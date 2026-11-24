@@ -40,23 +40,88 @@ import UIKit
         #expect(clientVMs.count == 2)
 
         for vm in settingsVMs {
-            #expect(vm.machines.allSatisfy { !$0.shortID.isEmpty })
+            #expect(vm.machines.allSatisfy { !$0.machineID.isEmpty && $0.disambiguator.isEmpty })
+            #expect(vm.connCheck.hasFooterText)
             render(SettingsPage {
-                GroupCard(separatorLeading: 46) {
+                VStack(spacing: 10) {
                     ForEach(vm.machines, id: \.machineID) { m in
                         MachineCard(machine: m)
                     }
                 }
+                .padding(.horizontal, 16)
                 HomeDiskReminders(reminders: vm.diskReminders)
             })
         }
-        // Archived machine card with empty subtitleParts still renders shortID cleanly.
-        var archived = PBMachineListCardView()
-        archived.machineID = "11223344556677889900aabbccddeeff"
-        archived.name = "Old Studio"
-        archived.shortID = "…ccddeeff"
-        archived.member = false
-        render(SettingsPage { GroupCard(separatorLeading: 46) { MachineCard(machine: archived) } })
+        // Plan B edge states: online direct + disk alert + warn/exhausted quotas, duplicate disambiguator,
+        // protocol mismatch, offline dimmed, and archived/removed with secondary note (no duplicate text).
+        let edgeCards: [PBMachineListCardView] = [
+            .with {
+                $0.machineID = "11223344556674c7"
+                $0.name = "MacBook"
+                $0.disambiguator = "74c7"
+                $0.online = true
+                $0.member = true
+                $0.directActive = true
+                $0.statusDot = .greenLive
+                $0.statusText = .with { $0.literal = "在线" }
+                $0.alerts = [
+                    .with {
+                        $0.kind = .diskLow
+                        $0.text = .with { $0.literal = "磁盘剩 4.2 GB" }
+                        $0.warn = true
+                    },
+                ]
+                $0.quotaItems = [
+                    .with {
+                        $0.agent = .codex
+                        $0.agentName = "Codex"
+                        $0.remainingPercent = 12
+                        $0.warn = true
+                        $0.valueText = .with { $0.literal = "剩 12%" }
+                    },
+                    .with {
+                        $0.agent = .claude
+                        $0.agentName = "Claude Code"
+                        $0.remainingPercent = 0
+                        $0.exhausted = true
+                        $0.warn = true
+                        $0.valueText = .with { $0.literal = "已用尽" }
+                    },
+                ]
+            },
+            .with {
+                $0.machineID = "112233445566a91e"
+                $0.name = "MacBook"
+                $0.disambiguator = "a91e"
+                $0.online = true
+                $0.member = true
+                $0.statusDot = .orangeStatic
+                $0.statusText = .with { $0.literal = "需更新" }
+                $0.alerts = [
+                    .with {
+                        $0.kind = .protocolMismatch
+                        $0.text = .with { $0.literal = "协议版本不一致，需更新此应用" }
+                        $0.warn = true
+                    },
+                ]
+            },
+            .with {
+                $0.machineID = "11223344556677889900aabbccddeeff"
+                $0.name = "Old Studio"
+                $0.online = false
+                $0.member = false
+                $0.dimmed = true
+                $0.statusDot = .unspecified
+                $0.statusText = .with { $0.literal = "已移除" }
+                $0.secondaryNote = .with { $0.literal = "保留历史会话记录" }
+            },
+        ]
+        render(SettingsPage {
+            VStack(spacing: 10) {
+                ForEach(edgeCards, id: \.machineID) { MachineCard(machine: $0) }
+            }
+            .padding(.horizontal, 16)
+        })
         for d in devicesVMs {
             render(SettingsPage {
                 GroupCard {

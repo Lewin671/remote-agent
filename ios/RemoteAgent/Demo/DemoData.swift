@@ -635,5 +635,79 @@ enum Demo {
         s.devices = keyed([client(me, now: now, platform: "ios", description: "iOS 26.0 · iPhone", ageMs: 60_000)], by: \.deviceID)
         return s
     }
+
+    // MARK: Plan B Settings Showcase (`-demoPlanB main|one|edges|empty`)
+
+    static func planB(_ mode: String, now: Int64 = nowMs()) -> DemoWorld {
+        func q(_ agent: PBAgent, used: Double) -> PBAgentQuota {
+            .with {
+                $0.agent = agent
+                $0.state = .ok
+                $0.observedMs = now - 60_000
+                $0.windows = [
+                    .with {
+                        $0.name = "five_hour"
+                        $0.windowMinutes = 300
+                        $0.usedPercent = used
+                        $0.resetsAtMs = now + 3 * 3_600_000
+                    },
+                ]
+            }
+        }
+        let iosDesc = "iOS 27.0 · iPhone"
+        let webDesc = "Chrome · macOS"
+        let authLabel = "Workstation"
+        var s = DemoWorld()
+        s.devices = keyed([
+            client(me, now: now, platform: "ios", description: iosDesc, ageMs: 86_400_000),
+            client(AuthorityDemo.other, now: now, name: authLabel, platform: "web", description: webDesc, ageMs: 3_600_000, seenMs: 600_000),
+        ], by: \.deviceID)
+        s.authorityDeviceId = (mode == "edges") ? AuthorityDemo.other : me
+        s.leaseEndMs = now + 48 * 3_600_000
+
+        switch mode {
+        case "one":
+            let m = machine(
+                "mac-00000000a7f2", "MacBook Pro", now: now,
+                agents: [.codex, .claude],
+                quotas: [q(.codex, used: 18), q(.claude, used: 36)]
+            )
+            s.machines = keyed([m], by: \.machineID)
+            s.directMachineIds = ["mac-00000000a7f2"]
+        case "edges":
+            var daemonOld = machine("studio-00001a2b", "Studio", now: now, agents: [.codex])
+            daemonOld.meta.protocolVersion = peerProtocolVersion > 1 ? peerProtocolVersion - 1 : 1
+            var clientOld = machine("studio-00003c4d", "Studio", now: now, agents: [.codex])
+            clientOld.meta.protocolVersion = peerProtocolVersion + 1
+            let offline = machine("vps-00009b20", "Old-VPS", now: now, online: false, agents: [.codex])
+            let removed = machine("mini-0000e512", "Old-MacMini", now: now, online: false, agents: [.codex])
+            s.machines = keyed([daemonOld, clientOld, offline, removed], by: \.machineID)
+            s.archivedMachineIds = ["mini-0000e512"]
+        case "empty":
+            break
+        default: // "main"
+            let macOnline = machine(
+                "mac-00000000a7f2", "MacBook Pro", now: now,
+                agents: [.codex, .claude, .antigravity],
+                quotas: [q(.codex, used: 18), q(.claude, used: 86), q(.antigravity, used: 32)]
+            )
+            var linux = machine(
+                "linux-0000003b91", "Linux Build", now: now,
+                agents: [.codex, .claude],
+                quotas: [q(.codex, used: 100), q(.claude, used: 55)]
+            )
+            linux.meta.diskStatus = .with {
+                $0.totalBytes = 256_000_000_000
+                $0.availableBytes = 1_600_000_000
+                $0.pressure = .warning
+            }
+            let macOffline = machine("mac-000000009c04", "MacBook Pro", now: now, online: false, agents: [.codex])
+            let removed = machine("mini-00000000e512", "Old MacMini", now: now, online: false, agents: [.codex])
+            s.machines = keyed([macOnline, linux, macOffline, removed], by: \.machineID)
+            s.archivedMachineIds = ["mini-00000000e512"]
+            s.directMachineIds = ["mac-00000000a7f2"]
+        }
+        return s
+    }
 }
 #endif

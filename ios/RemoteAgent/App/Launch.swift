@@ -191,8 +191,13 @@ enum LaunchDriver {
             model.showJoinForDemo(lastServer: "https://ra.example.com")
         } else if let demo {
             let remote = Demo.remote()
-            var world = Demo.world(demo)
-            AuthorityDemo.apply(&world)
+            var world: DemoWorld
+            if let planB = value("-demoPlanB") {
+                world = Demo.planB(planB)
+            } else {
+                world = Demo.world(demo)
+                AuthorityDemo.apply(&world)
+            }
             if args.contains("-demoRemoved") { world.removed = true }
             switch value("-demoLink") {
             case "waiting": world.connection = .connecting

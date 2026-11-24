@@ -23,6 +23,8 @@ struct DemoWorld: Equatable, Sendable {
     var recoveryPending = false
     var recoveryReadyMs: Int64 = 0
     var clockSkewed = false
+    var archivedMachineIds: Set<String> = []
+    var directMachineIds: Set<String> = []
 }
 
 /// Main-actor observable snapshots published by `CoreHost` for the migrated screens.
@@ -3455,6 +3457,27 @@ actor CoreHost: SyncEngine {
             }
         }
 
+        #if DEBUG
+        if demoMode, !demoWorld.directMachineIds.isEmpty, var vm = settingsVM {
+            var onlineCount = 0
+            var directCount = 0
+            for idx in vm.machines.indices {
+                if vm.machines[idx].online && !vm.machines[idx].dimmed {
+                    onlineCount += 1
+                    if demoWorld.directMachineIds.contains(vm.machines[idx].machineID) {
+                        vm.machines[idx].directActive = true
+                        directCount += 1
+                    }
+                }
+            }
+            if directCount > 0 {
+                vm.connCheck.footerText = .with {
+                    $0.key = directCount == onlineCount ? "connection.latency_footer_direct" : "connection.latency_footer_mixed"
+                }
+            }
+            settingsVM = vm
+        }
+        #endif
         let seq = nextRenderSeq()
 
         await MainActor.run { [
@@ -3913,7 +3936,7 @@ actor CoreHost: SyncEngine {
             $0.isMember = !demoWorld.removed
             $0.removed = demoWorld.removed
             $0.authorityDeviceID = demoWorld.authorityDeviceId
-            $0.trustedMachineIds = demoWorld.machines.keys.sorted()
+            $0.trustedMachineIds = demoWorld.machines.keys.filter { !demoWorld.archivedMachineIds.contains($0) }.sorted()
             $0.trustedClientIds = demoWorld.devices.values.filter { $0.kind == .client }.map(\.deviceID)
             $0.archiveMachineIds = demoWorld.machines.keys.sorted()
             $0.headEpoch = 1

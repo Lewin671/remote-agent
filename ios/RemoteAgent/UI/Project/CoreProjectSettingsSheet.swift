@@ -110,6 +110,7 @@ struct CoreProjectSettingsSheet: View {
                         desc: note.isEmpty ? nil : note,
                         checked: choice.selected,
                         enabled: blocked == nil && vm.settled,
+                        small: choice.disambiguator.isEmpty ? nil : choice.disambiguator,
                         last: idx == panel.machineChoices.count - 1
                     ) {
                         Haptics.selection()

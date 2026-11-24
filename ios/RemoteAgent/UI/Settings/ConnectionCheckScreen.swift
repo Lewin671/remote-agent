@@ -26,7 +26,7 @@ struct ConnectionCheckScreen: View {
                 GRow(L10n.connectionLocalNetwork(), value: network ? L10n.connectionWorking() : L10n.connectionUnavailable()).valueLead { Dot(network ? DS.green : DS.ink3) }
                 result(L10n.securityServer(), sub: hostOf(context.account.server), check?.server ?? .wait, slow: slowServerMs)
                 for m in machines {
-                    let name = m.name
+                    let name = m.disambiguator.isEmpty ? m.name : "\(m.name) · \(m.disambiguator)"
                     if m.online, m.member || model.isDemo {
                         result(name, check?.machines[m.machineID] ?? .wait, slow: slowMachineMs)
                         if m.hasDirectRow, m.directRow.visible {
@@ -47,7 +47,10 @@ struct ConnectionCheckScreen: View {
                 }
             }
             .padding(.top, 4)
-            GroupNote(L10n.connectionLatencyIsOneRoundTripTheServerRowMeasures())
+            let baseFoot = settingsVM.connCheck.footerText.rendered().or(L10n.connectionLatencyIsOneRoundTripTheServerRowMeasures())
+            let unsupported = machines.contains { $0.online && $0.member && $0.hasDirectRow && $0.directRow.stage == .unsupported }
+            let footSep = MessageLocale.current.hasPrefix("zh") ? "" : " "
+            GroupNote(unsupported ? baseFoot + footSep + L10n.transportConnFooterUnsupportedApp() : baseFoot)
             Btn(L10n.connectionTestAgain(), enabled: check?.busy == false, background: DS.gbg) { run += 1 }
                 .padding(.horizontal, 16)
         }
