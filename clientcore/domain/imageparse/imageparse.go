@@ -625,7 +625,12 @@ func (p *Plan) stepPng(offset int64, buf []byte) ([]byte, error) {
 			return p.fail(ErrCodeMalformed, "PNG chunk runs past the end"), nil
 		}
 		if p.pos < base || p.pos+8 > bufEnd {
-			return p.needRead(p.pos, minU32(p.totalLen-p.pos, defaultReadWindow)), nil
+			// Request only the chunk header (plus IHDR dimensions at pos==8) so IDAT payloads never cross the boundary.
+			want := uint32(8)
+			if p.pos == 8 {
+				want = 16
+			}
+			return p.needRead(p.pos, minU32(p.totalLen-p.pos, want)), nil
 		}
 		rel := int(p.pos - base)
 		chunkLen := uint64(u32be(buf, rel))
@@ -722,7 +727,12 @@ func (p *Plan) stepWebp(offset int64, buf []byte) ([]byte, error) {
 			return p.fail(ErrCodeMalformed, "WebP chunk header runs past the end"), nil
 		}
 		if p.pos < base || p.pos+8 > bufEnd {
-			return p.needRead(p.pos, minU32(p.limit-p.pos, defaultReadWindow)), nil
+			// Request only the 8-byte RIFF chunk header (18 bytes at pos==12 for VP8*/VP8X header) to skip image payloads.
+			want := uint32(8)
+			if p.pos == 12 {
+				want = 18
+			}
+			return p.needRead(p.pos, minU32(p.limit-p.pos, want)), nil
 		}
 		rel := int(p.pos - base)
 		t0, t1, t2, t3 := buf[rel], buf[rel+1], buf[rel+2], buf[rel+3]

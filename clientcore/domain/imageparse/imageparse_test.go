@@ -492,3 +492,94 @@ func TestStalledNeedReadFailsDeterministically(t *testing.T) {
 	}
 	t.Fatalf("expected Plan to terminate with StatusError on stalled reads")
 }
+
+func runPlanCountingBytes(t *testing.T, data []byte, mode Mode, expected Format, initWin int) (done []byte, steps int, bytesRead int64) {
+	t.Helper()
+	p := NewPlan(mode, expected, int64(len(data)))
+	maxSteps := int(MaxPlanSteps(int64(len(data))))
+	off := int64(0)
+	initEnd := len(data)
+	if initEnd > initWin {
+		initEnd = initWin
+	}
+	slice := data[:initEnd]
+	bytesRead += int64(len(slice))
+	for steps = 0; steps < maxSteps; steps++ {
+		res, err := p.Step(off, slice)
+		if err != nil {
+			t.Fatalf("Step error: %v", err)
+		}
+		switch res[0] {
+		case StatusDone:
+			return res, steps + 1, bytesRead
+		case StatusError:
+			t.Fatalf("unexpected plan error %d: %s", res[1], string(res[2:]))
+		case StatusNeedRead:
+			uoff := readU64le(res, 1)
+			need := uint64(u32le(res, 9))
+			end := uoff + need
+			if end > uint64(len(data)) {
+				end = uint64(len(data))
+			}
+			off = int64(uoff)
+			slice = data[uoff:end]
+			bytesRead += int64(len(slice))
+		default:
+			t.Fatalf("unexpected status %d", res[0])
+		}
+	}
+	t.Fatalf("exceeded maxSteps=%d", maxSteps)
+	return nil, steps, bytesRead
+}
+
+func TestPng20MB8KBIdatCrossBoundaryBytes(t *testing.T) {
+	// 20 MiB PNG split into 2,560 x 8 KiB IDAT chunks (typical libpng chunking) + tEXt + post-IDAT eXIf.
+	const idatSize = 8 * 1024
+	const idatCount = (20 * 1024 * 1024) / idatSize
+	ihdr := makePngChunk("IHDR", []byte{0, 0, 0x0f, 0xa0, 0, 0, 0x0b, 0xb8, 8, 6, 0, 0, 0}) // 4000x3000
+	textChunk := makePngChunk("tEXt", []byte("Comment\x00SECRET-TEXT"))
+	idatChunk := makePngChunk("IDAT", make([]byte, idatSize))
+	exifChunk := makePngChunk("eXIf", makeTiffOrient(6, 128))
+	iend := makePngChunk("IEND", nil)
+
+	totalSize := len(pngSignature) + len(ihdr) + len(textChunk) + idatCount*len(idatChunk) + len(exifChunk) + len(iend)
+	png := make([]byte, 0, totalSize)
+	png = append(png, pngSignature[:]...)
+	png = append(png, ihdr...)
+	png = append(png, textChunk...)
+	for i := 0; i < idatCount; i++ {
+		png = append(png, idatChunk...)
+	}
+	png = append(png, exifChunk...)
+	png = append(png, iend...)
+
+	// Inspect (initial 64 KB window): must read chunk headers only (~86 KB total, NOT 20 MB!).
+	doneInspect, stepsInspect, bytesInspect := runPlanCountingBytes(t, png, ModeInspect, FormatPNG, 64*1024)
+	if doneInspect[2] != 6 || doneInspect[3] != 1 || u32le(doneInspect, 4) != 4000 || u32le(doneInspect, 8) != 3000 {
+		t.Fatalf("inspect mismatch: orient=%d hasSize=%d %dx%d", doneInspect[2], doneInspect[3], u32le(doneInspect, 4), u32le(doneInspect, 8))
+	}
+	if bytesInspect > 128*1024 {
+		t.Fatalf("20 MB PNG Inspect crossed %d bytes (want <= 128 KiB, steps=%d)", bytesInspect, stepsInspect)
+	}
+
+	// Strip (initial 64 KB window): must read chunk headers only (~86 KB total, NOT 20 MB!),
+	// and merge all 2,560 contiguous IDAT chunks into a single KeepRange!
+	doneStrip, stepsStrip, bytesStrip := runPlanCountingBytes(t, png, ModeStrip, FormatPNG, 64*1024)
+	if bytesStrip > 128*1024 {
+		t.Fatalf("20 MB PNG Strip crossed %d bytes (want <= 128 KiB, steps=%d)", bytesStrip, stepsStrip)
+	}
+	opCount := u32le(doneStrip, 12)
+	if opCount > 4 {
+		t.Fatalf("expected merged KeepRanges (<= 4 ops), got %d", opCount)
+	}
+	stripped := spliceDone(png, doneStrip)
+	wantLen := totalSize - len(textChunk) - len(exifChunk)
+	if len(stripped) != wantLen {
+		t.Fatalf("stripped len = %d, want %d", len(stripped), wantLen)
+	}
+	if bytes.Contains(stripped, []byte("SECRET-TEXT")) || bytes.Contains(stripped, []byte("eXIf")) {
+		t.Fatalf("metadata leaked in stripped 20 MB PNG")
+	}
+	t.Logf("20 MiB PNG (8 KiB IDAT x %d): Inspect=%d B (%d steps), Strip=%d B (%d steps, %d ops)",
+		idatCount, bytesInspect, stepsInspect, bytesStrip, stepsStrip, opCount)
+}
