@@ -216,6 +216,13 @@ func (e *Engine) handleDirectDcStats(ctx *StepContext, ev *corev1.DirectDcStatsE
 	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnDcStats(e.nowMs, ev.PcId, report))
 }
 
+func (e *Engine) handleDirectPcProbeReceived(ctx *StepContext, ev *corev1.DirectPcProbeReceivedEvent) {
+	if ev == nil || len(ev.Raw) == 0 {
+		return
+	}
+	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnPcProbeReceived(e.nowMs, ev.PcId, ev.Raw))
+}
+
 func convertDirectStatsReport(in *corev1.DirectStatsReport) *transport.StatsReport {
 	out := &transport.StatsReport{
 		DTLS: in.DtlsState,
@@ -564,6 +571,16 @@ func (e *Engine) emitCoordEffects(ctx *StepContext, effs []transport.CoordEffect
 				Effect: &corev1.Effect_DirectDcReadStats{
 					DirectDcReadStats: &corev1.DirectDcReadStatsEffect{
 						PcId: eff.PCID,
+					},
+				},
+			})
+
+		case transport.CoordPcSendProbe:
+			ctx.emit(&corev1.Effect{
+				Effect: &corev1.Effect_DirectPcSendProbe{
+					DirectPcSendProbe: &corev1.DirectPcSendProbeEffect{
+						PcId: eff.PCID,
+						Raw:  eff.Raw,
 					},
 				},
 			})

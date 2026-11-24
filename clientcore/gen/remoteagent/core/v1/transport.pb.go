@@ -1069,6 +1069,303 @@ func extraUnmarshal_DirectPreferencesLoadedEvent(base unsafe.Pointer, num litewi
 	return false, nil
 }
 
+type DirectPcProbeReceivedEvent struct {
+	_    [0]func()
+	PcId uint64
+	Raw  []byte
+}
+
+func (m *DirectPcProbeReceivedEvent) GetPcId() uint64 {
+	if m != nil {
+		return m.PcId
+	}
+	return 0
+}
+func (m *DirectPcProbeReceivedEvent) GetRaw() []byte {
+	if m != nil {
+		return m.Raw
+	}
+	return nil
+}
+
+var LitewireDesc_DirectPcProbeReceivedEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectPcProbeReceivedEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectPcProbeReceivedEvent{}.PcId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(DirectPcProbeReceivedEvent{}.Raw), Kind: litewire.KindBytes},
+	},
+}
+
+func (m *DirectPcProbeReceivedEvent) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectPcProbeReceivedEvent)
+}
+
+type TerminalDirectOpenEvent struct {
+	_          [0]func()
+	StreamId   string
+	MachineId  string
+	SessionId  string
+	RelayLegId []byte
+}
+
+func (m *TerminalDirectOpenEvent) GetStreamId() string {
+	if m != nil {
+		return m.StreamId
+	}
+	return ""
+}
+func (m *TerminalDirectOpenEvent) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+func (m *TerminalDirectOpenEvent) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *TerminalDirectOpenEvent) GetRelayLegId() []byte {
+	if m != nil {
+		return m.RelayLegId
+	}
+	return nil
+}
+
+var LitewireDesc_TerminalDirectOpenEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&TerminalDirectOpenEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalDirectOpenEvent{}.StreamId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(TerminalDirectOpenEvent{}.MachineId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(TerminalDirectOpenEvent{}.SessionId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(TerminalDirectOpenEvent{}.RelayLegId), Kind: litewire.KindBytes},
+	},
+}
+
+func (m *TerminalDirectOpenEvent) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalDirectOpenEvent)
+}
+
+type TerminalDirectCloseEvent struct {
+	_        [0]func()
+	StreamId string
+}
+
+func (m *TerminalDirectCloseEvent) GetStreamId() string {
+	if m != nil {
+		return m.StreamId
+	}
+	return ""
+}
+
+var LitewireDesc_TerminalDirectCloseEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&TerminalDirectCloseEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalDirectCloseEvent{}.StreamId), Kind: litewire.KindString},
+	},
+}
+
+func (m *TerminalDirectCloseEvent) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalDirectCloseEvent)
+}
+
+type TerminalDirectLegEvent struct {
+	_        [0]func()
+	StreamId string
+	LegId    []byte
+	Direct   bool
+	Open     bool
+	PcId     uint64
+}
+
+func (m *TerminalDirectLegEvent) GetStreamId() string {
+	if m != nil {
+		return m.StreamId
+	}
+	return ""
+}
+func (m *TerminalDirectLegEvent) GetLegId() []byte {
+	if m != nil {
+		return m.LegId
+	}
+	return nil
+}
+func (m *TerminalDirectLegEvent) GetDirect() bool {
+	if m != nil {
+		return m.Direct
+	}
+	return false
+}
+func (m *TerminalDirectLegEvent) GetOpen() bool {
+	if m != nil {
+		return m.Open
+	}
+	return false
+}
+func (m *TerminalDirectLegEvent) GetPcId() uint64 {
+	if m != nil {
+		return m.PcId
+	}
+	return 0
+}
+
+var LitewireDesc_TerminalDirectLegEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&TerminalDirectLegEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalDirectLegEvent{}.StreamId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(TerminalDirectLegEvent{}.LegId), Kind: litewire.KindBytes},
+		{Num: 3, Offset: unsafe.Offsetof(TerminalDirectLegEvent{}.Direct), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(TerminalDirectLegEvent{}.Open), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(TerminalDirectLegEvent{}.PcId), Kind: litewire.KindUint64},
+	},
+}
+
+func (m *TerminalDirectLegEvent) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalDirectLegEvent)
+}
+
+type TerminalDirectInputEvent struct {
+	_              [0]func()
+	StreamId       string
+	Seq            uint64
+	IsInput        bool
+	SealedEnvelope []byte
+	FrameHash      []byte
+}
+
+func (m *TerminalDirectInputEvent) GetStreamId() string {
+	if m != nil {
+		return m.StreamId
+	}
+	return ""
+}
+func (m *TerminalDirectInputEvent) GetSeq() uint64 {
+	if m != nil {
+		return m.Seq
+	}
+	return 0
+}
+func (m *TerminalDirectInputEvent) GetIsInput() bool {
+	if m != nil {
+		return m.IsInput
+	}
+	return false
+}
+func (m *TerminalDirectInputEvent) GetSealedEnvelope() []byte {
+	if m != nil {
+		return m.SealedEnvelope
+	}
+	return nil
+}
+func (m *TerminalDirectInputEvent) GetFrameHash() []byte {
+	if m != nil {
+		return m.FrameHash
+	}
+	return nil
+}
+
+var LitewireDesc_TerminalDirectInputEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&TerminalDirectInputEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalDirectInputEvent{}.StreamId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(TerminalDirectInputEvent{}.Seq), Kind: litewire.KindUint64},
+		{Num: 3, Offset: unsafe.Offsetof(TerminalDirectInputEvent{}.IsInput), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(TerminalDirectInputEvent{}.SealedEnvelope), Kind: litewire.KindBytes},
+		{Num: 5, Offset: unsafe.Offsetof(TerminalDirectInputEvent{}.FrameHash), Kind: litewire.KindBytes},
+	},
+}
+
+func (m *TerminalDirectInputEvent) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalDirectInputEvent)
+}
+
+type TerminalDirectOutputEvent struct {
+	_          [0]func()
+	StreamId   string
+	Seq        uint64
+	FrameHash  []byte
+	Payload    []byte
+	FromDirect bool
+	PcId       uint64
+}
+
+func (m *TerminalDirectOutputEvent) GetStreamId() string {
+	if m != nil {
+		return m.StreamId
+	}
+	return ""
+}
+func (m *TerminalDirectOutputEvent) GetSeq() uint64 {
+	if m != nil {
+		return m.Seq
+	}
+	return 0
+}
+func (m *TerminalDirectOutputEvent) GetFrameHash() []byte {
+	if m != nil {
+		return m.FrameHash
+	}
+	return nil
+}
+func (m *TerminalDirectOutputEvent) GetPayload() []byte {
+	if m != nil {
+		return m.Payload
+	}
+	return nil
+}
+func (m *TerminalDirectOutputEvent) GetFromDirect() bool {
+	if m != nil {
+		return m.FromDirect
+	}
+	return false
+}
+func (m *TerminalDirectOutputEvent) GetPcId() uint64 {
+	if m != nil {
+		return m.PcId
+	}
+	return 0
+}
+
+var LitewireDesc_TerminalDirectOutputEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&TerminalDirectOutputEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalDirectOutputEvent{}.StreamId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(TerminalDirectOutputEvent{}.Seq), Kind: litewire.KindUint64},
+		{Num: 3, Offset: unsafe.Offsetof(TerminalDirectOutputEvent{}.FrameHash), Kind: litewire.KindBytes},
+		{Num: 4, Offset: unsafe.Offsetof(TerminalDirectOutputEvent{}.Payload), Kind: litewire.KindBytes},
+		{Num: 5, Offset: unsafe.Offsetof(TerminalDirectOutputEvent{}.FromDirect), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(TerminalDirectOutputEvent{}.PcId), Kind: litewire.KindUint64},
+	},
+}
+
+func (m *TerminalDirectOutputEvent) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalDirectOutputEvent)
+}
+
+type TerminalDirectConfirmRebuildAction struct {
+	_        [0]func()
+	StreamId string
+}
+
+func (m *TerminalDirectConfirmRebuildAction) GetStreamId() string {
+	if m != nil {
+		return m.StreamId
+	}
+	return ""
+}
+
+var LitewireDesc_TerminalDirectConfirmRebuildAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&TerminalDirectConfirmRebuildAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalDirectConfirmRebuildAction{}.StreamId), Kind: litewire.KindString},
+	},
+}
+
+func (m *TerminalDirectConfirmRebuildAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalDirectConfirmRebuildAction)
+}
+
 type DirectSignalSendEffect struct {
 	_          [0]func()
 	ToDevice   []byte
@@ -1545,6 +1842,216 @@ func (m *DirectRetryNowResultEffect) Marshal() ([]byte, error) {
 
 func (m *DirectRetryNowResultEffect) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DirectRetryNowResultEffect)
+}
+
+type DirectPcSendProbeEffect struct {
+	_    [0]func()
+	PcId uint64
+	Raw  []byte
+}
+
+func (m *DirectPcSendProbeEffect) GetPcId() uint64 {
+	if m != nil {
+		return m.PcId
+	}
+	return 0
+}
+func (m *DirectPcSendProbeEffect) GetRaw() []byte {
+	if m != nil {
+		return m.Raw
+	}
+	return nil
+}
+
+var LitewireDesc_DirectPcSendProbeEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectPcSendProbeEffect{}.PcId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(DirectPcSendProbeEffect{}.Raw), Kind: litewire.KindBytes},
+	},
+}
+
+func (m *DirectPcSendProbeEffect) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *DirectPcSendProbeEffect) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DirectPcSendProbeEffect)
+}
+
+type TerminalDirectSendEffect struct {
+	_              [0]func()
+	StreamId       string
+	SendRelay      bool
+	DirectPcId     uint64
+	SealedEnvelope []byte
+}
+
+func (m *TerminalDirectSendEffect) GetStreamId() string {
+	if m != nil {
+		return m.StreamId
+	}
+	return ""
+}
+func (m *TerminalDirectSendEffect) GetSendRelay() bool {
+	if m != nil {
+		return m.SendRelay
+	}
+	return false
+}
+func (m *TerminalDirectSendEffect) GetDirectPcId() uint64 {
+	if m != nil {
+		return m.DirectPcId
+	}
+	return 0
+}
+func (m *TerminalDirectSendEffect) GetSealedEnvelope() []byte {
+	if m != nil {
+		return m.SealedEnvelope
+	}
+	return nil
+}
+
+var LitewireDesc_TerminalDirectSendEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalDirectSendEffect{}.StreamId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(TerminalDirectSendEffect{}.SendRelay), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(TerminalDirectSendEffect{}.DirectPcId), Kind: litewire.KindUint64},
+		{Num: 4, Offset: unsafe.Offsetof(TerminalDirectSendEffect{}.SealedEnvelope), Kind: litewire.KindBytes},
+	},
+}
+
+func (m *TerminalDirectSendEffect) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *TerminalDirectSendEffect) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalDirectSendEffect)
+}
+
+type TerminalDirectDeliverEffect struct {
+	_        [0]func()
+	StreamId string
+	Payloads [][]byte
+}
+
+func (m *TerminalDirectDeliverEffect) GetStreamId() string {
+	if m != nil {
+		return m.StreamId
+	}
+	return ""
+}
+func (m *TerminalDirectDeliverEffect) GetPayloads() [][]byte {
+	if m != nil {
+		return m.Payloads
+	}
+	return nil
+}
+
+var LitewireDesc_TerminalDirectDeliverEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalDirectDeliverEffect{}.StreamId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(TerminalDirectDeliverEffect{}.Payloads), Kind: litewire.KindBytes, Flags: litewire.FlagRepeated},
+	},
+}
+
+func (m *TerminalDirectDeliverEffect) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *TerminalDirectDeliverEffect) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalDirectDeliverEffect)
+}
+
+type TerminalDirectAttachRelayEffect struct {
+	_         [0]func()
+	StreamId  string
+	MachineId string
+	LegId     []byte
+}
+
+func (m *TerminalDirectAttachRelayEffect) GetStreamId() string {
+	if m != nil {
+		return m.StreamId
+	}
+	return ""
+}
+func (m *TerminalDirectAttachRelayEffect) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+func (m *TerminalDirectAttachRelayEffect) GetLegId() []byte {
+	if m != nil {
+		return m.LegId
+	}
+	return nil
+}
+
+var LitewireDesc_TerminalDirectAttachRelayEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalDirectAttachRelayEffect{}.StreamId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(TerminalDirectAttachRelayEffect{}.MachineId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(TerminalDirectAttachRelayEffect{}.LegId), Kind: litewire.KindBytes},
+	},
+}
+
+func (m *TerminalDirectAttachRelayEffect) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *TerminalDirectAttachRelayEffect) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalDirectAttachRelayEffect)
+}
+
+type TerminalDirectStateEffect struct {
+	_                 [0]func()
+	StreamId          string
+	State             uint32
+	Reason            string
+	NeedsConfirmation bool
+}
+
+func (m *TerminalDirectStateEffect) GetStreamId() string {
+	if m != nil {
+		return m.StreamId
+	}
+	return ""
+}
+func (m *TerminalDirectStateEffect) GetState() uint32 {
+	if m != nil {
+		return m.State
+	}
+	return 0
+}
+func (m *TerminalDirectStateEffect) GetReason() string {
+	if m != nil {
+		return m.Reason
+	}
+	return ""
+}
+func (m *TerminalDirectStateEffect) GetNeedsConfirmation() bool {
+	if m != nil {
+		return m.NeedsConfirmation
+	}
+	return false
+}
+
+var LitewireDesc_TerminalDirectStateEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalDirectStateEffect{}.StreamId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(TerminalDirectStateEffect{}.State), Kind: litewire.KindUint32},
+		{Num: 3, Offset: unsafe.Offsetof(TerminalDirectStateEffect{}.Reason), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(TerminalDirectStateEffect{}.NeedsConfirmation), Kind: litewire.KindBool},
+	},
+}
+
+func (m *TerminalDirectStateEffect) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *TerminalDirectStateEffect) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalDirectStateEffect)
 }
 
 func init() {

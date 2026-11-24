@@ -14,7 +14,9 @@ import io.github.lewin671.remoteagent.core.proto.DirectPcCreatedEvent
 import io.github.lewin671.remoteagent.core.proto.DirectPcDescribeEffect
 import io.github.lewin671.remoteagent.core.proto.DirectPcDescriptionEvent
 import io.github.lewin671.remoteagent.core.proto.DirectPcLocalCandidateEvent
+import io.github.lewin671.remoteagent.core.proto.DirectPcProbeReceivedEvent
 import io.github.lewin671.remoteagent.core.proto.DirectPcRemoteSetEvent
+import io.github.lewin671.remoteagent.core.proto.DirectPcSendProbeEffect
 import io.github.lewin671.remoteagent.core.proto.DirectPcSetRemoteEffect
 import io.github.lewin671.remoteagent.core.proto.DirectPcStateEvent
 import io.github.lewin671.remoteagent.core.proto.DirectPcStunErrorEvent
@@ -183,6 +185,17 @@ internal class DirectExecutor(
                             }
                         }
                     },
+                    probeReply = { raw ->
+                        if (!closed.get() && pcs[eff.pcId] === entry) {
+                            emitEvent {
+                                setDirectPcProbeReceived(
+                                    DirectPcProbeReceivedEvent.newBuilder()
+                                        .setPcId(eff.pcId)
+                                        .setRaw(ByteString.copyFrom(raw)),
+                                )
+                            }
+                        }
+                    },
                     frame = { raw -> handleDcFrame(eff.pcId, entry, raw) },
                     closed = {
                         pcs.remove(eff.pcId, entry)
@@ -312,6 +325,11 @@ internal class DirectExecutor(
         entry.closedByCore = true
         rejectPendingForPc(eff.pcId)
         entry.channel.close()
+    }
+
+    fun pcSendProbe(eff: DirectPcSendProbeEffect) {
+        val entry = pcs[eff.pcId] ?: return
+        entry.channel.sendProbe(eff.raw.toByteArray())
     }
 
     suspend fun dcReadStats(eff: DirectDcReadStatsEffect) {

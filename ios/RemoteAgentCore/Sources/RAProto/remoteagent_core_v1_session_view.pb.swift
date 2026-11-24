@@ -1682,6 +1682,11 @@ public struct PBSessionDirectChipView: @unchecked Sendable {
   /// Clears the value of `popoverFoot`. Subsequent reads from it will return its default value.
   public mutating func clearPopoverFoot() {_uniqueStorage()._popoverFoot = nil}
 
+  public var terminalDirect: Bool {
+    get {return _storage._terminalDirect}
+    set {_uniqueStorage()._terminalDirect = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -5816,7 +5821,7 @@ extension PBSessionHeaderView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension PBSessionDirectChipView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionDirectChipView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}visible\0\u{1}active\0\u{3}read_direct\0\u{3}file_direct\0\u{3}label_text\0\u{3}popover_title\0\u{3}popover_body\0\u{3}popover_foot\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}visible\0\u{1}active\0\u{3}read_direct\0\u{3}file_direct\0\u{3}label_text\0\u{3}popover_title\0\u{3}popover_body\0\u{3}popover_foot\0\u{3}terminal_direct\0")
 
   fileprivate class _StorageClass {
     var _visible: Bool = false
@@ -5827,6 +5832,7 @@ extension PBSessionDirectChipView: SwiftProtobuf.Message, SwiftProtobuf._Message
     var _popoverTitle: PBCoreText? = nil
     var _popoverBody: PBCoreText? = nil
     var _popoverFoot: PBCoreText? = nil
+    var _terminalDirect: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5845,6 +5851,7 @@ extension PBSessionDirectChipView: SwiftProtobuf.Message, SwiftProtobuf._Message
       _popoverTitle = source._popoverTitle
       _popoverBody = source._popoverBody
       _popoverFoot = source._popoverFoot
+      _terminalDirect = source._terminalDirect
     }
   }
 
@@ -5871,6 +5878,7 @@ extension PBSessionDirectChipView: SwiftProtobuf.Message, SwiftProtobuf._Message
         case 6: try { try decoder.decodeSingularMessageField(value: &_storage._popoverTitle) }()
         case 7: try { try decoder.decodeSingularMessageField(value: &_storage._popoverBody) }()
         case 8: try { try decoder.decodeSingularMessageField(value: &_storage._popoverFoot) }()
+        case 9: try { try decoder.decodeSingularBoolField(value: &_storage._terminalDirect) }()
         default: break
         }
       }
@@ -5907,6 +5915,9 @@ extension PBSessionDirectChipView: SwiftProtobuf.Message, SwiftProtobuf._Message
       try { if let v = _storage._popoverFoot {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
       } }()
+      if _storage._terminalDirect != false {
+        try visitor.visitSingularBoolField(value: _storage._terminalDirect, fieldNumber: 9)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -5924,6 +5935,7 @@ extension PBSessionDirectChipView: SwiftProtobuf.Message, SwiftProtobuf._Message
         if _storage._popoverTitle != rhs_storage._popoverTitle {return false}
         if _storage._popoverBody != rhs_storage._popoverBody {return false}
         if _storage._popoverFoot != rhs_storage._popoverFoot {return false}
+        if _storage._terminalDirect != rhs_storage._terminalDirect {return false}
         return true
       }
       if !storagesAreEqual {return false}

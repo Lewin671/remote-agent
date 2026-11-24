@@ -178,6 +178,7 @@ class CoreHost(
     var onDirectPcAddCandidates: (DirectPcAddCandidatesEffect) -> Unit = {}
     var onDirectPcConfirm: (DirectPcConfirmEffect) -> Unit = {}
     var onDirectPcClose: (DirectPcCloseEffect) -> Unit = {}
+    var onDirectPcSendProbe: (DirectPcSendProbeEffect) -> Unit = {}
     var onDirectDcReadStats: (DirectDcReadStatsEffect) -> Unit = {}
     var onRenameClient: (RenameClientEffect) -> Unit = {}
     var onCheckUpdates: (CheckUpdatesEffect) -> Unit = {}
@@ -623,6 +624,7 @@ class CoreHost(
             Effect.EffectCase.DIRECT_PC_ADD_CANDIDATES -> onDirectPcAddCandidates(effect.directPcAddCandidates)
             Effect.EffectCase.DIRECT_PC_CONFIRM -> onDirectPcConfirm(effect.directPcConfirm)
             Effect.EffectCase.DIRECT_PC_CLOSE -> onDirectPcClose(effect.directPcClose)
+            Effect.EffectCase.DIRECT_PC_SEND_PROBE -> onDirectPcSendProbe(effect.directPcSendProbe)
             Effect.EffectCase.DIRECT_DC_READ_STATS -> onDirectDcReadStats(effect.directDcReadStats)
             Effect.EffectCase.DIRECT_BULK_ROUTE -> {
                 val res = effect.directBulkRoute

@@ -82,6 +82,7 @@ import type {
   DirectPcConfirmEffect,
   DirectPcCreateEffect,
   DirectPcDescribeEffect,
+  DirectPcSendProbeEffect,
   DirectPcSetRemoteEffect,
   DirectSignalSendEffect,
 } from "./gen/remoteagent/core/v1/transport_pb";
@@ -1221,6 +1222,7 @@ export class Remote implements CoreExecutor {
   directPcAddCandidates(eff: DirectPcAddCandidatesEffect) { void this.directExec.pcAddCandidates(eff); }
   directPcConfirm(eff: DirectPcConfirmEffect) { this.directExec.pcConfirm(eff); }
   directPcClose(eff: DirectPcCloseEffect) { this.directExec.pcClose(eff); }
+  directPcSendProbe(eff: DirectPcSendProbeEffect) { this.directExec.pcSendProbe(eff); }
   directDcReadStats(eff: DirectDcReadStatsEffect) { void this.directExec.dcReadStats(eff); }
 
   async executeCommandAttempt(eff: DispatchCommandEffect, signal?: AbortSignal): Promise<CommandOutcomeEvent> {

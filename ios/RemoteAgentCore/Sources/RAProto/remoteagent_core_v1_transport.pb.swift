@@ -644,6 +644,124 @@ public struct PBCoreDirectPreferencesLoadedEvent: Sendable {
   public init() {}
 }
 
+public struct PBCoreDirectPcProbeReceivedEvent: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var pcID: UInt64 = 0
+
+  public var raw: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreTerminalDirectOpenEvent: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var streamID: String = String()
+
+  public var machineID: String = String()
+
+  public var sessionID: String = String()
+
+  public var relayLegID: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreTerminalDirectCloseEvent: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var streamID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreTerminalDirectLegEvent: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var streamID: String = String()
+
+  public var legID: Data = Data()
+
+  public var direct: Bool = false
+
+  public var `open`: Bool = false
+
+  public var pcID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreTerminalDirectInputEvent: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var streamID: String = String()
+
+  public var seq: UInt64 = 0
+
+  public var isInput: Bool = false
+
+  public var sealedEnvelope: Data = Data()
+
+  public var frameHash: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreTerminalDirectOutputEvent: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var streamID: String = String()
+
+  public var seq: UInt64 = 0
+
+  public var frameHash: Data = Data()
+
+  public var payload: Data = Data()
+
+  public var fromDirect: Bool = false
+
+  public var pcID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreTerminalDirectConfirmRebuildAction: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var streamID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 public struct PBCoreDirectSignalSendEffect: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -818,6 +936,86 @@ public struct PBCoreDirectRetryNowResultEffect: Sendable {
   public var machineID: String = String()
 
   public var started: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreDirectPcSendProbeEffect: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var pcID: UInt64 = 0
+
+  public var raw: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreTerminalDirectSendEffect: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var streamID: String = String()
+
+  public var sendRelay: Bool = false
+
+  public var directPcID: UInt64 = 0
+
+  public var sealedEnvelope: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreTerminalDirectDeliverEffect: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var streamID: String = String()
+
+  public var payloads: [Data] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreTerminalDirectAttachRelayEffect: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var streamID: String = String()
+
+  public var machineID: String = String()
+
+  public var legID: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreTerminalDirectStateEffect: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var streamID: String = String()
+
+  public var state: UInt32 = 0
+
+  public var reason: String = String()
+
+  public var needsConfirmation: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1822,6 +2020,301 @@ extension PBCoreDirectPreferencesLoadedEvent: SwiftProtobuf.Message, SwiftProtob
   }
 }
 
+extension PBCoreDirectPcProbeReceivedEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DirectPcProbeReceivedEvent"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pc_id\0\u{1}raw\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.pcID) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.raw) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.pcID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.pcID, fieldNumber: 1)
+    }
+    if !self.raw.isEmpty {
+      try visitor.visitSingularBytesField(value: self.raw, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreDirectPcProbeReceivedEvent, rhs: PBCoreDirectPcProbeReceivedEvent) -> Bool {
+    if lhs.pcID != rhs.pcID {return false}
+    if lhs.raw != rhs.raw {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreTerminalDirectOpenEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalDirectOpenEvent"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}stream_id\0\u{3}machine_id\0\u{3}session_id\0\u{3}relay_leg_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.streamID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
+      case 4: try { try decoder.decodeSingularBytesField(value: &self.relayLegID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.streamID.isEmpty {
+      try visitor.visitSingularStringField(value: self.streamID, fieldNumber: 1)
+    }
+    if !self.machineID.isEmpty {
+      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 2)
+    }
+    if !self.sessionID.isEmpty {
+      try visitor.visitSingularStringField(value: self.sessionID, fieldNumber: 3)
+    }
+    if !self.relayLegID.isEmpty {
+      try visitor.visitSingularBytesField(value: self.relayLegID, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreTerminalDirectOpenEvent, rhs: PBCoreTerminalDirectOpenEvent) -> Bool {
+    if lhs.streamID != rhs.streamID {return false}
+    if lhs.machineID != rhs.machineID {return false}
+    if lhs.sessionID != rhs.sessionID {return false}
+    if lhs.relayLegID != rhs.relayLegID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreTerminalDirectCloseEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalDirectCloseEvent"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}stream_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.streamID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.streamID.isEmpty {
+      try visitor.visitSingularStringField(value: self.streamID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreTerminalDirectCloseEvent, rhs: PBCoreTerminalDirectCloseEvent) -> Bool {
+    if lhs.streamID != rhs.streamID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreTerminalDirectLegEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalDirectLegEvent"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}stream_id\0\u{3}leg_id\0\u{1}direct\0\u{1}open\0\u{3}pc_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.streamID) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.legID) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.direct) }()
+      case 4: try { try decoder.decodeSingularBoolField(value: &self.`open`) }()
+      case 5: try { try decoder.decodeSingularUInt64Field(value: &self.pcID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.streamID.isEmpty {
+      try visitor.visitSingularStringField(value: self.streamID, fieldNumber: 1)
+    }
+    if !self.legID.isEmpty {
+      try visitor.visitSingularBytesField(value: self.legID, fieldNumber: 2)
+    }
+    if self.direct != false {
+      try visitor.visitSingularBoolField(value: self.direct, fieldNumber: 3)
+    }
+    if self.`open` != false {
+      try visitor.visitSingularBoolField(value: self.`open`, fieldNumber: 4)
+    }
+    if self.pcID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.pcID, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreTerminalDirectLegEvent, rhs: PBCoreTerminalDirectLegEvent) -> Bool {
+    if lhs.streamID != rhs.streamID {return false}
+    if lhs.legID != rhs.legID {return false}
+    if lhs.direct != rhs.direct {return false}
+    if lhs.`open` != rhs.`open` {return false}
+    if lhs.pcID != rhs.pcID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreTerminalDirectInputEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalDirectInputEvent"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}stream_id\0\u{1}seq\0\u{3}is_input\0\u{3}sealed_envelope\0\u{3}frame_hash\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.streamID) }()
+      case 2: try { try decoder.decodeSingularUInt64Field(value: &self.seq) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.isInput) }()
+      case 4: try { try decoder.decodeSingularBytesField(value: &self.sealedEnvelope) }()
+      case 5: try { try decoder.decodeSingularBytesField(value: &self.frameHash) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.streamID.isEmpty {
+      try visitor.visitSingularStringField(value: self.streamID, fieldNumber: 1)
+    }
+    if self.seq != 0 {
+      try visitor.visitSingularUInt64Field(value: self.seq, fieldNumber: 2)
+    }
+    if self.isInput != false {
+      try visitor.visitSingularBoolField(value: self.isInput, fieldNumber: 3)
+    }
+    if !self.sealedEnvelope.isEmpty {
+      try visitor.visitSingularBytesField(value: self.sealedEnvelope, fieldNumber: 4)
+    }
+    if !self.frameHash.isEmpty {
+      try visitor.visitSingularBytesField(value: self.frameHash, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreTerminalDirectInputEvent, rhs: PBCoreTerminalDirectInputEvent) -> Bool {
+    if lhs.streamID != rhs.streamID {return false}
+    if lhs.seq != rhs.seq {return false}
+    if lhs.isInput != rhs.isInput {return false}
+    if lhs.sealedEnvelope != rhs.sealedEnvelope {return false}
+    if lhs.frameHash != rhs.frameHash {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreTerminalDirectOutputEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalDirectOutputEvent"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}stream_id\0\u{1}seq\0\u{3}frame_hash\0\u{1}payload\0\u{3}from_direct\0\u{3}pc_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.streamID) }()
+      case 2: try { try decoder.decodeSingularUInt64Field(value: &self.seq) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.frameHash) }()
+      case 4: try { try decoder.decodeSingularBytesField(value: &self.payload) }()
+      case 5: try { try decoder.decodeSingularBoolField(value: &self.fromDirect) }()
+      case 6: try { try decoder.decodeSingularUInt64Field(value: &self.pcID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.streamID.isEmpty {
+      try visitor.visitSingularStringField(value: self.streamID, fieldNumber: 1)
+    }
+    if self.seq != 0 {
+      try visitor.visitSingularUInt64Field(value: self.seq, fieldNumber: 2)
+    }
+    if !self.frameHash.isEmpty {
+      try visitor.visitSingularBytesField(value: self.frameHash, fieldNumber: 3)
+    }
+    if !self.payload.isEmpty {
+      try visitor.visitSingularBytesField(value: self.payload, fieldNumber: 4)
+    }
+    if self.fromDirect != false {
+      try visitor.visitSingularBoolField(value: self.fromDirect, fieldNumber: 5)
+    }
+    if self.pcID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.pcID, fieldNumber: 6)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreTerminalDirectOutputEvent, rhs: PBCoreTerminalDirectOutputEvent) -> Bool {
+    if lhs.streamID != rhs.streamID {return false}
+    if lhs.seq != rhs.seq {return false}
+    if lhs.frameHash != rhs.frameHash {return false}
+    if lhs.payload != rhs.payload {return false}
+    if lhs.fromDirect != rhs.fromDirect {return false}
+    if lhs.pcID != rhs.pcID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreTerminalDirectConfirmRebuildAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalDirectConfirmRebuildAction"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}stream_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.streamID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.streamID.isEmpty {
+      try visitor.visitSingularStringField(value: self.streamID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreTerminalDirectConfirmRebuildAction, rhs: PBCoreTerminalDirectConfirmRebuildAction) -> Bool {
+    if lhs.streamID != rhs.streamID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 extension PBCoreDirectSignalSendEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DirectSignalSendEffect"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}to_device\0\u{3}frame_class\0\u{3}frame_id\0\u{1}sealed\0\u{3}deadline_ms\0\u{1}critical\0")
@@ -2267,6 +2760,206 @@ extension PBCoreDirectRetryNowResultEffect: SwiftProtobuf.Message, SwiftProtobuf
   public static func ==(lhs: PBCoreDirectRetryNowResultEffect, rhs: PBCoreDirectRetryNowResultEffect) -> Bool {
     if lhs.machineID != rhs.machineID {return false}
     if lhs.started != rhs.started {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreDirectPcSendProbeEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DirectPcSendProbeEffect"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pc_id\0\u{1}raw\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.pcID) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.raw) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.pcID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.pcID, fieldNumber: 1)
+    }
+    if !self.raw.isEmpty {
+      try visitor.visitSingularBytesField(value: self.raw, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreDirectPcSendProbeEffect, rhs: PBCoreDirectPcSendProbeEffect) -> Bool {
+    if lhs.pcID != rhs.pcID {return false}
+    if lhs.raw != rhs.raw {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreTerminalDirectSendEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalDirectSendEffect"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}stream_id\0\u{3}send_relay\0\u{3}direct_pc_id\0\u{3}sealed_envelope\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.streamID) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.sendRelay) }()
+      case 3: try { try decoder.decodeSingularUInt64Field(value: &self.directPcID) }()
+      case 4: try { try decoder.decodeSingularBytesField(value: &self.sealedEnvelope) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.streamID.isEmpty {
+      try visitor.visitSingularStringField(value: self.streamID, fieldNumber: 1)
+    }
+    if self.sendRelay != false {
+      try visitor.visitSingularBoolField(value: self.sendRelay, fieldNumber: 2)
+    }
+    if self.directPcID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.directPcID, fieldNumber: 3)
+    }
+    if !self.sealedEnvelope.isEmpty {
+      try visitor.visitSingularBytesField(value: self.sealedEnvelope, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreTerminalDirectSendEffect, rhs: PBCoreTerminalDirectSendEffect) -> Bool {
+    if lhs.streamID != rhs.streamID {return false}
+    if lhs.sendRelay != rhs.sendRelay {return false}
+    if lhs.directPcID != rhs.directPcID {return false}
+    if lhs.sealedEnvelope != rhs.sealedEnvelope {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreTerminalDirectDeliverEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalDirectDeliverEffect"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}stream_id\0\u{1}payloads\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.streamID) }()
+      case 2: try { try decoder.decodeRepeatedBytesField(value: &self.payloads) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.streamID.isEmpty {
+      try visitor.visitSingularStringField(value: self.streamID, fieldNumber: 1)
+    }
+    if !self.payloads.isEmpty {
+      try visitor.visitRepeatedBytesField(value: self.payloads, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreTerminalDirectDeliverEffect, rhs: PBCoreTerminalDirectDeliverEffect) -> Bool {
+    if lhs.streamID != rhs.streamID {return false}
+    if lhs.payloads != rhs.payloads {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreTerminalDirectAttachRelayEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalDirectAttachRelayEffect"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}stream_id\0\u{3}machine_id\0\u{3}leg_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.streamID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.legID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.streamID.isEmpty {
+      try visitor.visitSingularStringField(value: self.streamID, fieldNumber: 1)
+    }
+    if !self.machineID.isEmpty {
+      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 2)
+    }
+    if !self.legID.isEmpty {
+      try visitor.visitSingularBytesField(value: self.legID, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreTerminalDirectAttachRelayEffect, rhs: PBCoreTerminalDirectAttachRelayEffect) -> Bool {
+    if lhs.streamID != rhs.streamID {return false}
+    if lhs.machineID != rhs.machineID {return false}
+    if lhs.legID != rhs.legID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreTerminalDirectStateEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalDirectStateEffect"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}stream_id\0\u{1}state\0\u{1}reason\0\u{3}needs_confirmation\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.streamID) }()
+      case 2: try { try decoder.decodeSingularUInt32Field(value: &self.state) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.reason) }()
+      case 4: try { try decoder.decodeSingularBoolField(value: &self.needsConfirmation) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.streamID.isEmpty {
+      try visitor.visitSingularStringField(value: self.streamID, fieldNumber: 1)
+    }
+    if self.state != 0 {
+      try visitor.visitSingularUInt32Field(value: self.state, fieldNumber: 2)
+    }
+    if !self.reason.isEmpty {
+      try visitor.visitSingularStringField(value: self.reason, fieldNumber: 3)
+    }
+    if self.needsConfirmation != false {
+      try visitor.visitSingularBoolField(value: self.needsConfirmation, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreTerminalDirectStateEffect, rhs: PBCoreTerminalDirectStateEffect) -> Bool {
+    if lhs.streamID != rhs.streamID {return false}
+    if lhs.state != rhs.state {return false}
+    if lhs.reason != rhs.reason {return false}
+    if lhs.needsConfirmation != rhs.needsConfirmation {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

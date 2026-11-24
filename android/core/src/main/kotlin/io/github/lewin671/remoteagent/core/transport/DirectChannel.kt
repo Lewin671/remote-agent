@@ -24,8 +24,6 @@ import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Locale
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -152,7 +150,7 @@ internal class DirectChannelOptions(
     val frame: (ByteArray) -> Unit,
     val closed: () -> Unit,
     val open: (() -> Unit)? = null,
-    val probe: ((Double) -> Unit)? = null,
+    val probeReply: ((ByteArray) -> Unit)? = null,
     val clock: () -> Long = System::currentTimeMillis,
     val monotonic: () -> Long = { System.nanoTime() / 1_000_000L },
     val dispatcher: CoroutineDispatcher = Dispatchers.Default,
@@ -181,14 +179,11 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
 
     @Volatile private var confirmed = false
     @Volatile private var ended = false
-    @Volatile private var lastProbeAt = 0L
-    private var missedProbes = 0
     private val reservationReleased = AtomicBoolean(false)
     private val writers = AtomicInteger(0)
 
     private val partial = HashMap<String, PartialMessage>()
     private val waiting = ArrayList<ByteArray>()
-    private val probes = ConcurrentHashMap<String, Long>()
 
     private val pc: RtcPeerConnection
     private val data: RtcDataChannel
@@ -284,12 +279,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                         reply[0] = 1
                         probe.send(reply, true)
                     } else if (data[0] == 1.toByte()) {
-                        val id = hexBytes(data.copyOfRange(1, 17))
-                        val startNs = probes.remove(id)
-                        if (startNs != null) {
-                            synchronized(stateLock) { missedProbes = 0 }
-                            options.probe?.invoke((System.nanoTime() - startNs) / 1_000_000.0)
-                        }
+                        options.probeReply?.invoke(data.copyOf())
                     }
                 }
             }
@@ -322,7 +312,6 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                     return@launch
                 }
                 val now = options.monotonic()
-                val nowNs = System.nanoTime()
                 val expiredParts = synchronized(stateLock) {
                     val expired = partial.entries.filter { now >= it.value.until }.map { it.key to it.value }
                     for ((k, _) in expired) partial.remove(k)
@@ -330,24 +319,6 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                 }
                 for ((_, part) in expiredParts) {
                     options.budget.free(options.peer, 1, part.bytes, part.parts.size)
-                }
-                val tooManyMissed = expireStaleProbes(probes, nowNs) {
-                    synchronized(stateLock) { ++missedProbes }
-                }
-                if (tooManyMissed) {
-                    close()
-                    return@launch
-                }
-                if (ready && probe.state() == RtcChannelState.OPEN && now - lastProbeAt >= 1000L) {
-                    lastProbeAt = now
-                    val raw = ByteArray(17)
-                    random.nextBytes(raw)
-                    raw[0] = 0
-                    probes[hexBytes(raw.copyOfRange(1, 17))] = System.nanoTime()
-                    if (!probe.send(raw, true)) {
-                        close()
-                        return@launch
-                    }
                 }
             }
         }
@@ -360,6 +331,15 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
 
     val queuedBytes: Long
         get() = data.bufferedAmount()
+
+    fun sendProbe(raw: ByteArray): Boolean {
+        if (!ready || probe.state() != RtcChannelState.OPEN || raw.size != 17) return false
+        if (!probe.send(raw, true)) {
+            close()
+            return false
+        }
+        return true
+    }
 
     suspend fun description(offer: Boolean, restart: Boolean = false): ByteArray {
         if (!valid()) throw PathChanged()
@@ -586,7 +566,6 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
         }
         for (part in toFreeParts) options.budget.free(options.peer, 1, part.bytes, part.parts.size)
         for (raw in toFreeWaiting) options.budget.free(options.peer, 1, raw.size, 1)
-        probes.clear()
         wake.close()
         incoming.close()
         tickJob.cancel()
@@ -604,19 +583,4 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
             options.budget.release(options.peer, options.use)
         }
     }
-}
-
-internal fun expireStaleProbes(
-    probes: ConcurrentMap<String, Long>,
-    nowNs: Long,
-    onMissed: () -> Int,
-): Boolean {
-    for ((id, startNs) in probes.entries) {
-        if (nowNs - startNs >= 1_000_000_000L && probes.remove(id, startNs)) {
-            if (onMissed() >= 3) {
-                return true
-            }
-        }
-    }
-    return false
 }

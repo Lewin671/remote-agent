@@ -119,8 +119,59 @@ export interface ChannelOptions {
   frame: (raw: Uint8Array<ArrayBuffer>) => void;
   closed: () => void;
   open?: () => void;
-  probe?: (milliseconds: number) => void;
+  probeReply?: (raw: Uint8Array<ArrayBuffer>) => void;
   factory?: (config: RTCConfiguration) => RTCPeerConnection;
+}
+
+/** Strict unknown-field check for Fragment (fields 1..7 only). */
+function hasUnknownFragmentFields(raw: Uint8Array): boolean {
+  let pos = 0;
+  while (pos < raw.byteLength) {
+    let tag = 0;
+    let shift = 0;
+    let ok = false;
+    for (let i = 0; i < 10 && pos < raw.byteLength; i++) {
+      const b = raw[pos++];
+      tag |= (b & 0x7f) << shift;
+      if ((b & 0x80) === 0) {
+        ok = true;
+        break;
+      }
+      shift += 7;
+    }
+    if (!ok) return true;
+    const field = tag >>> 3;
+    const wire = tag & 7;
+    if (field < 1 || field > 7) return true;
+    if (wire === 0) {
+      let vok = false;
+      for (let i = 0; i < 10 && pos < raw.byteLength; i++) {
+        if ((raw[pos++] & 0x80) === 0) {
+          vok = true;
+          break;
+        }
+      }
+      if (!vok) return true;
+    } else if (wire === 2) {
+      let len = 0;
+      let lshift = 0;
+      let lok = false;
+      for (let i = 0; i < 10 && pos < raw.byteLength; i++) {
+        const b = raw[pos++];
+        len |= (b & 0x7f) << lshift;
+        if ((b & 0x80) === 0) {
+          lok = true;
+          break;
+        }
+        lshift += 7;
+      }
+      if (!lok || len < 0 || pos + len > raw.byteLength) return true;
+      pos += len;
+    } else {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** Browser-native WebRTC peer connection & DataChannel framing adapter. */
@@ -131,15 +182,11 @@ export class DirectChannel {
   private readonly owner: string;
   private readonly lifetime = new AbortController();
   private confirmed = false;
-  private stunReady = false;
   private ended = false;
   private chain = Promise.resolve();
   private partial = new Map<string, PartialMessage>();
   private waiting: Uint8Array<ArrayBuffer>[] = [];
-  private probes = new Map<string, number>();
   private tick: ReturnType<typeof setInterval>;
-  private lastProbe = 0;
-  private missedProbes = 0;
   private writers = 0;
   private reservationReleased = false;
   private listeners = new Set<() => void>();
@@ -186,7 +233,6 @@ export class DirectChannel {
     this.data.onerror = this.probe.onerror = () => this.close();
     this.pc.ondatachannel = (event) => { event.channel.close(); this.close(); };
     this.pc.onicecandidate = (event) => {
-      if (event.candidate?.type === "srflx") this.stunReady = true;
       if (this.valid()) options.candidate(event.candidate?.toJSON() ?? null);
     };
     this.pc.onconnectionstatechange = () => {
@@ -223,13 +269,7 @@ export class DirectChannel {
         raw[0] = 1;
         this.probe.send(raw);
       } else if (raw[0] === 1) {
-        const id = hexBytes(raw.subarray(1));
-        const start = this.probes.get(id);
-        if (start !== undefined) {
-          this.probes.delete(id);
-          this.missedProbes = 0;
-          options.probe?.(performance.now() - start);
-        }
+        options.probeReply?.(raw);
       }
     };
     this.tick = setInterval(() => {
@@ -239,34 +279,24 @@ export class DirectChannel {
       }
       const now = performance.now();
       for (const [key, part] of this.partial) if (now >= part.until) this.drop(key, part);
-      for (const [id, start] of this.probes) {
-        if (now - start >= 1000) {
-          this.probes.delete(id);
-          if (++this.missedProbes >= 3) {
-            this.close();
-            return;
-          }
-        }
-      }
-      if (this.ready && this.probe.readyState === "open" && now - this.lastProbe >= 1000) {
-        this.lastProbe = now;
-        const raw = crypto.getRandomValues(new Uint8Array(17));
-        raw[0] = 0;
-        this.probes.set(hexBytes(raw.subarray(1)), now);
-        try {
-          this.probe.send(raw);
-        } catch {
-          this.close();
-        }
-      }
     }, 100);
   }
 
   private valid() { return !this.ended && this.options.valid(); }
   get ready() { return this.confirmed && this.valid() && this.data.readyState === "open"; }
-  get traversalReady() { return this.stunReady; }
   get queuedBytes() { return this.data.bufferedAmount; }
   get signal() { return this.lifetime.signal; }
+
+  sendProbe(raw: Uint8Array<ArrayBuffer>): boolean {
+    if (!this.ready || this.probe.readyState !== "open" || raw.byteLength !== 17) return false;
+    try {
+      this.probe.send(raw);
+      return true;
+    } catch {
+      this.close();
+      return false;
+    }
+  }
 
   async description(offer: boolean, restart = false): Promise<Uint8Array<ArrayBuffer>> {
     if (!this.valid()) throw new PathChanged();
@@ -416,6 +446,7 @@ export class DirectChannel {
 
   private async receive(raw: Uint8Array<ArrayBuffer>) {
     if (!this.valid()) return;
+    if (hasUnknownFragmentFields(raw)) return;
     const frame = fromBinary(FragmentSchema, raw);
     if (
       frame.messageId.byteLength !== 16 ||
@@ -498,7 +529,6 @@ export class DirectChannel {
     clearInterval(this.tick);
     for (const [key, part] of this.partial) this.drop(key, part);
     for (const raw of this.waiting.splice(0)) this.options.budget.free(this.options.peer, 1, raw.byteLength, 1);
-    this.probes.clear();
     cleanup(() => this.pc.close(), () => this.options.closed(), () => this.releaseReservation());
   }
 

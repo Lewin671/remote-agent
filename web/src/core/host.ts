@@ -188,6 +188,7 @@ import {
   type DirectPcConfirmEffect,
   type DirectPcCreateEffect,
   type DirectPcDescribeEffect,
+  type DirectPcSendProbeEffect,
   type DirectPcSetRemoteEffect,
   type DirectPreferenceEntry,
   type DirectSignalSendEffect,
@@ -429,6 +430,7 @@ export interface CoreExecutor {
   directPcAddCandidates?(eff: DirectPcAddCandidatesEffect): void;
   directPcConfirm?(eff: DirectPcConfirmEffect): void;
   directPcClose?(eff: DirectPcCloseEffect): void;
+  directPcSendProbe?(eff: DirectPcSendProbeEffect): void;
   directDcReadStats?(eff: DirectDcReadStatsEffect): void;
 }
 
@@ -3194,6 +3196,10 @@ export class CoreHost {
 
       case "directPcClose":
         this.executor?.directPcClose?.(val.value);
+        break;
+
+      case "directPcSendProbe":
+        this.executor?.directPcSendProbe?.(val.value);
         break;
 
       case "directDcReadStats":

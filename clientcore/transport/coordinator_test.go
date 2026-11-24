@@ -689,19 +689,22 @@ func TestCoordinatorNextTimersNoBusyLoopAfterDeadline(t *testing.T) {
 	afterDeadline := int64(r.session.Deadline()) + 100
 	coord.OnSessionTimer(afterDeadline)
 	_, _, sessAt, sessOK, _, _ := coord.NextTimers(afterDeadline)
-	if sessOK {
+	if sessOK && sessAt <= afterDeadline {
 		t.Fatalf("established live round past Deadline must not spin NextTimers, got sessOK=%v sessAt=%d (now=%d)", sessOK, sessAt, afterDeadline)
 	}
 
 	pastRetain := int64(r.session.RetainUntil()) + 100
 	coord.OnSessionTimer(pastRetain)
 	_, _, sessAt, sessOK, _, _ = coord.NextTimers(pastRetain)
-	if sessOK {
+	if sessOK && sessAt <= pastRetain {
 		t.Fatalf("unretired live round past RetainUntil must not spin NextTimers, got sessOK=%v sessAt=%d (now=%d)", sessOK, sessAt, pastRetain)
 	}
 
 	// Closing all remaining PCs after deadlineTicked ends the session immediately.
 	coord.OnPcClosed(pastRetain+10, readPC)
+	if _, _, _, sessOK, _, _ = coord.NextTimers(pastRetain + 10); sessOK {
+		t.Fatalf("expected no session timers after live PCs close")
+	}
 	for id, rem := range coord.rounds {
 		if id == rid && !rem.ended {
 			t.Fatalf("expected post-deadline round to end once live PCs close")
@@ -867,5 +870,51 @@ func TestCoordinatorPerUsePeerUnsupported(t *testing.T) {
 	}
 	if rounds[len(rounds)-1].End == EndPeerUnsupported {
 		t.Fatalf("per-use Unsupported on UseBulk after Read became ready must not mark EndPeerUnsupported: %+v", rounds[len(rounds)-1])
+	}
+}
+
+func TestCoordinatorProbeLivenessAndTimeout(t *testing.T) {
+	coord, _, _, now, _, rid, _ := driveEstablishedCoordRound(t, "127.0.0.1", "")
+	r := coord.rounds[rid]
+	if r == nil {
+		t.Fatal("expected active round")
+	}
+	pcID := r.globalPC[UseRead]
+	if pcID == 0 {
+		t.Fatal("expected read PC")
+	}
+	// Ensure probe tracker started once DC opened + confirmed.
+	_, _, sessAt, sessOK, _, _ := coord.NextTimers(now)
+	if !sessOK || sessAt > now+int64(linkcore.ProbeIntervalMs) {
+		t.Fatalf("expected probe timer scheduled within %dms, got ok=%v at=%d (now=%d)", linkcore.ProbeIntervalMs, sessOK, sessAt, now)
+	}
+	// First probe fires at +1000ms and gets echoed back -> keeps PC alive.
+	t1 := now + int64(linkcore.ProbeIntervalMs)
+	effs := coord.OnSessionTimer(t1)
+	var probeRaw []byte
+	for _, e := range effs {
+		if sp, ok := e.(CoordPcSendProbe); ok && sp.PCID == pcID {
+			probeRaw = append([]byte(nil), sp.Raw...)
+		}
+	}
+	if len(probeRaw) != linkcore.ProbeFrameBytes || probeRaw[0] != 0 {
+		t.Fatalf("expected 17-byte probe request, got len=%d", len(probeRaw))
+	}
+	probeRaw[0] = 1
+	coord.OnPcProbeReceived(t1+20, pcID, probeRaw)
+
+	// Three consecutive missed probes close the PC with reason "probe_timeout".
+	var closedReason string
+	cur := t1
+	for step := 0; step < 6 && closedReason == ""; step++ {
+		cur += int64(linkcore.ProbeIntervalMs)
+		for _, e := range coord.OnSessionTimer(cur) {
+			if cl, ok := e.(CoordPcClose); ok && cl.PCID == pcID {
+				closedReason = cl.Reason
+			}
+		}
+	}
+	if closedReason != "probe_timeout" {
+		t.Fatalf("expected probe_timeout close after 3 misses, got %q", closedReason)
 	}
 }

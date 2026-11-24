@@ -77,4 +77,10 @@ public interface SessionDirectChipViewOrBuilder extends
    * @return The popoverFoot.
    */
   io.github.lewin671.remoteagent.core.proto.Text getPopoverFoot();
+
+  /**
+   * <code>bool terminal_direct = 9 [json_name = "terminalDirect"];</code>
+   * @return The terminalDirect.
+   */
+  boolean getTerminalDirect();
 }

@@ -10,6 +10,7 @@ import {
   DirectPcCreatedEventSchema,
   DirectPcDescriptionEventSchema,
   DirectPcLocalCandidateEventSchema,
+  DirectPcProbeReceivedEventSchema,
   DirectPcRemoteSetEventSchema,
   DirectPcStateEventSchema,
   DirectPcStunErrorEventSchema,
@@ -19,6 +20,7 @@ import {
   type DirectPcConfirmEffect,
   type DirectPcCreateEffect,
   type DirectPcDescribeEffect,
+  type DirectPcSendProbeEffect,
   type DirectPcSetRemoteEffect,
   type DirectSignalSendEffect,
 } from "../gen/remoteagent/core/v1/transport_pb";
@@ -176,6 +178,9 @@ export class DirectExecutor {
         stunError: (code, address) => {
           this.emit({ case: "directPcStunError", value: create(DirectPcStunErrorEventSchema, { pcId: eff.pcId, code, address }) });
         },
+        probeReply: (raw) => {
+          this.emit({ case: "directPcProbeReceived", value: create(DirectPcProbeReceivedEventSchema, { pcId: eff.pcId, raw }) });
+        },
         frame: (raw) => this.handleDcFrame(eff.pcId, entry, raw),
         closed: () => {
           const cur = this.pcs.get(eff.pcId);
@@ -263,6 +268,12 @@ export class DirectExecutor {
     this.pcs.delete(eff.pcId);
     this.rejectPendingForPc(eff.pcId);
     entry.channel.close();
+  }
+
+  pcSendProbe(eff: DirectPcSendProbeEffect) {
+    const entry = this.pcs.get(eff.pcId);
+    if (!entry) return;
+    entry.channel.sendProbe(eff.raw as Uint8Array<ArrayBuffer>);
   }
 
   async dcReadStats(eff: DirectDcReadStatsEffect): Promise<void> {

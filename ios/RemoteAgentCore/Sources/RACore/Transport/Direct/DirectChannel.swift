@@ -188,7 +188,7 @@ struct DirectChannelOptions: Sendable {
     var frame: @Sendable (Data) -> Void
     var closed: @Sendable () -> Void
     var open: (@Sendable () -> Void)? = nil
-    var probe: (@Sendable (Double) -> Void)? = nil
+    var probeReply: (@Sendable (Data) -> Void)? = nil
     var clock: @Sendable () -> UInt64 = { UInt64(Date().timeIntervalSince1970 * 1000) }
     var monotonic: @Sendable () -> Double = { Double(DispatchTime.now().uptimeNanoseconds) / 1e6 }
 }
@@ -209,11 +209,9 @@ final class DirectChannel: @unchecked Sendable {
     private let wake = AsyncSignal()
     private let writes = SerialChain()
     private var confirmed = false, ended = false, reservationReleased = false
-    private var writers = 0, missedProbes = 0
-    private var lastProbe = -Double.infinity
+    private var writers = 0
     private var partial: [String: Partial] = [:]
     private var waiting: [Data] = []
-    private var probes: [String: Double] = [:]
     private var pc: (any RtcPeerConnection)!
     private var data: (any RtcDataChannel)!
     private var probe: (any RtcDataChannel)!
@@ -315,10 +313,18 @@ final class DirectChannel: @unchecked Sendable {
             var reply = bytes; reply[0] = 1
             _ = probe.send(Data(reply))
         } else if bytes[0] == 1 {
-            let id = hexString(Data(bytes[1...]))
-            lock.lock(); let start = probes.removeValue(forKey: id); if start != nil { missedProbes = 0 }; lock.unlock()
-            if let start { options.probe?(options.monotonic() - start) }
+            options.probeReply?(raw)
         }
+    }
+
+    @discardableResult
+    func sendProbe(_ raw: Data) -> Bool {
+        guard ready, probe.state == .open, raw.count == 17 else { return false }
+        if !probe.send(raw) {
+            close()
+            return false
+        }
+        return true
     }
 
     private func tickOnce() {
@@ -329,24 +335,10 @@ final class DirectChannel: @unchecked Sendable {
         }
         let now = options.monotonic()
         var expired: [Partial] = []
-        var tooMany = false
         lock.lock()
         for (key, part) in partial where now >= part.until { expired.append(part); partial.removeValue(forKey: key) }
-        for (id, start) in probes where now - start >= 1000 {
-            probes.removeValue(forKey: id)
-            missedProbes += 1
-            if missedProbes >= 3 { tooMany = true }
-        }
         lock.unlock()
         for part in expired { options.budget.free(options.peer, 1, part.bytes, part.parts.count) }
-        if tooMany { close(); return }
-        if ready && probe.state == .open && now - lastProbe >= 1000 {
-            lastProbe = now
-            var raw = [UInt8](randomBytes(17))
-            raw[0] = 0
-            lock.lock(); probes[hexString(Data(raw[1...]))] = now; lock.unlock()
-            _ = probe.send(Data(raw))
-        }
     }
 
     // MARK: negotiation
@@ -518,7 +510,6 @@ final class DirectChannel: @unchecked Sendable {
         ended = true
         parts = Array(partial.values); partial = [:]
         held = waiting; waiting = []
-        probes = [:]
         lock.unlock()
         for part in parts { options.budget.free(options.peer, 1, part.bytes, part.parts.count) }
         for raw in held { options.budget.free(options.peer, 1, raw.count, 1) }

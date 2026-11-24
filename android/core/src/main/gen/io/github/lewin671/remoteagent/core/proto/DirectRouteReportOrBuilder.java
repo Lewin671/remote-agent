@@ -161,4 +161,15 @@ public interface DirectRouteReportOrBuilder extends
    * @return The fileSlow.
    */
   boolean getFileSlow();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectPathChoice terminal_route = 23 [json_name = "terminalRoute"];</code>
+   * @return The enum numeric value on the wire for terminalRoute.
+   */
+  int getTerminalRouteValue();
+  /**
+   * <code>.remoteagent.core.v1.DirectPathChoice terminal_route = 23 [json_name = "terminalRoute"];</code>
+   * @return The terminalRoute.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectPathChoice getTerminalRoute();
 }

@@ -213,6 +213,15 @@ final class DirectExecutor: @unchecked Sendable {
                         }
                     }
                 },
+                probeReply: { [weak self, weak entry] raw in
+                    guard let self, let entry, self.lock.withLock({ !self.closed && self.pcs[pcID] === entry }) else { return }
+                    self.emitEvent {
+                        $0.directPcProbeReceived = .with {
+                            $0.pcID = pcID
+                            $0.raw = raw
+                        }
+                    }
+                },
                 clock: clock,
                 monotonic: monotonic
             ))
@@ -341,6 +350,11 @@ final class DirectExecutor: @unchecked Sendable {
         }
         rejectPending(for: eff.pcID)
         entry?.channel?.close()
+    }
+
+    func pcSendProbe(_ eff: PBCoreDirectPcSendProbeEffect) {
+        let ch = lock.withLock { pcs[eff.pcID]?.channel }
+        _ = ch?.sendProbe(eff.raw)
     }
 
     func dcReadStats(_ eff: PBCoreDirectDcReadStatsEffect) async {

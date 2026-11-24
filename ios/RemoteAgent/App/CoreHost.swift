@@ -134,6 +134,7 @@ protocol CoreHostExecutor: AnyObject, Sendable {
     func handleDirectPcAddCandidates(_ eff: PBCoreDirectPcAddCandidatesEffect) async
     func handleDirectPcConfirm(_ eff: PBCoreDirectPcConfirmEffect)
     func handleDirectPcClose(_ eff: PBCoreDirectPcCloseEffect)
+    func handleDirectPcSendProbe(_ eff: PBCoreDirectPcSendProbeEffect)
     func handleDirectDcReadStats(_ eff: PBCoreDirectDcReadStatsEffect) async
     func close() async
 }
@@ -161,6 +162,7 @@ extension CoreHostExecutor {
     func handleDirectPcAddCandidates(_ eff: PBCoreDirectPcAddCandidatesEffect) async {}
     func handleDirectPcConfirm(_ eff: PBCoreDirectPcConfirmEffect) {}
     func handleDirectPcClose(_ eff: PBCoreDirectPcCloseEffect) {}
+    func handleDirectPcSendProbe(_ eff: PBCoreDirectPcSendProbeEffect) {}
     func handleDirectDcReadStats(_ eff: PBCoreDirectDcReadStatsEffect) async {}
     func discardToken(_ rejected: String) async {}
     func setWatchedSessions(_ sessionIds: [String]) async {}
@@ -2167,6 +2169,9 @@ actor CoreHost: SyncEngine {
 
             case .directPcClose(let eff):
                 executor.handleDirectPcClose(eff)
+
+            case .directPcSendProbe(let eff):
+                executor.handleDirectPcSendProbe(eff)
 
             case .directDcReadStats(let eff):
                 spawnIO { host in

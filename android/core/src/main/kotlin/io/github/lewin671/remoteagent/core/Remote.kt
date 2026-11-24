@@ -483,6 +483,7 @@ class Remote(
         coreHost.onDirectPcAddCandidates = { eff -> scope.launch(directDispatcher) { directExecutor.pcAddCandidates(eff) } }
         coreHost.onDirectPcConfirm = { eff -> directExecutor.pcConfirm(eff) }
         coreHost.onDirectPcClose = { eff -> scope.launch(directDispatcher) { directExecutor.pcClose(eff) } }
+        coreHost.onDirectPcSendProbe = { eff -> directExecutor.pcSendProbe(eff) }
         coreHost.onDirectDcReadStats = { eff -> scope.launch(directDispatcher) { directExecutor.dcReadStats(eff) } }
         coreHost.onWatchedSessionsChanged = { ids ->
             watchedSessionIds = ids

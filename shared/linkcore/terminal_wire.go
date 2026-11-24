@@ -2,7 +2,6 @@ package linkcore
 
 import (
 	"github.com/Lewin671/remote-agent/shared/peerwire"
-	"google.golang.org/protobuf/encoding/protowire"
 )
 
 // Frozen TransportControl type IDs (docs/transport-wire-draft.md).
@@ -153,6 +152,23 @@ func DecodeFrameStatus(raw []byte) (TermFrameStatus, error) {
 	}, nil
 }
 
+func readProtoVarint(b []byte) (uint64, int) {
+	var x uint64
+	var s uint
+	for i := 0; i < len(b) && i < 10; i++ {
+		c := b[i]
+		if c < 0x80 {
+			if i == 9 && c > 1 {
+				return 0, -1
+			}
+			return x | uint64(c)<<s, i + 1
+		}
+		x |= uint64(c&0x7f) << s
+		s += 7
+	}
+	return 0, -1
+}
+
 // DecodeWatermark strictly decodes Watermark (including repeated FrameStatus field 4).
 func DecodeWatermark(raw []byte) (TermWatermark, error) {
 	norm, err := peerwire.NormalizeMessage(raw, "Watermark")
@@ -161,17 +177,19 @@ func DecodeWatermark(raw []byte) (TermWatermark, error) {
 	}
 	var wm TermWatermark
 	for len(norm) > 0 {
-		num, typ, n := protowire.ConsumeTag(norm)
+		tag, n := readProtoVarint(norm)
 		if n < 0 {
 			return TermWatermark{}, ErrTermInvalidControl
 		}
 		norm = norm[n:]
+		num := tag >> 3
+		typ := tag & 7
 		switch num {
 		case 1, 2, 3:
-			if typ != protowire.VarintType {
+			if typ != 0 {
 				return TermWatermark{}, ErrTermInvalidControl
 			}
-			v, m := protowire.ConsumeVarint(norm)
+			v, m := readProtoVarint(norm)
 			if m < 0 {
 				return TermWatermark{}, ErrTermInvalidControl
 			}
@@ -185,14 +203,15 @@ func DecodeWatermark(raw []byte) (TermWatermark, error) {
 				wm.FailedInputSeq = v
 			}
 		case 4:
-			if typ != protowire.BytesType || len(wm.Details) >= TermInputDetailMax {
+			if typ != 2 || len(wm.Details) >= TermInputDetailMax {
 				return TermWatermark{}, ErrTermInvalidControl
 			}
-			b, m := protowire.ConsumeBytes(norm)
-			if m < 0 {
+			size, m := readProtoVarint(norm)
+			if m < 0 || size > uint64(len(norm)-m) {
 				return TermWatermark{}, ErrTermInvalidControl
 			}
-			norm = norm[m:]
+			b := norm[m : m+int(size)]
+			norm = norm[m+int(size):]
 			d, err := DecodeFrameStatus(b)
 			if err != nil {
 				return TermWatermark{}, err

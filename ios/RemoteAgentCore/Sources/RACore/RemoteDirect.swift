@@ -111,6 +111,10 @@ extension Remote {
         directExecutor.pcClose(eff)
     }
 
+    public nonisolated func handleDirectPcSendProbe(_ eff: PBCoreDirectPcSendProbeEffect) {
+        directExecutor.pcSendProbe(eff)
+    }
+
     public func handleDirectDcReadStats(_ eff: PBCoreDirectDcReadStatsEffect) async {
         await directExecutor.dcReadStats(eff)
     }

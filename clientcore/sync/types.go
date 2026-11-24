@@ -691,6 +691,8 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 		e.handleDirectDcState(ctx, k.DirectDcState)
 	case *corev1.Event_DirectDcStats:
 		e.handleDirectDcStats(ctx, k.DirectDcStats)
+	case *corev1.Event_DirectPcProbeReceived:
+		e.handleDirectPcProbeReceived(ctx, k.DirectPcProbeReceived)
 	case *corev1.Event_DirectRetryNow:
 		e.handleDirectRetryNow(ctx, k.DirectRetryNow)
 	case *corev1.Event_DirectRefreshDiagnostics:
