@@ -80,12 +80,12 @@ export function App() {
       setCoreError("");
       const initialRoute = location.hash.replace(/^#\/?/, "");
       if (demo) {
-        const [, loaded, ws] = await Promise.all([
+        const [, ws] = await Promise.all([
           corePromise,
-          loadRemote(),
           loadWorkspace().catch(() => undefined),
           preloadRoute(initialRoute).catch(() => undefined),
         ]);
+        const loaded = await loadRemote();
         if (!active()) return;
         if (loaded) {
           await getCoreHost(loaded).warmLocalCache(initialRoute);
