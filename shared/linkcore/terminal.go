@@ -670,6 +670,12 @@ func (s *TerminalStream) CurrentOutputWatermark() TermWatermark {
 	}
 }
 
+// termRenderedIdentityWindow is how many rendered output identities the client
+// keeps for duplicate/conflict checks. Together with at most TermGapMaxFrames
+// pending frames it stays within TermOutputMaxIdentities, so a long stream never
+// exhausts the identity budget.
+const termRenderedIdentityWindow = TermOutputMaxIdentities - TermGapMaxFrames
+
 // ReceiveOutput validates, deduplicates, and reorders a daemon->client output frame.
 func (s *TerminalStream) ReceiveOutput(now uint64, f TermFrame) (TermOutputAction, *TermFrame, error) {
 	s.pruneOutputIdentities(now)
@@ -678,6 +684,12 @@ func (s *TerminalStream) ReceiveOutput(now uint64, f TermFrame) (TermOutputActio
 	}
 	if f.Seq <= s.rendered {
 		old, ok := s.renderedIDs[f.Seq]
+		if !ok && f.Seq+termRenderedIdentityWindow <= s.rendered {
+			// Rendered long ago and evicted from the sliding identity window:
+			// it cannot be rendered again, so acknowledge it as a duplicate.
+			s.dirtyACK++
+			return TermOutputDuplicateACK, nil, nil
+		}
 		if !ok {
 			return TermOutputReject, nil, ErrTermIdentityUnknown
 		}
@@ -723,6 +735,9 @@ func (s *TerminalStream) ConfirmRendered(now uint64, seq uint64) (nextReady *Ter
 	}
 	s.rendered = cur.Seq
 	s.renderedIDs[cur.Seq] = termOutputIdentity{hash: cur.PayloadHash, deadline: cur.DeadlineMs}
+	if cur.Seq > termRenderedIdentityWindow {
+		delete(s.renderedIDs, cur.Seq-termRenderedIdentityWindow)
+	}
 	s.outputPendBytes -= cur.RawBytes
 	delete(s.outputPending, cur.Seq)
 	s.renderReady = nil

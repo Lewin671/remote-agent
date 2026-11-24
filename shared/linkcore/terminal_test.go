@@ -480,3 +480,39 @@ func TestReview3_HA_ReconcileGapDetectionRequiresConfirm(t *testing.T) {
 		t.Fatalf("H-A gap detection: expected needConfirm=true and empty resend, got resend=%v barrier=%v confirm=%v", toResend, needBarrier, needConfirm)
 	}
 }
+
+// A long stream renders far more frames than TermOutputMaxIdentities without
+// running out of identity budget; deadline-free frames (the ClientCore path)
+// must keep flowing, and a duplicate of a long-evicted frame is acknowledged.
+func TestTerminalLongOutputStreamNeverExhaustsIdentities(t *testing.T) {
+	const base = uint64(1_000_000)
+	s := NewTerminalStream("stream-00000000000000ff", "sess-1", "peer-1", "inst-a", base)
+	const total = 3 * TermOutputMaxIdentities
+	for seq := uint64(1); seq <= total; seq++ {
+		f := mkTermFrame(seq, fmt.Sprintf("out-%d", seq), 0, false)
+		act, ready, err := s.ReceiveOutput(base+seq, f)
+		if err != nil || act != TermOutputReady || ready == nil || ready.Seq != seq {
+			t.Fatalf("seq %d: act=%d ready=%v err=%v", seq, act, ready, err)
+		}
+		if _, _, err := s.ConfirmRendered(base+seq, seq); err != nil {
+			t.Fatalf("confirm seq %d: %v", seq, err)
+		}
+	}
+	if got := len(s.renderedIDs); got > termRenderedIdentityWindow {
+		t.Fatalf("rendered identities grew to %d, want <= %d", got, termRenderedIdentityWindow)
+	}
+	// Recent duplicate: verified against its stored identity.
+	recent := mkTermFrame(total, fmt.Sprintf("out-%d", total), 0, false)
+	if act, _, err := s.ReceiveOutput(base+total+1, recent); err != nil || act != TermOutputDuplicateACK {
+		t.Fatalf("recent duplicate: act=%d err=%v", act, err)
+	}
+	conflict := mkTermFrame(total, "different", 0, false)
+	if _, _, err := s.ReceiveOutput(base+total+1, conflict); !errors.Is(err, ErrTermConflict) {
+		t.Fatalf("recent conflicting duplicate: want ErrTermConflict, got %v", err)
+	}
+	// Long-evicted duplicate: acknowledged, never re-rendered.
+	old := mkTermFrame(1, "out-1", 0, false)
+	if act, ready, err := s.ReceiveOutput(base+total+1, old); err != nil || act != TermOutputDuplicateACK || ready != nil {
+		t.Fatalf("evicted duplicate: act=%d ready=%v err=%v", act, ready, err)
+	}
+}
