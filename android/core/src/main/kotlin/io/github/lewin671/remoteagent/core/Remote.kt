@@ -2490,6 +2490,10 @@ class Remote(
                         if (code == POLICY_VIOLATION) rejectToken(tok)
                         if (socket.get() !== stream) return
                         stream.close()
+                        if (!opened.isCompleted) {
+                            finish(UiMessages.errorsTerminalConnectionClosed().messageText())
+                            return
+                        }
                         coreHost.dispatch(
                             CoreEvent.newBuilder()
                                 .setTerminalDirectLeg(
@@ -2505,6 +2509,10 @@ class Remote(
                     override fun onEnd(stream: FrameStream, code: Int) {
                         if (code == POLICY_VIOLATION) rejectToken(tok)
                         if (socket.get() !== stream) return
+                        if (!opened.isCompleted) {
+                            finish(UiMessages.errorsTerminalConnectionClosed().messageText())
+                            return
+                        }
                         coreHost.dispatch(
                             CoreEvent.newBuilder()
                                 .setTerminalDirectLeg(
@@ -2518,8 +2526,13 @@ class Remote(
                         )
                     }
                     override fun onFailure(stream: FrameStream, error: Throwable) {
+                        val wasOpened = opened.isCompleted
                         opened.completeExceptionally(MessageException(UiMessages.errorsCannotConnectToTerminal().messageText()))
                         if (socket.get() !== stream) return
+                        if (!wasOpened) {
+                            finish(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(error, state.value).resolve(copy))) })
+                            return
+                        }
                         lastRelayError.set(error)
                         coreHost.dispatch(
                             CoreEvent.newBuilder()
