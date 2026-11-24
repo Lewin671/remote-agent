@@ -99,6 +99,11 @@ type pendingDraftWriteBarrier struct {
 	requestID   string
 }
 
+type pendingLocalReleaseBarrier struct {
+	writeSeq uint64
+	refs     []string
+}
+
 type attPendingSend struct {
 	sessionID string
 	machineID string
@@ -191,6 +196,7 @@ type attDraft struct {
 	writeSeq             uint64
 	dirtyWrite           bool
 	pendingOutboxDeletes []pendingDraftWriteBarrier
+	pendingLocalReleases []pendingLocalReleaseBarrier
 
 	sending     bool
 	pendingSend *attPendingSend
@@ -1092,10 +1098,11 @@ func (c *Core) handleDraftRemoveItem(ctx *sync.StepContext, act *corev1.DraftRem
 	}
 	c.syncNewSessionAttachmentCount(d)
 	c.scheduleDraftExpiryTimer(ctx, d)
+	var targetSeq uint64
 	if d.loadState == draftLoadLoaded {
-		c.enqueueDraftWrite(d, &effects)
+		targetSeq = c.enqueueDraftWrite(d, &effects)
 	}
-	c.emitUnreferencedLocalReleases(removed.localRefs(), &effects)
+	c.releaseDraftLocalRefsAfterWrite(d, targetSeq, removed.localRefs(), &effects)
 	c.pumpAttachmentQueues(ctx, &effects)
 	c.markDraftDirty(ctx, d.scope)
 	return effects
@@ -1163,10 +1170,11 @@ func (c *Core) handleDraftSetOriginal(ctx *sync.StepContext, act *corev1.DraftSe
 		c.startItemPipeline(ctx, attOwnerDraft, d.key, d.scope, c.resolveDraftMachineID(d), d.original, it, &effects)
 	}
 	c.scheduleDraftExpiryTimer(ctx, d)
+	var targetSeq uint64
 	if d.loadState == draftLoadLoaded {
-		c.enqueueDraftWrite(d, &effects)
+		targetSeq = c.enqueueDraftWrite(d, &effects)
 	}
-	c.emitUnreferencedLocalReleases(oldPrepared, &effects)
+	c.releaseDraftLocalRefsAfterWrite(d, targetSeq, oldPrepared, &effects)
 	c.pumpAttachmentQueues(ctx, &effects)
 	c.markDraftDirty(ctx, d.scope)
 	return effects
@@ -1202,10 +1210,11 @@ func (c *Core) handleDraftClear(ctx *sync.StepContext, act *corev1.DraftClearAct
 	c.m.sync.CancelAppTimer(ctx, corev1.TimerKind_TIMER_KIND_DRAFT_EXPIRY, d.key)
 	c.syncNewSessionPromptFromDraft(d)
 	c.syncNewSessionAttachmentCount(d)
+	var targetSeq uint64
 	if c.m.attachments.persistDrafts && d.loadState == draftLoadLoaded {
-		c.enqueueDraftWrite(d, &effects)
+		targetSeq = c.enqueueDraftWrite(d, &effects)
 	}
-	c.emitUnreferencedLocalReleases(refs, &effects)
+	c.releaseDraftLocalRefsAfterWrite(d, targetSeq, refs, &effects)
 	c.pumpAttachmentQueues(ctx, &effects)
 	c.markDraftDirty(ctx, d.scope)
 	return effects
@@ -1350,19 +1359,48 @@ func (c *Core) emitDraftWriteNow(d *attDraft, effects *[]*corev1.Effect) {
 	})
 }
 
-func (c *Core) flushDraftWriteBarriers(d *attDraft, settledSeq uint64, effects *[]*corev1.Effect) {
-	if d == nil || len(d.pendingOutboxDeletes) == 0 {
+func (c *Core) releaseDraftLocalRefsAfterWrite(d *attDraft, targetSeq uint64, refs []string, effects *[]*corev1.Effect) {
+	if len(refs) == 0 {
 		return
 	}
-	kept := d.pendingOutboxDeletes[:0]
-	for _, b := range d.pendingOutboxDeletes {
-		if !b.pendingLoad && b.writeSeq <= settledSeq {
-			*effects = append(*effects, makeDraftStorageDeleteEffect(corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_OUTBOX, b.outboxKey))
-		} else {
-			kept = append(kept, b)
-		}
+	if d != nil && targetSeq > 0 && d.activeWriteOpID != 0 {
+		d.pendingLocalReleases = append(d.pendingLocalReleases, pendingLocalReleaseBarrier{
+			writeSeq: targetSeq,
+			refs:     slices.Clone(refs),
+		})
+		return
 	}
-	d.pendingOutboxDeletes = kept
+	c.emitUnreferencedLocalReleases(refs, effects)
+}
+
+func (c *Core) flushDraftWriteBarriers(d *attDraft, settledSeq uint64, effects *[]*corev1.Effect) {
+	if d == nil {
+		return
+	}
+	if len(d.pendingOutboxDeletes) > 0 {
+		kept := d.pendingOutboxDeletes[:0]
+		for _, b := range d.pendingOutboxDeletes {
+			if !b.pendingLoad && b.writeSeq <= settledSeq {
+				*effects = append(*effects, makeDraftStorageDeleteEffect(corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_OUTBOX, b.outboxKey))
+			} else {
+				kept = append(kept, b)
+			}
+		}
+		d.pendingOutboxDeletes = kept
+	}
+	if len(d.pendingLocalReleases) > 0 {
+		var releaseCandidates []string
+		keptRel := d.pendingLocalReleases[:0]
+		for _, r := range d.pendingLocalReleases {
+			if r.writeSeq <= settledSeq {
+				releaseCandidates = append(releaseCandidates, r.refs...)
+			} else {
+				keptRel = append(keptRel, r)
+			}
+		}
+		d.pendingLocalReleases = keptRel
+		c.emitUnreferencedLocalReleases(releaseCandidates, effects)
+	}
 }
 
 func (c *Core) handleDraftStorageWriteResult(ctx *sync.StepContext, ev *corev1.DraftStorageWriteResultEvent) []*corev1.Effect {

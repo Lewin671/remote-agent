@@ -1528,10 +1528,11 @@ func (c *Core) onNewSessionCreateSettled(projectKey string, sc sync.SettledComma
 	c.syncNewSessionPromptFromDraft(d)
 	c.syncNewSessionAttachmentCount(d)
 	c.scheduleDraftExpiryTimer(ctx, d)
+	var targetSeq uint64
 	if d.loadState == draftLoadLoaded {
-		c.enqueueDraftWrite(d, &localEffects)
+		targetSeq = c.enqueueDraftWrite(d, &localEffects)
 	}
-	c.emitUnreferencedLocalReleases(releaseRefs, &localEffects)
+	c.releaseDraftLocalRefsAfterWrite(d, targetSeq, releaseRefs, &localEffects)
 	c.markDraftDirty(ctx, d.scope)
 	stepRes := c.m.sync.EndStep(stepPrev, ctx)
 	*effects = append(*effects, stepRes.Effects...)
@@ -1575,6 +1576,9 @@ func (c *Core) handleDraftForgetSession(ctx *sync.StepContext, act *corev1.Draft
 		}
 		for _, b := range d.pendingOutboxDeletes {
 			effects = append(effects, makeDraftStorageDeleteEffect(corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_OUTBOX, b.outboxKey))
+		}
+		for _, r := range d.pendingLocalReleases {
+			refs = append(refs, r.refs...)
 		}
 		c.m.sync.CancelAppTimer(ctx, corev1.TimerKind_TIMER_KIND_DRAFT_EXPIRY, d.key)
 		delete(mgr.drafts, draftKey)

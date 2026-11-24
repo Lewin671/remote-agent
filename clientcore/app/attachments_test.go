@@ -2486,3 +2486,58 @@ func TestAttachments_PutBackWhileDraftUnloaded_WaitsForDraftLoadAndWriteBeforeDe
 		t.Fatalf("expected OUTBOX delete ONLY after merged DRAFT write succeeded, got %+v", dels)
 	}
 }
+
+func TestAttachments_RemoveDuringInFlightDraftWrite_DefersLocalReleaseBehindCoalescedWrite(t *testing.T) {
+	h := newAttHarness(t, true, true)
+	scope := h.sessionScope()
+
+	// Open empty draft so loadState == draftLoadLoaded.
+	openEff := h.dispatch(&corev1.Event{Event: &corev1.Event_DraftOpen{DraftOpen: &corev1.DraftOpenAction{Scope: scope}}})
+	for _, ef := range openEff.GetEffects() {
+		if rd := ef.GetDraftStorageRead(); rd != nil {
+			h.dispatch(&corev1.Event{Event: &corev1.Event_DraftStorageReadResult{DraftStorageReadResult: &corev1.DraftStorageReadResultEvent{OpId: rd.OpId, Found: false}}})
+		}
+	}
+
+	// Add 2 images -> emits DraftStorageWrite #1 (keep write #1 IN FLIGHT!).
+	addEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{
+					pickedImage("a.jpg", 4, "src-def-a", true),
+					pickedImage("b.jpg", 4, "src-def-b", true),
+				},
+			},
+		},
+	})
+	write1 := findDraftWriteEffects(addEff)[0]
+	itemAID := h.draftView(scope).Images[0].ItemId
+
+	// WHILE write #1 is STILL in flight, remove item A!
+	// Removal coalesces into write #2 -> MUST NOT emit AttachmentReleaseLocal(src-def-a) yet!
+	remEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftRemoveItem{DraftRemoveItem: &corev1.DraftRemoveItemAction{Scope: scope, ItemId: itemAID}},
+	})
+	if len(findReleaseLocalEffects(remEff)) != 0 {
+		t.Fatalf("AttachmentReleaseLocal must NOT precede coalesced draft write #2: %+v", findReleaseLocalEffects(remEff))
+	}
+
+	// Write #1 finishes -> triggers coalesced write #2 (snapshot without item A). STILL must NOT release src-def-a yet!
+	w1Done := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftStorageWriteResult{DraftStorageWriteResult: &corev1.DraftStorageWriteResultEvent{OpId: write1.OpId, Ok: true}},
+	})
+	if len(findReleaseLocalEffects(w1Done)) != 0 {
+		t.Fatalf("AttachmentReleaseLocal must NOT fire before coalesced write #2 completes!")
+	}
+	write2 := findDraftWriteEffects(w1Done)[0]
+
+	// Write #2 finishes -> NOW AttachmentReleaseLocal(src-def-a) is emitted!
+	w2Done := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftStorageWriteResult{DraftStorageWriteResult: &corev1.DraftStorageWriteResultEvent{OpId: write2.OpId, Ok: true}},
+	})
+	rels := findReleaseLocalEffects(w2Done)
+	if len(rels) != 1 || len(rels[0].Refs) != 1 || rels[0].Refs[0] != "src-def-a" {
+		t.Fatalf("expected AttachmentReleaseLocal([src-def-a]) right after coalesced write #2 succeeded, got %+v", rels)
+	}
+}
