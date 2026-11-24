@@ -49,12 +49,17 @@
     <string name="attachment_failed_send_hint">"%1$s。点「重试」或移除后才能发送"</string>
     <string name="attachment_failure">"失败：%1$s"</string>
     <string name="attachment_file" formatted="false">"文件"</string>
+    <string name="attachment_file_changed" formatted="false">"文件在上传时发生变化，请重试或重新选择"</string>
     <string name="attachment_file_missing" formatted="false">"这个文件没有本机副本，请移除后重新选择"</string>
     <string name="attachment_file_progress" formatted="false">"文件上传进度"</string>
+    <string name="attachment_file_storage_full" formatted="false">"电脑附件空间不足，清理后重试"</string>
+    <string name="attachment_file_upload_unauthorized" formatted="false">"没有上传文件的权限，请检查设备授权"</string>
+    <string name="attachment_file_verify_failed" formatted="false">"文件校验失败，请重试或重新选择"</string>
     <string name="attachment_filename_limit" formatted="false">"文件名不能超过 255 字节，请重命名后选择"</string>
     <plurals name="attachment_images_limit">
         <item quantity="other">"一条消息最多 %2$d 张，多选的 %1$d 张没有加入"</item>
     </plurals>
+    <string name="attachment_local_storage_full" formatted="false">"本机待发附件空间不足，请发送或移除旧草稿"</string>
     <plurals name="attachment_max_files">
         <item quantity="other">"一条消息最多 %1$d 个文件"</item>
     </plurals>
@@ -63,6 +68,7 @@
     </plurals>
     <string name="attachment_metadata" formatted="false">"文件原样发送，包含其中的元数据。"</string>
     <string name="attachment_named_size_limit">"「%2$s」超过单个文件 %1$d MB 的上限"</string>
+    <string name="attachment_outbox_restarted_unconfirmed" formatted="false">"应用重启过，不确定这条有没有送到"</string>
     <string name="attachment_path_spaces">"%1$s 上 remote-agent 的目录路径带空格，不能发图片"</string>
     <string name="attachment_photos_videos" formatted="false">"照片和视频"</string>
     <string name="attachment_preparing" formatted="false">"准备中"</string>
@@ -70,11 +76,16 @@
     <string name="attachment_release_to_add" formatted="false">"松开以添加附件"</string>
     <string name="attachment_remove_file">"移除文件 %1$s"</string>
     <string name="attachment_remove_video">"移除视频 %1$s"</string>
+    <string name="attachment_restore_wait" formatted="false">"正在恢复待发附件，请稍后再放回"</string>
     <string name="attachment_size_limit">"单个文件不能超过 %1$d MB"</string>
     <string name="attachment_size_unreadable" formatted="false">"读不到文件大小，请重新选择"</string>
     <string name="attachment_update_required" formatted="false">"这台电脑不支持发送文件，请更新电脑上的 remote-agent"</string>
     <string name="attachment_upload_failed" formatted="false">"上传失败"</string>
+    <string name="attachment_upload_incomplete" formatted="false">"电脑尚未确认附件上传完成，请重试"</string>
+    <string name="attachment_upload_paused" formatted="false">"已暂停"</string>
     <string name="attachment_upload_progress">"上传 %1$d%%"</string>
+    <string name="attachment_upload_progress_invalid" formatted="false">"电脑返回的上传进度无效，请重试"</string>
+    <string name="attachment_upload_waiting_reconnect" formatted="false">"等待重连…"</string>
     <string name="attachment_uploading" formatted="false">"上传中"</string>
     <string name="attachment_zip_folder" formatted="false">"不能直接发送文件夹，请先压缩成 ZIP 再选择文件"</string>
     <string name="common_all_projects_avatar" formatted="false">"全"</string>

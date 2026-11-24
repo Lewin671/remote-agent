@@ -256,4 +256,31 @@ func TestAspectSizeAndFormatHelpers(t *testing.T) {
 	if collected[0].GetAspectRatio() != 2.0 {
 		t.Fatalf("expected AspectRatio 2.0 preserved from PreviewWidth/PreviewHeight, got %v", collected[0].GetAspectRatio())
 	}
+	if collected[0].GetDisplayName() != "" {
+		t.Fatalf("expected empty DisplayName when Path is empty, got %q", collected[0].GetDisplayName())
+	}
+	if collected[0].GetDownloadName() != "image-1.jpg" {
+		t.Fatalf("expected DownloadName fallback image-1.jpg, got %q", collected[0].GetDownloadName())
+	}
+}
+
+func TestDownloadName(t *testing.T) {
+	cases := []struct {
+		displayName string
+		ext         string
+		index       int32
+		want        string
+	}{
+		{"chart.png", "png", 0, "chart.png"},
+		{"screenshot", "png", 2, "screenshot.png"},
+		{"", "webp", 0, "image-1.webp"},
+		{"   ", "gif", 4, "image-5.gif"},
+		{"", "", -1, "image-1.jpg"},
+		{"/tmp/dir/photo.jpeg", "jpg", 1, "photo.jpeg"},
+	}
+	for _, tc := range cases {
+		if got := DownloadName(tc.displayName, tc.ext, tc.index); got != tc.want {
+			t.Errorf("DownloadName(%q, %q, %d) = %q, want %q", tc.displayName, tc.ext, tc.index, got, tc.want)
+		}
+	}
 }

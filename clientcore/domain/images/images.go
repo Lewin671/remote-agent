@@ -240,6 +240,29 @@ func DisplayName(path string) string {
 	return sharedfiles.SanitizeFileName(trimmed)
 }
 
+// DownloadName returns a guaranteed non-empty sanitized filename for saving/downloading/sharing
+// a session viewer image: uses displayName (appending "."+ext if it has no extension) when non-empty,
+// otherwise falls back to "image-<N>.<ext>" using 1-based viewerIndex.
+func DownloadName(displayName, ext string, viewerIndex int32) string {
+	cleanExt := strings.TrimPrefix(strings.TrimSpace(ext), ".")
+	if cleanExt == "" {
+		cleanExt = "jpg"
+	}
+	name := strings.TrimSpace(displayName)
+	if name != "" {
+		name = sharedfiles.SanitizeFileName(name)
+		if dot := strings.LastIndexByte(name, '.'); dot > 0 && dot < len(name)-1 {
+			return name
+		}
+		return name + "." + cleanExt
+	}
+	idx := viewerIndex
+	if idx < 0 {
+		idx = 0
+	}
+	return "image-" + strconv.Itoa(int(idx)+1) + "." + cleanExt
+}
+
 func stripPreview(ref *v1.ImageRef) *v1.ImageRef {
 	if ref == nil {
 		return nil
@@ -291,8 +314,11 @@ func CollectViewerImages(
 		if strings.TrimSpace(ref.Path) != "" {
 			dispPath = sharedfiles.DisplaySourcePath(ref.Path, machineHome, "")
 		}
+		dispName := DisplayName(ref.Path)
+		ext := FormatExtension(ref.Format)
+		viewerIdx := int32(len(out))
 		out = append(out, &corev1.SessionViewerImageView{
-			ViewerIndex:        int32(len(out)),
+			ViewerIndex:        viewerIdx,
 			Seq:                seq,
 			EventImageIndex:    evIdx,
 			TimestampMs:        ts,
@@ -305,11 +331,12 @@ func CollectViewerImages(
 			AspectRatio:        AspectRatio(ref),
 			ClampedAspectRatio: ClampedAspectRatio(ref),
 			HasDisplayCopy:     HasDisplayCopy(ref),
-			DisplayName:        DisplayName(ref.Path),
+			DisplayName:        dispName,
 			DisplayPath:        dispPath,
-			FileExtension:      FormatExtension(ref.Format),
+			FileExtension:      ext,
 			MimeType:           FormatMime(ref.Format),
 			InCollapsedGroup:   inCollapsed,
+			DownloadName:       DownloadName(dispName, ext, viewerIdx),
 		})
 	}
 

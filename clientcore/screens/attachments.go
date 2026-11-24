@@ -119,6 +119,8 @@ func BuildAttachmentEval(st *State, req *corev1.AttachmentEvalScreenRequest) *co
 		ImagesPickBlockedReason:  imagesPickBlocked,
 		FilesPickBlockedReason:   filesPickBlocked,
 		FailureSummary:           summary,
+		OriginalTotalSizeText:    attachments.FormatOriginalTotalSize(req.TotalImageBytes),
+		DraftViewerPositionText:  attachments.DraftViewerPositionText(req.DraftViewerIndex, req.CurrentImages),
 	}
 }
 

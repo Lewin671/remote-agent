@@ -192,6 +192,9 @@
             },
             "filesPickBlockedReason": {
               "key": "attachment.disconnected_files"
+            },
+            "draftViewerPositionText": {
+              "literal": "1 / 5"
             }
           }
         },
@@ -695,7 +698,8 @@
                   "displayName": "desktop.png",
                   "displayPath": "~/proj/desktop.png",
                   "fileExtension": "png",
-                  "mimeType": "image/png"
+                  "mimeType": "image/png",
+                  "downloadName": "desktop.png"
                 },
                 {
                   "viewerIndex": 1,
@@ -722,7 +726,8 @@
                   "displayName": "phone.jpg",
                   "displayPath": "~/proj/phone.jpg",
                   "fileExtension": "jpg",
-                  "mimeType": "image/jpeg"
+                  "mimeType": "image/jpeg",
+                  "downloadName": "phone.jpg"
                 },
                 {
                   "viewerIndex": 2,
@@ -751,7 +756,8 @@
                   "clampedAspectRatio": 1.3333333333333333,
                   "hasDisplayCopy": true,
                   "fileExtension": "webp",
-                  "mimeType": "image/webp"
+                  "mimeType": "image/webp",
+                  "downloadName": "image-3.webp"
                 },
                 {
                   "viewerIndex": 3,
@@ -780,7 +786,8 @@
                   "clampedAspectRatio": 1,
                   "hasDisplayCopy": true,
                   "fileExtension": "png",
-                  "mimeType": "image/png"
+                  "mimeType": "image/png",
+                  "downloadName": "image-4.png"
                 }
               ]
             },
@@ -813,7 +820,8 @@
                 "displayName": "desktop.png",
                 "displayPath": "~/proj/desktop.png",
                 "fileExtension": "png",
-                "mimeType": "image/png"
+                "mimeType": "image/png",
+                "downloadName": "desktop.png"
               }
             }
           }
@@ -1605,7 +1613,8 @@
                   "displayName": "desktop.png",
                   "displayPath": "~/proj/desktop.png",
                   "fileExtension": "png",
-                  "mimeType": "image/png"
+                  "mimeType": "image/png",
+                  "downloadName": "desktop.png"
                 },
                 {
                   "viewerIndex": 1,
@@ -1632,7 +1641,8 @@
                   "displayName": "phone.jpg",
                   "displayPath": "~/proj/phone.jpg",
                   "fileExtension": "jpg",
-                  "mimeType": "image/jpeg"
+                  "mimeType": "image/jpeg",
+                  "downloadName": "phone.jpg"
                 },
                 {
                   "viewerIndex": 2,
@@ -1661,7 +1671,8 @@
                   "clampedAspectRatio": 1.3333333333333333,
                   "hasDisplayCopy": true,
                   "fileExtension": "webp",
-                  "mimeType": "image/webp"
+                  "mimeType": "image/webp",
+                  "downloadName": "image-3.webp"
                 },
                 {
                   "viewerIndex": 3,
@@ -1690,7 +1701,8 @@
                   "clampedAspectRatio": 1,
                   "hasDisplayCopy": true,
                   "fileExtension": "png",
-                  "mimeType": "image/png"
+                  "mimeType": "image/png",
+                  "downloadName": "image-4.png"
                 }
               ]
             },
@@ -1723,7 +1735,8 @@
                 "displayName": "desktop.png",
                 "displayPath": "~/proj/desktop.png",
                 "fileExtension": "png",
-                "mimeType": "image/png"
+                "mimeType": "image/png",
+                "downloadName": "desktop.png"
               }
             }
           }
@@ -2398,7 +2411,8 @@
                   "displayName": "desktop.png",
                   "displayPath": "~/proj/desktop.png",
                   "fileExtension": "png",
-                  "mimeType": "image/png"
+                  "mimeType": "image/png",
+                  "downloadName": "desktop.png"
                 },
                 {
                   "viewerIndex": 1,
@@ -2425,7 +2439,8 @@
                   "displayName": "phone.jpg",
                   "displayPath": "~/proj/phone.jpg",
                   "fileExtension": "jpg",
-                  "mimeType": "image/jpeg"
+                  "mimeType": "image/jpeg",
+                  "downloadName": "phone.jpg"
                 },
                 {
                   "viewerIndex": 2,
@@ -2454,7 +2469,8 @@
                   "clampedAspectRatio": 1.3333333333333333,
                   "hasDisplayCopy": true,
                   "fileExtension": "webp",
-                  "mimeType": "image/webp"
+                  "mimeType": "image/webp",
+                  "downloadName": "image-3.webp"
                 },
                 {
                   "viewerIndex": 3,
@@ -2483,7 +2499,8 @@
                   "clampedAspectRatio": 1,
                   "hasDisplayCopy": true,
                   "fileExtension": "png",
-                  "mimeType": "image/png"
+                  "mimeType": "image/png",
+                  "downloadName": "image-4.png"
                 }
               ]
             },
@@ -2523,7 +2540,8 @@
                 "clampedAspectRatio": 1.3333333333333333,
                 "hasDisplayCopy": true,
                 "fileExtension": "webp",
-                "mimeType": "image/webp"
+                "mimeType": "image/webp",
+                "downloadName": "image-3.webp"
               }
             }
           }
@@ -3132,7 +3150,8 @@
                   "displayName": "desktop.png",
                   "displayPath": "~/proj/desktop.png",
                   "fileExtension": "png",
-                  "mimeType": "image/png"
+                  "mimeType": "image/png",
+                  "downloadName": "desktop.png"
                 },
                 {
                   "viewerIndex": 1,
@@ -3159,7 +3178,8 @@
                   "displayName": "phone.jpg",
                   "displayPath": "~/proj/phone.jpg",
                   "fileExtension": "jpg",
-                  "mimeType": "image/jpeg"
+                  "mimeType": "image/jpeg",
+                  "downloadName": "phone.jpg"
                 },
                 {
                   "viewerIndex": 2,
@@ -3188,7 +3208,8 @@
                   "clampedAspectRatio": 1.3333333333333333,
                   "hasDisplayCopy": true,
                   "fileExtension": "webp",
-                  "mimeType": "image/webp"
+                  "mimeType": "image/webp",
+                  "downloadName": "image-3.webp"
                 },
                 {
                   "viewerIndex": 3,
@@ -3217,7 +3238,8 @@
                   "clampedAspectRatio": 1,
                   "hasDisplayCopy": true,
                   "fileExtension": "png",
-                  "mimeType": "image/png"
+                  "mimeType": "image/png",
+                  "downloadName": "image-4.png"
                 }
               ]
             },
@@ -3256,7 +3278,8 @@
                 "clampedAspectRatio": 1,
                 "hasDisplayCopy": true,
                 "fileExtension": "png",
-                "mimeType": "image/png"
+                "mimeType": "image/png",
+                "downloadName": "image-4.png"
               }
             }
           }
@@ -3865,7 +3888,8 @@
                   "displayName": "desktop.png",
                   "displayPath": "~/proj/desktop.png",
                   "fileExtension": "png",
-                  "mimeType": "image/png"
+                  "mimeType": "image/png",
+                  "downloadName": "desktop.png"
                 },
                 {
                   "viewerIndex": 1,
@@ -3892,7 +3916,8 @@
                   "displayName": "phone.jpg",
                   "displayPath": "~/proj/phone.jpg",
                   "fileExtension": "jpg",
-                  "mimeType": "image/jpeg"
+                  "mimeType": "image/jpeg",
+                  "downloadName": "phone.jpg"
                 },
                 {
                   "viewerIndex": 2,
@@ -3921,7 +3946,8 @@
                   "clampedAspectRatio": 1.3333333333333333,
                   "hasDisplayCopy": true,
                   "fileExtension": "webp",
-                  "mimeType": "image/webp"
+                  "mimeType": "image/webp",
+                  "downloadName": "image-3.webp"
                 },
                 {
                   "viewerIndex": 3,
@@ -3950,7 +3976,8 @@
                   "clampedAspectRatio": 1,
                   "hasDisplayCopy": true,
                   "fileExtension": "png",
-                  "mimeType": "image/png"
+                  "mimeType": "image/png",
+                  "downloadName": "image-4.png"
                 }
               ]
             },
@@ -3983,7 +4010,8 @@
                 "displayName": "desktop.png",
                 "displayPath": "~/proj/desktop.png",
                 "fileExtension": "png",
-                "mimeType": "image/png"
+                "mimeType": "image/png",
+                "downloadName": "desktop.png"
               }
             }
           }

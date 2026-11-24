@@ -1440,5 +1440,181 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "attachment.file_changed",
+    "zh-CN": "文件在上传时发生变化，请重试或重新选择",
+    "en": "The file changed during upload. Retry or select it again.",
+    "notes": "附件上传状态机：流式读取或完成校验发现源文件在上传期间被修改时的错误提示。完整句，允许多行，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.file_verify_failed",
+    "zh-CN": "文件校验失败，请重试或重新选择",
+    "en": "File verification failed. Retry or select it again.",
+    "notes": "附件上传状态机：电脑端校验文件长度或 SHA-256 失败时的错误提示。完整句，允许多行，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.file_storage_full",
+    "zh-CN": "电脑附件空间不足，清理后重试",
+    "en": "The computer’s attachment storage is full. Clear space and retry.",
+    "notes": "附件上传状态机：电脑端附件配额已满（resource_exhausted）时的文件错误提示。完整句，允许多行，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.file_upload_unauthorized",
+    "zh-CN": "没有上传文件的权限，请检查设备授权",
+    "en": "File upload is not authorized. Check device authorization.",
+    "notes": "附件上传状态机：设备权限不足（permission_denied/unauthenticated）时的文件上传错误提示。完整句，允许多行，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.upload_paused",
+    "zh-CN": "已暂停",
+    "en": "Paused",
+    "notes": "草稿附件上传条目处于手动或后台暂停状态时的短标签。空间紧凑，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.upload_waiting_reconnect",
+    "zh-CN": "等待重连…",
+    "en": "Waiting to reconnect…",
+    "notes": "草稿附件上传遇到断线正在等待重连续传时的短标签。空间紧凑，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.outbox_restarted_unconfirmed",
+    "zh-CN": "应用重启过，不确定这条有没有送到",
+    "en": "The app restarted. Delivery of this message is unconfirmed.",
+    "notes": "待发区（Outbox）崩溃/刷新恢复后尚未在事件历史中确认送达的消息原因说明。完整句，允许多行，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.restore_wait",
+    "zh-CN": "正在恢复待发附件，请稍后再放回",
+    "en": "Restoring pending attachments. Wait before putting them back.",
+    "notes": "草稿仍在异步加载时用户尝试放回消息的提示。完整句，允许多行，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.local_storage_full",
+    "zh-CN": "本机待发附件空间不足，请发送或移除旧草稿",
+    "en": "Local storage for pending attachments is full. Send or remove older drafts.",
+    "notes": "本机加密草稿或待发区（Outbox）存储已满时的错误提示。完整句，允许多行，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.upload_progress_invalid",
+    "zh-CN": "电脑返回的上传进度无效，请重试",
+    "en": "The computer reported invalid upload progress. Retry.",
+    "notes": "附件上传状态机：电脑返回越界或非法 persisted_bytes 时的错误提示。完整句，允许多行，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.upload_incomplete",
+    "zh-CN": "电脑尚未确认附件上传完成，请重试",
+    "en": "The computer has not confirmed the attachment upload. Retry.",
+    "notes": "附件上传状态机：CompleteImageUpload 返回非 COMPLETE 状态时的错误提示。完整句，允许多行，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

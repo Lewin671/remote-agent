@@ -73,16 +73,22 @@ export interface MessageArgs {
   "attachment.failed_send_hint": { reason: string };
   "attachment.failure": { reason: string };
   "attachment.file": { [name: string]: never };
+  "attachment.file_changed": { [name: string]: never };
   "attachment.file_missing": { [name: string]: never };
   "attachment.file_progress": { [name: string]: never };
+  "attachment.file_storage_full": { [name: string]: never };
+  "attachment.file_upload_unauthorized": { [name: string]: never };
+  "attachment.file_verify_failed": { [name: string]: never };
   "attachment.filename_limit": { [name: string]: never };
   "attachment.images_limit": { count: number; limit: number };
   "attachment.ios_image_missing": { [name: string]: never };
   "attachment.ios_missing": { [name: string]: never };
+  "attachment.local_storage_full": { [name: string]: never };
   "attachment.max_files": { count: number };
   "attachment.max_images": { count: number };
   "attachment.metadata": { [name: string]: never };
   "attachment.named_size_limit": { limit: number; name: string };
+  "attachment.outbox_restarted_unconfirmed": { [name: string]: never };
   "attachment.path_spaces": { name: string };
   "attachment.photos_videos": { [name: string]: never };
   "attachment.preparing": { [name: string]: never };
@@ -90,11 +96,16 @@ export interface MessageArgs {
   "attachment.release_to_add": { [name: string]: never };
   "attachment.remove_file": { name: string };
   "attachment.remove_video": { name: string };
+  "attachment.restore_wait": { [name: string]: never };
   "attachment.size_limit": { limit: number };
   "attachment.size_unreadable": { [name: string]: never };
   "attachment.update_required": { [name: string]: never };
   "attachment.upload_failed": { [name: string]: never };
+  "attachment.upload_incomplete": { [name: string]: never };
+  "attachment.upload_paused": { [name: string]: never };
   "attachment.upload_progress": { percent: number };
+  "attachment.upload_progress_invalid": { [name: string]: never };
+  "attachment.upload_waiting_reconnect": { [name: string]: never };
   "attachment.uploading": { [name: string]: never };
   "attachment.zip_folder": { [name: string]: never };
   "common.all_projects_avatar": { [name: string]: never };
@@ -1821,8 +1832,12 @@ export const messages = {
     "attachment.failed_send_hint": "{reason}. Retry or remove the file before sending.",
     "attachment.failure": "Failed: {reason}",
     "attachment.file": "File",
+    "attachment.file_changed": "The file changed during upload. Retry or select it again.",
     "attachment.file_missing": "This file has no local copy. Remove it and select it again.",
     "attachment.file_progress": "File upload progress",
+    "attachment.file_storage_full": "The computer’s attachment storage is full. Clear space and retry.",
+    "attachment.file_upload_unauthorized": "File upload is not authorized. Check device authorization.",
+    "attachment.file_verify_failed": "File verification failed. Retry or select it again.",
     "attachment.filename_limit": "File names cannot exceed 255 bytes. Rename the file, then select it again.",
     "attachment.images_limit": {
       "forms": {
@@ -1833,6 +1848,7 @@ export const messages = {
     },
     "attachment.ios_image_missing": "Image is not on the computer",
     "attachment.ios_missing": "Attachment is not on the computer",
+    "attachment.local_storage_full": "Local storage for pending attachments is full. Send or remove older drafts.",
     "attachment.max_files": {
       "forms": {
         "one": "A message can have at most {count} file",
@@ -1849,6 +1865,7 @@ export const messages = {
     },
     "attachment.metadata": "Files are sent unchanged, including their metadata.",
     "attachment.named_size_limit": "“{name}” exceeds the {limit} MB limit per file",
+    "attachment.outbox_restarted_unconfirmed": "The app restarted. Delivery of this message is unconfirmed.",
     "attachment.path_spaces": "The remote-agent directory path on {name} contains spaces, so images cannot be sent.",
     "attachment.photos_videos": "Photos and videos",
     "attachment.preparing": "Preparing",
@@ -1856,11 +1873,16 @@ export const messages = {
     "attachment.release_to_add": "Release to add attachments",
     "attachment.remove_file": "Remove file {name}",
     "attachment.remove_video": "Remove video {name}",
+    "attachment.restore_wait": "Restoring pending attachments. Wait before putting them back.",
     "attachment.size_limit": "A file cannot exceed {limit} MB",
     "attachment.size_unreadable": "Could not read the file size. Select the file again.",
     "attachment.update_required": "This computer does not support file uploads. Update remote-agent on the computer.",
     "attachment.upload_failed": "Upload failed",
+    "attachment.upload_incomplete": "The computer has not confirmed the attachment upload. Retry.",
+    "attachment.upload_paused": "Paused",
     "attachment.upload_progress": "Uploading {percent}%",
+    "attachment.upload_progress_invalid": "The computer reported invalid upload progress. Retry.",
+    "attachment.upload_waiting_reconnect": "Waiting to reconnect…",
     "attachment.uploading": "Uploading",
     "attachment.zip_folder": "Folders cannot be sent directly. Compress the folder as a ZIP, then select the file.",
     "common.all_projects_avatar": "All",
@@ -4154,8 +4176,12 @@ export const messages = {
     "attachment.failed_send_hint": "{reason}。点「重试」或移除后才能发送",
     "attachment.failure": "失败：{reason}",
     "attachment.file": "文件",
+    "attachment.file_changed": "文件在上传时发生变化，请重试或重新选择",
     "attachment.file_missing": "这个文件没有本机副本，请移除后重新选择",
     "attachment.file_progress": "文件上传进度",
+    "attachment.file_storage_full": "电脑附件空间不足，清理后重试",
+    "attachment.file_upload_unauthorized": "没有上传文件的权限，请检查设备授权",
+    "attachment.file_verify_failed": "文件校验失败，请重试或重新选择",
     "attachment.filename_limit": "文件名不能超过 255 字节，请重命名后选择",
     "attachment.images_limit": {
       "forms": {
@@ -4165,6 +4191,7 @@ export const messages = {
     },
     "attachment.ios_image_missing": "图片不在电脑上",
     "attachment.ios_missing": "附件不在电脑上",
+    "attachment.local_storage_full": "本机待发附件空间不足，请发送或移除旧草稿",
     "attachment.max_files": {
       "forms": {
         "other": "一条消息最多 {count} 个文件"
@@ -4179,6 +4206,7 @@ export const messages = {
     },
     "attachment.metadata": "文件原样发送，包含其中的元数据。",
     "attachment.named_size_limit": "「{name}」超过单个文件 {limit} MB 的上限",
+    "attachment.outbox_restarted_unconfirmed": "应用重启过，不确定这条有没有送到",
     "attachment.path_spaces": "{name} 上 remote-agent 的目录路径带空格，不能发图片",
     "attachment.photos_videos": "照片和视频",
     "attachment.preparing": "准备中",
@@ -4186,11 +4214,16 @@ export const messages = {
     "attachment.release_to_add": "松开以添加附件",
     "attachment.remove_file": "移除文件 {name}",
     "attachment.remove_video": "移除视频 {name}",
+    "attachment.restore_wait": "正在恢复待发附件，请稍后再放回",
     "attachment.size_limit": "单个文件不能超过 {limit} MB",
     "attachment.size_unreadable": "读不到文件大小，请重新选择",
     "attachment.update_required": "这台电脑不支持发送文件，请更新电脑上的 remote-agent",
     "attachment.upload_failed": "上传失败",
+    "attachment.upload_incomplete": "电脑尚未确认附件上传完成，请重试",
+    "attachment.upload_paused": "已暂停",
     "attachment.upload_progress": "上传 {percent}%",
+    "attachment.upload_progress_invalid": "电脑返回的上传进度无效，请重试",
+    "attachment.upload_waiting_reconnect": "等待重连…",
     "attachment.uploading": "上传中",
     "attachment.zip_folder": "不能直接发送文件夹，请先压缩成 ZIP 再选择文件",
     "common.all_projects_avatar": "全",
