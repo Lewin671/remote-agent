@@ -455,8 +455,8 @@
   },
   {
     "key": "transport.footer",
-    "zh-CN": "发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。",
-    "en": "Messages and approvals are sent over both direct and relay, taking whichever arrives first; only relay is used in the background.",
+    "zh-CN": "发消息、审批和终端输入同时经直连和中继发出，以先到的为准；后台时只用中继。",
+    "en": "Messages, approvals, and terminal input are sent over both direct and relay, taking whichever arrives first; only relay is used in the background.",
     "notes": "电脑设置页「连接」组下面的说明，13 号，一句话。不写测速来源。无变量。",
     "params": {},
     "platforms": [
@@ -2493,8 +2493,8 @@
   },
   {
     "key": "transport.popover_direct_body",
-    "zh-CN": "加载与文件走直连；发消息和审批同时经直连和中继发出，以先到的为准。",
-    "en": "Loading and files use direct; messages and approvals are sent over both direct and relay, whichever arrives first.",
+    "zh-CN": "加载、文件与终端走直连；发消息、审批和终端输入同时经直连和中继发出，以先到的为准。",
+    "en": "Loading, files, and terminal use direct; messages, approvals, and terminal input are sent over both direct and relay, whichever arrives first.",
     "notes": "直连轻气泡第二行路由说明。",
     "params": {},
     "platforms": [
@@ -2653,8 +2653,8 @@
   },
   {
     "key": "transport.diag_connected_body",
-    "zh-CN": "加载与文件现在已恢复直连。",
-    "en": "Loading and files are back on a direct connection.",
+    "zh-CN": "加载、文件与终端现在已恢复直连。",
+    "en": "Loading, files, and terminal are back on a direct connection.",
     "notes": "在排障单里重试连上时的短说明。",
     "params": {},
     "platforms": [

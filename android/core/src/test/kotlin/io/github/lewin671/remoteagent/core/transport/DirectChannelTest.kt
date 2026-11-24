@@ -324,48 +324,4 @@ class DirectChannelTest {
             releaseLatch.countDown()
         }
     }
-
-    @Test
-    fun expireStaleProbesHandlesConcurrentRemovalWithoutNoSuchElementException() {
-        // Reproduce the exact Kotlin Collection.toList() race on ConcurrentHashMap:
-        // size() observes 1, then another thread removes the sole entry before iterator().next().
-        val backing = java.util.concurrent.ConcurrentHashMap<String, Long>()
-        val racy = object : java.util.concurrent.ConcurrentMap<String, Long> by backing {
-            override val entries: MutableSet<MutableMap.MutableEntry<String, Long>>
-                get() {
-                    val delegate = backing.entries
-                    return object : MutableSet<MutableMap.MutableEntry<String, Long>> by delegate {
-                        override val size: Int
-                            get() {
-                                val s = delegate.size
-                                if (s == 1) backing.clear()
-                                return s
-                            }
-                    }
-                }
-        }
-        racy["probe-1"] = 0L
-        var missed = 0
-        assertFalse(expireStaleProbes(racy, 2_000_000_000L) { ++missed })
-        assertEquals(1, missed)
-        assertTrue(racy.isEmpty())
-
-        // Normal sweep removes expired probes (including concurrent removal during iteration),
-        // leaves fresh ones, and triggers at 3 misses.
-        missed = 0
-        val probes = java.util.concurrent.ConcurrentHashMap<String, Long>()
-        probes["stale-1"] = 0L
-        probes["stale-2"] = 100L
-        probes["stale-3"] = 200L
-        probes["replied-concurrently"] = 1_500_000_000L
-        probes["fresh"] = 1_500_000_000L
-        assertTrue(
-            expireStaleProbes(probes, 2_000_000_000L) {
-                probes.remove("replied-concurrently")
-                ++missed
-            },
-        )
-        assertEquals(3, missed)
-        assertEquals(setOf("fresh"), probes.keys)
-    }
 }

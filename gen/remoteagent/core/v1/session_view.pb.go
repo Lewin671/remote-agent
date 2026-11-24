@@ -2142,17 +2142,18 @@ func (x *SessionHeaderView) GetShortPath() string {
 }
 
 type SessionDirectChipView struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Visible       bool                   `protobuf:"varint,1,opt,name=visible,proto3" json:"visible,omitempty"`
-	Active        bool                   `protobuf:"varint,2,opt,name=active,proto3" json:"active,omitempty"`
-	ReadDirect    bool                   `protobuf:"varint,3,opt,name=read_direct,json=readDirect,proto3" json:"read_direct,omitempty"`
-	FileDirect    bool                   `protobuf:"varint,4,opt,name=file_direct,json=fileDirect,proto3" json:"file_direct,omitempty"`
-	LabelText     *Text                  `protobuf:"bytes,5,opt,name=label_text,json=labelText,proto3" json:"label_text,omitempty"`
-	PopoverTitle  *Text                  `protobuf:"bytes,6,opt,name=popover_title,json=popoverTitle,proto3" json:"popover_title,omitempty"`
-	PopoverBody   *Text                  `protobuf:"bytes,7,opt,name=popover_body,json=popoverBody,proto3" json:"popover_body,omitempty"`
-	PopoverFoot   *Text                  `protobuf:"bytes,8,opt,name=popover_foot,json=popoverFoot,proto3" json:"popover_foot,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Visible        bool                   `protobuf:"varint,1,opt,name=visible,proto3" json:"visible,omitempty"`
+	Active         bool                   `protobuf:"varint,2,opt,name=active,proto3" json:"active,omitempty"`
+	ReadDirect     bool                   `protobuf:"varint,3,opt,name=read_direct,json=readDirect,proto3" json:"read_direct,omitempty"`
+	FileDirect     bool                   `protobuf:"varint,4,opt,name=file_direct,json=fileDirect,proto3" json:"file_direct,omitempty"`
+	LabelText      *Text                  `protobuf:"bytes,5,opt,name=label_text,json=labelText,proto3" json:"label_text,omitempty"`
+	PopoverTitle   *Text                  `protobuf:"bytes,6,opt,name=popover_title,json=popoverTitle,proto3" json:"popover_title,omitempty"`
+	PopoverBody    *Text                  `protobuf:"bytes,7,opt,name=popover_body,json=popoverBody,proto3" json:"popover_body,omitempty"`
+	PopoverFoot    *Text                  `protobuf:"bytes,8,opt,name=popover_foot,json=popoverFoot,proto3" json:"popover_foot,omitempty"`
+	TerminalDirect bool                   `protobuf:"varint,9,opt,name=terminal_direct,json=terminalDirect,proto3" json:"terminal_direct,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *SessionDirectChipView) Reset() {
@@ -2239,6 +2240,13 @@ func (x *SessionDirectChipView) GetPopoverFoot() *Text {
 		return x.PopoverFoot
 	}
 	return nil
+}
+
+func (x *SessionDirectChipView) GetTerminalDirect() bool {
+	if x != nil {
+		return x.TerminalDirect
+	}
+	return false
 }
 
 type SessionModelChoiceView struct {
@@ -8066,7 +8074,7 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"\x11lookup_error_text\x18: \x01(\v2\x19.remoteagent.core.v1.TextR\x0flookupErrorText\x12+\n" +
 	"\x11multiple_machines\x18; \x01(\bR\x10multipleMachines\x12\x1d\n" +
 	"\n" +
-	"short_path\x18< \x01(\tR\tshortPath\"\x81\x03\n" +
+	"short_path\x18< \x01(\tR\tshortPath\"\xaa\x03\n" +
 	"\x15SessionDirectChipView\x12\x18\n" +
 	"\avisible\x18\x01 \x01(\bR\avisible\x12\x16\n" +
 	"\x06active\x18\x02 \x01(\bR\x06active\x12\x1f\n" +
@@ -8078,7 +8086,8 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"label_text\x18\x05 \x01(\v2\x19.remoteagent.core.v1.TextR\tlabelText\x12>\n" +
 	"\rpopover_title\x18\x06 \x01(\v2\x19.remoteagent.core.v1.TextR\fpopoverTitle\x12<\n" +
 	"\fpopover_body\x18\a \x01(\v2\x19.remoteagent.core.v1.TextR\vpopoverBody\x12<\n" +
-	"\fpopover_foot\x18\b \x01(\v2\x19.remoteagent.core.v1.TextR\vpopoverFoot\"\x8b\x03\n" +
+	"\fpopover_foot\x18\b \x01(\v2\x19.remoteagent.core.v1.TextR\vpopoverFoot\x12'\n" +
+	"\x0fterminal_direct\x18\t \x01(\bR\x0eterminalDirect\"\x8b\x03\n" +
 	"\x16SessionModelChoiceView\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12E\n" +

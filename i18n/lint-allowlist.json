@@ -5948,5 +5948,65 @@
     "path": "ios/RemoteAgent/App/Shared.swift",
     "literal": "wifi.slash",
     "reason": "SF Symbol identifier passed to GlassStrip near banner.text.rendered(); never rendered as UI text."
+  },
+  {
+    "path": "internal/relay/terminal.go",
+    "literal": "terminal output path unavailable",
+    "reason": "Internal daemon relay error sentinel returned when both relay and direct terminal output paths are closed; never displayed to users."
+  },
+  {
+    "path": "shared/linkcore/terminal.go",
+    "literal": "terminal_stream_stopped",
+    "reason": "Internal sans-IO protocol sentinel error code for stopped terminal stream; never rendered as UI copy."
+  },
+  {
+    "path": "shared/linkcore/terminal.go",
+    "literal": "terminal_payload_conflict",
+    "reason": "Internal sans-IO protocol sentinel error code for conflicting duplicate terminal frame payload; never rendered as UI copy."
+  },
+  {
+    "path": "shared/linkcore/terminal.go",
+    "literal": "terminal_frame_expired",
+    "reason": "Internal sans-IO protocol sentinel error code for expired terminal input frame; never rendered as UI copy."
+  },
+  {
+    "path": "shared/linkcore/terminal.go",
+    "literal": "terminal_budget_exceeded",
+    "reason": "Internal sans-IO protocol sentinel error code for terminal reorder/input cache cap; never rendered as UI copy."
+  },
+  {
+    "path": "shared/linkcore/terminal.go",
+    "literal": "terminal_output_replay_window",
+    "reason": "Internal sans-IO protocol sentinel error code when replay sequence falls outside bounded output history; never rendered as UI copy."
+  },
+  {
+    "path": "shared/linkcore/terminal.go",
+    "literal": "terminal_attach_binding",
+    "reason": "Internal sans-IO protocol sentinel error code for mismatched AttachPath binding; never rendered as UI copy."
+  },
+  {
+    "path": "shared/linkcore/terminal.go",
+    "literal": "terminal_output_identity_unavailable",
+    "reason": "Internal sans-IO protocol sentinel error code when output identity is absent; never rendered as UI copy."
+  },
+  {
+    "path": "shared/linkcore/terminal.go",
+    "literal": "terminal_registry_full",
+    "reason": "Internal sans-IO protocol sentinel error code when active terminal stream registry cap is reached; never rendered as UI copy."
+  },
+  {
+    "path": "shared/linkcore/terminal.go",
+    "literal": "terminal_retire_without_barrier",
+    "reason": "Internal sans-IO protocol sentinel error code when retiring a terminal stream before stop-admission barrier; never rendered as UI copy."
+  },
+  {
+    "path": "shared/linkcore/terminal.go",
+    "literal": "terminal_invalid_control",
+    "reason": "Internal sans-IO protocol sentinel error code for invalid terminal control wire payload; never rendered as UI copy."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Remote.kt",
+    "literal": "replay_overflow",
+    "reason": "Internal Core TerminalDirectStateEffect reason code matched to select localized UiMessages.terminalReplayOverflow(); never rendered as UI copy."
   }
 ]

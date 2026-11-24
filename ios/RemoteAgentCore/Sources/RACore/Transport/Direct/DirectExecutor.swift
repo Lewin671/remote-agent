@@ -59,6 +59,7 @@ final class DirectExecutor: @unchecked Sendable {
 
     private let emit: @Sendable (PBCoreEvent) -> Void
     private let onPushedEvent: @Sendable (_ machineId: String, _ pcId: UInt64, _ env: PBEnvelope, _ header: PBHeader, _ size: Int) -> Void
+    private let onTerminalOutput: (@Sendable (_ machineId: String, _ pcId: UInt64, _ env: PBEnvelope, _ header: PBHeader, _ raw: Data) -> Void)?
     private let factory: (any RtcFactory)?
     private let clock: @Sendable () -> UInt64
     private let monotonic: @Sendable () -> Double
@@ -73,12 +74,14 @@ final class DirectExecutor: @unchecked Sendable {
     init(
         emit: @escaping @Sendable (PBCoreEvent) -> Void,
         onPushedEvent: @escaping @Sendable (_ machineId: String, _ pcId: UInt64, _ env: PBEnvelope, _ header: PBHeader, _ size: Int) -> Void,
+        onTerminalOutput: (@Sendable (_ machineId: String, _ pcId: UInt64, _ env: PBEnvelope, _ header: PBHeader, _ raw: Data) -> Void)? = nil,
         factory: (any RtcFactory)? = nil,
         clock: @escaping @Sendable () -> UInt64 = { UInt64(Date().timeIntervalSince1970 * 1000) },
         monotonic: @escaping @Sendable () -> Double = { Double(DispatchTime.now().uptimeNanoseconds) / 1e6 }
     ) {
         self.emit = emit
         self.onPushedEvent = onPushedEvent
+        self.onTerminalOutput = onTerminalOutput
         self.factory = factory
         self.clock = clock
         self.monotonic = monotonic
@@ -213,6 +216,15 @@ final class DirectExecutor: @unchecked Sendable {
                         }
                     }
                 },
+                probeReply: { [weak self, weak entry] raw in
+                    guard let self, let entry, self.lock.withLock({ !self.closed && self.pcs[pcID] === entry }) else { return }
+                    self.emitEvent {
+                        $0.directPcProbeReceived = .with {
+                            $0.pcID = pcID
+                            $0.raw = raw
+                        }
+                    }
+                },
                 clock: clock,
                 monotonic: monotonic
             ))
@@ -343,6 +355,22 @@ final class DirectExecutor: @unchecked Sendable {
         entry?.channel?.close()
     }
 
+    func pcSendProbe(_ eff: PBCoreDirectPcSendProbeEffect) {
+        let ch = lock.withLock { pcs[eff.pcID]?.channel }
+        _ = ch?.sendProbe(eff.raw)
+    }
+
+    func sendTerminalFrame(pcId: UInt64, raw: Data) {
+        let ch: DirectChannel? = lock.withLock {
+            guard let entry = pcs[pcId], entry.confirmed, entry.use == 1 else { return nil }
+            return entry.channel
+        }
+        guard let ch, ch.ready else { return }
+        Task {
+            try? await ch.write(raw, handoff: {})
+        }
+    }
+
     func dcReadStats(_ eff: PBCoreDirectDcReadStatsEffect) async {
         let ch = lock.withLock { pcs[eff.pcID]?.channel }
         let report = if let ch { await ch.readStats() } else { PBCoreDirectStatsReport() }
@@ -420,6 +448,12 @@ final class DirectExecutor: @unchecked Sendable {
         if entry.use == 1 && header.kind == .event {
             if confirmed && header.machineID == entry.machineId && header.sender == entry.machineId {
                 onPushedEvent(entry.machineId, pcId, env, header, raw.count)
+            }
+            return
+        }
+        if entry.use == 1 && header.kind == .terminalOutput {
+            if confirmed && header.machineID == entry.machineId && header.sender == entry.machineId {
+                onTerminalOutput?(entry.machineId, pcId, env, header, raw)
             }
             return
         }

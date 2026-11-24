@@ -2079,6 +2079,83 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.TerminalHistoryEvent getTerminalHistory();
 
   /**
+   * <code>.remoteagent.core.v1.DirectPcProbeReceivedEvent direct_pc_probe_received = 423 [json_name = "directPcProbeReceived"];</code>
+   * @return Whether the directPcProbeReceived field is set.
+   */
+  boolean hasDirectPcProbeReceived();
+  /**
+   * <code>.remoteagent.core.v1.DirectPcProbeReceivedEvent direct_pc_probe_received = 423 [json_name = "directPcProbeReceived"];</code>
+   * @return The directPcProbeReceived.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectPcProbeReceivedEvent getDirectPcProbeReceived();
+
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectOpenEvent terminal_direct_open = 424 [json_name = "terminalDirectOpen"];</code>
+   * @return Whether the terminalDirectOpen field is set.
+   */
+  boolean hasTerminalDirectOpen();
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectOpenEvent terminal_direct_open = 424 [json_name = "terminalDirectOpen"];</code>
+   * @return The terminalDirectOpen.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalDirectOpenEvent getTerminalDirectOpen();
+
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectCloseEvent terminal_direct_close = 425 [json_name = "terminalDirectClose"];</code>
+   * @return Whether the terminalDirectClose field is set.
+   */
+  boolean hasTerminalDirectClose();
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectCloseEvent terminal_direct_close = 425 [json_name = "terminalDirectClose"];</code>
+   * @return The terminalDirectClose.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalDirectCloseEvent getTerminalDirectClose();
+
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectLegEvent terminal_direct_leg = 426 [json_name = "terminalDirectLeg"];</code>
+   * @return Whether the terminalDirectLeg field is set.
+   */
+  boolean hasTerminalDirectLeg();
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectLegEvent terminal_direct_leg = 426 [json_name = "terminalDirectLeg"];</code>
+   * @return The terminalDirectLeg.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalDirectLegEvent getTerminalDirectLeg();
+
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectInputEvent terminal_direct_input = 427 [json_name = "terminalDirectInput"];</code>
+   * @return Whether the terminalDirectInput field is set.
+   */
+  boolean hasTerminalDirectInput();
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectInputEvent terminal_direct_input = 427 [json_name = "terminalDirectInput"];</code>
+   * @return The terminalDirectInput.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalDirectInputEvent getTerminalDirectInput();
+
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectOutputEvent terminal_direct_output = 428 [json_name = "terminalDirectOutput"];</code>
+   * @return Whether the terminalDirectOutput field is set.
+   */
+  boolean hasTerminalDirectOutput();
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectOutputEvent terminal_direct_output = 428 [json_name = "terminalDirectOutput"];</code>
+   * @return The terminalDirectOutput.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalDirectOutputEvent getTerminalDirectOutput();
+
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectConfirmRebuildAction terminal_direct_confirm_rebuild = 429 [json_name = "terminalDirectConfirmRebuild"];</code>
+   * @return Whether the terminalDirectConfirmRebuild field is set.
+   */
+  boolean hasTerminalDirectConfirmRebuild();
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectConfirmRebuildAction terminal_direct_confirm_rebuild = 429 [json_name = "terminalDirectConfirmRebuild"];</code>
+   * @return The terminalDirectConfirmRebuild.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalDirectConfirmRebuildAction getTerminalDirectConfirmRebuild();
+
+  /**
    * <pre>
    * Security engine (450-499 reserved for security).
    * </pre>

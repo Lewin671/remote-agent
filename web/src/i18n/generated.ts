@@ -1478,6 +1478,11 @@ export interface MessageArgs {
   "terminal.closed_ended_note": { [name: string]: never };
   "terminal.closed_running_note": { [name: string]: never };
   "terminal.computer_dimensions": { cols: number; rows: number };
+  "terminal.confirm_close_action": { [name: string]: never };
+  "terminal.confirm_rebuild_action": { [name: string]: never };
+  "terminal.confirm_rebuild_input_body": { [name: string]: never };
+  "terminal.confirm_rebuild_restart_body": { [name: string]: never };
+  "terminal.confirm_rebuild_title": { [name: string]: never };
   "terminal.connecting": { [name: string]: never };
   "terminal.disconnected": { [name: string]: never };
   "terminal.down": { [name: string]: never };
@@ -1500,6 +1505,7 @@ export interface MessageArgs {
   "terminal.readonly": { [name: string]: never };
   "terminal.reconnect": { [name: string]: never };
   "terminal.remote_dimensions": { cols: number; rows: number };
+  "terminal.replay_overflow": { [name: string]: never };
   "terminal.restore": { [name: string]: never };
   "terminal.right": { [name: string]: never };
   "terminal.size_changed": { [name: string]: never };
@@ -3759,6 +3765,11 @@ export const messages = {
     "terminal.closed_ended_note": "The last frame before disconnection is shown below. The session has ended.",
     "terminal.closed_running_note": "The last frame before disconnection is shown below. The session is still running; chat updates continue.",
     "terminal.computer_dimensions": "On computer {cols}×{rows}",
+    "terminal.confirm_close_action": "Close terminal",
+    "terminal.confirm_rebuild_action": "Rebuild terminal",
+    "terminal.confirm_rebuild_input_body": "Some input may not have been delivered completely or has expired. Automatic resend is paused to prevent duplicate execution. Check the screen, then rebuild or close the terminal.",
+    "terminal.confirm_rebuild_restart_body": "The computer restarted or the terminal stream is no longer available, so unconfirmed input cannot be verified. Check the status, then rebuild or close the terminal.",
+    "terminal.confirm_rebuild_title": "Confirm before rebuilding terminal",
     "terminal.connecting": "Connecting to terminal…",
     "terminal.disconnected": "Terminal disconnected",
     "terminal.down": "Down",
@@ -3781,6 +3792,7 @@ export const messages = {
     "terminal.readonly": "Reviewing history · Read only",
     "terminal.reconnect": "Reconnect",
     "terminal.remote_dimensions": "Remote {cols}×{rows}",
+    "terminal.replay_overflow": "Terminal output exceeded the replay buffer. Reconnect for the latest screen.",
     "terminal.restore": "Restore",
     "terminal.right": "Right",
     "terminal.size_changed": "Remote size changed",
@@ -3877,7 +3889,7 @@ export const messages = {
     "transport.diag_check_path": "Local or public direct path",
     "transport.diag_check_peer": "Computer reachable & responding",
     "transport.diag_check_retry": "Background auto-retry",
-    "transport.diag_connected_body": "Loading and files are back on a direct connection.",
+    "transport.diag_connected_body": "Loading, files, and terminal are back on a direct connection.",
     "transport.diag_connected_title": "Direct connected",
     "transport.diag_copy_permission": "Couldn’t copy; check clipboard permission",
     "transport.diag_count": "×{count}",
@@ -4009,9 +4021,9 @@ export const messages = {
     "transport.file_speed_both": "Direct {direct} · Relay {relay} MiB/s",
     "transport.file_speed_direct": "Direct {direct} MiB/s",
     "transport.file_speed_relay": "Relay {relay} MiB/s",
-    "transport.footer": "Messages and approvals are sent over both direct and relay, taking whichever arrives first; only relay is used in the background.",
+    "transport.footer": "Messages, approvals, and terminal input are sent over both direct and relay, taking whichever arrives first; only relay is used in the background.",
     "transport.popover_a11y": "Direct connection active, tap for details",
-    "transport.popover_direct_body": "Loading and files use direct; messages and approvals are sent over both direct and relay, whichever arrives first.",
+    "transport.popover_direct_body": "Loading, files, and terminal use direct; messages, approvals, and terminal input are sent over both direct and relay, whichever arrives first.",
     "transport.popover_direct_title": "Direct to {name}",
     "transport.popover_direct_title_rtt": "Direct to {name} · {ms} ms",
     "transport.popover_file_only": "Files only over direct",
@@ -6022,6 +6034,11 @@ export const messages = {
     "terminal.closed_ended_note": "下面是断开前的画面。会话已经结束。",
     "terminal.closed_running_note": "下面是断开前的画面。会话还在运行，聊天照常更新。",
     "terminal.computer_dimensions": "电脑上 {cols}×{rows}",
+    "terminal.confirm_close_action": "关闭终端",
+    "terminal.confirm_rebuild_action": "重建终端",
+    "terminal.confirm_rebuild_input_body": "有输入可能未完整送达或已过期，已暂停自动续发以避免重复执行。请核对屏幕内容后选择重建终端或关闭。",
+    "terminal.confirm_rebuild_restart_body": "电脑端已重启或原终端会话已失效，无法确认未送达的输入是否已执行。请核对状态后选择重建终端或关闭。",
+    "terminal.confirm_rebuild_title": "需要确认后重建终端",
     "terminal.connecting": "连接终端…",
     "terminal.disconnected": "终端已断开",
     "terminal.down": "下",
@@ -6044,6 +6061,7 @@ export const messages = {
     "terminal.readonly": "回看中 · 只读",
     "terminal.reconnect": "重新连接",
     "terminal.remote_dimensions": "远端 {cols}×{rows}",
+    "terminal.replay_overflow": "终端输出超出补发缓冲，请重新连接获取最新画面。",
     "terminal.restore": "还原",
     "terminal.right": "右",
     "terminal.size_changed": "远端尺寸已变化",
@@ -6134,7 +6152,7 @@ export const messages = {
     "transport.diag_check_path": "局域网或公网直通",
     "transport.diag_check_peer": "电脑在线并响应",
     "transport.diag_check_retry": "后台自动重试",
-    "transport.diag_connected_body": "加载与文件现在已恢复直连。",
+    "transport.diag_connected_body": "加载、文件与终端现在已恢复直连。",
     "transport.diag_connected_title": "直连已连上",
     "transport.diag_copy_permission": "没能复制，请检查剪贴板权限",
     "transport.diag_count": "×{count}",
@@ -6266,9 +6284,9 @@ export const messages = {
     "transport.file_speed_both": "直连 {direct} · 中继 {relay} MiB/s",
     "transport.file_speed_direct": "直连 {direct} MiB/s",
     "transport.file_speed_relay": "中继 {relay} MiB/s",
-    "transport.footer": "发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。",
+    "transport.footer": "发消息、审批和终端输入同时经直连和中继发出，以先到的为准；后台时只用中继。",
     "transport.popover_a11y": "直连已生效，点按查看连接详情",
-    "transport.popover_direct_body": "加载与文件走直连；发消息和审批同时经直连和中继发出，以先到的为准。",
+    "transport.popover_direct_body": "加载、文件与终端走直连；发消息、审批和终端输入同时经直连和中继发出，以先到的为准。",
     "transport.popover_direct_title": "直连 {name}",
     "transport.popover_direct_title_rtt": "直连 {name} · {ms} ms",
     "transport.popover_file_only": "仅文件走直连",

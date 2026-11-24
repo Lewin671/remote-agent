@@ -1621,6 +1621,11 @@
 "terminal_closed_ended_note" = "下面是断开前的画面。会话已经结束。";
 "terminal_closed_running_note" = "下面是断开前的画面。会话还在运行，聊天照常更新。";
 "terminal_computer_dimensions" = "电脑上 %1$lld×%2$lld";
+"terminal_confirm_close_action" = "关闭终端";
+"terminal_confirm_rebuild_action" = "重建终端";
+"terminal_confirm_rebuild_input_body" = "有输入可能未完整送达或已过期，已暂停自动续发以避免重复执行。请核对屏幕内容后选择重建终端或关闭。";
+"terminal_confirm_rebuild_restart_body" = "电脑端已重启或原终端会话已失效，无法确认未送达的输入是否已执行。请核对状态后选择重建终端或关闭。";
+"terminal_confirm_rebuild_title" = "需要确认后重建终端";
 "terminal_connecting" = "连接终端…";
 "terminal_disconnected" = "终端已断开";
 "terminal_down" = "下";
@@ -1660,6 +1665,7 @@
 "terminal_readonly" = "回看中 · 只读";
 "terminal_reconnect" = "重新连接";
 "terminal_remote_dimensions" = "远端 %1$lld×%2$lld";
+"terminal_replay_overflow" = "终端输出超出补发缓冲，请重新连接获取最新画面。";
 "terminal_restore" = "还原";
 "terminal_right" = "右";
 "terminal_size_changed" = "远端尺寸已变化";
@@ -1712,7 +1718,7 @@
 "transport_diag_check_path" = "局域网或公网直通";
 "transport_diag_check_peer" = "电脑在线并响应";
 "transport_diag_check_retry" = "后台自动重试";
-"transport_diag_connected_body" = "加载与文件现在已恢复直连。";
+"transport_diag_connected_body" = "加载、文件与终端现在已恢复直连。";
 "transport_diag_connected_title" = "直连已连上";
 "transport_diag_copy_permission" = "没能复制，请检查剪贴板权限";
 "transport_diag_count" = "×%1$lld";
@@ -1844,9 +1850,9 @@
 "transport_file_speed_both" = "直连 %1$@ · 中继 %2$@ MiB/s";
 "transport_file_speed_direct" = "直连 %1$@ MiB/s";
 "transport_file_speed_relay" = "中继 %1$@ MiB/s";
-"transport_footer" = "发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。";
+"transport_footer" = "发消息、审批和终端输入同时经直连和中继发出，以先到的为准；后台时只用中继。";
 "transport_popover_a11y" = "直连已生效，点按查看连接详情";
-"transport_popover_direct_body" = "加载与文件走直连；发消息和审批同时经直连和中继发出，以先到的为准。";
+"transport_popover_direct_body" = "加载、文件与终端走直连；发消息、审批和终端输入同时经直连和中继发出，以先到的为准。";
 "transport_popover_direct_title" = "直连 %1$@";
 "transport_popover_direct_title_rtt" = "直连 %2$@ · %1$@ ms";
 "transport_popover_file_only" = "仅文件走直连";

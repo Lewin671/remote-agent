@@ -390,7 +390,7 @@ class V63UiInteractionsTest {
             .setFileDirect(true)
             .setLabelText(coreLit("直连"))
             .setPopoverTitle(coreLit("已通过直连连接到电脑 · 14 ms"))
-            .setPopoverBody(coreLit("加载与文件走直连；发消息和审批同时经直连和中继发出，以先到的为准。"))
+            .setPopoverBody(coreLit("加载、文件与终端走直连；发消息、审批和终端输入同时经直连和中继发出，以先到的为准。"))
             .setPopoverFoot(coreLit("直连稳定"))
             .build()
         val directHeader = baseVm.header.toBuilder()
@@ -421,7 +421,7 @@ class V63UiInteractionsTest {
             ui.waitForIdle()
             val badge = ui.onNodeWithContentDescription("直连已生效，点按查看连接详情")
             badge.assertIsDisplayed().performClick()
-            ui.onNodeWithText("加载与文件走直连；发消息和审批同时经直连和中继发出，以先到的为准。").assertIsDisplayed()
+            ui.onNodeWithText("加载、文件与终端走直连；发消息、审批和终端输入同时经直连和中继发出，以先到的为准。").assertIsDisplayed()
 
             // Mid-open drop to relay: popover remains open and reflects relay fallback copy.
             ui.runOnIdle { remote.showForTest(state, sessions = mapOf(relayVm.sessionId to relayVm)) }

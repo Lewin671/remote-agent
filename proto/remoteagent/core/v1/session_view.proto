@@ -186,6 +186,7 @@ message SessionDirectChipView {
   Text popover_title = 6;
   Text popover_body = 7;
   Text popover_foot = 8;
+  bool terminal_direct = 9;
 }
 
 message SessionModelChoiceView {

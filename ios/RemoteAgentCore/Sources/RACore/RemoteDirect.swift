@@ -96,6 +96,31 @@ extension Remote {
         directExecutor.pcClose(eff)
     }
 
+    public nonisolated func handleDirectPcSendProbe(_ eff: PBCoreDirectPcSendProbeEffect) {
+        directExecutor.pcSendProbe(eff)
+    }
+
+    public nonisolated func handleTerminalDirectSend(_ eff: PBCoreTerminalDirectSendEffect) {
+        if eff.sendRelay {
+            activeTerminals.sendRelay(streamId: eff.streamID, raw: eff.sealedEnvelope)
+        }
+        if eff.directPcID > 0 {
+            directExecutor.sendTerminalFrame(pcId: eff.directPcID, raw: eff.sealedEnvelope)
+        }
+    }
+
+    public nonisolated func handleTerminalDirectDeliver(_ eff: PBCoreTerminalDirectDeliverEffect) {
+        activeTerminals.deliver(streamId: eff.streamID, payloads: eff.payloads)
+    }
+
+    public nonisolated func handleTerminalDirectAttachRelay(_ eff: PBCoreTerminalDirectAttachRelayEffect) {
+        activeTerminals.attachRelay(streamId: eff.streamID, legId: eff.legID)
+    }
+
+    public nonisolated func handleTerminalDirectState(_ eff: PBCoreTerminalDirectStateEffect) {
+        activeTerminals.onState(streamId: eff.streamID, state: eff.state, reason: eff.reason, needsConfirmation: eff.needsConfirmation)
+    }
+
     public func handleDirectDcReadStats(_ eff: PBCoreDirectDcReadStatsEffect) async {
         await directExecutor.dcReadStats(eff)
     }

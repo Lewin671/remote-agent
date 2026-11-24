@@ -2000,6 +2000,11 @@
     <string name="terminal_closed_ended_note" formatted="false">"The last frame before disconnection is shown below. The session has ended."</string>
     <string name="terminal_closed_running_note" formatted="false">"The last frame before disconnection is shown below. The session is still running; chat updates continue."</string>
     <string name="terminal_computer_dimensions">"On computer %1$d×%2$d"</string>
+    <string name="terminal_confirm_close_action" formatted="false">"Close terminal"</string>
+    <string name="terminal_confirm_rebuild_action" formatted="false">"Rebuild terminal"</string>
+    <string name="terminal_confirm_rebuild_input_body" formatted="false">"Some input may not have been delivered completely or has expired. Automatic resend is paused to prevent duplicate execution. Check the screen, then rebuild or close the terminal."</string>
+    <string name="terminal_confirm_rebuild_restart_body" formatted="false">"The computer restarted or the terminal stream is no longer available, so unconfirmed input cannot be verified. Check the status, then rebuild or close the terminal."</string>
+    <string name="terminal_confirm_rebuild_title" formatted="false">"Confirm before rebuilding terminal"</string>
     <string name="terminal_connecting" formatted="false">"Connecting to terminal…"</string>
     <string name="terminal_disconnected" formatted="false">"Terminal disconnected"</string>
     <string name="terminal_down" formatted="false">"Down"</string>
@@ -2022,6 +2027,7 @@
     <string name="terminal_readonly" formatted="false">"Reviewing history · Read only"</string>
     <string name="terminal_reconnect" formatted="false">"Reconnect"</string>
     <string name="terminal_remote_dimensions">"Remote %1$d×%2$d"</string>
+    <string name="terminal_replay_overflow" formatted="false">"Terminal output exceeded the replay buffer. Reconnect for the latest screen."</string>
     <string name="terminal_restore" formatted="false">"Restore"</string>
     <string name="terminal_right" formatted="false">"Right"</string>
     <string name="terminal_size_changed" formatted="false">"Remote size changed"</string>
@@ -2100,7 +2106,7 @@
     <string name="transport_diag_check_path" formatted="false">"Local or public direct path"</string>
     <string name="transport_diag_check_peer" formatted="false">"Computer reachable &amp; responding"</string>
     <string name="transport_diag_check_retry" formatted="false">"Background auto-retry"</string>
-    <string name="transport_diag_connected_body" formatted="false">"Loading and files are back on a direct connection."</string>
+    <string name="transport_diag_connected_body" formatted="false">"Loading, files, and terminal are back on a direct connection."</string>
     <string name="transport_diag_connected_title" formatted="false">"Direct connected"</string>
     <string name="transport_diag_copy_permission" formatted="false">"Couldn’t copy; check clipboard permission"</string>
     <string name="transport_diag_count">"×%1$d"</string>
@@ -2232,9 +2238,9 @@
     <string name="transport_file_speed_both">"Direct %1$s · Relay %2$s MiB/s"</string>
     <string name="transport_file_speed_direct">"Direct %1$s MiB/s"</string>
     <string name="transport_file_speed_relay">"Relay %1$s MiB/s"</string>
-    <string name="transport_footer" formatted="false">"Messages and approvals are sent over both direct and relay, taking whichever arrives first; only relay is used in the background."</string>
+    <string name="transport_footer" formatted="false">"Messages, approvals, and terminal input are sent over both direct and relay, taking whichever arrives first; only relay is used in the background."</string>
     <string name="transport_popover_a11y" formatted="false">"Direct connection active, tap for details"</string>
-    <string name="transport_popover_direct_body" formatted="false">"Loading and files use direct; messages and approvals are sent over both direct and relay, whichever arrives first."</string>
+    <string name="transport_popover_direct_body" formatted="false">"Loading, files, and terminal use direct; messages, approvals, and terminal input are sent over both direct and relay, whichever arrives first."</string>
     <string name="transport_popover_direct_title">"Direct to %1$s"</string>
     <string name="transport_popover_direct_title_rtt">"Direct to %2$s · %1$s ms"</string>
     <string name="transport_popover_file_only" formatted="false">"Files only over direct"</string>

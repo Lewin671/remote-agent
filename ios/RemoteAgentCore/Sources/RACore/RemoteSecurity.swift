@@ -74,6 +74,16 @@ extension Remote {
                     }
                 }
                 return await self.dispatchCommandAttempt(eff)
+            },
+            onTerminalEffect: { [weak self] eff in
+                guard let self else { return }
+                switch eff.effect {
+                case .terminalDirectSend(let e)?: self.handleTerminalDirectSend(e)
+                case .terminalDirectDeliver(let e)?: self.handleTerminalDirectDeliver(e)
+                case .terminalDirectAttachRelay(let e)?: self.handleTerminalDirectAttachRelay(e)
+                case .terminalDirectState(let e)?: self.handleTerminalDirectState(e)
+                default: break
+                }
             }
         )
         fallbackSecurityDriver = driver

@@ -14,7 +14,9 @@ import io.github.lewin671.remoteagent.core.proto.DirectPcCreatedEvent
 import io.github.lewin671.remoteagent.core.proto.DirectPcDescribeEffect
 import io.github.lewin671.remoteagent.core.proto.DirectPcDescriptionEvent
 import io.github.lewin671.remoteagent.core.proto.DirectPcLocalCandidateEvent
+import io.github.lewin671.remoteagent.core.proto.DirectPcProbeReceivedEvent
 import io.github.lewin671.remoteagent.core.proto.DirectPcRemoteSetEvent
+import io.github.lewin671.remoteagent.core.proto.DirectPcSendProbeEffect
 import io.github.lewin671.remoteagent.core.proto.DirectPcSetRemoteEffect
 import io.github.lewin671.remoteagent.core.proto.DirectPcStateEvent
 import io.github.lewin671.remoteagent.core.proto.DirectPcStunErrorEvent
@@ -55,6 +57,7 @@ private fun decodeUtf8Strict(bytes: ByteArray): String =
 internal class DirectExecutor(
     private val emit: (CoreEvent) -> Unit,
     private val onPushedEvent: (machineId: String, pcId: Long, env: Envelope, header: Header, size: Int) -> Unit,
+    private val onTerminalOutput: ((machineId: String, pcId: Long, env: Envelope, header: Header, raw: ByteArray) -> Unit)? = null,
     private val factory: RtcFactory? = null,
     private val clock: () -> Long = System::currentTimeMillis,
     private val monotonic: () -> Long = { System.nanoTime() / 1_000_000L },
@@ -179,6 +182,17 @@ internal class DirectExecutor(
                                         .setPcId(eff.pcId)
                                         .setCode(code)
                                         .setAddress(address),
+                                )
+                            }
+                        }
+                    },
+                    probeReply = { raw ->
+                        if (!closed.get() && pcs[eff.pcId] === entry) {
+                            emitEvent {
+                                setDirectPcProbeReceived(
+                                    DirectPcProbeReceivedEvent.newBuilder()
+                                        .setPcId(eff.pcId)
+                                        .setRaw(ByteString.copyFrom(raw)),
                                 )
                             }
                         }
@@ -314,6 +328,22 @@ internal class DirectExecutor(
         entry.channel.close()
     }
 
+    fun pcSendProbe(eff: DirectPcSendProbeEffect) {
+        val entry = pcs[eff.pcId] ?: return
+        entry.channel.sendProbe(eff.raw.toByteArray())
+    }
+
+    suspend fun sendTerminalFrame(pcId: Long, raw: ByteArray): Boolean {
+        val entry = pcs[pcId] ?: return false
+        if (!entry.confirmed || !entry.channel.ready || entry.use != 1) return false
+        return try {
+            entry.channel.write(raw) {}
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     suspend fun dcReadStats(eff: DirectDcReadStatsEffect) {
         val entry = pcs[eff.pcId]
         val report = if (entry != null) entry.channel.readStats() else DirectStatsReport.getDefaultInstance()
@@ -363,6 +393,12 @@ internal class DirectExecutor(
             if (entry.use == 1 && header.kind == PayloadKind.PAYLOAD_KIND_EVENT) {
                 if (entry.confirmed && header.machineId == entry.machineId && header.sender == entry.machineId) {
                     onPushedEvent(entry.machineId, pcId, env, header, raw.size)
+                }
+                return
+            }
+            if (entry.use == 1 && header.kind == PayloadKind.PAYLOAD_KIND_TERMINAL_OUTPUT) {
+                if (entry.confirmed && header.machineId == entry.machineId && header.sender == entry.machineId) {
+                    onTerminalOutput?.invoke(entry.machineId, pcId, env, header, raw)
                 }
                 return
             }

@@ -48,7 +48,7 @@ import Testing
                 socket: AcceptingSocket(),
                 seal: { [self] frame, _, _ in
                     lock.withLock { typed.append(frame) }
-                    return Data()
+                    return (Data(), Data(), true)
                 }, finish: { _ in }, closeLocal: {})
             lock.withLock { answered[i] = conn }
         }

@@ -209,6 +209,13 @@ public  final class Event extends
     TERMINAL_STREAM(420),
     DIRECT_PREFERENCES_LOADED(421),
     TERMINAL_HISTORY(422),
+    DIRECT_PC_PROBE_RECEIVED(423),
+    TERMINAL_DIRECT_OPEN(424),
+    TERMINAL_DIRECT_CLOSE(425),
+    TERMINAL_DIRECT_LEG(426),
+    TERMINAL_DIRECT_INPUT(427),
+    TERMINAL_DIRECT_OUTPUT(428),
+    TERMINAL_DIRECT_CONFIRM_REBUILD(429),
     SECURITY_CONFIG(450),
     SECURITY_KEY_SIGNED(452),
     SECURITY_KEY_AGREED(453),
@@ -425,6 +432,13 @@ public  final class Event extends
         case 420: return TERMINAL_STREAM;
         case 421: return DIRECT_PREFERENCES_LOADED;
         case 422: return TERMINAL_HISTORY;
+        case 423: return DIRECT_PC_PROBE_RECEIVED;
+        case 424: return TERMINAL_DIRECT_OPEN;
+        case 425: return TERMINAL_DIRECT_CLOSE;
+        case 426: return TERMINAL_DIRECT_LEG;
+        case 427: return TERMINAL_DIRECT_INPUT;
+        case 428: return TERMINAL_DIRECT_OUTPUT;
+        case 429: return TERMINAL_DIRECT_CONFIRM_REBUILD;
         case 450: return SECURITY_CONFIG;
         case 452: return SECURITY_KEY_SIGNED;
         case 453: return SECURITY_KEY_AGREED;
@@ -10230,6 +10244,370 @@ public  final class Event extends
    */
   private void clearTerminalHistory() {
     if (eventCase_ == 422) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_PC_PROBE_RECEIVED_FIELD_NUMBER = 423;
+  /**
+   * <code>.remoteagent.core.v1.DirectPcProbeReceivedEvent direct_pc_probe_received = 423 [json_name = "directPcProbeReceived"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectPcProbeReceived() {
+    return eventCase_ == 423;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcProbeReceivedEvent direct_pc_probe_received = 423 [json_name = "directPcProbeReceived"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectPcProbeReceivedEvent getDirectPcProbeReceived() {
+    if (eventCase_ == 423) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectPcProbeReceivedEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectPcProbeReceivedEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcProbeReceivedEvent direct_pc_probe_received = 423 [json_name = "directPcProbeReceived"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectPcProbeReceived(io.github.lewin671.remoteagent.core.proto.DirectPcProbeReceivedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 423;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcProbeReceivedEvent direct_pc_probe_received = 423 [json_name = "directPcProbeReceived"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectPcProbeReceived(io.github.lewin671.remoteagent.core.proto.DirectPcProbeReceivedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 423 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectPcProbeReceivedEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectPcProbeReceivedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectPcProbeReceivedEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 423;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcProbeReceivedEvent direct_pc_probe_received = 423 [json_name = "directPcProbeReceived"];</code>
+   */
+  private void clearDirectPcProbeReceived() {
+    if (eventCase_ == 423) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int TERMINAL_DIRECT_OPEN_FIELD_NUMBER = 424;
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectOpenEvent terminal_direct_open = 424 [json_name = "terminalDirectOpen"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTerminalDirectOpen() {
+    return eventCase_ == 424;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectOpenEvent terminal_direct_open = 424 [json_name = "terminalDirectOpen"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.TerminalDirectOpenEvent getTerminalDirectOpen() {
+    if (eventCase_ == 424) {
+       return (io.github.lewin671.remoteagent.core.proto.TerminalDirectOpenEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.TerminalDirectOpenEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectOpenEvent terminal_direct_open = 424 [json_name = "terminalDirectOpen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTerminalDirectOpen(io.github.lewin671.remoteagent.core.proto.TerminalDirectOpenEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 424;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectOpenEvent terminal_direct_open = 424 [json_name = "terminalDirectOpen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeTerminalDirectOpen(io.github.lewin671.remoteagent.core.proto.TerminalDirectOpenEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 424 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.TerminalDirectOpenEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.TerminalDirectOpenEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.TerminalDirectOpenEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 424;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectOpenEvent terminal_direct_open = 424 [json_name = "terminalDirectOpen"];</code>
+   */
+  private void clearTerminalDirectOpen() {
+    if (eventCase_ == 424) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int TERMINAL_DIRECT_CLOSE_FIELD_NUMBER = 425;
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectCloseEvent terminal_direct_close = 425 [json_name = "terminalDirectClose"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTerminalDirectClose() {
+    return eventCase_ == 425;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectCloseEvent terminal_direct_close = 425 [json_name = "terminalDirectClose"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.TerminalDirectCloseEvent getTerminalDirectClose() {
+    if (eventCase_ == 425) {
+       return (io.github.lewin671.remoteagent.core.proto.TerminalDirectCloseEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.TerminalDirectCloseEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectCloseEvent terminal_direct_close = 425 [json_name = "terminalDirectClose"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTerminalDirectClose(io.github.lewin671.remoteagent.core.proto.TerminalDirectCloseEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 425;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectCloseEvent terminal_direct_close = 425 [json_name = "terminalDirectClose"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeTerminalDirectClose(io.github.lewin671.remoteagent.core.proto.TerminalDirectCloseEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 425 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.TerminalDirectCloseEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.TerminalDirectCloseEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.TerminalDirectCloseEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 425;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectCloseEvent terminal_direct_close = 425 [json_name = "terminalDirectClose"];</code>
+   */
+  private void clearTerminalDirectClose() {
+    if (eventCase_ == 425) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int TERMINAL_DIRECT_LEG_FIELD_NUMBER = 426;
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectLegEvent terminal_direct_leg = 426 [json_name = "terminalDirectLeg"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTerminalDirectLeg() {
+    return eventCase_ == 426;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectLegEvent terminal_direct_leg = 426 [json_name = "terminalDirectLeg"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.TerminalDirectLegEvent getTerminalDirectLeg() {
+    if (eventCase_ == 426) {
+       return (io.github.lewin671.remoteagent.core.proto.TerminalDirectLegEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.TerminalDirectLegEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectLegEvent terminal_direct_leg = 426 [json_name = "terminalDirectLeg"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTerminalDirectLeg(io.github.lewin671.remoteagent.core.proto.TerminalDirectLegEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 426;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectLegEvent terminal_direct_leg = 426 [json_name = "terminalDirectLeg"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeTerminalDirectLeg(io.github.lewin671.remoteagent.core.proto.TerminalDirectLegEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 426 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.TerminalDirectLegEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.TerminalDirectLegEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.TerminalDirectLegEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 426;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectLegEvent terminal_direct_leg = 426 [json_name = "terminalDirectLeg"];</code>
+   */
+  private void clearTerminalDirectLeg() {
+    if (eventCase_ == 426) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int TERMINAL_DIRECT_INPUT_FIELD_NUMBER = 427;
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectInputEvent terminal_direct_input = 427 [json_name = "terminalDirectInput"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTerminalDirectInput() {
+    return eventCase_ == 427;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectInputEvent terminal_direct_input = 427 [json_name = "terminalDirectInput"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.TerminalDirectInputEvent getTerminalDirectInput() {
+    if (eventCase_ == 427) {
+       return (io.github.lewin671.remoteagent.core.proto.TerminalDirectInputEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.TerminalDirectInputEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectInputEvent terminal_direct_input = 427 [json_name = "terminalDirectInput"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTerminalDirectInput(io.github.lewin671.remoteagent.core.proto.TerminalDirectInputEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 427;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectInputEvent terminal_direct_input = 427 [json_name = "terminalDirectInput"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeTerminalDirectInput(io.github.lewin671.remoteagent.core.proto.TerminalDirectInputEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 427 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.TerminalDirectInputEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.TerminalDirectInputEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.TerminalDirectInputEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 427;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectInputEvent terminal_direct_input = 427 [json_name = "terminalDirectInput"];</code>
+   */
+  private void clearTerminalDirectInput() {
+    if (eventCase_ == 427) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int TERMINAL_DIRECT_OUTPUT_FIELD_NUMBER = 428;
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectOutputEvent terminal_direct_output = 428 [json_name = "terminalDirectOutput"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTerminalDirectOutput() {
+    return eventCase_ == 428;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectOutputEvent terminal_direct_output = 428 [json_name = "terminalDirectOutput"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.TerminalDirectOutputEvent getTerminalDirectOutput() {
+    if (eventCase_ == 428) {
+       return (io.github.lewin671.remoteagent.core.proto.TerminalDirectOutputEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.TerminalDirectOutputEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectOutputEvent terminal_direct_output = 428 [json_name = "terminalDirectOutput"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTerminalDirectOutput(io.github.lewin671.remoteagent.core.proto.TerminalDirectOutputEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 428;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectOutputEvent terminal_direct_output = 428 [json_name = "terminalDirectOutput"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeTerminalDirectOutput(io.github.lewin671.remoteagent.core.proto.TerminalDirectOutputEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 428 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.TerminalDirectOutputEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.TerminalDirectOutputEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.TerminalDirectOutputEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 428;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectOutputEvent terminal_direct_output = 428 [json_name = "terminalDirectOutput"];</code>
+   */
+  private void clearTerminalDirectOutput() {
+    if (eventCase_ == 428) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int TERMINAL_DIRECT_CONFIRM_REBUILD_FIELD_NUMBER = 429;
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectConfirmRebuildAction terminal_direct_confirm_rebuild = 429 [json_name = "terminalDirectConfirmRebuild"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTerminalDirectConfirmRebuild() {
+    return eventCase_ == 429;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectConfirmRebuildAction terminal_direct_confirm_rebuild = 429 [json_name = "terminalDirectConfirmRebuild"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.TerminalDirectConfirmRebuildAction getTerminalDirectConfirmRebuild() {
+    if (eventCase_ == 429) {
+       return (io.github.lewin671.remoteagent.core.proto.TerminalDirectConfirmRebuildAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.TerminalDirectConfirmRebuildAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectConfirmRebuildAction terminal_direct_confirm_rebuild = 429 [json_name = "terminalDirectConfirmRebuild"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTerminalDirectConfirmRebuild(io.github.lewin671.remoteagent.core.proto.TerminalDirectConfirmRebuildAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 429;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectConfirmRebuildAction terminal_direct_confirm_rebuild = 429 [json_name = "terminalDirectConfirmRebuild"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeTerminalDirectConfirmRebuild(io.github.lewin671.remoteagent.core.proto.TerminalDirectConfirmRebuildAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 429 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.TerminalDirectConfirmRebuildAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.TerminalDirectConfirmRebuildAction.newBuilder((io.github.lewin671.remoteagent.core.proto.TerminalDirectConfirmRebuildAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 429;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectConfirmRebuildAction terminal_direct_confirm_rebuild = 429 [json_name = "terminalDirectConfirmRebuild"];</code>
+   */
+  private void clearTerminalDirectConfirmRebuild() {
+    if (eventCase_ == 429) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -20283,6 +20661,342 @@ public  final class Event extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.DirectPcProbeReceivedEvent direct_pc_probe_received = 423 [json_name = "directPcProbeReceived"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectPcProbeReceived() {
+      return instance.hasDirectPcProbeReceived();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcProbeReceivedEvent direct_pc_probe_received = 423 [json_name = "directPcProbeReceived"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectPcProbeReceivedEvent getDirectPcProbeReceived() {
+      return instance.getDirectPcProbeReceived();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcProbeReceivedEvent direct_pc_probe_received = 423 [json_name = "directPcProbeReceived"];</code>
+     */
+    public Builder setDirectPcProbeReceived(io.github.lewin671.remoteagent.core.proto.DirectPcProbeReceivedEvent value) {
+      copyOnWrite();
+      instance.setDirectPcProbeReceived(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcProbeReceivedEvent direct_pc_probe_received = 423 [json_name = "directPcProbeReceived"];</code>
+     */
+    public Builder setDirectPcProbeReceived(
+        io.github.lewin671.remoteagent.core.proto.DirectPcProbeReceivedEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectPcProbeReceived(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcProbeReceivedEvent direct_pc_probe_received = 423 [json_name = "directPcProbeReceived"];</code>
+     */
+    public Builder mergeDirectPcProbeReceived(io.github.lewin671.remoteagent.core.proto.DirectPcProbeReceivedEvent value) {
+      copyOnWrite();
+      instance.mergeDirectPcProbeReceived(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcProbeReceivedEvent direct_pc_probe_received = 423 [json_name = "directPcProbeReceived"];</code>
+     */
+    public Builder clearDirectPcProbeReceived() {
+      copyOnWrite();
+      instance.clearDirectPcProbeReceived();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectOpenEvent terminal_direct_open = 424 [json_name = "terminalDirectOpen"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTerminalDirectOpen() {
+      return instance.hasTerminalDirectOpen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectOpenEvent terminal_direct_open = 424 [json_name = "terminalDirectOpen"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.TerminalDirectOpenEvent getTerminalDirectOpen() {
+      return instance.getTerminalDirectOpen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectOpenEvent terminal_direct_open = 424 [json_name = "terminalDirectOpen"];</code>
+     */
+    public Builder setTerminalDirectOpen(io.github.lewin671.remoteagent.core.proto.TerminalDirectOpenEvent value) {
+      copyOnWrite();
+      instance.setTerminalDirectOpen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectOpenEvent terminal_direct_open = 424 [json_name = "terminalDirectOpen"];</code>
+     */
+    public Builder setTerminalDirectOpen(
+        io.github.lewin671.remoteagent.core.proto.TerminalDirectOpenEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTerminalDirectOpen(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectOpenEvent terminal_direct_open = 424 [json_name = "terminalDirectOpen"];</code>
+     */
+    public Builder mergeTerminalDirectOpen(io.github.lewin671.remoteagent.core.proto.TerminalDirectOpenEvent value) {
+      copyOnWrite();
+      instance.mergeTerminalDirectOpen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectOpenEvent terminal_direct_open = 424 [json_name = "terminalDirectOpen"];</code>
+     */
+    public Builder clearTerminalDirectOpen() {
+      copyOnWrite();
+      instance.clearTerminalDirectOpen();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectCloseEvent terminal_direct_close = 425 [json_name = "terminalDirectClose"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTerminalDirectClose() {
+      return instance.hasTerminalDirectClose();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectCloseEvent terminal_direct_close = 425 [json_name = "terminalDirectClose"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.TerminalDirectCloseEvent getTerminalDirectClose() {
+      return instance.getTerminalDirectClose();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectCloseEvent terminal_direct_close = 425 [json_name = "terminalDirectClose"];</code>
+     */
+    public Builder setTerminalDirectClose(io.github.lewin671.remoteagent.core.proto.TerminalDirectCloseEvent value) {
+      copyOnWrite();
+      instance.setTerminalDirectClose(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectCloseEvent terminal_direct_close = 425 [json_name = "terminalDirectClose"];</code>
+     */
+    public Builder setTerminalDirectClose(
+        io.github.lewin671.remoteagent.core.proto.TerminalDirectCloseEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTerminalDirectClose(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectCloseEvent terminal_direct_close = 425 [json_name = "terminalDirectClose"];</code>
+     */
+    public Builder mergeTerminalDirectClose(io.github.lewin671.remoteagent.core.proto.TerminalDirectCloseEvent value) {
+      copyOnWrite();
+      instance.mergeTerminalDirectClose(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectCloseEvent terminal_direct_close = 425 [json_name = "terminalDirectClose"];</code>
+     */
+    public Builder clearTerminalDirectClose() {
+      copyOnWrite();
+      instance.clearTerminalDirectClose();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectLegEvent terminal_direct_leg = 426 [json_name = "terminalDirectLeg"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTerminalDirectLeg() {
+      return instance.hasTerminalDirectLeg();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectLegEvent terminal_direct_leg = 426 [json_name = "terminalDirectLeg"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.TerminalDirectLegEvent getTerminalDirectLeg() {
+      return instance.getTerminalDirectLeg();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectLegEvent terminal_direct_leg = 426 [json_name = "terminalDirectLeg"];</code>
+     */
+    public Builder setTerminalDirectLeg(io.github.lewin671.remoteagent.core.proto.TerminalDirectLegEvent value) {
+      copyOnWrite();
+      instance.setTerminalDirectLeg(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectLegEvent terminal_direct_leg = 426 [json_name = "terminalDirectLeg"];</code>
+     */
+    public Builder setTerminalDirectLeg(
+        io.github.lewin671.remoteagent.core.proto.TerminalDirectLegEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTerminalDirectLeg(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectLegEvent terminal_direct_leg = 426 [json_name = "terminalDirectLeg"];</code>
+     */
+    public Builder mergeTerminalDirectLeg(io.github.lewin671.remoteagent.core.proto.TerminalDirectLegEvent value) {
+      copyOnWrite();
+      instance.mergeTerminalDirectLeg(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectLegEvent terminal_direct_leg = 426 [json_name = "terminalDirectLeg"];</code>
+     */
+    public Builder clearTerminalDirectLeg() {
+      copyOnWrite();
+      instance.clearTerminalDirectLeg();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectInputEvent terminal_direct_input = 427 [json_name = "terminalDirectInput"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTerminalDirectInput() {
+      return instance.hasTerminalDirectInput();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectInputEvent terminal_direct_input = 427 [json_name = "terminalDirectInput"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.TerminalDirectInputEvent getTerminalDirectInput() {
+      return instance.getTerminalDirectInput();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectInputEvent terminal_direct_input = 427 [json_name = "terminalDirectInput"];</code>
+     */
+    public Builder setTerminalDirectInput(io.github.lewin671.remoteagent.core.proto.TerminalDirectInputEvent value) {
+      copyOnWrite();
+      instance.setTerminalDirectInput(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectInputEvent terminal_direct_input = 427 [json_name = "terminalDirectInput"];</code>
+     */
+    public Builder setTerminalDirectInput(
+        io.github.lewin671.remoteagent.core.proto.TerminalDirectInputEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTerminalDirectInput(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectInputEvent terminal_direct_input = 427 [json_name = "terminalDirectInput"];</code>
+     */
+    public Builder mergeTerminalDirectInput(io.github.lewin671.remoteagent.core.proto.TerminalDirectInputEvent value) {
+      copyOnWrite();
+      instance.mergeTerminalDirectInput(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectInputEvent terminal_direct_input = 427 [json_name = "terminalDirectInput"];</code>
+     */
+    public Builder clearTerminalDirectInput() {
+      copyOnWrite();
+      instance.clearTerminalDirectInput();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectOutputEvent terminal_direct_output = 428 [json_name = "terminalDirectOutput"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTerminalDirectOutput() {
+      return instance.hasTerminalDirectOutput();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectOutputEvent terminal_direct_output = 428 [json_name = "terminalDirectOutput"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.TerminalDirectOutputEvent getTerminalDirectOutput() {
+      return instance.getTerminalDirectOutput();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectOutputEvent terminal_direct_output = 428 [json_name = "terminalDirectOutput"];</code>
+     */
+    public Builder setTerminalDirectOutput(io.github.lewin671.remoteagent.core.proto.TerminalDirectOutputEvent value) {
+      copyOnWrite();
+      instance.setTerminalDirectOutput(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectOutputEvent terminal_direct_output = 428 [json_name = "terminalDirectOutput"];</code>
+     */
+    public Builder setTerminalDirectOutput(
+        io.github.lewin671.remoteagent.core.proto.TerminalDirectOutputEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTerminalDirectOutput(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectOutputEvent terminal_direct_output = 428 [json_name = "terminalDirectOutput"];</code>
+     */
+    public Builder mergeTerminalDirectOutput(io.github.lewin671.remoteagent.core.proto.TerminalDirectOutputEvent value) {
+      copyOnWrite();
+      instance.mergeTerminalDirectOutput(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectOutputEvent terminal_direct_output = 428 [json_name = "terminalDirectOutput"];</code>
+     */
+    public Builder clearTerminalDirectOutput() {
+      copyOnWrite();
+      instance.clearTerminalDirectOutput();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectConfirmRebuildAction terminal_direct_confirm_rebuild = 429 [json_name = "terminalDirectConfirmRebuild"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTerminalDirectConfirmRebuild() {
+      return instance.hasTerminalDirectConfirmRebuild();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectConfirmRebuildAction terminal_direct_confirm_rebuild = 429 [json_name = "terminalDirectConfirmRebuild"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.TerminalDirectConfirmRebuildAction getTerminalDirectConfirmRebuild() {
+      return instance.getTerminalDirectConfirmRebuild();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectConfirmRebuildAction terminal_direct_confirm_rebuild = 429 [json_name = "terminalDirectConfirmRebuild"];</code>
+     */
+    public Builder setTerminalDirectConfirmRebuild(io.github.lewin671.remoteagent.core.proto.TerminalDirectConfirmRebuildAction value) {
+      copyOnWrite();
+      instance.setTerminalDirectConfirmRebuild(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectConfirmRebuildAction terminal_direct_confirm_rebuild = 429 [json_name = "terminalDirectConfirmRebuild"];</code>
+     */
+    public Builder setTerminalDirectConfirmRebuild(
+        io.github.lewin671.remoteagent.core.proto.TerminalDirectConfirmRebuildAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTerminalDirectConfirmRebuild(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectConfirmRebuildAction terminal_direct_confirm_rebuild = 429 [json_name = "terminalDirectConfirmRebuild"];</code>
+     */
+    public Builder mergeTerminalDirectConfirmRebuild(io.github.lewin671.remoteagent.core.proto.TerminalDirectConfirmRebuildAction value) {
+      copyOnWrite();
+      instance.mergeTerminalDirectConfirmRebuild(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDirectConfirmRebuildAction terminal_direct_confirm_rebuild = 429 [json_name = "terminalDirectConfirmRebuild"];</code>
+     */
+    public Builder clearTerminalDirectConfirmRebuild() {
+      copyOnWrite();
+      instance.clearTerminalDirectConfirmRebuild();
+      return this;
+    }
+
+    /**
      * <pre>
      * Security engine (450-499 reserved for security).
      * </pre>
@@ -21357,6 +22071,13 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.TerminalStreamEvent.class,
             io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent.class,
             io.github.lewin671.remoteagent.core.proto.TerminalHistoryEvent.class,
+            io.github.lewin671.remoteagent.core.proto.DirectPcProbeReceivedEvent.class,
+            io.github.lewin671.remoteagent.core.proto.TerminalDirectOpenEvent.class,
+            io.github.lewin671.remoteagent.core.proto.TerminalDirectCloseEvent.class,
+            io.github.lewin671.remoteagent.core.proto.TerminalDirectLegEvent.class,
+            io.github.lewin671.remoteagent.core.proto.TerminalDirectInputEvent.class,
+            io.github.lewin671.remoteagent.core.proto.TerminalDirectOutputEvent.class,
+            io.github.lewin671.remoteagent.core.proto.TerminalDirectConfirmRebuildAction.class,
             io.github.lewin671.remoteagent.core.proto.SecurityConfigEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeySignedEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreedEvent.class,
@@ -21372,7 +22093,7 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.SecurityOpenNotifyEvent.class,
           };
           java.lang.String info =
-              "\u0000\u00cd\u0001\u0000\u0001\u01d1\u00cd\u0000\u0002\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u00d4\u0001\u0000\u0001\u01d1\u00d4\u0000\u0002\u0000\u0001<\u0000\u0002<" +
               "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000" +
               "\t<\u0000\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010" +
               "<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000" +
@@ -21400,9 +22121,10 @@ public  final class Event extends
               "\u017d<\u0000\u017e<\u0000\u017f<\u0000\u0180<\u0000\u0181<\u0000\u0190<\u0000\u0192" +
               "<\u0000\u0193<\u0000\u0196<\u0000\u0197<\u0000\u0198<\u0000\u0199<\u0000\u019a<\u0000" +
               "\u019b<\u0000\u019c<\u0000\u019d<\u0000\u019e<\u0000\u019f<\u0000\u01a0<\u0000\u01a1" +
-              "<\u0000\u01a2<\u0000\u01a3<\u0000\u01a4<\u0000\u01a5<\u0000\u01a6<\u0000\u01c2<\u0000" +
-              "\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000\u01c9<\u0000\u01ca<\u0000\u01cb<\u0000\u01cc" +
-              "<\u0000\u01cd<\u0000\u01ce<\u0000\u01cf<\u0000\u01d0<\u0000\u01d1<\u0000";
+              "<\u0000\u01a2<\u0000\u01a3<\u0000\u01a4<\u0000\u01a5<\u0000\u01a6<\u0000\u01a7<\u0000" +
+              "\u01a8<\u0000\u01a9<\u0000\u01aa<\u0000\u01ab<\u0000\u01ac<\u0000\u01ad<\u0000\u01c2" +
+              "<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000\u01c9<\u0000\u01ca<\u0000\u01cb<\u0000" +
+              "\u01cc<\u0000\u01cd<\u0000\u01ce<\u0000\u01cf<\u0000\u01d0<\u0000\u01d1<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

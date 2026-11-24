@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/transport"
@@ -18,6 +19,9 @@ import (
 type endpoint struct {
 	admissionOnce sync.Once
 	admission     *commandAdmission
+	termHubOnce   sync.Once
+	termHub       *terminalHub
+	direct        atomic.Pointer[directManager]
 	r             *Relay
 	acct          *Account
 	security      *securitySession

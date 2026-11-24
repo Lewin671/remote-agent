@@ -277,6 +277,7 @@ message DirectRouteReport {
   bool has_diagnostics = 20;
   bool read_slow = 21;
   bool file_slow = 22;
+  DirectPathChoice terminal_route = 23;
 }
 
 message ConnCheckDirectRowView {

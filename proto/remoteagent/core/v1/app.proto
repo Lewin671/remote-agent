@@ -706,6 +706,13 @@ message Event {
     TerminalStreamEvent terminal_stream = 420;
     DirectPreferencesLoadedEvent direct_preferences_loaded = 421;
     TerminalHistoryEvent terminal_history = 422;
+    DirectPcProbeReceivedEvent direct_pc_probe_received = 423;
+    TerminalDirectOpenEvent terminal_direct_open = 424;
+    TerminalDirectCloseEvent terminal_direct_close = 425;
+    TerminalDirectLegEvent terminal_direct_leg = 426;
+    TerminalDirectInputEvent terminal_direct_input = 427;
+    TerminalDirectOutputEvent terminal_direct_output = 428;
+    TerminalDirectConfirmRebuildAction terminal_direct_confirm_rebuild = 429;
 
     // Security engine (450-499 reserved for security).
     SecurityConfigEvent security_config = 450;
@@ -1026,6 +1033,11 @@ message Effect {
     DirectRetryNowResultEffect direct_retry_now_result = 113;
     TerminalHistorySendRequestEffect terminal_history_send_request = 114;
     TerminalHistoryUpdatedEffect terminal_history_updated = 115;
+    DirectPcSendProbeEffect direct_pc_send_probe = 116;
+    TerminalDirectSendEffect terminal_direct_send = 117;
+    TerminalDirectDeliverEffect terminal_direct_deliver = 118;
+    TerminalDirectAttachRelayEffect terminal_direct_attach_relay = 119;
+    TerminalDirectStateEffect terminal_direct_state = 120;
 
     // Security engine (130-159 reserved for security).
     SecurityKeySignEffect security_key_sign = 130;

@@ -501,8 +501,12 @@ actor FakeDaemon {
             snap.snapshot.data = Data("\u{1b}[Hhello".utf8)
             var more = PBTerminalFrame()
             more.output = Data(" world".utf8)
+            var conflict = PBTerminalFrame()
+            conflict.output = Data(" tampered".utf8)
             var seq: UInt64 = 0
-            for (i, f) in ([snap, more] + (replay ? [more] : [])).enumerated() {
+            // Phase 3: identical duplicate seq=2 is ignored without closing; a conflicting payload
+            // at the same seq=2 still terminates the stream with errorsTerminalFramesAreOutOfOrder.
+            for (i, f) in ([snap, more] + (replay ? [more, conflict] : [])).enumerated() {
                 seq = UInt64(min(i + 1, 2))
                 var h = out
                 h.sessionID = sid

@@ -148,6 +148,11 @@ type (
 		RoundID RoundID
 		Use     Use
 	}
+	// CoordPcSendProbe asks the shell executor to transmit a 17-byte liveness probe on PCID's probe channel.
+	CoordPcSendProbe struct {
+		PCID uint64
+		Raw  []byte
+	}
 	// CoordChanged notifies sync that direct status or diagnostics changed.
 	CoordChanged struct{}
 	// CoordTerminalOpen asks the shell to reopen a closed relay terminal stream.
@@ -168,6 +173,7 @@ func (CoordPcAddCandidates) coordEffect() {}
 func (CoordPcConfirm) coordEffect()       {}
 func (CoordPcClose) coordEffect()         {}
 func (CoordDcReadStats) coordEffect()     {}
+func (CoordPcSendProbe) coordEffect()     {}
 func (CoordChanged) coordEffect()         {}
 func (CoordTerminalOpen) coordEffect()    {}
 
@@ -214,6 +220,7 @@ type pcBinding struct {
 	use            Use
 	confirmed      bool
 	closedNotified bool
+	probe          linkcore.ProbeTracker
 }
 
 type coordRound struct {
@@ -238,6 +245,7 @@ type coordRound struct {
 	roundUnsupp    bool
 	useUnsupp      [3]bool
 	attemptedUse   [3]bool
+	clientCapsSent bool
 	deadlineTicked bool
 	ended          bool
 }
@@ -314,8 +322,11 @@ type Coordinator struct {
 	transfers     map[string]Upload
 	transferOrder []string
 
-	termBudget linkcore.Budget
-	terms      map[string]*termState
+	termBudget       linkcore.Budget
+	terms            map[string]*termState
+	termStreams      map[string]*clientTermStream
+	earlyOutputs     map[string][]earlyTermOutput
+	earlyOutputBytes int
 
 	out []CoordEffect
 }
@@ -539,7 +550,57 @@ func (c *Coordinator) OnSessionTimer(now int64) []CoordEffect {
 			continue
 		}
 	}
+	c.stepProbeTrackers(now)
+	c.stepClientTerminals(now)
 	return c.take()
+}
+
+func (c *Coordinator) stepProbeTrackers(now int64) {
+	if len(c.pcs) == 0 {
+		return
+	}
+	pcIDs := make([]uint64, 0, len(c.pcs))
+	for id := range c.pcs {
+		pcIDs = append(pcIDs, id)
+	}
+	for i := 1; i < len(pcIDs); i++ {
+		for j := i; j > 0 && pcIDs[j] < pcIDs[j-1]; j-- {
+			pcIDs[j], pcIDs[j-1] = pcIDs[j-1], pcIDs[j]
+		}
+	}
+	for _, pcID := range pcIDs {
+		b, r := c.lookupPC(pcID)
+		if b == nil || !b.confirmed || r.ended {
+			continue
+		}
+		ready := r.dcOpen[b.use]
+		needEntropy := false
+		raw, timedOut := b.probe.Tick(now, ready, func() ([16]byte, bool) {
+			var nonce [16]byte
+			if _, err := c.randPool.Read(nonce[:]); err != nil {
+				needEntropy = true
+				return nonce, false
+			}
+			return nonce, true
+		})
+		if needEntropy {
+			c.maybeNeedEntropy(CoordEntropyRefillBytes)
+		}
+		if len(raw) == linkcore.ProbeFrameBytes {
+			c.emit(CoordPcSendProbe{PCID: pcID, Raw: raw})
+			c.maybeLowWater()
+		}
+		if timedOut {
+			delete(r.localToGlobal, b.localID)
+			if r.globalPC[b.use] == pcID {
+				r.globalPC[b.use] = 0
+			}
+			c.markPCClosed(now, r, b)
+			delete(c.pcs, pcID)
+			_ = c.stepSession(now, r, linkcore.PCClosed{ID: b.localID})
+			c.emit(CoordPcClose{PCID: pcID, Reason: "probe_timeout"})
+		}
+	}
 }
 
 // OnSecuritySnapshot installs a verified directory/lease/codec snapshot.
@@ -1079,8 +1140,19 @@ func (c *Coordinator) OnDcState(now int64, pcID uint64, open bool) []CoordEffect
 	c.handleEngine(now, DiagState{Round: r.id, Use: b.use, Kind: StateDC, Value: val})
 	r.dcOpen[b.use] = open
 	if !open {
+		b.probe.Reset()
 		c.markPCClosed(now, r, b)
 	}
+	return c.take()
+}
+
+// OnPcProbeReceived processes an inbound 17-byte probe echo reply on pcID.
+func (c *Coordinator) OnPcProbeReceived(now int64, pcID uint64, raw []byte) []CoordEffect {
+	b, r := c.lookupPC(pcID)
+	if b == nil || !b.confirmed || r.ended {
+		return nil
+	}
+	_, _ = b.probe.OnReply(now, raw)
 	return c.take()
 }
 
@@ -1107,6 +1179,11 @@ func (c *Coordinator) markPCClosed(now int64, r *coordRound, b *pcBinding) {
 	if b.confirmed && !b.closedNotified {
 		b.closedNotified = true
 		r.confirmed[b.use] = false
+		if b.use == UseRead {
+			if pcID := r.localToGlobal[b.localID]; pcID != 0 {
+				c.detachDirectTerminalsForPC(now, pcID)
+			}
+		}
 		c.handleEngine(now, PathClosed{Round: r.id, Use: b.use})
 	}
 }
@@ -1388,6 +1465,45 @@ func (c *Coordinator) NextTimers(now int64) (engineAt int64, engineOK bool, sess
 	for _, s := range c.pendingSignals {
 		addSess(s.deadline)
 	}
+	for _, b := range c.pcs {
+		if b == nil || !b.confirmed {
+			continue
+		}
+		r := c.rounds[b.roundID]
+		ready := r != nil && !r.ended && r.dcOpen[b.use]
+		if due, ok := b.probe.NextDue(ready); ok {
+			if due < now {
+				due = now
+			}
+			addSess(due)
+		}
+	}
+	for _, ct := range c.termStreams {
+		if ct == nil {
+			continue
+		}
+		if due, ok := ct.stream.NextDue(); ok {
+			d := int64(due)
+			if d < now {
+				d = now
+			}
+			addSess(d)
+		}
+		if ct.disconnectedAll {
+			d := ct.disconnectedAt + termDisconnectTimeoutMs
+			if d < now {
+				d = now
+			}
+			addSess(d)
+		}
+		if ct.relayRetryAt > 0 {
+			d := ct.relayRetryAt
+			if d < now {
+				d = now
+			}
+			addSess(d)
+		}
+	}
 	for _, ts := range c.terms {
 		if ts.hasTimer && (!termOK || ts.nextAt < termAt) {
 			termAt, termOK = ts.nextAt, true
@@ -1408,6 +1524,12 @@ func (c *Coordinator) FileRoute(now int64, machineID string) Route {
 }
 func (c *Coordinator) Capabilities(now int64, machineID string) (Caps, bool) {
 	return c.engine.Capabilities(now, machineID)
+}
+func (c *Coordinator) Phase2CommandsReady(now int64, machineID string) bool {
+	return c.engine.Phase2CommandsReady(now, machineID)
+}
+func (c *Coordinator) TerminalReady(now int64, machineID string) bool {
+	return c.engine.TerminalReady(now, machineID)
 }
 func (c *Coordinator) Enabled(machineID string) bool { return c.engine.enabled(machineID) }
 func (c *Coordinator) Diagnostics(machineID string) ([]*RoundData, int64, bool) {
@@ -1762,6 +1884,10 @@ func (c *Coordinator) applySessionEffects(now int64, r *coordRound, effects []li
 			r.everReady = true
 			c.emit(CoordPcConfirm{PCID: pcID, MachineID: r.machine, Use: u})
 			c.handleEngine(now, PathReady{Round: r.id, Use: u, Path: pcID})
+			if u == UseRead {
+				c.maybeSendClientCapabilities(now, r)
+				c.attachDirectTerminalsForMachine(now, r.machine)
+			}
 
 		case linkcore.ClosePC:
 			pcID := r.localToGlobal[eff.ID]
@@ -1781,11 +1907,15 @@ func (c *Coordinator) applySessionEffects(now int64, r *coordRound, effects []li
 
 		case linkcore.PeerUnsupported:
 			c.handleEngine(now, DiagSignal{Round: r.id, Note: NoteUnsupported})
-			if eff.Use == 0 {
+			// Optional Class=2 control frames may legally receive Unsupported from older peers
+			// without tearing down the direct round; only Class=1 signaling Unsupported retires.
+			if eff.Class == 1 && eff.Use == 0 {
 				r.roundUnsupp = true
 				c.retireAndFailUnsupported(now, r)
-			} else if eff.Use == uint64(UseRead) || eff.Use == uint64(UseBulk) {
+			} else if eff.Class == 1 && (eff.Use == uint64(UseRead) || eff.Use == uint64(UseBulk)) {
 				r.useUnsupp[eff.Use] = true
+			} else if eff.Class == 2 && eff.Type == linkcore.ControlAttachPath && eff.Stream != "" {
+				c.onTerminalAttachUnsupported(now, r, eff.Stream)
 			}
 
 		case linkcore.SignalRejected:

@@ -652,6 +652,48 @@ public  final class DirectRouteReport extends
     fileSlow_ = false;
   }
 
+  public static final int TERMINAL_ROUTE_FIELD_NUMBER = 23;
+  private int terminalRoute_;
+  /**
+   * <code>.remoteagent.core.v1.DirectPathChoice terminal_route = 23 [json_name = "terminalRoute"];</code>
+   * @return The enum numeric value on the wire for terminalRoute.
+   */
+  @java.lang.Override
+  public int getTerminalRouteValue() {
+    return terminalRoute_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPathChoice terminal_route = 23 [json_name = "terminalRoute"];</code>
+   * @return The terminalRoute.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectPathChoice getTerminalRoute() {
+    io.github.lewin671.remoteagent.core.proto.DirectPathChoice result = io.github.lewin671.remoteagent.core.proto.DirectPathChoice.forNumber(terminalRoute_);
+    return result == null ? io.github.lewin671.remoteagent.core.proto.DirectPathChoice.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPathChoice terminal_route = 23 [json_name = "terminalRoute"];</code>
+   * @param value The enum numeric value on the wire for terminalRoute to set.
+   */
+  private void setTerminalRouteValue(int value) {
+      terminalRoute_ = value;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPathChoice terminal_route = 23 [json_name = "terminalRoute"];</code>
+   * @param value The terminalRoute to set.
+   */
+  private void setTerminalRoute(io.github.lewin671.remoteagent.core.proto.DirectPathChoice value) {
+    terminalRoute_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPathChoice terminal_route = 23 [json_name = "terminalRoute"];</code>
+   */
+  private void clearTerminalRoute() {
+
+    terminalRoute_ = 0;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.DirectRouteReport parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1437,6 +1479,52 @@ public  final class DirectRouteReport extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.DirectPathChoice terminal_route = 23 [json_name = "terminalRoute"];</code>
+     * @return The enum numeric value on the wire for terminalRoute.
+     */
+    @java.lang.Override
+    public int getTerminalRouteValue() {
+      return instance.getTerminalRouteValue();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPathChoice terminal_route = 23 [json_name = "terminalRoute"];</code>
+     * @param value The terminalRoute to set.
+     * @return This builder for chaining.
+     */
+    public Builder setTerminalRouteValue(int value) {
+      copyOnWrite();
+      instance.setTerminalRouteValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPathChoice terminal_route = 23 [json_name = "terminalRoute"];</code>
+     * @return The terminalRoute.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectPathChoice getTerminalRoute() {
+      return instance.getTerminalRoute();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPathChoice terminal_route = 23 [json_name = "terminalRoute"];</code>
+     * @param value The enum numeric value on the wire for terminalRoute to set.
+     * @return This builder for chaining.
+     */
+    public Builder setTerminalRoute(io.github.lewin671.remoteagent.core.proto.DirectPathChoice value) {
+      copyOnWrite();
+      instance.setTerminalRoute(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPathChoice terminal_route = 23 [json_name = "terminalRoute"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearTerminalRoute() {
+      copyOnWrite();
+      instance.clearTerminalRoute();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.DirectRouteReport)
   }
   @java.lang.Override
@@ -1475,12 +1563,13 @@ public  final class DirectRouteReport extends
             "hasDiagnostics_",
             "readSlow_",
             "fileSlow_",
+            "terminalRoute_",
           };
           java.lang.String info =
-              "\u0000\u0016\u0000\u0000\u0001\u0016\u0016\u0000\u0000\u0000\u0001\u0007\u0002\u0007" +
+              "\u0000\u0017\u0000\u0000\u0001\u0017\u0017\u0000\u0000\u0000\u0001\u0007\u0002\u0007" +
               "\u0003\u0007\u0004\f\u0005\f\u0006\f\u0007\f\b\u0007\t\u0004\n\u0007\u000b\u0000" +
               "\f\u0007\r\u0000\u000e\u0007\u000f\u0004\u0010\u0007\u0011\u0004\u0012\u0007\u0013" +
-              "\u0007\u0014\u0007\u0015\u0007\u0016\u0007";
+              "\u0007\u0014\u0007\u0015\u0007\u0016\u0007\u0017\f";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

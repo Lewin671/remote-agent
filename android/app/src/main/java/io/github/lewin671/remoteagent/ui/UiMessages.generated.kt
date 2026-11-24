@@ -5782,6 +5782,21 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
             val rows = message.args.getValue("rows") as Int
             resources.getString(R.string.terminal_computer_dimensions, cols, rows)
         }
+        "terminal.confirm_close_action" -> {
+            resources.getString(R.string.terminal_confirm_close_action)
+        }
+        "terminal.confirm_rebuild_action" -> {
+            resources.getString(R.string.terminal_confirm_rebuild_action)
+        }
+        "terminal.confirm_rebuild_input_body" -> {
+            resources.getString(R.string.terminal_confirm_rebuild_input_body)
+        }
+        "terminal.confirm_rebuild_restart_body" -> {
+            resources.getString(R.string.terminal_confirm_rebuild_restart_body)
+        }
+        "terminal.confirm_rebuild_title" -> {
+            resources.getString(R.string.terminal_confirm_rebuild_title)
+        }
         "terminal.connecting" -> {
             resources.getString(R.string.terminal_connecting)
         }
@@ -5851,6 +5866,9 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
             val cols = message.args.getValue("cols") as Int
             val rows = message.args.getValue("rows") as Int
             resources.getString(R.string.terminal_remote_dimensions, cols, rows)
+        }
+        "terminal.replay_overflow" -> {
+            resources.getString(R.string.terminal_replay_overflow)
         }
         "terminal.restore" -> {
             resources.getString(R.string.terminal_restore)
@@ -6008,6 +6026,12 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
             val duration = message.args.getValue("duration") as String
             resources.getString(R.string.tools_elapsed, duration)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "tools.elapsed_sync" -> {
             val elapsed = message.args.getValue("elapsed") as String
             resources.getString(R.string.tools_elapsed_sync, elapsed)
@@ -6028,12 +6052,6 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         "transport.detail_daemon_disabled" -> {
             resources.getString(R.string.transport_detail_daemon_disabled)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "transport.detail_relay_only" -> {
             resources.getString(R.string.transport_detail_relay_only)
         }
@@ -6501,6 +6519,12 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
             val name = message.args.getValue("name") as String
             resources.getString(R.string.transport_popover_direct_title_rtt, ms, name)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "transport.popover_file_only" -> {
             resources.getString(R.string.transport_popover_file_only)
         }
@@ -6520,12 +6544,6 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.popover_stable" -> {
             resources.getString(R.string.transport_popover_stable)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "transport.popover_switched_relay" -> {
             resources.getString(R.string.transport_popover_switched_relay)
         }

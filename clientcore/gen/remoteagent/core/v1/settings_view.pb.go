@@ -1344,6 +1344,7 @@ type DirectRouteReport struct {
 	HasDiagnostics     bool
 	ReadSlow           bool
 	FileSlow           bool
+	TerminalRoute      DirectPathChoice
 }
 
 func (m *DirectRouteReport) GetEnabled() bool {
@@ -1478,6 +1479,12 @@ func (m *DirectRouteReport) GetFileSlow() bool {
 	}
 	return false
 }
+func (m *DirectRouteReport) GetTerminalRoute() DirectPathChoice {
+	if m != nil {
+		return m.TerminalRoute
+	}
+	return 0
+}
 
 var LitewireDesc_DirectRouteReport = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -1503,6 +1510,7 @@ var LitewireDesc_DirectRouteReport = litewire.MessageDesc{
 		{Num: 20, Offset: unsafe.Offsetof(DirectRouteReport{}.HasDiagnostics), Kind: litewire.KindBool},
 		{Num: 21, Offset: unsafe.Offsetof(DirectRouteReport{}.ReadSlow), Kind: litewire.KindBool},
 		{Num: 22, Offset: unsafe.Offsetof(DirectRouteReport{}.FileSlow), Kind: litewire.KindBool},
+		{Num: 23, Offset: unsafe.Offsetof(DirectRouteReport{}.TerminalRoute), Kind: litewire.KindInt32},
 	},
 }
 

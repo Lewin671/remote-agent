@@ -14,7 +14,7 @@ func (c *Coordinator) decodeControl(now int64, r *coordRound, eff linkcore.Handl
 		if err != nil {
 			return 0, nil
 		}
-		download, eventPush, ok := parseCapabilitiesPayload(o.Payload)
+		download, eventPush, phase2Cmds, terminalDirect, ok := parseCapabilitiesPayload(o.Payload)
 		if !ok {
 			return 0, nil
 		}
@@ -23,11 +23,16 @@ func (c *Coordinator) decodeControl(now int64, r *coordRound, eff linkcore.Handl
 			dlUntil = int64(exp)
 		}
 		c.handleEngine(now, Capabilities{
-			Round:         r.id,
-			Seq:           o.Context.Seq,
-			DownloadUntil: dlUntil,
-			EventPush:     eventPush,
+			Round:          r.id,
+			Seq:            o.Context.Seq,
+			DownloadUntil:  dlUntil,
+			EventPush:      eventPush,
+			Phase2Commands: phase2Cmds,
+			Terminal:       terminalDirect,
 		})
+		if terminalDirect {
+			c.attachDirectTerminalsForMachine(now, r.machine)
+		}
 		return 4, ackPayload(o)
 
 	case 14: // CapabilitySnapshot
@@ -46,6 +51,9 @@ func (c *Coordinator) decodeControl(now int64, r *coordRound, eff linkcore.Handl
 			ExpiresAt: int64(exp),
 		})
 		return 4, ackPayload(o)
+
+	case linkcore.ControlAck, linkcore.ControlStreamFailed, linkcore.ControlClosePath, linkcore.ControlInputStatusReply, linkcore.ControlBarrierReply:
+		return c.handleInboundTerminalControl(now, r, o)
 
 	default:
 		return 0, nil
@@ -70,14 +78,57 @@ func encodeSubscription(sessionIDs []string) []byte {
 	return peerwire.PB(fields...)
 }
 
+func (c *Coordinator) maybeSendClientCapabilities(now int64, r *coordRound) {
+	if r == nil || r.ended || r.clientCapsSent || r.session == nil {
+		return
+	}
+	var capID [16]byte
+	if _, err := c.randPool.Read(capID[:]); err != nil {
+		c.maybeNeedEntropy(CoordEntropyRefillBytes)
+		return
+	}
+	c.maybeLowWater()
+	r.clientCapsSent = true
+	body := encodeClientCapabilities(capID, now+55_000)
+	_ = c.stepSession(now, r, linkcore.QueueControl{Type: 1, Body: body})
+}
+
+// encodeClientCapabilities encodes Control 1 declaring the client's Phase 2/3
+// support so a Phase 3 daemon enables direct-only large terminal output only
+// for negotiated Phase 3 clients (H4) without breaking Phase 1 daemons.
+func encodeClientCapabilities(capID [16]byte, expiresAtMs int64) []byte {
+	return peerwire.PB(
+		peerwire.B(1, capID[:]),
+		peerwire.U(2, 1), peerwire.U(2, 2), peerwire.U(2, 3), peerwire.U(2, 4), peerwire.U(2, 5),
+		peerwire.U(2, 6), peerwire.U(2, 7), peerwire.U(2, 8), peerwire.U(2, 9), peerwire.U(2, 10),
+		peerwire.U(2, 11), peerwire.U(2, 12), peerwire.U(2, 13), peerwire.U(2, 14), peerwire.U(2, 15),
+		peerwire.U(3, 1), peerwire.U(3, 2), peerwire.U(3, 3), peerwire.U(3, 4), peerwire.U(3, 5),
+		peerwire.U(3, 6), peerwire.U(3, 7), peerwire.U(3, 8), peerwire.U(3, 9),
+		peerwire.U(4, uint64(expiresAtMs)),
+		peerwire.U(5, 1),
+		peerwire.U(6, 1<<20),
+	)
+}
+
 // parseCapabilitiesPayload extracts field 5 (file_download) and whether field 2
-// (control_types, packed or unpacked) contains 15.
-func parseCapabilitiesPayload(raw []byte) (fileDownload bool, eventPush bool, ok bool) {
+// (control_types, packed or unpacked) contains 15 (event push) and Phase 2/3
+// continuity controls (2, 3, 5, 6, 7, 8, 11, 12).
+func parseCapabilitiesPayload(raw []byte) (fileDownload bool, eventPush bool, phase2Commands bool, terminalDirect bool, ok bool) {
+	var termMask uint32
+	noteControl := func(v uint64) {
+		switch v {
+		case 15:
+			eventPush = true
+		case 2, 3, 5, 6, 7, 8, 11, 12:
+			termMask |= 1 << v
+		}
+	}
+	const wantTermMask uint32 = (1 << 2) | (1 << 3) | (1 << 5) | (1 << 6) | (1 << 7) | (1 << 8) | (1 << 11) | (1 << 12)
 	pos := 0
 	for pos < len(raw) {
 		tag, n := readUvarint(raw[pos:])
 		if n <= 0 {
-			return false, false, false
+			return false, false, false, false, false
 		}
 		pos += n
 		fieldNum := tag >> 3
@@ -86,21 +137,19 @@ func parseCapabilitiesPayload(raw []byte) (fileDownload bool, eventPush bool, ok
 		case 0:
 			v, m := readUvarint(raw[pos:])
 			if m <= 0 {
-				return false, false, false
+				return false, false, false, false, false
 			}
 			pos += m
 			switch fieldNum {
 			case 2:
-				if v == 15 {
-					eventPush = true
-				}
+				noteControl(v)
 			case 5:
 				fileDownload = v != 0
 			}
 		case 2:
 			size, m := readUvarint(raw[pos:])
 			if m <= 0 || size > uint64(len(raw)-pos-m) {
-				return false, false, false
+				return false, false, false, false, false
 			}
 			pos += m
 			sub := raw[pos : pos+int(size)]
@@ -109,23 +158,22 @@ func parseCapabilitiesPayload(raw []byte) (fileDownload bool, eventPush bool, ok
 				for sp := 0; sp < len(sub); {
 					v, k := readUvarint(sub[sp:])
 					if k <= 0 {
-						return false, false, false
+						return false, false, false, false, false
 					}
 					sp += k
-					if v == 15 {
-						eventPush = true
-					}
+					noteControl(v)
 				}
 			}
 		default:
 			nSkip := skipWireField(raw[pos:], wire)
 			if nSkip < 0 {
-				return false, false, false
+				return false, false, false, false, false
 			}
 			pos += nSkip
 		}
 	}
-	return fileDownload, eventPush, true
+	hasTerm := (termMask & wantTermMask) == wantTermMask
+	return fileDownload, eventPush, hasTerm, hasTerm, true
 }
 
 // parseCapabilitySnapshotPayload extracts CapabilitySnapshot.capabilities (field 2).

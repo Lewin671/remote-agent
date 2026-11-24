@@ -105,9 +105,10 @@ func TestAppDirectDiagnosticsViewAndPreferences(t *testing.T) {
 	}
 
 	connStatus := transport.Status{
-		State: transport.StateConnected,
-		Read:  transport.Direct,
-		File:  transport.Direct,
+		State:    transport.StateConnected,
+		Read:     transport.Direct,
+		File:     transport.Direct,
+		Terminal: transport.Direct,
 		Measured: transport.Measured{
 			HasReadMs: [2]bool{false, true},
 			ReadMs:    [2]float64{0, 18.4},
@@ -115,11 +116,22 @@ func TestAppDirectDiagnosticsViewAndPreferences(t *testing.T) {
 	}
 	rep := screens.BuildDirectRouteReport(connStatus, true, false, 1)
 	chip := screens.BuildSessionDirectChip(rep, text.Plain("MacBook"), true, false, false)
-	if chip == nil || !chip.Visible || !chip.Active || !chip.ReadDirect || !chip.FileDirect {
-		t.Fatalf("expected active SessionDirectChipView, got %+v", chip)
+	if chip == nil || !chip.Visible || !chip.Active || !chip.ReadDirect || !chip.FileDirect || !chip.TerminalDirect {
+		t.Fatalf("expected active SessionDirectChipView with TerminalDirect, got %+v", chip)
 	}
 	if chip.PopoverTitle.GetKey() != text.KeyTransportPopoverDirectTitleRtt || chip.PopoverFoot.GetKey() != text.KeyTransportPopoverStable {
 		t.Fatalf("unexpected chip popover keys: title=%v foot=%v", chip.PopoverTitle, chip.PopoverFoot)
+	}
+	// Phase 3: terminal-only direct route still activates the top-bar direct chip.
+	termOnlyRep := screens.BuildDirectRouteReport(transport.Status{
+		State:    transport.StateConnected,
+		Read:     transport.Relay,
+		File:     transport.Relay,
+		Terminal: transport.Direct,
+	}, true, false, 0)
+	termOnlyChip := screens.BuildSessionDirectChip(termOnlyRep, text.Plain("MacBook"), true, false, false)
+	if termOnlyChip == nil || !termOnlyChip.Visible || !termOnlyChip.Active || !termOnlyChip.TerminalDirect || termOnlyChip.ReadDirect || termOnlyChip.FileDirect {
+		t.Fatalf("expected terminal-only direct chip active, got %+v", termOnlyChip)
 	}
 	_ = v1.Session{}
 }

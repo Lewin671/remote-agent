@@ -5300,6 +5300,55 @@ type Event_TerminalHistory struct {
 
 func (*Event_TerminalHistory) isEvent_Event() {}
 
+type Event_DirectPcProbeReceived struct {
+	_                     [0]func()
+	DirectPcProbeReceived *DirectPcProbeReceivedEvent
+}
+
+func (*Event_DirectPcProbeReceived) isEvent_Event() {}
+
+type Event_TerminalDirectOpen struct {
+	_                  [0]func()
+	TerminalDirectOpen *TerminalDirectOpenEvent
+}
+
+func (*Event_TerminalDirectOpen) isEvent_Event() {}
+
+type Event_TerminalDirectClose struct {
+	_                   [0]func()
+	TerminalDirectClose *TerminalDirectCloseEvent
+}
+
+func (*Event_TerminalDirectClose) isEvent_Event() {}
+
+type Event_TerminalDirectLeg struct {
+	_                 [0]func()
+	TerminalDirectLeg *TerminalDirectLegEvent
+}
+
+func (*Event_TerminalDirectLeg) isEvent_Event() {}
+
+type Event_TerminalDirectInput struct {
+	_                   [0]func()
+	TerminalDirectInput *TerminalDirectInputEvent
+}
+
+func (*Event_TerminalDirectInput) isEvent_Event() {}
+
+type Event_TerminalDirectOutput struct {
+	_                    [0]func()
+	TerminalDirectOutput *TerminalDirectOutputEvent
+}
+
+func (*Event_TerminalDirectOutput) isEvent_Event() {}
+
+type Event_TerminalDirectConfirmRebuild struct {
+	_                            [0]func()
+	TerminalDirectConfirmRebuild *TerminalDirectConfirmRebuildAction
+}
+
+func (*Event_TerminalDirectConfirmRebuild) isEvent_Event() {}
+
 type Event_SecurityConfig struct {
 	_              [0]func()
 	SecurityConfig *SecurityConfigEvent
@@ -6525,6 +6574,48 @@ func (m *Event) GetTerminalHistory() *TerminalHistoryEvent {
 	}
 	return nil
 }
+func (m *Event) GetDirectPcProbeReceived() *DirectPcProbeReceivedEvent {
+	if x, ok := m.GetEvent().(*Event_DirectPcProbeReceived); ok && x != nil {
+		return x.DirectPcProbeReceived
+	}
+	return nil
+}
+func (m *Event) GetTerminalDirectOpen() *TerminalDirectOpenEvent {
+	if x, ok := m.GetEvent().(*Event_TerminalDirectOpen); ok && x != nil {
+		return x.TerminalDirectOpen
+	}
+	return nil
+}
+func (m *Event) GetTerminalDirectClose() *TerminalDirectCloseEvent {
+	if x, ok := m.GetEvent().(*Event_TerminalDirectClose); ok && x != nil {
+		return x.TerminalDirectClose
+	}
+	return nil
+}
+func (m *Event) GetTerminalDirectLeg() *TerminalDirectLegEvent {
+	if x, ok := m.GetEvent().(*Event_TerminalDirectLeg); ok && x != nil {
+		return x.TerminalDirectLeg
+	}
+	return nil
+}
+func (m *Event) GetTerminalDirectInput() *TerminalDirectInputEvent {
+	if x, ok := m.GetEvent().(*Event_TerminalDirectInput); ok && x != nil {
+		return x.TerminalDirectInput
+	}
+	return nil
+}
+func (m *Event) GetTerminalDirectOutput() *TerminalDirectOutputEvent {
+	if x, ok := m.GetEvent().(*Event_TerminalDirectOutput); ok && x != nil {
+		return x.TerminalDirectOutput
+	}
+	return nil
+}
+func (m *Event) GetTerminalDirectConfirmRebuild() *TerminalDirectConfirmRebuildAction {
+	if x, ok := m.GetEvent().(*Event_TerminalDirectConfirmRebuild); ok && x != nil {
+		return x.TerminalDirectConfirmRebuild
+	}
+	return nil
+}
 func (m *Event) GetSecurityConfig() *SecurityConfigEvent {
 	if x, ok := m.GetEvent().(*Event_SecurityConfig); ok && x != nil {
 		return x.SecurityConfig
@@ -6675,10 +6766,12 @@ func extraUnmarshal_Event(base unsafe.Pointer, num litewire.Number, wtyp litewir
 		return m.extraUnmarshalPart13(num, wtyp, bp)
 	case num <= 414:
 		return m.extraUnmarshalPart14(num, wtyp, bp)
-	case num <= 456:
+	case num <= 426:
 		return m.extraUnmarshalPart15(num, wtyp, bp)
-	case num <= 465:
+	case num <= 461:
 		return m.extraUnmarshalPart16(num, wtyp, bp)
+	case num <= 465:
+		return m.extraUnmarshalPart17(num, wtyp, bp)
 	}
 	return false, nil
 }
@@ -8275,6 +8368,73 @@ func (m *Event) extraUnmarshalPart15(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.TerminalHistory
+		case 423:
+			w, _ := m.Event.(*Event_DirectPcProbeReceived)
+			if w == nil || w.DirectPcProbeReceived == nil {
+				w = &Event_DirectPcProbeReceived{DirectPcProbeReceived: &DirectPcProbeReceivedEvent{}}
+				m.Event = w
+			}
+			sub = w.DirectPcProbeReceived
+		case 424:
+			w, _ := m.Event.(*Event_TerminalDirectOpen)
+			if w == nil || w.TerminalDirectOpen == nil {
+				w = &Event_TerminalDirectOpen{TerminalDirectOpen: &TerminalDirectOpenEvent{}}
+				m.Event = w
+			}
+			sub = w.TerminalDirectOpen
+		case 425:
+			w, _ := m.Event.(*Event_TerminalDirectClose)
+			if w == nil || w.TerminalDirectClose == nil {
+				w = &Event_TerminalDirectClose{TerminalDirectClose: &TerminalDirectCloseEvent{}}
+				m.Event = w
+			}
+			sub = w.TerminalDirectClose
+		case 426:
+			w, _ := m.Event.(*Event_TerminalDirectLeg)
+			if w == nil || w.TerminalDirectLeg == nil {
+				w = &Event_TerminalDirectLeg{TerminalDirectLeg: &TerminalDirectLegEvent{}}
+				m.Event = w
+			}
+			sub = w.TerminalDirectLeg
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart16(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
+		case 427:
+			w, _ := m.Event.(*Event_TerminalDirectInput)
+			if w == nil || w.TerminalDirectInput == nil {
+				w = &Event_TerminalDirectInput{TerminalDirectInput: &TerminalDirectInputEvent{}}
+				m.Event = w
+			}
+			sub = w.TerminalDirectInput
+		case 428:
+			w, _ := m.Event.(*Event_TerminalDirectOutput)
+			if w == nil || w.TerminalDirectOutput == nil {
+				w = &Event_TerminalDirectOutput{TerminalDirectOutput: &TerminalDirectOutputEvent{}}
+				m.Event = w
+			}
+			sub = w.TerminalDirectOutput
+		case 429:
+			w, _ := m.Event.(*Event_TerminalDirectConfirmRebuild)
+			if w == nil || w.TerminalDirectConfirmRebuild == nil {
+				w = &Event_TerminalDirectConfirmRebuild{TerminalDirectConfirmRebuild: &TerminalDirectConfirmRebuildAction{}}
+				m.Event = w
+			}
+			sub = w.TerminalDirectConfirmRebuild
 		case 450:
 			w, _ := m.Event.(*Event_SecurityConfig)
 			if w == nil || w.SecurityConfig == nil {
@@ -8303,24 +8463,6 @@ func (m *Event) extraUnmarshalPart15(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityCryptoBatchDone
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart16(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 457:
 			w, _ := m.Event.(*Event_SecurityOpRequest)
 			if w == nil || w.SecurityOpRequest == nil {
@@ -8356,6 +8498,24 @@ func (m *Event) extraUnmarshalPart16(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityStorageResult
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart17(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 462:
 			w, _ := m.Event.(*Event_SecurityRpcResult)
 			if w == nil || w.SecurityRpcResult == nil {
@@ -10362,6 +10522,41 @@ type Effect_TerminalHistoryUpdated struct {
 
 func (*Effect_TerminalHistoryUpdated) isEffect_Effect() {}
 
+type Effect_DirectPcSendProbe struct {
+	_                 [0]func()
+	DirectPcSendProbe *DirectPcSendProbeEffect
+}
+
+func (*Effect_DirectPcSendProbe) isEffect_Effect() {}
+
+type Effect_TerminalDirectSend struct {
+	_                  [0]func()
+	TerminalDirectSend *TerminalDirectSendEffect
+}
+
+func (*Effect_TerminalDirectSend) isEffect_Effect() {}
+
+type Effect_TerminalDirectDeliver struct {
+	_                     [0]func()
+	TerminalDirectDeliver *TerminalDirectDeliverEffect
+}
+
+func (*Effect_TerminalDirectDeliver) isEffect_Effect() {}
+
+type Effect_TerminalDirectAttachRelay struct {
+	_                         [0]func()
+	TerminalDirectAttachRelay *TerminalDirectAttachRelayEffect
+}
+
+func (*Effect_TerminalDirectAttachRelay) isEffect_Effect() {}
+
+type Effect_TerminalDirectState struct {
+	_                   [0]func()
+	TerminalDirectState *TerminalDirectStateEffect
+}
+
+func (*Effect_TerminalDirectState) isEffect_Effect() {}
+
 type Effect_SecurityKeySign struct {
 	_               [0]func()
 	SecurityKeySign *SecurityKeySignEffect
@@ -10831,6 +11026,36 @@ func (m *Effect) GetTerminalHistoryUpdated() *TerminalHistoryUpdatedEffect {
 	}
 	return nil
 }
+func (m *Effect) GetDirectPcSendProbe() *DirectPcSendProbeEffect {
+	if x, ok := m.GetEffect().(*Effect_DirectPcSendProbe); ok && x != nil {
+		return x.DirectPcSendProbe
+	}
+	return nil
+}
+func (m *Effect) GetTerminalDirectSend() *TerminalDirectSendEffect {
+	if x, ok := m.GetEffect().(*Effect_TerminalDirectSend); ok && x != nil {
+		return x.TerminalDirectSend
+	}
+	return nil
+}
+func (m *Effect) GetTerminalDirectDeliver() *TerminalDirectDeliverEffect {
+	if x, ok := m.GetEffect().(*Effect_TerminalDirectDeliver); ok && x != nil {
+		return x.TerminalDirectDeliver
+	}
+	return nil
+}
+func (m *Effect) GetTerminalDirectAttachRelay() *TerminalDirectAttachRelayEffect {
+	if x, ok := m.GetEffect().(*Effect_TerminalDirectAttachRelay); ok && x != nil {
+		return x.TerminalDirectAttachRelay
+	}
+	return nil
+}
+func (m *Effect) GetTerminalDirectState() *TerminalDirectStateEffect {
+	if x, ok := m.GetEffect().(*Effect_TerminalDirectState); ok && x != nil {
+		return x.TerminalDirectState
+	}
+	return nil
+}
 func (m *Effect) GetSecurityKeySign() *SecurityKeySignEffect {
 	if x, ok := m.GetEffect().(*Effect_SecurityKeySign); ok && x != nil {
 		return x.SecurityKeySign
@@ -11274,6 +11499,26 @@ func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
 		if x != nil && x.TerminalHistoryUpdated != nil {
 			onum, omsg = 115, x.TerminalHistoryUpdated
 		}
+	case *Effect_DirectPcSendProbe:
+		if x != nil && x.DirectPcSendProbe != nil {
+			onum, omsg = 116, x.DirectPcSendProbe
+		}
+	case *Effect_TerminalDirectSend:
+		if x != nil && x.TerminalDirectSend != nil {
+			onum, omsg = 117, x.TerminalDirectSend
+		}
+	case *Effect_TerminalDirectDeliver:
+		if x != nil && x.TerminalDirectDeliver != nil {
+			onum, omsg = 118, x.TerminalDirectDeliver
+		}
+	case *Effect_TerminalDirectAttachRelay:
+		if x != nil && x.TerminalDirectAttachRelay != nil {
+			onum, omsg = 119, x.TerminalDirectAttachRelay
+		}
+	case *Effect_TerminalDirectState:
+		if x != nil && x.TerminalDirectState != nil {
+			onum, omsg = 120, x.TerminalDirectState
+		}
 	case *Effect_SecurityKeySign:
 		if x != nil && x.SecurityKeySign != nil {
 			onum, omsg = 130, x.SecurityKeySign
@@ -11294,6 +11539,20 @@ func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
 		if x != nil && x.SecurityKeyGenerate != nil {
 			onum, omsg = 137, x.SecurityKeyGenerate
 		}
+	default:
+		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
+}
+
+//go:noinline
+func (m *Effect) appendMarshalEffectPart6(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Effect.(type) {
 	case *Effect_SecurityKeyEncapsulate:
 		if x != nil && x.SecurityKeyEncapsulate != nil {
 			onum, omsg = 138, x.SecurityKeyEncapsulate
@@ -11314,20 +11573,6 @@ func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
 		if x != nil && x.SecurityWorkflowResult != nil {
 			onum, omsg = 142, x.SecurityWorkflowResult
 		}
-	default:
-		return b, false
-	}
-	if omsg != nil {
-		b = litewire.AppendMessage(b, onum, omsg)
-	}
-	return b, true
-}
-
-//go:noinline
-func (m *Effect) appendMarshalEffectPart6(b []byte) ([]byte, bool) {
-	var onum litewire.Number
-	var omsg litewire.Marshaler
-	switch x := m.Effect.(type) {
 	case *Effect_SecurityStatusChanged:
 		if x != nil && x.SecurityStatusChanged != nil {
 			onum, omsg = 143, x.SecurityStatusChanged

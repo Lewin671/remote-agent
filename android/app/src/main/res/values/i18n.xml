@@ -1911,6 +1911,11 @@
     <string name="terminal_closed_ended_note" formatted="false">"下面是断开前的画面。会话已经结束。"</string>
     <string name="terminal_closed_running_note" formatted="false">"下面是断开前的画面。会话还在运行，聊天照常更新。"</string>
     <string name="terminal_computer_dimensions">"电脑上 %1$d×%2$d"</string>
+    <string name="terminal_confirm_close_action" formatted="false">"关闭终端"</string>
+    <string name="terminal_confirm_rebuild_action" formatted="false">"重建终端"</string>
+    <string name="terminal_confirm_rebuild_input_body" formatted="false">"有输入可能未完整送达或已过期，已暂停自动续发以避免重复执行。请核对屏幕内容后选择重建终端或关闭。"</string>
+    <string name="terminal_confirm_rebuild_restart_body" formatted="false">"电脑端已重启或原终端会话已失效，无法确认未送达的输入是否已执行。请核对状态后选择重建终端或关闭。"</string>
+    <string name="terminal_confirm_rebuild_title" formatted="false">"需要确认后重建终端"</string>
     <string name="terminal_connecting" formatted="false">"连接终端…"</string>
     <string name="terminal_disconnected" formatted="false">"终端已断开"</string>
     <string name="terminal_down" formatted="false">"下"</string>
@@ -1933,6 +1938,7 @@
     <string name="terminal_readonly" formatted="false">"回看中 · 只读"</string>
     <string name="terminal_reconnect" formatted="false">"重新连接"</string>
     <string name="terminal_remote_dimensions">"远端 %1$d×%2$d"</string>
+    <string name="terminal_replay_overflow" formatted="false">"终端输出超出补发缓冲，请重新连接获取最新画面。"</string>
     <string name="terminal_restore" formatted="false">"还原"</string>
     <string name="terminal_right" formatted="false">"右"</string>
     <string name="terminal_size_changed" formatted="false">"远端尺寸已变化"</string>
@@ -2005,7 +2011,7 @@
     <string name="transport_diag_check_path" formatted="false">"局域网或公网直通"</string>
     <string name="transport_diag_check_peer" formatted="false">"电脑在线并响应"</string>
     <string name="transport_diag_check_retry" formatted="false">"后台自动重试"</string>
-    <string name="transport_diag_connected_body" formatted="false">"加载与文件现在已恢复直连。"</string>
+    <string name="transport_diag_connected_body" formatted="false">"加载、文件与终端现在已恢复直连。"</string>
     <string name="transport_diag_connected_title" formatted="false">"直连已连上"</string>
     <string name="transport_diag_copy_permission" formatted="false">"没能复制，请检查剪贴板权限"</string>
     <string name="transport_diag_count">"×%1$d"</string>
@@ -2137,9 +2143,9 @@
     <string name="transport_file_speed_both">"直连 %1$s · 中继 %2$s MiB/s"</string>
     <string name="transport_file_speed_direct">"直连 %1$s MiB/s"</string>
     <string name="transport_file_speed_relay">"中继 %1$s MiB/s"</string>
-    <string name="transport_footer" formatted="false">"发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。"</string>
+    <string name="transport_footer" formatted="false">"发消息、审批和终端输入同时经直连和中继发出，以先到的为准；后台时只用中继。"</string>
     <string name="transport_popover_a11y" formatted="false">"直连已生效，点按查看连接详情"</string>
-    <string name="transport_popover_direct_body" formatted="false">"加载与文件走直连；发消息和审批同时经直连和中继发出，以先到的为准。"</string>
+    <string name="transport_popover_direct_body" formatted="false">"加载、文件与终端走直连；发消息、审批和终端输入同时经直连和中继发出，以先到的为准。"</string>
     <string name="transport_popover_direct_title">"直连 %1$s"</string>
     <string name="transport_popover_direct_title_rtt">"直连 %2$s · %1$s ms"</string>
     <string name="transport_popover_file_only" formatted="false">"仅文件走直连"</string>

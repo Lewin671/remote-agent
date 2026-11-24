@@ -1204,15 +1204,16 @@ func (m *SessionHeaderView) AppendMarshal(b []byte) []byte {
 }
 
 type SessionDirectChipView struct {
-	_            [0]func()
-	Visible      bool
-	Active       bool
-	ReadDirect   bool
-	FileDirect   bool
-	LabelText    *Text
-	PopoverTitle *Text
-	PopoverBody  *Text
-	PopoverFoot  *Text
+	_              [0]func()
+	Visible        bool
+	Active         bool
+	ReadDirect     bool
+	FileDirect     bool
+	LabelText      *Text
+	PopoverTitle   *Text
+	PopoverBody    *Text
+	PopoverFoot    *Text
+	TerminalDirect bool
 }
 
 func (m *SessionDirectChipView) GetVisible() bool {
@@ -1263,6 +1264,12 @@ func (m *SessionDirectChipView) GetPopoverFoot() *Text {
 	}
 	return nil
 }
+func (m *SessionDirectChipView) GetTerminalDirect() bool {
+	if m != nil {
+		return m.TerminalDirect
+	}
+	return false
+}
 
 var LitewireDesc_SessionDirectChipView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -1274,6 +1281,7 @@ var LitewireDesc_SessionDirectChipView = litewire.MessageDesc{
 		{Num: 6, Offset: unsafe.Offsetof(SessionDirectChipView{}.PopoverTitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 7, Offset: unsafe.Offsetof(SessionDirectChipView{}.PopoverBody), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 8, Offset: unsafe.Offsetof(SessionDirectChipView{}.PopoverFoot), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 9, Offset: unsafe.Offsetof(SessionDirectChipView{}.TerminalDirect), Kind: litewire.KindBool},
 	},
 }
 

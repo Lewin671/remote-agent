@@ -51,9 +51,13 @@ interface CipherCache {
     suspend fun removeBlob(name: String) {}
 }
 
+enum class TermConfirmKind { INPUT, RESTART }
+
 interface TermListener {
     fun onFrame(frame: TerminalFrame)
     fun onClose(reason: MessageText)
+    fun onConfirmRebuild(kind: TermConfirmKind) {}
+    fun onRebuildConfirmed() {}
 }
 
 class TermConn internal constructor(
@@ -61,8 +65,10 @@ class TermConn internal constructor(
     private val sendFrame: (TerminalFrame) -> Unit,
     private val closeLocal: () -> Unit,
 ) {
+    internal var confirmRebuildAction: () -> Unit = {}
     fun send(frame: TerminalFrame) = sendFrame(frame)
     fun close() = cleanup(closeLocal, { ws.close() })
+    fun confirmRebuild() = confirmRebuildAction()
 }
 
 internal fun ucmp(a: Long, b: Long): Int = java.lang.Long.compareUnsigned(a, b)
@@ -201,10 +207,23 @@ class Remote(
         dispatcher = if (rpcTransport != null) this.dispatcher else Dispatchers.IO,
     )
 
+    private class ActiveTerminalStream(
+        val sendRelay: (ByteArray) -> Unit,
+        val deliver: (List<ByteArray>) -> Unit,
+        val attachRelay: (ByteArray) -> Unit,
+        val onState: (Int, String, Boolean) -> Unit,
+        val onDirectOutput: (String, Long, Envelope, ByteArray) -> Unit,
+    )
+
+    private val activeTerminals = ConcurrentHashMap<String, ActiveTerminalStream>()
+
     internal val directExecutor: DirectExecutor = DirectExecutor(
         emit = { ev -> coreHost.dispatch(ev) },
         onPushedEvent = { machineId, pcId, env, header, size ->
             handleDirectEvent(machineId, pcId, env, header, size)
+        },
+        onTerminalOutput = { machineId, pcId, env, header, raw ->
+            activeTerminals[header.requestId]?.onDirectOutput?.invoke(machineId, pcId, env, raw)
         },
         factory = rtcFactory,
         clock = clock,
@@ -422,7 +441,24 @@ class Remote(
         coreHost.onDirectPcAddCandidates = { eff -> scope.launch(directDispatcher) { directExecutor.pcAddCandidates(eff) } }
         coreHost.onDirectPcConfirm = { eff -> directExecutor.pcConfirm(eff) }
         coreHost.onDirectPcClose = { eff -> scope.launch(directDispatcher) { directExecutor.pcClose(eff) } }
+        coreHost.onDirectPcSendProbe = { eff -> directExecutor.pcSendProbe(eff) }
         coreHost.onDirectDcReadStats = { eff -> scope.launch(directDispatcher) { directExecutor.dcReadStats(eff) } }
+        coreHost.onTerminalDirectSend = { eff ->
+            val raw = eff.sealedEnvelope.toByteArray()
+            if (eff.sendRelay) activeTerminals[eff.streamId]?.sendRelay?.invoke(raw)
+            if (eff.directPcId > 0L) {
+                scope.launch(directDispatcher) { directExecutor.sendTerminalFrame(eff.directPcId, raw) }
+            }
+        }
+        coreHost.onTerminalDirectDeliver = { eff ->
+            activeTerminals[eff.streamId]?.deliver?.invoke(eff.payloadsList.map { it.toByteArray() })
+        }
+        coreHost.onTerminalDirectAttachRelay = { eff ->
+            activeTerminals[eff.streamId]?.attachRelay?.invoke(eff.legId.toByteArray())
+        }
+        coreHost.onTerminalDirectState = { eff ->
+            activeTerminals[eff.streamId]?.onState?.invoke(eff.state, eff.reason, eff.needsConfirmation)
+        }
         coreHost.onWatchedSessionsChanged = { ids ->
             watchedSessionIds = ids
         }
@@ -1772,16 +1808,24 @@ class Remote(
         val streamId = newRequestId()
         val opened = CompletableDeferred<Unit>()
         val closed = AtomicBoolean(false)
-        var last = 0L
-        val incoming = Channel<ByteArray>(64)
+        data class InboundItem(val env: Envelope, val fromDirect: Boolean, val pcId: Long, val size: Int)
+        val incoming = Channel<InboundItem>(128)
         data class QueuedInput(val frame: TerminalFrame, val deadline: Long)
         val outgoing = Channel<QueuedInput>(64)
         val queuedBytes = AtomicLong(0)
         val terminalJob = SupervisorJob(scope.coroutineContext[Job])
         val terminalScope = CoroutineScope(scope.coroutineContext + terminalJob)
         val socket = java.util.concurrent.atomic.AtomicReference<FrameStream?>()
+        val activeLegId = java.util.concurrent.atomic.AtomicReference(streamId.toByteArray(Charsets.UTF_8))
+        val lastRelayError = java.util.concurrent.atomic.AtomicReference<Throwable?>(null)
         val stream = deviceLink.openStream(stop = { reason ->
             if (closed.compareAndSet(false, true)) {
+                activeTerminals.remove(streamId)
+                coreHost.dispatch(
+                    CoreEvent.newBuilder()
+                        .setTerminalDirectClose(TerminalDirectCloseEvent.newBuilder().setStreamId(streamId))
+                        .build(),
+                )
                 cleanup(
                     { incoming.cancel() },
                     { outgoing.cancel() },
@@ -1795,19 +1839,32 @@ class Remote(
 
         terminalScope.launch {
             try {
-                for (raw in incoming) {
+                for (item in incoming) {
                     try {
-                        val env = Envelope.parseFrom(raw)
                         val (h, frame) = openSecureMessage(
-                            env,
+                            item.env,
                             Place(PayloadKind.PAYLOAD_KIND_TERMINAL_OUTPUT, machineId = s.machineId, sessionId = sid, requestId = streamId),
                             TerminalFrame::parseFrom,
                         )
-                        if (ucmp(h.seq, last) <= 0) throw OpenException(UiMessages.errorsTerminalFramesAreOutOfOrder().messageText())
-                        last = h.seq
-                        listener.onFrame(frame)
+                        val payloadBytes = frame.toByteArray()
+                        val frameHash = java.security.MessageDigest.getInstance("SHA-256").digest(payloadBytes)
+                        coreHost.dispatch(
+                            CoreEvent.newBuilder()
+                                .setTerminalDirectOutput(
+                                    TerminalDirectOutputEvent.newBuilder()
+                                        .setStreamId(streamId)
+                                        .setSeq(h.seq)
+                                        .setFrameHash(ByteString.copyFrom(frameHash))
+                                        .setPayload(ByteString.copyFrom(payloadBytes))
+                                        .setFromDirect(item.fromDirect)
+                                        .setPcId(item.pcId),
+                                )
+                                .build(),
+                        )
+                    } catch (e: Exception) {
+                        if (!item.fromDirect) throw e
                     } finally {
-                        queuedBytes.addAndGet(-raw.size.toLong())
+                        queuedBytes.addAndGet(-item.size.toLong())
                     }
                 }
             } catch (e: Exception) {
@@ -1815,6 +1872,120 @@ class Remote(
             }
         }
         val url = account.server.replaceFirst(Regex("^http"), "ws") + "/v1/term"
+        activeTerminals[streamId] = ActiveTerminalStream(
+            sendRelay = { raw -> if (!closed.get()) socket.get()?.send(raw) },
+            deliver = { payloads ->
+                for (p in payloads) {
+                    if (closed.get()) break
+                    runCatching { TerminalFrame.parseFrom(p) }.getOrNull()?.let { listener.onFrame(it) }
+                }
+            },
+            attachRelay = { legBytes ->
+                if (!closed.get()) {
+                    val legStr = String(legBytes, Charsets.UTF_8)
+                    val dialOpened = AtomicBoolean(false)
+                    val nextWs = deviceLink.path.openStream(
+                        url,
+                        object : FrameListener() {
+                            override fun onOpen(stream: FrameStream) {
+                                if (closed.get()) { stream.cancel(); return }
+                                dialOpened.set(true)
+                                val hello = TermHello.newBuilder().setToken(tok).setStreamId(legStr).setMachineId(s.machineId).build()
+                                stream.send(hello.toByteArray())
+                                val prev = socket.getAndSet(stream)
+                                activeLegId.set(legBytes)
+                                if (prev !== stream) prev?.close()
+                                coreHost.dispatch(
+                                    CoreEvent.newBuilder()
+                                        .setTerminalDirectLeg(
+                                            TerminalDirectLegEvent.newBuilder()
+                                                .setStreamId(streamId)
+                                                .setLegId(ByteString.copyFrom(legBytes))
+                                                .setDirect(false)
+                                                .setOpen(true),
+                                        )
+                                        .build(),
+                                )
+                            }
+                            override fun onFrame(stream: FrameStream, bytes: ByteArray) {
+                                if (closed.get()) return
+                                val env = runCatching { Envelope.parseFrom(bytes) }.getOrNull() ?: return
+                                if (bytes.size > (1 shl 20) || queuedBytes.addAndGet(bytes.size.toLong()) > 2L * 1024 * 1024 ||
+                                    incoming.trySend(InboundItem(env, false, 0L, bytes.size)).isFailure) {
+                                    finish(UiMessages.errorsAndroidTerminalOutputBacklogReceptionStopped().messageText())
+                                }
+                            }
+                            override fun onEnd(stream: FrameStream, code: Int) {
+                                if (closed.get()) return
+                                if (dialOpened.get() && socket.get() !== stream) return
+                                coreHost.dispatch(
+                                    CoreEvent.newBuilder()
+                                        .setTerminalDirectLeg(
+                                            TerminalDirectLegEvent.newBuilder()
+                                                .setStreamId(streamId)
+                                                .setLegId(ByteString.copyFrom(legBytes))
+                                                .setDirect(false)
+                                                .setOpen(false),
+                                        )
+                                        .build(),
+                                )
+                            }
+                            override fun onFailure(stream: FrameStream, error: Throwable) {
+                                if (closed.get()) return
+                                if (dialOpened.get() && socket.get() !== stream) return
+                                if (dialOpened.get()) lastRelayError.set(error)
+                                coreHost.dispatch(
+                                    CoreEvent.newBuilder()
+                                        .setTerminalDirectLeg(
+                                            TerminalDirectLegEvent.newBuilder()
+                                                .setStreamId(streamId)
+                                                .setLegId(ByteString.copyFrom(legBytes))
+                                                .setDirect(false)
+                                                .setOpen(false),
+                                        )
+                                        .build(),
+                                )
+                            }
+                        },
+                    )
+                    if (closed.get()) nextWs.cancel()
+                }
+            },
+            onState = { st, reason, needsConfirm ->
+                // M4/M5: NeedsConfirmation enters user confirmation UI without auto-closing;
+                // rebuild_confirmed closes the old stream silently and triggers a fresh open.
+                if (!closed.get()) {
+                    if (needsConfirm) {
+                        listener.onConfirmRebuild(if (st == 4) TermConfirmKind.RESTART else TermConfirmKind.INPUT)
+                    } else if (st == 5 && reason == "rebuild_confirmed") {
+                        finish()
+                        listener.onRebuildConfirmed()
+                    } else if (st == 5) {
+                        val err = lastRelayError.getAndSet(null)
+                        if (reason == "conflict") {
+                            finish(UiMessages.errorsTerminalFramesAreOutOfOrder().messageText())
+                        } else if (reason == "replay_overflow") {
+                            finish(UiMessages.terminalReplayOverflow().messageText())
+                        } else if (err != null) {
+                            finish(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(err, coreHost.syncStateView.value).resolve(copy))) })
+                        } else {
+                            finish(UiMessages.errorsTerminalConnectionDropped().messageText())
+                        }
+                    }
+                }
+            },
+            onDirectOutput = { machineId, pcId, env, raw ->
+                if (!closed.get() && machineId == s.machineId) {
+                    if (queuedBytes.addAndGet(raw.size.toLong()) <= 2L * 1024 * 1024) {
+                        if (incoming.trySend(InboundItem(env, true, pcId, raw.size)).isFailure) {
+                            queuedBytes.addAndGet(-raw.size.toLong())
+                        }
+                    } else {
+                        queuedBytes.addAndGet(-raw.size.toLong())
+                    }
+                }
+            },
+        )
         try {
             val ws = deviceLink.path.openStream(
                 url,
@@ -1826,27 +1997,89 @@ class Remote(
                     }
                     override fun onFrame(stream: FrameStream, bytes: ByteArray) {
                         if (closed.get()) return
-                        if (bytes.size > (1 shl 20) || queuedBytes.addAndGet(bytes.size.toLong()) > 2L * 1024 * 1024 || incoming.trySend(bytes).isFailure) {
+                        val env = runCatching { Envelope.parseFrom(bytes) }.getOrNull()
+                        if (env == null || bytes.size > (1 shl 20) || queuedBytes.addAndGet(bytes.size.toLong()) > 2L * 1024 * 1024 ||
+                            incoming.trySend(InboundItem(env, false, 0L, bytes.size)).isFailure) {
                             finish(UiMessages.errorsAndroidTerminalOutputBacklogReceptionStopped().messageText())
                         }
                     }
                     override fun onClosing(stream: FrameStream, code: Int) {
                         if (code == POLICY_VIOLATION) rejectToken(tok)
-                        cleanup({ stream.close() }, { finish(UiMessages.errorsTerminalConnectionDropped().messageText()) })
+                        if (socket.get() !== stream) return
+                        stream.close()
+                        if (!opened.isCompleted) {
+                            finish(UiMessages.errorsTerminalConnectionClosed().messageText())
+                            return
+                        }
+                        coreHost.dispatch(
+                            CoreEvent.newBuilder()
+                                .setTerminalDirectLeg(
+                                    TerminalDirectLegEvent.newBuilder()
+                                        .setStreamId(streamId)
+                                        .setLegId(ByteString.copyFrom(activeLegId.get()))
+                                        .setDirect(false)
+                                        .setOpen(false),
+                                )
+                                .build(),
+                        )
                     }
                     override fun onEnd(stream: FrameStream, code: Int) {
                         if (code == POLICY_VIOLATION) rejectToken(tok)
-                        finish(UiMessages.errorsTerminalConnectionDropped().messageText())
+                        if (socket.get() !== stream) return
+                        if (!opened.isCompleted) {
+                            finish(UiMessages.errorsTerminalConnectionClosed().messageText())
+                            return
+                        }
+                        coreHost.dispatch(
+                            CoreEvent.newBuilder()
+                                .setTerminalDirectLeg(
+                                    TerminalDirectLegEvent.newBuilder()
+                                        .setStreamId(streamId)
+                                        .setLegId(ByteString.copyFrom(activeLegId.get()))
+                                        .setDirect(false)
+                                        .setOpen(false),
+                                )
+                                .build(),
+                        )
                     }
                     override fun onFailure(stream: FrameStream, error: Throwable) {
+                        val wasOpened = opened.isCompleted
                         opened.completeExceptionally(MessageException(UiMessages.errorsCannotConnectToTerminal().messageText()))
-                        finish(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(error, coreHost.syncStateView.value).resolve(copy))) })
+                        if (socket.get() !== stream) return
+                        if (!wasOpened) {
+                            finish(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(error, coreHost.syncStateView.value).resolve(copy))) })
+                            return
+                        }
+                        lastRelayError.set(error)
+                        coreHost.dispatch(
+                            CoreEvent.newBuilder()
+                                .setTerminalDirectLeg(
+                                    TerminalDirectLegEvent.newBuilder()
+                                        .setStreamId(streamId)
+                                        .setLegId(ByteString.copyFrom(activeLegId.get()))
+                                        .setDirect(false)
+                                        .setOpen(false),
+                                )
+                                .build(),
+                        )
                     }
                 },
             )
             socket.set(ws)
             if (closed.get()) ws.cancel()
             withTimeout(20_000) { opened.await() }
+            // M6: register in Core before sending OpenTerminal RPC so early frames are never lost.
+            coreHost.dispatch(
+                CoreEvent.newBuilder()
+                    .setTerminalDirectOpen(
+                        TerminalDirectOpenEvent.newBuilder()
+                            .setStreamId(streamId)
+                            .setMachineId(s.machineId)
+                            .setSessionId(sid)
+                            .setRelayLegId(ByteString.copyFrom(activeLegId.get())),
+                    )
+                    .build(),
+            )
             coreHost.runMachineCommand(
                 s.machineId,
                 sid,
@@ -1855,6 +2088,18 @@ class Remote(
             )
             kotlinx.coroutines.currentCoroutineContext().ensureActive()
             if (closed.get()) throw MessageException(UiMessages.terminalAndroidClosed().messageText())
+            // H-B: signal Core that daemon confirmed openTerminal so direct AttachPath fires now.
+            coreHost.dispatch(
+                CoreEvent.newBuilder()
+                    .setTerminalDirectLeg(
+                        TerminalDirectLegEvent.newBuilder()
+                            .setStreamId(streamId)
+                            .setLegId(ByteString.copyFrom(activeLegId.get()))
+                            .setDirect(false)
+                            .setOpen(true),
+                    )
+                    .build(),
+            )
             var seq = 0L
             terminalScope.launch {
                 try {
@@ -1873,7 +2118,22 @@ class Remote(
                                 .build(),
                             item.frame,
                         )
-                        if (!closed.get()) ws.send(env.toByteArray())
+                        if (!closed.get()) {
+                            val sealedBytes = env.toByteArray()
+                            val frameHash = java.security.MessageDigest.getInstance("SHA-256").digest(item.frame.toByteArray())
+                            coreHost.dispatch(
+                                CoreEvent.newBuilder()
+                                    .setTerminalDirectInput(
+                                        TerminalDirectInputEvent.newBuilder()
+                                            .setStreamId(streamId)
+                                            .setSeq(seq)
+                                            .setIsInput(item.frame.hasInput())
+                                            .setSealedEnvelope(ByteString.copyFrom(sealedBytes))
+                                            .setFrameHash(ByteString.copyFrom(frameHash)),
+                                    )
+                                    .build(),
+                            )
+                        }
                     }
                 } catch (e: Exception) {
                     finish(errorText(e, coreHost.syncStateView.value))
@@ -1887,7 +2147,19 @@ class Remote(
                     }
                 },
                 closeLocal = { finish() },
-            )
+            ).apply {
+                confirmRebuildAction = {
+                    if (!closed.get()) {
+                        coreHost.dispatch(
+                            CoreEvent.newBuilder()
+                                .setTerminalDirectConfirmRebuild(
+                                    TerminalDirectConfirmRebuildAction.newBuilder().setStreamId(streamId),
+                                )
+                                .build(),
+                        )
+                    }
+                }
+            }
         } catch (e: Exception) {
             finish()
             throw e

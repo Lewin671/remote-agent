@@ -1490,6 +1490,11 @@ public struct PBDirectRouteReport: @unchecked Sendable {
     set {_uniqueStorage()._fileSlow = newValue}
   }
 
+  public var terminalRoute: PBDirectPathChoice {
+    get {return _storage._terminalRoute}
+    set {_uniqueStorage()._terminalRoute = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -4935,7 +4940,7 @@ extension PBMachineSettingsScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._
 
 extension PBDirectRouteReport: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DirectRouteReport"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}enabled\0\u{1}capable\0\u{3}daemon_disabled\0\u{1}state\0\u{1}reason\0\u{3}file_route\0\u{3}read_route\0\u{3}has_active_rtt_ms\0\u{3}active_rtt_ms\0\u{3}has_direct_file_mibps\0\u{3}direct_file_mibps\0\u{3}has_relay_file_mibps\0\u{3}relay_file_mibps\0\u{3}has_direct_read_ms\0\u{3}direct_read_ms\0\u{3}has_relay_read_ms\0\u{3}relay_read_ms\0\u{1}warming\0\u{1}compared\0\u{3}has_diagnostics\0\u{3}read_slow\0\u{3}file_slow\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}enabled\0\u{1}capable\0\u{3}daemon_disabled\0\u{1}state\0\u{1}reason\0\u{3}file_route\0\u{3}read_route\0\u{3}has_active_rtt_ms\0\u{3}active_rtt_ms\0\u{3}has_direct_file_mibps\0\u{3}direct_file_mibps\0\u{3}has_relay_file_mibps\0\u{3}relay_file_mibps\0\u{3}has_direct_read_ms\0\u{3}direct_read_ms\0\u{3}has_relay_read_ms\0\u{3}relay_read_ms\0\u{1}warming\0\u{1}compared\0\u{3}has_diagnostics\0\u{3}read_slow\0\u{3}file_slow\0\u{3}terminal_route\0")
 
   fileprivate class _StorageClass {
     var _enabled: Bool = false
@@ -4960,6 +4965,7 @@ extension PBDirectRouteReport: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     var _hasDiagnostics_p: Bool = false
     var _readSlow: Bool = false
     var _fileSlow: Bool = false
+    var _terminalRoute: PBDirectPathChoice = .unspecified
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -4992,6 +4998,7 @@ extension PBDirectRouteReport: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       _hasDiagnostics_p = source._hasDiagnostics_p
       _readSlow = source._readSlow
       _fileSlow = source._fileSlow
+      _terminalRoute = source._terminalRoute
     }
   }
 
@@ -5032,6 +5039,7 @@ extension PBDirectRouteReport: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         case 20: try { try decoder.decodeSingularBoolField(value: &_storage._hasDiagnostics_p) }()
         case 21: try { try decoder.decodeSingularBoolField(value: &_storage._readSlow) }()
         case 22: try { try decoder.decodeSingularBoolField(value: &_storage._fileSlow) }()
+        case 23: try { try decoder.decodeSingularEnumField(value: &_storage._terminalRoute) }()
         default: break
         }
       }
@@ -5106,6 +5114,9 @@ extension PBDirectRouteReport: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       if _storage._fileSlow != false {
         try visitor.visitSingularBoolField(value: _storage._fileSlow, fieldNumber: 22)
       }
+      if _storage._terminalRoute != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._terminalRoute, fieldNumber: 23)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -5137,6 +5148,7 @@ extension PBDirectRouteReport: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         if _storage._hasDiagnostics_p != rhs_storage._hasDiagnostics_p {return false}
         if _storage._readSlow != rhs_storage._readSlow {return false}
         if _storage._fileSlow != rhs_storage._fileSlow {return false}
+        if _storage._terminalRoute != rhs_storage._terminalRoute {return false}
         return true
       }
       if !storagesAreEqual {return false}

@@ -10,6 +10,7 @@ import {
   DirectPcCreatedEventSchema,
   DirectPcDescriptionEventSchema,
   DirectPcLocalCandidateEventSchema,
+  DirectPcProbeReceivedEventSchema,
   DirectPcRemoteSetEventSchema,
   DirectPcStateEventSchema,
   DirectPcStunErrorEventSchema,
@@ -19,6 +20,7 @@ import {
   type DirectPcConfirmEffect,
   type DirectPcCreateEffect,
   type DirectPcDescribeEffect,
+  type DirectPcSendProbeEffect,
   type DirectPcSetRemoteEffect,
   type DirectSignalSendEffect,
 } from "../gen/remoteagent/core/v1/transport_pb";
@@ -82,6 +84,7 @@ export class DirectExecutor {
     private readonly options: {
       emit: (ev: CoreEvent) => void;
       onPushedEvent: (machineId: string, pcId: bigint, env: Envelope, header: Header, size: number) => void;
+      onTerminalOutput?: (machineId: string, pcId: bigint, env: Envelope, header: Header, raw: Uint8Array<ArrayBuffer>) => void;
       factory?: (config: RTCConfiguration) => RTCPeerConnection;
     },
   ) {}
@@ -176,6 +179,9 @@ export class DirectExecutor {
         stunError: (code, address) => {
           this.emit({ case: "directPcStunError", value: create(DirectPcStunErrorEventSchema, { pcId: eff.pcId, code, address }) });
         },
+        probeReply: (raw) => {
+          this.emit({ case: "directPcProbeReceived", value: create(DirectPcProbeReceivedEventSchema, { pcId: eff.pcId, raw }) });
+        },
         frame: (raw) => this.handleDcFrame(eff.pcId, entry, raw),
         closed: () => {
           const cur = this.pcs.get(eff.pcId);
@@ -265,6 +271,19 @@ export class DirectExecutor {
     entry.channel.close();
   }
 
+  pcSendProbe(eff: DirectPcSendProbeEffect) {
+    const entry = this.pcs.get(eff.pcId);
+    if (!entry) return;
+    entry.channel.sendProbe(eff.raw as Uint8Array<ArrayBuffer>);
+  }
+
+  sendTerminalFrame(pcId: bigint, raw: Uint8Array<ArrayBuffer>): boolean {
+    const entry = this.pcs.get(pcId);
+    if (!entry || !entry.confirmed || !entry.channel.ready || entry.use !== 1) return false;
+    void entry.channel.write(raw, () => {}).catch(() => {});
+    return true;
+  }
+
   async dcReadStats(eff: DirectDcReadStatsEffect): Promise<void> {
     const entry = this.pcs.get(eff.pcId);
     if (!entry) {
@@ -324,6 +343,12 @@ export class DirectExecutor {
       if (entry.use === 1 && header.kind === PayloadKind.EVENT) {
         if (entry.confirmed && header.machineId === entry.machineId && header.sender === entry.machineId) {
           this.options.onPushedEvent(entry.machineId, pcId, env, header, raw.byteLength);
+        }
+        return;
+      }
+      if (entry.use === 1 && header.kind === PayloadKind.TERMINAL_OUTPUT) {
+        if (entry.confirmed && header.machineId === entry.machineId && header.sender === entry.machineId) {
+          this.options.onTerminalOutput?.(entry.machineId, pcId, env, header, raw);
         }
         return;
       }

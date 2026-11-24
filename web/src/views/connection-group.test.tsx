@@ -76,10 +76,10 @@ describe("the Module 3 summary row & unified Direct sheet frame", () => {
   it("explains direct vs relay behavior cleanly in one sentence when healthy/off", () => {
     const r = openSheet();
     show(r, "direct");
-    expect(footer()).toBe("发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。");
+    expect(footer()).toBe("发消息、审批和终端输入同时经直连和中继发出，以先到的为准；后台时只用中继。");
     act(() => clearDemoDirect(r, "mac"));
     act(() => sw().click());
-    expect(footer()).toBe("发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。");
+    expect(footer()).toBe("发消息、审批和终端输入同时经直连和中继发出，以先到的为准；后台时只用中继。");
   });
 });
 
@@ -251,7 +251,7 @@ describe("the switch inside the unified Direct sheet (real Core)", () => {
     show(rEn, { preset: "direct", rttMs: 12 });
     expect(summaryRow().querySelector(".vt")!.textContent).toBe("Direct · 12 ms");
     expect(statusRow()!.querySelector(".dx-text")!.textContent).toBe("Using direct");
-    expect(footer()).toBe("Messages and approvals are sent over both direct and relay, taking whichever arrives first; only relay is used in the background.");
+    expect(footer()).toBe("Messages, approvals, and terminal input are sent over both direct and relay, taking whichever arrives first; only relay is used in the background.");
   });
 });
 

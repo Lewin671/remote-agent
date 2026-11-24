@@ -75,7 +75,7 @@ func ActivePoolsForTest(r *Relay) [3]int {
 	return [3]int{}
 }
 
-func SetDirectLoopbackForTest(r *Relay) { r.directLoopback = true; r.directSTUN = []string{} }
+func SetDirectLoopbackForTest(r *Relay)                   { r.directLoopback = true; r.directSTUN = []string{} }
 func SetDirectClockForTest(r *Relay, fn func() time.Time) { r.directClock = fn }
 func SetSchedulerClockForTest(r *Relay, now func() time.Time, after func(time.Duration, func()) func() bool) {
 	r.SchedulerNow = now
@@ -84,4 +84,100 @@ func SetSchedulerClockForTest(r *Relay, now func() time.Time, after func(time.Du
 func DirectFreshForTest(r *Relay) bool {
 	s := r.security.Load()
 	return s != nil && s.directFresh.Load() != nil
+}
+func SetTerminalClockForTest(r *Relay, ttl time.Duration, fn func() time.Time) {
+	r.termZeroLegTTL = ttl
+	r.termClock = fn
+}
+func TerminalRegistryActiveForTest(r *Relay) int {
+	h := r.termHubRef.Load()
+	if h == nil {
+		return 0
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.registry.ActiveCount()
+}
+func TerminalRelayAttachGenForTest(r *Relay, streamID string) uint64 {
+	h := r.termHubRef.Load()
+	if h == nil {
+		return 0
+	}
+	lt := h.getLive(streamID)
+	if lt == nil {
+		return 0
+	}
+	lt.mu.Lock()
+	defer lt.mu.Unlock()
+	return lt.relayAttachGen
+}
+func TerminalHasDirectLegForTest(r *Relay, streamID string) bool {
+	h := r.termHubRef.Load()
+	if h == nil {
+		return false
+	}
+	lt := h.getLive(streamID)
+	if lt == nil {
+		return false
+	}
+	lt.mu.Lock()
+	defer lt.mu.Unlock()
+	return lt.stream.HasLeg("direct")
+}
+func TerminalHasRelayLegForTest(r *Relay, streamID string) bool {
+	h := r.termHubRef.Load()
+	if h == nil {
+		return false
+	}
+	lt := h.getLive(streamID)
+	if lt == nil {
+		return false
+	}
+	lt.mu.Lock()
+	defer lt.mu.Unlock()
+	return lt.relayPath != nil
+}
+func TerminalOutSeqForTest(r *Relay, streamID string) uint64 {
+	h := r.termHubRef.Load()
+	if h == nil {
+		return 0
+	}
+	lt := h.getLive(streamID)
+	if lt == nil {
+		return 0
+	}
+	lt.mu.Lock()
+	defer lt.mu.Unlock()
+	return lt.outSeq
+}
+func TerminalDirectLegIDForTest(r *Relay, streamID string) string {
+	h := r.termHubRef.Load()
+	if h == nil {
+		return ""
+	}
+	lt := h.getLive(streamID)
+	if lt == nil {
+		return ""
+	}
+	lt.mu.Lock()
+	defer lt.mu.Unlock()
+	return lt.stream.LegID("direct")
+}
+func TerminalHasPendingDirectForTest(r *Relay, streamID string) bool {
+	h := r.termHubRef.Load()
+	if h == nil {
+		return false
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	_, ok := h.pendingDirect[streamID]
+	return ok
+}
+func PeerTerminalDirectForTest(r *Relay, peerID string) bool {
+	dm := r.directRef.Load()
+	if dm == nil {
+		return false
+	}
+	dp, ok := dm.activePeerFor(peerID)
+	return ok && dp.peerTerminalDirect.Load()
 }

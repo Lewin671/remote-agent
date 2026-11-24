@@ -693,6 +693,61 @@ public interface EffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.TerminalHistoryUpdatedEffect getTerminalHistoryUpdated();
 
   /**
+   * <code>.remoteagent.core.v1.DirectPcSendProbeEffect direct_pc_send_probe = 116 [json_name = "directPcSendProbe"];</code>
+   * @return Whether the directPcSendProbe field is set.
+   */
+  boolean hasDirectPcSendProbe();
+  /**
+   * <code>.remoteagent.core.v1.DirectPcSendProbeEffect direct_pc_send_probe = 116 [json_name = "directPcSendProbe"];</code>
+   * @return The directPcSendProbe.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectPcSendProbeEffect getDirectPcSendProbe();
+
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectSendEffect terminal_direct_send = 117 [json_name = "terminalDirectSend"];</code>
+   * @return Whether the terminalDirectSend field is set.
+   */
+  boolean hasTerminalDirectSend();
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectSendEffect terminal_direct_send = 117 [json_name = "terminalDirectSend"];</code>
+   * @return The terminalDirectSend.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalDirectSendEffect getTerminalDirectSend();
+
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectDeliverEffect terminal_direct_deliver = 118 [json_name = "terminalDirectDeliver"];</code>
+   * @return Whether the terminalDirectDeliver field is set.
+   */
+  boolean hasTerminalDirectDeliver();
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectDeliverEffect terminal_direct_deliver = 118 [json_name = "terminalDirectDeliver"];</code>
+   * @return The terminalDirectDeliver.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalDirectDeliverEffect getTerminalDirectDeliver();
+
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectAttachRelayEffect terminal_direct_attach_relay = 119 [json_name = "terminalDirectAttachRelay"];</code>
+   * @return Whether the terminalDirectAttachRelay field is set.
+   */
+  boolean hasTerminalDirectAttachRelay();
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectAttachRelayEffect terminal_direct_attach_relay = 119 [json_name = "terminalDirectAttachRelay"];</code>
+   * @return The terminalDirectAttachRelay.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalDirectAttachRelayEffect getTerminalDirectAttachRelay();
+
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectStateEffect terminal_direct_state = 120 [json_name = "terminalDirectState"];</code>
+   * @return Whether the terminalDirectState field is set.
+   */
+  boolean hasTerminalDirectState();
+  /**
+   * <code>.remoteagent.core.v1.TerminalDirectStateEffect terminal_direct_state = 120 [json_name = "terminalDirectState"];</code>
+   * @return The terminalDirectState.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalDirectStateEffect getTerminalDirectState();
+
+  /**
    * <pre>
    * Security engine (130-159 reserved for security).
    * </pre>

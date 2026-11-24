@@ -59,6 +59,7 @@ import androidx.core.view.WindowInsetsCompat
 import com.termux.terminal.TerminalColors
 import com.termux.view.TerminalView
 import io.github.lewin671.remoteagent.core.Remote
+import io.github.lewin671.remoteagent.core.TermConfirmKind
 import io.github.lewin671.remoteagent.ui.pal
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -399,6 +400,21 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                         RemoteTerminal.State.Connecting -> Row(verticalAlignment = Alignment.CenterVertically) {
                             Spinner(CardColors.text2, size = 15.dp)
                             Text(copy(UiMessages.terminalConnecting()), style = T.s15, color = CardColors.text2, modifier = Modifier.padding(start = 8.dp))
+                        }
+                        is RemoteTerminal.State.ConfirmRebuild -> {
+                            val body = when (s.kind) {
+                                TermConfirmKind.RESTART -> copy(UiMessages.terminalConfirmRebuildRestartBody())
+                                TermConfirmKind.INPUT -> copy(UiMessages.terminalConfirmRebuildInputBody())
+                            }
+                            Text(copy(UiMessages.terminalConfirmRebuildTitle()), style = T.s17b, color = CardColors.text)
+                            Text(
+                                body,
+                                style = T.s15, color = CardColors.text.copy(alpha = .7f), modifier = Modifier.padding(top = 6.dp, bottom = 14.dp),
+                            )
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                CardButton(copy(UiMessages.terminalConfirmCloseAction()), { term.closeFromConfirm() }, Modifier.weight(1f))
+                                CardButton(copy(UiMessages.terminalConfirmRebuildAction()), { term.confirmRebuild() }, Modifier.weight(1f), primary = true, enabled = online)
+                            }
                         }
                         is RemoteTerminal.State.Closed -> {
                             Text(copy(UiMessages.terminalClosed()), style = T.s17b, color = CardColors.text)

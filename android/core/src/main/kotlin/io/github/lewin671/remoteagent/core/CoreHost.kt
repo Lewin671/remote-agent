@@ -180,7 +180,12 @@ class CoreHost(
     var onDirectPcAddCandidates: (DirectPcAddCandidatesEffect) -> Unit = {}
     var onDirectPcConfirm: (DirectPcConfirmEffect) -> Unit = {}
     var onDirectPcClose: (DirectPcCloseEffect) -> Unit = {}
+    var onDirectPcSendProbe: (DirectPcSendProbeEffect) -> Unit = {}
     var onDirectDcReadStats: (DirectDcReadStatsEffect) -> Unit = {}
+    var onTerminalDirectSend: (TerminalDirectSendEffect) -> Unit = {}
+    var onTerminalDirectDeliver: (TerminalDirectDeliverEffect) -> Unit = {}
+    var onTerminalDirectAttachRelay: (TerminalDirectAttachRelayEffect) -> Unit = {}
+    var onTerminalDirectState: (TerminalDirectStateEffect) -> Unit = {}
     var onRenameClient: (RenameClientEffect) -> Unit = {}
     var onCheckUpdates: (CheckUpdatesEffect) -> Unit = {}
     var onPersistClientPrefs: (PersistClientPrefsEffect) -> Unit = {}
@@ -619,6 +624,7 @@ class CoreHost(
             Effect.EffectCase.DIRECT_PC_ADD_CANDIDATES -> onDirectPcAddCandidates(effect.directPcAddCandidates)
             Effect.EffectCase.DIRECT_PC_CONFIRM -> onDirectPcConfirm(effect.directPcConfirm)
             Effect.EffectCase.DIRECT_PC_CLOSE -> onDirectPcClose(effect.directPcClose)
+            Effect.EffectCase.DIRECT_PC_SEND_PROBE -> onDirectPcSendProbe(effect.directPcSendProbe)
             Effect.EffectCase.DIRECT_DC_READ_STATS -> onDirectDcReadStats(effect.directDcReadStats)
             Effect.EffectCase.RUN_MACHINE_COMMAND_RESULT -> {
                 val res = effect.runMachineCommandResult
@@ -649,6 +655,10 @@ class CoreHost(
                 val eff = effect.terminalHistoryUpdated
                 terminalHistoryUpdatedListeners[eff.terminalId]?.invoke(eff)
             }
+            Effect.EffectCase.TERMINAL_DIRECT_SEND -> onTerminalDirectSend(effect.terminalDirectSend)
+            Effect.EffectCase.TERMINAL_DIRECT_DELIVER -> onTerminalDirectDeliver(effect.terminalDirectDeliver)
+            Effect.EffectCase.TERMINAL_DIRECT_ATTACH_RELAY -> onTerminalDirectAttachRelay(effect.terminalDirectAttachRelay)
+            Effect.EffectCase.TERMINAL_DIRECT_STATE -> onTerminalDirectState(effect.terminalDirectState)
             Effect.EffectCase.SHARED_FILE_SCAN_LOCAL -> onSharedFileScanLocal(effect.sharedFileScanLocal)
             Effect.EffectCase.SHARED_FILE_INSPECT_DISK -> onSharedFileInspectDisk(effect.sharedFileInspectDisk)
             Effect.EffectCase.SHARED_FILE_WRITE_CHUNK -> onSharedFileWriteChunk(effect.sharedFileWriteChunk)

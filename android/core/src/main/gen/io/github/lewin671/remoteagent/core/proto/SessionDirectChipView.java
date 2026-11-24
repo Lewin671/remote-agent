@@ -313,6 +313,32 @@ public  final class SessionDirectChipView extends
     bitField0_ = (bitField0_ & ~0x00000008);
   }
 
+  public static final int TERMINAL_DIRECT_FIELD_NUMBER = 9;
+  private boolean terminalDirect_;
+  /**
+   * <code>bool terminal_direct = 9 [json_name = "terminalDirect"];</code>
+   * @return The terminalDirect.
+   */
+  @java.lang.Override
+  public boolean getTerminalDirect() {
+    return terminalDirect_;
+  }
+  /**
+   * <code>bool terminal_direct = 9 [json_name = "terminalDirect"];</code>
+   * @param value The terminalDirect to set.
+   */
+  private void setTerminalDirect(boolean value) {
+    
+    terminalDirect_ = value;
+  }
+  /**
+   * <code>bool terminal_direct = 9 [json_name = "terminalDirect"];</code>
+   */
+  private void clearTerminalDirect() {
+
+    terminalDirect_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SessionDirectChipView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -710,6 +736,34 @@ public  final class SessionDirectChipView extends
       return this;
     }
 
+    /**
+     * <code>bool terminal_direct = 9 [json_name = "terminalDirect"];</code>
+     * @return The terminalDirect.
+     */
+    @java.lang.Override
+    public boolean getTerminalDirect() {
+      return instance.getTerminalDirect();
+    }
+    /**
+     * <code>bool terminal_direct = 9 [json_name = "terminalDirect"];</code>
+     * @param value The terminalDirect to set.
+     * @return This builder for chaining.
+     */
+    public Builder setTerminalDirect(boolean value) {
+      copyOnWrite();
+      instance.setTerminalDirect(value);
+      return this;
+    }
+    /**
+     * <code>bool terminal_direct = 9 [json_name = "terminalDirect"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearTerminalDirect() {
+      copyOnWrite();
+      instance.clearTerminalDirect();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionDirectChipView)
   }
   @java.lang.Override
@@ -735,11 +789,12 @@ public  final class SessionDirectChipView extends
             "popoverTitle_",
             "popoverBody_",
             "popoverFoot_",
+            "terminalDirect_",
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0000\u0000\u0001\u0007\u0002\u0007\u0003\u0007" +
+              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0000\u0000\u0001\u0007\u0002\u0007\u0003\u0007" +
               "\u0004\u0007\u0005\u1009\u0000\u0006\u1009\u0001\u0007\u1009\u0002\b\u1009\u0003" +
-              "";
+              "\t\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

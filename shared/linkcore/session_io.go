@@ -161,8 +161,12 @@ type (
 	// FrameObserved names an authenticated frame received, for the trace.
 	FrameObserved struct{ Type, Use uint64 }
 	// PeerUnsupported reports that the peer answered Unsupported (control type 10)
-	// to a pending frame from this session.
-	PeerUnsupported struct{ Class, Type, Use uint64 }
+	// to a pending frame from this session. For Class 2 AttachPath rejections,
+	// Stream identifies the rejected terminal stream (N-K).
+	PeerUnsupported struct {
+		Class, Type, Use uint64
+		Stream           string
+	}
 	// SignalRejected reports that an inbound frame failed verification or state rules.
 	SignalRejected struct {
 		Use    uint64

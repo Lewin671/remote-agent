@@ -121,6 +121,7 @@ const (
 	jobSignal  // a PC message for that PC's sender
 	jobReceipt // an ACK, Unsupported or control reply: cached and sent once
 	jobControl // a frame for the control window
+	jobOneShot // a one-way control frame (terminal Ack / deferred reply) not tracked in controlWindow
 )
 
 // sealJob is a prepared frame waiting for its signature.
@@ -290,7 +291,11 @@ func (s *Session) Handle(e Event, now uint64) []Effect {
 		}
 	case QueueControl:
 		if s.active() && len(s.pcs[0].signal.Peer.Boot) == 32 {
-			s.controlUntil(e.Type, e.Body, now, now+10000, &sealJob{kind: jobControl, expiry: now + 10000})
+			kind := jobControl
+			if e.Type == ControlAck || e.Type == ControlInputStatusReply || e.Type == ControlBarrierReply {
+				kind = jobOneShot
+			}
+			s.controlUntil(e.Type, e.Body, now, now+10000, &sealJob{kind: kind, expiry: now + 10000})
 		}
 	case RetireRound:
 		s.retire()
@@ -634,6 +639,10 @@ func (s *Session) signed(e FrameSigned, now uint64) {
 		if err == nil && s.cfg.Allow() && now < job.deadline {
 			s.transmit(raw, now)
 		}
+	case jobOneShot:
+		if err == nil && s.active() && s.cfg.Allow() && now < job.deadline {
+			s.transmit(raw, now)
+		}
 	case jobControl:
 		if err != nil || !s.active() {
 			return
@@ -852,6 +861,10 @@ func (s *Session) receiveACK(raw []byte, o peerwire.Opened, now uint64) {
 	if err != nil {
 		return
 	}
+	if len(f[1].B) > 0 && len(f[6].B) == 0 {
+		s.receiveControl(o, now)
+		return
+	}
 	hash := f[6].B
 	matched, bootstrap := false, false
 	for _, sender := range s.senders() {
@@ -936,12 +949,53 @@ func (s *Session) receiveControl(o peerwire.Opened, now uint64) {
 		s.receiveUnsupported(o, now)
 		return
 	}
-	if o.Type == 11 || o.Type == 12 || o.Type == 13 {
+	if o.Type == 13 {
 		return
+	}
+	if o.Type == ControlInputStatusReply || o.Type == ControlBarrierReply {
+		s.ackMatchingControlReply(o.Type, o.Payload, now)
 	}
 	s.nextOp++
 	s.controls[s.nextOp] = o
 	s.emit(HandleControl{s.nextOp, o, now})
+}
+
+func (s *Session) ackMatchingControlReply(replyType uint64, payload []byte, now uint64) {
+	if s.controlWindow == nil || len(s.controlWindow.Pending) == 0 {
+		return
+	}
+	var reqType uint64
+	var msgName, reqName string
+	switch replyType {
+	case ControlInputStatusReply:
+		reqType, msgName, reqName = ControlInputStatus, "InputStatusReply", "InputStatus"
+	case ControlBarrierReply:
+		reqType, msgName, reqName = ControlBarrier, "BarrierReply", "Barrier"
+	default:
+		return
+	}
+	rf, err := peerwire.ParseMessage(payload, msgName)
+	if err != nil {
+		return
+	}
+	stream, id := rf[1].B, rf[2].B
+	var matched [][]byte
+	for _, pending := range s.controlWindow.Pending {
+		orig, err := s.openSent(pending.Raw, now)
+		if err != nil || orig.Context.Class != 2 || orig.Type != reqType {
+			continue
+		}
+		of, err := peerwire.ParseMessage(orig.Payload, reqName)
+		if err != nil {
+			continue
+		}
+		if bytes.Equal(of[1].B, stream) && bytes.Equal(of[2].B, id) {
+			matched = append(matched, pending.Hash)
+		}
+	}
+	for _, h := range matched {
+		s.ackAll(h)
+	}
 }
 
 func (s *Session) receiveUnsupported(o peerwire.Opened, now uint64) {
@@ -951,6 +1005,7 @@ func (s *Session) receiveUnsupported(o peerwire.Opened, now uint64) {
 	}
 	hash := f[4].B
 	var matchedUse uint64
+	var matchedStream string
 	matched := false
 	for _, sender := range s.senders() {
 		if pending := sender.Pending[string(hash)]; pending != nil {
@@ -960,6 +1015,11 @@ func (s *Session) receiveUnsupported(o peerwire.Opened, now uint64) {
 			}
 			matched = true
 			matchedUse = original.Context.Use
+			if original.Context.Class == 2 && original.Type == ControlAttachPath {
+				if ap, err := DecodeAttachPath(original.Payload); err == nil {
+					matchedStream = ap.Stream
+				}
+			}
 			break
 		}
 	}
@@ -975,7 +1035,7 @@ func (s *Session) receiveUnsupported(o peerwire.Opened, now uint64) {
 			p.pc = 0
 		}
 	}
-	s.emit(PeerUnsupported{Class: f[1].U, Type: f[2].U, Use: matchedUse})
+	s.emit(PeerUnsupported{Class: f[1].U, Type: f[2].U, Use: matchedUse, Stream: matchedStream})
 }
 
 func (s *Session) controlHandled(e ControlHandled, now uint64) {
@@ -987,6 +1047,9 @@ func (s *Session) controlHandled(e ControlHandled, now uint64) {
 	c := o.Context
 	typ, body := e.Type, e.Body
 	if typ == 0 {
+		if o.Type == ControlAck || o.Type == ControlInputStatusReply || o.Type == ControlBarrierReply {
+			return
+		}
 		typ = 10
 		body = peerwire.PB(peerwire.U(1, c.Class), peerwire.U(2, o.Type), peerwire.U(3, c.Seq), peerwire.B(4, o.Hash))
 	}

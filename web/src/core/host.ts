@@ -176,9 +176,14 @@ import {
   type DirectPcConfirmEffect,
   type DirectPcCreateEffect,
   type DirectPcDescribeEffect,
+  type DirectPcSendProbeEffect,
   type DirectPcSetRemoteEffect,
   type DirectPreferenceEntry,
   type DirectSignalSendEffect,
+  type TerminalDirectAttachRelayEffect,
+  type TerminalDirectDeliverEffect,
+  type TerminalDirectSendEffect,
+  type TerminalDirectStateEffect,
 } from "../gen/remoteagent/core/v1/transport_pb";
 import { ApprovalMode, SendMode, type Agent } from "../gen/remoteagent/v1/event_pb";
 import { UsageRangePreset, UsageStatsResponseSchema, type UsageStatsResponse } from "../gen/remoteagent/v1/local_pb";
@@ -410,7 +415,12 @@ export interface CoreExecutor {
   directPcAddCandidates?(eff: DirectPcAddCandidatesEffect): void;
   directPcConfirm?(eff: DirectPcConfirmEffect): void;
   directPcClose?(eff: DirectPcCloseEffect): void;
+  directPcSendProbe?(eff: DirectPcSendProbeEffect): void;
   directDcReadStats?(eff: DirectDcReadStatsEffect): void;
+  terminalDirectSend?(eff: TerminalDirectSendEffect): void;
+  terminalDirectDeliver?(eff: TerminalDirectDeliverEffect): void;
+  terminalDirectAttachRelay?(eff: TerminalDirectAttachRelayEffect): void;
+  terminalDirectState?(eff: TerminalDirectStateEffect): void;
 }
 
 export interface SessionWindowOptions {
@@ -3139,6 +3149,10 @@ export class CoreHost {
         this.executor?.directPcClose?.(val.value);
         break;
 
+      case "directPcSendProbe":
+        this.executor?.directPcSendProbe?.(val.value);
+        break;
+
       case "directDcReadStats":
         this.executor?.directDcReadStats?.(val.value);
         break;
@@ -3157,6 +3171,22 @@ export class CoreHost {
         this.terminalHistoryUpdatedListeners.get(val.value.terminalId)?.(val.value);
         break;
       }
+
+      case "terminalDirectSend":
+        this.executor?.terminalDirectSend?.(val.value);
+        break;
+
+      case "terminalDirectDeliver":
+        this.executor?.terminalDirectDeliver?.(val.value);
+        break;
+
+      case "terminalDirectAttachRelay":
+        this.executor?.terminalDirectAttachRelay?.(val.value);
+        break;
+
+      case "terminalDirectState":
+        this.executor?.terminalDirectState?.(val.value);
+        break;
 
       case "directRetryNowResult": {
         const list = this.retryNowWaiters.get(val.value.machineId);

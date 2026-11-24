@@ -1621,6 +1621,11 @@
 "terminal_closed_ended_note" = "The last frame before disconnection is shown below. The session has ended.";
 "terminal_closed_running_note" = "The last frame before disconnection is shown below. The session is still running; chat updates continue.";
 "terminal_computer_dimensions" = "On computer %1$lld×%2$lld";
+"terminal_confirm_close_action" = "Close terminal";
+"terminal_confirm_rebuild_action" = "Rebuild terminal";
+"terminal_confirm_rebuild_input_body" = "Some input may not have been delivered completely or has expired. Automatic resend is paused to prevent duplicate execution. Check the screen, then rebuild or close the terminal.";
+"terminal_confirm_rebuild_restart_body" = "The computer restarted or the terminal stream is no longer available, so unconfirmed input cannot be verified. Check the status, then rebuild or close the terminal.";
+"terminal_confirm_rebuild_title" = "Confirm before rebuilding terminal";
 "terminal_connecting" = "Connecting to terminal…";
 "terminal_disconnected" = "Terminal disconnected";
 "terminal_down" = "Down";
@@ -1660,6 +1665,7 @@
 "terminal_readonly" = "Reviewing history · Read only";
 "terminal_reconnect" = "Reconnect";
 "terminal_remote_dimensions" = "Remote %1$lld×%2$lld";
+"terminal_replay_overflow" = "Terminal output exceeded the replay buffer. Reconnect for the latest screen.";
 "terminal_restore" = "Restore";
 "terminal_right" = "Right";
 "terminal_size_changed" = "Remote size changed";
@@ -1712,7 +1718,7 @@
 "transport_diag_check_path" = "Local or public direct path";
 "transport_diag_check_peer" = "Computer reachable & responding";
 "transport_diag_check_retry" = "Background auto-retry";
-"transport_diag_connected_body" = "Loading and files are back on a direct connection.";
+"transport_diag_connected_body" = "Loading, files, and terminal are back on a direct connection.";
 "transport_diag_connected_title" = "Direct connected";
 "transport_diag_copy_permission" = "Couldn’t copy; check clipboard permission";
 "transport_diag_count" = "×%1$lld";
@@ -1844,9 +1850,9 @@
 "transport_file_speed_both" = "Direct %1$@ · Relay %2$@ MiB/s";
 "transport_file_speed_direct" = "Direct %1$@ MiB/s";
 "transport_file_speed_relay" = "Relay %1$@ MiB/s";
-"transport_footer" = "Messages and approvals are sent over both direct and relay, taking whichever arrives first; only relay is used in the background.";
+"transport_footer" = "Messages, approvals, and terminal input are sent over both direct and relay, taking whichever arrives first; only relay is used in the background.";
 "transport_popover_a11y" = "Direct connection active, tap for details";
-"transport_popover_direct_body" = "Loading and files use direct; messages and approvals are sent over both direct and relay, whichever arrives first.";
+"transport_popover_direct_body" = "Loading, files, and terminal use direct; messages, approvals, and terminal input are sent over both direct and relay, whichever arrives first.";
 "transport_popover_direct_title" = "Direct to %1$@";
 "transport_popover_direct_title_rtt" = "Direct to %2$@ · %1$@ ms";
 "transport_popover_file_only" = "Files only over direct";

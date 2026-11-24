@@ -6877,6 +6877,26 @@ public enum L10n {
         let key = "terminal_computer_dimensions"
         return format(key, locale: locale, args: [Int64(cols), Int64(rows)])
     }
+    public static func terminalConfirmCloseAction(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_confirm_close_action"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalConfirmRebuildAction(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_confirm_rebuild_action"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalConfirmRebuildInputBody(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_confirm_rebuild_input_body"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalConfirmRebuildRestartBody(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_confirm_rebuild_restart_body"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalConfirmRebuildTitle(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_confirm_rebuild_title"
+        return format(key, locale: locale, args: [])
+    }
     public static func terminalConnecting(locale: String = MessageLocale.current) -> String {
         let key = "terminal_connecting"
         return format(key, locale: locale, args: [])
@@ -7032,6 +7052,10 @@ public enum L10n {
     public static func terminalRemoteDimensions(cols: Int, rows: Int, locale: String = MessageLocale.current) -> String {
         let key = "terminal_remote_dimensions"
         return format(key, locale: locale, args: [Int64(cols), Int64(rows)])
+    }
+    public static func terminalReplayOverflow(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_replay_overflow"
+        return format(key, locale: locale, args: [])
     }
     public static func terminalRestore(locale: String = MessageLocale.current) -> String {
         let key = "terminal_restore"
@@ -15061,6 +15085,26 @@ public enum L10nMessage {
         let key = "terminal_computer_dimensions"
         return LocalizedMessage(key: key, arguments: [.integer(Int64(cols)), .integer(Int64(rows))])
     }
+    public static func terminalConfirmCloseAction() -> LocalizedMessage {
+        let key = "terminal_confirm_close_action"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalConfirmRebuildAction() -> LocalizedMessage {
+        let key = "terminal_confirm_rebuild_action"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalConfirmRebuildInputBody() -> LocalizedMessage {
+        let key = "terminal_confirm_rebuild_input_body"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalConfirmRebuildRestartBody() -> LocalizedMessage {
+        let key = "terminal_confirm_rebuild_restart_body"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalConfirmRebuildTitle() -> LocalizedMessage {
+        let key = "terminal_confirm_rebuild_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func terminalConnecting() -> LocalizedMessage {
         let key = "terminal_connecting"
         return LocalizedMessage(key: key, arguments: [])
@@ -15216,6 +15260,10 @@ public enum L10nMessage {
     public static func terminalRemoteDimensions(cols: Int, rows: Int) -> LocalizedMessage {
         let key = "terminal_remote_dimensions"
         return LocalizedMessage(key: key, arguments: [.integer(Int64(cols)), .integer(Int64(rows))])
+    }
+    public static func terminalReplayOverflow() -> LocalizedMessage {
+        let key = "terminal_replay_overflow"
+        return LocalizedMessage(key: key, arguments: [])
     }
     public static func terminalRestore() -> LocalizedMessage {
         let key = "terminal_restore"
@@ -18225,6 +18273,11 @@ public enum L10nText {
         case "terminal.closed_ended_note": return L10n.format("terminal_closed_ended_note", locale: locale, args: [])
         case "terminal.closed_running_note": return L10n.format("terminal_closed_running_note", locale: locale, args: [])
         case "terminal.computer_dimensions": return L10n.format("terminal_computer_dimensions", locale: locale, args: [intArg(args["cols"]), intArg(args["rows"])])
+        case "terminal.confirm_close_action": return L10n.format("terminal_confirm_close_action", locale: locale, args: [])
+        case "terminal.confirm_rebuild_action": return L10n.format("terminal_confirm_rebuild_action", locale: locale, args: [])
+        case "terminal.confirm_rebuild_input_body": return L10n.format("terminal_confirm_rebuild_input_body", locale: locale, args: [])
+        case "terminal.confirm_rebuild_restart_body": return L10n.format("terminal_confirm_rebuild_restart_body", locale: locale, args: [])
+        case "terminal.confirm_rebuild_title": return L10n.format("terminal_confirm_rebuild_title", locale: locale, args: [])
         case "terminal.connecting": return L10n.format("terminal_connecting", locale: locale, args: [])
         case "terminal.disconnected": return L10n.format("terminal_disconnected", locale: locale, args: [])
         case "terminal.down": return L10n.format("terminal_down", locale: locale, args: [])
@@ -18264,6 +18317,7 @@ public enum L10nText {
         case "terminal.readonly": return L10n.format("terminal_readonly", locale: locale, args: [])
         case "terminal.reconnect": return L10n.format("terminal_reconnect", locale: locale, args: [])
         case "terminal.remote_dimensions": return L10n.format("terminal_remote_dimensions", locale: locale, args: [intArg(args["cols"]), intArg(args["rows"])])
+        case "terminal.replay_overflow": return L10n.format("terminal_replay_overflow", locale: locale, args: [])
         case "terminal.restore": return L10n.format("terminal_restore", locale: locale, args: [])
         case "terminal.right": return L10n.format("terminal_right", locale: locale, args: [])
         case "terminal.size_changed": return L10n.format("terminal_size_changed", locale: locale, args: [])
@@ -18315,17 +18369,17 @@ public enum L10nText {
         case "tools.ios_completed_label": return L10n.format("tools_ios_completed_label", locale: locale, args: [strArg(args["title"])])
         case "tools.ios_edit": return L10n.format("tools_ios_edit", locale: locale, args: [])
         case "tools.ios_failed_label": return L10n.format("tools_ios_failed_label", locale: locale, args: [strArg(args["title"])])
+        default: return nil
+        }
+    }
+    private static func resolve12(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "tools.ios_running_label": return L10n.format("tools_ios_running_label", locale: locale, args: [strArg(args["title"])])
         case "tools.tool": return L10n.format("tools_tool", locale: locale, args: [])
         case "tools.waiting_sync": return L10n.format("tools_waiting_sync", locale: locale, args: [])
         case "transport.conn_footer_unsupported_app": return L10n.format("transport_conn_footer_unsupported_app", locale: locale, args: [])
         case "transport.detail_daemon_disabled": return L10n.format("transport_detail_daemon_disabled", locale: locale, args: [])
         case "transport.detail_relay_only": return L10n.format("transport_detail_relay_only", locale: locale, args: [])
-        default: return nil
-        }
-    }
-    private static func resolve12(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "transport.diag_at": return L10n.format("transport_diag_at", locale: locale, args: [strArg(args["seconds"]), strArg(args["state"])])
         case "transport.diag_cand": return L10n.format("transport_diag_cand", locale: locale, args: [intArg(args["count"]), strArg(args["kind"]), strArg(args["scope"])])
         case "transport.diag_channel": return L10n.format("transport_diag_channel", locale: locale, args: [])
@@ -18470,17 +18524,17 @@ public enum L10nText {
         case "transport.popover_direct_title": return L10n.format("transport_popover_direct_title", locale: locale, args: [strArg(args["name"])])
         case "transport.popover_direct_title_rtt": return L10n.format("transport_popover_direct_title_rtt", locale: locale, args: [strArg(args["ms"]), strArg(args["name"])])
         case "transport.popover_file_only": return L10n.format("transport_popover_file_only", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve13(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "transport.popover_read_only": return L10n.format("transport_popover_read_only", locale: locale, args: [])
         case "transport.popover_relay_body": return L10n.format("transport_popover_relay_body", locale: locale, args: [])
         case "transport.popover_relay_title": return L10n.format("transport_popover_relay_title", locale: locale, args: [strArg(args["name"])])
         case "transport.popover_settings": return L10n.format("transport_popover_settings", locale: locale, args: [])
         case "transport.popover_stable": return L10n.format("transport_popover_stable", locale: locale, args: [])
         case "transport.popover_switched_relay": return L10n.format("transport_popover_switched_relay", locale: locale, args: [])
-        default: return nil
-        }
-    }
-    private static func resolve13(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "transport.read_latency_both": return L10n.format("transport_read_latency_both", locale: locale, args: [strArg(args["direct"]), strArg(args["relay"])])
         case "transport.read_latency_direct": return L10n.format("transport_read_latency_direct", locale: locale, args: [strArg(args["direct"])])
         case "transport.read_latency_relay": return L10n.format("transport_read_latency_relay", locale: locale, args: [strArg(args["relay"])])

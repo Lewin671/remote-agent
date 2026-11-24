@@ -15,6 +15,7 @@ import com.termux.view.TerminalView
 import com.termux.view.TerminalViewClient
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.Remote
+import io.github.lewin671.remoteagent.core.TermConfirmKind
 import io.github.lewin671.remoteagent.core.TermConn
 import io.github.lewin671.remoteagent.core.TermListener
 import io.github.lewin671.remoteagent.core.proto.ConnState as CoreConnState
@@ -49,6 +50,8 @@ class RemoteTerminal(
         data object Connecting : State
         /** The screen shows the remote terminal and what is typed goes to it. */
         data object Live : State
+        /** Core requires explicit user confirmation before rebuilding after input/daemon uncertainty. */
+        data class ConfirmRebuild(val kind: TermConfirmKind) : State
         data class Closed(val reason: MessageText) : State
     }
 
@@ -228,6 +231,22 @@ class RemoteTerminal(
                     override fun onClose(reason: io.github.lewin671.remoteagent.core.MessageText) {
                         enqueue(TerminalFrame.newBuilder().setClosed(io.github.lewin671.remoteagent.ui.sessionText(reason)).build())
                     }
+
+                    override fun onConfirmRebuild(kind: TermConfirmKind) {
+                        main.post {
+                            if (gen == generation && _state.value !is State.Closed) {
+                                _state.value = State.ConfirmRebuild(kind)
+                            }
+                        }
+                    }
+
+                    override fun onRebuildConfirmed() {
+                        main.post {
+                            if (gen == generation && active) {
+                                openAttempt()
+                            }
+                        }
+                    }
                 })
                 if (gen == generation) { conn = c; goLive() } else c.close()
             } catch (e: Exception) {
@@ -347,6 +366,14 @@ class RemoteTerminal(
         _resizedElsewhere.value = false
         _fitted.value = fit.fitted
         return true
+    }
+
+    fun confirmRebuild() {
+        conn?.confirmRebuild()
+    }
+
+    fun closeFromConfirm() {
+        close()
     }
 
     fun close() {

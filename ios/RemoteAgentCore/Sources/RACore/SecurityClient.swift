@@ -498,6 +498,7 @@ final class CoreSecurityDriver: @unchecked Sendable {
     private let onStatusSnapshot: (@Sendable (PBSecurityWorkflowStatus) -> Void)?
     private let onTokenUpdated: (@Sendable (PBSecurityTokenUpdatedEffect) -> Void)?
     private let onDispatchCommand: (@Sendable (PBCoreDispatchCommandEffect) async -> PBCoreCommandOutcomeEvent)?
+    private let onTerminalEffect: (@Sendable (PBCoreEffect) -> Void)?
     private let queue = DispatchQueue(label: "ra.core.security.driver")
     private let lock = NSLock()
     private var closed = false
@@ -515,6 +516,7 @@ final class CoreSecurityDriver: @unchecked Sendable {
         onStatusSnapshot: (@Sendable (PBSecurityWorkflowStatus) -> Void)? = nil,
         onTokenUpdated: (@Sendable (PBSecurityTokenUpdatedEffect) -> Void)? = nil,
         onDispatchCommand: (@Sendable (PBCoreDispatchCommandEffect) async -> PBCoreCommandOutcomeEvent)? = nil,
+        onTerminalEffect: (@Sendable (PBCoreEffect) -> Void)? = nil,
         initialConfig: PBSecurityConfigEvent? = nil
     ) throws {
         self.core = try CoreClient()
@@ -525,6 +527,7 @@ final class CoreSecurityDriver: @unchecked Sendable {
         self.onStatusSnapshot = onStatusSnapshot
         self.onTokenUpdated = onTokenUpdated
         self.onDispatchCommand = onDispatchCommand
+        self.onTerminalEffect = onTerminalEffect
         enqueueEvent(PBCoreEvent.with {
             $0.entropyProvided = Self.buildEntropy(minIds: 16, minFloats: 16, minRandomBytes: 4096)
         })
@@ -744,6 +747,8 @@ final class CoreSecurityDriver: @unchecked Sendable {
                     fromDaemon: fromDaemon
                 )))
             }
+        case .terminalDirectSend, .terminalDirectDeliver, .terminalDirectAttachRelay, .terminalDirectState:
+            onTerminalEffect?(eff)
         default: break
         }
     }

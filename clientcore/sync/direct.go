@@ -216,6 +216,13 @@ func (e *Engine) handleDirectDcStats(ctx *StepContext, ev *corev1.DirectDcStatsE
 	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnDcStats(e.nowMs, ev.PcId, report))
 }
 
+func (e *Engine) handleDirectPcProbeReceived(ctx *StepContext, ev *corev1.DirectPcProbeReceivedEvent) {
+	if ev == nil || len(ev.Raw) == 0 {
+		return
+	}
+	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnPcProbeReceived(e.nowMs, ev.PcId, ev.Raw))
+}
+
 func convertDirectStatsReport(in *corev1.DirectStatsReport) *transport.StatsReport {
 	out := &transport.StatsReport{
 		DTLS: in.DtlsState,
@@ -388,6 +395,48 @@ func (e *Engine) handleTerminalStream(ctx *StepContext, ev *corev1.TerminalStrea
 		c.ClearTerminal(ev.TerminalId)
 		e.syncDirectTimers(ctx)
 	}
+}
+
+func (e *Engine) handleTerminalDirectOpen(ctx *StepContext, ev *corev1.TerminalDirectOpenEvent) {
+	if ev == nil || ev.StreamId == "" {
+		return
+	}
+	e.emitCoordEffects(ctx, e.ensureTransportCoord().TerminalDirectOpen(e.nowMs, ev.StreamId, ev.MachineId, ev.SessionId, ev.RelayLegId))
+}
+
+func (e *Engine) handleTerminalDirectClose(ctx *StepContext, ev *corev1.TerminalDirectCloseEvent) {
+	if ev == nil || ev.StreamId == "" {
+		return
+	}
+	e.emitCoordEffects(ctx, e.ensureTransportCoord().TerminalDirectClose(e.nowMs, ev.StreamId))
+}
+
+func (e *Engine) handleTerminalDirectLeg(ctx *StepContext, ev *corev1.TerminalDirectLegEvent) {
+	if ev == nil || ev.StreamId == "" {
+		return
+	}
+	e.emitCoordEffects(ctx, e.ensureTransportCoord().TerminalDirectLeg(e.nowMs, ev.StreamId, ev.LegId, ev.Direct, ev.Open, ev.PcId))
+}
+
+func (e *Engine) handleTerminalDirectInput(ctx *StepContext, ev *corev1.TerminalDirectInputEvent) {
+	if ev == nil || ev.StreamId == "" {
+		return
+	}
+	e.emitCoordEffects(ctx, e.ensureTransportCoord().TerminalDirectInput(e.nowMs, ev.StreamId, ev.Seq, ev.IsInput, ev.SealedEnvelope, ev.FrameHash))
+}
+
+func (e *Engine) handleTerminalDirectOutput(ctx *StepContext, ev *corev1.TerminalDirectOutputEvent) {
+	if ev == nil || ev.StreamId == "" {
+		return
+	}
+	e.emitCoordEffects(ctx, e.ensureTransportCoord().TerminalDirectOutput(e.nowMs, ev.StreamId, ev.Seq, ev.FrameHash, ev.Payload, ev.FromDirect, ev.PcId))
+}
+
+func (e *Engine) handleTerminalDirectConfirmRebuild(ctx *StepContext, ev *corev1.TerminalDirectConfirmRebuildAction) {
+	if ev == nil || ev.StreamId == "" {
+		return
+	}
+	e.emitCoordEffects(ctx, e.ensureTransportCoord().TerminalDirectConfirmRebuild(e.nowMs, ev.StreamId))
 }
 
 func (e *Engine) syncDirectWatched(ctx *StepContext) {
@@ -568,11 +617,66 @@ func (e *Engine) emitCoordEffects(ctx *StepContext, effs []transport.CoordEffect
 				},
 			})
 
+		case transport.CoordPcSendProbe:
+			ctx.emit(&corev1.Effect{
+				Effect: &corev1.Effect_DirectPcSendProbe{
+					DirectPcSendProbe: &corev1.DirectPcSendProbeEffect{
+						PcId: eff.PCID,
+						Raw:  eff.Raw,
+					},
+				},
+			})
+
 		case transport.CoordTerminalOpen:
 			ctx.emit(&corev1.Effect{
 				Effect: &corev1.Effect_TerminalReopen{
 					TerminalReopen: &corev1.TerminalReopenEffect{
 						TerminalId: eff.TerminalID,
+					},
+				},
+			})
+
+		case transport.CoordTerminalSend:
+			ctx.emit(&corev1.Effect{
+				Effect: &corev1.Effect_TerminalDirectSend{
+					TerminalDirectSend: &corev1.TerminalDirectSendEffect{
+						StreamId:       eff.StreamID,
+						SendRelay:      eff.SendRelay,
+						DirectPcId:     eff.DirectPCID,
+						SealedEnvelope: eff.SealedEnvelope,
+					},
+				},
+			})
+
+		case transport.CoordTerminalDeliver:
+			ctx.emit(&corev1.Effect{
+				Effect: &corev1.Effect_TerminalDirectDeliver{
+					TerminalDirectDeliver: &corev1.TerminalDirectDeliverEffect{
+						StreamId: eff.StreamID,
+						Payloads: eff.Payloads,
+					},
+				},
+			})
+
+		case transport.CoordTerminalAttachRelay:
+			ctx.emit(&corev1.Effect{
+				Effect: &corev1.Effect_TerminalDirectAttachRelay{
+					TerminalDirectAttachRelay: &corev1.TerminalDirectAttachRelayEffect{
+						StreamId:  eff.StreamID,
+						MachineId: eff.MachineID,
+						LegId:     eff.LegID,
+					},
+				},
+			})
+
+		case transport.CoordTerminalState:
+			ctx.emit(&corev1.Effect{
+				Effect: &corev1.Effect_TerminalDirectState{
+					TerminalDirectState: &corev1.TerminalDirectStateEffect{
+						StreamId:          eff.StreamID,
+						State:             eff.State,
+						Reason:            eff.Reason,
+						NeedsConfirmation: eff.NeedsConfirmation,
 					},
 				},
 			})
@@ -657,11 +761,13 @@ func (e *Engine) clearDirectTimerTracking() {
 	e.directTermAt = 0
 }
 
-func isInteractiveCommand(cmd *v1.Command) bool {
-	if cmd == nil {
+// isLegacyInteractiveCommand matches the 7 interactive commands accepted on
+// Phase 1 daemons over direct use=1 before Phase 2 capability negotiation.
+func isLegacyInteractiveCommand(prep *PreparedCommand) bool {
+	if prep == nil || prep.Command == nil {
 		return false
 	}
-	switch cmd.Kind.(type) {
+	switch prep.Command.Kind.(type) {
 	case *v1.Command_Send,
 		*v1.Command_Interrupt,
 		*v1.Command_ResolveApproval,
@@ -672,6 +778,13 @@ func isInteractiveCommand(cmd *v1.Command) bool {
 		return true
 	}
 	return false
+}
+
+func isDualSendCommand(prep *PreparedCommand) bool {
+	if prep == nil || prep.Command == nil {
+		return false
+	}
+	return prep.RouteHint == corev1.CommandRouteHint_COMMAND_ROUTE_HINT_NORMAL
 }
 
 func (e *Engine) trackCommandTransferLifecycle(cmd *v1.Command, machineID string) {

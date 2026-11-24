@@ -1753,6 +1753,450 @@ func (x *DirectPreferencesLoadedEvent) GetEntries() []*DirectPreferenceEntry {
 	return nil
 }
 
+type DirectPcProbeReceivedEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PcId          uint64                 `protobuf:"varint,1,opt,name=pc_id,json=pcId,proto3" json:"pc_id,omitempty"`
+	Raw           []byte                 `protobuf:"bytes,2,opt,name=raw,proto3" json:"raw,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DirectPcProbeReceivedEvent) Reset() {
+	*x = DirectPcProbeReceivedEvent{}
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DirectPcProbeReceivedEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DirectPcProbeReceivedEvent) ProtoMessage() {}
+
+func (x *DirectPcProbeReceivedEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DirectPcProbeReceivedEvent.ProtoReflect.Descriptor instead.
+func (*DirectPcProbeReceivedEvent) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *DirectPcProbeReceivedEvent) GetPcId() uint64 {
+	if x != nil {
+		return x.PcId
+	}
+	return 0
+}
+
+func (x *DirectPcProbeReceivedEvent) GetRaw() []byte {
+	if x != nil {
+		return x.Raw
+	}
+	return nil
+}
+
+type TerminalDirectOpenEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StreamId      string                 `protobuf:"bytes,1,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	MachineId     string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	SessionId     string                 `protobuf:"bytes,3,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	RelayLegId    []byte                 `protobuf:"bytes,4,opt,name=relay_leg_id,json=relayLegId,proto3" json:"relay_leg_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerminalDirectOpenEvent) Reset() {
+	*x = TerminalDirectOpenEvent{}
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalDirectOpenEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalDirectOpenEvent) ProtoMessage() {}
+
+func (x *TerminalDirectOpenEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalDirectOpenEvent.ProtoReflect.Descriptor instead.
+func (*TerminalDirectOpenEvent) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *TerminalDirectOpenEvent) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+func (x *TerminalDirectOpenEvent) GetMachineId() string {
+	if x != nil {
+		return x.MachineId
+	}
+	return ""
+}
+
+func (x *TerminalDirectOpenEvent) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *TerminalDirectOpenEvent) GetRelayLegId() []byte {
+	if x != nil {
+		return x.RelayLegId
+	}
+	return nil
+}
+
+type TerminalDirectCloseEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StreamId      string                 `protobuf:"bytes,1,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerminalDirectCloseEvent) Reset() {
+	*x = TerminalDirectCloseEvent{}
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalDirectCloseEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalDirectCloseEvent) ProtoMessage() {}
+
+func (x *TerminalDirectCloseEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalDirectCloseEvent.ProtoReflect.Descriptor instead.
+func (*TerminalDirectCloseEvent) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *TerminalDirectCloseEvent) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+type TerminalDirectLegEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StreamId      string                 `protobuf:"bytes,1,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	LegId         []byte                 `protobuf:"bytes,2,opt,name=leg_id,json=legId,proto3" json:"leg_id,omitempty"`
+	Direct        bool                   `protobuf:"varint,3,opt,name=direct,proto3" json:"direct,omitempty"`
+	Open          bool                   `protobuf:"varint,4,opt,name=open,proto3" json:"open,omitempty"`
+	PcId          uint64                 `protobuf:"varint,5,opt,name=pc_id,json=pcId,proto3" json:"pc_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerminalDirectLegEvent) Reset() {
+	*x = TerminalDirectLegEvent{}
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalDirectLegEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalDirectLegEvent) ProtoMessage() {}
+
+func (x *TerminalDirectLegEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalDirectLegEvent.ProtoReflect.Descriptor instead.
+func (*TerminalDirectLegEvent) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *TerminalDirectLegEvent) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+func (x *TerminalDirectLegEvent) GetLegId() []byte {
+	if x != nil {
+		return x.LegId
+	}
+	return nil
+}
+
+func (x *TerminalDirectLegEvent) GetDirect() bool {
+	if x != nil {
+		return x.Direct
+	}
+	return false
+}
+
+func (x *TerminalDirectLegEvent) GetOpen() bool {
+	if x != nil {
+		return x.Open
+	}
+	return false
+}
+
+func (x *TerminalDirectLegEvent) GetPcId() uint64 {
+	if x != nil {
+		return x.PcId
+	}
+	return 0
+}
+
+type TerminalDirectInputEvent struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	StreamId       string                 `protobuf:"bytes,1,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	Seq            uint64                 `protobuf:"varint,2,opt,name=seq,proto3" json:"seq,omitempty"`
+	IsInput        bool                   `protobuf:"varint,3,opt,name=is_input,json=isInput,proto3" json:"is_input,omitempty"`
+	SealedEnvelope []byte                 `protobuf:"bytes,4,opt,name=sealed_envelope,json=sealedEnvelope,proto3" json:"sealed_envelope,omitempty"`
+	FrameHash      []byte                 `protobuf:"bytes,5,opt,name=frame_hash,json=frameHash,proto3" json:"frame_hash,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *TerminalDirectInputEvent) Reset() {
+	*x = TerminalDirectInputEvent{}
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalDirectInputEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalDirectInputEvent) ProtoMessage() {}
+
+func (x *TerminalDirectInputEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalDirectInputEvent.ProtoReflect.Descriptor instead.
+func (*TerminalDirectInputEvent) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *TerminalDirectInputEvent) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+func (x *TerminalDirectInputEvent) GetSeq() uint64 {
+	if x != nil {
+		return x.Seq
+	}
+	return 0
+}
+
+func (x *TerminalDirectInputEvent) GetIsInput() bool {
+	if x != nil {
+		return x.IsInput
+	}
+	return false
+}
+
+func (x *TerminalDirectInputEvent) GetSealedEnvelope() []byte {
+	if x != nil {
+		return x.SealedEnvelope
+	}
+	return nil
+}
+
+func (x *TerminalDirectInputEvent) GetFrameHash() []byte {
+	if x != nil {
+		return x.FrameHash
+	}
+	return nil
+}
+
+type TerminalDirectOutputEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StreamId      string                 `protobuf:"bytes,1,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	Seq           uint64                 `protobuf:"varint,2,opt,name=seq,proto3" json:"seq,omitempty"`
+	FrameHash     []byte                 `protobuf:"bytes,3,opt,name=frame_hash,json=frameHash,proto3" json:"frame_hash,omitempty"`
+	Payload       []byte                 `protobuf:"bytes,4,opt,name=payload,proto3" json:"payload,omitempty"`
+	FromDirect    bool                   `protobuf:"varint,5,opt,name=from_direct,json=fromDirect,proto3" json:"from_direct,omitempty"`
+	PcId          uint64                 `protobuf:"varint,6,opt,name=pc_id,json=pcId,proto3" json:"pc_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerminalDirectOutputEvent) Reset() {
+	*x = TerminalDirectOutputEvent{}
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalDirectOutputEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalDirectOutputEvent) ProtoMessage() {}
+
+func (x *TerminalDirectOutputEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalDirectOutputEvent.ProtoReflect.Descriptor instead.
+func (*TerminalDirectOutputEvent) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *TerminalDirectOutputEvent) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+func (x *TerminalDirectOutputEvent) GetSeq() uint64 {
+	if x != nil {
+		return x.Seq
+	}
+	return 0
+}
+
+func (x *TerminalDirectOutputEvent) GetFrameHash() []byte {
+	if x != nil {
+		return x.FrameHash
+	}
+	return nil
+}
+
+func (x *TerminalDirectOutputEvent) GetPayload() []byte {
+	if x != nil {
+		return x.Payload
+	}
+	return nil
+}
+
+func (x *TerminalDirectOutputEvent) GetFromDirect() bool {
+	if x != nil {
+		return x.FromDirect
+	}
+	return false
+}
+
+func (x *TerminalDirectOutputEvent) GetPcId() uint64 {
+	if x != nil {
+		return x.PcId
+	}
+	return 0
+}
+
+type TerminalDirectConfirmRebuildAction struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StreamId      string                 `protobuf:"bytes,1,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerminalDirectConfirmRebuildAction) Reset() {
+	*x = TerminalDirectConfirmRebuildAction{}
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalDirectConfirmRebuildAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalDirectConfirmRebuildAction) ProtoMessage() {}
+
+func (x *TerminalDirectConfirmRebuildAction) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalDirectConfirmRebuildAction.ProtoReflect.Descriptor instead.
+func (*TerminalDirectConfirmRebuildAction) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *TerminalDirectConfirmRebuildAction) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
 type DirectSignalSendEffect struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ToDevice      []byte                 `protobuf:"bytes,1,opt,name=to_device,json=toDevice,proto3" json:"to_device,omitempty"`
@@ -1767,7 +2211,7 @@ type DirectSignalSendEffect struct {
 
 func (x *DirectSignalSendEffect) Reset() {
 	*x = DirectSignalSendEffect{}
-	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[23]
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1779,7 +2223,7 @@ func (x *DirectSignalSendEffect) String() string {
 func (*DirectSignalSendEffect) ProtoMessage() {}
 
 func (x *DirectSignalSendEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[23]
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1792,7 +2236,7 @@ func (x *DirectSignalSendEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirectSignalSendEffect.ProtoReflect.Descriptor instead.
 func (*DirectSignalSendEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{23}
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *DirectSignalSendEffect) GetToDevice() []byte {
@@ -1851,7 +2295,7 @@ type DirectPcCreateEffect struct {
 
 func (x *DirectPcCreateEffect) Reset() {
 	*x = DirectPcCreateEffect{}
-	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[24]
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1863,7 +2307,7 @@ func (x *DirectPcCreateEffect) String() string {
 func (*DirectPcCreateEffect) ProtoMessage() {}
 
 func (x *DirectPcCreateEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[24]
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1876,7 +2320,7 @@ func (x *DirectPcCreateEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirectPcCreateEffect.ProtoReflect.Descriptor instead.
 func (*DirectPcCreateEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{24}
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *DirectPcCreateEffect) GetRoundId() uint64 {
@@ -1932,7 +2376,7 @@ type DirectPcDescribeEffect struct {
 
 func (x *DirectPcDescribeEffect) Reset() {
 	*x = DirectPcDescribeEffect{}
-	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[25]
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1944,7 +2388,7 @@ func (x *DirectPcDescribeEffect) String() string {
 func (*DirectPcDescribeEffect) ProtoMessage() {}
 
 func (x *DirectPcDescribeEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[25]
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1957,7 +2401,7 @@ func (x *DirectPcDescribeEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirectPcDescribeEffect.ProtoReflect.Descriptor instead.
 func (*DirectPcDescribeEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{25}
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *DirectPcDescribeEffect) GetPcId() uint64 {
@@ -1992,7 +2436,7 @@ type DirectPcSetRemoteEffect struct {
 
 func (x *DirectPcSetRemoteEffect) Reset() {
 	*x = DirectPcSetRemoteEffect{}
-	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[26]
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2004,7 +2448,7 @@ func (x *DirectPcSetRemoteEffect) String() string {
 func (*DirectPcSetRemoteEffect) ProtoMessage() {}
 
 func (x *DirectPcSetRemoteEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[26]
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2017,7 +2461,7 @@ func (x *DirectPcSetRemoteEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirectPcSetRemoteEffect.ProtoReflect.Descriptor instead.
 func (*DirectPcSetRemoteEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{26}
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *DirectPcSetRemoteEffect) GetPcId() uint64 {
@@ -2052,7 +2496,7 @@ type DirectPcAddCandidatesEffect struct {
 
 func (x *DirectPcAddCandidatesEffect) Reset() {
 	*x = DirectPcAddCandidatesEffect{}
-	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[27]
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2064,7 +2508,7 @@ func (x *DirectPcAddCandidatesEffect) String() string {
 func (*DirectPcAddCandidatesEffect) ProtoMessage() {}
 
 func (x *DirectPcAddCandidatesEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[27]
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2077,7 +2521,7 @@ func (x *DirectPcAddCandidatesEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirectPcAddCandidatesEffect.ProtoReflect.Descriptor instead.
 func (*DirectPcAddCandidatesEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{27}
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *DirectPcAddCandidatesEffect) GetPcId() uint64 {
@@ -2112,7 +2556,7 @@ type DirectPcConfirmEffect struct {
 
 func (x *DirectPcConfirmEffect) Reset() {
 	*x = DirectPcConfirmEffect{}
-	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[28]
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2124,7 +2568,7 @@ func (x *DirectPcConfirmEffect) String() string {
 func (*DirectPcConfirmEffect) ProtoMessage() {}
 
 func (x *DirectPcConfirmEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[28]
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2137,7 +2581,7 @@ func (x *DirectPcConfirmEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirectPcConfirmEffect.ProtoReflect.Descriptor instead.
 func (*DirectPcConfirmEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{28}
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *DirectPcConfirmEffect) GetPcId() uint64 {
@@ -2171,7 +2615,7 @@ type DirectPcCloseEffect struct {
 
 func (x *DirectPcCloseEffect) Reset() {
 	*x = DirectPcCloseEffect{}
-	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[29]
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2183,7 +2627,7 @@ func (x *DirectPcCloseEffect) String() string {
 func (*DirectPcCloseEffect) ProtoMessage() {}
 
 func (x *DirectPcCloseEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[29]
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2196,7 +2640,7 @@ func (x *DirectPcCloseEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirectPcCloseEffect.ProtoReflect.Descriptor instead.
 func (*DirectPcCloseEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{29}
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *DirectPcCloseEffect) GetPcId() uint64 {
@@ -2222,7 +2666,7 @@ type DirectDcReadStatsEffect struct {
 
 func (x *DirectDcReadStatsEffect) Reset() {
 	*x = DirectDcReadStatsEffect{}
-	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[30]
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2234,7 +2678,7 @@ func (x *DirectDcReadStatsEffect) String() string {
 func (*DirectDcReadStatsEffect) ProtoMessage() {}
 
 func (x *DirectDcReadStatsEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[30]
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2247,7 +2691,7 @@ func (x *DirectDcReadStatsEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirectDcReadStatsEffect.ProtoReflect.Descriptor instead.
 func (*DirectDcReadStatsEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{30}
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *DirectDcReadStatsEffect) GetPcId() uint64 {
@@ -2270,7 +2714,7 @@ type DirectBulkRouteEffect struct {
 
 func (x *DirectBulkRouteEffect) Reset() {
 	*x = DirectBulkRouteEffect{}
-	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[31]
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2282,7 +2726,7 @@ func (x *DirectBulkRouteEffect) String() string {
 func (*DirectBulkRouteEffect) ProtoMessage() {}
 
 func (x *DirectBulkRouteEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[31]
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2295,7 +2739,7 @@ func (x *DirectBulkRouteEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirectBulkRouteEffect.ProtoReflect.Descriptor instead.
 func (*DirectBulkRouteEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{31}
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *DirectBulkRouteEffect) GetCallId() uint64 {
@@ -2342,7 +2786,7 @@ type TerminalReopenEffect struct {
 
 func (x *TerminalReopenEffect) Reset() {
 	*x = TerminalReopenEffect{}
-	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[32]
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2354,7 +2798,7 @@ func (x *TerminalReopenEffect) String() string {
 func (*TerminalReopenEffect) ProtoMessage() {}
 
 func (x *TerminalReopenEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[32]
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2367,7 +2811,7 @@ func (x *TerminalReopenEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TerminalReopenEffect.ProtoReflect.Descriptor instead.
 func (*TerminalReopenEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{32}
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *TerminalReopenEffect) GetTerminalId() string {
@@ -2387,7 +2831,7 @@ type DirectRetryNowResultEffect struct {
 
 func (x *DirectRetryNowResultEffect) Reset() {
 	*x = DirectRetryNowResultEffect{}
-	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[33]
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2399,7 +2843,7 @@ func (x *DirectRetryNowResultEffect) String() string {
 func (*DirectRetryNowResultEffect) ProtoMessage() {}
 
 func (x *DirectRetryNowResultEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[33]
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2412,7 +2856,7 @@ func (x *DirectRetryNowResultEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirectRetryNowResultEffect.ProtoReflect.Descriptor instead.
 func (*DirectRetryNowResultEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{33}
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *DirectRetryNowResultEffect) GetMachineId() string {
@@ -2425,6 +2869,306 @@ func (x *DirectRetryNowResultEffect) GetMachineId() string {
 func (x *DirectRetryNowResultEffect) GetStarted() bool {
 	if x != nil {
 		return x.Started
+	}
+	return false
+}
+
+type DirectPcSendProbeEffect struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PcId          uint64                 `protobuf:"varint,1,opt,name=pc_id,json=pcId,proto3" json:"pc_id,omitempty"`
+	Raw           []byte                 `protobuf:"bytes,2,opt,name=raw,proto3" json:"raw,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DirectPcSendProbeEffect) Reset() {
+	*x = DirectPcSendProbeEffect{}
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DirectPcSendProbeEffect) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DirectPcSendProbeEffect) ProtoMessage() {}
+
+func (x *DirectPcSendProbeEffect) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DirectPcSendProbeEffect.ProtoReflect.Descriptor instead.
+func (*DirectPcSendProbeEffect) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *DirectPcSendProbeEffect) GetPcId() uint64 {
+	if x != nil {
+		return x.PcId
+	}
+	return 0
+}
+
+func (x *DirectPcSendProbeEffect) GetRaw() []byte {
+	if x != nil {
+		return x.Raw
+	}
+	return nil
+}
+
+type TerminalDirectSendEffect struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	StreamId       string                 `protobuf:"bytes,1,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	SendRelay      bool                   `protobuf:"varint,2,opt,name=send_relay,json=sendRelay,proto3" json:"send_relay,omitempty"`
+	DirectPcId     uint64                 `protobuf:"varint,3,opt,name=direct_pc_id,json=directPcId,proto3" json:"direct_pc_id,omitempty"`
+	SealedEnvelope []byte                 `protobuf:"bytes,4,opt,name=sealed_envelope,json=sealedEnvelope,proto3" json:"sealed_envelope,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *TerminalDirectSendEffect) Reset() {
+	*x = TerminalDirectSendEffect{}
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalDirectSendEffect) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalDirectSendEffect) ProtoMessage() {}
+
+func (x *TerminalDirectSendEffect) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalDirectSendEffect.ProtoReflect.Descriptor instead.
+func (*TerminalDirectSendEffect) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *TerminalDirectSendEffect) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+func (x *TerminalDirectSendEffect) GetSendRelay() bool {
+	if x != nil {
+		return x.SendRelay
+	}
+	return false
+}
+
+func (x *TerminalDirectSendEffect) GetDirectPcId() uint64 {
+	if x != nil {
+		return x.DirectPcId
+	}
+	return 0
+}
+
+func (x *TerminalDirectSendEffect) GetSealedEnvelope() []byte {
+	if x != nil {
+		return x.SealedEnvelope
+	}
+	return nil
+}
+
+type TerminalDirectDeliverEffect struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StreamId      string                 `protobuf:"bytes,1,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	Payloads      [][]byte               `protobuf:"bytes,2,rep,name=payloads,proto3" json:"payloads,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerminalDirectDeliverEffect) Reset() {
+	*x = TerminalDirectDeliverEffect{}
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalDirectDeliverEffect) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalDirectDeliverEffect) ProtoMessage() {}
+
+func (x *TerminalDirectDeliverEffect) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalDirectDeliverEffect.ProtoReflect.Descriptor instead.
+func (*TerminalDirectDeliverEffect) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *TerminalDirectDeliverEffect) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+func (x *TerminalDirectDeliverEffect) GetPayloads() [][]byte {
+	if x != nil {
+		return x.Payloads
+	}
+	return nil
+}
+
+type TerminalDirectAttachRelayEffect struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StreamId      string                 `protobuf:"bytes,1,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	MachineId     string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	LegId         []byte                 `protobuf:"bytes,3,opt,name=leg_id,json=legId,proto3" json:"leg_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerminalDirectAttachRelayEffect) Reset() {
+	*x = TerminalDirectAttachRelayEffect{}
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalDirectAttachRelayEffect) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalDirectAttachRelayEffect) ProtoMessage() {}
+
+func (x *TerminalDirectAttachRelayEffect) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalDirectAttachRelayEffect.ProtoReflect.Descriptor instead.
+func (*TerminalDirectAttachRelayEffect) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *TerminalDirectAttachRelayEffect) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+func (x *TerminalDirectAttachRelayEffect) GetMachineId() string {
+	if x != nil {
+		return x.MachineId
+	}
+	return ""
+}
+
+func (x *TerminalDirectAttachRelayEffect) GetLegId() []byte {
+	if x != nil {
+		return x.LegId
+	}
+	return nil
+}
+
+type TerminalDirectStateEffect struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	StreamId          string                 `protobuf:"bytes,1,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	State             uint32                 `protobuf:"varint,2,opt,name=state,proto3" json:"state,omitempty"`
+	Reason            string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	NeedsConfirmation bool                   `protobuf:"varint,4,opt,name=needs_confirmation,json=needsConfirmation,proto3" json:"needs_confirmation,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *TerminalDirectStateEffect) Reset() {
+	*x = TerminalDirectStateEffect{}
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalDirectStateEffect) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalDirectStateEffect) ProtoMessage() {}
+
+func (x *TerminalDirectStateEffect) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_transport_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalDirectStateEffect.ProtoReflect.Descriptor instead.
+func (*TerminalDirectStateEffect) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_transport_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *TerminalDirectStateEffect) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+func (x *TerminalDirectStateEffect) GetState() uint32 {
+	if x != nil {
+		return x.State
+	}
+	return 0
+}
+
+func (x *TerminalDirectStateEffect) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *TerminalDirectStateEffect) GetNeedsConfirmation() bool {
+	if x != nil {
+		return x.NeedsConfirmation
 	}
 	return false
 }
@@ -2554,7 +3298,44 @@ const file_remoteagent_core_v1_transport_proto_rawDesc = "" +
 	"\x04kind\x18\x02 \x01(\x0e2,.remoteagent.core.v1.TerminalStreamEventKindR\x04kind\x12\x16\n" +
 	"\x06opened\x18\x03 \x01(\bR\x06opened\"d\n" +
 	"\x1cDirectPreferencesLoadedEvent\x12D\n" +
-	"\aentries\x18\x01 \x03(\v2*.remoteagent.core.v1.DirectPreferenceEntryR\aentries\"\xc6\x01\n" +
+	"\aentries\x18\x01 \x03(\v2*.remoteagent.core.v1.DirectPreferenceEntryR\aentries\"C\n" +
+	"\x1aDirectPcProbeReceivedEvent\x12\x13\n" +
+	"\x05pc_id\x18\x01 \x01(\x04R\x04pcId\x12\x10\n" +
+	"\x03raw\x18\x02 \x01(\fR\x03raw\"\x96\x01\n" +
+	"\x17TerminalDirectOpenEvent\x12\x1b\n" +
+	"\tstream_id\x18\x01 \x01(\tR\bstreamId\x12\x1d\n" +
+	"\n" +
+	"machine_id\x18\x02 \x01(\tR\tmachineId\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x03 \x01(\tR\tsessionId\x12 \n" +
+	"\frelay_leg_id\x18\x04 \x01(\fR\n" +
+	"relayLegId\"7\n" +
+	"\x18TerminalDirectCloseEvent\x12\x1b\n" +
+	"\tstream_id\x18\x01 \x01(\tR\bstreamId\"\x8d\x01\n" +
+	"\x16TerminalDirectLegEvent\x12\x1b\n" +
+	"\tstream_id\x18\x01 \x01(\tR\bstreamId\x12\x15\n" +
+	"\x06leg_id\x18\x02 \x01(\fR\x05legId\x12\x16\n" +
+	"\x06direct\x18\x03 \x01(\bR\x06direct\x12\x12\n" +
+	"\x04open\x18\x04 \x01(\bR\x04open\x12\x13\n" +
+	"\x05pc_id\x18\x05 \x01(\x04R\x04pcId\"\xac\x01\n" +
+	"\x18TerminalDirectInputEvent\x12\x1b\n" +
+	"\tstream_id\x18\x01 \x01(\tR\bstreamId\x12\x10\n" +
+	"\x03seq\x18\x02 \x01(\x04R\x03seq\x12\x19\n" +
+	"\bis_input\x18\x03 \x01(\bR\aisInput\x12'\n" +
+	"\x0fsealed_envelope\x18\x04 \x01(\fR\x0esealedEnvelope\x12\x1d\n" +
+	"\n" +
+	"frame_hash\x18\x05 \x01(\fR\tframeHash\"\xb9\x01\n" +
+	"\x19TerminalDirectOutputEvent\x12\x1b\n" +
+	"\tstream_id\x18\x01 \x01(\tR\bstreamId\x12\x10\n" +
+	"\x03seq\x18\x02 \x01(\x04R\x03seq\x12\x1d\n" +
+	"\n" +
+	"frame_hash\x18\x03 \x01(\fR\tframeHash\x12\x18\n" +
+	"\apayload\x18\x04 \x01(\fR\apayload\x12\x1f\n" +
+	"\vfrom_direct\x18\x05 \x01(\bR\n" +
+	"fromDirect\x12\x13\n" +
+	"\x05pc_id\x18\x06 \x01(\x04R\x04pcId\"A\n" +
+	"\"TerminalDirectConfirmRebuildAction\x12\x1b\n" +
+	"\tstream_id\x18\x01 \x01(\tR\bstreamId\"\xc6\x01\n" +
 	"\x16DirectSignalSendEffect\x12\x1b\n" +
 	"\tto_device\x18\x01 \x01(\fR\btoDevice\x12\x1f\n" +
 	"\vframe_class\x18\x02 \x01(\rR\n" +
@@ -2613,7 +3394,30 @@ const file_remoteagent_core_v1_transport_proto_rawDesc = "" +
 	"\x1aDirectRetryNowResultEffect\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x18\n" +
-	"\astarted\x18\x02 \x01(\bR\astarted*o\n" +
+	"\astarted\x18\x02 \x01(\bR\astarted\"@\n" +
+	"\x17DirectPcSendProbeEffect\x12\x13\n" +
+	"\x05pc_id\x18\x01 \x01(\x04R\x04pcId\x12\x10\n" +
+	"\x03raw\x18\x02 \x01(\fR\x03raw\"\xa1\x01\n" +
+	"\x18TerminalDirectSendEffect\x12\x1b\n" +
+	"\tstream_id\x18\x01 \x01(\tR\bstreamId\x12\x1d\n" +
+	"\n" +
+	"send_relay\x18\x02 \x01(\bR\tsendRelay\x12 \n" +
+	"\fdirect_pc_id\x18\x03 \x01(\x04R\n" +
+	"directPcId\x12'\n" +
+	"\x0fsealed_envelope\x18\x04 \x01(\fR\x0esealedEnvelope\"V\n" +
+	"\x1bTerminalDirectDeliverEffect\x12\x1b\n" +
+	"\tstream_id\x18\x01 \x01(\tR\bstreamId\x12\x1a\n" +
+	"\bpayloads\x18\x02 \x03(\fR\bpayloads\"t\n" +
+	"\x1fTerminalDirectAttachRelayEffect\x12\x1b\n" +
+	"\tstream_id\x18\x01 \x01(\tR\bstreamId\x12\x1d\n" +
+	"\n" +
+	"machine_id\x18\x02 \x01(\tR\tmachineId\x12\x15\n" +
+	"\x06leg_id\x18\x03 \x01(\fR\x05legId\"\x95\x01\n" +
+	"\x19TerminalDirectStateEffect\x12\x1b\n" +
+	"\tstream_id\x18\x01 \x01(\tR\bstreamId\x12\x14\n" +
+	"\x05state\x18\x02 \x01(\rR\x05state\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\x12-\n" +
+	"\x12needs_confirmation\x18\x04 \x01(\bR\x11needsConfirmation*o\n" +
 	"\x0fCommandRouteLeg\x12!\n" +
 	"\x1dCOMMAND_ROUTE_LEG_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17COMMAND_ROUTE_LEG_RELAY\x10\x01\x12\x1c\n" +
@@ -2658,47 +3462,59 @@ func file_remoteagent_core_v1_transport_proto_rawDescGZIP() []byte {
 }
 
 var file_remoteagent_core_v1_transport_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_remoteagent_core_v1_transport_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
+var file_remoteagent_core_v1_transport_proto_msgTypes = make([]protoimpl.MessageInfo, 46)
 var file_remoteagent_core_v1_transport_proto_goTypes = []any{
-	(CommandRouteLeg)(0),                   // 0: remoteagent.core.v1.CommandRouteLeg
-	(DirectStateKind)(0),                   // 1: remoteagent.core.v1.DirectStateKind
-	(DirectCandType)(0),                    // 2: remoteagent.core.v1.DirectCandType
-	(DirectCandFamily)(0),                  // 3: remoteagent.core.v1.DirectCandFamily
-	(TerminalStreamEventKind)(0),           // 4: remoteagent.core.v1.TerminalStreamEventKind
-	(*DirectIceCandidate)(nil),             // 5: remoteagent.core.v1.DirectIceCandidate
-	(*DirectPreferenceEntry)(nil),          // 6: remoteagent.core.v1.DirectPreferenceEntry
-	(*DirectStatsPair)(nil),                // 7: remoteagent.core.v1.DirectStatsPair
-	(*DirectStatsReport)(nil),              // 8: remoteagent.core.v1.DirectStatsReport
-	(*TransportConfigEvent)(nil),           // 9: remoteagent.core.v1.TransportConfigEvent
-	(*DirectSignalReceivedEvent)(nil),      // 10: remoteagent.core.v1.DirectSignalReceivedEvent
-	(*DirectSignalDeliveryEvent)(nil),      // 11: remoteagent.core.v1.DirectSignalDeliveryEvent
-	(*DirectPcCreatedEvent)(nil),           // 12: remoteagent.core.v1.DirectPcCreatedEvent
-	(*DirectPcDescriptionEvent)(nil),       // 13: remoteagent.core.v1.DirectPcDescriptionEvent
-	(*DirectPcRemoteSetEvent)(nil),         // 14: remoteagent.core.v1.DirectPcRemoteSetEvent
-	(*DirectPcCandidatesAddedEvent)(nil),   // 15: remoteagent.core.v1.DirectPcCandidatesAddedEvent
-	(*DirectPcLocalCandidateEvent)(nil),    // 16: remoteagent.core.v1.DirectPcLocalCandidateEvent
-	(*DirectPcStateEvent)(nil),             // 17: remoteagent.core.v1.DirectPcStateEvent
-	(*DirectPcStunErrorEvent)(nil),         // 18: remoteagent.core.v1.DirectPcStunErrorEvent
-	(*DirectPcClosedEvent)(nil),            // 19: remoteagent.core.v1.DirectPcClosedEvent
-	(*DirectDcStateEvent)(nil),             // 20: remoteagent.core.v1.DirectDcStateEvent
-	(*DirectDcStatsEvent)(nil),             // 21: remoteagent.core.v1.DirectDcStatsEvent
-	(*DirectRetryNowAction)(nil),           // 22: remoteagent.core.v1.DirectRetryNowAction
-	(*DirectRefreshDiagnosticsAction)(nil), // 23: remoteagent.core.v1.DirectRefreshDiagnosticsAction
-	(*DirectBulkTransferBeginEvent)(nil),   // 24: remoteagent.core.v1.DirectBulkTransferBeginEvent
-	(*DirectBulkTransferDoneEvent)(nil),    // 25: remoteagent.core.v1.DirectBulkTransferDoneEvent
-	(*TerminalStreamEvent)(nil),            // 26: remoteagent.core.v1.TerminalStreamEvent
-	(*DirectPreferencesLoadedEvent)(nil),   // 27: remoteagent.core.v1.DirectPreferencesLoadedEvent
-	(*DirectSignalSendEffect)(nil),         // 28: remoteagent.core.v1.DirectSignalSendEffect
-	(*DirectPcCreateEffect)(nil),           // 29: remoteagent.core.v1.DirectPcCreateEffect
-	(*DirectPcDescribeEffect)(nil),         // 30: remoteagent.core.v1.DirectPcDescribeEffect
-	(*DirectPcSetRemoteEffect)(nil),        // 31: remoteagent.core.v1.DirectPcSetRemoteEffect
-	(*DirectPcAddCandidatesEffect)(nil),    // 32: remoteagent.core.v1.DirectPcAddCandidatesEffect
-	(*DirectPcConfirmEffect)(nil),          // 33: remoteagent.core.v1.DirectPcConfirmEffect
-	(*DirectPcCloseEffect)(nil),            // 34: remoteagent.core.v1.DirectPcCloseEffect
-	(*DirectDcReadStatsEffect)(nil),        // 35: remoteagent.core.v1.DirectDcReadStatsEffect
-	(*DirectBulkRouteEffect)(nil),          // 36: remoteagent.core.v1.DirectBulkRouteEffect
-	(*TerminalReopenEffect)(nil),           // 37: remoteagent.core.v1.TerminalReopenEffect
-	(*DirectRetryNowResultEffect)(nil),     // 38: remoteagent.core.v1.DirectRetryNowResultEffect
+	(CommandRouteLeg)(0),                       // 0: remoteagent.core.v1.CommandRouteLeg
+	(DirectStateKind)(0),                       // 1: remoteagent.core.v1.DirectStateKind
+	(DirectCandType)(0),                        // 2: remoteagent.core.v1.DirectCandType
+	(DirectCandFamily)(0),                      // 3: remoteagent.core.v1.DirectCandFamily
+	(TerminalStreamEventKind)(0),               // 4: remoteagent.core.v1.TerminalStreamEventKind
+	(*DirectIceCandidate)(nil),                 // 5: remoteagent.core.v1.DirectIceCandidate
+	(*DirectPreferenceEntry)(nil),              // 6: remoteagent.core.v1.DirectPreferenceEntry
+	(*DirectStatsPair)(nil),                    // 7: remoteagent.core.v1.DirectStatsPair
+	(*DirectStatsReport)(nil),                  // 8: remoteagent.core.v1.DirectStatsReport
+	(*TransportConfigEvent)(nil),               // 9: remoteagent.core.v1.TransportConfigEvent
+	(*DirectSignalReceivedEvent)(nil),          // 10: remoteagent.core.v1.DirectSignalReceivedEvent
+	(*DirectSignalDeliveryEvent)(nil),          // 11: remoteagent.core.v1.DirectSignalDeliveryEvent
+	(*DirectPcCreatedEvent)(nil),               // 12: remoteagent.core.v1.DirectPcCreatedEvent
+	(*DirectPcDescriptionEvent)(nil),           // 13: remoteagent.core.v1.DirectPcDescriptionEvent
+	(*DirectPcRemoteSetEvent)(nil),             // 14: remoteagent.core.v1.DirectPcRemoteSetEvent
+	(*DirectPcCandidatesAddedEvent)(nil),       // 15: remoteagent.core.v1.DirectPcCandidatesAddedEvent
+	(*DirectPcLocalCandidateEvent)(nil),        // 16: remoteagent.core.v1.DirectPcLocalCandidateEvent
+	(*DirectPcStateEvent)(nil),                 // 17: remoteagent.core.v1.DirectPcStateEvent
+	(*DirectPcStunErrorEvent)(nil),             // 18: remoteagent.core.v1.DirectPcStunErrorEvent
+	(*DirectPcClosedEvent)(nil),                // 19: remoteagent.core.v1.DirectPcClosedEvent
+	(*DirectDcStateEvent)(nil),                 // 20: remoteagent.core.v1.DirectDcStateEvent
+	(*DirectDcStatsEvent)(nil),                 // 21: remoteagent.core.v1.DirectDcStatsEvent
+	(*DirectRetryNowAction)(nil),               // 22: remoteagent.core.v1.DirectRetryNowAction
+	(*DirectRefreshDiagnosticsAction)(nil),     // 23: remoteagent.core.v1.DirectRefreshDiagnosticsAction
+	(*DirectBulkTransferBeginEvent)(nil),       // 24: remoteagent.core.v1.DirectBulkTransferBeginEvent
+	(*DirectBulkTransferDoneEvent)(nil),        // 25: remoteagent.core.v1.DirectBulkTransferDoneEvent
+	(*TerminalStreamEvent)(nil),                // 26: remoteagent.core.v1.TerminalStreamEvent
+	(*DirectPreferencesLoadedEvent)(nil),       // 27: remoteagent.core.v1.DirectPreferencesLoadedEvent
+	(*DirectPcProbeReceivedEvent)(nil),         // 28: remoteagent.core.v1.DirectPcProbeReceivedEvent
+	(*TerminalDirectOpenEvent)(nil),            // 29: remoteagent.core.v1.TerminalDirectOpenEvent
+	(*TerminalDirectCloseEvent)(nil),           // 30: remoteagent.core.v1.TerminalDirectCloseEvent
+	(*TerminalDirectLegEvent)(nil),             // 31: remoteagent.core.v1.TerminalDirectLegEvent
+	(*TerminalDirectInputEvent)(nil),           // 32: remoteagent.core.v1.TerminalDirectInputEvent
+	(*TerminalDirectOutputEvent)(nil),          // 33: remoteagent.core.v1.TerminalDirectOutputEvent
+	(*TerminalDirectConfirmRebuildAction)(nil), // 34: remoteagent.core.v1.TerminalDirectConfirmRebuildAction
+	(*DirectSignalSendEffect)(nil),             // 35: remoteagent.core.v1.DirectSignalSendEffect
+	(*DirectPcCreateEffect)(nil),               // 36: remoteagent.core.v1.DirectPcCreateEffect
+	(*DirectPcDescribeEffect)(nil),             // 37: remoteagent.core.v1.DirectPcDescribeEffect
+	(*DirectPcSetRemoteEffect)(nil),            // 38: remoteagent.core.v1.DirectPcSetRemoteEffect
+	(*DirectPcAddCandidatesEffect)(nil),        // 39: remoteagent.core.v1.DirectPcAddCandidatesEffect
+	(*DirectPcConfirmEffect)(nil),              // 40: remoteagent.core.v1.DirectPcConfirmEffect
+	(*DirectPcCloseEffect)(nil),                // 41: remoteagent.core.v1.DirectPcCloseEffect
+	(*DirectDcReadStatsEffect)(nil),            // 42: remoteagent.core.v1.DirectDcReadStatsEffect
+	(*DirectBulkRouteEffect)(nil),              // 43: remoteagent.core.v1.DirectBulkRouteEffect
+	(*TerminalReopenEffect)(nil),               // 44: remoteagent.core.v1.TerminalReopenEffect
+	(*DirectRetryNowResultEffect)(nil),         // 45: remoteagent.core.v1.DirectRetryNowResultEffect
+	(*DirectPcSendProbeEffect)(nil),            // 46: remoteagent.core.v1.DirectPcSendProbeEffect
+	(*TerminalDirectSendEffect)(nil),           // 47: remoteagent.core.v1.TerminalDirectSendEffect
+	(*TerminalDirectDeliverEffect)(nil),        // 48: remoteagent.core.v1.TerminalDirectDeliverEffect
+	(*TerminalDirectAttachRelayEffect)(nil),    // 49: remoteagent.core.v1.TerminalDirectAttachRelayEffect
+	(*TerminalDirectStateEffect)(nil),          // 50: remoteagent.core.v1.TerminalDirectStateEffect
 }
 var file_remoteagent_core_v1_transport_proto_depIdxs = []int32{
 	2,  // 0: remoteagent.core.v1.DirectStatsPair.local_type:type_name -> remoteagent.core.v1.DirectCandType
@@ -2729,7 +3545,7 @@ func file_remoteagent_core_v1_transport_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_core_v1_transport_proto_rawDesc), len(file_remoteagent_core_v1_transport_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   34,
+			NumMessages:   46,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
