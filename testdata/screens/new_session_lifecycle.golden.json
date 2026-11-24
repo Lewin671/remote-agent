@@ -151,6 +151,10 @@
               "canSelectAutoMode": true
             },
             "autoIssue": "AUTO_ISSUE_KIND_NONE",
+            "prefsBlocked": true,
+            "prefsBlockedReason": {
+              "key": "projects.connect_to_edit"
+            },
             "capabilitiesLoaded": true,
             "maxImages": 6,
             "maxFiles": 6,
@@ -418,6 +422,10 @@
               "canSelectAutoMode": true
             },
             "autoIssue": "AUTO_ISSUE_KIND_NONE",
+            "prefsBlocked": true,
+            "prefsBlockedReason": {
+              "key": "common.loading"
+            },
             "capabilitiesLoaded": true,
             "maxImages": 6,
             "maxFiles": 6,
@@ -699,6 +707,10 @@
               "canSelectAutoMode": true
             },
             "autoIssue": "AUTO_ISSUE_KIND_NONE",
+            "prefsBlocked": true,
+            "prefsBlockedReason": {
+              "key": "common.loading"
+            },
             "capabilitiesLoaded": true,
             "maxImages": 6,
             "maxFiles": 6,
@@ -924,6 +936,10 @@
               "canSelectAutoMode": true
             },
             "autoIssue": "AUTO_ISSUE_KIND_NONE",
+            "prefsBlocked": true,
+            "prefsBlockedReason": {
+              "key": "common.loading"
+            },
             "capabilitiesLoaded": true,
             "maxImages": 6,
             "maxFiles": 6,
@@ -1152,6 +1168,10 @@
               "canSelectAutoMode": true
             },
             "autoIssue": "AUTO_ISSUE_KIND_NONE",
+            "prefsBlocked": true,
+            "prefsBlockedReason": {
+              "key": "common.loading"
+            },
             "capabilitiesLoaded": true,
             "maxImages": 6,
             "maxFiles": 6,

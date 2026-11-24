@@ -473,3 +473,62 @@ func TestBuildHomeEmptyLoadingKind(t *testing.T) {
 		t.Fatalf("expected HOME_EMPTY_KIND_NONE with active sessions, got %v", readyVM.GetEmpty().GetKind())
 	}
 }
+
+func TestNewSessionPrefsBlocked(t *testing.T) {
+	cases := []struct {
+		name        string
+		mutate      func(*State)
+		wantBlocked bool
+		wantKey     string
+	}{
+		{
+			name:        "disconnected",
+			mutate:      func(st *State) { st.World.Connection = lists.ConnReconnecting; st.World.PrefsLoaded = true },
+			wantBlocked: true,
+			wantKey:     "projects.connect_to_edit",
+		},
+		{
+			name:        "offline_unlinked",
+			mutate:      func(st *State) { st.World.Connection = lists.ConnOffline; st.World.PrefsLoaded = true },
+			wantBlocked: true,
+			wantKey:     "projects.connect_to_edit",
+		},
+		{
+			name:        "prefs_unloaded",
+			mutate:      func(st *State) { st.World.Connection = lists.ConnConnected; st.World.PrefsLoaded = false },
+			wantBlocked: true,
+			wantKey:     "common.loading",
+		},
+		{
+			name:        "clock_skewed",
+			mutate:      func(st *State) { st.World.Connection = lists.ConnConnected; st.World.PrefsLoaded = true; st.World.AccountClockSkewed = true },
+			wantBlocked: true,
+			wantKey:     "errors.this_device_s_clock_is_behind_the_account_state_remote",
+		},
+		{
+			name:        "control_lost",
+			mutate:      func(st *State) { st.World.Connection = lists.ConnConnected; st.World.PrefsLoaded = true; st.World.AccountControlLost = true },
+			wantBlocked: true,
+			wantKey:     "errors.remote_control_expired_saving_changes_session_control_and_new",
+		},
+		{
+			name:        "ready",
+			mutate:      func(st *State) { st.World.Connection = lists.ConnConnected; st.World.PrefsLoaded = true },
+			wantBlocked: false,
+			wantKey:     "",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			st := NewState(nil)
+			tc.mutate(st)
+			vm := BuildNewSession(st, "/work/app")
+			if vm.GetPrefsBlocked() != tc.wantBlocked {
+				t.Fatalf("prefsBlocked=%v, want %v", vm.GetPrefsBlocked(), tc.wantBlocked)
+			}
+			if gotKey := vm.GetPrefsBlockedReason().GetKey(); gotKey != tc.wantKey {
+				t.Fatalf("prefsBlockedReason.key=%q, want %q", gotKey, tc.wantKey)
+			}
+		})
+	}
+}
