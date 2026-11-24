@@ -10,12 +10,8 @@ import UIKit
 @testable import RemoteAgent
 
 private func nextSignal<T: Sendable>(_ stream: AsyncStream<T>) async -> T? {
-    await withTaskGroup(of: T?.self) { group in
-        group.addTask { var it = stream.makeAsyncIterator(); return await it.next() }
-        group.addTask { try? await Task.sleep(for: .seconds(5)); return nil }
-        defer { group.cancelAll() }
-        return await group.next() ?? nil
-    }
+    var it = stream.makeAsyncIterator()
+    return await it.next()
 }
 
 /// In-process upload responder for real-Core attachment smoke tests.
@@ -445,11 +441,33 @@ private final class FakeUploadDaemon: @unchecked Sendable {
         var pb: CVPixelBuffer?
         CVPixelBufferCreate(kCFAllocatorDefault, 32, 32, kCVPixelFormatType_32ARGB, nil, &pb)
         let buffer = try #require(pb)
-        while !input.isReadyForMoreMediaData { try await Task.sleep(for: .milliseconds(5)) }
-        #expect(adaptor.append(buffer, withPresentationTime: .zero))
-        while !input.isReadyForMoreMediaData { try await Task.sleep(for: .milliseconds(5)) }
-        #expect(adaptor.append(buffer, withPresentationTime: CMTime(value: 1, timescale: 2)))
-        input.markAsFinished()
+        let writerQueue = DispatchQueue(label: "att-vid-test-writer")
+        let frames: [CMTime] = [.zero, CMTime(value: 1, timescale: 2)]
+        final class FrameFeed: @unchecked Sendable {
+            var index = 0
+            var appended = 0
+            var finished = false
+        }
+        let feed = FrameFeed()
+        nonisolated(unsafe) let uInput = input
+        nonisolated(unsafe) let uAdaptor = adaptor
+        nonisolated(unsafe) let uBuffer = buffer
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            uInput.requestMediaDataWhenReady(on: writerQueue) {
+                while uInput.isReadyForMoreMediaData && feed.index < frames.count {
+                    if uAdaptor.append(uBuffer, withPresentationTime: frames[feed.index]) {
+                        feed.appended += 1
+                    }
+                    feed.index += 1
+                }
+                if feed.index >= frames.count && !feed.finished {
+                    feed.finished = true
+                    uInput.markAsFinished()
+                    done.resume()
+                }
+            }
+        }
+        #expect(feed.appended == frames.count)
         await writer.finishWriting()
         #expect(writer.status == .completed)
 
