@@ -2225,7 +2225,7 @@ actor CoreHost: SyncEngine {
             case .directRetryNowResult(let eff):
                 resumeRetryNowWaiters(machineID: eff.machineID, started: eff.started)
 
-            case .runMachineCommandResult:
+            case .runMachineCommandResult, .cancelDispatch:
                 // iOS still uses its legacy command path until migrated.
                 break
 

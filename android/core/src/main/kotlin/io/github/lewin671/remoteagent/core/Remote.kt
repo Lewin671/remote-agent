@@ -452,12 +452,14 @@ class Remote(
             inFlightDispatches[eff.attemptId] = eff to job
             job.invokeOnCompletion { inFlightDispatches.remove(eff.attemptId) }
         }
-        coreHost.onCancelMachineCommand = { machineId, sessionId, command ->
-            val want = command.toBuilder().setProtocolVersion(PEER_PROTOCOL_VERSION).build().toByteArray()
-            for ((aid, pair) in inFlightDispatches.entries.toList()) {
-                val (eff, job) = pair
-                if (eff.machineId == machineId && eff.sessionId == sessionId && eff.commandBytes.toByteArray().contentEquals(want)) {
-                    if (inFlightDispatches.remove(aid, pair)) job.cancel()
+        coreHost.onCancelDispatch = { eff ->
+            val rid = eff.requestId
+            if (rid.isNotEmpty()) {
+                for ((aid, pair) in inFlightDispatches.entries.toList()) {
+                    val (dispatched, job) = pair
+                    if (dispatched.requestId == rid) {
+                        if (inFlightDispatches.remove(aid, pair)) job.cancel()
+                    }
                 }
             }
         }

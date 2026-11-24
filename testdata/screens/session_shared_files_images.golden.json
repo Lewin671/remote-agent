@@ -1747,6 +1747,11 @@
       "effects": {
         "effects": [
           {
+            "cancelDispatch": {
+              "requestId": "r-3"
+            }
+          },
+          {
             "render": {
               "screens": [
                 "SCREEN_TARGET_SESSION"

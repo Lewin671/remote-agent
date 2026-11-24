@@ -9668,6 +9668,32 @@ func (m *DispatchCommandEffect) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DispatchCommandEffect)
 }
 
+type CancelDispatchEffect struct {
+	_         [0]func()
+	RequestId string
+}
+
+func (m *CancelDispatchEffect) GetRequestId() string {
+	if m != nil {
+		return m.RequestId
+	}
+	return ""
+}
+
+var LitewireDesc_CancelDispatchEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(CancelDispatchEffect{}.RequestId), Kind: litewire.KindString},
+	},
+}
+
+func (m *CancelDispatchEffect) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *CancelDispatchEffect) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_CancelDispatchEffect)
+}
+
 type SaveHomeScopeEffect struct {
 	_          [0]func()
 	ScopeKey   string
@@ -10088,6 +10114,13 @@ type Effect_RunMachineCommandResult struct {
 }
 
 func (*Effect_RunMachineCommandResult) isEffect_Effect() {}
+
+type Effect_CancelDispatch struct {
+	_              [0]func()
+	CancelDispatch *CancelDispatchEffect
+}
+
+func (*Effect_CancelDispatch) isEffect_Effect() {}
 
 type Effect_ScheduleMachinePoll struct {
 	_                   [0]func()
@@ -10596,6 +10629,12 @@ func (m *Effect) GetRunMachineCommandResult() *RunMachineCommandResultEffect {
 	}
 	return nil
 }
+func (m *Effect) GetCancelDispatch() *CancelDispatchEffect {
+	if x, ok := m.GetEffect().(*Effect_CancelDispatch); ok && x != nil {
+		return x.CancelDispatch
+	}
+	return nil
+}
 func (m *Effect) GetScheduleMachinePoll() *ScheduleMachinePollEffect {
 	if x, ok := m.GetEffect().(*Effect_ScheduleMachinePoll); ok && x != nil {
 		return x.ScheduleMachinePoll
@@ -11067,6 +11106,10 @@ func (m *Effect) appendMarshalEffectPart1(b []byte) ([]byte, bool) {
 		if x != nil && x.RunMachineCommandResult != nil {
 			onum, omsg = 18, x.RunMachineCommandResult
 		}
+	case *Effect_CancelDispatch:
+		if x != nil && x.CancelDispatch != nil {
+			onum, omsg = 19, x.CancelDispatch
+		}
 	case *Effect_ScheduleMachinePoll:
 		if x != nil && x.ScheduleMachinePoll != nil {
 			onum, omsg = 70, x.ScheduleMachinePoll
@@ -11091,10 +11134,6 @@ func (m *Effect) appendMarshalEffectPart1(b []byte) ([]byte, bool) {
 		if x != nil && x.PrepareCleanupSession != nil {
 			onum, omsg = 75, x.PrepareCleanupSession
 		}
-	case *Effect_UsageCacheWrite:
-		if x != nil && x.UsageCacheWrite != nil {
-			onum, omsg = 76, x.UsageCacheWrite
-		}
 	default:
 		return b, false
 	}
@@ -11109,6 +11148,10 @@ func (m *Effect) appendMarshalEffectPart2(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_UsageCacheWrite:
+		if x != nil && x.UsageCacheWrite != nil {
+			onum, omsg = 76, x.UsageCacheWrite
+		}
 	case *Effect_DraftStorageList:
 		if x != nil && x.DraftStorageList != nil {
 			onum, omsg = 80, x.DraftStorageList
@@ -11153,10 +11196,6 @@ func (m *Effect) appendMarshalEffectPart2(b []byte) ([]byte, bool) {
 		if x != nil && x.SessionResendAttachments != nil {
 			onum, omsg = 41, x.SessionResendAttachments
 		}
-	case *Effect_SharedFileScanLocal:
-		if x != nil && x.SharedFileScanLocal != nil {
-			onum, omsg = 42, x.SharedFileScanLocal
-		}
 	default:
 		return b, false
 	}
@@ -11171,6 +11210,10 @@ func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_SharedFileScanLocal:
+		if x != nil && x.SharedFileScanLocal != nil {
+			onum, omsg = 42, x.SharedFileScanLocal
+		}
 	case *Effect_SharedFileInspectDisk:
 		if x != nil && x.SharedFileInspectDisk != nil {
 			onum, omsg = 43, x.SharedFileInspectDisk
@@ -11215,10 +11258,6 @@ func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
 		if x != nil && x.ScheduleLoadSeen != nil {
 			onum, omsg = 62, x.ScheduleLoadSeen
 		}
-	case *Effect_ScheduleSaveSeen:
-		if x != nil && x.ScheduleSaveSeen != nil {
-			onum, omsg = 63, x.ScheduleSaveSeen
-		}
 	default:
 		return b, false
 	}
@@ -11233,6 +11272,10 @@ func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_ScheduleSaveSeen:
+		if x != nil && x.ScheduleSaveSeen != nil {
+			onum, omsg = 63, x.ScheduleSaveSeen
+		}
 	case *Effect_ScheduleDismissNotifications:
 		if x != nil && x.ScheduleDismissNotifications != nil {
 			onum, omsg = 64, x.ScheduleDismissNotifications
@@ -11277,10 +11320,6 @@ func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
 		if x != nil && x.DirectBulkRoute != nil {
 			onum, omsg = 111, x.DirectBulkRoute
 		}
-	case *Effect_TerminalReopen:
-		if x != nil && x.TerminalReopen != nil {
-			onum, omsg = 112, x.TerminalReopen
-		}
 	default:
 		return b, false
 	}
@@ -11295,6 +11334,10 @@ func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_TerminalReopen:
+		if x != nil && x.TerminalReopen != nil {
+			onum, omsg = 112, x.TerminalReopen
+		}
 	case *Effect_DirectRetryNowResult:
 		if x != nil && x.DirectRetryNowResult != nil {
 			onum, omsg = 113, x.DirectRetryNowResult
@@ -11339,10 +11382,6 @@ func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
 		if x != nil && x.SecurityWorkflowResult != nil {
 			onum, omsg = 142, x.SecurityWorkflowResult
 		}
-	case *Effect_SecurityStatusChanged:
-		if x != nil && x.SecurityStatusChanged != nil {
-			onum, omsg = 143, x.SecurityStatusChanged
-		}
 	default:
 		return b, false
 	}
@@ -11357,6 +11396,10 @@ func (m *Effect) appendMarshalEffectPart6(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_SecurityStatusChanged:
+		if x != nil && x.SecurityStatusChanged != nil {
+			onum, omsg = 143, x.SecurityStatusChanged
+		}
 	case *Effect_SecurityNotifyOpened:
 		if x != nil && x.SecurityNotifyOpened != nil {
 			onum, omsg = 144, x.SecurityNotifyOpened

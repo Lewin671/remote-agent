@@ -378,7 +378,7 @@ export interface CoreExecutor {
   writeCache(eff: CacheWriteEffect): Promise<void>;
   deleteCache(eff: CacheDeleteEffect): Promise<void>;
   executeRpc(eff: RpcEffect): Promise<Event>;
-  executeCommandAttempt(eff: DispatchCommandEffect): Promise<CommandOutcomeEvent>;
+  executeCommandAttempt(eff: DispatchCommandEffect, signal?: AbortSignal): Promise<CommandOutcomeEvent>;
   applySyncStateView(view: SyncStateView): void;
   readScheduleCache?(opId: bigint, machineId: string): Promise<ScheduleCacheLoadedEvent>;
   deleteScheduleCache?(machineId: string): Promise<void>;
@@ -830,6 +830,7 @@ export class CoreHost {
   private usageHydratedMachines = new Set<string>();
   private nextMachineCmdOpId = 0n;
   private machineCmdWaiters = new Map<bigint, { resolve: () => void; reject: (err: Error) => void }>();
+  private inFlightDispatches = new Map<string, Map<string, AbortController>>();
   private retryNowWaiters = new Map<string, Array<(started: boolean) => void>>();
   private terminalReopenListeners = new Map<string, () => void>();
 
@@ -2711,11 +2712,30 @@ export class CoreHost {
         break;
 
       case "dispatchCommand": {
+        if (!this.executor) break;
         const cmdEff = val.value;
-        void this.executor?.executeCommandAttempt(cmdEff).then(
-          (value) => !this.closed && this.emit({ case: "commandOutcome", value }),
+        const ac = new AbortController();
+        let byAttempt = this.inFlightDispatches.get(cmdEff.requestId);
+        if (!byAttempt) {
+          byAttempt = new Map();
+          this.inFlightDispatches.set(cmdEff.requestId, byAttempt);
+        }
+        byAttempt.set(cmdEff.attemptId, ac);
+        const cleanup = () => {
+          const map = this.inFlightDispatches.get(cmdEff.requestId);
+          if (map) {
+            map.delete(cmdEff.attemptId);
+            if (map.size === 0) this.inFlightDispatches.delete(cmdEff.requestId);
+          }
+        };
+        void this.executor.executeCommandAttempt(cmdEff, ac.signal).then(
+          (value) => {
+            cleanup();
+            if (!this.closed && !ac.signal.aborted) this.emit({ case: "commandOutcome", value });
+          },
           (err) => {
-            if (this.closed) return;
+            cleanup();
+            if (this.closed || ac.signal.aborted) return;
             const c = err as { code?: string; fromDaemon?: boolean; outcome?: string; message?: string };
             const value = c?.fromDaemon
               ? create(CommandOutcomeEventSchema, {
@@ -2741,6 +2761,15 @@ export class CoreHost {
             this.emit({ case: "commandOutcome", value });
           },
         );
+        break;
+      }
+
+      case "cancelDispatch": {
+        const map = this.inFlightDispatches.get(val.value.requestId);
+        if (map) {
+          this.inFlightDispatches.delete(val.value.requestId);
+          for (const ac of map.values()) ac.abort();
+        }
         break;
       }
 
@@ -3321,6 +3350,10 @@ export class CoreHost {
     this.machineWatchCounts.clear();
     this.machineWatchActive.clear();
     this.terminalReopenListeners.clear();
+    for (const map of this.inFlightDispatches.values()) {
+      for (const ac of map.values()) ac.abort();
+    }
+    this.inFlightDispatches.clear();
     for (const w of this.machineCmdWaiters.values()) {
       w.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
     }

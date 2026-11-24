@@ -4664,6 +4664,18 @@ public struct PBCoreDispatchCommandEffect: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
+public struct PBCoreCancelDispatchEffect: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var requestID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 public struct PBCoreSaveHomeScopeEffect: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -4945,6 +4957,14 @@ public struct PBCoreEffect: Sendable {
       return PBCoreRunMachineCommandResultEffect()
     }
     set {effect = .runMachineCommandResult(newValue)}
+  }
+
+  public var cancelDispatch: PBCoreCancelDispatchEffect {
+    get {
+      if case .cancelDispatch(let v)? = effect {return v}
+      return PBCoreCancelDispatchEffect()
+    }
+    set {effect = .cancelDispatch(newValue)}
   }
 
   public var scheduleMachinePoll: PBScheduleMachinePollEffect {
@@ -5424,6 +5444,7 @@ public struct PBCoreEffect: Sendable {
     case attachmentsSettled(PBCoreAttachmentsSettledEffect)
     case requestEntropy(PBCoreRequestEntropyEffect)
     case runMachineCommandResult(PBCoreRunMachineCommandResultEffect)
+    case cancelDispatch(PBCoreCancelDispatchEffect)
     case scheduleMachinePoll(PBScheduleMachinePollEffect)
     case directPreference(PBDirectPreferenceEffect)
     case renameClient(PBRenameClientEffect)
@@ -14020,6 +14041,36 @@ extension PBCoreDispatchCommandEffect: SwiftProtobuf.Message, SwiftProtobuf._Mes
   }
 }
 
+extension PBCoreCancelDispatchEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CancelDispatchEffect"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}request_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.requestID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.requestID.isEmpty {
+      try visitor.visitSingularStringField(value: self.requestID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreCancelDispatchEffect, rhs: PBCoreCancelDispatchEffect) -> Bool {
+    if lhs.requestID != rhs.requestID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 extension PBCoreSaveHomeScopeEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SaveHomeScopeEffect"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}scope_key\0\u{3}scope_token\0")
@@ -14315,7 +14366,7 @@ extension PBCoreRunMachineCommandResultEffect: SwiftProtobuf.Message, SwiftProto
 
 extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Effect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}render\0\u{3}open_stream\0\u{3}close_stream\0\u{3}ensure_token\0\u{3}discard_token\0\u{4}\u{2}schedule_timer\0\u{3}cancel_timer\0\u{3}cache_read\0\u{3}cache_write\0\u{3}cache_delete\0\u{1}rpc\0\u{3}dispatch_command\0\u{3}save_home_scope\0\u{1}navigate\0\u{3}attachments_settled\0\u{3}request_entropy\0\u{3}run_machine_command_result\0\u{4}\u{16}session_restore_composer\0\u{3}session_resend_attachments\0\u{3}shared_file_scan_local\0\u{3}shared_file_inspect_disk\0\u{3}shared_file_write_chunk\0\u{3}shared_file_verify_and_commit\0\u{3}shared_file_delete_partial\0\u{3}shared_file_delete_local\0\u{3}shared_file_delete_session\0\u{3}shared_file_clear_all\0\u{3}shared_file_completed\0\u{4}\u{a}schedule_read_cache\0\u{3}schedule_delete_cache\0\u{3}schedule_load_seen\0\u{3}schedule_save_seen\0\u{3}schedule_dismiss_notifications\0\u{3}schedule_navigate\0\u{4}\u{5}schedule_machine_poll\0\u{3}direct_preference\0\u{3}rename_client\0\u{3}check_updates\0\u{3}persist_client_prefs\0\u{3}prepare_cleanup_session\0\u{3}usage_cache_write\0\u{4}\u{4}draft_storage_list\0\u{3}draft_storage_read\0\u{3}draft_storage_write\0\u{3}draft_storage_delete\0\u{3}draft_storage_clear_all\0\u{3}attachment_prepare_image\0\u{3}attachment_hash_file\0\u{3}attachment_read_chunk\0\u{3}attachment_release_local\0\u{4}\u{e}direct_signal_send\0\u{3}direct_pc_create\0\u{3}direct_pc_describe\0\u{3}direct_pc_set_remote\0\u{3}direct_pc_add_candidates\0\u{3}direct_pc_confirm\0\u{3}direct_pc_close\0\u{3}direct_dc_read_stats\0\u{4}\u{2}direct_bulk_route\0\u{3}terminal_reopen\0\u{3}direct_retry_now_result\0\u{4}\u{11}security_key_sign\0\u{3}security_key_agree\0\u{4}\u{4}security_crypto_batch\0\u{3}security_op_result\0\u{3}security_key_generate\0\u{3}security_key_encapsulate\0\u{3}security_key_discard\0\u{3}security_storage\0\u{3}security_rpc\0\u{3}security_workflow_result\0\u{3}security_status_changed\0\u{3}security_notify_opened\0\u{3}security_token_updated\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}render\0\u{3}open_stream\0\u{3}close_stream\0\u{3}ensure_token\0\u{3}discard_token\0\u{4}\u{2}schedule_timer\0\u{3}cancel_timer\0\u{3}cache_read\0\u{3}cache_write\0\u{3}cache_delete\0\u{1}rpc\0\u{3}dispatch_command\0\u{3}save_home_scope\0\u{1}navigate\0\u{3}attachments_settled\0\u{3}request_entropy\0\u{3}run_machine_command_result\0\u{3}cancel_dispatch\0\u{4}\u{15}session_restore_composer\0\u{3}session_resend_attachments\0\u{3}shared_file_scan_local\0\u{3}shared_file_inspect_disk\0\u{3}shared_file_write_chunk\0\u{3}shared_file_verify_and_commit\0\u{3}shared_file_delete_partial\0\u{3}shared_file_delete_local\0\u{3}shared_file_delete_session\0\u{3}shared_file_clear_all\0\u{3}shared_file_completed\0\u{4}\u{a}schedule_read_cache\0\u{3}schedule_delete_cache\0\u{3}schedule_load_seen\0\u{3}schedule_save_seen\0\u{3}schedule_dismiss_notifications\0\u{3}schedule_navigate\0\u{4}\u{5}schedule_machine_poll\0\u{3}direct_preference\0\u{3}rename_client\0\u{3}check_updates\0\u{3}persist_client_prefs\0\u{3}prepare_cleanup_session\0\u{3}usage_cache_write\0\u{4}\u{4}draft_storage_list\0\u{3}draft_storage_read\0\u{3}draft_storage_write\0\u{3}draft_storage_delete\0\u{3}draft_storage_clear_all\0\u{3}attachment_prepare_image\0\u{3}attachment_hash_file\0\u{3}attachment_read_chunk\0\u{3}attachment_release_local\0\u{4}\u{e}direct_signal_send\0\u{3}direct_pc_create\0\u{3}direct_pc_describe\0\u{3}direct_pc_set_remote\0\u{3}direct_pc_add_candidates\0\u{3}direct_pc_confirm\0\u{3}direct_pc_close\0\u{3}direct_dc_read_stats\0\u{4}\u{2}direct_bulk_route\0\u{3}terminal_reopen\0\u{3}direct_retry_now_result\0\u{4}\u{11}security_key_sign\0\u{3}security_key_agree\0\u{4}\u{4}security_crypto_batch\0\u{3}security_op_result\0\u{3}security_key_generate\0\u{3}security_key_encapsulate\0\u{3}security_key_discard\0\u{3}security_storage\0\u{3}security_rpc\0\u{3}security_workflow_result\0\u{3}security_status_changed\0\u{3}security_notify_opened\0\u{3}security_token_updated\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -14542,6 +14593,19 @@ extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
         if let v = v {
           if hadOneofValue {try decoder.handleConflictingOneOf()}
           self.effect = .runMachineCommandResult(v)
+        }
+      }()
+      case 19: try {
+        var v: PBCoreCancelDispatchEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .cancelDispatch(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .cancelDispatch(v)
         }
       }()
       case 40: try {
@@ -15363,6 +15427,10 @@ extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
     case .runMachineCommandResult?: try {
       guard case .runMachineCommandResult(let v)? = self.effect else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 18)
+    }()
+    case .cancelDispatch?: try {
+      guard case .cancelDispatch(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 19)
     }()
     case .sessionRestoreComposer?: try {
       guard case .sessionRestoreComposer(let v)? = self.effect else { preconditionFailure() }

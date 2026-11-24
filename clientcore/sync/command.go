@@ -209,6 +209,13 @@ func (e *Engine) CancelCommand(ctx *StepContext, requestID string) {
 	clear(prep.PendingAttempts)
 	clear(prep.ActiveLegs)
 	prep.DualMode = false
+	ctx.emit(&corev1.Effect{
+		Effect: &corev1.Effect_CancelDispatch{
+			CancelDispatch: &corev1.CancelDispatchEffect{
+				RequestId: requestID,
+			},
+		},
+	})
 }
 
 // AttemptState reports whether slotKey currently has a frozen or expired unknown attempt.

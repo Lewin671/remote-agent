@@ -155,7 +155,7 @@ class CoreHost(
     var onCacheDelete: (CacheDeleteEffect) -> Unit = {}
     var onRpc: (RpcEffect) -> Unit = {}
     var onDispatchCommand: (DispatchCommandEffect) -> Unit = {}
-    var onCancelMachineCommand: (machineId: String, sessionId: String, command: Command) -> Unit = { _, _, _ -> }
+    var onCancelDispatch: (CancelDispatchEffect) -> Unit = {}
     var onSaveHomeScope: (SaveHomeScopeEffect) -> Unit = {}
     var onNavigate: (NavigateEffect) -> Unit = {}
     var onDirectPreference: (DirectPreferenceEffect) -> Unit = {}
@@ -538,6 +538,7 @@ class CoreHost(
             Effect.EffectCase.CACHE_DELETE -> onCacheDelete(effect.cacheDelete)
             Effect.EffectCase.RPC -> onRpc(effect.rpc)
             Effect.EffectCase.DISPATCH_COMMAND -> onDispatchCommand(effect.dispatchCommand)
+            Effect.EffectCase.CANCEL_DISPATCH -> onCancelDispatch(effect.cancelDispatch)
             Effect.EffectCase.SAVE_HOME_SCOPE -> onSaveHomeScope(effect.saveHomeScope)
             Effect.EffectCase.NAVIGATE -> {
                 _navigationEvents.tryEmit(effect.navigate)
@@ -2010,7 +2011,6 @@ class CoreHost(
             deferred.await()
         } catch (e: CancellationException) {
             if (pendingMachineCmds.remove(opId, deferred)) {
-                onCancelMachineCommand(machineId, sessionId, command)
                 if (!closed.get()) {
                     send { setCancelMachineCommand(CancelMachineCommandAction.newBuilder().setOpId(opId)) }
                 }

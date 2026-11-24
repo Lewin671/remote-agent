@@ -2935,12 +2935,21 @@ func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
 	if dc2 == nil {
 		t.Fatalf("expected DispatchCommandEffect for op 3")
 	}
-	c.Dispatch(&corev1.Event{
+	cancelBatch := c.Dispatch(&corev1.Event{
 		NowMs: now + 110,
 		Event: &corev1.Event_CancelMachineCommand{
 			CancelMachineCommand: &corev1.CancelMachineCommandAction{OpId: 3},
 		},
 	})
+	var cancelEff *corev1.CancelDispatchEffect
+	for _, ef := range cancelBatch.GetEffects() {
+		if cd := ef.GetCancelDispatch(); cd != nil {
+			cancelEff = cd
+		}
+	}
+	if cancelEff == nil || cancelEff.RequestId != dc2.RequestId {
+		t.Fatalf("expected CancelDispatchEffect for %q, got %+v", dc2.RequestId, cancelBatch.GetEffects())
+	}
 	lateBatch := c.Dispatch(&corev1.Event{
 		NowMs: now + 120,
 		Event: &corev1.Event_CommandOutcome{
@@ -2962,5 +2971,82 @@ func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
 		if ef.GetRunMachineCommandResult() != nil {
 			t.Fatalf("canceled one-shot command must not emit result effect: %+v", ef)
 		}
+	}
+
+	// 4. Canceling one of two concurrent identical commands cancels only its own request_id.
+	runA := c.Dispatch(&corev1.Event{
+		NowMs: now + 200,
+		Event: &corev1.Event_RunMachineCommand{
+			RunMachineCommand: &corev1.RunMachineCommandAction{
+				OpId:      4,
+				MachineId: "m-on",
+				Command:   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
+			},
+		},
+	})
+	runB := c.Dispatch(&corev1.Event{
+		NowMs: now + 201,
+		Event: &corev1.Event_RunMachineCommand{
+			RunMachineCommand: &corev1.RunMachineCommandAction{
+				OpId:      5,
+				MachineId: "m-on",
+				Command:   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
+			},
+		},
+	})
+	var dcA, dcB *corev1.DispatchCommandEffect
+	for _, ef := range runA.GetEffects() {
+		if d := ef.GetDispatchCommand(); d != nil {
+			dcA = d
+		}
+	}
+	for _, ef := range runB.GetEffects() {
+		if d := ef.GetDispatchCommand(); d != nil {
+			dcB = d
+		}
+	}
+	if dcA == nil || dcB == nil || dcA.RequestId == dcB.RequestId {
+		t.Fatalf("expected two distinct dispatches, got %+v and %+v", dcA, dcB)
+	}
+	cancelA := c.Dispatch(&corev1.Event{
+		NowMs: now + 210,
+		Event: &corev1.Event_CancelMachineCommand{
+			CancelMachineCommand: &corev1.CancelMachineCommandAction{OpId: 4},
+		},
+	})
+	var canceledIDs []string
+	for _, ef := range cancelA.GetEffects() {
+		if cd := ef.GetCancelDispatch(); cd != nil {
+			canceledIDs = append(canceledIDs, cd.RequestId)
+		}
+	}
+	if len(canceledIDs) != 1 || canceledIDs[0] != dcA.RequestId {
+		t.Fatalf("expected CancelDispatchEffect only for %q, got %v", dcA.RequestId, canceledIDs)
+	}
+	doneB := c.Dispatch(&corev1.Event{
+		NowMs: now + 220,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:         dcB.RequestId,
+				AttemptId:         dcB.AttemptId,
+				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				Signed:            true,
+				HashesMatch:       true,
+				AttemptBound:      true,
+				OuterMatchesInner: true,
+				OuterOutcome:      "executed",
+				OuterReason:       "ok",
+				Result:            &v1.CommandResult{Outcome: "executed", Reason: "ok", ResultAvailable: true},
+			},
+		},
+	})
+	var resB *corev1.RunMachineCommandResultEffect
+	for _, ef := range doneB.GetEffects() {
+		if r := ef.GetRunMachineCommandResult(); r != nil {
+			resB = r
+		}
+	}
+	if resB == nil || !resB.Ok || resB.OpId != 5 {
+		t.Fatalf("expected concurrent op 5 to still succeed, got %+v", resB)
 	}
 }

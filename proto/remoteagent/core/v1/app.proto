@@ -911,6 +911,10 @@ message DispatchCommandEffect {
   remoteagent.v1.Envelope sealed_envelope = 20;
 }
 
+message CancelDispatchEffect {
+  string request_id = 1;
+}
+
 message SaveHomeScopeEffect {
   string scope_key = 1;
   string scope_token = 2;
@@ -981,6 +985,7 @@ message Effect {
     AttachmentsSettledEffect attachments_settled = 16;
     RequestEntropyEffect request_entropy = 17;
     RunMachineCommandResultEffect run_machine_command_result = 18;
+    CancelDispatchEffect cancel_dispatch = 19;
     ScheduleMachinePollEffect schedule_machine_poll = 70;
     DirectPreferenceEffect direct_preference = 71;
     RenameClientEffect rename_client = 72;

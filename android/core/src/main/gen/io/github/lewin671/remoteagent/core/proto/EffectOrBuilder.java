@@ -198,6 +198,17 @@ public interface EffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.RunMachineCommandResultEffect getRunMachineCommandResult();
 
   /**
+   * <code>.remoteagent.core.v1.CancelDispatchEffect cancel_dispatch = 19 [json_name = "cancelDispatch"];</code>
+   * @return Whether the cancelDispatch field is set.
+   */
+  boolean hasCancelDispatch();
+  /**
+   * <code>.remoteagent.core.v1.CancelDispatchEffect cancel_dispatch = 19 [json_name = "cancelDispatch"];</code>
+   * @return The cancelDispatch.
+   */
+  io.github.lewin671.remoteagent.core.proto.CancelDispatchEffect getCancelDispatch();
+
+  /**
    * <code>.remoteagent.core.v1.ScheduleMachinePollEffect schedule_machine_poll = 70 [json_name = "scheduleMachinePoll"];</code>
    * @return Whether the scheduleMachinePoll field is set.
    */
