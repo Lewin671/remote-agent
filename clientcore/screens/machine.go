@@ -378,7 +378,8 @@ var _ = slices.Contains[[]v1.Agent]
 // BuildQuota renders the per-machine Account Quota screen ViewModel.
 func BuildQuota(st *State, syncView *corev1.SyncStateView, machineID string, filterAgent v1.Agent) *corev1.QuotaViewModel {
 	m := findMachineByID(st, machineID)
-	unlinked := syncView.GetUnlinked() || lists.WorldUnlinked(&st.World)
+	removed := st.Removed || syncView.GetRemoved()
+	unlinked := removed || syncView.GetUnlinked() || lists.WorldUnlinked(&st.World)
 	vm := &corev1.QuotaViewModel{
 		MachineId:  machineID,
 		Unlinked:   unlinked,
@@ -387,9 +388,9 @@ func BuildQuota(st *State, syncView *corev1.SyncStateView, machineID string, fil
 	if m == nil {
 		vm.MachineName = machine.ShortID(machineID)
 		switch {
-		case unlinked:
+		case removed:
 			vm.EmptyText = text.Msg(text.KeySettingsThisDeviceWasRemovedFromTheAccount)
-		case waitingForMachineList(st):
+		case !unlinked && waitingForMachineList(st):
 			vm.Loading = true
 			vm.EmptyText = text.Msg(text.KeyCommonLoading)
 		default:
@@ -399,7 +400,7 @@ func BuildQuota(st *State, syncView *corev1.SyncStateView, machineID string, fil
 	}
 
 	vm.Found = true
-	vm.Member = !unlinked
+	vm.Member = !m.Archived && !removed
 	vm.MachineName = lists.MachineName(m, machineID)
 	vm.Reachable = lists.MachineReachable(m)
 	if m.Meta != nil && (len(m.Meta.Agents) > 0 || len(m.Meta.Quotas) > 0) {

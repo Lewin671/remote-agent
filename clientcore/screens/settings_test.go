@@ -59,6 +59,19 @@ func TestBuildDevicesAndSettingsExcludeMachinesFromClientRows(t *testing.T) {
 		t.Fatalf("expected unfinished machine pairing detail to be removable, got %+v", detail)
 	}
 
+	// Unfinished pairing with no Meta yet must still have a non-empty DisplayName
+	// (falling back to ShortId) so detail header and removal dialog never render blank.
+	sv.Devices = append(sv.Devices, &corev1.SyncDeviceView{
+		DeviceId:   "4b5cb72cf559ecbf3593590a77aafc04",
+		Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
+		Trusted:    true,
+		Registered: false,
+	})
+	unnamedDetail := BuildClientDetail(st, sv, nil, "4b5cb72cf559ecbf3593590a77aafc04")
+	if !unnamedDetail.Found || unnamedDetail.DisplayName != "…fc04" || unnamedDetail.ShortId != "…fc04" {
+		t.Fatalf("expected unnamed unfinished pairing DisplayName to fall back to ShortId, got %+v", unnamedDetail)
+	}
+
 	svm := BuildSettings(st, sv, nil)
 	if len(svm.RecentClients) != 1 || svm.RecentClients[0].DeviceId != "c1" {
 		t.Fatalf("expected only client c1 in RecentClients, got %+v", svm.RecentClients)
@@ -130,7 +143,7 @@ func TestMissingOrEmptyMachinesReportLoadingUntilListedOrOffline(t *testing.T) {
 			wantLoading:     false,
 			wantEmptyKey:    text.KeySettingsEmptyComputersTitle,
 			wantMissingKey:  text.KeySettingsDeviceNotFound,
-			wantQuotaKey:    text.KeySettingsThisDeviceWasRemovedFromTheAccount,
+			wantQuotaKey:    text.KeySettingsDeviceNotFound,
 			wantPollState:   corev1.MachinePollState_MACHINE_POLL_STATE_UNAVAILABLE,
 			wantStatusTitle: text.KeyMachineStatusUnavailable,
 		},
@@ -248,10 +261,9 @@ func TestSettingsRedesignProjections(t *testing.T) {
 		},
 	}
 
-	unlinkedTrue := true
 	st.World.Machines = append(st.World.Machines, &lists.Machine{
 		ID:       "m-removed",
-		Unlinked: &unlinkedTrue,
+		Archived: true,
 		Meta:     &v1.MachineMeta{Hostname: "ArchivedMac", ProtocolVersion: 16},
 	})
 
@@ -634,5 +646,69 @@ func TestBuildSettingsHandoffCandidates(t *testing.T) {
 	// client-9999 has custom Name -> never gets suffix.
 	if got[6].DeviceId != "client-9999" || got[6].DisplayName != "Work Phone" || got[6].GetDisplayNameText().GetLiteral() != "Work Phone" {
 		t.Fatalf("unexpected candidate[6]: %+v", got[6])
+	}
+}
+
+func TestOfflineNetworkDoesNotShowRemovedBannerOrRemovedMachines(t *testing.T) {
+	now := int64(1_700_000_000_000)
+	unlinkedTrue := true
+	st := NewState(nil)
+	st.Cal = lists.Calendar{NowMs: now}
+	st.World.Connection = lists.ConnNoNetwork
+	st.World.MachinesListed = true
+	st.World.Unlinked = &unlinkedTrue
+	st.Removed = false
+	st.World.Machines = []*lists.Machine{
+		{
+			ID:         "m-active",
+			Online:     false,
+			Unlinked:   &unlinkedTrue,
+			Archived:   false,
+			LastSeenMs: now - 60_000,
+			Meta:       &v1.MachineMeta{Hostname: "WorkMac", ProtocolVersion: 17},
+		},
+		{
+			ID:       "m-archived",
+			Online:   false,
+			Unlinked: &unlinkedTrue,
+			Archived: true,
+			Meta:     &v1.MachineMeta{Hostname: "OldMac", ProtocolVersion: 17},
+		},
+	}
+	sv := &corev1.SyncStateView{
+		SelfDeviceId: "c1",
+		Unlinked:     true,
+		Removed:      false,
+	}
+
+	svm := BuildSettings(st, sv, nil)
+	if !svm.Unlinked {
+		t.Fatalf("expected Settings.Unlinked=true while network is down")
+	}
+	if svm.GetUnlinkedBannerText() != nil {
+		t.Fatalf("offline network must not show removed-from-account banner, got %+v", svm.GetUnlinkedBannerText())
+	}
+	byID := map[string]*corev1.MachineListCardView{}
+	for _, mc := range svm.Machines {
+		byID[mc.MachineId] = mc
+	}
+	if !byID["m-active"].Member || byID["m-active"].GetStatusText().GetKey() == text.KeySettingsStatusRemoved {
+		t.Fatalf("active machine must not be marked removed while phone is offline: %+v", byID["m-active"])
+	}
+	if byID["m-archived"].Member || byID["m-archived"].GetStatusText().GetKey() != text.KeySettingsStatusRemoved {
+		t.Fatalf("archived machine must still be marked removed: %+v", byID["m-archived"])
+	}
+
+	mvm := BuildMachineSettings(st, sv, nil, "m-active")
+	if !mvm.Member || mvm.GetRemovedBanner() != nil {
+		t.Fatalf("active machine detail must not show removed banner while phone is offline: %+v", mvm)
+	}
+
+	// Contrast: when the device is actually removed from the account, the banner IS shown.
+	st.Removed = true
+	sv.Removed = true
+	svmRemoved := BuildSettings(st, sv, nil)
+	if svmRemoved.GetUnlinkedBannerText().GetKey() != text.KeySettingsThisDeviceWasRemovedFromTheAccount {
+		t.Fatalf("removed account must show removed-from-account banner, got %+v", svmRemoved.GetUnlinkedBannerText())
 	}
 }
