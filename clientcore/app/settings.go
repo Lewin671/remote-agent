@@ -7,7 +7,6 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/machine"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
-	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/screens"
@@ -1034,8 +1033,7 @@ func (c *Core) onToggleMachineAgentSettled(sc sync.SettledCommand, meta cmdMeta,
 		sc.ErrorCode == "failed_precondition" ||
 		sc.ErrorCode == "settings_revision_conflict" ||
 		sc.Category == outcome.Conflict ||
-		sc.Category == outcome.Unknown ||
-		(sc.ErrorReason.Kind == world.ReasonPlain && strings.Contains(sc.ErrorReason.Param, "cannot_disable_last_agent"))
+		sc.Category == outcome.Unknown
 	if isConflict {
 		me.ToggleBanner = text.Msg(text.KeySettingsCliSwitchesConflict)
 		prevStep, ctx := c.m.sync.BeginStep()

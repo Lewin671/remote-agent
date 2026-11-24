@@ -8,6 +8,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/screens"
@@ -1095,11 +1096,10 @@ func (c *Core) handleUploadStepFailure(
 	}
 
 	// 3. Permanent failure.
-	errTxt := screens.ReasonText(sc.ErrorReason)
 	if it.kind == corev1.AttachmentItemKind_ATTACHMENT_ITEM_KIND_IMAGE {
 		rawDiag := ""
-		if errTxt != nil {
-			rawDiag = errTxt.GetLiteral()
+		if sc.ErrorReason.Kind == world.ReasonPlain {
+			rawDiag = sc.ErrorReason.Param
 		}
 		prob := attachments.ClassifyImageProblem(&corev1.ImageProblemInput{
 			ErrorCode:     sc.ErrorCode,
@@ -1107,7 +1107,7 @@ func (c *Core) handleUploadStepFailure(
 		})
 		c.failItem(ctx, meta.ownerKind, meta.ownerKey, it, prob, nil, effects)
 	} else {
-		errText := attachments.ClassifyDaemonFileUploadError(sc.FromDaemon, sc.ErrorCode, errTxt)
+		errText := attachments.ClassifyDaemonFileUploadError(sc.FromDaemon, sc.ErrorCode, screens.ReasonText(sc.ErrorReason))
 		c.failItem(ctx, meta.ownerKind, meta.ownerKey, it, nil, errText, effects)
 	}
 	c.markDraftDirty(ctx, scope)
