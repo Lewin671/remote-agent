@@ -287,14 +287,16 @@ class V8Gallery {
     )
 
     @Test fun queueSendMenu() {
-        ImageDrafts.forSession("queue-menu").text.value = "改完顺便跑一下 lint"
+        val scope = io.github.lewin671.remoteagent.core.sessionDraftScope("queue-menu")
+        remote.openDraft(scope, "mac")
+        remote.setDraftText(scope, "改完顺便跑一下 lint")
         try {
             shoot("10-queue-send-menu", sessionState(session("queue-menu", "mac", foo, "修复登录超时", SessionStatus.SESSION_STATUS_RUNNING)),
                 mapOf("queue-menu" to events(turn(), user("修复登录超时"))),
                 then = {
                     ui.onNodeWithText("做完再发").assertIsDisplayed()
                 }) { SessionScreen("queue-menu") }
-        } finally { ImageDrafts.forSession("queue-menu").text.value = "" }
+        } finally { remote.setDraftText(scope, "") }
     }
 
     @Test fun sessionMenu() {

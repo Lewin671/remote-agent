@@ -55,6 +55,10 @@ internal class AndroidAttachmentKeyProvider(
     private val keyFile = File(dir, "key.bin")
     @Volatile private var cachedKey: ByteArray? = null
 
+    @Synchronized fun setKeyForTest(key: ByteArray) {
+        cachedKey = key.copyOf()
+    }
+
     @Synchronized override fun loadExistingKey(): ByteArray? {
         cachedKey?.let { return it.copyOf() }
         val stored = readStoredKey() ?: return null
@@ -229,6 +233,10 @@ class AttachmentManager(
     }
 
     fun usedBytes(): Long = executor.usedBytes()
+
+    internal fun setKeyForTest(key: ByteArray) {
+        keyProvider.setKeyForTest(key)
+    }
 
     fun close() {
         executor.close()

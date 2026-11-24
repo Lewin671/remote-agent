@@ -252,6 +252,8 @@ internal fun AttachmentDraftStrip(
     draft: AttachmentDraftView,
     scope: DraftScope,
     remote: Remote,
+    onOpenViewer: (Int) -> Unit = { remote.openDraftImageViewer(scope, it) },
+    onRemoveItem: (String) -> Unit = { remote.removeDraftItem(scope, it) },
 ) {
     val copy = uiText()
     val p = pal
@@ -308,7 +310,7 @@ internal fun AttachmentDraftStrip(
                         original = draft.original,
                         onTap = {
                             if (item.kind == AttachmentItemKind.ATTACHMENT_ITEM_KIND_IMAGE) {
-                                remote.openDraftImageViewer(scope, item.imageIndex.coerceAtLeast(0))
+                                onOpenViewer(item.imageIndex.coerceAtLeast(0))
                             } else {
                                 when {
                                     item.canRetry -> remote.retryDraftItem(scope, item.itemId)
@@ -317,7 +319,7 @@ internal fun AttachmentDraftStrip(
                                 }
                             }
                         },
-                        onRemove = if (item.canRemove) ({ remote.removeDraftItem(scope, item.itemId) }) else null,
+                        onRemove = if (item.canRemove) ({ onRemoveItem(item.itemId) }) else null,
                     )
                 }
             }

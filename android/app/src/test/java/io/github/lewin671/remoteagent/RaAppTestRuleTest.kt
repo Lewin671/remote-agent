@@ -1,11 +1,6 @@
 package io.github.lewin671.remoteagent
 
 import android.app.Application
-import io.github.lewin671.remoteagent.proto.ImageFormat
-import io.github.lewin671.remoteagent.ui.ImageDraft
-import io.github.lewin671.remoteagent.ui.MemoryFiles
-import io.github.lewin671.remoteagent.ui.PendingImage
-import io.github.lewin671.remoteagent.ui.Processed
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import org.junit.Assert.*
@@ -20,7 +15,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class RaAppTestRuleTest {
-    @Test fun aFailedAppTestReleasesBothScopesBeforeStandaloneDraftWrites() {
+    @Test fun aFailedAppTestReleasesBothScopes() {
         assertNull(RaApp.scopeOrNull())
         val rule = RaAppTestRule()
         val failure = AssertionError("fixture failure")
@@ -44,15 +39,6 @@ class RaAppTestRuleTest {
         assertNull(RaApp.scopeOrNull())
         assertTrue(main.isCancelled)
         assertTrue(pairing.isCancelled)
-
-        // This is the previously order-dependent transition: fake app -> in-memory disk test.
-        val files = MemoryFiles()
-        val image = PendingImage("a", null, retainSource = false).apply {
-            processed = Processed(byteArrayOf(1), ImageFormat.IMAGE_FORMAT_PNG, 1, 1)
-            state = PendingImage.State.Ready
-        }
-        assertTrue(ImageDraft("session:fixture", files).attach(listOf(image)))
-        assertEquals("0\na", files.get("session:fixture", "order")!!.toString(Charsets.UTF_8))
     }
 
     @Test fun nestedAppFixturesRestoreThePreviousOwnerWithoutCancelingIt() {

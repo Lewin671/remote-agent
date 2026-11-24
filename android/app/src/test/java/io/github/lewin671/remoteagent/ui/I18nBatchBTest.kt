@@ -154,7 +154,7 @@ class I18nBatchBTest(private val locale: String) {
     @Before fun prepare() {
         remote.showForTest(state, sessions = mapOf("s" to defaultSessionVm))
     }
-    @After fun close() { remote.close(); Outbox.clear(); ImageDrafts.clear(); Drafts.clear(); DockFolds.clear(); QuestionMultiPicks.clear() }
+    @After fun close() { remote.close(); Drafts.clear(); DockFolds.clear(); QuestionMultiPicks.clear() }
     private fun show(content: @Composable () -> Unit) = ui.setContent {
         RaTheme(ThemeMode.LIGHT) {
             CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav, LocalMessageLocale provides language) {
@@ -306,8 +306,8 @@ class I18nBatchBTest(private val locale: String) {
     @Test fun renameDialog() { show { RenameDialog("s", defaultSessionVm) {} }; shot("rename") }
     @Test fun attachmentRows() {
         show { Column(Modifier.padding(16.dp)) {
-            FileChip("example.patch", "2.0 KB", PendingImage.State.Uploading(.42f), {}, {})
-            FileChip("notes.txt", "320 B", PendingImage.State.Failed.raw("Raw transport diagnostic"), {}, {})
+            FileChip("example.patch", "2.0 KB", AttachmentItemState.ATTACHMENT_ITEM_STATE_UPLOADING, progress = .42f, onRetry = {}, onRemove = {})
+            FileChip("notes.txt", "320 B", AttachmentItemState.ATTACHMENT_ITEM_STATE_FAILED, errorText = "Raw transport diagnostic", onRetry = {}, onRemove = {})
             Text(uiText(UiMessages.attachmentMetadata()))
             GeneratedCard("generated", listOf(ImageRef.newBuilder().setImageId("image").setWidth(640).setHeight(360).build()), "Original image prompt") {}
         } }; shot("attachments")
@@ -351,14 +351,30 @@ class I18nBatchBTest(private val locale: String) {
         show { ImageViewer("s", 6, 0) }; shot("image-viewer")
     }
     @Test fun draftViewer() {
-        val draft = ImageDraft("preview-draft", MemoryFiles(), scope = null)
-        val bitmap = Bitmap.createBitmap(240, 160, Bitmap.Config.ARGB_8888).apply { eraseColor(android.graphics.Color.rgb(100, 150, 180)) }
-        val image = PendingImage("draft", null, retainSource = false).apply {
-            thumb = bitmap.asImageBitmap()
-            state = PendingImage.State.Uploading(.42f)
-        }
-        draft.images += image
-        show { DraftImageViewer(draft, remote, "m", 0, originalMaxBytes = 20L * 1024 * 1024) {} }; shot("draft-viewer")
+        val scope = sessionDraftScope("s")
+        val item = AttachmentDraftItemView.newBuilder()
+            .setItemId("draft")
+            .setKind(AttachmentItemKind.ATTACHMENT_ITEM_KIND_IMAGE)
+            .setState(AttachmentItemState.ATTACHMENT_ITEM_STATE_UPLOADING)
+            .setDisplayName("draft.png")
+            .setProgress(0.42)
+            .setPositionText(Text.newBuilder().setLiteral("1 / 1"))
+            .setPositionA11Y(Text.newBuilder().setLiteral("1 / 1"))
+            .setCanRemove(true)
+            .build()
+        val draft = AttachmentDraftView.newBuilder()
+            .setScope(scope)
+            .addItems(item)
+            .addImages(item)
+            .setImageViewer(
+                DraftImageViewerView.newBuilder()
+                    .setOpen(true)
+                    .setCurrentIndex(0)
+                    .setTotalCount(1)
+                    .setPositionText(Text.newBuilder().setLiteral("1 / 1")),
+            )
+            .build()
+        show { DraftImageViewer(draft, scope, remote) }; shot("draft-viewer")
     }
     @Test fun terminalView() { show { TerminalPane(remote, "s", true) }; shot("terminal") }
     @Test fun terminalReader() {

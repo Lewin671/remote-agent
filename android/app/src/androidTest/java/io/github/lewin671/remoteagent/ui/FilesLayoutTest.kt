@@ -29,8 +29,21 @@ class FilesLayoutTest {
             RaTheme(if (dark) ThemeMode.DARK else ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
                     Column(Modifier.width(320.dp)) {
-                        FileChip(name, "1.0 KB", PendingImage.State.Uploading(.4f), onRemove = { removals++ })
-                        FileChip("data.csv", "0 B", PendingImage.State.Failed(AppImageFailure.FILE_MISSING), onRetry = {}, onRemove = {})
+                        FileChip(
+                            name = name,
+                            sizeText = "1.0 KB",
+                            state = io.github.lewin671.remoteagent.core.proto.AttachmentItemState.ATTACHMENT_ITEM_STATE_UPLOADING,
+                            progress = .4f,
+                            onRemove = { removals++ },
+                        )
+                        FileChip(
+                            name = "data.csv",
+                            sizeText = "0 B",
+                            state = io.github.lewin671.remoteagent.core.proto.AttachmentItemState.ATTACHMENT_ITEM_STATE_FAILED,
+                            errorText = "Missing file",
+                            onRetry = {},
+                            onRemove = {},
+                        )
                         ComposeBox("", {}, "消息", false, {}, { picturePicks++ }, onFile = { filePicks++ })
                     }
                 }

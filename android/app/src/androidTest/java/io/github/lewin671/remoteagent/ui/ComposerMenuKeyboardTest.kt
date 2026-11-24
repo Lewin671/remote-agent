@@ -85,6 +85,6 @@ class ComposerMenuKeyboardTest {
             instrumentation.uiAutomation.executeShellCommand("input tap 100 ${height - 260}").close()
             ui.waitUntil(5000) { ui.onAllNodesWithText("照片和视频").fetchSemanticsNodes().isEmpty() }
             capture("android-attach-keyboard")
-        } finally { remote.close(); ImageDrafts.forSession("menu-session").clear() }
+        } finally { remote.close() }
     }
 }

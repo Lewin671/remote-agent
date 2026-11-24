@@ -74,8 +74,6 @@ class MachineStatusShotsTest {
     fun close() {
         remote.close()
         Drafts.clear()
-        Outbox.clear()
-        ImageDrafts.clear()
         CleanupDraft.clear()
     }
 

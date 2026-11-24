@@ -31,7 +31,7 @@ class PendingVisibilityTest {
     private val session = SessionView("s", "m", Session.newBuilder().setId("s").setCwd("/example/demo").setAgent(Agent.AGENT_CODEX).setStatus(SessionStatus.SESSION_STATUS_RUNNING).build())
     private val state = RemoteState(conn = io.github.lewin671.remoteagent.core.ConnState.ONLINE, loaded = true, machines = mapOf("m" to MachineView("m", true, 0)), sessions = mapOf("s" to session))
 
-    @After fun close() { remote.close(); Outbox.clear(); ImageDrafts.clear() }
+    @After fun close() { remote.close() }
 
     private fun vmWithTray(item: SessionTrayItemView?, paused: Boolean = false): SessionViewModel {
         val tl = SessionTimelineView.newBuilder().setLoaded(true)

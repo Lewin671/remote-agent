@@ -171,96 +171,9 @@ class ImagesTest {
 
     @Test
     fun compressionShrinksTheLongSideOnly() {
-        assertEquals(2048 to 1536, fitLongSide(4032, 3024))
-        assertEquals(1536 to 2048, fitLongSide(3024, 4032))
-        assertEquals(800 to 600, fitLongSide(800, 600))
-    }
-}
-
-class UploadTest {
-    @get:org.junit.Rule val hangGuard = hangGuard()
-    /** The daemon's side, as internal/daemon keeps it: bytes on disk, overlap must match. */
-    private class FakeDaemon(val maxChunk: Int = 10) : UploadChannel {
-        var stored = ByteArray(0)
-        var total = 0L
-        var sha = ByteArray(0)
-        var done = false
-        var failNextPutAfterStoring = false
-        var puts = 0
-        private fun st() = io.github.lewin671.remoteagent.proto.ImageUploadStatus.newBuilder().setTransferId("t").setPersistedBytes(stored.size.toLong()).setTotalBytes(total)
-            .setMaxChunkBytes(maxChunk)
-            .setState(if (done) io.github.lewin671.remoteagent.proto.ImageUploadState.IMAGE_UPLOAD_STATE_COMPLETE else io.github.lewin671.remoteagent.proto.ImageUploadState.IMAGE_UPLOAD_STATE_RECEIVING)
-            .setImageId(if (done) "img1" else "").setExpiresMs(123456).build()
-        override suspend fun begin(transferId: String, format: ImageFormat, total: Long, sha256: ByteArray): io.github.lewin671.remoteagent.proto.ImageUploadStatus {
-            this.total = total; sha = sha256; return st()
-        }
-        override suspend fun put(transferId: String, offset: Long, data: ByteArray): io.github.lewin671.remoteagent.proto.ImageUploadStatus {
-            puts++
-            if (offset > stored.size) throw CommandException("failed_precondition", "gap", fromDaemon = true,outcome=io.github.lewin671.remoteagent.core.Outcome.EXECUTED)
-            val overlap = (stored.size - offset).toInt().coerceAtMost(data.size)
-            for (i in 0 until overlap) if (stored[offset.toInt() + i] != data[i]) throw CommandException("failed_precondition", "changed", fromDaemon = true,outcome=io.github.lewin671.remoteagent.core.Outcome.EXECUTED)
-            stored += data.copyOfRange(overlap, data.size)
-            if (failNextPutAfterStoring) {
-                failNextPutAfterStoring = false
-                throw CommandException(CommandException.UNKNOWN, "reply lost", outcome = Outcome.UNKNOWN)
-            }
-            return st()
-        }
-        override suspend fun status(transferId: String) = st()
-        override suspend fun abort(transferId: String) {}
-        override suspend fun complete(transferId: String): io.github.lewin671.remoteagent.proto.ImageUploadStatus {
-            if (stored.size.toLong() != total || !sha256(stored).contentEquals(sha)) throw CommandException("data_loss", "hash", fromDaemon = true)
-            done = true
-            return st()
-        }
-    }
-
-    private val png = ByteArrayOutputStream().also {
-        ImageIO.write(BufferedImage(8, 8, BufferedImage.TYPE_INT_RGB), "png", it)
-    }.toByteArray()
-
-    @Test
-    fun sendsEveryChunkAndCompletes() = kotlinx.coroutines.runBlocking {
-        val d = FakeDaemon()
-        assertEquals(UploadedImage("img1", 123456), uploadImage(d, "t", png))
-        assertArrayEquals(png, d.stored)
-        assertEquals((png.size + 9) / 10, d.puts)
-    }
-
-    @Test
-    fun aLostReplyGoesOnFromWhatTheDaemonStored() = kotlinx.coroutines.runBlocking {
-        val d = FakeDaemon()
-        d.failNextPutAfterStoring = true
-        assertEquals(UploadedImage("img1", 123456), uploadImage(d, "t", png))
-        assertArrayEquals(png, d.stored)
-    }
-
-    @Test fun resultNoticesNeverAutomaticallyReplayAnUpload() = kotlinx.coroutines.runBlocking {
-        for (error in listOf(
-            CommandException("network","done without body",fromDaemon=true,outcome=Outcome.EXECUTED,resultAvailable=false),
-            CommandException("network","different identity",fromDaemon=true,outcome=Outcome.CONFLICT,conflictKind="identity",resultAvailable=false),
-            CommandException("disk_full","done without body",fromDaemon=true,outcome=Outcome.EXECUTED,resultAvailable=false),
-            CommandException("storage_exhausted","different identity",fromDaemon=true,outcome=Outcome.CONFLICT,conflictKind="identity",resultAvailable=false),
-        )) {
-            assertEquals(error.message,errorText(error).testText())
-            var calls=0
-            val channel=object:UploadChannel by FakeDaemon() {
-                override suspend fun begin(transferId:String,format:ImageFormat,total:Long,sha256:ByteArray):io.github.lewin671.remoteagent.proto.ImageUploadStatus {calls++;throw error}
-            }
-            val result=runCatching{uploadImage(channel,"t",png)}
-            assertSame(error,result.exceptionOrNull());assertEquals(1,calls)
-        }
-    }
-
-    @Test
-    fun aRefusalIsAnErrorNotASuccess() {
-        val d = object : UploadChannel by FakeDaemon() {
-            override suspend fun abort(transferId: String) {}
-        override suspend fun complete(transferId: String): io.github.lewin671.remoteagent.proto.ImageUploadStatus =
-                throw CommandException("invalid_argument", "not an image", fromDaemon = true,outcome=io.github.lewin671.remoteagent.core.Outcome.EXECUTED)
-        }
-        val e = runCatching { kotlinx.coroutines.runBlocking { uploadImage(d, "t", png) } }.exceptionOrNull()
-        assertTrue(e is CommandException)
+        assertEquals(2048 to 1536, fitLongSide(4032, 3024, 2048))
+        assertEquals(1536 to 2048, fitLongSide(3024, 4032, 2048))
+        assertEquals(800 to 600, fitLongSide(800, 600, 2048))
     }
 }
 

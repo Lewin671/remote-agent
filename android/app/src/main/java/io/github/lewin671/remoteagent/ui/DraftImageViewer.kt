@@ -34,11 +34,11 @@ internal fun DraftImageViewer(
     draft: AttachmentDraftView,
     scope: DraftScope,
     remote: Remote,
+    onClose: () -> Unit = { remote.closeDraftImageViewer(scope) },
 ) {
     val copy = uiText()
     val viewer = draft.imageViewer
     val images = draft.imagesList
-    val onClose = { remote.closeDraftImageViewer(scope) }
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         PagedImageViewer(
             count = images.size,

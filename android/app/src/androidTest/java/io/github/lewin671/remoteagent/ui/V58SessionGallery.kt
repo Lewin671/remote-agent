@@ -75,13 +75,11 @@ class V58SessionGallery {
     @org.junit.Before fun chat() {
         // Every session opens in the view last picked on this device.
         InstrumentationRegistry.getInstrumentation().targetContext.getSharedPreferences("session-view", android.content.Context.MODE_PRIVATE).edit().clear().commit()
-        ImageDrafts.forSession("s").clear()
     }
 
     @After fun close() {
         remote.close()
         DockFolds.clear()
-        ImageDrafts.forSession("s").clear()
         HomeScopes.clear(InstrumentationRegistry.getInstrumentation().targetContext)
     }
 
@@ -220,11 +218,33 @@ class V58SessionGallery {
     @Test fun videoInTheBox() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val clip = File(context.filesDir, "clip.mp4")
-        val draft = ImageDrafts.forSession("s")
-        draft.attach(
+        val scope = io.github.lewin671.remoteagent.core.sessionDraftScope("s")
+        remote.openDraft(scope, "mac")
+        remote.addDraftItems(
+            scope,
             listOf(
-                PendingImage("v", if (clip.exists()) android.net.Uri.fromFile(clip).toString() else null, "clip.mp4", clip.length(), retainSource = false),
-                PendingImage("d", null, "季度分析-完整版-含补充说明.pdf", 8_600_000, retainSource = false),
+                io.github.lewin671.remoteagent.core.proto.DraftPickedItem.newBuilder()
+                    .setCandidate(
+                        io.github.lewin671.remoteagent.core.proto.AttachmentCandidateInput.newBuilder()
+                            .setName("clip.mp4")
+                            .setMimeType("video/mp4")
+                            .setSizeBytes(clip.length().coerceAtLeast(1024L))
+                            .setForceFile(false),
+                    )
+                    .setSourceRef(if (clip.exists()) android.net.Uri.fromFile(clip).toString() else "content://test/clip.mp4")
+                    .setHasOriginalSource(true)
+                    .build(),
+                io.github.lewin671.remoteagent.core.proto.DraftPickedItem.newBuilder()
+                    .setCandidate(
+                        io.github.lewin671.remoteagent.core.proto.AttachmentCandidateInput.newBuilder()
+                            .setName("季度分析-完整版-含补充说明.pdf")
+                            .setMimeType("application/pdf")
+                            .setSizeBytes(8_600_000L)
+                            .setForceFile(true),
+                    )
+                    .setSourceRef("content://test/report.pdf")
+                    .setHasOriginalSource(true)
+                    .build(),
             ),
         )
         // Not connected to the server, so nothing tries to upload them.

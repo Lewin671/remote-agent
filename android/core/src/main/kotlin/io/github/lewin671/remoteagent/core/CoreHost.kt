@@ -156,7 +156,6 @@ class CoreHost(
     var onDispatchCommand: (DispatchCommandEffect) -> Unit = {}
     var onSaveHomeScope: (SaveHomeScopeEffect) -> Unit = {}
     var onNavigate: (NavigateEffect) -> Unit = {}
-    var onAttachmentsSettled: (AttachmentsSettledEffect) -> Unit = {}
     var onDirectPreference: (DirectPreferenceEffect) -> Unit = {}
     var onSecurityEffect: (Effect) -> Boolean = { false }
     var onSecurityTokenUpdated: (SecurityTokenUpdatedEffect) -> Unit = {}
@@ -384,9 +383,6 @@ class CoreHost(
     private val _scheduleNavigationEvents = MutableSharedFlow<ScheduleNavigateEffect>(extraBufferCapacity = 16)
     val scheduleNavigationEvents: SharedFlow<ScheduleNavigateEffect> = _scheduleNavigationEvents.asSharedFlow()
 
-    private val _attachmentsSettledEvents = MutableSharedFlow<AttachmentsSettledEffect>(extraBufferCapacity = 16)
-    val attachmentsSettledEvents: SharedFlow<AttachmentsSettledEffect> = _attachmentsSettledEvents.asSharedFlow()
-
     private val _renameClientEvents = MutableSharedFlow<RenameClientEffect>(extraBufferCapacity = 8)
     val renameClientEvents: SharedFlow<RenameClientEffect> = _renameClientEvents.asSharedFlow()
 
@@ -395,9 +391,6 @@ class CoreHost(
 
     private val _restoreComposerEvents = MutableSharedFlow<SessionRestoreComposerEffect>(extraBufferCapacity = 16)
     val restoreComposerEvents: SharedFlow<SessionRestoreComposerEffect> = _restoreComposerEvents.asSharedFlow()
-
-    private val _resendAttachmentsEvents = MutableSharedFlow<SessionResendAttachmentsEffect>(extraBufferCapacity = 16)
-    val resendAttachmentsEvents: SharedFlow<SessionResendAttachmentsEffect> = _resendAttachmentsEvents.asSharedFlow()
 
     init {
         if (!closed.get()) {
@@ -556,10 +549,6 @@ class CoreHost(
                 _navigationEvents.tryEmit(effect.navigate)
                 onNavigate(effect.navigate)
             }
-            Effect.EffectCase.ATTACHMENTS_SETTLED -> {
-                _attachmentsSettledEvents.tryEmit(effect.attachmentsSettled)
-                onAttachmentsSettled(effect.attachmentsSettled)
-            }
             Effect.EffectCase.SCHEDULE_MACHINE_POLL -> scheduleMachinePoll(effect.scheduleMachinePoll)
             Effect.EffectCase.DIRECT_PREFERENCE -> onDirectPreference(effect.directPreference)
             Effect.EffectCase.RENAME_CLIENT -> {
@@ -574,9 +563,6 @@ class CoreHost(
             }
             Effect.EffectCase.SESSION_RESTORE_COMPOSER -> {
                 _restoreComposerEvents.tryEmit(effect.sessionRestoreComposer)
-            }
-            Effect.EffectCase.SESSION_RESEND_ATTACHMENTS -> {
-                _resendAttachmentsEvents.tryEmit(effect.sessionResendAttachments)
             }
             Effect.EffectCase.SCHEDULE_READ_CACHE -> onScheduleReadCache(effect.scheduleReadCache)
             Effect.EffectCase.SCHEDULE_DELETE_CACHE -> onScheduleDeleteCache(effect.scheduleDeleteCache)
@@ -840,18 +826,6 @@ class CoreHost(
         }
         if (rawVm == null || rawVm.isEmpty()) return null
         return ViewModel.parseFrom(rawVm)
-    }
-
-    /** Synchronous stateless attachment/problem evaluation via Core (`Screen.attachment_eval`). */
-    fun evaluateAttachments(req: AttachmentEvalScreenRequest): AttachmentEvalViewModel {
-        val screen = Screen.newBuilder().setAttachmentEval(req).build()
-        val rawVm: ByteArray? = synchronized(coreLock) {
-            if (closed.get()) return AttachmentEvalViewModel.getDefaultInstance()
-            core.view(screen.toByteArray())
-        }
-        if (rawVm == null || rawVm.isEmpty()) return AttachmentEvalViewModel.getDefaultInstance()
-        val vm = ViewModel.parseFrom(rawVm)
-        return if (vm.viewCase == ViewModel.ViewCase.ATTACHMENT_EVAL) vm.attachmentEval else AttachmentEvalViewModel.getDefaultInstance()
     }
 
     private class KeyedWatchFlow<V, K>(
@@ -1668,15 +1642,6 @@ class CoreHost(
         setNewSessionSelectModel(b)
     }
 
-    fun setNewSessionPrompt(prompt: String, attachmentCount: Int = 0, attachmentsMoved: Boolean = false) = send {
-        setNewSessionSetPrompt(
-            NewSessionSetPromptAction.newBuilder()
-                .setPrompt(prompt)
-                .setAttachmentCount(attachmentCount)
-                .setAttachmentsMoved(attachmentsMoved),
-        )
-    }
-
     fun retryNewSessionModels(projectKey: String = "") =
         send { setNewSessionRetryModels(NewSessionProjectAction.newBuilder().setProjectKey(projectKey)) }
 
@@ -1686,15 +1651,11 @@ class CoreHost(
     fun submitNewSession(
         projectKey: String = "",
         autoModeSupported: Boolean = false,
-        imageIds: List<String> = emptyList(),
-        fileIds: List<String> = emptyList(),
     ) = send {
         setNewSessionSubmit(
             NewSessionSubmitAction.newBuilder()
                 .setProjectKey(projectKey)
-                .setAutoModeSupported(autoModeSupported)
-                .addAllImageIds(imageIds)
-                .addAllFileIds(fileIds),
+                .setAutoModeSupported(autoModeSupported),
         )
     }
 

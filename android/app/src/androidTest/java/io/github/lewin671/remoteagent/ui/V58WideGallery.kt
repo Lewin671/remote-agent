@@ -80,13 +80,11 @@ class V58WideGallery {
     @org.junit.Before fun chat() {
         // Every session opens in the view last picked on this device.
         InstrumentationRegistry.getInstrumentation().targetContext.getSharedPreferences("session-view", android.content.Context.MODE_PRIVATE).edit().clear().commit()
-        ImageDrafts.forSession("s").clear()
     }
 
     @After fun close() {
         remote.close()
         DockFolds.clear()
-        ImageDrafts.forSession("s").clear()
         HomeScopes.clear(InstrumentationRegistry.getInstrumentation().targetContext)
     }
 

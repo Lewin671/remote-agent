@@ -441,26 +441,69 @@ class DirectTransportE2ETest {
             val uploadShaBytes = MessageDigest.getInstance("SHA-256").digest(uploadBytes)
             val uploadShaHex = sha256Hex(uploadBytes)
             val transferId = "ab" + "0".repeat(30).take(30).let { "%030x".format(System.nanoTime()) }.take(30)
-            val channel = remote.uploadChannel(machineId)
-            val st0 = retryNotSent { channel.beginFile(transferId, "e2e-upload.bin", uploadTotal.toLong(), uploadShaBytes) }
+            suspend fun runUpload(block: Command.Builder.() -> Unit) =
+                remote.machineCommand(machineId, Command.newBuilder().apply(block).build())
+            val st0 = retryNotSent {
+                runUpload {
+                    beginImageUpload = io.github.lewin671.remoteagent.proto.BeginImageUploadRequest.newBuilder()
+                        .setTransferId(transferId)
+                        .setFileName("e2e-upload.bin")
+                        .setFormat(io.github.lewin671.remoteagent.proto.ImageFormat.IMAGE_FORMAT_UNSPECIFIED)
+                        .setTotalBytes(uploadTotal.toLong())
+                        .setSha256(com.google.protobuf.ByteString.copyFrom(uploadShaBytes))
+                        .build()
+                }.beginImageUpload.status
+            }
             var upOff = st0.persistedBytes
             var uploadedCount = 0
             while (upOff < uploadTotal && uploadedCount < 3) {
                 val end = minOf(uploadTotal.toLong(), upOff + chunkSize).toInt()
-                val st = retryNotSent { channel.put(transferId, upOff, uploadBytes.copyOfRange(upOff.toInt(), end)) }
+                val chunk = uploadBytes.copyOfRange(upOff.toInt(), end)
+                val off = upOff
+                val st = retryNotSent {
+                    runUpload {
+                        putImageChunk = io.github.lewin671.remoteagent.proto.PutImageChunkRequest.newBuilder()
+                            .setTransferId(transferId)
+                            .setOffset(off)
+                            .setData(com.google.protobuf.ByteString.copyFrom(chunk))
+                            .build()
+                    }.putImageChunk.status
+                }
                 upOff = st.persistedBytes
                 uploadedCount++
             }
             // Simulate interruption & check durable persistedBytes via GetImageUploadStatus
-            val stPaused = retryNotSent { channel.status(transferId) }
+            val stPaused = retryNotSent {
+                runUpload {
+                    getImageUploadStatus = io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest.newBuilder()
+                        .setTransferId(transferId)
+                        .build()
+                }.getImageUploadStatus.status
+            }
             assertEquals(3L * chunkSize, stPaused.persistedBytes)
             upOff = stPaused.persistedBytes
             while (upOff < uploadTotal) {
                 val end = minOf(uploadTotal.toLong(), upOff + chunkSize).toInt()
-                val st = retryNotSent { channel.put(transferId, upOff, uploadBytes.copyOfRange(upOff.toInt(), end)) }
+                val chunk = uploadBytes.copyOfRange(upOff.toInt(), end)
+                val off = upOff
+                val st = retryNotSent {
+                    runUpload {
+                        putImageChunk = io.github.lewin671.remoteagent.proto.PutImageChunkRequest.newBuilder()
+                            .setTransferId(transferId)
+                            .setOffset(off)
+                            .setData(com.google.protobuf.ByteString.copyFrom(chunk))
+                            .build()
+                    }.putImageChunk.status
+                }
                 upOff = st.persistedBytes
             }
-            val stDone = retryNotSent { channel.complete(transferId) }
+            val stDone = retryNotSent {
+                runUpload {
+                    completeImageUpload = io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest.newBuilder()
+                        .setTransferId(transferId)
+                        .build()
+                }.completeImageUpload.status
+            }
             assertEquals(uploadTotal.toLong(), stDone.persistedBytes)
             val verifyRes = ctrlPost(ctrlBase, "/verify-upload", JSONObject().put("expectedSha256Hex", uploadShaHex))
             assertTrue("Uploaded file SHA-256 must match on daemon disk", verifyRes.getBoolean("matched"))

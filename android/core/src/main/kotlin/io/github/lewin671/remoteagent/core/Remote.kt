@@ -341,7 +341,6 @@ class Remote(
     val coreNavigation: SharedFlow<NavigateEffect> get() = coreHost.navigationEvents
     val scheduleNavigationEvents: SharedFlow<ScheduleNavigateEffect> get() = coreHost.scheduleNavigationEvents
     val restoreComposerEvents: SharedFlow<SessionRestoreComposerEffect> get() = coreHost.restoreComposerEvents
-    val resendAttachmentsEvents: SharedFlow<SessionResendAttachmentsEffect> get() = coreHost.resendAttachmentsEvents
     val securityClient: SecurityClient get() = coreHost.securityClient
     val securityStatus: StateFlow<SecurityWorkflowStatus?> get() = coreHost.securityClient.status
 
@@ -1719,9 +1718,6 @@ class Remote(
     fun closeSessionImageViewer(sid: String) =
         coreHost.closeSessionImageViewer(sid)
 
-    fun evaluateAttachments(req: io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest): io.github.lewin671.remoteagent.core.proto.AttachmentEvalViewModel =
-        coreHost.evaluateAttachments(req)
-
     suspend fun fetchSession(sid: String): Boolean {
         if (state.value.sessions[sid] != null) return true
         val deferred = CompletableDeferred<Boolean>()
@@ -1958,17 +1954,6 @@ class Remote(
         return (System.nanoTime() - started) / 1_000_000
     }
 
-    fun requireFileSupport(machineId: String?, hasFiles: Boolean, mayHaveRun: Boolean = false) {
-        if (hasFiles && capabilities(state.value.machines[machineId])?.fileUpload != true) {
-            val required = UiMessages.attachmentUpdateRequired().messageText()
-            throw CommandException(
-                if (mayHaveRun) CommandException.UNKNOWN else "failed_precondition",
-                if (mayHaveRun) localized { copy -> copy(UiMessages.errorsAndroidValue1ThePreviousOutcomeIsStillUnknownRetryTheSame(required.resolve(copy))) } else required,
-                outcome = if (mayHaveRun) Outcome.UNKNOWN else Outcome.NOT_SENT,
-            )
-        }
-    }
-
     private suspend fun sendMachineCommand(
         machineId: String,
         cmd: Command,
@@ -1977,13 +1962,7 @@ class Remote(
         deadlineMs: Long = clock() + COMMAND_TTL_MS,
     ): CommandResult = withContext(dispatcher) {
         val versioned = cmd.toBuilder().setProtocolVersion(PEER_PROTOCOL_VERSION).build()
-        val hasFiles = when (versioned.kindCase) {
-            Command.KindCase.SEND -> versioned.send.fileIdsCount > 0
-            Command.KindCase.CREATE_SESSION -> versioned.createSession.fileIdsCount > 0
-            else -> false
-        }
         var uncertain = false
-        requireFileSupport(machineId, hasFiles, uncertain)
         protocolMismatch(state.value.machines[machineId])?.let {
             throw CommandException("failed_precondition", it, outcome = Outcome.NOT_SENT)
         }
@@ -2059,7 +2038,6 @@ class Remote(
         var forceRelay = false
         var attempt = 0
         while (true) {
-            requireFileSupport(machineId, hasFiles, uncertain)
             val attemptId = newRequestId()
             val dec = if (routeHintValue != 0 || uploadTransferId.isNotEmpty()) {
                 coreHost.beginDirectBulkTransfer(
@@ -2291,59 +2269,6 @@ class Remote(
         }
         runCatching { cache?.putImage(cacheKey, env.toByteArray()) }
         ImageResult.Loaded(payload)
-    }
-
-    fun uploadChannel(machineId: String): UploadChannel = object : UploadChannel {
-        private suspend fun run(b: Command.Builder.() -> Unit): CommandResult =
-            machineCommand(machineId, Command.newBuilder().apply(b).build())
-
-        override suspend fun begin(
-            transferId: String,
-            format: io.github.lewin671.remoteagent.proto.ImageFormat,
-            total: Long,
-            sha256: ByteArray,
-        ) = run {
-            beginImageUpload = io.github.lewin671.remoteagent.proto.BeginImageUploadRequest.newBuilder()
-                .setTransferId(transferId)
-                .setFormat(format)
-                .setTotalBytes(total)
-                .setSha256(ByteString.copyFrom(sha256))
-                .build()
-        }.beginImageUpload.status
-
-        override suspend fun beginFile(transferId: String, name: String, total: Long, sha256: ByteArray) = run {
-            beginImageUpload = io.github.lewin671.remoteagent.proto.BeginImageUploadRequest.newBuilder()
-                .setTransferId(transferId)
-                .setFileName(name)
-                .setFormat(io.github.lewin671.remoteagent.proto.ImageFormat.IMAGE_FORMAT_UNSPECIFIED)
-                .setTotalBytes(total)
-                .setSha256(ByteString.copyFrom(sha256))
-                .build()
-        }.beginImageUpload.status
-
-        override suspend fun put(transferId: String, offset: Long, data: ByteArray) = run {
-            putImageChunk = io.github.lewin671.remoteagent.proto.PutImageChunkRequest.newBuilder()
-                .setTransferId(transferId)
-                .setOffset(offset)
-                .setData(ByteString.copyFrom(data))
-                .build()
-        }.putImageChunk.status
-
-        override suspend fun status(transferId: String) = run {
-            getImageUploadStatus = io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest.newBuilder()
-                .setTransferId(transferId)
-                .build()
-        }.getImageUploadStatus.status
-
-        override suspend fun abort(transferId: String) {
-            run { abortImageUpload = io.github.lewin671.remoteagent.proto.AbortImageUploadRequest.newBuilder().setTransferId(transferId).build() }
-        }
-
-        override suspend fun complete(transferId: String) = run {
-            completeImageUpload = io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest.newBuilder()
-                .setTransferId(transferId)
-                .build()
-        }.completeImageUpload.status
     }
 
     suspend fun openTerminal(sid: String, listener: TermListener): TermConn {

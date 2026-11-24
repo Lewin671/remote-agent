@@ -428,42 +428,6 @@ class RemoteTest {
             }
         }
 
-    @Test fun generationConflictStopsTheFileUploadWithoutResync() = runBlocking<Unit> {
-        val r = client()
-        r.start()
-        r.awaitState("online machine") { it.machines[daemon.id]?.online == true }
-        var completes = 0
-        var statuses = 0
-        daemon.answer = { _, command ->
-            val status = ImageUploadStatus.newBuilder().setState(ImageUploadState.IMAGE_UPLOAD_STATE_RECEIVING).setMaxChunkBytes(8192).build()
-            when {
-                command.hasBeginImageUpload() -> CommandResult.newBuilder().setBeginImageUpload(BeginImageUploadResponse.newBuilder().setStatus(status)).build()
-                command.hasCompleteImageUpload() -> {
-                    completes++
-                    CommandResult.newBuilder().setErrorCode("generation_conflict").setErrorMessage("diagnostic changed").build()
-                }
-                else -> { statuses++; error("unexpected upload retry/resync") }
-            }
-        }
-        val error = runCatching {
-            uploadFile(
-                r.uploadChannel(daemon.id),
-                "file-transfer-id",
-                "empty.bin",
-                0,
-                { java.io.ByteArrayInputStream(byteArrayOf()) },
-                maxBytes = 100L * 1024 * 1024,
-                maxNameBytes = 255,
-                maxSizeText = "100.0 MB",
-            )
-        }.exceptionOrNull() as CommandException
-        assertTrue(error.fromDaemon)
-        assertEquals("generation_conflict", error.code)
-        assertFalse(error.unknown)
-        assertEquals(1, completes)
-        assertEquals(0, statuses)
-    }
-
     @Test fun verifiedReadTimeoutAndFinalFailuresDoNotRetry() = runBlocking<Unit> {
         val r = client()
         r.start()
