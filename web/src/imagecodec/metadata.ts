@@ -93,11 +93,13 @@ function skipGifSubBlocks(b: Uint8Array, pos: number): number {
 const textDecoder = new TextDecoder();
 
 function runPlan(b: Uint8Array, mode: number, expectedFormat: number): Uint8Array {
-  const plan = getCore().newImagePlan(mode, expectedFormat, b.length);
+  const core = getCore();
+  const maxSteps = core.imagePlanMaxSteps(b.length);
+  const plan = core.newImagePlan(mode, expectedFormat, b.length);
   try {
     let offset = 0;
     let slice = b.subarray(0, Math.min(INITIAL_HEADER_BYTES, b.length));
-    for (;;) {
+    for (let step = 0; step < maxSteps; step++) {
       const res = plan.step(offset, slice);
       const status = res[0];
       if (status === STATUS_DONE) return res;
@@ -126,6 +128,7 @@ function runPlan(b: Uint8Array, mode: number, expectedFormat: number): Uint8Arra
         throw malformed("unexpected_plan_status");
       }
     }
+    throw malformed("unexpected_plan_status");
   } finally {
     plan.free();
   }

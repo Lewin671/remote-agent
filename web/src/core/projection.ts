@@ -14,6 +14,7 @@ export interface CoreWasmApi {
   reduceProjection(agent: number, batchBytes?: Uint8Array): CoreWasmResult;
   sniffImageFormat(header?: Uint8Array): number;
   tiffOrientation(tiff?: Uint8Array): number;
+  imagePlanMaxSteps(totalLen: number): number;
   newImagePlan(mode: number, expectedFormat: number, totalLen: number): number;
   imagePlanStep(handle: number, offset: number, buf?: Uint8Array): CoreWasmResult;
   imagePlanFree(handle: number): void;
@@ -197,6 +198,10 @@ export class RemoteAgentCore {
 
   tiffOrientation(tiff: Uint8Array): number {
     return this.api.tiffOrientation(tiff);
+  }
+
+  imagePlanMaxSteps(totalLen: number): number {
+    return this.api.imagePlanMaxSteps(totalLen);
   }
 
   newImagePlan(mode: number, expectedFormat: number, totalLen: number): WasmImagePlan {

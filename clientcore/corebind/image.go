@@ -18,6 +18,11 @@ func TiffOrientation(tiff []byte) int32 {
 	return imageparse.ParseTiffOrientation(tiff)
 }
 
+// ImagePlanMaxSteps returns the upper bound on Step iterations shells should enforce for totalLen bytes.
+func ImagePlanMaxSteps(totalLen int64) int64 {
+	return imageparse.MaxPlanSteps(totalLen)
+}
+
 // ImagePlan holds a sans-IO image container parser / strip-planner behind a gomobile-safe handle.
 type ImagePlan struct {
 	inner *imageparse.Plan

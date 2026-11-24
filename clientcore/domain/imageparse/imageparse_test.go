@@ -281,13 +281,14 @@ func TestSharedImageVectors(t *testing.T) {
 				idempDone, code2, detail2 := runPlanWithWindow(t, gotStripped, ModeStrip, expectedFmt, maxWin)
 				if code2 != 0 {
 					t.Errorf("%s (win=%d): idempotent strip failed (%d: %s)", tc.Name, maxWin, code2, detail2)
-				} else {
-					if got2 := spliceDone(gotStripped, idempDone); !bytes.Equal(got2, gotStripped) {
-						t.Errorf("%s (win=%d): strip is not idempotent", tc.Name, maxWin)
-					}
-					if idempDone[2] != 1 {
-						t.Errorf("%s (win=%d): stripped output orientation = %d, want 1", tc.Name, maxWin, idempDone[2])
-					}
+				} else if got2 := spliceDone(gotStripped, idempDone); !bytes.Equal(got2, gotStripped) {
+					t.Errorf("%s (win=%d): strip is not idempotent", tc.Name, maxWin)
+				}
+				inspectStripped, code3, detail3 := runPlanWithWindow(t, gotStripped, ModeInspect, FormatUnknown, maxWin)
+				if code3 != 0 {
+					t.Errorf("%s (win=%d): inspect stripped failed (%d: %s)", tc.Name, maxWin, code3, detail3)
+				} else if inspectStripped[2] != 1 {
+					t.Errorf("%s (win=%d): stripped output orientation = %d, want 1", tc.Name, maxWin, inspectStripped[2])
 				}
 			}
 		}
@@ -309,4 +310,185 @@ func TestParseTiffOrientationEdgeCases(t *testing.T) {
 			t.Errorf("case %d: got %d, want 1", i, got)
 		}
 	}
+}
+
+func makeTiffOrient(orient byte, totalSize int) []byte {
+	if totalSize < 32 {
+		totalSize = 32
+	}
+	b := make([]byte, totalSize)
+	copy(b, []byte{'M', 'M', 0, 42, 0, 0, 0, 8, 0, 1, 0x01, 0x12, 0, 3, 0, 0, 0, 1, 0, orient, 0, 0})
+	return b
+}
+
+func makePngChunk(typ string, payload []byte) []byte {
+	out := make([]byte, 12+len(payload))
+	out[0] = byte(len(payload) >> 24)
+	out[1] = byte(len(payload) >> 16)
+	out[2] = byte(len(payload) >> 8)
+	out[3] = byte(len(payload))
+	copy(out[4:8], typ)
+	copy(out[8:8+len(payload)], payload)
+	// CRC bytes left 0 (container parser does not verify CRC).
+	return out
+}
+
+func makeRiffChunk(fourcc string, payload []byte) []byte {
+	pad := len(payload) & 1
+	out := make([]byte, 8+len(payload)+pad)
+	copy(out[0:4], fourcc)
+	putU32le(out, 4, uint32(len(payload)))
+	copy(out[8:], payload)
+	return out
+}
+
+func makeWebpFile(chunks ...[]byte) []byte {
+	bodyLen := 4
+	for _, c := range chunks {
+		bodyLen += len(c)
+	}
+	out := make([]byte, 0, 8+bodyLen)
+	out = append(out, 'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'E', 'B', 'P')
+	putU32le(out, 4, uint32(bodyLen))
+	for _, c := range chunks {
+		out = append(out, c...)
+	}
+	return out
+}
+
+func makeMinimalJpegBody() []byte {
+	// SOF0 (16x12) + SOS + 2 bytes entropy + EOI
+	return []byte{
+		0xff, 0xc0, 0, 11, 8, 0, 12, 0, 16, 1, 1, 0x11, 0,
+		0xff, 0xda, 0, 8, 1, 1, 0, 0, 63, 0,
+		0x12, 0x34,
+		0xff, 0xd9,
+	}
+}
+
+func TestNoInfiniteLoopRegressions(t *testing.T) {
+	// Trigger 1: PNG eXIf chunk > 64 KB (70,000 B and 200,000 B).
+	ihdrPayload := []byte{0, 0, 0, 10, 0, 0, 0, 20, 8, 6, 0, 0, 0}
+	for _, exifLen := range []int{70_000, 200_000} {
+		png := append([]byte{}, pngSignature[:]...)
+		png = append(png, makePngChunk("IHDR", ihdrPayload)...)
+		png = append(png, makePngChunk("eXIf", makeTiffOrient(6, exifLen))...)
+		png = append(png, makePngChunk("IDAT", []byte{1, 2, 3, 4})...)
+		png = append(png, makePngChunk("IEND", nil)...)
+
+		done, code, detail := runPlanWithWindow(t, png, ModeInspect, FormatPNG, 64*1024)
+		if code != 0 {
+			t.Fatalf("PNG eXIf=%d inspect failed: %d %s", exifLen, code, detail)
+		}
+		if done[2] != 6 {
+			t.Fatalf("PNG eXIf=%d orientation = %d, want 6", exifLen, done[2])
+		}
+		stripDone, code, detail := runPlanWithWindow(t, png, ModeStrip, FormatPNG, 64*1024)
+		if code != 0 {
+			t.Fatalf("PNG eXIf=%d strip failed: %d %s", exifLen, code, detail)
+		}
+		stripped := spliceDone(png, stripDone)
+		if bytes.Contains(stripped, []byte("eXIf")) {
+			t.Fatalf("PNG eXIf=%d was not stripped", exifLen)
+		}
+	}
+
+	// Trigger 2: WebP EXIF chunk > 64 KB (70,000 B and 200,000 B).
+	vp8x := make([]byte, 10)
+	vp8x[0] = 0x08
+	vp8x[4] = 9  // width 10
+	vp8x[7] = 19 // height 20
+	vp8l := []byte{0x2f, 0, 0, 0, 0, 0}
+	for _, exifLen := range []int{70_000, 200_000} {
+		webp := makeWebpFile(
+			makeRiffChunk("VP8X", vp8x),
+			makeRiffChunk("VP8L", vp8l),
+			makeRiffChunk("EXIF", makeTiffOrient(8, exifLen)),
+		)
+		done, code, detail := runPlanWithWindow(t, webp, ModeInspect, FormatWebP, 64*1024)
+		if code != 0 {
+			t.Fatalf("WebP EXIF=%d inspect failed: %d %s", exifLen, code, detail)
+		}
+		if done[2] != 8 {
+			t.Fatalf("WebP EXIF=%d orientation = %d, want 8", exifLen, done[2])
+		}
+		stripDone, code, detail := runPlanWithWindow(t, webp, ModeStrip, FormatWebP, 64*1024)
+		if code != 0 {
+			t.Fatalf("WebP EXIF=%d strip failed: %d %s", exifLen, code, detail)
+		}
+		stripped := spliceDone(webp, stripDone)
+		if bytes.Contains(stripped, []byte("EXIF")) {
+			t.Fatalf("WebP EXIF=%d was not stripped", exifLen)
+		}
+	}
+
+	// Trigger 3: JPEG with > 64 KB consecutive 0xFF fill bytes (70,000 B and 200,000 B).
+	body := makeMinimalJpegBody()
+	for _, fillLen := range []int{70_000, 200_000} {
+		jpeg := make([]byte, 0, 2+fillLen+len(body))
+		jpeg = append(jpeg, 0xff, 0xd8)
+		jpeg = append(jpeg, bytes.Repeat([]byte{0xff}, fillLen)...)
+		jpeg = append(jpeg, body...)
+
+		done, code, detail := runPlanWithWindow(t, jpeg, ModeInspect, FormatJPEG, 64*1024)
+		if code != 0 {
+			t.Fatalf("JPEG fill=%d inspect failed: %d %s", fillLen, code, detail)
+		}
+		if done[3] != 1 || u32le(done, 4) != 16 || u32le(done, 8) != 12 {
+			t.Fatalf("JPEG fill=%d size mismatch: hasSize=%d %dx%d", fillLen, done[3], u32le(done, 4), u32le(done, 8))
+		}
+		stripDone, code, detail := runPlanWithWindow(t, jpeg, ModeStrip, FormatJPEG, 64*1024)
+		if code != 0 {
+			t.Fatalf("JPEG fill=%d strip failed: %d %s", fillLen, code, detail)
+		}
+		stripped := spliceDone(jpeg, stripDone)
+		want := append([]byte{0xff, 0xd8}, body...)
+		if !bytes.Equal(stripped, want) {
+			t.Fatalf("JPEG fill=%d stripped len=%d want=%d", fillLen, len(stripped), len(want))
+		}
+	}
+
+	// Trigger 4: Full-length JPEG APP1 (segLen=65535) preceded by 1 B and 5 B of 0xFF fill bytes.
+	app1Payload := append([]byte("Exif\x00\x00"), makeTiffOrient(3, 65535-2-6)...)
+	for _, fillLen := range []int{1, 5} {
+		jpeg := make([]byte, 0, 2+fillLen+4+len(app1Payload)+len(body))
+		jpeg = append(jpeg, 0xff, 0xd8)
+		jpeg = append(jpeg, bytes.Repeat([]byte{0xff}, fillLen)...)
+		jpeg = append(jpeg, 0xff, 0xe1, 0xff, 0xff)
+		jpeg = append(jpeg, app1Payload...)
+		jpeg = append(jpeg, body...)
+
+		done, code, detail := runPlanWithWindow(t, jpeg, ModeInspect, FormatJPEG, 64*1024)
+		if code != 0 {
+			t.Fatalf("JPEG full APP1 fill=%d inspect failed: %d %s", fillLen, code, detail)
+		}
+		if done[2] != 3 {
+			t.Fatalf("JPEG full APP1 fill=%d orientation = %d, want 3", fillLen, done[2])
+		}
+		stripDone, code, detail := runPlanWithWindow(t, jpeg, ModeStrip, FormatJPEG, 64*1024)
+		if code != 0 {
+			t.Fatalf("JPEG full APP1 fill=%d strip failed: %d %s", fillLen, code, detail)
+		}
+		stripped := spliceDone(jpeg, stripDone)
+		want := append([]byte{0xff, 0xd8}, body...)
+		if !bytes.Equal(stripped, want) {
+			t.Fatalf("JPEG full APP1 fill=%d stripped mismatch", fillLen)
+		}
+	}
+}
+
+func TestStalledNeedReadFailsDeterministically(t *testing.T) {
+	// If a buggy caller repeatedly returns an empty buffer for NeedRead at the same offset,
+	// Plan must fail with stalled_read instead of looping forever.
+	p := NewPlan(ModeStrip, FormatPNG, 1024)
+	for i := 0; i < 10; i++ {
+		res, err := p.Step(0, nil)
+		if err != nil {
+			t.Fatalf("step %d unexpected err: %v", i, err)
+		}
+		if res[0] == StatusError {
+			return
+		}
+	}
+	t.Fatalf("expected Plan to terminate with StatusError on stalled reads")
 }

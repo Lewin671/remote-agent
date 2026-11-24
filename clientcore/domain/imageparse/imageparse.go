@@ -54,7 +54,25 @@ const (
 const (
 	defaultReadWindow = 64 * 1024
 	maxExifReadBytes  = 256 * 1024
+	maxStalledReads   = 3
+
+	planStepBytesDivisor int64 = 256
+	planStepBase         int64 = 4096
+	planStepCap          int64 = 262144
 )
+
+// MaxPlanSteps returns the deterministic upper bound on Plan.Step iterations for a file of totalLen bytes.
+// Shells enforce this limit in their runPlan loop as an additional safety guard against non-terminating loops.
+func MaxPlanSteps(totalLen int64) int64 {
+	if totalLen <= 0 {
+		return planStepBase
+	}
+	steps := totalLen/planStepBytesDivisor + planStepBase
+	if steps > planStepCap {
+		return planStepCap
+	}
+	return steps
+}
 
 var pngSignature = [8]byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a}
 
@@ -219,6 +237,11 @@ type Plan struct {
 
 	// WebP header rewrite tracking (index in ops for 12-byte RIFF header).
 	webpOutBodyLen uint64
+
+	// Consecutive NeedRead stall detector.
+	hasLastRead  bool
+	lastReadPos  uint64
+	stalledReads int
 
 	done bool
 }
@@ -432,11 +455,14 @@ func (p *Plan) stepJpeg(offset int64, buf []byte) ([]byte, error) {
 				}
 				return p.fail(ErrCodeMalformed, "JPEG ends before EOI"), nil
 			}
-			// Keep the last 0xFF so fill bytes across window boundaries remain valid.
-			return p.needRead(bufEnd-1, minU32(p.totalLen-(bufEnd-1), defaultReadWindow)), nil
+			// Advance p.pos to the last 0xFF so fill bytes across window boundaries make forward progress.
+			p.pos = bufEnd - 1
+			return p.needRead(p.pos, minU32(p.totalLen-p.pos, defaultReadWindow)), nil
 		}
 		marker := buf[m]
 		start := base + uint64(m-1)
+		// Advance cursor past any leading 0xFF fill bytes so subsequent NeedRead offsets equal p.pos.
+		p.pos = start
 
 		if marker == 0xd9 { // EOI
 			if p.mode == ModeInspect {
@@ -498,15 +524,15 @@ func (p *Plan) stepJpeg(offset int64, buf []byte) ([]byte, error) {
 			}
 		}
 
-		// Inspect EXIF orientation in APP1 before SOS.
-		if !p.sawScan && !p.haveExif && marker == 0xe1 && segLen > 8 {
+		// Inspect EXIF orientation in APP1 before SOS (Inspect mode only).
+		if p.mode == ModeInspect && !p.sawScan && !p.haveExif && marker == 0xe1 && segLen > 8 {
 			if start+10 > bufEnd {
-				return p.needRead(start, uint32(minU64(end-start, defaultReadWindow))), nil
+				return p.needRead(p.pos, uint32(minU64(end-start, defaultReadWindow))), nil
 			}
 			if hasASCII(buf, relStart+4, "Exif\x00\x00") {
 				// JPEG segment max length is 65535, so end-start <= 65537.
 				if end > bufEnd {
-					return p.needRead(start, uint32(end-start)), nil
+					return p.needRead(p.pos, uint32(end-start)), nil
 				}
 				p.orientation = ParseTiffOrientation(buf[relStart+10 : int(end-base)])
 				p.haveExif = true
@@ -634,14 +660,14 @@ func (p *Plan) stepPng(offset int64, buf []byte) ([]byte, error) {
 		}
 
 		isEXIF := t0 == 'e' && t1 == 'X' && t2 == 'I' && t3 == 'f'
-		if isEXIF && !p.haveExif && chunkLen > 0 {
+		if p.mode == ModeInspect && isEXIF && !p.haveExif && chunkLen > 0 {
 			readLen := chunkLen
 			if readLen > maxExifReadBytes {
 				readLen = maxExifReadBytes
 			}
 			dataStart := p.pos + 8
 			if dataStart+readLen > bufEnd {
-				return p.needRead(dataStart, uint32(readLen)), nil
+				return p.needRead(p.pos, uint32(8+readLen)), nil
 			}
 			dRel := int(dataStart - base)
 			p.orientation = ParseTiffOrientation(buf[dRel : dRel+int(readLen)])
@@ -749,13 +775,13 @@ func (p *Plan) stepWebp(offset int64, buf []byte) ([]byte, error) {
 
 		isEXIF := t0 == 'E' && t1 == 'X' && t2 == 'I' && t3 == 'F'
 		isXMP := t0 == 'X' && t1 == 'M' && t2 == 'P' && t3 == ' '
-		if isEXIF && !p.haveExif && size > 0 {
+		if p.mode == ModeInspect && isEXIF && !p.haveExif && size > 0 {
 			readLen := size
 			if readLen > maxExifReadBytes {
 				readLen = maxExifReadBytes
 			}
 			if dataStart+readLen > bufEnd {
-				return p.needRead(dataStart, uint32(readLen)), nil
+				return p.needRead(p.pos, uint32(8+readLen)), nil
 			}
 			d := int(dataStart - base)
 			p.orientation = ParseTiffOrientation(buf[d : d+int(readLen)])
@@ -931,6 +957,16 @@ func (p *Plan) addKeep(start, end uint64) {
 }
 
 func (p *Plan) needRead(offset uint64, length uint32) []byte {
+	if p.hasLastRead && offset <= p.lastReadPos {
+		p.stalledReads++
+		if p.stalledReads > maxStalledReads {
+			return p.fail(ErrCodeMalformed, "stalled_read")
+		}
+	} else {
+		p.hasLastRead = true
+		p.lastReadPos = offset
+		p.stalledReads = 0
+	}
 	out := make([]byte, 13)
 	out[0] = StatusNeedRead
 	putU64le(out, 1, offset)

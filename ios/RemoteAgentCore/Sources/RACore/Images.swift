@@ -118,12 +118,13 @@ private enum ImagePlanFailure: Error {
 }
 
 private func runImagePlan(_ data: Data, mode: Int32, expectedFormat: Int32) throws -> Data {
+    let maxSteps = CorebindImagePlanMaxSteps(Int64(data.count))
     guard let plan = CorebindNewImagePlan(mode, expectedFormat, Int64(data.count)) else {
         throw ImagePlanFailure.rejected("unavailable")
     }
     var offset: Int64 = 0
     var slice = subdataCopy(data, 0, min(imgInitialHeaderBytes, data.count))
-    while true {
+    for _ in 0..<maxSteps {
         let res = try plan.step(offset, buf: slice)
         guard !res.isEmpty else { throw ImagePlanFailure.rejected("empty response") }
         let status = res[res.startIndex]
@@ -153,6 +154,7 @@ private func runImagePlan(_ data: Data, mode: Int32, expectedFormat: Int32) thro
             throw ImagePlanFailure.rejected("unexpected plan status \(status)")
         }
     }
+    throw ImagePlanFailure.rejected("plan step limit exceeded")
 }
 
 private func spliceImagePlan(_ src: Data, _ done: Data) -> Data {

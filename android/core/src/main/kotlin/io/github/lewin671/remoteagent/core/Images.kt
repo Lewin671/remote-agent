@@ -95,10 +95,13 @@ private fun runImagePlan(
     expectedFormat: Int,
     onError: (String) -> Nothing,
 ): ByteArray {
+    val maxSteps = Corebind.imagePlanMaxSteps(b.size.toLong())
     val plan = Corebind.newImagePlan(mode, expectedFormat, b.size.toLong())
     var offset = 0L
     var slice = if (b.size > IMG_INITIAL_HEADER_BYTES) b.copyOfRange(0, IMG_INITIAL_HEADER_BYTES) else b
-    while (true) {
+    var step = 0L
+    while (step < maxSteps) {
+        step++
         val res = plan.step(offset, slice)
         val status = res[0].toInt() and 0xff
         if (status == IMG_STATUS_DONE) return res
@@ -138,6 +141,7 @@ private fun runImagePlan(
             else -> onError("unexpected_plan_status")
         }
     }
+    onError("unexpected_plan_status")
 }
 
 private fun spliceImagePlan(src: ByteArray, done: ByteArray): ByteArray {

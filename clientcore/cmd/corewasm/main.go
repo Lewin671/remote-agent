@@ -223,6 +223,14 @@ func main() {
 		return int(corebind.TiffOrientation(raw))
 	}))
 
+	api.Set("imagePlanMaxSteps", js.FuncOf(func(_ js.Value, args []js.Value) any {
+		var totalLen int64
+		if len(args) > 0 {
+			totalLen = int64(args[0].Float())
+		}
+		return float64(corebind.ImagePlanMaxSteps(totalLen))
+	}))
+
 	api.Set("newImagePlan", js.FuncOf(func(_ js.Value, args []js.Value) any {
 		var mode, expected int32
 		var totalLen int64
