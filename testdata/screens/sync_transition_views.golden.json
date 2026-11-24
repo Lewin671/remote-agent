@@ -198,7 +198,8 @@
                   "protocolVersion": 17
                 },
                 "reachable": true,
-                "protocolVersion": 17
+                "protocolVersion": 17,
+                "terminalReady": true
               }
             ],
             "machinesListed": true,
@@ -236,7 +237,8 @@
                   "approvalId": "ap-tr-1",
                   "approvalToolName": "Bash",
                   "approvalCommand": "go test ./..."
-                }
+                },
+                "terminalReady": true
               }
             ],
             "sessionsListed": true,
@@ -361,7 +363,8 @@
                 "approvalId": "ap-tr-1",
                 "approvalToolName": "Bash",
                 "approvalCommand": "go test ./..."
-              }
+              },
+              "terminalReady": true
             },
             "loading": true,
             "awaitingCache": true,
@@ -482,7 +485,8 @@
                 "approvalId": "ap-tr-1",
                 "approvalToolName": "Bash",
                 "approvalCommand": "go test ./..."
-              }
+              },
+              "terminalReady": true
             },
             "loaded": true,
             "prefixLen": "2",
@@ -570,7 +574,8 @@
                   "protocolVersion": 17
                 },
                 "reachable": true,
-                "protocolVersion": 17
+                "protocolVersion": 17,
+                "terminalReady": true
               }
             ],
             "machinesListed": true,
@@ -608,7 +613,8 @@
                   "approvalId": "ap-tr-1",
                   "approvalToolName": "Bash",
                   "approvalCommand": "go test ./..."
-                }
+                },
+                "terminalReady": true
               }
             ],
             "sessionsListed": true,

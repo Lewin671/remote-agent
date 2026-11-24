@@ -184,6 +184,8 @@ public struct PBCoreSyncMachineView: Sendable {
 
   public var reachabilityUnknown: Bool = false
 
+  public var terminalReady: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -289,6 +291,16 @@ public struct PBCoreSyncSessionView: @unchecked Sendable {
   public var hasPending: Bool {return _storage._pending != nil}
   /// Clears the value of `pending`. Subsequent reads from it will return its default value.
   public mutating func clearPending() {_uniqueStorage()._pending = nil}
+
+  public var terminalReady: Bool {
+    get {return _storage._terminalReady}
+    set {_uniqueStorage()._terminalReady = newValue}
+  }
+
+  public var terminalWaiting: Bool {
+    get {return _storage._terminalWaiting}
+    set {_uniqueStorage()._terminalWaiting = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1047,7 +1059,7 @@ extension PBCoreSyncPendingAction: SwiftProtobuf.Message, SwiftProtobuf._Message
 
 extension PBCoreSyncMachineView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SyncMachineView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}online\0\u{3}last_seen_ms\0\u{1}meta\0\u{3}meta_rev\0\u{3}meta_broken\0\u{1}reachable\0\u{1}unlinked\0\u{3}direct_ready\0\u{3}protocol_version\0\u{3}daemon_out_of_date\0\u{3}client_out_of_date\0\u{3}reachability_unknown\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}online\0\u{3}last_seen_ms\0\u{1}meta\0\u{3}meta_rev\0\u{3}meta_broken\0\u{1}reachable\0\u{1}unlinked\0\u{3}direct_ready\0\u{3}protocol_version\0\u{3}daemon_out_of_date\0\u{3}client_out_of_date\0\u{3}reachability_unknown\0\u{3}terminal_ready\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1068,6 +1080,7 @@ extension PBCoreSyncMachineView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       case 11: try { try decoder.decodeSingularBoolField(value: &self.daemonOutOfDate) }()
       case 12: try { try decoder.decodeSingularBoolField(value: &self.clientOutOfDate) }()
       case 13: try { try decoder.decodeSingularBoolField(value: &self.reachabilityUnknown) }()
+      case 14: try { try decoder.decodeSingularBoolField(value: &self.terminalReady) }()
       default: break
       }
     }
@@ -1117,6 +1130,9 @@ extension PBCoreSyncMachineView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if self.reachabilityUnknown != false {
       try visitor.visitSingularBoolField(value: self.reachabilityUnknown, fieldNumber: 13)
     }
+    if self.terminalReady != false {
+      try visitor.visitSingularBoolField(value: self.terminalReady, fieldNumber: 14)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1134,6 +1150,7 @@ extension PBCoreSyncMachineView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if lhs.daemonOutOfDate != rhs.daemonOutOfDate {return false}
     if lhs.clientOutOfDate != rhs.clientOutOfDate {return false}
     if lhs.reachabilityUnknown != rhs.reachabilityUnknown {return false}
+    if lhs.terminalReady != rhs.terminalReady {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1141,7 +1158,7 @@ extension PBCoreSyncMachineView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 extension PBCoreSyncSessionView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SyncSessionView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}machine_id\0\u{1}info\0\u{3}meta_rev\0\u{3}last_seq\0\u{3}created_ms\0\u{3}updated_ms\0\u{3}listed_ended_ms\0\u{1}listed\0\u{1}checkpoint\0\u{3}checkpoint_invalid\0\u{3}retired_history\0\u{3}open_failed\0\u{3}schedule_name\0\u{3}schedule_unread\0\u{1}pending\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}machine_id\0\u{1}info\0\u{3}meta_rev\0\u{3}last_seq\0\u{3}created_ms\0\u{3}updated_ms\0\u{3}listed_ended_ms\0\u{1}listed\0\u{1}checkpoint\0\u{3}checkpoint_invalid\0\u{3}retired_history\0\u{3}open_failed\0\u{3}schedule_name\0\u{3}schedule_unread\0\u{1}pending\0\u{3}terminal_ready\0\u{3}terminal_waiting\0")
 
   fileprivate class _StorageClass {
     var _sessionID: String = String()
@@ -1160,6 +1177,8 @@ extension PBCoreSyncSessionView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _scheduleName: String = String()
     var _scheduleUnread: Bool = false
     var _pending: PBCoreSyncPendingAction? = nil
+    var _terminalReady: Bool = false
+    var _terminalWaiting: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1186,6 +1205,8 @@ extension PBCoreSyncSessionView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _scheduleName = source._scheduleName
       _scheduleUnread = source._scheduleUnread
       _pending = source._pending
+      _terminalReady = source._terminalReady
+      _terminalWaiting = source._terminalWaiting
     }
   }
 
@@ -1220,6 +1241,8 @@ extension PBCoreSyncSessionView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 14: try { try decoder.decodeSingularStringField(value: &_storage._scheduleName) }()
         case 15: try { try decoder.decodeSingularBoolField(value: &_storage._scheduleUnread) }()
         case 16: try { try decoder.decodeSingularMessageField(value: &_storage._pending) }()
+        case 17: try { try decoder.decodeSingularBoolField(value: &_storage._terminalReady) }()
+        case 18: try { try decoder.decodeSingularBoolField(value: &_storage._terminalWaiting) }()
         default: break
         }
       }
@@ -1280,6 +1303,12 @@ extension PBCoreSyncSessionView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       try { if let v = _storage._pending {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 16)
       } }()
+      if _storage._terminalReady != false {
+        try visitor.visitSingularBoolField(value: _storage._terminalReady, fieldNumber: 17)
+      }
+      if _storage._terminalWaiting != false {
+        try visitor.visitSingularBoolField(value: _storage._terminalWaiting, fieldNumber: 18)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1305,6 +1334,8 @@ extension PBCoreSyncSessionView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._scheduleName != rhs_storage._scheduleName {return false}
         if _storage._scheduleUnread != rhs_storage._scheduleUnread {return false}
         if _storage._pending != rhs_storage._pending {return false}
+        if _storage._terminalReady != rhs_storage._terminalReady {return false}
+        if _storage._terminalWaiting != rhs_storage._terminalWaiting {return false}
         return true
       }
       if !storagesAreEqual {return false}

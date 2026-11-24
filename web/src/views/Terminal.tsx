@@ -51,9 +51,10 @@ const keys2: [ReactNode, string, string][] = [
 export function TerminalView({ remote, session, compact, wide, running }: { remote: Remote; session: { id: string; machineId: string }; compact?: boolean; wide?: boolean; running: boolean }) {
   const coreHost = useCoreHost(remote);
   const sync = useSyncState(coreHost);
-  const machine = sync.machines.find((m) => m.machineId === session.machineId);
-  const online = Boolean((sync.connection === ConnState.CONNECTED && machine?.reachable) || machine?.directReady);
-  const waitingPeer = !online && (sync.reachabilityUnknown || sync.displayGrace);
+  const syncSession = sync.sessions.find((s) => s.sessionId === session.id);
+  const syncMachine = sync.machines.find((m) => m.machineId === session.machineId);
+  const online = syncSession ? syncSession.terminalReady : syncMachine ? syncMachine.terminalReady : sync.connection === ConnState.CONNECTED;
+  const waitingPeer = syncSession ? syncSession.terminalWaiting : !online && (sync.reachabilityUnknown || sync.displayGrace);
   const onlineRef = useRef(online);
   onlineRef.current = online;
   const waitingPeerRef = useRef(waitingPeer);

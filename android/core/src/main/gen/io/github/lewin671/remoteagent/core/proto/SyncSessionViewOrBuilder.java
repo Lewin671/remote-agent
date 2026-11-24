@@ -138,4 +138,16 @@ public interface SyncSessionViewOrBuilder extends
    * @return The pending.
    */
   io.github.lewin671.remoteagent.core.proto.SyncPendingAction getPending();
+
+  /**
+   * <code>bool terminal_ready = 17 [json_name = "terminalReady"];</code>
+   * @return The terminalReady.
+   */
+  boolean getTerminalReady();
+
+  /**
+   * <code>bool terminal_waiting = 18 [json_name = "terminalWaiting"];</code>
+   * @return The terminalWaiting.
+   */
+  boolean getTerminalWaiting();
 }

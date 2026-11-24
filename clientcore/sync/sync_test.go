@@ -3194,3 +3194,58 @@ func TestManagerNameTextFallbacks(t *testing.T) {
 		t.Fatalf("expected custom name to win, got %+v", got)
 	}
 }
+
+func TestTerminalReadyAndWaitingView(t *testing.T) {
+	e := NewEngine()
+	now := int64(1_700_000_000_000)
+	legID, listsOp := startAndConnect(t, e, now)
+
+	e.HandleEvent(&corev1.Event{
+		NowMs:  now + 20,
+		MonoMs: now + 20,
+		Event: &corev1.Event_ListsFetched{
+			ListsFetched: &corev1.ListsFetchedEvent{
+				OpId:     listsOp,
+				Machines: []*corev1.PlainMachine{{MachineId: "m1", Online: false}},
+				Sessions: []*corev1.PlainSession{{SessionId: "s1", MachineId: "m1", LastSeq: 1}},
+			},
+		},
+	})
+	// 1. Relay connected: terminal_ready=true even if machine presence says offline.
+	v1 := e.BuildSyncStateView()
+	if !v1.Machines[0].TerminalReady || !v1.Sessions[0].TerminalReady || v1.Sessions[0].TerminalWaiting {
+		t.Fatalf("expected terminal_ready=true when relay connected, got machine=%+v session=%+v", v1.Machines[0], v1.Sessions[0])
+	}
+
+	// 2. Relay drops -> enters displayGrace: terminal_ready=false, terminal_waiting=true.
+	e.HandleEvent(&corev1.Event{
+		NowMs:  now + 100,
+		MonoMs: now + 100,
+		Event: &corev1.Event_StreamClosed{
+			StreamClosed: &corev1.StreamClosedEvent{LegId: legID, Error: "drop"},
+		},
+	})
+	v2 := e.BuildSyncStateView()
+	if v2.Machines[0].TerminalReady || v2.Sessions[0].TerminalReady || !v2.Sessions[0].TerminalWaiting {
+		t.Fatalf("expected terminal_ready=false terminal_waiting=true during displayGrace, got machine=%+v session=%+v", v2.Machines[0], v2.Sessions[0])
+	}
+
+	// 3. Direct ready overrides relay disconnect: terminal_ready=true, terminal_waiting=false.
+	e.directReady["m1"] = true
+	v3 := e.BuildSyncStateView()
+	if !v3.Machines[0].TerminalReady || !v3.Sessions[0].TerminalReady || v3.Sessions[0].TerminalWaiting {
+		t.Fatalf("expected terminal_ready=true when directReady, got machine=%+v session=%+v", v3.Machines[0], v3.Sessions[0])
+	}
+
+	// 4. Direct drops and displayGrace expires -> terminal_ready=false, terminal_waiting=false.
+	e.directReady["m1"] = false
+	e.HandleEvent(&corev1.Event{
+		NowMs:  now + 100 + DisplayGraceMs + 100,
+		MonoMs: now + 100 + DisplayGraceMs + 100,
+		Event:  &corev1.Event_ClockUpdated{ClockUpdated: &corev1.LocalCalendar{NowMs: now + 100 + DisplayGraceMs + 100}},
+	})
+	v4 := e.BuildSyncStateView()
+	if v4.Machines[0].TerminalReady || v4.Sessions[0].TerminalReady || v4.Sessions[0].TerminalWaiting {
+		t.Fatalf("expected terminal_ready=false terminal_waiting=false after grace expires, got machine=%+v session=%+v", v4.Machines[0], v4.Sessions[0])
+	}
+}

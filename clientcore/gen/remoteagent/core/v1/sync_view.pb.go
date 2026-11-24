@@ -278,6 +278,7 @@ type SyncMachineView struct {
 	DaemonOutOfDate     bool
 	ClientOutOfDate     bool
 	ReachabilityUnknown bool
+	TerminalReady       bool
 }
 
 func (m *SyncMachineView) GetMachineId() string {
@@ -358,6 +359,12 @@ func (m *SyncMachineView) GetReachabilityUnknown() bool {
 	}
 	return false
 }
+func (m *SyncMachineView) GetTerminalReady() bool {
+	if m != nil {
+		return m.TerminalReady
+	}
+	return false
+}
 
 var LitewireDesc_SyncMachineView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -374,6 +381,7 @@ var LitewireDesc_SyncMachineView = litewire.MessageDesc{
 		{Num: 11, Offset: unsafe.Offsetof(SyncMachineView{}.DaemonOutOfDate), Kind: litewire.KindBool},
 		{Num: 12, Offset: unsafe.Offsetof(SyncMachineView{}.ClientOutOfDate), Kind: litewire.KindBool},
 		{Num: 13, Offset: unsafe.Offsetof(SyncMachineView{}.ReachabilityUnknown), Kind: litewire.KindBool},
+		{Num: 14, Offset: unsafe.Offsetof(SyncMachineView{}.TerminalReady), Kind: litewire.KindBool},
 	},
 }
 
@@ -403,6 +411,8 @@ type SyncSessionView struct {
 	ScheduleName      string
 	ScheduleUnread    bool
 	Pending           *SyncPendingAction
+	TerminalReady     bool
+	TerminalWaiting   bool
 }
 
 func (m *SyncSessionView) GetSessionId() string {
@@ -501,6 +511,18 @@ func (m *SyncSessionView) GetPending() *SyncPendingAction {
 	}
 	return nil
 }
+func (m *SyncSessionView) GetTerminalReady() bool {
+	if m != nil {
+		return m.TerminalReady
+	}
+	return false
+}
+func (m *SyncSessionView) GetTerminalWaiting() bool {
+	if m != nil {
+		return m.TerminalWaiting
+	}
+	return false
+}
 
 var LitewireDesc_SyncSessionView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -520,6 +542,8 @@ var LitewireDesc_SyncSessionView = litewire.MessageDesc{
 		{Num: 14, Offset: unsafe.Offsetof(SyncSessionView{}.ScheduleName), Kind: litewire.KindString},
 		{Num: 15, Offset: unsafe.Offsetof(SyncSessionView{}.ScheduleUnread), Kind: litewire.KindBool},
 		{Num: 16, Offset: unsafe.Offsetof(SyncSessionView{}.Pending), Kind: litewire.KindMessage, Sub: &LitewireDesc_SyncPendingAction},
+		{Num: 17, Offset: unsafe.Offsetof(SyncSessionView{}.TerminalReady), Kind: litewire.KindBool},
+		{Num: 18, Offset: unsafe.Offsetof(SyncSessionView{}.TerminalWaiting), Kind: litewire.KindBool},
 	},
 }
 

@@ -17,7 +17,7 @@ import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.TermConn
 import io.github.lewin671.remoteagent.core.TermListener
-import io.github.lewin671.remoteagent.core.isSessionMachineReady
+import io.github.lewin671.remoteagent.core.proto.ConnState as CoreConnState
 import io.github.lewin671.remoteagent.core.proto.TerminalStreamEventKind
 import io.github.lewin671.remoteagent.ui.displayError
 import io.github.lewin671.remoteagent.proto.TerminalFrame
@@ -135,7 +135,10 @@ class RemoteTerminal(
 
     private fun openAttempt() {
         history.close()
-        if (!remote.coreHost.syncStateView.value.isSessionMachineReady(sessionId)) { close(); return }
+        val sync = remote.coreHost.syncStateView.value
+        val ready = sync.sessionsList.firstOrNull { it.sessionId == sessionId }?.terminalReady
+            ?: (sync.connection == CoreConnState.CONN_STATE_CONNECTED)
+        if (!ready) { close(); return }
         active = true
         ensureReopenSubscription()
         liveNotified = false

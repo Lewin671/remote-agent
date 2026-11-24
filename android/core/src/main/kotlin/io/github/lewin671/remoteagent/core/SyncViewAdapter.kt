@@ -1,7 +1,5 @@
 package io.github.lewin671.remoteagent.core
 
-import io.github.lewin671.remoteagent.core.proto.ConnState as CoreConnState
-import io.github.lewin671.remoteagent.core.proto.SyncStateView
 import io.github.lewin671.remoteagent.core.proto.Text as CoreText
 import io.github.lewin671.remoteagent.core.proto.TextArg
 import io.github.lewin671.remoteagent.core.proto.TimestampArg
@@ -16,14 +14,6 @@ const val CACHE_EVENT_PAGE = 128
 data class LoginToken(val value: String, val expiresMs: Long) {
     val token: String get() = value
     override fun toString(): String = "LoginToken(expiresMs=$expiresMs)"
-}
-
-/** True when a terminal or request for [sessionId] has a live relay or direct path. */
-fun SyncStateView.isSessionMachineReady(sessionId: String): Boolean {
-    if (connection == CoreConnState.CONN_STATE_CONNECTED) return true
-    val machineId = sessionsList.firstOrNull { it.sessionId == sessionId }?.machineId.orEmpty()
-    if (machineId.isEmpty()) return false
-    return machinesList.firstOrNull { it.machineId == machineId }?.directReady == true
 }
 
 fun formatTimestampToMessageText(

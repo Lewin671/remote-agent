@@ -349,6 +349,7 @@ type SyncMachineView struct {
 	DaemonOutOfDate     bool                   `protobuf:"varint,11,opt,name=daemon_out_of_date,json=daemonOutOfDate,proto3" json:"daemon_out_of_date,omitempty"`
 	ClientOutOfDate     bool                   `protobuf:"varint,12,opt,name=client_out_of_date,json=clientOutOfDate,proto3" json:"client_out_of_date,omitempty"`
 	ReachabilityUnknown bool                   `protobuf:"varint,13,opt,name=reachability_unknown,json=reachabilityUnknown,proto3" json:"reachability_unknown,omitempty"`
+	TerminalReady       bool                   `protobuf:"varint,14,opt,name=terminal_ready,json=terminalReady,proto3" json:"terminal_ready,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -474,6 +475,13 @@ func (x *SyncMachineView) GetReachabilityUnknown() bool {
 	return false
 }
 
+func (x *SyncMachineView) GetTerminalReady() bool {
+	if x != nil {
+		return x.TerminalReady
+	}
+	return false
+}
+
 // Session snapshot for unmigrated Step 3-4 screens (session screen, schedules).
 // Delete after Steps 3-4 finish migrating those screens into Core.
 type SyncSessionView struct {
@@ -494,6 +502,8 @@ type SyncSessionView struct {
 	ScheduleName      string                 `protobuf:"bytes,14,opt,name=schedule_name,json=scheduleName,proto3" json:"schedule_name,omitempty"`
 	ScheduleUnread    bool                   `protobuf:"varint,15,opt,name=schedule_unread,json=scheduleUnread,proto3" json:"schedule_unread,omitempty"`
 	Pending           *SyncPendingAction     `protobuf:"bytes,16,opt,name=pending,proto3" json:"pending,omitempty"`
+	TerminalReady     bool                   `protobuf:"varint,17,opt,name=terminal_ready,json=terminalReady,proto3" json:"terminal_ready,omitempty"`
+	TerminalWaiting   bool                   `protobuf:"varint,18,opt,name=terminal_waiting,json=terminalWaiting,proto3" json:"terminal_waiting,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -638,6 +648,20 @@ func (x *SyncSessionView) GetPending() *SyncPendingAction {
 		return x.Pending
 	}
 	return nil
+}
+
+func (x *SyncSessionView) GetTerminalReady() bool {
+	if x != nil {
+		return x.TerminalReady
+	}
+	return false
+}
+
+func (x *SyncSessionView) GetTerminalWaiting() bool {
+	if x != nil {
+		return x.TerminalWaiting
+	}
+	return false
 }
 
 // Device directory entry for unmigrated Step 4 security/settings screens.
@@ -1435,7 +1459,7 @@ const file_remoteagent_core_v1_sync_view_proto_rawDesc = "" +
 	"\thas_popup\x18\n" +
 	" \x01(\bR\bhasPopup\x12#\n" +
 	"\rpopup_preview\x18\v \x01(\tR\fpopupPreview\x12D\n" +
-	"\bquestion\x18\f \x01(\v2(.remoteagent.core.v1.SyncPendingQuestionR\bquestion\"\xec\x03\n" +
+	"\bquestion\x18\f \x01(\v2(.remoteagent.core.v1.SyncPendingQuestionR\bquestion\"\x93\x04\n" +
 	"\x0fSyncMachineView\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x16\n" +
@@ -1453,7 +1477,8 @@ const file_remoteagent_core_v1_sync_view_proto_rawDesc = "" +
 	" \x01(\rR\x0fprotocolVersion\x12+\n" +
 	"\x12daemon_out_of_date\x18\v \x01(\bR\x0fdaemonOutOfDate\x12+\n" +
 	"\x12client_out_of_date\x18\f \x01(\bR\x0fclientOutOfDate\x121\n" +
-	"\x14reachability_unknown\x18\r \x01(\bR\x13reachabilityUnknown\"\xf7\x04\n" +
+	"\x14reachability_unknown\x18\r \x01(\bR\x13reachabilityUnknown\x12%\n" +
+	"\x0eterminal_ready\x18\x0e \x01(\bR\rterminalReady\"\xc9\x05\n" +
 	"\x0fSyncSessionView\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
@@ -1478,7 +1503,9 @@ const file_remoteagent_core_v1_sync_view_proto_rawDesc = "" +
 	"openFailed\x12#\n" +
 	"\rschedule_name\x18\x0e \x01(\tR\fscheduleName\x12'\n" +
 	"\x0fschedule_unread\x18\x0f \x01(\bR\x0escheduleUnread\x12@\n" +
-	"\apending\x18\x10 \x01(\v2&.remoteagent.core.v1.SyncPendingActionR\apending\"\xa4\x02\n" +
+	"\apending\x18\x10 \x01(\v2&.remoteagent.core.v1.SyncPendingActionR\apending\x12%\n" +
+	"\x0eterminal_ready\x18\x11 \x01(\bR\rterminalReady\x12)\n" +
+	"\x10terminal_waiting\x18\x12 \x01(\bR\x0fterminalWaiting\"\xa4\x02\n" +
 	"\x0eSyncDeviceView\x12\x1b\n" +
 	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12.\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1a.remoteagent.v1.DeviceKindR\x04kind\x12\x1d\n" +

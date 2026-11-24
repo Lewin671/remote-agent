@@ -405,6 +405,32 @@ public  final class SyncMachineView extends
     reachabilityUnknown_ = false;
   }
 
+  public static final int TERMINAL_READY_FIELD_NUMBER = 14;
+  private boolean terminalReady_;
+  /**
+   * <code>bool terminal_ready = 14 [json_name = "terminalReady"];</code>
+   * @return The terminalReady.
+   */
+  @java.lang.Override
+  public boolean getTerminalReady() {
+    return terminalReady_;
+  }
+  /**
+   * <code>bool terminal_ready = 14 [json_name = "terminalReady"];</code>
+   * @param value The terminalReady to set.
+   */
+  private void setTerminalReady(boolean value) {
+    
+    terminalReady_ = value;
+  }
+  /**
+   * <code>bool terminal_ready = 14 [json_name = "terminalReady"];</code>
+   */
+  private void clearTerminalReady() {
+
+    terminalReady_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SyncMachineView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -911,6 +937,34 @@ public  final class SyncMachineView extends
       return this;
     }
 
+    /**
+     * <code>bool terminal_ready = 14 [json_name = "terminalReady"];</code>
+     * @return The terminalReady.
+     */
+    @java.lang.Override
+    public boolean getTerminalReady() {
+      return instance.getTerminalReady();
+    }
+    /**
+     * <code>bool terminal_ready = 14 [json_name = "terminalReady"];</code>
+     * @param value The terminalReady to set.
+     * @return This builder for chaining.
+     */
+    public Builder setTerminalReady(boolean value) {
+      copyOnWrite();
+      instance.setTerminalReady(value);
+      return this;
+    }
+    /**
+     * <code>bool terminal_ready = 14 [json_name = "terminalReady"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearTerminalReady() {
+      copyOnWrite();
+      instance.clearTerminalReady();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SyncMachineView)
   }
   @java.lang.Override
@@ -941,11 +995,12 @@ public  final class SyncMachineView extends
             "daemonOutOfDate_",
             "clientOutOfDate_",
             "reachabilityUnknown_",
+            "terminalReady_",
           };
           java.lang.String info =
-              "\u0000\r\u0000\u0001\u0001\r\r\u0000\u0000\u0000\u0001\u0208\u0002\u0007\u0003\u0002" +
-              "\u0004\u1009\u0000\u0005\u0003\u0006\u0007\u0007\u0007\b\u0007\t\u0007\n\u000b\u000b" +
-              "\u0007\f\u0007\r\u0007";
+              "\u0000\u000e\u0000\u0001\u0001\u000e\u000e\u0000\u0000\u0000\u0001\u0208\u0002\u0007" +
+              "\u0003\u0002\u0004\u1009\u0000\u0005\u0003\u0006\u0007\u0007\u0007\b\u0007\t\u0007" +
+              "\n\u000b\u000b\u0007\f\u0007\r\u0007\u000e\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

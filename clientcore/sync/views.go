@@ -65,6 +65,10 @@ func syncPendingFromLists(p lists.PendingAction) *corev1.SyncPendingAction {
 	}
 }
 
+func (e *Engine) machineTerminalReady(machineID string) bool {
+	return e.w.World.Connection == lists.ConnConnected || (machineID != "" && e.directReady[machineID])
+}
+
 func (e *Engine) buildSyncMachineView(m *MachineEntry) *corev1.SyncMachineView {
 	if m == nil {
 		return nil
@@ -83,6 +87,7 @@ func (e *Engine) buildSyncMachineView(m *MachineEntry) *corev1.SyncMachineView {
 		DaemonOutOfDate:     m.DaemonOutOfDate,
 		ClientOutOfDate:     m.ClientOutOfDate,
 		ReachabilityUnknown: e.machineReachabilityUnknown(m),
+		TerminalReady:       e.machineTerminalReady(m.ID),
 	}
 }
 
@@ -94,6 +99,8 @@ func (e *Engine) buildSyncSessionView(s *SessionEntry) *corev1.SyncSessionView {
 	if s.Info != nil && s.Info.CreatedAt != nil {
 		createdMs = s.Info.CreatedAt.Seconds*1000 + int64(s.Info.CreatedAt.Nanos)/1_000_000
 	}
+	termReady := e.machineTerminalReady(s.MachineID)
+	termWaiting := !termReady && (e.w.ReachabilityUnknown || e.w.DisplayGrace)
 	return &corev1.SyncSessionView{
 		SessionId:         s.ID,
 		MachineId:         s.MachineID,
@@ -111,6 +118,8 @@ func (e *Engine) buildSyncSessionView(s *SessionEntry) *corev1.SyncSessionView {
 		ScheduleName:      s.ScheduleName,
 		ScheduleUnread:    s.ScheduleUnread,
 		Pending:           syncPendingFromLists(s.Pending),
+		TerminalReady:     termReady,
+		TerminalWaiting:   termWaiting,
 	}
 }
 

@@ -62,6 +62,7 @@ message SyncMachineView {
   bool daemon_out_of_date = 11;
   bool client_out_of_date = 12;
   bool reachability_unknown = 13;
+  bool terminal_ready = 14;
 }
 
 // Session snapshot for unmigrated Step 3-4 screens (session screen, schedules).
@@ -83,6 +84,8 @@ message SyncSessionView {
   string schedule_name = 14;
   bool schedule_unread = 15;
   SyncPendingAction pending = 16;
+  bool terminal_ready = 17;
+  bool terminal_waiting = 18;
 }
 
 // Device directory entry for unmigrated Step 4 security/settings screens.

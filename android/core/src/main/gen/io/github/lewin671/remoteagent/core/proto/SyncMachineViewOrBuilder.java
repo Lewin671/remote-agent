@@ -98,4 +98,10 @@ public interface SyncMachineViewOrBuilder extends
    * @return The reachabilityUnknown.
    */
   boolean getReachabilityUnknown();
+
+  /**
+   * <code>bool terminal_ready = 14 [json_name = "terminalReady"];</code>
+   * @return The terminalReady.
+   */
+  boolean getTerminalReady();
 }
