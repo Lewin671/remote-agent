@@ -117,6 +117,7 @@ class MainActivity : ComponentActivity() {
                     val loaded by app.loaded.collectAsState()
                     val remote by app.remote.collectAsState()
                     val accountError by app.accountError.collectAsState()
+                    val accountErrorAllowsReset by app.accountErrorAllowsReset.collectAsState()
                     val r = remote
                     val cacheReady = if (r != null) r.bootstrapped.collectAsState().value else false
                     when {
@@ -125,6 +126,7 @@ class MainActivity : ComponentActivity() {
                                 accountError,
                                 { app.loadAccount() },
                                 { app.discardAccount() },
+                                canDiscard = accountErrorAllowsReset,
                             )
                         }
                         !loaded || (r != null && !cacheReady) ->

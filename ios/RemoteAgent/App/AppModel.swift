@@ -6,6 +6,7 @@ import Observation
 import RACore
 import RAProto
 import RAWebRTC
+import Security
 import SwiftUI
 import UIKit
 import UserNotifications
@@ -260,6 +261,8 @@ final class AppModel {
     // MARK: What screens read
 
     private(set) var stage = Stage.loading
+    /// False when startup failed due to transient Keychain/storage unavailability rather than confirmed corruption.
+    private(set) var bootstrapCanReset = true
     /// The account in use and its engine; nil until one is, and after logout.
     private(set) var context: AccountContext?
     /// The engine's lists and connection as last copied here. A fresh, empty state while no account is in use.
@@ -507,8 +510,13 @@ final class AppModel {
                 log.error(
                     "stored account does not open: \(String(describing: type(of: error)), privacy: .public)"
                 )
+                let transientKeyAccess =
+                    (error as? SecurityWorkflowError)?.code == .storage
+                    || (error as? VaultError)?.status == errSecInteractionNotAllowed
+                bootstrapCanReset = !transientKeyAccess
                 stage = .failed(error.localizedDescription)
             case .success(let status):
+                bootstrapCanReset = true
                 securityStatus = status
                 legacyRepairNotice = status.legacyRepairNotice || legacyWipedNow
                 switch status.bootstrap {

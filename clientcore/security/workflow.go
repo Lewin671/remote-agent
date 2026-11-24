@@ -385,7 +385,7 @@ func (e *Engine) HandleStorageResult(nowMs int64, ev *corev1.SecurityStorageResu
 	if w, ok := e.takeTask(ev.OpId); ok && w.task != nil {
 		var err error
 		if ev.Error != "" {
-			err = errors.New(ev.Error)
+			err = newWfError("storage", ev.Error)
 		} else if ev.Conflict {
 			err = devicesec.ErrStale
 		}
@@ -692,9 +692,29 @@ func (e *Engine) HandleWorkflowAction(nowMs int64, ev *corev1.SecurityWorkflowAc
 
 type bootstrapTask struct{ actionID uint64 }
 
+func isConfirmedBootstrapCorruption(err error) bool {
+	if err == nil {
+		return false
+	}
+	if we := asWfError(err); we != nil {
+		return we.code == "invalid" || we.code == "untrusted"
+	}
+	return errors.Is(err, errStoreCorrupt) ||
+		errors.Is(err, devicesec.ErrInvalid) ||
+		errors.Is(err, devicesec.ErrUntrusted)
+}
+
 func (t *bootstrapTask) finish(e *Engine, wf *workflowState, err error) error {
 	if err != nil {
-		wf.bootstrapInvalid, wf.bootstrapError = true, err.Error()
+		if isConfirmedBootstrapCorruption(err) {
+			wf.bootstrapInvalid = true
+		} else {
+			// Transient storage/keystore/keychain unavailability must not be
+			// conflated with confirmed record corruption or trigger reset.
+			wf.bootstrapped = false
+			wf.bootstrapInvalid = false
+		}
+		wf.bootstrapError = err.Error()
 	}
 	e.emitActionResult(t.actionID, nil, err)
 	e.emitStatusChanged()

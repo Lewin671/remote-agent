@@ -126,6 +126,9 @@ class RaApp : Application() {
     private val _accountError = MutableStateFlow("")
     /** Why the stored account could not be read, e.g. the phone was locked. */
     val accountError: StateFlow<String> = _accountError.asStateFlow()
+    private val _accountErrorAllowsReset = MutableStateFlow(true)
+    /** False when the failure is a transient Keystore/storage lock rather than confirmed corruption. */
+    val accountErrorAllowsReset: StateFlow<Boolean> = _accountErrorAllowsReset.asStateFlow()
     /** The session page currently visible; cleared when its activity stops or leaves it. */
     @Volatile internal var visibleSession: String? = null
         set(value) {
@@ -344,6 +347,7 @@ class RaApp : Application() {
                 result
                     .onSuccess { (st, denied) ->
                         _accountError.value = ""
+                        _accountErrorAllowsReset.value = true
                         _bootstrapStatus.value = st
                         _retainedDenied.value = denied
                         if (st.server.isNotEmpty()) lastServer = st.server
@@ -361,6 +365,10 @@ class RaApp : Application() {
                     .onFailure { e ->
                         vault.clearMemoryCache()
                         Log.w(TAG, "stored account does not open: ${e.javaClass.simpleName}")
+                        val transientKeyAccess =
+                            (e as? io.github.lewin671.remoteagent.core.SecurityWorkflowError)?.code ==
+                                io.github.lewin671.remoteagent.core.proto.SecurityErrorCode.SECURITY_ERROR_CODE_STORAGE
+                        _accountErrorAllowsReset.value = !transientKeyAccess
                         _accountError.value =
                             io.github.lewin671.remoteagent.ui.displayError(e) +
                                 sessionText(UiMessages.commonAndroidTheOriginalRequestAndKeysAreSavedForRetryIf())

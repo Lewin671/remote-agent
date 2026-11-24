@@ -1,8 +1,8 @@
 import * as l10n from "./i18n";
 import { getCoreHost } from "./core/host";
 import { ensureCore } from "./core/runtime";
-import { createStandaloneSecurityClient } from "./core/security-client";
-import { SecurityBootstrapKind, type SecurityWorkflowStatus } from "./gen/remoteagent/core/v1/security_pb";
+import { createStandaloneSecurityClient, SecurityWorkflowError } from "./core/security-client";
+import { SecurityBootstrapKind, SecurityErrorCode, type SecurityWorkflowStatus } from "./gen/remoteagent/core/v1/security_pb";
 import { useLocale } from "./i18n";
 import { Startup } from "./Startup";
 import { RetainedIdentityDeniedScreen } from "./Rejoin";
@@ -58,6 +58,7 @@ export function App() {
   const [denied, setDenied] = useState(false);
   const loadGeneration = useRef(0);
   const [setupError, setSetupError] = useState("");
+  const [setupCanReset, setSetupCanReset] = useState(true);
   const [coreError, setCoreError] = useState("");
   const current = useRef(remote);
   current.current = remote;
@@ -75,6 +76,7 @@ export function App() {
     corePromise.catch(() => undefined);
     try {
       setSetupError("");
+      setSetupCanReset(true);
       setCoreError("");
       const initialRoute = location.hash.replace(/^#\/?/, "");
       if (demo) {
@@ -162,6 +164,9 @@ export function App() {
           l10n.t("errors.core_load_failed", { reason: errorText(error) }),
         );
       } else {
+        const transientStorage =
+          error instanceof SecurityWorkflowError && error.code === SecurityErrorCode.STORAGE;
+        setSetupCanReset(!transientStorage);
         setSetupError(
           l10n.t("errors.setup_request_preserved", { reason: errorText(error) }),
         );
@@ -249,7 +254,7 @@ export function App() {
       <div className="center">
         <p>{coreError || setupError}</p>
         <button onClick={() => void load()}>{l10n.t("common.retry")}</button>
-        {!coreError && <SetupReset onDone={() => void load()} />}
+        {!coreError && setupCanReset && <SetupReset onDone={() => void load()} />}
       </div>
     );
   if (remote === null && denied && retainedServer)

@@ -14,12 +14,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxWidth
 
 @Composable
-fun AccountLoadFailure(message: String, retry: () -> Unit, discard: () -> Unit) {
+fun AccountLoadFailure(
+    message: String,
+    retry: () -> Unit,
+    discard: () -> Unit,
+    canDiscard: Boolean = true,
+) {
     val copy = uiText()
     Column(Modifier.padding(24.dp)) {
         Text(message, style = T.s17, color = pal.ink)
         PillButton(copy(UiMessages.commonRetry()), retry, Modifier.fillMaxWidth().padding(top = 16.dp), ButtonKind.INK)
-        DiscardSetupAction(discard)
+        if (canDiscard) DiscardSetupAction(discard)
     }
 }
 

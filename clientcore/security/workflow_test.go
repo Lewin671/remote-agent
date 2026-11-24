@@ -48,6 +48,8 @@ type fakeClientHarness struct {
 	store         map[mockStoreKey]mockStoreEntry
 	legacyCleared bool
 	conflictOnce  bool
+	storageReadErr string
+	keyAgreeErr    string
 
 	deviceEd ed25519.PrivateKey
 	deviceX  *ecdh.PrivateKey
@@ -248,6 +250,13 @@ func (h *fakeClientHarness) pump(effs []*corev1.Effect) {
 
 		case *corev1.Effect_SecurityKeyAgree:
 			ka := k.SecurityKeyAgree
+			if h.keyAgreeErr != "" {
+				queue = append(queue, h.eng.HandleKeyAgreed(h.nowMs, &corev1.SecurityKeyAgreedEvent{
+					OpId:  ka.OpId,
+					Error: h.keyAgreeErr,
+				})...)
+				continue
+			}
 			var priv *ecdh.PrivateKey
 			switch ka.KeyKind {
 			case corev1.SecurityKeyKind_SECURITY_KEY_KIND_DEVICE_X:
@@ -389,6 +398,10 @@ func (h *fakeClientHarness) handleStorageEffect(st *corev1.SecurityStorageEffect
 			ev.Data = slices.Clone(ent.data)
 		}
 	case corev1.SecurityStorageOp_SECURITY_STORAGE_OP_READ_BOOTSTRAP:
+		if h.storageReadErr != "" {
+			ev.Error = h.storageReadErr
+			break
+		}
 		for sk, ent := range h.store {
 			if st.Bucket != corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_UNSPECIFIED && sk.bucket != st.Bucket {
 				continue
@@ -2070,6 +2083,37 @@ func TestBootstrapRejectsMissingDeviceKeysAndClearResetsInvalid(t *testing.T) {
 	if !advice.Ok || advice.ExitAdvice == nil || !advice.ExitAdvice.Authority ||
 		advice.ExitAdvice.Message != text.KeySecurityThisDeviceIsTheOnlyManagingClientTransferManagement {
 		t.Fatalf("expected device-neutral sole authority exit advice, got %+v", advice)
+	}
+
+	// Transient storage/Keystore/Keychain lock errors must NOT be classified as INVALID,
+	// and retrying bootstrap after unlock must recover cleanly to READY without resetting.
+	h.storageReadErr = "keystore temporarily locked"
+	h.restart("https://relay.example.com", false)
+	resLockedRead := h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	if resLockedRead.Ok || resLockedRead.StructuredErrorCode != corev1.SecurityErrorCode_SECURITY_ERROR_CODE_STORAGE ||
+		!resLockedRead.Retryable || resLockedRead.Status.Bootstrap == corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_INVALID {
+		t.Fatalf("expected transient STORAGE error (not INVALID) on locked storage read, got %+v", resLockedRead)
+	}
+	h.storageReadErr = ""
+
+	h.keyAgreeErr = "keychain interaction not allowed"
+	h.restart("https://relay.example.com", false)
+	resLockedAgree := h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	if resLockedAgree.Ok || resLockedAgree.StructuredErrorCode != corev1.SecurityErrorCode_SECURITY_ERROR_CODE_STORAGE ||
+		!resLockedAgree.Retryable || resLockedAgree.Status.Bootstrap == corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_INVALID {
+		t.Fatalf("expected transient STORAGE error (not INVALID) on locked key agree, got %+v", resLockedAgree)
+	}
+	h.keyAgreeErr = ""
+
+	resUnlocked := h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	if !resUnlocked.Ok || resUnlocked.Status.Bootstrap != corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_READY {
+		t.Fatalf("expected bootstrap retry after unlock to succeed as READY, got %+v", resUnlocked)
 	}
 
 	// Re-bootstrapping with a missing device Ed25519 key must fail as INVALID, not READY.

@@ -40,7 +40,9 @@ struct RootView: View {
                 VStack(spacing: 0) {
                     Spacer()
                     ErrorRow(why) { model.loadAccount() }
-                    SetupDiscardButton { await model.logout() }
+                    if model.bootstrapCanReset {
+                        SetupDiscardButton { await model.logout() }
+                    }
                     Spacer()
                 }
             }
