@@ -392,7 +392,7 @@ export function Settings({ remote, go, onBack }: { remote: Remote; go: Go; onBac
       recoverySlot={<RecoveryNotice remote={remote} go={go} />}
       overlaysSlot={
         <>
-          {leaving && <LeaveAlert onCancel={() => setLeaving(false)} />}
+          {leaving && <LeaveAlert remote={remote} onCancel={() => setLeaving(false)} />}
           {checking && <ConnCheck remote={remote} onClose={() => setChecking(false)} />}
         </>
       }
@@ -905,7 +905,7 @@ export function ClientPage({
       onUpdateName={(name, clear) => host.updateClientName(id, name, clear)}
       onOpenLeave={() => setLeaving(true)}
       removeSlot={<DeviceActions remote={remote} id={id} onRemoved={onBack} />}
-      leaveOverlaySlot={leaving ? <LeaveAlert onCancel={() => setLeaving(false)} /> : undefined}
+      leaveOverlaySlot={leaving ? <LeaveAlert remote={remote} onCancel={() => setLeaving(false)} /> : undefined}
     />
   );
 }

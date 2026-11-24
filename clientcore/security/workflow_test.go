@@ -2061,6 +2061,13 @@ func TestBootstrapRejectsMissingDeviceKeysAndClearResetsInvalid(t *testing.T) {
 	if !cont.Ok || cont.Status.Bootstrap != corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_READY {
 		t.Fatalf("ContinueCreation failed: %+v", cont)
 	}
+	advice := h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_CheckExitAdvice{CheckExitAdvice: &corev1.SecurityActionEmpty{}},
+	})
+	if !advice.Ok || advice.ExitAdvice == nil || !advice.ExitAdvice.Authority ||
+		advice.ExitAdvice.Message != text.KeySecurityThisDeviceIsTheOnlyManagingClientTransferManagement {
+		t.Fatalf("expected device-neutral sole authority exit advice, got %+v", advice)
+	}
 
 	// Re-bootstrapping with a missing device Ed25519 key must fail as INVALID, not READY.
 	savedEd := h.deviceEd

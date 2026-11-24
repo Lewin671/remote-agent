@@ -14,6 +14,7 @@ import type {
   SecurityPendingOpSummary,
 } from "../gen/remoteagent/core/v1/security_pb";
 import { errorText, type Remote } from "../remote";
+import { unregisterPushOnExit } from "../push";
 import { Alert, Banner, NavBar, useRemote, useNow, usePageVisible } from "../ui";
 import { CodeBackup, PersistenceResult } from "./AuthorityKit";
 
@@ -23,7 +24,7 @@ export {
   DeviceActions,
 } from "./DeviceManagement";
 
-export function LeaveAlert({ onCancel }: { onCancel: () => void }) {
+export function LeaveAlert({ remote, onCancel }: { remote?: Remote; onCancel: () => void }) {
   const [advice, setAdvice] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -50,12 +51,18 @@ export function LeaveAlert({ onCancel }: { onCancel: () => void }) {
         const standalone = createStandaloneSecurityClient();
         void (async () => {
           await standalone.client.bootstrap();
+          const current = await standalone.client.checkExitAdvice();
+          const currentMsg = translateSecurityKey(current.message);
+          if (currentMsg !== advice) {
+            setAdvice(currentMsg);
+            setBusy(false);
+            return;
+          }
+          await unregisterPushOnExit(remote);
           await standalone.client.clearSecurity();
+          location.hash = "";
+          location.reload();
         })()
-          .then(() => {
-            location.hash = "";
-            location.reload();
-          })
           .catch((e) => {
             setError(errorText(e));
             setBusy(false);

@@ -1392,7 +1392,7 @@ func (e *Engine) checkExitAdviceOp(actionID uint64) {
 	if unresolved {
 		msg = text.KeySecurityTheSecurityOperationSOutcomeIsUnverifiedContinueThe
 	} else if auth {
-		msg = text.KeySecurityThisBrowserIsTheOnlyManagingClientTransferManagement
+		msg = text.KeySecurityThisDeviceIsTheOnlyManagingClientTransferManagement
 	}
 	e.emitActionResult(actionID, &corev1.SecurityWorkflowResultEffect{
 		ExitAdvice: &corev1.SecurityExitAdvice{Authority: auth, Unresolved: unresolved, Message: msg},

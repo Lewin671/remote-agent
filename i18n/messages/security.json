@@ -2098,10 +2098,10 @@
     }
   },
   {
-    "key": "security.this_browser_is_the_only_managing_client_transfer_management",
-    "zh-CN": "此浏览器是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。",
-    "en": "This browser is the only managing client. Transfer management first if possible; exiting deletes the management key. Without a recovery code backup, management will be lost.",
-    "notes": "security-operation 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "key": "security.this_device_is_the_only_managing_client_transfer_management",
+    "zh-CN": "本机是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。",
+    "en": "This device is the only managing client. Transfer management first if possible; exiting deletes the management key. Without a recovery code backup, management will be lost.",
+    "notes": "退出账户时的风险提示（通用跨端文案，适用于手机、平板与浏览器）。无变量。",
     "params": {},
     "platforms": [
       "web",

@@ -116,6 +116,45 @@ export function setPushPrefs(remote: Remote, prefs: PushPrefs): Promise<void> {
   });
 }
 
+/** Best-effort push teardown before clearing local keys on exit.
+ * Clears the relay push subscription (when a live remote is provided) and
+ * unsubscribes the browser PushSubscription so the Service Worker stops
+ * receiving notifications for an exited account. Never blocks exit indefinitely. */
+export async function unregisterPushOnExit(
+  remote?: Pick<Remote, "setPushSubscription">,
+  timeoutMs = 5000,
+): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const work = (async () => {
+    if (remote) {
+      try {
+        await remote.setPushSubscription("", []);
+      } catch {
+        // Offline or already revoked; still unsubscribe locally.
+      }
+    }
+    if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        const sub = await reg?.pushManager?.getSubscription();
+        if (sub) await sub.unsubscribe();
+      } catch {
+        // Best effort: never block local key erasure.
+      }
+    }
+  })();
+  try {
+    await Promise.race([
+      work,
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
 /** A foreground signal carries no private material; always pull the signed
  * chain and recovery hints, including when both session switches are off. */
 export function watchSecurityPush(sync: () => void): () => void {

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Alert, Banner } from "./ui";
 import { createStandaloneSecurityClient, translateSecurityKey } from "./core/security-client";
 import { SecurityBootstrapKind } from "./gen/remoteagent/core/v1/security_pb";
+import { unregisterPushOnExit } from "./push";
 import { errorText } from "./remote";
 
 /** Rejoin keeps only the server; account keys and cached ciphertext are erased. */
@@ -26,6 +27,7 @@ export function RejoinButton({ server, children, onDone }: {
           + l10n.t("security.this_deletes_the_account_keys_and_cache_on_this") : undefined;
       if (warning && (!confirmed || warning !== advice)) { setAdvice(warning); return; }
       localStorage.setItem("ra-server", server);
+      await unregisterPushOnExit();
       await standalone.client.clearSecurity();
       location.hash = "/pair?";
       if (onDone) onDone(); else location.reload();

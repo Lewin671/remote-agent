@@ -1097,12 +1097,12 @@ export interface MessageArgs {
   "security.the_server_does_not_recognize_this_device": { [name: string]: never };
   "security.the_unpublished_pairing_draft_expired_you_can_explicitly_abandon": { [name: string]: never };
   "security.the_unpublished_pairing_draft_was_canceled_or_its_candidate": { [name: string]: never };
-  "security.this_browser_is_the_only_managing_client_transfer_management": { [name: string]: never };
   "security.this_browser_will_be_the_only_managing_client_clearing": { [name: string]: never };
   "security.this_deletes_the_account_keys_and_cache_on_this": { [name: string]: never };
   "security.this_device": { [name: string]: never };
   "security.this_device_becomes_the_managing_client": { [name: string]: never };
   "security.this_device_has_an_unfinished_join_request_deleting_it": { [name: string]: never };
+  "security.this_device_is_the_only_managing_client_transfer_management": { [name: string]: never };
   "security.this_device_manages_the_account": { [name: string]: never };
   "security.this_device_s_clock_is_behind_the_managing_client": { [name: string]: never };
   "security.this_page_and_the_server_or_pairing_device_use": { [name: string]: never };
@@ -3324,12 +3324,12 @@ export const messages = {
     "security.the_server_does_not_recognize_this_device": "The server does not recognize this device",
     "security.the_unpublished_pairing_draft_expired_you_can_explicitly_abandon": "The unpublished pairing draft expired. You can explicitly abandon it and start over.",
     "security.the_unpublished_pairing_draft_was_canceled_or_its_candidate": "The unpublished pairing draft was canceled or its candidate changed. You can explicitly abandon it and start over.",
-    "security.this_browser_is_the_only_managing_client_transfer_management": "This browser is the only managing client. Transfer management first if possible; exiting deletes the management key. Without a recovery code backup, management will be lost.",
     "security.this_browser_will_be_the_only_managing_client_clearing": "This browser will be the only managing client. Clearing site data or switching browsers loses the management key; keep the recovery code offline. Using the app for daily management is recommended.",
     "security.this_deletes_the_account_keys_and_cache_on_this": "This deletes the account keys and cache on this device. Sessions on your computers are unaffected.",
     "security.this_device": "This device",
     "security.this_device_becomes_the_managing_client": "This device becomes the managing client",
     "security.this_device_has_an_unfinished_join_request_deleting_it": "This device has an unfinished join request. Deleting it prevents you from continuing that request.",
+    "security.this_device_is_the_only_managing_client_transfer_management": "This device is the only managing client. Transfer management first if possible; exiting deletes the management key. Without a recovery code backup, management will be lost.",
     "security.this_device_manages_the_account": "This device manages the account",
     "security.this_device_s_clock_is_behind_the_managing_client": "This device’s clock is behind the managing client. Operations will be refused. Correct the system time and time zone before joining.",
     "security.this_page_and_the_server_or_pairing_device_use": "This page and the server or pairing device use different versions. Refresh to update and retry.",
@@ -5590,12 +5590,12 @@ export const messages = {
     "security.the_server_does_not_recognize_this_device": "服务器不认识这台设备",
     "security.the_unpublished_pairing_draft_expired_you_can_explicitly_abandon": "配对草稿已过期，尚未发布，可明确放弃后重新开始",
     "security.the_unpublished_pairing_draft_was_canceled_or_its_candidate": "配对草稿已取消或候选改变，尚未发布，可明确放弃后重新开始",
-    "security.this_browser_is_the_only_managing_client_transfer_management": "此浏览器是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。",
     "security.this_browser_will_be_the_only_managing_client_clearing": "此浏览器将是唯一管理端。清理网站数据或换浏览器会丢失管理密钥；恢复码必须离线保存。日常建议用 App 管理。",
     "security.this_deletes_the_account_keys_and_cache_on_this": "这会删除本机的账户密钥和缓存，电脑上的会话不受影响。",
     "security.this_device": "本机",
     "security.this_device_becomes_the_managing_client": "这台设备成为管理端",
     "security.this_device_has_an_unfinished_join_request_deleting_it": "这台设备还有未完成的加入请求，删除后将无法继续原请求。",
+    "security.this_device_is_the_only_managing_client_transfer_management": "本机是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。",
     "security.this_device_manages_the_account": "本机是管理端",
     "security.this_device_s_clock_is_behind_the_managing_client": "本机时间比管理端慢，操作会被拒绝。请校准系统时间和时区后再加入。",
     "security.this_page_and_the_server_or_pairing_device_use": "这个网页和服务器或发起配对的设备版本不同，请刷新页面更新后再试",

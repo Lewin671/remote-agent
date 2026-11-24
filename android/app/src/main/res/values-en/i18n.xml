@@ -1491,12 +1491,12 @@
     <string name="security_the_server_does_not_recognize_this_device" formatted="false">"The server does not recognize this device"</string>
     <string name="security_the_unpublished_pairing_draft_expired_you_can_explicitly_abandon" formatted="false">"The unpublished pairing draft expired. You can explicitly abandon it and start over."</string>
     <string name="security_the_unpublished_pairing_draft_was_canceled_or_its_candidate" formatted="false">"The unpublished pairing draft was canceled or its candidate changed. You can explicitly abandon it and start over."</string>
-    <string name="security_this_browser_is_the_only_managing_client_transfer_management" formatted="false">"This browser is the only managing client. Transfer management first if possible; exiting deletes the management key. Without a recovery code backup, management will be lost."</string>
     <string name="security_this_browser_will_be_the_only_managing_client_clearing" formatted="false">"This browser will be the only managing client. Clearing site data or switching browsers loses the management key; keep the recovery code offline. Using the app for daily management is recommended."</string>
     <string name="security_this_deletes_the_account_keys_and_cache_on_this" formatted="false">"This deletes the account keys and cache on this device. Sessions on your computers are unaffected."</string>
     <string name="security_this_device" formatted="false">"This device"</string>
     <string name="security_this_device_becomes_the_managing_client" formatted="false">"This device becomes the managing client"</string>
     <string name="security_this_device_has_an_unfinished_join_request_deleting_it" formatted="false">"This device has an unfinished join request. Deleting it prevents you from continuing that request."</string>
+    <string name="security_this_device_is_the_only_managing_client_transfer_management" formatted="false">"This device is the only managing client. Transfer management first if possible; exiting deletes the management key. Without a recovery code backup, management will be lost."</string>
     <string name="security_this_device_manages_the_account" formatted="false">"This device manages the account"</string>
     <string name="security_this_device_s_clock_is_behind_the_managing_client" formatted="false">"This device’s clock is behind the managing client. Operations will be refused. Correct the system time and time zone before joining."</string>
     <string name="security_this_page_and_the_server_or_pairing_device_use" formatted="false">"This page and the server or pairing device use different versions. Refresh to update and retry."</string>

@@ -2,6 +2,7 @@ import * as l10n from "./i18n";
 import { useState } from "react";
 import { Alert, Banner } from "./ui";
 import { createStandaloneSecurityClient, translateSecurityKey } from "./core/security-client";
+import { unregisterPushOnExit } from "./push";
 
 /** The retry path retains uncertain work; only this explicit confirmation discards it. */
 export function SetupReset({ onDone }: { onDone: () => void }) {
@@ -52,6 +53,7 @@ export function SetupReset({ onDone }: { onDone: () => void }) {
               } catch {
                 // Local security storage may be corrupt or missing private keys; allow clearing anyway.
               }
+              await unregisterPushOnExit();
               await standalone.client.clearSecurity();
               setAsking(false);
               location.hash = "";
