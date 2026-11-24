@@ -185,7 +185,10 @@ export function PairCodePage({
             const st = await remote.getSecurityStatus();
             if (next.delivered || !st.pendingOp) {
               await remote.loadDevices();
-              if (!stopped) setDone(true);
+              if (!stopped) {
+                setPair(next);
+                setDone(true);
+              }
               return;
             }
           } else {
@@ -266,7 +269,12 @@ export function PairCodePage({
       <div className="body security-body">
         <p className="txt">{l10n.t("security.computer_run_remote_agent_account_join_and_enter_the")}</p>
         {done ? (
-          <Banner kind="">{l10n.t("security.device_joined")}</Banner>
+          <>
+            <Banner kind="">{l10n.t("security.device_joined")}</Banner>
+            {renderText(pair?.removeOldNotice) && (
+              <Banner kind="warn">{renderText(pair?.removeOldNotice)}</Banner>
+            )}
+          </>
         ) : !pair ? (
           <>
             {replaces && (
@@ -376,8 +384,13 @@ export function PairCodePage({
                           const removeIds = pair.replacementCandidates
                             .filter((c) => selectedRemoveIds.includes(c.deviceId))
                             .map((c) => c.deviceId);
-                          await remote.approvePairing(pair.pairingId, confirmed, removeIds);
+                          const res = await remote.approvePairing(pair.pairingId, confirmed, removeIds);
+                          setPair(res);
                           setApproved(true);
+                          if (res.delivered) {
+                            await remote.loadDevices();
+                            setDone(true);
+                          }
                         })
                       }
                     >

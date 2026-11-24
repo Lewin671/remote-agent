@@ -24,7 +24,7 @@ sealed interface PairingUiState {
         val replaceOldHint: Text? = null,
     ) : PairingUiState
     data class Sending(val emoji: List<String>, val kind: DeviceKind) : PairingUiState
-    data object Done : PairingUiState
+    data class Done(val warning: Text? = null) : PairingUiState
     data class Failed(val message: MessageText, val uncertain: Boolean, val canRetry: Boolean) : PairingUiState
 }
 
@@ -162,7 +162,9 @@ class PairingController(
                 if (run == generation) {
                     pairingId = null
                     consent = null
-                    mutable.value = PairingUiState.Done
+                    mutable.value = PairingUiState.Done(
+                        warning = if (res.hasRemoveOldNotice()) res.removeOldNotice else null,
+                    )
                 }
                 runCatching { onCompleted() }
             } catch (e: CancellationException) {

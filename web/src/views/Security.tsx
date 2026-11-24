@@ -13,6 +13,8 @@ import type {
   SecurityHandoffCandidate,
   SecurityPendingOpSummary,
 } from "../gen/remoteagent/core/v1/security_pb";
+import type { Text } from "../gen/remoteagent/core/v1/text_pb";
+import { renderText } from "../core/text";
 import { errorText, type Remote } from "../remote";
 import { unregisterPushOnExit } from "../push";
 import { Alert, Banner, NavBar, useRemote, useNow, usePageVisible } from "../ui";
@@ -112,11 +114,13 @@ export function SecurityPage({
   const [takingOver, setTakingOver] = useState(false);
   const [offeredState, setOfferedState] = useState(false);
   const [abandonOffer, setAbandonOffer] = useState(false);
+  const [pendingRemoveNotice, setPendingRemoveNotice] = useState(undefined as Text | undefined);
   const refresh = async () => {
     const st = await remote.getSecurityStatus();
     setLease(st.leaseEndMs > 0n ? st.leaseEndMs : null);
     setTakingOver(st.takingOver);
     setPending(st.pendingOp);
+    setPendingRemoveNotice(st.pendingRemoveNotice);
     setRotation(st.needsRecoveryCodeRotation);
     setProfileReady(st.hasAccountPublicProfile);
     setOfferedState(st.hasHandoffOffer);
@@ -191,6 +195,11 @@ export function SecurityPage({
         )}
         {remote.authorityError && (
           <Banner kind="warn">{remote.authorityError}</Banner>
+        )}
+        {renderText(pendingRemoveNotice) && (
+          <Banner kind="warn" action={l10n.t("common.retry")} onAction={() => void run(async () => { await remote.resumeSecurityOperation(); await remote.loadDevices(); })}>
+            {renderText(pendingRemoveNotice)}
+          </Banner>
         )}
         </div>
         {page === "overview" && pending && (

@@ -3841,6 +3841,8 @@ type SecurityWorkflowStatus struct {
 	TakingOver                bool                      `protobuf:"varint,20,opt,name=taking_over,json=takingOver,proto3" json:"taking_over,omitempty"`
 	PendingOp                 *SecurityPendingOpSummary `protobuf:"bytes,21,opt,name=pending_op,json=pendingOp,proto3" json:"pending_op,omitempty"`
 	Error                     string                    `protobuf:"bytes,22,opt,name=error,proto3" json:"error,omitempty"`
+	PendingRemoveDeviceIds    []string                  `protobuf:"bytes,23,rep,name=pending_remove_device_ids,json=pendingRemoveDeviceIds,proto3" json:"pending_remove_device_ids,omitempty"`
+	PendingRemoveNotice       *Text                     `protobuf:"bytes,24,opt,name=pending_remove_notice,json=pendingRemoveNotice,proto3" json:"pending_remove_notice,omitempty"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
 }
@@ -4029,6 +4031,20 @@ func (x *SecurityWorkflowStatus) GetError() string {
 	return ""
 }
 
+func (x *SecurityWorkflowStatus) GetPendingRemoveDeviceIds() []string {
+	if x != nil {
+		return x.PendingRemoveDeviceIds
+	}
+	return nil
+}
+
+func (x *SecurityWorkflowStatus) GetPendingRemoveNotice() *Text {
+	if x != nil {
+		return x.PendingRemoveNotice
+	}
+	return nil
+}
+
 type SecurityPairingReplacementCandidate struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	DeviceId        string                 `protobuf:"bytes,1,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
@@ -4138,6 +4154,7 @@ type SecurityPairingInfo struct {
 	ReplaceOldLabel       *Text                                  `protobuf:"bytes,14,opt,name=replace_old_label,json=replaceOldLabel,proto3" json:"replace_old_label,omitempty"`
 	ReplaceOldHint        *Text                                  `protobuf:"bytes,15,opt,name=replace_old_hint,json=replaceOldHint,proto3" json:"replace_old_hint,omitempty"`
 	JoinerDescription     string                                 `protobuf:"bytes,16,opt,name=joiner_description,json=joinerDescription,proto3" json:"joiner_description,omitempty"`
+	RemoveOldNotice       *Text                                  `protobuf:"bytes,17,opt,name=remove_old_notice,json=removeOldNotice,proto3" json:"remove_old_notice,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -4275,6 +4292,13 @@ func (x *SecurityPairingInfo) GetJoinerDescription() string {
 		return x.JoinerDescription
 	}
 	return ""
+}
+
+func (x *SecurityPairingInfo) GetRemoveOldNotice() *Text {
+	if x != nil {
+		return x.RemoveOldNotice
+	}
+	return nil
 }
 
 type SecurityRecoveryInfo struct {
@@ -6757,7 +6781,7 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	" \x01(\x03R\x0frecoveryReadyMs\x12\x1a\n" +
 	"\brejected\x18\v \x01(\bR\brejected\x12(\n" +
 	"\x10target_device_id\x18\f \x01(\tR\x0etargetDeviceId\x12\x16\n" +
-	"\x06server\x18\r \x01(\tR\x06server\"\xbb\a\n" +
+	"\x06server\x18\r \x01(\tR\x06server\"\xc5\b\n" +
 	"\x16SecurityWorkflowStatus\x12H\n" +
 	"\tbootstrap\x18\x01 \x01(\x0e2*.remoteagent.core.v1.SecurityBootstrapKindR\tbootstrap\x120\n" +
 	"\x14legacy_repair_notice\x18\x02 \x01(\bR\x12legacyRepairNotice\x12\x1b\n" +
@@ -6787,7 +6811,9 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"takingOver\x12L\n" +
 	"\n" +
 	"pending_op\x18\x15 \x01(\v2-.remoteagent.core.v1.SecurityPendingOpSummaryR\tpendingOp\x12\x14\n" +
-	"\x05error\x18\x16 \x01(\tR\x05error\"\xb4\x02\n" +
+	"\x05error\x18\x16 \x01(\tR\x05error\x129\n" +
+	"\x19pending_remove_device_ids\x18\x17 \x03(\tR\x16pendingRemoveDeviceIds\x12M\n" +
+	"\x15pending_remove_notice\x18\x18 \x01(\v2\x19.remoteagent.core.v1.TextR\x13pendingRemoveNotice\"\xb4\x02\n" +
 	"#SecurityPairingReplacementCandidate\x12\x1b\n" +
 	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12 \n" +
@@ -6796,7 +6822,7 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\flast_seen_ms\x18\x05 \x01(\x03R\n" +
 	"lastSeenMs\x12C\n" +
 	"\x10last_active_text\x18\x06 \x01(\v2\x19.remoteagent.core.v1.TextR\x0elastActiveText\x12)\n" +
-	"\x10default_selected\x18\a \x01(\bR\x0fdefaultSelected\"\xbf\x05\n" +
+	"\x10default_selected\x18\a \x01(\bR\x0fdefaultSelected\"\x86\x06\n" +
 	"\x13SecurityPairingInfo\x12\x1d\n" +
 	"\n" +
 	"pairing_id\x18\x01 \x01(\tR\tpairingId\x12\x12\n" +
@@ -6816,7 +6842,8 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\x16replacement_candidates\x18\f \x03(\v28.remoteagent.core.v1.SecurityPairingReplacementCandidateR\x15replacementCandidates\x12E\n" +
 	"\x11replace_old_label\x18\x0e \x01(\v2\x19.remoteagent.core.v1.TextR\x0freplaceOldLabel\x12C\n" +
 	"\x10replace_old_hint\x18\x0f \x01(\v2\x19.remoteagent.core.v1.TextR\x0ereplaceOldHint\x12-\n" +
-	"\x12joiner_description\x18\x10 \x01(\tR\x11joinerDescriptionJ\x04\b\r\x10\x0eR\x12remove_old_default\"\x9a\x01\n" +
+	"\x12joiner_description\x18\x10 \x01(\tR\x11joinerDescription\x12E\n" +
+	"\x11remove_old_notice\x18\x11 \x01(\v2\x19.remoteagent.core.v1.TextR\x0fremoveOldNoticeJ\x04\b\r\x10\x0eR\x12remove_old_default\"\x9a\x01\n" +
 	"\x14SecurityRecoveryInfo\x12\x1f\n" +
 	"\vrecovery_id\x18\x01 \x01(\tR\n" +
 	"recoveryId\x12F\n" +
@@ -7230,75 +7257,77 @@ var file_remoteagent_core_v1_security_proto_depIdxs = []int32{
 	4,   // 39: remoteagent.core.v1.SecurityRpcEffect.method:type_name -> remoteagent.core.v1.SecurityRpcMethod
 	5,   // 40: remoteagent.core.v1.SecurityWorkflowStatus.bootstrap:type_name -> remoteagent.core.v1.SecurityBootstrapKind
 	48,  // 41: remoteagent.core.v1.SecurityWorkflowStatus.pending_op:type_name -> remoteagent.core.v1.SecurityPendingOpSummary
-	82,  // 42: remoteagent.core.v1.SecurityPairingReplacementCandidate.last_active_text:type_name -> remoteagent.core.v1.Text
-	77,  // 43: remoteagent.core.v1.SecurityPairingInfo.joiner_kind:type_name -> remoteagent.v1.DeviceKind
-	50,  // 44: remoteagent.core.v1.SecurityPairingInfo.replacement_candidates:type_name -> remoteagent.core.v1.SecurityPairingReplacementCandidate
-	82,  // 45: remoteagent.core.v1.SecurityPairingInfo.replace_old_label:type_name -> remoteagent.core.v1.Text
-	82,  // 46: remoteagent.core.v1.SecurityPairingInfo.replace_old_hint:type_name -> remoteagent.core.v1.Text
-	83,  // 47: remoteagent.core.v1.SecurityRecoveryInfo.phase:type_name -> remoteagent.v1.GetRecoveryContextResponse.Phase
-	56,  // 48: remoteagent.core.v1.SecurityWorkflowActionEvent.bootstrap:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	56,  // 49: remoteagent.core.v1.SecurityWorkflowActionEvent.dismiss_upgrade_notice:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	59,  // 50: remoteagent.core.v1.SecurityWorkflowActionEvent.sync_now:type_name -> remoteagent.core.v1.SecuritySyncNowAction
-	57,  // 51: remoteagent.core.v1.SecurityWorkflowActionEvent.renew_lease:type_name -> remoteagent.core.v1.SecurityBoolAction
-	56,  // 52: remoteagent.core.v1.SecurityWorkflowActionEvent.resume_pending_op:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	57,  // 53: remoteagent.core.v1.SecurityWorkflowActionEvent.discard_pending_op:type_name -> remoteagent.core.v1.SecurityBoolAction
-	60,  // 54: remoteagent.core.v1.SecurityWorkflowActionEvent.prepare_creation:type_name -> remoteagent.core.v1.SecurityPrepareCreationAction
-	56,  // 55: remoteagent.core.v1.SecurityWorkflowActionEvent.confirm_creation_code_saved:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	58,  // 56: remoteagent.core.v1.SecurityWorkflowActionEvent.continue_creation:type_name -> remoteagent.core.v1.SecurityStringAction
-	56,  // 57: remoteagent.core.v1.SecurityWorkflowActionEvent.adopt_creation_without_code:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	61,  // 58: remoteagent.core.v1.SecurityWorkflowActionEvent.remove_device:type_name -> remoteagent.core.v1.SecurityRemoveDeviceAction
-	58,  // 59: remoteagent.core.v1.SecurityWorkflowActionEvent.delete_machine_records:type_name -> remoteagent.core.v1.SecurityStringAction
-	56,  // 60: remoteagent.core.v1.SecurityWorkflowActionEvent.delete_account:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	56,  // 61: remoteagent.core.v1.SecurityWorkflowActionEvent.prepare_recovery_rotation:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	56,  // 62: remoteagent.core.v1.SecurityWorkflowActionEvent.confirm_recovery_rotation:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	57,  // 63: remoteagent.core.v1.SecurityWorkflowActionEvent.prepare_handoff_code:type_name -> remoteagent.core.v1.SecurityBoolAction
-	56,  // 64: remoteagent.core.v1.SecurityWorkflowActionEvent.publish_handoff_offer:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	58,  // 65: remoteagent.core.v1.SecurityWorkflowActionEvent.handoff_authority:type_name -> remoteagent.core.v1.SecurityStringAction
-	62,  // 66: remoteagent.core.v1.SecurityWorkflowActionEvent.complete_account_public_profile:type_name -> remoteagent.core.v1.SecurityServerCodeAction
-	63,  // 67: remoteagent.core.v1.SecurityWorkflowActionEvent.start_pairing:type_name -> remoteagent.core.v1.SecurityStartPairingAction
-	58,  // 68: remoteagent.core.v1.SecurityWorkflowActionEvent.poll_pairing:type_name -> remoteagent.core.v1.SecurityStringAction
-	64,  // 69: remoteagent.core.v1.SecurityWorkflowActionEvent.approve_pairing:type_name -> remoteagent.core.v1.SecurityApprovePairingAction
-	58,  // 70: remoteagent.core.v1.SecurityWorkflowActionEvent.finish_pairing_delivery:type_name -> remoteagent.core.v1.SecurityStringAction
-	58,  // 71: remoteagent.core.v1.SecurityWorkflowActionEvent.cancel_pairing:type_name -> remoteagent.core.v1.SecurityStringAction
-	65,  // 72: remoteagent.core.v1.SecurityWorkflowActionEvent.start_join_pairing:type_name -> remoteagent.core.v1.SecurityStartJoinPairingAction
-	58,  // 73: remoteagent.core.v1.SecurityWorkflowActionEvent.confirm_join_sas:type_name -> remoteagent.core.v1.SecurityStringAction
-	58,  // 74: remoteagent.core.v1.SecurityWorkflowActionEvent.cancel_join_pairing:type_name -> remoteagent.core.v1.SecurityStringAction
-	62,  // 75: remoteagent.core.v1.SecurityWorkflowActionEvent.prepare_emergency_recovery:type_name -> remoteagent.core.v1.SecurityServerCodeAction
-	58,  // 76: remoteagent.core.v1.SecurityWorkflowActionEvent.continue_recovery_signing:type_name -> remoteagent.core.v1.SecurityStringAction
-	56,  // 77: remoteagent.core.v1.SecurityWorkflowActionEvent.confirm_recovery_code_saved:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	56,  // 78: remoteagent.core.v1.SecurityWorkflowActionEvent.resume_recovery:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	56,  // 79: remoteagent.core.v1.SecurityWorkflowActionEvent.complete_recovery:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	56,  // 80: remoteagent.core.v1.SecurityWorkflowActionEvent.discard_unsigned_recovery:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	56,  // 81: remoteagent.core.v1.SecurityWorkflowActionEvent.discard_rejected_recovery:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	56,  // 82: remoteagent.core.v1.SecurityWorkflowActionEvent.check_exit_advice:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	56,  // 83: remoteagent.core.v1.SecurityWorkflowActionEvent.clear_security:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	66,  // 84: remoteagent.core.v1.SecurityWorkflowActionEvent.update_device_meta:type_name -> remoteagent.core.v1.SecurityUpdateDeviceMetaAction
-	56,  // 85: remoteagent.core.v1.SecurityWorkflowActionEvent.list_handoff_candidates:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	56,  // 86: remoteagent.core.v1.SecurityWorkflowActionEvent.get_status:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	56,  // 87: remoteagent.core.v1.SecurityWorkflowActionEvent.check_retained_denied:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	57,  // 88: remoteagent.core.v1.SecurityWorkflowActionEvent.republish_recovery_objects:type_name -> remoteagent.core.v1.SecurityBoolAction
-	49,  // 89: remoteagent.core.v1.SecurityWorkflowResultEffect.status:type_name -> remoteagent.core.v1.SecurityWorkflowStatus
-	51,  // 90: remoteagent.core.v1.SecurityWorkflowResultEffect.pairing:type_name -> remoteagent.core.v1.SecurityPairingInfo
-	52,  // 91: remoteagent.core.v1.SecurityWorkflowResultEffect.recovery:type_name -> remoteagent.core.v1.SecurityRecoveryInfo
-	53,  // 92: remoteagent.core.v1.SecurityWorkflowResultEffect.handoff_candidates:type_name -> remoteagent.core.v1.SecurityHandoffCandidate
-	54,  // 93: remoteagent.core.v1.SecurityWorkflowResultEffect.exit_advice:type_name -> remoteagent.core.v1.SecurityExitAdvice
-	55,  // 94: remoteagent.core.v1.SecurityWorkflowResultEffect.account_adopted:type_name -> remoteagent.core.v1.SecurityAccountAdopted
-	1,   // 95: remoteagent.core.v1.SecurityWorkflowResultEffect.structured_error_code:type_name -> remoteagent.core.v1.SecurityErrorCode
-	49,  // 96: remoteagent.core.v1.SecurityStatusChangedEffect.status:type_name -> remoteagent.core.v1.SecurityWorkflowStatus
-	73,  // 97: remoteagent.core.v1.SecurityOpenNotifyEvent.envelope:type_name -> remoteagent.v1.Envelope
-	84,  // 98: remoteagent.core.v1.SecurityOpenNotifyEvent.expected_kind:type_name -> remoteagent.v1.NotifyKind
-	84,  // 99: remoteagent.core.v1.SecurityNotifyDisplay.kind:type_name -> remoteagent.v1.NotifyKind
-	82,  // 100: remoteagent.core.v1.SecurityNotifyDisplay.title:type_name -> remoteagent.core.v1.Text
-	82,  // 101: remoteagent.core.v1.SecurityNotifyDisplay.body:type_name -> remoteagent.core.v1.Text
-	82,  // 102: remoteagent.core.v1.SecurityNotifyDisplay.sub_text:type_name -> remoteagent.core.v1.Text
-	82,  // 103: remoteagent.core.v1.SecurityNotifyDisplay.big_text:type_name -> remoteagent.core.v1.Text
-	82,  // 104: remoteagent.core.v1.SecurityNotifyDisplay.full_generic_body:type_name -> remoteagent.core.v1.Text
-	71,  // 105: remoteagent.core.v1.SecurityNotifyOpenedEffect.display:type_name -> remoteagent.core.v1.SecurityNotifyDisplay
-	106, // [106:106] is the sub-list for method output_type
-	106, // [106:106] is the sub-list for method input_type
-	106, // [106:106] is the sub-list for extension type_name
-	106, // [106:106] is the sub-list for extension extendee
-	0,   // [0:106] is the sub-list for field type_name
+	82,  // 42: remoteagent.core.v1.SecurityWorkflowStatus.pending_remove_notice:type_name -> remoteagent.core.v1.Text
+	82,  // 43: remoteagent.core.v1.SecurityPairingReplacementCandidate.last_active_text:type_name -> remoteagent.core.v1.Text
+	77,  // 44: remoteagent.core.v1.SecurityPairingInfo.joiner_kind:type_name -> remoteagent.v1.DeviceKind
+	50,  // 45: remoteagent.core.v1.SecurityPairingInfo.replacement_candidates:type_name -> remoteagent.core.v1.SecurityPairingReplacementCandidate
+	82,  // 46: remoteagent.core.v1.SecurityPairingInfo.replace_old_label:type_name -> remoteagent.core.v1.Text
+	82,  // 47: remoteagent.core.v1.SecurityPairingInfo.replace_old_hint:type_name -> remoteagent.core.v1.Text
+	82,  // 48: remoteagent.core.v1.SecurityPairingInfo.remove_old_notice:type_name -> remoteagent.core.v1.Text
+	83,  // 49: remoteagent.core.v1.SecurityRecoveryInfo.phase:type_name -> remoteagent.v1.GetRecoveryContextResponse.Phase
+	56,  // 50: remoteagent.core.v1.SecurityWorkflowActionEvent.bootstrap:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	56,  // 51: remoteagent.core.v1.SecurityWorkflowActionEvent.dismiss_upgrade_notice:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	59,  // 52: remoteagent.core.v1.SecurityWorkflowActionEvent.sync_now:type_name -> remoteagent.core.v1.SecuritySyncNowAction
+	57,  // 53: remoteagent.core.v1.SecurityWorkflowActionEvent.renew_lease:type_name -> remoteagent.core.v1.SecurityBoolAction
+	56,  // 54: remoteagent.core.v1.SecurityWorkflowActionEvent.resume_pending_op:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	57,  // 55: remoteagent.core.v1.SecurityWorkflowActionEvent.discard_pending_op:type_name -> remoteagent.core.v1.SecurityBoolAction
+	60,  // 56: remoteagent.core.v1.SecurityWorkflowActionEvent.prepare_creation:type_name -> remoteagent.core.v1.SecurityPrepareCreationAction
+	56,  // 57: remoteagent.core.v1.SecurityWorkflowActionEvent.confirm_creation_code_saved:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	58,  // 58: remoteagent.core.v1.SecurityWorkflowActionEvent.continue_creation:type_name -> remoteagent.core.v1.SecurityStringAction
+	56,  // 59: remoteagent.core.v1.SecurityWorkflowActionEvent.adopt_creation_without_code:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	61,  // 60: remoteagent.core.v1.SecurityWorkflowActionEvent.remove_device:type_name -> remoteagent.core.v1.SecurityRemoveDeviceAction
+	58,  // 61: remoteagent.core.v1.SecurityWorkflowActionEvent.delete_machine_records:type_name -> remoteagent.core.v1.SecurityStringAction
+	56,  // 62: remoteagent.core.v1.SecurityWorkflowActionEvent.delete_account:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	56,  // 63: remoteagent.core.v1.SecurityWorkflowActionEvent.prepare_recovery_rotation:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	56,  // 64: remoteagent.core.v1.SecurityWorkflowActionEvent.confirm_recovery_rotation:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	57,  // 65: remoteagent.core.v1.SecurityWorkflowActionEvent.prepare_handoff_code:type_name -> remoteagent.core.v1.SecurityBoolAction
+	56,  // 66: remoteagent.core.v1.SecurityWorkflowActionEvent.publish_handoff_offer:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	58,  // 67: remoteagent.core.v1.SecurityWorkflowActionEvent.handoff_authority:type_name -> remoteagent.core.v1.SecurityStringAction
+	62,  // 68: remoteagent.core.v1.SecurityWorkflowActionEvent.complete_account_public_profile:type_name -> remoteagent.core.v1.SecurityServerCodeAction
+	63,  // 69: remoteagent.core.v1.SecurityWorkflowActionEvent.start_pairing:type_name -> remoteagent.core.v1.SecurityStartPairingAction
+	58,  // 70: remoteagent.core.v1.SecurityWorkflowActionEvent.poll_pairing:type_name -> remoteagent.core.v1.SecurityStringAction
+	64,  // 71: remoteagent.core.v1.SecurityWorkflowActionEvent.approve_pairing:type_name -> remoteagent.core.v1.SecurityApprovePairingAction
+	58,  // 72: remoteagent.core.v1.SecurityWorkflowActionEvent.finish_pairing_delivery:type_name -> remoteagent.core.v1.SecurityStringAction
+	58,  // 73: remoteagent.core.v1.SecurityWorkflowActionEvent.cancel_pairing:type_name -> remoteagent.core.v1.SecurityStringAction
+	65,  // 74: remoteagent.core.v1.SecurityWorkflowActionEvent.start_join_pairing:type_name -> remoteagent.core.v1.SecurityStartJoinPairingAction
+	58,  // 75: remoteagent.core.v1.SecurityWorkflowActionEvent.confirm_join_sas:type_name -> remoteagent.core.v1.SecurityStringAction
+	58,  // 76: remoteagent.core.v1.SecurityWorkflowActionEvent.cancel_join_pairing:type_name -> remoteagent.core.v1.SecurityStringAction
+	62,  // 77: remoteagent.core.v1.SecurityWorkflowActionEvent.prepare_emergency_recovery:type_name -> remoteagent.core.v1.SecurityServerCodeAction
+	58,  // 78: remoteagent.core.v1.SecurityWorkflowActionEvent.continue_recovery_signing:type_name -> remoteagent.core.v1.SecurityStringAction
+	56,  // 79: remoteagent.core.v1.SecurityWorkflowActionEvent.confirm_recovery_code_saved:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	56,  // 80: remoteagent.core.v1.SecurityWorkflowActionEvent.resume_recovery:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	56,  // 81: remoteagent.core.v1.SecurityWorkflowActionEvent.complete_recovery:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	56,  // 82: remoteagent.core.v1.SecurityWorkflowActionEvent.discard_unsigned_recovery:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	56,  // 83: remoteagent.core.v1.SecurityWorkflowActionEvent.discard_rejected_recovery:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	56,  // 84: remoteagent.core.v1.SecurityWorkflowActionEvent.check_exit_advice:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	56,  // 85: remoteagent.core.v1.SecurityWorkflowActionEvent.clear_security:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	66,  // 86: remoteagent.core.v1.SecurityWorkflowActionEvent.update_device_meta:type_name -> remoteagent.core.v1.SecurityUpdateDeviceMetaAction
+	56,  // 87: remoteagent.core.v1.SecurityWorkflowActionEvent.list_handoff_candidates:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	56,  // 88: remoteagent.core.v1.SecurityWorkflowActionEvent.get_status:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	56,  // 89: remoteagent.core.v1.SecurityWorkflowActionEvent.check_retained_denied:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	57,  // 90: remoteagent.core.v1.SecurityWorkflowActionEvent.republish_recovery_objects:type_name -> remoteagent.core.v1.SecurityBoolAction
+	49,  // 91: remoteagent.core.v1.SecurityWorkflowResultEffect.status:type_name -> remoteagent.core.v1.SecurityWorkflowStatus
+	51,  // 92: remoteagent.core.v1.SecurityWorkflowResultEffect.pairing:type_name -> remoteagent.core.v1.SecurityPairingInfo
+	52,  // 93: remoteagent.core.v1.SecurityWorkflowResultEffect.recovery:type_name -> remoteagent.core.v1.SecurityRecoveryInfo
+	53,  // 94: remoteagent.core.v1.SecurityWorkflowResultEffect.handoff_candidates:type_name -> remoteagent.core.v1.SecurityHandoffCandidate
+	54,  // 95: remoteagent.core.v1.SecurityWorkflowResultEffect.exit_advice:type_name -> remoteagent.core.v1.SecurityExitAdvice
+	55,  // 96: remoteagent.core.v1.SecurityWorkflowResultEffect.account_adopted:type_name -> remoteagent.core.v1.SecurityAccountAdopted
+	1,   // 97: remoteagent.core.v1.SecurityWorkflowResultEffect.structured_error_code:type_name -> remoteagent.core.v1.SecurityErrorCode
+	49,  // 98: remoteagent.core.v1.SecurityStatusChangedEffect.status:type_name -> remoteagent.core.v1.SecurityWorkflowStatus
+	73,  // 99: remoteagent.core.v1.SecurityOpenNotifyEvent.envelope:type_name -> remoteagent.v1.Envelope
+	84,  // 100: remoteagent.core.v1.SecurityOpenNotifyEvent.expected_kind:type_name -> remoteagent.v1.NotifyKind
+	84,  // 101: remoteagent.core.v1.SecurityNotifyDisplay.kind:type_name -> remoteagent.v1.NotifyKind
+	82,  // 102: remoteagent.core.v1.SecurityNotifyDisplay.title:type_name -> remoteagent.core.v1.Text
+	82,  // 103: remoteagent.core.v1.SecurityNotifyDisplay.body:type_name -> remoteagent.core.v1.Text
+	82,  // 104: remoteagent.core.v1.SecurityNotifyDisplay.sub_text:type_name -> remoteagent.core.v1.Text
+	82,  // 105: remoteagent.core.v1.SecurityNotifyDisplay.big_text:type_name -> remoteagent.core.v1.Text
+	82,  // 106: remoteagent.core.v1.SecurityNotifyDisplay.full_generic_body:type_name -> remoteagent.core.v1.Text
+	71,  // 107: remoteagent.core.v1.SecurityNotifyOpenedEffect.display:type_name -> remoteagent.core.v1.SecurityNotifyDisplay
+	108, // [108:108] is the sub-list for method output_type
+	108, // [108:108] is the sub-list for method input_type
+	108, // [108:108] is the sub-list for extension type_name
+	108, // [108:108] is the sub-list for extension extendee
+	0,   // [0:108] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_security_proto_init() }

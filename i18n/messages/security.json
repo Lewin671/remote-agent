@@ -5928,5 +5928,37 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "security.old_devices_removal_incomplete",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "新设备已加入，但有 {count} 台旧设备未能自动移除，请稍后重试或在设备列表中手动移除。"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "The new device joined, but {count} old device could not be removed automatically. Retry later or remove it manually in Devices.",
+        "other": "The new device joined, but {count} old devices could not be removed automatically. Retry later or remove them manually in Devices."
+      }
+    },
+    "notes": "配对交付完成后自动移除勾选的旧设备存在失败或重启后仍有待移除旧设备时的核心警告提示。count 为尚未移除的旧设备数量（正整数）。允许多行。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 1
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

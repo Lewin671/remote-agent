@@ -5848,5 +5848,25 @@
     "path": "web/src/Rejoin.tsx",
     "literal": "setPushSubscription",
     "reason": "TypeScript Pick<Remote, \"setPushSubscription\"> property type key; never rendered as user-facing text."
+  },
+  {
+    "path": "web/src/views/DeviceManagement.tsx",
+    "literal": "warn",
+    "reason": "Banner kind CSS/style variant prop; never rendered as user-facing text."
+  },
+  {
+    "path": "web/src/views/Security.tsx",
+    "literal": "warn",
+    "reason": "Banner kind CSS/style variant prop; never rendered as user-facing text."
+  },
+  {
+    "path": "web/src/views/Security.tsx",
+    "literal": "overview",
+    "reason": "Internal subpage route state discriminator near Banner action prop; never rendered as user-facing text."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Recovery.kt",
+    "literal": "pending",
+    "reason": "Internal subpage route state discriminator near error assignment; never rendered as user-facing text."
   }
 ]

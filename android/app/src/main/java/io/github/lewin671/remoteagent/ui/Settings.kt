@@ -2125,7 +2125,7 @@ fun PairScreen(replacesDeviceId: String = "") {
                         }
                     }
                 }
-                PairingUiState.Done ->
+                is PairingUiState.Done -> {
                     Notice(
                         copy(UiMessages.settingsAndroidNewDeviceJoined()),
                         Modifier.padding(top = 14.dp),
@@ -2133,6 +2133,15 @@ fun PairScreen(replacesDeviceId: String = "") {
                         onAction = nav.back,
                         icon = Lucide.Check,
                     )
+                    val warnText = step.warning?.let { uiText(it) }.orEmpty()
+                    if (warnText.isNotEmpty()) {
+                        Notice(
+                            warnText,
+                            Modifier.padding(top = 10.dp),
+                            tone = NoticeTone.WARN,
+                        )
+                    }
+                }
                 is PairingUiState.Failed ->
                     Notice(
                         uiText(step.message),

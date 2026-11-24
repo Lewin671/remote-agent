@@ -2773,6 +2773,8 @@ type SecurityWorkflowStatus struct {
 	TakingOver                bool
 	PendingOp                 *SecurityPendingOpSummary
 	Error                     string
+	PendingRemoveDeviceIds    []string
+	PendingRemoveNotice       *Text
 }
 
 func (m *SecurityWorkflowStatus) GetBootstrap() SecurityBootstrapKind {
@@ -2907,6 +2909,18 @@ func (m *SecurityWorkflowStatus) GetError() string {
 	}
 	return ""
 }
+func (m *SecurityWorkflowStatus) GetPendingRemoveDeviceIds() []string {
+	if m != nil {
+		return m.PendingRemoveDeviceIds
+	}
+	return nil
+}
+func (m *SecurityWorkflowStatus) GetPendingRemoveNotice() *Text {
+	if m != nil {
+		return m.PendingRemoveNotice
+	}
+	return nil
+}
 
 var LitewireDesc_SecurityWorkflowStatus = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -2932,6 +2946,8 @@ var LitewireDesc_SecurityWorkflowStatus = litewire.MessageDesc{
 		{Num: 20, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.TakingOver), Kind: litewire.KindBool},
 		{Num: 21, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.PendingOp), Kind: litewire.KindMessage, Sub: &LitewireDesc_SecurityPendingOpSummary},
 		{Num: 22, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.Error), Kind: litewire.KindString},
+		{Num: 23, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.PendingRemoveDeviceIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 24, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.PendingRemoveNotice), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 
@@ -3034,6 +3050,7 @@ type SecurityPairingInfo struct {
 	ReplaceOldLabel       *Text
 	ReplaceOldHint        *Text
 	JoinerDescription     string
+	RemoveOldNotice       *Text
 }
 
 func (m *SecurityPairingInfo) GetPairingId() string {
@@ -3126,6 +3143,12 @@ func (m *SecurityPairingInfo) GetJoinerDescription() string {
 	}
 	return ""
 }
+func (m *SecurityPairingInfo) GetRemoveOldNotice() *Text {
+	if m != nil {
+		return m.RemoveOldNotice
+	}
+	return nil
+}
 
 var LitewireDesc_SecurityPairingInfo = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -3144,6 +3167,7 @@ var LitewireDesc_SecurityPairingInfo = litewire.MessageDesc{
 		{Num: 14, Offset: unsafe.Offsetof(SecurityPairingInfo{}.ReplaceOldLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 15, Offset: unsafe.Offsetof(SecurityPairingInfo{}.ReplaceOldHint), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 16, Offset: unsafe.Offsetof(SecurityPairingInfo{}.JoinerDescription), Kind: litewire.KindString},
+		{Num: 17, Offset: unsafe.Offsetof(SecurityPairingInfo{}.RemoveOldNotice), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 

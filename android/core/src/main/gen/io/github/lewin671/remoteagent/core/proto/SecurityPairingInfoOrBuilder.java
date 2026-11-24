@@ -165,4 +165,15 @@ public interface SecurityPairingInfoOrBuilder extends
    */
   com.google.protobuf.ByteString
       getJoinerDescriptionBytes();
+
+  /**
+   * <code>.remoteagent.core.v1.Text remove_old_notice = 17 [json_name = "removeOldNotice"];</code>
+   * @return Whether the removeOldNotice field is set.
+   */
+  boolean hasRemoveOldNotice();
+  /**
+   * <code>.remoteagent.core.v1.Text remove_old_notice = 17 [json_name = "removeOldNotice"];</code>
+   * @return The removeOldNotice.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getRemoveOldNotice();
 }

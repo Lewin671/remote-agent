@@ -19,6 +19,7 @@ public  final class SecurityWorkflowStatus extends
     deviceId_ = "";
     accountId_ = "";
     error_ = "";
+    pendingRemoveDeviceIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
   }
   private int bitField0_;
   public static final int BOOTSTRAP_FIELD_NUMBER = 1;
@@ -717,6 +718,149 @@ public  final class SecurityWorkflowStatus extends
     checkByteStringIsUtf8(value);
     error_ = value.toStringUtf8();
 
+  }
+
+  public static final int PENDING_REMOVE_DEVICE_IDS_FIELD_NUMBER = 23;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> pendingRemoveDeviceIds_;
+  /**
+   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * @return A list containing the pendingRemoveDeviceIds.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getPendingRemoveDeviceIdsList() {
+    return pendingRemoveDeviceIds_;
+  }
+  /**
+   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * @return The count of pendingRemoveDeviceIds.
+   */
+  @java.lang.Override
+  public int getPendingRemoveDeviceIdsCount() {
+    return pendingRemoveDeviceIds_.size();
+  }
+  /**
+   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * @param index The index of the element to return.
+   * @return The pendingRemoveDeviceIds at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getPendingRemoveDeviceIds(int index) {
+    return pendingRemoveDeviceIds_.get(index);
+  }
+  /**
+   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the pendingRemoveDeviceIds at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getPendingRemoveDeviceIdsBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        pendingRemoveDeviceIds_.get(index));
+  }
+  private void ensurePendingRemoveDeviceIdsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        pendingRemoveDeviceIds_;  if (!tmp.isModifiable()) {
+      pendingRemoveDeviceIds_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * @param index The index to set the value at.
+   * @param value The pendingRemoveDeviceIds to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPendingRemoveDeviceIds(
+      int index, java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensurePendingRemoveDeviceIdsIsMutable();
+    pendingRemoveDeviceIds_.set(index, value);
+  }
+  /**
+   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * @param value The pendingRemoveDeviceIds to add.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addPendingRemoveDeviceIds(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensurePendingRemoveDeviceIdsIsMutable();
+    pendingRemoveDeviceIds_.add(value);
+  }
+  /**
+   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * @param values The pendingRemoveDeviceIds to add.
+   */
+  private void addAllPendingRemoveDeviceIds(
+      java.lang.Iterable<java.lang.String> values) {
+    ensurePendingRemoveDeviceIdsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, pendingRemoveDeviceIds_);
+  }
+  /**
+   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   */
+  private void clearPendingRemoveDeviceIds() {
+    pendingRemoveDeviceIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
+  }
+  /**
+   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * @param value The bytes of the pendingRemoveDeviceIds to add.
+   */
+  private void addPendingRemoveDeviceIdsBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensurePendingRemoveDeviceIdsIsMutable();
+    pendingRemoveDeviceIds_.add(value.toStringUtf8());
+  }
+
+  public static final int PENDING_REMOVE_NOTICE_FIELD_NUMBER = 24;
+  private io.github.lewin671.remoteagent.core.proto.Text pendingRemoveNotice_;
+  /**
+   * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+   */
+  @java.lang.Override
+  public boolean hasPendingRemoveNotice() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getPendingRemoveNotice() {
+    return pendingRemoveNotice_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : pendingRemoveNotice_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPendingRemoveNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    pendingRemoveNotice_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergePendingRemoveNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (pendingRemoveNotice_ != null &&
+        pendingRemoveNotice_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      pendingRemoveNotice_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(pendingRemoveNotice_).mergeFrom(value).buildPartial();
+    } else {
+      pendingRemoveNotice_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+   */
+  private void clearPendingRemoveNotice() {
+    pendingRemoveNotice_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecurityWorkflowStatus parseFrom(
@@ -1553,6 +1697,145 @@ public  final class SecurityWorkflowStatus extends
       return this;
     }
 
+    /**
+     * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+     * @return A list containing the pendingRemoveDeviceIds.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getPendingRemoveDeviceIdsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getPendingRemoveDeviceIdsList());
+    }
+    /**
+     * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+     * @return The count of pendingRemoveDeviceIds.
+     */
+    @java.lang.Override
+    public int getPendingRemoveDeviceIdsCount() {
+      return instance.getPendingRemoveDeviceIdsCount();
+    }
+    /**
+     * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+     * @param index The index of the element to return.
+     * @return The pendingRemoveDeviceIds at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getPendingRemoveDeviceIds(int index) {
+      return instance.getPendingRemoveDeviceIds(index);
+    }
+    /**
+     * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the pendingRemoveDeviceIds at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getPendingRemoveDeviceIdsBytes(int index) {
+      return instance.getPendingRemoveDeviceIdsBytes(index);
+    }
+    /**
+     * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+     * @param index The index to set the value at.
+     * @param value The pendingRemoveDeviceIds to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPendingRemoveDeviceIds(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setPendingRemoveDeviceIds(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+     * @param value The pendingRemoveDeviceIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addPendingRemoveDeviceIds(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addPendingRemoveDeviceIds(value);
+      return this;
+    }
+    /**
+     * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+     * @param values The pendingRemoveDeviceIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllPendingRemoveDeviceIds(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllPendingRemoveDeviceIds(values);
+      return this;
+    }
+    /**
+     * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPendingRemoveDeviceIds() {
+      copyOnWrite();
+      instance.clearPendingRemoveDeviceIds();
+      return this;
+    }
+    /**
+     * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+     * @param value The bytes of the pendingRemoveDeviceIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addPendingRemoveDeviceIdsBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addPendingRemoveDeviceIdsBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+     */
+    @java.lang.Override
+    public boolean hasPendingRemoveNotice() {
+      return instance.hasPendingRemoveNotice();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getPendingRemoveNotice() {
+      return instance.getPendingRemoveNotice();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+     */
+    public Builder setPendingRemoveNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setPendingRemoveNotice(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+     */
+    public Builder setPendingRemoveNotice(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setPendingRemoveNotice(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+     */
+    public Builder mergePendingRemoveNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergePendingRemoveNotice(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+     */
+    public Builder clearPendingRemoveNotice() {  copyOnWrite();
+      instance.clearPendingRemoveNotice();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityWorkflowStatus)
   }
   @java.lang.Override
@@ -1592,12 +1875,15 @@ public  final class SecurityWorkflowStatus extends
             "takingOver_",
             "pendingOp_",
             "error_",
+            "pendingRemoveDeviceIds_",
+            "pendingRemoveNotice_",
           };
           java.lang.String info =
-              "\u0000\u0016\u0000\u0001\u0001\u0016\u0016\u0000\u0000\u0000\u0001\f\u0002\u0007" +
+              "\u0000\u0018\u0000\u0001\u0001\u0018\u0018\u0000\u0001\u0000\u0001\f\u0002\u0007" +
               "\u0003\u0007\u0004\u0007\u0005\u0007\u0006\u0208\u0007\u0208\b\u0208\t\u0003\n\u0002" +
               "\u000b\u0007\f\u0007\r\u0007\u000e\u0002\u000f\u0007\u0010\u0007\u0011\u0007\u0012" +
-              "\u0007\u0013\u0007\u0014\u0007\u0015\u1009\u0000\u0016\u0208";
+              "\u0007\u0013\u0007\u0014\u0007\u0015\u1009\u0000\u0016\u0208\u0017\u021a\u0018\u1009" +
+              "\u0001";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

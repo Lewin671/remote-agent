@@ -2655,3 +2655,154 @@ func TestApprovePairingRejectsInvalidRemoveDeviceIDs(t *testing.T) {
 		t.Fatalf("expected valid candidate subset approval to succeed, got %+v", okRes)
 	}
 }
+
+func TestPairingOldDeviceRemovalFailurePersistsAndResumesAcrossRestart(t *testing.T) {
+	relay := newFakeRelay(1_700_000_000_000)
+	a := newFakeClientHarness(t, relay, 0xa1)
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PrepareCreation{
+			PrepareCreation: &corev1.SecurityPrepareCreationAction{Server: "https://relay.example.com"},
+		},
+	})
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ConfirmCreationCodeSaved{ConfirmCreationCodeSaved: &corev1.SecurityActionEmpty{}},
+	})
+	if cont := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ContinueCreation{ContinueCreation: &corev1.SecurityStringAction{}},
+	}); !cont.Ok {
+		t.Fatalf("ContinueCreation failed: %+v", cont)
+	}
+
+	// Enroll old Android device.
+	p1 := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_StartPairing{StartPairing: &corev1.SecurityStartPairingAction{}},
+	})
+	oldPhone := newFakeClientHarness(t, relay, 0xa2)
+	_ = oldPhone.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	j1 := oldPhone.startAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_StartJoinPairing{
+			StartJoinPairing: &corev1.SecurityStartJoinPairingAction{
+				Server: "https://relay.example.com", Code: p1.Pairing.Code,
+				Platform: "android", Description: "Android 14 · Pixel 9",
+			},
+		},
+	})
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PollPairing{PollPairing: &corev1.SecurityStringAction{Value: p1.Pairing.PairingId}},
+	})
+	oldPhone.pumpPollTicks(5, func() bool { return oldPhone.actionResults[j1] != nil })
+	c1 := oldPhone.startAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ConfirmJoinSas{ConfirmJoinSas: &corev1.SecurityStringAction{Value: p1.Pairing.PairingId}},
+	})
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ApprovePairing{
+			ApprovePairing: &corev1.SecurityApprovePairingAction{PairingId: p1.Pairing.PairingId, SasConfirmed: true},
+		},
+	})
+	oldPhone.pumpPollTicks(5, func() bool { return oldPhone.actionResults[c1] != nil })
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_FinishPairingDelivery{FinishPairingDelivery: &corev1.SecurityStringAction{Value: p1.Pairing.PairingId}},
+	})
+	oldPhoneID := oldPhone.eng.selfDeviceID
+
+	// Re-pair same Pixel 9 model (inactive >24h -> DefaultSelected=true).
+	dir := []DeviceOfferInfo{
+		{ID: a.eng.selfDeviceID, Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Meta: &v1.DeviceMeta{Platform: "ios", Description: "iOS 18.4 · iPhone16,1"}},
+		{ID: oldPhoneID, Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, LastSeenMs: a.nowMs - 2*dayMs, Meta: &v1.DeviceMeta{Platform: "android", Description: "Android 14 · Pixel 9"}},
+	}
+	a.eng.SetDeviceDirectory(dir)
+	p2 := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_StartPairing{StartPairing: &corev1.SecurityStartPairingAction{}},
+	}, dir...)
+	newPhone := newFakeClientHarness(t, relay, 0xa3)
+	_ = newPhone.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	j2 := newPhone.startAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_StartJoinPairing{
+			StartJoinPairing: &corev1.SecurityStartJoinPairingAction{
+				Server: "https://relay.example.com", Code: p2.Pairing.Code,
+				Platform: "android", Description: "Android 15 · Pixel 9",
+			},
+		},
+	})
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PollPairing{PollPairing: &corev1.SecurityStringAction{Value: p2.Pairing.PairingId}},
+	}, dir...)
+	newPhone.pumpPollTicks(5, func() bool { return newPhone.actionResults[j2] != nil })
+	pollMeta := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PollPairing{PollPairing: &corev1.SecurityStringAction{Value: p2.Pairing.PairingId}},
+	}, dir...)
+	if !pollMeta.Ok || len(pollMeta.Pairing.ReplacementCandidates) != 1 || !pollMeta.Pairing.ReplacementCandidates[0].DefaultSelected {
+		t.Fatalf("expected DefaultSelected=true for inactive specific Android model, got %+v", pollMeta.Pairing)
+	}
+
+	c2 := newPhone.startAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ConfirmJoinSas{ConfirmJoinSas: &corev1.SecurityStringAction{Value: p2.Pairing.PairingId}},
+	})
+	appRes := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ApprovePairing{
+			ApprovePairing: &corev1.SecurityApprovePairingAction{
+				PairingId:       p2.Pairing.PairingId,
+				SasConfirmed:    true,
+				RemoveDeviceIds: []string{oldPhoneID},
+			},
+		},
+	}, dir...)
+	if !appRes.Ok {
+		t.Fatalf("ApprovePairing failed: %+v", appRes)
+	}
+	newPhone.pumpPollTicks(5, func() bool { return newPhone.actionResults[c2] != nil })
+
+	// Inject a transient relay failure during the post-delivery old-device removal PutSecurityState.
+	relay.mu.Lock()
+	relay.failNextMethod = corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_SECURITY_STATE
+	relay.failNextCode = connectCodeUnavailable
+	relay.mu.Unlock()
+
+	finRes := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_FinishPairingDelivery{FinishPairingDelivery: &corev1.SecurityStringAction{Value: p2.Pairing.PairingId}},
+	}, dir...)
+	if !finRes.Ok || !finRes.Pairing.Delivered {
+		t.Fatalf("expected pairing delivery to still succeed despite old-device removal failure, got %+v", finRes)
+	}
+	if finRes.Pairing.GetRemoveOldNotice().GetKey() != text.KeySecurityOldDevicesRemovalIncomplete {
+		t.Fatalf("expected RemoveOldNotice when old-device removal failed, got %+v", finRes.Pairing.GetRemoveOldNotice())
+	}
+	if _, live := a.eng.head.Core.Member(oldPhoneID); !live {
+		t.Fatalf("expected oldPhoneID to still be live after failed removal")
+	}
+	// Notice and pending list must persist inside the encrypted security record across restart.
+	a.restart("https://relay.example.com", false)
+	boot := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	if !boot.Ok || len(boot.Status.PendingRemoveDeviceIds) != 1 || boot.Status.PendingRemoveDeviceIds[0] != oldPhoneID {
+		t.Fatalf("expected PendingRemoveDeviceIds persisted across restart, got %+v", boot.Status)
+	}
+	if boot.Status.GetPendingRemoveNotice().GetKey() != text.KeySecurityOldDevicesRemovalIncomplete {
+		t.Fatalf("expected PendingRemoveNotice after restart, got %+v", boot.Status.GetPendingRemoveNotice())
+	}
+
+	// Resuming pending operations after restart must automatically finish removing oldPhoneID and clear the notice.
+	resumed := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ResumePendingOp{ResumePendingOp: &corev1.SecurityActionEmpty{}},
+	})
+	if !resumed.Ok {
+		t.Fatalf("ResumePendingOp after restart failed: %+v", resumed)
+	}
+	if _, live := a.eng.head.Core.Member(oldPhoneID); live {
+		t.Fatalf("expected oldPhoneID to be removed after restart resume")
+	}
+	st := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_GetStatus{GetStatus: &corev1.SecurityActionEmpty{}},
+	})
+	if len(st.Status.PendingRemoveDeviceIds) != 0 || st.Status.PendingRemoveNotice != nil {
+		t.Fatalf("expected PendingRemoveDeviceIds and notice cleared after successful removal, got %+v", st.Status)
+	}
+}

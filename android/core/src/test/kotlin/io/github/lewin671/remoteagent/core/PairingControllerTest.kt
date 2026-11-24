@@ -184,7 +184,7 @@ class PairingControllerTest {
             assertTrue(driver.cancelledIds.isEmpty())
             driver.completePendingApproval(); runCurrent()
             model.enter(); runCurrent()
-            assertEquals(PairingUiState.Done, model.state.value)
+            assertEquals(PairingUiState.Done(), model.state.value)
             assertEquals(1, completions)
         } finally {
             foreground.cancel()
@@ -247,7 +247,7 @@ class PairingControllerTest {
         assertEquals(1, driver.startedCodes.size)
         assertTrue(driver.cancelledIds.isEmpty())
         driver.completePendingApproval(); runCurrent()
-        assertEquals(PairingUiState.Done, model.state.value)
+        assertEquals(PairingUiState.Done(), model.state.value)
         model.leave(); runCurrent()
         assertTrue(driver.cancelledIds.isEmpty())
     }
@@ -339,7 +339,7 @@ class PairingControllerTest {
                 driver.approvedRemoveIds,
             )
             driver.completePendingApproval(); runCurrent()
-            assertEquals(PairingUiState.Done, model.state.value)
+            assertEquals(PairingUiState.Done(), model.state.value)
         }
     }
 }

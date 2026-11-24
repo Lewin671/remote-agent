@@ -1410,6 +1410,10 @@
     <string name="security_new_recovery_code" formatted="false">"New recovery code"</string>
     <string name="security_new_recovery_code_shown_only_once" formatted="false">"New recovery code · Shown only once"</string>
     <string name="security_nothing_is_published_before_you_save_it_an_unpublished" formatted="false">"Nothing is published before you save it. An unpublished recovery code can be explicitly abandoned and regenerated next time."</string>
+    <plurals name="security_old_devices_removal_incomplete">
+        <item quantity="one">"The new device joined, but %1$d old device could not be removed automatically. Retry later or remove it manually in Devices."</item>
+        <item quantity="other">"The new device joined, but %1$d old devices could not be removed automatically. Retry later or remove them manually in Devices."</item>
+    </plurals>
     <string name="security_on_the_managing_client_open_settings_add_device_and" formatted="false">"On the managing client, open Settings › Add device and enter its 8-digit pairing code here."</string>
     <string name="security_once_the_successor_device_joins_and_confirms_saving_its" formatted="false">"Once the successor device joins and confirms saving its new recovery code, approve here. Transfer preserves accessible history and removes this device."</string>
     <string name="security_one_time_security_setup" formatted="false">"One-time security setup"</string>

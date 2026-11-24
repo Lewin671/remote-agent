@@ -175,4 +175,40 @@ public interface SecurityWorkflowStatusOrBuilder extends
    */
   com.google.protobuf.ByteString
       getErrorBytes();
+
+  /**
+   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * @return A list containing the pendingRemoveDeviceIds.
+   */
+  java.util.List<java.lang.String>
+      getPendingRemoveDeviceIdsList();
+  /**
+   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * @return The count of pendingRemoveDeviceIds.
+   */
+  int getPendingRemoveDeviceIdsCount();
+  /**
+   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * @param index The index of the element to return.
+   * @return The pendingRemoveDeviceIds at the given index.
+   */
+  java.lang.String getPendingRemoveDeviceIds(int index);
+  /**
+   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * @param index The index of the element to return.
+   * @return The pendingRemoveDeviceIds at the given index.
+   */
+  com.google.protobuf.ByteString
+      getPendingRemoveDeviceIdsBytes(int index);
+
+  /**
+   * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+   * @return Whether the pendingRemoveNotice field is set.
+   */
+  boolean hasPendingRemoveNotice();
+  /**
+   * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+   * @return The pendingRemoveNotice.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getPendingRemoveNotice();
 }

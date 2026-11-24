@@ -701,6 +701,54 @@ public  final class SecurityPairingInfo extends
 
   }
 
+  public static final int REMOVE_OLD_NOTICE_FIELD_NUMBER = 17;
+  private io.github.lewin671.remoteagent.core.proto.Text removeOldNotice_;
+  /**
+   * <code>.remoteagent.core.v1.Text remove_old_notice = 17 [json_name = "removeOldNotice"];</code>
+   */
+  @java.lang.Override
+  public boolean hasRemoveOldNotice() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text remove_old_notice = 17 [json_name = "removeOldNotice"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getRemoveOldNotice() {
+    return removeOldNotice_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : removeOldNotice_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text remove_old_notice = 17 [json_name = "removeOldNotice"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setRemoveOldNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    removeOldNotice_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text remove_old_notice = 17 [json_name = "removeOldNotice"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeRemoveOldNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (removeOldNotice_ != null &&
+        removeOldNotice_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      removeOldNotice_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(removeOldNotice_).mergeFrom(value).buildPartial();
+    } else {
+      removeOldNotice_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text remove_old_notice = 17 [json_name = "removeOldNotice"];</code>
+   */
+  private void clearRemoveOldNotice() {
+    removeOldNotice_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SecurityPairingInfo parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1496,6 +1544,53 @@ public  final class SecurityPairingInfo extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text remove_old_notice = 17 [json_name = "removeOldNotice"];</code>
+     */
+    @java.lang.Override
+    public boolean hasRemoveOldNotice() {
+      return instance.hasRemoveOldNotice();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text remove_old_notice = 17 [json_name = "removeOldNotice"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getRemoveOldNotice() {
+      return instance.getRemoveOldNotice();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text remove_old_notice = 17 [json_name = "removeOldNotice"];</code>
+     */
+    public Builder setRemoveOldNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setRemoveOldNotice(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text remove_old_notice = 17 [json_name = "removeOldNotice"];</code>
+     */
+    public Builder setRemoveOldNotice(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setRemoveOldNotice(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text remove_old_notice = 17 [json_name = "removeOldNotice"];</code>
+     */
+    public Builder mergeRemoveOldNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeRemoveOldNotice(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text remove_old_notice = 17 [json_name = "removeOldNotice"];</code>
+     */
+    public Builder clearRemoveOldNotice() {  copyOnWrite();
+      instance.clearRemoveOldNotice();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityPairingInfo)
   }
   @java.lang.Override
@@ -1529,11 +1624,13 @@ public  final class SecurityPairingInfo extends
             "replaceOldLabel_",
             "replaceOldHint_",
             "joinerDescription_",
+            "removeOldNotice_",
           };
           java.lang.String info =
-              "\u0000\u000f\u0000\u0001\u0001\u0010\u000f\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u0010\u0000\u0001\u0001\u0011\u0010\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0208\u0004\u0002\u0005\u021a\u0006\f\u0007\u0007\b\u0007\t\u0007\n\u0007" +
-              "\u000b\u0007\f\u001b\u000e\u1009\u0000\u000f\u1009\u0001\u0010\u0208";
+              "\u000b\u0007\f\u001b\u000e\u1009\u0000\u000f\u1009\u0001\u0010\u0208\u0011\u1009" +
+              "\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

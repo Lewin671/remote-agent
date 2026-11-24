@@ -11,6 +11,7 @@ final class AuthorityPairingModel {
     var initiation: PBSecurityPairingInfo?
     var approved = false
     var delivered = false
+    var removeOldNotice: PBCoreText?
     var selectedRemoveIDs: Set<String> = []
     var error = ""
     var busy = false
@@ -54,6 +55,7 @@ final class AuthorityPairingModel {
         initiation = nil
         approved = false
         delivered = false
+        removeOldNotice = nil
         selectedRemoveIDs = []
         removeSelectionTouched = false
         metaPolls = 0
@@ -77,7 +79,7 @@ final class AuthorityPairingModel {
                 webOrigin: webOrigin(server: remote.account.server, preferred: ""),
                 replacesDeviceId: replacing
             )
-            approved = false; delivered = false
+            approved = false; delivered = false; removeOldNotice = nil
             selectedRemoveIDs = []; removeSelectionTouched = false; metaPolls = 0
         } catch { self.error = errorText(error) }
     }
@@ -92,11 +94,13 @@ final class AuthorityPairingModel {
                 try await remote.resumeSecurityOperation()
                 let res = try await remote.finishPairingDelivery(pairingId: initiation.pairingID)
                 self.initiation = res
+                if res.hasRemoveOldNotice { removeOldNotice = res.removeOldNotice }
                 if res.delivered {
                     delivered = true
                 } else {
                     let st = try await remote.getSecurityStatus()
                     delivered = !st.hasPendingOp
+                    if st.hasPendingRemoveNotice { removeOldNotice = st.pendingRemoveNotice }
                 }
             } else if !initiation.joined {
                 let next = try await remote.securityClient.pollPairing(pairingId: initiation.pairingID)
@@ -123,11 +127,13 @@ final class AuthorityPairingModel {
             )
             self.initiation = res
             approved = true
+            if res.hasRemoveOldNotice { removeOldNotice = res.removeOldNotice }
             if res.delivered {
                 delivered = true
             } else {
                 let st = try await remote.getSecurityStatus()
                 delivered = !st.hasPendingOp
+                if st.hasPendingRemoveNotice { removeOldNotice = st.pendingRemoveNotice }
             }
             if delivered { await remote.refreshDevices() }
         } catch {
@@ -173,6 +179,10 @@ struct AddDeviceScreen: View {
                 #endif
                 if flow.delivered {
                     GroupBanner(L10n.securityIosDeviceJoined(), tone: .plain)
+                    if let notice = flow.removeOldNotice {
+                        let text = notice.rendered()
+                        if !text.isEmpty { GroupBanner(text, tone: .warn) }
+                    }
                     Btn(L10n.securityIosAddAnotherDevice(), kind: .primary, enabled: !flow.busy) {
                         if replacing.isEmpty { perform { await flow.start($0, replacing: "") } }
                         else { nav.open(.addDevice()) }

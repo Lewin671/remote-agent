@@ -201,9 +201,16 @@ func (t *confirmOpSavedTask) step(e *Engine, ev *secEvent) error {
 	return nil
 }
 
+const (
+	resumePendingStart uint8 = iota
+	resumePendingLeaseSync
+	resumePendingAfterOp
+)
+
 type resumePendingTask struct {
 	taskBase
-	op *PersistedOperation
+	op                     *PersistedOperation
+	includePendingRemovals bool
 }
 
 //go:noinline
@@ -219,16 +226,37 @@ func (t *resumePendingTask) step(e *Engine, ev *secEvent) error {
 	if err := e.checkFG(t.fgGen); err != nil {
 		return err
 	}
-	if ev.kind == evChildDone {
-		e.startResumeLeaseOp(t.op, t.fgGen, t.target)
+	wf := e.ensureWF()
+	if t.stage == resumePendingLeaseSync {
+		nextTarget := t.target
+		if t.includePendingRemovals {
+			t.stage = resumePendingAfterOp
+			nextTarget = parentTarget(t, 0)
+		}
+		e.startResumeLeaseOp(t.op, t.fgGen, nextTarget)
 		return nil
 	}
-	wf := e.ensureWF()
+	if t.stage == resumePendingAfterOp {
+		if wf.pendingOp == nil && !wf.removingOldDevices {
+			if ids := e.pendingRemoveDeviceIDs(); len(ids) > 0 {
+				e.startRemoveDeviceList(t.fgGen, ids, t.target)
+				return nil
+			}
+		}
+		e.okTarget(t.target, nil)
+		return nil
+	}
 	op := wf.pendingOp
 	if op == nil {
 		if wf.regIntent != nil {
 			e.startResumeRegistration(t.fgGen, t.target)
 			return nil
+		}
+		if t.includePendingRemovals && !wf.removingOldDevices {
+			if ids := e.pendingRemoveDeviceIDs(); len(ids) > 0 {
+				e.startRemoveDeviceList(t.fgGen, ids, t.target)
+				return nil
+			}
 		}
 		e.okTarget(t.target, nil)
 		return nil
@@ -239,16 +267,22 @@ func (t *resumePendingTask) step(e *Engine, ev *secEvent) error {
 	if op.Kind == "create" || op.Kind == "recovery" {
 		return newWfError("conflict", text.KeySecurityReturnToAccountCreationOrRecoveryToContinueThe)
 	}
+	nextTarget := t.target
+	if t.includePendingRemovals && op.Kind != "lease" {
+		t.stage = resumePendingAfterOp
+		nextTarget = parentTarget(t, 0)
+	}
 	switch op.Kind {
 	case "offer":
-		e.startResumeOfferOp(op, t.fgGen, t.target)
+		e.startResumeOfferOp(op, t.fgGen, nextTarget)
 	case "delete-records":
-		e.startResumeDeleteRecordsOp(op, t.fgGen, t.target)
+		e.startResumeDeleteRecordsOp(op, t.fgGen, nextTarget)
 	case "lease":
 		t.op = op
+		t.stage = resumePendingLeaseSync
 		e.syncStates(false, "", parentTarget(t, 0))
 	case "state":
-		e.startResumeStateOp(op, t.fgGen, t.target)
+		e.startResumeStateOp(op, t.fgGen, nextTarget)
 	default:
 		return devicesec.ErrInvalid
 	}
@@ -962,6 +996,7 @@ const (
 	contStateListDevices
 	contStateSaveDelivered
 	contStateClearRotPost
+	contStateSaveRemoveOld
 	contStateDone
 	contStateRemoveOld
 )
@@ -1056,9 +1091,10 @@ func (t *continueStateOpTask) step(e *Engine, ev *secEvent) error {
 		e.clearOperationCAS(ev.op, parentTarget(t, 0))
 	case contStateDone:
 		if t.op != nil && t.op.Pair != nil {
-			if sess := e.ensureWF().initPairings[t.op.Pair.PairingID]; sess != nil && len(sess.removeDeviceIDs) > 0 {
-				ids := sess.removeDeviceIDs
+			if sess := e.ensureWF().initPairings[t.op.Pair.PairingID]; sess != nil {
 				sess.removeDeviceIDs = nil
+			}
+			if ids := e.pendingRemoveDeviceIDs(); len(ids) > 0 {
 				t.stage = contStateRemoveOld
 				e.startRemoveDeviceList(t.fgGen, ids, parentTarget(t, 0))
 				return nil
@@ -1067,7 +1103,7 @@ func (t *continueStateOpTask) step(e *Engine, ev *secEvent) error {
 		e.okTarget(t.target, nil)
 	case contStateRemoveOld:
 		e.okTarget(t.target, nil)
-	case contStateClearRotPre:
+	case contStateClearRotPre, contStateSaveRemoveOld:
 		t.stage = contStateDone
 		e.clearOperationCAS(t.op, parentTarget(t, 0))
 	case contStateSync:
@@ -1089,6 +1125,11 @@ func (t *continueStateOpTask) step(e *Engine, ev *secEvent) error {
 			if t.op.Action == "recovery" && t.op.CodeSaved {
 				t.stage = contStateClearRotPre
 				e.installRecordCAS(nil, nil, nil, nil, 0, clearNeedsRotationPatch(), parentTarget(t, 0))
+				return nil
+			}
+			if t.op.Pair != nil && len(t.op.Pair.RemoveDeviceIDs) > 0 {
+				t.stage = contStateSaveRemoveOld
+				e.installRecordCAS(nil, nil, nil, nil, 0, addPendingRemovePatch(t.op.Pair.RemoveDeviceIDs), parentTarget(t, 0))
 				return nil
 			}
 			t.stage = contStateDone
@@ -1212,6 +1253,11 @@ func (t *continueStateOpTask) step(e *Engine, ev *secEvent) error {
 		if ev.op.Action == "recovery" && ev.op.CodeSaved {
 			t.stage = contStateClearRotPost
 			e.installRecordCAS(nil, nil, nil, nil, 0, clearNeedsRotationPatch(), parentTarget(t, 0))
+			return nil
+		}
+		if ev.op.Pair != nil && len(ev.op.Pair.RemoveDeviceIDs) > 0 {
+			t.stage = contStateSaveRemoveOld
+			e.installRecordCAS(nil, nil, nil, nil, 0, addPendingRemovePatch(ev.op.Pair.RemoveDeviceIDs), parentTarget(t, 0))
 			return nil
 		}
 		t.stage = contStateDone

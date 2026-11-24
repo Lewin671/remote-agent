@@ -1605,6 +1605,20 @@ public struct PBSecurityWorkflowStatus: @unchecked Sendable {
     set {_uniqueStorage()._error = newValue}
   }
 
+  public var pendingRemoveDeviceIds: [String] {
+    get {return _storage._pendingRemoveDeviceIds}
+    set {_uniqueStorage()._pendingRemoveDeviceIds = newValue}
+  }
+
+  public var pendingRemoveNotice: PBCoreText {
+    get {return _storage._pendingRemoveNotice ?? PBCoreText()}
+    set {_uniqueStorage()._pendingRemoveNotice = newValue}
+  }
+  /// Returns true if `pendingRemoveNotice` has been explicitly set.
+  public var hasPendingRemoveNotice: Bool {return _storage._pendingRemoveNotice != nil}
+  /// Clears the value of `pendingRemoveNotice`. Subsequent reads from it will return its default value.
+  public mutating func clearPendingRemoveNotice() {_uniqueStorage()._pendingRemoveNotice = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1732,6 +1746,15 @@ public struct PBSecurityPairingInfo: @unchecked Sendable {
     get {return _storage._joinerDescription}
     set {_uniqueStorage()._joinerDescription = newValue}
   }
+
+  public var removeOldNotice: PBCoreText {
+    get {return _storage._removeOldNotice ?? PBCoreText()}
+    set {_uniqueStorage()._removeOldNotice = newValue}
+  }
+  /// Returns true if `removeOldNotice` has been explicitly set.
+  public var hasRemoveOldNotice: Bool {return _storage._removeOldNotice != nil}
+  /// Clears the value of `removeOldNotice`. Subsequent reads from it will return its default value.
+  public mutating func clearRemoveOldNotice() {_uniqueStorage()._removeOldNotice = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -5049,7 +5072,7 @@ extension PBSecurityPendingOpSummary: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 extension PBSecurityWorkflowStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityWorkflowStatus"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}bootstrap\0\u{3}legacy_repair_notice\0\u{3}is_member\0\u{3}is_authority\0\u{1}removed\0\u{1}server\0\u{3}device_id\0\u{3}account_id\0\u{3}head_epoch\0\u{3}lease_end_ms\0\u{3}lease_valid\0\u{3}clock_skewed\0\u{3}recovery_pending\0\u{3}recovery_ready_ms\0\u{3}recovery_status_stale\0\u{3}recovery_objects_pending\0\u{3}needs_recovery_code_rotation\0\u{3}has_account_public_profile\0\u{3}has_handoff_offer\0\u{3}taking_over\0\u{3}pending_op\0\u{1}error\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}bootstrap\0\u{3}legacy_repair_notice\0\u{3}is_member\0\u{3}is_authority\0\u{1}removed\0\u{1}server\0\u{3}device_id\0\u{3}account_id\0\u{3}head_epoch\0\u{3}lease_end_ms\0\u{3}lease_valid\0\u{3}clock_skewed\0\u{3}recovery_pending\0\u{3}recovery_ready_ms\0\u{3}recovery_status_stale\0\u{3}recovery_objects_pending\0\u{3}needs_recovery_code_rotation\0\u{3}has_account_public_profile\0\u{3}has_handoff_offer\0\u{3}taking_over\0\u{3}pending_op\0\u{1}error\0\u{3}pending_remove_device_ids\0\u{3}pending_remove_notice\0")
 
   fileprivate class _StorageClass {
     var _bootstrap: PBSecurityBootstrapKind = .unspecified
@@ -5074,6 +5097,8 @@ extension PBSecurityWorkflowStatus: SwiftProtobuf.Message, SwiftProtobuf._Messag
     var _takingOver: Bool = false
     var _pendingOp: PBSecurityPendingOpSummary? = nil
     var _error: String = String()
+    var _pendingRemoveDeviceIds: [String] = []
+    var _pendingRemoveNotice: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5106,6 +5131,8 @@ extension PBSecurityWorkflowStatus: SwiftProtobuf.Message, SwiftProtobuf._Messag
       _takingOver = source._takingOver
       _pendingOp = source._pendingOp
       _error = source._error
+      _pendingRemoveDeviceIds = source._pendingRemoveDeviceIds
+      _pendingRemoveNotice = source._pendingRemoveNotice
     }
   }
 
@@ -5146,6 +5173,8 @@ extension PBSecurityWorkflowStatus: SwiftProtobuf.Message, SwiftProtobuf._Messag
         case 20: try { try decoder.decodeSingularBoolField(value: &_storage._takingOver) }()
         case 21: try { try decoder.decodeSingularMessageField(value: &_storage._pendingOp) }()
         case 22: try { try decoder.decodeSingularStringField(value: &_storage._error) }()
+        case 23: try { try decoder.decodeRepeatedStringField(value: &_storage._pendingRemoveDeviceIds) }()
+        case 24: try { try decoder.decodeSingularMessageField(value: &_storage._pendingRemoveNotice) }()
         default: break
         }
       }
@@ -5224,6 +5253,12 @@ extension PBSecurityWorkflowStatus: SwiftProtobuf.Message, SwiftProtobuf._Messag
       if !_storage._error.isEmpty {
         try visitor.visitSingularStringField(value: _storage._error, fieldNumber: 22)
       }
+      if !_storage._pendingRemoveDeviceIds.isEmpty {
+        try visitor.visitRepeatedStringField(value: _storage._pendingRemoveDeviceIds, fieldNumber: 23)
+      }
+      try { if let v = _storage._pendingRemoveNotice {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 24)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -5255,6 +5290,8 @@ extension PBSecurityWorkflowStatus: SwiftProtobuf.Message, SwiftProtobuf._Messag
         if _storage._takingOver != rhs_storage._takingOver {return false}
         if _storage._pendingOp != rhs_storage._pendingOp {return false}
         if _storage._error != rhs_storage._error {return false}
+        if _storage._pendingRemoveDeviceIds != rhs_storage._pendingRemoveDeviceIds {return false}
+        if _storage._pendingRemoveNotice != rhs_storage._pendingRemoveNotice {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -5330,7 +5367,7 @@ extension PBSecurityPairingReplacementCandidate: SwiftProtobuf.Message, SwiftPro
 
 extension PBSecurityPairingInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityPairingInfo"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pairing_id\0\u{1}code\0\u{1}url\0\u{3}expires_ms\0\u{3}sas_emoji\0\u{3}joiner_kind\0\u{1}joined\0\u{1}approved\0\u{1}delivered\0\u{1}registering\0\u{3}joiner_meta_received\0\u{3}replacement_candidates\0\u{4}\u{2}replace_old_label\0\u{3}replace_old_hint\0\u{3}joiner_description\0\u{b}remove_old_default\0\u{c}\u{d}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pairing_id\0\u{1}code\0\u{1}url\0\u{3}expires_ms\0\u{3}sas_emoji\0\u{3}joiner_kind\0\u{1}joined\0\u{1}approved\0\u{1}delivered\0\u{1}registering\0\u{3}joiner_meta_received\0\u{3}replacement_candidates\0\u{4}\u{2}replace_old_label\0\u{3}replace_old_hint\0\u{3}joiner_description\0\u{3}remove_old_notice\0\u{b}remove_old_default\0\u{c}\u{d}\u{1}")
 
   fileprivate class _StorageClass {
     var _pairingID: String = String()
@@ -5348,6 +5385,7 @@ extension PBSecurityPairingInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _replaceOldLabel: PBCoreText? = nil
     var _replaceOldHint: PBCoreText? = nil
     var _joinerDescription: String = String()
+    var _removeOldNotice: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5373,6 +5411,7 @@ extension PBSecurityPairingInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _replaceOldLabel = source._replaceOldLabel
       _replaceOldHint = source._replaceOldHint
       _joinerDescription = source._joinerDescription
+      _removeOldNotice = source._removeOldNotice
     }
   }
 
@@ -5406,6 +5445,7 @@ extension PBSecurityPairingInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 14: try { try decoder.decodeSingularMessageField(value: &_storage._replaceOldLabel) }()
         case 15: try { try decoder.decodeSingularMessageField(value: &_storage._replaceOldHint) }()
         case 16: try { try decoder.decodeSingularStringField(value: &_storage._joinerDescription) }()
+        case 17: try { try decoder.decodeSingularMessageField(value: &_storage._removeOldNotice) }()
         default: break
         }
       }
@@ -5463,6 +5503,9 @@ extension PBSecurityPairingInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       if !_storage._joinerDescription.isEmpty {
         try visitor.visitSingularStringField(value: _storage._joinerDescription, fieldNumber: 16)
       }
+      try { if let v = _storage._removeOldNotice {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 17)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -5487,6 +5530,7 @@ extension PBSecurityPairingInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._replaceOldLabel != rhs_storage._replaceOldLabel {return false}
         if _storage._replaceOldHint != rhs_storage._replaceOldHint {return false}
         if _storage._joinerDescription != rhs_storage._joinerDescription {return false}
+        if _storage._removeOldNotice != rhs_storage._removeOldNotice {return false}
         return true
       }
       if !storagesAreEqual {return false}

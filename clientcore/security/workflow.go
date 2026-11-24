@@ -207,10 +207,11 @@ type workflowState struct {
 	deviceXPresent  bool
 	deviceXPub      []byte
 
-	codeDraft  *codeDraft
-	opBusy     bool
-	pumpingOps bool
-	opQueue    []queuedOp
+	codeDraft          *codeDraft
+	opBusy             bool
+	pumpingOps         bool
+	removingOldDevices bool
+	opQueue            []queuedOp
 
 	lastLeaseRenewAttemptMs int64
 	recoveryStatusStale     bool
@@ -551,7 +552,31 @@ func (e *Engine) BuildWorkflowStatus() *corev1.SecurityWorkflowStatus {
 		}
 		st.PendingOp = sum
 	}
+	if pendingRem := e.pendingRemoveDeviceIDs(); len(pendingRem) > 0 {
+		st.PendingRemoveDeviceIds = pendingRem
+		st.PendingRemoveNotice = text.Msg(text.KeySecurityOldDevicesRemovalIncomplete, text.Int("count", int64(len(pendingRem))))
+	}
 	return st
+}
+
+func (e *Engine) pendingRemoveDeviceIDs() []string {
+	wf := e.ensureWF()
+	if !e.isAuthority() || wf.record == nil || len(wf.record.PendingRemoveDeviceIDs) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(wf.record.PendingRemoveDeviceIDs))
+	seen := make(map[string]bool, len(wf.record.PendingRemoveDeviceIDs))
+	for _, id := range wf.record.PendingRemoveDeviceIDs {
+		if id == "" || seen[id] || id == e.selfDeviceID || id == e.head.Core.AuthorityID {
+			continue
+		}
+		if m, live := e.head.Core.Member(id); !live || m.Kind != devicesec.Client {
+			continue
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	return out
 }
 
 func (e *Engine) isAuthority() bool {
@@ -610,7 +635,7 @@ func (e *Engine) HandleWorkflowAction(nowMs int64, ev *corev1.SecurityWorkflowAc
 	case *corev1.SecurityWorkflowActionEvent_RenewLease:
 		e.runOpTask(aid, true, &renewLeaseTask{force: a.RenewLease.GetFlag()})
 	case *corev1.SecurityWorkflowActionEvent_ResumePendingOp:
-		e.runOpTask(aid, true, &resumePendingTask{})
+		e.runOpTask(aid, true, &resumePendingTask{includePendingRemovals: true})
 	case *corev1.SecurityWorkflowActionEvent_DiscardPendingOp:
 		e.runOpTask(aid, true, &discardPendingTask{acknowledgePublished: a.DiscardPendingOp.GetFlag()})
 	case *corev1.SecurityWorkflowActionEvent_PrepareCreation:

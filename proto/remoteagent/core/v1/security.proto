@@ -488,6 +488,8 @@ message SecurityWorkflowStatus {
   bool taking_over = 20;
   SecurityPendingOpSummary pending_op = 21;
   string error = 22;
+  repeated string pending_remove_device_ids = 23;
+  Text pending_remove_notice = 24;
 }
 
 message SecurityPairingReplacementCandidate {
@@ -518,6 +520,7 @@ message SecurityPairingInfo {
   Text replace_old_label = 14;
   Text replace_old_hint = 15;
   string joiner_description = 16;
+  Text remove_old_notice = 17;
 }
 
 message SecurityRecoveryInfo {

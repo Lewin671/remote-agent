@@ -230,7 +230,7 @@ func (e *Engine) matchReplacementCandidates(sess *initiatorPairingSession) []*co
 	return out
 }
 
-func initiatorSessionToProto(s *initiatorPairingSession) *corev1.SecurityPairingInfo {
+func (e *Engine) initiatorSessionToProto(s *initiatorPairingSession) *corev1.SecurityPairingInfo {
 	if s == nil {
 		return nil
 	}
@@ -253,6 +253,11 @@ func initiatorSessionToProto(s *initiatorPairingSession) *corev1.SecurityPairing
 	if len(s.replacementCandidates) > 0 {
 		info.ReplaceOldLabel = text.Msg(text.KeySecurityAlsoRemoveOldDevices)
 		info.ReplaceOldHint = text.Msg(text.KeySecurityAlsoRemoveOldDevicesHint)
+	}
+	if s.delivered {
+		if n := len(e.pendingRemoveDeviceIDs()); n > 0 {
+			info.RemoveOldNotice = text.Msg(text.KeySecurityOldDevicesRemovalIncomplete, text.Int("count", int64(n)))
+		}
 	}
 	return info
 }
@@ -398,7 +403,7 @@ func (t *startPairingTask) step(e *Engine, ev *secEvent) error {
 			trust: t.trust, replacesDeviceID: t.replacesDeviceID,
 		}
 		wf.initPairings[resp.PairingId] = sess
-		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{Pairing: initiatorSessionToProto(sess)})
+		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{Pairing: e.initiatorSessionToProto(sess)})
 	}
 	return nil
 }
@@ -468,9 +473,12 @@ func (t *pollPairingInitiatorTask) step(e *Engine, ev *secEvent) error {
 		case v1.PairingState_PAIRING_STATE_DELIVERED:
 			e.discardInitSlot(sess)
 			sess.delivered, sess.approved, sess.joined = true, true, true
-			if len(sess.removeDeviceIDs) > 0 {
-				ids := sess.removeDeviceIDs
-				sess.removeDeviceIDs = nil
+			ids := e.pendingRemoveDeviceIDs()
+			if len(ids) == 0 && len(sess.removeDeviceIDs) > 0 {
+				ids = sess.removeDeviceIDs
+			}
+			sess.removeDeviceIDs = nil
+			if len(ids) > 0 {
 				delete(wf.initPairings, t.pairingID)
 				t.stage = pollInitRemoveOld
 				e.startRemoveDeviceList(t.fgGen, ids, parentTarget(t, 0))
@@ -511,7 +519,7 @@ func (t *pollPairingInitiatorTask) step(e *Engine, ev *secEvent) error {
 		case v1.PairingState_PAIRING_STATE_APPROVED:
 			sess.approved, sess.joined = true, true
 		}
-		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{Pairing: initiatorSessionToProto(sess)})
+		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{Pairing: e.initiatorSessionToProto(sess)})
 	case pollInitAgree:
 		if err := e.checkFG(t.fgGen); err != nil {
 			return err
@@ -535,9 +543,9 @@ func (t *pollPairingInitiatorTask) step(e *Engine, ev *secEvent) error {
 		if t.st.JoinerKind != v1.DeviceKind_DEVICE_KIND_CLIENT {
 			sess.joinerMetaReceived = true
 		}
-		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{Pairing: initiatorSessionToProto(sess)})
+		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{Pairing: e.initiatorSessionToProto(sess)})
 	case pollInitRemoveOld:
-		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{Pairing: initiatorSessionToProto(t.sess)})
+		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{Pairing: e.initiatorSessionToProto(t.sess)})
 	}
 	return nil
 }
@@ -588,14 +596,23 @@ func openJoinerMetaEnvelope(pairKey []byte, pairingID string, env *v1.Envelope) 
 	return &dm
 }
 
+const (
+	remListRun uint8 = iota
+	remListPersist
+)
+
 type removeDeviceListTask struct {
+	stage  uint8
 	fgGen  uint64
 	ids    []string
+	curID  string
+	failed []string
 	target taskTarget
 }
 
 func (e *Engine) startRemoveDeviceList(fgGen uint64, ids []string, target taskTarget) {
-	t := &removeDeviceListTask{fgGen: fgGen, ids: slices.Clone(ids), target: target}
+	e.ensureWF().removingOldDevices = true
+	t := &removeDeviceListTask{stage: remListRun, fgGen: fgGen, ids: slices.Clone(ids), target: target}
 	t.next(e)
 }
 
@@ -609,15 +626,34 @@ func (t *removeDeviceListTask) next(e *Engine) {
 		if m, live := e.head.Core.Member(id); !live || m.Kind != devicesec.Client {
 			continue
 		}
+		t.curID = id
 		e.stepTask(&removeDeviceTask{id: id}, &secEvent{kind: evStart, fgGen: t.fgGen, target: parentTarget(t, 0)})
 		return
 	}
+	t.curID = ""
+	if e.ensureWF().record != nil {
+		t.stage = remListPersist
+		e.installRecordCAS(nil, nil, nil, nil, 0, setPendingRemovePatch(t.failed), parentTarget(t, 0))
+		return
+	}
+	e.ensureWF().removingOldDevices = false
+	e.emitStatusChanged()
 	e.okTarget(t.target, nil)
 }
 
-func (t *removeDeviceListTask) step(e *Engine, _ *secEvent) error {
-	// Continue removing any remaining requested old devices even if one fails;
-	// the newly paired device has already completed enrollment.
+func (t *removeDeviceListTask) step(e *Engine, ev *secEvent) error {
+	if t.stage == remListPersist {
+		e.ensureWF().removingOldDevices = false
+		e.emitStatusChanged()
+		e.okTarget(t.target, nil)
+		return nil
+	}
+	// Record any device that failed to remove so it stays persisted in the
+	// security record for retry/notice, while continuing with remaining IDs.
+	if ev != nil && ev.err != nil && t.curID != "" {
+		t.failed = append(t.failed, t.curID)
+	}
+	t.curID = ""
 	t.next(e)
 	return nil
 }
@@ -702,6 +738,7 @@ func (t *approvePairingTask) step(e *Engine, ev *secEvent) error {
 			PairingID: sess.pairingID, CandidateID: sess.candidateID, CandidateEd: slices.Clone(sess.candidateEd),
 			CandidateX: slices.Clone(sess.candidateX), CandidateKind: uint32(sess.candidateKind),
 			PairKey: slices.Clone(sess.pairKey), ExpiresMs: exp, ReplacesDeviceID: sess.replacesDeviceID,
+			RemoveDeviceIDs: slices.Clone(toRemove),
 		}
 		e.claimOperationCAS(op, &hh, e.selfDeviceID, parentTarget(t, 0))
 	case approvePairClaim:
@@ -713,7 +750,8 @@ func (t *approvePairingTask) step(e *Engine, ev *secEvent) error {
 			return nil
 		}
 		t.sess.approved = true
-		if wf.pendingOp == nil {
+		pairPending := wf.pendingOp != nil && wf.pendingOp.Kind == "state" && wf.pendingOp.Pair != nil && wf.pendingOp.Pair.PairingID == t.pairingID
+		if !pairPending {
 			if len(t.sess.removeDeviceIDs) > 0 {
 				ids := t.sess.removeDeviceIDs
 				t.sess.removeDeviceIDs = nil
@@ -724,11 +762,11 @@ func (t *approvePairingTask) step(e *Engine, ev *secEvent) error {
 			t.sess.delivered = true
 			delete(wf.initPairings, t.pairingID)
 		}
-		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{Pairing: initiatorSessionToProto(t.sess)})
+		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{Pairing: e.initiatorSessionToProto(t.sess)})
 	case approvePairRemoveOld:
 		t.sess.delivered = true
 		delete(wf.initPairings, t.pairingID)
-		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{Pairing: initiatorSessionToProto(t.sess)})
+		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{Pairing: e.initiatorSessionToProto(t.sess)})
 	}
 	return nil
 }
@@ -752,7 +790,7 @@ func (t *finishPairingDeliveryTask) step(e *Engine, ev *secEvent) error {
 			t.sess.delivered, t.sess.approved = true, true
 			delete(wf.initPairings, t.pid)
 		}
-		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{Pairing: initiatorSessionToProto(t.sess)})
+		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{Pairing: e.initiatorSessionToProto(t.sess)})
 		return nil
 	}
 	if ev.kind == evStart {
@@ -772,7 +810,8 @@ func (t *finishPairingDeliveryTask) step(e *Engine, ev *secEvent) error {
 		return nil
 	}
 	sess := wf.initPairings[t.pid]
-	if wf.pendingOp == nil {
+	pairPending := wf.pendingOp != nil && wf.pendingOp.Kind == "state" && wf.pendingOp.Pair != nil && wf.pendingOp.Pair.PairingID == t.pid
+	if !pairPending {
 		if sess != nil && len(sess.removeDeviceIDs) > 0 {
 			ids := sess.removeDeviceIDs
 			sess.removeDeviceIDs = nil
@@ -788,7 +827,7 @@ func (t *finishPairingDeliveryTask) step(e *Engine, ev *secEvent) error {
 			sess = &initiatorPairingSession{pairingID: t.pid, approved: true, delivered: true}
 		}
 	}
-	e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{Pairing: initiatorSessionToProto(sess)})
+	e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{Pairing: e.initiatorSessionToProto(sess)})
 	return nil
 }
 

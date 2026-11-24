@@ -1173,6 +1173,7 @@ object UiMessages {
     fun securityNewRecoveryCode(): UiMessage = UiMessage("security.new_recovery_code", emptyMap())
     fun securityNewRecoveryCodeShownOnlyOnce(): UiMessage = UiMessage("security.new_recovery_code_shown_only_once", emptyMap())
     fun securityNothingIsPublishedBeforeYouSaveItAnUnpublished(): UiMessage = UiMessage("security.nothing_is_published_before_you_save_it_an_unpublished", emptyMap())
+    fun securityOldDevicesRemovalIncomplete(count: Int): UiMessage = UiMessage("security.old_devices_removal_incomplete", mapOf("count" to count))
     fun securityOnTheManagingClientOpenSettingsAddDeviceAnd(): UiMessage = UiMessage("security.on_the_managing_client_open_settings_add_device_and", emptyMap())
     fun securityOnceTheSuccessorDeviceJoinsAndConfirmsSavingIts(): UiMessage = UiMessage("security.once_the_successor_device_joins_and_confirms_saving_its", emptyMap())
     fun securityOneTimeSecuritySetup(): UiMessage = UiMessage("security.one_time_security_setup", emptyMap())

@@ -3927,6 +3927,10 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
         "security.nothing_is_published_before_you_save_it_an_unpublished" -> {
             resources.getString(R.string.security_nothing_is_published_before_you_save_it_an_unpublished)
         }
+        "security.old_devices_removal_incomplete" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.security_old_devices_removal_incomplete, count, count)
+        }
         "security.on_the_managing_client_open_settings_add_device_and" -> {
             resources.getString(R.string.security_on_the_managing_client_open_settings_add_device_and)
         }
@@ -4020,15 +4024,15 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
             val value = message.args.getValue("value") as String
             resources.getString(R.string.security_recovery_request_pending_eligible_at, value)
         }
-        "security.recovery_was_rejected_you_can_apply_again" -> {
-            resources.getString(R.string.security_recovery_was_rejected_you_can_apply_again)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage8(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "security.recovery_was_rejected_you_can_apply_again" -> {
+            resources.getString(R.string.security_recovery_was_rejected_you_can_apply_again)
+        }
         "security.refresh_successor_devices" -> {
             resources.getString(R.string.security_refresh_successor_devices)
         }
@@ -4512,15 +4516,15 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         "session.origin_elsewhere" -> {
             resources.getString(R.string.session_origin_elsewhere)
         }
-        "session.origin_other" -> {
-            resources.getString(R.string.session_origin_other)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage9(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "session.origin_other" -> {
+            resources.getString(R.string.session_origin_other)
+        }
         "session.origin_terminal" -> {
             val name = message.args.getValue("name") as String
             resources.getString(R.string.session_origin_terminal, name)
@@ -5008,15 +5012,15 @@ private fun resolveUiMessage9(resources: android.content.res.Resources, message:
             val version = message.args.getValue("version") as String
             resources.getString(R.string.settings_cli_switches_a11y_row, name, state, version)
         }
-        "settings.cli_switches_conflict" -> {
-            resources.getString(R.string.settings_cli_switches_conflict)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage10(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "settings.cli_switches_conflict" -> {
+            resources.getString(R.string.settings_cli_switches_conflict)
+        }
         "settings.cli_switches_footer" -> {
             resources.getString(R.string.settings_cli_switches_footer)
         }
@@ -5496,15 +5500,15 @@ private fun resolveUiMessage10(resources: android.content.res.Resources, message
         "settings.unfinished_pairing" -> {
             resources.getString(R.string.settings_unfinished_pairing)
         }
-        "settings.unnamed" -> {
-            resources.getString(R.string.settings_unnamed)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage11(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "settings.unnamed" -> {
+            resources.getString(R.string.settings_unnamed)
+        }
         "settings.unverified" -> {
             resources.getString(R.string.settings_unverified)
         }
@@ -6023,16 +6027,16 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
             val count = message.args.getValue("count") as Int
             resources.getQuantityString(R.plurals.tools_completed_commands, count, count)
         }
-        "tools.completed_files" -> {
-            val count = message.args.getValue("count") as Int
-            resources.getQuantityString(R.plurals.tools_completed_files, count, count)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "tools.completed_files" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.tools_completed_files, count, count)
+        }
         "tools.elapsed" -> {
             val duration = message.args.getValue("duration") as String
             resources.getString(R.string.tools_elapsed, duration)
@@ -6515,16 +6519,16 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.popover_direct_body" -> {
             resources.getString(R.string.transport_popover_direct_body)
         }
-        "transport.popover_direct_title" -> {
-            val name = message.args.getValue("name") as String
-            resources.getString(R.string.transport_popover_direct_title, name)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "transport.popover_direct_title" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.transport_popover_direct_title, name)
+        }
         "transport.popover_direct_title_rtt" -> {
             val ms = message.args.getValue("ms") as String
             val name = message.args.getValue("name") as String

@@ -1016,6 +1016,7 @@ export interface MessageArgs {
   "security.new_recovery_code": { [name: string]: never };
   "security.new_recovery_code_shown_only_once": { [name: string]: never };
   "security.nothing_is_published_before_you_save_it_an_unpublished": { [name: string]: never };
+  "security.old_devices_removal_incomplete": { count: number };
   "security.on_the_managing_client_open_settings_add_device_and": { [name: string]: never };
   "security.once_the_successor_device_joins_and_confirms_saving_its": { [name: string]: never };
   "security.one_time_security_setup": { [name: string]: never };
@@ -3246,6 +3247,13 @@ export const messages = {
     "security.new_recovery_code": "New recovery code",
     "security.new_recovery_code_shown_only_once": "New recovery code · Shown only once",
     "security.nothing_is_published_before_you_save_it_an_unpublished": "Nothing is published before you save it. An unpublished recovery code can be explicitly abandoned and regenerated next time.",
+    "security.old_devices_removal_incomplete": {
+      "forms": {
+        "one": "The new device joined, but {count} old device could not be removed automatically. Retry later or remove it manually in Devices.",
+        "other": "The new device joined, but {count} old devices could not be removed automatically. Retry later or remove them manually in Devices."
+      },
+      "plural": "count"
+    },
     "security.on_the_managing_client_open_settings_add_device_and": "On the managing client, open Settings › Add device and enter its 8-digit pairing code here.",
     "security.once_the_successor_device_joins_and_confirms_saving_its": "Once the successor device joins and confirms saving its new recovery code, approve here. Transfer preserves accessible history and removes this device.",
     "security.one_time_security_setup": "One-time security setup",
@@ -5515,6 +5523,12 @@ export const messages = {
     "security.new_recovery_code": "新的恢复码",
     "security.new_recovery_code_shown_only_once": "新的恢复码 · 只显示这一次",
     "security.nothing_is_published_before_you_save_it_an_unpublished": "保存好之前不会发布。未发布的恢复码可在下次打开时明确放弃并重新生成。",
+    "security.old_devices_removal_incomplete": {
+      "forms": {
+        "other": "新设备已加入，但有 {count} 台旧设备未能自动移除，请稍后重试或在设备列表中手动移除。"
+      },
+      "plural": "count"
+    },
     "security.on_the_managing_client_open_settings_add_device_and": "在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里。",
     "security.once_the_successor_device_joins_and_confirms_saving_its": "在接任设备加入账户并确认保存新恢复码后，在这里批准。交接保留可达历史，同时移除本机。",
     "security.one_time_security_setup": "一次性安全设置",
