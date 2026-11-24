@@ -176,7 +176,7 @@ func (c *Coordinator) TerminalDirectLeg(now int64, streamID string, legID []byte
 		ct.relayOpen = false
 		ct.stream.CloseLeg("relay", ct.relayGen)
 		if r, _, _, ok := c.activeTerminalRound(now, ct.machineID); ok && ct.directAttached {
-			var rawRand [7]byte
+			var rawRand [8]byte
 			if _, err := c.randPool.Read(rawRand[:]); err == nil {
 				c.maybeLowWater()
 				newLeg := makeRelayAttachLegID(rawRand)
@@ -338,14 +338,14 @@ func (c *Coordinator) TerminalDirectConfirmRebuild(now int64, streamID string) [
 	return c.take()
 }
 
-func makeRelayAttachLegID(rand7 [7]byte) []byte {
+// makeRelayAttachLegID builds a pure 16-char lowercase hex leg ID for /v1/term
+// relay recovery so the relay server sees zero distinguishing prefix metadata (L2).
+func makeRelayAttachLegID(rand8 [8]byte) []byte {
 	const hexDigits = "0123456789abcdef"
 	out := make([]byte, 16)
-	out[0] = 'r'
-	out[1] = ':'
-	for i, b := range rand7 {
-		out[2+i*2] = hexDigits[b>>4]
-		out[2+i*2+1] = hexDigits[b&0x0f]
+	for i, b := range rand8 {
+		out[i*2] = hexDigits[b>>4]
+		out[i*2+1] = hexDigits[b&0x0f]
 	}
 	return out
 }

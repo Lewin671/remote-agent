@@ -573,8 +573,8 @@ func TestPhase3PionTerminalDirectHotStandbyAndFailover(t *testing.T) {
 	}
 	h.waitInputs([]byte("echo hi\nHELLO-WORLD-DIRECT"))
 
-	// Re-attach replacement relay leg via Control 2 without calling OpenTerminal!
-	newRelayLeg := "r:00000000000002"
+	// Re-attach replacement relay leg via Control 2 (pure 16-hex leg_id, zero relay prefix) without calling OpenTerminal!
+	newRelayLeg := "0011223344556677"
 	newTermWS := h.dialTermWS(newRelayLeg)
 	defer newTermWS.CloseNow()
 	if !h.link.SendControl(linkcore.ControlAttachPath, linkcore.EncodeAttachPath(linkcore.AttachPathMsg{

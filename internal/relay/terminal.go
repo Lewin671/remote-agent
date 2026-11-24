@@ -46,6 +46,9 @@ const (
 	// termMaxActiveStreams / termMaxRetiredStreams match docs/transport.md §5.
 	termMaxActiveStreams  = 16
 	termMaxRetiredStreams = 16
+	// termZeroLegTimeout bounds how long a terminal stream with zero attached legs
+	// (both relay and direct closed) waits for AttachPath before automatic GC (M2).
+	termZeroLegTimeout = 30 * time.Second
 )
 
 type frozenStatusCache struct {
@@ -56,12 +59,28 @@ type frozenStatusCache struct {
 }
 
 type terminalHub struct {
-	mu        sync.Mutex
-	registry  *linkcore.TerminalRegistry
-	dedup     *linkcore.CipherDedup
-	live      map[string]*liveTerminal
-	snapshots map[string]frozenStatusCache
-	instance  string
+	mu         sync.Mutex
+	registry   *linkcore.TerminalRegistry
+	dedup      *linkcore.CipherDedup
+	live       map[string]*liveTerminal
+	snapshots  map[string]frozenStatusCache
+	instance   string
+	nowFn      func() time.Time
+	zeroLegTTL time.Duration
+}
+
+func (h *terminalHub) now() time.Time {
+	if h != nil && h.nowFn != nil {
+		return h.nowFn()
+	}
+	return time.Now()
+}
+
+func (h *terminalHub) zeroLegTimeout() time.Duration {
+	if h != nil && h.zeroLegTTL > 0 {
+		return h.zeroLegTTL
+	}
+	return termZeroLegTimeout
 }
 
 func (c *endpoint) terminalHubOwner() *terminalHub {
@@ -147,13 +166,16 @@ type liveTerminal struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	mu          sync.Mutex
-	relayPath   transport.Path
-	relayLegID  string
-	relayGen    uint64
-	relayCancel context.CancelFunc
-	directGen   uint64
-	outSeq      uint64
+	mu                sync.Mutex
+	relayPath         transport.Path
+	relayLegID        string
+	relayGen          uint64
+	relayAttachGen    uint64
+	relayDialInFlight int
+	relayCancel       context.CancelFunc
+	directGen         uint64
+	zeroLegSince      time.Time
+	outSeq            uint64
 
 	inbound         chan inboundTermFrame
 	historyRequests chan *pb.TerminalHistoryRequest
@@ -211,7 +233,7 @@ func (c *endpoint) openTerminal(ctx context.Context, sessionID, streamID string)
 	}
 
 	hub := c.terminalHubOwner()
-	nowMs := uint64(time.Now().UnixMilli())
+	nowMs := uint64(hub.now().UnixMilli())
 	ts := linkcore.NewTerminalStream(streamID, sessionID, peer, hub.instance, nowMs)
 	_ = ts.AttachLeg("relay", streamID, hub.instance, 1)
 
@@ -230,6 +252,7 @@ func (c *endpoint) openTerminal(ctx context.Context, sessionID, streamID string)
 		relayPath:       path,
 		relayLegID:      streamID,
 		relayGen:        1,
+		relayAttachGen:  1,
 		inbound:         make(chan inboundTermFrame, 128),
 		historyRequests: make(chan *pb.TerminalHistoryRequest, 1),
 		historyPages:    make(chan *pb.TerminalHistoryPage, 1),
@@ -253,7 +276,7 @@ func (c *endpoint) openTerminal(ctx context.Context, sessionID, streamID string)
 	}) {
 		hub.mu.Lock()
 		delete(hub.live, streamID)
-		_ = hub.registry.Retire(streamID, uint64(time.Now().UnixMilli()))
+		hub.registry.ForceRetire(streamID, uint64(hub.now().UnixMilli()))
 		hub.mu.Unlock()
 		ltCancel()
 		t.Close()
@@ -283,12 +306,12 @@ func (lt *liveTerminal) serve() {
 		}
 		workers.Wait()
 		lt.t.Close()
-		nowMs := uint64(time.Now().UnixMilli())
+		nowMs := uint64(lt.hub.now().UnixMilli())
 		lt.hub.mu.Lock()
 		if lt.hub.live[lt.streamID] == lt {
 			delete(lt.hub.live, lt.streamID)
 		}
-		_ = lt.hub.registry.Retire(lt.streamID, nowMs)
+		lt.hub.registry.ForceRetire(lt.streamID, nowMs)
 		lt.hub.mu.Unlock()
 	}()
 
@@ -343,15 +366,20 @@ func (lt *liveTerminal) serve() {
 		case <-lt.ctx.Done():
 			return
 		case <-ackTicker.C:
+			nowT := lt.hub.now()
 			lt.mu.Lock()
-			emitACK := lt.stream.Advance(uint64(time.Now().UnixMilli()))
+			emitACK := lt.stream.Advance(uint64(nowT.UnixMilli()))
 			var wm linkcore.TermWatermark
 			if emitACK {
 				wm = lt.stream.CurrentInputWatermark()
 			}
+			zeroLegExpired := !lt.zeroLegSince.IsZero() && nowT.Sub(lt.zeroLegSince) >= lt.hub.zeroLegTimeout()
 			lt.mu.Unlock()
 			if emitACK {
 				lt.sendControlAck(wm)
+			}
+			if zeroLegExpired {
+				return
 			}
 		case <-lt.t.Done():
 			_ = lt.sendOutput(&pb.TerminalFrame{Kind: &pb.TerminalFrame_Closed{Closed: lt.t.Reason()}})
@@ -465,6 +493,16 @@ func (lt *liveTerminal) sendOutput(f *pb.TerminalFrame) error {
 	return errors.New("terminal output path unavailable")
 }
 
+func (lt *liveTerminal) noteLegStateLocked(now time.Time) {
+	if lt.relayPath == nil && !lt.stream.HasLeg("direct") {
+		if lt.zeroLegSince.IsZero() {
+			lt.zeroLegSince = now
+		}
+	} else {
+		lt.zeroLegSince = time.Time{}
+	}
+}
+
 func (lt *liveTerminal) readRelayLeg(legCtx context.Context, path transport.Path, gen uint64) {
 	defer path.Close()
 	for {
@@ -473,7 +511,7 @@ func (lt *liveTerminal) readRelayLeg(legCtx context.Context, path transport.Path
 			lt.onRelayLegEnded(path, gen)
 			return
 		}
-		if !lt.enqueueInbound(b, false) {
+		if !lt.enqueueInbound(legCtx, b, false) {
 			return
 		}
 	}
@@ -489,25 +527,39 @@ func (lt *liveTerminal) onRelayLegEnded(path transport.Path, gen uint64) {
 	lt.relayPath = nil
 	lt.stream.CloseLeg("relay", gen)
 	keepAlive := lt.stream.HasLeg("direct") && lt.ep.directPeerActive(lt.ownerPeer)
+	lt.noteLegStateLocked(lt.hub.now())
 	lt.mu.Unlock()
 	if !keepAlive {
 		lt.cancel()
 	}
 }
 
-func (lt *liveTerminal) enqueueInbound(raw []byte, fromDirect bool) bool {
+// enqueueInbound applies blocking WS backpressure for relay frames (M1 — never
+// silently dropping relay input frames) while keeping direct reads non-blocking
+// so a slow terminal cannot stall the shared direct DataChannel read loop.
+func (lt *liveTerminal) enqueueInbound(legCtx context.Context, raw []byte, fromDirect bool) bool {
 	if lt.closed.Load() {
 		return false
 	}
 	cp := append([]byte(nil), raw...)
+	if !fromDirect {
+		select {
+		case lt.inbound <- inboundTermFrame{raw: cp, fromDirect: false}:
+			return true
+		case <-legCtx.Done():
+			return false
+		case <-lt.ctx.Done():
+			return false
+		}
+	}
 	select {
-	case lt.inbound <- inboundTermFrame{raw: cp, fromDirect: fromDirect}:
+	case lt.inbound <- inboundTermFrame{raw: cp, fromDirect: true}:
 		return true
 	case <-lt.ctx.Done():
 		return false
 	default:
-		// Bounded inbound queue full.
-		return !fromDirect
+		slog.Warn("relay: direct terminal inbound queue full", "stream", lt.streamID[:min(8, len(lt.streamID))])
+		return false
 	}
 }
 
@@ -569,10 +621,6 @@ func (lt *liveTerminal) processInbound(raw []byte, fromDirect bool) bool {
 		slog.Warn("relay: terminal input auth", "stream", lt.streamID[:min(8, len(lt.streamID))], "err", err)
 		return fromDirect
 	}
-	// Record verified ciphertext hash ONLY after authentication succeeded.
-	lt.hub.mu.Lock()
-	lt.hub.dedup.RecordVerified(lt.ownerPeer, cipherHash, int64(nowMs))
-	lt.hub.mu.Unlock()
 
 	plain, err := deviceauth.Unpack(auth.Header(), auth.Body())
 	if err != nil {
@@ -604,6 +652,14 @@ func (lt *liveTerminal) processInbound(raw []byte, fromDirect bool) bool {
 		dupWM = lt.stream.CurrentInputWatermark()
 	}
 	lt.mu.Unlock()
+
+	// Record verified ciphertext hash ONLY AFTER ReceiveInput accepts the frame (M8),
+	// so budget-rejected frames are never swallowed for 10s on client retry.
+	if action == linkcore.TermInputRun || action == linkcore.TermInputBuffered || action == linkcore.TermInputDuplicateACK {
+		lt.hub.mu.Lock()
+		lt.hub.dedup.RecordVerified(lt.ownerPeer, cipherHash, int64(nowMs))
+		lt.hub.mu.Unlock()
+	}
 
 	switch action {
 	case linkcore.TermInputDuplicateACK:
@@ -711,8 +767,10 @@ func (lt *liveTerminal) executeContiguousInput(tf *linkcore.TermFrame) *linkcore
 func (lt *liveTerminal) acceptAndApplyFrame(wire devicesec.Wire, tf *linkcore.TermFrame, nowMs uint64) (linkcore.TermOutcome, uint32, uint32, uint32) {
 	outcome := linkcore.TermOutcomeApplied
 	var definitelyInjected, possiblyInjected, failureReason uint32
+	callbackEntered := false
 
 	_, err := lt.ep.security.accept(lt.ctx, wire, lt.key, nowMs, func(h devicesec.Header, plain []byte) (deviceauth.Completion, error) {
+		callbackEntered = true
 		plain, err := deviceauth.Unpack(h, plain)
 		if err != nil {
 			outcome = linkcore.TermOutcomeNonInputFailed
@@ -772,7 +830,23 @@ func (lt *liveTerminal) acceptAndApplyFrame(wire devicesec.Wire, tf *linkcore.Te
 	})
 	if err != nil {
 		slog.Warn("relay: terminal input", "stream", lt.streamID[:min(8, len(lt.streamID))], "err", err)
-		if tf.IsInput && outcome == linkcore.TermOutcomeApplied {
+		if !callbackEntered {
+			// L1: accept failed BEFORE callback ever ran (expired, lease/member/capacity);
+			// never injected into tmux -> do NOT trigger Input fail-stop, and do NOT mark Resize as Applied.
+			if tf.IsInput {
+				if errors.Is(err, deviceauth.ErrExpired) || (tf.DeadlineMs > 0 && nowMs >= tf.DeadlineMs) {
+					outcome = linkcore.TermOutcomeExpiredNotApplied
+				} else {
+					outcome = linkcore.TermOutcomeNotApplied
+				}
+				definitelyInjected = 0
+				possiblyInjected = 0
+				failureReason = 6
+			} else {
+				outcome = linkcore.TermOutcomeNonInputFailed
+				failureReason = 6
+			}
+		} else if tf.IsInput && outcome == linkcore.TermOutcomeApplied {
 			outcome = linkcore.TermOutcomeInputPartialUnknown
 			possiblyInjected = tf.InputBytes
 			failureReason = 2
@@ -828,13 +902,41 @@ func (c *endpoint) onDirectPeerPathClosed(peerID string) {
 		}
 	}
 	c.termHub.mu.Unlock()
+	nowT := c.termHub.now()
+	nowMs := uint64(nowT.UnixMilli())
 	for _, lt := range list {
 		lt.mu.Lock()
 		gen := lt.stream.LegGen("direct")
 		if gen > 0 {
 			lt.stream.CloseLeg("direct", gen)
 		}
+		rp := lt.relayPath
+		var replayFrames []linkcore.TermFrame
+		if rp != nil {
+			// M4: replay any direct-only output frames unacknowledged by the client over the live relay leg
+			// so a direct disconnect never leaves a frozen output gap on the client.
+			fromSeq := lt.stream.ClientOutputAck() + 1
+			if fromSeq <= lt.outSeq {
+				replayFrames, _ = lt.stream.ReplayOutput(nowMs, fromSeq, lt.outSeq, 1<<20, 128)
+			}
+		}
+		lt.noteLegStateLocked(nowT)
 		lt.mu.Unlock()
+		if rp != nil && len(replayFrames) > 0 {
+			c.link.Run(func(context.Context) {
+				for _, f := range replayFrames {
+					if lt.closed.Load() || lt.ctx.Err() != nil {
+						return
+					}
+					wctx, wcancel := context.WithTimeout(lt.ctx, 10*time.Second)
+					err := rp.Write(wctx, f.RawEnvelope)
+					wcancel()
+					if err != nil {
+						return
+					}
+				}
+			})
+		}
 	}
 }
 
@@ -844,7 +946,7 @@ func (c *endpoint) handleDirectTerminalInput(peerID, streamID string, raw []byte
 	if lt == nil || lt.ownerPeer != peerID {
 		return
 	}
-	lt.enqueueInbound(raw, true)
+	lt.enqueueInbound(lt.ctx, raw, true)
 }
 
 func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, o peerwire.Opened, now uint64) (uint64, []byte) {
@@ -873,19 +975,36 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 		if lt == nil || lt.ownerPeer != peerID || lt.sessionID != msg.Session {
 			return 0, nil
 		}
-		if !strings.HasPrefix(msg.LegID, "r:") {
+		if strings.HasPrefix(msg.LegID, "d:") {
 			lt.mu.Lock()
 			if msg.PathGeneration > lt.directGen {
 				lt.directGen = msg.PathGeneration
 				_ = lt.stream.AttachLeg("direct", msg.LegID, hub.instance, msg.PathGeneration)
+				lt.noteLegStateLocked(hub.now())
 			}
 			lt.mu.Unlock()
 			return receipt()
 		}
-		// Relay leg recovery via AttachPath (leg_id prefixed with "r:"): dial /v1/term
-		// with leg_id as TermHello.StreamId without calling OpenTerminal or creating a new tmux handle.
+		// Relay leg recovery via AttachPath (pure random 16-hex leg_id — zero relay-visible prefix, L2):
+		// enforce monotonic PathGeneration and per-stream concurrency cap=1 (M7), and replay missed outputs (M4).
 		legID := msg.LegID
+		reqGen := msg.PathGeneration
+		clientRendered := msg.State.ToClient.Processed
+		lt.mu.Lock()
+		if reqGen <= lt.relayAttachGen || lt.relayDialInFlight >= 1 {
+			lt.mu.Unlock()
+			return receipt()
+		}
+		lt.relayAttachGen = reqGen
+		lt.relayDialInFlight++
+		lt.mu.Unlock()
+
 		c.link.Run(func(runCtx context.Context) {
+			defer func() {
+				lt.mu.Lock()
+				lt.relayDialInFlight--
+				lt.mu.Unlock()
+			}()
 			dialCtx, dialCancel := context.WithTimeout(lt.ctx, 20*time.Second)
 			defer dialCancel()
 			newPath, err := c.link.Router.OpenStream(dialCtx, transport.StreamRoute{ID: legID})
@@ -897,15 +1016,24 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 				return
 			}
 			lt.mu.Lock()
+			if lt.closed.Load() || lt.ctx.Err() != nil || reqGen < lt.relayAttachGen {
+				lt.mu.Unlock()
+				newPath.Close()
+				return
+			}
 			oldCancel := lt.relayCancel
 			oldPath := lt.relayPath
-			lt.relayGen++
-			gen := lt.relayGen
+			lt.relayGen = reqGen
 			lt.relayPath = newPath
 			lt.relayLegID = legID
 			legCtx, legCancel := context.WithCancel(lt.ctx)
 			lt.relayCancel = legCancel
-			_ = lt.stream.AttachLeg("relay", legID, hub.instance, gen)
+			_ = lt.stream.AttachLeg("relay", legID, hub.instance, reqGen)
+			lt.noteLegStateLocked(hub.now())
+			var replayFrames []linkcore.TermFrame
+			if clientRendered < lt.outSeq {
+				replayFrames, _ = lt.stream.ReplayOutput(uint64(hub.now().UnixMilli()), clientRendered+1, lt.outSeq, 1<<20, 128)
+			}
 			lt.mu.Unlock()
 			if oldCancel != nil {
 				oldCancel()
@@ -913,8 +1041,16 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 			if oldPath != nil {
 				oldPath.Close()
 			}
+			for _, f := range replayFrames {
+				wctx, wcancel := context.WithTimeout(legCtx, 10*time.Second)
+				werr := newPath.Write(wctx, f.RawEnvelope)
+				wcancel()
+				if werr != nil {
+					break
+				}
+			}
 			c.link.Run(func(context.Context) {
-				lt.readRelayLeg(legCtx, newPath, gen)
+				lt.readRelayLeg(legCtx, newPath, reqGen)
 			})
 		})
 		return receipt()
@@ -1077,27 +1213,39 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 		if lt == nil || lt.ownerPeer != peerID {
 			return receipt()
 		}
+		nowT := hub.now()
 		lt.mu.Lock()
-		if msg.PathGeneration > 0 {
+		if strings.HasPrefix(msg.LegID, "d:") {
 			if lt.stream.LegID("direct") == msg.LegID {
 				lt.stream.CloseLeg("direct", msg.PathGeneration)
 			}
-		} else {
-			if lt.relayLegID == msg.LegID {
-				rc := lt.relayCancel
-				rp := lt.relayPath
-				lt.relayPath = nil
-				lt.relayCancel = nil
-				lt.stream.CloseLeg("relay", lt.relayGen)
-				lt.mu.Unlock()
-				if rc != nil {
-					rc()
-				}
-				if rp != nil {
-					rp.Close()
-				}
-				return receipt()
+			lt.noteLegStateLocked(nowT)
+			cancelNow := msg.Reason == 1 && lt.relayPath == nil && !lt.stream.HasLeg("direct")
+			lt.mu.Unlock()
+			if cancelNow {
+				lt.cancel()
 			}
+			return receipt()
+		}
+		if lt.relayLegID == msg.LegID {
+			rc := lt.relayCancel
+			rp := lt.relayPath
+			lt.relayPath = nil
+			lt.relayCancel = nil
+			lt.stream.CloseLeg("relay", lt.relayGen)
+			lt.noteLegStateLocked(nowT)
+			cancelNow := msg.Reason == 1 && !lt.stream.HasLeg("direct")
+			lt.mu.Unlock()
+			if rc != nil {
+				rc()
+			}
+			if rp != nil {
+				rp.Close()
+			}
+			if cancelNow {
+				lt.cancel()
+			}
+			return receipt()
 		}
 		lt.mu.Unlock()
 		return receipt()

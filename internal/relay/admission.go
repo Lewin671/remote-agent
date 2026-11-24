@@ -72,21 +72,27 @@ type pendingExecution struct {
 	retry     bool
 }
 
-type authCacheKey struct {
-	head devicesec.Hash
-	peer string
-	hash [32]byte
-}
+const verifiedCacheMaxBytesPerPeer = 4 << 20 // 4 MiB per peer hard byte cap (M9)
 
 type cachedAuth struct {
+	head      devicesec.Hash
+	hash      [32]byte
 	auth      *deviceauth.Authenticated
+	bytes     int
 	expiresAt int64
+}
+
+type peerVerifiedCache struct {
+	entries map[[32]byte]cachedAuth
+	order   [][32]byte
+	bytes   int
 }
 
 type commandAdmission struct {
 	authenticate     func(devicesec.Wire) (*deviceauth.Authenticated, error)
 	reserveWaiter    func(string) (func(), bool)
 	testBeforeFinish func(*pendingExecution)
+	nowFn            func() time.Time
 	endpoint         *endpoint
 	ctx              context.Context
 	cancel           context.CancelFunc
@@ -103,8 +109,15 @@ type commandAdmission struct {
 
 	authMu        sync.Mutex
 	verifiedDedup linkcore.CipherDedup
-	verifiedCache map[authCacheKey]cachedAuth
+	verifiedPeers map[string]*peerVerifiedCache
 	authCoalesced atomic.Uint64
+}
+
+func (a *commandAdmission) now() time.Time {
+	if a != nil && a.nowFn != nil {
+		return a.nowFn()
+	}
+	return time.Now()
 }
 
 func (c *endpoint) admissionOwner() *commandAdmission {
@@ -118,7 +131,7 @@ func (c *endpoint) admissionOwner() *commandAdmission {
 			replies:       make(chan struct{}, 2),
 			syncing:       map[string]bool{},
 			inflight:      map[string]*pendingExecution{},
-			verifiedCache: map[authCacheKey]cachedAuth{},
+			verifiedPeers: map[string]*peerVerifiedCache{},
 			scheduler:     transport.NewSchedulerWithClock(c.link, c.r.SchedulerNow, c.r.SchedulerAfter),
 		}
 		a.frames = linkcore.FairQueue[*authFrame]{Entries: 64, Bytes: 4 << 20, PeerEntries: 8, PeerBytes: 1 << 20}
@@ -260,7 +273,7 @@ func (a *commandAdmission) currentHeadHash() (devicesec.Hash, bool) {
 
 // authenticateWithDedup reuses verified-only authentication results for
 // identical sealed command envelopes arriving over dual paths within the
-// bounded 4096/peer, 10s TTL window (docs/transport.md §3.4).
+// bounded 4096/peer, 4 MiB/peer, 10s TTL window (docs/transport.md §3.4, M9).
 // Nothing is recorded before verification succeeds, and failed verifications
 // are never cached.
 func (a *commandAdmission) authenticateWithDedup(_ context.Context, peer string, wire devicesec.Wire) (*deviceauth.Authenticated, error) {
@@ -268,32 +281,66 @@ func (a *commandAdmission) authenticateWithDedup(_ context.Context, peer string,
 	if !hasHead {
 		return a.authenticate(wire)
 	}
-	nowMs := time.Now().UnixMilli()
-	key := authCacheKey{head: headHash, peer: peer, hash: wireCipherHash(wire)}
+	nowMs := a.now().UnixMilli()
+	cHash := wireCipherHash(wire)
 	a.authMu.Lock()
-	if a.verifiedDedup.Seen(peer, key.hash, nowMs) {
-		if cached, ok := a.verifiedCache[key]; ok && nowMs < cached.expiresAt && uint64(nowMs) <= cached.auth.Header().Deadline {
-			a.authMu.Unlock()
-			a.authCoalesced.Add(1)
-			return cached.auth, nil
+	if a.verifiedDedup.Seen(peer, cHash, nowMs) {
+		if pc := a.verifiedPeers[peer]; pc != nil {
+			if cached, ok := pc.entries[cHash]; ok && cached.head == headHash && nowMs < cached.expiresAt && uint64(nowMs) <= cached.auth.Header().Deadline {
+				a.authMu.Unlock()
+				a.authCoalesced.Add(1)
+				return cached.auth, nil
+			}
+			if old, ok := pc.entries[cHash]; ok {
+				pc.bytes -= old.bytes
+				delete(pc.entries, cHash)
+			}
 		}
-		delete(a.verifiedCache, key)
 	}
 	a.authMu.Unlock()
 
 	p, err := a.authenticate(wire)
 	if err == nil && p != nil {
-		nowAfter := time.Now().UnixMilli()
+		nowAfter := a.now().UnixMilli()
+		charge := p.Size() + 128
 		a.authMu.Lock()
-		a.verifiedDedup.RecordVerified(peer, key.hash, nowAfter)
-		if len(a.verifiedCache) >= linkcore.DedupMaxPerPeer*2 {
-			for k, v := range a.verifiedCache {
-				if nowAfter >= v.expiresAt || k.head != headHash {
-					delete(a.verifiedCache, k)
-				}
-			}
+		a.verifiedDedup.RecordVerified(peer, cHash, nowAfter)
+		pc := a.verifiedPeers[peer]
+		if pc == nil {
+			pc = &peerVerifiedCache{entries: map[[32]byte]cachedAuth{}}
+			a.verifiedPeers[peer] = pc
 		}
-		a.verifiedCache[key] = cachedAuth{auth: p, expiresAt: nowAfter + linkcore.DedupTTLMs}
+		// O(1) amortized FIFO/TTL/head/byte eviction strictly bounded per peer (M9).
+		for len(pc.order) > 0 {
+			front := pc.order[0]
+			item, ok := pc.entries[front]
+			if !ok {
+				pc.order = pc.order[1:]
+				continue
+			}
+			if nowAfter >= item.expiresAt || item.head != headHash || len(pc.entries) >= linkcore.DedupMaxPerPeer || pc.bytes+charge > verifiedCacheMaxBytesPerPeer {
+				pc.order = pc.order[1:]
+				pc.bytes -= item.bytes
+				delete(pc.entries, front)
+				continue
+			}
+			break
+		}
+		if charge <= verifiedCacheMaxBytesPerPeer {
+			if old, exists := pc.entries[cHash]; exists {
+				pc.bytes -= old.bytes
+			} else {
+				pc.order = append(pc.order, cHash)
+			}
+			pc.entries[cHash] = cachedAuth{
+				head:      headHash,
+				hash:      cHash,
+				auth:      p,
+				bytes:     charge,
+				expiresAt: nowAfter + linkcore.DedupTTLMs,
+			}
+			pc.bytes += charge
+		}
 		a.authMu.Unlock()
 	}
 	return p, err
@@ -776,7 +823,7 @@ func (a *commandAdmission) close() {
 	}
 	a.workers.Wait()
 	a.authMu.Lock()
-	clear(a.verifiedCache)
+	clear(a.verifiedPeers)
 	a.verifiedDedup = linkcore.CipherDedup{}
 	a.authMu.Unlock()
 }
