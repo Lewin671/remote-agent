@@ -2594,3 +2594,45 @@ func TestAttachments_PreSendMachineSwitchABA_RejectsStaleAbortedRemoteID(t *test
 		t.Fatalf("expected orphan pre-send OUTBOX deleted on generation/remoteID mismatch, got %+v", dels)
 	}
 }
+
+func TestAttachments_AddItemsWhileDraftLoading_ReleasesPickedHandlesAndReservation(t *testing.T) {
+	h := newAttHarness(t, true, true)
+	scope := h.sessionScope()
+
+	// Reserve slots before open, then start DraftOpen (loadState == draftLoadLoading).
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftReserveSlots{
+			DraftReserveSlots: &corev1.DraftReserveSlotsAction{Scope: scope, ReservationId: "res-load", ImageSlots: 2},
+		},
+	})
+	h.dispatch(&corev1.Event{Event: &corev1.Event_DraftOpen{DraftOpen: &corev1.DraftOpenAction{Scope: scope}}})
+
+	// Pick items arrive while draft is STILL loading -> MUST release reservation, show restore_wait notice, AND emit AttachmentReleaseLocal!
+	addEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope:         scope,
+				ReservationId: "res-load",
+				Items: []*corev1.DraftPickedItem{
+					{
+						Candidate:         &corev1.AttachmentCandidateInput{Name: "early.jpg", MimeType: "image/jpeg", SizeBytes: 4},
+						SourceRef:         "src-early-load",
+						ThumbRef:          "thumb-early-load",
+						HasOriginalSource: true,
+					},
+				},
+			},
+		},
+	})
+	dv := h.draftView(scope)
+	if dv.ReservedImages != 0 || dv.HasPendingPicks {
+		t.Fatalf("expected reservation released even when add rejected during load, got reserved=%d pending=%v", dv.ReservedImages, dv.HasPendingPicks)
+	}
+	if dv.Notice == nil || dv.Notice.GetKey() != text.KeyAttachmentRestoreWait {
+		t.Fatalf("expected attachment.restore_wait notice, got %+v", dv.Notice)
+	}
+	rels := findReleaseLocalEffects(addEff)
+	if len(rels) != 1 || len(rels[0].Refs) != 2 {
+		t.Fatalf("expected AttachmentReleaseLocal for both rejected refs, got %+v", rels)
+	}
+}

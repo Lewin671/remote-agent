@@ -970,9 +970,23 @@ func (c *Core) handleDraftAddItems(ctx *sync.StepContext, act *corev1.DraftAddIt
 		delete(d.reservations, act.ReservationId)
 	}
 	if d.loadState == draftLoadLoading {
+		var rejectedRefs []string
+		for _, picked := range act.Items {
+			if picked == nil {
+				continue
+			}
+			if picked.SourceRef != "" {
+				rejectedRefs = append(rejectedRefs, picked.SourceRef)
+			}
+			if picked.ThumbRef != "" {
+				rejectedRefs = append(rejectedRefs, picked.ThumbRef)
+			}
+		}
+		var effects []*corev1.Effect
+		c.emitUnreferencedLocalReleases(rejectedRefs, &effects)
 		d.notice = attachments.RestoreWaitReason()
 		c.markDraftDirty(ctx, d.scope)
-		return nil
+		return effects
 	}
 	if len(act.Items) == 0 {
 		c.markDraftDirty(ctx, d.scope)
