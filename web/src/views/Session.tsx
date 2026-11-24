@@ -1891,25 +1891,27 @@ const ChatBody = memo(function ChatBody({
   const hasSharedFiles = header?.capabilities?.supportsSharedFiles ?? false;
 
   const renderEntry = useCallback(
-    (entry: TimelineRowEntry) => (
-      <RowState id={entry.key} states={rowStates.current}>
-        <TimelineRow
-          item={entry.item}
-          sessionId={sid}
-          online={online}
-          lostAt={lostAt}
-          awaitingApproval={awaitingApprovalTool}
-          remote={remote}
-          hasSharedFiles={hasSharedFiles}
-          locale={locale}
-          onTerminal={onTerminal}
-          attachments={attachments}
-          outboxAttachments={outboxAttachments}
-          onRestoreText={onRestoreText}
-          onExpandGroup={onExpandGroup}
-        />
-      </RowState>
-    ),
+    (entry: TimelineRowEntry) => {
+      return (
+        <RowState id={entry.key} states={rowStates.current}>
+          <TimelineRow
+            item={entry.item}
+            sessionId={sid}
+            online={online}
+            lostAt={lostAt}
+            awaitingApproval={awaitingApprovalTool}
+            remote={remote}
+            hasSharedFiles={hasSharedFiles}
+            locale={locale}
+            onTerminal={onTerminal}
+            attachments={attachments}
+            outboxAttachments={outboxAttachments}
+            onRestoreText={onRestoreText}
+            onExpandGroup={onExpandGroup}
+          />
+        </RowState>
+      );
+    },
     [sid, online, remote, lostAt, awaitingApprovalTool, hasSharedFiles, locale, onTerminal, attachments, outboxAttachments, onRestoreText, onExpandGroup],
   );
 

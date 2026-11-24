@@ -52,7 +52,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   const coreHost = useCoreHost(remote);
   const sync = useSyncState(coreHost);
   const syncSession = sync.sessions.find((s) => s.sessionId === session.id);
-  const syncMachine = sync.machines.find((m) => m.machineId === session.machineId);
+  const syncMachine = sync.machines.find((m) => { return m.machineId === session.machineId; });
   const online = syncSession ? syncSession.terminalReady : syncMachine ? syncMachine.terminalReady : sync.connection === ConnState.CONNECTED;
   const waitingPeer = syncSession ? syncSession.terminalWaiting : !online && (sync.reachabilityUnknown || sync.displayGrace);
   const onlineRef = useRef(online);

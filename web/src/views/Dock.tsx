@@ -557,7 +557,9 @@ function PlanDock({
   onAbandonCommand: (slotKey: string) => void;
 }) {
   const hasContent = !!plan.markdown || plan.choices.length > 0;
-  if (dock.isSkeleton || !hasContent) return <div className="dock muted">{i18n.t("session.skeleton")}</div>;
+  if (dock.isSkeleton || !hasContent) {
+    return <div className="dock muted">{i18n.t("session.skeleton")}</div>;
+  }
   const note = renderText(plan.note);
   const title = renderText(dock.title);
   return (

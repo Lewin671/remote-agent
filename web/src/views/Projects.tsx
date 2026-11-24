@@ -80,7 +80,7 @@ export function DirPickerSheet({ picker, fixedMachine, title, onNavigate, onConf
   const dirty = picker.canConfirm && `${picker.machineId}:${picker.currentPath}` !== initialPath;
   const crumbs = picker.crumbs.map((c) => ({ label: renderText(c.label), path: c.path }));
   const confirmLabel = renderText(picker.confirmLabel) || t("projects.use_directory", { name: crumbs[crumbs.length - 1]?.label || "/" });
-  const fixedEntry = fixedMachine ? picker.machines.find((x) => x.machineId === fixedMachine) : undefined;
+  const fixedEntry = fixedMachine ? picker.machines.find((x) => { return x.machineId === fixedMachine; }) : undefined;
   return (
     <Sheet onClose={onClose} dirty={dirty} title={title ?? t("projects.new_choose_directory")} back={onBack}>
       {fixedEntry ? (

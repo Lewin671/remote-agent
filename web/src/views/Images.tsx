@@ -313,7 +313,7 @@ function useDisplay(
   const host = remote ? getCoreHost(remote) : undefined;
   const isOnline = useSyncExternalStore(
     host ? (cb) => host.subscribe(ScreenTarget.SYNC_STATE, cb) : NOOP_SUB,
-    host ? () => host.viewSyncState().connection === ConnState.CONNECTED : NOOP_ONLINE,
+    host ? () => { return host.viewSyncState().connection === ConnState.CONNECTED; } : NOOP_ONLINE,
   );
   const [state, setState] = useState<Load>({ kind: "idle" });
   const localLoad = useMemo<Load | undefined>(() => {

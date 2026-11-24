@@ -451,10 +451,11 @@ export function SessionSheet({
               >
                 <div className="mt">
                   {m.displayName || m.slug}
-                  {m.efforts.length === 0 ? (
+                  {m.efforts.length === 0 && (
                     <small>{i18n.t("session.no_effort")}</small>
-                  ) : (
-                    m.maxEffortHint && <small>{renderText(m.maxEffortHint)}</small>
+                  )}
+                  {m.efforts.length !== 0 && m.maxEffortHint && (
+                    <small>{renderText(m.maxEffortHint)}</small>
                   )}
                 </div>
                 {m.selected && (

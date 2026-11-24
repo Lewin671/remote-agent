@@ -212,7 +212,7 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
       host.reportConnCheckStatus(state, latencyMs, lastFailure),
     [host],
   );
-  const onReconnect = useCallback(() => host.reconnectNow(), [host]);
+  const onReconnect = useCallback(() => { host.reconnectNow(); }, [host]);
   return (
     <ConnCheckScreenView
       cc={settingsVm.connCheck}
