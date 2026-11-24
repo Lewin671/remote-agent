@@ -312,6 +312,7 @@ actor CoreHost: SyncEngine {
     private let draftStorageQueue: DraftStorageQueue
     private var attachmentHandlers: AttachmentHandlers?
     private var attachmentConfigured = false
+    private var lastDraftClearError: (any Error)?
     private var visibleSessions: [(token: UUID, sessionID: String)] = []
     private var currentVisibleSessionID = ""
     private let clock: @Sendable () -> Int64
@@ -1956,12 +1957,21 @@ actor CoreHost: SyncEngine {
         }
     }
 
-    func clearAllDrafts() async {
-        guard !closed else { return }
+    @discardableResult
+    func clearAllDrafts() async -> (any Error)? {
+        guard !closed else { return nil }
+        lastDraftClearError = nil
         await dispatch {
             $0.draftClearAll = PBDraftClearAllAction()
         }
         await drainDraftStorageQueue()
+        return lastDraftClearError
+    }
+
+    private func recordDraftClearError(_ error: any Error) {
+        if lastDraftClearError == nil {
+            lastDraftClearError = error
+        }
     }
 
     func dismissDraftNotice(scope: PBDraftScope) async {
@@ -2137,8 +2147,12 @@ actor CoreHost: SyncEngine {
             case .draftStorageClearAll:
                 let store = self.pendingStore
                 let clearAll = self.attachmentHandlers?.onClearAllLocal
-                enqueueDraftStorageOp {
-                    store.clearAll()
+                enqueueDraftStorageOp { [weak self] in
+                    do {
+                        try store.clearAll()
+                    } catch {
+                        await self?.recordDraftClearError(error)
+                    }
                     if let clearAll {
                         await MainActor.run { clearAll() }
                     }

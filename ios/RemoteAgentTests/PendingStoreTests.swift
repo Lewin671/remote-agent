@@ -310,6 +310,24 @@ import Testing
         #expect(filesOnDisk().isEmpty)
     }
 
+    @Test func pendingScopeClearAllPropagatesDeleteErrors() throws {
+        defer { cleanUp() }
+        let failingVault = Vault(
+            service: vault.service,
+            keychain: KeychainOps(
+                copyMatching: { _, _ in errSecItemNotFound },
+                add: { _, _ in errSecSuccess },
+                update: { _, _ in errSecSuccess },
+                delete: { _ in errSecInteractionNotAllowed }
+            )
+        )
+        let s = PendingStore(directory: dir, vault: failingVault)
+        let scope = s.scoped()
+        #expect(throws: VaultError(operation: .delete, status: errSecInteractionNotAllowed)) {
+            try scope.clearAll()
+        }
+    }
+
     @Test func staleScopeCannotTouchNextAccountAfterClearAll() throws {
         defer { cleanUp() }
         let s = store()

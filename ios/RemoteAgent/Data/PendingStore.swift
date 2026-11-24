@@ -1032,8 +1032,8 @@ struct PendingScope: Sendable {
         store.current(epoch) { store.delete(bucket: bucket, key: key) }
     }
 
-    func clearAll() {
-        store.current(epoch) { try? store.clearAll() }
+    func clearAll() throws {
+        try store.current(epoch) { try store.clearAll() }
     }
 
     func storeBlob(_ data: Data, prefix: String = "b") throws -> String {
