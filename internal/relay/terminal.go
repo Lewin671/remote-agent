@@ -834,8 +834,10 @@ func (lt *liveTerminal) acceptAndApplyFrame(wire devicesec.Wire, tf *linkcore.Te
 	if err != nil {
 		slog.Warn("relay: terminal input", "stream", lt.streamID[:min(8, len(lt.streamID))], "err", err)
 		if !callbackEntered {
-			// L1: accept failed BEFORE callback ever ran (expired, lease/member/capacity);
-			// never injected into tmux -> do NOT trigger Input fail-stop, and do NOT mark Resize as Applied.
+			// L1 + N6: accept failed BEFORE callback ever ran (expired, lease/member/capacity);
+			// never injected into tmux -> report exact 0/0 bounds as ExpiredNotApplied/NotApplied
+			// (which enters user confirmation per N6 instead of silently skipping), and mark
+			// non-input Resize/History as NonInputFailed without blocking subsequent Inputs.
 			if tf.IsInput {
 				if errors.Is(err, deviceauth.ErrExpired) || (tf.DeadlineMs > 0 && nowMs >= tf.DeadlineMs) {
 					outcome = linkcore.TermOutcomeExpiredNotApplied

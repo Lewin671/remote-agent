@@ -510,10 +510,15 @@ func (s *TerminalStream) CompleteInput(
 		}
 		s.inputSuccess = cur.Seq
 	}
-	if cur.IsInput && outcome == TermOutcomeInputPartialUnknown {
+	if cur.IsInput && (outcome == TermOutcomeInputPartialUnknown || outcome == TermOutcomeExpiredNotApplied || outcome == TermOutcomeNotApplied) {
+		// N6: expired or pre-callback unapplied Input must NEVER be silently skipped;
+		// record exact 0/0 injection bounds, pause/block subsequent Inputs, and emit
+		// StreamFailed so the client enters explicit user confirmation.
 		if s.failedInputSeq == 0 {
 			s.failedInputSeq = cur.Seq
 		}
+		s.NeedsUserConfirm = true
+		s.Paused = true
 		dCopy := detail
 		s.FailStopDetail = &dCopy
 		failStop = &dCopy
@@ -854,10 +859,15 @@ func (s *TerminalStream) ApplyInputAck(wm TermWatermark) (failStopTriggered bool
 	for _, d := range wm.Details {
 		if item, ok := s.inputCache[d.Seq]; ok && item.frame.PayloadHash == d.PayloadHash {
 			switch d.Outcome {
-			case TermOutcomeApplied, TermOutcomeNonInputFailed, TermOutcomeNotApplied, TermOutcomeExpiredNotApplied:
+			case TermOutcomeApplied, TermOutcomeNonInputFailed:
 				s.inputCacheBytes -= item.charge
 				delete(s.inputCache, d.Seq)
-			case TermOutcomeInputPartialUnknown:
+			case TermOutcomeInputPartialUnknown, TermOutcomeExpiredNotApplied, TermOutcomeNotApplied:
+				if !item.frame.IsInput {
+					s.inputCacheBytes -= item.charge
+					delete(s.inputCache, d.Seq)
+					continue
+				}
 				s.failedInputSeq = d.Seq
 				dCopy := d
 				s.FailStopDetail = &dCopy
@@ -927,10 +937,20 @@ func (s *TerminalStream) ReconcileStatus(now uint64, snap TermStatusSnapshot) (t
 				s.NeedsUserConfirm = true
 				needUserConfirm = true
 			case TermOutcomeExpiredNotApplied:
-				needBarrier = true
+				s.failedInputSeq = d.Seq
+				dCopy := d
+				s.FailStopDetail = &dCopy
+				s.Paused = true
+				s.NeedsUserConfirm = true
+				needUserConfirm = true
 			case TermOutcomeNotApplied:
 				if item.frame.DeadlineMs > 0 && now >= item.frame.DeadlineMs {
-					needBarrier = true
+					s.failedInputSeq = d.Seq
+					dCopy := d
+					s.FailStopDetail = &dCopy
+					s.Paused = true
+					s.NeedsUserConfirm = true
+					needUserConfirm = true
 				} else if !needUserConfirm && !needBarrier {
 					toResend = append(toResend, item.frame)
 				}

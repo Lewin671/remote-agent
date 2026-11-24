@@ -277,12 +277,100 @@ func TestPhase3TerminalDirectOnlyOutputReplayedOnDirectDrop(t *testing.T) {
 	}
 }
 
-// TestPhase3TerminalAttachPathOutOfOrderAndPreCallbackL1AndBudgetDedupM8 verifies M7, L1, and M8
+// TestPhase3TerminalExpiredInputEntersConfirmationGateN6 verifies N6 + L1:
+// an expired Input failing pre-callback is classified as ExpiredNotApplied with
+// definitely_injected=0, possibly_injected=0, emits StreamFailed to enter user
+// confirmation, and blocks subsequent Input from silently injecting into tmux.
+// Meanwhile, an expired Resize (non-input) is classified as NonInputFailed and
+// does NOT block subsequent Inputs.
+func TestPhase3TerminalExpiredInputEntersConfirmationGateN6(t *testing.T) {
+	h := startPhase3PionHarness(t)
+	h.advertisePhase3ClientCapabilities()
+	streamID := "e6000000000000000000000000000001"
+	termWS := h.openTerminal(streamID)
+	defer termWS.CloseNow()
+
+	if _, _, err := termWS.Read(h.ctx); err != nil {
+		t.Fatal(err)
+	}
+	if !h.link.SendControl(linkcore.ControlAttachPath, linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
+		Stream:         streamID,
+		Session:        h.session,
+		Sender:         h.e.authority.Member.ID,
+		LegID:          "d:00000000000006",
+		PathGeneration: 1,
+	})) {
+		t.Fatal("direct AttachPath failed")
+	}
+
+	// 1) Expired Resize at seq=1 (non-input) -> NonInputFailed, does NOT block seq=2 Input.
+	expResizeBody, _ := proto.Marshal(&pb.TerminalFrame{Kind: &pb.TerminalFrame_Resize{Resize: &pb.TerminalResize{Cols: 80, Rows: 24}}})
+	expResizeWire, err := h.ep.Prepare(devicesec.Header{
+		Purpose:  devicesec.TerminalResize,
+		Kind:     8,
+		Machine:  h.e.acct.DeviceID,
+		Session:  h.session,
+		Request:  streamID,
+		Seq:      1,
+		Deadline: uint64(time.Now().Add(-5 * time.Minute).UnixMilli()),
+	}, h.sessKey, expResizeBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expResizeEnv, _ := deviceauth.Envelope(expResizeWire)
+	expResizeRaw, _ := proto.Marshal(expResizeEnv)
+	if err := h.readPath.Write(h.ctx, expResizeRaw); err != nil {
+		t.Fatal(err)
+	}
+	// Follow with valid Input at seq=2 -> MUST inject cleanly.
+	if err := h.readPath.Write(h.ctx, h.sealTermFrame(streamID, 2, &pb.TerminalFrame{Kind: &pb.TerminalFrame_Input{Input: []byte("ok-after-resize")}})); err != nil {
+		t.Fatal(err)
+	}
+	h.waitInputs([]byte("ok-after-resize"))
+
+	// 2) Expired Input at seq=3 -> MUST emit StreamFailed (ExpiredNotApplied, 0/0 injected) and block seq=4!
+	expInBody, _ := proto.Marshal(&pb.TerminalFrame{Kind: &pb.TerminalFrame_Input{Input: []byte("expired-in")}})
+	expInWire, err := h.ep.Prepare(devicesec.Header{
+		Purpose:  devicesec.TerminalInput,
+		Kind:     8,
+		Machine:  h.e.acct.DeviceID,
+		Session:  h.session,
+		Request:  streamID,
+		Seq:      3,
+		Deadline: uint64(time.Now().Add(-5 * time.Minute).UnixMilli()),
+	}, h.sessKey, expInBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expInEnv, _ := deviceauth.Envelope(expInWire)
+	expInRaw, _ := proto.Marshal(expInEnv)
+	if err := h.readPath.Write(h.ctx, expInRaw); err != nil {
+		t.Fatal(err)
+	}
+	sfFrame := h.waitControl(linkcore.ControlStreamFailed)
+	sf, err := linkcore.DecodeStreamFailed(sfFrame.Payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sf.Stream != streamID || sf.InputFailure.Seq != 3 || sf.InputFailure.Outcome != linkcore.TermOutcomeExpiredNotApplied || sf.InputFailure.DefinitelyInjected != 0 || sf.InputFailure.PossiblyInjected != 0 {
+		t.Fatalf("N6: unexpected StreamFailed for expired input: %+v", sf)
+	}
+
+	// 3) Subsequent Input at seq=4 MUST be blocked (NOT silently injected into tmux!).
+	if err := h.readPath.Write(h.ctx, h.sealTermFrame(streamID, 4, &pb.TerminalFrame{Kind: &pb.TerminalFrame_Input{Input: []byte("MUST-NOT-RUN")}})); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(100 * time.Millisecond)
+	if bytes.Contains(h.backend.term.allInputs(), []byte("MUST-NOT-RUN")) {
+		t.Fatal("N6 violation: subsequent Input injected after expired Input without user confirmation")
+	}
+}
+
+// TestPhase3TerminalAttachPathOutOfOrderAndBudgetDedupM8 verifies M7 and M8
 // on a single real Pion Phase 3 harness:
 //   - M7: out-of-order AttachPath (gen=3 before stale gen=2) rejects stale gen=2
-//   - L1: pre-callback expired Input does NOT trigger fail-stop; subsequent valid Input injects
 //   - M8: budget-rejected out-of-order Input is NOT poisoned by CipherDedup when retried within 10s
-func TestPhase3TerminalAttachPathOutOfOrderAndPreCallbackL1AndBudgetDedupM8(t *testing.T) {
+func TestPhase3TerminalAttachPathOutOfOrderAndBudgetDedupM8(t *testing.T) {
 	h := startPhase3PionHarness(t)
 	h.advertisePhase3ClientCapabilities()
 	streamID := "e7000000000000000000000000000001"
@@ -304,32 +392,15 @@ func TestPhase3TerminalAttachPathOutOfOrderAndPreCallbackL1AndBudgetDedupM8(t *t
 		t.Fatal("direct AttachPath failed")
 	}
 
-	// L1: Send an ALREADY-EXPIRED Input at seq=1 -> must be classified ExpiredNotApplied (NO fail-stop!).
-	expiredBody, _ := proto.Marshal(&pb.TerminalFrame{Kind: &pb.TerminalFrame_Input{Input: []byte("expired")}})
-	expiredWire, err := h.ep.Prepare(devicesec.Header{
-		Purpose:  devicesec.TerminalInput,
-		Kind:     8,
-		Machine:  h.e.acct.DeviceID,
-		Session:  h.session,
-		Request:  streamID,
-		Seq:      1,
-		Deadline: uint64(time.Now().Add(-5 * time.Minute).UnixMilli()),
-	}, h.sessKey, expiredBody)
-	if err != nil {
+	// Send valid seq=1 Resize and seq=2 Input to advance baseline.
+	if err := h.readPath.Write(h.ctx, h.sealTermFrame(streamID, 1, &pb.TerminalFrame{Kind: &pb.TerminalFrame_Resize{Resize: &pb.TerminalResize{Cols: 80, Rows: 24}}})); err != nil {
 		t.Fatal(err)
 	}
-	expiredEnv, _ := deviceauth.Envelope(expiredWire)
-	expiredRaw, _ := proto.Marshal(expiredEnv)
-	if err := h.readPath.Write(h.ctx, expiredRaw); err != nil {
-		t.Fatal(err)
-	}
-
-	// Follow with valid Input at seq=2 -> MUST still inject into tmux (L1: zero false fail-stop!).
-	in2 := h.sealTermFrame(streamID, 2, &pb.TerminalFrame{Kind: &pb.TerminalFrame_Input{Input: []byte("valid-after-exp")}})
+	in2 := h.sealTermFrame(streamID, 2, &pb.TerminalFrame{Kind: &pb.TerminalFrame_Input{Input: []byte("valid-base")}})
 	if err := h.readPath.Write(h.ctx, in2); err != nil {
 		t.Fatal(err)
 	}
-	h.waitInputs([]byte("valid-after-exp"))
+	h.waitInputs([]byte("valid-base"))
 
 	// M8: Send out-of-order seq=135 (gap > 128 -> rejected by ErrTermBudget) FIRST, then
 	// advance seq=3..134, then resend the EXACT same sealed bytes for seq=135 within 10s!
@@ -353,7 +424,7 @@ func TestPhase3TerminalAttachPathOutOfOrderAndPreCallbackL1AndBudgetDedupM8(t *t
 		h.backend.term.mu.Lock()
 		rc := h.backend.term.resizes
 		h.backend.term.mu.Unlock()
-		if rc >= 132 {
+		if rc >= 133 {
 			break
 		}
 		time.Sleep(10 * time.Millisecond)
@@ -362,7 +433,7 @@ func TestPhase3TerminalAttachPathOutOfOrderAndPreCallbackL1AndBudgetDedupM8(t *t
 	if err := h.readPath.Write(h.ctx, in135); err != nil {
 		t.Fatal(err)
 	}
-	h.waitInputs([]byte("valid-after-expM8-OK"))
+	h.waitInputs([]byte("valid-baseM8-OK"))
 
 	// M7: Send AttachPath gen=3 (pure 16-hex leg, L2) then stale AttachPath gen=2;
 	// stale gen=2 must be rejected and gen=3 must remain active.
