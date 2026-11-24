@@ -119,7 +119,6 @@ final class PendingStore: @unchecked Sendable {
             }
 
             let v1 = v1Root
-            let hasEncryptedV1 = hasEncryptedV1Files()
             let loadedKey: SymmetricKey?
             do {
                 loadedKey = try storedKey()
@@ -127,13 +126,7 @@ final class PendingStore: @unchecked Sendable {
                 return .with {
                     $0.opID = opID
                     $0.errorKind = .other
-                    $0.errorDetail = error.localizedDescription
-                }
-            }
-            if loadedKey == nil && hasEncryptedV1 {
-                return .with {
-                    $0.opID = opID
-                    $0.errorKind = .other
+                    $0.errorDetail = Self.asciiErrorDetail(error)
                 }
             }
 
@@ -145,28 +138,29 @@ final class PendingStore: @unchecked Sendable {
             var entries: [PBDraftStorageEntry] = []
             var localRefs: [String] = []
 
-            if let key = loadedKey {
-                for (bucket, dirURL) in [(PBDraftStorageBucket.draft, draftsDir), (PBDraftStorageBucket.outbox, outboxDir)] {
-                    let aad = Self.recordAAD(bucket: bucket)
-                    let files = Self.visibleFiles(in: dirURL)
-                    for file in files {
-                        if let sealed = try? Data(contentsOf: file),
-                           let plain = try? AES.GCM.open(AES.GCM.SealedBox(combined: sealed), using: key, authenticating: aad),
-                           let decoded = Self.decodeRecord(plain)
-                        {
-                            entries.append(.with {
-                                $0.bucket = bucket
-                                $0.key = decoded.key
-                                $0.data = decoded.payload
-                                $0.corrupt = false
-                            })
-                        } else {
-                            entries.append(.with {
-                                $0.bucket = bucket
-                                $0.key = Self.rawPrefix + file.lastPathComponent
-                                $0.corrupt = true
-                            })
-                        }
+            for (bucket, dirURL) in [(PBDraftStorageBucket.draft, draftsDir), (PBDraftStorageBucket.outbox, outboxDir)] {
+                let aad = Self.recordAAD(bucket: bucket)
+                let files = Self.visibleFiles(in: dirURL)
+                for file in files {
+                    if let key = loadedKey,
+                       let sealed = try? Data(contentsOf: file),
+                       let plain = try? AES.GCM.open(AES.GCM.SealedBox(combined: sealed), using: key, authenticating: aad),
+                       let decoded = Self.decodeRecord(plain)
+                    {
+                        entries.append(.with {
+                            $0.bucket = bucket
+                            $0.key = decoded.key
+                            $0.data = decoded.payload
+                            $0.corrupt = false
+                        })
+                    } else {
+                        // Either corrupt ciphertext or pendingKey is confirmed absent (`errSecItemNotFound`):
+                        // report as corrupt so Core deletes the undecryptable record and storage self-heals.
+                        entries.append(.with {
+                            $0.bucket = bucket
+                            $0.key = Self.rawPrefix + file.lastPathComponent
+                            $0.corrupt = true
+                        })
                     }
                 }
             }
@@ -246,9 +240,10 @@ final class PendingStore: @unchecked Sendable {
             let loadedKey: SymmetricKey
             do {
                 guard let k = try storedKey() else {
+                    // pendingKey is confirmed absent (`errSecItemNotFound`), so this file can never decrypt.
                     return .with {
                         $0.opID = opID; $0.bucket = bucket; $0.key = key
-                        $0.found = false; $0.errorKind = .other
+                        $0.found = false; $0.errorKind = .corruptStore
                     }
                 }
                 loadedKey = k
@@ -256,7 +251,7 @@ final class PendingStore: @unchecked Sendable {
                 return .with {
                     $0.opID = opID; $0.bucket = bucket; $0.key = key
                     $0.found = false; $0.errorKind = .other
-                    $0.errorDetail = error.localizedDescription
+                    $0.errorDetail = Self.asciiErrorDetail(error)
                 }
             }
 
@@ -863,6 +858,17 @@ final class PendingStore: @unchecked Sendable {
         Data("\(ref):\(plainSize):\(chunkIndex)".utf8)
     }
 
+    private static func asciiErrorDetail(_ error: any Error) -> String {
+        if let v = error as? VaultError {
+            return v.isLocked ? "vault_locked" : "vault_status_\(v.status)"
+        }
+        if let e = error as? AttachmentFileIOError {
+            return e.detail
+        }
+        let ns = error as NSError
+        return "\(ns.domain):\(ns.code)"
+    }
+
     private static func isMissing(_ error: any Error) -> Bool {
         let ns = error as NSError
         return (ns.domain == NSCocoaErrorDomain && (ns.code == NSFileReadNoSuchFileError || ns.code == NSFileNoSuchFileError))
@@ -890,7 +896,15 @@ final class PendingStore: @unchecked Sendable {
     private func key() throws -> SymmetricKey {
         if let stored = try storedKey() { return stored }
         if hasEncryptedV1Files() {
-            throw AttachmentFileIOError(.other)
+            // Keychain explicitly confirmed `errSecItemNotFound`: existing ciphertext can never be
+            // decrypted (e.g. a previous logout deleted Keychain but failed to remove files). Wipe
+            // undecryptable v1 remnants before generating a fresh key so storage self-heals.
+            let fm = FileManager.default
+            for dir in [draftsDir, outboxDir, blobsDir] {
+                for file in Self.visibleFiles(in: dir) {
+                    try? fm.removeItem(at: file)
+                }
+            }
         }
         let fresh = randomBytes(keySize)
         try vault?.write(.pendingKey, fresh)

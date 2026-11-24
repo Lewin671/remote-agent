@@ -97,22 +97,31 @@ import Testing
         #expect(after.entries.isEmpty && after.localRefs.isEmpty)
     }
 
-    @Test func unavailableKeyReportsErrorWithoutDeletingOrOverwritingCiphertext() throws {
+    @Test func confirmedMissingKeySelfHealsUndecryptableCiphertext() throws {
         defer { cleanUp() }
         let first = store()
         #expect(first.write(opID: 1, bucket: .draft, key: "draft:session:s1", data: Data("keep".utf8)).ok)
+        let oldBlobRef = try first.storeBlob(Data("old-blob".utf8), prefix: "prep")
         try vault.delete(.pendingKey)
 
+        // Keychain explicitly confirms errSecItemNotFound -> old ciphertext can never decrypt:
+        // list() reports records as corrupt and enumerates blobs for Core GC with no error.
         let second = store()
-        let before = try Data(contentsOf: #require(filesOnDisk().first))
         let listed = second.list(opID: 2)
-        #expect(listed.errorKind == .other)
+        #expect(listed.errorKind == .unspecified)
+        #expect(listed.entries.count == 1 && listed.entries.first?.corrupt == true)
+        #expect(listed.localRefs == [oldBlobRef])
+
         let readRes = second.read(opID: 3, bucket: .draft, key: "draft:session:s1")
-        #expect(!readRes.found && readRes.errorKind == .other)
-        let writeRes = second.write(opID: 4, bucket: .draft, key: "draft:session:s2", data: Data("new".utf8))
-        #expect(!writeRes.ok && writeRes.errorKind == .other)
-        #expect(filesOnDisk().count == 1)
-        #expect(try Data(contentsOf: #require(filesOnDisk().first)) == before)
+        #expect(!readRes.found && readRes.errorKind == .corruptStore)
+
+        // Writing a new draft wipes undecryptable v1 remnants and generates a fresh key.
+        let writeRes = second.write(opID: 4, bucket: .draft, key: "draft:session:s2", data: Data("healed".utf8))
+        #expect(writeRes.ok)
+        #expect(try vault.read(.pendingKey)?.count == 32)
+        let readHealed = second.read(opID: 5, bucket: .draft, key: "draft:session:s2")
+        #expect(readHealed.found && readHealed.data == Data("healed".utf8))
+        #expect(second.list(opID: 6).localRefs.isEmpty)
     }
 
     @Test func quotaLimitRefusesOverflowWithStorageFull() throws {
