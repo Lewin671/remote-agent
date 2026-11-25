@@ -184,6 +184,8 @@ export class DirectChannel {
   private confirmed = false;
   private ended = false;
   private chain = Promise.resolve();
+  private receiveChain = Promise.resolve();
+  private verifying: { bytes: number; frames: number } | null = null;
   private partial = new Map<string, PartialMessage>();
   private waiting: Uint8Array<ArrayBuffer>[] = [];
   private tick: ReturnType<typeof setInterval>;
@@ -269,7 +271,10 @@ export class DirectChannel {
         this.close();
         return;
       }
-      void this.receive(new Uint8Array(event.data)).catch(() => this.close());
+      const raw = new Uint8Array(event.data);
+      this.receiveChain = this.receiveChain
+        .then(() => this.receive(raw))
+        .catch(() => this.close());
     };
     this.probe.onmessage = (event) => {
       if (!this.ready || !(event.data instanceof ArrayBuffer) || event.data.byteLength !== 17) return;
@@ -502,7 +507,7 @@ export class DirectChannel {
     part.bytes += frame.fragment.byteLength;
     this.partial.set(key, part);
     if (part.parts.size !== part.count) return;
-    if (part.bytes !== part.length || !this.options.budget.reserve(this.options.peer, 1, part.bytes, 1)) {
+    if (part.bytes !== part.length) {
       this.drop(key, part);
       return;
     }
@@ -514,20 +519,34 @@ export class DirectChannel {
       offset += chunk.byteLength;
     }
     const hash = part.hash;
-    this.drop(key, part);
+    const extraFrames = part.parts.size - 1;
+    this.partial.delete(key);
+    if (extraFrames > 0) {
+      this.options.budget.free(this.options.peer, 1, 0, extraFrames);
+    }
+    const held = { bytes: completed.byteLength, frames: 1 };
+    this.verifying = held;
     let valid: boolean;
     try {
       valid = equalBytes(hash, await sha256(completed));
     } catch (error) {
-      this.options.budget.free(this.options.peer, 1, completed.byteLength, 1);
+      this.releaseVerifying(held);
       throw error;
     }
-    if (!valid || !this.valid()) {
-      this.options.budget.free(this.options.peer, 1, completed.byteLength, 1);
+    if (!valid || !this.valid() || this.verifying !== held) {
+      this.releaseVerifying(held);
       return;
     }
+    this.verifying = null;
     if (this.confirmed) this.deliver(completed);
     else this.waiting.push(completed);
+  }
+
+  private releaseVerifying(held: { bytes: number; frames: number }) {
+    if (this.verifying === held) {
+      this.verifying = null;
+      this.options.budget.free(this.options.peer, 1, held.bytes, held.frames);
+    }
   }
 
   private deliver(raw: Uint8Array<ArrayBuffer>) {
@@ -546,6 +565,7 @@ export class DirectChannel {
     this.lifetime.abort(new PathChanged());
     clearInterval(this.tick);
     for (const [key, part] of this.partial) this.drop(key, part);
+    if (this.verifying) this.releaseVerifying(this.verifying);
     for (const raw of this.waiting.splice(0)) this.options.budget.free(this.options.peer, 1, raw.byteLength, 1);
     cleanup(() => this.pc.close(), () => this.options.closed(), () => this.releaseReservation());
   }
