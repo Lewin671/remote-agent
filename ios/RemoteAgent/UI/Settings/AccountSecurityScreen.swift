@@ -115,7 +115,7 @@ struct AccountSecurityScreen: View {
                         await read()
                     }
                 }.padding(16)
-                if pending.kind == "handoffOffer" {
+                if pending.kind == "offer" {
                     TextAction(L10n.securityAbandonThisSuccessionPreparationSecurity(), color: DS.red) { abandon = true }.disabled(action.running).padding(.horizontal, 16)
                 } else if pending.hasDelivery_p {
                     TextAction(L10n.securityIosRemoveUndeliveredCandidate(), color: DS.red) { abandon = true }.padding(.horizontal, 16)
@@ -138,12 +138,12 @@ struct AccountSecurityScreen: View {
             await read()
         }
         .confirm(isPresented: $abandon, title: L10n.securityIosAbandonThisSecurityOperation(),
-            text: pending?.kind == "handoffOffer"
+            text: pending?.kind == "offer"
                 ? L10n.securityIosTheSuccessorSPublicKeyMayAlreadyBePublished()
                 : L10n.securityIosTheApprovedCandidateWithoutConfirmedDeliveryWillBeExplicitly(), confirm: L10n.newSessionIosAbandon(), danger: true) {
                 action.run {
                     guard let pending else { return }
-                    if pending.kind == "handoffOffer" {
+                    if pending.kind == "offer" {
                         try await context.remote.discardPendingOp(abandonHandoff: true)
                     } else if !pending.deliveryCandidateID.isEmpty {
                         try await context.remote.removeDevice(pending.deliveryCandidateID)
