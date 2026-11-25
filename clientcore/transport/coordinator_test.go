@@ -1118,3 +1118,26 @@ func TestCoordinatorVerdictCreateFailedReachable(t *testing.T) {
 		t.Fatalf("B14: expected VerdictCreateFailed(%d), got %d", VerdictCreateFailed, v)
 	}
 }
+
+func TestCoordinatorRecordsBatchCapCandidateDropsInDiagnostics(t *testing.T) {
+	coord, _, _, now, _, rid, _ := driveEstablishedCoordRound(t, "127.0.0.1", "")
+	r := coord.rounds[rid]
+	for i := 0; i < 6; i++ {
+		coord.applySessionEffects(now+int64(i), r, []linkcore.Effect{
+			linkcore.SignalRejected{Use: uint64(UseRead), Type: 5, Reason: "batch cap"},
+		})
+	}
+	rounds, _, _ := coord.Diagnostics(r.machine)
+	if len(rounds) == 0 {
+		t.Fatal("expected diagnostic round")
+	}
+	found := false
+	for _, rej := range rounds[0].Pcs[0].Rejects {
+		if rej.Key == "candidates:batch cap" && rej.N == 6 {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected candidates:batch cap with N=6 in diagnostics, got %+v", rounds[0].Pcs[0].Rejects)
+	}
+}

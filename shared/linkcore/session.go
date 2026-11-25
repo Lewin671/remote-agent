@@ -330,11 +330,20 @@ func (s *Session) Handle(e Event, now uint64) []Effect {
 				if p.signal.LocalSDP {
 					s.flush(now)
 				}
-			} else if !p.batch.Add(e.Candidate, p.signal.Generation, now, 1) {
+				return
+			}
+			prevDropped := p.batch.Dropped
+			if !p.batch.Add(e.Candidate, p.signal.Generation, now, 1) {
 				p.signal.Closed = true
 				s.emit(ClosePC{p.pc, "candidate_budget"})
 				p.pc = 0
-			} else if p.signal.LocalSDP && len(p.batch.Pending) >= 16 {
+				return
+			}
+			if p.batch.Dropped > prevDropped {
+				s.emit(SignalRejected{Use: uint64(i + 1), Type: 5, Reason: "batch cap"})
+				return
+			}
+			if p.signal.LocalSDP && len(p.batch.Pending) >= 16 {
 				s.flush(now)
 			}
 		})

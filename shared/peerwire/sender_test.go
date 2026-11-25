@@ -80,73 +80,98 @@ func TestOfflineDiscoveryKeepsOriginalRetryWindow(t *testing.T) {
 }
 
 func TestCandidateBatcherTrickleAndBounds(t *testing.T) {
-	// 1. Small initial host candidates flush promptly at 50ms without waiting for end=true.
+	// 1. Typical Trickle timing: initial host burst flushes at 50ms (batch 0),
+	//    subsequent STUN srflx flushes at 50ms (batch 1), batches 2 & 3 wait for 16 or end=true.
 	b := CandidateBatcher{Generation: 1, Deadline: 10000, Binding: 1}
 	for i := 0; i < 4; i++ {
 		if !b.Add([]byte{byte(i)}, 1, 5, 1) {
-			t.Fatalf("add %d failed", i)
+			t.Fatalf("add host %d failed", i)
 		}
 	}
 	groups := b.Flush(55, false, 1, 1)
-	if len(groups) != 1 || len(groups[0]) != 4 {
-		t.Fatalf("expected 1 early batch of 4 at 55ms, got %d batches", len(groups))
-	}
-	if b.Batches != 1 || b.Count != 4 {
-		t.Fatalf("after batch 0: batches=%d count=%d", b.Batches, b.Count)
+	if len(groups) != 1 || len(groups[0]) != 4 || b.Batches != 1 || b.Count != 4 || b.Dropped != 0 {
+		t.Fatalf("batch 0 host burst: groups=%d batches=%d count=%d dropped=%d", len(groups), b.Batches, b.Count, b.Dropped)
 	}
 
-	// 2. Subsequent srflx candidates in batches 1 and 2 also trickle at 50ms.
-	if !b.Add([]byte{10}, 1, 80, 1) {
-		t.Fatal("add srflx 1 failed")
+	// STUN srflx arrives later at 80ms -> flushes as batch 1 at 130ms without waiting for end=true.
+	if !b.Add([]byte{10}, 1, 80, 1) || !b.Add([]byte{11}, 1, 85, 1) {
+		t.Fatal("add srflx failed")
 	}
 	groups = b.Flush(130, false, 1, 1)
-	if len(groups) != 1 || len(groups[0]) != 1 || b.Batches != 2 {
-		t.Fatalf("expected batch 1 of 1 at 130ms, got %d batches (total=%d)", len(groups), b.Batches)
-	}
-	if !b.Add([]byte{11}, 1, 200, 1) {
-		t.Fatal("add srflx 2 failed")
-	}
-	groups = b.Flush(250, false, 1, 1)
-	if len(groups) != 1 || len(groups[0]) != 1 || b.Batches != 3 {
-		t.Fatalf("expected batch 2 of 1 at 250ms, got %d batches (total=%d)", len(groups), b.Batches)
+	if len(groups) != 1 || len(groups[0]) != 2 || b.Batches != 2 || b.Count != 6 || b.Dropped != 0 {
+		t.Fatalf("batch 1 srflx: groups=%d batches=%d count=%d dropped=%d", len(groups), b.Batches, b.Count, b.Dropped)
 	}
 
-	// 3. Batch 3 (4th and final wire batch) waits for 16 candidates or end=true without timer spin.
-	if !b.Add([]byte{12}, 1, 300, 1) {
-		t.Fatal("add batch 3 cand failed")
+	// Batch 2 and 3 hold until 16 candidates accumulate or end=true (no 50ms timer spin).
+	if !b.Add([]byte{12}, 1, 200, 1) {
+		t.Fatal("add batch 2 cand failed")
 	}
 	if b.Due != 0 {
-		t.Fatalf("expected no 50ms timer spin on final batch 3, got Due=%d", b.Due)
+		t.Fatalf("expected no 50ms timer spin on batch 2, got Due=%d", b.Due)
 	}
-	if got := b.Flush(500, false, 1, 1); len(got) != 0 {
-		t.Fatalf("expected final batch 3 to wait for 16 or end, got %d batches", len(got))
+	if got := b.Flush(300, false, 1, 1); len(got) != 0 {
+		t.Fatalf("expected batch 2 to wait for 16 or end, got %d batches", len(got))
+	}
+	groups = b.Flush(400, true, 1, 1)
+	if len(groups) != 1 || len(groups[0]) != 1 || b.Batches != 3 || b.Count != 7 || b.Dropped != 0 {
+		t.Fatalf("tail flush: groups=%d batches=%d count=%d dropped=%d", len(groups), b.Batches, b.Count, b.Dropped)
 	}
 
-	// 4. Adding remaining candidates up to 64 total never panics, respects 4-batch wire limit,
-	// keeps Count == total emitted, and rejects the 65th candidate.
-	emitted := 4 + 1 + 1 // already emitted in batches 0..2
-	for i := 7; i < 64; i++ {
-		if !b.Add([]byte{byte(i)}, 1, 600, 1) {
-			t.Fatalf("add #%d (within 64 budget) unexpectedly rejected", i+1)
+	// 2. Worst-case 40 candidates (1 in batch 0, 1 in batch 1, then 38 more):
+	//    never panics, emits >= 34 (exact 1+1+16+16=34), counts 6 drops, End Count == emitted,
+	//    and still enforces the 64-candidate hard budget.
+	w := CandidateBatcher{Generation: 1, Deadline: 10000, Binding: 1}
+	emitted := 0
+	flushEmitted := func(now uint64, end bool) {
+		for _, g := range w.Flush(now, end, 1, 1) {
+			emitted += len(g)
 		}
 	}
-	if b.Add([]byte{99}, 1, 600, 1) {
-		t.Fatal("65th candidate must be rejected")
+	if !w.Add([]byte{0}, 1, 0, 1) {
+		t.Fatal("add #1")
 	}
-	for _, g := range b.Flush(700, true, 1, 1) {
-		emitted += len(g)
+	flushEmitted(50, false) // batch 0: 1
+	if !w.Add([]byte{1}, 1, 100, 1) {
+		t.Fatal("add #2")
 	}
-	if b.Batches > 4 {
-		t.Fatalf("batches exceeded 4: %d", b.Batches)
+	flushEmitted(150, false) // batch 1: 1
+	if w.Batches != 2 || emitted != 2 {
+		t.Fatalf("expected 2 early batches with 2 emitted, got batches=%d emitted=%d", w.Batches, emitted)
 	}
-	if b.Count != emitted {
-		t.Fatalf("EndCandidates Count mismatch: b.Count=%d emitted=%d", b.Count, emitted)
+	for i := 2; i < 40; i++ {
+		if !w.Add([]byte{byte(i)}, 1, 200+uint64(i), 1) {
+			t.Fatalf("add #%d rejected unexpectedly", i+1)
+		}
+		if len(w.Pending) >= 16 {
+			flushEmitted(200+uint64(i), false)
+		}
 	}
-	if emitted != 6+16 {
-		t.Fatalf("expected 6+16=22 emitted across 4 wire batches, got %d", emitted)
+	flushEmitted(500, true)
+	if w.Batches != 4 {
+		t.Fatalf("expected 4 wire batches, got %d", w.Batches)
+	}
+	if emitted < 34 || emitted != 34 {
+		t.Fatalf("expected >=34 (exact 34) emitted in worst-case 40-candidate burst, got %d", emitted)
+	}
+	if w.Dropped != 6 {
+		t.Fatalf("expected 6 dropped candidates counted, got %d", w.Dropped)
+	}
+	if w.Count != emitted {
+		t.Fatalf("EndCandidates Count mismatch: w.Count=%d emitted=%d", w.Count, emitted)
 	}
 
-	// 5. End=true flushes immediately even before 50ms.
+	// 3. 64-candidate hard budget still rejects the 65th candidate even when batches are full.
+	capB := CandidateBatcher{Generation: 1, Deadline: 10000, Binding: 1}
+	for i := 0; i < 64; i++ {
+		if !capB.Add([]byte{byte(i)}, 1, 0, 1) {
+			t.Fatalf("capB add #%d failed", i+1)
+		}
+	}
+	if capB.Add([]byte{65}, 1, 0, 1) {
+		t.Fatal("65th candidate must be rejected")
+	}
+
+	// 4. End=true flushes immediately even before 50ms.
 	b2 := CandidateBatcher{Generation: 1, Deadline: 10000, Binding: 1}
 	if !b2.Add([]byte{1}, 1, 10, 1) {
 		t.Fatal("b2 add failed")

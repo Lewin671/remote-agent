@@ -111,25 +111,26 @@ type fakePC struct {
 // fakeEnd is the fake executor of one session: it performs effects in
 // order, at once, and feeds results back like the daemon's executor does.
 type fakeEnd struct {
-	t         *testing.T
-	which     int
-	key       *testKey
-	codec     *peerwire.Codec
-	peer      peerwire.Public
-	s         *Session
-	now       *uint64
-	pcs       map[uint64]*fakePC
-	ready     map[uint64]*fakePC
-	sent      []TransmitFrame
-	events    []Event // SDK callbacks delivered on the next step
-	hold      bool    // keep signatures back until release
-	held      []SignFrame
-	signs     int
-	ended     string
-	roundDone bool
-	control   func(peerwire.Opened, uint64) (uint64, []byte)
-	controls  int
-	observe   func(Effect) // sees every effect, in the order performed
+	t                *testing.T
+	which            int
+	key              *testKey
+	codec            *peerwire.Codec
+	peer             peerwire.Public
+	s                *Session
+	now              *uint64
+	noAutoCandidates bool
+	pcs              map[uint64]*fakePC
+	ready            map[uint64]*fakePC
+	sent             []TransmitFrame
+	events           []Event // SDK callbacks delivered on the next step
+	hold             bool    // keep signatures back until release
+	held             []SignFrame
+	signs            int
+	ended            string
+	roundDone        bool
+	control          func(peerwire.Opened, uint64) (uint64, []byte)
+	controls         int
+	observe          func(Effect) // sees every effect, in the order performed
 }
 
 func newFakeEnd(t *testing.T, which int, key *testKey, peer peerwire.Public, codec *peerwire.Codec, connection []byte, now *uint64, deadline uint64, initiate bool, policy func() bool) *fakeEnd {
@@ -183,9 +184,11 @@ func (e *fakeEnd) apply(fx []Effect) {
 			pc := e.pcs[f.ID]
 			pc.local = fakeSDP(e.which, f.ID)
 			e.handle(PCDescribed{f.ID, pc.local, true})
-			e.events = append(e.events,
-				PCLocalCandidate{ID: f.ID, Candidate: []byte("candidate:1 1 udp 2130706431 127.0.0.1 50000 typ host"), Valid: true},
-				PCLocalCandidate{ID: f.ID, End: true, Valid: true})
+			if !e.noAutoCandidates {
+				e.events = append(e.events,
+					PCLocalCandidate{ID: f.ID, Candidate: []byte("candidate:1 1 udp 2130706431 127.0.0.1 50000 typ host"), Valid: true},
+					PCLocalCandidate{ID: f.ID, End: true, Valid: true})
+			}
 		case SetRemotePC:
 			e.pcs[f.ID].remote = f.SDP
 			e.handle(PCRemoteSet{f.ID, true})
@@ -1208,5 +1211,88 @@ func TestSessionLocalCandidateEndFlushAndPreDescribeGuard(t *testing.T) {
 	}
 	if !sawEndSign {
 		t.Fatalf("B13: 0-candidate PCLocalCandidate{End:true} did not immediately flush EndCandidates")
+	}
+}
+
+func TestSessionFortyCandidatesBatchCapDiagnosticsAndPeerEndAgreement(t *testing.T) {
+	// Verify:
+	// 1) Batches 0 and 1 trickle at 50ms (1 host + 1 srflx), batches 2 and 3 hold for 16 or end.
+	// 2) With 40 total local candidates (1 + 1 + 38), 34 are emitted across 4 wire batches,
+	//    6 drops are NOT silent (each emits SignalRejected{Use:1, Type:5, Reason:"batch cap"}),
+	//    and peer's peerwire.Signal accepts all 4 candidate batches + EndCandidates(34, 4) with
+	//    no gap and no rejection.
+	a, b := orderedKeys(t)
+	codec := testCodec(t)
+	now := uint64(1_700_000_000_000)
+	conn := make([]byte, 16)
+	_, _ = rand.Read(conn)
+	deadline := now + 10000
+
+	eA := newFakeEnd(t, 0, a, b.pub, codec, conn, &now, deadline, true, nil)
+	eA.noAutoCandidates = true
+	eB := newFakeEnd(t, 1, b, a.pub, codec, conn, &now, deadline, false, nil)
+	// Prevent fakeEnd from auto-injecting its own candidates on DescribePC by driving eA/eB cleanly.
+	p := &fakePair{now: now, ends: [2]*fakeEnd{eA, eB}}
+	// Complete bootstrap + Offer/Answer SDP exchange on use 1.
+	for i := 0; i < 40 && !(eA.s.pcs[0].signal.LocalSDP && eB.s.pcs[0].signal.RemoteSDP); i++ {
+		p.step()
+	}
+	if !eA.s.pcs[0].signal.LocalSDP || !eB.s.pcs[0].signal.RemoteSDP {
+		t.Fatalf("SDP exchange did not complete: A=%v B=%v", eA.s.Steps(), eB.s.Steps())
+	}
+	pcA := eA.s.pcs[0].pc
+	ufragA := string(eA.s.pcs[0].localUfrag)
+	candLine := func(idx int) []byte {
+		return []byte(fmt.Sprintf("candidate:%d 1 UDP 2122252543 192.0.2.%d %d typ host ufrag %s", idx, 1+idx%200, 50000+idx, ufragA))
+	}
+
+	droppedSignals := 0
+	eA.observe = func(f Effect) {
+		if sr, ok := f.(SignalRejected); ok && sr.Use == 1 && sr.Type == 5 && sr.Reason == "batch cap" {
+			droppedSignals++
+		}
+	}
+
+	// Candidate #1 -> flush at +50ms (batch 0, size 1).
+	eA.handle(PCLocalCandidate{ID: pcA, Candidate: candLine(1), Valid: true})
+	p.now += 50
+	*eA.now = p.now
+	*eB.now = p.now
+	eA.handle(Tick{})
+
+	// Candidate #2 -> flush at +50ms (batch 1, size 1).
+	eA.handle(PCLocalCandidate{ID: pcA, Candidate: candLine(2), Valid: true})
+	p.now += 50
+	*eA.now = p.now
+	*eB.now = p.now
+	eA.handle(Tick{})
+
+	if eA.s.pcs[0].batch.Batches != 2 || eA.s.pcs[0].batch.Count != 2 {
+		t.Fatalf("expected 2 early trickle batches (count=2), got batches=%d count=%d",
+			eA.s.pcs[0].batch.Batches, eA.s.pcs[0].batch.Count)
+	}
+
+	// Candidates #3..#40 (38 more) -> batches 2 & 3 emit 16 + 16 = 32 (total 34), 6 dropped with diagnostics.
+	for i := 3; i <= 40; i++ {
+		eA.handle(PCLocalCandidate{ID: pcA, Candidate: candLine(i), Valid: true})
+	}
+	eA.handle(PCLocalCandidate{ID: pcA, End: true, Valid: true})
+
+	if eA.s.pcs[0].batch.Batches != 4 || eA.s.pcs[0].batch.Count != 34 || eA.s.pcs[0].batch.Dropped != 6 {
+		t.Fatalf("sender batcher state mismatch: batches=%d count=%d dropped=%d",
+			eA.s.pcs[0].batch.Batches, eA.s.pcs[0].batch.Count, eA.s.pcs[0].batch.Dropped)
+	}
+	if droppedSignals != 6 {
+		t.Fatalf("expected 6 SignalRejected(batch cap) diagnostic effects, got %d", droppedSignals)
+	}
+
+	// Deliver all wire frames from A to B and verify peerwire.Signal accepts all 4 batches + EndCandidates(34, 4).
+	for i := 0; i < 40 && !eB.s.pcs[0].signal.Ended; i++ {
+		p.step()
+	}
+	sigB := eB.s.pcs[0].signal
+	if !sigB.Ended || sigB.Candidates != 34 || sigB.Batches != 4 || sigB.GapDeadline != 0 || sigB.Rejected != 0 {
+		t.Fatalf("peer Signal rejected or disagreed on EndCandidates: ended=%v cands=%d batches=%d gap=%d rejected=%d",
+			sigB.Ended, sigB.Candidates, sigB.Batches, sigB.GapDeadline, sigB.Rejected)
 	}
 }
