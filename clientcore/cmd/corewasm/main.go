@@ -10,11 +10,10 @@ import (
 )
 
 var (
-	mu          sync.Mutex
-	nextHandle  int64 = 1
-	projections       = make(map[int64]*corebind.Projection)
-	cores             = make(map[int64]*corebind.Core)
-	imagePlans        = make(map[int64]*corebind.ImagePlan)
+	mu         sync.Mutex
+	nextHandle int64 = 1
+	cores            = make(map[int64]*corebind.Core)
+	imagePlans       = make(map[int64]*corebind.ImagePlan)
 )
 
 func bytesFromJS(v js.Value) []byte {
@@ -43,12 +42,6 @@ func resultBytes(b []byte, err error) any {
 		return map[string]any{"error": err.Error()}
 	}
 	return map[string]any{"data": bytesToJS(b)}
-}
-
-func lookup(handle int64) *corebind.Projection {
-	mu.Lock()
-	defer mu.Unlock()
-	return projections[handle]
 }
 
 func lookupCore(handle int64) *corebind.Core {
@@ -118,93 +111,6 @@ func main() {
 			c.Close()
 		}
 		return nil
-	}))
-
-	api.Set("newProjection", js.FuncOf(func(_ js.Value, args []js.Value) any {
-		var agent int32
-		if len(args) > 0 {
-			agent = int32(args[0].Int())
-		}
-		mu.Lock()
-		id := nextHandle
-		nextHandle++
-		projections[id] = corebind.NewProjection(agent)
-		mu.Unlock()
-		return float64(id)
-	}))
-
-	api.Set("projectionReset", js.FuncOf(func(_ js.Value, args []js.Value) any {
-		if len(args) < 2 {
-			return nil
-		}
-		if p := lookup(int64(args[0].Float())); p != nil {
-			p.Reset(int32(args[1].Int()))
-		}
-		return nil
-	}))
-
-	api.Set("projectionAppend", js.FuncOf(func(_ js.Value, args []js.Value) any {
-		if len(args) < 1 {
-			return map[string]any{"error": "missing handle"}
-		}
-		p := lookup(int64(args[0].Float()))
-		if p == nil {
-			return map[string]any{"error": "unknown handle"}
-		}
-		var raw []byte
-		if len(args) > 1 {
-			raw = bytesFromJS(args[1])
-		}
-		return resultBytes(p.Append(raw))
-	}))
-
-	api.Set("projectionSnapshot", js.FuncOf(func(_ js.Value, args []js.Value) any {
-		if len(args) < 1 {
-			return map[string]any{"error": "missing handle"}
-		}
-		p := lookup(int64(args[0].Float()))
-		if p == nil {
-			return map[string]any{"error": "unknown handle"}
-		}
-		return resultBytes(p.Snapshot())
-	}))
-
-	api.Set("projectionCurrentActions", js.FuncOf(func(_ js.Value, args []js.Value) any {
-		if len(args) < 1 {
-			return map[string]any{"error": "missing handle"}
-		}
-		p := lookup(int64(args[0].Float()))
-		if p == nil {
-			return map[string]any{"error": "unknown handle"}
-		}
-		var raw []byte
-		if len(args) > 1 {
-			raw = bytesFromJS(args[1])
-		}
-		return resultBytes(p.CurrentActions(raw))
-	}))
-
-	api.Set("projectionFree", js.FuncOf(func(_ js.Value, args []js.Value) any {
-		if len(args) < 1 {
-			return nil
-		}
-		id := int64(args[0].Float())
-		mu.Lock()
-		delete(projections, id)
-		mu.Unlock()
-		return nil
-	}))
-
-	api.Set("reduceProjection", js.FuncOf(func(_ js.Value, args []js.Value) any {
-		var agent int32
-		var raw []byte
-		if len(args) > 0 {
-			agent = int32(args[0].Int())
-		}
-		if len(args) > 1 {
-			raw = bytesFromJS(args[1])
-		}
-		return resultBytes(corebind.Reduce(agent, raw))
 	}))
 
 	api.Set("sniffImageFormat", js.FuncOf(func(_ js.Value, args []js.Value) any {

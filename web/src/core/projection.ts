@@ -5,13 +5,6 @@ export interface CoreWasmApi {
   dispatch(handle: number, eventBytes?: Uint8Array): CoreWasmResult;
   view(handle: number, screenBytes?: Uint8Array): CoreWasmResult;
   close(handle: number): void;
-  newProjection(agent: number): number;
-  projectionReset(handle: number, agent: number): void;
-  projectionAppend(handle: number, batchBytes?: Uint8Array): CoreWasmResult;
-  projectionSnapshot(handle: number): CoreWasmResult;
-  projectionCurrentActions(handle: number, liveBytes?: Uint8Array): CoreWasmResult;
-  projectionFree(handle: number): void;
-  reduceProjection(agent: number, batchBytes?: Uint8Array): CoreWasmResult;
   sniffImageFormat(header?: Uint8Array): number;
   tiffOrientation(tiff?: Uint8Array): number;
   imagePlanMaxSteps(totalLen: number): number;
@@ -45,50 +38,6 @@ function unwrap(res: CoreWasmResult): Uint8Array {
     throw new Error(res.error);
   }
   return res.data;
-}
-
-export class WasmProjection {
-  private readonly api: CoreWasmApi;
-  private readonly handle: number;
-  private freed = false;
-
-  constructor(api: CoreWasmApi, agent = 0) {
-    this.api = api;
-    this.handle = api.newProjection(agent);
-  }
-
-  reset(agent: number): void {
-    this.assertAlive();
-    this.api.projectionReset(this.handle, agent);
-  }
-
-  append(eventBatchBytes?: Uint8Array): Uint8Array {
-    this.assertAlive();
-    return unwrap(this.api.projectionAppend(this.handle, eventBatchBytes));
-  }
-
-  snapshot(): Uint8Array {
-    this.assertAlive();
-    return unwrap(this.api.projectionSnapshot(this.handle));
-  }
-
-  currentActions(liveSnapshotBytes?: Uint8Array): Uint8Array {
-    this.assertAlive();
-    return unwrap(this.api.projectionCurrentActions(this.handle, liveSnapshotBytes));
-  }
-
-  free(): void {
-    if (!this.freed) {
-      this.freed = true;
-      this.api.projectionFree(this.handle);
-    }
-  }
-
-  private assertAlive(): void {
-    if (this.freed) {
-      throw new Error("WasmProjection already freed");
-    }
-  }
 }
 
 export class WasmAppCore {
@@ -182,14 +131,6 @@ export class RemoteAgentCore {
 
   newAppCore(): WasmAppCore {
     return new WasmAppCore(this.api);
-  }
-
-  newProjection(agent = 0): WasmProjection {
-    return new WasmProjection(this.api, agent);
-  }
-
-  reduce(agent: number, eventBatchBytes?: Uint8Array): Uint8Array {
-    return unwrap(this.api.reduceProjection(agent, eventBatchBytes));
   }
 
   sniffImageFormat(header: Uint8Array): number {
