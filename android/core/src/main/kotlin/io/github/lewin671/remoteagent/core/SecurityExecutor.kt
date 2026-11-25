@@ -13,6 +13,7 @@ import okio.Buffer
 import io.github.lewin671.remoteagent.core.proto.Effect
 import io.github.lewin671.remoteagent.core.proto.EffectBatch
 import io.github.lewin671.remoteagent.core.proto.Event as CoreEvent
+import io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytes
 import io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreeEffect
 import io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreedEvent
 import io.github.lewin671.remoteagent.core.proto.SecurityKeyDiscardEffect
@@ -41,6 +42,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -53,6 +55,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.IOException
+import java.util.Base64
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 
@@ -119,6 +122,49 @@ private fun connectCodeFromHttpStatus(status: Int): Int = when (status) {
 }
 
 private fun errorMessage(t: Throwable): String = t.message?.takeIf { it.isNotEmpty() } ?: t.javaClass.simpleName
+
+internal fun parseSecurityRpcError(
+    opId: Long,
+    httpCode: Int,
+    bodyBytes: ByteArray,
+    causeCode: Int? = null,
+    causeMsg: String? = null,
+    fallbackDetails: List<RpcErrorDetailBytes> = emptyList(),
+): SecurityRpcResultEvent {
+    var code = causeCode ?: connectCodeFromHttpStatus(httpCode)
+    var msg = causeMsg?.takeIf { it.isNotEmpty() } ?: "HTTP $httpCode"
+    val details = mutableListOf<RpcErrorDetailBytes>()
+    val text = runCatching { bodyBytes.decodeToString() }.getOrNull()
+    val parsed = if (!text.isNullOrBlank()) runCatching { Json.parseToJsonElement(text) as? JsonObject }.getOrNull() else null
+    if (parsed != null) {
+        parsed["code"]?.jsonPrimitive?.contentOrNull?.let { CONNECT_CODE_MAP[it]?.let { c -> code = c } }
+        parsed["message"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotEmpty() }?.let { msg = it }
+        val rawDetails = parsed["details"] as? JsonArray
+        if (rawDetails != null) {
+            for (elem in rawDetails) {
+                val obj = elem as? JsonObject ?: continue
+                val typeName = obj["type"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotEmpty() } ?: continue
+                val b64 = obj["value"]?.jsonPrimitive?.contentOrNull?.replace(Regex("\\s+"), "")?.takeIf { it.isNotEmpty() } ?: continue
+                val decoded = runCatching { Base64.getDecoder().decode(b64) }.getOrNull() ?: continue
+                if (decoded.isNotEmpty()) {
+                    details += RpcErrorDetailBytes.newBuilder()
+                        .setTypeName(typeName)
+                        .setValue(ByteString.copyFrom(decoded))
+                        .build()
+                }
+            }
+        }
+    }
+    if (details.isEmpty() && fallbackDetails.isNotEmpty()) {
+        details += fallbackDetails
+    }
+    return SecurityRpcResultEvent.newBuilder()
+        .setOpId(opId)
+        .setConnectCode(code)
+        .setError(msg)
+        .apply { if (details.isNotEmpty()) addAllErrorDetails(details) }
+        .build()
+}
 
 /**
  * Executes all host-side S6 security effects emitted by Go `clientcore`:
@@ -227,12 +273,21 @@ internal class SecurityExecutor(
     private fun rpcOk(opId: Long, bodyBytes: ByteArray): SecurityRpcResultEvent =
         SecurityRpcResultEvent.newBuilder().setOpId(opId).setResponseBytes(ByteString.copyFrom(bodyBytes)).build()
 
-    private fun rpcErr(opId: Long, code: Int, msg: String, networkError: Boolean = false): SecurityRpcResultEvent =
+    private fun rpcErr(
+        opId: Long,
+        code: Int,
+        msg: String,
+        networkError: Boolean = false,
+        errorDetails: List<RpcErrorDetailBytes> = emptyList(),
+    ): SecurityRpcResultEvent =
         SecurityRpcResultEvent.newBuilder()
             .setOpId(opId)
             .setConnectCode(code)
             .setError(msg)
-            .apply { if (networkError) setNetworkError(true) }
+            .apply {
+                if (networkError) setNetworkError(true)
+                if (errorDetails.isNotEmpty()) addAllErrorDetails(errorDetails)
+            }
             .build()
 
     private fun parseRpcError(
@@ -241,17 +296,8 @@ internal class SecurityExecutor(
         bodyBytes: ByteArray,
         causeCode: Int? = null,
         causeMsg: String? = null,
-    ): SecurityRpcResultEvent {
-        var code = causeCode ?: connectCodeFromHttpStatus(httpCode)
-        var msg = causeMsg?.takeIf { it.isNotEmpty() } ?: "HTTP $httpCode"
-        val text = runCatching { bodyBytes.decodeToString() }.getOrNull()
-        val parsed = if (!text.isNullOrBlank()) runCatching { Json.parseToJsonElement(text) as? JsonObject }.getOrNull() else null
-        if (parsed != null) {
-            parsed["code"]?.jsonPrimitive?.contentOrNull?.let { CONNECT_CODE_MAP[it]?.let { c -> code = c } }
-            parsed["message"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotEmpty() }?.let { msg = it }
-        }
-        return rpcErr(opId, code, msg)
-    }
+        fallbackDetails: List<RpcErrorDetailBytes> = emptyList(),
+    ): SecurityRpcResultEvent = parseSecurityRpcError(opId, httpCode, bodyBytes, causeCode, causeMsg, fallbackDetails)
 
     private suspend fun executeRpcUnary(eff: SecurityRpcEffect): SecurityRpcResultEvent {
         val path = SECURITY_RPC_PATHS[eff.method]
@@ -283,11 +329,16 @@ internal class SecurityExecutor(
                     val bodyBytes = runCatching { res.message.readByteArray() }.getOrElse { ByteArray(0) }
                     val cause = res.cause
                     val status = res.status
+                    val causeDetails = cause?.details?.mapNotNull { d ->
+                        val bytes = d.payload.toByteArray()
+                        if (d.type.isEmpty() || bytes.isEmpty()) null
+                        else RpcErrorDetailBytes.newBuilder().setTypeName(d.type).setValue(ByteString.copyFrom(bytes)).build()
+                    }.orEmpty()
                     val result = when {
                         status != null && status in 200..299 && cause == null -> rpcOk(eff.opId, bodyBytes)
                         cause != null && status == null ->
-                            rpcErr(eff.opId, cause.code.value, cause.message ?: cause.code.codeName, cause.code == Code.UNAVAILABLE)
-                        else -> parseRpcError(eff.opId, status ?: 502, bodyBytes, cause?.code?.value, cause?.message)
+                            rpcErr(eff.opId, cause.code.value, cause.message ?: cause.code.codeName, cause.code == Code.UNAVAILABLE, causeDetails)
+                        else -> parseRpcError(eff.opId, status ?: 502, bodyBytes, cause?.code?.value, cause?.message, causeDetails)
                     }
                     if (cont.isActive) cont.resume(result)
                 }

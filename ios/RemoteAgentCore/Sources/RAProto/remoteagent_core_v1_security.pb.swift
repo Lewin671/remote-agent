@@ -1449,6 +1449,20 @@ public struct PBSecurityRpcEffect: Sendable {
   public init() {}
 }
 
+public struct PBRpcErrorDetailBytes: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var typeName: String = String()
+
+  public var value: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 public struct PBSecurityRpcResultEvent: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -1463,6 +1477,8 @@ public struct PBSecurityRpcResultEvent: Sendable {
   public var error: String = String()
 
   public var networkError: Bool = false
+
+  public var errorDetails: [PBRpcErrorDetailBytes] = []
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -4998,9 +5014,44 @@ extension PBSecurityRpcEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
   }
 }
 
+extension PBRpcErrorDetailBytes: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RpcErrorDetailBytes"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}type_name\0\u{1}value\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.typeName) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.value) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.typeName.isEmpty {
+      try visitor.visitSingularStringField(value: self.typeName, fieldNumber: 1)
+    }
+    if !self.value.isEmpty {
+      try visitor.visitSingularBytesField(value: self.value, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBRpcErrorDetailBytes, rhs: PBRpcErrorDetailBytes) -> Bool {
+    if lhs.typeName != rhs.typeName {return false}
+    if lhs.value != rhs.value {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 extension PBSecurityRpcResultEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityRpcResultEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}response_bytes\0\u{3}connect_code\0\u{1}error\0\u{3}network_error\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}response_bytes\0\u{3}connect_code\0\u{1}error\0\u{3}network_error\0\u{3}error_details\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5013,6 +5064,7 @@ extension PBSecurityRpcResultEvent: SwiftProtobuf.Message, SwiftProtobuf._Messag
       case 3: try { try decoder.decodeSingularInt32Field(value: &self.connectCode) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.error) }()
       case 5: try { try decoder.decodeSingularBoolField(value: &self.networkError) }()
+      case 6: try { try decoder.decodeRepeatedMessageField(value: &self.errorDetails) }()
       default: break
       }
     }
@@ -5034,6 +5086,9 @@ extension PBSecurityRpcResultEvent: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if self.networkError != false {
       try visitor.visitSingularBoolField(value: self.networkError, fieldNumber: 5)
     }
+    if !self.errorDetails.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.errorDetails, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -5043,6 +5098,7 @@ extension PBSecurityRpcResultEvent: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if lhs.connectCode != rhs.connectCode {return false}
     if lhs.error != rhs.error {return false}
     if lhs.networkError != rhs.networkError {return false}
+    if lhs.errorDetails != rhs.errorDetails {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

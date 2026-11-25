@@ -89,6 +89,7 @@ type rpcError struct {
 	code    int32
 	msg     string
 	network bool
+	detail  *v1.RelayErrorDetail
 }
 
 func (e *rpcError) Error() string {
@@ -96,6 +97,99 @@ func (e *rpcError) Error() string {
 		return e.msg
 	}
 	return "rpc failed"
+}
+
+func (e *rpcError) relayReason() v1.RelayErrorReason {
+	if e == nil || e.detail == nil {
+		return v1.RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED
+	}
+	return e.detail.Reason
+}
+
+func (e *rpcError) isTokenInvalid() bool {
+	if e == nil {
+		return false
+	}
+	if r := e.relayReason(); r != v1.RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED {
+		return r == v1.RelayErrorReason_RELAY_ERROR_REASON_TOKEN_INVALID
+	}
+	return e.code == connectCodeUnauthenticated
+}
+
+func (e *rpcError) isSignupPowRequired() bool {
+	if e == nil {
+		return false
+	}
+	if r := e.relayReason(); r != v1.RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED {
+		return r == v1.RelayErrorReason_RELAY_ERROR_REASON_SIGNUP_POW_REQUIRED
+	}
+	return e.code == connectCodeFailedPrecondition
+}
+
+func (e *rpcError) isCreateInitLoginMissing() bool {
+	if e == nil {
+		return false
+	}
+	if r := e.relayReason(); r != v1.RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED {
+		return r == v1.RelayErrorReason_RELAY_ERROR_REASON_LOGIN_FAILED
+	}
+	return e.code == connectCodePermissionDenied || e.code == connectCodeNotFound || e.code == connectCodeUnauthenticated
+}
+
+func (e *rpcError) isRetainedLoginDenied() bool {
+	if e == nil {
+		return false
+	}
+	if r := e.relayReason(); r != v1.RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED {
+		return r == v1.RelayErrorReason_RELAY_ERROR_REASON_LOGIN_FAILED ||
+			r == v1.RelayErrorReason_RELAY_ERROR_REASON_DEVICE_NOT_MEMBER ||
+			r == v1.RelayErrorReason_RELAY_ERROR_REASON_ACCOUNT_SUSPENDED
+	}
+	return e.code == connectCodePermissionDenied
+}
+
+func (e *rpcError) isPairingGone() bool {
+	if e == nil {
+		return false
+	}
+	if r := e.relayReason(); r != v1.RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED {
+		return r == v1.RelayErrorReason_RELAY_ERROR_REASON_PAIRING_INVALID_OR_EXPIRED
+	}
+	return e.code == connectCodeNotFound
+}
+
+func (e *rpcError) isJoinPairingGone() bool {
+	if e == nil {
+		return false
+	}
+	if r := e.relayReason(); r != v1.RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED {
+		return r == v1.RelayErrorReason_RELAY_ERROR_REASON_PAIRING_INVALID_OR_EXPIRED ||
+			r == v1.RelayErrorReason_RELAY_ERROR_REASON_DEVICE_NOT_MEMBER ||
+			r == v1.RelayErrorReason_RELAY_ERROR_REASON_ACCOUNT_SUSPENDED
+	}
+	return e.code == connectCodeNotFound || e.code == connectCodePermissionDenied
+}
+
+func (e *rpcError) isDeliveryFallback() bool {
+	if e == nil {
+		return false
+	}
+	if r := e.relayReason(); r != v1.RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED {
+		return r == v1.RelayErrorReason_RELAY_ERROR_REASON_PAIRING_INVALID_OR_EXPIRED
+	}
+	return e.code == connectCodeNotFound || e.code == connectCodeFailedPrecondition || e.code == connectCodeCanceled
+}
+
+func (e *rpcError) isResumeRegFallbackLogin() bool {
+	if e == nil {
+		return false
+	}
+	if r := e.relayReason(); r != v1.RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED {
+		// Definite non-duplicate rejections should surface directly rather than
+		// falling back to a login probe.
+		return false
+	}
+	return e.code == connectCodeAlreadyExists || e.code == connectCodePermissionDenied
 }
 
 type codeDraft struct {
@@ -418,8 +512,13 @@ func (e *Engine) HandleRpcResult(nowMs int64, ev *corev1.SecurityRpcResultEvent)
 	}
 	if w, ok := e.takeTask(ev.OpId); ok && w.task != nil {
 		se := &secEvent{kind: evRPC, tag: w.tag, bytes: ev.ResponseBytes}
-		if ev.Error != "" || ev.ConnectCode != 0 || ev.NetworkError {
-			rErr := &rpcError{code: ev.ConnectCode, msg: ev.Error, network: ev.NetworkError}
+		if ev.Error != "" || ev.ConnectCode != 0 || ev.NetworkError || len(ev.ErrorDetails) > 0 {
+			rErr := &rpcError{
+				code:    ev.ConnectCode,
+				msg:     ev.Error,
+				network: ev.NetworkError,
+				detail:  ParseRelayErrorDetail(ev.ErrorDetails),
+			}
 			se.rpcErr, se.err = rErr, rErr
 		}
 		e.stepTask(w.task, se)
@@ -1099,7 +1198,7 @@ func (t *authedRPCTask) step(e *Engine, ev *secEvent) error {
 		}
 		e.waitRPC(t.method, t.server, ev.str, t.reqBytes, t, 0)
 	case authedRPCCall:
-		if ev.rpcErr != nil && ev.rpcErr.code == connectCodeUnauthenticated {
+		if ev.rpcErr != nil && ev.rpcErr.isTokenInvalid() {
 			e.ensureWF().cachedToken = ""
 			t.stage = authedRPCRefreshToken
 			e.forceLoginToken(t.server, keyDevEd, "", e.selfDeviceID, t.fgCheck, t.fgGen, true, parentTarget(t, 0))

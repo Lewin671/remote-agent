@@ -379,7 +379,7 @@ func (t *continueCreationTask) step(e *Engine, ev *secEvent) error {
 			return t.finishWithToken(e, ev.str)
 		}
 		re := asRpcError(ev.err)
-		if re == nil || (re.code != connectCodePermissionDenied && re.code != connectCodeNotFound && re.code != connectCodeUnauthenticated) {
+		if !re.isCreateInitLoginMissing() {
 			return ev.err
 		}
 		t.startRegisterAttempt(e, t.op, nil, false)
@@ -399,7 +399,7 @@ func (t *continueCreationTask) step(e *Engine, ev *secEvent) error {
 			e.forceLoginToken(t.op.Server, keyCandEd, t.edSlot, t.op.MemberID, true, t.fgGen, false, parentTarget(t, 0))
 			return nil
 		}
-		if t.isPowRetry || ev.rpcErr.code != connectCodeFailedPrecondition {
+		if t.isPowRetry || !ev.rpcErr.isSignupPowRequired() {
 			return ev.rpcErr
 		}
 		t.stage = contCreatePowChal
@@ -1370,7 +1370,7 @@ func (e *Engine) checkRetainedDeniedOp(actionID uint64) {
 func (t *checkRetainedDeniedTask) step(e *Engine, ev *secEvent) error {
 	var denied bool
 	if ev.err != nil {
-		if re := asRpcError(ev.err); re != nil && re.code == connectCodePermissionDenied {
+		if re := asRpcError(ev.err); re.isRetainedLoginDenied() {
 			if t.retries == 0 {
 				t.retries = 1
 				e.forceLoginToken(t.server, keyDevEd, "", e.selfDeviceID, false, 0, false, parentTarget(t, 0))

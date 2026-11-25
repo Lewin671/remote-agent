@@ -144,6 +144,23 @@ private final class TimeoutRPCProtocol: URLProtocol, @unchecked Sendable {
         #expect(rpcRes.connectCode == Int32(Code.deadlineExceeded.rawValue))
         #expect(rpcRes.networkError)
     }
+
+    @Test func parseConnectErrorBodyForwardsUnpaddedBase64Details() throws {
+        var detail = PBRelayErrorDetail()
+        detail.reason = .protocolMismatch
+        detail.serverRelayVersion = 17
+        let rawBytes = try detail.serializedData()
+        let unpadded = rawBytes.base64EncodedString().replacingOccurrences(of: "=", with: "")
+        let json = """
+        {"code":"failed_precondition","message":"relay version mismatch","details":[{"type":"remoteagent.v1.RelayErrorDetail","value":"\(unpadded)"},{"type":"ignored.bad","value":"!!!"}]}
+        """
+        let parsed = SecurityExecutor.parseConnectErrorBody(Data(json.utf8), fallbackCode: .unknown)
+        #expect(parsed.code == .failedPrecondition)
+        #expect(parsed.message == "relay version mismatch")
+        #expect(parsed.details.count == 1)
+        #expect(parsed.details[0].typeName == "remoteagent.v1.RelayErrorDetail")
+        #expect(parsed.details[0].value == rawBytes)
+    }
 }
 
 extension ServerTests {

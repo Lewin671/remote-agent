@@ -45,4 +45,18 @@ public interface SecurityRpcResultEventOrBuilder extends
    * @return The networkError.
    */
   boolean getNetworkError();
+
+  /**
+   * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytes> 
+      getErrorDetailsList();
+  /**
+   * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+   */
+  io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytes getErrorDetails(int index);
+  /**
+   * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+   */
+  int getErrorDetailsCount();
 }

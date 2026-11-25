@@ -1069,7 +1069,7 @@ func (t *continueStateOpTask) proceedPublish(e *Engine, curOp *PersistedOperatio
 }
 
 func (t *continueStateOpTask) checkDeliveryFallback(e *Engine, origErr *rpcError) error {
-	if origErr.code != connectCodeNotFound && origErr.code != connectCodeFailedPrecondition && origErr.code != connectCodeCanceled {
+	if !origErr.isDeliveryFallback() {
 		return origErr
 	}
 	t.stage = contStateListDevices

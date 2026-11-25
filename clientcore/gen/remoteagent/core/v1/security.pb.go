@@ -2588,6 +2588,37 @@ func (m *SecurityRpcEffect) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityRpcEffect)
 }
 
+type RpcErrorDetailBytes struct {
+	_        [0]func()
+	TypeName string
+	Value    []byte
+}
+
+func (m *RpcErrorDetailBytes) GetTypeName() string {
+	if m != nil {
+		return m.TypeName
+	}
+	return ""
+}
+func (m *RpcErrorDetailBytes) GetValue() []byte {
+	if m != nil {
+		return m.Value
+	}
+	return nil
+}
+
+var LitewireDesc_RpcErrorDetailBytes = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&RpcErrorDetailBytes{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(RpcErrorDetailBytes{}.TypeName), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(RpcErrorDetailBytes{}.Value), Kind: litewire.KindBytes},
+	},
+}
+
+func (m *RpcErrorDetailBytes) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_RpcErrorDetailBytes)
+}
+
 type SecurityRpcResultEvent struct {
 	_             [0]func()
 	OpId          uint64
@@ -2595,6 +2626,7 @@ type SecurityRpcResultEvent struct {
 	ConnectCode   int32
 	Error         string
 	NetworkError  bool
+	ErrorDetails  []*RpcErrorDetailBytes
 }
 
 func (m *SecurityRpcResultEvent) GetOpId() uint64 {
@@ -2627,6 +2659,12 @@ func (m *SecurityRpcResultEvent) GetNetworkError() bool {
 	}
 	return false
 }
+func (m *SecurityRpcResultEvent) GetErrorDetails() []*RpcErrorDetailBytes {
+	if m != nil {
+		return m.ErrorDetails
+	}
+	return nil
+}
 
 var LitewireDesc_SecurityRpcResultEvent = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityRpcResultEvent{}) },
@@ -2641,6 +2679,24 @@ var LitewireDesc_SecurityRpcResultEvent = litewire.MessageDesc{
 
 func (m *SecurityRpcResultEvent) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityRpcResultEvent)
+}
+
+func extraUnmarshal_SecurityRpcResultEvent(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*SecurityRpcResultEvent)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
+		switch num {
+		case 6:
+			elem := &RpcErrorDetailBytes{}
+			m.ErrorDetails = append(m.ErrorDetails, elem)
+			if err := litewire.ReadMessage(&b, elem); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 type SecurityTokenUpdatedEffect struct {
@@ -5233,5 +5289,6 @@ func init() {
 	LitewireDesc_SeedDemoWorldEvent.ExtraUnmarshal = extraUnmarshal_SeedDemoWorldEvent
 	LitewireDesc_SecurityKeyEncapsulatedEvent.ExtraUnmarshal = extraUnmarshal_SecurityKeyEncapsulatedEvent
 	LitewireDesc_SecurityStorageResultEvent.ExtraUnmarshal = extraUnmarshal_SecurityStorageResultEvent
+	LitewireDesc_SecurityRpcResultEvent.ExtraUnmarshal = extraUnmarshal_SecurityRpcResultEvent
 	LitewireDesc_SecurityWorkflowActionEvent.ExtraUnmarshal = extraUnmarshal_SecurityWorkflowActionEvent
 }

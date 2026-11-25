@@ -3,6 +3,7 @@ import { Code } from "@connectrpc/connect";
 import { checkServer } from "../crypto";
 import { EventSchema as CoreEventSchema, type Effect, type Event as CoreEvent } from "../gen/remoteagent/core/v1/app_pb";
 import {
+  RpcErrorDetailBytesSchema,
   SecurityCryptoBatchDoneEventSchema,
   SecurityCryptoBatchResultSchema,
   SecurityKeyAgreedEventSchema,
@@ -13,6 +14,7 @@ import {
   SecurityRpcMethod,
   SecurityRpcResultEventSchema,
   SecurityStorageResultEventSchema,
+  type RpcErrorDetailBytes,
   type SecurityCryptoBatchEffect,
   type SecurityCryptoBatchResult,
   type SecurityKeyAgreeEffect,
@@ -27,6 +29,20 @@ import { relayFetch } from "../transport";
 import { SecurityStoreV4, securityStoreV4 } from "./security-store-v4";
 
 const errorMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err));
+
+function decodeConnectDetailBase64(raw: string): Uint8Array | null {
+  const cleaned = raw.replace(/\s+/g, "").replace(/-/g, "+").replace(/_/g, "/");
+  if (!cleaned) return null;
+  const padded = cleaned + "=".repeat((4 - (cleaned.length % 4)) % 4);
+  try {
+    const bin = atob(padded);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  } catch {
+    return null;
+  }
+}
 
 function rpcBase(server: string): string {
   const origin = checkServer(server);
@@ -273,12 +289,26 @@ export class WebSecurityExecutor {
       if (!res.ok) {
         let code = httpStatusToConnectCode(res.status);
         let msg = `HTTP ${res.status}`;
+        const errorDetails: RpcErrorDetailBytes[] = [];
         try {
-          const parsed = JSON.parse(await res.text()) as { code?: string; message?: string };
+          const parsed = JSON.parse(await res.text()) as {
+            code?: string;
+            message?: string;
+            details?: Array<{ type?: unknown; value?: unknown }>;
+          };
           if (parsed.code && parsed.code in CONNECT_NAME_TO_CODE) code = CONNECT_NAME_TO_CODE[parsed.code];
           if (parsed.message) msg = parsed.message;
+          if (Array.isArray(parsed.details)) {
+            for (const d of parsed.details) {
+              if (typeof d?.type !== "string" || !d.type || typeof d.value !== "string") continue;
+              const value = decodeConnectDetailBase64(d.value);
+              if (value && value.byteLength > 0) {
+                errorDetails.push(create(RpcErrorDetailBytesSchema, { typeName: d.type, value }));
+              }
+            }
+          }
         } catch { /* keep HTTP status fallback */ }
-        emitRpc({ connectCode: code, error: msg });
+        emitRpc({ connectCode: code, error: msg, errorDetails });
         return;
       }
       emitRpc({ responseBytes: new Uint8Array(await res.arrayBuffer()) });

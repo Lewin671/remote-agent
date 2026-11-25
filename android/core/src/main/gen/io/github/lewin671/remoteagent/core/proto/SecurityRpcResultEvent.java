@@ -17,6 +17,7 @@ public  final class SecurityRpcResultEvent extends
   private SecurityRpcResultEvent() {
     responseBytes_ = com.google.protobuf.ByteString.EMPTY;
     error_ = "";
+    errorDetails_ = emptyProtobufList();
   }
   public static final int OP_ID_FIELD_NUMBER = 1;
   private long opId_;
@@ -169,6 +170,103 @@ public  final class SecurityRpcResultEvent extends
   private void clearNetworkError() {
 
     networkError_ = false;
+  }
+
+  public static final int ERROR_DETAILS_FIELD_NUMBER = 6;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytes> errorDetails_;
+  /**
+   * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytes> getErrorDetailsList() {
+    return errorDetails_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytesOrBuilder> 
+      getErrorDetailsOrBuilderList() {
+    return errorDetails_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+   */
+  @java.lang.Override
+  public int getErrorDetailsCount() {
+    return errorDetails_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytes getErrorDetails(int index) {
+    return errorDetails_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+   */
+  public io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytesOrBuilder getErrorDetailsOrBuilder(
+      int index) {
+    return errorDetails_.get(index);
+  }
+  private void ensureErrorDetailsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytes> tmp = errorDetails_;
+    if (!tmp.isModifiable()) {
+      errorDetails_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setErrorDetails(
+      int index, io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytes value) {
+    value.getClass();  // minimal bytecode null check
+    ensureErrorDetailsIsMutable();
+    errorDetails_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addErrorDetails(io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytes value) {
+    value.getClass();  // minimal bytecode null check
+    ensureErrorDetailsIsMutable();
+    errorDetails_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addErrorDetails(
+      int index, io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytes value) {
+    value.getClass();  // minimal bytecode null check
+    ensureErrorDetailsIsMutable();
+    errorDetails_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+   */
+  private void addAllErrorDetails(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytes> values) {
+    ensureErrorDetailsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, errorDetails_);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+   */
+  private void clearErrorDetails() {
+    errorDetails_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+   */
+  private void removeErrorDetails(int index) {
+    ensureErrorDetailsIsMutable();
+    errorDetails_.remove(index);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecurityRpcResultEvent parseFrom(
@@ -429,6 +527,108 @@ public  final class SecurityRpcResultEvent extends
       return this;
     }
 
+    /**
+     * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytes> getErrorDetailsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getErrorDetailsList());
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+     */
+    @java.lang.Override
+    public int getErrorDetailsCount() {
+      return instance.getErrorDetailsCount();
+    }/**
+     * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytes getErrorDetails(int index) {
+      return instance.getErrorDetails(index);
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+     */
+    public Builder setErrorDetails(
+        int index, io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytes value) {
+      copyOnWrite();
+      instance.setErrorDetails(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+     */
+    public Builder setErrorDetails(
+        int index, io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytes.Builder builderForValue) {
+      copyOnWrite();
+      instance.setErrorDetails(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+     */
+    public Builder addErrorDetails(io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytes value) {
+      copyOnWrite();
+      instance.addErrorDetails(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+     */
+    public Builder addErrorDetails(
+        int index, io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytes value) {
+      copyOnWrite();
+      instance.addErrorDetails(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+     */
+    public Builder addErrorDetails(
+        io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytes.Builder builderForValue) {
+      copyOnWrite();
+      instance.addErrorDetails(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+     */
+    public Builder addErrorDetails(
+        int index, io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytes.Builder builderForValue) {
+      copyOnWrite();
+      instance.addErrorDetails(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+     */
+    public Builder addAllErrorDetails(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytes> values) {
+      copyOnWrite();
+      instance.addAllErrorDetails(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+     */
+    public Builder clearErrorDetails() {
+      copyOnWrite();
+      instance.clearErrorDetails();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.RpcErrorDetailBytes error_details = 6 [json_name = "errorDetails"];</code>
+     */
+    public Builder removeErrorDetails(int index) {
+      copyOnWrite();
+      instance.removeErrorDetails(index);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityRpcResultEvent)
   }
   @java.lang.Override
@@ -450,10 +650,12 @@ public  final class SecurityRpcResultEvent extends
             "connectCode_",
             "error_",
             "networkError_",
+            "errorDetails_",
+            io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytes.class,
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0000\u0000\u0001\u0003\u0002\n" +
-              "\u0003\u0004\u0004\u0208\u0005\u0007";
+              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0001\u0000\u0001\u0003\u0002\n" +
+              "\u0003\u0004\u0004\u0208\u0005\u0007\u0006\u001b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

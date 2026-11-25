@@ -11,6 +11,8 @@ import io.github.lewin671.remoteagent.proto.Header
 import io.github.lewin671.remoteagent.proto.NotifyContent
 import io.github.lewin671.remoteagent.proto.NotifyKind
 import io.github.lewin671.remoteagent.proto.PayloadKind
+import io.github.lewin671.remoteagent.proto.RelayErrorDetail
+import io.github.lewin671.remoteagent.proto.RelayErrorReason
 import java.io.File
 import java.util.Base64
 import kotlinx.serialization.json.Json
@@ -150,5 +152,24 @@ class SecurityExecutorTest {
                 expectedKind = NotifyKind.NOTIFY_KIND_ATTENTION,
             ),
         )
+    }
+
+    @Test
+    fun parseRpcErrorForwardsUnpaddedBase64ConnectErrorDetails() {
+        val detail = RelayErrorDetail.newBuilder()
+            .setReason(RelayErrorReason.RELAY_ERROR_REASON_PROTOCOL_MISMATCH)
+            .setServerRelayVersion(17)
+            .build()
+        val rawBytes = detail.toByteArray()
+        val unpadded = Base64.getEncoder().withoutPadding().encodeToString(rawBytes)
+        val body = """{"code":"failed_precondition","message":"relay version mismatch","details":[{"type":"remoteagent.v1.RelayErrorDetail","value":"$unpadded"},{"type":"ignored.bad","value":"!!!"}]}"""
+
+        val ev = parseSecurityRpcError(opId = 42L, httpCode = 412, bodyBytes = body.toByteArray())
+        assertEquals(42L, ev.opId)
+        assertEquals(9, ev.connectCode)
+        assertEquals("relay version mismatch", ev.error)
+        assertEquals(1, ev.errorDetailsCount)
+        assertEquals("remoteagent.v1.RelayErrorDetail", ev.getErrorDetails(0).typeName)
+        assertArrayEquals(rawBytes, ev.getErrorDetails(0).value.toByteArray())
     }
 }

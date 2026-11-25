@@ -416,7 +416,7 @@ func (t *pollPairingInitiatorTask) step(e *Engine, ev *secEvent) error {
 		}
 		sess := t.sess
 		if ev.rpcErr != nil {
-			if ev.rpcErr.code == connectCodeNotFound {
+			if ev.rpcErr.isPairingGone() {
 				e.discardInitSlot(sess)
 				delete(wf.initPairings, t.pairingID)
 				return fatalWfError("canceled", WorkflowReasonPairingExpiredOrCanceled, "")
@@ -1240,7 +1240,7 @@ func (t *pollJoinTask) step(e *Engine, ev *secEvent) error {
 			return nil
 		}
 		if ev.rpcErr != nil {
-			if ev.rpcErr.code == connectCodeNotFound || ev.rpcErr.code == connectCodePermissionDenied {
+			if ev.rpcErr.isJoinPairingGone() {
 				return fatalWfError("canceled", WorkflowReasonPairingExpiredOrCanceled, "")
 			}
 			e.scheduleSecurityPollTimer()
@@ -1419,7 +1419,7 @@ func (t *resumeRegistrationTask) step(e *Engine, ev *secEvent) error {
 			}
 			return t.commitIntent(e)
 		}
-		if ev.rpcErr.code == connectCodeAlreadyExists || ev.rpcErr.code == connectCodePermissionDenied {
+		if ev.rpcErr.isResumeRegFallbackLogin() {
 			kind, slot := keyCandEd, intent.EdSlot
 			if intent.ReusesDeviceEd {
 				kind, slot = keyDevEd, ""

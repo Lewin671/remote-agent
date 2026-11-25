@@ -209,12 +209,16 @@ public final class SecurityExecutor: @unchecked Sendable {
                 out.error = ce?.message ?? err.localizedDescription
                 out.networkError = ce.map { networkFailure($0.exception) != nil }
                     ?? (response.code == .unavailable || response.code == .deadlineExceeded || response.code == .unknown)
+                if let ce {
+                    out.errorDetails = Self.mapConnectDetails(ce.details)
+                }
                 return out
             }
             if response.code != .ok {
                 let parsed = Self.parseConnectErrorBody(response.message, fallbackCode: response.code)
                 out.connectCode = Int32(parsed.code.rawValue)
                 out.error = parsed.message
+                out.errorDetails = parsed.details
                 return out
             }
             out.responseBytes = response.message ?? Data()
@@ -228,6 +232,7 @@ public final class SecurityExecutor: @unchecked Sendable {
             out.connectCode = Int32(ce.code.rawValue)
             out.error = ce.message ?? ce.localizedDescription
             out.networkError = networkFailure(ce.exception) != nil
+            out.errorDetails = Self.mapConnectDetails(ce.details)
             return out
         } catch {
             out.connectCode = Int32(Code.unavailable.rawValue)
@@ -316,17 +321,51 @@ public final class SecurityExecutor: @unchecked Sendable {
         "data_loss": .dataLoss, "unauthenticated": .unauthenticated,
     ]
 
-    private static func parseConnectErrorBody(_ data: Data?, fallbackCode: Code) -> (code: Code, message: String) {
+    private static func mapConnectDetails(_ details: [ConnectError.Detail]) -> [PBRpcErrorDetailBytes] {
+        details.compactMap { d in
+            guard !d.type.isEmpty, let payload = d.payload, !payload.isEmpty else { return nil }
+            return PBRpcErrorDetailBytes.with {
+                $0.typeName = d.type
+                $0.value = payload
+            }
+        }
+    }
+
+    private static func decodeConnectDetailBase64(_ raw: String) -> Data? {
+        let cleaned = raw
+            .filter { !$0.isWhitespace }
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        guard !cleaned.isEmpty else { return nil }
+        let rem = cleaned.count % 4
+        let padded = rem == 0 ? cleaned : cleaned + String(repeating: "=", count: 4 - rem)
+        return Data(base64Encoded: padded)
+    }
+
+    static func parseConnectErrorBody(_ data: Data?, fallbackCode: Code) -> (code: Code, message: String, details: [PBRpcErrorDetailBytes]) {
         let fallback = "HTTP error (\(fallbackCode.name))"
         guard let data, !data.isEmpty,
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else {
-            return (fallbackCode, fallback)
+            return (fallbackCode, fallback, [])
         }
         let codeStr = (json["code"] as? String)?.lowercased()
         let mapped = codeStr.flatMap { connectCodes[$0] } ?? fallbackCode
         let msg = (json["message"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? fallback
-        return (mapped, msg)
+        var details: [PBRpcErrorDetailBytes] = []
+        if let rawList = json["details"] as? [[String: Any]] {
+            for item in rawList {
+                guard let typeName = item["type"] as? String, !typeName.isEmpty,
+                      let rawVal = item["value"] as? String,
+                      let decoded = decodeConnectDetailBase64(rawVal), !decoded.isEmpty
+                else { continue }
+                details.append(PBRpcErrorDetailBytes.with {
+                    $0.typeName = typeName
+                    $0.value = decoded
+                })
+            }
+        }
+        return (mapped, msg, details)
     }
 }
 

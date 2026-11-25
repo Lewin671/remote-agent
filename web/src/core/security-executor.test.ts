@@ -23,8 +23,12 @@ import {
   SecurityKeyAgreeEffectSchema,
   SecurityKeyKind,
   SecurityKeySignEffectSchema,
+  SecurityRpcEffectSchema,
+  SecurityRpcMethod,
   SecurityStorageResultEventSchema,
 } from "../gen/remoteagent/core/v1/security_pb";
+import { RelayErrorDetailSchema, RelayErrorReason } from "../gen/remoteagent/v1/relay_pb";
+import { toBinary } from "@bufbuild/protobuf";
 import vectors from "../../../internal/deviceauth/testdata/domain-v3.json";
 import { concat, fromHex, utf8 } from "../crypto";
 
@@ -204,6 +208,51 @@ describe("WebSecurityExecutor", () => {
     expect(batch2.event.value.results[0].ok).toBe(true);
     expect(new Uint8Array(batch2.event.value.results[0].data)).toEqual(plain);
     expect(batch2.event.value.results[1].ok).toBe(false);
+  });
+
+  it("forwards Connect JSON error details (unpadded base64) in securityRpcResult", async () => {
+    const detailBytes = toBinary(
+      RelayErrorDetailSchema,
+      create(RelayErrorDetailSchema, { reason: RelayErrorReason.PROTOCOL_MISMATCH, serverRelayVersion: 17 }),
+    );
+    let bin = "";
+    for (const b of detailBytes) bin += String.fromCharCode(b);
+    const unpadded = btoa(bin).replace(/=+$/, "");
+
+    const emitted: CoreEvent[] = [];
+    const exec = new WebSecurityExecutor({
+      devicePrivate: () => undefined,
+      xPrivate: () => undefined,
+      emit: (ev) => emitted.push(ev),
+      fetch: async () =>
+        new Response(
+          JSON.stringify({
+            code: "failed_precondition",
+            message: "relay protocol mismatch",
+            details: [
+              { type: "remoteagent.v1.RelayErrorDetail", value: unpadded },
+              { type: "ignored.bad", value: "!!!" },
+            ],
+          }),
+          { status: 412, headers: { "Content-Type": "application/json" } },
+        ),
+    });
+
+    await exec.rpc(
+      create(SecurityRpcEffectSchema, {
+        opId: 99n,
+        method: SecurityRpcMethod.LOGIN,
+        server: "https://example.com",
+      }),
+    );
+
+    const resEv = await waitForEvent(emitted, (e) => e.event.case === "securityRpcResult" && e.event.value.opId === 99n);
+    if (resEv.event.case !== "securityRpcResult") throw new Error("unexpected event");
+    expect(resEv.event.value.connectCode).toBe(9);
+    expect(resEv.event.value.error).toBe("relay protocol mismatch");
+    expect(resEv.event.value.errorDetails).toHaveLength(1);
+    expect(resEv.event.value.errorDetails[0].typeName).toBe("remoteagent.v1.RelayErrorDetail");
+    expect(new Uint8Array(resEv.event.value.errorDetails[0].value)).toEqual(detailBytes);
   });
 });
 
