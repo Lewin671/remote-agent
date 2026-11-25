@@ -110,6 +110,7 @@ it("preserves concurrent project edits through server CAS", async () => {
       return { applied: true, object: { ...stored } };
     },
   };
+  const { getCoreHost } = await import("./core/host");
   for (const r of [a, b]) {
     (r as any).token = "tok";
     (r as any).tokenExpires = Date.now() + 7 * 86_400_000;
@@ -117,7 +118,7 @@ it("preserves concurrent project edits through server CAS", async () => {
     (r as any).openStreamLeg = (legId: bigint, _t: string, cb: { onReady: (id: bigint, ms: bigint) => void }) =>
       cb.onReady(legId, BigInt(Date.now()));
     r.start();
-    await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+    await vi.waitFor(() => expect(getCoreHost(r).viewConnection().connected).toBe(true));
   }
   await a.changePrefs("pin", "/synthetic/foo");
   await Promise.all([
@@ -125,7 +126,8 @@ it("preserves concurrent project edits through server CAS", async () => {
     b.changePrefs("pin", "/synthetic/billing"),
   ]);
   const { RpcEffectSchema } = await import("./gen/remoteagent/core/v1/app_pb");
-  const { getCoreHost } = await import("./core/host");
+  const { fromBinary } = await import("@bufbuild/protobuf");
+  const { ProjectPrefsSchema } = await import("./gen/remoteagent/v1/remote_pb");
   for (const r of [a, b]) {
     getCoreHost(r).dispatch(
       await r.executeRpc(
@@ -135,15 +137,15 @@ it("preserves concurrent project edits through server CAS", async () => {
         }),
       ),
     );
-    await vi.waitFor(() => expect(r.prefs.snap?.revision).toBe(3n));
-    const prefs = r.projectPrefs();
-    expect(prefs.pinned.map((p) => p.path)).toEqual([
-      "/synthetic/foo",
-      "/synthetic/billing",
-    ]);
-    expect(prefs.hidden.map((p) => p.path)).toEqual(["/synthetic/blog"]);
   }
-  expect(a.prefs.snap?.revision).toBe(3n);
+  expect(stored.revision).toBe(3n);
+  const opened = await a.world.fixture.open(a.account.deviceId, stored.envelope!);
+  const prefs = fromBinary(ProjectPrefsSchema, opened.plaintext);
+  expect(prefs.pinned.map((p) => p.path)).toEqual([
+    "/synthetic/foo",
+    "/synthetic/billing",
+  ]);
+  expect(prefs.hidden.map((p) => p.path)).toEqual(["/synthetic/blog"]);
   expect(uploads.length).toBeGreaterThanOrEqual(3);
   for (const env of uploads)
     expect(new TextDecoder().decode(env.ciphertext)).not.toContain("synthetic");
@@ -346,12 +348,11 @@ it("reports an unreadable prefs object and allows a fresh read retry", async () 
   (r as any).openStreamLeg = (legId: bigint, _t: string, cb: { onReady: (id: bigint, ms: bigint) => void }) =>
     cb.onReady(legId, BigInt(Date.now()));
   r.start();
-  await vi.waitFor(() => expect(r.prefs.status).toBe("error"));
-  expect(r.prefs.snap).toBeUndefined();
   const { getCoreHost } = await import("./core/host");
   const { TimerKind } = await import("./gen/remoteagent/core/v1/app_pb");
+  await vi.waitFor(() => expect(getCoreHost(r).viewHome(1).prefsBanner?.errorTone).toBe(true));
   getCoreHost(r).fireActiveTimer(TimerKind.PREFS_RETRY);
-  await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+  await vi.waitFor(() => expect(getCoreHost(r).viewHome(1).prefsBanner?.errorTone).toBeFalsy());
 });
 
 it("revokes a removed machine and retains its archive when the head moves without a push", async () => {
@@ -375,16 +376,18 @@ it("revokes a removed machine and retains its archive when the head moves withou
   r.start();
   const { getCoreHost } = await import("./core/host");
   await vi.waitFor(() => {
-    expect(r.devices.get(r.machine)).toBeTruthy();
-    expect(r.sessions.get("s")).toBeTruthy();
-    expect(getCoreHost(r).viewSyncState().securityLoaded).toBe(true);
+    const m = getCoreHost(r).viewSettings().machines.find((x) => x.machineId === r.machine);
+    expect(m?.inDeviceDirectory).toBe(true);
+    expect(m?.online).toBe(true);
+    expect(getCoreHost(r).viewSession("s").header?.found).toBe(true);
   });
   // Sync picks up the removal even when the relay withholds the push.
   await r.world.fixture.remove([r.machine]);
   await r.syncSecurityNow();
-  expect(r.devices.get(r.machine)).toBeUndefined();
-  expect(r.sessions.get("s")).toBeTruthy();
-  expect(r.machines.get(r.machine)?.online).toBe(false);
+  const afterMachine = getCoreHost(r).viewSettings().machines.find((x) => x.machineId === r.machine);
+  expect(afterMachine?.member).toBe(false);
+  expect(getCoreHost(r).viewSession("s").header?.found).toBe(true);
+  expect(getCoreHost(r).viewMachineSettings(r.machine).member).toBe(false);
 });
 
 it("bootstraps current owner state from a checkpoint without loading a history prefix", async () => {
@@ -416,10 +419,10 @@ it("bootstraps current owner state from a checkpoint without loading a history p
   (r as unknown as { openStreamLeg: (id: bigint, t: string, cb: { onReady: (id: bigint, ms: bigint) => void }) => void }).openStreamLeg = (legId, _t, cb) =>
     cb.onReady(legId, BigInt(Date.now()));
   r.start();
-  await vi.waitFor(() => expect(r.sessions.get("s")?.checkpoint?.running).toBe(true));
-  expect(r.sessions.get("s")?.checkpoint?.running).toBe(true);
-  expect(r.sessions.get("s")?.checkpoint?.session?.lastSeq).toBe(900n);
-  expect(r.sessions.get("s")?.checkpointStatus).toBe("ready");
+  const { getCoreHost } = await import("./core/host");
+  const { renderText } = await import("./core/text");
+  await vi.waitFor(() => expect(getCoreHost(r).viewHome().running.map((x) => x.sessionId)).toContain("s"));
+  expect(renderText(getCoreHost(r).viewSession("s").header?.title)).toBe("current state");
 });
 
 it("installs the updated head and valid lease through Core sync after a head change", async () => {
@@ -556,7 +559,6 @@ it("does not run a duplicate shell-side 12s security sync timer (Core drives Aut
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "setTimeout", "clearTimeout", "Date"] });
   try {
     const syncSpy = vi.spyOn(host.securityClient, "syncNow").mockResolvedValue(status);
-    vi.spyOn(r, "conn", "get").mockReturnValue("online");
     r.start();
     const before = syncSpy.mock.calls.length;
     await vi.advanceTimersByTimeAsync(36_000);
@@ -589,8 +591,7 @@ it("disposes its CoreHost on dispose() and drops an earlier-started snapshot tha
     }),
   );
 
-  expect(host.viewSyncState().securityLoaded).toBe(true);
-  expect(r.devices.get(r.machine)).toBeUndefined();
+  expect(host.viewSettings().machines.find((x) => x.machineId === r.machine)?.inDeviceDirectory).toBeFalsy();
 
   r.dispose();
   expect(() => host.viewHome()).toThrow(/closed/);
@@ -739,6 +740,6 @@ it("updates security status and trusted machine count when sync pulls a newly en
   const enrolled = await r.world.fixture.enroll(r.world.fixture.phone.json.member, 1);
   const updated = await r.syncSecurityNow();
   expect(updated.headEpoch).toBeGreaterThan(before.headEpoch);
-  expect(getCoreHost(r).viewSyncState().securityLoaded).toBe(true);
+  expect(getCoreHost(r).viewSettings().security?.authorityDeviceId).not.toBe("");
   expect(enrolled.json.member).not.toBe("");
 });

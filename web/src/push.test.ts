@@ -1,9 +1,10 @@
 // @vitest-environment happy-dom
+import { create } from "@bufbuild/protobuf";
 import { afterEach, expect, it, vi } from "vitest";
 import { closeScheduleNotification, pushPrefs, restorePushPrefs, setPushPrefs } from "./push";
 import { NotifyKind } from "./gen/remoteagent/v1/relay_pb";
-import { Remote } from "./remote";
-import { patchSyncState } from "./test/remote-fixture";
+import { EventSchema, TokenResultEventSchema } from "./gen/remoteagent/core/v1/app_pb";
+import { Remote, type StreamLegCallbacks } from "./remote";
 
 afterEach(() => { localStorage.clear(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
@@ -15,13 +16,27 @@ it("registers existing push preferences for the newly paired device without aski
   const subscription = { endpoint: "https://push.example.com/subscription" };
   vi.stubGlobal("navigator", { serviceWorker: { ready: Promise.resolve({ pushManager: { getSubscription: async () => subscription } }) } });
   const setPushSubscription = vi.fn(async () => undefined);
-  class Probe extends Remote { constructor() { super({ server: "https://ra.example.com", deviceId: "new-device" } as any, {} as any); } }
+  class Probe extends Remote {
+    constructor() { super({ server: "https://ra.example.com", deviceId: "new-device" } as any, undefined); }
+    override securityConfig() { return undefined; }
+    override ensureToken(opId: bigint) {
+      return Promise.resolve(create(TokenResultEventSchema, { opId, token: "tok", expiresMs: BigInt(Date.now() + 3600_000) }));
+    }
+    override openStreamLeg(legId: bigint, _token: string, callbacks: StreamLegCallbacks) {
+      callbacks.onReady(legId, BigInt(Date.now()));
+    }
+    override executeRpc() { return Promise.resolve(create(EventSchema, {})); }
+  }
   const remote = new Probe();
   remote.setPushSubscription = setPushSubscription;
-  patchSyncState(remote, { conn: "online" });
-  await vi.waitFor(() => expect(setPushSubscription).toHaveBeenCalled());
-  expect(setPushSubscription).toHaveBeenCalledWith(JSON.stringify(subscription), [NotifyKind.ATTENTION, NotifyKind.TURN_ENDED, NotifyKind.SECURITY, NotifyKind.SCHEDULED]);
-  expect(requestPermission).not.toHaveBeenCalled();
+  try {
+    remote.start();
+    await vi.waitFor(() => expect(setPushSubscription).toHaveBeenCalled());
+    expect(setPushSubscription).toHaveBeenCalledWith(JSON.stringify(subscription), [NotifyKind.ATTENTION, NotifyKind.TURN_ENDED, NotifyKind.SECURITY, NotifyKind.SCHEDULED]);
+    expect(requestPermission).not.toHaveBeenCalled();
+  } finally {
+    remote.dispose();
+  }
 });
 
 it("does not register a subscription after the account was removed during the read", async () => {

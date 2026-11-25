@@ -9,7 +9,8 @@ import {
   ClientPage, ClientsPage, LicensesPage, MachinePage, MachineStatusPage, NotificationsPage, PairCodePage, QuotaPage, RemovedScreen,
   ScheduleCreate, ScheduleDetail, SchedulesPage, SecurityPage, SettingsPage, UsagePage, inOwnFile, page,
 } from "./views/pages";
-import { routeForTask, useCoreHost, useSchedulesView, useSyncState } from "./core/host";
+import { routeForTask, useConnectionView, useCoreHost, useSchedulesView } from "./core/host";
+import { ScreenTarget } from "./gen/remoteagent/core/v1/app_pb";
 import { Plus } from "./icons";
 
 const Setup = page(() => import("./views/Pairing").then(m => ({ default: m.Setup })));
@@ -90,15 +91,24 @@ function useMainScrolled(route: string, wide: boolean) {
 export default function Workspace({ remote }: { remote: Remote }) {
   const [route, go] = useRoute();
   const host = useCoreHost(remote, go);
-  const sync = useSyncState(host);
+  const conn = useConnectionView(host);
   const remoteRemoved = useSyncExternalStore(remote.subscribe, () => remote.removed);
   const schedulesVm = useSchedulesView(host, 1);
   const wide = useWide();
   const scheduling = schedulesVm.canCreate;
   const parsed = parseRoute(route);
   const { kind, rest, arg } = parsed;
-  const session = kind === "s" ? sync.sessions.find((s) => s.sessionId === arg) : undefined;
-  const scheduleSession = session?.info?.taskOwned && session.info.scheduledTaskId ? routeForTask(session.machineId, session.info.scheduledTaskId) : undefined;
+  const sessionRouteInfo = useSyncExternalStore(
+    (cb) => (kind === "s" ? host.subscribe(ScreenTarget.SESSION, cb) : () => {}),
+    () => {
+      if (kind !== "s") return "";
+      const h = host.viewSession(arg).header;
+      if (!h?.found) return "";
+      return h.taskOwned && h.scheduledTaskId ? "t:" + routeForTask(h.machineId, h.scheduledTaskId) : "s:" + arg;
+    },
+  );
+  const scheduleSession = sessionRouteInfo.startsWith("t:") ? sessionRouteInfo.slice(2) : undefined;
+  const selectedSessionId = sessionRouteInfo ? arg : undefined;
   useEffect(() => {
     if (kind === "tasks" && wide && rest[0] !== "new" && !rest[1]) host.scheduleSelectTask("", "");
   }, [host, kind, wide, rest[0], rest[1]]);
@@ -114,7 +124,7 @@ export default function Workspace({ remote }: { remote: Remote }) {
       : prev.isSheet ? "back"
       : parsed.depth >= prev.depth ? "fwd" : "back";
   }
-  if (sync.removed || remoteRemoved) return <Suspense fallback={loading}><RemovedScreen remote={remote} /></Suspense>;
+  if (conn.removed || remoteRemoved) return <Suspense fallback={loading}><RemovedScreen remote={remote} /></Suspense>;
 
   let page;
   if (kind === "s")
@@ -201,7 +211,7 @@ export default function Workspace({ remote }: { remote: Remote }) {
           go={go}
           active={kind === "tasks" || scheduleSession ? "tasks" : kind === "settings" || kind === "devices" || kind === "m" || kind === "q" || kind === "c" ? "settings" : "sessions"}
           selectedTask={scheduleSession ?? route}
-          selected={session?.sessionId}
+          selected={selectedSessionId}
           project={kind === "p" ? arg : undefined}
         />
         <main className="dm" ref={main}><Suspense fallback={loading}>{page}</Suspense></main>

@@ -3,8 +3,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AgentMark } from "../agent-mark";
-import { getCoreHost, useCoreHost, useHomeView, useNewSessionView, useProjectView, useSchedulesView, useSyncState, type Go } from "../core/host";
-import type { SyncStateView } from "../gen/remoteagent/core/v1/sync_view_pb";
+import { getCoreHost, useCoreHost, useHomeView, useNewSessionView, useProjectView, useSchedulesView, type Go } from "../core/host";
 import { renderText } from "../core/text";
 import {
   ConnState,
@@ -68,15 +67,15 @@ function UpdateBanner() {
 
 function ListError({ remote }: { remote: Remote }) {
   const host = useCoreHost(remote);
-  const sync = useSyncState(host);
-  const msg = renderText(sync.sessionListError);
+  const vm = useHomeView(host, 1);
+  const msg = renderText(vm.listErrorText);
   return msg ? <Banner kind="err" action={t("common.retry")} onAction={() => host.homeRetryLoad()}>{msg}</Banner> : null;
 }
 
 function HomeBanners({ remote, go, quiet }: { remote: Remote; go: Go; quiet?: boolean }) {
   const host = useCoreHost(remote);
-  const sync = useSyncState(host);
-  const clockWarning = renderText(sync.clockSkewBannerText);
+  const vm = useHomeView(host, 1);
+  const clockWarning = renderText(vm.clockSkewBannerText);
   return (
     <div className="home-banners">
       <UpdateBanner />
@@ -87,11 +86,6 @@ function HomeBanners({ remote, go, quiet }: { remote: Remote; go: Go; quiet?: bo
       <PrefsBanner remote={remote} quiet={quiet} />
     </div>
   );
-}
-
-function suppressWaitingHeadline(sync?: SyncStateView, vm?: HomeHeadlineView): boolean {
-  if (!sync || !vm || !sync.displayGrace || sync.connection === ConnState.CONNECTED) return false;
-  return vm.isConnecting;
 }
 
 function Headline({ vm, onDetails }: { vm?: HomeHeadlineView; onDetails?: () => void }) {
@@ -498,7 +492,7 @@ export function HomeView(p: {
           <GlassButton label={t("common.settings")} onClick={p.onOpenSettings}><Settings /></GlassButton>
         </div>
         {p.connBar}
-        <Headline vm={suppressWaitingHeadline(remote ? getCoreHost(remote).viewSyncState() : undefined, vm.headline) ? undefined : vm.headline} onDetails={p.onOpenDetails} />
+        <Headline vm={vm.headline} onDetails={p.onOpenDetails} />
         {p.banners}
         <HomeEmpty empty={vm.empty} onAddDevice={p.onAddDevice} onStartFirst={p.onStart} onRetry={p.onRetryLoad} />
         {vm.canFilter && <FilterBar query={vm.filterQuery} onChange={p.onSetFilter} />}
@@ -547,7 +541,6 @@ export function HomeView(p: {
 /** Connected phone Home screen wired to CoreHost. */
 export function Home({ remote, go }: { remote: Remote; go: Go }) {
   const host = useCoreHost(remote, go);
-  const sync = useSyncState(host);
   const [endedLimit, setEndedLimit] = useState(30);
   const vm = useHomeView(host, endedLimit);
   const [connOpen, setConnOpen] = useState(false);
@@ -555,10 +548,10 @@ export function Home({ remote, go }: { remote: Remote; go: Go }) {
 
   const heldEnded = vm.endedGroups.reduce((n, g) => n + g.items.length, 0);
   useEffect(() => {
-    if (!vm.filterQuery && sync.hasMoreSessions && (vm.endedTail?.kind === TailKind.MORE_ENDED || vm.endedTail?.kind === TailKind.MORE_ON_SERVER) && heldEnded < endedLimit) {
+    if (!vm.filterQuery && vm.hasMoreSessions && (vm.endedTail?.kind === TailKind.MORE_ENDED || vm.endedTail?.kind === TailKind.MORE_ON_SERVER) && heldEnded < endedLimit) {
       void remote.loadMoreSessions();
     }
-  }, [vm.filterQuery, vm.endedTail?.kind, remote, sync.hasMoreSessions, heldEnded, endedLimit]);
+  }, [vm.filterQuery, vm.endedTail?.kind, remote, vm.hasMoreSessions, heldEnded, endedLimit]);
 
   const startTask = () => {
     if (vm.scopeKey) { remote.focusProject = vm.scopeKey; go("p/" + encodeURIComponent(vm.scopeKey)); }
@@ -727,7 +720,6 @@ export function Sidebar({ remote, selected, project, active = "sessions", tasks,
 /** Wide main area: start a new session directly (for all projects or a picked project). */
 export function WideHome({ remote, go, project }: { remote: Remote; go: Go; project?: string }) {
   const host = useCoreHost(remote, go);
-  const sync = useSyncState(host);
   const homeVm = useHomeView(host, 1);
   const scopedProject = project || homeVm.scopeKey;
   const [draftKey, setDraftKey] = useState("");
@@ -742,12 +734,12 @@ export function WideHome({ remote, go, project }: { remote: Remote; go: Go; proj
 
   if (!homeVm.canStart) {
     if (homeVm.empty?.kind === HomeEmptyKind.LOADING || homeVm.empty?.kind === HomeEmptyKind.NONE) {
-      return <div className="page wnew"><div className="wstart">{renderText(sync.sessionListError) ? <ListError remote={remote} /> : <div data-late="1"><Skeleton /></div>}</div></div>;
+      return <div className="page wnew"><div className="wstart">{renderText(homeVm.listErrorText) ? <ListError remote={remote} /> : <div data-late="1"><Skeleton /></div>}</div></div>;
     }
     return (
       <div className="page wnew">
         <div className="wstart">
-          <Headline vm={suppressWaitingHeadline(sync, homeVm.headline) ? undefined : homeVm.headline} />
+          <Headline vm={homeVm.headline} />
           <div className="home-banners"><ListError remote={remote} /><PrefsBanner remote={remote} /></div>
           <HomeEmpty empty={homeVm.empty} onAddDevice={() => go("devices")} onStartFirst={() => {}} onRetry={() => host.homeRetryLoad()} />
         </div>

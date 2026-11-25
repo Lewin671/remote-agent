@@ -12,7 +12,6 @@ import {
   useCoreHost,
   useNewSessionView,
   useProjectView,
-  useSyncState,
   type DraftCandidateEntry,
   type Go,
 } from "../core/host";
@@ -401,7 +400,6 @@ export function NewBoxView(p: {
 /** Connected new-session box backed by CoreHost. */
 export function NewBox({ remote, projectKey, go, autoFocus, variant = "sheet", fixed, onPickProject, onClose, notice, settings = false, onDraft }: { remote: Remote; projectKey: string; go: Go; autoFocus?: boolean; variant?: "sheet" | "start"; fixed?: boolean; onPickProject?: () => void; onClose?: () => void; notice?: ReactNode; settings?: boolean; onDraft?: () => void }) {
   const host = useCoreHost(remote, go);
-  const sync = useSyncState(host);
   const vm = useNewSessionView(host, projectKey);
   const activeKey = vm.projectKey || projectKey;
   const scope = useMemo(() => newSessionDraftScope(activeKey), [activeKey]);
@@ -418,10 +416,6 @@ export function NewBox({ remote, projectKey, go, autoFocus, variant = "sheet", f
   useEffect(() => {
     if (activeKey) host.draftOpen(scope, machineId);
   }, [host, scope, activeKey, machineId]);
-
-  useEffect(() => {
-    if (!vm.settled && activeKey && sync.hasMoreSessions) void remote.loadMoreSessions();
-  }, [vm.settled, activeKey, remote, sync.hasMoreSessions]);
 
   return (
     <NewBoxView

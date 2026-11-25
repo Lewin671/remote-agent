@@ -3,7 +3,7 @@ import { t } from "../i18n";
 // list for the scope menu, the project picker and 项目管理.
 
 import { useState, type ReactNode } from "react";
-import { useCoreHost, useProjectView, useSyncState, type Go } from "../core/host";
+import { useCoreHost, useHomeView, useProjectView, type Go } from "../core/host";
 import { renderText } from "../core/text";
 import type { ProjectListingView, ProjectRowView } from "../gen/remoteagent/core/v1/home_view_pb";
 import type { DirPickerView, HiddenProjectNoticeView, ManageProjectsView } from "../gen/remoteagent/core/v1/project_view_pb";
@@ -15,11 +15,12 @@ import { DirBrowserView } from "./DirBrowser";
 /** What the list's sync is doing on Home banners: saving or load failed. */
 export function PrefsBanner({ remote, quiet }: { remote: Remote; quiet?: boolean }) {
   const host = useCoreHost(remote);
-  const sync = useSyncState(host);
-  if (sync.prefsSyncing) return <Banner><LoaderCircle /> {t("projects.syncing")}</Banner>;
+  const banner = useHomeView(host, 1).prefsBanner;
+  if (!banner?.visible) return null;
+  if (banner.syncing) return <Banner><LoaderCircle /> {renderText(banner.text) || t("projects.syncing")}</Banner>;
   if (quiet) return null;
-  if ((sync.prefsLoadFailed || sync.prefsBroken) && !sync.prefs) {
-    return <Banner kind="err" action={t("common.retry")} onAction={() => host.retryPrefs()}>{t("projects.load_failed")}</Banner>;
+  if (banner.errorTone) {
+    return <Banner kind="err" action={banner.canRetry ? t("common.retry") : undefined} onAction={banner.canRetry ? () => host.retryPrefs() : undefined}>{renderText(banner.text) || t("projects.load_failed")}</Banner>;
   }
   return null;
 }

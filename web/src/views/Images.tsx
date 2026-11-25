@@ -19,7 +19,6 @@ import type { AttachmentExecutor } from "../attachment-executor";
 import { getCoreHost } from "../core/host";
 import { renderText } from "../core/text";
 import { ScreenTarget } from "../gen/remoteagent/core/v1/app_pb";
-import { ConnState } from "../gen/remoteagent/core/v1/home_view_pb";
 import {
   AttachmentItemKind,
   AttachmentItemState,
@@ -310,8 +309,8 @@ function useDisplay(
 ): Load {
   const host = remote ? getCoreHost(remote) : undefined;
   const isOnline = useSyncExternalStore(
-    host ? (cb) => host.subscribe(ScreenTarget.SYNC_STATE, cb) : NOOP_SUB,
-    host ? () => { return host.viewSyncState().connection === ConnState.CONNECTED; } : NOOP_ONLINE,
+    host ? (cb) => host.subscribe(ScreenTarget.CONNECTION, cb) : NOOP_SUB,
+    host ? () => host.viewConnection().connected : NOOP_ONLINE,
   );
   const [state, setState] = useState<Load>({ kind: "idle" });
   const localLoad = useMemo<Load | undefined>(() => {
@@ -346,7 +345,7 @@ function useDisplay(
       (e) =>
         alive &&
         setState({
-          kind: host?.viewSyncState().connection === ConnState.CONNECTED ? "error" : "offline",
+          kind: host?.viewConnection().connected ? "error" : "offline",
           error: errorText(e),
         }),
     );

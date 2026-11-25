@@ -96,7 +96,6 @@ function makeExecutor(overrides: Partial<CoreExecutor> = {}): CoreExecutor & {
       writeOrder.push(eff.kind.case ?? "unknown");
     },
     async deleteCache() {},
-    applySyncStateView() {},
     async executeRpc(eff: RpcEffect) {
       if (eff.kind.case === "fetchLists") {
         return create(EventSchema, {
@@ -196,10 +195,10 @@ test("CoreHost boots real WASM core, hydrates HomeViewModel, and uses persistent
     expect(home.running.map((r) => r.sessionId)).toEqual(["s1"]);
     expect(onHome).toHaveBeenCalled();
 
-    const sync = host.viewSyncState();
-    expect(sync.machinesListed).toBe(true);
-    expect(sync.sessionsListed).toBe(true);
-    expect(sync.isMember).toBe(true);
+    const conn = host.viewConnection();
+    expect(conn.connected).toBe(true);
+    expect(conn.liveLoaded).toBe(true);
+    expect(conn.removed).toBe(false);
   } finally {
     unsub();
   }
@@ -331,7 +330,7 @@ test("warmLocalCache hydrates bootstrap cache before start without re-reading In
   hosts.push(host);
 
   await host.warmLocalCache("settings");
-  expect(host.viewSyncState().machines.map((m) => m.machineId)).toEqual(["m-cached"]);
+  expect(host.viewSettings().machines.map((m) => m.machineId)).toEqual(["m-cached"]);
   expect(bootReads).toBe(1);
 
   host.start();
@@ -351,7 +350,7 @@ test("warmLocalCache uses timeout guard when cache read stalls without blocking 
     return undefined;
   });
   expect(seenTimeout).toBe(CoreHost.WARM_BOOTSTRAP_CACHE_TIMEOUT_MS);
-  expect(host.viewSyncState().machines).toEqual([]);
+  expect(host.viewSettings().machines).toEqual([]);
 });
 
 test("CoreHost dispatches LocaleChangedEvent on init and locale changes and unsubscribes on dispose", () => {

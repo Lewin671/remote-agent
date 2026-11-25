@@ -6,6 +6,7 @@ import { ResolveApprovalRequestSchema } from "./gen/remoteagent/v1/local_pb";
 import { GetLiveSnapshotRequestSchema } from "./gen/remoteagent/v1/remote_pb";
 import { Remote } from "./remote";
 import { getCoreHost } from "./core/host";
+import { ScreenTarget } from "./gen/remoteagent/core/v1/app_pb";
 import { createTestSecurityStore } from "./test/security-fixture";
 
 test.skipIf(!process.env.RA_1B_FLOW_ROOT)("full snapshot and approval flow under daemon saturation", async () => {
@@ -23,11 +24,16 @@ test.skipIf(!process.env.RA_1B_FLOW_ROOT)("full snapshot and approval flow under
     const response = await fetch(config.control, { method: "POST", headers: { "Content-Type": "application/json", "X-1b-Measure": config.controlToken }, body: JSON.stringify({ action, client: "web" }) });
     expect(response.ok).toBe(true); return await response.json();
   };
+  const host = getCoreHost(remote);
   const until = (condition: () => boolean) => new Promise<void>((resolve, reject) => {
-    let unsubscribe = () => {};
-    const timeout = setTimeout(() => { unsubscribe(); reject(Error("client did not reach its ready state")); }, 10_000);
-    const check = () => { if (condition()) { clearTimeout(timeout); unsubscribe(); resolve(); } };
-    unsubscribe = remote.subscribe(check); check();
+    let unsubConn = () => {};
+    let unsubSess = () => {};
+    const cleanup = () => { unsubConn(); unsubSess(); };
+    const timeout = setTimeout(() => { cleanup(); reject(Error("client did not reach its ready state")); }, 10_000);
+    const check = () => { if (condition()) { clearTimeout(timeout); cleanup(); resolve(); } };
+    unsubConn = host.subscribe(ScreenTarget.CONNECTION, check);
+    unsubSess = host.subscribe(ScreenTarget.SESSION, check);
+    check();
   });
   const sid = "flow-web";
   const approval = (i: number) => ({ case: "resolveApproval" as const, value: create(ResolveApprovalRequestSchema, { sessionId:sid, approvalId:`${sid}-approval-${String(i).padStart(3,"0")}`, allow:true }) });
@@ -35,9 +41,8 @@ test.skipIf(!process.env.RA_1B_FLOW_ROOT)("full snapshot and approval flow under
   try {
     await control("reset");
     remote.start();
-    await until(() => remote.conn === "online" && remote.sessions.has(sid));
-    const host = getCoreHost(remote);
-    const machineId = remote.sessions.get(sid)!.machineId;
+    await until(() => host.viewConnection().connected && !!host.viewSession(sid).header?.found);
+    const machineId = host.viewSession(sid).header!.machineId;
     await host.runMachineCommand(machineId, sid, {case:"getLiveSnapshot",value:create(GetLiveSnapshotRequestSchema,{sessionId:sid})});
     for (let i = 0; i < 20; i++) await host.runMachineCommand(machineId, sid, approval(i));
     const load = await control("start"); loaded = true;

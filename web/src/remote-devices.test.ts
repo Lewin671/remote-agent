@@ -1,9 +1,10 @@
 // The device directory comes from the signed membership state: a relay's
 // listing can only name members, and sealed metadata is verified on open.
-import { create, toBinary } from "@bufbuild/protobuf";
+import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { afterEach, expect, it, vi } from "vitest";
+import { getCoreHost } from "./core/host";
 import { DeviceMetaSchema } from "./gen/remoteagent/v1/remote_pb";
-import { DeviceKind, DeviceSchema } from "./gen/remoteagent/v1/relay_pb";
+import { DeviceKind, DeviceSchema, MachineSchema } from "./gen/remoteagent/v1/relay_pb";
 import type { Envelope } from "./gen/remoteagent/v1/envelope_pb";
 import { SyntheticRemote } from "./test/remote-fixture";
 
@@ -19,43 +20,38 @@ async function probe() {
   live.push(r);
   return r;
 }
-function directory(
-  r: SyntheticRemote,
-  devices: {
-    id: string;
-    kind?: DeviceKind;
-    meta?: Envelope;
-    revision?: bigint;
-  }[],
-) {
-  (r as unknown as { api: object }).api = {
-    listDevices: async () => ({
-      devices: devices.map((d) =>
-        create(DeviceSchema, {
-          id: d.id,
-          kind: d.kind ?? DeviceKind.CLIENT,
-          createdMs: 0n,
-          lastSeenMs: 0n,
-          meta: d.meta,
-          metaRevision: d.revision ?? 0n,
-        }),
-      ),
-    }),
-  };
-}
 
 it("ignores a device that is not in the signed member roster", async () => {
   const r = await probe();
   const rogue = "ffffffffffffffffffffffffffffffff";
-  directory(r, [
-    { id: r.member.account.deviceId },
-    { id: r.machine, kind: DeviceKind.MACHINE },
-    { id: rogue },
-  ]);
-  await r.loadDevices(false);
-  expect(r.devices.has(rogue)).toBe(false);
-  expect(r.devices.has(r.member.account.deviceId)).toBe(true);
-  expect(r.devices.has(r.machine)).toBe(true);
+  (r as unknown as { api: object }).api = {
+    listMachines: async () => ({
+      machines: [
+        create(MachineSchema, { id: r.machine, online: true, lastSeenMs: 0n }),
+      ],
+    }),
+    listRemoteSessions: async () => ({ sessions: [] }),
+    getAccountPrefs: async () => ({}),
+    listDevices: async () => ({
+      devices: [
+        create(DeviceSchema, { id: r.member.account.deviceId, kind: DeviceKind.CLIENT }),
+        create(DeviceSchema, { id: r.machine, kind: DeviceKind.MACHINE }),
+        create(DeviceSchema, { id: rogue, kind: DeviceKind.CLIENT }),
+      ],
+    }),
+  };
+  (r as any).token = "tok";
+  (r as any).tokenExpires = Date.now() + 7 * 86_400_000;
+  (r as any).openStreamLeg = (legId: bigint, _t: string, cb: { onReady: (id: bigint, ms: bigint) => void }) =>
+    cb.onReady(legId, BigInt(Date.now()));
+  r.start();
+  const host = getCoreHost(r);
+  await vi.waitFor(() => {
+    expect(host.viewDevices().clients.map((c) => c.deviceId)).toContain(r.member.account.deviceId);
+    expect(host.viewSettings().machines.map((m) => m.machineId)).toContain(r.machine);
+  });
+  expect(host.viewDevices().clients.map((c) => c.deviceId)).not.toContain(rogue);
+  expect(host.viewSettings().machines.find((m) => m.machineId === r.machine)?.inDeviceDirectory).toBe(true);
 }, 20000);
 
 it("preserves a verified handoff offer when renaming this device", async () => {
@@ -77,8 +73,11 @@ it("preserves a verified handoff offer when renaming this device", async () => {
   };
   await r.renameDevice(self, "after");
   await r.loadDevices(false);
-  expect(r.devices.get(self)?.meta?.name).toBe("after");
-  expect(r.devices.get(self)?.meta?.handoffRecoveryEd).toEqual(handoffRecoveryEd);
+  const opened = await r.world.fixture.open(self, envelope);
+  const decoded = fromBinary(DeviceMetaSchema, opened.plaintext);
+  expect(decoded.name).toBe("after");
+  expect(decoded.handoffRecoveryEd).toEqual(handoffRecoveryEd);
+  expect(getCoreHost(r).viewClientDetail(self).displayName).toBe("after");
   expect(() => r.renameDevice(r.machine, "other")).toThrow("名称只能在那台设备上修改");
 }, 20000);
 
@@ -92,8 +91,8 @@ it("always fetches a fresh device directory without caching stale entries", asyn
 }, 20000);
 
 it("describes a newly paired browser without metadata", async () => {
+  vi.stubGlobal("navigator", { userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/140.0 Safari/537.36" });
   const r = await probe(), self = r.member.account.deviceId;
-  vi.stubGlobal("navigator", { userAgent: "SyntheticBrowser" });
   let meta: Envelope | undefined;
   let revision = 0n;
   const putDeviceMeta = vi.fn(async (req: { deviceId: string; expectedRevision: bigint; meta: Envelope }) => {
@@ -103,17 +102,23 @@ it("describes a newly paired browser without metadata", async () => {
     revision++;
     return { applied: true };
   });
+  (r as any).token = "tok";
+  (r as any).tokenExpires = Date.now() + 7 * 86_400_000;
   (r as any).api = {
+    listMachines: async () => ({ machines: [] }),
+    listRemoteSessions: async () => ({ sessions: [] }),
+    getAccountPrefs: async () => ({}),
     listDevices: async () => ({ devices: [create(DeviceSchema, { id: self, kind: DeviceKind.CLIENT, meta, metaRevision: revision })] }),
     putDeviceMeta,
   };
-  await r.loadDevices();
+  (r as any).openStreamLeg = (legId: bigint, _t: string, cb: { onReady: (id: bigint, ms: bigint) => void }) =>
+    cb.onReady(legId, BigInt(Date.now()));
+  r.start();
   await vi.waitFor(() => expect(putDeviceMeta).toHaveBeenCalledTimes(1));
   await vi.waitFor(() => {
-    expect(r.devices.get(self)?.meta?.platform).toBe("web");
-    expect((r as any).describingSelf).toBe(false);
+    expect(getCoreHost(r).viewClientDetail(self).description).not.toBe("");
   });
-  expect(r.devices.get(self)?.metaRev).toBe(1n);
+  expect(revision).toBe(1n);
   await r.loadDevices();
   expect(putDeviceMeta).toHaveBeenCalledTimes(1);
 }, 10000);

@@ -503,7 +503,7 @@ export function clearDemoDirect(remote: Remote, machineId?: string) {
 }
 
 function installDemoDirectHost(
-  remote: Remote,
+  _remote: Remote,
   host: CoreHost,
   speedsParam: string,
   fallback?: (machineId: string) => DemoDirectSpec | undefined,
@@ -512,7 +512,7 @@ function installDemoDirectHost(
   const map = new Map<string, DemoDirectSpec>();
   const specFor = (id: string) => map.get(id) ?? fallback?.(id);
   const sync = () => {
-    const ids = new Set<string>([...initialMachineIds, ...remote.machines.keys(), ...map.keys()]);
+    const ids = new Set<string>([...initialMachineIds, ...host.viewSettings().machines.map((m) => m.machineId), ...map.keys()]);
     const directReports = [];
     for (const id of ids) {
       const s = specFor(id);
@@ -551,11 +551,10 @@ function installDemoDirectHost(
   const origViewSession = host.viewSession.bind(host);
   host.viewSession = (sessionId, windowOpts) => {
     const vm = origViewSession(sessionId, windowOpts);
-    const sess = remote.sessions.get(sessionId);
-    const mid = sess?.machineId ?? "mac";
+    const mid = vm.header?.machineId || "mac";
     const s = specFor(mid);
     if (s && vm.header) {
-      const mName = remote.machines.get(mid)?.meta?.hostname ?? mid;
+      const mName = host.viewSettings().machines.find((m) => m.machineId === mid)?.name || mid;
       vm.header.directChip = buildChip(s, mName);
     }
     return vm;

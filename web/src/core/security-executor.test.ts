@@ -316,7 +316,6 @@ describe("CoreHost cold-boot security ordering", () => {
       async executeCommandAttempt(eff) {
         return create(CommandOutcomeEventSchema, { requestId: eff.requestId, attemptId: eff.attemptId, source: OutcomeSource.DAEMON });
       },
-      applySyncStateView() {},
     };
 
     host = new CoreHost(undefined, { executor: exec });

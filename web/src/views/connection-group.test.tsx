@@ -160,7 +160,7 @@ describe("summary row + unified sheet status row", () => {
 
   it("is not drawn as connected for offline machine while keeping switch", () => {
     const r = openSheet("mini");
-    expect(getCoreHost(r).viewSyncState().machines.find((m) => m.machineId === "mini")?.reachable).toBe(false);
+    expect(getCoreHost(r).viewSettings().machines.find((m) => m.machineId === "mini")?.online).toBe(false);
     expect(summaryRow().querySelector(".vt")!.textContent).toBe("离线");
     act(() => setDemoDirect(r, "mini", "failed"));
     expect(statusRow()).toBeNull();

@@ -4065,10 +4065,13 @@ it("fetches a CLI's earlier sessions before a session starts on it, and before i
   });
   let pages = 0;
   patchSyncState(r, { moreSessions: true });
-  r.loadMoreSessions = async () => (pages++, false);
   const prefsSave = barrier();
   const origRpc = r.executeRpc.bind(r);
   vi.spyOn(r, "executeRpc").mockImplementation(async (eff) => {
+    if (eff.kind.case === "fetchSessionsPage") {
+      pages++;
+      return new Promise(() => {});
+    }
     if (eff.kind.case === "putAccountPrefs") await prefsSave.wait;
     return origRpc(eff);
   });
@@ -4736,7 +4739,7 @@ it("hands a new session to its chat with the first prompt before its listing arr
     core.dispatch(create(CoreEventSchema, { event: { case: "newSessionSubmit", value: create(NewSessionSubmitActionSchema, { projectKey: project, autoModeSupported: true }) } }));
   });
   await vi.waitFor(() => expect(go).toHaveBeenCalledWith("s/new-handoff", true));
-  expect(r.sessions.has(info.id)).toBe(true);
+  expect(core.viewSession(info.id).header?.found).toBe(true);
   // Seeded from CreateSession outcome, SessionPage and PendingStartPrompt render immediately in pending tray before any stream/listing arrives.
   await act(async () => root!.render(<SessionPage remote={r} sessionId={info.id} onBack={() => {}} wide={false} />));
   expect(host.querySelector(".session")).toBeTruthy();

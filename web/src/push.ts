@@ -4,6 +4,7 @@ import * as l10n from "./i18n";
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { checkServer } from "./crypto";
+import { getCoreHost } from "./core/host";
 import { ClientService, NotifyKind } from "./gen/remoteagent/v1/relay_pb";
 import type { Remote } from "./remote";
 
@@ -85,7 +86,14 @@ export function restorePushPrefs(remote: Remote): Promise<void> {
     // As saved when its turn comes, not when the connection opened.
     const prefs = pushPrefs();
     const kinds = [...(prefs.attention ? [NotifyKind.ATTENTION] : []), ...(prefs.turns ? [NotifyKind.TURN_ENDED] : []), NotifyKind.SECURITY, ...(prefs.scheduled !== false ? [NotifyKind.SCHEDULED] : [])];
-    const current = () => !remote.removed && remote.conn === "online";
+    const current = () => {
+      if (typeof (remote as { attachHost?: unknown }).attachHost === "function") {
+        const c = getCoreHost(remote).viewConnection();
+        return !remote.removed && !c.removed && c.connected;
+      }
+      const fake = remote as unknown as { removed?: boolean; conn?: string };
+      return !fake.removed && fake.conn === "online";
+    };
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
     if (!current()) return;

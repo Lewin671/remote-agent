@@ -33,7 +33,6 @@ import {
   createStandaloneSecurityClient,
   translateSecurityErrorMessage,
 } from "./core/security-client";
-import { renderText } from "./core/text";
 import {
   AccountPrefsFetchedEventSchema,
   AccountPrefsPutResultEventSchema,
@@ -102,8 +101,8 @@ import {
   type ScheduleSeenLoadedEvent,
   type ScheduleSeenToken,
 } from "./gen/remoteagent/core/v1/schedules_view_pb";
-import { ConnState as CoreConnState } from "./gen/remoteagent/core/v1/home_view_pb";
-import type { SyncMachineView, SyncSessionView, SyncStateView } from "./gen/remoteagent/core/v1/sync_view_pb";
+import type { WatchedSessionRoute } from "./gen/remoteagent/core/v1/connection_view_pb";
+import { ScreenTarget } from "./gen/remoteagent/core/v1/app_pb";
 import {
   type LiveSnapshot,
 } from "./gen/remoteagent/v1/remote_pb";
@@ -142,7 +141,6 @@ import {
   TermHelloSchema,
   AccountPrefsObjectSchema,
   type AccountPrefsObject,
-  type Device,
   type Machine as RemoteMachine,
   type RemoteSession,
   type StoredEvent,
@@ -165,7 +163,7 @@ import {
 } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { relayFetch, relayEpoch } from "./transport";
-import { closeScheduleNotification, restorePushPrefs, watchSecurityPush } from "./push";
+import { closeScheduleNotification, watchSecurityPush } from "./push";
 import {
   checkServer,
   concat,
@@ -189,13 +187,11 @@ import {
   CommandResultSchema,
   CommandSchema,
   ImagePayloadSchema,
-  ProjectPrefsSchema,
   TerminalFrameSchema,
   type MachineMeta,
   type ProjectPrefs,
   type TerminalFrame,
 } from "./gen/remoteagent/v1/remote_pb";
-import { describeBrowser, type DeviceInfo } from "./devices";
 import { CACHE_PAGE_SIZE, eventCache, type CachedEvent, type EventCache } from "./eventcache";
 import { PEER_PROTOCOL_VERSION, RELAY_PROTOCOL_VERSION } from "./protocol";
 import { type StoredAccount } from "./storage";
@@ -215,9 +211,6 @@ export interface TermConn { send(frame: MessageInitShape<typeof TerminalFrameSch
 export type ConnState = "connecting" | "online" | "offline";
 export type Link = "online" | "waiting" | "no-network" | "no-server";
 
-const EMPTY_PREFS: ReadonlyMap<string, string> = new Map();
-const SYNCING_PREFS: ReadonlyMap<string, string> = new Map([["", "syncing"]]);
-
 const IMAGE_CACHE = 40;
 const OPEN_TIMEOUT_MS = 15_000;
 const RPC_TIMEOUT_MS = 45_000;
@@ -230,7 +223,6 @@ const SCOPE_HMAC_KEY_VALUE = "scope-hmac-key";
 
 export type ImageResult = { kind: "ok"; blob: Blob; width: number; height: number; format: ImageFormat } | { kind: "expired" } | { kind: "missing" } | { kind: "bad"; why?: string };
 export interface PrefsState { status: "loading" | "ready" | "error"; error: string; snap?: { revision: bigint; prefs: ProjectPrefs }; pending: ReadonlyMap<string, string>; failed?: { op: { id: string; kind: string; path: string }; error: string }; changedAt?: number; }
-const emptyPrefs = () => create(ProjectPrefsSchema, { schema: 1 });
 
 const PAYLOAD_PURPOSES: Partial<Record<PayloadKind, Purpose>> = {
   [PayloadKind.EVENT]: Purpose.Event,
@@ -277,27 +269,14 @@ function readStoredScopeToken(): string {
   } catch { return "all"; }
 }
 
-function syncSessionToView(sv: SyncSessionView): SessionView {
-  return {
-    id: sv.sessionId, machineId: sv.machineId, info: sv.info, checkpoint: sv.checkpoint,
-    checkpointStatus: sv.checkpointInvalid ? "invalid" : sv.checkpoint ? "ready" : "waiting",
-    metaRev: sv.metaRev, lastSeq: sv.lastSeq, updatedMs: sv.updatedMs, endedMs: sv.listedEndedMs,
-    ...(sv.retiredHistory ? { historyError: l10n.t("errors.history_keys_unavailable_records_from_before_recovery_cannot_be") }
-      : sv.openFailed ? { historyError: l10n.t("session.history_unreadable") } : {}),
-  };
-}
-
 export class Remote implements CoreExecutor {
   private hostBridge?: HostBridge;
-  private syncStateView?: SyncStateView;
 
   private persistedMachines = new Map<string, RemoteMachine>();
   private persistedSessions = new Map<string, RemoteSession>();
 
-  private watchedSessionIds: string[] = [];
-  private describingSelf = false;
+  private watchedSessions = new Map<string, string>();
   private devicesPushSeq = 1n;
-  private devicesSyncWaiters: Array<() => void> = [];
   private serverAhead = false;
   private securityStatusSnapshot?: SecurityWorkflowStatus;
   authorityDeviceId = "";
@@ -338,9 +317,6 @@ export class Remote implements CoreExecutor {
   readonly scroll = new Map<string, { top: number; stick: boolean }>();
   readonly approvalReasons = new Map<string, string>();
 
-  private cachedMachineMap?: Map<string, MachineView>;
-  private cachedSessionMap?: Map<string, SessionView>;
-  private cachedDeviceMap?: Map<string, DeviceInfo>;
   private imageCache = new Map<string, ImageResult>();
 
   protected constructor(
@@ -383,18 +359,18 @@ export class Remote implements CoreExecutor {
     });
     this.deviceLink = new DeviceLink(
       new RelayPath(
-        (id) => {
-          const sm = this.syncMachine(id);
-          const direct = !!sm?.directReady;
-          const authorized = !this.removed && this.isMachineAuthorized(id);
+        () => {
+          const c = this.hostBridge?.viewConnection();
+          const authorized = !this.removed;
+          const connected = !!c?.connected;
           return {
-            relayRequired: !direct,
-            unlinked: this.unlinked,
-            reachable: direct || (authorized && !!sm?.online),
-            ready: direct || this.conn === "online",
+            relayRequired: true,
+            unlinked: !connected && !c?.reachabilityUnknown,
+            reachable: authorized && connected,
+            ready: connected,
             authorized,
-            protocolVersion: direct ? PEER_PROTOCOL_VERSION : (sm?.protocolVersion || sm?.meta?.protocolVersion),
-            capabilities: sm?.meta?.capabilities,
+            protocolVersion: PEER_PROTOCOL_VERSION,
+            capabilities: undefined,
           };
         },
         () => this.relayEpoch(),
@@ -514,7 +490,6 @@ export class Remote implements CoreExecutor {
   stop() {
     this.closed = true;
     this.directExec.close();
-    while (this.devicesSyncWaiters.length) this.devicesSyncWaiters.shift()!();
     this.unwatchSecurityPush?.();
     this.unwatchSecurityPush = undefined;
     this.stopPairingDelivery();
@@ -627,14 +602,21 @@ export class Remote implements CoreExecutor {
     this.ensureHost().retryPrefs();
   }
 
-  setWatchedSessions(sessionIds: string[]) {
-    this.watchedSessionIds = [...sessionIds];
+  setWatchedSessions(routes: WatchedSessionRoute[]) {
+    this.watchedSessions.clear();
+    for (const r of routes) {
+      if (r.sessionId) this.watchedSessions.set(r.sessionId, r.machineId);
+    }
+  }
+
+  protected sessionMachineId(sid: string): string {
+    return this.watchedSessions.get(sid) || this.hostBridge?.viewSession(sid).header?.machineId || "";
   }
 
   private handleDirectEvent(machineId: string, pcId: bigint, env: Envelope, header: Header, _size: number) {
     if (this.closed) return;
     const sid = header.sessionId;
-    if (!sid || header.seq <= 0n || !this.watchedSessionIds.includes(sid)) return;
+    if (!sid || header.seq <= 0n || !this.watchedSessions.has(sid)) return;
     this.hostBridge?.dispatchEvent(
       create(CoreEventSchema, {
         event: {
@@ -652,13 +634,14 @@ export class Remote implements CoreExecutor {
   }
 
   changePrefs(kind: "pin" | "unpin" | "hide" | "unhide", path: string) {
-    this.ensureHost().changeProjectPref(kind, path);
-    if (!this.syncStateView?.prefsSyncing) {
+    const host = this.ensureHost();
+    host.changeProjectPref(kind, path);
+    if (!host.viewHome(1).prefsBanner?.syncing) {
       return Promise.resolve(true);
     }
     return new Promise<boolean>((resolve) => {
-      const unsub = this.subscribe(() => {
-        if (!this.syncStateView?.prefsSyncing) {
+      const unsub = host.subscribe(ScreenTarget.HOME, () => {
+        if (!host.viewHome(1).prefsBanner?.syncing) {
           unsub();
           resolve(true);
         }
@@ -666,99 +649,7 @@ export class Remote implements CoreExecutor {
     });
   }
 
-  // --- SyncStateView projection ---
-
-  private syncMachine(id: string): SyncMachineView | undefined {
-    return this.syncStateView?.machines.find((m) => m.machineId === id);
-  }
-
-  private syncSession(id: string): SyncSessionView | undefined {
-    return this.syncStateView?.sessions.find((s) => s.sessionId === id);
-  }
-
-  private isMachineAuthorized(id: string): boolean {
-    const v = this.syncStateView;
-    if (!v || !v.securityLoaded) return true;
-    const dev = v.devices.find((d) => d.deviceId === id);
-    return dev ? dev.trusted : v.devices.length === 0;
-  }
-
-  applySyncStateView(view: SyncStateView) {
-    const wasOnline = this.conn === "online";
-    this.syncStateView = view;
-    this.cachedMachineMap = undefined;
-    this.cachedSessionMap = undefined;
-    this.cachedDeviceMap = undefined;
-    if (view.authorityDeviceId) this.authorityDeviceId = view.authorityDeviceId;
-    if (view.securityLoaded) {
-      for (const pm of view.machines) {
-        if (!this.isMachineAuthorized(pm.machineId)) {
-          void this.keepValue("schedules:" + pm.machineId, undefined);
-        }
-      }
-    }
-    if (view.devices.length > 0 || view.machinesListed) this.devicesStatus = "ready";
-    while (this.devicesSyncWaiters.length) this.devicesSyncWaiters.shift()!();
-    this.changed();
-    if (!wasOnline && (this.conn as ConnState) === "online" && !this.closed) void restorePushPrefs(this);
-  }
-
-  get conn(): ConnState {
-    if (this.removed) return "offline";
-    return this.syncStateView?.connection === CoreConnState.CONNECTED ? "online" : this.syncStateView?.connection === CoreConnState.OFFLINE ? "offline" : "connecting";
-  }
-  get connError(): string { return renderText(this.syncStateView?.connectionReason); }
-  get everOnline(): boolean { return this.syncStateView?.liveLoaded ?? false; }
-  get removed(): boolean { return Boolean(this.syncStateView?.removed || this.securityStatusSnapshot?.removed || this.removalVerified); }
-  get link(): Link {
-    if (!this.network) return "no-network";
-    const v = this.syncStateView;
-    if (!v) return "waiting";
-    if (v.removed || v.connection === CoreConnState.OFFLINE || (v.unlinked && !v.reachabilityUnknown)) return "no-server";
-    return v.connection === CoreConnState.CONNECTED ? "online" : "waiting";
-  }
-  get displayGrace(): boolean { return Boolean(this.syncStateView?.displayGrace); }
-  get reachabilityUnknown(): boolean { return Boolean(this.syncStateView?.reachabilityUnknown); }
-  get showWaiting(): boolean { return !this.displayGrace && this.conn !== "online" && this.link === "waiting"; }
-  get unlinked(): boolean { return !this.reachabilityUnknown && (this.link === "no-network" || this.link === "no-server" || (this.link === "waiting" && !this.listed)); }
-  get lostAt(): number | undefined { const ms = Number(this.syncStateView?.disconnectedAtMs ?? 0n); return ms > 0 ? ms : undefined; }
-  get listed(): boolean { return !!(this.syncStateView?.machinesListed && this.syncStateView?.sessionsListed); }
-  get machines(): ReadonlyMap<string, MachineView> {
-    if (!this.cachedMachineMap) {
-      const m = new Map<string, MachineView>();
-      for (const pm of this.syncStateView?.machines ?? []) {
-        const authorized = this.isMachineAuthorized(pm.machineId);
-        m.set(pm.machineId, { id: pm.machineId, online: authorized && pm.online, lastSeenMs: pm.lastSeenMs, meta: pm.meta, metaRev: pm.metaRev });
-      }
-      this.cachedMachineMap = m;
-    }
-    return this.cachedMachineMap;
-  }
-  get sessions(): ReadonlyMap<string, SessionView> {
-    if (!this.cachedSessionMap) {
-      const m = new Map<string, SessionView>();
-      for (const sv of this.syncStateView?.sessions ?? []) m.set(sv.sessionId, syncSessionToView(sv));
-      this.cachedSessionMap = m;
-    }
-    return this.cachedSessionMap;
-  }
-  get devices(): ReadonlyMap<string, DeviceInfo> {
-    if (!this.cachedDeviceMap) {
-      const v = this.syncStateView;
-      const m = new Map<string, DeviceInfo>();
-      for (const dv of v?.devices ?? []) {
-        if (v?.securityLoaded && !dv.trusted) continue;
-        m.set(dv.deviceId, { id: dv.deviceId, kind: dv.kind, pairingIncomplete: dv.createdMs === 0n && !dv.meta, createdMs: dv.createdMs, lastSeenMs: dv.lastSeenMs, meta: dv.meta, metaRev: dv.metaRev });
-      }
-      this.cachedDeviceMap = m;
-    }
-    return this.cachedDeviceMap;
-  }
-  get prefs(): PrefsState {
-    const v = this.syncStateView;
-    return { status: (v?.prefsLoadFailed || v?.prefsBroken) && !v.prefs ? "error" : v?.prefsLoaded ? "ready" : "loading", error: "", snap: v?.prefs ? { revision: v.prefsRevision, prefs: v.prefs } : undefined, pending: v?.prefsSyncing ? SYNCING_PREFS : EMPTY_PREFS };
-  }
-  projectPrefs(): ProjectPrefs { return this.syncStateView?.prefs ?? emptyPrefs(); }
+  get removed(): boolean { return Boolean(this.hostBridge?.viewConnection().removed || this.securityStatusSnapshot?.removed || this.removalVerified); }
   get securityStatus(): SecurityWorkflowStatus | undefined { return this.securityStatusSnapshot; }
   get securityClient(): SecurityClient { return this.ensureHost().securityClient; }
   demoFlag(_name: string): boolean { return false; }
@@ -959,10 +850,6 @@ export class Remote implements CoreExecutor {
     try {
       const cap = limit > 0 ? limit : CACHE_PAGE_SIZE;
       const rows = newest && this.cache.readNewest ? await this.cache.readNewest(sessionId, cap) : await this.cache.read(sessionId, afterSeq, cap);
-      const knownLast = this.syncSession(sessionId)?.lastSeq;
-      if (newest && knownLast !== undefined && rows.length && rows[rows.length - 1].seq > knownLast) {
-        return create(CacheEventsLoadedEventSchema, { opId, sessionId, broken: true });
-      }
       const wireEvents: StoredEvent[] = rows.map((row) =>
         create(StoredEventSchema, { seq: row.seq, ...(row.envelope ? { envelope: row.envelope } : {}) }),
       );
@@ -1039,7 +926,6 @@ export class Remote implements CoreExecutor {
             this.api.listRemoteSessions({ limit: eff.kind.value.limit || this.sessionPageSize }),
             this.api.listDevices({}),
           ]);
-          this.maybeDescribeSelf(dRes.devices);
           return this.rpcEv({ case: "listsFetched", value: create(ListsFetchedEventSchema, { opId, wireMachines: mRes.machines, wireSessions: sRes.sessions, next: sRes.next, wireDevices: dRes.devices }) });
         } catch (e) {
           return this.rpcEv({ case: "listsFetched", value: create(ListsFetchedEventSchema, { opId, error: errorText(e) }) });
@@ -1093,20 +979,12 @@ export class Remote implements CoreExecutor {
       case "fetchDevices":
         try {
           const res = await this.api.listDevices({});
-          this.maybeDescribeSelf(res.devices);
           return this.rpcEv({ case: "devicesFetched", value: create(DevicesFetchedEventSchema, { opId, wireDevices: res.devices }) });
         } catch (e) {
           return this.rpcEv({ case: "devicesFetched", value: create(DevicesFetchedEventSchema, { opId, error: errorText(e) }) });
         }
       default:
         throw new Error("unexpected rpc effect");
-    }
-  }
-
-  private maybeDescribeSelf(devices: Device[]) {
-    const me = devices.find((d) => d.id === this.account.deviceId);
-    if (me && (!me.meta || !me.meta.securityHeader.length)) {
-      void this.describeSelf();
     }
   }
 
@@ -1250,8 +1128,7 @@ export class Remote implements CoreExecutor {
       if (
         parsedCmd?.kind.case === "schedule" &&
         parsedCmd.kind.value.operation === "list" &&
-        res.result &&
-        this.isMachineAuthorized(params.machineId)
+        res.result
       ) {
         try {
           const { msg: schedMsg } = await this.openSecureMessage(
@@ -1416,7 +1293,7 @@ export class Remote implements CoreExecutor {
     };
   }
 
-  private roundBudget(): number { return this.everOnline || this.networkGeneration > 0 ? 3000 : SETUP_IDLE_MS; }
+  private roundBudget(): number { return this.hostBridge?.viewConnection().liveLoaded || this.networkGeneration > 0 ? 3000 : SETUP_IDLE_MS; }
 
   private retireNetworkIO() {
     this.loginController?.abort(new PathChanged());
@@ -1466,7 +1343,7 @@ export class Remote implements CoreExecutor {
     const auth = createClient(AuthService, createConnectTransport({ fetch: relayFetch, baseUrl: apiBase(this.account.server), useBinaryFormat: true, defaultTimeoutMs: OPEN_TIMEOUT_MS }));
     for (let again = true; ; again = false) {
       try {
-        const timeoutMs = this.everOnline || this.networkGeneration > 0 ? 3000 : OPEN_TIMEOUT_MS;
+        const timeoutMs = this.hostBridge?.viewConnection().liveLoaded || this.networkGeneration > 0 ? 3000 : OPEN_TIMEOUT_MS;
         const ch = await auth.getChallenge({ deviceId: this.account.deviceId }, { signal, timeoutMs });
         signal.throwIfAborted();
         const challengeMsg = concat(utf8("remote-agent/v1/login\0"), new Uint8Array(ch.challenge));
@@ -1500,7 +1377,7 @@ export class Remote implements CoreExecutor {
   // --- Schedules / Images / Terminal / Devices ---
 
   async readScheduleCache(opId: bigint, machineId: string): Promise<ScheduleCacheLoadedEvent> {
-    if (!machineId || this.closed || !this.isMachineAuthorized(machineId)) {
+    if (!machineId || this.closed) {
       return create(ScheduleCacheLoadedEventSchema, { opId, machineId });
     }
     try {
@@ -1575,8 +1452,9 @@ export class Remote implements CoreExecutor {
     onStateChange?: (ev: TermStateEvent) => void,
   ): Promise<TermConn> {
     if (this.closed) throw new Error(l10n.t("errors.terminal_connection_closed"));
-    const s = this.syncSession(sid);
-    if (!s) throw new Error(l10n.t("session.android_unknown"));
+    const sessionMachineId = this.sessionMachineId(sid);
+    if (!sessionMachineId) throw new Error(l10n.t("session.android_unknown"));
+    const s = { machineId: sessionMachineId };
     if (signal?.aborted) throw new Error(l10n.t("errors.terminal_connection_canceled"));
     const streamId = newRequestID();
     const termUrl = apiBase(this.account.server).replace(/^http/, "ws") + "/v1/term";
@@ -1880,8 +1758,8 @@ export class Remote implements CoreExecutor {
     const key = sid + "/" + imageId;
     const hit = this.imageCache.get(key);
     if (hit) { this.imageCache.delete(key); this.imageCache.set(key, hit); return hit; }
-    const s = this.syncSession(sid);
-    if (!s) throw new Error(l10n.t("session.android_unknown"));
+    const machineId = this.sessionMachineId(sid);
+    if (!machineId) throw new Error(l10n.t("session.android_unknown"));
     let res;
     try {
       res = await this.api.getImage({ sessionId: sid, imageId });
@@ -1894,7 +1772,7 @@ export class Remote implements CoreExecutor {
     try {
       const { msg } = await this.openSecureMessage(
         res.image,
-        { kind: PayloadKind.IMAGE, machineId: s.machineId, sessionId: sid, requestId: imageId },
+        { kind: PayloadKind.IMAGE, machineId, sessionId: sid, requestId: imageId },
         ImagePayloadSchema,
         true,
       );
@@ -1965,23 +1843,21 @@ export class Remote implements CoreExecutor {
     try {
       await this.ensureHost().securityClient.syncNow(false, this.token);
       const res = await this.api.listDevices({});
-      this.maybeDescribeSelf(res.devices);
-      const synced = new Promise<void>((resolve) => {
-        this.devicesSyncWaiters.push(resolve);
+      await new Promise<void>((resolve) => {
+        this.ensureHost().dispatchEvent(
+          create(CoreEventSchema, {
+            event: {
+              case: "devicesFetched",
+              value: create(DevicesFetchedEventSchema, {
+                opId: 0n,
+                pushSeq: devPushSeq,
+                wireDevices: res.devices,
+              }),
+            },
+          }),
+          resolve,
+        );
       });
-      this.ensureHost().dispatchEvent(
-        create(CoreEventSchema, {
-          event: {
-            case: "devicesFetched",
-            value: create(DevicesFetchedEventSchema, {
-              opId: 0n,
-              pushSeq: devPushSeq,
-              wireDevices: res.devices,
-            }),
-          },
-        }),
-      );
-      await synced;
       this.devicesStatus = "ready";
       this.changed();
     } catch (e) {
@@ -2086,23 +1962,6 @@ export class Remote implements CoreExecutor {
     return this.ensureHost().securityClient.updateDeviceMeta({ deviceId: id, name: name.trim() }).then(async () => {
       if (!this.closed) await this.loadDevices(false);
     });
-  }
-
-  private async describeSelf() {
-    if (this.describingSelf) return;
-    this.describingSelf = true;
-    try {
-      await this.ensureHost().securityClient.updateDeviceMeta({
-        platform: "web",
-        description: typeof navigator === "undefined" ? "" : describeBrowser(navigator.userAgent),
-        describeSelfOnly: true,
-      });
-      if (!this.closed) await this.loadDevices(false);
-    } catch {
-      /* Will retry on subsequent devices refresh. */
-    } finally {
-      this.describingSelf = false;
-    }
   }
 }
 

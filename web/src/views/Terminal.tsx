@@ -10,15 +10,15 @@ import {
 import { usePointerFine } from "../ui";
 import { Terminal as XTerm } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   TerminalHistoryEventKind,
   TerminalHistoryPhase,
   TerminalStreamEventKind,
+  useConnectionView,
   useCoreHost,
-  useSyncState,
 } from "../core/host";
-import { ConnState } from "../gen/remoteagent/core/v1/home_view_pb";
+import { ScreenTarget } from "../gen/remoteagent/core/v1/app_pb";
 import { renderText } from "../core/text";
 import { errorText, TermConfirmKind, type Remote, type TermConn } from "../remote";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CornerDownLeft, Keyboard, Maximize2 } from "../icons";
@@ -62,11 +62,13 @@ const keys2: [ReactNode, string, string][] = [
  * Scrolling up opens the read-only reader over the same area. */
 export function TerminalView({ remote, session, compact, wide, running }: { remote: Remote; session: { id: string; machineId: string }; compact?: boolean; wide?: boolean; running: boolean }) {
   const coreHost = useCoreHost(remote);
-  const sync = useSyncState(coreHost);
-  const syncSession = sync.sessions.find((s) => s.sessionId === session.id);
-  const syncMachine = sync.machines.find((m) => { return m.machineId === session.machineId; });
-  const online = syncSession ? syncSession.terminalReady : syncMachine ? syncMachine.terminalReady : sync.connection === ConnState.CONNECTED;
-  const waitingPeer = syncSession ? syncSession.terminalWaiting : !online && (sync.reachabilityUnknown || sync.displayGrace);
+  const connView = useConnectionView(coreHost);
+  const sessionHeader = useSyncExternalStore(
+    (cb) => coreHost.subscribe(ScreenTarget.SESSION, cb),
+    () => coreHost.viewSession(session.id).header,
+  );
+  const online = sessionHeader?.found ? sessionHeader.terminalReady : connView.connected;
+  const waitingPeer = sessionHeader?.found ? sessionHeader.terminalWaiting : !online && (connView.reachabilityUnknown || connView.displayGrace);
   const onlineRef = useRef(online);
   onlineRef.current = online;
   const waitingPeerRef = useRef(waitingPeer);

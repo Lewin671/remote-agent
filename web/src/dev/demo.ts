@@ -142,6 +142,10 @@ import {
   type TokenResultEvent,
 } from "../gen/remoteagent/core/v1/app_pb";
 import {
+  ConnState as CoreConnState,
+  HomeEmptyKind,
+} from "../gen/remoteagent/core/v1/home_view_pb";
+import {
   DemoDeviceSchema,
   DemoMachineSchema,
   DemoSecuritySchema,
@@ -1700,7 +1704,66 @@ export class DemoRemote extends Remote {
     getCoreHost(this).dispatch(create(CoreEventSchema, { event: { case: "streamFrame", value: { legId, frame } } }));
   }
 
-  /** Syncs the current demo fixtures into Core so Home/Project/NewSession/SyncStateView update. */
+  get machines(): ReadonlyMap<string, MachineView> { return this.demoMachines; }
+  get sessions(): ReadonlyMap<string, SessionView> { return this.demoSessions; }
+  get devices(): ReadonlyMap<string, import("../devices").DeviceInfo> { return this.demoDevices; }
+  get prefs(): import("../remote").PrefsState {
+    const b = globalThis.__remoteAgentCore ? getCoreHost(this).viewHome(1).prefsBanner : undefined;
+    return {
+      status: b?.errorTone ? "error" : "ready",
+      error: "",
+      snap: { revision: this.stored.revision, prefs: this.stored.prefs },
+      pending: b?.syncing ? new Map([["", "syncing"]]) : new Map(),
+    };
+  }
+  projectPrefs() { return this.stored.prefs; }
+  get listed(): boolean {
+    if (!globalThis.__remoteAgentCore) return true;
+    return getCoreHost(this).viewHome(1).empty?.kind !== HomeEmptyKind.LOADING;
+  }
+  get conn(): import("../remote").ConnState {
+    if (!globalThis.__remoteAgentCore) return this.opts.get("conn") === "noserver" || this.opts.get("conn") === "removed" ? "offline" : this.opts.get("conn") === "connecting" ? "connecting" : "online";
+    const c = getCoreHost(this).viewConnection();
+    return c.removed ? "offline" : c.connected ? "online" : c.state === CoreConnState.OFFLINE ? "offline" : "connecting";
+  }
+
+  setDemoConnection(conn: import("../remote").ConnState) {
+    if (!globalThis.__remoteAgentCore) return;
+    const host = getCoreHost(this);
+    if (conn === "online") {
+      this.opts.delete("conn");
+      this.network = true;
+      if (this.demoStream) {
+        this.demoStream.ready = true;
+        this.syncRpcQueue = [];
+        this.demoSyncing = true;
+        try {
+          this.demoStream.callbacks.onReady(this.demoStream.legId, BigInt(Date.now()));
+          while (this.syncRpcQueue.length > 0) host.dispatch(this.resolveSyncRpc(this.syncRpcQueue.shift()!));
+        } finally { this.demoSyncing = false; this.syncRpcQueue = []; }
+      }
+    } else if (conn === "offline") {
+      this.opts.set("conn", "noserver");
+      if (this.demoStream) {
+        this.demoStream.ready = false;
+        this.demoStream.callbacks.onClosed(this.demoStream.legId, { policyViolation: false, errorCode: "unavailable", error: "offline", unresolvedHost: false });
+        host.fireActiveTimer(TimerKind.LINK_GRACE, "display");
+        host.fireActiveTimer(TimerKind.LINK_GRACE);
+      }
+    } else {
+      this.opts.set("conn", "connecting");
+      if (this.demoStream) {
+        this.demoStream.ready = false;
+        this.demoStream.callbacks.onClosed(this.demoStream.legId, { policyViolation: false, errorCode: "unavailable", error: "", unresolvedHost: false });
+      }
+    }
+    this.changed();
+  }
+
+  private syncedMachineIds = new Set<string>();
+  private syncedSessionIds = new Set<string>();
+
+  /** Syncs the current demo fixtures into Core so Home/Project/NewSession/Connection update. */
   syncDemoToCore(forceRefresh = false) {
     if (!globalThis.__remoteAgentCore) return;
     const host = getCoreHost(this);
@@ -1726,18 +1789,20 @@ export class DemoRemote extends Remote {
           host.fireActiveTimer(TimerKind.LINK_GRACE);
         }
       } finally { this.demoSyncing = false; this.syncRpcQueue = []; }
+      this.syncedMachineIds = new Set(this.demoMachines.keys());
+      this.syncedSessionIds = new Set(this.demoSessions.keys());
       this.changed();
       return;
     }
     if (this.demoStream?.ready && !removed && conn !== "fail") {
       const legId = this.demoStream.legId;
-      const curView = host.viewSyncState();
       const wantedIds = new Set(this.demoMachines.keys());
-      for (const prev of curView.machines) if (!wantedIds.has(prev.machineId)) this.pushFrame(legId, { case: "machineRemovedId", value: prev.machineId });
+      for (const prevId of this.syncedMachineIds) if (!wantedIds.has(prevId)) this.pushFrame(legId, { case: "machineRemovedId", value: prevId });
       for (const m of this.demoMachines.values()) this.pushFrame(legId, { case: "machineUpdated", value: this.plainMachine(m) });
       const wantedSessions = [...this.demoSessions.values()];
       const wantedSids = new Set(wantedSessions.map((s) => s.id));
-      if (forceRefresh || curView.sessions.some((prev) => !wantedSids.has(prev.sessionId))) {
+      const removedAnySession = [...this.syncedSessionIds].some((prevId) => !wantedSids.has(prevId));
+      if (forceRefresh || removedAnySession) {
         this.syncRpcQueue = [];
         this.demoSyncing = true;
         try {
@@ -1749,6 +1814,8 @@ export class DemoRemote extends Remote {
       }
       for (const d of this.demoDevices.values()) this.pushFrame(legId, { case: "deviceUpdated", value: this.plainDevice(d) });
       this.pushFrame(legId, { case: "accountPrefsUpdated", value: this.demoPrefs() });
+      this.syncedMachineIds = wantedIds;
+      this.syncedSessionIds = wantedSids;
     }
     this.changed();
   }
@@ -2473,7 +2540,7 @@ export class DemoRemote extends Remote {
 
   async getSharedFileChunk(sid: string, fileId: string, offset: bigint) {
     await this.pause(240);
-    if (this.conn !== "online") {
+    if (!getCoreHost(this).viewConnection().connected) {
       const OfflineErr = CommandError;
       throw new OfflineErr("unavailable", "offline");
     }
@@ -2791,7 +2858,7 @@ export class DemoRemote extends Remote {
         });
         const quotaState = this.opts.get("quota");
         if (quotaState) {
-          const meta = this.machines.get("mac")!.meta!;
+          const meta = this.demoMachines.get("mac")!.meta!;
           meta.quotas = [create(AgentQuotaSchema, {
             agent: Agent.CODEX, plan: "prolite", state: QuotaState.OK,
             observedMs: BigInt(now - (quotaState === "old" ? 14 * 60 * min : min)),
@@ -3031,7 +3098,7 @@ export class DemoRemote extends Remote {
     const cached = this.cachedImage(sid, imageId);
     if (cached) return cached;
     await this.pause(900);
-    if (this.conn !== "online")
+    if (!getCoreHost(this).viewConnection().connected)
       throw new CommandError("unavailable", "和服务器断线了");
     if (imageId.startsWith("exp-")) return { kind: "expired" as const };
     if (imageId.startsWith("bad-")) return { kind: "bad" as const };
@@ -3154,7 +3221,7 @@ export class DemoRemote extends Remote {
   }
 
   private liveSnapshotResult(sid: string): CommandResult {
-    const s = this.sessions.get(sid);
+    const s = this.demoSessions.get(sid);
     const evs = this.demoEvents(sid);
     const resolved = new Set<string>();
     const answered = new Set<string>();
@@ -3210,7 +3277,7 @@ export class DemoRemote extends Remote {
         case: undefined,
       },
     ) => create(CommandResultSchema, { kind });
-    const s = this.sessions.get(sid)!;
+    const s = this.demoSessions.get(sid)!;
     switch (cmd.case) {
       case "send": {
         const { text, requestId } = cmd.value;
@@ -3353,7 +3420,7 @@ export class DemoRemote extends Remote {
         return ok();
       case "forkSession": {
         await this.pause(800);
-        const src = this.sessions.get(sid)!;
+        const src = this.demoSessions.get(sid)!;
         if (sid === "s-ended3")
           throw new CommandError(
             "failed_precondition",
@@ -3462,7 +3529,7 @@ export class DemoRemote extends Remote {
   ): Promise<CommandResult> {
     await this.pause(500);
     const cmd = create(CommandSchema, { kind }).kind;
-    const m = this.machines.get(machineId);
+    const m = this.demoMachines.get(machineId);
     if (!m?.online)
       throw new CommandError("unavailable", "电脑不在线，指令没有发出");
     if (cmd.case === "schedule") {
@@ -3843,12 +3910,12 @@ export class DemoRemote extends Remote {
     await this.pause(400);
     let open = true;
     const popup =
-      this.sessions.get(sid)?.info?.status === SessionStatus.BLOCKED;
+      this.demoSessions.get(sid)?.info?.status === SessionStatus.BLOCKED;
     const own = { cols: popup ? 42 : 120, rows: popup ? 30 : 40 };
     const snapshot = (size: { cols: number; rows: number }) => {
       if (!open) return;
       const data = new TextEncoder().encode(
-        popup ? trust : screen(this.sessions.get(sid)?.info?.title ?? ""),
+        popup ? trust : screen(this.demoSessions.get(sid)?.info?.title ?? ""),
       );
       onFrame({
         $typeName: "remoteagent.v1.TerminalFrame",

@@ -1,6 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { patchSyncState, SyntheticRemote } from "./test/remote-fixture";
 import { getCoreHost } from "./core/host";
+import { renderText } from "./core/text";
 const fixtureRemotes: SyntheticRemote[] = [];
 import { create } from "@bufbuild/protobuf";
 
@@ -237,8 +238,8 @@ it("opens a session from the cached history and downloads only what is new", asy
   (r as any).openStreamLeg = (legId: bigint, _t: string, cb: { onReady: (id: bigint, ms: bigint) => void }) =>
     cb.onReady(legId, BigInt(Date.now()));
   r.start();
-  await vi.waitFor(() => expect(r.sessions.get("s")?.lastSeq).toBe(3n));
   const host = getCoreHost(r);
+  await vi.waitFor(() => expect(host.viewConnection().connected && host.viewSession("s").header?.found).toBe(true));
   host.watchSession("s");
   host.sessionOpen("s");
   try {
@@ -288,8 +289,8 @@ it("drops a cached history that is not this session's", async () => {
   };
   (r as any).cache = long;
   r.start();
-  await vi.waitFor(() => expect(r.sessions.get("s")?.lastSeq).toBe(2n));
   const host1 = getCoreHost(r);
+  await vi.waitFor(() => expect(host1.viewConnection().connected && host1.viewSession("s").header?.found).toBe(true));
   host1.watchSession("s");
   host1.sessionOpen("s");
   await vi.waitFor(() => expect(host1.viewSession("s").timeline?.loaded).toBe(true));
@@ -324,8 +325,8 @@ it("drops a cached history that is not this session's", async () => {
     cb.onReady(legId, BigInt(Date.now()));
   (r2 as any).cache = moved;
   r2.start();
-  await vi.waitFor(() => expect(r2.sessions.get("s")?.lastSeq).toBe(3n));
   const host2 = getCoreHost(r2);
+  await vi.waitFor(() => expect(host2.viewConnection().connected && host2.viewSession("s").header?.found).toBe(true));
   host2.watchSession("s");
   host2.sessionOpen("s");
   await vi.waitFor(() => expect(host2.viewSession("s").timeline?.loaded).toBe(true));
@@ -397,14 +398,15 @@ it("starts from what the browser kept: the token, and the last listing", async (
   let notified = 0;
   r.subscribe(() => notified++);
   r.start();
+  const host = getCoreHost(r);
   await vi.waitFor(() => {
     expect(Socket.all).toHaveLength(1);
-    expect(r.sessions.get("kept")?.info?.title).toBe("from last time");
+    expect(renderText(host.viewSession("kept").header?.title)).toBe("from last time");
   });
   // Shown before the server has said anything, without logging in.
   expect(login).not.toHaveBeenCalled();
-  expect(r.machines.get(r.machine)?.online).toBe(false);
-  expect(r.listed).toBe(false);
+  expect(host.viewSettings().machines.find((m) => m.machineId === r.machine)?.online).toBe(false);
+  expect(host.viewConnection().liveLoaded).toBe(false);
   expect(r.authHeader()).toBe("Bearer kept-token");
   // A handshake the network dropped keeps the token.
   Socket.all[0].closedBy(1006);

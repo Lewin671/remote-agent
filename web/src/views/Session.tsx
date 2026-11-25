@@ -16,7 +16,6 @@ import {
   type SessionWindowOptions,
 } from "../core/host";
 import { renderText } from "../core/text";
-import { ScreenTarget } from "../gen/remoteagent/core/v1/app_pb";
 import type { AttachmentDraftView, OutboxAttachmentSummary } from "../gen/remoteagent/core/v1/attachments_pb";
 import {
   ComputerReachability,
@@ -104,13 +103,9 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
   type ReactNode,
   type RefObject,
 } from "react";
-
-const NOOP_SYNC_SUB = () => () => {};
-const NOOP_LOST_AT = (): number | undefined => undefined;
 
 const TerminalView = lazy(() =>
   import("./Terminal").then((m) => ({ default: m.TerminalView })),
@@ -1611,16 +1606,7 @@ const ChatBody = memo(function ChatBody({
   const timeline = vm.timeline;
   const dock = vm.dock;
   const locale = i18n.useLocale();
-  const host = remote ? getCoreHost(remote) : undefined;
-  const lostAt = useSyncExternalStore(
-    host ? (cb) => host.subscribe(ScreenTarget.SYNC_STATE, cb) : NOOP_SYNC_SUB,
-    host
-      ? () => {
-          const ms = Number(host.viewSyncState().disconnectedAtMs);
-          return ms > 0 ? ms : undefined;
-        }
-      : NOOP_LOST_AT,
-  );
+  const lostAt = header && header.frozenAtMs > 0n ? Number(header.frozenAtMs) : undefined;
 
   const scroller = useRef<HTMLDivElement>(null);
   const getScrollStore = () => {

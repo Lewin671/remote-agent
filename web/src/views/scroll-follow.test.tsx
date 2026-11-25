@@ -8,8 +8,6 @@ import { createRoot, type Root } from "react-dom/client";
 import { VirtuosoMockContext } from "react-virtuoso";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { create } from "@bufbuild/protobuf";
-import { getCoreHost } from "../core/host";
-import { ScreenTarget } from "../gen/remoteagent/core/v1/app_pb";
 import { ConnState } from "../gen/remoteagent/core/v1/home_view_pb";
 import { DemoRemote } from "../dev/demo";
 import {
@@ -428,16 +426,12 @@ describe("long-session cold load, memo reactivity, and key-based unseen badge", 
     expect(host!.querySelector("[data-history-index]")).toBeTruthy();
   });
 
-  it("re-renders memoized ChatBody and TimelineRow when Core sync state disconnectedAtMs or header connState updates", async () => {
+  it("re-renders memoized ChatBody and TimelineRow when header frozenAtMs or connState updates", async () => {
     vi.useFakeTimers();
     const r = DemoRemote.create(new URLSearchParams(), async () => undefined);
     remotes.push(r);
     r.start();
-    const coreHost = getCoreHost(r);
     const base = 1_700_000_000_000;
-    let disconnectedAtMs = BigInt(base + 5_000);
-    const origView = coreHost.viewSyncState.bind(coreHost);
-    vi.spyOn(coreHost, "viewSyncState").mockImplementation(() => ({ ...origView(), disconnectedAtMs }));
 
     const runningTool = create(SessionTimelineItemSchema, {
       id: "e1",
@@ -454,17 +448,13 @@ describe("long-session cold load, memo reactivity, and key-based unseen badge", 
       },
     });
     const vm = makeVm("s-memo", [runningTool], { loaded: true }, false);
+    vm.header!.frozenAtMs = BigInt(base + 5_000);
     await renderView(r, vm);
     expect(host!.textContent).toContain("0:05");
 
-    // Updating Core SYNC_STATE updates memoized TimelineRow without a new SessionViewModel reference.
-    disconnectedAtMs = BigInt(base + 12_000);
-    await act(async () => {
-      const h = coreHost as unknown as { invalidateTarget(t: ScreenTarget): void; dirtyTargets: Set<ScreenTarget>; flushRenders(): void };
-      h.invalidateTarget(ScreenTarget.SYNC_STATE);
-      h.dirtyTargets.add(ScreenTarget.SYNC_STATE);
-      h.flushRenders();
-    });
+    // Updating header.frozenAtMs updates memoized TimelineRow.
+    const vm2 = { ...vm, header: { ...vm.header!, frozenAtMs: BigInt(base + 12_000) } };
+    await renderView(r, vm2);
     expect(host!.textContent).toContain("0:12");
 
     // Updating header.connState updates HistoryOpening inside memoized ChatBody.
