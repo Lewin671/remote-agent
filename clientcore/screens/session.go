@@ -732,19 +732,32 @@ func buildSessionActions(
 	hasPendingInputs := in.Projection != nil && len(in.Projection.PendingInputs) > 0
 	exited := header.Exited
 
-	out.CanInterrupt = onlineReady && !exited && runningTurn
-	out.CanEnd = onlineReady && !exited
+	slotBlocked := func(s *corev1.SessionCommandState) bool {
+		return s != nil && (s.Expired || (s.Frozen && !s.CanAbandon))
+	}
+	slotBlockedReason := func(s *corev1.SessionCommandState) *corev1.Text {
+		if s == nil {
+			return nil
+		}
+		if s.StatusText != nil {
+			return s.StatusText
+		}
+		return s.ErrorText
+	}
+
+	out.CanInterrupt = onlineReady && !exited && runningTurn && !slotBlocked(out.Interrupt)
+	out.CanEnd = onlineReady && !exited && !slotBlocked(out.End)
 	machineDisplay := lists.MachineName(lm, "")
 	if machineDisplay != "" {
 		out.EndConfirmNote = text.Msg(text.KeySessionEndNote, text.Str("agent", caps.Name), text.Str("name", machineDisplay))
 	}
-	out.CanResume = onlineReady && exited
+	out.CanResume = onlineReady && exited && !slotBlocked(out.Resume)
 	if exited && !header.ComputerOnline && header.ComputerReachability != corev1.ComputerReachability_COMPUTER_REACHABILITY_UNKNOWN && machineDisplay != "" {
 		out.ResumeNote = text.Msg(text.KeySessionOfflineResume, text.Str("name", machineDisplay))
 	} else if machineDisplay != "" {
 		out.ResumeNote = text.Msg(text.KeySessionResumeNote, text.Str("name", machineDisplay))
 	}
-	out.CanRename = onlineReady
+	out.CanRename = onlineReady && !slotBlocked(out.Rename)
 
 	// Fork rules: Claude/Codex only, idle, no pending inputs, online.
 	out.CanFork = caps.Forks && onlineReady && !runningTurn && !hasPendingInputs
@@ -760,18 +773,23 @@ func buildSessionActions(
 	}
 	out.ForkAction = buildSessionForkAction(caps.Forks, header.ComputerOnline, header.ComputerUnlinked, out.CanFork, out.ForkBlockedReason, out.Fork)
 
-	out.CanCompact = header.Capabilities.SupportsCompact && onlineReady && !exited && !runningTurn
-	out.CanSwitchModel = caps.SwitchesModelInSession && onlineReady && !exited && !runningTurn
+	out.CanCompact = header.Capabilities.SupportsCompact && onlineReady && !exited && !runningTurn && !slotBlocked(out.Compact)
+	if header.Capabilities.SupportsCompact && slotBlocked(out.Compact) {
+		out.CompactBlockedReason = slotBlockedReason(out.Compact)
+	}
+	out.CanSwitchModel = caps.SwitchesModelInSession && onlineReady && !exited && !runningTurn && !slotBlocked(out.SetModel)
 	if caps.SwitchesModelInSession {
 		switch {
 		case !onlineReady:
 			out.ModelSwitchBlockedReason = text.Msg(text.KeySessionSwitchConnected)
 		case runningTurn:
 			out.ModelSwitchBlockedReason = text.Msg(text.KeySessionSwitchAfterTurn)
+		case slotBlocked(out.SetModel):
+			out.ModelSwitchBlockedReason = slotBlockedReason(out.SetModel)
 		}
 	}
 
-	out.CanSwitchMode = onlineReady && !exited
+	out.CanSwitchMode = onlineReady && !exited && !slotBlocked(out.SetMode)
 
 	// Model & effort choices.
 	var modelSlice []*v1.ModelInfo

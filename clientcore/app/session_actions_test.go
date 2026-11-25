@@ -967,3 +967,169 @@ func TestSessionFrozenDenyReasonChangeAutoAbandons(t *testing.T) {
 		t.Fatalf("expected fresh request_id with updated deny reason, prev=%s got=%+v", effs1[0].RequestId, effs2)
 	}
 }
+
+func TestSessionFrozenSlotPayloadChangesAndExpiry(t *testing.T) {
+	sess := &corev1.PlainSession{
+		SessionId: "s-frz",
+		MachineId: "m-on",
+		UpdatedMs: 1_791_078_060_000,
+		Meta: &v1.Session{
+			Id:           "s-frz",
+			Cwd:          "/Users/me/proj",
+			Agent:        v1.Agent_AGENT_CLAUDE,
+			Title:        "Original",
+			Model: "claude-haiku-4-5",
+			Mode:  v1.ApprovalMode_APPROVAL_MODE_ASK,
+		},
+		Checkpoint: &v1.LiveSnapshot{},
+	}
+	models := []*v1.ModelInfo{
+		{Slug: "claude-haiku-4-5", DisplayName: "Haiku 4.5"},
+		{Slug: "claude-opus-4-6", DisplayName: "Opus 4.6", Efforts: []string{"medium", "high"}, DefaultEffort: "medium"},
+		{Slug: "claude-sonnet-4-6", DisplayName: "Sonnet 4.6", Efforts: []string{"medium", "high"}, DefaultEffort: "high"},
+	}
+	c := makeSemanticTestCore(t, sess, models)
+
+	// 1) SetModel A -> UNKNOWN (frozen) -> same payload A reuses request_id; different payload B abandons A & allocates new request_id.
+	bModA := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_061_000,
+		Event: &corev1.Event_SessionSetModel{
+			SessionSetModel: &corev1.SessionSetModelAction{SessionId: "s-frz", Model: "claude-opus-4-6"},
+		},
+	})
+	effsA, cmdsA := decodeDispatchedCommands(t, bModA)
+	if len(effsA) != 1 || cmdsA[0].GetSetModel().GetModel() != "claude-opus-4-6" {
+		t.Fatalf("expected SetModel Opus, got %+v", cmdsA)
+	}
+	settleCommandUnknown(c, 1_791_078_061_100, effsA[0])
+
+	// Re-submitting identical model A replays frozen attempt with the SAME request_id.
+	bModARetry := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_061_200,
+		Event: &corev1.Event_SessionSetModel{
+			SessionSetModel: &corev1.SessionSetModelAction{SessionId: "s-frz", Model: "claude-opus-4-6"},
+		},
+	})
+	effsARetry, cmdsARetry := decodeDispatchedCommands(t, bModARetry)
+	if len(effsARetry) != 1 || effsARetry[0].RequestId != effsA[0].RequestId || cmdsARetry[0].GetSetModel().GetModel() != "claude-opus-4-6" {
+		t.Fatalf("same model payload on frozen slot must replay same request_id; prev=%s got=%+v", effsA[0].RequestId, effsARetry)
+	}
+	settleCommandUnknown(c, 1_791_078_061_300, effsARetry[0])
+
+	// Submitting DIFFERENT model B must abandon A and dispatch B with a NEW request_id!
+	bModB := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_061_400,
+		Event: &corev1.Event_SessionSetModel{
+			SessionSetModel: &corev1.SessionSetModelAction{SessionId: "s-frz", Model: "claude-sonnet-4-6"},
+		},
+	})
+	effsB, cmdsB := decodeDispatchedCommands(t, bModB)
+	if len(effsB) != 1 || effsB[0].RequestId == effsA[0].RequestId || cmdsB[0].GetSetModel().GetModel() != "claude-sonnet-4-6" {
+		t.Fatalf("different model payload on frozen slot must abandon & dispatch new request_id; prev=%s got=%+v cmds=%+v", effsA[0].RequestId, effsB, cmdsB)
+	}
+	vmModB, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-frz"}}})
+	if vmModB.GetSession().GetActions().GetSetModel().GetSubmittedSummary().GetLiteral() != "Sonnet 4.6" {
+		t.Fatalf("expected SubmittedSummary='Sonnet 4.6', got %+v", vmModB.GetSession().GetActions().GetSetModel().GetSubmittedSummary())
+	}
+
+	// Expire model B's frozen slot (settle UNKNOWN past RecoveryDeadlineMs = 360s).
+	settleCommandUnknown(c, 1_791_078_061_500, effsB[0])
+	// Retry after recovery deadline triggers Expired=true.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_500_000,
+		Event: &corev1.Event_SessionRetryCommand{
+			SessionRetryCommand: &corev1.SessionRetryCommandAction{SessionId: "s-frz", SlotKey: "set_model:s-frz"},
+		},
+	})
+	vmExp, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-frz"}}})
+	actExp := vmExp.GetSession().GetActions()
+	if actExp.CanSwitchModel || actExp.GetModelSwitchBlockedReason() == nil {
+		t.Fatalf("expired frozen set_model slot must set CanSwitchModel=false with blocked reason, got can=%v reason=%+v",
+			actExp.CanSwitchModel, actExp.GetModelSwitchBlockedReason())
+	}
+	bModAfterExp := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_500_100,
+		Event: &corev1.Event_SessionSetModel{
+			SessionSetModel: &corev1.SessionSetModelAction{SessionId: "s-frz", Model: "claude-opus-4-6"},
+		},
+	})
+	if effs, _ := decodeDispatchedCommands(t, bModAfterExp); len(effs) != 0 {
+		t.Fatalf("expired frozen set_model slot must reject new input until abandoned, got %d cmds", len(effs))
+	}
+
+	// 2) Rename frozen -> changing title abandons old frozen attempt and dispatches new title.
+	bRenA := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_500_200,
+		Event: &corev1.Event_SessionRename{
+			SessionRename: &corev1.SessionRenameAction{SessionId: "s-frz", Title: "Title A"},
+		},
+	})
+	effsRenA, _ := decodeDispatchedCommands(t, bRenA)
+	settleCommandUnknown(c, 1_791_078_500_300, effsRenA[0])
+	bRenB := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_500_400,
+		Event: &corev1.Event_SessionRename{
+			SessionRename: &corev1.SessionRenameAction{SessionId: "s-frz", Title: "Title B"},
+		},
+	})
+	effsRenB, cmdsRenB := decodeDispatchedCommands(t, bRenB)
+	if len(effsRenB) != 1 || effsRenB[0].RequestId == effsRenA[0].RequestId || cmdsRenB[0].GetRenameSession().GetTitle() != "Title B" {
+		t.Fatalf("different rename payload on frozen slot must abandon & send new request_id; prev=%s got=%+v", effsRenA[0].RequestId, effsRenB)
+	}
+
+	// 3) SetApprovalMode frozen -> changing mode abandons old frozen attempt and dispatches new mode.
+	bModeA := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_500_500,
+		Event: &corev1.Event_SessionSetApprovalMode{
+			SessionSetApprovalMode: &corev1.SessionSetApprovalModeAction{SessionId: "s-frz", Mode: v1.ApprovalMode_APPROVAL_MODE_AUTO},
+		},
+	})
+	effsModeA, _ := decodeDispatchedCommands(t, bModeA)
+	settleCommandUnknown(c, 1_791_078_500_600, effsModeA[0])
+	bModeB := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_500_700,
+		Event: &corev1.Event_SessionSetApprovalMode{
+			SessionSetApprovalMode: &corev1.SessionSetApprovalModeAction{SessionId: "s-frz", Mode: v1.ApprovalMode_APPROVAL_MODE_PLAN},
+		},
+	})
+	effsModeB, cmdsModeB := decodeDispatchedCommands(t, bModeB)
+	if len(effsModeB) != 1 || effsModeB[0].RequestId == effsModeA[0].RequestId || cmdsModeB[0].GetSetApprovalMode().GetMode() != v1.ApprovalMode_APPROVAL_MODE_PLAN {
+		t.Fatalf("different mode payload on frozen slot must abandon & send new request_id; prev=%s got=%+v", effsModeA[0].RequestId, effsModeB)
+	}
+
+	// 4) Compact frozen and expired -> CanCompact=false with CompactBlockedReason, rejects dispatch.
+	bCmp := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_500_800,
+		Event: &corev1.Event_SessionSimpleCommand{
+			SessionSimpleCommand: &corev1.SessionSimpleCommandAction{
+				SessionId: "s-frz",
+				Kind:      corev1.SessionSimpleCommandKind_SESSION_SIMPLE_COMMAND_KIND_COMPACT,
+			},
+		},
+	})
+	effsCmp, _ := decodeDispatchedCommands(t, bCmp)
+	settleCommandUnknown(c, 1_791_078_500_900, effsCmp[0])
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_900_000,
+		Event: &corev1.Event_SessionRetryCommand{
+			SessionRetryCommand: &corev1.SessionRetryCommandAction{SessionId: "s-frz", SlotKey: "compact:s-frz"},
+		},
+	})
+	vmCmpExp, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-frz"}}})
+	if vmCmpExp.GetSession().GetActions().CanCompact || vmCmpExp.GetSession().GetActions().GetCompactBlockedReason() == nil {
+		t.Fatalf("expired frozen compact slot must set CanCompact=false with CompactBlockedReason, got can=%v reason=%+v",
+			vmCmpExp.GetSession().GetActions().CanCompact, vmCmpExp.GetSession().GetActions().GetCompactBlockedReason())
+	}
+	bCmpAfter := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_900_100,
+		Event: &corev1.Event_SessionSimpleCommand{
+			SessionSimpleCommand: &corev1.SessionSimpleCommandAction{
+				SessionId: "s-frz",
+				Kind:      corev1.SessionSimpleCommandKind_SESSION_SIMPLE_COMMAND_KIND_COMPACT,
+			},
+		},
+	})
+	if effs, _ := decodeDispatchedCommands(t, bCmpAfter); len(effs) != 0 {
+		t.Fatalf("expired frozen compact slot must reject dispatch, got %d cmds", len(effs))
+	}
+}

@@ -30,6 +30,109 @@ func isSlotInFlight(ui *screens.SessionUIState, slotKey string) bool {
 	return rec != nil && (rec.Busy || rec.Status == corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_PENDING)
 }
 
+func sameQuestionIndex(a, b *int32) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return *a == *b
+}
+
+func sameCommandPayload(a, b *v1.Command) bool {
+	if a == nil || b == nil {
+		return false
+	}
+	switch ak := a.Kind.(type) {
+	case *v1.Command_ResolveApproval:
+		bk := b.GetResolveApproval()
+		if ak.ResolveApproval == nil || bk == nil {
+			return false
+		}
+		return ak.ResolveApproval.ApprovalId == bk.ApprovalId &&
+			ak.ResolveApproval.Allow == bk.Allow &&
+			ak.ResolveApproval.Always == bk.Always &&
+			(ak.ResolveApproval.Allow || ak.ResolveApproval.Message == bk.Message)
+	case *v1.Command_AnswerQuestion:
+		bk := b.GetAnswerQuestion()
+		if ak.AnswerQuestion == nil || bk == nil {
+			return false
+		}
+		return ak.AnswerQuestion.QuestionId == bk.QuestionId &&
+			ak.AnswerQuestion.Option == bk.Option &&
+			slices.Equal(ak.AnswerQuestion.Options, bk.Options) &&
+			sameQuestionIndex(ak.AnswerQuestion.QuestionIndex, bk.QuestionIndex)
+	case *v1.Command_AnswerPlan:
+		bk := b.GetAnswerPlan()
+		if ak.AnswerPlan == nil || bk == nil {
+			return false
+		}
+		return ak.AnswerPlan.Choice == bk.Choice
+	case *v1.Command_RenameSession:
+		bk := b.GetRenameSession()
+		if ak.RenameSession == nil || bk == nil {
+			return false
+		}
+		return ak.RenameSession.Title == bk.Title
+	case *v1.Command_SetApprovalMode:
+		bk := b.GetSetApprovalMode()
+		if ak.SetApprovalMode == nil || bk == nil {
+			return false
+		}
+		return ak.SetApprovalMode.Mode == bk.Mode
+	case *v1.Command_SetModel:
+		bk := b.GetSetModel()
+		if ak.SetModel == nil || bk == nil {
+			return false
+		}
+		return ak.SetModel.Model == bk.Model && ak.SetModel.Effort == bk.Effort
+	case *v1.Command_Compact:
+		return b.GetCompact() != nil
+	case *v1.Command_Interrupt:
+		return b.GetInterrupt() != nil
+	case *v1.Command_StopSession:
+		return b.GetStopSession() != nil
+	case *v1.Command_ResumeSession:
+		return b.GetResumeSession() != nil
+	case *v1.Command_ForkSession:
+		return b.GetForkSession() != nil
+	default:
+		return false
+	}
+}
+
+// prepareFrozenSlot reconciles a slot that holds a frozen (UNKNOWN) or expired attempt
+// before submitting newCmd:
+//   - If the frozen attempt is expired (non-retryable), reject new input until explicitly abandoned.
+//   - If newCmd has the same payload as the frozen attempt, keep it so sync.SubmitCommand replays the same request_id.
+//   - If the payload changed on a retryable frozen attempt, abandon the old attempt so newCmd gets a fresh request_id.
+func (c *Core) prepareFrozenSlot(
+	ctx *sync.StepContext,
+	store *sessionStore,
+	ui *screens.SessionUIState,
+	slotKey string,
+	newCmd *v1.Command,
+) bool {
+	syncFrozen, syncExpired, _ := c.m.sync.AttemptState(slotKey)
+	prev := ui.Commands[slotKey]
+	isFrozen := syncFrozen || syncExpired || (prev != nil && (prev.Frozen || prev.Expired || prev.Status == corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_UNKNOWN))
+	if !isFrozen {
+		return true
+	}
+	isExpired := syncExpired || (prev != nil && prev.Expired)
+	if isExpired {
+		return false
+	}
+	if prev != nil && prev.Command != nil && sameCommandPayload(prev.Command, newCmd) {
+		return true
+	}
+	c.m.sync.AbandonAttempt(ctx, slotKey)
+	delete(ui.Commands, slotKey)
+	delete(store.slotMeta, slotKey)
+	return true
+}
+
 func toggleInt32Sorted(in []int32, val int32) []int32 {
 	out := make([]int32, 0, len(in)+1)
 	found := false
@@ -237,21 +340,6 @@ func (c *Core) handleSessionResolveApproval(ctx *sync.StepContext, store *sessio
 	if !act.Allow {
 		denyReason = strings.TrimSpace(act.DenyReason)
 	}
-	// If a frozen/unknown attempt exists and the user changed their deny reason (or decision),
-	// abandon the old frozen attempt automatically before creating a fresh request_id.
-	if prev := ui.Commands[slotKey]; prev != nil && (prev.Frozen || c.m.sync.HasFrozenAttempt(slotKey)) {
-		if prev.Expired {
-			return nil
-		}
-		prevRA := prev.Command.GetResolveApproval()
-		changed := prevRA == nil || prevRA.Allow != act.Allow || prevRA.Always != act.Always || (!act.Allow && prevRA.Message != denyReason)
-		if changed {
-			c.m.sync.AbandonAttempt(ctx, slotKey)
-			delete(ui.Commands, slotKey)
-			delete(store.slotMeta, slotKey)
-		}
-	}
-
 	cmd := &v1.Command{
 		ProtocolVersion: sync.PeerVersion,
 		Kind: &v1.Command_ResolveApproval{
@@ -263,6 +351,9 @@ func (c *Core) handleSessionResolveApproval(ctx *sync.StepContext, store *sessio
 				Message:    denyReason,
 			},
 		},
+	}
+	if !c.prepareFrozenSlot(ctx, store, ui, slotKey, cmd) {
+		return nil
 	}
 	fillObservedPreconditions(cmd, snap, ui)
 	ui.ExternalResolution = nil
@@ -331,9 +422,6 @@ func (c *Core) handleSessionAnswerQuestion(ctx *sync.StepContext, store *session
 	if isSlotInFlight(ui, slotKey) {
 		return nil
 	}
-	if prev := ui.Commands[slotKey]; prev != nil && prev.Expired {
-		return nil
-	}
 
 	var picked []int32
 	if multiSelect {
@@ -370,6 +458,9 @@ func (c *Core) handleSessionAnswerQuestion(ctx *sync.StepContext, store *session
 			AnswerQuestion: req,
 		},
 	}
+	if !c.prepareFrozenSlot(ctx, store, ui, slotKey, cmd) {
+		return nil
+	}
 	fillObservedPreconditions(cmd, snap, ui)
 	ui.ExternalResolution = nil
 	c.submitSessionCommandDirect(ctx, store, ui, act.SessionId, machineID, slotKey, slotKindAnswerQuestion, act.QuestionId, activeIdx, "", cmd)
@@ -401,9 +492,6 @@ func (c *Core) handleSessionAnswerPlan(ctx *sync.StepContext, store *sessionStor
 	if isSlotInFlight(ui, slotKey) {
 		return nil
 	}
-	if prev := ui.Commands[slotKey]; prev != nil && prev.Expired {
-		return nil
-	}
 	cmd := &v1.Command{
 		ProtocolVersion: sync.PeerVersion,
 		Kind: &v1.Command_AnswerPlan{
@@ -412,6 +500,9 @@ func (c *Core) handleSessionAnswerPlan(ctx *sync.StepContext, store *sessionStor
 				Choice:    act.Choice,
 			},
 		},
+	}
+	if !c.prepareFrozenSlot(ctx, store, ui, slotKey, cmd) {
+		return nil
 	}
 	fillObservedPreconditions(cmd, snap, ui)
 	if !c.m.sync.HasFrozenAttempt(slotKey) {
@@ -470,6 +561,9 @@ func (c *Core) handleSessionSimpleCommand(ctx *sync.StepContext, store *sessionS
 	if isSlotInFlight(ui, slotKey) {
 		return nil
 	}
+	if !c.prepareFrozenSlot(ctx, store, ui, slotKey, cmd) {
+		return nil
+	}
 	c.submitSessionCommandDirect(ctx, store, ui, act.SessionId, machineID, slotKey, kind, "", 0, "", cmd)
 	return nil
 }
@@ -489,6 +583,14 @@ func (c *Core) handleSessionRename(ctx *sync.StepContext, store *sessionStore, a
 	clean := strings.TrimSpace(lists.TitleInput(strings.TrimSpace(act.Title)))
 	plainTitle, hasCustom, _ := lists.ResolveTitle(snap.Session, c.m.state.Cal)
 	if clean == strings.TrimSpace(plainTitle) || (!hasCustom && clean == "") {
+		syncFrozen, syncExpired, _ := c.m.sync.AttemptState(slotKey)
+		prev := ui.Commands[slotKey]
+		if syncExpired || (prev != nil && prev.Expired) {
+			return nil
+		}
+		if syncFrozen || (prev != nil && prev.Frozen) {
+			c.m.sync.AbandonAttempt(ctx, slotKey)
+		}
 		ui.SlotSucceededSeq[slotKey]++
 		delete(ui.Commands, slotKey)
 		delete(store.slotMeta, slotKey)
@@ -503,6 +605,9 @@ func (c *Core) handleSessionRename(ctx *sync.StepContext, store *sessionStore, a
 				Title:     clean,
 			},
 		},
+	}
+	if !c.prepareFrozenSlot(ctx, store, ui, slotKey, cmd) {
+		return nil
 	}
 	c.submitSessionCommandDirect(ctx, store, ui, act.SessionId, machineID, slotKey, slotKindGeneric, "", 0, "", cmd)
 	return nil
@@ -522,6 +627,14 @@ func (c *Core) handleSessionSetApprovalMode(ctx *sync.StepContext, store *sessio
 	}
 	curMode, _ := lists.SessionMode(snap.Session)
 	if curMode == act.Mode {
+		syncFrozen, syncExpired, _ := c.m.sync.AttemptState(slotKey)
+		prev := ui.Commands[slotKey]
+		if syncExpired || (prev != nil && prev.Expired) {
+			return nil
+		}
+		if syncFrozen || (prev != nil && prev.Frozen) {
+			c.m.sync.AbandonAttempt(ctx, slotKey)
+		}
 		ui.SlotSucceededSeq[slotKey]++
 		delete(ui.Commands, slotKey)
 		delete(store.slotMeta, slotKey)
@@ -536,6 +649,9 @@ func (c *Core) handleSessionSetApprovalMode(ctx *sync.StepContext, store *sessio
 				Mode:      act.Mode,
 			},
 		},
+	}
+	if !c.prepareFrozenSlot(ctx, store, ui, slotKey, cmd) {
+		return nil
 	}
 	c.submitSessionCommandDirect(ctx, store, ui, act.SessionId, machineID, slotKey, slotKindGeneric, "", 0, "", cmd)
 	return nil
@@ -583,6 +699,9 @@ func (c *Core) handleSessionSetModel(ctx *sync.StepContext, store *sessionStore,
 				Effort:    effort,
 			},
 		},
+	}
+	if !c.prepareFrozenSlot(ctx, store, ui, slotKey, cmd) {
+		return nil
 	}
 	c.submitSessionCommandDirect(ctx, store, ui, act.SessionId, machineID, slotKey, slotKindGeneric, "", 0, "", cmd)
 	if rec := ui.Commands[slotKey]; rec != nil {
