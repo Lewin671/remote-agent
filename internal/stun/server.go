@@ -5,10 +5,13 @@ package stun
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"hash/crc32"
+	"log/slog"
 	"net"
 	"net/netip"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -48,6 +51,13 @@ type Server struct {
 // New takes explicit limits. The caller validates flags without exposing peer
 // addresses in errors; invalid configuration cannot create a serving loop.
 func New(config Config) *Server {
+	def := DefaultConfig()
+	if config.PacketsPerSecond > 0 && config.PacketsPerSecond != def.PacketsPerSecond && config.Burst == def.Burst {
+		config.Burst = max(1, config.PacketsPerSecond*2)
+	}
+	if config.SourcePacketsPerSecond > 0 && config.SourcePacketsPerSecond != def.SourcePacketsPerSecond && config.SourceBurst == def.SourceBurst {
+		config.SourceBurst = max(1, config.SourcePacketsPerSecond*2)
+	}
 	if !config.valid() {
 		return nil
 	}
@@ -167,13 +177,30 @@ func (s *Server) Reply(request []byte, from netip.AddrPort, now time.Time) []byt
 	return response
 }
 
+type udpConn interface {
+	SetReadDeadline(time.Time) error
+	SetWriteDeadline(time.Time) error
+	ReadFromUDPAddrPort([]byte) (int, netip.AddrPort, error)
+	WriteToUDPAddrPort([]byte, netip.AddrPort) (int, error)
+	Close() error
+}
+
 // Serve owns conn until context cancellation. One fixed read/write loop bounds
 // work and memory even under spoofed-source floods; it starts no packet workers.
 func (s *Server) Serve(ctx context.Context, conn *net.UDPConn) error {
+	return s.serve(ctx, conn)
+}
+
+func isPermanentUDPReadError(err error) bool {
+	return errors.Is(err, net.ErrClosed) || errors.Is(err, syscall.EBADF) || errors.Is(err, syscall.ENOTSOCK) || errors.Is(err, syscall.EINVAL)
+}
+
+func (s *Server) serve(ctx context.Context, conn udpConn) error {
 	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
 	defer stop()
 	defer func() { s.mu.Lock(); clear(s.sources); s.mu.Unlock() }()
 	var buffer [maxPacket + 1]byte
+	var lastWarn time.Time
 	for {
 		_ = conn.SetReadDeadline(time.Now().Add(time.Second))
 		n, from, err := conn.ReadFromUDPAddrPort(buffer[:])
@@ -192,7 +219,21 @@ func (s *Server) Serve(ctx context.Context, conn *net.UDPConn) error {
 				s.mu.Unlock()
 				continue
 			}
-			return err
+			if isPermanentUDPReadError(err) {
+				return err
+			}
+			if now := time.Now(); now.Sub(lastWarn) >= time.Minute {
+				lastWarn = now
+				slog.Warn("stun: transient UDP read error; continuing")
+			}
+			timer := time.NewTimer(5 * time.Millisecond)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return nil
+			case <-timer.C:
+			}
+			continue
 		}
 		response := s.Reply(buffer[:n], from, time.Now())
 		if response == nil {
