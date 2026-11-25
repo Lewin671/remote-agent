@@ -512,10 +512,8 @@ internal fun TimelineItemView(
         }
         SessionTimelineItem.KindCase.INPUT_STATE -> {
             val st = item.inputState
-            val cap = listOfNotNull(
-                if (st.hasStatusText()) uiText(st.statusText).ifEmpty { null } else null,
-                if (st.hasReasonText()) uiText(st.reasonText).ifEmpty { null } else null,
-            ).joinToString(" · ").ifEmpty { null }
+            val status = if (st.hasStatusText()) uiText(st.statusText) else ""
+            val cap = status.ifEmpty { if (st.hasReasonText()) uiText(st.reasonText) else "" }.ifEmpty { null }
             val links = if (st.preview.isNotEmpty() && onRestoreInput != null) {
                 listOf(CaptionLink(CaptionAction.RESTORE, copy(UiMessages.composerRestore())) { onRestoreInput(st.requestId, st.preview) })
             } else emptyList()
