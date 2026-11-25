@@ -918,14 +918,16 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 		return nil
 
 	case *corev1.Event_SessionResolveApproval:
-		return c.handleSessionResolveApproval(ctx, store, k.SessionResolveApproval)
+		eff, _ := c.handleSessionResolveApproval(ctx, store, k.SessionResolveApproval)
+		return eff
 
 	case *corev1.Event_SessionToggleQuestionOption:
 		c.handleSessionToggleQuestionOption(store, k.SessionToggleQuestionOption)
 		return nil
 
 	case *corev1.Event_SessionAnswerQuestion:
-		return c.handleSessionAnswerQuestion(ctx, store, k.SessionAnswerQuestion, 0)
+		eff, _ := c.handleSessionAnswerQuestion(ctx, store, k.SessionAnswerQuestion, 0)
+		return eff
 
 	case *corev1.Event_SessionAnswerPlan:
 		return c.handleSessionAnswerPlan(ctx, store, k.SessionAnswerPlan)
@@ -943,7 +945,8 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 		return c.handleSessionSetModel(ctx, store, k.SessionSetModel)
 
 	case *corev1.Event_SessionRetryCommand:
-		return c.handleSessionRetryCommand(ctx, store, k.SessionRetryCommand)
+		eff, _ := c.handleSessionRetryCommand(ctx, store, k.SessionRetryCommand)
+		return eff
 
 	default:
 		if eff, ok := c.dispatchAttachmentEvent(ctx, ev); ok {

@@ -18,9 +18,17 @@ import (
 const (
 	sessionExternalNoticeHoldMs = 1200
 	homeFocusHoldMs             = 900
-	homeFocusHoldTimerKey       = "home-focus-hold"
+	homeFocusHoldTimerKeyPrefix = "home-focus-hold:"
 	sessionExtTimerKeyPrefix    = "session-ext:"
 )
+
+func homeFocusHoldKey(kind screens.HomeFocusKind, sid, itemID string) string {
+	tag := "a"
+	if kind == screens.HomeFocusQuestion {
+		tag = "q"
+	}
+	return homeFocusHoldTimerKeyPrefix + tag + ":" + sid + ":" + itemID
+}
 
 func isSlotInFlight(ui *screens.SessionUIState, slotKey string) bool {
 	if ui == nil || slotKey == "" {
@@ -324,17 +332,17 @@ func (c *Core) handleSessionEditApprovalDeny(ctx *sync.StepContext, store *sessi
 	ctx.Dirty.Add(true, false, false)
 }
 
-func (c *Core) handleSessionResolveApproval(ctx *sync.StepContext, store *sessionStore, act *corev1.SessionResolveApprovalAction) []*corev1.Effect {
+func (c *Core) handleSessionResolveApproval(ctx *sync.StepContext, store *sessionStore, act *corev1.SessionResolveApprovalAction) ([]*corev1.Effect, bool) {
 	if act == nil || act.SessionId == "" || act.ApprovalId == "" {
-		return nil
+		return nil, false
 	}
 	machineID, snap, ui, ok := c.resolveSessionActionTarget(store, act.SessionId)
 	if !ok || isPendingApprovalSkeleton(snap, act.ApprovalId) {
-		return nil
+		return nil, false
 	}
 	slotKey := "approval:" + act.SessionId + ":" + act.ApprovalId
 	if isSlotInFlight(ui, slotKey) {
-		return nil
+		return nil, false
 	}
 	denyReason := ""
 	if !act.Allow {
@@ -353,7 +361,7 @@ func (c *Core) handleSessionResolveApproval(ctx *sync.StepContext, store *sessio
 		},
 	}
 	if !c.prepareFrozenSlot(ctx, store, ui, slotKey, cmd) {
-		return nil
+		return nil, false
 	}
 	fillObservedPreconditions(cmd, snap, ui)
 	ui.ExternalResolution = nil
@@ -366,7 +374,7 @@ func (c *Core) handleSessionResolveApproval(ctx *sync.StepContext, store *sessio
 		}
 	}
 	ctx.Dirty.Add(true, false, false)
-	return nil
+	return nil, true
 }
 
 func (c *Core) handleSessionToggleQuestionOption(store *sessionStore, act *corev1.SessionToggleQuestionOptionAction) {
@@ -401,26 +409,26 @@ func (c *Core) handleSessionToggleQuestionOption(store *sessionStore, act *corev
 	store.pendingDirty = true
 }
 
-func (c *Core) handleSessionAnswerQuestion(ctx *sync.StepContext, store *sessionStore, act *corev1.SessionAnswerQuestionAction, fallbackObservedSeq uint64) []*corev1.Effect {
+func (c *Core) handleSessionAnswerQuestion(ctx *sync.StepContext, store *sessionStore, act *corev1.SessionAnswerQuestionAction, fallbackObservedSeq uint64) ([]*corev1.Effect, bool) {
 	if act == nil || act.SessionId == "" || act.QuestionId == "" {
-		return nil
+		return nil, false
 	}
 	machineID, snap, ui, ok := c.resolveSessionActionTarget(store, act.SessionId)
 	if !ok {
-		return nil
+		return nil, false
 	}
 	if ui.QuestionCompleted[act.QuestionId] {
-		return nil
+		return nil, false
 	}
 	activeIdx := ui.QuestionIndexByID[act.QuestionId]
 	multiSelect, _, isSkeleton := findPendingQuestionMeta(snap, act.QuestionId, activeIdx)
 	if isSkeleton {
-		return nil
+		return nil, false
 	}
 	qKey := act.QuestionId + "#" + strconv.Itoa(int(activeIdx))
 	slotKey := "question:" + act.SessionId + ":" + qKey
 	if isSlotInFlight(ui, slotKey) {
-		return nil
+		return nil, false
 	}
 
 	var picked []int32
@@ -431,11 +439,11 @@ func (c *Core) handleSessionAnswerQuestion(ctx *sync.StepContext, store *session
 			picked = dedupInt32Sorted(ui.QuestionDraftByKey[qKey])
 		}
 		if len(picked) == 0 {
-			return nil
+			return nil, false
 		}
 	} else {
 		if act.OptionNum <= 0 {
-			return nil
+			return nil, false
 		}
 		picked = []int32{act.OptionNum}
 	}
@@ -459,7 +467,7 @@ func (c *Core) handleSessionAnswerQuestion(ctx *sync.StepContext, store *session
 		},
 	}
 	if !c.prepareFrozenSlot(ctx, store, ui, slotKey, cmd) {
-		return nil
+		return nil, false
 	}
 	fillObservedPreconditions(cmd, snap, ui)
 	ui.ExternalResolution = nil
@@ -474,7 +482,7 @@ func (c *Core) handleSessionAnswerQuestion(ctx *sync.StepContext, store *session
 		}
 	}
 	ctx.Dirty.Add(true, false, false)
-	return nil
+	return nil, true
 }
 
 func (c *Core) handleSessionAnswerPlan(ctx *sync.StepContext, store *sessionStore, act *corev1.SessionAnswerPlanAction) []*corev1.Effect {
@@ -714,24 +722,24 @@ func (c *Core) handleSessionSetModel(ctx *sync.StepContext, store *sessionStore,
 	return nil
 }
 
-func (c *Core) handleSessionRetryCommand(ctx *sync.StepContext, store *sessionStore, act *corev1.SessionRetryCommandAction) []*corev1.Effect {
+func (c *Core) handleSessionRetryCommand(ctx *sync.StepContext, store *sessionStore, act *corev1.SessionRetryCommandAction) ([]*corev1.Effect, bool) {
 	if act == nil || act.SessionId == "" || act.SlotKey == "" {
-		return nil
+		return nil, false
 	}
 	machineID, snap, ui, ok := c.resolveSessionActionTarget(store, act.SessionId)
 	if !ok {
-		return nil
+		return nil, false
 	}
 	rec := ui.Commands[act.SlotKey]
 	if rec == nil || rec.Command == nil || isSlotInFlight(ui, act.SlotKey) {
-		return nil
+		return nil, false
 	}
 	if rec.Status == corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_UNKNOWN && rec.Expired {
-		return nil
+		return nil, false
 	}
 	if rec.Status != corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_FAILED &&
 		rec.Status != corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_UNKNOWN {
-		return nil
+		return nil, false
 	}
 	cmd := rec.Command.Clone()
 	summary := rec.SubmittedSummary
@@ -763,7 +771,7 @@ func (c *Core) handleSessionRetryCommand(ctx *sync.StepContext, store *sessionSt
 		}
 	}
 	ctx.Dirty.Add(true, false, false)
-	return nil
+	return nil, true
 }
 
 // --- Home attention semantic actions ---
@@ -823,22 +831,30 @@ func (c *Core) handleHomeResolveApproval(ctx *sync.StepContext, act *corev1.Home
 	} else if c.m.state.HomeLastTopApproval != nil && c.m.state.HomeLastTopSessionID == act.SessionId && c.m.state.HomeLastTopItemID == act.ApprovalId {
 		held = c.m.state.HomeLastTopApproval
 	}
-	ui := store.ensureUI(act.SessionId)
-	c.m.state.HomeFocus = &screens.HomeFocusState{
-		Kind:         screens.HomeFocusApproval,
-		SessionID:    act.SessionId,
-		ItemID:       act.ApprovalId,
-		Phase:        corev1.HomeFocusPhase_HOME_FOCUS_PHASE_SUBMITTING,
-		DenyingOpen:  !act.Allow && ui.ApprovalDenyOpen[act.ApprovalId],
-		HeldApproval: held,
-	}
-	eff := c.handleSessionResolveApproval(ctx, store, &corev1.SessionResolveApprovalAction{
+	eff, submitted := c.handleSessionResolveApproval(ctx, store, &corev1.SessionResolveApprovalAction{
 		SessionId:  act.SessionId,
 		ApprovalId: act.ApprovalId,
 		Allow:      act.Allow,
 		Always:     act.Always,
 		DenyReason: act.DenyReason,
 	})
+	if !submitted {
+		return eff
+	}
+	ui := store.ensureUI(act.SessionId)
+	summary := approvalSummaryText(act.Allow, act.Always)
+	if rec := ui.Commands["approval:"+act.SessionId+":"+act.ApprovalId]; rec != nil && rec.SubmittedSummary != nil {
+		summary = rec.SubmittedSummary
+	}
+	c.m.state.HomeFocus = &screens.HomeFocusState{
+		Kind:             screens.HomeFocusApproval,
+		SessionID:        act.SessionId,
+		ItemID:           act.ApprovalId,
+		Phase:            corev1.HomeFocusPhase_HOME_FOCUS_PHASE_SUBMITTING,
+		SubmittedSummary: summary,
+		DenyingOpen:      !act.Allow && ui.ApprovalDenyOpen[act.ApprovalId],
+		HeldApproval:     held,
+	}
 	ctx.Dirty.Add(true, false, false)
 	return eff
 }
@@ -870,6 +886,14 @@ func (c *Core) handleHomeAnswerQuestion(ctx *sync.StepContext, act *corev1.HomeA
 		snap := c.m.sync.SessionSnapshot(act.SessionId)
 		pickedLabel = questionOptionLabels(snap, act.QuestionId, 0, []int32{act.OptionNum})
 	}
+	eff, submitted := c.handleSessionAnswerQuestion(ctx, store, &corev1.SessionAnswerQuestionAction{
+		SessionId:  act.SessionId,
+		QuestionId: act.QuestionId,
+		OptionNum:  act.OptionNum,
+	}, observedSeq)
+	if !submitted {
+		return eff
+	}
 	c.m.state.HomeFocus = &screens.HomeFocusState{
 		Kind:            screens.HomeFocusQuestion,
 		SessionID:       act.SessionId,
@@ -879,11 +903,6 @@ func (c *Core) handleHomeAnswerQuestion(ctx *sync.StepContext, act *corev1.HomeA
 		PickedLabel:     pickedLabel,
 		HeldQuestion:    held,
 	}
-	eff := c.handleSessionAnswerQuestion(ctx, store, &corev1.SessionAnswerQuestionAction{
-		SessionId:  act.SessionId,
-		QuestionId: act.QuestionId,
-		OptionNum:  act.OptionNum,
-	}, observedSeq)
 	ctx.Dirty.Add(true, false, false)
 	return eff
 }
@@ -921,13 +940,16 @@ func (c *Core) handleHomeRetryAttention(ctx *sync.StepContext, act *corev1.HomeR
 	if slotKey == "" {
 		return nil
 	}
-	if hf := c.m.state.HomeFocus; hf != nil && hf.SessionID == act.SessionId && hf.ItemID == act.ItemId {
-		hf.Phase = corev1.HomeFocusPhase_HOME_FOCUS_PHASE_SUBMITTING
-	}
-	eff := c.handleSessionRetryCommand(ctx, store, &corev1.SessionRetryCommandAction{
+	eff, submitted := c.handleSessionRetryCommand(ctx, store, &corev1.SessionRetryCommandAction{
 		SessionId: act.SessionId,
 		SlotKey:   slotKey,
 	})
+	if !submitted {
+		return eff
+	}
+	if hf := c.m.state.HomeFocus; hf != nil && hf.SessionID == act.SessionId && hf.ItemID == act.ItemId {
+		hf.Phase = corev1.HomeFocusPhase_HOME_FOCUS_PHASE_SUBMITTING
+	}
 	ctx.Dirty.Add(true, false, false)
 	return eff
 }
@@ -1000,6 +1022,10 @@ func (c *Core) notifyHomeAttentionSettled(
 	if !matched {
 		return
 	}
+	if hf.Phase == corev1.HomeFocusPhase_HOME_FOCUS_PHASE_RESOLVED_THIS_CLIENT ||
+		hf.Phase == corev1.HomeFocusPhase_HOME_FOCUS_PHASE_RESOLVED_ELSEWHERE {
+		return
+	}
 	if !succeeded {
 		hf.Phase = corev1.HomeFocusPhase_HOME_FOCUS_PHASE_FAILED
 		dirty.Add(true, false, false)
@@ -1016,12 +1042,14 @@ func (c *Core) notifyHomeAttentionSettled(
 	} else {
 		if summary != nil {
 			hf.ResolutionText = summary
+		} else if hf.SubmittedSummary != nil {
+			hf.ResolutionText = hf.SubmittedSummary
 		} else {
 			hf.ResolutionText = text.Msg(text.KeyApprovalAllowed)
 		}
 	}
 	stepPrev, ctx := c.m.sync.BeginStep()
-	c.m.sync.ScheduleAppTimer(ctx, corev1.TimerKind_TIMER_KIND_UI_TRANSIENT, homeFocusHoldTimerKey, homeFocusHoldMs)
+	c.m.sync.ScheduleAppTimer(ctx, corev1.TimerKind_TIMER_KIND_UI_TRANSIENT, homeFocusHoldKey(hf.Kind, hf.SessionID, hf.ItemID), homeFocusHoldMs)
 	stepRes := c.m.sync.EndStep(stepPrev, ctx)
 	*effects = append(*effects, stepRes.Effects...)
 	dirty.Add(true, false, false)
@@ -1218,7 +1246,16 @@ func (c *Core) reconcileHomeFocusState(ctx *sync.StepContext) {
 						}
 						resText = text.Msg(text.KeyHomeQuestionAnsweredLine, text.Str("answer", lbl))
 					} else {
-						resText = text.Msg(text.KeyApprovalAllowed)
+						if st.HomeFocus != nil && st.HomeFocus.SessionID == prevSID && st.HomeFocus.ItemID == prevItemID && st.HomeFocus.SubmittedSummary != nil {
+							resText = st.HomeFocus.SubmittedSummary
+						} else if ui != nil {
+							if rec := ui.Commands["approval:"+prevSID+":"+prevItemID]; rec != nil && rec.SubmittedSummary != nil {
+								resText = rec.SubmittedSummary
+							}
+						}
+						if resText == nil {
+							resText = text.Msg(text.KeyApprovalAllowed)
+						}
 					}
 				} else {
 					phase = corev1.HomeFocusPhase_HOME_FOCUS_PHASE_RESOLVED_ELSEWHERE
@@ -1238,27 +1275,30 @@ func (c *Core) reconcileHomeFocusState(ctx *sync.StepContext) {
 				}
 				var pickedNum int32
 				var pickedLbl string
+				var submittedSummary *corev1.Text
 				if st.HomeFocus != nil && st.HomeFocus.SessionID == prevSID && st.HomeFocus.ItemID == prevItemID {
 					pickedNum = st.HomeFocus.PickedOptionNum
 					pickedLbl = st.HomeFocus.PickedLabel
+					submittedSummary = st.HomeFocus.SubmittedSummary
 				}
 				st.HomeFocus = &screens.HomeFocusState{
-					Kind:            prevKind,
-					SessionID:       prevSID,
-					ItemID:          prevItemID,
-					Phase:           phase,
-					PickedOptionNum: pickedNum,
-					PickedLabel:     pickedLbl,
-					ResolutionText:  resText,
-					HeldApproval:    st.HomeLastTopApproval,
-					HeldQuestion:    st.HomeLastTopQuestion,
+					Kind:             prevKind,
+					SessionID:        prevSID,
+					ItemID:           prevItemID,
+					Phase:            phase,
+					PickedOptionNum:  pickedNum,
+					PickedLabel:      pickedLbl,
+					SubmittedSummary: submittedSummary,
+					ResolutionText:   resText,
+					HeldApproval:     st.HomeLastTopApproval,
+					HeldQuestion:     st.HomeLastTopQuestion,
 				}
 				st.HomeLastTopKind = screens.HomeFocusNone
 				st.HomeLastTopSessionID = ""
 				st.HomeLastTopItemID = ""
 				st.HomeLastTopApproval = nil
 				st.HomeLastTopQuestion = nil
-				c.m.sync.ScheduleAppTimer(ctx, corev1.TimerKind_TIMER_KIND_UI_TRANSIENT, homeFocusHoldTimerKey, homeFocusHoldMs)
+				c.m.sync.ScheduleAppTimer(ctx, corev1.TimerKind_TIMER_KIND_UI_TRANSIENT, homeFocusHoldKey(prevKind, prevSID, prevItemID), homeFocusHoldMs)
 				ctx.Dirty.Add(true, false, false)
 				return
 			}
@@ -1278,18 +1318,27 @@ func (c *Core) reconcileHomeFocusState(ctx *sync.StepContext) {
 }
 
 func (c *Core) handleUITransientTimer(ctx *sync.StepContext, store *sessionStore, key string) []*corev1.Effect {
-	if key == homeFocusHoldTimerKey {
-		if c.m.state.HomeFocus != nil {
-			c.m.state.HomeFocus = nil
-			// Refresh live top snapshot now that hold finished.
-			kind, sid, itemID, approval, question := screens.CurrentHomeTopAttention(c.m.state)
-			c.m.state.HomeLastTopKind = kind
-			c.m.state.HomeLastTopSessionID = sid
-			c.m.state.HomeLastTopItemID = itemID
-			c.m.state.HomeLastTopApproval = approval
-			c.m.state.HomeLastTopQuestion = question
-			ctx.Dirty.Add(true, false, false)
+	if strings.HasPrefix(key, homeFocusHoldTimerKeyPrefix) {
+		hf := c.m.state.HomeFocus
+		if hf == nil {
+			return nil
 		}
+		if key != homeFocusHoldKey(hf.Kind, hf.SessionID, hf.ItemID) {
+			return nil
+		}
+		if hf.Phase != corev1.HomeFocusPhase_HOME_FOCUS_PHASE_RESOLVED_THIS_CLIENT &&
+			hf.Phase != corev1.HomeFocusPhase_HOME_FOCUS_PHASE_RESOLVED_ELSEWHERE {
+			return nil
+		}
+		c.m.state.HomeFocus = nil
+		// Refresh live top snapshot now that hold finished.
+		kind, sid, itemID, approval, question := screens.CurrentHomeTopAttention(c.m.state)
+		c.m.state.HomeLastTopKind = kind
+		c.m.state.HomeLastTopSessionID = sid
+		c.m.state.HomeLastTopItemID = itemID
+		c.m.state.HomeLastTopApproval = approval
+		c.m.state.HomeLastTopQuestion = question
+		ctx.Dirty.Add(true, false, false)
 		return nil
 	}
 	if strings.HasPrefix(key, sessionExtTimerKeyPrefix) {

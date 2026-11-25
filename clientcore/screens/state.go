@@ -111,16 +111,17 @@ const (
 
 // HomeFocusState tracks the lifecycle of Home's top approval or inline question focus card.
 type HomeFocusState struct {
-	Kind            HomeFocusKind
-	SessionID       string
-	ItemID          string
-	Phase           corev1.HomeFocusPhase
-	PickedOptionNum int32
-	PickedLabel     string
-	ResolutionText  *corev1.Text
-	DenyingOpen     bool
-	HeldApproval    *corev1.AttentionCardView
-	HeldQuestion    *corev1.HomeQuestionCardView
+	Kind             HomeFocusKind
+	SessionID        string
+	ItemID           string
+	Phase            corev1.HomeFocusPhase
+	PickedOptionNum  int32
+	PickedLabel      string
+	SubmittedSummary *corev1.Text
+	ResolutionText   *corev1.Text
+	DenyingOpen      bool
+	HeldApproval     *corev1.AttentionCardView
+	HeldQuestion     *corev1.HomeQuestionCardView
 }
 
 // State is what the screen builders render from: the core's synchronized

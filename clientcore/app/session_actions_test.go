@@ -7,6 +7,7 @@ import (
 
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/screens"
 	"github.com/Lewin671/remote-agent/clientcore/sync"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
@@ -856,7 +857,7 @@ func TestHomeQuestionFocusLifecycleAndRetry(t *testing.T) {
 		t.Fatalf("expected 1 retry command, got %d", len(effsRetry))
 	}
 	bOK := settleCommandOK(c, 1_791_078_061_300, effsRetry[0], &v1.CommandResult{Outcome: "executed"})
-	tmr := findUITransientTimer(bOK, homeFocusHoldTimerKey)
+	tmr := findUITransientTimer(bOK, homeFocusHoldKey(screens.HomeFocusQuestion, "s-hq", "hq-1"))
 	if tmr == nil || tmr.DelayMs != 900 {
 		t.Fatalf("expected 900ms home-focus-hold timer, got %+v", tmr)
 	}
@@ -1131,5 +1132,170 @@ func TestSessionFrozenSlotPayloadChangesAndExpiry(t *testing.T) {
 	})
 	if effs, _ := decodeDispatchedCommands(t, bCmpAfter); len(effs) != 0 {
 		t.Fatalf("expired frozen compact slot must reject dispatch, got %d cmds", len(effs))
+	}
+}
+
+func TestHomeFocusStateMachineEdgeCases(t *testing.T) {
+	// Case A + B: Deny approval on Home -> projection resolves THIS_CLIENT before settle ->
+	// ResolutionText must be KeyApprovalDenied (not KeyApprovalAllowed), AND a late failed settlement
+	// must NOT overwrite RESOLVED_THIS_CLIENT back to FAILED.
+	// Case C: Stale 900ms timer from item 1 must NOT clear item 2's SUBMITTING focus.
+	sess1 := &corev1.PlainSession{
+		SessionId: "s-hf1",
+		MachineId: "m-on",
+		UpdatedMs: 1_791_078_059_000,
+		Meta:      &v1.Session{Id: "s-hf1", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_CLAUDE},
+		Checkpoint: &v1.LiveSnapshot{
+			Actions: []*v1.Event{
+				{
+					Seq: 1,
+					Kind: &v1.Event_ApprovalRequested{
+						ApprovalRequested: &v1.ApprovalRequested{ApprovalId: "ap-1", Command: "rm -rf /tmp/x"},
+					},
+				},
+			},
+		},
+	}
+	sess2 := &corev1.PlainSession{
+		SessionId: "s-hf2",
+		MachineId: "m-on",
+		UpdatedMs: 1_791_078_060_000,
+		Meta:      &v1.Session{Id: "s-hf2", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_CLAUDE},
+		Checkpoint: &v1.LiveSnapshot{
+			Actions: []*v1.Event{
+				{
+					Seq: 1,
+					Kind: &v1.Event_ApprovalRequested{
+						ApprovalRequested: &v1.ApprovalRequested{ApprovalId: "ap-2", Command: "echo hi"},
+					},
+				},
+			},
+		},
+	}
+	c := bootstrapReadyApp(t, []*corev1.PlainMachine{
+		{
+			MachineId: "m-on",
+			Online:    true,
+			Meta: &v1.MachineMeta{
+				Hostname:        "DevBox",
+				ProtocolVersion: sync.PeerVersion,
+				Capabilities:    &v1.MachineCapabilities{ApprovalAlways: true},
+			},
+		},
+	}, []*corev1.PlainSession{sess1, sess2})
+
+	// Deny ap-1 from Home.
+	bDeny := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_061_000,
+		Event: &corev1.Event_HomeResolveApproval{
+			HomeResolveApproval: &corev1.HomeResolveApprovalAction{
+				SessionId:  "s-hf1",
+				ApprovalId: "ap-1",
+				Allow:      false,
+				DenyReason: "unsafe",
+			},
+		},
+	})
+	effs1, _ := decodeDispatchedCommands(t, bDeny)
+	if len(effs1) != 1 {
+		t.Fatalf("expected 1 deny command, got %d", len(effs1))
+	}
+
+	// Projection resolves ap-1 (checkpoint clears pending approval) BEFORE CommandOutcome arrives.
+	bRes := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_061_050,
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: 1,
+				Frame: &corev1.StreamFrameEvent_SessionUpdated{
+					SessionUpdated: &corev1.PlainSession{
+						SessionId:  "s-hf1",
+						MachineId:  "m-on",
+						UpdatedMs:  1_791_078_061_050,
+						Meta:       sess1.Meta,
+						Checkpoint: &v1.LiveSnapshot{},
+					},
+				},
+			},
+		},
+	})
+	tmr1 := findUITransientTimer(bRes, homeFocusHoldKey(screens.HomeFocusApproval, "s-hf1", "ap-1"))
+	if tmr1 == nil {
+		t.Fatalf("expected item-scoped hold timer for ap-1")
+	}
+
+	// Check ResolutionText is KeyApprovalDenied (NOT KeyApprovalAllowed).
+	hAfterRes, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_Home{Home: &corev1.HomeScreenRequest{}}})
+	top1 := hAfterRes.GetHome().GetTopAttentionCard()
+	if top1 == nil || top1.Phase != corev1.HomeFocusPhase_HOME_FOCUS_PHASE_RESOLVED_THIS_CLIENT ||
+		top1.GetResolutionText().GetKey() != text.KeyApprovalDenied {
+		t.Fatalf("expected RESOLVED_THIS_CLIENT with KeyApprovalDenied, got %+v", top1)
+	}
+
+	// Late failure settlement for ap-1 must NOT overwrite RESOLVED_THIS_CLIENT to FAILED!
+	settleCommandFailed(c, 1_791_078_061_100, effs1[0], "failed_precondition")
+	hAfterLateFail, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_Home{Home: &corev1.HomeScreenRequest{}}})
+	if hAfterLateFail.GetHome().GetTopAttentionCard().GetPhase() != corev1.HomeFocusPhase_HOME_FOCUS_PHASE_RESOLVED_THIS_CLIENT {
+		t.Fatalf("late failure must not overwrite RESOLVED_THIS_CLIENT, got %v", hAfterLateFail.GetHome().GetTopAttentionCard().GetPhase())
+	}
+
+	// User starts submitting ap-2 on Home BEFORE ap-1's stale timer fires.
+	bAllow2 := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_061_200,
+		Event: &corev1.Event_HomeResolveApproval{
+			HomeResolveApproval: &corev1.HomeResolveApprovalAction{
+				SessionId:  "s-hf2",
+				ApprovalId: "ap-2",
+				Allow:      true,
+			},
+		},
+	})
+	if effs2, _ := decodeDispatchedCommands(t, bAllow2); len(effs2) != 1 {
+		t.Fatalf("expected 1 allow command for ap-2, got %d", len(effs2))
+	}
+
+	// Now ap-1's stale timer fires -> must be ignored and keep ap-2 in SUBMITTING!
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_061_950,
+		Event: &corev1.Event_TimerFired{
+			TimerFired: &corev1.TimerFiredEvent{
+				TimerId: tmr1.TimerId,
+				Kind:    corev1.TimerKind_TIMER_KIND_UI_TRANSIENT,
+				Key:     tmr1.Key,
+			},
+		},
+	})
+	if c.m.state.HomeFocus == nil || c.m.state.HomeFocus.ItemID != "ap-2" ||
+		c.m.state.HomeFocus.Phase != corev1.HomeFocusPhase_HOME_FOCUS_PHASE_SUBMITTING {
+		t.Fatalf("stale ap-1 timer must not clear ap-2 SUBMITTING focus, got %+v", c.m.state.HomeFocus)
+	}
+
+	// Case D: HomeResolveApproval / HomeAnswerQuestion on missing session or skeleton must NOT enter SUBMITTING.
+	c.m.state.HomeFocus = nil
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_062_000,
+		Event: &corev1.Event_HomeResolveApproval{
+			HomeResolveApproval: &corev1.HomeResolveApprovalAction{
+				SessionId:  "s-does-not-exist",
+				ApprovalId: "ap-missing",
+				Allow:      true,
+			},
+		},
+	})
+	if c.m.state.HomeFocus != nil {
+		t.Fatalf("non-dispatched HomeResolveApproval must not set HomeFocus, got %+v", c.m.state.HomeFocus)
+	}
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_062_010,
+		Event: &corev1.Event_HomeAnswerQuestion{
+			HomeAnswerQuestion: &corev1.HomeAnswerQuestionAction{
+				SessionId:  "s-does-not-exist",
+				QuestionId: "q-missing",
+				OptionNum:  1,
+			},
+		},
+	})
+	if c.m.state.HomeFocus != nil {
+		t.Fatalf("non-dispatched HomeAnswerQuestion must not set HomeFocus, got %+v", c.m.state.HomeFocus)
 	}
 }
