@@ -621,3 +621,70 @@ func TestEnsurePublishedSummarizesBatchFailureInSingleWarn(t *testing.T) {
 		t.Fatalf("expected summary WARN with failed=5 and first_err, got failed=%d hasFirstErr=%v", failedAttr, hasFirstErr)
 	}
 }
+
+func TestEnsurePublishedDirtySessionPutFailureRetriesNextPass(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	ids := []string{"s1", "s2"}
+	backend := multiSessionPublishBackend{ids: ids, dirs: map[string]string{}}
+	for _, id := range ids {
+		backend.dirs[id] = t.TempDir()
+	}
+	c := &conn{r: New(backend), acct: &Account{}}
+	initializeTestSecurityKeys(t, c)
+
+	failS1 := false
+	service := &selectivePublishMachine{
+		putCount: map[string]int{},
+		putsByID: map[string]uint64{},
+	}
+	service.onPutSes = func(_ context.Context, id string) error {
+		if id == "s1" && failS1 {
+			return connect.NewError(connect.CodeUnavailable, errors.New("transient rpc drop"))
+		}
+		return nil
+	}
+	mux := http.NewServeMux()
+	path, h := remoteagentv1connect.NewMachineServiceHandler(service)
+	mux.Handle(path, h)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	c.machine = remoteagentv1connect.NewMachineServiceClient(http.DefaultClient, srv.URL)
+	for _, id := range ids {
+		if _, err := c.sessionKey(id, false); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Pass 1: both sessions publish and get cached in publishedSessions.
+	if err := c.ensurePublished(context.Background()); err != nil {
+		t.Fatalf("pass 1 failed: %v", err)
+	}
+	if service.putCount["s1"] != 1 || service.putCount["s2"] != 1 {
+		t.Fatalf("pass 1 counts = %v, want s1=1 s2=1", service.putCount)
+	}
+
+	// Mark s1 dirty (simulating a checkpoint failure during ordinary sync), then make its PutSession RPC fail once.
+	c.markCheckpointDirty("s1")
+	failS1 = true
+	if err := c.ensurePublished(context.Background()); err == nil {
+		t.Fatal("pass 2 unexpectedly succeeded while s1 PutSession failed")
+	}
+	if service.putCount["s1"] != 2 || service.putCount["s2"] != 1 {
+		t.Fatalf("pass 2 counts = %v, want s1=2 s2=1", service.putCount)
+	}
+
+	// Pass 3: PutSession recovers -> s1 MUST still be resent (not skipped via stale publishedSessions cache!).
+	failS1 = false
+	if err := c.ensurePublished(context.Background()); err != nil {
+		t.Fatalf("pass 3 failed: %v", err)
+	}
+	if service.putCount["s1"] != 3 {
+		t.Fatalf("pass 3 skipped previously dirty s1 after failed PutSession: putCount=%d, want 3", service.putCount["s1"])
+	}
+	if service.putCount["s2"] != 1 {
+		t.Fatalf("pass 3 unexpectedly resent unchanged s2: putCount=%d, want 1", service.putCount["s2"])
+	}
+	if c.checkpointPending.Load() || c.hasDirtyCheckpoints() {
+		t.Fatal("checkpoint pending/dirty state not cleared after pass 3 succeeded")
+	}
+}

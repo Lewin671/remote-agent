@@ -472,8 +472,13 @@ func (c *conn) publishCurrentCheckpoint(ctx context.Context, startedEpoch uint64
 				break
 			}
 			floor := floors[p.id]
+			wasDirty := c.isCheckpointDirty(p.id)
 			key, err := c.sessionKey(p.id, true)
 			if err != nil {
+				delete(c.publishedSessions, p.id)
+				if wasDirty {
+					c.markCheckpointDirty(p.id)
+				}
 				failed++
 				if firstErr == nil {
 					firstErr = err
@@ -485,6 +490,10 @@ func (c *conn) publishCurrentCheckpoint(ctx context.Context, startedEpoch uint64
 			rev, err := c.putSession(sctx, p.id, key, p.info, floor)
 			scancel()
 			if err != nil {
+				delete(c.publishedSessions, p.id)
+				if wasDirty {
+					c.markCheckpointDirty(p.id)
+				}
 				failed++
 				if firstErr == nil {
 					firstErr = err
@@ -493,6 +502,7 @@ func (c *conn) publishCurrentCheckpoint(ctx context.Context, startedEpoch uint64
 			}
 			c.noteSentMeta(p.id, key, p.curMeta, rev)
 			if c.isCheckpointDirty(p.id) {
+				delete(c.publishedSessions, p.id)
 				failed++
 				if firstErr == nil {
 					firstErr = errCheckpointsPending
