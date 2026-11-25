@@ -23,11 +23,7 @@ type peerReservation struct {
 // The session gate still validates ordering and state before any action. Keeping
 // this separate bounds all connections/generations for a peer together, even
 // when a signed but semantically invalid packet consumes a reservation.
-func (m *directManager) reserveAuthentication(peer string, o peerwire.Opened, now time.Time) bool {
-	if m.authReservations == nil {
-		m.authReservations = map[string]peerReservation{}
-		m.authCounts = map[string]int{}
-	}
+func (m *directManager) pruneAuthReservationsLocked(now time.Time) {
 	wall := uint64(now.UnixMilli())
 	for hash, entry := range m.authReservations {
 		if wall > entry.until && now.After(entry.elapsed) {
@@ -38,9 +34,28 @@ func (m *directManager) reserveAuthentication(peer string, o peerwire.Opened, no
 			}
 		}
 	}
+	m.authLastSweep = now
+}
+
+func (m *directManager) reserveAuthentication(peer string, o peerwire.Opened, now time.Time) bool {
+	if m.authReservations == nil {
+		m.authReservations = map[string]peerReservation{}
+		m.authCounts = map[string]int{}
+	}
+	wall := uint64(now.UnixMilli())
 	hash := string(o.Hash)
-	if _, exists := m.authReservations[hash]; exists {
-		return true
+	if entry, exists := m.authReservations[hash]; exists {
+		if !(wall > entry.until && now.After(entry.elapsed)) {
+			return true
+		}
+		delete(m.authReservations, hash)
+		m.authCounts[entry.peer]--
+		if m.authCounts[entry.peer] == 0 {
+			delete(m.authCounts, entry.peer)
+		}
+	}
+	if m.authLastSweep.IsZero() || now.Sub(m.authLastSweep) >= time.Second || m.authCounts[peer] >= 2048 || len(m.authReservations) >= 16384 {
+		m.pruneAuthReservationsLocked(now)
 	}
 	if m.authCounts[peer] >= 2048 || len(m.authReservations) >= 16384 {
 		return false

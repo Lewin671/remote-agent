@@ -1,6 +1,7 @@
 package direct
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -77,6 +78,7 @@ type Session struct {
 	generation  [2]atomic.Uint64
 	business    [2]atomic.Bool
 	current     [2]atomic.Uint64
+	peer        atomic.Pointer[peerwire.Public]
 
 	paths   map[uint64]*Path // every PC created, by ID; run goroutine only
 	open    map[uint64]*Path // PCs not yet reported closed
@@ -163,6 +165,12 @@ func pathAlive(p *Path) bool {
 func (s *Session) Active() bool        { return s.ctx.Err() == nil && !s.retired.Load() }
 func (s *Session) RetainUntil() uint64 { return s.retainUntil.Load() }
 func (s *Session) Established() bool   { return s.established.Load() }
+func (s *Session) Peer() peerwire.Public {
+	if p := s.peer.Load(); p != nil {
+		return *p
+	}
+	return s.cfg.Peer
+}
 func (s *Session) Retire() {
 	s.retired.Store(true)
 	s.finishRound()
@@ -300,6 +308,13 @@ func (s *Session) publish() {
 		s.generation[i].Store(v.Generation[i])
 		s.business[i].Store(v.Business[i])
 		s.current[i].Store(v.PC[i])
+	}
+	peer := s.core.Peer()
+	if cur := s.peer.Load(); cur == nil || !bytes.Equal(cur.Instance, peer.Instance) || !bytes.Equal(cur.Boot, peer.Boot) {
+		cloned := peer
+		cloned.Instance = append([]byte(nil), peer.Instance...)
+		cloned.Boot = append([]byte(nil), peer.Boot...)
+		s.peer.Store(&cloned)
 	}
 }
 
