@@ -603,4 +603,150 @@ class DirectChannelTest {
             channel.close()
         }
     }
+
+    @Test
+    fun reassemblyTransfersFragmentBudgetWithoutDoubleCharging() = runBlocking {
+        var fakePc: FakePeerConnection? = null
+        val budget = DirectBudget()
+        val received = CopyOnWriteArrayList<ByteArray>()
+        val channel = DirectChannel(
+            DirectChannelOptions(
+                peer = "m-1",
+                roundId = 60L,
+                use = 2,
+                generation = 1L,
+                budget = budget,
+                valid = { true },
+                stun = emptyList(),
+                factory = RtcFactory { _, l -> FakePeerConnection(l).also { fakePc = it } },
+                candidate = {},
+                state = { _, _ -> },
+                frame = { received.add(it) },
+                closed = {},
+            ),
+        )
+        val preReserved = 768 shl 10
+        assertTrue(budget.reserve("m-1", "60", 2, 1, preReserved, 1))
+        try {
+            val data = fakePc!!.channels.getValue(0)
+            data.open()
+            channel.confirm()
+
+            // 768 KiB split into 49 fragments of (16 KiB - 128); total 1.5 MiB < 2 MiB,
+            // whereas a 2x reassembly double-charge peaks at 2.25 MiB > 2 MiB and drops the message.
+            val payload = ByteArray(768 shl 10) { (it * 31).toByte() }
+            val digest = java.security.MessageDigest.getInstance("SHA-256").digest(payload)
+            val chunkSize = (16 shl 10) - 128
+            val count = (payload.size + chunkSize - 1) / chunkSize
+            assertEquals(49, count)
+            val msgId = com.google.protobuf.ByteString.copyFrom(ByteArray(16) { 0x60 })
+            for (index in 0 until count) {
+                val start = index * chunkSize
+                val end = minOf(payload.size, start + chunkSize)
+                val frag = Fragment.newBuilder()
+                    .setMessageId(msgId)
+                    .setIndex(index)
+                    .setCount(count)
+                    .setCiphertextLength(payload.size)
+                    .setCiphertextSha256(com.google.protobuf.ByteString.copyFrom(digest))
+                    .setPathGeneration(1L)
+                    .setFragment(com.google.protobuf.ByteString.copyFrom(payload, start, end - start))
+                    .build()
+                    .toByteArray()
+                data.listener.onMessage(frag)
+            }
+            kotlinx.coroutines.withTimeout(3_000L) {
+                while (received.isEmpty()) kotlinx.coroutines.delay(5)
+            }
+            assertEquals(1, received.size)
+            assertArrayEquals(payload, received[0])
+
+            // Also verify bad-hash reassembly frees all transferred bytes and frame slots cleanly.
+            val badHash = digest.copyOf().also { it[0] = (it[0].toInt() xor 0xff).toByte() }
+            val badMsgId = com.google.protobuf.ByteString.copyFrom(ByteArray(16) { 0x61 })
+            for (index in 0 until count) {
+                val start = index * chunkSize
+                val end = minOf(payload.size, start + chunkSize)
+                val frag = Fragment.newBuilder()
+                    .setMessageId(badMsgId)
+                    .setIndex(index)
+                    .setCount(count)
+                    .setCiphertextLength(payload.size)
+                    .setCiphertextSha256(com.google.protobuf.ByteString.copyFrom(badHash))
+                    .setPathGeneration(1L)
+                    .setFragment(com.google.protobuf.ByteString.copyFrom(payload, start, end - start))
+                    .build()
+                    .toByteArray()
+                data.listener.onMessage(frag)
+            }
+            budget.free("m-1", 1, preReserved, 1)
+            // After bad-hash cleanup + releasing preReserved, the full 2 MiB / 128-frame receive budget must be free.
+            kotlinx.coroutines.withTimeout(3_000L) {
+                while (!budget.reserve("m-1", "60", 2, 1, (2 shl 20), 128)) {
+                    kotlinx.coroutines.delay(10)
+                }
+                budget.free("m-1", 1, (2 shl 20), 128)
+            }
+            assertEquals(1, received.size)
+        } finally {
+            channel.close()
+        }
+    }
+
+    @Test
+    fun reassemblySupportsMaximum128FragmentMessage() = runBlocking {
+        var fakePc: FakePeerConnection? = null
+        val budget = DirectBudget()
+        val received = CopyOnWriteArrayList<ByteArray>()
+        val channel = DirectChannel(
+            DirectChannelOptions(
+                peer = "m-1",
+                roundId = 61L,
+                use = 2,
+                generation = 1L,
+                budget = budget,
+                valid = { true },
+                stun = emptyList(),
+                factory = RtcFactory { _, l -> FakePeerConnection(l).also { fakePc = it } },
+                candidate = {},
+                state = { _, _ -> },
+                frame = { received.add(it) },
+                closed = {},
+            ),
+        )
+        try {
+            val data = fakePc!!.channels.getValue(0)
+            data.open()
+            channel.confirm()
+
+            val count = 128
+            val chunkSize = 64
+            val payload = ByteArray(count * chunkSize) { (it % 251).toByte() }
+            val digest = java.security.MessageDigest.getInstance("SHA-256").digest(payload)
+            val msgId = com.google.protobuf.ByteString.copyFrom(ByteArray(16) { 0x62 })
+            for (index in 0 until count) {
+                val start = index * chunkSize
+                val frag = Fragment.newBuilder()
+                    .setMessageId(msgId)
+                    .setIndex(index)
+                    .setCount(count)
+                    .setCiphertextLength(payload.size)
+                    .setCiphertextSha256(com.google.protobuf.ByteString.copyFrom(digest))
+                    .setPathGeneration(1L)
+                    .setFragment(com.google.protobuf.ByteString.copyFrom(payload, start, chunkSize))
+                    .build()
+                    .toByteArray()
+                data.listener.onMessage(frag)
+            }
+            kotlinx.coroutines.withTimeout(3_000L) {
+                while (received.isEmpty()) kotlinx.coroutines.delay(5)
+            }
+            assertEquals(1, received.size)
+            assertArrayEquals(payload, received[0])
+            assertTrue(budget.reserve("m-1", "61", 2, 1, (2 shl 20), 128))
+            budget.free("m-1", 1, (2 shl 20), 128)
+        } finally {
+            channel.close()
+        }
+    }
 }
