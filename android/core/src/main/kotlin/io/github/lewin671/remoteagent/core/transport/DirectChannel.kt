@@ -25,10 +25,10 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
 
 private const val FRAME_BYTES = 16 shl 10
 private const val PAYLOAD_BYTES = FRAME_BYTES - 128
+private const val INCOMING_FRAME_CAP = 128
 
 private fun sha256(bytes: ByteArray): ByteArray =
     MessageDigest.getInstance("SHA-256").digest(bytes)
@@ -70,7 +70,7 @@ internal fun validateMinimalSDP(bytes: ByteArray): String {
 /** Shared by both PC uses and replacement connections; hints never reset it. */
 internal class DirectBudget(private val maxPeers: Int = 4) {
     private class Usage(
-        val owner: String,
+        var owner: String,
         val uses: MutableSet<Int> = HashSet(),
         val bytes: IntArray = IntArray(2),
         val frames: IntArray = IntArray(2),
@@ -86,6 +86,10 @@ internal class DirectBudget(private val maxPeers: Int = 4) {
             if (peers.size >= maxPeers) return false
             current = Usage(owner)
             peers[peer] = current
+        } else if (current.uses.isEmpty()) {
+            // Previous round released all active uses; allow the new round to take ownership while
+            // preserving any unwinding in-flight byte/frame accounting against the shared cap.
+            current.owner = owner
         }
         if (current.owner != owner || use in current.uses || current.uses.size >= 2) return false
         current.uses.add(use)
@@ -94,12 +98,14 @@ internal class DirectBudget(private val maxPeers: Int = 4) {
 
     fun ownerAvailable(peer: String, owner: String): Boolean = synchronized(lock) {
         val current = peers[peer]
-        current == null || current.owner == owner
+        current == null || current.owner == owner || current.uses.isEmpty()
     }
 
-    fun release(peer: String, use: Int) = synchronized(lock) {
+    fun release(peer: String, use: Int, owner: String? = null) = synchronized(lock) {
         val current = peers[peer] ?: return@synchronized
-        current.uses.remove(use)
+        if (owner == null || current.owner == owner) {
+            current.uses.remove(use)
+        }
         prune(peer, current)
     }
 
@@ -155,6 +161,8 @@ internal class DirectChannelOptions(
     val monotonic: () -> Long = { System.nanoTime() / 1_000_000L },
     val dispatcher: CoroutineDispatcher = Dispatchers.Default,
     val receiveDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    val closeScope: CoroutineScope = DirectChannel.sharedCloseScope,
+    val partialTimeoutMs: Long = 5_000L,
 )
 
 /** Framed DataChannel adapter; signaling, state machine, and routing policy live in Go Core. */
@@ -175,20 +183,21 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
     private val stateLock = Any()
     private val writeMutex = Mutex()
     private val wake = Channel<Unit>(Channel.CONFLATED)
-    private val incoming = Channel<ByteArray>(Channel.UNLIMITED)
+    private val incoming = Channel<ByteArray>(INCOMING_FRAME_CAP)
 
     @Volatile private var confirmed = false
     @Volatile private var ended = false
     private val reservationReleased = AtomicBoolean(false)
-    private val writers = AtomicInteger(0)
 
     private val partial = HashMap<String, PartialMessage>()
     private val waiting = ArrayList<ByteArray>()
+    private var expiryJob: Job? = null
 
     private val pc: RtcPeerConnection
+    @Volatile private var dataRef: RtcDataChannel? = null
+    @Volatile private var probeRef: RtcDataChannel? = null
     private val data: RtcDataChannel
     private val probe: RtcDataChannel
-    private val tickJob: Job
 
     init {
         if (!options.valid() ||
@@ -199,6 +208,8 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
             throw PathChanged()
         }
         var created: RtcPeerConnection? = null
+        val pendingDataState = AtomicBoolean(false)
+        val pendingProbeState = AtomicBoolean(false)
         try {
             created = options.factory.create(
                 options.stun,
@@ -238,22 +249,17 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
             )
             val dataListener = object : RtcDataChannelListener {
                 override fun onStateChange() {
-                    val s = data.state()
-                    if (!valid()) return
-                    if (s == RtcChannelState.OPEN) {
-                        options.state(DirectStateKind.DIRECT_STATE_KIND_DC, "open")
-                        options.dcState?.invoke(true)
-                        wake.trySend(Unit)
-                        options.open?.invoke()
-                    } else if (s == RtcChannelState.CLOSED) {
-                        options.state(DirectStateKind.DIRECT_STATE_KIND_DC, "closed")
-                        options.dcState?.invoke(false)
-                        close()
+                    val ch = dataRef
+                    if (ch == null) {
+                        pendingDataState.set(true)
+                        return
                     }
+                    handleDataState(ch.state())
                 }
 
                 override fun onBufferedAmountChange(previousAmount: Long) {
-                    if (data.bufferedAmount() <= (32 shl 10)) wake.trySend(Unit)
+                    val ch = dataRef ?: return
+                    if (ch.bufferedAmount() <= (32 shl 10)) wake.trySend(Unit)
                 }
 
                 override fun onMessage(data: ByteArray) {
@@ -262,22 +268,30 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                         close()
                         return
                     }
-                    incoming.trySend(data)
+                    if (!incoming.trySend(data).isSuccess && !ended) {
+                        close()
+                    }
                 }
             }
             val probeListener = object : RtcDataChannelListener {
                 override fun onStateChange() {
-                    if (valid() && probe.state() == RtcChannelState.CLOSED) close()
+                    val ch = probeRef
+                    if (ch == null) {
+                        pendingProbeState.set(true)
+                        return
+                    }
+                    if (valid() && ch.state() == RtcChannelState.CLOSED) close()
                 }
 
                 override fun onBufferedAmountChange(previousAmount: Long) {}
 
                 override fun onMessage(data: ByteArray) {
+                    val ch = probeRef ?: return
                     if (!ready || data.size != 17) return
                     if (data[0] == 0.toByte()) {
                         val reply = data.copyOf()
                         reply[0] = 1
-                        probe.send(reply, true)
+                        ch.send(reply, true)
                     } else if (data[0] == 1.toByte()) {
                         options.probeReply?.invoke(data.copyOf())
                     }
@@ -285,11 +299,20 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
             }
             pc = created
             data = pc.createDataChannel("remote-agent", 0, ordered = true, maxRetransmits = null, dataListener)
+            dataRef = data
             probe = pc.createDataChannel("remote-agent", 1, ordered = false, maxRetransmits = 0, probeListener)
+            probeRef = probe
         } catch (e: Exception) {
             runCatching { created?.close() }
-            options.budget.release(options.peer, options.use)
+            options.budget.release(options.peer, options.use, connOwner)
             throw PathChanged()
+        }
+
+        if (pendingDataState.compareAndSet(true, false)) {
+            handleDataState(data.state())
+        }
+        if (pendingProbeState.compareAndSet(true, false) && valid() && probe.state() == RtcChannelState.CLOSED) {
+            close()
         }
 
         scope.launch(options.receiveDispatcher) {
@@ -303,18 +326,40 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                 }
             }
         }
+    }
 
-        tickJob = scope.launch {
+    private fun handleDataState(state: RtcChannelState) {
+        if (!valid()) return
+        if (state == RtcChannelState.OPEN) {
+            options.state(DirectStateKind.DIRECT_STATE_KIND_DC, "open")
+            options.dcState?.invoke(true)
+            wake.trySend(Unit)
+            options.open?.invoke()
+        } else if (state == RtcChannelState.CLOSED) {
+            options.state(DirectStateKind.DIRECT_STATE_KIND_DC, "closed")
+            options.dcState?.invoke(false)
+            close()
+        }
+    }
+
+    private fun schedulePartialExpiryLocked() {
+        if (ended || expiryJob?.isActive == true || partial.isEmpty()) return
+        expiryJob = scope.launch {
             while (isActive && !ended) {
-                delay(100)
-                if (!valid() || (confirmed && (data.state() == RtcChannelState.CLOSED || probe.state() == RtcChannelState.CLOSED))) {
-                    close()
-                    return@launch
+                val delayMs = synchronized(stateLock) {
+                    val nextUntil = partial.values.minOfOrNull { it.until }
+                    if (nextUntil == null) {
+                        expiryJob = null
+                        return@launch
+                    }
+                    (nextUntil - options.monotonic()).coerceAtLeast(1L)
                 }
+                delay(delayMs)
                 val now = options.monotonic()
                 val expiredParts = synchronized(stateLock) {
                     val expired = partial.entries.filter { now >= it.value.until }.map { it.key to it.value }
                     for ((k, _) in expired) partial.remove(k)
+                    if (partial.isEmpty()) expiryJob = null
                     expired
                 }
                 for ((_, part) in expiredParts) {
@@ -333,6 +378,10 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
         get() = data.bufferedAmount()
 
     fun sendProbe(raw: ByteArray): Boolean {
+        if (confirmed && valid() && (data.state() == RtcChannelState.CLOSED || probe.state() == RtcChannelState.CLOSED)) {
+            close()
+            return false
+        }
         if (!ready || probe.state() != RtcChannelState.OPEN || raw.size != 17) return false
         if (!probe.send(raw, true)) {
             close()
@@ -365,6 +414,12 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
         if (!valid()) throw PathChanged()
     }
 
+    suspend fun endOfCandidates() {
+        if (!valid()) throw PathChanged()
+        pc.endOfCandidates()
+        if (!valid()) throw PathChanged()
+    }
+
     fun confirm() {
         val queued = synchronized(stateLock) {
             if (!valid()) return
@@ -384,24 +439,21 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
         }
     }
 
+    /** Callers pass an immutable sealed ciphertext buffer; write() slices directly without copying raw. */
     suspend fun write(raw: ByteArray, handoff: () -> Unit) {
         val count = (raw.size + PAYLOAD_BYTES - 1) / PAYLOAD_BYTES
         if (raw.isEmpty() || raw.size > (1 shl 20)) throw PathChanged()
-        writers.incrementAndGet()
         var reserved = false
         try {
             if (!ready || !options.budget.reserve(options.peer, connOwner, options.use, 0, raw.size, count)) {
                 throw PathChanged()
             }
             reserved = true
-            val frozen = raw.copyOf()
             writeMutex.withLock {
-                writeNow(frozen, handoff)
+                writeNow(raw, handoff)
             }
         } finally {
             if (reserved) options.budget.free(options.peer, 0, raw.size, count)
-            writers.decrementAndGet()
-            releaseReservation()
         }
     }
 
@@ -419,8 +471,8 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
             }
             currentCoroutineContext().ensureActive()
             if (!ready) throw PathChanged()
-            val end = minOf(raw.size, (index + 1) * PAYLOAD_BYTES)
-            val slice = raw.copyOfRange(index * PAYLOAD_BYTES, end)
+            val start = index * PAYLOAD_BYTES
+            val end = minOf(raw.size, start + PAYLOAD_BYTES)
             val frame = Fragment.newBuilder()
                 .setMessageId(ByteString.copyFrom(id))
                 .setIndex(index)
@@ -428,7 +480,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                 .setCiphertextLength(raw.size)
                 .setCiphertextSha256(ByteString.copyFrom(hash))
                 .setPathGeneration(options.generation)
-                .setFragment(ByteString.copyFrom(slice))
+                .setFragment(ByteString.copyFrom(raw, start, end - start))
                 .build()
                 .toByteArray()
             val maxMsg = pc.maxMessageSize() ?: FRAME_BYTES
@@ -480,43 +532,59 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
 
         synchronized(stateLock) {
             if (!valid()) return
-            val part = partial.getOrPut(key) {
-                PartialMessage(
-                    count = frame.count,
-                    length = frame.ciphertextLength,
-                    hash = msgHash,
-                    until = options.monotonic() + 5000L,
-                )
-            }
-            if (part.count != frame.count || part.length != frame.ciphertextLength || !part.hash.contentEquals(msgHash)) {
-                return
-            }
-            val old = part.parts[frame.index]
-            if (old != null) {
-                if (!old.contentEquals(fragBytes)) mismatch = true
-                return@synchronized
-            }
-            if (part.bytes + fragBytes.size > part.length) return
-            if (!options.budget.reserve(options.peer, connOwner, options.use, 1, fragBytes.size, 1)) return
-            part.parts[frame.index] = fragBytes
-            part.bytes += fragBytes.size
-            if (part.parts.size != part.count) return
-            partial.remove(key)
-            val totalReserved = part.bytes
-            val totalParts = part.parts.size
-            if (part.bytes != part.length || !options.budget.reserve(options.peer, connOwner, options.use, 1, part.bytes, 1)) {
+            val existing = partial[key]
+            if (existing == null) {
+                if (fragBytes.size > frame.ciphertextLength) return
+                if (frame.count == 1) {
+                    if (fragBytes.size != frame.ciphertextLength) return
+                    if (!options.budget.reserve(options.peer, connOwner, options.use, 1, fragBytes.size, 1)) return
+                    completed = fragBytes
+                } else {
+                    if (!options.budget.reserve(options.peer, connOwner, options.use, 1, fragBytes.size, 1)) return
+                    val part = PartialMessage(
+                        count = frame.count,
+                        length = frame.ciphertextLength,
+                        hash = msgHash,
+                        until = options.monotonic() + options.partialTimeoutMs,
+                    )
+                    part.parts[frame.index] = fragBytes
+                    part.bytes = fragBytes.size
+                    partial[key] = part
+                    schedulePartialExpiryLocked()
+                    return
+                }
+            } else {
+                val part = existing
+                if (part.count != frame.count || part.length != frame.ciphertextLength || !part.hash.contentEquals(msgHash)) {
+                    return
+                }
+                val old = part.parts[frame.index]
+                if (old != null) {
+                    if (!old.contentEquals(fragBytes)) mismatch = true
+                    return@synchronized
+                }
+                if (part.bytes + fragBytes.size > part.length) return
+                if (!options.budget.reserve(options.peer, connOwner, options.use, 1, fragBytes.size, 1)) return
+                part.parts[frame.index] = fragBytes
+                part.bytes += fragBytes.size
+                if (part.parts.size != part.count) return
+                partial.remove(key)
+                val totalReserved = part.bytes
+                val totalParts = part.parts.size
+                if (part.bytes != part.length || !options.budget.reserve(options.peer, connOwner, options.use, 1, part.bytes, 1)) {
+                    options.budget.free(options.peer, 1, totalReserved, totalParts)
+                    return
+                }
+                val buf = ByteArray(part.length)
+                var offset = 0
+                for (i in 0 until part.count) {
+                    val p = part.parts[i]!!
+                    System.arraycopy(p, 0, buf, offset, p.size)
+                    offset += p.size
+                }
                 options.budget.free(options.peer, 1, totalReserved, totalParts)
-                return
+                completed = buf
             }
-            val buf = ByteArray(part.length)
-            var offset = 0
-            for (i in 0 until part.count) {
-                val p = part.parts[i]!!
-                System.arraycopy(p, 0, buf, offset, p.size)
-                offset += p.size
-            }
-            options.budget.free(options.peer, 1, totalReserved, totalParts)
-            completed = buf
         }
 
         if (mismatch) {
@@ -556,6 +624,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
     fun close() {
         val toFreeParts: List<PartialMessage>
         val toFreeWaiting: List<ByteArray>
+        val jobToCancel: Job?
         synchronized(stateLock) {
             if (ended) return
             ended = true
@@ -563,24 +632,31 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
             partial.clear()
             toFreeWaiting = waiting.toList()
             waiting.clear()
+            jobToCancel = expiryJob
+            expiryJob = null
         }
         for (part in toFreeParts) options.budget.free(options.peer, 1, part.bytes, part.parts.size)
         for (raw in toFreeWaiting) options.budget.free(options.peer, 1, raw.size, 1)
         wake.close()
         incoming.close()
-        tickJob.cancel()
+        jobToCancel?.cancel()
         lifetimeJob.cancel()
         cleanup(
             { options.closed() },
             { releaseReservation() },
         )
-        // WebRTC PeerConnection.close() can block inside native locks; run off-caller so callers and DirectBudget never stall.
-        CoroutineScope(Dispatchers.IO).launch { runCatching { pc.close() } }
+        // WebRTC PeerConnection.close() can block inside native locks; run on a shared supervised scope
+        // so callers and DirectBudget never stall and no unbounded per-close scopes accumulate.
+        options.closeScope.launch { runCatching { pc.close() } }
     }
 
     private fun releaseReservation() {
-        if (ended && writers.get() == 0 && reservationReleased.compareAndSet(false, true)) {
-            options.budget.release(options.peer, options.use)
+        if (ended && reservationReleased.compareAndSet(false, true)) {
+            options.budget.release(options.peer, options.use, connOwner)
         }
+    }
+
+    companion object {
+        internal val sharedCloseScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     }
 }
