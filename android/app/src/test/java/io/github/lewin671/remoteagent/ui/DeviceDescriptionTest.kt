@@ -47,4 +47,37 @@ class DeviceDescriptionTest {
         ui.waitForIdle()
         ui.runOnIdle { assertEquals(2, calls) }
     }
+
+    @Test
+    fun existingNonEmptyDescriptionDoesNotLoopWritesAcrossRenewals() {
+        var sync by
+            mutableStateOf(
+                SyncStateView.newBuilder()
+                    .setConnection(CoreConnState.CONN_STATE_CONNECTED)
+                    .setLeaseEndMs(1)
+                    .addDevices(
+                        SyncDeviceView.newBuilder()
+                            .setDeviceId("me")
+                            .setKind(DeviceKind.DEVICE_KIND_CLIENT)
+                            .setMeta(
+                                io.github.lewin671.remoteagent.proto.DeviceMeta.newBuilder()
+                                    .setPlatform("android")
+                                    .setDescription("Earlier Android name"),
+                            ),
+                    )
+                    .build(),
+            )
+        var calls = 0
+        ui.setContent {
+            DeviceDescription(sync, "me", "Newer Android name") {
+                calls++
+            }
+        }
+        ui.runOnIdle {
+            assertEquals(0, calls)
+            sync = sync.toBuilder().setLeaseEndMs(2).build()
+        }
+        ui.waitForIdle()
+        ui.runOnIdle { assertEquals(0, calls) }
+    }
 }

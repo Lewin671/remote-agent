@@ -17,7 +17,7 @@ fun DeviceDescription(
     LaunchedEffect(me?.metaRev, sync.connection, sync.leaseEndMs) {
         if (
             me != null &&
-                (!me.hasMeta() || me.meta.platform != "android" || me.meta.description != description) &&
+                (!me.hasMeta() || me.meta.platform != "android" || (me.meta.description.isEmpty() && description.isNotEmpty())) &&
                 sync.connection == CoreConnState.CONN_STATE_CONNECTED
         ) {
             runCatching { save() }
