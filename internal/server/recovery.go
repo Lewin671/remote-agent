@@ -495,7 +495,8 @@ func (rs *recoveryService) completeRecovery(ctx context.Context, req *connect.Re
 	if n, _ := res.RowsAffected(); n != 1 {
 		var stored []byte
 		if err := tx.QueryRowContext(ctx, `SELECT state FROM security_states WHERE account_id = ? AND epoch = ?`, row.account, row.state.Core.Epoch).Scan(&stored); err != nil || !bytes.Equal(stored, reqStateRaw(row.state)) {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the recovery is stale"))
+			// A different state already occupies this epoch, superseding this recovery.
+			return nil, relayError(connect.CodeFailedPrecondition, errors.New("the recovery is stale"), pb.RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_REJECTED)
 		}
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE accounts SET recovery_ed = ? WHERE id = ?`, row.state.Core.RecoveryEd[:], row.account); err != nil {
