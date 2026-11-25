@@ -262,10 +262,6 @@ export function ModeSheet({
   );
 }
 
-export function tokens(n: bigint): string {
-  return n >= 1000n ? `${Math.round(Number(n) / 1000)}k` : String(n);
-}
-
 function SessionUsageEntryRow({
   ue,
   onClose,
@@ -369,6 +365,7 @@ export function SessionSheet({
   const locked = modelBusy || !actions?.canSwitchModel;
   const modelsError = renderText(actions?.modelsError);
   const pct = header?.hasContext ? header.contextPercent : undefined;
+  const contextText = renderText(header?.contextText);
   const activeEffort = effortChoices.find((e) => e.selected)?.id ?? header?.effort ?? "";
 
   const setModel = (slug: string, label: string, effort: string) => {
@@ -420,7 +417,7 @@ export function SessionSheet({
                   <LoaderCircle /> {i18n.t("session.compacting")}
                 </>
               ) : (
-                renderText(header.contextText) || i18n.t("session.context_tokens", { used: tokens(header.contextTokens), total: tokens(header.contextWindow) })
+                contextText
               )}
             </div>
             <div className={"bar" + (header.highContextWarning ? " warn" : "")}>
