@@ -34,7 +34,12 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withTimeout
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
@@ -71,6 +76,46 @@ internal class DirectExecutor(
         @Volatile var closedByCore: Boolean = false,
     ) {
         lateinit var channel: DirectChannel
+        private val jobsLock = Any()
+        private val inFlightJobs = LinkedHashSet<Job>()
+        private var jobsCancelled = false
+
+        fun attachJob(job: Job): Boolean = synchronized(jobsLock) {
+            if (jobsCancelled) {
+                false
+            } else {
+                inFlightJobs.add(job)
+                true
+            }
+        }
+
+        fun detachJob(job: Job) = synchronized(jobsLock) {
+            inFlightJobs.remove(job)
+        }
+
+        fun cancelInFlightJobs() {
+            val toCancel = synchronized(jobsLock) {
+                jobsCancelled = true
+                inFlightJobs.toList().also { inFlightJobs.clear() }
+            }
+            for (job in toCancel) job.cancel()
+        }
+    }
+
+    private suspend fun <T> withEntryJob(entry: PcEntry, block: suspend () -> T): T = coroutineScope {
+        val child = async { block() }
+        if (!entry.attachJob(child)) {
+            child.cancel()
+            throw PathChanged()
+        }
+        try {
+            child.await()
+        } catch (e: CancellationException) {
+            if (!currentCoroutineContext().isActive) throw e
+            throw PathChanged()
+        } finally {
+            entry.detachJob(child)
+        }
     }
 
     private class PendingRpc(
@@ -128,6 +173,7 @@ internal class DirectExecutor(
         }
         pcs.remove(eff.pcId)?.let { prev ->
             prev.closedByCore = true
+            prev.cancelInFlightJobs()
             rejectPendingForPc(eff.pcId)
             runCatching { prev.channel.close() }
         }
@@ -200,6 +246,7 @@ internal class DirectExecutor(
                     frame = { raw -> handleDcFrame(eff.pcId, entry, raw) },
                     closed = {
                         pcs.remove(eff.pcId, entry)
+                        entry.cancelInFlightJobs()
                         rejectPendingForPc(eff.pcId)
                         if (!entry.closedByCore) {
                             emitEvent {
@@ -235,7 +282,7 @@ internal class DirectExecutor(
             return
         }
         try {
-            val sdp = entry.channel.description(eff.offer, eff.iceRestart)
+            val sdp = withEntryJob(entry) { entry.channel.description(eff.offer, eff.iceRestart) }
             emitEvent {
                 setDirectPcDescription(
                     DirectPcDescriptionEvent.newBuilder()
@@ -262,7 +309,7 @@ internal class DirectExecutor(
             return
         }
         try {
-            entry.channel.remote(eff.sdp.toByteArray(), eff.offer)
+            withEntryJob(entry) { entry.channel.remote(eff.sdp.toByteArray(), eff.offer) }
             emitEvent {
                 setDirectPcRemoteSet(DirectPcRemoteSetEvent.newBuilder().setPcId(eff.pcId).setOk(true))
             }
@@ -291,11 +338,16 @@ internal class DirectExecutor(
             return
         }
         try {
-            for (c in eff.candidatesList) {
-                val line = decodeUtf8Strict(c.line.toByteArray())
-                val ufrag = if (c.ufrag.isEmpty) "" else decodeUtf8Strict(c.ufrag.toByteArray())
-                val mid = if (c.mid.isEmpty) "" else decodeUtf8Strict(c.mid.toByteArray())
-                entry.channel.addCandidate(line, mid, c.mlineIndex, ufrag)
+            withEntryJob(entry) {
+                for (c in eff.candidatesList) {
+                    val line = decodeUtf8Strict(c.line.toByteArray())
+                    val ufrag = if (c.ufrag.isEmpty) "" else decodeUtf8Strict(c.ufrag.toByteArray())
+                    val mid = if (c.mid.isEmpty) "" else decodeUtf8Strict(c.mid.toByteArray())
+                    entry.channel.addCandidate(line, mid, c.mlineIndex, ufrag)
+                }
+                if (eff.endOfCandidates) {
+                    entry.channel.endOfCandidates()
+                }
             }
             emitEvent {
                 setDirectPcCandidatesAdded(DirectPcCandidatesAddedEvent.newBuilder().setPcId(eff.pcId).setOk(true))
@@ -324,6 +376,7 @@ internal class DirectExecutor(
     fun pcClose(eff: DirectPcCloseEffect) {
         val entry = pcs.remove(eff.pcId) ?: return
         entry.closedByCore = true
+        entry.cancelInFlightJobs()
         rejectPendingForPc(eff.pcId)
         entry.channel.close()
     }
@@ -339,6 +392,8 @@ internal class DirectExecutor(
         return try {
             entry.channel.write(raw) {}
             true
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             false
         }
@@ -346,7 +401,17 @@ internal class DirectExecutor(
 
     suspend fun dcReadStats(eff: DirectDcReadStatsEffect) {
         val entry = pcs[eff.pcId]
-        val report = if (entry != null) entry.channel.readStats() else DirectStatsReport.getDefaultInstance()
+        val report = if (entry != null) {
+            try {
+                withEntryJob(entry) { entry.channel.readStats() }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                DirectStatsReport.getDefaultInstance()
+            }
+        } else {
+            DirectStatsReport.getDefaultInstance()
+        }
         emitEvent {
             setDirectDcStats(DirectDcStatsEvent.newBuilder().setPcId(eff.pcId).setReport(report))
         }
@@ -430,6 +495,7 @@ internal class DirectExecutor(
         pcs.clear()
         for ((_, entry) in snapshot) {
             entry.closedByCore = true
+            entry.cancelInFlightJobs()
             runCatching { entry.channel.close() }
         }
         val pendSnapshot = pendingRpc.entries.toList()
