@@ -74,13 +74,53 @@ def members(path, data):
             yield name, "a file that is never published"
 
 
+LC_CODE_SIGNATURE = 0x1D
+
+
+def code_signature(data, base=0):
+    """(start, end) of a 64-bit Mach-O's code signature, or None.
+
+    The Developer ID signature names its holder on purpose: that identity is
+    published by signing, so the scan skips this one region and still reads
+    the rest of the binary.
+    """
+    if data[base:base + 4] != b"\xcf\xfa\xed\xfe":
+        return None
+    ncmds = int.from_bytes(data[base + 16:base + 20], "little")
+    at = base + 32
+    for _ in range(ncmds):
+        cmd = int.from_bytes(data[at:at + 4], "little")
+        size = int.from_bytes(data[at + 4:at + 8], "little")
+        if size < 8:
+            return None
+        if cmd == LC_CODE_SIGNATURE:
+            off = int.from_bytes(data[at + 8:at + 12], "little")
+            length = int.from_bytes(data[at + 12:at + 16], "little")
+            return base + off, base + off + length
+        at += size
+    return None
+
+
+def without_signatures(tar_stream):
+    """A tar stream with each member's Mach-O code signature blanked."""
+    out = bytearray(tar_stream)
+    with tarfile.open(fileobj=io.BytesIO(tar_stream), mode="r:") as t:
+        for m in t.getmembers():
+            if m.isfile():
+                region = code_signature(out, m.offset_data)
+                if region and region[1] <= m.offset_data + m.size:
+                    out[region[0]:region[1]] = bytes(region[1] - region[0])
+    return bytes(out)
+
+
 def blobs(path):
     """The file's bytes, and what is packed inside it."""
     data = path.read_bytes()
-    yield "", data
+    region = code_signature(data)
+    yield "", data if not region else data[:region[0]] + bytes(region[1] - region[0]) + data[region[1]:]
     if data[:2] == b"\x1f\x8b":
         # A tar's headers (owner names) are scanned along with its members.
-        yield "(unpacked)", gzip.decompress(data)
+        yield "(unpacked)", without_signatures(gzip.decompress(data))
     elif data[:4] == b"PK\x03\x04":
         with zipfile.ZipFile(path) as z:
             for info in z.infolist():

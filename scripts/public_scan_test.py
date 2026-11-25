@@ -50,6 +50,24 @@ class PublicScanTests(unittest.TestCase):
         self.assertEqual({'guide.md', 'web.tar.gz', 'app.apk'}, {f for f, _, _ in self.terms()})
         self.assertIn(('app.apk', 'resources.arsc', TERM), self.terms())
 
+    def macho(self, signature, body=b''):
+        """A minimal 64-bit Mach-O whose code signature holds `signature`."""
+        header_end = 32 + 16
+        sig_off = header_end + len(body)
+        header = b'\xcf\xfa\xed\xfe' + bytes(12) + (1).to_bytes(4, 'little') + (16).to_bytes(4, 'little') + bytes(8)
+        command = (0x1D).to_bytes(4, 'little') + (16).to_bytes(4, 'little') + sig_off.to_bytes(4, 'little') + len(signature).to_bytes(4, 'little')
+        return header + command + body + signature
+
+    def test_a_developer_id_signature_may_name_its_holder(self):
+        binary = self.macho(b'Developer ID Application: private-host (TEAM)')
+        (self.root / 'remote-agent').write_bytes(binary)
+        self.tar('d.tar.gz', 'd/remote-agent', binary)
+        self.assertEqual([], self.terms())
+
+    def test_the_rest_of_a_signed_binary_is_still_scanned(self):
+        self.tar('d.tar.gz', 'd/remote-agent', self.macho(b'signature', body=HOST.encode()))
+        self.assertIn(('d.tar.gz', '(unpacked)', TERM), self.terms())
+
     def test_publishes_nothing_without_the_private_terms(self):
         (self.root / 'README.md').write_text('clean\n')
         env = {**os.environ, 'RA_PUBLIC_DENY': '', 'HOME': str(self.root)}
