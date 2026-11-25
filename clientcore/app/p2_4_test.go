@@ -1670,4 +1670,8 @@ func TestPreSecurityScheduleCacheEvictedWhenMachineUntrusted(t *testing.T) {
 	if got := totalTasks(vmAfter.GetSchedules()); got != 0 {
 		t.Fatalf("expected pre-security cached tasks evicted from memory when machine untrusted, got %d", got)
 	}
+	// An untrusted machine never gets a snapshot again, so it must not hold the list in loading.
+	if vmAfter.GetSchedules().GetLoading() {
+		t.Fatal("schedules list stuck loading on an untrusted machine with no snapshot")
+	}
 }

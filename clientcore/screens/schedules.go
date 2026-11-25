@@ -103,6 +103,9 @@ type ScheduleState struct {
 
 	// SessionEvents provides settled transcript events for final_answer extraction (wired by app).
 	SessionEvents func(sessionID string) (events []*v1.Event, settled bool)
+	// MachineUsable reports whether a machine's schedules are fetched and cached
+	// at all (wired by app); untrusted or removed machines never get a snapshot.
+	MachineUsable func(machineID string) bool
 }
 
 // NewScheduleState constructs an initialized ScheduleState.
@@ -733,7 +736,7 @@ func BuildSchedules(st *State, endedLimit int) *corev1.SchedulesViewModel {
 	var canCreate bool
 	unlinked := st.World.Unlinked != nil && *st.World.Unlinked
 	for _, m := range st.World.Machines {
-		if m == nil {
+		if m == nil || (ss.MachineUsable != nil && !ss.MachineUsable(m.ID)) {
 			continue
 		}
 		if m.Unlinked == nil && !unlinked || (m.Unlinked != nil && !*m.Unlinked) {

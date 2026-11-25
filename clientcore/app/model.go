@@ -100,6 +100,7 @@ func newModel() *Model {
 
 		usageCacheRequested: make(map[string]bool),
 	}
+	m.state.Schedules.MachineUsable = m.sync.CanUseMachineCache
 	m.state.Schedules.SessionEvents = func(sid string) ([]*v1.Event, bool) {
 		if sid == "" {
 			return nil, false
