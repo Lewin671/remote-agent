@@ -222,3 +222,58 @@ func TestNotifyReceipts(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildSessionMenuInterruptReachabilityUnknown(t *testing.T) {
+	hasInterrupt := func(items []*corev1.SessionMenuItemView) bool {
+		for _, it := range items {
+			if it != nil && it.Kind == corev1.SessionMenuItemKind_SESSION_MENU_ITEM_KIND_INTERRUPT {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Reachability UNKNOWN (e.g. during cold-start / reconnect grace) must keep INTERRUPT menu item visible.
+	unknownItems := buildSessionMenuItems(
+		true,
+		&corev1.SessionHeaderView{
+			Exited:               false,
+			ComputerOnline:       false,
+			ComputerUnlinked:     true,
+			ComputerReachability: corev1.ComputerReachability_COMPUTER_REACHABILITY_UNKNOWN,
+		},
+		&corev1.SessionActionsView{CanInterrupt: false},
+	)
+	if !hasInterrupt(unknownItems) {
+		t.Fatalf("expected INTERRUPT menu item when ComputerReachability == UNKNOWN")
+	}
+
+	// Confirmed OFFLINE must hide INTERRUPT menu item.
+	offlineItems := buildSessionMenuItems(
+		true,
+		&corev1.SessionHeaderView{
+			Exited:               false,
+			ComputerOnline:       false,
+			ComputerUnlinked:     false,
+			ComputerReachability: corev1.ComputerReachability_COMPUTER_REACHABILITY_OFFLINE,
+		},
+		&corev1.SessionActionsView{CanInterrupt: false},
+	)
+	if hasInterrupt(offlineItems) {
+		t.Fatalf("expected INTERRUPT menu item omitted when ComputerReachability == OFFLINE")
+	}
+
+	// Exited session must hide INTERRUPT menu item even when reachability is UNKNOWN.
+	exitedItems := buildSessionMenuItems(
+		true,
+		&corev1.SessionHeaderView{
+			Exited:               true,
+			ComputerOnline:       false,
+			ComputerReachability: corev1.ComputerReachability_COMPUTER_REACHABILITY_UNKNOWN,
+		},
+		&corev1.SessionActionsView{CanInterrupt: false},
+	)
+	if hasInterrupt(exitedItems) {
+		t.Fatalf("expected INTERRUPT menu item omitted for exited session")
+	}
+}

@@ -883,17 +883,19 @@ func buildSessionActions(
 	}
 
 	out.UsageEntry = buildSessionUsageEntry(st, lm, caps, header.Model)
-	out.MenuItems = buildSessionMenuItems(header, out)
+	out.MenuItems = buildSessionMenuItems(in.Found, header, out)
 	return out
 }
 
-func buildSessionMenuItems(header *corev1.SessionHeaderView, actions *corev1.SessionActionsView) []*corev1.SessionMenuItemView {
+func buildSessionMenuItems(found bool, header *corev1.SessionHeaderView, actions *corev1.SessionActionsView) []*corev1.SessionMenuItemView {
 	if header == nil || actions == nil {
 		return nil
 	}
 	forking := actions.Fork != nil && actions.Fork.Busy
 	exited := header.Exited
-	inactive := exited || !header.ComputerOnline || header.ComputerUnlinked
+	reachabilityUnknown := header.ComputerReachability == corev1.ComputerReachability_COMPUTER_REACHABILITY_UNKNOWN
+	unlinked := header.ComputerUnlinked && !reachabilityUnknown
+	inactive := exited || unlinked || (found && !header.ComputerOnline && !reachabilityUnknown)
 	items := make([]*corev1.SessionMenuItemView, 0, 10)
 
 	// Group 0: Mode, Model/Settings, Context.
