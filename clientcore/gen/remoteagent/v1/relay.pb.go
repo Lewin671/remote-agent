@@ -3074,6 +3074,79 @@ func (m *SetPushTargetResponse) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SetPushTargetResponse)
 }
 
+type GetImageRequest struct {
+	_         [0]func()
+	SessionId string
+	ImageId   string
+}
+
+func (m *GetImageRequest) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *GetImageRequest) GetImageId() string {
+	if m != nil {
+		return m.ImageId
+	}
+	return ""
+}
+
+var LitewireDesc_GetImageRequest = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(GetImageRequest{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(GetImageRequest{}.ImageId), Kind: litewire.KindString},
+	},
+}
+
+func (m *GetImageRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *GetImageRequest) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_GetImageRequest)
+}
+
+type GetImageResponse struct {
+	_         [0]func()
+	Image     *Envelope
+	Expired   bool
+	ExpiresMs int64
+}
+
+func (m *GetImageResponse) GetImage() *Envelope {
+	if m != nil {
+		return m.Image
+	}
+	return nil
+}
+func (m *GetImageResponse) GetExpired() bool {
+	if m != nil {
+		return m.Expired
+	}
+	return false
+}
+func (m *GetImageResponse) GetExpiresMs() int64 {
+	if m != nil {
+		return m.ExpiresMs
+	}
+	return 0
+}
+
+var LitewireDesc_GetImageResponse = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&GetImageResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(GetImageResponse{}.Image), Kind: litewire.KindMessage, Sub: &LitewireDesc_Envelope},
+		{Num: 2, Offset: unsafe.Offsetof(GetImageResponse{}.Expired), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(GetImageResponse{}.ExpiresMs), Kind: litewire.KindInt64},
+	},
+}
+
+func (m *GetImageResponse) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_GetImageResponse)
+}
+
 type Device struct {
 	_            [0]func()
 	Id           string

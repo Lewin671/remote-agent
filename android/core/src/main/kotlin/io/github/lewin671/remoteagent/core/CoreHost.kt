@@ -224,9 +224,11 @@ class CoreHost(
     private val nextMachineCmdOpId = AtomicLong(1L)
     private val nextSecurityOpSeq = AtomicLong(1L)
     private val nextPushRpcOpId = AtomicLong(1L)
+    private val nextImageFetchOpId = AtomicLong(1L)
     private val pendingMachineCmds = ConcurrentHashMap<Long, CompletableDeferred<CommandResult>>()
     private val pendingSecurityOps = ConcurrentHashMap<Long, CompletableDeferred<SecurityOpResultEffect>>()
     private val pendingPushRpcs = ConcurrentHashMap<Long, CompletableDeferred<PushRpcResultEffect>>()
+    private val pendingImageFetches = ConcurrentHashMap<Long, CompletableDeferred<SessionImageLoadedEffect>>()
     private val retryNowWaiters = ConcurrentHashMap<String, MutableList<CompletableDeferred<Boolean>>>()
     private val terminalReopenListeners = ConcurrentHashMap<String, () -> Unit>()
     private val terminalHistoryRequestListeners = ConcurrentHashMap<String, (TerminalHistorySendRequestEffect) -> Unit>()
@@ -617,6 +619,10 @@ class CoreHost(
             Effect.EffectCase.PUSH_RPC_RESULT -> {
                 val res = effect.pushRpcResult
                 pendingPushRpcs.remove(res.opId)?.complete(res)
+            }
+            Effect.EffectCase.SESSION_IMAGE_LOADED -> {
+                val res = effect.sessionImageLoaded
+                pendingImageFetches.remove(res.opId)?.complete(res)
             }
             Effect.EffectCase.SECURITY_TOKEN_UPDATED -> onSecurityTokenUpdated(effect.securityTokenUpdated)
             Effect.EffectCase.SECURITY_WORKFLOW_RESULT ->
@@ -1271,6 +1277,31 @@ class CoreHost(
             deferred.await()
         } finally {
             pendingPushRpcs.remove(opId, deferred)
+        }
+    }
+
+    suspend fun fetchSessionImage(
+        sessionId: String,
+        imageId: String,
+        cachedEnvelope: ByteArray? = null,
+        machineId: String = "",
+    ): SessionImageLoadedEffect {
+        val opId = nextImageFetchOpId.getAndIncrement()
+        val deferred = CompletableDeferred<SessionImageLoadedEffect>()
+        pendingImageFetches[opId] = deferred
+        val b = SessionFetchImageAction.newBuilder()
+            .setOpId(opId)
+            .setSessionId(sessionId)
+            .setImageId(imageId)
+            .setMachineId(machineId)
+        if (cachedEnvelope != null && cachedEnvelope.isNotEmpty()) {
+            b.setCachedEnvelope(ByteString.copyFrom(cachedEnvelope))
+        }
+        dispatch(CoreEvent.newBuilder().setSessionFetchImage(b).build())
+        return try {
+            deferred.await()
+        } finally {
+            pendingImageFetches.remove(opId, deferred)
         }
     }
 
@@ -2612,6 +2643,16 @@ class CoreHost(
             for ((k, w) in pendingSecurityOps.entries.toList()) {
                 if (pendingSecurityOps.remove(k, w)) {
                     w.completeExceptionally(IllegalStateException("core closed"))
+                }
+            }
+            for ((k, w) in pendingPushRpcs.entries.toList()) {
+                if (pendingPushRpcs.remove(k, w)) {
+                    w.completeExceptionally(IllegalStateException("core closed"))
+                }
+            }
+            for ((k, w) in pendingImageFetches.entries.toList()) {
+                if (pendingImageFetches.remove(k, w)) {
+                    w.completeExceptionally(CommandException("canceled", UiMessages.terminalAndroidClosed().messageText()))
                 }
             }
             synchronized(retryNowWaiters) {

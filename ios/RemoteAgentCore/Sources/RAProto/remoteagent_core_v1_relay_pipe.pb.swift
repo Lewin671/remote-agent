@@ -186,6 +186,56 @@ public enum PBRelayRpcMethod: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
+public enum PBSessionImageLoadStatus: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case ok // = 1
+  case expired // = 2
+  case missing // = 3
+  case bad // = 4
+  case error // = 5
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .ok
+    case 2: self = .expired
+    case 3: self = .missing
+    case 4: self = .bad
+    case 5: self = .error
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .ok: return 1
+    case .expired: return 2
+    case .missing: return 3
+    case .bad: return 4
+    case .error: return 5
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBSessionImageLoadStatus] = [
+    .unspecified,
+    .ok,
+    .expired,
+    .missing,
+    .bad,
+    .error,
+  ]
+
+}
+
 /// Opts the Core instance into the unified byte-pipe mode (RelayRpcEffect,
 /// StreamRawFrameEvent, Core-managed login/token refresh, opaque caches, image
 /// fetch, and Core-owned terminal crypto/lifecycle). Shells that do not send
@@ -362,12 +412,120 @@ public struct PBScheduleCacheBlob: Sendable {
   public init() {}
 }
 
+public struct PBSessionFetchImageAction: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var opID: UInt64 = 0
+
+  public var sessionID: String = String()
+
+  public var imageID: String = String()
+
+  /// Optional cached serialized remoteagent.v1.Envelope bytes (e.g. Android encrypted disk cache).
+  public var cachedEnvelope: Data = Data()
+
+  /// Optional machine_id hint when session is not yet in the live directory.
+  public var machineID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBSessionImageLoadedEffect: @unchecked Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var opID: UInt64 {
+    get {return _storage._opID}
+    set {_uniqueStorage()._opID = newValue}
+  }
+
+  public var sessionID: String {
+    get {return _storage._sessionID}
+    set {_uniqueStorage()._sessionID = newValue}
+  }
+
+  public var imageID: String {
+    get {return _storage._imageID}
+    set {_uniqueStorage()._imageID = newValue}
+  }
+
+  public var status: PBSessionImageLoadStatus {
+    get {return _storage._status}
+    set {_uniqueStorage()._status = newValue}
+  }
+
+  public var data: Data {
+    get {return _storage._data}
+    set {_uniqueStorage()._data = newValue}
+  }
+
+  public var mimeType: String {
+    get {return _storage._mimeType}
+    set {_uniqueStorage()._mimeType = newValue}
+  }
+
+  public var width: UInt32 {
+    get {return _storage._width}
+    set {_uniqueStorage()._width = newValue}
+  }
+
+  public var height: UInt32 {
+    get {return _storage._height}
+    set {_uniqueStorage()._height = newValue}
+  }
+
+  public var format: PBImageFormat {
+    get {return _storage._format}
+    set {_uniqueStorage()._format = newValue}
+  }
+
+  /// Non-empty only when freshly fetched, verified, and CanUseMachineCache(machine_id) is true.
+  public var cacheEnvelopeBytes: Data {
+    get {return _storage._cacheEnvelopeBytes}
+    set {_uniqueStorage()._cacheEnvelopeBytes = newValue}
+  }
+
+  public var errorText: PBCoreText {
+    get {return _storage._errorText ?? PBCoreText()}
+    set {_uniqueStorage()._errorText = newValue}
+  }
+  /// Returns true if `errorText` has been explicitly set.
+  public var hasErrorText: Bool {return _storage._errorText != nil}
+  /// Clears the value of `errorText`. Subsequent reads from it will return its default value.
+  public mutating func clearErrorText() {_uniqueStorage()._errorText = nil}
+
+  public var errorCode: String {
+    get {return _storage._errorCode}
+    set {_uniqueStorage()._errorCode = newValue}
+  }
+
+  public var retiredHistory: Bool {
+    get {return _storage._retiredHistory}
+    set {_uniqueStorage()._retiredHistory = newValue}
+  }
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate let _protobuf_package = "remoteagent.core.v1"
 
 extension PBRelayRpcMethod: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0RELAY_RPC_METHOD_UNSPECIFIED\0\u{1}RELAY_RPC_METHOD_GET_SECURITY_STATES\0\u{1}RELAY_RPC_METHOD_PUT_SECURITY_STATE\0\u{1}RELAY_RPC_METHOD_PIN_SECURITY_DOMAIN\0\u{1}RELAY_RPC_METHOD_CREATE_PAIRING\0\u{1}RELAY_RPC_METHOD_PEEK_PAIRING\0\u{1}RELAY_RPC_METHOD_JOIN_PAIRING\0\u{1}RELAY_RPC_METHOD_REVEAL_PAIRING\0\u{1}RELAY_RPC_METHOD_APPROVE_PAIRING\0\u{1}RELAY_RPC_METHOD_GET_PAIRING\0\u{1}RELAY_RPC_METHOD_CANCEL_PAIRING\0\u{1}RELAY_RPC_METHOD_GET_RECOVERY_CHALLENGE\0\u{1}RELAY_RPC_METHOD_GET_RECOVERY_CONTEXT\0\u{1}RELAY_RPC_METHOD_SUBMIT_RECOVERY\0\u{1}RELAY_RPC_METHOD_COMPLETE_RECOVERY\0\u{1}RELAY_RPC_METHOD_DELETE_MACHINE_RECORDS\0\u{1}RELAY_RPC_METHOD_DELETE_ACCOUNT\0\u{1}RELAY_RPC_METHOD_GET_CHALLENGE\0\u{1}RELAY_RPC_METHOD_LOGIN\0\u{1}RELAY_RPC_METHOD_GET_SIGNUP_CHALLENGE\0\u{1}RELAY_RPC_METHOD_REGISTER_DEVICE\0\u{1}RELAY_RPC_METHOD_PUT_DEVICE_META\0\u{1}RELAY_RPC_METHOD_LIST_DEVICES\0\u{1}RELAY_RPC_METHOD_LIST_MACHINES\0\u{1}RELAY_RPC_METHOD_GET_ACCOUNT_PREFS\0\u{1}RELAY_RPC_METHOD_PUT_ACCOUNT_PREFS\0\u{1}RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS\0\u{1}RELAY_RPC_METHOD_GET_EVENTS\0\u{1}RELAY_RPC_METHOD_FORWARD\0\u{1}RELAY_RPC_METHOD_GET_IMAGE\0\u{1}RELAY_RPC_METHOD_GET_PUSH_KEY\0\u{1}RELAY_RPC_METHOD_SET_PUSH_SUBSCRIPTION\0\u{1}RELAY_RPC_METHOD_SET_PUSH_TARGET\0\u{1}RELAY_RPC_METHOD_HEALTHZ\0")
+}
+
+extension PBSessionImageLoadStatus: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SESSION_IMAGE_LOAD_STATUS_UNSPECIFIED\0\u{1}SESSION_IMAGE_LOAD_STATUS_OK\0\u{1}SESSION_IMAGE_LOAD_STATUS_EXPIRED\0\u{1}SESSION_IMAGE_LOAD_STATUS_MISSING\0\u{1}SESSION_IMAGE_LOAD_STATUS_BAD\0\u{1}SESSION_IMAGE_LOAD_STATUS_ERROR\0")
 }
 
 extension PBRelayPipeConfigEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
@@ -759,6 +917,210 @@ extension PBScheduleCacheBlob: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
   public static func ==(lhs: PBScheduleCacheBlob, rhs: PBScheduleCacheBlob) -> Bool {
     if lhs.requestID != rhs.requestID {return false}
     if lhs.sealedResult != rhs.sealedResult {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBSessionFetchImageAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SessionFetchImageAction"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}session_id\0\u{3}image_id\0\u{3}cached_envelope\0\u{3}machine_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.opID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.imageID) }()
+      case 4: try { try decoder.decodeSingularBytesField(value: &self.cachedEnvelope) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.opID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.opID, fieldNumber: 1)
+    }
+    if !self.sessionID.isEmpty {
+      try visitor.visitSingularStringField(value: self.sessionID, fieldNumber: 2)
+    }
+    if !self.imageID.isEmpty {
+      try visitor.visitSingularStringField(value: self.imageID, fieldNumber: 3)
+    }
+    if !self.cachedEnvelope.isEmpty {
+      try visitor.visitSingularBytesField(value: self.cachedEnvelope, fieldNumber: 4)
+    }
+    if !self.machineID.isEmpty {
+      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBSessionFetchImageAction, rhs: PBSessionFetchImageAction) -> Bool {
+    if lhs.opID != rhs.opID {return false}
+    if lhs.sessionID != rhs.sessionID {return false}
+    if lhs.imageID != rhs.imageID {return false}
+    if lhs.cachedEnvelope != rhs.cachedEnvelope {return false}
+    if lhs.machineID != rhs.machineID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBSessionImageLoadedEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SessionImageLoadedEffect"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}session_id\0\u{3}image_id\0\u{1}status\0\u{1}data\0\u{3}mime_type\0\u{1}width\0\u{1}height\0\u{1}format\0\u{3}cache_envelope_bytes\0\u{3}error_text\0\u{3}error_code\0\u{3}retired_history\0")
+
+  fileprivate class _StorageClass {
+    var _opID: UInt64 = 0
+    var _sessionID: String = String()
+    var _imageID: String = String()
+    var _status: PBSessionImageLoadStatus = .unspecified
+    var _data: Data = Data()
+    var _mimeType: String = String()
+    var _width: UInt32 = 0
+    var _height: UInt32 = 0
+    var _format: PBImageFormat = .unspecified
+    var _cacheEnvelopeBytes: Data = Data()
+    var _errorText: PBCoreText? = nil
+    var _errorCode: String = String()
+    var _retiredHistory: Bool = false
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _opID = source._opID
+      _sessionID = source._sessionID
+      _imageID = source._imageID
+      _status = source._status
+      _data = source._data
+      _mimeType = source._mimeType
+      _width = source._width
+      _height = source._height
+      _format = source._format
+      _cacheEnvelopeBytes = source._cacheEnvelopeBytes
+      _errorText = source._errorText
+      _errorCode = source._errorCode
+      _retiredHistory = source._retiredHistory
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularUInt64Field(value: &_storage._opID) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._sessionID) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._imageID) }()
+        case 4: try { try decoder.decodeSingularEnumField(value: &_storage._status) }()
+        case 5: try { try decoder.decodeSingularBytesField(value: &_storage._data) }()
+        case 6: try { try decoder.decodeSingularStringField(value: &_storage._mimeType) }()
+        case 7: try { try decoder.decodeSingularUInt32Field(value: &_storage._width) }()
+        case 8: try { try decoder.decodeSingularUInt32Field(value: &_storage._height) }()
+        case 9: try { try decoder.decodeSingularEnumField(value: &_storage._format) }()
+        case 10: try { try decoder.decodeSingularBytesField(value: &_storage._cacheEnvelopeBytes) }()
+        case 11: try { try decoder.decodeSingularMessageField(value: &_storage._errorText) }()
+        case 12: try { try decoder.decodeSingularStringField(value: &_storage._errorCode) }()
+        case 13: try { try decoder.decodeSingularBoolField(value: &_storage._retiredHistory) }()
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._opID != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._opID, fieldNumber: 1)
+      }
+      if !_storage._sessionID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._sessionID, fieldNumber: 2)
+      }
+      if !_storage._imageID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._imageID, fieldNumber: 3)
+      }
+      if _storage._status != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._status, fieldNumber: 4)
+      }
+      if !_storage._data.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._data, fieldNumber: 5)
+      }
+      if !_storage._mimeType.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._mimeType, fieldNumber: 6)
+      }
+      if _storage._width != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._width, fieldNumber: 7)
+      }
+      if _storage._height != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._height, fieldNumber: 8)
+      }
+      if _storage._format != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._format, fieldNumber: 9)
+      }
+      if !_storage._cacheEnvelopeBytes.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._cacheEnvelopeBytes, fieldNumber: 10)
+      }
+      try { if let v = _storage._errorText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
+      } }()
+      if !_storage._errorCode.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._errorCode, fieldNumber: 12)
+      }
+      if _storage._retiredHistory != false {
+        try visitor.visitSingularBoolField(value: _storage._retiredHistory, fieldNumber: 13)
+      }
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBSessionImageLoadedEffect, rhs: PBSessionImageLoadedEffect) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._opID != rhs_storage._opID {return false}
+        if _storage._sessionID != rhs_storage._sessionID {return false}
+        if _storage._imageID != rhs_storage._imageID {return false}
+        if _storage._status != rhs_storage._status {return false}
+        if _storage._data != rhs_storage._data {return false}
+        if _storage._mimeType != rhs_storage._mimeType {return false}
+        if _storage._width != rhs_storage._width {return false}
+        if _storage._height != rhs_storage._height {return false}
+        if _storage._format != rhs_storage._format {return false}
+        if _storage._cacheEnvelopeBytes != rhs_storage._cacheEnvelopeBytes {return false}
+        if _storage._errorText != rhs_storage._errorText {return false}
+        if _storage._errorCode != rhs_storage._errorCode {return false}
+        if _storage._retiredHistory != rhs_storage._retiredHistory {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

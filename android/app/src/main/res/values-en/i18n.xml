@@ -89,13 +89,13 @@
     <string name="common_all_projects_avatar" formatted="false">"All"</string>
     <string name="common_android_allow_camera_access" formatted="false">"Allow camera access"</string>
     <string name="common_android_camera_access_is_needed_to_scan_you_can_also_go" formatted="false">"Camera access is needed to scan. You can also go back and enter the pairing code."</string>
-    <string name="common_android_cannot_find_this_session" formatted="false">"Cannot find this session"</string>
     <string name="common_android_could_not_clear_the_account_and_cache_on_this_phone" formatted="false">"Could not clear the account and cache on this phone. Retry"</string>
     <string name="common_android_more" formatted="false">"More"</string>
     <string name="common_android_the_original_request_and_keys_are_saved_for_retry_if" formatted="false">". The original request and keys are saved for retry. If approval expired or was rejected, exit and pair again or create an account."</string>
     <string name="common_android_this_app_version_is_old_update_and_retry" formatted="false">"This app version is old. Update and retry"</string>
     <string name="common_back" formatted="false">"Back"</string>
     <string name="common_cancel" formatted="false">"Cancel"</string>
+    <string name="common_cannot_find_this_session" formatted="false">"Cannot find this session"</string>
     <string name="common_clear_search" formatted="false">"Clear search"</string>
     <string name="common_close" formatted="false">"Close"</string>
     <string name="common_copied" formatted="false">"Copied"</string>
@@ -236,7 +236,6 @@
     <string name="dock_trust_folder" formatted="false">"No, exit is selected by default. Press ↓ to select Yes, I trust this folder, then press ⏎"</string>
     <string name="dock_waiting_confirmation" formatted="false">"Waiting for confirmation"</string>
     <string name="errors_android_cannot_find_the_server_check_your_network" formatted="false">"Cannot find the server. Check your network"</string>
-    <string name="errors_android_image_content_does_not_match_its_format" formatted="false">"Image content does not match its format"</string>
     <string name="errors_android_invalid_server_address" formatted="false">"Invalid server address"</string>
     <string name="errors_android_login_expired">"Login expired: %1$s"</string>
     <string name="errors_android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or">"Remote control authorization expired. Cannot save changes, control sessions, or upload new content. %1$s and retry. History remains viewable"</string>
@@ -258,6 +257,7 @@
     <string name="errors_history_could_not_continue_loading_retry" formatted="false">"History could not continue loading. Retry."</string>
     <string name="errors_history_has_a_gap_retry" formatted="false">"History has a gap. Retry."</string>
     <string name="errors_history_keys_unavailable_records_from_before_recovery_cannot_be" formatted="false">"History keys unavailable: records from before recovery cannot be decrypted"</string>
+    <string name="errors_image_content_does_not_match_its_format" formatted="false">"Image content does not match its format"</string>
     <string name="errors_invalid_ciphertext_signature_key_or_content_verification_failed" formatted="false">"Invalid ciphertext: signature, key, or content verification failed"</string>
     <string name="errors_invalid_command" formatted="false">"Invalid command arguments"</string>
     <string name="errors_it_may_have_been_deleted_or_belong_to_a" formatted="false">"It may have been deleted, or belong to a computer that was removed."</string>

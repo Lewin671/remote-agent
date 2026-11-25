@@ -5579,6 +5579,13 @@ type Event_PushRpc struct {
 
 func (*Event_PushRpc) isEvent_Event() {}
 
+type Event_SessionFetchImage struct {
+	_                 [0]func()
+	SessionFetchImage *SessionFetchImageAction
+}
+
+func (*Event_SessionFetchImage) isEvent_Event() {}
+
 type Event_SecurityConfig struct {
 	_              [0]func()
 	SecurityConfig *SecurityConfigEvent
@@ -6990,6 +6997,12 @@ func (m *Event) GetPushRpc() *PushRpcAction {
 	}
 	return nil
 }
+func (m *Event) GetSessionFetchImage() *SessionFetchImageAction {
+	if x, ok := m.GetEvent().(*Event_SessionFetchImage); ok && x != nil {
+		return x.SessionFetchImage
+	}
+	return nil
+}
 func (m *Event) GetSecurityConfig() *SecurityConfigEvent {
 	if x, ok := m.GetEvent().(*Event_SecurityConfig); ok && x != nil {
 		return x.SecurityConfig
@@ -7146,7 +7159,7 @@ func extraUnmarshal_Event(base unsafe.Pointer, num litewire.Number, wtyp litewir
 		return m.extraUnmarshalPart16(num, wtyp, bp)
 	case num <= 431:
 		return m.extraUnmarshalPart17(num, wtyp, bp)
-	case num <= 461:
+	case num <= 460:
 		return m.extraUnmarshalPart18(num, wtyp, bp)
 	case num <= 465:
 		return m.extraUnmarshalPart19(num, wtyp, bp)
@@ -9017,6 +9030,13 @@ func (m *Event) extraUnmarshalPart18(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.PushRpc
+		case 435:
+			w, _ := m.Event.(*Event_SessionFetchImage)
+			if w == nil || w.SessionFetchImage == nil {
+				w = &Event_SessionFetchImage{SessionFetchImage: &SessionFetchImageAction{}}
+				m.Event = w
+			}
+			sub = w.SessionFetchImage
 		case 450:
 			w, _ := m.Event.(*Event_SecurityConfig)
 			if w == nil || w.SecurityConfig == nil {
@@ -9073,13 +9093,6 @@ func (m *Event) extraUnmarshalPart18(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityKeyEncapsulated
-		case 461:
-			w, _ := m.Event.(*Event_SecurityStorageResult)
-			if w == nil || w.SecurityStorageResult == nil {
-				w = &Event_SecurityStorageResult{SecurityStorageResult: &SecurityStorageResultEvent{}}
-				m.Event = w
-			}
-			sub = w.SecurityStorageResult
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -9098,6 +9111,13 @@ func (m *Event) extraUnmarshalPart19(num litewire.Number, wtyp litewire.Type, bp
 	var sub litewire.Unmarshaler
 	if wtyp == litewire.BytesType {
 		switch num {
+		case 461:
+			w, _ := m.Event.(*Event_SecurityStorageResult)
+			if w == nil || w.SecurityStorageResult == nil {
+				w = &Event_SecurityStorageResult{SecurityStorageResult: &SecurityStorageResultEvent{}}
+				m.Event = w
+			}
+			sub = w.SecurityStorageResult
 		case 462:
 			w, _ := m.Event.(*Event_SecurityRpcResult)
 			if w == nil || w.SecurityRpcResult == nil {
@@ -10818,6 +10838,13 @@ type Effect_PushRpcResult struct {
 
 func (*Effect_PushRpcResult) isEffect_Effect() {}
 
+type Effect_SessionImageLoaded struct {
+	_                  [0]func()
+	SessionImageLoaded *SessionImageLoadedEffect
+}
+
+func (*Effect_SessionImageLoaded) isEffect_Effect() {}
+
 type Effect_ScheduleMachinePoll struct {
 	_                   [0]func()
 	ScheduleMachinePoll *ScheduleMachinePollEffect
@@ -11413,6 +11440,12 @@ func (m *Effect) GetPushRpcResult() *PushRpcResultEffect {
 	}
 	return nil
 }
+func (m *Effect) GetSessionImageLoaded() *SessionImageLoadedEffect {
+	if x, ok := m.GetEffect().(*Effect_SessionImageLoaded); ok && x != nil {
+		return x.SessionImageLoaded
+	}
+	return nil
+}
 func (m *Effect) GetScheduleMachinePoll() *ScheduleMachinePollEffect {
 	if x, ok := m.GetEffect().(*Effect_ScheduleMachinePoll); ok && x != nil {
 		return x.ScheduleMachinePoll
@@ -11959,6 +11992,10 @@ func (m *Effect) appendMarshalEffectPart1(b []byte) ([]byte, bool) {
 		if x != nil && x.PushRpcResult != nil {
 			onum, omsg = 22, x.PushRpcResult
 		}
+	case *Effect_SessionImageLoaded:
+		if x != nil && x.SessionImageLoaded != nil {
+			onum, omsg = 23, x.SessionImageLoaded
+		}
 	case *Effect_ScheduleMachinePoll:
 		if x != nil && x.ScheduleMachinePoll != nil {
 			onum, omsg = 70, x.ScheduleMachinePoll
@@ -11970,10 +12007,6 @@ func (m *Effect) appendMarshalEffectPart1(b []byte) ([]byte, bool) {
 	case *Effect_RenameClient:
 		if x != nil && x.RenameClient != nil {
 			onum, omsg = 72, x.RenameClient
-		}
-	case *Effect_CheckUpdates:
-		if x != nil && x.CheckUpdates != nil {
-			onum, omsg = 73, x.CheckUpdates
 		}
 	default:
 		return b, false
@@ -11989,6 +12022,10 @@ func (m *Effect) appendMarshalEffectPart2(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_CheckUpdates:
+		if x != nil && x.CheckUpdates != nil {
+			onum, omsg = 73, x.CheckUpdates
+		}
 	case *Effect_PersistClientPrefs:
 		if x != nil && x.PersistClientPrefs != nil {
 			onum, omsg = 74, x.PersistClientPrefs
@@ -12033,10 +12070,6 @@ func (m *Effect) appendMarshalEffectPart2(b []byte) ([]byte, bool) {
 		if x != nil && x.DraftStorageClearAll != nil {
 			onum, omsg = 84, x.DraftStorageClearAll
 		}
-	case *Effect_AttachmentPrepareImage:
-		if x != nil && x.AttachmentPrepareImage != nil {
-			onum, omsg = 85, x.AttachmentPrepareImage
-		}
 	default:
 		return b, false
 	}
@@ -12051,6 +12084,10 @@ func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_AttachmentPrepareImage:
+		if x != nil && x.AttachmentPrepareImage != nil {
+			onum, omsg = 85, x.AttachmentPrepareImage
+		}
 	case *Effect_AttachmentHashFile:
 		if x != nil && x.AttachmentHashFile != nil {
 			onum, omsg = 86, x.AttachmentHashFile
@@ -12095,10 +12132,6 @@ func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
 		if x != nil && x.SharedFileDeleteLocal != nil {
 			onum, omsg = 47, x.SharedFileDeleteLocal
 		}
-	case *Effect_SharedFileDeleteSession:
-		if x != nil && x.SharedFileDeleteSession != nil {
-			onum, omsg = 48, x.SharedFileDeleteSession
-		}
 	default:
 		return b, false
 	}
@@ -12113,6 +12146,10 @@ func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_SharedFileDeleteSession:
+		if x != nil && x.SharedFileDeleteSession != nil {
+			onum, omsg = 48, x.SharedFileDeleteSession
+		}
 	case *Effect_SharedFileClearAll:
 		if x != nil && x.SharedFileClearAll != nil {
 			onum, omsg = 49, x.SharedFileClearAll
@@ -12157,10 +12194,6 @@ func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
 		if x != nil && x.DirectPcDescribe != nil {
 			onum, omsg = 104, x.DirectPcDescribe
 		}
-	case *Effect_DirectPcSetRemote:
-		if x != nil && x.DirectPcSetRemote != nil {
-			onum, omsg = 105, x.DirectPcSetRemote
-		}
 	default:
 		return b, false
 	}
@@ -12175,6 +12208,10 @@ func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_DirectPcSetRemote:
+		if x != nil && x.DirectPcSetRemote != nil {
+			onum, omsg = 105, x.DirectPcSetRemote
+		}
 	case *Effect_DirectPcAddCandidates:
 		if x != nil && x.DirectPcAddCandidates != nil {
 			onum, omsg = 106, x.DirectPcAddCandidates
@@ -12219,10 +12256,6 @@ func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
 		if x != nil && x.TerminalDirectSend != nil {
 			onum, omsg = 117, x.TerminalDirectSend
 		}
-	case *Effect_TerminalDirectDeliver:
-		if x != nil && x.TerminalDirectDeliver != nil {
-			onum, omsg = 118, x.TerminalDirectDeliver
-		}
 	default:
 		return b, false
 	}
@@ -12237,6 +12270,10 @@ func (m *Effect) appendMarshalEffectPart6(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_TerminalDirectDeliver:
+		if x != nil && x.TerminalDirectDeliver != nil {
+			onum, omsg = 118, x.TerminalDirectDeliver
+		}
 	case *Effect_TerminalDirectAttachRelay:
 		if x != nil && x.TerminalDirectAttachRelay != nil {
 			onum, omsg = 119, x.TerminalDirectAttachRelay
@@ -12281,10 +12318,6 @@ func (m *Effect) appendMarshalEffectPart6(b []byte) ([]byte, bool) {
 		if x != nil && x.SecurityRpc != nil {
 			onum, omsg = 141, x.SecurityRpc
 		}
-	case *Effect_SecurityWorkflowResult:
-		if x != nil && x.SecurityWorkflowResult != nil {
-			onum, omsg = 142, x.SecurityWorkflowResult
-		}
 	default:
 		return b, false
 	}
@@ -12299,6 +12332,10 @@ func (m *Effect) appendMarshalEffectPart7(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_SecurityWorkflowResult:
+		if x != nil && x.SecurityWorkflowResult != nil {
+			onum, omsg = 142, x.SecurityWorkflowResult
+		}
 	case *Effect_SecurityStatusChanged:
 		if x != nil && x.SecurityStatusChanged != nil {
 			onum, omsg = 143, x.SecurityStatusChanged

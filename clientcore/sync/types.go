@@ -833,6 +833,8 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 		e.startRefreshDevices(ctx, true)
 	case *corev1.Event_PushRpc:
 		e.handlePushRpcAction(ctx, k.PushRpc)
+	case *corev1.Event_SessionFetchImage:
+		e.handleSessionFetchImage(ctx, k.SessionFetchImage)
 	default:
 		consumed = false
 	}

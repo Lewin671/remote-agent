@@ -56,6 +56,7 @@ fun coreTextToMessageText(t: CoreText?): MessageText {
         return formatTimestampToMessageText(t.timestamp)
     }
     if (t.key.isNotEmpty()) {
+        if (t.argsCount == 0) return UiMessage(t.key).messageText()
         return localized { copy ->
             val args = HashMap<String, Any>(t.argsCount)
             for (arg in t.argsList) {

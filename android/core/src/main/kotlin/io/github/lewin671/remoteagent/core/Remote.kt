@@ -1390,48 +1390,45 @@ class Remote(
         coreHost.connectionView.value.takeIf { it.hasLeaseRenewalAdvice() }?.leaseRenewalAdvice
 
     suspend fun image(sid: String, imageId: String): ImageResult = withContext(dispatcher) {
-        val machineId = sessionMachineId(sid).takeIf { it.isNotEmpty() }
-            ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
-        if (!hasSessionSeed(sid)) throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
         val cacheKey = "$sid/$imageId"
-        var env = runCatching { cache?.image(cacheKey)?.let { Envelope.parseFrom(it) } }.getOrNull()
-        if (env == null) {
-            val reqBytes = GetImageRequest.newBuilder().setSessionId(sid).setImageId(imageId).build().toByteArray()
-            val raw = securityExecutor.executeRelayUnary(
-                opId = 0L,
-                method = RelayRpcMethod.RELAY_RPC_METHOD_GET_IMAGE,
-                server = account.server,
-                authToken = currentToken(),
-                timeoutMs = 15_000L,
-                requestBytes = reqBytes,
-            )
-            if (raw.connectCode == Code.NOT_FOUND.value) return@withContext ImageResult.Missing
-            if (raw.connectCode != 0 || raw.networkError || raw.unresolvedHost || raw.diagnosticMessage.isNotEmpty()) {
-                throw CommandException("unavailable", raw.diagnosticMessage.ifEmpty { "getImage failed" })
+        val cachedBytes = runCatching { cache?.image(cacheKey) }.getOrNull()
+        val res = coreHost.fetchSessionImage(
+            sessionId = sid,
+            imageId = imageId,
+            cachedEnvelope = cachedBytes,
+            machineId = sessionMachineId(sid),
+        )
+        when (res.status) {
+            SessionImageLoadStatus.SESSION_IMAGE_LOAD_STATUS_OK -> {
+                if (!res.cacheEnvelopeBytes.isEmpty) {
+                    runCatching { cache?.putImage(cacheKey, res.cacheEnvelopeBytes.toByteArray()) }
+                }
+                ImageResult.Loaded(
+                    ImagePayload.newBuilder()
+                        .setFormat(res.format)
+                        .setWidth(res.width)
+                        .setHeight(res.height)
+                        .setData(res.data)
+                        .build(),
+                )
             }
-            val r = GetImageResponse.parseFrom(raw.responseBytes)
-            if (r.expired || !r.hasImage()) return@withContext ImageResult.Expired
-            env = r.image
+            SessionImageLoadStatus.SESSION_IMAGE_LOAD_STATUS_MISSING -> ImageResult.Missing
+            SessionImageLoadStatus.SESSION_IMAGE_LOAD_STATUS_EXPIRED -> ImageResult.Expired
+            SessionImageLoadStatus.SESSION_IMAGE_LOAD_STATUS_BAD -> {
+                val msg = when {
+                    res.retiredHistory -> RETIRED_HISTORY_ERROR
+                    res.hasErrorText() -> coreTextToMessageText(res.errorText)
+                    else -> UiMessages.errorsInvalidCiphertextSignatureKeyOrContentVerificationFailed().messageText()
+                }
+                ImageResult.Corrupt(msg)
+            }
+            else -> {
+                val code = res.errorCode.ifEmpty { "unavailable" }
+                val msg = if (res.hasErrorText()) coreTextToMessageText(res.errorText)
+                else code.messageText()
+                throw CommandException(code, msg)
+            }
         }
-        val payload = try {
-            openSecureMessage(
-                env,
-                Place(PayloadKind.PAYLOAD_KIND_IMAGE, machineId = machineId, sessionId = sid, requestId = imageId),
-                ImagePayload::parseFrom,
-                live = false,
-            ).second
-        } catch (_: UnsupportedHistoryException) {
-            return@withContext ImageResult.Corrupt(RETIRED_HISTORY_ERROR)
-        } catch (e: OpenException) {
-            return@withContext ImageResult.Corrupt(e.display)
-        } catch (e: SecurityFailure) {
-            return@withContext ImageResult.Corrupt(errorText(e, currentLeaseRenewalAdvice()))
-        }
-        if (detectFormat(payload.data.toByteArray()) != payload.format) {
-            return@withContext ImageResult.Corrupt(UiMessages.errorsAndroidImageContentDoesNotMatchItsFormat().messageText())
-        }
-        runCatching { cache?.putImage(cacheKey, env.toByteArray()) }
-        ImageResult.Loaded(payload)
     }
 
     suspend fun openTerminal(sid: String, listener: TermListener): TermConn {

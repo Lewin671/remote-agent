@@ -239,6 +239,17 @@ public interface EffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.PushRpcResultEffect getPushRpcResult();
 
   /**
+   * <code>.remoteagent.core.v1.SessionImageLoadedEffect session_image_loaded = 23 [json_name = "sessionImageLoaded"];</code>
+   * @return Whether the sessionImageLoaded field is set.
+   */
+  boolean hasSessionImageLoaded();
+  /**
+   * <code>.remoteagent.core.v1.SessionImageLoadedEffect session_image_loaded = 23 [json_name = "sessionImageLoaded"];</code>
+   * @return The sessionImageLoaded.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionImageLoadedEffect getSessionImageLoaded();
+
+  /**
    * <code>.remoteagent.core.v1.ScheduleMachinePollEffect schedule_machine_poll = 70 [json_name = "scheduleMachinePoll"];</code>
    * @return Whether the scheduleMachinePoll field is set.
    */

@@ -240,6 +240,7 @@ public  final class Event extends
     STREAM_RAW_FRAME(432),
     REFRESH_DEVICES(433),
     PUSH_RPC(434),
+    SESSION_FETCH_IMAGE(435),
     SECURITY_CONFIG(450),
     SECURITY_KEY_SIGNED(452),
     SECURITY_KEY_AGREED(453),
@@ -487,6 +488,7 @@ public  final class Event extends
         case 432: return STREAM_RAW_FRAME;
         case 433: return REFRESH_DEVICES;
         case 434: return PUSH_RPC;
+        case 435: return SESSION_FETCH_IMAGE;
         case 450: return SECURITY_CONFIG;
         case 452: return SECURITY_KEY_SIGNED;
         case 453: return SECURITY_KEY_AGREED;
@@ -11944,6 +11946,58 @@ public  final class Event extends
    */
   private void clearPushRpc() {
     if (eventCase_ == 434) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_FETCH_IMAGE_FIELD_NUMBER = 435;
+  /**
+   * <code>.remoteagent.core.v1.SessionFetchImageAction session_fetch_image = 435 [json_name = "sessionFetchImage"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionFetchImage() {
+    return eventCase_ == 435;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionFetchImageAction session_fetch_image = 435 [json_name = "sessionFetchImage"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionFetchImageAction getSessionFetchImage() {
+    if (eventCase_ == 435) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionFetchImageAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionFetchImageAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionFetchImageAction session_fetch_image = 435 [json_name = "sessionFetchImage"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionFetchImage(io.github.lewin671.remoteagent.core.proto.SessionFetchImageAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 435;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionFetchImageAction session_fetch_image = 435 [json_name = "sessionFetchImage"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionFetchImage(io.github.lewin671.remoteagent.core.proto.SessionFetchImageAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 435 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionFetchImageAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionFetchImageAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionFetchImageAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 435;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionFetchImageAction session_fetch_image = 435 [json_name = "sessionFetchImage"];</code>
+   */
+  private void clearSessionFetchImage() {
+    if (eventCase_ == 435) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -23533,6 +23587,54 @@ public  final class Event extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.SessionFetchImageAction session_fetch_image = 435 [json_name = "sessionFetchImage"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionFetchImage() {
+      return instance.hasSessionFetchImage();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionFetchImageAction session_fetch_image = 435 [json_name = "sessionFetchImage"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionFetchImageAction getSessionFetchImage() {
+      return instance.getSessionFetchImage();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionFetchImageAction session_fetch_image = 435 [json_name = "sessionFetchImage"];</code>
+     */
+    public Builder setSessionFetchImage(io.github.lewin671.remoteagent.core.proto.SessionFetchImageAction value) {
+      copyOnWrite();
+      instance.setSessionFetchImage(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionFetchImageAction session_fetch_image = 435 [json_name = "sessionFetchImage"];</code>
+     */
+    public Builder setSessionFetchImage(
+        io.github.lewin671.remoteagent.core.proto.SessionFetchImageAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionFetchImage(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionFetchImageAction session_fetch_image = 435 [json_name = "sessionFetchImage"];</code>
+     */
+    public Builder mergeSessionFetchImage(io.github.lewin671.remoteagent.core.proto.SessionFetchImageAction value) {
+      copyOnWrite();
+      instance.mergeSessionFetchImage(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionFetchImageAction session_fetch_image = 435 [json_name = "sessionFetchImage"];</code>
+     */
+    public Builder clearSessionFetchImage() {
+      copyOnWrite();
+      instance.clearSessionFetchImage();
+      return this;
+    }
+
+    /**
      * <pre>
      * Security engine (450-499 reserved for security).
      * </pre>
@@ -24638,6 +24740,7 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.StreamRawFrameEvent.class,
             io.github.lewin671.remoteagent.core.proto.RefreshDevicesAction.class,
             io.github.lewin671.remoteagent.core.proto.PushRpcAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionFetchImageAction.class,
             io.github.lewin671.remoteagent.core.proto.SecurityConfigEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeySignedEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreedEvent.class,
@@ -24653,7 +24756,7 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.SecurityOpenNotifyEvent.class,
           };
           java.lang.String info =
-              "\u0000\u00ec\u0001\u0000\u0001\u01d1\u00ec\u0000\u0002\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u00ed\u0001\u0000\u0001\u01d1\u00ed\u0000\u0002\u0000\u0001<\u0000\u0002<" +
               "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000" +
               "\t<\u0000\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010" +
               "<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000" +
@@ -24686,9 +24789,9 @@ public  final class Event extends
               "<\u0000\u019e<\u0000\u019f<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000" +
               "\u01a4<\u0000\u01a5<\u0000\u01a6<\u0000\u01a7<\u0000\u01a8<\u0000\u01a9<\u0000\u01aa" +
               "<\u0000\u01ab<\u0000\u01ac<\u0000\u01ad<\u0000\u01ae<\u0000\u01af<\u0000\u01b0<\u0000" +
-              "\u01b1<\u0000\u01b2<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000\u01c9" +
-              "<\u0000\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01ce<\u0000\u01cf<\u0000" +
-              "\u01d0<\u0000\u01d1<\u0000";
+              "\u01b1<\u0000\u01b2<\u0000\u01b3<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8" +
+              "<\u0000\u01c9<\u0000\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01ce<\u0000" +
+              "\u01cf<\u0000\u01d0<\u0000\u01d1<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

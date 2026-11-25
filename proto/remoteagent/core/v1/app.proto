@@ -749,6 +749,7 @@ message Event {
     StreamRawFrameEvent stream_raw_frame = 432;
     RefreshDevicesAction refresh_devices = 433;
     PushRpcAction push_rpc = 434;
+    SessionFetchImageAction session_fetch_image = 435;
 
     // Security engine (450-499 reserved for security).
     SecurityConfigEvent security_config = 450;
@@ -1030,6 +1031,7 @@ message Effect {
     RelayRpcEffect relay_rpc = 20;
     RelayRpcCancelEffect relay_rpc_cancel = 21;
     PushRpcResultEffect push_rpc_result = 22;
+    SessionImageLoadedEffect session_image_loaded = 23;
     ScheduleMachinePollEffect schedule_machine_poll = 70;
     DirectPreferenceEffect direct_preference = 71;
     RenameClientEffect rename_client = 72;

@@ -74,10 +74,10 @@
 "attachment_uploading" = "Uploading";
 "attachment_zip_folder" = "Folders cannot be sent directly. Compress the folder as a ZIP, then select the file.";
 "common_all_projects_avatar" = "All";
-"common_android_cannot_find_this_session" = "Cannot find this session";
 "common_android_this_app_version_is_old_update_and_retry" = "This app version is old. Update and retry";
 "common_back" = "Back";
 "common_cancel" = "Cancel";
+"common_cannot_find_this_session" = "Cannot find this session";
 "common_clear_search" = "Clear search";
 "common_close" = "Close";
 "common_copied" = "Copied";
@@ -216,6 +216,7 @@
 "errors_history_could_not_continue_loading_retry" = "History could not continue loading. Retry.";
 "errors_history_has_a_gap_retry" = "History has a gap. Retry.";
 "errors_history_keys_unavailable_records_from_before_recovery_cannot_be" = "History keys unavailable: records from before recovery cannot be decrypted";
+"errors_image_content_does_not_match_its_format" = "Image content does not match its format";
 "errors_invalid_ciphertext_signature_key_or_content_verification_failed" = "Invalid ciphertext: signature, key, or content verification failed";
 "errors_invalid_command" = "Invalid command arguments";
 "errors_ios_already_registering_wait_for_the_result" = "Already registering %1$@. Wait for the result.";

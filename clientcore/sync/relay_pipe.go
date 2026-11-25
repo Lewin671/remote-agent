@@ -38,11 +38,12 @@ const (
 	relayRpcPushKey
 	relayRpcPushSub
 	relayRpcPushTarget
+	relayRpcGetImage
 )
 
 type pendingRelayRpc struct {
 	kind          relayRpcKind
-	opID          uint64 // sync-internal logical opID (e.g. refreshOpID, pageOpID, push op_id)
+	opID          uint64 // sync-internal logical opID (e.g. refreshOpID, pageOpID, push op_id, image op_id)
 	method        corev1.RelayRpcMethod
 	timeoutMs     int64
 	attemptHeader string
@@ -50,6 +51,8 @@ type pendingRelayRpc struct {
 	usedToken     string
 	retriedAuth   bool
 	sid           string
+	machineID     string
+	imageID       string
 	requestID     string
 	attemptID     string
 	epoch         string
@@ -206,6 +209,14 @@ func (e *Engine) cancelAllSyncRelayRpcs(ctx *StepContext) {
 	}
 	for _, op := range canceled {
 		switch op.kind {
+		case relayRpcGetImage:
+			e.emitSessionImageLoaded(ctx, &corev1.SessionImageLoadedEffect{
+				OpId:      op.opID,
+				SessionId: op.sid,
+				ImageId:   op.imageID,
+				Status:    corev1.SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_ERROR,
+				ErrorCode: "canceled",
+			})
 		case relayRpcPushKey, relayRpcPushSub, relayRpcPushTarget:
 			if op.push != nil {
 				e.emitPushRpcResult(ctx, &corev1.PushRpcResultEffect{
@@ -542,7 +553,6 @@ func (e *Engine) startPushRpcWithToken(ctx *StepContext, p *pendingPushRpc, toke
 			(&v1.GetPushKeyRequest{}).AppendMarshal(nil),
 			&pendingRelayRpc{kind: relayRpcPushKey, opID: p.opID, push: p},
 		)
-		return
 	}
 }
 
@@ -552,6 +562,122 @@ func (e *Engine) emitPushRpcResult(ctx *StepContext, res *corev1.PushRpcResultEf
 			PushRpcResult: res,
 		},
 	})
+}
+
+func (e *Engine) emitSessionImageLoaded(ctx *StepContext, res *corev1.SessionImageLoadedEffect) {
+	ctx.emit(&corev1.Effect{
+		Effect: &corev1.Effect_SessionImageLoaded{
+			SessionImageLoaded: res,
+		},
+	})
+}
+
+func (e *Engine) handleSessionFetchImage(ctx *StepContext, act *corev1.SessionFetchImageAction) {
+	if act == nil || act.OpId == 0 {
+		return
+	}
+	machineID := ""
+	if sess := e.sessions[act.SessionId]; sess != nil && sess.MachineID != "" {
+		machineID = sess.MachineID
+	} else {
+		machineID = act.MachineId
+	}
+	if act.SessionId == "" || act.ImageId == "" || machineID == "" || e.secEngine == nil {
+		e.emitSessionImageLoaded(ctx, &corev1.SessionImageLoadedEffect{
+			OpId:      act.OpId,
+			SessionId: act.SessionId,
+			ImageId:   act.ImageId,
+			Status:    corev1.SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_ERROR,
+			ErrorCode: "not_found",
+		})
+		return
+	}
+	if _, ok := e.secEngine.SessionSeed(act.SessionId); !ok {
+		e.emitSessionImageLoaded(ctx, &corev1.SessionImageLoadedEffect{
+			OpId:      act.OpId,
+			SessionId: act.SessionId,
+			ImageId:   act.ImageId,
+			Status:    corev1.SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_ERROR,
+			ErrorCode: "not_found",
+		})
+		return
+	}
+	if len(act.CachedEnvelope) > 0 && (!e.security.Loaded || e.CanUseMachineCache(machineID)) {
+		var env v1.Envelope
+		if err := env.Unmarshal(act.CachedEnvelope); err == nil && !env.HasUnknown() {
+			e.openSessionImageEnvelope(ctx, act.OpId, act.SessionId, act.ImageId, machineID, &env, nil, true)
+			return
+		}
+	}
+	reqBytes := (&v1.GetImageRequest{
+		SessionId: act.SessionId,
+		ImageId:   act.ImageId,
+	}).AppendMarshal(nil)
+	e.emitRelayRpc(
+		ctx,
+		corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_IMAGE,
+		e.cachedToken,
+		relayRpcDefaultTimeoutMs,
+		"",
+		reqBytes,
+		&pendingRelayRpc{
+			kind:      relayRpcGetImage,
+			opID:      act.OpId,
+			sid:       act.SessionId,
+			machineID: machineID,
+			imageID:   act.ImageId,
+		},
+	)
+}
+
+func (e *Engine) handleGetImageRelayResult(ctx *StepContext, op *pendingRelayRpc, ev *corev1.RelayRpcResultEvent) {
+	if ev.ConnectCode == security.ConnectCodeNotFound {
+		e.emitSessionImageLoaded(ctx, &corev1.SessionImageLoadedEffect{
+			OpId:      op.opID,
+			SessionId: op.sid,
+			ImageId:   op.imageID,
+			Status:    corev1.SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_MISSING,
+		})
+		return
+	}
+	if isRelayRpcError(ev) {
+		var errText *corev1.Text
+		if ev.DiagnosticMessage != "" {
+			errText = &corev1.Text{Literal: ev.DiagnosticMessage}
+		}
+		e.emitSessionImageLoaded(ctx, &corev1.SessionImageLoadedEffect{
+			OpId:      op.opID,
+			SessionId: op.sid,
+			ImageId:   op.imageID,
+			Status:    corev1.SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_ERROR,
+			ErrorCode: relayRpcTransportCode(ev),
+			ErrorText: errText,
+		})
+		return
+	}
+	var resp v1.GetImageResponse
+	if err := resp.Unmarshal(ev.ResponseBytes); err != nil {
+		e.emitSessionImageLoaded(ctx, &corev1.SessionImageLoadedEffect{
+			OpId:      op.opID,
+			SessionId: op.sid,
+			ImageId:   op.imageID,
+			Status:    corev1.SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_ERROR,
+			ErrorCode: errCodeUnknown,
+			ErrorText: &corev1.Text{Literal: err.Error()},
+		})
+		return
+	}
+	if resp.Expired || resp.Image == nil {
+		e.emitSessionImageLoaded(ctx, &corev1.SessionImageLoadedEffect{
+			OpId:      op.opID,
+			SessionId: op.sid,
+			ImageId:   op.imageID,
+			Status:    corev1.SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_EXPIRED,
+		})
+		return
+	}
+	rawEnv := resp.Image.AppendMarshal(nil)
+	e.openSessionImageEnvelope(ctx, op.opID, op.sid, op.imageID, op.machineID, resp.Image, rawEnv, false)
 }
 
 func machineNotificationKinds(kinds []v1.NotifyKind, advertised bool) []v1.NotifyKind {
@@ -640,6 +766,24 @@ func (e *Engine) handleRelayRpcResult(ctx *StepContext, ev *corev1.RelayRpcResul
 	e.dispatchRelayRpcResult(ctx, op, ev)
 }
 
+func (e *Engine) reemitRelayRpcWithToken(ctx *StepContext, op *pendingRelayRpc, token string) {
+	if op.bundle != nil && e.refreshBundle != op.bundle {
+		return
+	}
+	op.retriedAuth = true
+	newOpID := e.emitRelayRpc(ctx, op.method, token, op.timeoutMs, op.attemptHeader, op.reqBytes, op)
+	if op.bundle != nil {
+		switch op.kind {
+		case relayRpcRefreshMachines:
+			op.bundle.machinesOpID = newOpID
+		case relayRpcRefreshSessions:
+			op.bundle.sessionsOpID = newOpID
+		case relayRpcRefreshDevices:
+			op.bundle.devicesOpID = newOpID
+		}
+	}
+}
+
 func (e *Engine) dispatchRelayRpcResult(ctx *StepContext, op *pendingRelayRpc, ev *corev1.RelayRpcResultEvent) {
 	switch op.kind {
 	case relayRpcRefreshMachines, relayRpcRefreshSessions, relayRpcRefreshDevices:
@@ -662,24 +806,8 @@ func (e *Engine) dispatchRelayRpcResult(ctx *StepContext, op *pendingRelayRpc, e
 		e.handleForwardRelayResult(ctx, op, ev)
 	case relayRpcPushKey, relayRpcPushSub, relayRpcPushTarget:
 		e.handlePushRelayResult(ctx, op, ev)
-	}
-}
-
-func (e *Engine) reemitRelayRpcWithToken(ctx *StepContext, op *pendingRelayRpc, token string) {
-	if op.bundle != nil && e.refreshBundle != op.bundle {
-		return
-	}
-	op.retriedAuth = true
-	newOpID := e.emitRelayRpc(ctx, op.method, token, op.timeoutMs, op.attemptHeader, op.reqBytes, op)
-	if op.bundle != nil {
-		switch op.kind {
-		case relayRpcRefreshMachines:
-			op.bundle.machinesOpID = newOpID
-		case relayRpcRefreshSessions:
-			op.bundle.sessionsOpID = newOpID
-		case relayRpcRefreshDevices:
-			op.bundle.devicesOpID = newOpID
-		}
+	case relayRpcGetImage:
+		e.handleGetImageRelayResult(ctx, op, ev)
 	}
 }
 

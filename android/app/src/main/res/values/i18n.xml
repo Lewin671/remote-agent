@@ -85,13 +85,13 @@
     <string name="common_all_projects_avatar" formatted="false">"全"</string>
     <string name="common_android_allow_camera_access" formatted="false">"允许使用相机"</string>
     <string name="common_android_camera_access_is_needed_to_scan_you_can_also_go" formatted="false">"需要相机权限才能扫码；也可以返回手动输入配对码。"</string>
-    <string name="common_android_cannot_find_this_session" formatted="false">"找不到这个会话"</string>
     <string name="common_android_could_not_clear_the_account_and_cache_on_this_phone" formatted="false">"没能清除这台手机上的账户和缓存，请重试"</string>
     <string name="common_android_more" formatted="false">"更多"</string>
     <string name="common_android_the_original_request_and_keys_are_saved_for_retry_if" formatted="false">"。原请求和密钥已保留，可重试；若批准已过期或被拒绝，请退出并重新配对或创建。"</string>
     <string name="common_android_this_app_version_is_old_update_and_retry" formatted="false">"这个 App 版本较旧，请更新后再试"</string>
     <string name="common_back" formatted="false">"返回"</string>
     <string name="common_cancel" formatted="false">"取消"</string>
+    <string name="common_cannot_find_this_session" formatted="false">"找不到这个会话"</string>
     <string name="common_clear_search" formatted="false">"清空搜索"</string>
     <string name="common_close" formatted="false">"关闭"</string>
     <string name="common_copied" formatted="false">"已复制"</string>
@@ -227,7 +227,6 @@
     <string name="dock_trust_folder" formatted="false">"默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎"</string>
     <string name="dock_waiting_confirmation" formatted="false">"等待确认"</string>
     <string name="errors_android_cannot_find_the_server_check_your_network" formatted="false">"找不到服务器，检查一下网络"</string>
-    <string name="errors_android_image_content_does_not_match_its_format" formatted="false">"图片内容和格式对不上"</string>
     <string name="errors_android_invalid_server_address" formatted="false">"server 地址无效"</string>
     <string name="errors_android_login_expired">"登录失效：%1$s"</string>
     <string name="errors_android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or">"远程控制有效期已过，无法保存更改、控制会话或上传新内容；%1$s后重试。历史仍可查看"</string>
@@ -249,6 +248,7 @@
     <string name="errors_history_could_not_continue_loading_retry" formatted="false">"历史记录未能继续加载，请重试"</string>
     <string name="errors_history_has_a_gap_retry" formatted="false">"历史记录不连续，请重试读取"</string>
     <string name="errors_history_keys_unavailable_records_from_before_recovery_cannot_be" formatted="false">"历史密钥不可用：恢复前的记录无法解密"</string>
+    <string name="errors_image_content_does_not_match_its_format" formatted="false">"图片内容和格式对不上"</string>
     <string name="errors_invalid_ciphertext_signature_key_or_content_verification_failed" formatted="false">"密文无效：签名、密钥或内容校验失败"</string>
     <string name="errors_invalid_command" formatted="false">"指令参数无效"</string>
     <string name="errors_it_may_have_been_deleted_or_belong_to_a" formatted="false">"它可能已经被删除，或者属于一台被移除的电脑。"</string>

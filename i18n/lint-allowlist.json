@@ -6123,10 +6123,5 @@
     "path": "web/src/remote.ts",
     "literal": "missing stream hello frame",
     "reason": "Internal protocol invariant guard when Core omits hello_frame on OpenStreamEffect."
-  },
-  {
-    "path": "web/src/remote.ts",
-    "literal": "getImage failed",
-    "reason": "Internal fallback diagnostic for GetImage RPC error before Commit 4 moves image loading into Core."
   }
 ]

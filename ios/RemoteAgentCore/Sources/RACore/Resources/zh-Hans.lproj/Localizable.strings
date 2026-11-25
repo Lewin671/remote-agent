@@ -74,10 +74,10 @@
 "attachment_uploading" = "上传中";
 "attachment_zip_folder" = "不能直接发送文件夹，请先压缩成 ZIP 再选择文件";
 "common_all_projects_avatar" = "全";
-"common_android_cannot_find_this_session" = "找不到这个会话";
 "common_android_this_app_version_is_old_update_and_retry" = "这个 App 版本较旧，请更新后再试";
 "common_back" = "返回";
 "common_cancel" = "取消";
+"common_cannot_find_this_session" = "找不到这个会话";
 "common_clear_search" = "清空搜索";
 "common_close" = "关闭";
 "common_copied" = "已复制";
@@ -216,6 +216,7 @@
 "errors_history_could_not_continue_loading_retry" = "历史记录未能继续加载，请重试";
 "errors_history_has_a_gap_retry" = "历史记录不连续，请重试读取";
 "errors_history_keys_unavailable_records_from_before_recovery_cannot_be" = "历史密钥不可用：恢复前的记录无法解密";
+"errors_image_content_does_not_match_its_format" = "图片内容和格式对不上";
 "errors_invalid_ciphertext_signature_key_or_content_verification_failed" = "密文无效：签名、密钥或内容校验失败";
 "errors_invalid_command" = "指令参数无效";
 "errors_ios_already_registering_wait_for_the_result" = "已经在登记%1$@，稍等结果";

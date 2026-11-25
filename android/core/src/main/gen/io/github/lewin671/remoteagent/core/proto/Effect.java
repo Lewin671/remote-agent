@@ -39,6 +39,7 @@ public  final class Effect extends
     RELAY_RPC(20),
     RELAY_RPC_CANCEL(21),
     PUSH_RPC_RESULT(22),
+    SESSION_IMAGE_LOADED(23),
     SCHEDULE_MACHINE_POLL(70),
     DIRECT_PREFERENCE(71),
     RENAME_CLIENT(72),
@@ -141,6 +142,7 @@ public  final class Effect extends
         case 20: return RELAY_RPC;
         case 21: return RELAY_RPC_CANCEL;
         case 22: return PUSH_RPC_RESULT;
+        case 23: return SESSION_IMAGE_LOADED;
         case 70: return SCHEDULE_MACHINE_POLL;
         case 71: return DIRECT_PREFERENCE;
         case 72: return RENAME_CLIENT;
@@ -1284,6 +1286,58 @@ public  final class Effect extends
    */
   private void clearPushRpcResult() {
     if (effectCase_ == 22) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SESSION_IMAGE_LOADED_FIELD_NUMBER = 23;
+  /**
+   * <code>.remoteagent.core.v1.SessionImageLoadedEffect session_image_loaded = 23 [json_name = "sessionImageLoaded"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionImageLoaded() {
+    return effectCase_ == 23;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionImageLoadedEffect session_image_loaded = 23 [json_name = "sessionImageLoaded"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionImageLoadedEffect getSessionImageLoaded() {
+    if (effectCase_ == 23) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionImageLoadedEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionImageLoadedEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionImageLoadedEffect session_image_loaded = 23 [json_name = "sessionImageLoaded"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionImageLoaded(io.github.lewin671.remoteagent.core.proto.SessionImageLoadedEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 23;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionImageLoadedEffect session_image_loaded = 23 [json_name = "sessionImageLoaded"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionImageLoaded(io.github.lewin671.remoteagent.core.proto.SessionImageLoadedEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 23 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.SessionImageLoadedEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.SessionImageLoadedEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionImageLoadedEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 23;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionImageLoadedEffect session_image_loaded = 23 [json_name = "sessionImageLoaded"];</code>
+   */
+  private void clearSessionImageLoaded() {
+    if (effectCase_ == 23) {
       effectCase_ = 0;
       effect_ = null;
     }
@@ -5907,6 +5961,54 @@ public  final class Effect extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.SessionImageLoadedEffect session_image_loaded = 23 [json_name = "sessionImageLoaded"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionImageLoaded() {
+      return instance.hasSessionImageLoaded();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionImageLoadedEffect session_image_loaded = 23 [json_name = "sessionImageLoaded"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionImageLoadedEffect getSessionImageLoaded() {
+      return instance.getSessionImageLoaded();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionImageLoadedEffect session_image_loaded = 23 [json_name = "sessionImageLoaded"];</code>
+     */
+    public Builder setSessionImageLoaded(io.github.lewin671.remoteagent.core.proto.SessionImageLoadedEffect value) {
+      copyOnWrite();
+      instance.setSessionImageLoaded(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionImageLoadedEffect session_image_loaded = 23 [json_name = "sessionImageLoaded"];</code>
+     */
+    public Builder setSessionImageLoaded(
+        io.github.lewin671.remoteagent.core.proto.SessionImageLoadedEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionImageLoaded(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionImageLoadedEffect session_image_loaded = 23 [json_name = "sessionImageLoaded"];</code>
+     */
+    public Builder mergeSessionImageLoaded(io.github.lewin671.remoteagent.core.proto.SessionImageLoadedEffect value) {
+      copyOnWrite();
+      instance.mergeSessionImageLoaded(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionImageLoadedEffect session_image_loaded = 23 [json_name = "sessionImageLoaded"];</code>
+     */
+    public Builder clearSessionImageLoaded() {
+      copyOnWrite();
+      instance.clearSessionImageLoaded();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.ScheduleMachinePollEffect schedule_machine_poll = 70 [json_name = "scheduleMachinePoll"];</code>
      */
     @java.lang.Override
@@ -9208,6 +9310,7 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.RelayRpcEffect.class,
             io.github.lewin671.remoteagent.core.proto.RelayRpcCancelEffect.class,
             io.github.lewin671.remoteagent.core.proto.PushRpcResultEffect.class,
+            io.github.lewin671.remoteagent.core.proto.SessionImageLoadedEffect.class,
             io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect.class,
             io.github.lewin671.remoteagent.core.proto.SharedFileScanLocalEffect.class,
             io.github.lewin671.remoteagent.core.proto.SharedFileInspectDiskEffect.class,
@@ -9277,17 +9380,18 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.SecurityTokenUpdatedEffect.class,
           };
           java.lang.String info =
-              "\u0000W\u0001\u0000\u0001\u0091W\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "\u0000X\u0001\u0000\u0001\u0091X\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
               "<\u0000\u0004<\u0000\u0005<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<\u0000\u000b<" +
               "\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0011<\u0000\u0012<\u0000\u0013" +
-              "<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000(<\u0000*<\u0000+<\u0000,<\u0000-<" +
-              "\u0000.<\u0000/<\u00000<\u00001<\u00002<\u0000<<\u0000=<\u0000><\u0000?<\u0000@<" +
-              "\u0000A<\u0000F<\u0000G<\u0000H<\u0000I<\u0000J<\u0000K<\u0000L<\u0000M<\u0000N<" +
-              "\u0000O<\u0000P<\u0000Q<\u0000R<\u0000S<\u0000T<\u0000U<\u0000V<\u0000W<\u0000X<" +
-              "\u0000Y<\u0000f<\u0000g<\u0000h<\u0000i<\u0000j<\u0000k<\u0000l<\u0000m<\u0000o<" +
-              "\u0000p<\u0000q<\u0000r<\u0000s<\u0000t<\u0000u<\u0000v<\u0000w<\u0000x<\u0000\u0082" +
-              "<\u0000\u0083<\u0000\u0087<\u0000\u0088<\u0000\u0089<\u0000\u008a<\u0000\u008b<\u0000" +
-              "\u008c<\u0000\u008d<\u0000\u008e<\u0000\u008f<\u0000\u0090<\u0000\u0091<\u0000";
+              "<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000(<\u0000*<\u0000+<\u0000" +
+              ",<\u0000-<\u0000.<\u0000/<\u00000<\u00001<\u00002<\u0000<<\u0000=<\u0000><\u0000" +
+              "?<\u0000@<\u0000A<\u0000F<\u0000G<\u0000H<\u0000I<\u0000J<\u0000K<\u0000L<\u0000" +
+              "M<\u0000N<\u0000O<\u0000P<\u0000Q<\u0000R<\u0000S<\u0000T<\u0000U<\u0000V<\u0000" +
+              "W<\u0000X<\u0000Y<\u0000f<\u0000g<\u0000h<\u0000i<\u0000j<\u0000k<\u0000l<\u0000" +
+              "m<\u0000o<\u0000p<\u0000q<\u0000r<\u0000s<\u0000t<\u0000u<\u0000v<\u0000w<\u0000" +
+              "x<\u0000\u0082<\u0000\u0083<\u0000\u0087<\u0000\u0088<\u0000\u0089<\u0000\u008a<" +
+              "\u0000\u008b<\u0000\u008c<\u0000\u008d<\u0000\u008e<\u0000\u008f<\u0000\u0090<\u0000" +
+              "\u0091<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

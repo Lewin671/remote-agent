@@ -2436,6 +2436,17 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.PushRpcAction getPushRpc();
 
   /**
+   * <code>.remoteagent.core.v1.SessionFetchImageAction session_fetch_image = 435 [json_name = "sessionFetchImage"];</code>
+   * @return Whether the sessionFetchImage field is set.
+   */
+  boolean hasSessionFetchImage();
+  /**
+   * <code>.remoteagent.core.v1.SessionFetchImageAction session_fetch_image = 435 [json_name = "sessionFetchImage"];</code>
+   * @return The sessionFetchImage.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionFetchImageAction getSessionFetchImage();
+
+  /**
    * <pre>
    * Security engine (450-499 reserved for security).
    * </pre>

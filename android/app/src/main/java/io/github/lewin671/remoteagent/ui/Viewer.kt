@@ -146,7 +146,7 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
     val emptyNote = when {
         viewer.hasEmptyText() -> uiText(viewer.emptyText)
         !vm.header.found && (vm.header.missing || (vm.header.sessionsListed && vm.header.hasMissingText())) ->
-            uiText(vm.header.missingText).ifEmpty { copy(UiMessages.commonAndroidCannotFindThisSession()) }
+            uiText(vm.header.missingText).ifEmpty { copy(UiMessages.commonCannotFindThisSession()) }
         else -> copy(UiMessages.projectsReadingDirectory())
     }
 

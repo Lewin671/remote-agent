@@ -6,6 +6,10 @@ import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2"
 import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
 import type { RpcErrorDetailBytes } from "./security_pb";
 import { file_remoteagent_core_v1_security } from "./security_pb";
+import type { Text } from "./text_pb";
+import { file_remoteagent_core_v1_text } from "./text_pb";
+import type { ImageFormat } from "../../v1/event_pb";
+import { file_remoteagent_v1_event } from "../../v1/event_pb";
 import type { NotifyKind } from "../../v1/relay_pb";
 import { file_remoteagent_v1_relay } from "../../v1/relay_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -14,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file remoteagent/core/v1/relay_pipe.proto.
  */
 export const file_remoteagent_core_v1_relay_pipe: GenFile = /*@__PURE__*/
-  fileDesc("CiRyZW1vdGVhZ2VudC9jb3JlL3YxL3JlbGF5X3BpcGUucHJvdG8SE3JlbW90ZWFnZW50LmNvcmUudjEiJwoUUmVsYXlQaXBlQ29uZmlnRXZlbnQSDwoHZW5hYmxlZBgBIAEoCCK7AQoOUmVsYXlScGNFZmZlY3QSDQoFb3BfaWQYASABKAQSMwoGbWV0aG9kGAIgASgOMiMucmVtb3RlYWdlbnQuY29yZS52MS5SZWxheVJwY01ldGhvZBIOCgZzZXJ2ZXIYAyABKAkSEgoKYXV0aF90b2tlbhgEIAEoCRISCgp0aW1lb3V0X21zGAUgASgDEhYKDmF0dGVtcHRfaGVhZGVyGAYgASgJEhUKDXJlcXVlc3RfYnl0ZXMYByABKAwiJQoUUmVsYXlScGNDYW5jZWxFZmZlY3QSDQoFb3BfaWQYASABKAQi9AEKE1JlbGF5UnBjUmVzdWx0RXZlbnQSDQoFb3BfaWQYASABKAQSFgoOcmVzcG9uc2VfYnl0ZXMYAiABKAwSFAoMY29ubmVjdF9jb2RlGAMgASgFEhMKC3JlbGF5X2Vwb2NoGAQgASgJEj8KDWVycm9yX2RldGFpbHMYBSADKAsyKC5yZW1vdGVhZ2VudC5jb3JlLnYxLlJwY0Vycm9yRGV0YWlsQnl0ZXMSFQoNbmV0d29ya19lcnJvchgGIAEoCBIXCg91bnJlc29sdmVkX2hvc3QYByABKAgSGgoSZGlhZ25vc3RpY19tZXNzYWdlGAggASgJIj8KE1N0cmVhbVJhd0ZyYW1lRXZlbnQSDgoGbGVnX2lkGAEgASgEEhgKEHJhd19zZXJ2ZXJfZnJhbWUYAiABKAwiFgoUUmVmcmVzaERldmljZXNBY3Rpb24iygEKDVB1c2hScGNBY3Rpb24SDQoFb3BfaWQYASABKAQSDwoHZ2V0X2tleRgCIAEoCBIcChRzZXRfd2ViX3N1YnNjcmlwdGlvbhgDIAEoCBISCgpzZXRfdGFyZ2V0GAQgASgIEhkKEXN1YnNjcmlwdGlvbl9qc29uGAUgASgJEhEKCXB1c2hfdHlwZRgGIAEoBRIOCgZ0YXJnZXQYByABKAkSKQoFa2luZHMYCCADKA4yGi5yZW1vdGVhZ2VudC52MS5Ob3RpZnlLaW5kIncKE1B1c2hScGNSZXN1bHRFZmZlY3QSDQoFb3BfaWQYASABKAQSCgoCb2sYAiABKAgSEgoKcHVibGljX2tleRgDIAEoCRIPCgdlbmFibGVkGAQgASgIEhEKCXJldHJ5YWJsZRgFIAEoCBINCgVlcnJvchgGIAEoCSI+ChFTY2hlZHVsZUNhY2hlQmxvYhISCgpyZXF1ZXN0X2lkGAEgASgJEhUKDXNlYWxlZF9yZXN1bHQYAiABKAwqjwoKDlJlbGF5UnBjTWV0aG9kEiAKHFJFTEFZX1JQQ19NRVRIT0RfVU5TUEVDSUZJRUQQABIoCiRSRUxBWV9SUENfTUVUSE9EX0dFVF9TRUNVUklUWV9TVEFURVMQARInCiNSRUxBWV9SUENfTUVUSE9EX1BVVF9TRUNVUklUWV9TVEFURRACEigKJFJFTEFZX1JQQ19NRVRIT0RfUElOX1NFQ1VSSVRZX0RPTUFJThADEiMKH1JFTEFZX1JQQ19NRVRIT0RfQ1JFQVRFX1BBSVJJTkcQBBIhCh1SRUxBWV9SUENfTUVUSE9EX1BFRUtfUEFJUklORxAFEiEKHVJFTEFZX1JQQ19NRVRIT0RfSk9JTl9QQUlSSU5HEAYSIwofUkVMQVlfUlBDX01FVEhPRF9SRVZFQUxfUEFJUklORxAHEiQKIFJFTEFZX1JQQ19NRVRIT0RfQVBQUk9WRV9QQUlSSU5HEAgSIAocUkVMQVlfUlBDX01FVEhPRF9HRVRfUEFJUklORxAJEiMKH1JFTEFZX1JQQ19NRVRIT0RfQ0FOQ0VMX1BBSVJJTkcQChIrCidSRUxBWV9SUENfTUVUSE9EX0dFVF9SRUNPVkVSWV9DSEFMTEVOR0UQCxIpCiVSRUxBWV9SUENfTUVUSE9EX0dFVF9SRUNPVkVSWV9DT05URVhUEAwSJAogUkVMQVlfUlBDX01FVEhPRF9TVUJNSVRfUkVDT1ZFUlkQDRImCiJSRUxBWV9SUENfTUVUSE9EX0NPTVBMRVRFX1JFQ09WRVJZEA4SKwonUkVMQVlfUlBDX01FVEhPRF9ERUxFVEVfTUFDSElORV9SRUNPUkRTEA8SIwofUkVMQVlfUlBDX01FVEhPRF9ERUxFVEVfQUNDT1VOVBAQEiIKHlJFTEFZX1JQQ19NRVRIT0RfR0VUX0NIQUxMRU5HRRAREhoKFlJFTEFZX1JQQ19NRVRIT0RfTE9HSU4QEhIpCiVSRUxBWV9SUENfTUVUSE9EX0dFVF9TSUdOVVBfQ0hBTExFTkdFEBMSJAogUkVMQVlfUlBDX01FVEhPRF9SRUdJU1RFUl9ERVZJQ0UQFBIkCiBSRUxBWV9SUENfTUVUSE9EX1BVVF9ERVZJQ0VfTUVUQRAVEiEKHVJFTEFZX1JQQ19NRVRIT0RfTElTVF9ERVZJQ0VTEBYSIgoeUkVMQVlfUlBDX01FVEhPRF9MSVNUX01BQ0hJTkVTEBcSJgoiUkVMQVlfUlBDX01FVEhPRF9HRVRfQUNDT1VOVF9QUkVGUxAYEiYKIlJFTEFZX1JQQ19NRVRIT0RfUFVUX0FDQ09VTlRfUFJFRlMQGRIpCiVSRUxBWV9SUENfTUVUSE9EX0xJU1RfUkVNT1RFX1NFU1NJT05TEBoSHwobUkVMQVlfUlBDX01FVEhPRF9HRVRfRVZFTlRTEBsSHAoYUkVMQVlfUlBDX01FVEhPRF9GT1JXQVJEEBwSHgoaUkVMQVlfUlBDX01FVEhPRF9HRVRfSU1BR0UQHRIhCh1SRUxBWV9SUENfTUVUSE9EX0dFVF9QVVNIX0tFWRAeEioKJlJFTEFZX1JQQ19NRVRIT0RfU0VUX1BVU0hfU1VCU0NSSVBUSU9OEB8SJAogUkVMQVlfUlBDX01FVEhPRF9TRVRfUFVTSF9UQVJHRVQQIBIcChhSRUxBWV9SUENfTUVUSE9EX0hFQUxUSFoQIWIGcHJvdG8z", [file_remoteagent_core_v1_security, file_remoteagent_v1_relay]);
+  fileDesc("CiRyZW1vdGVhZ2VudC9jb3JlL3YxL3JlbGF5X3BpcGUucHJvdG8SE3JlbW90ZWFnZW50LmNvcmUudjEiJwoUUmVsYXlQaXBlQ29uZmlnRXZlbnQSDwoHZW5hYmxlZBgBIAEoCCK7AQoOUmVsYXlScGNFZmZlY3QSDQoFb3BfaWQYASABKAQSMwoGbWV0aG9kGAIgASgOMiMucmVtb3RlYWdlbnQuY29yZS52MS5SZWxheVJwY01ldGhvZBIOCgZzZXJ2ZXIYAyABKAkSEgoKYXV0aF90b2tlbhgEIAEoCRISCgp0aW1lb3V0X21zGAUgASgDEhYKDmF0dGVtcHRfaGVhZGVyGAYgASgJEhUKDXJlcXVlc3RfYnl0ZXMYByABKAwiJQoUUmVsYXlScGNDYW5jZWxFZmZlY3QSDQoFb3BfaWQYASABKAQi9AEKE1JlbGF5UnBjUmVzdWx0RXZlbnQSDQoFb3BfaWQYASABKAQSFgoOcmVzcG9uc2VfYnl0ZXMYAiABKAwSFAoMY29ubmVjdF9jb2RlGAMgASgFEhMKC3JlbGF5X2Vwb2NoGAQgASgJEj8KDWVycm9yX2RldGFpbHMYBSADKAsyKC5yZW1vdGVhZ2VudC5jb3JlLnYxLlJwY0Vycm9yRGV0YWlsQnl0ZXMSFQoNbmV0d29ya19lcnJvchgGIAEoCBIXCg91bnJlc29sdmVkX2hvc3QYByABKAgSGgoSZGlhZ25vc3RpY19tZXNzYWdlGAggASgJIj8KE1N0cmVhbVJhd0ZyYW1lRXZlbnQSDgoGbGVnX2lkGAEgASgEEhgKEHJhd19zZXJ2ZXJfZnJhbWUYAiABKAwiFgoUUmVmcmVzaERldmljZXNBY3Rpb24iygEKDVB1c2hScGNBY3Rpb24SDQoFb3BfaWQYASABKAQSDwoHZ2V0X2tleRgCIAEoCBIcChRzZXRfd2ViX3N1YnNjcmlwdGlvbhgDIAEoCBISCgpzZXRfdGFyZ2V0GAQgASgIEhkKEXN1YnNjcmlwdGlvbl9qc29uGAUgASgJEhEKCXB1c2hfdHlwZRgGIAEoBRIOCgZ0YXJnZXQYByABKAkSKQoFa2luZHMYCCADKA4yGi5yZW1vdGVhZ2VudC52MS5Ob3RpZnlLaW5kIncKE1B1c2hScGNSZXN1bHRFZmZlY3QSDQoFb3BfaWQYASABKAQSCgoCb2sYAiABKAgSEgoKcHVibGljX2tleRgDIAEoCRIPCgdlbmFibGVkGAQgASgIEhEKCXJldHJ5YWJsZRgFIAEoCBINCgVlcnJvchgGIAEoCSI+ChFTY2hlZHVsZUNhY2hlQmxvYhISCgpyZXF1ZXN0X2lkGAEgASgJEhUKDXNlYWxlZF9yZXN1bHQYAiABKAwiewoXU2Vzc2lvbkZldGNoSW1hZ2VBY3Rpb24SDQoFb3BfaWQYASABKAQSEgoKc2Vzc2lvbl9pZBgCIAEoCRIQCghpbWFnZV9pZBgDIAEoCRIXCg9jYWNoZWRfZW52ZWxvcGUYBCABKAwSEgoKbWFjaGluZV9pZBgFIAEoCSLzAgoYU2Vzc2lvbkltYWdlTG9hZGVkRWZmZWN0Eg0KBW9wX2lkGAEgASgEEhIKCnNlc3Npb25faWQYAiABKAkSEAoIaW1hZ2VfaWQYAyABKAkSOwoGc3RhdHVzGAQgASgOMisucmVtb3RlYWdlbnQuY29yZS52MS5TZXNzaW9uSW1hZ2VMb2FkU3RhdHVzEgwKBGRhdGEYBSABKAwSEQoJbWltZV90eXBlGAYgASgJEg0KBXdpZHRoGAcgASgNEg4KBmhlaWdodBgIIAEoDRIrCgZmb3JtYXQYCSABKA4yGy5yZW1vdGVhZ2VudC52MS5JbWFnZUZvcm1hdBIcChRjYWNoZV9lbnZlbG9wZV9ieXRlcxgKIAEoDBItCgplcnJvcl90ZXh0GAsgASgLMhkucmVtb3RlYWdlbnQuY29yZS52MS5UZXh0EhIKCmVycm9yX2NvZGUYDCABKAkSFwoPcmV0aXJlZF9oaXN0b3J5GA0gASgIKo8KCg5SZWxheVJwY01ldGhvZBIgChxSRUxBWV9SUENfTUVUSE9EX1VOU1BFQ0lGSUVEEAASKAokUkVMQVlfUlBDX01FVEhPRF9HRVRfU0VDVVJJVFlfU1RBVEVTEAESJwojUkVMQVlfUlBDX01FVEhPRF9QVVRfU0VDVVJJVFlfU1RBVEUQAhIoCiRSRUxBWV9SUENfTUVUSE9EX1BJTl9TRUNVUklUWV9ET01BSU4QAxIjCh9SRUxBWV9SUENfTUVUSE9EX0NSRUFURV9QQUlSSU5HEAQSIQodUkVMQVlfUlBDX01FVEhPRF9QRUVLX1BBSVJJTkcQBRIhCh1SRUxBWV9SUENfTUVUSE9EX0pPSU5fUEFJUklORxAGEiMKH1JFTEFZX1JQQ19NRVRIT0RfUkVWRUFMX1BBSVJJTkcQBxIkCiBSRUxBWV9SUENfTUVUSE9EX0FQUFJPVkVfUEFJUklORxAIEiAKHFJFTEFZX1JQQ19NRVRIT0RfR0VUX1BBSVJJTkcQCRIjCh9SRUxBWV9SUENfTUVUSE9EX0NBTkNFTF9QQUlSSU5HEAoSKwonUkVMQVlfUlBDX01FVEhPRF9HRVRfUkVDT1ZFUllfQ0hBTExFTkdFEAsSKQolUkVMQVlfUlBDX01FVEhPRF9HRVRfUkVDT1ZFUllfQ09OVEVYVBAMEiQKIFJFTEFZX1JQQ19NRVRIT0RfU1VCTUlUX1JFQ09WRVJZEA0SJgoiUkVMQVlfUlBDX01FVEhPRF9DT01QTEVURV9SRUNPVkVSWRAOEisKJ1JFTEFZX1JQQ19NRVRIT0RfREVMRVRFX01BQ0hJTkVfUkVDT1JEUxAPEiMKH1JFTEFZX1JQQ19NRVRIT0RfREVMRVRFX0FDQ09VTlQQEBIiCh5SRUxBWV9SUENfTUVUSE9EX0dFVF9DSEFMTEVOR0UQERIaChZSRUxBWV9SUENfTUVUSE9EX0xPR0lOEBISKQolUkVMQVlfUlBDX01FVEhPRF9HRVRfU0lHTlVQX0NIQUxMRU5HRRATEiQKIFJFTEFZX1JQQ19NRVRIT0RfUkVHSVNURVJfREVWSUNFEBQSJAogUkVMQVlfUlBDX01FVEhPRF9QVVRfREVWSUNFX01FVEEQFRIhCh1SRUxBWV9SUENfTUVUSE9EX0xJU1RfREVWSUNFUxAWEiIKHlJFTEFZX1JQQ19NRVRIT0RfTElTVF9NQUNISU5FUxAXEiYKIlJFTEFZX1JQQ19NRVRIT0RfR0VUX0FDQ09VTlRfUFJFRlMQGBImCiJSRUxBWV9SUENfTUVUSE9EX1BVVF9BQ0NPVU5UX1BSRUZTEBkSKQolUkVMQVlfUlBDX01FVEhPRF9MSVNUX1JFTU9URV9TRVNTSU9OUxAaEh8KG1JFTEFZX1JQQ19NRVRIT0RfR0VUX0VWRU5UUxAbEhwKGFJFTEFZX1JQQ19NRVRIT0RfRk9SV0FSRBAcEh4KGlJFTEFZX1JQQ19NRVRIT0RfR0VUX0lNQUdFEB0SIQodUkVMQVlfUlBDX01FVEhPRF9HRVRfUFVTSF9LRVkQHhIqCiZSRUxBWV9SUENfTUVUSE9EX1NFVF9QVVNIX1NVQlNDUklQVElPThAfEiQKIFJFTEFZX1JQQ19NRVRIT0RfU0VUX1BVU0hfVEFSR0VUECASHAoYUkVMQVlfUlBDX01FVEhPRF9IRUFMVEhaECEq+wEKFlNlc3Npb25JbWFnZUxvYWRTdGF0dXMSKQolU0VTU0lPTl9JTUFHRV9MT0FEX1NUQVRVU19VTlNQRUNJRklFRBAAEiAKHFNFU1NJT05fSU1BR0VfTE9BRF9TVEFUVVNfT0sQARIlCiFTRVNTSU9OX0lNQUdFX0xPQURfU1RBVFVTX0VYUElSRUQQAhIlCiFTRVNTSU9OX0lNQUdFX0xPQURfU1RBVFVTX01JU1NJTkcQAxIhCh1TRVNTSU9OX0lNQUdFX0xPQURfU1RBVFVTX0JBRBAEEiMKH1NFU1NJT05fSU1BR0VfTE9BRF9TVEFUVVNfRVJST1IQBWIGcHJvdG8z", [file_remoteagent_core_v1_security, file_remoteagent_core_v1_text, file_remoteagent_v1_event, file_remoteagent_v1_relay]);
 
 /**
  * Opts the Core instance into the unified byte-pipe mode (RelayRpcEffect,
@@ -326,6 +330,126 @@ export const ScheduleCacheBlobSchema: GenMessage<ScheduleCacheBlob> = /*@__PURE_
   messageDesc(file_remoteagent_core_v1_relay_pipe, 8);
 
 /**
+ * @generated from message remoteagent.core.v1.SessionFetchImageAction
+ */
+export type SessionFetchImageAction = Message<"remoteagent.core.v1.SessionFetchImageAction"> & {
+  /**
+   * @generated from field: uint64 op_id = 1;
+   */
+  opId: bigint;
+
+  /**
+   * @generated from field: string session_id = 2;
+   */
+  sessionId: string;
+
+  /**
+   * @generated from field: string image_id = 3;
+   */
+  imageId: string;
+
+  /**
+   * Optional cached serialized remoteagent.v1.Envelope bytes (e.g. Android encrypted disk cache).
+   *
+   * @generated from field: bytes cached_envelope = 4;
+   */
+  cachedEnvelope: Uint8Array;
+
+  /**
+   * Optional machine_id hint when session is not yet in the live directory.
+   *
+   * @generated from field: string machine_id = 5;
+   */
+  machineId: string;
+};
+
+/**
+ * Describes the message remoteagent.core.v1.SessionFetchImageAction.
+ * Use `create(SessionFetchImageActionSchema)` to create a new message.
+ */
+export const SessionFetchImageActionSchema: GenMessage<SessionFetchImageAction> = /*@__PURE__*/
+  messageDesc(file_remoteagent_core_v1_relay_pipe, 9);
+
+/**
+ * @generated from message remoteagent.core.v1.SessionImageLoadedEffect
+ */
+export type SessionImageLoadedEffect = Message<"remoteagent.core.v1.SessionImageLoadedEffect"> & {
+  /**
+   * @generated from field: uint64 op_id = 1;
+   */
+  opId: bigint;
+
+  /**
+   * @generated from field: string session_id = 2;
+   */
+  sessionId: string;
+
+  /**
+   * @generated from field: string image_id = 3;
+   */
+  imageId: string;
+
+  /**
+   * @generated from field: remoteagent.core.v1.SessionImageLoadStatus status = 4;
+   */
+  status: SessionImageLoadStatus;
+
+  /**
+   * @generated from field: bytes data = 5;
+   */
+  data: Uint8Array;
+
+  /**
+   * @generated from field: string mime_type = 6;
+   */
+  mimeType: string;
+
+  /**
+   * @generated from field: uint32 width = 7;
+   */
+  width: number;
+
+  /**
+   * @generated from field: uint32 height = 8;
+   */
+  height: number;
+
+  /**
+   * @generated from field: remoteagent.v1.ImageFormat format = 9;
+   */
+  format: ImageFormat;
+
+  /**
+   * Non-empty only when freshly fetched, verified, and CanUseMachineCache(machine_id) is true.
+   *
+   * @generated from field: bytes cache_envelope_bytes = 10;
+   */
+  cacheEnvelopeBytes: Uint8Array;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text error_text = 11;
+   */
+  errorText?: Text | undefined;
+
+  /**
+   * @generated from field: string error_code = 12;
+   */
+  errorCode: string;
+
+  /**
+   * @generated from field: bool retired_history = 13;
+   */
+  retiredHistory: boolean;
+};
+
+/**
+ * Describes the message remoteagent.core.v1.SessionImageLoadedEffect.
+ * Use `create(SessionImageLoadedEffectSchema)` to create a new message.
+ */
+export const SessionImageLoadedEffectSchema: GenMessage<SessionImageLoadedEffect> = /*@__PURE__*/
+  messageDesc(file_remoteagent_core_v1_relay_pipe, 10);
+
+/**
  * Unified unary relay RPC methods (evolved from SecurityRpcMethod to cover all
  * Auth / Pairing / Recovery / ClientService unary calls + /healthz epoch probe).
  * Enum values 1..25 intentionally match SecurityRpcMethod 1-to-1.
@@ -509,4 +633,45 @@ export enum RelayRpcMethod {
  */
 export const RelayRpcMethodSchema: GenEnum<RelayRpcMethod> = /*@__PURE__*/
   enumDesc(file_remoteagent_core_v1_relay_pipe, 0);
+
+/**
+ * @generated from enum remoteagent.core.v1.SessionImageLoadStatus
+ */
+export enum SessionImageLoadStatus {
+  /**
+   * @generated from enum value: SESSION_IMAGE_LOAD_STATUS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SESSION_IMAGE_LOAD_STATUS_OK = 1;
+   */
+  OK = 1,
+
+  /**
+   * @generated from enum value: SESSION_IMAGE_LOAD_STATUS_EXPIRED = 2;
+   */
+  EXPIRED = 2,
+
+  /**
+   * @generated from enum value: SESSION_IMAGE_LOAD_STATUS_MISSING = 3;
+   */
+  MISSING = 3,
+
+  /**
+   * @generated from enum value: SESSION_IMAGE_LOAD_STATUS_BAD = 4;
+   */
+  BAD = 4,
+
+  /**
+   * @generated from enum value: SESSION_IMAGE_LOAD_STATUS_ERROR = 5;
+   */
+  ERROR = 5,
+}
+
+/**
+ * Describes the enum remoteagent.core.v1.SessionImageLoadStatus.
+ */
+export const SessionImageLoadStatusSchema: GenEnum<SessionImageLoadStatus> = /*@__PURE__*/
+  enumDesc(file_remoteagent_core_v1_relay_pipe, 1);
 

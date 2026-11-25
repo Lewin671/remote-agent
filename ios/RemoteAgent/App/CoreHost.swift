@@ -2798,7 +2798,8 @@ actor CoreHost: SyncEngine {
                  .scheduleWriteCache,
                  .relayRpc,
                  .relayRpcCancel,
-                 .pushRpcResult:
+                 .pushRpcResult,
+                 .sessionImageLoaded:
                 // Handled by Web/Android in P2-4/P2-5; iOS migrates in P3-2.
                 break
 

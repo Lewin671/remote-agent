@@ -267,9 +267,6 @@ private fun resolveUiMessage0(resources: android.content.res.Resources, message:
         "common.android_camera_access_is_needed_to_scan_you_can_also_go" -> {
             resources.getString(R.string.common_android_camera_access_is_needed_to_scan_you_can_also_go)
         }
-        "common.android_cannot_find_this_session" -> {
-            resources.getString(R.string.common_android_cannot_find_this_session)
-        }
         "common.android_could_not_clear_the_account_and_cache_on_this_phone" -> {
             resources.getString(R.string.common_android_could_not_clear_the_account_and_cache_on_this_phone)
         }
@@ -287,6 +284,9 @@ private fun resolveUiMessage0(resources: android.content.res.Resources, message:
         }
         "common.cancel" -> {
             resources.getString(R.string.common_cancel)
+        }
+        "common.cannot_find_this_session" -> {
+            resources.getString(R.string.common_cannot_find_this_session)
         }
         "common.clear_search" -> {
             resources.getString(R.string.common_clear_search)
@@ -701,9 +701,6 @@ private fun resolveUiMessage1(resources: android.content.res.Resources, message:
         "errors.android_cannot_find_the_server_check_your_network" -> {
             resources.getString(R.string.errors_android_cannot_find_the_server_check_your_network)
         }
-        "errors.android_image_content_does_not_match_its_format" -> {
-            resources.getString(R.string.errors_android_image_content_does_not_match_its_format)
-        }
         "errors.android_invalid_server_address" -> {
             resources.getString(R.string.errors_android_invalid_server_address)
         }
@@ -771,6 +768,9 @@ private fun resolveUiMessage1(resources: android.content.res.Resources, message:
         }
         "errors.history_keys_unavailable_records_from_before_recovery_cannot_be" -> {
             resources.getString(R.string.errors_history_keys_unavailable_records_from_before_recovery_cannot_be)
+        }
+        "errors.image_content_does_not_match_its_format" -> {
+            resources.getString(R.string.errors_image_content_does_not_match_its_format)
         }
         "errors.invalid_ciphertext_signature_key_or_content_verification_failed" -> {
             resources.getString(R.string.errors_invalid_ciphertext_signature_key_or_content_verification_failed)

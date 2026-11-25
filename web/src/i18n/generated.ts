@@ -109,11 +109,11 @@ export interface MessageArgs {
   "attachment.uploading": { [name: string]: never };
   "attachment.zip_folder": { [name: string]: never };
   "common.all_projects_avatar": { [name: string]: never };
-  "common.android_cannot_find_this_session": { [name: string]: never };
   "common.android_more": { [name: string]: never };
   "common.android_this_app_version_is_old_update_and_retry": { [name: string]: never };
   "common.back": { [name: string]: never };
   "common.cancel": { [name: string]: never };
+  "common.cannot_find_this_session": { [name: string]: never };
   "common.clear_search": { [name: string]: never };
   "common.close": { [name: string]: never };
   "common.copied": { [name: string]: never };
@@ -248,6 +248,7 @@ export interface MessageArgs {
   "errors.history_could_not_continue_loading_retry": { [name: string]: never };
   "errors.history_has_a_gap_retry": { [name: string]: never };
   "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": { [name: string]: never };
+  "errors.image_content_does_not_match_its_format": { [name: string]: never };
   "errors.invalid_ciphertext_signature_key_or_content_verification_failed": { [name: string]: never };
   "errors.invalid_command": { [name: string]: never };
   "errors.it_may_have_been_deleted_or_belong_to_a": { [name: string]: never };
@@ -1901,11 +1902,11 @@ export const messages = {
     "attachment.uploading": "Uploading",
     "attachment.zip_folder": "Folders cannot be sent directly. Compress the folder as a ZIP, then select the file.",
     "common.all_projects_avatar": "All",
-    "common.android_cannot_find_this_session": "Cannot find this session",
     "common.android_more": "More",
     "common.android_this_app_version_is_old_update_and_retry": "This app version is old. Update and retry",
     "common.back": "Back",
     "common.cancel": "Cancel",
+    "common.cannot_find_this_session": "Cannot find this session",
     "common.clear_search": "Clear search",
     "common.close": "Close",
     "common.copied": "Copied",
@@ -2070,6 +2071,7 @@ export const messages = {
     "errors.history_could_not_continue_loading_retry": "History could not continue loading. Retry.",
     "errors.history_has_a_gap_retry": "History has a gap. Retry.",
     "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": "History keys unavailable: records from before recovery cannot be decrypted",
+    "errors.image_content_does_not_match_its_format": "Image content does not match its format",
     "errors.invalid_ciphertext_signature_key_or_content_verification_failed": "Invalid ciphertext: signature, key, or content verification failed",
     "errors.invalid_command": "Invalid command arguments",
     "errors.it_may_have_been_deleted_or_belong_to_a": "It may have been deleted, or belong to a computer that was removed.",
@@ -4263,11 +4265,11 @@ export const messages = {
     "attachment.uploading": "上传中",
     "attachment.zip_folder": "不能直接发送文件夹，请先压缩成 ZIP 再选择文件",
     "common.all_projects_avatar": "全",
-    "common.android_cannot_find_this_session": "找不到这个会话",
     "common.android_more": "更多",
     "common.android_this_app_version_is_old_update_and_retry": "这个 App 版本较旧，请更新后再试",
     "common.back": "返回",
     "common.cancel": "取消",
+    "common.cannot_find_this_session": "找不到这个会话",
     "common.clear_search": "清空搜索",
     "common.close": "关闭",
     "common.copied": "已复制",
@@ -4427,6 +4429,7 @@ export const messages = {
     "errors.history_could_not_continue_loading_retry": "历史记录未能继续加载，请重试",
     "errors.history_has_a_gap_retry": "历史记录不连续，请重试读取",
     "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": "历史密钥不可用：恢复前的记录无法解密",
+    "errors.image_content_does_not_match_its_format": "图片内容和格式对不上",
     "errors.invalid_ciphertext_signature_key_or_content_verification_failed": "密文无效：签名、密钥或内容校验失败",
     "errors.invalid_command": "指令参数无效",
     "errors.it_may_have_been_deleted_or_belong_to_a": "它可能已经被删除，或者属于一台被移除的电脑。",

@@ -147,3 +147,5 @@ clone: remoteagent.v1.Session
 clone: remoteagent.v1.UsageStatsResponse
 in: remoteagent.v1.UsageStatsResponse
 out: remoteagent.v1.UsageStatsResponse
+out: remoteagent.v1.GetImageRequest
+in: remoteagent.v1.GetImageResponse

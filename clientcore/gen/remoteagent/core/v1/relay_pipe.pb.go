@@ -48,6 +48,17 @@ const (
 	RelayRpcMethod_RELAY_RPC_METHOD_HEALTHZ                RelayRpcMethod = 33
 )
 
+type SessionImageLoadStatus int32
+
+const (
+	SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_UNSPECIFIED SessionImageLoadStatus = 0
+	SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_OK          SessionImageLoadStatus = 1
+	SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_EXPIRED     SessionImageLoadStatus = 2
+	SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_MISSING     SessionImageLoadStatus = 3
+	SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_BAD         SessionImageLoadStatus = 4
+	SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_ERROR       SessionImageLoadStatus = 5
+)
+
 type RelayPipeConfigEvent struct {
 	_       [0]func()
 	Enabled bool
@@ -484,6 +495,183 @@ func (m *PushRpcResultEffect) Marshal() ([]byte, error) {
 
 func (m *PushRpcResultEffect) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_PushRpcResultEffect)
+}
+
+type SessionFetchImageAction struct {
+	_              [0]func()
+	OpId           uint64
+	SessionId      string
+	ImageId        string
+	CachedEnvelope []byte
+	MachineId      string
+}
+
+func (m *SessionFetchImageAction) GetOpId() uint64 {
+	if m != nil {
+		return m.OpId
+	}
+	return 0
+}
+func (m *SessionFetchImageAction) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *SessionFetchImageAction) GetImageId() string {
+	if m != nil {
+		return m.ImageId
+	}
+	return ""
+}
+func (m *SessionFetchImageAction) GetCachedEnvelope() []byte {
+	if m != nil {
+		return m.CachedEnvelope
+	}
+	return nil
+}
+func (m *SessionFetchImageAction) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+
+var LitewireDesc_SessionFetchImageAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionFetchImageAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionFetchImageAction{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(SessionFetchImageAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionFetchImageAction{}.ImageId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SessionFetchImageAction{}.CachedEnvelope), Kind: litewire.KindBytes},
+		{Num: 5, Offset: unsafe.Offsetof(SessionFetchImageAction{}.MachineId), Kind: litewire.KindString},
+	},
+}
+
+func (m *SessionFetchImageAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionFetchImageAction)
+}
+
+type SessionImageLoadedEffect struct {
+	_                  [0]func()
+	OpId               uint64
+	SessionId          string
+	ImageId            string
+	Status             SessionImageLoadStatus
+	Data               []byte
+	MimeType           string
+	Width              uint32
+	Height             uint32
+	Format             v1.ImageFormat
+	CacheEnvelopeBytes []byte
+	ErrorText          *Text
+	ErrorCode          string
+	RetiredHistory     bool
+}
+
+func (m *SessionImageLoadedEffect) GetOpId() uint64 {
+	if m != nil {
+		return m.OpId
+	}
+	return 0
+}
+func (m *SessionImageLoadedEffect) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *SessionImageLoadedEffect) GetImageId() string {
+	if m != nil {
+		return m.ImageId
+	}
+	return ""
+}
+func (m *SessionImageLoadedEffect) GetStatus() SessionImageLoadStatus {
+	if m != nil {
+		return m.Status
+	}
+	return 0
+}
+func (m *SessionImageLoadedEffect) GetData() []byte {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
+func (m *SessionImageLoadedEffect) GetMimeType() string {
+	if m != nil {
+		return m.MimeType
+	}
+	return ""
+}
+func (m *SessionImageLoadedEffect) GetWidth() uint32 {
+	if m != nil {
+		return m.Width
+	}
+	return 0
+}
+func (m *SessionImageLoadedEffect) GetHeight() uint32 {
+	if m != nil {
+		return m.Height
+	}
+	return 0
+}
+func (m *SessionImageLoadedEffect) GetFormat() v1.ImageFormat {
+	if m != nil {
+		return m.Format
+	}
+	return 0
+}
+func (m *SessionImageLoadedEffect) GetCacheEnvelopeBytes() []byte {
+	if m != nil {
+		return m.CacheEnvelopeBytes
+	}
+	return nil
+}
+func (m *SessionImageLoadedEffect) GetErrorText() *Text {
+	if m != nil {
+		return m.ErrorText
+	}
+	return nil
+}
+func (m *SessionImageLoadedEffect) GetErrorCode() string {
+	if m != nil {
+		return m.ErrorCode
+	}
+	return ""
+}
+func (m *SessionImageLoadedEffect) GetRetiredHistory() bool {
+	if m != nil {
+		return m.RetiredHistory
+	}
+	return false
+}
+
+var LitewireDesc_SessionImageLoadedEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionImageLoadedEffect{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(SessionImageLoadedEffect{}.SessionId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionImageLoadedEffect{}.ImageId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SessionImageLoadedEffect{}.Status), Kind: litewire.KindInt32},
+		{Num: 5, Offset: unsafe.Offsetof(SessionImageLoadedEffect{}.Data), Kind: litewire.KindBytes},
+		{Num: 6, Offset: unsafe.Offsetof(SessionImageLoadedEffect{}.MimeType), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(SessionImageLoadedEffect{}.Width), Kind: litewire.KindUint32},
+		{Num: 8, Offset: unsafe.Offsetof(SessionImageLoadedEffect{}.Height), Kind: litewire.KindUint32},
+		{Num: 9, Offset: unsafe.Offsetof(SessionImageLoadedEffect{}.Format), Kind: litewire.KindInt32},
+		{Num: 10, Offset: unsafe.Offsetof(SessionImageLoadedEffect{}.CacheEnvelopeBytes), Kind: litewire.KindBytes},
+		{Num: 11, Offset: unsafe.Offsetof(SessionImageLoadedEffect{}.ErrorText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 12, Offset: unsafe.Offsetof(SessionImageLoadedEffect{}.ErrorCode), Kind: litewire.KindString},
+		{Num: 13, Offset: unsafe.Offsetof(SessionImageLoadedEffect{}.RetiredHistory), Kind: litewire.KindBool},
+	},
+}
+
+func (m *SessionImageLoadedEffect) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SessionImageLoadedEffect) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionImageLoadedEffect)
 }
 
 func init() {

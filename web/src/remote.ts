@@ -5,7 +5,6 @@ import { Link as DeviceLink } from "./transport/link";
 import { RelayPath } from "./transport/relay-path";
 import type { FrameStream } from "./transport/path";
 import * as l10n from "./i18n";
-import { UnsupportedHistoryError } from "./crypto";
 import type { ImagePrepareFn } from "./attachment-executor";
 import type { AttachmentStore } from "./attachment-store";
 import {
@@ -47,10 +46,11 @@ import {
   type Effect,
 } from "./gen/remoteagent/core/v1/app_pb";
 import {
-  RelayRpcMethod,
+  SessionImageLoadStatus,
   type RelayRpcCancelEffect,
   type RelayRpcEffect,
 } from "./gen/remoteagent/core/v1/relay_pipe_pb";
+import { renderText } from "./core/text";
 import {
   SecurityBootstrapKind,
   SecurityErrorCode,
@@ -114,8 +114,6 @@ export enum Purpose {
 }
 
 import {
-  GetImageRequestSchema,
-  GetImageResponseSchema,
   ListMachinesResponseSchema,
   ListRemoteSessionsResponseSchema,
   NotifyKind,
@@ -156,9 +154,7 @@ import {
 import {
   ImageFormat,
 } from "./gen/remoteagent/v1/event_pb";
-import { matchesFormat, mimeOf } from "./imageview";
 import {
-  ImagePayloadSchema,
   TerminalFrameSchema,
   type TerminalFrame,
 } from "./gen/remoteagent/v1/remote_pb";
@@ -1320,42 +1316,34 @@ export class Remote implements CoreExecutor {
     const key = sid + "/" + imageId;
     const hit = this.imageCache.get(key);
     if (hit) { this.imageCache.delete(key); this.imageCache.set(key, hit); return hit; }
-    const machineId = this.sessionMachineId(sid);
-    if (!machineId) throw new Error(l10n.t("session.android_unknown"));
-    let res;
-    const raw = await this.secExec.executeUnary({
-      opId: 0n,
-      method: RelayRpcMethod.GET_IMAGE,
-      server: this.account.server,
-      authToken: this.token,
-      timeoutMs: RPC_TIMEOUT_MS,
-      requestBytes: toBinary(GetImageRequestSchema, create(GetImageRequestSchema, { sessionId: sid, imageId })),
-    });
-    if (raw.connectCode === Code.NotFound) return { kind: "missing" };
-    if (raw.connectCode !== 0 || raw.networkError || raw.diagnosticMessage) {
-      throw new Error(raw.diagnosticMessage || "getImage failed");
+    const res = await this.ensureHost().fetchSessionImage(sid, imageId, this.sessionMachineId(sid));
+    switch (res.status) {
+      case SessionImageLoadStatus.OK: {
+        const out: ImageResult = {
+          kind: "ok",
+          blob: new Blob([res.data as Uint8Array<ArrayBuffer>], { type: res.mimeType }),
+          width: res.width,
+          height: res.height,
+          format: res.format,
+        };
+        this.imageCache.set(key, out);
+        while (this.imageCache.size > IMAGE_CACHE) this.imageCache.delete(this.imageCache.keys().next().value!);
+        return out;
+      }
+      case SessionImageLoadStatus.MISSING:
+        return { kind: "missing" };
+      case SessionImageLoadStatus.EXPIRED:
+        return { kind: "expired" };
+      case SessionImageLoadStatus.BAD:
+        return {
+          kind: "bad",
+          ...(res.retiredHistory ? { why: renderText(res.errorText) || l10n.t("errors.this_history_uses_an_old_encryption_format_and_can") } : {}),
+        };
+      default: {
+        const msg = renderText(res.errorText) || res.errorCode || l10n.t("errors.command_failed");
+        throw new Error(msg);
+      }
     }
-    res = fromBinary(GetImageResponseSchema, raw.responseBytes);
-    if (res.expired || !res.image) return { kind: "expired" };
-    let out: ImageResult;
-    try {
-      const { msg } = await this.openSecureMessage(
-        res.image,
-        { kind: PayloadKind.IMAGE, machineId, sessionId: sid, requestId: imageId },
-        ImagePayloadSchema,
-        true,
-      );
-      out = matchesFormat(msg.data, msg.format)
-        ? { kind: "ok", blob: new Blob([msg.data as Uint8Array<ArrayBuffer>], { type: mimeOf(msg.format) }), width: msg.width, height: msg.height, format: msg.format }
-        : { kind: "bad" };
-    } catch (e) {
-      out = { kind: "bad", ...(e instanceof UnsupportedHistoryError ? { why: e.message } : {}) };
-    }
-    if (out.kind === "ok") {
-      this.imageCache.set(key, out);
-      while (this.imageCache.size > IMAGE_CACHE) this.imageCache.delete(this.imageCache.keys().next().value!);
-    }
-    return out;
   }
 
   cachedImage(sid: string, imageId: string): ImageResult | undefined { return this.imageCache.get(sid + "/" + imageId); }

@@ -349,7 +349,7 @@ func buildSessionHeader(
 		} else {
 			out.Missing = (in.SessionsListed && !in.LookingUp) || out.LookupFailed
 			if out.Missing {
-				out.MissingText = text.Msg(text.KeyCommonAndroidCannotFindThisSession)
+				out.MissingText = text.Msg(text.KeyCommonCannotFindThisSession)
 			} else {
 				out.StatusText = text.Msg(text.KeyCommonLoading)
 			}

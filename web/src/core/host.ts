@@ -152,10 +152,12 @@ import {
   PushRpcActionSchema,
   RefreshDevicesActionSchema,
   RelayPipeConfigEventSchema,
+  SessionFetchImageActionSchema,
   StreamRawFrameEventSchema,
   type PushRpcResultEffect,
   type RelayRpcCancelEffect,
   type RelayRpcEffect,
+  type SessionImageLoadedEffect,
 } from "../gen/remoteagent/core/v1/relay_pipe_pb";
 import {
   SecurityConfigEventSchema,
@@ -402,6 +404,7 @@ export interface HostBridge {
   retryEvents(sessionId: string): void;
   refreshDevices(): Promise<void>;
   pushRpc(req: Omit<MessageInitShape<typeof PushRpcActionSchema>, "opId">): Promise<PushRpcResultEffect>;
+  fetchSessionImage(sessionId: string, imageId: string, machineId?: string, cachedEnvelope?: Uint8Array<ArrayBuffer>): Promise<SessionImageLoadedEffect>;
   readonly securityClient: SecurityClient;
   securityOp(op: SecurityOpRequestEvent["op"]): Promise<SecurityOpResultEffect>;
   dispatchDirectSignal(raw: Uint8Array<ArrayBuffer>): void;
@@ -953,6 +956,8 @@ export class CoreHost {
   private securityOpWaiters = new Map<bigint, { resolve: (eff: SecurityOpResultEffect) => void; reject: (err: Error) => void }>();
   private nextPushRpcOpId = 1n;
   private pushRpcWaiters = new Map<bigint, { resolve: (eff: PushRpcResultEffect) => void; reject: (err: Error) => void }>();
+  private nextImageFetchOpId = 1n;
+  private imageFetchWaiters = new Map<bigint, { resolve: (eff: SessionImageLoadedEffect) => void; reject: (err: Error) => void }>();
   private readonly scheduleCacheReads = new Map<bigint, Promise<void>>();
 
   constructor(remote?: Remote, opts: CoreHostOptions = {}) {
@@ -1018,6 +1023,8 @@ export class CoreHost {
         retryEvents: (sid) => this.retryEvents(sid),
         refreshDevices: () => this.refreshDevices(),
         pushRpc: (req) => this.pushRpc(req),
+        fetchSessionImage: (sid, imageId, machineId, cachedEnvelope) =>
+          this.fetchSessionImage(sid, imageId, machineId, cachedEnvelope),
         securityClient: this.securityClient,
         securityOp: (op) => this.securityOp(op),
         dispatchDirectSignal: (raw) => this.dispatchDirectSignal(raw),
@@ -1302,6 +1309,10 @@ export class CoreHost {
       w.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
     }
     this.pushRpcWaiters.clear();
+    for (const w of this.imageFetchWaiters.values()) {
+      w.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
+    }
+    this.imageFetchWaiters.clear();
   }
 
   private rejectSecurityOps() {
@@ -1389,6 +1400,30 @@ export class CoreHost {
         case: "pushRpc",
         value: create(PushRpcActionSchema, { ...req, opId } as MessageInitShape<typeof PushRpcActionSchema>),
       });
+    });
+  }
+
+  fetchSessionImage(
+    sessionId: string,
+    imageId: string,
+    machineId = "",
+    cachedEnvelope?: Uint8Array<ArrayBuffer>,
+  ): Promise<SessionImageLoadedEffect> {
+    const opId = this.nextImageFetchOpId++;
+    const ev = {
+      case: "sessionFetchImage" as const,
+      value: create(SessionFetchImageActionSchema, {
+        opId,
+        sessionId,
+        imageId,
+        machineId,
+        ...(cachedEnvelope ? { cachedEnvelope } : {}),
+      }),
+    };
+    if (this.closed) return Promise.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
+    return new Promise<SessionImageLoadedEffect>((resolve, reject) => {
+      this.imageFetchWaiters.set(opId, { resolve, reject });
+      this.emit(ev);
     });
   }
 
@@ -2985,6 +3020,16 @@ export class CoreHost {
         else this.executor?.securityEffect?.(val);
         break;
 
+      case "sessionImageLoaded": {
+        const res = val.value;
+        const w = this.imageFetchWaiters.get(res.opId);
+        if (w) {
+          this.imageFetchWaiters.delete(res.opId);
+          w.resolve(res);
+        }
+        break;
+      }
+
       case "pushRpcResult": {
         const res = val.value;
         const w = this.pushRpcWaiters.get(res.opId);
@@ -3715,6 +3760,10 @@ export class CoreHost {
       w.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
     }
     this.pushRpcWaiters.clear();
+    for (const w of this.imageFetchWaiters.values()) {
+      w.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
+    }
+    this.imageFetchWaiters.clear();
     for (const list of this.retryNowWaiters.values()) {
       for (const fn of list) fn(false);
     }

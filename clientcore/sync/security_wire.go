@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/entropy"
+	"github.com/Lewin671/remote-agent/clientcore/domain/imageparse"
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
@@ -619,6 +620,7 @@ const (
 	secOpForwardAuth
 	secOpPushAuth
 	secOpScheduleCache
+	secOpSessionImage
 )
 
 type dirBatchKind uint8
@@ -690,6 +692,9 @@ type pendingSecOp struct {
 	more           bool
 	sid            string
 	machineID      string
+	imageID        string
+	rawEnvBytes    []byte
+	fromCache      bool
 	pcID           uint64
 	prep           *PreparedCommand
 	cmdEv          *corev1.CommandOutcomeEvent
@@ -809,6 +814,8 @@ func (e *Engine) OnOpenBatchDone(tag uint64, results []security.OpenResult) {
 		e.finishOpenCmdOutcome(e.activeStepCtx, op, results)
 	case secOpScheduleCache:
 		e.finishScheduleCacheOpen(e.activeStepCtx, op, results)
+	case secOpSessionImage:
+		e.finishSessionImageOpen(e.activeStepCtx, op, results)
 	}
 }
 
@@ -867,6 +874,131 @@ func (e *Engine) finishScheduleCacheOpen(stepCtx *StepContext, op *pendingSecOp,
 	}
 	out.ResultJSON = slices.Clone(res.GetSchedule().GetResultJson())
 	stepCtx.OpenedScheduleCaches = append(stepCtx.OpenedScheduleCaches, out)
+}
+
+func (e *Engine) openSessionImageEnvelope(
+	ctx *StepContext,
+	opID uint64,
+	sid, imageID, machineID string,
+	env *v1.Envelope,
+	rawEnvBytes []byte,
+	fromCache bool,
+) {
+	if ctx == nil || e.secEngine == nil || env == nil {
+		return
+	}
+	repls := e.sessionReplacements[sid]
+	if len(repls) == 0 {
+		if sess := e.sessions[sid]; sess != nil && sess.Info != nil {
+			repls = sess.Info.MachineReplacements
+		}
+	}
+	tag := e.allocSecOp(&pendingSecOp{
+		kind:        secOpSessionImage,
+		opID:        opID,
+		sid:         sid,
+		machineID:   machineID,
+		imageID:     imageID,
+		rawEnvBytes: rawEnvBytes,
+		fromCache:   fromCache,
+	})
+	effs := e.secEngine.OpenBatchTag(e.nowMs, []security.OpenItem{{
+		Env:             env,
+		ExpectedPurpose: devicesec.Image,
+		MachineID:       machineID,
+		SessionID:       sid,
+		RequestID:       imageID,
+		History:         true,
+		Replacements:    repls,
+	}}, tag)
+	e.emitRawEffects(ctx, effs)
+}
+
+func (e *Engine) finishSessionImageOpen(stepCtx *StepContext, op *pendingSecOp, results []security.OpenResult) {
+	if stepCtx == nil || op == nil {
+		return
+	}
+	if len(results) != 1 || results[0].Err != nil {
+		var err error
+		if len(results) == 1 {
+			err = results[0].Err
+		}
+		retired := errors.Is(err, security.ErrUnsupportedHistory)
+		e.emitSessionImageLoaded(stepCtx, &corev1.SessionImageLoadedEffect{
+			OpId:           op.opID,
+			SessionId:      op.sid,
+			ImageId:        op.imageID,
+			Status:         corev1.SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_BAD,
+			ErrorCode:      sessionImageOpenErrorCode(err),
+			RetiredHistory: retired,
+		})
+		return
+	}
+	payload, ok := results[0].Body.(*v1.ImagePayload)
+	if !ok || payload == nil || !matchesImageFormat(payload.Data, payload.Format) {
+		e.emitSessionImageLoaded(stepCtx, &corev1.SessionImageLoadedEffect{
+			OpId:      op.opID,
+			SessionId: op.sid,
+			ImageId:   op.imageID,
+			Status:    corev1.SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_BAD,
+			ErrorCode: "format_mismatch",
+		})
+		return
+	}
+	var cacheBytes []byte
+	if !op.fromCache && len(op.rawEnvBytes) > 0 && e.CanUseMachineCache(op.machineID) {
+		cacheBytes = op.rawEnvBytes
+	}
+	var w, h uint32
+	if payload.Width > 0 {
+		w = uint32(payload.Width)
+	}
+	if payload.Height > 0 {
+		h = uint32(payload.Height)
+	}
+	e.emitSessionImageLoaded(stepCtx, &corev1.SessionImageLoadedEffect{
+		OpId:               op.opID,
+		SessionId:          op.sid,
+		ImageId:            op.imageID,
+		Status:             corev1.SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_OK,
+		Data:               payload.Data,
+		Width:              w,
+		Height:             h,
+		Format:             payload.Format,
+		CacheEnvelopeBytes: cacheBytes,
+	})
+}
+
+func matchesImageFormat(data []byte, f v1.ImageFormat) bool {
+	detected := imageparse.SniffFormat(data)
+	switch f {
+	case v1.ImageFormat_IMAGE_FORMAT_PNG:
+		return detected == imageparse.FormatPNG
+	case v1.ImageFormat_IMAGE_FORMAT_JPEG:
+		return detected == imageparse.FormatJPEG
+	case v1.ImageFormat_IMAGE_FORMAT_WEBP:
+		return detected == imageparse.FormatWebP
+	case v1.ImageFormat_IMAGE_FORMAT_GIF:
+		return detected == imageparse.FormatGIF
+	default:
+		return false
+	}
+}
+
+func sessionImageOpenErrorCode(err error) string {
+	switch security.StructuredErrorCode(err) {
+	case corev1.SecurityErrorCode_SECURITY_ERROR_CODE_UNSUPPORTED_HISTORY:
+		return "retired_history"
+	case corev1.SecurityErrorCode_SECURITY_ERROR_CODE_LEASE_EXPIRED:
+		return "lease"
+	case corev1.SecurityErrorCode_SECURITY_ERROR_CODE_RECOVERY_UNAVAILABLE,
+		corev1.SecurityErrorCode_SECURITY_ERROR_CODE_STALE:
+		return "unavailable"
+	case corev1.SecurityErrorCode_SECURITY_ERROR_CODE_UNTRUSTED:
+		return "untrusted"
+	default:
+		return "invalid"
+	}
 }
 
 // OnSealEnvelopeDone implements security.AsyncSink.

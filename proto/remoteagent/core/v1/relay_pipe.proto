@@ -3,6 +3,8 @@ syntax = "proto3";
 package remoteagent.core.v1;
 
 import "remoteagent/core/v1/security.proto";
+import "remoteagent/core/v1/text.proto";
+import "remoteagent/v1/event.proto";
 import "remoteagent/v1/relay.proto";
 
 // Unified unary relay RPC methods (evolved from SecurityRpcMethod to cover all
@@ -120,4 +122,42 @@ message PushRpcResultEffect {
 message ScheduleCacheBlob {
   string request_id = 1;
   bytes sealed_result = 2;
+}
+
+// ---- Session Image Fetch, Decrypt, and Magic-Byte Sniffing ----
+
+enum SessionImageLoadStatus {
+  SESSION_IMAGE_LOAD_STATUS_UNSPECIFIED = 0;
+  SESSION_IMAGE_LOAD_STATUS_OK = 1;
+  SESSION_IMAGE_LOAD_STATUS_EXPIRED = 2;
+  SESSION_IMAGE_LOAD_STATUS_MISSING = 3;
+  SESSION_IMAGE_LOAD_STATUS_BAD = 4;
+  SESSION_IMAGE_LOAD_STATUS_ERROR = 5;
+}
+
+message SessionFetchImageAction {
+  uint64 op_id = 1;
+  string session_id = 2;
+  string image_id = 3;
+  // Optional cached serialized remoteagent.v1.Envelope bytes (e.g. Android encrypted disk cache).
+  bytes cached_envelope = 4;
+  // Optional machine_id hint when session is not yet in the live directory.
+  string machine_id = 5;
+}
+
+message SessionImageLoadedEffect {
+  uint64 op_id = 1;
+  string session_id = 2;
+  string image_id = 3;
+  SessionImageLoadStatus status = 4;
+  bytes data = 5;
+  string mime_type = 6;
+  uint32 width = 7;
+  uint32 height = 8;
+  remoteagent.v1.ImageFormat format = 9;
+  // Non-empty only when freshly fetched, verified, and CanUseMachineCache(machine_id) is true.
+  bytes cache_envelope_bytes = 10;
+  Text error_text = 11;
+  string error_code = 12;
+  bool retired_history = 13;
 }

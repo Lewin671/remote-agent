@@ -5,6 +5,7 @@ package app
 import (
 	"errors"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/images"
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
 	"github.com/Lewin671/remote-agent/clientcore/domain/usage"
@@ -173,6 +174,7 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 			nowMs = c.m.sync.NowMs()
 		}
 		screens.DecorateSecurityEffects(effects, syncRes.SecurityWorkflowMeta, syncRes.SecurityNotifyOutcomes, syncRes.SecurityBootstrapError, nowMs)
+		decorateSessionImageEffects(effects)
 		if r := renderEffect(syncRes.Dirty); r != nil {
 			effects = append(effects, r)
 		}
@@ -202,6 +204,7 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 		nowMs = c.m.sync.NowMs()
 	}
 	screens.DecorateSecurityEffects(effects, stepRes.SecurityWorkflowMeta, stepRes.SecurityNotifyOutcomes, stepRes.SecurityBootstrapError, nowMs)
+	decorateSessionImageEffects(effects)
 	if r := renderEffect(stepRes.Dirty); r != nil {
 		effects = append(effects, r)
 	}
@@ -211,6 +214,52 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 	effects = c.appendAttachmentDraftRenderTarget(effects)
 	effects = c.m.mergeScheduleRender(effects)
 	return &corev1.EffectBatch{Effects: effects}
+}
+
+func decorateSessionImageEffects(effects []*corev1.Effect) {
+	for _, eff := range effects {
+		img := eff.GetSessionImageLoaded()
+		if img == nil {
+			continue
+		}
+		if img.Status == corev1.SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_OK {
+			if img.MimeType == "" {
+				img.MimeType = images.FormatMime(img.Format)
+			}
+			continue
+		}
+		if img.ErrorText != nil {
+			continue
+		}
+		switch img.Status {
+		case corev1.SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_BAD:
+			switch {
+			case img.RetiredHistory || img.ErrorCode == "retired_history":
+				img.ErrorText = text.Msg(text.KeyErrorsThisHistoryUsesAnOldEncryptionFormatAndCan)
+			case img.ErrorCode == "format_mismatch":
+				img.ErrorText = text.Msg(text.KeyErrorsImageContentDoesNotMatchItsFormat)
+			case img.ErrorCode == "lease":
+				img.ErrorText = text.Msg(text.KeyErrorsRemoteControlExpiredSavingChangesSessionControlAndNew)
+			case img.ErrorCode == "unavailable":
+				img.ErrorText = text.Msg(text.KeyErrorsWaitingForTheOwningComputerToUpdateTheCurrentRemote)
+			default:
+				img.ErrorText = text.Msg(text.KeyErrorsInvalidCiphertextSignatureKeyOrContentVerificationFailed)
+			}
+		case corev1.SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_ERROR:
+			switch img.ErrorCode {
+			case "not_found":
+				img.ErrorText = text.Msg(text.KeyCommonCannotFindThisSession)
+			case "deadline_exceeded", "timeout":
+				img.ErrorText = text.Msg(text.KeyErrorsConnectionTimedOut)
+			case "network", "unavailable", "unresolved_host":
+				img.ErrorText = text.Msg(text.KeyConnectionNoServer)
+			case "unauthenticated", "permission_denied":
+				img.ErrorText = text.Msg(text.KeyErrorsTheServerDoesNotRecognizeThisDeviceItMay)
+			default:
+				img.ErrorText = text.Msg(text.KeyErrorsCommandFailed)
+			}
+		}
+	}
 }
 
 func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.DirtyFlags) {

@@ -167,6 +167,64 @@ func (RelayRpcMethod) EnumDescriptor() ([]byte, []int) {
 	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{0}
 }
 
+type SessionImageLoadStatus int32
+
+const (
+	SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_UNSPECIFIED SessionImageLoadStatus = 0
+	SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_OK          SessionImageLoadStatus = 1
+	SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_EXPIRED     SessionImageLoadStatus = 2
+	SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_MISSING     SessionImageLoadStatus = 3
+	SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_BAD         SessionImageLoadStatus = 4
+	SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_ERROR       SessionImageLoadStatus = 5
+)
+
+// Enum value maps for SessionImageLoadStatus.
+var (
+	SessionImageLoadStatus_name = map[int32]string{
+		0: "SESSION_IMAGE_LOAD_STATUS_UNSPECIFIED",
+		1: "SESSION_IMAGE_LOAD_STATUS_OK",
+		2: "SESSION_IMAGE_LOAD_STATUS_EXPIRED",
+		3: "SESSION_IMAGE_LOAD_STATUS_MISSING",
+		4: "SESSION_IMAGE_LOAD_STATUS_BAD",
+		5: "SESSION_IMAGE_LOAD_STATUS_ERROR",
+	}
+	SessionImageLoadStatus_value = map[string]int32{
+		"SESSION_IMAGE_LOAD_STATUS_UNSPECIFIED": 0,
+		"SESSION_IMAGE_LOAD_STATUS_OK":          1,
+		"SESSION_IMAGE_LOAD_STATUS_EXPIRED":     2,
+		"SESSION_IMAGE_LOAD_STATUS_MISSING":     3,
+		"SESSION_IMAGE_LOAD_STATUS_BAD":         4,
+		"SESSION_IMAGE_LOAD_STATUS_ERROR":       5,
+	}
+)
+
+func (x SessionImageLoadStatus) Enum() *SessionImageLoadStatus {
+	p := new(SessionImageLoadStatus)
+	*p = x
+	return p
+}
+
+func (x SessionImageLoadStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SessionImageLoadStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_remoteagent_core_v1_relay_pipe_proto_enumTypes[1].Descriptor()
+}
+
+func (SessionImageLoadStatus) Type() protoreflect.EnumType {
+	return &file_remoteagent_core_v1_relay_pipe_proto_enumTypes[1]
+}
+
+func (x SessionImageLoadStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SessionImageLoadStatus.Descriptor instead.
+func (SessionImageLoadStatus) EnumDescriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{1}
+}
+
 // Opts the Core instance into the unified byte-pipe mode (RelayRpcEffect,
 // StreamRawFrameEvent, Core-managed login/token refresh, opaque caches, image
 // fetch, and Core-owned terminal crypto/lifecycle). Shells that do not send
@@ -787,11 +845,230 @@ func (x *ScheduleCacheBlob) GetSealedResult() []byte {
 	return nil
 }
 
+type SessionFetchImageAction struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	OpId      uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
+	SessionId string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	ImageId   string                 `protobuf:"bytes,3,opt,name=image_id,json=imageId,proto3" json:"image_id,omitempty"`
+	// Optional cached serialized remoteagent.v1.Envelope bytes (e.g. Android encrypted disk cache).
+	CachedEnvelope []byte `protobuf:"bytes,4,opt,name=cached_envelope,json=cachedEnvelope,proto3" json:"cached_envelope,omitempty"`
+	// Optional machine_id hint when session is not yet in the live directory.
+	MachineId     string `protobuf:"bytes,5,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionFetchImageAction) Reset() {
+	*x = SessionFetchImageAction{}
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionFetchImageAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionFetchImageAction) ProtoMessage() {}
+
+func (x *SessionFetchImageAction) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionFetchImageAction.ProtoReflect.Descriptor instead.
+func (*SessionFetchImageAction) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *SessionFetchImageAction) GetOpId() uint64 {
+	if x != nil {
+		return x.OpId
+	}
+	return 0
+}
+
+func (x *SessionFetchImageAction) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *SessionFetchImageAction) GetImageId() string {
+	if x != nil {
+		return x.ImageId
+	}
+	return ""
+}
+
+func (x *SessionFetchImageAction) GetCachedEnvelope() []byte {
+	if x != nil {
+		return x.CachedEnvelope
+	}
+	return nil
+}
+
+func (x *SessionFetchImageAction) GetMachineId() string {
+	if x != nil {
+		return x.MachineId
+	}
+	return ""
+}
+
+type SessionImageLoadedEffect struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	OpId      uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
+	SessionId string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	ImageId   string                 `protobuf:"bytes,3,opt,name=image_id,json=imageId,proto3" json:"image_id,omitempty"`
+	Status    SessionImageLoadStatus `protobuf:"varint,4,opt,name=status,proto3,enum=remoteagent.core.v1.SessionImageLoadStatus" json:"status,omitempty"`
+	Data      []byte                 `protobuf:"bytes,5,opt,name=data,proto3" json:"data,omitempty"`
+	MimeType  string                 `protobuf:"bytes,6,opt,name=mime_type,json=mimeType,proto3" json:"mime_type,omitempty"`
+	Width     uint32                 `protobuf:"varint,7,opt,name=width,proto3" json:"width,omitempty"`
+	Height    uint32                 `protobuf:"varint,8,opt,name=height,proto3" json:"height,omitempty"`
+	Format    v1.ImageFormat         `protobuf:"varint,9,opt,name=format,proto3,enum=remoteagent.v1.ImageFormat" json:"format,omitempty"`
+	// Non-empty only when freshly fetched, verified, and CanUseMachineCache(machine_id) is true.
+	CacheEnvelopeBytes []byte `protobuf:"bytes,10,opt,name=cache_envelope_bytes,json=cacheEnvelopeBytes,proto3" json:"cache_envelope_bytes,omitempty"`
+	ErrorText          *Text  `protobuf:"bytes,11,opt,name=error_text,json=errorText,proto3" json:"error_text,omitempty"`
+	ErrorCode          string `protobuf:"bytes,12,opt,name=error_code,json=errorCode,proto3" json:"error_code,omitempty"`
+	RetiredHistory     bool   `protobuf:"varint,13,opt,name=retired_history,json=retiredHistory,proto3" json:"retired_history,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *SessionImageLoadedEffect) Reset() {
+	*x = SessionImageLoadedEffect{}
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionImageLoadedEffect) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionImageLoadedEffect) ProtoMessage() {}
+
+func (x *SessionImageLoadedEffect) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionImageLoadedEffect.ProtoReflect.Descriptor instead.
+func (*SessionImageLoadedEffect) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *SessionImageLoadedEffect) GetOpId() uint64 {
+	if x != nil {
+		return x.OpId
+	}
+	return 0
+}
+
+func (x *SessionImageLoadedEffect) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *SessionImageLoadedEffect) GetImageId() string {
+	if x != nil {
+		return x.ImageId
+	}
+	return ""
+}
+
+func (x *SessionImageLoadedEffect) GetStatus() SessionImageLoadStatus {
+	if x != nil {
+		return x.Status
+	}
+	return SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_UNSPECIFIED
+}
+
+func (x *SessionImageLoadedEffect) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+func (x *SessionImageLoadedEffect) GetMimeType() string {
+	if x != nil {
+		return x.MimeType
+	}
+	return ""
+}
+
+func (x *SessionImageLoadedEffect) GetWidth() uint32 {
+	if x != nil {
+		return x.Width
+	}
+	return 0
+}
+
+func (x *SessionImageLoadedEffect) GetHeight() uint32 {
+	if x != nil {
+		return x.Height
+	}
+	return 0
+}
+
+func (x *SessionImageLoadedEffect) GetFormat() v1.ImageFormat {
+	if x != nil {
+		return x.Format
+	}
+	return v1.ImageFormat(0)
+}
+
+func (x *SessionImageLoadedEffect) GetCacheEnvelopeBytes() []byte {
+	if x != nil {
+		return x.CacheEnvelopeBytes
+	}
+	return nil
+}
+
+func (x *SessionImageLoadedEffect) GetErrorText() *Text {
+	if x != nil {
+		return x.ErrorText
+	}
+	return nil
+}
+
+func (x *SessionImageLoadedEffect) GetErrorCode() string {
+	if x != nil {
+		return x.ErrorCode
+	}
+	return ""
+}
+
+func (x *SessionImageLoadedEffect) GetRetiredHistory() bool {
+	if x != nil {
+		return x.RetiredHistory
+	}
+	return false
+}
+
 var File_remoteagent_core_v1_relay_pipe_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_relay_pipe_proto_rawDesc = "" +
 	"\n" +
-	"$remoteagent/core/v1/relay_pipe.proto\x12\x13remoteagent.core.v1\x1a\"remoteagent/core/v1/security.proto\x1a\x1aremoteagent/v1/relay.proto\"0\n" +
+	"$remoteagent/core/v1/relay_pipe.proto\x12\x13remoteagent.core.v1\x1a\"remoteagent/core/v1/security.proto\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/relay.proto\"0\n" +
 	"\x14RelayPipeConfigEvent\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\"\x84\x02\n" +
 	"\x0eRelayRpcEffect\x12\x13\n" +
@@ -841,7 +1118,33 @@ const file_remoteagent_core_v1_relay_pipe_proto_rawDesc = "" +
 	"\x11ScheduleCacheBlob\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12#\n" +
-	"\rsealed_result\x18\x02 \x01(\fR\fsealedResult*\x8f\n" +
+	"\rsealed_result\x18\x02 \x01(\fR\fsealedResult\"\xb0\x01\n" +
+	"\x17SessionFetchImageAction\x12\x13\n" +
+	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x02 \x01(\tR\tsessionId\x12\x19\n" +
+	"\bimage_id\x18\x03 \x01(\tR\aimageId\x12'\n" +
+	"\x0fcached_envelope\x18\x04 \x01(\fR\x0ecachedEnvelope\x12\x1d\n" +
+	"\n" +
+	"machine_id\x18\x05 \x01(\tR\tmachineId\"\xf6\x03\n" +
+	"\x18SessionImageLoadedEffect\x12\x13\n" +
+	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x02 \x01(\tR\tsessionId\x12\x19\n" +
+	"\bimage_id\x18\x03 \x01(\tR\aimageId\x12C\n" +
+	"\x06status\x18\x04 \x01(\x0e2+.remoteagent.core.v1.SessionImageLoadStatusR\x06status\x12\x12\n" +
+	"\x04data\x18\x05 \x01(\fR\x04data\x12\x1b\n" +
+	"\tmime_type\x18\x06 \x01(\tR\bmimeType\x12\x14\n" +
+	"\x05width\x18\a \x01(\rR\x05width\x12\x16\n" +
+	"\x06height\x18\b \x01(\rR\x06height\x123\n" +
+	"\x06format\x18\t \x01(\x0e2\x1b.remoteagent.v1.ImageFormatR\x06format\x120\n" +
+	"\x14cache_envelope_bytes\x18\n" +
+	" \x01(\fR\x12cacheEnvelopeBytes\x128\n" +
+	"\n" +
+	"error_text\x18\v \x01(\v2\x19.remoteagent.core.v1.TextR\terrorText\x12\x1d\n" +
+	"\n" +
+	"error_code\x18\f \x01(\tR\terrorCode\x12'\n" +
+	"\x0fretired_history\x18\r \x01(\bR\x0eretiredHistory*\x8f\n" +
 	"\n" +
 	"\x0eRelayRpcMethod\x12 \n" +
 	"\x1cRELAY_RPC_METHOD_UNSPECIFIED\x10\x00\x12(\n" +
@@ -878,7 +1181,14 @@ const file_remoteagent_core_v1_relay_pipe_proto_rawDesc = "" +
 	"\x1dRELAY_RPC_METHOD_GET_PUSH_KEY\x10\x1e\x12*\n" +
 	"&RELAY_RPC_METHOD_SET_PUSH_SUBSCRIPTION\x10\x1f\x12$\n" +
 	" RELAY_RPC_METHOD_SET_PUSH_TARGET\x10 \x12\x1c\n" +
-	"\x18RELAY_RPC_METHOD_HEALTHZ\x10!B\xd8\x01\n" +
+	"\x18RELAY_RPC_METHOD_HEALTHZ\x10!*\xfb\x01\n" +
+	"\x16SessionImageLoadStatus\x12)\n" +
+	"%SESSION_IMAGE_LOAD_STATUS_UNSPECIFIED\x10\x00\x12 \n" +
+	"\x1cSESSION_IMAGE_LOAD_STATUS_OK\x10\x01\x12%\n" +
+	"!SESSION_IMAGE_LOAD_STATUS_EXPIRED\x10\x02\x12%\n" +
+	"!SESSION_IMAGE_LOAD_STATUS_MISSING\x10\x03\x12!\n" +
+	"\x1dSESSION_IMAGE_LOAD_STATUS_BAD\x10\x04\x12#\n" +
+	"\x1fSESSION_IMAGE_LOAD_STATUS_ERROR\x10\x05B\xd8\x01\n" +
 	"\x17com.remoteagent.core.v1B\x0eRelayPipeProtoP\x01Z?github.com/Lewin671/remote-agent/gen/remoteagent/core/v1;corev1\xa2\x02\x03RCX\xaa\x02\x13Remoteagent.Core.V1\xca\x02\x13Remoteagent\\Core\\V1\xe2\x02\x1fRemoteagent\\Core\\V1\\GPBMetadata\xea\x02\x15Remoteagent::Core::V1b\x06proto3"
 
 var (
@@ -893,31 +1203,39 @@ func file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP() []byte {
 	return file_remoteagent_core_v1_relay_pipe_proto_rawDescData
 }
 
-var file_remoteagent_core_v1_relay_pipe_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_remoteagent_core_v1_relay_pipe_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_remoteagent_core_v1_relay_pipe_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_remoteagent_core_v1_relay_pipe_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_remoteagent_core_v1_relay_pipe_proto_goTypes = []any{
-	(RelayRpcMethod)(0),          // 0: remoteagent.core.v1.RelayRpcMethod
-	(*RelayPipeConfigEvent)(nil), // 1: remoteagent.core.v1.RelayPipeConfigEvent
-	(*RelayRpcEffect)(nil),       // 2: remoteagent.core.v1.RelayRpcEffect
-	(*RelayRpcCancelEffect)(nil), // 3: remoteagent.core.v1.RelayRpcCancelEffect
-	(*RelayRpcResultEvent)(nil),  // 4: remoteagent.core.v1.RelayRpcResultEvent
-	(*StreamRawFrameEvent)(nil),  // 5: remoteagent.core.v1.StreamRawFrameEvent
-	(*RefreshDevicesAction)(nil), // 6: remoteagent.core.v1.RefreshDevicesAction
-	(*PushRpcAction)(nil),        // 7: remoteagent.core.v1.PushRpcAction
-	(*PushRpcResultEffect)(nil),  // 8: remoteagent.core.v1.PushRpcResultEffect
-	(*ScheduleCacheBlob)(nil),    // 9: remoteagent.core.v1.ScheduleCacheBlob
-	(*RpcErrorDetailBytes)(nil),  // 10: remoteagent.core.v1.RpcErrorDetailBytes
-	(v1.NotifyKind)(0),           // 11: remoteagent.v1.NotifyKind
+	(RelayRpcMethod)(0),              // 0: remoteagent.core.v1.RelayRpcMethod
+	(SessionImageLoadStatus)(0),      // 1: remoteagent.core.v1.SessionImageLoadStatus
+	(*RelayPipeConfigEvent)(nil),     // 2: remoteagent.core.v1.RelayPipeConfigEvent
+	(*RelayRpcEffect)(nil),           // 3: remoteagent.core.v1.RelayRpcEffect
+	(*RelayRpcCancelEffect)(nil),     // 4: remoteagent.core.v1.RelayRpcCancelEffect
+	(*RelayRpcResultEvent)(nil),      // 5: remoteagent.core.v1.RelayRpcResultEvent
+	(*StreamRawFrameEvent)(nil),      // 6: remoteagent.core.v1.StreamRawFrameEvent
+	(*RefreshDevicesAction)(nil),     // 7: remoteagent.core.v1.RefreshDevicesAction
+	(*PushRpcAction)(nil),            // 8: remoteagent.core.v1.PushRpcAction
+	(*PushRpcResultEffect)(nil),      // 9: remoteagent.core.v1.PushRpcResultEffect
+	(*ScheduleCacheBlob)(nil),        // 10: remoteagent.core.v1.ScheduleCacheBlob
+	(*SessionFetchImageAction)(nil),  // 11: remoteagent.core.v1.SessionFetchImageAction
+	(*SessionImageLoadedEffect)(nil), // 12: remoteagent.core.v1.SessionImageLoadedEffect
+	(*RpcErrorDetailBytes)(nil),      // 13: remoteagent.core.v1.RpcErrorDetailBytes
+	(v1.NotifyKind)(0),               // 14: remoteagent.v1.NotifyKind
+	(v1.ImageFormat)(0),              // 15: remoteagent.v1.ImageFormat
+	(*Text)(nil),                     // 16: remoteagent.core.v1.Text
 }
 var file_remoteagent_core_v1_relay_pipe_proto_depIdxs = []int32{
 	0,  // 0: remoteagent.core.v1.RelayRpcEffect.method:type_name -> remoteagent.core.v1.RelayRpcMethod
-	10, // 1: remoteagent.core.v1.RelayRpcResultEvent.error_details:type_name -> remoteagent.core.v1.RpcErrorDetailBytes
-	11, // 2: remoteagent.core.v1.PushRpcAction.kinds:type_name -> remoteagent.v1.NotifyKind
-	3,  // [3:3] is the sub-list for method output_type
-	3,  // [3:3] is the sub-list for method input_type
-	3,  // [3:3] is the sub-list for extension type_name
-	3,  // [3:3] is the sub-list for extension extendee
-	0,  // [0:3] is the sub-list for field type_name
+	13, // 1: remoteagent.core.v1.RelayRpcResultEvent.error_details:type_name -> remoteagent.core.v1.RpcErrorDetailBytes
+	14, // 2: remoteagent.core.v1.PushRpcAction.kinds:type_name -> remoteagent.v1.NotifyKind
+	1,  // 3: remoteagent.core.v1.SessionImageLoadedEffect.status:type_name -> remoteagent.core.v1.SessionImageLoadStatus
+	15, // 4: remoteagent.core.v1.SessionImageLoadedEffect.format:type_name -> remoteagent.v1.ImageFormat
+	16, // 5: remoteagent.core.v1.SessionImageLoadedEffect.error_text:type_name -> remoteagent.core.v1.Text
+	6,  // [6:6] is the sub-list for method output_type
+	6,  // [6:6] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_relay_pipe_proto_init() }
@@ -926,13 +1244,14 @@ func file_remoteagent_core_v1_relay_pipe_proto_init() {
 		return
 	}
 	file_remoteagent_core_v1_security_proto_init()
+	file_remoteagent_core_v1_text_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_core_v1_relay_pipe_proto_rawDesc), len(file_remoteagent_core_v1_relay_pipe_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   9,
+			NumEnums:      2,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

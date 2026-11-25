@@ -44,10 +44,10 @@
     }
   },
   {
-    "key": "common.android_cannot_find_this_session",
+    "key": "common.cannot_find_this_session",
     "zh-CN": "找不到这个会话",
     "en": "Cannot find this session",
-    "notes": "Android Model 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "notes": "无法找到指定会话时的错误文案，供 Core 与三端共享。无变量。",
     "params": {},
     "platforms": [
       "web",

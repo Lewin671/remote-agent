@@ -532,7 +532,7 @@ func BuildViewerView(
 			if header.MissingText != nil {
 				out.EmptyText = header.MissingText
 			} else {
-				out.EmptyText = text.Msg(text.KeyCommonAndroidCannotFindThisSession)
+				out.EmptyText = text.Msg(text.KeyCommonCannotFindThisSession)
 			}
 		} else if timelineLoaded {
 			out.EmptyText = text.Msg(text.KeyImageViewerEmpty)
