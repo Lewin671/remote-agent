@@ -30,9 +30,9 @@ if [ "$(uname)" = Darwin ]; then
 	[ -n "$identity" ] || identity=$(printf '%s\n' "$identities" |
 		sed -n 's/.*"\(Apple Development: [^"]*\)".*/\1/p' | head -n 1)
 	if [ -n "$identity" ]; then
+		# A failure (codesign reports it) only costs the kept permissions.
 		codesign --force --sign "$identity" --identifier com.github.lewin671.remote-agent \
-			--options runtime "$tmp" ||
-			echo "codesign failed: macOS may ask again for permissions it already granted" >&2
+			--options runtime "$tmp" || true
 	fi
 fi
 mv -f "$tmp" "$BIN"
