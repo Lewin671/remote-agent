@@ -327,6 +327,7 @@ type workflowState struct {
 	warmTokenInFlight  bool
 	inFlightLogin      *loginTokenTask
 	loginWaiters       []authTokenWaiter
+	accountGen         uint64
 
 	record          *PersistedRecord
 	recordRev       string
@@ -412,6 +413,14 @@ func (e *Engine) SetNetworkGeneration(gen uint64) {
 			e.wf.inFlightLogin.resetForNetworkChange(e)
 		}
 	}
+}
+
+// InvalidateAccountAuth advances the account auth generation and clears any cached login token so
+// in-flight login or sync RPCs from an outgoing account cannot write tokens or records after exit starts.
+func (e *Engine) InvalidateAccountAuth() {
+	wf := e.ensureWF()
+	wf.accountGen++
+	wf.cachedToken, wf.tokenExpiresMs = "", 0
 }
 
 // SetPollObserver registers an observer for managed security poll progress.
@@ -1270,6 +1279,7 @@ func (e *Engine) startSharedLogin(timeoutMs int64) {
 		shared:      true,
 		timeoutMs:   timeoutMs,
 		attempt:     1,
+		accountGen:  wf.accountGen,
 	}
 	wf.inFlightLogin = t
 	t.currentRpcOpID = e.waitProtoRPCTimeout(
@@ -1347,6 +1357,7 @@ type loginTokenTask struct {
 	timeoutMs              int64
 	attempt                uint64
 	currentRpcOpID         uint64
+	accountGen             uint64
 	challenge              []byte
 }
 
@@ -1426,7 +1437,8 @@ func (e *Engine) forceLoginToken(server string, keyKind corev1.SecurityKeyKind, 
 	t := &loginTokenTask{
 		taskBase: taskBase{fgGen: capturedGen, target: target},
 		server:   server, keyKind: keyKind, slot: slot, deviceID: deviceID, fgCheck: fgCheck, cacheResult: cacheResult,
-		attempt: 1,
+		attempt:    1,
+		accountGen: e.ensureWF().accountGen,
 	}
 	t.currentRpcOpID = e.waitProtoRPCTimeout(
 		corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_CHALLENGE,
@@ -1494,6 +1506,9 @@ func (t *loginTokenTask) step(e *Engine, ev *secEvent) error {
 			return nil
 		}
 		return ev.err
+	}
+	if e.ensureWF().accountGen != t.accountGen {
+		return devicesec.ErrStale
 	}
 	var fg uint64
 	if t.fgCheck {

@@ -244,13 +244,14 @@ func (e *Engine) SyncStatesTag(nowMs int64, touch bool, authToken string, tag ui
 }
 
 type syncStatesTask struct {
-	server    string
-	authToken string
-	pages     int
-	touch     bool
-	cur       *PersistedRecord
-	head      devicesec.State
-	stage     uint8
+	server     string
+	authToken  string
+	pages      int
+	touch      bool
+	accountGen uint64
+	cur        *PersistedRecord
+	head       devicesec.State
+	stage      uint8
 }
 
 const (
@@ -283,7 +284,7 @@ func (e *Engine) syncWait(touch bool, authToken string, waiter syncWaiter) {
 		e.finishSyncWaiters(ErrNotInitialized)
 		return
 	}
-	(&syncStatesTask{server: server, authToken: authToken, touch: touch}).nextPage(e)
+	(&syncStatesTask{server: server, authToken: authToken, touch: touch, accountGen: wf.accountGen}).nextPage(e)
 }
 
 func (e *Engine) finishSyncWaiters(err error) {
@@ -305,6 +306,10 @@ func (e *Engine) finishSyncWaiters(err error) {
 
 func (t *syncStatesTask) nextPage(e *Engine) {
 	wf := e.ensureWF()
+	if wf.accountGen != t.accountGen {
+		e.finishSyncWaiters(devicesec.ErrStale)
+		return
+	}
 	if t.pages >= maxSyncPages {
 		wf.recoveryStatusStale = true
 		e.finishSyncWaiters(devicesec.ErrCapacity)
@@ -343,6 +348,9 @@ func (t *syncStatesTask) fetchAfterTouch(e *Engine, rec *PersistedRecord) {
 
 func (t *syncStatesTask) step(e *Engine, ev *secEvent) error {
 	wf := e.ensureWF()
+	if wf.accountGen != t.accountGen {
+		return devicesec.ErrStale
+	}
 	switch t.stage {
 	case syncStageTouch:
 		if ev.err != nil {

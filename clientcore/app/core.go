@@ -18,16 +18,33 @@ import (
 
 // Core wraps the unified sync Engine and screen ViewModel builders behind a single Dispatch/View API.
 type Core struct {
-	m *Model
+	m               *Model
+	clientCfg       *clientInitConfig
+	nextSyncOpSeq   uint64
+	nextSecOpID     uint64
+	nextSecActionID uint64
+	nextSecEffectOp uint64
 }
 
 // New constructs a Core instance with fresh sync state and screen caches.
 func New() *Core {
-	c := &Core{m: newModel()}
+	c := &Core{}
+	c.initModel()
+	return c
+}
+
+func (c *Core) initModel() {
+	c.m = newModel()
+	if c.nextSyncOpSeq > 0 {
+		c.m.sync.SetNextOpSeq(c.nextSyncOpSeq)
+	}
+	if c.nextSecOpID > 0 {
+		c.m.sync.SecurityEngine().SetNextOpID(c.nextSecOpID)
+	}
 	c.m.state.DraftViewFn = func(scope *corev1.DraftScope) *corev1.AttachmentDraftView {
 		return c.buildAttachmentDraftView(scope, false)
 	}
-	return c
+	c.m.sync.SetSecurityPollObserver(c)
 }
 
 // Close releases references held by Core.
@@ -134,6 +151,9 @@ func (c *Core) View(screen *corev1.Screen) (*corev1.ViewModel, error) {
 		if vm, handled, err := c.viewSchedules(screen); handled {
 			return vm, err
 		}
+		if vm, handled, err := c.viewSecurity(screen); handled {
+			return vm, err
+		}
 		return nil, errors.New("app: unsupported screen")
 	}
 }
@@ -176,6 +196,7 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 		screens.DecorateSecurityEffects(effects, syncRes.SecurityWorkflowMeta, syncRes.SecurityNotifyOutcomes, syncRes.SecurityBootstrapError, nowMs)
 		decorateSessionImageEffects(effects)
 		decorateTerminalStateEffects(effects)
+		effects = c.processSecurityEffects(effects, syncRes.SecurityWorkflowMeta, syncRes.SecurityBootstrapError, nowMs)
 		if r := renderEffect(syncRes.Dirty); r != nil {
 			effects = append(effects, r)
 		}
@@ -184,6 +205,7 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 		effects = c.appendSessionRenderTarget(syncRes.Dirty, effects)
 		effects = c.appendAttachmentDraftRenderTarget(effects)
 		effects = c.m.mergeScheduleRender(effects)
+		effects = c.appendSecurityRender(effects, syncRes.Dirty)
 		return &corev1.EffectBatch{Effects: effects}
 	}
 
@@ -207,6 +229,7 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 	screens.DecorateSecurityEffects(effects, stepRes.SecurityWorkflowMeta, stepRes.SecurityNotifyOutcomes, stepRes.SecurityBootstrapError, nowMs)
 	decorateSessionImageEffects(effects)
 	decorateTerminalStateEffects(effects)
+	effects = c.processSecurityEffects(effects, stepRes.SecurityWorkflowMeta, stepRes.SecurityBootstrapError, nowMs)
 	if r := renderEffect(stepRes.Dirty); r != nil {
 		effects = append(effects, r)
 	}
@@ -215,6 +238,7 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 	effects = c.appendSessionRenderTarget(stepRes.Dirty, effects)
 	effects = c.appendAttachmentDraftRenderTarget(effects)
 	effects = c.m.mergeScheduleRender(effects)
+	effects = c.appendSecurityRender(effects, stepRes.Dirty)
 	return &corev1.EffectBatch{Effects: effects}
 }
 
@@ -693,6 +717,9 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 		c.m.settingsDirty.MachineStatus = true
 		c.m.settingsDirty.MachineSettings = true
 		c.m.ensureSessionStore().pendingDirty = true
+		if c.m.sec != nil {
+			c.m.sec.dirty.markAll()
+		}
 
 	case *corev1.Event_HomeSetScope:
 		if k.HomeSetScope == nil {
@@ -1203,6 +1230,10 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 			}
 		}
 	default:
+		if secEffects, handled := c.dispatchSecurityUI(ctx, ev); handled {
+			effects = append(effects, secEffects...)
+			break
+		}
 		effects = append(effects, c.dispatchSettingsUI(ctx, ev)...)
 		effects = append(effects, c.dispatchSessionUI(ctx, ev)...)
 		effects = append(effects, c.dispatchUsageUI(ctx, ev)...)

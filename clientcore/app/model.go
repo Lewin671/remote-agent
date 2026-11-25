@@ -85,6 +85,7 @@ type Model struct {
 	usageCacheRequested       map[string]bool
 	activeNewSessionPagingKey string
 	pendingNotifTap           *corev1.ResolveNotificationTapAction
+	sec                       *secControllerState
 }
 
 func newModel() *Model {

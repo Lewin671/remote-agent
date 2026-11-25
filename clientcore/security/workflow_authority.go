@@ -1383,27 +1383,83 @@ func (t *checkRetainedDeniedTask) step(e *Engine, ev *secEvent) error {
 	return nil
 }
 
-func (e *Engine) recordIndicatesAuthority() bool {
-	if e.isAuthority() {
-		return true
-	}
-	wf := e.ensureWF()
-	if wf.record == nil || !wf.record.Member || len(wf.record.States) == 0 {
+func recordIndicatesAuthority(rec *PersistedRecord) bool {
+	if rec == nil || !rec.Member || len(rec.States) == 0 {
 		return false
 	}
-	head, err := devicesec.ParseState(wf.record.States[len(wf.record.States)-1])
+	head, err := devicesec.ParseState(rec.States[len(rec.States)-1])
 	if err != nil {
 		return false
 	}
-	return head.Core.AuthorityID == wf.record.MemberID
+	return head.Core.AuthorityID == rec.MemberID
+}
+
+func (e *Engine) recordIndicatesAuthority() bool {
+	return e.isAuthority() || recordIndicatesAuthority(e.ensureWF().record)
+}
+
+type checkExitAdviceTask struct {
+	actionID uint64
 }
 
 func (e *Engine) checkExitAdviceOp(actionID uint64) {
+	e.readBootstrapStorage(&checkExitAdviceTask{actionID: actionID})
+}
+
+func (t *checkExitAdviceTask) step(e *Engine, ev *secEvent) error {
+	if ev != nil && ev.err != nil {
+		e.emitActionResult(t.actionID, nil, ev.err)
+		return nil
+	}
+	if ev != nil && ev.storage != nil {
+		var rec *PersistedRecord
+		var op *PersistedOperation
+		var intent *PersistedRegistrationIntent
+		for _, ent := range ev.storage.entries {
+			if ent == nil || len(ent.Data) == 0 {
+				continue
+			}
+			switch ent.Bucket {
+			case bktRec:
+				r, err := DecodePersistedRecord(ent.Data)
+				if err != nil {
+					e.emitActionResult(t.actionID, nil, err)
+					return nil
+				}
+				rec = r
+			case bktOp:
+				o, err := DecodePersistedOperation(ent.Data)
+				if err != nil {
+					e.emitActionResult(t.actionID, nil, err)
+					return nil
+				}
+				op = o
+			case bktIntent:
+				in, err := DecodePersistedRegistrationIntent(ent.Data)
+				if err != nil {
+					e.emitActionResult(t.actionID, nil, err)
+					return nil
+				}
+				intent = in
+			}
+		}
+		// Compute advice purely from storage without mutating live Engine/workflowState.
+		e.emitActionResult(t.actionID, &corev1.SecurityWorkflowResultEffect{
+			ExitAdvice: &corev1.SecurityExitAdvice{
+				Authority:  recordIndicatesAuthority(rec),
+				Unresolved: op != nil || intent != nil,
+			},
+		}, nil)
+		return nil
+	}
 	wf := e.ensureWF()
-	unresolved, auth := wf.pendingOp != nil || wf.regIntent != nil, e.recordIndicatesAuthority()
-	e.emitActionResult(actionID, &corev1.SecurityWorkflowResultEffect{
-		ExitAdvice: &corev1.SecurityExitAdvice{Authority: auth, Unresolved: unresolved},
+	e.emitActionResult(t.actionID, &corev1.SecurityWorkflowResultEffect{
+		ExitAdvice: &corev1.SecurityExitAdvice{
+			Authority:  e.recordIndicatesAuthority(),
+			Unresolved: wf.pendingOp != nil || wf.regIntent != nil,
+		},
 	}, nil)
+	return nil
 }
 
 type clearLocalSecurityTask struct {
@@ -1412,6 +1468,7 @@ type clearLocalSecurityTask struct {
 }
 
 func (e *Engine) startClearLocalSecurity(target taskTarget, statusOnOK bool) {
+	e.InvalidateAccountAuth()
 	e.resetWorkflowPairingSessions()
 	e.waitStorage(&corev1.SecurityStorageEffect{
 		Op: corev1.SecurityStorageOp_SECURITY_STORAGE_OP_CLEAR_ALL, ClearLoginToken: true,
@@ -1423,6 +1480,7 @@ func (t *clearLocalSecurityTask) step(e *Engine, ev *secEvent) error {
 		return ev.err
 	}
 	wf := e.ensureWF()
+	e.InvalidateAccountAuth()
 	e.resetChainState()
 	e.loaded, e.isMember, e.removed, e.cleared, e.securityLocked = false, false, false, true, false
 	wf.bootstrapInvalid, wf.bootstrapError = false, ""
