@@ -751,6 +751,8 @@ func diagVerdictText(v transport.Verdict) *corev1.Text {
 		return text.Msg(text.KeyTransportDiagVerdictIpv6Silent)
 	case transport.VerdictAllFailed:
 		return text.Msg(text.KeyTransportDiagVerdictAllFailed)
+	case transport.VerdictUnselected:
+		return text.Msg(text.KeyTransportDiagVerdictUnselected)
 	case transport.VerdictDTLS:
 		return text.Msg(text.KeyTransportDiagVerdictDtls)
 	case transport.VerdictChannel:

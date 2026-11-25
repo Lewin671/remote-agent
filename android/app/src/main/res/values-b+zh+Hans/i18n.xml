@@ -2144,6 +2144,7 @@
     <string name="transport_diag_verdict_signal_limited" formatted="false">"握手消息被中继限速了，稍后会自动再试"</string>
     <string name="transport_diag_verdict_signal_offline" formatted="false">"握手消息没送到：电脑当前不在线"</string>
     <string name="transport_diag_verdict_unknown" formatted="false">"没连上，原因不明"</string>
+    <string name="transport_diag_verdict_unselected" formatted="false">"两边地址能互通，但没有选定线路"</string>
     <string name="transport_direct" formatted="false">"直连"</string>
     <string name="transport_direct_slow" formatted="false">"直连较慢，暂时改用中继"</string>
     <string name="transport_file_speed_both">"直连 %1$s · 中继 %2$s MiB/s"</string>

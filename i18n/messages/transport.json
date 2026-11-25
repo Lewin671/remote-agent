@@ -726,6 +726,22 @@
     }
   },
   {
+    "key": "transport.diag_verdict_unselected",
+    "zh-CN": "两边地址能互通，但没有选定线路",
+    "en": "The two sides reached each other, but no path was chosen",
+    "notes": "诊断页顶部的一句结论：有地址对的连通检查成功了，但负责选定的一方没有选定任何一对，连通检查没有完成。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "transport.diag_verdict_dtls",
     "zh-CN": "已连上，加密握手没完成",
     "en": "Connected, but the encryption handshake didn't finish",

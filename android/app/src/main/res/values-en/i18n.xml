@@ -2239,6 +2239,7 @@
     <string name="transport_diag_verdict_signal_limited" formatted="false">"The relay rate-limited the handshake messages; it will retry"</string>
     <string name="transport_diag_verdict_signal_offline" formatted="false">"The handshake didn\'t arrive: the computer is offline"</string>
     <string name="transport_diag_verdict_unknown" formatted="false">"Couldn\'t connect; the cause is unknown"</string>
+    <string name="transport_diag_verdict_unselected" formatted="false">"The two sides reached each other, but no path was chosen"</string>
     <string name="transport_direct" formatted="false">"Direct connection"</string>
     <string name="transport_direct_slow" formatted="false">"Direct is slow; using relay for now"</string>
     <string name="transport_file_speed_both">"Direct %1$s · Relay %2$s MiB/s"</string>

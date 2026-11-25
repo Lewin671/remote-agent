@@ -1851,6 +1851,7 @@
 "transport_diag_verdict_signal_limited" = "The relay rate-limited the handshake messages; it will retry";
 "transport_diag_verdict_signal_offline" = "The handshake didn't arrive: the computer is offline";
 "transport_diag_verdict_unknown" = "Couldn't connect; the cause is unknown";
+"transport_diag_verdict_unselected" = "The two sides reached each other, but no path was chosen";
 "transport_direct" = "Direct connection";
 "transport_direct_slow" = "Direct is slow; using relay for now";
 "transport_file_speed_both" = "Direct %1$@ · Relay %2$@ MiB/s";

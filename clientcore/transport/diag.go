@@ -135,6 +135,7 @@ const (
 	VerdictNoSDP
 	VerdictIPv6Silent
 	VerdictAllFailed
+	VerdictUnselected
 	VerdictDTLS
 	VerdictChannel
 	VerdictConfirm
@@ -687,7 +688,9 @@ func StageOf(pc *PcData, a *AttemptData) Stage {
 		return StageSDP
 	}
 	encrypted := seen(a, StateConn, "connected") || seen(a, StateDTLS, "connected")
-	if !encrypted && !seen(a, StateICE, "connected", "completed") && !anyPairOK(a) {
+	// A pair that answered is not enough: until one is nominated the
+	// connectivity checks have not chosen a path.
+	if !encrypted && !seen(a, StateICE, "connected", "completed") && !anyPairNominated(a) {
 		return StageICE
 	}
 	if !encrypted {
@@ -708,6 +711,18 @@ func anyPairOK(a *AttemptData) bool {
 	}
 	for _, p := range a.Pairs {
 		if p.OK > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func anyPairNominated(a *AttemptData) bool {
+	if a == nil {
+		return false
+	}
+	for _, p := range a.Pairs {
+		if p.Nominated {
 			return true
 		}
 	}
@@ -785,7 +800,9 @@ func VerdictOf(r *RoundData, blocked bool) Verdict {
 	if a == nil || a.Local.Count(nil) == 0 {
 		return VerdictNoLocal
 	}
-	if r.End == EndNoTraversal || a.Local.Count(func(k CandKind) bool { return k.Type == CandSrflx }) == 0 {
+	// A pair that answered shows the addresses reach each other, so missing
+	// mapped addresses are not what stopped the round.
+	if !anyPairOK(a) && (r.End == EndNoTraversal || a.Local.Count(func(k CandKind) bool { return k.Type == CandSrflx }) == 0) {
 		return VerdictNoSTUN
 	}
 	if a.Remote.Count(nil) == 0 {
@@ -793,6 +810,9 @@ func VerdictOf(r *RoundData, blocked bool) Verdict {
 	}
 	switch stage {
 	case StageICE:
+		if anyPairOK(a) {
+			return VerdictUnselected
+		}
 		global6 := func(k CandKind) bool { return k.Family == Family6 && k.Class == AddrGlobal }
 		sent, silent, any6 := false, true, false
 		for _, p := range a.Pairs {

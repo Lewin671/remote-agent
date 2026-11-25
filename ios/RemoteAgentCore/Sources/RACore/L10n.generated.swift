@@ -7803,6 +7803,10 @@ public enum L10n {
         let key = "transport_diag_verdict_unknown"
         return format(key, locale: locale, args: [])
     }
+    public static func transportDiagVerdictUnselected(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_verdict_unselected"
+        return format(key, locale: locale, args: [])
+    }
     public static func transportDirect(locale: String = MessageLocale.current) -> String {
         let key = "transport_direct"
         return format(key, locale: locale, args: [])
@@ -16035,6 +16039,10 @@ public enum L10nMessage {
         let key = "transport_diag_verdict_unknown"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func transportDiagVerdictUnselected() -> LocalizedMessage {
+        let key = "transport_diag_verdict_unselected"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func transportDirect() -> LocalizedMessage {
         let key = "transport_direct"
         return LocalizedMessage(key: key, arguments: [])
@@ -18567,16 +18575,17 @@ public enum L10nText {
         case "transport.diag_verdict_signal_limited": return L10n.format("transport_diag_verdict_signal_limited", locale: locale, args: [])
         case "transport.diag_verdict_signal_offline": return L10n.format("transport_diag_verdict_signal_offline", locale: locale, args: [])
         case "transport.diag_verdict_unknown": return L10n.format("transport_diag_verdict_unknown", locale: locale, args: [])
+        case "transport.diag_verdict_unselected": return L10n.format("transport_diag_verdict_unselected", locale: locale, args: [])
         case "transport.direct": return L10n.format("transport_direct", locale: locale, args: [])
         case "transport.direct_slow": return L10n.format("transport_direct_slow", locale: locale, args: [])
         case "transport.file_speed_both": return L10n.format("transport_file_speed_both", locale: locale, args: [strArg(args["direct"]), strArg(args["relay"])])
         case "transport.file_speed_direct": return L10n.format("transport_file_speed_direct", locale: locale, args: [strArg(args["direct"])])
-        case "transport.file_speed_relay": return L10n.format("transport_file_speed_relay", locale: locale, args: [strArg(args["relay"])])
         default: return nil
         }
     }
     private static func resolve13(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "transport.file_speed_relay": return L10n.format("transport_file_speed_relay", locale: locale, args: [strArg(args["relay"])])
         case "transport.footer": return L10n.format("transport_footer", locale: locale, args: [])
         case "transport.popover_a11y": return L10n.format("transport_popover_a11y", locale: locale, args: [])
         case "transport.popover_direct_body": return L10n.format("transport_popover_direct_body", locale: locale, args: [])

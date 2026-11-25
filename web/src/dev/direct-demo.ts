@@ -63,6 +63,7 @@ const DIAG_VERDICT_KEYS: Record<string, string> = {
   no_sdp: "transport.diag_verdict_no_sdp",
   ipv6_silent: "transport.diag_verdict_ipv6_silent",
   all_failed: "transport.diag_verdict_all_failed",
+  unselected: "transport.diag_verdict_unselected",
   dtls: "transport.diag_verdict_dtls",
   channel: "transport.diag_verdict_channel",
   confirm: "transport.diag_verdict_confirm",

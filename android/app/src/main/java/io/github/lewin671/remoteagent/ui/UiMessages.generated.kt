@@ -6501,6 +6501,9 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.diag_verdict_unknown" -> {
             resources.getString(R.string.transport_diag_verdict_unknown)
         }
+        "transport.diag_verdict_unselected" -> {
+            resources.getString(R.string.transport_diag_verdict_unselected)
+        }
         "transport.direct" -> {
             resources.getString(R.string.transport_direct)
         }
@@ -6512,16 +6515,16 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
             val relay = message.args.getValue("relay") as String
             resources.getString(R.string.transport_file_speed_both, direct, relay)
         }
-        "transport.file_speed_direct" -> {
-            val direct = message.args.getValue("direct") as String
-            resources.getString(R.string.transport_file_speed_direct, direct)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "transport.file_speed_direct" -> {
+            val direct = message.args.getValue("direct") as String
+            resources.getString(R.string.transport_file_speed_direct, direct)
+        }
         "transport.file_speed_relay" -> {
             val relay = message.args.getValue("relay") as String
             resources.getString(R.string.transport_file_speed_relay, relay)

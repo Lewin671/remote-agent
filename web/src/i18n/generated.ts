@@ -1689,6 +1689,7 @@ export interface MessageArgs {
   "transport.diag_verdict_signal_limited": { [name: string]: never };
   "transport.diag_verdict_signal_offline": { [name: string]: never };
   "transport.diag_verdict_unknown": { [name: string]: never };
+  "transport.diag_verdict_unselected": { [name: string]: never };
   "transport.direct": { [name: string]: never };
   "transport.direct_slow": { [name: string]: never };
   "transport.file_speed_both": { direct: string; relay: string };
@@ -4032,6 +4033,7 @@ export const messages = {
     "transport.diag_verdict_signal_limited": "The relay rate-limited the handshake messages; it will retry",
     "transport.diag_verdict_signal_offline": "The handshake didn't arrive: the computer is offline",
     "transport.diag_verdict_unknown": "Couldn't connect; the cause is unknown",
+    "transport.diag_verdict_unselected": "The two sides reached each other, but no path was chosen",
     "transport.direct": "Direct connection",
     "transport.direct_slow": "Direct is slow; using relay for now",
     "transport.file_speed_both": "Direct {direct} · Relay {relay} MiB/s",
@@ -6303,6 +6305,7 @@ export const messages = {
     "transport.diag_verdict_signal_limited": "握手消息被中继限速了，稍后会自动再试",
     "transport.diag_verdict_signal_offline": "握手消息没送到：电脑当前不在线",
     "transport.diag_verdict_unknown": "没连上，原因不明",
+    "transport.diag_verdict_unselected": "两边地址能互通，但没有选定线路",
     "transport.direct": "直连",
     "transport.direct_slow": "直连较慢，暂时改用中继",
     "transport.file_speed_both": "直连 {direct} · 中继 {relay} MiB/s",

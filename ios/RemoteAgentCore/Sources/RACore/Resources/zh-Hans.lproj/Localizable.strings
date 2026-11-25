@@ -1851,6 +1851,7 @@
 "transport_diag_verdict_signal_limited" = "握手消息被中继限速了，稍后会自动再试";
 "transport_diag_verdict_signal_offline" = "握手消息没送到：电脑当前不在线";
 "transport_diag_verdict_unknown" = "没连上，原因不明";
+"transport_diag_verdict_unselected" = "两边地址能互通，但没有选定线路";
 "transport_direct" = "直连";
 "transport_direct_slow" = "直连较慢，暂时改用中继";
 "transport_file_speed_both" = "直连 %1$@ · 中继 %2$@ MiB/s";

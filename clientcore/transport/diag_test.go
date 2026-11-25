@@ -293,6 +293,7 @@ func TestVerdictOf(t *testing.T) {
 		{"IPv6 answered but all failed", VerdictAllFailed, playRound(shape{local: v6local, remote: v6remote, ice: failed, checks: []StatsPair{spair("L6", "R6", "failed", 14, 3, 0), spair("L4", "R4", "failed", 12, 0, 0)}}, EndTimeout, nil)},
 		{"IPv6 present, no pair sampled", VerdictAllFailed, playRound(shape{local: v6local, remote: v6remote, ice: failed, noSample: true}, EndTimeout, nil)},
 		{"IPv4 only, all failed", VerdictAllFailed, playRound(shape{local: v4local, remote: v4remote, ice: failed, checks: []StatsPair{spair("L4", "R4", "failed", 12, 0, 0)}}, EndTimeout, nil)},
+		{"pairs answered but none nominated, no mapped address either", VerdictUnselected, playRound(shape{local: []string{cline(L6, "host", 1)}, remote: v6remote, ice: []string{"checking"}, stun: []int{701}, checks: []StatsPair{{Local: "L6", Remote: "R6", State: "succeeded", Sent: 74, Got: 50}, spair("L4", "R4", "in-progress", 13, 0, 0)}}, EndNoTraversal, nil)},
 		{"encryption never finished", VerdictDTLS, playRound(shape{local: v4local, remote: v4remote, ice: []string{"checking", "connected"}, dtls: "failed", checks: []StatsPair{spair("L4", "R4", "succeeded", 6, 6, 0.04)}}, EndTimeout, nil)},
 		{"channel never opened", VerdictChannel, playRound(shape{local: v4local, remote: v4remote, ice: []string{"connected"}, dtls: "connected", dc: "connecting"}, EndTimeout, nil)},
 		{"computer never confirmed", VerdictConfirm, playRound(shape{local: v4local, remote: v4remote, ice: []string{"connected"}, dtls: "connected", dc: "open"}, EndTimeout, nil)},

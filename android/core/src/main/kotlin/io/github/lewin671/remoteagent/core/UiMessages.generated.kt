@@ -1950,6 +1950,7 @@ object UiMessages {
     fun transportDiagVerdictSignalLimited(): UiMessage = UiMessage("transport.diag_verdict_signal_limited", emptyMap())
     fun transportDiagVerdictSignalOffline(): UiMessage = UiMessage("transport.diag_verdict_signal_offline", emptyMap())
     fun transportDiagVerdictUnknown(): UiMessage = UiMessage("transport.diag_verdict_unknown", emptyMap())
+    fun transportDiagVerdictUnselected(): UiMessage = UiMessage("transport.diag_verdict_unselected", emptyMap())
     fun transportDirect(): UiMessage = UiMessage("transport.direct", emptyMap())
     fun transportDirectSlow(): UiMessage = UiMessage("transport.direct_slow", emptyMap())
     fun transportFileSpeedBoth(direct: String, relay: String): UiMessage = UiMessage("transport.file_speed_both", mapOf("direct" to direct, "relay" to relay))
