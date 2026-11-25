@@ -1165,6 +1165,43 @@ func hasPendingExternalWatchers(store *sessionStore) bool {
 	return false
 }
 
+func hasSessionTrackingToPrune(store *sessionStore) bool {
+	if store == nil {
+		return false
+	}
+	for _, ui := range store.uiBySession {
+		if ui != nil && (len(ui.LocalResolvedRequestID) > 0 || len(ui.LocalSucceededItems) > 0 || len(ui.QuestionCompleted) > 0 || len(ui.QuestionIndexByID) > 0) {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *Core) pruneAllSessionResolvedTracking() {
+	store := c.m.sessions
+	if store == nil {
+		return
+	}
+	st := c.m.state
+	keepSID := st.HomeLastTopSessionID
+	keepItemID := st.HomeLastTopItemID
+	if st.HomeFocus != nil && st.HomeFocus.SessionID != "" && st.HomeFocus.ItemID != "" {
+		keepSID = st.HomeFocus.SessionID
+		keepItemID = st.HomeFocus.ItemID
+	}
+	for sid, ui := range store.uiBySession {
+		if ui == nil {
+			continue
+		}
+		if len(ui.LocalResolvedRequestID) == 0 && len(ui.LocalSucceededItems) == 0 &&
+			len(ui.QuestionCompleted) == 0 && len(ui.QuestionIndexByID) == 0 && len(ui.SlotSucceededSeq) == 0 {
+			continue
+		}
+		snap := c.m.sync.SessionSnapshot(sid)
+		pruneSessionResolvedTracking(sid, snap, ui, keepSID, keepItemID)
+	}
+}
+
 func (c *Core) reconcileSessionAndHomeTransient(effects *[]*corev1.Effect, dirty *sync.DirtyFlags) {
 	needsExt := hasPendingExternalWatchers(c.m.sessions)
 
@@ -1184,28 +1221,29 @@ func (c *Core) reconcileSessionAndHomeTransient(effects *[]*corev1.Effect, dirty
 		}
 	}
 
-	if !needsExt && !needsHome {
-		return
+	if needsExt || needsHome {
+		stepPrev, ctx := c.m.sync.BeginStep()
+		if needsExt {
+			c.reconcileSessionExternalResolutions(ctx)
+		}
+		if needsHome {
+			c.reconcileHomeFocusState(ctx)
+			c.m.homeFocusDigest = homeDigest
+			c.m.homeFocusDigestValid = true
+		}
+		stepRes := c.m.sync.EndStep(stepPrev, ctx)
+		if len(stepRes.Effects) > 0 {
+			*effects = append(*effects, stepRes.Effects...)
+		}
+		if stepRes.Dirty.Home || stepRes.Dirty.Project || stepRes.Dirty.NewSession {
+			dirty.Add(stepRes.Dirty.Home, stepRes.Dirty.Project, stepRes.Dirty.NewSession)
+		}
+		if stepRes.Dirty.SessionData {
+			dirty.MarkSessionData()
+		}
 	}
-
-	stepPrev, ctx := c.m.sync.BeginStep()
-	if needsExt {
-		c.reconcileSessionExternalResolutions(ctx)
-	}
-	if needsHome {
-		c.reconcileHomeFocusState(ctx)
-		c.m.homeFocusDigest = homeDigest
-		c.m.homeFocusDigestValid = true
-	}
-	stepRes := c.m.sync.EndStep(stepPrev, ctx)
-	if len(stepRes.Effects) > 0 {
-		*effects = append(*effects, stepRes.Effects...)
-	}
-	if stepRes.Dirty.Home || stepRes.Dirty.Project || stepRes.Dirty.NewSession {
-		dirty.Add(stepRes.Dirty.Home, stepRes.Dirty.Project, stepRes.Dirty.NewSession)
-	}
-	if stepRes.Dirty.SessionData {
-		dirty.MarkSessionData()
+	if hasSessionTrackingToPrune(c.m.sessions) {
+		c.pruneAllSessionResolvedTracking()
 	}
 }
 

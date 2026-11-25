@@ -1299,3 +1299,216 @@ func TestHomeFocusStateMachineEdgeCases(t *testing.T) {
 		t.Fatalf("non-dispatched HomeAnswerQuestion must not set HomeFocus, got %+v", c.m.state.HomeFocus)
 	}
 }
+
+func TestSessionTrackingMapsStayBounded(t *testing.T) {
+	sess := &corev1.PlainSession{
+		SessionId: "s-bnd",
+		MachineId: "m-on",
+		UpdatedMs: 1_791_078_060_000,
+		Meta: &v1.Session{
+			Id:    "s-bnd",
+			Cwd:   "/Users/me/proj",
+			Agent: v1.Agent_AGENT_CLAUDE,
+			Title: "Initial",
+		},
+	}
+	c := makeSemanticTestCore(t, sess, nil)
+	// Provide plenty of entropy IDs for 30 messages + 30 approvals + 1 rename.
+	extraIDs := make([]string, 0, 200)
+	for i := 0; i < 200; i++ {
+		extraIDs = append(extraIDs, "bnd-id-"+string(rune('a'+(i/26)%26))+string(rune('a'+i%26))+string(rune('0'+(i/676)%10)))
+	}
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_050,
+		Event: &corev1.Event_EntropyProvided{
+			EntropyProvided: &corev1.EntropyProvided{RandomIds: extraIDs},
+		},
+	})
+	watchBatch := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_100,
+		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s-bnd", Watched: true}},
+	})
+	cacheOp := watchCacheReadOpID(watchBatch)
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_110,
+		Event: &corev1.Event_CacheEventsLoaded{
+			CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{OpId: cacheOp, SessionId: "s-bnd"},
+		},
+	})
+
+	now := int64(1_791_078_061_000)
+	var seq uint64 = 1
+
+	// Send 30 messages and settle each OK.
+	for i := 0; i < 30; i++ {
+		now += 10
+		msgReqID := "msg-" + string(rune('a'+i/26)) + string(rune('a'+i%26))
+		b := c.Dispatch(&corev1.Event{
+			NowMs: now,
+			Event: &corev1.Event_SessionSubmitCommand{
+				SessionSubmitCommand: &corev1.SessionSubmitCommandAction{
+					SessionId: "s-bnd",
+					Command: &v1.Command{
+						ProtocolVersion: sync.PeerVersion,
+						Kind: &v1.Command_Send{
+							Send: &v1.SendRequest{
+								SessionId: "s-bnd",
+								RequestId: msgReqID,
+								Text:      "msg",
+							},
+						},
+					},
+				},
+			},
+		})
+		effs, _ := decodeDispatchedCommands(t, b)
+		if len(effs) != 1 {
+			t.Fatalf("send %d: expected 1 command, got %d", i, len(effs))
+		}
+		now += 10
+		settleCommandOK(c, now, effs[0], &v1.CommandResult{Outcome: "executed"})
+	}
+
+	// Request, approve (without opening deny box), settle, and resolve 30 approvals.
+	for i := 0; i < 30; i++ {
+		aid := "ap-" + string(rune('a'+i/26)) + string(rune('a'+i%26))
+		apEv := &v1.Event{
+			Seq: seq,
+			Kind: &v1.Event_ApprovalRequested{
+				ApprovalRequested: &v1.ApprovalRequested{ApprovalId: aid, Command: "echo ok"},
+			},
+		}
+		now += 10
+		c.Dispatch(&corev1.Event{
+			NowMs: now,
+			Event: &corev1.Event_StreamFrame{
+				StreamFrame: &corev1.StreamFrameEvent{
+					LegId: 1,
+					Frame: &corev1.StreamFrameEvent_SessionUpdated{
+						SessionUpdated: &corev1.PlainSession{
+							SessionId:  "s-bnd",
+							MachineId:  "m-on",
+							LastSeq:    seq,
+							UpdatedMs:  now,
+							Meta:       sess.Meta,
+							Checkpoint: &v1.LiveSnapshot{Actions: []*v1.Event{apEv}},
+						},
+					},
+				},
+			},
+		})
+		c.Dispatch(&corev1.Event{
+			NowMs: now,
+			Event: &corev1.Event_StreamFrame{
+				StreamFrame: &corev1.StreamFrameEvent{
+					LegId: 1,
+					Frame: &corev1.StreamFrameEvent_EventsAppended{
+						EventsAppended: &corev1.EventsAppendedFrame{
+							SessionId: "s-bnd",
+							Events:    []*corev1.PlainEvent{{Seq: seq, Verified: true, Event: apEv}},
+						},
+					},
+				},
+			},
+		})
+		seq++
+
+		now += 10
+		b := c.Dispatch(&corev1.Event{
+			NowMs: now,
+			Event: &corev1.Event_SessionResolveApproval{
+				SessionResolveApproval: &corev1.SessionResolveApprovalAction{
+					SessionId:  "s-bnd",
+					ApprovalId: aid,
+					Allow:      true,
+				},
+			},
+		})
+		effs, _ := decodeDispatchedCommands(t, b)
+		if len(effs) != 1 {
+			t.Fatalf("approval %d: expected 1 command, got %d", i, len(effs))
+		}
+		now += 10
+		settleCommandOK(c, now, effs[0], &v1.CommandResult{Outcome: "executed"})
+
+		now += 10
+		c.Dispatch(&corev1.Event{
+			NowMs: now,
+			Event: &corev1.Event_StreamFrame{
+				StreamFrame: &corev1.StreamFrameEvent{
+					LegId: 1,
+					Frame: &corev1.StreamFrameEvent_SessionUpdated{
+						SessionUpdated: &corev1.PlainSession{
+							SessionId:  "s-bnd",
+							MachineId:  "m-on",
+							LastSeq:    seq,
+							UpdatedMs:  now,
+							Meta:       sess.Meta,
+							Checkpoint: &v1.LiveSnapshot{},
+						},
+					},
+				},
+			},
+		})
+		c.Dispatch(&corev1.Event{
+			NowMs: now,
+			Event: &corev1.Event_StreamFrame{
+				StreamFrame: &corev1.StreamFrameEvent{
+					LegId: 1,
+					Frame: &corev1.StreamFrameEvent_EventsAppended{
+						EventsAppended: &corev1.EventsAppendedFrame{
+							SessionId: "s-bnd",
+							Events: []*corev1.PlainEvent{
+								{
+									Seq:      seq,
+									Verified: true,
+									Event: &v1.Event{
+										Seq:    seq,
+										Origin: &v1.Origin{Kind: v1.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "dev-1"},
+										Kind: &v1.Event_ApprovalResolved{
+											ApprovalResolved: &v1.ApprovalResolved{
+												ApprovalId: aid,
+												Decision:   v1.ApprovalDecision_APPROVAL_DECISION_ALLOW,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		})
+		seq++
+	}
+
+	ui := c.m.sessions.uiBySession["s-bnd"]
+	if ui == nil {
+		t.Fatalf("expected session UI state")
+	}
+	if len(ui.SlotSucceededSeq) != 0 {
+		t.Fatalf("SlotSucceededSeq must not accumulate per-message/approval keys, got %v", ui.SlotSucceededSeq)
+	}
+	if len(ui.LocalResolvedRequestID) != 0 {
+		t.Fatalf("LocalResolvedRequestID must be pruned after resolution, got %v", ui.LocalResolvedRequestID)
+	}
+	if len(ui.LocalSucceededItems) != 0 {
+		t.Fatalf("LocalSucceededItems must be pruned after resolution, got %v", ui.LocalSucceededItems)
+	}
+	if len(ui.Commands) != 0 || len(c.m.sessions.slotMeta) != 0 {
+		t.Fatalf("Commands/slotMeta must be empty after settlement, got cmds=%d meta=%d", len(ui.Commands), len(c.m.sessions.slotMeta))
+	}
+
+	// Fixed slot (rename) still increments SlotSucceededSeq as expected.
+	bRen := c.Dispatch(&corev1.Event{
+		NowMs: now + 10,
+		Event: &corev1.Event_SessionRename{
+			SessionRename: &corev1.SessionRenameAction{SessionId: "s-bnd", Title: "Renamed"},
+		},
+	})
+	effsRen, _ := decodeDispatchedCommands(t, bRen)
+	settleCommandOK(c, now+20, effsRen[0], &v1.CommandResult{Outcome: "executed"})
+	if ui.SlotSucceededSeq["rename:s-bnd"] != 1 {
+		t.Fatalf("expected fixed rename slot succeeded_seq=1, got %v", ui.SlotSucceededSeq)
+	}
+}

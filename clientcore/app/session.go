@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/images"
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
@@ -219,6 +220,117 @@ func reconcileSessionSnapshot(snap world.SessionSnapshot, ui *screens.SessionUIS
 	}
 }
 
+func tracksSlotSucceededSeq(slotKey string) bool {
+	return strings.HasPrefix(slotKey, "rename:") ||
+		strings.HasPrefix(slotKey, "set_mode:") ||
+		strings.HasPrefix(slotKey, "set_model:") ||
+		strings.HasPrefix(slotKey, "compact:") ||
+		strings.HasPrefix(slotKey, "fork:") ||
+		strings.HasPrefix(slotKey, "stop:") ||
+		strings.HasPrefix(slotKey, "resume:") ||
+		strings.HasPrefix(slotKey, "interrupt:") ||
+		strings.HasPrefix(slotKey, "plan:") ||
+		strings.HasPrefix(slotKey, "question:")
+}
+
+func isApprovalPendingInSnapshot(snap world.SessionSnapshot, aid string) bool {
+	if snap.Projection != nil {
+		for _, pa := range snap.Projection.Approvals {
+			if pa != nil && pa.ApprovalId == aid {
+				return true
+			}
+		}
+		return false
+	}
+	return snap.Session != nil && snap.Session.Pending.HasApproval && snap.Session.Pending.ApprovalID == aid
+}
+
+func isQuestionPendingInSnapshot(snap world.SessionSnapshot, qID string) bool {
+	if snap.Projection != nil {
+		for _, pq := range snap.Projection.Questions {
+			if pq != nil && pq.QuestionId == qID {
+				return true
+			}
+		}
+		return false
+	}
+	return snap.Session != nil && snap.Session.Pending.HasQuestion &&
+		snap.Session.Pending.Question != nil && snap.Session.Pending.Question.QuestionID == qID
+}
+
+func pruneSessionResolvedTracking(sid string, snap world.SessionSnapshot, ui *screens.SessionUIState, keepHomeSID, keepHomeItemID string) {
+	if ui == nil || !snap.Found {
+		return
+	}
+	shouldKeepItem := func(itemKey string) bool {
+		if aid, ok := strings.CutPrefix(itemKey, "approval:"); ok {
+			if isApprovalPendingInSnapshot(snap, aid) || ui.ApprovalDenyOpen[aid] || ui.Commands["approval:"+sid+":"+aid] != nil {
+				return true
+			}
+			if keepHomeSID == sid && keepHomeItemID == aid {
+				return true
+			}
+			return false
+		}
+		if qID, ok := strings.CutPrefix(itemKey, "question:"); ok {
+			if isQuestionPendingInSnapshot(snap, qID) {
+				return true
+			}
+			if keepHomeSID == sid && keepHomeItemID == qID {
+				return true
+			}
+			prefix := qID + "#"
+			for qKey := range ui.QuestionDraftByKey {
+				if strings.HasPrefix(qKey, prefix) {
+					return true
+				}
+			}
+			cmdPrefix := "question:" + sid + ":" + prefix
+			for slotKey := range ui.Commands {
+				if strings.HasPrefix(slotKey, cmdPrefix) {
+					return true
+				}
+			}
+			return false
+		}
+		return false
+	}
+	for k := range ui.LocalResolvedRequestID {
+		if !shouldKeepItem(k) {
+			delete(ui.LocalResolvedRequestID, k)
+		}
+	}
+	for k := range ui.LocalSucceededItems {
+		if !shouldKeepItem(k) {
+			delete(ui.LocalSucceededItems, k)
+		}
+	}
+	if len(ui.QuestionCompleted) > 0 || len(ui.QuestionIndexByID) > 0 {
+		for qID := range ui.QuestionCompleted {
+			if !isQuestionPendingInSnapshot(snap, qID) {
+				delete(ui.QuestionCompleted, qID)
+				delete(ui.QuestionIndexByID, qID)
+			}
+		}
+		for qID := range ui.QuestionIndexByID {
+			if !isQuestionPendingInSnapshot(snap, qID) {
+				delete(ui.QuestionIndexByID, qID)
+			}
+		}
+	}
+	if len(ui.SlotSucceededSeq) > 0 {
+		qSlotPrefix := "question:" + sid + ":"
+		for slotKey := range ui.SlotSucceededSeq {
+			if rest, ok := strings.CutPrefix(slotKey, qSlotPrefix); ok {
+				qID, _, _ := strings.Cut(rest, "#")
+				if qID != "" && !isQuestionPendingInSnapshot(snap, qID) {
+					delete(ui.SlotSucceededSeq, slotKey)
+				}
+			}
+		}
+	}
+}
+
 func pruneSessionLocalContents(ui *screens.SessionUIState, userMsgReqs, activeInputReqs map[string]bool) {
 	if ui == nil {
 		return
@@ -333,7 +445,9 @@ func (c *Core) processSessionSettled(
 			c.notifyHomeAttentionSettled(meta, false, nil, effects, dirty)
 		} else {
 			summary := rec.SubmittedSummary
-			ui.SlotSucceededSeq[slotKey]++
+			if tracksSlotSucceededSeq(slotKey) {
+				ui.SlotSucceededSeq[slotKey]++
+			}
 			delete(ui.Commands, slotKey)
 			delete(store.slotMeta, slotKey)
 			if meta.kind == slotKindResolveApproval && meta.approvalID != "" {
