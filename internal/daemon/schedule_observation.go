@@ -78,3 +78,26 @@ func (d *Daemon) refreshDueScheduleObservations(ctx context.Context, now time.Ti
 		}
 	}
 }
+
+// refreshPendingScheduledBackground checks the live terminal screen outside
+// scheduleMu for active runs whose CLI tracks background work via the screen.
+func (d *Daemon) refreshPendingScheduledBackground(ctx context.Context, now time.Time) {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	d.scheduleMu.Lock()
+	ids := map[string]bool{}
+	for _, task := range d.tasks {
+		if run := task.Active; run != nil && run.SessionID != "" && run.Status != "uncertain" && run.Status != "dispatching" {
+			ids[run.SessionID] = true
+		}
+	}
+	d.scheduleMu.Unlock()
+	for id := range ids {
+		if ctx.Err() != nil {
+			return
+		}
+		if s, err := d.exact(id); err == nil && s.needsBackgroundScreenCheck() {
+			s.checkBackgroundScreen(ctx, now)
+		}
+	}
+}

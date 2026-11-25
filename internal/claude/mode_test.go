@@ -27,7 +27,7 @@ func TestSetModeWithCapturedBackgroundShell(t *testing.T) {
 			}
 			f.capture = string(b)
 			scr := AnalyzeScreen(f.capture)
-			if !scr.ComposerReady || !scr.DraftEmpty || scr.Busy || scr.Mode != "plan" {
+			if !scr.ComposerReady || !scr.DraftEmpty || scr.Busy || scr.Mode != "plan" || scr.Background != (name == "background-shell") {
 				t.Fatalf("%s: %+v", name, scr)
 			}
 			err = a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_ASK, false, agent.ModeFacts{Model: "claude-haiku-5-5"})

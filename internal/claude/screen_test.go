@@ -1,6 +1,7 @@
 package claude
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -58,6 +59,40 @@ func TestAnalyzeScreen(t *testing.T) {
 	s := AnalyzeScreen(strings.Replace(screen("\x1b[39m❯ \x1b[7m \x1b[0m"), manual, bypass, 1))
 	if s.Mode != "bypassPermissions" || s.Footer != "Haiku 4.5  │  ra-cc-work" {
 		t.Errorf("mode %q footer %q", s.Mode, s.Footer)
+	}
+
+	// Live background work populates Screen.Background; stale turn summaries do not.
+	for _, tc := range []struct {
+		name   string
+		screen string
+		want   bool
+	}{
+		{"footer shells", strings.Replace(screen("\x1b[39m❯\u00a0\x1b[7m \x1b[0m"), manual, "  ⏸ manual mode on · 2 shells · ← for agents", 1), true},
+		{"waiting above", "✻ Waiting for 1 background agent to finish\n" + titledRule + "\n" + idle, true},
+		{"waiting above blank line", "✻ Waiting for 1 background agent to finish\n\n" + titledRule + "\n" + idle, true},
+		{"subagent row", screen("\x1b[39m❯\u00a0\x1b[7m \x1b[0m") + "  ⏺ main\n  ◯ general-purpose  task  6s\n", true},
+		{"stale turn summary", "✻ Worked for 5s · done 4:54 PM · 1 shell still running\n" + titledRule + "\n" + idle, false},
+	} {
+		got := AnalyzeScreen(tc.screen)
+		if got.Background != tc.want {
+			t.Errorf("%s: Background=%v, want %v (%+v)", tc.name, got.Background, tc.want, got)
+		}
+	}
+	for _, tc := range []struct {
+		file string
+		want bool
+	}{
+		{"testdata/mode/background-shell-2.1.300.txt", true},
+		{"testdata/mode/finished-shell-2.1.300.txt", false},
+	} {
+		b, err := os.ReadFile(tc.file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := AnalyzeScreen(string(b))
+		if !got.ComposerReady || got.Busy || got.Background != tc.want {
+			t.Errorf("%s: got %+v, want Background=%v", tc.file, got, tc.want)
+		}
 	}
 }
 

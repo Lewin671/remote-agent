@@ -92,6 +92,10 @@ type Capabilities struct {
 	// WaitMCPReady reports whether the daemon should wait for the session's
 	// remote_agent MCP handshake before submitting the CLI lifetime's first turn.
 	WaitMCPReady bool
+	// ScreenBackground reports whether Analyze's Screen.Background reflects
+	// live background work so the daemon can track backgroundPossible on
+	// background tool calls and clear it once the screen stays idle.
+	ScreenBackground bool
 }
 
 // MCPWarmer is optionally implemented by adapters whose CLI starts plugin MCP
@@ -458,6 +462,9 @@ type Screen struct {
 	// Busy: the screen shows the CLI working (Claude Code's spinner line
 	// or its dimmed prompt), whatever the transcript says yet.
 	Busy bool
+	// Background: the live screen shows background shells or subagents still
+	// running (only populated when Capabilities().ScreenBackground is true).
+	Background bool
 	// Loading is an ambiguous startup hint; it does not invalidate the composer.
 	Loading bool
 }

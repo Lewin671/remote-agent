@@ -49,11 +49,10 @@ type line struct {
 	plain  string
 }
 
-// AnalyzeScreen reads a capture made with escape sequences kept.
-func AnalyzeScreen(styled string) agent.Screen {
+func screenLines(styled string) []line {
 	var lines []line
 	for _, l := range strings.Split(strings.TrimRight(styled, "\n"), "\n") {
-		lines = append(lines, line{styled: l, plain: strings.ReplaceAll(agent.StripANSI(l), " ", " ")})
+		lines = append(lines, line{styled: l, plain: strings.ReplaceAll(agent.StripANSI(l), "\u00a0", " ")})
 	}
 	for len(lines) > 0 && strings.TrimSpace(lines[len(lines)-1].plain) == "" {
 		lines = lines[:len(lines)-1]
@@ -61,6 +60,12 @@ func AnalyzeScreen(styled string) agent.Screen {
 	if len(lines) > bottomLines {
 		lines = lines[len(lines)-bottomLines:]
 	}
+	return lines
+}
+
+// AnalyzeScreen reads a capture made with escape sequences kept.
+func AnalyzeScreen(styled string) agent.Screen {
+	lines := screenLines(styled)
 
 	var s agent.Screen
 	top, bottom := composer(lines)
@@ -104,6 +109,7 @@ func AnalyzeScreen(styled string) agent.Screen {
 	s.ComposerReady = true
 	s.DraftEmpty = bottom == top+1 && emptyPrompt(lines[top].styled)
 	s.Busy = busy(lines, top)
+	s.Background = backgroundWork(lines, top, bottom) != ""
 	for _, l := range lines[bottom+1:] {
 		if s.Footer == "" && strings.TrimSpace(l.plain) != "" {
 			s.Footer = strings.TrimSpace(l.plain)
@@ -193,27 +199,31 @@ func emptyPrompt(styled string) bool {
 // backgroundRE matches Claude Code's live notes about background work: the
 // mode line's "· 1 shell", "Waiting for 1 background agent to finish", and
 // the rows of running subagents under the mode line (claude-code-notes §10).
-var backgroundRE = regexp.MustCompile(`\b\d+ shells?\b|\b\d+ background (?:agents?|tasks?)\b|^\s*◯ `)
+var backgroundRE = regexp.MustCompile(`\b\d+ shells?\b|\b\d+ background (?:agents?|tasks?|shells?)\b|^\s*◯ `)
 
-var waitingRE = regexp.MustCompile(`Waiting for \d+ background (?:agents?|tasks?)`)
+var waitingRE = regexp.MustCompile(`Waiting for \d+ background (?:agents?|tasks?|shells?)`)
 
 // BackgroundWork describes background work the screen shows as running,
 // or is empty. Only the live parts are read: the line above the input box
 // and what is under it; older notes in the conversation are not.
 func BackgroundWork(styled string) string {
-	var lines []line
-	for _, l := range strings.Split(strings.TrimRight(styled, "\n"), "\n") {
-		lines = append(lines, line{styled: l, plain: strings.ReplaceAll(agent.StripANSI(l), " ", " ")})
-	}
+	lines := screenLines(styled)
 	top, bottom := composer(lines)
+	return backgroundWork(lines, top, bottom)
+}
+
+func backgroundWork(lines []line, top, bottom int) string {
 	if top < 0 {
 		return ""
 	}
 	// Above the input box only the live "Waiting for …" counts; a turn's
 	// summary ("… · 1 shell still running") stays after the shell ends.
-	if top >= 2 {
-		if m := waitingRE.FindString(lines[top-2].plain); m != "" {
+	for i := top - 2; i >= 0 && i >= top-3; i-- {
+		if m := waitingRE.FindString(lines[i].plain); m != "" {
 			return strings.TrimPrefix(m, "Waiting for ")
+		}
+		if strings.TrimSpace(lines[i].plain) != "" {
+			break
 		}
 	}
 	for _, l := range lines[bottom+1:] {

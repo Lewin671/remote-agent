@@ -147,3 +147,40 @@ func TestIdleCloseSetting(t *testing.T) {
 		t.Fatalf("2h=%v err=%v", st, err)
 	}
 }
+
+func TestIdleCloseClearsClaudeBackgroundWhenScreenIdle(t *testing.T) {
+	h := claudeHarness(t, Config{ApprovalTimeout: time.Minute})
+	h.d.sessions[h.s.meta.ID] = h.s
+	t.Cleanup(func() { h.s.log.Close() })
+	if err := h.s.emit(
+		&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{Status: pb.SessionStatus_SESSION_STATUS_IDLE}}},
+		&pb.Event{TurnId: "p1", Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}},
+		&pb.Event{TurnId: "p1", Kind: &pb.Event_ToolCall{ToolCall: &pb.ToolCall{CallId: "t1", ItemType: "Bash", Background: pb.ToolBackground_TOOL_BACKGROUND_TIMED_OUT, Status: "completed"}}},
+		&pb.Event{TurnId: "p1", Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{Outcome: pb.TurnOutcome_TURN_OUTCOME_COMPLETED}}},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	now := time.Now()
+	h.s.now = func() time.Time { return now }
+
+	// While background work is shown on screen, idle-close keeps the session open.
+	h.term.setScreen(ccBgShell)
+	age(h, 7*time.Hour)
+	if got := h.d.idleClosures(context.Background()); len(got) != 0 {
+		t.Fatalf("closed Claude session while background shell was shown: %v", got)
+	}
+
+	// Once background work disappears from the screen and stays clear across the grace period,
+	// backgroundPossible clears and the session can be idle-closed.
+	h.term.setScreen(ccBgFinished)
+	h.s.checkScreen()
+	now = now.Add(backgroundClearGrace)
+	h.s.checkScreen()
+
+	age(h, 7*time.Hour)
+	got := h.d.idleClosures(context.Background())
+	if len(got) != 1 || got[0] != h.s {
+		t.Fatalf("Claude session stayed un-idle-closable after background finished: %v", got)
+	}
+}

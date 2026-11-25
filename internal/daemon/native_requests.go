@@ -78,11 +78,6 @@ func (s *session) observeNative(e *pb.Event) {
 			hook.Uncertain = true
 		}
 	}
-	if call := e.GetToolCall(); call != nil && call.Background != pb.ToolBackground_TOOL_BACKGROUND_UNSPECIFIED && e.Seq > s.meta.BackgroundIdleSeq {
-		s.backgroundPossible = true
-		value := true
-		s.meta.BackgroundPossible = &value
-	}
 	if call := e.GetToolCall(); call != nil {
 		delete(s.nativeCalls, call.CallId)
 		delete(s.nativePending, call.CallId)

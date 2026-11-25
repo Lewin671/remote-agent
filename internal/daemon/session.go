@@ -162,27 +162,31 @@ type session struct {
 	recent []input
 	// unproven are the remembered messages that were reported
 	// UNCONFIRMED: a record of one, coming late, still confirms it.
-	unproven           map[string]bool
-	now                func() time.Time
-	sleep              func(time.Duration)
-	wake               chan struct{} // pokes the injector
-	nativePending      map[string]*agent.Hook
-	nativeCalls        map[string]*agent.Hook
-	identityPending    bool
-	identityResume     bool
-	identityTarget     string
-	identityFailed     bool
-	identityObservedAt time.Time
-	identityRefreshAt  time.Time
-	identityEmptySince time.Time
-	statusLineMode     string
-	statusLineAt       time.Time
-	statusLineIdle     bool
-	backgroundPossible bool
-	mcpWarmupAttempted bool
-	mcpWarmupSince     time.Time
-	planFacts          *agent.PlanFacts
-	*sessionLoops      // replaced only after the previous loops have stopped
+	unproven              map[string]bool
+	now                   func() time.Time
+	sleep                 func(time.Duration)
+	wake                  chan struct{} // pokes the injector
+	nativePending         map[string]*agent.Hook
+	nativeCalls           map[string]*agent.Hook
+	identityPending       bool
+	identityResume        bool
+	identityTarget        string
+	identityFailed        bool
+	identityObservedAt    time.Time
+	identityRefreshAt     time.Time
+	identityEmptySince    time.Time
+	statusLineMode        string
+	statusLineAt          time.Time
+	statusLineIdle        bool
+	backgroundPossible    bool
+	backgroundActivitySeq uint64
+	backgroundClearSince  time.Time
+	backgroundClearSeq    uint64
+	backgroundClearObs    int
+	mcpWarmupAttempted    bool
+	mcpWarmupSince        time.Time
+	planFacts             *agent.PlanFacts
+	*sessionLoops         // replaced only after the previous loops have stopped
 }
 
 // Each generation owns its cancellation and completion handles. Workers keep
@@ -371,6 +375,7 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 // the only goroutine touching the session.
 func (s *session) observe(e *pb.Event) {
 	s.observeActivity(e)
+	s.observeBackground(e)
 	s.observeNative(e)
 	s.observeScheduled(e)
 	s.ordering.observe(e)
@@ -382,6 +387,7 @@ func (s *session) observe(e *pb.Event) {
 		s.turnPrompt, s.turnOutput = "", false
 		s.idleCompleteSince = time.Time{}
 		s.restoredPromptSince = time.Time{}
+		s.resetBackgroundClearLocked()
 	case *pb.Event_TurnEnded:
 		s.running = false
 		s.turnEnds++
@@ -859,12 +865,20 @@ func (s *session) checkScreenContext(ctx context.Context) bool {
 	s.prevScreen = scr
 	if !stable {
 		s.restoredPromptSince = time.Time{}
+		driving := s.driving
+		if driving {
+			s.resetBackgroundClearLocked()
+		}
 		s.mu.Unlock()
+		if !driving {
+			s.settleBackgroundClear(ctx, scr, s.nowTime())
+		}
 		return true
 	}
 	if s.driving {
 		// Menus opened by a control operation are not the user's popups.
 		s.restoredPromptSince = time.Time{}
+		s.resetBackgroundClearLocked()
 		s.mu.Unlock()
 		return true
 	}
@@ -933,6 +947,7 @@ func (s *session) checkScreenContext(ctx context.Context) bool {
 	}
 	s.settleRestoredPrompt(styled)
 	s.settleIdleCompletion(styled)
+	s.settleBackgroundClear(ctx, scr, s.nowTime())
 	return true
 }
 

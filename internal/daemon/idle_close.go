@@ -169,6 +169,9 @@ func (d *Daemon) idleClosures(ctx context.Context) []*session {
 	now := time.Now()
 	var out []*session
 	for _, s := range sessions {
+		if s.needsBackgroundScreenCheck() {
+			s.checkBackgroundScreen(ctx, s.nowTime())
+		}
 		s.mu.Lock()
 		idle := s.idleLocked(now)
 		if active[s.meta.ID] {

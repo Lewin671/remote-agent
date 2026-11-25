@@ -783,7 +783,7 @@ func (a *Adapter) AnswerApproval(t agent.Term, _ *agent.Hook, _ bool, _ func() b
 }
 
 func (a *Adapter) Capabilities() agent.Capabilities {
-	return agent.Capabilities{ModelSwitch: true, Fork: true}
+	return agent.Capabilities{ModelSwitch: true, Fork: true, ScreenBackground: true}
 }
 
 func (a *Adapter) DecodeHook(raw []byte) (*agent.Hook, error) { return agent.DecodeStandardHook(raw) }

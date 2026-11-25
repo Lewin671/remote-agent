@@ -1424,11 +1424,12 @@ func (s *session) resumeStateLocked(pendingInput bool) {
 			s.scheduledCloseAfter = time.Time{}
 		}
 	}
-	if s.ag.Capabilities().ConversationIdentity {
+	if s.tracksBackground() {
 		idle := false
 		s.backgroundPossible = false
 		s.meta.BackgroundPossible = &idle
 		s.meta.BackgroundIdleSeq = s.log.LastSeq()
+		s.resetBackgroundClearLocked()
 	}
 	s.sawComposer = false
 }

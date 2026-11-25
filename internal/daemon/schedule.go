@@ -894,6 +894,10 @@ func (d *Daemon) prepareScheduledDispatchesContext(ctx context.Context, now time
 	if ctx.Err() != nil {
 		return nil
 	}
+	d.refreshPendingScheduledBackground(ctx, now)
+	if ctx.Err() != nil {
+		return nil
+	}
 	var dispatches []*schedule.Task
 	d.scheduleMu.Lock()
 	defer d.scheduleMu.Unlock()
