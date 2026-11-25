@@ -345,26 +345,32 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
     private fun schedulePartialExpiryLocked() {
         if (ended || expiryJob?.isActive == true || partial.isEmpty()) return
         expiryJob = scope.launch {
+            val self = coroutineContext[Job]
             while (isActive && !ended) {
                 val delayMs = synchronized(stateLock) {
                     val nextUntil = partial.values.minOfOrNull { it.until }
                     if (nextUntil == null) {
-                        expiryJob = null
+                        if (expiryJob === self) expiryJob = null
                         return@launch
                     }
                     (nextUntil - options.monotonic()).coerceAtLeast(1L)
                 }
                 delay(delayMs)
                 val now = options.monotonic()
+                var stop = false
                 val expiredParts = synchronized(stateLock) {
                     val expired = partial.entries.filter { now >= it.value.until }.map { it.key to it.value }
                     for ((k, _) in expired) partial.remove(k)
-                    if (partial.isEmpty()) expiryJob = null
+                    if (partial.isEmpty()) {
+                        if (expiryJob === self) expiryJob = null
+                        stop = true
+                    }
                     expired
                 }
                 for ((_, part) in expiredParts) {
                     options.budget.free(options.peer, 1, part.bytes, part.parts.size)
                 }
+                if (stop) return@launch
             }
         }
     }

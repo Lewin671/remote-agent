@@ -6,9 +6,18 @@ import io.github.lewin671.remoteagent.core.proto.DirectStatsPair
 import io.github.lewin671.remoteagent.core.proto.DirectStatsReport
 import io.github.lewin671.remoteagent.core.proto.DirectStateKind
 import io.github.lewin671.remoteagent.proto.Fragment
-import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -96,13 +105,20 @@ private class FakePeerConnection(
     fun emitGatheringComplete() = listener.onIceGatheringComplete()
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class DirectChannelTest {
     private val validSdp =
         "v=0\r\no=- 1 1 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=fingerprint:sha-256 00\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\n"
             .toByteArray(StandardCharsets.UTF_8)
 
+    private fun TestScope.testRuntime(): Pair<TestDispatcher, CoroutineScope> {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        return dispatcher to CoroutineScope(SupervisorJob() + dispatcher)
+    }
+
     @Test
-    fun descriptionAndRemoteValidateMinimalSdpAndForwardCandidates() = runBlocking {
+    fun descriptionAndRemoteValidateMinimalSdpAndForwardCandidates() = runTest {
+        val (dispatcher, closeScope) = testRuntime()
         var fakePc: FakePeerConnection? = null
         val candidates = ArrayList<RtcIceCandidate?>()
         val states = ArrayList<Pair<DirectStateKind, String>>()
@@ -120,6 +136,10 @@ class DirectChannelTest {
                 state = { k, v -> states.add(k to v) },
                 frame = {},
                 closed = {},
+                monotonic = { testScheduler.currentTime },
+                dispatcher = dispatcher,
+                receiveDispatcher = dispatcher,
+                closeScope = closeScope,
             ),
         )
         try {
@@ -142,15 +162,15 @@ class DirectChannelTest {
             assertEquals(null, candidates[1])
         } finally {
             channel.close()
-        }
-        kotlinx.coroutines.withTimeout(2_000L) {
-            while (!fakePc!!.closed) kotlinx.coroutines.delay(5)
+            runCurrent()
+            closeScope.cancel()
         }
         assertTrue(fakePc!!.closed)
     }
 
     @Test
-    fun fragmentRoundTripRejectsWrongGenerationAndUnknownFieldsBeforeConfirm() = runBlocking {
+    fun fragmentRoundTripRejectsWrongGenerationAndUnknownFieldsBeforeConfirm() = runTest {
+        val (dispatcher, closeScope) = testRuntime()
         var fakePc: FakePeerConnection? = null
         val received = CopyOnWriteArrayList<ByteArray>()
         val channel = DirectChannel(
@@ -167,6 +187,10 @@ class DirectChannelTest {
                 state = { _, _ -> },
                 frame = { received.add(it) },
                 closed = {},
+                monotonic = { testScheduler.currentTime },
+                dispatcher = dispatcher,
+                receiveDispatcher = dispatcher,
+                closeScope = closeScope,
             ),
         )
         try {
@@ -194,23 +218,24 @@ class DirectChannelTest {
             // Feed unknown field -> ignored.
             val withUnknown = data.sent.first() + byteArrayOf(0x78.toByte(), 0x01)
             data.listener.onMessage(withUnknown)
-            kotlinx.coroutines.delay(50)
+            runCurrent()
             assertTrue(received.isEmpty())
 
             // Replay real fragments -> exact payload reassembled.
             for (frag in data.sent) data.listener.onMessage(frag)
-            kotlinx.coroutines.withTimeout(2_000L) {
-                while (received.isEmpty()) kotlinx.coroutines.delay(5)
-            }
+            runCurrent()
             assertEquals(1, received.size)
             assertArrayEquals(payload, received[0])
         } finally {
             channel.close()
+            runCurrent()
+            closeScope.cancel()
         }
     }
 
     @Test
-    fun readStatsForwardsStructuredReportAndFallsBackDcState() = runBlocking {
+    fun readStatsForwardsStructuredReportAndFallsBackDcState() = runTest {
+        val (dispatcher, closeScope) = testRuntime()
         var fakePc: FakePeerConnection? = null
         val statsReport = DirectStatsReport.newBuilder()
             .setIceState("connected")
@@ -238,6 +263,10 @@ class DirectChannelTest {
                 state = { _, _ -> },
                 frame = {},
                 closed = {},
+                monotonic = { testScheduler.currentTime },
+                dispatcher = dispatcher,
+                receiveDispatcher = dispatcher,
+                closeScope = closeScope,
             ),
         )
         try {
@@ -250,11 +279,14 @@ class DirectChannelTest {
             assertEquals(DirectCandFamily.DIRECT_CAND_FAMILY_V4, stats.pairsList[0].localFamily)
         } finally {
             channel.close()
+            runCurrent()
+            closeScope.cancel()
         }
     }
 
     @Test
-    fun silentDataChannelCloseDetectedOnSendProbe() = runBlocking {
+    fun silentDataChannelCloseDetectedOnSendProbe() = runTest {
+        val (dispatcher, closeScope) = testRuntime()
         var fakePc: FakePeerConnection? = null
         val closed = java.util.concurrent.atomic.AtomicBoolean(false)
         val channel = DirectChannel(
@@ -271,6 +303,10 @@ class DirectChannelTest {
                 state = { _, _ -> },
                 frame = {},
                 closed = { closed.set(true) },
+                monotonic = { testScheduler.currentTime },
+                dispatcher = dispatcher,
+                receiveDispatcher = dispatcher,
+                closeScope = closeScope,
             ),
         )
         try {
@@ -287,6 +323,8 @@ class DirectChannelTest {
             assertTrue(closed.get())
         } finally {
             channel.close()
+            runCurrent()
+            closeScope.cancel()
         }
     }
 
@@ -340,14 +378,10 @@ class DirectChannelTest {
     }
 
     @Test
-    fun incomingQueueOverflowClosesChannelInsteadOfUnboundedBuffering() = runBlocking {
+    fun incomingQueueOverflowClosesChannelInsteadOfUnboundedBuffering() = runTest {
+        val (dispatcher, closeScope) = testRuntime()
         var fakePc: FakePeerConnection? = null
         val closed = java.util.concurrent.atomic.AtomicBoolean(false)
-        val blockReceive = java.util.concurrent.CountDownLatch(1)
-        val receiveExec = java.util.concurrent.Executors.newSingleThreadExecutor()
-        val receiveDispatcher = receiveExec.asCoroutineDispatcher()
-        // Occupy the single receive worker thread so incoming frames pile up in DirectChannel.incoming.
-        receiveExec.submit { blockReceive.await(5, java.util.concurrent.TimeUnit.SECONDS) }
         val channel = DirectChannel(
             DirectChannelOptions(
                 peer = "m-1",
@@ -362,10 +396,16 @@ class DirectChannelTest {
                 state = { _, _ -> },
                 frame = {},
                 closed = { closed.set(true) },
-                receiveDispatcher = receiveDispatcher,
+                monotonic = { testScheduler.currentTime },
+                dispatcher = dispatcher,
+                receiveDispatcher = dispatcher,
+                closeScope = closeScope,
             ),
         )
         try {
+            // Start the receiver coroutine so it is suspended on incoming, then burst frames
+            // before yielding to StandardTestDispatcher so the bounded incoming buffer overflows.
+            runCurrent()
             val data = fakePc!!.channels.getValue(0)
             val chunk = ByteArray(1024)
             for (i in 0 until 200) {
@@ -373,14 +413,15 @@ class DirectChannelTest {
             }
             assertTrue("expected incoming queue overflow to close channel", closed.get())
         } finally {
-            blockReceive.countDown()
             channel.close()
-            receiveExec.shutdownNow()
+            runCurrent()
+            closeScope.cancel()
         }
     }
 
     @Test
-    fun rejectedFirstFragmentDoesNotPoisonPartialMap() = runBlocking {
+    fun rejectedFirstFragmentDoesNotPoisonPartialMap() = runTest {
+        val (dispatcher, closeScope) = testRuntime()
         var fakePc: FakePeerConnection? = null
         val received = CopyOnWriteArrayList<ByteArray>()
         val channel = DirectChannel(
@@ -397,6 +438,10 @@ class DirectChannelTest {
                 state = { _, _ -> },
                 frame = { received.add(it) },
                 closed = {},
+                monotonic = { testScheduler.currentTime },
+                dispatcher = dispatcher,
+                receiveDispatcher = dispatcher,
+                closeScope = closeScope,
             ),
         )
         try {
@@ -432,13 +477,13 @@ class DirectChannelTest {
                 .build()
                 .toByteArray()
             data.listener.onMessage(good)
-            kotlinx.coroutines.withTimeout(2_000L) {
-                while (received.isEmpty()) kotlinx.coroutines.delay(5)
-            }
+            runCurrent()
             assertEquals(1, received.size)
             assertArrayEquals(payload, received[0])
         } finally {
             channel.close()
+            runCurrent()
+            closeScope.cancel()
         }
     }
 
@@ -511,7 +556,8 @@ class DirectChannelTest {
     }
 
     @Test
-    fun syncStateChangeDuringCreateDataChannelDoesNotThrowAndDeliversOpen() = runBlocking {
+    fun syncStateChangeDuringCreateDataChannelDoesNotThrowAndDeliversOpen() = runTest {
+        val (dispatcher, closeScope) = testRuntime()
         val dcStates = CopyOnWriteArrayList<Boolean>()
         val channel = DirectChannel(
             DirectChannelOptions(
@@ -528,19 +574,25 @@ class DirectChannelTest {
                 dcState = { dcStates.add(it) },
                 frame = {},
                 closed = {},
+                monotonic = { testScheduler.currentTime },
+                dispatcher = dispatcher,
+                receiveDispatcher = dispatcher,
+                closeScope = closeScope,
             ),
         )
         try {
             assertEquals(listOf(true), dcStates.toList())
         } finally {
             channel.close()
+            runCurrent()
+            closeScope.cancel()
         }
     }
 
     @Test
-    fun idleChannelDoesNotPollDataChannelStateAndExpiresPartialsOnDemand() = runBlocking {
+    fun idleChannelDoesNotPollDataChannelStateAndExpiresPartialsOnDemand() = runTest {
+        val (dispatcher, closeScope) = testRuntime()
         var fakePc: FakePeerConnection? = null
-        val mono = java.util.concurrent.atomic.AtomicLong(1_000L)
         val budget = DirectBudget()
         val channel = DirectChannel(
             DirectChannelOptions(
@@ -556,7 +608,10 @@ class DirectChannelTest {
                 state = { _, _ -> },
                 frame = {},
                 closed = {},
-                monotonic = { mono.get() },
+                monotonic = { testScheduler.currentTime },
+                dispatcher = dispatcher,
+                receiveDispatcher = dispatcher,
+                closeScope = closeScope,
                 partialTimeoutMs = 40L,
             ),
         )
@@ -566,46 +621,67 @@ class DirectChannelTest {
             data.open()
             probe.open()
             channel.confirm()
+            runCurrent()
             data.stateCalls.set(0)
             probe.stateCalls.set(0)
-            kotlinx.coroutines.delay(250)
+            advanceTimeBy(250)
+            runCurrent()
             assertEquals("idle channel must not poll data.state()", 0, data.stateCalls.get())
             assertEquals("idle channel must not poll probe.state()", 0, probe.stateCalls.get())
 
-            // Send an incomplete 2-part message (1 MiB) and verify on-demand expiry frees its receive budget.
-            val half = ByteArray(1024) { 7 }
-            val frag = Fragment.newBuilder()
-                .setMessageId(com.google.protobuf.ByteString.copyFrom(ByteArray(16) { 0x11 }))
+            // Send an incomplete 2-part message and verify on-demand expiry frees its receive budget
+            // without ever mutating DirectBudget concurrently with DirectChannel.receive().
+            fun incompleteFragment(idByte: Byte): ByteArray = Fragment.newBuilder()
+                .setMessageId(com.google.protobuf.ByteString.copyFrom(ByteArray(16) { idByte }))
                 .setIndex(0)
                 .setCount(2)
                 .setCiphertextLength(2048)
                 .setCiphertextSha256(com.google.protobuf.ByteString.copyFrom(ByteArray(32)))
                 .setPathGeneration(1L)
-                .setFragment(com.google.protobuf.ByteString.copyFrom(half))
+                .setFragment(com.google.protobuf.ByteString.copyFrom(ByteArray(1024) { 7 }))
                 .build()
                 .toByteArray()
-            data.listener.onMessage(frag)
-            kotlinx.coroutines.withTimeout(2_000L) {
-                while (budget.reserve("m-1", "50", 1, 1, (2 shl 20), 1)) {
-                    budget.free("m-1", 1, (2 shl 20), 1)
-                    kotlinx.coroutines.delay(5)
-                }
-            }
-            // Advance monotonic clock past partialTimeoutMs and wait for on-demand expiry to free budget.
-            mono.addAndGet(50L)
-            kotlinx.coroutines.withTimeout(2_000L) {
-                while (!budget.reserve("m-1", "50", 1, 1, (2 shl 20), 1)) {
-                    kotlinx.coroutines.delay(10)
-                }
-                budget.free("m-1", 1, (2 shl 20), 1)
-            }
+
+            data.listener.onMessage(incompleteFragment(0x11))
+            runCurrent()
+            assertFalse("incomplete fragment must reserve receive budget", budget.reserve("m-1", "50", 1, 1, (2 shl 20), 1))
+            assertTrue(budget.reserve("m-1", "50", 1, 1, (2 shl 20) - 1024, 127))
+            budget.free("m-1", 1, (2 shl 20) - 1024, 127)
+
+            // Just before partialTimeoutMs, the partial must still be retained.
+            advanceTimeBy(39)
+            runCurrent()
+            assertFalse("partial must not expire before partialTimeoutMs", budget.reserve("m-1", "50", 1, 1, (2 shl 20), 1))
+
+            // Crossing partialTimeoutMs expires the partial and frees the full receive budget.
+            advanceTimeBy(1)
+            runCurrent()
+            assertTrue("on-demand expiry must free full receive budget", budget.reserve("m-1", "50", 1, 1, (2 shl 20), 128))
+            budget.free("m-1", 1, (2 shl 20), 128)
+
+            // A subsequent incomplete fragment re-arms on-demand expiry cleanly after the previous expiry job exits.
+            data.listener.onMessage(incompleteFragment(0x22))
+            runCurrent()
+            assertFalse(budget.reserve("m-1", "50", 1, 1, (2 shl 20), 1))
+            advanceTimeBy(40)
+            runCurrent()
+            assertTrue(budget.reserve("m-1", "50", 1, 1, (2 shl 20), 128))
+            budget.free("m-1", 1, (2 shl 20), 128)
+
+            advanceTimeBy(1_000)
+            runCurrent()
+            assertEquals("channel must remain idle after expiry", 0, data.stateCalls.get())
+            assertEquals("channel must remain idle after expiry", 0, probe.stateCalls.get())
         } finally {
             channel.close()
+            runCurrent()
+            closeScope.cancel()
         }
     }
 
     @Test
-    fun reassemblyTransfersFragmentBudgetWithoutDoubleCharging() = runBlocking {
+    fun reassemblyTransfersFragmentBudgetWithoutDoubleCharging() = runTest {
+        val (dispatcher, closeScope) = testRuntime()
         var fakePc: FakePeerConnection? = null
         val budget = DirectBudget()
         val received = CopyOnWriteArrayList<ByteArray>()
@@ -623,6 +699,10 @@ class DirectChannelTest {
                 state = { _, _ -> },
                 frame = { received.add(it) },
                 closed = {},
+                monotonic = { testScheduler.currentTime },
+                dispatcher = dispatcher,
+                receiveDispatcher = dispatcher,
+                closeScope = closeScope,
             ),
         )
         val preReserved = 768 shl 10
@@ -655,9 +735,7 @@ class DirectChannelTest {
                     .toByteArray()
                 data.listener.onMessage(frag)
             }
-            kotlinx.coroutines.withTimeout(3_000L) {
-                while (received.isEmpty()) kotlinx.coroutines.delay(5)
-            }
+            runCurrent()
             assertEquals(1, received.size)
             assertArrayEquals(payload, received[0])
 
@@ -679,22 +757,22 @@ class DirectChannelTest {
                     .toByteArray()
                 data.listener.onMessage(frag)
             }
+            runCurrent()
             budget.free("m-1", 1, preReserved, 1)
             // After bad-hash cleanup + releasing preReserved, the full 2 MiB / 128-frame receive budget must be free.
-            kotlinx.coroutines.withTimeout(3_000L) {
-                while (!budget.reserve("m-1", "60", 2, 1, (2 shl 20), 128)) {
-                    kotlinx.coroutines.delay(10)
-                }
-                budget.free("m-1", 1, (2 shl 20), 128)
-            }
+            assertTrue(budget.reserve("m-1", "60", 2, 1, (2 shl 20), 128))
+            budget.free("m-1", 1, (2 shl 20), 128)
             assertEquals(1, received.size)
         } finally {
             channel.close()
+            runCurrent()
+            closeScope.cancel()
         }
     }
 
     @Test
-    fun reassemblySupportsMaximum128FragmentMessage() = runBlocking {
+    fun reassemblySupportsMaximum128FragmentMessage() = runTest {
+        val (dispatcher, closeScope) = testRuntime()
         var fakePc: FakePeerConnection? = null
         val budget = DirectBudget()
         val received = CopyOnWriteArrayList<ByteArray>()
@@ -712,6 +790,10 @@ class DirectChannelTest {
                 state = { _, _ -> },
                 frame = { received.add(it) },
                 closed = {},
+                monotonic = { testScheduler.currentTime },
+                dispatcher = dispatcher,
+                receiveDispatcher = dispatcher,
+                closeScope = closeScope,
             ),
         )
         try {
@@ -738,15 +820,15 @@ class DirectChannelTest {
                     .toByteArray()
                 data.listener.onMessage(frag)
             }
-            kotlinx.coroutines.withTimeout(3_000L) {
-                while (received.isEmpty()) kotlinx.coroutines.delay(5)
-            }
+            runCurrent()
             assertEquals(1, received.size)
             assertArrayEquals(payload, received[0])
             assertTrue(budget.reserve("m-1", "61", 2, 1, (2 shl 20), 128))
             budget.free("m-1", 1, (2 shl 20), 128)
         } finally {
             channel.close()
+            runCurrent()
+            closeScope.cancel()
         }
     }
 }
