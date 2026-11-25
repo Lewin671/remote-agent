@@ -62,6 +62,7 @@ type DirtyFlags struct {
 	Project     bool
 	NewSession  bool
 	SyncState   bool
+	Connection  bool
 	SessionData bool
 	Direct      bool
 }
@@ -78,6 +79,12 @@ func (d *DirtyFlags) Add(home, project, newSession bool) {
 
 // MarkSyncState marks the transitional SyncState view dirty.
 func (d *DirtyFlags) MarkSyncState() {
+	d.SyncState = true
+}
+
+// MarkConnection marks connection-derived views (Connection, Session, SyncState) dirty.
+func (d *DirtyFlags) MarkConnection() {
+	d.Connection = true
 	d.SyncState = true
 }
 
@@ -103,7 +110,7 @@ func (d *DirtyFlags) MarkAll() {
 
 // Any reports whether at least one screen or transitional view is dirty.
 func (d DirtyFlags) Any() bool {
-	return d.Home || d.Project || d.NewSession || d.SyncState || d.SessionData || d.Direct
+	return d.Home || d.Project || d.NewSession || d.SyncState || d.Connection || d.SessionData || d.Direct
 }
 
 // ScreenTargets returns ordered corev1.ScreenTarget entries for RenderEffect.
@@ -120,6 +127,8 @@ func (d DirtyFlags) ScreenTargets() []corev1.ScreenTarget {
 	}
 	if d.SyncState {
 		out = append(out, corev1.ScreenTarget_SCREEN_TARGET_SYNC_STATE)
+	}
+	if d.Connection {
 		out = append(out, corev1.ScreenTarget_SCREEN_TARGET_CONNECTION)
 	}
 	if d.SessionData {
@@ -218,6 +227,7 @@ type SettledCommand struct {
 	FromDaemon  bool
 	Expired     bool
 	Frozen      bool
+
 }
 
 // StepContext accumulates side effects, dirty flags, and settled command notifications for one Step call.
@@ -473,6 +483,29 @@ type Engine struct {
 	wasConnectedForPush        bool
 	lastEmittedWatched         []watchedRoute
 	prunedUntrustedMachines    map[string]bool
+	connSnap                   connStateSnap
+	connSnapInit               bool
+}
+
+type connStateSnap struct {
+	conn                lists.ConnectionKind
+	displayGrace        bool
+	reachabilityUnknown bool
+	unlinked            bool
+	removed             bool
+	networkAvailable    bool
+	liveLoaded          bool
+	securityLoaded      bool
+	isMember            bool
+	machinesListed      bool
+	sessionsListed      bool
+	hasSessions         bool
+	accountControlLost  bool
+	accountClockSkewed  bool
+	disconnectedAtMs    int64
+	connectionReason    world.Reason
+	managerName         string
+	isManager           bool
 }
 
 type watchedRoute struct {
@@ -516,8 +549,9 @@ func NewEngine() *Engine {
 		reqIDByAttempt:      make(map[string]string),
 		attemptTrackers:     make(map[string]*AttemptTracker),
 		retryReqByTimer:     make(map[string]string),
-		lateDirectTickets:       make(map[string]uint64),
-		lateDirectDeadline:      make(map[string]int64),
+		lateDirectTickets:   make(map[string]uint64),
+		lateDirectDeadline:  make(map[string]int64),
+
 		prunedUntrustedMachines: make(map[string]bool),
 		transportCoord: transport.NewCoordinator(transport.CoordConfig{
 			ProtocolVersion: uint64(PeerVersion),
@@ -596,9 +630,7 @@ func (e *Engine) Calendar() lists.Calendar { return e.w.Cal }
 // timers, cache, auth, security, stream, RPC, commands, watch, pin, route/schedule hints).
 // It returns whether the event was consumed by sync (ui-screen events return false).
 func (e *Engine) HandleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
-	consumed, res = e.handleEvent(ev)
-	e.refreshWorld()
-	return consumed, res
+	return e.handleEvent(ev)
 }
 
 func (e *Engine) restoreStepCtx(prev *StepContext) { e.activeStepCtx = prev }
@@ -626,12 +658,12 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 			e.emitSecurityEffects(ctx, e.secEngine.FlushEntropy())
 		}
 		e.maybeRequestEntropy(ctx)
-		return true, finalizeResult(ctx)
+		return true, e.finishStep(ctx)
 	}
 	if cal != nil {
 		e.checkLeaseClock(ctx)
 		ctx.Dirty.Add(true, true, false)
-		return true, finalizeResult(ctx)
+		return true, e.finishStep(ctx)
 	}
 
 	consumed = true
@@ -771,7 +803,13 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 	default:
 		consumed = false
 	}
-	return consumed, finalizeResult(ctx)
+	return consumed, e.finishStep(ctx)
+}
+
+func (e *Engine) finishStep(ctx *StepContext) StepResult {
+	e.refreshWorld()
+	e.detectConnectionChange(ctx)
+	return finalizeResult(ctx)
 }
 
 func finalizeResult(ctx *StepContext) StepResult {

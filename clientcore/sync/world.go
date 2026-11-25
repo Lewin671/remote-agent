@@ -128,6 +128,7 @@ func (e *Engine) BeginStep() (prev, ctx *StepContext) {
 func (e *Engine) EndStep(prev, ctx *StepContext) StepResult {
 	e.restoreStepCtx(prev)
 	e.refreshWorld()
+	e.detectConnectionChange(ctx)
 	return finalizeResult(ctx)
 }
 
@@ -139,7 +140,48 @@ func (e *Engine) Run(fn func(ctx *StepContext)) StepResult {
 		fn(ctx)
 	}
 	e.refreshWorld()
+	e.detectConnectionChange(ctx)
 	return finalizeResult(ctx)
+}
+
+func (e *Engine) currentConnSnap() connStateSnap {
+	return connStateSnap{
+		conn:                e.w.World.Connection,
+		displayGrace:        e.w.DisplayGrace,
+		reachabilityUnknown: e.w.ReachabilityUnknown,
+		unlinked:            e.unlinkedFlag,
+		removed:             e.removed,
+		networkAvailable:    e.networkAvailable,
+		liveLoaded:          e.w.World.LiveLoaded,
+		securityLoaded:      e.security.Loaded,
+		isMember:            e.security.IsMember,
+		machinesListed:      e.w.World.MachinesListed,
+		sessionsListed:      e.w.World.SessionsListed,
+		hasSessions:         len(e.sessions) > 0,
+		accountControlLost:  e.w.World.AccountControlLost,
+		accountClockSkewed:  e.w.World.AccountClockSkewed,
+		disconnectedAtMs:    e.w.DisconnectedAtMs,
+		connectionReason:    e.w.ConnectionReason,
+		managerName:         e.w.World.ManagerName,
+		isManager:           e.w.World.IsManager,
+	}
+}
+
+func (e *Engine) detectConnectionChange(ctx *StepContext) {
+	if ctx == nil {
+		return
+	}
+	cur := e.currentConnSnap()
+	if !e.connSnapInit || cur != e.connSnap {
+		e.connSnap = cur
+		e.connSnapInit = true
+		ctx.Dirty.MarkConnection()
+	}
+}
+
+// HasWatchedSessions reports whether any session currently has an active watcher.
+func (e *Engine) HasWatchedSessions() bool {
+	return len(e.watchedSessions) > 0
 }
 
 // World returns the core's synchronized world. The engine is its only writer:

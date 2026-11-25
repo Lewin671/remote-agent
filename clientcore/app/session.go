@@ -1074,7 +1074,8 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 
 func (c *Core) appendSessionRenderTarget(dirty sync.DirtyFlags, effects []*corev1.Effect) []*corev1.Effect {
 	store := c.m.ensureSessionStore()
-	wantSession := store.pendingDirty || (len(store.opened) > 0 && (dirty.SessionData || dirty.Home || dirty.Direct))
+	hasSessionListeners := len(store.opened) > 0 || c.m.sync.HasWatchedSessions()
+	wantSession := store.pendingDirty || (hasSessionListeners && (dirty.Connection || dirty.SessionData || dirty.Home || dirty.Direct))
 	store.pendingDirty = false
 	if !wantSession {
 		return effects
