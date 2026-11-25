@@ -33,3 +33,39 @@ func ParseRelayErrorDetail(details []*corev1.RpcErrorDetailBytes) *v1.RelayError
 	}
 	return nil
 }
+
+// isKnownRelayErrorReason reports whether r is a non-zero RelayErrorReason
+// defined in this client's schema. Unrecognized future enum values return false
+// so callers fall back to Connect status code semantics just like UNSPECIFIED.
+func isKnownRelayErrorReason(r v1.RelayErrorReason) bool {
+	switch r {
+	case v1.RelayErrorReason_RELAY_ERROR_REASON_LOGIN_FAILED,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_PROTOCOL_MISMATCH,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_TOKEN_INVALID,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_ACCOUNT_SUSPENDED,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_DEVICE_NOT_MEMBER,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_NO_SECURITY_DOMAIN,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_NOT_AUTHORITY,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_CLOCK_AHEAD,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_SECURITY_CHAIN_FULL,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_SETUP_TOKEN_REQUIRED,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_SIGNUP_POW_REQUIRED,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_SIGNUP_POW_INVALID,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_SIGNUP_TOKEN_ONLY,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_RATE_LIMITED,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_RELAY_DISK_LOW,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_RELAY_ACCOUNTS_FULL,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_QUOTA_DEVICES,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_QUOTA_MACHINES,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_QUOTA_SESSIONS,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_QUOTA_STORAGE,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_PAIRING_INVALID_OR_EXPIRED,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_PAIRING_ALREADY_JOINED,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_INVALID,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_NOT_READY,
+		v1.RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_REJECTED:
+		return true
+	default:
+		return false
+	}
+}

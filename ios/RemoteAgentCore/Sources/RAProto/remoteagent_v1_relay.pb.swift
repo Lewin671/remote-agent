@@ -229,7 +229,9 @@ public enum PBPushType: SwiftProtobuf.Enum, Swift.CaseIterable {
 }
 
 /// Structured machine-readable reason attached to Connect errors via connect.ErrorDetail.
-/// Purely additive: 0 (UNSPECIFIED) falls back to Connect status code semantics.
+/// Purely additive: 0 (UNSPECIFIED) and any reason value unrecognized by a client
+/// fall back to Connect status code semantics, so adding a new reason must never
+/// change the Connect status code of an existing error.
 public enum PBRelayErrorReason: SwiftProtobuf.Enum, Swift.CaseIterable {
   public typealias RawValue = Int
   case unspecified // = 0

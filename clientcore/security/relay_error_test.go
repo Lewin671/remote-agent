@@ -172,3 +172,69 @@ func (c *captureRPCTask) step(_ *Engine, ev *secEvent) error {
 	c.onStep(ev)
 	return nil
 }
+
+func TestUnknownRelayErrorReasonFallsBackToConnectCode(t *testing.T) {
+	// Every generated non-zero RelayErrorReason must be recognized as known.
+	for num, name := range pb.RelayErrorReason_name {
+		r := v1.RelayErrorReason(num)
+		want := num != 0
+		if got := isKnownRelayErrorReason(r); got != want {
+			t.Fatalf("isKnownRelayErrorReason(%s=%d) = %v, want %v", name, num, got, want)
+		}
+	}
+	for _, unknown := range []v1.RelayErrorReason{99, -1} {
+		if isKnownRelayErrorReason(unknown) {
+			t.Fatalf("isKnownRelayErrorReason(%d) = true, want false", unknown)
+		}
+	}
+
+	unknownDetail := ParseRelayErrorDetail([]*corev1.RpcErrorDetailBytes{
+		{
+			TypeName: RelayErrorDetailTypeName,
+			Value:    mustMarshalDetail(t, &pb.RelayErrorDetail{Reason: pb.RelayErrorReason(99)}),
+		},
+	})
+	if unknownDetail == nil || unknownDetail.Reason != v1.RelayErrorReason(99) {
+		t.Fatalf("ParseRelayErrorDetail(99) = %+v, want raw reason 99 preserved", unknownDetail)
+	}
+
+	codes := []int32{
+		connectCodeCanceled,
+		connectCodeInvalidArgument,
+		connectCodeNotFound,
+		connectCodeAlreadyExists,
+		connectCodePermissionDenied,
+		connectCodeResourceExhausted,
+		connectCodeFailedPrecondition,
+		connectCodeUnavailable,
+		connectCodeUnauthenticated,
+	}
+	predicates := []struct {
+		name string
+		fn   func(*rpcError) bool
+	}{
+		{"isTokenInvalid", (*rpcError).isTokenInvalid},
+		{"isSignupPowRequired", (*rpcError).isSignupPowRequired},
+		{"isCreateInitLoginMissing", (*rpcError).isCreateInitLoginMissing},
+		{"isRetainedLoginDenied", (*rpcError).isRetainedLoginDenied},
+		{"isPairingGone", (*rpcError).isPairingGone},
+		{"isJoinPairingGone", (*rpcError).isJoinPairingGone},
+		{"isDeliveryFallback", (*rpcError).isDeliveryFallback},
+		{"isResumeRegFallbackLogin", (*rpcError).isResumeRegFallbackLogin},
+	}
+
+	for _, code := range codes {
+		noDetail := &rpcError{code: code}
+		withUnknown := &rpcError{code: code, detail: unknownDetail}
+		if withUnknown.relayReason() != v1.RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED {
+			t.Fatalf("code=%d: relayReason() = %v, want UNSPECIFIED for unknown reason 99", code, withUnknown.relayReason())
+		}
+		for _, p := range predicates {
+			want := p.fn(noDetail)
+			got := p.fn(withUnknown)
+			if got != want {
+				t.Errorf("code=%d predicate=%s: unknown reason 99 gave %v, want %v (same as no detail)", code, p.name, got, want)
+			}
+		}
+	}
+}

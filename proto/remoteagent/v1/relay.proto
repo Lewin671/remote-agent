@@ -865,7 +865,9 @@ message DeleteAccountRequest {
 message DeleteAccountResponse {}
 
 // Structured machine-readable reason attached to Connect errors via connect.ErrorDetail.
-// Purely additive: 0 (UNSPECIFIED) falls back to Connect status code semantics.
+// Purely additive: 0 (UNSPECIFIED) and any reason value unrecognized by a client
+// fall back to Connect status code semantics, so adding a new reason must never
+// change the Connect status code of an existing error.
 enum RelayErrorReason {
   RELAY_ERROR_REASON_UNSPECIFIED = 0;
   RELAY_ERROR_REASON_LOGIN_FAILED = 1;                // Device unknown, bad/expired challenge, or signature mismatch

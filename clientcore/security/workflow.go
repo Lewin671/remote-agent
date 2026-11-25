@@ -100,7 +100,7 @@ func (e *rpcError) Error() string {
 }
 
 func (e *rpcError) relayReason() v1.RelayErrorReason {
-	if e == nil || e.detail == nil {
+	if e == nil || e.detail == nil || !isKnownRelayErrorReason(e.detail.Reason) {
 		return v1.RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED
 	}
 	return e.detail.Reason
