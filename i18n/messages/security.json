@@ -4766,39 +4766,6 @@
     }
   },
   {
-    "key": "security.ios_open_settings_account_security_and_tap_renew_now",
-    "zh-CN": "请在「设置 › 账户安全」点「现在续期」",
-    "en": "Open Settings › Account security and tap Renew now",
-    "notes": "iOS RemoteSecurity.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_open_to_renew",
-    "zh-CN": "请打开{value}续期",
-    "en": "Open {value} to renew",
-    "notes": "iOS RemoteSecurity.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 clientName(devices[authorityDeviceId], id: authorityDeviceId, among: devices)；用户内容和系统/CLI 原文不翻译。",
-    "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.ios_original_cli_sessions_and_project_files_on_computers_and",
     "zh-CN": "电脑上的原始 CLI 会话和项目文件，以及其他设备已下载的本地副本，不会被远程删除。为防止旧设备身份重新注册，中继仍保留最小的设备撤销标记。",
     "en": "Original CLI sessions and project files on computers, and local copies downloaded on other devices, will not be remotely deleted. The relay retains minimal device revocation markers to prevent old device identities from registering again.",
@@ -5266,20 +5233,6 @@
     }
   },
   {
-    "key": "security.ios_security_state_is_unverified_the_operation_was_not_sent",
-    "zh-CN": "安全状态尚未核实，操作没有发出；请重试",
-    "en": "Security state is unverified. The operation was not sent; retry.",
-    "notes": "iOS RemoteSecurity.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.ios_setup_token",
     "zh-CN": "设置令牌",
     "en": "Setup token",
@@ -5494,20 +5447,6 @@
     "zh-CN": "这台设备没有可用的相机；可以返回手动输入配对码。",
     "en": "This device has no available camera. Go back to enter the pairing code manually.",
     "notes": "iOS QRScanner.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_this_device_is_over_5_minutes_behind_the_security",
-    "zh-CN": "本机时间比安全状态慢 5 分钟以上，控制已暂停；请校准系统时间后重试",
-    "en": "This device is over 5 minutes behind the security state. Control paused. Correct the system clock and retry.",
-    "notes": "iOS RemoteSecurity.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"

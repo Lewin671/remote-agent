@@ -34,6 +34,14 @@ extension Remote {
         ev.requestID = effect.requestID
         ev.attemptID = effect.attemptID
 
+        guard effect.hasSealedEnvelope else {
+            ev.source = .local
+            ev.notForwarded = true
+            ev.transportCode = "failed_precondition"
+            ev.transportDetail = "missing sealed command"
+            return ev
+        }
+
         let cmd = try? PBCommand(serializedBytes: effect.commandBytes)
 
         let useDirect = effect.routeLeg == .direct && effect.directPcID > 0
@@ -53,25 +61,7 @@ extension Remote {
                 try await relayAttempt.prepare(prior: effect.retryOfUnknown)
             }
 
-            let envelope: PBEnvelope
-            let keyHash: Data
-            let payloadHash: Data
-            if effect.hasSealedEnvelope {
-                envelope = effect.sealedEnvelope
-                keyHash = Data()
-                payloadHash = Data()
-            } else {
-                let auth = try await authorizeCommandBytes(
-                    machineId: effect.machineID,
-                    sessionId: effect.sessionID,
-                    requestId: effect.requestID,
-                    deadlineMs: effect.deadlineMs,
-                    commandBytes: effect.commandBytes
-                )
-                envelope = auth.envelope
-                keyHash = auth.keyHash
-                payloadHash = auth.payloadHash
-            }
+            let envelope = effect.sealedEnvelope
             try Task.checkCancellation()
 
             let res: PBForwardResponse
@@ -94,90 +84,31 @@ extension Remote {
             ev.elapsedMs = elapsed()
             ev.handedOff = handedOffLock.withLock { $0 }
 
-            if effect.hasSealedEnvelope {
-                let bound = res.attemptID == effect.attemptID
-                if bound,
-                   let cmd, case .schedule(let req)? = cmd.kind, req.operation == "list",
-                   res.hasResult,
-                   let (_, msg) = try? await openSecureMessage(
-                       envelope: res.result,
-                       want: Place(
-                           .commandResult,
-                           machineId: effect.machineID,
-                           sessionId: effect.sessionID,
-                           requestId: effect.requestID),
-                       as: PBCommandResult.self),
-                   msg.outcome == "executed", msg.errorCode.isEmpty, msg.resultAvailable,
-                   case .schedule? = msg.kind,
-                   let envBytes = try? res.result.serializedData() {
-                    await keepScheduleSnapshot(effect.machineID, data: envBytes)
-                }
-                ev.source = .daemon
-                ev.notForwarded = false
-                ev.attemptBound = bound
-                ev.outerOutcome = useDirect ? "" : res.outcome
-                ev.outerReason = useDirect ? "" : res.reason
-                if res.hasResult {
-                    ev.sealedResult = res.result
-                }
-                return ev
-            }
-
-            let (_, msg): (PBHeader, PBCommandResult)
-            do {
-                (_, msg) = try await openSecureMessage(
-                    envelope: res.result,
-                    want: Place(
-                        .commandResult,
-                        machineId: effect.machineID,
-                        sessionId: effect.sessionID,
-                        requestId: effect.requestID),
-                    as: PBCommandResult.self)
-            } catch {
-                ev.source = .daemon
-                ev.notForwarded = false
-                ev.attemptBound = res.attemptID == effect.attemptID
-                ev.hashesMatch = false
-                ev.signed = false
-                ev.outerMatchesInner = false
-                ev.transportCode = CommandError.unknownOutcome
-                ev.transportDetail = L10n.errorsIosCannotOpenTheComputerSReplyCommandExecutionIs()
-                return ev
-            }
-
-            let hashesMatch = msg.requestKeyHash == keyHash && msg.payloadHash == payloadHash
-            let outerOutcome = useDirect ? msg.outcome : res.outcome
-            let outerReason = useDirect ? msg.reason : res.reason
-            let outerMatchesInner = useDirect || (res.outcome == msg.outcome && res.reason == msg.reason)
-            let signed = msg.outcome == "conflict" || msg.conflictKind.isEmpty
             let bound = res.attemptID == effect.attemptID
-
-            let obsBytes: Int64 = if let cmd, case .putImageChunk(let put)? = cmd.kind {
-                Int64(put.data.count)
-            } else if case .getSharedFileChunk(let chunk)? = msg.kind {
-                Int64(chunk.data.count)
-            } else {
-                0
-            }
-            ev.observedBytes = obsBytes
-
-            if bound && hashesMatch && outerMatchesInner && signed && msg.outcome == "executed",
-               msg.errorCode.isEmpty, msg.resultAvailable,
+            if bound,
                let cmd, case .schedule(let req)? = cmd.kind, req.operation == "list",
+               res.hasResult,
+               let (_, msg) = try? await openSecureMessage(
+                   envelope: res.result,
+                   want: Place(
+                       .commandResult,
+                       machineId: effect.machineID,
+                       sessionId: effect.sessionID,
+                       requestId: effect.requestID),
+                   as: PBCommandResult.self),
+               msg.outcome == "executed", msg.errorCode.isEmpty, msg.resultAvailable,
                case .schedule? = msg.kind,
                let envBytes = try? res.result.serializedData() {
                 await keepScheduleSnapshot(effect.machineID, data: envBytes)
             }
-
             ev.source = .daemon
             ev.notForwarded = false
             ev.attemptBound = bound
-            ev.hashesMatch = hashesMatch
-            ev.outerMatchesInner = outerMatchesInner
-            ev.signed = signed
-            ev.outerOutcome = outerOutcome
-            ev.outerReason = outerReason
-            ev.result = msg
+            ev.outerOutcome = useDirect ? "" : res.outcome
+            ev.outerReason = useDirect ? "" : res.reason
+            if res.hasResult {
+                ev.sealedResult = res.result
+            }
             return ev
         } catch let error as CommandError {
             ev.elapsedMs = elapsed()

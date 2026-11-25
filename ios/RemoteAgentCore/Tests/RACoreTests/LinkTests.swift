@@ -1,76 +1,29 @@
 import Foundation
 import RAProto
 import Testing
-import os
 @testable import RACore
 
-private final class GuardedSecurityStore: SecurityStoreV4, Sendable {
-    let base: MemorySecurityStoreV4
-    let blocked = OSAllocatedUnfairLock(initialState: false)
-    init(_ base: MemorySecurityStoreV4) { self.base = base }
-    func hasPersistedState() -> Bool { base.hasPersistedState() }
-    func generateKey(kind: PBSecurityKeyKind, slot: String, persist: Bool) throws -> Data {
-        try base.generateKey(kind: kind, slot: slot, persist: persist)
-    }
-    func signKey(kind: PBSecurityKeyKind, slot: String, message: Data) throws -> Data {
-        if blocked.withLock({ $0 }) { throw SecurityFailure.lease }
-        return try base.signKey(kind: kind, slot: slot, message: message)
-    }
-    func agreeKey(kind: PBSecurityKeyKind, slot: String, peerPublic: Data) throws -> Data {
-        try base.agreeKey(kind: kind, slot: slot, peerPublic: peerPublic)
-    }
-    func encapsulate(recipients: [PBSecurityEncapsulateRecipient]) throws -> [PBSecurityEncapsulatedPair] {
-        try base.encapsulate(recipients: recipients)
-    }
-    func discardKey(kind: PBSecurityKeyKind, slot: String) { base.discardKey(kind: kind, slot: slot) }
-    func executeStorage(_ effect: PBSecurityStorageEffect) -> PBSecurityStorageResultEvent {
-        base.executeStorage(effect)
-    }
-    func dismissLegacyRepairNotice() { base.dismissLegacyRepairNotice() }
-    func clearMemoryCache() { base.clearMemoryCache() }
-    func loadLoginToken(server: String, deviceId: String) -> SavedLogin? {
-        base.loadLoginToken(server: server, deviceId: deviceId)
-    }
-    func saveLoginToken(_ token: SavedLogin, server: String, deviceId: String) {
-        base.saveLoginToken(token, server: server, deviceId: deviceId)
-    }
-    func clearLoginToken(server: String, deviceId: String) {
-        base.clearLoginToken(server: server, deviceId: deviceId)
-    }
-}
-
-extension ServerTests {
-    @Suite(.timeLimit(.minutes(2))) struct LinkTests {
-        @Test func reachabilityCannotAuthorizeOrClearPriorEvidence() async throws {
-            try await World.run(setUp: { _ in }) { w in
-                let account = try await w.join()
-                let baseStore = try #require(TestSecurity.find(w.server.url)?.store(account.deviceId))
-                let store = GuardedSecurityStore(baseStore)
-                let forwards = Counter()
-                let http = Intercept.http(for: w.server.url) { request in
-                    if request.url?.path.hasSuffix("/Forward") == true { forwards.increment() }
-                    return request
-                }
-                let remote = try Remote(account: account, http: http, securityStore: store, allowPlainHttp: true)
-                defer { remote.close() }
-                _ = try await remote.currentToken()
-                try await remote.ensureSecurityBootstrapped()
-                let cmdBytes = try PBCommand.with { $0.getSettings = PBGetSettingsRequest() }.serializedData()
-                let eff = PBCoreDispatchCommandEffect.with {
-                    $0.requestID = newRequestId()
-                    $0.attemptID = newRequestId()
-                    $0.machineID = w.daemon.id
-                    $0.deadlineMs = Int64(Date().timeIntervalSince1970 * 1000) + 60_000
-                    $0.commandBytes = cmdBytes
-                    $0.routeLeg = .relay
-                }
-                store.blocked.withLock { $0 = true }
-                let outcome = await remote.dispatchCommandAttempt(eff)
-                #expect(forwards.value == 0)
-                #expect(outcome.notForwarded)
-                #expect(outcome.transportCode == "authorization_unavailable")
-            }
+@Suite(.timeLimit(.minutes(2))) struct LinkCommandTests {
+    @Test func missingSealedEnvelopeFailsLocallyWithoutForwarding() async throws {
+        let account = Account(server: "https://example.com", deviceId: "dev-1", accountId: "acc-1")
+        let remote = try Remote(account: account, http: HTTP(), securityStore: MemorySecurityStoreV4())
+        defer { remote.close() }
+        let cmdBytes = try PBCommand.with { $0.getSettings = PBGetSettingsRequest() }.serializedData()
+        let eff = PBCoreDispatchCommandEffect.with {
+            $0.requestID = newRequestId()
+            $0.attemptID = newRequestId()
+            $0.machineID = "mach-1"
+            $0.deadlineMs = nowMs() + 60_000
+            $0.commandBytes = cmdBytes
+            $0.routeLeg = .relay
         }
+        let outcome = await remote.dispatchCommandAttempt(eff)
+        #expect(outcome.requestID == eff.requestID)
+        #expect(outcome.attemptID == eff.attemptID)
+        #expect(outcome.source == .local)
+        #expect(outcome.notForwarded)
+        #expect(outcome.transportCode == "failed_precondition")
+        #expect(outcome.transportDetail == "missing sealed command")
     }
 }
 

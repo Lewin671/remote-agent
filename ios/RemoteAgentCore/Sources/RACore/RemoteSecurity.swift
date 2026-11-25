@@ -382,60 +382,6 @@ extension Remote {
         }
     }
 
-    struct AuthorizedCommand: Sendable {
-        let envelope: PBEnvelope
-        let keyHash: Data
-        let payloadHash: Data
-    }
-
-    func authorizeCommandBytes(
-        machineId: String,
-        sessionId: String,
-        requestId: String,
-        deadlineMs: Int64,
-        commandBytes: Data
-    ) async throws -> AuthorizedCommand {
-        do {
-            try await ensureSecurityBootstrapped()
-            guard !(securityClient.currentStatus?.clockSkewed ?? clockSkewed) else {
-                throw CommandError("failed_precondition", L10n.securityIosThisDeviceIsOver5MinutesBehindTheSecurity())
-            }
-            let sealed = try await sealEnvelopeOp(
-                purpose: .command,
-                machineId: machineId,
-                sessionId: sessionId,
-                requestId: requestId,
-                deadlineMs: deadlineMs,
-                plaintext: commandBytes
-            )
-            return AuthorizedCommand(
-                envelope: sealed.envelope,
-                keyHash: sealed.requestKeyHash,
-                payloadHash: sealed.payloadHash
-            )
-        } catch let e as CommandError {
-            throw e
-        } catch SecurityFailure.lease {
-            let view = await currentCoreSyncStateView()
-            let renewal: String
-            if let view, view.hasLeaseRenewalAdvice {
-                renewal = renderCoreText(view.leaseRenewalAdvice)
-            } else {
-                let authId = view?.authorityDeviceID ?? ""
-                let rawManager = view?.hasManagerName == true ? renderCoreText(view!.managerName) : ""
-                let managerName = rawManager.isEmpty ? L10n.securityClient() : rawManager
-                renewal = authId == account.deviceId
-                    ? L10n.securityIosOpenSettingsAccountSecurityAndTapRenewNow()
-                    : L10n.securityIosOpenToRenew(value: managerName)
-            }
-            throw CommandError(
-                "failed_precondition", L10nMessage.errorsIosExpiredControlRenewal(renewal: renewal))
-        } catch {
-            if error is CancellationError { throw error }
-            throw CommandError("authorization_unavailable", L10nMessage.securityIosSecurityStateIsUnverifiedTheOperationWasNotSent())
-        }
-    }
-
     private static let purposeByKind: [PBPayloadKind: SecurityPurpose] = [
         .event: .event, .sessionMeta: .sessionMeta, .sessionKey: .sessionKey, .machineMeta: .machineMeta,
         .command: .command, .commandResult: .result, .terminalOutput: .terminalOutput, .terminalInput: .terminalInput,

@@ -214,9 +214,7 @@
 "errors_invalid_command" = "Invalid command arguments";
 "errors_ios_already_registering_wait_for_the_result" = "Already registering %1$@. Wait for the result.";
 "errors_ios_cannot_find_the_server_check_your_network" = "Cannot find the server. Check your network.";
-"errors_ios_cannot_open_the_computer_s_reply_command_execution_is" = "Cannot open the computer’s reply. Command execution is unconfirmed.";
 "errors_ios_could_not_read_this_phone_s_account_state_management" = "Could not read this phone’s account state. Management keys or unfinished security operations may remain. Continuing deletes local account keys and cache, so the original operation cannot continue. Computer sessions are unaffected.";
-"errors_ios_expired_control_renewal" = "Remote control expired. Control and new uploads are paused; %1$@";
 "errors_ios_image_content_does_not_match_its_format" = "Image content does not match its format";
 "errors_ios_image_content_or_origin_could_not_be_verified" = "Image content or origin could not be verified";
 "errors_ios_invalid_server_address" = "Invalid server address";
@@ -1022,8 +1020,6 @@
 "security_ios_management_transferred_this_device_was_removed" = "Management transferred. This device was removed.";
 "security_ios_not_read_yet" = "Not read yet";
 "security_ios_on_the_managing_client_open_settings_add_device_scan" = "On the managing client, open Settings › Add device. Scan its QR code or enter its 8-digit pairing code here.";
-"security_ios_open_settings_account_security_and_tap_renew_now" = "Open Settings › Account security and tap Renew now";
-"security_ios_open_to_renew" = "Open %1$@ to renew";
 "security_ios_original_cli_sessions_and_project_files_on_computers_and" = "Original CLI sessions and project files on computers, and local copies downloaded on other devices, will not be remotely deleted. The relay retains minimal device revocation markers to prevent old device identities from registering again.";
 "security_ios_original_security_operation_verified_this_device_no_longer_has" = "Original security operation verified. This device no longer has management authority.";
 "security_ios_pair_again_and_preserve_identity" = "Pair again and preserve identity";
@@ -1057,7 +1053,6 @@
 "security_ios_scan_qr_code" = "Scan QR code";
 "security_ios_security_operation_state_changed_choose_how_to_exit_again" = "Security operation state changed. Choose how to exit again.";
 "security_ios_security_operation_state_changed_choose_how_to_join_again" = "Security operation state changed. Choose how to join again.";
-"security_ios_security_state_is_unverified_the_operation_was_not_sent" = "Security state is unverified. The operation was not sent; retry.";
 "security_ios_setup_token" = "Setup token";
 "security_ios_setup_token_if_required" = "Setup token (if required)";
 "security_ios_submit_and_verify_original_request" = "Submit and verify original request";
@@ -1074,7 +1069,6 @@
 "security_ios_the_successor_s_public_key_may_already_be_published" = "The successor’s public key may already be published. Abandoning only clears local preparation and does not withdraw the key seen by the managing client. If transferred, this device will still verify management and renew control. Keep the saved recovery code.";
 "security_ios_this_deletes_the_entire_account_on_the_current_relay" = "This deletes the entire account on the current relay, device registrations, encrypted session records, images, file chunks, and account settings, and disconnects all paired devices. This is permanent account deletion; a recovery code cannot restore it.";
 "security_ios_this_device_has_no_available_camera_go_back_to" = "This device has no available camera. Go back to enter the pairing code manually.";
-"security_ios_this_device_is_over_5_minutes_behind_the_security" = "This device is over 5 minutes behind the security state. Control paused. Correct the system clock and retry.";
 "security_ios_this_device_s_account_keys_and_cache_will_be" = "This device’s account keys and cache will be deleted before joining with a pairing code.";
 "security_ios_this_device_was_removed_the_successor_is_now_the" = "This device was removed. The successor is now the sole managing client. Pair again to rejoin.";
 "security_ios_this_ipad" = "this iPad";

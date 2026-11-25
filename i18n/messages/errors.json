@@ -1057,20 +1057,6 @@
     "zh-CN": "找不到服务器，检查一下网络"
   },
   {
-    "en": "Cannot open the computer’s reply. Command execution is unconfirmed.",
-    "key": "errors.ios_cannot_open_the_computer_s_reply_command_execution_is",
-    "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "电脑的回复打不开，不确定指令有没有执行"
-  },
-  {
     "en": "Could not read this phone’s account state. Management keys or unfinished security operations may remain. Continuing deletes local account keys and cache, so the original operation cannot continue. Computer sessions are unaffected.",
     "key": "errors.ios_could_not_read_this_phone_s_account_state_management",
     "notes": "iOS AppModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
@@ -1083,25 +1069,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "没能读取这台手机的账户状态，可能还有管理密钥或未完成的安全操作。继续会删除本机账户密钥和缓存，无法继续原操作；电脑上的会话不受影响。"
-  },
-  {
-    "en": "Remote control expired. Control and new uploads are paused; {renewal}",
-    "key": "errors.ios_expired_control_renewal",
-    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。renewal 为本端生成的续期指引（当前管理端名称可来自账户），安全提示正文。",
-    "params": {
-      "renewal": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "远程控制有效期已过，控制和新内容上传已暂停；{renewal}"
   },
   {
     "en": "Image content does not match its format",
