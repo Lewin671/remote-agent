@@ -136,7 +136,7 @@ fun SessionScreen(sid: String) {
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val p = pal
-    val syncView by remote.coreHost.syncStateView.collectAsState()
+    val connView by remote.coreHost.connectionView.collectAsState()
 
     var windowLimit by rememberSaveable(sid) { mutableIntStateOf(CORE_SESSION_WINDOW_LIMIT) }
     val pendingJump = ScheduleJump.requested[sid] ?: 0L
@@ -247,7 +247,7 @@ fun SessionScreen(sid: String) {
             dot = if (header.status == SessionDisplayStatus.SESSION_DISPLAY_STATUS_POPUP) 1 else -1,
             dark = term,
         )
-        ConnStrip(syncView, Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp))
+        ConnStrip(connView, Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp))
         if (!term) SessionScheduleStrip(sid, Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp))
         if (term) {
             TerminalPane(

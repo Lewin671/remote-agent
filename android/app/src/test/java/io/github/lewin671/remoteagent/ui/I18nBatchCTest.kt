@@ -246,13 +246,13 @@ class I18nBatchCTest(private val locale: String) {
     @Test fun storage() { show { PhoneImageStoragePage {} }; shot("phone-storage") }
     @Test fun devices() { show { DevicesScreen() }; shot("devices") }
     @Test fun client() { show { ClientScreen(client.id) }; shot("client") }
-    @Test fun security() { show { Column { AccountSecurityContent(state.copy(recoveryPending = true, recoveryReadyMs = stamp + 172_800_000).toTestSyncStateView(client.id)) } }; shot("security") }
-    @Test fun securityMember() { show { Column { AccountSecurityContent(state.copy(isAuthority = false).toTestSyncStateView(client.id)) } }; shot("security-member") }
+    @Test fun security() { show { Column { AccountSecurityContent(state.copy(recoveryPending = true, recoveryReadyMs = stamp + 172_800_000).toTestSecuritySummaryView(client.id)) } }; shot("security") }
+    @Test fun securityMember() { show { Column { AccountSecurityContent(state.copy(isAuthority = false).toTestSecuritySummaryView(client.id)) } }; shot("security-member") }
     @Test fun recover() { show { RecoverScreen(appFixture.app) }; shot("recover") }
     @Test fun createAccount() { show { CreateAccountScreen(appFixture.app) }; shot("create-account") }
-    @Test fun rotateRecovery() { show { RotateRecoveryContent(state.toTestSyncStateView(client.id), { error("Preview does not publish") }, {}, {}) }; shot("rotate-recovery") }
+    @Test fun rotateRecovery() { show { RotateRecoveryContent(prepareCode = { error("Preview does not publish") }, publishCode = {}, onBack = {}) }; shot("rotate-recovery") }
     @Test fun recoveryStatus() { show { Column(Modifier.padding(20.dp)) { RecoveryStatus(GetRecoveryContextResponse.Phase.PHASE_READY, false, "", {}, {}, {}) } }; shot("recovery-ready") }
-    @Test fun handoff() { show { HandoffPreparationContent(state.copy(isAuthority = false).toTestSyncStateView(client.id), prepareCode = { "EXAMPLE RECOVERY CODE" }, publishOffer = {}) }; shot("handoff") }
+    @Test fun handoff() { show { HandoffPreparationContent(prepareCode = { "EXAMPLE RECOVERY CODE" }, publishOffer = {}) }; shot("handoff") }
     @Test fun join() { show { JoinScreen(appFixture.app) }; shot("join") }
     @Test fun removed() { show { RemovedScreen(appFixture.app, remote) }; shot("removed") }
     @Test fun pair() { show { PairScreen() }; shot("pair") }

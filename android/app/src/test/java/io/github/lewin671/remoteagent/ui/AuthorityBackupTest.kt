@@ -62,10 +62,10 @@ class AuthorityBackupTest {
         var attempts = 0
         var backs = 0
         show {
-                RotateRecoveryContent(io.github.lewin671.remoteagent.core.proto.SyncStateView.newBuilder().setIsManager(true).build(), { "synthetic-offline-code" }, {
+                RotateRecoveryContent(prepareCode = { "synthetic-offline-code" }, publishCode = {
                     attempts++
                     if (attempts == 1) throw IllegalStateException("save failed")
-                }, { backs++ })
+                }, onBack = { backs++ })
         }
         ui.onNodeWithText("我已保存，发布换码").assertDoesNotExist()
         ui.onNodeWithText("生成新的恢复码").performClick()

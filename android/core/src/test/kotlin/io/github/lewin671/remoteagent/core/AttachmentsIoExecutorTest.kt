@@ -466,7 +466,7 @@ class AttachmentsIoExecutorTest {
                 host1.syncLifecycle(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_START)
                 // Wait for machine m1 to be online and connected.
                 withTimeout(5_000L) {
-                    while (host1.syncStateView.value.machinesList.none { it.machineId == "m1" && it.online }) {
+                    while (host1.snapshotSettingsView().machinesList.none { it.machineId == "m1" && it.online }) {
                         kotlinx.coroutines.delay(10L)
                     }
                 }

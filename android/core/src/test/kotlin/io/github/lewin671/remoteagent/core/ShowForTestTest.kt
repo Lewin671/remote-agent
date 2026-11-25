@@ -38,7 +38,7 @@ class ShowForTestTest {
                 RemoteState(machines = mapOf("m" to m), loaded = true),
                 sessions = mapOf("s" to vm),
             )
-            val gotMachine = remote.coreHost.syncStateView.value.machinesList.firstOrNull { it.machineId == "m" }
+            val gotMachine = remote.coreHost.snapshotSettingsView().machinesList.firstOrNull { it.machineId == "m" }
             assertEquals("m", gotMachine?.machineId)
             assertEquals(true, gotMachine?.online)
             val got = remote.watchSession("s").first()
@@ -59,7 +59,7 @@ class ShowForTestTest {
         try {
             val expected = RemoteState(conn = ConnState.ONLINE, loaded = true)
             remote.showForTest(expected)
-            assertEquals(io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_CONNECTED, remote.coreHost.syncStateView.value.connection)
+            assertEquals(io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_CONNECTED, remote.coreHost.connectionView.value.state)
         } finally {
             remote.close()
         }

@@ -422,6 +422,8 @@ class RaApp : Application() {
                     }
                 },
                 monotonic = android.os.SystemClock::elapsedRealtime,
+                devicePlatform = "android",
+                deviceDescription = androidDeviceDescription(this),
                 securityStore = object : SecurityStoreV4 by vault {
                     override fun loadLoginToken(server: String, deviceId: String) =
                         if (foreground) vault.loadLoginToken(server, deviceId) else null

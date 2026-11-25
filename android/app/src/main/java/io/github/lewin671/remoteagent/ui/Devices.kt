@@ -251,7 +251,6 @@ private fun DeviceClientRow(c: ClientRowView, unfinished: Boolean, onClick: () -
 fun ClientScreen(id: String) {
     val remote = LocalRemote.current
     val nav = LocalNav.current
-    val syncView by remote.coreHost.syncStateView.collectAsState()
     val initialVm = remember(remote, id) { remote.coreHost.snapshotClientDetailView(id) }
     val rawVm by remote.clientDetailView.collectAsState()
     val vm = if (rawVm.deviceId == id) rawVm else initialVm
@@ -264,7 +263,7 @@ fun ClientScreen(id: String) {
     ClientScreenContent(
         vm = vm,
         rename = rename,
-        canRemoveNow = vm.canRemove && syncView.connection == io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_CONNECTED && !remove.running,
+        canRemoveNow = vm.canRemove && !remove.running,
         removeError = remove.error,
         onSettings = { nav.settings() },
         onRename = { name ->

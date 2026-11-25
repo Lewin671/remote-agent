@@ -8,17 +8,19 @@ import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.proto.HandoffCandidateView
 import io.github.lewin671.remoteagent.core.proto.SettingsViewModel
-import io.github.lewin671.remoteagent.core.proto.SyncStateView
+import io.github.lewin671.remoteagent.core.proto.Text as CoreText
 import kotlinx.coroutines.launch
 
 /** The successor client only offers its public recovery key after explicit backup confirmation. */
 @Composable
 fun HandoffPreparation(onBack: (() -> Unit)? = null) {
     val remote = LocalRemote.current
-    val syncView by remote.coreHost.syncStateView.collectAsState()
+    val connView by remote.coreHost.connectionView.collectAsState()
     val settingsView by remote.settingsView.collectAsState()
+    val advice = settingsView.security.takeIf { it.hasLeaseRenewalAdvice() }?.leaseRenewalAdvice
+        ?: connView.takeIf { it.hasLeaseRenewalAdvice() }?.leaseRenewalAdvice
     HandoffPreparationContent(
-        syncView = syncView,
+        leaseRenewalAdvice = advice,
         hasHandoffOffer = settingsView.security.hasHandoffOffer,
         prepareCode = { remote.prepareHandoffCode(storagePersisted = true) },
         onBack = onBack,
@@ -28,7 +30,7 @@ fun HandoffPreparation(onBack: (() -> Unit)? = null) {
 
 @Composable
 internal fun HandoffPreparationContent(
-    syncView: SyncStateView = SyncStateView.getDefaultInstance(),
+    leaseRenewalAdvice: CoreText? = null,
     hasHandoffOffer: Boolean = false,
     prepareCode: suspend () -> String,
     onBack: (() -> Unit)? = null,
@@ -59,7 +61,7 @@ internal fun HandoffPreparationContent(
                                 publishOffer()
                                 prepared = null
                             } catch (e: Exception) {
-                                error = displayError(e, syncView)
+                                error = displayError(e, leaseRenewalAdvice)
                             } finally {
                                 busy = false
                             }
@@ -81,7 +83,7 @@ internal fun HandoffPreparationContent(
                             try {
                                 prepared = prepareCode()
                             } catch (e: Exception) {
-                                error = displayError(e, syncView)
+                                error = displayError(e, leaseRenewalAdvice)
                             } finally {
                                 busy = false
                             }
@@ -107,7 +109,9 @@ fun HandoffControls() {
     HandoffControlsContent(
         candidates = vm.security.handoffCandidatesList,
         onTransfer = { id -> remote.handoffAuthority(id) },
-        syncViewProvider = { remote.coreHost.syncStateView.value },
+        leaseRenewalAdviceProvider = {
+            remote.coreHost.connectionView.value.takeIf { it.hasLeaseRenewalAdvice() }?.leaseRenewalAdvice
+        },
     )
 }
 
@@ -115,7 +119,7 @@ fun HandoffControls() {
 internal fun HandoffControlsContent(
     candidates: List<HandoffCandidateView>,
     onTransfer: suspend (String) -> Unit,
-    syncViewProvider: () -> SyncStateView = { SyncStateView.getDefaultInstance() },
+    leaseRenewalAdviceProvider: () -> CoreText? = { null },
 ) {
     val copy = uiText()
     val scope = rememberAuthorityScope()
@@ -150,7 +154,7 @@ internal fun HandoffControlsContent(
                 try {
                     onTransfer(cand.deviceId)
                 } catch (e: Exception) {
-                    error = displayError(e, syncViewProvider())
+                    error = displayError(e, leaseRenewalAdviceProvider())
                 } finally {
                     busy = false
                 }
@@ -160,12 +164,10 @@ internal fun HandoffControlsContent(
 }
 
 @Composable
-fun DeleteMachineRecordsAction(id: String, authority: Boolean) {
+fun DeleteMachineRecordsAction(id: String, canDelete: Boolean) {
     val copy = uiText()
-    if (!authority) return
+    if (!canDelete) return
     val remote = LocalRemote.current
-    val syncView by remote.coreHost.syncStateView.collectAsState()
-    if (syncView.devicesList.any { it.deviceId == id }) return
     val scope = rememberAuthorityScope()
     var confirm by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
@@ -194,7 +196,8 @@ fun DeleteMachineRecordsAction(id: String, authority: Boolean) {
                 try {
                     remote.deleteMachineRecords(id)
                 } catch (e: Exception) {
-                    error = displayError(e, remote.coreHost.syncStateView.value)
+                    val advice = remote.coreHost.connectionView.value.takeIf { it.hasLeaseRenewalAdvice() }?.leaseRenewalAdvice
+                    error = displayError(e, advice)
                 } finally {
                     busy = false
                 }

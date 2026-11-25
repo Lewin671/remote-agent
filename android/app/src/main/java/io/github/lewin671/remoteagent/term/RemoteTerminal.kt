@@ -179,9 +179,9 @@ class RemoteTerminal(
 
     private fun openAttempt() {
         remote.coreHost.sendTerminalHistory(terminalId, TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_CLOSE)
-        val sync = remote.coreHost.syncStateView.value
-        val ready = sync.sessionsList.firstOrNull { it.sessionId == sessionId }?.terminalReady
-            ?: (sync.connection == CoreConnState.CONN_STATE_CONNECTED)
+        val header = remote.currentSessionView(sessionId)?.header
+        val connState = remote.coreHost.connectionView.value
+        val ready = if (header != null && header.found) header.terminalReady else connState.connected
         if (!ready) { close(); return }
         active = true
         ensureReopenSubscription()

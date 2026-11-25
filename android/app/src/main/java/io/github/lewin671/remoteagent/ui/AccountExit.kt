@@ -4,7 +4,7 @@ import io.github.lewin671.remoteagent.core.UiMessages
 
 import androidx.compose.runtime.*
 import io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice
-import io.github.lewin671.remoteagent.core.proto.SyncStateView
+import io.github.lewin671.remoteagent.core.proto.Text as CoreText
 import io.github.lewin671.remoteagent.core.renderExitAdviceMessage
 import io.github.lewin671.remoteagent.ui.displayError
 import kotlinx.coroutines.launch
@@ -29,7 +29,7 @@ internal fun authorityExitAdvice(authority: Boolean, unresolved: Boolean, copy: 
 /** Core computes exit advice; a failed check must never downgrade an unresolved operation to ordinary logout. */
 @Composable
 internal fun AccountExitAction(
-    syncView: SyncStateView = SyncStateView.getDefaultInstance(),
+    leaseRenewalAdvice: CoreText? = null,
     readAdvice: suspend () -> SecurityExitAdvice,
     exit: suspend () -> Unit,
 ) {
@@ -55,7 +55,7 @@ internal fun AccountExitAction(
                 try {
                     checked = toPair(readAdvice())
                 } catch (e: Exception) {
-                    error = copy(UiMessages.securityAndroidCouldNotReadSecurityOperationStateBeforeExitingValue1((displayError(e, syncView)).toString()))
+                    error = copy(UiMessages.securityAndroidCouldNotReadSecurityOperationStateBeforeExitingValue1((displayError(e, leaseRenewalAdvice)).toString()))
                 } finally {
                     busy = false
                 }
@@ -85,7 +85,7 @@ internal fun AccountExitAction(
                         }
                     } catch (e: Exception) {
                         checked = null
-                        error = copy(UiMessages.securityAndroidExitIncompleteValue1((displayError(e, syncView)).toString()))
+                        error = copy(UiMessages.securityAndroidExitIncompleteValue1((displayError(e, leaseRenewalAdvice)).toString()))
                     } finally {
                         busy = false
                     }

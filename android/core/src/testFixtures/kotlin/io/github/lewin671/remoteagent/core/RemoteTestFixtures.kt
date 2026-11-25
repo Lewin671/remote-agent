@@ -80,85 +80,72 @@ data class RemoteState(
     val archivedMachines: Set<String> = emptySet(),
 )
 
-/** Converts a test [RemoteState] fixture into a [SyncStateView] for direct composable rendering tests. */
-fun RemoteState.toTestSyncStateView(selfDeviceId: String = "self"): SyncStateView {
+/** Converts a test [RemoteState] fixture into a [ConnectionViewModel] for direct composable rendering tests. */
+fun RemoteState.toTestConnectionViewModel(selfDeviceId: String = "self"): ConnectionViewModel {
     val authId = authorityDeviceId.ifEmpty { if (isAuthority) selfDeviceId else "authority" }
-    val authDev = devices[authId]
-    val managerLabel = authDev?.meta?.name?.trim()?.takeIf { it.isNotEmpty() }
-        ?: authDev?.meta?.description?.trim()?.takeIf { it.isNotEmpty() }
-        ?: ""
     val connProto = when {
         link == Link.NO_NETWORK -> CoreConnState.CONN_STATE_NO_NETWORK
         conn == ConnState.ONLINE -> CoreConnState.CONN_STATE_CONNECTED
         conn == ConnState.OFFLINE -> CoreConnState.CONN_STATE_OFFLINE
         else -> CoreConnState.CONN_STATE_CONNECTING
     }
-    return SyncStateView.newBuilder()
-        .setConnection(connProto)
-        .setIsManager(isAuthority)
-        .setSelfDeviceId(selfDeviceId)
-        .setAuthorityDeviceId(authId)
-        .apply {
-            if (managerLabel.isNotEmpty()) {
-                setManagerName(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral(managerLabel))
-            } else {
-                setManagerName(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey("security.client"))
-            }
-            for (m in machines.values) {
-                addMachines(
-                    SyncMachineView.newBuilder()
-                        .setMachineId(m.id)
-                        .setOnline(m.online)
-                        .setLastSeenMs(m.lastSeenMs)
-                        .setMetaRev(m.metaRev)
-                        .setReachable(m.online)
-                        .apply { m.meta?.let { setMeta(it) } },
-                )
-            }
-            for (s in sessions.values) {
-                addSessions(
-                    SyncSessionView.newBuilder()
-                        .setSessionId(s.id)
-                        .setMachineId(s.machineId)
-                        .setMetaRev(s.metaRev)
-                        .setLastSeq(s.lastSeq)
-                        .setUpdatedMs(s.updatedMs)
-                        .apply {
-                            s.info?.let { setInfo(it) }
-                            s.checkpoint?.let { setCheckpoint(it) }
-                        },
-                )
-            }
-            for (d in devices.values) {
-                addDevices(
-                    SyncDeviceView.newBuilder()
-                        .setDeviceId(d.id)
-                        .setKind(d.kind)
-                        .setCreatedMs(d.createdMs)
-                        .setLastSeenMs(d.lastSeenMs)
-                        .setMetaRev(d.metaRev)
-                        .setTrusted(true)
-                        .apply { d.meta?.let { setMeta(it) } },
-                )
-            }
-            this@toTestSyncStateView.prefs?.let {
-                setPrefsLoaded(true)
-                setPrefsRevision(it.revision)
-                setPrefs(it.prefs)
-            }
-        }
+    val kept = loaded || sessions.isNotEmpty() || prefs != null
+    val bannerKind = when {
+        link == Link.NO_NETWORK -> ConnectionBannerKind.CONNECTION_BANNER_KIND_NO_NETWORK
+        removed || conn == ConnState.OFFLINE -> ConnectionBannerKind.CONNECTION_BANNER_KIND_NO_SERVER
+        conn == ConnState.ONLINE -> ConnectionBannerKind.CONNECTION_BANNER_KIND_NONE
+        else -> ConnectionBannerKind.CONNECTION_BANNER_KIND_WAITING
+    }
+    val reasonStr = connError.resolve { it.key }.ifEmpty { error.resolve { it.key } }
+    val b = ConnectionViewModel.newBuilder()
+        .setState(connProto)
+        .setConnected(conn == ConnState.ONLINE && !removed)
         .setRemoved(removed)
-        .setSecurityLoaded(synced)
-        .setIsMember(!removed)
-        .setLeaseEndMs(leaseEndMs)
-        .setRecoveryPending(recoveryPending)
-        .setRecoveryReadyMs(recoveryReadyMs)
-        .setAccountClockSkewed(clockWarning)
         .setDisplayGrace(displayGrace)
         .setReachabilityUnknown(reachabilityUnknown)
-        .setMachinesListed(loaded)
-        .setSessionsListed(loaded)
-        .build()
+        .setNetworkAvailable(link != Link.NO_NETWORK)
+        .setLiveLoaded(loaded || synced)
+        .setInitialListed(loaded)
+        .setSecurityLoaded(synced)
+        .setIsMember(!removed)
+        .setAccountClockSkewed(clockWarning)
+        .setAuthorityDeviceId(authId)
+        .setIsManager(isAuthority)
+    if (reasonStr.isNotEmpty()) {
+        b.setReasonText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral(reasonStr))
+    }
+    if (bannerKind != ConnectionBannerKind.CONNECTION_BANNER_KIND_NONE && !displayGrace) {
+        val banner = ConnectionBannerView.newBuilder()
+            .setKind(bannerKind)
+            .setVisible(true)
+            .setKeptData(kept)
+        when (bannerKind) {
+            ConnectionBannerKind.CONNECTION_BANNER_KIND_NO_NETWORK ->
+                banner.setText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey(if (kept) "connection.no_network_previous" else "connection.no_network_empty"))
+            ConnectionBannerKind.CONNECTION_BANNER_KIND_NO_SERVER -> {
+                banner.setShowDetails(true)
+                banner.setErrorTone(!kept)
+                banner.setText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey("connection.server_retrying"))
+                if (!kept && reasonStr.isNotEmpty()) {
+                    banner.setFailedText(
+                        io.github.lewin671.remoteagent.core.proto.Text.newBuilder()
+                            .setKey("connection.android_server_failed")
+                            .addArgs(io.github.lewin671.remoteagent.core.proto.TextArg.newBuilder().setName("reason").setStrValue(reasonStr)),
+                    )
+                }
+            }
+            else ->
+                banner.setText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey(if (synced) "connection.reconnecting" else "connection.connecting"))
+        }
+        b.setBanner(banner)
+    }
+    val details = ConnectionServerDetailsView.newBuilder()
+        .setShowDisconnectedAt(synced)
+    if (reasonStr.isNotEmpty()) {
+        details.setReasonText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral(reasonStr))
+    }
+    b.setServerDetails(details)
+    return b.build()
 }
 
 private val testSeedSeq = AtomicInteger(0)
@@ -301,7 +288,7 @@ internal fun seedCoreForTest(
         io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_HOME,
         io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_PROJECT,
         io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_NEW_SESSION,
-        io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_SYNC_STATE,
+        io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_CONNECTION,
         io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_SETTINGS,
         io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_DEVICES,
         io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_MACHINE_STATUS,
@@ -310,4 +297,21 @@ internal fun seedCoreForTest(
         io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_CLIENT_DETAIL,
         io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_USAGE,
     )) coreHost.refreshScreenOnWorker(t)
+}
+
+fun RemoteState.toTestSecuritySummaryView(selfId: String): io.github.lewin671.remoteagent.core.proto.SecuritySummaryView {
+    val authDev = devices[authorityDeviceId]
+    val authName = authDev?.meta?.name?.takeIf { it.isNotEmpty() }
+        ?: authDev?.meta?.description?.takeIf { it.isNotEmpty() }
+        ?: ""
+    val canPrepare = !isAuthority && devices[selfId]?.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT
+    return io.github.lewin671.remoteagent.core.proto.SecuritySummaryView.newBuilder()
+        .setIsManager(isAuthority)
+        .setAuthorityDeviceId(authorityDeviceId)
+        .setAuthorityName(authName)
+        .setRecoveryPending(recoveryPending)
+        .setRecoveryReadyMs(recoveryReadyMs)
+        .setLeaseEndMs(leaseEndMs)
+        .setCanPrepareHandoff(canPrepare)
+        .build()
 }

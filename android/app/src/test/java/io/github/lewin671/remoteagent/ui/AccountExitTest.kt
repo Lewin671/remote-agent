@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
-import io.github.lewin671.remoteagent.core.proto.SyncStateView
 import io.github.lewin671.remoteagent.data.ThemeMode
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -27,14 +26,13 @@ class AccountExitTest {
             RaTheme(ThemeMode.LIGHT) {
                 Column {
                     AccountExitAction(
-                        SyncStateView.newBuilder().setIsManager(true).build(),
-                        {
+                        readAdvice = {
                             io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice.newBuilder()
                                 .setAuthority(true)
                                 .setUnresolved(pending)
                                 .build()
                         },
-                        { exits++ },
+                        exit = { exits++ },
                     )
                 }
             }
@@ -55,7 +53,7 @@ class AccountExitTest {
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 Column {
-                    AccountExitAction(SyncStateView.getDefaultInstance(), { throw IllegalStateException("read failed") }, { exits++ })
+                    AccountExitAction(readAdvice = { throw IllegalStateException("read failed") }, exit = { exits++ })
                 }
             }
         }
@@ -72,9 +70,8 @@ class AccountExitTest {
             RaTheme(ThemeMode.LIGHT) {
                 Column {
                     AccountExitAction(
-                        SyncStateView.getDefaultInstance(),
-                        { io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice.getDefaultInstance() },
-                        { exits++ },
+                        readAdvice = { io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice.getDefaultInstance() },
+                        exit = { exits++ },
                     )
                 }
             }
@@ -91,8 +88,7 @@ class AccountExitTest {
             RaTheme(ThemeMode.LIGHT) {
                 Column {
                     AccountExitAction(
-                        SyncStateView.newBuilder().setIsManager(true).build(),
-                        {
+                        readAdvice = {
                             io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice.newBuilder()
                                 .setAuthority(true)
                                 .setMessageText(
@@ -101,7 +97,7 @@ class AccountExitTest {
                                 )
                                 .build()
                         },
-                        {},
+                        exit = {},
                     )
                 }
             }

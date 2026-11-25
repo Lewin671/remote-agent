@@ -115,26 +115,31 @@ internal fun PendingSecurityOperationPage(
 fun RecoveryScreen(onBack: () -> Unit = {}) {
     val copy = uiText()
     val remote = LocalRemote.current
-    val syncView by remote.coreHost.syncStateView.collectAsState()
+    val initialVm = remember(remote) { remote.coreHost.snapshotSettingsView() }
+    val rawVm by remote.settingsView.collectAsState()
+    val settingsVm = if (rawVm != io.github.lewin671.remoteagent.core.proto.SettingsViewModel.getDefaultInstance()) rawVm else initialVm
+    val sec = settingsVm.security
+    val advice = sec.takeIf { it.hasLeaseRenewalAdvice() }?.leaseRenewalAdvice
     val secStatus by remote.securityStatus.collectAsState()
     val pendingOp = activePendingOp(secStatus)
     val scope = rememberAuthorityScope()
     var page by remember { mutableStateOf("overview") }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { remote.coreHost.openSettings() }
     suspend fun read() {
         try {
             remote.getSecurityStatus()
             error = ""
         } catch (e: Exception) {
-            error = displayError(e, syncView)
+            error = displayError(e, advice)
         }
     }
-    LaunchedEffect(syncView.leaseEndMs, syncView.authorityDeviceId) { read() }
+    LaunchedEffect(sec.leaseEndMs, sec.authorityDeviceId) { read() }
     if (page != "overview") androidx.activity.compose.BackHandler { page = "overview" }
     when (page) {
         "recovery" -> RotateRecoveryScreen { page = "overview" }
-        "handoff" -> if (!syncView.isManager) HandoffPreparation { page = "overview" } else PageScaffold(copy(UiMessages.securityTransferManagement()), onBack = { page = "overview" }) {
+        "handoff" -> if (!sec.isManager) HandoffPreparation { page = "overview" } else PageScaffold(copy(UiMessages.securityTransferManagement()), onBack = { page = "overview" }) {
             FormColumn(Modifier.fillMaxWidth().verticalScrollFaded().padding(vertical = 16.dp)) { HandoffControls() }
         }
         "pending" -> PendingSecurityOperationPage(
@@ -158,7 +163,7 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
                             page = "overview"
                         }
                     } catch (e: Exception) {
-                        error = displayError(e, syncView)
+                        error = displayError(e, advice)
                     } finally {
                         busy = false
                     }
@@ -173,7 +178,7 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
                         val latest = remote.getSecurityStatus()
                         if (!latest.hasPendingOp()) page = "overview"
                     } catch (e: Exception) {
-                        error = displayError(e, syncView)
+                        error = displayError(e, advice)
                     } finally {
                         busy = false
                     }
@@ -181,7 +186,7 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
             },
         )
         else -> AccountSecurityContent(
-            syncView = syncView,
+            security = sec,
             pending = pendingOp != null,
             pendingRemoveNotice = secStatus?.takeIf { it.hasPendingRemoveNotice() }?.pendingRemoveNotice?.let { uiText(it) } ?: "",
             onRetryPendingRemove = {
@@ -190,7 +195,7 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
                         remote.resumeSecurityOperation()
                         read()
                     } catch (e: Exception) {
-                        error = displayError(e, syncView)
+                        error = displayError(e, advice)
                     }
                 }
             },
@@ -205,7 +210,7 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
 
 @Composable
 internal fun AccountSecurityContent(
-    syncView: io.github.lewin671.remoteagent.core.proto.SyncStateView,
+    security: io.github.lewin671.remoteagent.core.proto.SecuritySummaryView,
     pending: Boolean = false,
     pendingRemoveNotice: String = "",
     onRetryPendingRemove: () -> Unit = {},
@@ -217,15 +222,17 @@ internal fun AccountSecurityContent(
 ) {
     val copy = uiText()
     val t = now()
-    val self = LocalRemote.current.account.deviceId
-    val managerName = if (syncView.hasManagerName()) io.github.lewin671.remoteagent.core.coreTextToMessageText(syncView.managerName).resolve(copy)
-        else copy(UiMessages.securityClient())
+    val managerName = when {
+        security.hasAuthorityNameText() -> io.github.lewin671.remoteagent.core.coreTextToMessageText(security.authorityNameText).resolve(copy)
+        security.authorityName.isNotEmpty() -> security.authorityName
+        else -> copy(UiMessages.securityClient())
+    }
     PageScaffold(copy(UiMessages.securityAccountSecurity()), readable = true) {
         Column(Modifier.fillMaxWidth().verticalScrollFaded().padding(vertical = 16.dp)) {
-            if (syncView.recoveryPending) Notice(
-                copy(UiMessages.securitySomeoneIsRequestingManagementTakeoverWithARecoveryCode((io.github.lewin671.remoteagent.core.securityTime(syncView.recoveryReadyMs, t, copy = copy)).toString())),
+            if (security.recoveryPending) Notice(
+                copy(UiMessages.securitySomeoneIsRequestingManagementTakeoverWithARecoveryCode((io.github.lewin671.remoteagent.core.securityTime(security.recoveryReadyMs, t, copy = copy)).toString())),
                 Modifier.padding(horizontal = 16.dp, vertical = 6.dp), NoticeTone.WARN,
-                action = if (syncView.isManager) copy(UiMessages.securityReject()) else null, onAction = onRecovery,
+                action = if (security.isManager) copy(UiMessages.securityReject()) else null, onAction = onRecovery,
             )
             if (pendingRemoveNotice.isNotEmpty()) Notice(
                 pendingRemoveNotice,
@@ -237,15 +244,15 @@ internal fun AccountSecurityContent(
             if (error.isNotEmpty()) Notice(error, Modifier.padding(16.dp), NoticeTone.ERROR)
             if (pending) Group(rows = listOf({ GRow(copy(UiMessages.securityUnfinishedSecurityOperation()), chevron = true, onClick = onPending) }))
             Group(rows = listOf<@Composable () -> Unit>(
-                { GRow(copy(UiMessages.securityCurrentManagingClient()), if (syncView.isManager) copy(UiMessages.securityThisDevice()) else managerName) },
-                { GRow(copy(UiMessages.securityRemoteControlExpiry()), io.github.lewin671.remoteagent.core.securityTime(syncView.leaseEndMs, t, copy = copy)) },
-            ) + if (syncView.isManager) listOf<@Composable () -> Unit>({ GRow(copy(UiMessages.securityRenewNow()), action = true, onClick = onRenew) }) else emptyList())
+                { GRow(copy(UiMessages.securityCurrentManagingClient()), if (security.isManager) copy(UiMessages.securityThisDevice()) else managerName) },
+                { GRow(copy(UiMessages.securityRemoteControlExpiry()), io.github.lewin671.remoteagent.core.securityTime(security.leaseEndMs, t, copy = copy)) },
+            ) + if (security.isManager) listOf<@Composable () -> Unit>({ GRow(copy(UiMessages.securityRenewNow()), action = true, onClick = onRenew) }) else emptyList())
             Hint(copy(UiMessages.securityAndroidRenewsAutomaticallyWhenYouReturnToTheManagingClientAfter()), Modifier.padding(bottom = 8.dp))
-            if (!syncView.isManager) Hint(copy(UiMessages.securityOpenToRenew(managerName)), Modifier.padding(bottom = 8.dp))
-            if (syncView.isManager) Group(rows = listOf(
+            if (!security.isManager) Hint(copy(UiMessages.securityOpenToRenew(managerName)), Modifier.padding(bottom = 8.dp))
+            if (security.isManager) Group(rows = listOf(
                 { GRow(copy(UiMessages.securityRecoveryCode()), chevron = true, onClick = onRecovery) },
                 { GRow(copy(UiMessages.securityTransferManagement()), chevron = true, onClick = onHandoff) },
-            )) else if (syncView.devicesList.any { it.deviceId == self && it.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT })
+            )) else if (security.canPrepareHandoff)
                 Group(rows = listOf({ GRow(copy(UiMessages.securityTakeOverManagement()), chevron = true, onClick = onHandoff) }))
         }
     }
@@ -758,13 +765,14 @@ private fun RecoveryField(
 @Composable
 fun RotateRecoveryScreen(onBack: () -> Unit = {}) {
     val remote = LocalRemote.current
-    val syncView by remote.coreHost.syncStateView.collectAsState()
-    RotateRecoveryContent(syncView, remote::prepareRecoveryRotation, remote::confirmRecoveryRotation, onBack)
+    val connView by remote.coreHost.connectionView.collectAsState()
+    val advice = connView.takeIf { it.hasLeaseRenewalAdvice() }?.leaseRenewalAdvice
+    RotateRecoveryContent(advice, remote::prepareRecoveryRotation, remote::confirmRecoveryRotation, onBack)
 }
 
 @Composable
 internal fun RotateRecoveryContent(
-    syncView: io.github.lewin671.remoteagent.core.proto.SyncStateView = io.github.lewin671.remoteagent.core.proto.SyncStateView.getDefaultInstance(),
+    leaseRenewalAdvice: io.github.lewin671.remoteagent.core.proto.Text? = null,
     prepareCode: suspend () -> String,
     publishCode: suspend () -> Unit,
     onBack: () -> Unit,
@@ -801,7 +809,7 @@ internal fun RotateRecoveryContent(
                             try {
                                 prepared = prepareCode()
                             } catch (e: Exception) {
-                                error = displayError(e, syncView)
+                                error = displayError(e, leaseRenewalAdvice)
                             } finally {
                                 busy = false
                             }
@@ -828,7 +836,7 @@ internal fun RotateRecoveryContent(
                                 publishCode()
                                 onBack()
                             } catch (e: Exception) {
-                                error = displayError(e, syncView)
+                                error = displayError(e, leaseRenewalAdvice)
                             } finally {
                                 busy = false
                             }

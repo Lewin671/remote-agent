@@ -27,16 +27,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.repeatOnLifecycle
 import io.github.lewin671.remoteagent.core.Remote
-import io.github.lewin671.remoteagent.core.coreTextToMessageText
-import io.github.lewin671.remoteagent.core.proto.ConnState as CoreConnState
-import io.github.lewin671.remoteagent.core.proto.SyncStateView
+import io.github.lewin671.remoteagent.core.proto.ConnectionBannerKind
+import io.github.lewin671.remoteagent.core.proto.ConnectionViewModel
 import kotlinx.coroutines.delay
 
 val LocalRemote = staticCompositionLocalOf<Remote> { error("no remote") }
@@ -135,74 +133,66 @@ fun Card(
  * the server, whose details open from the bar.
  */
 @Composable
-fun ConnBanner(sync: SyncStateView) {
+fun ConnBanner(conn: ConnectionViewModel) {
     val p = pal
-    val line = connLine(sync, copy = uiText()) ?: return
+    if (!conn.hasBanner() || !conn.banner.visible) return
+    val b = conn.banner
+    val icon = when (b.kind) {
+        ConnectionBannerKind.CONNECTION_BANNER_KIND_NO_NETWORK -> Lucide.WifiOff
+        ConnectionBannerKind.CONNECTION_BANNER_KIND_NO_SERVER -> if (b.errorTone) Lucide.X else Lucide.CloudOff
+        else -> Lucide.LoaderCircle
+    }
+    val text = if (b.errorTone && b.hasFailedText()) uiText(b.failedText) else uiText(b.text)
     var details by remember { mutableStateOf(false) }
-    val color = if (line.failed) p.red else p.ink2
+    val color = if (b.errorTone) p.red else p.ink2
     Row(
         Modifier.fillMaxWidth()
             .background(p.gbg)
-            .then(if (line.details) Modifier.clickable { details = true } else Modifier)
+            .then(if (b.showDetails) Modifier.clickable { details = true } else Modifier)
             .padding(horizontal = 16.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Mark(line.icon, color, 12.dp)
+        Mark(icon, color, 12.dp)
         Spacer(Modifier.width(6.dp))
-        Text(uiText(line.text), Modifier.weight(1f), style = T.s12, color = color, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        if (line.details) Text(uiText(UiMessages.commonDetails()), Modifier.padding(start = 8.dp), style = T.s12b, color = p.blue)
+        Text(text, Modifier.weight(1f), style = T.s12, color = color, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        if (b.showDetails) Text(uiText(UiMessages.commonDetails()), Modifier.padding(start = 8.dp), style = T.s12b, color = p.blue)
     }
-    if (details && line.details) ServerDetails(sync) { details = false }
+    if (details && b.showDetails) ServerDetails(conn) { details = false }
 }
 
 /** The same sentence in a session, as the glass strip under its segmented control (design-system §6 连接状态). */
 @Composable
-fun ConnStrip(sync: SyncStateView, modifier: Modifier = Modifier) {
-    val line = connLine(sync, copy = uiText()) ?: return
+fun ConnStrip(conn: ConnectionViewModel, modifier: Modifier = Modifier) {
+    if (!conn.hasBanner() || !conn.banner.visible) return
+    val b = conn.banner
+    val icon = when (b.kind) {
+        ConnectionBannerKind.CONNECTION_BANNER_KIND_NO_NETWORK -> Lucide.WifiOff
+        ConnectionBannerKind.CONNECTION_BANNER_KIND_NO_SERVER -> if (b.errorTone) Lucide.X else Lucide.CloudOff
+        else -> Lucide.LoaderCircle
+    }
+    val text = if (b.errorTone && b.hasFailedText()) uiText(b.failedText) else uiText(b.text)
     var details by remember { mutableStateOf(false) }
     Strip(
-        line.icon, uiText(line.text), modifier,
-        action = if (line.details) uiText(UiMessages.commonDetails()) else null,
-        onClick = if (line.details) ({ details = true }) else null,
-        error = line.failed,
-        spin = line.icon == Lucide.LoaderCircle,
+        icon, text, modifier,
+        action = if (b.showDetails) uiText(UiMessages.commonDetails()) else null,
+        onClick = if (b.showDetails) ({ details = true }) else null,
+        error = b.errorTone,
+        spin = b.kind == ConnectionBannerKind.CONNECTION_BANNER_KIND_WAITING,
     )
-    if (details && line.details) ServerDetails(sync) { details = false }
-}
-
-/** What the connection bar or strip says: the icon, the sentence, whether it is a failure in red, and whether 详情 opens. */
-class ConnLine(val icon: ImageVector, val text: io.github.lewin671.remoteagent.core.UiMessage, val failed: Boolean, val details: Boolean)
-
-/** Nothing when online or inside core display grace; otherwise the nearest stretch that is down (client-v30 「断线」). */
-fun connLine(sync: SyncStateView, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): ConnLine? {
-    if (sync.connection == CoreConnState.CONN_STATE_CONNECTED || sync.displayGrace) return null
-    val loaded = sync.machinesListed || sync.sessionsListed || sync.prefsLoaded
-    val reason = if (sync.hasConnectionReason()) coreTextToMessageText(sync.connectionReason).resolve(copy) else ""
-    val noServer = sync.connection == CoreConnState.CONN_STATE_OFFLINE
-    val noNetwork = sync.connection == CoreConnState.CONN_STATE_NO_NETWORK
-    // Nothing kept from before to show: the bar says what the connection is needed for.
-    val failed = noServer && !loaded && reason.isNotEmpty()
-    val icon =
-        when {
-            noNetwork -> Lucide.WifiOff
-            noServer -> if (failed) Lucide.X else Lucide.CloudOff
-            else -> Lucide.LoaderCircle
-        }
-    val text =
-        when {
-            noNetwork -> if (loaded) UiMessages.connectionNoNetworkPrevious() else UiMessages.connectionNoNetworkEmpty()
-            noServer -> if (failed) UiMessages.connectionAndroidServerFailed(reason = reason) else UiMessages.connectionServerRetrying()
-            else -> if (sync.securityLoaded) UiMessages.connectionReconnecting() else UiMessages.connectionConnecting()
-        }
-    return ConnLine(icon, text, failed, noServer)
+    if (details && b.showDetails) ServerDetails(conn) { details = false }
 }
 
 /** Why the server is out of reach: the judgement first, the failure in the system's words last. */
 @Composable
-internal fun ServerDetails(sync: SyncStateView, onClose: () -> Unit) {
+internal fun ServerDetails(conn: ConnectionViewModel, onClose: () -> Unit) {
     val p = pal
     val remote = LocalRemote.current
-    val reason = if (sync.hasConnectionReason()) uiText(sync.connectionReason) else ""
+    val d = conn.serverDetails
+    val reason = when {
+        d.hasReasonText() -> uiText(d.reasonText)
+        conn.hasReasonText() -> uiText(conn.reasonText)
+        else -> ""
+    }
     Sheet(onClose) {
         SheetHead(uiText(UiMessages.connectionNoServer()))
         Text(
@@ -217,9 +207,9 @@ internal fun ServerDetails(sync: SyncStateView, onClose: () -> Unit) {
             modifier = Modifier.padding(top = 10.dp),
         )
         // Since start nothing was reached: when it was last is not known here.
-        if (sync.securityLoaded)
+        if (d.showDisconnectedAt)
             Text(
-                uiText(UiMessages.connectionAndroidDisconnectedAt(time = uiText(io.github.lewin671.remoteagent.core.listWhen(sync.disconnectedAtMs, now())))),
+                uiText(UiMessages.connectionAndroidDisconnectedAt(time = uiText(io.github.lewin671.remoteagent.core.listWhen(d.disconnectedAtMs, now())))),
                 style = T.s13,
                 color = p.ink2,
                 modifier = Modifier.padding(top = 2.dp),

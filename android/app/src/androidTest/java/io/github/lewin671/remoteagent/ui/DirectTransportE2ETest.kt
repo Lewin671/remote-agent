@@ -253,7 +253,7 @@ class DirectTransportE2ETest {
             }
         }
         check(machineId.isNotEmpty()) { "Timed out waiting for paired machineId" }
-        ui.waitUntil(60_000) { remote.coreHost.syncStateView.value.machinesList.firstOrNull { it.machineId == machineId }?.let { it.reachable || it.directReady } == true }
+        ui.waitUntil(60_000) { remote.coreHost.snapshotSettingsView().machinesList.firstOrNull { it.machineId == machineId }?.let { it.online || it.directReady } == true }
 
         val metrics = JSONObject()
         suspend fun io.github.lewin671.remoteagent.core.Remote.machineCommand(mid: String, cmd: Command): io.github.lewin671.remoteagent.proto.CommandResult {
@@ -552,7 +552,7 @@ class DirectTransportE2ETest {
             // Wait for restarted daemon to reconnect back online with policy=false
             val policyDeadline = System.currentTimeMillis() + 30_000
             while (System.currentTimeMillis() < policyDeadline) {
-                val mv = remote.coreHost.syncStateView.value.machinesList.firstOrNull { it.machineId == machineId }
+                val mv = remote.coreHost.snapshotSettingsView().machinesList.firstOrNull { it.machineId == machineId }
                 if (mv?.online == true) break
                 delay(150)
             }

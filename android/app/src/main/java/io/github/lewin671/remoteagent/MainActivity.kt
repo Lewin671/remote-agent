@@ -133,7 +133,7 @@ class MainActivity : ComponentActivity() {
                         !loaded || (r != null && !cacheReady) ->
                             io.github.lewin671.remoteagent.ui.StartupShell(null)
                         r == null -> io.github.lewin671.remoteagent.ui.AppSafeArea { JoinScreen(app) }
-                        r.coreHost.syncStateView.collectAsState().value.removed -> io.github.lewin671.remoteagent.ui.AppSafeArea { RemovedScreen(app, r) }
+                        r.coreHost.connectionView.collectAsState().value.removed -> io.github.lewin671.remoteagent.ui.AppSafeArea { RemovedScreen(app, r) }
                         // The first-level pages run under the system bars; every other page keeps clear of them.
                         else -> Main(r)
                     }
@@ -185,58 +185,22 @@ class MainActivity : ComponentActivity() {
             target?.let { (sid, approval) ->
                 val scheduled = openScheduled.value
                 if (scheduled) {
-                    val destination = io.github.lewin671.remoteagent.ui.resolveScheduleNotificationRoute(
-                        cached = {
-                            io.github.lewin671.remoteagent.ui.cachedScheduleNotificationRoute(
-                                sid,
-                                remote.coreHost.syncStateView.value.sessionsList.firstOrNull { it.sessionId == sid },
-                                remote.schedulesView.value,
-                            )
-                        },
-                        load = {
-                            remote.coreHost.syncStateView.first { it.machinesListed || it.sessionsListed || it.prefsLoaded || it.removed }
-                            remote.fetchSession(sid)
-                        },
+                    val seq = io.github.lewin671.remoteagent.ui.ScheduleJump.requested.remove(sid) ?: 0L
+                    remote.coreHost.resolveNotificationTap(
+                        sessionId = sid,
+                        scheduled = true,
+                        scheduleSeq = seq,
+                        approvalId = approval.orEmpty(),
                     )
-                    when (destination) {
-                        is io.github.lewin671.remoteagent.ui.ScheduleNotificationRoute.Task -> {
-                            io.github.lewin671.remoteagent.ui.ScheduleJump.requested.remove(sid)
-                            actions.task(destination.machineId, destination.taskId)
-                        }
-                        io.github.lewin671.remoteagent.ui.ScheduleNotificationRoute.Conversation -> actions.session(sid)
-                        io.github.lewin671.remoteagent.ui.ScheduleNotificationRoute.Inbox -> {
-                            io.github.lewin671.remoteagent.ui.ScheduleJump.requested.remove(sid)
-                            actions.schedules()
-                        }
-                    }
-                    // Navigation is already complete; a slow/offline computer never blocks the tap.
-                    notificationScope.launch {
-                        kotlinx.coroutines.withTimeoutOrNull(3_000) {
-                            val machine = (destination as? io.github.lewin671.remoteagent.ui.ScheduleNotificationRoute.Task)?.machineId
-                                ?: remote.coreHost.syncStateView.value.sessionsList.firstOrNull { it.sessionId == sid }?.machineId
-                            if (!machine.isNullOrEmpty()) remote.coreHost.refreshSchedules(machine)
-                        }
-                    }
                 } else actions.session(sid)
                 openScheduled.value = false
                 if (approval != null) actions.approval(sid, approval)
                 openSession.value = null
             }
         }
-        // Say what this client is, sealed, so other clients can tell it apart.
-        val syncView by remote.coreHost.syncStateView.collectAsState()
         val uiLocale = io.github.lewin671.remoteagent.ui.LocalMessageLocale.current
         LaunchedEffect(remote, uiLocale) {
             remote.coreHost.setUiLocale(uiLocale)
-        }
-        // The phone's own name where the system has one (小米 14), else its model number.
-        val description = remember { androidDeviceDescription(this@MainActivity) }
-        io.github.lewin671.remoteagent.ui.DeviceDescription(
-            syncView,
-            remote.account.deviceId,
-            description,
-        ) {
-            remote.describeSelf("android", description)
         }
         CompositionLocalProvider(LocalRemote provides remote, LocalNav provides actions) {
             val entry by nav.currentBackStackEntryAsState()
@@ -439,7 +403,7 @@ class MainActivity : ComponentActivity() {
                 val current = nav.currentBackStackEntry
                 val sid = current?.arguments?.getString("id")
                 if (current?.destination?.route == "session/{id}" &&
-                    remote.coreHost.syncStateView.value.sessionsList.firstOrNull { it.sessionId == sid }?.info?.taskOwned == true
+                    sid != null && remote.currentSessionView(sid)?.header?.taskOwned == true
                 ) {
                     leave()
                     nav.popBackStack()

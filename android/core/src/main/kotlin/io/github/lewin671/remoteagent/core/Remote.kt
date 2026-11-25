@@ -101,6 +101,8 @@ class Remote(
     private val directPrefs: DirectPreferenceStore = InMemoryDirectPreferenceStore(),
     private val stunUrls: List<String>? = null,
     private val directJitter: (() -> Double)? = null,
+    private val devicePlatform: String = "",
+    private val deviceDescription: String = "",
 ) {
     private val dispatcher = dispatcher ?: Dispatchers.IO.limitedParallelism(1)
     private val bulkCpuDispatcher =
@@ -259,6 +261,8 @@ class Remote(
                 server = account.server,
                 inlineCrypto = true,
                 foreground = foregroundActive,
+                platform = devicePlatform,
+                deviceDescription = deviceDescription,
             )
         }
     }
@@ -292,7 +296,7 @@ class Remote(
             .build()
     }
 
-    @Volatile private var watchedSessionIds: List<String> = emptyList()
+    @Volatile private var watchedSessionRoutes: Map<String, String> = emptyMap()
 
     private var authorityJob = SupervisorJob(scope.coroutineContext[Job])
 
@@ -329,13 +333,12 @@ class Remote(
     val coreNavigation: SharedFlow<NavigateEffect> get() = coreHost.navigationEvents
     val scheduleNavigationEvents: SharedFlow<ScheduleNavigateEffect> get() = coreHost.scheduleNavigationEvents
     val restoreComposerEvents: SharedFlow<SessionRestoreComposerEffect> get() = coreHost.restoreComposerEvents
+    val connectionView: StateFlow<ConnectionViewModel> get() = coreHost.connectionView
     val securityClient: SecurityClient get() = coreHost.securityClient
     val securityStatus: StateFlow<SecurityWorkflowStatus?> get() = coreHost.securityClient.status
 
-    fun watchSession(sid: String, initialWindow: SessionWindowRequest? = null): Flow<SessionViewModel> {
-        coreHost.syncStateView.value.sessionsList.firstOrNull { it.sessionId == sid }?.machineId?.takeIf { it.isNotEmpty() }?.let { coreHost.hydrateUsageCache(it) }
-        return coreHost.watchSession(sid, initialWindow)
-    }
+    fun watchSession(sid: String, initialWindow: SessionWindowRequest? = null): Flow<SessionViewModel> =
+        coreHost.watchSession(sid, initialWindow)
 
     fun currentSessionView(sid: String): SessionViewModel? =
         coreHost.currentSessionView(sid)
@@ -449,16 +452,17 @@ class Remote(
         }
     }
 
-    private fun currentScheduleMember(machine: String): Boolean {
-        val v = coreHost.syncStateView.value
-        if (!v.securityLoaded) return true
-        val dev = v.devicesList.firstOrNull { it.deviceId == machine }
-        return dev?.trusted ?: v.devicesList.isEmpty()
+    private fun isMachineMember(machine: String): Boolean {
+        val conn = coreHost.connectionView.value
+        if (conn.removed || (conn.securityLoaded && !conn.isMember)) return false
+        if (!conn.securityLoaded) return true
+        val vm = coreHost.snapshotMachineSettingsView(machine)
+        return !vm.found || vm.member
     }
 
     internal suspend fun cachedSchedules(machine: String): ByteArray? = withContext(dispatcher) {
         ensureSecurityBootstrapped()
-        if (!currentScheduleMember(machine)) {
+        if (!isMachineMember(machine)) {
             cache?.removeBlob("schedule:$machine")
             return@withContext null
         }
@@ -473,7 +477,7 @@ class Remote(
             live = false,
         )
         require(reply.hasSchedule() && reply.errorCode.isEmpty())
-        if (!currentScheduleMember(machine)) {
+        if (!isMachineMember(machine)) {
             cache?.removeBlob("schedule:$machine")
             return@withContext null
         }
@@ -521,10 +525,9 @@ class Remote(
         coreHost.onTerminalDirectState = { eff ->
             activeTerminals[eff.streamId]?.onState?.invoke(eff.state, eff.reason, eff.needsConfirmation)
         }
-        coreHost.onWatchedSessionsChanged = { ids ->
-            watchedSessionIds = ids
+        coreHost.onWatchedSessions = { eff ->
+            watchedSessionRoutes = eff.sessionsList.associate { it.sessionId to it.machineId }
         }
-        watchedSessionIds = coreHost.watchedSessionIds()
         coreHost.onSaveHomeScope = { eff ->
             homeScopeStore?.writeToken(eff.scopeToken.ifEmpty { encodeHomeScopeToken(account.localKey, eff.scopeKey) })
         }
@@ -577,7 +580,10 @@ class Remote(
             }
         }
         coreHost.onScheduleDeleteCache = { eff ->
-            if (cache != null) enqueueCacheOp { cache.removeBlob("schedule:${eff.machineId}") }
+            enqueueCacheOp {
+                cache?.removeBlob("schedule:${eff.machineId}")
+                scheduleSeenStore?.delete(eff.machineId)
+            }
         }
         coreHost.onScheduleLoadSeen = { eff ->
             scope.launch {
@@ -606,19 +612,30 @@ class Remote(
             val snap = eff.snapshot
             if (mid.isNotEmpty() && eff.hasSnapshot() && snap.preset in USAGE_CACHE_PRESETS && cache != null) {
                 enqueueCacheOp {
-                    if (currentScheduleMember(mid)) {
+                    if (isMachineMember(mid)) {
                         cache?.putBlob(usageBlobKey(mid, snap.preset), snap.toByteArray())
-                        if (!currentScheduleMember(mid)) cache?.removeBlob(usageBlobKey(mid, snap.preset))
+                        if (!isMachineMember(mid)) cache?.removeBlob(usageBlobKey(mid, snap.preset))
                     } else {
                         removeUsageBlobs(mid)
                     }
                 }
             }
         }
+        coreHost.onUsageCacheRequest = { eff ->
+            val mid = eff.machineId
+            if (mid.isNotEmpty()) {
+                if (eff.deleteCache) {
+                    usageHydratedMachines.remove(mid)
+                    enqueueCacheOp { removeUsageBlobs(mid) }
+                } else {
+                    coreHost.hydrateUsageCache(mid)
+                }
+            }
+        }
         coreHost.onHydrateUsageCache = { mid ->
             if (mid.isNotEmpty() && cache != null && usageHydratedMachines.add(mid)) {
                 enqueueCacheOp {
-                    if (!currentScheduleMember(mid)) {
+                    if (!isMachineMember(mid)) {
                         removeUsageBlobs(mid)
                     } else {
                         for (preset in USAGE_CACHE_PRESETS) {
@@ -757,7 +774,6 @@ class Remote(
             cachedToken = null
             scope.launch { runCatching { securityStore.clearLoginToken(account.server, account.deviceId) } }
         }
-        scope.launch { pruneUntrustedCaches() }
     }
 
     private suspend fun applySecurityStatusSnapshotAndPrune(status: SecurityWorkflowStatus) {
@@ -766,39 +782,6 @@ class Remote(
             runCatching { securityStore.clearLoginToken(account.server, account.deviceId) }
         }
         coreHost.dispatchAndWait(CoreEvent.getDefaultInstance())
-        pruneUntrustedCaches()
-    }
-
-    private suspend fun pruneUntrustedCaches() {
-        val v = coreHost.syncStateView.value
-        if (!v.securityLoaded) return
-        val candidates = buildSet {
-            v.machinesList.forEach { add(it.machineId) }
-            v.devicesList.filter { it.kind == DeviceKind.DEVICE_KIND_MACHINE }.forEach { add(it.deviceId) }
-            v.archiveMachineIdsList.forEach { add(it) }
-            cache?.machines().orEmpty().forEach { add(it.id) }
-        }
-        if (v.removed || !v.isMember) {
-            candidates.forEach { mid ->
-                cache?.removeBlob("schedule:$mid")
-                removeUsageBlobs(mid)
-                scheduleSeenStore?.delete(mid)
-            }
-            return
-        }
-        val trustedMachineIds = when {
-            v.trustedMachineIdsCount > 0 -> v.trustedMachineIdsList.toSet()
-            v.devicesList.isNotEmpty() -> v.devicesList.filter { it.trusted && it.kind == DeviceKind.DEVICE_KIND_MACHINE }
-                .map { it.deviceId }.toSet()
-            else -> return
-        }
-        candidates.forEach { mid ->
-            if (mid !in trustedMachineIds) {
-                cache?.removeBlob("schedule:$mid")
-                removeUsageBlobs(mid)
-                scheduleSeenStore?.delete(mid)
-            }
-        }
     }
 
     // --- Stream Driver ---
@@ -1006,14 +989,15 @@ class Remote(
     // --- Security Gate: Opening wire & cached objects ---
 
     private fun sessionMachineId(sessionId: String): String =
-        coreHost.syncStateView.value.sessionsList.firstOrNull { it.sessionId == sessionId }?.machineId.orEmpty()
+        watchedSessionRoutes[sessionId]?.takeIf { it.isNotEmpty() }
+            ?: coreHost.currentSessionView(sessionId)?.header?.machineId.orEmpty()
 
     private fun handleDirectEvent(machineId: String, pcId: Long, env: Envelope, header: Header, @Suppress("UNUSED_PARAMETER") size: Int) {
         if (closed) return
         val sid = header.sessionId
         if (sid.isEmpty() || header.seq <= 0L) return
-        if (sid !in watchedSessionIds) return
-        if (sessionMachineId(sid) != machineId || header.sender != machineId) return
+        val routeMid = watchedSessionRoutes[sid] ?: return
+        if (routeMid != machineId || header.sender != machineId) return
         coreHost.dispatch(
             CoreEvent.newBuilder()
                 .setDirectEventsReceived(
@@ -1036,7 +1020,6 @@ class Remote(
                 val b = CacheBootstrapLoadedEvent.newBuilder().setOpId(eff.bootstrap.opId)
                 try {
                     ensureSecurityBootstrapped()
-                    pruneUntrustedCaches()
                     b.addAllWireMachines(cache?.machines().orEmpty())
                         .addAllWireSessions(cache?.sessions().orEmpty())
                     cache?.blob(PROJECT_PREFS)?.let { b.setWirePrefs(AccountPrefsObject.parseFrom(it)) }
@@ -1336,7 +1319,7 @@ class Remote(
                 parsedCmd.schedule.operation == "list" &&
                 attemptBound &&
                 (useDirect || res.outcome == "executed") &&
-                currentScheduleMember(machineId)
+                isMachineMember(machineId)
             ) {
                 val msg = runCatching {
                     openSecureMessage(
@@ -1348,7 +1331,7 @@ class Remote(
                 }.getOrNull()
                 if (msg != null && msg.hasSchedule() && msg.errorCode.isEmpty() && msg.outcome == "executed") {
                     cache.putBlob("schedule:$machineId", scheduleSnapshot(requestId, res.result))
-                    if (!currentScheduleMember(machineId)) cache.removeBlob("schedule:$machineId")
+                    if (!isMachineMember(machineId)) cache.removeBlob("schedule:$machineId")
                 }
             }
             baseOutcome(OutcomeSource.OUTCOME_SOURCE_DAEMON)
@@ -1620,7 +1603,7 @@ class Remote(
         coreHost.closeSessionImageViewer(sid)
 
     suspend fun fetchSession(sid: String): Boolean {
-        if (coreHost.syncStateView.value.sessionsList.any { it.sessionId == sid }) return true
+        if (coreHost.currentSessionView(sid)?.header?.found == true) return true
         val deferred = CompletableDeferred<Boolean>()
         pendingSessionLookups.computeIfAbsent(sid) { java.util.concurrent.CopyOnWriteArrayList() }.add(deferred)
         coreHost.fetchSession(sid)
@@ -1816,8 +1799,11 @@ class Remote(
         data class Corrupt(val why: MessageText) : ImageResult
     }
 
+    private fun currentLeaseRenewalAdvice(): io.github.lewin671.remoteagent.core.proto.Text? =
+        coreHost.connectionView.value.takeIf { it.hasLeaseRenewalAdvice() }?.leaseRenewalAdvice
+
     suspend fun image(sid: String, imageId: String): ImageResult = withContext(dispatcher) {
-        val s = coreHost.syncStateView.value.sessionsList.firstOrNull { it.sessionId == sid }
+        val machineId = sessionMachineId(sid).takeIf { it.isNotEmpty() }
             ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
         if (!hasSessionSeed(sid)) throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
         val cacheKey = "$sid/$imageId"
@@ -1838,7 +1824,7 @@ class Remote(
         val payload = try {
             openSecureMessage(
                 env,
-                Place(PayloadKind.PAYLOAD_KIND_IMAGE, machineId = s.machineId, sessionId = sid, requestId = imageId),
+                Place(PayloadKind.PAYLOAD_KIND_IMAGE, machineId = machineId, sessionId = sid, requestId = imageId),
                 ImagePayload::parseFrom,
                 live = false,
             ).second
@@ -1847,7 +1833,7 @@ class Remote(
         } catch (e: OpenException) {
             return@withContext ImageResult.Corrupt(e.display)
         } catch (e: SecurityFailure) {
-            return@withContext ImageResult.Corrupt(errorText(e, coreHost.syncStateView.value))
+            return@withContext ImageResult.Corrupt(errorText(e, currentLeaseRenewalAdvice()))
         }
         if (detectFormat(payload.data.toByteArray()) != payload.format) {
             return@withContext ImageResult.Corrupt(UiMessages.errorsAndroidImageContentDoesNotMatchItsFormat().messageText())
@@ -1857,7 +1843,7 @@ class Remote(
     }
 
     suspend fun openTerminal(sid: String, listener: TermListener): TermConn {
-        val s = coreHost.syncStateView.value.sessionsList.firstOrNull { it.sessionId == sid }
+        val sessionMachineId = sessionMachineId(sid).takeIf { it.isNotEmpty() }
             ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
         if (!hasSessionSeed(sid)) throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
         val tok = currentToken()
@@ -1899,7 +1885,7 @@ class Remote(
                     try {
                         val (h, frame) = openSecureMessage(
                             item.env,
-                            Place(PayloadKind.PAYLOAD_KIND_TERMINAL_OUTPUT, machineId = s.machineId, sessionId = sid, requestId = streamId),
+                            Place(PayloadKind.PAYLOAD_KIND_TERMINAL_OUTPUT, machineId = sessionMachineId, sessionId = sid, requestId = streamId),
                             TerminalFrame::parseFrom,
                         )
                         val payloadBytes = frame.toByteArray()
@@ -1924,7 +1910,7 @@ class Remote(
                     }
                 }
             } catch (e: Exception) {
-                finish(errorText(e, coreHost.syncStateView.value))
+                finish(errorText(e, currentLeaseRenewalAdvice()))
             }
         }
         val url = account.server.replaceFirst(Regex("^http"), "ws") + "/v1/term"
@@ -1946,7 +1932,7 @@ class Remote(
                             override fun onOpen(stream: FrameStream) {
                                 if (closed.get()) { stream.cancel(); return }
                                 dialOpened.set(true)
-                                val hello = TermHello.newBuilder().setToken(tok).setStreamId(legStr).setMachineId(s.machineId).build()
+                                val hello = TermHello.newBuilder().setToken(tok).setStreamId(legStr).setMachineId(sessionMachineId).build()
                                 stream.send(hello.toByteArray())
                                 val prev = socket.getAndSet(stream)
                                 activeLegId.set(legBytes)
@@ -2023,7 +2009,7 @@ class Remote(
                         } else if (reason == "replay_overflow") {
                             finish(UiMessages.terminalReplayOverflow().messageText())
                         } else if (err != null) {
-                            finish(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(err, coreHost.syncStateView.value).resolve(copy))) })
+                            finish(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(err, currentLeaseRenewalAdvice()).resolve(copy))) })
                         } else {
                             finish(UiMessages.errorsTerminalConnectionDropped().messageText())
                         }
@@ -2031,7 +2017,7 @@ class Remote(
                 }
             },
             onDirectOutput = { machineId, pcId, env, raw ->
-                if (!closed.get() && machineId == s.machineId) {
+                if (!closed.get() && machineId == sessionMachineId) {
                     if (queuedBytes.addAndGet(raw.size.toLong()) <= 2L * 1024 * 1024) {
                         if (incoming.trySend(InboundItem(env, true, pcId, raw.size)).isFailure) {
                             queuedBytes.addAndGet(-raw.size.toLong())
@@ -2047,7 +2033,7 @@ class Remote(
                 url,
                 object : FrameListener() {
                     override fun onOpen(stream: FrameStream) {
-                        val hello = TermHello.newBuilder().setToken(tok).setStreamId(streamId).setMachineId(s.machineId).build()
+                        val hello = TermHello.newBuilder().setToken(tok).setStreamId(streamId).setMachineId(sessionMachineId).build()
                         stream.send(hello.toByteArray())
                         opened.complete(Unit)
                     }
@@ -2103,7 +2089,7 @@ class Remote(
                         opened.completeExceptionally(MessageException(UiMessages.errorsCannotConnectToTerminal().messageText()))
                         if (socket.get() !== stream) return
                         if (!wasOpened) {
-                            finish(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(error, coreHost.syncStateView.value).resolve(copy))) })
+                            finish(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(error, currentLeaseRenewalAdvice()).resolve(copy))) })
                             return
                         }
                         lastRelayError.set(error)
@@ -2130,14 +2116,14 @@ class Remote(
                     .setTerminalDirectOpen(
                         TerminalDirectOpenEvent.newBuilder()
                             .setStreamId(streamId)
-                            .setMachineId(s.machineId)
+                            .setMachineId(sessionMachineId)
                             .setSessionId(sid)
                             .setRelayLegId(ByteString.copyFrom(activeLegId.get())),
                     )
                     .build(),
             )
             coreHost.runMachineCommand(
-                s.machineId,
+                sessionMachineId,
                 sid,
                 Command.newBuilder().setOpenTerminal(OpenTerminalRequest.newBuilder().setSessionId(sid).setStreamId(streamId)).build(),
                 skipConnectivityPreflight = true,
@@ -2165,7 +2151,7 @@ class Remote(
                         val env = sealSecureMessage(
                             Header.newBuilder()
                                 .setKind(PayloadKind.PAYLOAD_KIND_TERMINAL_INPUT)
-                                .setMachineId(s.machineId)
+                                .setMachineId(sessionMachineId)
                                 .setSessionId(sid)
                                 .setRequestId(streamId)
                                 .setSeq(seq)
@@ -2192,7 +2178,7 @@ class Remote(
                         }
                     }
                 } catch (e: Exception) {
-                    finish(errorText(e, coreHost.syncStateView.value))
+                    finish(errorText(e, currentLeaseRenewalAdvice()))
                 }
             }
             return TermConn(

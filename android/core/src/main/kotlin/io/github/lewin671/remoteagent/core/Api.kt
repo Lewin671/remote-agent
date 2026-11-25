@@ -195,7 +195,7 @@ class CommandException(
 }
 
 /** Short text for an error, without content. */
-fun errorText(e: Throwable, sync: io.github.lewin671.remoteagent.core.proto.SyncStateView? = null): MessageText = localized { copy ->
+fun errorText(e: Throwable, leaseRenewalAdvice: io.github.lewin671.remoteagent.core.proto.Text? = null): MessageText = localized { copy ->
     when (e) {
         is MessageFailure -> e.display.resolve(copy)
         is SecurityFailure -> when (e.code) {
@@ -203,8 +203,8 @@ fun errorText(e: Throwable, sync: io.github.lewin671.remoteagent.core.proto.Sync
             "invalid", "untrusted" -> copy(UiMessages.errorsInvalidCiphertextSignatureKeyOrContentVerificationFailed())
             "conflict" -> copy(UiMessages.errorsMembershipChainConflictSecurityOperationsStoppedVerifyDevicesAnd())
             "lease" -> {
-                val advice = if (sync != null && sync.hasLeaseRenewalAdvice()) {
-                    coreTextToMessageText(sync.leaseRenewalAdvice).resolve(copy)
+                val advice = if (leaseRenewalAdvice != null && (leaseRenewalAdvice.key.isNotEmpty() || leaseRenewalAdvice.literal.isNotEmpty() || leaseRenewalAdvice.joinCount > 0)) {
+                    coreTextToMessageText(leaseRenewalAdvice).resolve(copy)
                 } else {
                     copy(UiMessages.securityAndroidRenewOnAuthority())
                 }

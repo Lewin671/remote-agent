@@ -64,8 +64,8 @@ class ScheduleLocalE2ETest {
         ui.onNodeWithText("完成").performClick()
         }
         val remote = requireNotNull(RaApp.instance.remote.value)
-        ui.waitUntil(60_000) { remote.coreHost.syncStateView.value.machinesList.any { it.online } }
-        val machine=remote.coreHost.syncStateView.value.machinesList.first { it.online }.machineId
+        ui.waitUntil(60_000) { remote.coreHost.snapshotSettingsView().machinesList.any { it.online } }
+        val machine=remote.coreHost.snapshotSettingsView().machinesList.first { it.online }.machineId
         // Seed a throwaway project preference; task creation and every task operation use the UI.
         val project = requireNotNull(args.getString("scheduleProject"))
         remote.coreHost.openNewSession(project)
@@ -73,7 +73,7 @@ class ScheduleLocalE2ETest {
         remote.coreHost.selectNewSessionAgent(Agent.AGENT_CLAUDE)
         remote.coreHost.selectNewSessionModel("haiku", "", mode = ApprovalMode.APPROVAL_MODE_AUTO)
         remote.coreHost.toggleProjectPin(project)
-        ui.waitUntil(10_000) { remote.coreHost.syncStateView.value.prefs.pinnedList.any { it.path == project } }
+        ui.waitUntil(10_000) { remote.homeView.value.sidebarProjects.pinnedList.any { it.key == project } }
         ui.onNodeWithText("定时",useUnmergedTree=true).performClick()
         waitText("定时任务")
         ui.onNodeWithContentDescription("新任务").performClick()

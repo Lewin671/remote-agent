@@ -69,7 +69,7 @@ fun HomeScreen() {
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val vm by remote.homeView.collectAsState()
-    val syncView by remote.coreHost.syncStateView.collectAsState()
+    val connView by remote.coreHost.connectionView.collectAsState()
 
     var filterText by remember(vm.scopeKey) { mutableStateOf(vm.filterQuery) }
     LaunchedEffect(vm.filterQuery) {
@@ -276,7 +276,7 @@ fun HomeScreen() {
     }
 
     if (updating) UpdateSheet { updating = false }
-    if (details) ServerDetails(syncView) { details = false }
+    if (details) ServerDetails(connView) { details = false }
     if (pick) PickProjectSheet(vm.sidebarProjects, onClose = { pick = false })
     if (menu) ScopeSheet(vm, onPick = { remote.coreHost.setHomeScope(it) }) { menu = false }
 }

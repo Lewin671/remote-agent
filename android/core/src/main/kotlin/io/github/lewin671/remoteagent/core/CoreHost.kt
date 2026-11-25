@@ -190,11 +190,9 @@ class CoreHost(
     var onRenameClient: (RenameClientEffect) -> Unit = {}
     var onCheckUpdates: (CheckUpdatesEffect) -> Unit = {}
     var onPersistClientPrefs: (PersistClientPrefsEffect) -> Unit = {}
-    var onWatchedSessionsChanged: (List<String>) -> Unit = {}
-
-    fun watchedSessionIds(): List<String> = synchronized(sessionWatchers) {
-        sessionWatchers.keys.toList().reversed()
-    }
+    var onWatchedSessions: (WatchedSessionsEffect) -> Unit = {}
+    var onUsageCacheRequest: (UsageCacheRequestEffect) -> Unit = {}
+    var onSyncPushSubscription: () -> Unit = {}
     var onPrepareCleanupSession: (PrepareCleanupSessionEffect) -> Unit = {}
     var onScheduleReadCache: (ScheduleReadCacheEffect) -> Unit = {}
     var onScheduleDeleteCache: (ScheduleDeleteCacheEffect) -> Unit = {}
@@ -280,12 +278,12 @@ class CoreHost(
     )
     val newSessionView: StateFlow<NewSessionViewModel> = newSessionSlot.flow.asStateFlow()
 
-    private val syncStateSlot = registerScreen(
-        ScreenTarget.SCREEN_TARGET_SYNC_STATE, SyncStateView.getDefaultInstance(),
-        { Screen.newBuilder().setSyncState(SyncStateScreenRequest.getDefaultInstance()).build() },
-        { if (it.viewCase == ViewModel.ViewCase.SYNC_STATE) it.syncState else null },
+    private val connectionSlot = registerScreen(
+        ScreenTarget.SCREEN_TARGET_CONNECTION, ConnectionViewModel.getDefaultInstance(),
+        { Screen.newBuilder().setConnection(ConnectionScreenRequest.getDefaultInstance()).build() },
+        { if (it.viewCase == ViewModel.ViewCase.CONNECTION) it.connection else null },
     )
-    val syncStateView: StateFlow<SyncStateView> = syncStateSlot.flow.asStateFlow()
+    val connectionView: StateFlow<ConnectionViewModel> = connectionSlot.flow.asStateFlow()
 
     private val settingsSlot = registerScreen(
         ScreenTarget.SCREEN_TARGET_SETTINGS, SettingsViewModel.getDefaultInstance(),
@@ -427,7 +425,7 @@ class CoreHost(
                     refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_HOME)
                     refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_PROJECT)
                     refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_NEW_SESSION)
-                    refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_SYNC_STATE)
+                    refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_CONNECTION)
                     refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_SCHEDULES)
                 }
             }
@@ -596,6 +594,9 @@ class CoreHost(
             Effect.EffectCase.USAGE_CACHE_WRITE -> {
                 onUsageCacheWrite(effect.usageCacheWrite)
             }
+            Effect.EffectCase.WATCHED_SESSIONS -> onWatchedSessions(effect.watchedSessions)
+            Effect.EffectCase.USAGE_CACHE_REQUEST -> onUsageCacheRequest(effect.usageCacheRequest)
+            Effect.EffectCase.SYNC_PUSH_SUBSCRIPTION -> onSyncPushSubscription()
             Effect.EffectCase.SECURITY_KEY_GENERATE,
             Effect.EffectCase.SECURITY_KEY_SIGN,
             Effect.EffectCase.SECURITY_KEY_AGREE,
@@ -782,6 +783,17 @@ class CoreHost(
                     }
                 }
                 refreshAllKeyed(dirPickerWatchers, ::refreshDirPickerOnWorker)
+            }
+            ScreenTarget.SCREEN_TARGET_CONNECTION -> {
+                val slot = screenSlots[target]
+                if (slot != null) {
+                    val screen = slot.build()
+                    if (screen != null) {
+                        val vm = viewOnWorker(screen)
+                        if (vm != null) slot.update(vm)
+                    }
+                }
+                refreshAllKeyed(sessionWatchers, ::refreshSessionOnWorker)
             }
             else -> {
                 val slot = screenSlots[target] ?: return
@@ -1080,17 +1092,17 @@ class CoreHost(
         extract = { if (it.viewCase == ViewModel.ViewCase.SCHEDULE_DETAIL) it.scheduleDetail else null },
     )
 
-    fun snapshotProjectView(manage: Boolean = true, machineId: String = ""): ProjectViewModel = snapshotSlot(
+    fun snapshotProjectView(manage: Boolean = true, machineId: String = "", projectKey: String = ""): ProjectViewModel = snapshotSlot(
         ScreenTarget.SCREEN_TARGET_PROJECT,
         projectSlot,
         matches = {
-            if (!manage) !it.hasManage()
+            if (!manage) it.hasDetail() && it.detail.key == projectKey
             else it.hasManage() && it.manage.filterMachineId == machineId
         },
         screen = {
             Screen.newBuilder().setProject(
                 ProjectScreenRequest.newBuilder()
-                    .setProjectKey("")
+                    .setProjectKey(projectKey)
                     .setManage(manage)
                     .setEndedLimit(CORE_ENDED_PAGE)
                     .setMachineId(machineId),
@@ -1122,11 +1134,9 @@ class CoreHost(
                     refCount = 1,
                 )
                 sessionWatchers[sessionId] = created
-                watchedSnapshot = sessionWatchers.keys.toList().reversed()
                 created to true
             }
         }
-        watchedSnapshot?.let(onWatchedSessionsChanged)
         if (becameActive) dispatchAction {
             sendOnWorker { setSessionWatch(SessionWatchEvent.newBuilder().setSessionId(sessionId).setWatched(true)) }
             refreshSessionOnWorker(sessionId)
@@ -1137,17 +1147,14 @@ class CoreHost(
     }
 
     private fun releaseSessionWatcher(sessionId: String) {
-        var watchedSnapshot: List<String>? = null
         val becameIdle = synchronized(sessionWatchers) {
             val existing = sessionWatchers[sessionId] ?: return
             existing.refCount--
             if (existing.refCount <= 0) {
                 sessionWatchers.remove(sessionId)
-                watchedSnapshot = sessionWatchers.keys.toList().reversed()
                 true
             } else false
         }
-        watchedSnapshot?.let(onWatchedSessionsChanged)
         if (becameIdle) send { setSessionWatch(SessionWatchEvent.newBuilder().setSessionId(sessionId).setWatched(false)) }
     }
 
@@ -1540,6 +1547,21 @@ class CoreHost(
 
     fun fetchSession(sessionId: String) =
         send { setFetchSession(FetchSessionAction.newBuilder().setSessionId(sessionId)) }
+
+    fun resolveNotificationTap(
+        sessionId: String,
+        scheduled: Boolean = false,
+        scheduleSeq: Long = 0L,
+        approvalId: String = "",
+    ) = send {
+        setResolveNotificationTap(
+            ResolveNotificationTapAction.newBuilder()
+                .setSessionId(sessionId)
+                .setScheduled(scheduled)
+                .setScheduleSeq(scheduleSeq)
+                .setApprovalId(approvalId),
+        )
+    }
 
     // --- Screen actions ---
 
@@ -2007,6 +2029,8 @@ class CoreHost(
         server: String = "",
         inlineCrypto: Boolean = true,
         foreground: Boolean = true,
+        platform: String = "",
+        deviceDescription: String = "",
     ) = send {
         setSecurityConfig(
             SecurityConfigEvent.newBuilder()
@@ -2014,7 +2038,9 @@ class CoreHost(
                 .setDeviceId(deviceId)
                 .setServer(server)
                 .setInlineCrypto(inlineCrypto)
-                .setForeground(foreground),
+                .setForeground(foreground)
+                .setPlatform(platform)
+                .setDeviceDescription(deviceDescription),
         )
     }
 
@@ -2461,7 +2487,7 @@ class CoreHost(
         home: HomeViewModel? = null,
         project: ProjectViewModel? = null,
         newSession: NewSessionViewModel? = null,
-        syncState: SyncStateView? = null,
+        connection: ConnectionViewModel? = null,
         settings: SettingsViewModel? = null,
         machineStatus: MachineStatusViewModel? = null,
         machineSettings: MachineSettingsViewModel? = null,
@@ -2476,7 +2502,7 @@ class CoreHost(
         sessions: Map<String, SessionViewModel> = emptyMap(),
         usage: UsageViewModel? = null,
     ) {
-        if (home != null || project != null || newSession != null || syncState != null) {
+        if (home != null || project != null || newSession != null || connection != null) {
             testOverrideViews = true
         }
         overrideSlot(ScreenTarget.SCREEN_TARGET_SCHEDULES, schedulesSlot, schedules)
@@ -2486,7 +2512,7 @@ class CoreHost(
         home?.let { homeSlot.flow.value = it }
         project?.let { projectSlot.flow.value = it }
         newSession?.let { newSessionSlot.flow.value = it }
-        syncState?.let { syncStateSlot.flow.value = it }
+        connection?.let { connectionSlot.flow.value = it }
         settings?.let { settingsSlot.flow.value = it }
         machineStatus?.let { machineStatusSlot.flow.value = it }
         machineSettings?.let { machineSettingsSlot.flow.value = it }

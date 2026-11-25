@@ -189,18 +189,20 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
     val scope = rememberCoroutineScope()
     val term = remember(remote, sessionId) { RemoteTerminal(remote, sessionId, scope) }
     val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    val transportState = remote.coreHost.syncStateView.collectAsStateWithLifecycle().value
-    val syncSession = transportState.sessionsList.firstOrNull { it.sessionId == sessionId }
-    val online = syncSession?.terminalReady ?: (transportState.connection == CoreConnState.CONN_STATE_CONNECTED)
-    val waitingReachability = syncSession?.terminalWaiting ?: (!online && (transportState.reachabilityUnknown || transportState.displayGrace))
+    val connState = remote.coreHost.connectionView.collectAsStateWithLifecycle().value
+    val sessionVm = remember(remote, sessionId) { remote.watchSession(sessionId) }
+        .collectAsStateWithLifecycle(initialValue = remote.currentSessionView(sessionId) ?: io.github.lewin671.remoteagent.core.proto.SessionViewModel.getDefaultInstance()).value
+    val sessionHeader = sessionVm.header
+    val online = if (sessionHeader.found) sessionHeader.terminalReady else connState.connected
+    val waitingReachability = if (sessionHeader.found) sessionHeader.terminalWaiting else (!online && (connState.reachabilityUnknown || connState.displayGrace))
     DisposableEffect(term, owner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             when (event) {
                 androidx.lifecycle.Lifecycle.Event.ON_START -> {
-                    val currentState = remote.coreHost.syncStateView.value
-                    val currentSession = currentState.sessionsList.firstOrNull { it.sessionId == sessionId }
-                    val ready = currentSession?.terminalReady ?: (currentState.connection == CoreConnState.CONN_STATE_CONNECTED)
-                    val waiting = currentSession?.terminalWaiting ?: (!ready && (currentState.reachabilityUnknown || currentState.displayGrace))
+                    val curHeader = remote.currentSessionView(sessionId)?.header
+                    val curConn = remote.coreHost.connectionView.value
+                    val ready = if (curHeader != null && curHeader.found) curHeader.terminalReady else curConn.connected
+                    val waiting = if (curHeader != null && curHeader.found) curHeader.terminalWaiting else (!ready && (curConn.reachabilityUnknown || curConn.displayGrace))
                     if (ready) term.connect()
                     else if (!waiting) term.close()
                 }
@@ -426,9 +428,9 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                             CardButton(
                                 copy(UiMessages.terminalReconnect()),
                                 {
-                                    val st = remote.coreHost.syncStateView.value
-                                    val ready = st.sessionsList.firstOrNull { it.sessionId == sessionId }?.terminalReady
-                                        ?: (st.connection == CoreConnState.CONN_STATE_CONNECTED)
+                                    val curHeader = remote.currentSessionView(sessionId)?.header
+                                    val curConn = remote.coreHost.connectionView.value
+                                    val ready = if (curHeader != null && curHeader.found) curHeader.terminalReady else curConn.connected
                                     if (ready) term.connect()
                                 },
                                 Modifier.fillMaxWidth(),

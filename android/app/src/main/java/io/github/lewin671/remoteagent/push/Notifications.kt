@@ -539,11 +539,13 @@ class ApprovalWorker(context: Context, params: WorkerParameters) :
         val remote = Remote(acct, RaApp.instance.http, securityStore = RaApp.instance.vault)
         try {
             remote.start()
+            val vmFlow = remote.watchSession(session)
             val ready = withTimeoutOrNull(10_000L) {
-                remote.coreHost.syncStateView.first {
-                    it.connection == CoreConnState.CONN_STATE_CONNECTED &&
-                        it.machinesList.any { m -> m.machineId == machine && m.online } &&
-                        it.sessionsList.any { s -> s.sessionId == session && s.hasInfo() }
+                vmFlow.first { vm ->
+                    vm.header.connState == CoreConnState.CONN_STATE_CONNECTED &&
+                        vm.header.found &&
+                        vm.header.machineId == machine &&
+                        vm.header.computerOnline
                 }
                 true
             } ?: false
@@ -554,7 +556,6 @@ class ApprovalWorker(context: Context, params: WorkerParameters) :
                 }
                 return finish(if (wasUnknown()) sessionText(UiMessages.notificationsAndroidOutcomeUnknownOpenTheAppToCheck()) else sessionText(UiMessages.errorsTheComputerIsOfflineTheCommandWasNotSent()))
             }
-            val vmFlow = remote.watchSession(session)
             remote.openSession(session)
             val initialVm = withTimeoutOrNull(5_000L) {
                 vmFlow.first { vm ->

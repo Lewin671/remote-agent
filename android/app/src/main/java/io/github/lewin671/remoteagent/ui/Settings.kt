@@ -169,7 +169,7 @@ fun SettingsScreen() {
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val copy = uiText()
-    val syncView by remote.coreHost.syncStateView.collectAsState()
+    val connView by remote.coreHost.connectionView.collectAsState()
     val initialVm = remember(remote) { remote.coreHost.snapshotSettingsView() }
     val rawVm by remote.settingsView.collectAsState()
     val vm = if (rawVm != SettingsViewModel.getDefaultInstance()) rawVm else initialVm
@@ -205,7 +205,7 @@ fun SettingsScreen() {
         }
     SettingsScreenContent(
         vm = vm,
-        syncView = syncView,
+        connView = connView,
         push = push,
         serverDisplay = remote.account.server.removePrefix("https://").removePrefix("http://"),
         localCacheText = localCacheBytes?.let { imageBytes(it, copy) }.orEmpty(),
@@ -241,7 +241,7 @@ private fun connDotFor(vm: SettingsViewModel): MachineStatusDot = when {
 @Composable
 internal fun SettingsScreenContent(
     vm: SettingsViewModel,
-    syncView: io.github.lewin671.remoteagent.core.proto.SyncStateView = io.github.lewin671.remoteagent.core.proto.SyncStateView.getDefaultInstance(),
+    connView: io.github.lewin671.remoteagent.core.proto.ConnectionViewModel = io.github.lewin671.remoteagent.core.proto.ConnectionViewModel.getDefaultInstance(),
     push: PushStatus = PushStatus(),
     serverDisplay: String = "",
     localCacheText: String = "",
@@ -274,7 +274,7 @@ internal fun SettingsScreenContent(
         ) {
             BackRow(onBack)
             LargeTitle(copy(UiMessages.commonSettings()))
-            ConnBanner(syncView)
+            ConnBanner(connView)
             if (vm.recoveryPending) {
                 val recMsg = uiText(vm.recoveryBannerText).ifEmpty {
                     if (vm.isManager) copy(UiMessages.securityAndroidSomeoneIsRequestingManagementTakeoverWithARecoveryCodeVeto())
@@ -455,7 +455,7 @@ internal fun SettingsScreenContent(
                 Group(
                     rows = listOf {
                         AccountExitAction(
-                            syncView,
+                            leaseRenewalAdvice = connView.takeIf { it.hasLeaseRenewalAdvice() }?.leaseRenewalAdvice,
                             readAdvice = readExitAdvice,
                             exit = onExitAccount,
                         )
@@ -1517,7 +1517,7 @@ internal fun DeviceScreenContent(
                     },
                 )
             } else {
-                DeleteMachineRecordsAction(vm.machineId, isAuthority)
+                DeleteMachineRecordsAction(vm.machineId, mgmt.canDeleteRecords)
             }
             if (mgmt.canRemove) {
                 Group(
@@ -2126,11 +2126,8 @@ fun PairScreen(replacesDeviceId: String = "") {
             Hint(copy(UiMessages.securityComputerRunRemoteAgentAccountJoinAndEnterThe()))
             if (replacesDeviceId.isNotEmpty()) {
                 val settingsVm by remote.settingsView.collectAsState()
-                val syncVm by remote.coreHost.syncStateView.collectAsState()
                 val label = settingsVm.machinesList.firstOrNull { it.machineId == replacesDeviceId }?.name
                     ?.takeIf { it.isNotEmpty() }
-                    ?: syncVm.machinesList.firstOrNull { it.machineId == replacesDeviceId }?.displayName
-                        ?.takeIf { it.isNotEmpty() }
                     ?: copy(UiMessages.commonUnknownComputer())
                 Hint(
                     copy(UiMessages.settingsAndroidAllowTheOriginalComputerToResumeValue1SRetainedSessions(label)),

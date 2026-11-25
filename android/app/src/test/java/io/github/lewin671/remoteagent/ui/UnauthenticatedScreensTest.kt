@@ -223,7 +223,7 @@ class UnauthenticatedScreensTest {
     @Test
     fun rotateRecoveryHasOnlyTheTopBarBack() {
         var backs = 0
-        show { RotateRecoveryContent(io.github.lewin671.remoteagent.core.proto.SyncStateView.getDefaultInstance(), { error("unused") }, {}, { backs++ }) }
+        show { RotateRecoveryContent(prepareCode = { error("unused") }, publishCode = {}, onBack = { backs++ }) }
         ui.onNodeWithText("生成新的恢复码").assertIsDisplayed()
         ui.onNodeWithText("返回").assertDoesNotExist()
         ui.onNodeWithContentDescription("返回").performClick()
@@ -299,7 +299,7 @@ class UnauthenticatedScreensTest {
                     LocalNav provides Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {}),
                 ) {
                     AccountSecurityContent(
-                        syncView = io.github.lewin671.remoteagent.core.proto.SyncStateView.newBuilder()
+                        security = io.github.lewin671.remoteagent.core.proto.SecuritySummaryView.newBuilder()
                             .setIsManager(true)
                             .setAuthorityDeviceId("self-1")
                             .build(),

@@ -157,7 +157,7 @@ class ApprovalLatencyE2ETest {
         check(machineId.isNotEmpty()) { "Timed out waiting for paired machineId" }
         // Keep the direct path out of the relay-only cases from the start.
         remote.setDirectEnabled(machineId, false)
-        ui.waitUntil(60_000) { remote.coreHost.syncStateView.value.machinesList.firstOrNull { it.machineId == machineId }?.let { it.reachable || it.directReady } == true }
+        ui.waitUntil(60_000) { remote.coreHost.snapshotSettingsView().machinesList.firstOrNull { it.machineId == machineId }?.let { it.online || it.directReady } == true }
 
         val metrics = JSONObject().put("rounds", rounds)
         suspend fun io.github.lewin671.remoteagent.core.Remote.machineCommand(mid: String, cmd: Command): io.github.lewin671.remoteagent.proto.CommandResult {
