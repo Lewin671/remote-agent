@@ -274,4 +274,39 @@ describe("DirectExecutor", () => {
     expect(pc.connectionState).toBe("failed");
     exec.close();
   });
+
+  it("maps W3C empty-string candidate to a single endOfCandidates event (audit #4)", () => {
+    const sdk = fakeRTC();
+    const events: CoreEvent[] = [];
+    const exec = new DirectExecutor({
+      emit: (ev) => events.push(ev),
+      onPushedEvent: () => {},
+      factory: sdk.factory,
+    });
+
+    exec.pcCreate(create(DirectPcCreateEffectSchema, {
+      pcId: 23n,
+      machineId: "mac",
+      roundId: 1n,
+      use: 1,
+      generation: 1n,
+      stunServers: [],
+    }));
+    const pc = sdk.pcs[0]!;
+    pc.onicecandidate?.({
+      candidate: {
+        type: "",
+        candidate: "",
+        toJSON: () => ({ candidate: "", sdpMid: "0", sdpMLineIndex: 0 }),
+      },
+    });
+    // A subsequent null end-of-candidates event must be deduplicated.
+    pc.onicecandidate?.({ candidate: null });
+
+    const candEvents = events.filter((e) => e.event.case === "directPcLocalCandidate");
+    expect(candEvents).toHaveLength(1);
+    expect(candEvents[0]!.event.case === "directPcLocalCandidate" && candEvents[0]!.event.value.endOfCandidates).toBe(true);
+    expect(candEvents[0]!.event.case === "directPcLocalCandidate" && candEvents[0]!.event.value.candidate).toBe("");
+    exec.close();
+  });
 });

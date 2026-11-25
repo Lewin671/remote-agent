@@ -158,7 +158,7 @@ export class DirectExecutor {
         factory: this.options.factory,
         valid: () => !this.closed && this.pcs.get(eff.pcId) === entry,
         candidate: (cand) => {
-          if (!cand) {
+          if (!cand || !cand.candidate) {
             this.emit({
               case: "directPcLocalCandidate",
               value: create(DirectPcLocalCandidateEventSchema, { pcId: eff.pcId, endOfCandidates: true }),
@@ -169,7 +169,7 @@ export class DirectExecutor {
             case: "directPcLocalCandidate",
             value: create(DirectPcLocalCandidateEventSchema, {
               pcId: eff.pcId,
-              candidate: cand.candidate ?? "",
+              candidate: cand.candidate,
             }),
           });
         },

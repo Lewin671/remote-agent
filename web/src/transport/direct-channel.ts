@@ -189,6 +189,7 @@ export class DirectChannel {
   private tick: ReturnType<typeof setInterval>;
   private writers = 0;
   private reservationReleased = false;
+  private endCandidateSent = false;
   private listeners = new Set<() => void>();
 
   constructor(private readonly options: ChannelOptions) {
@@ -233,7 +234,15 @@ export class DirectChannel {
     this.data.onerror = this.probe.onerror = () => this.close();
     this.pc.ondatachannel = (event) => { event.channel.close(); this.close(); };
     this.pc.onicecandidate = (event) => {
-      if (this.valid()) options.candidate(event.candidate?.toJSON() ?? null);
+      if (!this.valid()) return;
+      const init = event.candidate?.toJSON() ?? null;
+      if (!init || !init.candidate) {
+        if (this.endCandidateSent) return;
+        this.endCandidateSent = true;
+        options.candidate(null);
+        return;
+      }
+      options.candidate(init);
     };
     this.pc.onconnectionstatechange = () => {
       if (this.ended) return;
@@ -312,6 +321,7 @@ export class DirectChannel {
     if (!this.valid() || !description.sdp) throw new PathChanged();
     const raw = textEnc.encode(description.sdp) as Uint8Array<ArrayBuffer>;
     validateMinimalSDP(raw);
+    this.endCandidateSent = false;
     await this.pc.setLocalDescription(description);
     if (!this.valid()) throw new PathChanged();
     return raw;
