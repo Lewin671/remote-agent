@@ -292,8 +292,8 @@ Android 和 iOS 解锁后私钥字节在内存里，可以交给核心直接用�
 3. session 界面：聊天行、审批、提问、队列、计划，复用 `projection`
 4. schedules、machine status、quota、settings
 5. `security`：S5（信封、成员链、租约、HPKE/加密门入 `clientcore/security` 与 `shared/devicesec`）与 S6（持久安全操作状态机、建号/配对/删除/轮换/交接/恢复流程及统一 v4 本地安全记录管理）已在独立分支完成、拆除 `SecCall` 过渡桥接并完成状态机与三端壳去重瘦身；各端仅保留平台安全存储适配、`Key*`/`CryptoBatch` 密钥执行器与界面，坚持「核心里不自写加密原语」；协议仍保持 `17`、daemon 存储格式不变，客户端遇到旧格式本地安全记录时清掉本地安全记录并提示按正常流程重新配对（不写迁移代码）
-6. 附件和共享文件的状态机；直连的选路策略（路径可用性、退回与等待、指令两路同发与终端恢复重连的状态机）已按 S4 迁入 `clientcore/transport` 与 `sync`，网页、Android、iOS 三端均已完成接线并拆除过渡桥接，各端仅保留平台原生 WebRTC / WebSocket / Timer / 密钥 / 加密执行器
-7. Markdown 和终端 SGR 的解析（渲染留在壳）
+6. 附件上传与共享文件下载的状态机（`clientcore/app/attachments*.go`、`shared_files.go`，规则在 `domain/attachments`、`domain/sharedfiles`）；直连的选路策略（路径可用性、退回与等待、指令两路同发与终端恢复重连的状态机）已按 S4 迁入 `clientcore/transport` 与 `sync`，网页、Android、iOS 三端均已完成接线并拆除过渡桥接，各端仅保留平台原生 WebRTC / WebSocket / Timer / 密钥 / 加密执行器
+7. Markdown 和终端 SGR 的解析（渲染留在壳）：终端回看历史与 SGR 已在 `clientcore/domain/termhistory`；Markdown 与 LaTeX 解析尚在三端各自实现
 
 同步必须先于各界面进核心：第 1 步曾让同步留在壳里、由宿主把壳的状态翻成 Event，三端宿主各写了 600 到 1100 行翻译代码，产品代码不减反增。界面迁移只在核心已持有它所需的状态之后进行。
 
