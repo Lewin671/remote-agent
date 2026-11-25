@@ -240,7 +240,7 @@ export class DirectChannel {
       options.state(DirectStateKind.CONN, this.pc.connectionState);
       if (this.pc.sctp?.state) options.state(DirectStateKind.SCTP, this.pc.sctp.state);
       if (this.pc.sctp?.transport?.state) options.state(DirectStateKind.DTLS, this.pc.sctp.transport.state);
-      if (["failed", "closed", "disconnected"].includes(this.pc.connectionState)) this.close();
+      if (this.pc.connectionState === "closed") this.close();
     };
     this.pc.onicegatheringstatechange = () => {
       if (!this.ended) options.state(DirectStateKind.GATHER, this.pc.iceGatheringState);
@@ -283,7 +283,15 @@ export class DirectChannel {
   }
 
   private valid() { return !this.ended && this.options.valid(); }
-  get ready() { return this.confirmed && this.valid() && this.data.readyState === "open"; }
+  get ready() {
+    return (
+      this.confirmed &&
+      this.valid() &&
+      this.data.readyState === "open" &&
+      this.pc.connectionState !== "failed" &&
+      this.pc.connectionState !== "closed"
+    );
+  }
   get queuedBytes() { return this.data.bufferedAmount; }
   get signal() { return this.lifetime.signal; }
 

@@ -179,4 +179,99 @@ describe("DirectExecutor", () => {
     expect(events.some((e) => e.event.case === "directPcClosed")).toBe(false);
     exec.close();
   });
+
+  it("preserves getStats before closing a failed confirmed PC and does not close on disconnected (audit #2)", async () => {
+    const sdk = fakeRTC();
+    const events: CoreEvent[] = [];
+    let resolveStats!: (val: { forEach: (cb: (v: Record<string, unknown>) => void) => void }) => void;
+
+    const exec = new DirectExecutor({
+      emit: (ev) => {
+        events.push(ev);
+        if (ev.event.case === "directPcState" && ev.event.value.kind === DirectStateKind.CONN && ev.event.value.value === "failed") {
+          void exec.dcReadStats(create(DirectDcReadStatsEffectSchema, { pcId: ev.event.value.pcId }));
+        }
+      },
+      onPushedEvent: () => {},
+      factory: sdk.factory,
+    });
+
+    exec.pcCreate(create(DirectPcCreateEffectSchema, {
+      pcId: 21n,
+      machineId: "mac",
+      roundId: 1n,
+      use: 1,
+      generation: 1n,
+      stunServers: [],
+    }));
+    const pc = sdk.pcs[0]!;
+    const dc = pc.channels[0]!;
+    dc.readyState = "open";
+    dc.onopen?.();
+    pc.state("connected");
+    exec.pcConfirm(create(DirectPcConfirmEffectSchema, { pcId: 21n, machineId: "mac", use: 1 }));
+
+    // Transient disconnected must not emit directPcClosed or close the PC.
+    pc.state("disconnected");
+    expect(events.some((e) => e.event.case === "directPcClosed")).toBe(false);
+    expect(pc.connectionState).toBe("disconnected");
+
+    // Failed on confirmed PC must wait for in-flight dcReadStats before closing and emitting directPcClosed.
+    let closedBeforeStats = false;
+    const origClose = pc.close.bind(pc);
+    pc.close = () => {
+      if (!events.some((e) => e.event.case === "directDcStats")) closedBeforeStats = true;
+      origClose();
+    };
+    pc.getStats.mockImplementationOnce(() => new Promise((res) => { resolveStats = res; }));
+
+    pc.state("failed");
+    expect(closedBeforeStats).toBe(false);
+    expect(events.some((e) => e.event.case === "directPcClosed")).toBe(false);
+
+    const rows = [
+      { id: "lc", type: "local-candidate", candidateType: "host", address: "10.0.0.2" },
+      { id: "rc", type: "remote-candidate", candidateType: "srflx", address: "203.0.113.9" },
+      { id: "cp", type: "candidate-pair", localCandidateId: "lc", remoteCandidateId: "rc", nominated: true, state: "failed" },
+    ];
+    resolveStats({ forEach: (cb) => rows.forEach(cb) });
+
+    await vi.waitFor(() => expect(events.some((e) => e.event.case === "directPcClosed")).toBe(true));
+    const statsIdx = events.findIndex((e) => e.event.case === "directDcStats");
+    const closedIdx = events.findIndex((e) => e.event.case === "directPcClosed");
+    expect(statsIdx).toBeGreaterThan(-1);
+    expect(statsIdx).toBeLessThan(closedIdx);
+    expect(closedBeforeStats).toBe(false);
+    exec.close();
+  });
+
+  it("leaves unconfirmed failed PC open for Core restart/close while allowing getStats (audit #2)", async () => {
+    const sdk = fakeRTC();
+    const events: CoreEvent[] = [];
+    const exec = new DirectExecutor({
+      emit: (ev) => {
+        events.push(ev);
+        if (ev.event.case === "directPcState" && ev.event.value.kind === DirectStateKind.CONN && ev.event.value.value === "failed") {
+          void exec.dcReadStats(create(DirectDcReadStatsEffectSchema, { pcId: ev.event.value.pcId }));
+        }
+      },
+      onPushedEvent: () => {},
+      factory: sdk.factory,
+    });
+
+    exec.pcCreate(create(DirectPcCreateEffectSchema, {
+      pcId: 22n,
+      machineId: "mac",
+      roundId: 1n,
+      use: 1,
+      generation: 1n,
+      stunServers: [],
+    }));
+    const pc = sdk.pcs[0]!;
+    pc.state("failed");
+    await vi.waitFor(() => expect(events.some((e) => e.event.case === "directDcStats")).toBe(true));
+    expect(events.some((e) => e.event.case === "directPcClosed")).toBe(false);
+    expect(pc.connectionState).toBe("failed");
+    exec.close();
+  });
 });

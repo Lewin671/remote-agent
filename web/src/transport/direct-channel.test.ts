@@ -152,4 +152,52 @@ describe("DirectChannel", () => {
     expect(() => channel.close()).toThrow("fixture close observer");
     expect(budget.ownerAvailable("peer", "3")).toBe(true);
   });
+
+  it("keeps PC open on transient disconnected state and defers close on failed state (audit #2)", () => {
+    const sdk = fakeRTC();
+    const budget = new DirectBudget();
+    const states: Array<[DirectStateKind, string]> = [];
+    let closedCalls = 0;
+
+    const channel = new DirectChannel({
+      peer: "peer",
+      roundId: 1n,
+      use: 1,
+      generation: 1n,
+      budget,
+      valid: () => true,
+      stun: [],
+      factory: sdk.factory,
+      candidate: () => {},
+      state: (kind, val) => states.push([kind, val]),
+      frame: () => {},
+      closed: () => { closedCalls++; },
+    });
+
+    const pc = sdk.pcs[0]!;
+    const dc = pc.channels[0]!;
+    dc.readyState = "open";
+    dc.onopen?.();
+    pc.state("connected");
+    channel.confirm();
+    expect(channel.ready).toBe(true);
+
+    // Transient disconnected must not close the PC and must allow self-healing.
+    pc.state("disconnected");
+    expect(closedCalls).toBe(0);
+    expect(pc.connectionState).toBe("disconnected");
+    pc.state("connected");
+    expect(channel.ready).toBe(true);
+    expect(closedCalls).toBe(0);
+
+    // Terminal failed marks channel unready without synchronously closing PC.
+    pc.state("failed");
+    expect(channel.ready).toBe(false);
+    expect(closedCalls).toBe(0);
+    expect(pc.connectionState).toBe("failed");
+
+    // Browser-initiated closed cleans up synchronously.
+    pc.state("closed");
+    expect(closedCalls).toBe(1);
+  });
 });

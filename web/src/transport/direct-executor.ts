@@ -14,6 +14,7 @@ import {
   DirectPcRemoteSetEventSchema,
   DirectPcStateEventSchema,
   DirectPcStunErrorEventSchema,
+  DirectStateKind,
   type DirectDcReadStatsEffect,
   type DirectPcAddCandidatesEffect,
   type DirectPcCloseEffect,
@@ -52,6 +53,8 @@ interface PcEntry {
   use: number;
   confirmed: boolean;
   closedByCore: boolean;
+  statsInFlight?: Promise<void>;
+  closingOnFailure?: boolean;
 }
 
 interface PendingRpc {
@@ -172,6 +175,9 @@ export class DirectExecutor {
         },
         state: (kind, value) => {
           this.emit({ case: "directPcState", value: create(DirectPcStateEventSchema, { pcId: eff.pcId, kind, value }) });
+          if (kind === DirectStateKind.CONN && value === "failed" && entry.confirmed && this.pcs.get(eff.pcId) === entry) {
+            this.closeConfirmedAfterStats(eff.pcId, entry);
+          }
         },
         dcState: (open) => {
           this.emit({ case: "directDcState", value: create(DirectDcStateEventSchema, { pcId: eff.pcId, open }) });
@@ -290,8 +296,43 @@ export class DirectExecutor {
       this.emit({ case: "directDcStats", value: create(DirectDcStatsEventSchema, { pcId: eff.pcId }) });
       return;
     }
-    const report = await entry.channel.readStats();
-    this.emit({ case: "directDcStats", value: create(DirectDcStatsEventSchema, { pcId: eff.pcId, report }) });
+    const task = (async () => {
+      const report = await entry.channel.readStats();
+      this.emit({ case: "directDcStats", value: create(DirectDcStatsEventSchema, { pcId: eff.pcId, report }) });
+    })();
+    entry.statsInFlight = task;
+    try {
+      await task;
+    } finally {
+      if (entry.statsInFlight === task) entry.statsInFlight = undefined;
+    }
+  }
+
+  private closeConfirmedAfterStats(pcId: bigint, entry: PcEntry) {
+    if (entry.closingOnFailure) return;
+    entry.closingOnFailure = true;
+    const stats = entry.statsInFlight;
+    if (!stats) {
+      if (!this.closed && this.pcs.get(pcId) === entry) entry.channel.close();
+      return;
+    }
+    let done = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onAbort = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+    };
+    const settle = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      entry.channel.signal.removeEventListener("abort", onAbort);
+      if (!this.closed && this.pcs.get(pcId) === entry) entry.channel.close();
+    };
+    entry.channel.signal.addEventListener("abort", onAbort, { once: true });
+    timer = setTimeout(settle, 500);
+    void stats.then(settle, settle);
   }
 
   async sendRpc(
