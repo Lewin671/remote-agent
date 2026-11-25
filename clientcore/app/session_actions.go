@@ -391,16 +391,20 @@ func (c *Core) handleSessionToggleQuestionOption(store *sessionStore, act *corev
 	if isSlotInFlight(ui, slotKey) {
 		return
 	}
+	base := ui.QuestionDraftByKey[qKey]
 	if rec := ui.Commands[slotKey]; rec != nil {
 		if rec.Frozen {
 			return
 		}
 		if rec.Status == corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_FAILED {
+			if len(base) == 0 && len(rec.SubmittedOptionNums) > 0 {
+				base = rec.SubmittedOptionNums
+			}
 			delete(ui.Commands, slotKey)
 			delete(store.slotMeta, slotKey)
 		}
 	}
-	next := toggleInt32Sorted(ui.QuestionDraftByKey[qKey], act.OptionNum)
+	next := toggleInt32Sorted(base, act.OptionNum)
 	if len(next) == 0 {
 		delete(ui.QuestionDraftByKey, qKey)
 	} else {

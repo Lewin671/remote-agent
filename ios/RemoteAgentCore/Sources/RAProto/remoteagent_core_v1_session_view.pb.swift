@@ -2787,6 +2787,11 @@ public struct PBSessionQuestionDockView: @unchecked Sendable {
   /// Clears the value of `answeredText`. Subsequent reads from it will return its default value.
   public mutating func clearAnsweredText() {_uniqueStorage()._answeredText = nil}
 
+  public var selectedOptionNums: [Int32] {
+    get {return _storage._selectedOptionNums}
+    set {_uniqueStorage()._selectedOptionNums = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -7837,7 +7842,7 @@ extension PBSessionQuestionStepView: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 extension PBSessionQuestionDockView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionQuestionDockView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}question_id\0\u{3}active_index\0\u{3}total_questions\0\u{3}progress_text\0\u{1}question\0\u{3}answered_indices\0\u{4}\u{4}drafted_option_nums\0\u{3}can_submit_multi\0\u{3}submit_button_label\0\u{3}is_last_step\0\u{3}submitted_option_nums\0\u{1}answered\0\u{3}answered_text\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}question_id\0\u{3}active_index\0\u{3}total_questions\0\u{3}progress_text\0\u{1}question\0\u{3}answered_indices\0\u{4}\u{4}drafted_option_nums\0\u{3}can_submit_multi\0\u{3}submit_button_label\0\u{3}is_last_step\0\u{3}submitted_option_nums\0\u{1}answered\0\u{3}answered_text\0\u{3}selected_option_nums\0")
 
   fileprivate class _StorageClass {
     var _questionID: String = String()
@@ -7853,6 +7858,7 @@ extension PBSessionQuestionDockView: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _submittedOptionNums: [Int32] = []
     var _answered: Bool = false
     var _answeredText: PBCoreText? = nil
+    var _selectedOptionNums: [Int32] = []
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -7876,6 +7882,7 @@ extension PBSessionQuestionDockView: SwiftProtobuf.Message, SwiftProtobuf._Messa
       _submittedOptionNums = source._submittedOptionNums
       _answered = source._answered
       _answeredText = source._answeredText
+      _selectedOptionNums = source._selectedOptionNums
     }
   }
 
@@ -7907,6 +7914,7 @@ extension PBSessionQuestionDockView: SwiftProtobuf.Message, SwiftProtobuf._Messa
         case 14: try { try decoder.decodeRepeatedInt32Field(value: &_storage._submittedOptionNums) }()
         case 15: try { try decoder.decodeSingularBoolField(value: &_storage._answered) }()
         case 16: try { try decoder.decodeSingularMessageField(value: &_storage._answeredText) }()
+        case 17: try { try decoder.decodeRepeatedInt32Field(value: &_storage._selectedOptionNums) }()
         default: break
         }
       }
@@ -7958,6 +7966,9 @@ extension PBSessionQuestionDockView: SwiftProtobuf.Message, SwiftProtobuf._Messa
       try { if let v = _storage._answeredText {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 16)
       } }()
+      if !_storage._selectedOptionNums.isEmpty {
+        try visitor.visitPackedInt32Field(value: _storage._selectedOptionNums, fieldNumber: 17)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -7980,6 +7991,7 @@ extension PBSessionQuestionDockView: SwiftProtobuf.Message, SwiftProtobuf._Messa
         if _storage._submittedOptionNums != rhs_storage._submittedOptionNums {return false}
         if _storage._answered != rhs_storage._answered {return false}
         if _storage._answeredText != rhs_storage._answeredText {return false}
+        if _storage._selectedOptionNums != rhs_storage._selectedOptionNums {return false}
         return true
       }
       if !storagesAreEqual {return false}

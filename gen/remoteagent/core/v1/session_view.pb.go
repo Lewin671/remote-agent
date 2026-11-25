@@ -3817,6 +3817,7 @@ type SessionQuestionDockView struct {
 	SubmittedOptionNums []int32                  `protobuf:"varint,14,rep,packed,name=submitted_option_nums,json=submittedOptionNums,proto3" json:"submitted_option_nums,omitempty"`
 	Answered            bool                     `protobuf:"varint,15,opt,name=answered,proto3" json:"answered,omitempty"`
 	AnsweredText        *Text                    `protobuf:"bytes,16,opt,name=answered_text,json=answeredText,proto3" json:"answered_text,omitempty"`
+	SelectedOptionNums  []int32                  `protobuf:"varint,17,rep,packed,name=selected_option_nums,json=selectedOptionNums,proto3" json:"selected_option_nums,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -3938,6 +3939,13 @@ func (x *SessionQuestionDockView) GetAnswered() bool {
 func (x *SessionQuestionDockView) GetAnsweredText() *Text {
 	if x != nil {
 		return x.AnsweredText
+	}
+	return nil
+}
+
+func (x *SessionQuestionDockView) GetSelectedOptionNums() []int32 {
+	if x != nil {
+		return x.SelectedOptionNums
 	}
 	return nil
 }
@@ -9332,7 +9340,7 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"\rquestion_text\x18\x02 \x01(\tR\fquestionText\x12!\n" +
 	"\fmulti_select\x18\x03 \x01(\bR\vmultiSelect\x12H\n" +
 	"\aoptions\x18\x04 \x03(\v2..remoteagent.core.v1.SessionQuestionOptionViewR\aoptions\x12\"\n" +
-	"\rcan_free_text\x18\x05 \x01(\bR\vcanFreeText\"\x92\x05\n" +
+	"\rcan_free_text\x18\x05 \x01(\bR\vcanFreeText\"\xc4\x05\n" +
 	"\x17SessionQuestionDockView\x12\x1f\n" +
 	"\vquestion_id\x18\x01 \x01(\tR\n" +
 	"questionId\x12!\n" +
@@ -9349,7 +9357,8 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"isLastStep\x122\n" +
 	"\x15submitted_option_nums\x18\x0e \x03(\x05R\x13submittedOptionNums\x12\x1a\n" +
 	"\banswered\x18\x0f \x01(\bR\banswered\x12>\n" +
-	"\ranswered_text\x18\x10 \x01(\v2\x19.remoteagent.core.v1.TextR\fansweredText\"\xa4\x01\n" +
+	"\ranswered_text\x18\x10 \x01(\v2\x19.remoteagent.core.v1.TextR\fansweredText\x120\n" +
+	"\x14selected_option_nums\x18\x11 \x03(\x05R\x12selectedOptionNums\"\xa4\x01\n" +
 	"\x1bSessionPlanChoiceOptionView\x122\n" +
 	"\x06choice\x18\x01 \x01(\x0e2\x1a.remoteagent.v1.PlanChoiceR\x06choice\x12/\n" +
 	"\x05label\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\x05label\x12 \n" +

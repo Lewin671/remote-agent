@@ -146,4 +146,21 @@ public interface SessionQuestionDockViewOrBuilder extends
    * @return The answeredText.
    */
   io.github.lewin671.remoteagent.core.proto.Text getAnsweredText();
+
+  /**
+   * <code>repeated int32 selected_option_nums = 17 [json_name = "selectedOptionNums"];</code>
+   * @return A list containing the selectedOptionNums.
+   */
+  java.util.List<java.lang.Integer> getSelectedOptionNumsList();
+  /**
+   * <code>repeated int32 selected_option_nums = 17 [json_name = "selectedOptionNums"];</code>
+   * @return The count of selectedOptionNums.
+   */
+  int getSelectedOptionNumsCount();
+  /**
+   * <code>repeated int32 selected_option_nums = 17 [json_name = "selectedOptionNums"];</code>
+   * @param index The index of the element to return.
+   * @return The selectedOptionNums at the given index.
+   */
+  int getSelectedOptionNums(int index);
 }

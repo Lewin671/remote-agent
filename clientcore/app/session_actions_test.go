@@ -1512,3 +1512,102 @@ func TestSessionTrackingMapsStayBounded(t *testing.T) {
 		t.Fatalf("expected fixed rename slot succeeded_seq=1, got %v", ui.SlotSucceededSeq)
 	}
 }
+
+func TestSessionQuestionSelectedOptionNums(t *testing.T) {
+	sess := &corev1.PlainSession{
+		SessionId: "s-sel",
+		MachineId: "m-on",
+		UpdatedMs: 1_791_078_060_000,
+		Meta:      &v1.Session{Id: "s-sel", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_CLAUDE},
+		Checkpoint: &v1.LiveSnapshot{
+			Actions: []*v1.Event{
+				{
+					Seq: 10,
+					Kind: &v1.Event_QuestionAsked{
+						QuestionAsked: &v1.QuestionAsked{
+							QuestionId: "q-sel",
+							Questions: []*v1.Question{
+								{
+									Header:      "Features",
+									Text:        "Pick features",
+									MultiSelect: true,
+									Options:     []*v1.QuestionOption{{Label: "A"}, {Label: "B"}, {Label: "C"}},
+								},
+								{
+									Header: "Confirm",
+									Text:   "Proceed?",
+									Options: []*v1.QuestionOption{
+										{Label: "Yes"},
+										{Label: "No"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	c := makeSemanticTestCore(t, sess, nil)
+	getSelected := func() []int32 {
+		vm, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-sel"}}})
+		return vm.GetSession().GetDock().GetQuestion().GetSelectedOptionNums()
+	}
+
+	// 1) Idle multi-select: empty -> tick 1 & 3 -> [1, 3].
+	if got := getSelected(); len(got) != 0 {
+		t.Fatalf("initial selected = %v, want empty", got)
+	}
+	c.Dispatch(&corev1.Event{NowMs: 1_791_078_061_000, Event: &corev1.Event_SessionToggleQuestionOption{SessionToggleQuestionOption: &corev1.SessionToggleQuestionOptionAction{SessionId: "s-sel", QuestionId: "q-sel", OptionNum: 1}}})
+	c.Dispatch(&corev1.Event{NowMs: 1_791_078_061_010, Event: &corev1.Event_SessionToggleQuestionOption{SessionToggleQuestionOption: &corev1.SessionToggleQuestionOptionAction{SessionId: "s-sel", QuestionId: "q-sel", OptionNum: 3}}})
+	if got := getSelected(); !slices.Equal(got, []int32{1, 3}) {
+		t.Fatalf("drafted selected = %v, want [1 3]", got)
+	}
+
+	// 2) Submit -> busy -> selected stays [1, 3]; fail -> selected stays [1, 3].
+	bSub := c.Dispatch(&corev1.Event{NowMs: 1_791_078_061_020, Event: &corev1.Event_SessionAnswerQuestion{SessionAnswerQuestion: &corev1.SessionAnswerQuestionAction{SessionId: "s-sel", QuestionId: "q-sel"}}})
+	effs, _ := decodeDispatchedCommands(t, bSub)
+	if got := getSelected(); !slices.Equal(got, []int32{1, 3}) {
+		t.Fatalf("busy selected = %v, want [1 3]", got)
+	}
+	settleCommandFailed(c, 1_791_078_061_030, effs[0], "failed_precondition")
+	if got := getSelected(); !slices.Equal(got, []int32{1, 3}) {
+		t.Fatalf("failed selected = %v, want [1 3]", got)
+	}
+
+	// 3) Toggle after failure clears error & updates selected; unticking ALL yields empty (not stale submitted!).
+	c.Dispatch(&corev1.Event{NowMs: 1_791_078_061_040, Event: &corev1.Event_SessionToggleQuestionOption{SessionToggleQuestionOption: &corev1.SessionToggleQuestionOptionAction{SessionId: "s-sel", QuestionId: "q-sel", OptionNum: 1}}})
+	if got := getSelected(); !slices.Equal(got, []int32{3}) {
+		t.Fatalf("after unticking 1, selected = %v, want [3]", got)
+	}
+	c.Dispatch(&corev1.Event{NowMs: 1_791_078_061_050, Event: &corev1.Event_SessionToggleQuestionOption{SessionToggleQuestionOption: &corev1.SessionToggleQuestionOptionAction{SessionId: "s-sel", QuestionId: "q-sel", OptionNum: 3}}})
+	if got := getSelected(); len(got) != 0 {
+		t.Fatalf("after unticking all post-failure, selected = %v, want empty", got)
+	}
+
+	// 4) Submit [2] -> UNKNOWN (frozen) -> selected = [2]; settle OK advances to single-select step 1.
+	c.Dispatch(&corev1.Event{NowMs: 1_791_078_061_060, Event: &corev1.Event_SessionToggleQuestionOption{SessionToggleQuestionOption: &corev1.SessionToggleQuestionOptionAction{SessionId: "s-sel", QuestionId: "q-sel", OptionNum: 2}}})
+	bSub2 := c.Dispatch(&corev1.Event{NowMs: 1_791_078_061_070, Event: &corev1.Event_SessionAnswerQuestion{SessionAnswerQuestion: &corev1.SessionAnswerQuestionAction{SessionId: "s-sel", QuestionId: "q-sel"}}})
+	effs2, _ := decodeDispatchedCommands(t, bSub2)
+	settleCommandUnknown(c, 1_791_078_061_080, effs2[0])
+	if got := getSelected(); !slices.Equal(got, []int32{2}) {
+		t.Fatalf("frozen multi selected = %v, want [2]", got)
+	}
+	bRetry := c.Dispatch(&corev1.Event{NowMs: 1_791_078_061_090, Event: &corev1.Event_SessionRetryCommand{SessionRetryCommand: &corev1.SessionRetryCommandAction{SessionId: "s-sel", SlotKey: "question:s-sel:q-sel#0"}}})
+	effsR, _ := decodeDispatchedCommands(t, bRetry)
+	settleCommandOK(c, 1_791_078_061_100, effsR[0], &v1.CommandResult{Outcome: "executed"})
+
+	// 5) Single-select step 1: idle -> empty; submit option 2 -> busy/failed -> [2].
+	if got := getSelected(); len(got) != 0 {
+		t.Fatalf("single-select idle selected = %v, want empty", got)
+	}
+	bSingle := c.Dispatch(&corev1.Event{NowMs: 1_791_078_061_110, Event: &corev1.Event_SessionAnswerQuestion{SessionAnswerQuestion: &corev1.SessionAnswerQuestionAction{SessionId: "s-sel", QuestionId: "q-sel", OptionNum: 2}}})
+	effsS, _ := decodeDispatchedCommands(t, bSingle)
+	if got := getSelected(); !slices.Equal(got, []int32{2}) {
+		t.Fatalf("single-select busy selected = %v, want [2]", got)
+	}
+	settleCommandFailed(c, 1_791_078_061_120, effsS[0], "failed_precondition")
+	if got := getSelected(); !slices.Equal(got, []int32{2}) {
+		t.Fatalf("single-select failed selected = %v, want [2]", got)
+	}
+}

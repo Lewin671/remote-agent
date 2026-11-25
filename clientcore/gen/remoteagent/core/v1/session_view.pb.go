@@ -2573,6 +2573,7 @@ type SessionQuestionDockView struct {
 	SubmittedOptionNums []int32
 	Answered            bool
 	AnsweredText        *Text
+	SelectedOptionNums  []int32
 }
 
 func (m *SessionQuestionDockView) GetQuestionId() string {
@@ -2653,6 +2654,12 @@ func (m *SessionQuestionDockView) GetAnsweredText() *Text {
 	}
 	return nil
 }
+func (m *SessionQuestionDockView) GetSelectedOptionNums() []int32 {
+	if m != nil {
+		return m.SelectedOptionNums
+	}
+	return nil
+}
 
 var LitewireDesc_SessionQuestionDockView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -2669,6 +2676,7 @@ var LitewireDesc_SessionQuestionDockView = litewire.MessageDesc{
 		{Num: 14, Offset: unsafe.Offsetof(SessionQuestionDockView{}.SubmittedOptionNums), Kind: litewire.KindInt32, Flags: litewire.FlagRepeated | litewire.FlagPacked},
 		{Num: 15, Offset: unsafe.Offsetof(SessionQuestionDockView{}.Answered), Kind: litewire.KindBool},
 		{Num: 16, Offset: unsafe.Offsetof(SessionQuestionDockView{}.AnsweredText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 17, Offset: unsafe.Offsetof(SessionQuestionDockView{}.SelectedOptionNums), Kind: litewire.KindInt32, Flags: litewire.FlagRepeated | litewire.FlagPacked},
 	},
 }
 

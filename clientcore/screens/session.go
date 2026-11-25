@@ -1476,6 +1476,19 @@ func buildSessionDock(
 		isMulti := stepView != nil && stepView.MultiSelect
 		cmdBusy := out.Command != nil && out.Command.Busy
 		cmdFrozen := out.Command != nil && out.Command.Frozen
+		cmdHasError := out.Command != nil &&
+			(out.Command.Status == corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_FAILED ||
+				out.Command.Status == corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_UNKNOWN)
+		var selected []int32
+		if isMulti {
+			if (cmdBusy || cmdFrozen || cmdHasError) && len(submitted) > 0 {
+				selected = submitted
+			} else {
+				selected = drafted
+			}
+		} else {
+			selected = submitted
+		}
 		canSubmitMulti := isMulti && !answered && !cmdBusy && !cmdFrozen && len(drafted) > 0
 		var submitLabel *corev1.Text
 		if isMulti {
@@ -1508,6 +1521,7 @@ func buildSessionDock(
 				SubmittedOptionNums: submitted,
 				Answered:            answered,
 				AnsweredText:        answeredText,
+				SelectedOptionNums:  selected,
 			},
 		}
 		return out

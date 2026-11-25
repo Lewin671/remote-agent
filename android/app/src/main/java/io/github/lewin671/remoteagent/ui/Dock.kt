@@ -405,6 +405,7 @@ internal fun QuestionBody(
     val errorText = if (cmd.hasErrorText()) uiText(cmd.errorText) else cmd.errorCode
     val pickedMulti = q.draftedOptionNumsList
     val submittedNums = q.submittedOptionNumsList
+    val selectedNums = q.selectedOptionNumsList
 
     if (part != 2) {
         Text(
@@ -417,12 +418,7 @@ internal fun QuestionBody(
         )
         if (!full && longQuestionStep(cur)) CardLink(copy(UiMessages.markdownExpand()), onLong, lead = 0.dp)
         cur.optionsList.forEach { o ->
-            val sel = if (cur.multiSelect) {
-                if (pickedMulti.isNotEmpty()) o.optionNum in pickedMulti
-                else (busy || frozen) && o.optionNum in submittedNums
-            } else {
-                o.optionNum in submittedNums && (busy || frozen)
-            }
+            val sel = o.optionNum in selectedNums
             val ink = if (sel) CardColors.onPrimary else CardColors.text
             val ink2 = if (sel) CardColors.onPrimary.copy(alpha = .6f) else CardColors.text2
             Row(

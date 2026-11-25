@@ -388,6 +388,7 @@ message SessionQuestionDockView {
   repeated int32 submitted_option_nums = 14;
   bool answered = 15;
   Text answered_text = 16;
+  repeated int32 selected_option_nums = 17;
 }
 
 message SessionPlanChoiceOptionView {

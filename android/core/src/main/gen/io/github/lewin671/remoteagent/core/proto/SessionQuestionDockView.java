@@ -19,6 +19,7 @@ public  final class SessionQuestionDockView extends
     answeredIndices_ = emptyIntList();
     draftedOptionNums_ = emptyIntList();
     submittedOptionNums_ = emptyIntList();
+    selectedOptionNums_ = emptyIntList();
   }
   private int bitField0_;
   public static final int QUESTION_ID_FIELD_NUMBER = 1;
@@ -602,6 +603,77 @@ public  final class SessionQuestionDockView extends
   private void clearAnsweredText() {
     answeredText_ = null;
     bitField0_ = (bitField0_ & ~0x00000008);
+  }
+
+  public static final int SELECTED_OPTION_NUMS_FIELD_NUMBER = 17;
+  private com.google.protobuf.Internal.IntList selectedOptionNums_;
+  /**
+   * <code>repeated int32 selected_option_nums = 17 [json_name = "selectedOptionNums"];</code>
+   * @return A list containing the selectedOptionNums.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.Integer>
+      getSelectedOptionNumsList() {
+    return selectedOptionNums_;
+  }
+  /**
+   * <code>repeated int32 selected_option_nums = 17 [json_name = "selectedOptionNums"];</code>
+   * @return The count of selectedOptionNums.
+   */
+  @java.lang.Override
+  public int getSelectedOptionNumsCount() {
+    return selectedOptionNums_.size();
+  }
+  /**
+   * <code>repeated int32 selected_option_nums = 17 [json_name = "selectedOptionNums"];</code>
+   * @param index The index of the element to return.
+   * @return The selectedOptionNums at the given index.
+   */
+  @java.lang.Override
+  public int getSelectedOptionNums(int index) {
+    return selectedOptionNums_.getInt(index);
+  }
+  private int selectedOptionNumsMemoizedSerializedSize = -1;
+  private void ensureSelectedOptionNumsIsMutable() {
+    com.google.protobuf.Internal.IntList tmp = selectedOptionNums_;
+    if (!tmp.isModifiable()) {
+      selectedOptionNums_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <code>repeated int32 selected_option_nums = 17 [json_name = "selectedOptionNums"];</code>
+   * @param index The index to set the value at.
+   * @param value The selectedOptionNums to set.
+   */
+  private void setSelectedOptionNums(
+      int index, int value) {
+    ensureSelectedOptionNumsIsMutable();
+    selectedOptionNums_.setInt(index, value);
+  }
+  /**
+   * <code>repeated int32 selected_option_nums = 17 [json_name = "selectedOptionNums"];</code>
+   * @param value The selectedOptionNums to add.
+   */
+  private void addSelectedOptionNums(int value) {
+    ensureSelectedOptionNumsIsMutable();
+    selectedOptionNums_.addInt(value);
+  }
+  /**
+   * <code>repeated int32 selected_option_nums = 17 [json_name = "selectedOptionNums"];</code>
+   * @param values The selectedOptionNums to add.
+   */
+  private void addAllSelectedOptionNums(
+      java.lang.Iterable<? extends java.lang.Integer> values) {
+    ensureSelectedOptionNumsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, selectedOptionNums_);
+  }
+  /**
+   * <code>repeated int32 selected_option_nums = 17 [json_name = "selectedOptionNums"];</code>
+   */
+  private void clearSelectedOptionNums() {
+    selectedOptionNums_ = emptyIntList();
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SessionQuestionDockView parseFrom(
@@ -1285,6 +1357,75 @@ public  final class SessionQuestionDockView extends
       return this;
     }
 
+    /**
+     * <code>repeated int32 selected_option_nums = 17 [json_name = "selectedOptionNums"];</code>
+     * @return A list containing the selectedOptionNums.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.Integer>
+        getSelectedOptionNumsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getSelectedOptionNumsList());
+    }
+    /**
+     * <code>repeated int32 selected_option_nums = 17 [json_name = "selectedOptionNums"];</code>
+     * @return The count of selectedOptionNums.
+     */
+    @java.lang.Override
+    public int getSelectedOptionNumsCount() {
+      return instance.getSelectedOptionNumsCount();
+    }
+    /**
+     * <code>repeated int32 selected_option_nums = 17 [json_name = "selectedOptionNums"];</code>
+     * @param index The index of the element to return.
+     * @return The selectedOptionNums at the given index.
+     */
+    @java.lang.Override
+    public int getSelectedOptionNums(int index) {
+      return instance.getSelectedOptionNums(index);
+    }
+    /**
+     * <code>repeated int32 selected_option_nums = 17 [json_name = "selectedOptionNums"];</code>
+     * @param value The selectedOptionNums to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSelectedOptionNums(
+        int index, int value) {
+      copyOnWrite();
+      instance.setSelectedOptionNums(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated int32 selected_option_nums = 17 [json_name = "selectedOptionNums"];</code>
+     * @param value The selectedOptionNums to add.
+     * @return This builder for chaining.
+     */
+    public Builder addSelectedOptionNums(int value) {
+      copyOnWrite();
+      instance.addSelectedOptionNums(value);
+      return this;
+    }
+    /**
+     * <code>repeated int32 selected_option_nums = 17 [json_name = "selectedOptionNums"];</code>
+     * @param values The selectedOptionNums to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllSelectedOptionNums(
+        java.lang.Iterable<? extends java.lang.Integer> values) {
+      copyOnWrite();
+      instance.addAllSelectedOptionNums(values);
+      return this;
+    }
+    /**
+     * <code>repeated int32 selected_option_nums = 17 [json_name = "selectedOptionNums"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSelectedOptionNums() {
+      copyOnWrite();
+      instance.clearSelectedOptionNums();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionQuestionDockView)
   }
   @java.lang.Override
@@ -1315,11 +1456,12 @@ public  final class SessionQuestionDockView extends
             "submittedOptionNums_",
             "answered_",
             "answeredText_",
+            "selectedOptionNums_",
           };
           java.lang.String info =
-              "\u0000\r\u0000\u0001\u0001\u0010\r\u0000\u0003\u0000\u0001\u0208\u0002\u0004\u0003" +
-              "\u0004\u0004\u1009\u0000\u0005\u1009\u0001\u0006\'\n\'\u000b\u0007\f\u1009\u0002" +
-              "\r\u0007\u000e\'\u000f\u0007\u0010\u1009\u0003";
+              "\u0000\u000e\u0000\u0001\u0001\u0011\u000e\u0000\u0004\u0000\u0001\u0208\u0002\u0004" +
+              "\u0003\u0004\u0004\u1009\u0000\u0005\u1009\u0001\u0006\'\n\'\u000b\u0007\f\u1009" +
+              "\u0002\r\u0007\u000e\'\u000f\u0007\u0010\u1009\u0003\u0011\'";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

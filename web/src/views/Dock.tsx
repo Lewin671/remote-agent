@@ -212,14 +212,13 @@ function useQuestionState(
   const sent = q.submittedOptionNums;
   const errMsg = renderText(cmd?.errorText) || renderText(cmd?.statusText);
   const showError = hasError;
-  const shownTicks = multi ? (ticked.length > 0 ? ticked : frozen || showError ? sent : ticked) : sent;
   const progress = [renderText(q.progressText) || step.header, multi ? i18n.t("dock.multiselect") : ""].filter(Boolean).join(" · ");
 
   const answers = (
     <div className="answers">
       {step.options.map((o, idx) => {
         const num = o.optionNum || idx + 1;
-        const on = shownTicks.includes(num);
+        const on = q.selectedOptionNums.includes(num);
         const status = on && sent.includes(num) && (busy ? "sending" : showError ? "err" : "");
         return (
           <button
