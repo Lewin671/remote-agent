@@ -277,3 +277,27 @@ func TestBuildSessionMenuInterruptReachabilityUnknown(t *testing.T) {
 		t.Fatalf("expected INTERRUPT menu item omitted for exited session")
 	}
 }
+
+// The message template already carries the percent sign; passing "2%" as the
+// argument rendered "2%%" in every client.
+func TestCompactedNotePercentArgsAreBareNumbers(t *testing.T) {
+	before, after := int32(2), int32(0)
+	note := buildSettingsChangedNote(
+		&v1.Event{},
+		&v1.SettingsChanged{Compacted: true},
+		&corev1.ContextCompaction{BeforePercent: &before, AfterPercent: &after},
+		NewState(nil), nil, "", "",
+	)
+	if note == nil || note.Text == nil || note.Text.Key != text.KeySessionAndroidCompactedUsage {
+		t.Fatalf("note text = %+v, want key %q", note, text.KeySessionAndroidCompactedUsage)
+	}
+	got := map[string]string{}
+	for _, a := range note.Text.Args {
+		if s, ok := a.Value.(*corev1.TextArg_StrValue); ok {
+			got[a.Name] = s.StrValue
+		}
+	}
+	if got["before"] != "2" || got["after"] != "0" {
+		t.Fatalf("args = %v, want before=2 after=0", got)
+	}
+}

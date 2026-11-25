@@ -1438,8 +1438,8 @@ func buildSettingsChangedNote(
 		var txt *corev1.Text
 		if comp != nil && comp.BeforePercent != nil && comp.AfterPercent != nil {
 			txt = text.Msg(text.KeySessionAndroidCompactedUsage,
-				text.Str("before", strconv.FormatInt(int64(*comp.BeforePercent), 10)+"%"),
-				text.Str("after", strconv.FormatInt(int64(*comp.AfterPercent), 10)+"%"),
+				text.Str("before", strconv.FormatInt(int64(*comp.BeforePercent), 10)),
+				text.Str("after", strconv.FormatInt(int64(*comp.AfterPercent), 10)),
 			)
 		} else {
 			txt = text.Msg(text.KeySessionCompacted)
