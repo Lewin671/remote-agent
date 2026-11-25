@@ -18,7 +18,7 @@ import {
   DirectStateKind,
 } from "../gen/remoteagent/core/v1/transport_pb";
 import { DirectExecutor, peerFrameBody } from "./direct-executor";
-import { PathChanged } from "./recovery";
+import { PathChanged, scopedClient } from "./recovery";
 import { fakeRTC } from "../test/peer/fake-rtc";
 
 describe("DirectExecutor", () => {
@@ -356,5 +356,132 @@ describe("DirectExecutor", () => {
     expect(exec.budget.acquire("mac", "7", 1)).toBe(false);
     exec.close();
     expect(exec.budget.ownerAvailable("mac", "8")).toBe(true);
+  });
+
+  it("does not leak unhandledRejection when PC closes while sendRpc is waiting in write() (audit #8)", async () => {
+    const sdk = fakeRTC();
+    const exec = new DirectExecutor({
+      emit: () => {},
+      onPushedEvent: () => {},
+      factory: sdk.factory,
+    });
+
+    exec.pcCreate(create(DirectPcCreateEffectSchema, {
+      pcId: 41n,
+      machineId: "mac",
+      roundId: 1n,
+      use: 1,
+      generation: 1n,
+      stunServers: [],
+    }));
+    const pc = sdk.pcs[0]!;
+    const dc = pc.channels[0]!;
+    dc.readyState = "open";
+    dc.bufferedAmount = 128 << 10; // suspend write() in backpressure wait
+    dc.onopen?.();
+    pc.state("connected");
+    exec.pcConfirm(create(DirectPcConfirmEffectSchema, { pcId: 41n, machineId: "mac", use: 1 }));
+
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => { unhandled.push(reason); };
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      const rpcPromise = exec.sendRpc(41n, "req-unhandled", Uint8Array.from([1, 2, 3]), 5000n, () => {});
+      await new Promise((r) => setTimeout(r, 10));
+      exec.pcClose(create(DirectPcCloseEffectSchema, { pcId: 41n }));
+      await expect(rpcPromise).rejects.toThrow(PathChanged);
+      await new Promise((r) => setTimeout(r, 10));
+      expect(unhandled).toHaveLength(0);
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+      exec.close();
+    }
+  });
+
+  it("works without AbortSignal.any on Safari < 17.4 in both sendRpc and scopedClient (audit #12)", async () => {
+    const origAny = (AbortSignal as unknown as { any?: typeof AbortSignal.any }).any;
+    Object.defineProperty(AbortSignal, "any", { value: undefined, configurable: true, writable: true });
+    try {
+      const sdk = fakeRTC();
+      const exec = new DirectExecutor({
+        emit: () => {},
+        onPushedEvent: () => {},
+        factory: sdk.factory,
+      });
+
+      exec.pcCreate(create(DirectPcCreateEffectSchema, {
+        pcId: 42n,
+        machineId: "mac",
+        roundId: 1n,
+        use: 1,
+        generation: 1n,
+        stunServers: [],
+      }));
+      const pc = sdk.pcs[0]!;
+      const dc = pc.channels[0]!;
+      dc.readyState = "open";
+      dc.onopen?.();
+      pc.state("connected");
+      exec.pcConfirm(create(DirectPcConfirmEffectSchema, { pcId: 42n, machineId: "mac", use: 1 }));
+
+      const caller = new AbortController();
+      const rpcPromise = exec.sendRpc(42n, "req-no-any", Uint8Array.from([9, 8]), 2000n, () => {}, caller.signal);
+      await vi.waitFor(() => expect(dc.send).toHaveBeenCalledTimes(1));
+
+      const respHeader = toBinary(HeaderSchema, create(HeaderSchema, {
+        machineId: "mac",
+        sender: "mac",
+        kind: PayloadKind.COMMAND_RESULT,
+        requestId: "req-no-any",
+      }));
+      const respEnv = toBinary(EnvelopeSchema, create(EnvelopeSchema, { header: respHeader, ciphertext: Uint8Array.from([4, 5]) })) as Uint8Array<ArrayBuffer>;
+      const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", respEnv));
+      const frag = toBinary(FragmentSchema, create(FragmentSchema, {
+        messageId: crypto.getRandomValues(new Uint8Array(16)),
+        index: 0,
+        count: 1,
+        ciphertextLength: respEnv.byteLength,
+        ciphertextSha256: digest,
+        pathGeneration: 1n,
+        fragment: respEnv,
+      }));
+      dc.onmessage?.({ data: frag.buffer as ArrayBuffer });
+      const resolved = await rpcPromise;
+      expect(resolved.ciphertext).toEqual(Uint8Array.from([4, 5]));
+
+      // Also verify caller abort propagates without AbortSignal.any.
+      const caller2 = new AbortController();
+      const rpc2 = exec.sendRpc(42n, "req-abort", Uint8Array.from([1]), 2000n, () => {}, caller2.signal);
+      caller2.abort(new Error("user canceled"));
+      await expect(rpc2).rejects.toThrow(PathChanged);
+
+      // Verify scopedClient fallback combines two signals without AbortSignal.any.
+      const roundAc = new AbortController();
+      const callAc = new AbortController();
+      let seenSignal: AbortSignal | undefined;
+      const client = scopedClient({
+        async ping(_req: unknown, opts?: { signal?: AbortSignal }) {
+          seenSignal = opts?.signal;
+          return "ok";
+        },
+      }, roundAc.signal);
+      await expect(client.ping({}, { signal: callAc.signal })).resolves.toBe("ok");
+      expect(seenSignal?.aborted).toBe(false);
+
+      const roundAc2 = new AbortController();
+      const callAc2 = new AbortController();
+      const client2 = scopedClient({
+        async ping(_req: unknown, opts?: { signal?: AbortSignal }) {
+          seenSignal = opts?.signal;
+          callAc2.abort(new Error("call canceled"));
+          return seenSignal?.aborted;
+        },
+      }, roundAc2.signal);
+      await expect(client2.ping({}, { signal: callAc2.signal })).resolves.toBe(true);
+
+      exec.close();
+    } finally {
+      Object.defineProperty(AbortSignal, "any", { value: origAny, configurable: true, writable: true });
+    }
   });
 });

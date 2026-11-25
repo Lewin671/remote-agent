@@ -27,7 +27,7 @@ import {
 } from "../gen/remoteagent/core/v1/transport_pb";
 import type { FrameStream } from "./path";
 import { DirectBudget, DirectChannel } from "./direct-channel";
-import { PathChanged, abortable } from "./recovery";
+import { PathChanged, abortable, combineSignals } from "./recovery";
 
 const utf8Dec = new TextDecoder("utf-8", { fatal: true });
 
@@ -353,7 +353,7 @@ export class DirectExecutor {
     const ms = timeoutMs > 0n ? Math.max(1, Math.min(30_000, Number(timeoutMs))) : 3000;
     const timeout = new AbortController();
     const timer = setTimeout(() => timeout.abort(new PathChanged()), ms);
-    const canceled = AbortSignal.any([entry.channel.signal, timeout.signal, ...(signal ? [signal] : [])]);
+    const { signal: canceled, dispose: disposeSignal } = combineSignals([entry.channel.signal, timeout.signal, signal]);
 
     let resolve!: (env: Envelope) => void;
     let reject!: (err: Error) => void;
@@ -361,6 +361,8 @@ export class DirectExecutor {
       resolve = res;
       reject = rej;
     });
+    // Prevent unhandledRejection if PC closes while write() is still pending.
+    response.catch(() => undefined);
     const pending: PendingRpc = { pcId, machineId: entry.machineId, resolve, reject };
     this.pendingRpc.set(rpcKey, pending);
 
@@ -372,6 +374,7 @@ export class DirectExecutor {
       throw e instanceof PathChanged ? e : new PathChanged();
     } finally {
       clearTimeout(timer);
+      disposeSignal();
       if (this.pendingRpc.get(rpcKey) === pending) this.pendingRpc.delete(rpcKey);
     }
   }
