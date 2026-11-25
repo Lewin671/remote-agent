@@ -162,7 +162,7 @@ export function ToolCallView({
           mark={<span className="sp faint" role="img" aria-label={i18n.t("tools.background")}><LoaderCircle /></span>}
           meta={<span className="muted">{label}</span>}
         />
-        <ImageStrip refs={item.images} seq={imageSeq} className="under-tool" />
+        <ImageStrip refs={item.imageViews} seq={imageSeq} className="under-tool" />
       </>
     );
   }
@@ -182,16 +182,16 @@ export function ToolCallView({
           </>
         }
       />
-      <ImageStrip refs={item.images} seq={imageSeq} className="under-tool" />
+      <ImageStrip refs={item.imageViews} seq={imageSeq} className="under-tool" />
     </>
   );
 }
 
 export function ToolGroupView({ group, itemSeq = 0n }: { group: SessionToolGroupItem; itemSeq?: bigint }) {
   const [open, setOpen] = useRowExpanded("tools");
-  const images = group.calls.flatMap((c) => c.images);
+  const images = group.calls.flatMap((c) => c.imageViews);
   const anchors = group.calls.flatMap((c) =>
-    c.images.map((_, i) => ({ seq: c.seq || itemSeq, imageIndex: i })),
+    c.imageViews.map((_, i) => ({ seq: c.seq || itemSeq, imageIndex: i })),
   );
   return (
     <>

@@ -37,28 +37,25 @@ import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import io.github.lewin671.remoteagent.proto.ImageRef
-import io.github.lewin671.remoteagent.proto.ImageSync
+import com.google.protobuf.ByteString
+import io.github.lewin671.remoteagent.core.proto.SessionImageSyncState
+import io.github.lewin671.remoteagent.core.proto.SessionImageView
 
-/** The preview embedded in an image ref, decoded once; null without one or when it does not decode. */
+/** The preview embedded in an image view, decoded once; null without one or when it does not decode. */
 @Composable
-fun rememberPreview(ref: ImageRef): ImageBitmap? = remember(ref.imageId, ref.preview.size(), ref.path) {
-    val b = ref.preview.toByteArray()
+fun rememberPreview(image: SessionImageView): ImageBitmap? =
+    rememberPreviewBytes(image.imageId.ifEmpty { image.displayName }, image.preview)
+
+@Composable
+fun rememberPreviewBytes(key: String, preview: ByteString): ImageBitmap? = remember(key, preview.size()) {
+    val b = preview.toByteArray()
     if (b.isEmpty()) null else runCatching { BitmapFactory.decodeByteArray(b, 0, b.size)?.asImageBitmap() }.getOrNull()
 }
 
-/** Width over height of an image as the event says, so its place is kept before anything loads. */
-fun aspect(ref: ImageRef): Float {
-    val (w, h) = when {
-        ref.previewWidth > 0 && ref.previewHeight > 0 -> ref.previewWidth to ref.previewHeight
-        ref.displayWidth > 0 && ref.displayHeight > 0 -> ref.displayWidth to ref.displayHeight
-        ref.width > 0 && ref.height > 0 -> ref.width to ref.height
-        else -> 4 to 3
-    }
-    return (w.toFloat() / h).coerceIn(0.4f, 2.5f)
-}
-
-fun fileName(path: String, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String = path.substringAfterLast('/').ifEmpty { copy(UiMessages.imageTitle()) }
+private fun clampedAspect(image: SessionImageView): Float =
+    (if (image.clampedAspectRatio > 0.0) image.clampedAspectRatio
+    else if (image.aspectRatio > 0.0) image.aspectRatio
+    else 4.0 / 3.0).toFloat().coerceIn(0.4f, 2.5f)
 
 internal data class ImageRowGeometry(val widths: List<Int>, val height: Int, val gap: Int)
 
@@ -79,16 +76,16 @@ internal fun imageRowGeometry(aspects: List<Float>, available: Int, height: Int,
  * viewer at that image.
  */
 @Composable
-fun ImageRow(refs: List<ImageRef>, onOpen: (Int) -> Unit, modifier: Modifier = Modifier, height: Int = 88) {
-    if (refs.isEmpty()) return
-    val shown = refs.take(4)
+fun ImageRow(images: List<SessionImageView>, onOpen: (Int) -> Unit, modifier: Modifier = Modifier, height: Int = 88) {
+    if (images.isEmpty()) return
+    val shown = images.take(4)
     Layout(modifier = modifier, content = {
-        shown.forEachIndexed { i, ref ->
-            val more = if (i == 3 && refs.size > 4) refs.size - 4 else 0
-            Thumb(ref, Modifier, more) { onOpen(i) }
+        shown.forEachIndexed { i, img ->
+            val more = if (i == 3 && images.size > 4) images.size - 4 else 0
+            Thumb(img, Modifier, more) { onOpen(i) }
         }
     }) { children, constraints ->
-        val geometry = imageRowGeometry(shown.map(::aspect), constraints.maxWidth, height.dp.roundToPx(), 180.dp.roundToPx(), 6.dp.roundToPx())
+        val geometry = imageRowGeometry(shown.map(::clampedAspect), constraints.maxWidth, height.dp.roundToPx(), 180.dp.roundToPx(), 6.dp.roundToPx())
         val placed = children.mapIndexed { i, child -> child.measure(Constraints.fixed(geometry.widths[i], geometry.height)) }
         layout(constraints.constrainWidth(geometry.widths.sum() + geometry.gap * (shown.size - 1)), constraints.constrainHeight(geometry.height)) {
             var x = 0
@@ -98,23 +95,24 @@ fun ImageRow(refs: List<ImageRef>, onOpen: (Int) -> Unit, modifier: Modifier = M
 }
 
 @Composable
-fun Thumb(ref: ImageRef, modifier: Modifier, more: Int = 0, onClick: () -> Unit) {
+fun Thumb(image: SessionImageView, modifier: Modifier, more: Int = 0, onClick: () -> Unit) {
     val copy = uiText()
     val p = pal
-    val bmp = rememberPreview(ref)
+    val bmp = rememberPreview(image)
+    val label = image.displayName.ifEmpty { copy(UiMessages.imageTitle()) }
     Box(modifier.clip(Radii.R14).background(p.fill).clickable(onClick = onClick)) {
-        if (bmp != null) Image(bmp, fileName(ref.path, copy = copy), Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        if (bmp != null) Image(bmp, label, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         else Column(Modifier.fillMaxSize().padding(6.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
             // Not even a preview: the file name is all there is.
-            Text(if (ref.sync == ImageSync.IMAGE_SYNC_NAME_ONLY) copy(UiMessages.imageUnsynced()) else copy(UiMessages.imageAndroidNoPreview()), style = T.s12, color = p.ink2)
-            if (ref.path.isNotEmpty()) Text(fileName(ref.path, copy = copy), style = T.s12, color = p.ink3, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(if (image.syncState == SessionImageSyncState.SESSION_IMAGE_SYNC_STATE_NAME_ONLY) copy(UiMessages.imageUnsynced()) else copy(UiMessages.imageAndroidNoPreview()), style = T.s12, color = p.ink2)
+            if (image.displayName.isNotEmpty()) Text(image.displayName, style = T.s12, color = p.ink3, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
-        if (ref.cliIndex > 0) Text(
-            "${ref.cliIndex}",
+        if (image.cliIndex > 0) Text(
+            image.cliIndex.toString(),
             Modifier.align(Alignment.TopStart).padding(4.dp).background(Color(0x99000000), RoundedCornerShape(6.dp)).padding(horizontal = 5.dp),
             color = Color.White, style = T.s12b,
         )
-        if (ref.sync == ImageSync.IMAGE_SYNC_PREVIEW_ONLY && more == 0) Text(
+        if (image.syncState == SessionImageSyncState.SESSION_IMAGE_SYNC_STATE_PREVIEW_ONLY && more == 0) Text(
             copy(UiMessages.imagePreviewOnly()),
             Modifier.align(Alignment.BottomStart).padding(4.dp).background(Color(0x99000000), RoundedCornerShape(6.dp)).padding(horizontal = 5.dp),
             color = Color.White, style = T.s12b,
@@ -127,22 +125,22 @@ fun Thumb(ref: ImageRef, modifier: Modifier, more: Int = 0, onClick: () -> Unit)
 
 /** A generated image: its own card across the chat, with the prompt the CLI rewrote behind 提示词. */
 @Composable
-fun GeneratedCard(rowKey: String, images: List<ImageRef>, prompt: String, onOpen: (Int) -> Unit) {
+fun GeneratedCard(rowKey: String, images: List<SessionImageView>, prompt: String, onOpen: (Int) -> Unit) {
     val copy = uiText()
     val p = pal
     var open by rememberSaveable(rowKey) { mutableStateOf(false) }
     Column(Modifier.padding(horizontal = ChatSide, vertical = 6.dp).fillMaxWidth().clip(Radii.R18).background(p.gbg)) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            images.forEachIndexed { i, ref ->
-                val bmp = rememberPreview(ref)
-                Box(Modifier.fillMaxWidth().aspectRatio(aspect(ref)).clip(Radii.R14).background(p.fill).clickable { onOpen(i) }) {
+            images.forEachIndexed { i, img ->
+                val bmp = rememberPreview(img)
+                Box(Modifier.fillMaxWidth().aspectRatio(clampedAspect(img)).clip(Radii.R14).background(p.fill).clickable { onOpen(i) }) {
                     if (bmp != null) Image(bmp, copy(UiMessages.imageGenerated()), Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                     else Text(copy(UiMessages.imageAndroidNoPreview()), Modifier.align(Alignment.Center), color = p.ink2)
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val r = images.firstOrNull()
-                val size = r?.let { if (it.width > 0) " · ${it.width} × ${it.height}" else "" }.orEmpty()
+                val size = r?.sizeText?.takeIf { it.isNotEmpty() }?.let { " · $it" }.orEmpty()
                 Text(copy(UiMessages.imageAndroidGeneratedSize(size = size)), Modifier.weight(1f), style = T.s13, color = p.ink2)
                 if (prompt.isNotEmpty()) Box(Modifier.clickable { open = !open }.padding(6.dp)) { ArrowText(copy(UiMessages.imagePrompt()), p.blue, T.s13, down = !open, up = open) }
             }

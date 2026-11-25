@@ -69,6 +69,15 @@ const (
 	SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_CANCELING   SessionTrayRowActivity = 3
 )
 
+type SessionImageSyncState int32
+
+const (
+	SessionImageSyncState_SESSION_IMAGE_SYNC_STATE_UNSPECIFIED  SessionImageSyncState = 0
+	SessionImageSyncState_SESSION_IMAGE_SYNC_STATE_SYNCED       SessionImageSyncState = 1
+	SessionImageSyncState_SESSION_IMAGE_SYNC_STATE_PREVIEW_ONLY SessionImageSyncState = 2
+	SessionImageSyncState_SESSION_IMAGE_SYNC_STATE_NAME_ONLY    SessionImageSyncState = 3
+)
+
 type SessionToolStatus int32
 
 const (
@@ -4016,18 +4025,133 @@ func extraMarshal_SessionMessageTextSegment(base unsafe.Pointer, b []byte, idx l
 	return b
 }
 
+type SessionImageView struct {
+	_                  [0]func()
+	ImageId            string
+	SyncState          SessionImageSyncState
+	CliIndex           int32
+	Width              int32
+	Height             int32
+	Preview            []byte
+	PreviewFormat      v1.ImageFormat
+	DisplayName        string
+	HasDisplayCopy     bool
+	AspectRatio        float64
+	ClampedAspectRatio float64
+	SizeText           string
+}
+
+func (m *SessionImageView) GetImageId() string {
+	if m != nil {
+		return m.ImageId
+	}
+	return ""
+}
+func (m *SessionImageView) GetSyncState() SessionImageSyncState {
+	if m != nil {
+		return m.SyncState
+	}
+	return 0
+}
+func (m *SessionImageView) GetCliIndex() int32 {
+	if m != nil {
+		return m.CliIndex
+	}
+	return 0
+}
+func (m *SessionImageView) GetWidth() int32 {
+	if m != nil {
+		return m.Width
+	}
+	return 0
+}
+func (m *SessionImageView) GetHeight() int32 {
+	if m != nil {
+		return m.Height
+	}
+	return 0
+}
+func (m *SessionImageView) GetPreview() []byte {
+	if m != nil {
+		return m.Preview
+	}
+	return nil
+}
+func (m *SessionImageView) GetPreviewFormat() v1.ImageFormat {
+	if m != nil {
+		return m.PreviewFormat
+	}
+	return 0
+}
+func (m *SessionImageView) GetDisplayName() string {
+	if m != nil {
+		return m.DisplayName
+	}
+	return ""
+}
+func (m *SessionImageView) GetHasDisplayCopy() bool {
+	if m != nil {
+		return m.HasDisplayCopy
+	}
+	return false
+}
+func (m *SessionImageView) GetAspectRatio() float64 {
+	if m != nil {
+		return m.AspectRatio
+	}
+	return 0
+}
+func (m *SessionImageView) GetClampedAspectRatio() float64 {
+	if m != nil {
+		return m.ClampedAspectRatio
+	}
+	return 0
+}
+func (m *SessionImageView) GetSizeText() string {
+	if m != nil {
+		return m.SizeText
+	}
+	return ""
+}
+
+var LitewireDesc_SessionImageView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionImageView{}.ImageId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionImageView{}.SyncState), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(SessionImageView{}.CliIndex), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(SessionImageView{}.Width), Kind: litewire.KindInt32},
+		{Num: 5, Offset: unsafe.Offsetof(SessionImageView{}.Height), Kind: litewire.KindInt32},
+		{Num: 6, Offset: unsafe.Offsetof(SessionImageView{}.Preview), Kind: litewire.KindBytes},
+		{Num: 7, Offset: unsafe.Offsetof(SessionImageView{}.PreviewFormat), Kind: litewire.KindInt32},
+		{Num: 8, Offset: unsafe.Offsetof(SessionImageView{}.DisplayName), Kind: litewire.KindString},
+		{Num: 9, Offset: unsafe.Offsetof(SessionImageView{}.HasDisplayCopy), Kind: litewire.KindBool},
+		{Num: 10, Offset: unsafe.Offsetof(SessionImageView{}.AspectRatio), Kind: litewire.KindDouble},
+		{Num: 11, Offset: unsafe.Offsetof(SessionImageView{}.ClampedAspectRatio), Kind: litewire.KindDouble},
+		{Num: 12, Offset: unsafe.Offsetof(SessionImageView{}.SizeText), Kind: litewire.KindString},
+	},
+}
+
+func (m *SessionImageView) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SessionImageView) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionImageView)
+}
+
 type SessionUserMessageItem struct {
 	_               [0]func()
 	Text            string
 	Images          []*v1.ImageRef
 	Files           []*SessionFileRefView
-	Origin          *v1.Origin
 	OriginCaption   *Text
 	ScheduledTaskId string
 	ScheduledRunId  string
 	IsScheduled     bool
 	TypedLocally    bool
 	TextSegments    []*SessionMessageTextSegment
+	ImageViews      []*SessionImageView
+	OriginRequestId string
 }
 
 func (m *SessionUserMessageItem) GetText() string {
@@ -4045,12 +4169,6 @@ func (m *SessionUserMessageItem) GetImages() []*v1.ImageRef {
 func (m *SessionUserMessageItem) GetFiles() []*SessionFileRefView {
 	if m != nil {
 		return m.Files
-	}
-	return nil
-}
-func (m *SessionUserMessageItem) GetOrigin() *v1.Origin {
-	if m != nil {
-		return m.Origin
 	}
 	return nil
 }
@@ -4090,19 +4208,32 @@ func (m *SessionUserMessageItem) GetTextSegments() []*SessionMessageTextSegment 
 	}
 	return nil
 }
+func (m *SessionUserMessageItem) GetImageViews() []*SessionImageView {
+	if m != nil {
+		return m.ImageViews
+	}
+	return nil
+}
+func (m *SessionUserMessageItem) GetOriginRequestId() string {
+	if m != nil {
+		return m.OriginRequestId
+	}
+	return ""
+}
 
 var LitewireDesc_SessionUserMessageItem = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(SessionUserMessageItem{}.Text), Kind: litewire.KindString},
 		{Num: 2, Offset: unsafe.Offsetof(SessionUserMessageItem{}.Images), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &v1.LitewireDesc_ImageRef},
 		{Num: 3, Offset: unsafe.Offsetof(SessionUserMessageItem{}.Files), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionFileRefView},
-		{Num: 4, Offset: unsafe.Offsetof(SessionUserMessageItem{}.Origin), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_Origin},
 		{Num: 5, Offset: unsafe.Offsetof(SessionUserMessageItem{}.OriginCaption), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 6, Offset: unsafe.Offsetof(SessionUserMessageItem{}.ScheduledTaskId), Kind: litewire.KindString},
 		{Num: 7, Offset: unsafe.Offsetof(SessionUserMessageItem{}.ScheduledRunId), Kind: litewire.KindString},
 		{Num: 8, Offset: unsafe.Offsetof(SessionUserMessageItem{}.IsScheduled), Kind: litewire.KindBool},
 		{Num: 9, Offset: unsafe.Offsetof(SessionUserMessageItem{}.TypedLocally), Kind: litewire.KindBool},
 		{Num: 10, Offset: unsafe.Offsetof(SessionUserMessageItem{}.TextSegments), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionMessageTextSegment},
+		{Num: 20, Offset: unsafe.Offsetof(SessionUserMessageItem{}.ImageViews), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionImageView},
+		{Num: 21, Offset: unsafe.Offsetof(SessionUserMessageItem{}.OriginRequestId), Kind: litewire.KindString},
 	},
 }
 
@@ -4206,6 +4337,7 @@ type SessionToolCallItem struct {
 	DecisionAllowed bool
 	Images          []*v1.ImageRef
 	Seq             uint64
+	ImageViews      []*SessionImageView
 }
 
 func (m *SessionToolCallItem) GetCallId() string {
@@ -4340,6 +4472,12 @@ func (m *SessionToolCallItem) GetSeq() uint64 {
 	}
 	return 0
 }
+func (m *SessionToolCallItem) GetImageViews() []*SessionImageView {
+	if m != nil {
+		return m.ImageViews
+	}
+	return nil
+}
 
 var LitewireDesc_SessionToolCallItem = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -4365,6 +4503,7 @@ var LitewireDesc_SessionToolCallItem = litewire.MessageDesc{
 		{Num: 18, Offset: unsafe.Offsetof(SessionToolCallItem{}.DecisionAllowed), Kind: litewire.KindBool},
 		{Num: 19, Offset: unsafe.Offsetof(SessionToolCallItem{}.Images), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &v1.LitewireDesc_ImageRef},
 		{Num: 22, Offset: unsafe.Offsetof(SessionToolCallItem{}.Seq), Kind: litewire.KindUint64},
+		{Num: 23, Offset: unsafe.Offsetof(SessionToolCallItem{}.ImageViews), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionImageView},
 	},
 }
 
@@ -4780,6 +4919,7 @@ type SessionGeneratedImagesItem struct {
 	_             [0]func()
 	RevisedPrompt string
 	Images        []*v1.ImageRef
+	ImageViews    []*SessionImageView
 }
 
 func (m *SessionGeneratedImagesItem) GetRevisedPrompt() string {
@@ -4794,11 +4934,18 @@ func (m *SessionGeneratedImagesItem) GetImages() []*v1.ImageRef {
 	}
 	return nil
 }
+func (m *SessionGeneratedImagesItem) GetImageViews() []*SessionImageView {
+	if m != nil {
+		return m.ImageViews
+	}
+	return nil
+}
 
 var LitewireDesc_SessionGeneratedImagesItem = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(SessionGeneratedImagesItem{}.RevisedPrompt), Kind: litewire.KindString},
 		{Num: 2, Offset: unsafe.Offsetof(SessionGeneratedImagesItem{}.Images), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &v1.LitewireDesc_ImageRef},
+		{Num: 20, Offset: unsafe.Offsetof(SessionGeneratedImagesItem{}.ImageViews), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionImageView},
 	},
 }
 
@@ -4831,6 +4978,12 @@ type SessionViewerImageView struct {
 	MimeType           string
 	InCollapsedGroup   bool
 	DownloadName       string
+	ImageId            string
+	SyncState          SessionImageSyncState
+	Width              int32
+	Height             int32
+	Preview            []byte
+	PreviewFormat      v1.ImageFormat
 }
 
 func (m *SessionViewerImageView) GetViewerIndex() int32 {
@@ -4947,6 +5100,42 @@ func (m *SessionViewerImageView) GetDownloadName() string {
 	}
 	return ""
 }
+func (m *SessionViewerImageView) GetImageId() string {
+	if m != nil {
+		return m.ImageId
+	}
+	return ""
+}
+func (m *SessionViewerImageView) GetSyncState() SessionImageSyncState {
+	if m != nil {
+		return m.SyncState
+	}
+	return 0
+}
+func (m *SessionViewerImageView) GetWidth() int32 {
+	if m != nil {
+		return m.Width
+	}
+	return 0
+}
+func (m *SessionViewerImageView) GetHeight() int32 {
+	if m != nil {
+		return m.Height
+	}
+	return 0
+}
+func (m *SessionViewerImageView) GetPreview() []byte {
+	if m != nil {
+		return m.Preview
+	}
+	return nil
+}
+func (m *SessionViewerImageView) GetPreviewFormat() v1.ImageFormat {
+	if m != nil {
+		return m.PreviewFormat
+	}
+	return 0
+}
 
 var LitewireDesc_SessionViewerImageView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -4969,6 +5158,12 @@ var LitewireDesc_SessionViewerImageView = litewire.MessageDesc{
 		{Num: 17, Offset: unsafe.Offsetof(SessionViewerImageView{}.MimeType), Kind: litewire.KindString},
 		{Num: 18, Offset: unsafe.Offsetof(SessionViewerImageView{}.InCollapsedGroup), Kind: litewire.KindBool},
 		{Num: 19, Offset: unsafe.Offsetof(SessionViewerImageView{}.DownloadName), Kind: litewire.KindString},
+		{Num: 20, Offset: unsafe.Offsetof(SessionViewerImageView{}.ImageId), Kind: litewire.KindString},
+		{Num: 21, Offset: unsafe.Offsetof(SessionViewerImageView{}.SyncState), Kind: litewire.KindInt32},
+		{Num: 22, Offset: unsafe.Offsetof(SessionViewerImageView{}.Width), Kind: litewire.KindInt32},
+		{Num: 23, Offset: unsafe.Offsetof(SessionViewerImageView{}.Height), Kind: litewire.KindInt32},
+		{Num: 24, Offset: unsafe.Offsetof(SessionViewerImageView{}.Preview), Kind: litewire.KindBytes},
+		{Num: 25, Offset: unsafe.Offsetof(SessionViewerImageView{}.PreviewFormat), Kind: litewire.KindInt32},
 	},
 }
 

@@ -114,6 +114,19 @@ internal fun sessionFixtureVm(
                 val b = SessionUserMessageItem.newBuilder()
                     .setText(um.text)
                     .addAllImages(um.imagesList)
+                    .addAllImageViews(
+                        um.imagesList.map { img ->
+                            io.github.lewin671.remoteagent.core.proto.SessionImageView.newBuilder()
+                                .setImageId(img.imageId)
+                                .setCliIndex(img.cliIndex)
+                                .setWidth(img.width)
+                                .setHeight(img.height)
+                                .setPreview(img.preview)
+                                .setPreviewFormat(img.previewFormat)
+                                .setDisplayName(img.path.substringAfterLast('/'))
+                                .build()
+                        },
+                    )
                     .addAllFiles(um.filesList.map { SessionFileRefView.newBuilder().setName(it.name).setSizeBytes(it.sizeBytes).build() })
                 if (e.hasOrigin() && e.origin.kind == OriginKind.ORIGIN_KIND_LOCAL) {
                     b.setOriginCaption(Text.newBuilder().setKey(UiMessages.sessionOriginTerminal("{name}").key).addArgs(TextArg.newBuilder().setName("name").setStrValue(computerName)))

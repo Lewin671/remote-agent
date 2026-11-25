@@ -151,6 +151,11 @@ message UsageModelRowView {
   Text delta_text = 23;
 }
 
+message UsageAgentSourceView {
+  remoteagent.v1.Agent agent = 1;
+  remoteagent.v1.UsageSourceState state = 2;
+}
+
 message UsageViewModel {
   string machine_id = 1;
   string machine_name = 2;
@@ -171,7 +176,7 @@ message UsageViewModel {
   int64 end_ms = 17;
   int32 range_days = 18;
   UsageSortColumn sort_by = 19;
-  repeated remoteagent.v1.UsageAgentSource sources = 20;
+  repeated UsageAgentSourceView sources = 20;
   bool has_any_usage = 21;
   UsageHeroView hero = 22;
   UsageBarChartView bar_chart = 23;

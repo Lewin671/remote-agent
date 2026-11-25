@@ -35,4 +35,18 @@ public interface SessionGeneratedImagesItemOrBuilder extends
    * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
    */
   int getImagesCount();
+
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.core.proto.SessionImageView> 
+      getImageViewsList();
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionImageView getImageViews(int index);
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+   */
+  int getImageViewsCount();
 }

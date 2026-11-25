@@ -51,17 +51,6 @@ public interface SessionUserMessageItemOrBuilder extends
   int getFilesCount();
 
   /**
-   * <code>.remoteagent.v1.Origin origin = 4 [json_name = "origin"];</code>
-   * @return Whether the origin field is set.
-   */
-  boolean hasOrigin();
-  /**
-   * <code>.remoteagent.v1.Origin origin = 4 [json_name = "origin"];</code>
-   * @return The origin.
-   */
-  io.github.lewin671.remoteagent.proto.Origin getOrigin();
-
-  /**
    * <code>.remoteagent.core.v1.Text origin_caption = 5 [json_name = "originCaption"];</code>
    * @return Whether the originCaption field is set.
    */
@@ -121,4 +110,30 @@ public interface SessionUserMessageItemOrBuilder extends
    * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
    */
   int getTextSegmentsCount();
+
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.core.proto.SessionImageView> 
+      getImageViewsList();
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionImageView getImageViews(int index);
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+   */
+  int getImageViewsCount();
+
+  /**
+   * <code>string origin_request_id = 21 [json_name = "originRequestId"];</code>
+   * @return The originRequestId.
+   */
+  java.lang.String getOriginRequestId();
+  /**
+   * <code>string origin_request_id = 21 [json_name = "originRequestId"];</code>
+   * @return The bytes for originRequestId.
+   */
+  com.google.protobuf.ByteString
+      getOriginRequestIdBytes();
 }

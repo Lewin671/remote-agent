@@ -153,7 +153,10 @@ func BuildUsageView(st *State, syncView *corev1.SyncStateView, req *corev1.Usage
 			if src == nil || (disabled != nil && disabled[lists.EffectiveAgent(src.Agent)]) {
 				continue
 			}
-			vm.Sources = append(vm.Sources, src.Clone())
+			vm.Sources = append(vm.Sources, &corev1.UsageAgentSourceView{
+				Agent: src.Agent,
+				State: src.State,
+			})
 			if src.State == v1.UsageSourceState_USAGE_SOURCE_STATE_UNAVAILABLE {
 				unavailNames = append(unavailNames, lists.AgentInfo(src.Agent).Name)
 			} else {

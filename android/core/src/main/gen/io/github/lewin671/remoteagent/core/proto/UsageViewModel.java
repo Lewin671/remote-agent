@@ -631,44 +631,44 @@ public  final class UsageViewModel extends
   }
 
   public static final int SOURCES_FIELD_NUMBER = 20;
-  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.UsageAgentSource> sources_;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.UsageAgentSourceView> sources_;
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
    */
   @java.lang.Override
-  public java.util.List<io.github.lewin671.remoteagent.proto.UsageAgentSource> getSourcesList() {
+  public java.util.List<io.github.lewin671.remoteagent.core.proto.UsageAgentSourceView> getSourcesList() {
     return sources_;
   }
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
    */
-  public java.util.List<? extends io.github.lewin671.remoteagent.proto.UsageAgentSourceOrBuilder> 
+  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.UsageAgentSourceViewOrBuilder> 
       getSourcesOrBuilderList() {
     return sources_;
   }
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
    */
   @java.lang.Override
   public int getSourcesCount() {
     return sources_.size();
   }
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
    */
   @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.UsageAgentSource getSources(int index) {
+  public io.github.lewin671.remoteagent.core.proto.UsageAgentSourceView getSources(int index) {
     return sources_.get(index);
   }
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
    */
-  public io.github.lewin671.remoteagent.proto.UsageAgentSourceOrBuilder getSourcesOrBuilder(
+  public io.github.lewin671.remoteagent.core.proto.UsageAgentSourceViewOrBuilder getSourcesOrBuilder(
       int index) {
     return sources_.get(index);
   }
   private void ensureSourcesIsMutable() {
-    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.UsageAgentSource> tmp = sources_;
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.UsageAgentSourceView> tmp = sources_;
     if (!tmp.isModifiable()) {
       sources_ =
           com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
@@ -676,51 +676,51 @@ public  final class UsageViewModel extends
   }
 
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
   private void setSources(
-      int index, io.github.lewin671.remoteagent.proto.UsageAgentSource value) {
+      int index, io.github.lewin671.remoteagent.core.proto.UsageAgentSourceView value) {
     value.getClass();  // minimal bytecode null check
     ensureSourcesIsMutable();
     sources_.set(index, value);
   }
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addSources(io.github.lewin671.remoteagent.proto.UsageAgentSource value) {
+  private void addSources(io.github.lewin671.remoteagent.core.proto.UsageAgentSourceView value) {
     value.getClass();  // minimal bytecode null check
     ensureSourcesIsMutable();
     sources_.add(value);
   }
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
   private void addSources(
-      int index, io.github.lewin671.remoteagent.proto.UsageAgentSource value) {
+      int index, io.github.lewin671.remoteagent.core.proto.UsageAgentSourceView value) {
     value.getClass();  // minimal bytecode null check
     ensureSourcesIsMutable();
     sources_.add(index, value);
   }
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
    */
   private void addAllSources(
-      java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.UsageAgentSource> values) {
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.UsageAgentSourceView> values) {
     ensureSourcesIsMutable();
     com.google.protobuf.AbstractMessageLite.addAll(
         values, sources_);
   }
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
    */
   private void clearSources() {
     sources_ = emptyProtobufList();
   }
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
    */
   private void removeSources(int index) {
     ensureSourcesIsMutable();
@@ -2240,92 +2240,92 @@ public  final class UsageViewModel extends
     }
 
     /**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
      */
     @java.lang.Override
-    public java.util.List<io.github.lewin671.remoteagent.proto.UsageAgentSource> getSourcesList() {
+    public java.util.List<io.github.lewin671.remoteagent.core.proto.UsageAgentSourceView> getSourcesList() {
       return java.util.Collections.unmodifiableList(
           instance.getSourcesList());
     }
     /**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
      */
     @java.lang.Override
     public int getSourcesCount() {
       return instance.getSourcesCount();
     }/**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
      */
     @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.UsageAgentSource getSources(int index) {
+    public io.github.lewin671.remoteagent.core.proto.UsageAgentSourceView getSources(int index) {
       return instance.getSources(index);
     }
     /**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
      */
     public Builder setSources(
-        int index, io.github.lewin671.remoteagent.proto.UsageAgentSource value) {
+        int index, io.github.lewin671.remoteagent.core.proto.UsageAgentSourceView value) {
       copyOnWrite();
       instance.setSources(index, value);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
      */
     public Builder setSources(
-        int index, io.github.lewin671.remoteagent.proto.UsageAgentSource.Builder builderForValue) {
+        int index, io.github.lewin671.remoteagent.core.proto.UsageAgentSourceView.Builder builderForValue) {
       copyOnWrite();
       instance.setSources(index,
           builderForValue.build());
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
      */
-    public Builder addSources(io.github.lewin671.remoteagent.proto.UsageAgentSource value) {
+    public Builder addSources(io.github.lewin671.remoteagent.core.proto.UsageAgentSourceView value) {
       copyOnWrite();
       instance.addSources(value);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
      */
     public Builder addSources(
-        int index, io.github.lewin671.remoteagent.proto.UsageAgentSource value) {
+        int index, io.github.lewin671.remoteagent.core.proto.UsageAgentSourceView value) {
       copyOnWrite();
       instance.addSources(index, value);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
      */
     public Builder addSources(
-        io.github.lewin671.remoteagent.proto.UsageAgentSource.Builder builderForValue) {
+        io.github.lewin671.remoteagent.core.proto.UsageAgentSourceView.Builder builderForValue) {
       copyOnWrite();
       instance.addSources(builderForValue.build());
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
      */
     public Builder addSources(
-        int index, io.github.lewin671.remoteagent.proto.UsageAgentSource.Builder builderForValue) {
+        int index, io.github.lewin671.remoteagent.core.proto.UsageAgentSourceView.Builder builderForValue) {
       copyOnWrite();
       instance.addSources(index,
           builderForValue.build());
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
      */
     public Builder addAllSources(
-        java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.UsageAgentSource> values) {
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.UsageAgentSourceView> values) {
       copyOnWrite();
       instance.addAllSources(values);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
      */
     public Builder clearSources() {
       copyOnWrite();
@@ -2333,7 +2333,7 @@ public  final class UsageViewModel extends
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
      */
     public Builder removeSources(int index) {
       copyOnWrite();
@@ -3154,7 +3154,7 @@ public  final class UsageViewModel extends
             "rangeDays_",
             "sortBy_",
             "sources_",
-            io.github.lewin671.remoteagent.proto.UsageAgentSource.class,
+            io.github.lewin671.remoteagent.core.proto.UsageAgentSourceView.class,
             "hasAnyUsage_",
             "hero_",
             "barChart_",

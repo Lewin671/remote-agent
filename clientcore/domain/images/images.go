@@ -218,6 +218,60 @@ func HasDisplayCopy(ref *v1.ImageRef) bool {
 	return ref != nil && ref.Sync == v1.ImageSync_IMAGE_SYNC_SYNCED && ref.ImageId != ""
 }
 
+// ImageSyncState converts a wire ImageSync enum into the core-owned SessionImageSyncState.
+func ImageSyncState(s v1.ImageSync) corev1.SessionImageSyncState {
+	switch s {
+	case v1.ImageSync_IMAGE_SYNC_SYNCED:
+		return corev1.SessionImageSyncState_SESSION_IMAGE_SYNC_STATE_SYNCED
+	case v1.ImageSync_IMAGE_SYNC_PREVIEW_ONLY:
+		return corev1.SessionImageSyncState_SESSION_IMAGE_SYNC_STATE_PREVIEW_ONLY
+	case v1.ImageSync_IMAGE_SYNC_NAME_ONLY:
+		return corev1.SessionImageSyncState_SESSION_IMAGE_SYNC_STATE_NAME_ONLY
+	default:
+		return corev1.SessionImageSyncState_SESSION_IMAGE_SYNC_STATE_UNSPECIFIED
+	}
+}
+
+// BuildImageView projects a wire ImageRef into the core-owned SessionImageView.
+func BuildImageView(ref *v1.ImageRef) *corev1.SessionImageView {
+	if ref == nil {
+		return nil
+	}
+	var preview []byte
+	if len(ref.Preview) > 0 {
+		preview = make([]byte, len(ref.Preview))
+		copy(preview, ref.Preview)
+	}
+	return &corev1.SessionImageView{
+		ImageId:            ref.ImageId,
+		SyncState:          ImageSyncState(ref.Sync),
+		CliIndex:           ref.CliIndex,
+		Width:              ref.Width,
+		Height:             ref.Height,
+		Preview:            preview,
+		PreviewFormat:      ref.PreviewFormat,
+		DisplayName:        DisplayName(ref.Path),
+		HasDisplayCopy:     HasDisplayCopy(ref),
+		AspectRatio:        AspectRatio(ref),
+		ClampedAspectRatio: ClampedAspectRatio(ref),
+		SizeText:           SizeText(ref),
+	}
+}
+
+// BuildImageViews converts a slice of wire ImageRefs into core-owned SessionImageViews.
+func BuildImageViews(refs []*v1.ImageRef) []*corev1.SessionImageView {
+	if len(refs) == 0 {
+		return nil
+	}
+	out := make([]*corev1.SessionImageView, 0, len(refs))
+	for _, ref := range refs {
+		if v := BuildImageView(ref); v != nil {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
 // SourceLabel returns the localized caption describing where an image came from.
 func SourceLabel(kind corev1.SessionImageSourceKind, agentName string) *corev1.Text {
 	switch kind {
@@ -337,6 +391,11 @@ func CollectViewerImages(
 			MimeType:           FormatMime(ref.Format),
 			InCollapsedGroup:   inCollapsed,
 			DownloadName:       DownloadName(dispName, ext, viewerIdx),
+			ImageId:            ref.ImageId,
+			SyncState:          ImageSyncState(ref.Sync),
+			Width:              ref.Width,
+			Height:             ref.Height,
+			PreviewFormat:      ref.PreviewFormat,
 		})
 	}
 

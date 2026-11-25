@@ -33,11 +33,12 @@ import {
   type SessionRestoreComposerEffect,
   type SessionSharedFileItem,
   type SessionTimelineItem,
+  type SessionImageView,
   type SessionViewerImageView,
   type SessionViewModel,
 } from "../gen/remoteagent/core/v1/session_view_pb";
 import { ConnState, SessionDisplayStatus, SessionTone } from "../gen/remoteagent/core/v1/home_view_pb";
-import { Agent, ApprovalMode, SendMode, type ImageRef } from "../gen/remoteagent/v1/event_pb";
+import { Agent, ApprovalMode, SendMode } from "../gen/remoteagent/v1/event_pb";
 import {
   CommandSchema,
   type Command,
@@ -462,7 +463,7 @@ export function SessionScreenView({
         if (prevSet && !prevSet.has(it.id)) {
           newUserMsgs.push({
             id: it.id,
-            reqId: it.kind.value.origin?.requestId ?? "",
+            reqId: it.kind.value.originRequestId,
             text: it.kind.value.text.trim(),
           });
         }
@@ -635,26 +636,26 @@ export function SessionScreenView({
     return map;
   }, [viewerImages]);
   const previewRefsByKey = useMemo(() => {
-    const map = new Map<string, ImageRef>();
+    const map = new Map<string, SessionImageView>();
     const visit = (list: readonly SessionTimelineItem[]) => {
       for (const item of list) {
         switch (item.kind.case) {
           case "userMessage":
-            item.kind.value.images.forEach((ref, i) => map.set(viewerImageKey(item.seq, i), ref));
+            item.kind.value.imageViews.forEach((ref, i) => map.set(viewerImageKey(item.seq, i), ref));
             break;
           case "toolCall": {
             const seq = item.kind.value.seq || item.seq;
-            item.kind.value.images.forEach((ref, i) => map.set(viewerImageKey(seq, i), ref));
+            item.kind.value.imageViews.forEach((ref, i) => map.set(viewerImageKey(seq, i), ref));
             break;
           }
           case "toolGroup":
             for (const call of item.kind.value.calls) {
               const seq = call.seq || item.seq;
-              call.images.forEach((ref, i) => map.set(viewerImageKey(seq, i), ref));
+              call.imageViews.forEach((ref, i) => map.set(viewerImageKey(seq, i), ref));
             }
             break;
           case "generatedImages":
-            item.kind.value.images.forEach((ref, i) => map.set(viewerImageKey(item.seq, i), ref));
+            item.kind.value.imageViews.forEach((ref, i) => map.set(viewerImageKey(item.seq, i), ref));
             break;
           case "quietScheduledGroup":
             visit(item.kind.value.items);
@@ -2099,7 +2100,7 @@ const TimelineRow = memo(function TimelineRow({
       const caption = renderText(m.originCaption);
       return (
         <div className="me" data-msg-id={item.id}>
-          <ImageStrip refs={m.images} seq={item.seq} numbered />
+          <ImageStrip refs={m.imageViews} seq={item.seq} numbered />
           <FileChips files={m.files} />
           {m.isScheduled ? (
             <ScheduleText key={item.id} text={m.text} meta={caption} />
@@ -2183,7 +2184,7 @@ const TimelineRow = memo(function TimelineRow({
       );
     }
     case "generatedImages":
-      return <GenCard refs={item.kind.value.images} seq={item.seq} prompt={item.kind.value.revisedPrompt} />;
+      return <GenCard refs={item.kind.value.imageViews} seq={item.seq} prompt={item.kind.value.revisedPrompt} />;
     case "asyncQuestion": {
       const aq = item.kind.value;
       return (

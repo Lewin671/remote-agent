@@ -157,16 +157,16 @@ public interface UsageViewModelOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.UsageSortColumn getSortBy();
 
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
    */
-  java.util.List<io.github.lewin671.remoteagent.proto.UsageAgentSource> 
+  java.util.List<io.github.lewin671.remoteagent.core.proto.UsageAgentSourceView> 
       getSourcesList();
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
    */
-  io.github.lewin671.remoteagent.proto.UsageAgentSource getSources(int index);
+  io.github.lewin671.remoteagent.core.proto.UsageAgentSourceView getSources(int index);
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.core.v1.UsageAgentSourceView sources = 20 [json_name = "sources"];</code>
    */
   int getSourcesCount();
 

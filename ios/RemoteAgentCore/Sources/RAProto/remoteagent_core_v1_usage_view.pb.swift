@@ -759,6 +759,20 @@ public struct PBCoreUsageModelRowView: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
+public struct PBCoreUsageAgentSourceView: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var agent: PBAgent = .unspecified
+
+  public var state: PBUsageSourceState = .unspecified
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 public struct PBCoreUsageViewModel: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -863,7 +877,7 @@ public struct PBCoreUsageViewModel: @unchecked Sendable {
     set {_uniqueStorage()._sortBy = newValue}
   }
 
-  public var sources: [PBUsageAgentSource] {
+  public var sources: [PBCoreUsageAgentSourceView] {
     get {return _storage._sources}
     set {_uniqueStorage()._sources = newValue}
   }
@@ -2164,6 +2178,41 @@ extension PBCoreUsageModelRowView: SwiftProtobuf.Message, SwiftProtobuf._Message
   }
 }
 
+extension PBCoreUsageAgentSourceView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UsageAgentSourceView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}agent\0\u{1}state\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularEnumField(value: &self.agent) }()
+      case 2: try { try decoder.decodeSingularEnumField(value: &self.state) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.agent != .unspecified {
+      try visitor.visitSingularEnumField(value: self.agent, fieldNumber: 1)
+    }
+    if self.state != .unspecified {
+      try visitor.visitSingularEnumField(value: self.state, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreUsageAgentSourceView, rhs: PBCoreUsageAgentSourceView) -> Bool {
+    if lhs.agent != rhs.agent {return false}
+    if lhs.state != rhs.state {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 extension PBCoreUsageViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UsageViewModel"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}machine_name\0\u{1}found\0\u{1}supported\0\u{1}online\0\u{1}loading\0\u{3}error_text\0\u{3}cached_offline\0\u{3}cached_at_ms\0\u{1}backfilling\0\u{3}backfill_scanned_days\0\u{3}backfill_total_days\0\u{3}previous_period_backfilling\0\u{1}preset\0\u{1}granularity\0\u{3}start_ms\0\u{3}end_ms\0\u{3}range_days\0\u{3}sort_by\0\u{1}sources\0\u{3}has_any_usage\0\u{1}hero\0\u{3}bar_chart\0\u{3}cache_hit_strip\0\u{3}output_speed_strip\0\u{3}ttft_strip\0\u{1}rows\0\u{3}unsupported_footnote\0\u{1}subtitle\0\u{3}empty_kind\0\u{3}empty_title\0\u{3}empty_body\0\u{3}empty_can_retry\0\u{1}banners\0\u{3}charts_a11y_label\0")
@@ -2188,7 +2237,7 @@ extension PBCoreUsageViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     var _endMs: Int64 = 0
     var _rangeDays: Int32 = 0
     var _sortBy: PBCoreUsageSortColumn = .unspecified
-    var _sources: [PBUsageAgentSource] = []
+    var _sources: [PBCoreUsageAgentSourceView] = []
     var _hasAnyUsage_p: Bool = false
     var _hero: PBCoreUsageHeroView? = nil
     var _barChart: PBCoreUsageBarChartView? = nil

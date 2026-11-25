@@ -210,4 +210,18 @@ public interface SessionToolCallItemOrBuilder extends
    * @return The seq.
    */
   long getSeq();
+
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 23 [json_name = "imageViews"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.core.proto.SessionImageView> 
+      getImageViewsList();
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 23 [json_name = "imageViews"];</code>
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionImageView getImageViews(int index);
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 23 [json_name = "imageViews"];</code>
+   */
+  int getImageViewsCount();
 }

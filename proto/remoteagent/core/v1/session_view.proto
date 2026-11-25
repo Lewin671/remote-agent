@@ -566,17 +566,42 @@ message SessionMessageTextSegment {
   Text image_label = 3;
 }
 
+enum SessionImageSyncState {
+  SESSION_IMAGE_SYNC_STATE_UNSPECIFIED = 0;
+  SESSION_IMAGE_SYNC_STATE_SYNCED = 1;
+  SESSION_IMAGE_SYNC_STATE_PREVIEW_ONLY = 2;
+  SESSION_IMAGE_SYNC_STATE_NAME_ONLY = 3;
+}
+
+message SessionImageView {
+  string image_id = 1;
+  SessionImageSyncState sync_state = 2;
+  int32 cli_index = 3;
+  int32 width = 4;
+  int32 height = 5;
+  bytes preview = 6;
+  remoteagent.v1.ImageFormat preview_format = 7;
+  string display_name = 8;
+  bool has_display_copy = 9;
+  double aspect_ratio = 10;
+  double clamped_aspect_ratio = 11;
+  string size_text = 12;
+}
+
 message SessionUserMessageItem {
+  reserved 4;
+  reserved "origin";
   string text = 1;
   repeated remoteagent.v1.ImageRef images = 2;
   repeated SessionFileRefView files = 3;
-  remoteagent.v1.Origin origin = 4;
   Text origin_caption = 5;
   string scheduled_task_id = 6;
   string scheduled_run_id = 7;
   bool is_scheduled = 8;
   bool typed_locally = 9;
   repeated SessionMessageTextSegment text_segments = 10;
+  repeated SessionImageView image_views = 20;
+  string origin_request_id = 21;
 }
 
 message SessionAgentMessageItem {
@@ -622,6 +647,7 @@ message SessionToolCallItem {
   bool decision_allowed = 18;
   repeated remoteagent.v1.ImageRef images = 19;
   uint64 seq = 22;
+  repeated SessionImageView image_views = 23;
 }
 
 message SessionToolGroupItem {
@@ -743,6 +769,7 @@ message SessionSharedFilesItem {
 message SessionGeneratedImagesItem {
   string revised_prompt = 1;
   repeated remoteagent.v1.ImageRef images = 2;
+  repeated SessionImageView image_views = 20;
 }
 
 enum SessionImageSourceKind {
@@ -773,6 +800,12 @@ message SessionViewerImageView {
   bool in_collapsed_group = 18;
   // Always non-empty sanitized filename for downloading/saving/sharing (falls back to "image-<N>.<ext>").
   string download_name = 19;
+  string image_id = 20;
+  SessionImageSyncState sync_state = 21;
+  int32 width = 22;
+  int32 height = 23;
+  bytes preview = 24;
+  remoteagent.v1.ImageFormat preview_format = 25;
 }
 
 message SessionImageViewerView {

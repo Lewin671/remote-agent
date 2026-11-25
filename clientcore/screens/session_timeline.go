@@ -642,8 +642,9 @@ func buildSessionTimeline(
 					UserMessage: &corev1.SessionUserMessageItem{
 						Text:            clean,
 						Images:          slices.Clone(um.Images),
+						ImageViews:      images.BuildImageViews(um.Images),
 						Files:           files,
-						Origin:          e.Origin,
+						OriginRequestId: e.GetOrigin().GetRequestId(),
 						OriginCaption:   caption,
 						ScheduledTaskId: schedTaskID,
 						ScheduledRunId:  schedRunID,
@@ -821,6 +822,7 @@ func buildSessionTimeline(
 					GeneratedImages: &corev1.SessionGeneratedImagesItem{
 						RevisedPrompt: k.ImageGenerated.RevisedPrompt,
 						Images:        slices.Clone(k.ImageGenerated.Images),
+						ImageViews:    images.BuildImageViews(k.ImageGenerated.Images),
 					},
 				},
 			})
@@ -1206,6 +1208,7 @@ func buildToolCallView(
 		NoResult:        noResult,
 		Unconfirmed:     noResult,
 		Images:          slices.Clone(tc.Images),
+		ImageViews:      images.BuildImageViews(tc.Images),
 		Seq:             e.Seq,
 	}
 }

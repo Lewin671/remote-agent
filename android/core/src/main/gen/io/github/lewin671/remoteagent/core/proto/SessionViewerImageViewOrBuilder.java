@@ -194,4 +194,56 @@ public interface SessionViewerImageViewOrBuilder extends
    */
   com.google.protobuf.ByteString
       getDownloadNameBytes();
+
+  /**
+   * <code>string image_id = 20 [json_name = "imageId"];</code>
+   * @return The imageId.
+   */
+  java.lang.String getImageId();
+  /**
+   * <code>string image_id = 20 [json_name = "imageId"];</code>
+   * @return The bytes for imageId.
+   */
+  com.google.protobuf.ByteString
+      getImageIdBytes();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionImageSyncState sync_state = 21 [json_name = "syncState"];</code>
+   * @return The enum numeric value on the wire for syncState.
+   */
+  int getSyncStateValue();
+  /**
+   * <code>.remoteagent.core.v1.SessionImageSyncState sync_state = 21 [json_name = "syncState"];</code>
+   * @return The syncState.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionImageSyncState getSyncState();
+
+  /**
+   * <code>int32 width = 22 [json_name = "width"];</code>
+   * @return The width.
+   */
+  int getWidth();
+
+  /**
+   * <code>int32 height = 23 [json_name = "height"];</code>
+   * @return The height.
+   */
+  int getHeight();
+
+  /**
+   * <code>bytes preview = 24 [json_name = "preview"];</code>
+   * @return The preview.
+   */
+  com.google.protobuf.ByteString getPreview();
+
+  /**
+   * <code>.remoteagent.v1.ImageFormat preview_format = 25 [json_name = "previewFormat"];</code>
+   * @return The enum numeric value on the wire for previewFormat.
+   */
+  int getPreviewFormatValue();
+  /**
+   * <code>.remoteagent.v1.ImageFormat preview_format = 25 [json_name = "previewFormat"];</code>
+   * @return The previewFormat.
+   */
+  io.github.lewin671.remoteagent.proto.ImageFormat getPreviewFormat();
 }

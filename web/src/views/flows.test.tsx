@@ -184,8 +184,8 @@ const todoList = (r: DemoRemote) => {
 import { DaemonSettingsSchema } from "../gen/remoteagent/v1/local_pb";
 import { SessionPage } from "./Session";
 import { ImageStrip, LocalThumbs, ViewerImagesMeta, viewerImageKey } from "./Images";
-import { SessionViewerImageViewSchema } from "../gen/remoteagent/core/v1/session_view_pb";
-import { ImageFormat, ImageRefSchema, ImageSync } from "../gen/remoteagent/v1/event_pb";
+import { SessionImageSyncState, SessionImageViewSchema, SessionViewerImageViewSchema } from "../gen/remoteagent/core/v1/session_view_pb";
+import { ImageFormat } from "../gen/remoteagent/v1/event_pb";
 import { useRemote } from "../ui";
 
 const testQuestionDrafts = new WeakMap<DemoRemote, Map<string, QuestionDraftState>>();
@@ -2602,8 +2602,7 @@ it("revokes every blob: URL made for a picture once nothing shows it", async () 
   const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation((u) => void revoked.push(u));
   try {
     const { Pic } = await import("./Images");
-    const { ImageRefSchema, ImageFormat, ImageSync } = await import("../gen/remoteagent/v1/event_pb");
-    const ref = create(ImageRefSchema, { sync: ImageSync.SYNCED, previewFormat: ImageFormat.PNG, preview: Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), width: 10, height: 10 });
+    const ref = create(SessionImageViewSchema, { syncState: SessionImageSyncState.SYNCED, previewFormat: ImageFormat.PNG, preview: Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), width: 10, height: 10 });
     mount(<Pic image={ref} />);
     expect(made.length).toBe(1);
     expect(host.querySelector("img")?.getAttribute("src")).toBe(made[0]);
@@ -2611,7 +2610,7 @@ it("revokes every blob: URL made for a picture once nothing shows it", async () 
     root = undefined;
     expect(revoked).toEqual(made);
     // A preview that is not the format it claims is never given a URL.
-    const liar = create(ImageRefSchema, { sync: ImageSync.SYNCED, previewFormat: ImageFormat.PNG, preview: new TextEncoder().encode("<svg/>") });
+    const liar = create(SessionImageViewSchema, { syncState: SessionImageSyncState.SYNCED, previewFormat: ImageFormat.PNG, preview: new TextEncoder().encode("<svg/>") });
     mount(<Pic image={liar} />);
     expect(made.length).toBe(1);
   } finally {
@@ -2983,7 +2982,7 @@ it("keeps the same proportions, height and four-picture fold before and after co
   const before = [...host.querySelectorAll<HTMLElement>(".pic")].map(p => [p.style.width, p.style.height]);
   expect(before).toHaveLength(4);
   expect(host.querySelector(".more")!.textContent).toBe("+2");
-  const refs = sizes.map(size => create(ImageRefSchema, { ...size, sync: ImageSync.SYNCED, previewFormat: ImageFormat.PNG, preview: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10]) }));
+  const refs = sizes.map(size => create(SessionImageViewSchema, { ...size, syncState: SessionImageSyncState.SYNCED, previewFormat: ImageFormat.PNG, preview: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10]), aspectRatio: size.width / size.height, clampedAspectRatio: size.width / size.height }));
   const metaMap = new Map(
     sizes.map((size, i) => [
       viewerImageKey(0n, i),

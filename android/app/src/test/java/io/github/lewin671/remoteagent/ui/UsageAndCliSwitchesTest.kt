@@ -68,7 +68,7 @@ import io.github.lewin671.remoteagent.data.ThemeMode
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.MachineCapabilities
 import io.github.lewin671.remoteagent.proto.MachineMeta
-import io.github.lewin671.remoteagent.proto.UsageAgentSource
+import io.github.lewin671.remoteagent.core.proto.UsageAgentSourceView
 import io.github.lewin671.remoteagent.proto.UsageBucketGranularity
 import io.github.lewin671.remoteagent.proto.UsageBucketPoint
 import io.github.lewin671.remoteagent.proto.UsagePeriodSummary
@@ -678,7 +678,7 @@ class UsageAndCliSwitchesTest {
             .setEmptyKind(io.github.lewin671.remoteagent.core.proto.UsageEmptyKind.USAGE_EMPTY_KIND_ALL_SOURCES_UNAVAILABLE)
             .setEmptyTitle(coreLit(messageTextForTest(UiMessages.usageOnlyUnavailableTitle("Antigravity"))))
             .setEmptyBody(coreLit(messageTextForTest(UiMessages.usageOnlyUnavailableBody("Antigravity"))))
-            .addSources(UsageAgentSource.newBuilder().setAgent(Agent.AGENT_ANTIGRAVITY).setState(UsageSourceState.USAGE_SOURCE_STATE_UNAVAILABLE))
+            .addSources(UsageAgentSourceView.newBuilder().setAgent(Agent.AGENT_ANTIGRAVITY).setState(UsageSourceState.USAGE_SOURCE_STATE_UNAVAILABLE))
             .build()
         ui.waitForIdle()
         assertTrue(ui.onAllNodesWithText(messageTextForTest(UiMessages.usageOnlyUnavailableTitle("Antigravity")), substring = true).fetchSemanticsNodes().isNotEmpty())

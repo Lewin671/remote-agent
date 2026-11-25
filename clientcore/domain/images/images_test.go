@@ -262,6 +262,36 @@ func TestAspectSizeAndFormatHelpers(t *testing.T) {
 	if collected[0].GetDownloadName() != "image-1.jpg" {
 		t.Fatalf("expected DownloadName fallback image-1.jpg, got %q", collected[0].GetDownloadName())
 	}
+	if collected[0].GetImageId() != "img-prev" || collected[0].GetSyncState() != corev1.SessionImageSyncState_SESSION_IMAGE_SYNC_STATE_SYNCED {
+		t.Fatalf("expected flattened ImageId/SyncState on SessionViewerImageView, got id=%q sync=%v", collected[0].GetImageId(), collected[0].GetSyncState())
+	}
+	if len(collected[0].GetPreview()) != 0 {
+		t.Fatalf("expected flattened Preview bytes stripped on viewer image, got %d bytes", len(collected[0].GetPreview()))
+	}
+
+	view := BuildImageView(&v1.ImageRef{
+		ImageId:       "img-view-1",
+		Sync:          v1.ImageSync_IMAGE_SYNC_PREVIEW_ONLY,
+		CliIndex:      2,
+		Path:          "/tmp/shot.png",
+		Width:         1200,
+		Height:        800,
+		Preview:       []byte{0x89, 0x50, 0x4e, 0x47},
+		PreviewFormat: v1.ImageFormat_IMAGE_FORMAT_PNG,
+	})
+	if view.GetImageId() != "img-view-1" ||
+		view.GetSyncState() != corev1.SessionImageSyncState_SESSION_IMAGE_SYNC_STATE_PREVIEW_ONLY ||
+		view.GetCliIndex() != 2 ||
+		view.GetWidth() != 1200 || view.GetHeight() != 800 ||
+		view.GetDisplayName() != "shot.png" ||
+		view.GetHasDisplayCopy() ||
+		view.GetPreviewFormat() != v1.ImageFormat_IMAGE_FORMAT_PNG ||
+		len(view.GetPreview()) != 4 ||
+		view.GetAspectRatio() != 1.5 ||
+		view.GetClampedAspectRatio() != 1.5 ||
+		view.GetSizeText() != "1200 × 800" {
+		t.Fatalf("unexpected BuildImageView result: %+v", view)
+	}
 }
 
 func TestDownloadName(t *testing.T) {

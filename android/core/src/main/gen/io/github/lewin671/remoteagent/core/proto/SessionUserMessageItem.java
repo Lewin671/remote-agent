@@ -21,6 +21,8 @@ public  final class SessionUserMessageItem extends
     scheduledTaskId_ = "";
     scheduledRunId_ = "";
     textSegments_ = emptyProtobufList();
+    imageViews_ = emptyProtobufList();
+    originRequestId_ = "";
   }
   private int bitField0_;
   public static final int TEXT_FIELD_NUMBER = 1;
@@ -265,54 +267,6 @@ public  final class SessionUserMessageItem extends
     files_.remove(index);
   }
 
-  public static final int ORIGIN_FIELD_NUMBER = 4;
-  private io.github.lewin671.remoteagent.proto.Origin origin_;
-  /**
-   * <code>.remoteagent.v1.Origin origin = 4 [json_name = "origin"];</code>
-   */
-  @java.lang.Override
-  public boolean hasOrigin() {
-    return ((bitField0_ & 0x00000001) != 0);
-  }
-  /**
-   * <code>.remoteagent.v1.Origin origin = 4 [json_name = "origin"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.Origin getOrigin() {
-    return origin_ == null ? io.github.lewin671.remoteagent.proto.Origin.getDefaultInstance() : origin_;
-  }
-  /**
-   * <code>.remoteagent.v1.Origin origin = 4 [json_name = "origin"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setOrigin(io.github.lewin671.remoteagent.proto.Origin value) {
-    value.getClass();  // minimal bytecode null check
-    origin_ = value;
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.v1.Origin origin = 4 [json_name = "origin"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeOrigin(io.github.lewin671.remoteagent.proto.Origin value) {
-    value.getClass();  // minimal bytecode null check
-    if (origin_ != null &&
-        origin_ != io.github.lewin671.remoteagent.proto.Origin.getDefaultInstance()) {
-      origin_ =
-        io.github.lewin671.remoteagent.proto.Origin.newBuilder(origin_).mergeFrom(value).buildPartial();
-    } else {
-      origin_ = value;
-    }
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.v1.Origin origin = 4 [json_name = "origin"];</code>
-   */
-  private void clearOrigin() {
-    origin_ = null;
-    bitField0_ = (bitField0_ & ~0x00000001);
-  }
-
   public static final int ORIGIN_CAPTION_FIELD_NUMBER = 5;
   private io.github.lewin671.remoteagent.core.proto.Text originCaption_;
   /**
@@ -320,7 +274,7 @@ public  final class SessionUserMessageItem extends
    */
   @java.lang.Override
   public boolean hasOriginCaption() {
-    return ((bitField0_ & 0x00000002) != 0);
+    return ((bitField0_ & 0x00000001) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text origin_caption = 5 [json_name = "originCaption"];</code>
@@ -336,7 +290,7 @@ public  final class SessionUserMessageItem extends
   private void setOriginCaption(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     originCaption_ = value;
-    bitField0_ |= 0x00000002;
+    bitField0_ |= 0x00000001;
   }
   /**
    * <code>.remoteagent.core.v1.Text origin_caption = 5 [json_name = "originCaption"];</code>
@@ -351,14 +305,14 @@ public  final class SessionUserMessageItem extends
     } else {
       originCaption_ = value;
     }
-    bitField0_ |= 0x00000002;
+    bitField0_ |= 0x00000001;
   }
   /**
    * <code>.remoteagent.core.v1.Text origin_caption = 5 [json_name = "originCaption"];</code>
    */
   private void clearOriginCaption() {
     originCaption_ = null;
-    bitField0_ = (bitField0_ & ~0x00000002);
+    bitField0_ = (bitField0_ & ~0x00000001);
   }
 
   public static final int SCHEDULED_TASK_ID_FIELD_NUMBER = 6;
@@ -604,6 +558,151 @@ public  final class SessionUserMessageItem extends
   private void removeTextSegments(int index) {
     ensureTextSegmentsIsMutable();
     textSegments_.remove(index);
+  }
+
+  public static final int IMAGE_VIEWS_FIELD_NUMBER = 20;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SessionImageView> imageViews_;
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.core.proto.SessionImageView> getImageViewsList() {
+    return imageViews_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.SessionImageViewOrBuilder> 
+      getImageViewsOrBuilderList() {
+    return imageViews_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+   */
+  @java.lang.Override
+  public int getImageViewsCount() {
+    return imageViews_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionImageView getImageViews(int index) {
+    return imageViews_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+   */
+  public io.github.lewin671.remoteagent.core.proto.SessionImageViewOrBuilder getImageViewsOrBuilder(
+      int index) {
+    return imageViews_.get(index);
+  }
+  private void ensureImageViewsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SessionImageView> tmp = imageViews_;
+    if (!tmp.isModifiable()) {
+      imageViews_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setImageViews(
+      int index, io.github.lewin671.remoteagent.core.proto.SessionImageView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureImageViewsIsMutable();
+    imageViews_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addImageViews(io.github.lewin671.remoteagent.core.proto.SessionImageView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureImageViewsIsMutable();
+    imageViews_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addImageViews(
+      int index, io.github.lewin671.remoteagent.core.proto.SessionImageView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureImageViewsIsMutable();
+    imageViews_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+   */
+  private void addAllImageViews(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SessionImageView> values) {
+    ensureImageViewsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, imageViews_);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+   */
+  private void clearImageViews() {
+    imageViews_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+   */
+  private void removeImageViews(int index) {
+    ensureImageViewsIsMutable();
+    imageViews_.remove(index);
+  }
+
+  public static final int ORIGIN_REQUEST_ID_FIELD_NUMBER = 21;
+  private java.lang.String originRequestId_;
+  /**
+   * <code>string origin_request_id = 21 [json_name = "originRequestId"];</code>
+   * @return The originRequestId.
+   */
+  @java.lang.Override
+  public java.lang.String getOriginRequestId() {
+    return originRequestId_;
+  }
+  /**
+   * <code>string origin_request_id = 21 [json_name = "originRequestId"];</code>
+   * @return The bytes for originRequestId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getOriginRequestIdBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(originRequestId_);
+  }
+  /**
+   * <code>string origin_request_id = 21 [json_name = "originRequestId"];</code>
+   * @param value The originRequestId to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setOriginRequestId(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    originRequestId_ = value;
+  }
+  /**
+   * <code>string origin_request_id = 21 [json_name = "originRequestId"];</code>
+   */
+  private void clearOriginRequestId() {
+
+    originRequestId_ = getDefaultInstance().getOriginRequestId();
+  }
+  /**
+   * <code>string origin_request_id = 21 [json_name = "originRequestId"];</code>
+   * @param value The bytes for originRequestId to set.
+   */
+  private void setOriginRequestIdBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    originRequestId_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SessionUserMessageItem parseFrom(
@@ -957,53 +1056,6 @@ public  final class SessionUserMessageItem extends
     }
 
     /**
-     * <code>.remoteagent.v1.Origin origin = 4 [json_name = "origin"];</code>
-     */
-    @java.lang.Override
-    public boolean hasOrigin() {
-      return instance.hasOrigin();
-    }
-    /**
-     * <code>.remoteagent.v1.Origin origin = 4 [json_name = "origin"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.Origin getOrigin() {
-      return instance.getOrigin();
-    }
-    /**
-     * <code>.remoteagent.v1.Origin origin = 4 [json_name = "origin"];</code>
-     */
-    public Builder setOrigin(io.github.lewin671.remoteagent.proto.Origin value) {
-      copyOnWrite();
-      instance.setOrigin(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.v1.Origin origin = 4 [json_name = "origin"];</code>
-     */
-    public Builder setOrigin(
-        io.github.lewin671.remoteagent.proto.Origin.Builder builderForValue) {
-      copyOnWrite();
-      instance.setOrigin(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.Origin origin = 4 [json_name = "origin"];</code>
-     */
-    public Builder mergeOrigin(io.github.lewin671.remoteagent.proto.Origin value) {
-      copyOnWrite();
-      instance.mergeOrigin(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.Origin origin = 4 [json_name = "origin"];</code>
-     */
-    public Builder clearOrigin() {  copyOnWrite();
-      instance.clearOrigin();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.Text origin_caption = 5 [json_name = "originCaption"];</code>
      */
     @java.lang.Override
@@ -1306,6 +1358,157 @@ public  final class SessionUserMessageItem extends
       return this;
     }
 
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.core.proto.SessionImageView> getImageViewsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getImageViewsList());
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+     */
+    @java.lang.Override
+    public int getImageViewsCount() {
+      return instance.getImageViewsCount();
+    }/**
+     * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionImageView getImageViews(int index) {
+      return instance.getImageViews(index);
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+     */
+    public Builder setImageViews(
+        int index, io.github.lewin671.remoteagent.core.proto.SessionImageView value) {
+      copyOnWrite();
+      instance.setImageViews(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+     */
+    public Builder setImageViews(
+        int index, io.github.lewin671.remoteagent.core.proto.SessionImageView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setImageViews(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+     */
+    public Builder addImageViews(io.github.lewin671.remoteagent.core.proto.SessionImageView value) {
+      copyOnWrite();
+      instance.addImageViews(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+     */
+    public Builder addImageViews(
+        int index, io.github.lewin671.remoteagent.core.proto.SessionImageView value) {
+      copyOnWrite();
+      instance.addImageViews(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+     */
+    public Builder addImageViews(
+        io.github.lewin671.remoteagent.core.proto.SessionImageView.Builder builderForValue) {
+      copyOnWrite();
+      instance.addImageViews(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+     */
+    public Builder addImageViews(
+        int index, io.github.lewin671.remoteagent.core.proto.SessionImageView.Builder builderForValue) {
+      copyOnWrite();
+      instance.addImageViews(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+     */
+    public Builder addAllImageViews(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SessionImageView> values) {
+      copyOnWrite();
+      instance.addAllImageViews(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+     */
+    public Builder clearImageViews() {
+      copyOnWrite();
+      instance.clearImageViews();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
+     */
+    public Builder removeImageViews(int index) {
+      copyOnWrite();
+      instance.removeImageViews(index);
+      return this;
+    }
+
+    /**
+     * <code>string origin_request_id = 21 [json_name = "originRequestId"];</code>
+     * @return The originRequestId.
+     */
+    @java.lang.Override
+    public java.lang.String getOriginRequestId() {
+      return instance.getOriginRequestId();
+    }
+    /**
+     * <code>string origin_request_id = 21 [json_name = "originRequestId"];</code>
+     * @return The bytes for originRequestId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getOriginRequestIdBytes() {
+      return instance.getOriginRequestIdBytes();
+    }
+    /**
+     * <code>string origin_request_id = 21 [json_name = "originRequestId"];</code>
+     * @param value The originRequestId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setOriginRequestId(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setOriginRequestId(value);
+      return this;
+    }
+    /**
+     * <code>string origin_request_id = 21 [json_name = "originRequestId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearOriginRequestId() {
+      copyOnWrite();
+      instance.clearOriginRequestId();
+      return this;
+    }
+    /**
+     * <code>string origin_request_id = 21 [json_name = "originRequestId"];</code>
+     * @param value The bytes for originRequestId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setOriginRequestIdBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setOriginRequestIdBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionUserMessageItem)
   }
   @java.lang.Override
@@ -1328,7 +1531,6 @@ public  final class SessionUserMessageItem extends
             io.github.lewin671.remoteagent.proto.ImageRef.class,
             "files_",
             io.github.lewin671.remoteagent.core.proto.SessionFileRefView.class,
-            "origin_",
             "originCaption_",
             "scheduledTaskId_",
             "scheduledRunId_",
@@ -1336,11 +1538,14 @@ public  final class SessionUserMessageItem extends
             "typedLocally_",
             "textSegments_",
             io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegment.class,
+            "imageViews_",
+            io.github.lewin671.remoteagent.core.proto.SessionImageView.class,
+            "originRequestId_",
           };
           java.lang.String info =
-              "\u0000\n\u0000\u0001\u0001\n\n\u0000\u0003\u0000\u0001\u0208\u0002\u001b\u0003\u001b" +
-              "\u0004\u1009\u0000\u0005\u1009\u0001\u0006\u0208\u0007\u0208\b\u0007\t\u0007\n\u001b" +
-              "";
+              "\u0000\u000b\u0000\u0001\u0001\u0015\u000b\u0000\u0004\u0000\u0001\u0208\u0002\u001b" +
+              "\u0003\u001b\u0005\u1009\u0000\u0006\u0208\u0007\u0208\b\u0007\t\u0007\n\u001b\u0014" +
+              "\u001b\u0015\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

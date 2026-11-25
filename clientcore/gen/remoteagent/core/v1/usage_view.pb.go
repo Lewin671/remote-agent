@@ -929,6 +929,40 @@ func (m *UsageModelRowView) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_UsageModelRowView)
 }
 
+type UsageAgentSourceView struct {
+	_     [0]func()
+	Agent v1.Agent
+	State v1.UsageSourceState
+}
+
+func (m *UsageAgentSourceView) GetAgent() v1.Agent {
+	if m != nil {
+		return m.Agent
+	}
+	return 0
+}
+func (m *UsageAgentSourceView) GetState() v1.UsageSourceState {
+	if m != nil {
+		return m.State
+	}
+	return 0
+}
+
+var LitewireDesc_UsageAgentSourceView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsageAgentSourceView{}.Agent), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(UsageAgentSourceView{}.State), Kind: litewire.KindInt32},
+	},
+}
+
+func (m *UsageAgentSourceView) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *UsageAgentSourceView) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_UsageAgentSourceView)
+}
+
 type UsageViewModel struct {
 	_                         [0]func()
 	MachineId                 string
@@ -950,7 +984,7 @@ type UsageViewModel struct {
 	EndMs                     int64
 	RangeDays                 int32
 	SortBy                    UsageSortColumn
-	Sources                   []*v1.UsageAgentSource
+	Sources                   []*UsageAgentSourceView
 	HasAnyUsage               bool
 	Hero                      *UsageHeroView
 	BarChart                  *UsageBarChartView
@@ -1082,7 +1116,7 @@ func (m *UsageViewModel) GetSortBy() UsageSortColumn {
 	}
 	return 0
 }
-func (m *UsageViewModel) GetSources() []*v1.UsageAgentSource {
+func (m *UsageViewModel) GetSources() []*UsageAgentSourceView {
 	if m != nil {
 		return m.Sources
 	}
@@ -1200,7 +1234,7 @@ var LitewireDesc_UsageViewModel = litewire.MessageDesc{
 		{Num: 17, Offset: unsafe.Offsetof(UsageViewModel{}.EndMs), Kind: litewire.KindInt64},
 		{Num: 18, Offset: unsafe.Offsetof(UsageViewModel{}.RangeDays), Kind: litewire.KindInt32},
 		{Num: 19, Offset: unsafe.Offsetof(UsageViewModel{}.SortBy), Kind: litewire.KindInt32},
-		{Num: 20, Offset: unsafe.Offsetof(UsageViewModel{}.Sources), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &v1.LitewireDesc_UsageAgentSource},
+		{Num: 20, Offset: unsafe.Offsetof(UsageViewModel{}.Sources), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_UsageAgentSourceView},
 		{Num: 21, Offset: unsafe.Offsetof(UsageViewModel{}.HasAnyUsage), Kind: litewire.KindBool},
 		{Num: 22, Offset: unsafe.Offsetof(UsageViewModel{}.Hero), Kind: litewire.KindMessage, Sub: &LitewireDesc_UsageHeroView},
 		{Num: 23, Offset: unsafe.Offsetof(UsageViewModel{}.BarChart), Kind: litewire.KindMessage, Sub: &LitewireDesc_UsageBarChartView},

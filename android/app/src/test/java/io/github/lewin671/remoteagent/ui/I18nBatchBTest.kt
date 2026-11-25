@@ -309,22 +309,38 @@ class I18nBatchBTest(private val locale: String) {
             FileChip("example.patch", "2.0 KB", AttachmentItemState.ATTACHMENT_ITEM_STATE_UPLOADING, progress = .42f, onRetry = {}, onRemove = {})
             FileChip("notes.txt", "320 B", AttachmentItemState.ATTACHMENT_ITEM_STATE_FAILED, statusText = "Raw transport diagnostic", onRetry = {}, onRemove = {})
             Text(uiText(UiMessages.attachmentMetadata()))
-            GeneratedCard("generated", listOf(ImageRef.newBuilder().setImageId("image").setWidth(640).setHeight(360).build()), "Original image prompt") {}
+            GeneratedCard(
+                "generated",
+                listOf(SessionImageView.newBuilder().setImageId("image").setWidth(640).setHeight(360).setSizeText("640 × 360").build()),
+                "Original image prompt",
+            ) {}
         } }; shot("attachments")
     }
     @Test fun imageViewer() {
         val bitmap = Bitmap.createBitmap(240, 160, Bitmap.Config.ARGB_8888).apply { eraseColor(android.graphics.Color.rgb(100, 150, 180)) }
         val bytes = java.io.ByteArrayOutputStream().apply { bitmap.compress(Bitmap.CompressFormat.PNG, 100, this) }.toByteArray()
-        val image = ImageRef.newBuilder().setImageId("image").setPath("/example/demo/example.png")
-            .setPreview(com.google.protobuf.ByteString.copyFrom(bytes)).setPreviewWidth(240).setPreviewHeight(160)
-            .setWidth(240).setHeight(160).setSync(ImageSync.IMAGE_SYNC_NAME_ONLY).setSource(ImageSource.IMAGE_SOURCE_USER).build()
-        val imgItem = tl(6, "e6") { userMessage = SessionUserMessageItem.newBuilder().addImages(image).build() }
+        val image = SessionImageView.newBuilder()
+            .setImageId("image")
+            .setDisplayName("example.png")
+            .setPreview(com.google.protobuf.ByteString.copyFrom(bytes))
+            .setPreviewFormat(ImageFormat.IMAGE_FORMAT_PNG)
+            .setWidth(240).setHeight(160)
+            .setSyncState(SessionImageSyncState.SESSION_IMAGE_SYNC_STATE_NAME_ONLY)
+            .setAspectRatio(1.5).setClampedAspectRatio(1.5)
+            .setSizeText("240 × 160")
+            .build()
+        val imgItem = tl(6, "e6") { userMessage = SessionUserMessageItem.newBuilder().addImageViews(image).build() }
         val viewerImg = SessionViewerImageView.newBuilder()
             .setViewerIndex(0)
             .setSeq(6)
             .setEventImageIndex(0)
             .setKind(SessionImageSourceKind.SESSION_IMAGE_SOURCE_KIND_USER)
-            .setRef(image)
+            .setImageId("image")
+            .setSyncState(SessionImageSyncState.SESSION_IMAGE_SYNC_STATE_NAME_ONLY)
+            .setWidth(240)
+            .setHeight(160)
+            .setPreview(com.google.protobuf.ByteString.copyFrom(bytes))
+            .setPreviewFormat(ImageFormat.IMAGE_FORMAT_PNG)
             .setSourceLabel(Text.newBuilder().setKey(UiMessages.imageUserSource().key))
             .setSizeText("240 × 160")
             .setHasDisplayCopy(false)

@@ -27,12 +27,13 @@ import {
   type DraftImageViewerView,
   type OutboxAttachmentSummary,
 } from "../gen/remoteagent/core/v1/attachments_pb";
-import type {
-  SessionImageViewerView,
-  SessionViewerImageView,
+import {
+  SessionImageSyncState,
+  type SessionImageView,
+  type SessionImageViewerView,
+  type SessionViewerImageView,
 } from "../gen/remoteagent/core/v1/session_view_pb";
-import type { ImageRef } from "../gen/remoteagent/v1/event_pb";
-import { ImageFormat, ImageSync } from "../gen/remoteagent/v1/event_pb";
+import { ImageFormat } from "../gen/remoteagent/v1/event_pb";
 import { ChevronLeft, ChevronRight, X } from "../icons";
 import { matchesFormat, mimeOf } from "../imageview";
 import { hhmm } from "../model";
@@ -122,11 +123,13 @@ export function useLocalAttachmentBlob(
   return blob;
 }
 
-/** A ref's embedded preview, if it is what it claims to be. */
-function usePreview(ref: ImageRef): string | undefined {
+/** A view's embedded preview, if it is what it claims to be. */
+function usePreview(
+  img: { preview: Uint8Array; previewFormat: ImageFormat } | undefined,
+): string | undefined {
   const ok =
-    ref.preview.length > 0 && matchesFormat(ref.preview, ref.previewFormat);
-  return useBlobUrl(ok ? ref.preview : undefined, mimeOf(ref.previewFormat));
+    !!img && img.preview.length > 0 && matchesFormat(img.preview, img.previewFormat);
+  return useBlobUrl(ok ? img.preview : undefined, ok ? mimeOf(img.previewFormat) : "");
 }
 
 /** One preview, laid out at its own proportions before it loads. */
@@ -139,7 +142,7 @@ export function Pic({
   onOpen,
   className = "",
 }: {
-  image: ImageRef;
+  image: SessionImageView;
   meta?: SessionViewerImageView;
   height?: number;
   number?: number;
@@ -149,13 +152,13 @@ export function Pic({
 }) {
   const url = usePreview(r);
   const aspect = height
-    ? (meta?.clampedAspectRatio || meta?.aspectRatio || 4 / 3)
-    : (meta?.aspectRatio || 4 / 3);
+    ? (meta?.clampedAspectRatio || r.clampedAspectRatio || meta?.aspectRatio || r.aspectRatio || 4 / 3)
+    : (meta?.aspectRatio || r.aspectRatio || 4 / 3);
   const style: CSSProperties = height
     ? previewGeometry(aspect, height)
     : { aspectRatio: String(aspect) };
-  const name = meta?.displayName || (r.path ? r.path.split(/[\\/]/).pop() || r.path : "");
-  if (r.sync === ImageSync.NAME_ONLY || (!url && r.sync !== ImageSync.SYNCED))
+  const name = meta?.displayName || r.displayName;
+  if (r.syncState === SessionImageSyncState.NAME_ONLY || (!url && r.syncState !== SessionImageSyncState.SYNCED))
     return (
       <button
         className={"pic miss " + className}
@@ -179,7 +182,7 @@ export function Pic({
     >
       {url && <img src={url} alt="" draggable={false} />}
       {number ? <span className="n">{number}</span> : null}
-      {(badge ?? (r.sync === ImageSync.PREVIEW_ONLY ? i18n.t("image.preview_only") : "")) && (
+      {(badge ?? (r.syncState === SessionImageSyncState.PREVIEW_ONLY ? i18n.t("image.preview_only") : "")) && (
         <span className="badge">{badge ?? i18n.t("image.preview_only")}</span>
       )}
     </button>
@@ -195,7 +198,7 @@ export function ImageStrip({
   className = "",
   height,
 }: {
-  refs: ImageRef[];
+  refs: readonly SessionImageView[];
   seq?: bigint;
   anchors?: readonly ImageAnchor[];
   numbered?: boolean;
@@ -243,7 +246,7 @@ export function GenCard({
   seq = 0n,
   prompt,
 }: {
-  refs: ImageRef[];
+  refs: readonly SessionImageView[];
   seq?: bigint;
   prompt: string;
 }) {
@@ -256,7 +259,7 @@ export function GenCard({
         const anchor = { seq, imageIndex: i };
         const meta = metaMap.get(viewerImageKey(seq, i));
         const label = renderText(meta?.sourceLabel) || i18n.t("image.generated");
-        const size = meta?.sizeText ?? "";
+        const size = meta?.sizeText || r.sizeText;
         return (
           <div key={i} className="gen-card">
             <Pic image={r} meta={meta} className="lg" height={0} onOpen={() => open(anchor)} />
@@ -279,11 +282,6 @@ export function GenCard({
     </>
   );
 }
-
-const NO_REF = {
-  preview: new Uint8Array(),
-  previewFormat: 0,
-} as unknown as ImageRef;
 
 type Load =
   | {
@@ -329,13 +327,13 @@ function useDisplay(
     }
     return { kind: local.state === AttachmentItemState.FAILED ? "error" : "loading" };
   }, [local, localBlob]);
-  const imageId = img?.ref?.imageId ?? "";
-  const sync = img?.ref?.sync ?? ImageSync.UNSPECIFIED;
+  const imageId = img?.imageId ?? "";
+  const sync = img?.syncState ?? SessionImageSyncState.UNSPECIFIED;
   const hasDisplayCopy = !!img?.hasDisplayCopy;
   useEffect(() => {
     if (local) return;
-    if (!img?.ref) return;
-    if (sync === ImageSync.NAME_ONLY) return setState({ kind: "name-only" });
+    if (!img) return;
+    if (sync === SessionImageSyncState.NAME_ONLY) return setState({ kind: "name-only" });
     if (!hasDisplayCopy || !imageId) return setState({ kind: "preview-only" });
     if (!remote) return setState({ kind: "idle" });
     const cached = remote.cachedImage(sid, imageId);
@@ -405,7 +403,7 @@ export function ImageViewer({
   remote?: Remote;
   sid?: string;
   viewer?: SessionImageViewerView;
-  previewRef?: ImageRef;
+  previewRef?: SessionImageView;
   title?: string;
   wide: boolean;
   onNavigate?: (delta: number) => void;
@@ -449,7 +447,7 @@ export function ImageViewer({
     ? { kind: "ok", blob: sharedFile.blob, width: 0, height: 0, format: ImageFormat.UNSPECIFIED }
     : fetched;
   const full = useObjectUrl(load.kind === "ok" ? load.blob : undefined);
-  const preview = usePreview(previewRef ?? img?.ref ?? NO_REF);
+  const preview = usePreview(previewRef ?? img);
 
   const step = (d: number) => {
     if (d < 0 && !hasPrev) return;

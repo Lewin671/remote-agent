@@ -175,7 +175,7 @@ internal fun ToolCallRow(
                         metaColor = if (tool.hasDecisionLabel() && !tool.decisionAllowed) p.red else p.ink2,
                     )
                 }
-                if (tool.imagesCount > 0) ImageRow(tool.imagesList, { i -> ctx?.onImage?.invoke(seq, i) })
+                if (tool.imageViewsCount > 0) ImageRow(tool.imageViewsList, { i -> ctx?.onImage?.invoke(seq, i) })
             }
         }
     }

@@ -392,9 +392,9 @@ internal fun TimelineItemView(
                 captionIcon = if (um.isScheduled) Lucide.Clock else null,
                 foldScheduled = um.isScheduled,
                 settling = settling,
-                top = if (um.imagesCount > 0 || um.filesCount > 0) {
+                top = if (um.imageViewsCount > 0 || um.filesCount > 0) {
                     {
-                        if (um.imagesCount > 0) ImageRow(um.imagesList, { i -> chat?.onImage?.invoke(item.seq, i) })
+                        if (um.imageViewsCount > 0) ImageRow(um.imageViewsList, { i -> chat?.onImage?.invoke(item.seq, i) })
                         if (um.filesCount > 0) {
                             FileChips(um.filesList)
                         }
@@ -450,7 +450,7 @@ internal fun TimelineItemView(
         }
         SessionTimelineItem.KindCase.GENERATED_IMAGES -> {
             val g = item.generatedImages
-            GeneratedCard(item.id, g.imagesList, g.revisedPrompt) { i -> chat?.onImage?.invoke(item.seq, i) }
+            GeneratedCard(item.id, g.imageViewsList, g.revisedPrompt) { i -> chat?.onImage?.invoke(item.seq, i) }
         }
         SessionTimelineItem.KindCase.ASYNC_QUESTION -> SelectionContainer {
             Column(Modifier.fillMaxWidth().padding(horizontal = ChatSide, vertical = 8.dp).clip(Radii.R18).background(p.gbg).padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

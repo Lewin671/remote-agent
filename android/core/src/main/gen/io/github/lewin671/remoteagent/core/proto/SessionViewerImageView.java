@@ -23,6 +23,8 @@ public  final class SessionViewerImageView extends
     fileExtension_ = "";
     mimeType_ = "";
     downloadName_ = "";
+    imageId_ = "";
+    preview_ = com.google.protobuf.ByteString.EMPTY;
   }
   private int bitField0_;
   public static final int VIEWER_INDEX_FIELD_NUMBER = 1;
@@ -773,6 +775,217 @@ public  final class SessionViewerImageView extends
     checkByteStringIsUtf8(value);
     downloadName_ = value.toStringUtf8();
 
+  }
+
+  public static final int IMAGE_ID_FIELD_NUMBER = 20;
+  private java.lang.String imageId_;
+  /**
+   * <code>string image_id = 20 [json_name = "imageId"];</code>
+   * @return The imageId.
+   */
+  @java.lang.Override
+  public java.lang.String getImageId() {
+    return imageId_;
+  }
+  /**
+   * <code>string image_id = 20 [json_name = "imageId"];</code>
+   * @return The bytes for imageId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getImageIdBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(imageId_);
+  }
+  /**
+   * <code>string image_id = 20 [json_name = "imageId"];</code>
+   * @param value The imageId to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setImageId(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    imageId_ = value;
+  }
+  /**
+   * <code>string image_id = 20 [json_name = "imageId"];</code>
+   */
+  private void clearImageId() {
+
+    imageId_ = getDefaultInstance().getImageId();
+  }
+  /**
+   * <code>string image_id = 20 [json_name = "imageId"];</code>
+   * @param value The bytes for imageId to set.
+   */
+  private void setImageIdBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    imageId_ = value.toStringUtf8();
+
+  }
+
+  public static final int SYNC_STATE_FIELD_NUMBER = 21;
+  private int syncState_;
+  /**
+   * <code>.remoteagent.core.v1.SessionImageSyncState sync_state = 21 [json_name = "syncState"];</code>
+   * @return The enum numeric value on the wire for syncState.
+   */
+  @java.lang.Override
+  public int getSyncStateValue() {
+    return syncState_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionImageSyncState sync_state = 21 [json_name = "syncState"];</code>
+   * @return The syncState.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionImageSyncState getSyncState() {
+    io.github.lewin671.remoteagent.core.proto.SessionImageSyncState result = io.github.lewin671.remoteagent.core.proto.SessionImageSyncState.forNumber(syncState_);
+    return result == null ? io.github.lewin671.remoteagent.core.proto.SessionImageSyncState.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionImageSyncState sync_state = 21 [json_name = "syncState"];</code>
+   * @param value The enum numeric value on the wire for syncState to set.
+   */
+  private void setSyncStateValue(int value) {
+      syncState_ = value;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionImageSyncState sync_state = 21 [json_name = "syncState"];</code>
+   * @param value The syncState to set.
+   */
+  private void setSyncState(io.github.lewin671.remoteagent.core.proto.SessionImageSyncState value) {
+    syncState_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionImageSyncState sync_state = 21 [json_name = "syncState"];</code>
+   */
+  private void clearSyncState() {
+
+    syncState_ = 0;
+  }
+
+  public static final int WIDTH_FIELD_NUMBER = 22;
+  private int width_;
+  /**
+   * <code>int32 width = 22 [json_name = "width"];</code>
+   * @return The width.
+   */
+  @java.lang.Override
+  public int getWidth() {
+    return width_;
+  }
+  /**
+   * <code>int32 width = 22 [json_name = "width"];</code>
+   * @param value The width to set.
+   */
+  private void setWidth(int value) {
+    
+    width_ = value;
+  }
+  /**
+   * <code>int32 width = 22 [json_name = "width"];</code>
+   */
+  private void clearWidth() {
+
+    width_ = 0;
+  }
+
+  public static final int HEIGHT_FIELD_NUMBER = 23;
+  private int height_;
+  /**
+   * <code>int32 height = 23 [json_name = "height"];</code>
+   * @return The height.
+   */
+  @java.lang.Override
+  public int getHeight() {
+    return height_;
+  }
+  /**
+   * <code>int32 height = 23 [json_name = "height"];</code>
+   * @param value The height to set.
+   */
+  private void setHeight(int value) {
+    
+    height_ = value;
+  }
+  /**
+   * <code>int32 height = 23 [json_name = "height"];</code>
+   */
+  private void clearHeight() {
+
+    height_ = 0;
+  }
+
+  public static final int PREVIEW_FIELD_NUMBER = 24;
+  private com.google.protobuf.ByteString preview_;
+  /**
+   * <code>bytes preview = 24 [json_name = "preview"];</code>
+   * @return The preview.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getPreview() {
+    return preview_;
+  }
+  /**
+   * <code>bytes preview = 24 [json_name = "preview"];</code>
+   * @param value The preview to set.
+   */
+  private void setPreview(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    preview_ = value;
+  }
+  /**
+   * <code>bytes preview = 24 [json_name = "preview"];</code>
+   */
+  private void clearPreview() {
+
+    preview_ = getDefaultInstance().getPreview();
+  }
+
+  public static final int PREVIEW_FORMAT_FIELD_NUMBER = 25;
+  private int previewFormat_;
+  /**
+   * <code>.remoteagent.v1.ImageFormat preview_format = 25 [json_name = "previewFormat"];</code>
+   * @return The enum numeric value on the wire for previewFormat.
+   */
+  @java.lang.Override
+  public int getPreviewFormatValue() {
+    return previewFormat_;
+  }
+  /**
+   * <code>.remoteagent.v1.ImageFormat preview_format = 25 [json_name = "previewFormat"];</code>
+   * @return The previewFormat.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.ImageFormat getPreviewFormat() {
+    io.github.lewin671.remoteagent.proto.ImageFormat result = io.github.lewin671.remoteagent.proto.ImageFormat.forNumber(previewFormat_);
+    return result == null ? io.github.lewin671.remoteagent.proto.ImageFormat.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.v1.ImageFormat preview_format = 25 [json_name = "previewFormat"];</code>
+   * @param value The enum numeric value on the wire for previewFormat to set.
+   */
+  private void setPreviewFormatValue(int value) {
+      previewFormat_ = value;
+  }
+  /**
+   * <code>.remoteagent.v1.ImageFormat preview_format = 25 [json_name = "previewFormat"];</code>
+   * @param value The previewFormat to set.
+   */
+  private void setPreviewFormat(io.github.lewin671.remoteagent.proto.ImageFormat value) {
+    previewFormat_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.v1.ImageFormat preview_format = 25 [json_name = "previewFormat"];</code>
+   */
+  private void clearPreviewFormat() {
+
+    previewFormat_ = 0;
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SessionViewerImageView parseFrom(
@@ -1648,6 +1861,231 @@ public  final class SessionViewerImageView extends
       return this;
     }
 
+    /**
+     * <code>string image_id = 20 [json_name = "imageId"];</code>
+     * @return The imageId.
+     */
+    @java.lang.Override
+    public java.lang.String getImageId() {
+      return instance.getImageId();
+    }
+    /**
+     * <code>string image_id = 20 [json_name = "imageId"];</code>
+     * @return The bytes for imageId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getImageIdBytes() {
+      return instance.getImageIdBytes();
+    }
+    /**
+     * <code>string image_id = 20 [json_name = "imageId"];</code>
+     * @param value The imageId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setImageId(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setImageId(value);
+      return this;
+    }
+    /**
+     * <code>string image_id = 20 [json_name = "imageId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearImageId() {
+      copyOnWrite();
+      instance.clearImageId();
+      return this;
+    }
+    /**
+     * <code>string image_id = 20 [json_name = "imageId"];</code>
+     * @param value The bytes for imageId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setImageIdBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setImageIdBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionImageSyncState sync_state = 21 [json_name = "syncState"];</code>
+     * @return The enum numeric value on the wire for syncState.
+     */
+    @java.lang.Override
+    public int getSyncStateValue() {
+      return instance.getSyncStateValue();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionImageSyncState sync_state = 21 [json_name = "syncState"];</code>
+     * @param value The syncState to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSyncStateValue(int value) {
+      copyOnWrite();
+      instance.setSyncStateValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionImageSyncState sync_state = 21 [json_name = "syncState"];</code>
+     * @return The syncState.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionImageSyncState getSyncState() {
+      return instance.getSyncState();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionImageSyncState sync_state = 21 [json_name = "syncState"];</code>
+     * @param value The enum numeric value on the wire for syncState to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSyncState(io.github.lewin671.remoteagent.core.proto.SessionImageSyncState value) {
+      copyOnWrite();
+      instance.setSyncState(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionImageSyncState sync_state = 21 [json_name = "syncState"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSyncState() {
+      copyOnWrite();
+      instance.clearSyncState();
+      return this;
+    }
+
+    /**
+     * <code>int32 width = 22 [json_name = "width"];</code>
+     * @return The width.
+     */
+    @java.lang.Override
+    public int getWidth() {
+      return instance.getWidth();
+    }
+    /**
+     * <code>int32 width = 22 [json_name = "width"];</code>
+     * @param value The width to set.
+     * @return This builder for chaining.
+     */
+    public Builder setWidth(int value) {
+      copyOnWrite();
+      instance.setWidth(value);
+      return this;
+    }
+    /**
+     * <code>int32 width = 22 [json_name = "width"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearWidth() {
+      copyOnWrite();
+      instance.clearWidth();
+      return this;
+    }
+
+    /**
+     * <code>int32 height = 23 [json_name = "height"];</code>
+     * @return The height.
+     */
+    @java.lang.Override
+    public int getHeight() {
+      return instance.getHeight();
+    }
+    /**
+     * <code>int32 height = 23 [json_name = "height"];</code>
+     * @param value The height to set.
+     * @return This builder for chaining.
+     */
+    public Builder setHeight(int value) {
+      copyOnWrite();
+      instance.setHeight(value);
+      return this;
+    }
+    /**
+     * <code>int32 height = 23 [json_name = "height"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearHeight() {
+      copyOnWrite();
+      instance.clearHeight();
+      return this;
+    }
+
+    /**
+     * <code>bytes preview = 24 [json_name = "preview"];</code>
+     * @return The preview.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getPreview() {
+      return instance.getPreview();
+    }
+    /**
+     * <code>bytes preview = 24 [json_name = "preview"];</code>
+     * @param value The preview to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPreview(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setPreview(value);
+      return this;
+    }
+    /**
+     * <code>bytes preview = 24 [json_name = "preview"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPreview() {
+      copyOnWrite();
+      instance.clearPreview();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.v1.ImageFormat preview_format = 25 [json_name = "previewFormat"];</code>
+     * @return The enum numeric value on the wire for previewFormat.
+     */
+    @java.lang.Override
+    public int getPreviewFormatValue() {
+      return instance.getPreviewFormatValue();
+    }
+    /**
+     * <code>.remoteagent.v1.ImageFormat preview_format = 25 [json_name = "previewFormat"];</code>
+     * @param value The previewFormat to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPreviewFormatValue(int value) {
+      copyOnWrite();
+      instance.setPreviewFormatValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ImageFormat preview_format = 25 [json_name = "previewFormat"];</code>
+     * @return The previewFormat.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.ImageFormat getPreviewFormat() {
+      return instance.getPreviewFormat();
+    }
+    /**
+     * <code>.remoteagent.v1.ImageFormat preview_format = 25 [json_name = "previewFormat"];</code>
+     * @param value The enum numeric value on the wire for previewFormat to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPreviewFormat(io.github.lewin671.remoteagent.proto.ImageFormat value) {
+      copyOnWrite();
+      instance.setPreviewFormat(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ImageFormat preview_format = 25 [json_name = "previewFormat"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPreviewFormat() {
+      copyOnWrite();
+      instance.clearPreviewFormat();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionViewerImageView)
   }
   @java.lang.Override
@@ -1684,12 +2122,19 @@ public  final class SessionViewerImageView extends
             "mimeType_",
             "inCollapsedGroup_",
             "downloadName_",
+            "imageId_",
+            "syncState_",
+            "width_",
+            "height_",
+            "preview_",
+            "previewFormat_",
           };
           java.lang.String info =
-              "\u0000\u0013\u0000\u0001\u0001\u0013\u0013\u0000\u0000\u0000\u0001\u0004\u0002\u0003" +
+              "\u0000\u0019\u0000\u0001\u0001\u0019\u0019\u0000\u0000\u0000\u0001\u0004\u0002\u0003" +
               "\u0003\u0004\u0004\u0002\u0005\f\u0006\u1009\u0000\u0007\u0208\b\u0208\t\u1009\u0001" +
               "\n\u0208\u000b\u0000\f\u0000\r\u0007\u000e\u0208\u000f\u0208\u0010\u0208\u0011\u0208" +
-              "\u0012\u0007\u0013\u0208";
+              "\u0012\u0007\u0013\u0208\u0014\u0208\u0015\f\u0016\u0004\u0017\u0004\u0018\n\u0019" +
+              "\f";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

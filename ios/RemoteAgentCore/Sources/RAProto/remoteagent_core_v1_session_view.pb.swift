@@ -297,6 +297,48 @@ public enum PBSessionTrayRowActivity: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
+public enum PBSessionImageSyncState: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case synced // = 1
+  case previewOnly // = 2
+  case nameOnly // = 3
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .synced
+    case 2: self = .previewOnly
+    case 3: self = .nameOnly
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .synced: return 1
+    case .previewOnly: return 2
+    case .nameOnly: return 3
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBSessionImageSyncState] = [
+    .unspecified,
+    .synced,
+    .previewOnly,
+    .nameOnly,
+  ]
+
+}
+
 public enum PBSessionToolStatus: SwiftProtobuf.Enum, Swift.CaseIterable {
   public typealias RawValue = Int
   case unspecified // = 0
@@ -3486,6 +3528,40 @@ public struct PBSessionMessageTextSegment: Sendable {
   fileprivate var _imageLabel: PBCoreText? = nil
 }
 
+public struct PBSessionImageView: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var imageID: String = String()
+
+  public var syncState: PBSessionImageSyncState = .unspecified
+
+  public var cliIndex: Int32 = 0
+
+  public var width: Int32 = 0
+
+  public var height: Int32 = 0
+
+  public var preview: Data = Data()
+
+  public var previewFormat: PBImageFormat = .unspecified
+
+  public var displayName: String = String()
+
+  public var hasDisplayCopy_p: Bool = false
+
+  public var aspectRatio: Double = 0
+
+  public var clampedAspectRatio: Double = 0
+
+  public var sizeText: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 public struct PBSessionUserMessageItem: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -3505,15 +3581,6 @@ public struct PBSessionUserMessageItem: @unchecked Sendable {
     get {return _storage._files}
     set {_uniqueStorage()._files = newValue}
   }
-
-  public var origin: PBOrigin {
-    get {return _storage._origin ?? PBOrigin()}
-    set {_uniqueStorage()._origin = newValue}
-  }
-  /// Returns true if `origin` has been explicitly set.
-  public var hasOrigin: Bool {return _storage._origin != nil}
-  /// Clears the value of `origin`. Subsequent reads from it will return its default value.
-  public mutating func clearOrigin() {_uniqueStorage()._origin = nil}
 
   public var originCaption: PBCoreText {
     get {return _storage._originCaption ?? PBCoreText()}
@@ -3547,6 +3614,16 @@ public struct PBSessionUserMessageItem: @unchecked Sendable {
   public var textSegments: [PBSessionMessageTextSegment] {
     get {return _storage._textSegments}
     set {_uniqueStorage()._textSegments = newValue}
+  }
+
+  public var imageViews: [PBSessionImageView] {
+    get {return _storage._imageViews}
+    set {_uniqueStorage()._imageViews = newValue}
+  }
+
+  public var originRequestID: String {
+    get {return _storage._originRequestID}
+    set {_uniqueStorage()._originRequestID = newValue}
   }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -3705,6 +3782,11 @@ public struct PBSessionToolCallItem: @unchecked Sendable {
   public var seq: UInt64 {
     get {return _storage._seq}
     set {_uniqueStorage()._seq = newValue}
+  }
+
+  public var imageViews: [PBSessionImageView] {
+    get {return _storage._imageViews}
+    set {_uniqueStorage()._imageViews = newValue}
   }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -3996,6 +4078,8 @@ public struct PBSessionGeneratedImagesItem: Sendable {
 
   public var images: [PBImageRef] = []
 
+  public var imageViews: [PBSessionImageView] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -4108,6 +4192,36 @@ public struct PBSessionViewerImageView: @unchecked Sendable {
   public var downloadName: String {
     get {return _storage._downloadName}
     set {_uniqueStorage()._downloadName = newValue}
+  }
+
+  public var imageID: String {
+    get {return _storage._imageID}
+    set {_uniqueStorage()._imageID = newValue}
+  }
+
+  public var syncState: PBSessionImageSyncState {
+    get {return _storage._syncState}
+    set {_uniqueStorage()._syncState = newValue}
+  }
+
+  public var width: Int32 {
+    get {return _storage._width}
+    set {_uniqueStorage()._width = newValue}
+  }
+
+  public var height: Int32 {
+    get {return _storage._height}
+    set {_uniqueStorage()._height = newValue}
+  }
+
+  public var preview: Data {
+    get {return _storage._preview}
+    set {_uniqueStorage()._preview = newValue}
+  }
+
+  public var previewFormat: PBImageFormat {
+    get {return _storage._previewFormat}
+    set {_uniqueStorage()._previewFormat = newValue}
   }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -4735,6 +4849,10 @@ extension PBSessionTrayTone: SwiftProtobuf._ProtoNameProviding {
 
 extension PBSessionTrayRowActivity: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SESSION_TRAY_ROW_ACTIVITY_UNSPECIFIED\0\u{1}SESSION_TRAY_ROW_ACTIVITY_IDLE\0\u{1}SESSION_TRAY_ROW_ACTIVITY_SENDING\0\u{1}SESSION_TRAY_ROW_ACTIVITY_CANCELING\0")
+}
+
+extension PBSessionImageSyncState: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SESSION_IMAGE_SYNC_STATE_UNSPECIFIED\0\u{1}SESSION_IMAGE_SYNC_STATE_SYNCED\0\u{1}SESSION_IMAGE_SYNC_STATE_PREVIEW_ONLY\0\u{1}SESSION_IMAGE_SYNC_STATE_NAME_ONLY\0")
 }
 
 extension PBSessionToolStatus: SwiftProtobuf._ProtoNameProviding {
@@ -8997,21 +9115,107 @@ extension PBSessionMessageTextSegment: SwiftProtobuf.Message, SwiftProtobuf._Mes
   }
 }
 
+extension PBSessionImageView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SessionImageView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}image_id\0\u{3}sync_state\0\u{3}cli_index\0\u{1}width\0\u{1}height\0\u{1}preview\0\u{3}preview_format\0\u{3}display_name\0\u{3}has_display_copy\0\u{3}aspect_ratio\0\u{3}clamped_aspect_ratio\0\u{3}size_text\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.imageID) }()
+      case 2: try { try decoder.decodeSingularEnumField(value: &self.syncState) }()
+      case 3: try { try decoder.decodeSingularInt32Field(value: &self.cliIndex) }()
+      case 4: try { try decoder.decodeSingularInt32Field(value: &self.width) }()
+      case 5: try { try decoder.decodeSingularInt32Field(value: &self.height) }()
+      case 6: try { try decoder.decodeSingularBytesField(value: &self.preview) }()
+      case 7: try { try decoder.decodeSingularEnumField(value: &self.previewFormat) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self.displayName) }()
+      case 9: try { try decoder.decodeSingularBoolField(value: &self.hasDisplayCopy_p) }()
+      case 10: try { try decoder.decodeSingularDoubleField(value: &self.aspectRatio) }()
+      case 11: try { try decoder.decodeSingularDoubleField(value: &self.clampedAspectRatio) }()
+      case 12: try { try decoder.decodeSingularStringField(value: &self.sizeText) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.imageID.isEmpty {
+      try visitor.visitSingularStringField(value: self.imageID, fieldNumber: 1)
+    }
+    if self.syncState != .unspecified {
+      try visitor.visitSingularEnumField(value: self.syncState, fieldNumber: 2)
+    }
+    if self.cliIndex != 0 {
+      try visitor.visitSingularInt32Field(value: self.cliIndex, fieldNumber: 3)
+    }
+    if self.width != 0 {
+      try visitor.visitSingularInt32Field(value: self.width, fieldNumber: 4)
+    }
+    if self.height != 0 {
+      try visitor.visitSingularInt32Field(value: self.height, fieldNumber: 5)
+    }
+    if !self.preview.isEmpty {
+      try visitor.visitSingularBytesField(value: self.preview, fieldNumber: 6)
+    }
+    if self.previewFormat != .unspecified {
+      try visitor.visitSingularEnumField(value: self.previewFormat, fieldNumber: 7)
+    }
+    if !self.displayName.isEmpty {
+      try visitor.visitSingularStringField(value: self.displayName, fieldNumber: 8)
+    }
+    if self.hasDisplayCopy_p != false {
+      try visitor.visitSingularBoolField(value: self.hasDisplayCopy_p, fieldNumber: 9)
+    }
+    if self.aspectRatio.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.aspectRatio, fieldNumber: 10)
+    }
+    if self.clampedAspectRatio.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.clampedAspectRatio, fieldNumber: 11)
+    }
+    if !self.sizeText.isEmpty {
+      try visitor.visitSingularStringField(value: self.sizeText, fieldNumber: 12)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBSessionImageView, rhs: PBSessionImageView) -> Bool {
+    if lhs.imageID != rhs.imageID {return false}
+    if lhs.syncState != rhs.syncState {return false}
+    if lhs.cliIndex != rhs.cliIndex {return false}
+    if lhs.width != rhs.width {return false}
+    if lhs.height != rhs.height {return false}
+    if lhs.preview != rhs.preview {return false}
+    if lhs.previewFormat != rhs.previewFormat {return false}
+    if lhs.displayName != rhs.displayName {return false}
+    if lhs.hasDisplayCopy_p != rhs.hasDisplayCopy_p {return false}
+    if lhs.aspectRatio != rhs.aspectRatio {return false}
+    if lhs.clampedAspectRatio != rhs.clampedAspectRatio {return false}
+    if lhs.sizeText != rhs.sizeText {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 extension PBSessionUserMessageItem: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionUserMessageItem"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}text\0\u{1}images\0\u{1}files\0\u{1}origin\0\u{3}origin_caption\0\u{3}scheduled_task_id\0\u{3}scheduled_run_id\0\u{3}is_scheduled\0\u{3}typed_locally\0\u{3}text_segments\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}text\0\u{1}images\0\u{1}files\0\u{4}\u{2}origin_caption\0\u{3}scheduled_task_id\0\u{3}scheduled_run_id\0\u{3}is_scheduled\0\u{3}typed_locally\0\u{3}text_segments\0\u{4}\u{a}image_views\0\u{3}origin_request_id\0\u{b}origin\0\u{c}\u{4}\u{1}")
 
   fileprivate class _StorageClass {
     var _text: String = String()
     var _images: [PBImageRef] = []
     var _files: [PBSessionFileRefView] = []
-    var _origin: PBOrigin? = nil
     var _originCaption: PBCoreText? = nil
     var _scheduledTaskID: String = String()
     var _scheduledRunID: String = String()
     var _isScheduled: Bool = false
     var _typedLocally: Bool = false
     var _textSegments: [PBSessionMessageTextSegment] = []
+    var _imageViews: [PBSessionImageView] = []
+    var _originRequestID: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -9025,13 +9229,14 @@ extension PBSessionUserMessageItem: SwiftProtobuf.Message, SwiftProtobuf._Messag
       _text = source._text
       _images = source._images
       _files = source._files
-      _origin = source._origin
       _originCaption = source._originCaption
       _scheduledTaskID = source._scheduledTaskID
       _scheduledRunID = source._scheduledRunID
       _isScheduled = source._isScheduled
       _typedLocally = source._typedLocally
       _textSegments = source._textSegments
+      _imageViews = source._imageViews
+      _originRequestID = source._originRequestID
     }
   }
 
@@ -9053,13 +9258,14 @@ extension PBSessionUserMessageItem: SwiftProtobuf.Message, SwiftProtobuf._Messag
         case 1: try { try decoder.decodeSingularStringField(value: &_storage._text) }()
         case 2: try { try decoder.decodeRepeatedMessageField(value: &_storage._images) }()
         case 3: try { try decoder.decodeRepeatedMessageField(value: &_storage._files) }()
-        case 4: try { try decoder.decodeSingularMessageField(value: &_storage._origin) }()
         case 5: try { try decoder.decodeSingularMessageField(value: &_storage._originCaption) }()
         case 6: try { try decoder.decodeSingularStringField(value: &_storage._scheduledTaskID) }()
         case 7: try { try decoder.decodeSingularStringField(value: &_storage._scheduledRunID) }()
         case 8: try { try decoder.decodeSingularBoolField(value: &_storage._isScheduled) }()
         case 9: try { try decoder.decodeSingularBoolField(value: &_storage._typedLocally) }()
         case 10: try { try decoder.decodeRepeatedMessageField(value: &_storage._textSegments) }()
+        case 20: try { try decoder.decodeRepeatedMessageField(value: &_storage._imageViews) }()
+        case 21: try { try decoder.decodeSingularStringField(value: &_storage._originRequestID) }()
         default: break
         }
       }
@@ -9081,9 +9287,6 @@ extension PBSessionUserMessageItem: SwiftProtobuf.Message, SwiftProtobuf._Messag
       if !_storage._files.isEmpty {
         try visitor.visitRepeatedMessageField(value: _storage._files, fieldNumber: 3)
       }
-      try { if let v = _storage._origin {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
-      } }()
       try { if let v = _storage._originCaption {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
       } }()
@@ -9102,6 +9305,12 @@ extension PBSessionUserMessageItem: SwiftProtobuf.Message, SwiftProtobuf._Messag
       if !_storage._textSegments.isEmpty {
         try visitor.visitRepeatedMessageField(value: _storage._textSegments, fieldNumber: 10)
       }
+      if !_storage._imageViews.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._imageViews, fieldNumber: 20)
+      }
+      if !_storage._originRequestID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._originRequestID, fieldNumber: 21)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -9114,13 +9323,14 @@ extension PBSessionUserMessageItem: SwiftProtobuf.Message, SwiftProtobuf._Messag
         if _storage._text != rhs_storage._text {return false}
         if _storage._images != rhs_storage._images {return false}
         if _storage._files != rhs_storage._files {return false}
-        if _storage._origin != rhs_storage._origin {return false}
         if _storage._originCaption != rhs_storage._originCaption {return false}
         if _storage._scheduledTaskID != rhs_storage._scheduledTaskID {return false}
         if _storage._scheduledRunID != rhs_storage._scheduledRunID {return false}
         if _storage._isScheduled != rhs_storage._isScheduled {return false}
         if _storage._typedLocally != rhs_storage._typedLocally {return false}
         if _storage._textSegments != rhs_storage._textSegments {return false}
+        if _storage._imageViews != rhs_storage._imageViews {return false}
+        if _storage._originRequestID != rhs_storage._originRequestID {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -9202,7 +9412,7 @@ extension PBSessionReasoningItem: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension PBSessionToolCallItem: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionToolCallItem"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}call_id\0\u{3}tool_kind\0\u{3}item_type\0\u{1}title\0\u{3}raw_input\0\u{1}detail\0\u{1}status\0\u{3}exit_code\0\u{3}has_exit_code\0\u{3}elapsed_ms\0\u{3}since_ms\0\u{3}frozen_at_ms\0\u{3}is_background\0\u{3}background_label\0\u{1}unconfirmed\0\u{3}no_result\0\u{3}decision_label\0\u{3}decision_allowed\0\u{1}images\0\u{3}background_kind\0\u{3}background_id\0\u{1}seq\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}call_id\0\u{3}tool_kind\0\u{3}item_type\0\u{1}title\0\u{3}raw_input\0\u{1}detail\0\u{1}status\0\u{3}exit_code\0\u{3}has_exit_code\0\u{3}elapsed_ms\0\u{3}since_ms\0\u{3}frozen_at_ms\0\u{3}is_background\0\u{3}background_label\0\u{1}unconfirmed\0\u{3}no_result\0\u{3}decision_label\0\u{3}decision_allowed\0\u{1}images\0\u{3}background_kind\0\u{3}background_id\0\u{1}seq\0\u{3}image_views\0")
 
   fileprivate class _StorageClass {
     var _callID: String = String()
@@ -9227,6 +9437,7 @@ extension PBSessionToolCallItem: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _decisionAllowed: Bool = false
     var _images: [PBImageRef] = []
     var _seq: UInt64 = 0
+    var _imageViews: [PBSessionImageView] = []
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -9259,6 +9470,7 @@ extension PBSessionToolCallItem: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _decisionAllowed = source._decisionAllowed
       _images = source._images
       _seq = source._seq
+      _imageViews = source._imageViews
     }
   }
 
@@ -9299,6 +9511,7 @@ extension PBSessionToolCallItem: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 20: try { try decoder.decodeSingularEnumField(value: &_storage._backgroundKind) }()
         case 21: try { try decoder.decodeSingularStringField(value: &_storage._backgroundID) }()
         case 22: try { try decoder.decodeSingularUInt64Field(value: &_storage._seq) }()
+        case 23: try { try decoder.decodeRepeatedMessageField(value: &_storage._imageViews) }()
         default: break
         }
       }
@@ -9377,6 +9590,9 @@ extension PBSessionToolCallItem: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       if _storage._seq != 0 {
         try visitor.visitSingularUInt64Field(value: _storage._seq, fieldNumber: 22)
       }
+      if !_storage._imageViews.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._imageViews, fieldNumber: 23)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -9408,6 +9624,7 @@ extension PBSessionToolCallItem: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._decisionAllowed != rhs_storage._decisionAllowed {return false}
         if _storage._images != rhs_storage._images {return false}
         if _storage._seq != rhs_storage._seq {return false}
+        if _storage._imageViews != rhs_storage._imageViews {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -9872,7 +10089,7 @@ extension PBSessionSharedFilesItem: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 extension PBSessionGeneratedImagesItem: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionGeneratedImagesItem"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}revised_prompt\0\u{1}images\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}revised_prompt\0\u{1}images\0\u{4}\u{12}image_views\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -9882,6 +10099,7 @@ extension PBSessionGeneratedImagesItem: SwiftProtobuf.Message, SwiftProtobuf._Me
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.revisedPrompt) }()
       case 2: try { try decoder.decodeRepeatedMessageField(value: &self.images) }()
+      case 20: try { try decoder.decodeRepeatedMessageField(value: &self.imageViews) }()
       default: break
       }
     }
@@ -9894,12 +10112,16 @@ extension PBSessionGeneratedImagesItem: SwiftProtobuf.Message, SwiftProtobuf._Me
     if !self.images.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.images, fieldNumber: 2)
     }
+    if !self.imageViews.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.imageViews, fieldNumber: 20)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBSessionGeneratedImagesItem, rhs: PBSessionGeneratedImagesItem) -> Bool {
     if lhs.revisedPrompt != rhs.revisedPrompt {return false}
     if lhs.images != rhs.images {return false}
+    if lhs.imageViews != rhs.imageViews {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -9907,7 +10129,7 @@ extension PBSessionGeneratedImagesItem: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 extension PBSessionViewerImageView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionViewerImageView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}viewer_index\0\u{1}seq\0\u{3}event_image_index\0\u{3}timestamp_ms\0\u{1}kind\0\u{1}ref\0\u{3}tool_title\0\u{3}revised_prompt\0\u{3}source_label\0\u{3}size_text\0\u{3}aspect_ratio\0\u{3}clamped_aspect_ratio\0\u{3}has_display_copy\0\u{3}display_name\0\u{3}display_path\0\u{3}file_extension\0\u{3}mime_type\0\u{3}in_collapsed_group\0\u{3}download_name\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}viewer_index\0\u{1}seq\0\u{3}event_image_index\0\u{3}timestamp_ms\0\u{1}kind\0\u{1}ref\0\u{3}tool_title\0\u{3}revised_prompt\0\u{3}source_label\0\u{3}size_text\0\u{3}aspect_ratio\0\u{3}clamped_aspect_ratio\0\u{3}has_display_copy\0\u{3}display_name\0\u{3}display_path\0\u{3}file_extension\0\u{3}mime_type\0\u{3}in_collapsed_group\0\u{3}download_name\0\u{3}image_id\0\u{3}sync_state\0\u{1}width\0\u{1}height\0\u{1}preview\0\u{3}preview_format\0")
 
   fileprivate class _StorageClass {
     var _viewerIndex: Int32 = 0
@@ -9929,6 +10151,12 @@ extension PBSessionViewerImageView: SwiftProtobuf.Message, SwiftProtobuf._Messag
     var _mimeType: String = String()
     var _inCollapsedGroup: Bool = false
     var _downloadName: String = String()
+    var _imageID: String = String()
+    var _syncState: PBSessionImageSyncState = .unspecified
+    var _width: Int32 = 0
+    var _height: Int32 = 0
+    var _preview: Data = Data()
+    var _previewFormat: PBImageFormat = .unspecified
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -9958,6 +10186,12 @@ extension PBSessionViewerImageView: SwiftProtobuf.Message, SwiftProtobuf._Messag
       _mimeType = source._mimeType
       _inCollapsedGroup = source._inCollapsedGroup
       _downloadName = source._downloadName
+      _imageID = source._imageID
+      _syncState = source._syncState
+      _width = source._width
+      _height = source._height
+      _preview = source._preview
+      _previewFormat = source._previewFormat
     }
   }
 
@@ -9995,6 +10229,12 @@ extension PBSessionViewerImageView: SwiftProtobuf.Message, SwiftProtobuf._Messag
         case 17: try { try decoder.decodeSingularStringField(value: &_storage._mimeType) }()
         case 18: try { try decoder.decodeSingularBoolField(value: &_storage._inCollapsedGroup) }()
         case 19: try { try decoder.decodeSingularStringField(value: &_storage._downloadName) }()
+        case 20: try { try decoder.decodeSingularStringField(value: &_storage._imageID) }()
+        case 21: try { try decoder.decodeSingularEnumField(value: &_storage._syncState) }()
+        case 22: try { try decoder.decodeSingularInt32Field(value: &_storage._width) }()
+        case 23: try { try decoder.decodeSingularInt32Field(value: &_storage._height) }()
+        case 24: try { try decoder.decodeSingularBytesField(value: &_storage._preview) }()
+        case 25: try { try decoder.decodeSingularEnumField(value: &_storage._previewFormat) }()
         default: break
         }
       }
@@ -10064,6 +10304,24 @@ extension PBSessionViewerImageView: SwiftProtobuf.Message, SwiftProtobuf._Messag
       if !_storage._downloadName.isEmpty {
         try visitor.visitSingularStringField(value: _storage._downloadName, fieldNumber: 19)
       }
+      if !_storage._imageID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._imageID, fieldNumber: 20)
+      }
+      if _storage._syncState != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._syncState, fieldNumber: 21)
+      }
+      if _storage._width != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._width, fieldNumber: 22)
+      }
+      if _storage._height != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._height, fieldNumber: 23)
+      }
+      if !_storage._preview.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._preview, fieldNumber: 24)
+      }
+      if _storage._previewFormat != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._previewFormat, fieldNumber: 25)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -10092,6 +10350,12 @@ extension PBSessionViewerImageView: SwiftProtobuf.Message, SwiftProtobuf._Messag
         if _storage._mimeType != rhs_storage._mimeType {return false}
         if _storage._inCollapsedGroup != rhs_storage._inCollapsedGroup {return false}
         if _storage._downloadName != rhs_storage._downloadName {return false}
+        if _storage._imageID != rhs_storage._imageID {return false}
+        if _storage._syncState != rhs_storage._syncState {return false}
+        if _storage._width != rhs_storage._width {return false}
+        if _storage._height != rhs_storage._height {return false}
+        if _storage._preview != rhs_storage._preview {return false}
+        if _storage._previewFormat != rhs_storage._previewFormat {return false}
         return true
       }
       if !storagesAreEqual {return false}

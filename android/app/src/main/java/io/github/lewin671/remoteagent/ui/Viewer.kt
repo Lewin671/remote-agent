@@ -51,16 +51,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import com.google.protobuf.ByteString
 import io.github.lewin671.remoteagent.core.RETIRED_HISTORY_ERROR
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.proto.ConnState as CoreConnState
+import io.github.lewin671.remoteagent.core.proto.SessionImageSyncState
+import io.github.lewin671.remoteagent.core.proto.SessionImageView
 import io.github.lewin671.remoteagent.core.proto.SessionTimelineItem
 import io.github.lewin671.remoteagent.core.proto.SessionViewModel
 import io.github.lewin671.remoteagent.core.proto.SessionViewerImageView
 import io.github.lewin671.remoteagent.proto.ImageFormat
-import io.github.lewin671.remoteagent.proto.ImageRef
-import io.github.lewin671.remoteagent.proto.ImageSync
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.Dispatchers
@@ -173,7 +174,7 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
                 remote = remote,
                 sid = sid,
                 img = cur,
-                previewRef = previewsById[cur.ref.imageId] ?: cur.ref,
+                previewBytes = previewsById[cur.imageId] ?: cur.preview,
                 online = vm.header.connState == CoreConnState.CONN_STATE_CONNECTED,
             )
         },
@@ -199,26 +200,26 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
             if (meta.isNotEmpty()) {
                 Text(meta, color = Color(0xFFB9BFC6), style = T.s13)
             }
-            ViewerActions(remote, sid, cur, previewsById[cur.ref.imageId] ?: cur.ref)
+            ViewerActions(remote, sid, cur, previewsById[cur.imageId] ?: cur.preview)
         },
     )
 }
 
-private fun indexPreviewsById(items: List<SessionTimelineItem>): Map<String, ImageRef> = buildMap {
-    fun record(refs: List<ImageRef>) {
-        for (ref in refs) {
-            if (ref.imageId.isNotEmpty() && !ref.preview.isEmpty) {
-                put(ref.imageId, ref)
+private fun indexPreviewsById(items: List<SessionTimelineItem>): Map<String, ByteString> = buildMap {
+    fun record(images: List<SessionImageView>) {
+        for (img in images) {
+            if (img.imageId.isNotEmpty() && !img.preview.isEmpty) {
+                put(img.imageId, img.preview)
             }
         }
     }
     fun visit(list: List<SessionTimelineItem>) {
         for (item in list) {
             when (item.kindCase) {
-                SessionTimelineItem.KindCase.USER_MESSAGE -> record(item.userMessage.imagesList)
-                SessionTimelineItem.KindCase.TOOL_CALL -> record(item.toolCall.imagesList)
-                SessionTimelineItem.KindCase.TOOL_GROUP -> item.toolGroup.callsList.forEach { record(it.imagesList) }
-                SessionTimelineItem.KindCase.GENERATED_IMAGES -> record(item.generatedImages.imagesList)
+                SessionTimelineItem.KindCase.USER_MESSAGE -> record(item.userMessage.imageViewsList)
+                SessionTimelineItem.KindCase.TOOL_CALL -> record(item.toolCall.imageViewsList)
+                SessionTimelineItem.KindCase.TOOL_GROUP -> item.toolGroup.callsList.forEach { record(it.imageViewsList) }
+                SessionTimelineItem.KindCase.GENERATED_IMAGES -> record(item.generatedImages.imageViewsList)
                 SessionTimelineItem.KindCase.QUIET_SCHEDULED_GROUP -> visit(item.quietScheduledGroup.itemsList)
                 else -> Unit
             }
@@ -308,28 +309,27 @@ private fun ViewerPage(
     remote: Remote,
     sid: String,
     img: SessionViewerImageView,
-    previewRef: ImageRef,
+    previewBytes: ByteString,
     online: Boolean,
 ) {
     val copy = uiText()
-    val ref = img.ref
-    val preview = rememberPreview(previewRef)
-    var big by remember(ref.imageId, img.hasDisplayCopy) { mutableStateOf<Big>(Big.Loading) }
+    val preview = rememberPreviewBytes(img.imageId.ifEmpty { img.displayName }, previewBytes)
+    var big by remember(img.imageId, img.hasDisplayCopy) { mutableStateOf<Big>(Big.Loading) }
     var attempt by remember { mutableIntStateOf(0) }
-    LaunchedEffect(ref.imageId, img.hasDisplayCopy, attempt, online) {
+    LaunchedEffect(img.imageId, img.hasDisplayCopy, attempt, online) {
         big = load(remote, sid, img, online)
     }
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val b = big
         val bmp = (b as? Big.Ready)?.bitmap ?: preview
-        val label = img.displayName.ifEmpty { ref.path.ifEmpty { copy(UiMessages.imageTitle()) } }
+        val label = img.displayName.ifEmpty { img.displayPath.ifEmpty { copy(UiMessages.imageTitle()) } }
         if (bmp != null) ViewerBitmap(bmp, label)
         else Text(label, color = Color.White)
         val note = when (b) {
             Big.Loading -> null
             is Big.Ready -> null
             Big.NotSynced ->
-                if (ref.sync == ImageSync.IMAGE_SYNC_NAME_ONLY) copy(UiMessages.imageAndroidNameOnly())
+                if (img.syncState == SessionImageSyncState.SESSION_IMAGE_SYNC_STATE_NAME_ONLY) copy(UiMessages.imageAndroidNameOnly())
                 else copy(UiMessages.imageOriginalOnComputer())
             Big.Expired -> copy(UiMessages.imageOriginalExpired())
             Big.Offline -> copy(UiMessages.imageLoadConnected())
@@ -376,18 +376,17 @@ internal fun ViewerBitmap(bitmap: ImageBitmap, label: String) {
 }
 
 private suspend fun load(remote: Remote, sid: String, img: SessionViewerImageView, online: Boolean): Big {
-    val ref = img.ref
-    if (!img.hasDisplayCopy || ref.imageId.isEmpty()) return Big.NotSynced
-    ViewerImages.get(remote, "$sid/${ref.imageId}")?.let { return it }
+    if (!img.hasDisplayCopy || img.imageId.isEmpty()) return Big.NotSynced
+    ViewerImages.get(remote, "$sid/${img.imageId}")?.let { return it }
     return try {
-        when (val r = remote.image(sid, ref.imageId)) {
+        when (val r = remote.image(sid, img.imageId)) {
             is Remote.ImageResult.Loaded -> {
                 val bytes = r.payload.data.toByteArray()
                 val bmp = withContext(Dispatchers.Default) {
                     BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
                 } ?: return Big.Corrupt(io.github.lewin671.remoteagent.core.MessageText.Message(UiMessages.imageAndroidCannotDecodeImage()))
                 Big.Ready(bmp.asImageBitmap(), bytes, r.payload.format).also {
-                    ViewerImages.put(remote, "$sid/${ref.imageId}", it)
+                    ViewerImages.put(remote, "$sid/${img.imageId}", it)
                 }
             }
             Remote.ImageResult.Expired -> Big.Expired
@@ -410,18 +409,18 @@ private fun ViewerActions(
     remote: Remote,
     sid: String,
     img: SessionViewerImageView,
-    previewRef: ImageRef,
+    previewBytes: ByteString,
 ) {
     val copy = uiText()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var msg by remember(img.ref.imageId) { mutableStateOf("") }
+    var msg by remember(img.imageId) { mutableStateOf("") }
     val mime = img.mimeType.ifEmpty { "image/jpeg" }
     val downloadName = img.downloadName
 
     fun bytes(): ByteArray? {
-        ViewerImages.get(remote, "$sid/${img.ref.imageId}")?.let { return it.bytes }
-        val p = previewRef.preview.toByteArray()
+        ViewerImages.get(remote, "$sid/${img.imageId}")?.let { return it.bytes }
+        val p = previewBytes.toByteArray()
         return if (p.isEmpty()) null else p
     }
 
