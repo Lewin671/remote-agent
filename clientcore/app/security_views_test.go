@@ -593,6 +593,194 @@ func bootstrapCoreToReady(t *testing.T, c *Core, server, locale string, nowMs in
 	return recBytes, devEdPub, devXPub, devXPriv, deviceID
 }
 
+// bootstrapCoreToReadyWithMachine extends bootstrapCoreToReady with a trusted Machine member at epoch 2
+// so SealEnvelopeTag(devicesec.Command) can seal Forward commands targeting machineID.
+func bootstrapCoreToReadyWithMachine(t *testing.T, c *Core, server, locale string, nowMs int64) (
+	recBytes []byte,
+	devEdPub []byte,
+	devXPub []byte,
+	devXPriv *ecdh.PrivateKey,
+	deviceID string,
+	machineID string,
+) {
+	t.Helper()
+	edPub, edPriv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	xPriv, err := ecdh.X25519().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	xPub := xPriv.PublicKey().Bytes()
+	mEdPub, _, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mXPriv, err := ecdh.X25519().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mXPub := mXPriv.PublicKey().Bytes()
+	recEdPub, _, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientMember, err := devicesec.NewMember(edPub, xPub, devicesec.Client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	machineMember, err := devicesec.NewMember(mEdPub, mXPub, devicesec.Machine)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deviceID = clientMember.ID
+	machineID = machineMember.ID
+	domain := devicesec.Digest("test-domain-m", edPub)
+	var epochSecret [32]byte
+	if _, err := rand.Read(epochSecret[:]); err != nil {
+		t.Fatal(err)
+	}
+	u0, err := devicesec.NewGenesis(deviceID, domain, clientMember, [32]byte(recEdPub), epochSecret[:], uint64(nowMs-2_000), appTestHPKE{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb0, err := u0.SigningBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	u0.Signature = ed25519.Sign(edPriv, sb0)
+	s0Raw, err := u0.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s0, err := devicesec.ParseState(s0Raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u1, err := devicesec.NewMembershipState(s0, []devicesec.Member{clientMember, machineMember}, nil, epochSecret[:], epochSecret[:], uint64(nowMs-1_000), appTestHPKE{}, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb1, err := u1.SigningBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	u1.Signature = ed25519.Sign(edPriv, sb1)
+	s1Raw, err := u1.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s1, err := devicesec.ParseState(s1Raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pin, err := s0.Pin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	lease, err := devicesec.NewLease(s1, uint64(nowMs-1_000))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lb, err := lease.SigningBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	lease.Signature = ed25519.Sign(edPriv, lb)
+	leaseRaw, err := lease.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := &security.PersistedRecord{
+		Server:         server,
+		Pin:            pin,
+		MemberID:       deviceID,
+		Member:         true,
+		States:         [][]byte{s0Raw, s1Raw},
+		RecoveryProofs: [][]byte{nil, nil},
+		Lease:          leaseRaw,
+	}
+	recBytes, err = rec.Encode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	devEdPub, devXPub, devXPriv = edPub, xPub, xPriv
+	batch := c.Dispatch(&corev1.Event{
+		NowMs:  nowMs,
+		MonoMs: nowMs,
+		Event: &corev1.Event_ClientInit{
+			ClientInit: &corev1.ClientInitEvent{
+				UiLocale:              locale,
+				Platform:              "web",
+				DeviceDescription:     "Chrome",
+				InlineCrypto:          true,
+				Foreground:            true,
+				NetworkAvailable:      true,
+				DefaultServer:         server,
+				RequestStoragePersist: false,
+			},
+		},
+	})
+	bootEff := findStorageEffect(batch, corev1.SecurityStorageOp_SECURITY_STORAGE_OP_READ_BOOTSTRAP)
+	if bootEff == nil {
+		t.Fatal("expected READ_BOOTSTRAP on ClientInit")
+	}
+	cur := c.Dispatch(&corev1.Event{
+		NowMs:  nowMs + 10,
+		MonoMs: nowMs + 10,
+		Event: &corev1.Event_SecurityStorageResult{
+			SecurityStorageResult: &corev1.SecurityStorageResultEvent{
+				OpId:        bootEff.OpId,
+				HasDeviceEd: true,
+				DeviceEdPub: devEdPub,
+				HasDeviceX:  true,
+				DeviceXPub:  devXPub,
+				Entries: []*corev1.SecurityStorageEntry{{
+					Bucket:   corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_RECORD,
+					Key:      "record",
+					Revision: "1",
+					Data:     recBytes,
+				}},
+			},
+		},
+	})
+	for step := 0; step < 6; step++ {
+		var ka *corev1.SecurityKeyAgreeEffect
+		for _, eff := range cur.Effects {
+			if g := eff.GetSecurityKeyAgree(); g != nil {
+				ka = g
+				break
+			}
+		}
+		if ka == nil {
+			break
+		}
+		peerPub, err := ecdh.X25519().NewPublicKey(ka.PeerPublic)
+		if err != nil {
+			t.Fatalf("peer pubkey: %v", err)
+		}
+		shared, err := devXPriv.ECDH(peerPub)
+		if err != nil {
+			t.Fatalf("ecdh: %v", err)
+		}
+		cur = c.Dispatch(&corev1.Event{
+			NowMs:  nowMs + 20 + int64(step),
+			MonoMs: nowMs + 20 + int64(step),
+			Event: &corev1.Event_SecurityKeyAgreed{
+				SecurityKeyAgreed: &corev1.SecurityKeyAgreedEvent{
+					OpId:   ka.OpId,
+					Shared: shared,
+				},
+			},
+		})
+	}
+	if vm := mustViewAppRoot(t, c); vm.Stage != corev1.AppRootStage_APP_ROOT_STAGE_READY {
+		t.Fatalf("expected READY after bootstrapCoreToReadyWithMachine, got %v", vm.Stage)
+	}
+	return recBytes, devEdPub, devXPub, devXPriv, deviceID, machineID
+}
+
 func TestTwoPhaseExitRiskReCheckAndFullIsolationReset(t *testing.T) {
 	c := New()
 	// 1. Reach READY through real ClientInit + signed v4 PersistedRecord + X25519 unlock (never mutating sc.ui.Stage).
@@ -1514,5 +1702,1020 @@ func TestAccountSecurityAndHandoffAndAddDeviceViewModels(t *testing.T) {
 	bCap := screens.BuildJoinBannerState(nil, corev1.SecurityErrorCode_SECURITY_ERROR_CODE_CAPACITY, 0, false, false, "")
 	if bCap.Action != corev1.SecurityBannerAction_SECURITY_BANNER_ACTION_NONE {
 		t.Fatalf("capacity banner = %+v", bCap)
+	}
+}
+
+func TestExitInvalidatesRelayPipeAuthAndDropsLateLogin(t *testing.T) {
+	t.Run("SharedCanceledAndNonSharedBlockedByAccountGen", func(t *testing.T) {
+		c := New()
+		c.Dispatch(&corev1.Event{
+			NowMs: 49_900,
+			Event: &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true}},
+		})
+		if !c.m.sync.RelayPipeEnabled() {
+			t.Fatal("expected RelayPipeEnabled() == true after RelayPipeConfigEvent")
+		}
+		recBytes, devEdPub, devXPub, _, _ := bootstrapCoreToReady(t, c, "https://acct-pipe.example.com", "en", 50_000)
+		randBytes := make([]byte, 256)
+		_, _ = rand.Read(randBytes)
+		c.Dispatch(&corev1.Event{
+			NowMs: 50_050,
+			Event: &corev1.Event_EntropyProvided{EntropyProvided: &corev1.EntropyProvided{
+				RandomIds: []string{"id-1", "id-2"}, UnitFloats: []float64{0.5}, RandomBytes: randBytes,
+			}},
+		})
+
+		// 1. Start sync so P2-5 shared login (EnsureAuthTokenTag) reaches in-flight LOGIN.
+		startBatch := c.Dispatch(&corev1.Event{
+			NowMs:  50_100,
+			MonoMs: 50_100,
+			Event: &corev1.Event_SyncLifecycle{
+				SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
+			},
+		})
+		var sharedChalOpID uint64
+		if warmBoot := findStorageEffect(startBatch, corev1.SecurityStorageOp_SECURITY_STORAGE_OP_READ_BOOTSTRAP); warmBoot != nil {
+			b2 := c.Dispatch(&corev1.Event{
+				NowMs: 50_110,
+				Event: &corev1.Event_SecurityStorageResult{SecurityStorageResult: &corev1.SecurityStorageResultEvent{
+					OpId: warmBoot.OpId, HasDeviceEd: true, DeviceEdPub: devEdPub, HasDeviceX: true, DeviceXPub: devXPub,
+					Entries: []*corev1.SecurityStorageEntry{{Bucket: corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_RECORD, Key: "record", Revision: "1", Data: recBytes}},
+				}},
+			})
+			for _, eff := range b2.Effects {
+				if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_CHALLENGE {
+					sharedChalOpID = rpc.OpId
+				}
+			}
+		} else {
+			for _, eff := range startBatch.Effects {
+				if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_CHALLENGE {
+					sharedChalOpID = rpc.OpId
+				}
+			}
+		}
+		if sharedChalOpID == 0 {
+			t.Fatal("expected GET_CHALLENGE RelayRpcEffect from P2-5 EnsureAuthTokenTag")
+		}
+		chalBytes, _ := proto.Marshal(&pb.GetChallengeResponse{Challenge: []byte("pipe-challenge-1234567890")})
+		signBatch := c.Dispatch(&corev1.Event{
+			NowMs: 50_120,
+			Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId: sharedChalOpID, ResponseBytes: chalBytes,
+			}},
+		})
+		var sharedSignOpID uint64
+		for _, eff := range signBatch.Effects {
+			if sig := eff.GetSecurityKeySign(); sig != nil {
+				sharedSignOpID = sig.OpId
+			}
+		}
+		if sharedSignOpID == 0 {
+			t.Fatal("expected SecurityKeySignEffect for P2-5 shared login challenge")
+		}
+		loginBatch := c.Dispatch(&corev1.Event{
+			NowMs: 50_130,
+			Event: &corev1.Event_SecurityKeySigned{SecurityKeySigned: &corev1.SecurityKeySignedEvent{
+				OpId: sharedSignOpID, Signature: make([]byte, ed25519.SignatureSize),
+			}},
+		})
+		var sharedLoginOpID uint64
+		for _, eff := range loginBatch.Effects {
+			if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_LOGIN {
+				sharedLoginOpID = rpc.OpId
+			}
+		}
+		if sharedLoginOpID == 0 {
+			t.Fatal("expected in-flight shared LOGIN RelayRpcEffect")
+		}
+
+		// 2. Also start a foreground DeleteAccount action: first let its syncStates complete with a temporary token,
+		// clear the token right before GET_SECURITY_STATES returns, so delAcctChallenge calls callAuthedProtoRPC(..., fgGen)
+		// which invokes forceLoginToken(..., fgCheck=true, cacheResult=true) -> a NON-SHARED loginTokenTask on the P2-5 pipe.
+		// Because it is non-shared, InvalidateAccountAuth() does NOT cancel/unregister its op from e.tasks:
+		// when the late LOGIN response arrives, loginTokenTask.step() executes and ONLY accountGen stops it.
+		// Bump fgGen > 0 so callAuthedProtoRPC(..., t.fgGen, ...) sets fgCheck=true and takes forceLoginToken (non-shared).
+		c.Dispatch(&corev1.Event{
+			NowMs: 50_132,
+			Event: &corev1.Event_SecurityForeground{SecurityForeground: &corev1.SecurityForegroundEvent{Foreground: false}},
+		})
+		c.Dispatch(&corev1.Event{
+			NowMs: 50_133,
+			Event: &corev1.Event_SecurityForeground{SecurityForeground: &corev1.SecurityForegroundEvent{Foreground: true}},
+		})
+		c.m.sync.SecurityEngine().SetAuthToken("tmp-sync-tok", 999_999_999)
+		delBatch := c.Dispatch(&corev1.Event{
+			NowMs: 50_135,
+			Event: &corev1.Event_SecurityAction{SecurityAction: &corev1.SecurityWorkflowActionEvent{
+				ActionId: 76,
+				Action:   &corev1.SecurityWorkflowActionEvent_DeleteAccount{DeleteAccount: &corev1.SecurityActionEmpty{}},
+			}},
+		})
+		var syncStatesOpID uint64
+		for _, eff := range delBatch.Effects {
+			if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SECURITY_STATES {
+				syncStatesOpID = rpc.OpId
+			}
+		}
+		if syncStatesOpID == 0 {
+			t.Fatalf("expected GET_SECURITY_STATES from DeleteAccount, got %+v", delBatch.Effects)
+		}
+		// Clear cached token before GET_SECURITY_STATES finishes so delAcctChallenge takes the non-shared forceLoginToken path.
+		c.m.sync.SecurityEngine().SetAuthToken("", 0)
+		statesBytes, _ := proto.Marshal(&pb.GetSecurityStatesResponse{HeadEpoch: 1})
+		nsChalBatch := c.Dispatch(&corev1.Event{
+			NowMs: 50_145,
+			Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId:          syncStatesOpID,
+				ResponseBytes: statesBytes,
+			}},
+		})
+		var nsChalOpID uint64
+		for _, eff := range nsChalBatch.Effects {
+			if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_CHALLENGE {
+				nsChalOpID = rpc.OpId
+			}
+		}
+		if nsChalOpID == 0 {
+			t.Logf("syncStatesOpID=%d", syncStatesOpID)
+			for _, eff := range nsChalBatch.Effects {
+				t.Logf("nsChalBatch eff: %T %+v", eff.Effect, eff.Effect)
+			}
+			t.Fatal("expected GET_CHALLENGE RelayRpcEffect for non-shared foreground loginTokenTask")
+		}
+		nsChalBytes, _ := proto.Marshal(&pb.GetChallengeResponse{Challenge: []byte("nonshared-chal-1234567890")})
+		nsSignBatch := c.Dispatch(&corev1.Event{
+			NowMs: 50_150,
+			Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId: nsChalOpID, ResponseBytes: nsChalBytes,
+			}},
+		})
+		var nsSignOpID uint64
+		for _, eff := range nsSignBatch.Effects {
+			if sig := eff.GetSecurityKeySign(); sig != nil {
+				nsSignOpID = sig.OpId
+			}
+		}
+		if nsSignOpID == 0 {
+			t.Fatal("expected SecurityKeySignEffect for non-shared foreground loginTokenTask")
+		}
+		nsLoginBatch := c.Dispatch(&corev1.Event{
+			NowMs: 50_155,
+			Event: &corev1.Event_SecurityKeySigned{SecurityKeySigned: &corev1.SecurityKeySignedEvent{
+				OpId: nsSignOpID, Signature: make([]byte, ed25519.SignatureSize),
+			}},
+		})
+		var nsLoginOpID uint64
+		for _, eff := range nsLoginBatch.Effects {
+			if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_LOGIN {
+				nsLoginOpID = rpc.OpId
+			}
+		}
+		if nsLoginOpID == 0 || nsLoginOpID == sharedLoginOpID {
+			t.Fatalf("expected distinct in-flight non-shared LOGIN RelayRpcEffect, got %d (shared=%d)", nsLoginOpID, sharedLoginOpID)
+		}
+
+		// 3. Begin exit while both LOGIN RPCs are in flight -> 3s timeout fires -> proceedExitClearSecurity invalidates auth.
+		reqBatch := c.Dispatch(&corev1.Event{
+			NowMs: 50_200,
+			Event: &corev1.Event_ExitRequest{ExitRequest: &corev1.ExitRequestAction{Intent: corev1.ExitIntentKind_EXIT_INTENT_KIND_LEAVE_ACCOUNT}},
+		})
+		adv1 := findStorageEffect(reqBatch, corev1.SecurityStorageOp_SECURITY_STORAGE_OP_READ_BOOTSTRAP)
+		c.Dispatch(&corev1.Event{
+			NowMs: 50_210,
+			Event: &corev1.Event_SecurityStorageResult{SecurityStorageResult: &corev1.SecurityStorageResultEvent{
+				OpId: adv1.OpId, HasDeviceEd: true, DeviceEdPub: devEdPub, HasDeviceX: true, DeviceXPub: devXPub,
+				Entries: []*corev1.SecurityStorageEntry{{Bucket: corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_RECORD, Key: "record", Revision: "1", Data: recBytes}},
+			}},
+		})
+		confBatch := c.Dispatch(&corev1.Event{
+			NowMs: 50_220,
+			Event: &corev1.Event_ExitConfirm{ExitConfirm: &corev1.ExitConfirmAction{Confirm: true}},
+		})
+		adv2 := findStorageEffect(confBatch, corev1.SecurityStorageOp_SECURITY_STORAGE_OP_READ_BOOTSTRAP)
+		execBatch := c.Dispatch(&corev1.Event{
+			NowMs: 50_230,
+			Event: &corev1.Event_SecurityStorageResult{SecurityStorageResult: &corev1.SecurityStorageResultEvent{
+				OpId: adv2.OpId, HasDeviceEd: true, DeviceEdPub: devEdPub, HasDeviceX: true, DeviceXPub: devXPub,
+				Entries: []*corev1.SecurityStorageEntry{{Bucket: corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_RECORD, Key: "record", Revision: "1", Data: recBytes}},
+			}},
+		})
+		var timerID uint64
+		for _, eff := range execBatch.Effects {
+			if te := eff.GetScheduleTimer(); te != nil && te.Key == exitPushUnregisterTimerKey {
+				timerID = te.TimerId
+			}
+		}
+		if timerID == 0 {
+			t.Fatal("expected 3s exit push-unregister timer")
+		}
+		timeoutBatch := c.Dispatch(&corev1.Event{
+			NowMs:  53_300,
+			MonoMs: 53_300,
+			Event: &corev1.Event_TimerFired{TimerFired: &corev1.TimerFiredEvent{
+				Kind: corev1.TimerKind_TIMER_KIND_UI_TRANSIENT, Key: exitPushUnregisterTimerKey, TimerId: timerID,
+			}},
+		})
+		canceledShared := false
+		canceledNonShared := false
+		for _, eff := range timeoutBatch.Effects {
+			if cxl := eff.GetRelayRpcCancel(); cxl != nil {
+				if cxl.OpId == sharedLoginOpID {
+					canceledShared = true
+				}
+				if cxl.OpId == nsLoginOpID {
+					canceledNonShared = true
+				}
+			}
+		}
+		if !canceledShared {
+			t.Fatalf("expected RelayRpcCancelEffect for in-flight shared LOGIN op %d on exit", sharedLoginOpID)
+		}
+		if canceledNonShared {
+			t.Fatalf("non-shared LOGIN op %d should remain registered so accountGen guard is exercised", nsLoginOpID)
+		}
+
+		// 4. Late LOGIN response arrives for the still-registered NON-SHARED op: ONLY accountGen in loginTokenTask.step()
+		// can block it from caching the token, emitting SecurityTokenUpdatedEffect, and starting CREATE_PAIRING.
+		loginRespBytes, _ := proto.Marshal(&pb.LoginResponse{Token: "stale-nonshared-token-must-be-dropped", ExpiresMs: 999_999_999})
+		lateBatch := c.Dispatch(&corev1.Event{
+			NowMs: 53_350,
+			Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId: nsLoginOpID, ResponseBytes: loginRespBytes,
+			}},
+		})
+		for _, eff := range lateBatch.Effects {
+			if eff.GetSecurityTokenUpdated() != nil {
+				t.Fatalf("late non-shared P2-5 login after exit must NOT emit SecurityTokenUpdatedEffect: %+v", eff.GetSecurityTokenUpdated())
+			}
+			if eff.GetSecurityStorage() != nil {
+				t.Fatalf("late non-shared P2-5 login after exit must NOT write storage: %+v", eff.GetSecurityStorage())
+			}
+			if eff.GetRelayRpc() != nil {
+				t.Fatalf("late non-shared P2-5 login after exit must NOT start new RelayRpcEffect: %+v", eff.GetRelayRpc())
+			}
+		}
+		if tok := c.m.sync.SecurityEngine().CachedAuthToken(); tok != "" {
+			t.Fatalf("expected empty cached auth token after late non-shared P2-5 login, got %q", tok)
+		}
+	})
+
+	t.Run("WarmTokenBlockedByAccountGen", func(t *testing.T) {
+		c := New()
+		c.Dispatch(&corev1.Event{
+			NowMs: 54_900,
+			Event: &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true}},
+		})
+		recBytes, devEdPub, devXPub, _, _ := bootstrapCoreToReady(t, c, "https://acct-warm.example.com", "en", 55_000)
+
+		// Start sync -> EnsureAuthTokenTag issues READ_BOOTSTRAP via warmTokenTask (remains registered in e.tasks).
+		startBatch := c.Dispatch(&corev1.Event{
+			NowMs:  55_100,
+			MonoMs: 55_100,
+			Event: &corev1.Event_SyncLifecycle{
+				SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
+			},
+		})
+		warmBoot := findStorageEffect(startBatch, corev1.SecurityStorageOp_SECURITY_STORAGE_OP_READ_BOOTSTRAP)
+		if warmBoot == nil {
+			t.Fatal("expected READ_BOOTSTRAP from warmTokenTask on P2-5 sync start")
+		}
+
+		// Begin exit -> 3s timeout -> proceedExitClearSecurity -> InvalidateAccountAuth bumps accountGen.
+		reqBatch := c.Dispatch(&corev1.Event{
+			NowMs: 55_200,
+			Event: &corev1.Event_ExitRequest{ExitRequest: &corev1.ExitRequestAction{Intent: corev1.ExitIntentKind_EXIT_INTENT_KIND_LEAVE_ACCOUNT}},
+		})
+		adv1 := findStorageEffect(reqBatch, corev1.SecurityStorageOp_SECURITY_STORAGE_OP_READ_BOOTSTRAP)
+		c.Dispatch(&corev1.Event{
+			NowMs: 55_210,
+			Event: &corev1.Event_SecurityStorageResult{SecurityStorageResult: &corev1.SecurityStorageResultEvent{
+				OpId: adv1.OpId, HasDeviceEd: true, DeviceEdPub: devEdPub, HasDeviceX: true, DeviceXPub: devXPub,
+				Entries: []*corev1.SecurityStorageEntry{{Bucket: corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_RECORD, Key: "record", Revision: "1", Data: recBytes}},
+			}},
+		})
+		confBatch := c.Dispatch(&corev1.Event{
+			NowMs: 55_220,
+			Event: &corev1.Event_ExitConfirm{ExitConfirm: &corev1.ExitConfirmAction{Confirm: true}},
+		})
+		adv2 := findStorageEffect(confBatch, corev1.SecurityStorageOp_SECURITY_STORAGE_OP_READ_BOOTSTRAP)
+		execBatch := c.Dispatch(&corev1.Event{
+			NowMs: 55_230,
+			Event: &corev1.Event_SecurityStorageResult{SecurityStorageResult: &corev1.SecurityStorageResultEvent{
+				OpId: adv2.OpId, HasDeviceEd: true, DeviceEdPub: devEdPub, HasDeviceX: true, DeviceXPub: devXPub,
+				Entries: []*corev1.SecurityStorageEntry{{Bucket: corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_RECORD, Key: "record", Revision: "1", Data: recBytes}},
+			}},
+		})
+		var timerID uint64
+		for _, eff := range execBatch.Effects {
+			if te := eff.GetScheduleTimer(); te != nil && te.Key == exitPushUnregisterTimerKey {
+				timerID = te.TimerId
+			}
+		}
+		if timerID == 0 {
+			t.Fatal("expected 3s exit push-unregister timer")
+		}
+		c.Dispatch(&corev1.Event{
+			NowMs:  58_300,
+			MonoMs: 58_300,
+			Event: &corev1.Event_TimerFired{TimerFired: &corev1.TimerFiredEvent{
+				Kind: corev1.TimerKind_TIMER_KIND_UI_TRANSIENT, Key: exitPushUnregisterTimerKey, TimerId: timerID,
+			}},
+		})
+
+		// Deliver late READ_BOOTSTRAP with a fresh persisted LoginToken: ONLY warmTokenTask.step accountGen check blocks it.
+		lateWarm := c.Dispatch(&corev1.Event{
+			NowMs: 58_350,
+			Event: &corev1.Event_SecurityStorageResult{SecurityStorageResult: &corev1.SecurityStorageResultEvent{
+				OpId:                warmBoot.OpId,
+				LoginToken:          "stale-warm-token-must-be-dropped",
+				LoginTokenExpiresMs: 999_999_999,
+			}},
+		})
+		for _, eff := range lateWarm.Effects {
+			if eff.GetSecurityTokenUpdated() != nil || eff.GetRelayRpc() != nil || eff.GetOpenStream() != nil {
+				t.Fatalf("late warmTokenTask result after exit must be discarded, got %+v", eff)
+			}
+		}
+		if tok := c.m.sync.SecurityEngine().CachedAuthToken(); tok != "" {
+			t.Fatalf("expected empty cached auth token after late warmTokenTask, got %q", tok)
+		}
+	})
+}
+
+func TestExitClearSecurityFailureResumesAccountAuth(t *testing.T) {
+	c := New()
+	c.Dispatch(&corev1.Event{
+		NowMs: 58_900,
+		Event: &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true}},
+	})
+	recBytes, devEdPub, devXPub, devXPriv, _, machineID := bootstrapCoreToReadyWithMachine(t, c, "https://acct-resume.example.com", "en", 59_000)
+	randBytes := make([]byte, 512)
+	_, _ = rand.Read(randBytes)
+	c.Dispatch(&corev1.Event{
+		NowMs: 59_020,
+		Event: &corev1.Event_EntropyProvided{EntropyProvided: &corev1.EntropyProvided{
+			RandomIds: []string{"req-resume-1", "att-resume-1", "req-resume-2", "att-resume-2"}, UnitFloats: []float64{0.3, 0.7}, RandomBytes: randBytes,
+		}},
+	})
+	c.m.sync.SecurityEngine().SetAuthToken("initial-tok", 999_999_999)
+	startBatch := c.Dispatch(&corev1.Event{
+		NowMs:  59_050,
+		MonoMs: 59_050,
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
+		},
+	})
+	// Finish beginConnect's background requestSyncSecurity (READ -> WRITE_CAS -> KeyAgree -> GET_SECURITY_STATES) so syncInFlight is idle.
+	for q := append([]*corev1.Effect(nil), startBatch.Effects...); len(q) > 0; {
+		eff := q[0]
+		q = q[1:]
+		if st := eff.GetSecurityStorage(); st != nil {
+			switch st.Op {
+			case corev1.SecurityStorageOp_SECURITY_STORAGE_OP_READ:
+				b := c.Dispatch(&corev1.Event{
+					NowMs: 59_052,
+					Event: &corev1.Event_SecurityStorageResult{SecurityStorageResult: &corev1.SecurityStorageResultEvent{
+						OpId: st.OpId, Found: true, Revision: "1", Data: recBytes,
+					}},
+				})
+				q = append(q, b.Effects...)
+			case corev1.SecurityStorageOp_SECURITY_STORAGE_OP_WRITE_CAS,
+				corev1.SecurityStorageOp_SECURITY_STORAGE_OP_BATCH_COMMIT:
+				b := c.Dispatch(&corev1.Event{
+					NowMs: 59_055,
+					Event: &corev1.Event_SecurityStorageResult{SecurityStorageResult: &corev1.SecurityStorageResultEvent{OpId: st.OpId}},
+				})
+				q = append(q, b.Effects...)
+			}
+		} else if ka := eff.GetSecurityKeyAgree(); ka != nil {
+			peerPub, _ := ecdh.X25519().NewPublicKey(ka.PeerPublic)
+			shared, _ := devXPriv.ECDH(peerPub)
+			b := c.Dispatch(&corev1.Event{
+				NowMs: 59_057,
+				Event: &corev1.Event_SecurityKeyAgreed{SecurityKeyAgreed: &corev1.SecurityKeyAgreedEvent{OpId: ka.OpId, Shared: shared}},
+			})
+			q = append(q, b.Effects...)
+		} else if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SECURITY_STATES {
+			stBytes, _ := proto.Marshal(&pb.GetSecurityStatesResponse{HeadEpoch: 2})
+			b := c.Dispatch(&corev1.Event{
+				NowMs: 59_060,
+				Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{OpId: rpc.OpId, ResponseBytes: stBytes}},
+			})
+			q = append(q, b.Effects...)
+		}
+	}
+
+	// Request exit -> Confirm -> PushUnregistered -> proceedExitClearSecurity (sets exitingAccount=true).
+	reqBatch := c.Dispatch(&corev1.Event{
+		NowMs: 59_100,
+		Event: &corev1.Event_ExitRequest{ExitRequest: &corev1.ExitRequestAction{Intent: corev1.ExitIntentKind_EXIT_INTENT_KIND_LEAVE_ACCOUNT}},
+	})
+	adv1 := findStorageEffect(reqBatch, corev1.SecurityStorageOp_SECURITY_STORAGE_OP_READ_BOOTSTRAP)
+	c.Dispatch(&corev1.Event{
+		NowMs: 59_110,
+		Event: &corev1.Event_SecurityStorageResult{SecurityStorageResult: &corev1.SecurityStorageResultEvent{
+			OpId: adv1.OpId, HasDeviceEd: true, DeviceEdPub: devEdPub, HasDeviceX: true, DeviceXPub: devXPub,
+			Entries: []*corev1.SecurityStorageEntry{{Bucket: corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_RECORD, Key: "record", Revision: "1", Data: recBytes}},
+		}},
+	})
+	confBatch := c.Dispatch(&corev1.Event{
+		NowMs: 59_120,
+		Event: &corev1.Event_ExitConfirm{ExitConfirm: &corev1.ExitConfirmAction{Confirm: true}},
+	})
+	adv2 := findStorageEffect(confBatch, corev1.SecurityStorageOp_SECURITY_STORAGE_OP_READ_BOOTSTRAP)
+	execBatch := c.Dispatch(&corev1.Event{
+		NowMs: 59_130,
+		Event: &corev1.Event_SecurityStorageResult{SecurityStorageResult: &corev1.SecurityStorageResultEvent{
+			OpId: adv2.OpId, HasDeviceEd: true, DeviceEdPub: devEdPub, HasDeviceX: true, DeviceXPub: devXPub,
+			Entries: []*corev1.SecurityStorageEntry{{Bucket: corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_RECORD, Key: "record", Revision: "1", Data: recBytes}},
+		}},
+	})
+	unreg := findUnregisterPushEffect(execBatch)
+	if unreg == nil {
+		t.Fatal("expected UnregisterPushOnExitEffect")
+	}
+	clearBatch := c.Dispatch(&corev1.Event{
+		NowMs: 59_140,
+		Event: &corev1.Event_PushUnregistered{PushUnregistered: &corev1.PushUnregisteredEvent{OpId: unreg.OpId}},
+	})
+	clearEff := findStorageEffect(clearBatch, corev1.SecurityStorageOp_SECURITY_STORAGE_OP_CLEAR_ALL)
+	if clearEff == nil {
+		t.Fatal("expected SECURITY_STORAGE_OP_CLEAR_ALL")
+	}
+
+	// ClearSecurity fails -> enters EXIT_CONFIRM_STEP_FAILED and must reset exitingAccount.
+	c.Dispatch(&corev1.Event{
+		NowMs: 59_150,
+		Event: &corev1.Event_SecurityStorageResult{SecurityStorageResult: &corev1.SecurityStorageResultEvent{
+			OpId:  clearEff.OpId,
+			Error: "keystore temporarily unavailable",
+		}},
+	})
+	if vm := mustViewExitConfirm(t, c); vm.Step != corev1.ExitConfirmStep_EXIT_CONFIRM_STEP_FAILED {
+		t.Fatalf("expected EXIT_CONFIRM_STEP_FAILED, got %v", vm.Step)
+	}
+
+	// User cancels exit and stays on the original account.
+	c.Dispatch(&corev1.Event{
+		NowMs: 59_160,
+		Event: &corev1.Event_ExitConfirm{ExitConfirm: &corev1.ExitConfirmAction{Confirm: false}},
+	})
+	if vm := mustViewExitConfirm(t, c); vm.Step != corev1.ExitConfirmStep_EXIT_CONFIRM_STEP_CLOSED {
+		t.Fatalf("expected EXIT_CONFIRM_STEP_CLOSED after cancel, got %v", vm.Step)
+	}
+
+	// 1. SyncNow must be able to log in again and obtain a fresh token.
+	syncBatch := c.Dispatch(&corev1.Event{
+		NowMs: 59_200,
+		Event: &corev1.Event_SecurityAction{SecurityAction: &corev1.SecurityWorkflowActionEvent{
+			ActionId: 77,
+			Action:   &corev1.SecurityWorkflowActionEvent_SyncNow{SyncNow: &corev1.SecuritySyncNowAction{}},
+		}},
+	})
+	var chalOpID uint64
+	if warm := findStorageEffect(syncBatch, corev1.SecurityStorageOp_SECURITY_STORAGE_OP_READ_BOOTSTRAP); warm != nil {
+		b2 := c.Dispatch(&corev1.Event{
+			NowMs: 59_205,
+			Event: &corev1.Event_SecurityStorageResult{SecurityStorageResult: &corev1.SecurityStorageResultEvent{OpId: warm.OpId}},
+		})
+		for _, eff := range b2.Effects {
+			if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_CHALLENGE {
+				chalOpID = rpc.OpId
+			}
+		}
+	} else {
+		for _, eff := range syncBatch.Effects {
+			if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_CHALLENGE {
+				chalOpID = rpc.OpId
+			}
+		}
+	}
+	if chalOpID == 0 {
+		for _, eff := range syncBatch.Effects {
+			t.Logf("syncBatch eff: %T %+v", eff.Effect, eff.Effect)
+		}
+		t.Fatal("expected GET_CHALLENGE from SyncNow after failed exit")
+	}
+	chalBytes, _ := proto.Marshal(&pb.GetChallengeResponse{Challenge: []byte("resume-challenge-12345678")})
+	signBatch := c.Dispatch(&corev1.Event{
+		NowMs: 59_210,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId: chalOpID, ResponseBytes: chalBytes,
+		}},
+	})
+	var signOpID uint64
+	for _, eff := range signBatch.Effects {
+		if sig := eff.GetSecurityKeySign(); sig != nil {
+			signOpID = sig.OpId
+		}
+	}
+	if signOpID == 0 {
+		t.Fatal("expected SecurityKeySignEffect for SyncNow login")
+	}
+	loginReqBatch := c.Dispatch(&corev1.Event{
+		NowMs: 59_215,
+		Event: &corev1.Event_SecurityKeySigned{SecurityKeySigned: &corev1.SecurityKeySignedEvent{
+			OpId: signOpID, Signature: make([]byte, ed25519.SignatureSize),
+		}},
+	})
+	var loginOpID uint64
+	for _, eff := range loginReqBatch.Effects {
+		if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_LOGIN {
+			loginOpID = rpc.OpId
+		}
+	}
+	if loginOpID == 0 {
+		t.Fatal("expected LOGIN RelayRpcEffect from SyncNow")
+	}
+	loginRespBytes, _ := proto.Marshal(&pb.LoginResponse{Token: "resumed-tok-1", ExpiresMs: 999_999_999})
+	c.Dispatch(&corev1.Event{
+		NowMs: 59_220,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId: loginOpID, ResponseBytes: loginRespBytes,
+		}},
+	})
+	if tok := c.m.sync.SecurityEngine().CachedAuthToken(); tok != "resumed-tok-1" {
+		t.Fatalf("expected SyncNow to populate fresh token, got %q", tok)
+	}
+
+	// 2. Forward command (RunMachineCommand) while sync.cachedToken is still empty (cleared by InvalidateAccountAuthForExit)
+	// must pass finishForwardAuth (exitingAccount must be false) and emit HEALTHZ -> FORWARD.
+	cmdBatch := c.Dispatch(&corev1.Event{
+		NowMs:  59_230,
+		MonoMs: 59_230,
+		Event: &corev1.Event_RunMachineCommand{RunMachineCommand: &corev1.RunMachineCommandAction{
+			OpId:                      701,
+			MachineId:                 machineID,
+			SkipConnectivityPreflight: true,
+			Command:                   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
+		}},
+	})
+	var sealSignOpID uint64
+	for _, eff := range cmdBatch.Effects {
+		if sig := eff.GetSecurityKeySign(); sig != nil {
+			sealSignOpID = sig.OpId
+		}
+	}
+	if sealSignOpID == 0 {
+		t.Fatal("expected SecurityKeySignEffect to seal Forward command")
+	}
+	hzBatch := c.Dispatch(&corev1.Event{
+		NowMs:  59_235,
+		MonoMs: 59_235,
+		Event: &corev1.Event_SecurityKeySigned{SecurityKeySigned: &corev1.SecurityKeySignedEvent{
+			OpId: sealSignOpID, Signature: make([]byte, ed25519.SignatureSize),
+		}},
+	})
+	var hzOpID uint64
+	for _, eff := range hzBatch.Effects {
+		if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_HEALTHZ {
+			hzOpID = rpc.OpId
+		}
+		if res := eff.GetRunMachineCommandResult(); res != nil {
+			t.Fatalf("Forward command must NOT fail with auth error after failed exit, got %+v", res)
+		}
+	}
+	if hzOpID == 0 {
+		t.Fatal("expected HEALTHZ RelayRpcEffect for Forward command after failed exit")
+	}
+	fwdBatch := c.Dispatch(&corev1.Event{
+		NowMs:  59_240,
+		MonoMs: 59_240,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId:       hzOpID,
+			RelayEpoch: "ep-resumed",
+		}},
+	})
+	var fwdOpID uint64
+	for _, eff := range fwdBatch.Effects {
+		if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_FORWARD {
+			fwdOpID = rpc.OpId
+		}
+	}
+	if fwdOpID == 0 {
+		t.Fatal("expected FORWARD RelayRpcEffect after HEALTHZ epoch")
+	}
+
+	// 3. Sync reconnect must also accept the fresh token in handleTokenResult (exitingAccount must be false) and emit OpenStream.
+	reconnBatch := c.Dispatch(&corev1.Event{
+		NowMs:  59_250,
+		MonoMs: 59_250,
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_RECONNECT_NOW},
+		},
+	})
+	var openedStream *corev1.OpenStreamEffect
+	for _, eff := range reconnBatch.Effects {
+		if os := eff.GetOpenStream(); os != nil {
+			openedStream = os
+		}
+	}
+	if openedStream == nil || openedStream.Token != "resumed-tok-1" {
+		t.Fatalf("expected OpenStreamEffect with resumed-tok-1 after failed exit, got %+v", openedStream)
+	}
+}
+
+func TestExitInPlaceResetClearsRelayPipeStateAndPreservesCounters(t *testing.T) {
+	// Verify iOS legacy path (without RelayPipeConfigEvent) stays disabled.
+	iosCore := New()
+	if iosCore.m.sync.RelayPipeEnabled() {
+		t.Fatal("fresh Core without RelayPipeConfigEvent must keep RelayPipeEnabled() == false for iOS")
+	}
+
+	c := New()
+	c.Dispatch(&corev1.Event{
+		NowMs: 59_900,
+		Event: &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true}},
+	})
+	_, _, _, _, _, machineID := bootstrapCoreToReadyWithMachine(t, c, "https://acct-reset.example.com", "en", 60_000)
+	randBytes := make([]byte, 512)
+	_, _ = rand.Read(randBytes)
+	c.Dispatch(&corev1.Event{
+		NowMs: 60_010,
+		Event: &corev1.Event_EntropyProvided{EntropyProvided: &corev1.EntropyProvided{
+			RandomIds:   []string{"stream-reset-1", "req-fwd-1", "att-fwd-1", "req-hz-1", "att-hz-1"},
+			UnitFloats:  []float64{0.2, 0.5, 0.8},
+			RandomBytes: randBytes,
+		}},
+	})
+
+	// Install a cached token + session seed so GetImage, PushRpc, TerminalOpen, Forward, and PrefsPut all go in-flight on the P2-5 pipe.
+	c.m.sync.SecurityEngine().SetAuthToken("active-pipe-token", 999_999_999)
+	startBatch := c.Dispatch(&corev1.Event{
+		NowMs:  60_050,
+		MonoMs: 60_050,
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
+		},
+	})
+	var legID uint64
+	for _, eff := range startBatch.Effects {
+		if os := eff.GetOpenStream(); os != nil {
+			legID = os.LegId
+		}
+	}
+	if legID != 0 {
+		c.Dispatch(&corev1.Event{
+			NowMs:  60_055,
+			MonoMs: 60_055,
+			Event: &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{
+				LegId:        legID,
+				ServerTimeMs: 60_055,
+			}},
+		})
+	}
+	c.m.sync.SecurityEngine().SeedSessionKey("sess-pipe-1", make([]byte, 32))
+
+	imgBatch := c.Dispatch(&corev1.Event{
+		NowMs: 60_100,
+		Event: &corev1.Event_SessionFetchImage{SessionFetchImage: &corev1.SessionFetchImageAction{
+			OpId: 901, SessionId: "sess-pipe-1", ImageId: "img-1", MachineId: "m-1",
+		}},
+	})
+	var imgRpcOpID uint64
+	for _, eff := range imgBatch.Effects {
+		if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_IMAGE {
+			imgRpcOpID = rpc.OpId
+		}
+	}
+	if imgRpcOpID == 0 {
+		t.Fatal("expected GET_IMAGE RelayRpcEffect")
+	}
+
+	pushBatch := c.Dispatch(&corev1.Event{
+		NowMs: 60_102,
+		Event: &corev1.Event_PushRpc{PushRpc: &corev1.PushRpcAction{
+			OpId:   902,
+			GetKey: true,
+		}},
+	})
+	var pushRpcOpID uint64
+	for _, eff := range pushBatch.Effects {
+		if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_PUSH_KEY {
+			pushRpcOpID = rpc.OpId
+		}
+	}
+	if pushRpcOpID == 0 {
+		t.Fatal("expected GET_PUSH_KEY RelayRpcEffect")
+	}
+
+	termBatch := c.Dispatch(&corev1.Event{
+		NowMs: 60_104,
+		Event: &corev1.Event_TerminalOpen{TerminalOpen: &corev1.TerminalOpenAction{
+			OpId: 903, SessionId: "sess-pipe-1", MachineId: "m-1",
+		}},
+	})
+	var streamID string
+	for _, eff := range termBatch.Effects {
+		if open := eff.GetTerminalOpenSocket(); open != nil {
+			streamID = open.StreamId
+		}
+	}
+	if streamID == "" {
+		t.Fatal("expected TerminalOpenSocketEffect")
+	}
+
+	// Put a Forward command in flight: RunMachineCommand(906) -> KeySign -> HEALTHZ -> epoch -> FORWARD.
+	fwdStartBatch := c.Dispatch(&corev1.Event{
+		NowMs:  60_104,
+		MonoMs: 60_104,
+		Event: &corev1.Event_RunMachineCommand{RunMachineCommand: &corev1.RunMachineCommandAction{
+			OpId:                      906,
+			MachineId:                 machineID,
+			SkipConnectivityPreflight: true,
+			Command:                   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
+		}},
+	})
+	var fwdSignOpID uint64
+	for _, eff := range fwdStartBatch.Effects {
+		if sig := eff.GetSecurityKeySign(); sig != nil {
+			fwdSignOpID = sig.OpId
+		}
+	}
+	if fwdSignOpID == 0 {
+		for _, eff := range fwdStartBatch.Effects {
+			if r := eff.GetRunMachineCommandResult(); r != nil {
+				t.Logf("fwdStartBatch cmdRes: op=%d ok=%v code=%q errText=%+v", r.OpId, r.Ok, r.ErrorCode, r.ErrorText)
+			} else {
+				t.Logf("fwdStartBatch eff: %T", eff.Effect)
+			}
+		}
+		t.Fatal("expected SecurityKeySignEffect for Forward command 906")
+	}
+	fwdHzBatch := c.Dispatch(&corev1.Event{
+		NowMs:  60_104,
+		MonoMs: 60_104,
+		Event: &corev1.Event_SecurityKeySigned{SecurityKeySigned: &corev1.SecurityKeySignedEvent{
+			OpId: fwdSignOpID, Signature: make([]byte, ed25519.SignatureSize),
+		}},
+	})
+	var fwdHzOpID uint64
+	for _, eff := range fwdHzBatch.Effects {
+		if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_HEALTHZ {
+			fwdHzOpID = rpc.OpId
+		}
+	}
+	if fwdHzOpID == 0 {
+		t.Fatal("expected initial HEALTHZ RelayRpcEffect before Forward")
+	}
+	fwdEmitBatch := c.Dispatch(&corev1.Event{
+		NowMs:  60_104,
+		MonoMs: 60_104,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId:       fwdHzOpID,
+			RelayEpoch: "ep-reset-1",
+		}},
+	})
+	var fwdRpcOpID uint64
+	for _, eff := range fwdEmitBatch.Effects {
+		if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_FORWARD {
+			fwdRpcOpID = rpc.OpId
+		}
+	}
+	if fwdRpcOpID == 0 {
+		t.Fatal("expected in-flight FORWARD RelayRpcEffect")
+	}
+
+	// Put a PUT_ACCOUNT_PREFS RPC in flight: ProjectTogglePin -> GET_ACCOUNT_PREFS -> KeySign -> PUT_ACCOUNT_PREFS.
+	prefsGetBatch := c.Dispatch(&corev1.Event{
+		NowMs:  60_104,
+		MonoMs: 60_104,
+		Event: &corev1.Event_ProjectTogglePin{ProjectTogglePin: &corev1.ProjectKeyAction{
+			ProjectKey: "/work/pin-me",
+		}},
+	})
+	var prefsGetOpID uint64
+	for _, eff := range prefsGetBatch.Effects {
+		if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_ACCOUNT_PREFS {
+			prefsGetOpID = rpc.OpId
+		}
+	}
+	if prefsGetOpID == 0 {
+		t.Fatal("expected GET_ACCOUNT_PREFS RelayRpcEffect from ProjectTogglePin")
+	}
+	emptyPrefsResp, _ := proto.Marshal(&pb.GetAccountPrefsResponse{
+		Object: &pb.AccountPrefsObject{ObjectId: "project-prefs", Revision: 0},
+	})
+	prefsSignBatch := c.Dispatch(&corev1.Event{
+		NowMs:  60_104,
+		MonoMs: 60_104,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId:          prefsGetOpID,
+			ResponseBytes: emptyPrefsResp,
+		}},
+	})
+	var prefsSignOpID uint64
+	for _, eff := range prefsSignBatch.Effects {
+		if sig := eff.GetSecurityKeySign(); sig != nil {
+			prefsSignOpID = sig.OpId
+		}
+	}
+	if prefsSignOpID == 0 {
+		t.Fatal("expected SecurityKeySignEffect to seal PUT_ACCOUNT_PREFS")
+	}
+	prefsPutBatch := c.Dispatch(&corev1.Event{
+		NowMs:  60_104,
+		MonoMs: 60_104,
+		Event: &corev1.Event_SecurityKeySigned{SecurityKeySigned: &corev1.SecurityKeySignedEvent{
+			OpId: prefsSignOpID, Signature: make([]byte, ed25519.SignatureSize),
+		}},
+	})
+	var prefsPutRpcOpID uint64
+	for _, eff := range prefsPutBatch.Effects {
+		if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_PUT_ACCOUNT_PREFS {
+			prefsPutRpcOpID = rpc.OpId
+		}
+	}
+	if prefsPutRpcOpID == 0 {
+		t.Fatal("expected in-flight PUT_ACCOUNT_PREFS RelayRpcEffect")
+	}
+
+	imgRetryBatch := c.Dispatch(&corev1.Event{
+		NowMs: 60_105,
+		Event: &corev1.Event_SessionFetchImage{SessionFetchImage: &corev1.SessionFetchImageAction{
+			OpId: 904, SessionId: "sess-pipe-1", ImageId: "img-401", MachineId: "m-1",
+		}},
+	})
+	var img401RpcOpID uint64
+	for _, eff := range imgRetryBatch.Effects {
+		if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_IMAGE {
+			img401RpcOpID = rpc.OpId
+		}
+	}
+	if img401RpcOpID == 0 {
+		t.Fatal("expected second GET_IMAGE RelayRpcEffect")
+	}
+	// Return 401 UNAUTHENTICATED for img-401 so it queues in authRetryQueue waiting on EnsureAuthTokenTag,
+	// and issue a second PushRpcAction (905) while token refresh is in flight so it waits in secOpPushAuth.
+	c.Dispatch(&corev1.Event{
+		NowMs: 60_108,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId: img401RpcOpID, ConnectCode: security.ConnectCodeUnauthenticated, DiagnosticMessage: "expired",
+		}},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 60_112,
+		Event: &corev1.Event_PushRpc{PushRpc: &corev1.PushRpcAction{
+			OpId:   905,
+			GetKey: true,
+		}},
+	})
+
+	preOpSeq := c.m.sync.NextOpSeq()
+	preRelayOpSeq := c.m.sync.NextRelayOpSeq()
+	preLegSeq := c.m.sync.NextLegSeq()
+	preSecOpID := c.m.sync.SecurityEngine().NextOpID()
+	if preRelayOpSeq == 0 {
+		t.Fatal("expected non-zero NextRelayOpSeq before reset")
+	}
+
+	// Execute in-place exit reset via ExternalLogoutEvent.
+	resetBatch := c.Dispatch(&corev1.Event{
+		NowMs: 60_200,
+		Event: &corev1.Event_ExternalLogout{ExternalLogout: &corev1.ExternalLogoutEvent{}},
+	})
+
+	var sawImgCancel, sawPushCancel, sawFwdCancel, sawPrefsPutCancel, sawFwdSettled, sawImgSettled, sawImg401Settled, sawPushSettled, sawPushAuthSettled, sawTermClose, sawTermClosed, sawRuntimeInactive bool
+	for _, eff := range resetBatch.Effects {
+		if cxl := eff.GetRelayRpcCancel(); cxl != nil {
+			if cxl.OpId == imgRpcOpID {
+				sawImgCancel = true
+			}
+			if cxl.OpId == pushRpcOpID {
+				sawPushCancel = true
+			}
+			if cxl.OpId == fwdRpcOpID {
+				sawFwdCancel = true
+			}
+			if cxl.OpId == prefsPutRpcOpID {
+				sawPrefsPutCancel = true
+			}
+		}
+		if cmdRes := eff.GetRunMachineCommandResult(); cmdRes != nil && cmdRes.OpId == 906 && !cmdRes.Ok {
+			sawFwdSettled = true
+		}
+		if img := eff.GetSessionImageLoaded(); img != nil && img.Status == corev1.SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_ERROR {
+			if img.OpId == 901 && img.ErrorCode == "canceled" {
+				sawImgSettled = true
+			}
+			if img.OpId == 904 {
+				sawImg401Settled = true
+			}
+		}
+		if pr := eff.GetPushRpcResult(); pr != nil && !pr.Ok {
+			if pr.OpId == 902 && pr.Error == "canceled" {
+				sawPushSettled = true
+			}
+			if pr.OpId == 905 {
+				sawPushAuthSettled = true
+			}
+		}
+		if tc := eff.GetTerminalCloseSocket(); tc != nil && tc.StreamId == streamID {
+			sawTermClose = true
+		}
+		if ts := eff.GetTerminalStateChanged(); ts != nil && ts.OpId == 903 &&
+			ts.State == corev1.TerminalLifecycleState_TERMINAL_LIFECYCLE_STATE_CLOSED {
+			sawTermClosed = true
+		}
+		if rt := eff.GetAccountRuntimeChanged(); rt != nil && !rt.Active && !rt.Removed {
+			sawRuntimeInactive = true
+		}
+	}
+	if !sawImgCancel || !sawPushCancel || !sawFwdCancel || !sawPrefsPutCancel || !sawFwdSettled || !sawImgSettled || !sawImg401Settled || !sawPushSettled || !sawPushAuthSettled || !sawTermClose || !sawTermClosed || !sawRuntimeInactive {
+		t.Fatalf("incomplete exit cleanup: imgCancel=%v pushCancel=%v fwdCancel=%v prefsPutCancel=%v fwdSettled=%v imgSettled=%v img401Settled=%v pushSettled=%v pushAuthSettled=%v termClose=%v termClosed=%v runtimeInactive=%v",
+			sawImgCancel, sawPushCancel, sawFwdCancel, sawPrefsPutCancel, sawFwdSettled, sawImgSettled, sawImg401Settled, sawPushSettled, sawPushAuthSettled, sawTermClose, sawTermClosed, sawRuntimeInactive)
+	}
+
+	// Post-reset invariants: relay pipe config preserved, token cache cleared, all op_id counters monotonic.
+	if !c.m.sync.RelayPipeEnabled() {
+		t.Fatal("RelayPipeEnabled() must be preserved across executeInPlaceExitReset")
+	}
+	if tok := c.m.sync.SecurityEngine().CachedAuthToken(); tok != "" {
+		t.Fatalf("cached auth token must be empty after reset, got %q", tok)
+	}
+	if c.m.sync.NextOpSeq() < preOpSeq || c.m.sync.NextRelayOpSeq() < preRelayOpSeq ||
+		c.m.sync.NextLegSeq() < preLegSeq || c.m.sync.SecurityEngine().NextOpID() < preSecOpID {
+		t.Fatalf("monotonic counters regressed across reset: opSeq %d<%d relaySeq %d<%d legSeq %d<%d secOpID %d<%d",
+			c.m.sync.NextOpSeq(), preOpSeq, c.m.sync.NextRelayOpSeq(), preRelayOpSeq,
+			c.m.sync.NextLegSeq(), preLegSeq, c.m.sync.SecurityEngine().NextOpID(), preSecOpID)
+	}
+	if vm := mustViewAppRoot(t, c); vm.Stage != corev1.AppRootStage_APP_ROOT_STAGE_ONBOARDING {
+		t.Fatalf("expected ONBOARDING after reset, got %v", vm.Stage)
+	}
+
+	// Also cover the forLogout branch for in-flight HEALTHZ with a waiting Forward command (when relayEpoch is not yet populated).
+	cHz := New()
+	cHz.Dispatch(&corev1.Event{
+		NowMs: 69_900,
+		Event: &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true}},
+	})
+	_, _, _, _, _, hzMachineID := bootstrapCoreToReadyWithMachine(t, cHz, "https://acct-hz.example.com", "en", 70_000)
+	cHz.Dispatch(&corev1.Event{
+		NowMs: 70_010,
+		Event: &corev1.Event_EntropyProvided{EntropyProvided: &corev1.EntropyProvided{
+			RandomIds:   []string{"req-hz-only-1", "att-hz-only-1"},
+			UnitFloats:  []float64{0.4},
+			RandomBytes: randBytes,
+		}},
+	})
+	cHz.m.sync.SecurityEngine().SetAuthToken("active-hz-token", 999_999_999)
+	cHz.Dispatch(&corev1.Event{
+		NowMs:  70_020,
+		MonoMs: 70_020,
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
+		},
+	})
+	hzCmdBatch := cHz.Dispatch(&corev1.Event{
+		NowMs:  70_030,
+		MonoMs: 70_030,
+		Event: &corev1.Event_RunMachineCommand{RunMachineCommand: &corev1.RunMachineCommandAction{
+			OpId:                      907,
+			MachineId:                 hzMachineID,
+			SkipConnectivityPreflight: true,
+			Command:                   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
+		}},
+	})
+	var hzSignOpID uint64
+	for _, eff := range hzCmdBatch.Effects {
+		if sig := eff.GetSecurityKeySign(); sig != nil {
+			hzSignOpID = sig.OpId
+		}
+	}
+	if hzSignOpID == 0 {
+		t.Fatal("expected SecurityKeySignEffect for Healthz-waiting command 907")
+	}
+	hzEmitBatch := cHz.Dispatch(&corev1.Event{
+		NowMs:  70_035,
+		MonoMs: 70_035,
+		Event: &corev1.Event_SecurityKeySigned{SecurityKeySigned: &corev1.SecurityKeySignedEvent{
+			OpId: hzSignOpID, Signature: make([]byte, ed25519.SignatureSize),
+		}},
+	})
+	var healthzOpID uint64
+	for _, eff := range hzEmitBatch.Effects {
+		if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_HEALTHZ {
+			healthzOpID = rpc.OpId
+		}
+	}
+	if healthzOpID == 0 {
+		t.Fatal("expected in-flight HEALTHZ RelayRpcEffect with waiter")
+	}
+	hzResetBatch := cHz.Dispatch(&corev1.Event{
+		NowMs: 70_050,
+		Event: &corev1.Event_ExternalLogout{ExternalLogout: &corev1.ExternalLogoutEvent{}},
+	})
+	var sawHzCancel, sawHzWaiterSettled bool
+	for _, eff := range hzResetBatch.Effects {
+		if cxl := eff.GetRelayRpcCancel(); cxl != nil && cxl.OpId == healthzOpID {
+			sawHzCancel = true
+		}
+		if cmdRes := eff.GetRunMachineCommandResult(); cmdRes != nil && cmdRes.OpId == 907 && !cmdRes.Ok && cmdRes.ErrorCode == "canceled" {
+			sawHzWaiterSettled = true
+		}
+	}
+	if !sawHzCancel || !sawHzWaiterSettled {
+		t.Fatalf("incomplete HEALTHZ logout cleanup: sawHzCancel=%v sawHzWaiterSettled=%v", sawHzCancel, sawHzWaiterSettled)
 	}
 }

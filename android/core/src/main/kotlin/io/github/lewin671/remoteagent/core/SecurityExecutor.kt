@@ -213,9 +213,13 @@ class SecurityExecutor(
     private val allowPlainHttp: Boolean = true,
     private val rpcTransport: HTTPClientInterface? = null,
     dispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val defaultServer: String = "",
-    private val defaultDeviceId: String = "",
+    @Volatile private var defaultServer: String = "",
+    @Volatile private var defaultDeviceId: String = "",
 ) {
+    fun setDefaultAccount(server: String, deviceId: String) {
+        defaultServer = server
+        defaultDeviceId = deviceId
+    }
     private val closed = AtomicBoolean(false)
     private val scope = CoroutineScope(SupervisorJob(parentScope.coroutineContext[kotlinx.coroutines.Job]) + dispatcher)
     private val activeRelayJobs = ConcurrentHashMap<Long, Job>()

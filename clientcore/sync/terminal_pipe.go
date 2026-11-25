@@ -130,7 +130,7 @@ func (e *Engine) finishTerminalAuth(ctx *StepContext, streamID string, res secur
 	if ts == nil || ts.closed {
 		return
 	}
-	if res.Error != "" || res.Token == "" {
+	if e.exitingAccount || res.Error != "" || res.Token == "" {
 		var errText *corev1.Text
 		if res.Error != "" {
 			errText = &corev1.Text{Literal: res.Error}
@@ -285,11 +285,23 @@ func (e *Engine) onTerminalOpenCmdSettled(
 	e.failTerminalOpen(ctx, ts, code, errText)
 }
 
+func clearTerminalQueues(ts *activeTerminal) {
+	ts.sendQueue = nil
+	ts.sendPendingFrames = 0
+	ts.sendInFlight = false
+	ts.waitingEntropy = false
+	ts.openQueue = nil
+	ts.openPendingFrames = 0
+	ts.openPendingBytes = 0
+	ts.openInFlight = false
+}
+
 func (e *Engine) failTerminalOpen(ctx *StepContext, ts *activeTerminal, reasonCode string, errText *corev1.Text) {
 	if ts == nil || ts.closed {
 		return
 	}
 	ts.closed = true
+	clearTerminalQueues(ts)
 	if ts.openReqID != "" {
 		delete(e.terminalOpenByReqID, ts.openReqID)
 		e.CancelCommand(ctx, ts.openReqID)
@@ -338,6 +350,7 @@ func (e *Engine) handleTerminalClose(ctx *StepContext, act *corev1.TerminalClose
 	}
 	wasConfirmed := ts.openConfirmed
 	ts.closed = true
+	clearTerminalQueues(ts)
 	if ts.openReqID != "" {
 		delete(e.terminalOpenByReqID, ts.openReqID)
 		e.CancelCommand(ctx, ts.openReqID)

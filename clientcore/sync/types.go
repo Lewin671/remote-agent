@@ -506,6 +506,7 @@ type Engine struct {
 	connSnapInit               bool
 
 	relayPipe               bool
+	exitingAccount          bool
 	relayEpoch              string
 	nextRelayOpSeq          uint64
 	relayRpcOps             map[uint64]*pendingRelayRpc
@@ -616,6 +617,47 @@ func (e *Engine) NextOpSeq() uint64 {
 func (e *Engine) SetNextOpSeq(v uint64) {
 	if e != nil && v > e.nextOpSeq {
 		e.nextOpSeq = v
+	}
+}
+
+// NextRelayOpSeq returns the monotonic relay-pipe op sequence high-water mark for in-place reset preservation.
+func (e *Engine) NextRelayOpSeq() uint64 {
+	if e == nil {
+		return 0
+	}
+	return e.nextRelayOpSeq
+}
+
+// SetNextRelayOpSeq seeds the relay-pipe op sequence counter above an exited account's high-water mark.
+func (e *Engine) SetNextRelayOpSeq(v uint64) {
+	if e != nil && v > e.nextRelayOpSeq {
+		e.nextRelayOpSeq = v
+	}
+}
+
+// NextLegSeq returns the monotonic stream leg sequence high-water mark for in-place reset preservation.
+func (e *Engine) NextLegSeq() uint64 {
+	if e == nil {
+		return 0
+	}
+	return e.nextLegSeq
+}
+
+// SetNextLegSeq seeds the stream leg sequence counter above an exited account's high-water mark.
+func (e *Engine) SetNextLegSeq(v uint64) {
+	if e != nil && v > e.nextLegSeq {
+		e.nextLegSeq = v
+	}
+}
+
+// SetRelayPipeEnabled enables or disables the P2-5 relay byte pipe on sync and security engines.
+func (e *Engine) SetRelayPipeEnabled(enabled bool) {
+	if e == nil {
+		return
+	}
+	e.relayPipe = enabled
+	if e.secEngine != nil {
+		e.secEngine.SetRelayPipe(enabled)
 	}
 }
 

@@ -569,6 +569,7 @@ class Remote(
     // --- Security Status & Workflow Hooks ---
 
     private fun handleSecurityTokenUpdated(eff: SecurityTokenUpdatedEffect) {
+        if (closed) return
         if (eff.cleared) {
             cachedToken = null
             scope.launch { runCatching { securityStore.clearLoginToken(account.server, account.deviceId) } }

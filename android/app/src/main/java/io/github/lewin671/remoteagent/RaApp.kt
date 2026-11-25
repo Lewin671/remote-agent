@@ -198,6 +198,7 @@ class RaApp : Application() {
         synchronized(coreHostLock) {
             if (!clientInitDispatched) {
                 clientInitDispatched = true
+                host.sendRelayPipeConfig(true)
                 host.clientInit(
                     platform = "android", deviceDescription = androidDeviceDescription(this),
                     inlineCrypto = true, foreground = foreground, networkAvailable = online,
@@ -395,6 +396,7 @@ class RaApp : Application() {
         accountLock.withLock {
             if (!eff.active) {
                 if (!eff.removed) {
+                    coreSecurityExecutor?.setDefaultAccount("", "")
                     val old = _remote.value
                     _remote.value = null
                     Push.close()
@@ -404,6 +406,7 @@ class RaApp : Application() {
                 return@withLock
             }
             if (eff.server.isEmpty() || eff.deviceId.isEmpty()) return@withLock
+            coreSecurityExecutor?.setDefaultAccount(eff.server, eff.deviceId)
             val cur = _remote.value
             if (cur != null &&
                 cur.account.server == eff.server &&

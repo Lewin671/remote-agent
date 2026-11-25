@@ -1805,11 +1805,12 @@ func (c *Core) proceedExitClearSecurity(ctx *sync.StepContext) {
 	ui := &sc.ui
 	// Invalidate in-flight login/sync RPCs from the outgoing account so late responses
 	// arriving after the 3s push-unregister timeout cannot write old tokens back to memory/storage.
-	c.m.sync.SecurityEngine().InvalidateAccountAuth()
+	c.m.sync.InvalidateAccountAuthForExit(ctx)
 	c.runSecOp(ctx, &corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_ClearSecurity{ClearSecurity: emptySec}},
 		func(_ *sync.StepContext, res *corev1.SecurityWorkflowResultEffect, _ security.WorkflowMeta, errTxt *corev1.Text) []*corev1.Effect {
 			sc.dirty.ExitConfirm = true
 			if !res.Ok {
+				c.m.sync.ResumeAccountAuthAfterFailedExit()
 				ui.Exit.Step, ui.Exit.ErrorText = corev1.ExitConfirmStep_EXIT_CONFIRM_STEP_FAILED, errTxt
 				return nil
 			}
@@ -1850,6 +1851,33 @@ func (c *Core) executeInPlaceExitReset(ctx *sync.StepContext, intent corev1.Exit
 	c.m.sync.StopAllForLogout(ctx)
 	stopEffects := append([]*corev1.Effect(nil), ctx.Raw...)
 	ctx.Raw = nil
+	for _, sc := range ctx.Settled {
+		meta, ok := c.m.pendingCmdMeta[sc.RequestID]
+		if !ok || meta.kind != cmdKindMachineOneShot {
+			continue
+		}
+		delete(c.m.pendingCmdMeta, sc.RequestID)
+		delete(c.m.oneShotReqByOp, meta.opID)
+		errCode := sc.ErrorCode
+		if errCode == "" {
+			errCode = "canceled"
+		}
+		errText := screens.ReasonText(sc.ErrorReason)
+		if errText == nil {
+			errText = text.Msg(text.KeyErrorsCommandFailed)
+		}
+		stopEffects = append(stopEffects, &corev1.Effect{
+			Effect: &corev1.Effect_RunMachineCommandResult{
+				RunMachineCommandResult: &corev1.RunMachineCommandResultEffect{
+					OpId:      meta.opID,
+					Ok:        false,
+					ErrorCode: errCode,
+					ErrorText: errText,
+				},
+			},
+		})
+	}
+	ctx.Settled = nil
 
 	// Read live non-account state and monotonic high-water counters from the outgoing Model/Engines.
 	nowMs := c.m.sync.NowMs()
@@ -1860,6 +1888,12 @@ func (c *Core) executeInPlaceExitReset(ctx *sync.StepContext, intent corev1.Exit
 	netAvail, netSig := c.m.sync.NetworkState()
 	if v := c.m.sync.NextOpSeq(); v > c.nextSyncOpSeq {
 		c.nextSyncOpSeq = v
+	}
+	if v := c.m.sync.NextRelayOpSeq(); v > c.nextRelayOpSeq {
+		c.nextRelayOpSeq = v
+	}
+	if v := c.m.sync.NextLegSeq(); v > c.nextLegSeq {
+		c.nextLegSeq = v
 	}
 	if v := c.m.sync.SecurityEngine().NextOpID(); v > c.nextSecOpID {
 		c.nextSecOpID = v

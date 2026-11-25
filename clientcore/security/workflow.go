@@ -415,12 +415,40 @@ func (e *Engine) SetNetworkGeneration(gen uint64) {
 	}
 }
 
-// InvalidateAccountAuth advances the account auth generation and clears any cached login token so
-// in-flight login or sync RPCs from an outgoing account cannot write tokens or records after exit starts.
-func (e *Engine) InvalidateAccountAuth() {
+// InvalidateAccountAuth advances the account auth generation, clears any cached login token,
+// cancels in-flight shared login/warm-token work, and fails queued waiters without emitting
+// SecurityTokenUpdatedEffect so late RPCs from an outgoing account cannot write stale tokens.
+func (e *Engine) InvalidateAccountAuth() []*corev1.Effect {
+	e.invalidateAccountAuthLocked()
+	return e.DrainEffects()
+}
+
+func (e *Engine) invalidateAccountAuthLocked() {
 	wf := e.ensureWF()
 	wf.accountGen++
 	wf.cachedToken, wf.tokenExpiresMs = "", 0
+	wf.tokenWarmAttempted = false
+	wf.warmTokenInFlight = false
+	if wf.inFlightLogin != nil {
+		t := wf.inFlightLogin
+		wf.inFlightLogin = nil
+		t.canceled = true
+		e.cancelRPC(t.currentRpcOpID)
+		t.currentRpcOpID = 0
+	}
+	if len(wf.loginWaiters) > 0 {
+		waiters := wf.loginWaiters
+		wf.loginWaiters = nil
+		for _, w := range waiters {
+			if w.hasSink {
+				if wf.asyncSink != nil {
+					wf.asyncSink.OnAuthTokenDone(w.sinkTag, AuthTokenResult{ErrorCode: "canceled", Error: "stopped"})
+				}
+			} else if w.target.kind != targetNone {
+				e.failTarget(w.target, devicesec.ErrStale)
+			}
+		}
+	}
 }
 
 // SetPollObserver registers an observer for managed security poll progress.
@@ -1193,11 +1221,15 @@ type authTokenWaiter struct {
 }
 
 type warmTokenTask struct {
-	timeoutMs int64
+	timeoutMs  int64
+	accountGen uint64
 }
 
 func (t *warmTokenTask) onError(e *Engine, _ error) {
 	wf := e.ensureWF()
+	if wf.accountGen != t.accountGen {
+		return
+	}
 	wf.warmTokenInFlight = false
 	wf.tokenWarmAttempted = true
 	e.startSharedLogin(t.timeoutMs)
@@ -1215,6 +1247,9 @@ func isTokenFresh(token string, expiresMs, nowMs int64) bool {
 
 func (t *warmTokenTask) step(e *Engine, ev *secEvent) error {
 	wf := e.ensureWF()
+	if wf.accountGen != t.accountGen {
+		return nil
+	}
 	wf.warmTokenInFlight = false
 	wf.tokenWarmAttempted = true
 	if ev != nil && ev.err == nil && ev.storage != nil && ev.storage.loginToken != "" {
@@ -1255,7 +1290,7 @@ func (e *Engine) ensureAuthToken(forceLogin bool, timeoutMs int64, waiter authTo
 	}
 	if !forceLogin && !wf.tokenWarmAttempted {
 		wf.warmTokenInFlight = true
-		e.readBootstrapStorage(&warmTokenTask{timeoutMs: timeoutMs})
+		e.readBootstrapStorage(&warmTokenTask{timeoutMs: timeoutMs, accountGen: wf.accountGen})
 		return
 	}
 	e.startSharedLogin(timeoutMs)
@@ -1279,7 +1314,6 @@ func (e *Engine) startSharedLogin(timeoutMs int64) {
 		shared:      true,
 		timeoutMs:   timeoutMs,
 		attempt:     1,
-		accountGen:  wf.accountGen,
 	}
 	wf.inFlightLogin = t
 	t.currentRpcOpID = e.waitProtoRPCTimeout(
@@ -1388,9 +1422,12 @@ func (t *loginTokenTask) onError(e *Engine, err error) {
 		return
 	}
 	if t.shared {
+		wf := e.ensureWF()
+		if wf.inFlightLogin != t {
+			return
+		}
 		res := authTokenResultFromError(err)
 		if res.Removed {
-			wf := e.ensureWF()
 			wf.cachedToken = ""
 			wf.tokenExpiresMs = 0
 			e.emitTokenUpdated("", 0, true)
@@ -1479,6 +1516,9 @@ func (t *loginTokenTask) step(e *Engine, ev *secEvent) error {
 	if t.canceled {
 		return nil
 	}
+	if !t.shared && e.ensureWF().accountGen != t.accountGen {
+		return devicesec.ErrStale
+	}
 	if ev != nil && ev.kind == evSign && t.stage != loginStageSign {
 		return nil
 	}
@@ -1506,9 +1546,6 @@ func (t *loginTokenTask) step(e *Engine, ev *secEvent) error {
 			return nil
 		}
 		return ev.err
-	}
-	if e.ensureWF().accountGen != t.accountGen {
-		return devicesec.ErrStale
 	}
 	var fg uint64
 	if t.fgCheck {

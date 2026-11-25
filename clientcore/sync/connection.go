@@ -129,7 +129,7 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		}
 		e.updateLivePollers(ctx)
 		e.cancelAllTimers(ctx)
-		e.cancelAllSyncRelayRpcs(ctx)
+		e.cancelAllSyncRelayRpcs(ctx, false)
 		e.closeAllActiveTerminals(ctx)
 		if e.relayPipe && e.secEngine != nil {
 			e.emitSecurityEffects(ctx, e.secEngine.CancelAuthToken())
@@ -399,7 +399,7 @@ func (e *Engine) requestSyncSecurity(ctx *StepContext, touch bool) {
 }
 
 func (e *Engine) handleTokenResult(ctx *StepContext, ev *corev1.TokenResultEvent) {
-	if ev == nil || ev.OpId != e.activeTokenOpID || !e.running {
+	if ev == nil || ev.OpId != e.activeTokenOpID || !e.running || e.exitingAccount {
 		return
 	}
 	e.activeTokenOpID = 0

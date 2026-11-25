@@ -490,6 +490,7 @@ export class Remote implements CoreExecutor {
   }
 
   securityTokenUpdated(eff: SecurityTokenUpdatedEffect) {
+    if (this.closed) return;
     if (eff.cleared) {
       this.clearLocalToken();
       return;

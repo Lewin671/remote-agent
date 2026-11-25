@@ -797,7 +797,23 @@ class CoreHost(
             Effect.EffectCase.REQUEST_STORAGE_PERSIST -> onRequestStoragePersist(effect.requestStoragePersist)
             Effect.EffectCase.UNREGISTER_PUSH_ON_EXIT -> onUnregisterPushOnExit(effect.unregisterPushOnExit)
             Effect.EffectCase.CLEAR_ACCOUNT_CACHES -> onClearAccountCaches(effect.clearAccountCaches)
-            Effect.EffectCase.ACCOUNT_RUNTIME_CHANGED -> onAccountRuntimeChanged(effect.accountRuntimeChanged)
+            Effect.EffectCase.ACCOUNT_RUNTIME_CHANGED -> {
+                val eff = effect.accountRuntimeChanged
+                if (!eff.active && !eff.removed) {
+                    val canceledErr = CommandException("canceled", UiMessages.terminalAndroidClosed().messageText())
+                    for ((k, w) in pendingPushRpcs.entries.toList()) {
+                        if (pendingPushRpcs.remove(k, w)) {
+                            w.completeExceptionally(canceledErr)
+                        }
+                    }
+                    for ((k, w) in pendingImageFetches.entries.toList()) {
+                        if (pendingImageFetches.remove(k, w)) {
+                            w.completeExceptionally(canceledErr)
+                        }
+                    }
+                }
+                onAccountRuntimeChanged(eff)
+            }
             Effect.EffectCase.DISMISS_UPGRADE_NOTICE -> onDismissUpgradeNotice()
             Effect.EffectCase.PERSIST_LAST_SERVER -> onPersistLastServer(effect.persistLastServer)
             else -> {}

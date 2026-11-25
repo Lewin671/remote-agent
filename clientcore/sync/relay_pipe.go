@@ -166,12 +166,12 @@ func (e *Engine) cancelRelayRpc(ctx *StepContext, opID uint64) {
 	})
 }
 
-func (e *Engine) cancelAllSyncRelayRpcs(ctx *StepContext) {
+func (e *Engine) cancelAllSyncRelayRpcs(ctx *StepContext, forLogout bool) {
 	if e.refreshBundle != nil {
 		e.cancelRefreshBundle(ctx, e.refreshBundle)
 		e.refreshBundle = nil
 	}
-	keepHealthz := len(e.healthzWaiters) > 0
+	keepHealthz := !forLogout && len(e.healthzWaiters) > 0
 	var canceled []*pendingRelayRpc
 	opIDs := make([]uint64, 0, len(e.relayRpcOps))
 	for opID := range e.relayRpcOps {
@@ -185,9 +185,10 @@ func (e *Engine) cancelAllSyncRelayRpcs(ctx *StepContext) {
 			delete(e.relayRpcOps, opID)
 			continue
 		}
-		// Never cancel in-flight Forward or prefs PUT on STOP: let them finish naturally and
+		// On normal STOP, never cancel in-flight Forward or prefs PUT: let them finish naturally and
 		// deliver their results to Core (matching main). Keep healthz alive if a Forward waits on it.
-		if op.kind == relayRpcForward || op.kind == relayRpcPrefsPut || (op.kind == relayRpcHealthz && keepHealthz) {
+		// On logout, cancel everything unconditionally so no outgoing-account RPC outlives reset.
+		if !forLogout && (op.kind == relayRpcForward || op.kind == relayRpcPrefsPut || (op.kind == relayRpcHealthz && keepHealthz)) {
 			continue
 		}
 		delete(e.relayRpcOps, opID)
@@ -198,10 +199,8 @@ func (e *Engine) cancelAllSyncRelayRpcs(ctx *StepContext) {
 			},
 		})
 	}
-	if !keepHealthz {
-		e.healthzInFlight = false
-		e.healthzOpID = 0
-		e.healthzWaiters = nil
+	if forLogout {
+		clear(e.forwardRelayOpByAttempt)
 	}
 	canceledEv := &corev1.RelayRpcResultEvent{
 		ConnectCode:       security.ConnectCodeCanceled,
@@ -235,13 +234,23 @@ func (e *Engine) cancelAllSyncRelayRpcs(ctx *StepContext) {
 			e.dispatchRelayRpcResult(ctx, op, canceledEv)
 		}
 	}
+	if !keepHealthz {
+		e.healthzInFlight = false
+		e.healthzOpID = 0
+		e.healthzWaiters = nil
+	}
 	queue := e.authRetryQueue
 	e.authRetryInFlight = false
 	e.authRetryQueue = nil
 	for _, item := range queue {
-		if item != nil && item.op != nil && item.origEv != nil {
-			e.dispatchRelayRpcResult(ctx, item.op, item.origEv)
+		if item == nil || item.op == nil {
+			continue
 		}
+		ev := item.origEv
+		if forLogout || ev == nil {
+			ev = canceledEv
+		}
+		e.dispatchRelayRpcResult(ctx, item.op, ev)
 	}
 }
 
@@ -363,7 +372,7 @@ func (e *Engine) finishForwardAuth(ctx *StepContext, leg *pendingForwardLeg, res
 	if leg == nil || e.inFlightCmds[leg.requestID] == nil {
 		return
 	}
-	if res.Error != "" || res.Token == "" {
+	if e.exitingAccount || res.Error != "" || res.Token == "" {
 		code := res.ErrorCode
 		if code == "" {
 			code = errCodeUnauthenticated
@@ -476,7 +485,7 @@ func (e *Engine) finishPushAuth(ctx *StepContext, p *pendingPushRpc, res securit
 	if p == nil {
 		return
 	}
-	if res.Error != "" || res.Token == "" || res.Removed {
+	if e.exitingAccount || res.Error != "" || res.Token == "" || res.Removed {
 		errText := res.Error
 		if errText == "" {
 			errText = errCodeUnauthenticated
@@ -739,7 +748,8 @@ func (e *Engine) handleRelayRpcResult(ctx *StepContext, ev *corev1.RelayRpcResul
 		op.kind != relayRpcHealthz &&
 		e.secEngine != nil &&
 		(e.running || isPushOp || op.kind == relayRpcPrefsPut) &&
-		!e.removed {
+		!e.removed &&
+		!e.exitingAccount {
 		// If another call already refreshed the token since this RPC was sent, retry immediately
 		// with the new cached token instead of invalidating it and triggering another login.
 		if e.cachedToken != "" && e.cachedToken != op.usedToken {
@@ -818,8 +828,8 @@ func (e *Engine) finishAuthRetry(ctx *StepContext, res security.AuthTokenResult)
 	if len(queue) == 0 {
 		return
 	}
-	if res.Error != "" || res.Token == "" || res.Removed {
-		if res.Removed {
+	if e.exitingAccount || res.Error != "" || res.Token == "" || res.Removed {
+		if !e.exitingAccount && res.Removed {
 			e.activeTokenOpID = e.allocOpID()
 			e.handleTokenResult(ctx, &corev1.TokenResultEvent{
 				OpId:      e.activeTokenOpID,

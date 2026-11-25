@@ -1285,6 +1285,12 @@ export class CoreHost {
     }
     hosts.set(remote, this);
     this.bindRemoteBridge(remote);
+    if (remote.useRelayPipe()) {
+      this.emit({
+        case: "relayPipeConfig",
+        value: create(RelayPipeConfigEventSchema, { enabled: true }),
+      });
+    }
     if (this.viewAppRoot().stage === AppRootStage.READY || this.viewAppRoot().stage === AppRootStage.REMOVED) {
       this.securityConfigured = true;
       this.securityBootstrapped = true;
@@ -1307,6 +1313,14 @@ export class CoreHost {
     this.securityBootstrapPromise = undefined;
     this.bootstrapped = false;
     this.preloadedBootstrap = undefined;
+    for (const w of this.imageFetchWaiters.values()) {
+      w.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
+    }
+    this.imageFetchWaiters.clear();
+    for (const w of this.pushRpcWaiters.values()) {
+      w.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
+    }
+    this.pushRpcWaiters.clear();
     this.attachmentConfigured = false;
     this.usageHydratedMachines.clear();
     this.knownDraftScopes.clear();
@@ -1386,6 +1400,12 @@ export class CoreHost {
     defaultServer?: string;
     requestStoragePersist?: boolean;
   }) {
+    if (!this.explicitExecutor || this.explicitExecutor.useRelayPipe?.()) {
+      this.emit({
+        case: "relayPipeConfig",
+        value: create(RelayPipeConfigEventSchema, { enabled: true }),
+      });
+    }
     this.emit({
       case: "clientInit",
       value: create(ClientInitEventSchema, {
@@ -3483,12 +3503,14 @@ export class CoreHost {
 
       case "relayRpc":
         if (this.executor?.relayRpc) this.executor.relayRpc(val.value);
-        else this.executor?.securityEffect?.(val);
+        else if (this.executor?.securityEffect) this.executor.securityEffect(val);
+        else if (this.ownSecExec) void this.ownSecExec.relayRpc(val.value);
         break;
 
       case "relayRpcCancel":
         if (this.executor?.relayRpcCancel) this.executor.relayRpcCancel(val.value);
-        else this.executor?.securityEffect?.(val);
+        else if (this.executor?.securityEffect) this.executor.securityEffect(val);
+        else if (this.ownSecExec) this.ownSecExec.relayRpcCancel(val.value);
         break;
 
       case "sessionImageLoaded": {

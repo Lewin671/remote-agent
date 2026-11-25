@@ -1948,11 +1948,61 @@ func (e *Engine) SetInitialNetworkState(available bool, signature string) {
 	}
 }
 
-// StopAllForLogout stops sync, cancels all active timers/streams/direct routes, and discards cached tokens.
+// InvalidateAccountAuthForExit marks the outgoing account as exiting, drops cached tokens and
+// pending 401-retry queues, and advances security.Engine's accountGen so late login RPCs on the
+// P2-5 relay pipe or legacy security RPC pipe are silently discarded without emitting token updates.
+func (e *Engine) InvalidateAccountAuthForExit(ctx *StepContext) {
+	if e == nil {
+		return
+	}
+	e.exitingAccount = true
+	e.cachedToken = ""
+	e.tokenExpiresMs = 0
+	if e.activeTokenOpID != 0 {
+		e.activeTokenOpID = 0
+		e.connecting = false
+	}
+	prevCtx := e.activeStepCtx
+	e.activeStepCtx = ctx
+	defer func() { e.activeStepCtx = prevCtx }()
+
+	queue := e.authRetryQueue
+	e.authRetryInFlight = false
+	e.authRetryQueue = nil
+	canceledEv := &corev1.RelayRpcResultEvent{
+		ConnectCode:       security.ConnectCodeCanceled,
+		DiagnosticMessage: "canceled",
+	}
+	for _, item := range queue {
+		if item != nil && item.op != nil {
+			e.dispatchRelayRpcResult(ctx, item.op, canceledEv)
+		}
+	}
+	if e.secEngine != nil {
+		e.emitSecurityEffects(ctx, e.secEngine.InvalidateAccountAuth())
+	}
+}
+
+// ResumeAccountAuthAfterFailedExit clears the exitingAccount guard after ClearSecurity fails
+// and the user stays on the current account, allowing subsequent token/auth results to proceed.
+func (e *Engine) ResumeAccountAuthAfterFailedExit() {
+	if e == nil {
+		return
+	}
+	e.exitingAccount = false
+}
+
+// StopAllForLogout stops sync, cancels all active timers/streams/direct routes/relay RPCs/terminals,
+// settles pending image/push waiters, and discards cached tokens.
 func (e *Engine) StopAllForLogout(ctx *StepContext) {
 	if e == nil {
 		return
 	}
+	e.exitingAccount = true
+	prevCtx := e.activeStepCtx
+	e.activeStepCtx = ctx
+	defer func() { e.activeStepCtx = prevCtx }()
+
 	if e.cachedToken != "" {
 		ctx.emit(&corev1.Effect{
 			Effect: &corev1.Effect_DiscardToken{
@@ -1965,6 +2015,45 @@ func (e *Engine) StopAllForLogout(ctx *StepContext) {
 	e.handleLifecycle(ctx, &corev1.SyncLifecycleAction{
 		Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_STOP,
 	})
+	// Normal STOP preserves Forward/PrefsPut/Healthz; logout must cancel every remaining relay RPC
+	// and settle every auth-retry waiter before the outgoing Engine is discarded.
+	e.cancelAllSyncRelayRpcs(ctx, true)
+	if e.secEngine != nil {
+		e.emitSecurityEffects(ctx, e.secEngine.InvalidateAccountAuth())
+	}
+	if len(e.secOps) > 0 {
+		tags := make([]uint64, 0, len(e.secOps))
+		for tag := range e.secOps {
+			tags = append(tags, tag)
+		}
+		sortutil.Uint64s(tags)
+		for _, tag := range tags {
+			op := e.secOps[tag]
+			if op == nil {
+				continue
+			}
+			switch op.kind {
+			case secOpSessionImage:
+				e.emitSessionImageLoaded(ctx, &corev1.SessionImageLoadedEffect{
+					OpId:      op.opID,
+					SessionId: op.sid,
+					ImageId:   op.imageID,
+					Status:    corev1.SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_ERROR,
+					ErrorCode: "canceled",
+				})
+			case secOpPushAuth:
+				if op.push != nil {
+					e.emitPushRpcResult(ctx, &corev1.PushRpcResultEffect{
+						OpId:      op.push.opID,
+						Ok:        false,
+						Retryable: true,
+						Error:     "canceled",
+					})
+				}
+			}
+		}
+		clear(e.secOps)
+	}
 }
 
 // DeviceDisplayName returns the human-readable name for a synced device ID, if known.

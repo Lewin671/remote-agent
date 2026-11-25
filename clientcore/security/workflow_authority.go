@@ -1468,7 +1468,7 @@ type clearLocalSecurityTask struct {
 }
 
 func (e *Engine) startClearLocalSecurity(target taskTarget, statusOnOK bool) {
-	e.InvalidateAccountAuth()
+	e.invalidateAccountAuthLocked()
 	e.resetWorkflowPairingSessions()
 	e.waitStorage(&corev1.SecurityStorageEffect{
 		Op: corev1.SecurityStorageOp_SECURITY_STORAGE_OP_CLEAR_ALL, ClearLoginToken: true,
@@ -1480,7 +1480,7 @@ func (t *clearLocalSecurityTask) step(e *Engine, ev *secEvent) error {
 		return ev.err
 	}
 	wf := e.ensureWF()
-	e.InvalidateAccountAuth()
+	e.invalidateAccountAuthLocked()
 	e.resetChainState()
 	e.loaded, e.isMember, e.removed, e.cleared, e.securityLocked = false, false, false, true, false
 	wf.bootstrapInvalid, wf.bootstrapError = false, ""
