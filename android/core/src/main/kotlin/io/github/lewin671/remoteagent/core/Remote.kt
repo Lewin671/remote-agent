@@ -331,7 +331,7 @@ class Remote(
     val scheduleDetailView: StateFlow<ScheduleDetailViewModel> get() = coreHost.scheduleDetailView
     val scheduleFormView: StateFlow<ScheduleFormViewModel> get() = coreHost.scheduleFormView
     val coreNavigation: SharedFlow<NavigateEffect> get() = coreHost.navigationEvents
-    val scheduleNavigationEvents: SharedFlow<ScheduleNavigateEffect> get() = coreHost.scheduleNavigationEvents
+    val scheduleNavigationEvents: Flow<ScheduleNavigateEffect> get() = coreHost.scheduleNavigationEvents
     val restoreComposerEvents: SharedFlow<SessionRestoreComposerEffect> get() = coreHost.restoreComposerEvents
     val connectionView: StateFlow<ConnectionViewModel> get() = coreHost.connectionView
     val securityClient: SecurityClient get() = coreHost.securityClient

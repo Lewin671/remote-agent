@@ -383,8 +383,10 @@ class CoreHost(
     private val _navigationEvents = MutableSharedFlow<NavigateEffect>(extraBufferCapacity = 16)
     val navigationEvents: SharedFlow<NavigateEffect> = _navigationEvents.asSharedFlow()
 
-    private val _scheduleNavigationEvents = MutableSharedFlow<ScheduleNavigateEffect>(extraBufferCapacity = 16)
-    val scheduleNavigationEvents: SharedFlow<ScheduleNavigateEffect> = _scheduleNavigationEvents.asSharedFlow()
+    // Buffered until collected: a cold-start notification tap can resolve before
+    // the activity starts collecting, and the navigation must not be dropped.
+    private val _scheduleNavigationEvents = Channel<ScheduleNavigateEffect>(capacity = 16)
+    val scheduleNavigationEvents: Flow<ScheduleNavigateEffect> = _scheduleNavigationEvents.receiveAsFlow()
 
     private val _renameClientEvents = MutableSharedFlow<RenameClientEffect>(extraBufferCapacity = 8)
     val renameClientEvents: SharedFlow<RenameClientEffect> = _renameClientEvents.asSharedFlow()
@@ -581,7 +583,7 @@ class CoreHost(
                     scheduleDetailMachineId = nav.machineId
                     scheduleDetailTaskId = nav.taskId
                 }
-                _scheduleNavigationEvents.tryEmit(nav)
+                _scheduleNavigationEvents.trySend(nav)
             }
             Effect.EffectCase.REQUEST_ENTROPY -> {
                 val req = effect.requestEntropy
