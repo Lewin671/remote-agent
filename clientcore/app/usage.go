@@ -199,7 +199,7 @@ func (c *Core) dispatchUsageUI(ctx *sync.StepContext, ev *corev1.Event) []*corev
 		c.m.usageDirty = true
 
 	case *corev1.Event_UsageCacheLoaded:
-		if k.UsageCacheLoaded == nil || k.UsageCacheLoaded.MachineId == "" || k.UsageCacheLoaded.Snapshot == nil {
+		if k.UsageCacheLoaded == nil || k.UsageCacheLoaded.MachineId == "" {
 			return nil
 		}
 		if !c.m.sync.CanUseMachineCache(k.UsageCacheLoaded.MachineId) {
@@ -212,8 +212,23 @@ func (c *Core) dispatchUsageUI(ctx *sync.StepContext, ev *corev1.Event) []*corev
 				},
 			}}
 		}
-		snap := k.UsageCacheLoaded.Snapshot
-		key := usageCacheKey(k.UsageCacheLoaded.MachineId, snap.Preset, 0, 0)
+		var snap *v1.UsageStatsResponse
+		if len(k.UsageCacheLoaded.RawSnapshot) > 0 {
+			var parsed v1.UsageStatsResponse
+			if parsed.Unmarshal(k.UsageCacheLoaded.RawSnapshot) != nil {
+				return nil
+			}
+			snap = &parsed
+		} else if k.UsageCacheLoaded.Snapshot != nil {
+			snap = k.UsageCacheLoaded.Snapshot
+		} else {
+			return nil
+		}
+		preset := snap.Preset
+		if preset == v1.UsageRangePreset_USAGE_RANGE_PRESET_UNSPECIFIED {
+			preset = k.UsageCacheLoaded.Preset
+		}
+		key := usageCacheKey(k.UsageCacheLoaded.MachineId, preset, 0, 0)
 		entry := c.m.ensureUsageEntry(key)
 		entry.Cached = snap.Clone()
 		entry.CachedAtMs = snap.GeneratedAtMs
@@ -391,13 +406,17 @@ func (c *Core) onUsageStatsSettled(sc sync.SettledCommand, meta cmdMeta, dirty *
 			if entry.CachedAtMs == 0 {
 				entry.CachedAtMs = nowMs
 			}
+			eff := &corev1.UsageCacheWriteEffect{
+				MachineId: meta.machineID,
+				Preset:    resp.Preset,
+			}
+			if c.m.sync.RelayPipeEnabled() {
+				eff.RawSnapshot = resp.AppendMarshal(nil)
+			} else {
+				eff.Snapshot = resp.Clone()
+			}
 			out = append(out, &corev1.Effect{
-				Effect: &corev1.Effect_UsageCacheWrite{
-					UsageCacheWrite: &corev1.UsageCacheWriteEffect{
-						MachineId: meta.machineID,
-						Snapshot:  resp.Clone(),
-					},
-				},
+				Effect: &corev1.Effect_UsageCacheWrite{UsageCacheWrite: eff},
 			})
 		}
 

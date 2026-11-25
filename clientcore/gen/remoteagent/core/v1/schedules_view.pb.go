@@ -3410,6 +3410,7 @@ type ScheduleCacheLoadedEvent struct {
 	MachineId  string
 	ResultJson []byte
 	Error      string
+	RawBlob    []byte
 }
 
 func (m *ScheduleCacheLoadedEvent) GetOpId() uint64 {
@@ -3436,6 +3437,12 @@ func (m *ScheduleCacheLoadedEvent) GetError() string {
 	}
 	return ""
 }
+func (m *ScheduleCacheLoadedEvent) GetRawBlob() []byte {
+	if m != nil {
+		return m.RawBlob
+	}
+	return nil
+}
 
 var LitewireDesc_ScheduleCacheLoadedEvent = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleCacheLoadedEvent{}) },
@@ -3444,6 +3451,7 @@ var LitewireDesc_ScheduleCacheLoadedEvent = litewire.MessageDesc{
 		{Num: 2, Offset: unsafe.Offsetof(ScheduleCacheLoadedEvent{}.MachineId), Kind: litewire.KindString},
 		{Num: 3, Offset: unsafe.Offsetof(ScheduleCacheLoadedEvent{}.ResultJson), Kind: litewire.KindBytes},
 		{Num: 4, Offset: unsafe.Offsetof(ScheduleCacheLoadedEvent{}.Error), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleCacheLoadedEvent{}.RawBlob), Kind: litewire.KindBytes},
 	},
 }
 
@@ -4321,6 +4329,7 @@ type ScheduleWriteCacheEffect struct {
 	MachineId         string
 	RequestId         string
 	SealedResultBytes []byte
+	Blob              []byte
 }
 
 func (m *ScheduleWriteCacheEffect) GetMachineId() string {
@@ -4341,12 +4350,19 @@ func (m *ScheduleWriteCacheEffect) GetSealedResultBytes() []byte {
 	}
 	return nil
 }
+func (m *ScheduleWriteCacheEffect) GetBlob() []byte {
+	if m != nil {
+		return m.Blob
+	}
+	return nil
+}
 
 var LitewireDesc_ScheduleWriteCacheEffect = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 2, Offset: unsafe.Offsetof(ScheduleWriteCacheEffect{}.MachineId), Kind: litewire.KindString},
 		{Num: 3, Offset: unsafe.Offsetof(ScheduleWriteCacheEffect{}.RequestId), Kind: litewire.KindString},
 		{Num: 4, Offset: unsafe.Offsetof(ScheduleWriteCacheEffect{}.SealedResultBytes), Kind: litewire.KindBytes},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleWriteCacheEffect{}.Blob), Kind: litewire.KindBytes},
 	},
 }
 

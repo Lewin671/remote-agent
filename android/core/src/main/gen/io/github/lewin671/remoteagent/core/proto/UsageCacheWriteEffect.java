@@ -16,6 +16,7 @@ public  final class UsageCacheWriteEffect extends
     UsageCacheWriteEffectOrBuilder {
   private UsageCacheWriteEffect() {
     machineId_ = "";
+    rawSnapshot_ = com.google.protobuf.ByteString.EMPTY;
   }
   private int bitField0_;
   public static final int MACHINE_ID_FIELD_NUMBER = 1;
@@ -112,6 +113,87 @@ public  final class UsageCacheWriteEffect extends
   private void clearSnapshot() {
     snapshot_ = null;
     bitField0_ = (bitField0_ & ~0x00000001);
+  }
+
+  public static final int RAW_SNAPSHOT_FIELD_NUMBER = 3;
+  private com.google.protobuf.ByteString rawSnapshot_;
+  /**
+   * <pre>
+   * Opaque serialized remoteagent.v1.UsageStatsResponse bytes for pure-byte shell storage.
+   * </pre>
+   *
+   * <code>bytes raw_snapshot = 3 [json_name = "rawSnapshot"];</code>
+   * @return The rawSnapshot.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getRawSnapshot() {
+    return rawSnapshot_;
+  }
+  /**
+   * <pre>
+   * Opaque serialized remoteagent.v1.UsageStatsResponse bytes for pure-byte shell storage.
+   * </pre>
+   *
+   * <code>bytes raw_snapshot = 3 [json_name = "rawSnapshot"];</code>
+   * @param value The rawSnapshot to set.
+   */
+  private void setRawSnapshot(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    rawSnapshot_ = value;
+  }
+  /**
+   * <pre>
+   * Opaque serialized remoteagent.v1.UsageStatsResponse bytes for pure-byte shell storage.
+   * </pre>
+   *
+   * <code>bytes raw_snapshot = 3 [json_name = "rawSnapshot"];</code>
+   */
+  private void clearRawSnapshot() {
+
+    rawSnapshot_ = getDefaultInstance().getRawSnapshot();
+  }
+
+  public static final int PRESET_FIELD_NUMBER = 4;
+  private int preset_;
+  /**
+   * <code>.remoteagent.v1.UsageRangePreset preset = 4 [json_name = "preset"];</code>
+   * @return The enum numeric value on the wire for preset.
+   */
+  @java.lang.Override
+  public int getPresetValue() {
+    return preset_;
+  }
+  /**
+   * <code>.remoteagent.v1.UsageRangePreset preset = 4 [json_name = "preset"];</code>
+   * @return The preset.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.UsageRangePreset getPreset() {
+    io.github.lewin671.remoteagent.proto.UsageRangePreset result = io.github.lewin671.remoteagent.proto.UsageRangePreset.forNumber(preset_);
+    return result == null ? io.github.lewin671.remoteagent.proto.UsageRangePreset.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.v1.UsageRangePreset preset = 4 [json_name = "preset"];</code>
+   * @param value The enum numeric value on the wire for preset to set.
+   */
+  private void setPresetValue(int value) {
+      preset_ = value;
+  }
+  /**
+   * <code>.remoteagent.v1.UsageRangePreset preset = 4 [json_name = "preset"];</code>
+   * @param value The preset to set.
+   */
+  private void setPreset(io.github.lewin671.remoteagent.proto.UsageRangePreset value) {
+    preset_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.v1.UsageRangePreset preset = 4 [json_name = "preset"];</code>
+   */
+  private void clearPreset() {
+
+    preset_ = 0;
   }
 
   public static io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect parseFrom(
@@ -307,6 +389,92 @@ public  final class UsageCacheWriteEffect extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Opaque serialized remoteagent.v1.UsageStatsResponse bytes for pure-byte shell storage.
+     * </pre>
+     *
+     * <code>bytes raw_snapshot = 3 [json_name = "rawSnapshot"];</code>
+     * @return The rawSnapshot.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getRawSnapshot() {
+      return instance.getRawSnapshot();
+    }
+    /**
+     * <pre>
+     * Opaque serialized remoteagent.v1.UsageStatsResponse bytes for pure-byte shell storage.
+     * </pre>
+     *
+     * <code>bytes raw_snapshot = 3 [json_name = "rawSnapshot"];</code>
+     * @param value The rawSnapshot to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRawSnapshot(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setRawSnapshot(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Opaque serialized remoteagent.v1.UsageStatsResponse bytes for pure-byte shell storage.
+     * </pre>
+     *
+     * <code>bytes raw_snapshot = 3 [json_name = "rawSnapshot"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRawSnapshot() {
+      copyOnWrite();
+      instance.clearRawSnapshot();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.v1.UsageRangePreset preset = 4 [json_name = "preset"];</code>
+     * @return The enum numeric value on the wire for preset.
+     */
+    @java.lang.Override
+    public int getPresetValue() {
+      return instance.getPresetValue();
+    }
+    /**
+     * <code>.remoteagent.v1.UsageRangePreset preset = 4 [json_name = "preset"];</code>
+     * @param value The preset to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPresetValue(int value) {
+      copyOnWrite();
+      instance.setPresetValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.UsageRangePreset preset = 4 [json_name = "preset"];</code>
+     * @return The preset.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.UsageRangePreset getPreset() {
+      return instance.getPreset();
+    }
+    /**
+     * <code>.remoteagent.v1.UsageRangePreset preset = 4 [json_name = "preset"];</code>
+     * @param value The enum numeric value on the wire for preset to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPreset(io.github.lewin671.remoteagent.proto.UsageRangePreset value) {
+      copyOnWrite();
+      instance.setPreset(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.UsageRangePreset preset = 4 [json_name = "preset"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPreset() {
+      copyOnWrite();
+      instance.clearPreset();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.UsageCacheWriteEffect)
   }
   @java.lang.Override
@@ -326,10 +494,12 @@ public  final class UsageCacheWriteEffect extends
             "bitField0_",
             "machineId_",
             "snapshot_",
+            "rawSnapshot_",
+            "preset_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0001\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0208\u0002\u1009" +
-              "\u0000";
+              "\u0000\u0004\u0000\u0001\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\u1009" +
+              "\u0000\u0003\n\u0004\f";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

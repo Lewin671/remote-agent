@@ -39,4 +39,14 @@ public interface ScheduleWriteCacheEffectOrBuilder extends
    * @return The sealedResultBytes.
    */
   com.google.protobuf.ByteString getSealedResultBytes();
+
+  /**
+   * <pre>
+   * Opaque encoded ScheduleCacheBlob bytes for pure-byte shell storage.
+   * </pre>
+   *
+   * <code>bytes blob = 5 [json_name = "blob"];</code>
+   * @return The blob.
+   */
+  com.google.protobuf.ByteString getBlob();
 }

@@ -1863,6 +1863,18 @@ class CoreHost(
         }
     }
 
+    fun deliverUsageCacheLoadedRaw(machineId: String, preset: UsageRangePreset, rawSnapshot: ByteArray) {
+        if (machineId.isEmpty() || rawSnapshot.isEmpty() || closed.get()) return
+        send {
+            setUsageCacheLoaded(
+                UsageCacheLoadedEvent.newBuilder()
+                    .setMachineId(machineId)
+                    .setPreset(preset)
+                    .setRawSnapshot(ByteString.copyFrom(rawSnapshot)),
+            )
+        }
+    }
+
     fun openUsageScreen(
         machineId: String,
         focusAgent: Agent = Agent.AGENT_UNSPECIFIED,
@@ -2431,6 +2443,7 @@ class CoreHost(
         opId: Long,
         machineId: String,
         resultJson: ByteArray = ByteArray(0),
+        rawBlob: ByteArray = ByteArray(0),
         error: String = "",
     ) = send {
         setScheduleCacheLoaded(
@@ -2438,6 +2451,7 @@ class CoreHost(
                 .setOpId(opId)
                 .setMachineId(machineId)
                 .setResultJson(ByteString.copyFrom(resultJson))
+                .setRawBlob(ByteString.copyFrom(rawBlob))
                 .setError(error),
         )
     }

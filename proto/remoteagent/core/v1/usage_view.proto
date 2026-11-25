@@ -234,11 +234,17 @@ message UsageScreenScrubEvent {
 message UsageCacheLoadedEvent {
   string machine_id = 1;
   remoteagent.v1.UsageStatsResponse snapshot = 2;
+  // Opaque serialized remoteagent.v1.UsageStatsResponse bytes (Web/Android); Core unmarshals.
+  bytes raw_snapshot = 3;
+  remoteagent.v1.UsageRangePreset preset = 4;
 }
 
 message UsageCacheWriteEffect {
   string machine_id = 1;
   remoteagent.v1.UsageStatsResponse snapshot = 2;
+  // Opaque serialized remoteagent.v1.UsageStatsResponse bytes for pure-byte shell storage.
+  bytes raw_snapshot = 3;
+  remoteagent.v1.UsageRangePreset preset = 4;
 }
 
 message UsageCacheWrittenEvent {

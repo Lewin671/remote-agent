@@ -4840,11 +4840,13 @@ func (x *ScheduleNavigateEffect) GetFormKey() string {
 }
 
 type ScheduleCacheLoadedEvent struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	OpId          uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
-	MachineId     string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	ResultJson    []byte                 `protobuf:"bytes,3,opt,name=result_json,json=resultJson,proto3" json:"result_json,omitempty"`
-	Error         string                 `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	OpId       uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
+	MachineId  string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	ResultJson []byte                 `protobuf:"bytes,3,opt,name=result_json,json=resultJson,proto3" json:"result_json,omitempty"`
+	Error      string                 `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
+	// Opaque persisted ScheduleCacheBlob bytes (Web/Android); Core decodes and opens the signed envelope.
+	RawBlob       []byte `protobuf:"bytes,5,opt,name=raw_blob,json=rawBlob,proto3" json:"raw_blob,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4905,6 +4907,13 @@ func (x *ScheduleCacheLoadedEvent) GetError() string {
 		return x.Error
 	}
 	return ""
+}
+
+func (x *ScheduleCacheLoadedEvent) GetRawBlob() []byte {
+	if x != nil {
+		return x.RawBlob
+	}
+	return nil
 }
 
 type ScheduleSeenLoadedEvent struct {
@@ -6044,8 +6053,10 @@ type ScheduleWriteCacheEffect struct {
 	MachineId         string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
 	RequestId         string                 `protobuf:"bytes,3,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
 	SealedResultBytes []byte                 `protobuf:"bytes,4,opt,name=sealed_result_bytes,json=sealedResultBytes,proto3" json:"sealed_result_bytes,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Opaque encoded ScheduleCacheBlob bytes for pure-byte shell storage.
+	Blob          []byte `protobuf:"bytes,5,opt,name=blob,proto3" json:"blob,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ScheduleWriteCacheEffect) Reset() {
@@ -6095,6 +6106,13 @@ func (x *ScheduleWriteCacheEffect) GetRequestId() string {
 func (x *ScheduleWriteCacheEffect) GetSealedResultBytes() []byte {
 	if x != nil {
 		return x.SealedResultBytes
+	}
+	return nil
+}
+
+func (x *ScheduleWriteCacheEffect) GetBlob() []byte {
+	if x != nil {
+		return x.Blob
 	}
 	return nil
 }
@@ -6578,14 +6596,15 @@ const file_remoteagent_core_v1_schedules_view_proto_rawDesc = "" +
 	"session_id\x18\x04 \x01(\tR\tsessionId\x12\x15\n" +
 	"\x06run_id\x18\x05 \x01(\tR\x05runId\x12\x1b\n" +
 	"\tfirst_seq\x18\x06 \x01(\x04R\bfirstSeq\x12\x19\n" +
-	"\bform_key\x18\a \x01(\tR\aformKey\"\x85\x01\n" +
+	"\bform_key\x18\a \x01(\tR\aformKey\"\xa0\x01\n" +
 	"\x18ScheduleCacheLoadedEvent\x12\x13\n" +
 	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x02 \x01(\tR\tmachineId\x12\x1f\n" +
 	"\vresult_json\x18\x03 \x01(\fR\n" +
 	"resultJson\x12\x14\n" +
-	"\x05error\x18\x04 \x01(\tR\x05error\"\xa4\x01\n" +
+	"\x05error\x18\x04 \x01(\tR\x05error\x12\x19\n" +
+	"\braw_blob\x18\x05 \x01(\fR\arawBlob\"\xa4\x01\n" +
 	"\x17ScheduleSeenLoadedEvent\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12>\n" +
@@ -6702,13 +6721,14 @@ const file_remoteagent_core_v1_schedules_view_proto_rawDesc = "" +
 	"\v_zone_validB\r\n" +
 	"\v_at_dst_gapB\x10\n" +
 	"\x0e_until_dst_gapB\x11\n" +
-	"\x0f_jitter_minutes\"\x8e\x01\n" +
+	"\x0f_jitter_minutes\"\xa2\x01\n" +
 	"\x18ScheduleWriteCacheEffect\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x02 \x01(\tR\tmachineId\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x03 \x01(\tR\trequestId\x12.\n" +
-	"\x13sealed_result_bytes\x18\x04 \x01(\fR\x11sealedResultBytesJ\x04\b\x01\x10\x02\"@\n" +
+	"\x13sealed_result_bytes\x18\x04 \x01(\fR\x11sealedResultBytes\x12\x12\n" +
+	"\x04blob\x18\x05 \x01(\fR\x04blobJ\x04\b\x01\x10\x02\"@\n" +
 	"\x19ScheduleCacheWrittenEvent\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x02 \x01(\tR\tmachineIdJ\x04\b\x01\x10\x02*\xca\x01\n" +

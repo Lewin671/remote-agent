@@ -605,6 +605,8 @@ message ScheduleCacheLoadedEvent {
   string machine_id = 2;
   bytes result_json = 3;
   string error = 4;
+  // Opaque persisted ScheduleCacheBlob bytes (Web/Android); Core decodes and opens the signed envelope.
+  bytes raw_blob = 5;
 }
 
 message ScheduleSeenLoadedEvent {
@@ -728,6 +730,8 @@ message ScheduleWriteCacheEffect {
   string machine_id = 2;
   string request_id = 3;
   bytes sealed_result_bytes = 4;
+  // Opaque encoded ScheduleCacheBlob bytes for pure-byte shell storage.
+  bytes blob = 5;
 }
 
 message ScheduleCacheWrittenEvent {

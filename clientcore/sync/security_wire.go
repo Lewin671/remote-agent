@@ -618,6 +618,7 @@ const (
 	secOpAuthRetry
 	secOpForwardAuth
 	secOpPushAuth
+	secOpScheduleCache
 )
 
 type dirBatchKind uint8
@@ -806,7 +807,66 @@ func (e *Engine) OnOpenBatchDone(tag uint64, results []security.OpenResult) {
 		e.finishDirectEventsOpen(e.activeStepCtx, op, results)
 	case secOpOpenCmdOutcome:
 		e.finishOpenCmdOutcome(e.activeStepCtx, op, results)
+	case secOpScheduleCache:
+		e.finishScheduleCacheOpen(e.activeStepCtx, op, results)
 	}
+}
+
+// OpenScheduleCache verifies and decrypts a persisted signed schedule.list result envelope.
+// Completion is delivered synchronously (inlineCrypto / <=16 KiB) or asynchronously (Web CryptoBatch)
+// via StepContext.OpenedScheduleCaches.
+func (e *Engine) OpenScheduleCache(ctx *StepContext, opID uint64, machineID, requestID string, env *v1.Envelope) {
+	if ctx == nil {
+		return
+	}
+	if e.secEngine == nil || machineID == "" || requestID == "" || env == nil {
+		ctx.OpenedScheduleCaches = append(ctx.OpenedScheduleCaches, OpenedScheduleCache{
+			OpID:      opID,
+			MachineID: machineID,
+			Err:       devicesec.ErrInvalid,
+		})
+		return
+	}
+	tag := e.allocSecOp(&pendingSecOp{
+		kind:      secOpScheduleCache,
+		opID:      opID,
+		machineID: machineID,
+	})
+	effs := e.secEngine.OpenBatchTag(e.nowMs, []security.OpenItem{{
+		Env:             env,
+		ExpectedPurpose: devicesec.Result,
+		MachineID:       machineID,
+		RequestID:       requestID,
+		History:         true,
+	}}, tag)
+	e.emitRawEffects(ctx, effs)
+}
+
+func (e *Engine) finishScheduleCacheOpen(stepCtx *StepContext, op *pendingSecOp, results []security.OpenResult) {
+	if stepCtx == nil || op == nil {
+		return
+	}
+	out := OpenedScheduleCache{
+		OpID:      op.opID,
+		MachineID: op.machineID,
+	}
+	if len(results) != 1 || results[0].Err != nil {
+		if len(results) == 1 && results[0].Err != nil {
+			out.Err = results[0].Err
+		} else {
+			out.Err = devicesec.ErrInvalid
+		}
+		stepCtx.OpenedScheduleCaches = append(stepCtx.OpenedScheduleCaches, out)
+		return
+	}
+	res, ok := results[0].Body.(*v1.CommandResult)
+	if !ok || res == nil || res.ErrorCode != "" || res.GetSchedule() == nil || len(res.GetSchedule().GetResultJson()) == 0 {
+		out.Err = devicesec.ErrInvalid
+		stepCtx.OpenedScheduleCaches = append(stepCtx.OpenedScheduleCaches, out)
+		return
+	}
+	out.ResultJSON = slices.Clone(res.GetSchedule().GetResultJson())
+	stepCtx.OpenedScheduleCaches = append(stepCtx.OpenedScheduleCaches, out)
 }
 
 // OnSealEnvelopeDone implements security.AsyncSink.

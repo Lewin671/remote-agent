@@ -196,7 +196,7 @@ import {
   type TerminalDirectStateEffect,
 } from "../gen/remoteagent/core/v1/transport_pb";
 import { ApprovalMode, SendMode, type Agent } from "../gen/remoteagent/v1/event_pb";
-import { PlanChoice, UsageRangePreset, UsageStatsResponseSchema, type UsageStatsResponse } from "../gen/remoteagent/v1/local_pb";
+import { PlanChoice, UsageRangePreset } from "../gen/remoteagent/v1/local_pb";
 import {
   ConnState,
   HomeAbandonAttentionActionSchema,
@@ -444,7 +444,7 @@ export interface CoreExecutor {
   relayRpcCancel?(eff: RelayRpcCancelEffect): void;
   executeCommandAttempt(eff: DispatchCommandEffect, signal?: AbortSignal): Promise<CommandOutcomeEvent>;
   readScheduleCache?(opId: bigint, machineId: string): Promise<ScheduleCacheLoadedEvent>;
-  writeScheduleCache?(machineId: string, requestId: string, sealedResultBytes: Uint8Array): Promise<void>;
+  writeScheduleCache?(machineId: string, blob: Uint8Array): Promise<void>;
   deleteScheduleCache?(machineId: string): Promise<void>;
   loadScheduleSeen?(machineId: string): Promise<ScheduleSeenLoadedEvent>;
   saveScheduleSeen?(machineId: string, tokens: ScheduleSeenToken[]): Promise<void>;
@@ -2203,10 +2203,11 @@ export class CoreHost {
       try {
         const raw = localStorage.getItem(this.usageCacheStorageKey(machineId, preset));
         if (!raw) continue;
-        const snapshot = fromBinary(UsageStatsResponseSchema, decodeBytesBase64(raw));
+        const rawSnapshot = decodeBytesBase64(raw);
+        if (rawSnapshot.byteLength === 0) continue;
         this.emit({
           case: "usageCacheLoaded",
-          value: create(UsageCacheLoadedEventSchema, { machineId, snapshot }),
+          value: create(UsageCacheLoadedEventSchema, { machineId, preset, rawSnapshot }),
         });
       } catch {
         // Ignore corrupt or inaccessible local cache entries.
@@ -2227,12 +2228,12 @@ export class CoreHost {
     }
   }
 
-  private persistUsageCache(machineId: string, snapshot?: UsageStatsResponse) {
-    if (!machineId || !snapshot || snapshot.preset === UsageRangePreset.CUSTOM || snapshot.preset === UsageRangePreset.UNSPECIFIED) return;
+  private persistUsageCache(machineId: string, preset: UsageRangePreset, rawSnapshot: Uint8Array) {
+    if (!machineId || rawSnapshot.byteLength === 0 || preset === UsageRangePreset.CUSTOM || preset === UsageRangePreset.UNSPECIFIED) return;
     if (typeof localStorage === "undefined") return;
     try {
-      const encoded = encodeBytesBase64(toBinary(UsageStatsResponseSchema, snapshot));
-      localStorage.setItem(this.usageCacheStorageKey(machineId, snapshot.preset), encoded);
+      const encoded = encodeBytesBase64(rawSnapshot);
+      localStorage.setItem(this.usageCacheStorageKey(machineId, preset), encoded);
     } catch {
       // Storage may be full or restricted.
     }
@@ -3145,7 +3146,7 @@ export class CoreHost {
       }
 
       case "scheduleWriteCache": {
-        const { machineId, requestId, sealedResultBytes } = val.value;
+        const { machineId, blob } = val.value;
         const done = () => {
           if (!this.closed) {
             this.emit({
@@ -3155,7 +3156,7 @@ export class CoreHost {
           }
         };
         if (this.executor?.writeScheduleCache) {
-          void this.executor.writeScheduleCache(machineId, requestId, sealedResultBytes).then(done, done);
+          void this.executor.writeScheduleCache(machineId, blob).then(done, done);
         } else {
           done();
         }
@@ -3365,7 +3366,7 @@ export class CoreHost {
       }
 
       case "usageCacheWrite":
-        this.persistUsageCache(val.value.machineId, val.value.snapshot);
+        this.persistUsageCache(val.value.machineId, val.value.preset, val.value.rawSnapshot);
         if (!this.closed) {
           this.emit({
             case: "usageCacheWritten",

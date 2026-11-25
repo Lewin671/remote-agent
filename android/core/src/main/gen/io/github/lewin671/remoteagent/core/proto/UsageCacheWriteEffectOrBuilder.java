@@ -32,4 +32,25 @@ public interface UsageCacheWriteEffectOrBuilder extends
    * @return The snapshot.
    */
   io.github.lewin671.remoteagent.proto.UsageStatsResponse getSnapshot();
+
+  /**
+   * <pre>
+   * Opaque serialized remoteagent.v1.UsageStatsResponse bytes for pure-byte shell storage.
+   * </pre>
+   *
+   * <code>bytes raw_snapshot = 3 [json_name = "rawSnapshot"];</code>
+   * @return The rawSnapshot.
+   */
+  com.google.protobuf.ByteString getRawSnapshot();
+
+  /**
+   * <code>.remoteagent.v1.UsageRangePreset preset = 4 [json_name = "preset"];</code>
+   * @return The enum numeric value on the wire for preset.
+   */
+  int getPresetValue();
+  /**
+   * <code>.remoteagent.v1.UsageRangePreset preset = 4 [json_name = "preset"];</code>
+   * @return The preset.
+   */
+  io.github.lewin671.remoteagent.proto.UsageRangePreset getPreset();
 }

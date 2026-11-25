@@ -8,6 +8,7 @@
 // For information on using the generated types, please see the documentation:
 //   https://github.com/apple/swift-protobuf/
 
+import Foundation
 import SwiftProtobuf
 
 // If the compiler emits an error on this type, it is because this file
@@ -1110,6 +1111,11 @@ public struct PBCoreUsageCacheLoadedEvent: Sendable {
   /// Clears the value of `snapshot`. Subsequent reads from it will return its default value.
   public mutating func clearSnapshot() {self._snapshot = nil}
 
+  /// Opaque serialized remoteagent.v1.UsageStatsResponse bytes (Web/Android); Core unmarshals.
+  public var rawSnapshot: Data = Data()
+
+  public var preset: PBUsageRangePreset = .unspecified
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1132,6 +1138,11 @@ public struct PBCoreUsageCacheWriteEffect: Sendable {
   public var hasSnapshot: Bool {return self._snapshot != nil}
   /// Clears the value of `snapshot`. Subsequent reads from it will return its default value.
   public mutating func clearSnapshot() {self._snapshot = nil}
+
+  /// Opaque serialized remoteagent.v1.UsageStatsResponse bytes for pure-byte shell storage.
+  public var rawSnapshot: Data = Data()
+
+  public var preset: PBUsageRangePreset = .unspecified
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2760,7 +2771,7 @@ extension PBCoreUsageScreenScrubEvent: SwiftProtobuf.Message, SwiftProtobuf._Mes
 
 extension PBCoreUsageCacheLoadedEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UsageCacheLoadedEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}snapshot\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}snapshot\0\u{3}raw_snapshot\0\u{1}preset\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2770,6 +2781,8 @@ extension PBCoreUsageCacheLoadedEvent: SwiftProtobuf.Message, SwiftProtobuf._Mes
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
       case 2: try { try decoder.decodeSingularMessageField(value: &self._snapshot) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.rawSnapshot) }()
+      case 4: try { try decoder.decodeSingularEnumField(value: &self.preset) }()
       default: break
       }
     }
@@ -2786,12 +2799,20 @@ extension PBCoreUsageCacheLoadedEvent: SwiftProtobuf.Message, SwiftProtobuf._Mes
     try { if let v = self._snapshot {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
     } }()
+    if !self.rawSnapshot.isEmpty {
+      try visitor.visitSingularBytesField(value: self.rawSnapshot, fieldNumber: 3)
+    }
+    if self.preset != .unspecified {
+      try visitor.visitSingularEnumField(value: self.preset, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCoreUsageCacheLoadedEvent, rhs: PBCoreUsageCacheLoadedEvent) -> Bool {
     if lhs.machineID != rhs.machineID {return false}
     if lhs._snapshot != rhs._snapshot {return false}
+    if lhs.rawSnapshot != rhs.rawSnapshot {return false}
+    if lhs.preset != rhs.preset {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2799,7 +2820,7 @@ extension PBCoreUsageCacheLoadedEvent: SwiftProtobuf.Message, SwiftProtobuf._Mes
 
 extension PBCoreUsageCacheWriteEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UsageCacheWriteEffect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}snapshot\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}snapshot\0\u{3}raw_snapshot\0\u{1}preset\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2809,6 +2830,8 @@ extension PBCoreUsageCacheWriteEffect: SwiftProtobuf.Message, SwiftProtobuf._Mes
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
       case 2: try { try decoder.decodeSingularMessageField(value: &self._snapshot) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.rawSnapshot) }()
+      case 4: try { try decoder.decodeSingularEnumField(value: &self.preset) }()
       default: break
       }
     }
@@ -2825,12 +2848,20 @@ extension PBCoreUsageCacheWriteEffect: SwiftProtobuf.Message, SwiftProtobuf._Mes
     try { if let v = self._snapshot {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
     } }()
+    if !self.rawSnapshot.isEmpty {
+      try visitor.visitSingularBytesField(value: self.rawSnapshot, fieldNumber: 3)
+    }
+    if self.preset != .unspecified {
+      try visitor.visitSingularEnumField(value: self.preset, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCoreUsageCacheWriteEffect, rhs: PBCoreUsageCacheWriteEffect) -> Bool {
     if lhs.machineID != rhs.machineID {return false}
     if lhs._snapshot != rhs._snapshot {return false}
+    if lhs.rawSnapshot != rhs.rawSnapshot {return false}
+    if lhs.preset != rhs.preset {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

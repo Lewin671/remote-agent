@@ -7,6 +7,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
 	"github.com/Lewin671/remote-agent/clientcore/domain/schedule"
+	"github.com/Lewin671/remote-agent/clientcore/gen/litewire"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/screens"
@@ -533,6 +534,96 @@ func (c *Core) evictUntrustedScheduleSnapshots() {
 	}
 }
 
+// encodeScheduleCacheBlob encodes ScheduleCacheBlob (1: request_id, 2: sealed_result) on wire.
+func encodeScheduleCacheBlob(requestID string, sealedResult []byte) []byte {
+	var b []byte
+	if requestID != "" {
+		b = litewire.AppendString(b, 1, requestID)
+	}
+	if len(sealedResult) > 0 {
+		b = litewire.AppendBytes(b, 2, sealedResult)
+	}
+	return b
+}
+
+// decodeScheduleCacheBlob decodes ScheduleCacheBlob (1: request_id, 2: sealed_result) from wire.
+func decodeScheduleCacheBlob(raw []byte) (requestID string, sealedResult []byte, ok bool) {
+	b := raw
+	for len(b) > 0 {
+		num, typ, n := litewire.ConsumeTag(b)
+		if n < 0 {
+			return "", nil, false
+		}
+		b = b[n:]
+		switch {
+		case num == 1 && typ == litewire.BytesType:
+			v, m := litewire.ConsumeString(b)
+			if m < 0 {
+				return "", nil, false
+			}
+			requestID = v
+			b = b[m:]
+		case num == 2 && typ == litewire.BytesType:
+			v, m := litewire.ConsumeBytes(b)
+			if m < 0 {
+				return "", nil, false
+			}
+			sealedResult = append([]byte(nil), v...)
+			b = b[m:]
+		default:
+			m := litewire.ConsumeFieldValue(num, typ, b)
+			if m < 0 {
+				return "", nil, false
+			}
+			b = b[m:]
+		}
+	}
+	return requestID, sealedResult, requestID != "" && len(sealedResult) > 0
+}
+
+func (c *Core) applyOpenedScheduleCache(ctx *sync.StepContext, ss *screens.ScheduleState, opened sync.OpenedScheduleCache, effects *[]*corev1.Effect) {
+	if opened.MachineID == "" {
+		return
+	}
+	snap := ensureSchedMachine(ss, opened.MachineID)
+	if snap.CacheReadOpID != 0 && opened.OpID != 0 && snap.CacheReadOpID != opened.OpID {
+		return
+	}
+	snap.CacheReading = false
+	snap.CacheRestored = true
+	// Re-check trust AFTER async decrypt: if machine was removed while CryptoBatch was in flight, discard plaintext and delete cache.
+	if !c.m.sync.CanUseMachineCache(opened.MachineID) {
+		*effects = append(*effects, &corev1.Effect{
+			Effect: &corev1.Effect_ScheduleDeleteCache{
+				ScheduleDeleteCache: &corev1.ScheduleDeleteCacheEffect{MachineId: opened.MachineID},
+			},
+		})
+		c.m.markScheduleDirty(
+			corev1.ScreenTarget_SCREEN_TARGET_SCHEDULES,
+			corev1.ScreenTarget_SCREEN_TARGET_SCHEDULE_DETAIL,
+			corev1.ScreenTarget_SCREEN_TARGET_SCHEDULE_SESSION_STRIP,
+		)
+		return
+	}
+	if opened.Err == nil && len(opened.ResultJSON) > 0 && !snap.Live {
+		if tasks, err := schedule.DecodeTaskList(opened.ResultJSON); err == nil {
+			snap.Tasks = tasks
+			snap.Cached = true
+			out := ss.Seen.Observe(opened.MachineID, tasks, false)
+			*effects = append(*effects, seenOutcomeEffects(ss, out)...)
+			if ss.Detail != nil && ss.Detail.MachineID == opened.MachineID {
+				c.captureDetailResultIfNeeded(opened.MachineID, ss.Detail.TaskID)
+			}
+		}
+	}
+	c.reconcileSchedules(ctx, effects)
+	c.m.markScheduleDirty(
+		corev1.ScreenTarget_SCREEN_TARGET_SCHEDULES,
+		corev1.ScreenTarget_SCREEN_TARGET_SCHEDULE_DETAIL,
+		corev1.ScreenTarget_SCREEN_TARGET_SCHEDULE_SESSION_STRIP,
+	)
+}
+
 func (c *Core) processSchedulesSyncStep(res sync.StepResult, effects *[]*corev1.Effect) {
 	c.evictUntrustedScheduleSnapshots()
 	hasScheduleSettled := false
@@ -545,11 +636,19 @@ func (c *Core) processSchedulesSyncStep(res sync.StepResult, effects *[]*corev1.
 			break
 		}
 	}
-	if !c.m.schedActive && !hasScheduleSettled {
+	if !c.m.schedActive && !hasScheduleSettled && len(res.OpenedScheduleCaches) == 0 {
 		return
 	}
 	st := c.m.state
 	ss := ensureSchedState(st)
+	if len(res.OpenedScheduleCaches) > 0 {
+		prevStep, stepCtx := c.m.sync.BeginStep()
+		for _, opened := range res.OpenedScheduleCaches {
+			c.applyOpenedScheduleCache(stepCtx, ss, opened, effects)
+		}
+		stepRes := c.m.sync.EndStep(prevStep, stepCtx)
+		*effects = append(*effects, stepRes.Effects...)
+	}
 	var settledRefreshMachines []string
 	var configUpdated bool
 
@@ -602,14 +701,15 @@ func (c *Core) processSchedulesSyncStep(res sync.StepResult, effects *[]*corev1.
 					if sc.SealedResult != nil && len(sc.Result.GetSchedule().GetResultJson()) > 0 {
 						if c.m.sync.CanUseMachineCache(meta.machineID) {
 							if sealedBytes, err := sc.SealedResult.Marshal(); err == nil && len(sealedBytes) > 0 {
+								eff := &corev1.ScheduleWriteCacheEffect{MachineId: meta.machineID}
+								if c.m.sync.RelayPipeEnabled() {
+									eff.Blob = encodeScheduleCacheBlob(sc.RequestID, sealedBytes)
+								} else {
+									eff.RequestId = sc.RequestID
+									eff.SealedResultBytes = sealedBytes
+								}
 								*effects = append(*effects, &corev1.Effect{
-									Effect: &corev1.Effect_ScheduleWriteCache{
-										ScheduleWriteCache: &corev1.ScheduleWriteCacheEffect{
-											MachineId:         meta.machineID,
-											RequestId:         sc.RequestID,
-											SealedResultBytes: sealedBytes,
-										},
-									},
+									Effect: &corev1.Effect_ScheduleWriteCache{ScheduleWriteCache: eff},
 								})
 							}
 						} else {
@@ -1035,6 +1135,7 @@ func (c *Core) dispatchSchedulesUI(ctx *sync.StepContext, ev *corev1.Event) ([]*
 		}
 		snap.CacheReading = false
 		if !c.m.sync.CanUseMachineCache(act.MachineId) {
+			snap.CacheReading = false
 			snap.CacheRestored = true
 			effects = append(effects, &corev1.Effect{
 				Effect: &corev1.Effect_ScheduleDeleteCache{
@@ -1048,6 +1149,33 @@ func (c *Core) dispatchSchedulesUI(ctx *sync.StepContext, ev *corev1.Event) ([]*
 			)
 			return effects, true
 		}
+		// Opaque persisted blob path (Web/Android): decode ScheduleCacheBlob and open signed envelope in Core.
+		if act.Error == "" && len(act.RawBlob) > 0 && !snap.Live {
+			var env v1.Envelope
+			if reqID, sealedResult, ok := decodeScheduleCacheBlob(act.RawBlob); ok && env.Unmarshal(sealedResult) == nil {
+				snap.CacheReading = true
+				c.m.sync.OpenScheduleCache(ctx, act.OpId, act.MachineId, reqID, &env)
+				if len(ctx.OpenedScheduleCaches) > 0 {
+					opened := ctx.OpenedScheduleCaches
+					ctx.OpenedScheduleCaches = nil
+					for _, item := range opened {
+						c.applyOpenedScheduleCache(ctx, ss, item, &effects)
+					}
+				}
+				return effects, true
+			}
+			// Corrupt opaque blob: fall through as empty cache without crashing.
+			snap.CacheReading = false
+			snap.CacheRestored = true
+			c.reconcileSchedules(ctx, &effects)
+			c.m.markScheduleDirty(
+				corev1.ScreenTarget_SCREEN_TARGET_SCHEDULES,
+				corev1.ScreenTarget_SCREEN_TARGET_SCHEDULE_DETAIL,
+				corev1.ScreenTarget_SCREEN_TARGET_SCHEDULE_SESSION_STRIP,
+			)
+			return effects, true
+		}
+		snap.CacheReading = false
 		snap.CacheRestored = true
 		if act.Error == "" && len(act.ResultJson) > 0 && !snap.Live {
 			if tasks, err := schedule.DecodeTaskList(act.ResultJson); err == nil {

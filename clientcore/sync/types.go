@@ -231,11 +231,20 @@ type SettledCommand struct {
 	SealedResult *v1.Envelope
 }
 
+// OpenedScheduleCache delivers the verified plaintext result of a persisted schedule cache blob.
+type OpenedScheduleCache struct {
+	OpID       uint64
+	MachineID  string
+	ResultJSON []byte
+	Err        error
+}
+
 // StepContext accumulates side effects, dirty flags, and settled command notifications for one Step call.
 type StepContext struct {
 	Raw                    []*corev1.Effect
 	Dirty                  DirtyFlags
 	Settled                []SettledCommand
+	OpenedScheduleCaches   []OpenedScheduleCache
 	SecurityWorkflowMeta   map[uint64]security.WorkflowMeta
 	SecurityNotifyOutcomes map[uint64]security.NotifyOutcome
 	SecurityBootstrapError security.BootstrapErrorMeta
@@ -246,6 +255,7 @@ type StepResult struct {
 	Effects                []*corev1.Effect
 	Dirty                  DirtyFlags
 	Settled                []SettledCommand
+	OpenedScheduleCaches   []OpenedScheduleCache
 	SecurityWorkflowMeta   map[uint64]security.WorkflowMeta
 	SecurityNotifyOutcomes map[uint64]security.NotifyOutcome
 	SecurityBootstrapError security.BootstrapErrorMeta
@@ -840,6 +850,7 @@ func finalizeResult(ctx *StepContext) StepResult {
 		Effects:                ctx.Raw,
 		Dirty:                  ctx.Dirty,
 		Settled:                ctx.Settled,
+		OpenedScheduleCaches:   ctx.OpenedScheduleCaches,
 		SecurityWorkflowMeta:   ctx.SecurityWorkflowMeta,
 		SecurityNotifyOutcomes: ctx.SecurityNotifyOutcomes,
 		SecurityBootstrapError: ctx.SecurityBootstrapError,

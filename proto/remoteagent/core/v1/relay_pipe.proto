@@ -115,3 +115,9 @@ message PushRpcResultEffect {
   bool retryable = 5;
   string error = 6;
 }
+
+// Opaque persisted schedule list cache payload: Core encodes on write and decodes + decrypts on load.
+message ScheduleCacheBlob {
+  string request_id = 1;
+  bytes sealed_result = 2;
+}

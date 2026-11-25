@@ -734,6 +734,59 @@ func (x *PushRpcResultEffect) GetError() string {
 	return ""
 }
 
+// Opaque persisted schedule list cache payload: Core encodes on write and decodes + decrypts on load.
+type ScheduleCacheBlob struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	SealedResult  []byte                 `protobuf:"bytes,2,opt,name=sealed_result,json=sealedResult,proto3" json:"sealed_result,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ScheduleCacheBlob) Reset() {
+	*x = ScheduleCacheBlob{}
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ScheduleCacheBlob) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ScheduleCacheBlob) ProtoMessage() {}
+
+func (x *ScheduleCacheBlob) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ScheduleCacheBlob.ProtoReflect.Descriptor instead.
+func (*ScheduleCacheBlob) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ScheduleCacheBlob) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *ScheduleCacheBlob) GetSealedResult() []byte {
+	if x != nil {
+		return x.SealedResult
+	}
+	return nil
+}
+
 var File_remoteagent_core_v1_relay_pipe_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_relay_pipe_proto_rawDesc = "" +
@@ -784,7 +837,11 @@ const file_remoteagent_core_v1_relay_pipe_proto_rawDesc = "" +
 	"public_key\x18\x03 \x01(\tR\tpublicKey\x12\x18\n" +
 	"\aenabled\x18\x04 \x01(\bR\aenabled\x12\x1c\n" +
 	"\tretryable\x18\x05 \x01(\bR\tretryable\x12\x14\n" +
-	"\x05error\x18\x06 \x01(\tR\x05error*\x8f\n" +
+	"\x05error\x18\x06 \x01(\tR\x05error\"W\n" +
+	"\x11ScheduleCacheBlob\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12#\n" +
+	"\rsealed_result\x18\x02 \x01(\fR\fsealedResult*\x8f\n" +
 	"\n" +
 	"\x0eRelayRpcMethod\x12 \n" +
 	"\x1cRELAY_RPC_METHOD_UNSPECIFIED\x10\x00\x12(\n" +
@@ -837,7 +894,7 @@ func file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP() []byte {
 }
 
 var file_remoteagent_core_v1_relay_pipe_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_remoteagent_core_v1_relay_pipe_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_remoteagent_core_v1_relay_pipe_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_remoteagent_core_v1_relay_pipe_proto_goTypes = []any{
 	(RelayRpcMethod)(0),          // 0: remoteagent.core.v1.RelayRpcMethod
 	(*RelayPipeConfigEvent)(nil), // 1: remoteagent.core.v1.RelayPipeConfigEvent
@@ -848,13 +905,14 @@ var file_remoteagent_core_v1_relay_pipe_proto_goTypes = []any{
 	(*RefreshDevicesAction)(nil), // 6: remoteagent.core.v1.RefreshDevicesAction
 	(*PushRpcAction)(nil),        // 7: remoteagent.core.v1.PushRpcAction
 	(*PushRpcResultEffect)(nil),  // 8: remoteagent.core.v1.PushRpcResultEffect
-	(*RpcErrorDetailBytes)(nil),  // 9: remoteagent.core.v1.RpcErrorDetailBytes
-	(v1.NotifyKind)(0),           // 10: remoteagent.v1.NotifyKind
+	(*ScheduleCacheBlob)(nil),    // 9: remoteagent.core.v1.ScheduleCacheBlob
+	(*RpcErrorDetailBytes)(nil),  // 10: remoteagent.core.v1.RpcErrorDetailBytes
+	(v1.NotifyKind)(0),           // 11: remoteagent.v1.NotifyKind
 }
 var file_remoteagent_core_v1_relay_pipe_proto_depIdxs = []int32{
 	0,  // 0: remoteagent.core.v1.RelayRpcEffect.method:type_name -> remoteagent.core.v1.RelayRpcMethod
-	9,  // 1: remoteagent.core.v1.RelayRpcResultEvent.error_details:type_name -> remoteagent.core.v1.RpcErrorDetailBytes
-	10, // 2: remoteagent.core.v1.PushRpcAction.kinds:type_name -> remoteagent.v1.NotifyKind
+	10, // 1: remoteagent.core.v1.RelayRpcResultEvent.error_details:type_name -> remoteagent.core.v1.RpcErrorDetailBytes
+	11, // 2: remoteagent.core.v1.PushRpcAction.kinds:type_name -> remoteagent.v1.NotifyKind
 	3,  // [3:3] is the sub-list for method output_type
 	3,  // [3:3] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
@@ -874,7 +932,7 @@ func file_remoteagent_core_v1_relay_pipe_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_core_v1_relay_pipe_proto_rawDesc), len(file_remoteagent_core_v1_relay_pipe_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   8,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

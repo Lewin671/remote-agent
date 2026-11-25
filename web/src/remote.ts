@@ -158,7 +158,6 @@ import {
 } from "./gen/remoteagent/v1/event_pb";
 import { matchesFormat, mimeOf } from "./imageview";
 import {
-  CommandResultSchema,
   ImagePayloadSchema,
   TerminalFrameSchema,
   type TerminalFrame,
@@ -948,28 +947,19 @@ export class Remote implements CoreExecutor {
       return create(ScheduleCacheLoadedEventSchema, { opId, machineId });
     }
     try {
-      const kept = (await this.cache?.get("schedules:" + machineId)) as { requestId?: unknown; bytes?: unknown } | undefined;
-      if (!kept || typeof kept.requestId !== "string" || !(kept.bytes instanceof Uint8Array)) {
+      const kept = (await this.cache?.get("schedules:" + machineId)) as { blob?: unknown } | undefined;
+      if (!kept || !(kept.blob instanceof Uint8Array) || kept.blob.byteLength === 0) {
         return create(ScheduleCacheLoadedEventSchema, { opId, machineId });
       }
-      const { msg } = await this.openSecureMessage(
-        fromBinary(EnvelopeSchema, kept.bytes),
-        { kind: PayloadKind.COMMAND_RESULT, machineId, sessionId: "", requestId: kept.requestId },
-        CommandResultSchema,
-        true,
-      );
-      if (msg.kind.case !== "schedule" || !msg.kind.value.resultJson.length) {
-        return create(ScheduleCacheLoadedEventSchema, { opId, machineId });
-      }
-      return create(ScheduleCacheLoadedEventSchema, { opId, machineId, resultJson: msg.kind.value.resultJson });
+      return create(ScheduleCacheLoadedEventSchema, { opId, machineId, rawBlob: new Uint8Array(kept.blob) });
     } catch (e) {
       return create(ScheduleCacheLoadedEventSchema, { opId, machineId, error: errorText(e) });
     }
   }
 
-  async writeScheduleCache(machineId: string, requestId: string, sealedResultBytes: Uint8Array): Promise<void> {
-    if (!machineId || this.closed || !sealedResultBytes.length) return;
-    await this.keepValue("schedules:" + machineId, { bytes: sealedResultBytes, requestId });
+  async writeScheduleCache(machineId: string, blob: Uint8Array): Promise<void> {
+    if (!machineId || this.closed || !blob.length) return;
+    await this.keepValue("schedules:" + machineId, { blob });
   }
 
   async deleteScheduleCache(machineId: string): Promise<void> {

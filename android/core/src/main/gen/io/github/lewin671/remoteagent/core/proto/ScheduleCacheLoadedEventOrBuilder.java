@@ -45,4 +45,14 @@ public interface ScheduleCacheLoadedEventOrBuilder extends
    */
   com.google.protobuf.ByteString
       getErrorBytes();
+
+  /**
+   * <pre>
+   * Opaque persisted ScheduleCacheBlob bytes (Web/Android); Core decodes and opens the signed envelope.
+   * </pre>
+   *
+   * <code>bytes raw_blob = 5 [json_name = "rawBlob"];</code>
+   * @return The rawBlob.
+   */
+  com.google.protobuf.ByteString getRawBlob();
 }

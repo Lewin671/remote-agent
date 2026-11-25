@@ -805,23 +805,56 @@ class RemoteTest {
         r.awaitUntil("schedule cache written") { memory.blobs[key] != null }
         val stored = memory.blob(key)!!
         assertFalse(stored.decodeToString().contains("Private scheduled content"))
-        assertArrayEquals(json, r.cachedSchedules(daemon.account.deviceId))
-        val snapshot = kotlinx.serialization.json.Json.parseToJsonElement(stored.decodeToString()).jsonObject
-        val envText = (snapshot["envelope"] as kotlinx.serialization.json.JsonPrimitive).content
-        val reqText = (snapshot["request"] as kotlinx.serialization.json.JsonPrimitive).content
-        val env = io.github.lewin671.remoteagent.proto.Envelope.parseFrom(java.util.Base64.getDecoder().decode(envText))
+        val blob = io.github.lewin671.remoteagent.core.proto.ScheduleCacheBlob.parseFrom(stored)
+        assertTrue(blob.requestId.isNotEmpty())
+        val env = io.github.lewin671.remoteagent.proto.Envelope.parseFrom(blob.sealedResult)
         assertFalse(env.signature.isEmpty); assertFalse(env.securityHeader.isEmpty)
-        memory.putBlob(key, scheduleSnapshot("wrong-request", env))
-        assertTrue(runCatching { r.cachedSchedules(daemon.account.deviceId) }.isFailure)
-        memory.putBlob(key, scheduleSnapshot(reqText, env.toBuilder().setSignature(com.google.protobuf.ByteString.copyFrom(ByteArray(64))).build()))
-        assertTrue(runCatching { r.cachedSchedules(daemon.account.deviceId) }.isFailure)
+
+        fun allTasks(vm: io.github.lewin671.remoteagent.core.proto.SchedulesViewModel) =
+            vm.attention14List + vm.freshList + vm.othersList + vm.endedList
+
+        // Make daemon schedule.list fail so cold instances can only restore from the verified opaque cache.
+        daemon.answer = { h, c -> if (c.hasSchedule()) throw java.io.IOException("offline") else originalAnswer(h, c) }
+
+        // Wrong request_id or tampered signature must not restore cached schedules on cold start.
+        memory.putBlob(key, blob.toBuilder().setRequestId("wrong-request").build().toByteArray())
+        val badReq = fixtureRemote(r.account, http, memory); closers += AutoCloseable { badReq.close() }
+        badReq.start()
+        badReq.awaitUntil("badReq online") { badReq.conn.isOnline && badReq.machineCard(daemon.account.deviceId) != null }
+        badReq.coreHost.openScheduleList(true)
+        delay(250)
+        assertTrue(allTasks(badReq.coreHost.schedulesView.value).isEmpty())
+        badReq.close()
+
+        memory.putBlob(
+            key,
+            blob.toBuilder()
+                .setSealedResult(env.toBuilder().setSignature(com.google.protobuf.ByteString.copyFrom(ByteArray(64))).build().toByteString())
+                .build()
+                .toByteArray(),
+        )
+        val badSig = fixtureRemote(r.account, http, memory); closers += AutoCloseable { badSig.close() }
+        badSig.start()
+        badSig.awaitUntil("badSig online") { badSig.conn.isOnline && badSig.machineCard(daemon.account.deviceId) != null }
+        badSig.coreHost.openScheduleList(true)
+        delay(250)
+        assertTrue(allTasks(badSig.coreHost.schedulesView.value).isEmpty())
+        badSig.close()
+
+        // Valid opaque blob restores schedule task offline on cold start without hitting the daemon.
         memory.putBlob(key, stored)
         val cold = fixtureRemote(r.account, http, memory); closers += AutoCloseable { cold.close() }
-        assertArrayEquals(json, cold.cachedSchedules(daemon.account.deviceId))
+        cold.start()
+        cold.awaitUntil("cold online") { cold.conn.isOnline && cold.machineCard(daemon.account.deviceId) != null }
+        cold.coreHost.openScheduleList(true)
+        cold.coreHost.schedulesView.first { vm -> allTasks(vm).any { it.taskId == "task" && it.title == "Private scheduled content" } }
+        cold.close()
+
+        // Removing the machine prunes its persisted schedule cache blob.
         removeAsAuthority(daemon.phone, daemon.account.deviceId, http)
         r.syncSecurity()
         r.awaitUntil("schedule cache pruned") { memory.blobs[key] == null }
-        assertNull(memory.blob(key)); assertNull(r.cachedSchedules(daemon.account.deviceId))
+        assertNull(memory.blob(key))
     }
 
     @Test fun coreRejectsUnsequencedZeroOpDevicesEvent() = runBlocking<Unit> {

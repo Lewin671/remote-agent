@@ -18,6 +18,7 @@ public  final class ScheduleWriteCacheEffect extends
     machineId_ = "";
     requestId_ = "";
     sealedResultBytes_ = com.google.protobuf.ByteString.EMPTY;
+    blob_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int MACHINE_ID_FIELD_NUMBER = 2;
   private java.lang.String machineId_;
@@ -140,6 +141,45 @@ public  final class ScheduleWriteCacheEffect extends
   private void clearSealedResultBytes() {
 
     sealedResultBytes_ = getDefaultInstance().getSealedResultBytes();
+  }
+
+  public static final int BLOB_FIELD_NUMBER = 5;
+  private com.google.protobuf.ByteString blob_;
+  /**
+   * <pre>
+   * Opaque encoded ScheduleCacheBlob bytes for pure-byte shell storage.
+   * </pre>
+   *
+   * <code>bytes blob = 5 [json_name = "blob"];</code>
+   * @return The blob.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getBlob() {
+    return blob_;
+  }
+  /**
+   * <pre>
+   * Opaque encoded ScheduleCacheBlob bytes for pure-byte shell storage.
+   * </pre>
+   *
+   * <code>bytes blob = 5 [json_name = "blob"];</code>
+   * @param value The blob to set.
+   */
+  private void setBlob(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    blob_ = value;
+  }
+  /**
+   * <pre>
+   * Opaque encoded ScheduleCacheBlob bytes for pure-byte shell storage.
+   * </pre>
+   *
+   * <code>bytes blob = 5 [json_name = "blob"];</code>
+   */
+  private void clearBlob() {
+
+    blob_ = getDefaultInstance().getBlob();
   }
 
   public static io.github.lewin671.remoteagent.core.proto.ScheduleWriteCacheEffect parseFrom(
@@ -365,6 +405,46 @@ public  final class ScheduleWriteCacheEffect extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Opaque encoded ScheduleCacheBlob bytes for pure-byte shell storage.
+     * </pre>
+     *
+     * <code>bytes blob = 5 [json_name = "blob"];</code>
+     * @return The blob.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getBlob() {
+      return instance.getBlob();
+    }
+    /**
+     * <pre>
+     * Opaque encoded ScheduleCacheBlob bytes for pure-byte shell storage.
+     * </pre>
+     *
+     * <code>bytes blob = 5 [json_name = "blob"];</code>
+     * @param value The blob to set.
+     * @return This builder for chaining.
+     */
+    public Builder setBlob(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setBlob(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Opaque encoded ScheduleCacheBlob bytes for pure-byte shell storage.
+     * </pre>
+     *
+     * <code>bytes blob = 5 [json_name = "blob"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearBlob() {
+      copyOnWrite();
+      instance.clearBlob();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.ScheduleWriteCacheEffect)
   }
   @java.lang.Override
@@ -384,10 +464,11 @@ public  final class ScheduleWriteCacheEffect extends
             "machineId_",
             "requestId_",
             "sealedResultBytes_",
+            "blob_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0002\u0004\u0003\u0000\u0000\u0000\u0002\u0208\u0003\u0208" +
-              "\u0004\n";
+              "\u0000\u0004\u0000\u0000\u0002\u0005\u0004\u0000\u0000\u0000\u0002\u0208\u0003\u0208" +
+              "\u0004\n\u0005\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

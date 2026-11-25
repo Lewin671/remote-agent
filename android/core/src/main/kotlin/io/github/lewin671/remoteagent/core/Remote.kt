@@ -443,22 +443,6 @@ class Remote(
         }
     }
 
-    internal suspend fun cachedSchedules(machine: String): ByteArray? = withContext(dispatcher) {
-        ensureSecurityBootstrapped()
-        val raw = cache?.blob("schedule:$machine") ?: return@withContext null
-        val snapshot = Json.parseToJsonElement(raw.decodeToString()).jsonObject
-        val envText = (snapshot["envelope"] as? JsonPrimitive)?.contentOrNull.orEmpty()
-        val reqText = (snapshot["request"] as? JsonPrimitive)?.contentOrNull.orEmpty()
-        val (_, reply) = openSecureMessage(
-            Envelope.parseFrom(java.util.Base64.getDecoder().decode(envText)),
-            Place(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT, machineId = machine, requestId = reqText),
-            CommandResult::parseFrom,
-            live = false,
-        )
-        require(reply.hasSchedule() && reply.errorCode.isEmpty())
-        reply.schedule.resultJson.toByteArray()
-    }
-
     init {
         wireCoreHost()
     }
@@ -546,8 +530,8 @@ class Remote(
         coreHost.onScheduleReadCache = { eff ->
             enqueueCacheOp {
                 try {
-                    val bytes = cachedSchedules(eff.machineId)
-                    coreHost.deliverScheduleCacheLoaded(eff.opId, eff.machineId, bytes ?: ByteArray(0))
+                    val rawBlob = cache?.blob("schedule:${eff.machineId}") ?: ByteArray(0)
+                    coreHost.deliverScheduleCacheLoaded(eff.opId, eff.machineId, rawBlob = rawBlob)
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
                     coreHost.deliverScheduleCacheLoaded(
@@ -561,9 +545,8 @@ class Remote(
         coreHost.onScheduleWriteCache = { eff ->
             enqueueCacheOp {
                 try {
-                    if (eff.machineId.isNotEmpty() && !eff.sealedResultBytes.isEmpty) {
-                        val env = Envelope.parseFrom(eff.sealedResultBytes)
-                        cache?.putBlob("schedule:${eff.machineId}", scheduleSnapshot(eff.requestId, env))
+                    if (eff.machineId.isNotEmpty() && !eff.blob.isEmpty) {
+                        cache?.putBlob("schedule:${eff.machineId}", eff.blob.toByteArray())
                     }
                 } finally {
                     coreHost.deliverScheduleCacheWritten(eff.machineId)
@@ -600,14 +583,13 @@ class Remote(
         }
         coreHost.onUsageCacheWrite = { eff ->
             val mid = eff.machineId
-            val snap = eff.snapshot
-            if (mid.isNotEmpty() && eff.hasSnapshot() && snap.preset in USAGE_CACHE_PRESETS && cache != null) {
-                enqueueCacheOp {
-                    try {
-                        cache?.putBlob(usageBlobKey(mid, snap.preset), snap.toByteArray())
-                    } finally {
-                        coreHost.deliverUsageCacheWritten(mid)
+            enqueueCacheOp {
+                try {
+                    if (mid.isNotEmpty() && !eff.rawSnapshot.isEmpty && eff.preset in USAGE_CACHE_PRESETS) {
+                        cache?.putBlob(usageBlobKey(mid, eff.preset), eff.rawSnapshot.toByteArray())
                     }
+                } finally {
+                    if (mid.isNotEmpty()) coreHost.deliverUsageCacheWritten(mid)
                 }
             }
         }
@@ -627,8 +609,9 @@ class Remote(
                 enqueueCacheOp {
                     for (preset in USAGE_CACHE_PRESETS) {
                         val bytes = runCatching { cache?.blob(usageBlobKey(mid, preset)) }.getOrNull() ?: continue
-                        val snap = runCatching { UsageStatsResponse.parseFrom(bytes) }.getOrNull() ?: continue
-                        coreHost.deliverUsageCacheLoaded(mid, snap)
+                        if (bytes.isNotEmpty()) {
+                            coreHost.deliverUsageCacheLoadedRaw(mid, preset, bytes)
+                        }
                     }
                 }
             }
@@ -1965,9 +1948,3 @@ class Remote(
 }
 
 class PushRpcException(message: String, val retryable: Boolean) : Exception(message)
-
-/** The exact signed response plus its original request binding, never locally re-encrypted JSON. */
-internal fun scheduleSnapshot(request: String, envelope: Envelope): ByteArray = buildJsonObject {
-    put("request", request)
-    put("envelope", java.util.Base64.getEncoder().encodeToString(envelope.toByteArray()))
-}.toString().toByteArray()

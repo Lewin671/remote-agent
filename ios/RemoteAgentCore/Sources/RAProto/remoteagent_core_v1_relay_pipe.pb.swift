@@ -347,6 +347,21 @@ public struct PBPushRpcResultEffect: Sendable {
   public init() {}
 }
 
+/// Opaque persisted schedule list cache payload: Core encodes on write and decodes + decrypts on load.
+public struct PBScheduleCacheBlob: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var requestID: String = String()
+
+  public var sealedResult: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate let _protobuf_package = "remoteagent.core.v1"
@@ -709,6 +724,41 @@ extension PBPushRpcResultEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if lhs.enabled != rhs.enabled {return false}
     if lhs.retryable != rhs.retryable {return false}
     if lhs.error != rhs.error {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBScheduleCacheBlob: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ScheduleCacheBlob"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}request_id\0\u{3}sealed_result\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.requestID) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.sealedResult) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.requestID.isEmpty {
+      try visitor.visitSingularStringField(value: self.requestID, fieldNumber: 1)
+    }
+    if !self.sealedResult.isEmpty {
+      try visitor.visitSingularBytesField(value: self.sealedResult, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBScheduleCacheBlob, rhs: PBScheduleCacheBlob) -> Bool {
+    if lhs.requestID != rhs.requestID {return false}
+    if lhs.sealedResult != rhs.sealedResult {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

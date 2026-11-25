@@ -670,17 +670,23 @@ it("stores signed schedule cache via writeScheduleCache and decrypts via readSch
     }),
   );
 
-  // Shell must NOT write schedule cache ad hoc; Core drives writeScheduleCache.
-  expect(await r.readScheduleCache(2n, r.machine)).toMatchObject({ opId: 2n, machineId: r.machine, resultJson: new Uint8Array() });
+  const { ScheduleCacheBlobSchema } = await import("./gen/remoteagent/core/v1/relay_pipe_pb");
+  const blobBytes = toBinary(
+    ScheduleCacheBlobSchema,
+    create(ScheduleCacheBlobSchema, { requestId: reqId, sealedResult: toBinary(EnvelopeSchema, resEnv) }),
+  );
 
-  await r.writeScheduleCache(r.machine, reqId, toBinary(EnvelopeSchema, resEnv));
+  // Shell must NOT write schedule cache ad hoc; Core drives writeScheduleCache.
+  expect(await r.readScheduleCache(2n, r.machine)).toMatchObject({ opId: 2n, machineId: r.machine, rawBlob: new Uint8Array() });
+
+  await r.writeScheduleCache(r.machine, blobBytes);
   const cached = await r.readScheduleCache(3n, r.machine);
   expect(cached.error).toBe("");
-  expect(new TextDecoder().decode(cached.resultJson)).toBe(new TextDecoder().decode(listJson));
+  expect(cached.rawBlob).toEqual(blobBytes);
 
   await r.deleteScheduleCache(r.machine);
   const cleared = await r.readScheduleCache(4n, r.machine);
-  expect(cleared.resultJson).toEqual(new Uint8Array());
+  expect(cleared.rawBlob).toEqual(new Uint8Array());
 });
 
 it("updates security status and trusted machine count when sync pulls a newly enrolled machine", async () => {

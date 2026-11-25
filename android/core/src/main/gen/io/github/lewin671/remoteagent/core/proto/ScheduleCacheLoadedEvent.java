@@ -18,6 +18,7 @@ public  final class ScheduleCacheLoadedEvent extends
     machineId_ = "";
     resultJson_ = com.google.protobuf.ByteString.EMPTY;
     error_ = "";
+    rawBlob_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int OP_ID_FIELD_NUMBER = 1;
   private long opId_;
@@ -166,6 +167,45 @@ public  final class ScheduleCacheLoadedEvent extends
     checkByteStringIsUtf8(value);
     error_ = value.toStringUtf8();
 
+  }
+
+  public static final int RAW_BLOB_FIELD_NUMBER = 5;
+  private com.google.protobuf.ByteString rawBlob_;
+  /**
+   * <pre>
+   * Opaque persisted ScheduleCacheBlob bytes (Web/Android); Core decodes and opens the signed envelope.
+   * </pre>
+   *
+   * <code>bytes raw_blob = 5 [json_name = "rawBlob"];</code>
+   * @return The rawBlob.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getRawBlob() {
+    return rawBlob_;
+  }
+  /**
+   * <pre>
+   * Opaque persisted ScheduleCacheBlob bytes (Web/Android); Core decodes and opens the signed envelope.
+   * </pre>
+   *
+   * <code>bytes raw_blob = 5 [json_name = "rawBlob"];</code>
+   * @param value The rawBlob to set.
+   */
+  private void setRawBlob(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    rawBlob_ = value;
+  }
+  /**
+   * <pre>
+   * Opaque persisted ScheduleCacheBlob bytes (Web/Android); Core decodes and opens the signed envelope.
+   * </pre>
+   *
+   * <code>bytes raw_blob = 5 [json_name = "rawBlob"];</code>
+   */
+  private void clearRawBlob() {
+
+    rawBlob_ = getDefaultInstance().getRawBlob();
   }
 
   public static io.github.lewin671.remoteagent.core.proto.ScheduleCacheLoadedEvent parseFrom(
@@ -419,6 +459,46 @@ public  final class ScheduleCacheLoadedEvent extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Opaque persisted ScheduleCacheBlob bytes (Web/Android); Core decodes and opens the signed envelope.
+     * </pre>
+     *
+     * <code>bytes raw_blob = 5 [json_name = "rawBlob"];</code>
+     * @return The rawBlob.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getRawBlob() {
+      return instance.getRawBlob();
+    }
+    /**
+     * <pre>
+     * Opaque persisted ScheduleCacheBlob bytes (Web/Android); Core decodes and opens the signed envelope.
+     * </pre>
+     *
+     * <code>bytes raw_blob = 5 [json_name = "rawBlob"];</code>
+     * @param value The rawBlob to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRawBlob(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setRawBlob(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Opaque persisted ScheduleCacheBlob bytes (Web/Android); Core decodes and opens the signed envelope.
+     * </pre>
+     *
+     * <code>bytes raw_blob = 5 [json_name = "rawBlob"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRawBlob() {
+      copyOnWrite();
+      instance.clearRawBlob();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.ScheduleCacheLoadedEvent)
   }
   @java.lang.Override
@@ -439,10 +519,11 @@ public  final class ScheduleCacheLoadedEvent extends
             "machineId_",
             "resultJson_",
             "error_",
+            "rawBlob_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0003\u0002\u0208" +
-              "\u0003\n\u0004\u0208";
+              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0000\u0000\u0001\u0003\u0002\u0208" +
+              "\u0003\n\u0004\u0208\u0005\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
