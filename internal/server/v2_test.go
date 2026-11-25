@@ -391,6 +391,8 @@ func TestStreamSurvivesPongDelayWithinTimeout(t *testing.T) {
 		t.Fatal(err)
 	}
 	stream := ts.stream(t, ts.login(t, priv, id))
+	// The stimulus, not a wait for a condition: a longer pause only makes the
+	// check stricter. Pongs are sent only while the client reads.
 	time.Sleep(300 * time.Millisecond) // 30 ping intervals without a Pong
 	for range 40 {
 		stream.next(t, func(f *pb.ServerFrame) bool { return f.GetHeartbeat() != nil })

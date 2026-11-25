@@ -157,8 +157,9 @@ func (h *hub) serve(w http.ResponseWriter, r *http.Request) {
 	defer h.remove(p)
 
 	var workers sync.WaitGroup
-	workers.Add(3)
-	go func() { defer workers.Done(); h.ping(ctx, conn, p) }()
+	workers.Add(4)
+	go func() { defer workers.Done(); h.heartbeat(ctx, p) }()
+	go func() { defer workers.Done(); h.probe(ctx, conn, p) }()
 	go func() { defer workers.Done(); h.read(ctx, conn, p) }()
 	go func() { defer workers.Done(); h.directedExpiryLoop(ctx, p) }()
 	defer func() { cancel(); conn.CloseNow(); workers.Wait() }()
@@ -216,27 +217,9 @@ func (h *hub) hello(ctx context.Context, conn *websocket.Conn) (string, error) {
 	return f.GetHello().Token, nil
 }
 
-func (h *hub) ping(ctx context.Context, conn *websocket.Conn, p *peer) {
-	// Probe the connection with Ping/Pong in its own loop: on a lossy,
-	// high-RTT path one Pong can take several seconds, and waiting for it
-	// must neither stop the visible heartbeat nor drop a connection that is
-	// still delivering frames.
-	go func() {
-		for {
-			pctx, cancel := context.WithTimeout(ctx, h.s.cfg.PongTimeout)
-			err := conn.Ping(pctx)
-			cancel()
-			if err != nil {
-				p.cancel()
-				return
-			}
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(h.s.cfg.PingInterval):
-			}
-		}
-	}()
+// heartbeat sends a visible heartbeat every PingInterval. Browsers cannot
+// observe control-frame Ping/Pong, so clients judge liveness from these.
+func (h *hub) heartbeat(ctx context.Context, p *peer) {
 	t := time.NewTicker(h.s.cfg.PingInterval)
 	defer t.Stop()
 	for {
@@ -244,10 +227,33 @@ func (h *hub) ping(ctx context.Context, conn *websocket.Conn, p *peer) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			// Browsers cannot observe control-frame Ping/Pong. Send a visible
-			// heartbeat through the same bounded queue as the other frames.
 			h.send(p, &pb.ServerFrame{Kind: &pb.ServerFrame_Heartbeat{Heartbeat: &pb.Heartbeat{}}})
 		}
+	}
+}
+
+// probe drops the connection when a Ping stays unanswered for PongTimeout.
+// It runs apart from heartbeat: on a lossy, high-RTT path one Pong can take
+// several seconds, and waiting for it must not pause the heartbeat. Dropping
+// a dead peer therefore takes up to PongTimeout; until then a Forward to it
+// waits for ForwardTimeout.
+func (h *hub) probe(ctx context.Context, conn *websocket.Conn, p *peer) {
+	t := time.NewTimer(h.s.cfg.PingInterval)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+		pctx, cancel := context.WithTimeout(ctx, h.s.cfg.PongTimeout)
+		err := conn.Ping(pctx)
+		cancel()
+		if err != nil {
+			p.cancel()
+			return
+		}
+		t.Reset(h.s.cfg.PingInterval)
 	}
 }
 
