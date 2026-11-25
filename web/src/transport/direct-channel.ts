@@ -189,7 +189,6 @@ export class DirectChannel {
   private partial = new Map<string, PartialMessage>();
   private waiting: Uint8Array<ArrayBuffer>[] = [];
   private tick: ReturnType<typeof setInterval>;
-  private writers = 0;
   private reservationReleased = false;
   private endCandidateSent = false;
   private listeners = new Set<() => void>();
@@ -417,13 +416,10 @@ export class DirectChannel {
       return Promise.reject(new PathChanged());
     }
     const frozen = raw.slice();
-    this.writers++;
     const job = this.chain
       .then(() => this.writeNow(frozen, handoff, signal))
       .finally(() => {
         this.options.budget.free(this.options.peer, 0, frozen.byteLength, count);
-        this.writers--;
-        this.releaseReservation();
       });
     this.chain = job.catch(() => undefined);
     return abortable(job, signal);
@@ -571,7 +567,7 @@ export class DirectChannel {
   }
 
   private releaseReservation() {
-    if (this.ended && !this.writers && !this.reservationReleased) {
+    if (this.ended && !this.reservationReleased) {
       this.reservationReleased = true;
       this.options.budget.release(this.options.peer, this.options.use);
     }

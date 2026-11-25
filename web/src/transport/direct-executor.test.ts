@@ -309,4 +309,52 @@ describe("DirectExecutor", () => {
     expect(candEvents[0]!.event.case === "directPcLocalCandidate" && candEvents[0]!.event.value.candidate).toBe("");
     exec.close();
   });
+
+  it("allows same-batch pcClose followed by pcCreate on generation restart while an old write is in flight (audit #7)", async () => {
+    const sdk = fakeRTC();
+    const events: CoreEvent[] = [];
+    const exec = new DirectExecutor({
+      emit: (ev) => events.push(ev),
+      onPushedEvent: () => {},
+      factory: sdk.factory,
+    });
+
+    exec.pcCreate(create(DirectPcCreateEffectSchema, {
+      pcId: 31n,
+      machineId: "mac",
+      roundId: 7n,
+      use: 1,
+      generation: 1n,
+      stunServers: [],
+    }));
+    const pc1 = sdk.pcs[0]!;
+    const dc1 = pc1.channels[0]!;
+    dc1.readyState = "open";
+    dc1.bufferedAmount = 128 << 10; // hold write() in backpressure wait
+    dc1.onopen?.();
+    pc1.state("connected");
+    exec.pcConfirm(create(DirectPcConfirmEffectSchema, { pcId: 31n, machineId: "mac", use: 1 }));
+
+    expect(exec.sendTerminalFrame(31n, new Uint8Array(1024).fill(3))).toBe(true);
+
+    // Same EffectBatch synchronous ClosePC + CreatePC for gen+1 of the same round/use.
+    exec.pcClose(create(DirectPcCloseEffectSchema, { pcId: 31n }));
+    exec.pcCreate(create(DirectPcCreateEffectSchema, {
+      pcId: 32n,
+      machineId: "mac",
+      roundId: 7n,
+      use: 1,
+      generation: 2n,
+      stunServers: [],
+    }));
+
+    const created2 = events.find((e) => e.event.case === "directPcCreated" && e.event.value.pcId === 32n);
+    expect(created2?.event.case === "directPcCreated" && created2.event.value.ok).toBe(true);
+
+    // Let the aborted writer settle and ensure it does not release pc32's use slot.
+    await new Promise((r) => setTimeout(r, 10));
+    expect(exec.budget.acquire("mac", "7", 1)).toBe(false);
+    exec.close();
+    expect(exec.budget.ownerAvailable("mac", "8")).toBe(true);
+  });
 });
