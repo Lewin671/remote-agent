@@ -347,6 +347,7 @@ class ScheduleComponentsTest {
                                 .setMessageTooLong(tooLong)
                                 .setMessageError(if (tooLong) coreMsgText("schedule.too_long_maximum_32_kb") else Text.getDefaultInstance())
                                 .setCanSubmit(msg.isNotBlank() && !tooLong)
+                                .setHasUnsavedChanges(true)
                                 .build()
                         }
                     },

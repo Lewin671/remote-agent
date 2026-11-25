@@ -676,12 +676,10 @@ internal fun ScheduleRenameDialog(initialTitle: String, mutation: ScheduleMutati
 @Composable
 internal fun ScheduleMessageEditor(vm: ScheduleFormViewModel, onEvent: (CoreEvent.Builder.() -> Unit) -> Unit = {}, close: () -> Unit = {}) {
     val copy = uiText()
-    var savedInitial by remember(vm.formKey) { mutableStateOf(vm.message) }
     var text by remember(vm.formKey) { mutableStateOf(vm.message) }
-    LaunchedEffect(vm.formKey) { savedInitial = vm.message }
     var discard by remember { mutableStateOf(false) }
     val busy = vm.mutation.busy
-    fun cancel() { if (text != savedInitial) discard = true else close() }
+    fun cancel() { if (vm.hasUnsavedChanges) discard = true else close() }
     Dialog({ if (!busy) cancel() }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         val view = LocalView.current
         val light = pal.ink.luminance() < .5f
@@ -916,8 +914,7 @@ private fun ScheduleConfigSheet(
         else onEvent { setScheduleFormSubmit(ScheduleFormBoolAction.newBuilder().setFormKey(vm.formKey).setValue(false)) }
     }
 
-    val initialSnapshot = remember(vm.formKey) { listOf(vm.machineId, vm.agent.name, vm.model, vm.effort, vm.mode.name) }
-    val dirty = showSaveButton && initialSnapshot != listOf(vm.machineId, vm.agent.name, vm.model, vm.effort, vm.mode.name)
+    val dirty = showSaveButton && vm.hasUnsavedChanges
 
     Sheet({ if (!vm.mutation.busy) onClose() }, dirty = dirty) {
         Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
