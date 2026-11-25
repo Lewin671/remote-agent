@@ -185,6 +185,9 @@ func (s *Session) View() View {
 // than the round deadline and the replay window: a retransmission, a
 // candidate batch or a reorder gap. ok is false when there is none.
 func (s *Session) NextTimer() (due uint64, ok bool) {
+	if s.ended || s.retired {
+		return 0, false
+	}
 	at := func(t uint64) {
 		if !ok || t < due {
 			due, ok = t, true
@@ -202,10 +205,10 @@ func (s *Session) NextTimer() (due uint64, ok bool) {
 	}
 	for i := range s.pcs {
 		p := &s.pcs[i]
-		if len(p.batch.Pending) > 0 {
+		if !p.signal.Closed && p.signal.LocalSDP && p.pc != 0 && len(p.batch.Pending) > 0 && p.batch.Due != 0 {
 			at(p.batch.Due)
 		}
-		if p.signal.GapDeadline != 0 {
+		if !p.announced && !p.signal.Closed && p.signal.GapDeadline != 0 {
 			at(p.signal.GapDeadline)
 		}
 	}
@@ -286,9 +289,13 @@ func (s *Session) Handle(e Event, now uint64) []Effect {
 		s.delivered(e, now)
 	case PeerDiscovered:
 		s.boot.Discovered()
+		if s.controlWindow != nil {
+			s.controlWindow.Discovered()
+		}
 		for i := range s.pcs {
 			s.pcs[i].sender.Discovered()
 		}
+		s.flush(now)
 	case QueueControl:
 		if s.active() && len(s.pcs[0].signal.Peer.Boot) == 32 {
 			kind := jobControl
@@ -315,10 +322,20 @@ func (s *Session) Handle(e Event, now uint64) []Effect {
 		s.pcCandidatesAdded(e, now)
 	case PCLocalCandidate:
 		s.pcEvent(e.ID, now, e.Valid, func(i int, p *sessionPC) {
+			if p.ended || p.batch.Ended {
+				return
+			}
 			if e.End {
 				p.ended = true
+				if p.signal.LocalSDP {
+					s.flush(now)
+				}
 			} else if !p.batch.Add(e.Candidate, p.signal.Generation, now, 1) {
+				p.signal.Closed = true
 				s.emit(ClosePC{p.pc, "candidate_budget"})
+				p.pc = 0
+			} else if p.signal.LocalSDP && len(p.batch.Pending) >= 16 {
+				s.flush(now)
 			}
 		})
 	case PCStateChanged:
@@ -371,12 +388,17 @@ func (s *Session) finishRound() {
 func (s *Session) retire() {
 	first := !s.retired
 	s.retired = true
+	s.peerScope = PeerScope{}
 	s.finishRound()
 	for i := range s.pcs {
 		p := &s.pcs[i]
 		p.signal.Closed = true
+		p.batch.Ended = true
+		p.batch.Pending = nil
+		p.batch.Due = 0
 		if first && p.pc != 0 {
 			s.emit(ClosePC{p.pc, "peer_closed_round"})
+			p.pc = 0
 		}
 	}
 }
@@ -434,6 +456,12 @@ func (s *Session) send(sender *peerwire.Sender, now uint64) {
 
 func (s *Session) flush(now uint64) {
 	s.pruneControl(now)
+	if s.retired {
+		for i := range s.pcs {
+			s.pcs[i].signal.Prune(now)
+		}
+		return
+	}
 	if s.peerScope.Expired(now) {
 		s.retire()
 		return
@@ -450,6 +478,10 @@ func (s *Session) flush(now uint64) {
 		s.maybeReady(i, now)
 		if !p.announced {
 			p.signal.Tick(now)
+		} else if p.signal.GapDeadline != 0 && now >= p.signal.GapDeadline {
+			clear(p.signal.Pending)
+			clear(p.signal.PendingAt)
+			p.signal.GapDeadline = 0
 		}
 		if p.pc != 0 && !p.announced && p.signal.Closed {
 			s.emit(ClosePC{p.pc, "signal_closed"})
@@ -462,21 +494,23 @@ func (s *Session) flush(now uint64) {
 			s.maybeOffer(i, now)
 			s.drainActions(i, now)
 		}
-		batchIndex := p.batch.Batches
-		for _, group := range p.batch.Flush(now, p.ended, p.signal.Generation, 1) {
-			candidates := make([]peerwire.Candidate, len(group))
-			for j, raw := range group {
-				candidates[j] = peerwire.Candidate{Original: raw, Ufrag: p.localUfrag, Mid: p.localMid, Generation: p.signal.Generation}
+		if now < s.cfg.Deadline && p.signal.LocalSDP && !p.signal.Closed && p.pc != 0 {
+			batchIndex := p.batch.Batches
+			for _, group := range p.batch.Flush(now, p.ended, p.signal.Generation, 1) {
+				candidates := make([]peerwire.Candidate, len(group))
+				for j, raw := range group {
+					candidates[j] = peerwire.Candidate{Original: raw, Ufrag: p.localUfrag, Mid: p.localMid, Generation: p.signal.Generation}
+				}
+				if !s.sendSignal(i, 5, peerwire.CandidateBody(candidates, uint64(batchIndex)), now) {
+					return
+				}
+				batchIndex++
 			}
-			if !s.sendSignal(i, 5, peerwire.CandidateBody(candidates, uint64(batchIndex)), now) {
-				return
+			// EndCandidates is sent only after all full/tail candidate batches.
+			if p.ended && p.batch.Ended && len(p.batch.Pending) == 0 && p.pc != 0 {
+				p.ended = false
+				s.sendSignal(i, 6, peerwire.EndBody(p.localUfrag, uint64(p.batch.Count), uint64(p.batch.Batches)), now)
 			}
-			batchIndex++
-		}
-		// EndCandidates is sent only after all full/tail candidate batches.
-		if p.ended && p.batch.Ended && len(p.batch.Pending) == 0 && p.pc != 0 {
-			p.ended = false
-			s.sendSignal(i, 6, peerwire.EndBody(p.localUfrag, uint64(p.batch.Count), uint64(p.batch.Batches)), now)
 		}
 		s.send(p.sender, now)
 	}
@@ -647,8 +681,18 @@ func (s *Session) signed(e FrameSigned, now uint64) {
 		if err != nil || !s.active() {
 			return
 		}
-		if s.controlWindow == nil || s.controlWindow.TimedOut || len(s.controlWindow.Pending) == 0 {
-			s.controlWindow = peerwire.NewSender(now + 10000)
+		if s.controlWindow != nil {
+			for k, p := range s.controlWindow.Pending {
+				if now >= p.Expiry {
+					delete(s.controlWindow.Pending, k)
+				}
+			}
+		}
+		if s.controlWindow == nil || s.controlWindow.TimedOut || len(s.controlWindow.Pending) == 0 || now >= s.controlWindow.Deadline {
+			s.controlWindow = peerwire.NewSender(max(now+10000, job.expiry))
+		} else {
+			s.controlWindow.Deadline = max(s.controlWindow.Deadline, job.expiry)
+			s.controlWindow.LeaseUntil = max(s.controlWindow.LeaseUntil, job.expiry)
 		}
 		s.controlWindow.Enqueue(raw, now, job.expiry, 1)
 		for _, raw := range s.controlWindow.Tick(now) {
@@ -1015,9 +1059,20 @@ func (s *Session) receiveUnsupported(o peerwire.Opened, now uint64) {
 			}
 			matched = true
 			matchedUse = original.Context.Use
-			if original.Context.Class == 2 && original.Type == ControlAttachPath {
-				if ap, err := DecodeAttachPath(original.Payload); err == nil {
-					matchedStream = ap.Stream
+			if original.Context.Class == 2 {
+				switch original.Type {
+				case ControlAttachPath:
+					if ap, err := DecodeAttachPath(original.Payload); err == nil {
+						matchedStream = ap.Stream
+					}
+				case ControlInputStatus:
+					if is, err := DecodeInputStatus(original.Payload); err == nil {
+						matchedStream = is.Stream
+					}
+				case ControlBarrier:
+					if b, err := DecodeBarrier(original.Payload); err == nil {
+						matchedStream = b.Stream
+					}
 				}
 			}
 			break
@@ -1173,8 +1228,10 @@ func (s *Session) runActions(i int, now uint64) {
 		case 8:
 			s.restartPC(i, now)
 		case 9:
+			p.signal.Closed = true
 			if p.pc != 0 {
 				s.emit(ClosePC{p.pc, "signal_close_action"})
+				p.pc = 0
 			}
 		}
 	}
@@ -1202,6 +1259,9 @@ func (s *Session) makePC(i int, now uint64) bool {
 func (s *Session) pcCreated(e PCCreated, now uint64) {
 	for i := range s.pcs {
 		p := &s.pcs[i]
+		if p.pc != 0 && p.pc == e.ID {
+			return
+		}
 		if p.creating == 0 || p.creating != e.ID {
 			continue
 		}
@@ -1209,8 +1269,14 @@ func (s *Session) pcCreated(e PCCreated, now uint64) {
 		if !e.OK {
 			return
 		}
-		if s.retired {
-			s.emit(ClosePC{e.ID, "peer_closed_round"})
+		if s.retired || p.signal.Closed || now >= s.cfg.Deadline {
+			reason := "peer_closed_round"
+			if !s.retired && now >= s.cfg.Deadline {
+				reason = "round_deadline"
+			} else if !s.retired && p.signal.Closed {
+				reason = "signal_closed"
+			}
+			s.emit(ClosePC{e.ID, reason})
 			return
 		}
 		p.pc, p.pcDone = e.ID, false
@@ -1247,6 +1313,9 @@ func (s *Session) pcDescribed(e PCDescribed, now uint64) {
 	offer := p.busy == opDescribeOffer
 	p.busy = opNone
 	if !e.OK || p.signal.SetLocal(e.SDP, offer, p.signal.Generation) != nil {
+		p.signal.Closed = true
+		s.emit(ClosePC{p.pc, "describe_failed"})
+		p.pc = 0
 		return
 	}
 	info, _ := peerwire.InspectSDP(e.SDP)
@@ -1257,6 +1326,7 @@ func (s *Session) pcDescribed(e PCDescribed, now uint64) {
 	}
 	s.sendSignal(i, typ, peerwire.SDPBody(e.SDP), now)
 	s.drainActions(i, now)
+	s.flush(now)
 }
 
 func (s *Session) pcRemoteSet(e PCRemoteSet, now uint64) {
@@ -1267,7 +1337,9 @@ func (s *Session) pcRemoteSet(e PCRemoteSet, now uint64) {
 	offer := p.busy == opRemoteOffer
 	p.busy = opNone
 	if !e.OK {
+		p.signal.Closed = true
 		s.emit(ClosePC{p.pc, "remote_description_rejected"})
+		p.pc = 0
 		return
 	}
 	if offer {
@@ -1283,11 +1355,8 @@ func (s *Session) pcCandidatesAdded(e PCCandidatesAdded, now uint64) {
 	if p == nil {
 		return
 	}
-	end := p.busy == opEndCandidates
 	p.busy = opNone
-	if e.OK || end {
-		s.drainActions(i, now)
-	}
+	s.drainActions(i, now)
 }
 
 // pcEvent runs f for an SDK callback of the current PC of the current

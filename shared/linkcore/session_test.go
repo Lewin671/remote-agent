@@ -442,11 +442,11 @@ func TestCallbacksOfAReplacedPCAreIgnored(t *testing.T) {
 	e.handle(PCLocalCandidate{ID: old, End: true, Valid: true})
 	e.handle(PCStateChanged{old, PCConnected, true})
 	e.handle(PCStateChanged{old, PCFailed, true})
-	if p.ended || p.signal.DTLS || p.signal.Generation != 2 {
+	if p.ended || p.batch.Ended || p.signal.DTLS || p.signal.Generation != 2 {
 		t.Fatal("old PC callback changed the replacement")
 	}
 	e.handle(PCLocalCandidate{ID: p.pc, End: true, Valid: true})
-	if !p.ended {
+	if !p.ended && !p.batch.Ended {
 		t.Fatal("current candidate callback was lost")
 	}
 }
@@ -826,5 +826,387 @@ func TestSessionQueuesAndResumesOnEntropyExhaustion(t *testing.T) {
 	}
 	if !pair.allReady() {
 		t.Fatalf("session did not establish after entropy refill: steps %v / %v", eA.s.Steps(), eB.s.Steps())
+	}
+}
+
+func TestSessionPostAnnounceGapDeadlineNoTimerSpin(t *testing.T) {
+	// Audit core B2a: out-of-order signal frame arriving after PC is announced
+	// must not leave GapDeadline stuck in the past causing 1ms NextTimer spin.
+	a, b := orderedKeys(t)
+	p := newFakePair(t, a, b)
+	for i := 0; i < 400 && !p.allReady(); i++ {
+		p.step()
+	}
+	if !p.allReady() {
+		t.Fatalf("did not establish")
+	}
+	eA, eB := p.ends[0], p.ends[1]
+	// Forge a future-seq (seq = Next+1) EndCandidates frame from B to A on use=1 so A buffers it and sets GapDeadline.
+	nextSeq := eA.s.pcs[0].signal.Next
+	ufrag := eA.s.pcs[0].signal.RemoteUfrag
+	ctx := peerwire.NewContext(eB.key.pub, eA.key.pub, eA.s.cfg.Connection, 1, eA.s.pcs[0].generation, nextSeq+1, p.now, 1, false)
+	ctx.Deadline = p.now + 5000
+	body := peerwire.EndBody(ufrag, uint64(eA.s.pcs[0].signal.Candidates), uint64(eA.s.pcs[0].signal.Batches))
+	raw := eB.key.seal(t, eB.codec, eA.key.pub, ctx, 6, body)
+	eA.handle(FrameReceived{Raw: raw})
+	if eA.s.pcs[0].signal.GapDeadline == 0 {
+		t.Fatalf("expected GapDeadline to be set for out-of-order frame")
+	}
+	// Advance past GapDeadline + 20s and tick.
+	p.now += 25000
+	eA.handle(Tick{})
+	if due, ok := eA.s.NextTimer(); ok && due <= p.now {
+		t.Fatalf("B2a: NextTimer returned past due=%d <= now=%d", due, p.now)
+	}
+	if !eA.s.pcs[0].announced || eA.s.pcs[0].pc == 0 {
+		t.Fatalf("announced PC must remain alive after post-announce gap cleanup")
+	}
+}
+
+func TestSessionRetiredPeerScopeNoTimerSpinAndNoTransmit(t *testing.T) {
+	// Audit core B2b & B10b: expired PeerScope gap retires session without leaving
+	// NextTimer spinning in the past, and retired sessions must not transmit from flush.
+	a, b := orderedKeys(t)
+	p := newFakePair(t, a, b)
+	eA, eB := p.ends[0], p.ends[1]
+	// Complete bootstrap first.
+	for i := 0; i < 20 && !eA.s.Booted(); i++ {
+		p.step()
+	}
+	if !eA.s.Booted() {
+		t.Fatal("did not boot")
+	}
+	// Send out-of-order peer-scope Close (seq=2, use=0) from B to A to open a PeerScope gap.
+	ctx := peerwire.NewContext(eB.key.pub, eA.key.pub, eA.s.cfg.Connection, 0, 1, 2, p.now, 1, false)
+	ctx.Deadline = p.now + 5000
+	raw := eB.key.seal(t, eB.codec, eA.key.pub, ctx, 9, nil)
+	eA.handle(FrameReceived{Raw: raw})
+	// Advance past the 2.5s peerScope gap so flush retires the session.
+	p.now += 3000
+	eA.handle(Tick{})
+	if !eA.s.View().Retired {
+		t.Fatal("expected session to retire on expired peerScope gap")
+	}
+	// Advance further and check NextTimer doesn't spin in the past.
+	p.now += 5000
+	if due, ok := eA.s.NextTimer(); ok && due <= p.now {
+		t.Fatalf("B2b: retired session NextTimer returned past due=%d <= now=%d", due, p.now)
+	}
+
+	// B10b: explicit RetireRound while Probe is pending must not transmit on subsequent Tick.
+	a2, b2 := orderedKeys(t)
+	codec := testCodec(t)
+	now := uint64(1_700_000_000_000)
+	conn := make([]byte, 16)
+	_, _ = rand.Read(conn)
+	e := newFakeEnd(t, 0, a2, b2.pub, codec, conn, &now, now+10000, true, nil)
+	e.sent = nil
+	e.handle(RetireRound{})
+	now += 600
+	e.handle(Tick{})
+	if len(e.sent) != 0 {
+		t.Fatalf("B10b: retired session transmitted %d frames on Tick", len(e.sent))
+	}
+}
+
+func TestSessionControlWindowRenewalAndOfflineDiscovery(t *testing.T) {
+	// Audit core B3a & B3b + daemon Opt 1:
+	// 1) A new control frame queued after an un-ACKed control frame's 10s deadline must transmit.
+	// 2) PeerDiscovered must resume controlWindow after Status=2 (offline) and flush immediately.
+	a, b := orderedKeys(t)
+	p := newFakePair(t, a, b)
+	for i := 0; i < 400 && !p.allReady(); i++ {
+		p.step()
+	}
+	if !p.allReady() {
+		t.Fatal("did not establish")
+	}
+	eA := p.ends[0]
+	eA.sent = nil
+
+	// Queue control #1 (Control 15 subscription) and let it exhaust retries without ACK.
+	body1 := peerwire.PB(peerwire.B(1, []byte("sess-1")))
+	eA.handle(QueueControl{Type: 15, Body: body1})
+	if len(eA.sent) != 1 {
+		t.Fatalf("expected initial control #1 send, got %d", len(eA.sent))
+	}
+	p.now += 500
+	eA.handle(Tick{})
+	p.now += 1000
+	eA.handle(Tick{})
+	if len(eA.sent) != 3 {
+		t.Fatalf("expected 3 total attempts for control #1, got %d", len(eA.sent))
+	}
+
+	// Advance past control #1's 10s window WITHOUT ticking first, then queue control #2.
+	p.now += 9000 // total +10500ms since control #1
+	eA.sent = nil
+	body2 := peerwire.PB(peerwire.B(1, []byte("sess-2")))
+	eA.handle(QueueControl{Type: 15, Body: body2})
+	if len(eA.sent) != 1 {
+		t.Fatalf("B3a: expected control #2 to transmit after old window expired, got %d", len(eA.sent))
+	}
+
+	// B3b + Opt 1: deliver Status=2 (offline) for control #2, then PeerDiscovered must unpause and flush.
+	fields, err := peerwire.Parse(eA.sent[0].Raw, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	eA.handle(DeliveryResult{ID: fields[4].B, Status: 2})
+	eA.sent = nil
+	p.now += 600
+	eA.handle(PeerDiscovered{})
+	if len(eA.sent) == 0 {
+		t.Fatalf("B3b/Opt1: PeerDiscovered failed to unpause and immediately flush controlWindow")
+	}
+}
+
+func TestSessionSDKCallbackBugs(t *testing.T) {
+	// Audit core B5a, B5b, B5c, B5d.
+	a, b := orderedKeys(t)
+	codec := testCodec(t)
+	now := uint64(1_700_000_000_000)
+	conn := make([]byte, 16)
+	_, _ = rand.Read(conn)
+	deadline := now + 10000
+
+	// Helper to create an offerer session already bootstrapped with PC 1 created.
+	setupOfferer := func() (*Session, *fakeEnd) {
+		eA := newFakeEnd(t, 0, a, b.pub, codec, conn, &now, deadline, true, nil)
+		eB := newFakeEnd(t, 1, b, a.pub, codec, conn, &now, deadline, false, nil)
+		// Deliver Probe -> Challenge -> A receives Challenge -> CreatePC emitted.
+		for _, f := range eA.sent {
+			eB.handle(FrameReceived{Raw: f.Raw})
+		}
+		eA.sent = nil
+		var chal []byte
+		for _, f := range eB.sent {
+			if f.Type == 2 {
+				chal = f.Raw
+			}
+		}
+		if chal == nil {
+			t.Fatal("missing challenge")
+		}
+		// Drive A manually without auto-describing.
+		sA := eA.s
+		fx := sA.Handle(FrameReceived{Raw: chal}, now)
+		// Sign ACK if needed and collect CreatePC.
+		var created uint64
+		for _, f := range fx {
+			if c, ok := f.(CreatePC); ok && c.Use == 1 {
+				created = c.ID
+			}
+		}
+		if created == 0 {
+			t.Fatal("expected CreatePC for use 1")
+		}
+		return sA, eB
+	}
+
+	// B5b: PCDescribed{OK: false} must close PC and not loop DescribePC on every Tick.
+	t.Run("B5b_PCDescribedFailureClosesPC", func(t *testing.T) {
+		sA, _ := setupOfferer()
+		fx := sA.Handle(PCCreated{ID: 1, OK: true}, now)
+		var sawDesc bool
+		for _, f := range fx {
+			if _, ok := f.(DescribePC); ok {
+				sawDesc = true
+			}
+		}
+		if !sawDesc {
+			t.Fatal("expected initial DescribePC")
+		}
+		fx = sA.Handle(PCDescribed{ID: 1, OK: false}, now)
+		var sawClose bool
+		for _, f := range fx {
+			if c, ok := f.(ClosePC); ok && c.ID == 1 {
+				sawClose = true
+			}
+		}
+		if !sawClose {
+			t.Fatal("B5b: expected ClosePC on PCDescribed failure")
+		}
+		fx = sA.Handle(Tick{}, now+25)
+		for _, f := range fx {
+			if _, ok := f.(DescribePC); ok {
+				t.Fatal("B5b: looped DescribePC on Tick after describe failure")
+			}
+		}
+	})
+
+	// B5d: Duplicate PCCreated{ID: 1, OK: true} must be ignored (not kill active PC 1),
+	// and late PCCreated after deadline must be closed without emitting PCChosen.
+	t.Run("B5d_DuplicateAndLatePCCreated", func(t *testing.T) {
+		sA, _ := setupOfferer()
+		_ = sA.Handle(PCCreated{ID: 1, OK: true}, now)
+		fx := sA.Handle(PCCreated{ID: 1, OK: true}, now)
+		for _, f := range fx {
+			if c, ok := f.(ClosePC); ok && c.ID == 1 {
+				t.Fatal("B5d: duplicate PCCreated killed active PC 1")
+			}
+		}
+		// Late PCCreated for use 2 (ID 2) after deadline must close without PCChosen.
+		fx = sA.Handle(PCCreated{ID: 2, OK: true}, deadline+1)
+		for _, f := range fx {
+			if _, ok := f.(PCChosen); ok {
+				t.Fatal("B5d: late PCCreated after deadline emitted PCChosen")
+			}
+		}
+	})
+
+	// B5a: PCCandidatesAdded{OK: false} after PCConnected must still drainActions/maybeReady and emit Confirm.
+	t.Run("B5a_CandidatesAddedFailureStillConfirms", func(t *testing.T) {
+		pa, pb := orderedKeys(t)
+		p := newFakePair(t, pa, pb)
+		eA, eB := p.ends[0], p.ends[1]
+		// Hold AddCandidatesPC on A for use 1 so we can connect DTLS first, then fail AddCandidatesPC.
+		var heldCand *AddCandidatesPC
+		eA.observe = func(f Effect) {}
+		// Establish bootstrap + SDP exchange manually by running until remote SDP is set on A.
+		sA := eA.s
+		origStep := false
+		for i := 0; i < 60; i++ {
+			if sA.pcs[0].signal.LocalSDP && sA.pcs[0].signal.RemoteSDP {
+				origStep = true
+				break
+			}
+			p.step()
+		}
+		if !origStep {
+			t.Fatal("did not exchange SDPs")
+		}
+		// Inject a candidate batch from B to A directly via sA.Handle so A enters opCandidates.
+		ufrag := sA.pcs[0].signal.RemoteUfrag
+		mid := sA.pcs[0].signal.RemoteMid
+		candLine := []byte("candidate:1 1 UDP 2122252543 192.0.2.1 54321 typ host")
+		cands := []peerwire.Candidate{{Original: candLine, Ufrag: ufrag, Mid: mid, Generation: 1}}
+		cCtx := peerwire.NewContext(eB.key.pub, eA.key.pub, sA.cfg.Connection, 1, 1, sA.pcs[0].signal.Next, p.now, 1, false)
+		cCtx.Deadline = p.now + 5000
+		rawCand := eB.key.seal(t, eB.codec, eA.key.pub, cCtx, 5, peerwire.CandidateBody(cands, uint64(sA.pcs[0].signal.Batches)))
+		fx := sA.Handle(FrameReceived{Raw: rawCand}, p.now)
+		for _, f := range fx {
+			if ac, ok := f.(AddCandidatesPC); ok && ac.ID == sA.pcs[0].pc {
+				cp := ac
+				heldCand = &cp
+			}
+		}
+		if heldCand == nil {
+			t.Fatal("expected AddCandidatesPC effect")
+		}
+		// Now PC connects while opCandidates is in flight (so Confirm is deferred).
+		_ = sA.Handle(PCStateChanged{ID: sA.pcs[0].pc, State: PCConnected, Valid: true}, p.now)
+		if sA.pcs[0].confirmed || sA.pcs[0].confirming {
+			t.Fatal("confirm should be deferred while opCandidates is busy")
+		}
+		// Now AddCandidatesPC returns OK: false -> must still trigger maybeReady -> SignFrame(Confirm).
+		fx = sA.Handle(PCCandidatesAdded{ID: sA.pcs[0].pc, OK: false}, p.now)
+		if !sA.pcs[0].confirming && !sA.pcs[0].confirmed {
+			t.Fatalf("B5a: PCCandidatesAdded{OK:false} stalled Confirm (effects=%d)", len(fx))
+		}
+	})
+
+	// B5c: PCRemoteSet{OK: false} must clear p.pc = 0 and set signal.Closed so no duplicate ClosePC.
+	t.Run("B5c_ClosePCClearsPCID", func(t *testing.T) {
+		sA, _ := setupOfferer()
+		_ = sA.Handle(PCCreated{ID: 1, OK: true}, now)
+		sA.pcs[0].busy = opRemoteAnswer
+		fx := sA.Handle(PCRemoteSet{ID: 1, OK: false}, now)
+		closes := 0
+		for _, f := range fx {
+			if c, ok := f.(ClosePC); ok && c.ID == 1 {
+				closes++
+			}
+		}
+		if closes != 1 || sA.pcs[0].pc != 0 || !sA.pcs[0].signal.Closed {
+			t.Fatalf("B5c: expected 1 ClosePC, p.pc=0, signal.Closed=true; got closes=%d pc=%d closed=%v", closes, sA.pcs[0].pc, sA.pcs[0].signal.Closed)
+		}
+		fx2 := sA.Handle(Tick{}, now+25)
+		for _, f := range fx2 {
+			if c, ok := f.(ClosePC); ok && c.ID == 1 {
+				t.Fatal("B5c: duplicate ClosePC emitted on subsequent Tick")
+			}
+		}
+	})
+}
+
+func TestSessionLocalCandidateEndFlushAndPreDescribeGuard(t *testing.T) {
+	// Audit core B13 + web-ios #11 + daemon Opt 1:
+	// 1) Local candidate & End arriving BEFORE PCDescribed must NOT flush with empty ufrag/mid;
+	//    once PCDescribed completes, Offer is sent first and buffered candidates+End flush with valid ufrag/mid.
+	// 2) PCLocalCandidate{End: true} with 0 candidates after LocalSDP flushes EndCandidates immediately.
+	a, b := orderedKeys(t)
+	codec := testCodec(t)
+	now := uint64(1_700_000_000_000)
+	conn := make([]byte, 16)
+	_, _ = rand.Read(conn)
+	deadline := now + 10000
+
+	eA := newFakeEnd(t, 0, a, b.pub, codec, conn, &now, deadline, true, nil)
+	eB := newFakeEnd(t, 1, b, a.pub, codec, conn, &now, deadline, false, nil)
+	for _, f := range eA.sent {
+		eB.handle(FrameReceived{Raw: f.Raw})
+	}
+	var chal []byte
+	for _, f := range eB.sent {
+		if f.Type == 2 {
+			chal = f.Raw
+		}
+	}
+	sA := eA.s
+	_ = sA.Handle(FrameReceived{Raw: chal}, now)
+	_ = sA.Handle(PCCreated{ID: 1, OK: true}, now)
+	// Before PCDescribed completes, a local candidate AND End=true arrive!
+	cand := []byte("candidate:1 1 UDP 2122252543 192.0.2.1 54321 typ host")
+	fx1 := sA.Handle(PCLocalCandidate{ID: 1, Candidate: cand, Valid: true}, now+5)
+	fx2 := sA.Handle(PCLocalCandidate{ID: 1, End: true, Valid: true}, now+10)
+	fxTick := sA.Handle(Tick{}, now+100)
+	for _, list := range [][]Effect{fx1, fx2, fxTick} {
+		for _, f := range list {
+			if _, ok := f.(SignFrame); ok {
+				t.Fatalf("web-ios #11 / B13: emitted candidate/End SignFrame before PCDescribed")
+			}
+		}
+	}
+	// Now PCDescribed completes -> Offer (seq 1), Candidate batch (seq 2 with ufrag/mid), EndCandidates (seq 3).
+	sdp := fakeSDP(0, 1)
+	fxDesc := sA.Handle(PCDescribed{ID: 1, SDP: sdp, OK: true}, now+120)
+	var signedTypes []uint64
+	for _, f := range fxDesc {
+		if sf, ok := f.(SignFrame); ok {
+			sig := ed25519.Sign(a.sign, sf.Message)
+			for _, tf := range sA.Handle(FrameSigned{Op: sf.Op, Signature: sig}, now+120) {
+				if tr, ok := tf.(TransmitFrame); ok && tr.Use == 1 {
+					signedTypes = append(signedTypes, tr.Type)
+					if tr.Type == 5 {
+						opened, err := codec.OpenSent(tr.Raw, a.pub, sA.Peer(), a.shared(b.pub), now+120)
+						if err != nil {
+							t.Fatal(err)
+						}
+						cs, _, err := peerwire.ReadCandidates(opened.Payload)
+						if err != nil || len(cs) != 1 || len(cs[0].Ufrag) == 0 || len(cs[0].Mid) == 0 {
+							t.Fatalf("web-ios #11: candidate missing ufrag/mid: err=%v cs=%+v", err, cs)
+						}
+					}
+				}
+			}
+		}
+	}
+	if len(signedTypes) != 3 || signedTypes[0] != 3 || signedTypes[1] != 5 || signedTypes[2] != 6 {
+		t.Fatalf("B13/web-ios #11: expected Offer(3), Candidates(5), End(6) after PCDescribed, got %v", signedTypes)
+	}
+
+	// Case 2: 0 candidates + PCLocalCandidate{End: true} after LocalSDP flushes EndCandidates immediately.
+	_ = sA.Handle(PCCreated{ID: 2, OK: true}, now+130)
+	_ = sA.Handle(PCDescribed{ID: 2, SDP: fakeSDP(0, 2), OK: true}, now+135)
+	fxEnd := sA.Handle(PCLocalCandidate{ID: 2, End: true, Valid: true}, now+140)
+	sawEndSign := false
+	for _, f := range fxEnd {
+		if _, ok := f.(SignFrame); ok {
+			sawEndSign = true
+		}
+	}
+	if !sawEndSign {
+		t.Fatalf("B13: 0-candidate PCLocalCandidate{End:true} did not immediately flush EndCandidates")
 	}
 }
