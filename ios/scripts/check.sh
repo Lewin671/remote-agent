@@ -89,5 +89,20 @@ case "$mode" in
     perf) scheme=RemoteAgentPerfTests; set -- -only-testing:RemoteAgentPerfTests ;;
 esac
 [ -z "${IOS_DERIVED_DATA_PATH:-}" ] || set -- "$@" -derivedDataPath "$IOS_DERIVED_DATA_PATH"
+# A run that was killed leaves its test host running inside the simulator, and
+# the next xcodebuild on that simulator then waits for it indefinitely with no
+# output. Stop any app of ours left on the target before testing.
+case "$destination" in
+    *id=*) udid=${destination##*id=}; udid=${udid%%,*} ;;
+    *name=*)
+        name=${destination##*name=}; name=${name%%,*}
+        udid=$(xcrun simctl list devices available 2>/dev/null | sed -n "s/^ *$name (\([0-9A-F-]\{36\}\)) (Booted).*/\1/p" | head -n 1) ;;
+    *) udid= ;;
+esac
+if [ -n "$udid" ]; then
+    for bundle in io.github.lewin671.remoteagent io.github.lewin671.remoteagent.dev io.github.lewin671.remoteagent.uitests.xctrunner io.github.lewin671.remoteagent.perftests.xctrunner; do
+        xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
+    done
+fi
 xcodebuild -quiet -test-timeouts-enabled YES -default-test-execution-time-allowance 180 -maximum-test-execution-time-allowance 180 -collect-test-diagnostics never -parallel-testing-enabled NO -jobs "${IOS_BUILD_JOBS:-4}" -project "$ios/RemoteAgent.xcodeproj" -scheme "$scheme" -destination "$destination" "$@" test >"$out" 2>&1 \
     || fail "the app did not build or its tests failed (xcodebuild build test, $destination)"
