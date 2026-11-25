@@ -31,18 +31,12 @@ import androidx.compose.ui.text.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
-import io.github.lewin671.remoteagent.core.UiMessage
 import io.github.lewin671.remoteagent.core.proto.AlwaysAllowKind
 import io.github.lewin671.remoteagent.core.proto.AttentionCardView
+import io.github.lewin671.remoteagent.core.proto.HomeFocusPhase
 import io.github.lewin671.remoteagent.core.proto.HomeQuestionCardView
-import io.github.lewin671.remoteagent.core.proto.SessionApprovalDockView
 import io.github.lewin671.remoteagent.core.proto.SessionCommandState
 import io.github.lewin671.remoteagent.core.proto.SessionCommandStatus
-import io.github.lewin671.remoteagent.core.proto.SessionDockKind
-import io.github.lewin671.remoteagent.core.proto.SessionViewModel
-import io.github.lewin671.remoteagent.proto.AnswerQuestionRequest
-import io.github.lewin671.remoteagent.proto.Command
-import io.github.lewin671.remoteagent.proto.ResolveApprovalRequest
 import kotlinx.coroutines.delay
 
 /*
@@ -223,10 +217,9 @@ fun DarkCardLine(kind: String, status: String, modifier: Modifier = Modifier, er
  */
 class ApprovalReply internal constructor(
     val cmdState: SessionCommandState?,
-    val chosenAllow: Boolean?,
-    val message: String,
-    val always: Boolean,
     private val send: (allow: Boolean, message: String, always: Boolean) -> Unit,
+    val retryAction: (() -> Unit)? = null,
+    val abandonAction: (() -> Unit)? = null,
 ) {
     val running: Boolean get() = cmdState?.status == SessionCommandStatus.SESSION_COMMAND_STATUS_PENDING || cmdState?.busy == true
     val failed: Boolean get() = cmdState != null && !running && (
@@ -234,49 +227,43 @@ class ApprovalReply internal constructor(
             cmdState.status == SessionCommandStatus.SESSION_COMMAND_STATUS_UNKNOWN ||
             cmdState.frozen
         )
-    val submitted: Boolean get() = running || cmdState?.frozen == true || chosenAllow != null
+    val submitted: Boolean get() = running || failed || cmdState?.frozen == true
 
     fun resolve(allow: Boolean, message: String = "", always: Boolean = false) = send(allow, message, always)
-
-    internal val said: UiMessage get() = if (chosenAllow != false) UiMessages.approvalAllowed() else UiMessages.approvalDenied()
 }
 
 @Composable
 fun rememberApprovalReply(
-    machineId: String,
     sessionId: String,
     approvalId: String,
-    observedSeq: Long,
     cmdState: SessionCommandState?,
+    isHome: Boolean = false,
     skeleton: Boolean = false,
 ): ApprovalReply {
     val remote = LocalRemote.current
     val view = androidx.compose.ui.platform.LocalView.current
-    var chosenAllow by remember(approvalId) { mutableStateOf<Boolean?>(null) }
-    var lastMessage by remember(approvalId) { mutableStateOf("") }
-    var lastAlways by remember(approvalId) { mutableStateOf(false) }
-    return ApprovalReply(cmdState, chosenAllow, lastMessage, lastAlways) { allow, message, always ->
-        if (skeleton) return@ApprovalReply
-        Motion.tap(view)
-        chosenAllow = allow
-        lastMessage = message
-        lastAlways = always
-        remote.submitSessionCommand(
-            sessionId,
-            Command.newBuilder()
-                .setResolveApproval(
-                    ResolveApprovalRequest.newBuilder()
-                        .setSessionId(sessionId)
-                        .setApprovalId(approvalId)
-                        .setAllow(allow)
-                        .setMessage(message)
-                        .setAlways(always)
-                        .apply { if (observedSeq > 0) setObservedEventSeq(observedSeq) },
-                )
-                .build(),
-            machineId = machineId,
-        )
+    val slotKey = cmdState?.slotKey.orEmpty()
+    val retry: (() -> Unit)? = when {
+        isHome -> ({ remote.homeRetryAttention(sessionId, approvalId) })
+        slotKey.isNotEmpty() -> ({ remote.retrySessionCommand(sessionId, slotKey) })
+        else -> null
     }
+    val abandon: (() -> Unit)? = when {
+        isHome -> ({ remote.homeAbandonAttention(sessionId, approvalId) })
+        slotKey.isNotEmpty() -> ({ remote.abandonSessionCommand(sessionId, slotKey) })
+        else -> null
+    }
+    return ApprovalReply(
+        cmdState = cmdState,
+        send = { allow, message, always ->
+            if (skeleton) return@ApprovalReply
+            Motion.tap(view)
+            if (isHome) remote.homeResolveApproval(sessionId, approvalId, allow, always, message)
+            else remote.resolveApproval(sessionId, approvalId, allow, always, message)
+        },
+        retryAction = retry,
+        abandonAction = abandon,
+    )
 }
 
 /**
@@ -287,21 +274,24 @@ fun ApprovalSubmitted(kind: String, d: ApprovalReply, modifier: Modifier = Modif
     val copy = uiText()
     val st = d.cmdState
     when {
-        !d.failed -> DarkCardLine(kind, copy(d.said), modifier)
-        st?.expired == true -> DarkCardLine(
-            kind,
-            copy(UiMessages.approvalAndroidReplyExpired(decision = (if (d.chosenAllow != false) copy(UiMessages.approvalAllow()) else copy(UiMessages.approvalAndroidDenyDecision())).toString())),
-            modifier,
-            error = true,
-        )
+        !d.failed -> {
+            val summary = st?.takeIf { it.hasSubmittedSummary() }?.let { uiText(it.submittedSummary) }
+                ?.ifEmpty { null }
+                ?: copy(UiMessages.dockWaitingConfirmation())
+            DarkCardLine(kind, summary, modifier)
+        }
+        st?.expired == true -> {
+            val status = st.takeIf { it.hasStatusText() }?.let { uiText(it.statusText) }
+                ?.ifEmpty { null }
+                ?: copy(UiMessages.approvalAndroidReplyExpired(decision = copy(UiMessages.approvalAllow())))
+            DarkCardLine(kind, status, modifier, error = true)
+        }
         else -> {
             val reason = st?.takeIf { it.hasErrorText() }?.let { uiText(it.errorText) }
                 ?.ifEmpty { st.errorCode }
                 ?.ifEmpty { copy(UiMessages.approvalAndroidUnknownResult()) }
                 ?: copy(UiMessages.approvalAndroidUnknownResult())
-            val retry: (() -> Unit)? = if (st == null || st.canRetry || !st.expired) {
-                { d.resolve(d.chosenAllow ?: true, d.message, d.always) }
-            } else null
+            val retry: (() -> Unit)? = if (st?.canRetry == true) d.retryAction else null
             DarkCardLine(kind, copy(UiMessages.approvalDeliveryFailed(reason = reason)), modifier, error = true, retry = retry)
         }
     }
@@ -325,14 +315,12 @@ fun ApprovalButtons(
     onFull: () -> Unit = {},
     scrollToBottomNeeded: Boolean = false,
     onScrollToBottom: () -> Unit = {},
-    onResolveStarted: (allow: Boolean) -> Unit = {},
 ) {
     val copy = uiText()
     var reason by Drafts.of("deny:$approvalId")
-    val sendingDeny = denying && d.running && d.chosenAllow == false
-    val failedDeny = denying && d.failed && d.chosenAllow == false
+    val sendingDeny = denying && d.running
+    val failedDeny = denying && d.failed
     val submitDeny = {
-        onResolveStarted(false)
         d.resolve(false, reason.trim())
     }
     if (denying) {
@@ -369,17 +357,32 @@ fun ApprovalButtons(
         CardButton(copy(UiMessages.approvalDeny()), { onDenying(true) }, Modifier.weight(1f), enabled = !locked)
         if (cut) CardButton(copy(UiMessages.approvalFullCommand()), onFull, Modifier.weight(1f), primary = true)
         else if (scrollToBottomNeeded) CardButton(copy(UiMessages.approvalScrollToView()), onScrollToBottom, Modifier.weight(1f), primary = true)
-        else CardButton(copy(UiMessages.approvalAllow()), { onResolveStarted(true); d.resolve(true) }, Modifier.weight(1f), primary = true, enabled = !locked && !truncated)
+        else CardButton(copy(UiMessages.approvalAllow()), { d.resolve(true) }, Modifier.weight(1f), primary = true, enabled = !locked && !truncated)
     }
     if (always && !cut && !scrollToBottomNeeded && !locked && !truncated) Box(
-        Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(top = 4.dp).clickable(role = Role.Button) { onResolveStarted(true); d.resolve(true, always = true) },
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(top = 4.dp).clickable(role = Role.Button) { d.resolve(true, always = true) },
         contentAlignment = Alignment.Center,
     ) { Text(alwaysLabel, style = T.s15, color = CardColors.link) }
 }
 
+@Composable
+private fun HomeResolvedLine(text: String, checked: Boolean, modifier: Modifier = Modifier) {
+    Row(
+        modifier.fillMaxWidth().clip(Radii.R24).background(pal.tc).border(0.5.dp, pal.tcLine, Radii.R24).heightIn(min = 48.dp)
+            .padding(horizontal = 16.dp, vertical = 10.dp).semantics(mergeDescendants = true) {
+                liveRegion = LiveRegionMode.Polite
+            },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (checked) Ic(Lucide.Check, 15.dp, pal.orangeInk)
+        Text(text, style = T.s13, color = pal.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
+}
+
 /**
- * The home page's dark card for the most urgent approval (design-system §6 终端卡), rendered from
- * Core's [AttentionCardView].
+ * The home page's dark card for the most urgent approval (design-system §6 终端卡), rendered purely from
+ * Core's [AttentionCardView] without any hidden session subscription.
  */
 @Composable
 fun ApprovalCard(
@@ -390,18 +393,31 @@ fun ApprovalCard(
 ) {
     val copy = uiText()
     val remote = LocalRemote.current
-    val sessionFlow = remember(remote, card.sessionId) { remote.watchSession(card.sessionId) }
-    val svm by sessionFlow.collectAsState(initial = remember(remote, card.sessionId) { remote.currentSessionView(card.sessionId) ?: SessionViewModel.getDefaultInstance() })
-    val cmdState = svm.dock.takeIf {
-        it.hasItem && it.kind == SessionDockKind.SESSION_DOCK_KIND_APPROVAL && it.approval.approvalId == card.approvalId
-    }?.command
+    if (card.phase == HomeFocusPhase.HOME_FOCUS_PHASE_RESOLVED_THIS_CLIENT ||
+        card.phase == HomeFocusPhase.HOME_FOCUS_PHASE_RESOLVED_ELSEWHERE
+    ) {
+        HomeResolvedLine(
+            text = uiText(card.resolutionText),
+            checked = card.phase == HomeFocusPhase.HOME_FOCUS_PHASE_RESOLVED_THIS_CLIENT,
+            modifier = modifier,
+        )
+        return
+    }
     val kind = uiText(card.kindText)
+    if (card.isSkeleton) {
+        DarkCard(modifier) {
+            DarkCardHead(kind)
+            Text(copy(UiMessages.sessionSkeleton()), style = T.s15, color = CardColors.text2, modifier = Modifier.padding(top = 12.dp))
+        }
+        return
+    }
     val time = uiText(card.time)
-    val d = rememberApprovalReply(card.machineId, card.sessionId, card.approvalId, 0L, cmdState)
+    val cmdState = if (card.hasCommand()) card.command else null
+    val d = rememberApprovalReply(card.sessionId, card.approvalId, cmdState, isHome = true, skeleton = card.isSkeleton)
     var full by rememberSaveable(card.approvalId) { mutableStateOf(false) }
-    var denying by rememberSaveable(card.approvalId) { mutableStateOf(false) }
     var lines by remember(card.approvalId) { mutableIntStateOf(0) }
-    val showCompactSubmitted = d.submitted && !(denying && d.chosenAllow == false && (d.running || d.failed))
+    val denying = card.denyingOpen
+    val showCompactSubmitted = d.submitted && !card.holdOpenCard
     if (showCompactSubmitted) return ApprovalSubmitted(kind, d, modifier)
     val command = card.body.trim()
     val more = lines - CARD_LINES
@@ -433,27 +449,28 @@ fun ApprovalCard(
             }
         }
         if (card.truncated) Text(copy(UiMessages.approvalTruncated()), style = T.s13, color = CardColors.red, modifier = Modifier.padding(top = 8.dp))
+        if (!denying && card.description.isNotEmpty()) {
+            Text(card.description.trim(), style = T.s15, color = CardColors.text2, modifier = Modifier.padding(top = 12.dp))
+        }
         ApprovalButtons(
             approvalId = card.approvalId,
             d = d,
             denying = denying,
-            onDenying = { denying = it },
+            onDenying = { remote.homeEditApprovalDeny(card.sessionId, card.approvalId, it) },
             locked = locked,
             truncated = card.truncated,
             always = always,
             alwaysLabel = uiText(card.alwaysLabel).ifEmpty { copy(UiMessages.approvalAlwaysAllow()) },
+            denyPlaceholder = if (card.hasDenyReasonPlaceholder()) uiText(card.denyReasonPlaceholder) else copy(UiMessages.approvalReasonPlaceholder()),
             cut = cut,
             onFull = { full = true },
         )
     }
 }
 
-private enum class QuestionSlotPhase { IDLE, SENDING, ERROR, DELIVERED, ELSEWHERE, EXITING }
-
 /**
- * Holds Home's inline single-select question dark focus card through its 5-state lifecycle:
- * idle -> picked white/black (+ 150ms delayed spinner) -> 900ms confirmation bar -> exit,
- * plus failure rollback with Retry and external resolution ("已在另一端回答").
+ * Renders Home's inline single-select question dark focus card purely from Core's [HomeQuestionCardView].
+ * Keeps only a 150ms pure visual spinner delay while SUBMITTING.
  */
 @Composable
 fun HomeQuestionSlot(
@@ -462,50 +479,27 @@ fun HomeQuestionSlot(
     onOpenTerminal: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val active = question ?: return
     val copy = uiText()
     val remote = LocalRemote.current
     val view = androidx.compose.ui.platform.LocalView.current
-    var held by remember { mutableStateOf(question) }
-    var phase by remember { mutableStateOf(QuestionSlotPhase.IDLE) }
-    var exitElsewhere by remember { mutableStateOf(false) }
-    var pickedNum by remember { mutableStateOf<Int?>(null) }
-    var pickedLabel by remember { mutableStateOf("") }
-    var showSpinner by remember { mutableStateOf(false) }
-    var errMsg by remember { mutableStateOf("") }
-    var wasBusy by remember { mutableStateOf(false) }
+    val phase = active.phase
 
-    LaunchedEffect(question?.sessionId, question?.questionId, question) {
-        if (question != null) {
-            if (held == null || held?.sessionId != question.sessionId || held?.questionId != question.questionId) {
-                held = question
-                phase = QuestionSlotPhase.IDLE
-                exitElsewhere = false
-                pickedNum = null
-                pickedLabel = ""
-                showSpinner = false
-                errMsg = ""
-                wasBusy = false
-            } else {
-                held = question
-            }
-        } else if (held != null) {
-            showSpinner = false
-            when (phase) {
-                QuestionSlotPhase.SENDING -> {
-                    exitElsewhere = false
-                    phase = QuestionSlotPhase.DELIVERED
-                }
-                QuestionSlotPhase.IDLE, QuestionSlotPhase.ERROR -> {
-                    exitElsewhere = true
-                    phase = QuestionSlotPhase.ELSEWHERE
-                }
-                else -> {}
-            }
-        }
+    if (phase == HomeFocusPhase.HOME_FOCUS_PHASE_RESOLVED_THIS_CLIENT ||
+        phase == HomeFocusPhase.HOME_FOCUS_PHASE_RESOLVED_ELSEWHERE
+    ) {
+        HomeResolvedLine(
+            text = uiText(active.resolutionText),
+            checked = phase == HomeFocusPhase.HOME_FOCUS_PHASE_RESOLVED_THIS_CLIENT,
+            modifier = modifier,
+        )
+        return
     }
 
-    LaunchedEffect(phase) {
-        if (phase == QuestionSlotPhase.SENDING) {
+    val sending = phase == HomeFocusPhase.HOME_FOCUS_PHASE_SUBMITTING
+    var showSpinner by remember(active.sessionId, active.questionId, active.pickedOptionNum) { mutableStateOf(false) }
+    LaunchedEffect(sending, active.sessionId, active.questionId, active.pickedOptionNum) {
+        if (sending) {
             showSpinner = false
             delay(150)
             showSpinner = true
@@ -514,91 +508,13 @@ fun HomeQuestionSlot(
         }
     }
 
-    LaunchedEffect(phase) {
-        if (phase == QuestionSlotPhase.DELIVERED || phase == QuestionSlotPhase.ELSEWHERE) {
-            delay(900)
-            phase = QuestionSlotPhase.EXITING
-        } else if (phase == QuestionSlotPhase.EXITING) {
-            delay(160)
-            held = null
-            pickedNum = null
-            pickedLabel = ""
-            errMsg = ""
-            wasBusy = false
-            phase = QuestionSlotPhase.IDLE
-        }
-    }
-
-    val active = held ?: return
-
-    if (phase == QuestionSlotPhase.DELIVERED || phase == QuestionSlotPhase.ELSEWHERE || phase == QuestionSlotPhase.EXITING) {
-        val isElsewhere = phase == QuestionSlotPhase.ELSEWHERE || (phase == QuestionSlotPhase.EXITING && exitElsewhere)
-        val lineText = if (isElsewhere) {
-            copy(UiMessages.homeQuestionAnsweredElsewhere())
-        } else {
-            copy(UiMessages.homeQuestionAnsweredLine(answer = pickedLabel))
-        }
-        Row(
-            modifier.fillMaxWidth().clip(Radii.R24).background(pal.tc).border(0.5.dp, pal.tcLine, Radii.R24).heightIn(min = 48.dp)
-                .padding(horizontal = 16.dp, vertical = 10.dp).semantics(mergeDescendants = true) {
-                    liveRegion = LiveRegionMode.Polite
-                },
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            if (!isElsewhere) Ic(Lucide.Check, 15.dp, pal.orangeInk)
-            Text(lineText, style = T.s13, color = pal.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        }
-        return
-    }
-
-    val sessionFlow = remember(remote, active.sessionId) { remote.watchSession(active.sessionId) }
-    val svm by sessionFlow.collectAsState(initial = remember(remote, active.sessionId) { remote.currentSessionView(active.sessionId) ?: SessionViewModel.getDefaultInstance() })
-    val cmd = svm.dock.takeIf {
-        it.hasItem && it.kind == SessionDockKind.SESSION_DOCK_KIND_QUESTION && it.itemId == active.questionId
-    }?.command
-    val cmdBusy = cmd?.busy == true || cmd?.status == SessionCommandStatus.SESSION_COMMAND_STATUS_PENDING
-    val cmdErr = cmd != null && (cmd.status == SessionCommandStatus.SESSION_COMMAND_STATUS_FAILED || cmd.status == SessionCommandStatus.SESSION_COMMAND_STATUS_UNKNOWN || cmd.expired)
-    val cmdErrText = if (cmd?.hasErrorText() == true) uiText(cmd.errorText) else cmd?.errorCode.orEmpty()
-
-    LaunchedEffect(cmdBusy, cmdErr, cmdErrText, phase) {
-        if (cmdBusy) {
-            wasBusy = true
-        } else if (phase == QuestionSlotPhase.SENDING && wasBusy) {
-            wasBusy = false
-            if (cmdErr) {
-                errMsg = cmdErrText.ifEmpty { copy(UiMessages.approvalAndroidUnknownResult()) }
-                phase = QuestionSlotPhase.ERROR
-            } else {
-                exitElsewhere = false
-                phase = QuestionSlotPhase.DELIVERED
-            }
-        }
-    }
-
-    fun submitOption(optionNum: Int, label: String) {
-        if (!active.canAnswer || phase == QuestionSlotPhase.SENDING) return
-        Motion.tap(view)
-        pickedNum = optionNum
-        pickedLabel = label
-        errMsg = ""
-        wasBusy = false
-        phase = QuestionSlotPhase.SENDING
-        remote.submitSessionCommand(
-            active.sessionId,
-            Command.newBuilder()
-                .setAnswerQuestion(
-                    AnswerQuestionRequest.newBuilder()
-                        .setSessionId(active.sessionId)
-                        .setQuestionId(active.questionId)
-                        .setOption(optionNum)
-                        .setQuestionIndex(0)
-                        .apply { if (active.observedEventSeq > 0) setObservedEventSeq(active.observedEventSeq) },
-                )
-                .build(),
-            machineId = svm.header.machineId.ifEmpty { active.machineId },
-        )
-    }
+    val errMsg = if (phase == HomeFocusPhase.HOME_FOCUS_PHASE_FAILED) {
+        val cmd = if (active.hasCommand()) active.command else null
+        cmd?.takeIf { it.hasErrorText() }?.let { uiText(it.errorText) }
+            ?.ifEmpty { cmd.errorCode }
+            ?.ifEmpty { copy(UiMessages.approvalAndroidUnknownResult()) }
+            ?: copy(UiMessages.approvalAndroidUnknownResult())
+    } else ""
 
     DarkCard(modifier.semantics(mergeDescendants = false) {}) {
         DarkCardHead(uiText(active.badgeText), uiText(active.timeText))
@@ -628,15 +544,18 @@ fun HomeQuestionSlot(
         Column(Modifier.fillMaxWidth().padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             val recWord = copy(UiMessages.dockRecommended())
             active.optionsList.forEach { opt ->
-                val isPicked = pickedNum == opt.optionNum && phase == QuestionSlotPhase.SENDING
-                val dimmed = phase == QuestionSlotPhase.SENDING && !isPicked
-                val enabled = active.canAnswer && phase != QuestionSlotPhase.SENDING
+                val isPicked = active.pickedOptionNum == opt.optionNum && sending
+                val dimmed = sending && !isPicked
+                val enabled = active.canAnswer && !sending
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 44.dp)
                         .disabledAlpha(!dimmed)
                         .clip(Radii.R12)
                         .background(if (isPicked) CardColors.primary else Color(0x14FFFFFF))
-                        .clickable(enabled = enabled, role = Role.Button) { submitOption(opt.optionNum, opt.label) }
+                        .clickable(enabled = enabled, role = Role.Button) {
+                            Motion.tap(view)
+                            remote.homeAnswerQuestion(active.sessionId, active.questionId, opt.optionNum)
+                        }
                         .padding(horizontal = 14.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -666,11 +585,14 @@ fun HomeQuestionSlot(
                 }
             }
         }
-        if (phase == QuestionSlotPhase.ERROR && errMsg.isNotEmpty()) {
+        if (phase == HomeFocusPhase.HOME_FOCUS_PHASE_FAILED && errMsg.isNotEmpty()) {
             CardNote(
                 copy(UiMessages.homeQuestionSendFailed(reason = errMsg)),
-                action = if (pickedNum != null) copy(UiMessages.commonRetry()) else null,
-                onAction = { pickedNum?.let { submitOption(it, pickedLabel) } },
+                action = if (active.command.canRetry || active.pickedOptionNum > 0) copy(UiMessages.commonRetry()) else null,
+                onAction = {
+                    Motion.tap(view)
+                    remote.homeRetryAttention(active.sessionId, active.questionId)
+                },
             )
         }
         if (!active.canAnswer && active.hasOfflineNote()) {

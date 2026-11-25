@@ -154,7 +154,7 @@ class I18nBatchBTest(private val locale: String) {
     @Before fun prepare() {
         remote.showForTest(state, sessions = mapOf("s" to defaultSessionVm))
     }
-    @After fun close() { remote.close(); Drafts.clear(); DockFolds.clear(); QuestionMultiPicks.clear() }
+    @After fun close() { remote.close(); Drafts.clear(); DockFolds.clear() }
     private fun show(content: @Composable () -> Unit) = ui.setContent {
         RaTheme(ThemeMode.LIGHT) {
             CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav, LocalMessageLocale provides language) {

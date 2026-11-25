@@ -382,6 +382,65 @@ class Remote(
     fun loadEarlierSessionHistory(sid: String) =
         coreHost.loadEarlierSessionHistory(sid)
 
+    fun homeResolveApproval(
+        sid: String,
+        approvalId: String,
+        allow: Boolean,
+        always: Boolean = false,
+        denyReason: String = "",
+    ) = coreHost.homeResolveApproval(sid, approvalId, allow, always, denyReason)
+
+    fun homeEditApprovalDeny(sid: String, approvalId: String, denyingOpen: Boolean) =
+        coreHost.homeEditApprovalDeny(sid, approvalId, denyingOpen)
+
+    fun homeAnswerQuestion(sid: String, questionId: String, optionNum: Int) =
+        coreHost.homeAnswerQuestion(sid, questionId, optionNum)
+
+    fun homeRetryAttention(sid: String, itemId: String) =
+        coreHost.homeRetryAttention(sid, itemId)
+
+    fun homeAbandonAttention(sid: String, itemId: String) =
+        coreHost.homeAbandonAttention(sid, itemId)
+
+    fun editApprovalDeny(sid: String, approvalId: String, denyingOpen: Boolean) =
+        coreHost.editApprovalDeny(sid, approvalId, denyingOpen)
+
+    fun resolveApproval(
+        sid: String,
+        approvalId: String,
+        allow: Boolean,
+        always: Boolean = false,
+        denyReason: String = "",
+    ) = coreHost.resolveApproval(sid, approvalId, allow, always, denyReason)
+
+    fun toggleQuestionOption(sid: String, questionId: String, optionNum: Int) =
+        coreHost.toggleQuestionOption(sid, questionId, optionNum)
+
+    fun answerQuestion(
+        sid: String,
+        questionId: String,
+        optionNum: Int = 0,
+        optionNums: List<Int> = emptyList(),
+    ) = coreHost.answerQuestion(sid, questionId, optionNum, optionNums)
+
+    fun answerPlan(sid: String, choice: PlanChoice) =
+        coreHost.answerPlan(sid, choice)
+
+    fun sessionSimpleCommand(sid: String, kind: SessionSimpleCommandKind) =
+        coreHost.sessionSimpleCommand(sid, kind)
+
+    fun renameSession(sid: String, title: String) =
+        coreHost.renameSession(sid, title)
+
+    fun setApprovalMode(sid: String, mode: ApprovalMode) =
+        coreHost.setApprovalMode(sid, mode)
+
+    fun setSessionModel(sid: String, model: String, effort: String = "") =
+        coreHost.setSessionModel(sid, model, effort)
+
+    fun retrySessionCommand(sid: String, slotKey: String) =
+        coreHost.retrySessionCommand(sid, slotKey)
+
     private val pendingSessionLookups = ConcurrentHashMap<String, java.util.concurrent.CopyOnWriteArrayList<CompletableDeferred<Boolean>>>()
 
     init {

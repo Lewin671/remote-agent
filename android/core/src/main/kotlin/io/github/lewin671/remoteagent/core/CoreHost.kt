@@ -9,6 +9,7 @@ import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.ApprovalMode
 import io.github.lewin671.remoteagent.proto.Command
 import io.github.lewin671.remoteagent.proto.CommandResult
+import io.github.lewin671.remoteagent.proto.PlanChoice
 import io.github.lewin671.remoteagent.proto.SendMode
 import io.github.lewin671.remoteagent.proto.UsageRangePreset
 import io.github.lewin671.remoteagent.proto.UsageStatsResponse
@@ -1560,6 +1561,57 @@ class CoreHost(
     fun selectHomeSession(sessionId: String) =
         send { setHomeSelectSession(HomeSelectSessionAction.newBuilder().setSessionId(sessionId)) }
 
+    fun homeResolveApproval(
+        sessionId: String,
+        approvalId: String,
+        allow: Boolean,
+        always: Boolean = false,
+        denyReason: String = "",
+    ) = send {
+        setHomeResolveApproval(
+            HomeResolveApprovalAction.newBuilder()
+                .setSessionId(sessionId)
+                .setApprovalId(approvalId)
+                .setAllow(allow)
+                .setAlways(always)
+                .setDenyReason(denyReason),
+        )
+    }
+
+    fun homeEditApprovalDeny(sessionId: String, approvalId: String, denyingOpen: Boolean) = send {
+        setHomeEditApprovalDeny(
+            HomeEditApprovalDenyAction.newBuilder()
+                .setSessionId(sessionId)
+                .setApprovalId(approvalId)
+                .setDenyingOpen(denyingOpen),
+        )
+    }
+
+    fun homeAnswerQuestion(sessionId: String, questionId: String, optionNum: Int) = send {
+        setHomeAnswerQuestion(
+            HomeAnswerQuestionAction.newBuilder()
+                .setSessionId(sessionId)
+                .setQuestionId(questionId)
+                .setOptionNum(optionNum),
+        )
+    }
+
+    fun homeRetryAttention(sessionId: String, itemId: String) = send {
+        setHomeRetryAttention(
+            HomeRetryAttentionAction.newBuilder()
+                .setSessionId(sessionId)
+                .setItemId(itemId),
+        )
+    }
+
+    fun homeAbandonAttention(sessionId: String, itemId: String) = send {
+        setHomeAbandonAttention(
+            HomeAbandonAttentionAction.newBuilder()
+                .setSessionId(sessionId)
+                .setItemId(itemId),
+        )
+    }
+
     fun openManageProjects(machineId: String = "") = dispatchAction {
         projectMachineId = machineId
         refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_PROJECT)
@@ -2207,6 +2259,105 @@ class CoreHost(
 
     fun loadEarlierSessionHistory(sessionId: String) = send {
         setSessionLoadEarlier(SessionRefreshHistoryAction.newBuilder().setSessionId(sessionId))
+    }
+
+    fun editApprovalDeny(sessionId: String, approvalId: String, denyingOpen: Boolean) = send {
+        setSessionEditApprovalDeny(
+            SessionEditApprovalDenyAction.newBuilder()
+                .setSessionId(sessionId)
+                .setApprovalId(approvalId)
+                .setDenyingOpen(denyingOpen),
+        )
+    }
+
+    fun resolveApproval(
+        sessionId: String,
+        approvalId: String,
+        allow: Boolean,
+        always: Boolean = false,
+        denyReason: String = "",
+    ) = send {
+        setSessionResolveApproval(
+            SessionResolveApprovalAction.newBuilder()
+                .setSessionId(sessionId)
+                .setApprovalId(approvalId)
+                .setAllow(allow)
+                .setAlways(always)
+                .setDenyReason(denyReason),
+        )
+    }
+
+    fun toggleQuestionOption(sessionId: String, questionId: String, optionNum: Int) = send {
+        setSessionToggleQuestionOption(
+            SessionToggleQuestionOptionAction.newBuilder()
+                .setSessionId(sessionId)
+                .setQuestionId(questionId)
+                .setOptionNum(optionNum),
+        )
+    }
+
+    fun answerQuestion(
+        sessionId: String,
+        questionId: String,
+        optionNum: Int = 0,
+        optionNums: List<Int> = emptyList(),
+    ) = send {
+        setSessionAnswerQuestion(
+            SessionAnswerQuestionAction.newBuilder()
+                .setSessionId(sessionId)
+                .setQuestionId(questionId)
+                .setOptionNum(optionNum)
+                .addAllOptionNums(optionNums),
+        )
+    }
+
+    fun answerPlan(sessionId: String, choice: PlanChoice) = send {
+        setSessionAnswerPlan(
+            SessionAnswerPlanAction.newBuilder()
+                .setSessionId(sessionId)
+                .setChoice(choice),
+        )
+    }
+
+    fun sessionSimpleCommand(sessionId: String, kind: SessionSimpleCommandKind) = send {
+        setSessionSimpleCommand(
+            SessionSimpleCommandAction.newBuilder()
+                .setSessionId(sessionId)
+                .setKind(kind),
+        )
+    }
+
+    fun renameSession(sessionId: String, title: String) = send {
+        setSessionRename(
+            SessionRenameAction.newBuilder()
+                .setSessionId(sessionId)
+                .setTitle(title),
+        )
+    }
+
+    fun setApprovalMode(sessionId: String, mode: ApprovalMode) = send {
+        setSessionSetApprovalMode(
+            SessionSetApprovalModeAction.newBuilder()
+                .setSessionId(sessionId)
+                .setMode(mode),
+        )
+    }
+
+    fun setSessionModel(sessionId: String, model: String, effort: String = "") = send {
+        setSessionSetModel(
+            SessionSetModelAction.newBuilder()
+                .setSessionId(sessionId)
+                .setModel(model)
+                .setEffort(effort),
+        )
+    }
+
+    fun retrySessionCommand(sessionId: String, slotKey: String) = send {
+        setSessionRetryCommand(
+            SessionRetryCommandAction.newBuilder()
+                .setSessionId(sessionId)
+                .setSlotKey(slotKey),
+        )
     }
 
     // --- Schedule actions (300..349) ---

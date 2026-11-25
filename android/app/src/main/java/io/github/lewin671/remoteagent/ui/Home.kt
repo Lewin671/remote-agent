@@ -79,14 +79,8 @@ fun HomeScreen() {
     var allAttention by remember(vm.scopeKey) { mutableStateOf(false) }
     var allRunning by remember(vm.scopeKey, vm.filterQuery) { mutableStateOf(false) }
 
-    val showCard = vm.topAttentionActionable && vm.hasTopAttentionCard() && vm.topAttentionCard.approvalId.isNotEmpty()
-    val showQuestion = !showCard && vm.topAttentionActionable && vm.hasTopAttentionQuestion() && vm.topAttentionQuestion.questionId.isNotEmpty()
-    if (vm.topAttentionActionable && !showCard && vm.topAttentionSessionId.isNotEmpty()) {
-        // Hydrate approval details for the top attention item when only metadata was available.
-        remote.watchSession(vm.topAttentionSessionId).collectAsState(
-            initial = io.github.lewin671.remoteagent.core.proto.SessionViewModel.getDefaultInstance(),
-        )
-    }
+    val showCard = filterText.isEmpty() && vm.hasTopAttentionCard() && vm.topAttentionCard.approvalId.isNotEmpty()
+    val showQuestion = !showCard && filterText.isEmpty() && vm.hasTopAttentionQuestion() && vm.topAttentionQuestion.questionId.isNotEmpty()
     val excludedTopId = when {
         showCard -> vm.topAttentionCard.sessionId.ifEmpty { vm.topAttentionSessionId }
         showQuestion -> vm.topAttentionQuestion.sessionId.ifEmpty { vm.topAttentionSessionId }

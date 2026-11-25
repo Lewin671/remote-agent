@@ -41,6 +41,7 @@ import io.github.lewin671.remoteagent.core.Link
 import io.github.lewin671.remoteagent.core.MachineView
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.RemoteState
+import io.github.lewin671.remoteagent.core.proto.HomeFocusPhase
 import io.github.lewin671.remoteagent.core.proto.HomeQuestionCardView
 import io.github.lewin671.remoteagent.core.proto.HomeQuestionOptionView
 import io.github.lewin671.remoteagent.core.proto.SessionCommandState
@@ -113,9 +114,8 @@ class V63UiInteractionsTest {
         var terminalOpened = ""
         val cardState = mutableStateOf<HomeQuestionCardView?>(sampleQuestion(canAnswer = false, offlineNote = "Mac Studio 离线，无法作答"))
         val baseState = RemoteState(conn = ConnState.ONLINE, link = Link.ONLINE, loaded = true, synced = true)
-        val baseVm = SessionViewModel.newBuilder().setSessionId("s-q1").build()
         try {
-            remote.showForTest(baseState, sessions = mapOf("s-q1" to baseVm))
+            remote.showForTest(baseState)
             ui.setContent {
                 RaTheme(ThemeMode.LIGHT) {
                     CompositionLocalProvider(LocalRemote provides remote) {
@@ -139,57 +139,47 @@ class V63UiInteractionsTest {
             ui.waitForIdle()
             assertEquals("s-q1", terminalOpened)
 
-            // Bring card online and submit option 1, then simulate backend failure -> Retry.
-            cardState.value = sampleQuestion(canAnswer = true)
-            ui.waitForIdle()
+            // Submitting state from Core shows picked option + delayed spinner after 150ms.
             ui.mainClock.autoAdvance = false
-            ui.onNodeWithText("LRU · 推荐").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+            ui.runOnIdle {
+                cardState.value = sampleQuestion(canAnswer = true).toBuilder()
+                    .setPhase(HomeFocusPhase.HOME_FOCUS_PHASE_SUBMITTING)
+                    .setPickedOptionNum(1)
+                    .build()
+            }
             ui.mainClock.advanceTimeBy(160)
             ui.waitForIdle()
 
+            // Failed state from Core renders error text + Retry action.
             ui.mainClock.autoAdvance = true
-            val busyVm = baseVm.toBuilder()
-                .setDock(
-                    SessionDockView.newBuilder()
-                        .setHasItem(true)
-                        .setKind(SessionDockKind.SESSION_DOCK_KIND_QUESTION)
-                        .setItemId("q1")
-                        .setCommand(
-                            SessionCommandState.newBuilder()
-                                .setBusy(true)
-                                .setStatus(SessionCommandStatus.SESSION_COMMAND_STATUS_PENDING),
-                        ),
-                )
-                .build()
-            remote.showForTest(baseState, sessions = mapOf("s-q1" to busyVm))
-            ui.waitForIdle()
-
-            val failedVm = busyVm.toBuilder()
-                .setDock(
-                    busyVm.dock.toBuilder()
-                        .setCommand(
-                            SessionCommandState.newBuilder()
-                                .setBusy(false)
-                                .setStatus(SessionCommandStatus.SESSION_COMMAND_STATUS_FAILED)
-                                .setErrorText(coreLit("网络超时")),
-                        ),
-                )
-                .build()
-            remote.showForTest(baseState, sessions = mapOf("s-q1" to failedVm))
+            ui.runOnIdle {
+                cardState.value = sampleQuestion(canAnswer = true).toBuilder()
+                    .setPhase(HomeFocusPhase.HOME_FOCUS_PHASE_FAILED)
+                    .setPickedOptionNum(1)
+                    .setCommand(
+                        SessionCommandState.newBuilder()
+                            .setBusy(false)
+                            .setCanRetry(true)
+                            .setStatus(SessionCommandStatus.SESSION_COMMAND_STATUS_FAILED)
+                            .setErrorText(coreLit("网络超时")),
+                    )
+                    .build()
+            }
             ui.waitUntil(3000) { ui.onAllNodesWithText("网络超时", substring = true).fetchSemanticsNodes().isNotEmpty() }
             ui.onNodeWithText("网络超时", substring = true).performScrollTo().assertIsDisplayed()
             ui.onNodeWithText("重试").performScrollTo().assertIsDisplayed()
 
-            // External disappearance during error shows "已在另一端回答" for 900ms, then exits after 160ms.
-            ui.mainClock.autoAdvance = false
-            ui.runOnIdle { cardState.value = null }
-            ui.waitForIdle()
-            ui.mainClock.advanceTimeBy(50)
+            // Core-driven external resolution renders the resolution notice, and disappears when Core clears it.
+            ui.runOnIdle {
+                cardState.value = sampleQuestion(canAnswer = true).toBuilder()
+                    .setPhase(HomeFocusPhase.HOME_FOCUS_PHASE_RESOLVED_ELSEWHERE)
+                    .setResolutionText(coreLit("已在另一端回答"))
+                    .build()
+            }
             ui.waitForIdle()
             ui.onNodeWithText("已在另一端回答").assertExists()
-            ui.mainClock.advanceTimeBy(950)
-            ui.waitForIdle()
-            ui.mainClock.advanceTimeBy(250)
+
+            ui.runOnIdle { cardState.value = null }
             ui.waitForIdle()
             ui.onAllNodesWithText("已在另一端回答").assertCountEquals(0)
         } finally {
@@ -202,9 +192,8 @@ class V63UiInteractionsTest {
         val remote = Remote(Account("http://127.0.0.1:1", "test"), Api.defaultHttp())
         val cardState = mutableStateOf<HomeQuestionCardView?>(sampleQuestion(canAnswer = true))
         val baseState = RemoteState(conn = ConnState.ONLINE, link = Link.ONLINE, loaded = true, synced = true)
-        val baseVm = SessionViewModel.newBuilder().setSessionId("s-q1").build()
         try {
-            remote.showForTest(baseState, sessions = mapOf("s-q1" to baseVm))
+            remote.showForTest(baseState)
             ui.setContent {
                 RaTheme(ThemeMode.LIGHT) {
                     CompositionLocalProvider(LocalRemote provides remote) {
@@ -219,18 +208,16 @@ class V63UiInteractionsTest {
                 }
             }
             ui.waitForIdle()
-            ui.mainClock.autoAdvance = false
-            ui.onNodeWithText("FIFO").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
-            ui.mainClock.advanceTimeBy(50)
-            ui.waitForIdle()
-            // Disappears from pending list after local answer succeeds -> "已回答 · FIFO"
-            cardState.value = null
-            ui.mainClock.advanceTimeBy(50)
+            ui.runOnIdle {
+                cardState.value = sampleQuestion(canAnswer = true).toBuilder()
+                    .setPhase(HomeFocusPhase.HOME_FOCUS_PHASE_RESOLVED_THIS_CLIENT)
+                    .setResolutionText(coreLit("已回答 · FIFO"))
+                    .build()
+            }
             ui.waitForIdle()
             ui.onNodeWithText("已回答 · FIFO").assertIsDisplayed()
-            ui.mainClock.advanceTimeBy(950)
-            ui.waitForIdle()
-            ui.mainClock.advanceTimeBy(250)
+
+            ui.runOnIdle { cardState.value = null }
             ui.waitForIdle()
             ui.onAllNodesWithText("已回答 · FIFO").assertCountEquals(0)
         } finally {
@@ -282,9 +269,6 @@ class V63UiInteractionsTest {
         val replyState = mutableStateOf(
             ApprovalReply(
                 cmdState = null,
-                chosenAllow = null,
-                message = "",
-                always = false,
                 send = { _, _, _ -> },
             ),
         )
@@ -294,9 +278,6 @@ class V63UiInteractionsTest {
         var allowClicked = 0
         val baseReply = ApprovalReply(
             cmdState = null,
-            chosenAllow = null,
-            message = "",
-            always = false,
             send = { allow, _, _ -> if (allow) allowClicked++ },
         )
         replyState.value = baseReply
@@ -340,9 +321,6 @@ class V63UiInteractionsTest {
                     .setBusy(true)
                     .setStatus(SessionCommandStatus.SESSION_COMMAND_STATUS_PENDING)
                     .build(),
-                chosenAllow = false,
-                message = "危险命令",
-                always = false,
                 send = { _, _, _ -> },
             )
         }
@@ -358,9 +336,6 @@ class V63UiInteractionsTest {
                     .setStatus(SessionCommandStatus.SESSION_COMMAND_STATUS_FAILED)
                     .setErrorText(coreLit("发送失败"))
                     .build(),
-                chosenAllow = false,
-                message = "危险命令",
-                always = false,
                 send = { _, _, _ -> },
             )
         }

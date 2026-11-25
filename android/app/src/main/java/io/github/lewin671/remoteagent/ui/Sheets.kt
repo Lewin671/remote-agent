@@ -52,14 +52,9 @@ import androidx.compose.ui.window.DialogProperties
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.proto.SessionCommandStatus
 import io.github.lewin671.remoteagent.core.proto.SessionDockKind
-import io.github.lewin671.remoteagent.core.proto.SessionModelChoiceView
+import io.github.lewin671.remoteagent.core.proto.SessionSimpleCommandKind
 import io.github.lewin671.remoteagent.core.proto.SessionViewModel
 import io.github.lewin671.remoteagent.proto.ApprovalMode
-import io.github.lewin671.remoteagent.proto.Command
-import io.github.lewin671.remoteagent.proto.CompactRequest
-import io.github.lewin671.remoteagent.proto.RenameSessionRequest
-import io.github.lewin671.remoteagent.proto.SetApprovalModeRequest
-import io.github.lewin671.remoteagent.proto.SetModelRequest
 
 /** Approval mode picker rendered from [SessionViewModel.actions]. */
 @Composable
@@ -68,19 +63,14 @@ fun ModeSheet(sid: String, vm: SessionViewModel, onClose: () -> Unit) {
     val p = pal
     val remote = LocalRemote.current
     var confirmFull by remember { mutableStateOf(false) }
-    var submitted by remember(sid) { mutableStateOf(false) }
     val slot = vm.actions.setMode
+    val initialSeq = remember(sid) { slot.succeededSeq }
     val busy = slot.busy || slot.status == SessionCommandStatus.SESSION_COMMAND_STATUS_PENDING
-    LaunchedEffect(submitted, busy, slot.status) {
-        if (submitted && !busy && slot.status == SessionCommandStatus.SESSION_COMMAND_STATUS_IDLE) onClose()
+    LaunchedEffect(slot.succeededSeq) {
+        if (slot.succeededSeq > initialSeq) onClose()
     }
     fun set(mode: ApprovalMode) {
-        submitted = true
-        remote.submitSessionCommand(
-            sid,
-            Command.newBuilder().setSetApprovalMode(SetApprovalModeRequest.newBuilder().setSessionId(sid).setMode(mode)).build(),
-            machineId = vm.header.machineId,
-        )
+        remote.setApprovalMode(sid, mode)
     }
     val raw = vm.header.approvalModeRaw
     Sheet(onClose) {
@@ -138,28 +128,14 @@ fun ModeSheet(sid: String, vm: SessionViewModel, onClose: () -> Unit) {
 
 private const val SESSION_TITLE_MAX_CODE_POINTS = 60
 
-private fun sanitizeTitle(text: String): String {
-    val trimmed = text.trimStart()
-    val sb = StringBuilder(trimmed.length)
+private fun limitCodePoints(text: String, max: Int): String {
     var count = 0
-    var inBreak = false
     var i = 0
-    while (i < trimmed.length && count < SESSION_TITLE_MAX_CODE_POINTS) {
-        val cp = trimmed.codePointAt(i)
-        i += Character.charCount(cp)
-        if (cp == '\r'.code || cp == '\n'.code) {
-            if (!inBreak) {
-                sb.append(' ')
-                count++
-                inBreak = true
-            }
-            continue
-        }
-        inBreak = false
-        sb.appendCodePoint(cp)
+    while (i < text.length && count < max) {
+        i += Character.charCount(text.codePointAt(i))
         count++
     }
-    return sb.toString()
+    return if (i < text.length) text.substring(0, i) else text
 }
 
 @Composable
@@ -168,25 +144,18 @@ fun RenameDialog(sid: String, vm: SessionViewModel, onClose: () -> Unit) {
     val p = pal
     val remote = LocalRemote.current
     val titleText = uiText(vm.header.title)
-    val initial = remember(sid) { sanitizeTitle(titleText.trim()) }
+    val initial = remember(sid) { limitCodePoints(titleText.trim(), SESSION_TITLE_MAX_CODE_POINTS) }
     var value by remember { mutableStateOf(TextFieldValue(initial, TextRange(0, initial.length))) }
-    var submitted by remember(sid) { mutableStateOf(false) }
     val slot = vm.actions.rename
+    val initialSeq = remember(sid) { slot.succeededSeq }
     val busy = slot.busy || slot.status == SessionCommandStatus.SESSION_COMMAND_STATUS_PENDING
-    LaunchedEffect(submitted, busy, slot.status) {
-        if (submitted && !busy && slot.status == SessionCommandStatus.SESSION_COMMAND_STATUS_IDLE) onClose()
+    LaunchedEffect(slot.succeededSeq) {
+        if (slot.succeededSeq > initialSeq) onClose()
     }
     val focus = remember { FocusRequester() }
     fun save() {
         if (busy) return
-        val next = value.text.trim()
-        if (next == initial) { onClose(); return }
-        submitted = true
-        remote.submitSessionCommand(
-            sid,
-            Command.newBuilder().setRenameSession(RenameSessionRequest.newBuilder().setSessionId(sid).setTitle(next)).build(),
-            machineId = vm.header.machineId,
-        )
+        remote.renameSession(sid, value.text)
     }
     Dialog(
         onDismissRequest = { if (!busy) onClose() },
@@ -206,16 +175,16 @@ fun RenameDialog(sid: String, vm: SessionViewModel, onClose: () -> Unit) {
                 BasicTextField(
                     value,
                     { next ->
-                        val clean = sanitizeTitle(next.text)
-                        value = if (clean == next.text) next else next.copy(
-                            text = clean,
+                        val capped = limitCodePoints(next.text, SESSION_TITLE_MAX_CODE_POINTS)
+                        value = if (capped == next.text) next else next.copy(
+                            text = capped,
                             selection = TextRange(
-                                next.selection.start.coerceAtMost(clean.length),
-                                next.selection.end.coerceAtMost(clean.length),
+                                next.selection.start.coerceAtMost(capped.length),
+                                next.selection.end.coerceAtMost(capped.length),
                             ),
                             composition = next.composition?.let { c ->
-                                val s = c.start.coerceAtMost(clean.length)
-                                val e = c.end.coerceAtMost(clean.length)
+                                val s = c.start.coerceAtMost(capped.length)
+                                val e = c.end.coerceAtMost(capped.length)
                                 if (s < e) TextRange(s, e) else null
                             },
                         )
@@ -293,52 +262,32 @@ fun ChoiceGrid(items: List<String>, selected: String?, enabled: Boolean, onPick:
     }
 }
 
-private fun foldModelChoices(offered: List<SessionModelChoiceView>, pickedSlug: String, showAll: Boolean): List<SessionModelChoiceView> {
-    if (showAll || offered.size <= 5) return offered
-    val picked = offered.firstOrNull { it.slug == pickedSlug }
-    val out = ArrayList<SessionModelChoiceView>(5)
-    if (picked != null) out += picked
-    for (m in offered) {
-        if (out.size >= 5) break
-        if (m.slug != picked?.slug) out += m
-    }
-    return out
-}
-
 @Composable
 fun ModelSheet(sid: String, vm: SessionViewModel, onOpenUsage: (() -> Unit)? = null, onClose: () -> Unit) {
     val copy = uiText()
     val p = pal
     val remote = LocalRemote.current
     var all by remember { mutableStateOf(false) }
-    var pickedModel by remember { mutableStateOf("") }
-    var submittedModel by remember(sid) { mutableStateOf(false) }
-    var submittedCompact by remember(sid) { mutableStateOf(false) }
 
     val actions = vm.actions
     val header = vm.header
     val modelSlot = actions.setModel
     val compactSlot = actions.compact
+    val initialModelSeq = remember(sid) { modelSlot.succeededSeq }
+    val initialCompactSeq = remember(sid) { compactSlot.succeededSeq }
     val modelBusy = modelSlot.busy || modelSlot.status == SessionCommandStatus.SESSION_COMMAND_STATUS_PENDING
     val compactBusy = compactSlot.busy || compactSlot.status == SessionCommandStatus.SESSION_COMMAND_STATUS_PENDING
     val turnRunning = vm.composer.hasActiveTurn
 
-    LaunchedEffect(submittedModel, modelBusy, modelSlot.status) {
-        if (submittedModel && !modelBusy && modelSlot.status == SessionCommandStatus.SESSION_COMMAND_STATUS_IDLE) onClose()
+    LaunchedEffect(modelSlot.succeededSeq) {
+        if (modelSlot.succeededSeq > initialModelSeq) onClose()
     }
-    LaunchedEffect(submittedCompact, compactBusy, compactSlot.status) {
-        if (submittedCompact && !compactBusy && compactSlot.status == SessionCommandStatus.SESSION_COMMAND_STATUS_IDLE) onClose()
+    LaunchedEffect(compactSlot.succeededSeq) {
+        if (compactSlot.succeededSeq > initialCompactSeq) onClose()
     }
 
     fun setModel(slug: String, effort: String) {
-        submittedModel = true
-        remote.submitSessionCommand(
-            sid,
-            Command.newBuilder().setSetModel(
-                SetModelRequest.newBuilder().setSessionId(sid).setModel(slug).also { if (effort.isNotEmpty()) it.setEffort(effort) },
-            ).build(),
-            machineId = header.machineId,
-        )
+        remote.setSessionModel(sid, slug, effort)
     }
 
     Sheet(onClose) {
@@ -351,15 +300,10 @@ fun ModelSheet(sid: String, vm: SessionViewModel, onOpenUsage: (() -> Unit)? = n
                 header.contextPercent,
                 detail,
                 if (actions.canCompact) (if (compactBusy) copy(UiMessages.sessionCompacting()) else copy(UiMessages.sessionCompact())) else null,
-                enabled = actions.canCompact && !turnRunning && !compactBusy,
+                enabled = actions.canCompact && !compactBusy,
                 highContextWarning = header.highContextWarning,
                 onAction = {
-                    submittedCompact = true
-                    remote.submitSessionCommand(
-                        sid,
-                        Command.newBuilder().setCompact(CompactRequest.newBuilder().setSessionId(sid)).build(),
-                        machineId = header.machineId,
-                    )
+                    remote.sessionSimpleCommand(sid, SessionSimpleCommandKind.SESSION_SIMPLE_COMMAND_KIND_COMPACT)
                 },
             )
             if (compactSlot.hasErrorText()) {
@@ -403,9 +347,8 @@ fun ModelSheet(sid: String, vm: SessionViewModel, onOpenUsage: (() -> Unit)? = n
             )
             else -> {
                 val current = offered.firstOrNull { it.selected } ?: offered.firstOrNull { it.slug == header.model }
-                if (pickedModel.isEmpty()) pickedModel = current?.slug.orEmpty()
-                val list = foldModelChoices(offered, pickedModel, all)
-                val few = list.size == offered.size
+                val folded = actions.foldedModelChoicesList
+                val list = if (all || folded.isEmpty()) offered else folded
                 SheetList {
                     list.forEachIndexed { i, m ->
                         val note = when {
@@ -416,25 +359,24 @@ fun ModelSheet(sid: String, vm: SessionViewModel, onOpenUsage: (() -> Unit)? = n
                         ListItem(
                             m.displayName.ifEmpty { m.slug },
                             small = note,
-                            checked = m.slug == pickedModel,
-                            enabled = !turnRunning && !modelBusy,
+                            checked = m.selected || m.slug == current?.slug,
+                            enabled = actions.canSwitchModel && !modelBusy,
                             last = i == list.size - 1,
                             onClick = {
-                                pickedModel = m.slug
-                                if (m.effortsCount == 0 && m.slug != current?.slug) setModel(m.slug, "")
+                                if (!m.selected && m.slug != current?.slug) setModel(m.slug, "")
                             },
                         )
                     }
                 }
-                if (!few) AllModels { all = true }
-                val model = offered.firstOrNull { it.slug == pickedModel }
-                if (model != null && model.effortsCount > 0) {
+                if (!all && actions.hasMoreModels) AllModels { all = true }
+                if (current != null && current.effortsCount > 0) {
                     FieldLabel(copy(UiMessages.modelsEffort()))
+                    val activeEffort = actions.effortChoicesList.firstOrNull { it.selected }?.id ?: header.effort
                     ChoiceGrid(
-                        model.effortsList,
-                        if (model.slug == current?.slug) header.effort else null,
-                        !turnRunning && !modelBusy,
-                    ) { setModel(model.slug, it) }
+                        current.effortsList,
+                        activeEffort,
+                        actions.canSwitchModel && !modelBusy,
+                    ) { setModel(current.slug, it) }
                 }
             }
         }
@@ -528,13 +470,13 @@ fun ApprovalPage(sid: String, aid: String) {
             }
             return@PageScaffold
         }
-        val decision = rememberApprovalReply(vm.header.machineId, sid, a.approvalId, dock.observedSeq, dock.command, a.isSkeleton)
+        val decision = rememberApprovalReply(sid, a.approvalId, dock.command, isHome = false, skeleton = a.isSkeleton)
         val card = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp)
-        if (decision.submitted) {
+        if (decision.submitted && !a.holdOpenCard) {
             ApprovalSubmitted(uiText(dock.title), decision, card)
             return@PageScaffold
         }
-        var denying by androidx.compose.runtime.saveable.rememberSaveable(aid) { mutableStateOf(false) }
+        val denying = a.denyingOpen
         val locked = vm.header.computerUnlinked || (dock.deadlineMs > 0 && t >= dock.deadlineMs)
         DarkCard(Modifier.weight(1f, fill = false).then(card)) {
             DarkCardHead(uiText(dock.title), uiText(dock.timeLeftPlain))
@@ -547,7 +489,7 @@ fun ApprovalPage(sid: String, aid: String) {
                 approvalId = a.approvalId,
                 d = decision,
                 denying = denying,
-                onDenying = { denying = it },
+                onDenying = { remote.editApprovalDeny(sid, a.approvalId, it) },
                 locked = locked,
                 truncated = a.bodyTruncated,
                 always = a.canAlwaysAllow,

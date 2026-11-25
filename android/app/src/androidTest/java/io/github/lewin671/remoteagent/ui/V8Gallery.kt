@@ -576,7 +576,6 @@ class V8Gallery {
                 .addOptions(QuestionOption.newBuilder().setLabel("机器离线").setDescription("验证排队反馈和恢复路径"))
                 .addOptions(QuestionOption.newBuilder().setLabel("网络短暂中断").setDescription("不重复发送原指令"))
                 .addOptions(QuestionOption.newBuilder().setLabel("返回终端手动操作")))))
-        QuestionMultiPicks.selected["Q9#1"] = setOf(0, 2)
         shoot("39-question-page", sessionState(session("q", "mac", foo, "梳理登录流程", agent = Agent.AGENT_CLAUDE, questions = 1)), mapOf("q" to ev)) { QuestionPage("q", "Q9") }
     }
 }

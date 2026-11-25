@@ -29,7 +29,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,7 +49,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.plain
@@ -61,9 +59,6 @@ import io.github.lewin671.remoteagent.core.proto.SessionDockView
 import io.github.lewin671.remoteagent.core.proto.SessionPlanChoiceOptionView
 import io.github.lewin671.remoteagent.core.proto.SessionQuestionDockView
 import io.github.lewin671.remoteagent.core.proto.SessionViewModel
-import io.github.lewin671.remoteagent.proto.AnswerPlanRequest
-import io.github.lewin671.remoteagent.proto.AnswerQuestionRequest
-import io.github.lewin671.remoteagent.proto.Command
 import io.github.lewin671.remoteagent.proto.PlanChoice
 
 /** Fold state per session & dock item for this run. */
@@ -84,16 +79,6 @@ object DockFolds {
     fun clear() {
         chosen.clear()
         cameWhileDrafting.clear()
-    }
-}
-
-/** Local multi-select ticks keyed by "$qid#$questionIndex" before submitting. */
-object QuestionMultiPicks {
-    val selected = mutableStateMapOf<String, Set<Int>>()
-    val lastSentOptions = mutableStateMapOf<String, List<Int>>()
-    fun clear() {
-        selected.clear()
-        lastSentOptions.clear()
     }
 }
 
@@ -183,29 +168,10 @@ internal fun SessionDock(
     onDenyingChange: (Boolean) -> Unit = {},
     onOpenChange: (Boolean) -> Unit = {},
 ) {
-    val copy = uiText()
     val dock = vm.dock
-    var prevApprovalId by remember(vm.sessionId) { mutableStateOf("") }
-    var wasDenying by remember(vm.sessionId) { mutableStateOf(false) }
-    var localResolveAt by remember(vm.sessionId) { mutableLongStateOf(0L) }
-    var externalNote by remember(vm.sessionId) { mutableStateOf(false) }
-
-    val activeApprovalId = if (dock.hasItem && dock.kind == SessionDockKind.SESSION_DOCK_KIND_APPROVAL) dock.approval.approvalId else ""
-    LaunchedEffect(activeApprovalId) {
-        if (prevApprovalId.isNotEmpty() && prevApprovalId != activeApprovalId && wasDenying &&
-            (System.currentTimeMillis() - localResolveAt > 2000L)
-        ) {
-            externalNote = true
-            wasDenying = false
-            onDenyingChange(false)
-            prevApprovalId = activeApprovalId
-            delay(1200)
-            externalNote = false
-        } else {
-            if (prevApprovalId != activeApprovalId) wasDenying = false
-            prevApprovalId = activeApprovalId
-        }
-    }
+    val externalText = if (dock.hasExternalResolution() && dock.externalResolution.hasText()) {
+        uiText(dock.externalResolution.text)
+    } else ""
 
     if (!dock.hasItem) {
         DisposableEffect(Unit) {
@@ -213,16 +179,16 @@ internal fun SessionDock(
             onDenyingChange(false)
             onDispose { }
         }
-        if (externalNote) {
+        if (externalText.isNotEmpty()) {
             DockShell {
-                DarkCardLine(copy(UiMessages.approvalHandledInTerminal()), "")
+                DarkCardLine(externalText, "")
             }
         }
         return
     }
-    if (externalNote) {
+    if (externalText.isNotEmpty()) {
         DockShell {
-            DarkCardLine(copy(UiMessages.approvalHandledInTerminal()), "")
+            DarkCardLine(externalText, "")
         }
     }
     val sid = vm.sessionId
@@ -230,12 +196,8 @@ internal fun SessionDock(
         SessionDockKind.SESSION_DOCK_KIND_APPROVAL -> ApprovalDock(
             sid = sid,
             vm = vm,
-            onDenyingChange = { d ->
-                wasDenying = d
-                onDenyingChange(d)
-            },
+            onDenyingChange = onDenyingChange,
             onOpenChange = onOpenChange,
-            onLocalResolve = { localResolveAt = System.currentTimeMillis() },
             onFull = onApproval,
         )
         SessionDockKind.SESSION_DOCK_KIND_QUESTION -> {
@@ -342,17 +304,17 @@ internal fun ApprovalDock(
     vm: SessionViewModel,
     onDenyingChange: (Boolean) -> Unit = {},
     onOpenChange: (Boolean) -> Unit = {},
-    onLocalResolve: () -> Unit = {},
     onFull: (String) -> Unit,
 ) {
     val copy = uiText()
+    val remote = LocalRemote.current
     val dock = vm.dock
     val a = dock.approval
     if (dock.isSkeleton || a.isSkeleton) return DockSkeleton()
-    val d = rememberApprovalReply(vm.header.machineId, sid, a.approvalId, dock.observedSeq, dock.command, a.isSkeleton)
+    val d = rememberApprovalReply(sid, a.approvalId, dock.command, isHome = false, skeleton = a.isSkeleton)
     val t = now(15_000)
     val locked = vm.header.computerUnlinked || (dock.deadlineMs > 0 && t >= dock.deadlineMs)
-    var denying by rememberSaveable(a.approvalId) { mutableStateOf(false) }
+    val denying = a.denyingOpen
     var expandFull by rememberSaveable(a.approvalId) { mutableStateOf(false) }
     var dockOpen by remember { mutableStateOf(true) }
     val scrollState = rememberScrollState()
@@ -366,8 +328,7 @@ internal fun ApprovalDock(
         }
     }
 
-    val holdOpenForDeny = denying && d.chosenAllow == false && (d.running || d.failed)
-    val showCompactSubmitted = d.submitted && !holdOpenForDeny
+    val showCompactSubmitted = d.submitted && !a.holdOpenCard
     val activeDenying = denying && dockOpen && !showCompactSubmitted
     DisposableEffect(activeDenying) {
         onDenyingChange(activeDenying)
@@ -400,7 +361,7 @@ internal fun ApprovalDock(
                 approvalId = a.approvalId,
                 d = d,
                 denying = denying,
-                onDenying = { denying = it },
+                onDenying = { remote.editApprovalDeny(sid, a.approvalId, it) },
                 locked = locked,
                 truncated = a.bodyTruncated,
                 always = a.canAlwaysAllow,
@@ -408,7 +369,6 @@ internal fun ApprovalDock(
                 denyPlaceholder = uiText(a.denyReasonPlaceholder).ifEmpty { copy(UiMessages.approvalReasonPlaceholder()) },
                 scrollToBottomNeeded = !denying && scrollState.maxValue > 0 && !seenBottom,
                 onScrollToBottom = { scope.launch { scrollState.animateScrollTo(scrollState.maxValue) } },
-                onResolveStarted = { onLocalResolve() },
             )
         }
     }
@@ -426,7 +386,6 @@ internal fun QuestionBody(
     onTerminal: () -> Unit,
     full: Boolean,
     onLong: () -> Unit = {},
-    onAnswered: () -> Unit = {},
     part: Int = 0,
 ) {
     val copy = uiText()
@@ -438,39 +397,13 @@ internal fun QuestionBody(
         return
     }
     val cur = q.question
-    val key = "${q.questionId}#${q.activeIndex}"
     val cmd = dock.command
     val busy = cmd.busy || cmd.status == SessionCommandStatus.SESSION_COMMAND_STATUS_PENDING
     val frozen = cmd.frozen
     val expired = cmd.expired
     val errorText = if (cmd.hasErrorText()) uiText(cmd.errorText) else cmd.errorCode
-    val pickedMulti = QuestionMultiPicks.selected[key] ?: emptySet()
-
-    fun submit(options: List<Int>) {
-        QuestionMultiPicks.lastSentOptions[key] = options
-        remote.submitSessionCommand(
-            sid,
-            Command.newBuilder()
-                .setAnswerQuestion(
-                    AnswerQuestionRequest.newBuilder()
-                        .setSessionId(sid)
-                        .setQuestionId(q.questionId)
-                        .apply {
-                            if (cur.multiSelect) addAllOptions(options)
-                            else if (options.isNotEmpty()) setOption(options.first())
-                            if (q.totalQuestions > 1) setQuestionIndex(q.activeIndex)
-                            if (dock.observedSeq > 0) setObservedEventSeq(dock.observedSeq)
-                        },
-                )
-                .build(),
-            machineId = vm.header.machineId,
-        )
-        if (q.activeIndex + 1 < q.totalQuestions) {
-            remote.setSessionQuestionIndex(sid, q.questionId, q.activeIndex + 1)
-        } else {
-            onAnswered()
-        }
-    }
+    val pickedMulti = q.draftedOptionNumsList
+    val submittedNums = q.submittedOptionNumsList
 
     if (part != 2) {
         Text(
@@ -483,7 +416,12 @@ internal fun QuestionBody(
         )
         if (!full && longQuestionStep(cur)) CardLink(copy(UiMessages.markdownExpand()), onLong, lead = 0.dp)
         cur.optionsList.forEach { o ->
-            val sel = if (cur.multiSelect) o.optionNum in pickedMulti else (QuestionMultiPicks.lastSentOptions[key]?.firstOrNull() == o.optionNum && (busy || frozen))
+            val sel = if (cur.multiSelect) {
+                if (pickedMulti.isNotEmpty()) o.optionNum in pickedMulti
+                else (busy || frozen) && o.optionNum in submittedNums
+            } else {
+                o.optionNum in submittedNums && (busy || frozen)
+            }
             val ink = if (sel) CardColors.onPrimary else CardColors.text
             val ink2 = if (sel) CardColors.onPrimary.copy(alpha = .6f) else CardColors.text2
             Row(
@@ -494,11 +432,9 @@ internal fun QuestionBody(
                     .background(if (sel) CardColors.primary else CardColors.field)
                     .clickable(enabled = !busy && !frozen, role = if (cur.multiSelect) Role.Checkbox else Role.Button) {
                         if (cur.multiSelect) {
-                            val set = pickedMulti.toMutableSet()
-                            if (!set.add(o.optionNum)) set.remove(o.optionNum)
-                            QuestionMultiPicks.selected[key] = set
+                            remote.toggleQuestionOption(sid, q.questionId, o.optionNum)
                         } else {
-                            submit(listOf(o.optionNum))
+                            remote.answerQuestion(sid, q.questionId, optionNum = o.optionNum)
                         }
                     }
                     .padding(horizontal = 14.dp, vertical = 10.dp),
@@ -527,10 +463,12 @@ internal fun QuestionBody(
             }
         }
         if (!busy && frozen) {
-            val prev = QuestionMultiPicks.lastSentOptions[key].orEmpty()
-            val shown = prev.joinToString("、") { num ->
-                cur.optionsList.firstOrNull { it.optionNum == num }?.label ?: num.toString()
-            }
+            val shown = cmd.takeIf { it.hasSubmittedSummary() }?.let { uiText(it.submittedSummary) }.orEmpty()
+                .ifEmpty {
+                    submittedNums.joinToString("、") { num ->
+                        cur.optionsList.firstOrNull { it.optionNum == num }?.label ?: num.toString()
+                    }
+                }
             CardNote(
                 if (expired) copy(UiMessages.dockAndroidAnswerExpired(answer = shown))
                 else copy(UiMessages.dockAndroidAnswerUnknown(answer = shown)),
@@ -545,24 +483,25 @@ internal fun QuestionBody(
     if (part != 1) {
         val n = pickedMulti.size
         if (cur.multiSelect) {
+            val btnLabel = if (q.hasSubmitButtonLabel()) uiText(q.submitButtonLabel)
+            else if (busy) copy(UiMessages.dockSubmitting())
+            else if (n == 0) copy(UiMessages.dockSelectThenSubmit())
+            else copy(UiMessages.dockSubmitSelected(count = n))
             CardButton(
-                if (busy) copy(UiMessages.dockSubmitting()) else if (n == 0) copy(UiMessages.dockSelectThenSubmit()) else copy(UiMessages.dockSubmitSelected(count = n)),
-                { submit(pickedMulti.sorted()) },
+                btnLabel,
+                { remote.answerQuestion(sid, q.questionId, optionNums = pickedMulti) },
                 Modifier.fillMaxWidth().padding(top = 16.dp),
                 primary = true,
-                enabled = !busy && !frozen && n > 0,
+                enabled = q.canSubmitMulti,
             )
-        } else if (frozen && !expired && cmd.canRetry) {
-            val prev = QuestionMultiPicks.lastSentOptions[key]
-            if (!prev.isNullOrEmpty()) {
-                CardButton(
-                    if (busy) copy(UiMessages.dockSubmitting()) else copy(UiMessages.commonRetry()),
-                    { submit(prev) },
-                    Modifier.fillMaxWidth().padding(top = 16.dp),
-                    primary = true,
-                    enabled = !busy,
-                )
-            }
+        } else if (frozen && !expired && cmd.canRetry && cmd.slotKey.isNotEmpty()) {
+            CardButton(
+                if (busy) copy(UiMessages.dockSubmitting()) else copy(UiMessages.commonRetry()),
+                { remote.retrySessionCommand(sid, cmd.slotKey) },
+                Modifier.fillMaxWidth().padding(top = 16.dp),
+                primary = true,
+                enabled = !busy,
+            )
         }
         Row(Modifier.fillMaxWidth().padding(top = if (cur.multiSelect) 4.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(if (cur.multiSelect && n > 0) copy(UiMessages.dockSelected(count = n)) else copy(UiMessages.dockNoneFit()), style = T.s13, color = CardColors.text2)
@@ -593,6 +532,12 @@ fun QuestionPage(sid: String, qid: String) {
     val vm by remote.watchSession(sid).collectAsState(initial = SessionViewModel.getDefaultInstance())
     val hasQuestion = vm.dock.hasItem && vm.dock.kind == SessionDockKind.SESSION_DOCK_KIND_QUESTION &&
         (qid.isEmpty() || vm.dock.question.questionId == qid)
+    val initialSeq = remember(sid, qid) { vm.dock.command.succeededSeq }
+    val succeededSeq = if (hasQuestion) vm.dock.command.succeededSeq else 0L
+    val isLastStep = hasQuestion && vm.dock.question.isLastStep
+    LaunchedEffect(isLastStep, succeededSeq) {
+        if (isLastStep && succeededSeq > initialSeq) nav.back()
+    }
     val subtitle = listOfNotNull(
         uiText(vm.header.title).ifEmpty { null },
         vm.header.agentName.ifEmpty { null },
@@ -612,9 +557,9 @@ fun QuestionPage(sid: String, qid: String) {
         DarkCard(Modifier.weight(1f, fill = false).padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp)) {
             DarkCardHead(uiText(vm.dock.title), uiText(vm.dock.question.progressText))
             Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
-                QuestionBody(sid, vm, toTerminal, full = true, onAnswered = { nav.back() }, part = 1)
+                QuestionBody(sid, vm, toTerminal, full = true, part = 1)
             }
-            QuestionBody(sid, vm, toTerminal, full = true, onAnswered = { nav.back() }, part = 2)
+            QuestionBody(sid, vm, toTerminal, full = true, part = 2)
         }
     }
 }
@@ -661,26 +606,13 @@ internal fun PlanButtons(
     val cmd = dock.command
     val busy = cmd.busy || cmd.status == SessionCommandStatus.SESSION_COMMAND_STATUS_PENDING
     val errorText = if (cmd.hasErrorText()) uiText(cmd.errorText) else cmd.errorCode
-    var lastChoice by remember(sid, plan.screenHash) { mutableStateOf<PlanChoice?>(null) }
+    val initialSeq = remember(sid, plan.screenHash) { cmd.succeededSeq }
+    LaunchedEffect(cmd.succeededSeq) {
+        if (cmd.succeededSeq > initialSeq) onDone()
+    }
 
     fun answer(c: PlanChoice) {
-        lastChoice = c
-        remote.submitSessionCommand(
-            sid,
-            Command.newBuilder()
-                .setAnswerPlan(
-                    AnswerPlanRequest.newBuilder()
-                        .setSessionId(sid)
-                        .setChoice(c)
-                        .apply {
-                            if (dock.observedSeq > 0) setObservedEventSeq(dock.observedSeq)
-                            if (!plan.screenHash.isEmpty) setObservedScreenHash(plan.screenHash)
-                        },
-                )
-                .build(),
-            machineId = vm.header.machineId,
-        )
-        onDone()
+        remote.answerPlan(sid, c)
     }
 
     @Composable
@@ -696,8 +628,8 @@ internal fun PlanButtons(
         Note(errorText.ifEmpty { copy(UiMessages.approvalAndroidUnknownResult()) })
         Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (cmd.canAbandon) Choice(copy(UiMessages.newSessionAndroidAbandon()), { remote.abandonSessionCommand(sid, cmd.slotKey) }, Modifier.weight(1f), enabled = !busy)
-            if (cmd.canRetry && lastChoice != null) {
-                Choice(if (busy) copy(UiMessages.dockSubmitting()) else copy(UiMessages.commonRetry()), { answer(lastChoice!!) }, Modifier.weight(1f), primary = true, enabled = !busy)
+            if (cmd.canRetry && cmd.slotKey.isNotEmpty()) {
+                Choice(if (busy) copy(UiMessages.dockSubmitting()) else copy(UiMessages.commonRetry()), { remote.retrySessionCommand(sid, cmd.slotKey) }, Modifier.weight(1f), primary = true, enabled = !busy)
             }
         }
         return
@@ -706,11 +638,14 @@ internal fun PlanButtons(
     val choices: List<SessionPlanChoiceOptionView> = plan.choicesList
     val primaryRow = choices.filter { it.choice != PlanChoice.PLAN_CHOICE_CLEAR_AND_IMPLEMENT }
     val clearChoice = choices.firstOrNull { it.choice == PlanChoice.PLAN_CHOICE_CLEAR_AND_IMPLEMENT }
+    val submittedChoice = plan.submittedChoice
 
     Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         primaryRow.forEach { opt ->
             val primary = opt.choice == PlanChoice.PLAN_CHOICE_IMPLEMENT || opt.recommended
-            val label = if (primary && busy) copy(UiMessages.dockSubmitting()) else uiText(opt.label)
+            val label = if (busy && (submittedChoice == opt.choice || (submittedChoice == PlanChoice.PLAN_CHOICE_UNSPECIFIED && primary))) {
+                copy(UiMessages.dockSubmitting())
+            } else uiText(opt.label)
             Choice(label, { answer(opt.choice) }, Modifier.weight(1f), primary = primary, enabled = !busy)
         }
     }

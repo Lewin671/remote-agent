@@ -90,19 +90,16 @@ import io.github.lewin671.remoteagent.core.proto.AttachmentDraftView
 import io.github.lewin671.remoteagent.core.proto.ComputerReachability
 import io.github.lewin671.remoteagent.core.proto.SessionCommandStatus
 import io.github.lewin671.remoteagent.core.proto.SessionDisplayStatus
+import io.github.lewin671.remoteagent.core.proto.SessionMenuItemKind
 import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
+import io.github.lewin671.remoteagent.core.proto.SessionSimpleCommandKind
 import io.github.lewin671.remoteagent.core.proto.SessionTimelineItem
 import io.github.lewin671.remoteagent.core.proto.SessionViewModel
 import io.github.lewin671.remoteagent.core.proto.SessionWindowRequest
 import io.github.lewin671.remoteagent.core.sessionDraftScope
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.ApprovalMode
-import io.github.lewin671.remoteagent.proto.Command
-import io.github.lewin671.remoteagent.proto.ForkSessionRequest
-import io.github.lewin671.remoteagent.proto.InterruptRequest
-import io.github.lewin671.remoteagent.proto.ResumeSessionRequest
 import io.github.lewin671.remoteagent.proto.SendMode
-import io.github.lewin671.remoteagent.proto.StopSessionRequest
 import io.github.lewin671.remoteagent.term.TerminalPane
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -499,9 +496,47 @@ private fun SessionTopBar(
             if (header.hasProjectName()) uiText(header.projectName).ifEmpty { null } else null,
             computer.takeIf { it.isNotEmpty() && header.multipleMachines },
         ).joinToString(" · ")
-        val modelLabel = header.modelLabel.ifEmpty { header.model }
-        val effortStr = if (header.hasEffortLabel()) uiText(header.effortLabel) else header.effort
-        val modelValue = modelLabel + if (effortStr.isNotEmpty()) " · $effortStr" else ""
+
+        val menuGroups = (0..2).map { grp ->
+            actions.menuItemsList
+                .filter { it.group == grp }
+                .map { item ->
+                    val labelText = uiText(item.label)
+                    val valueText = if (item.hasValueText()) uiText(item.valueText) else ""
+                    val noteText = if (item.hasNoteText()) uiText(item.noteText) else ""
+                    SheetAction(
+                        labelText,
+                        value = valueText,
+                        danger = item.danger,
+                        warn = item.warn,
+                        enabled = item.enabled,
+                        busy = item.busy,
+                        keepOpen = item.keepMenuOpen,
+                        note = noteText,
+                        noteError = item.noteError,
+                    ) {
+                        when (item.kind) {
+                            SessionMenuItemKind.SESSION_MENU_ITEM_KIND_MODE -> sheet = 1
+                            SessionMenuItemKind.SESSION_MENU_ITEM_KIND_MODEL,
+                            SessionMenuItemKind.SESSION_MENU_ITEM_KIND_CONTEXT -> sheet = 2
+                            SessionMenuItemKind.SESSION_MENU_ITEM_KIND_PROJECT_SETTINGS -> sheet = 3
+                            SessionMenuItemKind.SESSION_MENU_ITEM_KIND_RENAME -> rename = true
+                            SessionMenuItemKind.SESSION_MENU_ITEM_KIND_FORK -> {
+                                remote.sessionSimpleCommand(sid, SessionSimpleCommandKind.SESSION_SIMPLE_COMMAND_KIND_FORK)
+                                menu = false
+                            }
+                            SessionMenuItemKind.SESSION_MENU_ITEM_KIND_ABANDON_FORK -> {
+                                if (forkSlot.slotKey.isNotEmpty()) remote.abandonSessionCommand(sid, forkSlot.slotKey)
+                            }
+                            SessionMenuItemKind.SESSION_MENU_ITEM_KIND_SCHEDULE -> nav.newTask(sid)
+                            SessionMenuItemKind.SESSION_MENU_ITEM_KIND_INTERRUPT ->
+                                remote.sessionSimpleCommand(sid, SessionSimpleCommandKind.SESSION_SIMPLE_COMMAND_KIND_INTERRUPT)
+                            SessionMenuItemKind.SESSION_MENU_ITEM_KIND_END_SESSION -> confirmStop = true
+                            else -> {}
+                        }
+                    }
+                }
+        }.filter { it.isNotEmpty() }
 
         ActionSheet(
             info = {
@@ -512,87 +547,7 @@ private fun SessionTopBar(
                     lead = { AgentMarkLead(header.agent.takeIf { it != Agent.AGENT_UNSPECIFIED } ?: DEFAULT_AGENT, T.s17b, p.ink) },
                 )
             },
-            groups = listOf(
-                buildList {
-                    if (!header.exited && (actions.modeChoicesCount > 0 || actions.canSwitchMode)) {
-                        add(
-                            SheetAction(
-                                copy(UiMessages.modesTitle()),
-                                value = modeStr,
-                                danger = header.approvalMode == ApprovalMode.APPROVAL_MODE_FULL_ACCESS,
-                                enabled = !forking && actions.canSwitchMode,
-                            ) { sheet = 1 },
-                        )
-                    }
-                    if (!header.exited) {
-                        add(
-                            SheetAction(
-                                if (modelLabel.isEmpty()) copy(UiMessages.sessionSettings()) else copy(UiMessages.modelsTitle()),
-                                value = modelValue,
-                                enabled = !forking,
-                            ) { sheet = 2 },
-                        )
-                    }
-                    if (!header.exited && header.hasContext) {
-                        add(
-                            SheetAction(
-                                copy(UiMessages.sessionContext()),
-                                value = copy(UiMessages.sessionContextUsed(percent = header.contextPercent)),
-                                warn = high,
-                                enabled = !forking,
-                            ) { sheet = 2 },
-                        )
-                    }
-                },
-                buildList {
-                    add(SheetAction(copy(UiMessages.projectsAndroidSettings()), enabled = !forking && header.projectKey.isNotEmpty()) { sheet = 3 })
-                    if (actions.canRename) {
-                        add(SheetAction(copy(UiMessages.sessionRename()), enabled = !forking) { rename = true })
-                    }
-                    if (forkAct.visible) {
-                        add(
-                            SheetAction(
-                                uiText(forkAct.label).ifEmpty { copy(UiMessages.sessionFork()) },
-                                enabled = forkAct.enabled,
-                                busy = forkAct.busy,
-                                keepOpen = true,
-                                note = uiText(forkAct.note),
-                                noteError = forkAct.noteError,
-                            ) {
-                                if (forkAct.abandons && forkAct.canAbandon) {
-                                    remote.abandonSessionCommand(sid, forkSlot.slotKey)
-                                } else {
-                                    remote.submitSessionCommand(
-                                        sid,
-                                        Command.newBuilder().setForkSession(ForkSessionRequest.newBuilder().setSessionId(sid)).build(),
-                                        machineId = header.machineId,
-                                    )
-                                    menu = false
-                                }
-                            },
-                        )
-                    }
-                    if (caps.supportsSchedule) {
-                        add(SheetAction(copy(UiMessages.sessionScheduleSend()), enabled = !forking) { nav.newTask(sid) })
-                    }
-                    if (actions.canInterrupt) {
-                        add(
-                            SheetAction(copy(UiMessages.sessionInterruptTurn()), danger = true, enabled = !forking) {
-                                remote.submitSessionCommand(
-                                    sid,
-                                    Command.newBuilder().setInterrupt(InterruptRequest.newBuilder().setSessionId(sid)).build(),
-                                    machineId = header.machineId,
-                                )
-                            },
-                        )
-                    }
-                },
-                buildList {
-                    if (actions.canEnd) {
-                        add(SheetAction(copy(UiMessages.sessionEndAction()), danger = true, enabled = !forking) { confirmStop = true })
-                    }
-                },
-            ),
+            groups = menuGroups,
             onDismiss = { menu = false },
         )
     }
@@ -627,11 +582,7 @@ private fun SessionTopBar(
             onDismiss = { confirmStop = false },
         ) {
             confirmStop = false
-            remote.submitSessionCommand(
-                sid,
-                Command.newBuilder().setStopSession(StopSessionRequest.newBuilder().setSessionId(sid)).build(),
-                machineId = header.machineId,
-            )
+            remote.sessionSimpleCommand(sid, SessionSimpleCommandKind.SESSION_SIMPLE_COMMAND_KIND_STOP)
         }
     }
 }
@@ -879,15 +830,11 @@ private fun BottomArea(
                 PillButton(
                     if (err.isNotEmpty()) copy(UiMessages.sessionTryAgain()) else copy(UiMessages.sessionResume()),
                     {
-                        remote.submitSessionCommand(
-                            sid,
-                            Command.newBuilder().setResumeSession(ResumeSessionRequest.newBuilder().setSessionId(sid)).build(),
-                            machineId = header.machineId,
-                        )
+                        remote.sessionSimpleCommand(sid, SessionSimpleCommandKind.SESSION_SIMPLE_COMMAND_KIND_RESUME)
                     },
                     Modifier.fillMaxWidth().padding(top = 14.dp),
                     if (err.isNotEmpty()) ButtonKind.SECONDARY else ButtonKind.INK,
-                    enabled = header.computerOnline && !header.computerUnlinked,
+                    enabled = vm.actions.canResume,
                 )
             }
             if (err.isNotEmpty()) {
@@ -907,7 +854,7 @@ private fun BottomArea(
 
     var dockDenying by remember(sid) { mutableStateOf(false) }
     var dockOpen by remember(sid) { mutableStateOf(false) }
-    val showDock = vm.dock.hasItem
+    val showDock = vm.dock.hasItem || vm.dock.hasExternalResolution()
 
     Reveal(
         visible = showDock || dockDenying,
@@ -1024,11 +971,7 @@ internal fun Composer(
         focusRequester = composerFocus,
         onQueue = if (composer.supportsQueueMode && composer.hasActiveTurn) ({ send(SendMode.SEND_MODE_QUEUE) }) else null,
         onInterrupt = if (composer.interruptVisible) ({
-            remote.submitSessionCommand(
-                sid,
-                Command.newBuilder().setInterrupt(InterruptRequest.newBuilder().setSessionId(sid)).build(),
-                machineId = machineId,
-            )
+            remote.sessionSimpleCommand(sid, SessionSimpleCommandKind.SESSION_SIMPLE_COMMAND_KIND_INTERRUPT)
         }) else null,
         canInterrupt = online && vm.actions.canInterrupt && !interruptBusy,
         hasDraft = hasDraftContent,
