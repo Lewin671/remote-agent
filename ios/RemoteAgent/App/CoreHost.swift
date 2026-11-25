@@ -265,12 +265,64 @@ struct ScopeDefaults: @unchecked Sendable {
     }
 }
 
+private final class AsyncSerialQueueState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var pending = 0
+    private var closed = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    var hasPending: Bool {
+        lock.withLock { pending > 0 }
+    }
+
+    func willEnqueue() {
+        lock.withLock { pending += 1 }
+    }
+
+    func didFinishOne() {
+        let toResume: [CheckedContinuation<Void, Never>] = lock.withLock {
+            pending -= 1
+            guard pending <= 0 else { return [] }
+            pending = 0
+            let list = waiters
+            waiters.removeAll()
+            return list
+        }
+        for c in toResume { c.resume() }
+    }
+
+    func finish() {
+        let toResume: [CheckedContinuation<Void, Never>] = lock.withLock {
+            closed = true
+            pending = 0
+            let list = waiters
+            waiters.removeAll()
+            return list
+        }
+        for c in toResume { c.resume() }
+    }
+
+    func waitUntilIdle() async {
+        await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+            let immediate: Bool = lock.withLock {
+                if closed || pending == 0 { return true }
+                waiters.append(c)
+                return false
+            }
+            if immediate { c.resume() }
+        }
+    }
+}
+
 /// Process-wide single FIFO queue serializing all shared-file disk operations across
 /// CoreHost lifetimes (e.g., logout ClearAll followed by a new account's ScanLocal).
 final class SharedFileStorageQueue: Sendable {
     static let shared = SharedFileStorageQueue()
 
     private let continuation: AsyncStream<@Sendable () async -> Void>.Continuation
+    private let state = AsyncSerialQueueState()
+
+    var hasPending: Bool { state.hasPending }
 
     init() {
         let (stream, continuation) = AsyncStream.makeStream(
@@ -278,24 +330,31 @@ final class SharedFileStorageQueue: Sendable {
             bufferingPolicy: .unbounded
         )
         self.continuation = continuation
+        let state = self.state
         Task.detached(priority: .utility) {
             for await op in stream {
                 await op()
+                state.didFinishOne()
             }
+            state.finish()
         }
+    }
+
+    deinit {
+        continuation.finish()
     }
 
     func enqueue(_ op: @escaping @Sendable () async -> Void) {
-        continuation.yield(op)
+        state.willEnqueue()
+        if case .terminated = continuation.yield(op) {
+            state.didFinishOne()
+        }
     }
 
+    /// Waits until all queued operations and any follow-up operations synchronously
+    /// enqueued during their completion callbacks have finished.
     func drain() async {
-        await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
-            let yielded = continuation.yield { c.resume() }
-            if case .terminated = yielded {
-                c.resume()
-            }
-        }
+        await state.waitUntilIdle()
     }
 }
 
@@ -306,6 +365,9 @@ final class DraftStorageQueue: Sendable {
     static let shared = DraftStorageQueue()
 
     private let continuation: AsyncStream<@Sendable () async -> Void>.Continuation
+    private let state = AsyncSerialQueueState()
+
+    var hasPending: Bool { state.hasPending }
 
     init() {
         let (stream, continuation) = AsyncStream.makeStream(
@@ -313,24 +375,32 @@ final class DraftStorageQueue: Sendable {
             bufferingPolicy: .unbounded
         )
         self.continuation = continuation
+        let state = self.state
         Task.detached(priority: .utility) {
             for await op in stream {
                 await op()
+                state.didFinishOne()
             }
+            state.finish()
         }
+    }
+
+    deinit {
+        continuation.finish()
     }
 
     func enqueue(_ op: @escaping @Sendable () async -> Void) {
-        continuation.yield(op)
+        state.willEnqueue()
+        if case .terminated = continuation.yield(op) {
+            state.didFinishOne()
+        }
     }
 
+    /// Waits until all queued operations and any follow-up operations synchronously
+    /// enqueued during their completion callbacks (such as coalesced `dirtyWrite`
+    /// flushes or post-write deletes/releases) have finished.
     func drain() async {
-        await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
-            let yielded = continuation.yield { c.resume() }
-            if case .terminated = yielded {
-                c.resume()
-            }
-        }
+        await state.waitUntilIdle()
     }
 }
 
@@ -3001,6 +3071,25 @@ actor CoreHost: SyncEngine {
 
     func readChunkForTesting(_ eff: PBAttachmentReadChunkEffect) async -> PBAttachmentReadChunkResultEvent {
         await runReadChunk(eff)
+    }
+
+    /// Waits until all in-flight CoreHost I/O tasks (`prepareImage`, `hashFile`, `readChunk`, etc.)
+    /// and the draft storage queue reach a fixed point with zero pending work.
+    func drainAttachmentWorkForTesting() async {
+        while true {
+            if !ioTasks.isEmpty {
+                let current = Array(ioTasks.values)
+                for task in current {
+                    await task.value
+                }
+                continue
+            }
+            if draftStorageQueue.hasPending {
+                await draftStorageQueue.drain()
+                continue
+            }
+            break
+        }
     }
     #endif
 

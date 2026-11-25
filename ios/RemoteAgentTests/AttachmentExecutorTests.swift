@@ -18,7 +18,11 @@ private func nextSignal<T: Sendable>(_ stream: AsyncStream<T>) async -> T? {
 private final class FakeUploadDaemon: @unchecked Sendable {
     private let lock = NSLock()
     private var transfers: [String: (machine: String, total: Int64, received: Data)] = [:]
-    var sentCommands: [(machine: String, send: PBSendRequest)] = []
+    private var _sentCommands: [(machine: String, send: PBSendRequest)] = []
+
+    var sentCommands: [(machine: String, send: PBSendRequest)] {
+        lock.withLock { _sentCommands }
+    }
 
     func action(for effect: PBCoreDispatchCommandEffect, cmd: PBCommand) -> CoreHost.DemoCommandAction? {
         switch cmd.kind {
@@ -77,7 +81,7 @@ private final class FakeUploadDaemon: @unchecked Sendable {
             return .respond(CoreHost.demoExecutedOutcome(for: effect))
         case .send(let req)?:
             return .respond(lock.withLock {
-                sentCommands.append((effect.machineID, req))
+                _sentCommands.append((effect.machineID, req))
                 return CoreHost.demoExecutedOutcome(for: effect)
             })
         default:
@@ -176,6 +180,31 @@ private final class FakeUploadDaemon: @unchecked Sendable {
         return (host, screens, center, remote)
     }
 
+    private typealias Harness = (host: CoreHost, screens: CoreScreens, center: ImageCenter, remote: Remote)
+
+    private func withHarness(
+        store: PendingStore,
+        queue: DraftStorageQueue = DraftStorageQueue(),
+        daemon: FakeUploadDaemon = FakeUploadDaemon(),
+        persist: Bool = true,
+        _ body: (Harness) async throws -> Void
+    ) async throws {
+        let h = try await makeHarness(store: store, queue: queue, daemon: daemon, persist: persist)
+        do {
+            try await body(h)
+        } catch {
+            await tearDown(h)
+            throw error
+        }
+        await tearDown(h)
+    }
+
+    private func tearDown(_ h: Harness) async {
+        await h.host.drainAttachmentWorkForTesting()
+        await h.host.closeAsync()
+        ImageCenter.remove(h.remote)
+    }
+
     @Test func realCorePrepareUploadSendAndRestartPersistenceSmoke() async throws {
         let dir = FileManager.default.temporaryDirectory.appending(path: "att-smoke-\(UUID().uuidString)", directoryHint: .isDirectory)
         let vault = Vault(service: "io.github.lewin671.remoteagent.tests.\(UUID().uuidString)")
@@ -185,121 +214,120 @@ private final class FakeUploadDaemon: @unchecked Sendable {
         }
 
         let daemon = FakeUploadDaemon()
-        let store1 = PendingStore(directory: dir, vault: vault)
-        let h1 = try await makeHarness(store: store1, daemon: daemon, persist: true)
-
+        let sharedQueue = DraftStorageQueue()
         let scope = PBDraftScope.session("s1")
-        await h1.host.openDraft(scope: scope, machineID: "m1")
-        await h1.host.setDraftText(scope: scope, text: "persisted text")
-        h1.center.addImageData(scope: scope, [samplePNG()])
 
-        await eventually("image prepared and uploaded via Core") {
-            let d = h1.screens.sessions["s1"]?.composer.draft
-            return d?.text == "persisted text" && d?.images.count == 1 && d?.images.first?.state == .ready
-        }
-        await h1.host.drainDraftStorageQueue()
+        try await withHarness(
+            store: PendingStore(directory: dir, vault: vault),
+            queue: sharedQueue,
+            daemon: daemon,
+            persist: true
+        ) { h1 in
+            await h1.host.openDraft(scope: scope, machineID: "m1")
+            // Wait for the initial DraftStorageRead to settle before picking images,
+            // matching the UI which disables picking while `draft.restoring` is true.
+            await h1.host.drainDraftStorageQueue()
+            await h1.host.setDraftText(scope: scope, text: "persisted text")
+            await h1.center.addImageData(scope: scope, [samplePNG()])?.value
+            await h1.host.drainAttachmentWorkForTesting()
 
-        // Close host 1 and start host 2 on the same encrypted PendingStore -> draft restores across restart.
-        await h1.host.closeAsync()
-        ImageCenter.remove(h1.remote)
-
-        let store2 = PendingStore(directory: dir, vault: vault)
-        let h2 = try await makeHarness(store: store2, daemon: daemon, persist: true)
-        defer {
-            Task {
-                await h2.host.closeAsync()
-                await MainActor.run { ImageCenter.remove(h2.remote) }
-            }
-        }
-        await h2.host.openDraft(scope: scope, machineID: "m1")
-        await eventually("draft text and image restored after restart") {
-            let d = h2.screens.sessions["s1"]?.composer.draft
-            return d?.text == "persisted text" && d?.images.count == 1 && d?.images.first?.state == .ready
+            let d1 = h1.screens.sessions["s1"]?.composer.draft
+            #expect(d1?.text == "persisted text")
+            #expect(d1?.images.count == 1)
+            #expect(d1?.images.first?.state == .ready)
         }
 
-        // Send via Core -> DraftSendSessionAction clears draft and dispatches SendInput with image_ids.
-        await h2.host.sendSessionDraft(sessionID: "s1", mode: .steer)
-        await eventually("send dispatched with uploaded image id and draft cleared") {
-            let d = h2.screens.sessions["s1"]?.composer.draft
-            return d?.text.isEmpty == true && d?.images.isEmpty == true && daemon.sentCommands.count == 1
+        // Host 1 is closed and its storage queue fully drained; start host 2 on the same encrypted PendingStore.
+        try await withHarness(
+            store: PendingStore(directory: dir, vault: vault),
+            queue: sharedQueue,
+            daemon: daemon,
+            persist: true
+        ) { h2 in
+            await h2.host.openDraft(scope: scope, machineID: "m1")
+            await h2.host.drainAttachmentWorkForTesting()
+
+            let d2 = h2.screens.sessions["s1"]?.composer.draft
+            #expect(d2?.text == "persisted text")
+            #expect(d2?.images.count == 1)
+            #expect(d2?.images.first?.state == .ready)
+
+            // Send via Core -> DraftSendSessionAction clears draft and dispatches SendInput with image_ids.
+            await h2.host.sendSessionDraft(sessionID: "s1", mode: .steer)
+            await h2.host.drainAttachmentWorkForTesting()
+
+            let d3 = h2.screens.sessions["s1"]?.composer.draft
+            #expect(d3?.text.isEmpty == true)
+            #expect(d3?.images.isEmpty == true)
+            let sent = daemon.sentCommands
+            #expect(sent.count == 1)
+            #expect(sent.first?.send.imageIds.count == 1)
         }
-        #expect(daemon.sentCommands.first?.send.imageIds.count == 1)
     }
 
     @Test func originalToggleAndOriginalTotalSizeWorkWithRealCore() async throws {
         let store = PendingStore.ephemeral()
         let daemon = FakeUploadDaemon()
-        let h = try await makeHarness(store: store, daemon: daemon, persist: false)
-        defer {
-            Task {
-                await h.host.closeAsync()
-                await MainActor.run { ImageCenter.remove(h.remote) }
-            }
-        }
+        try await withHarness(store: store, daemon: daemon, persist: false) { h in
+            let scope = PBDraftScope.session("s1")
+            await h.host.openDraft(scope: scope, machineID: "m1")
+            await h.center.addImageData(scope: scope, [samplePNG(.systemRed)])?.value
+            await h.host.drainAttachmentWorkForTesting()
 
-        let scope = PBDraftScope.session("s1")
-        await h.host.openDraft(scope: scope, machineID: "m1")
-        h.center.addImageData(scope: scope, [samplePNG(.systemRed)])
+            let d1 = h.screens.sessions["s1"]?.composer.draft
+            #expect(d1?.images.count == 1)
+            #expect(d1?.images.first?.state == .ready)
+            #expect(d1?.canToggleOriginal == true)
 
-        await eventually("picked image has original source enabled and becomes ready") {
-            let d = h.screens.sessions["s1"]?.composer.draft
-            return d?.images.count == 1 && d?.images.first?.state == .ready && d?.canToggleOriginal == true
-        }
+            await h.host.setDraftOriginal(scope: scope, original: true)
+            await h.host.drainAttachmentWorkForTesting()
 
-        await h.host.setDraftOriginal(scope: scope, original: true)
-        await eventually("original toggle prepares original image and renders total size") {
-            let d = h.screens.sessions["s1"]?.composer.draft
-            return d?.original == true
-                && d?.images.first?.state == .ready
-                && d?.hasOriginalTotalSizeText == true
-                && !(d?.originalTotalSizeText.rendered().isEmpty ?? true)
-                && d?.canSend == true
+            let d2 = h.screens.sessions["s1"]?.composer.draft
+            #expect(d2?.original == true)
+            #expect(d2?.images.first?.state == .ready)
+            #expect(d2?.hasOriginalTotalSizeText == true)
+            #expect(!(d2?.originalTotalSizeText.rendered().isEmpty ?? true))
+            #expect(d2?.canSend == true)
         }
     }
 
     @Test func readChunkNeverFallsBackToRawSourceRefForImages() async throws {
         let store = PendingStore.ephemeral()
         let rawSourceRef = try store.storeBlob(Data("raw-exif-bytes".utf8), prefix: "src")
-        let h = try await makeHarness(store: store, persist: false)
-        defer {
-            Task {
-                await h.host.closeAsync()
-                await MainActor.run { ImageCenter.remove(h.remote) }
-            }
+        try await withHarness(store: store, persist: false) { h in
+            let res = await h.host.readChunkForTesting(.with {
+                $0.opID = 77
+                $0.scope = .session("s1")
+                $0.itemID = "img-1"
+                $0.kind = .image
+                $0.sourceRef = rawSourceRef
+                $0.preparedRef = ""
+                $0.offset = 0
+                $0.length = 14
+                $0.expectedSizeBytes = 14
+            })
+            #expect(res.opID == 77)
+            #expect(!res.ok)
+            #expect(res.errorKind == .sourceMissing)
+            #expect(res.data.isEmpty)
+
+            // Unspecified kind must never read sourceRef or preparedRef either.
+            let unspecRes = await h.host.readChunkForTesting(.with {
+                $0.opID = 78
+                $0.scope = .session("s1")
+                $0.itemID = "img-unspec"
+                $0.kind = .unspecified
+                $0.sourceRef = rawSourceRef
+                $0.preparedRef = rawSourceRef
+                $0.offset = 0
+                $0.length = 14
+                $0.expectedSizeBytes = 14
+            })
+            #expect(unspecRes.opID == 78)
+            #expect(!unspecRes.ok)
+            #expect(unspecRes.errorKind == .sourceMissing)
+            #expect(unspecRes.data.isEmpty)
         }
-
-        let res = await h.host.readChunkForTesting(.with {
-            $0.opID = 77
-            $0.scope = .session("s1")
-            $0.itemID = "img-1"
-            $0.kind = .image
-            $0.sourceRef = rawSourceRef
-            $0.preparedRef = ""
-            $0.offset = 0
-            $0.length = 14
-            $0.expectedSizeBytes = 14
-        })
-        #expect(res.opID == 77)
-        #expect(!res.ok)
-        #expect(res.errorKind == .sourceMissing)
-        #expect(res.data.isEmpty)
-
-        // Unspecified kind must never read sourceRef or preparedRef either.
-        let unspecRes = await h.host.readChunkForTesting(.with {
-            $0.opID = 78
-            $0.scope = .session("s1")
-            $0.itemID = "img-unspec"
-            $0.kind = .unspecified
-            $0.sourceRef = rawSourceRef
-            $0.preparedRef = rawSourceRef
-            $0.offset = 0
-            $0.length = 14
-            $0.expectedSizeBytes = 14
-        })
-        #expect(unspecRes.opID == 78)
-        #expect(!unspecRes.ok)
-        #expect(unspecRes.errorKind == .sourceMissing)
-        #expect(unspecRes.data.isEmpty)
     }
 
     @Test func preparePropagatesCancellationAndReportsVaultLockedWithoutDecodeMisclassification() async throws {
@@ -324,56 +352,46 @@ private final class FakeUploadDaemon: @unchecked Sendable {
             delete: { _ in errSecInteractionNotAllowed }
         )
         let lockedStore = PendingStore(directory: dir, vault: Vault(service: service, keychain: lockedOps))
-        let hLocked = try await makeHarness(store: lockedStore, persist: false)
-        defer {
-            Task {
-                await hLocked.host.closeAsync()
-                await MainActor.run { ImageCenter.remove(hLocked.remote) }
-            }
-        }
-        let lockedRes = await hLocked.host.prepareImageForTesting(.with {
-            $0.opID = 101
-            $0.scope = .session("s1")
-            $0.itemID = "img-locked"
-            $0.sourceRef = srcRef
-            $0.maxOriginalBytes = 20 * 1024 * 1024
-            $0.maxDimensionPx = 2048
-            $0.maxCompressedBytes = 900 * 1024
-        })
-        #expect(!lockedRes.ok)
-        #expect(lockedRes.errorKind == .other)
-        #expect(!lockedRes.isReadingSource)
-        #expect(lockedRes.errorDetail == "vault_locked")
-
-        // 2) Cancelling the parent task must propagate into the detached worker (`canceled` instead of proceeding).
-        let hCancel = try await makeHarness(store: writerStore, persist: false)
-        defer {
-            Task {
-                await hCancel.host.closeAsync()
-                await MainActor.run { ImageCenter.remove(hCancel.remote) }
-            }
-        }
-        let gate = AsyncStream<Void>.makeStream()
-        let cancelledTask = Task {
-            var it = gate.stream.makeAsyncIterator()
-            _ = await it.next()
-            return await hCancel.host.prepareImageForTesting(.with {
-                $0.opID = 102
+        try await withHarness(store: lockedStore, persist: false) { hLocked in
+            let lockedRes = await hLocked.host.prepareImageForTesting(.with {
+                $0.opID = 101
                 $0.scope = .session("s1")
-                $0.itemID = "img-cancel"
+                $0.itemID = "img-locked"
                 $0.sourceRef = srcRef
                 $0.maxOriginalBytes = 20 * 1024 * 1024
                 $0.maxDimensionPx = 2048
                 $0.maxCompressedBytes = 900 * 1024
             })
+            #expect(!lockedRes.ok)
+            #expect(lockedRes.errorKind == .other)
+            #expect(!lockedRes.isReadingSource)
+            #expect(lockedRes.errorDetail == "vault_locked")
         }
-        cancelledTask.cancel()
-        gate.continuation.finish()
-        let cancelRes = await cancelledTask.value
-        #expect(cancelRes.opID == 102)
-        #expect(!cancelRes.ok)
-        #expect(cancelRes.errorKind == .other)
-        #expect(cancelRes.errorDetail == "canceled")
+
+        // 2) Cancelling the parent task must propagate into the detached worker (`canceled` instead of proceeding).
+        try await withHarness(store: writerStore, persist: false) { hCancel in
+            let gate = AsyncStream<Void>.makeStream()
+            let cancelledTask = Task {
+                var it = gate.stream.makeAsyncIterator()
+                _ = await it.next()
+                return await hCancel.host.prepareImageForTesting(.with {
+                    $0.opID = 102
+                    $0.scope = .session("s1")
+                    $0.itemID = "img-cancel"
+                    $0.sourceRef = srcRef
+                    $0.maxOriginalBytes = 20 * 1024 * 1024
+                    $0.maxDimensionPx = 2048
+                    $0.maxCompressedBytes = 900 * 1024
+                })
+            }
+            cancelledTask.cancel()
+            gate.continuation.finish()
+            let cancelRes = await cancelledTask.value
+            #expect(cancelRes.opID == 102)
+            #expect(!cancelRes.ok)
+            #expect(cancelRes.errorKind == .other)
+            #expect(cancelRes.errorDetail == "canceled")
+        }
     }
 
     @Test func inFlightPrepareCannotWriteFilesAfterClearAllDrafts() async throws {
@@ -385,35 +403,29 @@ private final class FakeUploadDaemon: @unchecked Sendable {
         }
 
         let store = PendingStore(directory: dir, vault: vault)
-        let h = try await makeHarness(store: store, persist: true)
-        defer {
-            Task {
-                await h.host.closeAsync()
-                await MainActor.run { ImageCenter.remove(h.remote) }
-            }
+        try await withHarness(store: store, persist: true) { h in
+            let srcRef = try store.storeBlob(samplePNG(.systemOrange), prefix: "src")
+            await h.host.clearAllDrafts()
+            #expect(!FileManager.default.fileExists(atPath: dir.path))
+
+            // Late prepare effect executing on the pre-logout host's stale PendingScope must write nothing to disk.
+            await h.host.processEffectBatchForTesting([
+                .with {
+                    $0.attachmentPrepareImage = .with {
+                        $0.opID = 88
+                        $0.scope = .session("s1")
+                        $0.itemID = "late-1"
+                        $0.sourceRef = srcRef
+                        $0.original = false
+                        $0.maxOriginalBytes = 20 * 1024 * 1024
+                        $0.maxDimensionPx = 2048
+                        $0.maxCompressedBytes = 900 * 1024
+                    }
+                },
+            ])
+            await h.host.drainAttachmentWorkForTesting()
+            #expect(!FileManager.default.fileExists(atPath: dir.path))
         }
-
-        let srcRef = try store.storeBlob(samplePNG(.systemOrange), prefix: "src")
-        await h.host.clearAllDrafts()
-        #expect(!FileManager.default.fileExists(atPath: dir.path))
-
-        // Late prepare effect executing on the pre-logout host's stale PendingScope must write nothing to disk.
-        await h.host.processEffectBatchForTesting([
-            .with {
-                $0.attachmentPrepareImage = .with {
-                    $0.opID = 88
-                    $0.scope = .session("s1")
-                    $0.itemID = "late-1"
-                    $0.sourceRef = srcRef
-                    $0.original = false
-                    $0.maxOriginalBytes = 20 * 1024 * 1024
-                    $0.maxDimensionPx = 2048
-                    $0.maxCompressedBytes = 900 * 1024
-                }
-            },
-        ])
-        await h.host.drainDraftStorageQueue()
-        #expect(!FileManager.default.fileExists(atPath: dir.path))
     }
 
     @Test func hashFileBookmarkProbesVideoDurationWithHasDurationFlag() async throws {
@@ -476,86 +488,64 @@ private final class FakeUploadDaemon: @unchecked Sendable {
         let store = PendingStore.ephemeral()
         let bmk = try PickedFile.bookmark(for: videoURL)
         let bmkRef = try store.storeBookmark(bmk)
-        let h = try await makeHarness(store: store, persist: false)
-        defer {
-            Task {
-                await h.host.closeAsync()
-                await MainActor.run { ImageCenter.remove(h.remote) }
-            }
+        try await withHarness(store: store, persist: false) { h in
+            let res = await h.host.hashFileForTesting(.with {
+                $0.opID = 91
+                $0.scope = .session("s1")
+                $0.itemID = "vid-1"
+                $0.sourceRef = bmkRef
+                $0.maxBytes = 100 * 1024 * 1024
+                $0.isVideo = true
+            })
+            #expect(res.ok)
+            #expect(res.sizeBytes > 0 && res.sha256.count == 32)
+            #expect(res.hasDuration_p)
+            #expect(res.durationMs > 0)
         }
-
-        let res = await h.host.hashFileForTesting(.with {
-            $0.opID = 91
-            $0.scope = .session("s1")
-            $0.itemID = "vid-1"
-            $0.sourceRef = bmkRef
-            $0.maxBytes = 100 * 1024 * 1024
-            $0.isVideo = true
-        })
-        #expect(res.ok)
-        #expect(res.sizeBytes > 0 && res.sha256.count == 32)
-        #expect(res.hasDuration_p)
-        #expect(res.durationMs > 0)
     }
 
     @Test func localImageCacheRespectsLRUBound() async throws {
         let store = PendingStore.ephemeral()
-        let h = try await makeHarness(store: store, persist: false)
-        defer {
-            Task {
-                await h.host.closeAsync()
-                await MainActor.run { ImageCenter.remove(h.remote) }
+        try await withHarness(store: store, persist: false) { h in
+            let png = samplePNG(.systemPurple)
+            var refs: [String] = []
+            for i in 0..<(ImageCenter.maxLocalImages + 6) {
+                refs.append(try store.storeBlob(png, prefix: "t\(i)"))
             }
+            for ref in refs {
+                _ = h.center.localImage(for: ref)
+            }
+            await h.center.drainLocalImageLoadsForTesting()
+            #expect(h.center.localImageCacheCountForTesting == ImageCenter.maxLocalImages)
         }
-
-        let png = samplePNG(.systemPurple)
-        var refs: [String] = []
-        for i in 0..<(ImageCenter.maxLocalImages + 6) {
-            refs.append(try store.storeBlob(png, prefix: "t\(i)"))
-        }
-        for ref in refs {
-            _ = h.center.localImage(for: ref)
-        }
-        await eventually("LRU thumbnail cache populated up to cap") {
-            h.center.localImageCacheCountForTesting == ImageCenter.maxLocalImages
-        }
-        #expect(h.center.localImageCacheCountForTesting <= ImageCenter.maxLocalImages)
     }
 
     @Test func localImageNegativeCachesDecodeFailuresAndBoundsBlobSize() async throws {
         let store = PendingStore.ephemeral()
-        let h = try await makeHarness(store: store, persist: false)
-        defer {
-            Task {
-                await h.host.closeAsync()
-                await MainActor.run { ImageCenter.remove(h.remote) }
-            }
-        }
+        try await withHarness(store: store, persist: false) { h in
+            let badRef = try store.storeBlob(Data("not-an-image".utf8), prefix: "bad")
+            let hugeRef = try store.storeBlob(Data(count: Int(ImageCenter.maxThumbnailBlobBytes) + 1), prefix: "huge")
 
-        let badRef = try store.storeBlob(Data("not-an-image".utf8), prefix: "bad")
-        let hugeRef = try store.storeBlob(Data(count: Int(ImageCenter.maxThumbnailBlobBytes) + 1), prefix: "huge")
-
-        #expect(h.center.localImage(for: badRef) == nil)
-        await eventually("badRef recorded in negative cache") {
-            h.center.failedLocalRefCountForTesting == 1
-        }
-        let loadsAfterBad = h.center.localImageLoadCountForTesting
-        for _ in 0..<5 {
             #expect(h.center.localImage(for: badRef) == nil)
-        }
-        #expect(h.center.localImageLoadCountForTesting == loadsAfterBad)
+            await h.center.drainLocalImageLoadsForTesting()
+            #expect(h.center.failedLocalRefCountForTesting == 1)
+            let loadsAfterBad = h.center.localImageLoadCountForTesting
+            for _ in 0..<5 {
+                #expect(h.center.localImage(for: badRef) == nil)
+            }
+            #expect(h.center.localImageLoadCountForTesting == loadsAfterBad)
 
-        #expect(h.center.localImage(for: hugeRef) == nil)
-        await eventually("oversized ref rejected before decode and cached") {
-            h.center.failedLocalRefCountForTesting == 2
-        }
-        let loadsAfterHuge = h.center.localImageLoadCountForTesting
-        #expect(h.center.localImage(for: hugeRef) == nil)
-        #expect(h.center.localImageLoadCountForTesting == loadsAfterHuge)
+            #expect(h.center.localImage(for: hugeRef) == nil)
+            await h.center.drainLocalImageLoadsForTesting()
+            #expect(h.center.failedLocalRefCountForTesting == 2)
+            let loadsAfterHuge = h.center.localImageLoadCountForTesting
+            #expect(h.center.localImage(for: hugeRef) == nil)
+            #expect(h.center.localImageLoadCountForTesting == loadsAfterHuge)
 
-        // Evicting a ref clears its negative-cache entry.
-        h.center.handlers().onReleaseLocalRefs([badRef])
-        #expect(h.center.failedLocalRefCountForTesting == 1)
+            // Evicting a ref clears its negative-cache entry.
+            h.center.handlers().onReleaseLocalRefs([badRef])
+            #expect(h.center.failedLocalRefCountForTesting == 1)
+        }
     }
 
     @Test func pastedOversizedImageRefusedBeforeLoadingIntoMemory() async throws {
@@ -650,51 +640,79 @@ private final class FakeUploadDaemon: @unchecked Sendable {
 
     @Test func oversizedLibraryVideoSkipsCopyAndIsRejectedByCore() async throws {
         let store = PendingStore.ephemeral()
-        let h = try await makeHarness(store: store, persist: false)
-        defer {
-            Task {
-                await h.host.closeAsync()
-                await MainActor.run { ImageCenter.remove(h.remote) }
+        try await withHarness(store: store, persist: false) { h in
+            let scope = PBDraftScope.session("s1")
+            let maxBytes = await h.host.maxFileBytes(for: scope)
+            #expect(maxBytes == 100 * 1024 * 1024)
+
+            let tmpDir = FileManager.default.temporaryDirectory.appending(path: "att-bigvid-\(UUID().uuidString)", directoryHint: .isDirectory)
+            let stagingRoot = tmpDir.appending(path: "library-videos", directoryHint: .isDirectory)
+            try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: tmpDir) }
+
+            let hugeFile = tmpDir.appending(path: "huge.mp4")
+            FileManager.default.createFile(atPath: hugeFile.path, contents: nil)
+            let fh = try FileHandle(forWritingTo: hugeFile)
+            try fh.truncate(atOffset: UInt64(maxBytes) + 1)
+            try fh.close()
+
+            let staged = try LibraryVideos.stage(hugeFile, maxBytes: maxBytes, root: stagingRoot)
+            guard case .rejectedCandidate(let info) = staged else {
+                Issue.record("expected oversized video to skip staging copy")
+                return
+            }
+            #expect(!FileManager.default.fileExists(atPath: stagingRoot.path))
+            #expect(store.used == 0)
+
+            await h.host.openDraft(scope: scope, machineID: "m1")
+            await h.host.addDraftItems(scope: scope, items: [.with {
+                $0.candidate = info.candidate(forceFile: false)
+                $0.sourceRef = ""
+            }])
+            await h.host.drainAttachmentWorkForTesting()
+            let d = h.screens.sessions["s1"]?.composer.draft
+            #expect(d?.files.isEmpty == true)
+            #expect(d?.hasNotice == true)
+            #expect(!(d?.notice.rendered().isEmpty ?? true))
+
+            // Startup cleanup removes any residual staged library videos.
+            let leftover = try LibraryVideos.copy(hugeFile, root: stagingRoot)
+            #expect(FileManager.default.fileExists(atPath: leftover.path))
+            LibraryVideos.discardAll(root: stagingRoot)
+            #expect(!FileManager.default.fileExists(atPath: stagingRoot.path))
+        }
+    }
+
+    @Test func draftStorageQueueDrainWaitsForFollowUpOpsEnqueuedDuringExecution() async {
+        final class Recorder: @unchecked Sendable {
+            private let lock = NSLock()
+            private var _steps: [String] = []
+            var steps: [String] { lock.withLock { _steps } }
+            func append(_ step: String) { lock.withLock { _steps.append(step) } }
+        }
+
+        let queue = DraftStorageQueue()
+        let recorder = Recorder()
+        let firstStarted = AsyncStream<Void>.makeStream()
+        let releaseFirst = AsyncStream<Void>.makeStream()
+
+        queue.enqueue {
+            firstStarted.continuation.yield(())
+            var it = releaseFirst.stream.makeAsyncIterator()
+            _ = await it.next()
+            recorder.append("first")
+            // Mirrors a storage callback (e.g., draftStorageWriteResult with dirtyWrite)
+            // synchronously enqueuing a follow-up write after drain() was already called.
+            queue.enqueue {
+                recorder.append("follow-up")
             }
         }
-        let scope = PBDraftScope.session("s1")
-        let maxBytes = await h.host.maxFileBytes(for: scope)
-        #expect(maxBytes == 100 * 1024 * 1024)
 
-        let tmpDir = FileManager.default.temporaryDirectory.appending(path: "att-bigvid-\(UUID().uuidString)", directoryHint: .isDirectory)
-        let stagingRoot = tmpDir.appending(path: "library-videos", directoryHint: .isDirectory)
-        try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tmpDir) }
-
-        let hugeFile = tmpDir.appending(path: "huge.mp4")
-        FileManager.default.createFile(atPath: hugeFile.path, contents: nil)
-        let fh = try FileHandle(forWritingTo: hugeFile)
-        try fh.truncate(atOffset: UInt64(maxBytes) + 1)
-        try fh.close()
-
-        let staged = try LibraryVideos.stage(hugeFile, maxBytes: maxBytes, root: stagingRoot)
-        guard case .rejectedCandidate(let info) = staged else {
-            Issue.record("expected oversized video to skip staging copy")
-            return
-        }
-        #expect(!FileManager.default.fileExists(atPath: stagingRoot.path))
-        #expect(store.used == 0)
-
-        await h.host.openDraft(scope: scope, machineID: "m1")
-        await h.host.addDraftItems(scope: scope, items: [.with {
-            $0.candidate = info.candidate(forceFile: false)
-            $0.sourceRef = ""
-        }])
-        await eventually("Core rejects oversized video candidate with notice") {
-            let d = h.screens.sessions["s1"]?.composer.draft
-            return d?.files.isEmpty == true && d?.hasNotice == true && !(d?.notice.rendered().isEmpty ?? true)
-        }
-
-        // Startup cleanup removes any residual staged library videos.
-        let leftover = try LibraryVideos.copy(hugeFile, root: stagingRoot)
-        #expect(FileManager.default.fileExists(atPath: leftover.path))
-        LibraryVideos.discardAll(root: stagingRoot)
-        #expect(!FileManager.default.fileExists(atPath: stagingRoot.path))
+        _ = await nextSignal(firstStarted.stream)
+        let drainTask = Task { await queue.drain() }
+        releaseFirst.continuation.yield(())
+        await drainTask.value
+        #expect(recorder.steps == ["first", "follow-up"])
     }
 
     @Test func draftStorageEffectsEnqueueInBatchOrderAcrossActorReentrancy() async throws {
@@ -726,7 +744,6 @@ private final class FakeUploadDaemon: @unchecked Sendable {
             demoMode: true,
             onNavigate: { _ in }
         )
-        defer { Task { await host.closeAsync() } }
         await host.setNavigateSuspendHookForTesting {
             navEntered.continuation.yield(())
             var it = resumeBatch1.stream.makeAsyncIterator()
@@ -764,6 +781,7 @@ private final class FakeUploadDaemon: @unchecked Sendable {
 
         let read = store.read(opID: 3, bucket: .draft, key: "draft:session:s1")
         #expect(read.found && read.data == Data("fresh-second-batch".utf8))
+        await host.closeAsync()
     }
 
     @Test func sharedDraftQueueSerializesLogoutClearAllBeforeNextHostList() async throws {
@@ -799,12 +817,6 @@ private final class FakeUploadDaemon: @unchecked Sendable {
 
         let host1 = try makeHost()
         let host2 = try makeHost()
-        defer {
-            Task {
-                await host1.closeAsync()
-                await host2.closeAsync()
-            }
-        }
 
         // Hold queue with a blocker so host1's ClearAll queues behind it.
         let gateStarted = AsyncStream<Void>.makeStream()
@@ -828,9 +840,10 @@ private final class FakeUploadDaemon: @unchecked Sendable {
         await host2.drainDraftStorageQueue()
         let count = await nextSignal(listCount.stream)
         #expect(count == 0)
+        await host2.closeAsync()
     }
 
-    @Test func draftViewsRenderFromCoreViewModelsWithoutState() throws {
+    @Test func draftViewsRenderFromCoreViewModelsWithoutState() async throws {
         let store = PendingStore.ephemeral()
         let account = Account(
             server: "http://127.0.0.1:1",
@@ -847,10 +860,6 @@ private final class FakeUploadDaemon: @unchecked Sendable {
             demoMode: true,
             onNavigate: { _ in }
         )
-        defer {
-            Task { await host.closeAsync() }
-            ImageCenter.remove(remote)
-        }
         let center = ImageCenter.install(remote: remote, coreHost: host, pending: store.scoped())
         let thumbRef = try store.storeBlob(samplePNG(.systemGreen), prefix: "thumb")
 
@@ -923,5 +932,7 @@ private final class FakeUploadDaemon: @unchecked Sendable {
         ])
         let outboxImg = ImageRenderer(content: outbox.frame(width: 320))
         #expect(outboxImg.uiImage != nil)
+        await host.closeAsync()
+        ImageCenter.remove(remote)
     }
 }

@@ -197,6 +197,15 @@ final class ImageCenter {
     var localImageCacheCountForTesting: Int { localImages.count }
     var failedLocalRefCountForTesting: Int { failedLocalRefs.count }
     var localImageLoadCountForTesting: Int { localImageLoadCount }
+
+    func drainLocalImageLoadsForTesting() async {
+        while !loadTasks.isEmpty {
+            let current = Array(loadTasks.values)
+            for task in current {
+                await task.value
+            }
+        }
+    }
     #endif
 
     // MARK: Viewed images & timeline previews
@@ -370,13 +379,14 @@ final class ImageCenter {
     }
 
     /// Adds raw image bytes (from debug signals or pasteboard data).
-    func addImageData(scope: PBDraftScope, _ dataList: [Data]) {
-        guard !dataList.isEmpty, !closed else { return }
+    @discardableResult
+    func addImageData(scope: PBDraftScope, _ dataList: [Data]) -> Task<Void, Never>? {
+        guard !dataList.isEmpty, !closed else { return nil }
         let reservationID = newRequestId()
         let store = pending
         let host = coreHost
         let scopeKey = scope.debugKey
-        Task { [weak self] in
+        return Task { [weak self] in
             await host.reserveDraftSlots(
                 scope: scope,
                 reservationID: reservationID,
