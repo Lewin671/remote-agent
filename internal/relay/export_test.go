@@ -27,6 +27,16 @@ func SetBeforeDialResultForTest(r *Relay, hook func(uint64)) {
 	r.beforeDialResult = hook
 }
 
+// SetBeforeHelloForTest runs inside dialMain after websocket.Dial and right before StreamHello.
+func SetBeforeHelloForTest(r *Relay, hook func()) {
+	r.beforeHello = hook
+}
+
+// SetRecoveryNowForTest overrides the clock used by relay leg liveness and recovery budgets.
+func SetRecoveryNowForTest(r *Relay, now func() time.Time) {
+	r.recoveryNow = now
+}
+
 // SetSyncIntervalForTest changes only this relay's polling schedule. Set it
 // before Run; production relays retain New's five-second interval.
 func SetSyncIntervalForTest(r *Relay, interval time.Duration) { r.syncInterval = interval }

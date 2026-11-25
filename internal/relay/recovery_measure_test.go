@@ -359,10 +359,14 @@ func TestRecoveryMeasurements(t *testing.T) {
 					}
 				}
 				row := recoverySample{Scenario: scenario}
+				waitLimit := 8 * time.Second
+				if scenario == "blackhole" {
+					waitLimit = 25 * time.Second
+				}
 				select {
 				case <-ready:
 					row.Ready = true
-				case <-time.After(8 * time.Second):
+				case <-time.After(waitLimit):
 				}
 				if row.Ready {
 					row.Call = call()

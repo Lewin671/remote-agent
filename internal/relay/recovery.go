@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net"
 	"net/http/httptrace"
 	"strings"
@@ -26,6 +27,74 @@ const (
 	recoveryReady
 )
 
+type dialReason uint8
+
+const (
+	dialReasonNone dialReason = iota
+	dialReasonInitial
+	dialReasonSuspect
+	dialReasonLost
+	dialReasonNetwork
+	dialReasonWake
+)
+
+func (d dialReason) String() string {
+	switch d {
+	case dialReasonInitial:
+		return "initial"
+	case dialReasonSuspect:
+		return "suspect"
+	case dialReasonLost:
+		return "lost"
+	case dialReasonNetwork:
+		return "network"
+	case dialReasonWake:
+		return "wake"
+	default:
+		return "unknown"
+	}
+}
+
+func mergeDialReason(cur, next dialReason) dialReason {
+	if next > cur {
+		return next
+	}
+	return cur
+}
+
+// helloGate coordinates aborting a suspect-triggered replacement dial before
+// StreamHello is written (once StreamHello reaches the server, hub.add cancels
+// the previous machine leg).
+type helloGate struct {
+	mu        sync.Mutex
+	aborted   bool
+	committed bool
+}
+
+func (g *helloGate) abort() bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.committed {
+		return false
+	}
+	g.aborted = true
+	return true
+}
+
+func (g *helloGate) commit(allow func() bool) bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.aborted {
+		return false
+	}
+	if allow != nil && !allow() {
+		g.aborted = true
+		return false
+	}
+	g.committed = true
+	return true
+}
+
 func (r *Relay) observe(event recoveryEvent) {
 	if r.observeRecovery != nil {
 		r.observeRecovery(event)
@@ -48,10 +117,14 @@ type dialResult struct {
 	expiresMs         int64
 	securityRefreshed bool
 	policyViolation   bool
+	aborted           bool
 	err               error
 }
 
-const tokenRefreshMarginMs = 86_400_000
+const (
+	tokenRefreshMarginMs = 86_400_000
+	wakeJumpThreshold    = 3 * time.Second
+)
 
 func (r *Relay) isRouteAvailable(localIP net.IP) bool {
 	if r.routeAvailable != nil {
@@ -78,21 +151,29 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 		wakes = r.wakeEvents(ctx)
 	}
 	policy := transport.Recovery{Budget: r.recoveryBudget}
-	origin := time.Now()
-	elapsed := func() int64 { return time.Since(origin).Milliseconds() }
+	nowFn := r.recoveryNow
+	if nowFn == nil {
+		nowFn = time.Now
+	}
+	origin := nowFn()
+	elapsed := func() int64 { return nowFn().Sub(origin).Milliseconds() }
 	var active *mainPath
 	var generation uint64
 	var dialing bool
+	var dialingReason dialReason
 	var candidateCancel context.CancelFunc
 	var candidateLocalIP *atomic.Pointer[net.IP]
+	var candidateGate *helloGate
 	var everReady bool
 	var cachedToken string
 	var cachedExpiresMs int64
 	var wakeRefreshRequired bool
 	var wakeGen uint64
 	wanted := true
+	wantedReason := dialReasonInitial
 	results := make(chan dialResult, 1)
 	ended := make(chan *mainPath, 2)
+	activeFrame := make(chan *mainPath, 1)
 	var readers sync.WaitGroup
 	var retryTimer *time.Timer
 	var retryC <-chan time.Time
@@ -132,6 +213,7 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 		wakeRefreshRequired = true
 		wakeGen = generation
 		wanted = true
+		wantedReason = mergeDialReason(wantedReason, dialReasonWake)
 		if candidateCancel != nil {
 			candidateCancel()
 		}
@@ -141,15 +223,24 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 	}
 	tick := time.NewTicker(100 * time.Millisecond)
 	defer tick.Stop()
-	lastTick := time.Now()
+	lastWallTick := time.Now()
 	for {
-		now := time.Now()
+		now := nowFn()
+		if wanted && !dialing {
+			if wantedReason == dialReasonSuspect && active != nil && !active.liveness.Suspect(elapsed()) {
+				wanted = false
+				wantedReason = dialReasonNone
+				stopRetry()
+			}
+		}
 		if wanted && !dialing {
 			if policy.Take(now) {
 				stopRetry()
 				r.observe(recoveryDial)
 				dialing = true
+				dialingReason = wantedReason
 				wanted = false
+				wantedReason = dialReasonNone
 				gen := generation
 				token := cachedToken
 				expiresMs := cachedExpiresMs
@@ -159,16 +250,26 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 					expiresMs = 0
 				}
 				budget := r.readyTimeout
-				if everReady && !needsLogin {
+				if everReady && !needsLogin && dialingReason == dialReasonNetwork {
 					budget = min(r.readyTimeout, 3*time.Second)
 				}
 				requireRefresh := wakeRefreshRequired
 				attempt, abort := context.WithTimeout(ctx, budget)
 				localIPPtr := &atomic.Pointer[net.IP]{}
+				gate := &helloGate{}
+				var allowHello func() bool
+				if dialingReason == dialReasonSuspect && active != nil {
+					suspectLeg := active
+					suspectFrameAt := suspectLeg.liveness.LastFrameAt()
+					allowHello = func() bool {
+						return suspectLeg.liveness.LastFrameAt() == suspectFrameAt
+					}
+				}
 				candidateCancel = abort
 				candidateLocalIP = localIPPtr
+				candidateGate = gate
 				readers.Go(func() {
-					res := r.dialMain(attempt, acct, d, requireRefresh, token, expiresMs, localIPPtr)
+					res := r.dialMain(attempt, acct, d, requireRefresh, token, expiresMs, localIPPtr, gate, allowHello)
 					res.generation = gen
 					abort()
 					if r.beforeDialResult != nil {
@@ -195,6 +296,28 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 		case <-retryC:
 			retryTimer = nil
 			retryC = nil
+		case p := <-activeFrame:
+			if p != active || active == nil {
+				continue
+			}
+			nowMs := elapsed()
+			if active.liveness.Suspect(nowMs) {
+				continue
+			}
+			if wanted && wantedReason == dialReasonSuspect {
+				wanted = false
+				wantedReason = dialReasonNone
+				stopRetry()
+			}
+			if dialing && dialingReason == dialReasonSuspect && candidateGate != nil && candidateGate.abort() {
+				if candidateCancel != nil {
+					candidateCancel()
+				}
+				slog.Info("relay: kept active stream leg after traffic resumed",
+					"reason", "suspect_recovered",
+					"age_ms", active.liveness.AgeMs(nowMs),
+				)
+			}
 		case _, ok := <-network:
 			if !ok {
 				network = nil
@@ -204,6 +327,7 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 			d.security.networkChanged()
 			generation++
 			wanted = true
+			wantedReason = mergeDialReason(wantedReason, dialReasonNetwork)
 			if candidateCancel != nil {
 				keepDial := false
 				if candidateLocalIP != nil {
@@ -227,16 +351,24 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 			}
 			onWake()
 		case <-tick.C:
-			now = time.Now()
-			if now.Sub(lastTick) > transport.SuspectAfter || now.UnixNano()-lastTick.UnixNano() > int64(transport.SuspectAfter) {
+			wallNow := time.Now()
+			if wallNow.Sub(lastWallTick) > wakeJumpThreshold || wallNow.UnixNano()-lastWallTick.UnixNano() > int64(wakeJumpThreshold) {
 				onWake()
 			}
-			lastTick = now
-			if active != nil && active.liveness.Suspect(elapsed()) {
+			lastWallTick = wallNow
+			nowMs := elapsed()
+			if active != nil && active.liveness.Suspect(nowMs) {
 				if !wanted && !dialing {
 					r.observe(recoverySuspect)
+					slog.Info("relay: stream leg suspect",
+						"reason", dialReasonSuspect.String(),
+						"silence_ms", active.liveness.SilenceMs(nowMs),
+						"threshold_ms", active.liveness.ThresholdMs(),
+						"age_ms", active.liveness.AgeMs(nowMs),
+					)
 				}
 				wanted = true
+				wantedReason = mergeDialReason(wantedReason, dialReasonSuspect)
 			}
 		case old := <-ended:
 			if websocket.CloseStatus(old.exitErr) == websocket.StatusPolicyViolation && old.token == cachedToken {
@@ -246,22 +378,39 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 			if old != active {
 				continue
 			}
+			nowMs := elapsed()
+			slog.Info("relay: stream leg lost",
+				"reason", dialReasonLost.String(),
+				"silence_ms", old.liveness.SilenceMs(nowMs),
+				"age_ms", old.liveness.AgeMs(nowMs),
+				"err", old.exitErr,
+			)
 			r.observe(recoveryLost)
 			active = nil
 			wanted = true
+			wantedReason = mergeDialReason(wantedReason, dialReasonLost)
 			r.mu.Lock()
 			r.connected = false
 			r.mu.Unlock()
 		case result := <-results:
+			reason := dialingReason
 			dialing = false
+			dialingReason = dialReasonNone
 			candidateCancel = nil
 			candidateLocalIP = nil
+			candidateGate = nil
 			if result.policyViolation {
 				cachedToken = ""
 				cachedExpiresMs = 0
 			} else if result.token != "" && result.expiresMs > cachedExpiresMs {
 				cachedToken = result.token
 				cachedExpiresMs = result.expiresMs
+			}
+			if result.aborted {
+				if result.path != nil {
+					result.path.ws.CloseNow()
+				}
+				continue
 			}
 			if result.err == nil && result.path != nil {
 				if result.securityRefreshed && result.generation >= wakeGen {
@@ -272,6 +421,7 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 				if !keep {
 					result.path.ws.CloseNow()
 					wanted = true
+					wantedReason = mergeDialReason(wantedReason, reason)
 					continue
 				}
 			} else if result.generation != generation {
@@ -279,15 +429,21 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 					result.path.ws.CloseNow()
 				}
 				wanted = true
+				wantedReason = mergeDialReason(wantedReason, reason)
 				continue
 			}
 			if result.err != nil {
-				policy.Failed(time.Now())
+				if reason == dialReasonSuspect && active != nil && !active.liveness.Suspect(elapsed()) {
+					continue
+				}
+				policy.Failed(nowFn())
 				wanted = true
+				wantedReason = mergeDialReason(wantedReason, reason)
 				continue
 			}
 			p := result.path
-			p.liveness = transport.NewAdaptiveLiveness(elapsed())
+			nowMs := elapsed()
+			p.liveness = transport.NewAdaptiveLiveness(nowMs)
 			everReady = true
 			leg, closeLeg := context.WithCancel(ctx)
 			p.cancel = closeLeg
@@ -295,6 +451,14 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 			active = p
 			policy.Ready()
 			wanted = false
+			wantedReason = dialReasonNone
+			if old != nil {
+				slog.Info("relay: replaced stream leg",
+					"reason", reason.String(),
+					"silence_ms", old.liveness.SilenceMs(nowMs),
+					"age_ms", old.liveness.AgeMs(nowMs),
+				)
+			}
 			d.link.Router.Attach(func(ctx context.Context, route transport.StreamRoute) (transport.Path, error) {
 				return openRelayStream(ctx, acct.Server, p.token, route)
 			})
@@ -311,7 +475,13 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 					pathLifetime: leg,
 					dispatcher:   d,
 					path:         transport.NewRelayPath(p.ws),
-					activity:     func(isHeartbeat bool) { p.liveness.OnFrame(elapsed(), isHeartbeat) },
+					activity: func(isHeartbeat bool) {
+						p.liveness.OnFrame(elapsed(), isHeartbeat)
+						select {
+						case activeFrame <- p:
+						default:
+						}
+					},
 				}
 				p.exitErr = c.readLoop(leg)
 				select {
@@ -327,7 +497,7 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 	}
 }
 
-func (r *Relay) dialMain(ctx context.Context, acct *Account, d *dispatcher, refresh bool, token string, expiresMs int64, dialLocalIP *atomic.Pointer[net.IP]) dialResult {
+func (r *Relay) dialMain(ctx context.Context, acct *Account, d *dispatcher, refresh bool, token string, expiresMs int64, dialLocalIP *atomic.Pointer[net.IP], gate *helloGate, allowHello func() bool) dialResult {
 	var res dialResult
 	if err := d.security.endpoint.Touch(d.security.now()); err != nil {
 		res.err = err
@@ -364,6 +534,11 @@ func (r *Relay) dialMain(ctx context.Context, acct *Account, d *dispatcher, refr
 	})
 	ws, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(acct.Server, "http")+"/v1/stream", &websocket.DialOptions{HTTPClient: httpClient()})
 	if err != nil {
+		if gate != nil {
+			gate.mu.Lock()
+			res.aborted = gate.aborted
+			gate.mu.Unlock()
+		}
 		res.policyViolation = websocket.CloseStatus(err) == websocket.StatusPolicyViolation
 		res.err = err
 		return res
@@ -375,6 +550,13 @@ func (r *Relay) dialMain(ctx context.Context, acct *Account, d *dispatcher, refr
 		}
 	}()
 	ws.SetReadLimit(4 << 20)
+	if r.beforeHello != nil {
+		r.beforeHello()
+	}
+	if gate != nil && !gate.commit(allowHello) {
+		res.aborted = true
+		return res
+	}
 	hello, _ := proto.Marshal(&pb.PeerFrame{Kind: &pb.PeerFrame_Hello{Hello: &pb.StreamHello{Token: token}}})
 	if err = ws.Write(ctx, websocket.MessageBinary, hello); err != nil {
 		res.policyViolation = websocket.CloseStatus(err) == websocket.StatusPolicyViolation

@@ -96,6 +96,8 @@ type Relay struct {
 	wakeEvents       func(context.Context) <-chan struct{}
 	routeAvailable   func(net.IP) bool
 	beforeDialResult func(uint64)
+	beforeHello      func()
+	recoveryNow      func() time.Time
 	readyTimeout     time.Duration
 	syncRetryBase    time.Duration
 	// keyMu makes reading or creating a session's key one step across

@@ -47,6 +47,30 @@ func (a *AdaptiveLiveness) Suspect(nowMs int64) bool {
 	return a.l.Suspect(nowMs)
 }
 
+func (a *AdaptiveLiveness) ThresholdMs() int64 {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.l.ThresholdMs()
+}
+
+func (a *AdaptiveLiveness) SilenceMs(nowMs int64) int64 {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.l.SilenceMs(nowMs)
+}
+
+func (a *AdaptiveLiveness) AgeMs(nowMs int64) int64 {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.l.AgeMs(nowMs)
+}
+
+func (a *AdaptiveLiveness) LastFrameAt() int64 {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.l.LastFrameAt()
+}
+
 // Budget is shared by all targets in one process.
 type Budget struct {
 	mu sync.Mutex

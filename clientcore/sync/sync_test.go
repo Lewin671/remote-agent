@@ -137,7 +137,8 @@ func TestConnectionLifecycleRecoveryAndLiveness(t *testing.T) {
 		t.Fatalf("stale StreamClosed should be ignored, got conn=%v effects=%v", e.Connection(), stale.Effects)
 	}
 
-	// Heartbeat calibrates LegLiveness to max(3s, 3 * interval = 6s).
+	// Heartbeat calibrates LegLiveness: 1s cadence uses the 15s floor (tolerating
+	// transient high-RTT/lossy stalls without closing the client stream).
 	e.HandleEvent(&corev1.Event{
 		NowMs:  now + 1000,
 		MonoMs: 2_000,
@@ -149,8 +150,8 @@ func TestConnectionLifecycleRecoveryAndLiveness(t *testing.T) {
 		},
 	})
 	e.HandleEvent(&corev1.Event{
-		NowMs:  now + 3000,
-		MonoMs: 4_000,
+		NowMs:  now + 2000,
+		MonoMs: 3_000,
 		Event: &corev1.Event_StreamFrame{
 			StreamFrame: &corev1.StreamFrameEvent{
 				LegId: legID,
@@ -158,15 +159,30 @@ func TestConnectionLifecycleRecoveryAndLiveness(t *testing.T) {
 			},
 		},
 	})
-	if got := e.liveness.ThresholdMs(); got != 6_000 {
-		t.Fatalf("expected liveness threshold 6000ms, got %d", got)
+	if got := e.liveness.ThresholdMs(); got != 15_000 {
+		t.Fatalf("expected liveness threshold 15000ms, got %d", got)
 	}
 
-	// Find active liveness timer and advance past 6000ms silence -> triggers CloseStreamEffect.
+	// A 10s transient silence must NOT close the stream (old 3s threshold would have closed it).
 	lt := e.timers[timerKey{kind: corev1.TimerKind_TIMER_KIND_LIVENESS}]
+	_, transientRes := e.HandleEvent(&corev1.Event{
+		NowMs:  now + 12_000,
+		MonoMs: 13_000,
+		Event: &corev1.Event_TimerFired{
+			TimerFired: &corev1.TimerFiredEvent{TimerId: lt.id, Kind: lt.kind},
+		},
+	})
+	for _, eff := range transientRes.Effects {
+		if eff.GetCloseStream() != nil {
+			t.Fatalf("client stream closed prematurely after 10s silence")
+		}
+	}
+
+	// Advance past 15000ms silence -> triggers CloseStreamEffect.
+	lt = e.timers[timerKey{kind: corev1.TimerKind_TIMER_KIND_LIVENESS}]
 	_, livenessRes := e.HandleEvent(&corev1.Event{
-		NowMs:  now + 10_500,
-		MonoMs: 11_000,
+		NowMs:  now + 18_500,
+		MonoMs: 18_500,
 		Event: &corev1.Event_TimerFired{
 			TimerFired: &corev1.TimerFiredEvent{TimerId: lt.id, Kind: lt.kind},
 		},

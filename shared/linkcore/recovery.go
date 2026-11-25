@@ -7,32 +7,58 @@ package linkcore
 
 const (
 	HeartbeatMs        = 1000
-	SuspectAfterMs     = 3 * HeartbeatMs
+	SuspectAfterMs     = 15 * HeartbeatMs
 	DefaultDeadAfterMs = 60000
 )
 
-// Liveness tracks observed server heartbeat intervals on a single leg.
-// Before two heartbeats are observed, silence uses DefaultDeadAfterMs (60s);
-// afterwards, it uses max(SuspectAfterMs, 3*observedInterval).
+// Liveness tracks observed server heartbeat cadence and transport stalls on a
+// single leg. Before two heartbeats are observed, silence uses
+// DefaultDeadAfterMs (60s); afterwards, it uses
+// min(max(SuspectAfterMs, 3*cadenceMs) + 3*stallMs, DefaultDeadAfterMs).
 type Liveness struct {
-	lastFrameAt      int64
-	heartbeats       int
-	lastHeartbeatAt  int64
-	observedInterval int64
+	startedAt       int64
+	lastFrameAt     int64
+	heartbeats      int
+	lastHeartbeatAt int64
+	cadenceMs       int64
+	stallMs         int64
 }
 
-func NewLiveness(now int64) Liveness { return Liveness{lastFrameAt: now} }
+func NewLiveness(now int64) Liveness { return Liveness{startedAt: now, lastFrameAt: now} }
 
 func (l *Liveness) OnFrame(now int64, isHeartbeat bool) {
+	prevFrame := l.lastFrameAt
 	if now > l.lastFrameAt {
 		l.lastFrameAt = now
+	}
+	if l.heartbeats >= 2 && now > prevFrame {
+		silence := now - prevFrame
+		if excess := silence - l.cadenceMs; excess > l.stallMs {
+			// Fast attack so lossy/high-RTT links quickly widen their silence
+			// tolerance instead of flapping after repeated TCP retransmissions.
+			l.stallMs += (excess - l.stallMs + 1) / 2
+		}
 	}
 	if !isHeartbeat {
 		return
 	}
 	l.heartbeats++
 	if l.heartbeats >= 2 {
-		l.observedInterval = max(0, now-l.lastHeartbeatAt)
+		dt := max(0, now-l.lastHeartbeatAt)
+		if l.heartbeats == 2 {
+			l.cadenceMs = dt
+		} else {
+			// Smooth heartbeat cadence so burst drains after a stall do not
+			// collapse the observed interval toward zero.
+			l.cadenceMs = (7*l.cadenceMs + dt) / 8
+		}
+		// Slow decay on non-burst heartbeats when silence stayed within bounds.
+		if dt >= l.cadenceMs/2 {
+			silence := max(0, now-prevFrame)
+			if silence-l.cadenceMs <= l.stallMs {
+				l.stallMs = (l.stallMs * 7) / 8
+			}
+		}
 	}
 	l.lastHeartbeatAt = now
 }
@@ -42,10 +68,20 @@ func (l *Liveness) ThresholdMs() int64 {
 	if l.heartbeats < 2 {
 		return DefaultDeadAfterMs
 	}
-	return max(SuspectAfterMs, 3*l.observedInterval)
+	base := max(SuspectAfterMs, 3*l.cadenceMs)
+	return min(base+3*l.stallMs, DefaultDeadAfterMs)
 }
 
-func (l *Liveness) Suspect(now int64) bool { return now-l.lastFrameAt >= l.ThresholdMs() }
+// SilenceMs is how long the leg has been silent at now.
+func (l *Liveness) SilenceMs(now int64) int64 { return max(0, now-l.lastFrameAt) }
+
+// AgeMs is how long the leg has been alive at now.
+func (l *Liveness) AgeMs(now int64) int64 { return max(0, now-l.startedAt) }
+
+// LastFrameAt is the timestamp of the most recent frame observed on the leg.
+func (l *Liveness) LastFrameAt() int64 { return l.lastFrameAt }
+
+func (l *Liveness) Suspect(now int64) bool { return l.SilenceMs(now) >= l.ThresholdMs() }
 
 // Budget is shared by all targets in one process. A notification never refills
 // it. Both buckets are checked before either is charged.
