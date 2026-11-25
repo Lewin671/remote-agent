@@ -68,13 +68,21 @@ internal fun normalizeCandidateSdp(candidate: String, usernameFragment: String):
     if (trimmed.isEmpty()) return candidate
     val tokens = trimmed.split(' ')
     if (tokens.any { it == "ufrag" }) return candidate
-    return "$trimmed ufrag $ufrag"
+    return buildString(trimmed.length + ufrag.length + 7) {
+        append(trimmed)
+        append(' ')
+        append("ufrag")
+        append(' ')
+        append(ufrag)
+    }
 }
+
+private const val DIRECT_PREFS_NAME = "direct-path"
 
 internal class SharedPrefsDirectPreferenceStore internal constructor(
     private val prefs: SharedPreferences,
 ) : DirectPreferenceStore {
-    constructor(context: Context) : this(context.getSharedPreferences("direct-path", Context.MODE_PRIVATE))
+    constructor(context: Context) : this(context.getSharedPreferences(DIRECT_PREFS_NAME, Context.MODE_PRIVATE))
 
     override fun isEnabled(server: String, selfDeviceId: String, machineId: String): Boolean =
         prefs.getBoolean("$server|$selfDeviceId|$machineId", true)
