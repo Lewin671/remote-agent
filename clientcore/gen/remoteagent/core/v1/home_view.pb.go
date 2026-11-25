@@ -103,6 +103,37 @@ const (
 	AlwaysAllowKind_ALWAYS_ALLOW_KIND_TOOL_CATEGORY  AlwaysAllowKind = 3
 )
 
+type SessionCommandStatus int32
+
+const (
+	SessionCommandStatus_SESSION_COMMAND_STATUS_UNSPECIFIED SessionCommandStatus = 0
+	SessionCommandStatus_SESSION_COMMAND_STATUS_IDLE        SessionCommandStatus = 1
+	SessionCommandStatus_SESSION_COMMAND_STATUS_PENDING     SessionCommandStatus = 2
+	SessionCommandStatus_SESSION_COMMAND_STATUS_FAILED      SessionCommandStatus = 3
+	SessionCommandStatus_SESSION_COMMAND_STATUS_UNKNOWN     SessionCommandStatus = 4
+)
+
+type ResolutionOutcome int32
+
+const (
+	ResolutionOutcome_RESOLUTION_OUTCOME_UNSPECIFIED  ResolutionOutcome = 0
+	ResolutionOutcome_RESOLUTION_OUTCOME_THIS_CLIENT  ResolutionOutcome = 1
+	ResolutionOutcome_RESOLUTION_OUTCOME_OTHER_CLIENT ResolutionOutcome = 2
+	ResolutionOutcome_RESOLUTION_OUTCOME_TERMINAL     ResolutionOutcome = 3
+	ResolutionOutcome_RESOLUTION_OUTCOME_FAILED       ResolutionOutcome = 4
+)
+
+type HomeFocusPhase int32
+
+const (
+	HomeFocusPhase_HOME_FOCUS_PHASE_UNSPECIFIED          HomeFocusPhase = 0
+	HomeFocusPhase_HOME_FOCUS_PHASE_IDLE                 HomeFocusPhase = 1
+	HomeFocusPhase_HOME_FOCUS_PHASE_SUBMITTING           HomeFocusPhase = 2
+	HomeFocusPhase_HOME_FOCUS_PHASE_FAILED               HomeFocusPhase = 3
+	HomeFocusPhase_HOME_FOCUS_PHASE_RESOLVED_THIS_CLIENT HomeFocusPhase = 4
+	HomeFocusPhase_HOME_FOCUS_PHASE_RESOLVED_ELSEWHERE   HomeFocusPhase = 5
+)
+
 type ConnectionStatusView struct {
 	_                 [0]func()
 	State             ConnState
@@ -349,24 +380,154 @@ func (m *HomeEmptyView) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_HomeEmptyView)
 }
 
+type SessionCommandState struct {
+	_                [0]func()
+	SlotKey          string
+	RequestId        string
+	Status           SessionCommandStatus
+	Busy             bool
+	Frozen           bool
+	Expired          bool
+	CanRetry         bool
+	CanAbandon       bool
+	ErrorCode        string
+	ErrorText        *Text
+	StatusText       *Text
+	SucceededSeq     uint64
+	SubmittedSummary *Text
+}
+
+func (m *SessionCommandState) GetSlotKey() string {
+	if m != nil {
+		return m.SlotKey
+	}
+	return ""
+}
+func (m *SessionCommandState) GetRequestId() string {
+	if m != nil {
+		return m.RequestId
+	}
+	return ""
+}
+func (m *SessionCommandState) GetStatus() SessionCommandStatus {
+	if m != nil {
+		return m.Status
+	}
+	return 0
+}
+func (m *SessionCommandState) GetBusy() bool {
+	if m != nil {
+		return m.Busy
+	}
+	return false
+}
+func (m *SessionCommandState) GetFrozen() bool {
+	if m != nil {
+		return m.Frozen
+	}
+	return false
+}
+func (m *SessionCommandState) GetExpired() bool {
+	if m != nil {
+		return m.Expired
+	}
+	return false
+}
+func (m *SessionCommandState) GetCanRetry() bool {
+	if m != nil {
+		return m.CanRetry
+	}
+	return false
+}
+func (m *SessionCommandState) GetCanAbandon() bool {
+	if m != nil {
+		return m.CanAbandon
+	}
+	return false
+}
+func (m *SessionCommandState) GetErrorCode() string {
+	if m != nil {
+		return m.ErrorCode
+	}
+	return ""
+}
+func (m *SessionCommandState) GetErrorText() *Text {
+	if m != nil {
+		return m.ErrorText
+	}
+	return nil
+}
+func (m *SessionCommandState) GetStatusText() *Text {
+	if m != nil {
+		return m.StatusText
+	}
+	return nil
+}
+func (m *SessionCommandState) GetSucceededSeq() uint64 {
+	if m != nil {
+		return m.SucceededSeq
+	}
+	return 0
+}
+func (m *SessionCommandState) GetSubmittedSummary() *Text {
+	if m != nil {
+		return m.SubmittedSummary
+	}
+	return nil
+}
+
+var LitewireDesc_SessionCommandState = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionCommandState{}.SlotKey), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionCommandState{}.RequestId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionCommandState{}.Status), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(SessionCommandState{}.Busy), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(SessionCommandState{}.Frozen), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(SessionCommandState{}.Expired), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(SessionCommandState{}.CanRetry), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(SessionCommandState{}.CanAbandon), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(SessionCommandState{}.ErrorCode), Kind: litewire.KindString},
+		{Num: 10, Offset: unsafe.Offsetof(SessionCommandState{}.ErrorText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 11, Offset: unsafe.Offsetof(SessionCommandState{}.StatusText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 12, Offset: unsafe.Offsetof(SessionCommandState{}.SucceededSeq), Kind: litewire.KindUint64},
+		{Num: 13, Offset: unsafe.Offsetof(SessionCommandState{}.SubmittedSummary), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
+
+func (m *SessionCommandState) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SessionCommandState) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionCommandState)
+}
+
 type AttentionCardView struct {
-	_           [0]func()
-	SessionId   string
-	MachineId   string
-	ApprovalId  string
-	Title       *Text
-	KindText    *Text
-	Where       *Text
-	Time        *Text
-	Hot         bool
-	Body        string
-	ToolName    string
-	IsCommand   bool
-	Truncated   bool
-	AlwaysKind  AlwaysAllowKind
-	AlwaysArg   string
-	AlwaysLabel *Text
-	Locked      bool
+	_                     [0]func()
+	SessionId             string
+	MachineId             string
+	ApprovalId            string
+	Title                 *Text
+	KindText              *Text
+	Where                 *Text
+	Time                  *Text
+	Hot                   bool
+	Body                  string
+	ToolName              string
+	IsCommand             bool
+	Truncated             bool
+	AlwaysKind            AlwaysAllowKind
+	AlwaysArg             string
+	AlwaysLabel           *Text
+	Locked                bool
+	Command               *SessionCommandState
+	DenyingOpen           bool
+	Phase                 HomeFocusPhase
+	ResolutionText        *Text
+	HoldOpenCard          bool
+	DenyReasonPlaceholder *Text
+	Description           string
+	IsSkeleton            bool
 }
 
 func (m *AttentionCardView) GetSessionId() string {
@@ -465,6 +626,54 @@ func (m *AttentionCardView) GetLocked() bool {
 	}
 	return false
 }
+func (m *AttentionCardView) GetCommand() *SessionCommandState {
+	if m != nil {
+		return m.Command
+	}
+	return nil
+}
+func (m *AttentionCardView) GetDenyingOpen() bool {
+	if m != nil {
+		return m.DenyingOpen
+	}
+	return false
+}
+func (m *AttentionCardView) GetPhase() HomeFocusPhase {
+	if m != nil {
+		return m.Phase
+	}
+	return 0
+}
+func (m *AttentionCardView) GetResolutionText() *Text {
+	if m != nil {
+		return m.ResolutionText
+	}
+	return nil
+}
+func (m *AttentionCardView) GetHoldOpenCard() bool {
+	if m != nil {
+		return m.HoldOpenCard
+	}
+	return false
+}
+func (m *AttentionCardView) GetDenyReasonPlaceholder() *Text {
+	if m != nil {
+		return m.DenyReasonPlaceholder
+	}
+	return nil
+}
+func (m *AttentionCardView) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+func (m *AttentionCardView) GetIsSkeleton() bool {
+	if m != nil {
+		return m.IsSkeleton
+	}
+	return false
+}
 
 var LitewireDesc_AttentionCardView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -484,6 +693,14 @@ var LitewireDesc_AttentionCardView = litewire.MessageDesc{
 		{Num: 14, Offset: unsafe.Offsetof(AttentionCardView{}.AlwaysArg), Kind: litewire.KindString},
 		{Num: 15, Offset: unsafe.Offsetof(AttentionCardView{}.AlwaysLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 16, Offset: unsafe.Offsetof(AttentionCardView{}.Locked), Kind: litewire.KindBool},
+		{Num: 20, Offset: unsafe.Offsetof(AttentionCardView{}.Command), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionCommandState},
+		{Num: 21, Offset: unsafe.Offsetof(AttentionCardView{}.DenyingOpen), Kind: litewire.KindBool},
+		{Num: 23, Offset: unsafe.Offsetof(AttentionCardView{}.Phase), Kind: litewire.KindInt32},
+		{Num: 24, Offset: unsafe.Offsetof(AttentionCardView{}.ResolutionText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 25, Offset: unsafe.Offsetof(AttentionCardView{}.HoldOpenCard), Kind: litewire.KindBool},
+		{Num: 26, Offset: unsafe.Offsetof(AttentionCardView{}.DenyReasonPlaceholder), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 27, Offset: unsafe.Offsetof(AttentionCardView{}.Description), Kind: litewire.KindString},
+		{Num: 28, Offset: unsafe.Offsetof(AttentionCardView{}.IsSkeleton), Kind: litewire.KindBool},
 	},
 }
 
@@ -1458,6 +1675,10 @@ type HomeQuestionCardView struct {
 	Options          []*HomeQuestionOptionView
 	CanAnswer        bool
 	OfflineNote      *Text
+	Command          *SessionCommandState
+	Phase            HomeFocusPhase
+	PickedOptionNum  int32
+	ResolutionText   *Text
 }
 
 func (m *HomeQuestionCardView) GetSessionId() string {
@@ -1538,6 +1759,30 @@ func (m *HomeQuestionCardView) GetOfflineNote() *Text {
 	}
 	return nil
 }
+func (m *HomeQuestionCardView) GetCommand() *SessionCommandState {
+	if m != nil {
+		return m.Command
+	}
+	return nil
+}
+func (m *HomeQuestionCardView) GetPhase() HomeFocusPhase {
+	if m != nil {
+		return m.Phase
+	}
+	return 0
+}
+func (m *HomeQuestionCardView) GetPickedOptionNum() int32 {
+	if m != nil {
+		return m.PickedOptionNum
+	}
+	return 0
+}
+func (m *HomeQuestionCardView) GetResolutionText() *Text {
+	if m != nil {
+		return m.ResolutionText
+	}
+	return nil
+}
 
 var LitewireDesc_HomeQuestionCardView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -1554,6 +1799,10 @@ var LitewireDesc_HomeQuestionCardView = litewire.MessageDesc{
 		{Num: 11, Offset: unsafe.Offsetof(HomeQuestionCardView{}.Options), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_HomeQuestionOptionView},
 		{Num: 12, Offset: unsafe.Offsetof(HomeQuestionCardView{}.CanAnswer), Kind: litewire.KindBool},
 		{Num: 13, Offset: unsafe.Offsetof(HomeQuestionCardView{}.OfflineNote), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 15, Offset: unsafe.Offsetof(HomeQuestionCardView{}.Command), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionCommandState},
+		{Num: 16, Offset: unsafe.Offsetof(HomeQuestionCardView{}.Phase), Kind: litewire.KindInt32},
+		{Num: 17, Offset: unsafe.Offsetof(HomeQuestionCardView{}.PickedOptionNum), Kind: litewire.KindInt32},
+		{Num: 18, Offset: unsafe.Offsetof(HomeQuestionCardView{}.ResolutionText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 
@@ -1563,4 +1812,199 @@ func (m *HomeQuestionCardView) Marshal() ([]byte, error) {
 
 func (m *HomeQuestionCardView) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_HomeQuestionCardView)
+}
+
+type HomeResolveApprovalAction struct {
+	_          [0]func()
+	SessionId  string
+	ApprovalId string
+	Allow      bool
+	Always     bool
+	DenyReason string
+}
+
+func (m *HomeResolveApprovalAction) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *HomeResolveApprovalAction) GetApprovalId() string {
+	if m != nil {
+		return m.ApprovalId
+	}
+	return ""
+}
+func (m *HomeResolveApprovalAction) GetAllow() bool {
+	if m != nil {
+		return m.Allow
+	}
+	return false
+}
+func (m *HomeResolveApprovalAction) GetAlways() bool {
+	if m != nil {
+		return m.Always
+	}
+	return false
+}
+func (m *HomeResolveApprovalAction) GetDenyReason() string {
+	if m != nil {
+		return m.DenyReason
+	}
+	return ""
+}
+
+var LitewireDesc_HomeResolveApprovalAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&HomeResolveApprovalAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(HomeResolveApprovalAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(HomeResolveApprovalAction{}.ApprovalId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(HomeResolveApprovalAction{}.Allow), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(HomeResolveApprovalAction{}.Always), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(HomeResolveApprovalAction{}.DenyReason), Kind: litewire.KindString},
+	},
+}
+
+func (m *HomeResolveApprovalAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_HomeResolveApprovalAction)
+}
+
+type HomeEditApprovalDenyAction struct {
+	_           [0]func()
+	SessionId   string
+	ApprovalId  string
+	DenyingOpen bool
+}
+
+func (m *HomeEditApprovalDenyAction) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *HomeEditApprovalDenyAction) GetApprovalId() string {
+	if m != nil {
+		return m.ApprovalId
+	}
+	return ""
+}
+func (m *HomeEditApprovalDenyAction) GetDenyingOpen() bool {
+	if m != nil {
+		return m.DenyingOpen
+	}
+	return false
+}
+
+var LitewireDesc_HomeEditApprovalDenyAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&HomeEditApprovalDenyAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(HomeEditApprovalDenyAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(HomeEditApprovalDenyAction{}.ApprovalId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(HomeEditApprovalDenyAction{}.DenyingOpen), Kind: litewire.KindBool},
+	},
+}
+
+func (m *HomeEditApprovalDenyAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_HomeEditApprovalDenyAction)
+}
+
+type HomeAnswerQuestionAction struct {
+	_          [0]func()
+	SessionId  string
+	QuestionId string
+	OptionNum  int32
+}
+
+func (m *HomeAnswerQuestionAction) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *HomeAnswerQuestionAction) GetQuestionId() string {
+	if m != nil {
+		return m.QuestionId
+	}
+	return ""
+}
+func (m *HomeAnswerQuestionAction) GetOptionNum() int32 {
+	if m != nil {
+		return m.OptionNum
+	}
+	return 0
+}
+
+var LitewireDesc_HomeAnswerQuestionAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&HomeAnswerQuestionAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(HomeAnswerQuestionAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(HomeAnswerQuestionAction{}.QuestionId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(HomeAnswerQuestionAction{}.OptionNum), Kind: litewire.KindInt32},
+	},
+}
+
+func (m *HomeAnswerQuestionAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_HomeAnswerQuestionAction)
+}
+
+type HomeRetryAttentionAction struct {
+	_         [0]func()
+	SessionId string
+	ItemId    string
+}
+
+func (m *HomeRetryAttentionAction) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *HomeRetryAttentionAction) GetItemId() string {
+	if m != nil {
+		return m.ItemId
+	}
+	return ""
+}
+
+var LitewireDesc_HomeRetryAttentionAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&HomeRetryAttentionAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(HomeRetryAttentionAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(HomeRetryAttentionAction{}.ItemId), Kind: litewire.KindString},
+	},
+}
+
+func (m *HomeRetryAttentionAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_HomeRetryAttentionAction)
+}
+
+type HomeAbandonAttentionAction struct {
+	_         [0]func()
+	SessionId string
+	ItemId    string
+}
+
+func (m *HomeAbandonAttentionAction) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *HomeAbandonAttentionAction) GetItemId() string {
+	if m != nil {
+		return m.ItemId
+	}
+	return ""
+}
+
+var LitewireDesc_HomeAbandonAttentionAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&HomeAbandonAttentionAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(HomeAbandonAttentionAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(HomeAbandonAttentionAction{}.ItemId), Kind: litewire.KindString},
+	},
+}
+
+func (m *HomeAbandonAttentionAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_HomeAbandonAttentionAction)
 }

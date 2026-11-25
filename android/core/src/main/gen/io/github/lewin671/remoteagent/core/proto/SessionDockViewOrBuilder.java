@@ -125,6 +125,17 @@ public interface SessionDockViewOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.Text getTimeLeftPlain();
 
   /**
+   * <code>.remoteagent.core.v1.SessionResolutionNoticeView external_resolution = 15 [json_name = "externalResolution"];</code>
+   * @return Whether the externalResolution field is set.
+   */
+  boolean hasExternalResolution();
+  /**
+   * <code>.remoteagent.core.v1.SessionResolutionNoticeView external_resolution = 15 [json_name = "externalResolution"];</code>
+   * @return The externalResolution.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionResolutionNoticeView getExternalResolution();
+
+  /**
    * <code>.remoteagent.core.v1.SessionApprovalDockView approval = 20 [json_name = "approval"];</code>
    * @return Whether the approval field is set.
    */

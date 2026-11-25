@@ -513,6 +513,9 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 	c.processSchedulesSyncStep(res, &effects)
 	c.reconcileSharedFileDownloads(&effects, &dirty)
 	c.reconcileAttachments(&effects, &dirty)
+	if res.Dirty.Home || res.Dirty.SessionData || dirty.Home || dirty.SessionData {
+		c.reconcileSessionAndHomeTransient(&effects, &dirty)
+	}
 
 	return effects, dirty
 }
@@ -585,6 +588,27 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 			st.HomeSelectedSessionID = k.HomeSelectSession.SessionId
 			ctx.Dirty.Add(true, false, false)
 		}
+
+	case *corev1.Event_HomeResolveApproval:
+		if eff := c.handleHomeResolveApproval(ctx, k.HomeResolveApproval); len(eff) > 0 {
+			effects = append(effects, eff...)
+		}
+
+	case *corev1.Event_HomeEditApprovalDeny:
+		c.handleHomeEditApprovalDeny(ctx, k.HomeEditApprovalDeny)
+
+	case *corev1.Event_HomeAnswerQuestion:
+		if eff := c.handleHomeAnswerQuestion(ctx, k.HomeAnswerQuestion); len(eff) > 0 {
+			effects = append(effects, eff...)
+		}
+
+	case *corev1.Event_HomeRetryAttention:
+		if eff := c.handleHomeRetryAttention(ctx, k.HomeRetryAttention); len(eff) > 0 {
+			effects = append(effects, eff...)
+		}
+
+	case *corev1.Event_HomeAbandonAttention:
+		c.handleHomeAbandonAttention(ctx, k.HomeAbandonAttention)
 
 	case *corev1.Event_ProjectSetSearch:
 		if k.ProjectSetSearch != nil {

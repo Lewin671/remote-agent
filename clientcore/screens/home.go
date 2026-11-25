@@ -71,6 +71,35 @@ func BuildHome(st *State, endedLimit int) *corev1.HomeViewModel {
 		}
 	}
 
+	heldResolved := st.HomeFocus != nil &&
+		(st.HomeFocus.Phase == corev1.HomeFocusPhase_HOME_FOCUS_PHASE_RESOLVED_THIS_CLIENT ||
+			st.HomeFocus.Phase == corev1.HomeFocusPhase_HOME_FOCUS_PHASE_RESOLVED_ELSEWHERE)
+	if heldResolved && st.HomeFilterQuery == "" {
+		switch st.HomeFocus.Kind {
+		case HomeFocusApproval:
+			if st.HomeFocus.HeldApproval != nil {
+				cardCopy := *st.HomeFocus.HeldApproval
+				cardCopy.Phase = st.HomeFocus.Phase
+				cardCopy.ResolutionText = st.HomeFocus.ResolutionText
+				cardCopy.DenyingOpen = false
+				cardCopy.HoldOpenCard = false
+				vm.TopAttentionSessionId = st.HomeFocus.SessionID
+				vm.TopAttentionActionable = true
+				vm.TopAttentionCard = &cardCopy
+			}
+		case HomeFocusQuestion:
+			if st.HomeFocus.HeldQuestion != nil {
+				qCopy := *st.HomeFocus.HeldQuestion
+				qCopy.Phase = st.HomeFocus.Phase
+				qCopy.ResolutionText = st.HomeFocus.ResolutionText
+				qCopy.PickedOptionNum = st.HomeFocus.PickedOptionNum
+				vm.TopAttentionSessionId = st.HomeFocus.SessionID
+				vm.TopAttentionActionable = true
+				vm.TopAttentionQuestion = &qCopy
+			}
+		}
+	}
+
 	var curGroup *corev1.EndedGroupView
 	for _, row := range homeData.Items {
 		switch row.Kind {
@@ -323,6 +352,61 @@ func buildHomeEmptyView(e *lists.HomeEmptyInfo, st *State) *corev1.HomeEmptyView
 	return v
 }
 
+func sessionUIFor(st *State, sid string) *SessionUIState {
+	if st == nil || st.SessionUIForFn == nil || sid == "" {
+		return nil
+	}
+	return st.SessionUIForFn(sid)
+}
+
+func homeFocusPhaseForCommand(cmd *corev1.SessionCommandState) corev1.HomeFocusPhase {
+	if cmd == nil {
+		return corev1.HomeFocusPhase_HOME_FOCUS_PHASE_IDLE
+	}
+	if cmd.Busy || cmd.Status == corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_PENDING {
+		return corev1.HomeFocusPhase_HOME_FOCUS_PHASE_SUBMITTING
+	}
+	if cmd.Status == corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_FAILED ||
+		cmd.Status == corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_UNKNOWN ||
+		cmd.Frozen || cmd.Expired {
+		return corev1.HomeFocusPhase_HOME_FOCUS_PHASE_FAILED
+	}
+	return corev1.HomeFocusPhase_HOME_FOCUS_PHASE_IDLE
+}
+
+// CurrentHomeTopAttention returns the live top actionable attention card on Home (ignoring held resolved focus).
+func CurrentHomeTopAttention(st *State) (kind HomeFocusKind, sessionID, itemID string, approval *corev1.AttentionCardView, question *corev1.HomeQuestionCardView) {
+	if st == nil {
+		return HomeFocusNone, "", "", nil, nil
+	}
+	dw := displayWorld(st)
+	_, homeData := lists.BuildProjectsAndHome(&dw, st.RememberedScope, st.RememberedScopeToken, nil, st.Scope, st.ProjectSearch, "", st.Cal, lists.HomeShown{
+		AllAttention:      true,
+		AllRunning:        false,
+		Ended:             1,
+		SkipAttentionCard: true,
+	})
+	for _, row := range homeData.Items {
+		if row.Kind != lists.HomeRowAttention || row.Item == nil {
+			continue
+		}
+		switch row.Item.RawStatus {
+		case lists.StatusApproval:
+			card := buildAttentionCardView(row.Item, st)
+			if card != nil && card.ApprovalId != "" {
+				return HomeFocusApproval, card.SessionId, card.ApprovalId, card, nil
+			}
+		case lists.StatusQuestion:
+			qCard := buildHomeQuestionCardView(row.Item, st)
+			if qCard != nil && qCard.QuestionId != "" {
+				return HomeFocusQuestion, qCard.SessionId, qCard.QuestionId, nil, qCard
+			}
+		}
+		return HomeFocusNone, row.Item.ID, "", nil, nil
+	}
+	return HomeFocusNone, "", "", nil, nil
+}
+
 func buildAttentionCardView(item *lists.SessionItem, st *State) *corev1.AttentionCardView {
 	if item == nil {
 		return nil
@@ -385,23 +469,57 @@ func buildAttentionCardView(item *lists.SessionItem, st *State) *corev1.Attentio
 		}
 		locked = dw.AccountControlLost || dw.AccountClockSkewed || lists.WorldUnlinked(&dw) || !lists.MachineReachable(mac)
 	}
+	ui := sessionUIFor(st, item.ID)
+	slotKey := "approval:" + item.ID + ":" + p.ApprovalID
+	cmd := commandSlotState(ui, slotKey,
+		text.Msg(text.KeyApprovalAndroidReplyExpired, text.Str("decision", approvalDecisionHint(ui, slotKey))),
+		text.Msg(text.KeyApprovalAndroidUnknownResult),
+	)
+	denyingOpen := ui != nil && ui.ApprovalDenyOpen[p.ApprovalID]
+	var rec *SessionCommandRecord
+	if ui != nil {
+		rec = ui.Commands[slotKey]
+	}
+	holdOpenCard := denyingOpen && rec != nil && rec.DenySubmit &&
+		(rec.Busy || rec.Status == corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_FAILED || rec.Status == corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_UNKNOWN)
+	phase := homeFocusPhaseForCommand(cmd)
+	var cwd, home string
+	if item.Session != nil && item.Session.Info != nil {
+		cwd = item.Session.Info.Cwd
+	}
+	if st != nil {
+		for _, m := range st.World.Machines {
+			if m != nil && m.ID == item.MachineID && m.Meta != nil {
+				home = m.Meta.Home
+				break
+			}
+		}
+	}
+	desc := lists.ShortenPaths(lists.ApprovalDisplay(p.ApprovalDescription), cwd, home)
 	return &corev1.AttentionCardView{
-		SessionId:   item.ID,
-		MachineId:   item.MachineID,
-		ApprovalId:  p.ApprovalID,
-		Title:       sessionTitleText(item),
-		KindText:    kindText,
-		Where:       text.JoinLiteral(" · ", whereParts...),
-		Time:        timeText,
-		Hot:         item.MinutesLeft > 0 && item.MinutesLeft <= 2,
-		Body:        body,
-		ToolName:    lists.ApprovalDisplay(p.ApprovalToolName),
-		IsCommand:   isCmd,
-		Truncated:   p.ApprovalTruncated,
-		AlwaysKind:  alwaysKind,
-		AlwaysArg:   alwaysArg,
-		AlwaysLabel: alwaysLabel,
-		Locked:      locked,
+		SessionId:             item.ID,
+		MachineId:             item.MachineID,
+		ApprovalId:            p.ApprovalID,
+		Title:                 sessionTitleText(item),
+		KindText:              kindText,
+		Where:                 text.JoinLiteral(" · ", whereParts...),
+		Time:                  timeText,
+		Hot:                   item.MinutesLeft > 0 && item.MinutesLeft <= 2,
+		Body:                  body,
+		ToolName:              lists.ApprovalDisplay(p.ApprovalToolName),
+		IsCommand:             isCmd,
+		Truncated:             p.ApprovalTruncated,
+		AlwaysKind:            alwaysKind,
+		AlwaysArg:             alwaysArg,
+		AlwaysLabel:           alwaysLabel,
+		Locked:                locked,
+		Command:               cmd,
+		DenyingOpen:           denyingOpen,
+		Phase:                 phase,
+		HoldOpenCard:          holdOpenCard,
+		DenyReasonPlaceholder: text.Msg(text.KeyApprovalReasonPlaceholder),
+		Description:           desc,
+		IsSkeleton:            p.ApprovalSkeleton,
 	}
 }
 

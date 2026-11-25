@@ -133,19 +133,21 @@ type PendingQuestionData struct {
 
 // PendingAction captures unresolved interactive state on a live session.
 type PendingAction struct {
-	_                  [0]func()
-	HasApproval        bool
-	ApprovalID         string
-	ApprovalToolName   string
-	ApprovalCommand    string
-	ApprovalToolInput  string
-	ApprovalTruncated  bool
-	ApprovalDeadlineMs int64
-	HasQuestion        bool
-	HasPlan            bool
-	HasPopup           bool
-	PopupPreview       string
-	Question           *PendingQuestionData
+	_                   [0]func()
+	HasApproval         bool
+	ApprovalID          string
+	ApprovalToolName    string
+	ApprovalCommand     string
+	ApprovalToolInput   string
+	ApprovalDescription string
+	ApprovalTruncated   bool
+	ApprovalSkeleton    bool
+	ApprovalDeadlineMs  int64
+	HasQuestion         bool
+	HasPlan             bool
+	HasPopup            bool
+	PopupPreview        string
+	Question            *PendingQuestionData
 }
 
 // Session represents one session known to the client core.

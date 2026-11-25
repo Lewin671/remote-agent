@@ -120,6 +120,48 @@ enum AlwaysAllowKind {
   ALWAYS_ALLOW_KIND_TOOL_CATEGORY = 3;
 }
 
+enum SessionCommandStatus {
+  SESSION_COMMAND_STATUS_UNSPECIFIED = 0;
+  SESSION_COMMAND_STATUS_IDLE = 1;
+  SESSION_COMMAND_STATUS_PENDING = 2;
+  SESSION_COMMAND_STATUS_FAILED = 3;
+  SESSION_COMMAND_STATUS_UNKNOWN = 4;
+}
+
+// SessionCommandState captures the sync.SubmitCommand lifecycle for one action slot.
+message SessionCommandState {
+  string slot_key = 1;
+  string request_id = 2;
+  SessionCommandStatus status = 3;
+  bool busy = 4;
+  bool frozen = 5;
+  bool expired = 6;
+  bool can_retry = 7;
+  bool can_abandon = 8;
+  string error_code = 9;
+  Text error_text = 10;
+  Text status_text = 11;
+  uint64 succeeded_seq = 12;
+  Text submitted_summary = 13;
+}
+
+enum ResolutionOutcome {
+  RESOLUTION_OUTCOME_UNSPECIFIED = 0;
+  RESOLUTION_OUTCOME_THIS_CLIENT = 1;
+  RESOLUTION_OUTCOME_OTHER_CLIENT = 2;
+  RESOLUTION_OUTCOME_TERMINAL = 3;
+  RESOLUTION_OUTCOME_FAILED = 4;
+}
+
+enum HomeFocusPhase {
+  HOME_FOCUS_PHASE_UNSPECIFIED = 0;
+  HOME_FOCUS_PHASE_IDLE = 1;
+  HOME_FOCUS_PHASE_SUBMITTING = 2;
+  HOME_FOCUS_PHASE_FAILED = 3;
+  HOME_FOCUS_PHASE_RESOLVED_THIS_CLIENT = 4;
+  HOME_FOCUS_PHASE_RESOLVED_ELSEWHERE = 5;
+}
+
 message AttentionCardView {
   string session_id = 1;
   string machine_id = 2;
@@ -137,6 +179,14 @@ message AttentionCardView {
   string always_arg = 14;
   Text always_label = 15;
   bool locked = 16;
+  SessionCommandState command = 20;
+  bool denying_open = 21;
+  HomeFocusPhase phase = 23;
+  Text resolution_text = 24;
+  bool hold_open_card = 25;
+  Text deny_reason_placeholder = 26;
+  string description = 27;
+  bool is_skeleton = 28;
 }
 
 message AttentionRowView {
@@ -279,4 +329,38 @@ message HomeQuestionCardView {
   repeated HomeQuestionOptionView options = 11;
   bool can_answer = 12;
   Text offline_note = 13;
+  SessionCommandState command = 15;
+  HomeFocusPhase phase = 16;
+  int32 picked_option_num = 17;
+  Text resolution_text = 18;
+}
+
+message HomeResolveApprovalAction {
+  string session_id = 1;
+  string approval_id = 2;
+  bool allow = 3;
+  bool always = 4;
+  string deny_reason = 5;
+}
+
+message HomeEditApprovalDenyAction {
+  string session_id = 1;
+  string approval_id = 2;
+  bool denying_open = 3;
+}
+
+message HomeAnswerQuestionAction {
+  string session_id = 1;
+  string question_id = 2;
+  int32 option_num = 3;
+}
+
+message HomeRetryAttentionAction {
+  string session_id = 1;
+  string item_id = 2;
+}
+
+message HomeAbandonAttentionAction {
+  string session_id = 1;
+  string item_id = 2;
 }

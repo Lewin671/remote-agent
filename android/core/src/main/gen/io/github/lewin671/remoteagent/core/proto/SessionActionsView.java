@@ -18,6 +18,8 @@ public  final class SessionActionsView extends
     modelChoices_ = emptyProtobufList();
     effortChoices_ = emptyProtobufList();
     modeChoices_ = emptyProtobufList();
+    menuItems_ = emptyProtobufList();
+    foldedModelChoices_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int CAN_INTERRUPT_FIELD_NUMBER = 1;
@@ -1459,6 +1461,226 @@ public  final class SessionActionsView extends
   private void clearModePermissionNotice() {
     modePermissionNotice_ = null;
     bitField0_ = (bitField0_ & ~0x00020000);
+  }
+
+  public static final int MENU_ITEMS_FIELD_NUMBER = 33;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SessionMenuItemView> menuItems_;
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.core.proto.SessionMenuItemView> getMenuItemsList() {
+    return menuItems_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.SessionMenuItemViewOrBuilder> 
+      getMenuItemsOrBuilderList() {
+    return menuItems_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+   */
+  @java.lang.Override
+  public int getMenuItemsCount() {
+    return menuItems_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionMenuItemView getMenuItems(int index) {
+    return menuItems_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+   */
+  public io.github.lewin671.remoteagent.core.proto.SessionMenuItemViewOrBuilder getMenuItemsOrBuilder(
+      int index) {
+    return menuItems_.get(index);
+  }
+  private void ensureMenuItemsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SessionMenuItemView> tmp = menuItems_;
+    if (!tmp.isModifiable()) {
+      menuItems_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMenuItems(
+      int index, io.github.lewin671.remoteagent.core.proto.SessionMenuItemView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureMenuItemsIsMutable();
+    menuItems_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addMenuItems(io.github.lewin671.remoteagent.core.proto.SessionMenuItemView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureMenuItemsIsMutable();
+    menuItems_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addMenuItems(
+      int index, io.github.lewin671.remoteagent.core.proto.SessionMenuItemView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureMenuItemsIsMutable();
+    menuItems_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+   */
+  private void addAllMenuItems(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SessionMenuItemView> values) {
+    ensureMenuItemsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, menuItems_);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+   */
+  private void clearMenuItems() {
+    menuItems_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+   */
+  private void removeMenuItems(int index) {
+    ensureMenuItemsIsMutable();
+    menuItems_.remove(index);
+  }
+
+  public static final int FOLDED_MODEL_CHOICES_FIELD_NUMBER = 34;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SessionModelChoiceView> foldedModelChoices_;
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.core.proto.SessionModelChoiceView> getFoldedModelChoicesList() {
+    return foldedModelChoices_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.SessionModelChoiceViewOrBuilder> 
+      getFoldedModelChoicesOrBuilderList() {
+    return foldedModelChoices_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+   */
+  @java.lang.Override
+  public int getFoldedModelChoicesCount() {
+    return foldedModelChoices_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionModelChoiceView getFoldedModelChoices(int index) {
+    return foldedModelChoices_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+   */
+  public io.github.lewin671.remoteagent.core.proto.SessionModelChoiceViewOrBuilder getFoldedModelChoicesOrBuilder(
+      int index) {
+    return foldedModelChoices_.get(index);
+  }
+  private void ensureFoldedModelChoicesIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SessionModelChoiceView> tmp = foldedModelChoices_;
+    if (!tmp.isModifiable()) {
+      foldedModelChoices_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setFoldedModelChoices(
+      int index, io.github.lewin671.remoteagent.core.proto.SessionModelChoiceView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureFoldedModelChoicesIsMutable();
+    foldedModelChoices_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addFoldedModelChoices(io.github.lewin671.remoteagent.core.proto.SessionModelChoiceView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureFoldedModelChoicesIsMutable();
+    foldedModelChoices_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addFoldedModelChoices(
+      int index, io.github.lewin671.remoteagent.core.proto.SessionModelChoiceView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureFoldedModelChoicesIsMutable();
+    foldedModelChoices_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+   */
+  private void addAllFoldedModelChoices(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SessionModelChoiceView> values) {
+    ensureFoldedModelChoicesIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, foldedModelChoices_);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+   */
+  private void clearFoldedModelChoices() {
+    foldedModelChoices_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+   */
+  private void removeFoldedModelChoices(int index) {
+    ensureFoldedModelChoicesIsMutable();
+    foldedModelChoices_.remove(index);
+  }
+
+  public static final int HAS_MORE_MODELS_FIELD_NUMBER = 35;
+  private boolean hasMoreModels_;
+  /**
+   * <code>bool has_more_models = 35 [json_name = "hasMoreModels"];</code>
+   * @return The hasMoreModels.
+   */
+  @java.lang.Override
+  public boolean getHasMoreModels() {
+    return hasMoreModels_;
+  }
+  /**
+   * <code>bool has_more_models = 35 [json_name = "hasMoreModels"];</code>
+   * @param value The hasMoreModels to set.
+   */
+  private void setHasMoreModels(boolean value) {
+    
+    hasMoreModels_ = value;
+  }
+  /**
+   * <code>bool has_more_models = 35 [json_name = "hasMoreModels"];</code>
+   */
+  private void clearHasMoreModels() {
+
+    hasMoreModels_ = false;
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SessionActionsView parseFrom(
@@ -3018,6 +3240,238 @@ public  final class SessionActionsView extends
       return this;
     }
 
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.core.proto.SessionMenuItemView> getMenuItemsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getMenuItemsList());
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+     */
+    @java.lang.Override
+    public int getMenuItemsCount() {
+      return instance.getMenuItemsCount();
+    }/**
+     * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionMenuItemView getMenuItems(int index) {
+      return instance.getMenuItems(index);
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+     */
+    public Builder setMenuItems(
+        int index, io.github.lewin671.remoteagent.core.proto.SessionMenuItemView value) {
+      copyOnWrite();
+      instance.setMenuItems(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+     */
+    public Builder setMenuItems(
+        int index, io.github.lewin671.remoteagent.core.proto.SessionMenuItemView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMenuItems(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+     */
+    public Builder addMenuItems(io.github.lewin671.remoteagent.core.proto.SessionMenuItemView value) {
+      copyOnWrite();
+      instance.addMenuItems(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+     */
+    public Builder addMenuItems(
+        int index, io.github.lewin671.remoteagent.core.proto.SessionMenuItemView value) {
+      copyOnWrite();
+      instance.addMenuItems(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+     */
+    public Builder addMenuItems(
+        io.github.lewin671.remoteagent.core.proto.SessionMenuItemView.Builder builderForValue) {
+      copyOnWrite();
+      instance.addMenuItems(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+     */
+    public Builder addMenuItems(
+        int index, io.github.lewin671.remoteagent.core.proto.SessionMenuItemView.Builder builderForValue) {
+      copyOnWrite();
+      instance.addMenuItems(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+     */
+    public Builder addAllMenuItems(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SessionMenuItemView> values) {
+      copyOnWrite();
+      instance.addAllMenuItems(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+     */
+    public Builder clearMenuItems() {
+      copyOnWrite();
+      instance.clearMenuItems();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+     */
+    public Builder removeMenuItems(int index) {
+      copyOnWrite();
+      instance.removeMenuItems(index);
+      return this;
+    }
+
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.core.proto.SessionModelChoiceView> getFoldedModelChoicesList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getFoldedModelChoicesList());
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+     */
+    @java.lang.Override
+    public int getFoldedModelChoicesCount() {
+      return instance.getFoldedModelChoicesCount();
+    }/**
+     * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionModelChoiceView getFoldedModelChoices(int index) {
+      return instance.getFoldedModelChoices(index);
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+     */
+    public Builder setFoldedModelChoices(
+        int index, io.github.lewin671.remoteagent.core.proto.SessionModelChoiceView value) {
+      copyOnWrite();
+      instance.setFoldedModelChoices(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+     */
+    public Builder setFoldedModelChoices(
+        int index, io.github.lewin671.remoteagent.core.proto.SessionModelChoiceView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setFoldedModelChoices(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+     */
+    public Builder addFoldedModelChoices(io.github.lewin671.remoteagent.core.proto.SessionModelChoiceView value) {
+      copyOnWrite();
+      instance.addFoldedModelChoices(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+     */
+    public Builder addFoldedModelChoices(
+        int index, io.github.lewin671.remoteagent.core.proto.SessionModelChoiceView value) {
+      copyOnWrite();
+      instance.addFoldedModelChoices(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+     */
+    public Builder addFoldedModelChoices(
+        io.github.lewin671.remoteagent.core.proto.SessionModelChoiceView.Builder builderForValue) {
+      copyOnWrite();
+      instance.addFoldedModelChoices(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+     */
+    public Builder addFoldedModelChoices(
+        int index, io.github.lewin671.remoteagent.core.proto.SessionModelChoiceView.Builder builderForValue) {
+      copyOnWrite();
+      instance.addFoldedModelChoices(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+     */
+    public Builder addAllFoldedModelChoices(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SessionModelChoiceView> values) {
+      copyOnWrite();
+      instance.addAllFoldedModelChoices(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+     */
+    public Builder clearFoldedModelChoices() {
+      copyOnWrite();
+      instance.clearFoldedModelChoices();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+     */
+    public Builder removeFoldedModelChoices(int index) {
+      copyOnWrite();
+      instance.removeFoldedModelChoices(index);
+      return this;
+    }
+
+    /**
+     * <code>bool has_more_models = 35 [json_name = "hasMoreModels"];</code>
+     * @return The hasMoreModels.
+     */
+    @java.lang.Override
+    public boolean getHasMoreModels() {
+      return instance.getHasMoreModels();
+    }
+    /**
+     * <code>bool has_more_models = 35 [json_name = "hasMoreModels"];</code>
+     * @param value The hasMoreModels to set.
+     * @return This builder for chaining.
+     */
+    public Builder setHasMoreModels(boolean value) {
+      copyOnWrite();
+      instance.setHasMoreModels(value);
+      return this;
+    }
+    /**
+     * <code>bool has_more_models = 35 [json_name = "hasMoreModels"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearHasMoreModels() {
+      copyOnWrite();
+      instance.clearHasMoreModels();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionActionsView)
   }
   @java.lang.Override
@@ -3070,15 +3524,20 @@ public  final class SessionActionsView extends
             "forkAction_",
             "modeLocked_",
             "modePermissionNotice_",
+            "menuItems_",
+            io.github.lewin671.remoteagent.core.proto.SessionMenuItemView.class,
+            "foldedModelChoices_",
+            io.github.lewin671.remoteagent.core.proto.SessionModelChoiceView.class,
+            "hasMoreModels_",
           };
           java.lang.String info =
-              "\u0000 \u0000\u0001\u0001  \u0000\u0003\u0000\u0001\u0007\u0002\u1009\u0000\u0003" +
+              "\u0000#\u0000\u0001\u0001##\u0000\u0005\u0000\u0001\u0007\u0002\u1009\u0000\u0003" +
               "\u0007\u0004\u1009\u0001\u0005\u1009\u0002\u0006\u0007\u0007\u1009\u0003\b\u1009" +
               "\u0004\t\u0007\n\u1009\u0005\u000b\u0007\f\u1009\u0006\r\u1009\u0007\u000e\u0007" +
               "\u000f\u1009\b\u0010\u1009\t\u0011\u0007\u0012\u1009\n\u0013\u1009\u000b\u0014\u0007" +
               "\u0015\u0007\u0016\u1009\f\u0017\u001b\u0018\u001b\u0019\u0007\u001a\u1009\r\u001b" +
               "\u1009\u000e\u001c\u001b\u001d\u1009\u000f\u001e\u1009\u0010\u001f\u0007 \u1009\u0011" +
-              "";
+              "!\u001b\"\u001b#\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

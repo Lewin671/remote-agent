@@ -19,6 +19,7 @@
     <string name="approval_details" formatted="false">"Approval details"</string>
     <string name="approval_full_command" formatted="false">"View full command"</string>
     <string name="approval_handled_in_terminal" formatted="false">"Handled in terminal"</string>
+    <string name="approval_handled_other_device" formatted="false">"Handled on another device"</string>
     <string name="approval_reason_placeholder" formatted="false">"Suggest what to do instead (optional)"</string>
     <string name="approval_retry_deny" formatted="false">"Retry deny"</string>
     <string name="approval_scroll_to_view" formatted="false">"Scroll to view full command"</string>

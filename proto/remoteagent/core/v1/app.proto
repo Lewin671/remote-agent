@@ -172,6 +172,7 @@ enum TimerKind {
   TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT = 18;
   TIMER_KIND_DRAFT_EXPIRY = 19;
   TIMER_KIND_TERMINAL_HISTORY_TIMEOUT = 20;
+  TIMER_KIND_UI_TRANSIENT = 21;
 }
 
 message TimerFiredEvent {
@@ -549,6 +550,11 @@ message Event {
     HomeLoadMoreEndedAction home_load_more_ended = 32;
     HomeRetryLoadAction home_retry_load = 33;
     HomeSelectSessionAction home_select_session = 34;
+    HomeResolveApprovalAction home_resolve_approval = 35;
+    HomeEditApprovalDenyAction home_edit_approval_deny = 36;
+    HomeAnswerQuestionAction home_answer_question = 37;
+    HomeRetryAttentionAction home_retry_attention = 38;
+    HomeAbandonAttentionAction home_abandon_attention = 39;
     ProjectSetSearchAction project_set_search = 40;
     ProjectKeyAction project_toggle_pin = 41;
     ProjectKeyAction project_toggle_hide = 42;
@@ -651,6 +657,16 @@ message Event {
     DraftImageViewerNavigateAction draft_image_viewer_navigate = 265;
     DraftImageViewerCloseAction draft_image_viewer_close = 266;
     DraftAppendTextAction draft_append_text = 267;
+    SessionEditApprovalDenyAction session_edit_approval_deny = 270;
+    SessionResolveApprovalAction session_resolve_approval = 271;
+    SessionToggleQuestionOptionAction session_toggle_question_option = 272;
+    SessionAnswerQuestionAction session_answer_question = 273;
+    SessionAnswerPlanAction session_answer_plan = 274;
+    SessionSimpleCommandAction session_simple_command = 275;
+    SessionRenameAction session_rename = 276;
+    SessionSetApprovalModeAction session_set_approval_mode = 277;
+    SessionSetModelAction session_set_model = 278;
+    SessionRetryCommandAction session_retry_command = 279;
     ScheduleCacheLoadedEvent schedule_cache_loaded = 300;
     ScheduleSeenLoadedEvent schedule_seen_loaded = 301;
     ScheduleLocalContextEvent schedule_local_context = 302;

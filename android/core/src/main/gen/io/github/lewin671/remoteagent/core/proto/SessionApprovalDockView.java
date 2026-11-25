@@ -575,6 +575,58 @@ public  final class SessionApprovalDockView extends
     bitField0_ = (bitField0_ & ~0x00000004);
   }
 
+  public static final int DENYING_OPEN_FIELD_NUMBER = 15;
+  private boolean denyingOpen_;
+  /**
+   * <code>bool denying_open = 15 [json_name = "denyingOpen"];</code>
+   * @return The denyingOpen.
+   */
+  @java.lang.Override
+  public boolean getDenyingOpen() {
+    return denyingOpen_;
+  }
+  /**
+   * <code>bool denying_open = 15 [json_name = "denyingOpen"];</code>
+   * @param value The denyingOpen to set.
+   */
+  private void setDenyingOpen(boolean value) {
+    
+    denyingOpen_ = value;
+  }
+  /**
+   * <code>bool denying_open = 15 [json_name = "denyingOpen"];</code>
+   */
+  private void clearDenyingOpen() {
+
+    denyingOpen_ = false;
+  }
+
+  public static final int HOLD_OPEN_CARD_FIELD_NUMBER = 17;
+  private boolean holdOpenCard_;
+  /**
+   * <code>bool hold_open_card = 17 [json_name = "holdOpenCard"];</code>
+   * @return The holdOpenCard.
+   */
+  @java.lang.Override
+  public boolean getHoldOpenCard() {
+    return holdOpenCard_;
+  }
+  /**
+   * <code>bool hold_open_card = 17 [json_name = "holdOpenCard"];</code>
+   * @param value The holdOpenCard to set.
+   */
+  private void setHoldOpenCard(boolean value) {
+    
+    holdOpenCard_ = value;
+  }
+  /**
+   * <code>bool hold_open_card = 17 [json_name = "holdOpenCard"];</code>
+   */
+  private void clearHoldOpenCard() {
+
+    holdOpenCard_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SessionApprovalDockView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1237,6 +1289,62 @@ public  final class SessionApprovalDockView extends
       return this;
     }
 
+    /**
+     * <code>bool denying_open = 15 [json_name = "denyingOpen"];</code>
+     * @return The denyingOpen.
+     */
+    @java.lang.Override
+    public boolean getDenyingOpen() {
+      return instance.getDenyingOpen();
+    }
+    /**
+     * <code>bool denying_open = 15 [json_name = "denyingOpen"];</code>
+     * @param value The denyingOpen to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDenyingOpen(boolean value) {
+      copyOnWrite();
+      instance.setDenyingOpen(value);
+      return this;
+    }
+    /**
+     * <code>bool denying_open = 15 [json_name = "denyingOpen"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDenyingOpen() {
+      copyOnWrite();
+      instance.clearDenyingOpen();
+      return this;
+    }
+
+    /**
+     * <code>bool hold_open_card = 17 [json_name = "holdOpenCard"];</code>
+     * @return The holdOpenCard.
+     */
+    @java.lang.Override
+    public boolean getHoldOpenCard() {
+      return instance.getHoldOpenCard();
+    }
+    /**
+     * <code>bool hold_open_card = 17 [json_name = "holdOpenCard"];</code>
+     * @param value The holdOpenCard to set.
+     * @return This builder for chaining.
+     */
+    public Builder setHoldOpenCard(boolean value) {
+      copyOnWrite();
+      instance.setHoldOpenCard(value);
+      return this;
+    }
+    /**
+     * <code>bool hold_open_card = 17 [json_name = "holdOpenCard"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearHoldOpenCard() {
+      copyOnWrite();
+      instance.clearHoldOpenCard();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionApprovalDockView)
   }
   @java.lang.Override
@@ -1267,11 +1375,13 @@ public  final class SessionApprovalDockView extends
             "alwaysLabel_",
             "denyReasonPlaceholder_",
             "deliveryFailedNote_",
+            "denyingOpen_",
+            "holdOpenCard_",
           };
           java.lang.String info =
-              "\u0000\r\u0000\u0001\u0001\r\r\u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
-              "\u0004\u0208\u0005\u0007\u0006\u0007\u0007\u0208\b\u0007\t\f\n\u0208\u000b\u1009" +
-              "\u0000\f\u1009\u0001\r\u1009\u0002";
+              "\u0000\u000f\u0000\u0001\u0001\u0011\u000f\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0208\u0004\u0208\u0005\u0007\u0006\u0007\u0007\u0208\b\u0007\t\f\n\u0208" +
+              "\u000b\u1009\u0000\f\u1009\u0001\r\u1009\u0002\u000f\u0007\u0011\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

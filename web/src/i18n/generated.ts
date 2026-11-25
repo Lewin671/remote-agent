@@ -54,6 +54,7 @@ export interface MessageArgs {
   "approval.details": { [name: string]: never };
   "approval.full_command": { [name: string]: never };
   "approval.handled_in_terminal": { [name: string]: never };
+  "approval.handled_other_device": { [name: string]: never };
   "approval.reason_placeholder": { [name: string]: never };
   "approval.retry_deny": { [name: string]: never };
   "approval.scroll_to_view": { [name: string]: never };
@@ -1816,6 +1817,7 @@ export const messages = {
     "approval.details": "Approval details",
     "approval.full_command": "View full command",
     "approval.handled_in_terminal": "Handled in terminal",
+    "approval.handled_other_device": "Handled on another device",
     "approval.reason_placeholder": "Suggest what to do instead (optional)",
     "approval.retry_deny": "Retry deny",
     "approval.scroll_to_view": "Scroll to view full command",
@@ -4176,6 +4178,7 @@ export const messages = {
     "approval.details": "审批详情",
     "approval.full_command": "看完整命令",
     "approval.handled_in_terminal": "已在终端处理",
+    "approval.handled_other_device": "已在另一端处理",
     "approval.reason_placeholder": "说说该怎么做，可以不填",
     "approval.retry_deny": "重试拒绝",
     "approval.scroll_to_view": "往下看完整命令",

@@ -48,7 +48,7 @@ struct HomeApprovalCard: View {
 
     var body: some View {
         let dock = context.core.sessions[card.sessionID]?.dock
-        let cmdState: PBSessionCommandState? = (dock?.hasItem_p == true && dock?.kind == .approval && dock?.approval.approvalID == card.approvalID) ? dock?.command : nil
+        let cmdState: PBCoreSessionCommandState? = (dock?.hasItem_p == true && dock?.kind == .approval && dock?.approval.approvalID == card.approvalID) ? dock?.command : nil
         let target = ApprovalTarget(card: card, commandState: cmdState)
         let choice = context.sessionStore.approvalChoice(card.approvalID)
         Group {

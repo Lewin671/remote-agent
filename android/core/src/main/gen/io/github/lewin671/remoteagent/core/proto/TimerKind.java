@@ -95,6 +95,10 @@ public enum TimerKind
    * <code>TIMER_KIND_TERMINAL_HISTORY_TIMEOUT = 20;</code>
    */
   TIMER_KIND_TERMINAL_HISTORY_TIMEOUT(20),
+  /**
+   * <code>TIMER_KIND_UI_TRANSIENT = 21;</code>
+   */
+  TIMER_KIND_UI_TRANSIENT(21),
   UNRECOGNIZED(-1),
   ;
 
@@ -182,6 +186,10 @@ public enum TimerKind
    * <code>TIMER_KIND_TERMINAL_HISTORY_TIMEOUT = 20;</code>
    */
   public static final int TIMER_KIND_TERMINAL_HISTORY_TIMEOUT_VALUE = 20;
+  /**
+   * <code>TIMER_KIND_UI_TRANSIENT = 21;</code>
+   */
+  public static final int TIMER_KIND_UI_TRANSIENT_VALUE = 21;
 
 
   @java.lang.Override
@@ -226,6 +234,7 @@ public enum TimerKind
       case 18: return TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT;
       case 19: return TIMER_KIND_DRAFT_EXPIRY;
       case 20: return TIMER_KIND_TERMINAL_HISTORY_TIMEOUT;
+      case 21: return TIMER_KIND_UI_TRANSIENT;
       default: return null;
     }
   }

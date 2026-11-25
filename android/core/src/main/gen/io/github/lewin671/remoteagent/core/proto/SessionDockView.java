@@ -551,6 +551,54 @@ public  final class SessionDockView extends
     bitField0_ = (bitField0_ & ~0x00000010);
   }
 
+  public static final int EXTERNAL_RESOLUTION_FIELD_NUMBER = 15;
+  private io.github.lewin671.remoteagent.core.proto.SessionResolutionNoticeView externalResolution_;
+  /**
+   * <code>.remoteagent.core.v1.SessionResolutionNoticeView external_resolution = 15 [json_name = "externalResolution"];</code>
+   */
+  @java.lang.Override
+  public boolean hasExternalResolution() {
+    return ((bitField0_ & 0x00000020) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionResolutionNoticeView external_resolution = 15 [json_name = "externalResolution"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionResolutionNoticeView getExternalResolution() {
+    return externalResolution_ == null ? io.github.lewin671.remoteagent.core.proto.SessionResolutionNoticeView.getDefaultInstance() : externalResolution_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionResolutionNoticeView external_resolution = 15 [json_name = "externalResolution"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setExternalResolution(io.github.lewin671.remoteagent.core.proto.SessionResolutionNoticeView value) {
+    value.getClass();  // minimal bytecode null check
+    externalResolution_ = value;
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionResolutionNoticeView external_resolution = 15 [json_name = "externalResolution"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeExternalResolution(io.github.lewin671.remoteagent.core.proto.SessionResolutionNoticeView value) {
+    value.getClass();  // minimal bytecode null check
+    if (externalResolution_ != null &&
+        externalResolution_ != io.github.lewin671.remoteagent.core.proto.SessionResolutionNoticeView.getDefaultInstance()) {
+      externalResolution_ =
+        io.github.lewin671.remoteagent.core.proto.SessionResolutionNoticeView.newBuilder(externalResolution_).mergeFrom(value).buildPartial();
+    } else {
+      externalResolution_ = value;
+    }
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionResolutionNoticeView external_resolution = 15 [json_name = "externalResolution"];</code>
+   */
+  private void clearExternalResolution() {
+    externalResolution_ = null;
+    bitField0_ = (bitField0_ & ~0x00000020);
+  }
+
   public static final int APPROVAL_FIELD_NUMBER = 20;
   /**
    * <code>.remoteagent.core.v1.SessionApprovalDockView approval = 20 [json_name = "approval"];</code>
@@ -1367,6 +1415,53 @@ public  final class SessionDockView extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.SessionResolutionNoticeView external_resolution = 15 [json_name = "externalResolution"];</code>
+     */
+    @java.lang.Override
+    public boolean hasExternalResolution() {
+      return instance.hasExternalResolution();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionResolutionNoticeView external_resolution = 15 [json_name = "externalResolution"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionResolutionNoticeView getExternalResolution() {
+      return instance.getExternalResolution();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionResolutionNoticeView external_resolution = 15 [json_name = "externalResolution"];</code>
+     */
+    public Builder setExternalResolution(io.github.lewin671.remoteagent.core.proto.SessionResolutionNoticeView value) {
+      copyOnWrite();
+      instance.setExternalResolution(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.SessionResolutionNoticeView external_resolution = 15 [json_name = "externalResolution"];</code>
+     */
+    public Builder setExternalResolution(
+        io.github.lewin671.remoteagent.core.proto.SessionResolutionNoticeView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setExternalResolution(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionResolutionNoticeView external_resolution = 15 [json_name = "externalResolution"];</code>
+     */
+    public Builder mergeExternalResolution(io.github.lewin671.remoteagent.core.proto.SessionResolutionNoticeView value) {
+      copyOnWrite();
+      instance.mergeExternalResolution(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionResolutionNoticeView external_resolution = 15 [json_name = "externalResolution"];</code>
+     */
+    public Builder clearExternalResolution() {  copyOnWrite();
+      instance.clearExternalResolution();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.SessionApprovalDockView approval = 20 [json_name = "approval"];</code>
      */
     @java.lang.Override
@@ -1590,16 +1685,17 @@ public  final class SessionDockView extends
             "command_",
             "isSkeleton_",
             "timeLeftPlain_",
+            "externalResolution_",
             io.github.lewin671.remoteagent.core.proto.SessionApprovalDockView.class,
             io.github.lewin671.remoteagent.core.proto.SessionQuestionDockView.class,
             io.github.lewin671.remoteagent.core.proto.SessionPlanDockView.class,
             io.github.lewin671.remoteagent.core.proto.SessionTerminalPopupDockView.class,
           };
           java.lang.String info =
-              "\u0000\u0011\u0001\u0001\u0001\u0017\u0011\u0000\u0000\u0000\u0001\u0007\u0002\f" +
+              "\u0000\u0012\u0001\u0001\u0001\u0017\u0012\u0000\u0000\u0000\u0001\u0007\u0002\f" +
               "\u0003\u0208\u0004\u0003\u0005\u0004\u0006\u1009\u0000\u0007\u1009\u0001\b\u1009" +
-              "\u0002\n\u0002\u000b\u0007\f\u1009\u0003\r\u0007\u000e\u1009\u0004\u0014<\u0000\u0015" +
-              "<\u0000\u0016<\u0000\u0017<\u0000";
+              "\u0002\n\u0002\u000b\u0007\f\u1009\u0003\r\u0007\u000e\u1009\u0004\u000f\u1009\u0005" +
+              "\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

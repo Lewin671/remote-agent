@@ -100,6 +100,29 @@ type NewSessionDraft struct {
 	AutoModeSupported    bool
 }
 
+// HomeFocusKind identifies which top attention focus card Home is tracking.
+type HomeFocusKind uint8
+
+const (
+	HomeFocusNone HomeFocusKind = iota
+	HomeFocusApproval
+	HomeFocusQuestion
+)
+
+// HomeFocusState tracks the lifecycle of Home's top approval or inline question focus card.
+type HomeFocusState struct {
+	Kind            HomeFocusKind
+	SessionID       string
+	ItemID          string
+	Phase           corev1.HomeFocusPhase
+	PickedOptionNum int32
+	PickedLabel     string
+	ResolutionText  *corev1.Text
+	DenyingOpen     bool
+	HeldApproval    *corev1.AttentionCardView
+	HeldQuestion    *corev1.HomeQuestionCardView
+}
+
 // State is what the screen builders render from: the core's synchronized
 // world, which the sync engine owns and screens only read, plus the
 // screen-owned UI state (scope, search, drafts, pickers and fetched caches).
@@ -111,6 +134,12 @@ type State struct {
 	Scope                 *lists.Scope
 	HomeFilterQuery       string
 	HomeSelectedSessionID string
+	HomeFocus             *HomeFocusState
+	HomeLastTopKind       HomeFocusKind
+	HomeLastTopSessionID  string
+	HomeLastTopItemID     string
+	HomeLastTopApproval   *corev1.AttentionCardView
+	HomeLastTopQuestion   *corev1.HomeQuestionCardView
 
 	ProjectSearch string
 
@@ -137,6 +166,9 @@ type State struct {
 
 	// DraftViewFn returns the live AttachmentDraftView for a scope when managed by Core (nil when absent).
 	DraftViewFn func(scope *corev1.DraftScope) *corev1.AttachmentDraftView
+
+	// SessionUIForFn returns the SessionUIState for sessionID when tracked by Core (nil when absent).
+	SessionUIForFn func(sessionID string) *SessionUIState
 }
 
 // NewState constructs a State over w with empty UI lookup maps. A nil w gets a

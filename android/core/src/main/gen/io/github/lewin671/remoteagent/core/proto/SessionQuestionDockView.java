@@ -17,6 +17,8 @@ public  final class SessionQuestionDockView extends
   private SessionQuestionDockView() {
     questionId_ = "";
     answeredIndices_ = emptyIntList();
+    draftedOptionNums_ = emptyIntList();
+    submittedOptionNums_ = emptyIntList();
   }
   private int bitField0_;
   public static final int QUESTION_ID_FIELD_NUMBER = 1;
@@ -284,6 +286,248 @@ public  final class SessionQuestionDockView extends
    */
   private void clearAnsweredIndices() {
     answeredIndices_ = emptyIntList();
+  }
+
+  public static final int DRAFTED_OPTION_NUMS_FIELD_NUMBER = 10;
+  private com.google.protobuf.Internal.IntList draftedOptionNums_;
+  /**
+   * <code>repeated int32 drafted_option_nums = 10 [json_name = "draftedOptionNums"];</code>
+   * @return A list containing the draftedOptionNums.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.Integer>
+      getDraftedOptionNumsList() {
+    return draftedOptionNums_;
+  }
+  /**
+   * <code>repeated int32 drafted_option_nums = 10 [json_name = "draftedOptionNums"];</code>
+   * @return The count of draftedOptionNums.
+   */
+  @java.lang.Override
+  public int getDraftedOptionNumsCount() {
+    return draftedOptionNums_.size();
+  }
+  /**
+   * <code>repeated int32 drafted_option_nums = 10 [json_name = "draftedOptionNums"];</code>
+   * @param index The index of the element to return.
+   * @return The draftedOptionNums at the given index.
+   */
+  @java.lang.Override
+  public int getDraftedOptionNums(int index) {
+    return draftedOptionNums_.getInt(index);
+  }
+  private int draftedOptionNumsMemoizedSerializedSize = -1;
+  private void ensureDraftedOptionNumsIsMutable() {
+    com.google.protobuf.Internal.IntList tmp = draftedOptionNums_;
+    if (!tmp.isModifiable()) {
+      draftedOptionNums_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <code>repeated int32 drafted_option_nums = 10 [json_name = "draftedOptionNums"];</code>
+   * @param index The index to set the value at.
+   * @param value The draftedOptionNums to set.
+   */
+  private void setDraftedOptionNums(
+      int index, int value) {
+    ensureDraftedOptionNumsIsMutable();
+    draftedOptionNums_.setInt(index, value);
+  }
+  /**
+   * <code>repeated int32 drafted_option_nums = 10 [json_name = "draftedOptionNums"];</code>
+   * @param value The draftedOptionNums to add.
+   */
+  private void addDraftedOptionNums(int value) {
+    ensureDraftedOptionNumsIsMutable();
+    draftedOptionNums_.addInt(value);
+  }
+  /**
+   * <code>repeated int32 drafted_option_nums = 10 [json_name = "draftedOptionNums"];</code>
+   * @param values The draftedOptionNums to add.
+   */
+  private void addAllDraftedOptionNums(
+      java.lang.Iterable<? extends java.lang.Integer> values) {
+    ensureDraftedOptionNumsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, draftedOptionNums_);
+  }
+  /**
+   * <code>repeated int32 drafted_option_nums = 10 [json_name = "draftedOptionNums"];</code>
+   */
+  private void clearDraftedOptionNums() {
+    draftedOptionNums_ = emptyIntList();
+  }
+
+  public static final int CAN_SUBMIT_MULTI_FIELD_NUMBER = 11;
+  private boolean canSubmitMulti_;
+  /**
+   * <code>bool can_submit_multi = 11 [json_name = "canSubmitMulti"];</code>
+   * @return The canSubmitMulti.
+   */
+  @java.lang.Override
+  public boolean getCanSubmitMulti() {
+    return canSubmitMulti_;
+  }
+  /**
+   * <code>bool can_submit_multi = 11 [json_name = "canSubmitMulti"];</code>
+   * @param value The canSubmitMulti to set.
+   */
+  private void setCanSubmitMulti(boolean value) {
+    
+    canSubmitMulti_ = value;
+  }
+  /**
+   * <code>bool can_submit_multi = 11 [json_name = "canSubmitMulti"];</code>
+   */
+  private void clearCanSubmitMulti() {
+
+    canSubmitMulti_ = false;
+  }
+
+  public static final int SUBMIT_BUTTON_LABEL_FIELD_NUMBER = 12;
+  private io.github.lewin671.remoteagent.core.proto.Text submitButtonLabel_;
+  /**
+   * <code>.remoteagent.core.v1.Text submit_button_label = 12 [json_name = "submitButtonLabel"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSubmitButtonLabel() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text submit_button_label = 12 [json_name = "submitButtonLabel"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getSubmitButtonLabel() {
+    return submitButtonLabel_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : submitButtonLabel_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text submit_button_label = 12 [json_name = "submitButtonLabel"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSubmitButtonLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    submitButtonLabel_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text submit_button_label = 12 [json_name = "submitButtonLabel"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeSubmitButtonLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (submitButtonLabel_ != null &&
+        submitButtonLabel_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      submitButtonLabel_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(submitButtonLabel_).mergeFrom(value).buildPartial();
+    } else {
+      submitButtonLabel_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text submit_button_label = 12 [json_name = "submitButtonLabel"];</code>
+   */
+  private void clearSubmitButtonLabel() {
+    submitButtonLabel_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
+  public static final int IS_LAST_STEP_FIELD_NUMBER = 13;
+  private boolean isLastStep_;
+  /**
+   * <code>bool is_last_step = 13 [json_name = "isLastStep"];</code>
+   * @return The isLastStep.
+   */
+  @java.lang.Override
+  public boolean getIsLastStep() {
+    return isLastStep_;
+  }
+  /**
+   * <code>bool is_last_step = 13 [json_name = "isLastStep"];</code>
+   * @param value The isLastStep to set.
+   */
+  private void setIsLastStep(boolean value) {
+    
+    isLastStep_ = value;
+  }
+  /**
+   * <code>bool is_last_step = 13 [json_name = "isLastStep"];</code>
+   */
+  private void clearIsLastStep() {
+
+    isLastStep_ = false;
+  }
+
+  public static final int SUBMITTED_OPTION_NUMS_FIELD_NUMBER = 14;
+  private com.google.protobuf.Internal.IntList submittedOptionNums_;
+  /**
+   * <code>repeated int32 submitted_option_nums = 14 [json_name = "submittedOptionNums"];</code>
+   * @return A list containing the submittedOptionNums.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.Integer>
+      getSubmittedOptionNumsList() {
+    return submittedOptionNums_;
+  }
+  /**
+   * <code>repeated int32 submitted_option_nums = 14 [json_name = "submittedOptionNums"];</code>
+   * @return The count of submittedOptionNums.
+   */
+  @java.lang.Override
+  public int getSubmittedOptionNumsCount() {
+    return submittedOptionNums_.size();
+  }
+  /**
+   * <code>repeated int32 submitted_option_nums = 14 [json_name = "submittedOptionNums"];</code>
+   * @param index The index of the element to return.
+   * @return The submittedOptionNums at the given index.
+   */
+  @java.lang.Override
+  public int getSubmittedOptionNums(int index) {
+    return submittedOptionNums_.getInt(index);
+  }
+  private int submittedOptionNumsMemoizedSerializedSize = -1;
+  private void ensureSubmittedOptionNumsIsMutable() {
+    com.google.protobuf.Internal.IntList tmp = submittedOptionNums_;
+    if (!tmp.isModifiable()) {
+      submittedOptionNums_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <code>repeated int32 submitted_option_nums = 14 [json_name = "submittedOptionNums"];</code>
+   * @param index The index to set the value at.
+   * @param value The submittedOptionNums to set.
+   */
+  private void setSubmittedOptionNums(
+      int index, int value) {
+    ensureSubmittedOptionNumsIsMutable();
+    submittedOptionNums_.setInt(index, value);
+  }
+  /**
+   * <code>repeated int32 submitted_option_nums = 14 [json_name = "submittedOptionNums"];</code>
+   * @param value The submittedOptionNums to add.
+   */
+  private void addSubmittedOptionNums(int value) {
+    ensureSubmittedOptionNumsIsMutable();
+    submittedOptionNums_.addInt(value);
+  }
+  /**
+   * <code>repeated int32 submitted_option_nums = 14 [json_name = "submittedOptionNums"];</code>
+   * @param values The submittedOptionNums to add.
+   */
+  private void addAllSubmittedOptionNums(
+      java.lang.Iterable<? extends java.lang.Integer> values) {
+    ensureSubmittedOptionNumsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, submittedOptionNums_);
+  }
+  /**
+   * <code>repeated int32 submitted_option_nums = 14 [json_name = "submittedOptionNums"];</code>
+   */
+  private void clearSubmittedOptionNums() {
+    submittedOptionNums_ = emptyIntList();
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SessionQuestionDockView parseFrom(
@@ -651,6 +895,247 @@ public  final class SessionQuestionDockView extends
       return this;
     }
 
+    /**
+     * <code>repeated int32 drafted_option_nums = 10 [json_name = "draftedOptionNums"];</code>
+     * @return A list containing the draftedOptionNums.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.Integer>
+        getDraftedOptionNumsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getDraftedOptionNumsList());
+    }
+    /**
+     * <code>repeated int32 drafted_option_nums = 10 [json_name = "draftedOptionNums"];</code>
+     * @return The count of draftedOptionNums.
+     */
+    @java.lang.Override
+    public int getDraftedOptionNumsCount() {
+      return instance.getDraftedOptionNumsCount();
+    }
+    /**
+     * <code>repeated int32 drafted_option_nums = 10 [json_name = "draftedOptionNums"];</code>
+     * @param index The index of the element to return.
+     * @return The draftedOptionNums at the given index.
+     */
+    @java.lang.Override
+    public int getDraftedOptionNums(int index) {
+      return instance.getDraftedOptionNums(index);
+    }
+    /**
+     * <code>repeated int32 drafted_option_nums = 10 [json_name = "draftedOptionNums"];</code>
+     * @param value The draftedOptionNums to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDraftedOptionNums(
+        int index, int value) {
+      copyOnWrite();
+      instance.setDraftedOptionNums(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated int32 drafted_option_nums = 10 [json_name = "draftedOptionNums"];</code>
+     * @param value The draftedOptionNums to add.
+     * @return This builder for chaining.
+     */
+    public Builder addDraftedOptionNums(int value) {
+      copyOnWrite();
+      instance.addDraftedOptionNums(value);
+      return this;
+    }
+    /**
+     * <code>repeated int32 drafted_option_nums = 10 [json_name = "draftedOptionNums"];</code>
+     * @param values The draftedOptionNums to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllDraftedOptionNums(
+        java.lang.Iterable<? extends java.lang.Integer> values) {
+      copyOnWrite();
+      instance.addAllDraftedOptionNums(values);
+      return this;
+    }
+    /**
+     * <code>repeated int32 drafted_option_nums = 10 [json_name = "draftedOptionNums"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDraftedOptionNums() {
+      copyOnWrite();
+      instance.clearDraftedOptionNums();
+      return this;
+    }
+
+    /**
+     * <code>bool can_submit_multi = 11 [json_name = "canSubmitMulti"];</code>
+     * @return The canSubmitMulti.
+     */
+    @java.lang.Override
+    public boolean getCanSubmitMulti() {
+      return instance.getCanSubmitMulti();
+    }
+    /**
+     * <code>bool can_submit_multi = 11 [json_name = "canSubmitMulti"];</code>
+     * @param value The canSubmitMulti to set.
+     * @return This builder for chaining.
+     */
+    public Builder setCanSubmitMulti(boolean value) {
+      copyOnWrite();
+      instance.setCanSubmitMulti(value);
+      return this;
+    }
+    /**
+     * <code>bool can_submit_multi = 11 [json_name = "canSubmitMulti"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearCanSubmitMulti() {
+      copyOnWrite();
+      instance.clearCanSubmitMulti();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text submit_button_label = 12 [json_name = "submitButtonLabel"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSubmitButtonLabel() {
+      return instance.hasSubmitButtonLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text submit_button_label = 12 [json_name = "submitButtonLabel"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getSubmitButtonLabel() {
+      return instance.getSubmitButtonLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text submit_button_label = 12 [json_name = "submitButtonLabel"];</code>
+     */
+    public Builder setSubmitButtonLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setSubmitButtonLabel(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text submit_button_label = 12 [json_name = "submitButtonLabel"];</code>
+     */
+    public Builder setSubmitButtonLabel(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSubmitButtonLabel(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text submit_button_label = 12 [json_name = "submitButtonLabel"];</code>
+     */
+    public Builder mergeSubmitButtonLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeSubmitButtonLabel(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text submit_button_label = 12 [json_name = "submitButtonLabel"];</code>
+     */
+    public Builder clearSubmitButtonLabel() {  copyOnWrite();
+      instance.clearSubmitButtonLabel();
+      return this;
+    }
+
+    /**
+     * <code>bool is_last_step = 13 [json_name = "isLastStep"];</code>
+     * @return The isLastStep.
+     */
+    @java.lang.Override
+    public boolean getIsLastStep() {
+      return instance.getIsLastStep();
+    }
+    /**
+     * <code>bool is_last_step = 13 [json_name = "isLastStep"];</code>
+     * @param value The isLastStep to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIsLastStep(boolean value) {
+      copyOnWrite();
+      instance.setIsLastStep(value);
+      return this;
+    }
+    /**
+     * <code>bool is_last_step = 13 [json_name = "isLastStep"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearIsLastStep() {
+      copyOnWrite();
+      instance.clearIsLastStep();
+      return this;
+    }
+
+    /**
+     * <code>repeated int32 submitted_option_nums = 14 [json_name = "submittedOptionNums"];</code>
+     * @return A list containing the submittedOptionNums.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.Integer>
+        getSubmittedOptionNumsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getSubmittedOptionNumsList());
+    }
+    /**
+     * <code>repeated int32 submitted_option_nums = 14 [json_name = "submittedOptionNums"];</code>
+     * @return The count of submittedOptionNums.
+     */
+    @java.lang.Override
+    public int getSubmittedOptionNumsCount() {
+      return instance.getSubmittedOptionNumsCount();
+    }
+    /**
+     * <code>repeated int32 submitted_option_nums = 14 [json_name = "submittedOptionNums"];</code>
+     * @param index The index of the element to return.
+     * @return The submittedOptionNums at the given index.
+     */
+    @java.lang.Override
+    public int getSubmittedOptionNums(int index) {
+      return instance.getSubmittedOptionNums(index);
+    }
+    /**
+     * <code>repeated int32 submitted_option_nums = 14 [json_name = "submittedOptionNums"];</code>
+     * @param value The submittedOptionNums to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSubmittedOptionNums(
+        int index, int value) {
+      copyOnWrite();
+      instance.setSubmittedOptionNums(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated int32 submitted_option_nums = 14 [json_name = "submittedOptionNums"];</code>
+     * @param value The submittedOptionNums to add.
+     * @return This builder for chaining.
+     */
+    public Builder addSubmittedOptionNums(int value) {
+      copyOnWrite();
+      instance.addSubmittedOptionNums(value);
+      return this;
+    }
+    /**
+     * <code>repeated int32 submitted_option_nums = 14 [json_name = "submittedOptionNums"];</code>
+     * @param values The submittedOptionNums to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllSubmittedOptionNums(
+        java.lang.Iterable<? extends java.lang.Integer> values) {
+      copyOnWrite();
+      instance.addAllSubmittedOptionNums(values);
+      return this;
+    }
+    /**
+     * <code>repeated int32 submitted_option_nums = 14 [json_name = "submittedOptionNums"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSubmittedOptionNums() {
+      copyOnWrite();
+      instance.clearSubmittedOptionNums();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionQuestionDockView)
   }
   @java.lang.Override
@@ -674,10 +1159,16 @@ public  final class SessionQuestionDockView extends
             "progressText_",
             "question_",
             "answeredIndices_",
+            "draftedOptionNums_",
+            "canSubmitMulti_",
+            "submitButtonLabel_",
+            "isLastStep_",
+            "submittedOptionNums_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0001\u0000\u0001\u0208\u0002\u0004" +
-              "\u0003\u0004\u0004\u1009\u0000\u0005\u1009\u0001\u0006\'";
+              "\u0000\u000b\u0000\u0001\u0001\u000e\u000b\u0000\u0003\u0000\u0001\u0208\u0002\u0004" +
+              "\u0003\u0004\u0004\u1009\u0000\u0005\u1009\u0001\u0006\'\n\'\u000b\u0007\f\u1009" +
+              "\u0002\r\u0007\u000e\'";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

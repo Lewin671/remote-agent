@@ -266,6 +266,48 @@ public  final class SessionPlanDockView extends
     choices_.remove(index);
   }
 
+  public static final int SUBMITTED_CHOICE_FIELD_NUMBER = 6;
+  private int submittedChoice_;
+  /**
+   * <code>.remoteagent.v1.PlanChoice submitted_choice = 6 [json_name = "submittedChoice"];</code>
+   * @return The enum numeric value on the wire for submittedChoice.
+   */
+  @java.lang.Override
+  public int getSubmittedChoiceValue() {
+    return submittedChoice_;
+  }
+  /**
+   * <code>.remoteagent.v1.PlanChoice submitted_choice = 6 [json_name = "submittedChoice"];</code>
+   * @return The submittedChoice.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.PlanChoice getSubmittedChoice() {
+    io.github.lewin671.remoteagent.proto.PlanChoice result = io.github.lewin671.remoteagent.proto.PlanChoice.forNumber(submittedChoice_);
+    return result == null ? io.github.lewin671.remoteagent.proto.PlanChoice.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.v1.PlanChoice submitted_choice = 6 [json_name = "submittedChoice"];</code>
+   * @param value The enum numeric value on the wire for submittedChoice to set.
+   */
+  private void setSubmittedChoiceValue(int value) {
+      submittedChoice_ = value;
+  }
+  /**
+   * <code>.remoteagent.v1.PlanChoice submitted_choice = 6 [json_name = "submittedChoice"];</code>
+   * @param value The submittedChoice to set.
+   */
+  private void setSubmittedChoice(io.github.lewin671.remoteagent.proto.PlanChoice value) {
+    submittedChoice_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.v1.PlanChoice submitted_choice = 6 [json_name = "submittedChoice"];</code>
+   */
+  private void clearSubmittedChoice() {
+
+    submittedChoice_ = 0;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SessionPlanDockView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -617,6 +659,52 @@ public  final class SessionPlanDockView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.PlanChoice submitted_choice = 6 [json_name = "submittedChoice"];</code>
+     * @return The enum numeric value on the wire for submittedChoice.
+     */
+    @java.lang.Override
+    public int getSubmittedChoiceValue() {
+      return instance.getSubmittedChoiceValue();
+    }
+    /**
+     * <code>.remoteagent.v1.PlanChoice submitted_choice = 6 [json_name = "submittedChoice"];</code>
+     * @param value The submittedChoice to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSubmittedChoiceValue(int value) {
+      copyOnWrite();
+      instance.setSubmittedChoiceValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.PlanChoice submitted_choice = 6 [json_name = "submittedChoice"];</code>
+     * @return The submittedChoice.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.PlanChoice getSubmittedChoice() {
+      return instance.getSubmittedChoice();
+    }
+    /**
+     * <code>.remoteagent.v1.PlanChoice submitted_choice = 6 [json_name = "submittedChoice"];</code>
+     * @param value The enum numeric value on the wire for submittedChoice to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSubmittedChoice(io.github.lewin671.remoteagent.proto.PlanChoice value) {
+      copyOnWrite();
+      instance.setSubmittedChoice(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.PlanChoice submitted_choice = 6 [json_name = "submittedChoice"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSubmittedChoice() {
+      copyOnWrite();
+      instance.clearSubmittedChoice();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionPlanDockView)
   }
   @java.lang.Override
@@ -640,10 +728,11 @@ public  final class SessionPlanDockView extends
             "clearContextAvailable_",
             "choices_",
             io.github.lewin671.remoteagent.core.proto.SessionPlanChoiceOptionView.class,
+            "submittedChoice_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0001\u0001\u0005\u0005\u0000\u0001\u0000\u0001\u0208\u0002\n" +
-              "\u0003\u1009\u0000\u0004\u0007\u0005\u001b";
+              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0001\u0000\u0001\u0208\u0002\n" +
+              "\u0003\u1009\u0000\u0004\u0007\u0005\u001b\u0006\f";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

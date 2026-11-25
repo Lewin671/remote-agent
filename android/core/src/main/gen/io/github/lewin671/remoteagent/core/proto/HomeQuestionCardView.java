@@ -652,6 +652,170 @@ public  final class HomeQuestionCardView extends
     bitField0_ = (bitField0_ & ~0x00000010);
   }
 
+  public static final int COMMAND_FIELD_NUMBER = 15;
+  private io.github.lewin671.remoteagent.core.proto.SessionCommandState command_;
+  /**
+   * <code>.remoteagent.core.v1.SessionCommandState command = 15 [json_name = "command"];</code>
+   */
+  @java.lang.Override
+  public boolean hasCommand() {
+    return ((bitField0_ & 0x00000020) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionCommandState command = 15 [json_name = "command"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionCommandState getCommand() {
+    return command_ == null ? io.github.lewin671.remoteagent.core.proto.SessionCommandState.getDefaultInstance() : command_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionCommandState command = 15 [json_name = "command"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setCommand(io.github.lewin671.remoteagent.core.proto.SessionCommandState value) {
+    value.getClass();  // minimal bytecode null check
+    command_ = value;
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionCommandState command = 15 [json_name = "command"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeCommand(io.github.lewin671.remoteagent.core.proto.SessionCommandState value) {
+    value.getClass();  // minimal bytecode null check
+    if (command_ != null &&
+        command_ != io.github.lewin671.remoteagent.core.proto.SessionCommandState.getDefaultInstance()) {
+      command_ =
+        io.github.lewin671.remoteagent.core.proto.SessionCommandState.newBuilder(command_).mergeFrom(value).buildPartial();
+    } else {
+      command_ = value;
+    }
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionCommandState command = 15 [json_name = "command"];</code>
+   */
+  private void clearCommand() {
+    command_ = null;
+    bitField0_ = (bitField0_ & ~0x00000020);
+  }
+
+  public static final int PHASE_FIELD_NUMBER = 16;
+  private int phase_;
+  /**
+   * <code>.remoteagent.core.v1.HomeFocusPhase phase = 16 [json_name = "phase"];</code>
+   * @return The enum numeric value on the wire for phase.
+   */
+  @java.lang.Override
+  public int getPhaseValue() {
+    return phase_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeFocusPhase phase = 16 [json_name = "phase"];</code>
+   * @return The phase.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.HomeFocusPhase getPhase() {
+    io.github.lewin671.remoteagent.core.proto.HomeFocusPhase result = io.github.lewin671.remoteagent.core.proto.HomeFocusPhase.forNumber(phase_);
+    return result == null ? io.github.lewin671.remoteagent.core.proto.HomeFocusPhase.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeFocusPhase phase = 16 [json_name = "phase"];</code>
+   * @param value The enum numeric value on the wire for phase to set.
+   */
+  private void setPhaseValue(int value) {
+      phase_ = value;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeFocusPhase phase = 16 [json_name = "phase"];</code>
+   * @param value The phase to set.
+   */
+  private void setPhase(io.github.lewin671.remoteagent.core.proto.HomeFocusPhase value) {
+    phase_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeFocusPhase phase = 16 [json_name = "phase"];</code>
+   */
+  private void clearPhase() {
+
+    phase_ = 0;
+  }
+
+  public static final int PICKED_OPTION_NUM_FIELD_NUMBER = 17;
+  private int pickedOptionNum_;
+  /**
+   * <code>int32 picked_option_num = 17 [json_name = "pickedOptionNum"];</code>
+   * @return The pickedOptionNum.
+   */
+  @java.lang.Override
+  public int getPickedOptionNum() {
+    return pickedOptionNum_;
+  }
+  /**
+   * <code>int32 picked_option_num = 17 [json_name = "pickedOptionNum"];</code>
+   * @param value The pickedOptionNum to set.
+   */
+  private void setPickedOptionNum(int value) {
+    
+    pickedOptionNum_ = value;
+  }
+  /**
+   * <code>int32 picked_option_num = 17 [json_name = "pickedOptionNum"];</code>
+   */
+  private void clearPickedOptionNum() {
+
+    pickedOptionNum_ = 0;
+  }
+
+  public static final int RESOLUTION_TEXT_FIELD_NUMBER = 18;
+  private io.github.lewin671.remoteagent.core.proto.Text resolutionText_;
+  /**
+   * <code>.remoteagent.core.v1.Text resolution_text = 18 [json_name = "resolutionText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasResolutionText() {
+    return ((bitField0_ & 0x00000040) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text resolution_text = 18 [json_name = "resolutionText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getResolutionText() {
+    return resolutionText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : resolutionText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text resolution_text = 18 [json_name = "resolutionText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setResolutionText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    resolutionText_ = value;
+    bitField0_ |= 0x00000040;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text resolution_text = 18 [json_name = "resolutionText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeResolutionText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (resolutionText_ != null &&
+        resolutionText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      resolutionText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(resolutionText_).mergeFrom(value).buildPartial();
+    } else {
+      resolutionText_ = value;
+    }
+    bitField0_ |= 0x00000040;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text resolution_text = 18 [json_name = "resolutionText"];</code>
+   */
+  private void clearResolutionText() {
+    resolutionText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000040);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.HomeQuestionCardView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1387,6 +1551,174 @@ public  final class HomeQuestionCardView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.SessionCommandState command = 15 [json_name = "command"];</code>
+     */
+    @java.lang.Override
+    public boolean hasCommand() {
+      return instance.hasCommand();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionCommandState command = 15 [json_name = "command"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionCommandState getCommand() {
+      return instance.getCommand();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionCommandState command = 15 [json_name = "command"];</code>
+     */
+    public Builder setCommand(io.github.lewin671.remoteagent.core.proto.SessionCommandState value) {
+      copyOnWrite();
+      instance.setCommand(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.SessionCommandState command = 15 [json_name = "command"];</code>
+     */
+    public Builder setCommand(
+        io.github.lewin671.remoteagent.core.proto.SessionCommandState.Builder builderForValue) {
+      copyOnWrite();
+      instance.setCommand(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionCommandState command = 15 [json_name = "command"];</code>
+     */
+    public Builder mergeCommand(io.github.lewin671.remoteagent.core.proto.SessionCommandState value) {
+      copyOnWrite();
+      instance.mergeCommand(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionCommandState command = 15 [json_name = "command"];</code>
+     */
+    public Builder clearCommand() {  copyOnWrite();
+      instance.clearCommand();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.HomeFocusPhase phase = 16 [json_name = "phase"];</code>
+     * @return The enum numeric value on the wire for phase.
+     */
+    @java.lang.Override
+    public int getPhaseValue() {
+      return instance.getPhaseValue();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeFocusPhase phase = 16 [json_name = "phase"];</code>
+     * @param value The phase to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPhaseValue(int value) {
+      copyOnWrite();
+      instance.setPhaseValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeFocusPhase phase = 16 [json_name = "phase"];</code>
+     * @return The phase.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.HomeFocusPhase getPhase() {
+      return instance.getPhase();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeFocusPhase phase = 16 [json_name = "phase"];</code>
+     * @param value The enum numeric value on the wire for phase to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPhase(io.github.lewin671.remoteagent.core.proto.HomeFocusPhase value) {
+      copyOnWrite();
+      instance.setPhase(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeFocusPhase phase = 16 [json_name = "phase"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPhase() {
+      copyOnWrite();
+      instance.clearPhase();
+      return this;
+    }
+
+    /**
+     * <code>int32 picked_option_num = 17 [json_name = "pickedOptionNum"];</code>
+     * @return The pickedOptionNum.
+     */
+    @java.lang.Override
+    public int getPickedOptionNum() {
+      return instance.getPickedOptionNum();
+    }
+    /**
+     * <code>int32 picked_option_num = 17 [json_name = "pickedOptionNum"];</code>
+     * @param value The pickedOptionNum to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPickedOptionNum(int value) {
+      copyOnWrite();
+      instance.setPickedOptionNum(value);
+      return this;
+    }
+    /**
+     * <code>int32 picked_option_num = 17 [json_name = "pickedOptionNum"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPickedOptionNum() {
+      copyOnWrite();
+      instance.clearPickedOptionNum();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text resolution_text = 18 [json_name = "resolutionText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasResolutionText() {
+      return instance.hasResolutionText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text resolution_text = 18 [json_name = "resolutionText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getResolutionText() {
+      return instance.getResolutionText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text resolution_text = 18 [json_name = "resolutionText"];</code>
+     */
+    public Builder setResolutionText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setResolutionText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text resolution_text = 18 [json_name = "resolutionText"];</code>
+     */
+    public Builder setResolutionText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setResolutionText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text resolution_text = 18 [json_name = "resolutionText"];</code>
+     */
+    public Builder mergeResolutionText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeResolutionText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text resolution_text = 18 [json_name = "resolutionText"];</code>
+     */
+    public Builder clearResolutionText() {  copyOnWrite();
+      instance.clearResolutionText();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.HomeQuestionCardView)
   }
   @java.lang.Override
@@ -1418,11 +1750,16 @@ public  final class HomeQuestionCardView extends
             io.github.lewin671.remoteagent.core.proto.HomeQuestionOptionView.class,
             "canAnswer_",
             "offlineNote_",
+            "command_",
+            "phase_",
+            "pickedOptionNum_",
+            "resolutionText_",
           };
           java.lang.String info =
-              "\u0000\r\u0000\u0001\u0001\r\r\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
-              "\u0004\u0003\u0005\u1009\u0000\u0006\u1009\u0001\u0007\u1009\u0002\b\u1009\u0003" +
-              "\t\u0208\n\u0208\u000b\u001b\f\u0007\r\u1009\u0004";
+              "\u0000\u0011\u0000\u0001\u0001\u0012\u0011\u0000\u0001\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0208\u0004\u0003\u0005\u1009\u0000\u0006\u1009\u0001\u0007\u1009\u0002\b" +
+              "\u1009\u0003\t\u0208\n\u0208\u000b\u001b\f\u0007\r\u1009\u0004\u000f\u1009\u0005" +
+              "\u0010\f\u0011\u0004\u0012\u1009\u0006";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

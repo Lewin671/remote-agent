@@ -19,6 +19,7 @@
     <string name="approval_details" formatted="false">"审批详情"</string>
     <string name="approval_full_command" formatted="false">"看完整命令"</string>
     <string name="approval_handled_in_terminal" formatted="false">"已在终端处理"</string>
+    <string name="approval_handled_other_device" formatted="false">"已在另一端处理"</string>
     <string name="approval_reason_placeholder" formatted="false">"说说该怎么做，可以不填"</string>
     <string name="approval_retry_deny" formatted="false">"重试拒绝"</string>
     <string name="approval_scroll_to_view" formatted="false">"往下看完整命令"</string>

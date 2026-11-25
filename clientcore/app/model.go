@@ -109,6 +109,12 @@ func newModel() *Model {
 		return prefEnabled, screens.BuildDirectRouteReport(status, prefEnabled, daemonDisabled, len(rounds)), true
 	}
 	m.state.PlatformAgentFn = m.sync.PlatformAgent
+	m.state.SessionUIForFn = func(sid string) *screens.SessionUIState {
+		if m.sessions == nil || sid == "" {
+			return nil
+		}
+		return m.sessions.uiBySession[sid]
+	}
 	return m
 }
 

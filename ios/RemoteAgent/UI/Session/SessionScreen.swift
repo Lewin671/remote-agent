@@ -442,7 +442,7 @@ struct SessionScreen: View {
         )
     }
 
-    private func commandErrorText(_ st: PBSessionCommandState) -> String {
+    private func commandErrorText(_ st: PBCoreSessionCommandState) -> String {
         if st.hasErrorText {
             let rendered = st.errorText.rendered()
             if !rendered.isEmpty { return rendered }

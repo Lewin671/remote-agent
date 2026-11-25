@@ -283,7 +283,7 @@ struct SessionComposer: View {
         }
     }
 
-    private func commandRunning(_ st: PBSessionCommandState) -> Bool {
+    private func commandRunning(_ st: PBCoreSessionCommandState) -> Bool {
         st.status == .pending || st.busy
     }
 }

@@ -22,6 +22,7 @@ object UiMessages {
     fun approvalDetails(): UiMessage = UiMessage("approval.details", emptyMap())
     fun approvalFullCommand(): UiMessage = UiMessage("approval.full_command", emptyMap())
     fun approvalHandledInTerminal(): UiMessage = UiMessage("approval.handled_in_terminal", emptyMap())
+    fun approvalHandledOtherDevice(): UiMessage = UiMessage("approval.handled_other_device", emptyMap())
     fun approvalReasonPlaceholder(): UiMessage = UiMessage("approval.reason_placeholder", emptyMap())
     fun approvalRetryDeny(): UiMessage = UiMessage("approval.retry_deny", emptyMap())
     fun approvalScrollToView(): UiMessage = UiMessage("approval.scroll_to_view", emptyMap())

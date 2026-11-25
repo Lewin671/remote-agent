@@ -58,4 +58,15 @@ public interface SessionPlanDockViewOrBuilder extends
    * <code>repeated .remoteagent.core.v1.SessionPlanChoiceOptionView choices = 5 [json_name = "choices"];</code>
    */
   int getChoicesCount();
+
+  /**
+   * <code>.remoteagent.v1.PlanChoice submitted_choice = 6 [json_name = "submittedChoice"];</code>
+   * @return The enum numeric value on the wire for submittedChoice.
+   */
+  int getSubmittedChoiceValue();
+  /**
+   * <code>.remoteagent.v1.PlanChoice submitted_choice = 6 [json_name = "submittedChoice"];</code>
+   * @return The submittedChoice.
+   */
+  io.github.lewin671.remoteagent.proto.PlanChoice getSubmittedChoice();
 }

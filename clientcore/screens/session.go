@@ -27,17 +27,21 @@ const (
 
 // SessionCommandRecord tracks one command slot's submission and settle lifecycle.
 type SessionCommandRecord struct {
-	_             [0]func()
-	SlotKey       string
-	RequestID     string
-	Status        corev1.SessionCommandStatus
-	Busy          bool
-	Frozen        bool
-	Expired       bool
-	ErrorCode     string
-	ErrorText     *corev1.Text
-	Command       *v1.Command
-	SubmittedAtMs int64
+	_                   [0]func()
+	SlotKey             string
+	RequestID           string
+	Status              corev1.SessionCommandStatus
+	Busy                bool
+	Frozen              bool
+	Expired             bool
+	ErrorCode           string
+	ErrorText           *corev1.Text
+	Command             *v1.Command
+	SubmittedAtMs       int64
+	SubmittedSummary    *corev1.Text
+	DenySubmit          bool
+	SubmittedOptionNums []int32
+	SubmittedPlanChoice v1.PlanChoice
 }
 
 // SessionOutgoingState is Core's internal pre-projection delivery state for a client send.
@@ -131,6 +135,12 @@ type PendingStartPrompt struct {
 // SessionUIState holds per-session client UI state owned by Core (slots, outgoing sends, tray actions, dock steps).
 type SessionUIState struct {
 	Commands               map[string]*SessionCommandRecord
+	SlotSucceededSeq       map[string]uint64
+	ApprovalDenyOpen       map[string]bool
+	QuestionDraftByKey     map[string][]int32
+	LocalResolvedRequestID map[string]string
+	LocalSucceededItems    map[string]bool
+	ExternalResolution     *corev1.SessionResolutionNoticeView
 	Outgoing               []*SessionOutgoingRecord
 	LocalContents          map[string]*LocalSentContent
 	CancelIntents          map[string]*SessionCancelIntent
@@ -176,15 +186,20 @@ func (ui *SessionUIState) HasTimelineCache() bool {
 // NewSessionUIState allocates an initialized SessionUIState.
 func NewSessionUIState() *SessionUIState {
 	return &SessionUIState{
-		Commands:             make(map[string]*SessionCommandRecord),
-		LocalContents:        make(map[string]*LocalSentContent),
-		CancelIntents:        make(map[string]*SessionCancelIntent),
-		DismissedInputIDs:    make(map[string]bool),
-		SteerVisibleAfterMs:  make(map[string]int64),
-		QuestionIndexByID:    make(map[string]int32),
-		LastApprovalSeq:      make(map[string]uint64),
-		LastQuestionSeq:      make(map[string]uint64),
-		SharedFiles:          make(map[string]*sharedfiles.LocalState),
+		Commands:               make(map[string]*SessionCommandRecord),
+		SlotSucceededSeq:       make(map[string]uint64),
+		ApprovalDenyOpen:       make(map[string]bool),
+		QuestionDraftByKey:     make(map[string][]int32),
+		LocalResolvedRequestID: make(map[string]string),
+		LocalSucceededItems:    make(map[string]bool),
+		LocalContents:          make(map[string]*LocalSentContent),
+		CancelIntents:          make(map[string]*SessionCancelIntent),
+		DismissedInputIDs:      make(map[string]bool),
+		SteerVisibleAfterMs:    make(map[string]int64),
+		QuestionIndexByID:      make(map[string]int32),
+		LastApprovalSeq:        make(map[string]uint64),
+		LastQuestionSeq:        make(map[string]uint64),
+		SharedFiles:            make(map[string]*sharedfiles.LocalState),
 	}
 }
 
@@ -623,6 +638,9 @@ func commandSlotState(ui *SessionUIState, slotKey string, expiredText, unknownTe
 	if ui == nil {
 		return out
 	}
+	if ui.SlotSucceededSeq != nil {
+		out.SucceededSeq = ui.SlotSucceededSeq[slotKey]
+	}
 	rec := ui.Commands[slotKey]
 	if rec == nil {
 		return out
@@ -634,6 +652,22 @@ func commandSlotState(ui *SessionUIState, slotKey string, expiredText, unknownTe
 	out.Expired = rec.Expired
 	out.ErrorCode = rec.ErrorCode
 	out.ErrorText = rec.ErrorText
+	out.SubmittedSummary = rec.SubmittedSummary
+	if out.SubmittedSummary == nil && rec.Command != nil {
+		if ra := rec.Command.GetResolveApproval(); ra != nil {
+			if ra.Allow {
+				if ra.Always {
+					out.SubmittedSummary = text.Msg(text.KeyApprovalAlwaysAllowed)
+				} else {
+					out.SubmittedSummary = text.Msg(text.KeyApprovalAllowed)
+				}
+			} else {
+				out.SubmittedSummary = text.Msg(text.KeyApprovalDenied)
+			}
+		} else if sm := rec.Command.GetSetModel(); sm != nil && sm.Model != "" {
+			out.SubmittedSummary = text.Plain(sm.Model)
+		}
+	}
 	switch rec.Status {
 	case corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_FAILED:
 		out.CanRetry = true
@@ -745,6 +779,7 @@ func buildSessionActions(
 	picked := lists.FindModel(modelSlice, header.Model)
 	shown := lists.ShownModels(modelSlice, picked, true)
 	out.ModelChoices = make([]*corev1.SessionModelChoiceView, 0, len(shown))
+	choiceBySlug := make(map[string]*corev1.SessionModelChoiceView, len(shown))
 	for _, m := range shown {
 		if m == nil {
 			continue
@@ -759,7 +794,7 @@ func buildSessionActions(
 				maxEffortHint = text.Msg(text.KeySessionMaxEffort, text.Str("effort", last))
 			}
 		}
-		out.ModelChoices = append(out.ModelChoices, &corev1.SessionModelChoiceView{
+		mc := &corev1.SessionModelChoiceView{
 			Slug:                    m.Slug,
 			DisplayName:             m.DisplayName,
 			FixedEffortNote:         fixedNote,
@@ -769,8 +804,21 @@ func buildSessionActions(
 			Selected:                lists.ModelIs(header.Model, m.Slug),
 			SupportsStandardContext: caps.StandardContextOption && (m.ContextWindow == 0 || m.ContextWindow > lists.StandardContextWindow),
 			MaxEffortHint:           maxEffortHint,
-		})
+		}
+		out.ModelChoices = append(out.ModelChoices, mc)
+		choiceBySlug[m.Slug] = mc
 	}
+	folded := lists.ShownModels(modelSlice, picked, false)
+	out.FoldedModelChoices = make([]*corev1.SessionModelChoiceView, 0, len(folded))
+	for _, m := range folded {
+		if m == nil {
+			continue
+		}
+		if mc := choiceBySlug[m.Slug]; mc != nil {
+			out.FoldedModelChoices = append(out.FoldedModelChoices, mc)
+		}
+	}
+	out.HasMoreModels = len(out.FoldedModelChoices) < len(out.ModelChoices)
 	efforts, activeEffort := lists.EffortChoices(lists.StartConfig{
 		Agent:  caps.Agent,
 		Model:  header.Model,
@@ -815,7 +863,171 @@ func buildSessionActions(
 	}
 
 	out.UsageEntry = buildSessionUsageEntry(st, lm, caps, header.Model)
+	out.MenuItems = buildSessionMenuItems(header, out)
 	return out
+}
+
+func buildSessionMenuItems(header *corev1.SessionHeaderView, actions *corev1.SessionActionsView) []*corev1.SessionMenuItemView {
+	if header == nil || actions == nil {
+		return nil
+	}
+	forking := actions.Fork != nil && actions.Fork.Busy
+	exited := header.Exited
+	inactive := exited || !header.ComputerOnline || header.ComputerUnlinked
+	items := make([]*corev1.SessionMenuItemView, 0, 10)
+
+	// Group 0: Mode, Model/Settings, Context.
+	if !exited && (len(actions.ModeChoices) > 0 || actions.CanSwitchMode) {
+		items = append(items, &corev1.SessionMenuItemView{
+			Kind:      corev1.SessionMenuItemKind_SESSION_MENU_ITEM_KIND_MODE,
+			Group:     0,
+			Label:     text.Msg(text.KeyModesTitle),
+			ValueText: header.ApprovalModeLabel,
+			Enabled:   !forking && actions.CanSwitchMode,
+			Danger:    header.ApprovalMode == v1.ApprovalMode_APPROVAL_MODE_FULL_ACCESS,
+		})
+	}
+	if !exited {
+		modelLabel := header.ModelLabel
+		if modelLabel == "" {
+			modelLabel = header.Model
+		}
+		label := text.Msg(text.KeySessionSettings)
+		if modelLabel != "" {
+			label = text.Msg(text.KeyModelsTitle)
+		}
+		var valParts []*corev1.Text
+		if modelLabel != "" {
+			valParts = append(valParts, text.Plain(modelLabel))
+		}
+		if header.EffortLabel != nil {
+			valParts = append(valParts, header.EffortLabel)
+		} else if header.Effort != "" {
+			valParts = append(valParts, text.Plain(header.Effort))
+		}
+		items = append(items, &corev1.SessionMenuItemView{
+			Kind:      corev1.SessionMenuItemKind_SESSION_MENU_ITEM_KIND_MODEL,
+			Group:     0,
+			Label:     label,
+			ValueText: text.JoinLiteral(" · ", valParts...),
+			Enabled:   !forking,
+		})
+	}
+	if !exited && header.HasContext {
+		items = append(items, &corev1.SessionMenuItemView{
+			Kind:      corev1.SessionMenuItemKind_SESSION_MENU_ITEM_KIND_CONTEXT,
+			Group:     0,
+			Label:     text.Msg(text.KeySessionContext),
+			ValueText: text.Msg(text.KeySessionContextUsed, text.Int("percent", int64(header.ContextPercent))),
+			Enabled:   !forking,
+			Warn:      header.HighContextWarning,
+		})
+	}
+
+	// Group 1: Project settings, Rename, Fork / Abandon fork, Schedule, Interrupt.
+	if header.ProjectKey != "" {
+		items = append(items, &corev1.SessionMenuItemView{
+			Kind:    corev1.SessionMenuItemKind_SESSION_MENU_ITEM_KIND_PROJECT_SETTINGS,
+			Group:   1,
+			Label:   text.Msg(text.KeyProjectsAndroidSettings),
+			Enabled: !forking,
+		})
+	}
+	if actions.CanRename {
+		items = append(items, &corev1.SessionMenuItemView{
+			Kind:    corev1.SessionMenuItemKind_SESSION_MENU_ITEM_KIND_RENAME,
+			Group:   1,
+			Label:   text.Msg(text.KeySessionRename),
+			Enabled: !forking,
+		})
+	}
+	if fa := actions.ForkAction; fa != nil && fa.Visible {
+		switch {
+		case fa.Busy:
+			items = append(items, &corev1.SessionMenuItemView{
+				Kind:         corev1.SessionMenuItemKind_SESSION_MENU_ITEM_KIND_FORK,
+				Group:        1,
+				Label:        fa.Label,
+				Enabled:      false,
+				Busy:         true,
+				KeepMenuOpen: true,
+			})
+		case fa.Abandons:
+			items = append(items, &corev1.SessionMenuItemView{
+				Kind:         corev1.SessionMenuItemKind_SESSION_MENU_ITEM_KIND_ABANDON_FORK,
+				Group:        1,
+				Label:        fa.Label,
+				NoteText:     fa.Note,
+				NoteError:    fa.NoteError,
+				Enabled:      fa.Enabled && !forking,
+				KeepMenuOpen: true,
+			})
+		default:
+			items = append(items, &corev1.SessionMenuItemView{
+				Kind:         corev1.SessionMenuItemKind_SESSION_MENU_ITEM_KIND_FORK,
+				Group:        1,
+				Label:        fa.Label,
+				NoteText:     fa.Note,
+				NoteError:    fa.NoteError,
+				Enabled:      fa.Enabled && !forking,
+				KeepMenuOpen: fa.Enabled,
+			})
+			if fa.CanAbandon {
+				items = append(items, &corev1.SessionMenuItemView{
+					Kind:         corev1.SessionMenuItemKind_SESSION_MENU_ITEM_KIND_ABANDON_FORK,
+					Group:        1,
+					Label:        text.Msg(text.KeySessionAbandonFork),
+					Enabled:      !forking,
+					KeepMenuOpen: true,
+				})
+			}
+		}
+	}
+	if header.Capabilities != nil {
+		supportsSched := header.Capabilities.SupportsSchedule
+		var schedNote *corev1.Text
+		if !supportsSched {
+			schedNote = text.Msg(text.KeySessionUpdateComputer)
+		}
+		items = append(items, &corev1.SessionMenuItemView{
+			Kind:     corev1.SessionMenuItemKind_SESSION_MENU_ITEM_KIND_SCHEDULE,
+			Group:    1,
+			Label:    text.Msg(text.KeySessionScheduleSend),
+			NoteText: schedNote,
+			Enabled:  !forking && supportsSched && header.ComputerOnline && !header.ComputerUnlinked,
+		})
+	}
+	if !inactive {
+		if actions.CanInterrupt {
+			items = append(items, &corev1.SessionMenuItemView{
+				Kind:    corev1.SessionMenuItemKind_SESSION_MENU_ITEM_KIND_INTERRUPT,
+				Group:   1,
+				Label:   text.Msg(text.KeySessionInterruptTurn),
+				Enabled: !forking,
+				Danger:  true,
+			})
+		} else {
+			items = append(items, &corev1.SessionMenuItemView{
+				Kind:     corev1.SessionMenuItemKind_SESSION_MENU_ITEM_KIND_INTERRUPT,
+				Group:    1,
+				Label:    text.Msg(text.KeySessionInterruptTurn),
+				NoteText: text.Msg(text.KeySessionNotRunning),
+				Enabled:  false,
+			})
+		}
+	}
+
+	// Group 2: End session.
+	if actions.CanEnd {
+		items = append(items, &corev1.SessionMenuItemView{
+			Kind:    corev1.SessionMenuItemKind_SESSION_MENU_ITEM_KIND_END_SESSION,
+			Group:   2,
+			Label:   text.Msg(text.KeySessionEndAction),
+			Enabled: !forking,
+			Danger:  true,
+		})
+	}
+	return items
 }
 
 func buildSessionForkAction(
@@ -1050,6 +1262,9 @@ func buildSessionDock(
 	ui *SessionUIState,
 ) *corev1.SessionDockView {
 	out := &corev1.SessionDockView{}
+	if ui != nil {
+		out.ExternalResolution = ui.ExternalResolution
+	}
 	if !in.Found || in.Projection == nil {
 		return out
 	}
@@ -1154,6 +1369,10 @@ func buildSessionDock(
 				}
 			}
 		}
+		denyingOpen := ui != nil && ui.ApprovalDenyOpen[pa.ApprovalId]
+		rec := ui.Commands[slotKey]
+		holdOpenCard := denyingOpen && rec != nil && rec.DenySubmit &&
+			(rec.Busy || rec.Status == corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_FAILED || rec.Status == corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_UNKNOWN)
 		out.Detail = &corev1.SessionDockView_Approval{
 			Approval: &corev1.SessionApprovalDockView{
 				ApprovalId:            pa.ApprovalId,
@@ -1168,6 +1387,8 @@ func buildSessionDock(
 				AlwaysTarget:          alwaysTarget,
 				AlwaysLabel:           alwaysLabel,
 				DenyReasonPlaceholder: text.Msg(text.KeyApprovalReasonPlaceholder),
+				DenyingOpen:           denyingOpen,
+				HoldOpenCard:          holdOpenCard,
 			},
 		}
 		return out
@@ -1211,18 +1432,47 @@ func buildSessionDock(
 		if total > 1 {
 			out.Meta = text.Msg(text.KeyDockQuestionProgress, text.Int("index", int64(activeIdx+1)), text.Int("count", int64(total)))
 		}
-		slotKey := "question:" + sid + ":" + pq.QuestionId + "#" + strconv.Itoa(int(activeIdx))
+		qKey := pq.QuestionId + "#" + strconv.Itoa(int(activeIdx))
+		slotKey := "question:" + sid + ":" + qKey
 		out.Command = commandSlotState(ui, slotKey,
 			text.Msg(text.KeyDockAndroidAnswerExpired, text.Str("answer", questionAnswerHint(ui, slotKey))),
 			text.Msg(text.KeyDockAndroidAnswerUnknown, text.Str("answer", questionAnswerHint(ui, slotKey))),
 		)
+		var drafted []int32
+		if ui != nil && len(ui.QuestionDraftByKey[qKey]) > 0 {
+			drafted = append([]int32(nil), ui.QuestionDraftByKey[qKey]...)
+		}
+		var submitted []int32
+		if rec := ui.Commands[slotKey]; rec != nil && len(rec.SubmittedOptionNums) > 0 {
+			submitted = append([]int32(nil), rec.SubmittedOptionNums...)
+		}
+		isMulti := stepView != nil && stepView.MultiSelect
+		cmdBusy := out.Command != nil && out.Command.Busy
+		cmdFrozen := out.Command != nil && out.Command.Frozen
+		canSubmitMulti := isMulti && !cmdBusy && !cmdFrozen && len(drafted) > 0
+		var submitLabel *corev1.Text
+		if isMulti {
+			switch {
+			case cmdBusy:
+				submitLabel = text.Msg(text.KeyDockSubmitting)
+			case len(drafted) > 0:
+				submitLabel = text.Msg(text.KeyDockSubmitSelected, text.Int("count", int64(len(drafted))))
+			default:
+				submitLabel = text.Msg(text.KeyDockSelectThenSubmit)
+			}
+		}
 		out.Detail = &corev1.SessionDockView_Question{
 			Question: &corev1.SessionQuestionDockView{
-				QuestionId:     pq.QuestionId,
-				ActiveIndex:    activeIdx,
-				TotalQuestions: int32(total),
-				ProgressText:   out.Meta,
-				Question:       stepView,
+				QuestionId:          pq.QuestionId,
+				ActiveIndex:         activeIdx,
+				TotalQuestions:      int32(total),
+				ProgressText:        out.Meta,
+				Question:            stepView,
+				DraftedOptionNums:   drafted,
+				CanSubmitMulti:      canSubmitMulti,
+				SubmitButtonLabel:   submitLabel,
+				IsLastStep:          total <= 0 || int(activeIdx)+1 >= total,
+				SubmittedOptionNums: submitted,
 			},
 		}
 		return out
@@ -1256,6 +1506,10 @@ func buildSessionDock(
 		if in.Checkpoint != nil {
 			screenHash = append([]byte(nil), in.Checkpoint.PlanScreenHash...)
 		}
+		var submittedChoice v1.PlanChoice
+		if rec := ui.Commands[slotKey]; rec != nil {
+			submittedChoice = rec.SubmittedPlanChoice
+		}
 		out.Detail = &corev1.SessionDockView_Plan{
 			Plan: &corev1.SessionPlanDockView{
 				Markdown:              p.Plan.Text,
@@ -1263,6 +1517,7 @@ func buildSessionDock(
 				Note:                  note,
 				ClearContextAvailable: caps.PlanClearContext,
 				Choices:               buildPlanChoices(caps),
+				SubmittedChoice:       submittedChoice,
 			},
 		}
 		return out
@@ -1322,6 +1577,9 @@ func mapAlwaysKind(ak lists.ApprovalAlwaysKind) corev1.AlwaysAllowKind {
 }
 
 func approvalDecisionHint(ui *SessionUIState, slotKey string) string {
+	if ui == nil {
+		return ""
+	}
 	rec := ui.Commands[slotKey]
 	if rec == nil || rec.Command == nil || rec.Command.GetResolveApproval() == nil {
 		return ""
@@ -1337,6 +1595,9 @@ func approvalDecisionHint(ui *SessionUIState, slotKey string) string {
 }
 
 func questionAnswerHint(ui *SessionUIState, slotKey string) string {
+	if ui == nil {
+		return ""
+	}
 	rec := ui.Commands[slotKey]
 	if rec == nil || rec.Command == nil || rec.Command.GetAnswerQuestion() == nil {
 		return ""
@@ -1352,6 +1613,9 @@ func questionAnswerHint(ui *SessionUIState, slotKey string) string {
 }
 
 func planChoiceHint(ui *SessionUIState, slotKey string) string {
+	if ui == nil {
+		return ""
+	}
 	rec := ui.Commands[slotKey]
 	if rec == nil || rec.Command == nil || rec.Command.GetAnswerPlan() == nil {
 		return ""

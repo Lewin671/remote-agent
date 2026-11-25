@@ -72,7 +72,8 @@
     "params": {},
     "platforms": [
       "android",
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",

@@ -52,6 +52,11 @@ public  final class Event extends
     HOME_LOAD_MORE_ENDED(32),
     HOME_RETRY_LOAD(33),
     HOME_SELECT_SESSION(34),
+    HOME_RESOLVE_APPROVAL(35),
+    HOME_EDIT_APPROVAL_DENY(36),
+    HOME_ANSWER_QUESTION(37),
+    HOME_RETRY_ATTENTION(38),
+    HOME_ABANDON_ATTENTION(39),
     PROJECT_SET_SEARCH(40),
     PROJECT_TOGGLE_PIN(41),
     PROJECT_TOGGLE_HIDE(42),
@@ -154,6 +159,16 @@ public  final class Event extends
     DRAFT_IMAGE_VIEWER_NAVIGATE(265),
     DRAFT_IMAGE_VIEWER_CLOSE(266),
     DRAFT_APPEND_TEXT(267),
+    SESSION_EDIT_APPROVAL_DENY(270),
+    SESSION_RESOLVE_APPROVAL(271),
+    SESSION_TOGGLE_QUESTION_OPTION(272),
+    SESSION_ANSWER_QUESTION(273),
+    SESSION_ANSWER_PLAN(274),
+    SESSION_SIMPLE_COMMAND(275),
+    SESSION_RENAME(276),
+    SESSION_SET_APPROVAL_MODE(277),
+    SESSION_SET_MODEL(278),
+    SESSION_RETRY_COMMAND(279),
     SCHEDULE_CACHE_LOADED(300),
     SCHEDULE_SEEN_LOADED(301),
     SCHEDULE_LOCAL_CONTEXT(302),
@@ -275,6 +290,11 @@ public  final class Event extends
         case 32: return HOME_LOAD_MORE_ENDED;
         case 33: return HOME_RETRY_LOAD;
         case 34: return HOME_SELECT_SESSION;
+        case 35: return HOME_RESOLVE_APPROVAL;
+        case 36: return HOME_EDIT_APPROVAL_DENY;
+        case 37: return HOME_ANSWER_QUESTION;
+        case 38: return HOME_RETRY_ATTENTION;
+        case 39: return HOME_ABANDON_ATTENTION;
         case 40: return PROJECT_SET_SEARCH;
         case 41: return PROJECT_TOGGLE_PIN;
         case 42: return PROJECT_TOGGLE_HIDE;
@@ -377,6 +397,16 @@ public  final class Event extends
         case 265: return DRAFT_IMAGE_VIEWER_NAVIGATE;
         case 266: return DRAFT_IMAGE_VIEWER_CLOSE;
         case 267: return DRAFT_APPEND_TEXT;
+        case 270: return SESSION_EDIT_APPROVAL_DENY;
+        case 271: return SESSION_RESOLVE_APPROVAL;
+        case 272: return SESSION_TOGGLE_QUESTION_OPTION;
+        case 273: return SESSION_ANSWER_QUESTION;
+        case 274: return SESSION_ANSWER_PLAN;
+        case 275: return SESSION_SIMPLE_COMMAND;
+        case 276: return SESSION_RENAME;
+        case 277: return SESSION_SET_APPROVAL_MODE;
+        case 278: return SESSION_SET_MODEL;
+        case 279: return SESSION_RETRY_COMMAND;
         case 300: return SCHEDULE_CACHE_LOADED;
         case 301: return SCHEDULE_SEEN_LOADED;
         case 302: return SCHEDULE_LOCAL_CONTEXT;
@@ -2080,6 +2110,266 @@ public  final class Event extends
    */
   private void clearHomeSelectSession() {
     if (eventCase_ == 34) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int HOME_RESOLVE_APPROVAL_FIELD_NUMBER = 35;
+  /**
+   * <code>.remoteagent.core.v1.HomeResolveApprovalAction home_resolve_approval = 35 [json_name = "homeResolveApproval"];</code>
+   */
+  @java.lang.Override
+  public boolean hasHomeResolveApproval() {
+    return eventCase_ == 35;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeResolveApprovalAction home_resolve_approval = 35 [json_name = "homeResolveApproval"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.HomeResolveApprovalAction getHomeResolveApproval() {
+    if (eventCase_ == 35) {
+       return (io.github.lewin671.remoteagent.core.proto.HomeResolveApprovalAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.HomeResolveApprovalAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeResolveApprovalAction home_resolve_approval = 35 [json_name = "homeResolveApproval"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setHomeResolveApproval(io.github.lewin671.remoteagent.core.proto.HomeResolveApprovalAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 35;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeResolveApprovalAction home_resolve_approval = 35 [json_name = "homeResolveApproval"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeHomeResolveApproval(io.github.lewin671.remoteagent.core.proto.HomeResolveApprovalAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 35 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.HomeResolveApprovalAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.HomeResolveApprovalAction.newBuilder((io.github.lewin671.remoteagent.core.proto.HomeResolveApprovalAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 35;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeResolveApprovalAction home_resolve_approval = 35 [json_name = "homeResolveApproval"];</code>
+   */
+  private void clearHomeResolveApproval() {
+    if (eventCase_ == 35) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int HOME_EDIT_APPROVAL_DENY_FIELD_NUMBER = 36;
+  /**
+   * <code>.remoteagent.core.v1.HomeEditApprovalDenyAction home_edit_approval_deny = 36 [json_name = "homeEditApprovalDeny"];</code>
+   */
+  @java.lang.Override
+  public boolean hasHomeEditApprovalDeny() {
+    return eventCase_ == 36;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeEditApprovalDenyAction home_edit_approval_deny = 36 [json_name = "homeEditApprovalDeny"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.HomeEditApprovalDenyAction getHomeEditApprovalDeny() {
+    if (eventCase_ == 36) {
+       return (io.github.lewin671.remoteagent.core.proto.HomeEditApprovalDenyAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.HomeEditApprovalDenyAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeEditApprovalDenyAction home_edit_approval_deny = 36 [json_name = "homeEditApprovalDeny"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setHomeEditApprovalDeny(io.github.lewin671.remoteagent.core.proto.HomeEditApprovalDenyAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 36;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeEditApprovalDenyAction home_edit_approval_deny = 36 [json_name = "homeEditApprovalDeny"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeHomeEditApprovalDeny(io.github.lewin671.remoteagent.core.proto.HomeEditApprovalDenyAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 36 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.HomeEditApprovalDenyAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.HomeEditApprovalDenyAction.newBuilder((io.github.lewin671.remoteagent.core.proto.HomeEditApprovalDenyAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 36;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeEditApprovalDenyAction home_edit_approval_deny = 36 [json_name = "homeEditApprovalDeny"];</code>
+   */
+  private void clearHomeEditApprovalDeny() {
+    if (eventCase_ == 36) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int HOME_ANSWER_QUESTION_FIELD_NUMBER = 37;
+  /**
+   * <code>.remoteagent.core.v1.HomeAnswerQuestionAction home_answer_question = 37 [json_name = "homeAnswerQuestion"];</code>
+   */
+  @java.lang.Override
+  public boolean hasHomeAnswerQuestion() {
+    return eventCase_ == 37;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeAnswerQuestionAction home_answer_question = 37 [json_name = "homeAnswerQuestion"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.HomeAnswerQuestionAction getHomeAnswerQuestion() {
+    if (eventCase_ == 37) {
+       return (io.github.lewin671.remoteagent.core.proto.HomeAnswerQuestionAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.HomeAnswerQuestionAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeAnswerQuestionAction home_answer_question = 37 [json_name = "homeAnswerQuestion"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setHomeAnswerQuestion(io.github.lewin671.remoteagent.core.proto.HomeAnswerQuestionAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 37;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeAnswerQuestionAction home_answer_question = 37 [json_name = "homeAnswerQuestion"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeHomeAnswerQuestion(io.github.lewin671.remoteagent.core.proto.HomeAnswerQuestionAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 37 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.HomeAnswerQuestionAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.HomeAnswerQuestionAction.newBuilder((io.github.lewin671.remoteagent.core.proto.HomeAnswerQuestionAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 37;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeAnswerQuestionAction home_answer_question = 37 [json_name = "homeAnswerQuestion"];</code>
+   */
+  private void clearHomeAnswerQuestion() {
+    if (eventCase_ == 37) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int HOME_RETRY_ATTENTION_FIELD_NUMBER = 38;
+  /**
+   * <code>.remoteagent.core.v1.HomeRetryAttentionAction home_retry_attention = 38 [json_name = "homeRetryAttention"];</code>
+   */
+  @java.lang.Override
+  public boolean hasHomeRetryAttention() {
+    return eventCase_ == 38;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeRetryAttentionAction home_retry_attention = 38 [json_name = "homeRetryAttention"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.HomeRetryAttentionAction getHomeRetryAttention() {
+    if (eventCase_ == 38) {
+       return (io.github.lewin671.remoteagent.core.proto.HomeRetryAttentionAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.HomeRetryAttentionAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeRetryAttentionAction home_retry_attention = 38 [json_name = "homeRetryAttention"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setHomeRetryAttention(io.github.lewin671.remoteagent.core.proto.HomeRetryAttentionAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 38;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeRetryAttentionAction home_retry_attention = 38 [json_name = "homeRetryAttention"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeHomeRetryAttention(io.github.lewin671.remoteagent.core.proto.HomeRetryAttentionAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 38 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.HomeRetryAttentionAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.HomeRetryAttentionAction.newBuilder((io.github.lewin671.remoteagent.core.proto.HomeRetryAttentionAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 38;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeRetryAttentionAction home_retry_attention = 38 [json_name = "homeRetryAttention"];</code>
+   */
+  private void clearHomeRetryAttention() {
+    if (eventCase_ == 38) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int HOME_ABANDON_ATTENTION_FIELD_NUMBER = 39;
+  /**
+   * <code>.remoteagent.core.v1.HomeAbandonAttentionAction home_abandon_attention = 39 [json_name = "homeAbandonAttention"];</code>
+   */
+  @java.lang.Override
+  public boolean hasHomeAbandonAttention() {
+    return eventCase_ == 39;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeAbandonAttentionAction home_abandon_attention = 39 [json_name = "homeAbandonAttention"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.HomeAbandonAttentionAction getHomeAbandonAttention() {
+    if (eventCase_ == 39) {
+       return (io.github.lewin671.remoteagent.core.proto.HomeAbandonAttentionAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.HomeAbandonAttentionAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeAbandonAttentionAction home_abandon_attention = 39 [json_name = "homeAbandonAttention"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setHomeAbandonAttention(io.github.lewin671.remoteagent.core.proto.HomeAbandonAttentionAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 39;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeAbandonAttentionAction home_abandon_attention = 39 [json_name = "homeAbandonAttention"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeHomeAbandonAttention(io.github.lewin671.remoteagent.core.proto.HomeAbandonAttentionAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 39 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.HomeAbandonAttentionAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.HomeAbandonAttentionAction.newBuilder((io.github.lewin671.remoteagent.core.proto.HomeAbandonAttentionAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 39;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeAbandonAttentionAction home_abandon_attention = 39 [json_name = "homeAbandonAttention"];</code>
+   */
+  private void clearHomeAbandonAttention() {
+    if (eventCase_ == 39) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -7384,6 +7674,526 @@ public  final class Event extends
    */
   private void clearDraftAppendText() {
     if (eventCase_ == 267) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_EDIT_APPROVAL_DENY_FIELD_NUMBER = 270;
+  /**
+   * <code>.remoteagent.core.v1.SessionEditApprovalDenyAction session_edit_approval_deny = 270 [json_name = "sessionEditApprovalDeny"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionEditApprovalDeny() {
+    return eventCase_ == 270;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionEditApprovalDenyAction session_edit_approval_deny = 270 [json_name = "sessionEditApprovalDeny"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionEditApprovalDenyAction getSessionEditApprovalDeny() {
+    if (eventCase_ == 270) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionEditApprovalDenyAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionEditApprovalDenyAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionEditApprovalDenyAction session_edit_approval_deny = 270 [json_name = "sessionEditApprovalDeny"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionEditApprovalDeny(io.github.lewin671.remoteagent.core.proto.SessionEditApprovalDenyAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 270;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionEditApprovalDenyAction session_edit_approval_deny = 270 [json_name = "sessionEditApprovalDeny"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionEditApprovalDeny(io.github.lewin671.remoteagent.core.proto.SessionEditApprovalDenyAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 270 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionEditApprovalDenyAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionEditApprovalDenyAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionEditApprovalDenyAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 270;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionEditApprovalDenyAction session_edit_approval_deny = 270 [json_name = "sessionEditApprovalDeny"];</code>
+   */
+  private void clearSessionEditApprovalDeny() {
+    if (eventCase_ == 270) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_RESOLVE_APPROVAL_FIELD_NUMBER = 271;
+  /**
+   * <code>.remoteagent.core.v1.SessionResolveApprovalAction session_resolve_approval = 271 [json_name = "sessionResolveApproval"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionResolveApproval() {
+    return eventCase_ == 271;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionResolveApprovalAction session_resolve_approval = 271 [json_name = "sessionResolveApproval"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionResolveApprovalAction getSessionResolveApproval() {
+    if (eventCase_ == 271) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionResolveApprovalAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionResolveApprovalAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionResolveApprovalAction session_resolve_approval = 271 [json_name = "sessionResolveApproval"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionResolveApproval(io.github.lewin671.remoteagent.core.proto.SessionResolveApprovalAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 271;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionResolveApprovalAction session_resolve_approval = 271 [json_name = "sessionResolveApproval"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionResolveApproval(io.github.lewin671.remoteagent.core.proto.SessionResolveApprovalAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 271 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionResolveApprovalAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionResolveApprovalAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionResolveApprovalAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 271;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionResolveApprovalAction session_resolve_approval = 271 [json_name = "sessionResolveApproval"];</code>
+   */
+  private void clearSessionResolveApproval() {
+    if (eventCase_ == 271) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_TOGGLE_QUESTION_OPTION_FIELD_NUMBER = 272;
+  /**
+   * <code>.remoteagent.core.v1.SessionToggleQuestionOptionAction session_toggle_question_option = 272 [json_name = "sessionToggleQuestionOption"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionToggleQuestionOption() {
+    return eventCase_ == 272;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionToggleQuestionOptionAction session_toggle_question_option = 272 [json_name = "sessionToggleQuestionOption"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionToggleQuestionOptionAction getSessionToggleQuestionOption() {
+    if (eventCase_ == 272) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionToggleQuestionOptionAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionToggleQuestionOptionAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionToggleQuestionOptionAction session_toggle_question_option = 272 [json_name = "sessionToggleQuestionOption"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionToggleQuestionOption(io.github.lewin671.remoteagent.core.proto.SessionToggleQuestionOptionAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 272;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionToggleQuestionOptionAction session_toggle_question_option = 272 [json_name = "sessionToggleQuestionOption"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionToggleQuestionOption(io.github.lewin671.remoteagent.core.proto.SessionToggleQuestionOptionAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 272 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionToggleQuestionOptionAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionToggleQuestionOptionAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionToggleQuestionOptionAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 272;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionToggleQuestionOptionAction session_toggle_question_option = 272 [json_name = "sessionToggleQuestionOption"];</code>
+   */
+  private void clearSessionToggleQuestionOption() {
+    if (eventCase_ == 272) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_ANSWER_QUESTION_FIELD_NUMBER = 273;
+  /**
+   * <code>.remoteagent.core.v1.SessionAnswerQuestionAction session_answer_question = 273 [json_name = "sessionAnswerQuestion"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionAnswerQuestion() {
+    return eventCase_ == 273;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionAnswerQuestionAction session_answer_question = 273 [json_name = "sessionAnswerQuestion"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionAnswerQuestionAction getSessionAnswerQuestion() {
+    if (eventCase_ == 273) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionAnswerQuestionAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionAnswerQuestionAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionAnswerQuestionAction session_answer_question = 273 [json_name = "sessionAnswerQuestion"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionAnswerQuestion(io.github.lewin671.remoteagent.core.proto.SessionAnswerQuestionAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 273;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionAnswerQuestionAction session_answer_question = 273 [json_name = "sessionAnswerQuestion"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionAnswerQuestion(io.github.lewin671.remoteagent.core.proto.SessionAnswerQuestionAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 273 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionAnswerQuestionAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionAnswerQuestionAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionAnswerQuestionAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 273;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionAnswerQuestionAction session_answer_question = 273 [json_name = "sessionAnswerQuestion"];</code>
+   */
+  private void clearSessionAnswerQuestion() {
+    if (eventCase_ == 273) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_ANSWER_PLAN_FIELD_NUMBER = 274;
+  /**
+   * <code>.remoteagent.core.v1.SessionAnswerPlanAction session_answer_plan = 274 [json_name = "sessionAnswerPlan"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionAnswerPlan() {
+    return eventCase_ == 274;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionAnswerPlanAction session_answer_plan = 274 [json_name = "sessionAnswerPlan"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionAnswerPlanAction getSessionAnswerPlan() {
+    if (eventCase_ == 274) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionAnswerPlanAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionAnswerPlanAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionAnswerPlanAction session_answer_plan = 274 [json_name = "sessionAnswerPlan"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionAnswerPlan(io.github.lewin671.remoteagent.core.proto.SessionAnswerPlanAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 274;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionAnswerPlanAction session_answer_plan = 274 [json_name = "sessionAnswerPlan"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionAnswerPlan(io.github.lewin671.remoteagent.core.proto.SessionAnswerPlanAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 274 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionAnswerPlanAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionAnswerPlanAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionAnswerPlanAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 274;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionAnswerPlanAction session_answer_plan = 274 [json_name = "sessionAnswerPlan"];</code>
+   */
+  private void clearSessionAnswerPlan() {
+    if (eventCase_ == 274) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_SIMPLE_COMMAND_FIELD_NUMBER = 275;
+  /**
+   * <code>.remoteagent.core.v1.SessionSimpleCommandAction session_simple_command = 275 [json_name = "sessionSimpleCommand"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionSimpleCommand() {
+    return eventCase_ == 275;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionSimpleCommandAction session_simple_command = 275 [json_name = "sessionSimpleCommand"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionSimpleCommandAction getSessionSimpleCommand() {
+    if (eventCase_ == 275) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionSimpleCommandAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionSimpleCommandAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionSimpleCommandAction session_simple_command = 275 [json_name = "sessionSimpleCommand"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionSimpleCommand(io.github.lewin671.remoteagent.core.proto.SessionSimpleCommandAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 275;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionSimpleCommandAction session_simple_command = 275 [json_name = "sessionSimpleCommand"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionSimpleCommand(io.github.lewin671.remoteagent.core.proto.SessionSimpleCommandAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 275 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionSimpleCommandAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionSimpleCommandAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionSimpleCommandAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 275;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionSimpleCommandAction session_simple_command = 275 [json_name = "sessionSimpleCommand"];</code>
+   */
+  private void clearSessionSimpleCommand() {
+    if (eventCase_ == 275) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_RENAME_FIELD_NUMBER = 276;
+  /**
+   * <code>.remoteagent.core.v1.SessionRenameAction session_rename = 276 [json_name = "sessionRename"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionRename() {
+    return eventCase_ == 276;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionRenameAction session_rename = 276 [json_name = "sessionRename"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionRenameAction getSessionRename() {
+    if (eventCase_ == 276) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionRenameAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionRenameAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionRenameAction session_rename = 276 [json_name = "sessionRename"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionRename(io.github.lewin671.remoteagent.core.proto.SessionRenameAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 276;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionRenameAction session_rename = 276 [json_name = "sessionRename"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionRename(io.github.lewin671.remoteagent.core.proto.SessionRenameAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 276 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionRenameAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionRenameAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionRenameAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 276;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionRenameAction session_rename = 276 [json_name = "sessionRename"];</code>
+   */
+  private void clearSessionRename() {
+    if (eventCase_ == 276) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_SET_APPROVAL_MODE_FIELD_NUMBER = 277;
+  /**
+   * <code>.remoteagent.core.v1.SessionSetApprovalModeAction session_set_approval_mode = 277 [json_name = "sessionSetApprovalMode"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionSetApprovalMode() {
+    return eventCase_ == 277;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionSetApprovalModeAction session_set_approval_mode = 277 [json_name = "sessionSetApprovalMode"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionSetApprovalModeAction getSessionSetApprovalMode() {
+    if (eventCase_ == 277) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionSetApprovalModeAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionSetApprovalModeAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionSetApprovalModeAction session_set_approval_mode = 277 [json_name = "sessionSetApprovalMode"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionSetApprovalMode(io.github.lewin671.remoteagent.core.proto.SessionSetApprovalModeAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 277;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionSetApprovalModeAction session_set_approval_mode = 277 [json_name = "sessionSetApprovalMode"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionSetApprovalMode(io.github.lewin671.remoteagent.core.proto.SessionSetApprovalModeAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 277 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionSetApprovalModeAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionSetApprovalModeAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionSetApprovalModeAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 277;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionSetApprovalModeAction session_set_approval_mode = 277 [json_name = "sessionSetApprovalMode"];</code>
+   */
+  private void clearSessionSetApprovalMode() {
+    if (eventCase_ == 277) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_SET_MODEL_FIELD_NUMBER = 278;
+  /**
+   * <code>.remoteagent.core.v1.SessionSetModelAction session_set_model = 278 [json_name = "sessionSetModel"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionSetModel() {
+    return eventCase_ == 278;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionSetModelAction session_set_model = 278 [json_name = "sessionSetModel"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionSetModelAction getSessionSetModel() {
+    if (eventCase_ == 278) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionSetModelAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionSetModelAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionSetModelAction session_set_model = 278 [json_name = "sessionSetModel"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionSetModel(io.github.lewin671.remoteagent.core.proto.SessionSetModelAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 278;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionSetModelAction session_set_model = 278 [json_name = "sessionSetModel"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionSetModel(io.github.lewin671.remoteagent.core.proto.SessionSetModelAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 278 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionSetModelAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionSetModelAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionSetModelAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 278;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionSetModelAction session_set_model = 278 [json_name = "sessionSetModel"];</code>
+   */
+  private void clearSessionSetModel() {
+    if (eventCase_ == 278) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_RETRY_COMMAND_FIELD_NUMBER = 279;
+  /**
+   * <code>.remoteagent.core.v1.SessionRetryCommandAction session_retry_command = 279 [json_name = "sessionRetryCommand"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionRetryCommand() {
+    return eventCase_ == 279;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionRetryCommandAction session_retry_command = 279 [json_name = "sessionRetryCommand"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionRetryCommandAction getSessionRetryCommand() {
+    if (eventCase_ == 279) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionRetryCommandAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionRetryCommandAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionRetryCommandAction session_retry_command = 279 [json_name = "sessionRetryCommand"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionRetryCommand(io.github.lewin671.remoteagent.core.proto.SessionRetryCommandAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 279;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionRetryCommandAction session_retry_command = 279 [json_name = "sessionRetryCommand"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionRetryCommand(io.github.lewin671.remoteagent.core.proto.SessionRetryCommandAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 279 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionRetryCommandAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionRetryCommandAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionRetryCommandAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 279;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionRetryCommandAction session_retry_command = 279 [json_name = "sessionRetryCommand"];</code>
+   */
+  private void clearSessionRetryCommand() {
+    if (eventCase_ == 279) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -13125,6 +13935,246 @@ public  final class Event extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.HomeResolveApprovalAction home_resolve_approval = 35 [json_name = "homeResolveApproval"];</code>
+     */
+    @java.lang.Override
+    public boolean hasHomeResolveApproval() {
+      return instance.hasHomeResolveApproval();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeResolveApprovalAction home_resolve_approval = 35 [json_name = "homeResolveApproval"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.HomeResolveApprovalAction getHomeResolveApproval() {
+      return instance.getHomeResolveApproval();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeResolveApprovalAction home_resolve_approval = 35 [json_name = "homeResolveApproval"];</code>
+     */
+    public Builder setHomeResolveApproval(io.github.lewin671.remoteagent.core.proto.HomeResolveApprovalAction value) {
+      copyOnWrite();
+      instance.setHomeResolveApproval(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeResolveApprovalAction home_resolve_approval = 35 [json_name = "homeResolveApproval"];</code>
+     */
+    public Builder setHomeResolveApproval(
+        io.github.lewin671.remoteagent.core.proto.HomeResolveApprovalAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setHomeResolveApproval(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeResolveApprovalAction home_resolve_approval = 35 [json_name = "homeResolveApproval"];</code>
+     */
+    public Builder mergeHomeResolveApproval(io.github.lewin671.remoteagent.core.proto.HomeResolveApprovalAction value) {
+      copyOnWrite();
+      instance.mergeHomeResolveApproval(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeResolveApprovalAction home_resolve_approval = 35 [json_name = "homeResolveApproval"];</code>
+     */
+    public Builder clearHomeResolveApproval() {
+      copyOnWrite();
+      instance.clearHomeResolveApproval();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.HomeEditApprovalDenyAction home_edit_approval_deny = 36 [json_name = "homeEditApprovalDeny"];</code>
+     */
+    @java.lang.Override
+    public boolean hasHomeEditApprovalDeny() {
+      return instance.hasHomeEditApprovalDeny();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeEditApprovalDenyAction home_edit_approval_deny = 36 [json_name = "homeEditApprovalDeny"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.HomeEditApprovalDenyAction getHomeEditApprovalDeny() {
+      return instance.getHomeEditApprovalDeny();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeEditApprovalDenyAction home_edit_approval_deny = 36 [json_name = "homeEditApprovalDeny"];</code>
+     */
+    public Builder setHomeEditApprovalDeny(io.github.lewin671.remoteagent.core.proto.HomeEditApprovalDenyAction value) {
+      copyOnWrite();
+      instance.setHomeEditApprovalDeny(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeEditApprovalDenyAction home_edit_approval_deny = 36 [json_name = "homeEditApprovalDeny"];</code>
+     */
+    public Builder setHomeEditApprovalDeny(
+        io.github.lewin671.remoteagent.core.proto.HomeEditApprovalDenyAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setHomeEditApprovalDeny(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeEditApprovalDenyAction home_edit_approval_deny = 36 [json_name = "homeEditApprovalDeny"];</code>
+     */
+    public Builder mergeHomeEditApprovalDeny(io.github.lewin671.remoteagent.core.proto.HomeEditApprovalDenyAction value) {
+      copyOnWrite();
+      instance.mergeHomeEditApprovalDeny(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeEditApprovalDenyAction home_edit_approval_deny = 36 [json_name = "homeEditApprovalDeny"];</code>
+     */
+    public Builder clearHomeEditApprovalDeny() {
+      copyOnWrite();
+      instance.clearHomeEditApprovalDeny();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.HomeAnswerQuestionAction home_answer_question = 37 [json_name = "homeAnswerQuestion"];</code>
+     */
+    @java.lang.Override
+    public boolean hasHomeAnswerQuestion() {
+      return instance.hasHomeAnswerQuestion();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeAnswerQuestionAction home_answer_question = 37 [json_name = "homeAnswerQuestion"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.HomeAnswerQuestionAction getHomeAnswerQuestion() {
+      return instance.getHomeAnswerQuestion();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeAnswerQuestionAction home_answer_question = 37 [json_name = "homeAnswerQuestion"];</code>
+     */
+    public Builder setHomeAnswerQuestion(io.github.lewin671.remoteagent.core.proto.HomeAnswerQuestionAction value) {
+      copyOnWrite();
+      instance.setHomeAnswerQuestion(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeAnswerQuestionAction home_answer_question = 37 [json_name = "homeAnswerQuestion"];</code>
+     */
+    public Builder setHomeAnswerQuestion(
+        io.github.lewin671.remoteagent.core.proto.HomeAnswerQuestionAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setHomeAnswerQuestion(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeAnswerQuestionAction home_answer_question = 37 [json_name = "homeAnswerQuestion"];</code>
+     */
+    public Builder mergeHomeAnswerQuestion(io.github.lewin671.remoteagent.core.proto.HomeAnswerQuestionAction value) {
+      copyOnWrite();
+      instance.mergeHomeAnswerQuestion(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeAnswerQuestionAction home_answer_question = 37 [json_name = "homeAnswerQuestion"];</code>
+     */
+    public Builder clearHomeAnswerQuestion() {
+      copyOnWrite();
+      instance.clearHomeAnswerQuestion();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.HomeRetryAttentionAction home_retry_attention = 38 [json_name = "homeRetryAttention"];</code>
+     */
+    @java.lang.Override
+    public boolean hasHomeRetryAttention() {
+      return instance.hasHomeRetryAttention();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeRetryAttentionAction home_retry_attention = 38 [json_name = "homeRetryAttention"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.HomeRetryAttentionAction getHomeRetryAttention() {
+      return instance.getHomeRetryAttention();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeRetryAttentionAction home_retry_attention = 38 [json_name = "homeRetryAttention"];</code>
+     */
+    public Builder setHomeRetryAttention(io.github.lewin671.remoteagent.core.proto.HomeRetryAttentionAction value) {
+      copyOnWrite();
+      instance.setHomeRetryAttention(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeRetryAttentionAction home_retry_attention = 38 [json_name = "homeRetryAttention"];</code>
+     */
+    public Builder setHomeRetryAttention(
+        io.github.lewin671.remoteagent.core.proto.HomeRetryAttentionAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setHomeRetryAttention(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeRetryAttentionAction home_retry_attention = 38 [json_name = "homeRetryAttention"];</code>
+     */
+    public Builder mergeHomeRetryAttention(io.github.lewin671.remoteagent.core.proto.HomeRetryAttentionAction value) {
+      copyOnWrite();
+      instance.mergeHomeRetryAttention(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeRetryAttentionAction home_retry_attention = 38 [json_name = "homeRetryAttention"];</code>
+     */
+    public Builder clearHomeRetryAttention() {
+      copyOnWrite();
+      instance.clearHomeRetryAttention();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.HomeAbandonAttentionAction home_abandon_attention = 39 [json_name = "homeAbandonAttention"];</code>
+     */
+    @java.lang.Override
+    public boolean hasHomeAbandonAttention() {
+      return instance.hasHomeAbandonAttention();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeAbandonAttentionAction home_abandon_attention = 39 [json_name = "homeAbandonAttention"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.HomeAbandonAttentionAction getHomeAbandonAttention() {
+      return instance.getHomeAbandonAttention();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeAbandonAttentionAction home_abandon_attention = 39 [json_name = "homeAbandonAttention"];</code>
+     */
+    public Builder setHomeAbandonAttention(io.github.lewin671.remoteagent.core.proto.HomeAbandonAttentionAction value) {
+      copyOnWrite();
+      instance.setHomeAbandonAttention(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeAbandonAttentionAction home_abandon_attention = 39 [json_name = "homeAbandonAttention"];</code>
+     */
+    public Builder setHomeAbandonAttention(
+        io.github.lewin671.remoteagent.core.proto.HomeAbandonAttentionAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setHomeAbandonAttention(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeAbandonAttentionAction home_abandon_attention = 39 [json_name = "homeAbandonAttention"];</code>
+     */
+    public Builder mergeHomeAbandonAttention(io.github.lewin671.remoteagent.core.proto.HomeAbandonAttentionAction value) {
+      copyOnWrite();
+      instance.mergeHomeAbandonAttention(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeAbandonAttentionAction home_abandon_attention = 39 [json_name = "homeAbandonAttention"];</code>
+     */
+    public Builder clearHomeAbandonAttention() {
+      copyOnWrite();
+      instance.clearHomeAbandonAttention();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.ProjectSetSearchAction project_set_search = 40 [json_name = "projectSetSearch"];</code>
      */
     @java.lang.Override
@@ -18021,6 +19071,486 @@ public  final class Event extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.SessionEditApprovalDenyAction session_edit_approval_deny = 270 [json_name = "sessionEditApprovalDeny"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionEditApprovalDeny() {
+      return instance.hasSessionEditApprovalDeny();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionEditApprovalDenyAction session_edit_approval_deny = 270 [json_name = "sessionEditApprovalDeny"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionEditApprovalDenyAction getSessionEditApprovalDeny() {
+      return instance.getSessionEditApprovalDeny();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionEditApprovalDenyAction session_edit_approval_deny = 270 [json_name = "sessionEditApprovalDeny"];</code>
+     */
+    public Builder setSessionEditApprovalDeny(io.github.lewin671.remoteagent.core.proto.SessionEditApprovalDenyAction value) {
+      copyOnWrite();
+      instance.setSessionEditApprovalDeny(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionEditApprovalDenyAction session_edit_approval_deny = 270 [json_name = "sessionEditApprovalDeny"];</code>
+     */
+    public Builder setSessionEditApprovalDeny(
+        io.github.lewin671.remoteagent.core.proto.SessionEditApprovalDenyAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionEditApprovalDeny(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionEditApprovalDenyAction session_edit_approval_deny = 270 [json_name = "sessionEditApprovalDeny"];</code>
+     */
+    public Builder mergeSessionEditApprovalDeny(io.github.lewin671.remoteagent.core.proto.SessionEditApprovalDenyAction value) {
+      copyOnWrite();
+      instance.mergeSessionEditApprovalDeny(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionEditApprovalDenyAction session_edit_approval_deny = 270 [json_name = "sessionEditApprovalDeny"];</code>
+     */
+    public Builder clearSessionEditApprovalDeny() {
+      copyOnWrite();
+      instance.clearSessionEditApprovalDeny();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionResolveApprovalAction session_resolve_approval = 271 [json_name = "sessionResolveApproval"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionResolveApproval() {
+      return instance.hasSessionResolveApproval();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionResolveApprovalAction session_resolve_approval = 271 [json_name = "sessionResolveApproval"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionResolveApprovalAction getSessionResolveApproval() {
+      return instance.getSessionResolveApproval();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionResolveApprovalAction session_resolve_approval = 271 [json_name = "sessionResolveApproval"];</code>
+     */
+    public Builder setSessionResolveApproval(io.github.lewin671.remoteagent.core.proto.SessionResolveApprovalAction value) {
+      copyOnWrite();
+      instance.setSessionResolveApproval(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionResolveApprovalAction session_resolve_approval = 271 [json_name = "sessionResolveApproval"];</code>
+     */
+    public Builder setSessionResolveApproval(
+        io.github.lewin671.remoteagent.core.proto.SessionResolveApprovalAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionResolveApproval(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionResolveApprovalAction session_resolve_approval = 271 [json_name = "sessionResolveApproval"];</code>
+     */
+    public Builder mergeSessionResolveApproval(io.github.lewin671.remoteagent.core.proto.SessionResolveApprovalAction value) {
+      copyOnWrite();
+      instance.mergeSessionResolveApproval(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionResolveApprovalAction session_resolve_approval = 271 [json_name = "sessionResolveApproval"];</code>
+     */
+    public Builder clearSessionResolveApproval() {
+      copyOnWrite();
+      instance.clearSessionResolveApproval();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionToggleQuestionOptionAction session_toggle_question_option = 272 [json_name = "sessionToggleQuestionOption"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionToggleQuestionOption() {
+      return instance.hasSessionToggleQuestionOption();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionToggleQuestionOptionAction session_toggle_question_option = 272 [json_name = "sessionToggleQuestionOption"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionToggleQuestionOptionAction getSessionToggleQuestionOption() {
+      return instance.getSessionToggleQuestionOption();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionToggleQuestionOptionAction session_toggle_question_option = 272 [json_name = "sessionToggleQuestionOption"];</code>
+     */
+    public Builder setSessionToggleQuestionOption(io.github.lewin671.remoteagent.core.proto.SessionToggleQuestionOptionAction value) {
+      copyOnWrite();
+      instance.setSessionToggleQuestionOption(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionToggleQuestionOptionAction session_toggle_question_option = 272 [json_name = "sessionToggleQuestionOption"];</code>
+     */
+    public Builder setSessionToggleQuestionOption(
+        io.github.lewin671.remoteagent.core.proto.SessionToggleQuestionOptionAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionToggleQuestionOption(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionToggleQuestionOptionAction session_toggle_question_option = 272 [json_name = "sessionToggleQuestionOption"];</code>
+     */
+    public Builder mergeSessionToggleQuestionOption(io.github.lewin671.remoteagent.core.proto.SessionToggleQuestionOptionAction value) {
+      copyOnWrite();
+      instance.mergeSessionToggleQuestionOption(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionToggleQuestionOptionAction session_toggle_question_option = 272 [json_name = "sessionToggleQuestionOption"];</code>
+     */
+    public Builder clearSessionToggleQuestionOption() {
+      copyOnWrite();
+      instance.clearSessionToggleQuestionOption();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionAnswerQuestionAction session_answer_question = 273 [json_name = "sessionAnswerQuestion"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionAnswerQuestion() {
+      return instance.hasSessionAnswerQuestion();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionAnswerQuestionAction session_answer_question = 273 [json_name = "sessionAnswerQuestion"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionAnswerQuestionAction getSessionAnswerQuestion() {
+      return instance.getSessionAnswerQuestion();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionAnswerQuestionAction session_answer_question = 273 [json_name = "sessionAnswerQuestion"];</code>
+     */
+    public Builder setSessionAnswerQuestion(io.github.lewin671.remoteagent.core.proto.SessionAnswerQuestionAction value) {
+      copyOnWrite();
+      instance.setSessionAnswerQuestion(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionAnswerQuestionAction session_answer_question = 273 [json_name = "sessionAnswerQuestion"];</code>
+     */
+    public Builder setSessionAnswerQuestion(
+        io.github.lewin671.remoteagent.core.proto.SessionAnswerQuestionAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionAnswerQuestion(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionAnswerQuestionAction session_answer_question = 273 [json_name = "sessionAnswerQuestion"];</code>
+     */
+    public Builder mergeSessionAnswerQuestion(io.github.lewin671.remoteagent.core.proto.SessionAnswerQuestionAction value) {
+      copyOnWrite();
+      instance.mergeSessionAnswerQuestion(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionAnswerQuestionAction session_answer_question = 273 [json_name = "sessionAnswerQuestion"];</code>
+     */
+    public Builder clearSessionAnswerQuestion() {
+      copyOnWrite();
+      instance.clearSessionAnswerQuestion();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionAnswerPlanAction session_answer_plan = 274 [json_name = "sessionAnswerPlan"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionAnswerPlan() {
+      return instance.hasSessionAnswerPlan();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionAnswerPlanAction session_answer_plan = 274 [json_name = "sessionAnswerPlan"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionAnswerPlanAction getSessionAnswerPlan() {
+      return instance.getSessionAnswerPlan();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionAnswerPlanAction session_answer_plan = 274 [json_name = "sessionAnswerPlan"];</code>
+     */
+    public Builder setSessionAnswerPlan(io.github.lewin671.remoteagent.core.proto.SessionAnswerPlanAction value) {
+      copyOnWrite();
+      instance.setSessionAnswerPlan(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionAnswerPlanAction session_answer_plan = 274 [json_name = "sessionAnswerPlan"];</code>
+     */
+    public Builder setSessionAnswerPlan(
+        io.github.lewin671.remoteagent.core.proto.SessionAnswerPlanAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionAnswerPlan(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionAnswerPlanAction session_answer_plan = 274 [json_name = "sessionAnswerPlan"];</code>
+     */
+    public Builder mergeSessionAnswerPlan(io.github.lewin671.remoteagent.core.proto.SessionAnswerPlanAction value) {
+      copyOnWrite();
+      instance.mergeSessionAnswerPlan(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionAnswerPlanAction session_answer_plan = 274 [json_name = "sessionAnswerPlan"];</code>
+     */
+    public Builder clearSessionAnswerPlan() {
+      copyOnWrite();
+      instance.clearSessionAnswerPlan();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionSimpleCommandAction session_simple_command = 275 [json_name = "sessionSimpleCommand"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionSimpleCommand() {
+      return instance.hasSessionSimpleCommand();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSimpleCommandAction session_simple_command = 275 [json_name = "sessionSimpleCommand"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionSimpleCommandAction getSessionSimpleCommand() {
+      return instance.getSessionSimpleCommand();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSimpleCommandAction session_simple_command = 275 [json_name = "sessionSimpleCommand"];</code>
+     */
+    public Builder setSessionSimpleCommand(io.github.lewin671.remoteagent.core.proto.SessionSimpleCommandAction value) {
+      copyOnWrite();
+      instance.setSessionSimpleCommand(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSimpleCommandAction session_simple_command = 275 [json_name = "sessionSimpleCommand"];</code>
+     */
+    public Builder setSessionSimpleCommand(
+        io.github.lewin671.remoteagent.core.proto.SessionSimpleCommandAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionSimpleCommand(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSimpleCommandAction session_simple_command = 275 [json_name = "sessionSimpleCommand"];</code>
+     */
+    public Builder mergeSessionSimpleCommand(io.github.lewin671.remoteagent.core.proto.SessionSimpleCommandAction value) {
+      copyOnWrite();
+      instance.mergeSessionSimpleCommand(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSimpleCommandAction session_simple_command = 275 [json_name = "sessionSimpleCommand"];</code>
+     */
+    public Builder clearSessionSimpleCommand() {
+      copyOnWrite();
+      instance.clearSessionSimpleCommand();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionRenameAction session_rename = 276 [json_name = "sessionRename"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionRename() {
+      return instance.hasSessionRename();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRenameAction session_rename = 276 [json_name = "sessionRename"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionRenameAction getSessionRename() {
+      return instance.getSessionRename();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRenameAction session_rename = 276 [json_name = "sessionRename"];</code>
+     */
+    public Builder setSessionRename(io.github.lewin671.remoteagent.core.proto.SessionRenameAction value) {
+      copyOnWrite();
+      instance.setSessionRename(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRenameAction session_rename = 276 [json_name = "sessionRename"];</code>
+     */
+    public Builder setSessionRename(
+        io.github.lewin671.remoteagent.core.proto.SessionRenameAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionRename(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRenameAction session_rename = 276 [json_name = "sessionRename"];</code>
+     */
+    public Builder mergeSessionRename(io.github.lewin671.remoteagent.core.proto.SessionRenameAction value) {
+      copyOnWrite();
+      instance.mergeSessionRename(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRenameAction session_rename = 276 [json_name = "sessionRename"];</code>
+     */
+    public Builder clearSessionRename() {
+      copyOnWrite();
+      instance.clearSessionRename();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionSetApprovalModeAction session_set_approval_mode = 277 [json_name = "sessionSetApprovalMode"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionSetApprovalMode() {
+      return instance.hasSessionSetApprovalMode();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSetApprovalModeAction session_set_approval_mode = 277 [json_name = "sessionSetApprovalMode"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionSetApprovalModeAction getSessionSetApprovalMode() {
+      return instance.getSessionSetApprovalMode();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSetApprovalModeAction session_set_approval_mode = 277 [json_name = "sessionSetApprovalMode"];</code>
+     */
+    public Builder setSessionSetApprovalMode(io.github.lewin671.remoteagent.core.proto.SessionSetApprovalModeAction value) {
+      copyOnWrite();
+      instance.setSessionSetApprovalMode(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSetApprovalModeAction session_set_approval_mode = 277 [json_name = "sessionSetApprovalMode"];</code>
+     */
+    public Builder setSessionSetApprovalMode(
+        io.github.lewin671.remoteagent.core.proto.SessionSetApprovalModeAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionSetApprovalMode(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSetApprovalModeAction session_set_approval_mode = 277 [json_name = "sessionSetApprovalMode"];</code>
+     */
+    public Builder mergeSessionSetApprovalMode(io.github.lewin671.remoteagent.core.proto.SessionSetApprovalModeAction value) {
+      copyOnWrite();
+      instance.mergeSessionSetApprovalMode(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSetApprovalModeAction session_set_approval_mode = 277 [json_name = "sessionSetApprovalMode"];</code>
+     */
+    public Builder clearSessionSetApprovalMode() {
+      copyOnWrite();
+      instance.clearSessionSetApprovalMode();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionSetModelAction session_set_model = 278 [json_name = "sessionSetModel"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionSetModel() {
+      return instance.hasSessionSetModel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSetModelAction session_set_model = 278 [json_name = "sessionSetModel"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionSetModelAction getSessionSetModel() {
+      return instance.getSessionSetModel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSetModelAction session_set_model = 278 [json_name = "sessionSetModel"];</code>
+     */
+    public Builder setSessionSetModel(io.github.lewin671.remoteagent.core.proto.SessionSetModelAction value) {
+      copyOnWrite();
+      instance.setSessionSetModel(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSetModelAction session_set_model = 278 [json_name = "sessionSetModel"];</code>
+     */
+    public Builder setSessionSetModel(
+        io.github.lewin671.remoteagent.core.proto.SessionSetModelAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionSetModel(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSetModelAction session_set_model = 278 [json_name = "sessionSetModel"];</code>
+     */
+    public Builder mergeSessionSetModel(io.github.lewin671.remoteagent.core.proto.SessionSetModelAction value) {
+      copyOnWrite();
+      instance.mergeSessionSetModel(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSetModelAction session_set_model = 278 [json_name = "sessionSetModel"];</code>
+     */
+    public Builder clearSessionSetModel() {
+      copyOnWrite();
+      instance.clearSessionSetModel();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionRetryCommandAction session_retry_command = 279 [json_name = "sessionRetryCommand"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionRetryCommand() {
+      return instance.hasSessionRetryCommand();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRetryCommandAction session_retry_command = 279 [json_name = "sessionRetryCommand"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionRetryCommandAction getSessionRetryCommand() {
+      return instance.getSessionRetryCommand();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRetryCommandAction session_retry_command = 279 [json_name = "sessionRetryCommand"];</code>
+     */
+    public Builder setSessionRetryCommand(io.github.lewin671.remoteagent.core.proto.SessionRetryCommandAction value) {
+      copyOnWrite();
+      instance.setSessionRetryCommand(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRetryCommandAction session_retry_command = 279 [json_name = "sessionRetryCommand"];</code>
+     */
+    public Builder setSessionRetryCommand(
+        io.github.lewin671.remoteagent.core.proto.SessionRetryCommandAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionRetryCommand(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRetryCommandAction session_retry_command = 279 [json_name = "sessionRetryCommand"];</code>
+     */
+    public Builder mergeSessionRetryCommand(io.github.lewin671.remoteagent.core.proto.SessionRetryCommandAction value) {
+      copyOnWrite();
+      instance.mergeSessionRetryCommand(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRetryCommandAction session_retry_command = 279 [json_name = "sessionRetryCommand"];</code>
+     */
+    public Builder clearSessionRetryCommand() {
+      copyOnWrite();
+      instance.clearSessionRetryCommand();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>
      */
     @java.lang.Override
@@ -21910,6 +23440,11 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.HomeLoadMoreEndedAction.class,
             io.github.lewin671.remoteagent.core.proto.HomeRetryLoadAction.class,
             io.github.lewin671.remoteagent.core.proto.HomeSelectSessionAction.class,
+            io.github.lewin671.remoteagent.core.proto.HomeResolveApprovalAction.class,
+            io.github.lewin671.remoteagent.core.proto.HomeEditApprovalDenyAction.class,
+            io.github.lewin671.remoteagent.core.proto.HomeAnswerQuestionAction.class,
+            io.github.lewin671.remoteagent.core.proto.HomeRetryAttentionAction.class,
+            io.github.lewin671.remoteagent.core.proto.HomeAbandonAttentionAction.class,
             io.github.lewin671.remoteagent.core.proto.ProjectSetSearchAction.class,
             io.github.lewin671.remoteagent.core.proto.ProjectKeyAction.class,
             io.github.lewin671.remoteagent.core.proto.ProjectKeyAction.class,
@@ -21992,6 +23527,16 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.DraftImageViewerNavigateAction.class,
             io.github.lewin671.remoteagent.core.proto.DraftImageViewerCloseAction.class,
             io.github.lewin671.remoteagent.core.proto.DraftAppendTextAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionEditApprovalDenyAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionResolveApprovalAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionToggleQuestionOptionAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionAnswerQuestionAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionAnswerPlanAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionSimpleCommandAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionRenameAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionSetApprovalModeAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionSetModelAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionRetryCommandAction.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleCacheLoadedEvent.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleSeenLoadedEvent.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleLocalContextEvent.class,
@@ -22093,23 +23638,25 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.SecurityOpenNotifyEvent.class,
           };
           java.lang.String info =
-              "\u0000\u00d4\u0001\u0000\u0001\u01d1\u00d4\u0000\u0002\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u00e3\u0001\u0000\u0001\u01d1\u00e3\u0000\u0002\u0000\u0001<\u0000\u0002<" +
               "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000" +
               "\t<\u0000\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010" +
               "<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000" +
               "\u0017<\u0000\u0018<\u0000\u001a<\u0000\u001b<\u0000\u001e<\u0000\u001f<\u0000 <" +
-              "\u0000!<\u0000\"<\u0000(<\u0000)<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/" +
-              "<\u00002<\u00003<\u00004<\u00005<\u00006<\u00008<\u00009<\u0000:<\u0000;<\u0000b" +
-              "\u0002c\u0002d\u021ae#\u00c8<\u0000\u00c9<\u0000\u00ca<\u0000\u00cb<\u0000\u00cc" +
-              "<\u0000\u00cd<\u0000\u00ce<\u0000\u00cf<\u0000\u00d0<\u0000\u00d1<\u0000\u00d2<\u0000" +
-              "\u00d3<\u0000\u00d4<\u0000\u00d5<\u0000\u00d6<\u0000\u00d7<\u0000\u00d9<\u0000\u00da" +
-              "<\u0000\u00db<\u0000\u00dc<\u0000\u00dd<\u0000\u00de<\u0000\u00df<\u0000\u00e0<\u0000" +
-              "\u00e1<\u0000\u00e2<\u0000\u00e3<\u0000\u00e4<\u0000\u00e5<\u0000\u00e6<\u0000\u00e7" +
-              "<\u0000\u00e8<\u0000\u00e9<\u0000\u00f0<\u0000\u00f1<\u0000\u00f2<\u0000\u00f3<\u0000" +
-              "\u00f4<\u0000\u00f5<\u0000\u00f6<\u0000\u00f7<\u0000\u00f8<\u0000\u00f9<\u0000\u00fa" +
-              "<\u0000\u00fb<\u0000\u00fc<\u0000\u00fd<\u0000\u00fe<\u0000\u00ff<\u0000\u0100<\u0000" +
-              "\u0101<\u0000\u0102<\u0000\u0103<\u0000\u0104<\u0000\u0105<\u0000\u0106<\u0000\u0107" +
-              "<\u0000\u0108<\u0000\u0109<\u0000\u010a<\u0000\u010b<\u0000\u012c<\u0000\u012d<\u0000" +
+              "\u0000!<\u0000\"<\u0000#<\u0000$<\u0000%<\u0000&<\u0000\'<\u0000(<\u0000)<\u0000" +
+              "*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/<\u00002<\u00003<\u00004<\u00005<\u0000" +
+              "6<\u00008<\u00009<\u0000:<\u0000;<\u0000b\u0002c\u0002d\u021ae#\u00c8<\u0000\u00c9" +
+              "<\u0000\u00ca<\u0000\u00cb<\u0000\u00cc<\u0000\u00cd<\u0000\u00ce<\u0000\u00cf<\u0000" +
+              "\u00d0<\u0000\u00d1<\u0000\u00d2<\u0000\u00d3<\u0000\u00d4<\u0000\u00d5<\u0000\u00d6" +
+              "<\u0000\u00d7<\u0000\u00d9<\u0000\u00da<\u0000\u00db<\u0000\u00dc<\u0000\u00dd<\u0000" +
+              "\u00de<\u0000\u00df<\u0000\u00e0<\u0000\u00e1<\u0000\u00e2<\u0000\u00e3<\u0000\u00e4" +
+              "<\u0000\u00e5<\u0000\u00e6<\u0000\u00e7<\u0000\u00e8<\u0000\u00e9<\u0000\u00f0<\u0000" +
+              "\u00f1<\u0000\u00f2<\u0000\u00f3<\u0000\u00f4<\u0000\u00f5<\u0000\u00f6<\u0000\u00f7" +
+              "<\u0000\u00f8<\u0000\u00f9<\u0000\u00fa<\u0000\u00fb<\u0000\u00fc<\u0000\u00fd<\u0000" +
+              "\u00fe<\u0000\u00ff<\u0000\u0100<\u0000\u0101<\u0000\u0102<\u0000\u0103<\u0000\u0104" +
+              "<\u0000\u0105<\u0000\u0106<\u0000\u0107<\u0000\u0108<\u0000\u0109<\u0000\u010a<\u0000" +
+              "\u010b<\u0000\u010e<\u0000\u010f<\u0000\u0110<\u0000\u0111<\u0000\u0112<\u0000\u0113" +
+              "<\u0000\u0114<\u0000\u0115<\u0000\u0116<\u0000\u0117<\u0000\u012c<\u0000\u012d<\u0000" +
               "\u012e<\u0000\u012f<\u0000\u0130<\u0000\u0136<\u0000\u0137<\u0000\u0138<\u0000\u0139" +
               "<\u0000\u013a<\u0000\u0140<\u0000\u0141<\u0000\u0142<\u0000\u0143<\u0000\u0144<\u0000" +
               "\u0145<\u0000\u0146<\u0000\u014a<\u0000\u014b<\u0000\u014c<\u0000\u014d<\u0000\u014e" +

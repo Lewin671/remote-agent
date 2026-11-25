@@ -1028,7 +1028,9 @@ func pendingFromProjection(ps *corev1.ProjectionState, meta *v1.Session) lists.P
 			p.ApprovalToolName = req.ToolName
 			p.ApprovalCommand = req.Command
 			p.ApprovalToolInput = req.ToolInputJson
+			p.ApprovalDescription = req.Description
 			p.ApprovalTruncated = lists.ApprovalTruncated(req)
+			p.ApprovalSkeleton = lists.IsApprovalSkeleton(req)
 			if req.Deadline != nil {
 				p.ApprovalDeadlineMs = req.Deadline.Seconds*1000 + int64(req.Deadline.Nanos)/1_000_000
 			}

@@ -150,4 +150,43 @@ public interface HomeQuestionCardViewOrBuilder extends
    * @return The offlineNote.
    */
   io.github.lewin671.remoteagent.core.proto.Text getOfflineNote();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionCommandState command = 15 [json_name = "command"];</code>
+   * @return Whether the command field is set.
+   */
+  boolean hasCommand();
+  /**
+   * <code>.remoteagent.core.v1.SessionCommandState command = 15 [json_name = "command"];</code>
+   * @return The command.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionCommandState getCommand();
+
+  /**
+   * <code>.remoteagent.core.v1.HomeFocusPhase phase = 16 [json_name = "phase"];</code>
+   * @return The enum numeric value on the wire for phase.
+   */
+  int getPhaseValue();
+  /**
+   * <code>.remoteagent.core.v1.HomeFocusPhase phase = 16 [json_name = "phase"];</code>
+   * @return The phase.
+   */
+  io.github.lewin671.remoteagent.core.proto.HomeFocusPhase getPhase();
+
+  /**
+   * <code>int32 picked_option_num = 17 [json_name = "pickedOptionNum"];</code>
+   * @return The pickedOptionNum.
+   */
+  int getPickedOptionNum();
+
+  /**
+   * <code>.remoteagent.core.v1.Text resolution_text = 18 [json_name = "resolutionText"];</code>
+   * @return Whether the resolutionText field is set.
+   */
+  boolean hasResolutionText();
+  /**
+   * <code>.remoteagent.core.v1.Text resolution_text = 18 [json_name = "resolutionText"];</code>
+   * @return The resolutionText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getResolutionText();
 }

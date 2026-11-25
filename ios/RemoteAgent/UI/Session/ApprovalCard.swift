@@ -1,7 +1,7 @@
 // The decision on an approval, on the dark card (design-system §6 「终端卡」),
 // wherever an approval is drawn: the home page's card, the session's dock
 // and the approval's own page. 不允许 asks for a reason in place; once
-// decided the card shrinks to one status line of Core's `PBSessionCommandState`.
+// decided the card shrinks to one status line of Core's `PBCoreSessionCommandState`.
 import RACore
 import RAProto
 import SwiftUI
@@ -17,7 +17,7 @@ struct ApprovalTarget {
     let isSkeleton: Bool
     let expired: Bool
     let locked: Bool
-    let commandState: PBSessionCommandState?
+    let commandState: PBCoreSessionCommandState?
     let canAlwaysAllow: Bool
     let alwaysLabel: String
     let denyPlaceholder: String
@@ -43,7 +43,7 @@ struct ApprovalTarget {
         self.denyPlaceholder = a.hasDenyReasonPlaceholder ? a.denyReasonPlaceholder.rendered() : L10n.approvalReasonPlaceholder()
     }
 
-    init(card: PBCoreAttentionCardView, commandState: PBSessionCommandState?) {
+    init(card: PBCoreAttentionCardView, commandState: PBCoreSessionCommandState?) {
         self.sessionId = card.sessionID
         self.machineId = card.machineID
         self.approvalId = card.approvalID

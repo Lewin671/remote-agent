@@ -352,6 +352,61 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.HomeSelectSessionAction getHomeSelectSession();
 
   /**
+   * <code>.remoteagent.core.v1.HomeResolveApprovalAction home_resolve_approval = 35 [json_name = "homeResolveApproval"];</code>
+   * @return Whether the homeResolveApproval field is set.
+   */
+  boolean hasHomeResolveApproval();
+  /**
+   * <code>.remoteagent.core.v1.HomeResolveApprovalAction home_resolve_approval = 35 [json_name = "homeResolveApproval"];</code>
+   * @return The homeResolveApproval.
+   */
+  io.github.lewin671.remoteagent.core.proto.HomeResolveApprovalAction getHomeResolveApproval();
+
+  /**
+   * <code>.remoteagent.core.v1.HomeEditApprovalDenyAction home_edit_approval_deny = 36 [json_name = "homeEditApprovalDeny"];</code>
+   * @return Whether the homeEditApprovalDeny field is set.
+   */
+  boolean hasHomeEditApprovalDeny();
+  /**
+   * <code>.remoteagent.core.v1.HomeEditApprovalDenyAction home_edit_approval_deny = 36 [json_name = "homeEditApprovalDeny"];</code>
+   * @return The homeEditApprovalDeny.
+   */
+  io.github.lewin671.remoteagent.core.proto.HomeEditApprovalDenyAction getHomeEditApprovalDeny();
+
+  /**
+   * <code>.remoteagent.core.v1.HomeAnswerQuestionAction home_answer_question = 37 [json_name = "homeAnswerQuestion"];</code>
+   * @return Whether the homeAnswerQuestion field is set.
+   */
+  boolean hasHomeAnswerQuestion();
+  /**
+   * <code>.remoteagent.core.v1.HomeAnswerQuestionAction home_answer_question = 37 [json_name = "homeAnswerQuestion"];</code>
+   * @return The homeAnswerQuestion.
+   */
+  io.github.lewin671.remoteagent.core.proto.HomeAnswerQuestionAction getHomeAnswerQuestion();
+
+  /**
+   * <code>.remoteagent.core.v1.HomeRetryAttentionAction home_retry_attention = 38 [json_name = "homeRetryAttention"];</code>
+   * @return Whether the homeRetryAttention field is set.
+   */
+  boolean hasHomeRetryAttention();
+  /**
+   * <code>.remoteagent.core.v1.HomeRetryAttentionAction home_retry_attention = 38 [json_name = "homeRetryAttention"];</code>
+   * @return The homeRetryAttention.
+   */
+  io.github.lewin671.remoteagent.core.proto.HomeRetryAttentionAction getHomeRetryAttention();
+
+  /**
+   * <code>.remoteagent.core.v1.HomeAbandonAttentionAction home_abandon_attention = 39 [json_name = "homeAbandonAttention"];</code>
+   * @return Whether the homeAbandonAttention field is set.
+   */
+  boolean hasHomeAbandonAttention();
+  /**
+   * <code>.remoteagent.core.v1.HomeAbandonAttentionAction home_abandon_attention = 39 [json_name = "homeAbandonAttention"];</code>
+   * @return The homeAbandonAttention.
+   */
+  io.github.lewin671.remoteagent.core.proto.HomeAbandonAttentionAction getHomeAbandonAttention();
+
+  /**
    * <code>.remoteagent.core.v1.ProjectSetSearchAction project_set_search = 40 [json_name = "projectSetSearch"];</code>
    * @return Whether the projectSetSearch field is set.
    */
@@ -1472,6 +1527,116 @@ public interface EventOrBuilder extends
    * @return The draftAppendText.
    */
   io.github.lewin671.remoteagent.core.proto.DraftAppendTextAction getDraftAppendText();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionEditApprovalDenyAction session_edit_approval_deny = 270 [json_name = "sessionEditApprovalDeny"];</code>
+   * @return Whether the sessionEditApprovalDeny field is set.
+   */
+  boolean hasSessionEditApprovalDeny();
+  /**
+   * <code>.remoteagent.core.v1.SessionEditApprovalDenyAction session_edit_approval_deny = 270 [json_name = "sessionEditApprovalDeny"];</code>
+   * @return The sessionEditApprovalDeny.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionEditApprovalDenyAction getSessionEditApprovalDeny();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionResolveApprovalAction session_resolve_approval = 271 [json_name = "sessionResolveApproval"];</code>
+   * @return Whether the sessionResolveApproval field is set.
+   */
+  boolean hasSessionResolveApproval();
+  /**
+   * <code>.remoteagent.core.v1.SessionResolveApprovalAction session_resolve_approval = 271 [json_name = "sessionResolveApproval"];</code>
+   * @return The sessionResolveApproval.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionResolveApprovalAction getSessionResolveApproval();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionToggleQuestionOptionAction session_toggle_question_option = 272 [json_name = "sessionToggleQuestionOption"];</code>
+   * @return Whether the sessionToggleQuestionOption field is set.
+   */
+  boolean hasSessionToggleQuestionOption();
+  /**
+   * <code>.remoteagent.core.v1.SessionToggleQuestionOptionAction session_toggle_question_option = 272 [json_name = "sessionToggleQuestionOption"];</code>
+   * @return The sessionToggleQuestionOption.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionToggleQuestionOptionAction getSessionToggleQuestionOption();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionAnswerQuestionAction session_answer_question = 273 [json_name = "sessionAnswerQuestion"];</code>
+   * @return Whether the sessionAnswerQuestion field is set.
+   */
+  boolean hasSessionAnswerQuestion();
+  /**
+   * <code>.remoteagent.core.v1.SessionAnswerQuestionAction session_answer_question = 273 [json_name = "sessionAnswerQuestion"];</code>
+   * @return The sessionAnswerQuestion.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionAnswerQuestionAction getSessionAnswerQuestion();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionAnswerPlanAction session_answer_plan = 274 [json_name = "sessionAnswerPlan"];</code>
+   * @return Whether the sessionAnswerPlan field is set.
+   */
+  boolean hasSessionAnswerPlan();
+  /**
+   * <code>.remoteagent.core.v1.SessionAnswerPlanAction session_answer_plan = 274 [json_name = "sessionAnswerPlan"];</code>
+   * @return The sessionAnswerPlan.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionAnswerPlanAction getSessionAnswerPlan();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionSimpleCommandAction session_simple_command = 275 [json_name = "sessionSimpleCommand"];</code>
+   * @return Whether the sessionSimpleCommand field is set.
+   */
+  boolean hasSessionSimpleCommand();
+  /**
+   * <code>.remoteagent.core.v1.SessionSimpleCommandAction session_simple_command = 275 [json_name = "sessionSimpleCommand"];</code>
+   * @return The sessionSimpleCommand.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionSimpleCommandAction getSessionSimpleCommand();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionRenameAction session_rename = 276 [json_name = "sessionRename"];</code>
+   * @return Whether the sessionRename field is set.
+   */
+  boolean hasSessionRename();
+  /**
+   * <code>.remoteagent.core.v1.SessionRenameAction session_rename = 276 [json_name = "sessionRename"];</code>
+   * @return The sessionRename.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionRenameAction getSessionRename();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionSetApprovalModeAction session_set_approval_mode = 277 [json_name = "sessionSetApprovalMode"];</code>
+   * @return Whether the sessionSetApprovalMode field is set.
+   */
+  boolean hasSessionSetApprovalMode();
+  /**
+   * <code>.remoteagent.core.v1.SessionSetApprovalModeAction session_set_approval_mode = 277 [json_name = "sessionSetApprovalMode"];</code>
+   * @return The sessionSetApprovalMode.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionSetApprovalModeAction getSessionSetApprovalMode();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionSetModelAction session_set_model = 278 [json_name = "sessionSetModel"];</code>
+   * @return Whether the sessionSetModel field is set.
+   */
+  boolean hasSessionSetModel();
+  /**
+   * <code>.remoteagent.core.v1.SessionSetModelAction session_set_model = 278 [json_name = "sessionSetModel"];</code>
+   * @return The sessionSetModel.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionSetModelAction getSessionSetModel();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionRetryCommandAction session_retry_command = 279 [json_name = "sessionRetryCommand"];</code>
+   * @return Whether the sessionRetryCommand field is set.
+   */
+  boolean hasSessionRetryCommand();
+  /**
+   * <code>.remoteagent.core.v1.SessionRetryCommandAction session_retry_command = 279 [json_name = "sessionRetryCommand"];</code>
+   * @return The sessionRetryCommand.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionRetryCommandAction getSessionRetryCommand();
 
   /**
    * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>

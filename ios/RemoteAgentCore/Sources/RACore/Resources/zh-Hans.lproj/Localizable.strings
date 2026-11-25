@@ -14,6 +14,8 @@
 "approval_deny" = "拒绝";
 "approval_details" = "审批详情";
 "approval_full_command" = "看完整命令";
+"approval_handled_in_terminal" = "已在终端处理";
+"approval_handled_other_device" = "已在另一端处理";
 "approval_ios_decision_deny" = "拒绝";
 "approval_ios_expired" = "不确定「%1$@」有没有送到，它已过期，不会再重发。审批超时后会自动拒绝";
 "approval_ios_unknown_result" = "结果未知";
@@ -308,6 +310,8 @@
 "home_nothing_waiting" = "没有等你的事";
 "home_online_start" = "%1$@ 在线，可以开始第一个会话。";
 "home_project_no_sessions" = "这个项目还没有会话";
+"home_question_answered_elsewhere" = "已在另一端回答";
+"home_question_answered_line" = "已回答 · %1$@";
 "home_scheduled_frequency" = "定时 %1$@";
 "home_schedules_tab" = "定时";
 "home_scope_label" = "范围：%1$@";
@@ -607,6 +611,7 @@
 "notifications_the_browser_did_not_allow_notifications" = "浏览器没有允许通知";
 "projects_add_again" = "重新添加";
 "projects_adding" = "正在添加到项目列表…";
+"projects_android_settings" = "项目设置";
 "projects_changed_elsewhere" = "项目列表已在另一客户端更新";
 "projects_choose" = "选项目";
 "projects_choose_directory" = "项目 · 选目录";

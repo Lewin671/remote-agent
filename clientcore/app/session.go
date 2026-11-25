@@ -34,6 +34,7 @@ type sessionSlotMeta struct {
 	sessionID     string
 	machineID     string
 	kind          sessionSlotKind
+	approvalID    string
 	outgoingReqID string
 	questionID    string
 	questionIndex int32
@@ -315,12 +316,23 @@ func (c *Core) processSessionSettled(
 			rec.Expired = false
 			rec.ErrorCode = sc.ErrorCode
 			rec.ErrorText = screens.ReasonText(sc.ErrorReason)
+			c.notifyHomeAttentionSettled(meta, false, nil, effects, dirty)
 		} else {
+			summary := rec.SubmittedSummary
+			ui.SlotSucceededSeq[slotKey]++
 			delete(ui.Commands, slotKey)
 			delete(store.slotMeta, slotKey)
-			if meta.kind == slotKindAnswerQuestion && meta.questionID != "" {
-				ui.QuestionIndexByID[meta.questionID] = meta.questionIndex + 1
+			if meta.kind == slotKindResolveApproval && meta.approvalID != "" {
+				ui.LocalSucceededItems["approval:"+meta.approvalID] = true
+				delete(ui.ApprovalDenyOpen, meta.approvalID)
 			}
+			if meta.kind == slotKindAnswerQuestion && meta.questionID != "" {
+				qKey := meta.questionID + "#" + strconv.Itoa(int(meta.questionIndex))
+				delete(ui.QuestionDraftByKey, qKey)
+				ui.QuestionIndexByID[meta.questionID] = meta.questionIndex + 1
+				ui.LocalSucceededItems["question:"+meta.questionID] = true
+			}
+			c.notifyHomeAttentionSettled(meta, true, summary, effects, dirty)
 			if meta.kind == slotKindFork && sc.Result != nil && sc.Result.GetForkSession() != nil {
 				if ns := sc.Result.GetForkSession().GetSession(); ns != nil && ns.Id != "" {
 					seedPrev, seedCtx := c.m.sync.BeginStep()
@@ -347,12 +359,14 @@ func (c *Core) processSessionSettled(
 		rec.Expired = false
 		rec.ErrorCode = sc.ErrorCode
 		rec.ErrorText = screens.ReasonText(sc.ErrorReason)
+		c.notifyHomeAttentionSettled(meta, false, nil, effects, dirty)
 	case outcome.Unknown:
 		rec.Status = corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_UNKNOWN
 		rec.Frozen = sc.Frozen
 		rec.Expired = sc.Expired
 		rec.ErrorCode = sc.ErrorCode
 		rec.ErrorText = screens.ReasonText(sc.ErrorReason)
+		c.notifyHomeAttentionSettled(meta, false, nil, effects, dirty)
 	}
 
 	if meta.kind == slotKindSend && meta.outgoingReqID != "" {
@@ -382,10 +396,15 @@ func (c *Core) submitSessionCommandDirect(
 		Command:   cmd,
 	})
 
+	var approvalID string
+	if ra := cmd.GetResolveApproval(); ra != nil {
+		approvalID = ra.ApprovalId
+	}
 	store.slotMeta[slotKey] = sessionSlotMeta{
 		sessionID:     sid,
 		machineID:     machineID,
 		kind:          kind,
+		approvalID:    approvalID,
 		outgoingReqID: outReqID,
 		questionID:    qID,
 		questionIndex: qIdx,
@@ -873,6 +892,39 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 		c.m.sync.RetrySessionHistory(ctx, k.SessionLoadEarlier.SessionId)
 		store.pendingDirty = true
 		return nil
+
+	case *corev1.Event_SessionEditApprovalDeny:
+		c.handleSessionEditApprovalDeny(ctx, store, k.SessionEditApprovalDeny)
+		return nil
+
+	case *corev1.Event_SessionResolveApproval:
+		return c.handleSessionResolveApproval(ctx, store, k.SessionResolveApproval)
+
+	case *corev1.Event_SessionToggleQuestionOption:
+		c.handleSessionToggleQuestionOption(store, k.SessionToggleQuestionOption)
+		return nil
+
+	case *corev1.Event_SessionAnswerQuestion:
+		return c.handleSessionAnswerQuestion(ctx, store, k.SessionAnswerQuestion, 0)
+
+	case *corev1.Event_SessionAnswerPlan:
+		return c.handleSessionAnswerPlan(ctx, store, k.SessionAnswerPlan)
+
+	case *corev1.Event_SessionSimpleCommand:
+		return c.handleSessionSimpleCommand(ctx, store, k.SessionSimpleCommand)
+
+	case *corev1.Event_SessionRename:
+		return c.handleSessionRename(ctx, store, k.SessionRename)
+
+	case *corev1.Event_SessionSetApprovalMode:
+		return c.handleSessionSetApprovalMode(ctx, store, k.SessionSetApprovalMode)
+
+	case *corev1.Event_SessionSetModel:
+		return c.handleSessionSetModel(ctx, store, k.SessionSetModel)
+
+	case *corev1.Event_SessionRetryCommand:
+		return c.handleSessionRetryCommand(ctx, store, k.SessionRetryCommand)
+
 	default:
 		if eff, ok := c.dispatchAttachmentEvent(ctx, ev); ok {
 			return eff
@@ -1036,6 +1088,12 @@ func fillObservedPreconditions(cmd *v1.Command, snap world.SessionSnapshot, ui *
 					}
 				}
 			}
+			for i := len(snap.Events) - 1; i >= 0; i-- {
+				if e := snap.Events[i]; e != nil && e.GetApprovalRequested() != nil && e.GetApprovalRequested().ApprovalId == r.ApprovalId {
+					r.ObservedEventSeq = e.Seq
+					return
+				}
+			}
 			if seq := ui.LastApprovalSeq[r.ApprovalId]; seq > 0 {
 				r.ObservedEventSeq = seq
 			}
@@ -1049,6 +1107,18 @@ func fillObservedPreconditions(cmd *v1.Command, snap world.SessionSnapshot, ui *
 						return
 					}
 				}
+			}
+			for i := len(snap.Events) - 1; i >= 0; i-- {
+				if e := snap.Events[i]; e != nil && e.GetQuestionAsked() != nil && e.GetQuestionAsked().QuestionId == q.QuestionId {
+					q.ObservedEventSeq = e.Seq
+					return
+				}
+			}
+			if snap.Session != nil && snap.Session.Pending.Question != nil &&
+				snap.Session.Pending.Question.QuestionID == q.QuestionId &&
+				snap.Session.Pending.Question.ObservedEventSeq > 0 {
+				q.ObservedEventSeq = snap.Session.Pending.Question.ObservedEventSeq
+				return
 			}
 			if seq := ui.LastQuestionSeq[q.QuestionId]; seq > 0 {
 				q.ObservedEventSeq = seq
@@ -1442,6 +1512,8 @@ func (c *Core) handleSessionTimerFired(ctx *sync.StepContext, store *sessionStor
 		return c.handleDraftExpiryTimer(ctx, ev.Key)
 	case corev1.TimerKind_TIMER_KIND_TERMINAL_HISTORY_TIMEOUT:
 		return c.handleTerminalHistoryTimeout(ctx, ev.Key)
+	case corev1.TimerKind_TIMER_KIND_UI_TRANSIENT:
+		return c.handleUITransientTimer(ctx, store, ev.Key)
 	}
 	sid := ev.Key
 	ui := store.ensureUI(sid)

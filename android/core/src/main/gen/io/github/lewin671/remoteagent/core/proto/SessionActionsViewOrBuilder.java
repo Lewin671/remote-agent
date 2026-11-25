@@ -315,4 +315,38 @@ public interface SessionActionsViewOrBuilder extends
    * @return The modePermissionNotice.
    */
   io.github.lewin671.remoteagent.core.proto.Text getModePermissionNotice();
+
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.core.proto.SessionMenuItemView> 
+      getMenuItemsList();
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionMenuItemView getMenuItems(int index);
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMenuItemView menu_items = 33 [json_name = "menuItems"];</code>
+   */
+  int getMenuItemsCount();
+
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.core.proto.SessionModelChoiceView> 
+      getFoldedModelChoicesList();
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionModelChoiceView getFoldedModelChoices(int index);
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionModelChoiceView folded_model_choices = 34 [json_name = "foldedModelChoices"];</code>
+   */
+  int getFoldedModelChoicesCount();
+
+  /**
+   * <code>bool has_more_models = 35 [json_name = "hasMoreModels"];</code>
+   * @return The hasMoreModels.
+   */
+  boolean getHasMoreModels();
 }

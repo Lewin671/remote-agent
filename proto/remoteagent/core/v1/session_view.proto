@@ -42,29 +42,6 @@ message SessionViewModel {
   SessionImageViewerView image_viewer = 7;
 }
 
-enum SessionCommandStatus {
-  SESSION_COMMAND_STATUS_UNSPECIFIED = 0;
-  SESSION_COMMAND_STATUS_IDLE = 1;
-  SESSION_COMMAND_STATUS_PENDING = 2;
-  SESSION_COMMAND_STATUS_FAILED = 3;
-  SESSION_COMMAND_STATUS_UNKNOWN = 4;
-}
-
-// SessionCommandState captures the sync.SubmitCommand lifecycle for one action slot.
-message SessionCommandState {
-  string slot_key = 1;
-  string request_id = 2;
-  SessionCommandStatus status = 3;
-  bool busy = 4;
-  bool frozen = 5;
-  bool expired = 6;
-  bool can_retry = 7;
-  bool can_abandon = 8;
-  string error_code = 9;
-  Text error_text = 10;
-  Text status_text = 11;
-}
-
 message SessionCapabilitiesView {
   bool can_send = 1;
   bool supports_images = 2;
@@ -250,6 +227,34 @@ message SessionForkActionView {
   Text note = 8;
 }
 
+enum SessionMenuItemKind {
+  SESSION_MENU_ITEM_KIND_UNSPECIFIED = 0;
+  SESSION_MENU_ITEM_KIND_MODE = 1;
+  SESSION_MENU_ITEM_KIND_MODEL = 2;
+  SESSION_MENU_ITEM_KIND_CONTEXT = 3;
+  SESSION_MENU_ITEM_KIND_PROJECT_SETTINGS = 4;
+  SESSION_MENU_ITEM_KIND_SCHEDULE = 5;
+  SESSION_MENU_ITEM_KIND_RENAME = 6;
+  SESSION_MENU_ITEM_KIND_FORK = 7;
+  SESSION_MENU_ITEM_KIND_ABANDON_FORK = 8;
+  SESSION_MENU_ITEM_KIND_INTERRUPT = 9;
+  SESSION_MENU_ITEM_KIND_END_SESSION = 10;
+}
+
+message SessionMenuItemView {
+  SessionMenuItemKind kind = 1;
+  int32 group = 2;
+  Text label = 3;
+  Text value_text = 4;
+  Text note_text = 5;
+  bool enabled = 6;
+  bool busy = 7;
+  bool danger = 8;
+  bool warn = 9;
+  bool note_error = 10;
+  bool keep_menu_open = 11;
+}
+
 message SessionActionsView {
   bool can_interrupt = 1;
   SessionCommandState interrupt = 2;
@@ -290,6 +295,14 @@ message SessionActionsView {
   SessionForkActionView fork_action = 30;
   bool mode_locked = 31;
   Text mode_permission_notice = 32;
+  repeated SessionMenuItemView menu_items = 33;
+  repeated SessionModelChoiceView folded_model_choices = 34;
+  bool has_more_models = 35;
+}
+
+message SessionResolutionNoticeView {
+  ResolutionOutcome outcome = 1;
+  Text text = 2;
 }
 
 enum SessionDockKind {
@@ -318,6 +331,7 @@ message SessionDockView {
   SessionCommandState command = 12;
   bool is_skeleton = 13;
   Text time_left_plain = 14;
+  SessionResolutionNoticeView external_resolution = 15;
 
   oneof detail {
     SessionApprovalDockView approval = 20;
@@ -341,6 +355,8 @@ message SessionApprovalDockView {
   Text always_label = 11;
   Text deny_reason_placeholder = 12;
   Text delivery_failed_note = 13;
+  bool denying_open = 15;
+  bool hold_open_card = 17;
 }
 
 message SessionQuestionOptionView {
@@ -365,6 +381,11 @@ message SessionQuestionDockView {
   Text progress_text = 4;
   SessionQuestionStepView question = 5;
   repeated int32 answered_indices = 6;
+  repeated int32 drafted_option_nums = 10;
+  bool can_submit_multi = 11;
+  Text submit_button_label = 12;
+  bool is_last_step = 13;
+  repeated int32 submitted_option_nums = 14;
 }
 
 message SessionPlanChoiceOptionView {
@@ -379,6 +400,7 @@ message SessionPlanDockView {
   Text note = 3;
   bool clear_context_available = 4;
   repeated SessionPlanChoiceOptionView choices = 5;
+  remoteagent.v1.PlanChoice submitted_choice = 6;
 }
 
 message SessionTerminalPopupDockView {
@@ -1004,5 +1026,82 @@ message SessionRestoreComposerEffect {
   reserved "text", "image_ids", "file_ids", "handled_by_core";
   string session_id = 1;
   string request_id = 2;
+}
+
+// SessionEditApprovalDenyAction toggles whether the approval deny reason form is open.
+message SessionEditApprovalDenyAction {
+  string session_id = 1;
+  string approval_id = 2;
+  bool denying_open = 3;
+}
+
+// SessionResolveApprovalAction resolves a pending approval on a session.
+message SessionResolveApprovalAction {
+  string session_id = 1;
+  string approval_id = 2;
+  bool allow = 3;
+  bool always = 4;
+  string deny_reason = 5;
+}
+
+// SessionToggleQuestionOptionAction toggles one option in a multi-select question step.
+message SessionToggleQuestionOptionAction {
+  string session_id = 1;
+  string question_id = 2;
+  int32 option_num = 3;
+}
+
+// SessionAnswerQuestionAction submits the active step answer for a pending question.
+message SessionAnswerQuestionAction {
+  string session_id = 1;
+  string question_id = 2;
+  int32 option_num = 3;
+  repeated int32 option_nums = 4;
+}
+
+// SessionAnswerPlanAction submits the user's decision on a proposed plan.
+message SessionAnswerPlanAction {
+  string session_id = 1;
+  remoteagent.v1.PlanChoice choice = 2;
+}
+
+enum SessionSimpleCommandKind {
+  SESSION_SIMPLE_COMMAND_KIND_UNSPECIFIED = 0;
+  SESSION_SIMPLE_COMMAND_KIND_INTERRUPT = 1;
+  SESSION_SIMPLE_COMMAND_KIND_STOP = 2;
+  SESSION_SIMPLE_COMMAND_KIND_RESUME = 3;
+  SESSION_SIMPLE_COMMAND_KIND_FORK = 4;
+  SESSION_SIMPLE_COMMAND_KIND_COMPACT = 5;
+}
+
+// SessionSimpleCommandAction triggers a parameterless session lifecycle command.
+message SessionSimpleCommandAction {
+  string session_id = 1;
+  SessionSimpleCommandKind kind = 2;
+}
+
+// SessionRenameAction renames a session; Core trims, collapses newlines, and clamps to 60 code points.
+message SessionRenameAction {
+  string session_id = 1;
+  string title = 2;
+}
+
+// SessionSetApprovalModeAction switches the session approval mode.
+message SessionSetApprovalModeAction {
+  string session_id = 1;
+  remoteagent.v1.ApprovalMode mode = 2;
+}
+
+// SessionSetModelAction switches the session model and/or reasoning effort.
+message SessionSetModelAction {
+  string session_id = 1;
+  string model = 2;
+  string effort = 3;
+}
+
+// SessionRetryCommandAction retries the last submitted semantic payload for slot_key.
+message SessionRetryCommandAction {
+  string session_id = 1;
+  string slot_key = 2;
 }
 

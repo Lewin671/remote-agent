@@ -489,12 +489,29 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "en": "draft",
       "zh-CN": "source"
     },
     "zh-CN": "已在终端处理"
+  },
+  {
+    "en": "Handled on another device",
+    "key": "approval.handled_other_device",
+    "notes": "审批或提问查看/输入期间已被其他客户端处理时的提示文字。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "已在另一端处理"
   }
 ]

@@ -143,4 +143,16 @@ public interface SessionApprovalDockViewOrBuilder extends
    * @return The deliveryFailedNote.
    */
   io.github.lewin671.remoteagent.core.proto.Text getDeliveryFailedNote();
+
+  /**
+   * <code>bool denying_open = 15 [json_name = "denyingOpen"];</code>
+   * @return The denyingOpen.
+   */
+  boolean getDenyingOpen();
+
+  /**
+   * <code>bool hold_open_card = 17 [json_name = "holdOpenCard"];</code>
+   * @return The holdOpenCard.
+   */
+  boolean getHoldOpenCard();
 }

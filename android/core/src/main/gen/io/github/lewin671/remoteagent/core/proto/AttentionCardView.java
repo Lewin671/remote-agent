@@ -21,6 +21,7 @@ public  final class AttentionCardView extends
     body_ = "";
     toolName_ = "";
     alwaysArg_ = "";
+    description_ = "";
   }
   private int bitField0_;
   public static final int SESSION_ID_FIELD_NUMBER = 1;
@@ -695,6 +696,318 @@ public  final class AttentionCardView extends
   private void clearLocked() {
 
     locked_ = false;
+  }
+
+  public static final int COMMAND_FIELD_NUMBER = 20;
+  private io.github.lewin671.remoteagent.core.proto.SessionCommandState command_;
+  /**
+   * <code>.remoteagent.core.v1.SessionCommandState command = 20 [json_name = "command"];</code>
+   */
+  @java.lang.Override
+  public boolean hasCommand() {
+    return ((bitField0_ & 0x00000020) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionCommandState command = 20 [json_name = "command"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionCommandState getCommand() {
+    return command_ == null ? io.github.lewin671.remoteagent.core.proto.SessionCommandState.getDefaultInstance() : command_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionCommandState command = 20 [json_name = "command"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setCommand(io.github.lewin671.remoteagent.core.proto.SessionCommandState value) {
+    value.getClass();  // minimal bytecode null check
+    command_ = value;
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionCommandState command = 20 [json_name = "command"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeCommand(io.github.lewin671.remoteagent.core.proto.SessionCommandState value) {
+    value.getClass();  // minimal bytecode null check
+    if (command_ != null &&
+        command_ != io.github.lewin671.remoteagent.core.proto.SessionCommandState.getDefaultInstance()) {
+      command_ =
+        io.github.lewin671.remoteagent.core.proto.SessionCommandState.newBuilder(command_).mergeFrom(value).buildPartial();
+    } else {
+      command_ = value;
+    }
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionCommandState command = 20 [json_name = "command"];</code>
+   */
+  private void clearCommand() {
+    command_ = null;
+    bitField0_ = (bitField0_ & ~0x00000020);
+  }
+
+  public static final int DENYING_OPEN_FIELD_NUMBER = 21;
+  private boolean denyingOpen_;
+  /**
+   * <code>bool denying_open = 21 [json_name = "denyingOpen"];</code>
+   * @return The denyingOpen.
+   */
+  @java.lang.Override
+  public boolean getDenyingOpen() {
+    return denyingOpen_;
+  }
+  /**
+   * <code>bool denying_open = 21 [json_name = "denyingOpen"];</code>
+   * @param value The denyingOpen to set.
+   */
+  private void setDenyingOpen(boolean value) {
+    
+    denyingOpen_ = value;
+  }
+  /**
+   * <code>bool denying_open = 21 [json_name = "denyingOpen"];</code>
+   */
+  private void clearDenyingOpen() {
+
+    denyingOpen_ = false;
+  }
+
+  public static final int PHASE_FIELD_NUMBER = 23;
+  private int phase_;
+  /**
+   * <code>.remoteagent.core.v1.HomeFocusPhase phase = 23 [json_name = "phase"];</code>
+   * @return The enum numeric value on the wire for phase.
+   */
+  @java.lang.Override
+  public int getPhaseValue() {
+    return phase_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeFocusPhase phase = 23 [json_name = "phase"];</code>
+   * @return The phase.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.HomeFocusPhase getPhase() {
+    io.github.lewin671.remoteagent.core.proto.HomeFocusPhase result = io.github.lewin671.remoteagent.core.proto.HomeFocusPhase.forNumber(phase_);
+    return result == null ? io.github.lewin671.remoteagent.core.proto.HomeFocusPhase.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeFocusPhase phase = 23 [json_name = "phase"];</code>
+   * @param value The enum numeric value on the wire for phase to set.
+   */
+  private void setPhaseValue(int value) {
+      phase_ = value;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeFocusPhase phase = 23 [json_name = "phase"];</code>
+   * @param value The phase to set.
+   */
+  private void setPhase(io.github.lewin671.remoteagent.core.proto.HomeFocusPhase value) {
+    phase_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeFocusPhase phase = 23 [json_name = "phase"];</code>
+   */
+  private void clearPhase() {
+
+    phase_ = 0;
+  }
+
+  public static final int RESOLUTION_TEXT_FIELD_NUMBER = 24;
+  private io.github.lewin671.remoteagent.core.proto.Text resolutionText_;
+  /**
+   * <code>.remoteagent.core.v1.Text resolution_text = 24 [json_name = "resolutionText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasResolutionText() {
+    return ((bitField0_ & 0x00000040) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text resolution_text = 24 [json_name = "resolutionText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getResolutionText() {
+    return resolutionText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : resolutionText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text resolution_text = 24 [json_name = "resolutionText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setResolutionText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    resolutionText_ = value;
+    bitField0_ |= 0x00000040;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text resolution_text = 24 [json_name = "resolutionText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeResolutionText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (resolutionText_ != null &&
+        resolutionText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      resolutionText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(resolutionText_).mergeFrom(value).buildPartial();
+    } else {
+      resolutionText_ = value;
+    }
+    bitField0_ |= 0x00000040;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text resolution_text = 24 [json_name = "resolutionText"];</code>
+   */
+  private void clearResolutionText() {
+    resolutionText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000040);
+  }
+
+  public static final int HOLD_OPEN_CARD_FIELD_NUMBER = 25;
+  private boolean holdOpenCard_;
+  /**
+   * <code>bool hold_open_card = 25 [json_name = "holdOpenCard"];</code>
+   * @return The holdOpenCard.
+   */
+  @java.lang.Override
+  public boolean getHoldOpenCard() {
+    return holdOpenCard_;
+  }
+  /**
+   * <code>bool hold_open_card = 25 [json_name = "holdOpenCard"];</code>
+   * @param value The holdOpenCard to set.
+   */
+  private void setHoldOpenCard(boolean value) {
+    
+    holdOpenCard_ = value;
+  }
+  /**
+   * <code>bool hold_open_card = 25 [json_name = "holdOpenCard"];</code>
+   */
+  private void clearHoldOpenCard() {
+
+    holdOpenCard_ = false;
+  }
+
+  public static final int DENY_REASON_PLACEHOLDER_FIELD_NUMBER = 26;
+  private io.github.lewin671.remoteagent.core.proto.Text denyReasonPlaceholder_;
+  /**
+   * <code>.remoteagent.core.v1.Text deny_reason_placeholder = 26 [json_name = "denyReasonPlaceholder"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDenyReasonPlaceholder() {
+    return ((bitField0_ & 0x00000080) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text deny_reason_placeholder = 26 [json_name = "denyReasonPlaceholder"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getDenyReasonPlaceholder() {
+    return denyReasonPlaceholder_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : denyReasonPlaceholder_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text deny_reason_placeholder = 26 [json_name = "denyReasonPlaceholder"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDenyReasonPlaceholder(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    denyReasonPlaceholder_ = value;
+    bitField0_ |= 0x00000080;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text deny_reason_placeholder = 26 [json_name = "denyReasonPlaceholder"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeDenyReasonPlaceholder(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (denyReasonPlaceholder_ != null &&
+        denyReasonPlaceholder_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      denyReasonPlaceholder_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(denyReasonPlaceholder_).mergeFrom(value).buildPartial();
+    } else {
+      denyReasonPlaceholder_ = value;
+    }
+    bitField0_ |= 0x00000080;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text deny_reason_placeholder = 26 [json_name = "denyReasonPlaceholder"];</code>
+   */
+  private void clearDenyReasonPlaceholder() {
+    denyReasonPlaceholder_ = null;
+    bitField0_ = (bitField0_ & ~0x00000080);
+  }
+
+  public static final int DESCRIPTION_FIELD_NUMBER = 27;
+  private java.lang.String description_;
+  /**
+   * <code>string description = 27 [json_name = "description"];</code>
+   * @return The description.
+   */
+  @java.lang.Override
+  public java.lang.String getDescription() {
+    return description_;
+  }
+  /**
+   * <code>string description = 27 [json_name = "description"];</code>
+   * @return The bytes for description.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getDescriptionBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(description_);
+  }
+  /**
+   * <code>string description = 27 [json_name = "description"];</code>
+   * @param value The description to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDescription(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    description_ = value;
+  }
+  /**
+   * <code>string description = 27 [json_name = "description"];</code>
+   */
+  private void clearDescription() {
+
+    description_ = getDefaultInstance().getDescription();
+  }
+  /**
+   * <code>string description = 27 [json_name = "description"];</code>
+   * @param value The bytes for description to set.
+   */
+  private void setDescriptionBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    description_ = value.toStringUtf8();
+
+  }
+
+  public static final int IS_SKELETON_FIELD_NUMBER = 28;
+  private boolean isSkeleton_;
+  /**
+   * <code>bool is_skeleton = 28 [json_name = "isSkeleton"];</code>
+   * @return The isSkeleton.
+   */
+  @java.lang.Override
+  public boolean getIsSkeleton() {
+    return isSkeleton_;
+  }
+  /**
+   * <code>bool is_skeleton = 28 [json_name = "isSkeleton"];</code>
+   * @param value The isSkeleton to set.
+   */
+  private void setIsSkeleton(boolean value) {
+    
+    isSkeleton_ = value;
+  }
+  /**
+   * <code>bool is_skeleton = 28 [json_name = "isSkeleton"];</code>
+   */
+  private void clearIsSkeleton() {
+
+    isSkeleton_ = false;
   }
 
   public static io.github.lewin671.remoteagent.core.proto.AttentionCardView parseFrom(
@@ -1481,6 +1794,326 @@ public  final class AttentionCardView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.SessionCommandState command = 20 [json_name = "command"];</code>
+     */
+    @java.lang.Override
+    public boolean hasCommand() {
+      return instance.hasCommand();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionCommandState command = 20 [json_name = "command"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionCommandState getCommand() {
+      return instance.getCommand();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionCommandState command = 20 [json_name = "command"];</code>
+     */
+    public Builder setCommand(io.github.lewin671.remoteagent.core.proto.SessionCommandState value) {
+      copyOnWrite();
+      instance.setCommand(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.SessionCommandState command = 20 [json_name = "command"];</code>
+     */
+    public Builder setCommand(
+        io.github.lewin671.remoteagent.core.proto.SessionCommandState.Builder builderForValue) {
+      copyOnWrite();
+      instance.setCommand(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionCommandState command = 20 [json_name = "command"];</code>
+     */
+    public Builder mergeCommand(io.github.lewin671.remoteagent.core.proto.SessionCommandState value) {
+      copyOnWrite();
+      instance.mergeCommand(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionCommandState command = 20 [json_name = "command"];</code>
+     */
+    public Builder clearCommand() {  copyOnWrite();
+      instance.clearCommand();
+      return this;
+    }
+
+    /**
+     * <code>bool denying_open = 21 [json_name = "denyingOpen"];</code>
+     * @return The denyingOpen.
+     */
+    @java.lang.Override
+    public boolean getDenyingOpen() {
+      return instance.getDenyingOpen();
+    }
+    /**
+     * <code>bool denying_open = 21 [json_name = "denyingOpen"];</code>
+     * @param value The denyingOpen to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDenyingOpen(boolean value) {
+      copyOnWrite();
+      instance.setDenyingOpen(value);
+      return this;
+    }
+    /**
+     * <code>bool denying_open = 21 [json_name = "denyingOpen"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDenyingOpen() {
+      copyOnWrite();
+      instance.clearDenyingOpen();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.HomeFocusPhase phase = 23 [json_name = "phase"];</code>
+     * @return The enum numeric value on the wire for phase.
+     */
+    @java.lang.Override
+    public int getPhaseValue() {
+      return instance.getPhaseValue();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeFocusPhase phase = 23 [json_name = "phase"];</code>
+     * @param value The phase to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPhaseValue(int value) {
+      copyOnWrite();
+      instance.setPhaseValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeFocusPhase phase = 23 [json_name = "phase"];</code>
+     * @return The phase.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.HomeFocusPhase getPhase() {
+      return instance.getPhase();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeFocusPhase phase = 23 [json_name = "phase"];</code>
+     * @param value The enum numeric value on the wire for phase to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPhase(io.github.lewin671.remoteagent.core.proto.HomeFocusPhase value) {
+      copyOnWrite();
+      instance.setPhase(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeFocusPhase phase = 23 [json_name = "phase"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPhase() {
+      copyOnWrite();
+      instance.clearPhase();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text resolution_text = 24 [json_name = "resolutionText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasResolutionText() {
+      return instance.hasResolutionText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text resolution_text = 24 [json_name = "resolutionText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getResolutionText() {
+      return instance.getResolutionText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text resolution_text = 24 [json_name = "resolutionText"];</code>
+     */
+    public Builder setResolutionText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setResolutionText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text resolution_text = 24 [json_name = "resolutionText"];</code>
+     */
+    public Builder setResolutionText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setResolutionText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text resolution_text = 24 [json_name = "resolutionText"];</code>
+     */
+    public Builder mergeResolutionText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeResolutionText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text resolution_text = 24 [json_name = "resolutionText"];</code>
+     */
+    public Builder clearResolutionText() {  copyOnWrite();
+      instance.clearResolutionText();
+      return this;
+    }
+
+    /**
+     * <code>bool hold_open_card = 25 [json_name = "holdOpenCard"];</code>
+     * @return The holdOpenCard.
+     */
+    @java.lang.Override
+    public boolean getHoldOpenCard() {
+      return instance.getHoldOpenCard();
+    }
+    /**
+     * <code>bool hold_open_card = 25 [json_name = "holdOpenCard"];</code>
+     * @param value The holdOpenCard to set.
+     * @return This builder for chaining.
+     */
+    public Builder setHoldOpenCard(boolean value) {
+      copyOnWrite();
+      instance.setHoldOpenCard(value);
+      return this;
+    }
+    /**
+     * <code>bool hold_open_card = 25 [json_name = "holdOpenCard"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearHoldOpenCard() {
+      copyOnWrite();
+      instance.clearHoldOpenCard();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text deny_reason_placeholder = 26 [json_name = "denyReasonPlaceholder"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDenyReasonPlaceholder() {
+      return instance.hasDenyReasonPlaceholder();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text deny_reason_placeholder = 26 [json_name = "denyReasonPlaceholder"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getDenyReasonPlaceholder() {
+      return instance.getDenyReasonPlaceholder();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text deny_reason_placeholder = 26 [json_name = "denyReasonPlaceholder"];</code>
+     */
+    public Builder setDenyReasonPlaceholder(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setDenyReasonPlaceholder(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text deny_reason_placeholder = 26 [json_name = "denyReasonPlaceholder"];</code>
+     */
+    public Builder setDenyReasonPlaceholder(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDenyReasonPlaceholder(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text deny_reason_placeholder = 26 [json_name = "denyReasonPlaceholder"];</code>
+     */
+    public Builder mergeDenyReasonPlaceholder(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeDenyReasonPlaceholder(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text deny_reason_placeholder = 26 [json_name = "denyReasonPlaceholder"];</code>
+     */
+    public Builder clearDenyReasonPlaceholder() {  copyOnWrite();
+      instance.clearDenyReasonPlaceholder();
+      return this;
+    }
+
+    /**
+     * <code>string description = 27 [json_name = "description"];</code>
+     * @return The description.
+     */
+    @java.lang.Override
+    public java.lang.String getDescription() {
+      return instance.getDescription();
+    }
+    /**
+     * <code>string description = 27 [json_name = "description"];</code>
+     * @return The bytes for description.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getDescriptionBytes() {
+      return instance.getDescriptionBytes();
+    }
+    /**
+     * <code>string description = 27 [json_name = "description"];</code>
+     * @param value The description to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDescription(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setDescription(value);
+      return this;
+    }
+    /**
+     * <code>string description = 27 [json_name = "description"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDescription() {
+      copyOnWrite();
+      instance.clearDescription();
+      return this;
+    }
+    /**
+     * <code>string description = 27 [json_name = "description"];</code>
+     * @param value The bytes for description to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDescriptionBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setDescriptionBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>bool is_skeleton = 28 [json_name = "isSkeleton"];</code>
+     * @return The isSkeleton.
+     */
+    @java.lang.Override
+    public boolean getIsSkeleton() {
+      return instance.getIsSkeleton();
+    }
+    /**
+     * <code>bool is_skeleton = 28 [json_name = "isSkeleton"];</code>
+     * @param value The isSkeleton to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIsSkeleton(boolean value) {
+      copyOnWrite();
+      instance.setIsSkeleton(value);
+      return this;
+    }
+    /**
+     * <code>bool is_skeleton = 28 [json_name = "isSkeleton"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearIsSkeleton() {
+      copyOnWrite();
+      instance.clearIsSkeleton();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.AttentionCardView)
   }
   @java.lang.Override
@@ -1514,12 +2147,21 @@ public  final class AttentionCardView extends
             "alwaysArg_",
             "alwaysLabel_",
             "locked_",
+            "command_",
+            "denyingOpen_",
+            "phase_",
+            "resolutionText_",
+            "holdOpenCard_",
+            "denyReasonPlaceholder_",
+            "description_",
+            "isSkeleton_",
           };
           java.lang.String info =
-              "\u0000\u0010\u0000\u0001\u0001\u0010\u0010\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u0018\u0000\u0001\u0001\u001c\u0018\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0208\u0004\u1009\u0000\u0005\u1009\u0001\u0006\u1009\u0002\u0007\u1009\u0003" +
               "\b\u0007\t\u0208\n\u0208\u000b\u0007\f\u0007\r\f\u000e\u0208\u000f\u1009\u0004\u0010" +
-              "\u0007";
+              "\u0007\u0014\u1009\u0005\u0015\u0007\u0017\f\u0018\u1009\u0006\u0019\u0007\u001a" +
+              "\u1009\u0007\u001b\u0208\u001c\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -9,16 +9,6 @@ import (
 	unsafe "unsafe"
 )
 
-type SessionCommandStatus int32
-
-const (
-	SessionCommandStatus_SESSION_COMMAND_STATUS_UNSPECIFIED SessionCommandStatus = 0
-	SessionCommandStatus_SESSION_COMMAND_STATUS_IDLE        SessionCommandStatus = 1
-	SessionCommandStatus_SESSION_COMMAND_STATUS_PENDING     SessionCommandStatus = 2
-	SessionCommandStatus_SESSION_COMMAND_STATUS_FAILED      SessionCommandStatus = 3
-	SessionCommandStatus_SESSION_COMMAND_STATUS_UNKNOWN     SessionCommandStatus = 4
-)
-
 type ComputerReachability int32
 
 const (
@@ -26,6 +16,22 @@ const (
 	ComputerReachability_COMPUTER_REACHABILITY_ONLINE      ComputerReachability = 1
 	ComputerReachability_COMPUTER_REACHABILITY_OFFLINE     ComputerReachability = 2
 	ComputerReachability_COMPUTER_REACHABILITY_UNKNOWN     ComputerReachability = 3
+)
+
+type SessionMenuItemKind int32
+
+const (
+	SessionMenuItemKind_SESSION_MENU_ITEM_KIND_UNSPECIFIED      SessionMenuItemKind = 0
+	SessionMenuItemKind_SESSION_MENU_ITEM_KIND_MODE             SessionMenuItemKind = 1
+	SessionMenuItemKind_SESSION_MENU_ITEM_KIND_MODEL            SessionMenuItemKind = 2
+	SessionMenuItemKind_SESSION_MENU_ITEM_KIND_CONTEXT          SessionMenuItemKind = 3
+	SessionMenuItemKind_SESSION_MENU_ITEM_KIND_PROJECT_SETTINGS SessionMenuItemKind = 4
+	SessionMenuItemKind_SESSION_MENU_ITEM_KIND_SCHEDULE         SessionMenuItemKind = 5
+	SessionMenuItemKind_SESSION_MENU_ITEM_KIND_RENAME           SessionMenuItemKind = 6
+	SessionMenuItemKind_SESSION_MENU_ITEM_KIND_FORK             SessionMenuItemKind = 7
+	SessionMenuItemKind_SESSION_MENU_ITEM_KIND_ABANDON_FORK     SessionMenuItemKind = 8
+	SessionMenuItemKind_SESSION_MENU_ITEM_KIND_INTERRUPT        SessionMenuItemKind = 9
+	SessionMenuItemKind_SESSION_MENU_ITEM_KIND_END_SESSION      SessionMenuItemKind = 10
 )
 
 type SessionDockKind int32
@@ -206,6 +212,17 @@ const (
 	SessionInputNoticeKind_SESSION_INPUT_NOTICE_KIND_UNCONFIRMED    SessionInputNoticeKind = 5
 )
 
+type SessionSimpleCommandKind int32
+
+const (
+	SessionSimpleCommandKind_SESSION_SIMPLE_COMMAND_KIND_UNSPECIFIED SessionSimpleCommandKind = 0
+	SessionSimpleCommandKind_SESSION_SIMPLE_COMMAND_KIND_INTERRUPT   SessionSimpleCommandKind = 1
+	SessionSimpleCommandKind_SESSION_SIMPLE_COMMAND_KIND_STOP        SessionSimpleCommandKind = 2
+	SessionSimpleCommandKind_SESSION_SIMPLE_COMMAND_KIND_RESUME      SessionSimpleCommandKind = 3
+	SessionSimpleCommandKind_SESSION_SIMPLE_COMMAND_KIND_FORK        SessionSimpleCommandKind = 4
+	SessionSimpleCommandKind_SESSION_SIMPLE_COMMAND_KIND_COMPACT     SessionSimpleCommandKind = 5
+)
+
 type SessionScreenRequest struct {
 	_         [0]func()
 	SessionId string
@@ -372,112 +389,6 @@ func (m *SessionViewModel) Marshal() ([]byte, error) {
 
 func (m *SessionViewModel) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionViewModel)
-}
-
-type SessionCommandState struct {
-	_          [0]func()
-	SlotKey    string
-	RequestId  string
-	Status     SessionCommandStatus
-	Busy       bool
-	Frozen     bool
-	Expired    bool
-	CanRetry   bool
-	CanAbandon bool
-	ErrorCode  string
-	ErrorText  *Text
-	StatusText *Text
-}
-
-func (m *SessionCommandState) GetSlotKey() string {
-	if m != nil {
-		return m.SlotKey
-	}
-	return ""
-}
-func (m *SessionCommandState) GetRequestId() string {
-	if m != nil {
-		return m.RequestId
-	}
-	return ""
-}
-func (m *SessionCommandState) GetStatus() SessionCommandStatus {
-	if m != nil {
-		return m.Status
-	}
-	return 0
-}
-func (m *SessionCommandState) GetBusy() bool {
-	if m != nil {
-		return m.Busy
-	}
-	return false
-}
-func (m *SessionCommandState) GetFrozen() bool {
-	if m != nil {
-		return m.Frozen
-	}
-	return false
-}
-func (m *SessionCommandState) GetExpired() bool {
-	if m != nil {
-		return m.Expired
-	}
-	return false
-}
-func (m *SessionCommandState) GetCanRetry() bool {
-	if m != nil {
-		return m.CanRetry
-	}
-	return false
-}
-func (m *SessionCommandState) GetCanAbandon() bool {
-	if m != nil {
-		return m.CanAbandon
-	}
-	return false
-}
-func (m *SessionCommandState) GetErrorCode() string {
-	if m != nil {
-		return m.ErrorCode
-	}
-	return ""
-}
-func (m *SessionCommandState) GetErrorText() *Text {
-	if m != nil {
-		return m.ErrorText
-	}
-	return nil
-}
-func (m *SessionCommandState) GetStatusText() *Text {
-	if m != nil {
-		return m.StatusText
-	}
-	return nil
-}
-
-var LitewireDesc_SessionCommandState = litewire.MessageDesc{
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(SessionCommandState{}.SlotKey), Kind: litewire.KindString},
-		{Num: 2, Offset: unsafe.Offsetof(SessionCommandState{}.RequestId), Kind: litewire.KindString},
-		{Num: 3, Offset: unsafe.Offsetof(SessionCommandState{}.Status), Kind: litewire.KindInt32},
-		{Num: 4, Offset: unsafe.Offsetof(SessionCommandState{}.Busy), Kind: litewire.KindBool},
-		{Num: 5, Offset: unsafe.Offsetof(SessionCommandState{}.Frozen), Kind: litewire.KindBool},
-		{Num: 6, Offset: unsafe.Offsetof(SessionCommandState{}.Expired), Kind: litewire.KindBool},
-		{Num: 7, Offset: unsafe.Offsetof(SessionCommandState{}.CanRetry), Kind: litewire.KindBool},
-		{Num: 8, Offset: unsafe.Offsetof(SessionCommandState{}.CanAbandon), Kind: litewire.KindBool},
-		{Num: 9, Offset: unsafe.Offsetof(SessionCommandState{}.ErrorCode), Kind: litewire.KindString},
-		{Num: 10, Offset: unsafe.Offsetof(SessionCommandState{}.ErrorText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
-		{Num: 11, Offset: unsafe.Offsetof(SessionCommandState{}.StatusText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
-	},
-}
-
-func (m *SessionCommandState) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *SessionCommandState) AppendMarshal(b []byte) []byte {
-	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionCommandState)
 }
 
 type SessionCapabilitiesView struct {
@@ -1744,6 +1655,112 @@ func (m *SessionForkActionView) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionForkActionView)
 }
 
+type SessionMenuItemView struct {
+	_            [0]func()
+	Kind         SessionMenuItemKind
+	Group        int32
+	Label        *Text
+	ValueText    *Text
+	NoteText     *Text
+	Enabled      bool
+	Busy         bool
+	Danger       bool
+	Warn         bool
+	NoteError    bool
+	KeepMenuOpen bool
+}
+
+func (m *SessionMenuItemView) GetKind() SessionMenuItemKind {
+	if m != nil {
+		return m.Kind
+	}
+	return 0
+}
+func (m *SessionMenuItemView) GetGroup() int32 {
+	if m != nil {
+		return m.Group
+	}
+	return 0
+}
+func (m *SessionMenuItemView) GetLabel() *Text {
+	if m != nil {
+		return m.Label
+	}
+	return nil
+}
+func (m *SessionMenuItemView) GetValueText() *Text {
+	if m != nil {
+		return m.ValueText
+	}
+	return nil
+}
+func (m *SessionMenuItemView) GetNoteText() *Text {
+	if m != nil {
+		return m.NoteText
+	}
+	return nil
+}
+func (m *SessionMenuItemView) GetEnabled() bool {
+	if m != nil {
+		return m.Enabled
+	}
+	return false
+}
+func (m *SessionMenuItemView) GetBusy() bool {
+	if m != nil {
+		return m.Busy
+	}
+	return false
+}
+func (m *SessionMenuItemView) GetDanger() bool {
+	if m != nil {
+		return m.Danger
+	}
+	return false
+}
+func (m *SessionMenuItemView) GetWarn() bool {
+	if m != nil {
+		return m.Warn
+	}
+	return false
+}
+func (m *SessionMenuItemView) GetNoteError() bool {
+	if m != nil {
+		return m.NoteError
+	}
+	return false
+}
+func (m *SessionMenuItemView) GetKeepMenuOpen() bool {
+	if m != nil {
+		return m.KeepMenuOpen
+	}
+	return false
+}
+
+var LitewireDesc_SessionMenuItemView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionMenuItemView{}.Kind), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(SessionMenuItemView{}.Group), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(SessionMenuItemView{}.Label), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(SessionMenuItemView{}.ValueText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(SessionMenuItemView{}.NoteText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 6, Offset: unsafe.Offsetof(SessionMenuItemView{}.Enabled), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(SessionMenuItemView{}.Busy), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(SessionMenuItemView{}.Danger), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(SessionMenuItemView{}.Warn), Kind: litewire.KindBool},
+		{Num: 10, Offset: unsafe.Offsetof(SessionMenuItemView{}.NoteError), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(SessionMenuItemView{}.KeepMenuOpen), Kind: litewire.KindBool},
+	},
+}
+
+func (m *SessionMenuItemView) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SessionMenuItemView) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionMenuItemView)
+}
+
 type SessionActionsView struct {
 	_                        [0]func()
 	CanInterrupt             bool
@@ -1778,6 +1795,9 @@ type SessionActionsView struct {
 	ForkAction               *SessionForkActionView
 	ModeLocked               bool
 	ModePermissionNotice     *Text
+	MenuItems                []*SessionMenuItemView
+	FoldedModelChoices       []*SessionModelChoiceView
+	HasMoreModels            bool
 }
 
 func (m *SessionActionsView) GetCanInterrupt() bool {
@@ -1972,6 +1992,24 @@ func (m *SessionActionsView) GetModePermissionNotice() *Text {
 	}
 	return nil
 }
+func (m *SessionActionsView) GetMenuItems() []*SessionMenuItemView {
+	if m != nil {
+		return m.MenuItems
+	}
+	return nil
+}
+func (m *SessionActionsView) GetFoldedModelChoices() []*SessionModelChoiceView {
+	if m != nil {
+		return m.FoldedModelChoices
+	}
+	return nil
+}
+func (m *SessionActionsView) GetHasMoreModels() bool {
+	if m != nil {
+		return m.HasMoreModels
+	}
+	return false
+}
 
 var LitewireDesc_SessionActionsView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -2007,6 +2045,9 @@ var LitewireDesc_SessionActionsView = litewire.MessageDesc{
 		{Num: 30, Offset: unsafe.Offsetof(SessionActionsView{}.ForkAction), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionForkActionView},
 		{Num: 31, Offset: unsafe.Offsetof(SessionActionsView{}.ModeLocked), Kind: litewire.KindBool},
 		{Num: 32, Offset: unsafe.Offsetof(SessionActionsView{}.ModePermissionNotice), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 33, Offset: unsafe.Offsetof(SessionActionsView{}.MenuItems), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionMenuItemView},
+		{Num: 34, Offset: unsafe.Offsetof(SessionActionsView{}.FoldedModelChoices), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionModelChoiceView},
+		{Num: 35, Offset: unsafe.Offsetof(SessionActionsView{}.HasMoreModels), Kind: litewire.KindBool},
 	},
 }
 
@@ -2016,6 +2057,40 @@ func (m *SessionActionsView) Marshal() ([]byte, error) {
 
 func (m *SessionActionsView) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionActionsView)
+}
+
+type SessionResolutionNoticeView struct {
+	_       [0]func()
+	Outcome ResolutionOutcome
+	Text    *Text
+}
+
+func (m *SessionResolutionNoticeView) GetOutcome() ResolutionOutcome {
+	if m != nil {
+		return m.Outcome
+	}
+	return 0
+}
+func (m *SessionResolutionNoticeView) GetText() *Text {
+	if m != nil {
+		return m.Text
+	}
+	return nil
+}
+
+var LitewireDesc_SessionResolutionNoticeView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionResolutionNoticeView{}.Outcome), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(SessionResolutionNoticeView{}.Text), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
+
+func (m *SessionResolutionNoticeView) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SessionResolutionNoticeView) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionResolutionNoticeView)
 }
 
 type SessionDockView struct {
@@ -2033,6 +2108,7 @@ type SessionDockView struct {
 	Command             *SessionCommandState
 	IsSkeleton          bool
 	TimeLeftPlain       *Text
+	ExternalResolution  *SessionResolutionNoticeView
 	Detail              isSessionDockView_Detail
 }
 
@@ -2149,6 +2225,12 @@ func (m *SessionDockView) GetTimeLeftPlain() *Text {
 	}
 	return nil
 }
+func (m *SessionDockView) GetExternalResolution() *SessionResolutionNoticeView {
+	if m != nil {
+		return m.ExternalResolution
+	}
+	return nil
+}
 func (m *SessionDockView) GetApproval() *SessionApprovalDockView {
 	if x, ok := m.GetDetail().(*SessionDockView_Approval); ok && x != nil {
 		return x.Approval
@@ -2189,6 +2271,7 @@ var LitewireDesc_SessionDockView = litewire.MessageDesc{
 		{Num: 12, Offset: unsafe.Offsetof(SessionDockView{}.Command), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionCommandState},
 		{Num: 13, Offset: unsafe.Offsetof(SessionDockView{}.IsSkeleton), Kind: litewire.KindBool},
 		{Num: 14, Offset: unsafe.Offsetof(SessionDockView{}.TimeLeftPlain), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 15, Offset: unsafe.Offsetof(SessionDockView{}.ExternalResolution), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionResolutionNoticeView},
 		{Num: litewire.Number(1), Kind: litewire.KindCustom},
 	},
 }
@@ -2244,6 +2327,8 @@ type SessionApprovalDockView struct {
 	AlwaysLabel           *Text
 	DenyReasonPlaceholder *Text
 	DeliveryFailedNote    *Text
+	DenyingOpen           bool
+	HoldOpenCard          bool
 }
 
 func (m *SessionApprovalDockView) GetApprovalId() string {
@@ -2324,6 +2409,18 @@ func (m *SessionApprovalDockView) GetDeliveryFailedNote() *Text {
 	}
 	return nil
 }
+func (m *SessionApprovalDockView) GetDenyingOpen() bool {
+	if m != nil {
+		return m.DenyingOpen
+	}
+	return false
+}
+func (m *SessionApprovalDockView) GetHoldOpenCard() bool {
+	if m != nil {
+		return m.HoldOpenCard
+	}
+	return false
+}
 
 var LitewireDesc_SessionApprovalDockView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -2340,6 +2437,8 @@ var LitewireDesc_SessionApprovalDockView = litewire.MessageDesc{
 		{Num: 11, Offset: unsafe.Offsetof(SessionApprovalDockView{}.AlwaysLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 12, Offset: unsafe.Offsetof(SessionApprovalDockView{}.DenyReasonPlaceholder), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 13, Offset: unsafe.Offsetof(SessionApprovalDockView{}.DeliveryFailedNote), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 15, Offset: unsafe.Offsetof(SessionApprovalDockView{}.DenyingOpen), Kind: litewire.KindBool},
+		{Num: 17, Offset: unsafe.Offsetof(SessionApprovalDockView{}.HoldOpenCard), Kind: litewire.KindBool},
 	},
 }
 
@@ -2460,13 +2559,18 @@ func (m *SessionQuestionStepView) AppendMarshal(b []byte) []byte {
 }
 
 type SessionQuestionDockView struct {
-	_               [0]func()
-	QuestionId      string
-	ActiveIndex     int32
-	TotalQuestions  int32
-	ProgressText    *Text
-	Question        *SessionQuestionStepView
-	AnsweredIndices []int32
+	_                   [0]func()
+	QuestionId          string
+	ActiveIndex         int32
+	TotalQuestions      int32
+	ProgressText        *Text
+	Question            *SessionQuestionStepView
+	AnsweredIndices     []int32
+	DraftedOptionNums   []int32
+	CanSubmitMulti      bool
+	SubmitButtonLabel   *Text
+	IsLastStep          bool
+	SubmittedOptionNums []int32
 }
 
 func (m *SessionQuestionDockView) GetQuestionId() string {
@@ -2505,6 +2609,36 @@ func (m *SessionQuestionDockView) GetAnsweredIndices() []int32 {
 	}
 	return nil
 }
+func (m *SessionQuestionDockView) GetDraftedOptionNums() []int32 {
+	if m != nil {
+		return m.DraftedOptionNums
+	}
+	return nil
+}
+func (m *SessionQuestionDockView) GetCanSubmitMulti() bool {
+	if m != nil {
+		return m.CanSubmitMulti
+	}
+	return false
+}
+func (m *SessionQuestionDockView) GetSubmitButtonLabel() *Text {
+	if m != nil {
+		return m.SubmitButtonLabel
+	}
+	return nil
+}
+func (m *SessionQuestionDockView) GetIsLastStep() bool {
+	if m != nil {
+		return m.IsLastStep
+	}
+	return false
+}
+func (m *SessionQuestionDockView) GetSubmittedOptionNums() []int32 {
+	if m != nil {
+		return m.SubmittedOptionNums
+	}
+	return nil
+}
 
 var LitewireDesc_SessionQuestionDockView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -2514,6 +2648,11 @@ var LitewireDesc_SessionQuestionDockView = litewire.MessageDesc{
 		{Num: 4, Offset: unsafe.Offsetof(SessionQuestionDockView{}.ProgressText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 5, Offset: unsafe.Offsetof(SessionQuestionDockView{}.Question), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionQuestionStepView},
 		{Num: 6, Offset: unsafe.Offsetof(SessionQuestionDockView{}.AnsweredIndices), Kind: litewire.KindInt32, Flags: litewire.FlagRepeated | litewire.FlagPacked},
+		{Num: 10, Offset: unsafe.Offsetof(SessionQuestionDockView{}.DraftedOptionNums), Kind: litewire.KindInt32, Flags: litewire.FlagRepeated | litewire.FlagPacked},
+		{Num: 11, Offset: unsafe.Offsetof(SessionQuestionDockView{}.CanSubmitMulti), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(SessionQuestionDockView{}.SubmitButtonLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 13, Offset: unsafe.Offsetof(SessionQuestionDockView{}.IsLastStep), Kind: litewire.KindBool},
+		{Num: 14, Offset: unsafe.Offsetof(SessionQuestionDockView{}.SubmittedOptionNums), Kind: litewire.KindInt32, Flags: litewire.FlagRepeated | litewire.FlagPacked},
 	},
 }
 
@@ -2574,6 +2713,7 @@ type SessionPlanDockView struct {
 	Note                  *Text
 	ClearContextAvailable bool
 	Choices               []*SessionPlanChoiceOptionView
+	SubmittedChoice       v1.PlanChoice
 }
 
 func (m *SessionPlanDockView) GetMarkdown() string {
@@ -2606,6 +2746,12 @@ func (m *SessionPlanDockView) GetChoices() []*SessionPlanChoiceOptionView {
 	}
 	return nil
 }
+func (m *SessionPlanDockView) GetSubmittedChoice() v1.PlanChoice {
+	if m != nil {
+		return m.SubmittedChoice
+	}
+	return 0
+}
 
 var LitewireDesc_SessionPlanDockView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -2614,6 +2760,7 @@ var LitewireDesc_SessionPlanDockView = litewire.MessageDesc{
 		{Num: 3, Offset: unsafe.Offsetof(SessionPlanDockView{}.Note), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 4, Offset: unsafe.Offsetof(SessionPlanDockView{}.ClearContextAvailable), Kind: litewire.KindBool},
 		{Num: 5, Offset: unsafe.Offsetof(SessionPlanDockView{}.Choices), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionPlanChoiceOptionView},
+		{Num: 6, Offset: unsafe.Offsetof(SessionPlanDockView{}.SubmittedChoice), Kind: litewire.KindInt32},
 	},
 }
 
@@ -6162,6 +6309,380 @@ func (m *SessionRestoreComposerEffect) Marshal() ([]byte, error) {
 
 func (m *SessionRestoreComposerEffect) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionRestoreComposerEffect)
+}
+
+type SessionEditApprovalDenyAction struct {
+	_           [0]func()
+	SessionId   string
+	ApprovalId  string
+	DenyingOpen bool
+}
+
+func (m *SessionEditApprovalDenyAction) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *SessionEditApprovalDenyAction) GetApprovalId() string {
+	if m != nil {
+		return m.ApprovalId
+	}
+	return ""
+}
+func (m *SessionEditApprovalDenyAction) GetDenyingOpen() bool {
+	if m != nil {
+		return m.DenyingOpen
+	}
+	return false
+}
+
+var LitewireDesc_SessionEditApprovalDenyAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionEditApprovalDenyAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionEditApprovalDenyAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionEditApprovalDenyAction{}.ApprovalId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionEditApprovalDenyAction{}.DenyingOpen), Kind: litewire.KindBool},
+	},
+}
+
+func (m *SessionEditApprovalDenyAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionEditApprovalDenyAction)
+}
+
+type SessionResolveApprovalAction struct {
+	_          [0]func()
+	SessionId  string
+	ApprovalId string
+	Allow      bool
+	Always     bool
+	DenyReason string
+}
+
+func (m *SessionResolveApprovalAction) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *SessionResolveApprovalAction) GetApprovalId() string {
+	if m != nil {
+		return m.ApprovalId
+	}
+	return ""
+}
+func (m *SessionResolveApprovalAction) GetAllow() bool {
+	if m != nil {
+		return m.Allow
+	}
+	return false
+}
+func (m *SessionResolveApprovalAction) GetAlways() bool {
+	if m != nil {
+		return m.Always
+	}
+	return false
+}
+func (m *SessionResolveApprovalAction) GetDenyReason() string {
+	if m != nil {
+		return m.DenyReason
+	}
+	return ""
+}
+
+var LitewireDesc_SessionResolveApprovalAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionResolveApprovalAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionResolveApprovalAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionResolveApprovalAction{}.ApprovalId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionResolveApprovalAction{}.Allow), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(SessionResolveApprovalAction{}.Always), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(SessionResolveApprovalAction{}.DenyReason), Kind: litewire.KindString},
+	},
+}
+
+func (m *SessionResolveApprovalAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionResolveApprovalAction)
+}
+
+type SessionToggleQuestionOptionAction struct {
+	_          [0]func()
+	SessionId  string
+	QuestionId string
+	OptionNum  int32
+}
+
+func (m *SessionToggleQuestionOptionAction) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *SessionToggleQuestionOptionAction) GetQuestionId() string {
+	if m != nil {
+		return m.QuestionId
+	}
+	return ""
+}
+func (m *SessionToggleQuestionOptionAction) GetOptionNum() int32 {
+	if m != nil {
+		return m.OptionNum
+	}
+	return 0
+}
+
+var LitewireDesc_SessionToggleQuestionOptionAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionToggleQuestionOptionAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionToggleQuestionOptionAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionToggleQuestionOptionAction{}.QuestionId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionToggleQuestionOptionAction{}.OptionNum), Kind: litewire.KindInt32},
+	},
+}
+
+func (m *SessionToggleQuestionOptionAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionToggleQuestionOptionAction)
+}
+
+type SessionAnswerQuestionAction struct {
+	_          [0]func()
+	SessionId  string
+	QuestionId string
+	OptionNum  int32
+	OptionNums []int32
+}
+
+func (m *SessionAnswerQuestionAction) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *SessionAnswerQuestionAction) GetQuestionId() string {
+	if m != nil {
+		return m.QuestionId
+	}
+	return ""
+}
+func (m *SessionAnswerQuestionAction) GetOptionNum() int32 {
+	if m != nil {
+		return m.OptionNum
+	}
+	return 0
+}
+func (m *SessionAnswerQuestionAction) GetOptionNums() []int32 {
+	if m != nil {
+		return m.OptionNums
+	}
+	return nil
+}
+
+var LitewireDesc_SessionAnswerQuestionAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionAnswerQuestionAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionAnswerQuestionAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionAnswerQuestionAction{}.QuestionId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionAnswerQuestionAction{}.OptionNum), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(SessionAnswerQuestionAction{}.OptionNums), Kind: litewire.KindInt32, Flags: litewire.FlagRepeated | litewire.FlagPacked},
+	},
+}
+
+func (m *SessionAnswerQuestionAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionAnswerQuestionAction)
+}
+
+type SessionAnswerPlanAction struct {
+	_         [0]func()
+	SessionId string
+	Choice    v1.PlanChoice
+}
+
+func (m *SessionAnswerPlanAction) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *SessionAnswerPlanAction) GetChoice() v1.PlanChoice {
+	if m != nil {
+		return m.Choice
+	}
+	return 0
+}
+
+var LitewireDesc_SessionAnswerPlanAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionAnswerPlanAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionAnswerPlanAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionAnswerPlanAction{}.Choice), Kind: litewire.KindInt32},
+	},
+}
+
+func (m *SessionAnswerPlanAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionAnswerPlanAction)
+}
+
+type SessionSimpleCommandAction struct {
+	_         [0]func()
+	SessionId string
+	Kind      SessionSimpleCommandKind
+}
+
+func (m *SessionSimpleCommandAction) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *SessionSimpleCommandAction) GetKind() SessionSimpleCommandKind {
+	if m != nil {
+		return m.Kind
+	}
+	return 0
+}
+
+var LitewireDesc_SessionSimpleCommandAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionSimpleCommandAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionSimpleCommandAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionSimpleCommandAction{}.Kind), Kind: litewire.KindInt32},
+	},
+}
+
+func (m *SessionSimpleCommandAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionSimpleCommandAction)
+}
+
+type SessionRenameAction struct {
+	_         [0]func()
+	SessionId string
+	Title     string
+}
+
+func (m *SessionRenameAction) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *SessionRenameAction) GetTitle() string {
+	if m != nil {
+		return m.Title
+	}
+	return ""
+}
+
+var LitewireDesc_SessionRenameAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionRenameAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionRenameAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionRenameAction{}.Title), Kind: litewire.KindString},
+	},
+}
+
+func (m *SessionRenameAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionRenameAction)
+}
+
+type SessionSetApprovalModeAction struct {
+	_         [0]func()
+	SessionId string
+	Mode      v1.ApprovalMode
+}
+
+func (m *SessionSetApprovalModeAction) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *SessionSetApprovalModeAction) GetMode() v1.ApprovalMode {
+	if m != nil {
+		return m.Mode
+	}
+	return 0
+}
+
+var LitewireDesc_SessionSetApprovalModeAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionSetApprovalModeAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionSetApprovalModeAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionSetApprovalModeAction{}.Mode), Kind: litewire.KindInt32},
+	},
+}
+
+func (m *SessionSetApprovalModeAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionSetApprovalModeAction)
+}
+
+type SessionSetModelAction struct {
+	_         [0]func()
+	SessionId string
+	Model     string
+	Effort    string
+}
+
+func (m *SessionSetModelAction) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *SessionSetModelAction) GetModel() string {
+	if m != nil {
+		return m.Model
+	}
+	return ""
+}
+func (m *SessionSetModelAction) GetEffort() string {
+	if m != nil {
+		return m.Effort
+	}
+	return ""
+}
+
+var LitewireDesc_SessionSetModelAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionSetModelAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionSetModelAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionSetModelAction{}.Model), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionSetModelAction{}.Effort), Kind: litewire.KindString},
+	},
+}
+
+func (m *SessionSetModelAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionSetModelAction)
+}
+
+type SessionRetryCommandAction struct {
+	_         [0]func()
+	SessionId string
+	SlotKey   string
+}
+
+func (m *SessionRetryCommandAction) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *SessionRetryCommandAction) GetSlotKey() string {
+	if m != nil {
+		return m.SlotKey
+	}
+	return ""
+}
+
+var LitewireDesc_SessionRetryCommandAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionRetryCommandAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionRetryCommandAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionRetryCommandAction{}.SlotKey), Kind: litewire.KindString},
+	},
+}
+
+func (m *SessionRetryCommandAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionRetryCommandAction)
 }
 
 func init() {

@@ -72,4 +72,61 @@ public interface SessionQuestionDockViewOrBuilder extends
    * @return The answeredIndices at the given index.
    */
   int getAnsweredIndices(int index);
+
+  /**
+   * <code>repeated int32 drafted_option_nums = 10 [json_name = "draftedOptionNums"];</code>
+   * @return A list containing the draftedOptionNums.
+   */
+  java.util.List<java.lang.Integer> getDraftedOptionNumsList();
+  /**
+   * <code>repeated int32 drafted_option_nums = 10 [json_name = "draftedOptionNums"];</code>
+   * @return The count of draftedOptionNums.
+   */
+  int getDraftedOptionNumsCount();
+  /**
+   * <code>repeated int32 drafted_option_nums = 10 [json_name = "draftedOptionNums"];</code>
+   * @param index The index of the element to return.
+   * @return The draftedOptionNums at the given index.
+   */
+  int getDraftedOptionNums(int index);
+
+  /**
+   * <code>bool can_submit_multi = 11 [json_name = "canSubmitMulti"];</code>
+   * @return The canSubmitMulti.
+   */
+  boolean getCanSubmitMulti();
+
+  /**
+   * <code>.remoteagent.core.v1.Text submit_button_label = 12 [json_name = "submitButtonLabel"];</code>
+   * @return Whether the submitButtonLabel field is set.
+   */
+  boolean hasSubmitButtonLabel();
+  /**
+   * <code>.remoteagent.core.v1.Text submit_button_label = 12 [json_name = "submitButtonLabel"];</code>
+   * @return The submitButtonLabel.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getSubmitButtonLabel();
+
+  /**
+   * <code>bool is_last_step = 13 [json_name = "isLastStep"];</code>
+   * @return The isLastStep.
+   */
+  boolean getIsLastStep();
+
+  /**
+   * <code>repeated int32 submitted_option_nums = 14 [json_name = "submittedOptionNums"];</code>
+   * @return A list containing the submittedOptionNums.
+   */
+  java.util.List<java.lang.Integer> getSubmittedOptionNumsList();
+  /**
+   * <code>repeated int32 submitted_option_nums = 14 [json_name = "submittedOptionNums"];</code>
+   * @return The count of submittedOptionNums.
+   */
+  int getSubmittedOptionNumsCount();
+  /**
+   * <code>repeated int32 submitted_option_nums = 14 [json_name = "submittedOptionNums"];</code>
+   * @param index The index of the element to return.
+   * @return The submittedOptionNums at the given index.
+   */
+  int getSubmittedOptionNums(int index);
 }

@@ -141,6 +141,26 @@ func buildHomeQuestionCardView(item *lists.SessionItem, st *State) *corev1.HomeQ
 		offlineNote = text.Msg(text.KeyListStateOffline)
 	}
 
+	ui := sessionUIFor(st, item.ID)
+	slotKey := "question:" + item.ID + ":" + q.QuestionID + "#0"
+	cmd := commandSlotState(ui, slotKey,
+		text.Msg(text.KeyDockAndroidAnswerExpired, text.Str("answer", questionAnswerHint(ui, slotKey))),
+		text.Msg(text.KeyDockAndroidAnswerUnknown, text.Str("answer", questionAnswerHint(ui, slotKey))),
+	)
+	phase := homeFocusPhaseForCommand(cmd)
+	var pickedOptionNum int32
+	if ui != nil {
+		if rec := ui.Commands[slotKey]; rec != nil && len(rec.SubmittedOptionNums) > 0 {
+			pickedOptionNum = rec.SubmittedOptionNums[0]
+		}
+	}
+	if pickedOptionNum == 0 && st != nil && st.HomeFocus != nil &&
+		st.HomeFocus.Kind == HomeFocusQuestion &&
+		st.HomeFocus.SessionID == item.ID &&
+		st.HomeFocus.ItemID == q.QuestionID {
+		pickedOptionNum = st.HomeFocus.PickedOptionNum
+	}
+
 	return &corev1.HomeQuestionCardView{
 		SessionId:        item.ID,
 		MachineId:        item.MachineID,
@@ -155,5 +175,8 @@ func buildHomeQuestionCardView(item *lists.SessionItem, st *State) *corev1.HomeQ
 		Options:          opts,
 		CanAnswer:        canAnswer,
 		OfflineNote:      offlineNote,
+		Command:          cmd,
+		Phase:            phase,
+		PickedOptionNum:  pickedOptionNum,
 	}
 }

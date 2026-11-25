@@ -171,4 +171,78 @@ public interface AttentionCardViewOrBuilder extends
    * @return The locked.
    */
   boolean getLocked();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionCommandState command = 20 [json_name = "command"];</code>
+   * @return Whether the command field is set.
+   */
+  boolean hasCommand();
+  /**
+   * <code>.remoteagent.core.v1.SessionCommandState command = 20 [json_name = "command"];</code>
+   * @return The command.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionCommandState getCommand();
+
+  /**
+   * <code>bool denying_open = 21 [json_name = "denyingOpen"];</code>
+   * @return The denyingOpen.
+   */
+  boolean getDenyingOpen();
+
+  /**
+   * <code>.remoteagent.core.v1.HomeFocusPhase phase = 23 [json_name = "phase"];</code>
+   * @return The enum numeric value on the wire for phase.
+   */
+  int getPhaseValue();
+  /**
+   * <code>.remoteagent.core.v1.HomeFocusPhase phase = 23 [json_name = "phase"];</code>
+   * @return The phase.
+   */
+  io.github.lewin671.remoteagent.core.proto.HomeFocusPhase getPhase();
+
+  /**
+   * <code>.remoteagent.core.v1.Text resolution_text = 24 [json_name = "resolutionText"];</code>
+   * @return Whether the resolutionText field is set.
+   */
+  boolean hasResolutionText();
+  /**
+   * <code>.remoteagent.core.v1.Text resolution_text = 24 [json_name = "resolutionText"];</code>
+   * @return The resolutionText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getResolutionText();
+
+  /**
+   * <code>bool hold_open_card = 25 [json_name = "holdOpenCard"];</code>
+   * @return The holdOpenCard.
+   */
+  boolean getHoldOpenCard();
+
+  /**
+   * <code>.remoteagent.core.v1.Text deny_reason_placeholder = 26 [json_name = "denyReasonPlaceholder"];</code>
+   * @return Whether the denyReasonPlaceholder field is set.
+   */
+  boolean hasDenyReasonPlaceholder();
+  /**
+   * <code>.remoteagent.core.v1.Text deny_reason_placeholder = 26 [json_name = "denyReasonPlaceholder"];</code>
+   * @return The denyReasonPlaceholder.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getDenyReasonPlaceholder();
+
+  /**
+   * <code>string description = 27 [json_name = "description"];</code>
+   * @return The description.
+   */
+  java.lang.String getDescription();
+  /**
+   * <code>string description = 27 [json_name = "description"];</code>
+   * @return The bytes for description.
+   */
+  com.google.protobuf.ByteString
+      getDescriptionBytes();
+
+  /**
+   * <code>bool is_skeleton = 28 [json_name = "isSkeleton"];</code>
+   * @return The isSkeleton.
+   */
+  boolean getIsSkeleton();
 }

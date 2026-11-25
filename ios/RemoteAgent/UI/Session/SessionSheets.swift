@@ -5,11 +5,11 @@ import RACore
 import RAProto
 import SwiftUI
 
-private func commandPending(_ st: PBSessionCommandState?) -> Bool {
+private func commandPending(_ st: PBCoreSessionCommandState?) -> Bool {
     st?.status == .pending || st?.busy == true
 }
 
-private func commandError(_ st: PBSessionCommandState?) -> String {
+private func commandError(_ st: PBCoreSessionCommandState?) -> String {
     guard let st else { return "" }
     if st.hasErrorText {
         let rendered = st.errorText.rendered()
@@ -23,7 +23,7 @@ private func commandError(_ st: PBSessionCommandState?) -> String {
 private func awaitSessionCommand(
     context: AccountContext,
     sessionID: String,
-    extract: @MainActor @escaping (PBSessionViewModel) -> PBSessionCommandState,
+    extract: @MainActor @escaping (PBSessionViewModel) -> PBCoreSessionCommandState,
     send: @escaping () -> Void
 ) async throws {
     let initial = context.core.sessions[sessionID].map(extract)

@@ -29,11 +29,11 @@ func dockFoldKey(sessionID: String, _ dock: PBSessionDockView) -> String {
     "\(sessionID):\(dock.kind.rawValue):\(dock.itemID)"
 }
 
-private func commandRunning(_ st: PBSessionCommandState?) -> Bool {
+private func commandRunning(_ st: PBCoreSessionCommandState?) -> Bool {
     st?.status == .pending || st?.busy == true
 }
 
-private func commandErrorText(_ st: PBSessionCommandState?) -> String {
+private func commandErrorText(_ st: PBCoreSessionCommandState?) -> String {
     guard let st else { return "" }
     if st.hasErrorText {
         let rendered = st.errorText.rendered()
@@ -355,7 +355,7 @@ struct QuestionBody: View {
     private var qid: String { qDock.questionID }
     private var index: Int { Int(qDock.activeIndex) }
     private var cur: PBSessionQuestionStepView { qDock.question }
-    private var cmd: PBSessionCommandState { dock.command }
+    private var cmd: PBCoreSessionCommandState { dock.command }
     private var isRunning: Bool { commandRunning(cmd) }
 
     private func submit(_ options: [Int]) {
@@ -599,7 +599,7 @@ struct PlanButtons: View {
     @State private var awaitingDone = false
 
     private var plan: PBSessionPlanDockView { dock.plan }
-    private var cmd: PBSessionCommandState { dock.command }
+    private var cmd: PBCoreSessionCommandState { dock.command }
     private var isRunning: Bool { commandRunning(cmd) }
 
     private func labelFor(_ choice: PBPlanChoice) -> String {

@@ -444,6 +444,148 @@ public enum PBCoreAlwaysAllowKind: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
+public enum PBCoreSessionCommandStatus: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case idle // = 1
+  case pending // = 2
+  case failed // = 3
+  case unknown // = 4
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .idle
+    case 2: self = .pending
+    case 3: self = .failed
+    case 4: self = .unknown
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .idle: return 1
+    case .pending: return 2
+    case .failed: return 3
+    case .unknown: return 4
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBCoreSessionCommandStatus] = [
+    .unspecified,
+    .idle,
+    .pending,
+    .failed,
+    .unknown,
+  ]
+
+}
+
+public enum PBCoreResolutionOutcome: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case thisClient // = 1
+  case otherClient // = 2
+  case terminal // = 3
+  case failed // = 4
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .thisClient
+    case 2: self = .otherClient
+    case 3: self = .terminal
+    case 4: self = .failed
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .thisClient: return 1
+    case .otherClient: return 2
+    case .terminal: return 3
+    case .failed: return 4
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBCoreResolutionOutcome] = [
+    .unspecified,
+    .thisClient,
+    .otherClient,
+    .terminal,
+    .failed,
+  ]
+
+}
+
+public enum PBCoreHomeFocusPhase: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case idle // = 1
+  case submitting // = 2
+  case failed // = 3
+  case resolvedThisClient // = 4
+  case resolvedElsewhere // = 5
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .idle
+    case 2: self = .submitting
+    case 3: self = .failed
+    case 4: self = .resolvedThisClient
+    case 5: self = .resolvedElsewhere
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .idle: return 1
+    case .submitting: return 2
+    case .failed: return 3
+    case .resolvedThisClient: return 4
+    case .resolvedElsewhere: return 5
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBCoreHomeFocusPhase] = [
+    .unspecified,
+    .idle,
+    .submitting,
+    .failed,
+    .resolvedThisClient,
+    .resolvedElsewhere,
+  ]
+
+}
+
 public struct PBCoreConnectionStatusView: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -603,6 +745,96 @@ public struct PBCoreHomeEmptyView: Sendable {
   fileprivate var _message: PBCoreText? = nil
 }
 
+/// SessionCommandState captures the sync.SubmitCommand lifecycle for one action slot.
+public struct PBCoreSessionCommandState: @unchecked Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var slotKey: String {
+    get {return _storage._slotKey}
+    set {_uniqueStorage()._slotKey = newValue}
+  }
+
+  public var requestID: String {
+    get {return _storage._requestID}
+    set {_uniqueStorage()._requestID = newValue}
+  }
+
+  public var status: PBCoreSessionCommandStatus {
+    get {return _storage._status}
+    set {_uniqueStorage()._status = newValue}
+  }
+
+  public var busy: Bool {
+    get {return _storage._busy}
+    set {_uniqueStorage()._busy = newValue}
+  }
+
+  public var frozen: Bool {
+    get {return _storage._frozen}
+    set {_uniqueStorage()._frozen = newValue}
+  }
+
+  public var expired: Bool {
+    get {return _storage._expired}
+    set {_uniqueStorage()._expired = newValue}
+  }
+
+  public var canRetry: Bool {
+    get {return _storage._canRetry}
+    set {_uniqueStorage()._canRetry = newValue}
+  }
+
+  public var canAbandon: Bool {
+    get {return _storage._canAbandon}
+    set {_uniqueStorage()._canAbandon = newValue}
+  }
+
+  public var errorCode: String {
+    get {return _storage._errorCode}
+    set {_uniqueStorage()._errorCode = newValue}
+  }
+
+  public var errorText: PBCoreText {
+    get {return _storage._errorText ?? PBCoreText()}
+    set {_uniqueStorage()._errorText = newValue}
+  }
+  /// Returns true if `errorText` has been explicitly set.
+  public var hasErrorText: Bool {return _storage._errorText != nil}
+  /// Clears the value of `errorText`. Subsequent reads from it will return its default value.
+  public mutating func clearErrorText() {_uniqueStorage()._errorText = nil}
+
+  public var statusText: PBCoreText {
+    get {return _storage._statusText ?? PBCoreText()}
+    set {_uniqueStorage()._statusText = newValue}
+  }
+  /// Returns true if `statusText` has been explicitly set.
+  public var hasStatusText: Bool {return _storage._statusText != nil}
+  /// Clears the value of `statusText`. Subsequent reads from it will return its default value.
+  public mutating func clearStatusText() {_uniqueStorage()._statusText = nil}
+
+  public var succeededSeq: UInt64 {
+    get {return _storage._succeededSeq}
+    set {_uniqueStorage()._succeededSeq = newValue}
+  }
+
+  public var submittedSummary: PBCoreText {
+    get {return _storage._submittedSummary ?? PBCoreText()}
+    set {_uniqueStorage()._submittedSummary = newValue}
+  }
+  /// Returns true if `submittedSummary` has been explicitly set.
+  public var hasSubmittedSummary: Bool {return _storage._submittedSummary != nil}
+  /// Clears the value of `submittedSummary`. Subsequent reads from it will return its default value.
+  public mutating func clearSubmittedSummary() {_uniqueStorage()._submittedSummary = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
 public struct PBCoreAttentionCardView: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -706,6 +938,58 @@ public struct PBCoreAttentionCardView: @unchecked Sendable {
   public var locked: Bool {
     get {return _storage._locked}
     set {_uniqueStorage()._locked = newValue}
+  }
+
+  public var command: PBCoreSessionCommandState {
+    get {return _storage._command ?? PBCoreSessionCommandState()}
+    set {_uniqueStorage()._command = newValue}
+  }
+  /// Returns true if `command` has been explicitly set.
+  public var hasCommand: Bool {return _storage._command != nil}
+  /// Clears the value of `command`. Subsequent reads from it will return its default value.
+  public mutating func clearCommand() {_uniqueStorage()._command = nil}
+
+  public var denyingOpen: Bool {
+    get {return _storage._denyingOpen}
+    set {_uniqueStorage()._denyingOpen = newValue}
+  }
+
+  public var phase: PBCoreHomeFocusPhase {
+    get {return _storage._phase}
+    set {_uniqueStorage()._phase = newValue}
+  }
+
+  public var resolutionText: PBCoreText {
+    get {return _storage._resolutionText ?? PBCoreText()}
+    set {_uniqueStorage()._resolutionText = newValue}
+  }
+  /// Returns true if `resolutionText` has been explicitly set.
+  public var hasResolutionText: Bool {return _storage._resolutionText != nil}
+  /// Clears the value of `resolutionText`. Subsequent reads from it will return its default value.
+  public mutating func clearResolutionText() {_uniqueStorage()._resolutionText = nil}
+
+  public var holdOpenCard: Bool {
+    get {return _storage._holdOpenCard}
+    set {_uniqueStorage()._holdOpenCard = newValue}
+  }
+
+  public var denyReasonPlaceholder: PBCoreText {
+    get {return _storage._denyReasonPlaceholder ?? PBCoreText()}
+    set {_uniqueStorage()._denyReasonPlaceholder = newValue}
+  }
+  /// Returns true if `denyReasonPlaceholder` has been explicitly set.
+  public var hasDenyReasonPlaceholder: Bool {return _storage._denyReasonPlaceholder != nil}
+  /// Clears the value of `denyReasonPlaceholder`. Subsequent reads from it will return its default value.
+  public mutating func clearDenyReasonPlaceholder() {_uniqueStorage()._denyReasonPlaceholder = nil}
+
+  public var description_p: String {
+    get {return _storage._description_p}
+    set {_uniqueStorage()._description_p = newValue}
+  }
+
+  public var isSkeleton: Bool {
+    get {return _storage._isSkeleton}
+    set {_uniqueStorage()._isSkeleton = newValue}
   }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -1492,11 +1776,119 @@ public struct PBCoreHomeQuestionCardView: @unchecked Sendable {
   /// Clears the value of `offlineNote`. Subsequent reads from it will return its default value.
   public mutating func clearOfflineNote() {_uniqueStorage()._offlineNote = nil}
 
+  public var command: PBCoreSessionCommandState {
+    get {return _storage._command ?? PBCoreSessionCommandState()}
+    set {_uniqueStorage()._command = newValue}
+  }
+  /// Returns true if `command` has been explicitly set.
+  public var hasCommand: Bool {return _storage._command != nil}
+  /// Clears the value of `command`. Subsequent reads from it will return its default value.
+  public mutating func clearCommand() {_uniqueStorage()._command = nil}
+
+  public var phase: PBCoreHomeFocusPhase {
+    get {return _storage._phase}
+    set {_uniqueStorage()._phase = newValue}
+  }
+
+  public var pickedOptionNum: Int32 {
+    get {return _storage._pickedOptionNum}
+    set {_uniqueStorage()._pickedOptionNum = newValue}
+  }
+
+  public var resolutionText: PBCoreText {
+    get {return _storage._resolutionText ?? PBCoreText()}
+    set {_uniqueStorage()._resolutionText = newValue}
+  }
+  /// Returns true if `resolutionText` has been explicitly set.
+  public var hasResolutionText: Bool {return _storage._resolutionText != nil}
+  /// Clears the value of `resolutionText`. Subsequent reads from it will return its default value.
+  public mutating func clearResolutionText() {_uniqueStorage()._resolutionText = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+public struct PBCoreHomeResolveApprovalAction: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var sessionID: String = String()
+
+  public var approvalID: String = String()
+
+  public var allow: Bool = false
+
+  public var always: Bool = false
+
+  public var denyReason: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreHomeEditApprovalDenyAction: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var sessionID: String = String()
+
+  public var approvalID: String = String()
+
+  public var denyingOpen: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreHomeAnswerQuestionAction: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var sessionID: String = String()
+
+  public var questionID: String = String()
+
+  public var optionNum: Int32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreHomeRetryAttentionAction: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var sessionID: String = String()
+
+  public var itemID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreHomeAbandonAttentionAction: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var sessionID: String = String()
+
+  public var itemID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
 }
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
@@ -1533,6 +1925,18 @@ extension PBCoreTailKind: SwiftProtobuf._ProtoNameProviding {
 
 extension PBCoreAlwaysAllowKind: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0ALWAYS_ALLOW_KIND_UNSPECIFIED\0\u{1}ALWAYS_ALLOW_KIND_COMMAND_PREFIX\0\u{1}ALWAYS_ALLOW_KIND_DIRECTORY\0\u{1}ALWAYS_ALLOW_KIND_TOOL_CATEGORY\0")
+}
+
+extension PBCoreSessionCommandStatus: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SESSION_COMMAND_STATUS_UNSPECIFIED\0\u{1}SESSION_COMMAND_STATUS_IDLE\0\u{1}SESSION_COMMAND_STATUS_PENDING\0\u{1}SESSION_COMMAND_STATUS_FAILED\0\u{1}SESSION_COMMAND_STATUS_UNKNOWN\0")
+}
+
+extension PBCoreResolutionOutcome: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0RESOLUTION_OUTCOME_UNSPECIFIED\0\u{1}RESOLUTION_OUTCOME_THIS_CLIENT\0\u{1}RESOLUTION_OUTCOME_OTHER_CLIENT\0\u{1}RESOLUTION_OUTCOME_TERMINAL\0\u{1}RESOLUTION_OUTCOME_FAILED\0")
+}
+
+extension PBCoreHomeFocusPhase: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0HOME_FOCUS_PHASE_UNSPECIFIED\0\u{1}HOME_FOCUS_PHASE_IDLE\0\u{1}HOME_FOCUS_PHASE_SUBMITTING\0\u{1}HOME_FOCUS_PHASE_FAILED\0\u{1}HOME_FOCUS_PHASE_RESOLVED_THIS_CLIENT\0\u{1}HOME_FOCUS_PHASE_RESOLVED_ELSEWHERE\0")
 }
 
 extension PBCoreConnectionStatusView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
@@ -1842,9 +2246,163 @@ extension PBCoreHomeEmptyView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
   }
 }
 
+extension PBCoreSessionCommandState: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SessionCommandState"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}slot_key\0\u{3}request_id\0\u{1}status\0\u{1}busy\0\u{1}frozen\0\u{1}expired\0\u{3}can_retry\0\u{3}can_abandon\0\u{3}error_code\0\u{3}error_text\0\u{3}status_text\0\u{3}succeeded_seq\0\u{3}submitted_summary\0")
+
+  fileprivate class _StorageClass {
+    var _slotKey: String = String()
+    var _requestID: String = String()
+    var _status: PBCoreSessionCommandStatus = .unspecified
+    var _busy: Bool = false
+    var _frozen: Bool = false
+    var _expired: Bool = false
+    var _canRetry: Bool = false
+    var _canAbandon: Bool = false
+    var _errorCode: String = String()
+    var _errorText: PBCoreText? = nil
+    var _statusText: PBCoreText? = nil
+    var _succeededSeq: UInt64 = 0
+    var _submittedSummary: PBCoreText? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _slotKey = source._slotKey
+      _requestID = source._requestID
+      _status = source._status
+      _busy = source._busy
+      _frozen = source._frozen
+      _expired = source._expired
+      _canRetry = source._canRetry
+      _canAbandon = source._canAbandon
+      _errorCode = source._errorCode
+      _errorText = source._errorText
+      _statusText = source._statusText
+      _succeededSeq = source._succeededSeq
+      _submittedSummary = source._submittedSummary
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularStringField(value: &_storage._slotKey) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._requestID) }()
+        case 3: try { try decoder.decodeSingularEnumField(value: &_storage._status) }()
+        case 4: try { try decoder.decodeSingularBoolField(value: &_storage._busy) }()
+        case 5: try { try decoder.decodeSingularBoolField(value: &_storage._frozen) }()
+        case 6: try { try decoder.decodeSingularBoolField(value: &_storage._expired) }()
+        case 7: try { try decoder.decodeSingularBoolField(value: &_storage._canRetry) }()
+        case 8: try { try decoder.decodeSingularBoolField(value: &_storage._canAbandon) }()
+        case 9: try { try decoder.decodeSingularStringField(value: &_storage._errorCode) }()
+        case 10: try { try decoder.decodeSingularMessageField(value: &_storage._errorText) }()
+        case 11: try { try decoder.decodeSingularMessageField(value: &_storage._statusText) }()
+        case 12: try { try decoder.decodeSingularUInt64Field(value: &_storage._succeededSeq) }()
+        case 13: try { try decoder.decodeSingularMessageField(value: &_storage._submittedSummary) }()
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if !_storage._slotKey.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._slotKey, fieldNumber: 1)
+      }
+      if !_storage._requestID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._requestID, fieldNumber: 2)
+      }
+      if _storage._status != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._status, fieldNumber: 3)
+      }
+      if _storage._busy != false {
+        try visitor.visitSingularBoolField(value: _storage._busy, fieldNumber: 4)
+      }
+      if _storage._frozen != false {
+        try visitor.visitSingularBoolField(value: _storage._frozen, fieldNumber: 5)
+      }
+      if _storage._expired != false {
+        try visitor.visitSingularBoolField(value: _storage._expired, fieldNumber: 6)
+      }
+      if _storage._canRetry != false {
+        try visitor.visitSingularBoolField(value: _storage._canRetry, fieldNumber: 7)
+      }
+      if _storage._canAbandon != false {
+        try visitor.visitSingularBoolField(value: _storage._canAbandon, fieldNumber: 8)
+      }
+      if !_storage._errorCode.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._errorCode, fieldNumber: 9)
+      }
+      try { if let v = _storage._errorText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
+      } }()
+      try { if let v = _storage._statusText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
+      } }()
+      if _storage._succeededSeq != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._succeededSeq, fieldNumber: 12)
+      }
+      try { if let v = _storage._submittedSummary {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
+      } }()
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreSessionCommandState, rhs: PBCoreSessionCommandState) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._slotKey != rhs_storage._slotKey {return false}
+        if _storage._requestID != rhs_storage._requestID {return false}
+        if _storage._status != rhs_storage._status {return false}
+        if _storage._busy != rhs_storage._busy {return false}
+        if _storage._frozen != rhs_storage._frozen {return false}
+        if _storage._expired != rhs_storage._expired {return false}
+        if _storage._canRetry != rhs_storage._canRetry {return false}
+        if _storage._canAbandon != rhs_storage._canAbandon {return false}
+        if _storage._errorCode != rhs_storage._errorCode {return false}
+        if _storage._errorText != rhs_storage._errorText {return false}
+        if _storage._statusText != rhs_storage._statusText {return false}
+        if _storage._succeededSeq != rhs_storage._succeededSeq {return false}
+        if _storage._submittedSummary != rhs_storage._submittedSummary {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 extension PBCoreAttentionCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".AttentionCardView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}machine_id\0\u{3}approval_id\0\u{1}title\0\u{3}kind_text\0\u{1}where\0\u{1}time\0\u{1}hot\0\u{1}body\0\u{3}tool_name\0\u{3}is_command\0\u{1}truncated\0\u{3}always_kind\0\u{3}always_arg\0\u{3}always_label\0\u{1}locked\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}machine_id\0\u{3}approval_id\0\u{1}title\0\u{3}kind_text\0\u{1}where\0\u{1}time\0\u{1}hot\0\u{1}body\0\u{3}tool_name\0\u{3}is_command\0\u{1}truncated\0\u{3}always_kind\0\u{3}always_arg\0\u{3}always_label\0\u{1}locked\0\u{2}\u{4}command\0\u{3}denying_open\0\u{2}\u{2}phase\0\u{3}resolution_text\0\u{3}hold_open_card\0\u{3}deny_reason_placeholder\0\u{1}description\0\u{3}is_skeleton\0")
 
   fileprivate class _StorageClass {
     var _sessionID: String = String()
@@ -1863,6 +2421,14 @@ extension PBCoreAttentionCardView: SwiftProtobuf.Message, SwiftProtobuf._Message
     var _alwaysArg: String = String()
     var _alwaysLabel: PBCoreText? = nil
     var _locked: Bool = false
+    var _command: PBCoreSessionCommandState? = nil
+    var _denyingOpen: Bool = false
+    var _phase: PBCoreHomeFocusPhase = .unspecified
+    var _resolutionText: PBCoreText? = nil
+    var _holdOpenCard: Bool = false
+    var _denyReasonPlaceholder: PBCoreText? = nil
+    var _description_p: String = String()
+    var _isSkeleton: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1889,6 +2455,14 @@ extension PBCoreAttentionCardView: SwiftProtobuf.Message, SwiftProtobuf._Message
       _alwaysArg = source._alwaysArg
       _alwaysLabel = source._alwaysLabel
       _locked = source._locked
+      _command = source._command
+      _denyingOpen = source._denyingOpen
+      _phase = source._phase
+      _resolutionText = source._resolutionText
+      _holdOpenCard = source._holdOpenCard
+      _denyReasonPlaceholder = source._denyReasonPlaceholder
+      _description_p = source._description_p
+      _isSkeleton = source._isSkeleton
     }
   }
 
@@ -1923,6 +2497,14 @@ extension PBCoreAttentionCardView: SwiftProtobuf.Message, SwiftProtobuf._Message
         case 14: try { try decoder.decodeSingularStringField(value: &_storage._alwaysArg) }()
         case 15: try { try decoder.decodeSingularMessageField(value: &_storage._alwaysLabel) }()
         case 16: try { try decoder.decodeSingularBoolField(value: &_storage._locked) }()
+        case 20: try { try decoder.decodeSingularMessageField(value: &_storage._command) }()
+        case 21: try { try decoder.decodeSingularBoolField(value: &_storage._denyingOpen) }()
+        case 23: try { try decoder.decodeSingularEnumField(value: &_storage._phase) }()
+        case 24: try { try decoder.decodeSingularMessageField(value: &_storage._resolutionText) }()
+        case 25: try { try decoder.decodeSingularBoolField(value: &_storage._holdOpenCard) }()
+        case 26: try { try decoder.decodeSingularMessageField(value: &_storage._denyReasonPlaceholder) }()
+        case 27: try { try decoder.decodeSingularStringField(value: &_storage._description_p) }()
+        case 28: try { try decoder.decodeSingularBoolField(value: &_storage._isSkeleton) }()
         default: break
         }
       }
@@ -1983,6 +2565,30 @@ extension PBCoreAttentionCardView: SwiftProtobuf.Message, SwiftProtobuf._Message
       if _storage._locked != false {
         try visitor.visitSingularBoolField(value: _storage._locked, fieldNumber: 16)
       }
+      try { if let v = _storage._command {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 20)
+      } }()
+      if _storage._denyingOpen != false {
+        try visitor.visitSingularBoolField(value: _storage._denyingOpen, fieldNumber: 21)
+      }
+      if _storage._phase != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._phase, fieldNumber: 23)
+      }
+      try { if let v = _storage._resolutionText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 24)
+      } }()
+      if _storage._holdOpenCard != false {
+        try visitor.visitSingularBoolField(value: _storage._holdOpenCard, fieldNumber: 25)
+      }
+      try { if let v = _storage._denyReasonPlaceholder {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 26)
+      } }()
+      if !_storage._description_p.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._description_p, fieldNumber: 27)
+      }
+      if _storage._isSkeleton != false {
+        try visitor.visitSingularBoolField(value: _storage._isSkeleton, fieldNumber: 28)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2008,6 +2614,14 @@ extension PBCoreAttentionCardView: SwiftProtobuf.Message, SwiftProtobuf._Message
         if _storage._alwaysArg != rhs_storage._alwaysArg {return false}
         if _storage._alwaysLabel != rhs_storage._alwaysLabel {return false}
         if _storage._locked != rhs_storage._locked {return false}
+        if _storage._command != rhs_storage._command {return false}
+        if _storage._denyingOpen != rhs_storage._denyingOpen {return false}
+        if _storage._phase != rhs_storage._phase {return false}
+        if _storage._resolutionText != rhs_storage._resolutionText {return false}
+        if _storage._holdOpenCard != rhs_storage._holdOpenCard {return false}
+        if _storage._denyReasonPlaceholder != rhs_storage._denyReasonPlaceholder {return false}
+        if _storage._description_p != rhs_storage._description_p {return false}
+        if _storage._isSkeleton != rhs_storage._isSkeleton {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -3193,7 +3807,7 @@ extension PBCoreHomeQuestionOptionView: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 extension PBCoreHomeQuestionCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".HomeQuestionCardView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}machine_id\0\u{3}question_id\0\u{3}observed_event_seq\0\u{3}badge_text\0\u{3}time_text\0\u{1}title\0\u{1}where\0\u{1}header\0\u{3}question_text\0\u{1}options\0\u{3}can_answer\0\u{3}offline_note\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}machine_id\0\u{3}question_id\0\u{3}observed_event_seq\0\u{3}badge_text\0\u{3}time_text\0\u{1}title\0\u{1}where\0\u{1}header\0\u{3}question_text\0\u{1}options\0\u{3}can_answer\0\u{3}offline_note\0\u{2}\u{2}command\0\u{1}phase\0\u{3}picked_option_num\0\u{3}resolution_text\0")
 
   fileprivate class _StorageClass {
     var _sessionID: String = String()
@@ -3209,6 +3823,10 @@ extension PBCoreHomeQuestionCardView: SwiftProtobuf.Message, SwiftProtobuf._Mess
     var _options: [PBCoreHomeQuestionOptionView] = []
     var _canAnswer: Bool = false
     var _offlineNote: PBCoreText? = nil
+    var _command: PBCoreSessionCommandState? = nil
+    var _phase: PBCoreHomeFocusPhase = .unspecified
+    var _pickedOptionNum: Int32 = 0
+    var _resolutionText: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3232,6 +3850,10 @@ extension PBCoreHomeQuestionCardView: SwiftProtobuf.Message, SwiftProtobuf._Mess
       _options = source._options
       _canAnswer = source._canAnswer
       _offlineNote = source._offlineNote
+      _command = source._command
+      _phase = source._phase
+      _pickedOptionNum = source._pickedOptionNum
+      _resolutionText = source._resolutionText
     }
   }
 
@@ -3263,6 +3885,10 @@ extension PBCoreHomeQuestionCardView: SwiftProtobuf.Message, SwiftProtobuf._Mess
         case 11: try { try decoder.decodeRepeatedMessageField(value: &_storage._options) }()
         case 12: try { try decoder.decodeSingularBoolField(value: &_storage._canAnswer) }()
         case 13: try { try decoder.decodeSingularMessageField(value: &_storage._offlineNote) }()
+        case 15: try { try decoder.decodeSingularMessageField(value: &_storage._command) }()
+        case 16: try { try decoder.decodeSingularEnumField(value: &_storage._phase) }()
+        case 17: try { try decoder.decodeSingularInt32Field(value: &_storage._pickedOptionNum) }()
+        case 18: try { try decoder.decodeSingularMessageField(value: &_storage._resolutionText) }()
         default: break
         }
       }
@@ -3314,6 +3940,18 @@ extension PBCoreHomeQuestionCardView: SwiftProtobuf.Message, SwiftProtobuf._Mess
       try { if let v = _storage._offlineNote {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
       } }()
+      try { if let v = _storage._command {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 15)
+      } }()
+      if _storage._phase != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._phase, fieldNumber: 16)
+      }
+      if _storage._pickedOptionNum != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._pickedOptionNum, fieldNumber: 17)
+      }
+      try { if let v = _storage._resolutionText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 18)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -3336,10 +3974,214 @@ extension PBCoreHomeQuestionCardView: SwiftProtobuf.Message, SwiftProtobuf._Mess
         if _storage._options != rhs_storage._options {return false}
         if _storage._canAnswer != rhs_storage._canAnswer {return false}
         if _storage._offlineNote != rhs_storage._offlineNote {return false}
+        if _storage._command != rhs_storage._command {return false}
+        if _storage._phase != rhs_storage._phase {return false}
+        if _storage._pickedOptionNum != rhs_storage._pickedOptionNum {return false}
+        if _storage._resolutionText != rhs_storage._resolutionText {return false}
         return true
       }
       if !storagesAreEqual {return false}
     }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreHomeResolveApprovalAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".HomeResolveApprovalAction"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}approval_id\0\u{1}allow\0\u{1}always\0\u{3}deny_reason\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.approvalID) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.allow) }()
+      case 4: try { try decoder.decodeSingularBoolField(value: &self.always) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.denyReason) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.sessionID.isEmpty {
+      try visitor.visitSingularStringField(value: self.sessionID, fieldNumber: 1)
+    }
+    if !self.approvalID.isEmpty {
+      try visitor.visitSingularStringField(value: self.approvalID, fieldNumber: 2)
+    }
+    if self.allow != false {
+      try visitor.visitSingularBoolField(value: self.allow, fieldNumber: 3)
+    }
+    if self.always != false {
+      try visitor.visitSingularBoolField(value: self.always, fieldNumber: 4)
+    }
+    if !self.denyReason.isEmpty {
+      try visitor.visitSingularStringField(value: self.denyReason, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreHomeResolveApprovalAction, rhs: PBCoreHomeResolveApprovalAction) -> Bool {
+    if lhs.sessionID != rhs.sessionID {return false}
+    if lhs.approvalID != rhs.approvalID {return false}
+    if lhs.allow != rhs.allow {return false}
+    if lhs.always != rhs.always {return false}
+    if lhs.denyReason != rhs.denyReason {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreHomeEditApprovalDenyAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".HomeEditApprovalDenyAction"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}approval_id\0\u{3}denying_open\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.approvalID) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.denyingOpen) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.sessionID.isEmpty {
+      try visitor.visitSingularStringField(value: self.sessionID, fieldNumber: 1)
+    }
+    if !self.approvalID.isEmpty {
+      try visitor.visitSingularStringField(value: self.approvalID, fieldNumber: 2)
+    }
+    if self.denyingOpen != false {
+      try visitor.visitSingularBoolField(value: self.denyingOpen, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreHomeEditApprovalDenyAction, rhs: PBCoreHomeEditApprovalDenyAction) -> Bool {
+    if lhs.sessionID != rhs.sessionID {return false}
+    if lhs.approvalID != rhs.approvalID {return false}
+    if lhs.denyingOpen != rhs.denyingOpen {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreHomeAnswerQuestionAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".HomeAnswerQuestionAction"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}question_id\0\u{3}option_num\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.questionID) }()
+      case 3: try { try decoder.decodeSingularInt32Field(value: &self.optionNum) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.sessionID.isEmpty {
+      try visitor.visitSingularStringField(value: self.sessionID, fieldNumber: 1)
+    }
+    if !self.questionID.isEmpty {
+      try visitor.visitSingularStringField(value: self.questionID, fieldNumber: 2)
+    }
+    if self.optionNum != 0 {
+      try visitor.visitSingularInt32Field(value: self.optionNum, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreHomeAnswerQuestionAction, rhs: PBCoreHomeAnswerQuestionAction) -> Bool {
+    if lhs.sessionID != rhs.sessionID {return false}
+    if lhs.questionID != rhs.questionID {return false}
+    if lhs.optionNum != rhs.optionNum {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreHomeRetryAttentionAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".HomeRetryAttentionAction"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}item_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.itemID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.sessionID.isEmpty {
+      try visitor.visitSingularStringField(value: self.sessionID, fieldNumber: 1)
+    }
+    if !self.itemID.isEmpty {
+      try visitor.visitSingularStringField(value: self.itemID, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreHomeRetryAttentionAction, rhs: PBCoreHomeRetryAttentionAction) -> Bool {
+    if lhs.sessionID != rhs.sessionID {return false}
+    if lhs.itemID != rhs.itemID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreHomeAbandonAttentionAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".HomeAbandonAttentionAction"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}item_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.itemID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.sessionID.isEmpty {
+      try visitor.visitSingularStringField(value: self.sessionID, fieldNumber: 1)
+    }
+    if !self.itemID.isEmpty {
+      try visitor.visitSingularStringField(value: self.itemID, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreHomeAbandonAttentionAction, rhs: PBCoreHomeAbandonAttentionAction) -> Bool {
+    if lhs.sessionID != rhs.sessionID {return false}
+    if lhs.itemID != rhs.itemID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
