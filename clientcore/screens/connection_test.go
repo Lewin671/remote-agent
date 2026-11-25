@@ -12,17 +12,17 @@ import (
 
 func TestBuildConnectionBannerAndDetails(t *testing.T) {
 	tests := []struct {
-		name             string
-		sv               *corev1.SyncStateView
-		wantConnected    bool
-		wantBannerKind   corev1.ConnectionBannerKind
-		wantVisible      bool
-		wantErrorTone    bool
-		wantShowDetails  bool
-		wantTextKey      string
-		wantFailedKey    string
-		wantDetailKey    string
-		wantShowDisconn  bool
+		name            string
+		sv              *corev1.SyncStateView
+		wantConnected   bool
+		wantBannerKind  corev1.ConnBannerKind
+		wantVisible     bool
+		wantErrorTone   bool
+		wantShowDetails bool
+		wantTextKey     string
+		wantFailedKey   string
+		wantDetailKey   string
+		wantShowDisconn bool
 	}{
 		{
 			name: "connected hides banner",
@@ -52,7 +52,7 @@ func TestBuildConnectionBannerAndDetails(t *testing.T) {
 				Connection:       corev1.ConnState_CONN_STATE_NO_NETWORK,
 				NetworkAvailable: false,
 			},
-			wantBannerKind: corev1.ConnectionBannerKind_CONNECTION_BANNER_KIND_NO_NETWORK,
+			wantBannerKind: corev1.ConnBannerKind_CONN_BANNER_KIND_NO_NETWORK,
 			wantVisible:    true,
 			wantTextKey:    text.KeyConnectionNoNetworkEmpty,
 		},
@@ -61,11 +61,23 @@ func TestBuildConnectionBannerAndDetails(t *testing.T) {
 			sv: &corev1.SyncStateView{
 				Connection:       corev1.ConnState_CONN_STATE_NO_NETWORK,
 				NetworkAvailable: false,
-				PrefsLoaded:      true,
+				MachinesListed:   true,
+				SessionsListed:   true,
 			},
-			wantBannerKind: corev1.ConnectionBannerKind_CONNECTION_BANNER_KIND_NO_NETWORK,
+			wantBannerKind: corev1.ConnBannerKind_CONN_BANNER_KIND_NO_NETWORK,
 			wantVisible:    true,
 			wantTextKey:    text.KeyConnectionNoNetworkPrevious,
+		},
+		{
+			name: "no network with only prefs loaded is still empty per buildSyncConnBanner",
+			sv: &corev1.SyncStateView{
+				Connection:       corev1.ConnState_CONN_STATE_NO_NETWORK,
+				NetworkAvailable: false,
+				PrefsLoaded:      true,
+			},
+			wantBannerKind: corev1.ConnBannerKind_CONN_BANNER_KIND_NO_NETWORK,
+			wantVisible:    true,
+			wantTextKey:    text.KeyConnectionNoNetworkEmpty,
 		},
 		{
 			name: "no server cold failure has error tone and failed text",
@@ -74,12 +86,12 @@ func TestBuildConnectionBannerAndDetails(t *testing.T) {
 				NetworkAvailable: true,
 				ConnectionReason: text.Msg(text.KeyErrorsConnectionTimedOut),
 			},
-			wantBannerKind:  corev1.ConnectionBannerKind_CONNECTION_BANNER_KIND_NO_SERVER,
+			wantBannerKind:  corev1.ConnBannerKind_CONN_BANNER_KIND_NO_SERVER,
 			wantVisible:     true,
 			wantErrorTone:   true,
 			wantShowDetails: true,
 			wantTextKey:     text.KeyConnectionServerRetrying,
-			wantFailedKey:   text.KeyConnectionAndroidServerFailed,
+			wantFailedKey:   text.KeyConnectionServerFailed,
 			wantDetailKey:   text.KeyConnectionServerDetails,
 		},
 		{
@@ -93,7 +105,7 @@ func TestBuildConnectionBannerAndDetails(t *testing.T) {
 				DisconnectedAtMs: 1_700_000_000_000,
 				ConnectionReason: text.Msg(text.KeyConnectionNoServer),
 			},
-			wantBannerKind:  corev1.ConnectionBannerKind_CONNECTION_BANNER_KIND_NO_SERVER,
+			wantBannerKind:  corev1.ConnBannerKind_CONN_BANNER_KIND_NO_SERVER,
 			wantVisible:     true,
 			wantErrorTone:   false,
 			wantShowDetails: true,
@@ -107,7 +119,18 @@ func TestBuildConnectionBannerAndDetails(t *testing.T) {
 				Connection:       corev1.ConnState_CONN_STATE_CONNECTING,
 				NetworkAvailable: true,
 			},
-			wantBannerKind: corev1.ConnectionBannerKind_CONNECTION_BANNER_KIND_WAITING,
+			wantBannerKind: corev1.ConnBannerKind_CONN_BANNER_KIND_WAITING,
+			wantVisible:    true,
+			wantTextKey:    text.KeyConnectionConnecting,
+		},
+		{
+			name: "reconnecting before live loaded still says connecting per buildSyncConnBanner",
+			sv: &corev1.SyncStateView{
+				Connection:       corev1.ConnState_CONN_STATE_RECONNECTING,
+				NetworkAvailable: true,
+				SecurityLoaded:   true,
+			},
+			wantBannerKind: corev1.ConnBannerKind_CONN_BANNER_KIND_WAITING,
 			wantVisible:    true,
 			wantTextKey:    text.KeyConnectionConnecting,
 		},
@@ -118,7 +141,7 @@ func TestBuildConnectionBannerAndDetails(t *testing.T) {
 				NetworkAvailable: true,
 				LiveLoaded:       true,
 			},
-			wantBannerKind: corev1.ConnectionBannerKind_CONNECTION_BANNER_KIND_WAITING,
+			wantBannerKind: corev1.ConnBannerKind_CONN_BANNER_KIND_WAITING,
 			wantVisible:    true,
 			wantTextKey:    text.KeyConnectionReconnecting,
 		},
@@ -129,6 +152,7 @@ func TestBuildConnectionBannerAndDetails(t *testing.T) {
 			st := NewState(nil)
 			st.Cal.NowMs = 1_700_000_060_000
 			vm := BuildConnection(st, tc.sv)
+			syncBanner := buildSyncConnBanner(tc.sv, nil)
 			if vm.Connected != tc.wantConnected {
 				t.Fatalf("Connected = %v, want %v", vm.Connected, tc.wantConnected)
 			}
@@ -136,10 +160,19 @@ func TestBuildConnectionBannerAndDetails(t *testing.T) {
 				if vm.Banner != nil && vm.Banner.Visible {
 					t.Fatalf("expected hidden banner, got %+v", vm.Banner)
 				}
+				if syncBanner != nil && syncBanner.Visible {
+					t.Fatalf("expected syncBanner hidden, got %+v", syncBanner)
+				}
 				return
 			}
 			if vm.Banner == nil || !vm.Banner.Visible {
 				t.Fatalf("expected visible banner")
+			}
+			if syncBanner == nil || !syncBanner.Visible {
+				t.Fatalf("expected syncBanner visible alongside ConnectionViewModel.Banner")
+			}
+			if vm.Banner.ErrorTone != syncBanner.ErrorTone || vm.Banner.KeptData != syncBanner.KeptData || vm.Banner.Text.GetKey() != syncBanner.Text.GetKey() {
+				t.Fatalf("ConnectionBanner (%+v) diverged from SyncConnBanner (%+v)", vm.Banner, syncBanner)
 			}
 			if vm.Banner.Kind != tc.wantBannerKind {
 				t.Fatalf("Banner.Kind = %v, want %v", vm.Banner.Kind, tc.wantBannerKind)
@@ -233,5 +266,105 @@ func TestBuildSessionHeaderTerminalAndFrozenAt(t *testing.T) {
 	vm2 := BuildSessionView(snap, st, &corev1.SessionScreenRequest{SessionId: "s1"}, nil)
 	if vm2.Header.FrozenAtMs != 1_700_000_050_000 {
 		t.Fatalf("FrozenAtMs = %d, want disconnected_at_ms 1700000050000", vm2.Header.FrozenAtMs)
+	}
+}
+
+func TestBuildHomeSuppressesWaitingHeadlineDuringDisplayGrace(t *testing.T) {
+	st := NewState(nil)
+	st.World.Connection = lists.ConnConnecting
+	st.DisplayGrace = true
+	vm := BuildHome(st, 30)
+	if vm.Headline != nil && (vm.Headline.IsConnecting || vm.Headline.Title != nil) {
+		t.Fatalf("expected waiting headline suppressed during DisplayGrace, got %+v", vm.Headline)
+	}
+
+	st.DisplayGrace = false
+	vm2 := BuildHome(st, 30)
+	if vm2.Headline == nil || !vm2.Headline.IsConnecting || vm2.Headline.Title.GetKey() != text.KeyConnectionConnecting {
+		t.Fatalf("expected connecting headline once DisplayGrace ends, got %+v", vm2.Headline)
+	}
+}
+
+func TestSettingsSecuritySummaryAndMachineManagementFlags(t *testing.T) {
+	st := NewState(nil)
+	st.World.Connection = lists.ConnConnected
+	st.World.Machines = []*lists.Machine{
+		{ID: "m-in-dir", Online: true},
+		{ID: "m-archived", Online: false, Archived: true},
+	}
+
+	// Non-manager client in directory -> CanPrepareHandoff=true, AuthorityNameText populated.
+	memberSV := &corev1.SyncStateView{
+		Connection:        corev1.ConnState_CONN_STATE_CONNECTED,
+		SecurityLoaded:    true,
+		IsMember:          true,
+		IsManager:         false,
+		SelfDeviceId:      "client-2",
+		AuthorityDeviceId: "client-1",
+		Devices: []*corev1.SyncDeviceView{
+			{DeviceId: "client-1", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Meta: &v1.DeviceMeta{Name: "Main Phone"}},
+			{DeviceId: "client-2", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT},
+			{DeviceId: "m-in-dir", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE},
+		},
+	}
+	ApplySyncStateTexts(memberSV, nil, 0, world.Reason{})
+	settingsVM := BuildSettings(st, memberSV, NewSettingsExtra())
+	if !settingsVM.Security.CanPrepareHandoff {
+		t.Fatal("expected CanPrepareHandoff=true for member client")
+	}
+	if settingsVM.Security.AuthorityNameText == nil || settingsVM.Security.AuthorityNameText.GetLiteral() != "Main Phone" {
+		t.Fatalf("unexpected AuthorityNameText: %+v", settingsVM.Security.AuthorityNameText)
+	}
+	if settingsVM.Security.LeaseRenewalAdvice.GetKey() != text.KeySecurityOpenToRenew {
+		t.Fatalf("unexpected LeaseRenewalAdvice: %+v", settingsVM.Security.LeaseRenewalAdvice)
+	}
+
+	// Manager viewing archived machine (not in device directory) vs in-dir machine -> CanDeleteRecords checks !inDeviceDir.
+	mgrSV := &corev1.SyncStateView{
+		Connection:        corev1.ConnState_CONN_STATE_CONNECTED,
+		SecurityLoaded:    true,
+		IsMember:          true,
+		IsManager:         true,
+		SelfDeviceId:      "client-1",
+		AuthorityDeviceId: "client-1",
+		Devices: []*corev1.SyncDeviceView{
+			{DeviceId: "client-1", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT},
+			{DeviceId: "m-in-dir", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE},
+		},
+	}
+	ApplySyncStateTexts(mgrSV, nil, 0, world.Reason{})
+	mgrSettings := BuildSettings(st, mgrSV, NewSettingsExtra())
+	if mgrSettings.Security.CanPrepareHandoff {
+		t.Fatal("expected CanPrepareHandoff=false for manager")
+	}
+	inDirVM := BuildMachineSettings(st, mgrSV, NewSettingsExtra(), "m-in-dir")
+	if inDirVM.Management.CanDeleteRecords {
+		t.Fatal("expected CanDeleteRecords=false when machine is still in device directory")
+	}
+	archivedVM := BuildMachineSettings(st, mgrSV, NewSettingsExtra(), "m-archived")
+	if !archivedVM.Management.CanDeleteRecords {
+		t.Fatal("expected CanDeleteRecords=true for archived machine not in device directory")
+	}
+}
+
+func TestSchedulesInitialLoaded(t *testing.T) {
+	st := NewState(nil)
+	vm := BuildSchedules(st, 30)
+	if vm.InitialLoaded {
+		t.Fatal("expected InitialLoaded=false before lists/prefs load")
+	}
+	detailVM := BuildScheduleDetail(st, "m1", "t1", 30)
+	if detailVM.InitialLoaded {
+		t.Fatal("expected ScheduleDetailView.InitialLoaded=false before lists/prefs load")
+	}
+
+	st.World.SessionsListed = true
+	vm2 := BuildSchedules(st, 30)
+	if !vm2.InitialLoaded {
+		t.Fatal("expected InitialLoaded=true once SessionsListed")
+	}
+	detailVM2 := BuildScheduleDetail(st, "m1", "t1", 30)
+	if !detailVM2.InitialLoaded {
+		t.Fatal("expected ScheduleDetailView.InitialLoaded=true once SessionsListed")
 	}
 }

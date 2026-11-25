@@ -23,17 +23,6 @@ public interface ConnectionServerDetailsViewOrBuilder extends
   long getDisconnectedAtMs();
 
   /**
-   * <code>.remoteagent.core.v1.Text disconnected_at_text = 3 [json_name = "disconnectedAtText"];</code>
-   * @return Whether the disconnectedAtText field is set.
-   */
-  boolean hasDisconnectedAtText();
-  /**
-   * <code>.remoteagent.core.v1.Text disconnected_at_text = 3 [json_name = "disconnectedAtText"];</code>
-   * @return The disconnectedAtText.
-   */
-  io.github.lewin671.remoteagent.core.proto.Text getDisconnectedAtText();
-
-  /**
    * <code>.remoteagent.core.v1.Text reason_text = 4 [json_name = "reasonText"];</code>
    * @return Whether the reasonText field is set.
    */

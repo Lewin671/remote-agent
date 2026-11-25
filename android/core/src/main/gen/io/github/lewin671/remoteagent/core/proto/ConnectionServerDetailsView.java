@@ -69,54 +69,6 @@ public  final class ConnectionServerDetailsView extends
     disconnectedAtMs_ = 0L;
   }
 
-  public static final int DISCONNECTED_AT_TEXT_FIELD_NUMBER = 3;
-  private io.github.lewin671.remoteagent.core.proto.Text disconnectedAtText_;
-  /**
-   * <code>.remoteagent.core.v1.Text disconnected_at_text = 3 [json_name = "disconnectedAtText"];</code>
-   */
-  @java.lang.Override
-  public boolean hasDisconnectedAtText() {
-    return ((bitField0_ & 0x00000001) != 0);
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text disconnected_at_text = 3 [json_name = "disconnectedAtText"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.Text getDisconnectedAtText() {
-    return disconnectedAtText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : disconnectedAtText_;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text disconnected_at_text = 3 [json_name = "disconnectedAtText"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setDisconnectedAtText(io.github.lewin671.remoteagent.core.proto.Text value) {
-    value.getClass();  // minimal bytecode null check
-    disconnectedAtText_ = value;
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text disconnected_at_text = 3 [json_name = "disconnectedAtText"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeDisconnectedAtText(io.github.lewin671.remoteagent.core.proto.Text value) {
-    value.getClass();  // minimal bytecode null check
-    if (disconnectedAtText_ != null &&
-        disconnectedAtText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
-      disconnectedAtText_ =
-        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(disconnectedAtText_).mergeFrom(value).buildPartial();
-    } else {
-      disconnectedAtText_ = value;
-    }
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text disconnected_at_text = 3 [json_name = "disconnectedAtText"];</code>
-   */
-  private void clearDisconnectedAtText() {
-    disconnectedAtText_ = null;
-    bitField0_ = (bitField0_ & ~0x00000001);
-  }
-
   public static final int REASON_TEXT_FIELD_NUMBER = 4;
   private io.github.lewin671.remoteagent.core.proto.Text reasonText_;
   /**
@@ -124,7 +76,7 @@ public  final class ConnectionServerDetailsView extends
    */
   @java.lang.Override
   public boolean hasReasonText() {
-    return ((bitField0_ & 0x00000002) != 0);
+    return ((bitField0_ & 0x00000001) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text reason_text = 4 [json_name = "reasonText"];</code>
@@ -140,7 +92,7 @@ public  final class ConnectionServerDetailsView extends
   private void setReasonText(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     reasonText_ = value;
-    bitField0_ |= 0x00000002;
+    bitField0_ |= 0x00000001;
   }
   /**
    * <code>.remoteagent.core.v1.Text reason_text = 4 [json_name = "reasonText"];</code>
@@ -155,14 +107,14 @@ public  final class ConnectionServerDetailsView extends
     } else {
       reasonText_ = value;
     }
-    bitField0_ |= 0x00000002;
+    bitField0_ |= 0x00000001;
   }
   /**
    * <code>.remoteagent.core.v1.Text reason_text = 4 [json_name = "reasonText"];</code>
    */
   private void clearReasonText() {
     reasonText_ = null;
-    bitField0_ = (bitField0_ & ~0x00000002);
+    bitField0_ = (bitField0_ & ~0x00000001);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.ConnectionServerDetailsView parseFrom(
@@ -319,53 +271,6 @@ public  final class ConnectionServerDetailsView extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.Text disconnected_at_text = 3 [json_name = "disconnectedAtText"];</code>
-     */
-    @java.lang.Override
-    public boolean hasDisconnectedAtText() {
-      return instance.hasDisconnectedAtText();
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text disconnected_at_text = 3 [json_name = "disconnectedAtText"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.Text getDisconnectedAtText() {
-      return instance.getDisconnectedAtText();
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text disconnected_at_text = 3 [json_name = "disconnectedAtText"];</code>
-     */
-    public Builder setDisconnectedAtText(io.github.lewin671.remoteagent.core.proto.Text value) {
-      copyOnWrite();
-      instance.setDisconnectedAtText(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.core.v1.Text disconnected_at_text = 3 [json_name = "disconnectedAtText"];</code>
-     */
-    public Builder setDisconnectedAtText(
-        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
-      copyOnWrite();
-      instance.setDisconnectedAtText(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text disconnected_at_text = 3 [json_name = "disconnectedAtText"];</code>
-     */
-    public Builder mergeDisconnectedAtText(io.github.lewin671.remoteagent.core.proto.Text value) {
-      copyOnWrite();
-      instance.mergeDisconnectedAtText(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text disconnected_at_text = 3 [json_name = "disconnectedAtText"];</code>
-     */
-    public Builder clearDisconnectedAtText() {  copyOnWrite();
-      instance.clearDisconnectedAtText();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.Text reason_text = 4 [json_name = "reasonText"];</code>
      */
     @java.lang.Override
@@ -431,12 +336,11 @@ public  final class ConnectionServerDetailsView extends
             "bitField0_",
             "showDisconnectedAt_",
             "disconnectedAtMs_",
-            "disconnectedAtText_",
             "reasonText_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0001\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0007\u0002\u0002" +
-              "\u0003\u1009\u0000\u0004\u1009\u0001";
+              "\u0000\u0003\u0000\u0001\u0001\u0004\u0003\u0000\u0000\u0000\u0001\u0007\u0002\u0002" +
+              "\u0004\u1009\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

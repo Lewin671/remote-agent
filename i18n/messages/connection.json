@@ -85,10 +85,10 @@
     }
   },
   {
-    "key": "connection.android_server_failed",
+    "key": "connection.server_failed",
     "zh-CN": "连不上服务器：{reason}",
     "en": "Cannot reach the server: {reason}",
-    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "notes": "公共连接条在无旧数据且有具体错误原因时显示，三端共用；保留原始诊断文本，不翻译 reason。",
     "params": {
       "reason": {
         "type": "string",

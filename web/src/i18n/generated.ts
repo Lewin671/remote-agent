@@ -167,7 +167,6 @@ export interface MessageArgs {
   "composer.slash_title": { [name: string]: never };
   "composer.unconfirmed": { [name: string]: never };
   "composer.write_failed": { [name: string]: never };
-  "connection.android_server_failed": { reason: string };
   "connection.checking": { [name: string]: never };
   "connection.connected": { [name: string]: never };
   "connection.connecting": { [name: string]: never };
@@ -195,6 +194,7 @@ export interface MessageArgs {
   "connection.reconnecting_conn_check_label": { [name: string]: never };
   "connection.sec_elapsed": { count: number; detail: string; previousFailure: string; value: string };
   "connection.server_details": { reason: string };
+  "connection.server_failed": { reason: string };
   "connection.server_retrying": { [name: string]: never };
   "connection.slow": { [name: string]: never };
   "connection.test_again": { [name: string]: never };
@@ -1958,7 +1958,6 @@ export const messages = {
     "composer.slash_title": "Send as a regular message?",
     "composer.unconfirmed": "Possibly not sent: written to terminal but unconfirmed",
     "composer.write_failed": "Could not write to terminal",
-    "connection.android_server_failed": "Cannot reach the server: {reason}",
     "connection.checking": "Checking…",
     "connection.connected": "Connected",
     "connection.connecting": "Connecting…",
@@ -1992,6 +1991,7 @@ export const messages = {
       "plural": "count"
     },
     "connection.server_details": "Cannot connect to server: {reason}. This device’s network may also be unavailable. Retrying automatically.",
+    "connection.server_failed": "Cannot reach the server: {reason}",
     "connection.server_retrying": "Cannot connect to server · Retrying",
     "connection.slow": " · Slow",
     "connection.test_again": "Test again",
@@ -4319,7 +4319,6 @@ export const messages = {
     "composer.slash_title": "作为普通消息发送？",
     "composer.unconfirmed": "可能没发出去：已送到终端但没确认",
     "composer.write_failed": "写入终端失败",
-    "connection.android_server_failed": "连不上服务器：{reason}",
     "connection.checking": "检测中…",
     "connection.connected": "已连接",
     "connection.connecting": "连接中…",
@@ -4352,6 +4351,7 @@ export const messages = {
       "plural": "count"
     },
     "connection.server_details": "连不上服务器：{reason}。也可能是这台设备的网络不通，会一直自动重试",
+    "connection.server_failed": "连不上服务器：{reason}",
     "connection.server_retrying": "连不上服务器 · 正在重试",
     "connection.slow": " · 较慢",
     "connection.test_again": "再测一次",

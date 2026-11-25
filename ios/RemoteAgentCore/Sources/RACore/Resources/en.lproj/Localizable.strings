@@ -131,7 +131,6 @@
 "composer_slash_title" = "Send as a regular message?";
 "composer_unconfirmed" = "Possibly not sent: written to terminal but unconfirmed";
 "composer_write_failed" = "Could not write to terminal";
-"connection_android_server_failed" = "Cannot reach the server: %1$@";
 "connection_checking" = "Checking…";
 "connection_connected" = "Connected";
 "connection_connecting" = "Connecting…";
@@ -164,6 +163,7 @@
 "connection_reconnecting_conn_check" = "Reconnecting";
 "connection_reconnecting_conn_check_label" = "Reconnecting";
 "connection_server_details" = "Cannot connect to server: %1$@. This device’s network may also be unavailable. Retrying automatically.";
+"connection_server_failed" = "Cannot reach the server: %1$@";
 "connection_server_retrying" = "Cannot connect to server · Retrying";
 "connection_slow" = " · Slow";
 "connection_test_again" = "Test again";

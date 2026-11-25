@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file remoteagent/core/v1/connection_view.proto.
  */
 export const file_remoteagent_core_v1_connection_view: GenFile = /*@__PURE__*/
-  fileDesc("CilyZW1vdGVhZ2VudC9jb3JlL3YxL2Nvbm5lY3Rpb25fdmlldy5wcm90bxITcmVtb3RlYWdlbnQuY29yZS52MSIZChdDb25uZWN0aW9uU2NyZWVuUmVxdWVzdCKmAgoUQ29ubmVjdGlvbkJhbm5lclZpZXcSNwoEa2luZBgBIAEoDjIpLnJlbW90ZWFnZW50LmNvcmUudjEuQ29ubmVjdGlvbkJhbm5lcktpbmQSDwoHdmlzaWJsZRgCIAEoCBISCgplcnJvcl90b25lGAMgASgIEhEKCWtlcHRfZGF0YRgEIAEoCBIUCgxzaG93X2RldGFpbHMYBSABKAgSJwoEdGV4dBgGIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dBIuCgtkZXRhaWxfdGV4dBgHIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dBIuCgtmYWlsZWRfdGV4dBgIIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dCLAAQobQ29ubmVjdGlvblNlcnZlckRldGFpbHNWaWV3EhwKFHNob3dfZGlzY29ubmVjdGVkX2F0GAEgASgIEhoKEmRpc2Nvbm5lY3RlZF9hdF9tcxgCIAEoAxI3ChRkaXNjb25uZWN0ZWRfYXRfdGV4dBgDIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dBIuCgtyZWFzb25fdGV4dBgEIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dCKlBQoTQ29ubmVjdGlvblZpZXdNb2RlbBItCgVzdGF0ZRgBIAEoDjIeLnJlbW90ZWFnZW50LmNvcmUudjEuQ29ublN0YXRlEhEKCWNvbm5lY3RlZBgCIAEoCBIPCgdyZW1vdmVkGAMgASgIEhUKDWRpc3BsYXlfZ3JhY2UYBCABKAgSHAoUcmVhY2hhYmlsaXR5X3Vua25vd24YBSABKAgSGQoRbmV0d29ya19hdmFpbGFibGUYBiABKAgSEwoLbGl2ZV9sb2FkZWQYByABKAgSFgoOaW5pdGlhbF9saXN0ZWQYCCABKAgSFwoPc2VjdXJpdHlfbG9hZGVkGAkgASgIEhEKCWlzX21lbWJlchgKIAEoCBIcChRhY2NvdW50X2Nsb2NrX3NrZXdlZBgLIAEoCBIaChJkaXNjb25uZWN0ZWRfYXRfbXMYDCABKAMSLgoLcmVhc29uX3RleHQYDSABKAsyGS5yZW1vdGVhZ2VudC5jb3JlLnYxLlRleHQSOQoWY2xvY2tfc2tld19iYW5uZXJfdGV4dBgOIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dBI3ChRsZWFzZV9yZW5ld2FsX2FkdmljZRgPIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dBI5CgZiYW5uZXIYECABKAsyKS5yZW1vdGVhZ2VudC5jb3JlLnYxLkNvbm5lY3Rpb25CYW5uZXJWaWV3EkgKDnNlcnZlcl9kZXRhaWxzGBEgASgLMjAucmVtb3RlYWdlbnQuY29yZS52MS5Db25uZWN0aW9uU2VydmVyRGV0YWlsc1ZpZXcSGwoTYXV0aG9yaXR5X2RldmljZV9pZBgSIAEoCRISCgppc19tYW5hZ2VyGBMgASgIIj0KE1dhdGNoZWRTZXNzaW9uUm91dGUSEgoKc2Vzc2lvbl9pZBgBIAEoCRISCgptYWNoaW5lX2lkGAIgASgJIlMKFVdhdGNoZWRTZXNzaW9uc0VmZmVjdBI6CghzZXNzaW9ucxgBIAMoCzIoLnJlbW90ZWFnZW50LmNvcmUudjEuV2F0Y2hlZFNlc3Npb25Sb3V0ZSJDChdVc2FnZUNhY2hlUmVxdWVzdEVmZmVjdBISCgptYWNoaW5lX2lkGAEgASgJEhQKDGRlbGV0ZV9jYWNoZRgCIAEoCCIcChpTeW5jUHVzaFN1YnNjcmlwdGlvbkVmZmVjdCJwChxSZXNvbHZlTm90aWZpY2F0aW9uVGFwQWN0aW9uEhIKCnNlc3Npb25faWQYASABKAkSEQoJc2NoZWR1bGVkGAIgASgIEhQKDHNjaGVkdWxlX3NlcRgDIAEoBBITCgthcHByb3ZhbF9pZBgEIAEoCSrQAQoUQ29ubmVjdGlvbkJhbm5lcktpbmQSJgoiQ09OTkVDVElPTl9CQU5ORVJfS0lORF9VTlNQRUNJRklFRBAAEh8KG0NPTk5FQ1RJT05fQkFOTkVSX0tJTkRfTk9ORRABEiUKIUNPTk5FQ1RJT05fQkFOTkVSX0tJTkRfTk9fTkVUV09SSxACEiQKIENPTk5FQ1RJT05fQkFOTkVSX0tJTkRfTk9fU0VSVkVSEAMSIgoeQ09OTkVDVElPTl9CQU5ORVJfS0lORF9XQUlUSU5HEARiBnByb3RvMw", [file_remoteagent_core_v1_home_view, file_remoteagent_core_v1_text]);
+  fileDesc("CilyZW1vdGVhZ2VudC9jb3JlL3YxL2Nvbm5lY3Rpb25fdmlldy5wcm90bxITcmVtb3RlYWdlbnQuY29yZS52MSIZChdDb25uZWN0aW9uU2NyZWVuUmVxdWVzdCKaAgoOQ29ubkJhbm5lclZpZXcSMQoEa2luZBgBIAEoDjIjLnJlbW90ZWFnZW50LmNvcmUudjEuQ29ubkJhbm5lcktpbmQSDwoHdmlzaWJsZRgCIAEoCBISCgplcnJvcl90b25lGAMgASgIEhEKCWtlcHRfZGF0YRgEIAEoCBInCgR0ZXh0GAUgASgLMhkucmVtb3RlYWdlbnQuY29yZS52MS5UZXh0Ei4KC2RldGFpbF90ZXh0GAYgASgLMhkucmVtb3RlYWdlbnQuY29yZS52MS5UZXh0EhQKDHNob3dfZGV0YWlscxgHIAEoCBIuCgtmYWlsZWRfdGV4dBgIIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dCKjAQobQ29ubmVjdGlvblNlcnZlckRldGFpbHNWaWV3EhwKFHNob3dfZGlzY29ubmVjdGVkX2F0GAEgASgIEhoKEmRpc2Nvbm5lY3RlZF9hdF9tcxgCIAEoAxIuCgtyZWFzb25fdGV4dBgEIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dEoECAMQBFIUZGlzY29ubmVjdGVkX2F0X3RleHQi1QQKE0Nvbm5lY3Rpb25WaWV3TW9kZWwSLQoFc3RhdGUYASABKA4yHi5yZW1vdGVhZ2VudC5jb3JlLnYxLkNvbm5TdGF0ZRIRCgljb25uZWN0ZWQYAiABKAgSDwoHcmVtb3ZlZBgDIAEoCBIVCg1kaXNwbGF5X2dyYWNlGAQgASgIEhwKFHJlYWNoYWJpbGl0eV91bmtub3duGAUgASgIEhMKC2xpdmVfbG9hZGVkGAcgASgIEjcKFGxlYXNlX3JlbmV3YWxfYWR2aWNlGA8gASgLMhkucmVtb3RlYWdlbnQuY29yZS52MS5UZXh0EjMKBmJhbm5lchgQIAEoCzIjLnJlbW90ZWFnZW50LmNvcmUudjEuQ29ubkJhbm5lclZpZXcSSAoOc2VydmVyX2RldGFpbHMYESABKAsyMC5yZW1vdGVhZ2VudC5jb3JlLnYxLkNvbm5lY3Rpb25TZXJ2ZXJEZXRhaWxzVmlld0oECAYQB0oECAgQCUoECAkQCkoECAoQC0oECAsQDEoECAwQDUoECA0QDkoECA4QD0oECBIQE0oECBMQFFIRbmV0d29ya19hdmFpbGFibGVSDmluaXRpYWxfbGlzdGVkUg9zZWN1cml0eV9sb2FkZWRSCWlzX21lbWJlclIUYWNjb3VudF9jbG9ja19za2V3ZWRSEmRpc2Nvbm5lY3RlZF9hdF9tc1ILcmVhc29uX3RleHRSFmNsb2NrX3NrZXdfYmFubmVyX3RleHRSE2F1dGhvcml0eV9kZXZpY2VfaWRSCmlzX21hbmFnZXIiPQoTV2F0Y2hlZFNlc3Npb25Sb3V0ZRISCgpzZXNzaW9uX2lkGAEgASgJEhIKCm1hY2hpbmVfaWQYAiABKAkiUwoVV2F0Y2hlZFNlc3Npb25zRWZmZWN0EjoKCHNlc3Npb25zGAEgAygLMigucmVtb3RlYWdlbnQuY29yZS52MS5XYXRjaGVkU2Vzc2lvblJvdXRlIkMKF1VzYWdlQ2FjaGVSZXF1ZXN0RWZmZWN0EhIKCm1hY2hpbmVfaWQYASABKAkSFAoMZGVsZXRlX2NhY2hlGAIgASgIIhwKGlN5bmNQdXNoU3Vic2NyaXB0aW9uRWZmZWN0InAKHFJlc29sdmVOb3RpZmljYXRpb25UYXBBY3Rpb24SEgoKc2Vzc2lvbl9pZBgBIAEoCRIRCglzY2hlZHVsZWQYAiABKAgSFAoMc2NoZWR1bGVfc2VxGAMgASgEEhMKC2FwcHJvdmFsX2lkGAQgASgJKqwBCg5Db25uQmFubmVyS2luZBIgChxDT05OX0JBTk5FUl9LSU5EX1VOU1BFQ0lGSUVEEAASGQoVQ09OTl9CQU5ORVJfS0lORF9OT05FEAESHwobQ09OTl9CQU5ORVJfS0lORF9OT19ORVRXT1JLEAISHgoaQ09OTl9CQU5ORVJfS0lORF9OT19TRVJWRVIQAxIcChhDT05OX0JBTk5FUl9LSU5EX1dBSVRJTkcQBGIGcHJvdG8z", [file_remoteagent_core_v1_home_view, file_remoteagent_core_v1_text]);
 
 /**
  * ConnectionScreenRequest requests the global connection, banner, and server details ViewModel.
@@ -32,13 +32,13 @@ export const ConnectionScreenRequestSchema: GenMessage<ConnectionScreenRequest> 
   messageDesc(file_remoteagent_core_v1_connection_view, 0);
 
 /**
- * @generated from message remoteagent.core.v1.ConnectionBannerView
+ * @generated from message remoteagent.core.v1.ConnBannerView
  */
-export type ConnectionBannerView = Message<"remoteagent.core.v1.ConnectionBannerView"> & {
+export type ConnBannerView = Message<"remoteagent.core.v1.ConnBannerView"> & {
   /**
-   * @generated from field: remoteagent.core.v1.ConnectionBannerKind kind = 1;
+   * @generated from field: remoteagent.core.v1.ConnBannerKind kind = 1;
    */
-  kind: ConnectionBannerKind;
+  kind: ConnBannerKind;
 
   /**
    * @generated from field: bool visible = 2;
@@ -56,19 +56,19 @@ export type ConnectionBannerView = Message<"remoteagent.core.v1.ConnectionBanner
   keptData: boolean;
 
   /**
-   * @generated from field: bool show_details = 5;
-   */
-  showDetails: boolean;
-
-  /**
-   * @generated from field: remoteagent.core.v1.Text text = 6;
+   * @generated from field: remoteagent.core.v1.Text text = 5;
    */
   text?: Text | undefined;
 
   /**
-   * @generated from field: remoteagent.core.v1.Text detail_text = 7;
+   * @generated from field: remoteagent.core.v1.Text detail_text = 6;
    */
   detailText?: Text | undefined;
+
+  /**
+   * @generated from field: bool show_details = 7;
+   */
+  showDetails: boolean;
 
   /**
    * @generated from field: remoteagent.core.v1.Text failed_text = 8;
@@ -77,10 +77,10 @@ export type ConnectionBannerView = Message<"remoteagent.core.v1.ConnectionBanner
 };
 
 /**
- * Describes the message remoteagent.core.v1.ConnectionBannerView.
- * Use `create(ConnectionBannerViewSchema)` to create a new message.
+ * Describes the message remoteagent.core.v1.ConnBannerView.
+ * Use `create(ConnBannerViewSchema)` to create a new message.
  */
-export const ConnectionBannerViewSchema: GenMessage<ConnectionBannerView> = /*@__PURE__*/
+export const ConnBannerViewSchema: GenMessage<ConnBannerView> = /*@__PURE__*/
   messageDesc(file_remoteagent_core_v1_connection_view, 1);
 
 /**
@@ -96,11 +96,6 @@ export type ConnectionServerDetailsView = Message<"remoteagent.core.v1.Connectio
    * @generated from field: int64 disconnected_at_ms = 2;
    */
   disconnectedAtMs: bigint;
-
-  /**
-   * @generated from field: remoteagent.core.v1.Text disconnected_at_text = 3;
-   */
-  disconnectedAtText?: Text | undefined;
 
   /**
    * @generated from field: remoteagent.core.v1.Text reason_text = 4;
@@ -148,49 +143,9 @@ export type ConnectionViewModel = Message<"remoteagent.core.v1.ConnectionViewMod
   reachabilityUnknown: boolean;
 
   /**
-   * @generated from field: bool network_available = 6;
-   */
-  networkAvailable: boolean;
-
-  /**
    * @generated from field: bool live_loaded = 7;
    */
   liveLoaded: boolean;
-
-  /**
-   * @generated from field: bool initial_listed = 8;
-   */
-  initialListed: boolean;
-
-  /**
-   * @generated from field: bool security_loaded = 9;
-   */
-  securityLoaded: boolean;
-
-  /**
-   * @generated from field: bool is_member = 10;
-   */
-  isMember: boolean;
-
-  /**
-   * @generated from field: bool account_clock_skewed = 11;
-   */
-  accountClockSkewed: boolean;
-
-  /**
-   * @generated from field: int64 disconnected_at_ms = 12;
-   */
-  disconnectedAtMs: bigint;
-
-  /**
-   * @generated from field: remoteagent.core.v1.Text reason_text = 13;
-   */
-  reasonText?: Text | undefined;
-
-  /**
-   * @generated from field: remoteagent.core.v1.Text clock_skew_banner_text = 14;
-   */
-  clockSkewBannerText?: Text | undefined;
 
   /**
    * @generated from field: remoteagent.core.v1.Text lease_renewal_advice = 15;
@@ -198,24 +153,14 @@ export type ConnectionViewModel = Message<"remoteagent.core.v1.ConnectionViewMod
   leaseRenewalAdvice?: Text | undefined;
 
   /**
-   * @generated from field: remoteagent.core.v1.ConnectionBannerView banner = 16;
+   * @generated from field: remoteagent.core.v1.ConnBannerView banner = 16;
    */
-  banner?: ConnectionBannerView | undefined;
+  banner?: ConnBannerView | undefined;
 
   /**
    * @generated from field: remoteagent.core.v1.ConnectionServerDetailsView server_details = 17;
    */
   serverDetails?: ConnectionServerDetailsView | undefined;
-
-  /**
-   * @generated from field: string authority_device_id = 18;
-   */
-  authorityDeviceId: string;
-
-  /**
-   * @generated from field: bool is_manager = 19;
-   */
-  isManager: boolean;
 };
 
 /**
@@ -345,38 +290,38 @@ export const ResolveNotificationTapActionSchema: GenMessage<ResolveNotificationT
   messageDesc(file_remoteagent_core_v1_connection_view, 8);
 
 /**
- * @generated from enum remoteagent.core.v1.ConnectionBannerKind
+ * @generated from enum remoteagent.core.v1.ConnBannerKind
  */
-export enum ConnectionBannerKind {
+export enum ConnBannerKind {
   /**
-   * @generated from enum value: CONNECTION_BANNER_KIND_UNSPECIFIED = 0;
+   * @generated from enum value: CONN_BANNER_KIND_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: CONNECTION_BANNER_KIND_NONE = 1;
+   * @generated from enum value: CONN_BANNER_KIND_NONE = 1;
    */
   NONE = 1,
 
   /**
-   * @generated from enum value: CONNECTION_BANNER_KIND_NO_NETWORK = 2;
+   * @generated from enum value: CONN_BANNER_KIND_NO_NETWORK = 2;
    */
   NO_NETWORK = 2,
 
   /**
-   * @generated from enum value: CONNECTION_BANNER_KIND_NO_SERVER = 3;
+   * @generated from enum value: CONN_BANNER_KIND_NO_SERVER = 3;
    */
   NO_SERVER = 3,
 
   /**
-   * @generated from enum value: CONNECTION_BANNER_KIND_WAITING = 4;
+   * @generated from enum value: CONN_BANNER_KIND_WAITING = 4;
    */
   WAITING = 4,
 }
 
 /**
- * Describes the enum remoteagent.core.v1.ConnectionBannerKind.
+ * Describes the enum remoteagent.core.v1.ConnBannerKind.
  */
-export const ConnectionBannerKindSchema: GenEnum<ConnectionBannerKind> = /*@__PURE__*/
+export const ConnBannerKindSchema: GenEnum<ConnBannerKind> = /*@__PURE__*/
   enumDesc(file_remoteagent_core_v1_connection_view, 0);
 

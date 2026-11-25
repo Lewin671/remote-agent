@@ -20,7 +20,6 @@ public  final class ConnectionViewModel extends
     // @@protoc_insertion_point(message_implements:remoteagent.core.v1.ConnectionViewModel)
     ConnectionViewModelOrBuilder {
   private ConnectionViewModel() {
-    authorityDeviceId_ = "";
   }
   private int bitField0_;
   public static final int STATE_FIELD_NUMBER = 1;
@@ -169,32 +168,6 @@ public  final class ConnectionViewModel extends
     reachabilityUnknown_ = false;
   }
 
-  public static final int NETWORK_AVAILABLE_FIELD_NUMBER = 6;
-  private boolean networkAvailable_;
-  /**
-   * <code>bool network_available = 6 [json_name = "networkAvailable"];</code>
-   * @return The networkAvailable.
-   */
-  @java.lang.Override
-  public boolean getNetworkAvailable() {
-    return networkAvailable_;
-  }
-  /**
-   * <code>bool network_available = 6 [json_name = "networkAvailable"];</code>
-   * @param value The networkAvailable to set.
-   */
-  private void setNetworkAvailable(boolean value) {
-    
-    networkAvailable_ = value;
-  }
-  /**
-   * <code>bool network_available = 6 [json_name = "networkAvailable"];</code>
-   */
-  private void clearNetworkAvailable() {
-
-    networkAvailable_ = false;
-  }
-
   public static final int LIVE_LOADED_FIELD_NUMBER = 7;
   private boolean liveLoaded_;
   /**
@@ -221,232 +194,6 @@ public  final class ConnectionViewModel extends
     liveLoaded_ = false;
   }
 
-  public static final int INITIAL_LISTED_FIELD_NUMBER = 8;
-  private boolean initialListed_;
-  /**
-   * <code>bool initial_listed = 8 [json_name = "initialListed"];</code>
-   * @return The initialListed.
-   */
-  @java.lang.Override
-  public boolean getInitialListed() {
-    return initialListed_;
-  }
-  /**
-   * <code>bool initial_listed = 8 [json_name = "initialListed"];</code>
-   * @param value The initialListed to set.
-   */
-  private void setInitialListed(boolean value) {
-    
-    initialListed_ = value;
-  }
-  /**
-   * <code>bool initial_listed = 8 [json_name = "initialListed"];</code>
-   */
-  private void clearInitialListed() {
-
-    initialListed_ = false;
-  }
-
-  public static final int SECURITY_LOADED_FIELD_NUMBER = 9;
-  private boolean securityLoaded_;
-  /**
-   * <code>bool security_loaded = 9 [json_name = "securityLoaded"];</code>
-   * @return The securityLoaded.
-   */
-  @java.lang.Override
-  public boolean getSecurityLoaded() {
-    return securityLoaded_;
-  }
-  /**
-   * <code>bool security_loaded = 9 [json_name = "securityLoaded"];</code>
-   * @param value The securityLoaded to set.
-   */
-  private void setSecurityLoaded(boolean value) {
-    
-    securityLoaded_ = value;
-  }
-  /**
-   * <code>bool security_loaded = 9 [json_name = "securityLoaded"];</code>
-   */
-  private void clearSecurityLoaded() {
-
-    securityLoaded_ = false;
-  }
-
-  public static final int IS_MEMBER_FIELD_NUMBER = 10;
-  private boolean isMember_;
-  /**
-   * <code>bool is_member = 10 [json_name = "isMember"];</code>
-   * @return The isMember.
-   */
-  @java.lang.Override
-  public boolean getIsMember() {
-    return isMember_;
-  }
-  /**
-   * <code>bool is_member = 10 [json_name = "isMember"];</code>
-   * @param value The isMember to set.
-   */
-  private void setIsMember(boolean value) {
-    
-    isMember_ = value;
-  }
-  /**
-   * <code>bool is_member = 10 [json_name = "isMember"];</code>
-   */
-  private void clearIsMember() {
-
-    isMember_ = false;
-  }
-
-  public static final int ACCOUNT_CLOCK_SKEWED_FIELD_NUMBER = 11;
-  private boolean accountClockSkewed_;
-  /**
-   * <code>bool account_clock_skewed = 11 [json_name = "accountClockSkewed"];</code>
-   * @return The accountClockSkewed.
-   */
-  @java.lang.Override
-  public boolean getAccountClockSkewed() {
-    return accountClockSkewed_;
-  }
-  /**
-   * <code>bool account_clock_skewed = 11 [json_name = "accountClockSkewed"];</code>
-   * @param value The accountClockSkewed to set.
-   */
-  private void setAccountClockSkewed(boolean value) {
-    
-    accountClockSkewed_ = value;
-  }
-  /**
-   * <code>bool account_clock_skewed = 11 [json_name = "accountClockSkewed"];</code>
-   */
-  private void clearAccountClockSkewed() {
-
-    accountClockSkewed_ = false;
-  }
-
-  public static final int DISCONNECTED_AT_MS_FIELD_NUMBER = 12;
-  private long disconnectedAtMs_;
-  /**
-   * <code>int64 disconnected_at_ms = 12 [json_name = "disconnectedAtMs"];</code>
-   * @return The disconnectedAtMs.
-   */
-  @java.lang.Override
-  public long getDisconnectedAtMs() {
-    return disconnectedAtMs_;
-  }
-  /**
-   * <code>int64 disconnected_at_ms = 12 [json_name = "disconnectedAtMs"];</code>
-   * @param value The disconnectedAtMs to set.
-   */
-  private void setDisconnectedAtMs(long value) {
-    
-    disconnectedAtMs_ = value;
-  }
-  /**
-   * <code>int64 disconnected_at_ms = 12 [json_name = "disconnectedAtMs"];</code>
-   */
-  private void clearDisconnectedAtMs() {
-
-    disconnectedAtMs_ = 0L;
-  }
-
-  public static final int REASON_TEXT_FIELD_NUMBER = 13;
-  private io.github.lewin671.remoteagent.core.proto.Text reasonText_;
-  /**
-   * <code>.remoteagent.core.v1.Text reason_text = 13 [json_name = "reasonText"];</code>
-   */
-  @java.lang.Override
-  public boolean hasReasonText() {
-    return ((bitField0_ & 0x00000001) != 0);
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text reason_text = 13 [json_name = "reasonText"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.Text getReasonText() {
-    return reasonText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : reasonText_;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text reason_text = 13 [json_name = "reasonText"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setReasonText(io.github.lewin671.remoteagent.core.proto.Text value) {
-    value.getClass();  // minimal bytecode null check
-    reasonText_ = value;
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text reason_text = 13 [json_name = "reasonText"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeReasonText(io.github.lewin671.remoteagent.core.proto.Text value) {
-    value.getClass();  // minimal bytecode null check
-    if (reasonText_ != null &&
-        reasonText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
-      reasonText_ =
-        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(reasonText_).mergeFrom(value).buildPartial();
-    } else {
-      reasonText_ = value;
-    }
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text reason_text = 13 [json_name = "reasonText"];</code>
-   */
-  private void clearReasonText() {
-    reasonText_ = null;
-    bitField0_ = (bitField0_ & ~0x00000001);
-  }
-
-  public static final int CLOCK_SKEW_BANNER_TEXT_FIELD_NUMBER = 14;
-  private io.github.lewin671.remoteagent.core.proto.Text clockSkewBannerText_;
-  /**
-   * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 14 [json_name = "clockSkewBannerText"];</code>
-   */
-  @java.lang.Override
-  public boolean hasClockSkewBannerText() {
-    return ((bitField0_ & 0x00000002) != 0);
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 14 [json_name = "clockSkewBannerText"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.Text getClockSkewBannerText() {
-    return clockSkewBannerText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : clockSkewBannerText_;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 14 [json_name = "clockSkewBannerText"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setClockSkewBannerText(io.github.lewin671.remoteagent.core.proto.Text value) {
-    value.getClass();  // minimal bytecode null check
-    clockSkewBannerText_ = value;
-    bitField0_ |= 0x00000002;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 14 [json_name = "clockSkewBannerText"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeClockSkewBannerText(io.github.lewin671.remoteagent.core.proto.Text value) {
-    value.getClass();  // minimal bytecode null check
-    if (clockSkewBannerText_ != null &&
-        clockSkewBannerText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
-      clockSkewBannerText_ =
-        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(clockSkewBannerText_).mergeFrom(value).buildPartial();
-    } else {
-      clockSkewBannerText_ = value;
-    }
-    bitField0_ |= 0x00000002;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 14 [json_name = "clockSkewBannerText"];</code>
-   */
-  private void clearClockSkewBannerText() {
-    clockSkewBannerText_ = null;
-    bitField0_ = (bitField0_ & ~0x00000002);
-  }
-
   public static final int LEASE_RENEWAL_ADVICE_FIELD_NUMBER = 15;
   private io.github.lewin671.remoteagent.core.proto.Text leaseRenewalAdvice_;
   /**
@@ -454,7 +201,7 @@ public  final class ConnectionViewModel extends
    */
   @java.lang.Override
   public boolean hasLeaseRenewalAdvice() {
-    return ((bitField0_ & 0x00000004) != 0);
+    return ((bitField0_ & 0x00000001) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text lease_renewal_advice = 15 [json_name = "leaseRenewalAdvice"];</code>
@@ -470,7 +217,7 @@ public  final class ConnectionViewModel extends
   private void setLeaseRenewalAdvice(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     leaseRenewalAdvice_ = value;
-    bitField0_ |= 0x00000004;
+    bitField0_ |= 0x00000001;
   }
   /**
    * <code>.remoteagent.core.v1.Text lease_renewal_advice = 15 [json_name = "leaseRenewalAdvice"];</code>
@@ -485,62 +232,62 @@ public  final class ConnectionViewModel extends
     } else {
       leaseRenewalAdvice_ = value;
     }
-    bitField0_ |= 0x00000004;
+    bitField0_ |= 0x00000001;
   }
   /**
    * <code>.remoteagent.core.v1.Text lease_renewal_advice = 15 [json_name = "leaseRenewalAdvice"];</code>
    */
   private void clearLeaseRenewalAdvice() {
     leaseRenewalAdvice_ = null;
-    bitField0_ = (bitField0_ & ~0x00000004);
+    bitField0_ = (bitField0_ & ~0x00000001);
   }
 
   public static final int BANNER_FIELD_NUMBER = 16;
-  private io.github.lewin671.remoteagent.core.proto.ConnectionBannerView banner_;
+  private io.github.lewin671.remoteagent.core.proto.ConnBannerView banner_;
   /**
-   * <code>.remoteagent.core.v1.ConnectionBannerView banner = 16 [json_name = "banner"];</code>
+   * <code>.remoteagent.core.v1.ConnBannerView banner = 16 [json_name = "banner"];</code>
    */
   @java.lang.Override
   public boolean hasBanner() {
-    return ((bitField0_ & 0x00000008) != 0);
+    return ((bitField0_ & 0x00000002) != 0);
   }
   /**
-   * <code>.remoteagent.core.v1.ConnectionBannerView banner = 16 [json_name = "banner"];</code>
+   * <code>.remoteagent.core.v1.ConnBannerView banner = 16 [json_name = "banner"];</code>
    */
   @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.ConnectionBannerView getBanner() {
-    return banner_ == null ? io.github.lewin671.remoteagent.core.proto.ConnectionBannerView.getDefaultInstance() : banner_;
+  public io.github.lewin671.remoteagent.core.proto.ConnBannerView getBanner() {
+    return banner_ == null ? io.github.lewin671.remoteagent.core.proto.ConnBannerView.getDefaultInstance() : banner_;
   }
   /**
-   * <code>.remoteagent.core.v1.ConnectionBannerView banner = 16 [json_name = "banner"];</code>
+   * <code>.remoteagent.core.v1.ConnBannerView banner = 16 [json_name = "banner"];</code>
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setBanner(io.github.lewin671.remoteagent.core.proto.ConnectionBannerView value) {
+  private void setBanner(io.github.lewin671.remoteagent.core.proto.ConnBannerView value) {
     value.getClass();  // minimal bytecode null check
     banner_ = value;
-    bitField0_ |= 0x00000008;
+    bitField0_ |= 0x00000002;
   }
   /**
-   * <code>.remoteagent.core.v1.ConnectionBannerView banner = 16 [json_name = "banner"];</code>
+   * <code>.remoteagent.core.v1.ConnBannerView banner = 16 [json_name = "banner"];</code>
    */
   @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeBanner(io.github.lewin671.remoteagent.core.proto.ConnectionBannerView value) {
+  private void mergeBanner(io.github.lewin671.remoteagent.core.proto.ConnBannerView value) {
     value.getClass();  // minimal bytecode null check
     if (banner_ != null &&
-        banner_ != io.github.lewin671.remoteagent.core.proto.ConnectionBannerView.getDefaultInstance()) {
+        banner_ != io.github.lewin671.remoteagent.core.proto.ConnBannerView.getDefaultInstance()) {
       banner_ =
-        io.github.lewin671.remoteagent.core.proto.ConnectionBannerView.newBuilder(banner_).mergeFrom(value).buildPartial();
+        io.github.lewin671.remoteagent.core.proto.ConnBannerView.newBuilder(banner_).mergeFrom(value).buildPartial();
     } else {
       banner_ = value;
     }
-    bitField0_ |= 0x00000008;
+    bitField0_ |= 0x00000002;
   }
   /**
-   * <code>.remoteagent.core.v1.ConnectionBannerView banner = 16 [json_name = "banner"];</code>
+   * <code>.remoteagent.core.v1.ConnBannerView banner = 16 [json_name = "banner"];</code>
    */
   private void clearBanner() {
     banner_ = null;
-    bitField0_ = (bitField0_ & ~0x00000008);
+    bitField0_ = (bitField0_ & ~0x00000002);
   }
 
   public static final int SERVER_DETAILS_FIELD_NUMBER = 17;
@@ -550,7 +297,7 @@ public  final class ConnectionViewModel extends
    */
   @java.lang.Override
   public boolean hasServerDetails() {
-    return ((bitField0_ & 0x00000010) != 0);
+    return ((bitField0_ & 0x00000004) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.ConnectionServerDetailsView server_details = 17 [json_name = "serverDetails"];</code>
@@ -566,7 +313,7 @@ public  final class ConnectionViewModel extends
   private void setServerDetails(io.github.lewin671.remoteagent.core.proto.ConnectionServerDetailsView value) {
     value.getClass();  // minimal bytecode null check
     serverDetails_ = value;
-    bitField0_ |= 0x00000010;
+    bitField0_ |= 0x00000004;
   }
   /**
    * <code>.remoteagent.core.v1.ConnectionServerDetailsView server_details = 17 [json_name = "serverDetails"];</code>
@@ -581,88 +328,14 @@ public  final class ConnectionViewModel extends
     } else {
       serverDetails_ = value;
     }
-    bitField0_ |= 0x00000010;
+    bitField0_ |= 0x00000004;
   }
   /**
    * <code>.remoteagent.core.v1.ConnectionServerDetailsView server_details = 17 [json_name = "serverDetails"];</code>
    */
   private void clearServerDetails() {
     serverDetails_ = null;
-    bitField0_ = (bitField0_ & ~0x00000010);
-  }
-
-  public static final int AUTHORITY_DEVICE_ID_FIELD_NUMBER = 18;
-  private java.lang.String authorityDeviceId_;
-  /**
-   * <code>string authority_device_id = 18 [json_name = "authorityDeviceId"];</code>
-   * @return The authorityDeviceId.
-   */
-  @java.lang.Override
-  public java.lang.String getAuthorityDeviceId() {
-    return authorityDeviceId_;
-  }
-  /**
-   * <code>string authority_device_id = 18 [json_name = "authorityDeviceId"];</code>
-   * @return The bytes for authorityDeviceId.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getAuthorityDeviceIdBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(authorityDeviceId_);
-  }
-  /**
-   * <code>string authority_device_id = 18 [json_name = "authorityDeviceId"];</code>
-   * @param value The authorityDeviceId to set.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setAuthorityDeviceId(
-      java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-
-    authorityDeviceId_ = value;
-  }
-  /**
-   * <code>string authority_device_id = 18 [json_name = "authorityDeviceId"];</code>
-   */
-  private void clearAuthorityDeviceId() {
-
-    authorityDeviceId_ = getDefaultInstance().getAuthorityDeviceId();
-  }
-  /**
-   * <code>string authority_device_id = 18 [json_name = "authorityDeviceId"];</code>
-   * @param value The bytes for authorityDeviceId to set.
-   */
-  private void setAuthorityDeviceIdBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    authorityDeviceId_ = value.toStringUtf8();
-
-  }
-
-  public static final int IS_MANAGER_FIELD_NUMBER = 19;
-  private boolean isManager_;
-  /**
-   * <code>bool is_manager = 19 [json_name = "isManager"];</code>
-   * @return The isManager.
-   */
-  @java.lang.Override
-  public boolean getIsManager() {
-    return isManager_;
-  }
-  /**
-   * <code>bool is_manager = 19 [json_name = "isManager"];</code>
-   * @param value The isManager to set.
-   */
-  private void setIsManager(boolean value) {
-    
-    isManager_ = value;
-  }
-  /**
-   * <code>bool is_manager = 19 [json_name = "isManager"];</code>
-   */
-  private void clearIsManager() {
-
-    isManager_ = false;
+    bitField0_ = (bitField0_ & ~0x00000004);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.ConnectionViewModel parseFrom(
@@ -926,34 +599,6 @@ public  final class ConnectionViewModel extends
     }
 
     /**
-     * <code>bool network_available = 6 [json_name = "networkAvailable"];</code>
-     * @return The networkAvailable.
-     */
-    @java.lang.Override
-    public boolean getNetworkAvailable() {
-      return instance.getNetworkAvailable();
-    }
-    /**
-     * <code>bool network_available = 6 [json_name = "networkAvailable"];</code>
-     * @param value The networkAvailable to set.
-     * @return This builder for chaining.
-     */
-    public Builder setNetworkAvailable(boolean value) {
-      copyOnWrite();
-      instance.setNetworkAvailable(value);
-      return this;
-    }
-    /**
-     * <code>bool network_available = 6 [json_name = "networkAvailable"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearNetworkAvailable() {
-      copyOnWrite();
-      instance.clearNetworkAvailable();
-      return this;
-    }
-
-    /**
      * <code>bool live_loaded = 7 [json_name = "liveLoaded"];</code>
      * @return The liveLoaded.
      */
@@ -978,240 +623,6 @@ public  final class ConnectionViewModel extends
     public Builder clearLiveLoaded() {
       copyOnWrite();
       instance.clearLiveLoaded();
-      return this;
-    }
-
-    /**
-     * <code>bool initial_listed = 8 [json_name = "initialListed"];</code>
-     * @return The initialListed.
-     */
-    @java.lang.Override
-    public boolean getInitialListed() {
-      return instance.getInitialListed();
-    }
-    /**
-     * <code>bool initial_listed = 8 [json_name = "initialListed"];</code>
-     * @param value The initialListed to set.
-     * @return This builder for chaining.
-     */
-    public Builder setInitialListed(boolean value) {
-      copyOnWrite();
-      instance.setInitialListed(value);
-      return this;
-    }
-    /**
-     * <code>bool initial_listed = 8 [json_name = "initialListed"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearInitialListed() {
-      copyOnWrite();
-      instance.clearInitialListed();
-      return this;
-    }
-
-    /**
-     * <code>bool security_loaded = 9 [json_name = "securityLoaded"];</code>
-     * @return The securityLoaded.
-     */
-    @java.lang.Override
-    public boolean getSecurityLoaded() {
-      return instance.getSecurityLoaded();
-    }
-    /**
-     * <code>bool security_loaded = 9 [json_name = "securityLoaded"];</code>
-     * @param value The securityLoaded to set.
-     * @return This builder for chaining.
-     */
-    public Builder setSecurityLoaded(boolean value) {
-      copyOnWrite();
-      instance.setSecurityLoaded(value);
-      return this;
-    }
-    /**
-     * <code>bool security_loaded = 9 [json_name = "securityLoaded"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearSecurityLoaded() {
-      copyOnWrite();
-      instance.clearSecurityLoaded();
-      return this;
-    }
-
-    /**
-     * <code>bool is_member = 10 [json_name = "isMember"];</code>
-     * @return The isMember.
-     */
-    @java.lang.Override
-    public boolean getIsMember() {
-      return instance.getIsMember();
-    }
-    /**
-     * <code>bool is_member = 10 [json_name = "isMember"];</code>
-     * @param value The isMember to set.
-     * @return This builder for chaining.
-     */
-    public Builder setIsMember(boolean value) {
-      copyOnWrite();
-      instance.setIsMember(value);
-      return this;
-    }
-    /**
-     * <code>bool is_member = 10 [json_name = "isMember"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearIsMember() {
-      copyOnWrite();
-      instance.clearIsMember();
-      return this;
-    }
-
-    /**
-     * <code>bool account_clock_skewed = 11 [json_name = "accountClockSkewed"];</code>
-     * @return The accountClockSkewed.
-     */
-    @java.lang.Override
-    public boolean getAccountClockSkewed() {
-      return instance.getAccountClockSkewed();
-    }
-    /**
-     * <code>bool account_clock_skewed = 11 [json_name = "accountClockSkewed"];</code>
-     * @param value The accountClockSkewed to set.
-     * @return This builder for chaining.
-     */
-    public Builder setAccountClockSkewed(boolean value) {
-      copyOnWrite();
-      instance.setAccountClockSkewed(value);
-      return this;
-    }
-    /**
-     * <code>bool account_clock_skewed = 11 [json_name = "accountClockSkewed"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearAccountClockSkewed() {
-      copyOnWrite();
-      instance.clearAccountClockSkewed();
-      return this;
-    }
-
-    /**
-     * <code>int64 disconnected_at_ms = 12 [json_name = "disconnectedAtMs"];</code>
-     * @return The disconnectedAtMs.
-     */
-    @java.lang.Override
-    public long getDisconnectedAtMs() {
-      return instance.getDisconnectedAtMs();
-    }
-    /**
-     * <code>int64 disconnected_at_ms = 12 [json_name = "disconnectedAtMs"];</code>
-     * @param value The disconnectedAtMs to set.
-     * @return This builder for chaining.
-     */
-    public Builder setDisconnectedAtMs(long value) {
-      copyOnWrite();
-      instance.setDisconnectedAtMs(value);
-      return this;
-    }
-    /**
-     * <code>int64 disconnected_at_ms = 12 [json_name = "disconnectedAtMs"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearDisconnectedAtMs() {
-      copyOnWrite();
-      instance.clearDisconnectedAtMs();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.Text reason_text = 13 [json_name = "reasonText"];</code>
-     */
-    @java.lang.Override
-    public boolean hasReasonText() {
-      return instance.hasReasonText();
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text reason_text = 13 [json_name = "reasonText"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.Text getReasonText() {
-      return instance.getReasonText();
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text reason_text = 13 [json_name = "reasonText"];</code>
-     */
-    public Builder setReasonText(io.github.lewin671.remoteagent.core.proto.Text value) {
-      copyOnWrite();
-      instance.setReasonText(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.core.v1.Text reason_text = 13 [json_name = "reasonText"];</code>
-     */
-    public Builder setReasonText(
-        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
-      copyOnWrite();
-      instance.setReasonText(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text reason_text = 13 [json_name = "reasonText"];</code>
-     */
-    public Builder mergeReasonText(io.github.lewin671.remoteagent.core.proto.Text value) {
-      copyOnWrite();
-      instance.mergeReasonText(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text reason_text = 13 [json_name = "reasonText"];</code>
-     */
-    public Builder clearReasonText() {  copyOnWrite();
-      instance.clearReasonText();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 14 [json_name = "clockSkewBannerText"];</code>
-     */
-    @java.lang.Override
-    public boolean hasClockSkewBannerText() {
-      return instance.hasClockSkewBannerText();
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 14 [json_name = "clockSkewBannerText"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.Text getClockSkewBannerText() {
-      return instance.getClockSkewBannerText();
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 14 [json_name = "clockSkewBannerText"];</code>
-     */
-    public Builder setClockSkewBannerText(io.github.lewin671.remoteagent.core.proto.Text value) {
-      copyOnWrite();
-      instance.setClockSkewBannerText(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 14 [json_name = "clockSkewBannerText"];</code>
-     */
-    public Builder setClockSkewBannerText(
-        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
-      copyOnWrite();
-      instance.setClockSkewBannerText(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 14 [json_name = "clockSkewBannerText"];</code>
-     */
-    public Builder mergeClockSkewBannerText(io.github.lewin671.remoteagent.core.proto.Text value) {
-      copyOnWrite();
-      instance.mergeClockSkewBannerText(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 14 [json_name = "clockSkewBannerText"];</code>
-     */
-    public Builder clearClockSkewBannerText() {  copyOnWrite();
-      instance.clearClockSkewBannerText();
       return this;
     }
 
@@ -1263,46 +674,46 @@ public  final class ConnectionViewModel extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.ConnectionBannerView banner = 16 [json_name = "banner"];</code>
+     * <code>.remoteagent.core.v1.ConnBannerView banner = 16 [json_name = "banner"];</code>
      */
     @java.lang.Override
     public boolean hasBanner() {
       return instance.hasBanner();
     }
     /**
-     * <code>.remoteagent.core.v1.ConnectionBannerView banner = 16 [json_name = "banner"];</code>
+     * <code>.remoteagent.core.v1.ConnBannerView banner = 16 [json_name = "banner"];</code>
      */
     @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.ConnectionBannerView getBanner() {
+    public io.github.lewin671.remoteagent.core.proto.ConnBannerView getBanner() {
       return instance.getBanner();
     }
     /**
-     * <code>.remoteagent.core.v1.ConnectionBannerView banner = 16 [json_name = "banner"];</code>
+     * <code>.remoteagent.core.v1.ConnBannerView banner = 16 [json_name = "banner"];</code>
      */
-    public Builder setBanner(io.github.lewin671.remoteagent.core.proto.ConnectionBannerView value) {
+    public Builder setBanner(io.github.lewin671.remoteagent.core.proto.ConnBannerView value) {
       copyOnWrite();
       instance.setBanner(value);
       return this;
       }
     /**
-     * <code>.remoteagent.core.v1.ConnectionBannerView banner = 16 [json_name = "banner"];</code>
+     * <code>.remoteagent.core.v1.ConnBannerView banner = 16 [json_name = "banner"];</code>
      */
     public Builder setBanner(
-        io.github.lewin671.remoteagent.core.proto.ConnectionBannerView.Builder builderForValue) {
+        io.github.lewin671.remoteagent.core.proto.ConnBannerView.Builder builderForValue) {
       copyOnWrite();
       instance.setBanner(builderForValue.build());
       return this;
     }
     /**
-     * <code>.remoteagent.core.v1.ConnectionBannerView banner = 16 [json_name = "banner"];</code>
+     * <code>.remoteagent.core.v1.ConnBannerView banner = 16 [json_name = "banner"];</code>
      */
-    public Builder mergeBanner(io.github.lewin671.remoteagent.core.proto.ConnectionBannerView value) {
+    public Builder mergeBanner(io.github.lewin671.remoteagent.core.proto.ConnBannerView value) {
       copyOnWrite();
       instance.mergeBanner(value);
       return this;
     }
     /**
-     * <code>.remoteagent.core.v1.ConnectionBannerView banner = 16 [json_name = "banner"];</code>
+     * <code>.remoteagent.core.v1.ConnBannerView banner = 16 [json_name = "banner"];</code>
      */
     public Builder clearBanner() {  copyOnWrite();
       instance.clearBanner();
@@ -1356,83 +767,6 @@ public  final class ConnectionViewModel extends
       return this;
     }
 
-    /**
-     * <code>string authority_device_id = 18 [json_name = "authorityDeviceId"];</code>
-     * @return The authorityDeviceId.
-     */
-    @java.lang.Override
-    public java.lang.String getAuthorityDeviceId() {
-      return instance.getAuthorityDeviceId();
-    }
-    /**
-     * <code>string authority_device_id = 18 [json_name = "authorityDeviceId"];</code>
-     * @return The bytes for authorityDeviceId.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getAuthorityDeviceIdBytes() {
-      return instance.getAuthorityDeviceIdBytes();
-    }
-    /**
-     * <code>string authority_device_id = 18 [json_name = "authorityDeviceId"];</code>
-     * @param value The authorityDeviceId to set.
-     * @return This builder for chaining.
-     */
-    public Builder setAuthorityDeviceId(
-        java.lang.String value) {
-      copyOnWrite();
-      instance.setAuthorityDeviceId(value);
-      return this;
-    }
-    /**
-     * <code>string authority_device_id = 18 [json_name = "authorityDeviceId"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearAuthorityDeviceId() {
-      copyOnWrite();
-      instance.clearAuthorityDeviceId();
-      return this;
-    }
-    /**
-     * <code>string authority_device_id = 18 [json_name = "authorityDeviceId"];</code>
-     * @param value The bytes for authorityDeviceId to set.
-     * @return This builder for chaining.
-     */
-    public Builder setAuthorityDeviceIdBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setAuthorityDeviceIdBytes(value);
-      return this;
-    }
-
-    /**
-     * <code>bool is_manager = 19 [json_name = "isManager"];</code>
-     * @return The isManager.
-     */
-    @java.lang.Override
-    public boolean getIsManager() {
-      return instance.getIsManager();
-    }
-    /**
-     * <code>bool is_manager = 19 [json_name = "isManager"];</code>
-     * @param value The isManager to set.
-     * @return This builder for chaining.
-     */
-    public Builder setIsManager(boolean value) {
-      copyOnWrite();
-      instance.setIsManager(value);
-      return this;
-    }
-    /**
-     * <code>bool is_manager = 19 [json_name = "isManager"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearIsManager() {
-      copyOnWrite();
-      instance.clearIsManager();
-      return this;
-    }
-
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.ConnectionViewModel)
   }
   @java.lang.Override
@@ -1455,26 +789,15 @@ public  final class ConnectionViewModel extends
             "removed_",
             "displayGrace_",
             "reachabilityUnknown_",
-            "networkAvailable_",
             "liveLoaded_",
-            "initialListed_",
-            "securityLoaded_",
-            "isMember_",
-            "accountClockSkewed_",
-            "disconnectedAtMs_",
-            "reasonText_",
-            "clockSkewBannerText_",
             "leaseRenewalAdvice_",
             "banner_",
             "serverDetails_",
-            "authorityDeviceId_",
-            "isManager_",
           };
           java.lang.String info =
-              "\u0000\u0013\u0000\u0001\u0001\u0013\u0013\u0000\u0000\u0000\u0001\f\u0002\u0007" +
-              "\u0003\u0007\u0004\u0007\u0005\u0007\u0006\u0007\u0007\u0007\b\u0007\t\u0007\n\u0007" +
-              "\u000b\u0007\f\u0002\r\u1009\u0000\u000e\u1009\u0001\u000f\u1009\u0002\u0010\u1009" +
-              "\u0003\u0011\u1009\u0004\u0012\u0208\u0013\u0007";
+              "\u0000\t\u0000\u0001\u0001\u0011\t\u0000\u0000\u0000\u0001\f\u0002\u0007\u0003\u0007" +
+              "\u0004\u0007\u0005\u0007\u0007\u0007\u000f\u1009\u0000\u0010\u1009\u0001\u0011\u1009" +
+              "\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

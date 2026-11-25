@@ -22,61 +22,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type ConnBannerKind int32
-
-const (
-	ConnBannerKind_CONN_BANNER_KIND_UNSPECIFIED ConnBannerKind = 0
-	ConnBannerKind_CONN_BANNER_KIND_NONE        ConnBannerKind = 1
-	ConnBannerKind_CONN_BANNER_KIND_NO_NETWORK  ConnBannerKind = 2
-	ConnBannerKind_CONN_BANNER_KIND_NO_SERVER   ConnBannerKind = 3
-	ConnBannerKind_CONN_BANNER_KIND_WAITING     ConnBannerKind = 4
-)
-
-// Enum value maps for ConnBannerKind.
-var (
-	ConnBannerKind_name = map[int32]string{
-		0: "CONN_BANNER_KIND_UNSPECIFIED",
-		1: "CONN_BANNER_KIND_NONE",
-		2: "CONN_BANNER_KIND_NO_NETWORK",
-		3: "CONN_BANNER_KIND_NO_SERVER",
-		4: "CONN_BANNER_KIND_WAITING",
-	}
-	ConnBannerKind_value = map[string]int32{
-		"CONN_BANNER_KIND_UNSPECIFIED": 0,
-		"CONN_BANNER_KIND_NONE":        1,
-		"CONN_BANNER_KIND_NO_NETWORK":  2,
-		"CONN_BANNER_KIND_NO_SERVER":   3,
-		"CONN_BANNER_KIND_WAITING":     4,
-	}
-)
-
-func (x ConnBannerKind) Enum() *ConnBannerKind {
-	p := new(ConnBannerKind)
-	*p = x
-	return p
-}
-
-func (x ConnBannerKind) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (ConnBannerKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_remoteagent_core_v1_sync_view_proto_enumTypes[0].Descriptor()
-}
-
-func (ConnBannerKind) Type() protoreflect.EnumType {
-	return &file_remoteagent_core_v1_sync_view_proto_enumTypes[0]
-}
-
-func (x ConnBannerKind) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use ConnBannerKind.Descriptor instead.
-func (ConnBannerKind) EnumDescriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_sync_view_proto_rawDescGZIP(), []int{0}
-}
-
 type SyncPendingQuestionOption struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Label         string                 `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
@@ -837,90 +782,6 @@ func (x *SyncDeviceView) GetRegistered() bool {
 	return false
 }
 
-type ConnBannerView struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Kind          ConnBannerKind         `protobuf:"varint,1,opt,name=kind,proto3,enum=remoteagent.core.v1.ConnBannerKind" json:"kind,omitempty"`
-	Visible       bool                   `protobuf:"varint,2,opt,name=visible,proto3" json:"visible,omitempty"`
-	ErrorTone     bool                   `protobuf:"varint,3,opt,name=error_tone,json=errorTone,proto3" json:"error_tone,omitempty"`
-	KeptData      bool                   `protobuf:"varint,4,opt,name=kept_data,json=keptData,proto3" json:"kept_data,omitempty"`
-	Text          *Text                  `protobuf:"bytes,5,opt,name=text,proto3" json:"text,omitempty"`
-	DetailText    *Text                  `protobuf:"bytes,6,opt,name=detail_text,json=detailText,proto3" json:"detail_text,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ConnBannerView) Reset() {
-	*x = ConnBannerView{}
-	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ConnBannerView) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ConnBannerView) ProtoMessage() {}
-
-func (x *ConnBannerView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ConnBannerView.ProtoReflect.Descriptor instead.
-func (*ConnBannerView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_sync_view_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *ConnBannerView) GetKind() ConnBannerKind {
-	if x != nil {
-		return x.Kind
-	}
-	return ConnBannerKind_CONN_BANNER_KIND_UNSPECIFIED
-}
-
-func (x *ConnBannerView) GetVisible() bool {
-	if x != nil {
-		return x.Visible
-	}
-	return false
-}
-
-func (x *ConnBannerView) GetErrorTone() bool {
-	if x != nil {
-		return x.ErrorTone
-	}
-	return false
-}
-
-func (x *ConnBannerView) GetKeptData() bool {
-	if x != nil {
-		return x.KeptData
-	}
-	return false
-}
-
-func (x *ConnBannerView) GetText() *Text {
-	if x != nil {
-		return x.Text
-	}
-	return nil
-}
-
-func (x *ConnBannerView) GetDetailText() *Text {
-	if x != nil {
-		return x.DetailText
-	}
-	return nil
-}
-
 // Transitional view exposing Core's synchronized connection, role, machines, sessions, prefs, and devices.
 // Exists solely so unmigrated shell screens (session, schedules, settings, machine status) read from Core
 // during Steps 3-4 instead of retaining duplicate sync state in the shells; delete once Steps 3-4 complete.
@@ -984,7 +845,7 @@ type SyncStateView struct {
 
 func (x *SyncStateView) Reset() {
 	*x = SyncStateView{}
-	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[7]
+	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -996,7 +857,7 @@ func (x *SyncStateView) String() string {
 func (*SyncStateView) ProtoMessage() {}
 
 func (x *SyncStateView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[7]
+	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1009,7 +870,7 @@ func (x *SyncStateView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncStateView.ProtoReflect.Descriptor instead.
 func (*SyncStateView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_sync_view_proto_rawDescGZIP(), []int{7}
+	return file_remoteagent_core_v1_sync_view_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *SyncStateView) GetConnection() ConnState {
@@ -1413,7 +1274,7 @@ type SessionDataView struct {
 
 func (x *SessionDataView) Reset() {
 	*x = SessionDataView{}
-	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[8]
+	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1425,7 +1286,7 @@ func (x *SessionDataView) String() string {
 func (*SessionDataView) ProtoMessage() {}
 
 func (x *SessionDataView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[8]
+	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1438,7 +1299,7 @@ func (x *SessionDataView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionDataView.ProtoReflect.Descriptor instead.
 func (*SessionDataView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_sync_view_proto_rawDescGZIP(), []int{8}
+	return file_remoteagent_core_v1_sync_view_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *SessionDataView) GetSessionId() string {
@@ -1606,7 +1467,7 @@ var File_remoteagent_core_v1_sync_view_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_sync_view_proto_rawDesc = "" +
 	"\n" +
-	"#remoteagent/core/v1/sync_view.proto\x12\x13remoteagent.core.v1\x1a#remoteagent/core/v1/home_view.proto\x1a$remoteagent/core/v1/projection.proto\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\x1a\x1bremoteagent/v1/remote.proto\"S\n" +
+	"#remoteagent/core/v1/sync_view.proto\x12\x13remoteagent.core.v1\x1a)remoteagent/core/v1/connection_view.proto\x1a#remoteagent/core/v1/home_view.proto\x1a$remoteagent/core/v1/projection.proto\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\x1a\x1bremoteagent/v1/remote.proto\"S\n" +
 	"\x19SyncPendingQuestionOption\x12\x14\n" +
 	"\x05label\x18\x01 \x01(\tR\x05label\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\"\xa1\x03\n" +
@@ -1700,16 +1561,7 @@ const file_remoteagent_core_v1_sync_view_proto_rawDesc = "" +
 	"\atrusted\x18\b \x01(\bR\atrusted\x12\x1e\n" +
 	"\n" +
 	"registered\x18\t \x01(\bR\n" +
-	"registered\"\x8a\x02\n" +
-	"\x0eConnBannerView\x127\n" +
-	"\x04kind\x18\x01 \x01(\x0e2#.remoteagent.core.v1.ConnBannerKindR\x04kind\x12\x18\n" +
-	"\avisible\x18\x02 \x01(\bR\avisible\x12\x1d\n" +
-	"\n" +
-	"error_tone\x18\x03 \x01(\bR\terrorTone\x12\x1b\n" +
-	"\tkept_data\x18\x04 \x01(\bR\bkeptData\x12-\n" +
-	"\x04text\x18\x05 \x01(\v2\x19.remoteagent.core.v1.TextR\x04text\x12:\n" +
-	"\vdetail_text\x18\x06 \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
-	"detailText\"\x9e\x14\n" +
+	"registered\"\x9e\x14\n" +
 	"\rSyncStateView\x12>\n" +
 	"\n" +
 	"connection\x18\x01 \x01(\x0e2\x1e.remoteagent.core.v1.ConnStateR\n" +
@@ -1801,13 +1653,7 @@ const file_remoteagent_core_v1_sync_view_proto_rawDesc = "" +
 	"projection\x12A\n" +
 	"\rlive_snapshot\x18\x15 \x01(\v2\x1c.remoteagent.v1.LiveSnapshotR\fliveSnapshot\x12@\n" +
 	"\apending\x18\x16 \x01(\v2&.remoteagent.core.v1.SyncPendingActionR\apending\x12-\n" +
-	"\x06events\x18\x17 \x03(\v2\x15.remoteagent.v1.EventR\x06events*\xac\x01\n" +
-	"\x0eConnBannerKind\x12 \n" +
-	"\x1cCONN_BANNER_KIND_UNSPECIFIED\x10\x00\x12\x19\n" +
-	"\x15CONN_BANNER_KIND_NONE\x10\x01\x12\x1f\n" +
-	"\x1bCONN_BANNER_KIND_NO_NETWORK\x10\x02\x12\x1e\n" +
-	"\x1aCONN_BANNER_KIND_NO_SERVER\x10\x03\x12\x1c\n" +
-	"\x18CONN_BANNER_KIND_WAITING\x10\x04B\xd7\x01\n" +
+	"\x06events\x18\x17 \x03(\v2\x15.remoteagent.v1.EventR\x06eventsB\xd7\x01\n" +
 	"\x17com.remoteagent.core.v1B\rSyncViewProtoP\x01Z?github.com/Lewin671/remote-agent/gen/remoteagent/core/v1;corev1\xa2\x02\x03RCX\xaa\x02\x13Remoteagent.Core.V1\xca\x02\x13Remoteagent\\Core\\V1\xe2\x02\x1fRemoteagent\\Core\\V1\\GPBMetadata\xea\x02\x15Remoteagent::Core::V1b\x06proto3"
 
 var (
@@ -1822,69 +1668,64 @@ func file_remoteagent_core_v1_sync_view_proto_rawDescGZIP() []byte {
 	return file_remoteagent_core_v1_sync_view_proto_rawDescData
 }
 
-var file_remoteagent_core_v1_sync_view_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_remoteagent_core_v1_sync_view_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_remoteagent_core_v1_sync_view_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_remoteagent_core_v1_sync_view_proto_goTypes = []any{
-	(ConnBannerKind)(0),               // 0: remoteagent.core.v1.ConnBannerKind
-	(*SyncPendingQuestionOption)(nil), // 1: remoteagent.core.v1.SyncPendingQuestionOption
-	(*SyncPendingQuestion)(nil),       // 2: remoteagent.core.v1.SyncPendingQuestion
-	(*SyncPendingAction)(nil),         // 3: remoteagent.core.v1.SyncPendingAction
-	(*SyncMachineView)(nil),           // 4: remoteagent.core.v1.SyncMachineView
-	(*SyncSessionView)(nil),           // 5: remoteagent.core.v1.SyncSessionView
-	(*SyncDeviceView)(nil),            // 6: remoteagent.core.v1.SyncDeviceView
-	(*ConnBannerView)(nil),            // 7: remoteagent.core.v1.ConnBannerView
-	(*SyncStateView)(nil),             // 8: remoteagent.core.v1.SyncStateView
-	(*SessionDataView)(nil),           // 9: remoteagent.core.v1.SessionDataView
-	(*v1.MachineMeta)(nil),            // 10: remoteagent.v1.MachineMeta
-	(*v1.Session)(nil),                // 11: remoteagent.v1.Session
-	(*v1.LiveSnapshot)(nil),           // 12: remoteagent.v1.LiveSnapshot
-	(v1.DeviceKind)(0),                // 13: remoteagent.v1.DeviceKind
-	(*v1.DeviceMeta)(nil),             // 14: remoteagent.v1.DeviceMeta
-	(*Text)(nil),                      // 15: remoteagent.core.v1.Text
-	(ConnState)(0),                    // 16: remoteagent.core.v1.ConnState
-	(*v1.SessionCursor)(nil),          // 17: remoteagent.v1.SessionCursor
-	(*v1.ProjectPrefs)(nil),           // 18: remoteagent.v1.ProjectPrefs
-	(*ProjectionState)(nil),           // 19: remoteagent.core.v1.ProjectionState
-	(*v1.Event)(nil),                  // 20: remoteagent.v1.Event
+	(*SyncPendingQuestionOption)(nil), // 0: remoteagent.core.v1.SyncPendingQuestionOption
+	(*SyncPendingQuestion)(nil),       // 1: remoteagent.core.v1.SyncPendingQuestion
+	(*SyncPendingAction)(nil),         // 2: remoteagent.core.v1.SyncPendingAction
+	(*SyncMachineView)(nil),           // 3: remoteagent.core.v1.SyncMachineView
+	(*SyncSessionView)(nil),           // 4: remoteagent.core.v1.SyncSessionView
+	(*SyncDeviceView)(nil),            // 5: remoteagent.core.v1.SyncDeviceView
+	(*SyncStateView)(nil),             // 6: remoteagent.core.v1.SyncStateView
+	(*SessionDataView)(nil),           // 7: remoteagent.core.v1.SessionDataView
+	(*v1.MachineMeta)(nil),            // 8: remoteagent.v1.MachineMeta
+	(*v1.Session)(nil),                // 9: remoteagent.v1.Session
+	(*v1.LiveSnapshot)(nil),           // 10: remoteagent.v1.LiveSnapshot
+	(v1.DeviceKind)(0),                // 11: remoteagent.v1.DeviceKind
+	(*v1.DeviceMeta)(nil),             // 12: remoteagent.v1.DeviceMeta
+	(ConnState)(0),                    // 13: remoteagent.core.v1.ConnState
+	(*Text)(nil),                      // 14: remoteagent.core.v1.Text
+	(*v1.SessionCursor)(nil),          // 15: remoteagent.v1.SessionCursor
+	(*v1.ProjectPrefs)(nil),           // 16: remoteagent.v1.ProjectPrefs
+	(*ConnBannerView)(nil),            // 17: remoteagent.core.v1.ConnBannerView
+	(*ProjectionState)(nil),           // 18: remoteagent.core.v1.ProjectionState
+	(*v1.Event)(nil),                  // 19: remoteagent.v1.Event
 }
 var file_remoteagent_core_v1_sync_view_proto_depIdxs = []int32{
-	1,  // 0: remoteagent.core.v1.SyncPendingQuestion.options:type_name -> remoteagent.core.v1.SyncPendingQuestionOption
-	2,  // 1: remoteagent.core.v1.SyncPendingAction.question:type_name -> remoteagent.core.v1.SyncPendingQuestion
-	10, // 2: remoteagent.core.v1.SyncMachineView.meta:type_name -> remoteagent.v1.MachineMeta
-	11, // 3: remoteagent.core.v1.SyncSessionView.info:type_name -> remoteagent.v1.Session
-	12, // 4: remoteagent.core.v1.SyncSessionView.checkpoint:type_name -> remoteagent.v1.LiveSnapshot
-	3,  // 5: remoteagent.core.v1.SyncSessionView.pending:type_name -> remoteagent.core.v1.SyncPendingAction
-	13, // 6: remoteagent.core.v1.SyncDeviceView.kind:type_name -> remoteagent.v1.DeviceKind
-	14, // 7: remoteagent.core.v1.SyncDeviceView.meta:type_name -> remoteagent.v1.DeviceMeta
-	0,  // 8: remoteagent.core.v1.ConnBannerView.kind:type_name -> remoteagent.core.v1.ConnBannerKind
-	15, // 9: remoteagent.core.v1.ConnBannerView.text:type_name -> remoteagent.core.v1.Text
-	15, // 10: remoteagent.core.v1.ConnBannerView.detail_text:type_name -> remoteagent.core.v1.Text
-	16, // 11: remoteagent.core.v1.SyncStateView.connection:type_name -> remoteagent.core.v1.ConnState
-	15, // 12: remoteagent.core.v1.SyncStateView.connection_reason:type_name -> remoteagent.core.v1.Text
-	15, // 13: remoteagent.core.v1.SyncStateView.connection_step:type_name -> remoteagent.core.v1.Text
-	15, // 14: remoteagent.core.v1.SyncStateView.manager_name:type_name -> remoteagent.core.v1.Text
-	4,  // 15: remoteagent.core.v1.SyncStateView.machines:type_name -> remoteagent.core.v1.SyncMachineView
-	5,  // 16: remoteagent.core.v1.SyncStateView.sessions:type_name -> remoteagent.core.v1.SyncSessionView
-	17, // 17: remoteagent.core.v1.SyncStateView.next_cursor:type_name -> remoteagent.v1.SessionCursor
-	15, // 18: remoteagent.core.v1.SyncStateView.session_list_error:type_name -> remoteagent.core.v1.Text
-	18, // 19: remoteagent.core.v1.SyncStateView.prefs:type_name -> remoteagent.v1.ProjectPrefs
-	6,  // 20: remoteagent.core.v1.SyncStateView.devices:type_name -> remoteagent.core.v1.SyncDeviceView
-	15, // 21: remoteagent.core.v1.SyncStateView.devices_error_text:type_name -> remoteagent.core.v1.Text
-	7,  // 22: remoteagent.core.v1.SyncStateView.conn_banner:type_name -> remoteagent.core.v1.ConnBannerView
-	15, // 23: remoteagent.core.v1.SyncStateView.clock_skew_banner_text:type_name -> remoteagent.core.v1.Text
-	15, // 24: remoteagent.core.v1.SyncStateView.lease_renewal_advice:type_name -> remoteagent.core.v1.Text
-	5,  // 25: remoteagent.core.v1.SessionDataView.session:type_name -> remoteagent.core.v1.SyncSessionView
-	15, // 26: remoteagent.core.v1.SessionDataView.error:type_name -> remoteagent.core.v1.Text
-	15, // 27: remoteagent.core.v1.SessionDataView.fetch_error:type_name -> remoteagent.core.v1.Text
-	19, // 28: remoteagent.core.v1.SessionDataView.projection:type_name -> remoteagent.core.v1.ProjectionState
-	12, // 29: remoteagent.core.v1.SessionDataView.live_snapshot:type_name -> remoteagent.v1.LiveSnapshot
-	3,  // 30: remoteagent.core.v1.SessionDataView.pending:type_name -> remoteagent.core.v1.SyncPendingAction
-	20, // 31: remoteagent.core.v1.SessionDataView.events:type_name -> remoteagent.v1.Event
-	32, // [32:32] is the sub-list for method output_type
-	32, // [32:32] is the sub-list for method input_type
-	32, // [32:32] is the sub-list for extension type_name
-	32, // [32:32] is the sub-list for extension extendee
-	0,  // [0:32] is the sub-list for field type_name
+	0,  // 0: remoteagent.core.v1.SyncPendingQuestion.options:type_name -> remoteagent.core.v1.SyncPendingQuestionOption
+	1,  // 1: remoteagent.core.v1.SyncPendingAction.question:type_name -> remoteagent.core.v1.SyncPendingQuestion
+	8,  // 2: remoteagent.core.v1.SyncMachineView.meta:type_name -> remoteagent.v1.MachineMeta
+	9,  // 3: remoteagent.core.v1.SyncSessionView.info:type_name -> remoteagent.v1.Session
+	10, // 4: remoteagent.core.v1.SyncSessionView.checkpoint:type_name -> remoteagent.v1.LiveSnapshot
+	2,  // 5: remoteagent.core.v1.SyncSessionView.pending:type_name -> remoteagent.core.v1.SyncPendingAction
+	11, // 6: remoteagent.core.v1.SyncDeviceView.kind:type_name -> remoteagent.v1.DeviceKind
+	12, // 7: remoteagent.core.v1.SyncDeviceView.meta:type_name -> remoteagent.v1.DeviceMeta
+	13, // 8: remoteagent.core.v1.SyncStateView.connection:type_name -> remoteagent.core.v1.ConnState
+	14, // 9: remoteagent.core.v1.SyncStateView.connection_reason:type_name -> remoteagent.core.v1.Text
+	14, // 10: remoteagent.core.v1.SyncStateView.connection_step:type_name -> remoteagent.core.v1.Text
+	14, // 11: remoteagent.core.v1.SyncStateView.manager_name:type_name -> remoteagent.core.v1.Text
+	3,  // 12: remoteagent.core.v1.SyncStateView.machines:type_name -> remoteagent.core.v1.SyncMachineView
+	4,  // 13: remoteagent.core.v1.SyncStateView.sessions:type_name -> remoteagent.core.v1.SyncSessionView
+	15, // 14: remoteagent.core.v1.SyncStateView.next_cursor:type_name -> remoteagent.v1.SessionCursor
+	14, // 15: remoteagent.core.v1.SyncStateView.session_list_error:type_name -> remoteagent.core.v1.Text
+	16, // 16: remoteagent.core.v1.SyncStateView.prefs:type_name -> remoteagent.v1.ProjectPrefs
+	5,  // 17: remoteagent.core.v1.SyncStateView.devices:type_name -> remoteagent.core.v1.SyncDeviceView
+	14, // 18: remoteagent.core.v1.SyncStateView.devices_error_text:type_name -> remoteagent.core.v1.Text
+	17, // 19: remoteagent.core.v1.SyncStateView.conn_banner:type_name -> remoteagent.core.v1.ConnBannerView
+	14, // 20: remoteagent.core.v1.SyncStateView.clock_skew_banner_text:type_name -> remoteagent.core.v1.Text
+	14, // 21: remoteagent.core.v1.SyncStateView.lease_renewal_advice:type_name -> remoteagent.core.v1.Text
+	4,  // 22: remoteagent.core.v1.SessionDataView.session:type_name -> remoteagent.core.v1.SyncSessionView
+	14, // 23: remoteagent.core.v1.SessionDataView.error:type_name -> remoteagent.core.v1.Text
+	14, // 24: remoteagent.core.v1.SessionDataView.fetch_error:type_name -> remoteagent.core.v1.Text
+	18, // 25: remoteagent.core.v1.SessionDataView.projection:type_name -> remoteagent.core.v1.ProjectionState
+	10, // 26: remoteagent.core.v1.SessionDataView.live_snapshot:type_name -> remoteagent.v1.LiveSnapshot
+	2,  // 27: remoteagent.core.v1.SessionDataView.pending:type_name -> remoteagent.core.v1.SyncPendingAction
+	19, // 28: remoteagent.core.v1.SessionDataView.events:type_name -> remoteagent.v1.Event
+	29, // [29:29] is the sub-list for method output_type
+	29, // [29:29] is the sub-list for method input_type
+	29, // [29:29] is the sub-list for extension type_name
+	29, // [29:29] is the sub-list for extension extendee
+	0,  // [0:29] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_sync_view_proto_init() }
@@ -1892,6 +1733,7 @@ func file_remoteagent_core_v1_sync_view_proto_init() {
 	if File_remoteagent_core_v1_sync_view_proto != nil {
 		return
 	}
+	file_remoteagent_core_v1_connection_view_proto_init()
 	file_remoteagent_core_v1_home_view_proto_init()
 	file_remoteagent_core_v1_projection_proto_init()
 	file_remoteagent_core_v1_text_proto_init()
@@ -1900,14 +1742,13 @@ func file_remoteagent_core_v1_sync_view_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_core_v1_sync_view_proto_rawDesc), len(file_remoteagent_core_v1_sync_view_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   9,
+			NumEnums:      0,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_remoteagent_core_v1_sync_view_proto_goTypes,
 		DependencyIndexes: file_remoteagent_core_v1_sync_view_proto_depIdxs,
-		EnumInfos:         file_remoteagent_core_v1_sync_view_proto_enumTypes,
 		MessageInfos:      file_remoteagent_core_v1_sync_view_proto_msgTypes,
 	}.Build()
 	File_remoteagent_core_v1_sync_view_proto = out.File

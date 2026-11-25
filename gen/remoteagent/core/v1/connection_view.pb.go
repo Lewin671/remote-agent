@@ -21,58 +21,58 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type ConnectionBannerKind int32
+type ConnBannerKind int32
 
 const (
-	ConnectionBannerKind_CONNECTION_BANNER_KIND_UNSPECIFIED ConnectionBannerKind = 0
-	ConnectionBannerKind_CONNECTION_BANNER_KIND_NONE        ConnectionBannerKind = 1
-	ConnectionBannerKind_CONNECTION_BANNER_KIND_NO_NETWORK  ConnectionBannerKind = 2
-	ConnectionBannerKind_CONNECTION_BANNER_KIND_NO_SERVER   ConnectionBannerKind = 3
-	ConnectionBannerKind_CONNECTION_BANNER_KIND_WAITING     ConnectionBannerKind = 4
+	ConnBannerKind_CONN_BANNER_KIND_UNSPECIFIED ConnBannerKind = 0
+	ConnBannerKind_CONN_BANNER_KIND_NONE        ConnBannerKind = 1
+	ConnBannerKind_CONN_BANNER_KIND_NO_NETWORK  ConnBannerKind = 2
+	ConnBannerKind_CONN_BANNER_KIND_NO_SERVER   ConnBannerKind = 3
+	ConnBannerKind_CONN_BANNER_KIND_WAITING     ConnBannerKind = 4
 )
 
-// Enum value maps for ConnectionBannerKind.
+// Enum value maps for ConnBannerKind.
 var (
-	ConnectionBannerKind_name = map[int32]string{
-		0: "CONNECTION_BANNER_KIND_UNSPECIFIED",
-		1: "CONNECTION_BANNER_KIND_NONE",
-		2: "CONNECTION_BANNER_KIND_NO_NETWORK",
-		3: "CONNECTION_BANNER_KIND_NO_SERVER",
-		4: "CONNECTION_BANNER_KIND_WAITING",
+	ConnBannerKind_name = map[int32]string{
+		0: "CONN_BANNER_KIND_UNSPECIFIED",
+		1: "CONN_BANNER_KIND_NONE",
+		2: "CONN_BANNER_KIND_NO_NETWORK",
+		3: "CONN_BANNER_KIND_NO_SERVER",
+		4: "CONN_BANNER_KIND_WAITING",
 	}
-	ConnectionBannerKind_value = map[string]int32{
-		"CONNECTION_BANNER_KIND_UNSPECIFIED": 0,
-		"CONNECTION_BANNER_KIND_NONE":        1,
-		"CONNECTION_BANNER_KIND_NO_NETWORK":  2,
-		"CONNECTION_BANNER_KIND_NO_SERVER":   3,
-		"CONNECTION_BANNER_KIND_WAITING":     4,
+	ConnBannerKind_value = map[string]int32{
+		"CONN_BANNER_KIND_UNSPECIFIED": 0,
+		"CONN_BANNER_KIND_NONE":        1,
+		"CONN_BANNER_KIND_NO_NETWORK":  2,
+		"CONN_BANNER_KIND_NO_SERVER":   3,
+		"CONN_BANNER_KIND_WAITING":     4,
 	}
 )
 
-func (x ConnectionBannerKind) Enum() *ConnectionBannerKind {
-	p := new(ConnectionBannerKind)
+func (x ConnBannerKind) Enum() *ConnBannerKind {
+	p := new(ConnBannerKind)
 	*p = x
 	return p
 }
 
-func (x ConnectionBannerKind) String() string {
+func (x ConnBannerKind) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (ConnectionBannerKind) Descriptor() protoreflect.EnumDescriptor {
+func (ConnBannerKind) Descriptor() protoreflect.EnumDescriptor {
 	return file_remoteagent_core_v1_connection_view_proto_enumTypes[0].Descriptor()
 }
 
-func (ConnectionBannerKind) Type() protoreflect.EnumType {
+func (ConnBannerKind) Type() protoreflect.EnumType {
 	return &file_remoteagent_core_v1_connection_view_proto_enumTypes[0]
 }
 
-func (x ConnectionBannerKind) Number() protoreflect.EnumNumber {
+func (x ConnBannerKind) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use ConnectionBannerKind.Descriptor instead.
-func (ConnectionBannerKind) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use ConnBannerKind.Descriptor instead.
+func (ConnBannerKind) EnumDescriptor() ([]byte, []int) {
 	return file_remoteagent_core_v1_connection_view_proto_rawDescGZIP(), []int{0}
 }
 
@@ -113,34 +113,34 @@ func (*ConnectionScreenRequest) Descriptor() ([]byte, []int) {
 	return file_remoteagent_core_v1_connection_view_proto_rawDescGZIP(), []int{0}
 }
 
-type ConnectionBannerView struct {
+type ConnBannerView struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Kind          ConnectionBannerKind   `protobuf:"varint,1,opt,name=kind,proto3,enum=remoteagent.core.v1.ConnectionBannerKind" json:"kind,omitempty"`
+	Kind          ConnBannerKind         `protobuf:"varint,1,opt,name=kind,proto3,enum=remoteagent.core.v1.ConnBannerKind" json:"kind,omitempty"`
 	Visible       bool                   `protobuf:"varint,2,opt,name=visible,proto3" json:"visible,omitempty"`
 	ErrorTone     bool                   `protobuf:"varint,3,opt,name=error_tone,json=errorTone,proto3" json:"error_tone,omitempty"`
 	KeptData      bool                   `protobuf:"varint,4,opt,name=kept_data,json=keptData,proto3" json:"kept_data,omitempty"`
-	ShowDetails   bool                   `protobuf:"varint,5,opt,name=show_details,json=showDetails,proto3" json:"show_details,omitempty"`
-	Text          *Text                  `protobuf:"bytes,6,opt,name=text,proto3" json:"text,omitempty"`
-	DetailText    *Text                  `protobuf:"bytes,7,opt,name=detail_text,json=detailText,proto3" json:"detail_text,omitempty"`
+	Text          *Text                  `protobuf:"bytes,5,opt,name=text,proto3" json:"text,omitempty"`
+	DetailText    *Text                  `protobuf:"bytes,6,opt,name=detail_text,json=detailText,proto3" json:"detail_text,omitempty"`
+	ShowDetails   bool                   `protobuf:"varint,7,opt,name=show_details,json=showDetails,proto3" json:"show_details,omitempty"`
 	FailedText    *Text                  `protobuf:"bytes,8,opt,name=failed_text,json=failedText,proto3" json:"failed_text,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ConnectionBannerView) Reset() {
-	*x = ConnectionBannerView{}
+func (x *ConnBannerView) Reset() {
+	*x = ConnBannerView{}
 	mi := &file_remoteagent_core_v1_connection_view_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ConnectionBannerView) String() string {
+func (x *ConnBannerView) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ConnectionBannerView) ProtoMessage() {}
+func (*ConnBannerView) ProtoMessage() {}
 
-func (x *ConnectionBannerView) ProtoReflect() protoreflect.Message {
+func (x *ConnBannerView) ProtoReflect() protoreflect.Message {
 	mi := &file_remoteagent_core_v1_connection_view_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -152,61 +152,61 @@ func (x *ConnectionBannerView) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ConnectionBannerView.ProtoReflect.Descriptor instead.
-func (*ConnectionBannerView) Descriptor() ([]byte, []int) {
+// Deprecated: Use ConnBannerView.ProtoReflect.Descriptor instead.
+func (*ConnBannerView) Descriptor() ([]byte, []int) {
 	return file_remoteagent_core_v1_connection_view_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *ConnectionBannerView) GetKind() ConnectionBannerKind {
+func (x *ConnBannerView) GetKind() ConnBannerKind {
 	if x != nil {
 		return x.Kind
 	}
-	return ConnectionBannerKind_CONNECTION_BANNER_KIND_UNSPECIFIED
+	return ConnBannerKind_CONN_BANNER_KIND_UNSPECIFIED
 }
 
-func (x *ConnectionBannerView) GetVisible() bool {
+func (x *ConnBannerView) GetVisible() bool {
 	if x != nil {
 		return x.Visible
 	}
 	return false
 }
 
-func (x *ConnectionBannerView) GetErrorTone() bool {
+func (x *ConnBannerView) GetErrorTone() bool {
 	if x != nil {
 		return x.ErrorTone
 	}
 	return false
 }
 
-func (x *ConnectionBannerView) GetKeptData() bool {
+func (x *ConnBannerView) GetKeptData() bool {
 	if x != nil {
 		return x.KeptData
 	}
 	return false
 }
 
-func (x *ConnectionBannerView) GetShowDetails() bool {
-	if x != nil {
-		return x.ShowDetails
-	}
-	return false
-}
-
-func (x *ConnectionBannerView) GetText() *Text {
+func (x *ConnBannerView) GetText() *Text {
 	if x != nil {
 		return x.Text
 	}
 	return nil
 }
 
-func (x *ConnectionBannerView) GetDetailText() *Text {
+func (x *ConnBannerView) GetDetailText() *Text {
 	if x != nil {
 		return x.DetailText
 	}
 	return nil
 }
 
-func (x *ConnectionBannerView) GetFailedText() *Text {
+func (x *ConnBannerView) GetShowDetails() bool {
+	if x != nil {
+		return x.ShowDetails
+	}
+	return false
+}
+
+func (x *ConnBannerView) GetFailedText() *Text {
 	if x != nil {
 		return x.FailedText
 	}
@@ -217,7 +217,6 @@ type ConnectionServerDetailsView struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	ShowDisconnectedAt bool                   `protobuf:"varint,1,opt,name=show_disconnected_at,json=showDisconnectedAt,proto3" json:"show_disconnected_at,omitempty"`
 	DisconnectedAtMs   int64                  `protobuf:"varint,2,opt,name=disconnected_at_ms,json=disconnectedAtMs,proto3" json:"disconnected_at_ms,omitempty"`
-	DisconnectedAtText *Text                  `protobuf:"bytes,3,opt,name=disconnected_at_text,json=disconnectedAtText,proto3" json:"disconnected_at_text,omitempty"`
 	ReasonText         *Text                  `protobuf:"bytes,4,opt,name=reason_text,json=reasonText,proto3" json:"reason_text,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
@@ -267,13 +266,6 @@ func (x *ConnectionServerDetailsView) GetDisconnectedAtMs() int64 {
 	return 0
 }
 
-func (x *ConnectionServerDetailsView) GetDisconnectedAtText() *Text {
-	if x != nil {
-		return x.DisconnectedAtText
-	}
-	return nil
-}
-
 func (x *ConnectionServerDetailsView) GetReasonText() *Text {
 	if x != nil {
 		return x.ReasonText
@@ -290,20 +282,10 @@ type ConnectionViewModel struct {
 	Removed             bool                         `protobuf:"varint,3,opt,name=removed,proto3" json:"removed,omitempty"`
 	DisplayGrace        bool                         `protobuf:"varint,4,opt,name=display_grace,json=displayGrace,proto3" json:"display_grace,omitempty"`
 	ReachabilityUnknown bool                         `protobuf:"varint,5,opt,name=reachability_unknown,json=reachabilityUnknown,proto3" json:"reachability_unknown,omitempty"`
-	NetworkAvailable    bool                         `protobuf:"varint,6,opt,name=network_available,json=networkAvailable,proto3" json:"network_available,omitempty"`
 	LiveLoaded          bool                         `protobuf:"varint,7,opt,name=live_loaded,json=liveLoaded,proto3" json:"live_loaded,omitempty"`
-	InitialListed       bool                         `protobuf:"varint,8,opt,name=initial_listed,json=initialListed,proto3" json:"initial_listed,omitempty"`
-	SecurityLoaded      bool                         `protobuf:"varint,9,opt,name=security_loaded,json=securityLoaded,proto3" json:"security_loaded,omitempty"`
-	IsMember            bool                         `protobuf:"varint,10,opt,name=is_member,json=isMember,proto3" json:"is_member,omitempty"`
-	AccountClockSkewed  bool                         `protobuf:"varint,11,opt,name=account_clock_skewed,json=accountClockSkewed,proto3" json:"account_clock_skewed,omitempty"`
-	DisconnectedAtMs    int64                        `protobuf:"varint,12,opt,name=disconnected_at_ms,json=disconnectedAtMs,proto3" json:"disconnected_at_ms,omitempty"`
-	ReasonText          *Text                        `protobuf:"bytes,13,opt,name=reason_text,json=reasonText,proto3" json:"reason_text,omitempty"`
-	ClockSkewBannerText *Text                        `protobuf:"bytes,14,opt,name=clock_skew_banner_text,json=clockSkewBannerText,proto3" json:"clock_skew_banner_text,omitempty"`
 	LeaseRenewalAdvice  *Text                        `protobuf:"bytes,15,opt,name=lease_renewal_advice,json=leaseRenewalAdvice,proto3" json:"lease_renewal_advice,omitempty"`
-	Banner              *ConnectionBannerView        `protobuf:"bytes,16,opt,name=banner,proto3" json:"banner,omitempty"`
+	Banner              *ConnBannerView              `protobuf:"bytes,16,opt,name=banner,proto3" json:"banner,omitempty"`
 	ServerDetails       *ConnectionServerDetailsView `protobuf:"bytes,17,opt,name=server_details,json=serverDetails,proto3" json:"server_details,omitempty"`
-	AuthorityDeviceId   string                       `protobuf:"bytes,18,opt,name=authority_device_id,json=authorityDeviceId,proto3" json:"authority_device_id,omitempty"`
-	IsManager           bool                         `protobuf:"varint,19,opt,name=is_manager,json=isManager,proto3" json:"is_manager,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -373,67 +355,11 @@ func (x *ConnectionViewModel) GetReachabilityUnknown() bool {
 	return false
 }
 
-func (x *ConnectionViewModel) GetNetworkAvailable() bool {
-	if x != nil {
-		return x.NetworkAvailable
-	}
-	return false
-}
-
 func (x *ConnectionViewModel) GetLiveLoaded() bool {
 	if x != nil {
 		return x.LiveLoaded
 	}
 	return false
-}
-
-func (x *ConnectionViewModel) GetInitialListed() bool {
-	if x != nil {
-		return x.InitialListed
-	}
-	return false
-}
-
-func (x *ConnectionViewModel) GetSecurityLoaded() bool {
-	if x != nil {
-		return x.SecurityLoaded
-	}
-	return false
-}
-
-func (x *ConnectionViewModel) GetIsMember() bool {
-	if x != nil {
-		return x.IsMember
-	}
-	return false
-}
-
-func (x *ConnectionViewModel) GetAccountClockSkewed() bool {
-	if x != nil {
-		return x.AccountClockSkewed
-	}
-	return false
-}
-
-func (x *ConnectionViewModel) GetDisconnectedAtMs() int64 {
-	if x != nil {
-		return x.DisconnectedAtMs
-	}
-	return 0
-}
-
-func (x *ConnectionViewModel) GetReasonText() *Text {
-	if x != nil {
-		return x.ReasonText
-	}
-	return nil
-}
-
-func (x *ConnectionViewModel) GetClockSkewBannerText() *Text {
-	if x != nil {
-		return x.ClockSkewBannerText
-	}
-	return nil
 }
 
 func (x *ConnectionViewModel) GetLeaseRenewalAdvice() *Text {
@@ -443,7 +369,7 @@ func (x *ConnectionViewModel) GetLeaseRenewalAdvice() *Text {
 	return nil
 }
 
-func (x *ConnectionViewModel) GetBanner() *ConnectionBannerView {
+func (x *ConnectionViewModel) GetBanner() *ConnBannerView {
 	if x != nil {
 		return x.Banner
 	}
@@ -455,20 +381,6 @@ func (x *ConnectionViewModel) GetServerDetails() *ConnectionServerDetailsView {
 		return x.ServerDetails
 	}
 	return nil
-}
-
-func (x *ConnectionViewModel) GetAuthorityDeviceId() string {
-	if x != nil {
-		return x.AuthorityDeviceId
-	}
-	return ""
-}
-
-func (x *ConnectionViewModel) GetIsManager() bool {
-	if x != nil {
-		return x.IsManager
-	}
-	return false
 }
 
 // WatchedSessionRoute pairs a watched session ID with its owning machine ID for direct-event gating.
@@ -736,49 +648,38 @@ var File_remoteagent_core_v1_connection_view_proto protoreflect.FileDescriptor
 const file_remoteagent_core_v1_connection_view_proto_rawDesc = "" +
 	"\n" +
 	")remoteagent/core/v1/connection_view.proto\x12\x13remoteagent.core.v1\x1a#remoteagent/core/v1/home_view.proto\x1a\x1eremoteagent/core/v1/text.proto\"\x19\n" +
-	"\x17ConnectionScreenRequest\"\xf5\x02\n" +
-	"\x14ConnectionBannerView\x12=\n" +
-	"\x04kind\x18\x01 \x01(\x0e2).remoteagent.core.v1.ConnectionBannerKindR\x04kind\x12\x18\n" +
+	"\x17ConnectionScreenRequest\"\xe9\x02\n" +
+	"\x0eConnBannerView\x127\n" +
+	"\x04kind\x18\x01 \x01(\x0e2#.remoteagent.core.v1.ConnBannerKindR\x04kind\x12\x18\n" +
 	"\avisible\x18\x02 \x01(\bR\avisible\x12\x1d\n" +
 	"\n" +
 	"error_tone\x18\x03 \x01(\bR\terrorTone\x12\x1b\n" +
-	"\tkept_data\x18\x04 \x01(\bR\bkeptData\x12!\n" +
-	"\fshow_details\x18\x05 \x01(\bR\vshowDetails\x12-\n" +
-	"\x04text\x18\x06 \x01(\v2\x19.remoteagent.core.v1.TextR\x04text\x12:\n" +
-	"\vdetail_text\x18\a \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
-	"detailText\x12:\n" +
+	"\tkept_data\x18\x04 \x01(\bR\bkeptData\x12-\n" +
+	"\x04text\x18\x05 \x01(\v2\x19.remoteagent.core.v1.TextR\x04text\x12:\n" +
+	"\vdetail_text\x18\x06 \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
+	"detailText\x12!\n" +
+	"\fshow_details\x18\a \x01(\bR\vshowDetails\x12:\n" +
 	"\vfailed_text\x18\b \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
-	"failedText\"\x86\x02\n" +
+	"failedText\"\xd5\x01\n" +
 	"\x1bConnectionServerDetailsView\x120\n" +
 	"\x14show_disconnected_at\x18\x01 \x01(\bR\x12showDisconnectedAt\x12,\n" +
-	"\x12disconnected_at_ms\x18\x02 \x01(\x03R\x10disconnectedAtMs\x12K\n" +
-	"\x14disconnected_at_text\x18\x03 \x01(\v2\x19.remoteagent.core.v1.TextR\x12disconnectedAtText\x12:\n" +
+	"\x12disconnected_at_ms\x18\x02 \x01(\x03R\x10disconnectedAtMs\x12:\n" +
 	"\vreason_text\x18\x04 \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
-	"reasonText\"\xba\a\n" +
+	"reasonTextJ\x04\b\x03\x10\x04R\x14disconnected_at_text\"\xca\x05\n" +
 	"\x13ConnectionViewModel\x124\n" +
 	"\x05state\x18\x01 \x01(\x0e2\x1e.remoteagent.core.v1.ConnStateR\x05state\x12\x1c\n" +
 	"\tconnected\x18\x02 \x01(\bR\tconnected\x12\x18\n" +
 	"\aremoved\x18\x03 \x01(\bR\aremoved\x12#\n" +
 	"\rdisplay_grace\x18\x04 \x01(\bR\fdisplayGrace\x121\n" +
-	"\x14reachability_unknown\x18\x05 \x01(\bR\x13reachabilityUnknown\x12+\n" +
-	"\x11network_available\x18\x06 \x01(\bR\x10networkAvailable\x12\x1f\n" +
+	"\x14reachability_unknown\x18\x05 \x01(\bR\x13reachabilityUnknown\x12\x1f\n" +
 	"\vlive_loaded\x18\a \x01(\bR\n" +
-	"liveLoaded\x12%\n" +
-	"\x0einitial_listed\x18\b \x01(\bR\rinitialListed\x12'\n" +
-	"\x0fsecurity_loaded\x18\t \x01(\bR\x0esecurityLoaded\x12\x1b\n" +
-	"\tis_member\x18\n" +
-	" \x01(\bR\bisMember\x120\n" +
-	"\x14account_clock_skewed\x18\v \x01(\bR\x12accountClockSkewed\x12,\n" +
-	"\x12disconnected_at_ms\x18\f \x01(\x03R\x10disconnectedAtMs\x12:\n" +
-	"\vreason_text\x18\r \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
-	"reasonText\x12N\n" +
-	"\x16clock_skew_banner_text\x18\x0e \x01(\v2\x19.remoteagent.core.v1.TextR\x13clockSkewBannerText\x12K\n" +
-	"\x14lease_renewal_advice\x18\x0f \x01(\v2\x19.remoteagent.core.v1.TextR\x12leaseRenewalAdvice\x12A\n" +
-	"\x06banner\x18\x10 \x01(\v2).remoteagent.core.v1.ConnectionBannerViewR\x06banner\x12W\n" +
-	"\x0eserver_details\x18\x11 \x01(\v20.remoteagent.core.v1.ConnectionServerDetailsViewR\rserverDetails\x12.\n" +
-	"\x13authority_device_id\x18\x12 \x01(\tR\x11authorityDeviceId\x12\x1d\n" +
-	"\n" +
-	"is_manager\x18\x13 \x01(\bR\tisManager\"S\n" +
+	"liveLoaded\x12K\n" +
+	"\x14lease_renewal_advice\x18\x0f \x01(\v2\x19.remoteagent.core.v1.TextR\x12leaseRenewalAdvice\x12;\n" +
+	"\x06banner\x18\x10 \x01(\v2#.remoteagent.core.v1.ConnBannerViewR\x06banner\x12W\n" +
+	"\x0eserver_details\x18\x11 \x01(\v20.remoteagent.core.v1.ConnectionServerDetailsViewR\rserverDetailsJ\x04\b\x06\x10\aJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
+	"J\x04\b\n" +
+	"\x10\vJ\x04\b\v\x10\fJ\x04\b\f\x10\rJ\x04\b\r\x10\x0eJ\x04\b\x0e\x10\x0fJ\x04\b\x12\x10\x13J\x04\b\x13\x10\x14R\x11network_availableR\x0einitial_listedR\x0fsecurity_loadedR\tis_memberR\x14account_clock_skewedR\x12disconnected_at_msR\vreason_textR\x16clock_skew_banner_textR\x13authority_device_idR\n" +
+	"is_manager\"S\n" +
 	"\x13WatchedSessionRoute\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
@@ -797,13 +698,13 @@ const file_remoteagent_core_v1_connection_view_proto_rawDesc = "" +
 	"\tscheduled\x18\x02 \x01(\bR\tscheduled\x12!\n" +
 	"\fschedule_seq\x18\x03 \x01(\x04R\vscheduleSeq\x12\x1f\n" +
 	"\vapproval_id\x18\x04 \x01(\tR\n" +
-	"approvalId*\xd0\x01\n" +
-	"\x14ConnectionBannerKind\x12&\n" +
-	"\"CONNECTION_BANNER_KIND_UNSPECIFIED\x10\x00\x12\x1f\n" +
-	"\x1bCONNECTION_BANNER_KIND_NONE\x10\x01\x12%\n" +
-	"!CONNECTION_BANNER_KIND_NO_NETWORK\x10\x02\x12$\n" +
-	" CONNECTION_BANNER_KIND_NO_SERVER\x10\x03\x12\"\n" +
-	"\x1eCONNECTION_BANNER_KIND_WAITING\x10\x04B\xdd\x01\n" +
+	"approvalId*\xac\x01\n" +
+	"\x0eConnBannerKind\x12 \n" +
+	"\x1cCONN_BANNER_KIND_UNSPECIFIED\x10\x00\x12\x19\n" +
+	"\x15CONN_BANNER_KIND_NONE\x10\x01\x12\x1f\n" +
+	"\x1bCONN_BANNER_KIND_NO_NETWORK\x10\x02\x12\x1e\n" +
+	"\x1aCONN_BANNER_KIND_NO_SERVER\x10\x03\x12\x1c\n" +
+	"\x18CONN_BANNER_KIND_WAITING\x10\x04B\xdd\x01\n" +
 	"\x17com.remoteagent.core.v1B\x13ConnectionViewProtoP\x01Z?github.com/Lewin671/remote-agent/gen/remoteagent/core/v1;corev1\xa2\x02\x03RCX\xaa\x02\x13Remoteagent.Core.V1\xca\x02\x13Remoteagent\\Core\\V1\xe2\x02\x1fRemoteagent\\Core\\V1\\GPBMetadata\xea\x02\x15Remoteagent::Core::V1b\x06proto3"
 
 var (
@@ -821,9 +722,9 @@ func file_remoteagent_core_v1_connection_view_proto_rawDescGZIP() []byte {
 var file_remoteagent_core_v1_connection_view_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_remoteagent_core_v1_connection_view_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_remoteagent_core_v1_connection_view_proto_goTypes = []any{
-	(ConnectionBannerKind)(0),            // 0: remoteagent.core.v1.ConnectionBannerKind
+	(ConnBannerKind)(0),                  // 0: remoteagent.core.v1.ConnBannerKind
 	(*ConnectionScreenRequest)(nil),      // 1: remoteagent.core.v1.ConnectionScreenRequest
-	(*ConnectionBannerView)(nil),         // 2: remoteagent.core.v1.ConnectionBannerView
+	(*ConnBannerView)(nil),               // 2: remoteagent.core.v1.ConnBannerView
 	(*ConnectionServerDetailsView)(nil),  // 3: remoteagent.core.v1.ConnectionServerDetailsView
 	(*ConnectionViewModel)(nil),          // 4: remoteagent.core.v1.ConnectionViewModel
 	(*WatchedSessionRoute)(nil),          // 5: remoteagent.core.v1.WatchedSessionRoute
@@ -835,24 +736,21 @@ var file_remoteagent_core_v1_connection_view_proto_goTypes = []any{
 	(ConnState)(0),                       // 11: remoteagent.core.v1.ConnState
 }
 var file_remoteagent_core_v1_connection_view_proto_depIdxs = []int32{
-	0,  // 0: remoteagent.core.v1.ConnectionBannerView.kind:type_name -> remoteagent.core.v1.ConnectionBannerKind
-	10, // 1: remoteagent.core.v1.ConnectionBannerView.text:type_name -> remoteagent.core.v1.Text
-	10, // 2: remoteagent.core.v1.ConnectionBannerView.detail_text:type_name -> remoteagent.core.v1.Text
-	10, // 3: remoteagent.core.v1.ConnectionBannerView.failed_text:type_name -> remoteagent.core.v1.Text
-	10, // 4: remoteagent.core.v1.ConnectionServerDetailsView.disconnected_at_text:type_name -> remoteagent.core.v1.Text
-	10, // 5: remoteagent.core.v1.ConnectionServerDetailsView.reason_text:type_name -> remoteagent.core.v1.Text
-	11, // 6: remoteagent.core.v1.ConnectionViewModel.state:type_name -> remoteagent.core.v1.ConnState
-	10, // 7: remoteagent.core.v1.ConnectionViewModel.reason_text:type_name -> remoteagent.core.v1.Text
-	10, // 8: remoteagent.core.v1.ConnectionViewModel.clock_skew_banner_text:type_name -> remoteagent.core.v1.Text
-	10, // 9: remoteagent.core.v1.ConnectionViewModel.lease_renewal_advice:type_name -> remoteagent.core.v1.Text
-	2,  // 10: remoteagent.core.v1.ConnectionViewModel.banner:type_name -> remoteagent.core.v1.ConnectionBannerView
-	3,  // 11: remoteagent.core.v1.ConnectionViewModel.server_details:type_name -> remoteagent.core.v1.ConnectionServerDetailsView
-	5,  // 12: remoteagent.core.v1.WatchedSessionsEffect.sessions:type_name -> remoteagent.core.v1.WatchedSessionRoute
-	13, // [13:13] is the sub-list for method output_type
-	13, // [13:13] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	0,  // 0: remoteagent.core.v1.ConnBannerView.kind:type_name -> remoteagent.core.v1.ConnBannerKind
+	10, // 1: remoteagent.core.v1.ConnBannerView.text:type_name -> remoteagent.core.v1.Text
+	10, // 2: remoteagent.core.v1.ConnBannerView.detail_text:type_name -> remoteagent.core.v1.Text
+	10, // 3: remoteagent.core.v1.ConnBannerView.failed_text:type_name -> remoteagent.core.v1.Text
+	10, // 4: remoteagent.core.v1.ConnectionServerDetailsView.reason_text:type_name -> remoteagent.core.v1.Text
+	11, // 5: remoteagent.core.v1.ConnectionViewModel.state:type_name -> remoteagent.core.v1.ConnState
+	10, // 6: remoteagent.core.v1.ConnectionViewModel.lease_renewal_advice:type_name -> remoteagent.core.v1.Text
+	2,  // 7: remoteagent.core.v1.ConnectionViewModel.banner:type_name -> remoteagent.core.v1.ConnBannerView
+	3,  // 8: remoteagent.core.v1.ConnectionViewModel.server_details:type_name -> remoteagent.core.v1.ConnectionServerDetailsView
+	5,  // 9: remoteagent.core.v1.WatchedSessionsEffect.sessions:type_name -> remoteagent.core.v1.WatchedSessionRoute
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_connection_view_proto_init() }

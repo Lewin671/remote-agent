@@ -178,12 +178,16 @@ func buildSyncConnBanner(v *corev1.SyncStateView, w *world.State) *corev1.ConnBa
 		}
 	case corev1.ConnBannerKind_CONN_BANNER_KIND_NO_SERVER:
 		out.ErrorTone = !kept
+		out.ShowDetails = true
 		out.Text = text.Msg(text.KeyConnectionServerRetrying)
 		reason := v.ConnectionReason
 		if text.IsEmpty(reason) {
 			reason = text.Msg(text.KeyConnectionNoResponse)
 		}
 		out.DetailText = text.Msg(text.KeyConnectionServerDetails, text.ArgText("reason", reason))
+		if !kept && !text.IsEmpty(v.ConnectionReason) {
+			out.FailedText = text.Msg(text.KeyConnectionServerFailed, text.ArgText("reason", v.ConnectionReason))
+		}
 	case corev1.ConnBannerKind_CONN_BANNER_KIND_WAITING:
 		if v.LiveLoaded {
 			out.Text = text.Msg(text.KeyConnectionReconnecting)

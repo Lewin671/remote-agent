@@ -8,14 +8,14 @@ import (
 	unsafe "unsafe"
 )
 
-type ConnectionBannerKind int32
+type ConnBannerKind int32
 
 const (
-	ConnectionBannerKind_CONNECTION_BANNER_KIND_UNSPECIFIED ConnectionBannerKind = 0
-	ConnectionBannerKind_CONNECTION_BANNER_KIND_NONE        ConnectionBannerKind = 1
-	ConnectionBannerKind_CONNECTION_BANNER_KIND_NO_NETWORK  ConnectionBannerKind = 2
-	ConnectionBannerKind_CONNECTION_BANNER_KIND_NO_SERVER   ConnectionBannerKind = 3
-	ConnectionBannerKind_CONNECTION_BANNER_KIND_WAITING     ConnectionBannerKind = 4
+	ConnBannerKind_CONN_BANNER_KIND_UNSPECIFIED ConnBannerKind = 0
+	ConnBannerKind_CONN_BANNER_KIND_NONE        ConnBannerKind = 1
+	ConnBannerKind_CONN_BANNER_KIND_NO_NETWORK  ConnBannerKind = 2
+	ConnBannerKind_CONN_BANNER_KIND_NO_SERVER   ConnBannerKind = 3
+	ConnBannerKind_CONN_BANNER_KIND_WAITING     ConnBannerKind = 4
 )
 
 type ConnectionScreenRequest struct {
@@ -29,93 +29,92 @@ func (m *ConnectionScreenRequest) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ConnectionScreenRequest)
 }
 
-type ConnectionBannerView struct {
+type ConnBannerView struct {
 	_           [0]func()
-	Kind        ConnectionBannerKind
+	Kind        ConnBannerKind
 	Visible     bool
 	ErrorTone   bool
 	KeptData    bool
-	ShowDetails bool
 	Text        *Text
 	DetailText  *Text
+	ShowDetails bool
 	FailedText  *Text
 }
 
-func (m *ConnectionBannerView) GetKind() ConnectionBannerKind {
+func (m *ConnBannerView) GetKind() ConnBannerKind {
 	if m != nil {
 		return m.Kind
 	}
 	return 0
 }
-func (m *ConnectionBannerView) GetVisible() bool {
+func (m *ConnBannerView) GetVisible() bool {
 	if m != nil {
 		return m.Visible
 	}
 	return false
 }
-func (m *ConnectionBannerView) GetErrorTone() bool {
+func (m *ConnBannerView) GetErrorTone() bool {
 	if m != nil {
 		return m.ErrorTone
 	}
 	return false
 }
-func (m *ConnectionBannerView) GetKeptData() bool {
+func (m *ConnBannerView) GetKeptData() bool {
 	if m != nil {
 		return m.KeptData
 	}
 	return false
 }
-func (m *ConnectionBannerView) GetShowDetails() bool {
-	if m != nil {
-		return m.ShowDetails
-	}
-	return false
-}
-func (m *ConnectionBannerView) GetText() *Text {
+func (m *ConnBannerView) GetText() *Text {
 	if m != nil {
 		return m.Text
 	}
 	return nil
 }
-func (m *ConnectionBannerView) GetDetailText() *Text {
+func (m *ConnBannerView) GetDetailText() *Text {
 	if m != nil {
 		return m.DetailText
 	}
 	return nil
 }
-func (m *ConnectionBannerView) GetFailedText() *Text {
+func (m *ConnBannerView) GetShowDetails() bool {
+	if m != nil {
+		return m.ShowDetails
+	}
+	return false
+}
+func (m *ConnBannerView) GetFailedText() *Text {
 	if m != nil {
 		return m.FailedText
 	}
 	return nil
 }
 
-var LitewireDesc_ConnectionBannerView = litewire.MessageDesc{
+var LitewireDesc_ConnBannerView = litewire.MessageDesc{
 	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(ConnectionBannerView{}.Kind), Kind: litewire.KindInt32},
-		{Num: 2, Offset: unsafe.Offsetof(ConnectionBannerView{}.Visible), Kind: litewire.KindBool},
-		{Num: 3, Offset: unsafe.Offsetof(ConnectionBannerView{}.ErrorTone), Kind: litewire.KindBool},
-		{Num: 4, Offset: unsafe.Offsetof(ConnectionBannerView{}.KeptData), Kind: litewire.KindBool},
-		{Num: 5, Offset: unsafe.Offsetof(ConnectionBannerView{}.ShowDetails), Kind: litewire.KindBool},
-		{Num: 6, Offset: unsafe.Offsetof(ConnectionBannerView{}.Text), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
-		{Num: 7, Offset: unsafe.Offsetof(ConnectionBannerView{}.DetailText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
-		{Num: 8, Offset: unsafe.Offsetof(ConnectionBannerView{}.FailedText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 1, Offset: unsafe.Offsetof(ConnBannerView{}.Kind), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(ConnBannerView{}.Visible), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(ConnBannerView{}.ErrorTone), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(ConnBannerView{}.KeptData), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(ConnBannerView{}.Text), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 6, Offset: unsafe.Offsetof(ConnBannerView{}.DetailText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 7, Offset: unsafe.Offsetof(ConnBannerView{}.ShowDetails), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(ConnBannerView{}.FailedText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 
-func (m *ConnectionBannerView) Marshal() ([]byte, error) {
+func (m *ConnBannerView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
-func (m *ConnectionBannerView) AppendMarshal(b []byte) []byte {
-	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ConnectionBannerView)
+func (m *ConnBannerView) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ConnBannerView)
 }
 
 type ConnectionServerDetailsView struct {
 	_                  [0]func()
 	ShowDisconnectedAt bool
 	DisconnectedAtMs   int64
-	DisconnectedAtText *Text
 	ReasonText         *Text
 }
 
@@ -131,12 +130,6 @@ func (m *ConnectionServerDetailsView) GetDisconnectedAtMs() int64 {
 	}
 	return 0
 }
-func (m *ConnectionServerDetailsView) GetDisconnectedAtText() *Text {
-	if m != nil {
-		return m.DisconnectedAtText
-	}
-	return nil
-}
 func (m *ConnectionServerDetailsView) GetReasonText() *Text {
 	if m != nil {
 		return m.ReasonText
@@ -148,7 +141,6 @@ var LitewireDesc_ConnectionServerDetailsView = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(ConnectionServerDetailsView{}.ShowDisconnectedAt), Kind: litewire.KindBool},
 		{Num: 2, Offset: unsafe.Offsetof(ConnectionServerDetailsView{}.DisconnectedAtMs), Kind: litewire.KindInt64},
-		{Num: 3, Offset: unsafe.Offsetof(ConnectionServerDetailsView{}.DisconnectedAtText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 4, Offset: unsafe.Offsetof(ConnectionServerDetailsView{}.ReasonText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
@@ -168,20 +160,10 @@ type ConnectionViewModel struct {
 	Removed             bool
 	DisplayGrace        bool
 	ReachabilityUnknown bool
-	NetworkAvailable    bool
 	LiveLoaded          bool
-	InitialListed       bool
-	SecurityLoaded      bool
-	IsMember            bool
-	AccountClockSkewed  bool
-	DisconnectedAtMs    int64
-	ReasonText          *Text
-	ClockSkewBannerText *Text
 	LeaseRenewalAdvice  *Text
-	Banner              *ConnectionBannerView
+	Banner              *ConnBannerView
 	ServerDetails       *ConnectionServerDetailsView
-	AuthorityDeviceId   string
-	IsManager           bool
 }
 
 func (m *ConnectionViewModel) GetState() ConnState {
@@ -214,59 +196,11 @@ func (m *ConnectionViewModel) GetReachabilityUnknown() bool {
 	}
 	return false
 }
-func (m *ConnectionViewModel) GetNetworkAvailable() bool {
-	if m != nil {
-		return m.NetworkAvailable
-	}
-	return false
-}
 func (m *ConnectionViewModel) GetLiveLoaded() bool {
 	if m != nil {
 		return m.LiveLoaded
 	}
 	return false
-}
-func (m *ConnectionViewModel) GetInitialListed() bool {
-	if m != nil {
-		return m.InitialListed
-	}
-	return false
-}
-func (m *ConnectionViewModel) GetSecurityLoaded() bool {
-	if m != nil {
-		return m.SecurityLoaded
-	}
-	return false
-}
-func (m *ConnectionViewModel) GetIsMember() bool {
-	if m != nil {
-		return m.IsMember
-	}
-	return false
-}
-func (m *ConnectionViewModel) GetAccountClockSkewed() bool {
-	if m != nil {
-		return m.AccountClockSkewed
-	}
-	return false
-}
-func (m *ConnectionViewModel) GetDisconnectedAtMs() int64 {
-	if m != nil {
-		return m.DisconnectedAtMs
-	}
-	return 0
-}
-func (m *ConnectionViewModel) GetReasonText() *Text {
-	if m != nil {
-		return m.ReasonText
-	}
-	return nil
-}
-func (m *ConnectionViewModel) GetClockSkewBannerText() *Text {
-	if m != nil {
-		return m.ClockSkewBannerText
-	}
-	return nil
 }
 func (m *ConnectionViewModel) GetLeaseRenewalAdvice() *Text {
 	if m != nil {
@@ -274,7 +208,7 @@ func (m *ConnectionViewModel) GetLeaseRenewalAdvice() *Text {
 	}
 	return nil
 }
-func (m *ConnectionViewModel) GetBanner() *ConnectionBannerView {
+func (m *ConnectionViewModel) GetBanner() *ConnBannerView {
 	if m != nil {
 		return m.Banner
 	}
@@ -286,18 +220,6 @@ func (m *ConnectionViewModel) GetServerDetails() *ConnectionServerDetailsView {
 	}
 	return nil
 }
-func (m *ConnectionViewModel) GetAuthorityDeviceId() string {
-	if m != nil {
-		return m.AuthorityDeviceId
-	}
-	return ""
-}
-func (m *ConnectionViewModel) GetIsManager() bool {
-	if m != nil {
-		return m.IsManager
-	}
-	return false
-}
 
 var LitewireDesc_ConnectionViewModel = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -306,20 +228,10 @@ var LitewireDesc_ConnectionViewModel = litewire.MessageDesc{
 		{Num: 3, Offset: unsafe.Offsetof(ConnectionViewModel{}.Removed), Kind: litewire.KindBool},
 		{Num: 4, Offset: unsafe.Offsetof(ConnectionViewModel{}.DisplayGrace), Kind: litewire.KindBool},
 		{Num: 5, Offset: unsafe.Offsetof(ConnectionViewModel{}.ReachabilityUnknown), Kind: litewire.KindBool},
-		{Num: 6, Offset: unsafe.Offsetof(ConnectionViewModel{}.NetworkAvailable), Kind: litewire.KindBool},
 		{Num: 7, Offset: unsafe.Offsetof(ConnectionViewModel{}.LiveLoaded), Kind: litewire.KindBool},
-		{Num: 8, Offset: unsafe.Offsetof(ConnectionViewModel{}.InitialListed), Kind: litewire.KindBool},
-		{Num: 9, Offset: unsafe.Offsetof(ConnectionViewModel{}.SecurityLoaded), Kind: litewire.KindBool},
-		{Num: 10, Offset: unsafe.Offsetof(ConnectionViewModel{}.IsMember), Kind: litewire.KindBool},
-		{Num: 11, Offset: unsafe.Offsetof(ConnectionViewModel{}.AccountClockSkewed), Kind: litewire.KindBool},
-		{Num: 12, Offset: unsafe.Offsetof(ConnectionViewModel{}.DisconnectedAtMs), Kind: litewire.KindInt64},
-		{Num: 13, Offset: unsafe.Offsetof(ConnectionViewModel{}.ReasonText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
-		{Num: 14, Offset: unsafe.Offsetof(ConnectionViewModel{}.ClockSkewBannerText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 15, Offset: unsafe.Offsetof(ConnectionViewModel{}.LeaseRenewalAdvice), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
-		{Num: 16, Offset: unsafe.Offsetof(ConnectionViewModel{}.Banner), Kind: litewire.KindMessage, Sub: &LitewireDesc_ConnectionBannerView},
+		{Num: 16, Offset: unsafe.Offsetof(ConnectionViewModel{}.Banner), Kind: litewire.KindMessage, Sub: &LitewireDesc_ConnBannerView},
 		{Num: 17, Offset: unsafe.Offsetof(ConnectionViewModel{}.ServerDetails), Kind: litewire.KindMessage, Sub: &LitewireDesc_ConnectionServerDetailsView},
-		{Num: 18, Offset: unsafe.Offsetof(ConnectionViewModel{}.AuthorityDeviceId), Kind: litewire.KindString},
-		{Num: 19, Offset: unsafe.Offsetof(ConnectionViewModel{}.IsManager), Kind: litewire.KindBool},
 	},
 }
 

@@ -20,7 +20,7 @@ fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAP
   typealias Version = _2
 }
 
-public enum PBConnectionBannerKind: SwiftProtobuf.Enum, Swift.CaseIterable {
+public enum PBConnBannerKind: SwiftProtobuf.Enum, Swift.CaseIterable {
   public typealias RawValue = Int
   case unspecified // = 0
   case none // = 1
@@ -56,7 +56,7 @@ public enum PBConnectionBannerKind: SwiftProtobuf.Enum, Swift.CaseIterable {
   }
 
   // The compiler won't synthesize support with the UNRECOGNIZED case.
-  public static let allCases: [PBConnectionBannerKind] = [
+  public static let allCases: [PBConnBannerKind] = [
     .unspecified,
     .none,
     .noNetwork,
@@ -77,12 +77,12 @@ public struct PBConnectionScreenRequest: Sendable {
   public init() {}
 }
 
-public struct PBConnectionBannerView: @unchecked Sendable {
+public struct PBConnBannerView: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var kind: PBConnectionBannerKind {
+  public var kind: PBConnBannerKind {
     get {return _storage._kind}
     set {_uniqueStorage()._kind = newValue}
   }
@@ -100,11 +100,6 @@ public struct PBConnectionBannerView: @unchecked Sendable {
   public var keptData: Bool {
     get {return _storage._keptData}
     set {_uniqueStorage()._keptData = newValue}
-  }
-
-  public var showDetails: Bool {
-    get {return _storage._showDetails}
-    set {_uniqueStorage()._showDetails = newValue}
   }
 
   public var text: PBCoreText {
@@ -125,6 +120,11 @@ public struct PBConnectionBannerView: @unchecked Sendable {
   /// Clears the value of `detailText`. Subsequent reads from it will return its default value.
   public mutating func clearDetailText() {_uniqueStorage()._detailText = nil}
 
+  public var showDetails: Bool {
+    get {return _storage._showDetails}
+    set {_uniqueStorage()._showDetails = newValue}
+  }
+
   public var failedText: PBCoreText {
     get {return _storage._failedText ?? PBCoreText()}
     set {_uniqueStorage()._failedText = newValue}
@@ -141,44 +141,29 @@ public struct PBConnectionBannerView: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-public struct PBConnectionServerDetailsView: @unchecked Sendable {
+public struct PBConnectionServerDetailsView: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var showDisconnectedAt: Bool {
-    get {return _storage._showDisconnectedAt}
-    set {_uniqueStorage()._showDisconnectedAt = newValue}
-  }
+  public var showDisconnectedAt: Bool = false
 
-  public var disconnectedAtMs: Int64 {
-    get {return _storage._disconnectedAtMs}
-    set {_uniqueStorage()._disconnectedAtMs = newValue}
-  }
-
-  public var disconnectedAtText: PBCoreText {
-    get {return _storage._disconnectedAtText ?? PBCoreText()}
-    set {_uniqueStorage()._disconnectedAtText = newValue}
-  }
-  /// Returns true if `disconnectedAtText` has been explicitly set.
-  public var hasDisconnectedAtText: Bool {return _storage._disconnectedAtText != nil}
-  /// Clears the value of `disconnectedAtText`. Subsequent reads from it will return its default value.
-  public mutating func clearDisconnectedAtText() {_uniqueStorage()._disconnectedAtText = nil}
+  public var disconnectedAtMs: Int64 = 0
 
   public var reasonText: PBCoreText {
-    get {return _storage._reasonText ?? PBCoreText()}
-    set {_uniqueStorage()._reasonText = newValue}
+    get {return _reasonText ?? PBCoreText()}
+    set {_reasonText = newValue}
   }
   /// Returns true if `reasonText` has been explicitly set.
-  public var hasReasonText: Bool {return _storage._reasonText != nil}
+  public var hasReasonText: Bool {return self._reasonText != nil}
   /// Clears the value of `reasonText`. Subsequent reads from it will return its default value.
-  public mutating func clearReasonText() {_uniqueStorage()._reasonText = nil}
+  public mutating func clearReasonText() {self._reasonText = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _storage = _StorageClass.defaultInstance
+  fileprivate var _reasonText: PBCoreText? = nil
 }
 
 /// ConnectionViewModel exposes global connection status, banner presentation, server details,
@@ -213,58 +198,10 @@ public struct PBConnectionViewModel: @unchecked Sendable {
     set {_uniqueStorage()._reachabilityUnknown = newValue}
   }
 
-  public var networkAvailable: Bool {
-    get {return _storage._networkAvailable}
-    set {_uniqueStorage()._networkAvailable = newValue}
-  }
-
   public var liveLoaded: Bool {
     get {return _storage._liveLoaded}
     set {_uniqueStorage()._liveLoaded = newValue}
   }
-
-  public var initialListed: Bool {
-    get {return _storage._initialListed}
-    set {_uniqueStorage()._initialListed = newValue}
-  }
-
-  public var securityLoaded: Bool {
-    get {return _storage._securityLoaded}
-    set {_uniqueStorage()._securityLoaded = newValue}
-  }
-
-  public var isMember: Bool {
-    get {return _storage._isMember}
-    set {_uniqueStorage()._isMember = newValue}
-  }
-
-  public var accountClockSkewed: Bool {
-    get {return _storage._accountClockSkewed}
-    set {_uniqueStorage()._accountClockSkewed = newValue}
-  }
-
-  public var disconnectedAtMs: Int64 {
-    get {return _storage._disconnectedAtMs}
-    set {_uniqueStorage()._disconnectedAtMs = newValue}
-  }
-
-  public var reasonText: PBCoreText {
-    get {return _storage._reasonText ?? PBCoreText()}
-    set {_uniqueStorage()._reasonText = newValue}
-  }
-  /// Returns true if `reasonText` has been explicitly set.
-  public var hasReasonText: Bool {return _storage._reasonText != nil}
-  /// Clears the value of `reasonText`. Subsequent reads from it will return its default value.
-  public mutating func clearReasonText() {_uniqueStorage()._reasonText = nil}
-
-  public var clockSkewBannerText: PBCoreText {
-    get {return _storage._clockSkewBannerText ?? PBCoreText()}
-    set {_uniqueStorage()._clockSkewBannerText = newValue}
-  }
-  /// Returns true if `clockSkewBannerText` has been explicitly set.
-  public var hasClockSkewBannerText: Bool {return _storage._clockSkewBannerText != nil}
-  /// Clears the value of `clockSkewBannerText`. Subsequent reads from it will return its default value.
-  public mutating func clearClockSkewBannerText() {_uniqueStorage()._clockSkewBannerText = nil}
 
   public var leaseRenewalAdvice: PBCoreText {
     get {return _storage._leaseRenewalAdvice ?? PBCoreText()}
@@ -275,8 +212,8 @@ public struct PBConnectionViewModel: @unchecked Sendable {
   /// Clears the value of `leaseRenewalAdvice`. Subsequent reads from it will return its default value.
   public mutating func clearLeaseRenewalAdvice() {_uniqueStorage()._leaseRenewalAdvice = nil}
 
-  public var banner: PBConnectionBannerView {
-    get {return _storage._banner ?? PBConnectionBannerView()}
+  public var banner: PBConnBannerView {
+    get {return _storage._banner ?? PBConnBannerView()}
     set {_uniqueStorage()._banner = newValue}
   }
   /// Returns true if `banner` has been explicitly set.
@@ -292,16 +229,6 @@ public struct PBConnectionViewModel: @unchecked Sendable {
   public var hasServerDetails: Bool {return _storage._serverDetails != nil}
   /// Clears the value of `serverDetails`. Subsequent reads from it will return its default value.
   public mutating func clearServerDetails() {_uniqueStorage()._serverDetails = nil}
-
-  public var authorityDeviceID: String {
-    get {return _storage._authorityDeviceID}
-    set {_uniqueStorage()._authorityDeviceID = newValue}
-  }
-
-  public var isManager: Bool {
-    get {return _storage._isManager}
-    set {_uniqueStorage()._isManager = newValue}
-  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -390,8 +317,8 @@ public struct PBResolveNotificationTapAction: Sendable {
 
 fileprivate let _protobuf_package = "remoteagent.core.v1"
 
-extension PBConnectionBannerKind: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0CONNECTION_BANNER_KIND_UNSPECIFIED\0\u{1}CONNECTION_BANNER_KIND_NONE\0\u{1}CONNECTION_BANNER_KIND_NO_NETWORK\0\u{1}CONNECTION_BANNER_KIND_NO_SERVER\0\u{1}CONNECTION_BANNER_KIND_WAITING\0")
+extension PBConnBannerKind: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0CONN_BANNER_KIND_UNSPECIFIED\0\u{1}CONN_BANNER_KIND_NONE\0\u{1}CONN_BANNER_KIND_NO_NETWORK\0\u{1}CONN_BANNER_KIND_NO_SERVER\0\u{1}CONN_BANNER_KIND_WAITING\0")
 }
 
 extension PBConnectionScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
@@ -413,18 +340,18 @@ extension PBConnectionScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
   }
 }
 
-extension PBConnectionBannerView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".ConnectionBannerView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{1}visible\0\u{3}error_tone\0\u{3}kept_data\0\u{3}show_details\0\u{1}text\0\u{3}detail_text\0\u{3}failed_text\0")
+extension PBConnBannerView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ConnBannerView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{1}visible\0\u{3}error_tone\0\u{3}kept_data\0\u{1}text\0\u{3}detail_text\0\u{3}show_details\0\u{3}failed_text\0")
 
   fileprivate class _StorageClass {
-    var _kind: PBConnectionBannerKind = .unspecified
+    var _kind: PBConnBannerKind = .unspecified
     var _visible: Bool = false
     var _errorTone: Bool = false
     var _keptData: Bool = false
-    var _showDetails: Bool = false
     var _text: PBCoreText? = nil
     var _detailText: PBCoreText? = nil
+    var _showDetails: Bool = false
     var _failedText: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
@@ -440,9 +367,9 @@ extension PBConnectionBannerView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       _visible = source._visible
       _errorTone = source._errorTone
       _keptData = source._keptData
-      _showDetails = source._showDetails
       _text = source._text
       _detailText = source._detailText
+      _showDetails = source._showDetails
       _failedText = source._failedText
     }
   }
@@ -466,9 +393,9 @@ extension PBConnectionBannerView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
         case 2: try { try decoder.decodeSingularBoolField(value: &_storage._visible) }()
         case 3: try { try decoder.decodeSingularBoolField(value: &_storage._errorTone) }()
         case 4: try { try decoder.decodeSingularBoolField(value: &_storage._keptData) }()
-        case 5: try { try decoder.decodeSingularBoolField(value: &_storage._showDetails) }()
-        case 6: try { try decoder.decodeSingularMessageField(value: &_storage._text) }()
-        case 7: try { try decoder.decodeSingularMessageField(value: &_storage._detailText) }()
+        case 5: try { try decoder.decodeSingularMessageField(value: &_storage._text) }()
+        case 6: try { try decoder.decodeSingularMessageField(value: &_storage._detailText) }()
+        case 7: try { try decoder.decodeSingularBoolField(value: &_storage._showDetails) }()
         case 8: try { try decoder.decodeSingularMessageField(value: &_storage._failedText) }()
         default: break
         }
@@ -494,15 +421,15 @@ extension PBConnectionBannerView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       if _storage._keptData != false {
         try visitor.visitSingularBoolField(value: _storage._keptData, fieldNumber: 4)
       }
-      if _storage._showDetails != false {
-        try visitor.visitSingularBoolField(value: _storage._showDetails, fieldNumber: 5)
-      }
       try { if let v = _storage._text {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
       } }()
       try { if let v = _storage._detailText {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
       } }()
+      if _storage._showDetails != false {
+        try visitor.visitSingularBoolField(value: _storage._showDetails, fieldNumber: 7)
+      }
       try { if let v = _storage._failedText {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
       } }()
@@ -510,7 +437,7 @@ extension PBConnectionBannerView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: PBConnectionBannerView, rhs: PBConnectionBannerView) -> Bool {
+  public static func ==(lhs: PBConnBannerView, rhs: PBConnBannerView) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -519,9 +446,9 @@ extension PBConnectionBannerView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
         if _storage._visible != rhs_storage._visible {return false}
         if _storage._errorTone != rhs_storage._errorTone {return false}
         if _storage._keptData != rhs_storage._keptData {return false}
-        if _storage._showDetails != rhs_storage._showDetails {return false}
         if _storage._text != rhs_storage._text {return false}
         if _storage._detailText != rhs_storage._detailText {return false}
+        if _storage._showDetails != rhs_storage._showDetails {return false}
         if _storage._failedText != rhs_storage._failedText {return false}
         return true
       }
@@ -534,90 +461,43 @@ extension PBConnectionBannerView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension PBConnectionServerDetailsView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ConnectionServerDetailsView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}show_disconnected_at\0\u{3}disconnected_at_ms\0\u{3}disconnected_at_text\0\u{3}reason_text\0")
-
-  fileprivate class _StorageClass {
-    var _showDisconnectedAt: Bool = false
-    var _disconnectedAtMs: Int64 = 0
-    var _disconnectedAtText: PBCoreText? = nil
-    var _reasonText: PBCoreText? = nil
-
-      // This property is used as the initial default value for new instances of the type.
-      // The type itself is protecting the reference to its storage via CoW semantics.
-      // This will force a copy to be made of this reference when the first mutation occurs;
-      // hence, it is safe to mark this as `nonisolated(unsafe)`.
-      static nonisolated(unsafe) let defaultInstance = _StorageClass()
-
-    private init() {}
-
-    init(copying source: _StorageClass) {
-      _showDisconnectedAt = source._showDisconnectedAt
-      _disconnectedAtMs = source._disconnectedAtMs
-      _disconnectedAtText = source._disconnectedAtText
-      _reasonText = source._reasonText
-    }
-  }
-
-  fileprivate mutating func _uniqueStorage() -> _StorageClass {
-    if !isKnownUniquelyReferenced(&_storage) {
-      _storage = _StorageClass(copying: _storage)
-    }
-    return _storage
-  }
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}show_disconnected_at\0\u{3}disconnected_at_ms\0\u{4}\u{2}reason_text\0\u{b}disconnected_at_text\0\u{c}\u{3}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    _ = _uniqueStorage()
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      while let fieldNumber = try decoder.nextFieldNumber() {
-        // The use of inline closures is to circumvent an issue where the compiler
-        // allocates stack space for every case branch when no optimizations are
-        // enabled. https://github.com/apple/swift-protobuf/issues/1034
-        switch fieldNumber {
-        case 1: try { try decoder.decodeSingularBoolField(value: &_storage._showDisconnectedAt) }()
-        case 2: try { try decoder.decodeSingularInt64Field(value: &_storage._disconnectedAtMs) }()
-        case 3: try { try decoder.decodeSingularMessageField(value: &_storage._disconnectedAtText) }()
-        case 4: try { try decoder.decodeSingularMessageField(value: &_storage._reasonText) }()
-        default: break
-        }
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBoolField(value: &self.showDisconnectedAt) }()
+      case 2: try { try decoder.decodeSingularInt64Field(value: &self.disconnectedAtMs) }()
+      case 4: try { try decoder.decodeSingularMessageField(value: &self._reasonText) }()
+      default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every if/case branch local when no optimizations
-      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-      // https://github.com/apple/swift-protobuf/issues/1182
-      if _storage._showDisconnectedAt != false {
-        try visitor.visitSingularBoolField(value: _storage._showDisconnectedAt, fieldNumber: 1)
-      }
-      if _storage._disconnectedAtMs != 0 {
-        try visitor.visitSingularInt64Field(value: _storage._disconnectedAtMs, fieldNumber: 2)
-      }
-      try { if let v = _storage._disconnectedAtText {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
-      } }()
-      try { if let v = _storage._reasonText {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
-      } }()
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if self.showDisconnectedAt != false {
+      try visitor.visitSingularBoolField(value: self.showDisconnectedAt, fieldNumber: 1)
     }
+    if self.disconnectedAtMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.disconnectedAtMs, fieldNumber: 2)
+    }
+    try { if let v = self._reasonText {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBConnectionServerDetailsView, rhs: PBConnectionServerDetailsView) -> Bool {
-    if lhs._storage !== rhs._storage {
-      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-        let _storage = _args.0
-        let rhs_storage = _args.1
-        if _storage._showDisconnectedAt != rhs_storage._showDisconnectedAt {return false}
-        if _storage._disconnectedAtMs != rhs_storage._disconnectedAtMs {return false}
-        if _storage._disconnectedAtText != rhs_storage._disconnectedAtText {return false}
-        if _storage._reasonText != rhs_storage._reasonText {return false}
-        return true
-      }
-      if !storagesAreEqual {return false}
-    }
+    if lhs.showDisconnectedAt != rhs.showDisconnectedAt {return false}
+    if lhs.disconnectedAtMs != rhs.disconnectedAtMs {return false}
+    if lhs._reasonText != rhs._reasonText {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -625,7 +505,7 @@ extension PBConnectionServerDetailsView: SwiftProtobuf.Message, SwiftProtobuf._M
 
 extension PBConnectionViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ConnectionViewModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}state\0\u{1}connected\0\u{1}removed\0\u{3}display_grace\0\u{3}reachability_unknown\0\u{3}network_available\0\u{3}live_loaded\0\u{3}initial_listed\0\u{3}security_loaded\0\u{3}is_member\0\u{3}account_clock_skewed\0\u{3}disconnected_at_ms\0\u{3}reason_text\0\u{3}clock_skew_banner_text\0\u{3}lease_renewal_advice\0\u{1}banner\0\u{3}server_details\0\u{3}authority_device_id\0\u{3}is_manager\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}state\0\u{1}connected\0\u{1}removed\0\u{3}display_grace\0\u{3}reachability_unknown\0\u{4}\u{2}live_loaded\0\u{4}\u{8}lease_renewal_advice\0\u{1}banner\0\u{3}server_details\0\u{b}network_available\0\u{b}initial_listed\0\u{b}security_loaded\0\u{b}is_member\0\u{b}account_clock_skewed\0\u{b}disconnected_at_ms\0\u{b}reason_text\0\u{b}clock_skew_banner_text\0\u{b}authority_device_id\0\u{b}is_manager\0\u{c}\u{6}\u{1}\u{c}\u{8}\u{1}\u{c}\u{9}\u{1}\u{c}\u{a}\u{1}\u{c}\u{b}\u{1}\u{c}\u{c}\u{1}\u{c}\u{d}\u{1}\u{c}\u{e}\u{1}\u{c}\u{12}\u{1}\u{c}\u{13}\u{1}")
 
   fileprivate class _StorageClass {
     var _state: PBCoreConnState = .unspecified
@@ -633,20 +513,10 @@ extension PBConnectionViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _removed: Bool = false
     var _displayGrace: Bool = false
     var _reachabilityUnknown: Bool = false
-    var _networkAvailable: Bool = false
     var _liveLoaded: Bool = false
-    var _initialListed: Bool = false
-    var _securityLoaded: Bool = false
-    var _isMember: Bool = false
-    var _accountClockSkewed: Bool = false
-    var _disconnectedAtMs: Int64 = 0
-    var _reasonText: PBCoreText? = nil
-    var _clockSkewBannerText: PBCoreText? = nil
     var _leaseRenewalAdvice: PBCoreText? = nil
-    var _banner: PBConnectionBannerView? = nil
+    var _banner: PBConnBannerView? = nil
     var _serverDetails: PBConnectionServerDetailsView? = nil
-    var _authorityDeviceID: String = String()
-    var _isManager: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -662,20 +532,10 @@ extension PBConnectionViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _removed = source._removed
       _displayGrace = source._displayGrace
       _reachabilityUnknown = source._reachabilityUnknown
-      _networkAvailable = source._networkAvailable
       _liveLoaded = source._liveLoaded
-      _initialListed = source._initialListed
-      _securityLoaded = source._securityLoaded
-      _isMember = source._isMember
-      _accountClockSkewed = source._accountClockSkewed
-      _disconnectedAtMs = source._disconnectedAtMs
-      _reasonText = source._reasonText
-      _clockSkewBannerText = source._clockSkewBannerText
       _leaseRenewalAdvice = source._leaseRenewalAdvice
       _banner = source._banner
       _serverDetails = source._serverDetails
-      _authorityDeviceID = source._authorityDeviceID
-      _isManager = source._isManager
     }
   }
 
@@ -699,20 +559,10 @@ extension PBConnectionViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 3: try { try decoder.decodeSingularBoolField(value: &_storage._removed) }()
         case 4: try { try decoder.decodeSingularBoolField(value: &_storage._displayGrace) }()
         case 5: try { try decoder.decodeSingularBoolField(value: &_storage._reachabilityUnknown) }()
-        case 6: try { try decoder.decodeSingularBoolField(value: &_storage._networkAvailable) }()
         case 7: try { try decoder.decodeSingularBoolField(value: &_storage._liveLoaded) }()
-        case 8: try { try decoder.decodeSingularBoolField(value: &_storage._initialListed) }()
-        case 9: try { try decoder.decodeSingularBoolField(value: &_storage._securityLoaded) }()
-        case 10: try { try decoder.decodeSingularBoolField(value: &_storage._isMember) }()
-        case 11: try { try decoder.decodeSingularBoolField(value: &_storage._accountClockSkewed) }()
-        case 12: try { try decoder.decodeSingularInt64Field(value: &_storage._disconnectedAtMs) }()
-        case 13: try { try decoder.decodeSingularMessageField(value: &_storage._reasonText) }()
-        case 14: try { try decoder.decodeSingularMessageField(value: &_storage._clockSkewBannerText) }()
         case 15: try { try decoder.decodeSingularMessageField(value: &_storage._leaseRenewalAdvice) }()
         case 16: try { try decoder.decodeSingularMessageField(value: &_storage._banner) }()
         case 17: try { try decoder.decodeSingularMessageField(value: &_storage._serverDetails) }()
-        case 18: try { try decoder.decodeSingularStringField(value: &_storage._authorityDeviceID) }()
-        case 19: try { try decoder.decodeSingularBoolField(value: &_storage._isManager) }()
         default: break
         }
       }
@@ -740,33 +590,9 @@ extension PBConnectionViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       if _storage._reachabilityUnknown != false {
         try visitor.visitSingularBoolField(value: _storage._reachabilityUnknown, fieldNumber: 5)
       }
-      if _storage._networkAvailable != false {
-        try visitor.visitSingularBoolField(value: _storage._networkAvailable, fieldNumber: 6)
-      }
       if _storage._liveLoaded != false {
         try visitor.visitSingularBoolField(value: _storage._liveLoaded, fieldNumber: 7)
       }
-      if _storage._initialListed != false {
-        try visitor.visitSingularBoolField(value: _storage._initialListed, fieldNumber: 8)
-      }
-      if _storage._securityLoaded != false {
-        try visitor.visitSingularBoolField(value: _storage._securityLoaded, fieldNumber: 9)
-      }
-      if _storage._isMember != false {
-        try visitor.visitSingularBoolField(value: _storage._isMember, fieldNumber: 10)
-      }
-      if _storage._accountClockSkewed != false {
-        try visitor.visitSingularBoolField(value: _storage._accountClockSkewed, fieldNumber: 11)
-      }
-      if _storage._disconnectedAtMs != 0 {
-        try visitor.visitSingularInt64Field(value: _storage._disconnectedAtMs, fieldNumber: 12)
-      }
-      try { if let v = _storage._reasonText {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
-      } }()
-      try { if let v = _storage._clockSkewBannerText {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
-      } }()
       try { if let v = _storage._leaseRenewalAdvice {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 15)
       } }()
@@ -776,12 +602,6 @@ extension PBConnectionViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       try { if let v = _storage._serverDetails {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 17)
       } }()
-      if !_storage._authorityDeviceID.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._authorityDeviceID, fieldNumber: 18)
-      }
-      if _storage._isManager != false {
-        try visitor.visitSingularBoolField(value: _storage._isManager, fieldNumber: 19)
-      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -796,20 +616,10 @@ extension PBConnectionViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._removed != rhs_storage._removed {return false}
         if _storage._displayGrace != rhs_storage._displayGrace {return false}
         if _storage._reachabilityUnknown != rhs_storage._reachabilityUnknown {return false}
-        if _storage._networkAvailable != rhs_storage._networkAvailable {return false}
         if _storage._liveLoaded != rhs_storage._liveLoaded {return false}
-        if _storage._initialListed != rhs_storage._initialListed {return false}
-        if _storage._securityLoaded != rhs_storage._securityLoaded {return false}
-        if _storage._isMember != rhs_storage._isMember {return false}
-        if _storage._accountClockSkewed != rhs_storage._accountClockSkewed {return false}
-        if _storage._disconnectedAtMs != rhs_storage._disconnectedAtMs {return false}
-        if _storage._reasonText != rhs_storage._reasonText {return false}
-        if _storage._clockSkewBannerText != rhs_storage._clockSkewBannerText {return false}
         if _storage._leaseRenewalAdvice != rhs_storage._leaseRenewalAdvice {return false}
         if _storage._banner != rhs_storage._banner {return false}
         if _storage._serverDetails != rhs_storage._serverDetails {return false}
-        if _storage._authorityDeviceID != rhs_storage._authorityDeviceID {return false}
-        if _storage._isManager != rhs_storage._isManager {return false}
         return true
       }
       if !storagesAreEqual {return false}

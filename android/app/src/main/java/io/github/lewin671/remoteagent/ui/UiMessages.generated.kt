@@ -456,10 +456,6 @@ private fun resolveUiMessage0(resources: android.content.res.Resources, message:
             val name = message.args.getValue("name") as String
             resources.getString(R.string.connection_android_server, name)
         }
-        "connection.android_server_failed" -> {
-            val reason = message.args.getValue("reason") as String
-            resources.getString(R.string.connection_android_server_failed, reason)
-        }
         "connection.checking" -> {
             resources.getString(R.string.connection_checking)
         }
@@ -501,15 +497,15 @@ private fun resolveUiMessage0(resources: android.content.res.Resources, message:
         "connection.local_network" -> {
             resources.getString(R.string.connection_local_network)
         }
+        "connection.network_required" -> {
+            resources.getString(R.string.connection_network_required)
+        }
         else -> null
     }
 }
 
 private fun resolveUiMessage1(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
-        "connection.network_required" -> {
-            resources.getString(R.string.connection_network_required)
-        }
         "connection.no_network" -> {
             resources.getString(R.string.connection_no_network)
         }
@@ -553,6 +549,10 @@ private fun resolveUiMessage1(resources: android.content.res.Resources, message:
         "connection.server_details" -> {
             val reason = message.args.getValue("reason") as String
             resources.getString(R.string.connection_server_details, reason)
+        }
+        "connection.server_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.connection_server_failed, reason)
         }
         "connection.server_retrying" -> {
             resources.getString(R.string.connection_server_retrying)

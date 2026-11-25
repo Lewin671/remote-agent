@@ -557,10 +557,6 @@ public enum L10n {
         let key = "composer_write_failed"
         return format(key, locale: locale, args: [])
     }
-    public static func connectionAndroidServerFailed(reason: String, locale: String = MessageLocale.current) -> String {
-        let key = "connection_android_server_failed"
-        return format(key, locale: locale, args: [reason])
-    }
     public static func connectionChecking(locale: String = MessageLocale.current) -> String {
         let key = "connection_checking"
         return format(key, locale: locale, args: [])
@@ -691,6 +687,10 @@ public enum L10n {
     }
     public static func connectionServerDetails(reason: String, locale: String = MessageLocale.current) -> String {
         let key = "connection_server_details"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func connectionServerFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "connection_server_failed"
         return format(key, locale: locale, args: [reason])
     }
     public static func connectionServerRetrying(locale: String = MessageLocale.current) -> String {
@@ -8789,10 +8789,6 @@ public enum L10nMessage {
         let key = "composer_write_failed"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func connectionAndroidServerFailed(reason: String) -> LocalizedMessage {
-        let key = "connection_android_server_failed"
-        return LocalizedMessage(key: key, arguments: [.string(reason)])
-    }
     public static func connectionChecking() -> LocalizedMessage {
         let key = "connection_checking"
         return LocalizedMessage(key: key, arguments: [])
@@ -8923,6 +8919,10 @@ public enum L10nMessage {
     }
     public static func connectionServerDetails(reason: String) -> LocalizedMessage {
         let key = "connection_server_details"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func connectionServerFailed(reason: String) -> LocalizedMessage {
+        let key = "connection_server_failed"
         return LocalizedMessage(key: key, arguments: [.string(reason)])
     }
     public static func connectionServerRetrying() -> LocalizedMessage {
@@ -16686,7 +16686,6 @@ public enum L10nText {
         case "composer.slash_title": return L10n.format("composer_slash_title", locale: locale, args: [])
         case "composer.unconfirmed": return L10n.format("composer_unconfirmed", locale: locale, args: [])
         case "composer.write_failed": return L10n.format("composer_write_failed", locale: locale, args: [])
-        case "connection.android_server_failed": return L10n.format("connection_android_server_failed", locale: locale, args: [strArg(args["reason"])])
         case "connection.checking": return L10n.format("connection_checking", locale: locale, args: [])
         case "connection.connected": return L10n.format("connection_connected", locale: locale, args: [])
         case "connection.connecting": return L10n.format("connection_connecting", locale: locale, args: [])
@@ -16700,12 +16699,12 @@ public enum L10nText {
         case "connection.ios_server_error": return L10n.format("connection_ios_server_error", locale: locale, args: [strArg(args["reason"])])
         case "connection.last_failure": return L10n.format("connection_last_failure", locale: locale, args: [strArg(args["value"])])
         case "connection.latency_footer_direct": return L10n.format("connection_latency_footer_direct", locale: locale, args: [])
+        case "connection.latency_footer_mixed": return L10n.format("connection_latency_footer_mixed", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve1(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
-        case "connection.latency_footer_mixed": return L10n.format("connection_latency_footer_mixed", locale: locale, args: [])
         case "connection.latency_is_one_round_trip_the_server_row_measures": return L10n.format("connection_latency_is_one_round_trip_the_server_row_measures", locale: locale, args: [])
         case "connection.live_push": return L10n.format("connection_live_push", locale: locale, args: [])
         case "connection.live_push_is_not_connected": return L10n.format("connection_live_push_is_not_connected", locale: locale, args: [])
@@ -16725,6 +16724,7 @@ public enum L10nText {
         case "connection.reconnecting_conn_check_label": return L10n.format("connection_reconnecting_conn_check_label", locale: locale, args: [])
         case "connection.sec_elapsed": return L10n.format("connection_sec_elapsed", locale: locale, args: [intArg(args["count"]), strArg(args["detail"]), strArg(args["previousFailure"]), strArg(args["value"])])
         case "connection.server_details": return L10n.format("connection_server_details", locale: locale, args: [strArg(args["reason"])])
+        case "connection.server_failed": return L10n.format("connection_server_failed", locale: locale, args: [strArg(args["reason"])])
         case "connection.server_retrying": return L10n.format("connection_server_retrying", locale: locale, args: [])
         case "connection.slow": return L10n.format("connection_slow", locale: locale, args: [])
         case "connection.test_again": return L10n.format("connection_test_again", locale: locale, args: [])

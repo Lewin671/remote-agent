@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package remoteagent.core.v1;
 
+import "remoteagent/core/v1/connection_view.proto";
 import "remoteagent/core/v1/home_view.proto";
 import "remoteagent/core/v1/projection.proto";
 import "remoteagent/core/v1/text.proto";
@@ -101,23 +102,6 @@ message SyncDeviceView {
   bool meta_broken = 7;
   bool trusted = 8;
   bool registered = 9;
-}
-
-enum ConnBannerKind {
-  CONN_BANNER_KIND_UNSPECIFIED = 0;
-  CONN_BANNER_KIND_NONE = 1;
-  CONN_BANNER_KIND_NO_NETWORK = 2;
-  CONN_BANNER_KIND_NO_SERVER = 3;
-  CONN_BANNER_KIND_WAITING = 4;
-}
-
-message ConnBannerView {
-  ConnBannerKind kind = 1;
-  bool visible = 2;
-  bool error_tone = 3;
-  bool kept_data = 4;
-  Text text = 5;
-  Text detail_text = 6;
 }
 
 // Transitional view exposing Core's synchronized connection, role, machines, sessions, prefs, and devices.

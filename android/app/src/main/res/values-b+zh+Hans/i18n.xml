@@ -145,7 +145,6 @@
     <string name="connection_android_reason">"原因　%1$s"</string>
     <string name="connection_android_retry_now" formatted="false">"重试"</string>
     <string name="connection_android_server">"服务器　%1$s"</string>
-    <string name="connection_android_server_failed">"连不上服务器：%1$s"</string>
     <string name="connection_checking" formatted="false">"检测中…"</string>
     <string name="connection_connected" formatted="false">"已连接"</string>
     <string name="connection_connecting" formatted="false">"连接中…"</string>
@@ -175,6 +174,7 @@
         <item quantity="other">"正在%4$s：%2$s，已 %1$d 秒。%3$s"</item>
     </plurals>
     <string name="connection_server_details">"连不上服务器：%1$s。也可能是这台设备的网络不通，会一直自动重试"</string>
+    <string name="connection_server_failed">"连不上服务器：%1$s"</string>
     <string name="connection_server_retrying" formatted="false">"连不上服务器 · 正在重试"</string>
     <string name="connection_slow" formatted="false">" · 较慢"</string>
     <string name="connection_test_again" formatted="false">"再测一次"</string>

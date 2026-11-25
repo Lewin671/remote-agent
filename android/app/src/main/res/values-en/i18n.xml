@@ -149,7 +149,6 @@
     <string name="connection_android_reason">"Reason  %1$s"</string>
     <string name="connection_android_retry_now" formatted="false">"Retry now"</string>
     <string name="connection_android_server">"Server  %1$s"</string>
-    <string name="connection_android_server_failed">"Cannot reach the server: %1$s"</string>
     <string name="connection_checking" formatted="false">"Checking…"</string>
     <string name="connection_connected" formatted="false">"Connected"</string>
     <string name="connection_connecting" formatted="false">"Connecting…"</string>
@@ -180,6 +179,7 @@
         <item quantity="other">"%4$s: %2$s, %1$d sec elapsed. %3$s"</item>
     </plurals>
     <string name="connection_server_details">"Cannot connect to server: %1$s. This device’s network may also be unavailable. Retrying automatically."</string>
+    <string name="connection_server_failed">"Cannot reach the server: %1$s"</string>
     <string name="connection_server_retrying" formatted="false">"Cannot connect to server · Retrying"</string>
     <string name="connection_slow" formatted="false">" · Slow"</string>
     <string name="connection_test_again" formatted="false">"Test again"</string>

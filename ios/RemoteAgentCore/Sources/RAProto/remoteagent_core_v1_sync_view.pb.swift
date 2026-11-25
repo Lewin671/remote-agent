@@ -20,52 +20,6 @@ fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAP
   typealias Version = _2
 }
 
-public enum PBCoreConnBannerKind: SwiftProtobuf.Enum, Swift.CaseIterable {
-  public typealias RawValue = Int
-  case unspecified // = 0
-  case none // = 1
-  case noNetwork // = 2
-  case noServer // = 3
-  case waiting // = 4
-  case UNRECOGNIZED(Int)
-
-  public init() {
-    self = .unspecified
-  }
-
-  public init?(rawValue: Int) {
-    switch rawValue {
-    case 0: self = .unspecified
-    case 1: self = .none
-    case 2: self = .noNetwork
-    case 3: self = .noServer
-    case 4: self = .waiting
-    default: self = .UNRECOGNIZED(rawValue)
-    }
-  }
-
-  public var rawValue: Int {
-    switch self {
-    case .unspecified: return 0
-    case .none: return 1
-    case .noNetwork: return 2
-    case .noServer: return 3
-    case .waiting: return 4
-    case .UNRECOGNIZED(let i): return i
-    }
-  }
-
-  // The compiler won't synthesize support with the UNRECOGNIZED case.
-  public static let allCases: [PBCoreConnBannerKind] = [
-    .unspecified,
-    .none,
-    .noNetwork,
-    .noServer,
-    .waiting,
-  ]
-
-}
-
 public struct PBCoreSyncPendingQuestionOption: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -396,56 +350,6 @@ public struct PBCoreSyncDeviceView: Sendable {
   fileprivate var _meta: PBDeviceMeta? = nil
 }
 
-public struct PBCoreConnBannerView: @unchecked Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var kind: PBCoreConnBannerKind {
-    get {return _storage._kind}
-    set {_uniqueStorage()._kind = newValue}
-  }
-
-  public var visible: Bool {
-    get {return _storage._visible}
-    set {_uniqueStorage()._visible = newValue}
-  }
-
-  public var errorTone: Bool {
-    get {return _storage._errorTone}
-    set {_uniqueStorage()._errorTone = newValue}
-  }
-
-  public var keptData: Bool {
-    get {return _storage._keptData}
-    set {_uniqueStorage()._keptData = newValue}
-  }
-
-  public var text: PBCoreText {
-    get {return _storage._text ?? PBCoreText()}
-    set {_uniqueStorage()._text = newValue}
-  }
-  /// Returns true if `text` has been explicitly set.
-  public var hasText: Bool {return _storage._text != nil}
-  /// Clears the value of `text`. Subsequent reads from it will return its default value.
-  public mutating func clearText() {_uniqueStorage()._text = nil}
-
-  public var detailText: PBCoreText {
-    get {return _storage._detailText ?? PBCoreText()}
-    set {_uniqueStorage()._detailText = newValue}
-  }
-  /// Returns true if `detailText` has been explicitly set.
-  public var hasDetailText: Bool {return _storage._detailText != nil}
-  /// Clears the value of `detailText`. Subsequent reads from it will return its default value.
-  public mutating func clearDetailText() {_uniqueStorage()._detailText = nil}
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-
-  fileprivate var _storage = _StorageClass.defaultInstance
-}
-
 /// Transitional view exposing Core's synchronized connection, role, machines, sessions, prefs, and devices.
 /// Exists solely so unmigrated shell screens (session, schedules, settings, machine status) read from Core
 /// during Steps 3-4 instead of retaining duplicate sync state in the shells; delete once Steps 3-4 complete.
@@ -727,8 +631,8 @@ public struct PBCoreSyncStateView: @unchecked Sendable {
     set {_uniqueStorage()._hasHandoffOffer_p = newValue}
   }
 
-  public var connBanner: PBCoreConnBannerView {
-    get {return _storage._connBanner ?? PBCoreConnBannerView()}
+  public var connBanner: PBConnBannerView {
+    get {return _storage._connBanner ?? PBConnBannerView()}
     set {_uniqueStorage()._connBanner = newValue}
   }
   /// Returns true if `connBanner` has been explicitly set.
@@ -921,10 +825,6 @@ public struct PBCoreSessionDataView: @unchecked Sendable {
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate let _protobuf_package = "remoteagent.core.v1"
-
-extension PBCoreConnBannerKind: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0CONN_BANNER_KIND_UNSPECIFIED\0\u{1}CONN_BANNER_KIND_NONE\0\u{1}CONN_BANNER_KIND_NO_NETWORK\0\u{1}CONN_BANNER_KIND_NO_SERVER\0\u{1}CONN_BANNER_KIND_WAITING\0")
-}
 
 extension PBCoreSyncPendingQuestionOption: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SyncPendingQuestionOption"
@@ -1555,111 +1455,6 @@ extension PBCoreSyncDeviceView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
   }
 }
 
-extension PBCoreConnBannerView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".ConnBannerView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{1}visible\0\u{3}error_tone\0\u{3}kept_data\0\u{1}text\0\u{3}detail_text\0")
-
-  fileprivate class _StorageClass {
-    var _kind: PBCoreConnBannerKind = .unspecified
-    var _visible: Bool = false
-    var _errorTone: Bool = false
-    var _keptData: Bool = false
-    var _text: PBCoreText? = nil
-    var _detailText: PBCoreText? = nil
-
-      // This property is used as the initial default value for new instances of the type.
-      // The type itself is protecting the reference to its storage via CoW semantics.
-      // This will force a copy to be made of this reference when the first mutation occurs;
-      // hence, it is safe to mark this as `nonisolated(unsafe)`.
-      static nonisolated(unsafe) let defaultInstance = _StorageClass()
-
-    private init() {}
-
-    init(copying source: _StorageClass) {
-      _kind = source._kind
-      _visible = source._visible
-      _errorTone = source._errorTone
-      _keptData = source._keptData
-      _text = source._text
-      _detailText = source._detailText
-    }
-  }
-
-  fileprivate mutating func _uniqueStorage() -> _StorageClass {
-    if !isKnownUniquelyReferenced(&_storage) {
-      _storage = _StorageClass(copying: _storage)
-    }
-    return _storage
-  }
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    _ = _uniqueStorage()
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      while let fieldNumber = try decoder.nextFieldNumber() {
-        // The use of inline closures is to circumvent an issue where the compiler
-        // allocates stack space for every case branch when no optimizations are
-        // enabled. https://github.com/apple/swift-protobuf/issues/1034
-        switch fieldNumber {
-        case 1: try { try decoder.decodeSingularEnumField(value: &_storage._kind) }()
-        case 2: try { try decoder.decodeSingularBoolField(value: &_storage._visible) }()
-        case 3: try { try decoder.decodeSingularBoolField(value: &_storage._errorTone) }()
-        case 4: try { try decoder.decodeSingularBoolField(value: &_storage._keptData) }()
-        case 5: try { try decoder.decodeSingularMessageField(value: &_storage._text) }()
-        case 6: try { try decoder.decodeSingularMessageField(value: &_storage._detailText) }()
-        default: break
-        }
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every if/case branch local when no optimizations
-      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-      // https://github.com/apple/swift-protobuf/issues/1182
-      if _storage._kind != .unspecified {
-        try visitor.visitSingularEnumField(value: _storage._kind, fieldNumber: 1)
-      }
-      if _storage._visible != false {
-        try visitor.visitSingularBoolField(value: _storage._visible, fieldNumber: 2)
-      }
-      if _storage._errorTone != false {
-        try visitor.visitSingularBoolField(value: _storage._errorTone, fieldNumber: 3)
-      }
-      if _storage._keptData != false {
-        try visitor.visitSingularBoolField(value: _storage._keptData, fieldNumber: 4)
-      }
-      try { if let v = _storage._text {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
-      } }()
-      try { if let v = _storage._detailText {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
-      } }()
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: PBCoreConnBannerView, rhs: PBCoreConnBannerView) -> Bool {
-    if lhs._storage !== rhs._storage {
-      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-        let _storage = _args.0
-        let rhs_storage = _args.1
-        if _storage._kind != rhs_storage._kind {return false}
-        if _storage._visible != rhs_storage._visible {return false}
-        if _storage._errorTone != rhs_storage._errorTone {return false}
-        if _storage._keptData != rhs_storage._keptData {return false}
-        if _storage._text != rhs_storage._text {return false}
-        if _storage._detailText != rhs_storage._detailText {return false}
-        return true
-      }
-      if !storagesAreEqual {return false}
-    }
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
 extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SyncStateView"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}connection\0\u{3}connection_reason\0\u{3}connection_step\0\u{3}disconnected_at_ms\0\u{3}live_push_connected\0\u{1}unlinked\0\u{3}is_manager\0\u{3}self_device_id\0\u{3}authority_device_id\0\u{3}manager_name\0\u{3}account_control_lost\0\u{3}account_clock_skewed\0\u{1}removed\0\u{3}security_loaded\0\u{3}is_member\0\u{3}lease_end_ms\0\u{3}recovery_pending\0\u{3}recovery_ready_ms\0\u{3}recovery_objects_pending\0\u{3}client_protocol_version\0\u{1}machines\0\u{3}machines_listed\0\u{1}sessions\0\u{3}sessions_listed\0\u{3}live_loaded\0\u{3}has_more_sessions\0\u{3}next_cursor\0\u{3}loading_more_sessions\0\u{3}session_list_failed\0\u{3}session_list_error\0\u{3}prefs_loaded\0\u{3}prefs_load_failed\0\u{3}prefs_broken\0\u{3}prefs_revision\0\u{3}prefs_syncing\0\u{1}prefs\0\u{1}devices\0\u{3}display_grace\0\u{3}reachability_unknown\0\u{3}trusted_machine_ids\0\u{3}archive_machine_ids\0\u{3}connection_started_at_ms\0\u{3}network_available\0\u{3}ever_online\0\u{3}connect_failures\0\u{3}recovery_status_stale\0\u{3}devices_load_failed\0\u{3}devices_error_text\0\u{3}has_handoff_offer\0\u{3}conn_banner\0\u{3}clock_skew_banner_text\0\u{3}lease_renewal_advice\0")
@@ -1714,7 +1509,7 @@ extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     var _devicesLoadFailed: Bool = false
     var _devicesErrorText: PBCoreText? = nil
     var _hasHandoffOffer_p: Bool = false
-    var _connBanner: PBCoreConnBannerView? = nil
+    var _connBanner: PBConnBannerView? = nil
     var _clockSkewBannerText: PBCoreText? = nil
     var _leaseRenewalAdvice: PBCoreText? = nil
 

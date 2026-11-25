@@ -131,7 +131,6 @@
 "composer_slash_title" = "作为普通消息发送？";
 "composer_unconfirmed" = "可能没发出去：已送到终端但没确认";
 "composer_write_failed" = "写入终端失败";
-"connection_android_server_failed" = "连不上服务器：%1$@";
 "connection_checking" = "检测中…";
 "connection_connected" = "已连接";
 "connection_connecting" = "连接中…";
@@ -164,6 +163,7 @@
 "connection_reconnecting_conn_check" = "重连中";
 "connection_reconnecting_conn_check_label" = "重连";
 "connection_server_details" = "连不上服务器：%1$@。也可能是这台设备的网络不通，会一直自动重试";
+"connection_server_failed" = "连不上服务器：%1$@";
 "connection_server_retrying" = "连不上服务器 · 正在重试";
 "connection_slow" = " · 较慢";
 "connection_test_again" = "再测一次";

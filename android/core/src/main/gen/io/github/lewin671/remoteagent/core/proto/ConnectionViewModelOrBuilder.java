@@ -46,68 +46,10 @@ public interface ConnectionViewModelOrBuilder extends
   boolean getReachabilityUnknown();
 
   /**
-   * <code>bool network_available = 6 [json_name = "networkAvailable"];</code>
-   * @return The networkAvailable.
-   */
-  boolean getNetworkAvailable();
-
-  /**
    * <code>bool live_loaded = 7 [json_name = "liveLoaded"];</code>
    * @return The liveLoaded.
    */
   boolean getLiveLoaded();
-
-  /**
-   * <code>bool initial_listed = 8 [json_name = "initialListed"];</code>
-   * @return The initialListed.
-   */
-  boolean getInitialListed();
-
-  /**
-   * <code>bool security_loaded = 9 [json_name = "securityLoaded"];</code>
-   * @return The securityLoaded.
-   */
-  boolean getSecurityLoaded();
-
-  /**
-   * <code>bool is_member = 10 [json_name = "isMember"];</code>
-   * @return The isMember.
-   */
-  boolean getIsMember();
-
-  /**
-   * <code>bool account_clock_skewed = 11 [json_name = "accountClockSkewed"];</code>
-   * @return The accountClockSkewed.
-   */
-  boolean getAccountClockSkewed();
-
-  /**
-   * <code>int64 disconnected_at_ms = 12 [json_name = "disconnectedAtMs"];</code>
-   * @return The disconnectedAtMs.
-   */
-  long getDisconnectedAtMs();
-
-  /**
-   * <code>.remoteagent.core.v1.Text reason_text = 13 [json_name = "reasonText"];</code>
-   * @return Whether the reasonText field is set.
-   */
-  boolean hasReasonText();
-  /**
-   * <code>.remoteagent.core.v1.Text reason_text = 13 [json_name = "reasonText"];</code>
-   * @return The reasonText.
-   */
-  io.github.lewin671.remoteagent.core.proto.Text getReasonText();
-
-  /**
-   * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 14 [json_name = "clockSkewBannerText"];</code>
-   * @return Whether the clockSkewBannerText field is set.
-   */
-  boolean hasClockSkewBannerText();
-  /**
-   * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 14 [json_name = "clockSkewBannerText"];</code>
-   * @return The clockSkewBannerText.
-   */
-  io.github.lewin671.remoteagent.core.proto.Text getClockSkewBannerText();
 
   /**
    * <code>.remoteagent.core.v1.Text lease_renewal_advice = 15 [json_name = "leaseRenewalAdvice"];</code>
@@ -121,15 +63,15 @@ public interface ConnectionViewModelOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.Text getLeaseRenewalAdvice();
 
   /**
-   * <code>.remoteagent.core.v1.ConnectionBannerView banner = 16 [json_name = "banner"];</code>
+   * <code>.remoteagent.core.v1.ConnBannerView banner = 16 [json_name = "banner"];</code>
    * @return Whether the banner field is set.
    */
   boolean hasBanner();
   /**
-   * <code>.remoteagent.core.v1.ConnectionBannerView banner = 16 [json_name = "banner"];</code>
+   * <code>.remoteagent.core.v1.ConnBannerView banner = 16 [json_name = "banner"];</code>
    * @return The banner.
    */
-  io.github.lewin671.remoteagent.core.proto.ConnectionBannerView getBanner();
+  io.github.lewin671.remoteagent.core.proto.ConnBannerView getBanner();
 
   /**
    * <code>.remoteagent.core.v1.ConnectionServerDetailsView server_details = 17 [json_name = "serverDetails"];</code>
@@ -141,22 +83,4 @@ public interface ConnectionViewModelOrBuilder extends
    * @return The serverDetails.
    */
   io.github.lewin671.remoteagent.core.proto.ConnectionServerDetailsView getServerDetails();
-
-  /**
-   * <code>string authority_device_id = 18 [json_name = "authorityDeviceId"];</code>
-   * @return The authorityDeviceId.
-   */
-  java.lang.String getAuthorityDeviceId();
-  /**
-   * <code>string authority_device_id = 18 [json_name = "authorityDeviceId"];</code>
-   * @return The bytes for authorityDeviceId.
-   */
-  com.google.protobuf.ByteString
-      getAuthorityDeviceIdBytes();
-
-  /**
-   * <code>bool is_manager = 19 [json_name = "isManager"];</code>
-   * @return The isManager.
-   */
-  boolean getIsManager();
 }
