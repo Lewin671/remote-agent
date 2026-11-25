@@ -355,17 +355,17 @@ func newToken() string {
 // authenticate resolves a bearer token to its device.
 func (s *Server) authenticate(ctx context.Context, token string) (*device, error) {
 	if token == "" {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing token"))
+		return nil, relayError(connect.CodeUnauthenticated, errors.New("missing token"), pb.RelayErrorReason_RELAY_ERROR_REASON_TOKEN_INVALID)
 	}
 	d, err := s.store.tokenDevice(ctx, hashToken(token))
 	if err := rpcContextError(ctx); err != nil {
 		return nil, err
 	}
 	if errors.Is(err, errNoRows) {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid or expired token"))
+		return nil, relayError(connect.CodeUnauthenticated, errors.New("invalid or expired token"), pb.RelayErrorReason_RELAY_ERROR_REASON_TOKEN_INVALID)
 	}
 	if errors.Is(err, errSuspended) {
-		return nil, connect.NewError(connect.CodePermissionDenied, err)
+		return nil, relayError(connect.CodePermissionDenied, err, pb.RelayErrorReason_RELAY_ERROR_REASON_ACCOUNT_SUSPENDED)
 	}
 	if err != nil {
 		return nil, internal(err)

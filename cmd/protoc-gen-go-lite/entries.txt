@@ -49,6 +49,7 @@ in: remoteagent.v1.PutDeviceMetaRequest
 in: remoteagent.v1.PairingPayload
 in: remoteagent.v1.DeviceRegistration
 in: remoteagent.v1.PairApproval
+in: remoteagent.v1.RelayErrorDetail
 
 # Core -> Shell (Size, AppendMarshal, Marshal)
 out: remoteagent.core.v1.ViewModel

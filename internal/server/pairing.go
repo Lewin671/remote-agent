@@ -123,7 +123,9 @@ func randomHex(n int) string {
 	return hex.EncodeToString(b)
 }
 
-var errNoPairing = connect.NewError(connect.CodeNotFound, errors.New("no such pairing, or it expired"))
+func errNoPairing() error {
+	return relayError(connect.CodeNotFound, errors.New("no such pairing, or it expired"), pb.RelayErrorReason_RELAY_ERROR_REASON_PAIRING_INVALID_OR_EXPIRED)
+}
 
 func (ps *pairingService) CreatePairing(ctx context.Context, req *connect.Request[pb.CreatePairingRequest]) (*connect.Response[pb.CreatePairingResponse], error) {
 	d, err := ps.s.authenticate(ctx, bearerToken(req.Header().Get("Authorization")))
@@ -151,7 +153,7 @@ func (ps *pairingService) CreatePairing(ctx context.Context, req *connect.Reques
 		}
 	}
 	if len(ps.byID) >= maxPairings || mine >= maxAccountPairings {
-		return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("too many pairings in progress"))
+		return nil, relayError(connect.CodeResourceExhausted, errors.New("too many pairings in progress"), pb.RelayErrorReason_RELAY_ERROR_REASON_RATE_LIMITED)
 	}
 	var code string
 	for {
@@ -185,12 +187,12 @@ func (ps *pairingService) JoinPairing(ctx context.Context, req *connect.Request[
 		return nil, err
 	}
 	if p.canceled || p.joinerPub != nil {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("another device is already joining with this code"))
+		return nil, relayError(connect.CodeFailedPrecondition, errors.New("another device is already joining with this code"), pb.RelayErrorReason_RELAY_ERROR_REASON_PAIRING_ALREADY_JOINED)
 	}
 	p.attempts++
 	if p.attempts > pairingAttempts {
 		ps.dropLocked(p)
-		return nil, errNoPairing
+		return nil, errNoPairing()
 	}
 	token := randomHex(32)
 	p.candidate = hashToken(token)
@@ -204,11 +206,11 @@ func (ps *pairingService) JoinPairing(ctx context.Context, req *connect.Request[
 // approves a pairing on an honest relay.
 func (ps *pairingService) requireAuthority(ctx context.Context, d *device) error {
 	if d == nil {
-		return errNoPairing
+		return errNoPairing()
 	}
 	authority, err := ps.s.store.tenant(d.account).authorityDevice(ctx)
 	if err != nil || authority != d.id {
-		return connect.NewError(connect.CodePermissionDenied, errors.New("only the current authority client may manage pairings"))
+		return relayError(connect.CodePermissionDenied, errors.New("only the current authority client may manage pairings"), pb.RelayErrorReason_RELAY_ERROR_REASON_NOT_AUTHORITY)
 	}
 	return nil
 }
@@ -242,14 +244,14 @@ func (ps *pairingService) find(ctx context.Context, header, id, candidate string
 	p := ps.byID[id]
 	ps.mu.Unlock()
 	if p == nil {
-		return nil, false, errNoPairing
+		return nil, false, errNoPairing()
 	}
 	if candidate != "" {
 		ps.mu.Lock()
 		ok := p.candidate != nil && subtle.ConstantTimeCompare(p.candidate, hashToken(candidate)) == 1
 		ps.mu.Unlock()
 		if !ok {
-			return nil, false, errNoPairing
+			return nil, false, errNoPairing()
 		}
 		return p, false, nil
 	}
@@ -258,7 +260,7 @@ func (ps *pairingService) find(ctx context.Context, header, id, candidate string
 		return nil, false, err
 	}
 	if d.id != p.initiator {
-		return nil, false, errNoPairing
+		return nil, false, errNoPairing()
 	}
 	if err := ps.s.authorizeDevice(ctx, d, ""); err != nil {
 		return nil, false, err
@@ -317,7 +319,7 @@ func (ps *pairingService) GetPairing(ctx context.Context, req *connect.Request[p
 func (ps *pairingService) RevealPairing(ctx context.Context, req *connect.Request[pb.RevealPairingRequest]) (*connect.Response[pb.RevealPairingResponse], error) {
 	p, initiator, err := ps.find(ctx, req.Header().Get("Authorization"), req.Msg.PairingId, "")
 	if err != nil || !initiator {
-		return nil, errNoPairing
+		return nil, errNoPairing()
 	}
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
@@ -342,7 +344,7 @@ func (ps *pairingService) RevealPairing(ctx context.Context, req *connect.Reques
 func (ps *pairingService) ApprovePairing(ctx context.Context, req *connect.Request[pb.ApprovePairingRequest]) (*connect.Response[pb.ApprovePairingResponse], error) {
 	p, initiator, err := ps.find(ctx, req.Header().Get("Authorization"), req.Msg.PairingId, "")
 	if err != nil || !initiator {
-		return nil, errNoPairing
+		return nil, errNoPairing()
 	}
 	if _, err := checkEnvelope(req.Msg.Payload, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_PAIRING, RequestId: p.id}); err != nil {
 		return nil, err
@@ -362,7 +364,7 @@ func (ps *pairingService) ApprovePairing(ctx context.Context, req *connect.Reque
 	}
 	approver, err := ps.s.store.device(ctx, p.initiator)
 	if err != nil || ps.requireAuthority(ctx, approver) != nil {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only the current authority client may approve pairings"))
+		return nil, relayError(connect.CodePermissionDenied, errors.New("only the current authority client may approve pairings"), pb.RelayErrorReason_RELAY_ERROR_REASON_NOT_AUTHORITY)
 	}
 	a, err := parseApproval(req.Msg.Approval, req.Msg.ApprovalSignature)
 	if err != nil || a == nil {
@@ -400,7 +402,7 @@ func (ps *pairingService) CancelPairing(ctx context.Context, req *connect.Reques
 		var account, approver string
 		var candidateHash []byte
 		if e := ps.s.store.db.QueryRowContext(ctx, `SELECT account_id, approver_device_id, candidate_token_hash FROM pairing_admissions WHERE pairing_id = ? AND expires_ms > ?`, req.Msg.PairingId, nowMs()).Scan(&account, &approver, &candidateHash); e != nil {
-			return nil, errNoPairing
+			return nil, errNoPairing()
 		}
 		allowed := req.Msg.CandidateToken != "" && len(candidateHash) == 32 && subtle.ConstantTimeCompare(candidateHash, hashToken(req.Msg.CandidateToken)) == 1
 		if !allowed && req.Msg.CandidateToken == "" {
@@ -408,7 +410,7 @@ func (ps *pairingService) CancelPairing(ctx context.Context, req *connect.Reques
 			allowed = e == nil && d.account == account && d.id == approver
 		}
 		if !allowed {
-			return nil, errNoPairing
+			return nil, errNoPairing()
 		}
 		if e := ps.s.store.cancelAdmission(ctx, req.Msg.PairingId); e != nil {
 			return nil, connect.NewError(connect.CodeFailedPrecondition, e)
@@ -450,13 +452,13 @@ func (ps *pairingService) codeLocked(code, peer string, header http.Header) (*pa
 	ps.badCodes, okAll = recent(ps.badCodes, now, time.Minute, badCodesPerMinute)
 	_, okAddr = recent(ps.badCodesAddr[addr], now, time.Minute, badCodesPerMinuteAddr)
 	if !okAll || !okAddr {
-		return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("too many wrong codes; try again in a minute"))
+		return nil, relayError(connect.CodeResourceExhausted, errors.New("too many wrong codes; try again in a minute"), pb.RelayErrorReason_RELAY_ERROR_REASON_RATE_LIMITED)
 	}
 	p := ps.byCode[code]
 	if p == nil {
 		ps.badCodes = append(ps.badCodes, now)
 		ps.badCodesAddr[addr] = append(ps.badCodesAddr[addr], now)
-		return nil, errNoPairing
+		return nil, errNoPairing()
 	}
 	return p, nil
 }
@@ -472,7 +474,7 @@ func (ps *pairingService) PeekPairing(ctx context.Context, req *connect.Request[
 		return nil, err
 	}
 	if p.canceled || p.joinerPub != nil {
-		return nil, errNoPairing
+		return nil, errNoPairing()
 	}
 	return connect.NewResponse(&pb.PeekPairingResponse{PairingId: p.id, Commit: bytes.Clone(p.commit)}), nil
 }

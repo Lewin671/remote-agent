@@ -203,17 +203,17 @@ func (rs *recoveryService) chain(ctx context.Context, account string) ([]*pb.Sec
 
 func (rs *recoveryService) GetRecoveryChallenge(ctx context.Context, req *connect.Request[pb.GetRecoveryChallengeRequest]) (*connect.Response[pb.GetRecoveryChallengeResponse], error) {
 	if !rs.allow(rs.s.clientAddr(req.Peer().Addr, req.Header())) {
-		return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("too many recovery lookups; try again in a minute"))
+		return nil, relayError(connect.CodeResourceExhausted, errors.New("too many recovery lookups; try again in a minute"), pb.RelayErrorReason_RELAY_ERROR_REASON_RATE_LIMITED)
 	}
 	return connect.NewResponse(&pb.GetRecoveryChallengeResponse{Challenge: rs.challenge(nowMs())}), nil
 }
 
 func (rs *recoveryService) GetRecoveryContext(ctx context.Context, req *connect.Request[pb.GetRecoveryContextRequest]) (*connect.Response[pb.GetRecoveryContextResponse], error) {
 	if !rs.allow(rs.s.clientAddr(req.Peer().Addr, req.Header())) {
-		return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("too many recovery lookups; try again in a minute"))
+		return nil, relayError(connect.CodeResourceExhausted, errors.New("too many recovery lookups; try again in a minute"), pb.RelayErrorReason_RELAY_ERROR_REASON_RATE_LIMITED)
 	}
 	if !rs.checkChallenge(req.Msg.Challenge, nowMs()) {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("fetch a fresh recovery challenge and sign it"))
+		return nil, relayError(connect.CodePermissionDenied, errors.New("fetch a fresh recovery challenge and sign it"), pb.RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_INVALID)
 	}
 	var r *recoveryRow
 	var account string
@@ -221,14 +221,14 @@ func (rs *recoveryService) GetRecoveryContext(ctx context.Context, req *connect.
 	if id := req.Msg.GetRecoveryId(); id != "" {
 		row, err := rs.rowByID(ctx, id)
 		if errors.Is(err, errNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("no recovery is pending for that key"))
+			return nil, relayError(connect.CodeNotFound, errors.New("no recovery is pending for that key"), pb.RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_INVALID)
 		}
 		if err != nil {
 			return nil, internal(err)
 		}
 		key := row.statement.NewMember.EdPublic[:]
 		if len(req.Msg.Signature) != ed25519.SignatureSize || !ed25519.Verify(key, recoveryContextBytes(req.Msg.Challenge, nil, id), req.Msg.Signature) {
-			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("bad recovery context signature"))
+			return nil, relayError(connect.CodePermissionDenied, errors.New("bad recovery context signature"), pb.RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_INVALID)
 		}
 		acct, err := rs.s.store.account(ctx, row.account)
 		if err != nil {
@@ -240,17 +240,17 @@ func (rs *recoveryService) GetRecoveryContext(ctx context.Context, req *connect.
 				return nil, internal(err)
 			}
 			if _, ok := head.Core.Member(row.statement.NewMember.ID); !ok {
-				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("the recovered device is no longer a member"))
+				return nil, relayError(connect.CodePermissionDenied, errors.New("the recovered device is no longer a member"), pb.RelayErrorReason_RELAY_ERROR_REASON_DEVICE_NOT_MEMBER)
 			}
 		}
 		r, account, accountKey = row, row.account, acct.publicKey
 	} else {
 		ed := req.Msg.GetRecoveryEd()
 		if len(ed) != ed25519.PublicKeySize {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("no recovery is pending for that key"))
+			return nil, relayError(connect.CodeNotFound, errors.New("no recovery is pending for that key"), pb.RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_INVALID)
 		}
 		if len(req.Msg.Signature) != ed25519.SignatureSize || !ed25519.Verify(ed, recoveryContextBytes(req.Msg.Challenge, ed, ""), req.Msg.Signature) {
-			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("bad recovery context signature"))
+			return nil, relayError(connect.CodePermissionDenied, errors.New("bad recovery context signature"), pb.RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_INVALID)
 		}
 		acctID, publicKey, err := rs.accountByRecoveryKey(ctx, ed)
 		switch {
@@ -276,7 +276,7 @@ func (rs *recoveryService) GetRecoveryContext(ctx context.Context, req *connect.
 			} else if !errors.Is(perr, errNoRows) {
 				return nil, internal(perr)
 			} else {
-				return nil, connect.NewError(connect.CodeNotFound, errors.New("no recovery is pending for that key"))
+				return nil, relayError(connect.CodeNotFound, errors.New("no recovery is pending for that key"), pb.RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_INVALID)
 			}
 		default:
 			return nil, internal(err)
@@ -320,25 +320,28 @@ func (rs *recoveryService) pendingByNewKey(ctx context.Context, ed []byte) (*rec
 
 func (rs *recoveryService) SubmitRecovery(ctx context.Context, req *connect.Request[pb.SubmitRecoveryRequest]) (*connect.Response[pb.SubmitRecoveryResponse], error) {
 	if !rs.allow(rs.s.clientAddr(req.Peer().Addr, req.Header())) {
-		return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("too many recovery submissions; try again in a minute"))
+		return nil, relayError(connect.CodeResourceExhausted, errors.New("too many recovery submissions; try again in a minute"), pb.RelayErrorReason_RELAY_ERROR_REASON_RATE_LIMITED)
 	}
 	stmt, err := devicesec.ParseRecoveryStatement(req.Msg.Statement)
 	if err != nil {
-		return nil, invalid("invalid recovery statement")
+		return nil, withRelayDetail(invalid("invalid recovery statement"), &pb.RelayErrorDetail{Reason: pb.RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_INVALID})
 	}
 	state, err := devicesec.ParseState(req.Msg.State)
-	if err != nil || state.Core.IssuedAt > uint64(nowMs())+devicesec.MaxClockSkew {
-		return nil, invalid("invalid recovery state")
+	if err != nil {
+		return nil, withRelayDetail(invalid("invalid recovery state"), &pb.RelayErrorDetail{Reason: pb.RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_INVALID})
+	}
+	if now := nowMs(); state.Core.IssuedAt > uint64(now)+devicesec.MaxClockSkew {
+		return nil, withRelayDetail(invalid("invalid recovery state"), &pb.RelayErrorDetail{Reason: pb.RelayErrorReason_RELAY_ERROR_REASON_CLOCK_AHEAD, ServerTimeMs: now})
 	}
 	acct, err := rs.s.store.account(ctx, stmt.Account)
 	if errors.Is(err, errNoRows) {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("unknown account"))
+		return nil, relayError(connect.CodeNotFound, errors.New("unknown account"), pb.RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_INVALID)
 	}
 	if err != nil {
 		return nil, internal(err)
 	}
 	if acct.status != accountActive {
-		return nil, connect.NewError(connect.CodePermissionDenied, errSuspended)
+		return nil, relayError(connect.CodePermissionDenied, errSuspended, pb.RelayErrorReason_RELAY_ERROR_REASON_ACCOUNT_SUSPENDED)
 	}
 	stmtRaw, _ := stmt.MarshalBinary()
 	stateRaw, _ := state.MarshalBinary()
@@ -362,7 +365,7 @@ func (rs *recoveryService) SubmitRecovery(ctx context.Context, req *connect.Requ
 	}
 	var headRaw []byte
 	if err := tx.QueryRowContext(ctx, `SELECT state FROM security_states WHERE account_id = ? ORDER BY epoch DESC LIMIT 1`, stmt.Account).Scan(&headRaw); errors.Is(err, errNoRows) {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the account has no security domain"))
+		return nil, relayError(connect.CodeFailedPrecondition, errors.New("the account has no security domain"), pb.RelayErrorReason_RELAY_ERROR_REASON_NO_SECURITY_DOMAIN)
 	} else if err != nil {
 		return nil, internal(err)
 	}
@@ -371,7 +374,7 @@ func (rs *recoveryService) SubmitRecovery(ctx context.Context, req *connect.Requ
 		return nil, internal(err)
 	}
 	if err := devicesec.VerifyTransition(head, state, &stmt); err != nil {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("the recovery statement does not match the current head"))
+		return nil, relayError(connect.CodePermissionDenied, errors.New("the recovery statement does not match the current head"), pb.RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_INVALID)
 	}
 	if err := checkRecoveryEpoch(state.Core.Epoch); err != nil {
 		return nil, err
@@ -406,7 +409,7 @@ func (rs *recoveryService) SubmitRecovery(ctx context.Context, req *connect.Requ
 
 func (rs *recoveryService) CompleteRecovery(ctx context.Context, req *connect.Request[pb.CompleteRecoveryRequest]) (*connect.Response[pb.CompleteRecoveryResponse], error) {
 	if !rs.allow(rs.s.clientAddr(req.Peer().Addr, req.Header())) {
-		return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("too many recovery requests; try again in a minute"))
+		return nil, relayError(connect.CodeResourceExhausted, errors.New("too many recovery requests; try again in a minute"), pb.RelayErrorReason_RELAY_ERROR_REASON_RATE_LIMITED)
 	}
 	// The pending row and the head are read inside one transaction, and every
 	// side effect happens only after the recovery state insert succeeded.
@@ -416,21 +419,21 @@ func (rs *recoveryService) CompleteRecovery(ctx context.Context, req *connect.Re
 func (rs *recoveryService) completeRecovery(ctx context.Context, req *connect.Request[pb.CompleteRecoveryRequest]) (*connect.Response[pb.CompleteRecoveryResponse], error) {
 	row, err := rs.rowByID(ctx, req.Msg.RecoveryId)
 	if errors.Is(err, errNoRows) {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("no such recovery"))
+		return nil, relayError(connect.CodeNotFound, errors.New("no such recovery"), pb.RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_INVALID)
 	}
 	if err != nil {
 		return nil, internal(err)
 	}
 	label := append([]byte("ra3/recovery-complete\x00"), []byte(req.Msg.RecoveryId)...)
 	if len(req.Msg.Signature) != ed25519.SignatureSize || !ed25519.Verify(row.statement.NewMember.EdPublic[:], label, req.Msg.Signature) {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("bad recovery signature"))
+		return nil, relayError(connect.CodePermissionDenied, errors.New("bad recovery signature"), pb.RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_INVALID)
 	}
 	acct, err := rs.s.store.account(ctx, row.account)
 	if err != nil {
 		return nil, internal(err)
 	}
 	if row.rejected != 0 {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the recovery was vetoed"))
+		return nil, relayError(connect.CodeFailedPrecondition, errors.New("the recovery was vetoed"), pb.RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_REJECTED)
 	}
 	if row.completed != 0 {
 		// The device is already registered. Never mint a token from this
@@ -438,10 +441,10 @@ func (rs *recoveryService) completeRecovery(ctx context.Context, req *connect.Re
 		return connect.NewResponse(&pb.CompleteRecoveryResponse{DeviceId: row.statement.NewAuthorityID, AccountPublicKey: acct.publicKey}), nil
 	}
 	if nowMs() < row.ready {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the recovery is not ready yet"))
+		return nil, relayError(connect.CodeFailedPrecondition, errors.New("the recovery is not ready yet"), pb.RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_NOT_READY)
 	}
-	if row.state.Core.IssuedAt > uint64(nowMs())+devicesec.MaxClockSkew {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the recovery state's clock is ahead"))
+	if now := nowMs(); row.state.Core.IssuedAt > uint64(now)+devicesec.MaxClockSkew {
+		return nil, errClockAhead(connect.CodeFailedPrecondition, "the recovery state's clock is ahead", now)
 	}
 	t := rs.s.store.tenant(row.account)
 	tx, err := t.db.BeginTx(ctx, nil)
@@ -456,7 +459,7 @@ func (rs *recoveryService) completeRecovery(ctx context.Context, req *connect.Re
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the recovery is stale"))
 	}
 	if rejected != 0 {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the recovery was vetoed"))
+		return nil, relayError(connect.CodeFailedPrecondition, errors.New("the recovery was vetoed"), pb.RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_REJECTED)
 	}
 	if completed != 0 {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the recovery is stale"))
@@ -478,7 +481,7 @@ func (rs *recoveryService) completeRecovery(ctx context.Context, req *connect.Re
 		if err := tx.Commit(); err != nil {
 			return nil, internal(err)
 		}
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the recovery is stale"))
+		return nil, relayError(connect.CodeFailedPrecondition, errors.New("the recovery is stale"), pb.RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_REJECTED)
 	}
 	if err := checkRecoveryEpoch(row.state.Core.Epoch); err != nil {
 		return nil, err
@@ -536,7 +539,7 @@ func (rs *recoveryService) completeRecovery(ctx context.Context, req *connect.Re
 
 func checkRecoveryEpoch(epoch uint64) error {
 	if epoch > devicesec.MaxStates {
-		return connect.NewError(connect.CodeResourceExhausted, errors.New("security chain is full"))
+		return relayError(connect.CodeResourceExhausted, errors.New("security chain is full"), pb.RelayErrorReason_RELAY_ERROR_REASON_SECURITY_CHAIN_FULL)
 	}
 	return nil
 }

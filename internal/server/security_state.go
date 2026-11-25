@@ -114,8 +114,8 @@ func (c *clientService) PinSecurityDomain(ctx context.Context, req *connect.Requ
 	if err != nil {
 		return nil, invalid("invalid security genesis")
 	}
-	if state.Core.IssuedAt > uint64(nowMs())+devicesec.MaxClockSkew {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("the security genesis is from the future; check this device's clock"))
+	if now := nowMs(); state.Core.IssuedAt > uint64(now)+devicesec.MaxClockSkew {
+		return nil, errClockAhead(connect.CodePermissionDenied, "the security genesis is from the future; check this device's clock", now)
 	}
 	pin, err := state.Pin()
 	if err != nil || pin.VerifyGenesis(state) != nil || pin.Account != d.account {
@@ -175,7 +175,7 @@ func (c *clientService) PutSecurityState(ctx context.Context, req *connect.Reque
 	t := c.s.tenantFrom(ctx)
 	genesisRaw, _, err := t.store.securityGenesis(ctx)
 	if errors.Is(err, errNoRows) {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the security domain is not pinned yet"))
+		return nil, relayError(connect.CodeFailedPrecondition, errors.New("the security domain is not pinned yet"), pb.RelayErrorReason_RELAY_ERROR_REASON_NO_SECURITY_DOMAIN)
 	}
 	if err != nil {
 		return nil, internal(err)
@@ -196,8 +196,8 @@ func (c *clientService) PutSecurityState(ctx context.Context, req *connect.Reque
 		if err != nil {
 			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("invalid security state"))
 		}
-		if s.Core.IssuedAt > uint64(nowMs())+devicesec.MaxClockSkew {
-			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("the security state is from the future; check this device's clock"))
+		if now := nowMs(); s.Core.IssuedAt > uint64(now)+devicesec.MaxClockSkew {
+			return nil, errClockAhead(connect.CodePermissionDenied, "the security state is from the future; check this device's clock", now)
 		}
 		raw := in.State
 		var proof *devicesec.RecoveryStatement
@@ -240,7 +240,7 @@ func (c *clientService) PutSecurityState(ctx context.Context, req *connect.Reque
 			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("security chain must start at the genesis"))
 		}
 		if s.Core.Epoch > devicesec.MaxStates {
-			return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("security chain is full"))
+			return nil, relayError(connect.CodeResourceExhausted, errors.New("security chain is full"), pb.RelayErrorReason_RELAY_ERROR_REASON_SECURITY_CHAIN_FULL)
 		}
 		accepted = append(accepted, securityRow{epoch: s.Core.Epoch, state: s, raw: raw, hash: h, recovery: proof, recRaw: in.Recovery})
 
@@ -412,13 +412,13 @@ func (s *Server) authorizeDevice(ctx context.Context, d *device, procedure strin
 		if procedure == remoteagentv1connect.ClientServicePinSecurityDomainProcedure {
 			return nil
 		}
-		return connect.NewError(connect.CodePermissionDenied, errors.New("this account has no security domain yet; set it up in the app"))
+		return relayError(connect.CodePermissionDenied, errors.New("this account has no security domain yet; set it up in the app"), pb.RelayErrorReason_RELAY_ERROR_REASON_NO_SECURITY_DOMAIN)
 	}
 	if err != nil {
 		return internal(err)
 	}
 	if _, ok := head.Core.Member(d.id); !ok {
-		return connect.NewError(connect.CodePermissionDenied, errors.New("this device is not a current account member"))
+		return relayError(connect.CodePermissionDenied, errors.New("this device is not a current account member"), pb.RelayErrorReason_RELAY_ERROR_REASON_DEVICE_NOT_MEMBER)
 	}
 	return nil
 }

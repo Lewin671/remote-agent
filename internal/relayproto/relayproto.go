@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 )
 
 // Version is the relay protocol version checked by the server at its entry
@@ -18,6 +19,13 @@ const Version = 17
 // Mismatch is the error returned by the relay when a device speaks a different
 // relay protocol version.
 func Mismatch(peer string, got uint32) error {
-	return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf(
+	ce := connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf(
 		"%s speaks relay protocol version %d and this relay speaks version %d; update to a matching release", peer, got, Version))
+	if d, err := connect.NewErrorDetail(&pb.RelayErrorDetail{
+		Reason:             pb.RelayErrorReason_RELAY_ERROR_REASON_PROTOCOL_MISMATCH,
+		ServerRelayVersion: Version,
+	}); err == nil {
+		ce.AddDetail(d)
+	}
+	return ce
 }

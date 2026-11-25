@@ -43,7 +43,7 @@ func (c *clientService) DeleteAccount(ctx context.Context, req *connect.Request[
 	}
 	member, ok := head.Core.Member(d.id)
 	if !ok || head.Core.AuthorityID != d.id || !bytes.Equal(member.EdPublic[:], d.publicKey) {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("use the current authority client to delete the account"))
+		return nil, relayError(connect.CodePermissionDenied, errors.New("use the current authority client to delete the account"), pb.RelayErrorReason_RELAY_ERROR_REASON_NOT_AUTHORITY)
 	}
 	if !bytes.Equal(hash[:], r.StateHash) {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the account security state changed; review the deletion again"))

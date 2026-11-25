@@ -83,7 +83,7 @@ func (s *store) approveAdmission(ctx context.Context, a *enrollmentApproval, can
 		return err
 	}
 	if n >= maxPairings {
-		return errFull("too many device approvals in progress")
+		return errFullReason("too many device approvals in progress", pb.RelayErrorReason_RELAY_ERROR_REASON_RATE_LIMITED)
 	}
 	var existingAccount, existingCandidate string
 	var existingKind int32

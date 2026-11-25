@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 )
 
 // Accounts. One relay holds many accounts that know nothing of each
@@ -86,17 +87,17 @@ const (
 func (p plan) check(u accountUsage, g grows) error {
 	switch {
 	case g == growsDevices && p.devices > 0 && u.devices > p.devices:
-		return errFull(fmt.Sprintf("this account has its %d devices already; remove one first", p.devices))
+		return errFullReason(fmt.Sprintf("this account has its %d devices already; remove one first", p.devices), pb.RelayErrorReason_RELAY_ERROR_REASON_QUOTA_DEVICES)
 	case g == growsDevices && p.machines > 0 && u.machines > p.machines:
-		return errFull(fmt.Sprintf("this account has its %d computers already; remove one first", p.machines))
+		return errFullReason(fmt.Sprintf("this account has its %d computers already; remove one first", p.machines), pb.RelayErrorReason_RELAY_ERROR_REASON_QUOTA_MACHINES)
 	case g == growsDevices && p.revoked > 0 && u.revoked > p.revoked:
-		return errFull(fmt.Sprintf("this account has removed %d devices on this relay, which takes no new ones", p.revoked))
+		return errFullReason(fmt.Sprintf("this account has removed %d devices on this relay, which takes no new ones", p.revoked), pb.RelayErrorReason_RELAY_ERROR_REASON_QUOTA_DEVICES)
 	case g == growsSessions && p.sessions > 0 && u.sessions > p.sessions:
-		return errFull("relay_session_limit: this account has reached its session limit on this relay")
+		return errFullReason("relay_session_limit: this account has reached its session limit on this relay", pb.RelayErrorReason_RELAY_ERROR_REASON_QUOTA_SESSIONS)
 	case g == growsEvents && p.eventBytes > 0 && u.eventBytes > p.eventBytes:
-		return errFull("this account's storage on this relay is full")
+		return errFullReason("this account's storage on this relay is full", pb.RelayErrorReason_RELAY_ERROR_REASON_QUOTA_STORAGE)
 	case g == growsPrefs && p.prefs > 0 && u.prefs > p.prefs:
-		return errFull(fmt.Sprintf("this account has its %d preference objects already", p.prefs))
+		return errFullReason(fmt.Sprintf("this account has its %d preference objects already", p.prefs), pb.RelayErrorReason_RELAY_ERROR_REASON_QUOTA_STORAGE)
 	}
 	return nil
 }
@@ -124,7 +125,7 @@ func (s *Server) tenantFrom(ctx context.Context) *tenant {
 func (t *tenant) limit(s *Server, g grows) func(accountUsage) error {
 	return func(u accountUsage) error {
 		if s.diskLow.Load() {
-			return errFull("this relay is out of storage; try again later")
+			return errFullReason("this relay is out of storage; try again later", pb.RelayErrorReason_RELAY_ERROR_REASON_RELAY_DISK_LOW)
 		}
 		return t.plan.check(u, g)
 	}

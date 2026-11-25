@@ -164,7 +164,7 @@ func (m *machineService) PutImage(ctx context.Context, req *connect.Request[pb.P
 		return nil, err
 	}
 	if m.s.diskLow.Load() {
-		return nil, errFull("this relay is out of storage; try again later")
+		return nil, errFullReason("this relay is out of storage; try again later", pb.RelayErrorReason_RELAY_ERROR_REASON_RELAY_DISK_LOW)
 	}
 	b, _ := proto.Marshal(req.Msg.Image)
 	t := m.s.tenantFrom(ctx)
@@ -175,7 +175,7 @@ func (m *machineService) PutImage(ctx context.Context, req *connect.Request[pb.P
 	case errors.Is(err, errOtherMachine):
 		return nil, connect.NewError(connect.CodePermissionDenied, err)
 	case errors.Is(err, errQuota):
-		return nil, connect.NewError(connect.CodeResourceExhausted, err)
+		return nil, relayError(connect.CodeResourceExhausted, err, pb.RelayErrorReason_RELAY_ERROR_REASON_QUOTA_STORAGE)
 	case err != nil:
 		return nil, internal(err)
 	}

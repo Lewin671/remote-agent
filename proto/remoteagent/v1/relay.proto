@@ -863,3 +863,40 @@ message DeleteAccountRequest {
   bytes signature = 3;
 }
 message DeleteAccountResponse {}
+
+// Structured machine-readable reason attached to Connect errors via connect.ErrorDetail.
+// Purely additive: 0 (UNSPECIFIED) falls back to Connect status code semantics.
+enum RelayErrorReason {
+  RELAY_ERROR_REASON_UNSPECIFIED = 0;
+  RELAY_ERROR_REASON_LOGIN_FAILED = 1;                // Device unknown, bad/expired challenge, or signature mismatch
+  RELAY_ERROR_REASON_PROTOCOL_MISMATCH = 2;           // RelayVersion mismatch (carries server_relay_version)
+  RELAY_ERROR_REASON_TOKEN_INVALID = 3;               // Bearer token missing, invalid, or expired
+  RELAY_ERROR_REASON_ACCOUNT_SUSPENDED = 4;           // Account is suspended on this relay
+  RELAY_ERROR_REASON_DEVICE_NOT_MEMBER = 5;           // Device is not a member of the current security head
+  RELAY_ERROR_REASON_NO_SECURITY_DOMAIN = 6;          // Account has no pinned security domain yet
+  RELAY_ERROR_REASON_NOT_AUTHORITY = 7;               // Caller is not the current authority client
+  RELAY_ERROR_REASON_CLOCK_AHEAD = 8;                 // Client issued_at is ahead of relay clock (carries server_time_ms)
+  RELAY_ERROR_REASON_SECURITY_CHAIN_FULL = 9;         // Security state chain reached its length limit
+  RELAY_ERROR_REASON_SETUP_TOKEN_REQUIRED = 10;       // Private relay requires a valid setup token to create an account
+  RELAY_ERROR_REASON_SIGNUP_POW_REQUIRED = 11;        // Open relay requires a proof of work to create an account
+  RELAY_ERROR_REASON_SIGNUP_POW_INVALID = 12;         // Proof of work is wrong or expired
+  RELAY_ERROR_REASON_SIGNUP_TOKEN_ONLY = 13;          // Relay does not offer open signup challenges
+  RELAY_ERROR_REASON_RATE_LIMITED = 14;               // Login, signup, pairing, or recovery rate limit reached
+  RELAY_ERROR_REASON_RELAY_DISK_LOW = 15;             // Relay disk free space is below the reserve threshold
+  RELAY_ERROR_REASON_RELAY_ACCOUNTS_FULL = 16;        // Relay reached its maximum account count
+  RELAY_ERROR_REASON_QUOTA_DEVICES = 17;              // Account client/device or revoked-device quota reached
+  RELAY_ERROR_REASON_QUOTA_MACHINES = 18;             // Account machine quota reached
+  RELAY_ERROR_REASON_QUOTA_SESSIONS = 19;             // Account session quota reached
+  RELAY_ERROR_REASON_QUOTA_STORAGE = 20;              // Account event, image, or preferences storage quota reached
+  RELAY_ERROR_REASON_PAIRING_INVALID_OR_EXPIRED = 21; // Pairing code/ID unknown, invalid, or expired
+  RELAY_ERROR_REASON_PAIRING_ALREADY_JOINED = 22;     // Another device is already joining with this pairing code
+  RELAY_ERROR_REASON_RECOVERY_INVALID = 23;           // Recovery key, challenge, signature, statement, or ID invalid
+  RELAY_ERROR_REASON_RECOVERY_NOT_READY = 24;         // Recovery 48-hour waiting window has not elapsed yet
+  RELAY_ERROR_REASON_RECOVERY_REJECTED = 25;          // Recovery was vetoed or superseded by a newer state
+}
+
+message RelayErrorDetail {
+  RelayErrorReason reason = 1;
+  uint32 server_relay_version = 2; // Set when reason == RELAY_ERROR_REASON_PROTOCOL_MISMATCH
+  int64 server_time_ms = 3;        // Set when reason == RELAY_ERROR_REASON_CLOCK_AHEAD
+}

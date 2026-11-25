@@ -56,7 +56,7 @@ func (c *clientService) DeleteMachineRecords(ctx context.Context, req *connect.R
 	}
 	d := deviceFrom(ctx)
 	if d == nil || d.id != head.Core.AuthorityID {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("use the authority client"))
+		return nil, relayError(connect.CodePermissionDenied, errors.New("use the authority client"), pb.RelayErrorReason_RELAY_ERROR_REASON_NOT_AUTHORITY)
 	}
 	id := req.Msg.MachineId
 	if id == "" {

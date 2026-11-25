@@ -2,6 +2,7 @@
 # Regenerate with: go test ./internal/relayproto -update [-additive "<reason>"]
 relay_version: 17
 additive: optional encrypted joiner_meta envelope on GetPairing for same-device replacement
+additive: attach structured RelayErrorDetail to relay Connect errors
 
 enum remoteagent.v1.Compression.0=COMPRESSION_NONE
 enum remoteagent.v1.Compression.1=COMPRESSION_DEFLATE
@@ -50,6 +51,32 @@ enum remoteagent.v1.PeerFrameResult.Status.3=LIMITED
 enum remoteagent.v1.PushType.0=PUSH_TYPE_UNSPECIFIED
 enum remoteagent.v1.PushType.1=PUSH_TYPE_WEB_PUSH
 enum remoteagent.v1.PushType.2=PUSH_TYPE_FCM
+enum remoteagent.v1.RelayErrorReason.0=RELAY_ERROR_REASON_UNSPECIFIED
+enum remoteagent.v1.RelayErrorReason.1=RELAY_ERROR_REASON_LOGIN_FAILED
+enum remoteagent.v1.RelayErrorReason.10=RELAY_ERROR_REASON_SETUP_TOKEN_REQUIRED
+enum remoteagent.v1.RelayErrorReason.11=RELAY_ERROR_REASON_SIGNUP_POW_REQUIRED
+enum remoteagent.v1.RelayErrorReason.12=RELAY_ERROR_REASON_SIGNUP_POW_INVALID
+enum remoteagent.v1.RelayErrorReason.13=RELAY_ERROR_REASON_SIGNUP_TOKEN_ONLY
+enum remoteagent.v1.RelayErrorReason.14=RELAY_ERROR_REASON_RATE_LIMITED
+enum remoteagent.v1.RelayErrorReason.15=RELAY_ERROR_REASON_RELAY_DISK_LOW
+enum remoteagent.v1.RelayErrorReason.16=RELAY_ERROR_REASON_RELAY_ACCOUNTS_FULL
+enum remoteagent.v1.RelayErrorReason.17=RELAY_ERROR_REASON_QUOTA_DEVICES
+enum remoteagent.v1.RelayErrorReason.18=RELAY_ERROR_REASON_QUOTA_MACHINES
+enum remoteagent.v1.RelayErrorReason.19=RELAY_ERROR_REASON_QUOTA_SESSIONS
+enum remoteagent.v1.RelayErrorReason.2=RELAY_ERROR_REASON_PROTOCOL_MISMATCH
+enum remoteagent.v1.RelayErrorReason.20=RELAY_ERROR_REASON_QUOTA_STORAGE
+enum remoteagent.v1.RelayErrorReason.21=RELAY_ERROR_REASON_PAIRING_INVALID_OR_EXPIRED
+enum remoteagent.v1.RelayErrorReason.22=RELAY_ERROR_REASON_PAIRING_ALREADY_JOINED
+enum remoteagent.v1.RelayErrorReason.23=RELAY_ERROR_REASON_RECOVERY_INVALID
+enum remoteagent.v1.RelayErrorReason.24=RELAY_ERROR_REASON_RECOVERY_NOT_READY
+enum remoteagent.v1.RelayErrorReason.25=RELAY_ERROR_REASON_RECOVERY_REJECTED
+enum remoteagent.v1.RelayErrorReason.3=RELAY_ERROR_REASON_TOKEN_INVALID
+enum remoteagent.v1.RelayErrorReason.4=RELAY_ERROR_REASON_ACCOUNT_SUSPENDED
+enum remoteagent.v1.RelayErrorReason.5=RELAY_ERROR_REASON_DEVICE_NOT_MEMBER
+enum remoteagent.v1.RelayErrorReason.6=RELAY_ERROR_REASON_NO_SECURITY_DOMAIN
+enum remoteagent.v1.RelayErrorReason.7=RELAY_ERROR_REASON_NOT_AUTHORITY
+enum remoteagent.v1.RelayErrorReason.8=RELAY_ERROR_REASON_CLOCK_AHEAD
+enum remoteagent.v1.RelayErrorReason.9=RELAY_ERROR_REASON_SECURITY_CHAIN_FULL
 field remoteagent.v1.AccountPrefsObject.1:string
 field remoteagent.v1.AccountPrefsObject.2:uint64
 field remoteagent.v1.AccountPrefsObject.3:message(remoteagent.v1.Envelope)
@@ -274,6 +301,9 @@ field remoteagent.v1.RegisterDeviceRequest.5:bytes
 field remoteagent.v1.RegisterDeviceRequest.6:bytes
 field remoteagent.v1.RegisterDeviceRequest.7:uint32
 field remoteagent.v1.RegisterDeviceResponse.1:string
+field remoteagent.v1.RelayErrorDetail.1:enum(remoteagent.v1.RelayErrorReason)
+field remoteagent.v1.RelayErrorDetail.2:uint32
+field remoteagent.v1.RelayErrorDetail.3:int64
 field remoteagent.v1.RemoteSession.1:string
 field remoteagent.v1.RemoteSession.2:string
 field remoteagent.v1.RemoteSession.3:message(remoteagent.v1.Envelope)

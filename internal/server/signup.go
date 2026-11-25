@@ -81,10 +81,10 @@ func (g *signupGuard) challenge(addr string) ([]byte, time.Time, error) {
 	g.sweepLocked(now)
 	var ok bool
 	if g.asked[addr], ok = recent(g.asked[addr], now, time.Minute, signupChallengesPerMin); !ok {
-		return nil, time.Time{}, errFull("too many signup attempts from this address; try again in a minute")
+		return nil, time.Time{}, errFullReason("too many signup attempts from this address; try again in a minute", pb.RelayErrorReason_RELAY_ERROR_REASON_RATE_LIMITED)
 	}
 	if len(g.challenges) >= maxSignupChallenges {
-		return nil, time.Time{}, errFull("too many signups in progress; try again in a minute")
+		return nil, time.Time{}, errFullReason("too many signups in progress; try again in a minute", pb.RelayErrorReason_RELAY_ERROR_REASON_RATE_LIMITED)
 	}
 	c := make([]byte, 32)
 	if _, err := rand.Read(c); err != nil {
@@ -107,15 +107,15 @@ func (g *signupGuard) admit(addr string, p *pb.SignupProof, bits uint) (undo fun
 	g.sweepLocked(now)
 	var ok bool
 	if g.created[addr], ok = recent(g.created[addr], now, time.Hour, signupsPerHour); !ok {
-		return nil, errFull("too many new accounts from this address; try again later")
+		return nil, errFullReason("too many new accounts from this address; try again later", pb.RelayErrorReason_RELAY_ERROR_REASON_RATE_LIMITED)
 	}
 	if g.total, ok = recent(g.total, now, time.Hour, signupsPerHourTotal); !ok {
-		return nil, errFull("this relay takes no more new accounts for now; try again later")
+		return nil, errFullReason("this relay takes no more new accounts for now; try again later", pb.RelayErrorReason_RELAY_ERROR_REASON_RATE_LIMITED)
 	}
 	c := string(p.GetChallenge())
 	exp, found := g.challenges[c]
 	if !found || now.After(exp) || len(p.GetNonce()) > maxSignupNonceBytes || !solved(p.GetChallenge(), p.GetNonce(), bits) {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("the proof of work is wrong or expired; try again"))
+		return nil, relayError(connect.CodePermissionDenied, errors.New("the proof of work is wrong or expired; try again"), pb.RelayErrorReason_RELAY_ERROR_REASON_SIGNUP_POW_INVALID)
 	}
 	delete(g.challenges, c)
 	g.created[addr] = append(g.created[addr], now)
@@ -164,14 +164,14 @@ func (s *Server) newAccountFor(req *connect.Request[pb.RegisterDeviceRequest]) (
 		return &newAccount{plan: "owner"}, func() {}, nil
 	}
 	if s.cfg.Signup != SignupOpen {
-		return nil, nil, connect.NewError(connect.CodePermissionDenied, errors.New("no account yet; a valid setup token is required"))
+		return nil, nil, relayError(connect.CodePermissionDenied, errors.New("no account yet; a valid setup token is required"), pb.RelayErrorReason_RELAY_ERROR_REASON_SETUP_TOKEN_REQUIRED)
 	}
 	if req.Msg.SignupProof == nil {
-		return nil, nil, connect.NewError(connect.CodeFailedPrecondition,
-			errors.New("this relay creates accounts with a proof of work; update remote-agent to create one here"))
+		return nil, nil, relayError(connect.CodeFailedPrecondition,
+			errors.New("this relay creates accounts with a proof of work; update remote-agent to create one here"), pb.RelayErrorReason_RELAY_ERROR_REASON_SIGNUP_POW_REQUIRED)
 	}
 	if s.diskLow.Load() {
-		return nil, nil, errFull("this relay is out of storage; try again later")
+		return nil, nil, errFullReason("this relay is out of storage; try again later", pb.RelayErrorReason_RELAY_ERROR_REASON_RELAY_DISK_LOW)
 	}
 	undo, err = s.signup.admit(s.clientAddr(req.Peer().Addr, req.Header()), req.Msg.SignupProof, s.cfg.SignupBits)
 	if err != nil {
@@ -182,7 +182,7 @@ func (s *Server) newAccountFor(req *connect.Request[pb.RegisterDeviceRequest]) (
 
 func (a *authService) GetSignupChallenge(ctx context.Context, req *connect.Request[pb.GetSignupChallengeRequest]) (*connect.Response[pb.GetSignupChallengeResponse], error) {
 	if a.s.cfg.Signup != SignupOpen {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("this relay creates accounts with a setup token"))
+		return nil, relayError(connect.CodeFailedPrecondition, errors.New("this relay creates accounts with a setup token"), pb.RelayErrorReason_RELAY_ERROR_REASON_SIGNUP_TOKEN_ONLY)
 	}
 	c, exp, err := a.s.signup.challenge(a.s.clientAddr(req.Peer().Addr, req.Header()))
 	if err != nil {

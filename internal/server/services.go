@@ -98,7 +98,7 @@ func (a *authService) RegisterDevice(ctx context.Context, req *connect.Request[p
 	case err != nil:
 		return nil, internal(err)
 	case existing.status != accountActive:
-		return nil, connect.NewError(connect.CodePermissionDenied, errSuspended)
+		return nil, relayError(connect.CodePermissionDenied, errSuspended, pb.RelayErrorReason_RELAY_ERROR_REASON_ACCOUNT_SUSPENDED)
 	default:
 		// A device joining an existing account is authorized by the
 		// authority-signed approval, never by root-key possession.
@@ -107,7 +107,7 @@ func (a *authService) RegisterDevice(ctx context.Context, req *connect.Request[p
 	id := e2e.DeviceID(reg.DevicePublicKey)
 	limit := func(u accountUsage) error {
 		if a.s.diskLow.Load() {
-			return errFull("this relay is out of storage; try again later")
+			return errFullReason("this relay is out of storage; try again later", pb.RelayErrorReason_RELAY_ERROR_REASON_RELAY_DISK_LOW)
 		}
 		return pl.check(u, growsDevices)
 	}
@@ -127,10 +127,12 @@ func (a *authService) RegisterDevice(ctx context.Context, req *connect.Request[p
 		switch {
 		case errors.As(err, &apiErr):
 			return nil, err
-		case errors.Is(err, errDeviceRevoked), errors.Is(err, errRegistrationStale), errors.Is(err, errOtherAccount), errors.Is(err, errAdmissionRequired), errors.Is(err, errSuspended):
+		case errors.Is(err, errSuspended):
+			return nil, relayError(connect.CodePermissionDenied, err, pb.RelayErrorReason_RELAY_ERROR_REASON_ACCOUNT_SUSPENDED)
+		case errors.Is(err, errDeviceRevoked), errors.Is(err, errRegistrationStale), errors.Is(err, errOtherAccount), errors.Is(err, errAdmissionRequired):
 			return nil, connect.NewError(connect.CodePermissionDenied, err)
 		case errors.Is(err, errNoRoom):
-			return nil, connect.NewError(connect.CodeResourceExhausted, err)
+			return nil, relayError(connect.CodeResourceExhausted, err, pb.RelayErrorReason_RELAY_ERROR_REASON_RELAY_ACCOUNTS_FULL)
 		}
 		return nil, internal(err)
 	}
@@ -165,7 +167,7 @@ func (a *authService) GetChallenge(ctx context.Context, req *connect.Request[pb.
 	}
 	ch, err := a.s.newChallenge(dev.id, dev.account)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeResourceExhausted, err)
+		return nil, relayError(connect.CodeResourceExhausted, err, pb.RelayErrorReason_RELAY_ERROR_REASON_RATE_LIMITED)
 	}
 	return connect.NewResponse(&pb.GetChallengeResponse{Challenge: ch}), nil
 }
@@ -174,7 +176,7 @@ func (a *authService) Login(ctx context.Context, req *connect.Request[pb.LoginRe
 	if req.Msg.ProtocolVersion != relayproto.Version {
 		return nil, relayproto.Mismatch("the device", req.Msg.ProtocolVersion)
 	}
-	denied := connect.NewError(connect.CodePermissionDenied, errors.New("login failed"))
+	denied := relayError(connect.CodePermissionDenied, errors.New("login failed"), pb.RelayErrorReason_RELAY_ERROR_REASON_LOGIN_FAILED)
 	if !a.s.takeChallenge(req.Msg.DeviceId, req.Msg.Challenge) {
 		return nil, denied
 	}
@@ -193,7 +195,7 @@ func (a *authService) Login(ctx context.Context, req *connect.Request[pb.LoginRe
 		return nil, internal(err)
 	}
 	if acct.status != accountActive {
-		return nil, connect.NewError(connect.CodePermissionDenied, errSuspended)
+		return nil, relayError(connect.CodePermissionDenied, errSuspended, pb.RelayErrorReason_RELAY_ERROR_REASON_ACCOUNT_SUSPENDED)
 	}
 	token := newToken()
 	expires := time.Now().Add(a.s.cfg.TokenTTL).UnixMilli()

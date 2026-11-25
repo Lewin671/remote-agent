@@ -39,6 +39,37 @@ const (
 	NotifyKind_NOTIFY_KIND_MACHINE_DISK NotifyKind = 5
 )
 
+type RelayErrorReason int32
+
+const (
+	RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED                RelayErrorReason = 0
+	RelayErrorReason_RELAY_ERROR_REASON_LOGIN_FAILED               RelayErrorReason = 1
+	RelayErrorReason_RELAY_ERROR_REASON_PROTOCOL_MISMATCH          RelayErrorReason = 2
+	RelayErrorReason_RELAY_ERROR_REASON_TOKEN_INVALID              RelayErrorReason = 3
+	RelayErrorReason_RELAY_ERROR_REASON_ACCOUNT_SUSPENDED          RelayErrorReason = 4
+	RelayErrorReason_RELAY_ERROR_REASON_DEVICE_NOT_MEMBER          RelayErrorReason = 5
+	RelayErrorReason_RELAY_ERROR_REASON_NO_SECURITY_DOMAIN         RelayErrorReason = 6
+	RelayErrorReason_RELAY_ERROR_REASON_NOT_AUTHORITY              RelayErrorReason = 7
+	RelayErrorReason_RELAY_ERROR_REASON_CLOCK_AHEAD                RelayErrorReason = 8
+	RelayErrorReason_RELAY_ERROR_REASON_SECURITY_CHAIN_FULL        RelayErrorReason = 9
+	RelayErrorReason_RELAY_ERROR_REASON_SETUP_TOKEN_REQUIRED       RelayErrorReason = 10
+	RelayErrorReason_RELAY_ERROR_REASON_SIGNUP_POW_REQUIRED        RelayErrorReason = 11
+	RelayErrorReason_RELAY_ERROR_REASON_SIGNUP_POW_INVALID         RelayErrorReason = 12
+	RelayErrorReason_RELAY_ERROR_REASON_SIGNUP_TOKEN_ONLY          RelayErrorReason = 13
+	RelayErrorReason_RELAY_ERROR_REASON_RATE_LIMITED               RelayErrorReason = 14
+	RelayErrorReason_RELAY_ERROR_REASON_RELAY_DISK_LOW             RelayErrorReason = 15
+	RelayErrorReason_RELAY_ERROR_REASON_RELAY_ACCOUNTS_FULL        RelayErrorReason = 16
+	RelayErrorReason_RELAY_ERROR_REASON_QUOTA_DEVICES              RelayErrorReason = 17
+	RelayErrorReason_RELAY_ERROR_REASON_QUOTA_MACHINES             RelayErrorReason = 18
+	RelayErrorReason_RELAY_ERROR_REASON_QUOTA_SESSIONS             RelayErrorReason = 19
+	RelayErrorReason_RELAY_ERROR_REASON_QUOTA_STORAGE              RelayErrorReason = 20
+	RelayErrorReason_RELAY_ERROR_REASON_PAIRING_INVALID_OR_EXPIRED RelayErrorReason = 21
+	RelayErrorReason_RELAY_ERROR_REASON_PAIRING_ALREADY_JOINED     RelayErrorReason = 22
+	RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_INVALID           RelayErrorReason = 23
+	RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_NOT_READY         RelayErrorReason = 24
+	RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_REJECTED          RelayErrorReason = 25
+)
+
 type DeviceRegistration struct {
 	_                [0]func()
 	AccountPublicKey []byte
@@ -2327,6 +2358,45 @@ func (m *DeleteAccountRequest) Marshal() ([]byte, error) {
 
 func (m *DeleteAccountRequest) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DeleteAccountRequest)
+}
+
+type RelayErrorDetail struct {
+	_                  [0]func()
+	Reason             RelayErrorReason
+	ServerRelayVersion uint32
+	ServerTimeMs       int64
+}
+
+func (m *RelayErrorDetail) GetReason() RelayErrorReason {
+	if m != nil {
+		return m.Reason
+	}
+	return 0
+}
+func (m *RelayErrorDetail) GetServerRelayVersion() uint32 {
+	if m != nil {
+		return m.ServerRelayVersion
+	}
+	return 0
+}
+func (m *RelayErrorDetail) GetServerTimeMs() int64 {
+	if m != nil {
+		return m.ServerTimeMs
+	}
+	return 0
+}
+
+var LitewireDesc_RelayErrorDetail = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&RelayErrorDetail{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(RelayErrorDetail{}.Reason), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(RelayErrorDetail{}.ServerRelayVersion), Kind: litewire.KindUint32},
+		{Num: 3, Offset: unsafe.Offsetof(RelayErrorDetail{}.ServerTimeMs), Kind: litewire.KindInt64},
+	},
+}
+
+func (m *RelayErrorDetail) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_RelayErrorDetail)
 }
 
 func init() {

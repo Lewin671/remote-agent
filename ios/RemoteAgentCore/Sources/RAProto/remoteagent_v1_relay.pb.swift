@@ -228,6 +228,188 @@ public enum PBPushType: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
+/// Structured machine-readable reason attached to Connect errors via connect.ErrorDetail.
+/// Purely additive: 0 (UNSPECIFIED) falls back to Connect status code semantics.
+public enum PBRelayErrorReason: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+
+  /// Device unknown, bad/expired challenge, or signature mismatch
+  case loginFailed // = 1
+
+  /// RelayVersion mismatch (carries server_relay_version)
+  case protocolMismatch // = 2
+
+  /// Bearer token missing, invalid, or expired
+  case tokenInvalid // = 3
+
+  /// Account is suspended on this relay
+  case accountSuspended // = 4
+
+  /// Device is not a member of the current security head
+  case deviceNotMember // = 5
+
+  /// Account has no pinned security domain yet
+  case noSecurityDomain // = 6
+
+  /// Caller is not the current authority client
+  case notAuthority // = 7
+
+  /// Client issued_at is ahead of relay clock (carries server_time_ms)
+  case clockAhead // = 8
+
+  /// Security state chain reached its length limit
+  case securityChainFull // = 9
+
+  /// Private relay requires a valid setup token to create an account
+  case setupTokenRequired // = 10
+
+  /// Open relay requires a proof of work to create an account
+  case signupPowRequired // = 11
+
+  /// Proof of work is wrong or expired
+  case signupPowInvalid // = 12
+
+  /// Relay does not offer open signup challenges
+  case signupTokenOnly // = 13
+
+  /// Login, signup, pairing, or recovery rate limit reached
+  case rateLimited // = 14
+
+  /// Relay disk free space is below the reserve threshold
+  case relayDiskLow // = 15
+
+  /// Relay reached its maximum account count
+  case relayAccountsFull // = 16
+
+  /// Account client/device or revoked-device quota reached
+  case quotaDevices // = 17
+
+  /// Account machine quota reached
+  case quotaMachines // = 18
+
+  /// Account session quota reached
+  case quotaSessions // = 19
+
+  /// Account event, image, or preferences storage quota reached
+  case quotaStorage // = 20
+
+  /// Pairing code/ID unknown, invalid, or expired
+  case pairingInvalidOrExpired // = 21
+
+  /// Another device is already joining with this pairing code
+  case pairingAlreadyJoined // = 22
+
+  /// Recovery key, challenge, signature, statement, or ID invalid
+  case recoveryInvalid // = 23
+
+  /// Recovery 48-hour waiting window has not elapsed yet
+  case recoveryNotReady // = 24
+
+  /// Recovery was vetoed or superseded by a newer state
+  case recoveryRejected // = 25
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .loginFailed
+    case 2: self = .protocolMismatch
+    case 3: self = .tokenInvalid
+    case 4: self = .accountSuspended
+    case 5: self = .deviceNotMember
+    case 6: self = .noSecurityDomain
+    case 7: self = .notAuthority
+    case 8: self = .clockAhead
+    case 9: self = .securityChainFull
+    case 10: self = .setupTokenRequired
+    case 11: self = .signupPowRequired
+    case 12: self = .signupPowInvalid
+    case 13: self = .signupTokenOnly
+    case 14: self = .rateLimited
+    case 15: self = .relayDiskLow
+    case 16: self = .relayAccountsFull
+    case 17: self = .quotaDevices
+    case 18: self = .quotaMachines
+    case 19: self = .quotaSessions
+    case 20: self = .quotaStorage
+    case 21: self = .pairingInvalidOrExpired
+    case 22: self = .pairingAlreadyJoined
+    case 23: self = .recoveryInvalid
+    case 24: self = .recoveryNotReady
+    case 25: self = .recoveryRejected
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .loginFailed: return 1
+    case .protocolMismatch: return 2
+    case .tokenInvalid: return 3
+    case .accountSuspended: return 4
+    case .deviceNotMember: return 5
+    case .noSecurityDomain: return 6
+    case .notAuthority: return 7
+    case .clockAhead: return 8
+    case .securityChainFull: return 9
+    case .setupTokenRequired: return 10
+    case .signupPowRequired: return 11
+    case .signupPowInvalid: return 12
+    case .signupTokenOnly: return 13
+    case .rateLimited: return 14
+    case .relayDiskLow: return 15
+    case .relayAccountsFull: return 16
+    case .quotaDevices: return 17
+    case .quotaMachines: return 18
+    case .quotaSessions: return 19
+    case .quotaStorage: return 20
+    case .pairingInvalidOrExpired: return 21
+    case .pairingAlreadyJoined: return 22
+    case .recoveryInvalid: return 23
+    case .recoveryNotReady: return 24
+    case .recoveryRejected: return 25
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBRelayErrorReason] = [
+    .unspecified,
+    .loginFailed,
+    .protocolMismatch,
+    .tokenInvalid,
+    .accountSuspended,
+    .deviceNotMember,
+    .noSecurityDomain,
+    .notAuthority,
+    .clockAhead,
+    .securityChainFull,
+    .setupTokenRequired,
+    .signupPowRequired,
+    .signupPowInvalid,
+    .signupTokenOnly,
+    .rateLimited,
+    .relayDiskLow,
+    .relayAccountsFull,
+    .quotaDevices,
+    .quotaMachines,
+    .quotaSessions,
+    .quotaStorage,
+    .pairingInvalidOrExpired,
+    .pairingAlreadyJoined,
+    .recoveryInvalid,
+    .recoveryNotReady,
+    .recoveryRejected,
+  ]
+
+}
+
 /// DeviceRegistration is signed by the account key.
 public struct PBDeviceRegistration: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
@@ -2404,6 +2586,24 @@ public struct PBDeleteAccountResponse: Sendable {
   public init() {}
 }
 
+public struct PBRelayErrorDetail: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var reason: PBRelayErrorReason = .unspecified
+
+  /// Set when reason == RELAY_ERROR_REASON_PROTOCOL_MISMATCH
+  public var serverRelayVersion: UInt32 = 0
+
+  /// Set when reason == RELAY_ERROR_REASON_CLOCK_AHEAD
+  public var serverTimeMs: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate let _protobuf_package = "remoteagent.v1"
@@ -2422,6 +2622,10 @@ extension PBNotifyKind: SwiftProtobuf._ProtoNameProviding {
 
 extension PBPushType: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0PUSH_TYPE_UNSPECIFIED\0\u{1}PUSH_TYPE_WEB_PUSH\0\u{1}PUSH_TYPE_FCM\0")
+}
+
+extension PBRelayErrorReason: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0RELAY_ERROR_REASON_UNSPECIFIED\0\u{1}RELAY_ERROR_REASON_LOGIN_FAILED\0\u{1}RELAY_ERROR_REASON_PROTOCOL_MISMATCH\0\u{1}RELAY_ERROR_REASON_TOKEN_INVALID\0\u{1}RELAY_ERROR_REASON_ACCOUNT_SUSPENDED\0\u{1}RELAY_ERROR_REASON_DEVICE_NOT_MEMBER\0\u{1}RELAY_ERROR_REASON_NO_SECURITY_DOMAIN\0\u{1}RELAY_ERROR_REASON_NOT_AUTHORITY\0\u{1}RELAY_ERROR_REASON_CLOCK_AHEAD\0\u{1}RELAY_ERROR_REASON_SECURITY_CHAIN_FULL\0\u{1}RELAY_ERROR_REASON_SETUP_TOKEN_REQUIRED\0\u{1}RELAY_ERROR_REASON_SIGNUP_POW_REQUIRED\0\u{1}RELAY_ERROR_REASON_SIGNUP_POW_INVALID\0\u{1}RELAY_ERROR_REASON_SIGNUP_TOKEN_ONLY\0\u{1}RELAY_ERROR_REASON_RATE_LIMITED\0\u{1}RELAY_ERROR_REASON_RELAY_DISK_LOW\0\u{1}RELAY_ERROR_REASON_RELAY_ACCOUNTS_FULL\0\u{1}RELAY_ERROR_REASON_QUOTA_DEVICES\0\u{1}RELAY_ERROR_REASON_QUOTA_MACHINES\0\u{1}RELAY_ERROR_REASON_QUOTA_SESSIONS\0\u{1}RELAY_ERROR_REASON_QUOTA_STORAGE\0\u{1}RELAY_ERROR_REASON_PAIRING_INVALID_OR_EXPIRED\0\u{1}RELAY_ERROR_REASON_PAIRING_ALREADY_JOINED\0\u{1}RELAY_ERROR_REASON_RECOVERY_INVALID\0\u{1}RELAY_ERROR_REASON_RECOVERY_NOT_READY\0\u{1}RELAY_ERROR_REASON_RECOVERY_REJECTED\0")
 }
 
 extension PBDeviceRegistration: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
@@ -6517,6 +6721,46 @@ extension PBDeleteAccountResponse: SwiftProtobuf.Message, SwiftProtobuf._Message
   }
 
   public static func ==(lhs: PBDeleteAccountResponse, rhs: PBDeleteAccountResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBRelayErrorDetail: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RelayErrorDetail"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}reason\0\u{3}server_relay_version\0\u{3}server_time_ms\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularEnumField(value: &self.reason) }()
+      case 2: try { try decoder.decodeSingularUInt32Field(value: &self.serverRelayVersion) }()
+      case 3: try { try decoder.decodeSingularInt64Field(value: &self.serverTimeMs) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.reason != .unspecified {
+      try visitor.visitSingularEnumField(value: self.reason, fieldNumber: 1)
+    }
+    if self.serverRelayVersion != 0 {
+      try visitor.visitSingularUInt32Field(value: self.serverRelayVersion, fieldNumber: 2)
+    }
+    if self.serverTimeMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.serverTimeMs, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBRelayErrorDetail, rhs: PBRelayErrorDetail) -> Bool {
+    if lhs.reason != rhs.reason {return false}
+    if lhs.serverRelayVersion != rhs.serverRelayVersion {return false}
+    if lhs.serverTimeMs != rhs.serverTimeMs {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
