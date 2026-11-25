@@ -732,13 +732,14 @@ func BuildSchedules(st *State, endedLimit int) *corev1.SchedulesViewModel {
 
 	loading := waitingForMachineList(st)
 	var machineErrors []*corev1.ScheduleMachineErrorView
-	var anySupported bool
+	var anySupported, anyUsable bool
 	var canCreate bool
 	unlinked := st.World.Unlinked != nil && *st.World.Unlinked
 	for _, m := range st.World.Machines {
 		if m == nil || (ss.MachineUsable != nil && !ss.MachineUsable(m.ID)) {
 			continue
 		}
+		anyUsable = true
 		if m.Unlinked == nil && !unlinked || (m.Unlinked != nil && !*m.Unlinked) {
 			canCreate = true
 		}
@@ -766,7 +767,7 @@ func BuildSchedules(st *State, endedLimit int) *corev1.SchedulesViewModel {
 	}
 
 	var unsupportedNotice *corev1.Text
-	if st.World.MachinesListed && len(st.World.Machines) > 0 && !anySupported {
+	if st.World.MachinesListed && anyUsable && !anySupported {
 		unsupportedNotice = text.Msg(text.KeyScheduleUpdateRemoteAgentOnTheComputerToUseScheduled)
 	}
 

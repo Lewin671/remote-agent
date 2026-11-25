@@ -368,3 +368,18 @@ func TestSchedulesInitialLoaded(t *testing.T) {
 		t.Fatal("expected ScheduleDetailView.InitialLoaded=true once SessionsListed")
 	}
 }
+
+func TestSchedulesSkipMachinesTheCoreDoesNotUse(t *testing.T) {
+	st := NewState(nil)
+	st.World.MachinesListed = true
+	st.World.SessionsListed = true
+	st.World.Machines = []*lists.Machine{{ID: "m-removed", Online: true}}
+	st.Schedules.MachineUsable = func(string) bool { return false }
+	vm := BuildSchedules(st, 30)
+	if vm.Loading {
+		t.Fatal("a machine without a snapshot because it is untrusted must not hold the list loading")
+	}
+	if vm.UnsupportedNotice != nil {
+		t.Fatal("an untrusted machine alone must not ask to update remote-agent for schedules")
+	}
+}
