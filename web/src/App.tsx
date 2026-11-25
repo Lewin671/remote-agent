@@ -222,9 +222,12 @@ export function App() {
       netBinding.report();
     };
     const visibility = () => {
-      remote.setForeground(!document.hidden);
-      if (!document.hidden) resume();
-      else if (running && hiddenTimer === undefined)
+      if (!document.hidden) {
+        resume();
+        return;
+      }
+      remote.setForeground(false);
+      if (running && hiddenTimer === undefined)
         hiddenTimer = setTimeout(pause, HIDDEN_GRACE_MS);
     };
     document.addEventListener("visibilitychange", visibility);

@@ -314,8 +314,6 @@ export class Remote implements CoreExecutor {
 
   protected api: Client<typeof ClientService>;
   private unwatchSecurityPush?: () => void;
-  private securityTimer?: ReturnType<typeof setInterval>;
-  private foreground = true;
   private token = "";
   private tokenExpires = 0;
   private tokenWarmed = false;
@@ -511,12 +509,6 @@ export class Remote implements CoreExecutor {
         void this.ensureHost().securityClient.syncNow(true, this.token).catch(() => undefined);
       }
     });
-    clearInterval(this.securityTimer);
-    this.securityTimer = setInterval(() => {
-      if (!this.closed && this.foreground && this.conn === "online") {
-        void this.ensureHost().securityClient.syncNow(false, this.token).catch(() => undefined);
-      }
-    }, 12_000);
     this.ensureHost().start();
     void this.watchPairingDelivery();
   }
@@ -527,8 +519,6 @@ export class Remote implements CoreExecutor {
     while (this.devicesSyncWaiters.length) this.devicesSyncWaiters.shift()!();
     this.unwatchSecurityPush?.();
     this.unwatchSecurityPush = undefined;
-    clearInterval(this.securityTimer);
-    this.securityTimer = undefined;
     this.stopPairingDelivery();
     this.deviceLink.closeStreams(l10n.t("errors.terminal_connection_closed"));
     this.retireNetworkIO();
@@ -610,7 +600,6 @@ export class Remote implements CoreExecutor {
   }
 
   setForeground(active: boolean) {
-    this.foreground = active;
     this.ensureHost().setForeground(active);
   }
 

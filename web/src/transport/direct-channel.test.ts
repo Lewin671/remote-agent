@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { create } from "@bufbuild/protobuf";
+import { create, toBinary } from "@bufbuild/protobuf";
 import { DirectCandFamily, DirectCandType, DirectStateKind } from "../gen/remoteagent/core/v1/transport_pb";
 import { FragmentSchema } from "../gen/remoteagent/v1/transport_pb";
 import { DirectBudget, DirectChannel } from "./direct-channel";
@@ -76,7 +76,7 @@ describe("DirectChannel", () => {
     pc.ice("checking");
     pc.state("connected");
     pc.onicecandidateerror?.({ errorCode: 701, address: "203.0.113.5" });
-    expect(states).toContainEqual([DirectStateKind.DC, "open"]);
+    expect(states).not.toContainEqual([DirectStateKind.DC, "open"]);
     expect(states).toContainEqual([DirectStateKind.ICE, "checking"]);
     expect(states).toContainEqual([DirectStateKind.CONN, "connected"]);
     expect(dcStates).toEqual([true]);
@@ -151,5 +151,384 @@ describe("DirectChannel", () => {
     });
     expect(() => channel.close()).toThrow("fixture close observer");
     expect(budget.ownerAvailable("peer", "3")).toBe(true);
+  });
+
+  it("keeps PC open on transient disconnected state and defers close on failed state (audit #2)", () => {
+    const sdk = fakeRTC();
+    const budget = new DirectBudget();
+    const states: Array<[DirectStateKind, string]> = [];
+    let closedCalls = 0;
+
+    const channel = new DirectChannel({
+      peer: "peer",
+      roundId: 1n,
+      use: 1,
+      generation: 1n,
+      budget,
+      valid: () => true,
+      stun: [],
+      factory: sdk.factory,
+      candidate: () => {},
+      state: (kind, val) => states.push([kind, val]),
+      frame: () => {},
+      closed: () => { closedCalls++; },
+    });
+
+    const pc = sdk.pcs[0]!;
+    const dc = pc.channels[0]!;
+    dc.readyState = "open";
+    dc.onopen?.();
+    pc.state("connected");
+    channel.confirm();
+    expect(channel.ready).toBe(true);
+
+    // Transient disconnected must not close the PC and must allow self-healing.
+    pc.state("disconnected");
+    expect(closedCalls).toBe(0);
+    expect(pc.connectionState).toBe("disconnected");
+    pc.state("connected");
+    expect(channel.ready).toBe(true);
+    expect(closedCalls).toBe(0);
+
+    // Terminal failed marks channel unready without synchronously closing PC.
+    pc.state("failed");
+    expect(channel.ready).toBe(false);
+    expect(closedCalls).toBe(0);
+    expect(pc.connectionState).toBe("failed");
+
+    // Browser-initiated closed cleans up synchronously.
+    pc.state("closed");
+    expect(closedCalls).toBe(1);
+  });
+
+  it("delivers ordered DataChannel messages in FIFO order even when SHA-256 resolves out of order (audit #5)", async () => {
+    const sdk = fakeRTC();
+    const budget = new DirectBudget();
+    const received: number[] = [];
+
+    const channel = new DirectChannel({
+      peer: "peer",
+      roundId: 1n,
+      use: 1,
+      generation: 1n,
+      budget,
+      valid: () => true,
+      stun: [],
+      factory: sdk.factory,
+      candidate: () => {},
+      state: () => {},
+      frame: (raw) => received.push(raw[0]!),
+      closed: () => {},
+    });
+
+    const pc = sdk.pcs[0]!;
+    const dc = pc.channels[0]!;
+    dc.readyState = "open";
+    dc.onopen?.();
+    pc.state("connected");
+    channel.confirm();
+
+    const p1 = new Uint8Array([1, 10, 20]);
+    const p2 = new Uint8Array([2, 30, 40]);
+    const d1 = new Uint8Array(await crypto.subtle.digest("SHA-256", p1));
+    const d2 = new Uint8Array(await crypto.subtle.digest("SHA-256", p2));
+
+    const f1 = toBinary(FragmentSchema, create(FragmentSchema, {
+      messageId: new Uint8Array(16).fill(1),
+      index: 0,
+      count: 1,
+      ciphertextLength: p1.byteLength,
+      ciphertextSha256: d1,
+      pathGeneration: 1n,
+      fragment: p1,
+    }));
+    const f2 = toBinary(FragmentSchema, create(FragmentSchema, {
+      messageId: new Uint8Array(16).fill(2),
+      index: 0,
+      count: 1,
+      ciphertextLength: p2.byteLength,
+      ciphertextSha256: d2,
+      pathGeneration: 1n,
+      fragment: p2,
+    }));
+
+    // Hold message 1's SHA-256 digest until after message 2 arrives.
+    let releaseFirst!: () => void;
+    let calls = 0;
+    const realDigest = crypto.subtle.digest.bind(crypto.subtle);
+    vi.spyOn(crypto.subtle, "digest").mockImplementation((algo, data) => {
+      calls++;
+      if (calls === 1) {
+        return new Promise((resolve) => {
+          releaseFirst = () => resolve(realDigest(algo, data));
+        });
+      }
+      return realDigest(algo, data);
+    });
+
+    dc.onmessage?.({ data: f1.buffer as ArrayBuffer });
+    dc.onmessage?.({ data: f2.buffer as ArrayBuffer });
+    await new Promise((r) => setTimeout(r, 15));
+    expect(received).toEqual([]);
+    releaseFirst();
+    await vi.waitFor(() => expect(received).toEqual([1, 2]));
+    channel.close();
+  });
+
+  it("releases in-flight receive verification budget immediately on close so a new round can acquire (audit #5)", async () => {
+    const sdk = fakeRTC();
+    const budget = new DirectBudget();
+
+    const channel = new DirectChannel({
+      peer: "peer",
+      roundId: 1n,
+      use: 1,
+      generation: 1n,
+      budget,
+      valid: () => true,
+      stun: [],
+      factory: sdk.factory,
+      candidate: () => {},
+      state: () => {},
+      frame: () => {},
+      closed: () => {},
+    });
+
+    const pc = sdk.pcs[0]!;
+    const dc = pc.channels[0]!;
+    dc.readyState = "open";
+    dc.onopen?.();
+    pc.state("connected");
+    channel.confirm();
+
+    const payload = new Uint8Array(64).fill(7);
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", payload));
+    const frag = toBinary(FragmentSchema, create(FragmentSchema, {
+      messageId: new Uint8Array(16).fill(5),
+      index: 0,
+      count: 1,
+      ciphertextLength: payload.byteLength,
+      ciphertextSha256: digest,
+      pathGeneration: 1n,
+      fragment: payload,
+    }));
+
+    let resolveDigest!: (buf: ArrayBuffer) => void;
+    vi.spyOn(crypto.subtle, "digest").mockImplementationOnce(() => new Promise((res) => { resolveDigest = res; }));
+
+    dc.onmessage?.({ data: frag.buffer as ArrayBuffer });
+    await vi.waitFor(() => expect(resolveDigest).toBeDefined());
+
+    channel.close();
+    // Old round must not retain budget ownership while SHA-256 is still pending.
+    expect(budget.ownerAvailable("peer", "2")).toBe(true);
+    expect(budget.acquire("peer", "2", 1)).toBe(true);
+
+    // Settling the aborted digest must not corrupt the new round's budget.
+    resolveDigest(digest.buffer as ArrayBuffer);
+    await new Promise((r) => setTimeout(r, 10));
+    budget.release("peer", 1);
+    expect(budget.ownerAvailable("peer", "3")).toBe(true);
+  });
+
+  it("transfers reassembly reservation without doubling peak receive budget for 768 KiB messages (audit #6)", async () => {
+    const sdk = fakeRTC();
+    const budget = new DirectBudget();
+    const received: Uint8Array[] = [];
+
+    const channel = new DirectChannel({
+      peer: "peer",
+      roundId: 1n,
+      use: 2,
+      generation: 1n,
+      budget,
+      valid: () => true,
+      stun: [],
+      factory: sdk.factory,
+      candidate: () => {},
+      state: () => {},
+      frame: (raw) => received.push(raw),
+      closed: () => {},
+    });
+
+    const pc = sdk.pcs[0]!;
+    const dc = pc.channels[0]!;
+    dc.readyState = "open";
+    dc.onopen?.();
+    pc.state("connected");
+    channel.confirm();
+
+    // Occupy 768 KiB of the 2 MiB per-peer receive budget (e.g. concurrent use=1 traffic).
+    const preReserved = 768 << 10;
+    expect(budget.reserve("peer", 1, preReserved, 1)).toBe(true);
+
+    // Send a 768 KiB message split into 16 KiB-128 fragments (total 1.5 MiB <= 2 MiB, but 2x would be 2.25 MiB > 2 MiB).
+    const payload = new Uint8Array(768 << 10);
+    for (let i = 0; i < payload.byteLength; i += 4096) payload[i] = (i >>> 12) & 0xff;
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", payload));
+    const chunkSize = (16 << 10) - 128;
+    const count = Math.ceil(payload.byteLength / chunkSize);
+    const msgId = new Uint8Array(16).fill(6);
+
+    for (let index = 0; index < count; index++) {
+      const frag = toBinary(FragmentSchema, create(FragmentSchema, {
+        messageId: msgId,
+        index,
+        count,
+        ciphertextLength: payload.byteLength,
+        ciphertextSha256: digest,
+        pathGeneration: 1n,
+        fragment: payload.subarray(index * chunkSize, Math.min(payload.byteLength, (index + 1) * chunkSize)),
+      }));
+      dc.onmessage?.({ data: frag.buffer as ArrayBuffer });
+    }
+
+    await vi.waitFor(() => expect(received).toHaveLength(1));
+    expect(received[0]!.byteLength).toBe(payload.byteLength);
+    budget.free("peer", 1, preReserved, 1);
+    channel.close();
+    expect(budget.ownerAvailable("peer", "2")).toBe(true);
+  });
+
+  it("wakes write() via fallback tick when onbufferedamountlow is missed, closes on send throw, and detects silent channel close (audit #9)", async () => {
+    vi.useFakeTimers();
+    const sdk = fakeRTC();
+    const budget = new DirectBudget();
+    let closedCalls = 0;
+
+    const channel = new DirectChannel({
+      peer: "peer",
+      roundId: 1n,
+      use: 1,
+      generation: 1n,
+      budget,
+      valid: () => true,
+      stun: [],
+      factory: sdk.factory,
+      candidate: () => {},
+      state: () => {},
+      frame: () => {},
+      closed: () => { closedCalls++; },
+    });
+
+    const pc = sdk.pcs[0]!;
+    const dc = pc.channels[0]!;
+    const probe = pc.channels[1]!;
+    // Simulate Safari ignoring threshold set during connecting by clearing it before onopen.
+    (dc as unknown as { bufferedAmountLowThreshold: number }).bufferedAmountLowThreshold = 0;
+    dc.readyState = "open";
+    probe.readyState = "open";
+    dc.onopen?.();
+    expect((dc as unknown as { bufferedAmountLowThreshold: number }).bufferedAmountLowThreshold).toBe(32 << 10);
+
+    pc.state("connected");
+    channel.confirm();
+
+    // Enter backpressure wait, then drain bufferedAmount WITHOUT calling onbufferedamountlow.
+    dc.bufferedAmount = 128 << 10;
+    const writePromise = channel.write(new Uint8Array([1, 2, 3]), () => {});
+    // Flush sha256 microtask so writeNow enters the wait loop.
+    await vi.advanceTimersByTimeAsync(10);
+    expect(dc.send).not.toHaveBeenCalled();
+
+    dc.bufferedAmount = 0;
+    await vi.advanceTimersByTimeAsync(150);
+    await writePromise;
+    expect(dc.send).toHaveBeenCalledTimes(1);
+
+    // data.send throwing must close the channel and reject with PathChanged.
+    dc.send.mockImplementationOnce(() => { throw new Error("InvalidStateError"); });
+    await expect(channel.write(new Uint8Array([4, 5]), () => {})).rejects.toThrow(PathChanged);
+    expect(closedCalls).toBe(1);
+
+    // Silent readyState === "closed" without onclose callback must be caught by tick.
+    const channel2 = new DirectChannel({
+      peer: "peer2",
+      roundId: 2n,
+      use: 1,
+      generation: 1n,
+      budget,
+      valid: () => true,
+      stun: [],
+      factory: sdk.factory,
+      candidate: () => {},
+      state: () => {},
+      frame: () => {},
+      closed: () => { closedCalls++; },
+    });
+    const pc2 = sdk.pcs[1]!;
+    const dc2 = pc2.channels[0]!;
+    const probe2 = pc2.channels[1]!;
+    dc2.readyState = "open";
+    probe2.readyState = "open";
+    dc2.onopen?.();
+    pc2.state("connected");
+    channel2.confirm();
+
+    probe2.readyState = "closed";
+    await vi.advanceTimersByTimeAsync(1100);
+    expect(closedCalls).toBe(2);
+  });
+
+  it("ignores probe echo when probe channel is not open, unbinds DOM handlers on close, and uses adaptive tick (audit #13, opt 4)", async () => {
+    vi.useFakeTimers();
+    const sdk = fakeRTC();
+    const budget = new DirectBudget();
+    const states: Array<[DirectStateKind, string]> = [];
+    const dcStates: boolean[] = [];
+    const validSpy = vi.fn(() => true);
+
+    const channel = new DirectChannel({
+      peer: "peer",
+      roundId: 1n,
+      use: 1,
+      generation: 1n,
+      budget,
+      valid: validSpy,
+      stun: [],
+      factory: sdk.factory,
+      candidate: () => {},
+      state: (kind, val) => states.push([kind, val]),
+      dcState: (open) => dcStates.push(open),
+      frame: () => {},
+      closed: () => {},
+    });
+
+    const pc = sdk.pcs[0]!;
+    const dc = pc.channels[0]!;
+    const probe = pc.channels[1]!;
+    dc.readyState = "open";
+    probe.readyState = "open";
+    dc.onopen?.();
+    pc.state("connected");
+    channel.confirm();
+
+    // Opt 4: data.onopen must not emit redundant DirectStateKind.DC via state().
+    expect(states.some(([kind]) => kind === DirectStateKind.DC)).toBe(false);
+    expect(dcStates).toEqual([true]);
+
+    // #13: probe.onmessage while probe is closing must not throw.
+    probe.readyState = "closing";
+    probe.send.mockImplementation(() => { throw new Error("RTCDataChannel.readyState is not 'open'"); });
+    const req = new Uint8Array(17);
+    req[0] = 0;
+    expect(() => probe.onmessage?.({ data: req.buffer as ArrayBuffer })).not.toThrow();
+    expect(probe.send).not.toHaveBeenCalled();
+
+    // Opt 4: idle channel polls at ~1s cadence instead of 100ms (<= 2 calls in 1.5s, vs 15 at 100ms).
+    probe.readyState = "open";
+    validSpy.mockClear();
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(validSpy.mock.calls.length).toBeLessThanOrEqual(2);
+
+    // #13: close() unbinds DOM handlers and does not emit late dcState(false) or DC state.
+    channel.close();
+    expect(dcStates).toEqual([true]);
+    expect(pc.onconnectionstatechange).toBeNull();
+    expect(pc.onicecandidate).toBeNull();
+    expect(dc.onopen).toBeNull();
+    expect(dc.onclose).toBeNull();
+    expect(dc.onmessage).toBeNull();
+    expect(probe.onmessage).toBeNull();
   });
 });

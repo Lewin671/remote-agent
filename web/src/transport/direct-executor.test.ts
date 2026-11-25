@@ -18,7 +18,7 @@ import {
   DirectStateKind,
 } from "../gen/remoteagent/core/v1/transport_pb";
 import { DirectExecutor, peerFrameBody } from "./direct-executor";
-import { PathChanged } from "./recovery";
+import { PathChanged, scopedClient } from "./recovery";
 import { fakeRTC } from "../test/peer/fake-rtc";
 
 describe("DirectExecutor", () => {
@@ -177,6 +177,392 @@ describe("DirectExecutor", () => {
     exec.pcClose(create(DirectPcCloseEffectSchema, { pcId: 11n }));
     await expect(pendingBeforeClose).rejects.toThrow(PathChanged);
     expect(events.some((e) => e.event.case === "directPcClosed")).toBe(false);
+    exec.close();
+  });
+
+  it("preserves getStats before closing a failed confirmed PC and does not close on disconnected (audit #2)", async () => {
+    const sdk = fakeRTC();
+    const events: CoreEvent[] = [];
+    let resolveStats!: (val: { forEach: (cb: (v: Record<string, unknown>) => void) => void }) => void;
+
+    const exec = new DirectExecutor({
+      emit: (ev) => {
+        events.push(ev);
+        if (ev.event.case === "directPcState" && ev.event.value.kind === DirectStateKind.CONN && ev.event.value.value === "failed") {
+          void exec.dcReadStats(create(DirectDcReadStatsEffectSchema, { pcId: ev.event.value.pcId }));
+        }
+      },
+      onPushedEvent: () => {},
+      factory: sdk.factory,
+    });
+
+    exec.pcCreate(create(DirectPcCreateEffectSchema, {
+      pcId: 21n,
+      machineId: "mac",
+      roundId: 1n,
+      use: 1,
+      generation: 1n,
+      stunServers: [],
+    }));
+    const pc = sdk.pcs[0]!;
+    const dc = pc.channels[0]!;
+    dc.readyState = "open";
+    dc.onopen?.();
+    pc.state("connected");
+    exec.pcConfirm(create(DirectPcConfirmEffectSchema, { pcId: 21n, machineId: "mac", use: 1 }));
+
+    // Transient disconnected must not emit directPcClosed or close the PC.
+    pc.state("disconnected");
+    expect(events.some((e) => e.event.case === "directPcClosed")).toBe(false);
+    expect(pc.connectionState).toBe("disconnected");
+
+    // Failed on confirmed PC must wait for in-flight dcReadStats before closing and emitting directPcClosed.
+    let closedBeforeStats = false;
+    const origClose = pc.close.bind(pc);
+    pc.close = () => {
+      if (!events.some((e) => e.event.case === "directDcStats")) closedBeforeStats = true;
+      origClose();
+    };
+    pc.getStats.mockImplementationOnce(() => new Promise((res) => { resolveStats = res; }));
+
+    pc.state("failed");
+    expect(closedBeforeStats).toBe(false);
+    expect(events.some((e) => e.event.case === "directPcClosed")).toBe(false);
+
+    const rows = [
+      { id: "lc", type: "local-candidate", candidateType: "host", address: "10.0.0.2" },
+      { id: "rc", type: "remote-candidate", candidateType: "srflx", address: "203.0.113.9" },
+      { id: "cp", type: "candidate-pair", localCandidateId: "lc", remoteCandidateId: "rc", nominated: true, state: "failed" },
+    ];
+    resolveStats({ forEach: (cb) => rows.forEach(cb) });
+
+    await vi.waitFor(() => expect(events.some((e) => e.event.case === "directPcClosed")).toBe(true));
+    const statsIdx = events.findIndex((e) => e.event.case === "directDcStats");
+    const closedIdx = events.findIndex((e) => e.event.case === "directPcClosed");
+    expect(statsIdx).toBeGreaterThan(-1);
+    expect(statsIdx).toBeLessThan(closedIdx);
+    expect(closedBeforeStats).toBe(false);
+    exec.close();
+  });
+
+  it("closes failed PC after bounded getStats even without Core dcReadStats and abandons hung stats at 300ms timeout (audit #2)", async () => {
+    vi.useFakeTimers();
+    const sdk = fakeRTC();
+    const events: CoreEvent[] = [];
+    const exec = new DirectExecutor({
+      emit: (ev) => events.push(ev),
+      onPushedEvent: () => {},
+      factory: sdk.factory,
+    });
+
+    // Case 1: unconfirmed PC fails without Core calling dcReadStats -> still reads stats once, emits directDcStats before directPcClosed, and closes PC.
+    exec.pcCreate(create(DirectPcCreateEffectSchema, {
+      pcId: 22n,
+      machineId: "mac",
+      roundId: 1n,
+      use: 1,
+      generation: 1n,
+      stunServers: [],
+    }));
+    const pc1 = sdk.pcs[0]!;
+    pc1.report = [
+      { id: "lc", type: "local-candidate", candidateType: "host", address: "10.0.0.2" },
+      { id: "rc", type: "remote-candidate", candidateType: "srflx", address: "203.0.113.9" },
+      { id: "cp", type: "candidate-pair", localCandidateId: "lc", remoteCandidateId: "rc", nominated: true, state: "failed" },
+    ];
+    pc1.state("failed");
+    await vi.advanceTimersByTimeAsync(10);
+    const stats1Idx = events.findIndex((e) => e.event.case === "directDcStats" && e.event.value.pcId === 22n);
+    const closed1Idx = events.findIndex((e) => e.event.case === "directPcClosed" && e.event.value.pcId === 22n);
+    expect(stats1Idx).toBeGreaterThan(-1);
+    expect(closed1Idx).toBeGreaterThan(stats1Idx);
+    expect(pc1.connectionState).toBe("closed");
+
+    // Case 2: confirmed PC fails with hung getStats -> times out at 300ms, closes PC, emits directPcClosed, and drops late stats.
+    events.length = 0;
+    exec.pcCreate(create(DirectPcCreateEffectSchema, {
+      pcId: 23n,
+      machineId: "mac",
+      roundId: 2n,
+      use: 1,
+      generation: 1n,
+      stunServers: [],
+    }));
+    const pc2 = sdk.pcs[1]!;
+    const dc2 = pc2.channels[0]!;
+    dc2.readyState = "open";
+    dc2.onopen?.();
+    pc2.state("connected");
+    exec.pcConfirm(create(DirectPcConfirmEffectSchema, { pcId: 23n, machineId: "mac", use: 1 }));
+
+    let resolveHungStats!: (val: { forEach: (cb: (v: Record<string, unknown>) => void) => void }) => void;
+    pc2.getStats.mockImplementationOnce(() => new Promise((res) => { resolveHungStats = res; }));
+
+    pc2.state("failed");
+    await vi.advanceTimersByTimeAsync(299);
+    expect(events.some((e) => e.event.case === "directPcClosed")).toBe(false);
+    expect(pc2.connectionState).toBe("failed");
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(events.some((e) => e.event.case === "directPcClosed" && e.event.value.pcId === 23n)).toBe(true);
+    expect(pc2.connectionState).toBe("closed");
+
+    // Late resolution of hung getStats must be abandoned (no directDcStats after directPcClosed).
+    resolveHungStats({ forEach: () => {} });
+    await vi.advanceTimersByTimeAsync(10);
+    expect(events.some((e) => e.event.case === "directDcStats" && e.event.value.pcId === 23n)).toBe(false);
+
+    // Case 3: connectionState=closed still closes immediately.
+    events.length = 0;
+    exec.pcCreate(create(DirectPcCreateEffectSchema, {
+      pcId: 24n,
+      machineId: "mac",
+      roundId: 3n,
+      use: 1,
+      generation: 1n,
+      stunServers: [],
+    }));
+    const pc3 = sdk.pcs[2]!;
+    pc3.state("closed");
+    expect(events.some((e) => e.event.case === "directPcClosed" && e.event.value.pcId === 24n)).toBe(true);
+    exec.close();
+  });
+
+  it("maps W3C empty-string candidate to a single endOfCandidates event (audit #4)", () => {
+    const sdk = fakeRTC();
+    const events: CoreEvent[] = [];
+    const exec = new DirectExecutor({
+      emit: (ev) => events.push(ev),
+      onPushedEvent: () => {},
+      factory: sdk.factory,
+    });
+
+    exec.pcCreate(create(DirectPcCreateEffectSchema, {
+      pcId: 23n,
+      machineId: "mac",
+      roundId: 1n,
+      use: 1,
+      generation: 1n,
+      stunServers: [],
+    }));
+    const pc = sdk.pcs[0]!;
+    pc.onicecandidate?.({
+      candidate: {
+        type: "",
+        candidate: "",
+        toJSON: () => ({ candidate: "", sdpMid: "0", sdpMLineIndex: 0 }),
+      },
+    });
+    // A subsequent null end-of-candidates event must be deduplicated.
+    pc.onicecandidate?.({ candidate: null });
+
+    const candEvents = events.filter((e) => e.event.case === "directPcLocalCandidate");
+    expect(candEvents).toHaveLength(1);
+    expect(candEvents[0]!.event.case === "directPcLocalCandidate" && candEvents[0]!.event.value.endOfCandidates).toBe(true);
+    expect(candEvents[0]!.event.case === "directPcLocalCandidate" && candEvents[0]!.event.value.candidate).toBe("");
+    exec.close();
+  });
+
+  it("allows same-batch pcClose followed by pcCreate on generation restart while an old write is in flight (audit #7)", async () => {
+    const sdk = fakeRTC();
+    const events: CoreEvent[] = [];
+    const exec = new DirectExecutor({
+      emit: (ev) => events.push(ev),
+      onPushedEvent: () => {},
+      factory: sdk.factory,
+    });
+
+    exec.pcCreate(create(DirectPcCreateEffectSchema, {
+      pcId: 31n,
+      machineId: "mac",
+      roundId: 7n,
+      use: 1,
+      generation: 1n,
+      stunServers: [],
+    }));
+    const pc1 = sdk.pcs[0]!;
+    const dc1 = pc1.channels[0]!;
+    dc1.readyState = "open";
+    dc1.bufferedAmount = 128 << 10; // hold write() in backpressure wait
+    dc1.onopen?.();
+    pc1.state("connected");
+    exec.pcConfirm(create(DirectPcConfirmEffectSchema, { pcId: 31n, machineId: "mac", use: 1 }));
+
+    expect(exec.sendTerminalFrame(31n, new Uint8Array(1024).fill(3))).toBe(true);
+
+    // Same EffectBatch synchronous ClosePC + CreatePC for gen+1 of the same round/use.
+    exec.pcClose(create(DirectPcCloseEffectSchema, { pcId: 31n }));
+    exec.pcCreate(create(DirectPcCreateEffectSchema, {
+      pcId: 32n,
+      machineId: "mac",
+      roundId: 7n,
+      use: 1,
+      generation: 2n,
+      stunServers: [],
+    }));
+
+    const created2 = events.find((e) => e.event.case === "directPcCreated" && e.event.value.pcId === 32n);
+    expect(created2?.event.case === "directPcCreated" && created2.event.value.ok).toBe(true);
+
+    // Let the aborted writer settle and ensure it does not release pc32's use slot.
+    await new Promise((r) => setTimeout(r, 10));
+    expect(exec.budget.acquire("mac", "7", 1)).toBe(false);
+    exec.close();
+    expect(exec.budget.ownerAvailable("mac", "8")).toBe(true);
+  });
+
+  it("does not leak unhandledRejection when PC closes while sendRpc is waiting in write() (audit #8)", async () => {
+    const sdk = fakeRTC();
+    const exec = new DirectExecutor({
+      emit: () => {},
+      onPushedEvent: () => {},
+      factory: sdk.factory,
+    });
+
+    exec.pcCreate(create(DirectPcCreateEffectSchema, {
+      pcId: 41n,
+      machineId: "mac",
+      roundId: 1n,
+      use: 1,
+      generation: 1n,
+      stunServers: [],
+    }));
+    const pc = sdk.pcs[0]!;
+    const dc = pc.channels[0]!;
+    dc.readyState = "open";
+    dc.bufferedAmount = 128 << 10; // suspend write() in backpressure wait
+    dc.onopen?.();
+    pc.state("connected");
+    exec.pcConfirm(create(DirectPcConfirmEffectSchema, { pcId: 41n, machineId: "mac", use: 1 }));
+
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => { unhandled.push(reason); };
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      const rpcPromise = exec.sendRpc(41n, "req-unhandled", Uint8Array.from([1, 2, 3]), 5000n, () => {});
+      await new Promise((r) => setTimeout(r, 10));
+      exec.pcClose(create(DirectPcCloseEffectSchema, { pcId: 41n }));
+      await expect(rpcPromise).rejects.toThrow(PathChanged);
+      await new Promise((r) => setTimeout(r, 10));
+      expect(unhandled).toHaveLength(0);
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+      exec.close();
+    }
+  });
+
+  it("works without AbortSignal.any on Safari < 17.4 in both sendRpc and scopedClient (audit #12)", async () => {
+    const origAny = (AbortSignal as unknown as { any?: typeof AbortSignal.any }).any;
+    Object.defineProperty(AbortSignal, "any", { value: undefined, configurable: true, writable: true });
+    try {
+      const sdk = fakeRTC();
+      const exec = new DirectExecutor({
+        emit: () => {},
+        onPushedEvent: () => {},
+        factory: sdk.factory,
+      });
+
+      exec.pcCreate(create(DirectPcCreateEffectSchema, {
+        pcId: 42n,
+        machineId: "mac",
+        roundId: 1n,
+        use: 1,
+        generation: 1n,
+        stunServers: [],
+      }));
+      const pc = sdk.pcs[0]!;
+      const dc = pc.channels[0]!;
+      dc.readyState = "open";
+      dc.onopen?.();
+      pc.state("connected");
+      exec.pcConfirm(create(DirectPcConfirmEffectSchema, { pcId: 42n, machineId: "mac", use: 1 }));
+
+      const caller = new AbortController();
+      const rpcPromise = exec.sendRpc(42n, "req-no-any", Uint8Array.from([9, 8]), 2000n, () => {}, caller.signal);
+      await vi.waitFor(() => expect(dc.send).toHaveBeenCalledTimes(1));
+
+      const respHeader = toBinary(HeaderSchema, create(HeaderSchema, {
+        machineId: "mac",
+        sender: "mac",
+        kind: PayloadKind.COMMAND_RESULT,
+        requestId: "req-no-any",
+      }));
+      const respEnv = toBinary(EnvelopeSchema, create(EnvelopeSchema, { header: respHeader, ciphertext: Uint8Array.from([4, 5]) })) as Uint8Array<ArrayBuffer>;
+      const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", respEnv));
+      const frag = toBinary(FragmentSchema, create(FragmentSchema, {
+        messageId: crypto.getRandomValues(new Uint8Array(16)),
+        index: 0,
+        count: 1,
+        ciphertextLength: respEnv.byteLength,
+        ciphertextSha256: digest,
+        pathGeneration: 1n,
+        fragment: respEnv,
+      }));
+      dc.onmessage?.({ data: frag.buffer as ArrayBuffer });
+      const resolved = await rpcPromise;
+      expect(resolved.ciphertext).toEqual(Uint8Array.from([4, 5]));
+
+      // Also verify caller abort propagates without AbortSignal.any.
+      const caller2 = new AbortController();
+      const rpc2 = exec.sendRpc(42n, "req-abort", Uint8Array.from([1]), 2000n, () => {}, caller2.signal);
+      caller2.abort(new Error("user canceled"));
+      await expect(rpc2).rejects.toThrow(PathChanged);
+
+      // Verify scopedClient fallback combines two signals without AbortSignal.any.
+      const roundAc = new AbortController();
+      const callAc = new AbortController();
+      let seenSignal: AbortSignal | undefined;
+      const client = scopedClient({
+        async ping(_req: unknown, opts?: { signal?: AbortSignal }) {
+          seenSignal = opts?.signal;
+          return "ok";
+        },
+      }, roundAc.signal);
+      await expect(client.ping({}, { signal: callAc.signal })).resolves.toBe("ok");
+      expect(seenSignal?.aborted).toBe(false);
+
+      const roundAc2 = new AbortController();
+      const callAc2 = new AbortController();
+      const client2 = scopedClient({
+        async ping(_req: unknown, opts?: { signal?: AbortSignal }) {
+          seenSignal = opts?.signal;
+          callAc2.abort(new Error("call canceled"));
+          return seenSignal?.aborted;
+        },
+      }, roundAc2.signal);
+      await expect(client2.ping({}, { signal: callAc2.signal })).resolves.toBe(true);
+
+      exec.close();
+    } finally {
+      Object.defineProperty(AbortSignal, "any", { value: origAny, configurable: true, writable: true });
+    }
+  });
+
+  it("does not emit late directPcState or directDcState after pcClose (audit #13)", () => {
+    const sdk = fakeRTC();
+    const events: CoreEvent[] = [];
+    const exec = new DirectExecutor({
+      emit: (ev) => events.push(ev),
+      onPushedEvent: () => {},
+      factory: sdk.factory,
+    });
+
+    exec.pcCreate(create(DirectPcCreateEffectSchema, {
+      pcId: 51n,
+      machineId: "mac",
+      roundId: 1n,
+      use: 1,
+      generation: 1n,
+      stunServers: [],
+    }));
+    const pc = sdk.pcs[0]!;
+    const dc = pc.channels[0]!;
+    dc.readyState = "open";
+    dc.onopen?.();
+    events.length = 0;
+
+    exec.pcClose(create(DirectPcCloseEffectSchema, { pcId: 51n }));
+    expect(events).toEqual([]);
     exec.close();
   });
 });

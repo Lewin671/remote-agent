@@ -6,6 +6,8 @@ import { PathChanged, abortable } from "./recovery";
 
 const FRAME_BYTES = 16 << 10;
 const PAYLOAD_BYTES = FRAME_BYTES - 128;
+const FAST_TICK_MS = 100;
+const IDLE_TICK_MS = 1000;
 const textEnc = new TextEncoder();
 const textDec = new TextDecoder("utf-8", { fatal: true });
 
@@ -184,11 +186,14 @@ export class DirectChannel {
   private confirmed = false;
   private ended = false;
   private chain = Promise.resolve();
+  private receiveChain = Promise.resolve();
+  private verifying: { bytes: number; frames: number } | null = null;
   private partial = new Map<string, PartialMessage>();
   private waiting: Uint8Array<ArrayBuffer>[] = [];
-  private tick: ReturnType<typeof setInterval>;
-  private writers = 0;
+  private tickTimer?: ReturnType<typeof setTimeout>;
+  private tickFast = false;
   private reservationReleased = false;
+  private endCandidateSent = false;
   private listeners = new Set<() => void>();
 
   constructor(private readonly options: ChannelOptions) {
@@ -215,17 +220,16 @@ export class DirectChannel {
     }
     this.data.binaryType = this.probe.binaryType = "arraybuffer";
     this.data.bufferedAmountLowThreshold = 32 << 10;
-    const wake = () => { for (const listener of [...this.listeners]) listener(); };
-    this.data.onbufferedamountlow = wake;
+    this.data.onbufferedamountlow = () => this.wake();
     this.data.onopen = () => {
       if (this.ended) return;
-      options.state(DirectStateKind.DC, "open");
+      this.data.bufferedAmountLowThreshold = 32 << 10;
       options.dcState?.(true);
-      wake();
+      this.wake();
       options.open?.();
     };
     this.data.onclose = () => {
-      options.state(DirectStateKind.DC, "closed");
+      if (this.ended) return;
       options.dcState?.(false);
       this.close();
     };
@@ -233,14 +237,22 @@ export class DirectChannel {
     this.data.onerror = this.probe.onerror = () => this.close();
     this.pc.ondatachannel = (event) => { event.channel.close(); this.close(); };
     this.pc.onicecandidate = (event) => {
-      if (this.valid()) options.candidate(event.candidate?.toJSON() ?? null);
+      if (!this.valid()) return;
+      const init = event.candidate?.toJSON() ?? null;
+      if (!init || !init.candidate) {
+        if (this.endCandidateSent) return;
+        this.endCandidateSent = true;
+        options.candidate(null);
+        return;
+      }
+      options.candidate(init);
     };
     this.pc.onconnectionstatechange = () => {
       if (this.ended) return;
       options.state(DirectStateKind.CONN, this.pc.connectionState);
       if (this.pc.sctp?.state) options.state(DirectStateKind.SCTP, this.pc.sctp.state);
       if (this.pc.sctp?.transport?.state) options.state(DirectStateKind.DTLS, this.pc.sctp.transport.state);
-      if (["failed", "closed", "disconnected"].includes(this.pc.connectionState)) this.close();
+      if (this.pc.connectionState === "closed") this.close();
     };
     this.pc.onicegatheringstatechange = () => {
       if (!this.ended) options.state(DirectStateKind.GATHER, this.pc.iceGatheringState);
@@ -260,30 +272,74 @@ export class DirectChannel {
         this.close();
         return;
       }
-      void this.receive(new Uint8Array(event.data)).catch(() => this.close());
+      const raw = new Uint8Array(event.data);
+      this.receiveChain = this.receiveChain
+        .then(() => this.receive(raw))
+        .catch(() => this.close());
     };
     this.probe.onmessage = (event) => {
       if (!this.ready || !(event.data instanceof ArrayBuffer) || event.data.byteLength !== 17) return;
       const raw = new Uint8Array(event.data);
       if (raw[0] === 0) {
+        if (this.probe.readyState !== "open") return;
         raw[0] = 1;
-        this.probe.send(raw);
+        try {
+          this.probe.send(raw);
+        } catch {
+          /* Ignore probe echo failure when channel is closing/closed. */
+        }
       } else if (raw[0] === 1) {
         options.probeReply?.(raw);
       }
     };
-    this.tick = setInterval(() => {
-      if (!this.valid()) {
-        this.close();
-        return;
-      }
-      const now = performance.now();
-      for (const [key, part] of this.partial) if (now >= part.until) this.drop(key, part);
-    }, 100);
+    this.scheduleTick(false);
+  }
+
+  private wake() {
+    for (const listener of [...this.listeners]) listener();
+  }
+
+  private scheduleTick(fast = this.partial.size > 0 || this.listeners.size > 0) {
+    if (this.ended) return;
+    if (this.tickTimer !== undefined) {
+      if (!fast || this.tickFast) return;
+      clearTimeout(this.tickTimer);
+    }
+    this.tickFast = fast;
+    this.tickTimer = setTimeout(() => {
+      this.tickTimer = undefined;
+      this.tickFast = false;
+      this.tickOnce();
+    }, fast ? FAST_TICK_MS : IDLE_TICK_MS);
+  }
+
+  private tickOnce() {
+    if (!this.valid()) {
+      this.close();
+      return;
+    }
+    if (this.confirmed && (this.data.readyState === "closed" || this.probe.readyState === "closed")) {
+      this.close();
+      return;
+    }
+    if (this.listeners.size > 0 && (!this.ready || this.data.bufferedAmount <= 64 << 10)) {
+      this.wake();
+    }
+    const now = performance.now();
+    for (const [key, part] of this.partial) if (now >= part.until) this.drop(key, part);
+    this.scheduleTick();
   }
 
   private valid() { return !this.ended && this.options.valid(); }
-  get ready() { return this.confirmed && this.valid() && this.data.readyState === "open"; }
+  get ready() {
+    return (
+      this.confirmed &&
+      this.valid() &&
+      this.data.readyState === "open" &&
+      this.pc.connectionState !== "failed" &&
+      this.pc.connectionState !== "closed"
+    );
+  }
   get queuedBytes() { return this.data.bufferedAmount; }
   get signal() { return this.lifetime.signal; }
 
@@ -304,6 +360,7 @@ export class DirectChannel {
     if (!this.valid() || !description.sdp) throw new PathChanged();
     const raw = textEnc.encode(description.sdp) as Uint8Array<ArrayBuffer>;
     validateMinimalSDP(raw);
+    this.endCandidateSent = false;
     await this.pc.setLocalDescription(description);
     if (!this.valid()) throw new PathChanged();
     return raw;
@@ -394,13 +451,10 @@ export class DirectChannel {
       return Promise.reject(new PathChanged());
     }
     const frozen = raw.slice();
-    this.writers++;
     const job = this.chain
       .then(() => this.writeNow(frozen, handoff, signal))
       .finally(() => {
         this.options.budget.free(this.options.peer, 0, frozen.byteLength, count);
-        this.writers--;
-        this.releaseReservation();
       });
     this.chain = job.catch(() => undefined);
     return abortable(job, signal);
@@ -421,6 +475,7 @@ export class DirectChannel {
             signal?.removeEventListener("abort", abort);
           };
           this.listeners.add(wake);
+          this.scheduleTick(true);
           this.lifetime.signal.addEventListener("abort", abort, { once: true });
           signal?.addEventListener("abort", abort, { once: true });
           if (signal?.aborted || this.ended) abort();
@@ -440,7 +495,12 @@ export class DirectChannel {
       const maximum = this.pc.sctp?.maxMessageSize ?? FRAME_BYTES;
       if (frame.byteLength > FRAME_BYTES || (maximum && frame.byteLength > maximum)) throw new PathChanged();
       if (index === 0) handoff();
-      this.data.send(frame as Uint8Array<ArrayBuffer>);
+      try {
+        this.data.send(frame as Uint8Array<ArrayBuffer>);
+      } catch {
+        this.close();
+        throw new PathChanged();
+      }
     }
   }
 
@@ -483,8 +543,11 @@ export class DirectChannel {
     part.parts.set(frame.index, new Uint8Array(frame.fragment));
     part.bytes += frame.fragment.byteLength;
     this.partial.set(key, part);
-    if (part.parts.size !== part.count) return;
-    if (part.bytes !== part.length || !this.options.budget.reserve(this.options.peer, 1, part.bytes, 1)) {
+    if (part.parts.size !== part.count) {
+      this.scheduleTick(true);
+      return;
+    }
+    if (part.bytes !== part.length) {
       this.drop(key, part);
       return;
     }
@@ -496,20 +559,34 @@ export class DirectChannel {
       offset += chunk.byteLength;
     }
     const hash = part.hash;
-    this.drop(key, part);
+    const extraFrames = part.parts.size - 1;
+    this.partial.delete(key);
+    if (extraFrames > 0) {
+      this.options.budget.free(this.options.peer, 1, 0, extraFrames);
+    }
+    const held = { bytes: completed.byteLength, frames: 1 };
+    this.verifying = held;
     let valid: boolean;
     try {
       valid = equalBytes(hash, await sha256(completed));
     } catch (error) {
-      this.options.budget.free(this.options.peer, 1, completed.byteLength, 1);
+      this.releaseVerifying(held);
       throw error;
     }
-    if (!valid || !this.valid()) {
-      this.options.budget.free(this.options.peer, 1, completed.byteLength, 1);
+    if (!valid || !this.valid() || this.verifying !== held) {
+      this.releaseVerifying(held);
       return;
     }
+    this.verifying = null;
     if (this.confirmed) this.deliver(completed);
     else this.waiting.push(completed);
+  }
+
+  private releaseVerifying(held: { bytes: number; frames: number }) {
+    if (this.verifying === held) {
+      this.verifying = null;
+      this.options.budget.free(this.options.peer, 1, held.bytes, held.frames);
+    }
   }
 
   private deliver(raw: Uint8Array<ArrayBuffer>) {
@@ -526,14 +603,30 @@ export class DirectChannel {
     if (this.ended) return;
     this.ended = true;
     this.lifetime.abort(new PathChanged());
-    clearInterval(this.tick);
+    clearTimeout(this.tickTimer);
+    this.tickTimer = undefined;
+    this.data.onbufferedamountlow = null;
+    this.data.onopen = null;
+    this.data.onclose = null;
+    this.data.onerror = null;
+    this.data.onmessage = null;
+    this.probe.onclose = null;
+    this.probe.onerror = null;
+    this.probe.onmessage = null;
+    this.pc.ondatachannel = null;
+    this.pc.onicecandidate = null;
+    this.pc.onconnectionstatechange = null;
+    this.pc.onicegatheringstatechange = null;
+    this.pc.oniceconnectionstatechange = null;
+    this.pc.onicecandidateerror = null;
     for (const [key, part] of this.partial) this.drop(key, part);
+    if (this.verifying) this.releaseVerifying(this.verifying);
     for (const raw of this.waiting.splice(0)) this.options.budget.free(this.options.peer, 1, raw.byteLength, 1);
     cleanup(() => this.pc.close(), () => this.options.closed(), () => this.releaseReservation());
   }
 
   private releaseReservation() {
-    if (this.ended && !this.writers && !this.reservationReleased) {
+    if (this.ended && !this.reservationReleased) {
       this.reservationReleased = true;
       this.options.budget.release(this.options.peer, this.options.use);
     }

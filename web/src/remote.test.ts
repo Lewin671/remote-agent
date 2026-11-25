@@ -539,7 +539,7 @@ it("seals terminal frames with purpose-specific domains and a default deadline",
   }
 });
 
-it("proactively renews security every 12s while foreground and online so direct stays authorized", async () => {
+it("does not run a duplicate shell-side 12s security sync timer (Core drives AuthorizeEveryMs) (audit opt 1)", async () => {
   const r = await probe();
   const status = await r.getSecurityStatus();
   const host = (r as unknown as {
@@ -559,17 +559,8 @@ it("proactively renews security every 12s while foreground and online so direct 
     vi.spyOn(r, "conn", "get").mockReturnValue("online");
     r.start();
     const before = syncSpy.mock.calls.length;
-    await vi.advanceTimersByTimeAsync(12_000);
-    expect(syncSpy.mock.calls.length).toBeGreaterThan(before);
-    const afterOnline = syncSpy.mock.calls.length;
-    r.setForeground(false);
-    await vi.advanceTimersByTimeAsync(24_000);
-    expect(syncSpy.mock.calls.length).toBe(afterOnline);
-    r.setForeground(true);
-    await vi.advanceTimersByTimeAsync(11_000);
-    expect(syncSpy.mock.calls.length).toBe(afterOnline);
-    await vi.advanceTimersByTimeAsync(1_000);
-    expect(syncSpy.mock.calls.length).toBeGreaterThan(afterOnline);
+    await vi.advanceTimersByTimeAsync(36_000);
+    expect(syncSpy.mock.calls.length).toBe(before);
   } finally {
     r.stop();
     vi.useRealTimers();

@@ -14,6 +14,7 @@ import {
   DirectPcRemoteSetEventSchema,
   DirectPcStateEventSchema,
   DirectPcStunErrorEventSchema,
+  DirectStateKind,
   type DirectDcReadStatsEffect,
   type DirectPcAddCandidatesEffect,
   type DirectPcCloseEffect,
@@ -26,9 +27,10 @@ import {
 } from "../gen/remoteagent/core/v1/transport_pb";
 import type { FrameStream } from "./path";
 import { DirectBudget, DirectChannel } from "./direct-channel";
-import { PathChanged, abortable } from "./recovery";
+import { PathChanged, abortable, combineSignals } from "./recovery";
 
 const utf8Dec = new TextDecoder("utf-8", { fatal: true });
+const FAILED_STATS_TIMEOUT_MS = 300;
 
 /** Reads the bounded ServerFrame body without re-encoding signed peer bytes. */
 export function peerFrameBody(raw: Uint8Array<ArrayBuffer>, field: 11 | 12): Uint8Array<ArrayBuffer> | undefined {
@@ -52,6 +54,8 @@ interface PcEntry {
   use: number;
   confirmed: boolean;
   closedByCore: boolean;
+  statsInFlight?: Promise<void>;
+  closingOnFailure?: boolean;
 }
 
 interface PendingRpc {
@@ -155,7 +159,8 @@ export class DirectExecutor {
         factory: this.options.factory,
         valid: () => !this.closed && this.pcs.get(eff.pcId) === entry,
         candidate: (cand) => {
-          if (!cand) {
+          if (this.closed || this.pcs.get(eff.pcId) !== entry) return;
+          if (!cand || !cand.candidate) {
             this.emit({
               case: "directPcLocalCandidate",
               value: create(DirectPcLocalCandidateEventSchema, { pcId: eff.pcId, endOfCandidates: true }),
@@ -166,20 +171,27 @@ export class DirectExecutor {
             case: "directPcLocalCandidate",
             value: create(DirectPcLocalCandidateEventSchema, {
               pcId: eff.pcId,
-              candidate: cand.candidate ?? "",
+              candidate: cand.candidate,
             }),
           });
         },
         state: (kind, value) => {
+          if (this.closed || this.pcs.get(eff.pcId) !== entry) return;
           this.emit({ case: "directPcState", value: create(DirectPcStateEventSchema, { pcId: eff.pcId, kind, value }) });
+          if (kind === DirectStateKind.CONN && value === "failed" && this.pcs.get(eff.pcId) === entry) {
+            this.closeOnFailure(eff.pcId, entry);
+          }
         },
         dcState: (open) => {
+          if (this.closed || this.pcs.get(eff.pcId) !== entry) return;
           this.emit({ case: "directDcState", value: create(DirectDcStateEventSchema, { pcId: eff.pcId, open }) });
         },
         stunError: (code, address) => {
+          if (this.closed || this.pcs.get(eff.pcId) !== entry) return;
           this.emit({ case: "directPcStunError", value: create(DirectPcStunErrorEventSchema, { pcId: eff.pcId, code, address }) });
         },
         probeReply: (raw) => {
+          if (this.closed || this.pcs.get(eff.pcId) !== entry) return;
           this.emit({ case: "directPcProbeReceived", value: create(DirectPcProbeReceivedEventSchema, { pcId: eff.pcId, raw }) });
         },
         frame: (raw) => this.handleDcFrame(eff.pcId, entry, raw),
@@ -290,8 +302,43 @@ export class DirectExecutor {
       this.emit({ case: "directDcStats", value: create(DirectDcStatsEventSchema, { pcId: eff.pcId }) });
       return;
     }
-    const report = await entry.channel.readStats();
-    this.emit({ case: "directDcStats", value: create(DirectDcStatsEventSchema, { pcId: eff.pcId, report }) });
+    await (entry.statsInFlight ?? this.readStatsForEntry(eff.pcId, entry));
+  }
+
+  private readStatsForEntry(pcId: bigint, entry: PcEntry): Promise<void> {
+    const task = (async () => {
+      const report = await entry.channel.readStats();
+      if (!this.closed && this.pcs.get(pcId) === entry) {
+        this.emit({ case: "directDcStats", value: create(DirectDcStatsEventSchema, { pcId, report }) });
+      }
+    })();
+    entry.statsInFlight = task;
+    return task.finally(() => {
+      if (entry.statsInFlight === task) entry.statsInFlight = undefined;
+    });
+  }
+
+  private closeOnFailure(pcId: bigint, entry: PcEntry) {
+    if (entry.closingOnFailure) return;
+    entry.closingOnFailure = true;
+    const stats = entry.statsInFlight ?? this.readStatsForEntry(pcId, entry);
+    let done = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onAbort = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+    };
+    const settle = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      entry.channel.signal.removeEventListener("abort", onAbort);
+      if (!this.closed && this.pcs.get(pcId) === entry) entry.channel.close();
+    };
+    entry.channel.signal.addEventListener("abort", onAbort, { once: true });
+    timer = setTimeout(settle, FAILED_STATS_TIMEOUT_MS);
+    void stats.then(settle, settle);
   }
 
   async sendRpc(
@@ -312,7 +359,7 @@ export class DirectExecutor {
     const ms = timeoutMs > 0n ? Math.max(1, Math.min(30_000, Number(timeoutMs))) : 3000;
     const timeout = new AbortController();
     const timer = setTimeout(() => timeout.abort(new PathChanged()), ms);
-    const canceled = AbortSignal.any([entry.channel.signal, timeout.signal, ...(signal ? [signal] : [])]);
+    const { signal: canceled, dispose: disposeSignal } = combineSignals([entry.channel.signal, timeout.signal, signal]);
 
     let resolve!: (env: Envelope) => void;
     let reject!: (err: Error) => void;
@@ -320,6 +367,8 @@ export class DirectExecutor {
       resolve = res;
       reject = rej;
     });
+    // Prevent unhandledRejection if PC closes while write() is still pending.
+    response.catch(() => undefined);
     const pending: PendingRpc = { pcId, machineId: entry.machineId, resolve, reject };
     this.pendingRpc.set(rpcKey, pending);
 
@@ -331,6 +380,7 @@ export class DirectExecutor {
       throw e instanceof PathChanged ? e : new PathChanged();
     } finally {
       clearTimeout(timer);
+      disposeSignal();
       if (this.pendingRpc.get(rpcKey) === pending) this.pendingRpc.delete(rpcKey);
     }
   }
