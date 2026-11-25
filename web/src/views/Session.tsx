@@ -1158,6 +1158,7 @@ export function SessionScreenView({
                   <TerminalView
                     remote={remote}
                     session={{ id: sid, machineId: header?.machineId ?? "" }}
+                    header={header}
                     compact={tab === "split"}
                     wide={wide}
                     running={!exited}
@@ -1318,18 +1319,26 @@ export function SessionScreenView({
   );
 }
 
+export interface SessionRouteMeta {
+  sessionId: string;
+  found: boolean;
+  scheduleRoute?: string;
+}
+
 export function SessionPage({
   remote,
   sessionId,
   onBack,
   wide,
   go,
+  onRouteMeta,
 }: {
   remote: Remote;
   sessionId: string;
   onBack: () => void;
   wide: boolean;
   go?: Go;
+  onRouteMeta?: (meta: SessionRouteMeta | null) => void;
 }) {
   useRemote(remote);
   const host = useCoreHost(remote, go);
@@ -1360,6 +1369,16 @@ export function SessionPage({
 
   const vm = useSessionView(host, sessionId, windowOpts, { refreshModels: true, refreshSettings: true });
   const header = vm.header;
+  const headerFound = !!header?.found;
+  const headerScheduleRoute =
+    headerFound && header?.taskOwned && header.scheduledTaskId
+      ? routeForTask(header.machineId, header.scheduledTaskId)
+      : undefined;
+  useLayoutEffect(() => {
+    if (!onRouteMeta) return;
+    onRouteMeta({ sessionId, found: headerFound, scheduleRoute: headerScheduleRoute });
+    return () => onRouteMeta(null);
+  }, [onRouteMeta, sessionId, headerFound, headerScheduleRoute]);
   const machineId = header?.machineId ?? "";
   const caps = header?.capabilities;
   const scope = useMemo(() => sessionDraftScope(sessionId), [sessionId]);

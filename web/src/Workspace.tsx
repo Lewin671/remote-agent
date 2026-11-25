@@ -1,16 +1,15 @@
 import * as l10n from "./i18n";
-import { startTransition, Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { startTransition, Suspense, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Remote } from "./remote";
 import { BottomBar, Home, Sidebar, WideHome, type Go } from "./views/Home";
 import { ProjectPage } from "./views/Project";
 import { ManagePage } from "./views/Projects";
-import { SessionPage } from "./views/Session";
+import { SessionPage, type SessionRouteMeta } from "./views/Session";
 import {
   ClientPage, ClientsPage, LicensesPage, MachinePage, MachineStatusPage, NotificationsPage, PairCodePage, QuotaPage, RemovedScreen,
   ScheduleCreate, ScheduleDetail, SchedulesPage, SecurityPage, SettingsPage, UsagePage, inOwnFile, page,
 } from "./views/pages";
-import { routeForTask, useConnectionView, useCoreHost, useSchedulesView } from "./core/host";
-import { ScreenTarget } from "./gen/remoteagent/core/v1/app_pb";
+import { useConnectionView, useCoreHost, useSchedulesView } from "./core/host";
 import { Plus } from "./icons";
 
 const Setup = page(() => import("./views/Pairing").then(m => ({ default: m.Setup })));
@@ -98,17 +97,19 @@ export default function Workspace({ remote }: { remote: Remote }) {
   const scheduling = schedulesVm.canCreate;
   const parsed = parseRoute(route);
   const { kind, rest, arg } = parsed;
-  const sessionRouteInfo = useSyncExternalStore(
-    (cb) => (kind === "s" ? host.subscribe(ScreenTarget.SESSION, cb) : () => {}),
-    () => {
-      if (kind !== "s") return "";
-      const h = host.viewSession(arg).header;
-      if (!h?.found) return "";
-      return h.taskOwned && h.scheduledTaskId ? "t:" + routeForTask(h.machineId, h.scheduledTaskId) : "s:" + arg;
-    },
-  );
-  const scheduleSession = sessionRouteInfo.startsWith("t:") ? sessionRouteInfo.slice(2) : undefined;
-  const selectedSessionId = sessionRouteInfo ? arg : undefined;
+  const [sessionRouteMeta, setSessionRouteMeta] = useState<SessionRouteMeta | null>(null);
+  const handleSessionRouteMeta = useCallback((next: SessionRouteMeta | null) => {
+    setSessionRouteMeta((prev) =>
+      prev?.sessionId === next?.sessionId &&
+      prev?.found === next?.found &&
+      prev?.scheduleRoute === next?.scheduleRoute
+        ? prev
+        : next,
+    );
+  }, []);
+  const activeSessionMeta = kind === "s" && sessionRouteMeta?.sessionId === arg ? sessionRouteMeta : null;
+  const scheduleSession = activeSessionMeta?.found ? activeSessionMeta.scheduleRoute : undefined;
+  const selectedSessionId = activeSessionMeta?.found ? arg : undefined;
   useEffect(() => {
     if (kind === "tasks" && wide && rest[0] !== "new" && !rest[1]) host.scheduleSelectTask("", "");
   }, [host, kind, wide, rest[0], rest[1]]);
@@ -136,6 +137,7 @@ export default function Workspace({ remote }: { remote: Remote }) {
         onBack={back}
         wide={wide}
         go={go}
+        onRouteMeta={handleSessionRouteMeta}
       />
     );
   else if (kind === "tasks") {

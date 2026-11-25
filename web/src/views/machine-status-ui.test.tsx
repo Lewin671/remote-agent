@@ -6,7 +6,7 @@ import { create } from "@bufbuild/protobuf";
 import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { patchSyncState } from "../test/remote-fixture";
+import { patchSyncState, demoMachines } from "../test/remote-fixture";
 import { getCoreHost, newSessionDraftScope } from "../core/host";
 import { DemoRemote } from "../dev/demo";
 import { CommandResultSchema, ProjectSummarySchema } from "../gen/remoteagent/v1/remote_pb";
@@ -289,11 +289,11 @@ describe("a disk that is nearly full", () => {
 
   it("opens a new session on this computer in its latest project with the prompt filled in, and sends nothing", async () => {
     const r = demo("ms-full&ms=tight");
-    r.machines.get("mac")!.meta!.projects = [
+    demoMachines(r).get("mac")!.meta!.projects = [
       create(ProjectSummarySchema, { path: "/Users/me/Code/old", latestCreatedMs: 1n }),
       create(ProjectSummarySchema, { path: "/Users/me/Code/foo", latestEndedMs: 5n }),
     ];
-    patchSyncState(r, { machines: new Map(r.machines) });
+    patchSyncState(r, { machines: new Map(demoMachines(r)) });
     const sent = vi.spyOn(r, "machineCommand");
     const go = vi.fn();
     mount(<MachineStatusPage remote={r} id="mac" go={go} onBack={none} />);
@@ -331,8 +331,8 @@ describe("a disk that is nearly full", () => {
 
   it("asks for a folder on this computer when none has been used", async () => {
     const r = demo("ms-full&ms=tight");
-    r.machines.get("mac")!.meta!.projects = [];
-    patchSyncState(r, { machines: new Map(r.machines) });
+    demoMachines(r).get("mac")!.meta!.projects = [];
+    patchSyncState(r, { machines: new Map(demoMachines(r)) });
     mount(<MachineStatusPage remote={r} id="mac" go={none} onBack={none} />);
     await ready();
     await click(button("让 Agent 帮我清理"));
@@ -389,8 +389,8 @@ describe("when the numbers cannot be read", () => {
     mount(<MachineStatusPage remote={r} id="mac" go={none} onBack={none} />);
     await ready();
     act(() => {
-      r.machines.get("mac")!.online = false;
-      patchSyncState(r, { machines: new Map(r.machines) });
+      demoMachines(r).get("mac")!.online = false;
+      patchSyncState(r, { machines: new Map(demoMachines(r)) });
     });
     await vi.waitFor(() => expect(host.querySelector(".ms-live")!.textContent).toMatch(/前的数据$/));
   });
@@ -510,9 +510,9 @@ describe("the reminder on the home", () => {
 
   it("is not shown for a computer that is offline, has enough space or cannot report", () => {
     const r = demo("ms=both");
-    r.machines.get("imac")!.online = false;
-    r.machines.get("mac")!.meta!.capabilities!.machineStatus = false;
-    patchSyncState(r, { machines: new Map(r.machines) });
+    demoMachines(r).get("imac")!.online = false;
+    demoMachines(r).get("mac")!.meta!.capabilities!.machineStatus = false;
+    patchSyncState(r, { machines: new Map(demoMachines(r)) });
     mount(<DiskReminders remote={r} go={none} />);
     expect(host.querySelectorAll(".ms-alert")).toHaveLength(0);
     const fine = demo("ms=ok");
@@ -525,8 +525,8 @@ describe("the reminder on the home", () => {
     mount(<DiskReminders remote={r} go={none} />);
     expect(host.querySelectorAll(".ms-alert")).toHaveLength(1);
     act(() => {
-      r.machines.get("mac")!.meta!.diskStatus!.availableBytes = 30_000_000_000n;
-      patchSyncState(r, { machines: new Map(r.machines) });
+      demoMachines(r).get("mac")!.meta!.diskStatus!.availableBytes = 30_000_000_000n;
+      patchSyncState(r, { machines: new Map(demoMachines(r)) });
     });
     act(() => root!.render(<DiskReminders remote={r} go={none} />));
     expect(host.querySelectorAll(".ms-alert")).toHaveLength(0);
@@ -596,7 +596,7 @@ describe("the emergency reserve in the attachment storage", () => {
 
   it("is not listed for a computer that cannot report, nor once the daemon has released it", async () => {
     const r = demo();
-    r.machines.get("mac")!.meta!.diskStatus!.emergencyReserveBytes = 0n;
+    demoMachines(r).get("mac")!.meta!.diskStatus!.emergencyReserveBytes = 0n;
     mount(<MachinePage remote={r} id="mac" section="storage" go={none} onBack={none} />);
     await vi.waitFor(() => expect(host.textContent).toContain(message("settings.attachment_storage")));
     expect(host.textContent).not.toContain("应急预留");

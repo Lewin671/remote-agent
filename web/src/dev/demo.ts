@@ -79,11 +79,25 @@ import {
 } from "../gen/remoteagent/v1/remote_pb";
 import {
   Remote,
-  type MachineView,
-  type SessionView,
   type StreamLegCallbacks,
   type TermConn,
 } from "../remote";
+import type { LiveSnapshot, MachineMeta } from "../gen/remoteagent/v1/remote_pb";
+
+type MachineView = { id: string; online: boolean; lastSeenMs: bigint; meta?: MachineMeta; metaRev: bigint };
+type SessionView = {
+  id: string;
+  machineId: string;
+  historyError?: string;
+  info?: Session;
+  checkpoint?: LiveSnapshot;
+  checkpointStatus?: "ready" | "waiting" | "invalid";
+  metaRev: bigint;
+  lastSeq: bigint;
+  updatedMs: bigint;
+  endedMs: bigint;
+};
+type DemoConnState = "connecting" | "online" | "offline";
 import { newRequestID } from "../crypto";
 import type { DaemonSettings, ListModelsResponse } from "../gen/remoteagent/v1/local_pb";
 
@@ -141,10 +155,6 @@ import {
   type RpcEffect,
   type TokenResultEvent,
 } from "../gen/remoteagent/core/v1/app_pb";
-import {
-  ConnState as CoreConnState,
-  HomeEmptyKind,
-} from "../gen/remoteagent/core/v1/home_view_pb";
 import {
   DemoDeviceSchema,
   DemoMachineSchema,
@@ -1704,30 +1714,9 @@ export class DemoRemote extends Remote {
     getCoreHost(this).dispatch(create(CoreEventSchema, { event: { case: "streamFrame", value: { legId, frame } } }));
   }
 
-  get machines(): ReadonlyMap<string, MachineView> { return this.demoMachines; }
-  get sessions(): ReadonlyMap<string, SessionView> { return this.demoSessions; }
-  get devices(): ReadonlyMap<string, import("../devices").DeviceInfo> { return this.demoDevices; }
-  get prefs(): import("../remote").PrefsState {
-    const b = globalThis.__remoteAgentCore ? getCoreHost(this).viewHome(1).prefsBanner : undefined;
-    return {
-      status: b?.errorTone ? "error" : "ready",
-      error: "",
-      snap: { revision: this.stored.revision, prefs: this.stored.prefs },
-      pending: b?.syncing ? new Map([["", "syncing"]]) : new Map(),
-    };
-  }
   projectPrefs() { return this.stored.prefs; }
-  get listed(): boolean {
-    if (!globalThis.__remoteAgentCore) return true;
-    return getCoreHost(this).viewHome(1).empty?.kind !== HomeEmptyKind.LOADING;
-  }
-  get conn(): import("../remote").ConnState {
-    if (!globalThis.__remoteAgentCore) return this.opts.get("conn") === "noserver" || this.opts.get("conn") === "removed" ? "offline" : this.opts.get("conn") === "connecting" ? "connecting" : "online";
-    const c = getCoreHost(this).viewConnection();
-    return c.removed ? "offline" : c.connected ? "online" : c.state === CoreConnState.OFFLINE ? "offline" : "connecting";
-  }
 
-  setDemoConnection(conn: import("../remote").ConnState) {
+  setDemoConnection(conn: DemoConnState) {
     if (!globalThis.__remoteAgentCore) return;
     const host = getCoreHost(this);
     if (conn === "online") {
@@ -1797,6 +1786,12 @@ export class DemoRemote extends Remote {
     if (this.demoStream?.ready && !removed && conn !== "fail") {
       const legId = this.demoStream.legId;
       const wantedIds = new Set(this.demoMachines.keys());
+      const machinesChanged =
+        wantedIds.size !== this.syncedMachineIds.size ||
+        [...wantedIds].some((id) => !this.syncedMachineIds.has(id));
+      if (machinesChanged) {
+        host.dispatch(create(CoreEventSchema, { event: { case: "seedDemoWorld", value: this.demoWorld(false) } }));
+      }
       for (const prevId of this.syncedMachineIds) if (!wantedIds.has(prevId)) this.pushFrame(legId, { case: "machineRemovedId", value: prevId });
       for (const m of this.demoMachines.values()) this.pushFrame(legId, { case: "machineUpdated", value: this.plainMachine(m) });
       const wantedSessions = [...this.demoSessions.values()];

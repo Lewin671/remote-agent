@@ -10,15 +10,15 @@ import {
 import { usePointerFine } from "../ui";
 import { Terminal as XTerm } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   TerminalHistoryEventKind,
   TerminalHistoryPhase,
   TerminalStreamEventKind,
   useConnectionView,
   useCoreHost,
+  useSessionHeader,
 } from "../core/host";
-import { ScreenTarget } from "../gen/remoteagent/core/v1/app_pb";
 import { renderText } from "../core/text";
 import { errorText, TermConfirmKind, type Remote, type TermConn } from "../remote";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CornerDownLeft, Keyboard, Maximize2 } from "../icons";
@@ -60,13 +60,30 @@ const keys2: [ReactNode, string, string][] = [
 /** The session's terminal, streamed live. Typing goes to the session like
  * the local keyboard. Opening it fits the tmux window to this screen.
  * Scrolling up opens the read-only reader over the same area. */
-export function TerminalView({ remote, session, compact, wide, running }: { remote: Remote; session: { id: string; machineId: string }; compact?: boolean; wide?: boolean; running: boolean }) {
+export function TerminalView({
+  remote,
+  session,
+  header: headerProp,
+  compact,
+  wide,
+  running,
+}: {
+  remote: Remote;
+  session: { id: string; machineId: string };
+  header?: import("../gen/remoteagent/core/v1/session_view_pb").SessionHeaderView;
+  compact?: boolean;
+  wide?: boolean;
+  running: boolean;
+}) {
   const coreHost = useCoreHost(remote);
   const connView = useConnectionView(coreHost);
-  const sessionHeader = useSyncExternalStore(
-    (cb) => coreHost.subscribe(ScreenTarget.SESSION, cb),
-    () => { return coreHost.viewSession(session.id).header; },
-  );
+  useEffect(() => {
+    if (!session.id) return;
+    coreHost.watchSession(session.id);
+    return () => coreHost.unwatchSession(session.id);
+  }, [coreHost, session.id]);
+  const fallbackHeader = useSessionHeader(coreHost, headerProp ? "" : session.id);
+  const sessionHeader = headerProp ?? fallbackHeader;
   const online = sessionHeader?.found ? sessionHeader.terminalReady : connView.connected;
   const waitingPeer = sessionHeader?.found ? sessionHeader.terminalWaiting : !online && (connView.reachabilityUnknown || connView.displayGrace);
   const onlineRef = useRef(online);

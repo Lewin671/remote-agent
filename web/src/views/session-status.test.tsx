@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { getCoreHost } from "../core/host";
 import { DemoRemote } from "../dev/demo";
 import { ComputerReachability } from "../gen/remoteagent/core/v1/session_view_pb";
-import { patchSyncState } from "../test/remote-fixture";
+import { patchSyncState, demoMachines } from "../test/remote-fixture";
 import { SessionPage } from "./Session";
 import { SessionRow } from "./Home";
 
@@ -40,19 +40,19 @@ function open(setup: (r: DemoRemote) => void, query = "") {
 const status = () => host.querySelector(".dh .st")?.textContent ?? "";
 
 it("shows the last state heard, and no connection word, before the lists are in", () => {
-  open((r) => patchSyncState(r, { conn: "connecting", listed: false }), "conn=connecting");
+  open((r) => patchSyncState(r, { conn: "connecting" }), "conn=connecting");
   expect(status()).not.toContain(message("list_state.unlinked"));
   expect(status()).not.toContain(message("list_state.offline"));
   expect(status()).toContain(message("list_state.idle"));
 });
 
 it("shows the state once the lists are in", () => {
-  open((r) => patchSyncState(r, { conn: "online", listed: true }));
+  open((r) => patchSyncState(r, { conn: "online" }));
   expect(status()).toContain(message("list_state.idle"));
 });
 
 it("still says 未连接 when the server cannot be reached", () => {
-  open((r) => patchSyncState(r, { conn: "offline", listed: false }), "conn=nonetwork");
+  open((r) => patchSyncState(r, { conn: "offline" }), "conn=nonetwork");
   expect(status()).toContain(message("list_state.unlinked"));
 });
 
@@ -62,7 +62,7 @@ describe("a list row", () => {
     r.start();
     const demo = r as unknown as { demoMachines: Map<string, { online: boolean }>; syncDemoToCore(): void };
     for (const m of demo.demoMachines.values()) m.online = false;
-    const offlineMachines = new Map([...r.machines].map(([id, m]) => [id, { ...m, online: false }]));
+    const offlineMachines = new Map([...demoMachines(r)].map(([id, m]) => [id, { ...m, online: false }]));
     patchSyncState(r, { machines: offlineMachines });
     demo.syncDemoToCore();
     setup(r);
@@ -76,18 +76,18 @@ describe("a list row", () => {
   }
 
   it("shows the last state heard, not 未连接 or 电脑离线, while the lists are on their way", () => {
-    const text = row((r) => patchSyncState(r, { conn: "connecting", listed: false }), "conn=connecting");
+    const text = row((r) => patchSyncState(r, { conn: "connecting" }), "conn=connecting");
     expect(text).not.toContain(message("list_state.unlinked"));
     expect(text).not.toContain(message("list_state.offline"));
     expect(text).toContain(message("list_state.idle"));
   });
 
   it("says 电脑离线 once the lists are in and the computer is not", () => {
-    expect(row((r) => patchSyncState(r, { conn: "online", listed: true }))).toContain(message("list_state.offline"));
+    expect(row((r) => patchSyncState(r, { conn: "online" }))).toContain(message("list_state.offline"));
   });
 
   it("says 未连接 when the server cannot be reached", () => {
-    expect(row((r) => patchSyncState(r, { conn: "offline", listed: false }), "conn=nonetwork")).toContain(message("list_state.unlinked"));
+    expect(row((r) => patchSyncState(r, { conn: "offline" }), "conn=nonetwork")).toContain(message("list_state.unlinked"));
   });
 });
 

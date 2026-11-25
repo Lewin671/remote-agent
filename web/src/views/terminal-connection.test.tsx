@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { act } from "react";
+import { demoSessions } from "../test/remote-fixture";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
@@ -65,7 +66,7 @@ async function mount() {
     frame = receive; end = onClose; onStateChange = onState; return { close, send, confirmRebuild } as never;
   });
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
-  await act(async () => root!.render(<TerminalView remote={remote} session={remote.sessions.get("s-run")!} running />));
+  await act(async () => root!.render(<TerminalView remote={remote} session={demoSessions(remote).get("s-run")!} running />));
   await act(async () => { await frame({ kind: { case: "snapshot", value: { cols: 80, rows: 24, data: new Uint8Array([65]) } } } as never); });
   send.mockClear();
   const layout = (value: number, paneHeight = 480, screenHeight = 480) => {
@@ -145,7 +146,7 @@ it("keeps the first screen out of sight until it is fitted to the pane, or for a
   let frame!: Parameters<Remote["openTerminal"]>[1];
   vi.spyOn(remote, "openTerminal").mockImplementation(async (_sid, receive) => { frame = receive; return { close: vi.fn(), send: vi.fn() } as never; });
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
-  await act(async () => root!.render(<TerminalView remote={remote} session={remote.sessions.get("s-run")!} running />));
+  await act(async () => root!.render(<TerminalView remote={remote} session={demoSessions(remote).get("s-run")!} running />));
   const pane = () => host.querySelector(".tpan")!;
   expect(pane().classList.contains("unfit")).toBe(true);
   await act(async () => { await frame({ kind: { case: "snapshot", value: { cols: 80, rows: 24, data: new Uint8Array([65]) } } } as never); });
@@ -167,7 +168,7 @@ it("shows the first screen as soon as the fitted one is in", async () => {
   let frame!: Parameters<Remote["openTerminal"]>[1];
   vi.spyOn(remote, "openTerminal").mockImplementation(async (_sid, receive) => { frame = receive; return { close: vi.fn(), send: vi.fn() } as never; });
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
-  await act(async () => root!.render(<TerminalView remote={remote} session={remote.sessions.get("s-run")!} running />));
+  await act(async () => root!.render(<TerminalView remote={remote} session={demoSessions(remote).get("s-run")!} running />));
   const pane = () => host.querySelector(".tpan")!;
   const snapshot = (cols: number) => act(async () => { await frame({ kind: { case: "snapshot", value: { cols, rows: 24, data: new Uint8Array([65]) } } } as never); });
   await snapshot(80);
@@ -209,7 +210,7 @@ it("reopens after an opening failure when main transitions from offline to onlin
     .mockRejectedValueOnce(Error("initial opening failure"))
     .mockResolvedValueOnce({ close: vi.fn(), send: vi.fn() } as never);
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
-  const session = remote.sessions.get("s-run")!;
+  const session = demoSessions(remote).get("s-run")!;
   await act(async () => root!.render(<TerminalView remote={remote} session={session} running />));
   expect(open).toHaveBeenCalledTimes(1);
   // Transitions offline -> online should reopen even though the first attempt never opened.
@@ -232,7 +233,7 @@ it("does not open a newly selected session while offline, and opens it once onli
     openedSids.push(sid);
     return { close: vi.fn(), send: vi.fn() } as never;
   });
-  const s1 = remote.sessions.get("s-run")!;
+  const s1 = demoSessions(remote).get("s-run")!;
   const s2 = { ...s1, id: "s-next" };
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
   await act(async () => root!.render(<TerminalView remote={remote} session={s1} running />));
@@ -271,7 +272,7 @@ it("keeps terminal in connecting state during cold-start reachability unknown, o
   await act(async () => { remote.start(); });
   const open = vi.spyOn(remote, "openTerminal").mockResolvedValue({ close: vi.fn(), send: vi.fn() } as never);
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
-  const s1 = remote.sessions.get("s-run")!;
+  const s1 = demoSessions(remote).get("s-run")!;
   await act(async () => root!.render(<TerminalView remote={remote} session={s1} running />));
 
   // Neutral connecting capsule, no "terminal closed" card while grace is active.
@@ -291,7 +292,7 @@ it("keeps terminal in connecting state during cold-start reachability unknown, o
   await act(async () => { remote2.start(); });
   const open2 = vi.spyOn(remote2, "openTerminal").mockResolvedValue({ close: vi.fn(), send: vi.fn() } as never);
   root = createRoot(host);
-  await act(async () => root!.render(<TerminalView remote={remote2} session={remote2.sessions.get("s-run")!} running />));
+  await act(async () => root!.render(<TerminalView remote={remote2} session={demoSessions(remote2).get("s-run")!} running />));
   expect(open2).toHaveBeenCalledTimes(0);
   expect(host.querySelector(".tstate")).toBeNull();
   await act(async () => {
@@ -302,7 +303,7 @@ it("keeps terminal in connecting state during cold-start reachability unknown, o
 
 it("clears open history reader and restores input when switching sessions on the same TerminalView", async () => {
   const vm = await mount();
-  const s1 = vm.remote.sessions.get("s-run")!;
+  const s1 = demoSessions(vm.remote).get("s-run")!;
   const s2 = { ...s1, id: "s-next" };
 
   // Enter reading on s1 via wheel-up, accept a history page, and trigger live output while reading.

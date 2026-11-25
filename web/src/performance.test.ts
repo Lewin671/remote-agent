@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { patchSyncState, SyntheticRemote } from "./test/remote-fixture";
+import { patchSyncState, remoteConnState, SyntheticRemote } from "./test/remote-fixture";
 import { getCoreHost } from "./core/host";
 import { renderText } from "./core/text";
 const fixtureRemotes: SyntheticRemote[] = [];
@@ -71,7 +71,7 @@ it("does not open a stale main socket when stopped during login", async () => {
   finish = undefined as never;
   r.start();
   await vi.waitFor(() => expect(finish).toBeTypeOf("function"));
-  await vi.waitFor(() => expect((r as any).conn).toBe("connecting"));
+  await vi.waitFor(() => expect(remoteConnState(r)).toBe("connecting"));
   await settle();
   finish();
   await vi.waitFor(() => expect(Socket.all).toHaveLength(1));

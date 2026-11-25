@@ -10,15 +10,6 @@ export class Link {
   private readonly streams = new Set<{ end(reason: string, notify?: boolean): void }>();
   constructor(readonly path: Path) {}
 
-  status(machineId: string) {
-    const state = this.path.status(machineId);
-    return {
-      ...state,
-      available: state.ready && state.reachable,
-      canProbe: (serverReachable: boolean) => serverReachable || !state.relayRequired,
-    };
-  }
-
   openPathStream(address: string) { return this.path.openStream(address); }
 
   openStream(onClose: (reason: string) => void, stop: (reason: string) => void) {

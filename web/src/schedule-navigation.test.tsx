@@ -49,7 +49,7 @@ async function mount() {
   const remote = DemoRemote.create(new URLSearchParams());
   activeRemote = remote;
   vi.spyOn(Remote, "load").mockResolvedValue(remote);
-  const demoMachines = (remote as unknown as { demoMachines: Map<string, import("./remote").MachineView> }).demoMachines;
+  const demoMachines = (remote as unknown as { demoMachines: Map<string, import("./test/remote-fixture").TestMachineView> }).demoMachines;
   const mac = demoMachines.get("mac")!;
   mac.meta!.capabilities!.scheduledTasks = true;
   let tasks: ScheduleTaskJson[] = [];
@@ -64,7 +64,7 @@ async function mount() {
     return create(CommandResultSchema, {});
   });
   remote.start();
-  patchSyncState(remote, { conn: "online", listed: true, machines: new Map(demoMachines) });
+  patchSyncState(remote, { conn: "online", machines: new Map(demoMachines) });
   const coreHost = getCoreHost(remote);
   const refresh = async () => {
     const before = listCalls.mock.calls.filter(([, k]) => k?.case === "schedule" && k.value?.operation === "list").length;
@@ -212,7 +212,7 @@ it.each(["context", "keyboard"])("marking another task unread via %s preserves t
 it("keeps a source-session result unread through the sidebar action and route handoff, then reads it on the next visit", async () => {
   wide = true;
   const { tasks, refresh, taskHasUnread } = await mount();
-  const demoSessions = (activeRemote as unknown as { demoSessions: Map<string, import("./remote").SessionView> }).demoSessions;
+  const demoSessions = (activeRemote as unknown as { demoSessions: Map<string, import("./test/remote-fixture").TestSessionView> }).demoSessions;
   const source = { ...demoSessions.get("s-idle")!, info: { ...demoSessions.get("s-idle")!.info!, taskOwned: true, scheduledTaskId: tasks[0].id } };
   demoSessions.set("s-idle", source);
   patchSyncState(activeRemote!, { sessions: new Map(demoSessions) });

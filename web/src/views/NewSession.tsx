@@ -411,6 +411,7 @@ export function NewBox({ remote, projectKey, go, autoFocus, variant = "sheet", f
     host.newSessionOpen(projectKey);
     const draftMachine = projectKey ? remote.draftMachines.get(projectKey) : undefined;
     if (draftMachine) host.newSessionSelectMachine(draftMachine);
+    return () => { host.newSessionClose(projectKey); };
   }, [host, remote, projectKey]);
 
   useEffect(() => {

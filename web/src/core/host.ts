@@ -78,6 +78,7 @@ import {
   MonthStartSchema,
   NavigateRoute,
   NetworkChangedEventSchema,
+  NewSessionCloseActionSchema,
   NewSessionOpenActionSchema,
   NewSessionProjectActionSchema,
   NewSessionScreenRequestSchema,
@@ -218,6 +219,7 @@ import type { ProjectViewModel } from "../gen/remoteagent/core/v1/project_view_p
 import {
   ScheduleBoolActionSchema,
   ScheduleCacheLoadedEventSchema,
+  ScheduleCacheWrittenEventSchema,
   ScheduleDetailScreenRequestSchema,
   ScheduleFormBoolActionSchema,
   ScheduleFormOpenActionSchema,
@@ -274,6 +276,7 @@ import {
   SessionTraySessionActionSchema,
   SessionWindowRequestSchema,
   SharedFileFailureKind,
+  type SessionHeaderView,
   type SessionRestoreComposerEffect,
   type SessionViewModel,
 } from "../gen/remoteagent/core/v1/session_view_pb";
@@ -321,6 +324,7 @@ import {
 } from "../gen/remoteagent/core/v1/settings_view_pb";
 import {
   UsageCacheLoadedEventSchema,
+  UsageCacheWrittenEventSchema,
   UsageScreenOpenEventSchema,
   UsageScreenRequestSchema,
   UsageScreenRetryEventSchema,
@@ -331,7 +335,7 @@ import {
   type UsageViewModel,
 } from "../gen/remoteagent/core/v1/usage_view_pb";
 import {
-  ConnectionBannerKind,
+  ConnBannerKind,
   ConnectionScreenRequestSchema,
   type ConnectionViewModel,
   type WatchedSessionRoute,
@@ -426,12 +430,12 @@ export interface CoreExecutor {
   executeRpc(eff: RpcEffect): Promise<Event>;
   executeCommandAttempt(eff: DispatchCommandEffect, signal?: AbortSignal): Promise<CommandOutcomeEvent>;
   readScheduleCache?(opId: bigint, machineId: string): Promise<ScheduleCacheLoadedEvent>;
+  writeScheduleCache?(machineId: string, requestId: string, sealedResultBytes: Uint8Array): Promise<void>;
   deleteScheduleCache?(machineId: string): Promise<void>;
   loadScheduleSeen?(machineId: string): Promise<ScheduleSeenLoadedEvent>;
   saveScheduleSeen?(machineId: string, tokens: ScheduleSeenToken[]): Promise<void>;
   dismissScheduleNotifications?(runs: ScheduleNotificationRef[]): void;
   setWatchedSessions?(routes: WatchedSessionRoute[]): void;
-  syncPushSubscription?(): void;
   securityEffect?(eff: Effect["effect"]): void;
   securityTokenUpdated?(eff: SecurityTokenUpdatedEffect): void;
   securityStatusChanged?(eff: SecurityStatusChangedEffect): void;
@@ -859,9 +863,9 @@ export class CoreHost {
   private readonly listeners = new Map<ScreenTarget, Set<() => void>>(ALL_TARGETS.map((t) => [t, new Set()]));
   private totalListeners = 0;
 
-  private homeCache?: { version: number; endedLimit: number; vm: HomeViewModel };
+  private homeCache = new Map<number, { version: number; vm: HomeViewModel }>();
   private projectCache = new Map<string, { version: number; vm: ProjectViewModel }>();
-  private sessionCache = new Map<string, { version: number; windowKey: string; vm: SessionViewModel }>();
+  private sessionCache = new Map<string, { version: number; vm: SessionViewModel }>();
   private newSessionCache?: { version: number; key: string; vm: NewSessionViewModel };
   private connectionCache?: { version: number; vm: ConnectionViewModel };
   private schedulesCache?: { version: number; endedLimit: number; vm: SchedulesViewModel };
@@ -1188,18 +1192,6 @@ export class CoreHost {
           CoreHost.WARM_SCHEDULE_CACHE_TIMEOUT_MS,
         );
       }
-    } else if (kind === "machine-status" && rest[0]) {
-      try {
-        this.hydrateUsageCache(decodeURIComponent(rest[0]));
-      } catch {
-        this.hydrateUsageCache(rest[0]);
-      }
-    } else if (kind === "u" && rest[0]) {
-      try {
-        this.hydrateUsageCache(decodeURIComponent(rest[0]));
-      } catch {
-        this.hydrateUsageCache(rest[0]);
-      }
     }
   }
 
@@ -1459,6 +1451,7 @@ export class CoreHost {
     this.emit({ case: "projectAdd", value: create(ProjectAddActionSchema, { path, pickerKey }) });
 
   newSessionOpen = (projectKey: string) => this.emit({ case: "newSessionOpen", value: create(NewSessionOpenActionSchema, { projectKey }) });
+  newSessionClose = (projectKey: string) => this.emit({ case: "newSessionClose", value: create(NewSessionCloseActionSchema, { projectKey }) });
   newSessionSelectMachine = (machineId: string) => this.emit({ case: "newSessionSelectMachine", value: create(NewSessionSelectMachineActionSchema, { machineId }) });
   newSessionSelectAgent = (agent: Agent) => this.emit({ case: "newSessionSelectAgent", value: create(NewSessionSelectAgentActionSchema, { agent }) });
   newSessionSelectModel = (model: string, effort: string, standardContext?: boolean) =>
@@ -1668,12 +1661,19 @@ export class CoreHost {
     return false;
   }
 
+  private clearSessionCacheFor(sessionId: string) {
+    const prefix = `${sessionId}\0`;
+    for (const key of [...this.sessionCache.keys()]) {
+      if (key.startsWith(prefix)) this.sessionCache.delete(key);
+    }
+  }
+
   watchSession(sessionId: string) {
     if (!sessionId) return;
     const prev = this.watchCounts.get(sessionId) ?? 0;
     this.watchCounts.set(sessionId, prev + 1);
     if (prev === 0) {
-      this.sessionCache.delete(sessionId);
+      this.clearSessionCacheFor(sessionId);
       this.emit({ case: "sessionWatch", value: create(SessionWatchEventSchema, { sessionId, watched: true }) });
     }
   }
@@ -1683,7 +1683,7 @@ export class CoreHost {
     const prev = this.watchCounts.get(sessionId) ?? 0;
     if (prev <= 1) {
       this.watchCounts.delete(sessionId);
-      this.sessionCache.delete(sessionId);
+      this.clearSessionCacheFor(sessionId);
       if (prev === 1) {
         this.emit({ case: "sessionWatch", value: create(SessionWatchEventSchema, { sessionId, watched: false }) });
       }
@@ -2080,7 +2080,6 @@ export class CoreHost {
 
   watchMachineStatus(machineId: string, mode: MachinePollMode): () => void {
     if (!machineId || mode === MachinePollMode.OFF) return () => {};
-    this.hydrateUsageCache(machineId);
     let entry = this.machineWatchCounts.get(machineId);
     if (!entry) {
       entry = { live: 0, overview: 0 };
@@ -2137,7 +2136,7 @@ export class CoreHost {
     return `ra-usage-cache:${scope}:${machineId}:${preset}`;
   }
 
-  hydrateUsageCache(machineId: string) {
+  private hydrateUsageCache(machineId: string) {
     if (!machineId || this.closed || this.usageHydratedMachines.has(machineId)) return;
     this.usageHydratedMachines.add(machineId);
     if (typeof localStorage === "undefined") return;
@@ -2188,7 +2187,6 @@ export class CoreHost {
     opts?: { applyFocus?: boolean; focusAgent?: Agent; focusModel?: string },
   ) {
     if (!machineId || this.closed) return;
-    this.hydrateUsageCache(machineId);
     const params = buildUsageOpenParams(preset, customStartMs, customEndMs);
     this.emit({
       case: "usageScreenOpen",
@@ -2480,11 +2478,12 @@ export class CoreHost {
 
   viewHome(endedLimit = 30): HomeViewModel {
     const ver = this.version(ScreenTarget.HOME);
-    if (this.homeCache && this.homeCache.version === ver && this.homeCache.endedLimit === endedLimit) {
-      return this.homeCache.vm;
+    const cached = this.homeCache.get(endedLimit);
+    if (cached && cached.version === ver) {
+      return cached.vm;
     }
     const value = this.queryView<HomeViewModel>({ case: "home", value: create(HomeScreenRequestSchema, { endedLimit }) }, "home");
-    this.homeCache = { version: ver, endedLimit, vm: value };
+    this.homeCache.set(endedLimit, { version: ver, vm: value });
     return value;
   }
 
@@ -2545,8 +2544,9 @@ export class CoreHost {
     const windowKey = window
       ? `${window.limit ?? 0}:${window.beforeSeq ?? 0n}:${window.aroundSeq ?? 0n}:${window.revealSeq ?? 0n}:${window.revealRunId ?? ""}:${expandedGroupIds.join(",")}`
       : "";
-    const cached = this.sessionCache.get(sessionId);
-    if (cached && cached.version === ver && cached.windowKey === windowKey) {
+    const cacheKey = `${sessionId}\0${windowKey}`;
+    const cached = this.sessionCache.get(cacheKey);
+    if (cached && cached.version === ver) {
       return cached.vm;
     }
     const value = this.queryView<SessionViewModel>(
@@ -2568,8 +2568,19 @@ export class CoreHost {
       },
       "session",
     );
-    this.sessionCache.set(sessionId, { version: ver, windowKey, vm: value });
+    this.sessionCache.set(cacheKey, { version: ver, vm: value });
     return value;
+  }
+
+  viewSessionHeader(sessionId: string): SessionHeaderView | undefined {
+    const ver = this.version(ScreenTarget.SESSION);
+    const prefix = `${sessionId}\0`;
+    for (const [key, entry] of this.sessionCache) {
+      if (key.startsWith(prefix) && entry.version === ver) {
+        return entry.vm.header;
+      }
+    }
+    return this.viewSession(sessionId).header;
   }
 
   private queryView<T>(
@@ -3048,6 +3059,24 @@ export class CoreHost {
         break;
       }
 
+      case "scheduleWriteCache": {
+        const { opId, machineId, requestId, sealedResultBytes } = val.value;
+        const done = () => {
+          if (!this.closed) {
+            this.emit({
+              case: "scheduleCacheWritten",
+              value: create(ScheduleCacheWrittenEventSchema, { opId, machineId }),
+            });
+          }
+        };
+        if (this.executor?.writeScheduleCache) {
+          void this.executor.writeScheduleCache(machineId, requestId, sealedResultBytes).then(done, done);
+        } else {
+          done();
+        }
+        break;
+      }
+
       case "scheduleDeleteCache":
         void this.executor?.deleteScheduleCache?.(val.value.machineId)?.catch(() => undefined);
         break;
@@ -3252,6 +3281,15 @@ export class CoreHost {
 
       case "usageCacheWrite":
         this.persistUsageCache(val.value.machineId, val.value.snapshot);
+        if (!this.closed) {
+          this.emit({
+            case: "usageCacheWritten",
+            value: create(UsageCacheWrittenEventSchema, {
+              opId: val.value.opId,
+              machineId: val.value.machineId,
+            }),
+          });
+        }
         break;
 
       case "watchedSessions":
@@ -3267,9 +3305,7 @@ export class CoreHost {
         break;
 
       case "syncPushSubscription":
-        if (this.executor?.syncPushSubscription) {
-          this.executor.syncPushSubscription();
-        } else if (this.remote && !this.closed) {
+        if (this.remote && !this.closed) {
           void restorePushPrefs(this.remote);
         }
         break;
@@ -3491,7 +3527,7 @@ export class CoreHost {
 
   private invalidateTarget(target: ScreenTarget) {
     this.screenVersions.set(target, (this.screenVersions.get(target) ?? 0) + 1);
-    if (target === ScreenTarget.HOME) this.homeCache = undefined;
+    if (target === ScreenTarget.HOME) this.homeCache.clear();
     else if (target === ScreenTarget.PROJECT) this.projectCache.clear();
     else if (target === ScreenTarget.SESSION) this.sessionCache.clear();
     else if (target === ScreenTarget.NEW_SESSION) this.newSessionCache = undefined;
@@ -3517,10 +3553,6 @@ export class CoreHost {
     this.dirtyTargets.clear();
 
     if (targets.includes(ScreenTarget.CONNECTION) || targets.includes(ScreenTarget.HOME) || targets.includes(ScreenTarget.PROJECT)) {
-      if (!targets.includes(ScreenTarget.SESSION)) {
-        this.invalidateTarget(ScreenTarget.SESSION);
-        if ((this.listeners.get(ScreenTarget.SESSION)?.size ?? 0) > 0) targets.push(ScreenTarget.SESSION);
-      }
       for (const st of SETTINGS_TARGETS) {
         if (!targets.includes(st)) {
           this.invalidateTarget(st);
@@ -3665,6 +3697,21 @@ export function useNewSessionView(host: CoreHost, projectKey = ""): NewSessionVi
 export function useConnectionView(host: CoreHost): ConnectionViewModel {
   const version = useScreenVersion(host, ScreenTarget.CONNECTION);
   return useMemo(() => host.viewConnection(), [host, version]);
+}
+
+export function useSessionHeader(host: CoreHost, sessionId: string): SessionHeaderView | undefined {
+  const subscribe = useCallback(
+    (cb: () => void) => (sessionId ? host.subscribe(ScreenTarget.SESSION, cb) : () => {}),
+    [host, sessionId],
+  );
+  const version = useSyncExternalStore(
+    subscribe,
+    () => (sessionId ? host.version(ScreenTarget.SESSION) : 0),
+  );
+  return useMemo(
+    () => (sessionId ? host.viewSessionHeader(sessionId) : undefined),
+    [host, version, sessionId],
+  );
 }
 
 export function useSessionView(
@@ -3828,7 +3875,7 @@ export function useAttachmentDraftView(host: CoreHost, scope: DraftScope): Attac
 
 export {
   CommandRouteLeg,
-  ConnectionBannerKind,
+  ConnBannerKind,
   ConnProbeState,
   TerminalHistoryEventKind,
   TerminalHistoryPhase,

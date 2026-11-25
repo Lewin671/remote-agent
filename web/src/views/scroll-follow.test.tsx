@@ -372,7 +372,7 @@ describe("long-session cold load, memo reactivity, and key-based unseen badge", 
     remotes.push(r2);
     r2.start();
     r2.scroll.set("s-up", { top: 400, stick: false });
-    patchSyncState(r2, { conn: "offline", listed: true });
+    patchSyncState(r2, { conn: "offline" });
 
     await renderView(r2, makeVm("s-up", [], { awaitingCache: false, fetching: true }));
     expect(host!.querySelector(".body.chat")!.classList.contains("mo-hold")).toBe(true);
@@ -385,7 +385,7 @@ describe("long-session cold load, memo reactivity, and key-based unseen badge", 
     expect(host!.querySelector(".virtual-history")).toBeTruthy();
 
     // Reconnecting (fetching=true, offline=false) must never flip ready back to false / HistoryPlaceholder.
-    await act(async () => { patchSyncState(r2, { conn: "online", listed: true }); });
+    await act(async () => { patchSyncState(r2, { conn: "online" }); });
     await renderView(r2, makeVm("s-up", tail, { backfilling: false, fetching: true, hasGap: true, offline: false }));
     expect(host!.querySelector(".virtual-history")).toBeTruthy();
 
@@ -421,7 +421,7 @@ describe("long-session cold load, memo reactivity, and key-based unseen badge", 
     remotes.push(rNoNet);
     rNoNet.start();
     rNoNet.scroll.set("s-nonet", { top: 200, stick: false });
-    patchSyncState(rNoNet, { conn: "connecting", listed: true });
+    patchSyncState(rNoNet, { conn: "connecting" });
     await renderView(rNoNet, makeVm("s-nonet", tail, { backfilling: false, fetching: false, hasGap: true, offline: true }));
     expect(host!.querySelector("[data-history-index]")).toBeTruthy();
   });

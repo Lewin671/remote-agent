@@ -7,7 +7,7 @@ import {createServer as viteServer} from "vite";
 import {Remote,apiBase} from "./remote";
 import {getCoreHost} from "./core/host";
 import {relayFetch} from "./transport";
-import {SyntheticRemote} from "./test/remote-fixture";
+import { SyntheticRemote, remoteConnState } from "./test/remote-fixture";
 import {CommandResultSchema} from "./gen/remoteagent/v1/remote_pb";
 import { parseTestHeader } from "./test/stored-security-fixture";
 import type {Envelope} from "./gen/remoteagent/v1/envelope_pb";
@@ -46,7 +46,7 @@ test.each([true,false])("proxy-only command uses effective API origin (cached=%s
  };
  try {
   r.start();
-  await vi.waitFor(()=>expect(r.conn).toBe("online"));
+  await vi.waitFor(()=>expect(remoteConnState(r)).toBe("online"));
   expect(apiBase(r.account.server)).toBe(page);
   if(warm)await relayFetch(page+"/remoteagent.v1.AuthService/Login",{method:"POST"});
   await expect(getCoreHost(r).runMachineCommand(r.machine,"",{case:"createSession",value:{cwd:"/work/example"}})).resolves.toBeUndefined();

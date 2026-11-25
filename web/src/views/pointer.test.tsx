@@ -4,6 +4,7 @@
 // not need, and shortcuts written in input placeholders.
 
 import { act } from "react";
+import { demoSessions } from "../test/remote-fixture";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
@@ -33,7 +34,7 @@ function show(wide: boolean) {
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
-  act(() => root!.render(<TerminalView remote={r} session={r.sessions.get("s-run")!} wide={wide} running />));
+  act(() => root!.render(<TerminalView remote={r} session={demoSessions(r).get("s-run")!} wide={wide} running />));
   return !!host.querySelector(".keys");
 }
 

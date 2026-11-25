@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { create, type MessageInitShape } from "@bufbuild/protobuf";
+import { demoSessions } from "../test/remote-fixture";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
@@ -34,7 +35,7 @@ function demoPush(sid: string, kind: MessageInitShape<typeof EventSchema>["kind"
 it.each(["zh-CN", "en"] as const)("keeps Full access red and sends the original approval in %s", async locale => {
   localeStore.overrideForTesting(locale);
   remote = DemoRemote.create(new URLSearchParams(), async () => {}); remote.start();
-  const session = remote.sessions.get("s-appr")!;
+  const session = demoSessions(remote).get("s-appr")!;
   (remote as unknown as { demoSessions: Map<string, { info?: { mode: number } }>; syncDemoToCore(): void }).demoSessions.get("s-appr")!.info!.mode = ApprovalMode.FULL_ACCESS;
   (remote as unknown as { syncDemoToCore(): void }).syncDemoToCore();
   const resolve = vi.spyOn(getCoreHost(remote), "sessionResolveApproval");

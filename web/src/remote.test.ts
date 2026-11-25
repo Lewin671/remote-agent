@@ -4,7 +4,7 @@ import { LoginResponseSchema } from "./gen/remoteagent/v1/relay_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { afterEach, expect, it, vi } from "vitest";
 import { newRequestID } from "./crypto";
-import { patchSyncState, SyntheticRemote } from "./test/remote-fixture";
+import { patchSyncState, SyntheticRemote, demoSessions, remoteConnState } from "./test/remote-fixture";
 const liveFixtures: SyntheticRemote[] = [];
 async function probe() {
   const r = await SyntheticRemote.create();
@@ -44,7 +44,7 @@ it("routes pingMachine through CoreHost runMachineCommand and cancels on timeout
     },
   };
   r.start();
-  await vi.waitFor(() => expect(r.conn).toBe("online"));
+  await vi.waitFor(() => expect(remoteConnState(r)).toBe("online"));
   const rtt = await r.pingMachine(r.machine, 5_000);
   expect(rtt).toBeGreaterThanOrEqual(0);
   expect(sent).toBeTruthy();
@@ -73,7 +73,7 @@ it("cancels in-flight pingMachine immediately when external AbortSignal aborts",
     },
   };
   r.start();
-  await vi.waitFor(() => expect(r.conn).toBe("online"));
+  await vi.waitFor(() => expect(remoteConnState(r)).toBe("online"));
   const ctrl = new AbortController();
   const pending = r.pingMachine(r.machine, 15_000, ctrl.signal);
   await vi.waitFor(() => expect(forwardSignal).toBeDefined());
@@ -157,7 +157,7 @@ it("shows a display copy only where it belongs and in the format it claims", asy
   const { ImageFormat } = await import("./gen/remoteagent/v1/event_pb");
   const { create } = await import("@bufbuild/protobuf");
   const r = await probe();
-  const base = r.sessions.get("s")!;
+  const base = demoSessions(r).get("s")!;
   await r.seedSession("s1", r.seed);
   patchSyncState(r, { sessions: new Map([["s", base], ["s1", { ...base, id: "s1" }]]) });
   const png = Uint8Array.from([
@@ -251,7 +251,7 @@ it("gives up on a stream that never opens, and retains backoff when the network 
     expect(sockets[0].closed).toBe(false);
     await vi.advanceTimersByTimeAsync(2_000);
     expect(sockets[0].closed).toBe(true);
-    expect(r.conn).toBe("connecting");
+    expect(remoteConnState(r)).toBe("connecting");
     // Explicit reconnect replaces the active/pending attempt with a fresh socket.
     const before = sockets.length;
     r.reconnectNow();
@@ -310,7 +310,7 @@ it("stops and says so once the server no longer knows this device", async () => 
     const gone = await probe();
     gone.start();
     await vi.waitFor(() => expect(gone.removed).toBe(true));
-    expect(gone.conn).toBe("offline");
+    expect(remoteConnState(gone)).toBe("offline");
     gone.start();
     await new Promise((r) => setTimeout(r, 50));
     expect(calls.filter((c) => c === "Login")).toHaveLength(2);
@@ -634,7 +634,7 @@ it("persists schedule seen tuples under ra-schedule-seen and tolerates corrupt s
   expect(await r.loadScheduleSeen(r.machine)).toMatchObject({ found: false });
 });
 
-it("caches verified schedule list responses on executeCommandAttempt and decrypts via readScheduleCache", async () => {
+it("stores signed schedule cache via writeScheduleCache and decrypts via readScheduleCache", async () => {
   const r = await probe();
   const store = new Map<string, unknown>();
   (r as unknown as { cache: { get(k: string): Promise<unknown>; set(k: string, v: unknown): Promise<void> } }).cache = {
@@ -646,7 +646,7 @@ it("caches verified schedule list responses on executeCommandAttempt and decrypt
   };
   const { DispatchCommandEffectSchema, CommandRouteHint } = await import("./gen/remoteagent/core/v1/app_pb");
   const { CommandSchema, CommandResultSchema } = await import("./gen/remoteagent/v1/remote_pb");
-  const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
+  const { EnvelopeSchema, PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
   const { PEER_PROTOCOL_VERSION } = await import("./protocol");
   const listJson = new TextEncoder().encode(JSON.stringify({ tasks: [{ id: "t-cached", revision: 2 }] }));
 
@@ -723,13 +723,17 @@ it("caches verified schedule list responses on executeCommandAttempt and decrypt
     }),
   );
   expect(outcome.transportCode).toBe("");
+  expect(outcome.sealedResult).toBeDefined();
+  // Shell must NOT write schedule cache ad hoc during executeCommandAttempt; Core drives writeScheduleCache.
+  expect(await r.readScheduleCache(2n, r.machine)).toMatchObject({ opId: 2n, machineId: r.machine, resultJson: new Uint8Array() });
 
-  const cached = await r.readScheduleCache(2n, r.machine);
+  await r.writeScheduleCache(r.machine, reqId, toBinary(EnvelopeSchema, outcome.sealedResult!));
+  const cached = await r.readScheduleCache(3n, r.machine);
   expect(cached.error).toBe("");
   expect(new TextDecoder().decode(cached.resultJson)).toBe(new TextDecoder().decode(listJson));
 
   await r.deleteScheduleCache(r.machine);
-  const cleared = await r.readScheduleCache(3n, r.machine);
+  const cleared = await r.readScheduleCache(4n, r.machine);
   expect(cleared.resultJson).toEqual(new Uint8Array());
 });
 

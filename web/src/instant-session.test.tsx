@@ -5,7 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { getCoreHost, sessionDraftScope } from "./core/host";
 import { DemoRemote } from "./dev/demo";
-import { patchSyncState } from "./test/remote-fixture";
+import { patchSyncState, demoMachines, demoSessions } from "./test/remote-fixture";
 import Workspace from "./Workspace";
 import { SessionPage } from "./views/Session";
 import { setView } from "./view";
@@ -25,7 +25,7 @@ it("keeps the same input, draft and focus across Core session updates", async ()
   setView("term");
   const remote = DemoRemote.create(new URLSearchParams(), async () => undefined);
   remote.start();
-  const known = [...remote.sessions.values()].find((s) => s.info && !s.endedMs && remote.machines.get(s.machineId)?.online)!;
+  const known = [...demoSessions(remote).values()].find((s) => s.info && !s.endedMs && demoMachines(remote).get(s.machineId)?.online)!;
   const openingId = "opening-route-session";
   const origRpc = remote.executeRpc.bind(remote);
   vi.spyOn(remote, "executeRpc").mockImplementation((eff) =>
@@ -44,7 +44,7 @@ it("keeps the same input, draft and focus across Core session updates", async ()
   input.focus();
   expect(host.querySelector<HTMLButtonElement>(".snd")!.disabled).toBe(true);
   await act(async () => {
-    const nextSessions = new Map(remote.sessions);
+    const nextSessions = new Map(demoSessions(remote));
     nextSessions.set(openingId, {
       ...known,
       id: openingId,
@@ -61,7 +61,6 @@ it("keeps the same input, draft and focus across Core session updates", async ()
 it("draws an unresolved link as a chat page before lookup returns", async () => {
   const remote = DemoRemote.create(new URLSearchParams(), async () => undefined);
   remote.start();
-  patchSyncState(remote, { listed: true });
   const origRpc = remote.executeRpc.bind(remote);
   vi.spyOn(remote, "executeRpc").mockImplementation((eff) =>
     eff.kind.case === "fetchSessionById" ? new Promise<never>(() => undefined) : origRpc(eff),
@@ -82,7 +81,6 @@ it("draws an unresolved link as a chat page before lookup returns", async () => 
 it("distinguishes lookup failure (with retry) from missing session", async () => {
   const remote = DemoRemote.create(new URLSearchParams(), async () => undefined);
   remote.start();
-  patchSyncState(remote, { listed: true });
   const origRpc = remote.executeRpc.bind(remote);
   let failLookup = true;
   const { create } = await import("@bufbuild/protobuf");
@@ -116,7 +114,7 @@ it("distinguishes lookup failure (with retry) from missing session", async () =>
 it("shows a verified session in Workspace", async () => {
   const remote = DemoRemote.create(new URLSearchParams(), async () => undefined);
   remote.start();
-  const session = [...remote.sessions.values()].find((s) => s.info && !s.endedMs)!;
+  const session = [...demoSessions(remote).values()].find((s) => s.info && !s.endedMs)!;
   history.replaceState(null, "", "/#/s/" + session.id);
   host = document.createElement("div");
   document.body.append(host);

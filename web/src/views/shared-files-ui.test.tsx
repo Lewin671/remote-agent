@@ -15,7 +15,7 @@ import {
 import { TextSchema } from "../gen/remoteagent/core/v1/text_pb";
 import * as i18n from "../i18n";
 import { saveBlobAsDownload } from "../shared-files";
-import { patchSyncState } from "../test/remote-fixture";
+import { patchSyncState, demoMachines, demoSessions } from "../test/remote-fixture";
 import { SessionPage } from "./Session";
 import {
   SharedFileCard,
@@ -403,7 +403,7 @@ it("wires SessionPage to trigger non-media download on PDF click without inline 
   remotes.push(r);
   r.sharedFileStore.seedCompleted("s-sf-states", "sf-pdf", new Blob([new Uint8Array(4_404_019)]));
   r.start();
-  const s = r.sessions.get("s-sf-states")!;
+  const s = demoSessions(r).get("s-sf-states")!;
   expect(s).toBeTruthy();
 
   const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
@@ -427,7 +427,7 @@ it("wires SessionPage to trigger non-media download on PDF click without inline 
   expect(host!.querySelector(".lightbox")).toBeNull();
 
   // Turning off machine sharedFiles capability falls back to standard ToolRow.
-  const nextMachines = new Map(r.machines);
+  const nextMachines = new Map(demoMachines(r));
   const mac = nextMachines.get("mac")!;
   mac.meta!.capabilities!.sharedFiles = false;
   patchSyncState(r, { machines: nextMachines });

@@ -45,8 +45,8 @@ it("does not register a subscription after the account was removed during the re
   vi.stubGlobal("PushManager", class {});
   let finish!: (s: object) => void;
   vi.stubGlobal("navigator", { serviceWorker: { ready: Promise.resolve({ pushManager: { getSubscription: () => new Promise(resolve => { finish = resolve; }) } }) } });
-  const remote = { conn: "online", removed: false, setPushSubscription: vi.fn() } as unknown as Remote;
-  const work = restorePushPrefs(remote);
+  const remote = { removed: false, setPushSubscription: vi.fn() } as unknown as Remote;
+  const work = restorePushPrefs(remote, () => !remote.removed);
   await vi.waitFor(() => expect(finish).toBeDefined());
   (remote as { removed: boolean }).removed = true;
   finish({ endpoint: "https://push.example.com/subscription" });
@@ -69,8 +69,8 @@ it("keeps security and scheduled notifications when session notifications are tu
   let server: number[] = [];
   let key!: (k: string) => void;
   const asked = vi.fn(() => new Promise<string>((resolve) => { key = resolve; }));
-  const remote = { conn: "online", removed: false, pushKey: asked, setPushSubscription: vi.fn(async (_sub: string, kinds: number[]) => { server = kinds; }) } as unknown as Remote;
-  const restoring = restorePushPrefs(remote);
+  const remote = { removed: false, pushKey: asked, setPushSubscription: vi.fn(async (_sub: string, kinds: number[]) => { server = kinds; }) } as unknown as Remote;
+  const restoring = restorePushPrefs(remote, () => !remote.removed);
   await vi.waitFor(() => expect(asked).toHaveBeenCalled());
   // The user turns everything off while the server's key is on its way.
   const off = setPushPrefs(remote, { attention: false, turns: false });
@@ -87,8 +87,8 @@ it("restores SECURITY and SCHEDULED with both session preferences disabled", asy
   vi.stubGlobal("PushManager", class {});
   const subscription = { endpoint: "https://push.example.com/security" };
   vi.stubGlobal("navigator", { serviceWorker: { ready: Promise.resolve({ pushManager: { getSubscription: async () => subscription } }) } });
-  const remote = { conn: "online", removed: false, setPushSubscription: vi.fn() } as unknown as Remote;
-  await restorePushPrefs(remote);
+  const remote = { removed: false, setPushSubscription: vi.fn() } as unknown as Remote;
+  await restorePushPrefs(remote, () => !remote.removed);
   expect(remote.setPushSubscription).toHaveBeenCalledWith(JSON.stringify(subscription), [NotifyKind.SECURITY, NotifyKind.SCHEDULED]);
 });
 

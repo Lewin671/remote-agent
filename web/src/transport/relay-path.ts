@@ -1,12 +1,11 @@
 import { newRequestID } from "../crypto";
 import { NotForwardedSchema } from "../gen/remoteagent/v1/relay_pb";
-import type { Path, PeerStatus, Forward, FrameStream, PathAttempt } from "./path";
+import type { Path, Forward, FrameStream, PathAttempt } from "./path";
 
 /** The existing relay HTTP adapter. Main-WS observations are inputs to this
  * adapter; neither a cached offline bit nor a lost WS cancels a handed-off RPC. */
 export class RelayPath implements Path {
   constructor(
-    readonly status: (machineId: string) => PeerStatus,
     readonly epoch: () => Promise<string>,
     readonly forward: Forward,
     private readonly renew: (signal?: AbortSignal) => Promise<void> = async () => {},

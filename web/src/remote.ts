@@ -103,9 +103,6 @@ import {
 } from "./gen/remoteagent/core/v1/schedules_view_pb";
 import type { WatchedSessionRoute } from "./gen/remoteagent/core/v1/connection_view_pb";
 import { ScreenTarget } from "./gen/remoteagent/core/v1/app_pb";
-import {
-  type LiveSnapshot,
-} from "./gen/remoteagent/v1/remote_pb";
 import type { SharedFileStore } from "./shared-file-store";
 import { dispatchSecurityEffect, WebSecurityExecutor } from "./core/security-executor";
 
@@ -181,23 +178,15 @@ import {
 } from "./gen/remoteagent/v1/event_pb";
 import { matchesFormat, mimeOf } from "./imageview";
 import {
-  type Session,
-} from "./gen/remoteagent/v1/local_pb";
-import {
   CommandResultSchema,
   CommandSchema,
   ImagePayloadSchema,
   TerminalFrameSchema,
-  type MachineMeta,
-  type ProjectPrefs,
   type TerminalFrame,
 } from "./gen/remoteagent/v1/remote_pb";
 import { CACHE_PAGE_SIZE, eventCache, type CachedEvent, type EventCache } from "./eventcache";
-import { PEER_PROTOCOL_VERSION, RELAY_PROTOCOL_VERSION } from "./protocol";
+import { RELAY_PROTOCOL_VERSION } from "./protocol";
 import { type StoredAccount } from "./storage";
-
-export interface MachineView { id: string; online: boolean; lastSeenMs: bigint; meta?: MachineMeta; metaRev: bigint; }
-export interface SessionView { id: string; machineId: string; historyError?: string; info?: Session; checkpoint?: LiveSnapshot; checkpointStatus?: "ready" | "waiting" | "invalid"; metaRev: bigint; lastSeq: bigint; updatedMs: bigint; endedMs: bigint; }
 
 export function apiBase(server: string): string {
   const origin = checkServer(server);
@@ -208,8 +197,6 @@ export const TermConfirmKind = { Input: 1, Restart: 2 } as const;
 export type TermConfirmKind = (typeof TermConfirmKind)[keyof typeof TermConfirmKind];
 export type TermStateEvent = { kind: "confirm"; confirmKind: TermConfirmKind } | { kind: "rebuild" };
 export interface TermConn { send(frame: MessageInitShape<typeof TerminalFrameSchema>): void; close(): void; confirmRebuild?: () => void; }
-export type ConnState = "connecting" | "online" | "offline";
-export type Link = "online" | "waiting" | "no-network" | "no-server";
 
 const IMAGE_CACHE = 40;
 const OPEN_TIMEOUT_MS = 15_000;
@@ -222,7 +209,6 @@ const SCOPE_STORAGE_KEY = "ra-scope";
 const SCOPE_HMAC_KEY_VALUE = "scope-hmac-key";
 
 export type ImageResult = { kind: "ok"; blob: Blob; width: number; height: number; format: ImageFormat } | { kind: "expired" } | { kind: "missing" } | { kind: "bad"; why?: string };
-export interface PrefsState { status: "loading" | "ready" | "error"; error: string; snap?: { revision: bigint; prefs: ProjectPrefs }; pending: ReadonlyMap<string, string>; failed?: { op: { id: string; kind: string; path: string }; error: string }; changedAt?: number; }
 
 const PAYLOAD_PURPOSES: Partial<Record<PayloadKind, Purpose>> = {
   [PayloadKind.EVENT]: Purpose.Event,
@@ -359,20 +345,6 @@ export class Remote implements CoreExecutor {
     });
     this.deviceLink = new DeviceLink(
       new RelayPath(
-        () => {
-          const c = this.hostBridge?.viewConnection();
-          const authorized = !this.removed;
-          const connected = !!c?.connected;
-          return {
-            relayRequired: true,
-            unlinked: !connected && !c?.reachabilityUnknown,
-            reachable: authorized && connected,
-            ready: connected,
-            authorized,
-            protocolVersion: PEER_PROTOCOL_VERSION,
-            capabilities: undefined,
-          };
-        },
         () => this.relayEpoch(),
         (request, options) => this.api.forward(request, options),
         (signal) => this.login(signal),
@@ -1125,24 +1097,6 @@ export class Remote implements CoreExecutor {
 
       const elapsedMs = performance.now() - routeStarted;
       const attemptBound = res.attemptId === attemptId;
-      if (
-        parsedCmd?.kind.case === "schedule" &&
-        parsedCmd.kind.value.operation === "list" &&
-        res.result
-      ) {
-        try {
-          const { msg: schedMsg } = await this.openSecureMessage(
-            res.result,
-            { kind: PayloadKind.COMMAND_RESULT, machineId: params.machineId, sessionId: params.sessionId, requestId: params.requestId },
-            CommandResultSchema,
-          );
-          if (!schedMsg.errorCode && schedMsg.outcome === "executed" && schedMsg.kind.case === "schedule" && schedMsg.kind.value.resultJson.length) {
-            await this.keepValue("schedules:" + params.machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId: params.requestId });
-          }
-        } catch {
-          // Core will reject/report any unverified envelope.
-        }
-      }
       return {
         rawEnvelope: res.result,
         elapsedMs,
@@ -1398,6 +1352,11 @@ export class Remote implements CoreExecutor {
     } catch (e) {
       return create(ScheduleCacheLoadedEventSchema, { opId, machineId, error: errorText(e) });
     }
+  }
+
+  async writeScheduleCache(machineId: string, requestId: string, sealedResultBytes: Uint8Array): Promise<void> {
+    if (!machineId || this.closed || !sealedResultBytes.length) return;
+    await this.keepValue("schedules:" + machineId, { bytes: sealedResultBytes, requestId });
   }
 
   async deleteScheduleCache(machineId: string): Promise<void> {

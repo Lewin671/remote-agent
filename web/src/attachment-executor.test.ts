@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { create } from "@bufbuild/protobuf";
+import { demoMachines } from "./test/remote-fixture";
 import { IDBKeyRange } from "fake-indexeddb";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AttachmentExecutor } from "./attachment-executor";
@@ -397,7 +398,7 @@ describe("AttachmentExecutor FIFO queue and platform I/O", () => {
       // Enable file uploads on mac
       const dm = (r1 as unknown as { demoMachines: Map<string, { meta?: { capabilities?: { fileUpload: boolean } } }> }).demoMachines.get("mac")!;
       dm.meta!.capabilities!.fileUpload = true;
-      r1.machines.get("mac")!.meta!.capabilities!.fileUpload = true;
+      demoMachines(r1).get("mac")!.meta!.capabilities!.fileUpload = true;
       (r1 as unknown as { syncDemoToCore(): void }).syncDemoToCore();
 
       // Draft 1: session s-idle with image + file, then send (leaves Outbox in flight)

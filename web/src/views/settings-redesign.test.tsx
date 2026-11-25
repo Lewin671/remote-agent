@@ -29,7 +29,7 @@ import {
 } from "../gen/remoteagent/core/v1/settings_view_pb";
 import { TextSchema } from "../gen/remoteagent/core/v1/text_pb";
 import { localeStore, t as message } from "../i18n";
-import { patchSyncState } from "../test/remote-fixture";
+import { patchSyncState, demoDevices } from "../test/remote-fixture";
 import { ManagePage } from "./Projects";
 import {
   AttachmentStorageScreenView,
@@ -296,7 +296,7 @@ describe("Notifications secondary page (settings/notifications)", () => {
 describe("Pure Clients page (settings/clients)", () => {
   it("lists paired clients, current client, unfinished pairings, and omits computers completely", async () => {
     const r = createDemo("role=authority");
-    const nextDevices = new Map(r.devices);
+    const nextDevices = new Map(demoDevices(r));
     nextDevices.set("cand-1", {
       id: "cand-1",
       kind: DeviceKind.CLIENT,

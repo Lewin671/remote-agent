@@ -7,7 +7,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ANDROID, DemoRemote } from "../dev/demo";
-import { patchSyncState } from "../test/remote-fixture";
+import { patchSyncState, demoMachines, demoSessions, isPrefsReady, isPrefsSyncing, isRemoteListed } from "../test/remote-fixture";
 import { create, type MessageInitShape } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { getCoreHost, sessionDraftScope, useCoreHost, useSessionView } from "../core/host";
@@ -53,26 +53,26 @@ const syncDemo = (r: DemoRemote) => {
   (r as unknown as { syncDemoToCore(): void }).syncDemoToCore();
 };
 const setDemoOnline = (r: DemoRemote, id: string, online: boolean) => {
-  const demo = r as unknown as { demoMachines: Map<string, import("../remote").MachineView> };
+  const demo = r as unknown as { demoMachines: Map<string, import("../test/remote-fixture").TestMachineView> };
   const dm = demo.demoMachines.get(id);
   if (dm) dm.online = online;
-  const rm = r.machines.get(id);
+  const rm = demoMachines(r).get(id);
   if (rm) rm.online = online;
   syncDemo(r);
 };
-const updateDemoMachine = (r: DemoRemote, id: string, fn: (m: import("../remote").MachineView) => void) => {
-  const demo = r as unknown as { demoMachines: Map<string, import("../remote").MachineView> };
+const updateDemoMachine = (r: DemoRemote, id: string, fn: (m: import("../test/remote-fixture").TestMachineView) => void) => {
+  const demo = r as unknown as { demoMachines: Map<string, import("../test/remote-fixture").TestMachineView> };
   const dm = demo.demoMachines.get(id);
   if (dm) fn(dm);
-  const rm = r.machines.get(id);
+  const rm = demoMachines(r).get(id);
   if (rm) fn(rm);
   syncDemo(r);
 };
 const patchDemoSession = (r: DemoRemote, sid: string, info: Partial<import("../gen/remoteagent/v1/local_pb").Session>) => {
-  const demo = r as unknown as { demoSessions: Map<string, import("../remote").SessionView> };
+  const demo = r as unknown as { demoSessions: Map<string, import("../test/remote-fixture").TestSessionView> };
   const ds = demo.demoSessions.get(sid);
   if (ds?.info) ds.info = { ...ds.info, ...info };
-  const rs = r.sessions.get(sid);
+  const rs = demoSessions(r).get(sid);
   if (rs?.info) rs.info = { ...rs.info, ...info };
   syncDemo(r);
 };
@@ -84,9 +84,9 @@ const pushDemoEvent = (
 ) => {
   const demo = r as unknown as {
     evs: Map<string, import("../gen/remoteagent/v1/event_pb").Event[]>;
-    demoSessions: Map<string, import("../remote").SessionView>;
+    demoSessions: Map<string, import("../test/remote-fixture").TestSessionView>;
     demoStream?: { legId: bigint };
-    plainSession: (s: import("../remote").SessionView) => import("../gen/remoteagent/core/v1/app_pb").PlainSession;
+    plainSession: (s: import("../test/remote-fixture").TestSessionView) => import("../gen/remoteagent/core/v1/app_pb").PlainSession;
     changed: () => void;
   };
   const list = demo.evs.get(sid) ?? [];
@@ -96,7 +96,7 @@ const pushDemoEvent = (
   demo.evs.set(sid, list);
   const ds = demo.demoSessions.get(sid);
   if (ds) ds.lastSeq = seq;
-  const rs = r.sessions.get(sid);
+  const rs = demoSessions(r).get(sid);
   if (rs) rs.lastSeq = seq;
   const host = getCoreHost(r);
   const legId = demo.demoStream?.legId;
@@ -136,17 +136,17 @@ const pushDemoEvent = (
   }
 };
 const keepOnlyMachines = (r: DemoRemote, keepId: string) => {
-  const demo = r as unknown as { demoMachines: Map<string, import("../remote").MachineView> };
+  const demo = r as unknown as { demoMachines: Map<string, import("../test/remote-fixture").TestMachineView> };
   for (const id of [...demo.demoMachines.keys()]) if (id !== keepId) demo.demoMachines.delete(id);
-  const kept = r.machines.get(keepId);
+  const kept = demoMachines(r).get(keepId);
   patchSyncState(r, { machines: kept ? new Map([[keepId, kept]]) : new Map() });
   syncDemo(r);
 };
-const filterSessions = (r: DemoRemote, keep: (s: import("../remote").SessionView) => boolean) => {
-  const demo = r as unknown as { demoSessions: Map<string, import("../remote").SessionView> };
+const filterSessions = (r: DemoRemote, keep: (s: import("../test/remote-fixture").TestSessionView) => boolean) => {
+  const demo = r as unknown as { demoSessions: Map<string, import("../test/remote-fixture").TestSessionView> };
   for (const [id, s] of [...demo.demoSessions]) if (!keep(s)) demo.demoSessions.delete(id);
-  const next = new Map<string, import("../remote").SessionView>();
-  for (const [id, s] of r.sessions) if (keep(s)) next.set(id, s);
+  const next = new Map<string, import("../test/remote-fixture").TestSessionView>();
+  for (const [id, s] of demoSessions(r)) if (keep(s)) next.set(id, s);
   patchSyncState(r, { sessions: next });
   syncDemo(r);
 };
@@ -179,7 +179,7 @@ const pushStoredPrefs = (r: DemoRemote) => {
 };
 const todoList = (r: DemoRemote) => {
   const core = getCoreHost(r);
-  return core.viewHome(30).attention.map((a) => r.sessions.get(a.sessionId)!).filter(Boolean);
+  return core.viewHome(30).attention.map((a) => demoSessions(r).get(a.sessionId)!).filter(Boolean);
 };
 import { DaemonSettingsSchema } from "../gen/remoteagent/v1/local_pb";
 import { SessionPage } from "./Session";
@@ -410,7 +410,7 @@ const startProject = () => host.querySelector(".wstart .sent .tok.p")?.textConte
 it("keeps the context warning and the settings behind ⋯ on a narrow phone", async () => {
   const viewport = (window as unknown as { happyDOM: { setViewport(size: { width: number; height: number }): void } }).happyDOM;
   const r = demo();
-  const s = r.sessions.get("s-ctx")!;
+  const s = demoSessions(r).get("s-ctx")!;
   try {
     act(() => viewport.setViewport({ width: 320, height: 740 }));
     await mountAsync(<SessionPage remote={r} sessionId={s.id} onBack={() => undefined} wide={false} />);
@@ -443,12 +443,12 @@ it("lets the home card handle one approval after another", async () => {
 
 it("names the computer on the home card only where the account has more than one", () => {
   const several = demo();
-  expect(several.machines.size).toBeGreaterThan(1);
+  expect(demoMachines(several).size).toBeGreaterThan(1);
   mount(<Home remote={several} go={() => undefined} />);
   expect(host.querySelector(".tc .m")?.textContent).toMatch(/ · /);
   act(() => root!.unmount());
   const one = demo();
-  const keep = one.sessions.get("s-appr")!.machineId;
+  const keep = demoSessions(one).get("s-appr")!.machineId;
   keepOnlyMachines(one, keep);
   mount(<Home remote={one} go={() => undefined} />);
   expect(host.querySelector(".tc .m")?.textContent).toBe("foo · VPS-dev");
@@ -459,12 +459,12 @@ it("chooses the computer for a new folder with a segmented control, only where t
   const several = demo();
   vi.spyOn(several, "machineCommand").mockResolvedValue(listing);
   mount(<NewFlow remote={several} go={() => undefined} start="new" onClose={() => undefined} />);
-  expect(host.querySelectorAll(".seg.machines button").length).toBe(several.machines.size);
+  expect(host.querySelectorAll(".seg.machines button").length).toBe(demoMachines(several).size);
   expect(button(message("common.cancel", {}, "zh-CN"))).toBeUndefined();
   act(() => root!.unmount());
   const one = demo();
   vi.spyOn(one, "machineCommand").mockResolvedValue(listing);
-  keepOnlyMachines(one, [...one.machines.keys()][0]);
+  keepOnlyMachines(one, [...demoMachines(one).keys()][0]);
   mount(<NewFlow remote={one} go={() => undefined} start="new" onClose={() => undefined} />);
   expect(host.querySelector(".seg.machines")).toBeNull();
   expect(button(message("common.cancel", {}, "zh-CN"))).toBeUndefined();
@@ -555,7 +555,7 @@ it("keeps saved project settings as sessions change", () => {
   expect(line()).toMatch(/^Codex \/ gpt-6-astra$/i);
   // The Claude Code session in foo becomes the most recent one.
   act(() => {
-    r.sessions.get("s-claude")!.updatedMs = BigInt(Date.now() + 60_000);
+    demoSessions(r).get("s-claude")!.updatedMs = BigInt(Date.now() + 60_000);
     (r as unknown as { changed(): void }).changed();
   });
   expect(line()).toMatch(/^Codex \/ gpt-6-astra$/i);
@@ -578,7 +578,7 @@ it("leaves an unknown approval mode unsaid in the navbar, and a new session does
   act(() => root!.unmount());
   host.remove();
   // Neither the project nor the machine says how a new Codex session starts.
-  for (const a of r.machines.get("mac")!.meta!.agents) a.defaultModeSource = 0;
+  for (const a of demoMachines(r).get("mac")!.meta!.agents) a.defaultModeSource = 0;
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
   await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^GPT-6-Astra · medium$/));
   await fromMenu("新会话设置");
@@ -616,13 +616,13 @@ it("shows a failed first listing and lists again", async () => {
     r.start();
     mount(<Home remote={r} go={() => undefined} />);
     await act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); });
-    expect(r.listed).toBe(false);
+    expect(isRemoteListed(r)).toBe(false);
     expect(host.querySelector(".skels")).toBeNull();
     expect(host.textContent).toContain(message("home.list_failed", {"reason":message("errors.connection_timed_out")}, "zh-CN"));
     // It tries again by itself.
     fail = false;
     await act(async () => vi.advanceTimersByTimeAsync(2500));
-    expect(r.listed).toBe(true);
+    expect(isRemoteListed(r)).toBe(true);
     expect(host.textContent).not.toContain("没能读取会话列表");
   } finally {
     vi.useRealTimers();
@@ -679,7 +679,7 @@ it("offers no clear-and-implement on a Claude Code plan", async () => {
 
 it("shows Antigravity session settings as read-only, locks full-access modes, and hides fork", async () => {
   const r = demo();
-  const s = r.sessions.get("s-idle")!;
+  const s = demoSessions(r).get("s-idle")!;
   patchDemoSession(r, s.id, {
     agent: Agent.ANTIGRAVITY,
     model: "gemini-3.1-pro-high",
@@ -1263,7 +1263,7 @@ describe("an unknown session start", () => {
     await t.send(1);
     // The Claude Code session becomes the project's latest meanwhile.
     act(() => {
-      t.r.sessions.get("s-claude")!.updatedMs = BigInt(Date.now() + 60_000);
+      demoSessions(t.r).get("s-claude")!.updatedMs = BigInt(Date.now() + 60_000);
       (t.r as unknown as { changed(): void }).changed();
     });
     await t.send(2);
@@ -1437,7 +1437,7 @@ describe("an unknown session start, after leaving its page and coming back", () 
       }
       return DemoRemote.prototype.machineCommand.call(r, m, cmd);
     };
-    const before = r.sessions.size;
+    const before = demoSessions(r).size;
     mount(page(r));
     await type("加限流");
     await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
@@ -1447,7 +1447,7 @@ describe("an unknown session start, after leaving its page and coming back", () 
     mount(page(r));
     expect(input().value).toBe("加限流");
     await act(async () => answer());
-    await vi.waitFor(() => expect(r.sessions.size).toBe(before + 1));
+    await vi.waitFor(() => expect(demoSessions(r).size).toBe(before + 1));
     // Nothing is left to send again by mistake, and nothing is unknown.
     await vi.waitFor(() => expect(input().value).toBe(""));
     expect(host.textContent).not.toContain("上启动…");
@@ -1466,7 +1466,7 @@ describe("an unknown session start, after leaving its page and coming back", () 
       }
       return DemoRemote.prototype.machineCommand.call(r, m, cmd);
     };
-    const before = r.sessions.size;
+    const before = demoSessions(r).size;
     mount(page(r));
     await type("加限流");
     await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
@@ -1492,7 +1492,7 @@ describe("an unknown session start, after leaving its page and coming back", () 
     // The first session starts, its machine back meanwhile.
     setDemoOnline(r, "mac", true);
     await act(async () => answer());
-    await vi.waitFor(() => expect(r.sessions.size).toBe(before + 1));
+    await vi.waitFor(() => expect(demoSessions(r).size).toBe(before + 1));
     // The next message is still there, and still goes where it was told to.
     expect(input().value).toBe("给登录接口加限流");
     expect(host.querySelector(".tok.m")!.textContent).toContain("iMac");
@@ -1500,7 +1500,7 @@ describe("an unknown session start, after leaving its page and coming back", () 
     await click(sendButton());
     await vi.waitFor(() => expect(sent).toHaveLength(2));
     expect(sent[1]).toEqual({ machine: "imac", prompt: "给登录接口加限流" });
-    await vi.waitFor(() => expect(r.sessions.size).toBe(before + 2));
+    await vi.waitFor(() => expect(demoSessions(r).size).toBe(before + 2));
     expect(r.projectPrefs().settings.find((s) => s.path === "/Users/me/Code/foo")?.machineId).toBe("imac");
   });
 });
@@ -1624,7 +1624,7 @@ it("names a new project's default model as Codex does, even when /model hides it
 it("uses the machine selected for an existing path and excludes its missing Claude", async () => {
   const r = demo();
   const path = "/Users/me/Code/foo";
-  await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+  await vi.waitFor(() => expect(isPrefsReady(r)).toBe(true));
   const stored = (r as unknown as { stored: { revision: bigint; prefs: import("../gen/remoteagent/v1/remote_pb").ProjectPrefs } }).stored;
   stored.revision += 1n;
   stored.prefs.settings = [
@@ -1679,7 +1679,7 @@ it("keeps a project added with 新项目… in the lists before its first sessio
   expect(host.querySelector(".tok.p > span:not(.av)")?.textContent).toBe("Code");
   // Choosing an existing folder on its current machine keeps its settings.
   const foo = "/Users/me/Code/foo";
-  await act(async () => { await vi.waitFor(() => expect(r.prefs.pending.size).toBe(0)); });
+  await act(async () => { await vi.waitFor(() => expect(isPrefsSyncing(r)).toBe(false)); });
   const before = r.projectPrefs().settings.find((s) => s.path === foo);
   remount(<NewFlow remote={r} go={() => undefined} start="new" onClose={() => undefined} />);
   // The preservation assertion is about the same machine, regardless of
@@ -1691,7 +1691,7 @@ it("keeps a project added with 新项目… in the lists before its first sessio
   await click(button("foo", document));
   await vi.waitFor(() => expect(button(message("projects.use_directory", {"name":"foo"}), document)).toBeTruthy());
   await click(button(message("projects.use_directory", {"name":"foo"}), document));
-  await act(async () => { await vi.waitFor(() => expect(r.prefs.pending.size).toBe(0)); });
+  await act(async () => { await vi.waitFor(() => expect(isPrefsSyncing(r)).toBe(false)); });
   expect(r.projectPrefs().settings.find((s) => s.path === foo)).toEqual(before);
 });
 
@@ -1855,20 +1855,20 @@ describe("a new-session draft", () => {
   };
   const bump = (r: DemoRemote, sid: string) =>
     act(() => {
-      r.sessions.get(sid)!.updatedMs = BigInt(Date.now() + 60_000);
+      demoSessions(r).get(sid)!.updatedMs = BigInt(Date.now() + 60_000);
       (r as unknown as { changed(): void }).changed();
     });
 
   it("keeps the project it was begun in on the wide home", async () => {
     const r = demo();
-    r.sessions.get("s-run")!.info!.createdAt = timestampFromMs(Date.now() + 86_400_000);
+    demoSessions(r).get("s-run")!.info!.createdAt = timestampFromMs(Date.now() + 86_400_000);
     const sent = capture(r);
     mount(<WideHome remote={r} go={() => undefined} />);
     await vi.waitFor(() => expect(host.querySelector(".wstart .sent")).not.toBeNull());
     const before = startProject();
     await type("加限流");
     // Another project gets a newer session meanwhile.
-    act(() => { r.sessions.get("s-plan")!.info!.createdAt = timestampFromMs(Date.now() + 172_800_000); });
+    act(() => { demoSessions(r).get("s-plan")!.info!.createdAt = timestampFromMs(Date.now() + 172_800_000); });
     bump(r, "s-plan");
     expect(startProject()).toBe(before);
     await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
@@ -2027,7 +2027,7 @@ describe("switching a new session's CLI (v2)", () => {
     };
     const page = () => <ProjectPage remote={r} pkey={foo} go={() => undefined} onBack={() => undefined} />;
     mount(page());
-    await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+    await vi.waitFor(() => expect(isPrefsReady(r)).toBe(true));
     await pickCli("Claude Code");
     await act(async () => {
       const input = host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
@@ -2056,7 +2056,7 @@ describe("switching a new session's CLI (v2)", () => {
     const r = demo();
     const foo = "/Users/me/Code/foo";
     mount(<ProjectPage remote={r} pkey={foo} go={() => undefined} onBack={() => undefined} />);
-    await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+    await vi.waitFor(() => expect(isPrefsReady(r)).toBe(true));
     expect(cliPicked()).toBe("Codex");
     await fromMenu("新会话设置");
     // No tabs: the sheet is the model page of the one CLI the sentence names.
@@ -2072,7 +2072,7 @@ describe("switching a new session's CLI (v2)", () => {
   it("shows no switch on a machine with one CLI, and says which CLI runs when the remembered one is missing", async () => {
     const r = demo();
     const foo = "/Users/me/Code/foo";
-    await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+    await vi.waitFor(() => expect(isPrefsReady(r)).toBe(true));
     const stored = (r as unknown as { stored: { revision: bigint; prefs: import("../gen/remoteagent/v1/remote_pb").ProjectPrefs } }).stored;
     stored.revision += 1n;
     stored.prefs.settings = [
@@ -2201,7 +2201,7 @@ describe("a new task's settings have no approval mode (v2)", () => {
       return DemoRemote.prototype.machineCommand.call(r, m, cmd);
     };
     // The project's latest Codex session ran in full access, and an old stored set says so too.
-    for (const s of r.sessions.values()) if (s.info?.cwd === "/Users/me/Code/foo") s.info.mode = ApprovalMode.FULL_ACCESS;
+    for (const s of demoSessions(r).values()) if (s.info?.cwd === "/Users/me/Code/foo") s.info.mode = ApprovalMode.FULL_ACCESS;
     savedSet(r, "/Users/me/Code/foo")!.mode = ApprovalMode.FULL_ACCESS;
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     expect(host.querySelector(".project-summary")?.textContent).not.toContain(message("modes.full_access"));
@@ -2285,7 +2285,7 @@ describe("project management (v2)", () => {
   it("removes a project only after asking, and keeps its waiting sessions", async () => {
     const r = demo();
     mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} />);
-    await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+    await vi.waitFor(() => expect(isPrefsReady(r)).toBe(true));
     await click(host.querySelector<HTMLButtonElement>('[aria-label="管理 shop"]')!);
     await click(button(message("projects.remove_action", {}, "zh-CN")));
     // Nothing is removed until the dialog is confirmed.
@@ -2309,7 +2309,7 @@ describe("project management (v2)", () => {
 
   it("lists a removed project again when its folder is added as a new project", async () => {
     const r = demo();
-    await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+    await vi.waitFor(() => expect(isPrefsReady(r)).toBe(true));
     const shop = "/Users/me/Code/shop";
     await r.changePrefs("hide", shop);
     mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} />);
@@ -2327,7 +2327,7 @@ describe("project management (v2)", () => {
 
   it("lists projects the same way in the scope menu, the picker and 项目管理", async () => {
     const r = demo();
-    await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+    await vi.waitFor(() => expect(isPrefsReady(r)).toBe(true));
     const { ProjectPicker } = await import("./NewSession");
     const seen = () => [...host.querySelectorAll(".plist .fl, .plist .pi b, .plist .pi small, .plist .pi.add")].map((e) => e.textContent).filter((t) => t !== message("home.all_projects") && !/^(\d+ 个待处理|\d+ 个进行中)( · \d+ 个进行中)?$/.test(t ?? ""));
     mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} />);
@@ -2350,7 +2350,7 @@ describe("project management (v2)", () => {
 
   it("keeps a removed project out of the new-session picker and asks to add it again first", async () => {
     const r = demo();
-    await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+    await vi.waitFor(() => expect(isPrefsReady(r)).toBe(true));
     await r.changePrefs("hide", "/Users/me/Code/shop");
     const { ProjectPicker } = await import("./NewSession");
     mount(<ProjectPicker remote={r} onPick={() => undefined} onNew={() => undefined} onClose={() => undefined} />);
@@ -2365,7 +2365,7 @@ describe("project management (v2)", () => {
     });
     expect(sendButton()?.disabled).toBe(true);
     // Its sessions are all still there.
-    expect([...r.sessions.values()].some((s) => s.info?.title === "拆分订单服务")).toBe(true);
+    expect([...demoSessions(r).values()].some((s) => s.info?.title === "拆分订单服务")).toBe(true);
     await click(button(message("projects.add_again", {}, "zh-CN")));
     await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false), { timeout: 3000 });
   });
@@ -2373,7 +2373,7 @@ describe("project management (v2)", () => {
   it("leaves removing and pinning to the project lists, not a new task's settings", async () => {
     const r = createDemo(new URLSearchParams("project-settings=1"));
     r.start();
-    await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+    await vi.waitFor(() => expect(isPrefsReady(r)).toBe(true));
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     expect(document.querySelector(":is(.sheet, .composer-picker)")).not.toBeNull();
     expect(button(message("projects.remove_action", {}, "zh-CN"))).toBeUndefined();
@@ -2387,7 +2387,7 @@ describe("project management (v2)", () => {
       if (retrying) await retry.wait;
     });
     r.start();
-    await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+    await vi.waitFor(() => expect(isPrefsReady(r)).toBe(true));
     const puts: string[] = [];
     const origRpc = r.executeRpc.bind(r);
     vi.spyOn(r, "executeRpc").mockImplementation((eff) => {
@@ -2403,16 +2403,16 @@ describe("project management (v2)", () => {
     expect(puts).toHaveLength(1);
     retrying = true;
     await click(button(message("common.retry", {}, "zh-CN")));
-    await vi.waitFor(() => expect(r.prefs.pending.size).toBe(1));
+    await vi.waitFor(() => expect(isPrefsSyncing(r)).toBe(true));
     await act(async () => retry.release());
-    await vi.waitFor(() => expect(r.prefs.pending.size).toBe(0), { timeout: 5000 });
+    await vi.waitFor(() => expect(isPrefsSyncing(r)).toBe(false), { timeout: 5000 });
     expect(puts).toEqual([puts[0], puts[0]]);
   }, 15_000);
 
   it("pauses changes while disconnected and says when they can be made", async () => {
     const r = createDemo(new URLSearchParams("conn=reconnecting"));
     r.start();
-    await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+    await vi.waitFor(() => expect(isPrefsReady(r)).toBe(true));
     mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} />);
     await click(host.querySelector<HTMLButtonElement>('[aria-label="管理 bar"]')!);
     expect(button(/设为常用/)!.disabled).toBe(true);
@@ -2704,7 +2704,7 @@ describe("sending images (v2)", () => {
   it("opens draft image details from a keyboard-preserving attachment menu", async () => {
     const t = await setup(() => true);
     act(() => {
-      updateDemoMachine(t.r, t.r.sessions.get("s-idle")!.machineId, (m) => {
+      updateDemoMachine(t.r, demoSessions(t.r).get("s-idle")!.machineId, (m) => {
         m.meta!.capabilities!.fileUpload = true;
       });
     });
@@ -3008,7 +3008,7 @@ describe("an image-only new-session draft (review B8)", () => {
   };
   const bump = (r: DemoRemote, sid: string) =>
     act(() => {
-      r.sessions.get(sid)!.updatedMs = BigInt(Date.now() + 60_000);
+      demoSessions(r).get(sid)!.updatedMs = BigInt(Date.now() + 60_000);
       r.touch();
     });
 
@@ -3062,8 +3062,8 @@ it("loads a picture opened offline once the connection is back (review B11)", as
 
 it("asks to add a project again when it is removed while its draft is on the wide home (review B12)", async () => {
   const r = demo();
-  r.sessions.get("s-run")!.info!.createdAt = timestampFromMs(Date.now() + 86_400_000);
-  await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+  demoSessions(r).get("s-run")!.info!.createdAt = timestampFromMs(Date.now() + 86_400_000);
+  await vi.waitFor(() => expect(isPrefsReady(r)).toBe(true));
   mount(<WideHome remote={r} go={() => undefined} />);
   await vi.waitFor(() => expect(host.querySelector(".wstart .sent")).not.toBeNull());
   await act(async () => {
@@ -3131,7 +3131,7 @@ it("starts a new session with images and no words (Go 61c4bb2)", async () => {
 it("shows Claude Code's collected quota on the quota page (Go ed1a14d)", async () => {
   const r = demo();
   const { AgentQuotaSchema, QuotaState } = await import("../gen/remoteagent/v1/remote_pb");
-  const m = r.machines.get("mac")!;
+  const m = demoMachines(r).get("mac")!;
   const now = Date.now();
   m.meta!.quotas = [
     create(AgentQuotaSchema, { agent: Agent.CODEX, state: QuotaState.WAITING }),
@@ -3139,7 +3139,7 @@ it("shows Claude Code's collected quota on the quota page (Go ed1a14d)", async (
     create(AgentQuotaSchema, { agent: Agent.ANTIGRAVITY, state: QuotaState.WAITING }),
   ];
   const { patchSyncState } = await import("../test/remote-fixture");
-  patchSyncState(r, { machines: new Map(r.machines) });
+  patchSyncState(r, { machines: new Map(demoMachines(r)) });
   const { QuotaPage } = await import("./Settings");
   mount(<QuotaPage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
   expect(host.textContent).not.toContain(message("quota.quota_lookup_is_not_supported_yet"));
@@ -3154,7 +3154,7 @@ it("shows Claude Code's collected quota on the quota page (Go ed1a14d)", async (
 it("renders Antigravity's quota windows grouped by family on the quota page", async () => {
   const r = demo();
   const { AgentQuotaSchema, QuotaState } = await import("../gen/remoteagent/v1/remote_pb");
-  const m = r.machines.get("mac")!;
+  const m = demoMachines(r).get("mac")!;
   const now = Date.now();
   if (!m.meta!.agents.some((a) => a.agent === Agent.ANTIGRAVITY)) {
     m.meta!.agents.push({ agent: Agent.ANTIGRAVITY, version: "0.2.3", verified: true, defaultMode: ApprovalMode.ASK, defaultModeSource: 0, defaultModeVaries: false, $typeName: "remoteagent.v1.AgentInfo" });
@@ -3175,7 +3175,7 @@ it("renders Antigravity's quota windows grouped by family on the quota page", as
     }),
   ];
   const { patchSyncState } = await import("../test/remote-fixture");
-  patchSyncState(r, { machines: new Map(r.machines) });
+  patchSyncState(r, { machines: new Map(demoMachines(r)) });
   const { QuotaPage } = await import("./Settings");
   mount(<QuotaPage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
   const labels = [...host.querySelectorAll(".label")].map((el) => el.textContent);
@@ -3194,7 +3194,7 @@ it("renders Antigravity's quota windows grouped by family on the quota page", as
 
 it("opens CLI sheet for new-project defaults on multi-CLI machines and hides CLI switch on single-CLI machines", async () => {
   const r = demo();
-  const m = r.machines.get("mac")!;
+  const m = demoMachines(r).get("mac")!;
   if (!m.meta!.agents.some((a) => a.agent === Agent.ANTIGRAVITY)) {
     m.meta!.agents.push({ agent: Agent.ANTIGRAVITY, version: "0.2.3", verified: true, defaultMode: ApprovalMode.ASK, defaultModeSource: 0, defaultModeVaries: false, $typeName: "remoteagent.v1.AgentInfo" });
   }
@@ -3322,7 +3322,7 @@ it("keeps the wide home default project across background uploads before a draft
   mount(<WideHome remote={r} go={() => undefined} />);
   const before = startProject();
   act(() => {
-    r.sessions.get("s-plan")!.updatedMs = BigInt(Date.now() + 60_000);
+    demoSessions(r).get("s-plan")!.updatedMs = BigInt(Date.now() + 60_000);
     (r as unknown as { changed(): void }).changed();
   });
   expect(startProject()).toBe(before);
@@ -3384,7 +3384,7 @@ describe("the client-v7 conversation", () => {
 
   it("shows full access in the navbar and the other settings behind ⋯", async () => {
     const r = demo();
-    const s = r.sessions.get("s-idle")!;
+    const s = demoSessions(r).get("s-idle")!;
     patchDemoSession(r, s.id, { mode: ApprovalMode.FULL_ACCESS });
     await mountAsync(<SessionPage remote={r} sessionId={s.id} onBack={() => undefined} wide={false} />);
     expect(host.querySelector(".cbar .access-warning")).toBeNull();
@@ -3631,7 +3631,7 @@ describe("the session view", () => {
   it("shows the chat of an ended session and keeps the pick", async () => {
     const r = demo();
     localStorage.setItem("ra-view", "term");
-    const ended = [...r.sessions.values()].find((s) => s.info?.status === SessionStatus.EXITED)!;
+    const ended = [...demoSessions(r).values()].find((s) => s.info?.status === SessionStatus.EXITED)!;
     await open(r, ended.id);
     expect(picked()).toBe(message("session.chat"));
     expect(localStorage.getItem("ra-view")).toBe("term");
@@ -3681,7 +3681,7 @@ it("refreshes the model picker and lists GPT-6.1-Sol alongside the default with 
 
 it("renames a session from ⋯, keeps what was typed when saving fails, and goes back to the automatic title", async () => {
   const r = demo();
-  const s = r.sessions.get("s-run")!;
+  const s = demoSessions(r).get("s-run")!;
   const was = s.info!.title;
   await mountAsync(<SessionPage remote={r} sessionId={s.id} onBack={() => undefined} wide={false} />);
   const input = () => host.querySelector<HTMLInputElement>(".dialog.rename input")!;
@@ -3706,7 +3706,7 @@ it("renames a session from ⋯, keeps what was typed when saving fails, and goes
   await click(button(message("common.save", {}, "zh-CN")));
   expect(command).toHaveBeenLastCalledWith(s.id, expect.objectContaining({ case: "renameSession", value: expect.objectContaining({ sessionId: s.id, title: "登录超时：限流和重试" }) }), expect.anything());
   await vi.waitFor(() => expect(host.querySelector(".dialog.rename")).toBeNull(), { timeout: 3000 });
-  expect(r.sessions.get("s-run")!.info!.title).toBe("登录超时：限流和重试");
+  expect(demoSessions(r).get("s-run")!.info!.title).toBe("登录超时：限流和重试");
 
   // Saving the same title sends nothing; an empty one clears it.
   command.mockClear();
@@ -3812,8 +3812,8 @@ it("forks a session from ⋯: says why it cannot yet, reports a failure in the m
 
   // The fork carries the conversation and says where it came from.
   const id = decodeURIComponent(location.hash.slice(4));
-  await vi.waitFor(() => expect(r.sessions.get(id)).toBeTruthy(), { timeout: 3000 });
-  const fork = r.sessions.get(id)!;
+  await vi.waitFor(() => expect(demoSessions(r).get(id)).toBeTruthy(), { timeout: 3000 });
+  const fork = demoSessions(r).get(id)!;
   expect(fork.info!.forkedFrom).toBe("s-idle");
   act(() => root?.unmount());
   host.remove();
@@ -3857,7 +3857,7 @@ describe("the home's one sentence and its bottom row (client-v58)", () => {
     expect(hl()).toMatch(/^\d+ 个会话在运行$/);
     expect(sub()).toMatch(/^另有 \d+ 个空闲$/);
     expect(host.querySelector(".tc, .pl")).toBeNull();
-    drop(r, (s) => s.info?.status !== SessionStatus.RUNNING || !!s.endedMs || !r.machines.get(s.machineId)?.online);
+    drop(r, (s) => s.info?.status !== SessionStatus.RUNNING || !!s.endedMs || !demoMachines(r).get(s.machineId)?.online);
     expect(hl()).toBe(message("home.nothing_waiting", {}, "zh-CN"));
     expect(sub()).toMatch(/^\d+ 个会话空闲$/);
     drop(r, () => false);
@@ -3945,7 +3945,7 @@ describe("the home timeline and its scope (client-v27)", () => {
 
   it("falls back to all projects when the saved project leaves the list", async () => {
     const r = demo();
-    await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+    await vi.waitFor(() => expect(isPrefsReady(r)).toBe(true));
     saveScope("/Users/me/Code/shop", r);
     mount(<Home remote={r} go={() => undefined} />);
     expect(host.querySelector(".tbar .scope b")?.textContent).toBe("shop");
@@ -4017,7 +4017,7 @@ describe("the home timeline and its scope (client-v27)", () => {
     expect(pages).toBe(0);
     expect(all).toBe(0);
     // One does: what is shown reaches past the pages held, so the next is asked for.
-    const firstId = [...r.machines.keys()][0];
+    const firstId = [...demoMachines(r).keys()][0];
     act(() => {
       updateDemoMachine(r, firstId, (m) => {
         m.meta = create(MachineMetaSchema, { hostname: "MacBook", projects: [{ path: "/Users/me/Code/foo", ended: 90 }] });
@@ -4058,7 +4058,7 @@ it("fetches a CLI's earlier sessions before a session starts on it, and before i
   const r = demo();
   const project = "/Users/me/Code/ai-bot/remote-agent";
   // Its one session held here ran Codex; its machine counts more ended ones than are held.
-  const held = [...r.sessions.values()].filter((s) => s.info?.cwd === project);
+  const held = [...demoSessions(r).values()].filter((s) => s.info?.cwd === project);
   expect(held.every((s) => s.info?.agent !== Agent.CLAUDE)).toBe(true);
   updateDemoMachine(r, held[0].machineId, (m) => {
     m.meta!.projects.push(create(ProjectSummarySchema, { path: project, ended: 9 }));
@@ -4133,7 +4133,7 @@ it("retains an unknown start across page unmounts", async () => {
 it("holds saved launch settings while a draft is written", async () => {
   const r = demo();
   const path = "/Users/me/Code/foo";
-  await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+  await vi.waitFor(() => expect(isPrefsReady(r)).toBe(true));
   const core = getCoreHost(r);
   core.dispatch(create(CoreEventSchema, { event: { case: "newSessionOpen", value: create(NewSessionOpenActionSchema, { projectKey: path }) } }));
   core.dispatch(create(CoreEventSchema, { event: { case: "newSessionSelectMachine", value: create(NewSessionSelectMachineActionSchema, { machineId: "mac" }) } }));
@@ -4152,7 +4152,7 @@ it("holds saved launch settings while a draft is written", async () => {
 it("keeps the remembered CLI after a temporary fallback succeeds", async () => {
   const r = demo();
   const path = "/Users/me/Code/foo";
-  await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+  await vi.waitFor(() => expect(isPrefsReady(r)).toBe(true));
   const stored = (r as unknown as { stored: { revision: bigint; prefs: import("../gen/remoteagent/v1/remote_pb").ProjectPrefs } }).stored;
   const saved = stored.prefs.settings.find(s => s.path === path)!;
   saved.agent = Agent.CLAUDE;
@@ -4160,14 +4160,14 @@ it("keeps the remembered CLI after a temporary fallback succeeds", async () => {
   pushStoredPrefs(r);
   const demoMachine = (r as unknown as { demoMachines: Map<string, { meta?: { agents: { agent: Agent }[] } }> }).demoMachines.get(saved.machineId)!;
   demoMachine.meta!.agents = demoMachine.meta!.agents.filter(a => a.agent === Agent.CODEX);
-  r.machines.get(saved.machineId)!.meta!.agents = demoMachine.meta!.agents as never;
+  demoMachines(r).get(saved.machineId)!.meta!.agents = demoMachine.meta!.agents as never;
   syncDemo(r);
   const core = getCoreHost(r);
   expect(core.viewNewSession(path).notices.some(n => n.kind === NoticeKind.MISSING_AGENT)).toBe(true);
   mount(<NewBox remote={r} projectKey={path} go={() => undefined} />);
   await reviewType(host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!, "task");
   await act(async () => { sendButton()!.click(); });
-  await act(async () => { await vi.waitFor(() => expect(r.prefs.pending.size).toBe(0)); });
+  await act(async () => { await vi.waitFor(() => expect(isPrefsSyncing(r)).toBe(false)); });
   expect(r.projectPrefs().settings.find(s => s.path === path)!.agent).toBe(Agent.CODEX);
 });
 
@@ -4205,13 +4205,13 @@ it("shows failure and retry when resuming a paused message", async () => {
 
 it("offers more ended matches while filtering titles", async () => {
   const r = demo();
-  const ended = [...r.sessions.values()].find(s => s.info?.status === SessionStatus.EXITED)!;
-  const demoSessions = (r as unknown as { demoSessions: Map<string, import("../remote").SessionView> }).demoSessions;
-  demoSessions.clear();
-  const next = new Map<string, import("../remote").SessionView>();
+  const ended = [...demoSessions(r).values()].find(s => s.info?.status === SessionStatus.EXITED)!;
+  const rawSessions = (r as unknown as { demoSessions: Map<string, import("../test/remote-fixture").TestSessionView> }).demoSessions;
+  rawSessions.clear();
+  const next = new Map<string, import("../test/remote-fixture").TestSessionView>();
   for (let i = 0; i < 40; i++) {
     const row = { ...ended, id: "match" + i, info: { ...ended.info!, id: "match" + i, title: "match " + i } };
-    demoSessions.set("match" + i, row);
+    rawSessions.set("match" + i, row);
     next.set("match" + i, row);
   }
   patchSyncState(r, { sessions: next });
@@ -4251,14 +4251,14 @@ it("fills only missing project settings after a first start races with another c
   });
   await act(async () => { finish(create(CommandResultSchema, { kind: { case: "createSession", value: { session: { id: "started" } } } })); });
   await vi.waitFor(() => expect(core.viewNewSession(path).busy).toBe(false));
-  await act(async () => { await vi.waitFor(() => expect(r.prefs.pending.size).toBe(0)); });
+  await act(async () => { await vi.waitFor(() => expect(isPrefsSyncing(r)).toBe(false)); });
   expect(r.projectPrefs().settings.find(s => s.path === path)).toMatchObject({ machineId: "imac", agents: [{ model: "gpt-6-sol", effort: "high", mode: ApprovalMode.AUTO }] });
 });
 
 it.each([['removed', 'high'], ['gpt-6-astra', 'removed']])("falls back from unavailable model or effort (%s, %s) without changing saved settings", async (model, effort) => {
   const r = demo();
   const path = "/Users/me/Code/foo";
-  await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+  await vi.waitFor(() => expect(isPrefsReady(r)).toBe(true));
   const stored = (r as unknown as { stored: { revision: bigint; prefs: import("../gen/remoteagent/v1/remote_pb").ProjectPrefs } }).stored;
   stored.revision += 1n;
   const saved = stored.prefs.settings.find(s => s.path === path)!.agents.find(a => a.agent === Agent.CODEX)!;
@@ -4499,7 +4499,7 @@ describe("devices in settings", () => {
 
 it("keeps task-owned approvals in attention and counts while omitting idle task sessions", () => {
  const r=demo();
- const s=r.sessions.get("s-plan")!;s.info!.taskOwned=true;
+ const s=demoSessions(r).get("s-plan")!;s.info!.taskOwned=true;
  const ds=(r as unknown as { demoSessions: Map<string, { info?: { taskOwned?: boolean; planOpen?: boolean; pendingApprovals?: number; pendingQuestions?: number; status?: SessionStatus }; checkpoint?: unknown }> }).demoSessions.get("s-plan")!;
  ds.info!.taskOwned=true;
  syncDemo(r);
@@ -4517,7 +4517,7 @@ it("keeps task-owned approvals in attention and counts while omitting idle task 
 });
 
 it("sends files-only messages and restores a missing file from its original File", async () => {
-  const r = demo(); const s = r.sessions.get("s-idle")!;
+  const r = demo(); const s = demoSessions(r).get("s-idle")!;
   updateDemoMachine(r, s.machineId, (m) => { m.meta!.capabilities!.fileUpload = true; });
   const sent: CommandKind[] = [];
   r.command = async (_sid, cmd) => { sent.push(cmd); throw new CommandError("not_found", "file id is not on this machine; upload it again"); };
@@ -4550,7 +4550,7 @@ it("sends files-only messages and restores a missing file from its original File
 });
 
 it("creates a session with files-only and retains file IDs for an unknown retry", async () => {
-  const r = demo(); const machine = r.machines.get("mac") ?? [...r.machines.values()].find((m) => m.meta?.capabilities?.imageUpload)!;
+  const r = demo(); const machine = demoMachines(r).get("mac") ?? [...demoMachines(r).values()].find((m) => m.meta?.capabilities?.imageUpload)!;
   updateDemoMachine(r, machine.id, (m) => { m.meta!.capabilities!.fileUpload = true; });
   r.prepareImageOverride = async () => ({
     bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
@@ -4586,7 +4586,7 @@ it("creates a session with files-only and retains file IDs for an unknown retry"
 });
 
 it("restores a failed outgoing file back to the draft tray", async () => {
-  const r = demo(); const s = r.sessions.get("s-idle")!;
+  const r = demo(); const s = demoSessions(r).get("s-idle")!;
   updateDemoMachine(r, s.machineId, (m) => { m.meta!.capabilities!.fileUpload = true; });
   r.command = async () => { throw new CommandError("unavailable", "write_failed"); };
   await mountAsync(<SessionPage remote={r} sessionId={s.id} onBack={() => undefined} wide={false} />);
@@ -4609,7 +4609,7 @@ it("restores a failed outgoing file back to the draft tray", async () => {
 
 it("shows a folder-only rejection in an empty new-session tray", async () => {
   const r = demo();
-  for (const id of r.machines.keys()) {
+  for (const id of demoMachines(r).keys()) {
     updateDemoMachine(r, id, (m) => {
       m.meta!.capabilities!.fileUpload = true;
     });
@@ -4626,7 +4626,7 @@ it("shows a folder-only rejection in an empty new-session tray", async () => {
 });
 
 it("rejects restoring a failed file message before changing draft or dismissing it after downgrade", async () => {
-  const r = demo(); const s = r.sessions.get("s-idle")!;
+  const r = demo(); const s = demoSessions(r).get("s-idle")!;
   updateDemoMachine(r, s.machineId, (m) => { m.meta!.capabilities!.fileUpload = true; });
   r.command = async () => { throw new CommandError("unavailable", "offline"); };
   await mountAsync(<SessionPage remote={r} sessionId={s.id} onBack={() => undefined} wide={false} />);
@@ -4804,9 +4804,9 @@ it("keeps a named quota warning next to its card before the received time", asyn
   const r = demo();
   const { AgentQuotaSchema, QuotaState } = await import("../gen/remoteagent/v1/remote_pb");
   const now = Date.now();
-  r.machines.get("mac")!.meta!.quotas = [create(AgentQuotaSchema, { agent: Agent.CLAUDE, state: QuotaState.OK, observedMs: BigInt(now), windows: [{ name: "seven_day", usedPercent: 97, windowMinutes: 10080n, resetsAtMs: BigInt(now + 3_600_000) }] })];
+  demoMachines(r).get("mac")!.meta!.quotas = [create(AgentQuotaSchema, { agent: Agent.CLAUDE, state: QuotaState.OK, observedMs: BigInt(now), windows: [{ name: "seven_day", usedPercent: 97, windowMinutes: 10080n, resetsAtMs: BigInt(now + 3_600_000) }] })];
   const { patchSyncState } = await import("../test/remote-fixture");
-  patchSyncState(r, { machines: new Map(r.machines) });
+  patchSyncState(r, { machines: new Map(demoMachines(r)) });
   const { QuotaPage } = await import("./Settings");
   mount(<QuotaPage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
   const text = host.textContent!;
@@ -4868,7 +4868,7 @@ it.each([false, true])("queues agy sends without a 做完再发 button (attachme
 
 it("blocks opening pickers at the image and file limits", async () => {
   const r = demo();
-  const s = r.sessions.get("s-idle")!;
+  const s = demoSessions(r).get("s-idle")!;
   updateDemoMachine(r, s.machineId, (m) => {
     m.meta!.capabilities!.fileUpload = true;
     m.meta!.capabilities!.maxImagesPerMessage = 2;

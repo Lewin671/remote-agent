@@ -80,20 +80,16 @@ function inTurn<T>(work: () => Promise<T>): Promise<T> {
 
 /** Registers this browser's saved choices for the current device after
  * connecting, including when it has joined again under a new device ID. */
-export function restorePushPrefs(remote: Remote): Promise<void> {
+export function restorePushPrefs(remote: Remote, isCurrent?: () => boolean): Promise<void> {
   return inTurn(async () => {
     if (!pushSupported() || Notification.permission !== "granted") return;
     // As saved when its turn comes, not when the connection opened.
     const prefs = pushPrefs();
     const kinds = [...(prefs.attention ? [NotifyKind.ATTENTION] : []), ...(prefs.turns ? [NotifyKind.TURN_ENDED] : []), NotifyKind.SECURITY, ...(prefs.scheduled !== false ? [NotifyKind.SCHEDULED] : [])];
-    const current = () => {
-      if (typeof (remote as { attachHost?: unknown }).attachHost === "function") {
-        const c = getCoreHost(remote).viewConnection();
-        return !remote.removed && !c.removed && c.connected;
-      }
-      const fake = remote as unknown as { removed?: boolean; conn?: string };
-      return !fake.removed && fake.conn === "online";
-    };
+    const current = isCurrent ?? (() => {
+      const c = getCoreHost(remote).viewConnection();
+      return !remote.removed && !c.removed && c.connected;
+    });
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
     if (!current()) return;

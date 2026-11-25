@@ -10,10 +10,10 @@ import { parseTestHeader, testRequestIdentity, unpackTestBody } from "./stored-s
 import { SecurityOpenEnvelopeOpSchema } from "../gen/remoteagent/core/v1/security_pb";
 import { type Envelope, type Header } from "../gen/remoteagent/v1/envelope_pb";
 import { getCoreHost } from "../core/host";
-import { Purpose, Remote, type ConnState, type MachineView, type PrefsState, type SessionView } from "../remote";
+import { Purpose, Remote } from "../remote";
 import { GoSecurityFixture, webMember } from "./security-fixture";
-import { CommandResultSchema, MachineMetaSchema } from "../gen/remoteagent/v1/remote_pb";
-import { SessionSchema } from "../gen/remoteagent/v1/local_pb";
+import { CommandResultSchema, MachineMetaSchema, type LiveSnapshot, type MachineMeta } from "../gen/remoteagent/v1/remote_pb";
+import { SessionSchema, type Session } from "../gen/remoteagent/v1/local_pb";
 import { SessionStatus } from "../gen/remoteagent/v1/event_pb";
 import {
   GetAccountPrefsResponseSchema,
@@ -39,21 +39,67 @@ import {
 import { ConnState as CoreConnState, HomeEmptyKind } from "../gen/remoteagent/core/v1/home_view_pb";
 import type { DeviceInfo } from "../devices";
 
+export type TestConnState = "connecting" | "online" | "offline";
+export type TestMachineView = { id: string; online: boolean; lastSeenMs: bigint; meta?: MachineMeta; metaRev: bigint };
+export type TestSessionView = {
+  id: string;
+  machineId: string;
+  historyError?: string;
+  info?: Session;
+  checkpoint?: LiveSnapshot;
+  checkpointStatus?: "ready" | "waiting" | "invalid";
+  metaRev: bigint;
+  lastSeq: bigint;
+  updatedMs: bigint;
+  endedMs: bigint;
+};
+type ConnState = TestConnState;
+type MachineView = TestMachineView;
+type SessionView = TestSessionView;
+
+export function demoMachines(r: Remote): ReadonlyMap<string, TestMachineView> {
+  const host = r as unknown as { demoMachines?: Map<string, TestMachineView>; testMachines?: Map<string, TestMachineView> };
+  return host.demoMachines ?? host.testMachines ?? new Map();
+}
+
+export function demoSessions(r: Remote): ReadonlyMap<string, TestSessionView> {
+  const host = r as unknown as { demoSessions?: Map<string, TestSessionView>; testSessions?: Map<string, TestSessionView> };
+  return host.demoSessions ?? host.testSessions ?? new Map();
+}
+
+export function demoDevices(r: Remote): ReadonlyMap<string, DeviceInfo> {
+  const host = r as unknown as { demoDevices?: Map<string, DeviceInfo> };
+  return host.demoDevices ?? new Map();
+}
+
+export function remoteConnState(r: Remote): TestConnState {
+  if (!globalThis.__remoteAgentCore) return "connecting";
+  const c = getCoreHost(r).viewConnection();
+  return c.removed ? "offline" : c.connected ? "online" : c.state === CoreConnState.OFFLINE ? "offline" : "connecting";
+}
+
+export function isRemoteListed(r: Remote): boolean {
+  if (!globalThis.__remoteAgentCore) return false;
+  return getCoreHost(r).viewHome(1).empty?.kind !== HomeEmptyKind.LOADING;
+}
+
+export function isPrefsReady(r: Remote): boolean {
+  if (!globalThis.__remoteAgentCore) return true;
+  return !getCoreHost(r).viewHome(1).prefsBanner?.errorTone;
+}
+
+export function isPrefsSyncing(r: Remote): boolean {
+  if (!globalThis.__remoteAgentCore) return false;
+  return !!getCoreHost(r).viewHome(1).prefsBanner?.syncing;
+}
+
 export interface SyncStatePatch {
   conn?: ConnState;
-  listed?: boolean;
-  machinesListed?: boolean;
-  sessionsListed?: boolean;
-  everOnline?: boolean;
   moreSessions?: boolean;
   connError?: string;
-  removed?: boolean;
-  displayGrace?: boolean;
-  reachabilityUnknown?: boolean;
   machines?: Map<string, MachineView>;
   sessions?: Map<string, SessionView>;
   devices?: Map<string, DeviceInfo>;
-  prefs?: Partial<PrefsState>;
 }
 
 export function patchSyncState(r: Remote, patch: SyncStatePatch): void {
@@ -151,15 +197,6 @@ export class SyntheticRemote extends Remote {
   }
   get sessions(): ReadonlyMap<string, SessionView> { return this.testSessions; }
   get machines(): ReadonlyMap<string, MachineView> { return this.testMachines; }
-  get conn(): ConnState {
-    if (!globalThis.__remoteAgentCore) return "connecting";
-    const c = getCoreHost(this).viewConnection();
-    return c.removed ? "offline" : c.connected ? "online" : c.state === CoreConnState.OFFLINE ? "offline" : "connecting";
-  }
-  get listed(): boolean {
-    if (!globalThis.__remoteAgentCore) return false;
-    return getCoreHost(this).viewHome(1).empty?.kind !== HomeEmptyKind.LOADING;
-  }
   private custom: Record<string, unknown> = {};
   private readonly defaults: Record<string, unknown>;
   readonly seed: B;

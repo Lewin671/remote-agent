@@ -28,7 +28,7 @@ import { Agent, ApprovalMode, EventSchema, OriginSchema, SendMode } from "../gen
 import { CommandResultSchema, DefaultModeSource } from "../gen/remoteagent/v1/remote_pb";
 import { t as message } from "../i18n";
 import { CommandError } from "../dev/demo";
-import { patchSyncState } from "../test/remote-fixture";
+import { patchSyncState, demoMachines, demoSessions } from "../test/remote-fixture";
 import { run, task, type ScheduleTaskJson } from "../test/schedule-fixture";
 import { Sidebar } from "./Home";
 import { PendingTray } from "./Queue";
@@ -102,7 +102,7 @@ function enableScheduleOnMac(r: DemoRemote) {
     } as typeof demoMac.meta.capabilities;
     demoMac.meta.scheduleRevision = 1n;
   }
-  const machines = new Map(r.machines);
+  const machines = new Map(demoMachines(r));
   const mac = machines.get("mac");
   if (mac?.meta) {
     mac.meta = {
@@ -171,7 +171,7 @@ function remote(
   );
   r.start();
   const machines = enableScheduleOnMac(r);
-  patchSyncState(r, { conn: "online", listed: true, machines });
+  patchSyncState(r, { conn: "online", machines });
   const core = getCoreHost(r);
   ctrls.set(r, { core, byMachine, calls });
   return r;
@@ -251,7 +251,7 @@ it("renders attention first, combines machines and keeps cached tasks read-only 
   expect(go).toHaveBeenCalledWith("tasks/mac/bad");
   await act(async () => {
     patchSyncState(r, {
-      machines: new Map([...r.machines].map(([id, m]) => [id, id === "mac" ? { ...m, online: false } : m])),
+      machines: new Map([...demoMachines(r)].map(([id, m]) => [id, id === "mac" ? { ...m, online: false } : m])),
     });
   });
   await settle();
@@ -411,7 +411,7 @@ it("edits a task's run settings without replacing the project's defaults", async
 
 it("creates a new-conversation task without borrowing a source session", async () => {
   const r = remote([]);
-  const sourceSession = r.sessions.get("s-idle")!;
+  const sourceSession = demoSessions(r).get("s-idle")!;
   patchSyncState(r, {
     sessions: new Map([[sourceSession.id, sourceSession]]),
     machines: enableScheduleOnMac(r),
@@ -537,7 +537,7 @@ it("keeps plan permission visible and disables scheduled creation", async () => 
 
 it("uses the shared new-task explanation in the actual creation page", async () => {
   const r = remote([]);
-  for (const m of r.machines.values()) if (m.meta) m.meta.agents = r.machines.get("mac")!.meta!.agents;
+  for (const m of demoMachines(r).values()) if (m.meta) m.meta.agents = demoMachines(r).get("mac")!.meta!.agents;
   await mount(<ScheduleCreate remote={r} go={() => {}} onBack={() => {}} />);
   expect(host.querySelector(".schedule-body > .gf:last-child")?.textContent).toBe(
     "每次运行新开一个对话，归在这个任务下面，不进会话列表。 完成后默认通知；关闭后仅由 agent 主动通知。",
@@ -546,15 +546,15 @@ it("uses the shared new-task explanation in the actual creation page", async () 
 
 it("shows CLI as plain text on a single-CLI computer and segmented when multiple CLIs are installed", async () => {
   const r = remote([task()]);
-  const idle = r.sessions.get("s-idle")!;
+  const idle = demoSessions(r).get("s-idle")!;
   patchSyncState(r, { sessions: new Map([["s-idle", idle]]) });
   await mount(<ScheduleCreate remote={r} go={() => {}} onBack={() => {}} />);
   expect(host.querySelector(".schedule-field .seg")).not.toBeNull();
   await act(async () => {
-    const mac = r.machines.get("mac")!;
+    const mac = demoMachines(r).get("mac")!;
     patchSyncState(r, {
       machines: new Map([
-        ...r.machines,
+        ...demoMachines(r),
         [
           "mac",
           {
@@ -711,7 +711,7 @@ it.each(["at", "cutoff"])("rejects a DST gap and saves the first repeated time f
 
 it("creates with the new computer's displayed defaults after switching without editing", async () => {
   const r = remote([]);
-  const old = { ...r.machines.get("mac")! };
+  const old = { ...demoMachines(r).get("mac")! };
   const next = structuredClone(old);
   old.meta = {
     ...old.meta!,
@@ -722,7 +722,7 @@ it("creates with the new computer's displayed defaults after switching without e
   next.id = "new";
   next.meta!.hostname = "新电脑";
   next.meta!.agents = [{ ...old.meta!.agents[0], agent: Agent.CLAUDE, defaultMode: ApprovalMode.ASK }];
-  const source = r.sessions.get("s-idle")!;
+  const source = demoSessions(r).get("s-idle")!;
   const path = source.info!.cwd;
   const another = {
     ...source,
@@ -827,7 +827,7 @@ it("connects session/detail read transitions to exact notification cleanup witho
   const r = remote([]);
   const core = getCoreHost(r);
   await setTasks(r, []);
-  const session = r.sessions.get("s-idle")!;
+  const session = demoSessions(r).get("s-idle")!;
   await setTasks(r, [
     task({
       runs: [
@@ -970,7 +970,7 @@ it("replaces the wide session timeline with a task list and keeps navigation tab
 
 it("renders scheduled source metadata from Core pending tray and keeps cancellation available", async () => {
   const r = remote();
-  const session = r.sessions.get("s-idle")!;
+  const session = demoSessions(r).get("s-idle")!;
   expect(session.id).toBeTruthy();
   const onCancelItem = vi.fn();
   const item = create(SessionTrayItemViewSchema, {
@@ -1319,7 +1319,7 @@ it.each(["offline", "list-error"])("shows the latest cached result without readi
   if (mode === "offline") {
     patchSyncState(r, {
       conn: "offline",
-      machines: new Map([...r.machines].map(([id, m]) => [id, id === "mac" ? { ...m, online: false } : m])),
+      machines: new Map([...demoMachines(r)].map(([id, m]) => [id, id === "mac" ? { ...m, online: false } : m])),
     });
   } else {
     core.scheduleRefresh("mac");

@@ -484,3 +484,31 @@ test("cold-start networkChanged does not forge a signature or tear down the init
   await flushPromises();
   expect(closedLegs).toEqual([openedLegs[0]]);
 });
+
+test("viewSession + viewSessionHeader computes core.view(SESSION) at most once per SESSION version bump", async () => {
+  const exec = makeExecutor();
+  const host = new CoreHost(undefined, { executor: exec });
+  hosts.push(host);
+  host.start();
+  await flushPromises();
+
+  const core = (host as unknown as { core: { view(req: Uint8Array): Uint8Array } }).core;
+  const viewSpy = vi.spyOn(core, "view");
+
+  // Single SESSION version: SessionPage computes full viewSession(sid, opts), then
+  // any sibling/child reading viewSessionHeader(sid) MUST hit the per-version cache (0 extra boundary calls).
+  const vm1 = host.viewSession("s1", { limit: 80 });
+  const hdr1 = host.viewSessionHeader("s1");
+  const vm1Again = host.viewSession("s1", { limit: 80 });
+  expect(hdr1?.found).toBe(true);
+  expect(vm1Again).toBe(vm1);
+  expect(viewSpy).toHaveBeenCalledTimes(1);
+
+  // Trigger a new SESSION version bump via sessionOpen -> exactly one fresh core.view call.
+  viewSpy.mockClear();
+  host.sessionOpen("s1", false, false);
+  const vm2 = host.viewSession("s1", { limit: 80 });
+  const hdr2 = host.viewSessionHeader("s1");
+  expect(hdr2).toBe(vm2.header);
+  expect(viewSpy).toHaveBeenCalledTimes(1);
+});

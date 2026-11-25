@@ -2,7 +2,7 @@ import { t } from "./i18n";
 // Small building blocks shared by the views.
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject, type TouchEvent } from "react";
-import { ConnectionBannerKind, useConnectionView, useCoreHost } from "./core/host";
+import { ConnBannerKind, useConnectionView, useCoreHost } from "./core/host";
 import { renderText } from "./core/text";
 import { useExit, useKnob, useMarkSwap } from "./motion";
 import type { Tone } from "./model";
@@ -531,10 +531,10 @@ export function ConnBar({ remote, className = "connbar" }: { remote: Remote; cla
   const [details, setDetails] = useState(false);
   const banner = conn.banner;
   if (!banner?.visible) return null;
-  if (banner.kind === ConnectionBannerKind.NO_NETWORK) {
+  if (banner.kind === ConnBannerKind.NO_NETWORK) {
     return <div className={className}><WifiOff /><span>{renderText(banner.text)}</span></div>;
   }
-  if (banner.kind === ConnectionBannerKind.NO_SERVER) {
+  if (banner.kind === ConnBannerKind.NO_SERVER) {
     return (
       <div className={className + (banner.errorTone ? " err" : "")}>
         {/* A browser only knows of no network at all: one that leads nowhere looks the same as a server that is down. */}

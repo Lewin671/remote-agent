@@ -16,7 +16,7 @@ import { Home, Sidebar } from "./views/Home";
 import { SessionPage } from "./views/Session";
 import { getCoreHost } from "./core/host";
 import { NewBox } from "./views/NewSession";
-import { patchSyncState } from "./test/remote-fixture";
+import { patchSyncState, demoMachines } from "./test/remote-fixture";
 import { RowState } from "./views/RowState";
 import { ToolCallView, ToolGroupView, commandOf } from "./views/Tools";
 import { t } from "./i18n";
@@ -172,7 +172,7 @@ it("lists every running session in the wide sidebar, which scrolls as one column
 
 it("keeps saved machine when offline and offers another machine for this start", async () => {
   const r = demo();
-  const nextMachines = new Map(r.machines);
+  const nextMachines = new Map(demoMachines(r));
   const mac = nextMachines.get("mac")!;
   nextMachines.set("mac", { ...mac, online: false });
   patchSyncState(r, { machines: nextMachines });
