@@ -391,13 +391,11 @@ func (c *Core) onUsageStatsSettled(sc sync.SettledCommand, meta cmdMeta, dirty *
 			if entry.CachedAtMs == 0 {
 				entry.CachedAtMs = nowMs
 			}
-			c.m.nextUsageCacheOpID++
 			out = append(out, &corev1.Effect{
 				Effect: &corev1.Effect_UsageCacheWrite{
 					UsageCacheWrite: &corev1.UsageCacheWriteEffect{
 						MachineId: meta.machineID,
 						Snapshot:  resp.Clone(),
-						OpId:      c.m.nextUsageCacheOpID,
 					},
 				},
 			})

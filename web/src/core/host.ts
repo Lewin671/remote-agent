@@ -3060,12 +3060,12 @@ export class CoreHost {
       }
 
       case "scheduleWriteCache": {
-        const { opId, machineId, requestId, sealedResultBytes } = val.value;
+        const { machineId, requestId, sealedResultBytes } = val.value;
         const done = () => {
           if (!this.closed) {
             this.emit({
               case: "scheduleCacheWritten",
-              value: create(ScheduleCacheWrittenEventSchema, { opId, machineId }),
+              value: create(ScheduleCacheWrittenEventSchema, { machineId }),
             });
           }
         };
@@ -3284,10 +3284,7 @@ export class CoreHost {
         if (!this.closed) {
           this.emit({
             case: "usageCacheWritten",
-            value: create(UsageCacheWrittenEventSchema, {
-              opId: val.value.opId,
-              machineId: val.value.machineId,
-            }),
+            value: create(UsageCacheWrittenEventSchema, { machineId: val.value.machineId }),
           });
         }
         break;

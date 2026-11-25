@@ -4318,18 +4318,11 @@ func extraUnmarshal_ScheduleFormUpdateTimingAction(base unsafe.Pointer, num lite
 
 type ScheduleWriteCacheEffect struct {
 	_                 [0]func()
-	OpId              uint64
 	MachineId         string
 	RequestId         string
 	SealedResultBytes []byte
 }
 
-func (m *ScheduleWriteCacheEffect) GetOpId() uint64 {
-	if m != nil {
-		return m.OpId
-	}
-	return 0
-}
 func (m *ScheduleWriteCacheEffect) GetMachineId() string {
 	if m != nil {
 		return m.MachineId
@@ -4351,7 +4344,6 @@ func (m *ScheduleWriteCacheEffect) GetSealedResultBytes() []byte {
 
 var LitewireDesc_ScheduleWriteCacheEffect = litewire.MessageDesc{
 	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(ScheduleWriteCacheEffect{}.OpId), Kind: litewire.KindUint64},
 		{Num: 2, Offset: unsafe.Offsetof(ScheduleWriteCacheEffect{}.MachineId), Kind: litewire.KindString},
 		{Num: 3, Offset: unsafe.Offsetof(ScheduleWriteCacheEffect{}.RequestId), Kind: litewire.KindString},
 		{Num: 4, Offset: unsafe.Offsetof(ScheduleWriteCacheEffect{}.SealedResultBytes), Kind: litewire.KindBytes},
@@ -4368,16 +4360,9 @@ func (m *ScheduleWriteCacheEffect) AppendMarshal(b []byte) []byte {
 
 type ScheduleCacheWrittenEvent struct {
 	_         [0]func()
-	OpId      uint64
 	MachineId string
 }
 
-func (m *ScheduleCacheWrittenEvent) GetOpId() uint64 {
-	if m != nil {
-		return m.OpId
-	}
-	return 0
-}
 func (m *ScheduleCacheWrittenEvent) GetMachineId() string {
 	if m != nil {
 		return m.MachineId
@@ -4388,7 +4373,6 @@ func (m *ScheduleCacheWrittenEvent) GetMachineId() string {
 var LitewireDesc_ScheduleCacheWrittenEvent = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleCacheWrittenEvent{}) },
 	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(ScheduleCacheWrittenEvent{}.OpId), Kind: litewire.KindUint64},
 		{Num: 2, Offset: unsafe.Offsetof(ScheduleCacheWrittenEvent{}.MachineId), Kind: litewire.KindString},
 	},
 }

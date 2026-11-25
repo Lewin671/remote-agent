@@ -1133,8 +1133,6 @@ public struct PBCoreUsageCacheWriteEffect: Sendable {
   /// Clears the value of `snapshot`. Subsequent reads from it will return its default value.
   public mutating func clearSnapshot() {self._snapshot = nil}
 
-  public var opID: UInt64 = 0
-
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1146,8 +1144,6 @@ public struct PBCoreUsageCacheWrittenEvent: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
-
-  public var opID: UInt64 = 0
 
   public var machineID: String = String()
 
@@ -2803,7 +2799,7 @@ extension PBCoreUsageCacheLoadedEvent: SwiftProtobuf.Message, SwiftProtobuf._Mes
 
 extension PBCoreUsageCacheWriteEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UsageCacheWriteEffect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}snapshot\0\u{3}op_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}snapshot\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2813,7 +2809,6 @@ extension PBCoreUsageCacheWriteEffect: SwiftProtobuf.Message, SwiftProtobuf._Mes
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
       case 2: try { try decoder.decodeSingularMessageField(value: &self._snapshot) }()
-      case 3: try { try decoder.decodeSingularUInt64Field(value: &self.opID) }()
       default: break
       }
     }
@@ -2830,16 +2825,12 @@ extension PBCoreUsageCacheWriteEffect: SwiftProtobuf.Message, SwiftProtobuf._Mes
     try { if let v = self._snapshot {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
     } }()
-    if self.opID != 0 {
-      try visitor.visitSingularUInt64Field(value: self.opID, fieldNumber: 3)
-    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCoreUsageCacheWriteEffect, rhs: PBCoreUsageCacheWriteEffect) -> Bool {
     if lhs.machineID != rhs.machineID {return false}
     if lhs._snapshot != rhs._snapshot {return false}
-    if lhs.opID != rhs.opID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2847,7 +2838,7 @@ extension PBCoreUsageCacheWriteEffect: SwiftProtobuf.Message, SwiftProtobuf._Mes
 
 extension PBCoreUsageCacheWrittenEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UsageCacheWrittenEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}machine_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{4}\u{2}machine_id\0\u{c}\u{1}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2855,7 +2846,6 @@ extension PBCoreUsageCacheWrittenEvent: SwiftProtobuf.Message, SwiftProtobuf._Me
       // allocates stack space for every case branch when no optimizations are
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
-      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.opID) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
       default: break
       }
@@ -2863,9 +2853,6 @@ extension PBCoreUsageCacheWrittenEvent: SwiftProtobuf.Message, SwiftProtobuf._Me
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.opID != 0 {
-      try visitor.visitSingularUInt64Field(value: self.opID, fieldNumber: 1)
-    }
     if !self.machineID.isEmpty {
       try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 2)
     }
@@ -2873,7 +2860,6 @@ extension PBCoreUsageCacheWrittenEvent: SwiftProtobuf.Message, SwiftProtobuf._Me
   }
 
   public static func ==(lhs: PBCoreUsageCacheWrittenEvent, rhs: PBCoreUsageCacheWrittenEvent) -> Bool {
-    if lhs.opID != rhs.opID {return false}
     if lhs.machineID != rhs.machineID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true

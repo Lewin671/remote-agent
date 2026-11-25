@@ -1547,10 +1547,9 @@ class CoreHost(
         )
     }
 
-    fun deliverScheduleCacheWritten(opId: Long, machineId: String) = send {
+    fun deliverScheduleCacheWritten(machineId: String) = send {
         setScheduleCacheWritten(
             ScheduleCacheWrittenEvent.newBuilder()
-                .setOpId(opId)
                 .setMachineId(machineId),
         )
     }
@@ -1687,11 +1686,10 @@ class CoreHost(
     fun closeNewSession(projectKey: String) =
         send { setNewSessionClose(NewSessionCloseAction.newBuilder().setProjectKey(projectKey)) }
 
-    fun deliverUsageCacheWritten(opId: Long, machineId: String) =
+    fun deliverUsageCacheWritten(machineId: String) =
         send {
             setUsageCacheWritten(
                 UsageCacheWrittenEvent.newBuilder()
-                    .setOpId(opId)
                     .setMachineId(machineId),
             )
         }

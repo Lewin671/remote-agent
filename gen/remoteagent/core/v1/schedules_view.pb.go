@@ -6041,7 +6041,6 @@ func (x *ScheduleFormUpdateTimingAction) GetJitterMinutes() int64 {
 
 type ScheduleWriteCacheEffect struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
-	OpId              uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
 	MachineId         string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
 	RequestId         string                 `protobuf:"bytes,3,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
 	SealedResultBytes []byte                 `protobuf:"bytes,4,opt,name=sealed_result_bytes,json=sealedResultBytes,proto3" json:"sealed_result_bytes,omitempty"`
@@ -6079,13 +6078,6 @@ func (*ScheduleWriteCacheEffect) Descriptor() ([]byte, []int) {
 	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{53}
 }
 
-func (x *ScheduleWriteCacheEffect) GetOpId() uint64 {
-	if x != nil {
-		return x.OpId
-	}
-	return 0
-}
-
 func (x *ScheduleWriteCacheEffect) GetMachineId() string {
 	if x != nil {
 		return x.MachineId
@@ -6109,7 +6101,6 @@ func (x *ScheduleWriteCacheEffect) GetSealedResultBytes() []byte {
 
 type ScheduleCacheWrittenEvent struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	OpId          uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
 	MachineId     string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -6143,13 +6134,6 @@ func (x *ScheduleCacheWrittenEvent) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ScheduleCacheWrittenEvent.ProtoReflect.Descriptor instead.
 func (*ScheduleCacheWrittenEvent) Descriptor() ([]byte, []int) {
 	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{54}
-}
-
-func (x *ScheduleCacheWrittenEvent) GetOpId() uint64 {
-	if x != nil {
-		return x.OpId
-	}
-	return 0
 }
 
 func (x *ScheduleCacheWrittenEvent) GetMachineId() string {
@@ -6718,18 +6702,16 @@ const file_remoteagent_core_v1_schedules_view_proto_rawDesc = "" +
 	"\v_zone_validB\r\n" +
 	"\v_at_dst_gapB\x10\n" +
 	"\x0e_until_dst_gapB\x11\n" +
-	"\x0f_jitter_minutes\"\x9d\x01\n" +
-	"\x18ScheduleWriteCacheEffect\x12\x13\n" +
-	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12\x1d\n" +
+	"\x0f_jitter_minutes\"\x8e\x01\n" +
+	"\x18ScheduleWriteCacheEffect\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x02 \x01(\tR\tmachineId\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x03 \x01(\tR\trequestId\x12.\n" +
-	"\x13sealed_result_bytes\x18\x04 \x01(\fR\x11sealedResultBytes\"O\n" +
-	"\x19ScheduleCacheWrittenEvent\x12\x13\n" +
-	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12\x1d\n" +
+	"\x13sealed_result_bytes\x18\x04 \x01(\fR\x11sealedResultBytesJ\x04\b\x01\x10\x02\"@\n" +
+	"\x19ScheduleCacheWrittenEvent\x12\x1d\n" +
 	"\n" +
-	"machine_id\x18\x02 \x01(\tR\tmachineId*\xca\x01\n" +
+	"machine_id\x18\x02 \x01(\tR\tmachineIdJ\x04\b\x01\x10\x02*\xca\x01\n" +
 	"\x14ScheduleDisplayGroup\x12&\n" +
 	"\"SCHEDULE_DISPLAY_GROUP_UNSPECIFIED\x10\x00\x12$\n" +
 	" SCHEDULE_DISPLAY_GROUP_ATTENTION\x10\x01\x12 \n" +

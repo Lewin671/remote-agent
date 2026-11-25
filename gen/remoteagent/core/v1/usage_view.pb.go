@@ -2012,7 +2012,6 @@ type UsageCacheWriteEffect struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MachineId     string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
 	Snapshot      *v1.UsageStatsResponse `protobuf:"bytes,2,opt,name=snapshot,proto3" json:"snapshot,omitempty"`
-	OpId          uint64                 `protobuf:"varint,3,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2061,16 +2060,8 @@ func (x *UsageCacheWriteEffect) GetSnapshot() *v1.UsageStatsResponse {
 	return nil
 }
 
-func (x *UsageCacheWriteEffect) GetOpId() uint64 {
-	if x != nil {
-		return x.OpId
-	}
-	return 0
-}
-
 type UsageCacheWrittenEvent struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	OpId          uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
 	MachineId     string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2104,13 +2095,6 @@ func (x *UsageCacheWrittenEvent) ProtoReflect() protoreflect.Message {
 // Deprecated: Use UsageCacheWrittenEvent.ProtoReflect.Descriptor instead.
 func (*UsageCacheWrittenEvent) Descriptor() ([]byte, []int) {
 	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{18}
-}
-
-func (x *UsageCacheWrittenEvent) GetOpId() uint64 {
-	if x != nil {
-		return x.OpId
-	}
-	return 0
 }
 
 func (x *UsageCacheWrittenEvent) GetMachineId() string {
@@ -2332,16 +2316,14 @@ const file_remoteagent_core_v1_usage_view_proto_rawDesc = "" +
 	"\x15UsageCacheLoadedEvent\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12>\n" +
-	"\bsnapshot\x18\x02 \x01(\v2\".remoteagent.v1.UsageStatsResponseR\bsnapshot\"\x8b\x01\n" +
+	"\bsnapshot\x18\x02 \x01(\v2\".remoteagent.v1.UsageStatsResponseR\bsnapshot\"v\n" +
 	"\x15UsageCacheWriteEffect\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12>\n" +
-	"\bsnapshot\x18\x02 \x01(\v2\".remoteagent.v1.UsageStatsResponseR\bsnapshot\x12\x13\n" +
-	"\x05op_id\x18\x03 \x01(\x04R\x04opId\"L\n" +
-	"\x16UsageCacheWrittenEvent\x12\x13\n" +
-	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12\x1d\n" +
+	"\bsnapshot\x18\x02 \x01(\v2\".remoteagent.v1.UsageStatsResponseR\bsnapshot\"=\n" +
+	"\x16UsageCacheWrittenEvent\x12\x1d\n" +
 	"\n" +
-	"machine_id\x18\x02 \x01(\tR\tmachineId*\xac\x01\n" +
+	"machine_id\x18\x02 \x01(\tR\tmachineIdJ\x04\b\x01\x10\x02*\xac\x01\n" +
 	"\x0fUsageSortColumn\x12!\n" +
 	"\x1dUSAGE_SORT_COLUMN_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18USAGE_SORT_COLUMN_TOKENS\x10\x01\x12\x1f\n" +

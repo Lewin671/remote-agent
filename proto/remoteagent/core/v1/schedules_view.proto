@@ -724,13 +724,13 @@ message ScheduleFormUpdateTimingAction {
 }
 
 message ScheduleWriteCacheEffect {
-  uint64 op_id = 1;
+  reserved 1;
   string machine_id = 2;
   string request_id = 3;
   bytes sealed_result_bytes = 4;
 }
 
 message ScheduleCacheWrittenEvent {
-  uint64 op_id = 1;
+  reserved 1;
   string machine_id = 2;
 }

@@ -602,11 +602,9 @@ func (c *Core) processSchedulesSyncStep(res sync.StepResult, effects *[]*corev1.
 					if sc.SealedResult != nil && len(sc.Result.GetSchedule().GetResultJson()) > 0 {
 						if c.m.sync.CanUseMachineCache(meta.machineID) {
 							if sealedBytes, err := sc.SealedResult.Marshal(); err == nil && len(sealedBytes) > 0 {
-								c.m.nextScheduleCacheOpID++
 								*effects = append(*effects, &corev1.Effect{
 									Effect: &corev1.Effect_ScheduleWriteCache{
 										ScheduleWriteCache: &corev1.ScheduleWriteCacheEffect{
-											OpId:              c.m.nextScheduleCacheOpID,
 											MachineId:         meta.machineID,
 											RequestId:         sc.RequestID,
 											SealedResultBytes: sealedBytes,

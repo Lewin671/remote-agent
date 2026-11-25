@@ -2788,7 +2788,6 @@ actor CoreHost: SyncEngine {
                 defaults.saveUsageCache(machineID: eff.machineID, snapshot: eff.snapshot)
                 if !closed {
                     await dispatch {
-                        $0.usageCacheWritten.opID = eff.opID
                         $0.usageCacheWritten.machineID = eff.machineID
                     }
                 }

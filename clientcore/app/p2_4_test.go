@@ -1331,13 +1331,13 @@ func TestScheduleCacheGateAndRevocationDuringWrite(t *testing.T) {
 		},
 	})
 	outEffs := pumpCoreSecurityEffects(t, c, phone, secStore, nowMs+100, bOut)
-	var writeOpID uint64
+	wroteCache := false
 	for _, eff := range outEffs {
 		if wc := eff.GetScheduleWriteCache(); wc != nil && wc.MachineId == trusted.id && len(wc.SealedResultBytes) > 0 {
-			writeOpID = wc.OpId
+			wroteCache = true
 		}
 	}
-	if writeOpID == 0 {
+	if !wroteCache {
 		t.Fatal("expected ScheduleWriteCacheEffect after real Core verification of SealedResult")
 	}
 
@@ -1397,7 +1397,6 @@ func TestScheduleCacheGateAndRevocationDuringWrite(t *testing.T) {
 		MonoMs: nowMs + 130,
 		Event: &corev1.Event_ScheduleCacheWritten{
 			ScheduleCacheWritten: &corev1.ScheduleCacheWrittenEvent{
-				OpId:      writeOpID,
 				MachineId: trusted.id,
 			},
 		},
@@ -1498,14 +1497,14 @@ func TestUsageCacheRevocationDuringWrite(t *testing.T) {
 			},
 		},
 	})
-	var writeOpID uint64
+	wroteCache := false
 	for _, eff := range b.Effects {
 		if wc := eff.GetUsageCacheWrite(); wc != nil && wc.MachineId == "m-usage" {
-			writeOpID = wc.OpId
+			wroteCache = true
 		}
 	}
-	if writeOpID == 0 {
-		t.Fatal("expected UsageCacheWriteEffect with non-zero OpId")
+	if !wroteCache {
+		t.Fatal("expected UsageCacheWriteEffect")
 	}
 
 	// Revoke m-usage while write is in flight.
@@ -1539,7 +1538,6 @@ func TestUsageCacheRevocationDuringWrite(t *testing.T) {
 		MonoMs: 8_080,
 		Event: &corev1.Event_UsageCacheWritten{
 			UsageCacheWritten: &corev1.UsageCacheWrittenEvent{
-				OpId:      writeOpID,
 				MachineId: "m-usage",
 			},
 		},

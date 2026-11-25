@@ -569,7 +569,7 @@ class Remote(
                         cache?.putBlob("schedule:${eff.machineId}", scheduleSnapshot(eff.requestId, env))
                     }
                 } finally {
-                    coreHost.deliverScheduleCacheWritten(eff.opId, eff.machineId)
+                    coreHost.deliverScheduleCacheWritten(eff.machineId)
                 }
             }
         }
@@ -609,7 +609,7 @@ class Remote(
                     try {
                         cache?.putBlob(usageBlobKey(mid, snap.preset), snap.toByteArray())
                     } finally {
-                        coreHost.deliverUsageCacheWritten(eff.opId, mid)
+                        coreHost.deliverUsageCacheWritten(mid)
                     }
                 }
             }

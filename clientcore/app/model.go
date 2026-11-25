@@ -83,7 +83,6 @@ type Model struct {
 	homeFocusReconcileCount int
 
 	usageCacheRequested       map[string]bool
-	nextUsageCacheOpID        uint64
 	activeNewSessionPagingKey string
 	pendingNotifTap           *corev1.ResolveNotificationTapAction
 }

@@ -1531,7 +1531,6 @@ type UsageCacheWriteEffect struct {
 	_         [0]func()
 	MachineId string
 	Snapshot  *v1.UsageStatsResponse
-	OpId      uint64
 }
 
 func (m *UsageCacheWriteEffect) GetMachineId() string {
@@ -1546,18 +1545,11 @@ func (m *UsageCacheWriteEffect) GetSnapshot() *v1.UsageStatsResponse {
 	}
 	return nil
 }
-func (m *UsageCacheWriteEffect) GetOpId() uint64 {
-	if m != nil {
-		return m.OpId
-	}
-	return 0
-}
 
 var LitewireDesc_UsageCacheWriteEffect = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(UsageCacheWriteEffect{}.MachineId), Kind: litewire.KindString},
 		{Num: 2, Offset: unsafe.Offsetof(UsageCacheWriteEffect{}.Snapshot), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_UsageStatsResponse},
-		{Num: 3, Offset: unsafe.Offsetof(UsageCacheWriteEffect{}.OpId), Kind: litewire.KindUint64},
 	},
 }
 
@@ -1571,16 +1563,9 @@ func (m *UsageCacheWriteEffect) AppendMarshal(b []byte) []byte {
 
 type UsageCacheWrittenEvent struct {
 	_         [0]func()
-	OpId      uint64
 	MachineId string
 }
 
-func (m *UsageCacheWrittenEvent) GetOpId() uint64 {
-	if m != nil {
-		return m.OpId
-	}
-	return 0
-}
 func (m *UsageCacheWrittenEvent) GetMachineId() string {
 	if m != nil {
 		return m.MachineId
@@ -1591,7 +1576,6 @@ func (m *UsageCacheWrittenEvent) GetMachineId() string {
 var LitewireDesc_UsageCacheWrittenEvent = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&UsageCacheWrittenEvent{}) },
 	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(UsageCacheWrittenEvent{}.OpId), Kind: litewire.KindUint64},
 		{Num: 2, Offset: unsafe.Offsetof(UsageCacheWrittenEvent{}.MachineId), Kind: litewire.KindString},
 	},
 }

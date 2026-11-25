@@ -3533,8 +3533,6 @@ public struct PBScheduleWriteCacheEffect: Sendable {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var opID: UInt64 = 0
-
   public var machineID: String = String()
 
   public var requestID: String = String()
@@ -3550,8 +3548,6 @@ public struct PBScheduleCacheWrittenEvent: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
-
-  public var opID: UInt64 = 0
 
   public var machineID: String = String()
 
@@ -8134,7 +8130,7 @@ extension PBScheduleFormUpdateTimingAction: SwiftProtobuf.Message, SwiftProtobuf
 
 extension PBScheduleWriteCacheEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ScheduleWriteCacheEffect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}machine_id\0\u{3}request_id\0\u{3}sealed_result_bytes\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{4}\u{2}machine_id\0\u{3}request_id\0\u{3}sealed_result_bytes\0\u{c}\u{1}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -8142,7 +8138,6 @@ extension PBScheduleWriteCacheEffect: SwiftProtobuf.Message, SwiftProtobuf._Mess
       // allocates stack space for every case branch when no optimizations are
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
-      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.opID) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.requestID) }()
       case 4: try { try decoder.decodeSingularBytesField(value: &self.sealedResultBytes) }()
@@ -8152,9 +8147,6 @@ extension PBScheduleWriteCacheEffect: SwiftProtobuf.Message, SwiftProtobuf._Mess
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.opID != 0 {
-      try visitor.visitSingularUInt64Field(value: self.opID, fieldNumber: 1)
-    }
     if !self.machineID.isEmpty {
       try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 2)
     }
@@ -8168,7 +8160,6 @@ extension PBScheduleWriteCacheEffect: SwiftProtobuf.Message, SwiftProtobuf._Mess
   }
 
   public static func ==(lhs: PBScheduleWriteCacheEffect, rhs: PBScheduleWriteCacheEffect) -> Bool {
-    if lhs.opID != rhs.opID {return false}
     if lhs.machineID != rhs.machineID {return false}
     if lhs.requestID != rhs.requestID {return false}
     if lhs.sealedResultBytes != rhs.sealedResultBytes {return false}
@@ -8179,7 +8170,7 @@ extension PBScheduleWriteCacheEffect: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 extension PBScheduleCacheWrittenEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ScheduleCacheWrittenEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}machine_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{4}\u{2}machine_id\0\u{c}\u{1}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -8187,7 +8178,6 @@ extension PBScheduleCacheWrittenEvent: SwiftProtobuf.Message, SwiftProtobuf._Mes
       // allocates stack space for every case branch when no optimizations are
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
-      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.opID) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
       default: break
       }
@@ -8195,9 +8185,6 @@ extension PBScheduleCacheWrittenEvent: SwiftProtobuf.Message, SwiftProtobuf._Mes
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.opID != 0 {
-      try visitor.visitSingularUInt64Field(value: self.opID, fieldNumber: 1)
-    }
     if !self.machineID.isEmpty {
       try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 2)
     }
@@ -8205,7 +8192,6 @@ extension PBScheduleCacheWrittenEvent: SwiftProtobuf.Message, SwiftProtobuf._Mes
   }
 
   public static func ==(lhs: PBScheduleCacheWrittenEvent, rhs: PBScheduleCacheWrittenEvent) -> Bool {
-    if lhs.opID != rhs.opID {return false}
     if lhs.machineID != rhs.machineID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
