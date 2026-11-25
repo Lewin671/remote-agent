@@ -421,6 +421,7 @@ internal fun SharedFileHost(
             nameHead = preview.item.nameHead,
             nameTail = preview.item.nameTail,
             text = preview.text,
+            menuItems = viewerMenuItems(preview.item),
             onDismiss = { liveHost.textPreview = null },
             onAction = { action ->
                 handleMenuAction(action, preview.item, preview.localFile, sessionId, manager, context, liveHost, scope, copy)
@@ -435,6 +436,7 @@ internal fun SharedFileHost(
             nameHead = preview.item.nameHead,
             nameTail = preview.item.nameTail,
             localFile = preview.localFile,
+            menuItems = viewerMenuItems(preview.item),
             onDismiss = { liveHost.pdfPreview = null },
             onUnsupported = {
                 liveHost.pdfPreview = null
@@ -1314,20 +1316,16 @@ internal fun sharedFileMenuIcon(action: SharedFileMenuAction): ImageVector = whe
     else -> SharedFileIcons.Doc
 }
 
-internal fun viewerMenuItem(action: SharedFileMenuAction, labelKey: String): SharedFileMenuItemView =
-    SharedFileMenuItemView.newBuilder()
-        .setAction(action)
-        .setLabel(CoreText.newBuilder().setKey(labelKey))
-        .setEnabled(true)
-        .build()
+/** What the player's ⋯ menu offers: Core's downloaded-card menu entries, minus delete. */
+internal fun playerMenuItems(item: SessionSharedFileItem): List<SharedFileMenuItemView> =
+    item.menuItemsList.filter { it.action != SharedFileMenuAction.SHARED_FILE_MENU_ACTION_DELETE_LOCAL }
 
-/** What the player's ⋯ menu offers: the same actions as a downloaded card's menu, minus delete. */
-internal fun playerMenuEntries(video: Boolean): List<SharedFileMenuItemView> = buildList {
-    if (video) add(viewerMenuItem(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SAVE_TO_ALBUM, UiMessages.sharedFileMenuSaveToAlbum().key))
-    add(viewerMenuItem(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SAVE, UiMessages.sharedFileMenuSaveToDownloads().key))
-    add(viewerMenuItem(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SHARE, UiMessages.sharedFileMenuShare().key))
-    add(viewerMenuItem(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_OPEN_WITH, UiMessages.sharedFileMenuOpenWith().key))
-}
+/** What the text/PDF viewer's ⋯ menu offers: open-with and save from Core's menu entries (share is on the toolbar). */
+internal fun viewerMenuItems(item: SessionSharedFileItem): List<SharedFileMenuItemView> =
+    item.menuItemsList.filter {
+        it.action == SharedFileMenuAction.SHARED_FILE_MENU_ACTION_OPEN_WITH ||
+            it.action == SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SAVE
+    }
 
 @Composable
 internal fun SharedFileContextMenuCard(

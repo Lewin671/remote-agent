@@ -80,6 +80,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
 import io.github.lewin671.remoteagent.core.proto.SharedFileMenuAction
+import io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView
 import java.io.File
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
@@ -339,6 +340,7 @@ internal fun SharedMediaPlayerDialog(
                 engine = engine,
                 fileName = item.displayName,
                 video = video,
+                menuItems = playerMenuItems(item),
                 onClose = onDismiss,
                 onAction = onAction,
             )
@@ -391,6 +393,7 @@ internal fun SharedMediaPlayerPage(
     video: Boolean,
     onClose: () -> Unit,
     onAction: (SharedFileMenuAction) -> Unit,
+    menuItems: List<SharedFileMenuItemView> = emptyList(),
     safeInsets: WindowInsets = WindowInsets.displayCutout.union(WindowInsets.waterfall),
     videoSurface: @Composable (Modifier) -> Unit = { PlayerTextureView(engine, it) },
 ) {
@@ -530,7 +533,7 @@ internal fun SharedMediaPlayerPage(
             SharedFileContextMenuCard(
                 path = "",
                 sourceCaption = "",
-                entries = playerMenuEntries(video),
+                entries = menuItems,
                 onAction = { action ->
                     menuOpen = false
                     onAction(action)

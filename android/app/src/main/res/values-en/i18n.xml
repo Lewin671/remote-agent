@@ -1945,7 +1945,6 @@
     <string name="shared_file_menu_open_with" formatted="false">"Open in another app"</string>
     <string name="shared_file_menu_save_to_album" formatted="false">"Save to Photos"</string>
     <string name="shared_file_menu_save_to_device" formatted="false">"Save to device"</string>
-    <string name="shared_file_menu_save_to_downloads" formatted="false">"Save to Downloads"</string>
     <string name="shared_file_menu_share" formatted="false">"Share…"</string>
     <plurals name="shared_file_notification_files">
         <item quantity="one">"%1$d file attached"</item>

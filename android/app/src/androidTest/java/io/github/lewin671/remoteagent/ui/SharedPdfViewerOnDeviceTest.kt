@@ -29,10 +29,14 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
+import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
 import io.github.lewin671.remoteagent.core.proto.SharedFileCardStatus
 import io.github.lewin671.remoteagent.core.proto.SharedFileKind
+import io.github.lewin671.remoteagent.core.proto.SharedFileMenuAction
+import io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView
 import io.github.lewin671.remoteagent.core.proto.SharedFilePrimaryAction
+import io.github.lewin671.remoteagent.core.proto.Text as CoreText
 import io.github.lewin671.remoteagent.data.SharedFileManager
 import java.io.File
 import org.junit.After
@@ -67,6 +71,18 @@ class SharedPdfViewerOnDeviceTest {
             .setStatus(SharedFileCardStatus.SHARED_FILE_CARD_STATUS_DOWNLOADED)
             .setPrimaryAction(SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_OPEN)
             .setPrimaryEnabled(true)
+            .addMenuItems(
+                SharedFileMenuItemView.newBuilder()
+                    .setAction(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SAVE)
+                    .setLabel(CoreText.newBuilder().setKey(UiMessages.sharedFileMenuSaveToDevice().key))
+                    .setEnabled(true),
+            )
+            .addMenuItems(
+                SharedFileMenuItemView.newBuilder()
+                    .setAction(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_OPEN_WITH)
+                    .setLabel(CoreText.newBuilder().setKey(UiMessages.sharedFileMenuOpenWith().key))
+                    .setEnabled(true),
+            )
             .build()
         local = manager.seedCommittedFileForTest("pdf-preview", file.fileId, file.displayName, bytes)
         ui.setContent {

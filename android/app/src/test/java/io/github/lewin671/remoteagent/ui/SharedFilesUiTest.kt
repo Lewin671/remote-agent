@@ -165,7 +165,7 @@ class SharedFilesUiTest {
                 if (kind == SharedFileKind.SHARED_FILE_KIND_VIDEO || kind == SharedFileKind.SHARED_FILE_KIND_IMAGE) {
                     add(menuItem(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SAVE_TO_ALBUM, UiMessages.sharedFileMenuSaveToAlbum().key))
                 }
-                add(menuItem(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SAVE, UiMessages.sharedFileMenuSaveToDownloads().key))
+                add(menuItem(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SAVE, UiMessages.sharedFileMenuSaveToDevice().key))
                 add(menuItem(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SHARE, UiMessages.sharedFileMenuShare().key))
                 add(menuItem(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_OPEN_WITH, UiMessages.sharedFileMenuOpenWith().key))
                 add(menuItem(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_DELETE_LOCAL, UiMessages.sharedFileMenuDeleteLocal().key, destructive = true))
@@ -412,7 +412,7 @@ class SharedFilesUiTest {
         ui.onNodeWithText("~/Movies/daocheng/out/daocheng-final.mp4").assertExists()
         ui.onNodeWithText("来自 MacBook Pro").assertExists()
         ui.onNodeWithText("存到相册").assertExists()
-        ui.onNodeWithText("存到「下载」").assertExists()
+        ui.onNodeWithText("保存到本机").assertExists()
         ui.onNodeWithText("分享…").assertExists()
         ui.onNodeWithText("删除本机副本").assertExists()
 
@@ -430,9 +430,9 @@ class SharedFilesUiTest {
             }
         }
         ui.onNodeWithText("PDF · 2.1 MB").performTouchInput { longClick() }
-        ui.onNodeWithText("存到「下载」").assertExists()
+        ui.onNodeWithText("保存到本机").assertExists()
         ui.onAllNodesWithText("存到相册").assertCountEquals(0)
-        val labels = listOf("存到「下载」", "分享…", "用其他应用打开", "删除本机副本")
+        val labels = listOf("保存到本机", "分享…", "用其他应用打开", "删除本机副本")
             .map { ui.onNodeWithText(it).fetchSemanticsNode().boundsInWindow.top }
         assertEquals(labels.sorted(), labels)
     }
@@ -676,23 +676,25 @@ class SharedFilesUiTest {
         fun still(m: Modifier): @Composable () -> Unit = {
             androidx.compose.foundation.Image(createMockThumbnailBitmap(warm = true).asImageBitmap(), null, m, contentScale = androidx.compose.ui.layout.ContentScale.Crop)
         }
+        val videoItem = sharedFileItem("v", "daocheng-final.mp4", 24_300_000L, kind = SharedFileKind.SHARED_FILE_KIND_VIDEO, status = SharedFileCardStatus.SHARED_FILE_CARD_STATUS_DOWNLOADED)
         val video = FakePlayerEngine(102_000, video = true).apply { position = 42_000 }
         render(theme) {
-            SharedMediaPlayerPage(video, "daocheng-final.mp4", true, {}, {}) { m -> still(m)() }
+            SharedMediaPlayerPage(video, "daocheng-final.mp4", true, {}, {}, menuItems = playerMenuItems(videoItem)) { m -> still(m)() }
         }
         captureShot("android-player-video-$tag")
         ui.onNodeWithContentDescription("更多").performClick()
         captureShot("android-player-video-menu-$tag")
 
+        val audioItem = sharedFileItem("a", "pixel-tone-voice-memo-take-3.mp3", 1_200_000L, kind = SharedFileKind.SHARED_FILE_KIND_AUDIO, status = SharedFileCardStatus.SHARED_FILE_CARD_STATUS_DOWNLOADED)
         val audio = FakePlayerEngine(12_000, video = false).apply { position = 4_000 }
         render(theme) {
-            SharedMediaPlayerPage(audio, "pixel-tone-voice-memo-take-3.mp3", false, {}, {})
+            SharedMediaPlayerPage(audio, "pixel-tone-voice-memo-take-3.mp3", false, {}, {}, menuItems = playerMenuItems(audioItem))
         }
         captureShot("android-player-audio-$tag")
 
         val broken = FakePlayerEngine(video = true).apply { failed = true }
         render(theme) {
-            SharedMediaPlayerPage(broken, "clip.mkv", true, {}, {})
+            SharedMediaPlayerPage(broken, "clip.mkv", true, {}, {}, menuItems = playerMenuItems(videoItem))
         }
         captureShot("android-player-error-$tag")
     }

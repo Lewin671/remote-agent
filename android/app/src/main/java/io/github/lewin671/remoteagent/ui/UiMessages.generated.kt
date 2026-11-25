@@ -5606,9 +5606,6 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         "shared_file.menu_save_to_device" -> {
             resources.getString(R.string.shared_file_menu_save_to_device)
         }
-        "shared_file.menu_save_to_downloads" -> {
-            resources.getString(R.string.shared_file_menu_save_to_downloads)
-        }
         "shared_file.menu_share" -> {
             resources.getString(R.string.shared_file_menu_share)
         }
@@ -6025,16 +6022,16 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
             val count = message.args.getValue("count") as Int
             resources.getQuantityString(R.plurals.tools_completed_files, count, count)
         }
+        "tools.elapsed" -> {
+            val duration = message.args.getValue("duration") as String
+            resources.getString(R.string.tools_elapsed, duration)
+        }
         else -> null
     }
 }
 
 private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
-        "tools.elapsed" -> {
-            val duration = message.args.getValue("duration") as String
-            resources.getString(R.string.tools_elapsed, duration)
-        }
         "tools.elapsed_sync" -> {
             val elapsed = message.args.getValue("elapsed") as String
             resources.getString(R.string.tools_elapsed_sync, elapsed)
@@ -6516,15 +6513,15 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.popover_a11y" -> {
             resources.getString(R.string.transport_popover_a11y)
         }
+        "transport.popover_direct_body" -> {
+            resources.getString(R.string.transport_popover_direct_body)
+        }
         else -> null
     }
 }
 
 private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
-        "transport.popover_direct_body" -> {
-            resources.getString(R.string.transport_popover_direct_body)
-        }
         "transport.popover_direct_title" -> {
             val name = message.args.getValue("name") as String
             resources.getString(R.string.transport_popover_direct_title, name)

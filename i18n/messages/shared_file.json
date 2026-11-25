@@ -360,20 +360,6 @@
     }
   },
   {
-    "key": "shared_file.menu_save_to_downloads",
-    "zh-CN": "存到「下载」",
-    "en": "Save to Downloads",
-    "notes": "长按菜单操作（Android）：把文件存到系统下载目录。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "shared_file.menu_share",
     "zh-CN": "分享…",
     "en": "Share…",

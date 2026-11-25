@@ -17,6 +17,8 @@ import androidx.test.core.app.ApplicationProvider
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
 import io.github.lewin671.remoteagent.core.proto.SharedFileMenuAction
+import io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView
+import io.github.lewin671.remoteagent.core.proto.Text as CoreText
 import io.github.lewin671.remoteagent.data.SharedFileManager
 import io.github.lewin671.remoteagent.data.SharedTextMaxBytes
 import org.junit.After
@@ -116,10 +118,22 @@ class SharedTextViewerUiTest {
     @Test fun toolbarAndMenuDispatchTheExistingActions() {
         val actions = mutableListOf<SharedFileMenuAction>()
         var closed = false
+        val menuItems = listOf(
+            SharedFileMenuItemView.newBuilder()
+                .setAction(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SAVE)
+                .setLabel(CoreText.newBuilder().setKey(UiMessages.sharedFileMenuSaveToDevice().key))
+                .setEnabled(true)
+                .build(),
+            SharedFileMenuItemView.newBuilder()
+                .setAction(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_OPEN_WITH)
+                .setLabel(CoreText.newBuilder().setKey(UiMessages.sharedFileMenuOpenWith().key))
+                .setEnabled(true)
+                .build(),
+        )
         ui.setContent {
             RaTheme(DarkPalette) {
                 CompositionLocalProvider(LocalMessageLocale provides "en") {
-                    SharedFileTextViewerDialog("notes.txt", "Plain text", { closed = true }, actions::add)
+                    SharedFileTextViewerDialog("notes.txt", "Plain text", { closed = true }, actions::add, menuItems = menuItems)
                 }
             }
         }
@@ -128,7 +142,7 @@ class SharedTextViewerUiTest {
         ui.onNodeWithContentDescription(copy(UiMessages.commonAndroidMore())).performClick()
         ui.onNodeWithText(copy(UiMessages.sharedFileMenuOpenWith())).performClick()
         ui.onNodeWithContentDescription(copy(UiMessages.commonAndroidMore())).performClick()
-        ui.onNodeWithText(copy(UiMessages.sharedFileMenuSaveToDownloads())).performClick()
+        ui.onNodeWithText(copy(UiMessages.sharedFileMenuSaveToDevice())).performClick()
         assertEquals(
             listOf(
                 SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SHARE,

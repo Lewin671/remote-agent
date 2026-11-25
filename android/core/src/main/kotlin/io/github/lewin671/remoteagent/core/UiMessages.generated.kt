@@ -1684,7 +1684,6 @@ object UiMessages {
     fun sharedFileMenuOpenWith(): UiMessage = UiMessage("shared_file.menu_open_with", emptyMap())
     fun sharedFileMenuSaveToAlbum(): UiMessage = UiMessage("shared_file.menu_save_to_album", emptyMap())
     fun sharedFileMenuSaveToDevice(): UiMessage = UiMessage("shared_file.menu_save_to_device", emptyMap())
-    fun sharedFileMenuSaveToDownloads(): UiMessage = UiMessage("shared_file.menu_save_to_downloads", emptyMap())
     fun sharedFileMenuShare(): UiMessage = UiMessage("shared_file.menu_share", emptyMap())
     fun sharedFileNotificationFiles(count: Int): UiMessage = UiMessage("shared_file.notification_files", mapOf("count" to count))
     fun sharedFileOpenNoApp(): UiMessage = UiMessage("shared_file.open_no_app", emptyMap())

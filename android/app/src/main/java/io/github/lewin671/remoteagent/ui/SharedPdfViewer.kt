@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.proto.SharedFileMenuAction
+import io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView
 import io.github.lewin671.remoteagent.data.SharedPdfDocument
 import io.github.lewin671.remoteagent.data.pdfRetainedPages
 import java.io.File
@@ -79,6 +80,7 @@ internal fun SharedFilePdfViewer(
     onDismiss: () -> Unit,
     onUnsupported: () -> Unit,
     onAction: (SharedFileMenuAction) -> Unit,
+    menuItems: List<SharedFileMenuItemView> = emptyList(),
     nameHead: String = "",
     nameTail: String = "",
 ) {
@@ -100,7 +102,7 @@ internal fun SharedFilePdfViewer(
     }
     document?.let { pdf ->
         SharedFileViewerDialog(onDismiss) {
-            SharedFileViewerPage(fileName, onDismiss, onAction, tag = "pdf-viewer", nameHead = nameHead, nameTail = nameTail) {
+            SharedFileViewerPage(fileName, onDismiss, onAction, tag = "pdf-viewer", menuItems = menuItems, nameHead = nameHead, nameTail = nameTail) {
                 SharedPdfPages(pdf, onUnsupported, Modifier.weight(1f))
             }
         }

@@ -40,6 +40,7 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.core.view.WindowCompat
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.proto.SharedFileMenuAction
+import io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView
 
 /** Full-screen file viewers share the image viewer's platform transition and the chat palette. */
 @Composable
@@ -70,6 +71,7 @@ internal fun SharedFileViewerPage(
     onClose: () -> Unit,
     onAction: (SharedFileMenuAction) -> Unit,
     tag: String,
+    menuItems: List<SharedFileMenuItemView> = emptyList(),
     nameHead: String = "",
     nameTail: String = "",
     content: @Composable ColumnScope.() -> Unit,
@@ -109,10 +111,7 @@ internal fun SharedFileViewerPage(
                     ) {
                         SharedFileContextMenuCard(
                             path = "", sourceCaption = "",
-                            entries = listOf(
-                                viewerMenuItem(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_OPEN_WITH, UiMessages.sharedFileMenuOpenWith().key),
-                                viewerMenuItem(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SAVE, UiMessages.sharedFileMenuSaveToDownloads().key),
-                            ),
+                            entries = menuItems,
                             onAction = { menu = false; onAction(it) },
                             modifier = Modifier.testTag("$tag-menu"),
                         )

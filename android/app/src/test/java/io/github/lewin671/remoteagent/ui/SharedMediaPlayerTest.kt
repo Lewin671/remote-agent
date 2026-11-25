@@ -41,8 +41,11 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.test.core.app.ApplicationProvider
+import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
 import io.github.lewin671.remoteagent.core.proto.SharedFileMenuAction
+import io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView
+import io.github.lewin671.remoteagent.core.proto.Text as CoreText
 import io.github.lewin671.remoteagent.data.ThemeMode
 import org.robolectric.shadows.ShadowDialog
 import java.io.File
@@ -130,6 +133,18 @@ class SharedMediaPlayerTest {
         tempDir.deleteRecursively()
     }
 
+    private fun samplePlayerMenuItems(video: Boolean): List<SharedFileMenuItemView> = buildList {
+        fun entry(action: SharedFileMenuAction, key: String) = SharedFileMenuItemView.newBuilder()
+            .setAction(action)
+            .setLabel(CoreText.newBuilder().setKey(key))
+            .setEnabled(true)
+            .build()
+        if (video) add(entry(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SAVE_TO_ALBUM, UiMessages.sharedFileMenuSaveToAlbum().key))
+        add(entry(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SAVE, UiMessages.sharedFileMenuSaveToDevice().key))
+        add(entry(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SHARE, UiMessages.sharedFileMenuShare().key))
+        add(entry(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_OPEN_WITH, UiMessages.sharedFileMenuOpenWith().key))
+    }
+
     private fun page(engine: PlayerEngine, name: String, video: Boolean, theme: ThemeMode = ThemeMode.LIGHT, safeInsets: androidx.compose.foundation.layout.WindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0)) {
         ui.setContent {
             RaTheme(theme) {
@@ -143,6 +158,7 @@ class SharedMediaPlayerTest {
                         video = video,
                         onClose = { closed++ },
                         onAction = { actions += it },
+                        menuItems = samplePlayerMenuItems(video),
                         videoSurface = { m -> Box(m.background(Color(0xFF2F4858))) },
                         safeInsets = safeInsets,
                     )
@@ -441,7 +457,7 @@ class SharedMediaPlayerTest {
         page(FakePlayerEngine(), "clip.mp4", video = true)
         ui.onNodeWithContentDescription("更多").performClick()
         ui.onNodeWithText("存到相册").assertExists()
-        ui.onNodeWithText("存到「下载」").assertExists()
+        ui.onNodeWithText("保存到本机").assertExists()
         ui.onNodeWithText("分享…").assertExists()
         ui.onNodeWithText("用其他应用打开").performClick()
         assertEquals(listOf(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_OPEN_WITH), actions)
@@ -453,7 +469,7 @@ class SharedMediaPlayerTest {
         page(FakePlayerEngine(video = false), "tone.mp3", video = false)
         ui.onNodeWithContentDescription("更多").performClick()
         ui.onAllNodesWithText("存到相册").assertCountEquals(0)
-        ui.onNodeWithText("存到「下载」").assertExists()
+        ui.onNodeWithText("保存到本机").assertExists()
         ui.onNodeWithText("用其他应用打开").assertExists()
     }
 
