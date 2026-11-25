@@ -662,6 +662,9 @@ func (e *Engine) emitCoordEffects(ctx *StepContext, effs []transport.CoordEffect
 			})
 
 		case transport.CoordTerminalDeliver:
+			if e.handleTerminalCoordDeliver(ctx, eff) {
+				continue
+			}
 			ctx.emit(&corev1.Effect{
 				Effect: &corev1.Effect_TerminalDirectDeliver{
 					TerminalDirectDeliver: &corev1.TerminalDirectDeliverEffect{
@@ -672,6 +675,9 @@ func (e *Engine) emitCoordEffects(ctx *StepContext, effs []transport.CoordEffect
 			})
 
 		case transport.CoordTerminalAttachRelay:
+			if e.handleTerminalCoordAttachRelay(ctx, eff) {
+				continue
+			}
 			ctx.emit(&corev1.Effect{
 				Effect: &corev1.Effect_TerminalDirectAttachRelay{
 					TerminalDirectAttachRelay: &corev1.TerminalDirectAttachRelayEffect{
@@ -683,6 +689,9 @@ func (e *Engine) emitCoordEffects(ctx *StepContext, effs []transport.CoordEffect
 			})
 
 		case transport.CoordTerminalState:
+			if e.handleTerminalCoordState(ctx, eff) {
+				continue
+			}
 			ctx.emit(&corev1.Effect{
 				Effect: &corev1.Effect_TerminalDirectState{
 					TerminalDirectState: &corev1.TerminalDirectStateEffect{

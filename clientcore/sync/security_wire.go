@@ -621,6 +621,9 @@ const (
 	secOpPushAuth
 	secOpScheduleCache
 	secOpSessionImage
+	secOpTerminalAuth
+	secOpTerminalSeal
+	secOpTerminalOpen
 )
 
 type dirBatchKind uint8
@@ -695,6 +698,13 @@ type pendingSecOp struct {
 	imageID        string
 	rawEnvBytes    []byte
 	fromCache      bool
+	fromDirect     bool
+	streamID       string
+	termSeq        uint64
+	termIsInput    bool
+	termFrameBytes []byte
+	termItem       *pendingTermSend
+	termRawBytes   int
 	pcID           uint64
 	prep           *PreparedCommand
 	cmdEv          *corev1.CommandOutcomeEvent
@@ -775,6 +785,8 @@ func (e *Engine) OnAuthTokenDone(tag uint64, res security.AuthTokenResult) {
 		e.finishForwardAuth(stepCtx, op.fwdLeg, res)
 	case secOpPushAuth:
 		e.finishPushAuth(stepCtx, op.push, res)
+	case secOpTerminalAuth:
+		e.finishTerminalAuth(stepCtx, op.streamID, res)
 	}
 	e.maybeRequestEntropy(stepCtx)
 }
@@ -816,6 +828,8 @@ func (e *Engine) OnOpenBatchDone(tag uint64, results []security.OpenResult) {
 		e.finishScheduleCacheOpen(e.activeStepCtx, op, results)
 	case secOpSessionImage:
 		e.finishSessionImageOpen(e.activeStepCtx, op, results)
+	case secOpTerminalOpen:
+		e.finishTerminalOpen(e.activeStepCtx, op, results)
 	}
 }
 
@@ -1012,6 +1026,8 @@ func (e *Engine) OnSealEnvelopeDone(tag uint64, sr security.SealResult, _ error)
 		e.finishSealCmd(e.activeStepCtx, op, sr)
 	case secOpSealPrefs:
 		e.finishSealPrefs(e.activeStepCtx, op, sr)
+	case secOpTerminalSeal:
+		e.finishTerminalSeal(e.activeStepCtx, op, sr)
 	}
 }
 

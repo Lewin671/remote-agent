@@ -135,8 +135,8 @@
   },
   {
     "en": "Terminal connection dropped: {reason}",
-    "key": "errors.android_terminal_connection_dropped_reason",
-    "notes": "Android 终端断开提示；reason 是原始错误或已本地化的完整错误。",
+    "key": "errors.terminal_connection_dropped_reason",
+    "notes": "终端连接断开且带有具体原因时的提示，供 Core 与三端共享；reason 是原始错误或已本地化的完整错误。",
     "params": {
       "reason": {
         "example": "Example",
@@ -144,7 +144,9 @@
       }
     },
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "en": "draft",
@@ -153,18 +155,20 @@
     "zh-CN": "终端连接断开：{reason}"
   },
   {
-    "en": "Terminal input paused while waiting for authorization",
-    "key": "errors.android_terminal_input_paused_while_waiting_for_authorization",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "en": "Too many pending terminal inputs. Reconnect before typing again.",
+    "key": "errors.terminal_input_backlog_reconnect",
+    "notes": "终端出站输入队列超过 64 帧上限而关闭连接时的错误提示，供 Core 与三端共享。说明可多行，无变量。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "en": "draft",
       "zh-CN": "source"
     },
-    "zh-CN": "终端输入等待授权，已暂停"
+    "zh-CN": "终端输入积压过多，请重新连接后再输入"
   },
   {
     "en": "Terminal output backlog. Reception stopped",
@@ -385,38 +389,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "草稿没能恢复，仍可输入和发送，下次打开或编辑时重试"
-  },
-  {
-    "en": "Security envelope missing",
-    "key": "errors.security_envelope_missing",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "缺少安全信封"
-  },
-  {
-    "en": "Security body type or direction mismatch",
-    "key": "errors.security_body_type_or_direction_mismatch",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "安全正文类型或方向不匹配"
   },
   {
     "en": "Terminal connection closed",

@@ -2799,7 +2799,11 @@ actor CoreHost: SyncEngine {
                  .relayRpc,
                  .relayRpcCancel,
                  .pushRpcResult,
-                 .sessionImageLoaded:
+                 .sessionImageLoaded,
+                 .terminalOpenSocket,
+                 .terminalCloseSocket,
+                 .terminalDeliverOutput,
+                 .terminalStateChanged:
                 // Handled by Web/Android in P2-4/P2-5; iOS migrates in P3-2.
                 break
 

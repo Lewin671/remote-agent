@@ -18,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file remoteagent/core/v1/relay_pipe.proto.
  */
 export const file_remoteagent_core_v1_relay_pipe: GenFile = /*@__PURE__*/
-  fileDesc("CiRyZW1vdGVhZ2VudC9jb3JlL3YxL3JlbGF5X3BpcGUucHJvdG8SE3JlbW90ZWFnZW50LmNvcmUudjEiJwoUUmVsYXlQaXBlQ29uZmlnRXZlbnQSDwoHZW5hYmxlZBgBIAEoCCK7AQoOUmVsYXlScGNFZmZlY3QSDQoFb3BfaWQYASABKAQSMwoGbWV0aG9kGAIgASgOMiMucmVtb3RlYWdlbnQuY29yZS52MS5SZWxheVJwY01ldGhvZBIOCgZzZXJ2ZXIYAyABKAkSEgoKYXV0aF90b2tlbhgEIAEoCRISCgp0aW1lb3V0X21zGAUgASgDEhYKDmF0dGVtcHRfaGVhZGVyGAYgASgJEhUKDXJlcXVlc3RfYnl0ZXMYByABKAwiJQoUUmVsYXlScGNDYW5jZWxFZmZlY3QSDQoFb3BfaWQYASABKAQi9AEKE1JlbGF5UnBjUmVzdWx0RXZlbnQSDQoFb3BfaWQYASABKAQSFgoOcmVzcG9uc2VfYnl0ZXMYAiABKAwSFAoMY29ubmVjdF9jb2RlGAMgASgFEhMKC3JlbGF5X2Vwb2NoGAQgASgJEj8KDWVycm9yX2RldGFpbHMYBSADKAsyKC5yZW1vdGVhZ2VudC5jb3JlLnYxLlJwY0Vycm9yRGV0YWlsQnl0ZXMSFQoNbmV0d29ya19lcnJvchgGIAEoCBIXCg91bnJlc29sdmVkX2hvc3QYByABKAgSGgoSZGlhZ25vc3RpY19tZXNzYWdlGAggASgJIj8KE1N0cmVhbVJhd0ZyYW1lRXZlbnQSDgoGbGVnX2lkGAEgASgEEhgKEHJhd19zZXJ2ZXJfZnJhbWUYAiABKAwiFgoUUmVmcmVzaERldmljZXNBY3Rpb24iygEKDVB1c2hScGNBY3Rpb24SDQoFb3BfaWQYASABKAQSDwoHZ2V0X2tleRgCIAEoCBIcChRzZXRfd2ViX3N1YnNjcmlwdGlvbhgDIAEoCBISCgpzZXRfdGFyZ2V0GAQgASgIEhkKEXN1YnNjcmlwdGlvbl9qc29uGAUgASgJEhEKCXB1c2hfdHlwZRgGIAEoBRIOCgZ0YXJnZXQYByABKAkSKQoFa2luZHMYCCADKA4yGi5yZW1vdGVhZ2VudC52MS5Ob3RpZnlLaW5kIncKE1B1c2hScGNSZXN1bHRFZmZlY3QSDQoFb3BfaWQYASABKAQSCgoCb2sYAiABKAgSEgoKcHVibGljX2tleRgDIAEoCRIPCgdlbmFibGVkGAQgASgIEhEKCXJldHJ5YWJsZRgFIAEoCBINCgVlcnJvchgGIAEoCSI+ChFTY2hlZHVsZUNhY2hlQmxvYhISCgpyZXF1ZXN0X2lkGAEgASgJEhUKDXNlYWxlZF9yZXN1bHQYAiABKAwiewoXU2Vzc2lvbkZldGNoSW1hZ2VBY3Rpb24SDQoFb3BfaWQYASABKAQSEgoKc2Vzc2lvbl9pZBgCIAEoCRIQCghpbWFnZV9pZBgDIAEoCRIXCg9jYWNoZWRfZW52ZWxvcGUYBCABKAwSEgoKbWFjaGluZV9pZBgFIAEoCSLzAgoYU2Vzc2lvbkltYWdlTG9hZGVkRWZmZWN0Eg0KBW9wX2lkGAEgASgEEhIKCnNlc3Npb25faWQYAiABKAkSEAoIaW1hZ2VfaWQYAyABKAkSOwoGc3RhdHVzGAQgASgOMisucmVtb3RlYWdlbnQuY29yZS52MS5TZXNzaW9uSW1hZ2VMb2FkU3RhdHVzEgwKBGRhdGEYBSABKAwSEQoJbWltZV90eXBlGAYgASgJEg0KBXdpZHRoGAcgASgNEg4KBmhlaWdodBgIIAEoDRIrCgZmb3JtYXQYCSABKA4yGy5yZW1vdGVhZ2VudC52MS5JbWFnZUZvcm1hdBIcChRjYWNoZV9lbnZlbG9wZV9ieXRlcxgKIAEoDBItCgplcnJvcl90ZXh0GAsgASgLMhkucmVtb3RlYWdlbnQuY29yZS52MS5UZXh0EhIKCmVycm9yX2NvZGUYDCABKAkSFwoPcmV0aXJlZF9oaXN0b3J5GA0gASgIKo8KCg5SZWxheVJwY01ldGhvZBIgChxSRUxBWV9SUENfTUVUSE9EX1VOU1BFQ0lGSUVEEAASKAokUkVMQVlfUlBDX01FVEhPRF9HRVRfU0VDVVJJVFlfU1RBVEVTEAESJwojUkVMQVlfUlBDX01FVEhPRF9QVVRfU0VDVVJJVFlfU1RBVEUQAhIoCiRSRUxBWV9SUENfTUVUSE9EX1BJTl9TRUNVUklUWV9ET01BSU4QAxIjCh9SRUxBWV9SUENfTUVUSE9EX0NSRUFURV9QQUlSSU5HEAQSIQodUkVMQVlfUlBDX01FVEhPRF9QRUVLX1BBSVJJTkcQBRIhCh1SRUxBWV9SUENfTUVUSE9EX0pPSU5fUEFJUklORxAGEiMKH1JFTEFZX1JQQ19NRVRIT0RfUkVWRUFMX1BBSVJJTkcQBxIkCiBSRUxBWV9SUENfTUVUSE9EX0FQUFJPVkVfUEFJUklORxAIEiAKHFJFTEFZX1JQQ19NRVRIT0RfR0VUX1BBSVJJTkcQCRIjCh9SRUxBWV9SUENfTUVUSE9EX0NBTkNFTF9QQUlSSU5HEAoSKwonUkVMQVlfUlBDX01FVEhPRF9HRVRfUkVDT1ZFUllfQ0hBTExFTkdFEAsSKQolUkVMQVlfUlBDX01FVEhPRF9HRVRfUkVDT1ZFUllfQ09OVEVYVBAMEiQKIFJFTEFZX1JQQ19NRVRIT0RfU1VCTUlUX1JFQ09WRVJZEA0SJgoiUkVMQVlfUlBDX01FVEhPRF9DT01QTEVURV9SRUNPVkVSWRAOEisKJ1JFTEFZX1JQQ19NRVRIT0RfREVMRVRFX01BQ0hJTkVfUkVDT1JEUxAPEiMKH1JFTEFZX1JQQ19NRVRIT0RfREVMRVRFX0FDQ09VTlQQEBIiCh5SRUxBWV9SUENfTUVUSE9EX0dFVF9DSEFMTEVOR0UQERIaChZSRUxBWV9SUENfTUVUSE9EX0xPR0lOEBISKQolUkVMQVlfUlBDX01FVEhPRF9HRVRfU0lHTlVQX0NIQUxMRU5HRRATEiQKIFJFTEFZX1JQQ19NRVRIT0RfUkVHSVNURVJfREVWSUNFEBQSJAogUkVMQVlfUlBDX01FVEhPRF9QVVRfREVWSUNFX01FVEEQFRIhCh1SRUxBWV9SUENfTUVUSE9EX0xJU1RfREVWSUNFUxAWEiIKHlJFTEFZX1JQQ19NRVRIT0RfTElTVF9NQUNISU5FUxAXEiYKIlJFTEFZX1JQQ19NRVRIT0RfR0VUX0FDQ09VTlRfUFJFRlMQGBImCiJSRUxBWV9SUENfTUVUSE9EX1BVVF9BQ0NPVU5UX1BSRUZTEBkSKQolUkVMQVlfUlBDX01FVEhPRF9MSVNUX1JFTU9URV9TRVNTSU9OUxAaEh8KG1JFTEFZX1JQQ19NRVRIT0RfR0VUX0VWRU5UUxAbEhwKGFJFTEFZX1JQQ19NRVRIT0RfRk9SV0FSRBAcEh4KGlJFTEFZX1JQQ19NRVRIT0RfR0VUX0lNQUdFEB0SIQodUkVMQVlfUlBDX01FVEhPRF9HRVRfUFVTSF9LRVkQHhIqCiZSRUxBWV9SUENfTUVUSE9EX1NFVF9QVVNIX1NVQlNDUklQVElPThAfEiQKIFJFTEFZX1JQQ19NRVRIT0RfU0VUX1BVU0hfVEFSR0VUECASHAoYUkVMQVlfUlBDX01FVEhPRF9IRUFMVEhaECEq+wEKFlNlc3Npb25JbWFnZUxvYWRTdGF0dXMSKQolU0VTU0lPTl9JTUFHRV9MT0FEX1NUQVRVU19VTlNQRUNJRklFRBAAEiAKHFNFU1NJT05fSU1BR0VfTE9BRF9TVEFUVVNfT0sQARIlCiFTRVNTSU9OX0lNQUdFX0xPQURfU1RBVFVTX0VYUElSRUQQAhIlCiFTRVNTSU9OX0lNQUdFX0xPQURfU1RBVFVTX01JU1NJTkcQAxIhCh1TRVNTSU9OX0lNQUdFX0xPQURfU1RBVFVTX0JBRBAEEiMKH1NFU1NJT05fSU1BR0VfTE9BRF9TVEFUVVNfRVJST1IQBWIGcHJvdG8z", [file_remoteagent_core_v1_security, file_remoteagent_core_v1_text, file_remoteagent_v1_event, file_remoteagent_v1_relay]);
+  fileDesc("CiRyZW1vdGVhZ2VudC9jb3JlL3YxL3JlbGF5X3BpcGUucHJvdG8SE3JlbW90ZWFnZW50LmNvcmUudjEiJwoUUmVsYXlQaXBlQ29uZmlnRXZlbnQSDwoHZW5hYmxlZBgBIAEoCCK7AQoOUmVsYXlScGNFZmZlY3QSDQoFb3BfaWQYASABKAQSMwoGbWV0aG9kGAIgASgOMiMucmVtb3RlYWdlbnQuY29yZS52MS5SZWxheVJwY01ldGhvZBIOCgZzZXJ2ZXIYAyABKAkSEgoKYXV0aF90b2tlbhgEIAEoCRISCgp0aW1lb3V0X21zGAUgASgDEhYKDmF0dGVtcHRfaGVhZGVyGAYgASgJEhUKDXJlcXVlc3RfYnl0ZXMYByABKAwiJQoUUmVsYXlScGNDYW5jZWxFZmZlY3QSDQoFb3BfaWQYASABKAQi9AEKE1JlbGF5UnBjUmVzdWx0RXZlbnQSDQoFb3BfaWQYASABKAQSFgoOcmVzcG9uc2VfYnl0ZXMYAiABKAwSFAoMY29ubmVjdF9jb2RlGAMgASgFEhMKC3JlbGF5X2Vwb2NoGAQgASgJEj8KDWVycm9yX2RldGFpbHMYBSADKAsyKC5yZW1vdGVhZ2VudC5jb3JlLnYxLlJwY0Vycm9yRGV0YWlsQnl0ZXMSFQoNbmV0d29ya19lcnJvchgGIAEoCBIXCg91bnJlc29sdmVkX2hvc3QYByABKAgSGgoSZGlhZ25vc3RpY19tZXNzYWdlGAggASgJIj8KE1N0cmVhbVJhd0ZyYW1lRXZlbnQSDgoGbGVnX2lkGAEgASgEEhgKEHJhd19zZXJ2ZXJfZnJhbWUYAiABKAwiFgoUUmVmcmVzaERldmljZXNBY3Rpb24iygEKDVB1c2hScGNBY3Rpb24SDQoFb3BfaWQYASABKAQSDwoHZ2V0X2tleRgCIAEoCBIcChRzZXRfd2ViX3N1YnNjcmlwdGlvbhgDIAEoCBISCgpzZXRfdGFyZ2V0GAQgASgIEhkKEXN1YnNjcmlwdGlvbl9qc29uGAUgASgJEhEKCXB1c2hfdHlwZRgGIAEoBRIOCgZ0YXJnZXQYByABKAkSKQoFa2luZHMYCCADKA4yGi5yZW1vdGVhZ2VudC52MS5Ob3RpZnlLaW5kIncKE1B1c2hScGNSZXN1bHRFZmZlY3QSDQoFb3BfaWQYASABKAQSCgoCb2sYAiABKAgSEgoKcHVibGljX2tleRgDIAEoCRIPCgdlbmFibGVkGAQgASgIEhEKCXJldHJ5YWJsZRgFIAEoCBINCgVlcnJvchgGIAEoCSI+ChFTY2hlZHVsZUNhY2hlQmxvYhISCgpyZXF1ZXN0X2lkGAEgASgJEhUKDXNlYWxlZF9yZXN1bHQYAiABKAwiewoXU2Vzc2lvbkZldGNoSW1hZ2VBY3Rpb24SDQoFb3BfaWQYASABKAQSEgoKc2Vzc2lvbl9pZBgCIAEoCRIQCghpbWFnZV9pZBgDIAEoCRIXCg9jYWNoZWRfZW52ZWxvcGUYBCABKAwSEgoKbWFjaGluZV9pZBgFIAEoCSLzAgoYU2Vzc2lvbkltYWdlTG9hZGVkRWZmZWN0Eg0KBW9wX2lkGAEgASgEEhIKCnNlc3Npb25faWQYAiABKAkSEAoIaW1hZ2VfaWQYAyABKAkSOwoGc3RhdHVzGAQgASgOMisucmVtb3RlYWdlbnQuY29yZS52MS5TZXNzaW9uSW1hZ2VMb2FkU3RhdHVzEgwKBGRhdGEYBSABKAwSEQoJbWltZV90eXBlGAYgASgJEg0KBXdpZHRoGAcgASgNEg4KBmhlaWdodBgIIAEoDRIrCgZmb3JtYXQYCSABKA4yGy5yZW1vdGVhZ2VudC52MS5JbWFnZUZvcm1hdBIcChRjYWNoZV9lbnZlbG9wZV9ieXRlcxgKIAEoDBItCgplcnJvcl90ZXh0GAsgASgLMhkucmVtb3RlYWdlbnQuY29yZS52MS5UZXh0EhIKCmVycm9yX2NvZGUYDCABKAkSFwoPcmV0aXJlZF9oaXN0b3J5GA0gASgIImAKElRlcm1pbmFsT3BlbkFjdGlvbhINCgVvcF9pZBgBIAEoBBISCgpzZXNzaW9uX2lkGAIgASgJEhIKCm1hY2hpbmVfaWQYAyABKAkSEwoLdGVybWluYWxfaWQYBCABKAkiNwoTVGVybWluYWxDbG9zZUFjdGlvbhIRCglzdHJlYW1faWQYASABKAkSDQoFb3BfaWQYAiABKAQigQEKE1Rlcm1pbmFsU29ja2V0RXZlbnQSEQoJc3RyZWFtX2lkGAEgASgJEg4KBmxlZ19pZBgCIAEoDBIOCgZvcGVuZWQYAyABKAgSDgoGY2xvc2VkGAQgASgIEhgKEHBvbGljeV92aW9sYXRpb24YBSABKAgSDQoFZXJyb3IYBiABKAkiaAoZVGVybWluYWxJbmJvdW5kQnl0ZXNFdmVudBIRCglzdHJlYW1faWQYASABKAkSFAoMcmF3X2VudmVsb3BlGAIgASgMEhMKC2Zyb21fZGlyZWN0GAMgASgIEg0KBXBjX2lkGAQgASgEIj4KE1Rlcm1pbmFsUmVzaXplSW5wdXQSDAoEY29scxgBIAEoBRIMCgRyb3dzGAIgASgFEgsKA2ZpdBgDIAEoCCI6ChRUZXJtaW5hbEhpc3RvcnlJbnB1dBISCgpyZXF1ZXN0X2lkGAEgASgJEg4KBmN1cnNvchgCIAEoCSK7AQoTVGVybWluYWxJbnB1dEFjdGlvbhIRCglzdHJlYW1faWQYASABKAkSDwoFaW5wdXQYAiABKAxIABI6CgZyZXNpemUYAyABKAsyKC5yZW1vdGVhZ2VudC5jb3JlLnYxLlRlcm1pbmFsUmVzaXplSW5wdXRIABI8CgdoaXN0b3J5GAQgASgLMikucmVtb3RlYWdlbnQuY29yZS52MS5UZXJtaW5hbEhpc3RvcnlJbnB1dEgAQgYKBGtpbmQiMQocVGVybWluYWxDb25maXJtUmVidWlsZEFjdGlvbhIRCglzdHJlYW1faWQYASABKAkidQoYVGVybWluYWxPcGVuU29ja2V0RWZmZWN0Eg0KBW9wX2lkGAEgASgEEhEKCXN0cmVhbV9pZBgCIAEoCRIOCgZsZWdfaWQYAyABKAwSEwoLaGVsbG9fYnl0ZXMYBCABKAwSEgoKaXNfaW5pdGlhbBgFIAEoCCI+ChlUZXJtaW5hbENsb3NlU29ja2V0RWZmZWN0EhEKCXN0cmVhbV9pZBgBIAEoCRIOCgZsZWdfaWQYAiABKAwiQQoVVGVybWluYWxTbmFwc2hvdEZyYW1lEgwKBGNvbHMYASABKAUSDAoEcm93cxgCIAEoBRIMCgRkYXRhGAMgASgMIoQBChZUZXJtaW5hbERlbGl2ZXJlZEZyYW1lEhAKBm91dHB1dBgBIAEoDEgAEj4KCHNuYXBzaG90GAIgASgLMioucmVtb3RlYWdlbnQuY29yZS52MS5UZXJtaW5hbFNuYXBzaG90RnJhbWVIABIQCgZjbG9zZWQYAyABKAlIAEIGCgRraW5kIp4BChtUZXJtaW5hbERlbGl2ZXJPdXRwdXRFZmZlY3QSEQoJc3RyZWFtX2lkGAEgASgJEjsKBmZyYW1lcxgCIAMoCzIrLnJlbW90ZWFnZW50LmNvcmUudjEuVGVybWluYWxEZWxpdmVyZWRGcmFtZRIXCg9jb25zdW1lZF9mcmFtZXMYAyABKA0SFgoOY29uc3VtZWRfYnl0ZXMYBCABKA0ilQIKGlRlcm1pbmFsU3RhdGVDaGFuZ2VkRWZmZWN0Eg0KBW9wX2lkGAEgASgEEhEKCXN0cmVhbV9pZBgCIAEoCRI6CgVzdGF0ZRgDIAEoDjIrLnJlbW90ZWFnZW50LmNvcmUudjEuVGVybWluYWxMaWZlY3ljbGVTdGF0ZRIuCgtyZWFzb25fdGV4dBgEIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dBITCgtyZWFzb25fY29kZRgFIAEoCRIUCgxvcGVuX3NldHRsZWQYBiABKAgSDwoHb3Blbl9vaxgHIAEoCBItCgpvcGVuX2Vycm9yGAggASgLMhkucmVtb3RlYWdlbnQuY29yZS52MS5UZXh0Ko8KCg5SZWxheVJwY01ldGhvZBIgChxSRUxBWV9SUENfTUVUSE9EX1VOU1BFQ0lGSUVEEAASKAokUkVMQVlfUlBDX01FVEhPRF9HRVRfU0VDVVJJVFlfU1RBVEVTEAESJwojUkVMQVlfUlBDX01FVEhPRF9QVVRfU0VDVVJJVFlfU1RBVEUQAhIoCiRSRUxBWV9SUENfTUVUSE9EX1BJTl9TRUNVUklUWV9ET01BSU4QAxIjCh9SRUxBWV9SUENfTUVUSE9EX0NSRUFURV9QQUlSSU5HEAQSIQodUkVMQVlfUlBDX01FVEhPRF9QRUVLX1BBSVJJTkcQBRIhCh1SRUxBWV9SUENfTUVUSE9EX0pPSU5fUEFJUklORxAGEiMKH1JFTEFZX1JQQ19NRVRIT0RfUkVWRUFMX1BBSVJJTkcQBxIkCiBSRUxBWV9SUENfTUVUSE9EX0FQUFJPVkVfUEFJUklORxAIEiAKHFJFTEFZX1JQQ19NRVRIT0RfR0VUX1BBSVJJTkcQCRIjCh9SRUxBWV9SUENfTUVUSE9EX0NBTkNFTF9QQUlSSU5HEAoSKwonUkVMQVlfUlBDX01FVEhPRF9HRVRfUkVDT1ZFUllfQ0hBTExFTkdFEAsSKQolUkVMQVlfUlBDX01FVEhPRF9HRVRfUkVDT1ZFUllfQ09OVEVYVBAMEiQKIFJFTEFZX1JQQ19NRVRIT0RfU1VCTUlUX1JFQ09WRVJZEA0SJgoiUkVMQVlfUlBDX01FVEhPRF9DT01QTEVURV9SRUNPVkVSWRAOEisKJ1JFTEFZX1JQQ19NRVRIT0RfREVMRVRFX01BQ0hJTkVfUkVDT1JEUxAPEiMKH1JFTEFZX1JQQ19NRVRIT0RfREVMRVRFX0FDQ09VTlQQEBIiCh5SRUxBWV9SUENfTUVUSE9EX0dFVF9DSEFMTEVOR0UQERIaChZSRUxBWV9SUENfTUVUSE9EX0xPR0lOEBISKQolUkVMQVlfUlBDX01FVEhPRF9HRVRfU0lHTlVQX0NIQUxMRU5HRRATEiQKIFJFTEFZX1JQQ19NRVRIT0RfUkVHSVNURVJfREVWSUNFEBQSJAogUkVMQVlfUlBDX01FVEhPRF9QVVRfREVWSUNFX01FVEEQFRIhCh1SRUxBWV9SUENfTUVUSE9EX0xJU1RfREVWSUNFUxAWEiIKHlJFTEFZX1JQQ19NRVRIT0RfTElTVF9NQUNISU5FUxAXEiYKIlJFTEFZX1JQQ19NRVRIT0RfR0VUX0FDQ09VTlRfUFJFRlMQGBImCiJSRUxBWV9SUENfTUVUSE9EX1BVVF9BQ0NPVU5UX1BSRUZTEBkSKQolUkVMQVlfUlBDX01FVEhPRF9MSVNUX1JFTU9URV9TRVNTSU9OUxAaEh8KG1JFTEFZX1JQQ19NRVRIT0RfR0VUX0VWRU5UUxAbEhwKGFJFTEFZX1JQQ19NRVRIT0RfRk9SV0FSRBAcEh4KGlJFTEFZX1JQQ19NRVRIT0RfR0VUX0lNQUdFEB0SIQodUkVMQVlfUlBDX01FVEhPRF9HRVRfUFVTSF9LRVkQHhIqCiZSRUxBWV9SUENfTUVUSE9EX1NFVF9QVVNIX1NVQlNDUklQVElPThAfEiQKIFJFTEFZX1JQQ19NRVRIT0RfU0VUX1BVU0hfVEFSR0VUECASHAoYUkVMQVlfUlBDX01FVEhPRF9IRUFMVEhaECEq+wEKFlNlc3Npb25JbWFnZUxvYWRTdGF0dXMSKQolU0VTU0lPTl9JTUFHRV9MT0FEX1NUQVRVU19VTlNQRUNJRklFRBAAEiAKHFNFU1NJT05fSU1BR0VfTE9BRF9TVEFUVVNfT0sQARIlCiFTRVNTSU9OX0lNQUdFX0xPQURfU1RBVFVTX0VYUElSRUQQAhIlCiFTRVNTSU9OX0lNQUdFX0xPQURfU1RBVFVTX01JU1NJTkcQAxIhCh1TRVNTSU9OX0lNQUdFX0xPQURfU1RBVFVTX0JBRBAEEiMKH1NFU1NJT05fSU1BR0VfTE9BRF9TVEFUVVNfRVJST1IQBSrkAgoWVGVybWluYWxMaWZlY3ljbGVTdGF0ZRIoCiRURVJNSU5BTF9MSUZFQ1lDTEVfU1RBVEVfVU5TUEVDSUZJRUQQABIqCiZURVJNSU5BTF9MSUZFQ1lDTEVfU1RBVEVfQ09ORklSTV9JTlBVVBAEEiwKKFRFUk1JTkFMX0xJRkVDWUNMRV9TVEFURV9DT05GSVJNX1JFU1RBUlQQBRIkCiBURVJNSU5BTF9MSUZFQ1lDTEVfU1RBVEVfUkVCVUlMRBAGEiMKH1RFUk1JTkFMX0xJRkVDWUNMRV9TVEFURV9DTE9TRUQQByIECAEQASIECAIQAiIECAMQAyojVEVSTUlOQUxfTElGRUNZQ0xFX1NUQVRFX0NPTk5FQ1RJTkcqHVRFUk1JTkFMX0xJRkVDWUNMRV9TVEFURV9MSVZFKiVURVJNSU5BTF9MSUZFQ1lDTEVfU1RBVEVfUkVDT05ORUNUSU5HYgZwcm90bzM", [file_remoteagent_core_v1_security, file_remoteagent_core_v1_text, file_remoteagent_v1_event, file_remoteagent_v1_relay]);
 
 /**
  * Opts the Core instance into the unified byte-pipe mode (RelayRpcEffect,
@@ -450,6 +450,459 @@ export const SessionImageLoadedEffectSchema: GenMessage<SessionImageLoadedEffect
   messageDesc(file_remoteagent_core_v1_relay_pipe, 10);
 
 /**
+ * @generated from message remoteagent.core.v1.TerminalOpenAction
+ */
+export type TerminalOpenAction = Message<"remoteagent.core.v1.TerminalOpenAction"> & {
+  /**
+   * @generated from field: uint64 op_id = 1;
+   */
+  opId: bigint;
+
+  /**
+   * @generated from field: string session_id = 2;
+   */
+  sessionId: string;
+
+  /**
+   * Optional machine_id hint when session is not yet in live directory.
+   *
+   * @generated from field: string machine_id = 3;
+   */
+  machineId: string;
+
+  /**
+   * Optional logical terminal_id bound to Core's termhistory.Machine so
+   * inbound TerminalHistoryPage frames feed directly into Core without shell parsing.
+   *
+   * @generated from field: string terminal_id = 4;
+   */
+  terminalId: string;
+};
+
+/**
+ * Describes the message remoteagent.core.v1.TerminalOpenAction.
+ * Use `create(TerminalOpenActionSchema)` to create a new message.
+ */
+export const TerminalOpenActionSchema: GenMessage<TerminalOpenAction> = /*@__PURE__*/
+  messageDesc(file_remoteagent_core_v1_relay_pipe, 11);
+
+/**
+ * @generated from message remoteagent.core.v1.TerminalCloseAction
+ */
+export type TerminalCloseAction = Message<"remoteagent.core.v1.TerminalCloseAction"> & {
+  /**
+   * @generated from field: string stream_id = 1;
+   */
+  streamId: string;
+
+  /**
+   * @generated from field: uint64 op_id = 2;
+   */
+  opId: bigint;
+};
+
+/**
+ * Describes the message remoteagent.core.v1.TerminalCloseAction.
+ * Use `create(TerminalCloseActionSchema)` to create a new message.
+ */
+export const TerminalCloseActionSchema: GenMessage<TerminalCloseAction> = /*@__PURE__*/
+  messageDesc(file_remoteagent_core_v1_relay_pipe, 12);
+
+/**
+ * @generated from message remoteagent.core.v1.TerminalSocketEvent
+ */
+export type TerminalSocketEvent = Message<"remoteagent.core.v1.TerminalSocketEvent"> & {
+  /**
+   * @generated from field: string stream_id = 1;
+   */
+  streamId: string;
+
+  /**
+   * @generated from field: bytes leg_id = 2;
+   */
+  legId: Uint8Array;
+
+  /**
+   * @generated from field: bool opened = 3;
+   */
+  opened: boolean;
+
+  /**
+   * @generated from field: bool closed = 4;
+   */
+  closed: boolean;
+
+  /**
+   * @generated from field: bool policy_violation = 5;
+   */
+  policyViolation: boolean;
+
+  /**
+   * @generated from field: string error = 6;
+   */
+  error: string;
+};
+
+/**
+ * Describes the message remoteagent.core.v1.TerminalSocketEvent.
+ * Use `create(TerminalSocketEventSchema)` to create a new message.
+ */
+export const TerminalSocketEventSchema: GenMessage<TerminalSocketEvent> = /*@__PURE__*/
+  messageDesc(file_remoteagent_core_v1_relay_pipe, 13);
+
+/**
+ * @generated from message remoteagent.core.v1.TerminalInboundBytesEvent
+ */
+export type TerminalInboundBytesEvent = Message<"remoteagent.core.v1.TerminalInboundBytesEvent"> & {
+  /**
+   * @generated from field: string stream_id = 1;
+   */
+  streamId: string;
+
+  /**
+   * @generated from field: bytes raw_envelope = 2;
+   */
+  rawEnvelope: Uint8Array;
+
+  /**
+   * @generated from field: bool from_direct = 3;
+   */
+  fromDirect: boolean;
+
+  /**
+   * @generated from field: uint64 pc_id = 4;
+   */
+  pcId: bigint;
+};
+
+/**
+ * Describes the message remoteagent.core.v1.TerminalInboundBytesEvent.
+ * Use `create(TerminalInboundBytesEventSchema)` to create a new message.
+ */
+export const TerminalInboundBytesEventSchema: GenMessage<TerminalInboundBytesEvent> = /*@__PURE__*/
+  messageDesc(file_remoteagent_core_v1_relay_pipe, 14);
+
+/**
+ * @generated from message remoteagent.core.v1.TerminalResizeInput
+ */
+export type TerminalResizeInput = Message<"remoteagent.core.v1.TerminalResizeInput"> & {
+  /**
+   * @generated from field: int32 cols = 1;
+   */
+  cols: number;
+
+  /**
+   * @generated from field: int32 rows = 2;
+   */
+  rows: number;
+
+  /**
+   * @generated from field: bool fit = 3;
+   */
+  fit: boolean;
+};
+
+/**
+ * Describes the message remoteagent.core.v1.TerminalResizeInput.
+ * Use `create(TerminalResizeInputSchema)` to create a new message.
+ */
+export const TerminalResizeInputSchema: GenMessage<TerminalResizeInput> = /*@__PURE__*/
+  messageDesc(file_remoteagent_core_v1_relay_pipe, 15);
+
+/**
+ * @generated from message remoteagent.core.v1.TerminalHistoryInput
+ */
+export type TerminalHistoryInput = Message<"remoteagent.core.v1.TerminalHistoryInput"> & {
+  /**
+   * @generated from field: string request_id = 1;
+   */
+  requestId: string;
+
+  /**
+   * @generated from field: string cursor = 2;
+   */
+  cursor: string;
+};
+
+/**
+ * Describes the message remoteagent.core.v1.TerminalHistoryInput.
+ * Use `create(TerminalHistoryInputSchema)` to create a new message.
+ */
+export const TerminalHistoryInputSchema: GenMessage<TerminalHistoryInput> = /*@__PURE__*/
+  messageDesc(file_remoteagent_core_v1_relay_pipe, 16);
+
+/**
+ * @generated from message remoteagent.core.v1.TerminalInputAction
+ */
+export type TerminalInputAction = Message<"remoteagent.core.v1.TerminalInputAction"> & {
+  /**
+   * @generated from field: string stream_id = 1;
+   */
+  streamId: string;
+
+  /**
+   * @generated from oneof remoteagent.core.v1.TerminalInputAction.kind
+   */
+  kind: {
+    /**
+     * @generated from field: bytes input = 2;
+     */
+    value: Uint8Array;
+    case: "input";
+  } | {
+    /**
+     * @generated from field: remoteagent.core.v1.TerminalResizeInput resize = 3;
+     */
+    value: TerminalResizeInput;
+    case: "resize";
+  } | {
+    /**
+     * @generated from field: remoteagent.core.v1.TerminalHistoryInput history = 4;
+     */
+    value: TerminalHistoryInput;
+    case: "history";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message remoteagent.core.v1.TerminalInputAction.
+ * Use `create(TerminalInputActionSchema)` to create a new message.
+ */
+export const TerminalInputActionSchema: GenMessage<TerminalInputAction> = /*@__PURE__*/
+  messageDesc(file_remoteagent_core_v1_relay_pipe, 17);
+
+/**
+ * @generated from message remoteagent.core.v1.TerminalConfirmRebuildAction
+ */
+export type TerminalConfirmRebuildAction = Message<"remoteagent.core.v1.TerminalConfirmRebuildAction"> & {
+  /**
+   * @generated from field: string stream_id = 1;
+   */
+  streamId: string;
+};
+
+/**
+ * Describes the message remoteagent.core.v1.TerminalConfirmRebuildAction.
+ * Use `create(TerminalConfirmRebuildActionSchema)` to create a new message.
+ */
+export const TerminalConfirmRebuildActionSchema: GenMessage<TerminalConfirmRebuildAction> = /*@__PURE__*/
+  messageDesc(file_remoteagent_core_v1_relay_pipe, 18);
+
+/**
+ * @generated from message remoteagent.core.v1.TerminalOpenSocketEffect
+ */
+export type TerminalOpenSocketEffect = Message<"remoteagent.core.v1.TerminalOpenSocketEffect"> & {
+  /**
+   * @generated from field: uint64 op_id = 1;
+   */
+  opId: bigint;
+
+  /**
+   * @generated from field: string stream_id = 2;
+   */
+  streamId: string;
+
+  /**
+   * @generated from field: bytes leg_id = 3;
+   */
+  legId: Uint8Array;
+
+  /**
+   * @generated from field: bytes hello_bytes = 4;
+   */
+  helloBytes: Uint8Array;
+
+  /**
+   * @generated from field: bool is_initial = 5;
+   */
+  isInitial: boolean;
+};
+
+/**
+ * Describes the message remoteagent.core.v1.TerminalOpenSocketEffect.
+ * Use `create(TerminalOpenSocketEffectSchema)` to create a new message.
+ */
+export const TerminalOpenSocketEffectSchema: GenMessage<TerminalOpenSocketEffect> = /*@__PURE__*/
+  messageDesc(file_remoteagent_core_v1_relay_pipe, 19);
+
+/**
+ * @generated from message remoteagent.core.v1.TerminalCloseSocketEffect
+ */
+export type TerminalCloseSocketEffect = Message<"remoteagent.core.v1.TerminalCloseSocketEffect"> & {
+  /**
+   * @generated from field: string stream_id = 1;
+   */
+  streamId: string;
+
+  /**
+   * Empty closes all sockets for stream_id.
+   *
+   * @generated from field: bytes leg_id = 2;
+   */
+  legId: Uint8Array;
+};
+
+/**
+ * Describes the message remoteagent.core.v1.TerminalCloseSocketEffect.
+ * Use `create(TerminalCloseSocketEffectSchema)` to create a new message.
+ */
+export const TerminalCloseSocketEffectSchema: GenMessage<TerminalCloseSocketEffect> = /*@__PURE__*/
+  messageDesc(file_remoteagent_core_v1_relay_pipe, 20);
+
+/**
+ * @generated from message remoteagent.core.v1.TerminalSnapshotFrame
+ */
+export type TerminalSnapshotFrame = Message<"remoteagent.core.v1.TerminalSnapshotFrame"> & {
+  /**
+   * @generated from field: int32 cols = 1;
+   */
+  cols: number;
+
+  /**
+   * @generated from field: int32 rows = 2;
+   */
+  rows: number;
+
+  /**
+   * @generated from field: bytes data = 3;
+   */
+  data: Uint8Array;
+};
+
+/**
+ * Describes the message remoteagent.core.v1.TerminalSnapshotFrame.
+ * Use `create(TerminalSnapshotFrameSchema)` to create a new message.
+ */
+export const TerminalSnapshotFrameSchema: GenMessage<TerminalSnapshotFrame> = /*@__PURE__*/
+  messageDesc(file_remoteagent_core_v1_relay_pipe, 21);
+
+/**
+ * @generated from message remoteagent.core.v1.TerminalDeliveredFrame
+ */
+export type TerminalDeliveredFrame = Message<"remoteagent.core.v1.TerminalDeliveredFrame"> & {
+  /**
+   * @generated from oneof remoteagent.core.v1.TerminalDeliveredFrame.kind
+   */
+  kind: {
+    /**
+     * @generated from field: bytes output = 1;
+     */
+    value: Uint8Array;
+    case: "output";
+  } | {
+    /**
+     * @generated from field: remoteagent.core.v1.TerminalSnapshotFrame snapshot = 2;
+     */
+    value: TerminalSnapshotFrame;
+    case: "snapshot";
+  } | {
+    /**
+     * @generated from field: string closed = 3;
+     */
+    value: string;
+    case: "closed";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message remoteagent.core.v1.TerminalDeliveredFrame.
+ * Use `create(TerminalDeliveredFrameSchema)` to create a new message.
+ */
+export const TerminalDeliveredFrameSchema: GenMessage<TerminalDeliveredFrame> = /*@__PURE__*/
+  messageDesc(file_remoteagent_core_v1_relay_pipe, 22);
+
+/**
+ * Hot-path terminal output delivery: Core emits this directly with ZERO
+ * RenderEffect and ZERO ViewModel recomputation.
+ *
+ * @generated from message remoteagent.core.v1.TerminalDeliverOutputEffect
+ */
+export type TerminalDeliverOutputEffect = Message<"remoteagent.core.v1.TerminalDeliverOutputEffect"> & {
+  /**
+   * @generated from field: string stream_id = 1;
+   */
+  streamId: string;
+
+  /**
+   * @generated from field: repeated remoteagent.core.v1.TerminalDeliveredFrame frames = 2;
+   */
+  frames: TerminalDeliveredFrame[];
+
+  /**
+   * Inbound frame count and raw envelope bytes accounted for by this delivery
+   * (including frames that settled without emitting a frame, e.g. dropped direct
+   * duplicates or HistoryPage frames routed directly to Core).
+   *
+   * @generated from field: uint32 consumed_frames = 3;
+   */
+  consumedFrames: number;
+
+  /**
+   * @generated from field: uint32 consumed_bytes = 4;
+   */
+  consumedBytes: number;
+};
+
+/**
+ * Describes the message remoteagent.core.v1.TerminalDeliverOutputEffect.
+ * Use `create(TerminalDeliverOutputEffectSchema)` to create a new message.
+ */
+export const TerminalDeliverOutputEffectSchema: GenMessage<TerminalDeliverOutputEffect> = /*@__PURE__*/
+  messageDesc(file_remoteagent_core_v1_relay_pipe, 23);
+
+/**
+ * @generated from message remoteagent.core.v1.TerminalStateChangedEffect
+ */
+export type TerminalStateChangedEffect = Message<"remoteagent.core.v1.TerminalStateChangedEffect"> & {
+  /**
+   * @generated from field: uint64 op_id = 1;
+   */
+  opId: bigint;
+
+  /**
+   * @generated from field: string stream_id = 2;
+   */
+  streamId: string;
+
+  /**
+   * @generated from field: remoteagent.core.v1.TerminalLifecycleState state = 3;
+   */
+  state: TerminalLifecycleState;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text reason_text = 4;
+   */
+  reasonText?: Text | undefined;
+
+  /**
+   * @generated from field: string reason_code = 5;
+   */
+  reasonCode: string;
+
+  /**
+   * @generated from field: bool open_settled = 6;
+   */
+  openSettled: boolean;
+
+  /**
+   * @generated from field: bool open_ok = 7;
+   */
+  openOk: boolean;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text open_error = 8;
+   */
+  openError?: Text | undefined;
+};
+
+/**
+ * Describes the message remoteagent.core.v1.TerminalStateChangedEffect.
+ * Use `create(TerminalStateChangedEffectSchema)` to create a new message.
+ */
+export const TerminalStateChangedEffectSchema: GenMessage<TerminalStateChangedEffect> = /*@__PURE__*/
+  messageDesc(file_remoteagent_core_v1_relay_pipe, 24);
+
+/**
  * Unified unary relay RPC methods (evolved from SecurityRpcMethod to cover all
  * Auth / Pairing / Recovery / ClientService unary calls + /healthz epoch probe).
  * Enum values 1..25 intentionally match SecurityRpcMethod 1-to-1.
@@ -674,4 +1127,40 @@ export enum SessionImageLoadStatus {
  */
 export const SessionImageLoadStatusSchema: GenEnum<SessionImageLoadStatus> = /*@__PURE__*/
   enumDesc(file_remoteagent_core_v1_relay_pipe, 1);
+
+/**
+ * @generated from enum remoteagent.core.v1.TerminalLifecycleState
+ */
+export enum TerminalLifecycleState {
+  /**
+   * @generated from enum value: TERMINAL_LIFECYCLE_STATE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: TERMINAL_LIFECYCLE_STATE_CONFIRM_INPUT = 4;
+   */
+  CONFIRM_INPUT = 4,
+
+  /**
+   * @generated from enum value: TERMINAL_LIFECYCLE_STATE_CONFIRM_RESTART = 5;
+   */
+  CONFIRM_RESTART = 5,
+
+  /**
+   * @generated from enum value: TERMINAL_LIFECYCLE_STATE_REBUILD = 6;
+   */
+  REBUILD = 6,
+
+  /**
+   * @generated from enum value: TERMINAL_LIFECYCLE_STATE_CLOSED = 7;
+   */
+  CLOSED = 7,
+}
+
+/**
+ * Describes the enum remoteagent.core.v1.TerminalLifecycleState.
+ */
+export const TerminalLifecycleStateSchema: GenEnum<TerminalLifecycleState> = /*@__PURE__*/
+  enumDesc(file_remoteagent_core_v1_relay_pipe, 2);
 

@@ -750,6 +750,12 @@ message Event {
     RefreshDevicesAction refresh_devices = 433;
     PushRpcAction push_rpc = 434;
     SessionFetchImageAction session_fetch_image = 435;
+    TerminalOpenAction terminal_open = 436;
+    TerminalCloseAction terminal_close = 437;
+    TerminalSocketEvent terminal_socket = 438;
+    TerminalInboundBytesEvent terminal_inbound_bytes = 439;
+    TerminalInputAction terminal_input = 440;
+    TerminalConfirmRebuildAction terminal_confirm_rebuild = 441;
 
     // Security engine (450-499 reserved for security).
     SecurityConfigEvent security_config = 450;
@@ -1032,6 +1038,10 @@ message Effect {
     RelayRpcCancelEffect relay_rpc_cancel = 21;
     PushRpcResultEffect push_rpc_result = 22;
     SessionImageLoadedEffect session_image_loaded = 23;
+    TerminalOpenSocketEffect terminal_open_socket = 24;
+    TerminalCloseSocketEffect terminal_close_socket = 25;
+    TerminalDeliverOutputEffect terminal_deliver_output = 26;
+    TerminalStateChangedEffect terminal_state_changed = 27;
     ScheduleMachinePollEffect schedule_machine_poll = 70;
     DirectPreferenceEffect direct_preference = 71;
     RenameClientEffect rename_client = 72;

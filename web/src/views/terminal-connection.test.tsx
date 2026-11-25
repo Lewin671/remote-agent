@@ -315,7 +315,16 @@ it("clears open history reader and restores input when switching sessions on the
   expect(reqCall).toBeDefined();
   const requestId = reqCall![0].kind.value.requestId as string;
   await act(async () => {
-    await vm.frame({ kind: { case: "historyPage", value: { requestId, lines: ["old line"], nextCursor: "c:1", error: "" } } } as never);
+    const { create } = await import("@bufbuild/protobuf");
+    const { getCoreHost } = await import("../core/host");
+    const { TerminalHistoryEventKind } = await import("../gen/remoteagent/core/v1/terminal_history_pb");
+    const { TerminalHistoryPageSchema } = await import("../gen/remoteagent/v1/remote_pb");
+    const tid = (vm.open.mock.calls[0]?.[5] as string) || s1.id;
+    getCoreHost(vm.remote).sendTerminalHistory(
+      tid,
+      TerminalHistoryEventKind.PAGE_RECEIVED,
+      create(TerminalHistoryPageSchema, { requestId, lines: ["old line"], nextCursor: "c:1", error: "" }),
+    );
     await vm.frame({ kind: { case: "output", value: new Uint8Array([66]) } } as never);
   });
   expect(host.querySelector(".terminal-history")).not.toBeNull();

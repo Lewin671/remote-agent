@@ -220,6 +220,10 @@ class CoreHost(
     var onAttachmentHashFile: (AttachmentHashFileEffect) -> Unit = {}
     var onAttachmentReadChunk: (AttachmentReadChunkEffect) -> Unit = {}
     var onAttachmentReleaseLocal: (AttachmentReleaseLocalEffect) -> Unit = {}
+    var onTerminalOpenSocket: (TerminalOpenSocketEffect) -> Unit = {}
+    var onTerminalCloseSocket: (TerminalCloseSocketEffect) -> Unit = {}
+    var onTerminalDeliverOutput: (TerminalDeliverOutputEffect) -> Unit = {}
+    var onTerminalStateChanged: (TerminalStateChangedEffect) -> Unit = {}
 
     private val nextMachineCmdOpId = AtomicLong(1L)
     private val nextSecurityOpSeq = AtomicLong(1L)
@@ -679,6 +683,10 @@ class CoreHost(
             Effect.EffectCase.TERMINAL_DIRECT_DELIVER -> onTerminalDirectDeliver(effect.terminalDirectDeliver)
             Effect.EffectCase.TERMINAL_DIRECT_ATTACH_RELAY -> onTerminalDirectAttachRelay(effect.terminalDirectAttachRelay)
             Effect.EffectCase.TERMINAL_DIRECT_STATE -> onTerminalDirectState(effect.terminalDirectState)
+            Effect.EffectCase.TERMINAL_OPEN_SOCKET -> onTerminalOpenSocket(effect.terminalOpenSocket)
+            Effect.EffectCase.TERMINAL_CLOSE_SOCKET -> onTerminalCloseSocket(effect.terminalCloseSocket)
+            Effect.EffectCase.TERMINAL_DELIVER_OUTPUT -> onTerminalDeliverOutput(effect.terminalDeliverOutput)
+            Effect.EffectCase.TERMINAL_STATE_CHANGED -> onTerminalStateChanged(effect.terminalStateChanged)
             Effect.EffectCase.SHARED_FILE_SCAN_LOCAL -> onSharedFileScanLocal(effect.sharedFileScanLocal)
             Effect.EffectCase.SHARED_FILE_INSPECT_DISK -> onSharedFileInspectDisk(effect.sharedFileInspectDisk)
             Effect.EffectCase.SHARED_FILE_WRITE_CHUNK -> onSharedFileWriteChunk(effect.sharedFileWriteChunk)
@@ -1303,6 +1311,61 @@ class CoreHost(
         } finally {
             pendingImageFetches.remove(opId, deferred)
         }
+    }
+
+    fun terminalOpen(opId: Long, sessionId: String, machineId: String = "", terminalId: String = "") = send {
+        setTerminalOpen(
+            TerminalOpenAction.newBuilder()
+                .setOpId(opId)
+                .setSessionId(sessionId)
+                .setMachineId(machineId)
+                .setTerminalId(terminalId),
+        )
+    }
+
+    fun terminalClose(streamId: String, opId: Long = 0L) = send {
+        setTerminalClose(
+            TerminalCloseAction.newBuilder()
+                .setStreamId(streamId)
+                .setOpId(opId),
+        )
+    }
+
+    fun terminalSocket(
+        streamId: String,
+        legId: ByteArray,
+        opened: Boolean = false,
+        closed: Boolean = false,
+        policyViolation: Boolean = false,
+        error: String = "",
+    ) = send {
+        setTerminalSocket(
+            TerminalSocketEvent.newBuilder()
+                .setStreamId(streamId)
+                .setLegId(ByteString.copyFrom(legId))
+                .setOpened(opened)
+                .setClosed(closed)
+                .setPolicyViolation(policyViolation)
+                .setError(error),
+        )
+    }
+
+    fun terminalInboundBytes(streamId: String, rawEnvelope: ByteArray, fromDirect: Boolean = false, pcId: Long = 0L) = send {
+        setTerminalInboundBytes(
+            TerminalInboundBytesEvent.newBuilder()
+                .setStreamId(streamId)
+                .setRawEnvelope(ByteString.copyFrom(rawEnvelope))
+                .setFromDirect(fromDirect)
+                .setPcId(pcId),
+        )
+    }
+
+    fun terminalInput(block: TerminalInputAction.Builder.() -> Unit) = send {
+        setTerminalInput(TerminalInputAction.newBuilder().apply(block))
+    }
+
+    fun terminalConfirmRebuild(streamId: String) = send {
+        setTerminalConfirmRebuild(TerminalConfirmRebuildAction.newBuilder().setStreamId(streamId))
     }
 
     fun sendSharedFileConfig(

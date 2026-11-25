@@ -1057,14 +1057,6 @@ public enum L10n {
         let key = "errors_request_identity_conflict"
         return format(key, locale: locale, args: [])
     }
-    public static func errorsSecurityBodyTypeOrDirectionMismatch(locale: String = MessageLocale.current) -> String {
-        let key = "errors_security_body_type_or_direction_mismatch"
-        return format(key, locale: locale, args: [])
-    }
-    public static func errorsSecurityEnvelopeMissing(locale: String = MessageLocale.current) -> String {
-        let key = "errors_security_envelope_missing"
-        return format(key, locale: locale, args: [])
-    }
     public static func errorsServerReturned(value: String, locale: String = MessageLocale.current) -> String {
         let key = "errors_server_returned"
         return format(key, locale: locale, args: [value])
@@ -1089,12 +1081,20 @@ public enum L10n {
         let key = "errors_terminal_connection_dropped"
         return format(key, locale: locale, args: [])
     }
+    public static func errorsTerminalConnectionDroppedReason(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "errors_terminal_connection_dropped_reason"
+        return format(key, locale: locale, args: [reason])
+    }
     public static func errorsTerminalConnectionTimedOutReconnect(locale: String = MessageLocale.current) -> String {
         let key = "errors_terminal_connection_timed_out_reconnect"
         return format(key, locale: locale, args: [])
     }
     public static func errorsTerminalFramesAreOutOfOrder(locale: String = MessageLocale.current) -> String {
         let key = "errors_terminal_frames_are_out_of_order"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsTerminalInputBacklogReconnect(locale: String = MessageLocale.current) -> String {
+        let key = "errors_terminal_input_backlog_reconnect"
         return format(key, locale: locale, args: [])
     }
     public static func errorsTerminalOutputBacklogReconnectForTheLatestDisplay(locale: String = MessageLocale.current) -> String {
@@ -9297,14 +9297,6 @@ public enum L10nMessage {
         let key = "errors_request_identity_conflict"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func errorsSecurityBodyTypeOrDirectionMismatch() -> LocalizedMessage {
-        let key = "errors_security_body_type_or_direction_mismatch"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func errorsSecurityEnvelopeMissing() -> LocalizedMessage {
-        let key = "errors_security_envelope_missing"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func errorsServerReturned(value: String) -> LocalizedMessage {
         let key = "errors_server_returned"
         return LocalizedMessage(key: key, arguments: [.string(value)])
@@ -9329,12 +9321,20 @@ public enum L10nMessage {
         let key = "errors_terminal_connection_dropped"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func errorsTerminalConnectionDroppedReason(reason: String) -> LocalizedMessage {
+        let key = "errors_terminal_connection_dropped_reason"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
     public static func errorsTerminalConnectionTimedOutReconnect() -> LocalizedMessage {
         let key = "errors_terminal_connection_timed_out_reconnect"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func errorsTerminalFramesAreOutOfOrder() -> LocalizedMessage {
         let key = "errors_terminal_frames_are_out_of_order"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTerminalInputBacklogReconnect() -> LocalizedMessage {
+        let key = "errors_terminal_input_backlog_reconnect"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func errorsTerminalOutputBacklogReconnectForTheLatestDisplay() -> LocalizedMessage {
@@ -16832,16 +16832,16 @@ public enum L10nText {
         case "errors.remote_control_expired_control_and_new_uploads_are_paused": return L10n.format("errors_remote_control_expired_control_and_new_uploads_are_paused", locale: locale, args: [])
         case "errors.remote_control_expired_saving_changes_session_control_and_new": return L10n.format("errors_remote_control_expired_saving_changes_session_control_and_new", locale: locale, args: [])
         case "errors.request_identity_conflict": return L10n.format("errors_request_identity_conflict", locale: locale, args: [])
-        case "errors.security_body_type_or_direction_mismatch": return L10n.format("errors_security_body_type_or_direction_mismatch", locale: locale, args: [])
-        case "errors.security_envelope_missing": return L10n.format("errors_security_envelope_missing", locale: locale, args: [])
         case "errors.server_returned": return L10n.format("errors_server_returned", locale: locale, args: [strArg(args["value"])])
         case "errors.setup_request_preserved": return L10n.format("errors_setup_request_preserved", locale: locale, args: [strArg(args["reason"])])
         case "errors.signing_in": return L10n.format("errors_signing_in", locale: locale, args: [])
         case "errors.terminal_connection_canceled": return L10n.format("errors_terminal_connection_canceled", locale: locale, args: [])
         case "errors.terminal_connection_closed": return L10n.format("errors_terminal_connection_closed", locale: locale, args: [])
         case "errors.terminal_connection_dropped": return L10n.format("errors_terminal_connection_dropped", locale: locale, args: [])
+        case "errors.terminal_connection_dropped_reason": return L10n.format("errors_terminal_connection_dropped_reason", locale: locale, args: [strArg(args["reason"])])
         case "errors.terminal_connection_timed_out_reconnect": return L10n.format("errors_terminal_connection_timed_out_reconnect", locale: locale, args: [])
         case "errors.terminal_frames_are_out_of_order": return L10n.format("errors_terminal_frames_are_out_of_order", locale: locale, args: [])
+        case "errors.terminal_input_backlog_reconnect": return L10n.format("errors_terminal_input_backlog_reconnect", locale: locale, args: [])
         case "errors.terminal_output_backlog_reconnect_for_the_latest_display": return L10n.format("errors_terminal_output_backlog_reconnect_for_the_latest_display", locale: locale, args: [])
         case "errors.the_computer_did_not_return_an_attachment_id": return L10n.format("errors_the_computer_did_not_return_an_attachment_id", locale: locale, args: [])
         case "errors.the_computer_is_offline_the_command_was_not_sent": return L10n.format("errors_the_computer_is_offline_the_command_was_not_sent", locale: locale, args: [])
@@ -18588,12 +18588,12 @@ public enum L10nText {
         case "transport.direct": return L10n.format("transport_direct", locale: locale, args: [])
         case "transport.direct_slow": return L10n.format("transport_direct_slow", locale: locale, args: [])
         case "transport.file_speed_both": return L10n.format("transport_file_speed_both", locale: locale, args: [strArg(args["direct"]), strArg(args["relay"])])
-        case "transport.file_speed_direct": return L10n.format("transport_file_speed_direct", locale: locale, args: [strArg(args["direct"])])
         default: return nil
         }
     }
     private static func resolve13(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "transport.file_speed_direct": return L10n.format("transport_file_speed_direct", locale: locale, args: [strArg(args["direct"])])
         case "transport.file_speed_relay": return L10n.format("transport_file_speed_relay", locale: locale, args: [strArg(args["relay"])])
         case "transport.footer": return L10n.format("transport_footer", locale: locale, args: [])
         case "transport.popover_a11y": return L10n.format("transport_popover_a11y", locale: locale, args: [])

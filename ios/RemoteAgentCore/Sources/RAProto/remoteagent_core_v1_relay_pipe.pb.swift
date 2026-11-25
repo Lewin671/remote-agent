@@ -236,6 +236,52 @@ public enum PBSessionImageLoadStatus: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
+public enum PBTerminalLifecycleState: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case confirmInput // = 4
+  case confirmRestart // = 5
+  case rebuild // = 6
+  case closed // = 7
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 4: self = .confirmInput
+    case 5: self = .confirmRestart
+    case 6: self = .rebuild
+    case 7: self = .closed
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .confirmInput: return 4
+    case .confirmRestart: return 5
+    case .rebuild: return 6
+    case .closed: return 7
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBTerminalLifecycleState] = [
+    .unspecified,
+    .confirmInput,
+    .confirmRestart,
+    .rebuild,
+    .closed,
+  ]
+
+}
+
 /// Opts the Core instance into the unified byte-pipe mode (RelayRpcEffect,
 /// StreamRawFrameEvent, Core-managed login/token refresh, opaque caches, image
 /// fetch, and Core-owned terminal crypto/lifecycle). Shells that do not send
@@ -516,6 +562,345 @@ public struct PBSessionImageLoadedEffect: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
+public struct PBTerminalOpenAction: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var opID: UInt64 = 0
+
+  public var sessionID: String = String()
+
+  /// Optional machine_id hint when session is not yet in live directory.
+  public var machineID: String = String()
+
+  /// Optional logical terminal_id bound to Core's termhistory.Machine so
+  /// inbound TerminalHistoryPage frames feed directly into Core without shell parsing.
+  public var terminalID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBTerminalCloseAction: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var streamID: String = String()
+
+  public var opID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBTerminalSocketEvent: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var streamID: String = String()
+
+  public var legID: Data = Data()
+
+  public var opened: Bool = false
+
+  public var closed: Bool = false
+
+  public var policyViolation: Bool = false
+
+  public var error: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBTerminalInboundBytesEvent: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var streamID: String = String()
+
+  public var rawEnvelope: Data = Data()
+
+  public var fromDirect: Bool = false
+
+  public var pcID: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBTerminalResizeInput: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var cols: Int32 = 0
+
+  public var rows: Int32 = 0
+
+  public var fit: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBTerminalHistoryInput: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var requestID: String = String()
+
+  public var cursor: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBTerminalInputAction: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var streamID: String = String()
+
+  public var kind: PBTerminalInputAction.OneOf_Kind? = nil
+
+  public var input: Data {
+    get {
+      if case .input(let v)? = kind {return v}
+      return Data()
+    }
+    set {kind = .input(newValue)}
+  }
+
+  public var resize: PBTerminalResizeInput {
+    get {
+      if case .resize(let v)? = kind {return v}
+      return PBTerminalResizeInput()
+    }
+    set {kind = .resize(newValue)}
+  }
+
+  public var history: PBTerminalHistoryInput {
+    get {
+      if case .history(let v)? = kind {return v}
+      return PBTerminalHistoryInput()
+    }
+    set {kind = .history(newValue)}
+  }
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public enum OneOf_Kind: Equatable, Sendable {
+    case input(Data)
+    case resize(PBTerminalResizeInput)
+    case history(PBTerminalHistoryInput)
+
+  }
+
+  public init() {}
+}
+
+public struct PBTerminalConfirmRebuildAction: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var streamID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBTerminalOpenSocketEffect: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var opID: UInt64 = 0
+
+  public var streamID: String = String()
+
+  public var legID: Data = Data()
+
+  public var helloBytes: Data = Data()
+
+  public var isInitial: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBTerminalCloseSocketEffect: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var streamID: String = String()
+
+  /// Empty closes all sockets for stream_id.
+  public var legID: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBTerminalSnapshotFrame: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var cols: Int32 = 0
+
+  public var rows: Int32 = 0
+
+  public var data: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBTerminalDeliveredFrame: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var kind: PBTerminalDeliveredFrame.OneOf_Kind? = nil
+
+  public var output: Data {
+    get {
+      if case .output(let v)? = kind {return v}
+      return Data()
+    }
+    set {kind = .output(newValue)}
+  }
+
+  public var snapshot: PBTerminalSnapshotFrame {
+    get {
+      if case .snapshot(let v)? = kind {return v}
+      return PBTerminalSnapshotFrame()
+    }
+    set {kind = .snapshot(newValue)}
+  }
+
+  public var closed: String {
+    get {
+      if case .closed(let v)? = kind {return v}
+      return String()
+    }
+    set {kind = .closed(newValue)}
+  }
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public enum OneOf_Kind: Equatable, Sendable {
+    case output(Data)
+    case snapshot(PBTerminalSnapshotFrame)
+    case closed(String)
+
+  }
+
+  public init() {}
+}
+
+/// Hot-path terminal output delivery: Core emits this directly with ZERO
+/// RenderEffect and ZERO ViewModel recomputation.
+public struct PBTerminalDeliverOutputEffect: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var streamID: String = String()
+
+  public var frames: [PBTerminalDeliveredFrame] = []
+
+  /// Inbound frame count and raw envelope bytes accounted for by this delivery
+  /// (including frames that settled without emitting a frame, e.g. dropped direct
+  /// duplicates or HistoryPage frames routed directly to Core).
+  public var consumedFrames: UInt32 = 0
+
+  public var consumedBytes: UInt32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBTerminalStateChangedEffect: @unchecked Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var opID: UInt64 {
+    get {return _storage._opID}
+    set {_uniqueStorage()._opID = newValue}
+  }
+
+  public var streamID: String {
+    get {return _storage._streamID}
+    set {_uniqueStorage()._streamID = newValue}
+  }
+
+  public var state: PBTerminalLifecycleState {
+    get {return _storage._state}
+    set {_uniqueStorage()._state = newValue}
+  }
+
+  public var reasonText: PBCoreText {
+    get {return _storage._reasonText ?? PBCoreText()}
+    set {_uniqueStorage()._reasonText = newValue}
+  }
+  /// Returns true if `reasonText` has been explicitly set.
+  public var hasReasonText: Bool {return _storage._reasonText != nil}
+  /// Clears the value of `reasonText`. Subsequent reads from it will return its default value.
+  public mutating func clearReasonText() {_uniqueStorage()._reasonText = nil}
+
+  public var reasonCode: String {
+    get {return _storage._reasonCode}
+    set {_uniqueStorage()._reasonCode = newValue}
+  }
+
+  public var openSettled: Bool {
+    get {return _storage._openSettled}
+    set {_uniqueStorage()._openSettled = newValue}
+  }
+
+  public var openOk: Bool {
+    get {return _storage._openOk}
+    set {_uniqueStorage()._openOk = newValue}
+  }
+
+  public var openError: PBCoreText {
+    get {return _storage._openError ?? PBCoreText()}
+    set {_uniqueStorage()._openError = newValue}
+  }
+  /// Returns true if `openError` has been explicitly set.
+  public var hasOpenError: Bool {return _storage._openError != nil}
+  /// Clears the value of `openError`. Subsequent reads from it will return its default value.
+  public mutating func clearOpenError() {_uniqueStorage()._openError = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate let _protobuf_package = "remoteagent.core.v1"
@@ -526,6 +911,10 @@ extension PBRelayRpcMethod: SwiftProtobuf._ProtoNameProviding {
 
 extension PBSessionImageLoadStatus: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SESSION_IMAGE_LOAD_STATUS_UNSPECIFIED\0\u{1}SESSION_IMAGE_LOAD_STATUS_OK\0\u{1}SESSION_IMAGE_LOAD_STATUS_EXPIRED\0\u{1}SESSION_IMAGE_LOAD_STATUS_MISSING\0\u{1}SESSION_IMAGE_LOAD_STATUS_BAD\0\u{1}SESSION_IMAGE_LOAD_STATUS_ERROR\0")
+}
+
+extension PBTerminalLifecycleState: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0TERMINAL_LIFECYCLE_STATE_UNSPECIFIED\0\u{2}\u{4}TERMINAL_LIFECYCLE_STATE_CONFIRM_INPUT\0\u{1}TERMINAL_LIFECYCLE_STATE_CONFIRM_RESTART\0\u{1}TERMINAL_LIFECYCLE_STATE_REBUILD\0\u{1}TERMINAL_LIFECYCLE_STATE_CLOSED\0")
 }
 
 extension PBRelayPipeConfigEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
@@ -1117,6 +1506,738 @@ extension PBSessionImageLoadedEffect: SwiftProtobuf.Message, SwiftProtobuf._Mess
         if _storage._errorText != rhs_storage._errorText {return false}
         if _storage._errorCode != rhs_storage._errorCode {return false}
         if _storage._retiredHistory != rhs_storage._retiredHistory {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBTerminalOpenAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalOpenAction"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}session_id\0\u{3}machine_id\0\u{3}terminal_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.opID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.terminalID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.opID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.opID, fieldNumber: 1)
+    }
+    if !self.sessionID.isEmpty {
+      try visitor.visitSingularStringField(value: self.sessionID, fieldNumber: 2)
+    }
+    if !self.machineID.isEmpty {
+      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 3)
+    }
+    if !self.terminalID.isEmpty {
+      try visitor.visitSingularStringField(value: self.terminalID, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBTerminalOpenAction, rhs: PBTerminalOpenAction) -> Bool {
+    if lhs.opID != rhs.opID {return false}
+    if lhs.sessionID != rhs.sessionID {return false}
+    if lhs.machineID != rhs.machineID {return false}
+    if lhs.terminalID != rhs.terminalID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBTerminalCloseAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalCloseAction"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}stream_id\0\u{3}op_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.streamID) }()
+      case 2: try { try decoder.decodeSingularUInt64Field(value: &self.opID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.streamID.isEmpty {
+      try visitor.visitSingularStringField(value: self.streamID, fieldNumber: 1)
+    }
+    if self.opID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.opID, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBTerminalCloseAction, rhs: PBTerminalCloseAction) -> Bool {
+    if lhs.streamID != rhs.streamID {return false}
+    if lhs.opID != rhs.opID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBTerminalSocketEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalSocketEvent"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}stream_id\0\u{3}leg_id\0\u{1}opened\0\u{1}closed\0\u{3}policy_violation\0\u{1}error\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.streamID) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.legID) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.opened) }()
+      case 4: try { try decoder.decodeSingularBoolField(value: &self.closed) }()
+      case 5: try { try decoder.decodeSingularBoolField(value: &self.policyViolation) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.error) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.streamID.isEmpty {
+      try visitor.visitSingularStringField(value: self.streamID, fieldNumber: 1)
+    }
+    if !self.legID.isEmpty {
+      try visitor.visitSingularBytesField(value: self.legID, fieldNumber: 2)
+    }
+    if self.opened != false {
+      try visitor.visitSingularBoolField(value: self.opened, fieldNumber: 3)
+    }
+    if self.closed != false {
+      try visitor.visitSingularBoolField(value: self.closed, fieldNumber: 4)
+    }
+    if self.policyViolation != false {
+      try visitor.visitSingularBoolField(value: self.policyViolation, fieldNumber: 5)
+    }
+    if !self.error.isEmpty {
+      try visitor.visitSingularStringField(value: self.error, fieldNumber: 6)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBTerminalSocketEvent, rhs: PBTerminalSocketEvent) -> Bool {
+    if lhs.streamID != rhs.streamID {return false}
+    if lhs.legID != rhs.legID {return false}
+    if lhs.opened != rhs.opened {return false}
+    if lhs.closed != rhs.closed {return false}
+    if lhs.policyViolation != rhs.policyViolation {return false}
+    if lhs.error != rhs.error {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBTerminalInboundBytesEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalInboundBytesEvent"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}stream_id\0\u{3}raw_envelope\0\u{3}from_direct\0\u{3}pc_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.streamID) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.rawEnvelope) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.fromDirect) }()
+      case 4: try { try decoder.decodeSingularUInt64Field(value: &self.pcID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.streamID.isEmpty {
+      try visitor.visitSingularStringField(value: self.streamID, fieldNumber: 1)
+    }
+    if !self.rawEnvelope.isEmpty {
+      try visitor.visitSingularBytesField(value: self.rawEnvelope, fieldNumber: 2)
+    }
+    if self.fromDirect != false {
+      try visitor.visitSingularBoolField(value: self.fromDirect, fieldNumber: 3)
+    }
+    if self.pcID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.pcID, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBTerminalInboundBytesEvent, rhs: PBTerminalInboundBytesEvent) -> Bool {
+    if lhs.streamID != rhs.streamID {return false}
+    if lhs.rawEnvelope != rhs.rawEnvelope {return false}
+    if lhs.fromDirect != rhs.fromDirect {return false}
+    if lhs.pcID != rhs.pcID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBTerminalResizeInput: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalResizeInput"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}cols\0\u{1}rows\0\u{1}fit\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt32Field(value: &self.cols) }()
+      case 2: try { try decoder.decodeSingularInt32Field(value: &self.rows) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.fit) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.cols != 0 {
+      try visitor.visitSingularInt32Field(value: self.cols, fieldNumber: 1)
+    }
+    if self.rows != 0 {
+      try visitor.visitSingularInt32Field(value: self.rows, fieldNumber: 2)
+    }
+    if self.fit != false {
+      try visitor.visitSingularBoolField(value: self.fit, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBTerminalResizeInput, rhs: PBTerminalResizeInput) -> Bool {
+    if lhs.cols != rhs.cols {return false}
+    if lhs.rows != rhs.rows {return false}
+    if lhs.fit != rhs.fit {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBTerminalHistoryInput: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalHistoryInput"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}request_id\0\u{1}cursor\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.requestID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.cursor) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.requestID.isEmpty {
+      try visitor.visitSingularStringField(value: self.requestID, fieldNumber: 1)
+    }
+    if !self.cursor.isEmpty {
+      try visitor.visitSingularStringField(value: self.cursor, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBTerminalHistoryInput, rhs: PBTerminalHistoryInput) -> Bool {
+    if lhs.requestID != rhs.requestID {return false}
+    if lhs.cursor != rhs.cursor {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBTerminalInputAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalInputAction"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}stream_id\0\u{1}input\0\u{1}resize\0\u{1}history\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.streamID) }()
+      case 2: try {
+        var v: Data?
+        try decoder.decodeSingularBytesField(value: &v)
+        if let v = v {
+          if self.kind != nil {try decoder.handleConflictingOneOf()}
+          self.kind = .input(v)
+        }
+      }()
+      case 3: try {
+        var v: PBTerminalResizeInput?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .resize(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .resize(v)
+        }
+      }()
+      case 4: try {
+        var v: PBTerminalHistoryInput?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .history(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .history(v)
+        }
+      }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.streamID.isEmpty {
+      try visitor.visitSingularStringField(value: self.streamID, fieldNumber: 1)
+    }
+    switch self.kind {
+    case .input?: try {
+      guard case .input(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularBytesField(value: v, fieldNumber: 2)
+    }()
+    case .resize?: try {
+      guard case .resize(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+    }()
+    case .history?: try {
+      guard case .history(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+    }()
+    case nil: break
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBTerminalInputAction, rhs: PBTerminalInputAction) -> Bool {
+    if lhs.streamID != rhs.streamID {return false}
+    if lhs.kind != rhs.kind {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBTerminalConfirmRebuildAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalConfirmRebuildAction"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}stream_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.streamID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.streamID.isEmpty {
+      try visitor.visitSingularStringField(value: self.streamID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBTerminalConfirmRebuildAction, rhs: PBTerminalConfirmRebuildAction) -> Bool {
+    if lhs.streamID != rhs.streamID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBTerminalOpenSocketEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalOpenSocketEffect"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}stream_id\0\u{3}leg_id\0\u{3}hello_bytes\0\u{3}is_initial\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.opID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.streamID) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.legID) }()
+      case 4: try { try decoder.decodeSingularBytesField(value: &self.helloBytes) }()
+      case 5: try { try decoder.decodeSingularBoolField(value: &self.isInitial) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.opID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.opID, fieldNumber: 1)
+    }
+    if !self.streamID.isEmpty {
+      try visitor.visitSingularStringField(value: self.streamID, fieldNumber: 2)
+    }
+    if !self.legID.isEmpty {
+      try visitor.visitSingularBytesField(value: self.legID, fieldNumber: 3)
+    }
+    if !self.helloBytes.isEmpty {
+      try visitor.visitSingularBytesField(value: self.helloBytes, fieldNumber: 4)
+    }
+    if self.isInitial != false {
+      try visitor.visitSingularBoolField(value: self.isInitial, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBTerminalOpenSocketEffect, rhs: PBTerminalOpenSocketEffect) -> Bool {
+    if lhs.opID != rhs.opID {return false}
+    if lhs.streamID != rhs.streamID {return false}
+    if lhs.legID != rhs.legID {return false}
+    if lhs.helloBytes != rhs.helloBytes {return false}
+    if lhs.isInitial != rhs.isInitial {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBTerminalCloseSocketEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalCloseSocketEffect"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}stream_id\0\u{3}leg_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.streamID) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.legID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.streamID.isEmpty {
+      try visitor.visitSingularStringField(value: self.streamID, fieldNumber: 1)
+    }
+    if !self.legID.isEmpty {
+      try visitor.visitSingularBytesField(value: self.legID, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBTerminalCloseSocketEffect, rhs: PBTerminalCloseSocketEffect) -> Bool {
+    if lhs.streamID != rhs.streamID {return false}
+    if lhs.legID != rhs.legID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBTerminalSnapshotFrame: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalSnapshotFrame"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}cols\0\u{1}rows\0\u{1}data\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt32Field(value: &self.cols) }()
+      case 2: try { try decoder.decodeSingularInt32Field(value: &self.rows) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.data) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.cols != 0 {
+      try visitor.visitSingularInt32Field(value: self.cols, fieldNumber: 1)
+    }
+    if self.rows != 0 {
+      try visitor.visitSingularInt32Field(value: self.rows, fieldNumber: 2)
+    }
+    if !self.data.isEmpty {
+      try visitor.visitSingularBytesField(value: self.data, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBTerminalSnapshotFrame, rhs: PBTerminalSnapshotFrame) -> Bool {
+    if lhs.cols != rhs.cols {return false}
+    if lhs.rows != rhs.rows {return false}
+    if lhs.data != rhs.data {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBTerminalDeliveredFrame: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalDeliveredFrame"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}output\0\u{1}snapshot\0\u{1}closed\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try {
+        var v: Data?
+        try decoder.decodeSingularBytesField(value: &v)
+        if let v = v {
+          if self.kind != nil {try decoder.handleConflictingOneOf()}
+          self.kind = .output(v)
+        }
+      }()
+      case 2: try {
+        var v: PBTerminalSnapshotFrame?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .snapshot(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .snapshot(v)
+        }
+      }()
+      case 3: try {
+        var v: String?
+        try decoder.decodeSingularStringField(value: &v)
+        if let v = v {
+          if self.kind != nil {try decoder.handleConflictingOneOf()}
+          self.kind = .closed(v)
+        }
+      }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    switch self.kind {
+    case .output?: try {
+      guard case .output(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularBytesField(value: v, fieldNumber: 1)
+    }()
+    case .snapshot?: try {
+      guard case .snapshot(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    }()
+    case .closed?: try {
+      guard case .closed(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularStringField(value: v, fieldNumber: 3)
+    }()
+    case nil: break
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBTerminalDeliveredFrame, rhs: PBTerminalDeliveredFrame) -> Bool {
+    if lhs.kind != rhs.kind {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBTerminalDeliverOutputEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalDeliverOutputEffect"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}stream_id\0\u{1}frames\0\u{3}consumed_frames\0\u{3}consumed_bytes\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.streamID) }()
+      case 2: try { try decoder.decodeRepeatedMessageField(value: &self.frames) }()
+      case 3: try { try decoder.decodeSingularUInt32Field(value: &self.consumedFrames) }()
+      case 4: try { try decoder.decodeSingularUInt32Field(value: &self.consumedBytes) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.streamID.isEmpty {
+      try visitor.visitSingularStringField(value: self.streamID, fieldNumber: 1)
+    }
+    if !self.frames.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.frames, fieldNumber: 2)
+    }
+    if self.consumedFrames != 0 {
+      try visitor.visitSingularUInt32Field(value: self.consumedFrames, fieldNumber: 3)
+    }
+    if self.consumedBytes != 0 {
+      try visitor.visitSingularUInt32Field(value: self.consumedBytes, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBTerminalDeliverOutputEffect, rhs: PBTerminalDeliverOutputEffect) -> Bool {
+    if lhs.streamID != rhs.streamID {return false}
+    if lhs.frames != rhs.frames {return false}
+    if lhs.consumedFrames != rhs.consumedFrames {return false}
+    if lhs.consumedBytes != rhs.consumedBytes {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBTerminalStateChangedEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalStateChangedEffect"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}stream_id\0\u{1}state\0\u{3}reason_text\0\u{3}reason_code\0\u{3}open_settled\0\u{3}open_ok\0\u{3}open_error\0")
+
+  fileprivate class _StorageClass {
+    var _opID: UInt64 = 0
+    var _streamID: String = String()
+    var _state: PBTerminalLifecycleState = .unspecified
+    var _reasonText: PBCoreText? = nil
+    var _reasonCode: String = String()
+    var _openSettled: Bool = false
+    var _openOk: Bool = false
+    var _openError: PBCoreText? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _opID = source._opID
+      _streamID = source._streamID
+      _state = source._state
+      _reasonText = source._reasonText
+      _reasonCode = source._reasonCode
+      _openSettled = source._openSettled
+      _openOk = source._openOk
+      _openError = source._openError
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularUInt64Field(value: &_storage._opID) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._streamID) }()
+        case 3: try { try decoder.decodeSingularEnumField(value: &_storage._state) }()
+        case 4: try { try decoder.decodeSingularMessageField(value: &_storage._reasonText) }()
+        case 5: try { try decoder.decodeSingularStringField(value: &_storage._reasonCode) }()
+        case 6: try { try decoder.decodeSingularBoolField(value: &_storage._openSettled) }()
+        case 7: try { try decoder.decodeSingularBoolField(value: &_storage._openOk) }()
+        case 8: try { try decoder.decodeSingularMessageField(value: &_storage._openError) }()
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._opID != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._opID, fieldNumber: 1)
+      }
+      if !_storage._streamID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._streamID, fieldNumber: 2)
+      }
+      if _storage._state != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._state, fieldNumber: 3)
+      }
+      try { if let v = _storage._reasonText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+      } }()
+      if !_storage._reasonCode.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._reasonCode, fieldNumber: 5)
+      }
+      if _storage._openSettled != false {
+        try visitor.visitSingularBoolField(value: _storage._openSettled, fieldNumber: 6)
+      }
+      if _storage._openOk != false {
+        try visitor.visitSingularBoolField(value: _storage._openOk, fieldNumber: 7)
+      }
+      try { if let v = _storage._openError {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
+      } }()
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBTerminalStateChangedEffect, rhs: PBTerminalStateChangedEffect) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._opID != rhs_storage._opID {return false}
+        if _storage._streamID != rhs_storage._streamID {return false}
+        if _storage._state != rhs_storage._state {return false}
+        if _storage._reasonText != rhs_storage._reasonText {return false}
+        if _storage._reasonCode != rhs_storage._reasonCode {return false}
+        if _storage._openSettled != rhs_storage._openSettled {return false}
+        if _storage._openOk != rhs_storage._openOk {return false}
+        if _storage._openError != rhs_storage._openError {return false}
         return true
       }
       if !storagesAreEqual {return false}

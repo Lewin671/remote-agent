@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { getCoreHost } from "./core/host";
-import { Purpose } from "./remote";
+import { Purpose } from "./test/stored-security-fixture";
 import { SyntheticRemote } from "./test/remote-fixture";
 import { parseTestHeader, testRequestIdentity } from "./test/stored-security-fixture";
 import { EnvelopeSchema, PayloadKind, type Envelope } from "./gen/remoteagent/v1/envelope_pb";

@@ -2350,6 +2350,48 @@ func (m *ForwardReply) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ForwardReply)
 }
 
+type TermHello struct {
+	_         [0]func()
+	Token     string
+	StreamId  string
+	MachineId string
+}
+
+func (m *TermHello) GetToken() string {
+	if m != nil {
+		return m.Token
+	}
+	return ""
+}
+func (m *TermHello) GetStreamId() string {
+	if m != nil {
+		return m.StreamId
+	}
+	return ""
+}
+func (m *TermHello) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+
+var LitewireDesc_TermHello = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TermHello{}.Token), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(TermHello{}.StreamId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(TermHello{}.MachineId), Kind: litewire.KindString},
+	},
+}
+
+func (m *TermHello) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *TermHello) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TermHello)
+}
+
 type GetPushKeyRequest struct {
 }
 

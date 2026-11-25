@@ -2447,6 +2447,72 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SessionFetchImageAction getSessionFetchImage();
 
   /**
+   * <code>.remoteagent.core.v1.TerminalOpenAction terminal_open = 436 [json_name = "terminalOpen"];</code>
+   * @return Whether the terminalOpen field is set.
+   */
+  boolean hasTerminalOpen();
+  /**
+   * <code>.remoteagent.core.v1.TerminalOpenAction terminal_open = 436 [json_name = "terminalOpen"];</code>
+   * @return The terminalOpen.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalOpenAction getTerminalOpen();
+
+  /**
+   * <code>.remoteagent.core.v1.TerminalCloseAction terminal_close = 437 [json_name = "terminalClose"];</code>
+   * @return Whether the terminalClose field is set.
+   */
+  boolean hasTerminalClose();
+  /**
+   * <code>.remoteagent.core.v1.TerminalCloseAction terminal_close = 437 [json_name = "terminalClose"];</code>
+   * @return The terminalClose.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalCloseAction getTerminalClose();
+
+  /**
+   * <code>.remoteagent.core.v1.TerminalSocketEvent terminal_socket = 438 [json_name = "terminalSocket"];</code>
+   * @return Whether the terminalSocket field is set.
+   */
+  boolean hasTerminalSocket();
+  /**
+   * <code>.remoteagent.core.v1.TerminalSocketEvent terminal_socket = 438 [json_name = "terminalSocket"];</code>
+   * @return The terminalSocket.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalSocketEvent getTerminalSocket();
+
+  /**
+   * <code>.remoteagent.core.v1.TerminalInboundBytesEvent terminal_inbound_bytes = 439 [json_name = "terminalInboundBytes"];</code>
+   * @return Whether the terminalInboundBytes field is set.
+   */
+  boolean hasTerminalInboundBytes();
+  /**
+   * <code>.remoteagent.core.v1.TerminalInboundBytesEvent terminal_inbound_bytes = 439 [json_name = "terminalInboundBytes"];</code>
+   * @return The terminalInboundBytes.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalInboundBytesEvent getTerminalInboundBytes();
+
+  /**
+   * <code>.remoteagent.core.v1.TerminalInputAction terminal_input = 440 [json_name = "terminalInput"];</code>
+   * @return Whether the terminalInput field is set.
+   */
+  boolean hasTerminalInput();
+  /**
+   * <code>.remoteagent.core.v1.TerminalInputAction terminal_input = 440 [json_name = "terminalInput"];</code>
+   * @return The terminalInput.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalInputAction getTerminalInput();
+
+  /**
+   * <code>.remoteagent.core.v1.TerminalConfirmRebuildAction terminal_confirm_rebuild = 441 [json_name = "terminalConfirmRebuild"];</code>
+   * @return Whether the terminalConfirmRebuild field is set.
+   */
+  boolean hasTerminalConfirmRebuild();
+  /**
+   * <code>.remoteagent.core.v1.TerminalConfirmRebuildAction terminal_confirm_rebuild = 441 [json_name = "terminalConfirmRebuild"];</code>
+   * @return The terminalConfirmRebuild.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalConfirmRebuildAction getTerminalConfirmRebuild();
+
+  /**
    * <pre>
    * Security engine (450-499 reserved for security).
    * </pre>

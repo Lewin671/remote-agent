@@ -10,7 +10,8 @@ import { parseTestHeader, testRequestIdentity, unpackTestBody } from "./stored-s
 import { SecurityOpenEnvelopeOpSchema } from "../gen/remoteagent/core/v1/security_pb";
 import { type Envelope, type Header } from "../gen/remoteagent/v1/envelope_pb";
 import { getCoreHost } from "../core/host";
-import { Purpose, Remote } from "../remote";
+import { Remote } from "../remote";
+import { Purpose } from "./stored-security-fixture";
 import { GoSecurityFixture, webMember } from "./security-fixture";
 import { CommandResultSchema, MachineMetaSchema, type LiveSnapshot, type MachineMeta } from "../gen/remoteagent/v1/remote_pb";
 import { SessionSchema, type Session } from "../gen/remoteagent/v1/local_pb";

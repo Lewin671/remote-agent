@@ -5,7 +5,6 @@ import io.github.lewin671.remoteagent.proto.TerminalFrame
 import kotlinx.coroutines.*
 import org.junit.Assert.*
 import org.junit.Test
-import java.lang.reflect.Proxy
 
 @org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
 @org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
@@ -20,11 +19,7 @@ class TerminalTeardownTest {
         val scope = CoroutineScope(SupervisorJob())
         val terminal = RemoteTerminal(remote, "session", scope)
         val failure = IllegalStateException("injected terminal close")
-        val frameType = Class.forName("io.github.lewin671.remoteagent.core.transport.FrameStream")
-        val socket = Proxy.newProxyInstance(frameType.classLoader, arrayOf(frameType)) { _, method, _ ->
-            when (method.name) { "send", "close" -> true; else -> null }
-        }
-        val connection = TermConn::class.java.declaredConstructors.single().newInstance(socket,
+        val connection = TermConn::class.java.declaredConstructors.single().newInstance(
             { _: TerminalFrame -> Unit }, { throw failure }) as TermConn
         val field = RemoteTerminal::class.java.getDeclaredField("conn").apply { isAccessible = true }
         field.set(terminal, connection)
@@ -42,9 +37,7 @@ class TerminalTeardownTest {
         val scope = CoroutineScope(SupervisorJob())
         val terminal = RemoteTerminal(remote,"session",scope)
         var closes = 0
-        val type = Class.forName("io.github.lewin671.remoteagent.core.transport.FrameStream")
-        val socket = Proxy.newProxyInstance(type.classLoader,arrayOf(type)) { _,method,_ -> if(method.name in listOf("send","close")) true else null }
-        val connection = TermConn::class.java.declaredConstructors.single().newInstance(socket,
+        val connection = TermConn::class.java.declaredConstructors.single().newInstance(
             { _: TerminalFrame -> Unit }, { closes++ }) as TermConn
         val field = RemoteTerminal::class.java.getDeclaredField("conn").apply { isAccessible = true }
         field.set(terminal,connection)
@@ -73,12 +66,8 @@ class TerminalTeardownTest {
         val terminal = RemoteTerminal(remote, "session", scope)
         var closes = 0
         var typed = 0
-        val type = Class.forName("io.github.lewin671.remoteagent.core.transport.FrameStream")
-        val socket = Proxy.newProxyInstance(type.classLoader, arrayOf(type)) { _, method, _ ->
-            if (method.name in listOf("send", "close")) true else null
-        }
         val connection = TermConn::class.java.declaredConstructors.single().newInstance(
-            socket, { _: TerminalFrame -> typed++ }, { closes++ },
+            { _: TerminalFrame -> typed++ }, { closes++ },
         ) as TermConn
         val activeField = RemoteTerminal::class.java.getDeclaredField("active").apply { isAccessible = true }
         val ensureSubMethod = RemoteTerminal::class.java.getDeclaredMethod("ensureReopenSubscription").apply { isAccessible = true }

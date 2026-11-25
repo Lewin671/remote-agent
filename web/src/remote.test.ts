@@ -487,41 +487,77 @@ it.each(["complete", "missing", "final", "transient", "close"])(
 );
 
 it("seals terminal frames with purpose-specific domains and a default deadline", async () => {
+  const sent: Uint8Array[] = [];
+  let wsInstance!: { url: string; open: () => void; readyState: number };
+  vi.stubGlobal(
+    "WebSocket",
+    class {
+      static readonly OPEN = 1;
+      readyState = 0;
+      binaryType = "arraybuffer";
+      onopen?: () => void;
+      onmessage?: (e: { data: ArrayBuffer }) => void;
+      onclose?: (e: { code: number }) => void;
+      constructor(readonly url: string) {
+        if (url.endsWith("/v1/term")) wsInstance = this;
+        else mainOpened = true;
+      }
+      open() { this.readyState = 1; this.onopen?.(); }
+      send(data: ArrayBuffer | Uint8Array) {
+        if (this.url.endsWith("/v1/term")) sent.push(data instanceof Uint8Array ? new Uint8Array(data) : new Uint8Array(data));
+      }
+      close() { this.readyState = 3; }
+    },
+  );
+  let mainOpened = false;
   const r = await probe();
-  const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
+  const { EnvelopeSchema, HeaderSchema, PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
   const {
+    CommandResultSchema,
     TerminalFrameSchema,
     TerminalHistoryRequestSchema,
     TerminalResizeSchema,
   } = await import("./gen/remoteagent/v1/remote_pb");
   const seed = new Uint8Array(32).fill(9);
   await r.seedSession("s", seed);
-  const internal = r as unknown as {
-    sealSecureMessage: (...args: unknown[]) => Promise<{ envelope: Envelope }>;
+  (r as unknown as { api: object }).api = {
+    forward: async (req: { command?: Envelope }) => ({
+      result: await r.seal(
+        {
+          kind: PayloadKind.COMMAND_RESULT,
+          machineId: r.machine,
+          sessionId: "s",
+          requestId: req.command ? fromBinary(HeaderSchema, req.command.header).requestId : "",
+        },
+        CommandResultSchema,
+        create(CommandResultSchema, { kind: { case: "openTerminal", value: {} } }),
+      ),
+    }),
   };
+  r.start();
+  await vi.waitFor(() => expect(mainOpened).toBe(true));
   const nowBefore = Date.now();
-  let seq = 1n;
-  for (const kind of [
+  const opening = r.openTerminal("s", () => undefined, () => undefined);
+  await vi.waitFor(() => expect(wsInstance?.url?.endsWith("/v1/term")).toBe(true));
+  wsInstance.open();
+  const conn = await opening;
+  sent.length = 0; // discard initial TermHello
+  const kinds = [
     { case: "input" as const, value: new Uint8Array([13]) },
     { case: "resize" as const, value: create(TerminalResizeSchema, { cols: 80, rows: 24 }) },
     { case: "historyRequest" as const, value: create(TerminalHistoryRequestSchema, {}) },
-  ]) {
-    const { envelope: env } = await internal.sealSecureMessage.call(
-      r,
-      {
-        kind: PayloadKind.TERMINAL_INPUT,
-        machineId: r.machine,
-        sessionId: "s",
-        requestId: newRequestID(),
-        seq: seq++,
-      },
-      TerminalFrameSchema,
-      create(TerminalFrameSchema, { kind }),
-    );
+  ];
+  for (const kind of kinds) conn.send({ kind });
+  await vi.waitFor(() => expect(sent.length).toBe(3));
+  for (let i = 0; i < kinds.length; i++) {
+    const env = fromBinary(EnvelopeSchema, sent[i]);
     const opened = await r.world.fixture.open(r.machine, env, seed);
     expect(opened.header.deadlineMs).toBeGreaterThanOrEqual(BigInt(nowBefore + 50000));
-    expect(fromBinary(TerminalFrameSchema, opened.plaintext).kind.case).toBe(kind.case);
+    expect(opened.header.seq).toBe(BigInt(i + 1));
+    expect(fromBinary(TerminalFrameSchema, opened.plaintext).kind.case).toBe(kinds[i].case);
   }
+  conn.close();
+  r.stop();
 });
 
 it("does not run a duplicate shell-side 12s security sync timer (Core drives AuthorizeEveryMs) (audit opt 1)", async () => {

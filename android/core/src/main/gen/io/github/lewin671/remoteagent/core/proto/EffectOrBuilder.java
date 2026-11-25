@@ -250,6 +250,50 @@ public interface EffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SessionImageLoadedEffect getSessionImageLoaded();
 
   /**
+   * <code>.remoteagent.core.v1.TerminalOpenSocketEffect terminal_open_socket = 24 [json_name = "terminalOpenSocket"];</code>
+   * @return Whether the terminalOpenSocket field is set.
+   */
+  boolean hasTerminalOpenSocket();
+  /**
+   * <code>.remoteagent.core.v1.TerminalOpenSocketEffect terminal_open_socket = 24 [json_name = "terminalOpenSocket"];</code>
+   * @return The terminalOpenSocket.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalOpenSocketEffect getTerminalOpenSocket();
+
+  /**
+   * <code>.remoteagent.core.v1.TerminalCloseSocketEffect terminal_close_socket = 25 [json_name = "terminalCloseSocket"];</code>
+   * @return Whether the terminalCloseSocket field is set.
+   */
+  boolean hasTerminalCloseSocket();
+  /**
+   * <code>.remoteagent.core.v1.TerminalCloseSocketEffect terminal_close_socket = 25 [json_name = "terminalCloseSocket"];</code>
+   * @return The terminalCloseSocket.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalCloseSocketEffect getTerminalCloseSocket();
+
+  /**
+   * <code>.remoteagent.core.v1.TerminalDeliverOutputEffect terminal_deliver_output = 26 [json_name = "terminalDeliverOutput"];</code>
+   * @return Whether the terminalDeliverOutput field is set.
+   */
+  boolean hasTerminalDeliverOutput();
+  /**
+   * <code>.remoteagent.core.v1.TerminalDeliverOutputEffect terminal_deliver_output = 26 [json_name = "terminalDeliverOutput"];</code>
+   * @return The terminalDeliverOutput.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalDeliverOutputEffect getTerminalDeliverOutput();
+
+  /**
+   * <code>.remoteagent.core.v1.TerminalStateChangedEffect terminal_state_changed = 27 [json_name = "terminalStateChanged"];</code>
+   * @return Whether the terminalStateChanged field is set.
+   */
+  boolean hasTerminalStateChanged();
+  /**
+   * <code>.remoteagent.core.v1.TerminalStateChangedEffect terminal_state_changed = 27 [json_name = "terminalStateChanged"];</code>
+   * @return The terminalStateChanged.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalStateChangedEffect getTerminalStateChanged();
+
+  /**
    * <code>.remoteagent.core.v1.ScheduleMachinePollEffect schedule_machine_poll = 70 [json_name = "scheduleMachinePoll"];</code>
    * @return Whether the scheduleMachinePoll field is set.
    */

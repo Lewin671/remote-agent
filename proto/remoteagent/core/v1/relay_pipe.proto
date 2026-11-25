@@ -161,3 +161,121 @@ message SessionImageLoadedEffect {
   string error_code = 12;
   bool retired_history = 13;
 }
+
+// ---- Core-Owned Terminal Stream Lifecycle & Crypto ----
+
+enum TerminalLifecycleState {
+  reserved 1, 2, 3;
+  reserved "TERMINAL_LIFECYCLE_STATE_CONNECTING", "TERMINAL_LIFECYCLE_STATE_LIVE", "TERMINAL_LIFECYCLE_STATE_RECONNECTING";
+  TERMINAL_LIFECYCLE_STATE_UNSPECIFIED = 0;
+  TERMINAL_LIFECYCLE_STATE_CONFIRM_INPUT = 4;
+  TERMINAL_LIFECYCLE_STATE_CONFIRM_RESTART = 5;
+  TERMINAL_LIFECYCLE_STATE_REBUILD = 6;
+  TERMINAL_LIFECYCLE_STATE_CLOSED = 7;
+}
+
+message TerminalOpenAction {
+  uint64 op_id = 1;
+  string session_id = 2;
+  // Optional machine_id hint when session is not yet in live directory.
+  string machine_id = 3;
+  // Optional logical terminal_id bound to Core's termhistory.Machine so
+  // inbound TerminalHistoryPage frames feed directly into Core without shell parsing.
+  string terminal_id = 4;
+}
+
+message TerminalCloseAction {
+  string stream_id = 1;
+  uint64 op_id = 2;
+}
+
+message TerminalSocketEvent {
+  string stream_id = 1;
+  bytes leg_id = 2;
+  bool opened = 3;
+  bool closed = 4;
+  bool policy_violation = 5;
+  string error = 6;
+}
+
+message TerminalInboundBytesEvent {
+  string stream_id = 1;
+  bytes raw_envelope = 2;
+  bool from_direct = 3;
+  uint64 pc_id = 4;
+}
+
+message TerminalResizeInput {
+  int32 cols = 1;
+  int32 rows = 2;
+  bool fit = 3;
+}
+
+message TerminalHistoryInput {
+  string request_id = 1;
+  string cursor = 2;
+}
+
+message TerminalInputAction {
+  string stream_id = 1;
+  oneof kind {
+    bytes input = 2;
+    TerminalResizeInput resize = 3;
+    TerminalHistoryInput history = 4;
+  }
+}
+
+message TerminalConfirmRebuildAction {
+  string stream_id = 1;
+}
+
+message TerminalOpenSocketEffect {
+  uint64 op_id = 1;
+  string stream_id = 2;
+  bytes leg_id = 3;
+  bytes hello_bytes = 4;
+  bool is_initial = 5;
+}
+
+message TerminalCloseSocketEffect {
+  string stream_id = 1;
+  // Empty closes all sockets for stream_id.
+  bytes leg_id = 2;
+}
+
+message TerminalSnapshotFrame {
+  int32 cols = 1;
+  int32 rows = 2;
+  bytes data = 3;
+}
+
+message TerminalDeliveredFrame {
+  oneof kind {
+    bytes output = 1;
+    TerminalSnapshotFrame snapshot = 2;
+    string closed = 3;
+  }
+}
+
+// Hot-path terminal output delivery: Core emits this directly with ZERO
+// RenderEffect and ZERO ViewModel recomputation.
+message TerminalDeliverOutputEffect {
+  string stream_id = 1;
+  repeated TerminalDeliveredFrame frames = 2;
+  // Inbound frame count and raw envelope bytes accounted for by this delivery
+  // (including frames that settled without emitting a frame, e.g. dropped direct
+  // duplicates or HistoryPage frames routed directly to Core).
+  uint32 consumed_frames = 3;
+  uint32 consumed_bytes = 4;
+}
+
+message TerminalStateChangedEffect {
+  uint64 op_id = 1;
+  string stream_id = 2;
+  TerminalLifecycleState state = 3;
+  Text reason_text = 4;
+  string reason_code = 5;
+  bool open_settled = 6;
+  bool open_ok = 7;
+  Text open_error = 8;
+}

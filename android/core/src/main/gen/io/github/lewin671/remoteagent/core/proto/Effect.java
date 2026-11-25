@@ -40,6 +40,10 @@ public  final class Effect extends
     RELAY_RPC_CANCEL(21),
     PUSH_RPC_RESULT(22),
     SESSION_IMAGE_LOADED(23),
+    TERMINAL_OPEN_SOCKET(24),
+    TERMINAL_CLOSE_SOCKET(25),
+    TERMINAL_DELIVER_OUTPUT(26),
+    TERMINAL_STATE_CHANGED(27),
     SCHEDULE_MACHINE_POLL(70),
     DIRECT_PREFERENCE(71),
     RENAME_CLIENT(72),
@@ -143,6 +147,10 @@ public  final class Effect extends
         case 21: return RELAY_RPC_CANCEL;
         case 22: return PUSH_RPC_RESULT;
         case 23: return SESSION_IMAGE_LOADED;
+        case 24: return TERMINAL_OPEN_SOCKET;
+        case 25: return TERMINAL_CLOSE_SOCKET;
+        case 26: return TERMINAL_DELIVER_OUTPUT;
+        case 27: return TERMINAL_STATE_CHANGED;
         case 70: return SCHEDULE_MACHINE_POLL;
         case 71: return DIRECT_PREFERENCE;
         case 72: return RENAME_CLIENT;
@@ -1338,6 +1346,214 @@ public  final class Effect extends
    */
   private void clearSessionImageLoaded() {
     if (effectCase_ == 23) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int TERMINAL_OPEN_SOCKET_FIELD_NUMBER = 24;
+  /**
+   * <code>.remoteagent.core.v1.TerminalOpenSocketEffect terminal_open_socket = 24 [json_name = "terminalOpenSocket"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTerminalOpenSocket() {
+    return effectCase_ == 24;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalOpenSocketEffect terminal_open_socket = 24 [json_name = "terminalOpenSocket"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.TerminalOpenSocketEffect getTerminalOpenSocket() {
+    if (effectCase_ == 24) {
+       return (io.github.lewin671.remoteagent.core.proto.TerminalOpenSocketEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.TerminalOpenSocketEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalOpenSocketEffect terminal_open_socket = 24 [json_name = "terminalOpenSocket"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTerminalOpenSocket(io.github.lewin671.remoteagent.core.proto.TerminalOpenSocketEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 24;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalOpenSocketEffect terminal_open_socket = 24 [json_name = "terminalOpenSocket"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeTerminalOpenSocket(io.github.lewin671.remoteagent.core.proto.TerminalOpenSocketEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 24 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.TerminalOpenSocketEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.TerminalOpenSocketEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.TerminalOpenSocketEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 24;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalOpenSocketEffect terminal_open_socket = 24 [json_name = "terminalOpenSocket"];</code>
+   */
+  private void clearTerminalOpenSocket() {
+    if (effectCase_ == 24) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int TERMINAL_CLOSE_SOCKET_FIELD_NUMBER = 25;
+  /**
+   * <code>.remoteagent.core.v1.TerminalCloseSocketEffect terminal_close_socket = 25 [json_name = "terminalCloseSocket"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTerminalCloseSocket() {
+    return effectCase_ == 25;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalCloseSocketEffect terminal_close_socket = 25 [json_name = "terminalCloseSocket"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.TerminalCloseSocketEffect getTerminalCloseSocket() {
+    if (effectCase_ == 25) {
+       return (io.github.lewin671.remoteagent.core.proto.TerminalCloseSocketEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.TerminalCloseSocketEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalCloseSocketEffect terminal_close_socket = 25 [json_name = "terminalCloseSocket"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTerminalCloseSocket(io.github.lewin671.remoteagent.core.proto.TerminalCloseSocketEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 25;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalCloseSocketEffect terminal_close_socket = 25 [json_name = "terminalCloseSocket"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeTerminalCloseSocket(io.github.lewin671.remoteagent.core.proto.TerminalCloseSocketEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 25 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.TerminalCloseSocketEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.TerminalCloseSocketEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.TerminalCloseSocketEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 25;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalCloseSocketEffect terminal_close_socket = 25 [json_name = "terminalCloseSocket"];</code>
+   */
+  private void clearTerminalCloseSocket() {
+    if (effectCase_ == 25) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int TERMINAL_DELIVER_OUTPUT_FIELD_NUMBER = 26;
+  /**
+   * <code>.remoteagent.core.v1.TerminalDeliverOutputEffect terminal_deliver_output = 26 [json_name = "terminalDeliverOutput"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTerminalDeliverOutput() {
+    return effectCase_ == 26;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDeliverOutputEffect terminal_deliver_output = 26 [json_name = "terminalDeliverOutput"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.TerminalDeliverOutputEffect getTerminalDeliverOutput() {
+    if (effectCase_ == 26) {
+       return (io.github.lewin671.remoteagent.core.proto.TerminalDeliverOutputEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.TerminalDeliverOutputEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDeliverOutputEffect terminal_deliver_output = 26 [json_name = "terminalDeliverOutput"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTerminalDeliverOutput(io.github.lewin671.remoteagent.core.proto.TerminalDeliverOutputEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 26;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDeliverOutputEffect terminal_deliver_output = 26 [json_name = "terminalDeliverOutput"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeTerminalDeliverOutput(io.github.lewin671.remoteagent.core.proto.TerminalDeliverOutputEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 26 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.TerminalDeliverOutputEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.TerminalDeliverOutputEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.TerminalDeliverOutputEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 26;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalDeliverOutputEffect terminal_deliver_output = 26 [json_name = "terminalDeliverOutput"];</code>
+   */
+  private void clearTerminalDeliverOutput() {
+    if (effectCase_ == 26) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int TERMINAL_STATE_CHANGED_FIELD_NUMBER = 27;
+  /**
+   * <code>.remoteagent.core.v1.TerminalStateChangedEffect terminal_state_changed = 27 [json_name = "terminalStateChanged"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTerminalStateChanged() {
+    return effectCase_ == 27;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalStateChangedEffect terminal_state_changed = 27 [json_name = "terminalStateChanged"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.TerminalStateChangedEffect getTerminalStateChanged() {
+    if (effectCase_ == 27) {
+       return (io.github.lewin671.remoteagent.core.proto.TerminalStateChangedEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.TerminalStateChangedEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalStateChangedEffect terminal_state_changed = 27 [json_name = "terminalStateChanged"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTerminalStateChanged(io.github.lewin671.remoteagent.core.proto.TerminalStateChangedEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 27;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalStateChangedEffect terminal_state_changed = 27 [json_name = "terminalStateChanged"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeTerminalStateChanged(io.github.lewin671.remoteagent.core.proto.TerminalStateChangedEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 27 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.TerminalStateChangedEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.TerminalStateChangedEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.TerminalStateChangedEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 27;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalStateChangedEffect terminal_state_changed = 27 [json_name = "terminalStateChanged"];</code>
+   */
+  private void clearTerminalStateChanged() {
+    if (effectCase_ == 27) {
       effectCase_ = 0;
       effect_ = null;
     }
@@ -6009,6 +6225,198 @@ public  final class Effect extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.TerminalOpenSocketEffect terminal_open_socket = 24 [json_name = "terminalOpenSocket"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTerminalOpenSocket() {
+      return instance.hasTerminalOpenSocket();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalOpenSocketEffect terminal_open_socket = 24 [json_name = "terminalOpenSocket"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.TerminalOpenSocketEffect getTerminalOpenSocket() {
+      return instance.getTerminalOpenSocket();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalOpenSocketEffect terminal_open_socket = 24 [json_name = "terminalOpenSocket"];</code>
+     */
+    public Builder setTerminalOpenSocket(io.github.lewin671.remoteagent.core.proto.TerminalOpenSocketEffect value) {
+      copyOnWrite();
+      instance.setTerminalOpenSocket(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalOpenSocketEffect terminal_open_socket = 24 [json_name = "terminalOpenSocket"];</code>
+     */
+    public Builder setTerminalOpenSocket(
+        io.github.lewin671.remoteagent.core.proto.TerminalOpenSocketEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTerminalOpenSocket(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalOpenSocketEffect terminal_open_socket = 24 [json_name = "terminalOpenSocket"];</code>
+     */
+    public Builder mergeTerminalOpenSocket(io.github.lewin671.remoteagent.core.proto.TerminalOpenSocketEffect value) {
+      copyOnWrite();
+      instance.mergeTerminalOpenSocket(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalOpenSocketEffect terminal_open_socket = 24 [json_name = "terminalOpenSocket"];</code>
+     */
+    public Builder clearTerminalOpenSocket() {
+      copyOnWrite();
+      instance.clearTerminalOpenSocket();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.TerminalCloseSocketEffect terminal_close_socket = 25 [json_name = "terminalCloseSocket"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTerminalCloseSocket() {
+      return instance.hasTerminalCloseSocket();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalCloseSocketEffect terminal_close_socket = 25 [json_name = "terminalCloseSocket"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.TerminalCloseSocketEffect getTerminalCloseSocket() {
+      return instance.getTerminalCloseSocket();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalCloseSocketEffect terminal_close_socket = 25 [json_name = "terminalCloseSocket"];</code>
+     */
+    public Builder setTerminalCloseSocket(io.github.lewin671.remoteagent.core.proto.TerminalCloseSocketEffect value) {
+      copyOnWrite();
+      instance.setTerminalCloseSocket(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalCloseSocketEffect terminal_close_socket = 25 [json_name = "terminalCloseSocket"];</code>
+     */
+    public Builder setTerminalCloseSocket(
+        io.github.lewin671.remoteagent.core.proto.TerminalCloseSocketEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTerminalCloseSocket(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalCloseSocketEffect terminal_close_socket = 25 [json_name = "terminalCloseSocket"];</code>
+     */
+    public Builder mergeTerminalCloseSocket(io.github.lewin671.remoteagent.core.proto.TerminalCloseSocketEffect value) {
+      copyOnWrite();
+      instance.mergeTerminalCloseSocket(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalCloseSocketEffect terminal_close_socket = 25 [json_name = "terminalCloseSocket"];</code>
+     */
+    public Builder clearTerminalCloseSocket() {
+      copyOnWrite();
+      instance.clearTerminalCloseSocket();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.TerminalDeliverOutputEffect terminal_deliver_output = 26 [json_name = "terminalDeliverOutput"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTerminalDeliverOutput() {
+      return instance.hasTerminalDeliverOutput();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDeliverOutputEffect terminal_deliver_output = 26 [json_name = "terminalDeliverOutput"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.TerminalDeliverOutputEffect getTerminalDeliverOutput() {
+      return instance.getTerminalDeliverOutput();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDeliverOutputEffect terminal_deliver_output = 26 [json_name = "terminalDeliverOutput"];</code>
+     */
+    public Builder setTerminalDeliverOutput(io.github.lewin671.remoteagent.core.proto.TerminalDeliverOutputEffect value) {
+      copyOnWrite();
+      instance.setTerminalDeliverOutput(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDeliverOutputEffect terminal_deliver_output = 26 [json_name = "terminalDeliverOutput"];</code>
+     */
+    public Builder setTerminalDeliverOutput(
+        io.github.lewin671.remoteagent.core.proto.TerminalDeliverOutputEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTerminalDeliverOutput(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDeliverOutputEffect terminal_deliver_output = 26 [json_name = "terminalDeliverOutput"];</code>
+     */
+    public Builder mergeTerminalDeliverOutput(io.github.lewin671.remoteagent.core.proto.TerminalDeliverOutputEffect value) {
+      copyOnWrite();
+      instance.mergeTerminalDeliverOutput(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalDeliverOutputEffect terminal_deliver_output = 26 [json_name = "terminalDeliverOutput"];</code>
+     */
+    public Builder clearTerminalDeliverOutput() {
+      copyOnWrite();
+      instance.clearTerminalDeliverOutput();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.TerminalStateChangedEffect terminal_state_changed = 27 [json_name = "terminalStateChanged"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTerminalStateChanged() {
+      return instance.hasTerminalStateChanged();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalStateChangedEffect terminal_state_changed = 27 [json_name = "terminalStateChanged"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.TerminalStateChangedEffect getTerminalStateChanged() {
+      return instance.getTerminalStateChanged();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalStateChangedEffect terminal_state_changed = 27 [json_name = "terminalStateChanged"];</code>
+     */
+    public Builder setTerminalStateChanged(io.github.lewin671.remoteagent.core.proto.TerminalStateChangedEffect value) {
+      copyOnWrite();
+      instance.setTerminalStateChanged(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalStateChangedEffect terminal_state_changed = 27 [json_name = "terminalStateChanged"];</code>
+     */
+    public Builder setTerminalStateChanged(
+        io.github.lewin671.remoteagent.core.proto.TerminalStateChangedEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTerminalStateChanged(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalStateChangedEffect terminal_state_changed = 27 [json_name = "terminalStateChanged"];</code>
+     */
+    public Builder mergeTerminalStateChanged(io.github.lewin671.remoteagent.core.proto.TerminalStateChangedEffect value) {
+      copyOnWrite();
+      instance.mergeTerminalStateChanged(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalStateChangedEffect terminal_state_changed = 27 [json_name = "terminalStateChanged"];</code>
+     */
+    public Builder clearTerminalStateChanged() {
+      copyOnWrite();
+      instance.clearTerminalStateChanged();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.ScheduleMachinePollEffect schedule_machine_poll = 70 [json_name = "scheduleMachinePoll"];</code>
      */
     @java.lang.Override
@@ -9311,6 +9719,10 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.RelayRpcCancelEffect.class,
             io.github.lewin671.remoteagent.core.proto.PushRpcResultEffect.class,
             io.github.lewin671.remoteagent.core.proto.SessionImageLoadedEffect.class,
+            io.github.lewin671.remoteagent.core.proto.TerminalOpenSocketEffect.class,
+            io.github.lewin671.remoteagent.core.proto.TerminalCloseSocketEffect.class,
+            io.github.lewin671.remoteagent.core.proto.TerminalDeliverOutputEffect.class,
+            io.github.lewin671.remoteagent.core.proto.TerminalStateChangedEffect.class,
             io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect.class,
             io.github.lewin671.remoteagent.core.proto.SharedFileScanLocalEffect.class,
             io.github.lewin671.remoteagent.core.proto.SharedFileInspectDiskEffect.class,
@@ -9380,18 +9792,18 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.SecurityTokenUpdatedEffect.class,
           };
           java.lang.String info =
-              "\u0000X\u0001\u0000\u0001\u0091X\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "\u0000\\\u0001\u0000\u0001\u0091\\\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
               "<\u0000\u0004<\u0000\u0005<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<\u0000\u000b<" +
               "\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0011<\u0000\u0012<\u0000\u0013" +
-              "<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000(<\u0000*<\u0000+<\u0000" +
-              ",<\u0000-<\u0000.<\u0000/<\u00000<\u00001<\u00002<\u0000<<\u0000=<\u0000><\u0000" +
-              "?<\u0000@<\u0000A<\u0000F<\u0000G<\u0000H<\u0000I<\u0000J<\u0000K<\u0000L<\u0000" +
-              "M<\u0000N<\u0000O<\u0000P<\u0000Q<\u0000R<\u0000S<\u0000T<\u0000U<\u0000V<\u0000" +
-              "W<\u0000X<\u0000Y<\u0000f<\u0000g<\u0000h<\u0000i<\u0000j<\u0000k<\u0000l<\u0000" +
-              "m<\u0000o<\u0000p<\u0000q<\u0000r<\u0000s<\u0000t<\u0000u<\u0000v<\u0000w<\u0000" +
-              "x<\u0000\u0082<\u0000\u0083<\u0000\u0087<\u0000\u0088<\u0000\u0089<\u0000\u008a<" +
-              "\u0000\u008b<\u0000\u008c<\u0000\u008d<\u0000\u008e<\u0000\u008f<\u0000\u0090<\u0000" +
-              "\u0091<\u0000";
+              "<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000\u0018<\u0000\u0019<\u0000" +
+              "\u001a<\u0000\u001b<\u0000(<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/<\u0000" +
+              "0<\u00001<\u00002<\u0000<<\u0000=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000" +
+              "G<\u0000H<\u0000I<\u0000J<\u0000K<\u0000L<\u0000M<\u0000N<\u0000O<\u0000P<\u0000" +
+              "Q<\u0000R<\u0000S<\u0000T<\u0000U<\u0000V<\u0000W<\u0000X<\u0000Y<\u0000f<\u0000" +
+              "g<\u0000h<\u0000i<\u0000j<\u0000k<\u0000l<\u0000m<\u0000o<\u0000p<\u0000q<\u0000" +
+              "r<\u0000s<\u0000t<\u0000u<\u0000v<\u0000w<\u0000x<\u0000\u0082<\u0000\u0083<\u0000" +
+              "\u0087<\u0000\u0088<\u0000\u0089<\u0000\u008a<\u0000\u008b<\u0000\u008c<\u0000\u008d" +
+              "<\u0000\u008e<\u0000\u008f<\u0000\u0090<\u0000\u0091<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

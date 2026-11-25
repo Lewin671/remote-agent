@@ -73,25 +73,94 @@ it("does not open a stale main socket when stopped during login", async () => {
   await vi.waitFor(() => expect(Socket.all).toHaveLength(1));
   r.stop();
 }, 15000);
+async function mockOpenTerminalForward(r: SyntheticRemote, onStreamId?: (sid: string) => void) {
+  const { fromBinary } = await import("@bufbuild/protobuf");
+  const { HeaderSchema, PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
+  const { CommandResultSchema, CommandSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  (r as unknown as { api: object }).api = {
+    forward: async (req: { command?: import("./gen/remoteagent/v1/envelope_pb").Envelope }) => {
+      let reqId = "";
+      if (req.command) {
+        reqId = fromBinary(HeaderSchema, req.command.header).requestId;
+        if (onStreamId) {
+          const opened = await r.world.fixture.open(r.machine, req.command);
+          const cmd = fromBinary(CommandSchema, opened.plaintext);
+          if (cmd.kind.case === "openTerminal") onStreamId(cmd.kind.value.streamId);
+        }
+      }
+      return {
+        result: await r.seal(
+          { kind: PayloadKind.COMMAND_RESULT, machineId: r.machine, sessionId: "s", requestId: reqId },
+          CommandResultSchema,
+          create(CommandResultSchema, { kind: { case: "openTerminal", value: {} } }),
+        ),
+      };
+    },
+  };
+}
+
 it("stops pending terminal opens and bounds queued decryption", async () => {
   vi.stubGlobal("WebSocket", Socket);
   const r = await probe();
-  const { getCoreHost } = await import("./core/host");
-  vi.spyOn(getCoreHost(r), "runMachineCommand").mockResolvedValue(undefined);
+  let streamId = "";
+  await mockOpenTerminalForward(r, (sid) => { streamId = sid; });
+  r.start();
+  await vi.waitFor(() => expect(Socket.all.some((s) => s.url.endsWith("/v1/stream"))).toBe(true));
   const closed = vi.fn();
   const frames = vi.fn();
   const opening = r.openTerminal("s", frames, closed);
-  const socket = Socket.all[0];
+  await vi.waitFor(() => expect(Socket.all.some((s) => s.url.endsWith("/v1/term"))).toBe(true));
+  const socket = Socket.all.find((s) => s.url.endsWith("/v1/term"))!;
   socket.open();
   const terminal = await opening;
-  // All calls occur before promise jobs execute: these frames must be bounded and discarded.
-  for (let i = 0; i < 513; i++)
-    socket.onmessage?.({ data: new ArrayBuffer(0) });
-  await Promise.resolve();
-  await Promise.resolve();
+  expect(streamId).not.toBe("");
+
+  const { toBinary } = await import("@bufbuild/protobuf");
+  const { EnvelopeSchema, PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
+  const { TerminalFrameSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  const l10n = await import("./i18n");
+
+  // Hold async >16 KiB WebCrypto decryption so frames queue in Core + shell before delivery.
+  const pendingDecrypts: Array<() => void> = [];
+  const origDecrypt = crypto.subtle.decrypt.bind(crypto.subtle);
+  vi.spyOn(crypto.subtle, "decrypt").mockImplementation((...args) =>
+    new Promise((resolve, reject) => {
+      pendingDecrypts.push(() => {
+        void origDecrypt(...args).then(resolve, reject);
+      });
+    }),
+  );
+  // 20 KiB incompressible payload triggers >16 KiB async WebCrypto decrypt so frames queue behind it.
+  const bigPayload = new Uint8Array(20 * 1024);
+  crypto.getRandomValues(bigPayload);
+  const env1 = await r.seal(
+    { kind: PayloadKind.TERMINAL_OUTPUT, machineId: r.machine, sessionId: "s", requestId: streamId, seq: 1n },
+    TerminalFrameSchema,
+    create(TerminalFrameSchema, { kind: { case: "output", value: bigPayload } }),
+  );
+  const rawBig = toBinary(EnvelopeSchema, env1).buffer as ArrayBuffer;
+  const smallPayload = new Uint8Array([65]);
+  const envSmall = await r.seal(
+    { kind: PayloadKind.TERMINAL_OUTPUT, machineId: r.machine, sessionId: "s", requestId: streamId, seq: 2n },
+    TerminalFrameSchema,
+    create(TerminalFrameSchema, { kind: { case: "output", value: smallPayload } }),
+  );
+  const rawSmall = toBinary(EnvelopeSchema, envSmall).buffer as ArrayBuffer;
+
+  // Frame 1 (>16 KiB) enters async CryptoBatch; next 511 frames fill the 512-frame budget without closing.
+  socket.onmessage?.({ data: rawBig });
+  await vi.waitFor(() => expect(pendingDecrypts).toHaveLength(1));
+  for (let i = 0; i < 511; i++) socket.onmessage?.({ data: rawSmall });
+  expect(closed).not.toHaveBeenCalled();
+  expect(socket.readyState).toBe(1);
+
+  // 513th in-flight frame exceeds the 512-frame cap and closes with the backlog reason.
+  socket.onmessage?.({ data: rawSmall });
   expect(closed).toHaveBeenCalledTimes(1);
+  expect(closed).toHaveBeenCalledWith(l10n.t("errors.terminal_output_backlog_reconnect_for_the_latest_display"));
   expect(frames).not.toHaveBeenCalled();
   expect(socket.readyState).toBe(3);
+  for (const fn of pendingDecrypts) fn();
   terminal.close();
   r.stop();
 });
@@ -127,8 +196,8 @@ it("drops oversized main stream frames without buffering an unbounded backlog", 
 it("counts terminal output until the renderer has consumed it", async () => {
   vi.stubGlobal("WebSocket", Socket);
   const r = await probe();
-  const { getCoreHost } = await import("./core/host");
-  const command = vi.spyOn(getCoreHost(r), "runMachineCommand").mockResolvedValue(undefined);
+  let streamId = "";
+  await mockOpenTerminalForward(r, (sid) => { streamId = sid; });
   let consumed!: () => void;
   const renderer = vi.fn(
     () =>
@@ -137,8 +206,11 @@ it("counts terminal output until the renderer has consumed it", async () => {
       }),
   );
   const closed = vi.fn();
+  r.start();
+  await vi.waitFor(() => expect(Socket.all.some((s) => s.url.endsWith("/v1/stream"))).toBe(true));
   const opening = r.openTerminal("s", renderer, closed);
-  const ws = Socket.all[0];
+  await vi.waitFor(() => expect(Socket.all.some((s) => s.url.endsWith("/v1/term"))).toBe(true));
+  const ws = Socket.all.find((s) => s.url.endsWith("/v1/term"))!;
   ws.open();
   const conn = await opening;
   const { toBinary } = await import("@bufbuild/protobuf");
@@ -146,29 +218,42 @@ it("counts terminal output until the renderer has consumed it", async () => {
     await import("./gen/remoteagent/v1/envelope_pb");
   const { TerminalFrameSchema } =
     await import("./gen/remoteagent/v1/remote_pb");
-  const streamId = (command.mock.calls as any)[0][2].value.streamId;
-  const env = await r.seal(
-    {
-      kind: PayloadKind.TERMINAL_OUTPUT,
-      machineId: r.machine,
-      sessionId: "s",
-      requestId: streamId,
-      seq: 1n,
-    },
-    TerminalFrameSchema,
-    create(TerminalFrameSchema, {
-      kind: { case: "output", value: new Uint8Array([65]) },
-    }),
-  );
-  ws.onmessage?.({ data: toBinary(EnvelopeSchema, env).buffer as ArrayBuffer });
+  const l10n = await import("./i18n");
+  expect(streamId).not.toBe("");
+  const makeFrame = async (seq: bigint) => {
+    const env = await r.seal(
+      {
+        kind: PayloadKind.TERMINAL_OUTPUT,
+        machineId: r.machine,
+        sessionId: "s",
+        requestId: streamId,
+        seq,
+      },
+      TerminalFrameSchema,
+      create(TerminalFrameSchema, {
+        kind: { case: "output", value: new Uint8Array([65]) },
+      }),
+    );
+    return toBinary(EnvelopeSchema, env).buffer as ArrayBuffer;
+  };
+  ws.onmessage?.({ data: await makeFrame(1n) });
   await vi.waitFor(() => expect(renderer).toHaveBeenCalledTimes(1));
-  for (let i = 0; i < 512; i++) ws.onmessage?.({ data: new ArrayBuffer(0) });
+  // Renderer has not resolved `consumed`, so frame 1 still occupies 1 slot.
+  // Sending 511 more valid frames (seq 2..512) fills the 512-frame budget without closing.
+  const queuedRaw: ArrayBuffer[] = [];
+  for (let seq = 2n; seq <= 513n; seq++) queuedRaw.push(await makeFrame(seq));
+  for (let i = 0; i < 511; i++) ws.onmessage?.({ data: queuedRaw[i] });
+  expect(closed).not.toHaveBeenCalled();
+  expect(ws.readyState).toBe(1);
+  // 513th total unconsumed frame trips the 512-frame cap with the backlog reason.
+  ws.onmessage?.({ data: queuedRaw[511] });
   expect(ws.readyState).toBe(3);
   expect(closed).toHaveBeenCalledTimes(1);
+  expect(closed).toHaveBeenCalledWith(l10n.t("errors.terminal_output_backlog_reconnect_for_the_latest_display"));
   consumed();
   conn.close();
   r.stop();
-});
+}, 20_000);
 
 async function sealedEvents(r: SyntheticRemote, n: number) {
   const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");

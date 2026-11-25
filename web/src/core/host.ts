@@ -154,10 +154,20 @@ import {
   RelayPipeConfigEventSchema,
   SessionFetchImageActionSchema,
   StreamRawFrameEventSchema,
+  TerminalCloseActionSchema,
+  TerminalConfirmRebuildActionSchema,
+  TerminalInboundBytesEventSchema,
+  TerminalInputActionSchema,
+  TerminalOpenActionSchema,
+  TerminalSocketEventSchema,
   type PushRpcResultEffect,
   type RelayRpcCancelEffect,
   type RelayRpcEffect,
   type SessionImageLoadedEffect,
+  type TerminalCloseSocketEffect,
+  type TerminalDeliverOutputEffect,
+  type TerminalOpenSocketEffect,
+  type TerminalStateChangedEffect,
 } from "../gen/remoteagent/core/v1/relay_pipe_pb";
 import {
   SecurityConfigEventSchema,
@@ -405,6 +415,12 @@ export interface HostBridge {
   refreshDevices(): Promise<void>;
   pushRpc(req: Omit<MessageInitShape<typeof PushRpcActionSchema>, "opId">): Promise<PushRpcResultEffect>;
   fetchSessionImage(sessionId: string, imageId: string, machineId?: string, cachedEnvelope?: Uint8Array<ArrayBuffer>): Promise<SessionImageLoadedEffect>;
+  terminalOpen(opId: bigint, sessionId: string, machineId: string, terminalId: string): void;
+  terminalClose(streamId: string, opId?: bigint): void;
+  terminalSocket(ev: MessageInitShape<typeof TerminalSocketEventSchema>): void;
+  terminalInboundBytes(streamId: string, rawEnvelope: Uint8Array<ArrayBuffer>, fromDirect: boolean, pcId: bigint): void;
+  terminalInput(req: MessageInitShape<typeof TerminalInputActionSchema>): void;
+  terminalConfirmRebuild(streamId: string): void;
   readonly securityClient: SecurityClient;
   securityOp(op: SecurityOpRequestEvent["op"]): Promise<SecurityOpResultEffect>;
   dispatchDirectSignal(raw: Uint8Array<ArrayBuffer>): void;
@@ -469,6 +485,10 @@ export interface CoreExecutor {
   terminalDirectDeliver?(eff: TerminalDirectDeliverEffect): void;
   terminalDirectAttachRelay?(eff: TerminalDirectAttachRelayEffect): void;
   terminalDirectState?(eff: TerminalDirectStateEffect): void;
+  terminalOpenSocket?(eff: TerminalOpenSocketEffect): void;
+  terminalCloseSocket?(eff: TerminalCloseSocketEffect): void;
+  terminalDeliverOutput?(eff: TerminalDeliverOutputEffect): void;
+  terminalStateChanged?(eff: TerminalStateChangedEffect): void;
 }
 
 export interface SessionWindowOptions {
@@ -1025,6 +1045,18 @@ export class CoreHost {
         pushRpc: (req) => this.pushRpc(req),
         fetchSessionImage: (sid, imageId, machineId, cachedEnvelope) =>
           this.fetchSessionImage(sid, imageId, machineId, cachedEnvelope),
+        terminalOpen: (opId, sessionId, machineId, terminalId) =>
+          this.emit({ case: "terminalOpen", value: create(TerminalOpenActionSchema, { opId, sessionId, machineId, terminalId }) }),
+        terminalClose: (streamId, opId = 0n) =>
+          this.emit({ case: "terminalClose", value: create(TerminalCloseActionSchema, { streamId, opId }) }),
+        terminalSocket: (ev) =>
+          this.emit({ case: "terminalSocket", value: create(TerminalSocketEventSchema, ev) }),
+        terminalInboundBytes: (streamId, rawEnvelope, fromDirect, pcId) =>
+          this.emit({ case: "terminalInboundBytes", value: create(TerminalInboundBytesEventSchema, { streamId, rawEnvelope, fromDirect, pcId }) }),
+        terminalInput: (req) =>
+          this.emit({ case: "terminalInput", value: create(TerminalInputActionSchema, req) }),
+        terminalConfirmRebuild: (streamId) =>
+          this.emit({ case: "terminalConfirmRebuild", value: create(TerminalConfirmRebuildActionSchema, { streamId }) }),
         securityClient: this.securityClient,
         securityOp: (op) => this.securityOp(op),
         dispatchDirectSignal: (raw) => this.dispatchDirectSignal(raw),
@@ -1305,14 +1337,14 @@ export class CoreHost {
     this.rejectSecurityOps();
     this.securityClient.rejectAll();
     if (!this.closed) this.emit({ case: "syncLifecycle", value: create(SyncLifecycleActionSchema, { kind: SyncLifecycleKind.STOP }) });
-    for (const w of this.pushRpcWaiters.values()) {
-      w.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
-    }
-    this.pushRpcWaiters.clear();
     for (const w of this.imageFetchWaiters.values()) {
       w.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
     }
     this.imageFetchWaiters.clear();
+    for (const w of this.pushRpcWaiters.values()) {
+      w.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
+    }
+    this.pushRpcWaiters.clear();
   }
 
   private rejectSecurityOps() {
@@ -3503,6 +3535,22 @@ export class CoreHost {
 
       case "terminalDirectState":
         this.executor?.terminalDirectState?.(val.value);
+        break;
+
+      case "terminalOpenSocket":
+        this.executor?.terminalOpenSocket?.(val.value);
+        break;
+
+      case "terminalCloseSocket":
+        this.executor?.terminalCloseSocket?.(val.value);
+        break;
+
+      case "terminalDeliverOutput":
+        this.executor?.terminalDeliverOutput?.(val.value);
+        break;
+
+      case "terminalStateChanged":
+        this.executor?.terminalStateChanged?.(val.value);
         break;
 
       case "directRetryNowResult": {

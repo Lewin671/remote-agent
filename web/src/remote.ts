@@ -1,5 +1,5 @@
 import { DirectExecutor } from "./transport/direct-executor";
-import { ownedRound, PathChanged } from "./transport/recovery";
+import { PathChanged } from "./transport/recovery";
 import { cleanup } from "./cleanup";
 import { Link as DeviceLink } from "./transport/link";
 import { RelayPath } from "./transport/relay-path";
@@ -47,40 +47,34 @@ import {
 } from "./gen/remoteagent/core/v1/app_pb";
 import {
   SessionImageLoadStatus,
+  TerminalLifecycleState,
   type RelayRpcCancelEffect,
   type RelayRpcEffect,
+  type TerminalCloseSocketEffect,
+  type TerminalDeliverOutputEffect,
+  type TerminalOpenSocketEffect,
+  type TerminalStateChangedEffect,
 } from "./gen/remoteagent/core/v1/relay_pipe_pb";
 import { renderText } from "./core/text";
 import {
   SecurityBootstrapKind,
   SecurityErrorCode,
-  SecurityOpenEnvelopeOpSchema,
-  SecuritySealEnvelopeOpSchema,
   type SecurityPairingInfo,
   type SecurityStatusChangedEffect,
   type SecurityTokenUpdatedEffect,
   type SecurityWorkflowStatus,
 } from "./gen/remoteagent/core/v1/security_pb";
-import {
-  TerminalDirectCloseEventSchema,
-  TerminalDirectConfirmRebuildActionSchema,
-  TerminalDirectInputEventSchema,
-  TerminalDirectLegEventSchema,
-  TerminalDirectOpenEventSchema,
-  TerminalDirectOutputEventSchema,
-  type DirectDcReadStatsEffect,
-  type DirectPcAddCandidatesEffect,
-  type DirectPcCloseEffect,
-  type DirectPcConfirmEffect,
-  type DirectPcCreateEffect,
-  type DirectPcDescribeEffect,
-  type DirectPcSendProbeEffect,
-  type DirectPcSetRemoteEffect,
-  type DirectSignalSendEffect,
-  type TerminalDirectAttachRelayEffect,
-  type TerminalDirectDeliverEffect,
-  type TerminalDirectSendEffect,
-  type TerminalDirectStateEffect,
+import type {
+  DirectDcReadStatsEffect,
+  DirectPcAddCandidatesEffect,
+  DirectPcCloseEffect,
+  DirectPcConfirmEffect,
+  DirectPcCreateEffect,
+  DirectPcDescribeEffect,
+  DirectPcSendProbeEffect,
+  DirectPcSetRemoteEffect,
+  DirectSignalSendEffect,
+  TerminalDirectSendEffect,
 } from "./gen/remoteagent/core/v1/transport_pb";
 import {
   ScheduleCacheLoadedEventSchema,
@@ -96,23 +90,6 @@ import { ScreenTarget } from "./gen/remoteagent/core/v1/app_pb";
 import type { SharedFileStore } from "./shared-file-store";
 import { dispatchSecurityEffect, WebSecurityExecutor } from "./core/security-executor";
 
-export enum Purpose {
-  Event = 1,
-  SessionMeta = 2,
-  SessionKey = 3,
-  MachineMeta = 4,
-  Command = 5,
-  Result = 6,
-  TerminalOutput = 7,
-  TerminalInput = 8,
-  Notify = 10,
-  Image = 11,
-  Prefs = 12,
-  DeviceMeta = 13,
-  TerminalResize = 14,
-  TerminalHistory = 15,
-}
-
 import {
   ListMachinesResponseSchema,
   ListRemoteSessionsResponseSchema,
@@ -120,7 +97,6 @@ import {
   RelayErrorDetailSchema,
   RelayErrorReason,
   StoredEventSchema,
-  TermHelloSchema,
   AccountPrefsObjectSchema,
   type AccountPrefsObject,
   type Machine as RemoteMachine,
@@ -132,8 +108,6 @@ import {
   fromBinary,
   toBinary,
   type MessageInitShape,
-  type DescMessage,
-  type MessageShape,
 } from "@bufbuild/protobuf";
 import {
   Code,
@@ -141,15 +115,11 @@ import {
 } from "@connectrpc/connect";
 import { relayFetch } from "./transport";
 import { closeScheduleNotification, watchSecurityPush } from "./push";
-import {
-  checkServer,
-  newRequestID,
-} from "./crypto";
+import { checkServer } from "./crypto";
 import {
   EnvelopeSchema,
   type Envelope,
   type Header,
-  PayloadKind,
 } from "./gen/remoteagent/v1/envelope_pb";
 import {
   ImageFormat,
@@ -173,8 +143,6 @@ export interface TermConn { send(frame: MessageInitShape<typeof TerminalFrameSch
 
 const IMAGE_CACHE = 40;
 const OPEN_TIMEOUT_MS = 15_000;
-const RPC_TIMEOUT_MS = 45_000;
-const SETUP_IDLE_MS = RPC_TIMEOUT_MS + OPEN_TIMEOUT_MS;
 const SESSION_PAGE = 50;
 export { SESSION_PAGE };
 export const PREFS_OBJECT = "project-prefs";
@@ -182,25 +150,6 @@ const SCOPE_STORAGE_KEY = "ra-scope";
 const SCOPE_HMAC_KEY_VALUE = "scope-hmac-key";
 
 export type ImageResult = { kind: "ok"; blob: Blob; width: number; height: number; format: ImageFormat } | { kind: "expired" } | { kind: "missing" } | { kind: "bad"; why?: string };
-
-const PAYLOAD_PURPOSES: Partial<Record<PayloadKind, Purpose>> = {
-  [PayloadKind.EVENT]: Purpose.Event,
-  [PayloadKind.SESSION_META]: Purpose.SessionMeta,
-  [PayloadKind.SESSION_KEY]: Purpose.SessionKey,
-  [PayloadKind.MACHINE_META]: Purpose.MachineMeta,
-  [PayloadKind.COMMAND]: Purpose.Command,
-  [PayloadKind.COMMAND_RESULT]: Purpose.Result,
-  [PayloadKind.TERMINAL_OUTPUT]: Purpose.TerminalOutput,
-  [PayloadKind.TERMINAL_INPUT]: Purpose.TerminalInput,
-  [PayloadKind.IMAGE]: Purpose.Image,
-  [PayloadKind.NOTIFY]: Purpose.Notify,
-  [PayloadKind.ACCOUNT_PREFS]: Purpose.Prefs,
-  [PayloadKind.DEVICE_META]: Purpose.DeviceMeta,
-};
-
-function purposeOf(kind: PayloadKind): Purpose {
-  return PAYLOAD_PURPOSES[kind] ?? Purpose.Event;
-}
 
 type CacheWritePayload = { kind: "machine"; raw: RemoteMachine } | { kind: "session"; raw: RemoteSession } | { kind: "events"; sessionId: string; raw: CachedEvent[] } | { kind: "prefs"; raw: AccountPrefsObject };
 
@@ -232,11 +181,6 @@ export class Remote implements CoreExecutor {
   private unwatchSecurityPush?: () => void;
   private token = "";
   private tokenWrites: Promise<void> = Promise.resolve();
-  private networkGeneration = 0;
-  private wakeSecurity?: Promise<void>;
-  private wakeController?: AbortController;
-  private wakeRequired = false;
-  private wakeRevision = 0;
   private closed = false;
   private legs = new Map<bigint, { ws: FrameStream; stopped: boolean }>();
   private listeners = new Set<() => void>();
@@ -350,20 +294,26 @@ export class Remote implements CoreExecutor {
       onPushedEvent: (machineId, pcId, env, header, size) => {
         this.handleDirectEvent(machineId, pcId, env, header, size);
       },
-      onTerminalOutput: (machineId, pcId, env, header) => {
-        this.terminalStreams.get(header.requestId)?.onInboundEnvelope(machineId, env, true, pcId);
+      onTerminalOutput: (machineId, pcId, _env, header, raw) => {
+        const s = this.terminalStreams.get(header.requestId);
+        if (s && s.machineId === machineId) s.onDirectBytes(raw, pcId);
       },
     });
   }
 
+  private nextTerminalOpId = 1n;
+  private readonly pendingTerminalOpens = new Map<bigint, {
+    onOpenSocket: (eff: TerminalOpenSocketEffect) => void;
+    onStateChanged: (eff: TerminalStateChangedEffect) => void;
+  }>();
   private readonly terminalStreams = new Map<string, {
     machineId: string;
-    sessionId: string;
     sendRelay: (raw: Uint8Array<ArrayBuffer>) => void;
-    deliver: (payloads: Uint8Array[]) => void;
-    attachRelay: (legId: Uint8Array) => void;
-    onState: (state: number, reason: string, needsConfirmation: boolean) => void;
-    onInboundEnvelope: (machineId: string, env: Envelope, fromDirect: boolean, pcId: bigint) => void;
+    onOpenSocket: (eff: TerminalOpenSocketEffect) => void;
+    onCloseSocket: (eff: TerminalCloseSocketEffect) => void;
+    onDeliver: (eff: TerminalDeliverOutputEffect) => void;
+    onStateChanged: (eff: TerminalStateChangedEffect) => void;
+    onDirectBytes: (raw: Uint8Array<ArrayBuffer>, pcId: bigint) => void;
   }>();
 
   start() {
@@ -389,7 +339,6 @@ export class Remote implements CoreExecutor {
     this.unwatchSecurityPush = undefined;
     this.stopPairingDelivery();
     this.deviceLink.closeStreams(l10n.t("errors.terminal_connection_closed"));
-    this.retireNetworkIO();
     for (const legId of [...this.legs.keys()]) this.closeStreamLeg(legId);
     this.hostBridge?.stop();
   }
@@ -760,14 +709,21 @@ export class Remote implements CoreExecutor {
     if (eff.sendRelay) this.terminalStreams.get(eff.streamId)?.sendRelay(raw);
     if (eff.directPcId > 0n) this.directExec.sendTerminalFrame(eff.directPcId, raw);
   }
-  terminalDirectDeliver(eff: TerminalDirectDeliverEffect) {
-    this.terminalStreams.get(eff.streamId)?.deliver(eff.payloads);
+  terminalOpenSocket(eff: TerminalOpenSocketEffect) {
+    const s = this.terminalStreams.get(eff.streamId);
+    if (s) s.onOpenSocket(eff);
+    else this.pendingTerminalOpens.get(eff.opId)?.onOpenSocket(eff);
   }
-  terminalDirectAttachRelay(eff: TerminalDirectAttachRelayEffect) {
-    this.terminalStreams.get(eff.streamId)?.attachRelay(eff.legId);
+  terminalCloseSocket(eff: TerminalCloseSocketEffect) {
+    this.terminalStreams.get(eff.streamId)?.onCloseSocket(eff);
   }
-  terminalDirectState(eff: TerminalDirectStateEffect) {
-    this.terminalStreams.get(eff.streamId)?.onState(eff.state, eff.reason, eff.needsConfirmation);
+  terminalDeliverOutput(eff: TerminalDeliverOutputEffect) {
+    this.terminalStreams.get(eff.streamId)?.onDeliver(eff);
+  }
+  terminalStateChanged(eff: TerminalStateChangedEffect) {
+    const s = this.terminalStreams.get(eff.streamId);
+    if (s) s.onStateChanged(eff);
+    else this.pendingTerminalOpens.get(eff.opId)?.onStateChanged(eff);
   }
 
   async executeCommandAttempt(eff: DispatchCommandEffect, signal?: AbortSignal): Promise<CommandOutcomeEvent> {
@@ -824,112 +780,6 @@ export class Remote implements CoreExecutor {
         elapsedMs,
       });
     }
-  }
-
-  // --- Security Helpers (backed by clientcore/security) ---
-
-  private async openSecureMessage<D extends DescMessage>(
-    env: Envelope | undefined,
-    want: { kind: PayloadKind; machineId?: string; sessionId?: string; requestId?: string; seq?: bigint },
-    schema: D,
-    history = false,
-  ) {
-    if (!env) throw new Error(l10n.t("errors.security_envelope_missing"));
-    if ([PayloadKind.ACCOUNT_PREFS, PayloadKind.DEVICE_META, PayloadKind.MACHINE_META, PayloadKind.SESSION_META, PayloadKind.IMAGE].includes(want.kind)) history = true;
-    if (!history) await this.ensureWakeSecurity();
-    const res = await this.ensureHost().securityOp({
-      case: "openEnvelope",
-      value: create(SecurityOpenEnvelopeOpSchema, {
-        envelope: env,
-        expectedPurpose: purposeOf(want.kind),
-        machineId: want.machineId ?? "",
-        sessionId: want.sessionId ?? "",
-        requestId: want.requestId ?? "",
-        seq: want.seq ?? 0n,
-        history,
-      }),
-    });
-    if (res.result.case !== "opened") throw new SecurityError();
-    const opened = res.result.value;
-    try {
-      const msg = fromBinary(schema, opened.plaintext);
-      return {
-        header: {
-          version: 3,
-          kind: want.kind,
-          machineId: opened.machineId,
-          sessionId: opened.sessionId,
-          requestId: opened.requestId,
-          seq: opened.seq,
-          deadlineMs: opened.deadlineMs,
-          sender: opened.sender,
-        },
-        contentEpoch: opened.contentEpoch,
-        msg,
-        size: opened.plaintext.length,
-      };
-    } catch {
-      throw new Error(l10n.t("errors.security_body_type_or_direction_mismatch"));
-    }
-  }
-
-  private async sealSecureMessage<D extends DescMessage>(
-    h: Omit<Partial<Header>, "$typeName">,
-    schema: D, msg: MessageShape<D>,
-  ): Promise<{ envelope: Envelope; requestKeyHash: Uint8Array<ArrayBuffer>; payloadHash: Uint8Array<ArrayBuffer> }> {
-    await this.ensureWakeSecurity();
-    let purpose = purposeOf(h.kind ?? PayloadKind.UNSPECIFIED);
-    if (h.kind === PayloadKind.TERMINAL_INPUT) {
-      const f = msg as unknown as { kind: { case?: string } };
-      if (f.kind.case === "resize") purpose = Purpose.TerminalResize;
-      else if (f.kind.case === "historyRequest") purpose = Purpose.TerminalHistory;
-    }
-    const useSessionSeed = purpose === Purpose.TerminalInput || purpose === Purpose.TerminalResize || purpose === Purpose.TerminalHistory;
-    const plaintext = toBinary(schema, msg) as Uint8Array<ArrayBuffer>;
-    const res = await this.ensureHost().securityOp({
-      case: "sealEnvelope",
-      value: create(SecuritySealEnvelopeOpSchema, {
-        purpose,
-        machineId: h.machineId ?? "",
-        sessionId: h.sessionId ?? "",
-        requestId: h.requestId ?? "",
-        seq: h.seq ?? 0n,
-        deadlineMs: h.deadlineMs ?? (h.kind === PayloadKind.TERMINAL_INPUT ? BigInt(Date.now() + 60000) : 0n),
-        plaintext,
-        useSessionSeed,
-      }),
-    });
-    if (res.result.case !== "sealed" || !res.result.value.envelope) throw new SecurityError();
-    return {
-      envelope: res.result.value.envelope,
-      requestKeyHash: new Uint8Array(res.result.value.requestKeyHash),
-      payloadHash: new Uint8Array(res.result.value.payloadHash),
-    };
-  }
-
-  private roundBudget(): number { return this.hostBridge?.viewConnection().liveLoaded || this.networkGeneration > 0 ? 3000 : SETUP_IDLE_MS; }
-
-  private retireNetworkIO() {
-    this.wakeController?.abort(new PathChanged());
-    this.wakeSecurity = undefined;
-    this.wakeRequired = true;
-    this.wakeRevision++;
-  }
-  private confirmWake(generation: number, wake: number) { if (generation === this.networkGeneration && wake === this.wakeRevision) this.wakeRequired = false; }
-
-  private async ensureWakeSecurity() {
-    if (!this.wakeRequired) return;
-    if (!this.wakeSecurity) {
-      const generation = this.networkGeneration, wake = this.wakeRevision, controller = new AbortController();
-      this.wakeController = controller;
-      const pending = ownedRound(controller, this.roundBudget(), async () => {
-        await this.ensureHost().securityClient.syncNow(false, this.token);
-        this.confirmWake(generation, wake);
-      }).finally(() => { if (this.wakeSecurity === pending) { this.wakeSecurity = undefined; this.wakeController = undefined; } });
-      this.wakeSecurity = pending;
-      void pending.catch(() => undefined);
-    }
-    return this.wakeSecurity;
   }
 
   private keepValue(name: string, value: Record<string, unknown> | undefined) {
@@ -1008,307 +858,197 @@ export class Remote implements CoreExecutor {
     onClose: (reason: string) => void,
     signal?: AbortSignal,
     onStateChange?: (ev: TermStateEvent) => void,
+    terminalId = "",
   ): Promise<TermConn> {
     if (this.closed) throw new Error(l10n.t("errors.terminal_connection_closed"));
-    const sessionMachineId = this.sessionMachineId(sid);
-    if (!sessionMachineId) throw new Error(l10n.t("session.android_unknown"));
-    const s = { machineId: sessionMachineId };
     if (signal?.aborted) throw new Error(l10n.t("errors.terminal_connection_canceled"));
-    const streamId = newRequestID();
+    const host = this.ensureHost();
+    const machineId = this.sessionMachineId(sid);
     const termUrl = apiBase(this.account.server).replace(/^http/, "ws") + "/v1/term";
-    let activeWs = this.deviceLink.openPathStream(termUrl);
-    let activeLegId: Uint8Array = new TextEncoder().encode(streamId);
+    const opId = this.nextTerminalOpId++;
+    let streamId = "";
+    let activeWs: FrameStream | undefined;
+    const allSockets = new Set<FrameStream>();
     let closed = false;
+    let settled = false;
     let openingTimer: ReturnType<typeof setTimeout> | undefined;
+    let resolveOpening: () => void = () => {};
     let rejectOpening: (e: Error) => void = () => {};
+    let deliverQueue = Promise.resolve();
+    let pendingBytes = 0;
+    let pendingFrames = 0;
+
+    const closeAllSockets = () => {
+      for (const s of allSockets) s.close();
+      allSockets.clear();
+      activeWs = undefined;
+    };
     const abort = () => finish(l10n.t("errors.terminal_connection_canceled"));
     const stream = this.deviceLink.openStream(onClose, (reason) => {
       closed = true;
       clearTimeout(openingTimer);
       signal?.removeEventListener("abort", abort);
-      this.terminalStreams.delete(streamId);
-      this.hostBridge?.dispatchEvent(create(CoreEventSchema, {
-        event: { case: "terminalDirectClose", value: create(TerminalDirectCloseEventSchema, { streamId }) },
-      }));
-      rejectOpening(new Error(reason));
-      activeWs.close();
+      this.pendingTerminalOpens.delete(opId);
+      if (streamId) this.terminalStreams.delete(streamId);
+      host.terminalClose(streamId, opId);
+      if (!settled) {
+        settled = true;
+        rejectOpening(new Error(reason));
+      }
+      closeAllSockets();
     });
     const finish = (reason: string, notify = true) => stream.end(reason, notify);
     signal?.addEventListener("abort", abort, { once: true });
-    await new Promise<void>((resolve, reject) => {
-      rejectOpening = reject;
-      openingTimer = setTimeout(() => finish(l10n.t("errors.terminal_connection_timed_out_reconnect")), OPEN_TIMEOUT_MS);
-      activeWs.onOpen = () => {
-        if (closed) return;
-        clearTimeout(openingTimer);
-        try {
-          activeWs.send(toBinary(TermHelloSchema, create(TermHelloSchema, { token: this.token, streamId, machineId: s.machineId })));
-          resolve();
-        } catch (e) {
-          finish(errorText(e));
-        }
-      };
-      activeWs.onError = () => finish(l10n.t("errors.cannot_connect_to_terminal"));
-      activeWs.onEnd = () => finish(l10n.t("errors.terminal_connection_closed"));
-    });
-    let queue = Promise.resolve();
-    let deliverQueue = Promise.resolve();
-    let pendingBytes = 0;
-    let pendingFrames = 0;
 
-    const hashBytes = async (data: Uint8Array): Promise<Uint8Array<ArrayBuffer>> => {
-      const digest = await crypto.subtle.digest("SHA-256", data as Uint8Array<ArrayBuffer>);
-      return new Uint8Array(digest);
+    const reserveBackpressure = (bytes: number): boolean => {
+      if (pendingBytes + bytes > 2 * 1024 * 1024 || pendingFrames >= 512) {
+        finish(l10n.t("errors.terminal_output_backlog_reconnect_for_the_latest_display"));
+        return false;
+      }
+      pendingBytes += bytes;
+      pendingFrames++;
+      return true;
+    };
+    const releaseBackpressure = (frames: number, bytes: number) => {
+      pendingFrames = Math.max(0, pendingFrames - frames);
+      pendingBytes = Math.max(0, pendingBytes - bytes);
     };
 
-    const enqueueInboundEnvelope = (env: Envelope, fromDirect: boolean, pcId: bigint, size: number) => {
+    const openSocket = (eff: TerminalOpenSocketEffect) => {
       if (closed) return;
-      pendingBytes += size;
-      pendingFrames++;
-      if (pendingBytes > 2 * 1024 * 1024 || pendingFrames > 512) {
-        finish(l10n.t("errors.terminal_output_backlog_reconnect_for_the_latest_display"));
-        activeWs.close();
+      const legId = new Uint8Array(eff.legId);
+      const sock = this.deviceLink.openPathStream(termUrl);
+      allSockets.add(sock);
+      if (eff.isInitial) activeWs = sock;
+      let sockOpened = false;
+      let sockEnded = false;
+      const reportClose = (error: string, code?: number) => {
+        if (sockEnded) return;
+        sockEnded = true;
+        allSockets.delete(sock);
+        if (closed) return;
+        if (sockOpened && activeWs !== sock) return;
+        host.terminalSocket({
+          streamId: eff.streamId,
+          legId,
+          closed: true,
+          policyViolation: code === 1008,
+          error,
+        });
+      };
+      sock.onOpen = () => {
+        if (closed) { sock.close(); return; }
+        sockOpened = true;
+        if (eff.isInitial) clearTimeout(openingTimer);
+        try {
+          sock.send(new Uint8Array(eff.helloBytes));
+          const prev = activeWs;
+          activeWs = sock;
+          if (prev && prev !== sock) {
+            allSockets.delete(prev);
+            prev.close();
+          }
+          host.terminalSocket({ streamId: eff.streamId, legId, opened: true });
+        } catch (e) {
+          reportClose(errorText(e));
+        }
+      };
+      sock.onFrame = (data) => {
+        if (closed || activeWs !== sock) return;
+        const raw = new Uint8Array(data);
+        if (!reserveBackpressure(raw.byteLength)) return;
+        host.terminalInboundBytes(eff.streamId, raw, false, 0n);
+      };
+      sock.onError = () => reportClose(l10n.t("errors.cannot_connect_to_terminal"));
+      sock.onEnd = (code) => reportClose("", code);
+    };
+
+    const onDeliver = (eff: TerminalDeliverOutputEffect) => {
+      if (closed) return;
+      const cf = eff.consumedFrames;
+      const cb = eff.consumedBytes;
+      const delivered: TerminalFrame[] = [];
+      for (const f of eff.frames) {
+        const k = f.kind;
+        if (k.case === "output") delivered.push(create(TerminalFrameSchema, { kind: { case: "output", value: k.value } }));
+        else if (k.case === "snapshot") delivered.push(create(TerminalFrameSchema, { kind: { case: "snapshot", value: { cols: k.value.cols, rows: k.value.rows, data: k.value.data } } }));
+        else if (k.case === "closed") delivered.push(create(TerminalFrameSchema, { kind: { case: "closed", value: k.value } }));
+      }
+      if (delivered.length === 0) {
+        releaseBackpressure(cf, cb);
         return;
       }
-      queue = queue.then(async () => {
+      deliverQueue = deliverQueue.then(async () => {
         try {
-          if (closed) return;
-          const { header, msg } = await this.openSecureMessage(
-            env,
-            { kind: PayloadKind.TERMINAL_OUTPUT, machineId: s.machineId, sessionId: sid, requestId: streamId },
-            TerminalFrameSchema,
-          );
-          if (closed) return;
-          const payloadBytes = toBinary(TerminalFrameSchema, msg) as Uint8Array<ArrayBuffer>;
-          const frameHash = await hashBytes(payloadBytes);
-          if (this.hostBridge) {
-            this.hostBridge.dispatchEvent(create(CoreEventSchema, {
-              event: {
-                case: "terminalDirectOutput",
-                value: create(TerminalDirectOutputEventSchema, {
-                  streamId,
-                  seq: header.seq,
-                  frameHash,
-                  payload: payloadBytes,
-                  fromDirect,
-                  pcId,
-                }),
-              },
-            }));
-          } else {
-            await onFrame(msg);
-          }
-        } catch (e) {
-          if (!fromDirect) {
-            finish(errorText(e));
-            activeWs.close();
+          for (const frame of delivered) {
+            if (closed) break;
+            await onFrame(frame);
           }
         } finally {
-          pendingBytes -= size;
-          pendingFrames--;
+          releaseBackpressure(cf, cb);
         }
       });
     };
 
-    const bindRelaySocket = (sock: typeof activeWs, legBytes: Uint8Array) => {
-      sock.onFrame = (data) => {
-        if (closed) return;
-        try {
-          const env = fromBinary(EnvelopeSchema, new Uint8Array(data));
-          enqueueInboundEnvelope(env, false, 0n, data.byteLength);
-        } catch (e) {
-          finish(errorText(e));
-          sock.close();
-        }
-      };
-      sock.onEnd = () => {
-        if (closed || activeWs !== sock) return;
-        if (this.hostBridge) {
-          this.hostBridge.dispatchEvent(create(CoreEventSchema, {
-            event: {
-              case: "terminalDirectLeg",
-              value: create(TerminalDirectLegEventSchema, { streamId, legId: legBytes, direct: false, open: false }),
-            },
-          }));
-        } else {
-          finish(l10n.t("errors.terminal_connection_dropped"));
-        }
-      };
+    const onStateChanged = (eff: TerminalStateChangedEffect) => {
+      if (closed) return;
+      if (eff.openSettled && !settled) {
+        settled = true;
+        clearTimeout(openingTimer);
+        if (eff.openOk) { resolveOpening(); return; }
+        const msg = renderText(eff.openError ?? eff.reasonText) || l10n.t("errors.terminal_connection_closed");
+        finish(msg, false);
+        rejectOpening(new Error(msg));
+        return;
+      }
+      if (eff.state === TerminalLifecycleState.CONFIRM_INPUT || eff.state === TerminalLifecycleState.CONFIRM_RESTART) {
+        if (onStateChange) onStateChange({ kind: "confirm", confirmKind: eff.state === TerminalLifecycleState.CONFIRM_RESTART ? TermConfirmKind.Restart : TermConfirmKind.Input });
+        else finish(l10n.t("errors.terminal_connection_dropped"));
+      } else if (eff.state === TerminalLifecycleState.REBUILD) {
+        finish(renderText(eff.reasonText) || l10n.t("errors.terminal_connection_closed"), false);
+        onStateChange?.({ kind: "rebuild" });
+      } else if (eff.state === TerminalLifecycleState.CLOSED) {
+        finish(renderText(eff.reasonText) || l10n.t("errors.terminal_connection_dropped"));
+      }
     };
 
-    this.terminalStreams.set(streamId, {
-      machineId: s.machineId,
-      sessionId: sid,
-      sendRelay: (raw) => {
-        if (!closed && activeWs.ready) activeWs.send(raw);
-      },
-      deliver: (payloads) => {
-        for (const p of payloads) {
-          const pSize = p.byteLength;
-          pendingBytes += pSize;
-          pendingFrames++;
-          deliverQueue = deliverQueue.then(async () => {
-            try {
-              if (closed) return;
-              await onFrame(fromBinary(TerminalFrameSchema, p));
-            } finally {
-              pendingBytes -= pSize;
-              pendingFrames--;
-            }
-          });
-        }
-      },
-      attachRelay: (legId) => {
+    this.pendingTerminalOpens.set(opId, {
+      onOpenSocket: (eff) => {
         if (closed) return;
-        const legStr = new TextDecoder().decode(legId);
-        const nextWs = this.deviceLink.openPathStream(termUrl);
-        let settled = false;
-        const reportDialFailed = () => {
-          if (settled || closed) return;
-          settled = true;
-          nextWs.close();
-          this.hostBridge?.dispatchEvent(create(CoreEventSchema, {
-            event: {
-              case: "terminalDirectLeg",
-              value: create(TerminalDirectLegEventSchema, { streamId, legId, direct: false, open: false }),
-            },
-          }));
-        };
-        nextWs.onOpen = () => {
-          if (closed) { nextWs.close(); return; }
-          try {
-            nextWs.send(toBinary(TermHelloSchema, create(TermHelloSchema, { token: this.token, streamId: legStr, machineId: s.machineId })));
-            settled = true;
-            const old = activeWs;
-            activeWs = nextWs;
-            activeLegId = legId;
-            bindRelaySocket(nextWs, legId);
-            if (old !== nextWs) old.close();
-            this.hostBridge?.dispatchEvent(create(CoreEventSchema, {
-              event: {
-                case: "terminalDirectLeg",
-                value: create(TerminalDirectLegEventSchema, { streamId, legId, direct: false, open: true }),
-              },
-            }));
-          } catch {
-            reportDialFailed();
-          }
-        };
-        nextWs.onError = reportDialFailed;
-        nextWs.onEnd = reportDialFailed;
+        streamId = eff.streamId;
+        this.pendingTerminalOpens.delete(opId);
+        this.terminalStreams.set(streamId, {
+          machineId,
+          sendRelay: (raw) => { if (!closed && activeWs?.ready) activeWs.send(raw); },
+          onOpenSocket: openSocket,
+          onCloseSocket: () => closeAllSockets(),
+          onDeliver,
+          onStateChanged,
+          onDirectBytes: (raw, pcId) => { if (!closed && reserveBackpressure(raw.byteLength)) host.terminalInboundBytes(streamId, raw, true, pcId); },
+        });
+        openSocket(eff);
       },
-      onState: (state, reason, needsConfirmation) => {
-        if (closed) return;
-        // M4/M5: NeedsConfirmation enters user confirmation UI without auto-closing;
-        // rebuild_confirmed closes the old stream silently and triggers a fresh open.
-        if (needsConfirmation) {
-          if (onStateChange) {
-            onStateChange({ kind: "confirm", confirmKind: state === 4 ? TermConfirmKind.Restart : TermConfirmKind.Input });
-            return;
-          }
-          finish(l10n.t("errors.terminal_connection_dropped"));
-          activeWs.close();
-          return;
-        }
-        if (state === 5 && reason === "rebuild_confirmed") {
-          finish(l10n.t("errors.terminal_connection_closed"), false);
-          activeWs.close();
-          onStateChange?.({ kind: "rebuild" });
-          return;
-        }
-        if (state === 5) {
-          finish(
-            reason === "conflict"
-              ? l10n.t("errors.terminal_frames_are_out_of_order")
-              : reason === "replay_overflow"
-                ? l10n.t("terminal.replay_overflow")
-                : l10n.t("errors.terminal_connection_dropped"),
-          );
-          activeWs.close();
-        }
-      },
-      onInboundEnvelope: (machineId, env, fromDirect, pcId) => {
-        if (machineId === s.machineId) enqueueInboundEnvelope(env, fromDirect, pcId, env.ciphertext.byteLength + env.header.byteLength);
-      },
+      onStateChanged,
     });
 
-    bindRelaySocket(activeWs, activeLegId);
+    await new Promise<void>((resolve, reject) => {
+      resolveOpening = resolve;
+      rejectOpening = reject;
+      openingTimer = setTimeout(() => finish(l10n.t("errors.terminal_connection_timed_out_reconnect")), OPEN_TIMEOUT_MS);
+      host.terminalOpen(opId, sid, machineId, terminalId);
+    });
     if (closed) throw new Error(l10n.t("errors.terminal_connection_closed"));
-    // M6: register in Core before sending openTerminal RPC so early frames are never lost.
-    this.hostBridge?.dispatchEvent(create(CoreEventSchema, {
-      event: {
-        case: "terminalDirectOpen",
-        value: create(TerminalDirectOpenEventSchema, {
-          streamId,
-          machineId: s.machineId,
-          sessionId: sid,
-          relayLegId: activeLegId,
-        }),
-      },
-    }));
-    try {
-      await this.ensureHost().runMachineCommand(s.machineId, sid, { case: "openTerminal", value: { sessionId: sid, streamId } }, signal, true);
-    } catch (e) {
-      finish(errorText(e));
-      throw e;
-    }
-    if (closed) throw new Error(l10n.t("errors.terminal_connection_closed"));
-    // H-B: signal Core that daemon confirmed openTerminal so direct AttachPath fires now.
-    this.hostBridge?.dispatchEvent(create(CoreEventSchema, {
-      event: {
-        case: "terminalDirectLeg",
-        value: create(TerminalDirectLegEventSchema, {
-          streamId,
-          legId: activeLegId,
-          direct: false,
-          open: true,
-        }),
-      },
-    }));
-    let seq = 0n;
-    let sending = Promise.resolve();
+
     return {
       send: (frame) => {
-        sending = sending.then(async () => {
-          if (closed) return;
-          seq++;
-          const msg = create(TerminalFrameSchema, frame);
-          const env = (await this.sealSecureMessage(
-            { kind: PayloadKind.TERMINAL_INPUT, machineId: s.machineId, sessionId: sid, requestId: streamId, seq, sender: this.account.deviceId },
-            TerminalFrameSchema,
-            msg,
-          )).envelope;
-          if (closed) return;
-          const sealedBytes = toBinary(EnvelopeSchema, env) as Uint8Array<ArrayBuffer>;
-          if (this.hostBridge) {
-            const frameHash = await hashBytes(toBinary(TerminalFrameSchema, msg));
-            this.hostBridge.dispatchEvent(create(CoreEventSchema, {
-              event: {
-                case: "terminalDirectInput",
-                value: create(TerminalDirectInputEventSchema, {
-                  streamId,
-                  seq,
-                  isInput: msg.kind.case === "input",
-                  sealedEnvelope: sealedBytes,
-                  frameHash,
-                }),
-              },
-            }));
-          } else if (activeWs.ready) {
-            activeWs.send(sealedBytes);
-          }
-        });
+        if (closed || !streamId || !frame.kind) return;
+        const k = frame.kind;
+        if (k.case === "input") host.terminalInput({ streamId, kind: { case: "input", value: new Uint8Array(k.value) } });
+        else if (k.case === "resize") host.terminalInput({ streamId, kind: { case: "resize", value: { cols: k.value.cols ?? 0, rows: k.value.rows ?? 0, fit: Boolean(k.value.fit) } } });
+        else if (k.case === "historyRequest") host.terminalInput({ streamId, kind: { case: "history", value: { requestId: k.value.requestId ?? "", cursor: k.value.cursor ?? "" } } });
       },
       close: () => finish(l10n.t("errors.terminal_connection_closed"), false),
-      confirmRebuild: () => {
-        if (closed) return;
-        this.hostBridge?.dispatchEvent(create(CoreEventSchema, {
-          event: {
-            case: "terminalDirectConfirmRebuild",
-            value: create(TerminalDirectConfirmRebuildActionSchema, { streamId }),
-          },
-        }));
-      },
+      confirmRebuild: () => { if (!closed && streamId) host.terminalConfirmRebuild(streamId); },
     };
   }
 

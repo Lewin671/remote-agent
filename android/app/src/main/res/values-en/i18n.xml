@@ -242,8 +242,6 @@
     <string name="errors_android_secure_connection_failed">"Secure connection failed: %1$s"</string>
     <string name="errors_android_security_state_unavailable" formatted="false">"Security state unavailable"</string>
     <string name="errors_android_server_unavailable_reason">"Cannot connect to the server: %1$s"</string>
-    <string name="errors_android_terminal_connection_dropped_reason">"Terminal connection dropped: %1$s"</string>
-    <string name="errors_android_terminal_input_paused_while_waiting_for_authorization" formatted="false">"Terminal input paused while waiting for authorization"</string>
     <string name="errors_android_terminal_output_backlog_reception_stopped" formatted="false">"Terminal output backlog. Reception stopped"</string>
     <string name="errors_android_the_phone_clock_is_ahead_of_the_server_membership_state" formatted="false">"The phone clock is ahead of the server. Membership state is temporarily unavailable. Correct the system time"</string>
     <string name="errors_cannot_connect_to_terminal" formatted="false">"Cannot connect to terminal"</string>
@@ -271,16 +269,16 @@
     <string name="errors_remote_control_expired_control_and_new_uploads_are_paused" formatted="false">"Remote control expired. Control and new uploads are paused; renew on the current managing client."</string>
     <string name="errors_remote_control_expired_saving_changes_session_control_and_new" formatted="false">"Remote control expired. Saving changes, session control, and new uploads are paused; renew on the current managing client and retry. History remains available."</string>
     <string name="errors_request_identity_conflict" formatted="false">"This didn\'t match an earlier submission, so the computer didn\'t run it. Refresh and try again."</string>
-    <string name="errors_security_body_type_or_direction_mismatch" formatted="false">"Security body type or direction mismatch"</string>
-    <string name="errors_security_envelope_missing" formatted="false">"Security envelope missing"</string>
     <string name="errors_server_returned">"Server returned %1$s"</string>
     <string name="errors_setup_request_preserved">"%1$s. The original request and keys are preserved. Retry; if approval expired or was refused, exit and pair again or create an account."</string>
     <string name="errors_signing_in" formatted="false">"Signing in"</string>
     <string name="errors_terminal_connection_canceled" formatted="false">"Terminal connection canceled"</string>
     <string name="errors_terminal_connection_closed" formatted="false">"Terminal connection closed"</string>
     <string name="errors_terminal_connection_dropped" formatted="false">"Terminal connection dropped"</string>
+    <string name="errors_terminal_connection_dropped_reason">"Terminal connection dropped: %1$s"</string>
     <string name="errors_terminal_connection_timed_out_reconnect" formatted="false">"Terminal connection timed out. Reconnect."</string>
     <string name="errors_terminal_frames_are_out_of_order" formatted="false">"Terminal frames are out of order"</string>
+    <string name="errors_terminal_input_backlog_reconnect" formatted="false">"Too many pending terminal inputs. Reconnect before typing again."</string>
     <string name="errors_terminal_output_backlog_reconnect_for_the_latest_display" formatted="false">"Terminal output backlog. Reconnect for the latest display."</string>
     <string name="errors_the_computer_did_not_return_an_attachment_id" formatted="false">"The computer did not return an attachment ID"</string>
     <string name="errors_the_computer_is_offline_the_command_was_not_sent" formatted="false">"The computer is offline. The command was not sent."</string>

@@ -2837,6 +2837,57 @@ var LitewireDesc_TerminalFrame = litewire.MessageDesc{
 	Strict:        true,
 	HasUnknownOff: unsafe.Offsetof(TerminalFrame{}.hasUnknown),
 	New:           func() unsafe.Pointer { return unsafe.Pointer(&TerminalFrame{}) },
+	Fields: []litewire.Field{
+		{Num: litewire.Number(1), Kind: litewire.KindCustom},
+	},
+}
+
+func (m *TerminalFrame) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *TerminalFrame) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalFrame)
+}
+
+func extraMarshal_TerminalFrame(base unsafe.Pointer, b []byte, idx litewire.Number) []byte {
+	m := (*TerminalFrame)(base)
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Kind.(type) {
+	case *TerminalFrame_Snapshot:
+		if x != nil && x.Snapshot != nil {
+			onum, omsg = 1, x.Snapshot
+		}
+	case *TerminalFrame_Output:
+		if x != nil {
+			b = litewire.AppendBytesAlways(b, 2, x.Output)
+		}
+	case *TerminalFrame_HistoryPage:
+		if x != nil && x.HistoryPage != nil {
+			onum, omsg = 4, x.HistoryPage
+		}
+	case *TerminalFrame_Closed:
+		if x != nil {
+			b = litewire.AppendStringAlways(b, 3, x.Closed)
+		}
+	case *TerminalFrame_Input:
+		if x != nil {
+			b = litewire.AppendBytesAlways(b, 10, x.Input)
+		}
+	case *TerminalFrame_Resize:
+		if x != nil && x.Resize != nil {
+			onum, omsg = 11, x.Resize
+		}
+	case *TerminalFrame_HistoryRequest:
+		if x != nil && x.HistoryRequest != nil {
+			onum, omsg = 12, x.HistoryRequest
+		}
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b
 }
 
 func (m *TerminalFrame) Unmarshal(b []byte) error {
@@ -2959,6 +3010,14 @@ var LitewireDesc_TerminalSnapshot = litewire.MessageDesc{
 	},
 }
 
+func (m *TerminalSnapshot) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *TerminalSnapshot) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalSnapshot)
+}
+
 func (m *TerminalSnapshot) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalSnapshot)
 }
@@ -2993,6 +3052,14 @@ var LitewireDesc_TerminalHistoryRequest = litewire.MessageDesc{
 		{Num: 1, Offset: unsafe.Offsetof(TerminalHistoryRequest{}.RequestId), Kind: litewire.KindString},
 		{Num: 2, Offset: unsafe.Offsetof(TerminalHistoryRequest{}.Cursor), Kind: litewire.KindString},
 	},
+}
+
+func (m *TerminalHistoryRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *TerminalHistoryRequest) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalHistoryRequest)
 }
 
 func (m *TerminalHistoryRequest) Unmarshal(b []byte) error {
@@ -3055,6 +3122,14 @@ var LitewireDesc_TerminalHistoryPage = litewire.MessageDesc{
 	},
 }
 
+func (m *TerminalHistoryPage) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *TerminalHistoryPage) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalHistoryPage)
+}
+
 func (m *TerminalHistoryPage) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalHistoryPage)
 }
@@ -3097,6 +3172,14 @@ var LitewireDesc_TerminalResize = litewire.MessageDesc{
 		{Num: 2, Offset: unsafe.Offsetof(TerminalResize{}.Rows), Kind: litewire.KindInt32},
 		{Num: 3, Offset: unsafe.Offsetof(TerminalResize{}.Fit), Kind: litewire.KindBool},
 	},
+}
+
+func (m *TerminalResize) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *TerminalResize) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalResize)
 }
 
 func (m *TerminalResize) Unmarshal(b []byte) error {
@@ -4008,6 +4091,7 @@ func init() {
 	LitewireDesc_Command.ExtraUnmarshal = extraUnmarshal_Command
 	LitewireDesc_CommandResult.ExtraMarshal = extraMarshal_CommandResult
 	LitewireDesc_CommandResult.ExtraUnmarshal = extraUnmarshal_CommandResult
+	LitewireDesc_TerminalFrame.ExtraMarshal = extraMarshal_TerminalFrame
 	LitewireDesc_TerminalFrame.ExtraUnmarshal = extraUnmarshal_TerminalFrame
 	LitewireDesc_PairingPayload.ExtraUnmarshal = extraUnmarshal_PairingPayload
 	LitewireDesc_ProjectPrefs.ExtraUnmarshal = extraUnmarshal_ProjectPrefs

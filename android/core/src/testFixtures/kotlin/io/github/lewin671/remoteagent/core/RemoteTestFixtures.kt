@@ -214,6 +214,7 @@ internal fun seedCoreForTest(
             )
         }
     }
+    send { setRelayPipeConfig(RelayPipeConfigEvent.newBuilder().setEnabled(false)) }
     send { setSyncLifecycle(SyncLifecycleAction.newBuilder().setKind(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_STOP)) }
     send {
         setSeedDemoWorld(

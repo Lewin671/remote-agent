@@ -36,19 +36,27 @@ class NetworkAttachmentTest {
         val store=MemorySecurityStoreV4().apply {
             generateKey(io.github.lewin671.remoteagent.core.proto.SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_ED, "", persist=true)
         }
-        val r=Remote(Account("https://example.com","fixture-device"),Api.defaultHttp(),securityStore=store,dispatcher=StandardTestDispatcher(testScheduler),rpcTransport=transport)
-        val login=async(start=CoroutineStart.LAZY){r.currentToken()}
+        val dummySocketFactory = okhttp3.WebSocket.Factory { req, _ ->
+            object : okhttp3.WebSocket {
+                override fun request() = req
+                override fun queueSize() = 0L
+                override fun send(text: String) = true
+                override fun send(bytes: okio.ByteString) = true
+                override fun close(code: Int, reason: String?) = true
+                override fun cancel() {}
+            }
+        }
+        val r=Remote(Account("https://example.com","fixture-device"),Api.defaultHttp(),securityStore=store,dispatcher=StandardTestDispatcher(testScheduler),socketFactory=dummySocketFactory,rpcTransport=transport)
         try {
             app.attachNetwork(r);runCurrent()
-            login.start();runCurrent();assertEquals(1,challenges)
+            r.start();runCurrent();assertEquals(1,challenges)
             // Re-reporting the seeded network does not retire the cold login.
             r.networkChanged("wifi",true);runCurrent()
-            assertFalse(login.isCompleted);assertEquals(1,challenges)
+            assertEquals("",r.currentToken());assertEquals(1,challenges)
             // A real change before any Ready retires the blocked cold login.
             r.networkChanged("cellular",true);runCurrent()
-            assertTrue("cold login survived the network switch",login.isCompleted)
-            assertEquals("fresh-token",login.await());assertEquals(2,challenges)
-        }finally{login.cancel();r.close();runCurrent()}
+            assertEquals("fresh-token",r.currentToken());assertEquals(2,challenges)
+        }finally{r.close();runCurrent()}
     }
 
     @Test fun foregroundPrewarmRunsOffMainOnlyWhenForegroundAndAccountExists() = runBlocking {

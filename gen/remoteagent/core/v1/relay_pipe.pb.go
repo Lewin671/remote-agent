@@ -225,6 +225,61 @@ func (SessionImageLoadStatus) EnumDescriptor() ([]byte, []int) {
 	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{1}
 }
 
+type TerminalLifecycleState int32
+
+const (
+	TerminalLifecycleState_TERMINAL_LIFECYCLE_STATE_UNSPECIFIED     TerminalLifecycleState = 0
+	TerminalLifecycleState_TERMINAL_LIFECYCLE_STATE_CONFIRM_INPUT   TerminalLifecycleState = 4
+	TerminalLifecycleState_TERMINAL_LIFECYCLE_STATE_CONFIRM_RESTART TerminalLifecycleState = 5
+	TerminalLifecycleState_TERMINAL_LIFECYCLE_STATE_REBUILD         TerminalLifecycleState = 6
+	TerminalLifecycleState_TERMINAL_LIFECYCLE_STATE_CLOSED          TerminalLifecycleState = 7
+)
+
+// Enum value maps for TerminalLifecycleState.
+var (
+	TerminalLifecycleState_name = map[int32]string{
+		0: "TERMINAL_LIFECYCLE_STATE_UNSPECIFIED",
+		4: "TERMINAL_LIFECYCLE_STATE_CONFIRM_INPUT",
+		5: "TERMINAL_LIFECYCLE_STATE_CONFIRM_RESTART",
+		6: "TERMINAL_LIFECYCLE_STATE_REBUILD",
+		7: "TERMINAL_LIFECYCLE_STATE_CLOSED",
+	}
+	TerminalLifecycleState_value = map[string]int32{
+		"TERMINAL_LIFECYCLE_STATE_UNSPECIFIED":     0,
+		"TERMINAL_LIFECYCLE_STATE_CONFIRM_INPUT":   4,
+		"TERMINAL_LIFECYCLE_STATE_CONFIRM_RESTART": 5,
+		"TERMINAL_LIFECYCLE_STATE_REBUILD":         6,
+		"TERMINAL_LIFECYCLE_STATE_CLOSED":          7,
+	}
+)
+
+func (x TerminalLifecycleState) Enum() *TerminalLifecycleState {
+	p := new(TerminalLifecycleState)
+	*p = x
+	return p
+}
+
+func (x TerminalLifecycleState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TerminalLifecycleState) Descriptor() protoreflect.EnumDescriptor {
+	return file_remoteagent_core_v1_relay_pipe_proto_enumTypes[2].Descriptor()
+}
+
+func (TerminalLifecycleState) Type() protoreflect.EnumType {
+	return &file_remoteagent_core_v1_relay_pipe_proto_enumTypes[2]
+}
+
+func (x TerminalLifecycleState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TerminalLifecycleState.Descriptor instead.
+func (TerminalLifecycleState) EnumDescriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{2}
+}
+
 // Opts the Core instance into the unified byte-pipe mode (RelayRpcEffect,
 // StreamRawFrameEvent, Core-managed login/token refresh, opaque caches, image
 // fetch, and Core-owned terminal crypto/lifecycle). Shells that do not send
@@ -1064,6 +1119,1003 @@ func (x *SessionImageLoadedEffect) GetRetiredHistory() bool {
 	return false
 }
 
+type TerminalOpenAction struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	OpId      uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
+	SessionId string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	// Optional machine_id hint when session is not yet in live directory.
+	MachineId string `protobuf:"bytes,3,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	// Optional logical terminal_id bound to Core's termhistory.Machine so
+	// inbound TerminalHistoryPage frames feed directly into Core without shell parsing.
+	TerminalId    string `protobuf:"bytes,4,opt,name=terminal_id,json=terminalId,proto3" json:"terminal_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerminalOpenAction) Reset() {
+	*x = TerminalOpenAction{}
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalOpenAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalOpenAction) ProtoMessage() {}
+
+func (x *TerminalOpenAction) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalOpenAction.ProtoReflect.Descriptor instead.
+func (*TerminalOpenAction) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *TerminalOpenAction) GetOpId() uint64 {
+	if x != nil {
+		return x.OpId
+	}
+	return 0
+}
+
+func (x *TerminalOpenAction) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *TerminalOpenAction) GetMachineId() string {
+	if x != nil {
+		return x.MachineId
+	}
+	return ""
+}
+
+func (x *TerminalOpenAction) GetTerminalId() string {
+	if x != nil {
+		return x.TerminalId
+	}
+	return ""
+}
+
+type TerminalCloseAction struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StreamId      string                 `protobuf:"bytes,1,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	OpId          uint64                 `protobuf:"varint,2,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerminalCloseAction) Reset() {
+	*x = TerminalCloseAction{}
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalCloseAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalCloseAction) ProtoMessage() {}
+
+func (x *TerminalCloseAction) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalCloseAction.ProtoReflect.Descriptor instead.
+func (*TerminalCloseAction) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *TerminalCloseAction) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+func (x *TerminalCloseAction) GetOpId() uint64 {
+	if x != nil {
+		return x.OpId
+	}
+	return 0
+}
+
+type TerminalSocketEvent struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	StreamId        string                 `protobuf:"bytes,1,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	LegId           []byte                 `protobuf:"bytes,2,opt,name=leg_id,json=legId,proto3" json:"leg_id,omitempty"`
+	Opened          bool                   `protobuf:"varint,3,opt,name=opened,proto3" json:"opened,omitempty"`
+	Closed          bool                   `protobuf:"varint,4,opt,name=closed,proto3" json:"closed,omitempty"`
+	PolicyViolation bool                   `protobuf:"varint,5,opt,name=policy_violation,json=policyViolation,proto3" json:"policy_violation,omitempty"`
+	Error           string                 `protobuf:"bytes,6,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *TerminalSocketEvent) Reset() {
+	*x = TerminalSocketEvent{}
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalSocketEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalSocketEvent) ProtoMessage() {}
+
+func (x *TerminalSocketEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalSocketEvent.ProtoReflect.Descriptor instead.
+func (*TerminalSocketEvent) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *TerminalSocketEvent) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+func (x *TerminalSocketEvent) GetLegId() []byte {
+	if x != nil {
+		return x.LegId
+	}
+	return nil
+}
+
+func (x *TerminalSocketEvent) GetOpened() bool {
+	if x != nil {
+		return x.Opened
+	}
+	return false
+}
+
+func (x *TerminalSocketEvent) GetClosed() bool {
+	if x != nil {
+		return x.Closed
+	}
+	return false
+}
+
+func (x *TerminalSocketEvent) GetPolicyViolation() bool {
+	if x != nil {
+		return x.PolicyViolation
+	}
+	return false
+}
+
+func (x *TerminalSocketEvent) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type TerminalInboundBytesEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StreamId      string                 `protobuf:"bytes,1,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	RawEnvelope   []byte                 `protobuf:"bytes,2,opt,name=raw_envelope,json=rawEnvelope,proto3" json:"raw_envelope,omitempty"`
+	FromDirect    bool                   `protobuf:"varint,3,opt,name=from_direct,json=fromDirect,proto3" json:"from_direct,omitempty"`
+	PcId          uint64                 `protobuf:"varint,4,opt,name=pc_id,json=pcId,proto3" json:"pc_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerminalInboundBytesEvent) Reset() {
+	*x = TerminalInboundBytesEvent{}
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalInboundBytesEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalInboundBytesEvent) ProtoMessage() {}
+
+func (x *TerminalInboundBytesEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalInboundBytesEvent.ProtoReflect.Descriptor instead.
+func (*TerminalInboundBytesEvent) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *TerminalInboundBytesEvent) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+func (x *TerminalInboundBytesEvent) GetRawEnvelope() []byte {
+	if x != nil {
+		return x.RawEnvelope
+	}
+	return nil
+}
+
+func (x *TerminalInboundBytesEvent) GetFromDirect() bool {
+	if x != nil {
+		return x.FromDirect
+	}
+	return false
+}
+
+func (x *TerminalInboundBytesEvent) GetPcId() uint64 {
+	if x != nil {
+		return x.PcId
+	}
+	return 0
+}
+
+type TerminalResizeInput struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Cols          int32                  `protobuf:"varint,1,opt,name=cols,proto3" json:"cols,omitempty"`
+	Rows          int32                  `protobuf:"varint,2,opt,name=rows,proto3" json:"rows,omitempty"`
+	Fit           bool                   `protobuf:"varint,3,opt,name=fit,proto3" json:"fit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerminalResizeInput) Reset() {
+	*x = TerminalResizeInput{}
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalResizeInput) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalResizeInput) ProtoMessage() {}
+
+func (x *TerminalResizeInput) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalResizeInput.ProtoReflect.Descriptor instead.
+func (*TerminalResizeInput) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *TerminalResizeInput) GetCols() int32 {
+	if x != nil {
+		return x.Cols
+	}
+	return 0
+}
+
+func (x *TerminalResizeInput) GetRows() int32 {
+	if x != nil {
+		return x.Rows
+	}
+	return 0
+}
+
+func (x *TerminalResizeInput) GetFit() bool {
+	if x != nil {
+		return x.Fit
+	}
+	return false
+}
+
+type TerminalHistoryInput struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	Cursor        string                 `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerminalHistoryInput) Reset() {
+	*x = TerminalHistoryInput{}
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalHistoryInput) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalHistoryInput) ProtoMessage() {}
+
+func (x *TerminalHistoryInput) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalHistoryInput.ProtoReflect.Descriptor instead.
+func (*TerminalHistoryInput) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *TerminalHistoryInput) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *TerminalHistoryInput) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
+type TerminalInputAction struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	StreamId string                 `protobuf:"bytes,1,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	// Types that are valid to be assigned to Kind:
+	//
+	//	*TerminalInputAction_Input
+	//	*TerminalInputAction_Resize
+	//	*TerminalInputAction_History
+	Kind          isTerminalInputAction_Kind `protobuf_oneof:"kind"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerminalInputAction) Reset() {
+	*x = TerminalInputAction{}
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalInputAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalInputAction) ProtoMessage() {}
+
+func (x *TerminalInputAction) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalInputAction.ProtoReflect.Descriptor instead.
+func (*TerminalInputAction) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *TerminalInputAction) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+func (x *TerminalInputAction) GetKind() isTerminalInputAction_Kind {
+	if x != nil {
+		return x.Kind
+	}
+	return nil
+}
+
+func (x *TerminalInputAction) GetInput() []byte {
+	if x != nil {
+		if x, ok := x.Kind.(*TerminalInputAction_Input); ok {
+			return x.Input
+		}
+	}
+	return nil
+}
+
+func (x *TerminalInputAction) GetResize() *TerminalResizeInput {
+	if x != nil {
+		if x, ok := x.Kind.(*TerminalInputAction_Resize); ok {
+			return x.Resize
+		}
+	}
+	return nil
+}
+
+func (x *TerminalInputAction) GetHistory() *TerminalHistoryInput {
+	if x != nil {
+		if x, ok := x.Kind.(*TerminalInputAction_History); ok {
+			return x.History
+		}
+	}
+	return nil
+}
+
+type isTerminalInputAction_Kind interface {
+	isTerminalInputAction_Kind()
+}
+
+type TerminalInputAction_Input struct {
+	Input []byte `protobuf:"bytes,2,opt,name=input,proto3,oneof"`
+}
+
+type TerminalInputAction_Resize struct {
+	Resize *TerminalResizeInput `protobuf:"bytes,3,opt,name=resize,proto3,oneof"`
+}
+
+type TerminalInputAction_History struct {
+	History *TerminalHistoryInput `protobuf:"bytes,4,opt,name=history,proto3,oneof"`
+}
+
+func (*TerminalInputAction_Input) isTerminalInputAction_Kind() {}
+
+func (*TerminalInputAction_Resize) isTerminalInputAction_Kind() {}
+
+func (*TerminalInputAction_History) isTerminalInputAction_Kind() {}
+
+type TerminalConfirmRebuildAction struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StreamId      string                 `protobuf:"bytes,1,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerminalConfirmRebuildAction) Reset() {
+	*x = TerminalConfirmRebuildAction{}
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalConfirmRebuildAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalConfirmRebuildAction) ProtoMessage() {}
+
+func (x *TerminalConfirmRebuildAction) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalConfirmRebuildAction.ProtoReflect.Descriptor instead.
+func (*TerminalConfirmRebuildAction) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *TerminalConfirmRebuildAction) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+type TerminalOpenSocketEffect struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OpId          uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
+	StreamId      string                 `protobuf:"bytes,2,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	LegId         []byte                 `protobuf:"bytes,3,opt,name=leg_id,json=legId,proto3" json:"leg_id,omitempty"`
+	HelloBytes    []byte                 `protobuf:"bytes,4,opt,name=hello_bytes,json=helloBytes,proto3" json:"hello_bytes,omitempty"`
+	IsInitial     bool                   `protobuf:"varint,5,opt,name=is_initial,json=isInitial,proto3" json:"is_initial,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerminalOpenSocketEffect) Reset() {
+	*x = TerminalOpenSocketEffect{}
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalOpenSocketEffect) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalOpenSocketEffect) ProtoMessage() {}
+
+func (x *TerminalOpenSocketEffect) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalOpenSocketEffect.ProtoReflect.Descriptor instead.
+func (*TerminalOpenSocketEffect) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *TerminalOpenSocketEffect) GetOpId() uint64 {
+	if x != nil {
+		return x.OpId
+	}
+	return 0
+}
+
+func (x *TerminalOpenSocketEffect) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+func (x *TerminalOpenSocketEffect) GetLegId() []byte {
+	if x != nil {
+		return x.LegId
+	}
+	return nil
+}
+
+func (x *TerminalOpenSocketEffect) GetHelloBytes() []byte {
+	if x != nil {
+		return x.HelloBytes
+	}
+	return nil
+}
+
+func (x *TerminalOpenSocketEffect) GetIsInitial() bool {
+	if x != nil {
+		return x.IsInitial
+	}
+	return false
+}
+
+type TerminalCloseSocketEffect struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	StreamId string                 `protobuf:"bytes,1,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	// Empty closes all sockets for stream_id.
+	LegId         []byte `protobuf:"bytes,2,opt,name=leg_id,json=legId,proto3" json:"leg_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerminalCloseSocketEffect) Reset() {
+	*x = TerminalCloseSocketEffect{}
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalCloseSocketEffect) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalCloseSocketEffect) ProtoMessage() {}
+
+func (x *TerminalCloseSocketEffect) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalCloseSocketEffect.ProtoReflect.Descriptor instead.
+func (*TerminalCloseSocketEffect) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *TerminalCloseSocketEffect) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+func (x *TerminalCloseSocketEffect) GetLegId() []byte {
+	if x != nil {
+		return x.LegId
+	}
+	return nil
+}
+
+type TerminalSnapshotFrame struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Cols          int32                  `protobuf:"varint,1,opt,name=cols,proto3" json:"cols,omitempty"`
+	Rows          int32                  `protobuf:"varint,2,opt,name=rows,proto3" json:"rows,omitempty"`
+	Data          []byte                 `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerminalSnapshotFrame) Reset() {
+	*x = TerminalSnapshotFrame{}
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalSnapshotFrame) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalSnapshotFrame) ProtoMessage() {}
+
+func (x *TerminalSnapshotFrame) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalSnapshotFrame.ProtoReflect.Descriptor instead.
+func (*TerminalSnapshotFrame) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *TerminalSnapshotFrame) GetCols() int32 {
+	if x != nil {
+		return x.Cols
+	}
+	return 0
+}
+
+func (x *TerminalSnapshotFrame) GetRows() int32 {
+	if x != nil {
+		return x.Rows
+	}
+	return 0
+}
+
+func (x *TerminalSnapshotFrame) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+type TerminalDeliveredFrame struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Kind:
+	//
+	//	*TerminalDeliveredFrame_Output
+	//	*TerminalDeliveredFrame_Snapshot
+	//	*TerminalDeliveredFrame_Closed
+	Kind          isTerminalDeliveredFrame_Kind `protobuf_oneof:"kind"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerminalDeliveredFrame) Reset() {
+	*x = TerminalDeliveredFrame{}
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalDeliveredFrame) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalDeliveredFrame) ProtoMessage() {}
+
+func (x *TerminalDeliveredFrame) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalDeliveredFrame.ProtoReflect.Descriptor instead.
+func (*TerminalDeliveredFrame) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *TerminalDeliveredFrame) GetKind() isTerminalDeliveredFrame_Kind {
+	if x != nil {
+		return x.Kind
+	}
+	return nil
+}
+
+func (x *TerminalDeliveredFrame) GetOutput() []byte {
+	if x != nil {
+		if x, ok := x.Kind.(*TerminalDeliveredFrame_Output); ok {
+			return x.Output
+		}
+	}
+	return nil
+}
+
+func (x *TerminalDeliveredFrame) GetSnapshot() *TerminalSnapshotFrame {
+	if x != nil {
+		if x, ok := x.Kind.(*TerminalDeliveredFrame_Snapshot); ok {
+			return x.Snapshot
+		}
+	}
+	return nil
+}
+
+func (x *TerminalDeliveredFrame) GetClosed() string {
+	if x != nil {
+		if x, ok := x.Kind.(*TerminalDeliveredFrame_Closed); ok {
+			return x.Closed
+		}
+	}
+	return ""
+}
+
+type isTerminalDeliveredFrame_Kind interface {
+	isTerminalDeliveredFrame_Kind()
+}
+
+type TerminalDeliveredFrame_Output struct {
+	Output []byte `protobuf:"bytes,1,opt,name=output,proto3,oneof"`
+}
+
+type TerminalDeliveredFrame_Snapshot struct {
+	Snapshot *TerminalSnapshotFrame `protobuf:"bytes,2,opt,name=snapshot,proto3,oneof"`
+}
+
+type TerminalDeliveredFrame_Closed struct {
+	Closed string `protobuf:"bytes,3,opt,name=closed,proto3,oneof"`
+}
+
+func (*TerminalDeliveredFrame_Output) isTerminalDeliveredFrame_Kind() {}
+
+func (*TerminalDeliveredFrame_Snapshot) isTerminalDeliveredFrame_Kind() {}
+
+func (*TerminalDeliveredFrame_Closed) isTerminalDeliveredFrame_Kind() {}
+
+// Hot-path terminal output delivery: Core emits this directly with ZERO
+// RenderEffect and ZERO ViewModel recomputation.
+type TerminalDeliverOutputEffect struct {
+	state    protoimpl.MessageState    `protogen:"open.v1"`
+	StreamId string                    `protobuf:"bytes,1,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	Frames   []*TerminalDeliveredFrame `protobuf:"bytes,2,rep,name=frames,proto3" json:"frames,omitempty"`
+	// Inbound frame count and raw envelope bytes accounted for by this delivery
+	// (including frames that settled without emitting a frame, e.g. dropped direct
+	// duplicates or HistoryPage frames routed directly to Core).
+	ConsumedFrames uint32 `protobuf:"varint,3,opt,name=consumed_frames,json=consumedFrames,proto3" json:"consumed_frames,omitempty"`
+	ConsumedBytes  uint32 `protobuf:"varint,4,opt,name=consumed_bytes,json=consumedBytes,proto3" json:"consumed_bytes,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *TerminalDeliverOutputEffect) Reset() {
+	*x = TerminalDeliverOutputEffect{}
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalDeliverOutputEffect) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalDeliverOutputEffect) ProtoMessage() {}
+
+func (x *TerminalDeliverOutputEffect) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalDeliverOutputEffect.ProtoReflect.Descriptor instead.
+func (*TerminalDeliverOutputEffect) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *TerminalDeliverOutputEffect) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+func (x *TerminalDeliverOutputEffect) GetFrames() []*TerminalDeliveredFrame {
+	if x != nil {
+		return x.Frames
+	}
+	return nil
+}
+
+func (x *TerminalDeliverOutputEffect) GetConsumedFrames() uint32 {
+	if x != nil {
+		return x.ConsumedFrames
+	}
+	return 0
+}
+
+func (x *TerminalDeliverOutputEffect) GetConsumedBytes() uint32 {
+	if x != nil {
+		return x.ConsumedBytes
+	}
+	return 0
+}
+
+type TerminalStateChangedEffect struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OpId          uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
+	StreamId      string                 `protobuf:"bytes,2,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	State         TerminalLifecycleState `protobuf:"varint,3,opt,name=state,proto3,enum=remoteagent.core.v1.TerminalLifecycleState" json:"state,omitempty"`
+	ReasonText    *Text                  `protobuf:"bytes,4,opt,name=reason_text,json=reasonText,proto3" json:"reason_text,omitempty"`
+	ReasonCode    string                 `protobuf:"bytes,5,opt,name=reason_code,json=reasonCode,proto3" json:"reason_code,omitempty"`
+	OpenSettled   bool                   `protobuf:"varint,6,opt,name=open_settled,json=openSettled,proto3" json:"open_settled,omitempty"`
+	OpenOk        bool                   `protobuf:"varint,7,opt,name=open_ok,json=openOk,proto3" json:"open_ok,omitempty"`
+	OpenError     *Text                  `protobuf:"bytes,8,opt,name=open_error,json=openError,proto3" json:"open_error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerminalStateChangedEffect) Reset() {
+	*x = TerminalStateChangedEffect{}
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalStateChangedEffect) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalStateChangedEffect) ProtoMessage() {}
+
+func (x *TerminalStateChangedEffect) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalStateChangedEffect.ProtoReflect.Descriptor instead.
+func (*TerminalStateChangedEffect) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *TerminalStateChangedEffect) GetOpId() uint64 {
+	if x != nil {
+		return x.OpId
+	}
+	return 0
+}
+
+func (x *TerminalStateChangedEffect) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+func (x *TerminalStateChangedEffect) GetState() TerminalLifecycleState {
+	if x != nil {
+		return x.State
+	}
+	return TerminalLifecycleState_TERMINAL_LIFECYCLE_STATE_UNSPECIFIED
+}
+
+func (x *TerminalStateChangedEffect) GetReasonText() *Text {
+	if x != nil {
+		return x.ReasonText
+	}
+	return nil
+}
+
+func (x *TerminalStateChangedEffect) GetReasonCode() string {
+	if x != nil {
+		return x.ReasonCode
+	}
+	return ""
+}
+
+func (x *TerminalStateChangedEffect) GetOpenSettled() bool {
+	if x != nil {
+		return x.OpenSettled
+	}
+	return false
+}
+
+func (x *TerminalStateChangedEffect) GetOpenOk() bool {
+	if x != nil {
+		return x.OpenOk
+	}
+	return false
+}
+
+func (x *TerminalStateChangedEffect) GetOpenError() *Text {
+	if x != nil {
+		return x.OpenError
+	}
+	return nil
+}
+
 var File_remoteagent_core_v1_relay_pipe_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_relay_pipe_proto_rawDesc = "" +
@@ -1144,7 +2196,84 @@ const file_remoteagent_core_v1_relay_pipe_proto_rawDesc = "" +
 	"error_text\x18\v \x01(\v2\x19.remoteagent.core.v1.TextR\terrorText\x12\x1d\n" +
 	"\n" +
 	"error_code\x18\f \x01(\tR\terrorCode\x12'\n" +
-	"\x0fretired_history\x18\r \x01(\bR\x0eretiredHistory*\x8f\n" +
+	"\x0fretired_history\x18\r \x01(\bR\x0eretiredHistory\"\x88\x01\n" +
+	"\x12TerminalOpenAction\x12\x13\n" +
+	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x02 \x01(\tR\tsessionId\x12\x1d\n" +
+	"\n" +
+	"machine_id\x18\x03 \x01(\tR\tmachineId\x12\x1f\n" +
+	"\vterminal_id\x18\x04 \x01(\tR\n" +
+	"terminalId\"G\n" +
+	"\x13TerminalCloseAction\x12\x1b\n" +
+	"\tstream_id\x18\x01 \x01(\tR\bstreamId\x12\x13\n" +
+	"\x05op_id\x18\x02 \x01(\x04R\x04opId\"\xba\x01\n" +
+	"\x13TerminalSocketEvent\x12\x1b\n" +
+	"\tstream_id\x18\x01 \x01(\tR\bstreamId\x12\x15\n" +
+	"\x06leg_id\x18\x02 \x01(\fR\x05legId\x12\x16\n" +
+	"\x06opened\x18\x03 \x01(\bR\x06opened\x12\x16\n" +
+	"\x06closed\x18\x04 \x01(\bR\x06closed\x12)\n" +
+	"\x10policy_violation\x18\x05 \x01(\bR\x0fpolicyViolation\x12\x14\n" +
+	"\x05error\x18\x06 \x01(\tR\x05error\"\x91\x01\n" +
+	"\x19TerminalInboundBytesEvent\x12\x1b\n" +
+	"\tstream_id\x18\x01 \x01(\tR\bstreamId\x12!\n" +
+	"\fraw_envelope\x18\x02 \x01(\fR\vrawEnvelope\x12\x1f\n" +
+	"\vfrom_direct\x18\x03 \x01(\bR\n" +
+	"fromDirect\x12\x13\n" +
+	"\x05pc_id\x18\x04 \x01(\x04R\x04pcId\"O\n" +
+	"\x13TerminalResizeInput\x12\x12\n" +
+	"\x04cols\x18\x01 \x01(\x05R\x04cols\x12\x12\n" +
+	"\x04rows\x18\x02 \x01(\x05R\x04rows\x12\x10\n" +
+	"\x03fit\x18\x03 \x01(\bR\x03fit\"M\n" +
+	"\x14TerminalHistoryInput\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x16\n" +
+	"\x06cursor\x18\x02 \x01(\tR\x06cursor\"\xdd\x01\n" +
+	"\x13TerminalInputAction\x12\x1b\n" +
+	"\tstream_id\x18\x01 \x01(\tR\bstreamId\x12\x16\n" +
+	"\x05input\x18\x02 \x01(\fH\x00R\x05input\x12B\n" +
+	"\x06resize\x18\x03 \x01(\v2(.remoteagent.core.v1.TerminalResizeInputH\x00R\x06resize\x12E\n" +
+	"\ahistory\x18\x04 \x01(\v2).remoteagent.core.v1.TerminalHistoryInputH\x00R\ahistoryB\x06\n" +
+	"\x04kind\";\n" +
+	"\x1cTerminalConfirmRebuildAction\x12\x1b\n" +
+	"\tstream_id\x18\x01 \x01(\tR\bstreamId\"\xa3\x01\n" +
+	"\x18TerminalOpenSocketEffect\x12\x13\n" +
+	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12\x1b\n" +
+	"\tstream_id\x18\x02 \x01(\tR\bstreamId\x12\x15\n" +
+	"\x06leg_id\x18\x03 \x01(\fR\x05legId\x12\x1f\n" +
+	"\vhello_bytes\x18\x04 \x01(\fR\n" +
+	"helloBytes\x12\x1d\n" +
+	"\n" +
+	"is_initial\x18\x05 \x01(\bR\tisInitial\"O\n" +
+	"\x19TerminalCloseSocketEffect\x12\x1b\n" +
+	"\tstream_id\x18\x01 \x01(\tR\bstreamId\x12\x15\n" +
+	"\x06leg_id\x18\x02 \x01(\fR\x05legId\"S\n" +
+	"\x15TerminalSnapshotFrame\x12\x12\n" +
+	"\x04cols\x18\x01 \x01(\x05R\x04cols\x12\x12\n" +
+	"\x04rows\x18\x02 \x01(\x05R\x04rows\x12\x12\n" +
+	"\x04data\x18\x03 \x01(\fR\x04data\"\x9e\x01\n" +
+	"\x16TerminalDeliveredFrame\x12\x18\n" +
+	"\x06output\x18\x01 \x01(\fH\x00R\x06output\x12H\n" +
+	"\bsnapshot\x18\x02 \x01(\v2*.remoteagent.core.v1.TerminalSnapshotFrameH\x00R\bsnapshot\x12\x18\n" +
+	"\x06closed\x18\x03 \x01(\tH\x00R\x06closedB\x06\n" +
+	"\x04kind\"\xcf\x01\n" +
+	"\x1bTerminalDeliverOutputEffect\x12\x1b\n" +
+	"\tstream_id\x18\x01 \x01(\tR\bstreamId\x12C\n" +
+	"\x06frames\x18\x02 \x03(\v2+.remoteagent.core.v1.TerminalDeliveredFrameR\x06frames\x12'\n" +
+	"\x0fconsumed_frames\x18\x03 \x01(\rR\x0econsumedFrames\x12%\n" +
+	"\x0econsumed_bytes\x18\x04 \x01(\rR\rconsumedBytes\"\xe4\x02\n" +
+	"\x1aTerminalStateChangedEffect\x12\x13\n" +
+	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12\x1b\n" +
+	"\tstream_id\x18\x02 \x01(\tR\bstreamId\x12A\n" +
+	"\x05state\x18\x03 \x01(\x0e2+.remoteagent.core.v1.TerminalLifecycleStateR\x05state\x12:\n" +
+	"\vreason_text\x18\x04 \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
+	"reasonText\x12\x1f\n" +
+	"\vreason_code\x18\x05 \x01(\tR\n" +
+	"reasonCode\x12!\n" +
+	"\fopen_settled\x18\x06 \x01(\bR\vopenSettled\x12\x17\n" +
+	"\aopen_ok\x18\a \x01(\bR\x06openOk\x128\n" +
+	"\n" +
+	"open_error\x18\b \x01(\v2\x19.remoteagent.core.v1.TextR\topenError*\x8f\n" +
 	"\n" +
 	"\x0eRelayRpcMethod\x12 \n" +
 	"\x1cRELAY_RPC_METHOD_UNSPECIFIED\x10\x00\x12(\n" +
@@ -1188,7 +2317,13 @@ const file_remoteagent_core_v1_relay_pipe_proto_rawDesc = "" +
 	"!SESSION_IMAGE_LOAD_STATUS_EXPIRED\x10\x02\x12%\n" +
 	"!SESSION_IMAGE_LOAD_STATUS_MISSING\x10\x03\x12!\n" +
 	"\x1dSESSION_IMAGE_LOAD_STATUS_BAD\x10\x04\x12#\n" +
-	"\x1fSESSION_IMAGE_LOAD_STATUS_ERROR\x10\x05B\xd8\x01\n" +
+	"\x1fSESSION_IMAGE_LOAD_STATUS_ERROR\x10\x05*\xe4\x02\n" +
+	"\x16TerminalLifecycleState\x12(\n" +
+	"$TERMINAL_LIFECYCLE_STATE_UNSPECIFIED\x10\x00\x12*\n" +
+	"&TERMINAL_LIFECYCLE_STATE_CONFIRM_INPUT\x10\x04\x12,\n" +
+	"(TERMINAL_LIFECYCLE_STATE_CONFIRM_RESTART\x10\x05\x12$\n" +
+	" TERMINAL_LIFECYCLE_STATE_REBUILD\x10\x06\x12#\n" +
+	"\x1fTERMINAL_LIFECYCLE_STATE_CLOSED\x10\a\"\x04\b\x01\x10\x01\"\x04\b\x02\x10\x02\"\x04\b\x03\x10\x03*#TERMINAL_LIFECYCLE_STATE_CONNECTING*\x1dTERMINAL_LIFECYCLE_STATE_LIVE*%TERMINAL_LIFECYCLE_STATE_RECONNECTINGB\xd8\x01\n" +
 	"\x17com.remoteagent.core.v1B\x0eRelayPipeProtoP\x01Z?github.com/Lewin671/remote-agent/gen/remoteagent/core/v1;corev1\xa2\x02\x03RCX\xaa\x02\x13Remoteagent.Core.V1\xca\x02\x13Remoteagent\\Core\\V1\xe2\x02\x1fRemoteagent\\Core\\V1\\GPBMetadata\xea\x02\x15Remoteagent::Core::V1b\x06proto3"
 
 var (
@@ -1203,39 +2338,61 @@ func file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP() []byte {
 	return file_remoteagent_core_v1_relay_pipe_proto_rawDescData
 }
 
-var file_remoteagent_core_v1_relay_pipe_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_remoteagent_core_v1_relay_pipe_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_remoteagent_core_v1_relay_pipe_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_remoteagent_core_v1_relay_pipe_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_remoteagent_core_v1_relay_pipe_proto_goTypes = []any{
-	(RelayRpcMethod)(0),              // 0: remoteagent.core.v1.RelayRpcMethod
-	(SessionImageLoadStatus)(0),      // 1: remoteagent.core.v1.SessionImageLoadStatus
-	(*RelayPipeConfigEvent)(nil),     // 2: remoteagent.core.v1.RelayPipeConfigEvent
-	(*RelayRpcEffect)(nil),           // 3: remoteagent.core.v1.RelayRpcEffect
-	(*RelayRpcCancelEffect)(nil),     // 4: remoteagent.core.v1.RelayRpcCancelEffect
-	(*RelayRpcResultEvent)(nil),      // 5: remoteagent.core.v1.RelayRpcResultEvent
-	(*StreamRawFrameEvent)(nil),      // 6: remoteagent.core.v1.StreamRawFrameEvent
-	(*RefreshDevicesAction)(nil),     // 7: remoteagent.core.v1.RefreshDevicesAction
-	(*PushRpcAction)(nil),            // 8: remoteagent.core.v1.PushRpcAction
-	(*PushRpcResultEffect)(nil),      // 9: remoteagent.core.v1.PushRpcResultEffect
-	(*ScheduleCacheBlob)(nil),        // 10: remoteagent.core.v1.ScheduleCacheBlob
-	(*SessionFetchImageAction)(nil),  // 11: remoteagent.core.v1.SessionFetchImageAction
-	(*SessionImageLoadedEffect)(nil), // 12: remoteagent.core.v1.SessionImageLoadedEffect
-	(*RpcErrorDetailBytes)(nil),      // 13: remoteagent.core.v1.RpcErrorDetailBytes
-	(v1.NotifyKind)(0),               // 14: remoteagent.v1.NotifyKind
-	(v1.ImageFormat)(0),              // 15: remoteagent.v1.ImageFormat
-	(*Text)(nil),                     // 16: remoteagent.core.v1.Text
+	(RelayRpcMethod)(0),                  // 0: remoteagent.core.v1.RelayRpcMethod
+	(SessionImageLoadStatus)(0),          // 1: remoteagent.core.v1.SessionImageLoadStatus
+	(TerminalLifecycleState)(0),          // 2: remoteagent.core.v1.TerminalLifecycleState
+	(*RelayPipeConfigEvent)(nil),         // 3: remoteagent.core.v1.RelayPipeConfigEvent
+	(*RelayRpcEffect)(nil),               // 4: remoteagent.core.v1.RelayRpcEffect
+	(*RelayRpcCancelEffect)(nil),         // 5: remoteagent.core.v1.RelayRpcCancelEffect
+	(*RelayRpcResultEvent)(nil),          // 6: remoteagent.core.v1.RelayRpcResultEvent
+	(*StreamRawFrameEvent)(nil),          // 7: remoteagent.core.v1.StreamRawFrameEvent
+	(*RefreshDevicesAction)(nil),         // 8: remoteagent.core.v1.RefreshDevicesAction
+	(*PushRpcAction)(nil),                // 9: remoteagent.core.v1.PushRpcAction
+	(*PushRpcResultEffect)(nil),          // 10: remoteagent.core.v1.PushRpcResultEffect
+	(*ScheduleCacheBlob)(nil),            // 11: remoteagent.core.v1.ScheduleCacheBlob
+	(*SessionFetchImageAction)(nil),      // 12: remoteagent.core.v1.SessionFetchImageAction
+	(*SessionImageLoadedEffect)(nil),     // 13: remoteagent.core.v1.SessionImageLoadedEffect
+	(*TerminalOpenAction)(nil),           // 14: remoteagent.core.v1.TerminalOpenAction
+	(*TerminalCloseAction)(nil),          // 15: remoteagent.core.v1.TerminalCloseAction
+	(*TerminalSocketEvent)(nil),          // 16: remoteagent.core.v1.TerminalSocketEvent
+	(*TerminalInboundBytesEvent)(nil),    // 17: remoteagent.core.v1.TerminalInboundBytesEvent
+	(*TerminalResizeInput)(nil),          // 18: remoteagent.core.v1.TerminalResizeInput
+	(*TerminalHistoryInput)(nil),         // 19: remoteagent.core.v1.TerminalHistoryInput
+	(*TerminalInputAction)(nil),          // 20: remoteagent.core.v1.TerminalInputAction
+	(*TerminalConfirmRebuildAction)(nil), // 21: remoteagent.core.v1.TerminalConfirmRebuildAction
+	(*TerminalOpenSocketEffect)(nil),     // 22: remoteagent.core.v1.TerminalOpenSocketEffect
+	(*TerminalCloseSocketEffect)(nil),    // 23: remoteagent.core.v1.TerminalCloseSocketEffect
+	(*TerminalSnapshotFrame)(nil),        // 24: remoteagent.core.v1.TerminalSnapshotFrame
+	(*TerminalDeliveredFrame)(nil),       // 25: remoteagent.core.v1.TerminalDeliveredFrame
+	(*TerminalDeliverOutputEffect)(nil),  // 26: remoteagent.core.v1.TerminalDeliverOutputEffect
+	(*TerminalStateChangedEffect)(nil),   // 27: remoteagent.core.v1.TerminalStateChangedEffect
+	(*RpcErrorDetailBytes)(nil),          // 28: remoteagent.core.v1.RpcErrorDetailBytes
+	(v1.NotifyKind)(0),                   // 29: remoteagent.v1.NotifyKind
+	(v1.ImageFormat)(0),                  // 30: remoteagent.v1.ImageFormat
+	(*Text)(nil),                         // 31: remoteagent.core.v1.Text
 }
 var file_remoteagent_core_v1_relay_pipe_proto_depIdxs = []int32{
 	0,  // 0: remoteagent.core.v1.RelayRpcEffect.method:type_name -> remoteagent.core.v1.RelayRpcMethod
-	13, // 1: remoteagent.core.v1.RelayRpcResultEvent.error_details:type_name -> remoteagent.core.v1.RpcErrorDetailBytes
-	14, // 2: remoteagent.core.v1.PushRpcAction.kinds:type_name -> remoteagent.v1.NotifyKind
+	28, // 1: remoteagent.core.v1.RelayRpcResultEvent.error_details:type_name -> remoteagent.core.v1.RpcErrorDetailBytes
+	29, // 2: remoteagent.core.v1.PushRpcAction.kinds:type_name -> remoteagent.v1.NotifyKind
 	1,  // 3: remoteagent.core.v1.SessionImageLoadedEffect.status:type_name -> remoteagent.core.v1.SessionImageLoadStatus
-	15, // 4: remoteagent.core.v1.SessionImageLoadedEffect.format:type_name -> remoteagent.v1.ImageFormat
-	16, // 5: remoteagent.core.v1.SessionImageLoadedEffect.error_text:type_name -> remoteagent.core.v1.Text
-	6,  // [6:6] is the sub-list for method output_type
-	6,  // [6:6] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	30, // 4: remoteagent.core.v1.SessionImageLoadedEffect.format:type_name -> remoteagent.v1.ImageFormat
+	31, // 5: remoteagent.core.v1.SessionImageLoadedEffect.error_text:type_name -> remoteagent.core.v1.Text
+	18, // 6: remoteagent.core.v1.TerminalInputAction.resize:type_name -> remoteagent.core.v1.TerminalResizeInput
+	19, // 7: remoteagent.core.v1.TerminalInputAction.history:type_name -> remoteagent.core.v1.TerminalHistoryInput
+	24, // 8: remoteagent.core.v1.TerminalDeliveredFrame.snapshot:type_name -> remoteagent.core.v1.TerminalSnapshotFrame
+	25, // 9: remoteagent.core.v1.TerminalDeliverOutputEffect.frames:type_name -> remoteagent.core.v1.TerminalDeliveredFrame
+	2,  // 10: remoteagent.core.v1.TerminalStateChangedEffect.state:type_name -> remoteagent.core.v1.TerminalLifecycleState
+	31, // 11: remoteagent.core.v1.TerminalStateChangedEffect.reason_text:type_name -> remoteagent.core.v1.Text
+	31, // 12: remoteagent.core.v1.TerminalStateChangedEffect.open_error:type_name -> remoteagent.core.v1.Text
+	13, // [13:13] is the sub-list for method output_type
+	13, // [13:13] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_relay_pipe_proto_init() }
@@ -1245,13 +2402,23 @@ func file_remoteagent_core_v1_relay_pipe_proto_init() {
 	}
 	file_remoteagent_core_v1_security_proto_init()
 	file_remoteagent_core_v1_text_proto_init()
+	file_remoteagent_core_v1_relay_pipe_proto_msgTypes[17].OneofWrappers = []any{
+		(*TerminalInputAction_Input)(nil),
+		(*TerminalInputAction_Resize)(nil),
+		(*TerminalInputAction_History)(nil),
+	}
+	file_remoteagent_core_v1_relay_pipe_proto_msgTypes[22].OneofWrappers = []any{
+		(*TerminalDeliveredFrame_Output)(nil),
+		(*TerminalDeliveredFrame_Snapshot)(nil),
+		(*TerminalDeliveredFrame_Closed)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_core_v1_relay_pipe_proto_rawDesc), len(file_remoteagent_core_v1_relay_pipe_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   11,
+			NumEnums:      3,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

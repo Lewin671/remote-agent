@@ -1,6 +1,5 @@
 package io.github.lewin671.remoteagent.core
 
-import com.connectrpc.Code
 import com.connectrpc.ConnectException
 import com.google.protobuf.ByteString
 import io.github.lewin671.remoteagent.core.proto.*
@@ -8,18 +7,11 @@ import io.github.lewin671.remoteagent.core.proto.Event as CoreEvent
 import io.github.lewin671.remoteagent.core.transport.*
 import io.github.lewin671.remoteagent.core.transport.Link as DeviceLink
 import io.github.lewin671.remoteagent.proto.*
-import io.github.lewin671.remoteagent.proto.Event
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.put
 import okhttp3.OkHttpClient
 import okhttp3.WebSocket
 import java.io.IOException
@@ -61,25 +53,19 @@ interface TermListener {
 }
 
 class TermConn internal constructor(
-    private val ws: FrameStream,
     private val sendFrame: (TerminalFrame) -> Unit,
     private val closeLocal: () -> Unit,
 ) {
     internal var confirmRebuildAction: () -> Unit = {}
     fun send(frame: TerminalFrame) = sendFrame(frame)
-    fun close() = cleanup(closeLocal, { ws.close() })
+    fun close() = closeLocal()
     fun confirmRebuild() = confirmRebuildAction()
 }
 
-internal fun ucmp(a: Long, b: Long): Int = java.lang.Long.compareUnsigned(a, b)
-
 private const val STREAM_PING_SECONDS = 20L
-private const val STREAM_OPEN_MS = 15_000L
 private const val STREAM_FRAME_BYTES = 2 * 1024 * 1024
 private const val STREAM_QUEUE_BYTES = 8L * 1024 * 1024
 private const val POLICY_VIOLATION = 1008
-
-private class AccountRemoved : Exception()
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class Remote(
@@ -111,6 +97,7 @@ class Remote(
         if (dispatcher == null || dispatcher === Dispatchers.Unconfined) Dispatchers.IO.limitedParallelism(1)
         else this.dispatcher
 
+    private val relayServer = Secret.checkServer(account.server, allowPlainHttp = true)
     private val directServerHost: String =
         if (stunUrls != null) "" else runCatching { java.net.URI(account.server).host.orEmpty() }.getOrDefault("")
     private val directConfiguredStun: String = stunUrls?.joinToString(",") ?: ""
@@ -131,8 +118,6 @@ class Remote(
     // --- Token & stream runtime state ---
 
     @Volatile private var cachedToken: LoginToken? = null
-    @Volatile private var networkAvailable = true
-    @Volatile private var lastNetworkSignature: String? = null
     @Volatile private var running = false
     @Volatile private var closed = false
 
@@ -208,14 +193,24 @@ class Remote(
         defaultDeviceId = account.deviceId,
     )
 
-    private class ActiveTerminalStream(
-        val sendRelay: (ByteArray) -> Unit,
-        val deliver: (List<ByteArray>) -> Unit,
-        val attachRelay: (ByteArray) -> Unit,
-        val onState: (Int, String, Boolean) -> Unit,
-        val onDirectOutput: (String, Long, Envelope, ByteArray) -> Unit,
+    private class PendingTerminalOpen(
+        val onOpenSocket: (TerminalOpenSocketEffect) -> Unit,
+        val onStateChanged: (TerminalStateChangedEffect) -> Unit,
     )
 
+    private class ActiveTerminalStream(
+        val machineId: String,
+        val sendRelay: (ByteArray) -> Unit,
+        val onSentOut: () -> Unit,
+        val onOpenSocket: (TerminalOpenSocketEffect) -> Unit,
+        val onCloseSocket: (TerminalCloseSocketEffect) -> Unit,
+        val onDeliver: (TerminalDeliverOutputEffect) -> Unit,
+        val onStateChanged: (TerminalStateChangedEffect) -> Unit,
+        val onDirectBytes: (String, Long, ByteArray) -> Unit,
+    )
+
+    private val nextTerminalOpId = AtomicLong(1L)
+    private val pendingTerminalOpens = ConcurrentHashMap<Long, PendingTerminalOpen>()
     private val activeTerminals = ConcurrentHashMap<String, ActiveTerminalStream>()
 
     internal val directExecutor: DirectExecutor = DirectExecutor(
@@ -223,8 +218,8 @@ class Remote(
         onPushedEvent = { machineId, pcId, env, header, size ->
             handleDirectEvent(machineId, pcId, env, header, size)
         },
-        onTerminalOutput = { machineId, pcId, env, header, raw ->
-            activeTerminals[header.requestId]?.onDirectOutput?.invoke(machineId, pcId, env, raw)
+        onTerminalOutput = { machineId, pcId, _, header, raw ->
+            activeTerminals[header.requestId]?.onDirectBytes?.invoke(machineId, pcId, raw)
         },
         factory = rtcFactory,
         clock = clock,
@@ -233,9 +228,7 @@ class Remote(
         bulkReceiveDispatcher = bulkCpuDispatcher,
     )
 
-    internal var deviceLink = DeviceLink(RelayPath(
-        sockets = { socketFactory ?: streamHttp },
-    ))
+    internal var deviceLink = DeviceLink(RelayPath(sockets = { socketFactory ?: streamHttp }))
 
     fun directEnabled(machineId: String): Boolean =
         runCatching { directPrefs.isEnabled(account.server, account.deviceId, machineId) }.getOrDefault(true)
@@ -330,118 +323,37 @@ class Remote(
     val securityClient: SecurityClient get() = coreHost.securityClient
     val securityStatus: StateFlow<SecurityWorkflowStatus?> get() = coreHost.securityClient.status
 
-    fun watchSession(sid: String, initialWindow: SessionWindowRequest? = null): Flow<SessionViewModel> =
-        coreHost.watchSession(sid, initialWindow)
-
-    fun currentSessionView(sid: String): SessionViewModel? =
-        coreHost.currentSessionView(sid)
-
-    fun updateSessionWindow(sid: String, window: SessionWindowRequest) =
-        coreHost.updateSessionWindow(sid, window)
-
-    fun openSession(sid: String, refreshModels: Boolean = false, refreshSettings: Boolean = false) =
-        coreHost.openSession(sid, refreshModels, refreshSettings)
-
-    fun submitSessionCommand(sid: String, cmd: Command, machineId: String = "", slotKey: String = "") =
-        coreHost.submitSessionCommand(sid, cmd, machineId, slotKey)
-
-    fun abandonSessionCommand(sid: String, slotKey: String) =
-        coreHost.abandonSessionCommand(sid, slotKey)
-
-    fun cancelTrayItem(sid: String, requestId: String) =
-        coreHost.cancelTrayItem(sid, requestId)
-
-    fun ignoreTrayItem(sid: String, requestId: String) =
-        coreHost.ignoreTrayItem(sid, requestId)
-
-    fun promoteTrayItem(sid: String, requestId: String) =
-        coreHost.promoteTrayItem(sid, requestId)
-
-    fun restoreTrayItem(sid: String, requestId: String) =
-        coreHost.restoreTrayItem(sid, requestId)
-
-    fun retryTrayItem(sid: String, requestId: String) =
-        coreHost.retryTrayItem(sid, requestId)
-
-    fun resumeTrayItem(sid: String, requestId: String) =
-        coreHost.resumeTrayItem(sid, requestId)
-
-    fun cancelAllPaused(sid: String) =
-        coreHost.cancelAllPaused(sid)
-
-    fun undoCancel(sid: String) =
-        coreHost.undoCancel(sid)
-
-    fun setSessionQuestionIndex(sid: String, questionId: String, index: Int) =
-        coreHost.setSessionQuestionIndex(sid, questionId, index)
-
-    fun loadEarlierSessionHistory(sid: String) =
-        coreHost.loadEarlierSessionHistory(sid)
-
-    fun homeResolveApproval(
-        sid: String,
-        approvalId: String,
-        allow: Boolean,
-        always: Boolean = false,
-        denyReason: String = "",
-    ) = coreHost.homeResolveApproval(sid, approvalId, allow, always, denyReason)
-
-    fun homeEditApprovalDeny(sid: String, approvalId: String, denyingOpen: Boolean) =
-        coreHost.homeEditApprovalDeny(sid, approvalId, denyingOpen)
-
-    fun homeAnswerQuestion(sid: String, questionId: String, optionNum: Int) =
-        coreHost.homeAnswerQuestion(sid, questionId, optionNum)
-
-    fun homeRetryAttention(sid: String, itemId: String) =
-        coreHost.homeRetryAttention(sid, itemId)
-
-    fun homeAbandonAttention(sid: String, itemId: String) =
-        coreHost.homeAbandonAttention(sid, itemId)
-
-    fun editApprovalDeny(sid: String, approvalId: String, denyingOpen: Boolean) =
-        coreHost.editApprovalDeny(sid, approvalId, denyingOpen)
-
-    fun resolveApproval(
-        sid: String,
-        approvalId: String,
-        allow: Boolean,
-        always: Boolean = false,
-        denyReason: String = "",
-    ) = coreHost.resolveApproval(sid, approvalId, allow, always, denyReason)
-
-    fun toggleQuestionOption(sid: String, questionId: String, optionNum: Int) =
-        coreHost.toggleQuestionOption(sid, questionId, optionNum)
-
-    fun answerQuestion(
-        sid: String,
-        questionId: String,
-        optionNum: Int = 0,
-        optionNums: List<Int> = emptyList(),
-    ) = coreHost.answerQuestion(sid, questionId, optionNum, optionNums)
-
-    fun answerPlan(sid: String, choice: PlanChoice) =
-        coreHost.answerPlan(sid, choice)
-
-    fun sessionSimpleCommand(sid: String, kind: SessionSimpleCommandKind) =
-        coreHost.sessionSimpleCommand(sid, kind)
-
-    fun renameSession(sid: String, title: String) =
-        coreHost.renameSession(sid, title)
-
-    fun setApprovalMode(sid: String, mode: ApprovalMode) =
-        coreHost.setApprovalMode(sid, mode)
-
-    fun setSessionModel(sid: String, model: String, effort: String = "") =
-        coreHost.setSessionModel(sid, model, effort)
-
-    fun retrySessionCommand(sid: String, slotKey: String) =
-        coreHost.retrySessionCommand(sid, slotKey)
-
-    init {
-        coreHost.onDirectPreference = { eff ->
-            runCatching { directPrefs.setEnabled(account.server, account.deviceId, eff.machineId, eff.enabled) }
-        }
-    }
+    fun watchSession(sid: String, initialWindow: SessionWindowRequest? = null): Flow<SessionViewModel> = coreHost.watchSession(sid, initialWindow)
+    fun currentSessionView(sid: String): SessionViewModel? = coreHost.currentSessionView(sid)
+    fun updateSessionWindow(sid: String, window: SessionWindowRequest) = coreHost.updateSessionWindow(sid, window)
+    fun openSession(sid: String, refreshModels: Boolean = false, refreshSettings: Boolean = false) = coreHost.openSession(sid, refreshModels, refreshSettings)
+    fun submitSessionCommand(sid: String, cmd: Command, machineId: String = "", slotKey: String = "") = coreHost.submitSessionCommand(sid, cmd, machineId, slotKey)
+    fun abandonSessionCommand(sid: String, slotKey: String) = coreHost.abandonSessionCommand(sid, slotKey)
+    fun cancelTrayItem(sid: String, requestId: String) = coreHost.cancelTrayItem(sid, requestId)
+    fun ignoreTrayItem(sid: String, requestId: String) = coreHost.ignoreTrayItem(sid, requestId)
+    fun promoteTrayItem(sid: String, requestId: String) = coreHost.promoteTrayItem(sid, requestId)
+    fun restoreTrayItem(sid: String, requestId: String) = coreHost.restoreTrayItem(sid, requestId)
+    fun retryTrayItem(sid: String, requestId: String) = coreHost.retryTrayItem(sid, requestId)
+    fun resumeTrayItem(sid: String, requestId: String) = coreHost.resumeTrayItem(sid, requestId)
+    fun cancelAllPaused(sid: String) = coreHost.cancelAllPaused(sid)
+    fun undoCancel(sid: String) = coreHost.undoCancel(sid)
+    fun setSessionQuestionIndex(sid: String, questionId: String, index: Int) = coreHost.setSessionQuestionIndex(sid, questionId, index)
+    fun loadEarlierSessionHistory(sid: String) = coreHost.loadEarlierSessionHistory(sid)
+    fun homeResolveApproval(sid: String, approvalId: String, allow: Boolean, always: Boolean = false, denyReason: String = "") = coreHost.homeResolveApproval(sid, approvalId, allow, always, denyReason)
+    fun homeEditApprovalDeny(sid: String, approvalId: String, denyingOpen: Boolean) = coreHost.homeEditApprovalDeny(sid, approvalId, denyingOpen)
+    fun homeAnswerQuestion(sid: String, questionId: String, optionNum: Int) = coreHost.homeAnswerQuestion(sid, questionId, optionNum)
+    fun homeRetryAttention(sid: String, itemId: String) = coreHost.homeRetryAttention(sid, itemId)
+    fun homeAbandonAttention(sid: String, itemId: String) = coreHost.homeAbandonAttention(sid, itemId)
+    fun editApprovalDeny(sid: String, approvalId: String, denyingOpen: Boolean) = coreHost.editApprovalDeny(sid, approvalId, denyingOpen)
+    fun resolveApproval(sid: String, approvalId: String, allow: Boolean, always: Boolean = false, denyReason: String = "") = coreHost.resolveApproval(sid, approvalId, allow, always, denyReason)
+    fun toggleQuestionOption(sid: String, questionId: String, optionNum: Int) = coreHost.toggleQuestionOption(sid, questionId, optionNum)
+    fun answerQuestion(sid: String, questionId: String, optionNum: Int = 0, optionNums: List<Int> = emptyList()) = coreHost.answerQuestion(sid, questionId, optionNum, optionNums)
+    fun answerPlan(sid: String, choice: PlanChoice) = coreHost.answerPlan(sid, choice)
+    fun sessionSimpleCommand(sid: String, kind: SessionSimpleCommandKind) = coreHost.sessionSimpleCommand(sid, kind)
+    fun renameSession(sid: String, title: String) = coreHost.renameSession(sid, title)
+    fun setApprovalMode(sid: String, mode: ApprovalMode) = coreHost.setApprovalMode(sid, mode)
+    fun setSessionModel(sid: String, model: String, effort: String = "") = coreHost.setSessionModel(sid, model, effort)
+    fun retrySessionCommand(sid: String, slotKey: String) = coreHost.retrySessionCommand(sid, slotKey)
 
     init {
         wireCoreHost()
@@ -450,10 +362,12 @@ class Remote(
     // --- M2 Effect executors ---
 
     private fun wireCoreHost() {
+        coreHost.onDirectPreference = { eff ->
+            runCatching { directPrefs.setEnabled(account.server, account.deviceId, eff.machineId, eff.enabled) }
+        }
         coreHost.resolveUiMessage = { uiMessageResolver(it) }
         coreHost.onDismissUpgradeNotice = { securityStore.dismissUpgradeNotice() }
         coreHost.onSecurityEffect = securityExecutor::handleEffect
-        ensureSecurityConfigured()
         coreHost.sendRelayPipeConfig(true)
         coreHost.onSecurityTokenUpdated = ::handleSecurityTokenUpdated
         coreHost.onSecurityStatusChanged = { eff ->
@@ -472,19 +386,28 @@ class Remote(
         coreHost.onDirectDcReadStats = { eff -> scope.launch(directDispatcher) { directExecutor.dcReadStats(eff) } }
         coreHost.onTerminalDirectSend = { eff ->
             val raw = eff.sealedEnvelope.toByteArray()
-            if (eff.sendRelay) activeTerminals[eff.streamId]?.sendRelay?.invoke(raw)
+            val term = activeTerminals[eff.streamId]
+            term?.onSentOut?.invoke()
+            if (eff.sendRelay) term?.sendRelay?.invoke(raw)
             if (eff.directPcId > 0L) {
                 scope.launch(directDispatcher) { directExecutor.sendTerminalFrame(eff.directPcId, raw) }
             }
         }
-        coreHost.onTerminalDirectDeliver = { eff ->
-            activeTerminals[eff.streamId]?.deliver?.invoke(eff.payloadsList.map { it.toByteArray() })
+        coreHost.onTerminalOpenSocket = { eff ->
+            val active = activeTerminals[eff.streamId]
+            if (active != null) active.onOpenSocket(eff)
+            else pendingTerminalOpens[eff.opId]?.onOpenSocket?.invoke(eff)
         }
-        coreHost.onTerminalDirectAttachRelay = { eff ->
-            activeTerminals[eff.streamId]?.attachRelay?.invoke(eff.legId.toByteArray())
+        coreHost.onTerminalCloseSocket = { eff ->
+            activeTerminals[eff.streamId]?.onCloseSocket?.invoke(eff)
         }
-        coreHost.onTerminalDirectState = { eff ->
-            activeTerminals[eff.streamId]?.onState?.invoke(eff.state, eff.reason, eff.needsConfirmation)
+        coreHost.onTerminalDeliverOutput = { eff ->
+            activeTerminals[eff.streamId]?.onDeliver?.invoke(eff)
+        }
+        coreHost.onTerminalStateChanged = { eff ->
+            val active = activeTerminals[eff.streamId]
+            if (active != null) active.onStateChanged(eff)
+            else pendingTerminalOpens[eff.opId]?.onStateChanged?.invoke(eff)
         }
         coreHost.onWatchedSessions = { eff ->
             watchedSessionRoutes = eff.sessionsList.associate { it.sessionId to it.machineId }
@@ -1073,125 +996,43 @@ class Remote(
         )
     }
 
-    fun networkChanged(signature: String, available: Boolean) {
-        lastNetworkSignature = signature
-        networkAvailable = available
-        coreHost.networkChanged(available, signature)
-    }
-
+    fun networkChanged(signature: String, available: Boolean) = coreHost.networkChanged(available, signature)
     suspend fun retryDirect(machineId: String): Boolean = coreHost.retryDirectNow(machineId)
-
     fun refreshDirectDiagnostics(machineId: String) = coreHost.refreshDirectDiagnostics(machineId)
-
-    fun reconnectNow() {
-        coreHost.syncLifecycle(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_RECONNECT_NOW)
-    }
-
-    fun retryLogin() {
-        coreHost.syncLifecycle(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_RETRY_LOGIN)
-    }
-
+    fun reconnectNow() = coreHost.syncLifecycle(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_RECONNECT_NOW)
+    fun retryLogin() = coreHost.syncLifecycle(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_RETRY_LOGIN)
     fun retrySessionLoad(sid: String) = coreHost.retrySessionLoad(sid)
-
-    fun startSharedFileDownload(sessionId: String, fileId: String, autoOpenIfStaying: Boolean = true) =
-        coreHost.startSharedFileDownload(sessionId, fileId, autoOpenIfStaying)
-
-    fun pauseSharedFileDownload(sessionId: String, fileId: String) =
-        coreHost.pauseSharedFileDownload(sessionId, fileId)
-
-    fun cancelSharedFileDownload(sessionId: String, fileId: String) =
-        coreHost.cancelSharedFileDownload(sessionId, fileId)
-
-    fun deleteSharedFileLocal(sessionId: String, fileId: String) =
-        coreHost.deleteSharedFileLocal(sessionId, fileId)
-
-    fun setSharedFileVisibleSession(sessionId: String) =
-        coreHost.setSharedFileVisibleSession(sessionId)
-
-    fun forgetSharedFileSession(sessionId: String) =
-        coreHost.forgetSharedFileSession(sessionId)
-
-    fun clearAllSharedFiles() =
-        coreHost.clearAllSharedFiles()
-
-    suspend fun clearAllSharedFilesAndWait() =
-        coreHost.clearAllSharedFilesAndWait()
-
-    fun reportSharedFileDurationProbed(sessionId: String, fileId: String, durationMs: Long) =
-        coreHost.reportSharedFileDurationProbed(sessionId, fileId, durationMs)
-
-    fun reportSharedFileLocalMissing(sessionId: String, fileId: String) =
-        coreHost.reportSharedFileLocalMissing(sessionId, fileId)
-
-    fun openDraft(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, machineId: String = "") =
-        coreHost.openDraft(scope, machineId)
-
-    fun setDraftText(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, text: String) =
-        coreHost.setDraftText(scope, text)
-
-    fun reserveDraftSlots(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, reservationId: String, imageSlots: Int, fileSlots: Int) =
-        coreHost.reserveDraftSlots(scope, reservationId, imageSlots, fileSlots)
-
-    fun releaseDraftSlots(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, reservationId: String) =
-        coreHost.releaseDraftSlots(scope, reservationId)
-
-    fun addDraftItems(
-        scope: io.github.lewin671.remoteagent.core.proto.DraftScope,
-        items: List<io.github.lewin671.remoteagent.core.proto.DraftPickedItem>,
-        reservationId: String = "",
-    ) = coreHost.addDraftItems(scope, items, reservationId)
-
-    fun removeDraftItem(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, itemId: String) =
-        coreHost.removeDraftItem(scope, itemId)
-
-    fun retryDraftItem(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, itemId: String) =
-        coreHost.retryDraftItem(scope, itemId)
-
-    fun setDraftOriginal(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, original: Boolean) =
-        coreHost.setDraftOriginal(scope, original)
-
-    fun forgetDraftSession(sessionId: String) =
-        coreHost.forgetDraftSession(sessionId)
-
-    fun clearAllDrafts() =
-        coreHost.clearAllDrafts()
-
-    fun dismissDraftNotice(scope: io.github.lewin671.remoteagent.core.proto.DraftScope) =
-        coreHost.dismissDraftNotice(scope)
-
-    fun pauseAttachmentUpload(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, itemId: String) =
-        coreHost.pauseAttachmentUpload(scope, itemId)
-
-    fun resumeAttachmentUpload(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, itemId: String) =
-        coreHost.resumeAttachmentUpload(scope, itemId)
-
-    fun sendDraftSession(sessionId: String, mode: io.github.lewin671.remoteagent.proto.SendMode = io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_STEER) =
-        coreHost.sendDraftSession(sessionId, mode)
-
-    fun putBackDraftInput(sessionId: String, requestId: String) =
-        coreHost.putBackDraftInput(sessionId, requestId)
-
-    fun openDraftImageViewer(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, index: Int) =
-        coreHost.openDraftImageViewer(scope, index)
-
-    fun navigateDraftImageViewer(
-        scope: io.github.lewin671.remoteagent.core.proto.DraftScope,
-        delta: Int = 0,
-        setIndex: Boolean = false,
-        index: Int = 0,
-    ) = coreHost.navigateDraftImageViewer(scope, delta, setIndex, index)
-
-    fun closeDraftImageViewer(scope: io.github.lewin671.remoteagent.core.proto.DraftScope) =
-        coreHost.closeDraftImageViewer(scope)
-
-    fun openSessionImageViewer(sid: String, seq: Long = 0L, imageIndex: Int = 0, viewerIndex: Int = 0) =
-        coreHost.openSessionImageViewer(sid, seq, imageIndex, viewerIndex)
-
-    fun navigateSessionImageViewer(sid: String, delta: Int = 0, setIndex: Boolean = false, index: Int = 0) =
-        coreHost.navigateSessionImageViewer(sid, delta, setIndex, index)
-
-    fun closeSessionImageViewer(sid: String) =
-        coreHost.closeSessionImageViewer(sid)
+    fun startSharedFileDownload(sessionId: String, fileId: String, autoOpenIfStaying: Boolean = true) = coreHost.startSharedFileDownload(sessionId, fileId, autoOpenIfStaying)
+    fun pauseSharedFileDownload(sessionId: String, fileId: String) = coreHost.pauseSharedFileDownload(sessionId, fileId)
+    fun cancelSharedFileDownload(sessionId: String, fileId: String) = coreHost.cancelSharedFileDownload(sessionId, fileId)
+    fun deleteSharedFileLocal(sessionId: String, fileId: String) = coreHost.deleteSharedFileLocal(sessionId, fileId)
+    fun setSharedFileVisibleSession(sessionId: String) = coreHost.setSharedFileVisibleSession(sessionId)
+    fun forgetSharedFileSession(sessionId: String) = coreHost.forgetSharedFileSession(sessionId)
+    fun clearAllSharedFiles() = coreHost.clearAllSharedFiles()
+    suspend fun clearAllSharedFilesAndWait() = coreHost.clearAllSharedFilesAndWait()
+    fun reportSharedFileDurationProbed(sessionId: String, fileId: String, durationMs: Long) = coreHost.reportSharedFileDurationProbed(sessionId, fileId, durationMs)
+    fun reportSharedFileLocalMissing(sessionId: String, fileId: String) = coreHost.reportSharedFileLocalMissing(sessionId, fileId)
+    fun openDraft(scope: DraftScope, machineId: String = "") = coreHost.openDraft(scope, machineId)
+    fun setDraftText(scope: DraftScope, text: String) = coreHost.setDraftText(scope, text)
+    fun reserveDraftSlots(scope: DraftScope, reservationId: String, imageSlots: Int, fileSlots: Int) = coreHost.reserveDraftSlots(scope, reservationId, imageSlots, fileSlots)
+    fun releaseDraftSlots(scope: DraftScope, reservationId: String) = coreHost.releaseDraftSlots(scope, reservationId)
+    fun addDraftItems(scope: DraftScope, items: List<DraftPickedItem>, reservationId: String = "") = coreHost.addDraftItems(scope, items, reservationId)
+    fun removeDraftItem(scope: DraftScope, itemId: String) = coreHost.removeDraftItem(scope, itemId)
+    fun retryDraftItem(scope: DraftScope, itemId: String) = coreHost.retryDraftItem(scope, itemId)
+    fun setDraftOriginal(scope: DraftScope, original: Boolean) = coreHost.setDraftOriginal(scope, original)
+    fun forgetDraftSession(sessionId: String) = coreHost.forgetDraftSession(sessionId)
+    fun clearAllDrafts() = coreHost.clearAllDrafts()
+    fun dismissDraftNotice(scope: DraftScope) = coreHost.dismissDraftNotice(scope)
+    fun pauseAttachmentUpload(scope: DraftScope, itemId: String) = coreHost.pauseAttachmentUpload(scope, itemId)
+    fun resumeAttachmentUpload(scope: DraftScope, itemId: String) = coreHost.resumeAttachmentUpload(scope, itemId)
+    fun sendDraftSession(sessionId: String, mode: SendMode = SendMode.SEND_MODE_STEER) = coreHost.sendDraftSession(sessionId, mode)
+    fun putBackDraftInput(sessionId: String, requestId: String) = coreHost.putBackDraftInput(sessionId, requestId)
+    fun openDraftImageViewer(scope: DraftScope, index: Int) = coreHost.openDraftImageViewer(scope, index)
+    fun navigateDraftImageViewer(scope: DraftScope, delta: Int = 0, setIndex: Boolean = false, index: Int = 0) = coreHost.navigateDraftImageViewer(scope, delta, setIndex, index)
+    fun closeDraftImageViewer(scope: DraftScope) = coreHost.closeDraftImageViewer(scope)
+    fun openSessionImageViewer(sid: String, seq: Long = 0L, imageIndex: Int = 0, viewerIndex: Int = 0) = coreHost.openSessionImageViewer(sid, seq, imageIndex, viewerIndex)
+    fun navigateSessionImageViewer(sid: String, delta: Int = 0, setIndex: Boolean = false, index: Int = 0) = coreHost.navigateSessionImageViewer(sid, delta, setIndex, index)
+    fun closeSessionImageViewer(sid: String) = coreHost.closeSessionImageViewer(sid)
 
     fun close() {
         closed = true
@@ -1269,6 +1110,7 @@ class Remote(
     }
 
     suspend fun setPushTarget(type: PushType, target: String, kinds: List<NotifyKind>): SetPushTargetResponse {
+        ensureSecurityConfigured()
         val res = coreHost.pushRpc {
             setTarget = true
             pushType = type.number
@@ -1304,41 +1146,21 @@ class Remote(
 
     suspend fun renewLeaseBlocking(force: Boolean = true): SecurityWorkflowStatus =
         withSecurity { renewLease(force) }.also { applySecurityStatusSnapshotAndPrune(it) }
-
     suspend fun prepareRecoveryRotation(): String = withSecurity { prepareRecoveryRotation() }
-
     suspend fun confirmRecoveryRotation() { withSecurity { confirmRecoveryRotation() } }
-
-    suspend fun prepareHandoffCode(storagePersisted: Boolean = true): String =
-        withSecurity { prepareHandoffCode(storagePersisted) }
-
-    suspend fun publishHandoffOffer() {
-        withSecurity { publishHandoffOffer() }
-        if (!closed) refreshDevices()
-    }
-
+    suspend fun prepareHandoffCode(storagePersisted: Boolean = true): String = withSecurity { prepareHandoffCode(storagePersisted) }
+    suspend fun publishHandoffOffer() { withSecurity { publishHandoffOffer() }; if (!closed) refreshDevices() }
     suspend fun handoffAuthority(incoming: String) { withSecurity { handoffAuthority(incoming) } }
-
     suspend fun finishPairingDelivery(pairingId: String): SecurityPairingInfo =
         withSecurity { finishPairingDelivery(pairingId) }.also { if (it.delivered && !closed) refreshDevices() }
-
     suspend fun discardPendingOp(abandonHandoff: Boolean = false) { withSecurity { discardPendingOp(abandonHandoff) } }
-
     suspend fun checkExitAdvice(): SecurityExitAdvice = withSecurity { checkExitAdvice() }
-
     suspend fun renameDevice(id: String, name: String) {
-        if (id != account.deviceId) {
-            throw MessageArgumentException(UiMessages.errorsNamesCanOnlyBeChangedOnThatDevice().messageText())
-        }
+        if (id != account.deviceId) throw MessageArgumentException(UiMessages.errorsNamesCanOnlyBeChangedOnThatDevice().messageText())
         withSecurity { updateDeviceMeta(deviceId = id, name = name.trim()) }
         if (!closed) refreshDevices()
     }
-
-    suspend fun removeDevice(deviceId: String) {
-        withSecurity { removeDevice(deviceId) }
-        if (!closed) refreshDevices()
-    }
-
+    suspend fun removeDevice(deviceId: String) { withSecurity { removeDevice(deviceId) }; if (!closed) refreshDevices() }
     suspend fun deleteMachineRecords(machineId: String) {
         withSecurity { deleteMachineRecords(machineId) }
         coreHost.syncLifecycle(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_RECONNECT_NOW)
@@ -1347,7 +1169,7 @@ class Remote(
     // --- One-shot Machine Probes ---
 
     suspend fun pingServer(timeoutMs: Long = 8_000): Long = withContext(Dispatchers.IO) {
-        val req = okhttp3.Request.Builder().url(api.server.trimEnd('/') + "/healthz").header("Cache-Control", "no-store").build()
+        val req = okhttp3.Request.Builder().url(relayServer.trimEnd('/') + "/healthz").header("Cache-Control", "no-store").build()
         val started = System.nanoTime()
         try {
             http.newBuilder().callTimeout(timeoutMs, TimeUnit.MILLISECONDS).build().newCall(req).execute().use { res ->
@@ -1361,6 +1183,7 @@ class Remote(
     }
 
     suspend fun pingMachine(machineId: String, timeoutMs: Long = 15_000): Long {
+        ensureSecurityConfigured()
         val started = System.nanoTime()
         try {
             withTimeout(timeoutMs) {
@@ -1390,6 +1213,7 @@ class Remote(
         coreHost.connectionView.value.takeIf { it.hasLeaseRenewalAdvice() }?.leaseRenewalAdvice
 
     suspend fun image(sid: String, imageId: String): ImageResult = withContext(dispatcher) {
+        ensureSecurityConfigured()
         val cacheKey = "$sid/$imageId"
         val cachedBytes = runCatching { cache?.image(cacheKey) }.getOrNull()
         val res = coreHost.fetchSessionImage(
@@ -1431,516 +1255,233 @@ class Remote(
         }
     }
 
-    suspend fun openTerminal(sid: String, listener: TermListener): TermConn {
-        val sessionMachineId = sessionMachineId(sid).takeIf { it.isNotEmpty() }
-            ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
-        if (!hasSessionSeed(sid)) throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
-        val tok = currentToken()
-        val streamId = newRequestId()
+    suspend fun openTerminal(sid: String, listener: TermListener, terminalId: String = ""): TermConn {
+        ensureSecurityConfigured()
+        val sessionMachineId = sessionMachineId(sid)
+        val opId = nextTerminalOpId.getAndIncrement()
         val opened = CompletableDeferred<Unit>()
         val closed = AtomicBoolean(false)
-        data class InboundItem(val env: Envelope, val fromDirect: Boolean, val pcId: Long, val size: Int)
-        val incoming = Channel<InboundItem>(128)
-        data class QueuedInput(val frame: TerminalFrame, val deadline: Long)
-        val outgoing = Channel<QueuedInput>(64)
-        val queuedBytes = AtomicLong(0)
-        val terminalJob = SupervisorJob(scope.coroutineContext[Job])
-        val terminalScope = CoroutineScope(scope.coroutineContext + terminalJob)
-        val socket = java.util.concurrent.atomic.AtomicReference<FrameStream?>()
-        val activeLegId = java.util.concurrent.atomic.AtomicReference(streamId.toByteArray(Charsets.UTF_8))
-        val lastRelayError = java.util.concurrent.atomic.AtomicReference<Throwable?>(null)
+        val streamIdRef = java.util.concurrent.atomic.AtomicReference("")
+        val activeSocket = java.util.concurrent.atomic.AtomicReference<FrameStream?>()
+        val allSockets = java.util.Collections.newSetFromMap(ConcurrentHashMap<FrameStream, Boolean>())
+        val url = account.server.replaceFirst(Regex("^http"), "ws") + "/v1/term"
+        val inPendingFrames = java.util.concurrent.atomic.AtomicInteger(0)
+        val inPendingBytes = AtomicLong(0L)
+        val outPendingFrames = java.util.concurrent.atomic.AtomicInteger(0)
+
         val stream = deviceLink.openStream(stop = { reason ->
             if (closed.compareAndSet(false, true)) {
-                activeTerminals.remove(streamId)
-                coreHost.dispatch(
-                    CoreEvent.newBuilder()
-                        .setTerminalDirectClose(TerminalDirectCloseEvent.newBuilder().setStreamId(streamId))
-                        .build(),
-                )
-                cleanup(
-                    { incoming.cancel() },
-                    { outgoing.cancel() },
-                    { terminalJob.cancel() },
-                    { socket.get()?.cancel() },
-                    { opened.completeExceptionally(MessageException(reason ?: UiMessages.terminalAndroidClosed().messageText())) },
-                )
+                pendingTerminalOpens.remove(opId)
+                val sidStr = streamIdRef.get()
+                if (sidStr.isNotEmpty()) activeTerminals.remove(sidStr)
+                coreHost.terminalClose(sidStr, opId)
+                val sockets = allSockets.toList()
+                allSockets.clear()
+                activeSocket.set(null)
+                val actions = ArrayList<() -> Unit>(sockets.size + 1)
+                for (ws in sockets) actions.add { ws.cancel() }
+                actions.add {
+                    opened.completeExceptionally(MessageException(reason ?: UiMessages.terminalAndroidClosed().messageText()))
+                }
+                cleanup(*actions.toTypedArray())
             }
         }, onClose = listener::onClose)
         fun finish(reason: MessageText? = null) = stream.end(reason)
+        fun reserveInbound(size: Int): Boolean {
+            if (size > (1 shl 20) || inPendingFrames.incrementAndGet() > 128 || inPendingBytes.addAndGet(size.toLong()) > (2L shl 20)) {
+                finish(UiMessages.errorsAndroidTerminalOutputBacklogReceptionStopped().messageText())
+                return false
+            }
+            return true
+        }
 
-        terminalScope.launch {
-            try {
-                for (item in incoming) {
-                    try {
-                        val (h, frame) = openSecureMessage(
-                            item.env,
-                            Place(PayloadKind.PAYLOAD_KIND_TERMINAL_OUTPUT, machineId = sessionMachineId, sessionId = sid, requestId = streamId),
-                            TerminalFrame::parseFrom,
-                        )
-                        val payloadBytes = frame.toByteArray()
-                        val frameHash = java.security.MessageDigest.getInstance("SHA-256").digest(payloadBytes)
-                        coreHost.dispatch(
-                            CoreEvent.newBuilder()
-                                .setTerminalDirectOutput(
-                                    TerminalDirectOutputEvent.newBuilder()
-                                        .setStreamId(streamId)
-                                        .setSeq(h.seq)
-                                        .setFrameHash(ByteString.copyFrom(frameHash))
-                                        .setPayload(ByteString.copyFrom(payloadBytes))
-                                        .setFromDirect(item.fromDirect)
-                                        .setPcId(item.pcId),
-                                )
-                                .build(),
-                        )
-                    } catch (e: Exception) {
-                        if (!item.fromDirect) throw e
-                    } finally {
-                        queuedBytes.addAndGet(-item.size.toLong())
-                    }
+        fun openSocket(eff: TerminalOpenSocketEffect) {
+            if (closed.get()) return
+            val sidStr = eff.streamId
+            val legBytes = eff.legId.toByteArray()
+            val helloBytes = eff.helloBytes.toByteArray()
+            val dialOpened = AtomicBoolean(false)
+            val nextWs = try {
+                deviceLink.path.openStream(
+                    url,
+                    object : FrameListener() {
+                        override fun onOpen(stream: FrameStream) {
+                            if (closed.get()) { stream.cancel(); return }
+                            dialOpened.set(true)
+                            stream.send(helloBytes)
+                            val prev = activeSocket.getAndSet(stream)
+                            if (prev != null && prev !== stream) {
+                                allSockets.remove(prev)
+                                prev.close()
+                            }
+                            coreHost.terminalSocket(sidStr, legBytes, opened = true)
+                        }
+                        override fun onFrame(stream: FrameStream, bytes: ByteArray) {
+                            if (closed.get() || activeSocket.get() !== stream) return
+                            if (!reserveInbound(bytes.size)) return
+                            coreHost.terminalInboundBytes(sidStr, bytes, fromDirect = false, pcId = 0L)
+                        }
+                        private fun handleSocketClose(stream: FrameStream, code: Int, closeFirst: Boolean) {
+                            if (closed.get() || (dialOpened.get() && activeSocket.get() !== stream)) return
+                            if (closeFirst) stream.close()
+                            if (!opened.isCompleted && eff.isInitial) {
+                                finish(UiMessages.errorsTerminalConnectionClosed().messageText())
+                                return
+                            }
+                            coreHost.terminalSocket(sidStr, legBytes, closed = true, policyViolation = code == POLICY_VIOLATION)
+                        }
+                        override fun onClosing(stream: FrameStream, code: Int) = handleSocketClose(stream, code, closeFirst = true)
+                        override fun onEnd(stream: FrameStream, code: Int) = handleSocketClose(stream, code, closeFirst = false)
+                        override fun onFailure(stream: FrameStream, error: Throwable) {
+                            if (closed.get() || (dialOpened.get() && activeSocket.get() !== stream)) return
+                            val errMsg = errorText(error, currentLeaseRenewalAdvice())
+                            if (!opened.isCompleted && eff.isInitial) {
+                                finish(localized { copy -> copy(UiMessages.errorsTerminalConnectionDroppedReason(errMsg.resolve(copy))) })
+                                return
+                            }
+                            coreHost.terminalSocket(sidStr, legBytes, closed = true, error = error.message ?: error.javaClass.simpleName)
+                        }
+                    },
+                )
+            } catch (e: Throwable) {
+                if (!opened.isCompleted && eff.isInitial) {
+                    finish(UiMessages.errorsCannotConnectToTerminal().messageText())
+                } else {
+                    coreHost.terminalSocket(sidStr, legBytes, closed = true, error = e.message ?: e.javaClass.simpleName)
                 }
-            } catch (e: Exception) {
-                finish(errorText(e, currentLeaseRenewalAdvice()))
+                return
+            }
+            allSockets.add(nextWs)
+            if (eff.isInitial) activeSocket.set(nextWs)
+            if (closed.get()) {
+                allSockets.remove(nextWs)
+                nextWs.cancel()
             }
         }
-        val url = account.server.replaceFirst(Regex("^http"), "ws") + "/v1/term"
-        activeTerminals[streamId] = ActiveTerminalStream(
-            sendRelay = { raw -> if (!closed.get()) socket.get()?.send(raw) },
-            deliver = { payloads ->
-                for (p in payloads) {
+
+        fun onDeliver(eff: TerminalDeliverOutputEffect) {
+            if (closed.get()) return
+            try {
+                for (f in eff.framesList) {
                     if (closed.get()) break
-                    runCatching { TerminalFrame.parseFrom(p) }.getOrNull()?.let { listener.onFrame(it) }
+                    when (f.kindCase) {
+                        TerminalDeliveredFrame.KindCase.OUTPUT -> listener.onFrame(TerminalFrame.newBuilder().setOutput(f.output).build())
+                        TerminalDeliveredFrame.KindCase.SNAPSHOT -> listener.onFrame(
+                            TerminalFrame.newBuilder().setSnapshot(
+                                TerminalSnapshot.newBuilder().setCols(f.snapshot.cols).setRows(f.snapshot.rows).setData(f.snapshot.data),
+                            ).build(),
+                        )
+                        TerminalDeliveredFrame.KindCase.CLOSED -> listener.onFrame(TerminalFrame.newBuilder().setClosed(f.closed).build())
+                        else -> {}
+                    }
                 }
-            },
-            attachRelay = { legBytes ->
+            } finally {
+                if (eff.consumedFrames > 0) inPendingFrames.updateAndGet { maxOf(0, it - eff.consumedFrames) }
+                if (eff.consumedBytes > 0) inPendingBytes.updateAndGet { maxOf(0L, it - eff.consumedBytes.toLong()) }
+            }
+        }
+
+        fun onStateChanged(eff: TerminalStateChangedEffect) {
+            if (closed.get()) return
+            if (eff.openSettled && !opened.isCompleted) {
+                if (eff.openOk) {
+                    opened.complete(Unit)
+                    return
+                }
+                val code = eff.reasonCode.ifEmpty { "failed" }
+                val msg = if (eff.hasOpenError()) coreTextToMessageText(eff.openError)
+                else if (eff.hasReasonText()) coreTextToMessageText(eff.reasonText)
+                else UiMessages.errorsTerminalConnectionClosed().messageText()
+                opened.completeExceptionally(CommandException(code, msg))
+                finish(msg)
+                return
+            }
+            when (eff.state) {
+                TerminalLifecycleState.TERMINAL_LIFECYCLE_STATE_CONFIRM_INPUT ->
+                    listener.onConfirmRebuild(TermConfirmKind.INPUT)
+                TerminalLifecycleState.TERMINAL_LIFECYCLE_STATE_CONFIRM_RESTART ->
+                    listener.onConfirmRebuild(TermConfirmKind.RESTART)
+                TerminalLifecycleState.TERMINAL_LIFECYCLE_STATE_REBUILD -> {
+                    finish()
+                    listener.onRebuildConfirmed()
+                }
+                TerminalLifecycleState.TERMINAL_LIFECYCLE_STATE_CLOSED -> {
+                    val msg = if (eff.hasReasonText()) coreTextToMessageText(eff.reasonText)
+                    else UiMessages.errorsTerminalConnectionDropped().messageText()
+                    finish(msg)
+                }
+                else -> {}
+            }
+        }
+
+        pendingTerminalOpens[opId] = PendingTerminalOpen(
+            onOpenSocket = { eff ->
                 if (!closed.get()) {
-                    val legStr = String(legBytes, Charsets.UTF_8)
-                    val dialOpened = AtomicBoolean(false)
-                    val nextWs = deviceLink.path.openStream(
-                        url,
-                        object : FrameListener() {
-                            override fun onOpen(stream: FrameStream) {
-                                if (closed.get()) { stream.cancel(); return }
-                                dialOpened.set(true)
-                                val hello = TermHello.newBuilder().setToken(tok).setStreamId(legStr).setMachineId(sessionMachineId).build()
-                                stream.send(hello.toByteArray())
-                                val prev = socket.getAndSet(stream)
-                                activeLegId.set(legBytes)
-                                if (prev !== stream) prev?.close()
-                                coreHost.dispatch(
-                                    CoreEvent.newBuilder()
-                                        .setTerminalDirectLeg(
-                                            TerminalDirectLegEvent.newBuilder()
-                                                .setStreamId(streamId)
-                                                .setLegId(ByteString.copyFrom(legBytes))
-                                                .setDirect(false)
-                                                .setOpen(true),
-                                        )
-                                        .build(),
-                                )
-                            }
-                            override fun onFrame(stream: FrameStream, bytes: ByteArray) {
-                                if (closed.get()) return
-                                val env = runCatching { Envelope.parseFrom(bytes) }.getOrNull() ?: return
-                                if (bytes.size > (1 shl 20) || queuedBytes.addAndGet(bytes.size.toLong()) > 2L * 1024 * 1024 ||
-                                    incoming.trySend(InboundItem(env, false, 0L, bytes.size)).isFailure) {
-                                    finish(UiMessages.errorsAndroidTerminalOutputBacklogReceptionStopped().messageText())
-                                }
-                            }
-                            override fun onEnd(stream: FrameStream, code: Int) {
-                                if (closed.get()) return
-                                if (dialOpened.get() && socket.get() !== stream) return
-                                coreHost.dispatch(
-                                    CoreEvent.newBuilder()
-                                        .setTerminalDirectLeg(
-                                            TerminalDirectLegEvent.newBuilder()
-                                                .setStreamId(streamId)
-                                                .setLegId(ByteString.copyFrom(legBytes))
-                                                .setDirect(false)
-                                                .setOpen(false),
-                                        )
-                                        .build(),
-                                )
-                            }
-                            override fun onFailure(stream: FrameStream, error: Throwable) {
-                                if (closed.get()) return
-                                if (dialOpened.get() && socket.get() !== stream) return
-                                if (dialOpened.get()) lastRelayError.set(error)
-                                coreHost.dispatch(
-                                    CoreEvent.newBuilder()
-                                        .setTerminalDirectLeg(
-                                            TerminalDirectLegEvent.newBuilder()
-                                                .setStreamId(streamId)
-                                                .setLegId(ByteString.copyFrom(legBytes))
-                                                .setDirect(false)
-                                                .setOpen(false),
-                                        )
-                                        .build(),
-                                )
+                    streamIdRef.set(eff.streamId)
+                    pendingTerminalOpens.remove(opId)
+                    activeTerminals[eff.streamId] = ActiveTerminalStream(
+                        machineId = sessionMachineId,
+                        sendRelay = { raw -> if (!closed.get()) activeSocket.get()?.send(raw) },
+                        onSentOut = { outPendingFrames.updateAndGet { maxOf(0, it - 1) } },
+                        onOpenSocket = ::openSocket,
+                        onCloseSocket = {
+                            val list = allSockets.toList()
+                            allSockets.clear()
+                            activeSocket.set(null)
+                            for (ws in list) runCatching { ws.cancel() }
+                        },
+                        onDeliver = ::onDeliver,
+                        onStateChanged = ::onStateChanged,
+                        onDirectBytes = { machineId, pcId, raw ->
+                            if (!closed.get() && (sessionMachineId.isEmpty() || machineId == sessionMachineId) && reserveInbound(raw.size)) {
+                                coreHost.terminalInboundBytes(eff.streamId, raw, fromDirect = true, pcId = pcId)
                             }
                         },
                     )
-                    if (closed.get()) nextWs.cancel()
+                    openSocket(eff)
                 }
             },
-            onState = { st, reason, needsConfirm ->
-                // M4/M5: NeedsConfirmation enters user confirmation UI without auto-closing;
-                // rebuild_confirmed closes the old stream silently and triggers a fresh open.
-                if (!closed.get()) {
-                    if (needsConfirm) {
-                        listener.onConfirmRebuild(if (st == 4) TermConfirmKind.RESTART else TermConfirmKind.INPUT)
-                    } else if (st == 5 && reason == "rebuild_confirmed") {
-                        finish()
-                        listener.onRebuildConfirmed()
-                    } else if (st == 5) {
-                        val err = lastRelayError.getAndSet(null)
-                        if (reason == "conflict") {
-                            finish(UiMessages.errorsTerminalFramesAreOutOfOrder().messageText())
-                        } else if (reason == "replay_overflow") {
-                            finish(UiMessages.terminalReplayOverflow().messageText())
-                        } else if (err != null) {
-                            finish(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(err, currentLeaseRenewalAdvice()).resolve(copy))) })
-                        } else {
-                            finish(UiMessages.errorsTerminalConnectionDropped().messageText())
-                        }
-                    }
-                }
-            },
-            onDirectOutput = { machineId, pcId, env, raw ->
-                if (!closed.get() && machineId == sessionMachineId) {
-                    if (queuedBytes.addAndGet(raw.size.toLong()) <= 2L * 1024 * 1024) {
-                        if (incoming.trySend(InboundItem(env, true, pcId, raw.size)).isFailure) {
-                            queuedBytes.addAndGet(-raw.size.toLong())
-                        }
-                    } else {
-                        queuedBytes.addAndGet(-raw.size.toLong())
-                    }
-                }
-            },
+            onStateChanged = ::onStateChanged,
         )
+
         try {
-            val ws = deviceLink.path.openStream(
-                url,
-                object : FrameListener() {
-                    override fun onOpen(stream: FrameStream) {
-                        val hello = TermHello.newBuilder().setToken(tok).setStreamId(streamId).setMachineId(sessionMachineId).build()
-                        stream.send(hello.toByteArray())
-                        opened.complete(Unit)
-                    }
-                    override fun onFrame(stream: FrameStream, bytes: ByteArray) {
-                        if (closed.get()) return
-                        val env = runCatching { Envelope.parseFrom(bytes) }.getOrNull()
-                        if (env == null || bytes.size > (1 shl 20) || queuedBytes.addAndGet(bytes.size.toLong()) > 2L * 1024 * 1024 ||
-                            incoming.trySend(InboundItem(env, false, 0L, bytes.size)).isFailure) {
-                            finish(UiMessages.errorsAndroidTerminalOutputBacklogReceptionStopped().messageText())
-                        }
-                    }
-                    override fun onClosing(stream: FrameStream, code: Int) {
-                        if (socket.get() !== stream) return
-                        stream.close()
-                        if (!opened.isCompleted) {
-                            finish(UiMessages.errorsTerminalConnectionClosed().messageText())
-                            return
-                        }
-                        coreHost.dispatch(
-                            CoreEvent.newBuilder()
-                                .setTerminalDirectLeg(
-                                    TerminalDirectLegEvent.newBuilder()
-                                        .setStreamId(streamId)
-                                        .setLegId(ByteString.copyFrom(activeLegId.get()))
-                                        .setDirect(false)
-                                        .setOpen(false),
-                                )
-                                .build(),
-                        )
-                    }
-                    override fun onEnd(stream: FrameStream, code: Int) {
-                        if (socket.get() !== stream) return
-                        if (!opened.isCompleted) {
-                            finish(UiMessages.errorsTerminalConnectionClosed().messageText())
-                            return
-                        }
-                        coreHost.dispatch(
-                            CoreEvent.newBuilder()
-                                .setTerminalDirectLeg(
-                                    TerminalDirectLegEvent.newBuilder()
-                                        .setStreamId(streamId)
-                                        .setLegId(ByteString.copyFrom(activeLegId.get()))
-                                        .setDirect(false)
-                                        .setOpen(false),
-                                )
-                                .build(),
-                        )
-                    }
-                    override fun onFailure(stream: FrameStream, error: Throwable) {
-                        val wasOpened = opened.isCompleted
-                        opened.completeExceptionally(MessageException(UiMessages.errorsCannotConnectToTerminal().messageText()))
-                        if (socket.get() !== stream) return
-                        if (!wasOpened) {
-                            finish(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(error, currentLeaseRenewalAdvice()).resolve(copy))) })
-                            return
-                        }
-                        lastRelayError.set(error)
-                        coreHost.dispatch(
-                            CoreEvent.newBuilder()
-                                .setTerminalDirectLeg(
-                                    TerminalDirectLegEvent.newBuilder()
-                                        .setStreamId(streamId)
-                                        .setLegId(ByteString.copyFrom(activeLegId.get()))
-                                        .setDirect(false)
-                                        .setOpen(false),
-                                )
-                                .build(),
-                        )
-                    }
-                },
-            )
-            socket.set(ws)
-            if (closed.get()) ws.cancel()
+            coreHost.terminalOpen(opId, sid, sessionMachineId, terminalId)
             withTimeout(20_000) { opened.await() }
-            // M6: register in Core before sending OpenTerminal RPC so early frames are never lost.
-            coreHost.dispatch(
-                CoreEvent.newBuilder()
-                    .setTerminalDirectOpen(
-                        TerminalDirectOpenEvent.newBuilder()
-                            .setStreamId(streamId)
-                            .setMachineId(sessionMachineId)
-                            .setSessionId(sid)
-                            .setRelayLegId(ByteString.copyFrom(activeLegId.get())),
-                    )
-                    .build(),
-            )
-            coreHost.runMachineCommand(
-                sessionMachineId,
-                sid,
-                Command.newBuilder().setOpenTerminal(OpenTerminalRequest.newBuilder().setSessionId(sid).setStreamId(streamId)).build(),
-                skipConnectivityPreflight = true,
-            )
             kotlinx.coroutines.currentCoroutineContext().ensureActive()
             if (closed.get()) throw MessageException(UiMessages.terminalAndroidClosed().messageText())
-            // H-B: signal Core that daemon confirmed openTerminal so direct AttachPath fires now.
-            coreHost.dispatch(
-                CoreEvent.newBuilder()
-                    .setTerminalDirectLeg(
-                        TerminalDirectLegEvent.newBuilder()
-                            .setStreamId(streamId)
-                            .setLegId(ByteString.copyFrom(activeLegId.get()))
-                            .setDirect(false)
-                            .setOpen(true),
-                    )
-                    .build(),
-            )
-            var seq = 0L
-            terminalScope.launch {
-                try {
-                    for (item in outgoing) {
-                        if (closed.get()) break
-                        seq++
-                        val env = sealSecureMessage(
-                            Header.newBuilder()
-                                .setKind(PayloadKind.PAYLOAD_KIND_TERMINAL_INPUT)
-                                .setMachineId(sessionMachineId)
-                                .setSessionId(sid)
-                                .setRequestId(streamId)
-                                .setSeq(seq)
-                                .setDeadlineMs(item.deadline)
-                                .setSender(account.deviceId)
-                                .build(),
-                            item.frame,
-                        )
-                        if (!closed.get()) {
-                            val sealedBytes = env.toByteArray()
-                            val frameHash = java.security.MessageDigest.getInstance("SHA-256").digest(item.frame.toByteArray())
-                            coreHost.dispatch(
-                                CoreEvent.newBuilder()
-                                    .setTerminalDirectInput(
-                                        TerminalDirectInputEvent.newBuilder()
-                                            .setStreamId(streamId)
-                                            .setSeq(seq)
-                                            .setIsInput(item.frame.hasInput())
-                                            .setSealedEnvelope(ByteString.copyFrom(sealedBytes))
-                                            .setFrameHash(ByteString.copyFrom(frameHash)),
-                                    )
-                                    .build(),
-                            )
-                        }
-                    }
-                } catch (e: Exception) {
-                    finish(errorText(e, currentLeaseRenewalAdvice()))
-                }
-            }
+            val sidStr = streamIdRef.get()
             return TermConn(
-                ws,
                 sendFrame = { frame ->
-                    if (frame.serializedSize > 64 * 1024 || outgoing.trySend(QueuedInput(frame, clock() + 60_000)).isFailure) {
-                        finish(UiMessages.errorsAndroidTerminalInputPausedWhileWaitingForAuthorization().messageText())
+                    if (!closed.get()) {
+                        if (frame.serializedSize > 64 * 1024 || outPendingFrames.incrementAndGet() > 64) {
+                            finish(UiMessages.errorsTerminalInputBacklogReconnect().messageText())
+                        } else when (frame.kindCase) {
+                            TerminalFrame.KindCase.INPUT -> coreHost.terminalInput { streamId = sidStr; input = frame.input }
+                            TerminalFrame.KindCase.RESIZE -> coreHost.terminalInput {
+                                streamId = sidStr
+                                resize = TerminalResizeInput.newBuilder().setCols(frame.resize.cols).setRows(frame.resize.rows).setFit(frame.resize.fit).build()
+                            }
+                            TerminalFrame.KindCase.HISTORY_REQUEST -> coreHost.terminalInput {
+                                streamId = sidStr
+                                history = TerminalHistoryInput.newBuilder().setRequestId(frame.historyRequest.requestId).setCursor(frame.historyRequest.cursor).build()
+                            }
+                            else -> {}
+                        }
                     }
                 },
                 closeLocal = { finish() },
             ).apply {
-                confirmRebuildAction = {
-                    if (!closed.get()) {
-                        coreHost.dispatch(
-                            CoreEvent.newBuilder()
-                                .setTerminalDirectConfirmRebuild(
-                                    TerminalDirectConfirmRebuildAction.newBuilder().setStreamId(streamId),
-                                )
-                                .build(),
-                        )
-                    }
-                }
+                confirmRebuildAction = { if (!closed.get() && sidStr.isNotEmpty()) coreHost.terminalConfirmRebuild(sidStr) }
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             finish()
             throw e
         }
     }
 
-    // --- Crypto Envelope Helpers ---
-
     private fun report(e: Throwable) {
         log("remote-agent: " + e.javaClass.simpleName)
         if (System.getenv("RA_DEBUG_STACK") != null) e.printStackTrace()
-    }
-
-    private fun throwSecurityOpError(res: SecurityOpResultEffect): Nothing {
-        when (res.structuredErrorCode) {
-            SecurityErrorCode.SECURITY_ERROR_CODE_UNSUPPORTED_HISTORY -> throw UnsupportedHistoryException()
-            else -> throw SecurityFailure(securityErrorCodeKey(res.structuredErrorCode))
-        }
-    }
-
-    private suspend fun hasSessionSeed(sid: String): Boolean {
-        ensureSecurityBootstrapped()
-        val res = coreHost.securityOp {
-            setGetSessionSeed(SecurityGetSessionSeedOp.newBuilder().setSessionId(sid))
-        }
-        return res.error.isEmpty() && res.hasSessionSeed() && res.sessionSeed.size() == KEY_SIZE
-    }
-
-    private suspend fun <T : com.google.protobuf.MessageLite> openSecureMessageWithMeta(
-        env: Envelope,
-        want: Place,
-        parse: (ByteArray) -> T,
-        live: Boolean = true,
-    ): Pair<SecurityOpenEnvelopeResult, T> {
-        ensureSecurityBootstrapped()
-        val purpose = want.kind.number
-        if (purpose <= 0) throw SecurityFailure("invalid")
-        val history = !live || want.kind in setOf(
-            PayloadKind.PAYLOAD_KIND_ACCOUNT_PREFS,
-            PayloadKind.PAYLOAD_KIND_DEVICE_META,
-            PayloadKind.PAYLOAD_KIND_MACHINE_META,
-            PayloadKind.PAYLOAD_KIND_SESSION_META,
-            PayloadKind.PAYLOAD_KIND_IMAGE,
-        )
-        val res = coreHost.securityOp {
-            setOpenEnvelope(
-                SecurityOpenEnvelopeOp.newBuilder()
-                    .setEnvelope(env)
-                    .setExpectedPurpose(purpose)
-                    .setMachineId(want.machineId)
-                    .setSessionId(want.sessionId)
-                    .setRequestId(want.requestId)
-                    .setSeq(want.seq)
-                    .setHistory(history),
-            )
-        }
-        if (res.error.isNotEmpty() || !res.hasOpened()) {
-            throwSecurityOpError(res)
-        }
-        val opened = res.opened
-        val msg = try {
-            parse(opened.plaintext.toByteArray())
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            throw OpenException("malformed content")
-        }
-        return opened to msg
-    }
-
-    private suspend fun <T : com.google.protobuf.MessageLite> openSecureMessage(
-        env: Envelope,
-        want: Place,
-        parse: (ByteArray) -> T,
-        live: Boolean = true,
-        @Suppress("UNUSED_PARAMETER") bulk: Boolean = false,
-    ): Pair<Header, T> {
-        val (opened, msg) = openSecureMessageWithMeta(env, want, parse, live = live)
-        val projected = Header.newBuilder()
-            .setVersion(ENVELOPE_VERSION)
-            .setKind(want.kind)
-            .setMachineId(opened.machineId)
-            .setSessionId(opened.sessionId)
-            .setRequestId(opened.requestId)
-            .setSeq(opened.seq)
-            .setDeadlineMs(opened.deadlineMs)
-            .setSender(opened.sender)
-            .build()
-        return projected to msg
-    }
-
-    private suspend fun sealEnvelopeOp(
-        purpose: Int,
-        machineId: String = "",
-        sessionId: String = "",
-        request: String = "",
-        seq: ULong = 0uL,
-        deadline: ULong = 0uL,
-        plain: ByteArray,
-        useSessionSeed: Boolean = purpose in SESSION_KEY_PURPOSES,
-    ): SecuritySealEnvelopeResult {
-        ensureSecurityBootstrapped()
-        val res = coreHost.securityOp {
-            setSealEnvelope(
-                SecuritySealEnvelopeOp.newBuilder()
-                    .setPurpose(purpose)
-                    .setMachineId(machineId)
-                    .setSessionId(sessionId)
-                    .setRequestId(request)
-                    .setSeq(seq.toLong())
-                    .setDeadlineMs(deadline.toLong())
-                    .setPlaintext(ByteString.copyFrom(plain))
-                    .setUseSessionSeed(useSessionSeed),
-            )
-        }
-        if (res.error.isNotEmpty() || !res.hasSealed()) {
-            throwSecurityOpError(res)
-        }
-        return res.sealed
-    }
-
-    private suspend fun sealSecureMessage(h: Header, m: com.google.protobuf.MessageLite): Envelope {
-        var purpose = h.kindValue
-        if (purpose <= 0) throw SecurityFailure("invalid")
-        if (m is TerminalFrame) {
-            purpose = when (m.kindCase) {
-                TerminalFrame.KindCase.INPUT -> PURPOSE_TERMINAL_INPUT
-                TerminalFrame.KindCase.RESIZE -> PURPOSE_TERMINAL_RESIZE
-                TerminalFrame.KindCase.HISTORY_REQUEST -> PURPOSE_TERMINAL_HISTORY
-                else -> purpose
-            }
-        }
-        return sealEnvelopeOp(
-            purpose = purpose,
-            machineId = h.machineId,
-            sessionId = h.sessionId,
-            request = h.requestId,
-            seq = h.seq.toULong(),
-            deadline = h.deadlineMs.toULong(),
-            plain = m.toByteArray(),
-            useSessionSeed = purpose in SESSION_KEY_PURPOSES,
-        ).envelope
-    }
-
-    companion object {
-        private const val PURPOSE_TERMINAL_INPUT = 8
-        private const val PURPOSE_TERMINAL_RESIZE = 14
-        private const val PURPOSE_TERMINAL_HISTORY = 15
-        private val SESSION_KEY_PURPOSES = setOf(
-            PURPOSE_TERMINAL_INPUT,
-            PURPOSE_TERMINAL_RESIZE,
-            PURPOSE_TERMINAL_HISTORY,
-        )
     }
 }
 

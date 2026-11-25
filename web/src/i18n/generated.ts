@@ -262,16 +262,16 @@ export interface MessageArgs {
   "errors.remote_control_expired_control_and_new_uploads_are_paused": { [name: string]: never };
   "errors.remote_control_expired_saving_changes_session_control_and_new": { [name: string]: never };
   "errors.request_identity_conflict": { [name: string]: never };
-  "errors.security_body_type_or_direction_mismatch": { [name: string]: never };
-  "errors.security_envelope_missing": { [name: string]: never };
   "errors.server_returned": { value: string };
   "errors.setup_request_preserved": { reason: string };
   "errors.signing_in": { [name: string]: never };
   "errors.terminal_connection_canceled": { [name: string]: never };
   "errors.terminal_connection_closed": { [name: string]: never };
   "errors.terminal_connection_dropped": { [name: string]: never };
+  "errors.terminal_connection_dropped_reason": { reason: string };
   "errors.terminal_connection_timed_out_reconnect": { [name: string]: never };
   "errors.terminal_frames_are_out_of_order": { [name: string]: never };
+  "errors.terminal_input_backlog_reconnect": { [name: string]: never };
   "errors.terminal_output_backlog_reconnect_for_the_latest_display": { [name: string]: never };
   "errors.the_computer_did_not_return_an_attachment_id": { [name: string]: never };
   "errors.the_computer_is_offline_the_command_was_not_sent": { [name: string]: never };
@@ -2085,16 +2085,16 @@ export const messages = {
     "errors.remote_control_expired_control_and_new_uploads_are_paused": "Remote control expired. Control and new uploads are paused; renew on the current managing client.",
     "errors.remote_control_expired_saving_changes_session_control_and_new": "Remote control expired. Saving changes, session control, and new uploads are paused; renew on the current managing client and retry. History remains available.",
     "errors.request_identity_conflict": "This didn't match an earlier submission, so the computer didn't run it. Refresh and try again.",
-    "errors.security_body_type_or_direction_mismatch": "Security body type or direction mismatch",
-    "errors.security_envelope_missing": "Security envelope missing",
     "errors.server_returned": "Server returned {value}",
     "errors.setup_request_preserved": "{reason}. The original request and keys are preserved. Retry; if approval expired or was refused, exit and pair again or create an account.",
     "errors.signing_in": "Signing in",
     "errors.terminal_connection_canceled": "Terminal connection canceled",
     "errors.terminal_connection_closed": "Terminal connection closed",
     "errors.terminal_connection_dropped": "Terminal connection dropped",
+    "errors.terminal_connection_dropped_reason": "Terminal connection dropped: {reason}",
     "errors.terminal_connection_timed_out_reconnect": "Terminal connection timed out. Reconnect.",
     "errors.terminal_frames_are_out_of_order": "Terminal frames are out of order",
+    "errors.terminal_input_backlog_reconnect": "Too many pending terminal inputs. Reconnect before typing again.",
     "errors.terminal_output_backlog_reconnect_for_the_latest_display": "Terminal output backlog. Reconnect for the latest display.",
     "errors.the_computer_did_not_return_an_attachment_id": "The computer did not return an attachment ID",
     "errors.the_computer_is_offline_the_command_was_not_sent": "The computer is offline. The command was not sent.",
@@ -4443,16 +4443,16 @@ export const messages = {
     "errors.remote_control_expired_control_and_new_uploads_are_paused": "远程控制有效期已过，控制和新内容上传已暂停；请在当前管理端续期",
     "errors.remote_control_expired_saving_changes_session_control_and_new": "远程控制有效期已过，无法保存更改、控制会话或上传新内容；请在当前管理端续期后重试。历史仍可查看",
     "errors.request_identity_conflict": "这次提交和之前的一次不一致，电脑没有执行，请刷新后再操作",
-    "errors.security_body_type_or_direction_mismatch": "安全正文类型或方向不匹配",
-    "errors.security_envelope_missing": "缺少安全信封",
     "errors.server_returned": "服务器返回 {value}",
     "errors.setup_request_preserved": "{reason}。原请求和密钥已保留，可重试；若批准已过期或被拒绝，可退出并重新配对或创建。",
     "errors.signing_in": "登录",
     "errors.terminal_connection_canceled": "终端连接已取消",
     "errors.terminal_connection_closed": "终端连接已关闭",
     "errors.terminal_connection_dropped": "终端连接断开",
+    "errors.terminal_connection_dropped_reason": "终端连接断开：{reason}",
     "errors.terminal_connection_timed_out_reconnect": "连接终端超时，请重新连接",
     "errors.terminal_frames_are_out_of_order": "终端帧顺序不对",
+    "errors.terminal_input_backlog_reconnect": "终端输入积压过多，请重新连接后再输入",
     "errors.terminal_output_backlog_reconnect_for_the_latest_display": "终端输出积压，请重新连接以获取最新画面",
     "errors.the_computer_did_not_return_an_attachment_id": "电脑没有返回附件 ID",
     "errors.the_computer_is_offline_the_command_was_not_sent": "电脑不在线，指令没有发出",

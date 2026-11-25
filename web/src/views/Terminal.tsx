@@ -395,9 +395,6 @@ export function TerminalView({
           const t = term.current;
           if (!t) return;
           switch (f.kind.case) {
-            case "historyPage":
-              hostBridge.sendTerminalHistory(terminalId, TerminalHistoryEventKind.PAGE_RECEIVED, f.kind.value);
-              return;
             case "snapshot": {
               if (historyRef.current.phase === TerminalHistoryPhase.OPEN) setNewOutput(true);
               const next = { cols: f.kind.value.cols, rows: f.kind.value.rows };
@@ -461,6 +458,7 @@ export function TerminalView({
             setAttempt(next);
           }
         },
+        terminalId,
       )
       .then(
         (c) => {

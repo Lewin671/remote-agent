@@ -5586,6 +5586,48 @@ type Event_SessionFetchImage struct {
 
 func (*Event_SessionFetchImage) isEvent_Event() {}
 
+type Event_TerminalOpen struct {
+	_            [0]func()
+	TerminalOpen *TerminalOpenAction
+}
+
+func (*Event_TerminalOpen) isEvent_Event() {}
+
+type Event_TerminalClose struct {
+	_             [0]func()
+	TerminalClose *TerminalCloseAction
+}
+
+func (*Event_TerminalClose) isEvent_Event() {}
+
+type Event_TerminalSocket struct {
+	_              [0]func()
+	TerminalSocket *TerminalSocketEvent
+}
+
+func (*Event_TerminalSocket) isEvent_Event() {}
+
+type Event_TerminalInboundBytes struct {
+	_                    [0]func()
+	TerminalInboundBytes *TerminalInboundBytesEvent
+}
+
+func (*Event_TerminalInboundBytes) isEvent_Event() {}
+
+type Event_TerminalInput struct {
+	_             [0]func()
+	TerminalInput *TerminalInputAction
+}
+
+func (*Event_TerminalInput) isEvent_Event() {}
+
+type Event_TerminalConfirmRebuild struct {
+	_                      [0]func()
+	TerminalConfirmRebuild *TerminalConfirmRebuildAction
+}
+
+func (*Event_TerminalConfirmRebuild) isEvent_Event() {}
+
 type Event_SecurityConfig struct {
 	_              [0]func()
 	SecurityConfig *SecurityConfigEvent
@@ -7003,6 +7045,42 @@ func (m *Event) GetSessionFetchImage() *SessionFetchImageAction {
 	}
 	return nil
 }
+func (m *Event) GetTerminalOpen() *TerminalOpenAction {
+	if x, ok := m.GetEvent().(*Event_TerminalOpen); ok && x != nil {
+		return x.TerminalOpen
+	}
+	return nil
+}
+func (m *Event) GetTerminalClose() *TerminalCloseAction {
+	if x, ok := m.GetEvent().(*Event_TerminalClose); ok && x != nil {
+		return x.TerminalClose
+	}
+	return nil
+}
+func (m *Event) GetTerminalSocket() *TerminalSocketEvent {
+	if x, ok := m.GetEvent().(*Event_TerminalSocket); ok && x != nil {
+		return x.TerminalSocket
+	}
+	return nil
+}
+func (m *Event) GetTerminalInboundBytes() *TerminalInboundBytesEvent {
+	if x, ok := m.GetEvent().(*Event_TerminalInboundBytes); ok && x != nil {
+		return x.TerminalInboundBytes
+	}
+	return nil
+}
+func (m *Event) GetTerminalInput() *TerminalInputAction {
+	if x, ok := m.GetEvent().(*Event_TerminalInput); ok && x != nil {
+		return x.TerminalInput
+	}
+	return nil
+}
+func (m *Event) GetTerminalConfirmRebuild() *TerminalConfirmRebuildAction {
+	if x, ok := m.GetEvent().(*Event_TerminalConfirmRebuild); ok && x != nil {
+		return x.TerminalConfirmRebuild
+	}
+	return nil
+}
 func (m *Event) GetSecurityConfig() *SecurityConfigEvent {
 	if x, ok := m.GetEvent().(*Event_SecurityConfig); ok && x != nil {
 		return x.SecurityConfig
@@ -7159,7 +7237,7 @@ func extraUnmarshal_Event(base unsafe.Pointer, num litewire.Number, wtyp litewir
 		return m.extraUnmarshalPart16(num, wtyp, bp)
 	case num <= 431:
 		return m.extraUnmarshalPart17(num, wtyp, bp)
-	case num <= 460:
+	case num <= 452:
 		return m.extraUnmarshalPart18(num, wtyp, bp)
 	case num <= 465:
 		return m.extraUnmarshalPart19(num, wtyp, bp)
@@ -9037,6 +9115,48 @@ func (m *Event) extraUnmarshalPart18(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SessionFetchImage
+		case 436:
+			w, _ := m.Event.(*Event_TerminalOpen)
+			if w == nil || w.TerminalOpen == nil {
+				w = &Event_TerminalOpen{TerminalOpen: &TerminalOpenAction{}}
+				m.Event = w
+			}
+			sub = w.TerminalOpen
+		case 437:
+			w, _ := m.Event.(*Event_TerminalClose)
+			if w == nil || w.TerminalClose == nil {
+				w = &Event_TerminalClose{TerminalClose: &TerminalCloseAction{}}
+				m.Event = w
+			}
+			sub = w.TerminalClose
+		case 438:
+			w, _ := m.Event.(*Event_TerminalSocket)
+			if w == nil || w.TerminalSocket == nil {
+				w = &Event_TerminalSocket{TerminalSocket: &TerminalSocketEvent{}}
+				m.Event = w
+			}
+			sub = w.TerminalSocket
+		case 439:
+			w, _ := m.Event.(*Event_TerminalInboundBytes)
+			if w == nil || w.TerminalInboundBytes == nil {
+				w = &Event_TerminalInboundBytes{TerminalInboundBytes: &TerminalInboundBytesEvent{}}
+				m.Event = w
+			}
+			sub = w.TerminalInboundBytes
+		case 440:
+			w, _ := m.Event.(*Event_TerminalInput)
+			if w == nil || w.TerminalInput == nil {
+				w = &Event_TerminalInput{TerminalInput: &TerminalInputAction{}}
+				m.Event = w
+			}
+			sub = w.TerminalInput
+		case 441:
+			w, _ := m.Event.(*Event_TerminalConfirmRebuild)
+			if w == nil || w.TerminalConfirmRebuild == nil {
+				w = &Event_TerminalConfirmRebuild{TerminalConfirmRebuild: &TerminalConfirmRebuildAction{}}
+				m.Event = w
+			}
+			sub = w.TerminalConfirmRebuild
 		case 450:
 			w, _ := m.Event.(*Event_SecurityConfig)
 			if w == nil || w.SecurityConfig == nil {
@@ -9051,6 +9171,24 @@ func (m *Event) extraUnmarshalPart18(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityKeySigned
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart19(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 453:
 			w, _ := m.Event.(*Event_SecurityKeyAgreed)
 			if w == nil || w.SecurityKeyAgreed == nil {
@@ -9093,24 +9231,6 @@ func (m *Event) extraUnmarshalPart18(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityKeyEncapsulated
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart19(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 461:
 			w, _ := m.Event.(*Event_SecurityStorageResult)
 			if w == nil || w.SecurityStorageResult == nil {
@@ -10845,6 +10965,34 @@ type Effect_SessionImageLoaded struct {
 
 func (*Effect_SessionImageLoaded) isEffect_Effect() {}
 
+type Effect_TerminalOpenSocket struct {
+	_                  [0]func()
+	TerminalOpenSocket *TerminalOpenSocketEffect
+}
+
+func (*Effect_TerminalOpenSocket) isEffect_Effect() {}
+
+type Effect_TerminalCloseSocket struct {
+	_                   [0]func()
+	TerminalCloseSocket *TerminalCloseSocketEffect
+}
+
+func (*Effect_TerminalCloseSocket) isEffect_Effect() {}
+
+type Effect_TerminalDeliverOutput struct {
+	_                     [0]func()
+	TerminalDeliverOutput *TerminalDeliverOutputEffect
+}
+
+func (*Effect_TerminalDeliverOutput) isEffect_Effect() {}
+
+type Effect_TerminalStateChanged struct {
+	_                    [0]func()
+	TerminalStateChanged *TerminalStateChangedEffect
+}
+
+func (*Effect_TerminalStateChanged) isEffect_Effect() {}
+
 type Effect_ScheduleMachinePoll struct {
 	_                   [0]func()
 	ScheduleMachinePoll *ScheduleMachinePollEffect
@@ -11446,6 +11594,30 @@ func (m *Effect) GetSessionImageLoaded() *SessionImageLoadedEffect {
 	}
 	return nil
 }
+func (m *Effect) GetTerminalOpenSocket() *TerminalOpenSocketEffect {
+	if x, ok := m.GetEffect().(*Effect_TerminalOpenSocket); ok && x != nil {
+		return x.TerminalOpenSocket
+	}
+	return nil
+}
+func (m *Effect) GetTerminalCloseSocket() *TerminalCloseSocketEffect {
+	if x, ok := m.GetEffect().(*Effect_TerminalCloseSocket); ok && x != nil {
+		return x.TerminalCloseSocket
+	}
+	return nil
+}
+func (m *Effect) GetTerminalDeliverOutput() *TerminalDeliverOutputEffect {
+	if x, ok := m.GetEffect().(*Effect_TerminalDeliverOutput); ok && x != nil {
+		return x.TerminalDeliverOutput
+	}
+	return nil
+}
+func (m *Effect) GetTerminalStateChanged() *TerminalStateChangedEffect {
+	if x, ok := m.GetEffect().(*Effect_TerminalStateChanged); ok && x != nil {
+		return x.TerminalStateChanged
+	}
+	return nil
+}
 func (m *Effect) GetScheduleMachinePoll() *ScheduleMachinePollEffect {
 	if x, ok := m.GetEffect().(*Effect_ScheduleMachinePoll); ok && x != nil {
 		return x.ScheduleMachinePoll
@@ -11996,17 +12168,17 @@ func (m *Effect) appendMarshalEffectPart1(b []byte) ([]byte, bool) {
 		if x != nil && x.SessionImageLoaded != nil {
 			onum, omsg = 23, x.SessionImageLoaded
 		}
-	case *Effect_ScheduleMachinePoll:
-		if x != nil && x.ScheduleMachinePoll != nil {
-			onum, omsg = 70, x.ScheduleMachinePoll
+	case *Effect_TerminalOpenSocket:
+		if x != nil && x.TerminalOpenSocket != nil {
+			onum, omsg = 24, x.TerminalOpenSocket
 		}
-	case *Effect_DirectPreference:
-		if x != nil && x.DirectPreference != nil {
-			onum, omsg = 71, x.DirectPreference
+	case *Effect_TerminalCloseSocket:
+		if x != nil && x.TerminalCloseSocket != nil {
+			onum, omsg = 25, x.TerminalCloseSocket
 		}
-	case *Effect_RenameClient:
-		if x != nil && x.RenameClient != nil {
-			onum, omsg = 72, x.RenameClient
+	case *Effect_TerminalDeliverOutput:
+		if x != nil && x.TerminalDeliverOutput != nil {
+			onum, omsg = 26, x.TerminalDeliverOutput
 		}
 	default:
 		return b, false
@@ -12022,6 +12194,22 @@ func (m *Effect) appendMarshalEffectPart2(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_TerminalStateChanged:
+		if x != nil && x.TerminalStateChanged != nil {
+			onum, omsg = 27, x.TerminalStateChanged
+		}
+	case *Effect_ScheduleMachinePoll:
+		if x != nil && x.ScheduleMachinePoll != nil {
+			onum, omsg = 70, x.ScheduleMachinePoll
+		}
+	case *Effect_DirectPreference:
+		if x != nil && x.DirectPreference != nil {
+			onum, omsg = 71, x.DirectPreference
+		}
+	case *Effect_RenameClient:
+		if x != nil && x.RenameClient != nil {
+			onum, omsg = 72, x.RenameClient
+		}
 	case *Effect_CheckUpdates:
 		if x != nil && x.CheckUpdates != nil {
 			onum, omsg = 73, x.CheckUpdates
@@ -12054,6 +12242,20 @@ func (m *Effect) appendMarshalEffectPart2(b []byte) ([]byte, bool) {
 		if x != nil && x.DraftStorageList != nil {
 			onum, omsg = 80, x.DraftStorageList
 		}
+	default:
+		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
+}
+
+//go:noinline
+func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Effect.(type) {
 	case *Effect_DraftStorageRead:
 		if x != nil && x.DraftStorageRead != nil {
 			onum, omsg = 81, x.DraftStorageRead
@@ -12070,20 +12272,6 @@ func (m *Effect) appendMarshalEffectPart2(b []byte) ([]byte, bool) {
 		if x != nil && x.DraftStorageClearAll != nil {
 			onum, omsg = 84, x.DraftStorageClearAll
 		}
-	default:
-		return b, false
-	}
-	if omsg != nil {
-		b = litewire.AppendMessage(b, onum, omsg)
-	}
-	return b, true
-}
-
-//go:noinline
-func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
-	var onum litewire.Number
-	var omsg litewire.Marshaler
-	switch x := m.Effect.(type) {
 	case *Effect_AttachmentPrepareImage:
 		if x != nil && x.AttachmentPrepareImage != nil {
 			onum, omsg = 85, x.AttachmentPrepareImage
@@ -12116,6 +12304,20 @@ func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
 		if x != nil && x.SharedFileInspectDisk != nil {
 			onum, omsg = 43, x.SharedFileInspectDisk
 		}
+	default:
+		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
+}
+
+//go:noinline
+func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Effect.(type) {
 	case *Effect_SharedFileWriteChunk:
 		if x != nil && x.SharedFileWriteChunk != nil {
 			onum, omsg = 44, x.SharedFileWriteChunk
@@ -12132,20 +12334,6 @@ func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
 		if x != nil && x.SharedFileDeleteLocal != nil {
 			onum, omsg = 47, x.SharedFileDeleteLocal
 		}
-	default:
-		return b, false
-	}
-	if omsg != nil {
-		b = litewire.AppendMessage(b, onum, omsg)
-	}
-	return b, true
-}
-
-//go:noinline
-func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
-	var onum litewire.Number
-	var omsg litewire.Marshaler
-	switch x := m.Effect.(type) {
 	case *Effect_SharedFileDeleteSession:
 		if x != nil && x.SharedFileDeleteSession != nil {
 			onum, omsg = 48, x.SharedFileDeleteSession
@@ -12178,6 +12366,20 @@ func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
 		if x != nil && x.ScheduleDismissNotifications != nil {
 			onum, omsg = 64, x.ScheduleDismissNotifications
 		}
+	default:
+		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
+}
+
+//go:noinline
+func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Effect.(type) {
 	case *Effect_ScheduleNavigate:
 		if x != nil && x.ScheduleNavigate != nil {
 			onum, omsg = 65, x.ScheduleNavigate
@@ -12194,20 +12396,6 @@ func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
 		if x != nil && x.DirectPcDescribe != nil {
 			onum, omsg = 104, x.DirectPcDescribe
 		}
-	default:
-		return b, false
-	}
-	if omsg != nil {
-		b = litewire.AppendMessage(b, onum, omsg)
-	}
-	return b, true
-}
-
-//go:noinline
-func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
-	var onum litewire.Number
-	var omsg litewire.Marshaler
-	switch x := m.Effect.(type) {
 	case *Effect_DirectPcSetRemote:
 		if x != nil && x.DirectPcSetRemote != nil {
 			onum, omsg = 105, x.DirectPcSetRemote
@@ -12240,6 +12428,20 @@ func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
 		if x != nil && x.DirectRetryNowResult != nil {
 			onum, omsg = 113, x.DirectRetryNowResult
 		}
+	default:
+		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
+}
+
+//go:noinline
+func (m *Effect) appendMarshalEffectPart6(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Effect.(type) {
 	case *Effect_TerminalHistorySendRequest:
 		if x != nil && x.TerminalHistorySendRequest != nil {
 			onum, omsg = 114, x.TerminalHistorySendRequest
@@ -12256,20 +12458,6 @@ func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
 		if x != nil && x.TerminalDirectSend != nil {
 			onum, omsg = 117, x.TerminalDirectSend
 		}
-	default:
-		return b, false
-	}
-	if omsg != nil {
-		b = litewire.AppendMessage(b, onum, omsg)
-	}
-	return b, true
-}
-
-//go:noinline
-func (m *Effect) appendMarshalEffectPart6(b []byte) ([]byte, bool) {
-	var onum litewire.Number
-	var omsg litewire.Marshaler
-	switch x := m.Effect.(type) {
 	case *Effect_TerminalDirectDeliver:
 		if x != nil && x.TerminalDirectDeliver != nil {
 			onum, omsg = 118, x.TerminalDirectDeliver
@@ -12302,6 +12490,20 @@ func (m *Effect) appendMarshalEffectPart6(b []byte) ([]byte, bool) {
 		if x != nil && x.SecurityKeyGenerate != nil {
 			onum, omsg = 137, x.SecurityKeyGenerate
 		}
+	default:
+		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
+}
+
+//go:noinline
+func (m *Effect) appendMarshalEffectPart7(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Effect.(type) {
 	case *Effect_SecurityKeyEncapsulate:
 		if x != nil && x.SecurityKeyEncapsulate != nil {
 			onum, omsg = 138, x.SecurityKeyEncapsulate
@@ -12318,20 +12520,6 @@ func (m *Effect) appendMarshalEffectPart6(b []byte) ([]byte, bool) {
 		if x != nil && x.SecurityRpc != nil {
 			onum, omsg = 141, x.SecurityRpc
 		}
-	default:
-		return b, false
-	}
-	if omsg != nil {
-		b = litewire.AppendMessage(b, onum, omsg)
-	}
-	return b, true
-}
-
-//go:noinline
-func (m *Effect) appendMarshalEffectPart7(b []byte) ([]byte, bool) {
-	var onum litewire.Number
-	var omsg litewire.Marshaler
-	switch x := m.Effect.(type) {
 	case *Effect_SecurityWorkflowResult:
 		if x != nil && x.SecurityWorkflowResult != nil {
 			onum, omsg = 142, x.SecurityWorkflowResult

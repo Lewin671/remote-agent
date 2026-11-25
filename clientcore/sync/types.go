@@ -241,24 +241,26 @@ type OpenedScheduleCache struct {
 
 // StepContext accumulates side effects, dirty flags, and settled command notifications for one Step call.
 type StepContext struct {
-	Raw                    []*corev1.Effect
-	Dirty                  DirtyFlags
-	Settled                []SettledCommand
-	OpenedScheduleCaches   []OpenedScheduleCache
-	SecurityWorkflowMeta   map[uint64]security.WorkflowMeta
-	SecurityNotifyOutcomes map[uint64]security.NotifyOutcome
-	SecurityBootstrapError security.BootstrapErrorMeta
+	Raw                       []*corev1.Effect
+	Dirty                     DirtyFlags
+	Settled                   []SettledCommand
+	OpenedScheduleCaches      []OpenedScheduleCache
+	DeliveredTermHistoryPages []DeliveredTermHistoryPage
+	SecurityWorkflowMeta      map[uint64]security.WorkflowMeta
+	SecurityNotifyOutcomes    map[uint64]security.NotifyOutcome
+	SecurityBootstrapError    security.BootstrapErrorMeta
 }
 
 // StepResult summarizes the outputs of Engine.Step or direct Engine calls.
 type StepResult struct {
-	Effects                []*corev1.Effect
-	Dirty                  DirtyFlags
-	Settled                []SettledCommand
-	OpenedScheduleCaches   []OpenedScheduleCache
-	SecurityWorkflowMeta   map[uint64]security.WorkflowMeta
-	SecurityNotifyOutcomes map[uint64]security.NotifyOutcome
-	SecurityBootstrapError security.BootstrapErrorMeta
+	Effects                   []*corev1.Effect
+	Dirty                     DirtyFlags
+	Settled                   []SettledCommand
+	OpenedScheduleCaches      []OpenedScheduleCache
+	DeliveredTermHistoryPages []DeliveredTermHistoryPage
+	SecurityWorkflowMeta      map[uint64]security.WorkflowMeta
+	SecurityNotifyOutcomes    map[uint64]security.NotifyOutcome
+	SecurityBootstrapError    security.BootstrapErrorMeta
 }
 
 // StepContext intentionally omits generic reflection; helper keeps Emit concise.
@@ -508,6 +510,8 @@ type Engine struct {
 	forwardRelayOpByAttempt map[string]uint64
 	authRetryInFlight       bool
 	authRetryQueue          []*pendingAuthRetry
+	activeTerminals         map[string]*activeTerminal
+	terminalOpenByReqID     map[string]string
 }
 
 type connStateSnap struct {
@@ -679,6 +683,7 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 			e.entropy.Append(ep.RandomBytes)
 			e.handleDirectRandomBytes(ctx, ep.RandomBytes)
 			e.emitSecurityEffects(ctx, e.secEngine.FlushEntropy())
+			e.resumeEntropyWaitingTerminals(ctx)
 		}
 		e.maybeRequestEntropy(ctx)
 		return true, e.finishStep(ctx)
@@ -835,6 +840,18 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 		e.handlePushRpcAction(ctx, k.PushRpc)
 	case *corev1.Event_SessionFetchImage:
 		e.handleSessionFetchImage(ctx, k.SessionFetchImage)
+	case *corev1.Event_TerminalOpen:
+		e.handleTerminalOpen(ctx, k.TerminalOpen)
+	case *corev1.Event_TerminalClose:
+		e.handleTerminalClose(ctx, k.TerminalClose)
+	case *corev1.Event_TerminalSocket:
+		e.handleTerminalSocket(ctx, k.TerminalSocket)
+	case *corev1.Event_TerminalInboundBytes:
+		e.handleTerminalInboundBytes(ctx, k.TerminalInboundBytes)
+	case *corev1.Event_TerminalInput:
+		e.handleTerminalInput(ctx, k.TerminalInput)
+	case *corev1.Event_TerminalConfirmRebuild:
+		e.handleTerminalConfirmRebuild(ctx, k.TerminalConfirmRebuild)
 	default:
 		consumed = false
 	}
@@ -849,13 +866,14 @@ func (e *Engine) finishStep(ctx *StepContext) StepResult {
 
 func finalizeResult(ctx *StepContext) StepResult {
 	return StepResult{
-		Effects:                ctx.Raw,
-		Dirty:                  ctx.Dirty,
-		Settled:                ctx.Settled,
-		OpenedScheduleCaches:   ctx.OpenedScheduleCaches,
-		SecurityWorkflowMeta:   ctx.SecurityWorkflowMeta,
-		SecurityNotifyOutcomes: ctx.SecurityNotifyOutcomes,
-		SecurityBootstrapError: ctx.SecurityBootstrapError,
+		Effects:                   ctx.Raw,
+		Dirty:                     ctx.Dirty,
+		Settled:                   ctx.Settled,
+		OpenedScheduleCaches:      ctx.OpenedScheduleCaches,
+		DeliveredTermHistoryPages: ctx.DeliveredTermHistoryPages,
+		SecurityWorkflowMeta:      ctx.SecurityWorkflowMeta,
+		SecurityNotifyOutcomes:    ctx.SecurityNotifyOutcomes,
+		SecurityBootstrapError:    ctx.SecurityBootstrapError,
 	}
 }
 

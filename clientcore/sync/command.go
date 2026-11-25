@@ -795,6 +795,10 @@ func (e *Engine) settleCommand(
 		e.onLivePollSettled(ctx, prep.RequestID, res)
 		return
 	}
+	if _, isTerm := e.terminalOpenByReqID[prep.RequestID]; isTerm {
+		e.onTerminalOpenCmdSettled(ctx, prep.RequestID, cat, errCode, errReason)
+		return
+	}
 
 	var frozen, trackerExpired bool
 	if prep.SlotKey != "" {

@@ -59,6 +59,16 @@ const (
 	SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_ERROR       SessionImageLoadStatus = 5
 )
 
+type TerminalLifecycleState int32
+
+const (
+	TerminalLifecycleState_TERMINAL_LIFECYCLE_STATE_UNSPECIFIED     TerminalLifecycleState = 0
+	TerminalLifecycleState_TERMINAL_LIFECYCLE_STATE_CONFIRM_INPUT   TerminalLifecycleState = 4
+	TerminalLifecycleState_TERMINAL_LIFECYCLE_STATE_CONFIRM_RESTART TerminalLifecycleState = 5
+	TerminalLifecycleState_TERMINAL_LIFECYCLE_STATE_REBUILD         TerminalLifecycleState = 6
+	TerminalLifecycleState_TERMINAL_LIFECYCLE_STATE_CLOSED          TerminalLifecycleState = 7
+)
+
 type RelayPipeConfigEvent struct {
 	_       [0]func()
 	Enabled bool
@@ -674,7 +684,755 @@ func (m *SessionImageLoadedEffect) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionImageLoadedEffect)
 }
 
+type TerminalOpenAction struct {
+	_          [0]func()
+	OpId       uint64
+	SessionId  string
+	MachineId  string
+	TerminalId string
+}
+
+func (m *TerminalOpenAction) GetOpId() uint64 {
+	if m != nil {
+		return m.OpId
+	}
+	return 0
+}
+func (m *TerminalOpenAction) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *TerminalOpenAction) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+func (m *TerminalOpenAction) GetTerminalId() string {
+	if m != nil {
+		return m.TerminalId
+	}
+	return ""
+}
+
+var LitewireDesc_TerminalOpenAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&TerminalOpenAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalOpenAction{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(TerminalOpenAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(TerminalOpenAction{}.MachineId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(TerminalOpenAction{}.TerminalId), Kind: litewire.KindString},
+	},
+}
+
+func (m *TerminalOpenAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalOpenAction)
+}
+
+type TerminalCloseAction struct {
+	_        [0]func()
+	StreamId string
+	OpId     uint64
+}
+
+func (m *TerminalCloseAction) GetStreamId() string {
+	if m != nil {
+		return m.StreamId
+	}
+	return ""
+}
+func (m *TerminalCloseAction) GetOpId() uint64 {
+	if m != nil {
+		return m.OpId
+	}
+	return 0
+}
+
+var LitewireDesc_TerminalCloseAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&TerminalCloseAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalCloseAction{}.StreamId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(TerminalCloseAction{}.OpId), Kind: litewire.KindUint64},
+	},
+}
+
+func (m *TerminalCloseAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalCloseAction)
+}
+
+type TerminalSocketEvent struct {
+	_               [0]func()
+	StreamId        string
+	LegId           []byte
+	Opened          bool
+	Closed          bool
+	PolicyViolation bool
+	Error           string
+}
+
+func (m *TerminalSocketEvent) GetStreamId() string {
+	if m != nil {
+		return m.StreamId
+	}
+	return ""
+}
+func (m *TerminalSocketEvent) GetLegId() []byte {
+	if m != nil {
+		return m.LegId
+	}
+	return nil
+}
+func (m *TerminalSocketEvent) GetOpened() bool {
+	if m != nil {
+		return m.Opened
+	}
+	return false
+}
+func (m *TerminalSocketEvent) GetClosed() bool {
+	if m != nil {
+		return m.Closed
+	}
+	return false
+}
+func (m *TerminalSocketEvent) GetPolicyViolation() bool {
+	if m != nil {
+		return m.PolicyViolation
+	}
+	return false
+}
+func (m *TerminalSocketEvent) GetError() string {
+	if m != nil {
+		return m.Error
+	}
+	return ""
+}
+
+var LitewireDesc_TerminalSocketEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&TerminalSocketEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalSocketEvent{}.StreamId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(TerminalSocketEvent{}.LegId), Kind: litewire.KindBytes},
+		{Num: 3, Offset: unsafe.Offsetof(TerminalSocketEvent{}.Opened), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(TerminalSocketEvent{}.Closed), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(TerminalSocketEvent{}.PolicyViolation), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(TerminalSocketEvent{}.Error), Kind: litewire.KindString},
+	},
+}
+
+func (m *TerminalSocketEvent) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalSocketEvent)
+}
+
+type TerminalInboundBytesEvent struct {
+	_           [0]func()
+	StreamId    string
+	RawEnvelope []byte
+	FromDirect  bool
+	PcId        uint64
+}
+
+func (m *TerminalInboundBytesEvent) GetStreamId() string {
+	if m != nil {
+		return m.StreamId
+	}
+	return ""
+}
+func (m *TerminalInboundBytesEvent) GetRawEnvelope() []byte {
+	if m != nil {
+		return m.RawEnvelope
+	}
+	return nil
+}
+func (m *TerminalInboundBytesEvent) GetFromDirect() bool {
+	if m != nil {
+		return m.FromDirect
+	}
+	return false
+}
+func (m *TerminalInboundBytesEvent) GetPcId() uint64 {
+	if m != nil {
+		return m.PcId
+	}
+	return 0
+}
+
+var LitewireDesc_TerminalInboundBytesEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&TerminalInboundBytesEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalInboundBytesEvent{}.StreamId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(TerminalInboundBytesEvent{}.RawEnvelope), Kind: litewire.KindBytes},
+		{Num: 3, Offset: unsafe.Offsetof(TerminalInboundBytesEvent{}.FromDirect), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(TerminalInboundBytesEvent{}.PcId), Kind: litewire.KindUint64},
+	},
+}
+
+func (m *TerminalInboundBytesEvent) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalInboundBytesEvent)
+}
+
+type TerminalResizeInput struct {
+	_    [0]func()
+	Cols int32
+	Rows int32
+	Fit  bool
+}
+
+func (m *TerminalResizeInput) GetCols() int32 {
+	if m != nil {
+		return m.Cols
+	}
+	return 0
+}
+func (m *TerminalResizeInput) GetRows() int32 {
+	if m != nil {
+		return m.Rows
+	}
+	return 0
+}
+func (m *TerminalResizeInput) GetFit() bool {
+	if m != nil {
+		return m.Fit
+	}
+	return false
+}
+
+var LitewireDesc_TerminalResizeInput = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&TerminalResizeInput{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalResizeInput{}.Cols), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(TerminalResizeInput{}.Rows), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(TerminalResizeInput{}.Fit), Kind: litewire.KindBool},
+	},
+}
+
+func (m *TerminalResizeInput) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalResizeInput)
+}
+
+type TerminalHistoryInput struct {
+	_         [0]func()
+	RequestId string
+	Cursor    string
+}
+
+func (m *TerminalHistoryInput) GetRequestId() string {
+	if m != nil {
+		return m.RequestId
+	}
+	return ""
+}
+func (m *TerminalHistoryInput) GetCursor() string {
+	if m != nil {
+		return m.Cursor
+	}
+	return ""
+}
+
+var LitewireDesc_TerminalHistoryInput = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&TerminalHistoryInput{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalHistoryInput{}.RequestId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(TerminalHistoryInput{}.Cursor), Kind: litewire.KindString},
+	},
+}
+
+func (m *TerminalHistoryInput) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalHistoryInput)
+}
+
+type TerminalInputAction struct {
+	_        [0]func()
+	StreamId string
+	Kind     isTerminalInputAction_Kind
+}
+
+type isTerminalInputAction_Kind interface{ isTerminalInputAction_Kind() }
+type TerminalInputAction_Input struct {
+	_     [0]func()
+	Input []byte
+}
+
+func (*TerminalInputAction_Input) isTerminalInputAction_Kind() {}
+
+type TerminalInputAction_Resize struct {
+	_      [0]func()
+	Resize *TerminalResizeInput
+}
+
+func (*TerminalInputAction_Resize) isTerminalInputAction_Kind() {}
+
+type TerminalInputAction_History struct {
+	_       [0]func()
+	History *TerminalHistoryInput
+}
+
+func (*TerminalInputAction_History) isTerminalInputAction_Kind() {}
+
+func (m *TerminalInputAction) GetKind() isTerminalInputAction_Kind {
+	if m != nil {
+		return m.Kind
+	}
+	return nil
+}
+func (m *TerminalInputAction) GetStreamId() string {
+	if m != nil {
+		return m.StreamId
+	}
+	return ""
+}
+func (m *TerminalInputAction) GetInput() []byte {
+	if x, ok := m.GetKind().(*TerminalInputAction_Input); ok && x != nil {
+		return x.Input
+	}
+	return nil
+}
+func (m *TerminalInputAction) GetResize() *TerminalResizeInput {
+	if x, ok := m.GetKind().(*TerminalInputAction_Resize); ok && x != nil {
+		return x.Resize
+	}
+	return nil
+}
+func (m *TerminalInputAction) GetHistory() *TerminalHistoryInput {
+	if x, ok := m.GetKind().(*TerminalInputAction_History); ok && x != nil {
+		return x.History
+	}
+	return nil
+}
+
+var LitewireDesc_TerminalInputAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&TerminalInputAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalInputAction{}.StreamId), Kind: litewire.KindString},
+	},
+}
+
+func (m *TerminalInputAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalInputAction)
+}
+
+func extraUnmarshal_TerminalInputAction(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*TerminalInputAction)(base)
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return false, err
+				}
+				m.Kind = &TerminalInputAction_Input{Input: v}
+				*bp = b
+				return true, nil
+			}
+		case 3:
+			w, _ := m.Kind.(*TerminalInputAction_Resize)
+			if w == nil || w.Resize == nil {
+				w = &TerminalInputAction_Resize{Resize: &TerminalResizeInput{}}
+				m.Kind = w
+			}
+			sub = w.Resize
+		case 4:
+			w, _ := m.Kind.(*TerminalInputAction_History)
+			if w == nil || w.History == nil {
+				w = &TerminalInputAction_History{History: &TerminalHistoryInput{}}
+				m.Kind = w
+			}
+			sub = w.History
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+type TerminalConfirmRebuildAction struct {
+	_        [0]func()
+	StreamId string
+}
+
+func (m *TerminalConfirmRebuildAction) GetStreamId() string {
+	if m != nil {
+		return m.StreamId
+	}
+	return ""
+}
+
+var LitewireDesc_TerminalConfirmRebuildAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&TerminalConfirmRebuildAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalConfirmRebuildAction{}.StreamId), Kind: litewire.KindString},
+	},
+}
+
+func (m *TerminalConfirmRebuildAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalConfirmRebuildAction)
+}
+
+type TerminalOpenSocketEffect struct {
+	_          [0]func()
+	OpId       uint64
+	StreamId   string
+	LegId      []byte
+	HelloBytes []byte
+	IsInitial  bool
+}
+
+func (m *TerminalOpenSocketEffect) GetOpId() uint64 {
+	if m != nil {
+		return m.OpId
+	}
+	return 0
+}
+func (m *TerminalOpenSocketEffect) GetStreamId() string {
+	if m != nil {
+		return m.StreamId
+	}
+	return ""
+}
+func (m *TerminalOpenSocketEffect) GetLegId() []byte {
+	if m != nil {
+		return m.LegId
+	}
+	return nil
+}
+func (m *TerminalOpenSocketEffect) GetHelloBytes() []byte {
+	if m != nil {
+		return m.HelloBytes
+	}
+	return nil
+}
+func (m *TerminalOpenSocketEffect) GetIsInitial() bool {
+	if m != nil {
+		return m.IsInitial
+	}
+	return false
+}
+
+var LitewireDesc_TerminalOpenSocketEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalOpenSocketEffect{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(TerminalOpenSocketEffect{}.StreamId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(TerminalOpenSocketEffect{}.LegId), Kind: litewire.KindBytes},
+		{Num: 4, Offset: unsafe.Offsetof(TerminalOpenSocketEffect{}.HelloBytes), Kind: litewire.KindBytes},
+		{Num: 5, Offset: unsafe.Offsetof(TerminalOpenSocketEffect{}.IsInitial), Kind: litewire.KindBool},
+	},
+}
+
+func (m *TerminalOpenSocketEffect) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *TerminalOpenSocketEffect) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalOpenSocketEffect)
+}
+
+type TerminalCloseSocketEffect struct {
+	_        [0]func()
+	StreamId string
+	LegId    []byte
+}
+
+func (m *TerminalCloseSocketEffect) GetStreamId() string {
+	if m != nil {
+		return m.StreamId
+	}
+	return ""
+}
+func (m *TerminalCloseSocketEffect) GetLegId() []byte {
+	if m != nil {
+		return m.LegId
+	}
+	return nil
+}
+
+var LitewireDesc_TerminalCloseSocketEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalCloseSocketEffect{}.StreamId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(TerminalCloseSocketEffect{}.LegId), Kind: litewire.KindBytes},
+	},
+}
+
+func (m *TerminalCloseSocketEffect) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *TerminalCloseSocketEffect) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalCloseSocketEffect)
+}
+
+type TerminalSnapshotFrame struct {
+	_    [0]func()
+	Cols int32
+	Rows int32
+	Data []byte
+}
+
+func (m *TerminalSnapshotFrame) GetCols() int32 {
+	if m != nil {
+		return m.Cols
+	}
+	return 0
+}
+func (m *TerminalSnapshotFrame) GetRows() int32 {
+	if m != nil {
+		return m.Rows
+	}
+	return 0
+}
+func (m *TerminalSnapshotFrame) GetData() []byte {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
+
+var LitewireDesc_TerminalSnapshotFrame = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalSnapshotFrame{}.Cols), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(TerminalSnapshotFrame{}.Rows), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(TerminalSnapshotFrame{}.Data), Kind: litewire.KindBytes},
+	},
+}
+
+func (m *TerminalSnapshotFrame) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *TerminalSnapshotFrame) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalSnapshotFrame)
+}
+
+type TerminalDeliveredFrame struct {
+	_    [0]func()
+	Kind isTerminalDeliveredFrame_Kind
+}
+
+type isTerminalDeliveredFrame_Kind interface{ isTerminalDeliveredFrame_Kind() }
+type TerminalDeliveredFrame_Output struct {
+	_      [0]func()
+	Output []byte
+}
+
+func (*TerminalDeliveredFrame_Output) isTerminalDeliveredFrame_Kind() {}
+
+type TerminalDeliveredFrame_Snapshot struct {
+	_        [0]func()
+	Snapshot *TerminalSnapshotFrame
+}
+
+func (*TerminalDeliveredFrame_Snapshot) isTerminalDeliveredFrame_Kind() {}
+
+type TerminalDeliveredFrame_Closed struct {
+	_      [0]func()
+	Closed string
+}
+
+func (*TerminalDeliveredFrame_Closed) isTerminalDeliveredFrame_Kind() {}
+
+func (m *TerminalDeliveredFrame) GetKind() isTerminalDeliveredFrame_Kind {
+	if m != nil {
+		return m.Kind
+	}
+	return nil
+}
+func (m *TerminalDeliveredFrame) GetOutput() []byte {
+	if x, ok := m.GetKind().(*TerminalDeliveredFrame_Output); ok && x != nil {
+		return x.Output
+	}
+	return nil
+}
+func (m *TerminalDeliveredFrame) GetSnapshot() *TerminalSnapshotFrame {
+	if x, ok := m.GetKind().(*TerminalDeliveredFrame_Snapshot); ok && x != nil {
+		return x.Snapshot
+	}
+	return nil
+}
+func (m *TerminalDeliveredFrame) GetClosed() string {
+	if x, ok := m.GetKind().(*TerminalDeliveredFrame_Closed); ok && x != nil {
+		return x.Closed
+	}
+	return ""
+}
+
+var LitewireDesc_TerminalDeliveredFrame = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: litewire.Number(1), Kind: litewire.KindCustom},
+	},
+}
+
+func (m *TerminalDeliveredFrame) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *TerminalDeliveredFrame) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalDeliveredFrame)
+}
+
+func extraMarshal_TerminalDeliveredFrame(base unsafe.Pointer, b []byte, idx litewire.Number) []byte {
+	m := (*TerminalDeliveredFrame)(base)
+	switch x := m.Kind.(type) {
+	case *TerminalDeliveredFrame_Output:
+		if x != nil {
+			b = litewire.AppendBytesAlways(b, 1, x.Output)
+		}
+	case *TerminalDeliveredFrame_Snapshot:
+		if x != nil {
+			if x.Snapshot != nil {
+				b = litewire.AppendMessage(b, 2, x.Snapshot)
+			}
+		}
+	case *TerminalDeliveredFrame_Closed:
+		if x != nil {
+			b = litewire.AppendStringAlways(b, 3, x.Closed)
+		}
+	}
+	return b
+}
+
+type TerminalDeliverOutputEffect struct {
+	_              [0]func()
+	StreamId       string
+	Frames         []*TerminalDeliveredFrame
+	ConsumedFrames uint32
+	ConsumedBytes  uint32
+}
+
+func (m *TerminalDeliverOutputEffect) GetStreamId() string {
+	if m != nil {
+		return m.StreamId
+	}
+	return ""
+}
+func (m *TerminalDeliverOutputEffect) GetFrames() []*TerminalDeliveredFrame {
+	if m != nil {
+		return m.Frames
+	}
+	return nil
+}
+func (m *TerminalDeliverOutputEffect) GetConsumedFrames() uint32 {
+	if m != nil {
+		return m.ConsumedFrames
+	}
+	return 0
+}
+func (m *TerminalDeliverOutputEffect) GetConsumedBytes() uint32 {
+	if m != nil {
+		return m.ConsumedBytes
+	}
+	return 0
+}
+
+var LitewireDesc_TerminalDeliverOutputEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalDeliverOutputEffect{}.StreamId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(TerminalDeliverOutputEffect{}.Frames), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_TerminalDeliveredFrame},
+		{Num: 3, Offset: unsafe.Offsetof(TerminalDeliverOutputEffect{}.ConsumedFrames), Kind: litewire.KindUint32},
+		{Num: 4, Offset: unsafe.Offsetof(TerminalDeliverOutputEffect{}.ConsumedBytes), Kind: litewire.KindUint32},
+	},
+}
+
+func (m *TerminalDeliverOutputEffect) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *TerminalDeliverOutputEffect) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalDeliverOutputEffect)
+}
+
+type TerminalStateChangedEffect struct {
+	_           [0]func()
+	OpId        uint64
+	StreamId    string
+	State       TerminalLifecycleState
+	ReasonText  *Text
+	ReasonCode  string
+	OpenSettled bool
+	OpenOk      bool
+	OpenError   *Text
+}
+
+func (m *TerminalStateChangedEffect) GetOpId() uint64 {
+	if m != nil {
+		return m.OpId
+	}
+	return 0
+}
+func (m *TerminalStateChangedEffect) GetStreamId() string {
+	if m != nil {
+		return m.StreamId
+	}
+	return ""
+}
+func (m *TerminalStateChangedEffect) GetState() TerminalLifecycleState {
+	if m != nil {
+		return m.State
+	}
+	return 0
+}
+func (m *TerminalStateChangedEffect) GetReasonText() *Text {
+	if m != nil {
+		return m.ReasonText
+	}
+	return nil
+}
+func (m *TerminalStateChangedEffect) GetReasonCode() string {
+	if m != nil {
+		return m.ReasonCode
+	}
+	return ""
+}
+func (m *TerminalStateChangedEffect) GetOpenSettled() bool {
+	if m != nil {
+		return m.OpenSettled
+	}
+	return false
+}
+func (m *TerminalStateChangedEffect) GetOpenOk() bool {
+	if m != nil {
+		return m.OpenOk
+	}
+	return false
+}
+func (m *TerminalStateChangedEffect) GetOpenError() *Text {
+	if m != nil {
+		return m.OpenError
+	}
+	return nil
+}
+
+var LitewireDesc_TerminalStateChangedEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalStateChangedEffect{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(TerminalStateChangedEffect{}.StreamId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(TerminalStateChangedEffect{}.State), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(TerminalStateChangedEffect{}.ReasonText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(TerminalStateChangedEffect{}.ReasonCode), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(TerminalStateChangedEffect{}.OpenSettled), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(TerminalStateChangedEffect{}.OpenOk), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(TerminalStateChangedEffect{}.OpenError), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
+
+func (m *TerminalStateChangedEffect) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *TerminalStateChangedEffect) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalStateChangedEffect)
+}
+
 func init() {
 	LitewireDesc_RelayRpcResultEvent.ExtraUnmarshal = extraUnmarshal_RelayRpcResultEvent
 	LitewireDesc_PushRpcAction.ExtraUnmarshal = extraUnmarshal_PushRpcAction
+	LitewireDesc_TerminalInputAction.ExtraUnmarshal = extraUnmarshal_TerminalInputAction
+	LitewireDesc_TerminalDeliveredFrame.ExtraMarshal = extraMarshal_TerminalDeliveredFrame
 }

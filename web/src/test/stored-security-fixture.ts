@@ -12,7 +12,24 @@ import { concat, fromHex, utf8 } from "../crypto";
 import { SecurityKeyKind, SecurityStoreBucket } from "../gen/remoteagent/core/v1/security_pb";
 import { EnvelopeSchema, HeaderSchema, type Envelope } from "../gen/remoteagent/v1/envelope_pb";
 import type { Event } from "../gen/remoteagent/v1/event_pb";
-import { Purpose, SecurityError } from "../remote";
+import { SecurityError } from "../remote";
+
+export enum Purpose {
+  Event = 1,
+  SessionMeta = 2,
+  SessionKey = 3,
+  MachineMeta = 4,
+  Command = 5,
+  Result = 6,
+  TerminalOutput = 7,
+  TerminalInput = 8,
+  Notify = 10,
+  Image = 11,
+  Prefs = 12,
+  DeviceMeta = 13,
+  TerminalResize = 14,
+  TerminalHistory = 15,
+}
 import vectors from "../../../internal/deviceauth/testdata/domain-v3.json";
 
 type B = Uint8Array<ArrayBuffer>;

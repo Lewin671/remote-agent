@@ -149,3 +149,5 @@ in: remoteagent.v1.UsageStatsResponse
 out: remoteagent.v1.UsageStatsResponse
 out: remoteagent.v1.GetImageRequest
 in: remoteagent.v1.GetImageResponse
+out: remoteagent.v1.TermHello
+out: remoteagent.v1.TerminalFrame

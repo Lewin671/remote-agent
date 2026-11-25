@@ -78,13 +78,13 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		if len(e.buffers) > 0 {
 			e.scheduleTimer(ctx, corev1.TimerKind_TIMER_KIND_HISTORY_SWEEP, "", HistorySweepIntervalMs)
 		}
+		if len(e.prefsQueue) > 0 && e.prefsQueue[0].ActiveOpID == 0 {
+			e.startNextPrefsOp(ctx)
+		}
 		c := e.ensureTransportCoord()
 		e.emitCoordEffects(ctx, c.SetLifecycle(e.nowMs, true))
 		e.emitCoordEffects(ctx, c.SetMainLeg(e.nowMs, false))
 		e.beginConnect(ctx)
-		if len(e.prefsQueue) > 0 && e.prefsQueue[0].ActiveOpID == 0 {
-			e.startNextPrefsOp(ctx)
-		}
 		ctx.Dirty.MarkAll()
 
 	case corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_STOP:
@@ -130,6 +130,7 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		e.updateLivePollers(ctx)
 		e.cancelAllTimers(ctx)
 		e.cancelAllSyncRelayRpcs(ctx)
+		e.closeAllActiveTerminals(ctx)
 		if e.relayPipe && e.secEngine != nil {
 			e.emitSecurityEffects(ctx, e.secEngine.CancelAuthToken())
 		}

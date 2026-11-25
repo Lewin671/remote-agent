@@ -247,7 +247,7 @@ class RemoteTerminal(
                             }
                         }
                     }
-                })
+                }, terminalId)
                 if (gen == generation) { conn = c; goLive() } else c.close()
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
@@ -277,12 +277,6 @@ class RemoteTerminal(
 
     private fun apply(f: TerminalFrame) {
         when (f.kindCase) {
-            TerminalFrame.KindCase.HISTORY_PAGE ->
-                remote.coreHost.sendTerminalHistory(
-                    terminalId,
-                    TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_PAGE_RECEIVED,
-                    f.historyPage,
-                )
             TerminalFrame.KindCase.SNAPSHOT -> {
                 val s = f.snapshot
                 session.snapshot(s.cols, s.rows, s.data.toByteArray())

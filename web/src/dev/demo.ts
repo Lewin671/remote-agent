@@ -3902,6 +3902,7 @@ export class DemoRemote extends Remote {
     onClose: (reason: string) => void,
     _signal?: AbortSignal,
     _onStateChange?: Parameters<Remote["openTerminal"]>[4],
+    _terminalId?: string,
   ): Promise<TermConn> {
     await this.pause(400);
     let open = true;

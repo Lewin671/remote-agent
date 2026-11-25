@@ -175,6 +175,7 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 		}
 		screens.DecorateSecurityEffects(effects, syncRes.SecurityWorkflowMeta, syncRes.SecurityNotifyOutcomes, syncRes.SecurityBootstrapError, nowMs)
 		decorateSessionImageEffects(effects)
+		decorateTerminalStateEffects(effects)
 		if r := renderEffect(syncRes.Dirty); r != nil {
 			effects = append(effects, r)
 		}
@@ -205,6 +206,7 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 	}
 	screens.DecorateSecurityEffects(effects, stepRes.SecurityWorkflowMeta, stepRes.SecurityNotifyOutcomes, stepRes.SecurityBootstrapError, nowMs)
 	decorateSessionImageEffects(effects)
+	decorateTerminalStateEffects(effects)
 	if r := renderEffect(stepRes.Dirty); r != nil {
 		effects = append(effects, r)
 	}
@@ -262,6 +264,56 @@ func decorateSessionImageEffects(effects []*corev1.Effect) {
 	}
 }
 
+func decorateTerminalStateEffects(effects []*corev1.Effect) {
+	for _, eff := range effects {
+		st := eff.GetTerminalStateChanged()
+		if st == nil {
+			continue
+		}
+		if st.ReasonText == nil {
+			switch st.State {
+			case corev1.TerminalLifecycleState_TERMINAL_LIFECYCLE_STATE_REBUILD:
+				st.ReasonText = text.Msg(text.KeyErrorsTerminalConnectionClosed)
+			case corev1.TerminalLifecycleState_TERMINAL_LIFECYCLE_STATE_CLOSED:
+				switch st.ReasonCode {
+				case "conflict":
+					st.ReasonText = text.Msg(text.KeyErrorsTerminalFramesAreOutOfOrder)
+				case "replay_overflow":
+					st.ReasonText = text.Msg(text.KeyTerminalReplayOverflow)
+				case "backlog":
+					st.ReasonText = text.Msg(text.KeyErrorsTerminalOutputBacklogReconnectForTheLatestDisplay)
+				case "input_backlog":
+					st.ReasonText = text.Msg(text.KeyErrorsTerminalInputBacklogReconnect)
+				case "not_found":
+					st.ReasonText = text.Msg(text.KeyCommonCannotFindThisSession)
+				case "canceled":
+					st.ReasonText = text.Msg(text.KeyErrorsTerminalConnectionCanceled)
+				case "closed":
+					st.ReasonText = text.Msg(text.KeyErrorsTerminalConnectionClosed)
+				case "connect_error":
+					st.ReasonText = text.Msg(text.KeyErrorsCannotConnectToTerminal)
+				case "timeout":
+					st.ReasonText = text.Msg(text.KeyErrorsTerminalConnectionTimedOutReconnect)
+				case "lease":
+					st.ReasonText = text.Msg(text.KeyErrorsRemoteControlExpiredSavingChangesSessionControlAndNew)
+				case "unavailable":
+					st.ReasonText = text.Msg(text.KeyErrorsWaitingForTheOwningComputerToUpdateTheCurrentRemote)
+				case "invalid", "untrusted":
+					st.ReasonText = text.Msg(text.KeyErrorsInvalidCiphertextSignatureKeyOrContentVerificationFailed)
+				default:
+					st.ReasonText = text.Msg(text.KeyErrorsTerminalConnectionDropped)
+				}
+			}
+		} else if st.State == corev1.TerminalLifecycleState_TERMINAL_LIFECYCLE_STATE_CLOSED &&
+			st.ReasonCode == "socket_error" && st.ReasonText.Key == "" && st.ReasonText.Literal != "" {
+			st.ReasonText = text.Msg(text.KeyErrorsTerminalConnectionDroppedReason, text.Str("reason", st.ReasonText.Literal))
+		}
+		if st.OpenSettled && !st.OpenOk && st.OpenError == nil {
+			st.OpenError = st.ReasonText
+		}
+	}
+}
+
 func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.DirtyFlags) {
 	c.m.decodeScopeIfReady()
 	if c.m.sessions != nil {
@@ -274,6 +326,20 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 
 	var effects []*corev1.Effect
 	var dirty sync.DirtyFlags
+	if len(res.DeliveredTermHistoryPages) > 0 && c.m.termHistories != nil {
+		prev, thCtx := c.m.sync.BeginStep()
+		for _, item := range res.DeliveredTermHistoryPages {
+			if item.TerminalID == "" || item.Page == nil {
+				continue
+			}
+			if h := c.m.termHistories[item.TerminalID]; h != nil {
+				tr := h.ReceivePage(item.Page)
+				effects = append(effects, c.applyTermHistoryTransition(thCtx, item.TerminalID, h, tr)...)
+			}
+		}
+		thRes := c.m.sync.EndStep(prev, thCtx)
+		effects = append(effects, thRes.Effects...)
+	}
 	for _, eff := range res.Effects {
 		if req := eff.GetUsageCacheRequest(); req != nil && req.DeleteCache && req.MachineId != "" {
 			c.forgetUsageMachine(req.MachineId)
