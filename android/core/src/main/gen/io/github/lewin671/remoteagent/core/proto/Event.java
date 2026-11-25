@@ -93,6 +93,7 @@ public  final class Event extends
     USAGE_SCREEN_SELECT_SERIES(384),
     USAGE_SCREEN_SCRUB(385),
     RESOLVE_NOTIFICATION_TAP(390),
+    NEW_SESSION_CLOSE(391),
     UPDATE_CLIENT_NAME(370),
     SET_NOTIFICATION_PREF(375),
     SET_APPEARANCE_PREF(376),
@@ -332,6 +333,7 @@ public  final class Event extends
         case 384: return USAGE_SCREEN_SELECT_SERIES;
         case 385: return USAGE_SCREEN_SCRUB;
         case 390: return RESOLVE_NOTIFICATION_TAP;
+        case 391: return NEW_SESSION_CLOSE;
         case 370: return UPDATE_CLIENT_NAME;
         case 375: return SET_NOTIFICATION_PREF;
         case 376: return SET_APPEARANCE_PREF;
@@ -4199,6 +4201,10 @@ public  final class Event extends
 
   public static final int RESOLVE_NOTIFICATION_TAP_FIELD_NUMBER = 390;
   /**
+   * <pre>
+   * P2-4 housekeeping &amp; cache gate events (390-394).
+   * </pre>
+   *
    * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
    */
   @java.lang.Override
@@ -4206,6 +4212,10 @@ public  final class Event extends
     return eventCase_ == 390;
   }
   /**
+   * <pre>
+   * P2-4 housekeeping &amp; cache gate events (390-394).
+   * </pre>
+   *
    * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
    */
   @java.lang.Override
@@ -4216,6 +4226,10 @@ public  final class Event extends
     return io.github.lewin671.remoteagent.core.proto.ResolveNotificationTapAction.getDefaultInstance();
   }
   /**
+   * <pre>
+   * P2-4 housekeeping &amp; cache gate events (390-394).
+   * </pre>
+   *
    * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
@@ -4225,6 +4239,10 @@ public  final class Event extends
     eventCase_ = 390;
   }
   /**
+   * <pre>
+   * P2-4 housekeeping &amp; cache gate events (390-394).
+   * </pre>
+   *
    * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
@@ -4240,10 +4258,66 @@ public  final class Event extends
     eventCase_ = 390;
   }
   /**
+   * <pre>
+   * P2-4 housekeeping &amp; cache gate events (390-394).
+   * </pre>
+   *
    * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
    */
   private void clearResolveNotificationTap() {
     if (eventCase_ == 390) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int NEW_SESSION_CLOSE_FIELD_NUMBER = 391;
+  /**
+   * <code>.remoteagent.core.v1.NewSessionCloseAction new_session_close = 391 [json_name = "newSessionClose"];</code>
+   */
+  @java.lang.Override
+  public boolean hasNewSessionClose() {
+    return eventCase_ == 391;
+  }
+  /**
+   * <code>.remoteagent.core.v1.NewSessionCloseAction new_session_close = 391 [json_name = "newSessionClose"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.NewSessionCloseAction getNewSessionClose() {
+    if (eventCase_ == 391) {
+       return (io.github.lewin671.remoteagent.core.proto.NewSessionCloseAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.NewSessionCloseAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.NewSessionCloseAction new_session_close = 391 [json_name = "newSessionClose"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setNewSessionClose(io.github.lewin671.remoteagent.core.proto.NewSessionCloseAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 391;
+  }
+  /**
+   * <code>.remoteagent.core.v1.NewSessionCloseAction new_session_close = 391 [json_name = "newSessionClose"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeNewSessionClose(io.github.lewin671.remoteagent.core.proto.NewSessionCloseAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 391 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.NewSessionCloseAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.NewSessionCloseAction.newBuilder((io.github.lewin671.remoteagent.core.proto.NewSessionCloseAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 391;
+  }
+  /**
+   * <code>.remoteagent.core.v1.NewSessionCloseAction new_session_close = 391 [json_name = "newSessionClose"];</code>
+   */
+  private void clearNewSessionClose() {
+    if (eventCase_ == 391) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -15909,6 +15983,10 @@ public  final class Event extends
     }
 
     /**
+     * <pre>
+     * P2-4 housekeeping &amp; cache gate events (390-394).
+     * </pre>
+     *
      * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
      */
     @java.lang.Override
@@ -15916,6 +15994,10 @@ public  final class Event extends
       return instance.hasResolveNotificationTap();
     }
     /**
+     * <pre>
+     * P2-4 housekeeping &amp; cache gate events (390-394).
+     * </pre>
+     *
      * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
      */
     @java.lang.Override
@@ -15923,6 +16005,10 @@ public  final class Event extends
       return instance.getResolveNotificationTap();
     }
     /**
+     * <pre>
+     * P2-4 housekeeping &amp; cache gate events (390-394).
+     * </pre>
+     *
      * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
      */
     public Builder setResolveNotificationTap(io.github.lewin671.remoteagent.core.proto.ResolveNotificationTapAction value) {
@@ -15931,6 +16017,10 @@ public  final class Event extends
       return this;
     }
     /**
+     * <pre>
+     * P2-4 housekeeping &amp; cache gate events (390-394).
+     * </pre>
+     *
      * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
      */
     public Builder setResolveNotificationTap(
@@ -15940,6 +16030,10 @@ public  final class Event extends
       return this;
     }
     /**
+     * <pre>
+     * P2-4 housekeeping &amp; cache gate events (390-394).
+     * </pre>
+     *
      * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
      */
     public Builder mergeResolveNotificationTap(io.github.lewin671.remoteagent.core.proto.ResolveNotificationTapAction value) {
@@ -15948,11 +16042,63 @@ public  final class Event extends
       return this;
     }
     /**
+     * <pre>
+     * P2-4 housekeeping &amp; cache gate events (390-394).
+     * </pre>
+     *
      * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
      */
     public Builder clearResolveNotificationTap() {
       copyOnWrite();
       instance.clearResolveNotificationTap();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.NewSessionCloseAction new_session_close = 391 [json_name = "newSessionClose"];</code>
+     */
+    @java.lang.Override
+    public boolean hasNewSessionClose() {
+      return instance.hasNewSessionClose();
+    }
+    /**
+     * <code>.remoteagent.core.v1.NewSessionCloseAction new_session_close = 391 [json_name = "newSessionClose"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.NewSessionCloseAction getNewSessionClose() {
+      return instance.getNewSessionClose();
+    }
+    /**
+     * <code>.remoteagent.core.v1.NewSessionCloseAction new_session_close = 391 [json_name = "newSessionClose"];</code>
+     */
+    public Builder setNewSessionClose(io.github.lewin671.remoteagent.core.proto.NewSessionCloseAction value) {
+      copyOnWrite();
+      instance.setNewSessionClose(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.NewSessionCloseAction new_session_close = 391 [json_name = "newSessionClose"];</code>
+     */
+    public Builder setNewSessionClose(
+        io.github.lewin671.remoteagent.core.proto.NewSessionCloseAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setNewSessionClose(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.NewSessionCloseAction new_session_close = 391 [json_name = "newSessionClose"];</code>
+     */
+    public Builder mergeNewSessionClose(io.github.lewin671.remoteagent.core.proto.NewSessionCloseAction value) {
+      copyOnWrite();
+      instance.mergeNewSessionClose(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.NewSessionCloseAction new_session_close = 391 [json_name = "newSessionClose"];</code>
+     */
+    public Builder clearNewSessionClose() {
+      copyOnWrite();
+      instance.clearNewSessionClose();
       return this;
     }
 
@@ -23699,6 +23845,7 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSeriesEvent.class,
             io.github.lewin671.remoteagent.core.proto.UsageScreenScrubEvent.class,
             io.github.lewin671.remoteagent.core.proto.ResolveNotificationTapAction.class,
+            io.github.lewin671.remoteagent.core.proto.NewSessionCloseAction.class,
             io.github.lewin671.remoteagent.core.proto.TransportConfigEvent.class,
             io.github.lewin671.remoteagent.core.proto.DirectSignalReceivedEvent.class,
             io.github.lewin671.remoteagent.core.proto.DirectSignalDeliveryEvent.class,
@@ -23741,7 +23888,7 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.SecurityOpenNotifyEvent.class,
           };
           java.lang.String info =
-              "\u0000\u00e4\u0001\u0000\u0001\u01d1\u00e4\u0000\u0002\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u00e5\u0001\u0000\u0001\u01d1\u00e5\u0000\u0002\u0000\u0001<\u0000\u0002<" +
               "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000" +
               "\t<\u0000\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010" +
               "<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000" +
@@ -23768,14 +23915,14 @@ public  final class Event extends
               "<\u0000\u015e<\u0000\u015f<\u0000\u0160<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000" +
               "\u0168<\u0000\u0169<\u0000\u016a<\u0000\u016b<\u0000\u016c<\u0000\u016e<\u0000\u0172" +
               "<\u0000\u0177<\u0000\u0178<\u0000\u0179<\u0000\u017a<\u0000\u017b<\u0000\u017c<\u0000" +
-              "\u017d<\u0000\u017e<\u0000\u017f<\u0000\u0180<\u0000\u0181<\u0000\u0186<\u0000\u0190" +
-              "<\u0000\u0192<\u0000\u0193<\u0000\u0196<\u0000\u0197<\u0000\u0198<\u0000\u0199<\u0000" +
-              "\u019a<\u0000\u019b<\u0000\u019c<\u0000\u019d<\u0000\u019e<\u0000\u019f<\u0000\u01a0" +
-              "<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000\u01a4<\u0000\u01a5<\u0000\u01a6<\u0000" +
-              "\u01a7<\u0000\u01a8<\u0000\u01a9<\u0000\u01aa<\u0000\u01ab<\u0000\u01ac<\u0000\u01ad" +
-              "<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000\u01c9<\u0000\u01ca<\u0000" +
-              "\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01ce<\u0000\u01cf<\u0000\u01d0<\u0000\u01d1" +
-              "<\u0000";
+              "\u017d<\u0000\u017e<\u0000\u017f<\u0000\u0180<\u0000\u0181<\u0000\u0186<\u0000\u0187" +
+              "<\u0000\u0190<\u0000\u0192<\u0000\u0193<\u0000\u0196<\u0000\u0197<\u0000\u0198<\u0000" +
+              "\u0199<\u0000\u019a<\u0000\u019b<\u0000\u019c<\u0000\u019d<\u0000\u019e<\u0000\u019f" +
+              "<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000\u01a4<\u0000\u01a5<\u0000" +
+              "\u01a6<\u0000\u01a7<\u0000\u01a8<\u0000\u01a9<\u0000\u01aa<\u0000\u01ab<\u0000\u01ac" +
+              "<\u0000\u01ad<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000\u01c9<\u0000" +
+              "\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01ce<\u0000\u01cf<\u0000\u01d0" +
+              "<\u0000\u01d1<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

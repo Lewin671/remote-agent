@@ -792,15 +792,34 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.UsageScreenScrubEvent getUsageScreenScrub();
 
   /**
+   * <pre>
+   * P2-4 housekeeping &amp; cache gate events (390-394).
+   * </pre>
+   *
    * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
    * @return Whether the resolveNotificationTap field is set.
    */
   boolean hasResolveNotificationTap();
   /**
+   * <pre>
+   * P2-4 housekeeping &amp; cache gate events (390-394).
+   * </pre>
+   *
    * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
    * @return The resolveNotificationTap.
    */
   io.github.lewin671.remoteagent.core.proto.ResolveNotificationTapAction getResolveNotificationTap();
+
+  /**
+   * <code>.remoteagent.core.v1.NewSessionCloseAction new_session_close = 391 [json_name = "newSessionClose"];</code>
+   * @return Whether the newSessionClose field is set.
+   */
+  boolean hasNewSessionClose();
+  /**
+   * <code>.remoteagent.core.v1.NewSessionCloseAction new_session_close = 391 [json_name = "newSessionClose"];</code>
+   * @return The newSessionClose.
+   */
+  io.github.lewin671.remoteagent.core.proto.NewSessionCloseAction getNewSessionClose();
 
   /**
    * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>

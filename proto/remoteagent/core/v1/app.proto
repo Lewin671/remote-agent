@@ -488,6 +488,10 @@ message NewSessionOpenAction {
   string project_key = 1;
 }
 
+message NewSessionCloseAction {
+  string project_key = 1;
+}
+
 message NewSessionSelectProjectAction {
   string project_key = 1;
 }
@@ -593,7 +597,9 @@ message Event {
     UsageScreenSelectSortEvent usage_screen_select_sort = 383;
     UsageScreenSelectSeriesEvent usage_screen_select_series = 384;
     UsageScreenScrubEvent usage_screen_scrub = 385;
+    // P2-4 housekeeping & cache gate events (390-394).
     ResolveNotificationTapAction resolve_notification_tap = 390;
+    NewSessionCloseAction new_session_close = 391;
     UpdateClientNameEvent update_client_name = 370;
     SetNotificationPrefEvent set_notification_pref = 375;
     SetAppearancePrefEvent set_appearance_pref = 376;

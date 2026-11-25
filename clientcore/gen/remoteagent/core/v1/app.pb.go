@@ -3825,6 +3825,29 @@ func (m *NewSessionOpenAction) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_NewSessionOpenAction)
 }
 
+type NewSessionCloseAction struct {
+	_          [0]func()
+	ProjectKey string
+}
+
+func (m *NewSessionCloseAction) GetProjectKey() string {
+	if m != nil {
+		return m.ProjectKey
+	}
+	return ""
+}
+
+var LitewireDesc_NewSessionCloseAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&NewSessionCloseAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(NewSessionCloseAction{}.ProjectKey), Kind: litewire.KindString},
+	},
+}
+
+func (m *NewSessionCloseAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_NewSessionCloseAction)
+}
+
 type NewSessionSelectProjectAction struct {
 	_          [0]func()
 	ProjectKey string
@@ -4526,6 +4549,13 @@ type Event_ResolveNotificationTap struct {
 }
 
 func (*Event_ResolveNotificationTap) isEvent_Event() {}
+
+type Event_NewSessionClose struct {
+	_               [0]func()
+	NewSessionClose *NewSessionCloseAction
+}
+
+func (*Event_NewSessionClose) isEvent_Event() {}
 
 type Event_UpdateClientName struct {
 	_                [0]func()
@@ -6029,6 +6059,12 @@ func (m *Event) GetResolveNotificationTap() *ResolveNotificationTapAction {
 	}
 	return nil
 }
+func (m *Event) GetNewSessionClose() *NewSessionCloseAction {
+	if x, ok := m.GetEvent().(*Event_NewSessionClose); ok && x != nil {
+		return x.NewSessionClose
+	}
+	return nil
+}
 func (m *Event) GetUpdateClientName() *UpdateClientNameEvent {
 	if x, ok := m.GetEvent().(*Event_UpdateClientName); ok && x != nil {
 		return x.UpdateClientName
@@ -7013,11 +7049,11 @@ func extraUnmarshal_Event(base unsafe.Pointer, num litewire.Number, wtyp litewir
 		return m.extraUnmarshalPart13(num, wtyp, bp)
 	case num <= 382:
 		return m.extraUnmarshalPart14(num, wtyp, bp)
-	case num <= 410:
+	case num <= 409:
 		return m.extraUnmarshalPart15(num, wtyp, bp)
-	case num <= 422:
+	case num <= 421:
 		return m.extraUnmarshalPart16(num, wtyp, bp)
-	case num <= 457:
+	case num <= 456:
 		return m.extraUnmarshalPart17(num, wtyp, bp)
 	case num <= 465:
 		return m.extraUnmarshalPart18(num, wtyp, bp)
@@ -8589,6 +8625,13 @@ func (m *Event) extraUnmarshalPart15(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.ResolveNotificationTap
+		case 391:
+			w, _ := m.Event.(*Event_NewSessionClose)
+			if w == nil || w.NewSessionClose == nil {
+				w = &Event_NewSessionClose{NewSessionClose: &NewSessionCloseAction{}}
+				m.Event = w
+			}
+			sub = w.NewSessionClose
 		case 400:
 			w, _ := m.Event.(*Event_TransportConfig)
 			if w == nil || w.TransportConfig == nil {
@@ -8638,13 +8681,6 @@ func (m *Event) extraUnmarshalPart15(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.DirectPcCandidatesAdded
-		case 410:
-			w, _ := m.Event.(*Event_DirectPcLocalCandidate)
-			if w == nil || w.DirectPcLocalCandidate == nil {
-				w = &Event_DirectPcLocalCandidate{DirectPcLocalCandidate: &DirectPcLocalCandidateEvent{}}
-				m.Event = w
-			}
-			sub = w.DirectPcLocalCandidate
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -8663,6 +8699,13 @@ func (m *Event) extraUnmarshalPart16(num litewire.Number, wtyp litewire.Type, bp
 	var sub litewire.Unmarshaler
 	if wtyp == litewire.BytesType {
 		switch num {
+		case 410:
+			w, _ := m.Event.(*Event_DirectPcLocalCandidate)
+			if w == nil || w.DirectPcLocalCandidate == nil {
+				w = &Event_DirectPcLocalCandidate{DirectPcLocalCandidate: &DirectPcLocalCandidateEvent{}}
+				m.Event = w
+			}
+			sub = w.DirectPcLocalCandidate
 		case 411:
 			w, _ := m.Event.(*Event_DirectPcState)
 			if w == nil || w.DirectPcState == nil {
@@ -8740,13 +8783,6 @@ func (m *Event) extraUnmarshalPart16(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.DirectPreferencesLoaded
-		case 422:
-			w, _ := m.Event.(*Event_TerminalHistory)
-			if w == nil || w.TerminalHistory == nil {
-				w = &Event_TerminalHistory{TerminalHistory: &TerminalHistoryEvent{}}
-				m.Event = w
-			}
-			sub = w.TerminalHistory
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -8765,6 +8801,13 @@ func (m *Event) extraUnmarshalPart17(num litewire.Number, wtyp litewire.Type, bp
 	var sub litewire.Unmarshaler
 	if wtyp == litewire.BytesType {
 		switch num {
+		case 422:
+			w, _ := m.Event.(*Event_TerminalHistory)
+			if w == nil || w.TerminalHistory == nil {
+				w = &Event_TerminalHistory{TerminalHistory: &TerminalHistoryEvent{}}
+				m.Event = w
+			}
+			sub = w.TerminalHistory
 		case 423:
 			w, _ := m.Event.(*Event_DirectPcProbeReceived)
 			if w == nil || w.DirectPcProbeReceived == nil {
@@ -8842,13 +8885,6 @@ func (m *Event) extraUnmarshalPart17(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityCryptoBatchDone
-		case 457:
-			w, _ := m.Event.(*Event_SecurityOpRequest)
-			if w == nil || w.SecurityOpRequest == nil {
-				w = &Event_SecurityOpRequest{SecurityOpRequest: &SecurityOpRequestEvent{}}
-				m.Event = w
-			}
-			sub = w.SecurityOpRequest
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -8867,6 +8903,13 @@ func (m *Event) extraUnmarshalPart18(num litewire.Number, wtyp litewire.Type, bp
 	var sub litewire.Unmarshaler
 	if wtyp == litewire.BytesType {
 		switch num {
+		case 457:
+			w, _ := m.Event.(*Event_SecurityOpRequest)
+			if w == nil || w.SecurityOpRequest == nil {
+				w = &Event_SecurityOpRequest{SecurityOpRequest: &SecurityOpRequestEvent{}}
+				m.Event = w
+			}
+			sub = w.SecurityOpRequest
 		case 458:
 			w, _ := m.Event.(*Event_SeedDemoWorld)
 			if w == nil || w.SeedDemoWorld == nil {

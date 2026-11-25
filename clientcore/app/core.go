@@ -230,7 +230,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 			c.forgetUsageMachine(req.MachineId)
 		}
 	}
-	if c.m.sessions != nil && len(c.m.sessions.opened) > 0 {
+	if res.Dirty.Home && c.m.sessions != nil && len(c.m.sessions.opened) > 0 {
 		for sid := range c.m.sessions.opened {
 			if sess := c.m.sync.SessionEntry(sid); sess != nil && sess.MachineID != "" {
 				c.maybeHydrateUsageCache(sess.MachineID, &effects)
@@ -484,16 +484,22 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				}
 			}
 			c.onNewSessionCreateSettled(meta.projectKey, sc, &effects)
+			if sc.Category == outcome.Executed && c.m.activeNewSessionPagingKey == meta.projectKey {
+				c.m.activeNewSessionPagingKey = ""
+			}
 			dirty.Add(true, true, true)
 		default:
 			effects = append(effects, c.onOtherSettingsCmdSettled(sc, meta)...)
 		}
 	}
 
-	if res.Dirty.NewSession || dirty.NewSession {
+	if res.Dirty.NewSession || dirty.NewSession || (c.m.activeNewSessionPagingKey != "" && res.Dirty.Home) {
 		extraPrev, extraCtx := c.m.sync.BeginStep()
 		for key, d := range c.m.state.NewSessions {
 			if d == nil {
+				continue
+			}
+			if !(res.Dirty.NewSession || dirty.NewSession) && key != c.m.activeNewSessionPagingKey {
 				continue
 			}
 			psr := c.m.resolveDraftConfig(key, d)
@@ -501,8 +507,8 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 			if d.Config.MachineID != "" {
 				c.m.maybeFetchMachineConfig(extraCtx, d.Config.MachineID, d.Config.Agent)
 			}
-			if key == c.m.activeNewSessionPagingKey && !psr.Settled && c.m.state.World.HasMoreSessions {
-				c.m.sync.RequestMoreSessions(extraCtx)
+			if key == c.m.activeNewSessionPagingKey {
+				c.maybeAutoPageNewSession(extraCtx, key, psr)
 			}
 		}
 		extraRes := c.m.sync.EndStep(extraPrev, extraCtx)
@@ -541,6 +547,16 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 	}
 
 	return effects, dirty
+}
+
+func (c *Core) maybeAutoPageNewSession(ctx *sync.StepContext, key string, psr lists.ProjectStartResult) {
+	if key == "" {
+		return
+	}
+	c.m.activeNewSessionPagingKey = key
+	if !psr.Settled && c.m.state.World.HasMoreSessions {
+		c.m.sync.RequestMoreSessions(ctx)
+	}
 }
 
 func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Effect {
@@ -798,12 +814,15 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 				if d.Config.MachineID != "" {
 					c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
 				}
-				c.m.activeNewSessionPagingKey = key
-				if !psr.Settled && st.World.HasMoreSessions {
-					c.m.sync.RequestMoreSessions(ctx)
-				}
+				c.maybeAutoPageNewSession(ctx, key, psr)
 			}
 			ctx.Dirty.Add(false, false, true)
+		}
+
+	case *corev1.Event_NewSessionClose:
+		if k.NewSessionClose != nil && k.NewSessionClose.ProjectKey != "" &&
+			k.NewSessionClose.ProjectKey == c.m.activeNewSessionPagingKey {
+			c.m.activeNewSessionPagingKey = ""
 		}
 
 	case *corev1.Event_ResolveNotificationTap:
@@ -818,10 +837,7 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 			if d.Config.MachineID != "" {
 				c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
 			}
-			c.m.activeNewSessionPagingKey = st.StandaloneProjectKey
-			if !psr.Settled && st.World.HasMoreSessions {
-				c.m.sync.RequestMoreSessions(ctx)
-			}
+			c.maybeAutoPageNewSession(ctx, st.StandaloneProjectKey, psr)
 			ctx.Dirty.Add(false, false, true)
 		}
 
@@ -872,10 +888,7 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 				c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
 				op := buildFullSettingsOp(d.Config, false)
 				c.m.sync.EnqueuePrefsOp(ctx, op, true, key)
-				c.m.activeNewSessionPagingKey = key
-				if !psr.Settled && st.World.HasMoreSessions {
-					c.m.sync.RequestMoreSessions(ctx)
-				}
+				c.maybeAutoPageNewSession(ctx, key, psr)
 				ctx.Dirty.Add(false, false, true)
 			}
 		}

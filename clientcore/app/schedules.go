@@ -419,6 +419,11 @@ func (c *Core) submitSchedTaskMutation(ctx *sync.StepContext, slotKey, mutKey, m
 func (c *Core) onSyncEventConsumed(ev *corev1.Event, effects *[]*corev1.Effect) {
 	c.onSharedFilesSyncEvent(ev, effects)
 	c.onAttachmentsSyncEvent(ev, effects)
+	if lc := ev.GetSyncLifecycle(); lc != nil {
+		if lc.Kind == corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_STOP {
+			c.m.activeNewSessionPagingKey = ""
+		}
+	}
 	if sw := ev.GetSessionWatch(); sw != nil && sw.Watched && sw.SessionId != "" {
 		if sess := c.m.sync.SessionEntry(sw.SessionId); sess != nil && sess.MachineID != "" {
 			c.maybeHydrateUsageCache(sess.MachineID, effects)
