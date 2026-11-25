@@ -13,8 +13,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func seedBenchmarkCore(b *testing.B, numMachines, numProjects, numSessions int) (*Core, uint64) {
-	b.Helper()
+func seedBenchmarkCore(tb testing.TB, numMachines, numProjects, numSessions int) (*Core, uint64) {
+	tb.Helper()
 	c := New()
 	nowMs := int64(1_776_100_000_000)
 
@@ -285,5 +285,196 @@ func BenchmarkMarshalDispatchSessionPush1000Sessions(b *testing.B) {
 		if len(out) == 0 {
 			b.Fatal("expected non-empty EffectBatch")
 		}
+	}
+}
+
+func TestSessionStreamingDoesNotTriggerHomeAggregation(t *testing.T) {
+	c, legID := seedBenchmarkCore(t, 4, 10, 200)
+	defer c.Close()
+
+	baseNow := int64(1_776_100_000_000)
+
+	// Watch s-0001 and stream 100 text deltas + 100 SessionUpdated pushes with no pending approvals/questions.
+	c.Dispatch(&corev1.Event{
+		NowMs: baseNow + 100,
+		Event: &corev1.Event_SessionWatch{
+			SessionWatch: &corev1.SessionWatchEvent{SessionId: "s-0001", Watched: true},
+		},
+	})
+	beforeCount := c.m.homeFocusReconcileCount
+	for i := 0; i < 100; i++ {
+		seq := uint64(100 + i)
+		c.Dispatch(&corev1.Event{
+			NowMs: baseNow + 200 + int64(i),
+			Event: &corev1.Event_StreamFrame{
+				StreamFrame: &corev1.StreamFrameEvent{
+					LegId: legID,
+					Frame: &corev1.StreamFrameEvent_EventsAppended{
+						EventsAppended: &corev1.EventsAppendedFrame{
+							SessionId: "s-0001",
+							Events: []*corev1.PlainEvent{
+								{
+									Seq:      seq,
+									Verified: true,
+									Event: &v1.Event{
+										Seq: seq,
+										Kind: &v1.Event_AgentMessage{
+											AgentMessage: &v1.AgentMessage{Text: "chunk "},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		})
+		c.Dispatch(&corev1.Event{
+			NowMs: baseNow + 300 + int64(i),
+			Event: &corev1.Event_StreamFrame{
+				StreamFrame: &corev1.StreamFrameEvent{
+					LegId: legID,
+					Frame: &corev1.StreamFrameEvent_SessionUpdated{
+						SessionUpdated: &corev1.PlainSession{
+							SessionId: "s-0001",
+							MachineId: "m-1",
+							LastSeq:   seq,
+							UpdatedMs: baseNow + 300 + int64(i),
+							Meta: &v1.Session{
+								Id:      "s-0001",
+								Cwd:     "/Users/dev/work/proj-01",
+								Agent:   v1.Agent_AGENT_CODEX,
+								Status:  v1.SessionStatus_SESSION_STATUS_RUNNING,
+								Title:   "Session 1",
+								Preview: "Streaming output",
+							},
+						},
+					},
+				},
+			},
+		})
+	}
+	if c.m.homeFocusReconcileCount != beforeCount {
+		t.Fatalf("streaming session events with no pending attention triggered Home aggregation %d times (want 0)",
+			c.m.homeFocusReconcileCount-beforeCount)
+	}
+
+	// Now introduce an approval on s-0002 -> MUST trigger Home aggregation once!
+	c.Dispatch(&corev1.Event{
+		NowMs: baseNow + 1000,
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: legID,
+				Frame: &corev1.StreamFrameEvent_SessionUpdated{
+					SessionUpdated: &corev1.PlainSession{
+						SessionId: "s-0002",
+						MachineId: "m-0",
+						LastSeq:   200,
+						UpdatedMs: baseNow + 1000,
+						Meta: &v1.Session{
+							Id:     "s-0002",
+							Cwd:    "/Users/dev/work/proj-02",
+							Agent:  v1.Agent_AGENT_CODEX,
+							Status: v1.SessionStatus_SESSION_STATUS_RUNNING,
+							Title:  "Session 2",
+						},
+						Checkpoint: &v1.LiveSnapshot{
+							Actions: []*v1.Event{
+								{
+									Seq: 200,
+									Kind: &v1.Event_ApprovalRequested{
+										ApprovalRequested: &v1.ApprovalRequested{ApprovalId: "ap-bg", Command: "ls"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+	if c.m.homeFocusReconcileCount != beforeCount+1 || c.m.state.HomeLastTopItemID != "ap-bg" {
+		t.Fatalf("expected 1 Home aggregation on new approval (count=%d->%d, top=%q)",
+			beforeCount, c.m.homeFocusReconcileCount, c.m.state.HomeLastTopItemID)
+	}
+
+	// Continue streaming deltas on unrelated s-0001 while s-0002's approval sits pending -> 0 additional aggregations!
+	afterApCount := c.m.homeFocusReconcileCount
+	for i := 0; i < 50; i++ {
+		seq := uint64(300 + i)
+		c.Dispatch(&corev1.Event{
+			NowMs: baseNow + 2000 + int64(i),
+			Event: &corev1.Event_StreamFrame{
+				StreamFrame: &corev1.StreamFrameEvent{
+					LegId: legID,
+					Frame: &corev1.StreamFrameEvent_SessionUpdated{
+						SessionUpdated: &corev1.PlainSession{
+							SessionId: "s-0001",
+							MachineId: "m-1",
+							LastSeq:   seq,
+							UpdatedMs: baseNow + 2000 + int64(i),
+							Meta: &v1.Session{
+								Id:      "s-0001",
+								Cwd:     "/Users/dev/work/proj-01",
+								Agent:   v1.Agent_AGENT_CODEX,
+								Status:  v1.SessionStatus_SESSION_STATUS_RUNNING,
+								Title:   "Session 1",
+								Preview: "More streaming output",
+							},
+						},
+					},
+				},
+			},
+		})
+	}
+	if c.m.homeFocusReconcileCount != afterApCount {
+		t.Fatalf("unrelated streaming session updates triggered Home aggregation %d times (want 0)",
+			c.m.homeFocusReconcileCount-afterApCount)
+	}
+}
+
+func BenchmarkDispatchSessionStreaming1000Sessions(b *testing.B) {
+	c, legID := seedBenchmarkCore(b, 4, 20, 1000)
+	defer c.Close()
+
+	baseNow := int64(1_776_100_000_000)
+	c.Dispatch(&corev1.Event{
+		NowMs: baseNow + 50,
+		Event: &corev1.Event_SessionWatch{
+			SessionWatch: &corev1.SessionWatchEvent{SessionId: "s-0001", Watched: true},
+		},
+	})
+	ev := &corev1.Event{
+		NowMs: baseNow + 100,
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: legID,
+				Frame: &corev1.StreamFrameEvent_EventsAppended{
+					EventsAppended: &corev1.EventsAppendedFrame{
+						SessionId: "s-0001",
+						Events: []*corev1.PlainEvent{
+							{
+								Seq:      500,
+								Verified: true,
+								Event: &v1.Event{
+									Seq:  500,
+									Kind: &v1.Event_AgentMessage{AgentMessage: &v1.AgentMessage{Text: "token "}},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		seq := uint64(500 + i)
+		ev.NowMs = baseNow + 100 + int64(i)
+		pe := ev.GetStreamFrame().GetEventsAppended().Events[0]
+		pe.Seq = seq
+		pe.Event.Seq = seq
+		c.Dispatch(ev)
 	}
 }

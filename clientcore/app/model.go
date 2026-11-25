@@ -75,9 +75,12 @@ type Model struct {
 	frozenSchedOps        map[string]frozenSchedOp
 	usageDirty            bool
 	usageActive           bool
-	lastUsageFetchedMs    map[screens.UsageCacheKey]int64
-	activeUsageReq        *corev1.UsageScreenRequest
-	lastUsageParams       map[string]*corev1.UsageScreenOpenEvent
+	lastUsageFetchedMs      map[screens.UsageCacheKey]int64
+	activeUsageReq          *corev1.UsageScreenRequest
+	lastUsageParams         map[string]*corev1.UsageScreenOpenEvent
+	homeFocusDigest         uint64
+	homeFocusDigestValid    bool
+	homeFocusReconcileCount int
 }
 
 func newModel() *Model {

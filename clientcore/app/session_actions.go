@@ -1055,10 +1055,148 @@ func (c *Core) notifyHomeAttentionSettled(
 	dirty.Add(true, false, false)
 }
 
+const (
+	fnvOffset64 = uint64(14695981039346656037)
+	fnvPrime64  = uint64(1099511628211)
+)
+
+func fnvMixByte(h uint64, b byte) uint64 {
+	h ^= uint64(b)
+	return h * fnvPrime64
+}
+
+func fnvMixUint64(h, v uint64) uint64 {
+	for i := 0; i < 8; i++ {
+		h ^= uint64(byte(v))
+		h *= fnvPrime64
+		v >>= 8
+	}
+	return h
+}
+
+func fnvMixString(h uint64, s string) uint64 {
+	h = fnvMixUint64(h, uint64(len(s)))
+	for i := 0; i < len(s); i++ {
+		h ^= uint64(s[i])
+		h *= fnvPrime64
+	}
+	return h
+}
+
+func fnvMixBool(h uint64, b bool) uint64 {
+	if b {
+		return fnvMixByte(h, 1)
+	}
+	return fnvMixByte(h, 0)
+}
+
+// homePendingAttentionSignature computes a zero-allocation fingerprint of the world's
+// pending approvals/questions plus scope and machine reachability inputs that affect
+// Home's top attention card. Unrelated session streaming deltas leave this unchanged.
+func homePendingAttentionSignature(st *screens.State) (digest uint64, hasAny bool) {
+	if st == nil {
+		return 0, false
+	}
+	h := fnvOffset64
+	for _, s := range st.World.Sessions {
+		if s == nil {
+			continue
+		}
+		p := s.Pending
+		if !p.HasApproval && !p.HasQuestion {
+			continue
+		}
+		hasAny = true
+		h = fnvMixString(h, s.ID)
+		h = fnvMixString(h, s.MachineID)
+		h = fnvMixUint64(h, uint64(s.UpdatedMs))
+		if s.Info != nil {
+			h = fnvMixString(h, s.Info.Cwd)
+			h = fnvMixUint64(h, uint64(s.Info.Status))
+		}
+		h = fnvMixBool(h, p.HasApproval)
+		if p.HasApproval {
+			h = fnvMixString(h, p.ApprovalID)
+			h = fnvMixBool(h, p.ApprovalSkeleton)
+			h = fnvMixString(h, p.ApprovalCommand)
+		}
+		h = fnvMixBool(h, p.HasQuestion)
+		if p.HasQuestion && p.Question != nil {
+			h = fnvMixString(h, p.Question.QuestionID)
+			h = fnvMixUint64(h, uint64(p.Question.QuestionCount))
+			h = fnvMixBool(h, p.Question.MultiSelect)
+		}
+	}
+	if !hasAny {
+		return 0, false
+	}
+	h = fnvMixBool(h, st.DisplayGrace)
+	if st.Scope != nil {
+		h = fnvMixBool(h, st.Scope.AllProjects)
+		h = fnvMixString(h, st.Scope.Key)
+	}
+	if st.RememberedScope != nil {
+		h = fnvMixBool(h, st.RememberedScope.AllProjects)
+		h = fnvMixString(h, st.RememberedScope.Key)
+	}
+	for _, m := range st.World.Machines {
+		if m == nil {
+			continue
+		}
+		h = fnvMixString(h, m.ID)
+		h = fnvMixBool(h, m.Online)
+		h = fnvMixBool(h, m.Unlinked != nil && *m.Unlinked)
+		if m.Meta != nil {
+			h = fnvMixUint64(h, uint64(m.Meta.ProtocolVersion))
+		}
+	}
+	return h, true
+}
+
+func hasPendingExternalWatchers(store *sessionStore) bool {
+	if store == nil {
+		return false
+	}
+	for _, ui := range store.uiBySession {
+		if ui != nil && (len(ui.ApprovalDenyOpen) > 0 || len(ui.QuestionDraftByKey) > 0) {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *Core) reconcileSessionAndHomeTransient(effects *[]*corev1.Effect, dirty *sync.DirtyFlags) {
+	needsExt := hasPendingExternalWatchers(c.m.sessions)
+
+	st := c.m.state
+	needsHome := false
+	var homeDigest uint64
+	if st.HomeFocus == nil ||
+		(st.HomeFocus.Phase != corev1.HomeFocusPhase_HOME_FOCUS_PHASE_RESOLVED_THIS_CLIENT &&
+			st.HomeFocus.Phase != corev1.HomeFocusPhase_HOME_FOCUS_PHASE_RESOLVED_ELSEWHERE) {
+		digest, hasAny := homePendingAttentionSignature(st)
+		homeDigest = digest
+		if !hasAny && st.HomeFocus == nil && st.HomeLastTopKind == screens.HomeFocusNone {
+			c.m.homeFocusDigest = 0
+			c.m.homeFocusDigestValid = true
+		} else if !c.m.homeFocusDigestValid || digest != c.m.homeFocusDigest {
+			needsHome = true
+		}
+	}
+
+	if !needsExt && !needsHome {
+		return
+	}
+
 	stepPrev, ctx := c.m.sync.BeginStep()
-	c.reconcileSessionExternalResolutions(ctx)
-	c.reconcileHomeFocusState(ctx)
+	if needsExt {
+		c.reconcileSessionExternalResolutions(ctx)
+	}
+	if needsHome {
+		c.reconcileHomeFocusState(ctx)
+		c.m.homeFocusDigest = homeDigest
+		c.m.homeFocusDigestValid = true
+	}
 	stepRes := c.m.sync.EndStep(stepPrev, ctx)
 	if len(stepRes.Effects) > 0 {
 		*effects = append(*effects, stepRes.Effects...)
@@ -1306,6 +1444,7 @@ func (c *Core) reconcileHomeFocusState(ctx *sync.StepContext) {
 	}
 
 	// Update live top attention snapshot.
+	c.m.homeFocusReconcileCount++
 	kind, sid, itemID, approval, question := screens.CurrentHomeTopAttention(st)
 	st.HomeLastTopKind = kind
 	st.HomeLastTopSessionID = sid
@@ -1332,12 +1471,15 @@ func (c *Core) handleUITransientTimer(ctx *sync.StepContext, store *sessionStore
 		}
 		c.m.state.HomeFocus = nil
 		// Refresh live top snapshot now that hold finished.
+		c.m.homeFocusReconcileCount++
 		kind, sid, itemID, approval, question := screens.CurrentHomeTopAttention(c.m.state)
 		c.m.state.HomeLastTopKind = kind
 		c.m.state.HomeLastTopSessionID = sid
 		c.m.state.HomeLastTopItemID = itemID
 		c.m.state.HomeLastTopApproval = approval
 		c.m.state.HomeLastTopQuestion = question
+		c.m.homeFocusDigest, _ = homePendingAttentionSignature(c.m.state)
+		c.m.homeFocusDigestValid = true
 		ctx.Dirty.Add(true, false, false)
 		return nil
 	}
