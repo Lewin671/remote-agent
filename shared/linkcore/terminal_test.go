@@ -516,3 +516,101 @@ func TestTerminalLongOutputStreamNeverExhaustsIdentities(t *testing.T) {
 		t.Fatalf("evicted duplicate: act=%d ready=%v err=%v", act, ready, err)
 	}
 }
+
+func TestTerminalInputCachePausedNoTimerSpin(t *testing.T) {
+	// Audit core B2c: after inputCache hits 30s and sets Paused=true, NextDue must
+	// not keep returning the past cache expiry timestamp (1ms spin).
+	base := uint64(1_700_000_000_000)
+	s := NewTerminalStream("st-b2c", "sess", "m1", "inst", base)
+	f := mkTermFrame(1, "ls\n", base+60_000, true)
+	if err := s.CacheInput(base, f); err != nil {
+		t.Fatalf("CacheInput: %v", err)
+	}
+	now := base + TermInputCacheMaxMs + 5000
+	s.Advance(now)
+	if !s.Paused {
+		t.Fatal("expected Paused=true after 30s")
+	}
+	if due, ok := s.NextDue(); ok && due <= now {
+		t.Fatalf("B2c: NextDue returned past due=%d <= now=%d while Paused=true", due, now)
+	}
+}
+
+func TestTerminalStreamStateMachineBoundaryBugs(t *testing.T) {
+	base := uint64(1_700_000_000_000)
+
+	// B7a: ReconcileStatus must evict cached input with seq <= InputSuccess when FailedInputSeq == 0,
+	// even if daemon evicted that old seq from its 128-entry sliding details window.
+	t.Run("B7a_ReconcileEvictsAppliedBeyondDetailWindow", func(t *testing.T) {
+		s := NewTerminalStream("st-7a", "sess", "m1", "inst", base)
+		if err := s.CacheInput(base, mkTermFrame(70, "echo 70\n", base+60_000, true)); err != nil {
+			t.Fatalf("CacheInput: %v", err)
+		}
+		snap := TermStatusSnapshot{
+			Available: true,
+			State: TermFlowState{
+				ToDaemon: TermWatermark{
+					Processed:      200,
+					InputSuccess:   200,
+					FailedInputSeq: 0,
+					// Details only holds 73..200; seq 70 was evicted from the 128-entry window.
+					Details: []TermFrameStatus{{Seq: 200, Outcome: TermOutcomeApplied}},
+				},
+			},
+		}
+		toResend, needBarrier, needConfirm := s.ReconcileStatus(base+1000, snap)
+		if needConfirm || needBarrier || len(toResend) != 0 || s.HasUnconfirmedInputs() {
+			t.Fatalf("B7a: expected seq 70 evicted cleanly; got resend=%d barrier=%v confirm=%v unconfirmed=%v",
+				len(toResend), needBarrier, needConfirm, s.HasUnconfirmedInputs())
+		}
+	})
+
+	// B7b: ConfirmRendered returning ErrTermExpired must clear renderReady and release outputPending bytes.
+	t.Run("B7b_ConfirmRenderedExpiredClearsRenderReady", func(t *testing.T) {
+		s := NewTerminalStream("st-7b", "sess", "m1", "inst", base)
+		f1 := mkTermFrame(1, "out-1", base+1000, false)
+		act, ready, err := s.ReceiveOutput(base, f1)
+		if err != nil || act != TermOutputReady || ready == nil {
+			t.Fatalf("ReceiveOutput: act=%d err=%v", act, err)
+		}
+		_, _, err = s.ConfirmRendered(base+2000, 1)
+		if !errors.Is(err, ErrTermExpired) {
+			t.Fatalf("expected ErrTermExpired, got %v", err)
+		}
+		if s.renderReady != nil || len(s.outputPending) != 0 || s.outputPendBytes != 0 {
+			t.Fatalf("B7b: expired ConfirmRendered leaked renderReady=%v pending=%d bytes=%d",
+				s.renderReady, len(s.outputPending), s.outputPendBytes)
+		}
+	})
+
+	// B7c: CompleteInput encountering an expired queued input head must settle it as
+	// TermOutcomeExpiredNotApplied (advancing processed, setting failedInputSeq, returning failStop)
+	// instead of silently dropping it and stranding higher seqs.
+	t.Run("B7c_CompleteInputSettlesExpiredQueuedInput", func(t *testing.T) {
+		s := NewTerminalStream("st-7c", "sess", "m1", "inst", base)
+		f1 := mkTermFrame(1, "a", base+5000, true)
+		f2 := mkTermFrame(2, "b", base+1000, true)
+		f3 := mkTermFrame(3, "c", base+5000, true)
+		if act, _, err := s.ReceiveInput(base, f1); err != nil || act != TermInputRun {
+			t.Fatalf("f1: act=%d err=%v", act, err)
+		}
+		if act, _, err := s.ReceiveInput(base, f2); err != nil || act != TermInputBuffered {
+			t.Fatalf("f2: act=%d err=%v", act, err)
+		}
+		if act, _, err := s.ReceiveInput(base, f3); err != nil || act != TermInputBuffered {
+			t.Fatalf("f3: act=%d err=%v", act, err)
+		}
+		// Complete f1 after f2 expired (base+1500 >= f2.DeadlineMs).
+		nextReady, _, failStop, _, _ := s.CompleteInput(base+1500, 1, TermOutcomeApplied, 1, 1, 0)
+		if failStop == nil || failStop.Seq != 2 || failStop.Outcome != TermOutcomeExpiredNotApplied {
+			t.Fatalf("B7c: expected ExpiredNotApplied failStop for seq 2, got %+v", failStop)
+		}
+		if s.Processed() != 2 || s.FailedInputSeq() != 2 {
+			t.Fatalf("B7c: expected Processed=2 FailedInputSeq=2, got Processed=%d FailedInputSeq=%d",
+				s.Processed(), s.FailedInputSeq())
+		}
+		if nextReady == nil || nextReady.Seq != 3 {
+			t.Fatalf("B7c: expected nextReady=seq 3 after settling expired seq 2, got %+v", nextReady)
+		}
+	})
+}

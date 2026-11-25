@@ -565,22 +565,67 @@ func (s *TerminalStream) CompleteInput(
 		return nil, emitACK, failStop, resolvedQueries, resolvedBarrier
 	}
 
-	if next, ok := s.inputPending[s.processed+1]; ok {
+	for {
+		next, ok := s.inputPending[s.processed+1]
+		if !ok {
+			s.refreshInputGap()
+			break
+		}
+		if next.frame.DeadlineMs > 0 && now >= next.frame.DeadlineMs {
+			delete(s.inputPending, s.processed+1)
+			s.inputPendBytes -= next.frame.RawBytes
+			s.refreshInputGap()
+			s.evictOldestDetailIfFull()
+			if next.frame.IsInput {
+				// N6: settle expired queued Input explicitly rather than silently dropping it.
+				detail := TermFrameStatus{
+					Seq:         next.frame.Seq,
+					PayloadHash: next.frame.PayloadHash,
+					Outcome:     TermOutcomeExpiredNotApplied,
+					InputBytes:  next.frame.InputBytes,
+				}
+				if s.failedInputSeq != 0 {
+					detail.Outcome = TermOutcomeInputBlocked
+				} else {
+					s.failedInputSeq = next.frame.Seq
+					s.NeedsUserConfirm = true
+					s.Paused = true
+					dCopy := detail
+					s.FailStopDetail = &dCopy
+					if failStop == nil {
+						failStop = &dCopy
+					}
+				}
+				s.processed = next.frame.Seq
+				if len(s.details) < TermInputDetailMax {
+					s.details[next.frame.Seq] = detail
+				}
+				emitACK = true
+				continue
+			}
+			s.processed = next.frame.Seq
+			if len(s.details) < TermInputDetailMax {
+				s.details[next.frame.Seq] = TermFrameStatus{
+					Seq:         next.frame.Seq,
+					PayloadHash: next.frame.PayloadHash,
+					Outcome:     TermOutcomeNonInputFailed,
+				}
+			}
+			s.NetworkRecovery = true
+			continue
+		}
+		s.evictOldestDetailIfFull()
+		if len(s.details) >= TermInputDetailMax {
+			s.refreshInputGap()
+			break
+		}
 		delete(s.inputPending, s.processed+1)
 		s.inputPendBytes -= next.frame.RawBytes
 		s.refreshInputGap()
-		if next.frame.DeadlineMs > 0 && now >= next.frame.DeadlineMs {
-			s.NetworkRecovery = true
-		} else {
-			s.evictOldestDetailIfFull()
-			if len(s.details) < TermInputDetailMax {
-				cp := next.frame
-				s.inflight = &cp
-				nextReady = &cp
-			}
-		}
-	} else {
-		s.refreshInputGap()
+		cp := next.frame
+		s.inflight = &cp
+		nextReady = &cp
+		break
 	}
 	return nextReady, emitACK, failStop, resolvedQueries, resolvedBarrier
 }
@@ -730,6 +775,10 @@ func (s *TerminalStream) ConfirmRendered(now uint64, seq uint64) (nextReady *Ter
 	}
 	cur := *s.renderReady
 	if cur.DeadlineMs > 0 && now >= cur.DeadlineMs {
+		s.outputPendBytes -= cur.RawBytes
+		delete(s.outputPending, cur.Seq)
+		s.renderReady = nil
+		s.refreshOutputGap()
 		s.NetworkRecovery = true
 		return nil, false, ErrTermExpired
 	}
@@ -976,8 +1025,8 @@ func (s *TerminalStream) ReconcileStatus(now uint64, snap TermStatusSnapshot) (t
 			continue
 		}
 		if seq <= snap.State.ToDaemon.Processed {
-			if !item.frame.IsInput {
-				// Non-input frame already processed on daemon (H-A): safe to evict.
+			if !item.frame.IsInput || (snap.State.ToDaemon.FailedInputSeq == 0 && seq <= snap.State.ToDaemon.InputSuccess) {
+				// Already applied input (detail evicted from 128-entry window) or processed non-input frame.
 				s.inputCacheBytes -= item.charge
 				delete(s.inputCache, seq)
 				continue
@@ -1121,12 +1170,14 @@ func (s *TerminalStream) NextDue() (uint64, bool) {
 	if s.dirtyACK > 0 {
 		add(s.lastACK + TermAckIntervalMs)
 	}
-	for _, item := range s.inputCache {
-		if !item.frame.IsInput {
-			continue
+	if !s.Paused {
+		for _, item := range s.inputCache {
+			if !item.frame.IsInput {
+				continue
+			}
+			add(item.cachedAt + TermInputCacheMaxMs)
+			add(item.frame.DeadlineMs)
 		}
-		add(item.cachedAt + TermInputCacheMaxMs)
-		add(item.frame.DeadlineMs)
 	}
 	return due, ok
 }
