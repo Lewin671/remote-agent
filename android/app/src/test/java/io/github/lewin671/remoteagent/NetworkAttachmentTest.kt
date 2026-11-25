@@ -50,4 +50,45 @@ class NetworkAttachmentTest {
             assertEquals("fresh-token",login.await());assertEquals(2,challenges)
         }finally{login.cancel();r.close();runCurrent()}
     }
+
+    @Test fun foregroundPrewarmRunsOffMainOnlyWhenForegroundAndAccountExists() = runBlocking {
+        val app = fixture.app
+        val prewarmCount = java.util.concurrent.atomic.AtomicInteger(0)
+        val mainThread = Thread.currentThread()
+        val prewarmThread = java.util.concurrent.atomic.AtomicReference<Thread?>()
+        app.testRtcFactory = object : io.github.lewin671.remoteagent.core.transport.RtcFactory {
+            override fun create(
+                stunUrls: List<String>,
+                listener: io.github.lewin671.remoteagent.core.transport.RtcPeerListener,
+            ) = error("unused")
+
+            override fun prewarm() {
+                prewarmThread.set(Thread.currentThread())
+                prewarmCount.incrementAndGet()
+            }
+        }
+        val marker = java.io.File(app.noBackupFilesDir, "security-v4-buckets.bin")
+        val notifyMarker = java.io.File(app.noBackupFilesDir, "security-v4-notify.bin")
+        marker.delete()
+        notifyMarker.delete()
+        try {
+            // No account present -> must not prewarm.
+            app.prewarmRtcIfAccountPresent(foregroundOverride = true)?.join()
+            assertEquals(0, prewarmCount.get())
+
+            // Account exists, but background wakeup -> must not prewarm.
+            marker.parentFile?.mkdirs()
+            marker.writeBytes(byteArrayOf(1))
+            assertNull(app.prewarmRtcIfAccountPresent(foregroundOverride = false))
+            assertEquals(0, prewarmCount.get())
+
+            // Account exists and foreground -> prewarms on IO thread.
+            app.prewarmRtcIfAccountPresent(foregroundOverride = true)?.join()
+            assertEquals(1, prewarmCount.get())
+            assertTrue("expected prewarm off main thread", prewarmThread.get() !== mainThread)
+        } finally {
+            marker.delete()
+            notifyMarker.delete()
+        }
+    }
 }
