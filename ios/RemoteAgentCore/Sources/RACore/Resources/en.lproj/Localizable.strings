@@ -131,6 +131,7 @@
 "composer_slash_title" = "Send as a regular message?";
 "composer_unconfirmed" = "Possibly not sent: written to terminal but unconfirmed";
 "composer_write_failed" = "Could not write to terminal";
+"connection_android_server_failed" = "Cannot reach the server: %1$@";
 "connection_checking" = "Checking…";
 "connection_connected" = "Connected";
 "connection_connecting" = "Connecting…";

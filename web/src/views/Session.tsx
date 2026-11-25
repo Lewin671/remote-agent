@@ -1606,7 +1606,7 @@ const ChatBody = memo(function ChatBody({
   const timeline = vm.timeline;
   const dock = vm.dock;
   const locale = i18n.useLocale();
-  const lostAt = header && header.frozenAtMs > 0n ? Number(header.frozenAtMs) : undefined;
+  const lostAt = header && header.frozenAtMs !== 0n ? Number(header.frozenAtMs) : undefined;
 
   const scroller = useRef<HTMLDivElement>(null);
   const getScrollStore = () => {

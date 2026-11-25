@@ -65,7 +65,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   const connView = useConnectionView(coreHost);
   const sessionHeader = useSyncExternalStore(
     (cb) => coreHost.subscribe(ScreenTarget.SESSION, cb),
-    () => coreHost.viewSession(session.id).header,
+    () => { return coreHost.viewSession(session.id).header; },
   );
   const online = sessionHeader?.found ? sessionHeader.terminalReady : connView.connected;
   const waitingPeer = sessionHeader?.found ? sessionHeader.terminalWaiting : !online && (connView.reachabilityUnknown || connView.displayGrace);

@@ -167,6 +167,7 @@ export interface MessageArgs {
   "composer.slash_title": { [name: string]: never };
   "composer.unconfirmed": { [name: string]: never };
   "composer.write_failed": { [name: string]: never };
+  "connection.android_server_failed": { reason: string };
   "connection.checking": { [name: string]: never };
   "connection.connected": { [name: string]: never };
   "connection.connecting": { [name: string]: never };
@@ -1957,6 +1958,7 @@ export const messages = {
     "composer.slash_title": "Send as a regular message?",
     "composer.unconfirmed": "Possibly not sent: written to terminal but unconfirmed",
     "composer.write_failed": "Could not write to terminal",
+    "connection.android_server_failed": "Cannot reach the server: {reason}",
     "connection.checking": "Checking…",
     "connection.connected": "Connected",
     "connection.connecting": "Connecting…",
@@ -4317,6 +4319,7 @@ export const messages = {
     "composer.slash_title": "作为普通消息发送？",
     "composer.unconfirmed": "可能没发出去：已送到终端但没确认",
     "composer.write_failed": "写入终端失败",
+    "connection.android_server_failed": "连不上服务器：{reason}",
     "connection.checking": "检测中…",
     "connection.connected": "已连接",
     "connection.connecting": "连接中…",
