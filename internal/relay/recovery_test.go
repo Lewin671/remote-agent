@@ -95,6 +95,7 @@ func TestRecoveryBlackholeBecomesUsableWithoutSocketClose(t *testing.T) {
 		clockMu.Unlock()
 	}
 	hbSent := make(chan struct{}, 2)
+	hbProcessed := make(chan struct{}, 4)
 	secondReady := make(chan struct{}, 1)
 	e := setupWithHandler(t, func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -118,13 +119,11 @@ func TestRecoveryBlackholeBecomesUsableWithoutSocketClose(t *testing.T) {
 			if ws.Write(r.Context(), websocket.MessageBinary, hb) != nil {
 				return
 			}
-			hbSent <- struct{}{}
-			// Wait for test clock to advance 1s before sending 2nd heartbeat.
+			// Wait for test clock to advance 1s after HB #1 is processed before sending HB #2.
 			<-hbSent
 			if ws.Write(r.Context(), websocket.MessageBinary, hb) != nil {
 				return
 			}
-			hbSent <- struct{}{}
 			// A silent application path; drain any inbound peer probes without ending this leg.
 			for {
 				if _, _, err := ws.Read(r.Context()); err != nil {
@@ -137,23 +136,34 @@ func TestRecoveryBlackholeBecomesUsableWithoutSocketClose(t *testing.T) {
 	var readyCount atomic.Int32
 	e.startRelayBackend(e.backend, func(r *relay.Relay) {
 		relay.SetRecoveryNowForTest(r, nowFn)
+		relay.SetOnFrameForTest(r, func(isHeartbeat bool) {
+			if isHeartbeat {
+				hbProcessed <- struct{}{}
+			}
+		})
 		relay.ObserveRecoveryForTest(r, func(ev string) {
 			if ev == "ready" && readyCount.Add(1) == 2 {
 				secondReady <- struct{}{}
 			}
 		})
 	})
-	// Establish 1s heartbeat cadence using the injected clock.
-	<-hbSent
-	time.Sleep(50 * time.Millisecond)
+	// Establish 1s heartbeat cadence deterministically: wait for OnFrame after each heartbeat.
+	select {
+	case <-hbProcessed:
+	case <-time.After(3 * time.Second):
+		t.Fatal("first heartbeat was not processed")
+	}
 	advance(time.Second)
 	hbSent <- struct{}{}
-	<-hbSent
-	time.Sleep(50 * time.Millisecond)
+	select {
+	case <-hbProcessed:
+	case <-time.After(3 * time.Second):
+		t.Fatal("second heartbeat was not processed")
+	}
 
 	// A 10s silence (well above old 3s threshold, below 15s floor) must NOT replace the leg.
 	advance(10 * time.Second)
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(150 * time.Millisecond)
 	if got := attempts.Load(); got != 1 {
 		t.Fatalf("falsely suspected leg after 10s silence: attempts=%d", got)
 	}
@@ -194,8 +204,10 @@ func TestRecoverySuspectDialAbortsIfActiveLegResumesBeforeHello(t *testing.T) {
 	}
 
 	sendHB := make(chan struct{}, 4)
-	hbWritten := make(chan struct{}, 4)
+	hbProcessed := make(chan struct{}, 8)
 	candidateAtHello := make(chan struct{}, 1)
+	candidateClosed := make(chan struct{}, 1)
+	aborted := make(chan struct{}, 2)
 	releaseCandidate := make(chan struct{})
 	var releaseOnce sync.Once
 	freeCandidate := func() { releaseOnce.Do(func() { close(releaseCandidate) }) }
@@ -209,12 +221,18 @@ func TestRecoverySuspectDialAbortsIfActiveLegResumesBeforeHello(t *testing.T) {
 			}
 			n := dialAttempts.Add(1)
 			if n > 1 {
-				// Candidate leg: count if StreamHello ever arrives!
+				// Candidate leg: count if StreamHello ever arrives, and signal when closed.
 				ws, err := websocket.Accept(w, r, nil)
 				if err != nil {
 					return
 				}
-				defer ws.CloseNow()
+				defer func() {
+					ws.CloseNow()
+					select {
+					case candidateClosed <- struct{}{}:
+					default:
+					}
+				}()
 				if _, _, err := ws.Read(r.Context()); err == nil {
 					hellos.Add(1)
 				}
@@ -243,7 +261,6 @@ func TestRecoverySuspectDialAbortsIfActiveLegResumesBeforeHello(t *testing.T) {
 					if ws.Write(r.Context(), websocket.MessageBinary, hb) != nil {
 						return
 					}
-					hbWritten <- struct{}{}
 				}
 			}
 		})
@@ -253,6 +270,11 @@ func TestRecoverySuspectDialAbortsIfActiveLegResumesBeforeHello(t *testing.T) {
 	firstReady := make(chan struct{}, 1)
 	e.startRelayBackend(e.backend, func(r *relay.Relay) {
 		relay.SetRecoveryNowForTest(r, nowFn)
+		relay.SetOnFrameForTest(r, func(isHeartbeat bool) {
+			if isHeartbeat {
+				hbProcessed <- struct{}{}
+			}
+		})
 		relay.SetBeforeHelloForTest(r, func() {
 			if dialAttempts.Load() == 2 {
 				select {
@@ -265,6 +287,11 @@ func TestRecoverySuspectDialAbortsIfActiveLegResumesBeforeHello(t *testing.T) {
 		relay.ObserveRecoveryForTest(r, func(ev string) {
 			if ev == "ready" && readyCount.Add(1) == 1 {
 				firstReady <- struct{}{}
+			} else if ev == "aborted" {
+				select {
+				case aborted <- struct{}{}:
+				default:
+				}
 			}
 		})
 	})
@@ -274,15 +301,16 @@ func TestRecoverySuspectDialAbortsIfActiveLegResumesBeforeHello(t *testing.T) {
 		t.Fatal("initial leg did not become ready")
 	}
 
-	// Send 2 heartbeats 1s apart to arm the 15s liveness threshold.
-	advance(time.Second)
-	sendHB <- struct{}{}
-	<-hbWritten
-	time.Sleep(50 * time.Millisecond)
-	advance(time.Second)
-	sendHB <- struct{}{}
-	<-hbWritten
-	time.Sleep(50 * time.Millisecond)
+	// Send 2 heartbeats 1s apart; wait for Liveness.OnFrame to process each before advancing clock.
+	for i := range 2 {
+		advance(time.Second)
+		sendHB <- struct{}{}
+		select {
+		case <-hbProcessed:
+		case <-time.After(3 * time.Second):
+			t.Fatalf("heartbeat %d was not processed", i+1)
+		}
+	}
 
 	// Advance past 15s silence -> triggers suspect candidate dial, paused right before StreamHello.
 	advance(16 * time.Second)
@@ -292,15 +320,28 @@ func TestRecoverySuspectDialAbortsIfActiveLegResumesBeforeHello(t *testing.T) {
 		t.Fatal("suspect candidate dial did not reach pre-hello gate")
 	}
 
-	// While candidate is waiting before StreamHello, traffic resumes on the active leg!
+	// While candidate is waiting before StreamHello, traffic resumes on the active leg.
+	// Wait explicitly for OnFrame to observe the resumed heartbeat before unblocking candidate.
 	advance(100 * time.Millisecond)
 	sendHB <- struct{}{}
-	<-hbWritten
-	time.Sleep(100 * time.Millisecond)
+	select {
+	case <-hbProcessed:
+	case <-time.After(3 * time.Second):
+		t.Fatal("resumed heartbeat was not processed")
+	}
 
-	// Unblock candidate: helloGate must abort BEFORE writing StreamHello so active leg survives!
+	// Unblock candidate and wait for explicit abort + candidate socket closure signals.
 	freeCandidate()
-	time.Sleep(250 * time.Millisecond)
+	select {
+	case <-aborted:
+	case <-time.After(3 * time.Second):
+		t.Fatal("candidate dial did not emit aborted event after active leg resumed")
+	}
+	select {
+	case <-candidateClosed:
+	case <-time.After(3 * time.Second):
+		t.Fatal("candidate websocket was not closed after abort")
+	}
 
 	if got := hellos.Load(); got != 1 {
 		t.Fatalf("candidate wrote StreamHello after active leg resumed: hellos=%d, want 1", got)
@@ -315,6 +356,7 @@ func TestRecoveryLostLegReconnectsImmediately(t *testing.T) {
 	dropFirst := make(chan struct{})
 	secondReady := make(chan struct{}, 1)
 	firstReady := make(chan struct{}, 1)
+	frozenNow := time.Now()
 	e := setupWithHandler(t, func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path != "/v1/stream" || attempts.Add(1) > 1 {
@@ -339,8 +381,16 @@ func TestRecoveryLostLegReconnectsImmediately(t *testing.T) {
 	})
 	e.backend.add(t, "lost-fast")
 	var readyCount atomic.Int32
+	var eventsMu sync.Mutex
+	var events []string
 	e.startRelayBackend(e.backend, func(r *relay.Relay) {
+		// Frozen clock guarantees liveness/backoff timers cannot fire; recovery must come
+		// directly from the "lost" read error event.
+		relay.SetRecoveryNowForTest(r, func() time.Time { return frozenNow })
 		relay.ObserveRecoveryForTest(r, func(ev string) {
+			eventsMu.Lock()
+			events = append(events, ev)
+			eventsMu.Unlock()
 			if ev == "ready" {
 				if n := readyCount.Add(1); n == 1 {
 					firstReady <- struct{}{}
@@ -350,16 +400,33 @@ func TestRecoveryLostLegReconnectsImmediately(t *testing.T) {
 			}
 		})
 	})
-	<-firstReady
-	started := time.Now()
+	select {
+	case <-firstReady:
+	case <-time.After(3 * time.Second):
+		t.Fatal("initial leg did not become ready")
+	}
 	close(dropFirst)
 	select {
 	case <-secondReady:
 	case <-time.After(3 * time.Second):
-		t.Fatal("truly dropped leg did not reconnect promptly")
+		t.Fatal("truly dropped leg did not reconnect after lost event")
 	}
-	if elapsed := time.Since(started); elapsed > 2*time.Second {
-		t.Fatalf("truly dropped leg reconnected too slowly: %v", elapsed)
+	eventsMu.Lock()
+	got := append([]string(nil), events...)
+	eventsMu.Unlock()
+	sawLost, sawDialAfterLost := false, false
+	for _, ev := range got {
+		if ev == "suspect" {
+			t.Fatalf("lost leg waited for suspect instead of immediate lost reconnect: events=%v", got)
+		}
+		if ev == "lost" {
+			sawLost = true
+		} else if sawLost && ev == "dial" {
+			sawDialAfterLost = true
+		}
+	}
+	if !sawLost || !sawDialAfterLost {
+		t.Fatalf("expected immediate lost -> dial -> ready sequence with frozen clock, got events=%v", got)
 	}
 }
 

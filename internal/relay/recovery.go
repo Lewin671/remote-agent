@@ -25,6 +25,7 @@ const (
 	recoveryLost
 	recoveryDial
 	recoveryReady
+	recoveryAborted
 )
 
 type dialReason uint8
@@ -410,6 +411,7 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 				if result.path != nil {
 					result.path.ws.CloseNow()
 				}
+				r.observe(recoveryAborted)
 				continue
 			}
 			if result.err == nil && result.path != nil {
@@ -477,6 +479,9 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 					path:         transport.NewRelayPath(p.ws),
 					activity: func(isHeartbeat bool) {
 						p.liveness.OnFrame(elapsed(), isHeartbeat)
+						if r.onFrame != nil {
+							r.onFrame(isHeartbeat)
+						}
 						select {
 						case activeFrame <- p:
 						default:

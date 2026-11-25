@@ -95,9 +95,10 @@ type Relay struct {
 	networkChanges   func(context.Context) <-chan uint64
 	wakeEvents       func(context.Context) <-chan struct{}
 	routeAvailable   func(net.IP) bool
-	beforeDialResult func(uint64)
-	beforeHello      func()
-	recoveryNow      func() time.Time
+	beforeDialResult      func(uint64)
+	beforeHello           func()
+	onFrame               func(bool)
+	recoveryNow           func() time.Time
 	readyTimeout          time.Duration
 	syncRetryBase         time.Duration
 	publishSessionTimeout time.Duration

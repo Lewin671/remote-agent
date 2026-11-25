@@ -32,6 +32,11 @@ func SetBeforeHelloForTest(r *Relay, hook func()) {
 	r.beforeHello = hook
 }
 
+// SetOnFrameForTest runs after Liveness.OnFrame updates for each decoded frame on the active leg.
+func SetOnFrameForTest(r *Relay, hook func(isHeartbeat bool)) {
+	r.onFrame = hook
+}
+
 // SetRecoveryNowForTest overrides the clock used by relay leg liveness and recovery budgets.
 func SetRecoveryNowForTest(r *Relay, now func() time.Time) {
 	r.recoveryNow = now
@@ -67,7 +72,9 @@ func IsolateRecoveryBudgetForTest(r *Relay) { r.recoveryBudget = &transport.Budg
 
 // ObserveRecoveryForTest records only lifecycle timing, never frames or identifiers.
 func ObserveRecoveryForTest(r *Relay, observer func(string)) {
-	r.observeRecovery = func(event recoveryEvent) { observer([]string{"hint", "suspect", "lost", "dial", "ready"}[event]) }
+	r.observeRecovery = func(event recoveryEvent) {
+		observer([]string{"hint", "suspect", "lost", "dial", "ready", "aborted"}[event])
+	}
 }
 
 func ActiveCallsForTest(r *Relay) int {
