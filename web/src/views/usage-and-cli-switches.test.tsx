@@ -281,7 +281,6 @@ describe("Per-machine CLI switches and entry points", () => {
     let sheetUsageOpened = false;
     await mountAsync(
       <SessionSheet
-        sessionId="s1"
         header={create(SessionHeaderViewSchema, { machineId: "mac", agent: Agent.CODEX, agentName: "Codex", model: "gpt-6-astra" })}
         actions={create(SessionActionsViewSchema, {
           usageEntry: create(SessionUsageEntryViewSchema, {
@@ -294,7 +293,8 @@ describe("Per-machine CLI switches and entry points", () => {
         })}
         onClose={() => undefined}
         onRefreshModels={() => undefined}
-        onSubmitCommand={() => undefined}
+        onSetModel={() => undefined}
+        onCompact={() => undefined}
         onOpenUsage={() => {
           sheetUsageOpened = true;
         }}
@@ -449,7 +449,6 @@ describe("Usage & Output Speed screen", () => {
 
     await mountAsync(
       <SessionSheet
-        sessionId="s-agy"
         header={create(SessionHeaderViewSchema, { machineId: "mac", agent: Agent.ANTIGRAVITY, agentName: "Antigravity", model: "gemini-4-hydrogen" })}
         actions={create(SessionActionsViewSchema, {
           usageEntry: create(SessionUsageEntryViewSchema, {
@@ -477,7 +476,8 @@ describe("Usage & Output Speed screen", () => {
         })}
         onClose={() => undefined}
         onRefreshModels={() => undefined}
-        onSubmitCommand={() => undefined}
+        onSetModel={() => undefined}
+        onCompact={() => undefined}
         onOpenUsage={() => undefined}
       />,
     );

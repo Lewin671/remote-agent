@@ -6018,5 +6018,65 @@
     "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Remote.kt",
     "literal": "replay_overflow",
     "reason": "Internal Core TerminalDirectStateEffect reason code matched to select localized UiMessages.terminalReplayOverflow(); never rendered as UI copy."
+  },
+  {
+    "path": "clientcore/app/session_actions.go",
+    "literal": "plan:",
+    "reason": "Internal canonical command slot key prefix; never rendered as UI copy."
+  },
+  {
+    "path": "web/src/core/host.ts",
+    "literal": "sessionRename",
+    "reason": "Protobuf oneof discriminator case name for SessionRenameAction; never rendered as UI copy."
+  },
+  {
+    "path": "web/src/sheets.tsx",
+    "literal": "[...current].slice(0, TITLE_MAX).join(\"\")); const initialSeq = useRef(actions?.rename?.succeededSeq ?? 0n); const input = useRef",
+    "reason": "JSX lexical scan false positive spanning TypeScript arrow function and useRef generic; code statement, not UI copy."
+  },
+  {
+    "path": "web/src/views/ApprovalCard.tsx",
+    "literal": "); const denyBusy = cmdBusy; const denyFailed = !!cmdError; const canSubmitDeny = !lockedProp && !cmdBusy && (!cmdError || !!command?.canRetry || !!command?.canAbandon); const actions = (",
+    "reason": "JSX lexical scan false positive spanning TypeScript statements between JSX blocks; not UI copy."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": "0 ? ticked : frozen || showError ? sent : ticked) : sent; const progress = [renderText(q.progressText) || step.header, multi ? i18n.t(\"dock.multiselect\") : \"\"].filter(Boolean).join(\" · \"); const answers = (",
+    "reason": "JSX lexical scan false positive spanning TypeScript comparison operator and JSX opening tag; not UI copy."
+  },
+  {
+    "path": "web/src/views/Home.tsx",
+    "literal": "status",
+    "reason": "ARIA role attribute value (role=\"status\"); never rendered as UI copy."
+  },
+  {
+    "path": "web/src/views/Home.tsx",
+    "literal": "tc line",
+    "reason": "CSS class name for collapsed dark card line; never rendered as UI copy."
+  },
+  {
+    "path": "web/src/views/Home.tsx",
+    "literal": "q-opts",
+    "reason": "CSS class name for question option list container; never rendered as UI copy."
+  },
+  {
+    "path": "web/src/views/Home.tsx",
+    "literal": "(undefined); const [previewResolved, setPreviewResolved] = useState",
+    "reason": "JSX lexical scan false positive spanning adjacent TypeScript useState generics; not UI copy."
+  },
+  {
+    "path": "web/src/views/Home.tsx",
+    "literal": "(undefined); const prevResolved = useRef",
+    "reason": "JSX lexical scan false positive spanning adjacent TypeScript useState/useRef generics; not UI copy."
+  },
+  {
+    "path": "web/src/views/Home.tsx",
+    "literal": "; const host = getCoreHost(remote); const reason = remote.approvalReasons.get(card.approvalId) ?? \"\"; return (",
+    "reason": "JSX lexical scan false positive spanning JSX closing angle bracket and return statement; not UI copy."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "); const interruptCmd = actions?.interrupt; const activeDraft = draftView ?? composer?.draft; const resolvedTrayView = trayView ?? (activeDraft ?",
+    "reason": "JSX lexical scan false positive spanning TypeScript statements between JSX expressions; not UI copy."
   }
 ]

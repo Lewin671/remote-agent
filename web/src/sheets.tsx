@@ -2,20 +2,14 @@ import * as i18n from "./i18n";
 // Sheets opened from a session's chips: the approval mode, and the
 // model, reasoning effort and context use.
 
-import { create } from "@bufbuild/protobuf";
 import { useEffect, useRef, useState } from "react";
 import { renderText } from "./core/text";
+import { SessionCommandStatus, type SessionCommandState } from "./gen/remoteagent/core/v1/home_view_pb";
 import {
-  SessionCommandStatus,
   type SessionActionsView,
-  type SessionCommandState,
   type SessionHeaderView,
 } from "./gen/remoteagent/core/v1/session_view_pb";
 import { ApprovalMode } from "./gen/remoteagent/v1/event_pb";
-import {
-  CommandSchema,
-  type Command,
-} from "./gen/remoteagent/v1/remote_pb";
 import { Check, ChevronRight, LoaderCircle } from "./icons";
 import { Alert, Banner, Segmented, Sheet, useDialogFocus, useEscape, useOverlayExit } from "./ui";
 
@@ -43,13 +37,8 @@ export function FullAccessAlert({ onOk, onCancel, forNew }: { onOk: () => void; 
   );
 }
 
-/** The longest title a session can be given; the daemon checks it too. */
+/** The longest title a session can be given; Core enforces it canonically on submit. */
 export const TITLE_MAX = 60;
-
-/** Cuts a title to TITLE_MAX characters, not splitting one. */
-function clipTitle(t: string): string {
-  return [...t.replace(/\s*\n\s*/g, " ")].slice(0, TITLE_MAX).join("");
-}
 
 function isCommandError(cmd?: SessionCommandState): boolean {
   return !!cmd && (cmd.status === SessionCommandStatus.FAILED || cmd.status === SessionCommandStatus.UNKNOWN);
@@ -58,22 +47,19 @@ function isCommandError(cmd?: SessionCommandState): boolean {
 /** Renames a session. The title the user gives wins over the automatic
  * one; an empty one goes back to it. */
 export function RenameDialog({
-  sessionId,
   header,
   actions,
   onClose,
-  onSubmitCommand,
+  onRename,
 }: {
-  sessionId: string;
   header?: SessionHeaderView;
   actions?: SessionActionsView;
   onClose: () => void;
-  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onRename: (title: string) => void;
 }) {
   const current = renderText(header?.title).trim();
-  const [title, setTitle] = useState(() => clipTitle(current));
-  const [submitted, setSubmitted] = useState(false);
-  const sawBusy = useRef(false);
+  const [title, setTitle] = useState(() => [...current].slice(0, TITLE_MAX).join(""));
+  const initialSeq = useRef(actions?.rename?.succeededSeq ?? 0n);
   const input = useRef<HTMLInputElement>(null);
   useEscape(onClose);
   const root = useRef<HTMLDivElement>(null);
@@ -88,35 +74,14 @@ export function RenameDialog({
   const busy = !!cmd?.busy;
   const hasError = isCommandError(cmd);
   const error = hasError ? renderText(cmd?.errorText) || renderText(cmd?.statusText) : "";
+  const succeededSeq = cmd?.succeededSeq ?? 0n;
 
   useEffect(() => {
-    if (!submitted) return;
-    if (busy) {
-      sawBusy.current = true;
-      return;
-    }
-    if (cmd?.status === SessionCommandStatus.IDLE && (sawBusy.current || renderText(header?.title).trim() === title.trim())) {
-      onClose();
-    }
-  }, [submitted, busy, cmd?.status, header?.title, title, onClose]);
+    if (succeededSeq > initialSeq.current) onClose();
+  }, [succeededSeq, onClose]);
 
   const save = () => {
-    const next = title.trim();
-    if (next === current) {
-      onClose();
-      return;
-    }
-    sawBusy.current = false;
-    setSubmitted(true);
-    onSubmitCommand(
-      cmd?.slotKey ?? "",
-      create(CommandSchema, {
-        kind: {
-          case: "renameSession",
-          value: { sessionId, title: next },
-        },
-      }),
-    );
+    onRename(title);
   };
 
   return (
@@ -139,7 +104,7 @@ export function RenameDialog({
           aria-label={i18n.t("session.title_label")}
           value={title}
           enterKeyHint="done"
-          onChange={(e) => setTitle(clipTitle(e.target.value))}
+          onChange={(e) => setTitle([...e.target.value].slice(0, TITLE_MAX).join(""))}
         />
         {error ? <p className="red">{i18n.t("common.ios_save_failed", { reason: error })}</p> : <p>{i18n.t("session.auto_title_hint")}</p>}
         <div className="btns">
@@ -156,51 +121,32 @@ export function RenameDialog({
 }
 
 export function ModeSheet({
-  sessionId,
   header,
   actions,
   onClose,
-  onSubmitCommand,
+  onSetMode,
 }: {
-  sessionId: string;
   header?: SessionHeaderView;
   actions?: SessionActionsView;
   onClose: () => void;
-  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onSetMode: (mode: ApprovalMode) => void;
 }) {
   const [confirmFull, setConfirmFull] = useState(false);
-  const [pickedMode, setPickedMode] = useState<ApprovalMode | undefined>(undefined);
-  const sawBusy = useRef(false);
+  const initialSeq = useRef(actions?.setMode?.succeededSeq ?? 0n);
 
   const cmd = actions?.setMode;
   const busy = !!cmd?.busy;
   const hasError = isCommandError(cmd);
   const error = hasError ? renderText(cmd?.errorText) || renderText(cmd?.statusText) : "";
   const cur = header?.approvalMode || undefined;
+  const succeededSeq = cmd?.succeededSeq ?? 0n;
 
   useEffect(() => {
-    if (pickedMode === undefined) return;
-    if (busy) {
-      sawBusy.current = true;
-      return;
-    }
-    if (cmd?.status === SessionCommandStatus.IDLE && (sawBusy.current || header?.approvalMode === pickedMode)) {
-      onClose();
-    }
-  }, [pickedMode, busy, cmd?.status, header?.approvalMode, onClose]);
+    if (succeededSeq > initialSeq.current) onClose();
+  }, [succeededSeq, onClose]);
 
   const pick = (mode: ApprovalMode) => {
-    sawBusy.current = false;
-    setPickedMode(mode);
-    onSubmitCommand(
-      cmd?.slotKey ?? "",
-      create(CommandSchema, {
-        kind: {
-          case: "setApprovalMode",
-          value: { sessionId, mode },
-        },
-      }),
-    );
+    onSetMode(mode);
   };
 
   if (confirmFull) {
@@ -314,28 +260,26 @@ function SessionUsageEntryRow({
 }
 
 export function SessionSheet({
-  sessionId,
   header,
   actions,
   onClose,
   onRefreshModels,
-  onSubmitCommand,
+  onSetModel,
+  onCompact,
   onAbandonCommand,
   onOpenUsage,
 }: {
-  sessionId: string;
   header?: SessionHeaderView;
   actions?: SessionActionsView;
   onClose: () => void;
   onRefreshModels: () => void;
-  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onSetModel: (model: string, effort: string) => void;
+  onCompact: () => void;
   onAbandonCommand?: (slotKey: string) => void;
   onOpenUsage?: () => void;
 }) {
   const [all, setAll] = useState(false);
-  const [switchingName, setSwitchingName] = useState("");
-  const [compactSubmitted, setCompactSubmitted] = useState(false);
-  const sawCompactBusy = useRef(false);
+  const initialCompactSeq = useRef(actions?.compact?.succeededSeq ?? 0n);
 
   const modelCmd = actions?.setModel;
   const modelBusy = !!modelCmd?.busy;
@@ -344,61 +288,29 @@ export function SessionSheet({
   const compactCmd = actions?.compact;
   const compactBusy = !!compactCmd?.busy;
   const compactErr = isCommandError(compactCmd) ? renderText(compactCmd?.errorText) || renderText(compactCmd?.statusText) : "";
+  const compactSucceededSeq = compactCmd?.succeededSeq ?? 0n;
 
   useEffect(() => {
-    if (!compactSubmitted) return;
-    if (compactBusy) {
-      sawCompactBusy.current = true;
-      return;
-    }
-    if (compactCmd?.status === SessionCommandStatus.IDLE && sawCompactBusy.current) {
-      onClose();
-    }
-  }, [compactSubmitted, compactBusy, compactCmd?.status, onClose]);
+    if (compactSucceededSeq > initialCompactSeq.current) onClose();
+  }, [compactSucceededSeq, onClose]);
 
   const choices = actions?.modelChoices ?? [];
+  const folded = actions?.foldedModelChoices ?? [];
   const effortChoices = actions?.effortChoices ?? [];
   const cur = choices.find((c) => c.selected);
-  const few = choices.length <= 5;
-  const shown = all || few ? choices : [...choices.slice(0, 3), ...(cur && !choices.slice(0, 3).includes(cur) ? [cur] : [])];
+  const shown = all || folded.length === 0 ? choices : folded;
   const canSwitch = header?.capabilities?.supportsModelSwitch ?? false;
   const locked = modelBusy || !actions?.canSwitchModel;
   const modelsError = renderText(actions?.modelsError);
   const pct = header?.hasContext ? header.contextPercent : undefined;
   const contextText = renderText(header?.contextText);
   const activeEffort = effortChoices.find((e) => e.selected)?.id ?? header?.effort ?? "";
-
-  const setModel = (slug: string, label: string, effort: string) => {
-    setSwitchingName(label);
-    onSubmitCommand(
-      modelCmd?.slotKey ?? "",
-      create(CommandSchema, {
-        kind: {
-          case: "setModel",
-          value: { sessionId, model: slug, effort },
-        },
-      }),
-    );
-  };
-
-  const compact = () => {
-    sawCompactBusy.current = false;
-    setCompactSubmitted(true);
-    onSubmitCommand(
-      compactCmd?.slotKey ?? "",
-      create(CommandSchema, {
-        kind: {
-          case: "compact",
-          value: { sessionId },
-        },
-      }),
-    );
-  };
+  const switchingName = renderText(modelCmd?.submittedSummary) || header?.modelLabel || "";
 
   const noEffort = !!cur && cur.efforts.length === 0;
   const bannerError =
     modelErr
-      ? i18n.t("session.model_switch_failed", { model: switchingName || header?.modelLabel || "", reason: modelErr })
+      ? i18n.t("session.model_switch_failed", { model: switchingName, reason: modelErr })
       : compactErr
         ? i18n.t("session.compact_failed", { reason: compactErr })
         : "";
@@ -424,7 +336,7 @@ export function SessionSheet({
               <i style={{ width: `${Math.min(100, pct)}%` }} />
             </div>
           </div>
-          <button className="btn sm" disabled={compactBusy || !actions?.canCompact} onClick={compact}>
+          <button className="btn sm" disabled={compactBusy || !actions?.canCompact} onClick={onCompact}>
             {i18n.t("session.compact")}
           </button>
         </div>
@@ -444,7 +356,7 @@ export function SessionSheet({
                 key={m.slug}
                 className={"mi" + (locked ? " dis" : "")}
                 disabled={locked}
-                onClick={() => !m.selected && setModel(m.slug, m.displayName || m.slug, m.efforts.includes(activeEffort) ? activeEffort : m.defaultEffort)}
+                onClick={() => !m.selected && onSetModel(m.slug, "")}
               >
                 <div className="mt">
                   {m.displayName || m.slug}
@@ -462,7 +374,7 @@ export function SessionSheet({
                 )}
               </button>
             ))}
-            {actions?.modelsLoaded && !all && !few && (
+            {actions?.modelsLoaded && !all && !!actions?.hasMoreModels && (
               <button className="mi link-row" onClick={() => setAll(true)}>
                 {i18n.t("models.all")}
                 <ChevronRight />
@@ -479,7 +391,7 @@ export function SessionSheet({
               className="full wrap efforts"
               label={i18n.t("models.effort")}
               value={activeEffort}
-              onChange={(e) => cur && setModel(cur.slug, cur.displayName || cur.slug, e)}
+              onChange={(e) => cur && onSetModel(cur.slug, e)}
               options={effortChoices.map((e) => ({
                 value: e.id,
                 label: renderText(e.label) || e.id,
@@ -487,7 +399,7 @@ export function SessionSheet({
               }))}
             />
           )}
-          {modelBusy && <Banner>{i18n.t("session.switching_model", { model: switchingName || header?.modelLabel || "" })}</Banner>}
+          {modelBusy && <Banner>{i18n.t("session.switching_model", { model: switchingName })}</Banner>}
         </>
       ) : (
         <>

@@ -325,7 +325,6 @@ function renderSessionGolden(vm: SessionViewModel, overrides: Partial<SessionScr
     draft: "",
     onDraft: vi.fn(),
     onSend: vi.fn(),
-    onSubmitCommand: vi.fn(),
     onAbandonCommand: vi.fn(),
     onCancelTrayItem: vi.fn(),
     onIgnoreTrayItem: vi.fn(),
@@ -348,9 +347,9 @@ function renderSessionGolden(vm: SessionViewModel, overrides: Partial<SessionScr
 
 describe("golden SessionScreenView layout and interaction", () => {
   it("renders approval flow states and dispatches approval command from session_approval_flow.golden.pb", () => {
-    const onSubmitCommand = vi.fn();
+    const onResolveApproval = vi.fn();
     const pendingVm = sessionGoldenView(sessionApprovalGolden as GoldenDoc, "pendingApprovalDock");
-    renderSessionGolden(pendingVm, { onSubmitCommand });
+    renderSessionGolden(pendingVm, { onResolveApproval });
 
     expect(host.textContent).toContain("Approval test");
     expect(host.textContent).toContain("git status && ls src");
@@ -359,12 +358,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     )!;
     expect(approveBtn).toBeTruthy();
     act(() => approveBtn.click());
-    expect(onSubmitCommand).toHaveBeenCalled();
-    expect(onSubmitCommand.mock.calls[0][0]).toBe("approval:s-ap:ap-1");
-    expect(onSubmitCommand.mock.calls[0][1].kind).toMatchObject({
-      case: "resolveApproval",
-      value: { sessionId: "s-ap", approvalId: "ap-1", allow: true },
-    });
+    expect(onResolveApproval).toHaveBeenCalledWith("ap-1", true, false, "");
 
     const submittingVm = sessionGoldenView(sessionApprovalGolden as GoldenDoc, "approvalSubmitting");
     renderSessionGolden(submittingVm);
@@ -410,45 +404,41 @@ describe("golden SessionScreenView layout and interaction", () => {
   });
 
   it("renders question steps, plan dock, unknown frozen retry & abandon from session_question_plan.golden.pb", () => {
-    const onSubmitCommand = vi.fn();
+    const onAnswerQuestion = vi.fn();
+    const onRetryCommand = vi.fn();
     const onAbandonCommand = vi.fn();
 
     const q0Vm = sessionGoldenView(sessionQuestionPlanGolden as GoldenDoc, "questionStep0");
-    renderSessionGolden(q0Vm, { onSubmitCommand, onAbandonCommand });
+    renderSessionGolden(q0Vm, { onAnswerQuestion, onRetryCommand, onAbandonCommand });
     expect(host.textContent).toContain("Which package?");
     const coreOpt = [...host.querySelectorAll<HTMLButtonElement>(".pending button")].find((b) =>
       b.textContent?.includes("Core"),
     )!;
     expect(coreOpt).toBeTruthy();
     act(() => coreOpt.click());
-    expect(onSubmitCommand).toHaveBeenCalled();
+    expect(onAnswerQuestion).toHaveBeenCalled();
 
     const q1Vm = sessionGoldenView(sessionQuestionPlanGolden as GoldenDoc, "questionStep1");
-    renderSessionGolden(q1Vm, { onSubmitCommand, onAbandonCommand });
+    renderSessionGolden(q1Vm, { onAnswerQuestion, onRetryCommand, onAbandonCommand });
     expect(host.textContent).toContain("Select checks");
 
     const planOpenVm = sessionGoldenView(sessionQuestionPlanGolden as GoldenDoc, "planDockOpen");
-    renderSessionGolden(planOpenVm, { onSubmitCommand, onAbandonCommand });
+    renderSessionGolden(planOpenVm, { onAnswerQuestion, onRetryCommand, onAbandonCommand });
     expect(host.textContent).toContain("Step A");
     expect(host.textContent).toContain(t("dock.plan_implement_record"));
 
     const frozenVm = sessionGoldenView(sessionQuestionPlanGolden as GoldenDoc, "planUnknownFrozen");
-    renderSessionGolden(frozenVm, { onSubmitCommand, onAbandonCommand });
+    renderSessionGolden(frozenVm, { onAnswerQuestion, onRetryCommand, onAbandonCommand });
     expect(host.textContent).toContain(t("errors.the_computer_s_reply_could_not_be_verified_command"));
     const retryBtn = [...host.querySelectorAll<HTMLButtonElement>(".pending button")].find((b) =>
       b.textContent?.includes(t("common.retry")),
     )!;
     expect(retryBtn).toBeTruthy();
     act(() => retryBtn.click());
-    expect(onSubmitCommand).toHaveBeenCalledWith(
-      "plan:s-qp",
-      expect.objectContaining({
-        kind: expect.objectContaining({ case: "answerPlan", value: expect.objectContaining({ sessionId: "s-qp" }) }),
-      }),
-    );
+    expect(onRetryCommand).toHaveBeenCalledWith("plan:s-qp");
 
     const abandonedVm = sessionGoldenView(sessionQuestionPlanGolden as GoldenDoc, "planAbandoned");
-    renderSessionGolden(abandonedVm, { onSubmitCommand, onAbandonCommand });
+    renderSessionGolden(abandonedVm, { onAnswerQuestion, onRetryCommand, onAbandonCommand });
     expect(host.textContent).toContain(t("dock.plan_implement_record"));
   });
 
@@ -991,7 +981,6 @@ describe("golden SessionScreenView layout and interaction", () => {
         draft=""
         onDraft={vi.fn()}
         onSend={vi.fn()}
-        onSubmitCommand={vi.fn()}
         onAbandonCommand={vi.fn()}
         onLoadEarlier={vi.fn()}
         onExpandGroup={vi.fn()}

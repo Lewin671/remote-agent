@@ -4,11 +4,10 @@ import * as i18n from "../i18n";
 // shell. Only the first item is docked, open or folded to one dark line;
 // what has no room opens as a page, and the buttons stay in view.
 
-import { create } from "@bufbuild/protobuf";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { renderText } from "../core/text";
+import { SessionCommandStatus } from "../gen/remoteagent/core/v1/home_view_pb";
 import {
-  SessionCommandStatus,
   SessionDockKind,
   type SessionApprovalDockView,
   type SessionDockView,
@@ -18,10 +17,6 @@ import {
   type SessionTerminalPopupDockView,
 } from "../gen/remoteagent/core/v1/session_view_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
-import {
-  CommandSchema,
-  type Command,
-} from "../gen/remoteagent/v1/remote_pb";
 import { Check, ChevronRight } from "../icons";
 import { Markdown } from "../markdown";
 import { useGrow, useHeightFlip } from "../motion";
@@ -107,24 +102,7 @@ function metaOf(...parts: ReactNode[]): ReactNode {
   ));
 }
 
-function makeApprovalCommand(sessionId: string, dock: SessionDockView, a: SessionApprovalDockView, allow: boolean, reason: string, always: boolean): Command {
-  return create(CommandSchema, {
-    kind: {
-      case: "resolveApproval",
-      value: {
-        sessionId,
-        approvalId: a.approvalId,
-        allow,
-        message: reason,
-        always,
-        observedEventSeq: dock.observedSeq,
-      },
-    },
-  });
-}
-
 function ApprovalDock({
-  sessionId,
   dock,
   approval,
   canSend,
@@ -132,12 +110,11 @@ function ApprovalDock({
   defaultDenying,
   reason,
   onReasonChange,
-  onReasonOpen,
-  reasoning,
-  onSubmitCommand,
+  onEditApprovalDeny,
+  onResolveApproval,
+  onRetryCommand,
   onAbandonCommand,
 }: {
-  sessionId: string;
   dock: SessionDockView;
   approval: SessionApprovalDockView;
   canSend: boolean;
@@ -145,12 +122,11 @@ function ApprovalDock({
   defaultDenying?: boolean;
   reason?: string;
   onReasonChange?: (v: string) => void;
-  onReasonOpen: (open: boolean) => void;
-  reasoning: boolean;
-  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onEditApprovalDeny?: (approvalId: string, open: boolean) => void;
+  onResolveApproval: (approvalId: string, allow: boolean, always: boolean, denyReason: string) => void;
+  onRetryCommand?: (slotKey: string) => void;
   onAbandonCommand: (slotKey: string) => void;
 }) {
-  const lastCmd = useRef<Command | undefined>(undefined);
   const title = renderText(dock.title) || i18n.t("approval.title");
   if (dock.isSkeleton || approval.isSkeleton) {
     return (
@@ -167,15 +143,7 @@ function ApprovalDock({
   if (!frame.open) {
     return <FoldedLine frame={frame} label={title} brief={approval.commandPreview.replace(/\s+/g, " ")} busy={!!cmd?.busy} />;
   }
-  const submit = (allow: boolean, why: string, always: boolean) => {
-    const built = makeApprovalCommand(sessionId, dock, approval, allow, why, always);
-    lastCmd.current = built;
-    onSubmitCommand(slotKey, built);
-  };
-  const retry = () => {
-    const built = lastCmd.current ?? makeApprovalCommand(sessionId, dock, approval, true, "", false);
-    onSubmitCommand(slotKey, built);
-  };
+  const reasoning = approval.denyingOpen || !!defaultDenying;
   const body = approval.body || approval.commandPreview || approval.toolName;
   return (
     <div className={"dock pending open" + (reasoning ? " reasoning" : "") + (cmd?.busy ? " submitting" : "")}>
@@ -195,10 +163,12 @@ function ApprovalDock({
         reason={reason}
         onReasonChange={onReasonChange}
         defaultDenying={defaultDenying}
+        denyingOpen={onEditApprovalDeny ? approval.denyingOpen : undefined}
+        holdOpenCard={onEditApprovalDeny ? approval.holdOpenCard : undefined}
         docked
-        onDenying={onReasonOpen}
-        onResolve={submit}
-        onRetry={retry}
+        onDenying={onEditApprovalDeny ? (open) => onEditApprovalDeny(approval.approvalId, open) : undefined}
+        onResolve={(allow, why, always) => onResolveApproval(approval.approvalId, allow, always, why)}
+        onRetry={slotKey && onRetryCommand ? () => onRetryCommand(slotKey) : undefined}
         onAbandon={slotKey ? () => onAbandonCommand(slotKey) : undefined}
         head={<OpenHead frame={frame} label={title} meta={metaOf(frame.more > 0 && i18n.t("dock.more", { count: frame.more }), timeText)} busy={!!cmd?.busy} />}
       />
@@ -206,45 +176,16 @@ function ApprovalDock({
   );
 }
 
-export interface QuestionDraftState {
-  key: string;
-  ticked: number[];
-  chosen: { index: number; options: number[] };
-  dirty: boolean;
-}
-
 function useQuestionState(
-  sessionId: string,
   dock: SessionDockView,
   q: SessionQuestionDockView,
   canSend: boolean,
   onTerminal: () => void,
-  onSubmitCommand: (slotKey: string, cmd: Command) => void,
+  onToggleQuestionOption: ((questionId: string, optionNum: number) => void) | undefined,
+  onAnswerQuestion: (questionId: string, optionNum: number, optionNums?: number[]) => void,
+  onRetryCommand: ((slotKey: string) => void) | undefined,
   onAbandonCommand: (slotKey: string) => void,
-  questionDraft?: QuestionDraftState,
-  onQuestionDraftChange?: (next: QuestionDraftState) => void,
 ) {
-  const draftKey = `${q.questionId}:${q.activeIndex}`;
-  const matched = questionDraft?.key === draftKey ? questionDraft : undefined;
-  const [localDraft, setLocalDraft] = useState<QuestionDraftState>(() => ({
-    key: draftKey,
-    ticked: [],
-    chosen: { index: -1, options: [] },
-    dirty: false,
-  }));
-  const current = matched ?? (localDraft.key === draftKey ? localDraft : { key: draftKey, ticked: [], chosen: { index: -1, options: [] }, dirty: false });
-  const update = (next: Partial<QuestionDraftState>) => {
-    const merged: QuestionDraftState = { ...current, ...next, key: draftKey };
-    if (onQuestionDraftChange) onQuestionDraftChange(merged);
-    else setLocalDraft(merged);
-  };
-  const { ticked, chosen, dirty } = current;
-  const lastCmd = useRef<Command | undefined>(undefined);
-
-  useEffect(() => {
-    lastCmd.current = undefined;
-  }, [q.questionId, q.activeIndex]);
-
   const label = renderText(dock.title) || i18n.t("dock.answer_title");
   const cmd = dock.command;
   const slotKey = cmd?.slotKey ?? "";
@@ -265,60 +206,18 @@ function useQuestionState(
   }
 
   const multi = step.multiSelect;
-  const sent = chosen.index === q.activeIndex ? chosen.options : [];
+  const ticked = q.draftedOptionNums;
+  const sent = q.submittedOptionNums;
   const errMsg = renderText(cmd?.errorText) || renderText(cmd?.statusText);
-
-  const pick = (options: number[]) => {
-    update({ chosen: { index: q.activeIndex, options }, dirty: false });
-    const built = create(CommandSchema, {
-      kind: {
-        case: "answerQuestion",
-        value: {
-          sessionId,
-          questionId: q.questionId,
-          option: multi ? 0 : (options[0] ?? 0),
-          questionIndex: q.activeIndex,
-          options: multi ? options : [],
-          observedEventSeq: dock.observedSeq,
-        },
-      },
-    });
-    lastCmd.current = built;
-    onSubmitCommand(slotKey, built);
-  };
-
-  const retry = () => {
-    const built = lastCmd.current ?? create(CommandSchema, {
-      kind: {
-        case: "answerQuestion",
-        value: {
-          sessionId,
-          questionId: q.questionId,
-          option: multi ? 0 : (sent[0] ?? 1),
-          questionIndex: q.activeIndex,
-          options: multi ? (sent.length ? sent : [1]) : [],
-          observedEventSeq: dock.observedSeq,
-        },
-      },
-    });
-    update({ dirty: false });
-    onSubmitCommand(slotKey, built);
-  };
-
-  const tick = (optNum: number) => {
-    const base = hasError && !dirty && sent.length > 0 ? sent : ticked;
-    const nextTicked = base.includes(optNum) ? base.filter((x) => x !== optNum) : [...base, optNum].sort((a, b) => a - b);
-    update({ ticked: nextTicked, dirty: true });
-  };
-
-  const showError = hasError && !dirty;
-  const shownTicks = frozen || showError ? sent : ticked;
+  const showError = hasError;
+  const shownTicks = multi ? (ticked.length > 0 ? ticked : frozen || showError ? sent : ticked) : sent;
   const progress = [renderText(q.progressText) || step.header, multi ? i18n.t("dock.multiselect") : ""].filter(Boolean).join(" · ");
+
   const answers = (
     <div className="answers">
       {step.options.map((o, idx) => {
         const num = o.optionNum || idx + 1;
-        const on = multi ? shownTicks.includes(num) : sent.includes(num);
+        const on = shownTicks.includes(num);
         const status = on && sent.includes(num) && (busy ? "sending" : showError ? "err" : "");
         return (
           <button
@@ -327,7 +226,11 @@ function useQuestionState(
             role={multi ? "checkbox" : undefined}
             aria-checked={multi ? on : undefined}
             disabled={multi ? frozen : busy || !canSend || (hasError && !cmd?.canRetry && !!cmd?.frozen)}
-            onClick={() => (multi ? tick(num) : pick([num]))}
+            onClick={() =>
+              multi
+                ? onToggleQuestionOption?.(q.questionId, num)
+                : onAnswerQuestion(q.questionId, num, [])
+            }
           >
             {multi && <span className={"box" + (on ? " on" : "")}>{on && <Check />}</span>}
             <div>
@@ -348,10 +251,18 @@ function useQuestionState(
     </div>
   );
 
+  const submitLabel =
+    renderText(q.submitButtonLabel) ||
+    (busy ? i18n.t("dock.submitting") : ticked.length ? i18n.t("dock.submit_selected", { count: ticked.length }) : i18n.t("dock.select_then_submit"));
+
   const submit = multi && !(showError && cmd?.frozen) && (
     <div className="btns">
-      <button className="btn pri" disabled={busy || !canSend || ticked.length === 0} onClick={() => pick(ticked)}>
-        {busy ? i18n.t("dock.submitting") : ticked.length ? i18n.t("dock.submit_selected", { count: ticked.length }) : i18n.t("dock.select_then_submit")}
+      <button
+        className="btn pri"
+        disabled={!q.canSubmitMulti || !canSend}
+        onClick={() => onAnswerQuestion(q.questionId, 0, [...ticked])}
+      >
+        {submitLabel}
       </button>
     </div>
   );
@@ -360,12 +271,12 @@ function useQuestionState(
 
   const foot = (page: boolean) => (
     <div className="st">
-      {showError && cmd?.canRetry ? (
+      {showError && cmd?.canRetry && slotKey && onRetryCommand ? (
         <>
-          <button className="lk" onClick={retry}>
+          <button className="lk" onClick={() => onRetryCommand(slotKey)}>
             {i18n.t("common.retry")}
           </button>
-          {cmd.canAbandon && slotKey && (
+          {cmd.canAbandon && (
             <button className="lk" onClick={() => onAbandonCommand(slotKey)}>
               {i18n.t("common.cancel")}
             </button>
@@ -400,29 +311,27 @@ function useQuestionState(
 }
 
 function QuestionDock({
-  sessionId,
   dock,
   q,
   canSend,
   frame,
-  questionDraft,
-  onQuestionDraftChange,
   onTerminal,
-  onSubmitCommand,
+  onToggleQuestionOption,
+  onAnswerQuestion,
+  onRetryCommand,
   onAbandonCommand,
 }: {
-  sessionId: string;
   dock: SessionDockView;
   q: SessionQuestionDockView;
   canSend: boolean;
   frame: Frame;
-  questionDraft?: QuestionDraftState;
-  onQuestionDraftChange?: (next: QuestionDraftState) => void;
   onTerminal: () => void;
-  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onToggleQuestionOption?: (questionId: string, optionNum: number) => void;
+  onAnswerQuestion: (questionId: string, optionNum: number, optionNums?: number[]) => void;
+  onRetryCommand?: (slotKey: string) => void;
   onAbandonCommand: (slotKey: string) => void;
 }) {
-  const p = useQuestionState(sessionId, dock, q, canSend, onTerminal, onSubmitCommand, onAbandonCommand, questionDraft, onQuestionDraftChange);
+  const p = useQuestionState(dock, q, canSend, onTerminal, onToggleQuestionOption, onAnswerQuestion, onRetryCommand, onAbandonCommand);
   return (
     <Pending
       frame={frame}
@@ -441,39 +350,23 @@ function QuestionDock({
   );
 }
 
-function makePlanCommand(sessionId: string, dock: SessionDockView, plan: SessionPlanDockView, choice: PlanChoice): Command {
-  return create(CommandSchema, {
-    kind: {
-      case: "answerPlan",
-      value: {
-        sessionId,
-        choice,
-        observedEventSeq: dock.observedSeq,
-        observedScreenHash: plan.screenHash,
-      },
-    },
-  });
-}
-
 function PlanButtons({
-  sessionId,
   dock,
   plan,
   canSend,
   full,
-  onSubmitCommand,
+  onAnswerPlan,
+  onRetryCommand,
   onAbandonCommand,
 }: {
-  sessionId: string;
   dock: SessionDockView;
   plan: SessionPlanDockView;
   canSend: boolean;
   full?: boolean;
-  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onAnswerPlan: (choice: PlanChoice) => void;
+  onRetryCommand?: (slotKey: string) => void;
   onAbandonCommand: (slotKey: string) => void;
 }) {
-  const [pickedChoice, setPickedChoice] = useState<PlanChoice | undefined>(undefined);
-  const lastCmd = useRef<Command | undefined>(undefined);
   const cmd = dock.command;
   const slotKey = cmd?.slotKey ?? "";
   const busy = !!cmd?.busy;
@@ -483,16 +376,7 @@ function PlanButtons({
   if (dock.isSkeleton || plan.choices.length === 0) return <div className="muted">{i18n.t("session.skeleton")}</div>;
 
   const locked = busy || !canSend || !!cmd?.frozen;
-  const answer = (choice: PlanChoice) => {
-    setPickedChoice(choice);
-    const built = makePlanCommand(sessionId, dock, plan, choice);
-    lastCmd.current = built;
-    onSubmitCommand(slotKey, built);
-  };
-  const retry = () => {
-    const built = lastCmd.current ?? makePlanCommand(sessionId, dock, plan, pickedChoice ?? PlanChoice.IMPLEMENT);
-    onSubmitCommand(slotKey, built);
-  };
+  const pickedChoice = plan.submittedChoice;
 
   const clearChoice = full ? plan.choices.find((c) => c.choice === PlanChoice.CLEAR_AND_IMPLEMENT) : undefined;
   const mainChoices = plan.choices.filter((c) => c.choice !== PlanChoice.CLEAR_AND_IMPLEMENT);
@@ -506,7 +390,7 @@ function PlanButtons({
     <>
       {clearChoice && (
         <div className="btns decide">
-          <button className="btn" disabled={locked} onClick={() => answer(clearChoice.choice)}>
+          <button className="btn" disabled={locked} onClick={() => onAnswerPlan(clearChoice.choice)}>
             {busy && pickedChoice === clearChoice.choice ? i18n.t("dock.submitting") : renderText(clearChoice.label)}
           </button>
         </div>
@@ -517,7 +401,7 @@ function PlanButtons({
             key={c.choice}
             className={"btn" + (c.recommended ? " pri" : "")}
             disabled={locked}
-            onClick={() => answer(c.choice)}
+            onClick={() => onAnswerPlan(c.choice)}
           >
             {busy && pickedChoice === c.choice ? i18n.t("dock.submitting") : renderText(c.label)}
           </button>
@@ -526,8 +410,8 @@ function PlanButtons({
       {hasError && (
         <Banner
           kind="err"
-          action={cmd?.canRetry ? i18n.t("common.retry") : cmd?.canAbandon && slotKey ? i18n.t("common.cancel") : undefined}
-          onAction={cmd?.canRetry ? retry : cmd?.canAbandon && slotKey ? () => onAbandonCommand(slotKey) : undefined}
+          action={cmd?.canRetry && slotKey && onRetryCommand ? i18n.t("common.retry") : cmd?.canAbandon && slotKey ? i18n.t("common.cancel") : undefined}
+          onAction={cmd?.canRetry && slotKey && onRetryCommand ? () => onRetryCommand(slotKey) : cmd?.canAbandon && slotKey ? () => onAbandonCommand(slotKey) : undefined}
         >
           {errMsg}
         </Banner>
@@ -537,22 +421,22 @@ function PlanButtons({
 }
 
 function PlanDock({
-  sessionId,
   dock,
   plan,
   canSend,
   frame,
   onFull,
-  onSubmitCommand,
+  onAnswerPlan,
+  onRetryCommand,
   onAbandonCommand,
 }: {
-  sessionId: string;
   dock: SessionDockView;
   plan: SessionPlanDockView;
   canSend: boolean;
   frame: Frame;
   onFull: () => void;
-  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onAnswerPlan: (choice: PlanChoice) => void;
+  onRetryCommand?: (slotKey: string) => void;
   onAbandonCommand: (slotKey: string) => void;
 }) {
   const hasContent = !!plan.markdown || plan.choices.length > 0;
@@ -580,11 +464,11 @@ function PlanDock({
       actions={
         <>
           <PlanButtons
-            sessionId={sessionId}
             dock={dock}
             plan={plan}
             canSend={canSend}
-            onSubmitCommand={onSubmitCommand}
+            onAnswerPlan={onAnswerPlan}
+            onRetryCommand={onRetryCommand}
             onAbandonCommand={onAbandonCommand}
           />
           {note && <div className="ml">{note}</div>}
@@ -672,8 +556,6 @@ export interface DockProps {
   defaultDenying?: boolean;
   reason?: string;
   onReasonChange?: (approvalId: string, v: string) => void;
-  questionDraft?: QuestionDraftState;
-  onQuestionDraftChange?: (next: QuestionDraftState) => void;
   onExpand?: () => void;
   onDenyingChange?: (denying: boolean) => void;
   onOpenChange?: (open: boolean) => void;
@@ -681,7 +563,12 @@ export interface DockProps {
   onPlan?: () => void;
   onQuestion?: () => void;
   onTerminal: () => void;
-  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onEditApprovalDeny?: (approvalId: string, open: boolean) => void;
+  onResolveApproval: (approvalId: string, allow: boolean, always: boolean, denyReason: string) => void;
+  onToggleQuestionOption?: (questionId: string, optionNum: number) => void;
+  onAnswerQuestion: (questionId: string, optionNum: number, optionNums?: number[]) => void;
+  onAnswerPlan: (choice: PlanChoice) => void;
+  onRetryCommand?: (slotKey: string) => void;
   onAbandonCommand: (slotKey: string) => void;
 }
 
@@ -697,8 +584,6 @@ export function Dock({
   defaultDenying,
   reason,
   onReasonChange,
-  questionDraft,
-  onQuestionDraftChange,
   onExpand,
   onDenyingChange,
   onOpenChange,
@@ -706,16 +591,17 @@ export function Dock({
   onPlan,
   onQuestion,
   onTerminal,
-  onSubmitCommand,
+  onEditApprovalDeny,
+  onResolveApproval,
+  onToggleQuestionOption,
+  onAnswerQuestion,
+  onAnswerPlan,
+  onRetryCommand,
   onAbandonCommand,
 }: DockProps) {
   const [, redraw] = useState(0);
   const localSeen = useRef<Set<string>>(new Set());
   const localClosed = useRef<Set<string>>(new Set());
-  const [reasoning, setReasoning] = useState(false);
-  const [externalNote, setExternalNote] = useState(false);
-  const prevApprovalId = useRef("");
-  const localResolveAt = useRef(0);
 
   const hasDock = !!dock?.hasItem;
   const key = hasDock ? dockKey(sessionId, dock!) : "";
@@ -724,23 +610,11 @@ export function Dock({
     if (drafting) (closedKeys ?? localClosed.current).add(key);
   }
   const open = hasDock && !((closedKeys ?? localClosed.current).has(key));
+  const activeApproval = hasDock && dock!.kind === SessionDockKind.APPROVAL && dock!.detail.case === "approval" ? dock!.detail.value : undefined;
+  const reasoning = !!activeApproval && (activeApproval.denyingOpen || !!defaultDenying);
   const shown = open && (reasoning || room >= DOCK_MIN_ROOM);
-  const activeApprovalId = hasDock && dock!.kind === SessionDockKind.APPROVAL && dock!.detail.case === "approval" ? dock!.detail.value.approvalId : "";
-  const isDenyingNow = shown && !!activeApprovalId && reasoning;
-
-  useEffect(() => {
-    if (prevApprovalId.current && prevApprovalId.current !== activeApprovalId) {
-      if (reasoning && Date.now() - localResolveAt.current > 2000) {
-        setExternalNote(true);
-        setReasoning(false);
-        const timer = setTimeout(() => setExternalNote(false), 1200);
-        prevApprovalId.current = activeApprovalId;
-        return () => clearTimeout(timer);
-      }
-      setReasoning(false);
-    }
-    prevApprovalId.current = activeApprovalId;
-  }, [activeApprovalId, reasoning]);
+  const isDenyingNow = shown && reasoning;
+  const externalNotice = dock?.externalResolution ? renderText(dock.externalResolution.text) : "";
 
   useEffect(() => {
     onDenyingChange?.(isDenyingNow);
@@ -755,12 +629,12 @@ export function Dock({
   const closed = closedKeys ?? localClosed.current;
 
   if (!hasDock) {
-    if (externalNote) {
+    if (externalNotice) {
       return (
         <DockBox style={dockContentMax(room, height) === undefined ? {} : ({ "--content-max": `${dockContentMax(room, height)}px` } as CSSProperties)}>
           <div className="dock pending">
             <div className="tc line" role="status">
-              <div className="k"><i />{i18n.t("approval.handled_in_terminal")}</div>
+              <div className="k"><i />{externalNotice}</div>
             </div>
           </div>
         </DockBox>
@@ -801,7 +675,6 @@ export function Dock({
       card = (
         <ApprovalDock
           key={dock.itemId}
-          sessionId={sessionId}
           dock={dock}
           approval={a}
           canSend={canSend}
@@ -809,12 +682,9 @@ export function Dock({
           defaultDenying={defaultDenying}
           reason={reason}
           onReasonChange={onReasonChange ? (v) => onReasonChange(a.approvalId, v) : undefined}
-          reasoning={reasoning}
-          onReasonOpen={setReasoning}
-          onSubmitCommand={(sk, cmd) => {
-            localResolveAt.current = Date.now();
-            onSubmitCommand(sk, cmd);
-          }}
+          onEditApprovalDeny={onEditApprovalDeny}
+          onResolveApproval={onResolveApproval}
+          onRetryCommand={onRetryCommand}
           onAbandonCommand={onAbandonCommand}
         />
       );
@@ -824,15 +694,14 @@ export function Dock({
       card = (
         <QuestionDock
           key={dock.itemId}
-          sessionId={sessionId}
           dock={dock}
           q={dock.detail.value}
           canSend={canSend}
           frame={frame}
-          questionDraft={questionDraft}
-          onQuestionDraftChange={onQuestionDraftChange}
           onTerminal={onTerminal}
-          onSubmitCommand={onSubmitCommand}
+          onToggleQuestionOption={onToggleQuestionOption}
+          onAnswerQuestion={onAnswerQuestion}
+          onRetryCommand={onRetryCommand}
           onAbandonCommand={onAbandonCommand}
         />
       );
@@ -841,13 +710,13 @@ export function Dock({
       card = (
         <PlanDock
           key={dock.itemId}
-          sessionId={sessionId}
           dock={dock}
           plan={dock.detail.value}
           canSend={canSend}
           frame={frame}
           onFull={() => onPlan?.()}
-          onSubmitCommand={onSubmitCommand}
+          onAnswerPlan={onAnswerPlan}
+          onRetryCommand={onRetryCommand}
           onAbandonCommand={onAbandonCommand}
         />
       );
@@ -869,10 +738,10 @@ export function Dock({
   if (!card) return null;
   return (
     <DockBox style={style}>
-      {externalNote && (
+      {externalNotice && (
         <div className="dock pending">
           <div className="tc line" role="status">
-            <div className="k"><i />{i18n.t("approval.handled_in_terminal")}</div>
+            <div className="k"><i />{externalNotice}</div>
           </div>
         </div>
       )}
@@ -893,33 +762,31 @@ function DockBox({ style, children }: { style: CSSProperties; children: ReactNod
 }
 
 export function QuestionPage({
-  sessionId,
   dock,
   q,
   canSend = true,
   agentName,
   title,
-  questionDraft,
-  onQuestionDraftChange,
   onBack,
   onTerminal,
-  onSubmitCommand,
+  onToggleQuestionOption,
+  onAnswerQuestion,
+  onRetryCommand,
   onAbandonCommand,
 }: {
-  sessionId: string;
   dock: SessionDockView;
   q: SessionQuestionDockView;
   canSend?: boolean;
   agentName: string;
   title: string;
-  questionDraft?: QuestionDraftState;
-  onQuestionDraftChange?: (next: QuestionDraftState) => void;
   onBack: () => void;
   onTerminal: () => void;
-  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onToggleQuestionOption?: (questionId: string, optionNum: number) => void;
+  onAnswerQuestion: (questionId: string, optionNum: number, optionNums?: number[]) => void;
+  onRetryCommand?: (slotKey: string) => void;
   onAbandonCommand: (slotKey: string) => void;
 }) {
-  const p = useQuestionState(sessionId, dock, q, canSend, onTerminal, onSubmitCommand, onAbandonCommand, questionDraft, onQuestionDraftChange);
+  const p = useQuestionState(dock, q, canSend, onTerminal, onToggleQuestionOption, onAnswerQuestion, onRetryCommand, onAbandonCommand);
   return (
     <div className="page dpage">
       <NavBar onBack={onBack} title={i18n.t("dock.answer_title")} sub={`${title} · ${agentName}`} />
@@ -942,7 +809,6 @@ export function QuestionPage({
 }
 
 export function ApprovalPage({
-  sessionId,
   dock,
   approval,
   canSend = true,
@@ -950,10 +816,11 @@ export function ApprovalPage({
   reason,
   onReasonChange,
   onBack,
-  onSubmitCommand,
+  onEditApprovalDeny,
+  onResolveApproval,
+  onRetryCommand,
   onAbandonCommand,
 }: {
-  sessionId: string;
   dock: SessionDockView;
   approval: SessionApprovalDockView;
   canSend?: boolean;
@@ -961,10 +828,11 @@ export function ApprovalPage({
   reason?: string;
   onReasonChange?: (v: string) => void;
   onBack: () => void;
-  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onEditApprovalDeny?: (approvalId: string, open: boolean) => void;
+  onResolveApproval: (approvalId: string, allow: boolean, always: boolean, denyReason: string) => void;
+  onRetryCommand?: (slotKey: string) => void;
   onAbandonCommand: (slotKey: string) => void;
 }) {
-  const lastCmd = useRef<Command | undefined>(undefined);
   const timeText = renderText(dock.timeLeftPlain);
   if (dock.isSkeleton || approval.isSkeleton) {
     return (
@@ -993,16 +861,12 @@ export function ApprovalPage({
         command={dock.command}
         reason={reason}
         onReasonChange={onReasonChange}
+        denyingOpen={onEditApprovalDeny ? approval.denyingOpen : undefined}
+        holdOpenCard={onEditApprovalDeny ? approval.holdOpenCard : undefined}
         docked
-        onResolve={(allow, why, always) => {
-          const built = makeApprovalCommand(sessionId, dock, approval, allow, why, always);
-          lastCmd.current = built;
-          onSubmitCommand(slotKey, built);
-        }}
-        onRetry={() => {
-          const built = lastCmd.current ?? makeApprovalCommand(sessionId, dock, approval, true, "", false);
-          onSubmitCommand(slotKey, built);
-        }}
+        onDenying={onEditApprovalDeny ? (open) => onEditApprovalDeny(approval.approvalId, open) : undefined}
+        onResolve={(allow, why, always) => onResolveApproval(approval.approvalId, allow, always, why)}
+        onRetry={slotKey && onRetryCommand ? () => onRetryCommand(slotKey) : undefined}
         onAbandon={slotKey ? () => onAbandonCommand(slotKey) : undefined}
       />
     </div>
@@ -1010,22 +874,22 @@ export function ApprovalPage({
 }
 
 export function PlanPage({
-  sessionId,
   dock,
   plan,
   canSend = true,
   title,
   onBack,
-  onSubmitCommand,
+  onAnswerPlan,
+  onRetryCommand,
   onAbandonCommand,
 }: {
-  sessionId: string;
   dock: SessionDockView;
   plan: SessionPlanDockView;
   canSend?: boolean;
   title: string;
   onBack: () => void;
-  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onAnswerPlan: (choice: PlanChoice) => void;
+  onRetryCommand?: (slotKey: string) => void;
   onAbandonCommand: (slotKey: string) => void;
 }) {
   if (dock.isSkeleton || (!plan.markdown && plan.choices.length === 0)) {
@@ -1046,12 +910,12 @@ export function PlanPage({
       </div>
       <div className="pfoot">
         <PlanButtons
-          sessionId={sessionId}
           dock={dock}
           plan={plan}
           canSend={canSend}
           full
-          onSubmitCommand={onSubmitCommand}
+          onAnswerPlan={onAnswerPlan}
+          onRetryCommand={onRetryCommand}
           onAbandonCommand={onAbandonCommand}
         />
       </div>

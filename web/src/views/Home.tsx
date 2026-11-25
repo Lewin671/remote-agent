@@ -1,18 +1,16 @@
 // The home screen: scope, headline, what waits, what runs, what ended,
 // sidebar, and wide main area — all rendered straight from HomeViewModel.
 
-import { create } from "@bufbuild/protobuf";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AgentMark } from "../agent-mark";
-import { getCoreHost, useCoreHost, useHomeView, useNewSessionView, useProjectView, useSchedulesView, useSessionView, useSyncState, type Go } from "../core/host";
+import { getCoreHost, useCoreHost, useHomeView, useNewSessionView, useProjectView, useSchedulesView, useSyncState, type Go } from "../core/host";
 import type { SyncStateView } from "../gen/remoteagent/core/v1/sync_view_pb";
 import { renderText } from "../core/text";
-import { SessionCommandStatus, SessionDockKind } from "../gen/remoteagent/core/v1/session_view_pb";
-import { CommandSchema, type Command } from "../gen/remoteagent/v1/remote_pb";
 import {
   ConnState,
   HeadlineKind,
   HomeEmptyKind,
+  HomeFocusPhase,
   SessionDisplayStatus,
   TailKind,
   type AttentionCardView,
@@ -152,302 +150,112 @@ function TopQuestionSlot({
   onOpen: (sessionId: string) => void;
   onOpenTerminal: (sessionId: string) => void;
 }) {
-  const [held, setHeld] = useState(question as HomeQuestionCardView | undefined);
-  const [phase, setPhase] = useState("idle" as "idle" | "sending" | "error" | "delivered" | "elsewhere" | "exiting");
-  const [exitKind, setExitKind] = useState("delivered" as "delivered" | "elsewhere");
-  const [picked, setPicked] = useState(undefined as { num: number; label: string } | undefined);
+  // Pure visual state: 150ms spinner delay during SUBMITTING and 160ms collapse fade after Core's 900ms hold ends.
   const [showSpinner, setShowSpinner] = useState(false);
-  const [errMsg, setErrMsg] = useState("");
-  const spinTimer = useRef(undefined as ReturnType<typeof setTimeout> | undefined);
+  const [exiting, setExiting] = useState<{ label: string; checked: boolean } | undefined>(undefined);
+  const [previewResolved, setPreviewResolved] = useState<string | undefined>(undefined);
+  const prevResolved = useRef<{ label: string; checked: boolean } | undefined>(undefined);
 
-  useEffect(() => () => clearTimeout(spinTimer.current), []);
+  const phase = question?.phase ?? HomeFocusPhase.IDLE;
+  const sending = phase === HomeFocusPhase.SUBMITTING;
+  const resolved =
+    phase === HomeFocusPhase.RESOLVED_THIS_CLIENT || phase === HomeFocusPhase.RESOLVED_ELSEWHERE;
 
-  // Track changes to active question (switch, external answer, or cleared after submit)
   useEffect(() => {
-    if (question) {
-      if (!held || held.sessionId !== question.sessionId || held.questionId !== question.questionId) {
-        clearTimeout(spinTimer.current);
-        setShowSpinner(false);
-        setPicked(undefined);
-        setErrMsg("");
-        setPhase("idle");
-        setHeld(question);
-      } else {
-        setHeld(question);
-      }
+    if (!sending) {
+      setShowSpinner(false);
       return;
     }
-    if (!held) return;
-    if (phase === "sending") {
-      clearTimeout(spinTimer.current);
-      setShowSpinner(false);
-      setExitKind("delivered");
-      setPhase("delivered");
-    } else if (phase === "idle" || phase === "error") {
-      clearTimeout(spinTimer.current);
-      setShowSpinner(false);
-      setExitKind("elsewhere");
-      setPhase("elsewhere");
+    const timer = setTimeout(() => setShowSpinner(true), 150);
+    return () => clearTimeout(timer);
+  }, [sending, question?.sessionId, question?.questionId, question?.pickedOptionNum]);
+
+  useEffect(() => {
+    if (resolved && question) {
+      prevResolved.current = {
+        label: renderText(question.resolutionText),
+        checked: phase === HomeFocusPhase.RESOLVED_THIS_CLIENT,
+      };
+      setExiting(undefined);
+      return;
     }
-  }, [question, held, phase]);
+    if (!question && prevResolved.current) {
+      const snap = prevResolved.current;
+      prevResolved.current = undefined;
+      setExiting(snap);
+      const timer = setTimeout(() => setExiting(undefined), 160);
+      return () => clearTimeout(timer);
+    }
+    if (question) {
+      prevResolved.current = undefined;
+      setExiting(undefined);
+    }
+    return undefined;
+  }, [question, resolved, phase]);
 
-  // 900ms confirmation hold -> 160ms collapse fade
-  useEffect(() => {
-    if (phase !== "delivered" && phase !== "elsewhere") return;
-    const t1 = setTimeout(() => setPhase("exiting"), 900);
-    return () => clearTimeout(t1);
-  }, [phase]);
-
-  useEffect(() => {
-    if (phase !== "exiting") return;
-    const t2 = setTimeout(() => {
-      setHeld(undefined);
-      setPicked(undefined);
-      setErrMsg("");
-      setPhase("idle");
-    }, 160);
-    return () => clearTimeout(t2);
-  }, [phase]);
-
-  if (!held) return null;
-
-  const finishDelivery = (label: string) => {
-    clearTimeout(spinTimer.current);
-    setShowSpinner(false);
-    setPicked((p) => p ?? { num: 0, label });
-    setExitKind("delivered");
-    setPhase("delivered");
-  };
-
-  if (phase === "delivered" || phase === "elsewhere" || phase === "exiting") {
-    const isElsewhere = phase === "elsewhere" || (phase === "exiting" && exitKind === "elsewhere");
-    const label = isElsewhere
-      ? t("home.question_answered_elsewhere")
-      : t("home.question_answered_line", { answer: picked?.label || "" });
+  if (!question) {
+    if (!exiting) return null;
     return (
-      <div className={"tc line" + (phase === "exiting" ? " q-exit" : "")} role="status">
+      <div className="tc line q-exit" role="status">
         <div className="k">
-          {!isElsewhere && <Check />}
+          {exiting.checked && <Check />}
+          <span>{exiting.label}</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (resolved || previewResolved !== undefined) {
+    const isSelf = previewResolved !== undefined || phase === HomeFocusPhase.RESOLVED_THIS_CLIENT;
+    const label = previewResolved ?? renderText(question.resolutionText);
+    return (
+      <div className="tc line" role="status">
+        <div className="k">
+          {isSelf && <Check />}
           <span>{label}</span>
         </div>
       </div>
     );
   }
 
-  return remote ? (
-    <TopQuestionLive
-      card={held}
-      remote={remote}
-      phase={phase}
-      picked={picked}
-      showSpinner={showSpinner}
-      errMsg={errMsg}
-      onStartSend={(num, label) => {
-        clearTimeout(spinTimer.current);
-        setErrMsg("");
-        setPicked({ num, label });
-        setPhase("sending");
-        setShowSpinner(false);
-        spinTimer.current = setTimeout(() => setShowSpinner(true), 150);
-      }}
-      onDelivered={finishDelivery}
-      onError={(msg) => {
-        clearTimeout(spinTimer.current);
-        setShowSpinner(false);
-        setErrMsg(msg);
-        setPhase("error");
-      }}
-      onOpen={() => onOpen(held.sessionId)}
-      onOpenTerminal={() => onOpenTerminal(held.sessionId)}
-    />
-  ) : (
-    <TopQuestionCardView
-      card={held}
-      phase={phase}
-      picked={picked}
-      showSpinner={showSpinner}
-      errMsg={errMsg}
-      onPick={(opt) => {
-        setPicked({ num: opt.optionNum, label: opt.label });
-        setPhase("delivered");
-      }}
-      onRetry={() => setPhase("idle")}
-      onOpen={() => onOpen(held.sessionId)}
-      onOpenTerminal={() => onOpenTerminal(held.sessionId)}
-    />
-  );
-}
-
-function TopQuestionLive({
-  card,
-  remote,
-  phase,
-  picked,
-  showSpinner,
-  errMsg,
-  onStartSend,
-  onDelivered,
-  onError,
-  onOpen,
-  onOpenTerminal,
-}: {
-  card: HomeQuestionCardView;
-  remote: Remote;
-  phase: "idle" | "sending" | "error";
-  picked?: { num: number; label: string };
-  showSpinner: boolean;
-  errMsg: string;
-  onStartSend: (num: number, label: string) => void;
-  onDelivered: (label: string) => void;
-  onError: (msg: string) => void;
-  onOpen: () => void;
-  onOpenTerminal: () => void;
-}) {
-  const host = useCoreHost(remote);
-  const vm = useSessionView(host, card.sessionId);
-  const dock = vm.dock;
-  const cmd =
-    dock?.hasItem && dock.kind === SessionDockKind.QUESTION && dock.itemId === card.questionId
-      ? dock.command
-      : undefined;
-  const machineId = vm.header?.machineId || card.machineId || "";
-  const slotKey = cmd?.slotKey || `question:${card.sessionId}:${card.questionId}#0`;
-  const lastCmd = useRef<Command | undefined>(undefined);
-  const wasBusy = useRef(false);
-
-  const cmdBusy = !!cmd?.busy;
-  const cmdError =
-    !!cmd &&
-    (cmd.status === SessionCommandStatus.FAILED || cmd.status === SessionCommandStatus.UNKNOWN || !!cmd.expired);
-  const cmdErrText = renderText(cmd?.errorText) || renderText(cmd?.statusText);
-
-  useEffect(() => {
-    if (cmdBusy) {
-      wasBusy.current = true;
-      return;
-    }
-    if (phase === "sending" && wasBusy.current) {
-      wasBusy.current = false;
-      if (cmdError) {
-        onError(cmdErrText || t("composer.android_unknown_reason"));
-      } else {
-        onDelivered(picked?.label || "");
-      }
-    }
-  }, [cmdBusy, cmdError, cmdErrText, phase, picked?.label, onDelivered, onError]);
-
-  const sendOption = (num: number, label: string) => {
-    if (phase === "sending" || !card.canAnswer) return;
-    wasBusy.current = false;
-    onStartSend(num, label);
-    const built = create(CommandSchema, {
-      kind: {
-        case: "answerQuestion",
-        value: {
-          sessionId: card.sessionId,
-          questionId: card.questionId,
-          option: num,
-          questionIndex: 0,
-          options: [],
-          observedEventSeq: card.observedEventSeq,
-        },
-      },
-    });
-    lastCmd.current = built;
-    host.sessionSubmitCommand(slotKey, machineId, card.sessionId, built);
-  };
-
-  return (
-    <TopQuestionCardView
-      card={card}
-      phase={phase}
-      picked={picked}
-      showSpinner={showSpinner}
-      errMsg={errMsg}
-      onPick={(opt) => sendOption(opt.optionNum, opt.label)}
-      onRetry={() => {
-        if (picked) {
-          onStartSend(picked.num, picked.label);
-          const built =
-            lastCmd.current ??
-            create(CommandSchema, {
-              kind: {
-                case: "answerQuestion",
-                value: {
-                  sessionId: card.sessionId,
-                  questionId: card.questionId,
-                  option: picked.num,
-                  questionIndex: 0,
-                  options: [],
-                  observedEventSeq: card.observedEventSeq,
-                },
-              },
-            });
-          host.sessionSubmitCommand(slotKey, machineId, card.sessionId, built);
-        }
-      }}
-      onOpen={onOpen}
-      onOpenTerminal={onOpenTerminal}
-    />
-  );
-}
-
-function TopQuestionCardView({
-  card,
-  phase,
-  picked,
-  showSpinner,
-  errMsg,
-  onPick,
-  onRetry,
-  onOpen,
-  onOpenTerminal,
-}: {
-  card: HomeQuestionCardView;
-  phase: "idle" | "sending" | "error";
-  picked?: { num: number; label: string };
-  showSpinner: boolean;
-  errMsg: string;
-  onPick: (opt: HomeQuestionCardView["options"][number]) => void;
-  onRetry: () => void;
-  onOpen: () => void;
-  onOpenTerminal: () => void;
-}) {
-  const sending = phase === "sending";
-  const rightMeta = !card.canAnswer
-    ? renderText(card.offlineNote) || t("list_state.unlinked")
-    : renderText(card.timeText);
-  const title = renderText(card.title);
-  const where = renderText(card.where);
+  const host = remote ? getCoreHost(remote) : undefined;
+  const errMsg =
+    phase === HomeFocusPhase.FAILED
+      ? renderText(question.command?.errorText) || renderText(question.command?.statusText) || t("composer.android_unknown_reason")
+      : "";
+  const rightMeta = !question.canAnswer
+    ? renderText(question.offlineNote) || t("list_state.unlinked")
+    : renderText(question.timeText);
 
   return (
     <div className="tc">
       <div className="k">
         <i />
-        {renderText(card.badgeText) || t("dock.answer_title")}
+        {renderText(question.badgeText) || t("dock.answer_title")}
         {rightMeta && <span>{rightMeta}</span>}
       </div>
       <h4>
-        <button type="button" onClick={onOpen}>
-          <span>{title}</span>
+        <button type="button" onClick={() => onOpen(question.sessionId)}>
+          <span>{renderText(question.title)}</span>
           <ChevronRight />
         </button>
       </h4>
-      {where && <div className="m">{where}</div>}
-      <div className="q">{card.questionText}</div>
+      {renderText(question.where) && <div className="m">{renderText(question.where)}</div>}
+      <div className="q">{question.questionText}</div>
       <div className="q-opts">
-        {card.options.map((opt) => {
-          const isPicked = picked?.num === opt.optionNum;
-          const cls =
-            "q-opt" +
-            (isPicked ? " picking" : sending ? " dimmed" : "");
+        {question.options.map((opt) => {
+          const isPicked = question.pickedOptionNum === opt.optionNum;
+          const cls = "q-opt" + (isPicked ? " picking" : sending ? " dimmed" : "");
           return (
             <button
               key={opt.optionNum}
               type="button"
               className={cls}
-              disabled={!card.canAnswer || sending}
-              onClick={() => onPick(opt)}
+              disabled={!question.canAnswer || sending}
+              onClick={() => {
+                if (host) host.homeAnswerQuestion(question.sessionId, question.questionId, opt.optionNum);
+                else setPreviewResolved(t("home.question_answered_line", { answer: opt.label }));
+              }}
             >
               <div>
                 <b>
@@ -461,15 +269,20 @@ function TopQuestionCardView({
           );
         })}
       </div>
-      {phase === "error" && (
+      {phase === HomeFocusPhase.FAILED && (
         <div className="q-err" role="alert">
           <span>{t("home.question_send_failed", { reason: errMsg })}</span>
-          <button type="button" onClick={onRetry}>{t("common.retry")}</button>
+          <button
+            type="button"
+            onClick={() => host?.homeRetryAttention(question.sessionId, question.questionId)}
+          >
+            {t("common.retry")}
+          </button>
         </div>
       )}
       <div className="q-foot">
         <span>{t("dock.none_fit")}</span>
-        <button type="button" onClick={onOpenTerminal}>
+        <button type="button" onClick={() => onOpenTerminal(question.sessionId)}>
           {t("home.question_answer_in_terminal")}
           <ChevronRight />
         </button>
@@ -479,75 +292,49 @@ function TopQuestionCardView({
 }
 
 function TopApproval({ card, remote, onOpen }: { card: AttentionCardView; remote?: Remote; onOpen: () => void }) {
-  if (remote) return <TopApprovalLive card={card} remote={remote} onOpen={onOpen} />;
-  return <TopApprovalPreview card={card} onOpen={onOpen} />;
-}
-
-function TopApprovalLive({ card, remote, onOpen }: { card: AttentionCardView; remote: Remote; onOpen: () => void }) {
-  const host = useCoreHost(remote);
-  const vm = useSessionView(host, card.sessionId);
-  const lastCmd = useRef<Command | undefined>(undefined);
-  const dock = vm.dock;
-  const dockApproval =
-    dock?.hasItem && dock.kind === SessionDockKind.APPROVAL && dock.detail.case === "approval" && dock.detail.value.approvalId === card.approvalId
-      ? dock.detail.value
-      : undefined;
-  const command =
-    dock?.hasItem && dock.kind === SessionDockKind.APPROVAL && dock.itemId === card.approvalId
-      ? dock.command
-      : undefined;
-  const machineId = vm.header?.machineId ?? "";
-  const slotKey = command?.slotKey || `approval:${card.sessionId}:${card.approvalId}`;
+  if (card.phase === HomeFocusPhase.RESOLVED_THIS_CLIENT || card.phase === HomeFocusPhase.RESOLVED_ELSEWHERE) {
+    return (
+      <div className="tc line" role="status">
+        <div className="k">
+          {card.phase === HomeFocusPhase.RESOLVED_THIS_CLIENT && <Check />}
+          <span>{renderText(card.resolutionText)}</span>
+        </div>
+      </div>
+    );
+  }
+  if (!remote) return <TopApprovalPreview card={card} onOpen={onOpen} />;
+  const host = getCoreHost(remote);
   const reason = remote.approvalReasons.get(card.approvalId) ?? "";
-
-  const makeCmd = (allow: boolean, why: string, always: boolean): Command =>
-    create(CommandSchema, {
-      kind: {
-        case: "resolveApproval",
-        value: {
-          sessionId: card.sessionId,
-          approvalId: card.approvalId,
-          allow,
-          message: why,
-          always,
-          observedEventSeq: dock?.observedSeq ?? 0n,
-        },
-      },
-    });
-
   return (
     <ApprovalCard
+      approvalId={card.approvalId}
       kind={renderText(card.kindText)}
-      body={dockApproval ? (dockApproval.body || dockApproval.commandPreview || dockApproval.toolName) : (card.body || card.toolName)}
-      description={dockApproval?.description}
-      truncated={dockApproval?.bodyTruncated ?? card.truncated}
-      isSkeleton={dockApproval?.isSkeleton}
-      canAlwaysAllow={dockApproval?.canAlwaysAllow ?? !!renderText(card.alwaysLabel)}
-      alwaysLabel={renderText(dockApproval?.alwaysLabel) || renderText(card.alwaysLabel)}
-      denyReasonPlaceholder={renderText(dockApproval?.denyReasonPlaceholder)}
+      body={card.body || card.toolName}
+      description={card.description}
+      truncated={card.truncated}
+      isSkeleton={card.isSkeleton}
+      canAlwaysAllow={!!renderText(card.alwaysLabel)}
+      alwaysLabel={renderText(card.alwaysLabel)}
+      denyReasonPlaceholder={renderText(card.denyReasonPlaceholder)}
       timeText={renderText(card.time)}
       hot={card.hot}
-      locked={card.locked || (vm.header?.found ? !vm.header.capabilities?.canSend : false)}
-      command={command}
+      locked={card.locked}
+      command={card.command}
       reason={reason}
       onReasonChange={(v) => {
         if (v) remote.approvalReasons.set(card.approvalId, v);
         else remote.approvalReasons.delete(card.approvalId);
         remote.touch();
       }}
+      denyingOpen={card.denyingOpen}
+      holdOpenCard={card.holdOpenCard}
       title={renderText(card.title)}
       where={renderText(card.where)}
       onOpen={onOpen}
-      onResolve={(allow, why, always) => {
-        const built = makeCmd(allow, why, always);
-        lastCmd.current = built;
-        host.sessionSubmitCommand(slotKey, machineId, card.sessionId, built);
-      }}
-      onRetry={() => {
-        const built = lastCmd.current ?? makeCmd(true, "", false);
-        host.sessionSubmitCommand(slotKey, machineId, card.sessionId, built);
-      }}
-      onAbandon={() => host.sessionAbandonCommand(slotKey, card.sessionId)}
+      onDenying={(open) => host.homeEditApprovalDeny(card.sessionId, card.approvalId, open)}
+      onResolve={(allow, why, always) => host.homeResolveApproval(card.sessionId, card.approvalId, allow, always, why)}
+      onRetry={() => host.homeRetryAttention(card.sessionId, card.approvalId)}
+      onAbandon={() => host.homeAbandonAttention(card.sessionId, card.approvalId)}
     />
   );
 }

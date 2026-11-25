@@ -332,7 +332,6 @@ describe("long-session cold load, memo reactivity, and key-based unseen badge", 
             draft=""
             onDraft={() => undefined}
             onSend={() => undefined}
-            onSubmitCommand={() => undefined}
             onAbandonCommand={() => undefined}
             onCancelTrayItem={() => undefined}
             onIgnoreTrayItem={() => undefined}

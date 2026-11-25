@@ -186,9 +186,17 @@ import {
   type TerminalDirectStateEffect,
 } from "../gen/remoteagent/core/v1/transport_pb";
 import { ApprovalMode, SendMode, type Agent } from "../gen/remoteagent/v1/event_pb";
-import { UsageRangePreset, UsageStatsResponseSchema, type UsageStatsResponse } from "../gen/remoteagent/v1/local_pb";
-import { ConnState, type HomeViewModel } from "../gen/remoteagent/core/v1/home_view_pb";
-import { CommandResultSchema, CommandSchema, type Command } from "../gen/remoteagent/v1/remote_pb";
+import { PlanChoice, UsageRangePreset, UsageStatsResponseSchema, type UsageStatsResponse } from "../gen/remoteagent/v1/local_pb";
+import {
+  ConnState,
+  HomeAbandonAttentionActionSchema,
+  HomeAnswerQuestionActionSchema,
+  HomeEditApprovalDenyActionSchema,
+  HomeResolveApprovalActionSchema,
+  HomeRetryAttentionActionSchema,
+  type HomeViewModel,
+} from "../gen/remoteagent/core/v1/home_view_pb";
+import { CommandResultSchema, CommandSchema } from "../gen/remoteagent/v1/remote_pb";
 import {
   MachineChartKind,
   MachinePollMode,
@@ -243,15 +251,25 @@ import {
   type SchedulesViewModel,
 } from "../gen/remoteagent/core/v1/schedules_view_pb";
 import {
+  SessionAnswerPlanActionSchema,
+  SessionAnswerQuestionActionSchema,
+  SessionEditApprovalDenyActionSchema,
   SessionImageViewerCloseActionSchema,
   SessionImageViewerNavigateActionSchema,
   SessionImageViewerOpenActionSchema,
   SessionOpenActionSchema,
   SessionRefreshHistoryActionSchema,
+  SessionRenameActionSchema,
+  SessionResolveApprovalActionSchema,
+  SessionRetryCommandActionSchema,
   SessionRetryLoadActionSchema,
   SessionScreenRequestSchema,
+  SessionSetApprovalModeActionSchema,
+  SessionSetModelActionSchema,
+  SessionSimpleCommandActionSchema,
+  SessionSimpleCommandKind,
   SessionSlotActionSchema,
-  SessionSubmitCommandActionSchema,
+  SessionToggleQuestionOptionActionSchema,
   SessionTrayItemActionSchema,
   SessionTraySessionActionSchema,
   SessionWindowRequestSchema,
@@ -1387,6 +1405,31 @@ export class CoreHost {
   homeLoadMoreEnded = (step = 30) => this.emit({ case: "homeLoadMoreEnded", value: create(HomeLoadMoreEndedActionSchema, { step }) });
   homeRetryLoad = () => this.emit({ case: "homeRetryLoad", value: create(HomeRetryLoadActionSchema) });
   homeSelectSession = (sessionId: string) => this.emit({ case: "homeSelectSession", value: create(HomeSelectSessionActionSchema, { sessionId }) });
+  homeResolveApproval = (sessionId: string, approvalId: string, allow: boolean, always: boolean, denyReason = "") =>
+    this.emit({
+      case: "homeResolveApproval",
+      value: create(HomeResolveApprovalActionSchema, { sessionId, approvalId, allow, always, denyReason }),
+    });
+  homeEditApprovalDeny = (sessionId: string, approvalId: string, denyingOpen: boolean) =>
+    this.emit({
+      case: "homeEditApprovalDeny",
+      value: create(HomeEditApprovalDenyActionSchema, { sessionId, approvalId, denyingOpen }),
+    });
+  homeAnswerQuestion = (sessionId: string, questionId: string, optionNum: number) =>
+    this.emit({
+      case: "homeAnswerQuestion",
+      value: create(HomeAnswerQuestionActionSchema, { sessionId, questionId, optionNum }),
+    });
+  homeRetryAttention = (sessionId: string, itemId: string) =>
+    this.emit({
+      case: "homeRetryAttention",
+      value: create(HomeRetryAttentionActionSchema, { sessionId, itemId }),
+    });
+  homeAbandonAttention = (sessionId: string, itemId: string) =>
+    this.emit({
+      case: "homeAbandonAttention",
+      value: create(HomeAbandonAttentionActionSchema, { sessionId, itemId }),
+    });
 
   projectSetSearch = (query: string) => this.emit({ case: "projectSetSearch", value: create(ProjectSetSearchActionSchema, { query }) });
   projectTogglePin = (projectKey: string) => this.emit({ case: "projectTogglePin", value: create(ProjectKeyActionSchema, { projectKey }) });
@@ -1646,10 +1689,73 @@ export class CoreHost {
     });
   }
 
-  sessionSubmitCommand(slotKey: string, machineId: string, sessionId: string, command: Command) {
+  sessionEditApprovalDeny(sessionId: string, approvalId: string, denyingOpen: boolean) {
     this.emit({
-      case: "sessionSubmitCommand",
-      value: create(SessionSubmitCommandActionSchema, { slotKey, machineId, sessionId, command }),
+      case: "sessionEditApprovalDeny",
+      value: create(SessionEditApprovalDenyActionSchema, { sessionId, approvalId, denyingOpen }),
+    });
+  }
+
+  sessionResolveApproval(sessionId: string, approvalId: string, allow: boolean, always: boolean, denyReason = "") {
+    this.emit({
+      case: "sessionResolveApproval",
+      value: create(SessionResolveApprovalActionSchema, { sessionId, approvalId, allow, always, denyReason }),
+    });
+  }
+
+  sessionToggleQuestionOption(sessionId: string, questionId: string, optionNum: number) {
+    this.emit({
+      case: "sessionToggleQuestionOption",
+      value: create(SessionToggleQuestionOptionActionSchema, { sessionId, questionId, optionNum }),
+    });
+  }
+
+  sessionAnswerQuestion(sessionId: string, questionId: string, optionNum = 0, optionNums: number[] = []) {
+    this.emit({
+      case: "sessionAnswerQuestion",
+      value: create(SessionAnswerQuestionActionSchema, { sessionId, questionId, optionNum, optionNums }),
+    });
+  }
+
+  sessionAnswerPlan(sessionId: string, choice: PlanChoice) {
+    this.emit({
+      case: "sessionAnswerPlan",
+      value: create(SessionAnswerPlanActionSchema, { sessionId, choice }),
+    });
+  }
+
+  sessionSimpleCommand(sessionId: string, kind: SessionSimpleCommandKind) {
+    this.emit({
+      case: "sessionSimpleCommand",
+      value: create(SessionSimpleCommandActionSchema, { sessionId, kind }),
+    });
+  }
+
+  sessionRename(sessionId: string, title: string) {
+    this.emit({
+      case: "sessionRename",
+      value: create(SessionRenameActionSchema, { sessionId, title }),
+    });
+  }
+
+  sessionSetApprovalMode(sessionId: string, mode: ApprovalMode) {
+    this.emit({
+      case: "sessionSetApprovalMode",
+      value: create(SessionSetApprovalModeActionSchema, { sessionId, mode }),
+    });
+  }
+
+  sessionSetModel(sessionId: string, model: string, effort = "") {
+    this.emit({
+      case: "sessionSetModel",
+      value: create(SessionSetModelActionSchema, { sessionId, model, effort }),
+    });
+  }
+
+  sessionRetryCommand(sessionId: string, slotKey: string) {
+    this.emit({
+      case: "sessionRetryCommand",
+      value: create(SessionRetryCommandActionSchema, { sessionId, slotKey }),
     });
   }
 

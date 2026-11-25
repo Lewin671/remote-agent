@@ -37,15 +37,13 @@ it.each(["zh-CN", "en"] as const)("keeps Full access red and sends the original 
   const session = remote.sessions.get("s-appr")!;
   (remote as unknown as { demoSessions: Map<string, { info?: { mode: number } }>; syncDemoToCore(): void }).demoSessions.get("s-appr")!.info!.mode = ApprovalMode.FULL_ACCESS;
   (remote as unknown as { syncDemoToCore(): void }).syncDemoToCore();
-  const submit = vi.spyOn(getCoreHost(remote), "sessionSubmitCommand");
+  const resolve = vi.spyOn(getCoreHost(remote), "sessionResolveApproval");
   await mount(session.id);
   expect(host.querySelector(".red")?.textContent).toBe(t("modes.full_access"));
   const allow = [...host.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent === t("approval.allow"))!;
   expect(allow.disabled).toBe(false);
   await act(async () => allow.click());
-  expect(submit).toHaveBeenCalledWith(expect.any(String), session.machineId, session.id, expect.objectContaining({
-    kind: expect.objectContaining({ case: "resolveApproval", value: expect.objectContaining({ approvalId: "a1", allow: true }) }),
-  }));
+  expect(resolve).toHaveBeenCalledWith(session.id, "a1", true, false, "");
 });
 
 it("updates existing history and preserves the draft and structured changes on locale override", async () => {
@@ -84,12 +82,12 @@ it.each(["zh-CN", "en"] as const)("uses origin IDs even if another device is nam
 it.each(["zh-CN", "en"] as const)("never enables approval of a skeleton in %s", async locale => {
   localeStore.overrideForTesting(locale);
   remote = DemoRemote.create(new URLSearchParams(), async () => {}); remote.start();
-  const submit = vi.spyOn(getCoreHost(remote), "sessionSubmitCommand");
+  const resolve = vi.spyOn(getCoreHost(remote), "sessionResolveApproval");
   demoPush("s-idle", { case: "approvalRequested", value: { approvalId: "a-skel", description: "run cmd" + skeletonCorpus.note, command: "rm -rf" + skeletonCorpus.note } });
   await mount("s-idle");
   expect(host.textContent).toContain(t("session.skeleton"));
   expect([...host.querySelectorAll("button")].some(b => b.textContent === t("approval.allow"))).toBe(false);
-  expect(submit).not.toHaveBeenCalled();
+  expect(resolve).not.toHaveBeenCalled();
 });
 
 it.each(["zh-CN", "en"] as const)("resumes the same paused queue item in %s", async locale => {

@@ -20,14 +20,14 @@ import { ScreenTarget } from "../gen/remoteagent/core/v1/app_pb";
 import type { AttachmentDraftView, OutboxAttachmentSummary } from "../gen/remoteagent/core/v1/attachments_pb";
 import {
   ComputerReachability,
-  SessionCommandStatus,
   SessionDockKind,
   SessionInputNoticeKind,
+  SessionMenuItemKind,
   SessionNoteKind,
   SessionNoteTone,
+  SessionSimpleCommandKind,
   SharedFileWebPreviewKind,
   type SessionActionsView,
-  type SessionCommandState,
   type SessionHeaderView,
   type SessionNotifyReceiptItem,
   type SessionRestoreComposerEffect,
@@ -37,12 +37,15 @@ import {
   type SessionViewerImageView,
   type SessionViewModel,
 } from "../gen/remoteagent/core/v1/session_view_pb";
-import { ConnState, SessionDisplayStatus, SessionTone } from "../gen/remoteagent/core/v1/home_view_pb";
-import { Agent, ApprovalMode, SendMode } from "../gen/remoteagent/v1/event_pb";
 import {
-  CommandSchema,
-  type Command,
-} from "../gen/remoteagent/v1/remote_pb";
+  ConnState,
+  SessionCommandStatus,
+  SessionDisplayStatus,
+  SessionTone,
+  type SessionCommandState,
+} from "../gen/remoteagent/core/v1/home_view_pb";
+import { Agent, ApprovalMode, SendMode } from "../gen/remoteagent/v1/event_pb";
+import { type PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import {
   ArrowDown,
   Bell,
@@ -64,7 +67,7 @@ import { ActionSheet, Alert, Banner, ConnBar, Exp, NavBar, PathText, Sheet, Stat
 import { getView, setView, type View } from "../view";
 import { AttachButton, TrayView, useDropPaste } from "./Attach";
 import { Composer } from "./Composer";
-import { ApprovalPage, Dock, PlanPage, QuestionPage, type QuestionDraftState } from "./Dock";
+import { ApprovalPage, Dock, PlanPage, QuestionPage } from "./Dock";
 import { FileChip, FileChips } from "./Files";
 import { HistoryOpening } from "./HistoryOpening";
 import { HistoryRows } from "./HistoryRows";
@@ -90,7 +93,6 @@ import {
   type SharedFilePreviewTarget,
 } from "./SharedFiles";
 import { ToolCallView, ToolGroupView } from "./Tools";
-import { create } from "@bufbuild/protobuf";
 import { createPortal } from "react-dom";
 import {
   lazy,
@@ -319,7 +321,16 @@ export interface SessionScreenViewProps {
   defaultExpandedQueueAll?: boolean;
   defaultKeyboardCollapsed?: boolean;
   onSend: (text: string, mode: SendMode) => void;
-  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onEditApprovalDeny?: (approvalId: string, open: boolean) => void;
+  onResolveApproval?: (approvalId: string, allow: boolean, always: boolean, denyReason: string) => void;
+  onToggleQuestionOption?: (questionId: string, optionNum: number) => void;
+  onAnswerQuestion?: (questionId: string, optionNum: number, optionNums?: number[]) => void;
+  onAnswerPlan?: (choice: PlanChoice) => void;
+  onSimpleCommand?: (kind: SessionSimpleCommandKind) => void;
+  onRename?: (title: string) => void;
+  onSetApprovalMode?: (mode: ApprovalMode) => void;
+  onSetModel?: (model: string, effort: string) => void;
+  onRetryCommand?: (slotKey: string) => void;
   onAbandonCommand: (slotKey: string) => void;
   onCancelTrayItem?: (requestId: string) => void;
   onIgnoreTrayItem?: (requestId: string) => void;
@@ -373,7 +384,16 @@ export function SessionScreenView({
   defaultExpandedQueueAll = false,
   defaultKeyboardCollapsed = false,
   onSend,
-  onSubmitCommand,
+  onEditApprovalDeny,
+  onResolveApproval = noop,
+  onToggleQuestionOption,
+  onAnswerQuestion = noop,
+  onAnswerPlan = noop,
+  onSimpleCommand = noop,
+  onRename = noop,
+  onSetApprovalMode = noop,
+  onSetModel = noop,
+  onRetryCommand,
   onAbandonCommand,
   onCancelTrayItem = noopStr,
   onIgnoreTrayItem = noopStr,
@@ -425,7 +445,6 @@ export function SessionScreenView({
   })();
   const unlinked = !!header?.computerUnlinked && !reachabilityUnknown;
   const showEndCard = exited || unlinked;
-  const inactive = exited || unlinked || (!!header?.found && !header.computerOnline && !reachabilityUnknown);
 
   // Mobile soft-keyboard tray collapse and 200ms FLIP row-to-bubble transition.
   const [composerFocused, setComposerFocused] = useState(false);
@@ -521,7 +540,6 @@ export function SessionScreenView({
     }
     prevTraySnapRef.current = nextSnap;
   }, [sid, timeline?.items, pendingTray?.orderedItems, colRef]);
-  const [questionDraft, setQuestionDraft] = useState<QuestionDraftState | undefined>(undefined);
   const seenApprovals = useRef(new Set<string>());
   const resolvedByUs = useRef(new Set<string>());
   const currentApprovalId = dock?.hasItem && dock.kind === SessionDockKind.APPROVAL && dock.detail.case === "approval" ? dock.detail.value.approvalId : "";
@@ -806,13 +824,13 @@ export function SessionScreenView({
   if (page === "plan" && dock?.kind === SessionDockKind.PLAN && dock.detail.case === "plan") {
     return (
       <PlanPage
-        sessionId={sid}
         dock={dock}
         plan={dock.detail.value}
         canSend={header?.capabilities?.canSend ?? true}
         title={title}
         onBack={() => setPage("")}
-        onSubmitCommand={onSubmitCommand}
+        onAnswerPlan={onAnswerPlan}
+        onRetryCommand={onRetryCommand}
         onAbandonCommand={onAbandonCommand}
       />
     );
@@ -820,20 +838,19 @@ export function SessionScreenView({
   if (page === "question" && dock?.kind === SessionDockKind.QUESTION && dock.detail.case === "question") {
     return (
       <QuestionPage
-        sessionId={sid}
         dock={dock}
         q={dock.detail.value}
         canSend={header?.capabilities?.canSend ?? true}
         agentName={agentLabel}
         title={title}
-        questionDraft={questionDraft}
-        onQuestionDraftChange={setQuestionDraft}
         onBack={() => setPage("")}
         onTerminal={() => {
           setPage("");
           toTerminal();
         }}
-        onSubmitCommand={onSubmitCommand}
+        onToggleQuestionOption={onToggleQuestionOption}
+        onAnswerQuestion={onAnswerQuestion}
+        onRetryCommand={onRetryCommand}
         onAbandonCommand={onAbandonCommand}
       />
     );
@@ -843,7 +860,6 @@ export function SessionScreenView({
     if (ap.approvalId === page.approval) {
       return (
         <ApprovalPage
-          sessionId={sid}
           dock={dock}
           approval={ap}
           canSend={header?.capabilities?.canSend ?? true}
@@ -851,7 +867,9 @@ export function SessionScreenView({
           reason={approvalReason}
           onReasonChange={onApprovalReasonChange ? (v) => onApprovalReasonChange(ap.approvalId, v) : undefined}
           onBack={() => setPage("")}
-          onSubmitCommand={onSubmitCommand}
+          onEditApprovalDeny={onEditApprovalDeny}
+          onResolveApproval={onResolveApproval}
+          onRetryCommand={onRetryCommand}
           onAbandonCommand={onAbandonCommand}
         />
       );
@@ -893,7 +911,6 @@ export function SessionScreenView({
 
   const pct = header?.hasContext ? header.contextPercent : undefined;
   const high = !!header?.highContextWarning;
-  const modelText = [header?.modelLabel, header?.effort].filter(Boolean).join(" · ");
   const moreLabel = high && pct !== undefined ? i18n.t("session.more_context", { percent: pct }) : i18n.t("common.android_more");
   const tabs: [Tab, string][] = canSplit
     ? [
@@ -965,8 +982,6 @@ export function SessionScreenView({
   );
 
   const interruptCmd = actions?.interrupt;
-  const endCmd = actions?.end;
-  const forkUi = actions?.forkAction;
   const activeDraft = draftView ?? composer?.draft;
   const resolvedTrayView = trayView ?? (activeDraft ? <TrayView draft={activeDraft} attachments={attachments} /> : undefined);
 
@@ -1004,8 +1019,6 @@ export function SessionScreenView({
           defaultDenying={defaultDenying}
           reason={approvalReason}
           onReasonChange={onApprovalReasonChange}
-          questionDraft={questionDraft}
-          onQuestionDraftChange={setQuestionDraft}
           onDenyingChange={setDockDenying}
           onOpenChange={setDockOpen}
           onExpand={() => composerElRef.current?.blur()}
@@ -1013,18 +1026,22 @@ export function SessionScreenView({
           onPlan={() => setPage("plan")}
           onQuestion={() => setPage("question")}
           onTerminal={toTerminal}
-          onSubmitCommand={onSubmitCommand}
+          onEditApprovalDeny={onEditApprovalDeny}
+          onResolveApproval={onResolveApproval}
+          onToggleQuestionOption={onToggleQuestionOption}
+          onAnswerQuestion={onAnswerQuestion}
+          onAnswerPlan={onAnswerPlan}
+          onRetryCommand={onRetryCommand}
           onAbandonCommand={onAbandonCommand}
         />
       )}
       {header?.taskOwned && <div className="schedule-reply-hint">{i18n.t("session.reply_moves")}</div>}
       {showEndCard ? (
         <EndCard
-          sessionId={sid}
           header={header}
           actions={actions}
           composer={composer}
-          onSubmitCommand={onSubmitCommand}
+          onResume={() => onSimpleCommand(SessionSimpleCommandKind.RESUME)}
         />
       ) : null}
       {!showEndCard && !dockDenying && (
@@ -1033,14 +1050,7 @@ export function SessionScreenView({
           ref={composerElRef}
           composer={composer}
           onSend={onSend}
-          onInterrupt={() =>
-            onSubmitCommand(
-              interruptCmd?.slotKey ?? "",
-              create(CommandSchema, {
-                kind: { case: "interrupt", value: { sessionId: sid } },
-              }),
-            )
-          }
+          onInterrupt={() => onSimpleCommand(SessionSimpleCommandKind.INTERRUPT)}
           draft={draft}
           onDraft={onDraft}
           draftView={activeDraft}
@@ -1074,131 +1084,57 @@ export function SessionScreenView({
     </div>
   );
 
-  const forkAction = () =>
-    onSubmitCommand(
-      forkCmd?.slotKey ?? "",
-      create(CommandSchema, {
-        kind: { case: "forkSession", value: { sessionId: sid } },
-      }),
-    );
-
-  const menuActions = [
-    ...(!exited && modeLabel
-      ? [
-          {
-            label: i18n.t("modes.title"),
-            value: modeLabel,
-            red: header?.approvalMode === ApprovalMode.FULL_ACCESS,
-            onClick: () => setSheet("mode"),
-          },
-        ]
-      : []),
-    ...(!exited
-      ? [
-          {
-            label: modelText ? i18n.t("models.title") : i18n.t("session.settings"),
-            value: modelText,
-            onClick: () => setSheet("model"),
-          },
-        ]
-      : []),
-    ...(!exited && pct !== undefined
-      ? [
-          {
-            label: i18n.t("session.context"),
-            value: i18n.t("session.context_used", { percent: pct }),
-            warn: high,
-            onClick: () => setSheet("model"),
-          },
-        ]
-      : []),
-    ...(actions?.canRename
-      ? [{ label: i18n.t("session.rename"), group: 1, onClick: () => setRenaming(true) }]
-      : []),
-    ...(forkUi?.visible
-      ? [
-          forkUi.busy
-            ? {
-                label: renderText(forkUi.label) || i18n.t("session.forking"),
-                busy: true,
-                keep: true,
-                group: 1,
-                onClick: () => undefined,
-              }
-            : {
-                label: renderText(forkUi.label) || i18n.t("session.fork"),
-                disabled: !forkUi.enabled,
-                keep: forkUi.enabled,
-                note: renderText(forkUi.note) || undefined,
-                noteRed: forkUi.noteError,
-                group: 1,
-                onClick: () => {
-                  if (!forkUi.enabled) return;
-                  if (forkUi.abandons) {
-                    if (forkCmd?.slotKey) onAbandonCommand(forkCmd.slotKey);
-                  } else {
-                    forkAction();
-                  }
-                },
-              },
-          ...(forkUi.canAbandon && forkCmd?.slotKey
-            ? [
-                {
-                  label: i18n.t("session.abandon_fork"),
-                  keep: true,
-                  group: 1,
-                  onClick: () => onAbandonCommand(forkCmd.slotKey),
-                },
-              ]
-            : []),
-        ]
-      : []),
-    ...(remote && header
-      ? [
-          {
-            label: i18n.t("session.schedule_send"),
-            group: 1,
-            disabled: !header?.capabilities?.supportsSchedule || !header?.computerOnline || !!header?.computerUnlinked,
-            note: !header?.capabilities?.supportsSchedule ? i18n.t("session.update_computer") : undefined,
-            onClick: () => setScheduling(true),
-          },
-        ]
-      : []),
-    ...(!inactive
-      ? [
-          actions?.canInterrupt
-            ? {
-                label: i18n.t("session.interrupt_turn"),
-                red: true,
-                group: 1,
-                onClick: () =>
-                  onSubmitCommand(
-                    interruptCmd?.slotKey ?? "",
-                    create(CommandSchema, {
-                      kind: { case: "interrupt", value: { sessionId: sid } },
-                    }),
-                  ),
-              }
-            : {
-                label: i18n.t("session.interrupt_turn"),
-                disabled: true,
-                note: i18n.t("session.not_running"),
-                group: 1,
-                onClick: () => undefined,
-              },
-        ]
-      : []),
-    ...(actions?.canEnd
-      ? [
-          {
-            label: i18n.t("session.end_action"),
-            red: true,
-            group: 2,
-            onClick: () => setConfirmEnd(true),
-          },
-        ]
-      : []),
-  ].map((a) => ("busy" in a || !forkCmd?.busy ? a : { ...a, disabled: true }));
+  const menuActions = (actions?.menuItems ?? [])
+    .filter((item) => {
+      if (item.kind === SessionMenuItemKind.PROJECT_SETTINGS) return false;
+      if (item.kind === SessionMenuItemKind.SCHEDULE && (!remote || !header)) return false;
+      return true;
+    })
+    .map((item) => {
+      const onClick = () => {
+        if (!item.enabled || item.busy) return;
+        switch (item.kind) {
+          case SessionMenuItemKind.MODE:
+            setSheet("mode");
+            break;
+          case SessionMenuItemKind.MODEL:
+          case SessionMenuItemKind.CONTEXT:
+            setSheet("model");
+            break;
+          case SessionMenuItemKind.RENAME:
+            setRenaming(true);
+            break;
+          case SessionMenuItemKind.FORK:
+            onSimpleCommand(SessionSimpleCommandKind.FORK);
+            break;
+          case SessionMenuItemKind.ABANDON_FORK:
+            if (forkCmd?.slotKey) onAbandonCommand(forkCmd.slotKey);
+            break;
+          case SessionMenuItemKind.SCHEDULE:
+            setScheduling(true);
+            break;
+          case SessionMenuItemKind.INTERRUPT:
+            onSimpleCommand(SessionSimpleCommandKind.INTERRUPT);
+            break;
+          case SessionMenuItemKind.END_SESSION:
+            setConfirmEnd(true);
+            break;
+        }
+      };
+      return {
+        label: renderText(item.label),
+        value: renderText(item.valueText) || undefined,
+        note: renderText(item.noteText) || undefined,
+        noteRed: item.noteError,
+        red: item.danger,
+        warn: item.warn,
+        busy: item.busy,
+        disabled: !item.enabled && !item.busy,
+        keep: item.keepMenuOpen,
+        group: item.group,
+        onClick,
+      };
+    });
 
   return (
     <SharedFileViewContext.Provider value={sharedFileCtx}>
@@ -1279,41 +1215,34 @@ export function SessionScreenView({
               onCancel={() => setConfirmEnd(false)}
               onOk={() => {
                 setConfirmEnd(false);
-                onSubmitCommand(
-                  endCmd?.slotKey ?? "",
-                  create(CommandSchema, {
-                    kind: { case: "stopSession", value: { sessionId: sid } },
-                  }),
-                );
+                onSimpleCommand(SessionSimpleCommandKind.STOP);
               }}
             />
           )}
           {renaming && (
             <RenameDialog
-              sessionId={sid}
               header={header}
               actions={actions}
               onClose={() => setRenaming(false)}
-              onSubmitCommand={onSubmitCommand}
+              onRename={onRename}
             />
           )}
           {sheet === "mode" && (
             <ModeSheet
-              sessionId={sid}
               header={header}
               actions={actions}
               onClose={() => setSheet("")}
-              onSubmitCommand={onSubmitCommand}
+              onSetMode={onSetApprovalMode}
             />
           )}
           {sheet === "model" && (
             <SessionSheet
-              sessionId={sid}
               header={header}
               actions={actions}
               onClose={() => setSheet("")}
               onRefreshModels={() => onRefreshModels?.()}
-              onSubmitCommand={onSubmitCommand}
+              onSetModel={onSetModel}
+              onCompact={() => onSimpleCommand(SessionSimpleCommandKind.COMPACT)}
               onAbandonCommand={onAbandonCommand}
               onOpenUsage={
                 header?.machineId && go
@@ -1491,10 +1420,39 @@ export function SessionPage({
   const timelineRef = useRef(vm.timeline);
   timelineRef.current = vm.timeline;
 
-  const onSubmitCommand = useCallback(
-    (slotKey: string, cmd: Command) => host.sessionSubmitCommand(slotKey, machineId, sessionId, cmd),
-    [host, machineId, sessionId],
+  const onEditApprovalDeny = useCallback(
+    (approvalId: string, open: boolean) => host.sessionEditApprovalDeny(sessionId, approvalId, open),
+    [host, sessionId],
   );
+  const onResolveApproval = useCallback(
+    (approvalId: string, allow: boolean, always: boolean, denyReason: string) =>
+      host.sessionResolveApproval(sessionId, approvalId, allow, always, denyReason),
+    [host, sessionId],
+  );
+  const onToggleQuestionOption = useCallback(
+    (questionId: string, optionNum: number) => host.sessionToggleQuestionOption(sessionId, questionId, optionNum),
+    [host, sessionId],
+  );
+  const onAnswerQuestion = useCallback(
+    (questionId: string, optionNum: number, optionNums?: number[]) =>
+      host.sessionAnswerQuestion(sessionId, questionId, optionNum, optionNums ?? []),
+    [host, sessionId],
+  );
+  const onAnswerPlan = useCallback((choice: PlanChoice) => host.sessionAnswerPlan(sessionId, choice), [host, sessionId]);
+  const onSimpleCommand = useCallback(
+    (kind: SessionSimpleCommandKind) => host.sessionSimpleCommand(sessionId, kind),
+    [host, sessionId],
+  );
+  const onRename = useCallback((title: string) => host.sessionRename(sessionId, title), [host, sessionId]);
+  const onSetApprovalMode = useCallback(
+    (mode: ApprovalMode) => host.sessionSetApprovalMode(sessionId, mode),
+    [host, sessionId],
+  );
+  const onSetModel = useCallback(
+    (model: string, effort: string) => host.sessionSetModel(sessionId, model, effort),
+    [host, sessionId],
+  );
+  const onRetryCommand = useCallback((slotKey: string) => host.sessionRetryCommand(sessionId, slotKey), [host, sessionId]);
   const onAbandonCommand = useCallback(
     (slotKey: string) => host.sessionAbandonCommand(slotKey, sessionId),
     [host, sessionId],
@@ -1588,7 +1546,16 @@ export function SessionPage({
       onClearToast={() => setToast("")}
       sentCount={sent}
       onSend={handleSend}
-      onSubmitCommand={onSubmitCommand}
+      onEditApprovalDeny={onEditApprovalDeny}
+      onResolveApproval={onResolveApproval}
+      onToggleQuestionOption={onToggleQuestionOption}
+      onAnswerQuestion={onAnswerQuestion}
+      onAnswerPlan={onAnswerPlan}
+      onSimpleCommand={onSimpleCommand}
+      onRename={onRename}
+      onSetApprovalMode={onSetApprovalMode}
+      onSetModel={onSetModel}
+      onRetryCommand={onRetryCommand}
       onAbandonCommand={onAbandonCommand}
       onCancelTrayItem={onCancelTrayItem}
       onIgnoreTrayItem={onIgnoreTrayItem}
@@ -2337,17 +2304,15 @@ const TimelineRow = memo(function TimelineRow({
 });
 
 function EndCard({
-  sessionId,
   header,
   actions,
   composer,
-  onSubmitCommand,
+  onResume,
 }: {
-  sessionId: string;
   header?: SessionHeaderView;
   actions?: SessionActionsView;
   composer?: SessionViewModel["composer"];
-  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onResume: () => void;
 }) {
   const ended = !!header?.exited;
   const mname = renderText(header?.computerName);
@@ -2366,13 +2331,7 @@ function EndCard({
     );
   }
 
-  const doResume = () =>
-    onSubmitCommand(
-      resumeCmd?.slotKey ?? "",
-      create(CommandSchema, {
-        kind: { case: "resumeSession", value: { sessionId } },
-      }),
-    );
+  const doResume = onResume;
 
   if (resumeCmd?.busy) {
     return (

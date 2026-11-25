@@ -5,9 +5,11 @@ import { createRoot } from "react-dom/client";
 import { create } from "@bufbuild/protobuf";
 import { expect, it, vi } from "vitest";
 import {
-  SessionApprovalDockViewSchema,
   SessionCommandStateSchema,
   SessionCommandStatus,
+} from "./gen/remoteagent/core/v1/home_view_pb";
+import {
+  SessionApprovalDockViewSchema,
   SessionDockKind,
   SessionDockViewSchema,
 } from "./gen/remoteagent/core/v1/session_view_pb";
@@ -37,7 +39,7 @@ it("renders core-escaped approval text and submits allow decision with observed 
     }),
     detail: { case: "approval", value: approval },
   });
-  const onSubmitCommand = vi.fn();
+  const onResolveApproval = vi.fn();
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
@@ -45,12 +47,11 @@ it("renders core-escaped approval text and submits allow decision with observed 
     act(() =>
       root.render(
         <ApprovalPage
-          sessionId="s-appr"
           dock={dock}
           approval={approval}
           title="session"
           onBack={() => undefined}
-          onSubmitCommand={onSubmitCommand}
+          onResolveApproval={onResolveApproval}
           onAbandonCommand={() => undefined}
         />,
       ),
@@ -59,18 +60,8 @@ it("renders core-escaped approval text and submits allow decision with observed 
     expect(host.textContent).toContain("desc\\u2066hidden\\u2069");
     expect(host.textContent).not.toContain("以后不再问");
     act(() => [...host.querySelectorAll("button")].find((b) => b.textContent === message("approval.allow"))!.click());
-    expect(onSubmitCommand).toHaveBeenCalledTimes(1);
-    expect(onSubmitCommand.mock.calls[0][1].kind).toEqual({
-      case: "resolveApproval",
-      value: expect.objectContaining({
-        sessionId: "s-appr",
-        approvalId: approval.approvalId,
-        allow: true,
-        message: "",
-        always: false,
-        observedEventSeq: 5n,
-      }),
-    });
+    expect(onResolveApproval).toHaveBeenCalledTimes(1);
+    expect(onResolveApproval).toHaveBeenCalledWith(approval.approvalId, true, false, "");
   } finally {
     act(() => root.unmount());
     host.remove();
@@ -99,7 +90,7 @@ it("blocks allow and allow-always when approval payload was truncated", async ()
     }),
     detail: { case: "approval", value: approval },
   });
-  const onSubmitCommand = vi.fn();
+  const onResolveApproval = vi.fn();
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
@@ -107,12 +98,11 @@ it("blocks allow and allow-always when approval payload was truncated", async ()
     act(() =>
       root.render(
         <ApprovalPage
-          sessionId="s-appr"
           dock={dock}
           approval={approval}
           title="session"
           onBack={() => undefined}
-          onSubmitCommand={onSubmitCommand}
+          onResolveApproval={onResolveApproval}
           onAbandonCommand={() => undefined}
         />,
       ),
@@ -123,14 +113,11 @@ it("blocks allow and allow-always when approval payload was truncated", async ()
       expect(button.disabled).toBe(true);
       act(() => button.click());
     }
-    expect(onSubmitCommand).not.toHaveBeenCalled();
+    expect(onResolveApproval).not.toHaveBeenCalled();
     // Refusing remains possible without approving an incomplete request.
     act(() => [...host.querySelectorAll("button")].find((b) => b.textContent === message("approval.deny"))!.click());
     act(() => [...host.querySelectorAll("button")].find((b) => b.textContent === message("approval.deny"))!.click());
-    expect(onSubmitCommand.mock.calls[0][1].kind).toMatchObject({
-      case: "resolveApproval",
-      value: { allow: false, approvalId: approval.approvalId },
-    });
+    expect(onResolveApproval).toHaveBeenCalledWith(approval.approvalId, false, false, "");
   } finally {
     act(() => root.unmount());
     host.remove();

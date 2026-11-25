@@ -9,7 +9,7 @@ import * as i18n from "../i18n";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { renderText } from "../core/text";
-import { SessionCommandStatus, type SessionCommandState } from "../gen/remoteagent/core/v1/session_view_pb";
+import { SessionCommandStatus, type SessionCommandState } from "../gen/remoteagent/core/v1/home_view_pb";
 import { ChevronRight, LoaderCircle } from "../icons";
 import { isApprovalAtBottom, isShortApprovalViewport } from "./approval-scroll";
 
@@ -48,6 +48,10 @@ export interface ApprovalCardProps {
   reason?: string;
   onReasonChange?: (v: string) => void;
   defaultDenying?: boolean;
+  /** Core-driven deny-form open state when connected to Core; falls back to local state in previews/tests. */
+  denyingOpen?: boolean;
+  /** Core-driven flag to keep the full deny card open during delivery/failure. */
+  holdOpenCard?: boolean;
   /** The session's title, which opens it; none inside the session. */
   title?: string;
   /** 「项目 · 机器」 under the title. */
@@ -83,6 +87,8 @@ export function ApprovalCard({
   reason: controlledReason,
   onReasonChange,
   defaultDenying = false,
+  denyingOpen,
+  holdOpenCard,
   title,
   where,
   onOpen,
@@ -94,15 +100,14 @@ export function ApprovalCard({
   onAbandon,
 }: ApprovalCardProps) {
   const [full, setFull] = useState(false);
-  const [denying, setDenyingState] = useState(defaultDenying);
+  const [localDenying, setLocalDenying] = useState(defaultDenying);
   const [localReason, setLocalReason] = useState("");
-  const [lastAllow, setLastAllow] = useState(undefined as boolean | undefined);
-  const lastSentReason = useRef("");
   const [reachedBottom, setReachedBottom] = useState(() => !docked || (!!approvalId && latchedBottomIds.has(approvalId)));
   const [shortViewport, setShortViewport] = useState(false);
   const scrollRef = useRef(null as HTMLDivElement | null);
+  const denying = denyingOpen !== undefined ? denyingOpen || defaultDenying : localDenying;
   const setDenying = (v: boolean) => {
-    setDenyingState(v);
+    if (denyingOpen === undefined) setLocalDenying(v);
     onDenying?.(v);
   };
   const cmd = useRef(null as HTMLPreElement | null);
@@ -201,17 +206,14 @@ export function ApprovalCard({
   }
 
   // While denying with reason, keep the full card open during delivery & failure so the draft and command remain visible.
-  const holdDenyCard = denying && lastAllow === false && (cmdBusy || cmdError);
+  const holdDenyCard = holdOpenCard !== undefined ? holdOpenCard : denying && (cmdBusy || !!cmdError);
 
   // Submitted or failed: one line of where it stands (unless holding the open deny card).
   if ((cmdBusy || cmdError) && !holdDenyCard) {
     const busyLabel =
       cmdStatusMsg ||
-      (lastAllow === false
-        ? i18n.t("approval.denied")
-        : lastAllow === true
-          ? i18n.t("approval.allowed")
-          : i18n.t("dock.waiting_confirmation"));
+      renderText(command?.submittedSummary) ||
+      i18n.t("dock.waiting_confirmation");
     return (
       <div className="tc line" role="status">
         <div className="k">
@@ -234,23 +236,11 @@ export function ApprovalCard({
   }
 
   const submit = (allow: boolean, why = "", always = false) => {
-    setLastAllow(allow);
-    if (!allow) lastSentReason.current = why;
     onResolve(allow, why, always);
   };
 
   const submitDeny = () => {
-    const trimmed = reason.trim();
-    if (cmdError && lastAllow === false) {
-      if (trimmed === lastSentReason.current && command?.canRetry && onRetry) {
-        onRetry();
-      } else {
-        onAbandon?.();
-        submit(false, trimmed, false);
-      }
-      return;
-    }
-    submit(false, trimmed, false);
+    submit(false, reason.trim(), false);
   };
 
   const scrollToBottom = () => {
@@ -286,8 +276,8 @@ export function ApprovalCard({
     </>
   );
 
-  const denyBusy = cmdBusy && lastAllow === false;
-  const denyFailed = !!cmdError && lastAllow === false;
+  const denyBusy = cmdBusy;
+  const denyFailed = !!cmdError;
   const canSubmitDeny = !lockedProp && !cmdBusy && (!cmdError || !!command?.canRetry || !!command?.canAbandon);
 
   const actions = (

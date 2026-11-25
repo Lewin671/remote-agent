@@ -15,7 +15,7 @@ import { ImageError } from "../imagecodec/error";
 import { NoticeKind } from "../gen/remoteagent/core/v1/new_session_view_pb";
 import { renderText } from "../core/text";
 import { MachineMetaSchema, ProjectPrefsSchema, ProjectSettingsSchema, AgentSettingsSchema } from "../gen/remoteagent/v1/remote_pb";
-import { SessionDockKind, SessionPlanDockViewSchema, SessionTerminalPopupDockViewSchema, SessionDockViewSchema } from "../gen/remoteagent/core/v1/session_view_pb";
+import { SessionDockKind, SessionPlanDockViewSchema, SessionSimpleCommandKind, SessionTerminalPopupDockViewSchema, SessionDockViewSchema } from "../gen/remoteagent/core/v1/session_view_pb";
 import { TextSchema } from "../gen/remoteagent/core/v1/text_pb";
 import { AccountPrefsFetchedEventSchema, EventSchema as CoreEventSchema, EventsAppendedFrameSchema, HomeSetScopeActionSchema, ListsFetchedEventSchema, NewSessionOpenActionSchema, NewSessionSelectMachineActionSchema, NewSessionSelectModelActionSchema, NewSessionSubmitActionSchema, PlainAccountPrefsSchema, PlainEventSchema, SessionsPageFetchedEventSchema } from "../gen/remoteagent/core/v1/app_pb";
 import { DraftScopeKind, DraftScopeSchema, DraftSetTextActionSchema } from "../gen/remoteagent/core/v1/attachments_pb";
@@ -24,7 +24,7 @@ import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import { CommandResultSchema, type CommandResult } from "../gen/remoteagent/v1/remote_pb";
 import { CommandError, type CommandKind, type RequestSlot } from "../dev/demo";
 import { ModeSheet, SessionSheet } from "../sheets";
-import { Dock, dockContentMax, PlanPage, QuestionPage, type QuestionDraftState } from "./Dock";
+import { Dock, dockContentMax, PlanPage, QuestionPage } from "./Dock";
 import { Home, Sidebar, WideHome } from "./Home";
 import { NewBox, NewFlow, ProjectPicker } from "./NewSession";
 import { ProjectPage } from "./Project";
@@ -188,17 +188,6 @@ import { SessionImageSyncState, SessionImageViewSchema, SessionViewerImageViewSc
 import { ImageFormat } from "../gen/remoteagent/v1/event_pb";
 import { useRemote } from "../ui";
 
-const testQuestionDrafts = new WeakMap<DemoRemote, Map<string, QuestionDraftState>>();
-function getTestQuestionDraft(r: DemoRemote, sid: string): QuestionDraftState | undefined {
-  return testQuestionDrafts.get(r)?.get(sid);
-}
-function setTestQuestionDraft(r: DemoRemote, sid: string, next: QuestionDraftState) {
-  let m = testQuestionDrafts.get(r);
-  if (!m) { m = new Map(); testQuestionDrafts.set(r, m); }
-  m.set(sid, next);
-  r.touch();
-}
-
 function HostDock({
   r,
   sid,
@@ -223,7 +212,6 @@ function HostDock({
   useRemote(r);
   const host = useCoreHost(r);
   const vm = useSessionView(host, sid);
-  const machineId = vm.header?.machineId ?? "";
   return (
     <Dock
       sessionId={sid}
@@ -231,13 +219,16 @@ function HostDock({
       header={vm.header}
       drafting={drafting}
       room={room}
-      questionDraft={getTestQuestionDraft(r, sid)}
-      onQuestionDraftChange={(next) => setTestQuestionDraft(r, sid, next)}
       onExpand={onExpand}
       onDetail={onDetail}
       onPlan={onPlan}
       onTerminal={onTerminal}
-      onSubmitCommand={(slotKey, cmd) => host.sessionSubmitCommand(slotKey, machineId, sid, cmd)}
+      onEditApprovalDeny={(approvalId, open) => host.sessionEditApprovalDeny(sid, approvalId, open)}
+      onResolveApproval={(approvalId, allow, always, reason) => host.sessionResolveApproval(sid, approvalId, allow, always, reason)}
+      onToggleQuestionOption={(questionId, optionNum) => host.sessionToggleQuestionOption(sid, questionId, optionNum)}
+      onAnswerQuestion={(questionId, optionNum, optionNums) => host.sessionAnswerQuestion(sid, questionId, optionNum, optionNums ?? [])}
+      onAnswerPlan={(choice) => host.sessionAnswerPlan(sid, choice)}
+      onRetryCommand={(slotKey) => host.sessionRetryCommand(sid, slotKey)}
       onAbandonCommand={(slotKey) => host.sessionAbandonCommand(slotKey, sid)}
     />
   );
@@ -248,21 +239,19 @@ function HostQuestionPage({ r, sid }: { r: DemoRemote; sid: string }) {
   const host = useCoreHost(r);
   const vm = useSessionView(host, sid);
   const q = vm.dock?.detail.case === "question" ? vm.dock.detail.value : undefined;
-  const machineId = vm.header?.machineId ?? "";
   if (!vm.dock || !q) return null;
   return (
     <QuestionPage
-      sessionId={sid}
       dock={vm.dock}
       q={q}
       canSend={vm.header?.capabilities?.canSend ?? true}
       agentName={vm.header?.agentName || ""}
       title="t"
-      questionDraft={getTestQuestionDraft(r, sid)}
-      onQuestionDraftChange={(next) => setTestQuestionDraft(r, sid, next)}
       onBack={() => undefined}
       onTerminal={() => undefined}
-      onSubmitCommand={(slotKey, cmd) => host.sessionSubmitCommand(slotKey, machineId, sid, cmd)}
+      onToggleQuestionOption={(questionId, optionNum) => host.sessionToggleQuestionOption(sid, questionId, optionNum)}
+      onAnswerQuestion={(questionId, optionNum, optionNums) => host.sessionAnswerQuestion(sid, questionId, optionNum, optionNums ?? [])}
+      onRetryCommand={(slotKey) => host.sessionRetryCommand(sid, slotKey)}
       onAbandonCommand={(slotKey) => host.sessionAbandonCommand(slotKey, sid)}
     />
   );
@@ -272,7 +261,6 @@ function HostPlanPage({ r, sid, text = "1. do it" }: { r: DemoRemote; sid: strin
   useRemote(r);
   const host = useCoreHost(r);
   const vm = useSessionView(host, sid);
-  const machineId = vm.header?.machineId ?? "";
   if (!vm.dock) return null;
   const isClaude = vm.header?.agent === Agent.CLAUDE;
   const plan =
@@ -289,13 +277,13 @@ function HostPlanPage({ r, sid, text = "1. do it" }: { r: DemoRemote; sid: strin
         });
   return (
     <PlanPage
-      sessionId={sid}
       dock={vm.dock}
       plan={plan}
       canSend={vm.header?.capabilities?.canSend ?? true}
       title="t"
       onBack={() => undefined}
-      onSubmitCommand={(slotKey, cmd) => host.sessionSubmitCommand(slotKey, machineId, sid, cmd)}
+      onAnswerPlan={(choice) => host.sessionAnswerPlan(sid, choice)}
+      onRetryCommand={(slotKey) => host.sessionRetryCommand(sid, slotKey)}
       onAbandonCommand={(slotKey) => host.sessionAbandonCommand(slotKey, sid)}
     />
   );
@@ -305,14 +293,12 @@ function HostModeSheet({ r, sid, onClose }: { r: DemoRemote; sid: string; onClos
   useRemote(r);
   const host = useCoreHost(r);
   const vm = useSessionView(host, sid, undefined, { refreshModels: true, refreshSettings: true });
-  const machineId = vm.header?.machineId ?? "";
   return (
     <ModeSheet
-      sessionId={sid}
       header={vm.header}
       actions={vm.actions}
       onClose={onClose}
-      onSubmitCommand={(slotKey, cmd) => host.sessionSubmitCommand(slotKey, machineId, sid, cmd)}
+      onSetMode={(mode) => host.sessionSetApprovalMode(sid, mode)}
     />
   );
 }
@@ -321,15 +307,14 @@ function HostSessionSheet({ r, sid, onClose }: { r: DemoRemote; sid: string; onC
   useRemote(r);
   const host = useCoreHost(r);
   const vm = useSessionView(host, sid, undefined, { refreshModels: true, refreshSettings: true });
-  const machineId = vm.header?.machineId ?? "";
   return (
     <SessionSheet
-      sessionId={sid}
       header={vm.header}
       actions={vm.actions}
       onClose={onClose}
       onRefreshModels={() => host.sessionOpen(sid, true, false)}
-      onSubmitCommand={(slotKey, cmd) => host.sessionSubmitCommand(slotKey, machineId, sid, cmd)}
+      onSetModel={(model, effort) => host.sessionSetModel(sid, model, effort)}
+      onCompact={() => host.sessionSimpleCommand(sid, SessionSimpleCommandKind.COMPACT)}
       onAbandonCommand={(slotKey) => host.sessionAbandonCommand(slotKey, sid)}
     />
   );
