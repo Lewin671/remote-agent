@@ -8,7 +8,6 @@ import * as i18n from "../i18n";
 // the buttons, which stay in view.
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { approvalDisplay, approvalTruncatedMessage } from "../approval-display";
 import { renderText } from "../core/text";
 import { SessionCommandStatus, type SessionCommandState } from "../gen/remoteagent/core/v1/session_view_pb";
 import { ChevronRight, LoaderCircle } from "../icons";
@@ -107,8 +106,7 @@ export function ApprovalCard({
     onDenying?.(v);
   };
   const cmd = useRef(null as HTMLPreElement | null);
-  const text = approvalDisplay(body);
-  const [lines, setLines] = useState(() => linesOf(null, "❯ " + text));
+  const [lines, setLines] = useState(() => linesOf(null, "❯ " + body));
 
   const checkScrollBottom = useCallback(() => {
     if (!docked) {
@@ -132,13 +130,13 @@ export function ApprovalCard({
   useLayoutEffect(() => {
     // Measured open, or with no clamp: a clamped box's scroll height is
     // still the whole text's, so either way it counts every line.
-    const measure = () => setLines(linesOf(cmd.current, "❯ " + text));
+    const measure = () => setLines(linesOf(cmd.current, "❯ " + body));
     measure();
     if (typeof ResizeObserver === "undefined" || !cmd.current) return;
     const ro = new ResizeObserver(measure);
     ro.observe(cmd.current);
     return () => ro.disconnect();
-  }, [text]);
+  }, [body]);
 
   useLayoutEffect(() => {
     checkScrollBottom();
@@ -147,7 +145,7 @@ export function ApprovalCard({
     const ro = new ResizeObserver(checkScrollBottom);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [docked, text, denying, checkScrollBottom]);
+  }, [docked, body, denying, checkScrollBottom]);
 
   useEffect(() => {
     if (!docked || !denying || typeof window === "undefined") {
@@ -268,13 +266,12 @@ export function ApprovalCard({
   const more = docked ? 0 : lines - CARD_LINES;
   const cut = more > 0 && !full;
   const clamp = docked ? 0 : cut ? CARD_LINES : 0;
-  const desc = approvalDisplay(description);
 
   const commandBody = (
     <>
       <pre ref={cmd} className={"cmd" + (clamp ? " clamp" : "")} style={clamp ? ({ "--lines": clamp } as CSSProperties) : undefined}>
         <b>❯ </b>
-        {text}
+        {body}
       </pre>
       {cut ? (
         <div className="ml">{i18n.t("markdown.ios_hidden_lines", { count: more })}</div>
@@ -284,8 +281,8 @@ export function ApprovalCard({
           <button aria-expanded onClick={() => setFull(false)}>{i18n.t("markdown.collapse")}</button>
         </div>
       ) : null}
-      {truncated && <div className="ml red">{approvalTruncatedMessage()}</div>}
-      {!denying && desc && <div className="y">{desc}</div>}
+      {truncated && <div className="ml red">{i18n.t("approval.truncated")}</div>}
+      {!denying && description && <div className="y">{description}</div>}
     </>
   );
 

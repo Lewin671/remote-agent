@@ -3066,7 +3066,7 @@
   },
   {
     "path": "web/src/views/ApprovalCard.tsx",
-    "literal": "0 && !full; const clamp = docked ? 0 : cut ? CARD_LINES : 0; const desc = approvalDisplay(description); const commandBody = (",
+    "literal": "0 && !full; const clamp = docked ? 0 : cut ? CARD_LINES : 0; const commandBody = (",
     "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
   },
   {

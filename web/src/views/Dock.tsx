@@ -6,7 +6,6 @@ import * as i18n from "../i18n";
 
 import { create } from "@bufbuild/protobuf";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { approvalDisplay } from "../approval-display";
 import { renderText } from "../core/text";
 import {
   SessionCommandStatus,
@@ -166,7 +165,7 @@ function ApprovalDock({
   const cmd = dock.command;
   const slotKey = cmd?.slotKey ?? "";
   if (!frame.open) {
-    return <FoldedLine frame={frame} label={title} brief={approvalDisplay(approval.commandPreview).replace(/\s+/g, " ")} busy={!!cmd?.busy} />;
+    return <FoldedLine frame={frame} label={title} brief={approval.commandPreview.replace(/\s+/g, " ")} busy={!!cmd?.busy} />;
   }
   const submit = (allow: boolean, why: string, always: boolean) => {
     const built = makeApprovalCommand(sessionId, dock, approval, allow, why, always);

@@ -2,10 +2,8 @@ import { t as message } from "./i18n";
 // @vitest-environment happy-dom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { create, toBinary } from "@bufbuild/protobuf";
+import { create } from "@bufbuild/protobuf";
 import { expect, it, vi } from "vitest";
-import { approvalTruncatedMessage, approvalDisplay } from "./approval-display";
-import { ApprovalRequestedSchema } from "./gen/remoteagent/v1/event_pb";
 import {
   SessionApprovalDockViewSchema,
   SessionCommandStateSchema,
@@ -18,32 +16,23 @@ import { ApprovalPage } from "./views/Dock";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-it("reveals approval controls while preserving ordinary language and emoji", () => {
-  const text = "العربية 中文 👩‍💻\n\tcode";
-  expect(approvalDisplay(text)).toBe(text);
-  expect(approvalDisplay("\u061c\u200e\u200f\u202e\u2066\u2069\r\u001b\u009b"))
-    .toBe("\\u061c\\u200e\\u200f\\u202e\\u2066\\u2069\\u000d\\u001b\\u009b");
-});
-
-it("shows safe approval text without mutating the approval or decision command", async () => {
-  const a = create(ApprovalRequestedSchema, { approvalId: "security-approval", command: "printf '\u202e'; dangerous", description: "desc\u2066hidden\u2069", toolName: "Bash\u200f" });
-  const before = toBinary(ApprovalRequestedSchema, a);
+it("renders core-escaped approval text and submits allow decision with observed seq", async () => {
   const approval = create(SessionApprovalDockViewSchema, {
-    approvalId: a.approvalId,
-    toolName: a.toolName,
-    commandPreview: a.command,
-    body: a.command,
-    description: a.description,
+    approvalId: "security-approval",
+    toolName: "Bash\\u200f",
+    commandPreview: "printf '\\u202e'; dangerous",
+    body: "printf '\\u202e'; dangerous",
+    description: "desc\\u2066hidden\\u2069",
     canAlwaysAllow: false,
   });
   const dock = create(SessionDockViewSchema, {
     hasItem: true,
     kind: SessionDockKind.APPROVAL,
-    itemId: a.approvalId,
+    itemId: approval.approvalId,
     observedSeq: 5n,
     title: create(TextSchema, { key: "list_state.request_command_plain" }),
     command: create(SessionCommandStateSchema, {
-      slotKey: "approval:s-appr:" + a.approvalId,
+      slotKey: "approval:s-appr:" + approval.approvalId,
       status: SessionCommandStatus.IDLE,
     }),
     detail: { case: "approval", value: approval },
@@ -66,7 +55,7 @@ it("shows safe approval text without mutating the approval or decision command",
         />,
       ),
     );
-    expect(host.querySelector("pre")!.textContent).toBe("❯ " + approvalDisplay(a.command));
+    expect(host.querySelector("pre")!.textContent).toBe("❯ " + approval.body);
     expect(host.textContent).toContain("desc\\u2066hidden\\u2069");
     expect(host.textContent).not.toContain("以后不再问");
     act(() => [...host.querySelectorAll("button")].find((b) => b.textContent === message("approval.allow"))!.click());
@@ -75,27 +64,25 @@ it("shows safe approval text without mutating the approval or decision command",
       case: "resolveApproval",
       value: expect.objectContaining({
         sessionId: "s-appr",
-        approvalId: a.approvalId,
+        approvalId: approval.approvalId,
         allow: true,
         message: "",
         always: false,
         observedEventSeq: 5n,
       }),
     });
-    expect(toBinary(ApprovalRequestedSchema, a)).toEqual(before);
   } finally {
     act(() => root.unmount());
     host.remove();
   }
 });
 
-it.each(["command", "description", "toolInputJson"] as const)("blocks allow and allow-always when %s was truncated", async (field) => {
-  const a = create(ApprovalRequestedSchema, { approvalId: "oversized", command: "safe prefix", [field]: "cut\n…（remote-agent：内容过长，已截断）" });
+it("blocks allow and allow-always when approval payload was truncated", async () => {
   const approval = create(SessionApprovalDockViewSchema, {
-    approvalId: a.approvalId,
+    approvalId: "oversized",
     toolName: "Bash",
-    commandPreview: a.command,
-    body: a.command,
+    commandPreview: "safe prefix",
+    body: "safe prefix",
     bodyTruncated: true,
     canAlwaysAllow: true,
     alwaysLabel: create(TextSchema, { key: "approval.always_allow" }),
@@ -103,11 +90,11 @@ it.each(["command", "description", "toolInputJson"] as const)("blocks allow and 
   const dock = create(SessionDockViewSchema, {
     hasItem: true,
     kind: SessionDockKind.APPROVAL,
-    itemId: a.approvalId,
+    itemId: approval.approvalId,
     observedSeq: 2n,
     title: create(TextSchema, { key: "approval.title" }),
     command: create(SessionCommandStateSchema, {
-      slotKey: "approval:s-appr:" + a.approvalId,
+      slotKey: "approval:s-appr:" + approval.approvalId,
       status: SessionCommandStatus.IDLE,
     }),
     detail: { case: "approval", value: approval },
@@ -130,7 +117,7 @@ it.each(["command", "description", "toolInputJson"] as const)("blocks allow and 
         />,
       ),
     );
-    expect(host.textContent).toContain(approvalTruncatedMessage());
+    expect(host.textContent).toContain(message("approval.truncated"));
     for (const label of ["允许", "允许，这类请求以后不再问"]) {
       const button = [...host.querySelectorAll("button")].find((b) => b.textContent === label)!;
       expect(button.disabled).toBe(true);
@@ -142,7 +129,7 @@ it.each(["command", "description", "toolInputJson"] as const)("blocks allow and 
     act(() => [...host.querySelectorAll("button")].find((b) => b.textContent === message("approval.deny"))!.click());
     expect(onSubmitCommand.mock.calls[0][1].kind).toMatchObject({
       case: "resolveApproval",
-      value: { allow: false, approvalId: a.approvalId },
+      value: { allow: false, approvalId: approval.approvalId },
     });
   } finally {
     act(() => root.unmount());

@@ -1095,7 +1095,7 @@ func buildSessionDock(
 		if a != nil {
 			cmdPreview = lists.ShortenPaths(lists.ApprovalDisplay(a.Command), cwd, home)
 			desc = lists.ShortenPaths(lists.ApprovalDisplay(a.Description), cwd, home)
-			toolName = a.ToolName
+			toolName = lists.ApprovalDisplay(a.ToolName)
 			if a.Deadline != nil {
 				deadlineMs = a.Deadline.Seconds*1000 + int64(a.Deadline.Nanos)/1_000_000
 			}
