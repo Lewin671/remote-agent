@@ -209,14 +209,21 @@ fun RenameDialog(sid: String, vm: SessionViewModel, onClose: () -> Unit) {
 }
 
 @Composable
-fun ContextBox(percent: Int, detail: String, action: String?, onAction: () -> Unit, enabled: Boolean = true) {
+fun ContextBox(
+    percent: Int,
+    detail: String,
+    action: String?,
+    onAction: () -> Unit,
+    enabled: Boolean = true,
+    highContextWarning: Boolean = false,
+) {
     val p = pal
     Row(
         Modifier.fillMaxWidth().clip(Radii.R14).background(if (LocalOnSoft.current) p.raised else p.gbg).padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text("$percent%", style = T.h22, color = if (percent > 80) p.orangeInk else p.ink)
+            Text("$percent%", style = T.h22, color = if (highContextWarning) p.orangeInk else p.ink)
             Text(detail, style = T.s13, color = p.ink2)
         }
         if (action != null) {
@@ -308,6 +315,7 @@ fun ModelSheet(sid: String, vm: SessionViewModel, onOpenUsage: (() -> Unit)? = n
                 detail,
                 if (actions.canCompact) (if (compactBusy) copy(UiMessages.sessionCompacting()) else copy(UiMessages.sessionCompact())) else null,
                 enabled = actions.canCompact && !turnRunning && !compactBusy,
+                highContextWarning = header.highContextWarning,
                 onAction = {
                     submittedCompact = true
                     remote.submitSessionCommand(
