@@ -2664,6 +2664,311 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SecurityOpenNotifyEvent getSecurityOpenNotify();
 
   /**
+   * <pre>
+   * Security UI views, single-core startup &amp; exit (470-499).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.ClientInitEvent client_init = 470 [json_name = "clientInit"];</code>
+   * @return Whether the clientInit field is set.
+   */
+  boolean hasClientInit();
+  /**
+   * <pre>
+   * Security UI views, single-core startup &amp; exit (470-499).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.ClientInitEvent client_init = 470 [json_name = "clientInit"];</code>
+   * @return The clientInit.
+   */
+  io.github.lewin671.remoteagent.core.proto.ClientInitEvent getClientInit();
+
+  /**
+   * <code>.remoteagent.core.v1.StoragePersistResultEvent storage_persist_result = 471 [json_name = "storagePersistResult"];</code>
+   * @return Whether the storagePersistResult field is set.
+   */
+  boolean hasStoragePersistResult();
+  /**
+   * <code>.remoteagent.core.v1.StoragePersistResultEvent storage_persist_result = 471 [json_name = "storagePersistResult"];</code>
+   * @return The storagePersistResult.
+   */
+  io.github.lewin671.remoteagent.core.proto.StoragePersistResultEvent getStoragePersistResult();
+
+  /**
+   * <code>.remoteagent.core.v1.PushUnregisteredEvent push_unregistered = 472 [json_name = "pushUnregistered"];</code>
+   * @return Whether the pushUnregistered field is set.
+   */
+  boolean hasPushUnregistered();
+  /**
+   * <code>.remoteagent.core.v1.PushUnregisteredEvent push_unregistered = 472 [json_name = "pushUnregistered"];</code>
+   * @return The pushUnregistered.
+   */
+  io.github.lewin671.remoteagent.core.proto.PushUnregisteredEvent getPushUnregistered();
+
+  /**
+   * <code>.remoteagent.core.v1.AccountCachesClearedEvent account_caches_cleared = 473 [json_name = "accountCachesCleared"];</code>
+   * @return Whether the accountCachesCleared field is set.
+   */
+  boolean hasAccountCachesCleared();
+  /**
+   * <code>.remoteagent.core.v1.AccountCachesClearedEvent account_caches_cleared = 473 [json_name = "accountCachesCleared"];</code>
+   * @return The accountCachesCleared.
+   */
+  io.github.lewin671.remoteagent.core.proto.AccountCachesClearedEvent getAccountCachesCleared();
+
+  /**
+   * <code>.remoteagent.core.v1.AppRootRetryBootstrapAction app_root_retry_bootstrap = 474 [json_name = "appRootRetryBootstrap"];</code>
+   * @return Whether the appRootRetryBootstrap field is set.
+   */
+  boolean hasAppRootRetryBootstrap();
+  /**
+   * <code>.remoteagent.core.v1.AppRootRetryBootstrapAction app_root_retry_bootstrap = 474 [json_name = "appRootRetryBootstrap"];</code>
+   * @return The appRootRetryBootstrap.
+   */
+  io.github.lewin671.remoteagent.core.proto.AppRootRetryBootstrapAction getAppRootRetryBootstrap();
+
+  /**
+   * <code>.remoteagent.core.v1.AppRootVerifyPendingOpAction app_root_verify_pending_op = 475 [json_name = "appRootVerifyPendingOp"];</code>
+   * @return Whether the appRootVerifyPendingOp field is set.
+   */
+  boolean hasAppRootVerifyPendingOp();
+  /**
+   * <code>.remoteagent.core.v1.AppRootVerifyPendingOpAction app_root_verify_pending_op = 475 [json_name = "appRootVerifyPendingOp"];</code>
+   * @return The appRootVerifyPendingOp.
+   */
+  io.github.lewin671.remoteagent.core.proto.AppRootVerifyPendingOpAction getAppRootVerifyPendingOp();
+
+  /**
+   * <code>.remoteagent.core.v1.AppRootDismissUpgradeNoticeAction app_root_dismiss_upgrade_notice = 476 [json_name = "appRootDismissUpgradeNotice"];</code>
+   * @return Whether the appRootDismissUpgradeNotice field is set.
+   */
+  boolean hasAppRootDismissUpgradeNotice();
+  /**
+   * <code>.remoteagent.core.v1.AppRootDismissUpgradeNoticeAction app_root_dismiss_upgrade_notice = 476 [json_name = "appRootDismissUpgradeNotice"];</code>
+   * @return The appRootDismissUpgradeNotice.
+   */
+  io.github.lewin671.remoteagent.core.proto.AppRootDismissUpgradeNoticeAction getAppRootDismissUpgradeNotice();
+
+  /**
+   * <code>.remoteagent.core.v1.OnboardingSetModeAction onboarding_set_mode = 477 [json_name = "onboardingSetMode"];</code>
+   * @return Whether the onboardingSetMode field is set.
+   */
+  boolean hasOnboardingSetMode();
+  /**
+   * <code>.remoteagent.core.v1.OnboardingSetModeAction onboarding_set_mode = 477 [json_name = "onboardingSetMode"];</code>
+   * @return The onboardingSetMode.
+   */
+  io.github.lewin671.remoteagent.core.proto.OnboardingSetModeAction getOnboardingSetMode();
+
+  /**
+   * <code>.remoteagent.core.v1.OnboardingCreateEditAction onboarding_create_edit = 478 [json_name = "onboardingCreateEdit"];</code>
+   * @return Whether the onboardingCreateEdit field is set.
+   */
+  boolean hasOnboardingCreateEdit();
+  /**
+   * <code>.remoteagent.core.v1.OnboardingCreateEditAction onboarding_create_edit = 478 [json_name = "onboardingCreateEdit"];</code>
+   * @return The onboardingCreateEdit.
+   */
+  io.github.lewin671.remoteagent.core.proto.OnboardingCreateEditAction getOnboardingCreateEdit();
+
+  /**
+   * <code>.remoteagent.core.v1.OnboardingCreateSubmitAction onboarding_create_submit = 479 [json_name = "onboardingCreateSubmit"];</code>
+   * @return Whether the onboardingCreateSubmit field is set.
+   */
+  boolean hasOnboardingCreateSubmit();
+  /**
+   * <code>.remoteagent.core.v1.OnboardingCreateSubmitAction onboarding_create_submit = 479 [json_name = "onboardingCreateSubmit"];</code>
+   * @return The onboardingCreateSubmit.
+   */
+  io.github.lewin671.remoteagent.core.proto.OnboardingCreateSubmitAction getOnboardingCreateSubmit();
+
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinEditAction onboarding_join_edit = 480 [json_name = "onboardingJoinEdit"];</code>
+   * @return Whether the onboardingJoinEdit field is set.
+   */
+  boolean hasOnboardingJoinEdit();
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinEditAction onboarding_join_edit = 480 [json_name = "onboardingJoinEdit"];</code>
+   * @return The onboardingJoinEdit.
+   */
+  io.github.lewin671.remoteagent.core.proto.OnboardingJoinEditAction getOnboardingJoinEdit();
+
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinSubmitAction onboarding_join_submit = 481 [json_name = "onboardingJoinSubmit"];</code>
+   * @return Whether the onboardingJoinSubmit field is set.
+   */
+  boolean hasOnboardingJoinSubmit();
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinSubmitAction onboarding_join_submit = 481 [json_name = "onboardingJoinSubmit"];</code>
+   * @return The onboardingJoinSubmit.
+   */
+  io.github.lewin671.remoteagent.core.proto.OnboardingJoinSubmitAction getOnboardingJoinSubmit();
+
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinConfirmSasAction onboarding_join_confirm_sas = 482 [json_name = "onboardingJoinConfirmSas"];</code>
+   * @return Whether the onboardingJoinConfirmSas field is set.
+   */
+  boolean hasOnboardingJoinConfirmSas();
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinConfirmSasAction onboarding_join_confirm_sas = 482 [json_name = "onboardingJoinConfirmSas"];</code>
+   * @return The onboardingJoinConfirmSas.
+   */
+  io.github.lewin671.remoteagent.core.proto.OnboardingJoinConfirmSasAction getOnboardingJoinConfirmSas();
+
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinCancelAction onboarding_join_cancel = 483 [json_name = "onboardingJoinCancel"];</code>
+   * @return Whether the onboardingJoinCancel field is set.
+   */
+  boolean hasOnboardingJoinCancel();
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinCancelAction onboarding_join_cancel = 483 [json_name = "onboardingJoinCancel"];</code>
+   * @return The onboardingJoinCancel.
+   */
+  io.github.lewin671.remoteagent.core.proto.OnboardingJoinCancelAction getOnboardingJoinCancel();
+
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinBannerAction onboarding_join_banner_action = 484 [json_name = "onboardingJoinBannerAction"];</code>
+   * @return Whether the onboardingJoinBannerAction field is set.
+   */
+  boolean hasOnboardingJoinBannerAction();
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinBannerAction onboarding_join_banner_action = 484 [json_name = "onboardingJoinBannerAction"];</code>
+   * @return The onboardingJoinBannerAction.
+   */
+  io.github.lewin671.remoteagent.core.proto.OnboardingJoinBannerAction getOnboardingJoinBannerAction();
+
+  /**
+   * <code>.remoteagent.core.v1.OnboardingRecoveryEditAction onboarding_recovery_edit = 485 [json_name = "onboardingRecoveryEdit"];</code>
+   * @return Whether the onboardingRecoveryEdit field is set.
+   */
+  boolean hasOnboardingRecoveryEdit();
+  /**
+   * <code>.remoteagent.core.v1.OnboardingRecoveryEditAction onboarding_recovery_edit = 485 [json_name = "onboardingRecoveryEdit"];</code>
+   * @return The onboardingRecoveryEdit.
+   */
+  io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryEditAction getOnboardingRecoveryEdit();
+
+  /**
+   * <code>.remoteagent.core.v1.OnboardingRecoveryAction onboarding_recovery_action = 486 [json_name = "onboardingRecoveryAction"];</code>
+   * @return Whether the onboardingRecoveryAction field is set.
+   */
+  boolean hasOnboardingRecoveryAction();
+  /**
+   * <code>.remoteagent.core.v1.OnboardingRecoveryAction onboarding_recovery_action = 486 [json_name = "onboardingRecoveryAction"];</code>
+   * @return The onboardingRecoveryAction.
+   */
+  io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryAction getOnboardingRecoveryAction();
+
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceOpenAction add_device_open = 489 [json_name = "addDeviceOpen"];</code>
+   * @return Whether the addDeviceOpen field is set.
+   */
+  boolean hasAddDeviceOpen();
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceOpenAction add_device_open = 489 [json_name = "addDeviceOpen"];</code>
+   * @return The addDeviceOpen.
+   */
+  io.github.lewin671.remoteagent.core.proto.AddDeviceOpenAction getAddDeviceOpen();
+
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceCloseAction add_device_close = 490 [json_name = "addDeviceClose"];</code>
+   * @return Whether the addDeviceClose field is set.
+   */
+  boolean hasAddDeviceClose();
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceCloseAction add_device_close = 490 [json_name = "addDeviceClose"];</code>
+   * @return The addDeviceClose.
+   */
+  io.github.lewin671.remoteagent.core.proto.AddDeviceCloseAction getAddDeviceClose();
+
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceAction add_device_action = 491 [json_name = "addDeviceAction"];</code>
+   * @return Whether the addDeviceAction field is set.
+   */
+  boolean hasAddDeviceAction();
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceAction add_device_action = 491 [json_name = "addDeviceAction"];</code>
+   * @return The addDeviceAction.
+   */
+  io.github.lewin671.remoteagent.core.proto.AddDeviceAction getAddDeviceAction();
+
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityOpenAction account_security_open = 493 [json_name = "accountSecurityOpen"];</code>
+   * @return Whether the accountSecurityOpen field is set.
+   */
+  boolean hasAccountSecurityOpen();
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityOpenAction account_security_open = 493 [json_name = "accountSecurityOpen"];</code>
+   * @return The accountSecurityOpen.
+   */
+  io.github.lewin671.remoteagent.core.proto.AccountSecurityOpenAction getAccountSecurityOpen();
+
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityAction account_security_action = 494 [json_name = "accountSecurityAction"];</code>
+   * @return Whether the accountSecurityAction field is set.
+   */
+  boolean hasAccountSecurityAction();
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityAction account_security_action = 494 [json_name = "accountSecurityAction"];</code>
+   * @return The accountSecurityAction.
+   */
+  io.github.lewin671.remoteagent.core.proto.AccountSecurityAction getAccountSecurityAction();
+
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityCloseAction account_security_close = 495 [json_name = "accountSecurityClose"];</code>
+   * @return Whether the accountSecurityClose field is set.
+   */
+  boolean hasAccountSecurityClose();
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityCloseAction account_security_close = 495 [json_name = "accountSecurityClose"];</code>
+   * @return The accountSecurityClose.
+   */
+  io.github.lewin671.remoteagent.core.proto.AccountSecurityCloseAction getAccountSecurityClose();
+
+  /**
+   * <code>.remoteagent.core.v1.HandoffAction handoff_action = 496 [json_name = "handoffAction"];</code>
+   * @return Whether the handoffAction field is set.
+   */
+  boolean hasHandoffAction();
+  /**
+   * <code>.remoteagent.core.v1.HandoffAction handoff_action = 496 [json_name = "handoffAction"];</code>
+   * @return The handoffAction.
+   */
+  io.github.lewin671.remoteagent.core.proto.HandoffAction getHandoffAction();
+
+  /**
+   * <code>.remoteagent.core.v1.ExternalLogoutEvent external_logout = 497 [json_name = "externalLogout"];</code>
+   * @return Whether the externalLogout field is set.
+   */
+  boolean hasExternalLogout();
+  /**
+   * <code>.remoteagent.core.v1.ExternalLogoutEvent external_logout = 497 [json_name = "externalLogout"];</code>
+   * @return The externalLogout.
+   */
+  io.github.lewin671.remoteagent.core.proto.ExternalLogoutEvent getExternalLogout();
+
+  /**
+   * <code>.remoteagent.core.v1.ExitRequestAction exit_request = 498 [json_name = "exitRequest"];</code>
+   * @return Whether the exitRequest field is set.
+   */
+  boolean hasExitRequest();
+  /**
+   * <code>.remoteagent.core.v1.ExitRequestAction exit_request = 498 [json_name = "exitRequest"];</code>
+   * @return The exitRequest.
+   */
+  io.github.lewin671.remoteagent.core.proto.ExitRequestAction getExitRequest();
+
+  /**
+   * <code>.remoteagent.core.v1.ExitConfirmAction exit_confirm = 499 [json_name = "exitConfirm"];</code>
+   * @return Whether the exitConfirm field is set.
+   */
+  boolean hasExitConfirm();
+  /**
+   * <code>.remoteagent.core.v1.ExitConfirmAction exit_confirm = 499 [json_name = "exitConfirm"];</code>
+   * @return The exitConfirm.
+   */
+  io.github.lewin671.remoteagent.core.proto.ExitConfirmAction getExitConfirm();
+
+  /**
    * <code>int64 now_ms = 98 [json_name = "nowMs"];</code>
    * @return The nowMs.
    */

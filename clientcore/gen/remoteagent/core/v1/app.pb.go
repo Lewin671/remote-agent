@@ -82,6 +82,12 @@ const (
 	ScreenTarget_SCREEN_TARGET_SCHEDULE_DETAIL        ScreenTarget = 21
 	ScreenTarget_SCREEN_TARGET_SCHEDULE_FORM          ScreenTarget = 22
 	ScreenTarget_SCREEN_TARGET_SCHEDULE_SESSION_STRIP ScreenTarget = 23
+	ScreenTarget_SCREEN_TARGET_APP_ROOT               ScreenTarget = 50
+	ScreenTarget_SCREEN_TARGET_ONBOARDING             ScreenTarget = 51
+	ScreenTarget_SCREEN_TARGET_ADD_DEVICE             ScreenTarget = 52
+	ScreenTarget_SCREEN_TARGET_ACCOUNT_SECURITY       ScreenTarget = 53
+	ScreenTarget_SCREEN_TARGET_HANDOFF                ScreenTarget = 54
+	ScreenTarget_SCREEN_TARGET_EXIT_CONFIRM           ScreenTarget = 55
 )
 
 type CommandRouteHint int32
@@ -391,6 +397,48 @@ type Screen_ScheduleSessionStrip struct {
 
 func (*Screen_ScheduleSessionStrip) isScreen_Screen() {}
 
+type Screen_AppRoot struct {
+	_       [0]func()
+	AppRoot *AppRootScreenRequest
+}
+
+func (*Screen_AppRoot) isScreen_Screen() {}
+
+type Screen_Onboarding struct {
+	_          [0]func()
+	Onboarding *OnboardingScreenRequest
+}
+
+func (*Screen_Onboarding) isScreen_Screen() {}
+
+type Screen_AddDevice struct {
+	_         [0]func()
+	AddDevice *AddDeviceScreenRequest
+}
+
+func (*Screen_AddDevice) isScreen_Screen() {}
+
+type Screen_AccountSecurity struct {
+	_               [0]func()
+	AccountSecurity *AccountSecurityScreenRequest
+}
+
+func (*Screen_AccountSecurity) isScreen_Screen() {}
+
+type Screen_Handoff struct {
+	_       [0]func()
+	Handoff *HandoffScreenRequest
+}
+
+func (*Screen_Handoff) isScreen_Screen() {}
+
+type Screen_ExitConfirm struct {
+	_           [0]func()
+	ExitConfirm *ExitConfirmScreenRequest
+}
+
+func (*Screen_ExitConfirm) isScreen_Screen() {}
+
 func (m *Screen) GetScreen() isScreen_Screen {
 	if m != nil {
 		return m.Screen
@@ -523,6 +571,42 @@ func (m *Screen) GetScheduleSessionStrip() *ScheduleSessionStripScreenRequest {
 	}
 	return nil
 }
+func (m *Screen) GetAppRoot() *AppRootScreenRequest {
+	if x, ok := m.GetScreen().(*Screen_AppRoot); ok && x != nil {
+		return x.AppRoot
+	}
+	return nil
+}
+func (m *Screen) GetOnboarding() *OnboardingScreenRequest {
+	if x, ok := m.GetScreen().(*Screen_Onboarding); ok && x != nil {
+		return x.Onboarding
+	}
+	return nil
+}
+func (m *Screen) GetAddDevice() *AddDeviceScreenRequest {
+	if x, ok := m.GetScreen().(*Screen_AddDevice); ok && x != nil {
+		return x.AddDevice
+	}
+	return nil
+}
+func (m *Screen) GetAccountSecurity() *AccountSecurityScreenRequest {
+	if x, ok := m.GetScreen().(*Screen_AccountSecurity); ok && x != nil {
+		return x.AccountSecurity
+	}
+	return nil
+}
+func (m *Screen) GetHandoff() *HandoffScreenRequest {
+	if x, ok := m.GetScreen().(*Screen_Handoff); ok && x != nil {
+		return x.Handoff
+	}
+	return nil
+}
+func (m *Screen) GetExitConfirm() *ExitConfirmScreenRequest {
+	if x, ok := m.GetScreen().(*Screen_ExitConfirm); ok && x != nil {
+		return x.ExitConfirm
+	}
+	return nil
+}
 
 var LitewireDesc_Screen = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&Screen{}) },
@@ -537,8 +621,10 @@ func extraUnmarshal_Screen(base unsafe.Pointer, num litewire.Number, wtyp litewi
 	switch {
 	case num <= 31:
 		return m.extraUnmarshalPart0(num, wtyp, bp)
-	case num <= 40:
+	case num <= 52:
 		return m.extraUnmarshalPart1(num, wtyp, bp)
+	case num <= 55:
+		return m.extraUnmarshalPart2(num, wtyp, bp)
 	}
 	return false, nil
 }
@@ -714,6 +800,66 @@ func (m *Screen) extraUnmarshalPart1(num litewire.Number, wtyp litewire.Type, bp
 				m.Screen = w
 			}
 			sub = w.Connection
+		case 50:
+			w, _ := m.Screen.(*Screen_AppRoot)
+			if w == nil || w.AppRoot == nil {
+				w = &Screen_AppRoot{AppRoot: &AppRootScreenRequest{}}
+				m.Screen = w
+			}
+			sub = w.AppRoot
+		case 51:
+			w, _ := m.Screen.(*Screen_Onboarding)
+			if w == nil || w.Onboarding == nil {
+				w = &Screen_Onboarding{Onboarding: &OnboardingScreenRequest{}}
+				m.Screen = w
+			}
+			sub = w.Onboarding
+		case 52:
+			w, _ := m.Screen.(*Screen_AddDevice)
+			if w == nil || w.AddDevice == nil {
+				w = &Screen_AddDevice{AddDevice: &AddDeviceScreenRequest{}}
+				m.Screen = w
+			}
+			sub = w.AddDevice
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Screen) extraUnmarshalPart2(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
+		case 53:
+			w, _ := m.Screen.(*Screen_AccountSecurity)
+			if w == nil || w.AccountSecurity == nil {
+				w = &Screen_AccountSecurity{AccountSecurity: &AccountSecurityScreenRequest{}}
+				m.Screen = w
+			}
+			sub = w.AccountSecurity
+		case 54:
+			w, _ := m.Screen.(*Screen_Handoff)
+			if w == nil || w.Handoff == nil {
+				w = &Screen_Handoff{Handoff: &HandoffScreenRequest{}}
+				m.Screen = w
+			}
+			sub = w.Handoff
+		case 55:
+			w, _ := m.Screen.(*Screen_ExitConfirm)
+			if w == nil || w.ExitConfirm == nil {
+				w = &Screen_ExitConfirm{ExitConfirm: &ExitConfirmScreenRequest{}}
+				m.Screen = w
+			}
+			sub = w.ExitConfirm
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -879,6 +1025,48 @@ type ViewModel_ScheduleSessionStrip struct {
 
 func (*ViewModel_ScheduleSessionStrip) isViewModel_View() {}
 
+type ViewModel_AppRoot struct {
+	_       [0]func()
+	AppRoot *AppRootViewModel
+}
+
+func (*ViewModel_AppRoot) isViewModel_View() {}
+
+type ViewModel_Onboarding struct {
+	_          [0]func()
+	Onboarding *OnboardingViewModel
+}
+
+func (*ViewModel_Onboarding) isViewModel_View() {}
+
+type ViewModel_AddDevice struct {
+	_         [0]func()
+	AddDevice *AddDeviceViewModel
+}
+
+func (*ViewModel_AddDevice) isViewModel_View() {}
+
+type ViewModel_AccountSecurity struct {
+	_               [0]func()
+	AccountSecurity *AccountSecurityViewModel
+}
+
+func (*ViewModel_AccountSecurity) isViewModel_View() {}
+
+type ViewModel_Handoff struct {
+	_       [0]func()
+	Handoff *HandoffViewModel
+}
+
+func (*ViewModel_Handoff) isViewModel_View() {}
+
+type ViewModel_ExitConfirm struct {
+	_           [0]func()
+	ExitConfirm *ExitConfirmView
+}
+
+func (*ViewModel_ExitConfirm) isViewModel_View() {}
+
 func (m *ViewModel) GetView() isViewModel_View {
 	if m != nil {
 		return m.View
@@ -1011,6 +1199,42 @@ func (m *ViewModel) GetScheduleSessionStrip() *ScheduleSessionStripViewModel {
 	}
 	return nil
 }
+func (m *ViewModel) GetAppRoot() *AppRootViewModel {
+	if x, ok := m.GetView().(*ViewModel_AppRoot); ok && x != nil {
+		return x.AppRoot
+	}
+	return nil
+}
+func (m *ViewModel) GetOnboarding() *OnboardingViewModel {
+	if x, ok := m.GetView().(*ViewModel_Onboarding); ok && x != nil {
+		return x.Onboarding
+	}
+	return nil
+}
+func (m *ViewModel) GetAddDevice() *AddDeviceViewModel {
+	if x, ok := m.GetView().(*ViewModel_AddDevice); ok && x != nil {
+		return x.AddDevice
+	}
+	return nil
+}
+func (m *ViewModel) GetAccountSecurity() *AccountSecurityViewModel {
+	if x, ok := m.GetView().(*ViewModel_AccountSecurity); ok && x != nil {
+		return x.AccountSecurity
+	}
+	return nil
+}
+func (m *ViewModel) GetHandoff() *HandoffViewModel {
+	if x, ok := m.GetView().(*ViewModel_Handoff); ok && x != nil {
+		return x.Handoff
+	}
+	return nil
+}
+func (m *ViewModel) GetExitConfirm() *ExitConfirmView {
+	if x, ok := m.GetView().(*ViewModel_ExitConfirm); ok && x != nil {
+		return x.ExitConfirm
+	}
+	return nil
+}
 
 var LitewireDesc_ViewModel = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -1033,6 +1257,9 @@ func extraMarshal_ViewModel(base unsafe.Pointer, b []byte, idx litewire.Number) 
 		b, ok = m.appendMarshalViewPart0(b)
 		if !ok {
 			b, ok = m.appendMarshalViewPart1(b)
+		}
+		if !ok {
+			b, ok = m.appendMarshalViewPart2(b)
 		}
 	}
 	return b
@@ -1140,6 +1367,44 @@ func (m *ViewModel) appendMarshalViewPart1(b []byte) ([]byte, bool) {
 	case *ViewModel_ScheduleSessionStrip:
 		if x != nil && x.ScheduleSessionStrip != nil {
 			onum, omsg = 23, x.ScheduleSessionStrip
+		}
+	case *ViewModel_AppRoot:
+		if x != nil && x.AppRoot != nil {
+			onum, omsg = 50, x.AppRoot
+		}
+	case *ViewModel_Onboarding:
+		if x != nil && x.Onboarding != nil {
+			onum, omsg = 51, x.Onboarding
+		}
+	case *ViewModel_AddDevice:
+		if x != nil && x.AddDevice != nil {
+			onum, omsg = 52, x.AddDevice
+		}
+	default:
+		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
+}
+
+//go:noinline
+func (m *ViewModel) appendMarshalViewPart2(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.View.(type) {
+	case *ViewModel_AccountSecurity:
+		if x != nil && x.AccountSecurity != nil {
+			onum, omsg = 53, x.AccountSecurity
+		}
+	case *ViewModel_Handoff:
+		if x != nil && x.Handoff != nil {
+			onum, omsg = 54, x.Handoff
+		}
+	case *ViewModel_ExitConfirm:
+		if x != nil && x.ExitConfirm != nil {
+			onum, omsg = 55, x.ExitConfirm
 		}
 	default:
 		return b, false
@@ -5719,6 +5984,195 @@ type Event_SecurityOpenNotify struct {
 
 func (*Event_SecurityOpenNotify) isEvent_Event() {}
 
+type Event_ClientInit struct {
+	_          [0]func()
+	ClientInit *ClientInitEvent
+}
+
+func (*Event_ClientInit) isEvent_Event() {}
+
+type Event_StoragePersistResult struct {
+	_                    [0]func()
+	StoragePersistResult *StoragePersistResultEvent
+}
+
+func (*Event_StoragePersistResult) isEvent_Event() {}
+
+type Event_PushUnregistered struct {
+	_                [0]func()
+	PushUnregistered *PushUnregisteredEvent
+}
+
+func (*Event_PushUnregistered) isEvent_Event() {}
+
+type Event_AccountCachesCleared struct {
+	_                    [0]func()
+	AccountCachesCleared *AccountCachesClearedEvent
+}
+
+func (*Event_AccountCachesCleared) isEvent_Event() {}
+
+type Event_AppRootRetryBootstrap struct {
+	_                     [0]func()
+	AppRootRetryBootstrap *AppRootRetryBootstrapAction
+}
+
+func (*Event_AppRootRetryBootstrap) isEvent_Event() {}
+
+type Event_AppRootVerifyPendingOp struct {
+	_                      [0]func()
+	AppRootVerifyPendingOp *AppRootVerifyPendingOpAction
+}
+
+func (*Event_AppRootVerifyPendingOp) isEvent_Event() {}
+
+type Event_AppRootDismissUpgradeNotice struct {
+	_                           [0]func()
+	AppRootDismissUpgradeNotice *AppRootDismissUpgradeNoticeAction
+}
+
+func (*Event_AppRootDismissUpgradeNotice) isEvent_Event() {}
+
+type Event_OnboardingSetMode struct {
+	_                 [0]func()
+	OnboardingSetMode *OnboardingSetModeAction
+}
+
+func (*Event_OnboardingSetMode) isEvent_Event() {}
+
+type Event_OnboardingCreateEdit struct {
+	_                    [0]func()
+	OnboardingCreateEdit *OnboardingCreateEditAction
+}
+
+func (*Event_OnboardingCreateEdit) isEvent_Event() {}
+
+type Event_OnboardingCreateSubmit struct {
+	_                      [0]func()
+	OnboardingCreateSubmit *OnboardingCreateSubmitAction
+}
+
+func (*Event_OnboardingCreateSubmit) isEvent_Event() {}
+
+type Event_OnboardingJoinEdit struct {
+	_                  [0]func()
+	OnboardingJoinEdit *OnboardingJoinEditAction
+}
+
+func (*Event_OnboardingJoinEdit) isEvent_Event() {}
+
+type Event_OnboardingJoinSubmit struct {
+	_                    [0]func()
+	OnboardingJoinSubmit *OnboardingJoinSubmitAction
+}
+
+func (*Event_OnboardingJoinSubmit) isEvent_Event() {}
+
+type Event_OnboardingJoinConfirmSas struct {
+	_                        [0]func()
+	OnboardingJoinConfirmSas *OnboardingJoinConfirmSasAction
+}
+
+func (*Event_OnboardingJoinConfirmSas) isEvent_Event() {}
+
+type Event_OnboardingJoinCancel struct {
+	_                    [0]func()
+	OnboardingJoinCancel *OnboardingJoinCancelAction
+}
+
+func (*Event_OnboardingJoinCancel) isEvent_Event() {}
+
+type Event_OnboardingJoinBannerAction struct {
+	_                          [0]func()
+	OnboardingJoinBannerAction *OnboardingJoinBannerAction
+}
+
+func (*Event_OnboardingJoinBannerAction) isEvent_Event() {}
+
+type Event_OnboardingRecoveryEdit struct {
+	_                      [0]func()
+	OnboardingRecoveryEdit *OnboardingRecoveryEditAction
+}
+
+func (*Event_OnboardingRecoveryEdit) isEvent_Event() {}
+
+type Event_OnboardingRecoveryAction struct {
+	_                        [0]func()
+	OnboardingRecoveryAction *OnboardingRecoveryAction
+}
+
+func (*Event_OnboardingRecoveryAction) isEvent_Event() {}
+
+type Event_AddDeviceOpen struct {
+	_             [0]func()
+	AddDeviceOpen *AddDeviceOpenAction
+}
+
+func (*Event_AddDeviceOpen) isEvent_Event() {}
+
+type Event_AddDeviceClose struct {
+	_              [0]func()
+	AddDeviceClose *AddDeviceCloseAction
+}
+
+func (*Event_AddDeviceClose) isEvent_Event() {}
+
+type Event_AddDeviceAction struct {
+	_               [0]func()
+	AddDeviceAction *AddDeviceAction
+}
+
+func (*Event_AddDeviceAction) isEvent_Event() {}
+
+type Event_AccountSecurityOpen struct {
+	_                   [0]func()
+	AccountSecurityOpen *AccountSecurityOpenAction
+}
+
+func (*Event_AccountSecurityOpen) isEvent_Event() {}
+
+type Event_AccountSecurityAction struct {
+	_                     [0]func()
+	AccountSecurityAction *AccountSecurityAction
+}
+
+func (*Event_AccountSecurityAction) isEvent_Event() {}
+
+type Event_AccountSecurityClose struct {
+	_                    [0]func()
+	AccountSecurityClose *AccountSecurityCloseAction
+}
+
+func (*Event_AccountSecurityClose) isEvent_Event() {}
+
+type Event_HandoffAction struct {
+	_             [0]func()
+	HandoffAction *HandoffAction
+}
+
+func (*Event_HandoffAction) isEvent_Event() {}
+
+type Event_ExternalLogout struct {
+	_              [0]func()
+	ExternalLogout *ExternalLogoutEvent
+}
+
+func (*Event_ExternalLogout) isEvent_Event() {}
+
+type Event_ExitRequest struct {
+	_           [0]func()
+	ExitRequest *ExitRequestAction
+}
+
+func (*Event_ExitRequest) isEvent_Event() {}
+
+type Event_ExitConfirm struct {
+	_           [0]func()
+	ExitConfirm *ExitConfirmAction
+}
+
+func (*Event_ExitConfirm) isEvent_Event() {}
+
 func (m *Event) GetEvent() isEvent_Event {
 	if m != nil {
 		return m.Event
@@ -7159,6 +7613,168 @@ func (m *Event) GetSecurityOpenNotify() *SecurityOpenNotifyEvent {
 	}
 	return nil
 }
+func (m *Event) GetClientInit() *ClientInitEvent {
+	if x, ok := m.GetEvent().(*Event_ClientInit); ok && x != nil {
+		return x.ClientInit
+	}
+	return nil
+}
+func (m *Event) GetStoragePersistResult() *StoragePersistResultEvent {
+	if x, ok := m.GetEvent().(*Event_StoragePersistResult); ok && x != nil {
+		return x.StoragePersistResult
+	}
+	return nil
+}
+func (m *Event) GetPushUnregistered() *PushUnregisteredEvent {
+	if x, ok := m.GetEvent().(*Event_PushUnregistered); ok && x != nil {
+		return x.PushUnregistered
+	}
+	return nil
+}
+func (m *Event) GetAccountCachesCleared() *AccountCachesClearedEvent {
+	if x, ok := m.GetEvent().(*Event_AccountCachesCleared); ok && x != nil {
+		return x.AccountCachesCleared
+	}
+	return nil
+}
+func (m *Event) GetAppRootRetryBootstrap() *AppRootRetryBootstrapAction {
+	if x, ok := m.GetEvent().(*Event_AppRootRetryBootstrap); ok && x != nil {
+		return x.AppRootRetryBootstrap
+	}
+	return nil
+}
+func (m *Event) GetAppRootVerifyPendingOp() *AppRootVerifyPendingOpAction {
+	if x, ok := m.GetEvent().(*Event_AppRootVerifyPendingOp); ok && x != nil {
+		return x.AppRootVerifyPendingOp
+	}
+	return nil
+}
+func (m *Event) GetAppRootDismissUpgradeNotice() *AppRootDismissUpgradeNoticeAction {
+	if x, ok := m.GetEvent().(*Event_AppRootDismissUpgradeNotice); ok && x != nil {
+		return x.AppRootDismissUpgradeNotice
+	}
+	return nil
+}
+func (m *Event) GetOnboardingSetMode() *OnboardingSetModeAction {
+	if x, ok := m.GetEvent().(*Event_OnboardingSetMode); ok && x != nil {
+		return x.OnboardingSetMode
+	}
+	return nil
+}
+func (m *Event) GetOnboardingCreateEdit() *OnboardingCreateEditAction {
+	if x, ok := m.GetEvent().(*Event_OnboardingCreateEdit); ok && x != nil {
+		return x.OnboardingCreateEdit
+	}
+	return nil
+}
+func (m *Event) GetOnboardingCreateSubmit() *OnboardingCreateSubmitAction {
+	if x, ok := m.GetEvent().(*Event_OnboardingCreateSubmit); ok && x != nil {
+		return x.OnboardingCreateSubmit
+	}
+	return nil
+}
+func (m *Event) GetOnboardingJoinEdit() *OnboardingJoinEditAction {
+	if x, ok := m.GetEvent().(*Event_OnboardingJoinEdit); ok && x != nil {
+		return x.OnboardingJoinEdit
+	}
+	return nil
+}
+func (m *Event) GetOnboardingJoinSubmit() *OnboardingJoinSubmitAction {
+	if x, ok := m.GetEvent().(*Event_OnboardingJoinSubmit); ok && x != nil {
+		return x.OnboardingJoinSubmit
+	}
+	return nil
+}
+func (m *Event) GetOnboardingJoinConfirmSas() *OnboardingJoinConfirmSasAction {
+	if x, ok := m.GetEvent().(*Event_OnboardingJoinConfirmSas); ok && x != nil {
+		return x.OnboardingJoinConfirmSas
+	}
+	return nil
+}
+func (m *Event) GetOnboardingJoinCancel() *OnboardingJoinCancelAction {
+	if x, ok := m.GetEvent().(*Event_OnboardingJoinCancel); ok && x != nil {
+		return x.OnboardingJoinCancel
+	}
+	return nil
+}
+func (m *Event) GetOnboardingJoinBannerAction() *OnboardingJoinBannerAction {
+	if x, ok := m.GetEvent().(*Event_OnboardingJoinBannerAction); ok && x != nil {
+		return x.OnboardingJoinBannerAction
+	}
+	return nil
+}
+func (m *Event) GetOnboardingRecoveryEdit() *OnboardingRecoveryEditAction {
+	if x, ok := m.GetEvent().(*Event_OnboardingRecoveryEdit); ok && x != nil {
+		return x.OnboardingRecoveryEdit
+	}
+	return nil
+}
+func (m *Event) GetOnboardingRecoveryAction() *OnboardingRecoveryAction {
+	if x, ok := m.GetEvent().(*Event_OnboardingRecoveryAction); ok && x != nil {
+		return x.OnboardingRecoveryAction
+	}
+	return nil
+}
+func (m *Event) GetAddDeviceOpen() *AddDeviceOpenAction {
+	if x, ok := m.GetEvent().(*Event_AddDeviceOpen); ok && x != nil {
+		return x.AddDeviceOpen
+	}
+	return nil
+}
+func (m *Event) GetAddDeviceClose() *AddDeviceCloseAction {
+	if x, ok := m.GetEvent().(*Event_AddDeviceClose); ok && x != nil {
+		return x.AddDeviceClose
+	}
+	return nil
+}
+func (m *Event) GetAddDeviceAction() *AddDeviceAction {
+	if x, ok := m.GetEvent().(*Event_AddDeviceAction); ok && x != nil {
+		return x.AddDeviceAction
+	}
+	return nil
+}
+func (m *Event) GetAccountSecurityOpen() *AccountSecurityOpenAction {
+	if x, ok := m.GetEvent().(*Event_AccountSecurityOpen); ok && x != nil {
+		return x.AccountSecurityOpen
+	}
+	return nil
+}
+func (m *Event) GetAccountSecurityAction() *AccountSecurityAction {
+	if x, ok := m.GetEvent().(*Event_AccountSecurityAction); ok && x != nil {
+		return x.AccountSecurityAction
+	}
+	return nil
+}
+func (m *Event) GetAccountSecurityClose() *AccountSecurityCloseAction {
+	if x, ok := m.GetEvent().(*Event_AccountSecurityClose); ok && x != nil {
+		return x.AccountSecurityClose
+	}
+	return nil
+}
+func (m *Event) GetHandoffAction() *HandoffAction {
+	if x, ok := m.GetEvent().(*Event_HandoffAction); ok && x != nil {
+		return x.HandoffAction
+	}
+	return nil
+}
+func (m *Event) GetExternalLogout() *ExternalLogoutEvent {
+	if x, ok := m.GetEvent().(*Event_ExternalLogout); ok && x != nil {
+		return x.ExternalLogout
+	}
+	return nil
+}
+func (m *Event) GetExitRequest() *ExitRequestAction {
+	if x, ok := m.GetEvent().(*Event_ExitRequest); ok && x != nil {
+		return x.ExitRequest
+	}
+	return nil
+}
+func (m *Event) GetExitConfirm() *ExitConfirmAction {
+	if x, ok := m.GetEvent().(*Event_ExitConfirm); ok && x != nil {
+		return x.ExitConfirm
+	}
+	return nil
+}
 func (m *Event) GetNowMs() int64 {
 	if m != nil {
 		return m.NowMs
@@ -7239,8 +7855,14 @@ func extraUnmarshal_Event(base unsafe.Pointer, num litewire.Number, wtyp litewir
 		return m.extraUnmarshalPart17(num, wtyp, bp)
 	case num <= 452:
 		return m.extraUnmarshalPart18(num, wtyp, bp)
-	case num <= 465:
+	case num <= 470:
 		return m.extraUnmarshalPart19(num, wtyp, bp)
+	case num <= 482:
+		return m.extraUnmarshalPart20(num, wtyp, bp)
+	case num <= 497:
+		return m.extraUnmarshalPart21(num, wtyp, bp)
+	case num <= 499:
+		return m.extraUnmarshalPart22(num, wtyp, bp)
 	}
 	return false, nil
 }
@@ -9266,6 +9888,249 @@ func (m *Event) extraUnmarshalPart19(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityOpenNotify
+		case 470:
+			w, _ := m.Event.(*Event_ClientInit)
+			if w == nil || w.ClientInit == nil {
+				w = &Event_ClientInit{ClientInit: &ClientInitEvent{}}
+				m.Event = w
+			}
+			sub = w.ClientInit
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart20(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
+		case 471:
+			w, _ := m.Event.(*Event_StoragePersistResult)
+			if w == nil || w.StoragePersistResult == nil {
+				w = &Event_StoragePersistResult{StoragePersistResult: &StoragePersistResultEvent{}}
+				m.Event = w
+			}
+			sub = w.StoragePersistResult
+		case 472:
+			w, _ := m.Event.(*Event_PushUnregistered)
+			if w == nil || w.PushUnregistered == nil {
+				w = &Event_PushUnregistered{PushUnregistered: &PushUnregisteredEvent{}}
+				m.Event = w
+			}
+			sub = w.PushUnregistered
+		case 473:
+			w, _ := m.Event.(*Event_AccountCachesCleared)
+			if w == nil || w.AccountCachesCleared == nil {
+				w = &Event_AccountCachesCleared{AccountCachesCleared: &AccountCachesClearedEvent{}}
+				m.Event = w
+			}
+			sub = w.AccountCachesCleared
+		case 474:
+			w, _ := m.Event.(*Event_AppRootRetryBootstrap)
+			if w == nil || w.AppRootRetryBootstrap == nil {
+				w = &Event_AppRootRetryBootstrap{AppRootRetryBootstrap: &AppRootRetryBootstrapAction{}}
+				m.Event = w
+			}
+			sub = w.AppRootRetryBootstrap
+		case 475:
+			w, _ := m.Event.(*Event_AppRootVerifyPendingOp)
+			if w == nil || w.AppRootVerifyPendingOp == nil {
+				w = &Event_AppRootVerifyPendingOp{AppRootVerifyPendingOp: &AppRootVerifyPendingOpAction{}}
+				m.Event = w
+			}
+			sub = w.AppRootVerifyPendingOp
+		case 476:
+			w, _ := m.Event.(*Event_AppRootDismissUpgradeNotice)
+			if w == nil || w.AppRootDismissUpgradeNotice == nil {
+				w = &Event_AppRootDismissUpgradeNotice{AppRootDismissUpgradeNotice: &AppRootDismissUpgradeNoticeAction{}}
+				m.Event = w
+			}
+			sub = w.AppRootDismissUpgradeNotice
+		case 477:
+			w, _ := m.Event.(*Event_OnboardingSetMode)
+			if w == nil || w.OnboardingSetMode == nil {
+				w = &Event_OnboardingSetMode{OnboardingSetMode: &OnboardingSetModeAction{}}
+				m.Event = w
+			}
+			sub = w.OnboardingSetMode
+		case 478:
+			w, _ := m.Event.(*Event_OnboardingCreateEdit)
+			if w == nil || w.OnboardingCreateEdit == nil {
+				w = &Event_OnboardingCreateEdit{OnboardingCreateEdit: &OnboardingCreateEditAction{}}
+				m.Event = w
+			}
+			sub = w.OnboardingCreateEdit
+		case 479:
+			w, _ := m.Event.(*Event_OnboardingCreateSubmit)
+			if w == nil || w.OnboardingCreateSubmit == nil {
+				w = &Event_OnboardingCreateSubmit{OnboardingCreateSubmit: &OnboardingCreateSubmitAction{}}
+				m.Event = w
+			}
+			sub = w.OnboardingCreateSubmit
+		case 480:
+			w, _ := m.Event.(*Event_OnboardingJoinEdit)
+			if w == nil || w.OnboardingJoinEdit == nil {
+				w = &Event_OnboardingJoinEdit{OnboardingJoinEdit: &OnboardingJoinEditAction{}}
+				m.Event = w
+			}
+			sub = w.OnboardingJoinEdit
+		case 481:
+			w, _ := m.Event.(*Event_OnboardingJoinSubmit)
+			if w == nil || w.OnboardingJoinSubmit == nil {
+				w = &Event_OnboardingJoinSubmit{OnboardingJoinSubmit: &OnboardingJoinSubmitAction{}}
+				m.Event = w
+			}
+			sub = w.OnboardingJoinSubmit
+		case 482:
+			w, _ := m.Event.(*Event_OnboardingJoinConfirmSas)
+			if w == nil || w.OnboardingJoinConfirmSas == nil {
+				w = &Event_OnboardingJoinConfirmSas{OnboardingJoinConfirmSas: &OnboardingJoinConfirmSasAction{}}
+				m.Event = w
+			}
+			sub = w.OnboardingJoinConfirmSas
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart21(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
+		case 483:
+			w, _ := m.Event.(*Event_OnboardingJoinCancel)
+			if w == nil || w.OnboardingJoinCancel == nil {
+				w = &Event_OnboardingJoinCancel{OnboardingJoinCancel: &OnboardingJoinCancelAction{}}
+				m.Event = w
+			}
+			sub = w.OnboardingJoinCancel
+		case 484:
+			w, _ := m.Event.(*Event_OnboardingJoinBannerAction)
+			if w == nil || w.OnboardingJoinBannerAction == nil {
+				w = &Event_OnboardingJoinBannerAction{OnboardingJoinBannerAction: &OnboardingJoinBannerAction{}}
+				m.Event = w
+			}
+			sub = w.OnboardingJoinBannerAction
+		case 485:
+			w, _ := m.Event.(*Event_OnboardingRecoveryEdit)
+			if w == nil || w.OnboardingRecoveryEdit == nil {
+				w = &Event_OnboardingRecoveryEdit{OnboardingRecoveryEdit: &OnboardingRecoveryEditAction{}}
+				m.Event = w
+			}
+			sub = w.OnboardingRecoveryEdit
+		case 486:
+			w, _ := m.Event.(*Event_OnboardingRecoveryAction)
+			if w == nil || w.OnboardingRecoveryAction == nil {
+				w = &Event_OnboardingRecoveryAction{OnboardingRecoveryAction: &OnboardingRecoveryAction{}}
+				m.Event = w
+			}
+			sub = w.OnboardingRecoveryAction
+		case 489:
+			w, _ := m.Event.(*Event_AddDeviceOpen)
+			if w == nil || w.AddDeviceOpen == nil {
+				w = &Event_AddDeviceOpen{AddDeviceOpen: &AddDeviceOpenAction{}}
+				m.Event = w
+			}
+			sub = w.AddDeviceOpen
+		case 490:
+			w, _ := m.Event.(*Event_AddDeviceClose)
+			if w == nil || w.AddDeviceClose == nil {
+				w = &Event_AddDeviceClose{AddDeviceClose: &AddDeviceCloseAction{}}
+				m.Event = w
+			}
+			sub = w.AddDeviceClose
+		case 491:
+			w, _ := m.Event.(*Event_AddDeviceAction)
+			if w == nil || w.AddDeviceAction == nil {
+				w = &Event_AddDeviceAction{AddDeviceAction: &AddDeviceAction{}}
+				m.Event = w
+			}
+			sub = w.AddDeviceAction
+		case 493:
+			w, _ := m.Event.(*Event_AccountSecurityOpen)
+			if w == nil || w.AccountSecurityOpen == nil {
+				w = &Event_AccountSecurityOpen{AccountSecurityOpen: &AccountSecurityOpenAction{}}
+				m.Event = w
+			}
+			sub = w.AccountSecurityOpen
+		case 494:
+			w, _ := m.Event.(*Event_AccountSecurityAction)
+			if w == nil || w.AccountSecurityAction == nil {
+				w = &Event_AccountSecurityAction{AccountSecurityAction: &AccountSecurityAction{}}
+				m.Event = w
+			}
+			sub = w.AccountSecurityAction
+		case 495:
+			w, _ := m.Event.(*Event_AccountSecurityClose)
+			if w == nil || w.AccountSecurityClose == nil {
+				w = &Event_AccountSecurityClose{AccountSecurityClose: &AccountSecurityCloseAction{}}
+				m.Event = w
+			}
+			sub = w.AccountSecurityClose
+		case 496:
+			w, _ := m.Event.(*Event_HandoffAction)
+			if w == nil || w.HandoffAction == nil {
+				w = &Event_HandoffAction{HandoffAction: &HandoffAction{}}
+				m.Event = w
+			}
+			sub = w.HandoffAction
+		case 497:
+			w, _ := m.Event.(*Event_ExternalLogout)
+			if w == nil || w.ExternalLogout == nil {
+				w = &Event_ExternalLogout{ExternalLogout: &ExternalLogoutEvent{}}
+				m.Event = w
+			}
+			sub = w.ExternalLogout
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart22(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
+		case 498:
+			w, _ := m.Event.(*Event_ExitRequest)
+			if w == nil || w.ExitRequest == nil {
+				w = &Event_ExitRequest{ExitRequest: &ExitRequestAction{}}
+				m.Event = w
+			}
+			sub = w.ExitRequest
+		case 499:
+			w, _ := m.Event.(*Event_ExitConfirm)
+			if w == nil || w.ExitConfirm == nil {
+				w = &Event_ExitConfirm{ExitConfirm: &ExitConfirmAction{}}
+				m.Event = w
+			}
+			sub = w.ExitConfirm
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -11462,6 +12327,48 @@ type Effect_SecurityTokenUpdated struct {
 
 func (*Effect_SecurityTokenUpdated) isEffect_Effect() {}
 
+type Effect_RequestStoragePersist struct {
+	_                     [0]func()
+	RequestStoragePersist *RequestStoragePersistEffect
+}
+
+func (*Effect_RequestStoragePersist) isEffect_Effect() {}
+
+type Effect_UnregisterPushOnExit struct {
+	_                    [0]func()
+	UnregisterPushOnExit *UnregisterPushOnExitEffect
+}
+
+func (*Effect_UnregisterPushOnExit) isEffect_Effect() {}
+
+type Effect_ClearAccountCaches struct {
+	_                  [0]func()
+	ClearAccountCaches *ClearAccountCachesEffect
+}
+
+func (*Effect_ClearAccountCaches) isEffect_Effect() {}
+
+type Effect_AccountRuntimeChanged struct {
+	_                     [0]func()
+	AccountRuntimeChanged *AccountRuntimeChangedEffect
+}
+
+func (*Effect_AccountRuntimeChanged) isEffect_Effect() {}
+
+type Effect_DismissUpgradeNotice struct {
+	_                    [0]func()
+	DismissUpgradeNotice *DismissUpgradeNoticeEffect
+}
+
+func (*Effect_DismissUpgradeNotice) isEffect_Effect() {}
+
+type Effect_PersistLastServer struct {
+	_                 [0]func()
+	PersistLastServer *PersistLastServerEffect
+}
+
+func (*Effect_PersistLastServer) isEffect_Effect() {}
+
 func (m *Effect) GetEffect() isEffect_Effect {
 	if m != nil {
 		return m.Effect
@@ -12020,6 +12927,42 @@ func (m *Effect) GetSecurityTokenUpdated() *SecurityTokenUpdatedEffect {
 	}
 	return nil
 }
+func (m *Effect) GetRequestStoragePersist() *RequestStoragePersistEffect {
+	if x, ok := m.GetEffect().(*Effect_RequestStoragePersist); ok && x != nil {
+		return x.RequestStoragePersist
+	}
+	return nil
+}
+func (m *Effect) GetUnregisterPushOnExit() *UnregisterPushOnExitEffect {
+	if x, ok := m.GetEffect().(*Effect_UnregisterPushOnExit); ok && x != nil {
+		return x.UnregisterPushOnExit
+	}
+	return nil
+}
+func (m *Effect) GetClearAccountCaches() *ClearAccountCachesEffect {
+	if x, ok := m.GetEffect().(*Effect_ClearAccountCaches); ok && x != nil {
+		return x.ClearAccountCaches
+	}
+	return nil
+}
+func (m *Effect) GetAccountRuntimeChanged() *AccountRuntimeChangedEffect {
+	if x, ok := m.GetEffect().(*Effect_AccountRuntimeChanged); ok && x != nil {
+		return x.AccountRuntimeChanged
+	}
+	return nil
+}
+func (m *Effect) GetDismissUpgradeNotice() *DismissUpgradeNoticeEffect {
+	if x, ok := m.GetEffect().(*Effect_DismissUpgradeNotice); ok && x != nil {
+		return x.DismissUpgradeNotice
+	}
+	return nil
+}
+func (m *Effect) GetPersistLastServer() *PersistLastServerEffect {
+	if x, ok := m.GetEffect().(*Effect_PersistLastServer); ok && x != nil {
+		return x.PersistLastServer
+	}
+	return nil
+}
 
 var LitewireDesc_Effect = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -12060,6 +13003,9 @@ func extraMarshal_Effect(base unsafe.Pointer, b []byte, idx litewire.Number) []b
 		}
 		if !ok {
 			b, ok = m.appendMarshalEffectPart7(b)
+		}
+		if !ok {
+			b, ok = m.appendMarshalEffectPart8(b)
 		}
 	}
 	return b
@@ -12535,6 +13481,44 @@ func (m *Effect) appendMarshalEffectPart7(b []byte) ([]byte, bool) {
 	case *Effect_SecurityTokenUpdated:
 		if x != nil && x.SecurityTokenUpdated != nil {
 			onum, omsg = 145, x.SecurityTokenUpdated
+		}
+	case *Effect_RequestStoragePersist:
+		if x != nil && x.RequestStoragePersist != nil {
+			onum, omsg = 146, x.RequestStoragePersist
+		}
+	case *Effect_UnregisterPushOnExit:
+		if x != nil && x.UnregisterPushOnExit != nil {
+			onum, omsg = 147, x.UnregisterPushOnExit
+		}
+	case *Effect_ClearAccountCaches:
+		if x != nil && x.ClearAccountCaches != nil {
+			onum, omsg = 148, x.ClearAccountCaches
+		}
+	case *Effect_AccountRuntimeChanged:
+		if x != nil && x.AccountRuntimeChanged != nil {
+			onum, omsg = 149, x.AccountRuntimeChanged
+		}
+	default:
+		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
+}
+
+//go:noinline
+func (m *Effect) appendMarshalEffectPart8(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Effect.(type) {
+	case *Effect_DismissUpgradeNotice:
+		if x != nil && x.DismissUpgradeNotice != nil {
+			onum, omsg = 150, x.DismissUpgradeNotice
+		}
+	case *Effect_PersistLastServer:
+		if x != nil && x.PersistLastServer != nil {
+			onum, omsg = 151, x.PersistLastServer
 		}
 	default:
 		return b, false

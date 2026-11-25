@@ -40,6 +40,12 @@ public  final class Screen extends
     SCHEDULE_DETAIL(21),
     SCHEDULE_FORM(22),
     SCHEDULE_SESSION_STRIP(23),
+    APP_ROOT(50),
+    ONBOARDING(51),
+    ADD_DEVICE(52),
+    ACCOUNT_SECURITY(53),
+    HANDOFF(54),
+    EXIT_CONFIRM(55),
     SCREEN_NOT_SET(0);
     private final int value;
     private ScreenCase(int value) {
@@ -76,6 +82,12 @@ public  final class Screen extends
         case 21: return SCHEDULE_DETAIL;
         case 22: return SCHEDULE_FORM;
         case 23: return SCHEDULE_SESSION_STRIP;
+        case 50: return APP_ROOT;
+        case 51: return ONBOARDING;
+        case 52: return ADD_DEVICE;
+        case 53: return ACCOUNT_SECURITY;
+        case 54: return HANDOFF;
+        case 55: return EXIT_CONFIRM;
         case 0: return SCREEN_NOT_SET;
         default: return null;
       }
@@ -1224,6 +1236,318 @@ public  final class Screen extends
    */
   private void clearScheduleSessionStrip() {
     if (screenCase_ == 23) {
+      screenCase_ = 0;
+      screen_ = null;
+    }
+  }
+
+  public static final int APP_ROOT_FIELD_NUMBER = 50;
+  /**
+   * <code>.remoteagent.core.v1.AppRootScreenRequest app_root = 50 [json_name = "appRoot"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAppRoot() {
+    return screenCase_ == 50;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AppRootScreenRequest app_root = 50 [json_name = "appRoot"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AppRootScreenRequest getAppRoot() {
+    if (screenCase_ == 50) {
+       return (io.github.lewin671.remoteagent.core.proto.AppRootScreenRequest) screen_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AppRootScreenRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AppRootScreenRequest app_root = 50 [json_name = "appRoot"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAppRoot(io.github.lewin671.remoteagent.core.proto.AppRootScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    screen_ = value;
+    screenCase_ = 50;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AppRootScreenRequest app_root = 50 [json_name = "appRoot"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAppRoot(io.github.lewin671.remoteagent.core.proto.AppRootScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (screenCase_ == 50 &&
+        screen_ != io.github.lewin671.remoteagent.core.proto.AppRootScreenRequest.getDefaultInstance()) {
+      screen_ = io.github.lewin671.remoteagent.core.proto.AppRootScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.AppRootScreenRequest) screen_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      screen_ = value;
+    }
+    screenCase_ = 50;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AppRootScreenRequest app_root = 50 [json_name = "appRoot"];</code>
+   */
+  private void clearAppRoot() {
+    if (screenCase_ == 50) {
+      screenCase_ = 0;
+      screen_ = null;
+    }
+  }
+
+  public static final int ONBOARDING_FIELD_NUMBER = 51;
+  /**
+   * <code>.remoteagent.core.v1.OnboardingScreenRequest onboarding = 51 [json_name = "onboarding"];</code>
+   */
+  @java.lang.Override
+  public boolean hasOnboarding() {
+    return screenCase_ == 51;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingScreenRequest onboarding = 51 [json_name = "onboarding"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.OnboardingScreenRequest getOnboarding() {
+    if (screenCase_ == 51) {
+       return (io.github.lewin671.remoteagent.core.proto.OnboardingScreenRequest) screen_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.OnboardingScreenRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingScreenRequest onboarding = 51 [json_name = "onboarding"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setOnboarding(io.github.lewin671.remoteagent.core.proto.OnboardingScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    screen_ = value;
+    screenCase_ = 51;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingScreenRequest onboarding = 51 [json_name = "onboarding"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeOnboarding(io.github.lewin671.remoteagent.core.proto.OnboardingScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (screenCase_ == 51 &&
+        screen_ != io.github.lewin671.remoteagent.core.proto.OnboardingScreenRequest.getDefaultInstance()) {
+      screen_ = io.github.lewin671.remoteagent.core.proto.OnboardingScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.OnboardingScreenRequest) screen_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      screen_ = value;
+    }
+    screenCase_ = 51;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingScreenRequest onboarding = 51 [json_name = "onboarding"];</code>
+   */
+  private void clearOnboarding() {
+    if (screenCase_ == 51) {
+      screenCase_ = 0;
+      screen_ = null;
+    }
+  }
+
+  public static final int ADD_DEVICE_FIELD_NUMBER = 52;
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceScreenRequest add_device = 52 [json_name = "addDevice"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAddDevice() {
+    return screenCase_ == 52;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceScreenRequest add_device = 52 [json_name = "addDevice"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AddDeviceScreenRequest getAddDevice() {
+    if (screenCase_ == 52) {
+       return (io.github.lewin671.remoteagent.core.proto.AddDeviceScreenRequest) screen_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AddDeviceScreenRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceScreenRequest add_device = 52 [json_name = "addDevice"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAddDevice(io.github.lewin671.remoteagent.core.proto.AddDeviceScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    screen_ = value;
+    screenCase_ = 52;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceScreenRequest add_device = 52 [json_name = "addDevice"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAddDevice(io.github.lewin671.remoteagent.core.proto.AddDeviceScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (screenCase_ == 52 &&
+        screen_ != io.github.lewin671.remoteagent.core.proto.AddDeviceScreenRequest.getDefaultInstance()) {
+      screen_ = io.github.lewin671.remoteagent.core.proto.AddDeviceScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.AddDeviceScreenRequest) screen_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      screen_ = value;
+    }
+    screenCase_ = 52;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceScreenRequest add_device = 52 [json_name = "addDevice"];</code>
+   */
+  private void clearAddDevice() {
+    if (screenCase_ == 52) {
+      screenCase_ = 0;
+      screen_ = null;
+    }
+  }
+
+  public static final int ACCOUNT_SECURITY_FIELD_NUMBER = 53;
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityScreenRequest account_security = 53 [json_name = "accountSecurity"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAccountSecurity() {
+    return screenCase_ == 53;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityScreenRequest account_security = 53 [json_name = "accountSecurity"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AccountSecurityScreenRequest getAccountSecurity() {
+    if (screenCase_ == 53) {
+       return (io.github.lewin671.remoteagent.core.proto.AccountSecurityScreenRequest) screen_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AccountSecurityScreenRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityScreenRequest account_security = 53 [json_name = "accountSecurity"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAccountSecurity(io.github.lewin671.remoteagent.core.proto.AccountSecurityScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    screen_ = value;
+    screenCase_ = 53;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityScreenRequest account_security = 53 [json_name = "accountSecurity"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAccountSecurity(io.github.lewin671.remoteagent.core.proto.AccountSecurityScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (screenCase_ == 53 &&
+        screen_ != io.github.lewin671.remoteagent.core.proto.AccountSecurityScreenRequest.getDefaultInstance()) {
+      screen_ = io.github.lewin671.remoteagent.core.proto.AccountSecurityScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.AccountSecurityScreenRequest) screen_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      screen_ = value;
+    }
+    screenCase_ = 53;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityScreenRequest account_security = 53 [json_name = "accountSecurity"];</code>
+   */
+  private void clearAccountSecurity() {
+    if (screenCase_ == 53) {
+      screenCase_ = 0;
+      screen_ = null;
+    }
+  }
+
+  public static final int HANDOFF_FIELD_NUMBER = 54;
+  /**
+   * <code>.remoteagent.core.v1.HandoffScreenRequest handoff = 54 [json_name = "handoff"];</code>
+   */
+  @java.lang.Override
+  public boolean hasHandoff() {
+    return screenCase_ == 54;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HandoffScreenRequest handoff = 54 [json_name = "handoff"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.HandoffScreenRequest getHandoff() {
+    if (screenCase_ == 54) {
+       return (io.github.lewin671.remoteagent.core.proto.HandoffScreenRequest) screen_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.HandoffScreenRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.HandoffScreenRequest handoff = 54 [json_name = "handoff"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setHandoff(io.github.lewin671.remoteagent.core.proto.HandoffScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    screen_ = value;
+    screenCase_ = 54;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HandoffScreenRequest handoff = 54 [json_name = "handoff"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeHandoff(io.github.lewin671.remoteagent.core.proto.HandoffScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (screenCase_ == 54 &&
+        screen_ != io.github.lewin671.remoteagent.core.proto.HandoffScreenRequest.getDefaultInstance()) {
+      screen_ = io.github.lewin671.remoteagent.core.proto.HandoffScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.HandoffScreenRequest) screen_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      screen_ = value;
+    }
+    screenCase_ = 54;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HandoffScreenRequest handoff = 54 [json_name = "handoff"];</code>
+   */
+  private void clearHandoff() {
+    if (screenCase_ == 54) {
+      screenCase_ = 0;
+      screen_ = null;
+    }
+  }
+
+  public static final int EXIT_CONFIRM_FIELD_NUMBER = 55;
+  /**
+   * <code>.remoteagent.core.v1.ExitConfirmScreenRequest exit_confirm = 55 [json_name = "exitConfirm"];</code>
+   */
+  @java.lang.Override
+  public boolean hasExitConfirm() {
+    return screenCase_ == 55;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ExitConfirmScreenRequest exit_confirm = 55 [json_name = "exitConfirm"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ExitConfirmScreenRequest getExitConfirm() {
+    if (screenCase_ == 55) {
+       return (io.github.lewin671.remoteagent.core.proto.ExitConfirmScreenRequest) screen_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ExitConfirmScreenRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ExitConfirmScreenRequest exit_confirm = 55 [json_name = "exitConfirm"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setExitConfirm(io.github.lewin671.remoteagent.core.proto.ExitConfirmScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    screen_ = value;
+    screenCase_ = 55;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ExitConfirmScreenRequest exit_confirm = 55 [json_name = "exitConfirm"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeExitConfirm(io.github.lewin671.remoteagent.core.proto.ExitConfirmScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (screenCase_ == 55 &&
+        screen_ != io.github.lewin671.remoteagent.core.proto.ExitConfirmScreenRequest.getDefaultInstance()) {
+      screen_ = io.github.lewin671.remoteagent.core.proto.ExitConfirmScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.ExitConfirmScreenRequest) screen_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      screen_ = value;
+    }
+    screenCase_ = 55;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ExitConfirmScreenRequest exit_confirm = 55 [json_name = "exitConfirm"];</code>
+   */
+  private void clearExitConfirm() {
+    if (screenCase_ == 55) {
       screenCase_ = 0;
       screen_ = null;
     }
@@ -2394,6 +2718,294 @@ public  final class Screen extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.AppRootScreenRequest app_root = 50 [json_name = "appRoot"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAppRoot() {
+      return instance.hasAppRoot();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootScreenRequest app_root = 50 [json_name = "appRoot"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AppRootScreenRequest getAppRoot() {
+      return instance.getAppRoot();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootScreenRequest app_root = 50 [json_name = "appRoot"];</code>
+     */
+    public Builder setAppRoot(io.github.lewin671.remoteagent.core.proto.AppRootScreenRequest value) {
+      copyOnWrite();
+      instance.setAppRoot(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootScreenRequest app_root = 50 [json_name = "appRoot"];</code>
+     */
+    public Builder setAppRoot(
+        io.github.lewin671.remoteagent.core.proto.AppRootScreenRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAppRoot(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootScreenRequest app_root = 50 [json_name = "appRoot"];</code>
+     */
+    public Builder mergeAppRoot(io.github.lewin671.remoteagent.core.proto.AppRootScreenRequest value) {
+      copyOnWrite();
+      instance.mergeAppRoot(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootScreenRequest app_root = 50 [json_name = "appRoot"];</code>
+     */
+    public Builder clearAppRoot() {
+      copyOnWrite();
+      instance.clearAppRoot();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.OnboardingScreenRequest onboarding = 51 [json_name = "onboarding"];</code>
+     */
+    @java.lang.Override
+    public boolean hasOnboarding() {
+      return instance.hasOnboarding();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingScreenRequest onboarding = 51 [json_name = "onboarding"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.OnboardingScreenRequest getOnboarding() {
+      return instance.getOnboarding();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingScreenRequest onboarding = 51 [json_name = "onboarding"];</code>
+     */
+    public Builder setOnboarding(io.github.lewin671.remoteagent.core.proto.OnboardingScreenRequest value) {
+      copyOnWrite();
+      instance.setOnboarding(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingScreenRequest onboarding = 51 [json_name = "onboarding"];</code>
+     */
+    public Builder setOnboarding(
+        io.github.lewin671.remoteagent.core.proto.OnboardingScreenRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setOnboarding(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingScreenRequest onboarding = 51 [json_name = "onboarding"];</code>
+     */
+    public Builder mergeOnboarding(io.github.lewin671.remoteagent.core.proto.OnboardingScreenRequest value) {
+      copyOnWrite();
+      instance.mergeOnboarding(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingScreenRequest onboarding = 51 [json_name = "onboarding"];</code>
+     */
+    public Builder clearOnboarding() {
+      copyOnWrite();
+      instance.clearOnboarding();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceScreenRequest add_device = 52 [json_name = "addDevice"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAddDevice() {
+      return instance.hasAddDevice();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceScreenRequest add_device = 52 [json_name = "addDevice"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AddDeviceScreenRequest getAddDevice() {
+      return instance.getAddDevice();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceScreenRequest add_device = 52 [json_name = "addDevice"];</code>
+     */
+    public Builder setAddDevice(io.github.lewin671.remoteagent.core.proto.AddDeviceScreenRequest value) {
+      copyOnWrite();
+      instance.setAddDevice(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceScreenRequest add_device = 52 [json_name = "addDevice"];</code>
+     */
+    public Builder setAddDevice(
+        io.github.lewin671.remoteagent.core.proto.AddDeviceScreenRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAddDevice(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceScreenRequest add_device = 52 [json_name = "addDevice"];</code>
+     */
+    public Builder mergeAddDevice(io.github.lewin671.remoteagent.core.proto.AddDeviceScreenRequest value) {
+      copyOnWrite();
+      instance.mergeAddDevice(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceScreenRequest add_device = 52 [json_name = "addDevice"];</code>
+     */
+    public Builder clearAddDevice() {
+      copyOnWrite();
+      instance.clearAddDevice();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityScreenRequest account_security = 53 [json_name = "accountSecurity"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAccountSecurity() {
+      return instance.hasAccountSecurity();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityScreenRequest account_security = 53 [json_name = "accountSecurity"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AccountSecurityScreenRequest getAccountSecurity() {
+      return instance.getAccountSecurity();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityScreenRequest account_security = 53 [json_name = "accountSecurity"];</code>
+     */
+    public Builder setAccountSecurity(io.github.lewin671.remoteagent.core.proto.AccountSecurityScreenRequest value) {
+      copyOnWrite();
+      instance.setAccountSecurity(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityScreenRequest account_security = 53 [json_name = "accountSecurity"];</code>
+     */
+    public Builder setAccountSecurity(
+        io.github.lewin671.remoteagent.core.proto.AccountSecurityScreenRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAccountSecurity(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityScreenRequest account_security = 53 [json_name = "accountSecurity"];</code>
+     */
+    public Builder mergeAccountSecurity(io.github.lewin671.remoteagent.core.proto.AccountSecurityScreenRequest value) {
+      copyOnWrite();
+      instance.mergeAccountSecurity(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityScreenRequest account_security = 53 [json_name = "accountSecurity"];</code>
+     */
+    public Builder clearAccountSecurity() {
+      copyOnWrite();
+      instance.clearAccountSecurity();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.HandoffScreenRequest handoff = 54 [json_name = "handoff"];</code>
+     */
+    @java.lang.Override
+    public boolean hasHandoff() {
+      return instance.hasHandoff();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HandoffScreenRequest handoff = 54 [json_name = "handoff"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.HandoffScreenRequest getHandoff() {
+      return instance.getHandoff();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HandoffScreenRequest handoff = 54 [json_name = "handoff"];</code>
+     */
+    public Builder setHandoff(io.github.lewin671.remoteagent.core.proto.HandoffScreenRequest value) {
+      copyOnWrite();
+      instance.setHandoff(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HandoffScreenRequest handoff = 54 [json_name = "handoff"];</code>
+     */
+    public Builder setHandoff(
+        io.github.lewin671.remoteagent.core.proto.HandoffScreenRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setHandoff(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HandoffScreenRequest handoff = 54 [json_name = "handoff"];</code>
+     */
+    public Builder mergeHandoff(io.github.lewin671.remoteagent.core.proto.HandoffScreenRequest value) {
+      copyOnWrite();
+      instance.mergeHandoff(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HandoffScreenRequest handoff = 54 [json_name = "handoff"];</code>
+     */
+    public Builder clearHandoff() {
+      copyOnWrite();
+      instance.clearHandoff();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ExitConfirmScreenRequest exit_confirm = 55 [json_name = "exitConfirm"];</code>
+     */
+    @java.lang.Override
+    public boolean hasExitConfirm() {
+      return instance.hasExitConfirm();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExitConfirmScreenRequest exit_confirm = 55 [json_name = "exitConfirm"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ExitConfirmScreenRequest getExitConfirm() {
+      return instance.getExitConfirm();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExitConfirmScreenRequest exit_confirm = 55 [json_name = "exitConfirm"];</code>
+     */
+    public Builder setExitConfirm(io.github.lewin671.remoteagent.core.proto.ExitConfirmScreenRequest value) {
+      copyOnWrite();
+      instance.setExitConfirm(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExitConfirmScreenRequest exit_confirm = 55 [json_name = "exitConfirm"];</code>
+     */
+    public Builder setExitConfirm(
+        io.github.lewin671.remoteagent.core.proto.ExitConfirmScreenRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setExitConfirm(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExitConfirmScreenRequest exit_confirm = 55 [json_name = "exitConfirm"];</code>
+     */
+    public Builder mergeExitConfirm(io.github.lewin671.remoteagent.core.proto.ExitConfirmScreenRequest value) {
+      copyOnWrite();
+      instance.mergeExitConfirm(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExitConfirmScreenRequest exit_confirm = 55 [json_name = "exitConfirm"];</code>
+     */
+    public Builder clearExitConfirm() {
+      copyOnWrite();
+      instance.clearExitConfirm();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.Screen)
   }
   @java.lang.Override
@@ -2433,12 +3045,19 @@ public  final class Screen extends
             io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest.class,
             io.github.lewin671.remoteagent.core.proto.AttachmentDraftScreenRequest.class,
             io.github.lewin671.remoteagent.core.proto.ConnectionScreenRequest.class,
+            io.github.lewin671.remoteagent.core.proto.AppRootScreenRequest.class,
+            io.github.lewin671.remoteagent.core.proto.OnboardingScreenRequest.class,
+            io.github.lewin671.remoteagent.core.proto.AddDeviceScreenRequest.class,
+            io.github.lewin671.remoteagent.core.proto.AccountSecurityScreenRequest.class,
+            io.github.lewin671.remoteagent.core.proto.HandoffScreenRequest.class,
+            io.github.lewin671.remoteagent.core.proto.ExitConfirmScreenRequest.class,
           };
           java.lang.String info =
-              "\u0000\u0015\u0001\u0000\u0001(\u0015\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
+              "\u0000\u001b\u0001\u0000\u00017\u001b\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
               "\u0003<\u0000\u0004<\u0000\u0005<\u0000\n<\u0000\u0014<\u0000\u0015<\u0000\u0016" +
               "<\u0000\u0017<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$" +
-              "<\u0000%<\u0000&<\u0000\'<\u0000(<\u0000";
+              "<\u0000%<\u0000&<\u0000\'<\u0000(<\u00002<\u00003<\u00004<\u00005<\u00006<\u0000" +
+              "7<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

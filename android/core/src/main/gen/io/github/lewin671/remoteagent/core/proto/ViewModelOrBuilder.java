@@ -257,5 +257,71 @@ public interface ViewModelOrBuilder extends
    */
   io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripViewModel getScheduleSessionStrip();
 
+  /**
+   * <code>.remoteagent.core.v1.AppRootViewModel app_root = 50 [json_name = "appRoot"];</code>
+   * @return Whether the appRoot field is set.
+   */
+  boolean hasAppRoot();
+  /**
+   * <code>.remoteagent.core.v1.AppRootViewModel app_root = 50 [json_name = "appRoot"];</code>
+   * @return The appRoot.
+   */
+  io.github.lewin671.remoteagent.core.proto.AppRootViewModel getAppRoot();
+
+  /**
+   * <code>.remoteagent.core.v1.OnboardingViewModel onboarding = 51 [json_name = "onboarding"];</code>
+   * @return Whether the onboarding field is set.
+   */
+  boolean hasOnboarding();
+  /**
+   * <code>.remoteagent.core.v1.OnboardingViewModel onboarding = 51 [json_name = "onboarding"];</code>
+   * @return The onboarding.
+   */
+  io.github.lewin671.remoteagent.core.proto.OnboardingViewModel getOnboarding();
+
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceViewModel add_device = 52 [json_name = "addDevice"];</code>
+   * @return Whether the addDevice field is set.
+   */
+  boolean hasAddDevice();
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceViewModel add_device = 52 [json_name = "addDevice"];</code>
+   * @return The addDevice.
+   */
+  io.github.lewin671.remoteagent.core.proto.AddDeviceViewModel getAddDevice();
+
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityViewModel account_security = 53 [json_name = "accountSecurity"];</code>
+   * @return Whether the accountSecurity field is set.
+   */
+  boolean hasAccountSecurity();
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityViewModel account_security = 53 [json_name = "accountSecurity"];</code>
+   * @return The accountSecurity.
+   */
+  io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel getAccountSecurity();
+
+  /**
+   * <code>.remoteagent.core.v1.HandoffViewModel handoff = 54 [json_name = "handoff"];</code>
+   * @return Whether the handoff field is set.
+   */
+  boolean hasHandoff();
+  /**
+   * <code>.remoteagent.core.v1.HandoffViewModel handoff = 54 [json_name = "handoff"];</code>
+   * @return The handoff.
+   */
+  io.github.lewin671.remoteagent.core.proto.HandoffViewModel getHandoff();
+
+  /**
+   * <code>.remoteagent.core.v1.ExitConfirmView exit_confirm = 55 [json_name = "exitConfirm"];</code>
+   * @return Whether the exitConfirm field is set.
+   */
+  boolean hasExitConfirm();
+  /**
+   * <code>.remoteagent.core.v1.ExitConfirmView exit_confirm = 55 [json_name = "exitConfirm"];</code>
+   * @return The exitConfirm.
+   */
+  io.github.lewin671.remoteagent.core.proto.ExitConfirmView getExitConfirm();
+
   public io.github.lewin671.remoteagent.core.proto.ViewModel.ViewCase getViewCase();
 }

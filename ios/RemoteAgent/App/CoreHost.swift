@@ -2807,6 +2807,15 @@ actor CoreHost: SyncEngine {
                 // Handled by Web/Android in P2-4/P2-5; iOS migrates in P3-2.
                 break
 
+            case .requestStoragePersist,
+                 .unregisterPushOnExit,
+                 .clearAccountCaches_p,
+                 .accountRuntimeChanged,
+                 .dismissUpgradeNotice,
+                 .persistLastServer:
+                // Handled by Web/Android in P2-6; iOS migrates to security view models in P3-3.
+                break
+
             case .sharedFileScanLocal,
                  .sharedFileInspectDisk,
                  .sharedFileWriteChunk,

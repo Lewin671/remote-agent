@@ -103,6 +103,30 @@ public enum ScreenTarget
    * <code>SCREEN_TARGET_SCHEDULE_SESSION_STRIP = 23;</code>
    */
   SCREEN_TARGET_SCHEDULE_SESSION_STRIP(23),
+  /**
+   * <code>SCREEN_TARGET_APP_ROOT = 50;</code>
+   */
+  SCREEN_TARGET_APP_ROOT(50),
+  /**
+   * <code>SCREEN_TARGET_ONBOARDING = 51;</code>
+   */
+  SCREEN_TARGET_ONBOARDING(51),
+  /**
+   * <code>SCREEN_TARGET_ADD_DEVICE = 52;</code>
+   */
+  SCREEN_TARGET_ADD_DEVICE(52),
+  /**
+   * <code>SCREEN_TARGET_ACCOUNT_SECURITY = 53;</code>
+   */
+  SCREEN_TARGET_ACCOUNT_SECURITY(53),
+  /**
+   * <code>SCREEN_TARGET_HANDOFF = 54;</code>
+   */
+  SCREEN_TARGET_HANDOFF(54),
+  /**
+   * <code>SCREEN_TARGET_EXIT_CONFIRM = 55;</code>
+   */
+  SCREEN_TARGET_EXIT_CONFIRM(55),
   UNRECOGNIZED(-1),
   ;
 
@@ -198,6 +222,30 @@ public enum ScreenTarget
    * <code>SCREEN_TARGET_SCHEDULE_SESSION_STRIP = 23;</code>
    */
   public static final int SCREEN_TARGET_SCHEDULE_SESSION_STRIP_VALUE = 23;
+  /**
+   * <code>SCREEN_TARGET_APP_ROOT = 50;</code>
+   */
+  public static final int SCREEN_TARGET_APP_ROOT_VALUE = 50;
+  /**
+   * <code>SCREEN_TARGET_ONBOARDING = 51;</code>
+   */
+  public static final int SCREEN_TARGET_ONBOARDING_VALUE = 51;
+  /**
+   * <code>SCREEN_TARGET_ADD_DEVICE = 52;</code>
+   */
+  public static final int SCREEN_TARGET_ADD_DEVICE_VALUE = 52;
+  /**
+   * <code>SCREEN_TARGET_ACCOUNT_SECURITY = 53;</code>
+   */
+  public static final int SCREEN_TARGET_ACCOUNT_SECURITY_VALUE = 53;
+  /**
+   * <code>SCREEN_TARGET_HANDOFF = 54;</code>
+   */
+  public static final int SCREEN_TARGET_HANDOFF_VALUE = 54;
+  /**
+   * <code>SCREEN_TARGET_EXIT_CONFIRM = 55;</code>
+   */
+  public static final int SCREEN_TARGET_EXIT_CONFIRM_VALUE = 55;
 
 
   @java.lang.Override
@@ -242,6 +290,12 @@ public enum ScreenTarget
       case 21: return SCREEN_TARGET_SCHEDULE_DETAIL;
       case 22: return SCREEN_TARGET_SCHEDULE_FORM;
       case 23: return SCREEN_TARGET_SCHEDULE_SESSION_STRIP;
+      case 50: return SCREEN_TARGET_APP_ROOT;
+      case 51: return SCREEN_TARGET_ONBOARDING;
+      case 52: return SCREEN_TARGET_ADD_DEVICE;
+      case 53: return SCREEN_TARGET_ACCOUNT_SECURITY;
+      case 54: return SCREEN_TARGET_HANDOFF;
+      case 55: return SCREEN_TARGET_EXIT_CONFIRM;
       default: return null;
     }
   }

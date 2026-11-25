@@ -1,0 +1,554 @@
+syntax = "proto3";
+
+package remoteagent.core.v1;
+
+import "remoteagent/core/v1/text.proto";
+import "remoteagent/v1/relay.proto";
+
+// ---- Screen Requests (50..55) ----
+
+message AppRootScreenRequest {}
+
+message OnboardingScreenRequest {}
+
+message AddDeviceScreenRequest {}
+
+message AccountSecurityScreenRequest {}
+
+message HandoffScreenRequest {}
+
+message ExitConfirmScreenRequest {}
+
+// ---- Shared Security UI Building Blocks ----
+
+enum SecurityBannerTone {
+  SECURITY_BANNER_TONE_UNSPECIFIED = 0;
+  SECURITY_BANNER_TONE_INFO = 1;
+  SECURITY_BANNER_TONE_WARN = 2;
+  SECURITY_BANNER_TONE_ERROR = 3;
+}
+
+enum SecurityBannerAction {
+  SECURITY_BANNER_ACTION_NONE = 0;
+  SECURITY_BANNER_ACTION_RETRY = 1;
+  SECURITY_BANNER_ACTION_REFILL = 2;
+  SECURITY_BANNER_ACTION_RESTART = 3;
+}
+
+message SecurityBannerView {
+  bool visible = 1;
+  SecurityBannerTone tone = 2;
+  Text text = 3;
+  SecurityBannerAction action = 4;
+}
+
+// ---- AppRootViewModel (Screen 50) ----
+
+enum AppRootStage {
+  APP_ROOT_STAGE_UNSPECIFIED = 0;
+  APP_ROOT_STAGE_LOADING = 1;
+  APP_ROOT_STAGE_BOOTSTRAP_ERROR = 2;
+  APP_ROOT_STAGE_ONBOARDING = 3;
+  APP_ROOT_STAGE_RETAINED_DENIED = 4;
+  APP_ROOT_STAGE_REMOVED = 5;
+  APP_ROOT_STAGE_READY = 6;
+}
+
+message BootstrapErrorView {
+  Text message = 1;
+  bool can_retry = 2;
+  bool can_reset = 3;
+}
+
+message RetainedDeniedView {
+  string server = 1;
+  bool show_legacy_repair_banner = 6;
+}
+
+message RemovedDeviceView {
+  bool removal_verified = 1;
+  string server = 2;
+  bool has_pending_op = 6;
+  bool can_verify_pending = 7;
+  bool busy = 8;
+  Text verify_result_text = 9;
+  bool can_retry_login = 10;
+}
+
+message AppRootViewModel {
+  AppRootStage stage = 1;
+  string server = 2;
+  string device_id = 3;
+  string account_id = 4;
+  bool is_manager = 5;
+  BootstrapErrorView bootstrap_error = 6;
+  RetainedDeniedView retained_denied = 7;
+  RemovedDeviceView removed = 8;
+}
+
+// ---- OnboardingViewModel (Screen 51) ----
+
+enum OnboardingMode {
+  ONBOARDING_MODE_UNSPECIFIED = 0;
+  ONBOARDING_MODE_ENTRY = 1;
+  ONBOARDING_MODE_CREATE = 2;
+  ONBOARDING_MODE_JOIN = 3;
+  ONBOARDING_MODE_RECOVERY = 4;
+}
+
+enum CreateAccountStep {
+  CREATE_ACCOUNT_STEP_UNSPECIFIED = 0;
+  CREATE_ACCOUNT_STEP_FORM = 1;
+  CREATE_ACCOUNT_STEP_BACKUP_CODE = 2;
+  CREATE_ACCOUNT_STEP_MISSING_CODE_ACK = 3;
+}
+
+message CreateAccountView {
+  CreateAccountStep step = 1;
+  string server_input = 2;
+  string recovery_code = 3;
+  bool code_saved_checked = 4;
+  bool has_persistence_result = 5;
+  bool storage_persisted = 6;
+  bool can_submit = 7;
+  bool busy = 9;
+  SecurityBannerView banner = 10;
+  bool show_setup_reset = 11;
+  bool has_pending_create = 12;
+}
+
+enum JoinPairingStep {
+  JOIN_PAIRING_STEP_UNSPECIFIED = 0;
+  JOIN_PAIRING_STEP_FORM = 1;
+  JOIN_PAIRING_STEP_WORKING = 2;
+  JOIN_PAIRING_STEP_COMPARE_SAS = 3;
+  JOIN_PAIRING_STEP_WAITING_APPROVAL = 4;
+}
+
+message JoinPairingView {
+  JoinPairingStep step = 1;
+  bool is_existing_repair = 2;
+  bool pending_registration = 3;
+  string formatted_code = 6;
+  string server_input = 7;
+  bool server_editable = 8;
+  repeated string sas_emoji = 9;
+  bool can_submit = 11;
+  bool can_confirm_sas = 13;
+  bool can_cancel = 14;
+  bool busy = 15;
+  SecurityBannerView banner = 16;
+  bool show_setup_reset = 17;
+}
+
+// Core-owned top-level recovery phase enum (replaces v1.GetRecoveryContextResponse.Phase in UI).
+enum SecurityRecoveryPhase {
+  SECURITY_RECOVERY_PHASE_UNSPECIFIED = 0;
+  SECURITY_RECOVERY_PHASE_FORM = 1;
+  SECURITY_RECOVERY_PHASE_UNSIGNED_DRAFT = 2;
+  SECURITY_RECOVERY_PHASE_SUBMITTED_WAITING = 3;
+  SECURITY_RECOVERY_PHASE_READY_TO_COMPLETE = 4;
+  SECURITY_RECOVERY_PHASE_REJECTED = 5;
+}
+
+message EmergencyRecoveryView {
+  SecurityRecoveryPhase phase = 1;
+  string server_input = 2;
+  string new_recovery_code = 3;
+  bool code_saved_checked = 4;
+  bool has_persistence_result = 5;
+  bool storage_persisted = 6;
+  int64 ready_ms = 7;
+  Text status_hint_text = 9;
+  bool can_confirm_code_saved = 11;
+  bool can_prepare = 12;
+  bool can_continue_signing = 13;
+  bool can_submit_or_refresh = 14;
+  bool can_complete = 15;
+  bool can_discard = 16;
+  bool busy = 18;
+  SecurityBannerView banner = 19;
+  bool show_setup_reset = 20;
+}
+
+message OnboardingViewModel {
+  OnboardingMode mode = 1;
+  bool can_back = 2;
+  bool show_legacy_repair_banner = 3;
+  CreateAccountView create = 4;
+  JoinPairingView join = 5;
+  EmergencyRecoveryView recovery = 6;
+}
+
+// ---- AddDeviceViewModel (Screen 52) ----
+
+enum AddDeviceStep {
+  ADD_DEVICE_STEP_UNSPECIFIED = 0;
+  ADD_DEVICE_STEP_NOT_MANAGER = 1;
+  ADD_DEVICE_STEP_IDLE = 2;
+  ADD_DEVICE_STEP_GENERATING = 3;
+  ADD_DEVICE_STEP_WAITING_JOINER = 4;
+  ADD_DEVICE_STEP_COMPARE_SAS = 5;
+  ADD_DEVICE_STEP_APPROVING = 6;
+  ADD_DEVICE_STEP_DELIVERING = 7;
+  ADD_DEVICE_STEP_DONE = 8;
+  ADD_DEVICE_STEP_FAILED = 9;
+}
+
+message PairingCandidateItemView {
+  string device_id = 1;
+  string title = 2;
+  Text subtitle = 3;
+  bool selected = 4;
+}
+
+message AddDeviceViewModel {
+  AddDeviceStep step = 1;
+  string replaces_device_id = 2;
+  Text replaces_machine_name = 3;
+  Text non_manager_hint = 4;
+  string raw_code = 5;
+  string formatted_code = 6;
+  string qr_url = 7;
+  int64 expires_ms = 8;
+  Text valid_until_text = 9;
+  repeated string sas_emoji = 10;
+  remoteagent.v1.DeviceKind joiner_kind = 11;
+  bool sas_confirmed_checked = 12;
+  Text replace_old_label = 14;
+  Text replace_old_hint = 15;
+  repeated PairingCandidateItemView replacement_candidates = 16;
+  bool can_generate = 17;
+  bool can_approve = 18;
+  bool can_cancel = 19;
+  bool can_retry = 20;
+  bool busy = 21;
+  Text remove_old_warning = 22;
+  SecurityBannerView banner = 23;
+}
+
+// ---- AccountSecurityViewModel (Screen 53) ----
+
+enum AccountSecuritySubpage {
+  ACCOUNT_SECURITY_SUBPAGE_UNSPECIFIED = 0;
+  ACCOUNT_SECURITY_SUBPAGE_OVERVIEW = 1;
+  ACCOUNT_SECURITY_SUBPAGE_PENDING_OP = 2;
+  ACCOUNT_SECURITY_SUBPAGE_ROTATE_RECOVERY = 3;
+}
+
+enum PendingSecurityOpKind {
+  PENDING_SECURITY_OP_KIND_NONE = 0;
+  PENDING_SECURITY_OP_KIND_STATE_CHANGE = 1;
+  PENDING_SECURITY_OP_KIND_LEASE = 2;
+  PENDING_SECURITY_OP_KIND_RECOVERY_ROTATION = 3;
+  PENDING_SECURITY_OP_KIND_HANDOFF_OFFER = 4;
+  PENDING_SECURITY_OP_KIND_PAIRING_DELIVERY = 5;
+  PENDING_SECURITY_OP_KIND_DELETE_RECORDS = 6;
+}
+
+message AccountSecurityViewModel {
+  AccountSecuritySubpage subpage = 1;
+  bool is_manager = 2;
+  Text manager_display = 3;
+  int64 lease_end_ms = 4;
+  Text lease_expiry_text = 5;
+  Text lease_renewal_advice = 6;
+  bool can_renew_now = 7;
+  bool can_open_recovery = 8;
+  bool can_open_handoff = 9;
+
+  bool recovery_pending = 11;
+  Text recovery_takeover_banner = 12;
+  bool can_veto_recovery = 13;
+  bool recovery_status_stale = 14;
+  bool taking_over = 15;
+  bool needs_rotation_banner = 16;
+  Text pending_remove_banner = 17;
+  Text authority_error_banner = 18;
+  Text success_notice = 19;
+  SecurityBannerView error_banner = 20;
+
+  bool has_pending_op = 21;
+  PendingSecurityOpKind pending_kind = 22;
+  bool can_continue_pending = 23;
+  bool can_discard_pending = 24;
+  bool discard_requires_confirm = 25;
+
+  string prepared_code = 30;
+  bool code_saved_checked = 31;
+  bool can_prepare_rotation = 32;
+  bool can_publish_rotation = 33;
+  bool busy = 34;
+}
+
+// ---- HandoffViewModel (Screen 54) ----
+
+enum HandoffRole {
+  HANDOFF_ROLE_UNSPECIFIED = 0;
+  HANDOFF_ROLE_OUTGOING_MANAGER = 1;
+  HANDOFF_ROLE_INCOMING_CANDIDATE = 2;
+  HANDOFF_ROLE_UNAVAILABLE = 3;
+}
+
+message HandoffCandidateItemView {
+  string device_id = 1;
+  Text display_name = 2;
+}
+
+message HandoffViewModel {
+  HandoffRole role = 1;
+  repeated HandoffCandidateItemView candidates = 2;
+  string confirming_target_id = 3;
+  Text confirm_dialog_body = 4;
+  bool can_refresh = 5;
+  bool can_transfer = 6;
+  string prepared_code = 7;
+  bool code_saved_checked = 8;
+  bool has_persistence_result = 9;
+  bool storage_persisted = 10;
+  bool has_published_offer = 11;
+  bool can_prepare_code = 12;
+  bool can_publish_offer = 13;
+  bool needs_public_profile_restore = 14;
+  bool busy = 15;
+  Text message_banner = 16;
+  SecurityBannerView error_banner = 17;
+}
+
+// ---- ExitConfirmView (Screen 55) ----
+
+enum ExitIntentKind {
+  EXIT_INTENT_KIND_NONE = 0;
+  EXIT_INTENT_KIND_LEAVE_ACCOUNT = 1;
+  EXIT_INTENT_KIND_REJOIN_PAIRING = 2;
+  EXIT_INTENT_KIND_SETUP_RESET = 3;
+}
+
+enum ExitConfirmStep {
+  EXIT_CONFIRM_STEP_CLOSED = 0;
+  EXIT_CONFIRM_STEP_CHECKING = 1;
+  EXIT_CONFIRM_STEP_AWAITING_CONFIRM = 2;
+  EXIT_CONFIRM_STEP_EXECUTING = 3;
+  EXIT_CONFIRM_STEP_FAILED = 4;
+}
+
+message ExitConfirmView {
+  ExitIntentKind intent = 1;
+  ExitConfirmStep step = 2;
+  Text warning_body = 5;
+  bool busy = 7;
+  Text error_text = 8;
+  bool show_rejoin_deletes_cache_note = 9;
+}
+
+// ---- Semantic Events (app.proto 470..499) ----
+
+message ClientInitEvent {
+  string ui_locale = 1;
+  string platform = 2;
+  string device_description = 3;
+  bool inline_crypto = 4;
+  bool foreground = 5;
+  bool network_available = 6;
+  string network_signature = 7;
+  string initial_url = 8;
+  string default_server = 9;
+  bool request_storage_persist = 10;
+}
+
+message StoragePersistResultEvent {
+  uint64 op_id = 1;
+  bool persisted = 2;
+}
+
+message PushUnregisteredEvent {
+  uint64 op_id = 1;
+}
+
+message AccountCachesClearedEvent {
+  uint64 op_id = 1;
+  string error = 2;
+}
+
+message AppRootRetryBootstrapAction {}
+
+message AppRootVerifyPendingOpAction {}
+
+message AppRootDismissUpgradeNoticeAction {}
+
+message OnboardingSetModeAction {
+  OnboardingMode mode = 1;
+  string initial_url = 2;
+  bool existing_repair = 3;
+  string existing_server = 4;
+}
+
+message OnboardingCreateEditAction {
+  bool has_server_input = 1;
+  string server_input = 2;
+  bool has_code_saved_checked = 3;
+  bool code_saved_checked = 4;
+}
+
+message OnboardingCreateSubmitAction {
+  string server_input = 1;
+  string setup_token = 2;
+  bool confirm_code_saved = 3;
+}
+
+message OnboardingJoinEditAction {
+  bool has_code_input = 1;
+  string code_input = 2;
+  bool has_server_input = 3;
+  string server_input = 4;
+}
+
+message OnboardingJoinSubmitAction {
+  string raw_link = 1;
+  string server_input = 2;
+  string code_input = 3;
+}
+
+message OnboardingJoinConfirmSasAction {}
+
+message OnboardingJoinCancelAction {}
+
+message OnboardingJoinBannerAction {}
+
+message OnboardingRecoveryEditAction {
+  bool has_server_input = 1;
+  string server_input = 2;
+  bool has_code_saved_checked = 3;
+  bool code_saved_checked = 4;
+}
+
+enum OnboardingRecoveryActionKind {
+  ONBOARDING_RECOVERY_ACTION_KIND_UNSPECIFIED = 0;
+  ONBOARDING_RECOVERY_ACTION_KIND_PREPARE = 1;
+  ONBOARDING_RECOVERY_ACTION_KIND_CONTINUE_SIGNING = 2;
+  ONBOARDING_RECOVERY_ACTION_KIND_CONFIRM_CODE_SAVED = 3;
+  ONBOARDING_RECOVERY_ACTION_KIND_REFRESH_OR_SUBMIT = 4;
+  ONBOARDING_RECOVERY_ACTION_KIND_COMPLETE = 5;
+  ONBOARDING_RECOVERY_ACTION_KIND_DISCARD_UNSIGNED = 6;
+  ONBOARDING_RECOVERY_ACTION_KIND_DISCARD_REJECTED = 7;
+}
+
+message OnboardingRecoveryAction {
+  OnboardingRecoveryActionKind kind = 1;
+  string server_input = 2;
+  string old_code = 3;
+}
+
+message AddDeviceOpenAction {
+  string replaces_device_id = 1;
+  string web_origin = 2;
+  bool auto_start = 3;
+}
+
+message AddDeviceCloseAction {
+  string replaces_device_id = 1;
+}
+
+enum AddDeviceActionKind {
+  ADD_DEVICE_ACTION_KIND_UNSPECIFIED = 0;
+  ADD_DEVICE_ACTION_KIND_GENERATE = 1;
+  ADD_DEVICE_ACTION_KIND_SET_SAS_CONFIRMED = 2;
+  ADD_DEVICE_ACTION_KIND_TOGGLE_REMOVE_CANDIDATE = 3;
+  ADD_DEVICE_ACTION_KIND_APPROVE = 4;
+  ADD_DEVICE_ACTION_KIND_CANCEL = 5;
+  ADD_DEVICE_ACTION_KIND_RETRY = 6;
+}
+
+message AddDeviceAction {
+  AddDeviceActionKind kind = 1;
+  bool flag = 2;
+  string device_id = 3;
+}
+
+message AccountSecurityOpenAction {
+  AccountSecuritySubpage subpage = 1;
+}
+
+message AccountSecurityCloseAction {}
+
+message ExternalLogoutEvent {}
+
+enum AccountSecurityActionKind {
+  ACCOUNT_SECURITY_ACTION_KIND_UNSPECIFIED = 0;
+  ACCOUNT_SECURITY_ACTION_KIND_SET_SUBPAGE = 1;
+  ACCOUNT_SECURITY_ACTION_KIND_REFRESH = 2;
+  ACCOUNT_SECURITY_ACTION_KIND_RENEW_LEASE = 3;
+  ACCOUNT_SECURITY_ACTION_KIND_CONTINUE_PENDING = 4;
+  ACCOUNT_SECURITY_ACTION_KIND_DISCARD_PENDING = 5;
+  ACCOUNT_SECURITY_ACTION_KIND_PREPARE_ROTATION = 6;
+  ACCOUNT_SECURITY_ACTION_KIND_SET_ROTATION_SAVED = 7;
+  ACCOUNT_SECURITY_ACTION_KIND_PUBLISH_ROTATION = 8;
+  ACCOUNT_SECURITY_ACTION_KIND_RETRY_PENDING_REMOVE = 9;
+}
+
+message AccountSecurityAction {
+  AccountSecurityActionKind kind = 1;
+  AccountSecuritySubpage subpage = 2;
+  bool flag = 3;
+}
+
+enum HandoffActionKind {
+  HANDOFF_ACTION_KIND_UNSPECIFIED = 0;
+  HANDOFF_ACTION_KIND_OPEN = 1;
+  HANDOFF_ACTION_KIND_REFRESH_CANDIDATES = 2;
+  HANDOFF_ACTION_KIND_REQUEST_TRANSFER = 3;
+  HANDOFF_ACTION_KIND_CANCEL_TRANSFER = 4;
+  HANDOFF_ACTION_KIND_CONFIRM_TRANSFER = 5;
+  HANDOFF_ACTION_KIND_PREPARE_CODE = 6;
+  HANDOFF_ACTION_KIND_SET_CODE_SAVED = 7;
+  HANDOFF_ACTION_KIND_PUBLISH_OFFER = 8;
+  HANDOFF_ACTION_KIND_RESTORE_PUBLIC_PROFILE = 9;
+}
+
+message HandoffAction {
+  HandoffActionKind kind = 1;
+  string target_device_id = 2;
+  bool flag = 3;
+  string recovery_code = 4;
+}
+
+message ExitRequestAction {
+  ExitIntentKind intent = 1;
+  string server = 2;
+}
+
+message ExitConfirmAction {
+  bool confirm = 1;
+}
+
+// ---- Platform Executor Effects (app.proto 146..155) ----
+
+message RequestStoragePersistEffect {
+  uint64 op_id = 1;
+}
+
+message UnregisterPushOnExitEffect {
+  uint64 op_id = 1;
+  string server = 2;
+  string auth_token = 3;
+}
+
+message ClearAccountCachesEffect {
+  uint64 op_id = 1;
+  string preserve_server = 2;
+}
+
+message AccountRuntimeChangedEffect {
+  bool active = 1;
+  bool removed = 2;
+  string server = 3;
+  string device_id = 4;
+  string account_id = 5;
+  bool needs_recovery_rotation = 6;
+}
+
+message DismissUpgradeNoticeEffect {}
+
+message PersistLastServerEffect {
+  string server = 1;
+}

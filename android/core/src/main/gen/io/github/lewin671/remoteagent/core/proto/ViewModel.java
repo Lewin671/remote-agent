@@ -40,6 +40,12 @@ public  final class ViewModel extends
     SCHEDULE_DETAIL(21),
     SCHEDULE_FORM(22),
     SCHEDULE_SESSION_STRIP(23),
+    APP_ROOT(50),
+    ONBOARDING(51),
+    ADD_DEVICE(52),
+    ACCOUNT_SECURITY(53),
+    HANDOFF(54),
+    EXIT_CONFIRM(55),
     VIEW_NOT_SET(0);
     private final int value;
     private ViewCase(int value) {
@@ -76,6 +82,12 @@ public  final class ViewModel extends
         case 21: return SCHEDULE_DETAIL;
         case 22: return SCHEDULE_FORM;
         case 23: return SCHEDULE_SESSION_STRIP;
+        case 50: return APP_ROOT;
+        case 51: return ONBOARDING;
+        case 52: return ADD_DEVICE;
+        case 53: return ACCOUNT_SECURITY;
+        case 54: return HANDOFF;
+        case 55: return EXIT_CONFIRM;
         case 0: return VIEW_NOT_SET;
         default: return null;
       }
@@ -1224,6 +1236,318 @@ public  final class ViewModel extends
    */
   private void clearScheduleSessionStrip() {
     if (viewCase_ == 23) {
+      viewCase_ = 0;
+      view_ = null;
+    }
+  }
+
+  public static final int APP_ROOT_FIELD_NUMBER = 50;
+  /**
+   * <code>.remoteagent.core.v1.AppRootViewModel app_root = 50 [json_name = "appRoot"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAppRoot() {
+    return viewCase_ == 50;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AppRootViewModel app_root = 50 [json_name = "appRoot"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AppRootViewModel getAppRoot() {
+    if (viewCase_ == 50) {
+       return (io.github.lewin671.remoteagent.core.proto.AppRootViewModel) view_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AppRootViewModel.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AppRootViewModel app_root = 50 [json_name = "appRoot"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAppRoot(io.github.lewin671.remoteagent.core.proto.AppRootViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    view_ = value;
+    viewCase_ = 50;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AppRootViewModel app_root = 50 [json_name = "appRoot"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAppRoot(io.github.lewin671.remoteagent.core.proto.AppRootViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    if (viewCase_ == 50 &&
+        view_ != io.github.lewin671.remoteagent.core.proto.AppRootViewModel.getDefaultInstance()) {
+      view_ = io.github.lewin671.remoteagent.core.proto.AppRootViewModel.newBuilder((io.github.lewin671.remoteagent.core.proto.AppRootViewModel) view_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      view_ = value;
+    }
+    viewCase_ = 50;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AppRootViewModel app_root = 50 [json_name = "appRoot"];</code>
+   */
+  private void clearAppRoot() {
+    if (viewCase_ == 50) {
+      viewCase_ = 0;
+      view_ = null;
+    }
+  }
+
+  public static final int ONBOARDING_FIELD_NUMBER = 51;
+  /**
+   * <code>.remoteagent.core.v1.OnboardingViewModel onboarding = 51 [json_name = "onboarding"];</code>
+   */
+  @java.lang.Override
+  public boolean hasOnboarding() {
+    return viewCase_ == 51;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingViewModel onboarding = 51 [json_name = "onboarding"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.OnboardingViewModel getOnboarding() {
+    if (viewCase_ == 51) {
+       return (io.github.lewin671.remoteagent.core.proto.OnboardingViewModel) view_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.OnboardingViewModel.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingViewModel onboarding = 51 [json_name = "onboarding"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setOnboarding(io.github.lewin671.remoteagent.core.proto.OnboardingViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    view_ = value;
+    viewCase_ = 51;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingViewModel onboarding = 51 [json_name = "onboarding"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeOnboarding(io.github.lewin671.remoteagent.core.proto.OnboardingViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    if (viewCase_ == 51 &&
+        view_ != io.github.lewin671.remoteagent.core.proto.OnboardingViewModel.getDefaultInstance()) {
+      view_ = io.github.lewin671.remoteagent.core.proto.OnboardingViewModel.newBuilder((io.github.lewin671.remoteagent.core.proto.OnboardingViewModel) view_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      view_ = value;
+    }
+    viewCase_ = 51;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingViewModel onboarding = 51 [json_name = "onboarding"];</code>
+   */
+  private void clearOnboarding() {
+    if (viewCase_ == 51) {
+      viewCase_ = 0;
+      view_ = null;
+    }
+  }
+
+  public static final int ADD_DEVICE_FIELD_NUMBER = 52;
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceViewModel add_device = 52 [json_name = "addDevice"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAddDevice() {
+    return viewCase_ == 52;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceViewModel add_device = 52 [json_name = "addDevice"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AddDeviceViewModel getAddDevice() {
+    if (viewCase_ == 52) {
+       return (io.github.lewin671.remoteagent.core.proto.AddDeviceViewModel) view_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AddDeviceViewModel.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceViewModel add_device = 52 [json_name = "addDevice"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAddDevice(io.github.lewin671.remoteagent.core.proto.AddDeviceViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    view_ = value;
+    viewCase_ = 52;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceViewModel add_device = 52 [json_name = "addDevice"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAddDevice(io.github.lewin671.remoteagent.core.proto.AddDeviceViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    if (viewCase_ == 52 &&
+        view_ != io.github.lewin671.remoteagent.core.proto.AddDeviceViewModel.getDefaultInstance()) {
+      view_ = io.github.lewin671.remoteagent.core.proto.AddDeviceViewModel.newBuilder((io.github.lewin671.remoteagent.core.proto.AddDeviceViewModel) view_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      view_ = value;
+    }
+    viewCase_ = 52;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceViewModel add_device = 52 [json_name = "addDevice"];</code>
+   */
+  private void clearAddDevice() {
+    if (viewCase_ == 52) {
+      viewCase_ = 0;
+      view_ = null;
+    }
+  }
+
+  public static final int ACCOUNT_SECURITY_FIELD_NUMBER = 53;
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityViewModel account_security = 53 [json_name = "accountSecurity"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAccountSecurity() {
+    return viewCase_ == 53;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityViewModel account_security = 53 [json_name = "accountSecurity"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel getAccountSecurity() {
+    if (viewCase_ == 53) {
+       return (io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel) view_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityViewModel account_security = 53 [json_name = "accountSecurity"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAccountSecurity(io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    view_ = value;
+    viewCase_ = 53;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityViewModel account_security = 53 [json_name = "accountSecurity"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAccountSecurity(io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    if (viewCase_ == 53 &&
+        view_ != io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel.getDefaultInstance()) {
+      view_ = io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel.newBuilder((io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel) view_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      view_ = value;
+    }
+    viewCase_ = 53;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityViewModel account_security = 53 [json_name = "accountSecurity"];</code>
+   */
+  private void clearAccountSecurity() {
+    if (viewCase_ == 53) {
+      viewCase_ = 0;
+      view_ = null;
+    }
+  }
+
+  public static final int HANDOFF_FIELD_NUMBER = 54;
+  /**
+   * <code>.remoteagent.core.v1.HandoffViewModel handoff = 54 [json_name = "handoff"];</code>
+   */
+  @java.lang.Override
+  public boolean hasHandoff() {
+    return viewCase_ == 54;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HandoffViewModel handoff = 54 [json_name = "handoff"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.HandoffViewModel getHandoff() {
+    if (viewCase_ == 54) {
+       return (io.github.lewin671.remoteagent.core.proto.HandoffViewModel) view_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.HandoffViewModel.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.HandoffViewModel handoff = 54 [json_name = "handoff"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setHandoff(io.github.lewin671.remoteagent.core.proto.HandoffViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    view_ = value;
+    viewCase_ = 54;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HandoffViewModel handoff = 54 [json_name = "handoff"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeHandoff(io.github.lewin671.remoteagent.core.proto.HandoffViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    if (viewCase_ == 54 &&
+        view_ != io.github.lewin671.remoteagent.core.proto.HandoffViewModel.getDefaultInstance()) {
+      view_ = io.github.lewin671.remoteagent.core.proto.HandoffViewModel.newBuilder((io.github.lewin671.remoteagent.core.proto.HandoffViewModel) view_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      view_ = value;
+    }
+    viewCase_ = 54;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HandoffViewModel handoff = 54 [json_name = "handoff"];</code>
+   */
+  private void clearHandoff() {
+    if (viewCase_ == 54) {
+      viewCase_ = 0;
+      view_ = null;
+    }
+  }
+
+  public static final int EXIT_CONFIRM_FIELD_NUMBER = 55;
+  /**
+   * <code>.remoteagent.core.v1.ExitConfirmView exit_confirm = 55 [json_name = "exitConfirm"];</code>
+   */
+  @java.lang.Override
+  public boolean hasExitConfirm() {
+    return viewCase_ == 55;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ExitConfirmView exit_confirm = 55 [json_name = "exitConfirm"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ExitConfirmView getExitConfirm() {
+    if (viewCase_ == 55) {
+       return (io.github.lewin671.remoteagent.core.proto.ExitConfirmView) view_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ExitConfirmView.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ExitConfirmView exit_confirm = 55 [json_name = "exitConfirm"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setExitConfirm(io.github.lewin671.remoteagent.core.proto.ExitConfirmView value) {
+    value.getClass();  // minimal bytecode null check
+    view_ = value;
+    viewCase_ = 55;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ExitConfirmView exit_confirm = 55 [json_name = "exitConfirm"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeExitConfirm(io.github.lewin671.remoteagent.core.proto.ExitConfirmView value) {
+    value.getClass();  // minimal bytecode null check
+    if (viewCase_ == 55 &&
+        view_ != io.github.lewin671.remoteagent.core.proto.ExitConfirmView.getDefaultInstance()) {
+      view_ = io.github.lewin671.remoteagent.core.proto.ExitConfirmView.newBuilder((io.github.lewin671.remoteagent.core.proto.ExitConfirmView) view_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      view_ = value;
+    }
+    viewCase_ = 55;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ExitConfirmView exit_confirm = 55 [json_name = "exitConfirm"];</code>
+   */
+  private void clearExitConfirm() {
+    if (viewCase_ == 55) {
       viewCase_ = 0;
       view_ = null;
     }
@@ -2394,6 +2718,294 @@ public  final class ViewModel extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.AppRootViewModel app_root = 50 [json_name = "appRoot"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAppRoot() {
+      return instance.hasAppRoot();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootViewModel app_root = 50 [json_name = "appRoot"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AppRootViewModel getAppRoot() {
+      return instance.getAppRoot();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootViewModel app_root = 50 [json_name = "appRoot"];</code>
+     */
+    public Builder setAppRoot(io.github.lewin671.remoteagent.core.proto.AppRootViewModel value) {
+      copyOnWrite();
+      instance.setAppRoot(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootViewModel app_root = 50 [json_name = "appRoot"];</code>
+     */
+    public Builder setAppRoot(
+        io.github.lewin671.remoteagent.core.proto.AppRootViewModel.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAppRoot(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootViewModel app_root = 50 [json_name = "appRoot"];</code>
+     */
+    public Builder mergeAppRoot(io.github.lewin671.remoteagent.core.proto.AppRootViewModel value) {
+      copyOnWrite();
+      instance.mergeAppRoot(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootViewModel app_root = 50 [json_name = "appRoot"];</code>
+     */
+    public Builder clearAppRoot() {
+      copyOnWrite();
+      instance.clearAppRoot();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.OnboardingViewModel onboarding = 51 [json_name = "onboarding"];</code>
+     */
+    @java.lang.Override
+    public boolean hasOnboarding() {
+      return instance.hasOnboarding();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingViewModel onboarding = 51 [json_name = "onboarding"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.OnboardingViewModel getOnboarding() {
+      return instance.getOnboarding();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingViewModel onboarding = 51 [json_name = "onboarding"];</code>
+     */
+    public Builder setOnboarding(io.github.lewin671.remoteagent.core.proto.OnboardingViewModel value) {
+      copyOnWrite();
+      instance.setOnboarding(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingViewModel onboarding = 51 [json_name = "onboarding"];</code>
+     */
+    public Builder setOnboarding(
+        io.github.lewin671.remoteagent.core.proto.OnboardingViewModel.Builder builderForValue) {
+      copyOnWrite();
+      instance.setOnboarding(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingViewModel onboarding = 51 [json_name = "onboarding"];</code>
+     */
+    public Builder mergeOnboarding(io.github.lewin671.remoteagent.core.proto.OnboardingViewModel value) {
+      copyOnWrite();
+      instance.mergeOnboarding(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingViewModel onboarding = 51 [json_name = "onboarding"];</code>
+     */
+    public Builder clearOnboarding() {
+      copyOnWrite();
+      instance.clearOnboarding();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceViewModel add_device = 52 [json_name = "addDevice"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAddDevice() {
+      return instance.hasAddDevice();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceViewModel add_device = 52 [json_name = "addDevice"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AddDeviceViewModel getAddDevice() {
+      return instance.getAddDevice();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceViewModel add_device = 52 [json_name = "addDevice"];</code>
+     */
+    public Builder setAddDevice(io.github.lewin671.remoteagent.core.proto.AddDeviceViewModel value) {
+      copyOnWrite();
+      instance.setAddDevice(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceViewModel add_device = 52 [json_name = "addDevice"];</code>
+     */
+    public Builder setAddDevice(
+        io.github.lewin671.remoteagent.core.proto.AddDeviceViewModel.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAddDevice(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceViewModel add_device = 52 [json_name = "addDevice"];</code>
+     */
+    public Builder mergeAddDevice(io.github.lewin671.remoteagent.core.proto.AddDeviceViewModel value) {
+      copyOnWrite();
+      instance.mergeAddDevice(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceViewModel add_device = 52 [json_name = "addDevice"];</code>
+     */
+    public Builder clearAddDevice() {
+      copyOnWrite();
+      instance.clearAddDevice();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityViewModel account_security = 53 [json_name = "accountSecurity"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAccountSecurity() {
+      return instance.hasAccountSecurity();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityViewModel account_security = 53 [json_name = "accountSecurity"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel getAccountSecurity() {
+      return instance.getAccountSecurity();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityViewModel account_security = 53 [json_name = "accountSecurity"];</code>
+     */
+    public Builder setAccountSecurity(io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel value) {
+      copyOnWrite();
+      instance.setAccountSecurity(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityViewModel account_security = 53 [json_name = "accountSecurity"];</code>
+     */
+    public Builder setAccountSecurity(
+        io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAccountSecurity(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityViewModel account_security = 53 [json_name = "accountSecurity"];</code>
+     */
+    public Builder mergeAccountSecurity(io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel value) {
+      copyOnWrite();
+      instance.mergeAccountSecurity(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityViewModel account_security = 53 [json_name = "accountSecurity"];</code>
+     */
+    public Builder clearAccountSecurity() {
+      copyOnWrite();
+      instance.clearAccountSecurity();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.HandoffViewModel handoff = 54 [json_name = "handoff"];</code>
+     */
+    @java.lang.Override
+    public boolean hasHandoff() {
+      return instance.hasHandoff();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HandoffViewModel handoff = 54 [json_name = "handoff"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.HandoffViewModel getHandoff() {
+      return instance.getHandoff();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HandoffViewModel handoff = 54 [json_name = "handoff"];</code>
+     */
+    public Builder setHandoff(io.github.lewin671.remoteagent.core.proto.HandoffViewModel value) {
+      copyOnWrite();
+      instance.setHandoff(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HandoffViewModel handoff = 54 [json_name = "handoff"];</code>
+     */
+    public Builder setHandoff(
+        io.github.lewin671.remoteagent.core.proto.HandoffViewModel.Builder builderForValue) {
+      copyOnWrite();
+      instance.setHandoff(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HandoffViewModel handoff = 54 [json_name = "handoff"];</code>
+     */
+    public Builder mergeHandoff(io.github.lewin671.remoteagent.core.proto.HandoffViewModel value) {
+      copyOnWrite();
+      instance.mergeHandoff(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HandoffViewModel handoff = 54 [json_name = "handoff"];</code>
+     */
+    public Builder clearHandoff() {
+      copyOnWrite();
+      instance.clearHandoff();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ExitConfirmView exit_confirm = 55 [json_name = "exitConfirm"];</code>
+     */
+    @java.lang.Override
+    public boolean hasExitConfirm() {
+      return instance.hasExitConfirm();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExitConfirmView exit_confirm = 55 [json_name = "exitConfirm"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ExitConfirmView getExitConfirm() {
+      return instance.getExitConfirm();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExitConfirmView exit_confirm = 55 [json_name = "exitConfirm"];</code>
+     */
+    public Builder setExitConfirm(io.github.lewin671.remoteagent.core.proto.ExitConfirmView value) {
+      copyOnWrite();
+      instance.setExitConfirm(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExitConfirmView exit_confirm = 55 [json_name = "exitConfirm"];</code>
+     */
+    public Builder setExitConfirm(
+        io.github.lewin671.remoteagent.core.proto.ExitConfirmView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setExitConfirm(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExitConfirmView exit_confirm = 55 [json_name = "exitConfirm"];</code>
+     */
+    public Builder mergeExitConfirm(io.github.lewin671.remoteagent.core.proto.ExitConfirmView value) {
+      copyOnWrite();
+      instance.mergeExitConfirm(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExitConfirmView exit_confirm = 55 [json_name = "exitConfirm"];</code>
+     */
+    public Builder clearExitConfirm() {
+      copyOnWrite();
+      instance.clearExitConfirm();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.ViewModel)
   }
   @java.lang.Override
@@ -2433,12 +3045,19 @@ public  final class ViewModel extends
             io.github.lewin671.remoteagent.core.proto.AttachmentEvalViewModel.class,
             io.github.lewin671.remoteagent.core.proto.AttachmentDraftViewModel.class,
             io.github.lewin671.remoteagent.core.proto.ConnectionViewModel.class,
+            io.github.lewin671.remoteagent.core.proto.AppRootViewModel.class,
+            io.github.lewin671.remoteagent.core.proto.OnboardingViewModel.class,
+            io.github.lewin671.remoteagent.core.proto.AddDeviceViewModel.class,
+            io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel.class,
+            io.github.lewin671.remoteagent.core.proto.HandoffViewModel.class,
+            io.github.lewin671.remoteagent.core.proto.ExitConfirmView.class,
           };
           java.lang.String info =
-              "\u0000\u0015\u0001\u0000\u0001(\u0015\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
+              "\u0000\u001b\u0001\u0000\u00017\u001b\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
               "\u0003<\u0000\u0004<\u0000\u0005<\u0000\n<\u0000\u0014<\u0000\u0015<\u0000\u0016" +
               "<\u0000\u0017<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$" +
-              "<\u0000%<\u0000&<\u0000\'<\u0000(<\u0000";
+              "<\u0000%<\u0000&<\u0000\'<\u0000(<\u00002<\u00003<\u00004<\u00005<\u00006<\u0000" +
+              "7<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

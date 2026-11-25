@@ -257,5 +257,71 @@ public interface ScreenOrBuilder extends
    */
   io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripScreenRequest getScheduleSessionStrip();
 
+  /**
+   * <code>.remoteagent.core.v1.AppRootScreenRequest app_root = 50 [json_name = "appRoot"];</code>
+   * @return Whether the appRoot field is set.
+   */
+  boolean hasAppRoot();
+  /**
+   * <code>.remoteagent.core.v1.AppRootScreenRequest app_root = 50 [json_name = "appRoot"];</code>
+   * @return The appRoot.
+   */
+  io.github.lewin671.remoteagent.core.proto.AppRootScreenRequest getAppRoot();
+
+  /**
+   * <code>.remoteagent.core.v1.OnboardingScreenRequest onboarding = 51 [json_name = "onboarding"];</code>
+   * @return Whether the onboarding field is set.
+   */
+  boolean hasOnboarding();
+  /**
+   * <code>.remoteagent.core.v1.OnboardingScreenRequest onboarding = 51 [json_name = "onboarding"];</code>
+   * @return The onboarding.
+   */
+  io.github.lewin671.remoteagent.core.proto.OnboardingScreenRequest getOnboarding();
+
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceScreenRequest add_device = 52 [json_name = "addDevice"];</code>
+   * @return Whether the addDevice field is set.
+   */
+  boolean hasAddDevice();
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceScreenRequest add_device = 52 [json_name = "addDevice"];</code>
+   * @return The addDevice.
+   */
+  io.github.lewin671.remoteagent.core.proto.AddDeviceScreenRequest getAddDevice();
+
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityScreenRequest account_security = 53 [json_name = "accountSecurity"];</code>
+   * @return Whether the accountSecurity field is set.
+   */
+  boolean hasAccountSecurity();
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityScreenRequest account_security = 53 [json_name = "accountSecurity"];</code>
+   * @return The accountSecurity.
+   */
+  io.github.lewin671.remoteagent.core.proto.AccountSecurityScreenRequest getAccountSecurity();
+
+  /**
+   * <code>.remoteagent.core.v1.HandoffScreenRequest handoff = 54 [json_name = "handoff"];</code>
+   * @return Whether the handoff field is set.
+   */
+  boolean hasHandoff();
+  /**
+   * <code>.remoteagent.core.v1.HandoffScreenRequest handoff = 54 [json_name = "handoff"];</code>
+   * @return The handoff.
+   */
+  io.github.lewin671.remoteagent.core.proto.HandoffScreenRequest getHandoff();
+
+  /**
+   * <code>.remoteagent.core.v1.ExitConfirmScreenRequest exit_confirm = 55 [json_name = "exitConfirm"];</code>
+   * @return Whether the exitConfirm field is set.
+   */
+  boolean hasExitConfirm();
+  /**
+   * <code>.remoteagent.core.v1.ExitConfirmScreenRequest exit_confirm = 55 [json_name = "exitConfirm"];</code>
+   * @return The exitConfirm.
+   */
+  io.github.lewin671.remoteagent.core.proto.ExitConfirmScreenRequest getExitConfirm();
+
   public io.github.lewin671.remoteagent.core.proto.Screen.ScreenCase getScreenCase();
 }

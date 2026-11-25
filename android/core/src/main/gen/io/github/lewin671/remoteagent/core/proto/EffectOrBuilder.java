@@ -1046,5 +1046,71 @@ public interface EffectOrBuilder extends
    */
   io.github.lewin671.remoteagent.core.proto.SecurityTokenUpdatedEffect getSecurityTokenUpdated();
 
+  /**
+   * <code>.remoteagent.core.v1.RequestStoragePersistEffect request_storage_persist = 146 [json_name = "requestStoragePersist"];</code>
+   * @return Whether the requestStoragePersist field is set.
+   */
+  boolean hasRequestStoragePersist();
+  /**
+   * <code>.remoteagent.core.v1.RequestStoragePersistEffect request_storage_persist = 146 [json_name = "requestStoragePersist"];</code>
+   * @return The requestStoragePersist.
+   */
+  io.github.lewin671.remoteagent.core.proto.RequestStoragePersistEffect getRequestStoragePersist();
+
+  /**
+   * <code>.remoteagent.core.v1.UnregisterPushOnExitEffect unregister_push_on_exit = 147 [json_name = "unregisterPushOnExit"];</code>
+   * @return Whether the unregisterPushOnExit field is set.
+   */
+  boolean hasUnregisterPushOnExit();
+  /**
+   * <code>.remoteagent.core.v1.UnregisterPushOnExitEffect unregister_push_on_exit = 147 [json_name = "unregisterPushOnExit"];</code>
+   * @return The unregisterPushOnExit.
+   */
+  io.github.lewin671.remoteagent.core.proto.UnregisterPushOnExitEffect getUnregisterPushOnExit();
+
+  /**
+   * <code>.remoteagent.core.v1.ClearAccountCachesEffect clear_account_caches = 148 [json_name = "clearAccountCaches"];</code>
+   * @return Whether the clearAccountCaches field is set.
+   */
+  boolean hasClearAccountCaches();
+  /**
+   * <code>.remoteagent.core.v1.ClearAccountCachesEffect clear_account_caches = 148 [json_name = "clearAccountCaches"];</code>
+   * @return The clearAccountCaches.
+   */
+  io.github.lewin671.remoteagent.core.proto.ClearAccountCachesEffect getClearAccountCaches();
+
+  /**
+   * <code>.remoteagent.core.v1.AccountRuntimeChangedEffect account_runtime_changed = 149 [json_name = "accountRuntimeChanged"];</code>
+   * @return Whether the accountRuntimeChanged field is set.
+   */
+  boolean hasAccountRuntimeChanged();
+  /**
+   * <code>.remoteagent.core.v1.AccountRuntimeChangedEffect account_runtime_changed = 149 [json_name = "accountRuntimeChanged"];</code>
+   * @return The accountRuntimeChanged.
+   */
+  io.github.lewin671.remoteagent.core.proto.AccountRuntimeChangedEffect getAccountRuntimeChanged();
+
+  /**
+   * <code>.remoteagent.core.v1.DismissUpgradeNoticeEffect dismiss_upgrade_notice = 150 [json_name = "dismissUpgradeNotice"];</code>
+   * @return Whether the dismissUpgradeNotice field is set.
+   */
+  boolean hasDismissUpgradeNotice();
+  /**
+   * <code>.remoteagent.core.v1.DismissUpgradeNoticeEffect dismiss_upgrade_notice = 150 [json_name = "dismissUpgradeNotice"];</code>
+   * @return The dismissUpgradeNotice.
+   */
+  io.github.lewin671.remoteagent.core.proto.DismissUpgradeNoticeEffect getDismissUpgradeNotice();
+
+  /**
+   * <code>.remoteagent.core.v1.PersistLastServerEffect persist_last_server = 151 [json_name = "persistLastServer"];</code>
+   * @return Whether the persistLastServer field is set.
+   */
+  boolean hasPersistLastServer();
+  /**
+   * <code>.remoteagent.core.v1.PersistLastServerEffect persist_last_server = 151 [json_name = "persistLastServer"];</code>
+   * @return The persistLastServer.
+   */
+  io.github.lewin671.remoteagent.core.proto.PersistLastServerEffect getPersistLastServer();
+
   public io.github.lewin671.remoteagent.core.proto.Effect.EffectCase getEffectCase();
 }

@@ -111,6 +111,12 @@ public  final class Effect extends
     SECURITY_STATUS_CHANGED(143),
     SECURITY_NOTIFY_OPENED(144),
     SECURITY_TOKEN_UPDATED(145),
+    REQUEST_STORAGE_PERSIST(146),
+    UNREGISTER_PUSH_ON_EXIT(147),
+    CLEAR_ACCOUNT_CACHES(148),
+    ACCOUNT_RUNTIME_CHANGED(149),
+    DISMISS_UPGRADE_NOTICE(150),
+    PERSIST_LAST_SERVER(151),
     EFFECT_NOT_SET(0);
     private final int value;
     private EffectCase(int value) {
@@ -218,6 +224,12 @@ public  final class Effect extends
         case 143: return SECURITY_STATUS_CHANGED;
         case 144: return SECURITY_NOTIFY_OPENED;
         case 145: return SECURITY_TOKEN_UPDATED;
+        case 146: return REQUEST_STORAGE_PERSIST;
+        case 147: return UNREGISTER_PUSH_ON_EXIT;
+        case 148: return CLEAR_ACCOUNT_CACHES;
+        case 149: return ACCOUNT_RUNTIME_CHANGED;
+        case 150: return DISMISS_UPGRADE_NOTICE;
+        case 151: return PERSIST_LAST_SERVER;
         case 0: return EFFECT_NOT_SET;
         default: return null;
       }
@@ -5083,6 +5095,318 @@ public  final class Effect extends
     }
   }
 
+  public static final int REQUEST_STORAGE_PERSIST_FIELD_NUMBER = 146;
+  /**
+   * <code>.remoteagent.core.v1.RequestStoragePersistEffect request_storage_persist = 146 [json_name = "requestStoragePersist"];</code>
+   */
+  @java.lang.Override
+  public boolean hasRequestStoragePersist() {
+    return effectCase_ == 146;
+  }
+  /**
+   * <code>.remoteagent.core.v1.RequestStoragePersistEffect request_storage_persist = 146 [json_name = "requestStoragePersist"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.RequestStoragePersistEffect getRequestStoragePersist() {
+    if (effectCase_ == 146) {
+       return (io.github.lewin671.remoteagent.core.proto.RequestStoragePersistEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.RequestStoragePersistEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.RequestStoragePersistEffect request_storage_persist = 146 [json_name = "requestStoragePersist"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setRequestStoragePersist(io.github.lewin671.remoteagent.core.proto.RequestStoragePersistEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 146;
+  }
+  /**
+   * <code>.remoteagent.core.v1.RequestStoragePersistEffect request_storage_persist = 146 [json_name = "requestStoragePersist"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeRequestStoragePersist(io.github.lewin671.remoteagent.core.proto.RequestStoragePersistEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 146 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.RequestStoragePersistEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.RequestStoragePersistEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.RequestStoragePersistEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 146;
+  }
+  /**
+   * <code>.remoteagent.core.v1.RequestStoragePersistEffect request_storage_persist = 146 [json_name = "requestStoragePersist"];</code>
+   */
+  private void clearRequestStoragePersist() {
+    if (effectCase_ == 146) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int UNREGISTER_PUSH_ON_EXIT_FIELD_NUMBER = 147;
+  /**
+   * <code>.remoteagent.core.v1.UnregisterPushOnExitEffect unregister_push_on_exit = 147 [json_name = "unregisterPushOnExit"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUnregisterPushOnExit() {
+    return effectCase_ == 147;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UnregisterPushOnExitEffect unregister_push_on_exit = 147 [json_name = "unregisterPushOnExit"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UnregisterPushOnExitEffect getUnregisterPushOnExit() {
+    if (effectCase_ == 147) {
+       return (io.github.lewin671.remoteagent.core.proto.UnregisterPushOnExitEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.UnregisterPushOnExitEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.UnregisterPushOnExitEffect unregister_push_on_exit = 147 [json_name = "unregisterPushOnExit"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUnregisterPushOnExit(io.github.lewin671.remoteagent.core.proto.UnregisterPushOnExitEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 147;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UnregisterPushOnExitEffect unregister_push_on_exit = 147 [json_name = "unregisterPushOnExit"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeUnregisterPushOnExit(io.github.lewin671.remoteagent.core.proto.UnregisterPushOnExitEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 147 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.UnregisterPushOnExitEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.UnregisterPushOnExitEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.UnregisterPushOnExitEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 147;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UnregisterPushOnExitEffect unregister_push_on_exit = 147 [json_name = "unregisterPushOnExit"];</code>
+   */
+  private void clearUnregisterPushOnExit() {
+    if (effectCase_ == 147) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int CLEAR_ACCOUNT_CACHES_FIELD_NUMBER = 148;
+  /**
+   * <code>.remoteagent.core.v1.ClearAccountCachesEffect clear_account_caches = 148 [json_name = "clearAccountCaches"];</code>
+   */
+  @java.lang.Override
+  public boolean hasClearAccountCaches() {
+    return effectCase_ == 148;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ClearAccountCachesEffect clear_account_caches = 148 [json_name = "clearAccountCaches"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ClearAccountCachesEffect getClearAccountCaches() {
+    if (effectCase_ == 148) {
+       return (io.github.lewin671.remoteagent.core.proto.ClearAccountCachesEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ClearAccountCachesEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ClearAccountCachesEffect clear_account_caches = 148 [json_name = "clearAccountCaches"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setClearAccountCaches(io.github.lewin671.remoteagent.core.proto.ClearAccountCachesEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 148;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ClearAccountCachesEffect clear_account_caches = 148 [json_name = "clearAccountCaches"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeClearAccountCaches(io.github.lewin671.remoteagent.core.proto.ClearAccountCachesEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 148 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.ClearAccountCachesEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.ClearAccountCachesEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.ClearAccountCachesEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 148;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ClearAccountCachesEffect clear_account_caches = 148 [json_name = "clearAccountCaches"];</code>
+   */
+  private void clearClearAccountCaches() {
+    if (effectCase_ == 148) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int ACCOUNT_RUNTIME_CHANGED_FIELD_NUMBER = 149;
+  /**
+   * <code>.remoteagent.core.v1.AccountRuntimeChangedEffect account_runtime_changed = 149 [json_name = "accountRuntimeChanged"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAccountRuntimeChanged() {
+    return effectCase_ == 149;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountRuntimeChangedEffect account_runtime_changed = 149 [json_name = "accountRuntimeChanged"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AccountRuntimeChangedEffect getAccountRuntimeChanged() {
+    if (effectCase_ == 149) {
+       return (io.github.lewin671.remoteagent.core.proto.AccountRuntimeChangedEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AccountRuntimeChangedEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountRuntimeChangedEffect account_runtime_changed = 149 [json_name = "accountRuntimeChanged"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAccountRuntimeChanged(io.github.lewin671.remoteagent.core.proto.AccountRuntimeChangedEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 149;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountRuntimeChangedEffect account_runtime_changed = 149 [json_name = "accountRuntimeChanged"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAccountRuntimeChanged(io.github.lewin671.remoteagent.core.proto.AccountRuntimeChangedEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 149 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.AccountRuntimeChangedEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.AccountRuntimeChangedEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.AccountRuntimeChangedEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 149;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountRuntimeChangedEffect account_runtime_changed = 149 [json_name = "accountRuntimeChanged"];</code>
+   */
+  private void clearAccountRuntimeChanged() {
+    if (effectCase_ == 149) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int DISMISS_UPGRADE_NOTICE_FIELD_NUMBER = 150;
+  /**
+   * <code>.remoteagent.core.v1.DismissUpgradeNoticeEffect dismiss_upgrade_notice = 150 [json_name = "dismissUpgradeNotice"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDismissUpgradeNotice() {
+    return effectCase_ == 150;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DismissUpgradeNoticeEffect dismiss_upgrade_notice = 150 [json_name = "dismissUpgradeNotice"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DismissUpgradeNoticeEffect getDismissUpgradeNotice() {
+    if (effectCase_ == 150) {
+       return (io.github.lewin671.remoteagent.core.proto.DismissUpgradeNoticeEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DismissUpgradeNoticeEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DismissUpgradeNoticeEffect dismiss_upgrade_notice = 150 [json_name = "dismissUpgradeNotice"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDismissUpgradeNotice(io.github.lewin671.remoteagent.core.proto.DismissUpgradeNoticeEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 150;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DismissUpgradeNoticeEffect dismiss_upgrade_notice = 150 [json_name = "dismissUpgradeNotice"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDismissUpgradeNotice(io.github.lewin671.remoteagent.core.proto.DismissUpgradeNoticeEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 150 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.DismissUpgradeNoticeEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.DismissUpgradeNoticeEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DismissUpgradeNoticeEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 150;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DismissUpgradeNoticeEffect dismiss_upgrade_notice = 150 [json_name = "dismissUpgradeNotice"];</code>
+   */
+  private void clearDismissUpgradeNotice() {
+    if (effectCase_ == 150) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int PERSIST_LAST_SERVER_FIELD_NUMBER = 151;
+  /**
+   * <code>.remoteagent.core.v1.PersistLastServerEffect persist_last_server = 151 [json_name = "persistLastServer"];</code>
+   */
+  @java.lang.Override
+  public boolean hasPersistLastServer() {
+    return effectCase_ == 151;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PersistLastServerEffect persist_last_server = 151 [json_name = "persistLastServer"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.PersistLastServerEffect getPersistLastServer() {
+    if (effectCase_ == 151) {
+       return (io.github.lewin671.remoteagent.core.proto.PersistLastServerEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.PersistLastServerEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.PersistLastServerEffect persist_last_server = 151 [json_name = "persistLastServer"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPersistLastServer(io.github.lewin671.remoteagent.core.proto.PersistLastServerEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 151;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PersistLastServerEffect persist_last_server = 151 [json_name = "persistLastServer"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergePersistLastServer(io.github.lewin671.remoteagent.core.proto.PersistLastServerEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 151 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.PersistLastServerEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.PersistLastServerEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.PersistLastServerEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 151;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PersistLastServerEffect persist_last_server = 151 [json_name = "persistLastServer"];</code>
+   */
+  private void clearPersistLastServer() {
+    if (effectCase_ == 151) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.Effect parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -9680,6 +10004,294 @@ public  final class Effect extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.RequestStoragePersistEffect request_storage_persist = 146 [json_name = "requestStoragePersist"];</code>
+     */
+    @java.lang.Override
+    public boolean hasRequestStoragePersist() {
+      return instance.hasRequestStoragePersist();
+    }
+    /**
+     * <code>.remoteagent.core.v1.RequestStoragePersistEffect request_storage_persist = 146 [json_name = "requestStoragePersist"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.RequestStoragePersistEffect getRequestStoragePersist() {
+      return instance.getRequestStoragePersist();
+    }
+    /**
+     * <code>.remoteagent.core.v1.RequestStoragePersistEffect request_storage_persist = 146 [json_name = "requestStoragePersist"];</code>
+     */
+    public Builder setRequestStoragePersist(io.github.lewin671.remoteagent.core.proto.RequestStoragePersistEffect value) {
+      copyOnWrite();
+      instance.setRequestStoragePersist(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.RequestStoragePersistEffect request_storage_persist = 146 [json_name = "requestStoragePersist"];</code>
+     */
+    public Builder setRequestStoragePersist(
+        io.github.lewin671.remoteagent.core.proto.RequestStoragePersistEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setRequestStoragePersist(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.RequestStoragePersistEffect request_storage_persist = 146 [json_name = "requestStoragePersist"];</code>
+     */
+    public Builder mergeRequestStoragePersist(io.github.lewin671.remoteagent.core.proto.RequestStoragePersistEffect value) {
+      copyOnWrite();
+      instance.mergeRequestStoragePersist(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.RequestStoragePersistEffect request_storage_persist = 146 [json_name = "requestStoragePersist"];</code>
+     */
+    public Builder clearRequestStoragePersist() {
+      copyOnWrite();
+      instance.clearRequestStoragePersist();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.UnregisterPushOnExitEffect unregister_push_on_exit = 147 [json_name = "unregisterPushOnExit"];</code>
+     */
+    @java.lang.Override
+    public boolean hasUnregisterPushOnExit() {
+      return instance.hasUnregisterPushOnExit();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UnregisterPushOnExitEffect unregister_push_on_exit = 147 [json_name = "unregisterPushOnExit"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UnregisterPushOnExitEffect getUnregisterPushOnExit() {
+      return instance.getUnregisterPushOnExit();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UnregisterPushOnExitEffect unregister_push_on_exit = 147 [json_name = "unregisterPushOnExit"];</code>
+     */
+    public Builder setUnregisterPushOnExit(io.github.lewin671.remoteagent.core.proto.UnregisterPushOnExitEffect value) {
+      copyOnWrite();
+      instance.setUnregisterPushOnExit(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UnregisterPushOnExitEffect unregister_push_on_exit = 147 [json_name = "unregisterPushOnExit"];</code>
+     */
+    public Builder setUnregisterPushOnExit(
+        io.github.lewin671.remoteagent.core.proto.UnregisterPushOnExitEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setUnregisterPushOnExit(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UnregisterPushOnExitEffect unregister_push_on_exit = 147 [json_name = "unregisterPushOnExit"];</code>
+     */
+    public Builder mergeUnregisterPushOnExit(io.github.lewin671.remoteagent.core.proto.UnregisterPushOnExitEffect value) {
+      copyOnWrite();
+      instance.mergeUnregisterPushOnExit(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UnregisterPushOnExitEffect unregister_push_on_exit = 147 [json_name = "unregisterPushOnExit"];</code>
+     */
+    public Builder clearUnregisterPushOnExit() {
+      copyOnWrite();
+      instance.clearUnregisterPushOnExit();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ClearAccountCachesEffect clear_account_caches = 148 [json_name = "clearAccountCaches"];</code>
+     */
+    @java.lang.Override
+    public boolean hasClearAccountCaches() {
+      return instance.hasClearAccountCaches();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ClearAccountCachesEffect clear_account_caches = 148 [json_name = "clearAccountCaches"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ClearAccountCachesEffect getClearAccountCaches() {
+      return instance.getClearAccountCaches();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ClearAccountCachesEffect clear_account_caches = 148 [json_name = "clearAccountCaches"];</code>
+     */
+    public Builder setClearAccountCaches(io.github.lewin671.remoteagent.core.proto.ClearAccountCachesEffect value) {
+      copyOnWrite();
+      instance.setClearAccountCaches(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ClearAccountCachesEffect clear_account_caches = 148 [json_name = "clearAccountCaches"];</code>
+     */
+    public Builder setClearAccountCaches(
+        io.github.lewin671.remoteagent.core.proto.ClearAccountCachesEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setClearAccountCaches(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ClearAccountCachesEffect clear_account_caches = 148 [json_name = "clearAccountCaches"];</code>
+     */
+    public Builder mergeClearAccountCaches(io.github.lewin671.remoteagent.core.proto.ClearAccountCachesEffect value) {
+      copyOnWrite();
+      instance.mergeClearAccountCaches(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ClearAccountCachesEffect clear_account_caches = 148 [json_name = "clearAccountCaches"];</code>
+     */
+    public Builder clearClearAccountCaches() {
+      copyOnWrite();
+      instance.clearClearAccountCaches();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.AccountRuntimeChangedEffect account_runtime_changed = 149 [json_name = "accountRuntimeChanged"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAccountRuntimeChanged() {
+      return instance.hasAccountRuntimeChanged();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountRuntimeChangedEffect account_runtime_changed = 149 [json_name = "accountRuntimeChanged"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AccountRuntimeChangedEffect getAccountRuntimeChanged() {
+      return instance.getAccountRuntimeChanged();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountRuntimeChangedEffect account_runtime_changed = 149 [json_name = "accountRuntimeChanged"];</code>
+     */
+    public Builder setAccountRuntimeChanged(io.github.lewin671.remoteagent.core.proto.AccountRuntimeChangedEffect value) {
+      copyOnWrite();
+      instance.setAccountRuntimeChanged(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountRuntimeChangedEffect account_runtime_changed = 149 [json_name = "accountRuntimeChanged"];</code>
+     */
+    public Builder setAccountRuntimeChanged(
+        io.github.lewin671.remoteagent.core.proto.AccountRuntimeChangedEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAccountRuntimeChanged(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountRuntimeChangedEffect account_runtime_changed = 149 [json_name = "accountRuntimeChanged"];</code>
+     */
+    public Builder mergeAccountRuntimeChanged(io.github.lewin671.remoteagent.core.proto.AccountRuntimeChangedEffect value) {
+      copyOnWrite();
+      instance.mergeAccountRuntimeChanged(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountRuntimeChangedEffect account_runtime_changed = 149 [json_name = "accountRuntimeChanged"];</code>
+     */
+    public Builder clearAccountRuntimeChanged() {
+      copyOnWrite();
+      instance.clearAccountRuntimeChanged();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DismissUpgradeNoticeEffect dismiss_upgrade_notice = 150 [json_name = "dismissUpgradeNotice"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDismissUpgradeNotice() {
+      return instance.hasDismissUpgradeNotice();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DismissUpgradeNoticeEffect dismiss_upgrade_notice = 150 [json_name = "dismissUpgradeNotice"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DismissUpgradeNoticeEffect getDismissUpgradeNotice() {
+      return instance.getDismissUpgradeNotice();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DismissUpgradeNoticeEffect dismiss_upgrade_notice = 150 [json_name = "dismissUpgradeNotice"];</code>
+     */
+    public Builder setDismissUpgradeNotice(io.github.lewin671.remoteagent.core.proto.DismissUpgradeNoticeEffect value) {
+      copyOnWrite();
+      instance.setDismissUpgradeNotice(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DismissUpgradeNoticeEffect dismiss_upgrade_notice = 150 [json_name = "dismissUpgradeNotice"];</code>
+     */
+    public Builder setDismissUpgradeNotice(
+        io.github.lewin671.remoteagent.core.proto.DismissUpgradeNoticeEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDismissUpgradeNotice(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DismissUpgradeNoticeEffect dismiss_upgrade_notice = 150 [json_name = "dismissUpgradeNotice"];</code>
+     */
+    public Builder mergeDismissUpgradeNotice(io.github.lewin671.remoteagent.core.proto.DismissUpgradeNoticeEffect value) {
+      copyOnWrite();
+      instance.mergeDismissUpgradeNotice(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DismissUpgradeNoticeEffect dismiss_upgrade_notice = 150 [json_name = "dismissUpgradeNotice"];</code>
+     */
+    public Builder clearDismissUpgradeNotice() {
+      copyOnWrite();
+      instance.clearDismissUpgradeNotice();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.PersistLastServerEffect persist_last_server = 151 [json_name = "persistLastServer"];</code>
+     */
+    @java.lang.Override
+    public boolean hasPersistLastServer() {
+      return instance.hasPersistLastServer();
+    }
+    /**
+     * <code>.remoteagent.core.v1.PersistLastServerEffect persist_last_server = 151 [json_name = "persistLastServer"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.PersistLastServerEffect getPersistLastServer() {
+      return instance.getPersistLastServer();
+    }
+    /**
+     * <code>.remoteagent.core.v1.PersistLastServerEffect persist_last_server = 151 [json_name = "persistLastServer"];</code>
+     */
+    public Builder setPersistLastServer(io.github.lewin671.remoteagent.core.proto.PersistLastServerEffect value) {
+      copyOnWrite();
+      instance.setPersistLastServer(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PersistLastServerEffect persist_last_server = 151 [json_name = "persistLastServer"];</code>
+     */
+    public Builder setPersistLastServer(
+        io.github.lewin671.remoteagent.core.proto.PersistLastServerEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setPersistLastServer(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PersistLastServerEffect persist_last_server = 151 [json_name = "persistLastServer"];</code>
+     */
+    public Builder mergePersistLastServer(io.github.lewin671.remoteagent.core.proto.PersistLastServerEffect value) {
+      copyOnWrite();
+      instance.mergePersistLastServer(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PersistLastServerEffect persist_last_server = 151 [json_name = "persistLastServer"];</code>
+     */
+    public Builder clearPersistLastServer() {
+      copyOnWrite();
+      instance.clearPersistLastServer();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.Effect)
   }
   @java.lang.Override
@@ -9790,9 +10402,15 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.SecurityStatusChangedEffect.class,
             io.github.lewin671.remoteagent.core.proto.SecurityNotifyOpenedEffect.class,
             io.github.lewin671.remoteagent.core.proto.SecurityTokenUpdatedEffect.class,
+            io.github.lewin671.remoteagent.core.proto.RequestStoragePersistEffect.class,
+            io.github.lewin671.remoteagent.core.proto.UnregisterPushOnExitEffect.class,
+            io.github.lewin671.remoteagent.core.proto.ClearAccountCachesEffect.class,
+            io.github.lewin671.remoteagent.core.proto.AccountRuntimeChangedEffect.class,
+            io.github.lewin671.remoteagent.core.proto.DismissUpgradeNoticeEffect.class,
+            io.github.lewin671.remoteagent.core.proto.PersistLastServerEffect.class,
           };
           java.lang.String info =
-              "\u0000\\\u0001\u0000\u0001\u0091\\\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "\u0000b\u0001\u0000\u0001\u0097b\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
               "<\u0000\u0004<\u0000\u0005<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<\u0000\u000b<" +
               "\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0011<\u0000\u0012<\u0000\u0013" +
               "<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000\u0018<\u0000\u0019<\u0000" +
@@ -9803,7 +10421,8 @@ public  final class Effect extends
               "g<\u0000h<\u0000i<\u0000j<\u0000k<\u0000l<\u0000m<\u0000o<\u0000p<\u0000q<\u0000" +
               "r<\u0000s<\u0000t<\u0000u<\u0000v<\u0000w<\u0000x<\u0000\u0082<\u0000\u0083<\u0000" +
               "\u0087<\u0000\u0088<\u0000\u0089<\u0000\u008a<\u0000\u008b<\u0000\u008c<\u0000\u008d" +
-              "<\u0000\u008e<\u0000\u008f<\u0000\u0090<\u0000\u0091<\u0000";
+              "<\u0000\u008e<\u0000\u008f<\u0000\u0090<\u0000\u0091<\u0000\u0092<\u0000\u0093<\u0000" +
+              "\u0094<\u0000\u0095<\u0000\u0096<\u0000\u0097<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

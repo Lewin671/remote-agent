@@ -15,6 +15,7 @@ import "remoteagent/core/v1/session_view.proto";
 import "remoteagent/core/v1/shared_files.proto";
 import "remoteagent/core/v1/schedules_view.proto";
 import "remoteagent/core/v1/security.proto";
+import "remoteagent/core/v1/security_view.proto";
 import "remoteagent/core/v1/sync_view.proto";
 import "remoteagent/core/v1/terminal_history.proto";
 import "remoteagent/core/v1/text.proto";
@@ -75,6 +76,12 @@ message Screen {
     ScheduleDetailScreenRequest schedule_detail = 21;
     ScheduleFormScreenRequest schedule_form = 22;
     ScheduleSessionStripScreenRequest schedule_session_strip = 23;
+    AppRootScreenRequest app_root = 50;
+    OnboardingScreenRequest onboarding = 51;
+    AddDeviceScreenRequest add_device = 52;
+    AccountSecurityScreenRequest account_security = 53;
+    HandoffScreenRequest handoff = 54;
+    ExitConfirmScreenRequest exit_confirm = 55;
   }
 }
 
@@ -103,6 +110,12 @@ message ViewModel {
     ScheduleDetailViewModel schedule_detail = 21;
     ScheduleFormViewModel schedule_form = 22;
     ScheduleSessionStripViewModel schedule_session_strip = 23;
+    AppRootViewModel app_root = 50;
+    OnboardingViewModel onboarding = 51;
+    AddDeviceViewModel add_device = 52;
+    AccountSecurityViewModel account_security = 53;
+    HandoffViewModel handoff = 54;
+    ExitConfirmView exit_confirm = 55;
   }
 }
 
@@ -771,6 +784,35 @@ message Event {
     SecurityForegroundEvent security_foreground = 463;
     SecurityWorkflowActionEvent security_action = 464;
     SecurityOpenNotifyEvent security_open_notify = 465;
+
+    // Security UI views, single-core startup & exit (470-499).
+    ClientInitEvent client_init = 470;
+    StoragePersistResultEvent storage_persist_result = 471;
+    PushUnregisteredEvent push_unregistered = 472;
+    AccountCachesClearedEvent account_caches_cleared = 473;
+    AppRootRetryBootstrapAction app_root_retry_bootstrap = 474;
+    AppRootVerifyPendingOpAction app_root_verify_pending_op = 475;
+    AppRootDismissUpgradeNoticeAction app_root_dismiss_upgrade_notice = 476;
+    OnboardingSetModeAction onboarding_set_mode = 477;
+    OnboardingCreateEditAction onboarding_create_edit = 478;
+    OnboardingCreateSubmitAction onboarding_create_submit = 479;
+    OnboardingJoinEditAction onboarding_join_edit = 480;
+    OnboardingJoinSubmitAction onboarding_join_submit = 481;
+    OnboardingJoinConfirmSasAction onboarding_join_confirm_sas = 482;
+    OnboardingJoinCancelAction onboarding_join_cancel = 483;
+    OnboardingJoinBannerAction onboarding_join_banner_action = 484;
+    OnboardingRecoveryEditAction onboarding_recovery_edit = 485;
+    OnboardingRecoveryAction onboarding_recovery_action = 486;
+    AddDeviceOpenAction add_device_open = 489;
+    AddDeviceCloseAction add_device_close = 490;
+    AddDeviceAction add_device_action = 491;
+    AccountSecurityOpenAction account_security_open = 493;
+    AccountSecurityAction account_security_action = 494;
+    AccountSecurityCloseAction account_security_close = 495;
+    HandoffAction handoff_action = 496;
+    ExternalLogoutEvent external_logout = 497;
+    ExitRequestAction exit_request = 498;
+    ExitConfirmAction exit_confirm = 499;
   }
   reserved 216;
   reserved "shared_file_local_state";
@@ -804,6 +846,12 @@ enum ScreenTarget {
   SCREEN_TARGET_SCHEDULE_DETAIL = 21;
   SCREEN_TARGET_SCHEDULE_FORM = 22;
   SCREEN_TARGET_SCHEDULE_SESSION_STRIP = 23;
+  SCREEN_TARGET_APP_ROOT = 50;
+  SCREEN_TARGET_ONBOARDING = 51;
+  SCREEN_TARGET_ADD_DEVICE = 52;
+  SCREEN_TARGET_ACCOUNT_SECURITY = 53;
+  SCREEN_TARGET_HANDOFF = 54;
+  SCREEN_TARGET_EXIT_CONFIRM = 55;
 }
 
 message RenderEffect {
@@ -1112,6 +1160,12 @@ message Effect {
     SecurityStatusChangedEffect security_status_changed = 143;
     SecurityNotifyOpenedEffect security_notify_opened = 144;
     SecurityTokenUpdatedEffect security_token_updated = 145;
+    RequestStoragePersistEffect request_storage_persist = 146;
+    UnregisterPushOnExitEffect unregister_push_on_exit = 147;
+    ClearAccountCachesEffect clear_account_caches = 148;
+    AccountRuntimeChangedEffect account_runtime_changed = 149;
+    DismissUpgradeNoticeEffect dismiss_upgrade_notice = 150;
+    PersistLastServerEffect persist_last_server = 151;
   }
 }
 

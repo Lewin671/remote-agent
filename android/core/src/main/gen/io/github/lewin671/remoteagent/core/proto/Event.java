@@ -260,6 +260,33 @@ public  final class Event extends
     SECURITY_FOREGROUND(463),
     SECURITY_ACTION(464),
     SECURITY_OPEN_NOTIFY(465),
+    CLIENT_INIT(470),
+    STORAGE_PERSIST_RESULT(471),
+    PUSH_UNREGISTERED(472),
+    ACCOUNT_CACHES_CLEARED(473),
+    APP_ROOT_RETRY_BOOTSTRAP(474),
+    APP_ROOT_VERIFY_PENDING_OP(475),
+    APP_ROOT_DISMISS_UPGRADE_NOTICE(476),
+    ONBOARDING_SET_MODE(477),
+    ONBOARDING_CREATE_EDIT(478),
+    ONBOARDING_CREATE_SUBMIT(479),
+    ONBOARDING_JOIN_EDIT(480),
+    ONBOARDING_JOIN_SUBMIT(481),
+    ONBOARDING_JOIN_CONFIRM_SAS(482),
+    ONBOARDING_JOIN_CANCEL(483),
+    ONBOARDING_JOIN_BANNER_ACTION(484),
+    ONBOARDING_RECOVERY_EDIT(485),
+    ONBOARDING_RECOVERY_ACTION(486),
+    ADD_DEVICE_OPEN(489),
+    ADD_DEVICE_CLOSE(490),
+    ADD_DEVICE_ACTION(491),
+    ACCOUNT_SECURITY_OPEN(493),
+    ACCOUNT_SECURITY_ACTION(494),
+    ACCOUNT_SECURITY_CLOSE(495),
+    HANDOFF_ACTION(496),
+    EXTERNAL_LOGOUT(497),
+    EXIT_REQUEST(498),
+    EXIT_CONFIRM(499),
     EVENT_NOT_SET(0);
     private final int value;
     private EventCase(int value) {
@@ -514,6 +541,33 @@ public  final class Event extends
         case 463: return SECURITY_FOREGROUND;
         case 464: return SECURITY_ACTION;
         case 465: return SECURITY_OPEN_NOTIFY;
+        case 470: return CLIENT_INIT;
+        case 471: return STORAGE_PERSIST_RESULT;
+        case 472: return PUSH_UNREGISTERED;
+        case 473: return ACCOUNT_CACHES_CLEARED;
+        case 474: return APP_ROOT_RETRY_BOOTSTRAP;
+        case 475: return APP_ROOT_VERIFY_PENDING_OP;
+        case 476: return APP_ROOT_DISMISS_UPGRADE_NOTICE;
+        case 477: return ONBOARDING_SET_MODE;
+        case 478: return ONBOARDING_CREATE_EDIT;
+        case 479: return ONBOARDING_CREATE_SUBMIT;
+        case 480: return ONBOARDING_JOIN_EDIT;
+        case 481: return ONBOARDING_JOIN_SUBMIT;
+        case 482: return ONBOARDING_JOIN_CONFIRM_SAS;
+        case 483: return ONBOARDING_JOIN_CANCEL;
+        case 484: return ONBOARDING_JOIN_BANNER_ACTION;
+        case 485: return ONBOARDING_RECOVERY_EDIT;
+        case 486: return ONBOARDING_RECOVERY_ACTION;
+        case 489: return ADD_DEVICE_OPEN;
+        case 490: return ADD_DEVICE_CLOSE;
+        case 491: return ADD_DEVICE_ACTION;
+        case 493: return ACCOUNT_SECURITY_OPEN;
+        case 494: return ACCOUNT_SECURITY_ACTION;
+        case 495: return ACCOUNT_SECURITY_CLOSE;
+        case 496: return HANDOFF_ACTION;
+        case 497: return EXTERNAL_LOGOUT;
+        case 498: return EXIT_REQUEST;
+        case 499: return EXIT_CONFIRM;
         case 0: return EVENT_NOT_SET;
         default: return null;
       }
@@ -13023,6 +13077,1430 @@ public  final class Event extends
     }
   }
 
+  public static final int CLIENT_INIT_FIELD_NUMBER = 470;
+  /**
+   * <pre>
+   * Security UI views, single-core startup &amp; exit (470-499).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.ClientInitEvent client_init = 470 [json_name = "clientInit"];</code>
+   */
+  @java.lang.Override
+  public boolean hasClientInit() {
+    return eventCase_ == 470;
+  }
+  /**
+   * <pre>
+   * Security UI views, single-core startup &amp; exit (470-499).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.ClientInitEvent client_init = 470 [json_name = "clientInit"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ClientInitEvent getClientInit() {
+    if (eventCase_ == 470) {
+       return (io.github.lewin671.remoteagent.core.proto.ClientInitEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ClientInitEvent.getDefaultInstance();
+  }
+  /**
+   * <pre>
+   * Security UI views, single-core startup &amp; exit (470-499).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.ClientInitEvent client_init = 470 [json_name = "clientInit"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setClientInit(io.github.lewin671.remoteagent.core.proto.ClientInitEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 470;
+  }
+  /**
+   * <pre>
+   * Security UI views, single-core startup &amp; exit (470-499).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.ClientInitEvent client_init = 470 [json_name = "clientInit"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeClientInit(io.github.lewin671.remoteagent.core.proto.ClientInitEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 470 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ClientInitEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ClientInitEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.ClientInitEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 470;
+  }
+  /**
+   * <pre>
+   * Security UI views, single-core startup &amp; exit (470-499).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.ClientInitEvent client_init = 470 [json_name = "clientInit"];</code>
+   */
+  private void clearClientInit() {
+    if (eventCase_ == 470) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int STORAGE_PERSIST_RESULT_FIELD_NUMBER = 471;
+  /**
+   * <code>.remoteagent.core.v1.StoragePersistResultEvent storage_persist_result = 471 [json_name = "storagePersistResult"];</code>
+   */
+  @java.lang.Override
+  public boolean hasStoragePersistResult() {
+    return eventCase_ == 471;
+  }
+  /**
+   * <code>.remoteagent.core.v1.StoragePersistResultEvent storage_persist_result = 471 [json_name = "storagePersistResult"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.StoragePersistResultEvent getStoragePersistResult() {
+    if (eventCase_ == 471) {
+       return (io.github.lewin671.remoteagent.core.proto.StoragePersistResultEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.StoragePersistResultEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.StoragePersistResultEvent storage_persist_result = 471 [json_name = "storagePersistResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setStoragePersistResult(io.github.lewin671.remoteagent.core.proto.StoragePersistResultEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 471;
+  }
+  /**
+   * <code>.remoteagent.core.v1.StoragePersistResultEvent storage_persist_result = 471 [json_name = "storagePersistResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeStoragePersistResult(io.github.lewin671.remoteagent.core.proto.StoragePersistResultEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 471 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.StoragePersistResultEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.StoragePersistResultEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.StoragePersistResultEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 471;
+  }
+  /**
+   * <code>.remoteagent.core.v1.StoragePersistResultEvent storage_persist_result = 471 [json_name = "storagePersistResult"];</code>
+   */
+  private void clearStoragePersistResult() {
+    if (eventCase_ == 471) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int PUSH_UNREGISTERED_FIELD_NUMBER = 472;
+  /**
+   * <code>.remoteagent.core.v1.PushUnregisteredEvent push_unregistered = 472 [json_name = "pushUnregistered"];</code>
+   */
+  @java.lang.Override
+  public boolean hasPushUnregistered() {
+    return eventCase_ == 472;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PushUnregisteredEvent push_unregistered = 472 [json_name = "pushUnregistered"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.PushUnregisteredEvent getPushUnregistered() {
+    if (eventCase_ == 472) {
+       return (io.github.lewin671.remoteagent.core.proto.PushUnregisteredEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.PushUnregisteredEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.PushUnregisteredEvent push_unregistered = 472 [json_name = "pushUnregistered"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPushUnregistered(io.github.lewin671.remoteagent.core.proto.PushUnregisteredEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 472;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PushUnregisteredEvent push_unregistered = 472 [json_name = "pushUnregistered"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergePushUnregistered(io.github.lewin671.remoteagent.core.proto.PushUnregisteredEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 472 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.PushUnregisteredEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.PushUnregisteredEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.PushUnregisteredEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 472;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PushUnregisteredEvent push_unregistered = 472 [json_name = "pushUnregistered"];</code>
+   */
+  private void clearPushUnregistered() {
+    if (eventCase_ == 472) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int ACCOUNT_CACHES_CLEARED_FIELD_NUMBER = 473;
+  /**
+   * <code>.remoteagent.core.v1.AccountCachesClearedEvent account_caches_cleared = 473 [json_name = "accountCachesCleared"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAccountCachesCleared() {
+    return eventCase_ == 473;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountCachesClearedEvent account_caches_cleared = 473 [json_name = "accountCachesCleared"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AccountCachesClearedEvent getAccountCachesCleared() {
+    if (eventCase_ == 473) {
+       return (io.github.lewin671.remoteagent.core.proto.AccountCachesClearedEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AccountCachesClearedEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountCachesClearedEvent account_caches_cleared = 473 [json_name = "accountCachesCleared"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAccountCachesCleared(io.github.lewin671.remoteagent.core.proto.AccountCachesClearedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 473;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountCachesClearedEvent account_caches_cleared = 473 [json_name = "accountCachesCleared"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAccountCachesCleared(io.github.lewin671.remoteagent.core.proto.AccountCachesClearedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 473 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.AccountCachesClearedEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.AccountCachesClearedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.AccountCachesClearedEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 473;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountCachesClearedEvent account_caches_cleared = 473 [json_name = "accountCachesCleared"];</code>
+   */
+  private void clearAccountCachesCleared() {
+    if (eventCase_ == 473) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int APP_ROOT_RETRY_BOOTSTRAP_FIELD_NUMBER = 474;
+  /**
+   * <code>.remoteagent.core.v1.AppRootRetryBootstrapAction app_root_retry_bootstrap = 474 [json_name = "appRootRetryBootstrap"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAppRootRetryBootstrap() {
+    return eventCase_ == 474;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AppRootRetryBootstrapAction app_root_retry_bootstrap = 474 [json_name = "appRootRetryBootstrap"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AppRootRetryBootstrapAction getAppRootRetryBootstrap() {
+    if (eventCase_ == 474) {
+       return (io.github.lewin671.remoteagent.core.proto.AppRootRetryBootstrapAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AppRootRetryBootstrapAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AppRootRetryBootstrapAction app_root_retry_bootstrap = 474 [json_name = "appRootRetryBootstrap"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAppRootRetryBootstrap(io.github.lewin671.remoteagent.core.proto.AppRootRetryBootstrapAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 474;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AppRootRetryBootstrapAction app_root_retry_bootstrap = 474 [json_name = "appRootRetryBootstrap"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAppRootRetryBootstrap(io.github.lewin671.remoteagent.core.proto.AppRootRetryBootstrapAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 474 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.AppRootRetryBootstrapAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.AppRootRetryBootstrapAction.newBuilder((io.github.lewin671.remoteagent.core.proto.AppRootRetryBootstrapAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 474;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AppRootRetryBootstrapAction app_root_retry_bootstrap = 474 [json_name = "appRootRetryBootstrap"];</code>
+   */
+  private void clearAppRootRetryBootstrap() {
+    if (eventCase_ == 474) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int APP_ROOT_VERIFY_PENDING_OP_FIELD_NUMBER = 475;
+  /**
+   * <code>.remoteagent.core.v1.AppRootVerifyPendingOpAction app_root_verify_pending_op = 475 [json_name = "appRootVerifyPendingOp"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAppRootVerifyPendingOp() {
+    return eventCase_ == 475;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AppRootVerifyPendingOpAction app_root_verify_pending_op = 475 [json_name = "appRootVerifyPendingOp"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AppRootVerifyPendingOpAction getAppRootVerifyPendingOp() {
+    if (eventCase_ == 475) {
+       return (io.github.lewin671.remoteagent.core.proto.AppRootVerifyPendingOpAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AppRootVerifyPendingOpAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AppRootVerifyPendingOpAction app_root_verify_pending_op = 475 [json_name = "appRootVerifyPendingOp"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAppRootVerifyPendingOp(io.github.lewin671.remoteagent.core.proto.AppRootVerifyPendingOpAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 475;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AppRootVerifyPendingOpAction app_root_verify_pending_op = 475 [json_name = "appRootVerifyPendingOp"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAppRootVerifyPendingOp(io.github.lewin671.remoteagent.core.proto.AppRootVerifyPendingOpAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 475 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.AppRootVerifyPendingOpAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.AppRootVerifyPendingOpAction.newBuilder((io.github.lewin671.remoteagent.core.proto.AppRootVerifyPendingOpAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 475;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AppRootVerifyPendingOpAction app_root_verify_pending_op = 475 [json_name = "appRootVerifyPendingOp"];</code>
+   */
+  private void clearAppRootVerifyPendingOp() {
+    if (eventCase_ == 475) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int APP_ROOT_DISMISS_UPGRADE_NOTICE_FIELD_NUMBER = 476;
+  /**
+   * <code>.remoteagent.core.v1.AppRootDismissUpgradeNoticeAction app_root_dismiss_upgrade_notice = 476 [json_name = "appRootDismissUpgradeNotice"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAppRootDismissUpgradeNotice() {
+    return eventCase_ == 476;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AppRootDismissUpgradeNoticeAction app_root_dismiss_upgrade_notice = 476 [json_name = "appRootDismissUpgradeNotice"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AppRootDismissUpgradeNoticeAction getAppRootDismissUpgradeNotice() {
+    if (eventCase_ == 476) {
+       return (io.github.lewin671.remoteagent.core.proto.AppRootDismissUpgradeNoticeAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AppRootDismissUpgradeNoticeAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AppRootDismissUpgradeNoticeAction app_root_dismiss_upgrade_notice = 476 [json_name = "appRootDismissUpgradeNotice"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAppRootDismissUpgradeNotice(io.github.lewin671.remoteagent.core.proto.AppRootDismissUpgradeNoticeAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 476;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AppRootDismissUpgradeNoticeAction app_root_dismiss_upgrade_notice = 476 [json_name = "appRootDismissUpgradeNotice"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAppRootDismissUpgradeNotice(io.github.lewin671.remoteagent.core.proto.AppRootDismissUpgradeNoticeAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 476 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.AppRootDismissUpgradeNoticeAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.AppRootDismissUpgradeNoticeAction.newBuilder((io.github.lewin671.remoteagent.core.proto.AppRootDismissUpgradeNoticeAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 476;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AppRootDismissUpgradeNoticeAction app_root_dismiss_upgrade_notice = 476 [json_name = "appRootDismissUpgradeNotice"];</code>
+   */
+  private void clearAppRootDismissUpgradeNotice() {
+    if (eventCase_ == 476) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int ONBOARDING_SET_MODE_FIELD_NUMBER = 477;
+  /**
+   * <code>.remoteagent.core.v1.OnboardingSetModeAction onboarding_set_mode = 477 [json_name = "onboardingSetMode"];</code>
+   */
+  @java.lang.Override
+  public boolean hasOnboardingSetMode() {
+    return eventCase_ == 477;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingSetModeAction onboarding_set_mode = 477 [json_name = "onboardingSetMode"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.OnboardingSetModeAction getOnboardingSetMode() {
+    if (eventCase_ == 477) {
+       return (io.github.lewin671.remoteagent.core.proto.OnboardingSetModeAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.OnboardingSetModeAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingSetModeAction onboarding_set_mode = 477 [json_name = "onboardingSetMode"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setOnboardingSetMode(io.github.lewin671.remoteagent.core.proto.OnboardingSetModeAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 477;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingSetModeAction onboarding_set_mode = 477 [json_name = "onboardingSetMode"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeOnboardingSetMode(io.github.lewin671.remoteagent.core.proto.OnboardingSetModeAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 477 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.OnboardingSetModeAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.OnboardingSetModeAction.newBuilder((io.github.lewin671.remoteagent.core.proto.OnboardingSetModeAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 477;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingSetModeAction onboarding_set_mode = 477 [json_name = "onboardingSetMode"];</code>
+   */
+  private void clearOnboardingSetMode() {
+    if (eventCase_ == 477) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int ONBOARDING_CREATE_EDIT_FIELD_NUMBER = 478;
+  /**
+   * <code>.remoteagent.core.v1.OnboardingCreateEditAction onboarding_create_edit = 478 [json_name = "onboardingCreateEdit"];</code>
+   */
+  @java.lang.Override
+  public boolean hasOnboardingCreateEdit() {
+    return eventCase_ == 478;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingCreateEditAction onboarding_create_edit = 478 [json_name = "onboardingCreateEdit"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.OnboardingCreateEditAction getOnboardingCreateEdit() {
+    if (eventCase_ == 478) {
+       return (io.github.lewin671.remoteagent.core.proto.OnboardingCreateEditAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.OnboardingCreateEditAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingCreateEditAction onboarding_create_edit = 478 [json_name = "onboardingCreateEdit"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setOnboardingCreateEdit(io.github.lewin671.remoteagent.core.proto.OnboardingCreateEditAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 478;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingCreateEditAction onboarding_create_edit = 478 [json_name = "onboardingCreateEdit"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeOnboardingCreateEdit(io.github.lewin671.remoteagent.core.proto.OnboardingCreateEditAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 478 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.OnboardingCreateEditAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.OnboardingCreateEditAction.newBuilder((io.github.lewin671.remoteagent.core.proto.OnboardingCreateEditAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 478;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingCreateEditAction onboarding_create_edit = 478 [json_name = "onboardingCreateEdit"];</code>
+   */
+  private void clearOnboardingCreateEdit() {
+    if (eventCase_ == 478) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int ONBOARDING_CREATE_SUBMIT_FIELD_NUMBER = 479;
+  /**
+   * <code>.remoteagent.core.v1.OnboardingCreateSubmitAction onboarding_create_submit = 479 [json_name = "onboardingCreateSubmit"];</code>
+   */
+  @java.lang.Override
+  public boolean hasOnboardingCreateSubmit() {
+    return eventCase_ == 479;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingCreateSubmitAction onboarding_create_submit = 479 [json_name = "onboardingCreateSubmit"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.OnboardingCreateSubmitAction getOnboardingCreateSubmit() {
+    if (eventCase_ == 479) {
+       return (io.github.lewin671.remoteagent.core.proto.OnboardingCreateSubmitAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.OnboardingCreateSubmitAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingCreateSubmitAction onboarding_create_submit = 479 [json_name = "onboardingCreateSubmit"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setOnboardingCreateSubmit(io.github.lewin671.remoteagent.core.proto.OnboardingCreateSubmitAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 479;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingCreateSubmitAction onboarding_create_submit = 479 [json_name = "onboardingCreateSubmit"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeOnboardingCreateSubmit(io.github.lewin671.remoteagent.core.proto.OnboardingCreateSubmitAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 479 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.OnboardingCreateSubmitAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.OnboardingCreateSubmitAction.newBuilder((io.github.lewin671.remoteagent.core.proto.OnboardingCreateSubmitAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 479;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingCreateSubmitAction onboarding_create_submit = 479 [json_name = "onboardingCreateSubmit"];</code>
+   */
+  private void clearOnboardingCreateSubmit() {
+    if (eventCase_ == 479) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int ONBOARDING_JOIN_EDIT_FIELD_NUMBER = 480;
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinEditAction onboarding_join_edit = 480 [json_name = "onboardingJoinEdit"];</code>
+   */
+  @java.lang.Override
+  public boolean hasOnboardingJoinEdit() {
+    return eventCase_ == 480;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinEditAction onboarding_join_edit = 480 [json_name = "onboardingJoinEdit"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.OnboardingJoinEditAction getOnboardingJoinEdit() {
+    if (eventCase_ == 480) {
+       return (io.github.lewin671.remoteagent.core.proto.OnboardingJoinEditAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.OnboardingJoinEditAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinEditAction onboarding_join_edit = 480 [json_name = "onboardingJoinEdit"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setOnboardingJoinEdit(io.github.lewin671.remoteagent.core.proto.OnboardingJoinEditAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 480;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinEditAction onboarding_join_edit = 480 [json_name = "onboardingJoinEdit"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeOnboardingJoinEdit(io.github.lewin671.remoteagent.core.proto.OnboardingJoinEditAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 480 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.OnboardingJoinEditAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.OnboardingJoinEditAction.newBuilder((io.github.lewin671.remoteagent.core.proto.OnboardingJoinEditAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 480;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinEditAction onboarding_join_edit = 480 [json_name = "onboardingJoinEdit"];</code>
+   */
+  private void clearOnboardingJoinEdit() {
+    if (eventCase_ == 480) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int ONBOARDING_JOIN_SUBMIT_FIELD_NUMBER = 481;
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinSubmitAction onboarding_join_submit = 481 [json_name = "onboardingJoinSubmit"];</code>
+   */
+  @java.lang.Override
+  public boolean hasOnboardingJoinSubmit() {
+    return eventCase_ == 481;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinSubmitAction onboarding_join_submit = 481 [json_name = "onboardingJoinSubmit"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.OnboardingJoinSubmitAction getOnboardingJoinSubmit() {
+    if (eventCase_ == 481) {
+       return (io.github.lewin671.remoteagent.core.proto.OnboardingJoinSubmitAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.OnboardingJoinSubmitAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinSubmitAction onboarding_join_submit = 481 [json_name = "onboardingJoinSubmit"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setOnboardingJoinSubmit(io.github.lewin671.remoteagent.core.proto.OnboardingJoinSubmitAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 481;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinSubmitAction onboarding_join_submit = 481 [json_name = "onboardingJoinSubmit"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeOnboardingJoinSubmit(io.github.lewin671.remoteagent.core.proto.OnboardingJoinSubmitAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 481 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.OnboardingJoinSubmitAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.OnboardingJoinSubmitAction.newBuilder((io.github.lewin671.remoteagent.core.proto.OnboardingJoinSubmitAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 481;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinSubmitAction onboarding_join_submit = 481 [json_name = "onboardingJoinSubmit"];</code>
+   */
+  private void clearOnboardingJoinSubmit() {
+    if (eventCase_ == 481) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int ONBOARDING_JOIN_CONFIRM_SAS_FIELD_NUMBER = 482;
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinConfirmSasAction onboarding_join_confirm_sas = 482 [json_name = "onboardingJoinConfirmSas"];</code>
+   */
+  @java.lang.Override
+  public boolean hasOnboardingJoinConfirmSas() {
+    return eventCase_ == 482;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinConfirmSasAction onboarding_join_confirm_sas = 482 [json_name = "onboardingJoinConfirmSas"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.OnboardingJoinConfirmSasAction getOnboardingJoinConfirmSas() {
+    if (eventCase_ == 482) {
+       return (io.github.lewin671.remoteagent.core.proto.OnboardingJoinConfirmSasAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.OnboardingJoinConfirmSasAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinConfirmSasAction onboarding_join_confirm_sas = 482 [json_name = "onboardingJoinConfirmSas"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setOnboardingJoinConfirmSas(io.github.lewin671.remoteagent.core.proto.OnboardingJoinConfirmSasAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 482;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinConfirmSasAction onboarding_join_confirm_sas = 482 [json_name = "onboardingJoinConfirmSas"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeOnboardingJoinConfirmSas(io.github.lewin671.remoteagent.core.proto.OnboardingJoinConfirmSasAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 482 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.OnboardingJoinConfirmSasAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.OnboardingJoinConfirmSasAction.newBuilder((io.github.lewin671.remoteagent.core.proto.OnboardingJoinConfirmSasAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 482;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinConfirmSasAction onboarding_join_confirm_sas = 482 [json_name = "onboardingJoinConfirmSas"];</code>
+   */
+  private void clearOnboardingJoinConfirmSas() {
+    if (eventCase_ == 482) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int ONBOARDING_JOIN_CANCEL_FIELD_NUMBER = 483;
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinCancelAction onboarding_join_cancel = 483 [json_name = "onboardingJoinCancel"];</code>
+   */
+  @java.lang.Override
+  public boolean hasOnboardingJoinCancel() {
+    return eventCase_ == 483;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinCancelAction onboarding_join_cancel = 483 [json_name = "onboardingJoinCancel"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.OnboardingJoinCancelAction getOnboardingJoinCancel() {
+    if (eventCase_ == 483) {
+       return (io.github.lewin671.remoteagent.core.proto.OnboardingJoinCancelAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.OnboardingJoinCancelAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinCancelAction onboarding_join_cancel = 483 [json_name = "onboardingJoinCancel"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setOnboardingJoinCancel(io.github.lewin671.remoteagent.core.proto.OnboardingJoinCancelAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 483;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinCancelAction onboarding_join_cancel = 483 [json_name = "onboardingJoinCancel"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeOnboardingJoinCancel(io.github.lewin671.remoteagent.core.proto.OnboardingJoinCancelAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 483 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.OnboardingJoinCancelAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.OnboardingJoinCancelAction.newBuilder((io.github.lewin671.remoteagent.core.proto.OnboardingJoinCancelAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 483;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinCancelAction onboarding_join_cancel = 483 [json_name = "onboardingJoinCancel"];</code>
+   */
+  private void clearOnboardingJoinCancel() {
+    if (eventCase_ == 483) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int ONBOARDING_JOIN_BANNER_ACTION_FIELD_NUMBER = 484;
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinBannerAction onboarding_join_banner_action = 484 [json_name = "onboardingJoinBannerAction"];</code>
+   */
+  @java.lang.Override
+  public boolean hasOnboardingJoinBannerAction() {
+    return eventCase_ == 484;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinBannerAction onboarding_join_banner_action = 484 [json_name = "onboardingJoinBannerAction"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.OnboardingJoinBannerAction getOnboardingJoinBannerAction() {
+    if (eventCase_ == 484) {
+       return (io.github.lewin671.remoteagent.core.proto.OnboardingJoinBannerAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.OnboardingJoinBannerAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinBannerAction onboarding_join_banner_action = 484 [json_name = "onboardingJoinBannerAction"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setOnboardingJoinBannerAction(io.github.lewin671.remoteagent.core.proto.OnboardingJoinBannerAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 484;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinBannerAction onboarding_join_banner_action = 484 [json_name = "onboardingJoinBannerAction"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeOnboardingJoinBannerAction(io.github.lewin671.remoteagent.core.proto.OnboardingJoinBannerAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 484 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.OnboardingJoinBannerAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.OnboardingJoinBannerAction.newBuilder((io.github.lewin671.remoteagent.core.proto.OnboardingJoinBannerAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 484;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingJoinBannerAction onboarding_join_banner_action = 484 [json_name = "onboardingJoinBannerAction"];</code>
+   */
+  private void clearOnboardingJoinBannerAction() {
+    if (eventCase_ == 484) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int ONBOARDING_RECOVERY_EDIT_FIELD_NUMBER = 485;
+  /**
+   * <code>.remoteagent.core.v1.OnboardingRecoveryEditAction onboarding_recovery_edit = 485 [json_name = "onboardingRecoveryEdit"];</code>
+   */
+  @java.lang.Override
+  public boolean hasOnboardingRecoveryEdit() {
+    return eventCase_ == 485;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingRecoveryEditAction onboarding_recovery_edit = 485 [json_name = "onboardingRecoveryEdit"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryEditAction getOnboardingRecoveryEdit() {
+    if (eventCase_ == 485) {
+       return (io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryEditAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryEditAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingRecoveryEditAction onboarding_recovery_edit = 485 [json_name = "onboardingRecoveryEdit"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setOnboardingRecoveryEdit(io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryEditAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 485;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingRecoveryEditAction onboarding_recovery_edit = 485 [json_name = "onboardingRecoveryEdit"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeOnboardingRecoveryEdit(io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryEditAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 485 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryEditAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryEditAction.newBuilder((io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryEditAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 485;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingRecoveryEditAction onboarding_recovery_edit = 485 [json_name = "onboardingRecoveryEdit"];</code>
+   */
+  private void clearOnboardingRecoveryEdit() {
+    if (eventCase_ == 485) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int ONBOARDING_RECOVERY_ACTION_FIELD_NUMBER = 486;
+  /**
+   * <code>.remoteagent.core.v1.OnboardingRecoveryAction onboarding_recovery_action = 486 [json_name = "onboardingRecoveryAction"];</code>
+   */
+  @java.lang.Override
+  public boolean hasOnboardingRecoveryAction() {
+    return eventCase_ == 486;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingRecoveryAction onboarding_recovery_action = 486 [json_name = "onboardingRecoveryAction"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryAction getOnboardingRecoveryAction() {
+    if (eventCase_ == 486) {
+       return (io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingRecoveryAction onboarding_recovery_action = 486 [json_name = "onboardingRecoveryAction"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setOnboardingRecoveryAction(io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 486;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingRecoveryAction onboarding_recovery_action = 486 [json_name = "onboardingRecoveryAction"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeOnboardingRecoveryAction(io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 486 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryAction.newBuilder((io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 486;
+  }
+  /**
+   * <code>.remoteagent.core.v1.OnboardingRecoveryAction onboarding_recovery_action = 486 [json_name = "onboardingRecoveryAction"];</code>
+   */
+  private void clearOnboardingRecoveryAction() {
+    if (eventCase_ == 486) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int ADD_DEVICE_OPEN_FIELD_NUMBER = 489;
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceOpenAction add_device_open = 489 [json_name = "addDeviceOpen"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAddDeviceOpen() {
+    return eventCase_ == 489;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceOpenAction add_device_open = 489 [json_name = "addDeviceOpen"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AddDeviceOpenAction getAddDeviceOpen() {
+    if (eventCase_ == 489) {
+       return (io.github.lewin671.remoteagent.core.proto.AddDeviceOpenAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AddDeviceOpenAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceOpenAction add_device_open = 489 [json_name = "addDeviceOpen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAddDeviceOpen(io.github.lewin671.remoteagent.core.proto.AddDeviceOpenAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 489;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceOpenAction add_device_open = 489 [json_name = "addDeviceOpen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAddDeviceOpen(io.github.lewin671.remoteagent.core.proto.AddDeviceOpenAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 489 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.AddDeviceOpenAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.AddDeviceOpenAction.newBuilder((io.github.lewin671.remoteagent.core.proto.AddDeviceOpenAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 489;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceOpenAction add_device_open = 489 [json_name = "addDeviceOpen"];</code>
+   */
+  private void clearAddDeviceOpen() {
+    if (eventCase_ == 489) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int ADD_DEVICE_CLOSE_FIELD_NUMBER = 490;
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceCloseAction add_device_close = 490 [json_name = "addDeviceClose"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAddDeviceClose() {
+    return eventCase_ == 490;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceCloseAction add_device_close = 490 [json_name = "addDeviceClose"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AddDeviceCloseAction getAddDeviceClose() {
+    if (eventCase_ == 490) {
+       return (io.github.lewin671.remoteagent.core.proto.AddDeviceCloseAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AddDeviceCloseAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceCloseAction add_device_close = 490 [json_name = "addDeviceClose"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAddDeviceClose(io.github.lewin671.remoteagent.core.proto.AddDeviceCloseAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 490;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceCloseAction add_device_close = 490 [json_name = "addDeviceClose"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAddDeviceClose(io.github.lewin671.remoteagent.core.proto.AddDeviceCloseAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 490 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.AddDeviceCloseAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.AddDeviceCloseAction.newBuilder((io.github.lewin671.remoteagent.core.proto.AddDeviceCloseAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 490;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceCloseAction add_device_close = 490 [json_name = "addDeviceClose"];</code>
+   */
+  private void clearAddDeviceClose() {
+    if (eventCase_ == 490) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int ADD_DEVICE_ACTION_FIELD_NUMBER = 491;
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceAction add_device_action = 491 [json_name = "addDeviceAction"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAddDeviceAction() {
+    return eventCase_ == 491;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceAction add_device_action = 491 [json_name = "addDeviceAction"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AddDeviceAction getAddDeviceAction() {
+    if (eventCase_ == 491) {
+       return (io.github.lewin671.remoteagent.core.proto.AddDeviceAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AddDeviceAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceAction add_device_action = 491 [json_name = "addDeviceAction"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAddDeviceAction(io.github.lewin671.remoteagent.core.proto.AddDeviceAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 491;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceAction add_device_action = 491 [json_name = "addDeviceAction"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAddDeviceAction(io.github.lewin671.remoteagent.core.proto.AddDeviceAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 491 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.AddDeviceAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.AddDeviceAction.newBuilder((io.github.lewin671.remoteagent.core.proto.AddDeviceAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 491;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AddDeviceAction add_device_action = 491 [json_name = "addDeviceAction"];</code>
+   */
+  private void clearAddDeviceAction() {
+    if (eventCase_ == 491) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int ACCOUNT_SECURITY_OPEN_FIELD_NUMBER = 493;
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityOpenAction account_security_open = 493 [json_name = "accountSecurityOpen"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAccountSecurityOpen() {
+    return eventCase_ == 493;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityOpenAction account_security_open = 493 [json_name = "accountSecurityOpen"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AccountSecurityOpenAction getAccountSecurityOpen() {
+    if (eventCase_ == 493) {
+       return (io.github.lewin671.remoteagent.core.proto.AccountSecurityOpenAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AccountSecurityOpenAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityOpenAction account_security_open = 493 [json_name = "accountSecurityOpen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAccountSecurityOpen(io.github.lewin671.remoteagent.core.proto.AccountSecurityOpenAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 493;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityOpenAction account_security_open = 493 [json_name = "accountSecurityOpen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAccountSecurityOpen(io.github.lewin671.remoteagent.core.proto.AccountSecurityOpenAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 493 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.AccountSecurityOpenAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.AccountSecurityOpenAction.newBuilder((io.github.lewin671.remoteagent.core.proto.AccountSecurityOpenAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 493;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityOpenAction account_security_open = 493 [json_name = "accountSecurityOpen"];</code>
+   */
+  private void clearAccountSecurityOpen() {
+    if (eventCase_ == 493) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int ACCOUNT_SECURITY_ACTION_FIELD_NUMBER = 494;
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityAction account_security_action = 494 [json_name = "accountSecurityAction"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAccountSecurityAction() {
+    return eventCase_ == 494;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityAction account_security_action = 494 [json_name = "accountSecurityAction"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AccountSecurityAction getAccountSecurityAction() {
+    if (eventCase_ == 494) {
+       return (io.github.lewin671.remoteagent.core.proto.AccountSecurityAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AccountSecurityAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityAction account_security_action = 494 [json_name = "accountSecurityAction"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAccountSecurityAction(io.github.lewin671.remoteagent.core.proto.AccountSecurityAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 494;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityAction account_security_action = 494 [json_name = "accountSecurityAction"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAccountSecurityAction(io.github.lewin671.remoteagent.core.proto.AccountSecurityAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 494 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.AccountSecurityAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.AccountSecurityAction.newBuilder((io.github.lewin671.remoteagent.core.proto.AccountSecurityAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 494;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityAction account_security_action = 494 [json_name = "accountSecurityAction"];</code>
+   */
+  private void clearAccountSecurityAction() {
+    if (eventCase_ == 494) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int ACCOUNT_SECURITY_CLOSE_FIELD_NUMBER = 495;
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityCloseAction account_security_close = 495 [json_name = "accountSecurityClose"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAccountSecurityClose() {
+    return eventCase_ == 495;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityCloseAction account_security_close = 495 [json_name = "accountSecurityClose"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AccountSecurityCloseAction getAccountSecurityClose() {
+    if (eventCase_ == 495) {
+       return (io.github.lewin671.remoteagent.core.proto.AccountSecurityCloseAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AccountSecurityCloseAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityCloseAction account_security_close = 495 [json_name = "accountSecurityClose"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAccountSecurityClose(io.github.lewin671.remoteagent.core.proto.AccountSecurityCloseAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 495;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityCloseAction account_security_close = 495 [json_name = "accountSecurityClose"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAccountSecurityClose(io.github.lewin671.remoteagent.core.proto.AccountSecurityCloseAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 495 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.AccountSecurityCloseAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.AccountSecurityCloseAction.newBuilder((io.github.lewin671.remoteagent.core.proto.AccountSecurityCloseAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 495;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AccountSecurityCloseAction account_security_close = 495 [json_name = "accountSecurityClose"];</code>
+   */
+  private void clearAccountSecurityClose() {
+    if (eventCase_ == 495) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int HANDOFF_ACTION_FIELD_NUMBER = 496;
+  /**
+   * <code>.remoteagent.core.v1.HandoffAction handoff_action = 496 [json_name = "handoffAction"];</code>
+   */
+  @java.lang.Override
+  public boolean hasHandoffAction() {
+    return eventCase_ == 496;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HandoffAction handoff_action = 496 [json_name = "handoffAction"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.HandoffAction getHandoffAction() {
+    if (eventCase_ == 496) {
+       return (io.github.lewin671.remoteagent.core.proto.HandoffAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.HandoffAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.HandoffAction handoff_action = 496 [json_name = "handoffAction"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setHandoffAction(io.github.lewin671.remoteagent.core.proto.HandoffAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 496;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HandoffAction handoff_action = 496 [json_name = "handoffAction"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeHandoffAction(io.github.lewin671.remoteagent.core.proto.HandoffAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 496 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.HandoffAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.HandoffAction.newBuilder((io.github.lewin671.remoteagent.core.proto.HandoffAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 496;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HandoffAction handoff_action = 496 [json_name = "handoffAction"];</code>
+   */
+  private void clearHandoffAction() {
+    if (eventCase_ == 496) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int EXTERNAL_LOGOUT_FIELD_NUMBER = 497;
+  /**
+   * <code>.remoteagent.core.v1.ExternalLogoutEvent external_logout = 497 [json_name = "externalLogout"];</code>
+   */
+  @java.lang.Override
+  public boolean hasExternalLogout() {
+    return eventCase_ == 497;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ExternalLogoutEvent external_logout = 497 [json_name = "externalLogout"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ExternalLogoutEvent getExternalLogout() {
+    if (eventCase_ == 497) {
+       return (io.github.lewin671.remoteagent.core.proto.ExternalLogoutEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ExternalLogoutEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ExternalLogoutEvent external_logout = 497 [json_name = "externalLogout"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setExternalLogout(io.github.lewin671.remoteagent.core.proto.ExternalLogoutEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 497;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ExternalLogoutEvent external_logout = 497 [json_name = "externalLogout"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeExternalLogout(io.github.lewin671.remoteagent.core.proto.ExternalLogoutEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 497 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ExternalLogoutEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ExternalLogoutEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.ExternalLogoutEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 497;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ExternalLogoutEvent external_logout = 497 [json_name = "externalLogout"];</code>
+   */
+  private void clearExternalLogout() {
+    if (eventCase_ == 497) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int EXIT_REQUEST_FIELD_NUMBER = 498;
+  /**
+   * <code>.remoteagent.core.v1.ExitRequestAction exit_request = 498 [json_name = "exitRequest"];</code>
+   */
+  @java.lang.Override
+  public boolean hasExitRequest() {
+    return eventCase_ == 498;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ExitRequestAction exit_request = 498 [json_name = "exitRequest"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ExitRequestAction getExitRequest() {
+    if (eventCase_ == 498) {
+       return (io.github.lewin671.remoteagent.core.proto.ExitRequestAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ExitRequestAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ExitRequestAction exit_request = 498 [json_name = "exitRequest"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setExitRequest(io.github.lewin671.remoteagent.core.proto.ExitRequestAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 498;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ExitRequestAction exit_request = 498 [json_name = "exitRequest"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeExitRequest(io.github.lewin671.remoteagent.core.proto.ExitRequestAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 498 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ExitRequestAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ExitRequestAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ExitRequestAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 498;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ExitRequestAction exit_request = 498 [json_name = "exitRequest"];</code>
+   */
+  private void clearExitRequest() {
+    if (eventCase_ == 498) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int EXIT_CONFIRM_FIELD_NUMBER = 499;
+  /**
+   * <code>.remoteagent.core.v1.ExitConfirmAction exit_confirm = 499 [json_name = "exitConfirm"];</code>
+   */
+  @java.lang.Override
+  public boolean hasExitConfirm() {
+    return eventCase_ == 499;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ExitConfirmAction exit_confirm = 499 [json_name = "exitConfirm"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ExitConfirmAction getExitConfirm() {
+    if (eventCase_ == 499) {
+       return (io.github.lewin671.remoteagent.core.proto.ExitConfirmAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ExitConfirmAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ExitConfirmAction exit_confirm = 499 [json_name = "exitConfirm"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setExitConfirm(io.github.lewin671.remoteagent.core.proto.ExitConfirmAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 499;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ExitConfirmAction exit_confirm = 499 [json_name = "exitConfirm"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeExitConfirm(io.github.lewin671.remoteagent.core.proto.ExitConfirmAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 499 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ExitConfirmAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ExitConfirmAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ExitConfirmAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 499;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ExitConfirmAction exit_confirm = 499 [json_name = "exitConfirm"];</code>
+   */
+  private void clearExitConfirm() {
+    if (eventCase_ == 499) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
   public static final int NOW_MS_FIELD_NUMBER = 98;
   private long nowMs_;
   /**
@@ -24895,6 +26373,1326 @@ public  final class Event extends
     }
 
     /**
+     * <pre>
+     * Security UI views, single-core startup &amp; exit (470-499).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.ClientInitEvent client_init = 470 [json_name = "clientInit"];</code>
+     */
+    @java.lang.Override
+    public boolean hasClientInit() {
+      return instance.hasClientInit();
+    }
+    /**
+     * <pre>
+     * Security UI views, single-core startup &amp; exit (470-499).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.ClientInitEvent client_init = 470 [json_name = "clientInit"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ClientInitEvent getClientInit() {
+      return instance.getClientInit();
+    }
+    /**
+     * <pre>
+     * Security UI views, single-core startup &amp; exit (470-499).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.ClientInitEvent client_init = 470 [json_name = "clientInit"];</code>
+     */
+    public Builder setClientInit(io.github.lewin671.remoteagent.core.proto.ClientInitEvent value) {
+      copyOnWrite();
+      instance.setClientInit(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Security UI views, single-core startup &amp; exit (470-499).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.ClientInitEvent client_init = 470 [json_name = "clientInit"];</code>
+     */
+    public Builder setClientInit(
+        io.github.lewin671.remoteagent.core.proto.ClientInitEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setClientInit(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Security UI views, single-core startup &amp; exit (470-499).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.ClientInitEvent client_init = 470 [json_name = "clientInit"];</code>
+     */
+    public Builder mergeClientInit(io.github.lewin671.remoteagent.core.proto.ClientInitEvent value) {
+      copyOnWrite();
+      instance.mergeClientInit(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Security UI views, single-core startup &amp; exit (470-499).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.ClientInitEvent client_init = 470 [json_name = "clientInit"];</code>
+     */
+    public Builder clearClientInit() {
+      copyOnWrite();
+      instance.clearClientInit();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.StoragePersistResultEvent storage_persist_result = 471 [json_name = "storagePersistResult"];</code>
+     */
+    @java.lang.Override
+    public boolean hasStoragePersistResult() {
+      return instance.hasStoragePersistResult();
+    }
+    /**
+     * <code>.remoteagent.core.v1.StoragePersistResultEvent storage_persist_result = 471 [json_name = "storagePersistResult"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.StoragePersistResultEvent getStoragePersistResult() {
+      return instance.getStoragePersistResult();
+    }
+    /**
+     * <code>.remoteagent.core.v1.StoragePersistResultEvent storage_persist_result = 471 [json_name = "storagePersistResult"];</code>
+     */
+    public Builder setStoragePersistResult(io.github.lewin671.remoteagent.core.proto.StoragePersistResultEvent value) {
+      copyOnWrite();
+      instance.setStoragePersistResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.StoragePersistResultEvent storage_persist_result = 471 [json_name = "storagePersistResult"];</code>
+     */
+    public Builder setStoragePersistResult(
+        io.github.lewin671.remoteagent.core.proto.StoragePersistResultEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setStoragePersistResult(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.StoragePersistResultEvent storage_persist_result = 471 [json_name = "storagePersistResult"];</code>
+     */
+    public Builder mergeStoragePersistResult(io.github.lewin671.remoteagent.core.proto.StoragePersistResultEvent value) {
+      copyOnWrite();
+      instance.mergeStoragePersistResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.StoragePersistResultEvent storage_persist_result = 471 [json_name = "storagePersistResult"];</code>
+     */
+    public Builder clearStoragePersistResult() {
+      copyOnWrite();
+      instance.clearStoragePersistResult();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.PushUnregisteredEvent push_unregistered = 472 [json_name = "pushUnregistered"];</code>
+     */
+    @java.lang.Override
+    public boolean hasPushUnregistered() {
+      return instance.hasPushUnregistered();
+    }
+    /**
+     * <code>.remoteagent.core.v1.PushUnregisteredEvent push_unregistered = 472 [json_name = "pushUnregistered"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.PushUnregisteredEvent getPushUnregistered() {
+      return instance.getPushUnregistered();
+    }
+    /**
+     * <code>.remoteagent.core.v1.PushUnregisteredEvent push_unregistered = 472 [json_name = "pushUnregistered"];</code>
+     */
+    public Builder setPushUnregistered(io.github.lewin671.remoteagent.core.proto.PushUnregisteredEvent value) {
+      copyOnWrite();
+      instance.setPushUnregistered(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PushUnregisteredEvent push_unregistered = 472 [json_name = "pushUnregistered"];</code>
+     */
+    public Builder setPushUnregistered(
+        io.github.lewin671.remoteagent.core.proto.PushUnregisteredEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setPushUnregistered(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PushUnregisteredEvent push_unregistered = 472 [json_name = "pushUnregistered"];</code>
+     */
+    public Builder mergePushUnregistered(io.github.lewin671.remoteagent.core.proto.PushUnregisteredEvent value) {
+      copyOnWrite();
+      instance.mergePushUnregistered(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PushUnregisteredEvent push_unregistered = 472 [json_name = "pushUnregistered"];</code>
+     */
+    public Builder clearPushUnregistered() {
+      copyOnWrite();
+      instance.clearPushUnregistered();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.AccountCachesClearedEvent account_caches_cleared = 473 [json_name = "accountCachesCleared"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAccountCachesCleared() {
+      return instance.hasAccountCachesCleared();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountCachesClearedEvent account_caches_cleared = 473 [json_name = "accountCachesCleared"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AccountCachesClearedEvent getAccountCachesCleared() {
+      return instance.getAccountCachesCleared();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountCachesClearedEvent account_caches_cleared = 473 [json_name = "accountCachesCleared"];</code>
+     */
+    public Builder setAccountCachesCleared(io.github.lewin671.remoteagent.core.proto.AccountCachesClearedEvent value) {
+      copyOnWrite();
+      instance.setAccountCachesCleared(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountCachesClearedEvent account_caches_cleared = 473 [json_name = "accountCachesCleared"];</code>
+     */
+    public Builder setAccountCachesCleared(
+        io.github.lewin671.remoteagent.core.proto.AccountCachesClearedEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAccountCachesCleared(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountCachesClearedEvent account_caches_cleared = 473 [json_name = "accountCachesCleared"];</code>
+     */
+    public Builder mergeAccountCachesCleared(io.github.lewin671.remoteagent.core.proto.AccountCachesClearedEvent value) {
+      copyOnWrite();
+      instance.mergeAccountCachesCleared(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountCachesClearedEvent account_caches_cleared = 473 [json_name = "accountCachesCleared"];</code>
+     */
+    public Builder clearAccountCachesCleared() {
+      copyOnWrite();
+      instance.clearAccountCachesCleared();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.AppRootRetryBootstrapAction app_root_retry_bootstrap = 474 [json_name = "appRootRetryBootstrap"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAppRootRetryBootstrap() {
+      return instance.hasAppRootRetryBootstrap();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootRetryBootstrapAction app_root_retry_bootstrap = 474 [json_name = "appRootRetryBootstrap"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AppRootRetryBootstrapAction getAppRootRetryBootstrap() {
+      return instance.getAppRootRetryBootstrap();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootRetryBootstrapAction app_root_retry_bootstrap = 474 [json_name = "appRootRetryBootstrap"];</code>
+     */
+    public Builder setAppRootRetryBootstrap(io.github.lewin671.remoteagent.core.proto.AppRootRetryBootstrapAction value) {
+      copyOnWrite();
+      instance.setAppRootRetryBootstrap(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootRetryBootstrapAction app_root_retry_bootstrap = 474 [json_name = "appRootRetryBootstrap"];</code>
+     */
+    public Builder setAppRootRetryBootstrap(
+        io.github.lewin671.remoteagent.core.proto.AppRootRetryBootstrapAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAppRootRetryBootstrap(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootRetryBootstrapAction app_root_retry_bootstrap = 474 [json_name = "appRootRetryBootstrap"];</code>
+     */
+    public Builder mergeAppRootRetryBootstrap(io.github.lewin671.remoteagent.core.proto.AppRootRetryBootstrapAction value) {
+      copyOnWrite();
+      instance.mergeAppRootRetryBootstrap(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootRetryBootstrapAction app_root_retry_bootstrap = 474 [json_name = "appRootRetryBootstrap"];</code>
+     */
+    public Builder clearAppRootRetryBootstrap() {
+      copyOnWrite();
+      instance.clearAppRootRetryBootstrap();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.AppRootVerifyPendingOpAction app_root_verify_pending_op = 475 [json_name = "appRootVerifyPendingOp"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAppRootVerifyPendingOp() {
+      return instance.hasAppRootVerifyPendingOp();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootVerifyPendingOpAction app_root_verify_pending_op = 475 [json_name = "appRootVerifyPendingOp"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AppRootVerifyPendingOpAction getAppRootVerifyPendingOp() {
+      return instance.getAppRootVerifyPendingOp();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootVerifyPendingOpAction app_root_verify_pending_op = 475 [json_name = "appRootVerifyPendingOp"];</code>
+     */
+    public Builder setAppRootVerifyPendingOp(io.github.lewin671.remoteagent.core.proto.AppRootVerifyPendingOpAction value) {
+      copyOnWrite();
+      instance.setAppRootVerifyPendingOp(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootVerifyPendingOpAction app_root_verify_pending_op = 475 [json_name = "appRootVerifyPendingOp"];</code>
+     */
+    public Builder setAppRootVerifyPendingOp(
+        io.github.lewin671.remoteagent.core.proto.AppRootVerifyPendingOpAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAppRootVerifyPendingOp(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootVerifyPendingOpAction app_root_verify_pending_op = 475 [json_name = "appRootVerifyPendingOp"];</code>
+     */
+    public Builder mergeAppRootVerifyPendingOp(io.github.lewin671.remoteagent.core.proto.AppRootVerifyPendingOpAction value) {
+      copyOnWrite();
+      instance.mergeAppRootVerifyPendingOp(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootVerifyPendingOpAction app_root_verify_pending_op = 475 [json_name = "appRootVerifyPendingOp"];</code>
+     */
+    public Builder clearAppRootVerifyPendingOp() {
+      copyOnWrite();
+      instance.clearAppRootVerifyPendingOp();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.AppRootDismissUpgradeNoticeAction app_root_dismiss_upgrade_notice = 476 [json_name = "appRootDismissUpgradeNotice"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAppRootDismissUpgradeNotice() {
+      return instance.hasAppRootDismissUpgradeNotice();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootDismissUpgradeNoticeAction app_root_dismiss_upgrade_notice = 476 [json_name = "appRootDismissUpgradeNotice"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AppRootDismissUpgradeNoticeAction getAppRootDismissUpgradeNotice() {
+      return instance.getAppRootDismissUpgradeNotice();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootDismissUpgradeNoticeAction app_root_dismiss_upgrade_notice = 476 [json_name = "appRootDismissUpgradeNotice"];</code>
+     */
+    public Builder setAppRootDismissUpgradeNotice(io.github.lewin671.remoteagent.core.proto.AppRootDismissUpgradeNoticeAction value) {
+      copyOnWrite();
+      instance.setAppRootDismissUpgradeNotice(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootDismissUpgradeNoticeAction app_root_dismiss_upgrade_notice = 476 [json_name = "appRootDismissUpgradeNotice"];</code>
+     */
+    public Builder setAppRootDismissUpgradeNotice(
+        io.github.lewin671.remoteagent.core.proto.AppRootDismissUpgradeNoticeAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAppRootDismissUpgradeNotice(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootDismissUpgradeNoticeAction app_root_dismiss_upgrade_notice = 476 [json_name = "appRootDismissUpgradeNotice"];</code>
+     */
+    public Builder mergeAppRootDismissUpgradeNotice(io.github.lewin671.remoteagent.core.proto.AppRootDismissUpgradeNoticeAction value) {
+      copyOnWrite();
+      instance.mergeAppRootDismissUpgradeNotice(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AppRootDismissUpgradeNoticeAction app_root_dismiss_upgrade_notice = 476 [json_name = "appRootDismissUpgradeNotice"];</code>
+     */
+    public Builder clearAppRootDismissUpgradeNotice() {
+      copyOnWrite();
+      instance.clearAppRootDismissUpgradeNotice();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.OnboardingSetModeAction onboarding_set_mode = 477 [json_name = "onboardingSetMode"];</code>
+     */
+    @java.lang.Override
+    public boolean hasOnboardingSetMode() {
+      return instance.hasOnboardingSetMode();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingSetModeAction onboarding_set_mode = 477 [json_name = "onboardingSetMode"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.OnboardingSetModeAction getOnboardingSetMode() {
+      return instance.getOnboardingSetMode();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingSetModeAction onboarding_set_mode = 477 [json_name = "onboardingSetMode"];</code>
+     */
+    public Builder setOnboardingSetMode(io.github.lewin671.remoteagent.core.proto.OnboardingSetModeAction value) {
+      copyOnWrite();
+      instance.setOnboardingSetMode(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingSetModeAction onboarding_set_mode = 477 [json_name = "onboardingSetMode"];</code>
+     */
+    public Builder setOnboardingSetMode(
+        io.github.lewin671.remoteagent.core.proto.OnboardingSetModeAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setOnboardingSetMode(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingSetModeAction onboarding_set_mode = 477 [json_name = "onboardingSetMode"];</code>
+     */
+    public Builder mergeOnboardingSetMode(io.github.lewin671.remoteagent.core.proto.OnboardingSetModeAction value) {
+      copyOnWrite();
+      instance.mergeOnboardingSetMode(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingSetModeAction onboarding_set_mode = 477 [json_name = "onboardingSetMode"];</code>
+     */
+    public Builder clearOnboardingSetMode() {
+      copyOnWrite();
+      instance.clearOnboardingSetMode();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.OnboardingCreateEditAction onboarding_create_edit = 478 [json_name = "onboardingCreateEdit"];</code>
+     */
+    @java.lang.Override
+    public boolean hasOnboardingCreateEdit() {
+      return instance.hasOnboardingCreateEdit();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingCreateEditAction onboarding_create_edit = 478 [json_name = "onboardingCreateEdit"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.OnboardingCreateEditAction getOnboardingCreateEdit() {
+      return instance.getOnboardingCreateEdit();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingCreateEditAction onboarding_create_edit = 478 [json_name = "onboardingCreateEdit"];</code>
+     */
+    public Builder setOnboardingCreateEdit(io.github.lewin671.remoteagent.core.proto.OnboardingCreateEditAction value) {
+      copyOnWrite();
+      instance.setOnboardingCreateEdit(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingCreateEditAction onboarding_create_edit = 478 [json_name = "onboardingCreateEdit"];</code>
+     */
+    public Builder setOnboardingCreateEdit(
+        io.github.lewin671.remoteagent.core.proto.OnboardingCreateEditAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setOnboardingCreateEdit(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingCreateEditAction onboarding_create_edit = 478 [json_name = "onboardingCreateEdit"];</code>
+     */
+    public Builder mergeOnboardingCreateEdit(io.github.lewin671.remoteagent.core.proto.OnboardingCreateEditAction value) {
+      copyOnWrite();
+      instance.mergeOnboardingCreateEdit(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingCreateEditAction onboarding_create_edit = 478 [json_name = "onboardingCreateEdit"];</code>
+     */
+    public Builder clearOnboardingCreateEdit() {
+      copyOnWrite();
+      instance.clearOnboardingCreateEdit();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.OnboardingCreateSubmitAction onboarding_create_submit = 479 [json_name = "onboardingCreateSubmit"];</code>
+     */
+    @java.lang.Override
+    public boolean hasOnboardingCreateSubmit() {
+      return instance.hasOnboardingCreateSubmit();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingCreateSubmitAction onboarding_create_submit = 479 [json_name = "onboardingCreateSubmit"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.OnboardingCreateSubmitAction getOnboardingCreateSubmit() {
+      return instance.getOnboardingCreateSubmit();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingCreateSubmitAction onboarding_create_submit = 479 [json_name = "onboardingCreateSubmit"];</code>
+     */
+    public Builder setOnboardingCreateSubmit(io.github.lewin671.remoteagent.core.proto.OnboardingCreateSubmitAction value) {
+      copyOnWrite();
+      instance.setOnboardingCreateSubmit(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingCreateSubmitAction onboarding_create_submit = 479 [json_name = "onboardingCreateSubmit"];</code>
+     */
+    public Builder setOnboardingCreateSubmit(
+        io.github.lewin671.remoteagent.core.proto.OnboardingCreateSubmitAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setOnboardingCreateSubmit(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingCreateSubmitAction onboarding_create_submit = 479 [json_name = "onboardingCreateSubmit"];</code>
+     */
+    public Builder mergeOnboardingCreateSubmit(io.github.lewin671.remoteagent.core.proto.OnboardingCreateSubmitAction value) {
+      copyOnWrite();
+      instance.mergeOnboardingCreateSubmit(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingCreateSubmitAction onboarding_create_submit = 479 [json_name = "onboardingCreateSubmit"];</code>
+     */
+    public Builder clearOnboardingCreateSubmit() {
+      copyOnWrite();
+      instance.clearOnboardingCreateSubmit();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinEditAction onboarding_join_edit = 480 [json_name = "onboardingJoinEdit"];</code>
+     */
+    @java.lang.Override
+    public boolean hasOnboardingJoinEdit() {
+      return instance.hasOnboardingJoinEdit();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinEditAction onboarding_join_edit = 480 [json_name = "onboardingJoinEdit"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.OnboardingJoinEditAction getOnboardingJoinEdit() {
+      return instance.getOnboardingJoinEdit();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinEditAction onboarding_join_edit = 480 [json_name = "onboardingJoinEdit"];</code>
+     */
+    public Builder setOnboardingJoinEdit(io.github.lewin671.remoteagent.core.proto.OnboardingJoinEditAction value) {
+      copyOnWrite();
+      instance.setOnboardingJoinEdit(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinEditAction onboarding_join_edit = 480 [json_name = "onboardingJoinEdit"];</code>
+     */
+    public Builder setOnboardingJoinEdit(
+        io.github.lewin671.remoteagent.core.proto.OnboardingJoinEditAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setOnboardingJoinEdit(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinEditAction onboarding_join_edit = 480 [json_name = "onboardingJoinEdit"];</code>
+     */
+    public Builder mergeOnboardingJoinEdit(io.github.lewin671.remoteagent.core.proto.OnboardingJoinEditAction value) {
+      copyOnWrite();
+      instance.mergeOnboardingJoinEdit(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinEditAction onboarding_join_edit = 480 [json_name = "onboardingJoinEdit"];</code>
+     */
+    public Builder clearOnboardingJoinEdit() {
+      copyOnWrite();
+      instance.clearOnboardingJoinEdit();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinSubmitAction onboarding_join_submit = 481 [json_name = "onboardingJoinSubmit"];</code>
+     */
+    @java.lang.Override
+    public boolean hasOnboardingJoinSubmit() {
+      return instance.hasOnboardingJoinSubmit();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinSubmitAction onboarding_join_submit = 481 [json_name = "onboardingJoinSubmit"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.OnboardingJoinSubmitAction getOnboardingJoinSubmit() {
+      return instance.getOnboardingJoinSubmit();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinSubmitAction onboarding_join_submit = 481 [json_name = "onboardingJoinSubmit"];</code>
+     */
+    public Builder setOnboardingJoinSubmit(io.github.lewin671.remoteagent.core.proto.OnboardingJoinSubmitAction value) {
+      copyOnWrite();
+      instance.setOnboardingJoinSubmit(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinSubmitAction onboarding_join_submit = 481 [json_name = "onboardingJoinSubmit"];</code>
+     */
+    public Builder setOnboardingJoinSubmit(
+        io.github.lewin671.remoteagent.core.proto.OnboardingJoinSubmitAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setOnboardingJoinSubmit(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinSubmitAction onboarding_join_submit = 481 [json_name = "onboardingJoinSubmit"];</code>
+     */
+    public Builder mergeOnboardingJoinSubmit(io.github.lewin671.remoteagent.core.proto.OnboardingJoinSubmitAction value) {
+      copyOnWrite();
+      instance.mergeOnboardingJoinSubmit(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinSubmitAction onboarding_join_submit = 481 [json_name = "onboardingJoinSubmit"];</code>
+     */
+    public Builder clearOnboardingJoinSubmit() {
+      copyOnWrite();
+      instance.clearOnboardingJoinSubmit();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinConfirmSasAction onboarding_join_confirm_sas = 482 [json_name = "onboardingJoinConfirmSas"];</code>
+     */
+    @java.lang.Override
+    public boolean hasOnboardingJoinConfirmSas() {
+      return instance.hasOnboardingJoinConfirmSas();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinConfirmSasAction onboarding_join_confirm_sas = 482 [json_name = "onboardingJoinConfirmSas"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.OnboardingJoinConfirmSasAction getOnboardingJoinConfirmSas() {
+      return instance.getOnboardingJoinConfirmSas();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinConfirmSasAction onboarding_join_confirm_sas = 482 [json_name = "onboardingJoinConfirmSas"];</code>
+     */
+    public Builder setOnboardingJoinConfirmSas(io.github.lewin671.remoteagent.core.proto.OnboardingJoinConfirmSasAction value) {
+      copyOnWrite();
+      instance.setOnboardingJoinConfirmSas(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinConfirmSasAction onboarding_join_confirm_sas = 482 [json_name = "onboardingJoinConfirmSas"];</code>
+     */
+    public Builder setOnboardingJoinConfirmSas(
+        io.github.lewin671.remoteagent.core.proto.OnboardingJoinConfirmSasAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setOnboardingJoinConfirmSas(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinConfirmSasAction onboarding_join_confirm_sas = 482 [json_name = "onboardingJoinConfirmSas"];</code>
+     */
+    public Builder mergeOnboardingJoinConfirmSas(io.github.lewin671.remoteagent.core.proto.OnboardingJoinConfirmSasAction value) {
+      copyOnWrite();
+      instance.mergeOnboardingJoinConfirmSas(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinConfirmSasAction onboarding_join_confirm_sas = 482 [json_name = "onboardingJoinConfirmSas"];</code>
+     */
+    public Builder clearOnboardingJoinConfirmSas() {
+      copyOnWrite();
+      instance.clearOnboardingJoinConfirmSas();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinCancelAction onboarding_join_cancel = 483 [json_name = "onboardingJoinCancel"];</code>
+     */
+    @java.lang.Override
+    public boolean hasOnboardingJoinCancel() {
+      return instance.hasOnboardingJoinCancel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinCancelAction onboarding_join_cancel = 483 [json_name = "onboardingJoinCancel"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.OnboardingJoinCancelAction getOnboardingJoinCancel() {
+      return instance.getOnboardingJoinCancel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinCancelAction onboarding_join_cancel = 483 [json_name = "onboardingJoinCancel"];</code>
+     */
+    public Builder setOnboardingJoinCancel(io.github.lewin671.remoteagent.core.proto.OnboardingJoinCancelAction value) {
+      copyOnWrite();
+      instance.setOnboardingJoinCancel(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinCancelAction onboarding_join_cancel = 483 [json_name = "onboardingJoinCancel"];</code>
+     */
+    public Builder setOnboardingJoinCancel(
+        io.github.lewin671.remoteagent.core.proto.OnboardingJoinCancelAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setOnboardingJoinCancel(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinCancelAction onboarding_join_cancel = 483 [json_name = "onboardingJoinCancel"];</code>
+     */
+    public Builder mergeOnboardingJoinCancel(io.github.lewin671.remoteagent.core.proto.OnboardingJoinCancelAction value) {
+      copyOnWrite();
+      instance.mergeOnboardingJoinCancel(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinCancelAction onboarding_join_cancel = 483 [json_name = "onboardingJoinCancel"];</code>
+     */
+    public Builder clearOnboardingJoinCancel() {
+      copyOnWrite();
+      instance.clearOnboardingJoinCancel();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinBannerAction onboarding_join_banner_action = 484 [json_name = "onboardingJoinBannerAction"];</code>
+     */
+    @java.lang.Override
+    public boolean hasOnboardingJoinBannerAction() {
+      return instance.hasOnboardingJoinBannerAction();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinBannerAction onboarding_join_banner_action = 484 [json_name = "onboardingJoinBannerAction"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.OnboardingJoinBannerAction getOnboardingJoinBannerAction() {
+      return instance.getOnboardingJoinBannerAction();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinBannerAction onboarding_join_banner_action = 484 [json_name = "onboardingJoinBannerAction"];</code>
+     */
+    public Builder setOnboardingJoinBannerAction(io.github.lewin671.remoteagent.core.proto.OnboardingJoinBannerAction value) {
+      copyOnWrite();
+      instance.setOnboardingJoinBannerAction(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinBannerAction onboarding_join_banner_action = 484 [json_name = "onboardingJoinBannerAction"];</code>
+     */
+    public Builder setOnboardingJoinBannerAction(
+        io.github.lewin671.remoteagent.core.proto.OnboardingJoinBannerAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setOnboardingJoinBannerAction(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinBannerAction onboarding_join_banner_action = 484 [json_name = "onboardingJoinBannerAction"];</code>
+     */
+    public Builder mergeOnboardingJoinBannerAction(io.github.lewin671.remoteagent.core.proto.OnboardingJoinBannerAction value) {
+      copyOnWrite();
+      instance.mergeOnboardingJoinBannerAction(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingJoinBannerAction onboarding_join_banner_action = 484 [json_name = "onboardingJoinBannerAction"];</code>
+     */
+    public Builder clearOnboardingJoinBannerAction() {
+      copyOnWrite();
+      instance.clearOnboardingJoinBannerAction();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.OnboardingRecoveryEditAction onboarding_recovery_edit = 485 [json_name = "onboardingRecoveryEdit"];</code>
+     */
+    @java.lang.Override
+    public boolean hasOnboardingRecoveryEdit() {
+      return instance.hasOnboardingRecoveryEdit();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingRecoveryEditAction onboarding_recovery_edit = 485 [json_name = "onboardingRecoveryEdit"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryEditAction getOnboardingRecoveryEdit() {
+      return instance.getOnboardingRecoveryEdit();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingRecoveryEditAction onboarding_recovery_edit = 485 [json_name = "onboardingRecoveryEdit"];</code>
+     */
+    public Builder setOnboardingRecoveryEdit(io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryEditAction value) {
+      copyOnWrite();
+      instance.setOnboardingRecoveryEdit(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingRecoveryEditAction onboarding_recovery_edit = 485 [json_name = "onboardingRecoveryEdit"];</code>
+     */
+    public Builder setOnboardingRecoveryEdit(
+        io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryEditAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setOnboardingRecoveryEdit(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingRecoveryEditAction onboarding_recovery_edit = 485 [json_name = "onboardingRecoveryEdit"];</code>
+     */
+    public Builder mergeOnboardingRecoveryEdit(io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryEditAction value) {
+      copyOnWrite();
+      instance.mergeOnboardingRecoveryEdit(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingRecoveryEditAction onboarding_recovery_edit = 485 [json_name = "onboardingRecoveryEdit"];</code>
+     */
+    public Builder clearOnboardingRecoveryEdit() {
+      copyOnWrite();
+      instance.clearOnboardingRecoveryEdit();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.OnboardingRecoveryAction onboarding_recovery_action = 486 [json_name = "onboardingRecoveryAction"];</code>
+     */
+    @java.lang.Override
+    public boolean hasOnboardingRecoveryAction() {
+      return instance.hasOnboardingRecoveryAction();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingRecoveryAction onboarding_recovery_action = 486 [json_name = "onboardingRecoveryAction"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryAction getOnboardingRecoveryAction() {
+      return instance.getOnboardingRecoveryAction();
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingRecoveryAction onboarding_recovery_action = 486 [json_name = "onboardingRecoveryAction"];</code>
+     */
+    public Builder setOnboardingRecoveryAction(io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryAction value) {
+      copyOnWrite();
+      instance.setOnboardingRecoveryAction(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingRecoveryAction onboarding_recovery_action = 486 [json_name = "onboardingRecoveryAction"];</code>
+     */
+    public Builder setOnboardingRecoveryAction(
+        io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setOnboardingRecoveryAction(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingRecoveryAction onboarding_recovery_action = 486 [json_name = "onboardingRecoveryAction"];</code>
+     */
+    public Builder mergeOnboardingRecoveryAction(io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryAction value) {
+      copyOnWrite();
+      instance.mergeOnboardingRecoveryAction(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.OnboardingRecoveryAction onboarding_recovery_action = 486 [json_name = "onboardingRecoveryAction"];</code>
+     */
+    public Builder clearOnboardingRecoveryAction() {
+      copyOnWrite();
+      instance.clearOnboardingRecoveryAction();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceOpenAction add_device_open = 489 [json_name = "addDeviceOpen"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAddDeviceOpen() {
+      return instance.hasAddDeviceOpen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceOpenAction add_device_open = 489 [json_name = "addDeviceOpen"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AddDeviceOpenAction getAddDeviceOpen() {
+      return instance.getAddDeviceOpen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceOpenAction add_device_open = 489 [json_name = "addDeviceOpen"];</code>
+     */
+    public Builder setAddDeviceOpen(io.github.lewin671.remoteagent.core.proto.AddDeviceOpenAction value) {
+      copyOnWrite();
+      instance.setAddDeviceOpen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceOpenAction add_device_open = 489 [json_name = "addDeviceOpen"];</code>
+     */
+    public Builder setAddDeviceOpen(
+        io.github.lewin671.remoteagent.core.proto.AddDeviceOpenAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAddDeviceOpen(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceOpenAction add_device_open = 489 [json_name = "addDeviceOpen"];</code>
+     */
+    public Builder mergeAddDeviceOpen(io.github.lewin671.remoteagent.core.proto.AddDeviceOpenAction value) {
+      copyOnWrite();
+      instance.mergeAddDeviceOpen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceOpenAction add_device_open = 489 [json_name = "addDeviceOpen"];</code>
+     */
+    public Builder clearAddDeviceOpen() {
+      copyOnWrite();
+      instance.clearAddDeviceOpen();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceCloseAction add_device_close = 490 [json_name = "addDeviceClose"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAddDeviceClose() {
+      return instance.hasAddDeviceClose();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceCloseAction add_device_close = 490 [json_name = "addDeviceClose"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AddDeviceCloseAction getAddDeviceClose() {
+      return instance.getAddDeviceClose();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceCloseAction add_device_close = 490 [json_name = "addDeviceClose"];</code>
+     */
+    public Builder setAddDeviceClose(io.github.lewin671.remoteagent.core.proto.AddDeviceCloseAction value) {
+      copyOnWrite();
+      instance.setAddDeviceClose(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceCloseAction add_device_close = 490 [json_name = "addDeviceClose"];</code>
+     */
+    public Builder setAddDeviceClose(
+        io.github.lewin671.remoteagent.core.proto.AddDeviceCloseAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAddDeviceClose(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceCloseAction add_device_close = 490 [json_name = "addDeviceClose"];</code>
+     */
+    public Builder mergeAddDeviceClose(io.github.lewin671.remoteagent.core.proto.AddDeviceCloseAction value) {
+      copyOnWrite();
+      instance.mergeAddDeviceClose(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceCloseAction add_device_close = 490 [json_name = "addDeviceClose"];</code>
+     */
+    public Builder clearAddDeviceClose() {
+      copyOnWrite();
+      instance.clearAddDeviceClose();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceAction add_device_action = 491 [json_name = "addDeviceAction"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAddDeviceAction() {
+      return instance.hasAddDeviceAction();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceAction add_device_action = 491 [json_name = "addDeviceAction"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AddDeviceAction getAddDeviceAction() {
+      return instance.getAddDeviceAction();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceAction add_device_action = 491 [json_name = "addDeviceAction"];</code>
+     */
+    public Builder setAddDeviceAction(io.github.lewin671.remoteagent.core.proto.AddDeviceAction value) {
+      copyOnWrite();
+      instance.setAddDeviceAction(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceAction add_device_action = 491 [json_name = "addDeviceAction"];</code>
+     */
+    public Builder setAddDeviceAction(
+        io.github.lewin671.remoteagent.core.proto.AddDeviceAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAddDeviceAction(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceAction add_device_action = 491 [json_name = "addDeviceAction"];</code>
+     */
+    public Builder mergeAddDeviceAction(io.github.lewin671.remoteagent.core.proto.AddDeviceAction value) {
+      copyOnWrite();
+      instance.mergeAddDeviceAction(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AddDeviceAction add_device_action = 491 [json_name = "addDeviceAction"];</code>
+     */
+    public Builder clearAddDeviceAction() {
+      copyOnWrite();
+      instance.clearAddDeviceAction();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityOpenAction account_security_open = 493 [json_name = "accountSecurityOpen"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAccountSecurityOpen() {
+      return instance.hasAccountSecurityOpen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityOpenAction account_security_open = 493 [json_name = "accountSecurityOpen"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AccountSecurityOpenAction getAccountSecurityOpen() {
+      return instance.getAccountSecurityOpen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityOpenAction account_security_open = 493 [json_name = "accountSecurityOpen"];</code>
+     */
+    public Builder setAccountSecurityOpen(io.github.lewin671.remoteagent.core.proto.AccountSecurityOpenAction value) {
+      copyOnWrite();
+      instance.setAccountSecurityOpen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityOpenAction account_security_open = 493 [json_name = "accountSecurityOpen"];</code>
+     */
+    public Builder setAccountSecurityOpen(
+        io.github.lewin671.remoteagent.core.proto.AccountSecurityOpenAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAccountSecurityOpen(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityOpenAction account_security_open = 493 [json_name = "accountSecurityOpen"];</code>
+     */
+    public Builder mergeAccountSecurityOpen(io.github.lewin671.remoteagent.core.proto.AccountSecurityOpenAction value) {
+      copyOnWrite();
+      instance.mergeAccountSecurityOpen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityOpenAction account_security_open = 493 [json_name = "accountSecurityOpen"];</code>
+     */
+    public Builder clearAccountSecurityOpen() {
+      copyOnWrite();
+      instance.clearAccountSecurityOpen();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityAction account_security_action = 494 [json_name = "accountSecurityAction"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAccountSecurityAction() {
+      return instance.hasAccountSecurityAction();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityAction account_security_action = 494 [json_name = "accountSecurityAction"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AccountSecurityAction getAccountSecurityAction() {
+      return instance.getAccountSecurityAction();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityAction account_security_action = 494 [json_name = "accountSecurityAction"];</code>
+     */
+    public Builder setAccountSecurityAction(io.github.lewin671.remoteagent.core.proto.AccountSecurityAction value) {
+      copyOnWrite();
+      instance.setAccountSecurityAction(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityAction account_security_action = 494 [json_name = "accountSecurityAction"];</code>
+     */
+    public Builder setAccountSecurityAction(
+        io.github.lewin671.remoteagent.core.proto.AccountSecurityAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAccountSecurityAction(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityAction account_security_action = 494 [json_name = "accountSecurityAction"];</code>
+     */
+    public Builder mergeAccountSecurityAction(io.github.lewin671.remoteagent.core.proto.AccountSecurityAction value) {
+      copyOnWrite();
+      instance.mergeAccountSecurityAction(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityAction account_security_action = 494 [json_name = "accountSecurityAction"];</code>
+     */
+    public Builder clearAccountSecurityAction() {
+      copyOnWrite();
+      instance.clearAccountSecurityAction();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityCloseAction account_security_close = 495 [json_name = "accountSecurityClose"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAccountSecurityClose() {
+      return instance.hasAccountSecurityClose();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityCloseAction account_security_close = 495 [json_name = "accountSecurityClose"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AccountSecurityCloseAction getAccountSecurityClose() {
+      return instance.getAccountSecurityClose();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityCloseAction account_security_close = 495 [json_name = "accountSecurityClose"];</code>
+     */
+    public Builder setAccountSecurityClose(io.github.lewin671.remoteagent.core.proto.AccountSecurityCloseAction value) {
+      copyOnWrite();
+      instance.setAccountSecurityClose(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityCloseAction account_security_close = 495 [json_name = "accountSecurityClose"];</code>
+     */
+    public Builder setAccountSecurityClose(
+        io.github.lewin671.remoteagent.core.proto.AccountSecurityCloseAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAccountSecurityClose(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityCloseAction account_security_close = 495 [json_name = "accountSecurityClose"];</code>
+     */
+    public Builder mergeAccountSecurityClose(io.github.lewin671.remoteagent.core.proto.AccountSecurityCloseAction value) {
+      copyOnWrite();
+      instance.mergeAccountSecurityClose(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AccountSecurityCloseAction account_security_close = 495 [json_name = "accountSecurityClose"];</code>
+     */
+    public Builder clearAccountSecurityClose() {
+      copyOnWrite();
+      instance.clearAccountSecurityClose();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.HandoffAction handoff_action = 496 [json_name = "handoffAction"];</code>
+     */
+    @java.lang.Override
+    public boolean hasHandoffAction() {
+      return instance.hasHandoffAction();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HandoffAction handoff_action = 496 [json_name = "handoffAction"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.HandoffAction getHandoffAction() {
+      return instance.getHandoffAction();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HandoffAction handoff_action = 496 [json_name = "handoffAction"];</code>
+     */
+    public Builder setHandoffAction(io.github.lewin671.remoteagent.core.proto.HandoffAction value) {
+      copyOnWrite();
+      instance.setHandoffAction(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HandoffAction handoff_action = 496 [json_name = "handoffAction"];</code>
+     */
+    public Builder setHandoffAction(
+        io.github.lewin671.remoteagent.core.proto.HandoffAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setHandoffAction(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HandoffAction handoff_action = 496 [json_name = "handoffAction"];</code>
+     */
+    public Builder mergeHandoffAction(io.github.lewin671.remoteagent.core.proto.HandoffAction value) {
+      copyOnWrite();
+      instance.mergeHandoffAction(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HandoffAction handoff_action = 496 [json_name = "handoffAction"];</code>
+     */
+    public Builder clearHandoffAction() {
+      copyOnWrite();
+      instance.clearHandoffAction();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ExternalLogoutEvent external_logout = 497 [json_name = "externalLogout"];</code>
+     */
+    @java.lang.Override
+    public boolean hasExternalLogout() {
+      return instance.hasExternalLogout();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExternalLogoutEvent external_logout = 497 [json_name = "externalLogout"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ExternalLogoutEvent getExternalLogout() {
+      return instance.getExternalLogout();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExternalLogoutEvent external_logout = 497 [json_name = "externalLogout"];</code>
+     */
+    public Builder setExternalLogout(io.github.lewin671.remoteagent.core.proto.ExternalLogoutEvent value) {
+      copyOnWrite();
+      instance.setExternalLogout(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExternalLogoutEvent external_logout = 497 [json_name = "externalLogout"];</code>
+     */
+    public Builder setExternalLogout(
+        io.github.lewin671.remoteagent.core.proto.ExternalLogoutEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setExternalLogout(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExternalLogoutEvent external_logout = 497 [json_name = "externalLogout"];</code>
+     */
+    public Builder mergeExternalLogout(io.github.lewin671.remoteagent.core.proto.ExternalLogoutEvent value) {
+      copyOnWrite();
+      instance.mergeExternalLogout(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExternalLogoutEvent external_logout = 497 [json_name = "externalLogout"];</code>
+     */
+    public Builder clearExternalLogout() {
+      copyOnWrite();
+      instance.clearExternalLogout();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ExitRequestAction exit_request = 498 [json_name = "exitRequest"];</code>
+     */
+    @java.lang.Override
+    public boolean hasExitRequest() {
+      return instance.hasExitRequest();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExitRequestAction exit_request = 498 [json_name = "exitRequest"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ExitRequestAction getExitRequest() {
+      return instance.getExitRequest();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExitRequestAction exit_request = 498 [json_name = "exitRequest"];</code>
+     */
+    public Builder setExitRequest(io.github.lewin671.remoteagent.core.proto.ExitRequestAction value) {
+      copyOnWrite();
+      instance.setExitRequest(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExitRequestAction exit_request = 498 [json_name = "exitRequest"];</code>
+     */
+    public Builder setExitRequest(
+        io.github.lewin671.remoteagent.core.proto.ExitRequestAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setExitRequest(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExitRequestAction exit_request = 498 [json_name = "exitRequest"];</code>
+     */
+    public Builder mergeExitRequest(io.github.lewin671.remoteagent.core.proto.ExitRequestAction value) {
+      copyOnWrite();
+      instance.mergeExitRequest(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExitRequestAction exit_request = 498 [json_name = "exitRequest"];</code>
+     */
+    public Builder clearExitRequest() {
+      copyOnWrite();
+      instance.clearExitRequest();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ExitConfirmAction exit_confirm = 499 [json_name = "exitConfirm"];</code>
+     */
+    @java.lang.Override
+    public boolean hasExitConfirm() {
+      return instance.hasExitConfirm();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExitConfirmAction exit_confirm = 499 [json_name = "exitConfirm"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ExitConfirmAction getExitConfirm() {
+      return instance.getExitConfirm();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExitConfirmAction exit_confirm = 499 [json_name = "exitConfirm"];</code>
+     */
+    public Builder setExitConfirm(io.github.lewin671.remoteagent.core.proto.ExitConfirmAction value) {
+      copyOnWrite();
+      instance.setExitConfirm(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExitConfirmAction exit_confirm = 499 [json_name = "exitConfirm"];</code>
+     */
+    public Builder setExitConfirm(
+        io.github.lewin671.remoteagent.core.proto.ExitConfirmAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setExitConfirm(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExitConfirmAction exit_confirm = 499 [json_name = "exitConfirm"];</code>
+     */
+    public Builder mergeExitConfirm(io.github.lewin671.remoteagent.core.proto.ExitConfirmAction value) {
+      copyOnWrite();
+      instance.mergeExitConfirm(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ExitConfirmAction exit_confirm = 499 [json_name = "exitConfirm"];</code>
+     */
+    public Builder clearExitConfirm() {
+      copyOnWrite();
+      instance.clearExitConfirm();
+      return this;
+    }
+
+    /**
      * <code>int64 now_ms = 98 [json_name = "nowMs"];</code>
      * @return The nowMs.
      */
@@ -25372,9 +28170,36 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.SecurityForegroundEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityWorkflowActionEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityOpenNotifyEvent.class,
+            io.github.lewin671.remoteagent.core.proto.ClientInitEvent.class,
+            io.github.lewin671.remoteagent.core.proto.StoragePersistResultEvent.class,
+            io.github.lewin671.remoteagent.core.proto.PushUnregisteredEvent.class,
+            io.github.lewin671.remoteagent.core.proto.AccountCachesClearedEvent.class,
+            io.github.lewin671.remoteagent.core.proto.AppRootRetryBootstrapAction.class,
+            io.github.lewin671.remoteagent.core.proto.AppRootVerifyPendingOpAction.class,
+            io.github.lewin671.remoteagent.core.proto.AppRootDismissUpgradeNoticeAction.class,
+            io.github.lewin671.remoteagent.core.proto.OnboardingSetModeAction.class,
+            io.github.lewin671.remoteagent.core.proto.OnboardingCreateEditAction.class,
+            io.github.lewin671.remoteagent.core.proto.OnboardingCreateSubmitAction.class,
+            io.github.lewin671.remoteagent.core.proto.OnboardingJoinEditAction.class,
+            io.github.lewin671.remoteagent.core.proto.OnboardingJoinSubmitAction.class,
+            io.github.lewin671.remoteagent.core.proto.OnboardingJoinConfirmSasAction.class,
+            io.github.lewin671.remoteagent.core.proto.OnboardingJoinCancelAction.class,
+            io.github.lewin671.remoteagent.core.proto.OnboardingJoinBannerAction.class,
+            io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryEditAction.class,
+            io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryAction.class,
+            io.github.lewin671.remoteagent.core.proto.AddDeviceOpenAction.class,
+            io.github.lewin671.remoteagent.core.proto.AddDeviceCloseAction.class,
+            io.github.lewin671.remoteagent.core.proto.AddDeviceAction.class,
+            io.github.lewin671.remoteagent.core.proto.AccountSecurityOpenAction.class,
+            io.github.lewin671.remoteagent.core.proto.AccountSecurityAction.class,
+            io.github.lewin671.remoteagent.core.proto.AccountSecurityCloseAction.class,
+            io.github.lewin671.remoteagent.core.proto.HandoffAction.class,
+            io.github.lewin671.remoteagent.core.proto.ExternalLogoutEvent.class,
+            io.github.lewin671.remoteagent.core.proto.ExitRequestAction.class,
+            io.github.lewin671.remoteagent.core.proto.ExitConfirmAction.class,
           };
           java.lang.String info =
-              "\u0000\u00f3\u0001\u0000\u0001\u01d1\u00f3\u0000\u0002\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u010e\u0001\u0000\u0001\u01f3\u010e\u0000\u0002\u0000\u0001<\u0000\u0002<" +
               "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000" +
               "\t<\u0000\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010" +
               "<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000" +
@@ -25410,7 +28235,11 @@ public  final class Event extends
               "\u01b1<\u0000\u01b2<\u0000\u01b3<\u0000\u01b4<\u0000\u01b5<\u0000\u01b6<\u0000\u01b7" +
               "<\u0000\u01b8<\u0000\u01b9<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000" +
               "\u01c9<\u0000\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01ce<\u0000\u01cf" +
-              "<\u0000\u01d0<\u0000\u01d1<\u0000";
+              "<\u0000\u01d0<\u0000\u01d1<\u0000\u01d6<\u0000\u01d7<\u0000\u01d8<\u0000\u01d9<\u0000" +
+              "\u01da<\u0000\u01db<\u0000\u01dc<\u0000\u01dd<\u0000\u01de<\u0000\u01df<\u0000\u01e0" +
+              "<\u0000\u01e1<\u0000\u01e2<\u0000\u01e3<\u0000\u01e4<\u0000\u01e5<\u0000\u01e6<\u0000" +
+              "\u01e9<\u0000\u01ea<\u0000\u01eb<\u0000\u01ed<\u0000\u01ee<\u0000\u01ef<\u0000\u01f0" +
+              "<\u0000\u01f1<\u0000\u01f2<\u0000\u01f3<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
