@@ -194,6 +194,7 @@
 "dock_plan_keep" = "Keep planning";
 "dock_plan_title" = "%1$@ · Plan awaiting approval";
 "dock_plan_unread" = "The plan has not loaded yet. View it in the terminal.";
+"dock_question_answered" = "Answered";
 "dock_question_changed" = "Could not submit; the question in the terminal may have changed";
 "dock_recommended" = "Recommended";
 "dock_select_then_submit" = "Select, then submit";

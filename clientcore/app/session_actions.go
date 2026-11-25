@@ -283,6 +283,9 @@ func (c *Core) handleSessionToggleQuestionOption(store *sessionStore, act *corev
 		return
 	}
 	ui := store.ensureUI(act.SessionId)
+	if ui.QuestionCompleted[act.QuestionId] {
+		return
+	}
 	activeIdx := ui.QuestionIndexByID[act.QuestionId]
 	qKey := act.QuestionId + "#" + strconv.Itoa(int(activeIdx))
 	slotKey := "question:" + act.SessionId + ":" + qKey
@@ -313,6 +316,9 @@ func (c *Core) handleSessionAnswerQuestion(ctx *sync.StepContext, store *session
 	}
 	machineID, snap, ui, ok := c.resolveSessionActionTarget(store, act.SessionId)
 	if !ok {
+		return nil
+	}
+	if ui.QuestionCompleted[act.QuestionId] {
 		return nil
 	}
 	activeIdx := ui.QuestionIndexByID[act.QuestionId]

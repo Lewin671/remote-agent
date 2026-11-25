@@ -2773,6 +2773,20 @@ public struct PBSessionQuestionDockView: @unchecked Sendable {
     set {_uniqueStorage()._submittedOptionNums = newValue}
   }
 
+  public var answered: Bool {
+    get {return _storage._answered}
+    set {_uniqueStorage()._answered = newValue}
+  }
+
+  public var answeredText: PBCoreText {
+    get {return _storage._answeredText ?? PBCoreText()}
+    set {_uniqueStorage()._answeredText = newValue}
+  }
+  /// Returns true if `answeredText` has been explicitly set.
+  public var hasAnsweredText: Bool {return _storage._answeredText != nil}
+  /// Clears the value of `answeredText`. Subsequent reads from it will return its default value.
+  public mutating func clearAnsweredText() {_uniqueStorage()._answeredText = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -7823,7 +7837,7 @@ extension PBSessionQuestionStepView: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 extension PBSessionQuestionDockView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionQuestionDockView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}question_id\0\u{3}active_index\0\u{3}total_questions\0\u{3}progress_text\0\u{1}question\0\u{3}answered_indices\0\u{4}\u{4}drafted_option_nums\0\u{3}can_submit_multi\0\u{3}submit_button_label\0\u{3}is_last_step\0\u{3}submitted_option_nums\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}question_id\0\u{3}active_index\0\u{3}total_questions\0\u{3}progress_text\0\u{1}question\0\u{3}answered_indices\0\u{4}\u{4}drafted_option_nums\0\u{3}can_submit_multi\0\u{3}submit_button_label\0\u{3}is_last_step\0\u{3}submitted_option_nums\0\u{1}answered\0\u{3}answered_text\0")
 
   fileprivate class _StorageClass {
     var _questionID: String = String()
@@ -7837,6 +7851,8 @@ extension PBSessionQuestionDockView: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _submitButtonLabel: PBCoreText? = nil
     var _isLastStep: Bool = false
     var _submittedOptionNums: [Int32] = []
+    var _answered: Bool = false
+    var _answeredText: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -7858,6 +7874,8 @@ extension PBSessionQuestionDockView: SwiftProtobuf.Message, SwiftProtobuf._Messa
       _submitButtonLabel = source._submitButtonLabel
       _isLastStep = source._isLastStep
       _submittedOptionNums = source._submittedOptionNums
+      _answered = source._answered
+      _answeredText = source._answeredText
     }
   }
 
@@ -7887,6 +7905,8 @@ extension PBSessionQuestionDockView: SwiftProtobuf.Message, SwiftProtobuf._Messa
         case 12: try { try decoder.decodeSingularMessageField(value: &_storage._submitButtonLabel) }()
         case 13: try { try decoder.decodeSingularBoolField(value: &_storage._isLastStep) }()
         case 14: try { try decoder.decodeRepeatedInt32Field(value: &_storage._submittedOptionNums) }()
+        case 15: try { try decoder.decodeSingularBoolField(value: &_storage._answered) }()
+        case 16: try { try decoder.decodeSingularMessageField(value: &_storage._answeredText) }()
         default: break
         }
       }
@@ -7932,6 +7952,12 @@ extension PBSessionQuestionDockView: SwiftProtobuf.Message, SwiftProtobuf._Messa
       if !_storage._submittedOptionNums.isEmpty {
         try visitor.visitPackedInt32Field(value: _storage._submittedOptionNums, fieldNumber: 14)
       }
+      if _storage._answered != false {
+        try visitor.visitSingularBoolField(value: _storage._answered, fieldNumber: 15)
+      }
+      try { if let v = _storage._answeredText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 16)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -7952,6 +7978,8 @@ extension PBSessionQuestionDockView: SwiftProtobuf.Message, SwiftProtobuf._Messa
         if _storage._submitButtonLabel != rhs_storage._submitButtonLabel {return false}
         if _storage._isLastStep != rhs_storage._isLastStep {return false}
         if _storage._submittedOptionNums != rhs_storage._submittedOptionNums {return false}
+        if _storage._answered != rhs_storage._answered {return false}
+        if _storage._answeredText != rhs_storage._answeredText {return false}
         return true
       }
       if !storagesAreEqual {return false}

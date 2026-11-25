@@ -386,6 +386,8 @@ message SessionQuestionDockView {
   Text submit_button_label = 12;
   bool is_last_step = 13;
   repeated int32 submitted_option_nums = 14;
+  bool answered = 15;
+  Text answered_text = 16;
 }
 
 message SessionPlanChoiceOptionView {

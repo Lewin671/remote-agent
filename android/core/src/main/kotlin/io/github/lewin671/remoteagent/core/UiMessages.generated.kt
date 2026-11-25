@@ -198,6 +198,7 @@ object UiMessages {
     fun dockPlanKeep(): UiMessage = UiMessage("dock.plan_keep", emptyMap())
     fun dockPlanTitle(title: String): UiMessage = UiMessage("dock.plan_title", mapOf("title" to title))
     fun dockPlanUnread(): UiMessage = UiMessage("dock.plan_unread", emptyMap())
+    fun dockQuestionAnswered(): UiMessage = UiMessage("dock.question_answered", emptyMap())
     fun dockQuestionChanged(): UiMessage = UiMessage("dock.question_changed", emptyMap())
     fun dockQuestionProgress(count: Int, index: Int): UiMessage = UiMessage("dock.question_progress", mapOf("count" to count, "index" to index))
     fun dockRecommended(): UiMessage = UiMessage("dock.recommended", emptyMap())

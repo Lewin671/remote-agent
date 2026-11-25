@@ -568,8 +568,56 @@ func TestSessionMultiStepQuestionAndRetrySemantics(t *testing.T) {
 	settleCommandOK(c, 1_791_078_061_500, effs3[0], &v1.CommandResult{Outcome: "executed"})
 	vmStep1, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-q"}}})
 	qDock1 := vmStep1.GetSession().GetDock().GetQuestion()
-	if qDock1.ActiveIndex != 1 || !qDock1.IsLastStep {
-		t.Fatalf("expected active_index=1 & is_last_step=true after settle, got idx=%d last=%v", qDock1.ActiveIndex, qDock1.IsLastStep)
+	if qDock1.ActiveIndex != 1 || !qDock1.IsLastStep || qDock1.Answered {
+		t.Fatalf("expected active_index=1 & is_last_step=true & answered=false after step 0 settle, got idx=%d last=%v answered=%v", qDock1.ActiveIndex, qDock1.IsLastStep, qDock1.Answered)
+	}
+
+	// Submit last step (step 1) and settle OK BEFORE QuestionAnswered removes the question from projection.
+	// Must stay on last step with is_last_step=true, answered=true, and succeeded_seq incremented — never wrap back to step 0!
+	bLast := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_061_600,
+		Event: &corev1.Event_SessionAnswerQuestion{
+			SessionAnswerQuestion: &corev1.SessionAnswerQuestionAction{
+				SessionId:  "s-q",
+				QuestionId: "q-1",
+				OptionNum:  1,
+			},
+		},
+	})
+	effsLast, cmdsLast := decodeDispatchedCommands(t, bLast)
+	if len(effsLast) != 1 || len(cmdsLast) != 1 || cmdsLast[0].GetAnswerQuestion() == nil {
+		t.Fatalf("expected AnswerQuestion cmd for step 1")
+	}
+	settleCommandOK(c, 1_791_078_061_700, effsLast[0], &v1.CommandResult{Outcome: "executed"})
+
+	vmAfterLast, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-q"}}})
+	qDockAfterLast := vmAfterLast.GetSession().GetDock().GetQuestion()
+	if qDockAfterLast == nil {
+		t.Fatalf("expected question dock still visible before projection removes q-1")
+	}
+	if qDockAfterLast.ActiveIndex != 1 || !qDockAfterLast.IsLastStep || !qDockAfterLast.Answered {
+		t.Fatalf("last step after settle must stay on index 1 with is_last_step=true & answered=true, got idx=%d last=%v answered=%v",
+			qDockAfterLast.ActiveIndex, qDockAfterLast.IsLastStep, qDockAfterLast.Answered)
+	}
+	if qDockAfterLast.GetAnsweredText().GetKey() != text.KeyDockQuestionAnswered {
+		t.Fatalf("expected answered_text key %q, got %+v", text.KeyDockQuestionAnswered, qDockAfterLast.GetAnsweredText())
+	}
+	if vmAfterLast.GetSession().GetDock().GetCommand().GetSucceededSeq() < 1 {
+		t.Fatalf("expected last step command succeeded_seq >= 1, got %d", vmAfterLast.GetSession().GetDock().GetCommand().GetSucceededSeq())
+	}
+	// Further clicks/submits while answered must be ignored.
+	bDup := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_061_800,
+		Event: &corev1.Event_SessionAnswerQuestion{
+			SessionAnswerQuestion: &corev1.SessionAnswerQuestionAction{
+				SessionId:  "s-q",
+				QuestionId: "q-1",
+				OptionNum:  2,
+			},
+		},
+	})
+	if effsDup, _ := decodeDispatchedCommands(t, bDup); len(effsDup) != 0 {
+		t.Fatalf("expected no command dispatched after last step already answered, got %d", len(effsDup))
 	}
 }
 

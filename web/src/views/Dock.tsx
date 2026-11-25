@@ -206,6 +206,8 @@ function useQuestionState(
   }
 
   const multi = step.multiSelect;
+  const answered = q.answered;
+  const answeredLabel = renderText(q.answeredText);
   const ticked = q.draftedOptionNums;
   const sent = q.submittedOptionNums;
   const errMsg = renderText(cmd?.errorText) || renderText(cmd?.statusText);
@@ -225,7 +227,7 @@ function useQuestionState(
             className={"opt" + (on ? " on" : "") + (multi ? " multi" : "")}
             role={multi ? "checkbox" : undefined}
             aria-checked={multi ? on : undefined}
-            disabled={multi ? frozen : busy || !canSend || (hasError && !cmd?.canRetry && !!cmd?.frozen)}
+            disabled={answered || (multi ? frozen : busy || !canSend || (hasError && !cmd?.canRetry && !!cmd?.frozen))}
             onClick={() =>
               multi
                 ? onToggleQuestionOption?.(q.questionId, num)
@@ -268,6 +270,7 @@ function useQuestionState(
   );
 
   const failed = showError && (multi || sent.length === 0) && <div className="ml red">{errMsg}</div>;
+  const answeredNotice = answered && answeredLabel && <div className="ml" role="status">{answeredLabel}</div>;
 
   const foot = (page: boolean) => (
     <div className="st">
@@ -303,6 +306,7 @@ function useQuestionState(
     actions: (page: boolean) => (
       <>
         {submit}
+        {answeredNotice}
         {failed}
         {foot(page)}
       </>

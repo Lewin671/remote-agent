@@ -207,6 +207,7 @@
     <string name="dock_plan_keep" formatted="false">"继续规划"</string>
     <string name="dock_plan_title">"%1$s · 计划待批准"</string>
     <string name="dock_plan_unread" formatted="false">"计划的内容还没读到，可以去终端看"</string>
+    <string name="dock_question_answered" formatted="false">"已回答"</string>
     <string name="dock_question_changed" formatted="false">"没能提交，终端里的问题可能已经变了"</string>
     <plurals name="dock_question_progress">
         <item quantity="other">"第 %2$d 题，共 %1$d 题"</item>

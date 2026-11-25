@@ -708,6 +708,22 @@
     "zh-CN": "默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎"
   },
   {
+    "en": "Answered",
+    "key": "dock.question_answered",
+    "notes": "多步提问最后一步提交成功、等待服务端移除提问前在停靠区或完整页显示的已回答状态文案。短标签，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "已回答"
+  },
+  {
     "en": "Waiting for confirmation",
     "key": "dock.waiting_confirmation",
     "notes": "停靠区及完整页中的提问/计划操作或状态。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",

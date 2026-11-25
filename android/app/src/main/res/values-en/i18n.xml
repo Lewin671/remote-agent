@@ -213,6 +213,7 @@
     <string name="dock_plan_keep" formatted="false">"Keep planning"</string>
     <string name="dock_plan_title">"%1$s · Plan awaiting approval"</string>
     <string name="dock_plan_unread" formatted="false">"The plan has not loaded yet. View it in the terminal."</string>
+    <string name="dock_question_answered" formatted="false">"Answered"</string>
     <string name="dock_question_changed" formatted="false">"Could not submit; the question in the terminal may have changed"</string>
     <plurals name="dock_question_progress">
         <item quantity="one">"Question %2$d of %1$d"</item>

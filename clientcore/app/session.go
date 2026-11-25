@@ -203,6 +203,20 @@ func reconcileSessionSnapshot(snap world.SessionSnapshot, ui *screens.SessionUIS
 		delete(ui.SteerVisibleAfterMs, reqID)
 	}
 	pruneSessionLocalContents(ui, userMsgReqs, activeInputReqs)
+	if snap.Projection != nil && len(ui.QuestionCompleted) > 0 {
+		pendingQ := make(map[string]bool, len(snap.Projection.Questions))
+		for _, pq := range snap.Projection.Questions {
+			if pq != nil && pq.QuestionId != "" {
+				pendingQ[pq.QuestionId] = true
+			}
+		}
+		for qID := range ui.QuestionCompleted {
+			if !pendingQ[qID] {
+				delete(ui.QuestionCompleted, qID)
+				delete(ui.QuestionIndexByID, qID)
+			}
+		}
+	}
 }
 
 func pruneSessionLocalContents(ui *screens.SessionUIState, userMsgReqs, activeInputReqs map[string]bool) {
@@ -329,7 +343,13 @@ func (c *Core) processSessionSettled(
 			if meta.kind == slotKindAnswerQuestion && meta.questionID != "" {
 				qKey := meta.questionID + "#" + strconv.Itoa(int(meta.questionIndex))
 				delete(ui.QuestionDraftByKey, qKey)
-				ui.QuestionIndexByID[meta.questionID] = meta.questionIndex + 1
+				_, total, _ := findPendingQuestionMeta(c.m.sync.SessionSnapshot(meta.sessionID), meta.questionID, meta.questionIndex)
+				if total > 0 && meta.questionIndex+1 < total {
+					ui.QuestionIndexByID[meta.questionID] = meta.questionIndex + 1
+				} else {
+					ui.QuestionIndexByID[meta.questionID] = meta.questionIndex
+					ui.QuestionCompleted[meta.questionID] = true
+				}
 				ui.LocalSucceededItems["question:"+meta.questionID] = true
 			}
 			c.notifyHomeAttentionSettled(meta, true, summary, effects, dirty)

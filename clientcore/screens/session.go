@@ -138,6 +138,7 @@ type SessionUIState struct {
 	SlotSucceededSeq       map[string]uint64
 	ApprovalDenyOpen       map[string]bool
 	QuestionDraftByKey     map[string][]int32
+	QuestionCompleted      map[string]bool
 	LocalResolvedRequestID map[string]string
 	LocalSucceededItems    map[string]bool
 	ExternalResolution     *corev1.SessionResolutionNoticeView
@@ -190,6 +191,7 @@ func NewSessionUIState() *SessionUIState {
 		SlotSucceededSeq:       make(map[string]uint64),
 		ApprovalDenyOpen:       make(map[string]bool),
 		QuestionDraftByKey:     make(map[string][]int32),
+		QuestionCompleted:      make(map[string]bool),
 		LocalResolvedRequestID: make(map[string]string),
 		LocalSucceededItems:    make(map[string]bool),
 		LocalContents:          make(map[string]*LocalSentContent),
@@ -1415,9 +1417,14 @@ func buildSessionDock(
 			total = len(q.Questions)
 		}
 		activeIdx := int32(0)
-		if idx, ok := ui.QuestionIndexByID[pq.QuestionId]; ok && idx >= 0 && int(idx) < total {
-			activeIdx = idx
+		if idx, ok := ui.QuestionIndexByID[pq.QuestionId]; ok && idx >= 0 && total > 0 {
+			if int(idx) < total {
+				activeIdx = idx
+			} else {
+				activeIdx = int32(total - 1)
+			}
 		}
+		answered := ui != nil && ui.QuestionCompleted[pq.QuestionId]
 		var stepView *corev1.SessionQuestionStepView
 		var summaryStr string
 		if total > 0 {
@@ -1449,10 +1456,12 @@ func buildSessionDock(
 		isMulti := stepView != nil && stepView.MultiSelect
 		cmdBusy := out.Command != nil && out.Command.Busy
 		cmdFrozen := out.Command != nil && out.Command.Frozen
-		canSubmitMulti := isMulti && !cmdBusy && !cmdFrozen && len(drafted) > 0
+		canSubmitMulti := isMulti && !answered && !cmdBusy && !cmdFrozen && len(drafted) > 0
 		var submitLabel *corev1.Text
 		if isMulti {
 			switch {
+			case answered:
+				submitLabel = text.Msg(text.KeyDockQuestionAnswered)
 			case cmdBusy:
 				submitLabel = text.Msg(text.KeyDockSubmitting)
 			case len(drafted) > 0:
@@ -1460,6 +1469,10 @@ func buildSessionDock(
 			default:
 				submitLabel = text.Msg(text.KeyDockSelectThenSubmit)
 			}
+		}
+		var answeredText *corev1.Text
+		if answered {
+			answeredText = text.Msg(text.KeyDockQuestionAnswered)
 		}
 		out.Detail = &corev1.SessionDockView_Question{
 			Question: &corev1.SessionQuestionDockView{
@@ -1473,6 +1486,8 @@ func buildSessionDock(
 				SubmitButtonLabel:   submitLabel,
 				IsLastStep:          total <= 0 || int(activeIdx)+1 >= total,
 				SubmittedOptionNums: submitted,
+				Answered:            answered,
+				AnsweredText:        answeredText,
 			},
 		}
 		return out

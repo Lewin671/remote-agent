@@ -2571,6 +2571,8 @@ type SessionQuestionDockView struct {
 	SubmitButtonLabel   *Text
 	IsLastStep          bool
 	SubmittedOptionNums []int32
+	Answered            bool
+	AnsweredText        *Text
 }
 
 func (m *SessionQuestionDockView) GetQuestionId() string {
@@ -2639,6 +2641,18 @@ func (m *SessionQuestionDockView) GetSubmittedOptionNums() []int32 {
 	}
 	return nil
 }
+func (m *SessionQuestionDockView) GetAnswered() bool {
+	if m != nil {
+		return m.Answered
+	}
+	return false
+}
+func (m *SessionQuestionDockView) GetAnsweredText() *Text {
+	if m != nil {
+		return m.AnsweredText
+	}
+	return nil
+}
 
 var LitewireDesc_SessionQuestionDockView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -2653,6 +2667,8 @@ var LitewireDesc_SessionQuestionDockView = litewire.MessageDesc{
 		{Num: 12, Offset: unsafe.Offsetof(SessionQuestionDockView{}.SubmitButtonLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 13, Offset: unsafe.Offsetof(SessionQuestionDockView{}.IsLastStep), Kind: litewire.KindBool},
 		{Num: 14, Offset: unsafe.Offsetof(SessionQuestionDockView{}.SubmittedOptionNums), Kind: litewire.KindInt32, Flags: litewire.FlagRepeated | litewire.FlagPacked},
+		{Num: 15, Offset: unsafe.Offsetof(SessionQuestionDockView{}.Answered), Kind: litewire.KindBool},
+		{Num: 16, Offset: unsafe.Offsetof(SessionQuestionDockView{}.AnsweredText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 

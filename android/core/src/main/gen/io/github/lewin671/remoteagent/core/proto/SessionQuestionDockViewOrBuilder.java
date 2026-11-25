@@ -129,4 +129,21 @@ public interface SessionQuestionDockViewOrBuilder extends
    * @return The submittedOptionNums at the given index.
    */
   int getSubmittedOptionNums(int index);
+
+  /**
+   * <code>bool answered = 15 [json_name = "answered"];</code>
+   * @return The answered.
+   */
+  boolean getAnswered();
+
+  /**
+   * <code>.remoteagent.core.v1.Text answered_text = 16 [json_name = "answeredText"];</code>
+   * @return Whether the answeredText field is set.
+   */
+  boolean hasAnsweredText();
+  /**
+   * <code>.remoteagent.core.v1.Text answered_text = 16 [json_name = "answeredText"];</code>
+   * @return The answeredText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getAnsweredText();
 }

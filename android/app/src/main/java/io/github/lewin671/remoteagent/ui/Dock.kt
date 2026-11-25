@@ -401,6 +401,7 @@ internal fun QuestionBody(
     val busy = cmd.busy || cmd.status == SessionCommandStatus.SESSION_COMMAND_STATUS_PENDING
     val frozen = cmd.frozen
     val expired = cmd.expired
+    val answered = q.answered
     val errorText = if (cmd.hasErrorText()) uiText(cmd.errorText) else cmd.errorCode
     val pickedMulti = q.draftedOptionNumsList
     val submittedNums = q.submittedOptionNumsList
@@ -430,7 +431,7 @@ internal fun QuestionBody(
                     .heightIn(min = 46.dp)
                     .clip(Radii.R14)
                     .background(if (sel) CardColors.primary else CardColors.field)
-                    .clickable(enabled = !busy && !frozen, role = if (cur.multiSelect) Role.Checkbox else Role.Button) {
+                    .clickable(enabled = !answered && !busy && !frozen, role = if (cur.multiSelect) Role.Checkbox else Role.Button) {
                         if (cur.multiSelect) {
                             remote.toggleQuestionOption(sid, q.questionId, o.optionNum)
                         } else {
@@ -462,7 +463,9 @@ internal fun QuestionBody(
                 )
             }
         }
-        if (!busy && frozen) {
+        if (answered && q.hasAnsweredText()) {
+            Text(uiText(q.answeredText), style = T.s13, color = CardColors.text2, modifier = Modifier.padding(top = 10.dp))
+        } else if (!busy && frozen) {
             val shown = cmd.takeIf { it.hasSubmittedSummary() }?.let { uiText(it.submittedSummary) }.orEmpty()
                 .ifEmpty {
                     submittedNums.joinToString("、") { num ->

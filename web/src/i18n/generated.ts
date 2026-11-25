@@ -222,6 +222,7 @@ export interface MessageArgs {
   "dock.plan_keep": { [name: string]: never };
   "dock.plan_title": { title: string };
   "dock.plan_unread": { [name: string]: never };
+  "dock.question_answered": { [name: string]: never };
   "dock.question_changed": { [name: string]: never };
   "dock.question_progress": { count: number; index: number };
   "dock.recommended": { [name: string]: never };
@@ -2021,6 +2022,7 @@ export const messages = {
     "dock.plan_keep": "Keep planning",
     "dock.plan_title": "{title} · Plan awaiting approval",
     "dock.plan_unread": "The plan has not loaded yet. View it in the terminal.",
+    "dock.question_answered": "Answered",
     "dock.question_changed": "Could not submit; the question in the terminal may have changed",
     "dock.question_progress": {
       "forms": {
@@ -4376,6 +4378,7 @@ export const messages = {
     "dock.plan_keep": "继续规划",
     "dock.plan_title": "{title} · 计划待批准",
     "dock.plan_unread": "计划的内容还没读到，可以去终端看",
+    "dock.question_answered": "已回答",
     "dock.question_changed": "没能提交，终端里的问题可能已经变了",
     "dock.question_progress": {
       "forms": {

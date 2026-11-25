@@ -530,6 +530,80 @@ public  final class SessionQuestionDockView extends
     submittedOptionNums_ = emptyIntList();
   }
 
+  public static final int ANSWERED_FIELD_NUMBER = 15;
+  private boolean answered_;
+  /**
+   * <code>bool answered = 15 [json_name = "answered"];</code>
+   * @return The answered.
+   */
+  @java.lang.Override
+  public boolean getAnswered() {
+    return answered_;
+  }
+  /**
+   * <code>bool answered = 15 [json_name = "answered"];</code>
+   * @param value The answered to set.
+   */
+  private void setAnswered(boolean value) {
+    
+    answered_ = value;
+  }
+  /**
+   * <code>bool answered = 15 [json_name = "answered"];</code>
+   */
+  private void clearAnswered() {
+
+    answered_ = false;
+  }
+
+  public static final int ANSWERED_TEXT_FIELD_NUMBER = 16;
+  private io.github.lewin671.remoteagent.core.proto.Text answeredText_;
+  /**
+   * <code>.remoteagent.core.v1.Text answered_text = 16 [json_name = "answeredText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAnsweredText() {
+    return ((bitField0_ & 0x00000008) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text answered_text = 16 [json_name = "answeredText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getAnsweredText() {
+    return answeredText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : answeredText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text answered_text = 16 [json_name = "answeredText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAnsweredText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    answeredText_ = value;
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text answered_text = 16 [json_name = "answeredText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeAnsweredText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (answeredText_ != null &&
+        answeredText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      answeredText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(answeredText_).mergeFrom(value).buildPartial();
+    } else {
+      answeredText_ = value;
+    }
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text answered_text = 16 [json_name = "answeredText"];</code>
+   */
+  private void clearAnsweredText() {
+    answeredText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000008);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SessionQuestionDockView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1136,6 +1210,81 @@ public  final class SessionQuestionDockView extends
       return this;
     }
 
+    /**
+     * <code>bool answered = 15 [json_name = "answered"];</code>
+     * @return The answered.
+     */
+    @java.lang.Override
+    public boolean getAnswered() {
+      return instance.getAnswered();
+    }
+    /**
+     * <code>bool answered = 15 [json_name = "answered"];</code>
+     * @param value The answered to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAnswered(boolean value) {
+      copyOnWrite();
+      instance.setAnswered(value);
+      return this;
+    }
+    /**
+     * <code>bool answered = 15 [json_name = "answered"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearAnswered() {
+      copyOnWrite();
+      instance.clearAnswered();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text answered_text = 16 [json_name = "answeredText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAnsweredText() {
+      return instance.hasAnsweredText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text answered_text = 16 [json_name = "answeredText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getAnsweredText() {
+      return instance.getAnsweredText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text answered_text = 16 [json_name = "answeredText"];</code>
+     */
+    public Builder setAnsweredText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setAnsweredText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text answered_text = 16 [json_name = "answeredText"];</code>
+     */
+    public Builder setAnsweredText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAnsweredText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text answered_text = 16 [json_name = "answeredText"];</code>
+     */
+    public Builder mergeAnsweredText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeAnsweredText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text answered_text = 16 [json_name = "answeredText"];</code>
+     */
+    public Builder clearAnsweredText() {  copyOnWrite();
+      instance.clearAnsweredText();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionQuestionDockView)
   }
   @java.lang.Override
@@ -1164,11 +1313,13 @@ public  final class SessionQuestionDockView extends
             "submitButtonLabel_",
             "isLastStep_",
             "submittedOptionNums_",
+            "answered_",
+            "answeredText_",
           };
           java.lang.String info =
-              "\u0000\u000b\u0000\u0001\u0001\u000e\u000b\u0000\u0003\u0000\u0001\u0208\u0002\u0004" +
-              "\u0003\u0004\u0004\u1009\u0000\u0005\u1009\u0001\u0006\'\n\'\u000b\u0007\f\u1009" +
-              "\u0002\r\u0007\u000e\'";
+              "\u0000\r\u0000\u0001\u0001\u0010\r\u0000\u0003\u0000\u0001\u0208\u0002\u0004\u0003" +
+              "\u0004\u0004\u1009\u0000\u0005\u1009\u0001\u0006\'\n\'\u000b\u0007\f\u1009\u0002" +
+              "\r\u0007\u000e\'\u000f\u0007\u0010\u1009\u0003";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -194,6 +194,7 @@
 "dock_plan_keep" = "继续规划";
 "dock_plan_title" = "%1$@ · 计划待批准";
 "dock_plan_unread" = "计划的内容还没读到，可以去终端看";
+"dock_question_answered" = "已回答";
 "dock_question_changed" = "没能提交，终端里的问题可能已经变了";
 "dock_recommended" = "推荐";
 "dock_select_then_submit" = "选好后提交";
