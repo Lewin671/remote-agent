@@ -324,13 +324,15 @@ internal fun PendingTray(
                                     modifier = Modifier.padding(start = 4.dp, end = if (it.canCancel) 4.dp else 10.dp),
                                 )
                                 if (it.canCancel) {
+                                    val enabled = !(it.serverBacked && it.networkActionsDisabled)
                                     val cancelLabel = copy(UiMessages.commonCancel())
                                     Box(
                                         Modifier
                                             .width(36.dp)
                                             .height(if (isOpen) 26.dp else 38.dp)
+                                            .alpha(if (enabled) 1f else 0.35f)
                                             .clip(RoundedCornerShape(18.dp))
-                                            .clickable(role = Role.Button, onClickLabel = cancelLabel) {
+                                            .clickable(enabled = enabled, role = Role.Button, onClickLabel = cancelLabel) {
                                                 onCancelItem(id)
                                             }
                                             .semantics { contentDescription = cancelLabel },
@@ -341,19 +343,19 @@ internal fun PendingTray(
                                 }
                             }
                             else -> {
+                                if (it.canOpenTerminal && onTerminal != null) {
+                                    val termEnabled = !it.networkActionsDisabled
+                                    Text(
+                                        copy(UiMessages.sessionGoTerminal()),
+                                        style = T.s13.copy(fontSize = 13.5.sp),
+                                        color = p.blue,
+                                        modifier = Modifier
+                                            .alpha(if (termEnabled) 1f else 0.35f)
+                                            .clickable(enabled = termEnabled, role = Role.Button) { onTerminal() }
+                                            .padding(horizontal = 6.dp, vertical = 8.dp),
+                                    )
+                                }
                                 if (it.canIgnore) {
-                                    if (onTerminal != null) {
-                                        val termEnabled = !it.networkActionsDisabled
-                                        Text(
-                                            copy(UiMessages.sessionGoTerminal()),
-                                            style = T.s13.copy(fontSize = 13.5.sp),
-                                            color = p.blue,
-                                            modifier = Modifier
-                                                .alpha(if (termEnabled) 1f else 0.35f)
-                                                .clickable(enabled = termEnabled, role = Role.Button) { onTerminal() }
-                                                .padding(horizontal = 6.dp, vertical = 8.dp),
-                                        )
-                                    }
                                     Text(
                                         copy(UiMessages.queueIgnore()),
                                         style = T.s13.copy(fontSize = 13.5.sp),
@@ -362,48 +364,47 @@ internal fun PendingTray(
                                             .clickable(role = Role.Button) { onIgnoreItem(id) }
                                             .padding(horizontal = 6.dp, vertical = 8.dp),
                                     )
-                                } else {
-                                    if (it.canResume) {
-                                        val enabled = !it.networkActionsDisabled
-                                        Text(
-                                            copy(UiMessages.composerSend()),
-                                            style = T.s13.copy(fontSize = 13.5.sp),
-                                            color = p.blue,
-                                            modifier = Modifier
-                                                .alpha(if (enabled) 1f else 0.35f)
-                                                .clickable(enabled = enabled, role = Role.Button) { onResumeItem(id) }
-                                                .padding(horizontal = 6.dp, vertical = 8.dp),
-                                        )
-                                    }
-                                    if (it.canRetry) {
-                                        val enabled = !it.networkActionsDisabled
-                                        Text(
-                                            copy(UiMessages.commonRetry()),
-                                            style = T.s13.copy(fontSize = 13.5.sp),
-                                            color = p.blue,
-                                            modifier = Modifier
-                                                .alpha(if (enabled) 1f else 0.35f)
-                                                .clickable(enabled = enabled, role = Role.Button) { onRetryItem(id) }
-                                                .padding(horizontal = 6.dp, vertical = 8.dp),
-                                        )
-                                    }
-                                    if (it.canCancel) {
-                                        val enabled = !(it.serverBacked && it.networkActionsDisabled)
-                                        val cancelLabel = copy(UiMessages.commonCancel())
-                                        Box(
-                                            Modifier
-                                                .width(36.dp)
-                                                .height(if (isOpen) 26.dp else 38.dp)
-                                                .alpha(if (enabled) 1f else 0.35f)
-                                                .clip(RoundedCornerShape(18.dp))
-                                                .clickable(enabled = enabled, role = Role.Button, onClickLabel = cancelLabel) {
-                                                    onCancelItem(id)
-                                                }
-                                                .semantics { contentDescription = cancelLabel },
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            Ic(Lucide.X, 15.dp, p.ink2)
-                                        }
+                                }
+                                if (it.canResume) {
+                                    val enabled = !it.networkActionsDisabled
+                                    Text(
+                                        copy(UiMessages.composerSend()),
+                                        style = T.s13.copy(fontSize = 13.5.sp),
+                                        color = p.blue,
+                                        modifier = Modifier
+                                            .alpha(if (enabled) 1f else 0.35f)
+                                            .clickable(enabled = enabled, role = Role.Button) { onResumeItem(id) }
+                                            .padding(horizontal = 6.dp, vertical = 8.dp),
+                                    )
+                                }
+                                if (it.canRetry) {
+                                    val enabled = !it.networkActionsDisabled
+                                    Text(
+                                        copy(UiMessages.commonRetry()),
+                                        style = T.s13.copy(fontSize = 13.5.sp),
+                                        color = p.blue,
+                                        modifier = Modifier
+                                            .alpha(if (enabled) 1f else 0.35f)
+                                            .clickable(enabled = enabled, role = Role.Button) { onRetryItem(id) }
+                                            .padding(horizontal = 6.dp, vertical = 8.dp),
+                                    )
+                                }
+                                if (it.canCancel) {
+                                    val enabled = !(it.serverBacked && it.networkActionsDisabled)
+                                    val cancelLabel = copy(UiMessages.commonCancel())
+                                    Box(
+                                        Modifier
+                                            .width(36.dp)
+                                            .height(if (isOpen) 26.dp else 38.dp)
+                                            .alpha(if (enabled) 1f else 0.35f)
+                                            .clip(RoundedCornerShape(18.dp))
+                                            .clickable(enabled = enabled, role = Role.Button, onClickLabel = cancelLabel) {
+                                                onCancelItem(id)
+                                            }
+                                            .semantics { contentDescription = cancelLabel },
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Ic(Lucide.X, 15.dp, p.ink2)
                                     }
                                 }
                             }
