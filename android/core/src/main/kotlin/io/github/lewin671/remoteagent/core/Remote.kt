@@ -109,7 +109,6 @@ class Remote(
         if (dispatcher == null || dispatcher === Dispatchers.Unconfined) Dispatchers.IO.limitedParallelism(1)
         else this.dispatcher
 
-    private val peerJobs = java.util.concurrent.atomic.AtomicInteger()
     val api = Api(account.server, http, ::rejectToken, rpcTransport)
     private val directServerHost: String =
         if (stunUrls != null) "" else runCatching { java.net.URI(account.server).host.orEmpty() }.getOrDefault("")
@@ -141,11 +140,15 @@ class Remote(
     @Volatile private var closed = false
     @Volatile private var serverAhead = false
 
+    private class ActiveStreamLeg(val legId: Long, val socket: FrameStream)
+
     private val streamMutex = Mutex()
     private var activeLegId = 0L
     @Volatile private var activeSocket: FrameStream? = null
+    @Volatile private var activeStreamLeg: ActiveStreamLeg? = null
     internal val activeStreamForTest: FrameStream? get() = activeSocket
     private var activeLegJob: Job? = null
+    @Volatile internal var directSignalSink: ((ByteArray) -> Unit)? = null
 
     private sealed interface CacheWritePayload {
         class MachineWrite(val m: Machine) : CacheWritePayload
@@ -439,9 +442,9 @@ class Remote(
         coreHost.onDirectPcDescribe = { eff -> scope.launch(directDispatcher) { directExecutor.pcDescribe(eff) } }
         coreHost.onDirectPcSetRemote = { eff -> scope.launch(directDispatcher) { directExecutor.pcSetRemote(eff) } }
         coreHost.onDirectPcAddCandidates = { eff -> scope.launch(directDispatcher) { directExecutor.pcAddCandidates(eff) } }
-        coreHost.onDirectPcConfirm = { eff -> directExecutor.pcConfirm(eff) }
+        coreHost.onDirectPcConfirm = { eff -> scope.launch(directDispatcher) { directExecutor.pcConfirm(eff) } }
         coreHost.onDirectPcClose = { eff -> scope.launch(directDispatcher) { directExecutor.pcClose(eff) } }
-        coreHost.onDirectPcSendProbe = { eff -> directExecutor.pcSendProbe(eff) }
+        coreHost.onDirectPcSendProbe = { eff -> scope.launch(directDispatcher) { directExecutor.pcSendProbe(eff) } }
         coreHost.onDirectDcReadStats = { eff -> scope.launch(directDispatcher) { directExecutor.dcReadStats(eff) } }
         coreHost.onTerminalDirectSend = { eff ->
             val raw = eff.sealedEnvelope.toByteArray()
@@ -760,27 +763,18 @@ class Remote(
                 val deliveryBody = peerFrameBody(bytes, 11)
                 val resultBody = if (deliveryBody == null) peerFrameBody(bytes, 12) else null
                 if (deliveryBody != null || resultBody != null) {
-                    if (peerJobs.incrementAndGet() > 64) {
-                        peerJobs.decrementAndGet()
-                        return
-                    }
-                    scope.launch {
-                        try {
-                            val current = streamMutex.withLock { activeLegId == legId && activeSocket === stream }
-                            if (!current || !running) return@launch
-                            if (deliveryBody != null) {
-                                coreHost.dispatchDirectSignal(deliveryBody)
-                            } else if (resultBody != null) {
-                                val res = PeerFrameResult.parseFrom(resultBody)
-                                coreHost.dispatchDirectSignalDelivery(
-                                    res.frameId.toByteArray(),
-                                    res.statusValue,
-                                    res.retryAfterMs.toLong(),
-                                )
-                            }
-                        } catch (_: Exception) {
-                        } finally {
-                            peerJobs.decrementAndGet()
+                    val cur = activeStreamLeg
+                    if (cur == null || cur.legId != legId || cur.socket !== stream || !running) return
+                    runCatching {
+                        if (deliveryBody != null) {
+                            directSignalSink?.invoke(deliveryBody) ?: coreHost.dispatchDirectSignal(deliveryBody)
+                        } else if (resultBody != null) {
+                            val res = PeerFrameResult.parseFrom(resultBody)
+                            coreHost.dispatchDirectSignalDelivery(
+                                res.frameId.toByteArray(),
+                                res.statusValue,
+                                res.retryAfterMs.toLong(),
+                            )
                         }
                     }
                     return
@@ -880,6 +874,7 @@ class Remote(
                     val wasCurrent = streamMutex.withLock {
                         if (activeLegId == legId) {
                             activeSocket = null
+                            activeStreamLeg = null
                             activeLegJob = null
                             activeLegId = 0L
                             true
@@ -910,6 +905,7 @@ class Remote(
             val prevJob = activeLegJob
             activeLegId = legId
             activeSocket = socket
+            activeStreamLeg = ActiveStreamLeg(legId, socket)
             activeLegJob = legJob
             prevSocket to prevJob
         }
@@ -923,6 +919,7 @@ class Remote(
                 val s = activeSocket
                 val j = activeLegJob
                 activeSocket = null
+                activeStreamLeg = null
                 activeLegJob = null
                 if (activeLegId == legId) activeLegId = 0L
                 s to j

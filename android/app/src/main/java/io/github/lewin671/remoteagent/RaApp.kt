@@ -166,6 +166,7 @@ class RaApp : Application() {
                 object : DefaultLifecycleObserver {
                     override fun onStart(owner: LifecycleOwner) {
                         foreground = true
+                        prewarmRtcIfAccountPresent()
                         loadAccount()
                         io.github.lewin671.remoteagent.update.Updater.check(this@RaApp)
                         _remote.value?.let { r ->
@@ -191,42 +192,68 @@ class RaApp : Application() {
         // Without a network at start no callback comes.
         val connectivity = getSystemService(ConnectivityManager::class.java)
         observeCurrentNetwork(connectivity)
+        val networkCoalescer = NetworkObservationCoalescer(scope) { signature, available ->
+            observeNetwork(signature, available)
+        }
         connectivity.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
             private var current: Network? = connectivity.activeNetwork
             private var properties: LinkProperties? = current?.let(connectivity::getLinkProperties)
             private var capabilities: NetworkCapabilities? = current?.let(connectivity::getNetworkCapabilities)
-            private fun changed() {
+            private fun scheduleChanged() {
                 val network = current
                 val available = network != null
                 // Account attachment and observations share the main actor's order.
                 val signature = networkIdentity(network, properties, capabilities)
-                scope.launch { observeNetwork(signature, available) }
+                networkCoalescer.schedule(signature, available)
             }
             override fun onAvailable(network: Network) {
-                current = network
-                properties = connectivity.getLinkProperties(network)
-                capabilities = connectivity.getNetworkCapabilities(network)
-                changed()
+                if (current != network) {
+                    current = network
+                    // Avoid synchronous getLinkProperties/getNetworkCapabilities inside onAvailable;
+                    // ConnectivityManager immediately delivers onCapabilitiesChanged and
+                    // onLinkPropertiesChanged, which coalesce into a single stable observation.
+                    properties = null
+                    capabilities = null
+                }
+                scheduleChanged()
                 scope.launch { registerPush() }
             }
             override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
                 if (network != current) return
                 properties = linkProperties
-                changed()
+                scheduleChanged()
             }
             override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
                 if (network != current) return
                 capabilities = networkCapabilities
-                changed()
+                scheduleChanged()
             }
             override fun onLost(network: Network) {
                 if (network != current) return
-                current = connectivity.activeNetwork?.takeUnless { it == network }
-                properties = current?.let(connectivity::getLinkProperties)
-                capabilities = current?.let(connectivity::getNetworkCapabilities)
-                changed()
+                val next = connectivity.activeNetwork?.takeUnless { it == network }
+                current = next
+                properties = null
+                capabilities = null
+                if (next == null) {
+                    networkCoalescer.emitNow(networkIdentity(null, null, null), false)
+                } else {
+                    scheduleChanged()
+                }
             }
         })
+    }
+
+    /**
+     * Overlaps native libwebrtc (.so + PeerConnectionFactory) startup with account bootstrap and
+     * Room open during foreground launch; never runs for background push wakeups or empty vaults.
+     */
+    internal fun prewarmRtcIfAccountPresent(foregroundOverride: Boolean? = null): kotlinx.coroutines.Job? {
+        if (!(foregroundOverride ?: foreground) || erasePending) return null
+        return scope.launch(Dispatchers.IO) {
+            if ((foregroundOverride ?: foreground) && !erasePending && runCatching { vault.hasAccount() }.getOrDefault(false)) {
+                runCatching { (testRtcFactory ?: rtcFactory).prewarm() }
+            }
+        }
     }
 
     private fun observeCurrentNetwork(connectivity: ConnectivityManager) {

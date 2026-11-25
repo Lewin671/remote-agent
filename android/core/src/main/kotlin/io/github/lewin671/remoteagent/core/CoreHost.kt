@@ -700,6 +700,11 @@ class CoreHost(
     }
 
     private fun scheduleTimer(eff: ScheduleTimerEffect) {
+        // Coroutine delay() tracks CLOCK_MONOTONIC (pauses during deep sleep) while Android's
+        // monotonic clock uses SystemClock.elapsedRealtime() (CLOCK_BOOTTIME). This is safe for the
+        // current foreground-only app (ProcessLifecycleOwner stops Remote on background/lock after
+        // its ~700 ms timeout), though any future foreground-service keepalive would need boottime
+        // wakeup or post-wake clock resync.
         val id = eff.timerId
         val kind = eff.kind
         val key = eff.key
