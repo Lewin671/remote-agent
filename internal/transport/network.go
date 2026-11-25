@@ -7,8 +7,14 @@ import (
 	"net"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
+)
+
+const (
+	networkHintDebounce    = 60 * time.Millisecond
+	networkHintMaxDebounce = 150 * time.Millisecond
 )
 
 // NetworkChanges retains only the newest observation. Addresses and routes
@@ -16,26 +22,36 @@ import (
 // events accelerate the bounded fallback scan, including same-interface DHCP.
 func NetworkChanges(ctx context.Context) <-chan uint64 {
 	tick := time.NewTicker(time.Second)
-	return observeNetworkChanges(ctx, routeHints(ctx), tick.C, networkFingerprint, tick.Stop)
+	return observeNetworkChangesWithDebounce(ctx, routeHints(ctx), tick.C, networkHintDebounce, networkFingerprint, tick.Stop)
 }
 
 func observeNetworkChanges(ctx context.Context, hints <-chan struct{}, ticks <-chan time.Time, scan func() [32]byte, stop func()) <-chan uint64 {
+	return observeNetworkChangesWithDebounce(ctx, hints, ticks, 0, scan, stop)
+}
+
+func observeNetworkChangesWithDebounce(ctx context.Context, hints <-chan struct{}, ticks <-chan time.Time, debounce time.Duration, scan func() [32]byte, stop func()) <-chan uint64 {
 	out := make(chan uint64, 1)
 	go func() {
 		defer close(out)
 		defer stop()
+		var debounceTimer *time.Timer
+		var debounceC <-chan time.Time
+		var burstStart time.Time
+		stopDebounce := func() {
+			if debounceTimer != nil {
+				debounceTimer.Stop()
+				debounceTimer = nil
+				debounceC = nil
+			}
+		}
+		defer stopDebounce()
+
 		previous := scan()
 		var generation uint64
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-hints:
-			case <-ticks:
-			}
+		emitIfChanged := func() bool {
 			current := scan()
 			if current == previous {
-				continue
+				return true
 			}
 			previous = current
 			generation++
@@ -45,8 +61,56 @@ func observeNetworkChanges(ctx context.Context, hints <-chan struct{}, ticks <-c
 			}
 			select {
 			case out <- generation:
+				return true
+			case <-ctx.Done():
+				return false
+			}
+		}
+		for {
+			select {
 			case <-ctx.Done():
 				return
+			case <-hints:
+				if debounce <= 0 {
+					if !emitIfChanged() {
+						return
+					}
+					continue
+				}
+				now := time.Now()
+				if debounceTimer == nil {
+					burstStart = now
+					debounceTimer = time.NewTimer(debounce)
+					debounceC = debounceTimer.C
+					continue
+				}
+				maxWait := max(debounce*2, networkHintMaxDebounce)
+				rem := burstStart.Add(maxWait).Sub(now)
+				if rem <= 0 {
+					stopDebounce()
+					if !emitIfChanged() {
+						return
+					}
+					continue
+				}
+				if !debounceTimer.Stop() {
+					select {
+					case <-debounceTimer.C:
+					default:
+					}
+				}
+				debounceTimer.Reset(min(debounce, rem))
+			case <-debounceC:
+				debounceTimer = nil
+				debounceC = nil
+				if !emitIfChanged() {
+					return
+				}
+			case <-ticks:
+				stopDebounce()
+				if !emitIfChanged() {
+					return
+				}
 			}
 		}
 	}()
@@ -89,6 +153,16 @@ func dnsFingerprintLines(resolvPath string) []string {
 	return lines
 }
 
+func fingerprintAddr(a net.Addr) string {
+	if ipNet, ok := a.(*net.IPNet); ok && ipNet.IP != nil && ipNet.IP.To4() == nil && ipNet.IP.IsGlobalUnicast() {
+		ones, bits := ipNet.Mask.Size()
+		if bits == 128 && ones > 0 {
+			return ipNet.IP.Mask(ipNet.Mask).String() + "/" + strconv.Itoa(ones)
+		}
+	}
+	return a.String()
+}
+
 func fingerprintSnapshot(s networkSnapshot) [32]byte {
 	defaultIfs := make(map[int]bool, len(s.routes))
 	var parts []string
@@ -105,8 +179,13 @@ func fingerprintSnapshot(s networkSnapshot) [32]byte {
 		var addrsStr []string
 		if s.addrs != nil {
 			if addrs, err := s.addrs(iface); err == nil {
+				seen := make(map[string]struct{}, len(addrs))
 				for _, a := range addrs {
-					addrsStr = append(addrsStr, a.String())
+					s := fingerprintAddr(a)
+					if _, dup := seen[s]; !dup {
+						seen[s] = struct{}{}
+						addrsStr = append(addrsStr, s)
+					}
 				}
 			}
 		}

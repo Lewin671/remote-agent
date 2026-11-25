@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -40,7 +41,14 @@ func (r *Relay) newDispatcher(ctx context.Context, acct *Account, recovering boo
 	maintenance, stopMaintenance := context.WithCancel(ctx)
 	securityCredentials := accountCredentials(maintenance, acct)
 	securityCredentials.timeout = 3 * time.Second
-	client := remoteagentv1connect.NewClientServiceClient(httpClient(), acct.Server, connect.WithInterceptors(securityCredentials.bearer()))
+	securityHTTP := httpClient()
+	var closeIdle func()
+	if dt, ok := http.DefaultTransport.(*http.Transport); ok {
+		tr := dt.Clone()
+		securityHTTP.Transport = tr
+		closeIdle = tr.CloseIdleConnections
+	}
+	client := remoteagentv1connect.NewClientServiceClient(securityHTTP, acct.Server, connect.WithInterceptors(securityCredentials.bearer()))
 	security, err := openSecuritySession(acct, client)
 	if err != nil {
 		stopMaintenance()
@@ -49,6 +57,7 @@ func (r *Relay) newDispatcher(ctx context.Context, acct *Account, recovering boo
 	}
 	security.lifetime = maintenance
 	security.credentials = securityCredentials
+	security.closeIdleConnections = closeIdle
 	r.security.Store(security)
 	d := &dispatcher{ctx: ctx, cancel: cancel, security: security, acct: acct, maintenance: maintenance, stopMaintenance: stopMaintenance}
 	d.link = transport.NewLink(ctx)

@@ -196,3 +196,50 @@ func TestIndependentEndpointHandlesCannotRollbackLeaseOrFloor(t *testing.T) {
 		t.Fatal("stale handle rolled back time floor")
 	}
 }
+
+func TestInstallLeaseSkipsSQLiteWriteWhenUnchanged(t *testing.T) {
+	g, pin, ed, x, _ := testGenesis(t)
+	path := filepath.Join(t.TempDir(), "security.db")
+	ep, err := InitEndpoint(path, pin, []devicesec.State{g}, []*devicesec.RecoveryStatement{nil}, g.Core.AuthorityID, ed.Seed(), x)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ep.Close()
+	now := g.Core.IssuedAt
+	l, err := BuildLease(g, ed, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ep.InstallLease(l, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ep.db.Exec(`CREATE TABLE lease_writes (n INTEGER NOT NULL); INSERT INTO lease_writes VALUES (0); CREATE TRIGGER count_lease_writes AFTER INSERT ON lease BEGIN UPDATE lease_writes SET n = n + 1; END;`); err != nil {
+		t.Fatal(err)
+	}
+	if err := ep.InstallLease(l, now+12_000); err != nil {
+		t.Fatal(err)
+	}
+	var writes int
+	if err := ep.db.QueryRow(`SELECT n FROM lease_writes`).Scan(&writes); err != nil {
+		t.Fatal(err)
+	}
+	if writes != 0 {
+		t.Fatalf("unchanged lease triggered %d SQLite writes, want 0", writes)
+	}
+	if ep.Floor() < now+12_000 {
+		t.Fatalf("floor = %d, want >= %d", ep.Floor(), now+12_000)
+	}
+	newer, err := BuildLease(g, ed, now+24_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ep.InstallLease(newer, now+24_000); err != nil {
+		t.Fatal(err)
+	}
+	if err := ep.db.QueryRow(`SELECT n FROM lease_writes`).Scan(&writes); err != nil {
+		t.Fatal(err)
+	}
+	if writes != 1 {
+		t.Fatalf("updated lease triggered %d SQLite writes, want 1", writes)
+	}
+}

@@ -397,3 +397,123 @@ func TestDirectedExpiredBeforeDispatchDropsAsLimitedWithoutClosingMainWS(t *test
 		t.Fatal("unreachable")
 	}
 }
+
+// Bug 8: Closing a newer socket for a multi-connection client must fall back to the surviving socket.
+func TestMultiConnClientClosingNewerSocketRestoresOlderDirectReceiver(t *testing.T) {
+	ts, mid, _, _, _, ms := newV2Env(t)
+	cpriv, cid, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tok := ts.login(t, cpriv, cid)
+	tab1 := ts.stream(t, tok)
+	tab2 := ts.stream(t, tok)
+
+	// Close tab2 and wait until hub.remove(tab2) has processed.
+	tab2.ws.CloseNow()
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		ts.srv.hub.mu.Lock()
+		n := 0
+		for _, peers := range ts.srv.hub.clients {
+			for p := range peers {
+				if p.dev.id == cid {
+					n++
+				}
+			}
+		}
+		ts.srv.hub.mu.Unlock()
+		if n <= 1 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	// tab1 -> machine must deliver (not OFFLINE).
+	req := &pb.DirectedPeerFrame{
+		ToDevice:   []byte(mid),
+		FrameClass: pb.FrameClass_SIGNAL,
+		FrameId:    []byte("tab1-to-machine1"),
+		Sealed:     []byte("hello-machine"),
+	}
+	tab1.write(t, &pb.PeerFrame{Kind: &pb.PeerFrame_DirectedPeerFrame{DirectedPeerFrame: req}})
+	res := tab1.next(t, func(f *pb.ServerFrame) bool { return f.GetPeerFrameResult() != nil }).GetPeerFrameResult()
+	if res.Status != pb.PeerFrameResult_DELIVERED {
+		t.Fatalf("tab1 -> machine status = %v, want DELIVERED", res.Status)
+	}
+	deliv := ms.next(t, func(f *pb.ServerFrame) bool { return f.GetPeerFrameDelivery() != nil }).GetPeerFrameDelivery()
+	if !bytes.Equal(deliv.FrameId, req.FrameId) {
+		t.Fatalf("machine received wrong frame %q", deliv.FrameId)
+	}
+
+	// machine -> client must deliver to tab1 (not OFFLINE).
+	req2 := &pb.DirectedPeerFrame{
+		ToDevice:   []byte(cid),
+		FrameClass: pb.FrameClass_SIGNAL,
+		FrameId:    []byte("machine-to-tab11"),
+		Sealed:     []byte("hello-tab1"),
+	}
+	ms.write(t, &pb.PeerFrame{Kind: &pb.PeerFrame_DirectedPeerFrame{DirectedPeerFrame: req2}})
+	res2 := ms.next(t, func(f *pb.ServerFrame) bool { return f.GetPeerFrameResult() != nil }).GetPeerFrameResult()
+	if res2.Status != pb.PeerFrameResult_DELIVERED {
+		t.Fatalf("machine -> tab1 status = %v, want DELIVERED", res2.Status)
+	}
+	deliv2 := tab1.next(t, func(f *pb.ServerFrame) bool { return f.GetPeerFrameDelivery() != nil }).GetPeerFrameDelivery()
+	if !bytes.Equal(deliv2.FrameId, req2.FrameId) {
+		t.Fatalf("tab1 received wrong frame %q", deliv2.FrameId)
+	}
+}
+
+// Opt 4: Draining directed out slices resets them to nil; rate-limit RetryAfterMs reflects actual token deficit.
+func TestDirectedQueueDrainResetsSliceAndRateLimitRetryAfterIsShort(t *testing.T) {
+	h, c, m := directedFixture(t)
+	now := time.Now()
+	h.directed(c, directedRequest(m, 1, pb.FrameClass_SIGNAL), now)
+	_ = popDirected(t, h, m, 0)
+	h.direct.mu.Lock()
+	outNil := m.direct.out[0] == nil
+	h.direct.mu.Unlock()
+	if !outNil {
+		t.Fatal("drained directed out slice was not reset to nil")
+	}
+
+	// Exhaust the 256-frame Signal burst (1 frame deficit at 256 fps is ~4ms -> clamped to 50ms, not 1000ms).
+	h2, c2, m2 := directedFixture(t)
+	for i := range 256 {
+		h2.directed(c2, directedRequest(m2, i, pb.FrameClass_SIGNAL), now)
+	}
+	h2.directed(c2, directedRequest(m2, 999, pb.FrameClass_SIGNAL), now)
+	res := popDirected(t, h2, c2, 2).GetPeerFrameResult()
+	if res.Status != pb.PeerFrameResult_LIMITED {
+		t.Fatalf("status = %v, want LIMITED", res.Status)
+	}
+	if res.RetryAfterMs < 50 || res.RetryAfterMs > 200 {
+		t.Fatalf("RetryAfterMs = %d, want in [50, 200] instead of hardcoded 1000", res.RetryAfterMs)
+	}
+
+	// On-demand directedExpiryLoop expires queued frame promptly without busy polling.
+	h3, c3, m3 := directedFixture(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		h3.directedExpiryLoop(ctx, m3)
+	}()
+	h3.directed(c3, directedRequest(m3, 1, pb.FrameClass_SIGNAL), time.Now().Add(-directedResidence+40*time.Millisecond))
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		h3.direct.mu.Lock()
+		n := c3.direct.count[2]
+		h3.direct.mu.Unlock()
+		if n > 0 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	res3 := popDirected(t, h3, c3, 2).GetPeerFrameResult()
+	if res3.Status != pb.PeerFrameResult_LIMITED {
+		t.Fatalf("expired frame status = %v, want LIMITED", res3.Status)
+	}
+	cancel()
+	<-done
+}

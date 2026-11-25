@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"math"
 	"sync"
 	"time"
 
@@ -28,11 +29,12 @@ type directedFrame struct {
 	class  int // signal, control, receipt
 }
 type directedQueue struct {
-	out    [3][]directedFrame
-	wake   chan struct{}
-	count  [3]int
-	bytes  [3]int
-	closed bool
+	out        [3][]directedFrame
+	wake       chan struct{}
+	expiryWake chan struct{}
+	count      [3]int
+	bytes      [3]int
+	closed     bool
 }
 type directedBucket struct {
 	at            time.Time
@@ -51,6 +53,7 @@ type directedHub struct {
 
 func (h *hub) initDirected(p *peer) {
 	p.direct.wake = make(chan struct{}, 1)
+	p.direct.expiryWake = make(chan struct{}, 1)
 }
 func (h *hub) directedTarget(source *peer, id string) *peer {
 	h.mu.Lock()
@@ -77,6 +80,11 @@ func (h *hub) directedTarget(source *peer, id string) *peer {
 	return nil
 }
 func (d *directedHub) allow(source *peer, class, size int, now time.Time) bool {
+	ok, _ := d.allowRetryAfter(source, class, size, now)
+	return ok
+}
+
+func (d *directedHub) allowRetryAfter(source *peer, class, size int, now time.Time) (bool, uint32) {
 	if d.devices == nil {
 		d.devices = map[string]*directedRates{}
 		d.accounts = map[string]*directedRates{}
@@ -98,7 +106,7 @@ func (d *directedHub) allow(source *peer, class, size int, now time.Time) bool {
 		rates[i] = entries[keys[i]]
 		if rates[i] == nil {
 			if len(entries) >= directedRateKeys {
-				return false
+				return false, 1000
 			}
 			rates[i] = &directedRates{}
 			entries[keys[i]] = rates[i]
@@ -107,6 +115,8 @@ func (d *directedHub) allow(source *peer, class, size int, now time.Time) bool {
 	// Account and device reservations are atomic: a rejected frame does not
 	// consume one bucket while leaving the other unchanged.
 	var next [2]directedBucket
+	denied := false
+	var needSec float64
 	for i, rate := range rates {
 		fps, bps, burst := 256.0, float64(4<<20), 256.0
 		if class == 1 {
@@ -128,9 +138,23 @@ func (d *directedHub) allow(source *peer, class, size int, now time.Time) bool {
 		b.at = now
 		next[i] = b
 		rate.touched = now
-		if b.frames < 1 || b.bytes < float64(size) {
-			return false
+		if b.frames < 1 {
+			denied = true
+			needSec = max(needSec, (1-b.frames)/fps)
 		}
+		if b.bytes < float64(size) {
+			denied = true
+			needSec = max(needSec, (float64(size)-b.bytes)/bps)
+		}
+	}
+	if denied {
+		ms := uint32(math.Ceil(needSec * 1000))
+		if ms < 50 {
+			ms = 50
+		} else if ms > 1000 {
+			ms = 1000
+		}
+		return false, ms
 	}
 	for i, rate := range rates {
 		b := next[i]
@@ -138,7 +162,7 @@ func (d *directedHub) allow(source *peer, class, size int, now time.Time) bool {
 		b.bytes -= float64(size)
 		rate.buckets[class] = b
 	}
-	return true
+	return true, 0
 }
 func (h *hub) directed(source *peer, f *pb.DirectedPeerFrame, now time.Time) {
 	if len(f.FrameId) != 16 {
@@ -163,10 +187,10 @@ func (h *hub) directed(source *peer, f *pb.DirectedPeerFrame, now time.Time) {
 		return
 	}
 	h.direct.mu.Lock()
-	allowed := h.direct.allow(source, class, len(data), now)
+	allowed, retryAfterMs := h.direct.allowRetryAfter(source, class, len(data), now)
 	h.direct.mu.Unlock()
 	if !allowed {
-		h.directedResult(source, f.FrameId, pb.PeerFrameResult_LIMITED, now)
+		h.directedResultWithRetry(source, f.FrameId, pb.PeerFrameResult_LIMITED, retryAfterMs, now)
 		return
 	}
 	target := h.directedTarget(source, string(f.ToDevice))
@@ -211,12 +235,24 @@ func (h *hub) enqueueDirected(p *peer, q directedFrame) bool {
 	case p.direct.wake <- struct{}{}:
 	default:
 	}
+	if len(p.direct.out[c]) == 1 && p.direct.expiryWake != nil {
+		select {
+		case p.direct.expiryWake <- struct{}{}:
+		default:
+		}
+	}
 	return true
 }
 func (h *hub) directedResult(p *peer, id []byte, status pb.PeerFrameResult_Status, now time.Time) {
 	retry := uint32(0)
 	if status == pb.PeerFrameResult_LIMITED {
 		retry = 1000
+	}
+	h.directedResultWithRetry(p, id, status, retry, now)
+}
+func (h *hub) directedResultWithRetry(p *peer, id []byte, status pb.PeerFrameResult_Status, retry uint32, now time.Time) {
+	if status != pb.PeerFrameResult_LIMITED {
+		retry = 0
 	}
 	data, err := proto.Marshal(&pb.ServerFrame{Kind: &pb.ServerFrame_PeerFrameResult{PeerFrameResult: &pb.PeerFrameResult{FrameId: id, Status: status, RetryAfterMs: retry}}})
 	if err != nil {
@@ -296,6 +332,9 @@ func (h *hub) nextDirected(p *peer, next *int) (directedFrame, bool) {
 		q := p.direct.out[c][0]
 		p.direct.out[c][0] = directedFrame{}
 		p.direct.out[c] = p.direct.out[c][1:]
+		if len(p.direct.out[c]) == 0 {
+			p.direct.out[c] = nil
+		}
 		*next = (c + 1) % 3
 		return q, true
 	}
@@ -314,6 +353,9 @@ func (h *hub) expireDirected(p *peer, now time.Time) {
 			h.direct.bytes[min(c, 1)] -= len(q.data)
 			expired = append(expired, q)
 		}
+		if len(p.direct.out[c]) == 0 {
+			p.direct.out[c] = nil
+		}
 	}
 	h.direct.mu.Unlock()
 	for _, q := range expired {
@@ -322,15 +364,63 @@ func (h *hub) expireDirected(p *peer, now time.Time) {
 		}
 	}
 }
+func (h *hub) nextDirectedExpiry(p *peer) (time.Time, bool) {
+	h.direct.mu.Lock()
+	defer h.direct.mu.Unlock()
+	if p.direct.closed {
+		return time.Time{}, false
+	}
+	var earliest time.Time
+	for c := range p.direct.out {
+		if len(p.direct.out[c]) == 0 {
+			continue
+		}
+		u := p.direct.out[c][0].until
+		if earliest.IsZero() || u.Before(earliest) {
+			earliest = u
+		}
+	}
+	return earliest, !earliest.IsZero()
+}
 func (h *hub) directedExpiryLoop(ctx context.Context, p *peer) {
-	t := time.NewTicker(25 * time.Millisecond)
-	defer t.Stop()
+	var timer *time.Timer
+	defer func() {
+		if timer != nil {
+			timer.Stop()
+		}
+	}()
 	for {
+		until, ok := h.nextDirectedExpiry(p)
+		if !ok {
+			select {
+			case <-ctx.Done():
+				return
+			case <-p.direct.expiryWake:
+				continue
+			}
+		}
+		wait := time.Until(until)
+		if wait <= 0 {
+			h.expireDirected(p, time.Now())
+			continue
+		}
+		if timer == nil {
+			timer = time.NewTimer(wait)
+		} else {
+			timer.Reset(wait)
+		}
 		select {
 		case <-ctx.Done():
 			return
-		case now := <-t.C:
+		case now := <-timer.C:
 			h.expireDirected(p, now)
+		case <-p.direct.expiryWake:
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
 		}
 	}
 }

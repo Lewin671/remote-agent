@@ -74,6 +74,12 @@ func (r *Recovery) Take(now time.Time) bool {
 	defer b.mu.Unlock()
 	return r.r.Take(MonotonicMs(now), &b.b)
 }
+func (r *Recovery) Delay(now time.Time) time.Duration {
+	b := r.budget()
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return time.Duration(r.r.DelayMs(MonotonicMs(now), &b.b)) * time.Millisecond
+}
 func (r *Recovery) Failed(now time.Time) {
 	random := r.Random
 	if random == nil {

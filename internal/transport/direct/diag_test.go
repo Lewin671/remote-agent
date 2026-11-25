@@ -9,6 +9,9 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/Lewin671/remote-agent/shared/linkcore"
+	"github.com/Lewin671/remote-agent/shared/peerwire"
 )
 
 type lockedBuffer struct {
@@ -116,5 +119,43 @@ func TestRoundTraceIsBounded(t *testing.T) {
 	s2.traceAdd("tx", 7, 1, false)
 	if len(s2.trace) != 1 || !strings.HasPrefix(s2.trace[0], "tx7.1!@") {
 		t.Fatalf("trace = %v", s2.trace)
+	}
+}
+
+func TestSessionAllowReasonRefinesLeaseOrProcess(t *testing.T) {
+	buf := captureLog(t)
+	var allowed atomic.Bool
+	allowed.Store(true)
+	s := &Session{
+		born: time.Now(),
+		ctx:  context.Background(),
+		cfg: SessionConfig{
+			Peer:         peerwire.Public{ID: []byte("peer-reason-1234")},
+			Connection:   []byte("conn-reason"),
+			Deadline:     uint64(time.Now().Add(time.Minute).UnixMilli()),
+			Pool:         NewPool(8),
+			Allow:        allowed.Load,
+			AllowReason:  func() string { return "sync_failed" },
+			LoopbackOnly: true,
+		},
+		events: make(chan linkcore.Event, 8),
+		paths:  map[uint64]*Path{},
+		open:   map[uint64]*Path{},
+	}
+	s.generation[0].Store(1)
+	s.current[0].Store(1)
+	if !s.createPC(linkcore.CreatePC{ID: 1, Use: 1, Generation: 1}) {
+		t.Fatal("createPC failed")
+	}
+	p := s.paths[1]
+	allowed.Store(false)
+	select {
+	case <-p.closed:
+	case <-time.After(3 * time.Second):
+		t.Fatal("path did not close after Allow became false")
+	}
+	p.Close()
+	if out := buf.String(); !strings.Contains(out, "reason=sync_failed") || strings.Contains(out, "reason=lease_or_process") {
+		t.Fatalf("log = %q, want reason=sync_failed", out)
 	}
 }

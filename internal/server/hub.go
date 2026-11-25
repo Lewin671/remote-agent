@@ -22,9 +22,10 @@ import (
 // connection, which carries forwarded commands. Requests reach it only
 // through accountHub, which is bound to one account.
 type hub struct {
-	direct        directedHub
-	directClients map[string]*peer // current directed receiver for each client device
-	s             *Server
+	direct             directedHub
+	directClients      map[string]*peer   // current directed receiver for each client device
+	directClientStacks map[string][]*peer // connected sockets per client device, oldest to newest
+	s                  *Server
 
 	mu sync.Mutex
 	// clients are the connected clients by account.
@@ -70,7 +71,7 @@ func newHub(s *Server) *hub {
 	if s != nil && s.forwardAttempts == nil {
 		s.forwardAttempts = newAttemptLedger()
 	}
-	return &hub{s: s, directClients: map[string]*peer{}, clients: map[string]map[*peer]bool{}, machines: map[string]*peer{}, calls: map[uint64]*call{}, accountQueueBytes: map[string]int64{}}
+	return &hub{s: s, directClients: map[string]*peer{}, directClientStacks: map[string][]*peer{}, clients: map[string]map[*peer]bool{}, machines: map[string]*peer{}, calls: map[uint64]*call{}, accountQueueBytes: map[string]int64{}}
 }
 
 // accountHub is the hub as one account sees it.
@@ -286,6 +287,7 @@ func (h *hub) add(p *peer) {
 			h.clients[p.dev.account] = map[*peer]bool{}
 		}
 		h.clients[p.dev.account][p] = true
+		h.directClientStacks[p.dev.id] = append(h.directClientStacks[p.dev.id], p)
 		h.directClients[p.dev.id] = p
 	}
 	h.mu.Unlock()
@@ -319,8 +321,25 @@ func (h *hub) remove(p *peer) {
 		}
 	} else {
 		delete(h.clients[p.dev.account], p)
-		if h.directClients[p.dev.id] == p {
-			delete(h.directClients, p.dev.id)
+		stack := h.directClientStacks[p.dev.id]
+		for i := len(stack) - 1; i >= 0; i-- {
+			if stack[i] == p {
+				copy(stack[i:], stack[i+1:])
+				stack[len(stack)-1] = nil
+				stack = stack[:len(stack)-1]
+				break
+			}
+		}
+		if len(stack) == 0 {
+			delete(h.directClientStacks, p.dev.id)
+			if h.directClients[p.dev.id] == p {
+				delete(h.directClients, p.dev.id)
+			}
+		} else {
+			h.directClientStacks[p.dev.id] = stack
+			if h.directClients[p.dev.id] == p {
+				h.directClients[p.dev.id] = stack[len(stack)-1]
+			}
 		}
 		if len(h.clients[p.dev.account]) == 0 {
 			delete(h.clients, p.dev.account)

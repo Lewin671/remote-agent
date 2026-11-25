@@ -51,7 +51,7 @@ type securityRefresh struct {
 	done    chan struct{}
 	err     error
 	cancel  context.CancelFunc
-	retired bool
+	retired atomic.Bool
 }
 
 type securitySession struct {
@@ -59,25 +59,27 @@ type securitySession struct {
 	directRevision      uint64
 	directInvalidations atomic.Uint64
 	directFresh         atomic.Pointer[directFreshness]
+	directInvalidReason atomic.Value // fixed diagnostic word when directFresh is nil
 
-	syncMu        sync.Mutex
-	lifetime      context.Context
-	credentials   *credentials
-	workers       sync.WaitGroup
-	closed        bool
-	syncing       *securityRefresh
-	clock         func() uint64
-	endpoint      *deviceauth.Endpoint
-	client        remoteagentv1connect.ClientServiceClient
-	syncNow       chan struct{}
-	blocked       atomic.Bool
-	authMu        sync.Mutex
-	authorization context.Context
-	revoke        context.CancelFunc
-	beforeSync    func() error
-	onAuthLost    func()
-	streams       map[uint64]*authorizedStream
-	nextStream    uint64
+	syncMu               sync.Mutex
+	lifetime             context.Context
+	credentials          *credentials
+	closeIdleConnections func()
+	workers              sync.WaitGroup
+	closed               bool
+	syncing              *securityRefresh
+	clock                func() uint64
+	endpoint             *deviceauth.Endpoint
+	client               remoteagentv1connect.ClientServiceClient
+	syncNow              chan struct{}
+	blocked              atomic.Bool
+	authMu               sync.Mutex
+	authorization        context.Context
+	revoke               context.CancelFunc
+	beforeSync           func() error
+	onAuthLost           func()
+	streams              map[uint64]*authorizedStream
+	nextStream           uint64
 }
 
 func openSecuritySession(acct *Account, client remoteagentv1connect.ClientServiceClient) (*securitySession, error) {
@@ -260,7 +262,7 @@ func (s *securitySession) refreshWithin(ctx context.Context, budget time.Duratio
 			flight = &securityRefresh{done: make(chan struct{}), cancel: cancel}
 			s.syncing = flight
 			s.workers.Go(func() {
-				err := s.syncOnce(round)
+				err := s.syncOnceWith(round, flight.retired.Load)
 				s.syncMu.Lock()
 				flight.err = err
 				if s.syncing == flight {
@@ -276,10 +278,7 @@ func (s *securitySession) refreshWithin(ctx context.Context, budget time.Duratio
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-flight.done:
-			s.syncMu.Lock()
-			retired := flight.retired
-			s.syncMu.Unlock()
-			if retired {
+			if flight.retired.Load() {
 				continue
 			}
 			return flight.err
@@ -287,13 +286,24 @@ func (s *securitySession) refreshWithin(ctx context.Context, budget time.Duratio
 	}
 }
 
+// wake handles system sleep/resume: direct traffic pauses immediately until a
+// fresh post-wake synchronization succeeds.
+func (s *securitySession) wake() {
+	s.invalidateDirectFor("wake")
+	s.networkChanged()
+}
+
 // The network owner retires both the pull and its credential round, never a waiter.
+// Normal network changes keep directFresh within its existing 20s freshness window
+// and trigger an immediate sync; a retired round never wipes directFresh.
 func (s *securitySession) networkChanged() {
-	s.invalidateDirect()
+	s.directMu.Lock()
+	s.directRevision++
+	s.directMu.Unlock()
 	s.syncMu.Lock()
 	if flight := s.syncing; flight != nil {
 		s.syncing = nil
-		flight.retired = true
+		flight.retired.Store(true)
 		flight.cancel()
 	}
 	// Keep replacement pulls behind the same retirement barrier: otherwise a
@@ -301,11 +311,22 @@ func (s *securitySession) networkChanged() {
 	if s.credentials != nil {
 		s.credentials.networkChanged()
 	}
+	closeIdle := s.closeIdleConnections
 	s.syncMu.Unlock()
+	if closeIdle != nil {
+		closeIdle()
+	}
 	s.requestSync()
 }
 
-func (s *securitySession) syncOnce(ctx context.Context) (result error) {
+func (s *securitySession) syncOnce(ctx context.Context) error {
+	return s.syncOnceWith(ctx, nil)
+}
+
+func (s *securitySession) syncOnceWith(ctx context.Context, retired func() bool) (result error) {
+	if retired != nil && retired() {
+		return context.Canceled
+	}
 	round, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	ctx = round
@@ -316,6 +337,9 @@ func (s *securitySession) syncOnce(ctx context.Context) (result error) {
 	s.directMu.Unlock()
 	var refreshed *directFreshness
 	defer func() {
+		if retired != nil && retired() {
+			return
+		}
 		s.directMu.Lock()
 		defer s.directMu.Unlock()
 		if revision != s.directRevision {
@@ -325,6 +349,7 @@ func (s *securitySession) syncOnce(ctx context.Context) (result error) {
 			s.directFresh.Store(refreshed)
 		} else {
 			s.directFresh.Store(nil)
+			s.directInvalidReason.Store("sync_failed")
 			s.directInvalidations.Add(1)
 		}
 	}()
@@ -357,7 +382,20 @@ func (s *securitySession) syncOnce(ctx context.Context) (result error) {
 	return err
 }
 
+func isRetryableSyncTransportError(ctx context.Context, err error) bool {
+	if err == nil || ctx.Err() != nil {
+		return false
+	}
+	switch connect.CodeOf(err) {
+	case connect.CodeUnavailable, connect.CodeUnknown, connect.CodeInternal, connect.CodeAborted, connect.CodeDeadlineExceeded, connect.CodeCanceled:
+		return true
+	default:
+		return false
+	}
+}
+
 func (s *securitySession) pull(ctx context.Context) (uint64, error) {
+	retried := false
 	for page := 0; page < devicesec.MaxStates; page++ {
 		after := s.endpoint.HeadEpoch()
 		now := s.now()
@@ -365,6 +403,13 @@ func (s *securitySession) pull(ctx context.Context) (uint64, error) {
 			return 0, err
 		}
 		res, err := s.client.GetSecurityStates(ctx, connect.NewRequest(&pb.GetSecurityStatesRequest{AfterEpoch: after, Limit: 8}))
+		if err != nil && !retried && isRetryableSyncTransportError(ctx, err) {
+			retried = true
+			if s.closeIdleConnections != nil {
+				s.closeIdleConnections()
+			}
+			res, err = s.client.GetSecurityStates(ctx, connect.NewRequest(&pb.GetSecurityStatesRequest{AfterEpoch: after, Limit: 8}))
+		}
 		if err != nil {
 			return 0, err
 		}
@@ -431,13 +476,29 @@ func (s *securitySession) syncLoop(ctx context.Context, interval time.Duration, 
 	var warn warningGate
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
+	var retryTimer *time.Timer
+	var retryC <-chan time.Time
+	stopRetry := func() {
+		if retryTimer != nil {
+			retryTimer.Stop()
+			retryTimer = nil
+			retryC = nil
+		}
+	}
+	defer stopRetry()
+	failures := 0
 	s.requestSync()
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-ticker.C:
+			stopRetry()
 		case <-s.syncNow:
+			stopRetry()
+		case <-retryC:
+			retryTimer = nil
+			retryC = nil
 		}
 		attempt, cancel := context.WithTimeout(ctx, 5*time.Second)
 		err := s.refreshWithin(attempt, 5*time.Second)
@@ -446,8 +507,20 @@ func (s *securitySession) syncLoop(ctx context.Context, interval time.Duration, 
 			close(initialDone)
 			initialDone = nil
 		}
-		if err != nil && ctx.Err() == nil && warn.allow(time.Now()) {
+		if err == nil {
+			failures = 0
+			continue
+		}
+		if ctx.Err() == nil && warn.allow(time.Now()) {
 			slog.Warn("relay: security synchronization failed; retrying next sync", "code", connect.CodeOf(err).String())
+		}
+		if ctx.Err() == nil && !securityAuthenticationLost(err) {
+			delay := min(1500*time.Millisecond<<min(failures, 3), interval)
+			failures++
+			if delay > 0 && delay < interval {
+				retryTimer = time.NewTimer(delay)
+				retryC = retryTimer.C
+			}
 		}
 	}
 }
@@ -486,7 +559,7 @@ func (s *securitySession) setAuthorized(valid bool) {
 	s.authMu.Lock()
 	defer s.authMu.Unlock()
 	if !valid {
-		s.invalidateDirect()
+		s.invalidateDirectFor("auth_lost")
 		s.blocked.Store(true)
 		if s.revoke != nil {
 			s.revoke()
@@ -571,21 +644,75 @@ type directFreshness struct {
 }
 
 func (s *securitySession) invalidateDirect() {
+	s.invalidateDirectFor("not_synced")
+}
+
+func (s *securitySession) invalidateDirectFor(reason string) {
 	s.directMu.Lock()
 	s.directRevision++
 	s.directFresh.Store(nil)
+	s.directInvalidReason.Store(reason)
 	s.directInvalidations.Add(1)
 	s.directMu.Unlock()
 }
+
 func (s *securitySession) directCurrent(self, peer devicesec.Member, head devicesec.Hash) bool {
+	return s.directCurrentReason(self, peer, head) == ""
+}
+
+func (s *securitySession) directCurrentReason(self, peer devicesec.Member, head devicesec.Hash) string {
 	inv := s.directInvalidations.Load()
-	fresh := s.directFresh.Load()
-	if fresh == nil || fresh.head != head || s.blocked.Load() || s.now() >= min(fresh.until, fresh.leaseUntil) {
-		return false
+	if s.blocked.Load() {
+		return "auth_blocked"
 	}
-	if s.endpoint.CheckPeer(self, peer, head, s.now()) != nil {
-		return false
+	fresh := s.directFresh.Load()
+	if fresh == nil {
+		if r, ok := s.directInvalidReason.Load().(string); ok && r != "" {
+			return r
+		}
+		return "not_synced"
+	}
+	if fresh.head != head {
+		return "head_changed"
+	}
+	now := s.now()
+	if now >= fresh.leaseUntil {
+		return "lease_expired"
+	}
+	if now >= fresh.until {
+		return "freshness_expired"
+	}
+	if err := s.endpoint.CheckPeer(self, peer, head, s.now()); err != nil {
+		if errors.Is(err, devicesec.ErrClock) {
+			return "clock_rollback"
+		}
+		return "peer_or_lease"
+	}
+	if s.blocked.Load() {
+		return "auth_blocked"
 	}
 	after := s.directFresh.Load()
-	return !s.blocked.Load() && after != nil && after.head == head && s.directInvalidations.Load() == inv && s.now() < min(after.until, after.leaseUntil)
+	if after == nil {
+		if r, ok := s.directInvalidReason.Load().(string); ok && r != "" {
+			return r
+		}
+		return "not_synced"
+	}
+	if after.head != head {
+		return "head_changed"
+	}
+	if s.directInvalidations.Load() != inv {
+		if r, ok := s.directInvalidReason.Load().(string); ok && r != "" {
+			return r
+		}
+		return "invalidated"
+	}
+	nowAfter := s.now()
+	if nowAfter >= after.leaseUntil {
+		return "lease_expired"
+	}
+	if nowAfter >= after.until {
+		return "freshness_expired"
+	}
+	return ""
 }

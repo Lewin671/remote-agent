@@ -7,6 +7,7 @@ import (
 	"net/http/httptrace"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -83,6 +84,7 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 	var generation uint64
 	var dialing bool
 	var candidateCancel context.CancelFunc
+	var candidateLocalIP *atomic.Pointer[net.IP]
 	var everReady bool
 	var cachedToken string
 	var cachedExpiresMs int64
@@ -92,6 +94,16 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 	results := make(chan dialResult, 1)
 	ended := make(chan *mainPath, 2)
 	var readers sync.WaitGroup
+	var retryTimer *time.Timer
+	var retryC <-chan time.Time
+	stopRetry := func() {
+		if retryTimer != nil {
+			retryTimer.Stop()
+			retryTimer = nil
+			retryC = nil
+		}
+	}
+	defer stopRetry()
 	defer func() {
 		cancel()
 		if candidateCancel != nil {
@@ -115,7 +127,7 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 		r.mu.Unlock()
 	}()
 	onWake := func() {
-		d.security.networkChanged()
+		d.security.wake()
 		generation++
 		wakeRefreshRequired = true
 		wakeGen = generation
@@ -132,44 +144,57 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 	lastTick := time.Now()
 	for {
 		now := time.Now()
-		if wanted && !dialing && policy.Take(now) {
-			r.observe(recoveryDial)
-			dialing = true
-			wanted = false
-			gen := generation
-			token := cachedToken
-			expiresMs := cachedExpiresMs
-			needsLogin := token == "" || time.Now().UnixMilli()+tokenRefreshMarginMs >= expiresMs
-			if needsLogin {
-				token = ""
-				expiresMs = 0
-			}
-			budget := r.readyTimeout
-			if everReady && !needsLogin {
-				budget = min(r.readyTimeout, 3*time.Second)
-			}
-			requireRefresh := wakeRefreshRequired
-			attempt, abort := context.WithTimeout(ctx, budget)
-			candidateCancel = abort
-			readers.Go(func() {
-				res := r.dialMain(attempt, acct, d, requireRefresh, token, expiresMs)
-				res.generation = gen
-				abort()
-				if r.beforeDialResult != nil {
-					r.beforeDialResult(gen)
+		if wanted && !dialing {
+			if policy.Take(now) {
+				stopRetry()
+				r.observe(recoveryDial)
+				dialing = true
+				wanted = false
+				gen := generation
+				token := cachedToken
+				expiresMs := cachedExpiresMs
+				needsLogin := token == "" || time.Now().UnixMilli()+tokenRefreshMarginMs >= expiresMs
+				if needsLogin {
+					token = ""
+					expiresMs = 0
 				}
-				select {
-				case results <- res:
-				case <-ctx.Done():
-					if res.path != nil {
-						res.path.ws.CloseNow()
+				budget := r.readyTimeout
+				if everReady && !needsLogin {
+					budget = min(r.readyTimeout, 3*time.Second)
+				}
+				requireRefresh := wakeRefreshRequired
+				attempt, abort := context.WithTimeout(ctx, budget)
+				localIPPtr := &atomic.Pointer[net.IP]{}
+				candidateCancel = abort
+				candidateLocalIP = localIPPtr
+				readers.Go(func() {
+					res := r.dialMain(attempt, acct, d, requireRefresh, token, expiresMs, localIPPtr)
+					res.generation = gen
+					abort()
+					if r.beforeDialResult != nil {
+						r.beforeDialResult(gen)
 					}
+					select {
+					case results <- res:
+					case <-ctx.Done():
+						if res.path != nil {
+							res.path.ws.CloseNow()
+						}
+					}
+				})
+			} else if retryTimer == nil {
+				if delay := policy.Delay(now); delay > 0 {
+					retryTimer = time.NewTimer(delay)
+					retryC = retryTimer.C
 				}
-			})
+			}
 		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-retryC:
+			retryTimer = nil
+			retryC = nil
 		case _, ok := <-network:
 			if !ok {
 				network = nil
@@ -180,7 +205,15 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 			generation++
 			wanted = true
 			if candidateCancel != nil {
-				candidateCancel()
+				keepDial := false
+				if candidateLocalIP != nil {
+					if ip := candidateLocalIP.Load(); ip != nil && r.isRouteAvailable(*ip) {
+						keepDial = true
+					}
+				}
+				if !keepDial {
+					candidateCancel()
+				}
 			}
 			// Persist observed time before another leg is allowed to receive.
 			if err := d.security.endpoint.Touch(d.security.now()); err != nil {
@@ -222,6 +255,7 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 		case result := <-results:
 			dialing = false
 			candidateCancel = nil
+			candidateLocalIP = nil
 			if result.policyViolation {
 				cachedToken = ""
 				cachedExpiresMs = 0
@@ -293,7 +327,7 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 	}
 }
 
-func (r *Relay) dialMain(ctx context.Context, acct *Account, d *dispatcher, refresh bool, token string, expiresMs int64) dialResult {
+func (r *Relay) dialMain(ctx context.Context, acct *Account, d *dispatcher, refresh bool, token string, expiresMs int64, dialLocalIP *atomic.Pointer[net.IP]) dialResult {
 	var res dialResult
 	if err := d.security.endpoint.Touch(d.security.now()); err != nil {
 		res.err = err
@@ -321,6 +355,10 @@ func (r *Relay) dialMain(ctx context.Context, acct *Account, d *dispatcher, refr
 		GotConn: func(info httptrace.GotConnInfo) {
 			if addr, ok := info.Conn.LocalAddr().(*net.TCPAddr); ok {
 				localIP = addr.IP
+				if dialLocalIP != nil {
+					ipCopy := append(net.IP(nil), addr.IP...)
+					dialLocalIP.Store(&ipCopy)
+				}
 			}
 		},
 	})

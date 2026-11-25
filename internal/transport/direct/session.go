@@ -1,6 +1,7 @@
 package direct
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -37,6 +38,8 @@ type SessionConfig struct {
 	Deadline     uint64
 	Pool         *Pool
 	Allow        func() bool
+	// AllowReason optionally refines a failed Allow gate for local diagnostics.
+	AllowReason  func() string
 	Send         func(Outbound) bool
 	Ready        func(use uint64, path *Path)
 	End          func()
@@ -75,6 +78,7 @@ type Session struct {
 	generation  [2]atomic.Uint64
 	business    [2]atomic.Bool
 	current     [2]atomic.Uint64
+	peer        atomic.Pointer[peerwire.Public]
 
 	paths   map[uint64]*Path // every PC created, by ID; run goroutine only
 	open    map[uint64]*Path // PCs not yet reported closed
@@ -161,6 +165,12 @@ func pathAlive(p *Path) bool {
 func (s *Session) Active() bool        { return s.ctx.Err() == nil && !s.retired.Load() }
 func (s *Session) RetainUntil() uint64 { return s.retainUntil.Load() }
 func (s *Session) Established() bool   { return s.established.Load() }
+func (s *Session) Peer() peerwire.Public {
+	if p := s.peer.Load(); p != nil {
+		return *p
+	}
+	return s.cfg.Peer
+}
 func (s *Session) Retire() {
 	s.retired.Store(true)
 	s.finishRound()
@@ -299,6 +309,13 @@ func (s *Session) publish() {
 		s.business[i].Store(v.Business[i])
 		s.current[i].Store(v.PC[i])
 	}
+	peer := s.core.Peer()
+	if cur := s.peer.Load(); cur == nil || !bytes.Equal(cur.Instance, peer.Instance) || !bytes.Equal(cur.Boot, peer.Boot) {
+		cloned := peer
+		cloned.Instance = append([]byte(nil), peer.Instance...)
+		cloned.Boot = append([]byte(nil), peer.Boot...)
+		s.peer.Store(&cloned)
+	}
 }
 
 // view is the mirrored View, as other goroutines see it.
@@ -397,7 +414,13 @@ func (s *Session) addCandidates(f linkcore.AddCandidatesPC) bool {
 func (s *Session) createPC(f linkcore.CreatePC) bool {
 	use, generation, id := f.Use, f.Generation, f.ID
 	gate := func() string {
-		return s.view().PCGate(use, generation, s.nowMs(), s.cfg.Deadline, s.cfg.Policy, s.cfg.Allow)
+		r := s.view().PCGate(use, generation, s.nowMs(), s.cfg.Deadline, s.cfg.Policy, s.cfg.Allow)
+		if r == "lease_or_process" && s.cfg.AllowReason != nil {
+			if detail := s.cfg.AllowReason(); detail != "" {
+				return detail
+			}
+		}
+		return r
 	}
 	var source atomic.Pointer[Path]
 	post := func(e linkcore.Event) {

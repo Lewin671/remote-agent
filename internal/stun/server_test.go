@@ -3,9 +3,12 @@ package stun
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"hash/crc32"
 	"net"
 	"net/netip"
+	"sync"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -171,4 +174,113 @@ func FuzzBindingRequest(f *testing.F) {
 			t.Fatal("amplification")
 		}
 	})
+}
+
+type stubUDPConn struct {
+	mu      sync.Mutex
+	reads   []func([]byte) (int, netip.AddrPort, error)
+	writes  int
+	closed  chan struct{}
+	closeOp sync.Once
+}
+
+func (c *stubUDPConn) SetReadDeadline(time.Time) error  { return nil }
+func (c *stubUDPConn) SetWriteDeadline(time.Time) error { return nil }
+func (c *stubUDPConn) Close() error {
+	c.closeOp.Do(func() { close(c.closed) })
+	return nil
+}
+func (c *stubUDPConn) ReadFromUDPAddrPort(b []byte) (int, netip.AddrPort, error) {
+	c.mu.Lock()
+	if len(c.reads) > 0 {
+		fn := c.reads[0]
+		c.reads = c.reads[1:]
+		c.mu.Unlock()
+		return fn(b)
+	}
+	c.mu.Unlock()
+	<-c.closed
+	return 0, netip.AddrPort{}, net.ErrClosed
+}
+func (c *stubUDPConn) WriteToUDPAddrPort(b []byte, _ netip.AddrPort) (int, error) {
+	c.mu.Lock()
+	c.writes++
+	c.mu.Unlock()
+	return len(b), nil
+}
+
+func TestServeContinuesOnTransientUDPReadErrors(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s := New(DefaultConfig())
+	req := request(false)
+	replied := make(chan struct{}, 1)
+	conn := &stubUDPConn{closed: make(chan struct{})}
+	conn.reads = []func([]byte) (int, netip.AddrPort, error){
+		func([]byte) (int, netip.AddrPort, error) { return 0, netip.AddrPort{}, syscall.ENOBUFS },
+		func([]byte) (int, netip.AddrPort, error) { return 0, netip.AddrPort{}, syscall.EINTR },
+		func(b []byte) (int, netip.AddrPort, error) {
+			copy(b, req)
+			select {
+			case replied <- struct{}{}:
+			default:
+			}
+			return len(req), netip.MustParseAddrPort("192.0.2.1:4321"), nil
+		},
+	}
+	done := make(chan error, 1)
+	go func() { done <- s.serve(ctx, conn) }()
+	select {
+	case <-replied:
+		cancel()
+	case err := <-done:
+		t.Fatalf("Serve exited prematurely on transient read error: %v", err)
+	case <-time.After(2 * time.Second):
+		cancel()
+		t.Fatal("timed out waiting for packet after transient errors")
+	}
+	if err := <-done; err != nil {
+		t.Fatalf("Serve returned error after cancel: %v", err)
+	}
+	conn.mu.Lock()
+	writes := conn.writes
+	conn.mu.Unlock()
+	if writes != 1 {
+		t.Fatalf("writes = %d, want 1", writes)
+	}
+
+	// Permanent closed socket error must still exit Serve.
+	conn2 := &stubUDPConn{closed: make(chan struct{})}
+	conn2.reads = []func([]byte) (int, netip.AddrPort, error){
+		func([]byte) (int, netip.AddrPort, error) { return 0, netip.AddrPort{}, net.ErrClosed },
+	}
+	if err := s.serve(context.Background(), conn2); !errors.Is(err, net.ErrClosed) {
+		t.Fatalf("permanent error = %v, want net.ErrClosed", err)
+	}
+}
+
+func TestNewScalesDefaultBurstWhenRateCustomized(t *testing.T) {
+	c := DefaultConfig()
+	c.PacketsPerSecond = 100
+	c.SourcePacketsPerSecond = 5
+	s := New(c)
+	if s == nil {
+		t.Fatal("New returned nil")
+	}
+	if s.config.Burst != 200 {
+		t.Fatalf("Burst = %d, want 200 (2s of custom rate 100)", s.config.Burst)
+	}
+	if s.config.SourceBurst != 10 {
+		t.Fatalf("SourceBurst = %d, want 10 (2s of custom source-rate 5)", s.config.SourceBurst)
+	}
+	// Explicit custom Burst must not be overwritten.
+	c2 := DefaultConfig()
+	c2.PacketsPerSecond = 100
+	c2.Burst = 500
+	c2.SourcePacketsPerSecond = 5
+	c2.SourceBurst = 15
+	s2 := New(c2)
+	if s2.config.Burst != 500 || s2.config.SourceBurst != 15 {
+		t.Fatalf("explicit burst overwritten: got Burst=%d SourceBurst=%d", s2.config.Burst, s2.config.SourceBurst)
+	}
 }
