@@ -81,6 +81,7 @@ interface RtcPeerConnection {
     suspend fun setLocalDescription(offer: Boolean, sdp: String)
     suspend fun setRemoteDescription(offer: Boolean, sdp: String)
     suspend fun addIceCandidate(candidate: String, sdpMid: String, sdpMLineIndex: Int, usernameFragment: String)
+    suspend fun endOfCandidates() {}
     fun maxMessageSize(): Int? = null
     suspend fun readStats(): DirectStatsReport = DirectStatsReport.getDefaultInstance()
     fun close()
