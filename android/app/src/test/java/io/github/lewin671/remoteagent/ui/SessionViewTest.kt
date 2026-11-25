@@ -17,6 +17,8 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import io.github.lewin671.remoteagent.RaAppTestRule
 import io.github.lewin671.remoteagent.core.Account
 import io.github.lewin671.remoteagent.core.Api
@@ -322,6 +324,21 @@ class SessionViewTest {
             ui.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
             ui.waitForIdle()
             ui.onNodeWithText("正在读取更早的记录…").assertIsDisplayed()
+            assertEquals(1, loadCalls)
+
+            // Merging earlier items removes the loading row; the message that sat below it
+            // keeps its on-screen position instead of sliding up by the row's height.
+            // A real drag stops bottom-following, as a user's scroll to the top would.
+            ui.onNode(hasScrollToIndexAction()).performTouchInput { swipeDown() }
+            ui.waitForIdle()
+            val anchorTop = ui.onNodeWithText("Message 21", substring = true).fetchSemanticsNode().boundsInRoot.top
+            ui.runOnIdle {
+                currentVm = timelineVm(firstSeq = 1, lastSeq = 50, hasEarlier = false)
+            }
+            ui.waitForIdle()
+            ui.onNodeWithText("正在读取更早的记录…").assertDoesNotExist()
+            val mergedTop = ui.onNodeWithText("Message 21", substring = true).fetchSemanticsNode().boundsInRoot.top
+            assertEquals(anchorTop, mergedTop, 1f)
             assertEquals(1, loadCalls)
 
             // Failure pauses auto-load and shows an explicit retry action.

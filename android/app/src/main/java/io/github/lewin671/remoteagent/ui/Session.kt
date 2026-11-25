@@ -1159,7 +1159,9 @@ fun LazyListState.keepPlace(
         val now = after.indexOf(item.key)
         if (now >= 0) {
             val targetIndex = headerCount + now
-            val targetOffset = (-item.offset).coerceAtLeast(0)
+            // Negative when a vanishing header row sat above this item; LazyList honours
+            // negative offsets, so the item keeps its on-screen position.
+            val targetOffset = -item.offset
             if (targetIndex != firstVisibleItemIndex || targetOffset != firstVisibleItemScrollOffset) {
                 requestScrollToItem(targetIndex, targetOffset)
             }
