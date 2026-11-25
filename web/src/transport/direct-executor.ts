@@ -158,6 +158,7 @@ export class DirectExecutor {
         factory: this.options.factory,
         valid: () => !this.closed && this.pcs.get(eff.pcId) === entry,
         candidate: (cand) => {
+          if (this.closed || this.pcs.get(eff.pcId) !== entry) return;
           if (!cand || !cand.candidate) {
             this.emit({
               case: "directPcLocalCandidate",
@@ -174,18 +175,22 @@ export class DirectExecutor {
           });
         },
         state: (kind, value) => {
+          if (this.closed || this.pcs.get(eff.pcId) !== entry) return;
           this.emit({ case: "directPcState", value: create(DirectPcStateEventSchema, { pcId: eff.pcId, kind, value }) });
           if (kind === DirectStateKind.CONN && value === "failed" && entry.confirmed && this.pcs.get(eff.pcId) === entry) {
             this.closeConfirmedAfterStats(eff.pcId, entry);
           }
         },
         dcState: (open) => {
+          if (this.closed || this.pcs.get(eff.pcId) !== entry) return;
           this.emit({ case: "directDcState", value: create(DirectDcStateEventSchema, { pcId: eff.pcId, open }) });
         },
         stunError: (code, address) => {
+          if (this.closed || this.pcs.get(eff.pcId) !== entry) return;
           this.emit({ case: "directPcStunError", value: create(DirectPcStunErrorEventSchema, { pcId: eff.pcId, code, address }) });
         },
         probeReply: (raw) => {
+          if (this.closed || this.pcs.get(eff.pcId) !== entry) return;
           this.emit({ case: "directPcProbeReceived", value: create(DirectPcProbeReceivedEventSchema, { pcId: eff.pcId, raw }) });
         },
         frame: (raw) => this.handleDcFrame(eff.pcId, entry, raw),

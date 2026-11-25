@@ -484,4 +484,32 @@ describe("DirectExecutor", () => {
       Object.defineProperty(AbortSignal, "any", { value: origAny, configurable: true, writable: true });
     }
   });
+
+  it("does not emit late directPcState or directDcState after pcClose (audit #13)", () => {
+    const sdk = fakeRTC();
+    const events: CoreEvent[] = [];
+    const exec = new DirectExecutor({
+      emit: (ev) => events.push(ev),
+      onPushedEvent: () => {},
+      factory: sdk.factory,
+    });
+
+    exec.pcCreate(create(DirectPcCreateEffectSchema, {
+      pcId: 51n,
+      machineId: "mac",
+      roundId: 1n,
+      use: 1,
+      generation: 1n,
+      stunServers: [],
+    }));
+    const pc = sdk.pcs[0]!;
+    const dc = pc.channels[0]!;
+    dc.readyState = "open";
+    dc.onopen?.();
+    events.length = 0;
+
+    exec.pcClose(create(DirectPcCloseEffectSchema, { pcId: 51n }));
+    expect(events).toEqual([]);
+    exec.close();
+  });
 });

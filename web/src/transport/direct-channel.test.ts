@@ -76,7 +76,7 @@ describe("DirectChannel", () => {
     pc.ice("checking");
     pc.state("connected");
     pc.onicecandidateerror?.({ errorCode: 701, address: "203.0.113.5" });
-    expect(states).toContainEqual([DirectStateKind.DC, "open"]);
+    expect(states).not.toContainEqual([DirectStateKind.DC, "open"]);
     expect(states).toContainEqual([DirectStateKind.ICE, "checking"]);
     expect(states).toContainEqual([DirectStateKind.CONN, "connected"]);
     expect(dcStates).toEqual([true]);
@@ -388,5 +388,147 @@ describe("DirectChannel", () => {
     budget.free("peer", 1, preReserved, 1);
     channel.close();
     expect(budget.ownerAvailable("peer", "2")).toBe(true);
+  });
+
+  it("wakes write() via fallback tick when onbufferedamountlow is missed, closes on send throw, and detects silent channel close (audit #9)", async () => {
+    vi.useFakeTimers();
+    const sdk = fakeRTC();
+    const budget = new DirectBudget();
+    let closedCalls = 0;
+
+    const channel = new DirectChannel({
+      peer: "peer",
+      roundId: 1n,
+      use: 1,
+      generation: 1n,
+      budget,
+      valid: () => true,
+      stun: [],
+      factory: sdk.factory,
+      candidate: () => {},
+      state: () => {},
+      frame: () => {},
+      closed: () => { closedCalls++; },
+    });
+
+    const pc = sdk.pcs[0]!;
+    const dc = pc.channels[0]!;
+    const probe = pc.channels[1]!;
+    // Simulate Safari ignoring threshold set during connecting by clearing it before onopen.
+    (dc as unknown as { bufferedAmountLowThreshold: number }).bufferedAmountLowThreshold = 0;
+    dc.readyState = "open";
+    probe.readyState = "open";
+    dc.onopen?.();
+    expect((dc as unknown as { bufferedAmountLowThreshold: number }).bufferedAmountLowThreshold).toBe(32 << 10);
+
+    pc.state("connected");
+    channel.confirm();
+
+    // Enter backpressure wait, then drain bufferedAmount WITHOUT calling onbufferedamountlow.
+    dc.bufferedAmount = 128 << 10;
+    const writePromise = channel.write(new Uint8Array([1, 2, 3]), () => {});
+    // Flush sha256 microtask so writeNow enters the wait loop.
+    await vi.advanceTimersByTimeAsync(10);
+    expect(dc.send).not.toHaveBeenCalled();
+
+    dc.bufferedAmount = 0;
+    await vi.advanceTimersByTimeAsync(150);
+    await writePromise;
+    expect(dc.send).toHaveBeenCalledTimes(1);
+
+    // data.send throwing must close the channel and reject with PathChanged.
+    dc.send.mockImplementationOnce(() => { throw new Error("InvalidStateError"); });
+    await expect(channel.write(new Uint8Array([4, 5]), () => {})).rejects.toThrow(PathChanged);
+    expect(closedCalls).toBe(1);
+
+    // Silent readyState === "closed" without onclose callback must be caught by tick.
+    const channel2 = new DirectChannel({
+      peer: "peer2",
+      roundId: 2n,
+      use: 1,
+      generation: 1n,
+      budget,
+      valid: () => true,
+      stun: [],
+      factory: sdk.factory,
+      candidate: () => {},
+      state: () => {},
+      frame: () => {},
+      closed: () => { closedCalls++; },
+    });
+    const pc2 = sdk.pcs[1]!;
+    const dc2 = pc2.channels[0]!;
+    const probe2 = pc2.channels[1]!;
+    dc2.readyState = "open";
+    probe2.readyState = "open";
+    dc2.onopen?.();
+    pc2.state("connected");
+    channel2.confirm();
+
+    probe2.readyState = "closed";
+    await vi.advanceTimersByTimeAsync(1100);
+    expect(closedCalls).toBe(2);
+  });
+
+  it("ignores probe echo when probe channel is not open, unbinds DOM handlers on close, and uses adaptive tick (audit #13, opt 4)", async () => {
+    vi.useFakeTimers();
+    const sdk = fakeRTC();
+    const budget = new DirectBudget();
+    const states: Array<[DirectStateKind, string]> = [];
+    const dcStates: boolean[] = [];
+    const validSpy = vi.fn(() => true);
+
+    const channel = new DirectChannel({
+      peer: "peer",
+      roundId: 1n,
+      use: 1,
+      generation: 1n,
+      budget,
+      valid: validSpy,
+      stun: [],
+      factory: sdk.factory,
+      candidate: () => {},
+      state: (kind, val) => states.push([kind, val]),
+      dcState: (open) => dcStates.push(open),
+      frame: () => {},
+      closed: () => {},
+    });
+
+    const pc = sdk.pcs[0]!;
+    const dc = pc.channels[0]!;
+    const probe = pc.channels[1]!;
+    dc.readyState = "open";
+    probe.readyState = "open";
+    dc.onopen?.();
+    pc.state("connected");
+    channel.confirm();
+
+    // Opt 4: data.onopen must not emit redundant DirectStateKind.DC via state().
+    expect(states.some(([kind]) => kind === DirectStateKind.DC)).toBe(false);
+    expect(dcStates).toEqual([true]);
+
+    // #13: probe.onmessage while probe is closing must not throw.
+    probe.readyState = "closing";
+    probe.send.mockImplementation(() => { throw new Error("RTCDataChannel.readyState is not 'open'"); });
+    const req = new Uint8Array(17);
+    req[0] = 0;
+    expect(() => probe.onmessage?.({ data: req.buffer as ArrayBuffer })).not.toThrow();
+    expect(probe.send).not.toHaveBeenCalled();
+
+    // Opt 4: idle channel polls at ~1s cadence instead of 100ms (<= 2 calls in 1.5s, vs 15 at 100ms).
+    probe.readyState = "open";
+    validSpy.mockClear();
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(validSpy.mock.calls.length).toBeLessThanOrEqual(2);
+
+    // #13: close() unbinds DOM handlers and does not emit late dcState(false) or DC state.
+    channel.close();
+    expect(dcStates).toEqual([true]);
+    expect(pc.onconnectionstatechange).toBeNull();
+    expect(pc.onicecandidate).toBeNull();
+    expect(dc.onopen).toBeNull();
+    expect(dc.onclose).toBeNull();
+    expect(dc.onmessage).toBeNull();
+    expect(probe.onmessage).toBeNull();
   });
 });
