@@ -44,6 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -94,6 +95,7 @@ import io.github.lewin671.remoteagent.core.proto.SessionMenuItemKind
 import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
 import io.github.lewin671.remoteagent.core.proto.SessionSimpleCommandKind
 import io.github.lewin671.remoteagent.core.proto.SessionTimelineItem
+import io.github.lewin671.remoteagent.core.proto.SessionTimelineView
 import io.github.lewin671.remoteagent.core.proto.SessionViewModel
 import io.github.lewin671.remoteagent.core.proto.SessionWindowRequest
 import io.github.lewin671.remoteagent.core.sessionDraftScope
@@ -264,7 +266,8 @@ fun SessionScreen(sid: String) {
                     if (tl.hasHistoryNotice()) {
                         Hint(uiText(tl.historyNotice), note, inset = 0.dp)
                     }
-                    if (tl.hasFetchError()) {
+                    val showTopEarlierError = isLoadEarlierFailed(tl) && (tl.itemsCount > 0 || !tl.loading)
+                    if (tl.hasFetchError() && !showTopEarlierError) {
                         Hint(uiText(tl.fetchError), note, inset = 0.dp)
                     }
                     ChatPane(
@@ -608,19 +611,33 @@ internal fun ChatPane(
     val entrances = remember { RowEntrances() }
 
     val items = tl.itemsList
-    var prevIds by remember(sid) { mutableStateOf<List<String>>(emptyList()) }
-    var prevFirstSeq by remember(sid) { mutableStateOf(0L) }
-    LaunchedEffect(items, tl.windowFirstSeq) {
-        val ids = items.map { it.id }
-        val joined = prevFirstSeq > 0L && tl.windowFirstSeq > 0L && tl.windowFirstSeq < prevFirstSeq
-        if (joined && prevIds.isNotEmpty()) {
-            val n = rowsInFront(prevIds, ids)
-            list.keepPlace(prevIds, ids, n)
-            unseen.joined(n)
+    val loadingEarlier = isLoadingEarlier(tl)
+    val loadEarlierFailed = isLoadEarlierFailed(tl, loadingEarlier)
+    val showTopEarlierRow = (loadingEarlier || loadEarlierFailed) && (items.isNotEmpty() || !tl.loading)
+    val canAutoLoadEarlier =
+        (tl.hasEarlier || tl.canLoadEarlier) &&
+            !tl.backfilling &&
+            !tl.fetching &&
+            !tl.hasFetchError() &&
+            !tl.hasError() &&
+            (items.isNotEmpty() || !tl.loading)
+
+    val timelineTracker = remember(sid) { TimelineScrollTracker() }
+    SideEffect {
+        if (timelineTracker.lastTimeline !== tl) {
+            val ids = items.map { it.id }
+            val firstSeq = tl.windowFirstSeq
+            val joined = timelineTracker.lastFirstSeq > 0L && firstSeq > 0L && firstSeq < timelineTracker.lastFirstSeq
+            if (joined && timelineTracker.lastIds.isNotEmpty()) {
+                val n = rowsInFront(timelineTracker.lastIds, ids)
+                list.keepPlace(timelineTracker.lastIds, ids, n, headerCount = if (showTopEarlierRow) 1 else 0)
+                unseen.joined(n)
+            }
+            entrances.rows(items, joined)
+            timelineTracker.lastTimeline = tl
+            timelineTracker.lastIds = ids
+            if (firstSeq > 0L) timelineTracker.lastFirstSeq = firstSeq
         }
-        entrances.rows(items, joined)
-        prevIds = ids
-        if (tl.windowFirstSeq > 0L) prevFirstSeq = tl.windowFirstSeq
     }
 
     val trayItems = vm.composer.pendingTray.orderedItemsList
@@ -655,13 +672,53 @@ internal fun ChatPane(
     }
     LaunchedEffect(atBottom) { if (atBottom) unseen.saw(items.size) }
 
+    val canAutoLoadState = rememberUpdatedState(canAutoLoadEarlier)
+    val itemCountState = rememberUpdatedState(items.size)
+    val totalItemsState = rememberUpdatedState(tl.totalItems)
+    val hasEarlierState = rememberUpdatedState(tl.hasEarlier)
+    val hasGapState = rememberUpdatedState(tl.hasGap)
+    val topRowCountState = rememberUpdatedState(if (showTopEarlierRow) 1 else 0)
+    val onLoadEarlierState = rememberUpdatedState(onLoadEarlierWindow)
+    var loadedTopKey by remember(sid) { mutableStateOf<AutoLoadTopKey?>(null) }
+
+    LaunchedEffect(sid, list) {
+        var settledCount = -1
+        snapshotFlow {
+            val info = list.layoutInfo
+            val itemCount = itemCountState.value
+            val firstMsgIndex = (list.firstVisibleItemIndex - topRowCountState.value).coerceAtLeast(0)
+            AutoLoadTopSnapshot(
+                hasLayout = info.visibleItemsInfo.isNotEmpty() && info.totalItemsCount >= itemCount,
+                following = followState.on,
+                canScrollForward = list.canScrollForward,
+                nearTop = firstMsgIndex <= 2,
+                canLoad = canAutoLoadState.value,
+                key = AutoLoadTopKey(
+                    itemCount = itemCount,
+                    totalItems = totalItemsState.value,
+                    hasEarlier = hasEarlierState.value,
+                    hasGap = hasGapState.value,
+                ),
+            )
+        }.collect { snap ->
+            if (!snap.hasLayout) return@collect
+            if (!snap.following || !snap.canScrollForward) {
+                settledCount = snap.key.itemCount
+            }
+            if (settledCount == snap.key.itemCount && snap.nearTop && snap.canLoad && loadedTopKey != snap.key) {
+                loadedTopKey = snap.key
+                onLoadEarlierState.value()
+            }
+        }
+    }
+
     val anchorId = tl.anchorItemId
     LaunchedEffect(anchorId, items.size) {
         if (anchorId.isNotEmpty()) {
             val idx = items.indexOfFirst { it.id == anchorId }
             if (idx >= 0) {
                 followState.observe(userDragging = true, atBottom = false)
-                val offset = if (tl.hasEarlier || tl.canLoadEarlier || tl.backfilling) 1 else 0
+                val offset = if (showTopEarlierRow) 1 else 0
                 list.scrollToItem(idx + offset)
                 onScheduleRevealed()
             }
@@ -719,19 +776,28 @@ internal fun ChatPane(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(top = 12.dp),
                     ) {
-                        if ((tl.hasEarlier || tl.canLoadEarlier || tl.backfilling) && (items.isNotEmpty() || !tl.loading)) {
+                        if (showTopEarlierRow) {
                             item(key = "load-earlier") {
-                                Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
-                                    if (tl.backfilling) {
+                                if (loadingEarlier) {
+                                    Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                                         Text(copy(UiMessages.sessionLoadingEarlier()), style = T.s13, color = p.ink2)
-                                    } else {
-                                        TextAction(
-                                            copy(UiMessages.scheduleEarlier()),
-                                            onLoadEarlierWindow,
-                                            style = T.s13,
-                                            alignment = Alignment.Center,
-                                        )
                                     }
+                                } else {
+                                    Notice(
+                                        uiText(tl.fetchError),
+                                        Modifier.padding(horizontal = ChatSide, vertical = 8.dp),
+                                        NoticeTone.ERROR,
+                                        action = copy(UiMessages.commonRetry()),
+                                        onAction = {
+                                            loadedTopKey = AutoLoadTopKey(
+                                                itemCount = items.size,
+                                                totalItems = tl.totalItems,
+                                                hasEarlier = tl.hasEarlier,
+                                                hasGap = tl.hasGap,
+                                            )
+                                            onLoadEarlierWindow()
+                                        },
+                                    )
                                 }
                             }
                         }
@@ -1054,10 +1120,58 @@ fun rowsInFront(before: List<String>, after: List<String>): Int {
     return maxOf(0, after.size - before.size - maxOf(0, behind))
 }
 
-fun LazyListState.keepPlace(before: List<Any>, after: List<Any>, joined: Int) {
+private fun isLoadingEarlier(tl: SessionTimelineView): Boolean =
+    tl.backfilling || (tl.fetching && (tl.hasGap || tl.tailRequested))
+
+private fun isLoadEarlierFailed(tl: SessionTimelineView, loadingEarlier: Boolean = isLoadingEarlier(tl)): Boolean =
+    tl.hasFetchError() && (tl.hasGap || tl.hasEarlier || tl.canLoadEarlier) && !loadingEarlier
+
+private class TimelineScrollTracker {
+    var lastTimeline: SessionTimelineView? = null
+    var lastIds: List<String> = emptyList()
+    var lastFirstSeq: Long = 0L
+}
+
+private data class AutoLoadTopKey(
+    val itemCount: Int,
+    val totalItems: Int,
+    val hasEarlier: Boolean,
+    val hasGap: Boolean,
+)
+
+private data class AutoLoadTopSnapshot(
+    val hasLayout: Boolean,
+    val following: Boolean,
+    val canScrollForward: Boolean,
+    val nearTop: Boolean,
+    val canLoad: Boolean,
+    val key: AutoLoadTopKey,
+)
+
+fun LazyListState.keepPlace(
+    before: List<Any>,
+    after: List<Any>,
+    joined: Int,
+    headerCount: Int = 0,
+) {
+    val visible = layoutInfo.visibleItemsInfo
+    for (item in visible) {
+        val now = after.indexOf(item.key)
+        if (now >= 0) {
+            val targetIndex = headerCount + now
+            val targetOffset = (-item.offset).coerceAtLeast(0)
+            if (targetIndex != firstVisibleItemIndex || targetOffset != firstVisibleItemScrollOffset) {
+                requestScrollToItem(targetIndex, targetOffset)
+            }
+            return
+        }
+    }
     val index = firstVisibleItemIndex
-    val key = layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }?.key
+    val key = visible.firstOrNull { it.index == index }?.key
     val was = if (key == null) -1 else before.indexOf(key)
     val now = if (was < 0) -1 else after.indexOf(key)
-    requestScrollToItem(index + if (now >= 0) now - was else joined, firstVisibleItemScrollOffset)
+    val targetIndex = (index + if (now >= 0) now - was else joined).coerceAtLeast(0)
+    if (targetIndex != index) {
+        requestScrollToItem(targetIndex, firstVisibleItemScrollOffset)
+    }
 }
