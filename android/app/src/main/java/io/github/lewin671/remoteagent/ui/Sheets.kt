@@ -136,8 +136,31 @@ fun ModeSheet(sid: String, vm: SessionViewModel, onClose: () -> Unit) {
     }
 }
 
-private fun sanitizeTitle(text: String): String =
-    text.replace('\r', ' ').replace('\n', ' ').trimStart()
+private const val SESSION_TITLE_MAX_CODE_POINTS = 60
+
+private fun sanitizeTitle(text: String): String {
+    val trimmed = text.trimStart()
+    val sb = StringBuilder(trimmed.length)
+    var count = 0
+    var inBreak = false
+    var i = 0
+    while (i < trimmed.length && count < SESSION_TITLE_MAX_CODE_POINTS) {
+        val cp = trimmed.codePointAt(i)
+        i += Character.charCount(cp)
+        if (cp == '\r'.code || cp == '\n'.code) {
+            if (!inBreak) {
+                sb.append(' ')
+                count++
+                inBreak = true
+            }
+            continue
+        }
+        inBreak = false
+        sb.appendCodePoint(cp)
+        count++
+    }
+    return sb.toString()
+}
 
 @Composable
 fun RenameDialog(sid: String, vm: SessionViewModel, onClose: () -> Unit) {
@@ -145,7 +168,7 @@ fun RenameDialog(sid: String, vm: SessionViewModel, onClose: () -> Unit) {
     val p = pal
     val remote = LocalRemote.current
     val titleText = uiText(vm.header.title)
-    val initial = remember(sid) { titleText.trim().take(80) }
+    val initial = remember(sid) { sanitizeTitle(titleText.trim()) }
     var value by remember { mutableStateOf(TextFieldValue(initial, TextRange(0, initial.length))) }
     var submitted by remember(sid) { mutableStateOf(false) }
     val slot = vm.actions.rename
@@ -182,7 +205,21 @@ fun RenameDialog(sid: String, vm: SessionViewModel, onClose: () -> Unit) {
                 Text(copy(UiMessages.sessionRenameTitle()), style = T.s17b, color = p.ink, textAlign = TextAlign.Center, modifier = Modifier.padding(bottom = 12.dp))
                 BasicTextField(
                     value,
-                    { value = it.copy(text = sanitizeTitle(it.text)) },
+                    { next ->
+                        val clean = sanitizeTitle(next.text)
+                        value = if (clean == next.text) next else next.copy(
+                            text = clean,
+                            selection = TextRange(
+                                next.selection.start.coerceAtMost(clean.length),
+                                next.selection.end.coerceAtMost(clean.length),
+                            ),
+                            composition = next.composition?.let { c ->
+                                val s = c.start.coerceAtMost(clean.length)
+                                val e = c.end.coerceAtMost(clean.length)
+                                if (s < e) TextRange(s, e) else null
+                            },
+                        )
+                    },
                     Modifier.fillMaxWidth().padding(bottom = 8.dp).focusRequester(focus),
                     textStyle = T.s15.copy(color = p.ink),
                     cursorBrush = SolidColor(p.blue),
