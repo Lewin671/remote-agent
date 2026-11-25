@@ -347,14 +347,14 @@ private struct SessionRename: ViewModifier {
     func body(content: Content) -> some View {
         let vm = context.core.sessions[sessionID]
         let rawTitle = vm?.header.found == true ? vm!.header.title.rendered() : ""
-        let initial = titleInput(rawTitle.jvmTrim())
+        let initial = titleInput(rawTitle.trimmingCharacters(in: .whitespacesAndNewlines))
         let machineID = vm?.header.machineID ?? ""
         let slotKey = vm?.actions.rename.slotKey ?? ""
         content.inputAlert(
             isPresented: $isPresented, title: L10n.sessionRenameTitle(), initial: initial, placeholder: L10n.sessionIosTitleField(), text: L10n.sessionAutoTitleHint(),
             limit: .max, lines: 1...1, filter: titleInput, debugSignal: "session.rename.save", debugText: { SessionDebug.text }
         ) { typed in
-            let clean = titleInput(typed).jvmTrim()
+            let clean = titleInput(typed).trimmingCharacters(in: .whitespacesAndNewlines)
             guard clean != initial else { return }
             try await awaitSessionCommand(
                 context: context,

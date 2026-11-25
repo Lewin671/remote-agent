@@ -40,17 +40,17 @@ struct ProjectPageView: View {
             onOpenSettings: { page in settings = ProjectSettingsRequest(page: page) },
             onUnhide: {
                 Haptics.confirm()
-                context.dispatch { $0.projectToggleHide.projectKey = detail.key.ifEmpty(key) }
+                context.dispatch { $0.projectToggleHide.projectKey = detail.key.or(key) }
             },
             onRetrySaveConfig: {
-                context.dispatch { $0.newSessionRetrySaveConfig.projectKey = detail.key.ifEmpty(key) }
+                context.dispatch { $0.newSessionRetrySaveConfig.projectKey = detail.key.or(key) }
             },
             onLoadMoreEnded: {
-                context.dispatch { $0.projectLoadMoreEnded.projectKey = detail.key.ifEmpty(key) }
+                context.dispatch { $0.projectLoadMoreEnded.projectKey = detail.key.or(key) }
             },
             composer: {
                 NewSessionBox(
-                    key: detail.key.ifEmpty(key),
+                    key: detail.key.or(key),
                     focus: focus,
                     onMachine: { settings = ProjectSettingsRequest(page: .machine) },
                     onModel: { settings = ProjectSettingsRequest(page: .model) },
@@ -247,7 +247,7 @@ struct ProjectDetailContent<Composer: View>: View {
             if showEnded && (detail.canLoadEarlier || detail.hasMoreEnded_p) {
                 let tailText = detail.tail.text.rendered()
                 if !tailText.isEmpty || detail.tail.kind != .unspecified {
-                    EarlierTail(tailText.ifEmpty(L10n.commonLoading()), retry: detail.tail.retry, onRetry: onLoadMoreEnded)
+                    EarlierTail(tailText.or(L10n.commonLoading()), retry: detail.tail.retry, onRetry: onLoadMoreEnded)
                         .padding(.init(top: 12, leading: 35, bottom: 4, trailing: DS.Space.l))
                         .accessibilityIdentifier("project-earlier")
                         .task(id: "\(detail.ended.count):\(detail.hasMoreEnded_p)") {

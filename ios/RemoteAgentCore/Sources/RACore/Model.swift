@@ -1,6 +1,11 @@
-// Remaining shell helpers: running clock, title input clamping,
-// one-line preview stripping, relative time, and model list folding.
+// Remaining shell helpers: wall-clock timestamp, running timer, title input clamping,
+// one-line plan preview stripping, relative disconnect time, and model list folding.
 import Foundation
+
+/// The wall clock in milliseconds since the epoch.
+public func nowMs() -> Int64 { Int64((Date().timeIntervalSince1970 * 1000).rounded(.down)) }
+
+private func pad2(_ n: Int) -> String { n < 10 && n >= 0 ? "0\(n)" : "\(n)" }
 
 // --- sessions ---
 
@@ -30,24 +35,23 @@ public func titleInput(_ text: String) -> String {
     return line.count <= titleMax ? String(line) : String(String.UnicodeScalarView(line.prefix(titleMax)))
 }
 
-private let plainPlaceholder = Rx("\\[Image #\(Jre.digit)+\\]\(Jre.space)*")
-private let plainFence = Rx("```[a-zA-Z0-9]*")
-private let plainCode = Rx("`([^`]*)`")
-private let plainBold = Rx("\\*\\*([^*]+)\\*\\*")
-private let plainLink = Rx("\\[([^\\]]+)\\]\\([^)]*\\)")
-private let plainLineMark = Rx("\(Jre.lineStart)\(Jre.space){0,3}(#{1,6}\(Jre.space)+|[-*+]\(Jre.space)+|>\(Jre.space)?)")
-private let plainSpaces = Rx("\(Jre.space)+")
+private let plainPatterns: [(NSRegularExpression, String)] = [
+    (#"\[Image #[0-9]+\][ \t\n\x0B\f\r]*"#, ""),
+    (#"```[a-zA-Z0-9]*"#, ""),
+    (#"`([^`]*)`"#, "$1"),
+    (#"\*\*([^*]+)\*\*"#, "$1"),
+    (#"\[([^\]]+)\]\([^)]*\)"#, "$1"),
+    (#"(?:\A|(?<=[\n\u0085\u2028\u2029])|(?<=\r)(?!\n))[ \t\n\x0B\f\r]{0,3}(#{1,6}[ \t\n\x0B\f\r]+|[-*+][ \t\n\x0B\f\r]+|>[ \t\n\x0B\f\r]?)"#, ""),
+    (#"[ \t\n\x0B\f\r]+"#, " "),
+].map { (try! NSRegularExpression(pattern: $0.0), $0.1) }
 
 /// Text for one-line previews: Markdown marks and the CLIs' image placeholders removed.
 public func plain(_ text: String) -> String {
-    var t = plainPlaceholder.replace(text, with: "")
-    t = plainFence.replace(t, with: "")
-    t = plainCode.replaceWithGroup1(t)
-    t = plainBold.replaceWithGroup1(t)
-    t = plainLink.replaceWithGroup1(t)
-    t = plainLineMark.replace(t, with: "")
-    t = plainSpaces.replace(t, with: " ")
-    return t.jvmTrim()
+    var t = text
+    for (re, template) in plainPatterns {
+        t = re.stringByReplacingMatches(in: t, range: NSRange(t.startIndex..., in: t), withTemplate: template)
+    }
+    return t.trimmingCharacters(in: .whitespacesAndNewlines)
 }
 
 /// Short relative time, like the mockup: 刚刚, 3 分钟前, 9:12, 昨天, 9月27日.
@@ -56,11 +60,19 @@ public func whenText(_ ms: Int64, now: Int64 = nowMs(), zone: TimeZone = .curren
     let d = now - ms
     if d < 60_000 { return L10n.timeJustNow() }
     if d < 3_600_000 { return L10n.timeMinutesAgo(count: Int(d / 60_000)) }
-    let then = LocalDay(ms: ms, zone: zone)
-    let today = LocalDay(ms: now, zone: zone)
-    if then.sameDay(today) { return then.hhmm }
-    if then.epochDay == today.epochDay - 1 { return L10n.timeYesterday() }
-    return L10n.timeMonthDay(day: then.day, month: then.month)
+    var cal = Calendar(identifier: .gregorian)
+    cal.timeZone = zone
+    let thenDate = Date(timeIntervalSince1970: Double(ms) / 1000)
+    let nowDate = Date(timeIntervalSince1970: Double(now) / 1000)
+    let then = cal.dateComponents([.year, .month, .day, .hour, .minute], from: thenDate)
+    if cal.isDate(thenDate, inSameDayAs: nowDate) {
+        return "\(then.hour ?? 0):\(pad2(then.minute ?? 0))"
+    }
+    if let yesterday = cal.date(byAdding: .day, value: -1, to: nowDate),
+       cal.isDate(thenDate, inSameDayAs: yesterday) {
+        return L10n.timeYesterday()
+    }
+    return L10n.timeMonthDay(day: then.day ?? 1, month: then.month ?? 1)
 }
 
 /// The models a picker lists before 全部模型: a short list whole, so none is out

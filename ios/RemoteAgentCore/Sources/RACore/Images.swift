@@ -290,7 +290,7 @@ public func fitLongSide(w: Int, h: Int, max: Int) -> (w: Int, h: Int) {
     let long = Swift.max(w, h)
     if long <= max || long == 0 { return (w, h) }
     let scale = Double(max) / Double(long)
-    return (Swift.max(1, jvmRound(Double(w) * scale)), Swift.max(1, jvmRound(Double(h) * scale)))
+    return (Swift.max(1, Int((Double(w) * scale + 0.5).rounded(.down))), Swift.max(1, Int((Double(h) * scale + 0.5).rounded(.down))))
 }
 
 /// Orientations 5 to 8 swap width and height.

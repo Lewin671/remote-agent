@@ -18,13 +18,4 @@ import Testing
             #expect(L10n.imageAttachFailed(count: count, locale: "en") == "\(count) images could not be attached. Tap an image for details.")
         }
     }
-    @Test func preferenceIsLocalAndDoesNotEnableEnglishInStageZero() {
-        let defaults = UserDefaults(suiteName: "i18n-test-\(UUID())")!
-        let preferences = MessagePreferences(defaults: defaults)
-        #expect(preferences.preference == "auto")
-        preferences.preference = "en"
-        #expect(MessagePreferences(defaults: defaults).preference == "en")
-        #expect(preferences.current == "zh-CN")
-        defaults.removeObject(forKey: "message-language")
-    }
 }

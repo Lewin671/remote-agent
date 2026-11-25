@@ -239,7 +239,7 @@ struct NewTaskModelSummary: Equatable {
     }
 
     init(vm: PBCoreNewSessionViewModel) {
-        self.model = vm.modelLabel.rendered().ifEmpty(L10n.newSessionDefaultModel())
+        self.model = vm.modelLabel.rendered().or(L10n.newSessionDefaultModel())
         self.effort = vm.effortLabel
         let singleAgent = vm.availableAgents.count <= 1
         self.prefix = singleAgent && !vm.agentName.isEmpty ? vm.agentName + " · " : ""

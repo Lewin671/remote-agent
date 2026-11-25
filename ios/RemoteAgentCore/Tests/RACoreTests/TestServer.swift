@@ -703,14 +703,48 @@ final class HookedCache: CipherCache, @unchecked Sendable {
 
 /// Something a test waits for, set once.
 final class Signal: Sendable {
-    private let state = Feed(false)
-    func set() { state.set(true) }
-    var isSet: Bool { state.value }
+    private struct State {
+        var set = false
+        var waiters: [Int: CheckedContinuation<Bool, Never>] = [:]
+        var nextID = 0
+    }
+    private let state = OSAllocatedUnfairLock(initialState: State())
+
+    func set() {
+        let waiters = state.withLock { s -> [CheckedContinuation<Bool, Never>] in
+            s.set = true
+            let w = Array(s.waiters.values)
+            s.waiters.removeAll()
+            return w
+        }
+        for c in waiters { c.resume(returning: true) }
+    }
+
+    var isSet: Bool { state.withLock { $0.set } }
 
     /// Waits for the notification without a wall-clock deadline; the per-test hang guard catches stalls.
     @discardableResult
     func wait() async -> Bool {
-        await state.first(where: { $0 }) ?? false
+        if isSet { return true }
+        let id = state.withLock { s -> Int in
+            s.nextID += 1
+            return s.nextID
+        }
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { cont in
+                let alreadySet = state.withLock { s -> Bool in
+                    if s.set || Task.isCancelled { return true }
+                    s.waiters[id] = cont
+                    return false
+                }
+                if alreadySet {
+                    cont.resume(returning: isSet)
+                }
+            }
+        } onCancel: {
+            let cont = state.withLock { $0.waiters.removeValue(forKey: id) }
+            cont?.resume(returning: false)
+        }
     }
 }
 
@@ -725,12 +759,4 @@ final class Counter: @unchecked Sendable {
         }
     }
     var value: Int { lock.withLock { n } }
-}
-
-extension Feed {
-    /// The first value that satisfies `ok`; throws if cancelled before matching.
-    func await(_ what: String, _ ok: @escaping @Sendable (Value) -> Bool) async throws -> Value {
-        if let v = await self.first(where: ok) { return v }
-        throw TestFailure("cancelled waiting for \(what)")
-    }
 }

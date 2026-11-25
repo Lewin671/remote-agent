@@ -35,7 +35,7 @@ struct NewSessionBox: View {
 
     var body: some View {
         let vm = context.core.newSession
-        let projectKey = vm.projectKey.ifEmpty(key)
+        let projectKey = vm.projectKey.or(key)
         let scope = PBDraftScope.newSession(projectKey)
         let draft = vm.draft
         let images = ComposerAttachments(context: context, scope: scope, draft: draft)

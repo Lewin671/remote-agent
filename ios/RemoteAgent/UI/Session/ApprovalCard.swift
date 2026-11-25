@@ -122,13 +122,13 @@ struct ApprovalDecision: View {
         .frame(maxWidth: 480, alignment: .leading)
         .frame(maxWidth: .infinity, alignment: .leading)
         .debugSignal(signals.0) { decide(true) }
-        .debugSignal(signals.1) { decide(false, message: SessionDebug.text.jvmTrim()) }
+        .debugSignal(signals.1) { decide(false, message: SessionDebug.text.trimmingCharacters(in: .whitespacesAndNewlines)) }
     }
 
     @ViewBuilder private func row(locked: Bool, blocked: Bool) -> some View {
         if denying {
             Button(L10n.commonCancel()) { denying = false }.buttonStyle(.darkCard())
-            Button(L10n.approvalDeny()) { decide(false, message: context.sessionStore.reason(target.approvalId).jvmTrim()) }
+            Button(L10n.approvalDeny()) { decide(false, message: context.sessionStore.reason(target.approvalId).trimmingCharacters(in: .whitespacesAndNewlines)) }
                 .buttonStyle(.darkCard(primary: true)).disabled(locked)
         } else {
             Button(L10n.approvalDeny()) { denying = true }.buttonStyle(.darkCard()).disabled(locked)

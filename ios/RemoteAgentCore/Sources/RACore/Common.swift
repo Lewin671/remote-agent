@@ -18,4 +18,7 @@ public func aspect(_ ref: PBImageRef) -> Double {
 }
 
 /// A file's name from its path, for an image shown by name only.
-public func fileName(_ path: String) -> String { (path.split(ascii: UInt8(ascii: "/")).last ?? "").ifEmpty(L10n.imageTitle()) }
+public func fileName(_ path: String) -> String {
+    let name = path.split(separator: "/", omittingEmptySubsequences: false).last.map(String.init) ?? ""
+    return name.isEmpty ? L10n.imageTitle() : name
+}

@@ -237,9 +237,9 @@ struct ChatRowView: View, Equatable {
                 case nil: return ""
                 }
             }.joined()
-            return rendered.jvmIsBlank && (!m.images.isEmpty || !m.files.isEmpty) ? nil : rendered
+            return rendered.allSatisfy(\.isWhitespace) && (!m.images.isEmpty || !m.files.isEmpty) ? nil : rendered
         }
-        return m.text.jvmIsBlank && (!m.images.isEmpty || !m.files.isEmpty) ? nil : m.text
+        return m.text.allSatisfy(\.isWhitespace) && (!m.images.isEmpty || !m.files.isEmpty) ? nil : m.text
     }
 
     private func erasedBody(_ item: PBSessionTimelineItem) -> AnyView {
@@ -878,14 +878,18 @@ private struct PlanCard: View {
     }
 }
 
-private func firstLine(_ s: String) -> String { s.jvmLines()[0] }
+private func firstLine(_ s: String) -> String { String(s.prefix(while: { !$0.isNewline })) }
 
 func planFolds(_ text: String, lines: Int) -> Bool {
-    text.jvmLines().count > lines
+    text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline).count > lines
 }
 
 func planPreview(_ text: String, lines: Int) -> String {
-    text.jvmLines().map { plain($0) }.filter { !$0.jvmIsBlank }.prefix(lines).joined(separator: "\n")
+    text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+        .map { plain(String($0)) }
+        .filter { !$0.allSatisfy(\.isWhitespace) }
+        .prefix(lines)
+        .joined(separator: "\n")
 }
 
 struct ScheduledUserMessage: View {

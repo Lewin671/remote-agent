@@ -422,7 +422,8 @@ extension Remote {
                 renewal = renderCoreText(view.leaseRenewalAdvice)
             } else {
                 let authId = view?.authorityDeviceID ?? ""
-                let managerName = (view?.hasManagerName == true ? renderCoreText(view!.managerName) : "").ifEmpty(L10n.securityClient())
+                let rawManager = view?.hasManagerName == true ? renderCoreText(view!.managerName) : ""
+                let managerName = rawManager.isEmpty ? L10n.securityClient() : rawManager
                 renewal = authId == account.deviceId
                     ? L10n.securityIosOpenSettingsAccountSecurityAndTapRenewNow()
                     : L10n.securityIosOpenToRenew(value: managerName)

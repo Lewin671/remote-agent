@@ -198,7 +198,7 @@ struct SessionComposer: View {
     var body: some View {
         let draft = self.draft
         let images = self.images
-        let hasDraft = draft.hasUnsavedContent_p || !text.jvmIsBlank
+        let hasDraft = draft.hasUnsavedContent_p || !text.allSatisfy(\.isWhitespace)
         let canSend = composer.enabled && !header.protocolMismatch && draft.canSend && !draft.sending && !draft.restoring
         let placeholder = composer.hasPlaceholder ? composer.placeholder.rendered() : L10n.composerMessage()
         let interruptBusy = actions.interrupt.status == .pending || actions.interrupt.busy
