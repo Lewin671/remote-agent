@@ -6123,5 +6123,10 @@
     "path": "web/src/remote.ts",
     "literal": "missing stream hello frame",
     "reason": "Internal protocol invariant guard when Core omits hello_frame on OpenStreamEffect."
+  },
+  {
+    "path": "web/src/views/AuthoritySetup.tsx",
+    "literal": "https://ra.example.com",
+    "reason": "RFC 2606 example URL placeholder for relay server input."
   }
 ]

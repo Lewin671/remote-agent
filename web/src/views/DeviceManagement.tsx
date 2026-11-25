@@ -2,13 +2,19 @@ import * as l10n from "../i18n";
 import { t } from "../i18n";
 import { pairingQRCode } from "../qr-code";
 import { LoaderCircle, Plus } from "../icons";
-import { futureTime } from "../model";
-import { useEffect, useRef, useState } from "react";
-import { useCoreHost, useDevicesView, useSettingsView } from "../core/host";
-import { renderText } from "../core/text";
-import type { SecurityPairingInfo } from "../gen/remoteagent/core/v1/security_pb";
+import { useEffect, useState } from "react";
+import {
+  AddDeviceActionKind,
+  AddDeviceStep,
+  SecurityBannerTone,
+  useAddDeviceView,
+  useCoreHost,
+  useDevicesView,
+  useSettingsView,
+} from "../core/host";
+import { renderText as fmt } from "../core/text";
 import { errorText, type Remote } from "../remote";
-import { Alert, Banner, NavBar, useRemote } from "../ui";
+import { Alert, Banner, NavBar } from "../ui";
 
 /** 添加设备 on the current authority: a line of blue words with ＋ after
  * the computers' cards, or the last row of a list of them (row); on any
@@ -30,7 +36,7 @@ export function ManagementEntry({
     </button>
   ) : (
     <p className="gf">
-      {renderText(vm.addDeviceHint) || l10n.t("security.add_on_authority", { name: vm.authorityName || l10n.t("security.client") })}</p>
+      {fmt(vm.addDeviceHint) || l10n.t("security.add_on_authority", { name: vm.authorityName || l10n.t("security.client") })}</p>
   );
 }
 export function DeviceActions({
@@ -146,120 +152,59 @@ export function PairCodePage({
   replaces?: string;
   onBack: () => void;
 }) {
-  useRemote(remote);
-  const devicesVm = useDevicesView(useCoreHost(remote));
-  const [pair, setPair] = useState<SecurityPairingInfo>();
+  const host = useCoreHost(remote);
+  const vm = useAddDeviceView(host);
   const [qr, setQr] = useState<{ url: string; src: string }>();
-  const [confirmed, setConfirmed] = useState(false);
-  const [approved, setApproved] = useState(false);
-  const [done, setDone] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const currentId = useRef<string | undefined>(undefined);
-  const alive = useRef(true);
-  const handedOff = useRef(false);
-  const [selectedRemoveIds, setSelectedRemoveIds] = useState([] as string[]);
-  const removeSelectionTouched = useRef(false);
-  const metaPolls = useRef(0);
-  const emoji = pair?.sasEmoji.length ? pair.sasEmoji : undefined;
-  const waitingMeta = Boolean(emoji && !approved && !pair?.joinerMetaReceived);
-  const replaceLabel = renderText(pair?.replaceOldLabel) || l10n.t("security.also_remove_old_devices");
-  const replaceHint = renderText(pair?.replaceOldHint);
+  const [qrError, setQrError] = useState("");
+
   useEffect(() => {
-    alive.current = true;
-    return () => {
-      alive.current = false;
-      if (currentId.current && !handedOff.current) void remote.cancelPairing(currentId.current).catch(() => {});
-    };
-  }, [remote]);
+    host.addDeviceOpen({
+      replacesDeviceId: replaces,
+      webOrigin: location.origin + location.pathname,
+      autoStart: false,
+    });
+    return () => host.addDeviceClose(replaces);
+  }, [host, replaces]);
+
+  const pairURL = vm.qrUrl;
   useEffect(() => {
-    if (!pair || done || (emoji && !approved && !waitingMeta)) return;
+    if (!pairURL) {
+      setQr(undefined);
+      return;
+    }
     let stopped = false;
-    let timer: ReturnType<typeof setTimeout>;
-    const poll = async () => {
-      if (stopped) return;
-      try {
-        if (!document.hidden) {
-          if (approved) {
-            const next = await remote.finishPairingDelivery(pair.pairingId);
-            const st = await remote.getSecurityStatus();
-            if (next.delivered || !st.pendingOp) {
-              await remote.loadDevices();
-              if (!stopped) {
-                setPair(next);
-                setDone(true);
-              }
-              return;
-            }
-          } else {
-            if (waitingMeta && metaPolls.current >= 15) {
-              return;
-            }
-            if (waitingMeta) metaPolls.current += 1;
-            const next = await remote.pollPairing(pair.pairingId);
-            if (!stopped && next.joined && next.sasEmoji.length > 0) {
-              if (!emoji) {
-                metaPolls.current = 0;
-                if (next.replacementCandidates.length > 0 && !removeSelectionTouched.current) {
-                  setSelectedRemoveIds(
-                    next.replacementCandidates.filter((c) => c.defaultSelected).map((c) => c.deviceId),
-                  );
-                }
-                setPair(next);
-                return;
-              }
-              if (next.joinerMetaReceived) {
-                if (next.replacementCandidates.length > 0 && !removeSelectionTouched.current) {
-                  setSelectedRemoveIds(
-                    next.replacementCandidates.filter((c) => c.defaultSelected).map((c) => c.deviceId),
-                  );
-                }
-                setPair(next);
-                return;
-              }
-            }
-          }
-        }
-      } catch (e) {
-        if (!stopped) setError(errorText(e));
-      }
-      if (!stopped) timer = setTimeout(poll, waitingMeta ? 1000 : 1500);
-    };
-    void poll();
+    setQrError("");
+    void pairingQRCode(pairURL)
+      .then((src) => {
+        if (!stopped) setQr({ url: pairURL, src });
+      })
+      .catch((e) => {
+        if (!stopped) setQrError(errorText(e));
+      });
     return () => {
       stopped = true;
-      clearTimeout(timer);
     };
-  }, [pair, approved, done, emoji, waitingMeta, remote]);
-  const pairURL = pair?.url;
-  useEffect(() => {
-    if (!pairURL) return;
-    let stopped = false;
-    void pairingQRCode(pairURL).then((src) => {
-      if (!stopped) setQr({ url: pairURL, src });
-    }).catch((e) => { if (!stopped) setError(errorText(e)); });
-    return () => { stopped = true; };
   }, [pairURL]);
-  const run = async (job: () => Promise<void>) => {
-    setBusy(true);
-    setError("");
-    try {
-      await job();
-    } catch (e) {
-      setError(errorText(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-  if (!devicesVm.isManager)
+
+  if (vm.step === AddDeviceStep.NOT_MANAGER) {
     return (
       <div className="page set">
         <NavBar title={l10n.t("home.add_device")} onBack={onBack} />
         <div className="body">
-          <ManagementEntry remote={remote} go={() => {}} />
+          <p className="gf">{fmt(vm.nonManagerHint)}</p>
         </div>
       </div>
     );
+  }
+
+  const showCode =
+    vm.step === AddDeviceStep.WAITING_JOINER ||
+    vm.step === AddDeviceStep.COMPARE_SAS ||
+    vm.step === AddDeviceStep.APPROVING ||
+    vm.step === AddDeviceStep.DELIVERING;
+  const bannerText = qrError || (vm.banner?.visible ? fmt(vm.banner.text) : "");
+  const bannerKind = !qrError && vm.banner?.tone === SecurityBannerTone.WARN ? "warn" : "err";
+
   return (
     <div className="page set">
       <NavBar
@@ -268,104 +213,84 @@ export function PairCodePage({
       />
       <div className="body security-body">
         <p className="txt">{l10n.t("security.computer_run_remote_agent_account_join_and_enter_the")}</p>
-        {done ? (
+        {vm.step === AddDeviceStep.DONE && (
           <>
             <Banner kind="">{l10n.t("security.device_joined")}</Banner>
-            {renderText(pair?.removeOldNotice) && (
-              <Banner kind="warn">{renderText(pair?.removeOldNotice)}</Banner>
+            {fmt(vm.removeOldWarning) && (
+              <Banner kind="warn">{fmt(vm.removeOldWarning)}</Banner>
             )}
           </>
-        ) : !pair ? (
+        )}
+        {vm.step !== AddDeviceStep.DONE && !showCode && (
           <>
             {replaces && (
               <p className="txt">
-                {l10n.t("security.only_this_computer_can_rejoin_its_original_archive_with")}</p>
+                {l10n.t("security.only_this_computer_can_rejoin_its_original_archive_with")}
+              </p>
             )}
             <button
               className="btn pri"
-              disabled={busy}
-              onClick={() =>
-                void run(async () => {
-                  const p = await remote.startPairing(
-                    location.origin + location.pathname,
-                    replaces,
-                  );
-                  currentId.current = p.pairingId;
-                  handedOff.current = false;
-                  removeSelectionTouched.current = false;
-                  setSelectedRemoveIds([]);
-                  if (!alive.current) {
-                    await remote.cancelPairing(p.pairingId);
-                    return;
-                  }
-                  setPair(p);
-                })
-              }
+              disabled={!vm.canGenerate && !vm.canRetry}
+              onClick={() => host.addDeviceAction(AddDeviceActionKind.GENERATE)}
             >
-              {busy ? l10n.t("security.generating") : l10n.t("security.generate_pairing_code")}
+              {vm.busy ? l10n.t("security.generating") : l10n.t("security.generate_pairing_code")}
             </button>
           </>
-        ) : (
+        )}
+        {vm.step !== AddDeviceStep.DONE && showCode && (
           <>
-            {qr?.url === pair.url && <img className="security-qr" src={qr.src} alt={l10n.t("security.qr_code_for_adding_a_device")} />}
-            <div className="pair-code">
-              {pair.code.slice(0, 4)} {pair.code.slice(4)}
-            </div>
-            <p className="pcs">
-              {l10n.t("security.pair_valid_until", { time: futureTime(pair.expiresMs, Date.now(), "time") })}
-            </p>
-            {emoji ? (
+            {qr?.url === vm.qrUrl && (
+              <img className="security-qr" src={qr.src} alt={l10n.t("security.qr_code_for_adding_a_device")} />
+            )}
+            {vm.formattedCode && <div className="pair-code">{vm.formattedCode}</div>}
+            {fmt(vm.validUntilText) && <p className="pcs">{fmt(vm.validUntilText)}</p>}
+
+            {vm.sasEmoji.length > 0 ? (
               <>
-                <div className="emoji">{emoji.join(" ")}</div>
+                <div className="emoji">{vm.sasEmoji.join(" ")}</div>
                 <p className="txt center-text">
-                  {l10n.t("security.compare_the_4_patterns_on_the_new_device_confirm")}</p>
-                {!approved && (
+                  {l10n.t("security.compare_the_4_patterns_on_the_new_device_confirm")}
+                </p>
+                {vm.step === AddDeviceStep.COMPARE_SAS && (
                   <>
                     <div className="grp">
                       <label className="row backup-check">
                         <input
                           type="checkbox"
-                          checked={confirmed}
-                          onChange={(e) => setConfirmed(e.target.checked)}
+                          checked={vm.sasConfirmedChecked}
+                          onChange={(e) =>
+                            host.addDeviceAction(AddDeviceActionKind.SET_SAS_CONFIRMED, {
+                              flag: e.target.checked,
+                            })
+                          }
                         />
-                        {l10n.t("security.patterns_match_the_new_device_confirmed_first")}</label>
+                        {l10n.t("security.patterns_match_the_new_device_confirmed_first")}
+                      </label>
                     </div>
-                    {pair.replacementCandidates.length > 0 && (
+                    {vm.replacementCandidates.length > 0 && (
                       <div className="grp">
                         <div className="row">
-                          <b>{replaceLabel}</b>
+                          <b>{fmt(vm.replaceOldLabel) || l10n.t("security.also_remove_old_devices")}</b>
                         </div>
-                        {replaceHint && (
-                          <div className="row help">{replaceHint}</div>
+                        {fmt(vm.replaceOldHint) && (
+                          <div className="row help">{fmt(vm.replaceOldHint)}</div>
                         )}
-                        {pair.replacementCandidates.map((c) => {
-                          const title = c.displayName || c.description || c.shortId;
-                          const lastActive = renderText(c.lastActiveText);
-                          const detail = [
-                            c.description && c.description !== title ? c.description : "",
-                            c.shortId,
-                            lastActive,
-                          ]
-                            .filter(Boolean)
-                            .join(" · ");
-                          const checked = selectedRemoveIds.includes(c.deviceId);
+                        {vm.replacementCandidates.map((c) => {
+                          const detail = fmt(c.subtitle);
                           return (
                             <label key={c.deviceId} className="row backup-check">
                               <input
                                 type="checkbox"
-                                checked={checked}
-                                onChange={(e) => {
-                                  removeSelectionTouched.current = true;
-                                  const on = e.target.checked;
-                                  setSelectedRemoveIds((prev) =>
-                                    on
-                                      ? prev.includes(c.deviceId) ? prev : [...prev, c.deviceId]
-                                      : prev.filter((id) => id !== c.deviceId),
-                                  );
-                                }}
+                                checked={c.selected}
+                                onChange={(e) =>
+                                  host.addDeviceAction(AddDeviceActionKind.TOGGLE_REMOVE_CANDIDATE, {
+                                    deviceId: c.deviceId,
+                                    flag: e.target.checked,
+                                  })
+                                }
                               />
                               <span className="row-name">
-                                <b>{title}</b>
+                                <b>{c.title}</b>
                                 {detail && <small>{detail}</small>}
                               </span>
                             </label>
@@ -375,63 +300,38 @@ export function PairCodePage({
                     )}
                     <button
                       className="btn pri"
-                      disabled={busy || !confirmed}
-                      onClick={() =>
-                        void run(async () => {
-                          // Approval and its durable delivery belong to the account,
-                          // including while approve() is still awaiting its reply.
-                          handedOff.current = true;
-                          const removeIds = pair.replacementCandidates
-                            .filter((c) => selectedRemoveIds.includes(c.deviceId))
-                            .map((c) => c.deviceId);
-                          const res = await remote.approvePairing(pair.pairingId, confirmed, removeIds);
-                          setPair(res);
-                          setApproved(true);
-                          if (res.delivered) {
-                            await remote.loadDevices();
-                            setDone(true);
-                          }
-                        })
-                      }
+                      disabled={!vm.canApprove}
+                      onClick={() => host.addDeviceAction(AddDeviceActionKind.APPROVE)}
                     >
-                      {l10n.t("security.allow_to_join")}</button>
+                      {l10n.t("security.allow_to_join")}
+                    </button>
                   </>
                 )}
-                {approved && (
+                {(vm.step === AddDeviceStep.APPROVING || vm.step === AddDeviceStep.DELIVERING) && (
                   <p role="status" className="wait-line">
                     <LoaderCircle />
-                    {l10n.t("security.approved_waiting_for_the_new_device_to_finish_binding")}</p>
+                    {l10n.t("security.approved_waiting_for_the_new_device_to_finish_binding")}
+                  </p>
                 )}
               </>
             ) : (
               <p role="status" className="wait-line">
                 <LoaderCircle />
-                {l10n.t("security.waiting_for_the_new_device_to_enter_the_pairing")}</p>
+                {l10n.t("security.waiting_for_the_new_device_to_enter_the_pairing")}
+              </p>
             )}
-            {!approved && (
+            {vm.canCancel && (
               <button
                 className="btn"
-                disabled={busy}
-                onClick={() =>
-                  void run(async () => {
-                    try {
-                      await remote.cancelPairing(pair.pairingId);
-                    } finally {
-                      // The local SAS key is already destroyed even if the
-                      // cancel acknowledgement is lost. Durable delivery is
-                      // retained by the coordinator and checked on restart.
-                      currentId.current = undefined;
-                      setPair(undefined);
-                      setConfirmed(false);
-                    }
-                  })
-                }
+                disabled={vm.busy}
+                onClick={() => host.addDeviceAction(AddDeviceActionKind.CANCEL)}
               >
-                {l10n.t("security.cancel_pairing")}</button>
+                {l10n.t("security.cancel_pairing")}
+              </button>
             )}
           </>
         )}
-        {error && <div className="set-banners"><Banner kind="err">{error}</Banner></div>}
+        {bannerText && <div className="set-banners"><Banner kind={bannerKind}>{bannerText}</Banner></div>}
       </div>
     </div>
   );

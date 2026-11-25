@@ -1,97 +1,41 @@
 import * as l10n from "./i18n";
-import { useState } from "react";
+import {
+  ExitConfirmStep,
+  ExitIntentKind,
+  useExitConfirmView,
+  type CoreHost,
+} from "./core/host";
+import { renderText as fmt } from "./core/text";
 import { Alert, Banner } from "./ui";
-import { createStandaloneSecurityClient, renderExitAdviceMessage } from "./core/security-client";
-import { createStandalonePushUnsubscriber, unregisterPushOnExit } from "./push";
 
 /** The retry path retains uncertain work; only this explicit confirmation discards it. */
-export function SetupReset({ onDone }: { onDone: () => void }) {
-  const [asking, setAsking] = useState(false);
-  const [error, setError] = useState("");
-  const [advice, setAdvice] = useState("");
+export function SetupReset({ host }: { host: CoreHost }) {
+  const vm = useExitConfirmView(host);
+  const active = vm.intent === ExitIntentKind.SETUP_RESET && vm.step !== ExitConfirmStep.CLOSED;
+  const err = active ? fmt(vm.errorText) : "";
   return (
     <>
-      {error && <Banner kind="err">{error}</Banner>}
+      {err && <Banner kind="err">{err}</Banner>}
       <button
         className="link mid"
-        onClick={() => {
-          void (async () => {
-            const standalone = createStandaloneSecurityClient();
-            try {
-              let bootErr: unknown;
-              try {
-                await standalone.client.bootstrap();
-              } catch (e) {
-                bootErr = e;
-              }
-              let nextAdvice = "";
-              try {
-                const a = await standalone.client.checkExitAdvice();
-                if (a.authority || a.unresolved || !bootErr) {
-                  nextAdvice = renderExitAdviceMessage(a);
-                }
-              } catch {
-                // Fall back to the generic reset warning when exit advice cannot be read.
-              }
-              setAdvice(
-                nextAdvice ||
-                  l10n.t("security.the_local_account_unfinished_registration_and_security_operations_will"),
-              );
-            } finally {
-              standalone.dispose();
-            }
-            setError("");
-            setAsking(true);
-          })();
-        }}
+        disabled={active && vm.busy}
+        onClick={() => host.exitRequest(ExitIntentKind.SETUP_RESET)}
       >
         {l10n.t("security.exit_and_start_over")}
       </button>
-      {asking && (
+      {active && (
         <Alert
           title={l10n.t("security.exit_and_delete_local_keys")}
           text={
-            error || advice ||
+            err ||
+            fmt(vm.warningBody) ||
             l10n.t("security.the_local_account_unfinished_registration_and_security_operations_will")
           }
-          ok={l10n.t("security.confirm_exit")}
+          ok={vm.busy ? l10n.t("security.exiting") : l10n.t("security.confirm_exit")}
           danger
-          onCancel={() => setAsking(false)}
-          onOk={async () => {
-            let authToken = "";
-            const standalone = createStandaloneSecurityClient({
-              onToken: (eff) => {
-                if (!eff.cleared && eff.token) authToken = eff.token;
-              },
-            });
-            try {
-              let server = "";
-              try {
-                const st = await standalone.client.bootstrap();
-                server = st?.server ?? "";
-              } catch {
-                // Local security storage may be corrupt or missing private keys; allow clearing anyway.
-              }
-              const pushTarget = server
-                ? createStandalonePushUnsubscriber({
-                    server,
-                    getToken: () => authToken,
-                    ensureToken: async () => {
-                      await standalone.client.syncNow(false, "");
-                      return authToken;
-                    },
-                  })
-                : undefined;
-              await unregisterPushOnExit(pushTarget);
-              await standalone.client.clearSecurity();
-              setAsking(false);
-              location.hash = "";
-              onDone();
-            } catch (e) {
-              setError(e instanceof Error ? e.message : String(e));
-            } finally {
-              standalone.dispose();
-            }
+          onCancel={() => host.exitConfirm(false)}
+          onOk={() => {
+            if (!vm.busy) host.exitConfirm(true);
           }}
         />
       )}

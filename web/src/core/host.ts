@@ -6,7 +6,9 @@ import { newRequestID, UnsupportedHistoryError } from "../crypto";
 import * as l10n from "../i18n";
 import { PEER_PROTOCOL_VERSION } from "../protocol";
 import { describeBrowser } from "../devices";
-import { pushPrefs, pushState, pushSupported, restorePushPrefs, setPushPrefs, type PushPrefs } from "../push";
+import { createStandalonePushUnsubscriber, pushPrefs, pushState, pushSupported, restorePushPrefs, setPushPrefs, unregisterPushOnExit, type PushPrefs } from "../push";
+import { clearEventCache } from "../eventcache";
+import { clearMarkdownCache } from "../markdown";
 import { getTheme, setTheme, type Theme } from "../theme";
 import { checkUpdate } from "../update";
 
@@ -179,7 +181,67 @@ import {
   type SecurityStatusChangedEffect,
   type SecurityTokenUpdatedEffect,
 } from "../gen/remoteagent/core/v1/security_pb";
-import { buildEntropyProvided, SecurityClient } from "./security-client";
+import { buildEntropyProvided, requestAuthorityPersistence, SecurityClient } from "./security-client";
+import { dispatchSecurityEffect, WebSecurityExecutor } from "./security-executor";
+import {
+  AccountCachesClearedEventSchema,
+  AccountSecurityActionKind,
+  AccountSecurityActionSchema,
+  AccountSecurityCloseActionSchema,
+  AccountSecurityOpenActionSchema,
+  AccountSecurityScreenRequestSchema,
+  AccountSecuritySubpage,
+  AddDeviceActionKind,
+  AddDeviceActionSchema,
+  AddDeviceCloseActionSchema,
+  AddDeviceOpenActionSchema,
+  AddDeviceScreenRequestSchema,
+  AddDeviceStep,
+  AppRootDismissUpgradeNoticeActionSchema,
+  AppRootRetryBootstrapActionSchema,
+  AppRootScreenRequestSchema,
+  AppRootStage,
+  AppRootVerifyPendingOpActionSchema,
+  ClientInitEventSchema,
+  CreateAccountStep,
+  ExitConfirmActionSchema,
+  ExitConfirmScreenRequestSchema,
+  ExitConfirmStep,
+  ExitIntentKind,
+  ExitRequestActionSchema,
+  ExternalLogoutEventSchema,
+  HandoffActionKind,
+  HandoffActionSchema,
+  HandoffRole,
+  HandoffScreenRequestSchema,
+  JoinPairingStep,
+  OnboardingCreateEditActionSchema,
+  OnboardingCreateSubmitActionSchema,
+  OnboardingJoinBannerActionSchema,
+  OnboardingJoinCancelActionSchema,
+  OnboardingJoinConfirmSasActionSchema,
+  OnboardingJoinEditActionSchema,
+  OnboardingJoinSubmitActionSchema,
+  OnboardingMode,
+  OnboardingRecoveryActionKind,
+  OnboardingRecoveryActionSchema,
+  OnboardingRecoveryEditActionSchema,
+  OnboardingScreenRequestSchema,
+  OnboardingSetModeActionSchema,
+  PendingSecurityOpKind,
+  PushUnregisteredEventSchema,
+  SecurityBannerAction,
+  SecurityBannerTone,
+  SecurityRecoveryPhase,
+  StoragePersistResultEventSchema,
+  type AccountRuntimeChangedEffect,
+  type AccountSecurityViewModel,
+  type AddDeviceViewModel,
+  type AppRootViewModel,
+  type ExitConfirmView,
+  type HandoffViewModel,
+  type OnboardingViewModel,
+} from "../gen/remoteagent/core/v1/security_view_pb";
 import { renderText } from "./text";
 import {
   CommandRouteLeg,
@@ -314,7 +376,7 @@ import {
 } from "../gen/remoteagent/core/v1/shared_files_pb";
 import { SharedFileExecutor, WEB_LOCAL_CACHE_MAX_BYTES } from "../shared-files";
 import { sharedFileStore, type SharedFileStore } from "../shared-file-store";
-import { registerActiveAttachmentClearer, registerActiveSharedFileClearer } from "./security-store-v4";
+import { registerActiveAttachmentClearer, registerActiveSharedFileClearer, securityStoreV4, type SecurityStoreV4 } from "./security-store-v4";
 import {
   CheckForUpdatesEventSchema,
   ClientDetailScreenRequestSchema,
@@ -518,6 +580,12 @@ interface CoreHostOptions {
   prepareImage?: ImagePrepareFn;
   /** Optional video duration probe hook (defaults to browser <video> metadata probe). */
   probeVideoDurationMs?: (blob: Blob) => Promise<number | undefined>;
+  /** Optional security store override for standalone CoreHost before Remote attaches. */
+  securityStore?: SecurityStoreV4;
+  /** Optional fetch override for standalone CoreHost security RPCs before Remote attaches. */
+  securityFetch?: typeof fetch;
+  /** Optional listener for Core's AccountRuntimeChangedEffect (active/removed transitions). */
+  onAccountRuntimeChanged?: (eff: AccountRuntimeChangedEffect) => void;
 }
 
 /** Current browser IANA timezone ID (falls back to UTC when unavailable). */
@@ -790,6 +858,15 @@ const SETTINGS_TARGETS = [
   ScreenTarget.DIRECT_DIAGNOSTICS,
 ];
 
+const SECURITY_TARGETS = [
+  ScreenTarget.APP_ROOT,
+  ScreenTarget.ONBOARDING,
+  ScreenTarget.ADD_DEVICE,
+  ScreenTarget.ACCOUNT_SECURITY,
+  ScreenTarget.HANDOFF,
+  ScreenTarget.EXIT_CONFIRM,
+];
+
 const ALL_TARGETS = [
   ScreenTarget.HOME,
   ScreenTarget.PROJECT,
@@ -802,6 +879,7 @@ const ALL_TARGETS = [
   ScreenTarget.SCHEDULE_SESSION_STRIP,
   ScreenTarget.ATTACHMENT_DRAFT,
   ...SETTINGS_TARGETS,
+  ...SECURITY_TARGETS,
 ];
 
 function draftScopeKey(scope: Pick<DraftScope, "kind" | "id">): string {
@@ -890,11 +968,23 @@ function timerKey(kind: TimerKind, key: string): string {
  */
 export class CoreHost {
   private readonly core: WasmAppCore;
-  readonly remote?: Remote;
-  private readonly executor?: CoreExecutor;
+  private _remote?: Remote;
+  private _executor?: CoreExecutor;
+  private readonly explicitExecutor?: CoreExecutor;
+  private readonly ownSecExec?: WebSecurityExecutor;
   private readonly onEffect?: (effect: Effect) => void;
+  private onAccountRuntimeChanged?: (eff: AccountRuntimeChangedEffect) => void;
+  private lastRuntimeEffect?: AccountRuntimeChangedEffect;
   private readonly explicitScopeHmacKey?: Uint8Array;
   private go?: Go;
+
+  get remote(): Remote | undefined {
+    return this._remote;
+  }
+
+  private get executor(): CoreExecutor | undefined {
+    return this._executor;
+  }
 
   private readonly screenVersions = new Map<ScreenTarget, number>(ALL_TARGETS.map((t) => [t, 0]));
   private readonly listeners = new Map<ScreenTarget, Set<() => void>>(ALL_TARGETS.map((t) => [t, new Set()]));
@@ -918,6 +1008,12 @@ export class CoreHost {
   private usageCache = new Map<string, { version: number; vm: UsageViewModel }>();
   private directDiagnosticsCache = new Map<string, { version: number; vm: DirectDiagnosticsViewModel }>();
   private attachmentDraftCache = new Map<string, { version: number; vm: AttachmentDraftViewModel }>();
+  private appRootCache?: { version: number; vm: AppRootViewModel };
+  private onboardingCache?: { version: number; vm: OnboardingViewModel };
+  private addDeviceCache?: { version: number; vm: AddDeviceViewModel };
+  private accountSecurityCache?: { version: number; vm: AccountSecurityViewModel };
+  private handoffCache?: { version: number; vm: HandoffViewModel };
+  private exitConfirmCache?: { version: number; vm: ExitConfirmView };
   private knownDraftScopes = new Map<string, DraftScope>();
   private usageHydratedMachines = new Set<string>();
   private nextMachineCmdOpId = 0n;
@@ -982,11 +1078,20 @@ export class CoreHost {
 
   constructor(remote?: Remote, opts: CoreHostOptions = {}) {
     this.core = getCore().newAppCore();
-    this.remote = remote;
-    this.executor = opts.executor ?? remote;
+    this._remote = remote;
+    this.explicitExecutor = opts.executor;
+    this._executor = opts.executor ?? remote;
     this.onEffect = opts.onEffect;
+    this.onAccountRuntimeChanged = opts.onAccountRuntimeChanged;
     this.go = opts.go;
     this.explicitScopeHmacKey = opts.scopeHmacKey;
+    if (!opts.executor) {
+      this.ownSecExec = new WebSecurityExecutor({
+        store: opts.securityStore ?? securityStoreV4,
+        fetch: opts.securityFetch,
+        emit: (ev) => this.dispatch(ev),
+      });
+    }
     this.securityClient = new SecurityClient({
       dispatchSecurityEvent: (ev) => this.dispatch(ev),
       setForeground: (active) => this.setForeground(active),
@@ -1028,50 +1133,8 @@ export class CoreHost {
     this.unregisterSharedFileClearer = registerActiveSharedFileClearer(() => this.sharedFileClearAllAndWait());
     this.unregisterAttachmentClearer = registerActiveAttachmentClearer(() => this.draftClearAllAndWait());
 
-    if (this.remote) {
-      this.remote.attachHost({
-        start: () => this.start(),
-        stop: () => this.stop(),
-        setForeground: (active) => this.setForeground(active),
-        setNetwork: (available, signature) => this.setNetwork(available, signature),
-        reconnectNow: () => this.reconnectNow(),
-        retryLogin: () => this.retryLogin(),
-        loadMoreSessions: () => this.loadMoreSessions(),
-        retryList: () => this.retryList(),
-        retryPrefs: () => this.retryPrefs(),
-        retrySession: (sid) => this.retrySession(sid),
-        retryEvents: (sid) => this.retryEvents(sid),
-        refreshDevices: () => this.refreshDevices(),
-        pushRpc: (req) => this.pushRpc(req),
-        fetchSessionImage: (sid, imageId, machineId, cachedEnvelope) =>
-          this.fetchSessionImage(sid, imageId, machineId, cachedEnvelope),
-        terminalOpen: (opId, sessionId, machineId, terminalId) =>
-          this.emit({ case: "terminalOpen", value: create(TerminalOpenActionSchema, { opId, sessionId, machineId, terminalId }) }),
-        terminalClose: (streamId, opId = 0n) =>
-          this.emit({ case: "terminalClose", value: create(TerminalCloseActionSchema, { streamId, opId }) }),
-        terminalSocket: (ev) =>
-          this.emit({ case: "terminalSocket", value: create(TerminalSocketEventSchema, ev) }),
-        terminalInboundBytes: (streamId, rawEnvelope, fromDirect, pcId) =>
-          this.emit({ case: "terminalInboundBytes", value: create(TerminalInboundBytesEventSchema, { streamId, rawEnvelope, fromDirect, pcId }) }),
-        terminalInput: (req) =>
-          this.emit({ case: "terminalInput", value: create(TerminalInputActionSchema, req) }),
-        terminalConfirmRebuild: (streamId) =>
-          this.emit({ case: "terminalConfirmRebuild", value: create(TerminalConfirmRebuildActionSchema, { streamId }) }),
-        securityClient: this.securityClient,
-        securityOp: (op) => this.securityOp(op),
-        dispatchDirectSignal: (raw) => this.dispatchDirectSignal(raw),
-        dispatchDirectSignalDelivery: (frameId, status, retryAfterMs) =>
-          this.dispatchDirectSignalDelivery(frameId, status, retryAfterMs),
-        runMachineCommand: (machineId, sessionId, cmd, signal, skipConnectivityPreflight) =>
-          this.runMachineCommand(machineId, sessionId, cmd, signal, skipConnectivityPreflight),
-        changeProjectPref: (kind, path) =>
-          this.emit({ case: kind === "pin" || kind === "unpin" ? "projectTogglePin" : "projectToggleHide", value: create(ProjectKeyActionSchema, { projectKey: path }) }),
-        dispatchEvent: (ev, onProcessed) => this.dispatch(ev, onProcessed),
-        subscribe: (target, fn) => this.subscribe(target, fn),
-        viewConnection: () => this.viewConnection(),
-        viewHome: (endedLimit) => this.viewHome(endedLimit),
-        viewSession: (sid) => this.viewSession(sid),
-      });
+    if (this._remote) {
+      this.bindRemoteBridge(this._remote);
     }
 
     this.dispatch(
@@ -1153,6 +1216,382 @@ export class CoreHost {
         hasPersistedPreparedImages: false,
         storageLockedByOther: !owned,
       }),
+    });
+  }
+
+  private bindRemoteBridge(remote: Remote) {
+    remote.attachHost({
+      start: () => this.start(),
+      stop: () => this.stop(),
+      setForeground: (active) => this.setForeground(active),
+      setNetwork: (available, signature) => this.setNetwork(available, signature),
+      reconnectNow: () => this.reconnectNow(),
+      retryLogin: () => this.retryLogin(),
+      loadMoreSessions: () => this.loadMoreSessions(),
+      retryList: () => this.retryList(),
+      retryPrefs: () => this.retryPrefs(),
+      retrySession: (sid) => this.retrySession(sid),
+      retryEvents: (sid) => this.retryEvents(sid),
+      refreshDevices: () => this.refreshDevices(),
+      pushRpc: (req) => this.pushRpc(req),
+      fetchSessionImage: (sid, imageId, machineId, cachedEnvelope) =>
+        this.fetchSessionImage(sid, imageId, machineId, cachedEnvelope),
+      terminalOpen: (opId, sessionId, machineId, terminalId) =>
+        this.emit({ case: "terminalOpen", value: create(TerminalOpenActionSchema, { opId, sessionId, machineId, terminalId }) }),
+      terminalClose: (streamId, opId = 0n) =>
+        this.emit({ case: "terminalClose", value: create(TerminalCloseActionSchema, { streamId, opId }) }),
+      terminalSocket: (ev) =>
+        this.emit({ case: "terminalSocket", value: create(TerminalSocketEventSchema, ev) }),
+      terminalInboundBytes: (streamId, rawEnvelope, fromDirect, pcId) =>
+        this.emit({ case: "terminalInboundBytes", value: create(TerminalInboundBytesEventSchema, { streamId, rawEnvelope, fromDirect, pcId }) }),
+      terminalInput: (req) =>
+        this.emit({ case: "terminalInput", value: create(TerminalInputActionSchema, req) }),
+      terminalConfirmRebuild: (streamId) =>
+        this.emit({ case: "terminalConfirmRebuild", value: create(TerminalConfirmRebuildActionSchema, { streamId }) }),
+      securityClient: this.securityClient,
+      securityOp: (op) => this.securityOp(op),
+      dispatchDirectSignal: (raw) => this.dispatchDirectSignal(raw),
+      dispatchDirectSignalDelivery: (frameId, status, retryAfterMs) =>
+        this.dispatchDirectSignalDelivery(frameId, status, retryAfterMs),
+      runMachineCommand: (machineId, sessionId, cmd, signal, skipConnectivityPreflight) =>
+        this.runMachineCommand(machineId, sessionId, cmd, signal, skipConnectivityPreflight),
+      changeProjectPref: (kind, path) =>
+        this.emit({ case: kind === "pin" || kind === "unpin" ? "projectTogglePin" : "projectToggleHide", value: create(ProjectKeyActionSchema, { projectKey: path }) }),
+      dispatchEvent: (ev, onProcessed) => this.dispatch(ev, onProcessed),
+      subscribe: (target, fn) => this.subscribe(target, fn),
+      viewConnection: () => this.viewConnection(),
+      viewHome: (endedLimit) => this.viewHome(endedLimit),
+      viewSession: (sid) => this.viewSession(sid),
+    });
+  }
+
+  setOnAccountRuntimeChanged(fn?: (eff: AccountRuntimeChangedEffect) => void) {
+    this.onAccountRuntimeChanged = fn;
+    if (fn && this.lastRuntimeEffect) {
+      fn(this.lastRuntimeEffect);
+    }
+  }
+
+  /** Attaches a Remote instance to this singleton CoreHost without constructing a second WasmAppCore. */
+  attachRemote(remote: Remote) {
+    if (this._remote === remote) return;
+    if (this._remote) {
+      hosts.delete(this._remote);
+      this._remote.dispose(false);
+    }
+    this._remote = remote;
+    if (!this.explicitExecutor) {
+      this._executor = remote;
+    }
+    hosts.set(remote, this);
+    this.bindRemoteBridge(remote);
+    if (this.viewAppRoot().stage === AppRootStage.READY || this.viewAppRoot().stage === AppRootStage.REMOVED) {
+      this.securityConfigured = true;
+      this.securityBootstrapped = true;
+    }
+  }
+
+  /** Detaches the active Remote on exit/logout while keeping this CoreHost and its WasmAppCore alive. */
+  detachRemote() {
+    const prev = this._remote;
+    this._remote = undefined;
+    this._executor = this.explicitExecutor;
+    if (prev) {
+      // Keep prev -> this in the WeakMap until GC so any React teardown frame still holding prev
+      // resolves to the same singleton CoreHost instead of spawning a second WasmAppCore.
+      prev.dispose(false);
+    }
+    this.started = false;
+    this.securityConfigured = false;
+    this.securityBootstrapped = false;
+    this.securityBootstrapPromise = undefined;
+    this.bootstrapped = false;
+    this.preloadedBootstrap = undefined;
+    this.attachmentConfigured = false;
+    this.usageHydratedMachines.clear();
+    this.knownDraftScopes.clear();
+    this.watchCounts.clear();
+    this.openFormKeys.clear();
+    this.directToggleErrors.clear();
+    this.clientRenameStates.clear();
+    this.clearTimers();
+    for (const map of this.inFlightDispatches.values()) {
+      for (const ac of map.values()) ac.abort();
+    }
+    this.inFlightDispatches.clear();
+    for (const target of ALL_TARGETS) {
+      this.invalidateTarget(target);
+    }
+  }
+
+  // --- Security View Models & Semantic Actions (P2-6) ---
+
+  viewAppRoot(): AppRootViewModel {
+    const ver = this.version(ScreenTarget.APP_ROOT);
+    if (this.appRootCache?.version === ver) return this.appRootCache.vm;
+    const vm = this.queryView<AppRootViewModel>({ case: "appRoot", value: create(AppRootScreenRequestSchema, {}) }, "appRoot");
+    this.appRootCache = { version: ver, vm };
+    return vm;
+  }
+
+  viewOnboarding(): OnboardingViewModel {
+    const ver = this.version(ScreenTarget.ONBOARDING);
+    if (this.onboardingCache?.version === ver) return this.onboardingCache.vm;
+    const vm = this.queryView<OnboardingViewModel>({ case: "onboarding", value: create(OnboardingScreenRequestSchema, {}) }, "onboarding");
+    this.onboardingCache = { version: ver, vm };
+    return vm;
+  }
+
+  viewAddDevice(): AddDeviceViewModel {
+    const ver = this.version(ScreenTarget.ADD_DEVICE);
+    if (this.addDeviceCache?.version === ver) return this.addDeviceCache.vm;
+    const vm = this.queryView<AddDeviceViewModel>({ case: "addDevice", value: create(AddDeviceScreenRequestSchema, {}) }, "addDevice");
+    this.addDeviceCache = { version: ver, vm };
+    return vm;
+  }
+
+  viewAccountSecurity(): AccountSecurityViewModel {
+    const ver = this.version(ScreenTarget.ACCOUNT_SECURITY);
+    if (this.accountSecurityCache?.version === ver) return this.accountSecurityCache.vm;
+    const vm = this.queryView<AccountSecurityViewModel>({ case: "accountSecurity", value: create(AccountSecurityScreenRequestSchema, {}) }, "accountSecurity");
+    this.accountSecurityCache = { version: ver, vm };
+    return vm;
+  }
+
+  viewHandoff(): HandoffViewModel {
+    const ver = this.version(ScreenTarget.HANDOFF);
+    if (this.handoffCache?.version === ver) return this.handoffCache.vm;
+    const vm = this.queryView<HandoffViewModel>({ case: "handoff", value: create(HandoffScreenRequestSchema, {}) }, "handoff");
+    this.handoffCache = { version: ver, vm };
+    return vm;
+  }
+
+  viewExitConfirm(): ExitConfirmView {
+    const ver = this.version(ScreenTarget.EXIT_CONFIRM);
+    if (this.exitConfirmCache?.version === ver) return this.exitConfirmCache.vm;
+    const vm = this.queryView<ExitConfirmView>({ case: "exitConfirm", value: create(ExitConfirmScreenRequestSchema, {}) }, "exitConfirm");
+    this.exitConfirmCache = { version: ver, vm };
+    return vm;
+  }
+
+  clientInit(params: {
+    uiLocale?: string;
+    platform?: string;
+    deviceDescription?: string;
+    inlineCrypto?: boolean;
+    foreground?: boolean;
+    networkAvailable?: boolean;
+    networkSignature?: string;
+    initialUrl?: string;
+    defaultServer?: string;
+    requestStoragePersist?: boolean;
+  }) {
+    this.emit({
+      case: "clientInit",
+      value: create(ClientInitEventSchema, {
+        uiLocale: params.uiLocale ?? l10n.localeStore.snapshot(),
+        platform: params.platform ?? "web",
+        deviceDescription: params.deviceDescription ?? (typeof navigator === "undefined" ? "" : describeBrowser(navigator.userAgent)),
+        inlineCrypto: params.inlineCrypto ?? false,
+        foreground: params.foreground ?? (typeof document === "undefined" ? true : !document.hidden),
+        networkAvailable: params.networkAvailable ?? (typeof navigator === "undefined" ? true : navigator.onLine),
+        networkSignature: params.networkSignature ?? "",
+        initialUrl: params.initialUrl ?? "",
+        defaultServer: params.defaultServer ?? "",
+        requestStoragePersist: params.requestStoragePersist ?? true,
+      }),
+    });
+  }
+
+  appRootRetryBootstrap() {
+    this.emit({ case: "appRootRetryBootstrap", value: create(AppRootRetryBootstrapActionSchema, {}) });
+  }
+
+  appRootVerifyPendingOp() {
+    this.emit({ case: "appRootVerifyPendingOp", value: create(AppRootVerifyPendingOpActionSchema, {}) });
+  }
+
+  appRootDismissUpgradeNotice() {
+    this.emit({ case: "appRootDismissUpgradeNotice", value: create(AppRootDismissUpgradeNoticeActionSchema, {}) });
+  }
+
+  onboardingSetMode(mode: OnboardingMode, opts?: { initialUrl?: string; existingRepair?: boolean; existingServer?: string }) {
+    this.emit({
+      case: "onboardingSetMode",
+      value: create(OnboardingSetModeActionSchema, {
+        mode,
+        initialUrl: opts?.initialUrl ?? "",
+        existingRepair: !!opts?.existingRepair,
+        existingServer: opts?.existingServer ?? "",
+      }),
+    });
+  }
+
+  onboardingCreateEdit(patch: { serverInput?: string; codeSavedChecked?: boolean }) {
+    this.emit({
+      case: "onboardingCreateEdit",
+      value: create(OnboardingCreateEditActionSchema, {
+        hasServerInput: patch.serverInput !== undefined,
+        serverInput: patch.serverInput ?? "",
+        hasCodeSavedChecked: patch.codeSavedChecked !== undefined,
+        codeSavedChecked: !!patch.codeSavedChecked,
+      }),
+    });
+  }
+
+  onboardingCreateSubmit(params: { serverInput?: string; setupToken?: string; confirmCodeSaved?: boolean } = {}) {
+    this.emit({
+      case: "onboardingCreateSubmit",
+      value: create(OnboardingCreateSubmitActionSchema, {
+        serverInput: params.serverInput ?? "",
+        setupToken: params.setupToken ?? "",
+        confirmCodeSaved: !!params.confirmCodeSaved,
+      }),
+    });
+  }
+
+  onboardingJoinEdit(patch: { codeInput?: string; serverInput?: string }) {
+    this.emit({
+      case: "onboardingJoinEdit",
+      value: create(OnboardingJoinEditActionSchema, {
+        hasCodeInput: patch.codeInput !== undefined,
+        codeInput: patch.codeInput ?? "",
+        hasServerInput: patch.serverInput !== undefined,
+        serverInput: patch.serverInput ?? "",
+      }),
+    });
+  }
+
+  onboardingJoinSubmit(params: { rawLink?: string; serverInput?: string; codeInput?: string } = {}) {
+    this.emit({
+      case: "onboardingJoinSubmit",
+      value: create(OnboardingJoinSubmitActionSchema, {
+        rawLink: params.rawLink ?? "",
+        serverInput: params.serverInput ?? "",
+        codeInput: params.codeInput ?? "",
+      }),
+    });
+  }
+
+  onboardingJoinConfirmSas() {
+    this.emit({ case: "onboardingJoinConfirmSas", value: create(OnboardingJoinConfirmSasActionSchema, {}) });
+  }
+
+  onboardingJoinCancel() {
+    this.emit({ case: "onboardingJoinCancel", value: create(OnboardingJoinCancelActionSchema, {}) });
+  }
+
+  onboardingJoinBannerAction() {
+    this.emit({ case: "onboardingJoinBannerAction", value: create(OnboardingJoinBannerActionSchema, {}) });
+  }
+
+  onboardingRecoveryEdit(patch: { serverInput?: string; codeSavedChecked?: boolean }) {
+    this.emit({
+      case: "onboardingRecoveryEdit",
+      value: create(OnboardingRecoveryEditActionSchema, {
+        hasServerInput: patch.serverInput !== undefined,
+        serverInput: patch.serverInput ?? "",
+        hasCodeSavedChecked: patch.codeSavedChecked !== undefined,
+        codeSavedChecked: !!patch.codeSavedChecked,
+      }),
+    });
+  }
+
+  onboardingRecoveryAction(kind: OnboardingRecoveryActionKind, params?: { serverInput?: string; oldCode?: string }) {
+    this.emit({
+      case: "onboardingRecoveryAction",
+      value: create(OnboardingRecoveryActionSchema, {
+        kind,
+        serverInput: params?.serverInput ?? "",
+        oldCode: params?.oldCode ?? "",
+      }),
+    });
+  }
+
+  addDeviceOpen(params: { replacesDeviceId?: string; webOrigin?: string; autoStart?: boolean } = {}) {
+    this.emit({
+      case: "addDeviceOpen",
+      value: create(AddDeviceOpenActionSchema, {
+        replacesDeviceId: params.replacesDeviceId ?? "",
+        webOrigin: params.webOrigin ?? "",
+        autoStart: !!params.autoStart,
+      }),
+    });
+  }
+
+  addDeviceClose(replacesDeviceId = "") {
+    this.emit({
+      case: "addDeviceClose",
+      value: create(AddDeviceCloseActionSchema, { replacesDeviceId }),
+    });
+  }
+
+  addDeviceAction(kind: AddDeviceActionKind, params?: { flag?: boolean; deviceId?: string }) {
+    this.emit({
+      case: "addDeviceAction",
+      value: create(AddDeviceActionSchema, {
+        kind,
+        flag: !!params?.flag,
+        deviceId: params?.deviceId ?? "",
+      }),
+    });
+  }
+
+  accountSecurityOpen(subpage = AccountSecuritySubpage.OVERVIEW) {
+    this.emit({
+      case: "accountSecurityOpen",
+      value: create(AccountSecurityOpenActionSchema, { subpage }),
+    });
+  }
+
+  accountSecurityClose() {
+    this.emit({
+      case: "accountSecurityClose",
+      value: create(AccountSecurityCloseActionSchema, {}),
+    });
+  }
+
+  externalLogout() {
+    this.emit({
+      case: "externalLogout",
+      value: create(ExternalLogoutEventSchema, {}),
+    });
+  }
+
+  accountSecurityAction(kind: AccountSecurityActionKind, params?: { subpage?: AccountSecuritySubpage; flag?: boolean }) {
+    this.emit({
+      case: "accountSecurityAction",
+      value: create(AccountSecurityActionSchema, {
+        kind,
+        subpage: params?.subpage ?? AccountSecuritySubpage.UNSPECIFIED,
+        flag: !!params?.flag,
+      }),
+    });
+  }
+
+  handoffAction(kind: HandoffActionKind, params?: { targetDeviceId?: string; flag?: boolean; recoveryCode?: string }) {
+    this.emit({
+      case: "handoffAction",
+      value: create(HandoffActionSchema, {
+        kind,
+        targetDeviceId: params?.targetDeviceId ?? "",
+        flag: !!params?.flag,
+        recoveryCode: params?.recoveryCode ?? "",
+      }),
+    });
+  }
+
+  exitRequest(intent: ExitIntentKind, server = "") {
+    this.emit({
+      case: "exitRequest",
+      value: create(ExitRequestActionSchema, { intent, server }),
+    });
+  }
+
+  exitConfirm(confirm: boolean) {
+    this.emit({
+      case: "exitConfirm",
+      value: create(ExitConfirmActionSchema, { confirm }),
     });
   }
 
@@ -3671,11 +4110,102 @@ export class CoreHost {
         this.attachments.handleDraftStorageClearAll();
         break;
 
+      case "requestStoragePersist": {
+        const opId = val.value.opId;
+        void requestAuthorityPersistence()
+          .catch(() => false)
+          .then((persisted) => {
+            if (!this.closed) {
+              this.emit({
+                case: "storagePersistResult",
+                value: create(StoragePersistResultEventSchema, { opId, persisted }),
+              });
+            }
+          });
+        break;
+      }
+
+      case "unregisterPushOnExit": {
+        const { opId, server, authToken } = val.value;
+        const pushTarget =
+          this._remote ??
+          (server
+            ? createStandalonePushUnsubscriber({
+                server,
+                getToken: () => authToken,
+                ensureToken: async () => authToken,
+              })
+            : undefined);
+        void unregisterPushOnExit(pushTarget)
+          .catch(() => undefined)
+          .finally(() => {
+            if (!this.closed) {
+              this.emit({
+                case: "pushUnregistered",
+                value: create(PushUnregisteredEventSchema, { opId }),
+              });
+            }
+          });
+        break;
+      }
+
+      case "clearAccountCaches": {
+        const { opId, preserveServer } = val.value;
+        void (async () => {
+          let errMsg = "";
+          try {
+            this.detachRemote();
+            clearMarkdownCache();
+            await clearEventCache().catch(() => undefined);
+            try {
+              localStorage.removeItem(SCOPE_STORAGE_KEY);
+              if (preserveServer) {
+                localStorage.setItem("ra-server", preserveServer);
+              }
+            } catch {
+              /* ignore restricted storage */
+            }
+          } catch (e) {
+            errMsg = errorMessage(e);
+          }
+          if (!this.closed) {
+            this.emit({
+              case: "accountCachesCleared",
+              value: create(AccountCachesClearedEventSchema, { opId, error: errMsg }),
+            });
+          }
+        })();
+        break;
+      }
+
+      case "accountRuntimeChanged":
+        this.lastRuntimeEffect = val.value;
+        this.onAccountRuntimeChanged?.(val.value);
+        break;
+
+      case "dismissUpgradeNotice":
+        securityStoreV4.dismissUpgradeNotice();
+        break;
+
+      case "persistLastServer":
+        if (val.value.server) {
+          try {
+            localStorage.setItem("ra-server", val.value.server);
+          } catch {
+            /* ignore restricted storage */
+          }
+        }
+        break;
+
       case undefined:
         break;
 
       default:
-        this.executor?.securityEffect?.(val);
+        if (this.executor?.securityEffect) {
+          this.executor.securityEffect(val);
+        } else if (this.ownSecExec) {
+          dispatchSecurityEffect(this.ownSecExec, val);
+        }
         break;
     }
     this.onEffect?.(eff);
@@ -3721,6 +4251,12 @@ export class CoreHost {
     else if (target === ScreenTarget.USAGE) this.usageCache.clear();
     else if (target === ScreenTarget.DIRECT_DIAGNOSTICS) this.directDiagnosticsCache.clear();
     else if (target === ScreenTarget.ATTACHMENT_DRAFT) this.attachmentDraftCache.clear();
+    else if (target === ScreenTarget.APP_ROOT) this.appRootCache = undefined;
+    else if (target === ScreenTarget.ONBOARDING) this.onboardingCache = undefined;
+    else if (target === ScreenTarget.ADD_DEVICE) this.addDeviceCache = undefined;
+    else if (target === ScreenTarget.ACCOUNT_SECURITY) this.accountSecurityCache = undefined;
+    else if (target === ScreenTarget.HANDOFF) this.handoffCache = undefined;
+    else if (target === ScreenTarget.EXIT_CONFIRM) this.exitConfirmCache = undefined;
   }
 
   private flushRenders() {
@@ -3818,6 +4354,7 @@ export class CoreHost {
     this.retryNowWaiters.clear();
     this.rejectSecurityOps();
     this.securityClient.rejectAll();
+    this.ownSecExec?.close();
     this.attachments.store.releaseStorageLock?.();
     this.core.close();
   }
@@ -4057,10 +4594,57 @@ export function useAttachmentDraftView(host: CoreHost, scope: DraftScope): Attac
   );
 }
 
+export function useAppRootView(host: CoreHost): AppRootViewModel {
+  const version = useScreenVersion(host, ScreenTarget.APP_ROOT);
+  return useMemo(() => host.viewAppRoot(), [host, version]);
+}
+
+export function useOnboardingView(host: CoreHost): OnboardingViewModel {
+  const version = useScreenVersion(host, ScreenTarget.ONBOARDING);
+  return useMemo(() => host.viewOnboarding(), [host, version]);
+}
+
+export function useAddDeviceView(host: CoreHost): AddDeviceViewModel {
+  const version = useScreenVersion(host, ScreenTarget.ADD_DEVICE);
+  return useMemo(() => host.viewAddDevice(), [host, version]);
+}
+
+export function useAccountSecurityView(host: CoreHost): AccountSecurityViewModel {
+  const version = useScreenVersion(host, ScreenTarget.ACCOUNT_SECURITY);
+  return useMemo(() => host.viewAccountSecurity(), [host, version]);
+}
+
+export function useHandoffView(host: CoreHost): HandoffViewModel {
+  const version = useScreenVersion(host, ScreenTarget.HANDOFF);
+  return useMemo(() => host.viewHandoff(), [host, version]);
+}
+
+export function useExitConfirmView(host: CoreHost): ExitConfirmView {
+  const version = useScreenVersion(host, ScreenTarget.EXIT_CONFIRM);
+  return useMemo(() => host.viewExitConfirm(), [host, version]);
+}
+
 export {
+  AccountSecurityActionKind,
+  AccountSecuritySubpage,
+  AddDeviceActionKind,
+  AddDeviceStep,
+  AppRootStage,
   CommandRouteLeg,
   ConnBannerKind,
   ConnProbeState,
+  CreateAccountStep,
+  ExitConfirmStep,
+  ExitIntentKind,
+  HandoffActionKind,
+  HandoffRole,
+  JoinPairingStep,
+  OnboardingMode,
+  OnboardingRecoveryActionKind,
+  PendingSecurityOpKind,
+  SecurityBannerAction,
+  SecurityBannerTone,
+  SecurityRecoveryPhase,
   TerminalHistoryEventKind,
   TerminalHistoryPhase,
   TerminalHistoryStatus,
@@ -4076,6 +4660,13 @@ export {
   UsageSortColumn,
 };
 export type {
+  AccountRuntimeChangedEffect,
+  AccountSecurityViewModel,
+  AddDeviceViewModel,
+  AppRootViewModel,
+  ExitConfirmView,
+  HandoffViewModel,
+  OnboardingViewModel,
   TerminalHistoryParsedPage,
   TerminalHistoryRun,
   TerminalHistorySendRequestEffect,

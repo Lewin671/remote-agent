@@ -1,5 +1,4 @@
 // @vitest-environment happy-dom
-import { create } from "@bufbuild/protobuf";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
@@ -8,9 +7,8 @@ import { DemoRemote } from "./dev/demo";
 import { getCoreHost } from "./core/host";
 import { TimerKind } from "./gen/remoteagent/core/v1/app_pb";
 import * as remoteModule from "./remote";
-import * as securityClient from "./core/security-client";
-import { SecurityBootstrapKind, SecurityWorkflowStatusSchema } from "./gen/remoteagent/core/v1/security_pb";
 import { Home } from "./views/Home";
+import { mockAppReadyBootstrap } from "./test/security-host-fixture";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root | undefined;
@@ -25,12 +23,7 @@ afterEach(async () => {
 async function mount(initiallyHidden = false) {
   let hidden = initiallyHidden;
   vi.spyOn(document, "hidden", "get").mockImplementation(() => hidden);
-  vi.spyOn(securityClient, "createStandaloneSecurityClient").mockReturnValue({
-    client: {
-      bootstrap: vi.fn(async () => create(SecurityWorkflowStatusSchema, { bootstrap: SecurityBootstrapKind.READY, server: "https://ra.example.com", deviceId: "me", accountId: "acc", isMember: true })),
-    } as unknown as securityClient.SecurityClient,
-    dispose: vi.fn(),
-  });
+  mockAppReadyBootstrap();
   const remote = DemoRemote.create(new URLSearchParams("role=member&empty=none"));
   activeRemote = remote;
   vi.spyOn(remoteModule.Remote, "load").mockResolvedValue(remote);

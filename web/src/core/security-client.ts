@@ -1,43 +1,23 @@
-import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
-import { checkServer } from "../crypto";
+import { create } from "@bufbuild/protobuf";
 import * as l10n from "../i18n";
 import {
-  EffectBatchSchema,
   EntropyProvidedSchema,
   EventSchema,
-  TimerFiredEventSchema,
-  type Effect,
   type Event,
 } from "../gen/remoteagent/core/v1/app_pb";
 import {
   SecurityActionEmptySchema,
-  SecurityApprovePairingActionSchema,
   SecurityBoolActionSchema,
-  SecurityConfigEventSchema,
   SecurityErrorCode,
-  SecurityForegroundEventSchema,
-  SecurityPrepareCreationActionSchema,
   SecurityRemoveDeviceActionSchema,
-  SecurityServerCodeActionSchema,
-  SecurityStartJoinPairingActionSchema,
-  SecurityStartPairingActionSchema,
   SecurityStringActionSchema,
   SecuritySyncNowActionSchema,
   SecurityUpdateDeviceMetaActionSchema,
   SecurityWorkflowActionEventSchema,
-  type SecurityExitAdvice,
-  type SecurityHandoffCandidate,
-  type SecurityPairingInfo,
-  type SecurityRecoveryInfo,
-  type SecurityTokenUpdatedEffect,
   type SecurityWorkflowActionEvent,
   type SecurityWorkflowResultEffect,
   type SecurityWorkflowStatus,
 } from "../gen/remoteagent/core/v1/security_pb";
-import type { WasmAppCore } from "./projection";
-import { getCore } from "./runtime";
-import { dispatchSecurityEffect, WebSecurityExecutor } from "./security-executor";
-import { SecurityStoreV4, securityStoreV4 } from "./security-store-v4";
 import { renderText } from "./text";
 
 export const BROWSER_AUTHORITY_NOTICE = () =>
@@ -48,34 +28,6 @@ export async function requestAuthorityPersistence(): Promise<boolean> {
     return (await navigator.storage?.persist?.()) ?? false;
   } catch {
     return false;
-  }
-}
-
-export interface PairLink {
-  code: string;
-  commit?: Uint8Array;
-  server: string;
-}
-
-const fromB64url = (s: string) =>
-  Uint8Array.from(
-    atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)),
-    (c) => c.charCodeAt(0),
-  );
-
-/** Light query parser for `#/pair?...` deep-link prefill only; verification runs in Go clientcore. */
-export function parsePairLinkQuery(query: string): PairLink | undefined {
-  const q = new URLSearchParams(query);
-  const code = q.get("code");
-  const server = q.get("s");
-  if (!code || !server) return undefined;
-  const c = q.get("c");
-  try {
-    const commit = c ? fromB64url(c) : undefined;
-    if (!/^\d{8}$/.test(code) || (commit && commit.length !== 32)) return undefined;
-    return { code, server: checkServer(server), commit };
-  } catch {
-    return undefined;
   }
 }
 
@@ -102,12 +54,6 @@ export function translateSecurityErrorMessage(
     return SecurityErrorCode[res.structuredErrorCode] ?? "";
   }
   return "";
-}
-
-export function renderExitAdviceMessage(
-  a: Pick<SecurityExitAdvice, "messageText">,
-): string {
-  return a.messageText ? renderText(a.messageText) : "";
 }
 
 export interface SecurityWorkflowDispatcher {
@@ -141,7 +87,6 @@ export class SecurityClient {
     return () => this.statusListeners.delete(fn);
   }
 
-  /** Called by CoreHost / StandaloneSecurityHost when Go emits SecurityWorkflowResultEffect. */
   handleWorkflowResult(res: SecurityWorkflowResultEffect): void {
     if (res.status) this.handleStatusChanged(res.status);
     const w = this.waiters.get(res.actionId);
@@ -162,7 +107,6 @@ export class SecurityClient {
     w.resolve(res);
   }
 
-  /** Called by CoreHost / StandaloneSecurityHost when Go emits SecurityStatusChangedEffect. */
   handleStatusChanged(status: SecurityWorkflowStatus): void {
     this._status = status;
     for (const fn of [...this.statusListeners]) fn(status);
@@ -205,92 +149,14 @@ export class SecurityClient {
 
   bootstrap = async (): Promise<SecurityWorkflowStatus> => (await this.empty("bootstrap")).status!;
   getStatus = async (): Promise<SecurityWorkflowStatus> => (await this.empty("getStatus")).status!;
-  async dismissUpgradeNotice(): Promise<SecurityWorkflowStatus> {
-    const r = await this.empty("dismissUpgradeNotice");
-    securityStoreV4.dismissUpgradeNotice();
-    return r.status!;
-  }
   async syncNow(touch = false, authToken = ""): Promise<SecurityWorkflowStatus> {
     return (await this.run({ case: "syncNow", value: create(SecuritySyncNowActionSchema, { touch, authToken }) })).status!;
   }
   renewLease = async (force = true): Promise<SecurityWorkflowStatus> => (await this.bool("renewLease", force)).status!;
-  resumePendingOp = (): Promise<SecurityWorkflowResultEffect> => this.empty("resumePendingOp");
-  async discardPendingOp(abandonHandoff = false): Promise<void> {
-    await this.bool("discardPendingOp", abandonHandoff);
-  }
-  async prepareCreation(server: string, storagePersisted: boolean): Promise<{ recoveryCode: string; resumedDraft: boolean; codeSaved: boolean }> {
-    const r = await this.run({ case: "prepareCreation", value: create(SecurityPrepareCreationActionSchema, { server, storagePersisted }) });
-    return { recoveryCode: r.recoveryCode, resumedDraft: r.resumedDraft, codeSaved: r.codeSaved };
-  }
-  async confirmCreationCodeSaved(): Promise<void> { await this.empty("confirmCreationCodeSaved"); }
-  continueCreation = (setupToken = ""): Promise<SecurityWorkflowResultEffect> => this.str("continueCreation", setupToken);
-  adoptCreationWithoutCode = (): Promise<SecurityWorkflowResultEffect> => this.empty("adoptCreationWithoutCode");
   async removeDevice(deviceId: string): Promise<void> {
     await this.run({ case: "removeDevice", value: create(SecurityRemoveDeviceActionSchema, { deviceId }) });
   }
   async deleteMachineRecords(machineId: string): Promise<void> { await this.str("deleteMachineRecords", machineId); }
-  async deleteAccount(): Promise<void> { await this.empty("deleteAccount"); }
-  prepareRecoveryRotation = async (): Promise<{ recoveryCode: string }> => ({ recoveryCode: (await this.empty("prepareRecoveryRotation")).recoveryCode });
-  async confirmRecoveryRotation(): Promise<void> { await this.empty("confirmRecoveryRotation"); }
-  prepareHandoffCode = async (storagePersisted: boolean): Promise<{ recoveryCode: string }> => ({ recoveryCode: (await this.bool("prepareHandoffCode", storagePersisted)).recoveryCode });
-  async publishHandoffOffer(): Promise<void> { await this.empty("publishHandoffOffer"); }
-  listHandoffCandidates = async (): Promise<SecurityHandoffCandidate[]> => (await this.empty("listHandoffCandidates")).handoffCandidates;
-  async handoffAuthority(targetDeviceId: string): Promise<void> { await this.str("handoffAuthority", targetDeviceId); }
-  async completeAccountPublicProfile(server: string, code: string): Promise<void> {
-    await this.run({ case: "completeAccountPublicProfile", value: create(SecurityServerCodeActionSchema, { server, code }) });
-  }
-  async startPairing(webOrigin: string, replacesDeviceId = ""): Promise<SecurityPairingInfo> {
-    return (await this.run({ case: "startPairing", value: create(SecurityStartPairingActionSchema, { webOrigin, replacesDeviceId }) })).pairing!;
-  }
-  pollPairing = async (pairingId: string): Promise<SecurityPairingInfo> => (await this.str("pollPairing", pairingId)).pairing!;
-  async approvePairing(pairingId: string, sasConfirmed: boolean, removeDeviceIds: string[] = []): Promise<SecurityPairingInfo> {
-    return (await this.run({
-      case: "approvePairing",
-      value: create(SecurityApprovePairingActionSchema, { pairingId, sasConfirmed, removeDeviceIds }),
-    })).pairing!;
-  }
-  finishPairingDelivery = async (pairingId: string): Promise<SecurityPairingInfo> => (await this.str("finishPairingDelivery", pairingId)).pairing!;
-  async cancelPairing(pairingId: string): Promise<void> { await this.str("cancelPairing", pairingId); }
-  async startJoinPairing(params: {
-    server?: string;
-    code?: string;
-    commitHint?: Uint8Array;
-    existingRepair?: boolean;
-    existingServer?: string;
-    rawLink?: string;
-    platform?: string;
-    description?: string;
-  }): Promise<SecurityPairingInfo> {
-    const r = await this.run({
-      case: "startJoinPairing",
-      value: create(SecurityStartJoinPairingActionSchema, {
-        server: params.server ?? "",
-        code: params.code ?? "",
-        commitHint: params.commitHint ? new Uint8Array(params.commitHint) : new Uint8Array(),
-        existingRepair: !!params.existingRepair,
-        existingServer: params.existingServer ?? "",
-        rawLink: params.rawLink ?? "",
-        platform: params.platform ?? "",
-        description: params.description ?? "",
-      }),
-    });
-    return r.pairing!;
-  }
-  confirmJoinSas = (pairingId: string): Promise<SecurityWorkflowResultEffect> => this.str("confirmJoinSas", pairingId);
-  async cancelJoinPairing(pairingId: string): Promise<void> { await this.str("cancelJoinPairing", pairingId); }
-  async prepareEmergencyRecovery(server: string, code: string): Promise<{ recoveryCode: string; recovery?: SecurityRecoveryInfo }> {
-    const r = await this.run({ case: "prepareEmergencyRecovery", value: create(SecurityServerCodeActionSchema, { server, code }) });
-    return { recoveryCode: r.recoveryCode, recovery: r.recovery };
-  }
-  async confirmRecoveryCodeSaved(): Promise<void> { await this.empty("confirmRecoveryCodeSaved"); }
-  continueRecoverySigning = async (oldCode: string): Promise<SecurityRecoveryInfo | undefined> => (await this.str("continueRecoverySigning", oldCode)).recovery;
-  resumeRecovery = async (): Promise<SecurityRecoveryInfo | undefined> => (await this.empty("resumeRecovery")).recovery;
-  completeRecovery = (): Promise<SecurityWorkflowResultEffect> => this.empty("completeRecovery");
-  async discardUnsignedRecovery(): Promise<void> { await this.empty("discardUnsignedRecovery"); }
-  async discardRejectedRecovery(): Promise<void> { await this.empty("discardRejectedRecovery"); }
-  checkExitAdvice = async (): Promise<SecurityExitAdvice> => (await this.empty("checkExitAdvice")).exitAdvice!;
-  async clearSecurity(): Promise<void> { await this.empty("clearSecurity"); }
-  checkRetainedDenied = async (): Promise<boolean> => (await this.empty("checkRetainedDenied")).flag;
   async updateDeviceMeta(params: {
     deviceId?: string;
     name?: string;
@@ -309,13 +175,7 @@ export class SecurityClient {
       }),
     });
   }
-  async republishRecoveryObjects(flag = false): Promise<void> { await this.bool("republishRecoveryObjects", flag); }
   setForeground(active: boolean): void { this.host.setForeground(active); }
-}
-
-export interface StandaloneSecurityHandle {
-  client: SecurityClient;
-  dispose: () => void;
 }
 
 export function buildEntropyProvided(minIds: number, minFloats: number, minRandomBytes: number) {
@@ -329,116 +189,4 @@ export function buildEntropyProvided(minIds: number, minFloats: number, minRando
     ? crypto.getRandomValues(new Uint8Array(Math.max(minRandomBytes, 4096)))
     : new Uint8Array();
   return create(EntropyProvidedSchema, { randomIds, unitFloats, randomBytes });
-}
-
-/**
- * Hosts a standalone WasmAppCore + WebSecurityExecutor for unauthenticated entry screens
- * (bootstrap, account creation, pairing join, emergency recovery, setup reset, rejoin).
- */
-export function createStandaloneSecurityClient(opts: {
-  store?: SecurityStoreV4;
-  fetch?: typeof fetch;
-  onToken?: (eff: SecurityTokenUpdatedEffect) => void;
-} = {}): StandaloneSecurityHandle {
-  const core: WasmAppCore = getCore().newAppCore();
-  let closed = false;
-  const timers = new Map<string, { id: bigint; handle: ReturnType<typeof setTimeout> }>();
-  const pending: Event[] = [];
-  let draining = false;
-
-  const exec = new WebSecurityExecutor({ store: opts.store ?? securityStoreV4, fetch: opts.fetch, emit: (ev) => dispatch(ev) });
-
-  const dispatch = (ev: Event) => {
-    if (closed) return;
-    if (ev.nowMs === 0n) ev.nowMs = BigInt(Date.now());
-    if (ev.monoMs === 0n) ev.monoMs = BigInt(Math.max(0, Math.floor(performance.now())));
-    pending.push(ev);
-    if (draining) return;
-    draining = true;
-    try {
-      while (pending.length > 0 && !closed) {
-        const batch = fromBinary(EffectBatchSchema, core.dispatch(toBinary(EventSchema, pending.shift()!)));
-        for (const eff of batch.effects) {
-          if (closed) break;
-          handleEffect(eff);
-        }
-      }
-    } finally {
-      draining = false;
-    }
-  };
-
-  const client = new SecurityClient({
-    dispatchSecurityEvent: dispatch,
-    setForeground: (foreground) =>
-      !closed && dispatch(create(EventSchema, { event: { case: "securityForeground", value: create(SecurityForegroundEventSchema, { foreground }) } })),
-    isClosed: () => closed,
-  });
-
-  const handleEffect = (eff: Effect) => {
-    const val = eff.effect;
-    if (dispatchSecurityEffect(exec, val)) return;
-    switch (val.case) {
-      case "requestEntropy":
-        pending.push(
-          create(EventSchema, {
-            nowMs: BigInt(Date.now()),
-            monoMs: BigInt(Math.max(0, Math.floor(performance.now()))),
-            event: { case: "entropyProvided", value: buildEntropyProvided(val.value.minIds, val.value.minFloats, val.value.minRandomBytes) },
-          }),
-        );
-        break;
-      case "scheduleTimer": {
-        const { timerId, kind, key, delayMs } = val.value;
-        const tk = `${kind}:${key}`;
-        const prev = timers.get(tk);
-        if (prev) clearTimeout(prev.handle);
-        const handle = setTimeout(() => {
-          const cur = timers.get(tk);
-          if (!cur || cur.id !== timerId) return;
-          timers.delete(tk);
-          if (!closed) dispatch(create(EventSchema, { event: { case: "timerFired", value: create(TimerFiredEventSchema, { timerId, kind, key }) } }));
-        }, Math.max(0, Number(delayMs)));
-        timers.set(tk, { id: timerId, handle });
-        break;
-      }
-      case "cancelTimer": {
-        const tk = `${val.value.kind}:${val.value.key}`;
-        const cur = timers.get(tk);
-        if (cur && (val.value.timerId === 0n || cur.id === val.value.timerId)) {
-          clearTimeout(cur.handle);
-          timers.delete(tk);
-        }
-        break;
-      }
-      case "securityTokenUpdated": opts.onToken?.(val.value); break;
-      case "securityWorkflowResult": client.handleWorkflowResult(val.value); break;
-      case "securityStatusChanged": client.handleStatusChanged(val.value.status!); break;
-    }
-  };
-
-  const visibleNow = typeof document === "undefined" || document.visibilityState === "visible";
-  dispatch(create(EventSchema, { event: { case: "securityConfig", value: create(SecurityConfigEventSchema, { inlineCrypto: false, foreground: visibleNow }) } }));
-
-  const onVisibility = () => client.setForeground(typeof document === "undefined" || !document.hidden);
-  const onHide = () => client.setForeground(false);
-  globalThis.addEventListener?.("visibilitychange", onVisibility);
-  globalThis.addEventListener?.("pagehide", onHide);
-  globalThis.addEventListener?.("pageshow", onVisibility);
-
-  return {
-    client,
-    dispose: () => {
-      if (closed) return;
-      closed = true;
-      globalThis.removeEventListener?.("visibilitychange", onVisibility);
-      globalThis.removeEventListener?.("pagehide", onHide);
-      globalThis.removeEventListener?.("pageshow", onVisibility);
-      for (const t of timers.values()) clearTimeout(t.handle);
-      timers.clear();
-      exec.close();
-      client.rejectAll();
-      core.close();
-    },
-  };
 }

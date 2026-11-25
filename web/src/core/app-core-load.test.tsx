@@ -1,15 +1,13 @@
 // @vitest-environment happy-dom
-import { create } from "@bufbuild/protobuf";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { App } from "../App";
 import { t } from "../i18n";
 import * as coreRuntime from "./runtime";
-import * as securityClient from "./security-client";
 import * as remoteModule from "../remote";
-import { SecurityBootstrapKind, SecurityWorkflowStatusSchema } from "../gen/remoteagent/core/v1/security_pb";
 import { DemoRemote } from "../dev/demo";
+import { mockAppReadyBootstrap } from "../test/security-host-fixture";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root | undefined;
@@ -23,12 +21,7 @@ afterEach(async () => {
 });
 
 it("blocks workspace rendering until core is ready and shows a localized error with retry on failure", async () => {
-  vi.spyOn(securityClient, "createStandaloneSecurityClient").mockReturnValue({
-    client: {
-      bootstrap: vi.fn(async () => create(SecurityWorkflowStatusSchema, { bootstrap: SecurityBootstrapKind.READY, server: "https://ra.example.com", deviceId: "me", accountId: "acc", isMember: true })),
-    } as unknown as securityClient.SecurityClient,
-    dispose: vi.fn(),
-  });
+  mockAppReadyBootstrap();
   const remote = DemoRemote.create(new URLSearchParams("role=member&empty=none"));
   vi.spyOn(remoteModule.Remote, "load").mockResolvedValue(remote);
   vi.spyOn(remote, "start").mockImplementation(() => {});

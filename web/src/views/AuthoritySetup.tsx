@@ -1,136 +1,58 @@
 import * as l10n from "../i18n";
 import { ChevronRight } from "../icons";
-import { futureTime } from "../model";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useState } from "react";
 import { Startup } from "../Startup";
 import { page } from "./pages";
+import { BROWSER_AUTHORITY_NOTICE } from "../core/security-client";
 import {
-  BROWSER_AUTHORITY_NOTICE,
-  createStandaloneSecurityClient,
-  requestAuthorityPersistence,
-  SecurityClient,
-  type StandaloneSecurityHandle,
-} from "../core/security-client";
-import {
-  SecurityBootstrapKind,
-  type SecurityRecoveryInfo,
-  type SecurityWorkflowStatus,
-} from "../gen/remoteagent/core/v1/security_pb";
-import { GetRecoveryContextResponse_Phase as Phase } from "../gen/remoteagent/v1/relay_pb";
-import { errorText } from "../remote";
+  CreateAccountStep,
+  OnboardingMode,
+  OnboardingRecoveryActionKind,
+  SecurityBannerTone,
+  SecurityRecoveryPhase,
+  useOnboardingView,
+  type CoreHost,
+} from "../core/host";
+import { renderText } from "../core/text";
 import { Banner, NavBar } from "../ui";
 import { CodeBackup, PersistenceResult } from "./AuthorityKit";
 import { SetupReset } from "../SetupReset";
 
 // Pairing and curve code are needed only after choosing to join.
-const Setup = page(() => import("./Pairing").then(m => ({ default: m.Setup })));
+const Setup = page(() => import("./Pairing").then((m) => ({ default: m.Setup })));
 
-export function AccountEntry({
-  onDone,
-  client: supplied,
-  initialStatus,
-}: {
-  onDone: () => void;
-  client?: SecurityClient;
-  initialStatus?: SecurityWorkflowStatus;
-}) {
-  const ownHandle = useRef<StandaloneSecurityHandle | undefined>(undefined);
-  const [client, setClient] = useState(supplied);
-  const [mode, setMode] = useState<"" | "join" | "create" | "recovery">(
-    location.hash.startsWith("#/pair?") ? "join" : "",
-  );
-  const [startup, setStartup] = useState<SecurityWorkflowStatus | undefined>(initialStatus);
-  const [server, setServer] = useState(
-    localStorage.getItem("ra-server") ||
-      import.meta.env.VITE_DEFAULT_SERVER ||
-      "",
-  );
+export function AccountEntry({ host }: { host: CoreHost }) {
+  const vm = useOnboardingView(host);
+  // Secret inputs stay in shell local state and are passed to Core only on submit.
   const [token, setToken] = useState("");
   const [oldCode, setOldCode] = useState("");
-  const [code, setCode] = useState("");
-  const [saved, setSaved] = useState(false);
-  const [persisted, setPersisted] = useState<boolean>();
-  const [status, setStatus] = useState<SecurityRecoveryInfo>();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [signatureMissing, setSignatureMissing] = useState(false);
 
-  const syncMode = (st: SecurityWorkflowStatus) => {
-    setStartup(st);
-    if (st.bootstrap === SecurityBootstrapKind.PENDING_CREATE) {
-      setMode("create");
-    } else if (st.bootstrap === SecurityBootstrapKind.PENDING_RECOVERY) {
-      setMode("recovery");
-      if (st.pendingOp && !st.pendingOp.recoveryId && !st.pendingOp.signed) {
-        setSignatureMissing(true);
-      }
-    }
-  };
-
-  useEffect(() => {
-    const handle = supplied ? undefined : createStandaloneSecurityClient();
-    ownHandle.current = handle;
-    const activeClient = supplied ?? handle!.client;
-    setClient(activeClient);
-    let alive = true;
-    void activeClient
-      .bootstrap()
-      .then((st) => {
-        if (alive) syncMode(st);
-      })
-      .catch((e) => {
-        if (alive) setError(errorText(e));
-      });
-    return () => {
-      alive = false;
-      ownHandle.current = undefined;
-      handle?.dispose();
-    };
-  }, [supplied]);
-
-  const refresh = async () => {
-    if (!client) return;
-    syncMode(await client.getStatus());
-  };
-
-  const run = async (work: () => Promise<void>) => {
-    setBusy(true);
-    setError("");
-    setSignatureMissing(false);
-    try {
-      await work();
-      await refresh();
-    } catch (e) {
-      setError(errorText(e));
-      await refresh().catch(() => {});
-    } finally {
-      setBusy(false);
-    }
-  };
-  if (!client || (!startup && !error))
-    return <div className="center muted">{l10n.t("security.loading")}</div>;
-
-  const repairBanner = startup?.legacyRepairNotice && (
+  const repairBanner = vm.showLegacyRepairBanner && (
     <Banner
       kind="warn"
       action={l10n.t("common.got_it")}
-      onAction={() => void run(async () => {
-        setStartup(await client.dismissUpgradeNotice());
-      })}
+      onAction={() => host.appRootDismissUpgradeNotice()}
     >
       <strong>{l10n.t("security.upgrade_repair_title")}</strong>{" "}
       {l10n.t("security.upgrade_repair_notice")}
     </Banner>
   );
 
-  if (mode === "join")
+  if (vm.mode === OnboardingMode.JOIN) {
     return (
       <>
-        <NavBar onBack={() => setMode("")} title={l10n.t("security.join_an_existing_account")} />
-        <Suspense fallback={<Startup />}><Setup onDone={onDone} /></Suspense>
+        <NavBar
+          onBack={vm.canBack ? () => host.onboardingSetMode(OnboardingMode.ENTRY) : undefined}
+          title={l10n.t("security.join_an_existing_account")}
+        />
+        <Suspense fallback={<Startup />}>
+          <Setup host={host} />
+        </Suspense>
       </>
     );
-  if (!mode)
+  }
+
+  if (vm.mode === OnboardingMode.ENTRY || vm.mode === OnboardingMode.UNSPECIFIED) {
     return (
       <div className="setup authority-setup account-entry">
         <div className="entry-hero">
@@ -146,60 +68,92 @@ export function AccountEntry({
         {repairBanner}
         <div className="entry-actions">
           <div className="grp">
-            <button className="row entry-row" aria-label={l10n.t("security.create_account")} onClick={() => setMode("create")}>
-              <span className="row-name">{l10n.t("security.create_account")}<small>{l10n.t("security.this_device_becomes_the_managing_client")}</small></span>
+            <button
+              className="row entry-row"
+              aria-label={l10n.t("security.create_account")}
+              onClick={() => host.onboardingSetMode(OnboardingMode.CREATE)}
+            >
+              <span className="row-name">
+                {l10n.t("security.create_account")}
+                <small>{l10n.t("security.this_device_becomes_the_managing_client")}</small>
+              </span>
               <span className="v"><ChevronRight /></span>
             </button>
-            <button className="row entry-row" aria-label={l10n.t("security.join_an_existing_account")} onClick={() => setMode("join")}>
-              <span className="row-name">{l10n.t("security.join_an_existing_account")}<small>{l10n.t("security.join_with_a_code_from_the_managing_client")}</small></span>
+            <button
+              className="row entry-row"
+              aria-label={l10n.t("security.join_an_existing_account")}
+              onClick={() => host.onboardingSetMode(OnboardingMode.JOIN)}
+            >
+              <span className="row-name">
+                {l10n.t("security.join_an_existing_account")}
+                <small>{l10n.t("security.join_with_a_code_from_the_managing_client")}</small>
+              </span>
               <span className="v"><ChevronRight /></span>
             </button>
-            <button className="row entry-row" aria-label={l10n.t("security.recover_management_with_a_recovery_code")} onClick={() => setMode("recovery")}>
-              <span className="row-name">{l10n.t("security.recover_management_with_a_recovery_code")}<small>{l10n.t("security.use_when_the_managing_client_is_lost")}</small></span>
+            <button
+              className="row entry-row"
+              aria-label={l10n.t("security.recover_management_with_a_recovery_code")}
+              onClick={() => host.onboardingSetMode(OnboardingMode.RECOVERY)}
+            >
+              <span className="row-name">
+                {l10n.t("security.recover_management_with_a_recovery_code")}
+                <small>{l10n.t("security.use_when_the_managing_client_is_lost")}</small>
+              </span>
               <span className="v"><ChevronRight /></span>
             </button>
           </div>
           <p className="gf entry-note">{l10n.t("security.entry_e2ee_note")}</p>
         </div>
-        {error && <div className="set-banners"><Banner kind="err">{error}</Banner></div>}
       </div>
     );
-  const pending =
-    (mode === "create" && startup?.bootstrap === SecurityBootstrapKind.PENDING_CREATE) ||
-    (mode === "recovery" && startup?.bootstrap === SecurityBootstrapKind.PENDING_RECOVERY);
+  }
+
+  const isCreate = vm.mode === OnboardingMode.CREATE;
+  const createVm = vm.create;
+  const recVm = vm.recovery;
+
   return (
     <div className="setup authority-setup">
       <NavBar
-        title={mode === "create" ? l10n.t("security.create_account") : l10n.t("security.recover_management_with_a_recovery_code")}
-        onBack={!pending ? () => setMode("") : undefined}
+        title={
+          isCreate
+            ? l10n.t("security.create_account")
+            : l10n.t("security.recover_management_with_a_recovery_code")
+        }
+        onBack={vm.canBack ? () => host.onboardingSetMode(OnboardingMode.ENTRY) : undefined}
       />
       {repairBanner}
       <Banner kind="">{BROWSER_AUTHORITY_NOTICE()}</Banner>
-      {!pending && (
-        <label className="field">
-          <small>{l10n.t("security.server")}</small>
-          <input
-            aria-label={l10n.t("security.server")}
-            placeholder="https://ra.example.com"
-            value={server}
-            onChange={(e) => setServer(e.target.value.trim())}
-          />
-        </label>
-      )}
-      {mode === "recovery" && persisted !== undefined && (
-        <PersistenceResult persisted={persisted} />
-      )}
-      {mode === "create" ? (
+
+      {isCreate && createVm && (
         <>
-          {pending && !code && (
+          {!createVm.showSetupReset && (
+            <label className="field">
+              <small>{l10n.t("security.server")}</small>
+              <input
+                aria-label={l10n.t("security.server")}
+                placeholder="https://ra.example.com"
+                value={createVm.serverInput}
+                onChange={(e) => host.onboardingCreateEdit({ serverInput: e.target.value.trim() })}
+              />
+            </label>
+          )}
+          {createVm.step === CreateAccountStep.MISSING_CODE_ACK && (
             <Banner kind="warn">
-              {l10n.t("security.the_original_creation_draft_is_preserved_continue_with_the")}</Banner>
+              {l10n.t("security.the_original_creation_draft_is_preserved_continue_with_the")}
+            </Banner>
           )}
-          {persisted !== undefined && (
-            <PersistenceResult persisted={persisted} />
+          {createVm.hasPersistenceResult && (
+            <PersistenceResult persisted={createVm.storagePersisted} />
           )}
-          {code && <CodeBackup code={code} saved={saved} onSaved={setSaved} />}
-          {pending && (
+          {createVm.recoveryCode && (
+            <CodeBackup
+              code={createVm.recoveryCode}
+              saved={createVm.codeSavedChecked}
+              onSaved={(checked) => host.onboardingCreateEdit({ codeSavedChecked: checked })}
+            />
+          )}
+          {(createVm.showSetupReset || createVm.recoveryCode) && (
             <label className="field">
               <small>{l10n.t("security.setup_token_optional_with_open_registration")}</small>
               <input
@@ -212,46 +166,52 @@ export function AccountEntry({
           )}
           <button
             className="btn pri"
-            disabled={busy || (!pending && !server) || (!!code && !saved)}
+            disabled={!createVm.canSubmit}
             onClick={() =>
-              void run(async () => {
-                if (!pending) {
-                  const sp = await requestAuthorityPersistence();
-                  const p = await client.prepareCreation(server, sp);
-                  setCode(p.recoveryCode ?? "");
-                  if (p.resumedDraft && p.codeSaved) setSaved(true);
-                  setPersisted(sp);
-                  return;
-                }
-                if (code && saved) {
-                  await client.confirmCreationCodeSaved();
-                }
-                let cur = await client.getStatus();
-                if (cur.bootstrap === SecurityBootstrapKind.PENDING_CREATE) {
-                  const res = await client.continueCreation(token);
-                  if (res.status) cur = res.status;
-                }
-                if (
-                  !code &&
-                  cur.bootstrap === SecurityBootstrapKind.PENDING_CREATE &&
-                  !cur.pendingOp?.codeSaved
-                ) {
-                  await client.adoptCreationWithoutCode();
-                }
-                onDone();
+              host.onboardingCreateSubmit({
+                serverInput: createVm.serverInput,
+                setupToken: token,
+                confirmCodeSaved: createVm.step === CreateAccountStep.BACKUP_CODE && createVm.codeSavedChecked,
               })
             }
           >
-            {busy ? l10n.t("security.processing") : !pending ? l10n.t("security.generate_recovery_code") : l10n.t("security.continue_creation")}
+            {createVm.busy
+              ? l10n.t("security.processing")
+              : createVm.step === CreateAccountStep.FORM && !createVm.hasPendingCreate
+                ? l10n.t("security.generate_recovery_code")
+                : l10n.t("security.continue_creation")}
           </button>
+          {createVm.banner?.visible && (
+            <Banner kind={createVm.banner.tone === SecurityBannerTone.WARN ? "warn" : "err"}>
+              {renderText(createVm.banner.text)}
+            </Banner>
+          )}
+          {createVm.showSetupReset && <SetupReset host={host} />}
         </>
-      ) : (
+      )}
+      {!isCreate && recVm && (
         <>
+          {recVm.phase === SecurityRecoveryPhase.FORM && (
+            <label className="field">
+              <small>{l10n.t("security.server")}</small>
+              <input
+                aria-label={l10n.t("security.server")}
+                placeholder="https://ra.example.com"
+                value={recVm.serverInput}
+                onChange={(e) => host.onboardingRecoveryEdit({ serverInput: e.target.value.trim() })}
+              />
+            </label>
+          )}
+          {recVm.hasPersistenceResult && (
+            <PersistenceResult persisted={recVm.storagePersisted} />
+          )}
           <p className="txt">{l10n.t("security.if_this_browser_is_already_a_member_recovery_will")}</p>
-          {!pending && (
+
+          {recVm.phase === SecurityRecoveryPhase.FORM && (
             <>
               <p className="txt">
-                {l10n.t("security.after_submission_wait_48_hours_the_current_managing_client")}</p>
+                {renderText(recVm.statusHintText) || l10n.t("security.after_submission_wait_48_hours_the_current_managing_client")}
+              </p>
               <textarea
                 className="field"
                 aria-label={l10n.t("security.original_recovery_code")}
@@ -261,122 +221,141 @@ export function AccountEntry({
               />
               <button
                 className="btn pri"
-                disabled={busy || !server || !oldCode.trim()}
-                onClick={() =>
-                  void run(async () => {
-                    const sp = await requestAuthorityPersistence();
-                    setPersisted(sp);
-                    const p = await client.prepareEmergencyRecovery(server, oldCode);
-                    setCode(p.recoveryCode);
-                    if (p.recovery && p.recovery.phase !== Phase.UNSPECIFIED) setStatus(p.recovery);
-                    setOldCode("");
-                  })
-                }
+                disabled={!recVm.canPrepare || !oldCode.trim()}
+                onClick={() => {
+                  const codeToSend = oldCode;
+                  setOldCode("");
+                  host.onboardingRecoveryAction(OnboardingRecoveryActionKind.PREPARE, {
+                    serverInput: recVm.serverInput,
+                    oldCode: codeToSend,
+                  });
+                }}
               >
-                {l10n.t("security.prepare_recovery")}</button>
+                {recVm.busy ? l10n.t("security.processing") : l10n.t("security.prepare_recovery")}
+              </button>
             </>
           )}
-          {pending && (
+
+          {recVm.phase !== SecurityRecoveryPhase.FORM && (
             <>
-              {code ? (
-                <CodeBackup code={code} saved={saved} onSaved={setSaved} />
+              {recVm.newRecoveryCode ? (
+                <CodeBackup
+                  code={recVm.newRecoveryCode}
+                  saved={recVm.codeSavedChecked}
+                  onSaved={(checked) => host.onboardingRecoveryEdit({ codeSavedChecked: checked })}
+                />
               ) : (
                 <p className="txt">
-                  {l10n.t("security.the_original_recovery_draft_is_preserved_the_new_recovery")}</p>
+                  {l10n.t("security.the_original_recovery_draft_is_preserved_the_new_recovery")}
+                </p>
               )}
-              {status && status.phase !== Phase.UNSPECIFIED && (
-                <Banner kind={status.phase === Phase.REJECTED ? "err" : "warn"}>
-                  {status.phase === Phase.REJECTED
-                    ? l10n.t("security.recovery_was_rejected_you_can_apply_again")
-                    : l10n.t("security.recovery_request_pending_eligible_at", { value: String(futureTime(status.readyMs)) })}
+
+              {recVm.canConfirmCodeSaved && (
+                <button
+                  className="btn"
+                  disabled={recVm.busy}
+                  onClick={() =>
+                    host.onboardingRecoveryAction(OnboardingRecoveryActionKind.CONFIRM_CODE_SAVED)
+                  }
+                >
+                  {l10n.t("security.i_saved_the_new_recovery_code_offline")}
+                </button>
+              )}
+
+              {recVm.phase !== SecurityRecoveryPhase.UNSIGNED_DRAFT && renderText(recVm.statusHintText) && (
+                <Banner kind={recVm.phase === SecurityRecoveryPhase.REJECTED ? "err" : "warn"}>
+                  {renderText(recVm.statusHintText)}
                 </Banner>
               )}
-              {signatureMissing && (
+
+              {recVm.phase === SecurityRecoveryPhase.UNSIGNED_DRAFT && (
                 <>
                   <textarea
                     className="field"
                     aria-label={l10n.t("security.original_recovery_code")}
+                    placeholder={l10n.t("security.original_recovery_code")}
                     value={oldCode}
                     onChange={(e) => setOldCode(e.target.value)}
                   />
                   <button
-                    className="btn"
-                    disabled={busy || !oldCode}
-                    onClick={() =>
-                      void run(async () => {
-                        const next = await client.continueRecoverySigning(oldCode);
-                        if (next) setStatus(next);
-                        setSignatureMissing(false);
-                        setOldCode("");
-                      })
-                    }
+                    className="btn pri"
+                    disabled={!recVm.canContinueSigning || !oldCode.trim()}
+                    onClick={() => {
+                      const codeToSend = oldCode;
+                      setOldCode("");
+                      host.onboardingRecoveryAction(OnboardingRecoveryActionKind.CONTINUE_SIGNING, {
+                        oldCode: codeToSend,
+                      });
+                    }}
                   >
-                    {l10n.t("security.continue_original_draft")}</button>
-                  <button
-                    className="btn"
-                    disabled={busy}
-                    onClick={() =>
-                      void run(async () => {
-                        await client.discardUnsignedRecovery();
-                        setSignatureMissing(false);
-                        setMode("");
-                      })
-                    }
-                  >
-                    {l10n.t("security.abandon_unsigned_draft")}</button>
+                    {l10n.t("security.continue_original_draft")}
+                  </button>
+                  {recVm.canDiscard && (
+                    <button
+                      className="btn"
+                      disabled={recVm.busy}
+                      onClick={() =>
+                        host.onboardingRecoveryAction(OnboardingRecoveryActionKind.DISCARD_UNSIGNED)
+                      }
+                    >
+                      {l10n.t("security.abandon_unsigned_draft")}
+                    </button>
+                  )}
                 </>
               )}
-              <button
-                className="btn pri"
-                disabled={busy || (!!code && !saved)}
-                onClick={() =>
-                  void run(async () => {
-                    if (saved) await client.confirmRecoveryCodeSaved();
-                    if (
-                      status &&
-                      [Phase.READY, Phase.PUBLISHED].includes(status.phase)
-                    ) {
-                      await client.completeRecovery();
-                      onDone();
-                    } else {
-                      const next = await client.resumeRecovery();
-                      if (next) {
-                        setStatus(next);
-                      } else {
-                        setSignatureMissing(true);
-                      }
+
+              {recVm.phase === SecurityRecoveryPhase.SUBMITTED_WAITING && (
+                <button
+                  className="btn pri"
+                  disabled={!recVm.canSubmitOrRefresh || (!!recVm.newRecoveryCode && !recVm.codeSavedChecked)}
+                  onClick={() => {
+                    if (recVm.canConfirmCodeSaved) {
+                      host.onboardingRecoveryAction(OnboardingRecoveryActionKind.CONFIRM_CODE_SAVED);
                     }
-                  })
-                }
-              >
-                {busy
-                  ? l10n.t("security.processing")
-                  : status &&
-                      [Phase.READY, Phase.PUBLISHED].includes(status.phase)
-                    ? l10n.t("security.complete_recovery")
-                    : l10n.t("security.submit_or_check_original_recovery")}
-              </button>
-              {status?.phase === Phase.REJECTED && (
+                    host.onboardingRecoveryAction(OnboardingRecoveryActionKind.REFRESH_OR_SUBMIT);
+                  }}
+                >
+                  {recVm.busy ? l10n.t("security.processing") : l10n.t("security.submit_or_check_original_recovery")}
+                </button>
+              )}
+
+              {recVm.phase === SecurityRecoveryPhase.READY_TO_COMPLETE && (
+                <button
+                  className="btn pri"
+                  disabled={!recVm.canComplete || (!!recVm.newRecoveryCode && !recVm.codeSavedChecked)}
+                  onClick={() => {
+                    if (recVm.canConfirmCodeSaved) {
+                      host.onboardingRecoveryAction(OnboardingRecoveryActionKind.CONFIRM_CODE_SAVED);
+                    }
+                    host.onboardingRecoveryAction(OnboardingRecoveryActionKind.COMPLETE);
+                  }}
+                >
+                  {recVm.busy ? l10n.t("security.processing") : l10n.t("security.complete_recovery")}
+                </button>
+              )}
+
+              {recVm.phase === SecurityRecoveryPhase.REJECTED && recVm.canDiscard && (
                 <button
                   className="btn"
-                  disabled={busy}
+                  disabled={recVm.busy}
                   onClick={() =>
-                    void run(async () => {
-                      await client.discardRejectedRecovery();
-                      setStatus(undefined);
-                      setCode("");
-                      setSaved(false);
-                    })
+                    host.onboardingRecoveryAction(OnboardingRecoveryActionKind.DISCARD_REJECTED)
                   }
                 >
-                  {l10n.t("security.apply_again")}</button>
+                  {l10n.t("security.apply_again")}
+                </button>
               )}
             </>
           )}
+
+          {recVm.banner?.visible && (
+            <Banner kind={recVm.banner.tone === SecurityBannerTone.WARN ? "warn" : "err"}>
+              {renderText(recVm.banner.text)}
+            </Banner>
+          )}
+          {recVm.showSetupReset && <SetupReset host={host} />}
         </>
       )}
-      {error && <Banner kind="err">{error}</Banner>}
-      {pending && <SetupReset onDone={onDone} />}
     </div>
   );
 }

@@ -266,6 +266,12 @@ const blockCache = new Map<string, Block[]>();
 const MAX_SPAN_CACHE = 1000;
 const MAX_BLOCK_CACHE = 400;
 
+/** Clears module-level parsed markdown caches on account exit/logout so plaintext from a previous account is not retained. */
+export function clearMarkdownCache(): void {
+  spanCache.clear();
+  blockCache.clear();
+}
+
 function cacheGet<V>(cache: Map<string, V>, key: string): V | undefined {
   const hit = cache.get(key);
   if (hit !== undefined) {

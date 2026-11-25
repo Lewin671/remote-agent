@@ -25,16 +25,19 @@ import {
 } from "../gen/remoteagent/core/v1/settings_view_pb";
 import {
   ConnProbeState,
+  getCoreHost,
   NotificationPermissionState,
   PushRegistrationState,
   ThemePreference,
   routeForMachineSettings,
+  useAppRootView,
   useClientDetailView,
   useClientRenameState,
   useCoreHost,
   useDevicesView,
   useQuotaView,
   useSettingsView,
+  type CoreHost,
   type Go,
 } from "../core/host";
 import { renderText } from "../core/text";
@@ -50,7 +53,6 @@ import {
   Sheet,
   Switch,
   GlassButton,
-  useRemote,
   type Mark,
 } from "../ui";
 import { ConnCheck, connWord } from "./ConnCheck";
@@ -1132,41 +1134,44 @@ function QuotaSectionView({ sec }: { sec: QuotaCliSection }) {
   );
 }
 
-export function RemovedScreen({ remote }: { remote: Remote }) {
-  useRemote(remote);
-  const [result, setResult] = useState("");
+export function RemovedScreen({ host, remote }: { host?: CoreHost; remote?: Remote }) {
+  const effectiveHost = host ?? (remote ? getCoreHost(remote) : undefined);
+  if (!effectiveHost) return null;
+  return <RemovedScreenInner host={effectiveHost} remote={remote} />;
+}
+
+function RemovedScreenInner({ host, remote }: { host: CoreHost; remote?: Remote }) {
+  const root = useAppRootView(host);
+  const vm = root.removed;
+  const server = vm?.server || root.server || remote?.account.server || "";
+  const removalVerified = vm ? vm.removalVerified : !!remote?.removalVerified;
+  const formatCoreMsg = renderText;
+  const verifyResult = formatCoreMsg(vm?.verifyResultText);
   return (
     <div className="center">
       <div className="gone">
         <div className="et">
-          {remote.removalVerified ? l10n.t("settings.this_device_was_removed_from_the_account") : l10n.t("settings.cannot_sign_in_to_the_relay_right_now")}
+          {removalVerified
+            ? l10n.t("settings.this_device_was_removed_from_the_account")
+            : l10n.t("settings.cannot_sign_in_to_the_relay_right_now")}
         </div>
         <p className="muted">
-          {remote.removalVerified
+          {removalVerified
             ? l10n.t("settings.signed_account_state_confirms_this_device_was_removed_sessions")
             : l10n.t("settings.the_device_may_have_been_removed_the_service_reset")}
         </p>
-        <RejoinButton server={remote.account.server} remote={remote}>{l10n.t("settings.rejoin_account")}</RejoinButton>
-        <p className="muted small">{l10n.t("settings.the_account_keys_in_this_browser_will_be_deleted")}</p>
+        <RejoinButton host={host} server={server}>{l10n.t("settings.rejoin_account")}</RejoinButton>
+        <p className="muted small">
+          {l10n.t("settings.the_account_keys_in_this_browser_will_be_deleted")}
+        </p>
         <button
           className="link mid"
-          onClick={async () => {
-            try {
-              await remote.resumeSecurityOperation();
-              const st = await remote.getSecurityStatus();
-              setResult(
-                st.pendingOp
-                  ? l10n.t("settings.the_original_operation_is_unfinished_continue_verifying")
-                  : l10n.t("settings.the_original_security_operation_is_verified_complete_you_can"),
-              );
-            } catch (e) {
-              setResult(e instanceof Error ? e.message : String(e));
-            }
-          }}
+          disabled={vm?.busy}
+          onClick={() => host.appRootVerifyPendingOp()}
         >
           {l10n.t("settings.verify_and_continue_security_operation")}
         </button>
-        {result && <p className="muted small">{result}</p>}
+        {verifyResult && <p className="muted small">{verifyResult}</p>}
       </div>
     </div>
   );

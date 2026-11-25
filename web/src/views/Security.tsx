@@ -1,21 +1,26 @@
 import * as l10n from "../i18n";
 import { ChevronRight } from "../icons";
-import { futureTime } from "../model";
 import { useEffect, useState } from "react";
-import { useCoreHost, useDevicesView, useSettingsView } from "../core/host";
-import { renderText } from "../core/text";
 import {
-  BROWSER_AUTHORITY_NOTICE,
-  createStandaloneSecurityClient,
-  renderExitAdviceMessage,
-  requestAuthorityPersistence,
-} from "../core/security-client";
-import type { SecurityPendingOpSummary } from "../gen/remoteagent/core/v1/security_pb";
-import type { HandoffCandidateView } from "../gen/remoteagent/core/v1/settings_view_pb";
-import type { Text } from "../gen/remoteagent/core/v1/text_pb";
-import { errorText, type Remote } from "../remote";
-import { unregisterPushOnExit } from "../push";
-import { Alert, Banner, NavBar, useRemote, useNow, usePageVisible } from "../ui";
+  AccountSecurityActionKind,
+  AccountSecuritySubpage,
+  ExitConfirmStep,
+  ExitIntentKind,
+  getCoreHost,
+  HandoffActionKind,
+  HandoffRole,
+  PendingSecurityOpKind,
+  SecurityBannerTone,
+  useAccountSecurityView,
+  useCoreHost,
+  useExitConfirmView,
+  useHandoffView,
+  type CoreHost,
+} from "../core/host";
+import { renderText as fmt } from "../core/text";
+import { BROWSER_AUTHORITY_NOTICE } from "../core/security-client";
+import type { Remote } from "../remote";
+import { Alert, Banner, NavBar } from "../ui";
 import { CodeBackup, PersistenceResult } from "./AuthorityKit";
 
 export {
@@ -24,54 +29,63 @@ export {
   DeviceActions,
 } from "./DeviceManagement";
 
-export function LeaveAlert({ remote, onCancel }: { remote?: Remote; onCancel: () => void }) {
-  const [advice, setAdvice] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+export function LeaveAlert({
+  remote,
+  host: suppliedHost,
+  onCancel,
+}: {
+  remote?: Remote;
+  host?: CoreHost;
+  onCancel: () => void;
+}) {
+  const host = suppliedHost ?? (remote ? getCoreHost(remote) : undefined);
+  if (!host) return null;
+  return <LeaveAlertInner host={host} server={remote?.account.server ?? ""} onCancel={onCancel} />;
+}
+
+function LeaveAlertInner({
+  host,
+  server,
+  onCancel,
+}: {
+  host: CoreHost;
+  server: string;
+  onCancel: () => void;
+}) {
+  const vm = useExitConfirmView(host);
   useEffect(() => {
-    const standalone = createStandaloneSecurityClient();
-    void (async () => {
-      await standalone.client.bootstrap();
-      const a = await standalone.client.checkExitAdvice();
-      setAdvice(renderExitAdviceMessage(a));
-    })()
-      .catch((e) => setError(errorText(e)))
-      .finally(() => standalone.dispose());
-  }, []);
+    host.exitRequest(ExitIntentKind.LEAVE_ACCOUNT, server);
+    return () => {
+      const cur = host.viewExitConfirm();
+      if (cur.intent === ExitIntentKind.LEAVE_ACCOUNT && cur.step !== ExitConfirmStep.EXECUTING) {
+        host.exitConfirm(false);
+      }
+    };
+  }, [host, server]);
+
   return (
     <Alert
       title={l10n.t("security.exit_this_browser")}
-      text={error || advice || l10n.t("security.verifying_management_identity_and_unfinished_security_operations")}
-      ok={busy ? l10n.t("security.exiting") : l10n.t("security.exit")}
+      text={
+        fmt(vm.errorText) ||
+        fmt(vm.warningBody) ||
+        l10n.t("security.verifying_management_identity_and_unfinished_security_operations")
+      }
+      ok={vm.busy ? l10n.t("security.exiting") : l10n.t("security.exit")}
       danger
-      onCancel={onCancel}
+      onCancel={() => {
+        host.exitConfirm(false);
+        onCancel();
+      }}
       onOk={() => {
-        if (!advice || busy) return;
-        setBusy(true);
-        const standalone = createStandaloneSecurityClient();
-        void (async () => {
-          await standalone.client.bootstrap();
-          const current = await standalone.client.checkExitAdvice();
-          const currentMsg = renderExitAdviceMessage(current);
-          if (currentMsg !== advice) {
-            setAdvice(currentMsg);
-            setBusy(false);
-            return;
-          }
-          await unregisterPushOnExit(remote);
-          await standalone.client.clearSecurity();
-          location.hash = "";
-          location.reload();
-        })()
-          .catch((e) => {
-            setError(errorText(e));
-            setBusy(false);
-          })
-          .finally(() => standalone.dispose());
+        if (!vm.busy && vm.step === ExitConfirmStep.AWAITING_CONFIRM) {
+          host.exitConfirm(true);
+        }
       }}
     />
   );
 }
+
 export function SecurityPage({
   remote,
   onBack,
@@ -79,369 +93,389 @@ export function SecurityPage({
   remote: Remote;
   onBack: () => void;
 }) {
-  useRemote(remote);
   const host = useCoreHost(remote);
-  const settingsVm = useSettingsView(host);
-  const devicesVm = useDevicesView(host);
-  const isAuthority = settingsVm.isManager;
-  const managerName = settingsVm.authorityName || l10n.t("security.client");
-  const recoveryPending = settingsVm.recoveryPending;
-  const recoveryReadyMs = settingsVm.recoveryReadyMs;
-  const offers = settingsVm.security?.handoffCandidates ?? [];
-  const candidateName = (c: HandoffCandidateView | string) => {
-    if (typeof c !== "string") return renderText(c.displayNameText) || c.displayName || l10n.t("security.client");
-    const offer = offers.find((o) => o.deviceId === c);
-    return (offer && (renderText(offer.displayNameText) || offer.displayName)) || devicesVm.clients.find((cl) => cl.deviceId === c)?.displayName || l10n.t("security.client");
-  };
-  const visible = usePageVisible();
-  const [page, setPage] = useState<"overview" | "recovery" | "handoff" | "pending">("overview");
-  const now = useNow(30_000);
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
-  const [readError, setReadError] = useState("");
-  const [code, setCode] = useState(""),
-    [saved, setSaved] = useState(false);
-  const [persisted, setPersisted] = useState<boolean>();
-  const [lease, setLease] = useState<bigint | null>();
-  const [pending, setPending] = useState<SecurityPendingOpSummary>();
-  const [rotation, setRotation] = useState(false);
-  const [target, setTarget] = useState("");
-  const [message, setMessage] = useState("");
+  const vm = useAccountSecurityView(host);
+  const handoff = useHandoffView(host);
+  const [showHandoff, setShowHandoff] = useState(false);
+  const [abandonConfirm, setAbandonConfirm] = useState(false);
+  // Secret input stays in shell local state and is passed on submit.
   const [profileCode, setProfileCode] = useState("");
-  const [profileReady, setProfileReady] = useState(true);
-  const [takingOver, setTakingOver] = useState(false);
-  const [offeredState, setOfferedState] = useState(false);
-  const [abandonOffer, setAbandonOffer] = useState(false);
-  const [pendingRemoveNotice, setPendingRemoveNotice] = useState(undefined as Text | undefined);
-  const refresh = async () => {
-    const st = await remote.getSecurityStatus();
-    setLease(st.leaseEndMs > 0n ? st.leaseEndMs : null);
-    setTakingOver(st.takingOver);
-    setPending(st.pendingOp);
-    setPendingRemoveNotice(st.pendingRemoveNotice);
-    setRotation(st.needsRecoveryCodeRotation);
-    setProfileReady(st.hasAccountPublicProfile);
-    setOfferedState(st.hasHandoffOffer);
-    if (st.isAuthority || isAuthority) await remote.loadDevices(false);
-  };
+
   useEffect(() => {
-    if (!visible) return;
-    let current = true;
-    // App resumes the transport in its parent effect. Read after those
-    // effects, and ignore a read invalidated when the page goes away.
-    void Promise.resolve().then(() => current ? refresh() : undefined).then(() => {
-      if (current) setReadError("");
-    }).catch((e) => {
-      if (current && !document.hidden) setReadError(errorText(e));
-    });
-    return () => { current = false; };
-  }, [
-    remote,
-    visible,
-    isAuthority,
-    recoveryPending,
-    remote.authorityError,
-    now,
-  ]);
-  const run = async (work: () => Promise<void>) => {
-    setBusy(true);
-    setError("");
-    setMessage("");
-    try {
-      await work();
-      await refresh();
-    } catch (e) {
-      setMessage("");
-      setError(errorText(e));
-      await refresh().catch(() => {});
-    } finally {
-      setBusy(false);
-    }
+    host.accountSecurityOpen(AccountSecuritySubpage.OVERVIEW);
+    return () => host.accountSecurityClose();
+  }, [host]);
+
+  const openHandoff = () => {
+    setShowHandoff(true);
+    host.handoffAction(HandoffActionKind.OPEN);
   };
-  const offered = offeredState || !!settingsVm.security?.hasHandoffOffer;
-  const effectiveLease = lease !== undefined ? lease : (settingsVm.security?.leaseEndMs ? settingsVm.security.leaseEndMs : undefined);
-  const draft =
-    pending?.kind === "offer" ||
-    (pending?.kind === "state" && pending.action === "recovery");
-  const localClient = devicesVm.clients.some((c) => { return c.isSelf; });
+
+  const navTitle = showHandoff
+    ? vm.isManager
+      ? l10n.t("security.transfer_management")
+      : l10n.t("security.take_over_management")
+    : vm.subpage === AccountSecuritySubpage.ROTATE_RECOVERY
+      ? l10n.t("security.recovery_code")
+      : vm.subpage === AccountSecuritySubpage.PENDING_OP
+        ? l10n.t("security.unfinished_security_operation")
+        : l10n.t("security.account_security");
+
+  const handleBack = () => {
+    if (showHandoff) {
+      setShowHandoff(false);
+      return;
+    }
+    if (vm.subpage !== AccountSecuritySubpage.OVERVIEW) {
+      host.accountSecurityAction(AccountSecurityActionKind.SET_SUBPAGE, {
+        subpage: AccountSecuritySubpage.OVERVIEW,
+      });
+      return;
+    }
+    onBack();
+  };
+
+  const errBanner = showHandoff
+    ? handoff.errorBanner?.visible ? handoff.errorBanner : undefined
+    : vm.errorBanner?.visible ? vm.errorBanner : undefined;
+  const bodyClass = "body security-body";
+
   return (
     <div className="page set" data-route="account-security">
-      {abandonOffer && <Alert title={l10n.t("security.abandon_this_succession_preparation")}
-        text={l10n.t("security.the_public_key_may_already_be_published_abandoning_only")}
-        ok={l10n.t("new_session.android_abandon")} danger onCancel={() => setAbandonOffer(false)} onOk={() => {
-          setAbandonOffer(false);
-          void run(async () => { await remote.discardPendingOp(); setCode(""); setSaved(false); });
-        }} />}
-      <NavBar title={page === "overview" ? l10n.t("security.account_security") : page === "recovery" ? l10n.t("security.recovery_code") : page === "pending" ? l10n.t("security.unfinished_security_operation") : isAuthority ? l10n.t("security.transfer_management") : l10n.t("security.take_over_management")} onBack={page === "overview" ? onBack : () => setPage("overview")} />
-      <div className="body security-body">
+      {abandonConfirm && (
+        <Alert
+          title={l10n.t("security.abandon_this_succession_preparation")}
+          text={l10n.t("security.the_public_key_may_already_be_published_abandoning_only")}
+          ok={l10n.t("new_session.android_abandon")}
+          danger
+          onCancel={() => setAbandonConfirm(false)}
+          onOk={() => {
+            setAbandonConfirm(false);
+            host.accountSecurityAction(AccountSecurityActionKind.DISCARD_PENDING, { flag: true });
+          }}
+        />
+      )}
+      <NavBar title={navTitle} onBack={handleBack} />
+      <div className={bodyClass}>
         <div className="set-banners">
-        {recoveryPending && (
-          <Banner kind="warn" action={isAuthority ? l10n.t("security.reject") : undefined} onAction={() => setPage("recovery")}>
-            {l10n.t("security.someone_is_requesting_management_takeover_with_a_recovery_code", { value: String(recoveryReadyMs > 0n ? futureTime(recoveryReadyMs) : l10n.t("security.duration_48_hours")) })}
-          </Banner>
-        )}
-        {settingsVm.security?.recoveryStatusStale && (
-          <Banner kind="warn">{l10n.t("security.security_state_may_be_out_of_date_connect_and")}</Banner>
-        )}
-        {takingOver && (
-          <Banner kind="warn">
-            {l10n.t("security.completing_takeover_keep_this_page_in_the_foreground_and")}</Banner>
-        )}
-        {rotation && (
-          <Banner kind="warn">
-            {l10n.t("security.the_new_recovery_code_backup_is_unconfirmed_replace_the")}</Banner>
-        )}
-        {remote.authorityError && (
-          <Banner kind="warn">{remote.authorityError}</Banner>
-        )}
-        {renderText(pendingRemoveNotice) && (
-          <Banner kind="warn" action={l10n.t("common.retry")} onAction={() => void run(async () => { await remote.resumeSecurityOperation(); await remote.loadDevices(); })}>
-            {renderText(pendingRemoveNotice)}
-          </Banner>
-        )}
-        </div>
-        {page === "overview" && pending && (
-          <div className="grp"><button className="row" onClick={() => setPage("pending")}>{l10n.t("security.unfinished_security_operation")}<ChevronRight className="chev" /></button></div>
-        )}
-        {page === "overview" && <>
-        <div className="grp">
-          <div className="row">{l10n.t("security.current_managing_client")}<span className="v">{isAuthority ? l10n.t("security.this_device") : managerName}</span></div>
-          <div className="row">
-            {l10n.t("security.remote_control_expiry")}<span className="v">{effectiveLease === undefined ? l10n.t("security.reading") : effectiveLease === null ? l10n.t("security.remote_control_expiry_not_received_yet") : futureTime(effectiveLease, now)}</span>
-          </div>
-          {isAuthority && (
-            <button
-              className="row act"
-              disabled={busy}
-              onClick={() =>
-                void run(async () => {
-                  await remote.renewLeaseNow();
-                  const st = await remote.getSecurityStatus();
-                  if (st.pendingOp && (st.pendingOp.kind === "state" || st.pendingOp.kind === "lease"))
-                    throw new Error(l10n.t("security.finish_the_current_security_operation_before_renewing"));
-                  setMessage(l10n.t("security.remote_control_renewed"));
-                })
+          {vm.recoveryPending && (
+            <Banner
+              kind="warn"
+              action={vm.canVetoRecovery ? l10n.t("security.reject") : undefined}
+              onAction={
+                vm.canVetoRecovery
+                  ? () => {
+                      setShowHandoff(false);
+                      host.accountSecurityAction(AccountSecurityActionKind.SET_SUBPAGE, {
+                        subpage: AccountSecuritySubpage.ROTATE_RECOVERY,
+                      });
+                    }
+                  : undefined
               }
             >
-              {l10n.t("security.renew_now")}</button>
+              {fmt(vm.recoveryTakeoverBanner)}
+            </Banner>
+          )}
+          {vm.recoveryStatusStale && (
+            <Banner kind="warn">{l10n.t("security.security_state_may_be_out_of_date_connect_and")}</Banner>
+          )}
+          {vm.takingOver && (
+            <Banner kind="warn">{l10n.t("security.completing_takeover_keep_this_page_in_the_foreground_and")}</Banner>
+          )}
+          {vm.needsRotationBanner && (
+            <Banner kind="warn">{l10n.t("security.the_new_recovery_code_backup_is_unconfirmed_replace_the")}</Banner>
+          )}
+          {fmt(vm.pendingRemoveBanner) && (
+            <Banner
+              kind="warn"
+              action={l10n.t("common.retry")}
+              onAction={() => host.accountSecurityAction(AccountSecurityActionKind.RETRY_PENDING_REMOVE)}
+            >
+              {fmt(vm.pendingRemoveBanner)}
+            </Banner>
+          )}
+          {fmt(vm.authorityErrorBanner) && (
+            <Banner kind="err">{fmt(vm.authorityErrorBanner)}</Banner>
           )}
         </div>
-        <p className="gf">{l10n.t("security.automatically_renews_when_you_return_to_the_managing_client")}</p>
-        {!isAuthority && <p className="gf">{l10n.t("security.open_to_renew", { value: managerName })}</p>}
-        <div className="grp">
-          {isAuthority && <button className="row" onClick={() => setPage("recovery")}>{l10n.t("security.recovery_code")}<ChevronRight className="chev" /></button>}
-          {(isAuthority || localClient) && <button className="row" onClick={() => setPage("handoff")}>{isAuthority ? l10n.t("security.transfer_management") : l10n.t("security.take_over_management")}<ChevronRight className="chev" /></button>}
-        </div>
-        </>}
-        {page === "pending" && pending && (
-          <div className="grp">
-            <div className="row help">{l10n.t("security.a_security_operation_is_unfinished_continue_the_original_operation")}</div>
-            <button
-              className="row act"
-              disabled={busy}
-              onClick={() =>
-                void run(async () => {
-                  await remote.resumeSecurityOperation();
-                })
-              }
-            >
-              {l10n.t("security.verify_and_continue")}</button>
-            {draft && pending.phase === "PREPARED" &&
-              (pending.kind === "offer" || (!pending.signed && !pending.codeSaved)) && (
-              <button
-                className="row act"
-                disabled={busy}
-                onClick={() =>
-                  void run(async () => {
-                    if (pending.kind === "offer") { setAbandonOffer(true); return; }
-                    await remote.discardPendingOp();
-                    setCode(""); setSaved(false);
-                  })
-                }
-              >
-                {pending.kind === "offer" ? l10n.t("security.abandon_this_succession_preparation_security") : l10n.t("security.abandon_unpublished_recovery_code")}
-              </button>
-            )}
-            {pending.kind === "state" && !pending.signed && !draft && (
-              <button
-                className="row act"
-                disabled={busy}
-                onClick={() =>
-                  void run(async () => {
-                    await remote.discardPendingOp();
-                  })
-                }
-              >
-                {l10n.t("security.abandon_unsigned_operation")}</button>
-            )}
-          </div>
-        )}
-        {(page === "recovery" || page === "handoff") && code ? (
+
+        {!showHandoff && vm.subpage === AccountSecuritySubpage.OVERVIEW && (
           <>
-            <CodeBackup code={code} saved={saved} onSaved={setSaved} />
-            {persisted !== undefined && (
-              <PersistenceResult persisted={persisted} />
-            )}
-            <button
-              className="btn pri"
-              disabled={!saved || busy}
-              onClick={() =>
-                void run(async () => {
-                  if (isAuthority)
-                    await remote.confirmRecoveryRotation();
-                  else await remote.publishHandoffOffer();
-                  if ((await remote.getSecurityStatus()).pendingOp)
-                    throw new Error(l10n.t("security.the_original_operation_is_unfinished_continue_verifying"));
-                  setCode("");
-                  setSaved(false);
-                  setMessage(
-                    isAuthority
-                      ? l10n.t("security.recovery_code_updated_the_previous_code_and_pending_recovery")
-                      : l10n.t("security.recovery_code_saved_and_confirmed_waiting_for_the_current"),
-                  );
-                })
-              }
-            >
-              {busy
-                ? l10n.t("security.publishing")
-                : isAuthority
-                  ? l10n.t("security.saved_publish_replacement")
-                  : l10n.t("security.saved_notify_managing_client")}
-            </button>
-            <p className="gf">
-              {l10n.t("security.nothing_is_published_before_you_save_it_an_unpublished")}</p>
-          </>
-        ) : null}
-        {page === "recovery" && !code && isAuthority && (
-          <>
-          <p className="txt">{l10n.t("security.replacing_the_recovery_code_immediately_invalidates_the_old_code")}</p>
-          <div className="grp">
-            <button
-              className="row act"
-              disabled={busy || !!pending}
-              onClick={() =>
-                void run(async () => {
-                  const p = await remote.prepareRecoveryRotation();
-                  setCode(p.recoveryCode);
-                  setSaved(false);
-                })
-              }
-            >
-              {l10n.t("security.generate_new_recovery_code")}</button>
-          </div>
-          </>
-        )}
-        {page === "handoff" && (isAuthority ? (
-          <>
-            <p className="txt">
-              {l10n.t("security.once_the_successor_device_joins_and_confirms_saving_its")}</p>
-            <div className="grp">
-              {offers.map((o) => (
+            {vm.hasPendingOp && (
+              <div className="grp">
                 <button
                   className="row"
-                  key={o.deviceId}
-                  disabled={busy || !!pending}
-                  onClick={() => setTarget(o.deviceId)}
+                  onClick={() =>
+                    host.accountSecurityAction(AccountSecurityActionKind.SET_SUBPAGE, {
+                      subpage: AccountSecuritySubpage.PENDING_OP,
+                    })
+                  }
                 >
-                  {l10n.t("security.transfer_to")}{" "}
-                  {candidateName(o)}
+                  {l10n.t("security.unfinished_security_operation")}
                   <ChevronRight className="chev" />
                 </button>
-              ))}
-              <button
-                className="row act"
-                disabled={busy}
-                onClick={() => void run(async () => {})}
-              >
-                {l10n.t("security.refresh_successor_devices")}</button>
-              {!offers.length && (
-                <div className="row help">{l10n.t("security.waiting_for_the_successor_device_to_generate_and_save")}</div>
+              </div>
+            )}
+            <div className="grp">
+              <div className="row">
+                {l10n.t("security.current_managing_client")}
+                <span className="v">{fmt(vm.managerDisplay)}</span>
+              </div>
+              <div className="row">
+                {l10n.t("security.remote_control_expiry")}
+                <span className="v">{fmt(vm.leaseExpiryText)}</span>
+              </div>
+              {vm.isManager && (
+                <button
+                  className="row"
+                  disabled={!vm.canRenewNow}
+                  onClick={() => host.accountSecurityAction(AccountSecurityActionKind.RENEW_LEASE)}
+                >
+                  {l10n.t("security.renew_now")}
+                </button>
+              )}
+            </div>
+            <p className="gf">
+              {!vm.isManager && fmt(vm.leaseRenewalAdvice)
+                ? fmt(vm.leaseRenewalAdvice)
+                : l10n.t("security.automatically_renews_when_you_return_to_the_managing_client")}
+            </p>
+            <div className="grp">
+              {vm.canOpenRecovery && (
+                <button
+                  className="row"
+                  onClick={() =>
+                    host.accountSecurityAction(AccountSecurityActionKind.SET_SUBPAGE, {
+                      subpage: AccountSecuritySubpage.ROTATE_RECOVERY,
+                    })
+                  }
+                >
+                  {l10n.t("security.recovery_code")}
+                  <ChevronRight className="chev" />
+                </button>
+              )}
+              {vm.canOpenHandoff && (
+                <button className="row" onClick={openHandoff}>
+                  {vm.isManager
+                    ? l10n.t("security.transfer_management")
+                    : l10n.t("security.take_over_management")}
+                  <ChevronRight className="chev" />
+                </button>
               )}
             </div>
           </>
-        ) : localClient ? (
-          <>
-            <Banner>{BROWSER_AUTHORITY_NOTICE()}</Banner>
-            <p className="txt">
-              {l10n.t("security.save_the_new_recovery_code_first_then_ask_the")}</p>
-            {offered && (
-              <Banner kind="warn">
-                {l10n.t("security.recovery_code_saved_and_confirmed_waiting_for_the_current")}</Banner>
-            )}
+        )}
+
+        {!showHandoff && vm.subpage === AccountSecuritySubpage.PENDING_OP && (
+          <div className="grp">
+            <div className="row help">
+              {l10n.t("security.a_security_operation_is_unfinished_continue_the_original_operation")}
+            </div>
             <button
-              className="btn"
-              disabled={busy || !!pending || !!code}
-              onClick={() =>
-                void run(async () => {
-                  const sp = await requestAuthorityPersistence();
-                  const p = await remote.prepareHandoffCode(sp);
-                  setCode(p.recoveryCode);
-                  setPersisted(sp);
-                  setSaved(false);
-                })
-              }
+              className="row"
+              disabled={!vm.canContinuePending}
+              onClick={() => host.accountSecurityAction(AccountSecurityActionKind.CONTINUE_PENDING)}
             >
-              {offered ? l10n.t("security.regenerate_recovery_code") : l10n.t("security.generate_new_recovery_code")}
+              {l10n.t("security.verify_and_continue")}
             </button>
-          </>
-        ) : (
-          <p className="txt">{l10n.t("security.computers_can_only_run_clis_and_cannot_take_over")}</p>
-        ))}
-        {page === "handoff" && !profileReady && (
+            {vm.canDiscardPending && (
+              <button
+                className="row danger"
+                disabled={vm.busy}
+                onClick={() => {
+                  if (vm.discardRequiresConfirm) {
+                    setAbandonConfirm(true);
+                  } else {
+                    host.accountSecurityAction(AccountSecurityActionKind.DISCARD_PENDING, { flag: false });
+                  }
+                }}
+              >
+                {vm.pendingKind === PendingSecurityOpKind.HANDOFF_OFFER
+                  ? l10n.t("security.abandon_this_succession_preparation_security")
+                  : vm.pendingKind === PendingSecurityOpKind.RECOVERY_ROTATION
+                    ? l10n.t("security.abandon_unpublished_recovery_code")
+                    : l10n.t("security.abandon_unsigned_operation")}
+              </button>
+            )}
+          </div>
+        )}
+
+        {!showHandoff && vm.subpage === AccountSecuritySubpage.ROTATE_RECOVERY && (
           <>
-            <div className="label">{l10n.t("security.restore_account_public_key")}</div>
-            <p className="txt">
-              {l10n.t("security.before_succession_pair_again_afterward_enter_the_new_recovery")}</p>
-            <button
-              className="btn"
-              disabled={busy}
-              onClick={() => {
-                location.hash = "/settings/rejoin";
-              }}
-            >
-              {l10n.t("security.pair_again")}</button>
-            <textarea
-              className="field"
-              aria-label={l10n.t("security.recovery_code_for_restoring_public_information")}
-              value={profileCode}
-              onChange={(e) => setProfileCode(e.target.value)}
-            />
-            <button
-              className="btn"
-              disabled={busy || !profileCode}
-              onClick={() =>
-                void run(async () => {
-                  await remote.completeAccountPublicProfile(profileCode);
-                  setProfileCode("");
-                  setMessage(l10n.t("security.account_public_key_restored"));
-                })
-              }
-            >
-              {l10n.t("security.restore_public_information")}</button>
+            {vm.preparedCode ? (
+              <>
+                <CodeBackup
+                  code={vm.preparedCode}
+                  saved={vm.codeSavedChecked}
+                  onSaved={(checked) =>
+                    host.accountSecurityAction(AccountSecurityActionKind.SET_ROTATION_SAVED, { flag: checked })
+                  }
+                />
+                <button
+                  className="btn pri"
+                  disabled={!vm.canPublishRotation}
+                  onClick={() => host.accountSecurityAction(AccountSecurityActionKind.PUBLISH_ROTATION)}
+                >
+                  {vm.busy ? l10n.t("security.publishing") : l10n.t("security.saved_publish_replacement")}
+                </button>
+                <p className="gf">
+                  {l10n.t("security.nothing_is_published_before_you_save_it_an_unpublished")}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="txt">
+                  {l10n.t("security.replacing_the_recovery_code_immediately_invalidates_the_old_code")}
+                </p>
+                <button
+                  className="btn pri"
+                  disabled={!vm.canPrepareRotation}
+                  onClick={() => host.accountSecurityAction(AccountSecurityActionKind.PREPARE_ROTATION)}
+                >
+                  {l10n.t("security.generate_new_recovery_code")}
+                </button>
+              </>
+            )}
           </>
         )}
+
+        {showHandoff && handoff.role === HandoffRole.OUTGOING_MANAGER && (
+          <>
+            <p className="txt">{l10n.t("security.once_the_successor_device_joins_and_confirms_saving_its")}</p>
+            <div className="grp">
+              <button
+                className="row"
+                disabled={!handoff.canRefresh}
+                onClick={() => host.handoffAction(HandoffActionKind.REFRESH_CANDIDATES)}
+              >
+                {l10n.t("security.refresh_successor_devices")}
+              </button>
+              {handoff.candidates.length === 0 && (
+                <div className="row help">{l10n.t("security.waiting_for_the_successor_device_to_generate_and_save")}</div>
+              )}
+              {handoff.candidates.map((c) => (
+                <button
+                  key={c.deviceId}
+                  className="row"
+                  disabled={!handoff.canTransfer}
+                  onClick={() =>
+                    host.handoffAction(HandoffActionKind.REQUEST_TRANSFER, { targetDeviceId: c.deviceId })
+                  }
+                >
+                  {l10n.t("security.transfer_to")} {fmt(c.displayName)}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {showHandoff && handoff.role === HandoffRole.UNAVAILABLE && (
+          <p className="txt">{l10n.t("security.computers_can_only_run_clis_and_cannot_take_over")}</p>
+        )}
+
+        {showHandoff && handoff.role === HandoffRole.INCOMING_CANDIDATE && (
+          <>
+            <Banner kind="">{BROWSER_AUTHORITY_NOTICE()}</Banner>
+            {handoff.hasPersistenceResult && (
+              <PersistenceResult persisted={handoff.storagePersisted} />
+            )}
+            {handoff.needsPublicProfileRestore && (
+              <>
+                <div className="label">{l10n.t("security.restore_account_public_key")}</div>
+                <p className="txt">
+                  {l10n.t("security.before_succession_pair_again_afterward_enter_the_new_recovery")}
+                </p>
+                <button
+                  className="btn"
+                  disabled={handoff.busy}
+                  onClick={() => host.exitRequest(ExitIntentKind.REJOIN_PAIRING, "")}
+                >
+                  {l10n.t("security.pair_again")}
+                </button>
+                <textarea
+                  className="field"
+                  aria-label={l10n.t("security.recovery_code_for_restoring_public_information")}
+                  value={profileCode}
+                  onChange={(e) => setProfileCode(e.target.value)}
+                />
+                <button
+                  className="btn pri"
+                  disabled={handoff.busy || !profileCode.trim()}
+                  onClick={() => {
+                    const c = profileCode;
+                    setProfileCode("");
+                    host.handoffAction(HandoffActionKind.RESTORE_PUBLIC_PROFILE, { recoveryCode: c });
+                  }}
+                >
+                  {l10n.t("security.restore_public_information")}
+                </button>
+              </>
+            )}
+            {!handoff.needsPublicProfileRestore && !!handoff.preparedCode && (
+              <>
+                <CodeBackup
+                  code={handoff.preparedCode}
+                  saved={handoff.codeSavedChecked}
+                  onSaved={(checked) =>
+                    host.handoffAction(HandoffActionKind.SET_CODE_SAVED, { flag: checked })
+                  }
+                />
+                <button
+                  className="btn pri"
+                  disabled={!handoff.canPublishOffer}
+                  onClick={() => host.handoffAction(HandoffActionKind.PUBLISH_OFFER)}
+                >
+                  {handoff.busy ? l10n.t("security.publishing") : l10n.t("security.saved_notify_managing_client")}
+                </button>
+                <p className="gf">
+                  {l10n.t("security.nothing_is_published_before_you_save_it_an_unpublished")}
+                </p>
+              </>
+            )}
+            {!handoff.needsPublicProfileRestore && !handoff.preparedCode && handoff.hasPublishedOffer && (
+              <Banner kind="">
+                {l10n.t("security.recovery_code_saved_and_confirmed_waiting_for_the_current")}
+              </Banner>
+            )}
+            {!handoff.needsPublicProfileRestore && !handoff.preparedCode && !handoff.hasPublishedOffer && (
+              <button
+                className="btn pri"
+                disabled={!handoff.canPrepareCode}
+                onClick={() => host.handoffAction(HandoffActionKind.PREPARE_CODE)}
+              >
+                {l10n.t("security.generate_new_recovery_code")}
+              </button>
+            )}
+          </>
+        )}
+
         <div className="set-banners">
-          {message && <Banner kind="">{message}</Banner>}
-          {(error || readError) && <Banner kind="err">{error || readError}</Banner>}
+          {!showHandoff && fmt(vm.successNotice) && (
+            <Banner kind="">{fmt(vm.successNotice)}</Banner>
+          )}
+          {showHandoff && fmt(handoff.messageBanner) && (
+            <Banner kind="">{fmt(handoff.messageBanner)}</Banner>
+          )}
+          {errBanner && (
+            <Banner kind={errBanner.tone === SecurityBannerTone.WARN ? "warn" : "err"}>
+              {fmt(errBanner.text)}
+            </Banner>
+          )}
         </div>
       </div>
-      {target && (
+
+      {handoff.confirmingTargetId && (
         <Alert
           title={l10n.t("security.transfer_management")}
-          text={l10n.t("security.confirm_that_the_successor_device_saved_the_new_recovery", { value: candidateName(target) })}
+          text={fmt(handoff.confirmDialogBody)}
           ok={l10n.t("security.confirm_transfer")}
           danger
-          onCancel={() => setTarget("")}
-          onOk={() => {
-            const id = target;
-            setTarget("");
-            void run(async () => {
-              await remote.handoffAuthority(id);
-              if ((await remote.getSecurityStatus()).pendingOp)
-                throw new Error(l10n.t("security.transfer_result_unverified_continue_the_original_operation"));
-              setMessage(l10n.t("security.management_transferred_waiting_for_the_successor_to_complete_takeover"));
-            });
-          }}
+          onCancel={() => host.handoffAction(HandoffActionKind.CANCEL_TRANSFER)}
+          onOk={() =>
+            host.handoffAction(HandoffActionKind.CONFIRM_TRANSFER, {
+              targetDeviceId: handoff.confirmingTargetId,
+            })
+          }
         />
       )}
     </div>

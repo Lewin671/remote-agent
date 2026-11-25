@@ -125,7 +125,7 @@ export default function Workspace({ remote }: { remote: Remote }) {
       : prev.isSheet ? "back"
       : parsed.depth >= prev.depth ? "fwd" : "back";
   }
-  if (conn.removed || remoteRemoved) return <Suspense fallback={loading}><RemovedScreen remote={remote} /></Suspense>;
+  if (conn.removed || remoteRemoved) return <Suspense fallback={loading}><RemovedScreen host={host} remote={remote} /></Suspense>;
 
   let page;
   if (kind === "s")
@@ -164,7 +164,7 @@ export default function Workspace({ remote }: { remote: Remote }) {
     const decode = (s: string) => { try { return decodeURIComponent(s); } catch { return s; } };
     page = <ManagePage remote={remote} machineId={rest[0] ? decode(rest[0]) : ""} go={go} onBack={back} />;
   }
-  else if (kind === "settings" && arg === "rejoin") page = <Suspense fallback={loading}><Setup existing={remote.account} onDone={() => location.reload()} /></Suspense>;
+  else if (kind === "settings" && arg === "rejoin") page = <Suspense fallback={loading}><Setup host={host} existingServer={remote.account.server} /></Suspense>;
   else if (kind === "settings" && arg === "security") page = <SecurityPage remote={remote} onBack={back} />;
   else if (kind === "settings" && arg === "notifications") page = <NotificationsPage remote={remote} onBack={back} />;
   else if (kind === "settings" && arg === "clients") page = <ClientsPage remote={remote} go={go} onBack={back} />;

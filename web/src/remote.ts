@@ -19,6 +19,7 @@ import {
   getCoreHost,
   SecurityError,
   type CoreExecutor,
+  type CoreHost,
   type HostBridge,
   type StreamLegCallbacks,
 } from "./core/host";
@@ -27,7 +28,6 @@ export type { StreamLegCallbacks } from "./core/host";
 import {
   SecurityClient,
   SecurityWorkflowError,
-  createStandaloneSecurityClient,
   translateSecurityErrorMessage,
 } from "./core/security-client";
 import {
@@ -57,9 +57,6 @@ import {
 } from "./gen/remoteagent/core/v1/relay_pipe_pb";
 import { renderText } from "./core/text";
 import {
-  SecurityBootstrapKind,
-  SecurityErrorCode,
-  type SecurityPairingInfo,
   type SecurityStatusChangedEffect,
   type SecurityTokenUpdatedEffect,
   type SecurityWorkflowStatus,
@@ -110,7 +107,6 @@ import {
   type MessageInitShape,
 } from "@bufbuild/protobuf";
 import {
-  Code,
   ConnectError,
 } from "@connectrpc/connect";
 import { relayFetch } from "./transport";
@@ -169,7 +165,6 @@ export class Remote implements CoreExecutor {
   private watchedSessions = new Map<string, string>();
   private securityStatusSnapshot?: SecurityWorkflowStatus;
   authorityDeviceId = "";
-  authorityError = "";
 
   directExec: DirectExecutor;
   readonly sharedFileStore?: SharedFileStore;
@@ -220,35 +215,15 @@ export class Remote implements CoreExecutor {
     this.directExec = this.newDirectExecutor();
   }
 
-  static async load(initialStatus?: SecurityWorkflowStatus): Promise<Remote | undefined> {
-    let status = initialStatus;
-    if (!status) {
-      const standalone = createStandaloneSecurityClient();
-      try {
-        status = await standalone.client.bootstrap();
-        if (status.bootstrap === SecurityBootstrapKind.PENDING_REGISTRATION) {
-          const resumed = await standalone.client.resumePendingOp();
-          if (resumed.status) status = resumed.status;
-        }
-      } finally {
-        standalone.dispose();
-      }
-    }
-    if (
-      !status ||
-      (status.bootstrap !== SecurityBootstrapKind.READY &&
-        status.bootstrap !== SecurityBootstrapKind.REMOVED) ||
-      !status.server ||
-      !status.deviceId
-    ) {
-      return undefined;
-    }
-    const acct: StoredAccount = {
-      server: status.server,
-      deviceId: status.deviceId,
-      accountId: status.accountId,
-    };
+  static async load(
+    acct: StoredAccount,
+    sharedHost: CoreHost,
+    initialStatus?: SecurityWorkflowStatus,
+  ): Promise<Remote | undefined> {
+    if (!acct.server || !acct.deviceId) return undefined;
+    const status = initialStatus ?? sharedHost.securityClient.status;
     const r = new Remote(acct, eventCache(), status);
+    sharedHost.attachRemote(r);
     return r;
   }
 
@@ -284,10 +259,6 @@ export class Remote implements CoreExecutor {
     );
   }
 
-  private pairingTimer?: ReturnType<typeof setInterval>;
-  private pairingBusy = false;
-  private started = false;
-
   private newDirectExecutor() {
     return new DirectExecutor({
       emit: (ev) => this.hostBridge?.dispatchEvent(ev),
@@ -317,7 +288,6 @@ export class Remote implements CoreExecutor {
   }>();
 
   start() {
-    this.started = true;
     this.closed = false;
     // stop() closes the executor for good, so a page that was hidden and came
     // back needs a fresh one; otherwise every handshake is silently dropped.
@@ -329,7 +299,6 @@ export class Remote implements CoreExecutor {
       }
     });
     this.ensureHost().start();
-    void this.watchPairingDelivery();
   }
 
   stop() {
@@ -337,16 +306,17 @@ export class Remote implements CoreExecutor {
     this.directExec.close();
     this.unwatchSecurityPush?.();
     this.unwatchSecurityPush = undefined;
-    this.stopPairingDelivery();
     this.deviceLink.closeStreams(l10n.t("errors.terminal_connection_closed"));
     for (const legId of [...this.legs.keys()]) this.closeStreamLeg(legId);
     this.hostBridge?.stop();
   }
 
-  dispose() {
+  dispose(disposeHost = true) {
     this.stop();
     this.secExec.close();
-    disposeCoreHost(this);
+    if (disposeHost) {
+      disposeCoreHost(this);
+    }
     this.hostBridge = undefined;
   }
 
@@ -358,61 +328,9 @@ export class Remote implements CoreExecutor {
       this.removalVerified = true;
       this.clearLocalToken();
       if (!this.closed) this.stop();
-    } else if (status.pendingOp?.hasDelivery && !this.closed && this.started) {
-      void this.watchPairingDelivery();
-    } else if (!status.pendingOp?.hasDelivery) {
-      this.stopPairingDelivery();
     }
     if (this.removed !== prevRemoved || this.hostBridge) {
       this.changed();
-    }
-  }
-
-  private async watchPairingDelivery() {
-    if (this.closed || !this.securityStatusSnapshot?.pendingOp?.hasDelivery) {
-      this.stopPairingDelivery();
-      return;
-    }
-    this.pairingTimer ??= setInterval(() => void this.continuePairing(), 1500);
-  }
-
-  private stopPairingDelivery() {
-    clearInterval(this.pairingTimer);
-    this.pairingTimer = undefined;
-  }
-
-  private async continuePairing() {
-    if (this.closed || this.pairingBusy || (typeof document !== "undefined" && document.hidden)) return;
-    this.pairingBusy = true;
-    try {
-      if (!this.securityStatusSnapshot?.pendingOp?.hasDelivery) {
-        this.stopPairingDelivery();
-        return;
-      }
-      await this.ensureHost().securityClient.resumePendingOp();
-      if (!this.securityStatusSnapshot?.pendingOp?.hasDelivery) this.stopPairingDelivery();
-      this.authorityError = "";
-      if (!this.closed) await this.loadDevices(false);
-    } catch (e) {
-      this.authorityError = errorText(e);
-      if (
-        (e instanceof SecurityWorkflowError &&
-          [
-            SecurityErrorCode.INVALID,
-            SecurityErrorCode.UNTRUSTED,
-            SecurityErrorCode.CONFLICT,
-            SecurityErrorCode.STORAGE,
-            SecurityErrorCode.CAPACITY,
-            SecurityErrorCode.CANCELED,
-          ].includes(e.code)) ||
-        (e instanceof ConnectError &&
-          [Code.InvalidArgument, Code.NotFound, Code.PermissionDenied, Code.Unauthenticated, Code.FailedPrecondition].includes(e.code))
-      ) {
-        this.stopPairingDelivery();
-      }
-    } finally {
-      this.pairingBusy = false;
-      if (!this.closed) this.changed();
     }
   }
 
@@ -1151,68 +1069,6 @@ export class Remote implements CoreExecutor {
     const st = await this.ensureHost().securityClient.getStatus();
     this.applySecurityStatusSnapshot(st);
     return st;
-  }
-
-  async renewLeaseNow(): Promise<SecurityWorkflowStatus> {
-    const st = await this.ensureHost().securityClient.renewLease(true);
-    this.applySecurityStatusSnapshot(st);
-    return st;
-  }
-
-  prepareRecoveryRotation() {
-    return this.ensureHost().securityClient.prepareRecoveryRotation();
-  }
-
-  confirmRecoveryRotation() {
-    return this.ensureHost().securityClient.confirmRecoveryRotation();
-  }
-
-  prepareHandoffCode(storagePersisted: boolean) {
-    return this.ensureHost().securityClient.prepareHandoffCode(storagePersisted);
-  }
-
-  publishHandoffOffer() {
-    return this.ensureHost().securityClient.publishHandoffOffer();
-  }
-
-  discardPendingOp(abandonHandoff = false) {
-    return this.ensureHost().securityClient.discardPendingOp(abandonHandoff);
-  }
-
-  completeAccountPublicProfile(code: string) {
-    return this.ensureHost().securityClient.completeAccountPublicProfile(this.account.server, code);
-  }
-
-  startPairing(webOrigin: string, replacesDeviceId = ""): Promise<SecurityPairingInfo> {
-    return this.ensureHost().securityClient.startPairing(webOrigin, replacesDeviceId);
-  }
-
-  pollPairing(pairingId: string): Promise<SecurityPairingInfo> {
-    return this.ensureHost().securityClient.pollPairing(pairingId);
-  }
-
-  approvePairing(pairingId: string, sasConfirmed: boolean, removeDeviceIds: string[] = []): Promise<SecurityPairingInfo> {
-    return this.ensureHost().securityClient.approvePairing(pairingId, sasConfirmed, removeDeviceIds);
-  }
-
-  finishPairingDelivery(pairingId: string): Promise<SecurityPairingInfo> {
-    return this.ensureHost().securityClient.finishPairingDelivery(pairingId);
-  }
-
-  cancelPairing(pairingId: string): Promise<void> {
-    return this.ensureHost().securityClient.cancelPairing(pairingId);
-  }
-
-  async handoffAuthority(incoming: string) {
-    await this.ensureHost().securityClient.handoffAuthority(incoming);
-    await this.loadDevices(false);
-    this.hostBridge?.retryList();
-  }
-
-  async resumeSecurityOperation() {
-    await this.ensureHost().securityClient.resumePendingOp();
-    if (!this.closed) await this.loadDevices(false);
-    this.hostBridge?.retryList();
   }
 
   async removeDevice(id: string) {

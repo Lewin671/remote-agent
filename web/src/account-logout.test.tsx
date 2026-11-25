@@ -1,22 +1,19 @@
 // @vitest-environment happy-dom
-import { create } from "@bufbuild/protobuf";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { App } from "./App";
+import { CoreHost } from "./core/host";
 import { Remote } from "./remote";
 import { DemoRemote } from "./dev/demo";
 import { clearAllSecurityV4, securityStoreV4 } from "./core/security-store-v4";
-import * as securityClient from "./core/security-client";
-import { SecurityBootstrapKind, SecurityWorkflowStatusSchema } from "./gen/remoteagent/core/v1/security_pb";
+import { mockAppReadyBootstrap } from "./test/security-host-fixture";
 
 vi.mock("./eventcache", () => ({
   clearEventCache: vi.fn(async () => undefined),
 }));
 vi.mock("./views/Pairing", () => ({ Setup: () => <p>加入账户</p> }));
-(
-  globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
-).IS_REACT_ACT_ENVIRONMENT = true;
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 class Channel {
   static all = new Set<Channel>();
@@ -42,15 +39,11 @@ afterEach(() => {
   Channel.all.clear();
 });
 
-it("stops another tab and reloads the joining page after the user forgets the account", async () => {
+it("stops another tab and resets in-place via CoreHost without calling location.reload", async () => {
   vi.stubGlobal("BroadcastChannel", Channel);
-  vi.spyOn(securityClient, "createStandaloneSecurityClient").mockReturnValue({
-    client: {
-      bootstrap: vi.fn(async () => create(SecurityWorkflowStatusSchema, { bootstrap: SecurityBootstrapKind.READY, server: "https://ra.example.com", deviceId: "me", accountId: "acc", isMember: true })),
-    } as unknown as securityClient.SecurityClient,
-    dispose: vi.fn(),
-  });
-  // An IndexedDB delete that completes asynchronously, as in the browser.
+  mockAppReadyBootstrap();
+  const externalLogoutSpy = vi.spyOn(CoreHost.prototype, "externalLogout");
+
   const deleted = vi.fn();
   vi.stubGlobal("indexedDB", {
     deleteDatabase: () => {
@@ -100,25 +93,26 @@ it("stops another tab and reloads the joining page after the user forgets the ac
   vi.spyOn(Remote, "load").mockResolvedValue(remote);
   const start = vi.spyOn(remote, "start").mockImplementation(() => undefined);
   const stop = vi.spyOn(remote, "stop");
-  const reload = vi
-    .spyOn(location, "reload")
-    .mockImplementation(() => undefined);
+  const reload = vi.spyOn(location, "reload").mockImplementation(() => undefined);
   const root = createRoot(document.createElement("div"));
   try {
     await act(async () => root.render(<App />));
     await vi.waitFor(() => expect(start).toHaveBeenCalled());
     location.hash = "/settings";
-    // The source page leaves reloading to its caller, after cache cleanup.
     await act(async () => clearAllSecurityV4(securityStoreV4));
     expect(stop).not.toHaveBeenCalled();
     expect(reload).not.toHaveBeenCalled();
+
     // A separate module instance models the other tab's own channel.
     vi.resetModules();
     const other = await import("./core/security-store-v4");
     await act(async () => other.clearAllSecurityV4(other.securityStoreV4));
-    expect(stop).toHaveBeenCalled();
-    expect(location.hash).toBe("");
-    expect(reload).toHaveBeenCalledOnce();
+    await vi.waitFor(() => {
+      expect(externalLogoutSpy).toHaveBeenCalledOnce();
+      expect(stop).toHaveBeenCalled();
+      expect(location.hash).toBe("");
+    });
+    expect(reload).not.toHaveBeenCalled();
   } finally {
     act(() => root.unmount());
   }

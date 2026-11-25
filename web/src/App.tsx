@@ -1,34 +1,32 @@
 import * as l10n from "./i18n";
-import { getCoreHost } from "./core/host";
+import {
+  AppRootStage,
+  CoreHost,
+  getCoreHost,
+  OnboardingMode,
+  useAppRootView,
+  type AccountRuntimeChangedEffect,
+} from "./core/host";
 import { ensureCore } from "./core/runtime";
-import { createStandaloneSecurityClient, SecurityWorkflowError } from "./core/security-client";
-import { SecurityBootstrapKind, SecurityErrorCode, type SecurityWorkflowStatus } from "./gen/remoteagent/core/v1/security_pb";
+import { renderText } from "./core/text";
 import { useLocale } from "./i18n";
+import { clearMarkdownCache } from "./markdown";
 import { Startup } from "./Startup";
 import { RetainedIdentityDeniedScreen } from "./Rejoin";
-import {
-  lazy,
-  Suspense,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { SetupReset } from "./SetupReset";
 import { Remote, errorText } from "./remote";
 import { bindNetworkChanges, stableNetworkSignature, type NetworkConnection } from "./transport/network";
 import { watchAccountLogout } from "./storage";
 import { guardUpdateInput } from "./update";
-import { page, preloadRoute } from "./views/pages";
+import { page, preloadRoute, RemovedScreen } from "./views/pages";
 
 // Authenticated views are fetched only after a local identity has loaded.
 const loadWorkspace = () => import("./Workspace");
 const WorkspaceFallback = page(loadWorkspace);
 
-// Joining and pairing bring the QR code and curve code; fetched when used.
-const Setup = lazy(() =>
-  import("./views/Pairing").then((m) => ({ default: m.Setup })),
-);
-const AccountEntry = lazy(() => import("./views/AuthoritySetup").then(m => ({ default: m.AccountEntry })));
+// Entry/onboarding views are fetched only when needed.
+const AccountEntry = lazy(() => import("./views/AuthoritySetup").then((m) => ({ default: m.AccountEntry })));
 const loading = <Startup />;
 // Keep brief tab/app switches from rebuilding the stream and terminal.
 const HIDDEN_GRACE_MS = 60_000;
@@ -38,162 +36,100 @@ const HIDDEN_GRACE_MS = 60_000;
 const demo =
   import.meta.env.DEV && new URLSearchParams(location.search).has("demo");
 
-async function loadRemote(): Promise<Remote | undefined> {
-  if (import.meta.env.DEV && demo) {
-    if (new URLSearchParams(location.search).has("entry")) return undefined;
-    const { DemoRemote } = await import("./dev/demo");
-    return DemoRemote.create(new URLSearchParams(location.search));
+function readDefaultServer(): string {
+  try {
+    return localStorage.getItem("ra-server") || import.meta.env.VITE_DEFAULT_SERVER || "";
+  } catch {
+    return import.meta.env.VITE_DEFAULT_SERVER || "";
   }
-  return Remote.load();
 }
 
 export { bindNetworkChanges, stableNetworkSignature };
 
-export function App() {
-  useLocale();
-  const [remote, setRemote] = useState<Remote | null | undefined>(undefined);
-  const [workspace, setWorkspace] = useState<Awaited<ReturnType<typeof loadWorkspace>>>();
-  const [entryStatus, setEntryStatus] = useState<SecurityWorkflowStatus>();
-  const [retainedServer, setRetainedServer] = useState<string>();
-  const [denied, setDenied] = useState(false);
-  const loadGeneration = useRef(0);
-  const [setupError, setSetupError] = useState("");
-  const [setupCanReset, setSetupCanReset] = useState(true);
-  const [coreError, setCoreError] = useState("");
-  const current = useRef(remote);
-  current.current = remote;
-  const load = async () => {
-    const generation = ++loadGeneration.current;
-    const active = () => generation === loadGeneration.current;
-    setRetainedServer(undefined);
-    setEntryStatus(undefined);
-    setDenied(false);
-    let coreFailed = false;
-    const corePromise = ensureCore().catch((error) => {
-      coreFailed = true;
-      throw error;
-    });
-    corePromise.catch(() => undefined);
-    try {
-      setSetupError("");
-      setSetupCanReset(true);
-      setCoreError("");
+type WorkspaceModule = Awaited<ReturnType<typeof loadWorkspace>>;
+
+function CoreDrivenApp({
+  host,
+  initialWorkspace,
+}: {
+  host: CoreHost;
+  initialWorkspace?: WorkspaceModule;
+}) {
+  const appRoot = useAppRootView(host);
+  const [remote, setRemote] = useState(null as Remote | null);
+  const [workspace, setWorkspace] = useState(initialWorkspace as WorkspaceModule | undefined);
+  const activeGen = useRef(0);
+  const currentRemote = useRef(null as Remote | null);
+  currentRemote.current = remote;
+
+  useEffect(() => {
+    const onRuntime = (eff: AccountRuntimeChangedEffect) => {
+      const gen = ++activeGen.current;
+      if (!eff.active) {
+        if (!eff.removed) {
+          host.detachRemote();
+          clearMarkdownCache();
+          setRemote(null);
+          const obMode = host.viewOnboarding().mode;
+          location.hash = obMode === OnboardingMode.JOIN ? "/pair?" : "";
+        }
+        return;
+      }
+      if (!eff.server || !eff.deviceId) return;
+      if (location.hash.replace(/^#\/?/, "").startsWith("pair")) {
+        location.hash = "";
+      }
       const initialRoute = location.hash.replace(/^#\/?/, "");
-      if (demo) {
-        const [, ws] = await Promise.all([
-          corePromise,
+      const acct = { server: eff.server, deviceId: eff.deviceId, accountId: eff.accountId };
+      const status = host.securityClient.status;
+      void (async () => {
+        const [loaded, ws] = await Promise.all([
+          Remote.load(acct, host, status),
           loadWorkspace().catch(() => undefined),
           preloadRoute(initialRoute).catch(() => undefined),
         ]);
-        const loaded = await loadRemote();
-        if (!active()) return;
-        if (loaded) {
-          await getCoreHost(loaded).warmLocalCache(initialRoute);
-          if (!active()) return;
-        }
-        setWorkspace(ws);
-        setRemote(loaded ?? null);
-        return;
-      }
-
-      await corePromise;
-      if (!active()) return;
-      const standalone = createStandaloneSecurityClient();
-      let st: SecurityWorkflowStatus;
-      try {
-        st = await standalone.client.bootstrap();
-        if (st.bootstrap === SecurityBootstrapKind.PENDING_REGISTRATION) {
-          const resumed = await standalone.client.resumePendingOp();
-          if (resumed.status) st = resumed.status;
-        }
-        if (!active()) return;
-        if (st.bootstrap === SecurityBootstrapKind.EMPTY && st.deviceId && st.server) {
-          const isDenied = await standalone.client.checkRetainedDenied();
-          if (!active()) return;
-          setDenied(isDenied);
-          setRetainedServer(st.server);
-          setEntryStatus(st);
-          setRemote(null);
+        if (gen !== activeGen.current) {
+          loaded?.dispose(false);
           return;
         }
-      } finally {
-        standalone.dispose();
-      }
-      if (!active()) return;
-      if (st.bootstrap === SecurityBootstrapKind.CLOCK_SKEWED) {
-        setSetupError(
-          l10n.t("errors.this_device_s_clock_is_behind_the_account_state"),
-        );
-        setRemote(null);
-        return;
-      }
-      if (st.bootstrap === SecurityBootstrapKind.INVALID) {
-        setSetupError(
-          l10n.t("errors.this_device_s_security_state_could_not_be_verified"),
-        );
-        setRemote(null);
-        return;
-      }
-      if (
-        st.bootstrap === SecurityBootstrapKind.EMPTY ||
-        st.bootstrap === SecurityBootstrapKind.PENDING_CREATE ||
-        st.bootstrap === SecurityBootstrapKind.PENDING_RECOVERY
-      ) {
-        setEntryStatus(st);
-        setRemote(null);
-        return;
-      }
+        if (loaded) {
+          await host.warmLocalCache(initialRoute);
+          if (gen !== activeGen.current) return;
+        }
+        if (ws) setWorkspace(ws);
+        setRemote(loaded ?? null);
+      })();
+    };
+    host.setOnAccountRuntimeChanged(onRuntime);
+    return () => host.setOnAccountRuntimeChanged(undefined);
+  }, [host]);
 
-      // READY or REMOVED: load Remote and workspace chunk concurrently.
-      const [loaded, ws] = await Promise.all([
-        Remote.load(st),
-        loadWorkspace().catch(() => undefined),
-        preloadRoute(initialRoute).catch(() => undefined),
-      ]);
-      if (!active()) return;
-      if (loaded) {
-        await getCoreHost(loaded).warmLocalCache(initialRoute);
-        if (!active()) return;
-      }
-      setWorkspace(ws);
-      setRemote(loaded ?? null);
-    } catch (error) {
-      if (!active()) return;
-      if (coreFailed) {
-        setCoreError(
-          l10n.t("errors.core_load_failed", { reason: errorText(error) }),
-        );
-      } else {
-        const transientStorage =
-          error instanceof SecurityWorkflowError && error.code === SecurityErrorCode.STORAGE;
-        setSetupCanReset(!transientStorage);
-        setSetupError(
-          l10n.t("errors.setup_request_preserved", { reason: errorText(error) }),
-        );
-      }
-      setRemote(null);
+  useEffect(() => watchAccountLogout(() => host.externalLogout()), [host]);
+
+  useEffect(() => {
+    if (!remote) return;
+    return guardUpdateInput(
+      () =>
+        [...remote.approvalReasons.values()].some((text) => text.length > 0) ||
+        host.hasUnsavedDrafts() ||
+        host.hasUnsavedScheduleDrafts(),
+    );
+  }, [host, remote]);
+
+  // Keep Core's foreground state synced across both pre-login (pairing/recovery polls) and active sessions.
+  useEffect(() => {
+    if (!remote) {
+      const onVis = () => host.setForeground(!document.hidden);
+      const onHide = () => host.setForeground(false);
+      document.addEventListener("visibilitychange", onVis);
+      addEventListener("pagehide", onHide);
+      addEventListener("pageshow", onVis);
+      return () => {
+        document.removeEventListener("visibilitychange", onVis);
+        removeEventListener("pagehide", onHide);
+        removeEventListener("pageshow", onVis);
+      };
     }
-  };
-  useEffect(
-    () =>
-      watchAccountLogout(() => {
-        current.current?.stop();
-        location.hash = "";
-        location.reload();
-      }),
-    [],
-  );
-  useEffect(() => {
-    void load();
-  }, []);
-  useEffect(() => {
-    if (!remote) return;
-    return guardUpdateInput(() => [...remote.approvalReasons.values()].some(text => text.length > 0) ||
-      getCoreHost(remote).hasUnsavedDrafts() || getCoreHost(remote).hasUnsavedScheduleDrafts());
-  }, [remote]);
-  useEffect(() => {
-    if (!remote) return;
-    getCoreHost(remote);
     let running = false;
     let hiddenTimer: ReturnType<typeof setTimeout> | undefined;
     const cancelHidden = () => {
@@ -216,7 +152,6 @@ export function App() {
       if (document.hidden) return;
       cancelHidden();
       running = true;
-      // start is idempotent and also replaces a stale retained stream.
       remote.setForeground(true);
       remote.start();
       netBinding.report();
@@ -227,12 +162,11 @@ export function App() {
         return;
       }
       remote.setForeground(false);
-      if (running && hiddenTimer === undefined)
+      if (running && hiddenTimer === undefined) {
         hiddenTimer = setTimeout(pause, HIDDEN_GRACE_MS);
+      }
     };
     document.addEventListener("visibilitychange", visibility);
-    // Frozen timers cannot enforce the grace period. Release sockets in
-    // the event itself, including when entering the back/forward cache.
     document.addEventListener("freeze", pause);
     document.addEventListener("resume", resume);
     addEventListener("pagehide", pause);
@@ -248,26 +182,124 @@ export function App() {
       cancelHidden();
       remote.stop();
     };
-  }, [remote]);
-  // Keep the HTML shell in place while reading the saved identity.
-  if (remote === undefined)
-    return loading;
-  if (coreError || setupError)
+  }, [host, remote]);
+
+  if (appRoot.stage === AppRootStage.LOADING || appRoot.stage === AppRootStage.UNSPECIFIED) {
+    return <div className="center muted">{l10n.t("security.loading")}</div>;
+  }
+  if (appRoot.stage === AppRootStage.BOOTSTRAP_ERROR) {
     return (
       <div className="center">
-        <p>{coreError || setupError}</p>
-        <button onClick={() => void load()}>{l10n.t("common.retry")}</button>
-        {!coreError && setupCanReset && <SetupReset onDone={() => void load()} />}
+        <p>{renderText(appRoot.bootstrapError?.message)}</p>
+        {appRoot.bootstrapError?.canRetry !== false && (
+          <button onClick={() => host.appRootRetryBootstrap()}>
+            {l10n.t("common.retry")}
+          </button>
+        )}
+        {appRoot.bootstrapError?.canReset && <SetupReset host={host} />}
       </div>
     );
-  if (remote === null && denied && retainedServer)
-    return <RetainedIdentityDeniedScreen server={retainedServer} onDone={() => void load()} />;
-  if (remote === null)
+  }
+  if (appRoot.stage === AppRootStage.RETAINED_DENIED) {
+    return <RetainedIdentityDeniedScreen host={host} />;
+  }
+  if (appRoot.stage === AppRootStage.ONBOARDING) {
     return (
       <Suspense fallback={loading}>
-        {retainedServer ? <Setup existingServer={retainedServer} onDone={() => void load()} /> : <AccountEntry initialStatus={entryStatus} onDone={() => void load()} />}
+        <AccountEntry host={host} />
       </Suspense>
     );
+  }
+  if (appRoot.stage === AppRootStage.REMOVED) {
+    return (
+      <Suspense fallback={loading}>
+        <RemovedScreen host={host} remote={remote ?? undefined} />
+      </Suspense>
+    );
+  }
+  if (!remote) return loading;
   const Workspace = workspace?.default ?? WorkspaceFallback;
-  return <Suspense fallback={loading}><Workspace remote={remote} /></Suspense>;
+  return (
+    <Suspense fallback={loading}>
+      <Workspace remote={remote} />
+    </Suspense>
+  );
+}
+
+export function App() {
+  useLocale();
+  const [host, setHost] = useState(undefined as CoreHost | undefined);
+  const [demoRemote, setDemoRemote] = useState(undefined as Remote | null | undefined);
+  const [workspace, setWorkspace] = useState(undefined as WorkspaceModule | undefined);
+  const [coreError, setCoreError] = useState("");
+  const [bootAttempt, setBootAttempt] = useState(0);
+
+  useEffect(() => {
+    let alive = true;
+    let ownedHost: CoreHost | undefined;
+    setCoreError("");
+
+    void (async () => {
+      try {
+        await ensureCore();
+        if (!alive) return;
+        const initialRoute = location.hash.replace(/^#\/?/, "");
+        if (import.meta.env.DEV && demo) {
+          const ws = await loadWorkspace().catch(() => undefined);
+          await preloadRoute(initialRoute).catch(() => undefined);
+          const { DemoRemote } = await import("./dev/demo");
+          const loaded = DemoRemote.create(new URLSearchParams(location.search));
+          if (!alive) return;
+          await getCoreHost(loaded).warmLocalCache(initialRoute);
+          if (!alive) return;
+          setWorkspace(ws);
+          setDemoRemote(loaded);
+          return;
+        }
+
+        // Production single-core startup: exactly 1 CoreHost / WasmAppCore for the entire app lifecycle.
+        const h = new CoreHost(undefined);
+        ownedHost = h;
+        h.clientInit({
+          initialUrl: location.hash,
+          defaultServer: readDefaultServer(),
+          requestStoragePersist: true,
+        });
+        if (!alive) {
+          h.dispose();
+          return;
+        }
+        setHost(h);
+      } catch (error) {
+        if (!alive) return;
+        setCoreError(l10n.t("errors.core_load_failed", { reason: errorText(error) }));
+      }
+    })();
+
+    return () => {
+      alive = false;
+      ownedHost?.dispose();
+    };
+  }, [bootAttempt]);
+
+  if (coreError) {
+    return (
+      <div className="center">
+        <p>{coreError}</p>
+        <button onClick={() => setBootAttempt((n) => n + 1)}>
+          {l10n.t("common.retry")}
+        </button>
+      </div>
+    );
+  }
+  if (demo && demoRemote) {
+    const Workspace = workspace?.default ?? WorkspaceFallback;
+    return (
+      <Suspense fallback={loading}>
+        <Workspace remote={demoRemote} />
+      </Suspense>
+    );
+  }
+  if (!host) return loading;
+  return <CoreDrivenApp host={host} initialWorkspace={workspace} />;
 }

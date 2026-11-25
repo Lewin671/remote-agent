@@ -1053,7 +1053,7 @@ export function MachinePage({
       )}
       rejoinSlot={
         <div className="set-banners">
-          <RejoinButton server={remote.account.server} remote={remote}>{l10n.t("settings.rejoin_account")}</RejoinButton>
+          <RejoinButton host={host} server={remote.account.server}>{l10n.t("settings.rejoin_account")}</RejoinButton>
         </div>
       }
       deviceActionsSlot={<DeviceActions remote={remote} id={id} machine go={go} onRemoved={onBack} />}

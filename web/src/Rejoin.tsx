@@ -1,68 +1,94 @@
 import * as l10n from "./i18n";
-import { useState } from "react";
+import {
+  ExitConfirmStep,
+  ExitIntentKind,
+  useAppRootView,
+  useExitConfirmView,
+  type CoreHost,
+} from "./core/host";
+import { renderText } from "./core/text";
 import { Alert, Banner } from "./ui";
-import { createStandaloneSecurityClient, renderExitAdviceMessage } from "./core/security-client";
-import { SecurityBootstrapKind } from "./gen/remoteagent/core/v1/security_pb";
-import { createStandalonePushUnsubscriber, unregisterPushOnExit } from "./push";
-import { errorText, type Remote } from "./remote";
 
 /** Rejoin keeps only the server; account keys and cached ciphertext are erased. */
-export function RejoinButton({ server, remote, children, onDone }: {
-  server: string; remote?: Pick<Remote, "setPushSubscription">; children: string; onDone?: () => void;
+export function RejoinButton({
+  host,
+  server,
+  children,
+}: {
+  host: CoreHost;
+  server: string;
+  children: string;
 }) {
-  const [advice, setAdvice] = useState<string>();
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const leave = async (confirmed = false) => {
-    if (busy) return;
-    setBusy(true);
-    let authToken = "";
-    const standalone = createStandaloneSecurityClient({
-      onToken: (eff) => {
-        if (!eff.cleared && eff.token) authToken = eff.token;
-      },
-    });
-    try {
-      const st = await standalone.client.bootstrap();
-      const status = await standalone.client.checkExitAdvice();
-      const pending = st.bootstrap === SecurityBootstrapKind.PENDING_REGISTRATION;
-      const msg = renderExitAdviceMessage(status);
-      const warning = status.authority || status.unresolved || pending
-        ? (pending ? l10n.t("security.this_device_has_an_unfinished_join_request_deleting_it") : msg)
-          + l10n.t("security.this_deletes_the_account_keys_and_cache_on_this") : undefined;
-      if (warning && (!confirmed || warning !== advice)) { setAdvice(warning); return; }
-      localStorage.setItem("ra-server", server);
-      const pushTarget = remote ?? createStandalonePushUnsubscriber({
-        server: st.server || server,
-        getToken: () => authToken,
-        ensureToken: async () => {
-          await standalone.client.syncNow(false, "");
-          return authToken;
-        },
-      });
-      await unregisterPushOnExit(pushTarget);
-      await standalone.client.clearSecurity();
-      location.hash = "/pair?";
-      if (onDone) onDone(); else location.reload();
-    } catch (e) { setError(errorText(e)); }
-    finally {
-      standalone.dispose();
-      setBusy(false);
-    }
-  };
-  return <>
-    <button className="btn pri" disabled={busy} onClick={() => void leave()}>{children}</button>
-    {error && <Banner kind="err">{error}</Banner>}
-    {advice && <Alert title={l10n.t("security.delete_local_keys_and_rejoin")} text={advice} ok={l10n.t("security.rejoin")} danger
-      onCancel={() => setAdvice(undefined)} onOk={() => void leave(true)} />}
-  </>;
+  const vm = useExitConfirmView(host);
+  const active = vm.intent === ExitIntentKind.REJOIN_PAIRING && vm.step !== ExitConfirmStep.CLOSED;
+  const showDialog =
+    active &&
+    (vm.step === ExitConfirmStep.AWAITING_CONFIRM ||
+      vm.step === ExitConfirmStep.EXECUTING ||
+      vm.step === ExitConfirmStep.FAILED);
+  const err = active ? renderText(vm.errorText) : "";
+  const warningText = renderText(vm.warningBody);
+  const dialogText =
+    err ||
+    (vm.showRejoinDeletesCacheNote && warningText
+      ? `${warningText} ${l10n.t("security.this_deletes_the_account_keys_and_cache_on_this")}`
+      : warningText || l10n.t("security.this_deletes_the_account_keys_and_cache_on_this"));
+  return (
+    <>
+      <button
+        className="btn pri"
+        disabled={active && vm.busy}
+        onClick={() => host.exitRequest(ExitIntentKind.REJOIN_PAIRING, server)}
+      >
+        {children}
+      </button>
+      {err && <Banner kind="err">{err}</Banner>}
+      {showDialog && (
+        <Alert
+          title={l10n.t("security.delete_local_keys_and_rejoin")}
+          text={dialogText}
+          ok={vm.busy ? l10n.t("security.exiting") : l10n.t("security.rejoin")}
+          danger
+          onCancel={() => host.exitConfirm(false)}
+          onOk={() => {
+            if (!vm.busy) host.exitConfirm(true);
+          }}
+        />
+      )}
+    </>
+  );
 }
 
-export function RetainedIdentityDeniedScreen({ server, onDone }: { server: string; onDone: () => void }) {
-  return <div className="center"><div className="gone">
-    <div className="et">{l10n.t("security.the_server_does_not_recognize_this_device")}</div>
-    <p className="muted small">{l10n.t("security.it_may_have_been_removed_or_the_service_may")}</p>
-    <RejoinButton server={server} onDone={onDone}>{l10n.t("security.rejoin_with_a_pairing_code")}</RejoinButton>
-    <p className="muted small">{l10n.t("security.the_account_keys_and_cache_in_this_browser_will")}</p>
-  </div></div>;
+export function RetainedIdentityDeniedScreen({ host }: { host: CoreHost }) {
+  const root = useAppRootView(host);
+  const view = root.retainedDenied;
+  const server = view?.server || root.server;
+  return (
+    <div className="center">
+      <div className="gone">
+        {view?.showLegacyRepairBanner && (
+          <Banner
+            kind="warn"
+            action={l10n.t("common.got_it")}
+            onAction={() => host.appRootDismissUpgradeNotice()}
+          >
+            <strong>{l10n.t("security.upgrade_repair_title")}</strong>{" "}
+            {l10n.t("security.upgrade_repair_notice")}
+          </Banner>
+        )}
+        <div className="et">
+          {l10n.t("security.the_server_does_not_recognize_this_device")}
+        </div>
+        <p className="muted small">
+          {l10n.t("security.it_may_have_been_removed_or_the_service_may")}
+        </p>
+        <RejoinButton host={host} server={server}>
+          {l10n.t("security.rejoin_with_a_pairing_code")}
+        </RejoinButton>
+        <p className="muted small">
+          {l10n.t("security.the_account_keys_and_cache_in_this_browser_will")}
+        </p>
+      </div>
+    </div>
+  );
 }
