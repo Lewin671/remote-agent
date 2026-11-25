@@ -171,5 +171,15 @@ class SecurityExecutorTest {
         assertEquals(1, ev.errorDetailsCount)
         assertEquals("remoteagent.v1.RelayErrorDetail", ev.getErrorDetails(0).typeName)
         assertArrayEquals(rawBytes, ev.getErrorDetails(0).value.toByteArray())
+
+        // Non-primitive JSON fields (objects/arrays/numbers) must not throw and valid entries still pass through.
+        val malformed = """{"code":{"nested":1},"message":["bad"],"details":["not-an-object",{"type":{},"value":[]},{"type":123,"value":true},{"type":"remoteagent.v1.RelayErrorDetail","value":"$unpadded"}]}"""
+        val evMalformed = parseSecurityRpcError(opId = 43L, httpCode = 412, bodyBytes = malformed.toByteArray())
+        assertEquals(43L, evMalformed.opId)
+        assertEquals(9, evMalformed.connectCode)
+        assertEquals("HTTP 412", evMalformed.error)
+        assertEquals(1, evMalformed.errorDetailsCount)
+        assertEquals("remoteagent.v1.RelayErrorDetail", evMalformed.getErrorDetails(0).typeName)
+        assertArrayEquals(rawBytes, evMalformed.getErrorDetails(0).value.toByteArray())
     }
 }

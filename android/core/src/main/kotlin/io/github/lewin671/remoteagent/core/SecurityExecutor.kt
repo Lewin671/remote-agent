@@ -44,8 +44,8 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.Authenticator
 import okhttp3.Call
 import okhttp3.Callback
@@ -137,14 +137,14 @@ internal fun parseSecurityRpcError(
     val text = runCatching { bodyBytes.decodeToString() }.getOrNull()
     val parsed = if (!text.isNullOrBlank()) runCatching { Json.parseToJsonElement(text) as? JsonObject }.getOrNull() else null
     if (parsed != null) {
-        parsed["code"]?.jsonPrimitive?.contentOrNull?.let { CONNECT_CODE_MAP[it]?.let { c -> code = c } }
-        parsed["message"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotEmpty() }?.let { msg = it }
+        (parsed["code"] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull?.let { CONNECT_CODE_MAP[it]?.let { c -> code = c } }
+        (parsed["message"] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull?.takeIf { it.isNotEmpty() }?.let { msg = it }
         val rawDetails = parsed["details"] as? JsonArray
         if (rawDetails != null) {
             for (elem in rawDetails) {
                 val obj = elem as? JsonObject ?: continue
-                val typeName = obj["type"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotEmpty() } ?: continue
-                val b64 = obj["value"]?.jsonPrimitive?.contentOrNull?.replace(Regex("\\s+"), "")?.takeIf { it.isNotEmpty() } ?: continue
+                val typeName = (obj["type"] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull?.takeIf { it.isNotEmpty() } ?: continue
+                val b64 = (obj["value"] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull?.replace(Regex("\\s+"), "")?.takeIf { it.isNotEmpty() } ?: continue
                 val decoded = runCatching { Base64.getDecoder().decode(b64) }.getOrNull() ?: continue
                 if (decoded.isNotEmpty()) {
                     details += RpcErrorDetailBytes.newBuilder()
