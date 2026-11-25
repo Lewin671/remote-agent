@@ -55,6 +55,7 @@ public  final class Effect extends
     ATTACHMENT_HASH_FILE(86),
     ATTACHMENT_READ_CHUNK(87),
     ATTACHMENT_RELEASE_LOCAL(88),
+    SCHEDULE_WRITE_CACHE(89),
     SESSION_RESTORE_COMPOSER(40),
     SHARED_FILE_SCAN_LOCAL(42),
     SHARED_FILE_INSPECT_DISK(43),
@@ -153,6 +154,7 @@ public  final class Effect extends
         case 86: return ATTACHMENT_HASH_FILE;
         case 87: return ATTACHMENT_READ_CHUNK;
         case 88: return ATTACHMENT_RELEASE_LOCAL;
+        case 89: return SCHEDULE_WRITE_CACHE;
         case 40: return SESSION_RESTORE_COMPOSER;
         case 42: return SHARED_FILE_SCAN_LOCAL;
         case 43: return SHARED_FILE_INSPECT_DISK;
@@ -1471,6 +1473,10 @@ public  final class Effect extends
 
   public static final int WATCHED_SESSIONS_FIELD_NUMBER = 77;
   /**
+   * <pre>
+   * P2-4 housekeeping &amp; cache gates (77-79, 89; 80-88 used by drafts/attachments).
+   * </pre>
+   *
    * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
    */
   @java.lang.Override
@@ -1478,6 +1484,10 @@ public  final class Effect extends
     return effectCase_ == 77;
   }
   /**
+   * <pre>
+   * P2-4 housekeeping &amp; cache gates (77-79, 89; 80-88 used by drafts/attachments).
+   * </pre>
+   *
    * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
    */
   @java.lang.Override
@@ -1488,6 +1498,10 @@ public  final class Effect extends
     return io.github.lewin671.remoteagent.core.proto.WatchedSessionsEffect.getDefaultInstance();
   }
   /**
+   * <pre>
+   * P2-4 housekeeping &amp; cache gates (77-79, 89; 80-88 used by drafts/attachments).
+   * </pre>
+   *
    * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
@@ -1497,6 +1511,10 @@ public  final class Effect extends
     effectCase_ = 77;
   }
   /**
+   * <pre>
+   * P2-4 housekeeping &amp; cache gates (77-79, 89; 80-88 used by drafts/attachments).
+   * </pre>
+   *
    * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
@@ -1512,6 +1530,10 @@ public  final class Effect extends
     effectCase_ = 77;
   }
   /**
+   * <pre>
+   * P2-4 housekeeping &amp; cache gates (77-79, 89; 80-88 used by drafts/attachments).
+   * </pre>
+   *
    * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
    */
   private void clearWatchedSessions() {
@@ -2088,6 +2110,58 @@ public  final class Effect extends
    */
   private void clearAttachmentReleaseLocal() {
     if (effectCase_ == 88) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_WRITE_CACHE_FIELD_NUMBER = 89;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleWriteCacheEffect schedule_write_cache = 89 [json_name = "scheduleWriteCache"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleWriteCache() {
+    return effectCase_ == 89;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleWriteCacheEffect schedule_write_cache = 89 [json_name = "scheduleWriteCache"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleWriteCacheEffect getScheduleWriteCache() {
+    if (effectCase_ == 89) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleWriteCacheEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleWriteCacheEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleWriteCacheEffect schedule_write_cache = 89 [json_name = "scheduleWriteCache"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleWriteCache(io.github.lewin671.remoteagent.core.proto.ScheduleWriteCacheEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 89;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleWriteCacheEffect schedule_write_cache = 89 [json_name = "scheduleWriteCache"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleWriteCache(io.github.lewin671.remoteagent.core.proto.ScheduleWriteCacheEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 89 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.ScheduleWriteCacheEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.ScheduleWriteCacheEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleWriteCacheEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 89;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleWriteCacheEffect schedule_write_cache = 89 [json_name = "scheduleWriteCache"];</code>
+   */
+  private void clearScheduleWriteCache() {
+    if (effectCase_ == 89) {
       effectCase_ = 0;
       effect_ = null;
     }
@@ -5819,6 +5893,10 @@ public  final class Effect extends
     }
 
     /**
+     * <pre>
+     * P2-4 housekeeping &amp; cache gates (77-79, 89; 80-88 used by drafts/attachments).
+     * </pre>
+     *
      * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
      */
     @java.lang.Override
@@ -5826,6 +5904,10 @@ public  final class Effect extends
       return instance.hasWatchedSessions();
     }
     /**
+     * <pre>
+     * P2-4 housekeeping &amp; cache gates (77-79, 89; 80-88 used by drafts/attachments).
+     * </pre>
+     *
      * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
      */
     @java.lang.Override
@@ -5833,6 +5915,10 @@ public  final class Effect extends
       return instance.getWatchedSessions();
     }
     /**
+     * <pre>
+     * P2-4 housekeeping &amp; cache gates (77-79, 89; 80-88 used by drafts/attachments).
+     * </pre>
+     *
      * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
      */
     public Builder setWatchedSessions(io.github.lewin671.remoteagent.core.proto.WatchedSessionsEffect value) {
@@ -5841,6 +5927,10 @@ public  final class Effect extends
       return this;
     }
     /**
+     * <pre>
+     * P2-4 housekeeping &amp; cache gates (77-79, 89; 80-88 used by drafts/attachments).
+     * </pre>
+     *
      * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
      */
     public Builder setWatchedSessions(
@@ -5850,6 +5940,10 @@ public  final class Effect extends
       return this;
     }
     /**
+     * <pre>
+     * P2-4 housekeeping &amp; cache gates (77-79, 89; 80-88 used by drafts/attachments).
+     * </pre>
+     *
      * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
      */
     public Builder mergeWatchedSessions(io.github.lewin671.remoteagent.core.proto.WatchedSessionsEffect value) {
@@ -5858,6 +5952,10 @@ public  final class Effect extends
       return this;
     }
     /**
+     * <pre>
+     * P2-4 housekeeping &amp; cache gates (77-79, 89; 80-88 used by drafts/attachments).
+     * </pre>
+     *
      * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
      */
     public Builder clearWatchedSessions() {
@@ -6391,6 +6489,54 @@ public  final class Effect extends
     public Builder clearAttachmentReleaseLocal() {
       copyOnWrite();
       instance.clearAttachmentReleaseLocal();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleWriteCacheEffect schedule_write_cache = 89 [json_name = "scheduleWriteCache"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleWriteCache() {
+      return instance.hasScheduleWriteCache();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleWriteCacheEffect schedule_write_cache = 89 [json_name = "scheduleWriteCache"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleWriteCacheEffect getScheduleWriteCache() {
+      return instance.getScheduleWriteCache();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleWriteCacheEffect schedule_write_cache = 89 [json_name = "scheduleWriteCache"];</code>
+     */
+    public Builder setScheduleWriteCache(io.github.lewin671.remoteagent.core.proto.ScheduleWriteCacheEffect value) {
+      copyOnWrite();
+      instance.setScheduleWriteCache(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleWriteCacheEffect schedule_write_cache = 89 [json_name = "scheduleWriteCache"];</code>
+     */
+    public Builder setScheduleWriteCache(
+        io.github.lewin671.remoteagent.core.proto.ScheduleWriteCacheEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleWriteCache(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleWriteCacheEffect schedule_write_cache = 89 [json_name = "scheduleWriteCache"];</code>
+     */
+    public Builder mergeScheduleWriteCache(io.github.lewin671.remoteagent.core.proto.ScheduleWriteCacheEffect value) {
+      copyOnWrite();
+      instance.mergeScheduleWriteCache(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleWriteCacheEffect schedule_write_cache = 89 [json_name = "scheduleWriteCache"];</code>
+     */
+    public Builder clearScheduleWriteCache() {
+      copyOnWrite();
+      instance.clearScheduleWriteCache();
       return this;
     }
 
@@ -8744,6 +8890,7 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.AttachmentHashFileEffect.class,
             io.github.lewin671.remoteagent.core.proto.AttachmentReadChunkEffect.class,
             io.github.lewin671.remoteagent.core.proto.AttachmentReleaseLocalEffect.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleWriteCacheEffect.class,
             io.github.lewin671.remoteagent.core.proto.DirectSignalSendEffect.class,
             io.github.lewin671.remoteagent.core.proto.DirectPcCreateEffect.class,
             io.github.lewin671.remoteagent.core.proto.DirectPcDescribeEffect.class,
@@ -8777,17 +8924,17 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.SecurityTokenUpdatedEffect.class,
           };
           java.lang.String info =
-              "\u0000S\u0001\u0000\u0001\u0091S\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "\u0000T\u0001\u0000\u0001\u0091T\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
               "<\u0000\u0004<\u0000\u0005<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<\u0000\u000b<" +
               "\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0011<\u0000\u0012<\u0000\u0013" +
               "<\u0000(<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/<\u00000<\u00001<\u00002" +
               "<\u0000<<\u0000=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000G<\u0000H<\u0000I" +
               "<\u0000J<\u0000K<\u0000L<\u0000M<\u0000N<\u0000O<\u0000P<\u0000Q<\u0000R<\u0000S" +
-              "<\u0000T<\u0000U<\u0000V<\u0000W<\u0000X<\u0000f<\u0000g<\u0000h<\u0000i<\u0000j" +
-              "<\u0000k<\u0000l<\u0000m<\u0000o<\u0000p<\u0000q<\u0000r<\u0000s<\u0000t<\u0000u" +
-              "<\u0000v<\u0000w<\u0000x<\u0000\u0082<\u0000\u0083<\u0000\u0087<\u0000\u0088<\u0000" +
-              "\u0089<\u0000\u008a<\u0000\u008b<\u0000\u008c<\u0000\u008d<\u0000\u008e<\u0000\u008f" +
-              "<\u0000\u0090<\u0000\u0091<\u0000";
+              "<\u0000T<\u0000U<\u0000V<\u0000W<\u0000X<\u0000Y<\u0000f<\u0000g<\u0000h<\u0000i" +
+              "<\u0000j<\u0000k<\u0000l<\u0000m<\u0000o<\u0000p<\u0000q<\u0000r<\u0000s<\u0000t" +
+              "<\u0000u<\u0000v<\u0000w<\u0000x<\u0000\u0082<\u0000\u0083<\u0000\u0087<\u0000\u0088" +
+              "<\u0000\u0089<\u0000\u008a<\u0000\u008b<\u0000\u008c<\u0000\u008d<\u0000\u008e<\u0000" +
+              "\u008f<\u0000\u0090<\u0000\u0091<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

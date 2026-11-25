@@ -85,22 +85,8 @@ func (e *Engine) pruneUntrustedCaches(ctx *StepContext) {
 		return
 	}
 
-	pruneAll := e.removed || !e.security.IsMember
-	var trusted map[string]bool
-	if !pruneAll {
-		if len(e.security.TrustedMachines) > 0 {
-			trusted = e.security.TrustedMachines
-		} else if len(e.devices) > 0 {
-			trusted = make(map[string]bool)
-			for id, d := range e.devices {
-				if d != nil && d.Kind == v1.DeviceKind_DEVICE_KIND_MACHINE && e.security.TrustedMachines[id] {
-					trusted[id] = true
-				}
-			}
-		} else {
-			return
-		}
-	}
+	pruneAll := e.removed || !e.security.IsMember || len(e.security.TrustedMachines) == 0
+	trusted := e.security.TrustedMachines
 
 	candidates := make([]string, 0, len(candidateSet))
 	for mid := range candidateSet {

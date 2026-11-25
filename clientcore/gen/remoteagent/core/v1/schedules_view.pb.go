@@ -4316,6 +4316,87 @@ func extraUnmarshal_ScheduleFormUpdateTimingAction(base unsafe.Pointer, num lite
 	return false, nil
 }
 
+type ScheduleWriteCacheEffect struct {
+	_                 [0]func()
+	OpId              uint64
+	MachineId         string
+	RequestId         string
+	SealedResultBytes []byte
+}
+
+func (m *ScheduleWriteCacheEffect) GetOpId() uint64 {
+	if m != nil {
+		return m.OpId
+	}
+	return 0
+}
+func (m *ScheduleWriteCacheEffect) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+func (m *ScheduleWriteCacheEffect) GetRequestId() string {
+	if m != nil {
+		return m.RequestId
+	}
+	return ""
+}
+func (m *ScheduleWriteCacheEffect) GetSealedResultBytes() []byte {
+	if m != nil {
+		return m.SealedResultBytes
+	}
+	return nil
+}
+
+var LitewireDesc_ScheduleWriteCacheEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleWriteCacheEffect{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleWriteCacheEffect{}.MachineId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleWriteCacheEffect{}.RequestId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleWriteCacheEffect{}.SealedResultBytes), Kind: litewire.KindBytes},
+	},
+}
+
+func (m *ScheduleWriteCacheEffect) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ScheduleWriteCacheEffect) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleWriteCacheEffect)
+}
+
+type ScheduleCacheWrittenEvent struct {
+	_         [0]func()
+	OpId      uint64
+	MachineId string
+}
+
+func (m *ScheduleCacheWrittenEvent) GetOpId() uint64 {
+	if m != nil {
+		return m.OpId
+	}
+	return 0
+}
+func (m *ScheduleCacheWrittenEvent) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+
+var LitewireDesc_ScheduleCacheWrittenEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleCacheWrittenEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleCacheWrittenEvent{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleCacheWrittenEvent{}.MachineId), Kind: litewire.KindString},
+	},
+}
+
+func (m *ScheduleCacheWrittenEvent) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleCacheWrittenEvent)
+}
+
 func init() {
 	LitewireDesc_ScheduleSeenLoadedEvent.ExtraUnmarshal = extraUnmarshal_ScheduleSeenLoadedEvent
 	LitewireDesc_ScheduleMarkReadAction.ExtraUnmarshal = extraUnmarshal_ScheduleMarkReadAction

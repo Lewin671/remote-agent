@@ -573,6 +573,9 @@ func (e *Engine) handleSeedDemoWorld(ctx *StepContext, ev *corev1.SeedDemoWorldE
 			e.ingestDecodedEvents(ctx, se.SessionId, b, items, false, false, true, false)
 		}
 	}
+	if ev.Security != nil {
+		e.pruneUntrustedCaches(ctx)
+	}
 	e.updateLivePollers(ctx)
 	ctx.Dirty.MarkAll()
 	if seedWorld {
@@ -1531,6 +1534,7 @@ func (e *Engine) finishOpenCmdOutcome(stepCtx *StepContext, op *pendingSecOp, re
 	if evCopy.AttemptId != "" && !prep.PendingAttempts[evCopy.AttemptId] {
 		return
 	}
+	sealedEnv := evCopy.SealedResult
 	evCopy.SealedResult = nil
 	r := results[0]
 	if r.Err != nil {
@@ -1549,6 +1553,9 @@ func (e *Engine) finishOpenCmdOutcome(stepCtx *StepContext, op *pendingSecOp, re
 		bytes.Equal(res.PayloadHash, prep.PayloadHash) &&
 		(res.Outcome == "conflict" || res.ConflictKind == "")
 	outerMatchesInner := evCopy.RouteWasDirect || (evCopy.OuterOutcome == res.Outcome && evCopy.OuterReason == res.Reason)
+	if hashesMatch && outerMatchesInner {
+		prep.VerifiedSealedResult = sealedEnv
+	}
 	evCopy.Signed, evCopy.HashesMatch, evCopy.OuterMatchesInner, evCopy.Result = true, hashesMatch, outerMatchesInner, res
 	if evCopy.ObservedBytes == 0 {
 		if pic := prep.Command.GetPutImageChunk(); pic != nil {

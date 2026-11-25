@@ -497,8 +497,49 @@ func (c *Core) captureDetailResultIfNeeded(machineID, taskID string) {
 	ss.Detail.ResultCaptured = true
 }
 
+func (c *Core) evictUntrustedScheduleSnapshots() {
+	ss := c.m.state.Schedules
+	if ss == nil || len(ss.Machines) == 0 {
+		return
+	}
+	evicted := false
+	for mid := range ss.Machines {
+		if c.m.sync.CanUseMachineCache(mid) {
+			continue
+		}
+		delete(ss.Machines, mid)
+		ss.Seen.Forget(mid)
+		if ss.Detail != nil && ss.Detail.MachineID == mid {
+			ss.Detail = nil
+		}
+		if ss.SelectedMachineID == mid {
+			ss.SelectedMachineID = ""
+			ss.SelectedTaskID = ""
+		}
+		evicted = true
+	}
+	if evicted {
+		c.m.markScheduleDirty(
+			corev1.ScreenTarget_SCREEN_TARGET_SCHEDULES,
+			corev1.ScreenTarget_SCREEN_TARGET_SCHEDULE_DETAIL,
+			corev1.ScreenTarget_SCREEN_TARGET_SCHEDULE_SESSION_STRIP,
+		)
+	}
+}
+
 func (c *Core) processSchedulesSyncStep(res sync.StepResult, effects *[]*corev1.Effect) {
-	if !c.m.schedActive {
+	c.evictUntrustedScheduleSnapshots()
+	hasScheduleSettled := false
+	for _, sc := range res.Settled {
+		if meta, ok := c.m.pendingCmdMeta[sc.RequestID]; ok && (meta.kind == cmdKindScheduleList ||
+			meta.kind == cmdKindScheduleCreate ||
+			meta.kind == cmdKindScheduleOperate ||
+			meta.kind == cmdKindScheduleUpdate) {
+			hasScheduleSettled = true
+			break
+		}
+	}
+	if !c.m.schedActive && !hasScheduleSettled {
 		return
 	}
 	st := c.m.state
@@ -551,6 +592,29 @@ func (c *Core) processSchedulesSyncStep(res sync.StepResult, effects *[]*corev1.
 					*effects = append(*effects, seenOutcomeEffects(ss, out)...)
 					if ss.Detail != nil && ss.Detail.MachineID == meta.machineID {
 						c.captureDetailResultIfNeeded(meta.machineID, ss.Detail.TaskID)
+					}
+					if sc.SealedResult != nil && len(sc.Result.GetSchedule().GetResultJson()) > 0 {
+						if c.m.sync.CanUseMachineCache(meta.machineID) {
+							if sealedBytes, err := sc.SealedResult.Marshal(); err == nil && len(sealedBytes) > 0 {
+								c.m.nextScheduleCacheOpID++
+								*effects = append(*effects, &corev1.Effect{
+									Effect: &corev1.Effect_ScheduleWriteCache{
+										ScheduleWriteCache: &corev1.ScheduleWriteCacheEffect{
+											OpId:              c.m.nextScheduleCacheOpID,
+											MachineId:         meta.machineID,
+											RequestId:         sc.RequestID,
+											SealedResultBytes: sealedBytes,
+										},
+									},
+								})
+							}
+						} else {
+							*effects = append(*effects, &corev1.Effect{
+								Effect: &corev1.Effect_ScheduleDeleteCache{
+									ScheduleDeleteCache: &corev1.ScheduleDeleteCacheEffect{MachineId: meta.machineID},
+								},
+							})
+						}
 					}
 				}
 			} else {
@@ -752,7 +816,9 @@ func (c *Core) processSchedulesSyncStep(res sync.StepResult, effects *[]*corev1.
 				snap.PendingRefresh = true
 			}
 		}
-		c.reconcileSchedules(syncCtx, effects)
+		if c.m.schedActive {
+			c.reconcileSchedules(syncCtx, effects)
+		}
 		syncRes := c.m.sync.EndStep(syncPrev, syncCtx)
 		*effects = append(*effects, syncRes.Effects...)
 	}
@@ -799,9 +865,9 @@ func (c *Core) reconcileSchedules(ctx *sync.StepContext, effects *[]*corev1.Effe
 		)
 	}
 
-	// Ensure cache/seen load and revision-driven list fetches for all supported machines.
+	// Ensure cache/seen load and revision-driven list fetches for all supported trusted machines.
 	for _, mac := range st.World.Machines {
-		if mac == nil || !schedule.Supported(mac, st.World.ClientVersion) {
+		if mac == nil || !schedule.Supported(mac, st.World.ClientVersion) || !c.m.sync.CanUseMachineCache(mac.ID) {
 			continue
 		}
 		mid := mac.ID
@@ -815,18 +881,22 @@ func (c *Core) reconcileSchedules(ctx *sync.StepContext, effects *[]*corev1.Effe
 			})
 		}
 		if !snap.CacheRestored && !snap.CacheReading {
-			c.m.nextScheduleCacheOpID++
-			opID := c.m.nextScheduleCacheOpID
-			snap.CacheReading = true
-			snap.CacheReadOpID = opID
-			*effects = append(*effects, &corev1.Effect{
-				Effect: &corev1.Effect_ScheduleReadCache{
-					ScheduleReadCache: &corev1.ScheduleReadCacheEffect{
-						OpId:      opID,
-						MachineId: mid,
+			if c.m.sync.CanUseMachineCache(mid) {
+				c.m.nextScheduleCacheOpID++
+				opID := c.m.nextScheduleCacheOpID
+				snap.CacheReading = true
+				snap.CacheReadOpID = opID
+				*effects = append(*effects, &corev1.Effect{
+					Effect: &corev1.Effect_ScheduleReadCache{
+						ScheduleReadCache: &corev1.ScheduleReadCacheEffect{
+							OpId:      opID,
+							MachineId: mid,
+						},
 					},
-				},
-			})
+				})
+			} else {
+				snap.CacheRestored = true
+			}
 		}
 
 		writable := schedule.Writable(&st.World, mid)
@@ -960,6 +1030,20 @@ func (c *Core) dispatchSchedulesUI(ctx *sync.StepContext, ev *corev1.Event) ([]*
 			return nil, true
 		}
 		snap.CacheReading = false
+		if !c.m.sync.CanUseMachineCache(act.MachineId) {
+			snap.CacheRestored = true
+			effects = append(effects, &corev1.Effect{
+				Effect: &corev1.Effect_ScheduleDeleteCache{
+					ScheduleDeleteCache: &corev1.ScheduleDeleteCacheEffect{MachineId: act.MachineId},
+				},
+			})
+			c.m.markScheduleDirty(
+				corev1.ScreenTarget_SCREEN_TARGET_SCHEDULES,
+				corev1.ScreenTarget_SCREEN_TARGET_SCHEDULE_DETAIL,
+				corev1.ScreenTarget_SCREEN_TARGET_SCHEDULE_SESSION_STRIP,
+			)
+			return effects, true
+		}
 		snap.CacheRestored = true
 		if act.Error == "" && len(act.ResultJson) > 0 && !snap.Live {
 			if tasks, err := schedule.DecodeTaskList(act.ResultJson); err == nil {
@@ -978,6 +1062,19 @@ func (c *Core) dispatchSchedulesUI(ctx *sync.StepContext, ev *corev1.Event) ([]*
 			corev1.ScreenTarget_SCREEN_TARGET_SCHEDULE_DETAIL,
 			corev1.ScreenTarget_SCREEN_TARGET_SCHEDULE_SESSION_STRIP,
 		)
+		return effects, true
+
+	case *corev1.Event_ScheduleCacheWritten:
+		if k.ScheduleCacheWritten != nil && k.ScheduleCacheWritten.MachineId != "" {
+			mid := k.ScheduleCacheWritten.MachineId
+			if !c.m.sync.CanUseMachineCache(mid) {
+				effects = append(effects, &corev1.Effect{
+					Effect: &corev1.Effect_ScheduleDeleteCache{
+						ScheduleDeleteCache: &corev1.ScheduleDeleteCacheEffect{MachineId: mid},
+					},
+				})
+			}
+		}
 		return effects, true
 
 	case *corev1.Event_ScheduleSeenLoaded:

@@ -4557,6 +4557,20 @@ type Event_NewSessionClose struct {
 
 func (*Event_NewSessionClose) isEvent_Event() {}
 
+type Event_ScheduleCacheWritten struct {
+	_                    [0]func()
+	ScheduleCacheWritten *ScheduleCacheWrittenEvent
+}
+
+func (*Event_ScheduleCacheWritten) isEvent_Event() {}
+
+type Event_UsageCacheWritten struct {
+	_                 [0]func()
+	UsageCacheWritten *UsageCacheWrittenEvent
+}
+
+func (*Event_UsageCacheWritten) isEvent_Event() {}
+
 type Event_UpdateClientName struct {
 	_                [0]func()
 	UpdateClientName *UpdateClientNameEvent
@@ -6065,6 +6079,18 @@ func (m *Event) GetNewSessionClose() *NewSessionCloseAction {
 	}
 	return nil
 }
+func (m *Event) GetScheduleCacheWritten() *ScheduleCacheWrittenEvent {
+	if x, ok := m.GetEvent().(*Event_ScheduleCacheWritten); ok && x != nil {
+		return x.ScheduleCacheWritten
+	}
+	return nil
+}
+func (m *Event) GetUsageCacheWritten() *UsageCacheWrittenEvent {
+	if x, ok := m.GetEvent().(*Event_UsageCacheWritten); ok && x != nil {
+		return x.UsageCacheWritten
+	}
+	return nil
+}
 func (m *Event) GetUpdateClientName() *UpdateClientNameEvent {
 	if x, ok := m.GetEvent().(*Event_UpdateClientName); ok && x != nil {
 		return x.UpdateClientName
@@ -7049,11 +7075,11 @@ func extraUnmarshal_Event(base unsafe.Pointer, num litewire.Number, wtyp litewir
 		return m.extraUnmarshalPart13(num, wtyp, bp)
 	case num <= 382:
 		return m.extraUnmarshalPart14(num, wtyp, bp)
-	case num <= 409:
+	case num <= 407:
 		return m.extraUnmarshalPart15(num, wtyp, bp)
-	case num <= 421:
+	case num <= 419:
 		return m.extraUnmarshalPart16(num, wtyp, bp)
-	case num <= 456:
+	case num <= 452:
 		return m.extraUnmarshalPart17(num, wtyp, bp)
 	case num <= 465:
 		return m.extraUnmarshalPart18(num, wtyp, bp)
@@ -8632,6 +8658,20 @@ func (m *Event) extraUnmarshalPart15(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.NewSessionClose
+		case 392:
+			w, _ := m.Event.(*Event_ScheduleCacheWritten)
+			if w == nil || w.ScheduleCacheWritten == nil {
+				w = &Event_ScheduleCacheWritten{ScheduleCacheWritten: &ScheduleCacheWrittenEvent{}}
+				m.Event = w
+			}
+			sub = w.ScheduleCacheWritten
+		case 393:
+			w, _ := m.Event.(*Event_UsageCacheWritten)
+			if w == nil || w.UsageCacheWritten == nil {
+				w = &Event_UsageCacheWritten{UsageCacheWritten: &UsageCacheWrittenEvent{}}
+				m.Event = w
+			}
+			sub = w.UsageCacheWritten
 		case 400:
 			w, _ := m.Event.(*Event_TransportConfig)
 			if w == nil || w.TransportConfig == nil {
@@ -8667,20 +8707,6 @@ func (m *Event) extraUnmarshalPart15(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.DirectPcDescription
-		case 408:
-			w, _ := m.Event.(*Event_DirectPcRemoteSet)
-			if w == nil || w.DirectPcRemoteSet == nil {
-				w = &Event_DirectPcRemoteSet{DirectPcRemoteSet: &DirectPcRemoteSetEvent{}}
-				m.Event = w
-			}
-			sub = w.DirectPcRemoteSet
-		case 409:
-			w, _ := m.Event.(*Event_DirectPcCandidatesAdded)
-			if w == nil || w.DirectPcCandidatesAdded == nil {
-				w = &Event_DirectPcCandidatesAdded{DirectPcCandidatesAdded: &DirectPcCandidatesAddedEvent{}}
-				m.Event = w
-			}
-			sub = w.DirectPcCandidatesAdded
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -8699,6 +8725,20 @@ func (m *Event) extraUnmarshalPart16(num litewire.Number, wtyp litewire.Type, bp
 	var sub litewire.Unmarshaler
 	if wtyp == litewire.BytesType {
 		switch num {
+		case 408:
+			w, _ := m.Event.(*Event_DirectPcRemoteSet)
+			if w == nil || w.DirectPcRemoteSet == nil {
+				w = &Event_DirectPcRemoteSet{DirectPcRemoteSet: &DirectPcRemoteSetEvent{}}
+				m.Event = w
+			}
+			sub = w.DirectPcRemoteSet
+		case 409:
+			w, _ := m.Event.(*Event_DirectPcCandidatesAdded)
+			if w == nil || w.DirectPcCandidatesAdded == nil {
+				w = &Event_DirectPcCandidatesAdded{DirectPcCandidatesAdded: &DirectPcCandidatesAddedEvent{}}
+				m.Event = w
+			}
+			sub = w.DirectPcCandidatesAdded
 		case 410:
 			w, _ := m.Event.(*Event_DirectPcLocalCandidate)
 			if w == nil || w.DirectPcLocalCandidate == nil {
@@ -8769,20 +8809,6 @@ func (m *Event) extraUnmarshalPart16(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.DirectBulkTransferDone
-		case 420:
-			w, _ := m.Event.(*Event_TerminalStream)
-			if w == nil || w.TerminalStream == nil {
-				w = &Event_TerminalStream{TerminalStream: &TerminalStreamEvent{}}
-				m.Event = w
-			}
-			sub = w.TerminalStream
-		case 421:
-			w, _ := m.Event.(*Event_DirectPreferencesLoaded)
-			if w == nil || w.DirectPreferencesLoaded == nil {
-				w = &Event_DirectPreferencesLoaded{DirectPreferencesLoaded: &DirectPreferencesLoadedEvent{}}
-				m.Event = w
-			}
-			sub = w.DirectPreferencesLoaded
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -8801,6 +8827,20 @@ func (m *Event) extraUnmarshalPart17(num litewire.Number, wtyp litewire.Type, bp
 	var sub litewire.Unmarshaler
 	if wtyp == litewire.BytesType {
 		switch num {
+		case 420:
+			w, _ := m.Event.(*Event_TerminalStream)
+			if w == nil || w.TerminalStream == nil {
+				w = &Event_TerminalStream{TerminalStream: &TerminalStreamEvent{}}
+				m.Event = w
+			}
+			sub = w.TerminalStream
+		case 421:
+			w, _ := m.Event.(*Event_DirectPreferencesLoaded)
+			if w == nil || w.DirectPreferencesLoaded == nil {
+				w = &Event_DirectPreferencesLoaded{DirectPreferencesLoaded: &DirectPreferencesLoadedEvent{}}
+				m.Event = w
+			}
+			sub = w.DirectPreferencesLoaded
 		case 422:
 			w, _ := m.Event.(*Event_TerminalHistory)
 			if w == nil || w.TerminalHistory == nil {
@@ -8871,20 +8911,6 @@ func (m *Event) extraUnmarshalPart17(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityKeySigned
-		case 453:
-			w, _ := m.Event.(*Event_SecurityKeyAgreed)
-			if w == nil || w.SecurityKeyAgreed == nil {
-				w = &Event_SecurityKeyAgreed{SecurityKeyAgreed: &SecurityKeyAgreedEvent{}}
-				m.Event = w
-			}
-			sub = w.SecurityKeyAgreed
-		case 456:
-			w, _ := m.Event.(*Event_SecurityCryptoBatchDone)
-			if w == nil || w.SecurityCryptoBatchDone == nil {
-				w = &Event_SecurityCryptoBatchDone{SecurityCryptoBatchDone: &SecurityCryptoBatchDoneEvent{}}
-				m.Event = w
-			}
-			sub = w.SecurityCryptoBatchDone
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -8903,6 +8929,20 @@ func (m *Event) extraUnmarshalPart18(num litewire.Number, wtyp litewire.Type, bp
 	var sub litewire.Unmarshaler
 	if wtyp == litewire.BytesType {
 		switch num {
+		case 453:
+			w, _ := m.Event.(*Event_SecurityKeyAgreed)
+			if w == nil || w.SecurityKeyAgreed == nil {
+				w = &Event_SecurityKeyAgreed{SecurityKeyAgreed: &SecurityKeyAgreedEvent{}}
+				m.Event = w
+			}
+			sub = w.SecurityKeyAgreed
+		case 456:
+			w, _ := m.Event.(*Event_SecurityCryptoBatchDone)
+			if w == nil || w.SecurityCryptoBatchDone == nil {
+				w = &Event_SecurityCryptoBatchDone{SecurityCryptoBatchDone: &SecurityCryptoBatchDoneEvent{}}
+				m.Event = w
+			}
+			sub = w.SecurityCryptoBatchDone
 		case 457:
 			w, _ := m.Event.(*Event_SecurityOpRequest)
 			if w == nil || w.SecurityOpRequest == nil {
@@ -10762,6 +10802,13 @@ type Effect_AttachmentReleaseLocal struct {
 
 func (*Effect_AttachmentReleaseLocal) isEffect_Effect() {}
 
+type Effect_ScheduleWriteCache struct {
+	_                  [0]func()
+	ScheduleWriteCache *ScheduleWriteCacheEffect
+}
+
+func (*Effect_ScheduleWriteCache) isEffect_Effect() {}
+
 type Effect_SessionRestoreComposer struct {
 	_                      [0]func()
 	SessionRestoreComposer *SessionRestoreComposerEffect
@@ -11313,6 +11360,12 @@ func (m *Effect) GetAttachmentReleaseLocal() *AttachmentReleaseLocalEffect {
 	}
 	return nil
 }
+func (m *Effect) GetScheduleWriteCache() *ScheduleWriteCacheEffect {
+	if x, ok := m.GetEffect().(*Effect_ScheduleWriteCache); ok && x != nil {
+		return x.ScheduleWriteCache
+	}
+	return nil
+}
 func (m *Effect) GetSessionRestoreComposer() *SessionRestoreComposerEffect {
 	if x, ok := m.GetEffect().(*Effect_SessionRestoreComposer); ok && x != nil {
 		return x.SessionRestoreComposer
@@ -11828,6 +11881,10 @@ func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_ScheduleWriteCache:
+		if x != nil && x.ScheduleWriteCache != nil {
+			onum, omsg = 89, x.ScheduleWriteCache
+		}
 	case *Effect_SessionRestoreComposer:
 		if x != nil && x.SessionRestoreComposer != nil {
 			onum, omsg = 40, x.SessionRestoreComposer
@@ -11872,10 +11929,6 @@ func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
 		if x != nil && x.ScheduleReadCache != nil {
 			onum, omsg = 60, x.ScheduleReadCache
 		}
-	case *Effect_ScheduleDeleteCache:
-		if x != nil && x.ScheduleDeleteCache != nil {
-			onum, omsg = 61, x.ScheduleDeleteCache
-		}
 	default:
 		return b, false
 	}
@@ -11890,6 +11943,10 @@ func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_ScheduleDeleteCache:
+		if x != nil && x.ScheduleDeleteCache != nil {
+			onum, omsg = 61, x.ScheduleDeleteCache
+		}
 	case *Effect_ScheduleLoadSeen:
 		if x != nil && x.ScheduleLoadSeen != nil {
 			onum, omsg = 62, x.ScheduleLoadSeen
@@ -11934,10 +11991,6 @@ func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
 		if x != nil && x.DirectPcClose != nil {
 			onum, omsg = 108, x.DirectPcClose
 		}
-	case *Effect_DirectDcReadStats:
-		if x != nil && x.DirectDcReadStats != nil {
-			onum, omsg = 109, x.DirectDcReadStats
-		}
 	default:
 		return b, false
 	}
@@ -11952,6 +12005,10 @@ func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_DirectDcReadStats:
+		if x != nil && x.DirectDcReadStats != nil {
+			onum, omsg = 109, x.DirectDcReadStats
+		}
 	case *Effect_DirectBulkRoute:
 		if x != nil && x.DirectBulkRoute != nil {
 			onum, omsg = 111, x.DirectBulkRoute
@@ -11996,10 +12053,6 @@ func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
 		if x != nil && x.SecurityKeySign != nil {
 			onum, omsg = 130, x.SecurityKeySign
 		}
-	case *Effect_SecurityKeyAgree:
-		if x != nil && x.SecurityKeyAgree != nil {
-			onum, omsg = 131, x.SecurityKeyAgree
-		}
 	default:
 		return b, false
 	}
@@ -12014,6 +12067,10 @@ func (m *Effect) appendMarshalEffectPart6(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_SecurityKeyAgree:
+		if x != nil && x.SecurityKeyAgree != nil {
+			onum, omsg = 131, x.SecurityKeyAgree
+		}
 	case *Effect_SecurityCryptoBatch:
 		if x != nil && x.SecurityCryptoBatch != nil {
 			onum, omsg = 135, x.SecurityCryptoBatch

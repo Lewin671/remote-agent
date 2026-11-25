@@ -94,6 +94,8 @@ public  final class Event extends
     USAGE_SCREEN_SCRUB(385),
     RESOLVE_NOTIFICATION_TAP(390),
     NEW_SESSION_CLOSE(391),
+    SCHEDULE_CACHE_WRITTEN(392),
+    USAGE_CACHE_WRITTEN(393),
     UPDATE_CLIENT_NAME(370),
     SET_NOTIFICATION_PREF(375),
     SET_APPEARANCE_PREF(376),
@@ -334,6 +336,8 @@ public  final class Event extends
         case 385: return USAGE_SCREEN_SCRUB;
         case 390: return RESOLVE_NOTIFICATION_TAP;
         case 391: return NEW_SESSION_CLOSE;
+        case 392: return SCHEDULE_CACHE_WRITTEN;
+        case 393: return USAGE_CACHE_WRITTEN;
         case 370: return UPDATE_CLIENT_NAME;
         case 375: return SET_NOTIFICATION_PREF;
         case 376: return SET_APPEARANCE_PREF;
@@ -4318,6 +4322,110 @@ public  final class Event extends
    */
   private void clearNewSessionClose() {
     if (eventCase_ == 391) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_CACHE_WRITTEN_FIELD_NUMBER = 392;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleCacheWrittenEvent schedule_cache_written = 392 [json_name = "scheduleCacheWritten"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleCacheWritten() {
+    return eventCase_ == 392;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleCacheWrittenEvent schedule_cache_written = 392 [json_name = "scheduleCacheWritten"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleCacheWrittenEvent getScheduleCacheWritten() {
+    if (eventCase_ == 392) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleCacheWrittenEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleCacheWrittenEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleCacheWrittenEvent schedule_cache_written = 392 [json_name = "scheduleCacheWritten"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleCacheWritten(io.github.lewin671.remoteagent.core.proto.ScheduleCacheWrittenEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 392;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleCacheWrittenEvent schedule_cache_written = 392 [json_name = "scheduleCacheWritten"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleCacheWritten(io.github.lewin671.remoteagent.core.proto.ScheduleCacheWrittenEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 392 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleCacheWrittenEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleCacheWrittenEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleCacheWrittenEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 392;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleCacheWrittenEvent schedule_cache_written = 392 [json_name = "scheduleCacheWritten"];</code>
+   */
+  private void clearScheduleCacheWritten() {
+    if (eventCase_ == 392) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int USAGE_CACHE_WRITTEN_FIELD_NUMBER = 393;
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheWrittenEvent usage_cache_written = 393 [json_name = "usageCacheWritten"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUsageCacheWritten() {
+    return eventCase_ == 393;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheWrittenEvent usage_cache_written = 393 [json_name = "usageCacheWritten"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UsageCacheWrittenEvent getUsageCacheWritten() {
+    if (eventCase_ == 393) {
+       return (io.github.lewin671.remoteagent.core.proto.UsageCacheWrittenEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.UsageCacheWrittenEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheWrittenEvent usage_cache_written = 393 [json_name = "usageCacheWritten"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUsageCacheWritten(io.github.lewin671.remoteagent.core.proto.UsageCacheWrittenEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 393;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheWrittenEvent usage_cache_written = 393 [json_name = "usageCacheWritten"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeUsageCacheWritten(io.github.lewin671.remoteagent.core.proto.UsageCacheWrittenEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 393 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.UsageCacheWrittenEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.UsageCacheWrittenEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.UsageCacheWrittenEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 393;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheWrittenEvent usage_cache_written = 393 [json_name = "usageCacheWritten"];</code>
+   */
+  private void clearUsageCacheWritten() {
+    if (eventCase_ == 393) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -16103,6 +16211,102 @@ public  final class Event extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.ScheduleCacheWrittenEvent schedule_cache_written = 392 [json_name = "scheduleCacheWritten"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleCacheWritten() {
+      return instance.hasScheduleCacheWritten();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleCacheWrittenEvent schedule_cache_written = 392 [json_name = "scheduleCacheWritten"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleCacheWrittenEvent getScheduleCacheWritten() {
+      return instance.getScheduleCacheWritten();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleCacheWrittenEvent schedule_cache_written = 392 [json_name = "scheduleCacheWritten"];</code>
+     */
+    public Builder setScheduleCacheWritten(io.github.lewin671.remoteagent.core.proto.ScheduleCacheWrittenEvent value) {
+      copyOnWrite();
+      instance.setScheduleCacheWritten(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleCacheWrittenEvent schedule_cache_written = 392 [json_name = "scheduleCacheWritten"];</code>
+     */
+    public Builder setScheduleCacheWritten(
+        io.github.lewin671.remoteagent.core.proto.ScheduleCacheWrittenEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleCacheWritten(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleCacheWrittenEvent schedule_cache_written = 392 [json_name = "scheduleCacheWritten"];</code>
+     */
+    public Builder mergeScheduleCacheWritten(io.github.lewin671.remoteagent.core.proto.ScheduleCacheWrittenEvent value) {
+      copyOnWrite();
+      instance.mergeScheduleCacheWritten(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleCacheWrittenEvent schedule_cache_written = 392 [json_name = "scheduleCacheWritten"];</code>
+     */
+    public Builder clearScheduleCacheWritten() {
+      copyOnWrite();
+      instance.clearScheduleCacheWritten();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheWrittenEvent usage_cache_written = 393 [json_name = "usageCacheWritten"];</code>
+     */
+    @java.lang.Override
+    public boolean hasUsageCacheWritten() {
+      return instance.hasUsageCacheWritten();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheWrittenEvent usage_cache_written = 393 [json_name = "usageCacheWritten"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UsageCacheWrittenEvent getUsageCacheWritten() {
+      return instance.getUsageCacheWritten();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheWrittenEvent usage_cache_written = 393 [json_name = "usageCacheWritten"];</code>
+     */
+    public Builder setUsageCacheWritten(io.github.lewin671.remoteagent.core.proto.UsageCacheWrittenEvent value) {
+      copyOnWrite();
+      instance.setUsageCacheWritten(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheWrittenEvent usage_cache_written = 393 [json_name = "usageCacheWritten"];</code>
+     */
+    public Builder setUsageCacheWritten(
+        io.github.lewin671.remoteagent.core.proto.UsageCacheWrittenEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setUsageCacheWritten(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheWrittenEvent usage_cache_written = 393 [json_name = "usageCacheWritten"];</code>
+     */
+    public Builder mergeUsageCacheWritten(io.github.lewin671.remoteagent.core.proto.UsageCacheWrittenEvent value) {
+      copyOnWrite();
+      instance.mergeUsageCacheWritten(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheWrittenEvent usage_cache_written = 393 [json_name = "usageCacheWritten"];</code>
+     */
+    public Builder clearUsageCacheWritten() {
+      copyOnWrite();
+      instance.clearUsageCacheWritten();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>
      */
     @java.lang.Override
@@ -23846,6 +24050,8 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.UsageScreenScrubEvent.class,
             io.github.lewin671.remoteagent.core.proto.ResolveNotificationTapAction.class,
             io.github.lewin671.remoteagent.core.proto.NewSessionCloseAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleCacheWrittenEvent.class,
+            io.github.lewin671.remoteagent.core.proto.UsageCacheWrittenEvent.class,
             io.github.lewin671.remoteagent.core.proto.TransportConfigEvent.class,
             io.github.lewin671.remoteagent.core.proto.DirectSignalReceivedEvent.class,
             io.github.lewin671.remoteagent.core.proto.DirectSignalDeliveryEvent.class,
@@ -23888,7 +24094,7 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.SecurityOpenNotifyEvent.class,
           };
           java.lang.String info =
-              "\u0000\u00e5\u0001\u0000\u0001\u01d1\u00e5\u0000\u0002\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u00e7\u0001\u0000\u0001\u01d1\u00e7\u0000\u0002\u0000\u0001<\u0000\u0002<" +
               "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000" +
               "\t<\u0000\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010" +
               "<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000" +
@@ -23916,13 +24122,13 @@ public  final class Event extends
               "\u0168<\u0000\u0169<\u0000\u016a<\u0000\u016b<\u0000\u016c<\u0000\u016e<\u0000\u0172" +
               "<\u0000\u0177<\u0000\u0178<\u0000\u0179<\u0000\u017a<\u0000\u017b<\u0000\u017c<\u0000" +
               "\u017d<\u0000\u017e<\u0000\u017f<\u0000\u0180<\u0000\u0181<\u0000\u0186<\u0000\u0187" +
-              "<\u0000\u0190<\u0000\u0192<\u0000\u0193<\u0000\u0196<\u0000\u0197<\u0000\u0198<\u0000" +
-              "\u0199<\u0000\u019a<\u0000\u019b<\u0000\u019c<\u0000\u019d<\u0000\u019e<\u0000\u019f" +
-              "<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000\u01a4<\u0000\u01a5<\u0000" +
-              "\u01a6<\u0000\u01a7<\u0000\u01a8<\u0000\u01a9<\u0000\u01aa<\u0000\u01ab<\u0000\u01ac" +
-              "<\u0000\u01ad<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000\u01c9<\u0000" +
-              "\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01ce<\u0000\u01cf<\u0000\u01d0" +
-              "<\u0000\u01d1<\u0000";
+              "<\u0000\u0188<\u0000\u0189<\u0000\u0190<\u0000\u0192<\u0000\u0193<\u0000\u0196<\u0000" +
+              "\u0197<\u0000\u0198<\u0000\u0199<\u0000\u019a<\u0000\u019b<\u0000\u019c<\u0000\u019d" +
+              "<\u0000\u019e<\u0000\u019f<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000" +
+              "\u01a4<\u0000\u01a5<\u0000\u01a6<\u0000\u01a7<\u0000\u01a8<\u0000\u01a9<\u0000\u01aa" +
+              "<\u0000\u01ab<\u0000\u01ac<\u0000\u01ad<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000" +
+              "\u01c8<\u0000\u01c9<\u0000\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01ce" +
+              "<\u0000\u01cf<\u0000\u01d0<\u0000\u01d1<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

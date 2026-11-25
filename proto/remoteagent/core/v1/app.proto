@@ -600,6 +600,8 @@ message Event {
     // P2-4 housekeeping & cache gate events (390-394).
     ResolveNotificationTapAction resolve_notification_tap = 390;
     NewSessionCloseAction new_session_close = 391;
+    ScheduleCacheWrittenEvent schedule_cache_written = 392;
+    UsageCacheWrittenEvent usage_cache_written = 393;
     UpdateClientNameEvent update_client_name = 370;
     SetNotificationPrefEvent set_notification_pref = 375;
     SetAppearancePrefEvent set_appearance_pref = 376;
@@ -1022,6 +1024,7 @@ message Effect {
     PersistClientPrefsEffect persist_client_prefs = 74;
     PrepareCleanupSessionEffect prepare_cleanup_session = 75;
     UsageCacheWriteEffect usage_cache_write = 76;
+    // P2-4 housekeeping & cache gates (77-79, 89; 80-88 used by drafts/attachments).
     WatchedSessionsEffect watched_sessions = 77;
     UsageCacheRequestEffect usage_cache_request = 78;
     SyncPushSubscriptionEffect sync_push_subscription = 79;
@@ -1034,6 +1037,7 @@ message Effect {
     AttachmentHashFileEffect attachment_hash_file = 86;
     AttachmentReadChunkEffect attachment_read_chunk = 87;
     AttachmentReleaseLocalEffect attachment_release_local = 88;
+    ScheduleWriteCacheEffect schedule_write_cache = 89;
     SessionRestoreComposerEffect session_restore_composer = 40;
     SharedFileScanLocalEffect shared_file_scan_local = 42;
     SharedFileInspectDiskEffect shared_file_inspect_disk = 43;

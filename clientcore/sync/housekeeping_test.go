@@ -141,4 +141,35 @@ func TestMaybeDescribeSelfGuards(t *testing.T) {
 	if eng.selfDescribeActionID != 0 {
 		t.Fatalf("expected self-describe not to retry at same rev/lease (prev=%d, new=%d)", prevAction, eng.selfDescribeActionID)
 	}
+
+	// Reconnecting (StreamReady) resets selfDescribeAttempted so a prior failure retries on reconnect.
+	eng.legID = 7
+	eng.running = true
+	eng.selfDescribeAttemptedRev = 999
+	ctx4 := &StepContext{}
+	eng.handleStreamReady(ctx4, &corev1.StreamReadyEvent{LegId: 7, ServerTimeMs: 2_000})
+	if !eng.selfDescribeAttempted || eng.selfDescribeAttemptedRev != 1 {
+		t.Fatalf("expected self-describe to retry on reconnect after prior failure (attempted=%v, rev=%d)", eng.selfDescribeAttempted, eng.selfDescribeAttemptedRev)
+	}
+}
+
+func TestPruneUntrustedCachesEmptyTrustedMapPrunesAll(t *testing.T) {
+	eng := NewEngine()
+	eng.machines["m1"] = &MachineEntry{Machine: lists.Machine{ID: "m1", Online: true}}
+	eng.machines["m2"] = &MachineEntry{Machine: lists.Machine{ID: "m2", Online: true}}
+	eng.security.Loaded = true
+	eng.security.IsMember = true
+	eng.security.TrustedMachines = map[string]bool{}
+
+	ctx := &StepContext{}
+	eng.pruneUntrustedCaches(ctx)
+	var schedDel []string
+	for _, eff := range ctx.Raw {
+		if sd := eff.GetScheduleDeleteCache(); sd != nil {
+			schedDel = append(schedDel, sd.MachineId)
+		}
+	}
+	if len(schedDel) != 2 || schedDel[0] != "m1" || schedDel[1] != "m2" {
+		t.Fatalf("expected all machines pruned when TrustedMachines is empty, got %v", schedDel)
+	}
 }

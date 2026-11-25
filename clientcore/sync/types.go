@@ -228,6 +228,7 @@ type SettledCommand struct {
 	Expired     bool
 	Frozen      bool
 
+	SealedResult *v1.Envelope
 }
 
 // StepContext accumulates side effects, dirty flags, and settled command notifications for one Step call.

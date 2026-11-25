@@ -3528,6 +3528,38 @@ public struct PBScheduleFormUpdateTimingAction: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
+public struct PBScheduleWriteCacheEffect: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var opID: UInt64 = 0
+
+  public var machineID: String = String()
+
+  public var requestID: String = String()
+
+  public var sealedResultBytes: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBScheduleCacheWrittenEvent: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var opID: UInt64 = 0
+
+  public var machineID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate let _protobuf_package = "remoteagent.core.v1"
@@ -8095,6 +8127,86 @@ extension PBScheduleFormUpdateTimingAction: SwiftProtobuf.Message, SwiftProtobuf
       }
       if !storagesAreEqual {return false}
     }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBScheduleWriteCacheEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ScheduleWriteCacheEffect"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}machine_id\0\u{3}request_id\0\u{3}sealed_result_bytes\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.opID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.requestID) }()
+      case 4: try { try decoder.decodeSingularBytesField(value: &self.sealedResultBytes) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.opID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.opID, fieldNumber: 1)
+    }
+    if !self.machineID.isEmpty {
+      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 2)
+    }
+    if !self.requestID.isEmpty {
+      try visitor.visitSingularStringField(value: self.requestID, fieldNumber: 3)
+    }
+    if !self.sealedResultBytes.isEmpty {
+      try visitor.visitSingularBytesField(value: self.sealedResultBytes, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBScheduleWriteCacheEffect, rhs: PBScheduleWriteCacheEffect) -> Bool {
+    if lhs.opID != rhs.opID {return false}
+    if lhs.machineID != rhs.machineID {return false}
+    if lhs.requestID != rhs.requestID {return false}
+    if lhs.sealedResultBytes != rhs.sealedResultBytes {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBScheduleCacheWrittenEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ScheduleCacheWrittenEvent"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}machine_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.opID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.opID != 0 {
+      try visitor.visitSingularUInt64Field(value: self.opID, fieldNumber: 1)
+    }
+    if !self.machineID.isEmpty {
+      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBScheduleCacheWrittenEvent, rhs: PBScheduleCacheWrittenEvent) -> Bool {
+    if lhs.opID != rhs.opID {return false}
+    if lhs.machineID != rhs.machineID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

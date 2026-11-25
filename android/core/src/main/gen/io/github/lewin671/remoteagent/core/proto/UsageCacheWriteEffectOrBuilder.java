@@ -32,4 +32,10 @@ public interface UsageCacheWriteEffectOrBuilder extends
    * @return The snapshot.
    */
   io.github.lewin671.remoteagent.proto.UsageStatsResponse getSnapshot();
+
+  /**
+   * <code>uint64 op_id = 3 [json_name = "opId"];</code>
+   * @return The opId.
+   */
+  long getOpId();
 }

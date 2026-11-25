@@ -2012,6 +2012,7 @@ type UsageCacheWriteEffect struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MachineId     string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
 	Snapshot      *v1.UsageStatsResponse `protobuf:"bytes,2,opt,name=snapshot,proto3" json:"snapshot,omitempty"`
+	OpId          uint64                 `protobuf:"varint,3,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2058,6 +2059,65 @@ func (x *UsageCacheWriteEffect) GetSnapshot() *v1.UsageStatsResponse {
 		return x.Snapshot
 	}
 	return nil
+}
+
+func (x *UsageCacheWriteEffect) GetOpId() uint64 {
+	if x != nil {
+		return x.OpId
+	}
+	return 0
+}
+
+type UsageCacheWrittenEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OpId          uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
+	MachineId     string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UsageCacheWrittenEvent) Reset() {
+	*x = UsageCacheWrittenEvent{}
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UsageCacheWrittenEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UsageCacheWrittenEvent) ProtoMessage() {}
+
+func (x *UsageCacheWrittenEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UsageCacheWrittenEvent.ProtoReflect.Descriptor instead.
+func (*UsageCacheWrittenEvent) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *UsageCacheWrittenEvent) GetOpId() uint64 {
+	if x != nil {
+		return x.OpId
+	}
+	return 0
+}
+
+func (x *UsageCacheWrittenEvent) GetMachineId() string {
+	if x != nil {
+		return x.MachineId
+	}
+	return ""
 }
 
 var File_remoteagent_core_v1_usage_view_proto protoreflect.FileDescriptor
@@ -2272,11 +2332,16 @@ const file_remoteagent_core_v1_usage_view_proto_rawDesc = "" +
 	"\x15UsageCacheLoadedEvent\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12>\n" +
-	"\bsnapshot\x18\x02 \x01(\v2\".remoteagent.v1.UsageStatsResponseR\bsnapshot\"v\n" +
+	"\bsnapshot\x18\x02 \x01(\v2\".remoteagent.v1.UsageStatsResponseR\bsnapshot\"\x8b\x01\n" +
 	"\x15UsageCacheWriteEffect\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12>\n" +
-	"\bsnapshot\x18\x02 \x01(\v2\".remoteagent.v1.UsageStatsResponseR\bsnapshot*\xac\x01\n" +
+	"\bsnapshot\x18\x02 \x01(\v2\".remoteagent.v1.UsageStatsResponseR\bsnapshot\x12\x13\n" +
+	"\x05op_id\x18\x03 \x01(\x04R\x04opId\"L\n" +
+	"\x16UsageCacheWrittenEvent\x12\x13\n" +
+	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12\x1d\n" +
+	"\n" +
+	"machine_id\x18\x02 \x01(\tR\tmachineId*\xac\x01\n" +
 	"\x0fUsageSortColumn\x12!\n" +
 	"\x1dUSAGE_SORT_COLUMN_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18USAGE_SORT_COLUMN_TOKENS\x10\x01\x12\x1f\n" +
@@ -2313,7 +2378,7 @@ func file_remoteagent_core_v1_usage_view_proto_rawDescGZIP() []byte {
 }
 
 var file_remoteagent_core_v1_usage_view_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_remoteagent_core_v1_usage_view_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_remoteagent_core_v1_usage_view_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_remoteagent_core_v1_usage_view_proto_goTypes = []any{
 	(UsageSortColumn)(0),                 // 0: remoteagent.core.v1.UsageSortColumn
 	(UsageEmptyKind)(0),                  // 1: remoteagent.core.v1.UsageEmptyKind
@@ -2336,47 +2401,48 @@ var file_remoteagent_core_v1_usage_view_proto_goTypes = []any{
 	(*UsageScreenScrubEvent)(nil),        // 18: remoteagent.core.v1.UsageScreenScrubEvent
 	(*UsageCacheLoadedEvent)(nil),        // 19: remoteagent.core.v1.UsageCacheLoadedEvent
 	(*UsageCacheWriteEffect)(nil),        // 20: remoteagent.core.v1.UsageCacheWriteEffect
-	(*Text)(nil),                         // 21: remoteagent.core.v1.Text
-	(v1.Agent)(0),                        // 22: remoteagent.v1.Agent
-	(v1.UsageRangePreset)(0),             // 23: remoteagent.v1.UsageRangePreset
-	(v1.UsageSourceState)(0),             // 24: remoteagent.v1.UsageSourceState
-	(v1.UsageBucketGranularity)(0),       // 25: remoteagent.v1.UsageBucketGranularity
-	(*v1.UsageStatsResponse)(nil),        // 26: remoteagent.v1.UsageStatsResponse
+	(*UsageCacheWrittenEvent)(nil),       // 21: remoteagent.core.v1.UsageCacheWrittenEvent
+	(*Text)(nil),                         // 22: remoteagent.core.v1.Text
+	(v1.Agent)(0),                        // 23: remoteagent.v1.Agent
+	(v1.UsageRangePreset)(0),             // 24: remoteagent.v1.UsageRangePreset
+	(v1.UsageSourceState)(0),             // 25: remoteagent.v1.UsageSourceState
+	(v1.UsageBucketGranularity)(0),       // 26: remoteagent.v1.UsageBucketGranularity
+	(*v1.UsageStatsResponse)(nil),        // 27: remoteagent.v1.UsageStatsResponse
 }
 var file_remoteagent_core_v1_usage_view_proto_depIdxs = []int32{
 	2,  // 0: remoteagent.core.v1.UsageBannerView.kind:type_name -> remoteagent.core.v1.UsageBannerKind
-	21, // 1: remoteagent.core.v1.UsageBannerView.text:type_name -> remoteagent.core.v1.Text
-	22, // 2: remoteagent.core.v1.UsageScreenRequest.focus_agent:type_name -> remoteagent.v1.Agent
-	23, // 3: remoteagent.core.v1.UsageScreenRequest.preset:type_name -> remoteagent.v1.UsageRangePreset
-	21, // 4: remoteagent.core.v1.UsageCompositionView.uncached_input_text:type_name -> remoteagent.core.v1.Text
-	21, // 5: remoteagent.core.v1.UsageCompositionView.cache_read_text:type_name -> remoteagent.core.v1.Text
-	21, // 6: remoteagent.core.v1.UsageCompositionView.cache_write_text:type_name -> remoteagent.core.v1.Text
-	21, // 7: remoteagent.core.v1.UsageCompositionView.output_text:type_name -> remoteagent.core.v1.Text
-	21, // 8: remoteagent.core.v1.UsageCompositionView.reasoning_output_text:type_name -> remoteagent.core.v1.Text
-	22, // 9: remoteagent.core.v1.UsageHeroView.selected_agent:type_name -> remoteagent.v1.Agent
+	22, // 1: remoteagent.core.v1.UsageBannerView.text:type_name -> remoteagent.core.v1.Text
+	23, // 2: remoteagent.core.v1.UsageScreenRequest.focus_agent:type_name -> remoteagent.v1.Agent
+	24, // 3: remoteagent.core.v1.UsageScreenRequest.preset:type_name -> remoteagent.v1.UsageRangePreset
+	22, // 4: remoteagent.core.v1.UsageCompositionView.uncached_input_text:type_name -> remoteagent.core.v1.Text
+	22, // 5: remoteagent.core.v1.UsageCompositionView.cache_read_text:type_name -> remoteagent.core.v1.Text
+	22, // 6: remoteagent.core.v1.UsageCompositionView.cache_write_text:type_name -> remoteagent.core.v1.Text
+	22, // 7: remoteagent.core.v1.UsageCompositionView.output_text:type_name -> remoteagent.core.v1.Text
+	22, // 8: remoteagent.core.v1.UsageCompositionView.reasoning_output_text:type_name -> remoteagent.core.v1.Text
+	23, // 9: remoteagent.core.v1.UsageHeroView.selected_agent:type_name -> remoteagent.v1.Agent
 	5,  // 10: remoteagent.core.v1.UsageHeroView.composition:type_name -> remoteagent.core.v1.UsageCompositionView
-	21, // 11: remoteagent.core.v1.UsageHeroView.total_tokens_text:type_name -> remoteagent.core.v1.Text
-	21, // 12: remoteagent.core.v1.UsageHeroView.scope_text:type_name -> remoteagent.core.v1.Text
-	21, // 13: remoteagent.core.v1.UsageHeroView.subline_text:type_name -> remoteagent.core.v1.Text
+	22, // 11: remoteagent.core.v1.UsageHeroView.total_tokens_text:type_name -> remoteagent.core.v1.Text
+	22, // 12: remoteagent.core.v1.UsageHeroView.scope_text:type_name -> remoteagent.core.v1.Text
+	22, // 13: remoteagent.core.v1.UsageHeroView.subline_text:type_name -> remoteagent.core.v1.Text
 	7,  // 14: remoteagent.core.v1.UsageBarChartView.buckets:type_name -> remoteagent.core.v1.UsageBarBucketView
-	21, // 15: remoteagent.core.v1.UsageBarChartView.y_max_text:type_name -> remoteagent.core.v1.Text
-	21, // 16: remoteagent.core.v1.UsageBarChartView.y_mid_text:type_name -> remoteagent.core.v1.Text
+	22, // 15: remoteagent.core.v1.UsageBarChartView.y_max_text:type_name -> remoteagent.core.v1.Text
+	22, // 16: remoteagent.core.v1.UsageBarChartView.y_mid_text:type_name -> remoteagent.core.v1.Text
 	9,  // 17: remoteagent.core.v1.UsageMetricStripView.all_points:type_name -> remoteagent.core.v1.UsageStripPointView
 	9,  // 18: remoteagent.core.v1.UsageMetricStripView.selected_points:type_name -> remoteagent.core.v1.UsageStripPointView
-	21, // 19: remoteagent.core.v1.UsageMetricStripView.current_value_text:type_name -> remoteagent.core.v1.Text
-	21, // 20: remoteagent.core.v1.UsageMetricStripView.min_value_text:type_name -> remoteagent.core.v1.Text
-	21, // 21: remoteagent.core.v1.UsageMetricStripView.max_value_text:type_name -> remoteagent.core.v1.Text
-	22, // 22: remoteagent.core.v1.UsageModelRowView.agent:type_name -> remoteagent.v1.Agent
-	21, // 23: remoteagent.core.v1.UsageModelRowView.total_tokens_text:type_name -> remoteagent.core.v1.Text
-	21, // 24: remoteagent.core.v1.UsageModelRowView.cache_hit_text:type_name -> remoteagent.core.v1.Text
-	21, // 25: remoteagent.core.v1.UsageModelRowView.speed_text:type_name -> remoteagent.core.v1.Text
-	21, // 26: remoteagent.core.v1.UsageModelRowView.ttft_text:type_name -> remoteagent.core.v1.Text
-	21, // 27: remoteagent.core.v1.UsageModelRowView.delta_text:type_name -> remoteagent.core.v1.Text
-	22, // 28: remoteagent.core.v1.UsageAgentSourceView.agent:type_name -> remoteagent.v1.Agent
-	24, // 29: remoteagent.core.v1.UsageAgentSourceView.state:type_name -> remoteagent.v1.UsageSourceState
-	21, // 30: remoteagent.core.v1.UsageViewModel.error_text:type_name -> remoteagent.core.v1.Text
-	23, // 31: remoteagent.core.v1.UsageViewModel.preset:type_name -> remoteagent.v1.UsageRangePreset
-	25, // 32: remoteagent.core.v1.UsageViewModel.granularity:type_name -> remoteagent.v1.UsageBucketGranularity
+	22, // 19: remoteagent.core.v1.UsageMetricStripView.current_value_text:type_name -> remoteagent.core.v1.Text
+	22, // 20: remoteagent.core.v1.UsageMetricStripView.min_value_text:type_name -> remoteagent.core.v1.Text
+	22, // 21: remoteagent.core.v1.UsageMetricStripView.max_value_text:type_name -> remoteagent.core.v1.Text
+	23, // 22: remoteagent.core.v1.UsageModelRowView.agent:type_name -> remoteagent.v1.Agent
+	22, // 23: remoteagent.core.v1.UsageModelRowView.total_tokens_text:type_name -> remoteagent.core.v1.Text
+	22, // 24: remoteagent.core.v1.UsageModelRowView.cache_hit_text:type_name -> remoteagent.core.v1.Text
+	22, // 25: remoteagent.core.v1.UsageModelRowView.speed_text:type_name -> remoteagent.core.v1.Text
+	22, // 26: remoteagent.core.v1.UsageModelRowView.ttft_text:type_name -> remoteagent.core.v1.Text
+	22, // 27: remoteagent.core.v1.UsageModelRowView.delta_text:type_name -> remoteagent.core.v1.Text
+	23, // 28: remoteagent.core.v1.UsageAgentSourceView.agent:type_name -> remoteagent.v1.Agent
+	25, // 29: remoteagent.core.v1.UsageAgentSourceView.state:type_name -> remoteagent.v1.UsageSourceState
+	22, // 30: remoteagent.core.v1.UsageViewModel.error_text:type_name -> remoteagent.core.v1.Text
+	24, // 31: remoteagent.core.v1.UsageViewModel.preset:type_name -> remoteagent.v1.UsageRangePreset
+	26, // 32: remoteagent.core.v1.UsageViewModel.granularity:type_name -> remoteagent.v1.UsageBucketGranularity
 	0,  // 33: remoteagent.core.v1.UsageViewModel.sort_by:type_name -> remoteagent.core.v1.UsageSortColumn
 	12, // 34: remoteagent.core.v1.UsageViewModel.sources:type_name -> remoteagent.core.v1.UsageAgentSourceView
 	6,  // 35: remoteagent.core.v1.UsageViewModel.hero:type_name -> remoteagent.core.v1.UsageHeroView
@@ -2385,18 +2451,18 @@ var file_remoteagent_core_v1_usage_view_proto_depIdxs = []int32{
 	10, // 38: remoteagent.core.v1.UsageViewModel.output_speed_strip:type_name -> remoteagent.core.v1.UsageMetricStripView
 	10, // 39: remoteagent.core.v1.UsageViewModel.ttft_strip:type_name -> remoteagent.core.v1.UsageMetricStripView
 	11, // 40: remoteagent.core.v1.UsageViewModel.rows:type_name -> remoteagent.core.v1.UsageModelRowView
-	21, // 41: remoteagent.core.v1.UsageViewModel.unsupported_footnote:type_name -> remoteagent.core.v1.Text
-	21, // 42: remoteagent.core.v1.UsageViewModel.subtitle:type_name -> remoteagent.core.v1.Text
+	22, // 41: remoteagent.core.v1.UsageViewModel.unsupported_footnote:type_name -> remoteagent.core.v1.Text
+	22, // 42: remoteagent.core.v1.UsageViewModel.subtitle:type_name -> remoteagent.core.v1.Text
 	1,  // 43: remoteagent.core.v1.UsageViewModel.empty_kind:type_name -> remoteagent.core.v1.UsageEmptyKind
-	21, // 44: remoteagent.core.v1.UsageViewModel.empty_title:type_name -> remoteagent.core.v1.Text
-	21, // 45: remoteagent.core.v1.UsageViewModel.empty_body:type_name -> remoteagent.core.v1.Text
+	22, // 44: remoteagent.core.v1.UsageViewModel.empty_title:type_name -> remoteagent.core.v1.Text
+	22, // 45: remoteagent.core.v1.UsageViewModel.empty_body:type_name -> remoteagent.core.v1.Text
 	3,  // 46: remoteagent.core.v1.UsageViewModel.banners:type_name -> remoteagent.core.v1.UsageBannerView
-	21, // 47: remoteagent.core.v1.UsageViewModel.charts_a11y_label:type_name -> remoteagent.core.v1.Text
-	23, // 48: remoteagent.core.v1.UsageScreenOpenEvent.preset:type_name -> remoteagent.v1.UsageRangePreset
-	22, // 49: remoteagent.core.v1.UsageScreenOpenEvent.focus_agent:type_name -> remoteagent.v1.Agent
+	22, // 47: remoteagent.core.v1.UsageViewModel.charts_a11y_label:type_name -> remoteagent.core.v1.Text
+	24, // 48: remoteagent.core.v1.UsageScreenOpenEvent.preset:type_name -> remoteagent.v1.UsageRangePreset
+	23, // 49: remoteagent.core.v1.UsageScreenOpenEvent.focus_agent:type_name -> remoteagent.v1.Agent
 	0,  // 50: remoteagent.core.v1.UsageScreenSelectSortEvent.sort_by:type_name -> remoteagent.core.v1.UsageSortColumn
-	26, // 51: remoteagent.core.v1.UsageCacheLoadedEvent.snapshot:type_name -> remoteagent.v1.UsageStatsResponse
-	26, // 52: remoteagent.core.v1.UsageCacheWriteEffect.snapshot:type_name -> remoteagent.v1.UsageStatsResponse
+	27, // 51: remoteagent.core.v1.UsageCacheLoadedEvent.snapshot:type_name -> remoteagent.v1.UsageStatsResponse
+	27, // 52: remoteagent.core.v1.UsageCacheWriteEffect.snapshot:type_name -> remoteagent.v1.UsageStatsResponse
 	53, // [53:53] is the sub-list for method output_type
 	53, // [53:53] is the sub-list for method input_type
 	53, // [53:53] is the sub-list for extension type_name
@@ -2416,7 +2482,7 @@ func file_remoteagent_core_v1_usage_view_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_core_v1_usage_view_proto_rawDesc), len(file_remoteagent_core_v1_usage_view_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   18,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

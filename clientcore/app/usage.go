@@ -202,6 +202,16 @@ func (c *Core) dispatchUsageUI(ctx *sync.StepContext, ev *corev1.Event) []*corev
 		if k.UsageCacheLoaded == nil || k.UsageCacheLoaded.MachineId == "" || k.UsageCacheLoaded.Snapshot == nil {
 			return nil
 		}
+		if !c.m.sync.CanUseMachineCache(k.UsageCacheLoaded.MachineId) {
+			return []*corev1.Effect{{
+				Effect: &corev1.Effect_UsageCacheRequest{
+					UsageCacheRequest: &corev1.UsageCacheRequestEffect{
+						MachineId:   k.UsageCacheLoaded.MachineId,
+						DeleteCache: true,
+					},
+				},
+			}}
+		}
 		snap := k.UsageCacheLoaded.Snapshot
 		key := usageCacheKey(k.UsageCacheLoaded.MachineId, snap.Preset, 0, 0)
 		entry := c.m.ensureUsageEntry(key)
@@ -217,12 +227,29 @@ func (c *Core) dispatchUsageUI(ctx *sync.StepContext, ev *corev1.Event) []*corev
 		if len(c.m.ensureSessionStore().opened) > 0 {
 			c.m.ensureSessionStore().pendingDirty = true
 		}
+
+	case *corev1.Event_UsageCacheWritten:
+		if k.UsageCacheWritten == nil || k.UsageCacheWritten.MachineId == "" {
+			return nil
+		}
+		mid := k.UsageCacheWritten.MachineId
+		if !c.m.sync.CanUseMachineCache(mid) {
+			c.forgetUsageMachine(mid)
+			return []*corev1.Effect{{
+				Effect: &corev1.Effect_UsageCacheRequest{
+					UsageCacheRequest: &corev1.UsageCacheRequestEffect{
+						MachineId:   mid,
+						DeleteCache: true,
+					},
+				},
+			}}
+		}
 	}
 	return nil
 }
 
 func (c *Core) maybeHydrateUsageCache(machineID string, effects *[]*corev1.Effect) {
-	if machineID == "" || effects == nil {
+	if machineID == "" || effects == nil || !c.m.sync.CanUseMachineCache(machineID) {
 		return
 	}
 	if c.m.usageCacheRequested == nil {
@@ -358,17 +385,19 @@ func (c *Core) onUsageStatsSettled(sc sync.SettledCommand, meta cmdMeta, dirty *
 		}
 		c.m.lastUsageFetchedMs[meta.usageKey] = nowMs
 
-		if meta.usageKey.Preset != v1.UsageRangePreset_USAGE_RANGE_PRESET_CUSTOM {
+		if meta.usageKey.Preset != v1.UsageRangePreset_USAGE_RANGE_PRESET_CUSTOM && c.m.sync.CanUseMachineCache(meta.machineID) {
 			entry.Cached = resp.Clone()
 			entry.CachedAtMs = resp.GeneratedAtMs
 			if entry.CachedAtMs == 0 {
 				entry.CachedAtMs = nowMs
 			}
+			c.m.nextUsageCacheOpID++
 			out = append(out, &corev1.Effect{
 				Effect: &corev1.Effect_UsageCacheWrite{
 					UsageCacheWrite: &corev1.UsageCacheWriteEffect{
 						MachineId: meta.machineID,
 						Snapshot:  resp.Clone(),
+						OpId:      c.m.nextUsageCacheOpID,
 					},
 				},
 			})

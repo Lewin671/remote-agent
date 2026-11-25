@@ -78,12 +78,14 @@ type Model struct {
 	lastUsageFetchedMs      map[screens.UsageCacheKey]int64
 	activeUsageReq          *corev1.UsageScreenRequest
 	lastUsageParams         map[string]*corev1.UsageScreenOpenEvent
-	homeFocusDigest              uint64
-	homeFocusDigestValid         bool
-	homeFocusReconcileCount      int
-	usageCacheRequested          map[string]bool
-	activeNewSessionPagingKey    string
-	pendingNotifTap              *corev1.ResolveNotificationTapAction
+	homeFocusDigest         uint64
+	homeFocusDigestValid    bool
+	homeFocusReconcileCount int
+
+	usageCacheRequested       map[string]bool
+	nextUsageCacheOpID        uint64
+	activeNewSessionPagingKey string
+	pendingNotifTap           *corev1.ResolveNotificationTapAction
 }
 
 func newModel() *Model {
@@ -94,8 +96,9 @@ func newModel() *Model {
 		pendingCmdMeta:     make(map[string]cmdMeta),
 		oneShotReqByOp:     make(map[uint64]string),
 		frozenSchedOps:     make(map[string]frozenSchedOp),
-		lastUsageFetchedMs:  make(map[screens.UsageCacheKey]int64),
-		lastUsageParams:     make(map[string]*corev1.UsageScreenOpenEvent),
+		lastUsageFetchedMs: make(map[screens.UsageCacheKey]int64),
+		lastUsageParams:    make(map[string]*corev1.UsageScreenOpenEvent),
+
 		usageCacheRequested: make(map[string]bool),
 	}
 	m.state.Schedules.SessionEvents = func(sid string) ([]*v1.Event, bool) {

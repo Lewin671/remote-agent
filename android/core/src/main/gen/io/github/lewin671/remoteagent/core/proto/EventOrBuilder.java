@@ -822,6 +822,28 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.NewSessionCloseAction getNewSessionClose();
 
   /**
+   * <code>.remoteagent.core.v1.ScheduleCacheWrittenEvent schedule_cache_written = 392 [json_name = "scheduleCacheWritten"];</code>
+   * @return Whether the scheduleCacheWritten field is set.
+   */
+  boolean hasScheduleCacheWritten();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleCacheWrittenEvent schedule_cache_written = 392 [json_name = "scheduleCacheWritten"];</code>
+   * @return The scheduleCacheWritten.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleCacheWrittenEvent getScheduleCacheWritten();
+
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheWrittenEvent usage_cache_written = 393 [json_name = "usageCacheWritten"];</code>
+   * @return Whether the usageCacheWritten field is set.
+   */
+  boolean hasUsageCacheWritten();
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheWrittenEvent usage_cache_written = 393 [json_name = "usageCacheWritten"];</code>
+   * @return The usageCacheWritten.
+   */
+  io.github.lewin671.remoteagent.core.proto.UsageCacheWrittenEvent getUsageCacheWritten();
+
+  /**
    * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>
    * @return Whether the updateClientName field is set.
    */

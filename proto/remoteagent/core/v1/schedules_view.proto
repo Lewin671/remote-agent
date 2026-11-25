@@ -722,3 +722,15 @@ message ScheduleFormUpdateTimingAction {
   bool reset_draft = 20;
   optional int64 jitter_minutes = 21;
 }
+
+message ScheduleWriteCacheEffect {
+  uint64 op_id = 1;
+  string machine_id = 2;
+  string request_id = 3;
+  bytes sealed_result_bytes = 4;
+}
+
+message ScheduleCacheWrittenEvent {
+  uint64 op_id = 1;
+  string machine_id = 2;
+}

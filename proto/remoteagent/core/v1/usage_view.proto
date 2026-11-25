@@ -239,4 +239,10 @@ message UsageCacheLoadedEvent {
 message UsageCacheWriteEffect {
   string machine_id = 1;
   remoteagent.v1.UsageStatsResponse snapshot = 2;
+  uint64 op_id = 3;
+}
+
+message UsageCacheWrittenEvent {
+  uint64 op_id = 1;
+  string machine_id = 2;
 }

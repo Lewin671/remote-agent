@@ -184,6 +184,23 @@ func (e *Engine) HasWatchedSessions() bool {
 	return len(e.watchedSessions) > 0
 }
 
+// CanUseMachineCache reports whether local schedule/usage caches for machineID are
+// authorized under the loaded security state. Before security loads (cold start),
+// signed caches remain readable offline; once security loads, both self membership
+// and machine trust (active member, excluding revoked/archived machines) are required.
+func (e *Engine) CanUseMachineCache(machineID string) bool {
+	if machineID == "" || e.removed {
+		return false
+	}
+	if !e.security.Loaded {
+		return true
+	}
+	if !e.security.IsMember {
+		return false
+	}
+	return e.security.TrustedMachines[machineID]
+}
+
 // World returns the core's synchronized world. The engine is its only writer:
 // derived fields are refreshed when HandleEvent and Run return and when
 // SeedSession and EnqueuePrefsOp change the directory or prefs mid-step.

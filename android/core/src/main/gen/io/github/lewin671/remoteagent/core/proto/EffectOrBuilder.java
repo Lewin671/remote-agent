@@ -275,11 +275,19 @@ public interface EffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect getUsageCacheWrite();
 
   /**
+   * <pre>
+   * P2-4 housekeeping &amp; cache gates (77-79, 89; 80-88 used by drafts/attachments).
+   * </pre>
+   *
    * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
    * @return Whether the watchedSessions field is set.
    */
   boolean hasWatchedSessions();
   /**
+   * <pre>
+   * P2-4 housekeeping &amp; cache gates (77-79, 89; 80-88 used by drafts/attachments).
+   * </pre>
+   *
    * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
    * @return The watchedSessions.
    */
@@ -405,6 +413,17 @@ public interface EffectOrBuilder extends
    * @return The attachmentReleaseLocal.
    */
   io.github.lewin671.remoteagent.core.proto.AttachmentReleaseLocalEffect getAttachmentReleaseLocal();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleWriteCacheEffect schedule_write_cache = 89 [json_name = "scheduleWriteCache"];</code>
+   * @return Whether the scheduleWriteCache field is set.
+   */
+  boolean hasScheduleWriteCache();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleWriteCacheEffect schedule_write_cache = 89 [json_name = "scheduleWriteCache"];</code>
+   * @return The scheduleWriteCache.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleWriteCacheEffect getScheduleWriteCache();
 
   /**
    * <code>.remoteagent.core.v1.SessionRestoreComposerEffect session_restore_composer = 40 [json_name = "sessionRestoreComposer"];</code>

@@ -78,6 +78,8 @@ type PreparedCommand struct {
 	SealedHeadHash  [32]byte
 	RequestKeyHash  []byte
 	PayloadHash     []byte
+
+	VerifiedSealedResult *v1.Envelope
 }
 
 // AttemptTracker preserves one unknown command per UI action slot until settled or explicitly abandoned.
@@ -801,6 +803,10 @@ func (e *Engine) settleCommand(
 		}
 	}
 
+	var sealedResult *v1.Envelope
+	if cat == outcome.Executed {
+		sealedResult = prep.VerifiedSealedResult
+	}
 	ctx.Settled = append(ctx.Settled, SettledCommand{
 		RequestID:   prep.RequestID,
 		SlotKey:     prep.SlotKey,
@@ -813,6 +819,8 @@ func (e *Engine) settleCommand(
 		FromDaemon:  res != nil && cat != outcome.Unknown,
 		Expired:     trackerExpired || expired,
 		Frozen:      frozen,
+
+		SealedResult: sealedResult,
 	})
 	ctx.Dirty.Add(true, true, true)
 }
