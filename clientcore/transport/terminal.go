@@ -19,6 +19,12 @@ const (
 
 const (
 	termDisconnectTimeoutMs = 15_000
+	termDefaultDeadlineMs   = 60_000
+	termQueryRetryMs        = 3_000
+	termQueryMaxRetries     = 3
+	termReplayDebounceMs    = 50
+	termReplayRetryMs       = 2_000
+	termReplayMaxAttempts   = 4
 	earlyOutputMaxFrames    = 16
 	earlyOutputMaxBytes     = 256 << 10
 	earlyOutputTTLMs        = 5_000
@@ -98,9 +104,17 @@ type clientTermStream struct {
 	disconnectedAt        int64
 	queryInFlight         bool
 	queryID               []byte
+	querySentAt           int64
+	queryRetries          int
+	querySnapshotToken    []byte
 	pendingDetails        []linkcore.TermFrameStatus
+	barrierInFlight       bool
+	barrierID             []byte
+	barrierSentAt         int64
 	needsConfirm          bool
 	replaySentSeq         uint64
+	replayDueAt           int64
+	replayAttempts        int
 }
 
 func (c *Coordinator) ensureTermStreams() {
@@ -209,9 +223,19 @@ func (c *Coordinator) TerminalDirectLeg(now int64, streamID string, legID []byte
 	}
 	if !direct {
 		if open {
-			wasDaemonReady := ct.daemonReady
 			ct.daemonReady = true
-			if ct.relayOpen && !wasDaemonReady && (len(legID) == 0 || string(legID) == ct.relayLegID) {
+			if ct.needsConfirm {
+				ct.relayOpen = true
+				ct.relayRecoveryInFlight = false
+				ct.relayRecoveryLeg = ""
+				ct.relayRetryAt = 0
+				ct.relayRetryAttempts = 0
+				if len(legID) > 0 {
+					ct.relayLegID = string(legID)
+				}
+				return c.take()
+			}
+			if ct.relayOpen && (len(legID) == 0 || string(legID) == ct.relayLegID) {
 				// H-B: initial openTerminal RPC confirmed stream exists on daemon -> attach direct now.
 				c.maybeAttachDirectTerminal(now, ct)
 				return c.take()
@@ -282,10 +306,9 @@ func (c *Coordinator) TerminalDirectLeg(now int64, streamID string, legID []byte
 	} else if !open && (pcID == 0 || ct.directPCID == pcID) {
 		ct.directAttached = false
 		ct.directPCID = 0
-		ct.queryInFlight = false
-		ct.queryID = nil
+		ct.clearPendingRecoveryControls()
 		ct.stream.CloseLeg("direct", ct.directGen)
-		if !ct.relayOpen {
+		if !ct.relayOpen && !ct.needsConfirm {
 			ct.disconnectedAll = true
 			ct.disconnectedAt = now
 			ct.stream.NetworkRecovery = true
@@ -335,6 +358,7 @@ func (c *Coordinator) TerminalDirectInput(now int64, streamID string, seq uint64
 		if err := ct.stream.CacheInput(uint64(now), linkcore.TermFrame{
 			Seq:         seq,
 			PayloadHash: hash32,
+			DeadlineMs:  termFrameDeadlineMs(now, sealedEnvelope),
 			RawBytes:    len(sealedEnvelope),
 			IsInput:     isInput,
 			RawEnvelope: append([]byte(nil), sealedEnvelope...),
@@ -356,6 +380,7 @@ func (c *Coordinator) TerminalDirectInput(now int64, streamID string, seq uint64
 		if err := ct.stream.CacheInput(uint64(now), linkcore.TermFrame{
 			Seq:         seq,
 			PayloadHash: hash32,
+			DeadlineMs:  termFrameDeadlineMs(now, sealedEnvelope),
 			RawBytes:    len(sealedEnvelope),
 			IsInput:     isInput,
 			RawEnvelope: append([]byte(nil), sealedEnvelope...),
@@ -410,6 +435,7 @@ func (c *Coordinator) processTerminalOutput(now int64, ct *clientTermStream, seq
 	action, ready, err := ct.stream.ReceiveOutput(uint64(now), linkcore.TermFrame{
 		Seq:         seq,
 		PayloadHash: hash32,
+		DeadlineMs:  uint64(now) + termDefaultDeadlineMs,
 		RawBytes:    len(payload),
 		PlainBytes:  append([]byte(nil), payload...),
 	})
@@ -441,6 +467,10 @@ func (c *Coordinator) processTerminalOutput(now int64, ct *clientTermStream, seq
 			}
 			cur = next
 		}
+		if ct.stream.OutputGapDue() == 0 {
+			ct.replayDueAt = 0
+			ct.replayAttempts = 0
+		}
 		if len(payloads) > 0 {
 			c.emit(CoordTerminalDeliver{StreamID: ct.streamID, Payloads: payloads})
 		}
@@ -460,10 +490,101 @@ func (c *Coordinator) processTerminalOutput(now int64, ct *clientTermStream, seq
 			c.sendClientOutputAck(now, ct)
 		}
 	case linkcore.TermOutputBuffered:
-		// Out-of-order frame buffered; 10s gap timer / Replay will fill missing seqs.
+		// Schedule a short-debounced ControlReplay so gaps recover well before the 10s timeout.
+		if ct.stream.OutputGapDue() > 0 && ct.replayDueAt == 0 {
+			ct.replayDueAt = now + termReplayDebounceMs
+		}
 	}
 	_ = fromDirect
 	_ = pcID
+}
+
+func (ct *clientTermStream) clearPendingRecoveryControls() {
+	ct.queryInFlight = false
+	ct.queryID = nil
+	ct.querySentAt = 0
+	ct.querySnapshotToken = nil
+	ct.pendingDetails = nil
+	ct.barrierInFlight = false
+	ct.barrierID = nil
+	ct.barrierSentAt = 0
+}
+
+// termFrameDeadlineMs extracts Header.deadline_ms (field 7 inside Envelope.header
+// field 1) when sealedEnvelope is a protobuf Envelope; otherwise falls back to
+// now + termDefaultDeadlineMs (60s).
+func termFrameDeadlineMs(now int64, sealedEnvelope []byte) uint64 {
+	fallback := uint64(now) + termDefaultDeadlineMs
+	hdr := extractProtoBytesField(sealedEnvelope, 1)
+	if len(hdr) == 0 {
+		return fallback
+	}
+	if dl := extractProtoVarintField(hdr, 7); dl > 0 {
+		return dl
+	}
+	return fallback
+}
+
+func extractProtoBytesField(raw []byte, wantField uint64) []byte {
+	pos := 0
+	for pos < len(raw) {
+		tag, n := readUvarint(raw[pos:])
+		if n <= 0 {
+			return nil
+		}
+		pos += n
+		fieldNum := tag >> 3
+		wire := tag & 7
+		if wire == 2 {
+			size, m := readUvarint(raw[pos:])
+			if m <= 0 || size > uint64(len(raw)-pos-m) {
+				return nil
+			}
+			pos += m
+			sub := raw[pos : pos+int(size)]
+			pos += int(size)
+			if fieldNum == wantField {
+				return sub
+			}
+			continue
+		}
+		skip := skipWireField(raw[pos:], wire)
+		if skip < 0 {
+			return nil
+		}
+		pos += skip
+	}
+	return nil
+}
+
+func extractProtoVarintField(raw []byte, wantField uint64) uint64 {
+	pos := 0
+	for pos < len(raw) {
+		tag, n := readUvarint(raw[pos:])
+		if n <= 0 {
+			return 0
+		}
+		pos += n
+		fieldNum := tag >> 3
+		wire := tag & 7
+		if wire == 0 {
+			v, m := readUvarint(raw[pos:])
+			if m <= 0 {
+				return 0
+			}
+			pos += m
+			if fieldNum == wantField {
+				return v
+			}
+			continue
+		}
+		skip := skipWireField(raw[pos:], wire)
+		if skip < 0 {
+			return 0
+		}
+		pos += skip
+	}
+	return 0
 }
 
 // isRelayFailStopFrame checks whether a plaintext TerminalFrame carries a
@@ -646,14 +767,21 @@ func (c *Coordinator) triggerRelayRecovery(now int64, r *coordRound, ct *clientT
 func (c *Coordinator) sendInputStatusQuery(now int64, r *coordRound, ct *clientTermStream, fromSeq uint64, snapshotToken []byte) {
 	var qid [16]byte
 	if _, err := c.randPool.Read(qid[:]); err != nil {
+		ct.queryInFlight = false
+		ct.queryID = nil
+		ct.querySentAt = 0
+		ct.querySnapshotToken = nil
+		ct.pendingDetails = nil
 		c.maybeNeedEntropy(CoordEntropyRefillBytes)
 		return
 	}
 	c.maybeLowWater()
 	ct.queryInFlight = true
 	ct.queryID = append([]byte(nil), qid[:]...)
+	ct.querySentAt = now
 	if fromSeq <= 1 {
 		ct.pendingDetails = nil
+		ct.querySnapshotToken = nil
 	}
 	body := linkcore.EncodeInputStatus(linkcore.InputStatusMsg{
 		Stream:        ct.streamID,
@@ -689,6 +817,12 @@ func (c *Coordinator) sendAttachDirectPath(now int64, r *coordRound, pcID, _ uin
 	ct.directPCID = pcID
 	ct.directGen = attachGen
 	ct.phase3Used = true
+	ct.queryRetries = 0
+	ct.replaySentSeq = 0
+	ct.replayAttempts = 0
+	if ct.stream.OutputGapDue() > 0 {
+		ct.replayDueAt = now
+	}
 	_ = ct.stream.AttachLeg("direct", string(leg), string(c.instance), attachGen)
 	body := linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
 		Stream:         ct.streamID,
@@ -705,7 +839,7 @@ func (c *Coordinator) sendAttachDirectPath(now int64, r *coordRound, pcID, _ uin
 }
 
 func (c *Coordinator) maybeAttachDirectTerminal(now int64, ct *clientTermStream) {
-	if !ct.daemonReady {
+	if !ct.daemonReady || ct.needsConfirm || ct.barrierInFlight {
 		return
 	}
 	r, pcID, gen, ok := c.activeTerminalRound(now, ct.machineID)
@@ -746,6 +880,7 @@ func (c *Coordinator) onTerminalAttachUnsupported(now int64, r *coordRound, stre
 	}
 	ct.directAttached = false
 	ct.directPCID = 0
+	ct.clearPendingRecoveryControls()
 	ct.relayRecoveryInFlight = false
 	ct.relayRecoveryLeg = ""
 	ct.relayRetryAt = 0
@@ -765,10 +900,9 @@ func (c *Coordinator) detachDirectTerminalsForPC(now int64, pcID uint64) {
 		if ct != nil && ct.directAttached && ct.directPCID == pcID {
 			ct.directAttached = false
 			ct.directPCID = 0
-			ct.queryInFlight = false
-			ct.queryID = nil
+			ct.clearPendingRecoveryControls()
 			ct.stream.CloseLeg("direct", ct.directGen)
-			if !ct.relayOpen {
+			if !ct.relayOpen && !ct.needsConfirm {
 				ct.disconnectedAll = true
 				ct.disconnectedAt = now
 				ct.stream.NetworkRecovery = true
@@ -804,6 +938,37 @@ func (c *Coordinator) stepClientTerminals(now int64) {
 			expiredIDs = append(expiredIDs, id)
 			continue
 		}
+		if ct.queryInFlight && ct.querySentAt > 0 && now-ct.querySentAt >= termQueryRetryMs {
+			ct.queryInFlight = false
+			ct.queryID = nil
+			ct.querySentAt = 0
+			ct.querySnapshotToken = nil
+			ct.pendingDetails = nil
+			if ct.queryRetries < termQueryMaxRetries && !ct.needsConfirm {
+				ct.queryRetries++
+				c.maybeAttachDirectTerminal(now, ct)
+			}
+		}
+		if ct.barrierInFlight && ct.barrierSentAt > 0 && now-ct.barrierSentAt >= int64(linkcore.TermBarrierTimeoutMs) {
+			ct.barrierInFlight = false
+			ct.barrierID = nil
+			ct.barrierSentAt = 0
+			if ct.directAttached {
+				ct.stream.CloseLeg("direct", ct.directGen)
+			}
+			ct.directAttached = false
+			ct.directPCID = 0
+			ct.disconnectedAll = false
+			ct.needsConfirm = true
+			ct.stream.OnInstanceChanged()
+			c.emit(CoordTerminalState{
+				StreamID:          ct.streamID,
+				State:             TermStateInstanceChange,
+				Reason:            "barrier_timeout",
+				NeedsConfirmation: true,
+			})
+			continue
+		}
 		if ct.relayRetryAt > 0 && now >= ct.relayRetryAt {
 			ct.relayRetryAt = 0
 			if !ct.relayOpen && !ct.relayRecoveryInFlight && ct.directAttached {
@@ -816,12 +981,28 @@ func (c *Coordinator) stepClientTerminals(now int64) {
 		if emitAck {
 			c.sendClientOutputAck(now, ct)
 		}
-		// Trigger Replay (Control 5) if an output gap is open and we haven't requested this seq yet.
+		// Trigger bounded ControlReplay (Control 5) for open output gaps before the 10s deadline.
 		if gapDue := ct.stream.OutputGapDue(); gapDue > 0 {
+			if uint64(now) >= gapDue {
+				// M4/M5: an unrecovered 10s output gap must close/rebuild instead of freezing forever.
+				c.emit(CoordTerminalState{StreamID: ct.streamID, State: TermStateClosed, Reason: "output_gap_timeout"})
+				expiredIDs = append(expiredIDs, id)
+				continue
+			}
 			wantFrom := ct.stream.Rendered() + 1
 			if wantFrom > ct.replaySentSeq {
+				ct.replayAttempts = 0
+			}
+			dueNow := ct.replayDueAt == 0 || now >= ct.replayDueAt
+			if dueNow && ct.replayAttempts < termReplayMaxAttempts {
 				if r, _, _, ok := c.activeTerminalRound(now, ct.machineID); ok {
 					ct.replaySentSeq = wantFrom
+					ct.replayAttempts++
+					if ct.replayAttempts < termReplayMaxAttempts {
+						ct.replayDueAt = now + termReplayRetryMs
+					} else {
+						ct.replayDueAt = 0
+					}
 					body := linkcore.EncodeReplay(linkcore.ReplayMsg{
 						Stream:    ct.streamID,
 						Direction: linkcore.TermDirToClient,
@@ -832,11 +1013,9 @@ func (c *Coordinator) stepClientTerminals(now int64) {
 					_ = c.stepSession(now, r, linkcore.QueueControl{Type: linkcore.ControlReplay, Body: body})
 				}
 			}
-			if uint64(now) >= gapDue {
-				// M4/M5: an unrecovered 10s output gap must close/rebuild instead of freezing forever.
-				c.emit(CoordTerminalState{StreamID: ct.streamID, State: TermStateClosed, Reason: "output_gap_timeout"})
-				expiredIDs = append(expiredIDs, id)
-			}
+		} else {
+			ct.replayDueAt = 0
+			ct.replayAttempts = 0
 		}
 	}
 	for _, id := range expiredIDs {
@@ -900,9 +1079,8 @@ func (c *Coordinator) handleInboundTerminalControl(now int64, r *coordRound, o p
 			return 0, nil
 		}
 		if !rep.Available {
-			ct.queryInFlight = false
-			ct.queryID = nil
-			ct.pendingDetails = nil
+			ct.clearPendingRecoveryControls()
+			ct.queryRetries = 0
 			ct.disconnectedAll = false
 			ct.stream.OnInstanceChanged()
 			ct.needsConfirm = true
@@ -914,7 +1092,17 @@ func (c *Coordinator) handleInboundTerminalControl(now int64, r *coordRound, o p
 			})
 			return 0, nil
 		}
+		if len(ct.querySnapshotToken) > 0 && !bytes.Equal(ct.querySnapshotToken, rep.SnapshotToken) {
+			// Paginated snapshot token changed mid-query: restart from seq 1.
+			ct.pendingDetails = nil
+			ct.querySnapshotToken = nil
+			c.sendInputStatusQuery(now, r, ct, 1, nil)
+			return 0, nil
+		}
 		if !rep.Complete && rep.NextSeq > 0 {
+			if len(ct.querySnapshotToken) == 0 && len(rep.SnapshotToken) > 0 {
+				ct.querySnapshotToken = append([]byte(nil), rep.SnapshotToken...)
+			}
 			for _, d := range rep.State.ToDaemon.Details {
 				if len(ct.pendingDetails) < inputStatusMaxDetails {
 					ct.pendingDetails = append(ct.pendingDetails, d)
@@ -925,6 +1113,9 @@ func (c *Coordinator) handleInboundTerminalControl(now int64, r *coordRound, o p
 		}
 		ct.queryInFlight = false
 		ct.queryID = nil
+		ct.querySentAt = 0
+		ct.queryRetries = 0
+		ct.querySnapshotToken = nil
 		if len(ct.pendingDetails) > 0 {
 			merged := append(ct.pendingDetails, rep.State.ToDaemon.Details...)
 			rep.State.ToDaemon.Details = merged
@@ -949,8 +1140,22 @@ func (c *Coordinator) handleInboundTerminalControl(now int64, r *coordRound, o p
 			})
 		} else if needBarrier {
 			var bid [16]byte
-			if _, err := c.randPool.Read(bid[:]); err == nil {
+			if _, err := c.randPool.Read(bid[:]); err != nil {
+				c.maybeNeedEntropy(CoordEntropyRefillBytes)
+				ct.needsConfirm = true
+				ct.disconnectedAll = false
+				ct.stream.OnInstanceChanged()
+				c.emit(CoordTerminalState{
+					StreamID:          ct.streamID,
+					State:             TermStateInstanceChange,
+					Reason:            "barrier_entropy",
+					NeedsConfirmation: true,
+				})
+			} else {
 				c.maybeLowWater()
+				ct.barrierInFlight = true
+				ct.barrierID = append([]byte(nil), bid[:]...)
+				ct.barrierSentAt = now
 				body := linkcore.EncodeBarrier(linkcore.BarrierMsg{
 					Stream:        ct.streamID,
 					BarrierID:     bid[:],
@@ -1000,6 +1205,12 @@ func (c *Coordinator) handleInboundTerminalControl(now int64, r *coordRound, o p
 		if ct == nil || ct.machineID != r.machine {
 			return 0, nil
 		}
+		if !ct.barrierInFlight || len(ct.barrierID) == 0 || !bytes.Equal(ct.barrierID, rep.BarrierID) {
+			return 0, nil
+		}
+		ct.barrierInFlight = false
+		ct.barrierID = nil
+		ct.barrierSentAt = 0
 		if rep.Final {
 			ct.needsConfirm = true
 			ct.disconnectedAll = false

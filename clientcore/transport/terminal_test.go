@@ -848,3 +848,195 @@ func TestReview3_NK_AttachPathUnsupportedEntersConfirmationGate(t *testing.T) {
 		t.Fatalf("N-K: expected directAttached=false and TermStateInstanceChange+NeedsConfirmation, attached=%v effs=%+v", ct.directAttached, effs)
 	}
 }
+
+func TestTerminalRelayOpenRespectsNeedsConfirmAndInitialLegIdempotency(t *testing.T) {
+	// Audit core B6:
+	// 1) TerminalDirectLeg(relay open=true) while needsConfirm=true must not emit TermStateLive.
+	// 2) Initial leg open arriving after first output set daemonReady=true must not bump relayGen.
+	coord, _, daemon, now, _, rid, _ := driveEstablishedCoordRound(t, "127.0.0.1", "")
+	r := coord.rounds[rid]
+	coord.handleEngine(now, Capabilities{Round: rid, Seq: 1, Terminal: true})
+
+	// Scenario 1: needsConfirm=true, then replacement relay opens.
+	s1 := "b60123456789abcdef0123456789abc1"
+	_ = coord.TerminalDirectOpen(now, s1, daemon.id, "sess-b6-1", []byte("relay000000000b1"))
+	ct1 := coord.termStreams[s1]
+	ct1.needsConfirm = true
+	ct1.relayOpen = false
+	effs := coord.TerminalDirectLeg(now+10, s1, []byte("relay000000000b2"), false, true, 0)
+	for _, e := range effs {
+		if st, ok := e.(CoordTerminalState); ok && st.State == TermStateLive {
+			t.Fatalf("B6: relay open overwrote needsConfirm gate with TermStateLive: %+v", st)
+		}
+	}
+
+	// Scenario 2: first output sets daemonReady=true before openTerminal RPC confirms initial leg.
+	s2 := "b60123456789abcdef0123456789abc2"
+	initLeg := []byte("relay000000000b3")
+	_ = coord.TerminalDirectOpen(now+20, s2, daemon.id, "sess-b6-2", initLeg)
+	h := sha256.Sum256([]byte("out1"))
+	_ = coord.TerminalDirectOutput(now+21, s2, 1, h[:], []byte("out1"), false, 0)
+	ct2 := coord.termStreams[s2]
+	if !ct2.daemonReady || ct2.relayGen != 1 {
+		t.Fatalf("precondition: daemonReady=%v relayGen=%d", ct2.daemonReady, ct2.relayGen)
+	}
+	effs2 := coord.TerminalDirectLeg(now+22, s2, initLeg, false, true, 0)
+	if ct2.relayGen != 1 {
+		t.Fatalf("B6: initial leg open after early output bumped relayGen to %d (want 1)", ct2.relayGen)
+	}
+	for _, e := range effs2 {
+		if st, ok := e.(CoordTerminalState); ok && st.State == TermStateLive {
+			t.Fatalf("B6: duplicate TermStateLive emitted on initial leg confirm")
+		}
+	}
+	_ = r
+}
+
+func TestTerminalInputAndOutputPopulateDeadlineMs(t *testing.T) {
+	// Audit core B7d: TerminalDirectInput must populate TermFrame.DeadlineMs
+	// (from Envelope Header.deadline_ms or 60s fallback) so ReconcileStatus
+	// requests a Barrier after expiry instead of blindly resending expired envelopes.
+	coord, _, daemon, now, _, rid, _ := driveEstablishedCoordRound(t, "127.0.0.1", "")
+	coord.handleEngine(now, Capabilities{Round: rid, Seq: 1, Terminal: true})
+	streamID := "b7d123456789abcdef0123456789abcd"
+	_ = coord.TerminalDirectOpen(now, streamID, daemon.id, "sess-b7d", []byte("relay00000000b7d"))
+	_ = coord.TerminalDirectLeg(now+1, streamID, []byte("relay00000000b7d"), false, true, 0)
+
+	// Craft a minimal Envelope whose Header (field 1) has deadline_ms (field 7) = now + 5000.
+	hdr := peerwire.PB(peerwire.U(1, 1), peerwire.U(7, uint64(now+5000)))
+	env := peerwire.PB(peerwire.B(1, hdr))
+	h := sha256.Sum256(env)
+	_ = coord.TerminalDirectInput(now+10, streamID, 1, true, env, h[:])
+
+	ct := coord.termStreams[streamID]
+	snap := linkcore.TermStatusSnapshot{Available: true}
+	toResend, needBarrier, needConfirm := ct.stream.ReconcileStatus(uint64(now+6000), snap)
+	if !needBarrier || len(toResend) != 0 || needConfirm {
+		t.Fatalf("B7d: expected needBarrier=true for expired cached input, got resend=%d barrier=%v confirm=%v",
+			len(toResend), needBarrier, needConfirm)
+	}
+}
+
+func TestTerminalRecoveryControlTimeoutsAndReplay(t *testing.T) {
+	// Audit core B8:
+	// 1) queryInFlight retries after 3s and PeerUnsupported for ControlInputStatus enters confirm.
+	// 2) ControlBarrier ignores mismatched BarrierID and times out after 5s (TermBarrierTimeoutMs).
+	// 3) Output gap schedules and sends ControlReplay well before 10s gap timeout (not at 10s kill).
+	coord, _, daemon, now, _, rid, _ := driveEstablishedCoordRound(t, "127.0.0.1", "")
+	r := coord.rounds[rid]
+	coord.handleEngine(now, Capabilities{Round: rid, Seq: 1, Terminal: true})
+
+	// 1. Output gap triggers ControlReplay before 10s deadline.
+	sGap := "b80123456789abcdef0123456789abc1"
+	_ = coord.TerminalDirectOpen(now, sGap, daemon.id, "sess-b8-gap", []byte("relay00000000b81"))
+	_ = coord.TerminalDirectLeg(now+1, sGap, []byte("relay00000000b81"), false, true, 0)
+	// Deliver seq=2 (missing seq=1 -> output gap opens).
+	h2 := sha256.Sum256([]byte("out2"))
+	_ = coord.TerminalDirectOutput(now+10, sGap, 2, h2[:], []byte("out2"), true, r.globalPC[UseRead])
+	_, _, sessAt, sessOK, _, _ := coord.NextTimers(now + 10)
+	if !sessOK || sessAt > now+10+termReplayDebounceMs {
+		t.Fatalf("B8: output gap NextTimers scheduled at %d (expected Replay at <= %d)",
+			sessAt, now+10+termReplayDebounceMs)
+	}
+	// Fire timer at sessAt (< 1s): must emit SignFrame for ControlReplay and keep stream alive.
+	effs := coord.OnSessionTimer(sessAt)
+	sawSign := false
+	for _, e := range effs {
+		if _, ok := e.(CoordKeySign); ok {
+			sawSign = true
+		}
+	}
+	if !sawSign || coord.termStreams[sGap] == nil {
+		t.Fatalf("B8: expected ControlReplay queued before 10s timeout (sawSign=%v streamAlive=%v)", sawSign, coord.termStreams[sGap] != nil)
+	}
+
+	// 2. queryInFlight times out after 3s and retries.
+	sQ := "b80123456789abcdef0123456789abc2"
+	_ = coord.TerminalDirectOpen(now+200, sQ, daemon.id, "sess-b8-q", []byte("relay00000000b82"))
+	ctQ := coord.termStreams[sQ]
+	ctQ.daemonReady = true
+	ctQ.stream.NetworkRecovery = true
+	coord.maybeAttachDirectTerminal(now+200, ctQ)
+	coord.take()
+	if !ctQ.queryInFlight {
+		t.Fatal("expected queryInFlight=true")
+	}
+	firstQID := append([]byte(nil), ctQ.queryID...)
+	coord.OnSessionTimer(now + 200 + 3500)
+	if bytes.Equal(firstQID, ctQ.queryID) {
+		t.Fatal("B8: queryInFlight did not time out and retry with fresh queryID after 3s")
+	}
+
+	// 3. ControlBarrier ignores mismatched BarrierID and times out after 5s.
+	sB := "b80123456789abcdef0123456789abc3"
+	_ = coord.TerminalDirectOpen(now+300, sB, daemon.id, "sess-b8-b", []byte("relay00000000b83"))
+	_ = coord.TerminalDirectLeg(now+301, sB, []byte("relay00000000b83"), false, true, 0)
+	ctB := coord.termStreams[sB]
+	// Cache an input with deadline now+4000, then reconcile at now+4500 -> triggers ControlBarrier.
+	hdr := peerwire.PB(peerwire.U(1, 1), peerwire.U(7, uint64(now+4000)))
+	env := peerwire.PB(peerwire.B(1, hdr))
+	hb := sha256.Sum256(env)
+	_ = coord.TerminalDirectInput(now+310, sB, 1, true, env, hb[:])
+	ctB.stream.NetworkRecovery = true
+	ctB.directAttached = false
+	ctB.directPCID = 0
+	coord.maybeAttachDirectTerminal(now+4500, ctB)
+	coord.take()
+	if !ctB.queryInFlight {
+		t.Fatal("expected queryInFlight for barrier setup")
+	}
+	repBody := linkcore.EncodeInputStatusReply(linkcore.InputStatusReplyMsg{
+		Stream:        sB,
+		QueryID:       ctB.queryID,
+		Available:     true,
+		Complete:      true,
+		SnapshotToken: bytes.Repeat([]byte{0x11}, 32),
+	})
+	coord.handleInboundTerminalControl(now+4510, r, peerwire.Opened{
+		Type:    linkcore.ControlInputStatusReply,
+		Payload: repBody,
+	})
+	coord.take()
+	if !ctB.barrierInFlight {
+		t.Fatal("expected barrierInFlight=true after InputStatusReply with expired input")
+	}
+	// Deliver a ControlBarrierReply with a mismatched BarrierID -> must be ignored.
+	wrongReply := linkcore.EncodeBarrierReply(linkcore.BarrierReplyMsg{
+		Stream:    sB,
+		BarrierID: bytes.Repeat([]byte{0x99}, 16),
+		Final:     true,
+	})
+	coord.handleInboundTerminalControl(now+4600, r, peerwire.Opened{
+		Type:    linkcore.ControlBarrierReply,
+		Payload: wrongReply,
+	})
+	if ctB.needsConfirm || !ctB.barrierInFlight {
+		t.Fatal("B8: ControlBarrierReply accepted mismatched BarrierID")
+	}
+	// Advance past 5s TermBarrierTimeoutMs -> must time out and enter confirmation gate.
+	effsB := coord.OnSessionTimer(now + 4510 + int64(linkcore.TermBarrierTimeoutMs))
+	sawTimeout := false
+	for _, e := range effsB {
+		if st, ok := e.(CoordTerminalState); ok && st.StreamID == sB && st.NeedsConfirmation && st.Reason == "barrier_timeout" {
+			sawTimeout = true
+		}
+	}
+	if !sawTimeout || ctB.barrierInFlight {
+		t.Fatalf("B8: ControlBarrier did not time out after 5s (sawTimeout=%v barrierInFlight=%v)", sawTimeout, ctB.barrierInFlight)
+	}
+
+	// 4. PeerUnsupported for ControlInputStatus enters confirmation gate.
+	coord.applySessionEffects(now+4600, r, []linkcore.Effect{
+		linkcore.PeerUnsupported{Class: 2, Type: linkcore.ControlInputStatus, Stream: sQ},
+	})
+	effsU := coord.take()
+	sawUnsupp := false
+	for _, e := range effsU {
+		if st, ok := e.(CoordTerminalState); ok && st.StreamID == sQ && st.NeedsConfirmation {
+			sawUnsupp = true
+		}
+	}
+	if !sawUnsupp || ctQ.queryInFlight {
+		t.Fatalf("B8: PeerUnsupported for ControlInputStatus did not enter confirm gate (sawUnsupp=%v queryInFlight=%v)", sawUnsupp, ctQ.queryInFlight)
+	}
+}

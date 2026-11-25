@@ -1534,6 +1534,27 @@ func (c *Coordinator) NextTimers(now int64) (engineAt int64, engineOK bool, sess
 			}
 			addSess(d)
 		}
+		if ct.queryInFlight && ct.querySentAt > 0 {
+			d := ct.querySentAt + termQueryRetryMs
+			if d < now {
+				d = now
+			}
+			addSess(d)
+		}
+		if ct.barrierInFlight && ct.barrierSentAt > 0 {
+			d := ct.barrierSentAt + int64(linkcore.TermBarrierTimeoutMs)
+			if d < now {
+				d = now
+			}
+			addSess(d)
+		}
+		if ct.stream.OutputGapDue() > 0 && ct.replayDueAt > 0 {
+			d := ct.replayDueAt
+			if d < now {
+				d = now
+			}
+			addSess(d)
+		}
 	}
 	for _, ts := range c.terms {
 		if ts.hasTimer && (!termOK || ts.nextAt < termAt) {
@@ -1954,7 +1975,7 @@ func (c *Coordinator) applySessionEffects(now int64, r *coordRound, effects []li
 				c.retireAndFailUnsupported(now, r)
 			} else if eff.Class == 1 && (eff.Use == uint64(UseRead) || eff.Use == uint64(UseBulk)) {
 				r.useUnsupp[eff.Use] = true
-			} else if eff.Class == 2 && eff.Type == linkcore.ControlAttachPath && eff.Stream != "" {
+			} else if eff.Class == 2 && (eff.Type == linkcore.ControlAttachPath || eff.Type == linkcore.ControlInputStatus || eff.Type == linkcore.ControlBarrier) && eff.Stream != "" {
 				c.onTerminalAttachUnsupported(now, r, eff.Stream)
 			}
 
