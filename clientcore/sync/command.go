@@ -620,7 +620,10 @@ func (e *Engine) finishCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 				return
 			}
 			prep.Dispatch.PriorUnknown = true
-			if ev.TransportCode == errCodeUnavailable {
+			// Completing an upload has no side effect beyond accepting bytes
+			// already on the computer, so keep retrying it through a
+			// reconnect. Every other command keeps its outcome unknown here.
+			if ev.TransportCode == errCodeUnavailable && prep.Command.GetCompleteImageUpload() != nil {
 				e.handleRetryableTransportOutcome(ctx, prep, ev)
 				return
 			}
@@ -717,7 +720,7 @@ func (e *Engine) handleRetryableTransportOutcome(ctx *StepContext, prep *Prepare
 		return
 	}
 	retryLimit := prep.DeadlineMs
-	if prep.Dispatch.HasPrior() && prep.RecoveryDeadlineMs > retryLimit {
+	if prep.Command.GetCompleteImageUpload() != nil && prep.Dispatch.HasPrior() && prep.RecoveryDeadlineMs > retryLimit {
 		retryLimit = prep.RecoveryDeadlineMs
 	}
 	if isTransientRetryCode(ev.TransportCode) && prep.AttemptCount < CommandRetryMaxAttempts && e.nowMs+2_000 < retryLimit {
