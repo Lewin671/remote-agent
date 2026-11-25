@@ -269,7 +269,6 @@ function useQuestionState(
   );
 
   const failed = showError && (multi || sent.length === 0) && <div className="ml red">{errMsg}</div>;
-  const answeredNotice = answered && answeredLabel && <div className="ml" role="status">{answeredLabel}</div>;
 
   const foot = (page: boolean) => (
     <div className="st">
@@ -305,7 +304,7 @@ function useQuestionState(
     actions: (page: boolean) => (
       <>
         {submit}
-        {answeredNotice}
+        {answered && answeredLabel ? <div className="ml" role="status">{answeredLabel}</div> : null}
         {failed}
         {foot(page)}
       </>

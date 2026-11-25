@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
 import { localeStore, t as message } from "../i18n";
 import { CommandError } from "../dev/demo";
-import { SendMode } from "../gen/remoteagent/v1/event_pb";
+import { OriginKind, SendMode } from "../gen/remoteagent/v1/event_pb";
 import { setDemoDirect } from "../dev/direct-demo";
 import { Sheet } from "../ui";
 import { Home } from "./Home";
@@ -268,10 +268,14 @@ describe("ApprovalCard deny draft preservation & docked scroll-to-bottom guard",
     // External resolution during deny shows 1.2s banner 已在终端处理
     await act(async () => {
       vi.advanceTimersByTime(2500);
-      (r as unknown as { push: (sid: string, kind: unknown) => void }).push("s-appr", {
-        case: "approvalResolved",
-        value: { approvalId: "a1", decision: 3 },
-      });
+      (r as unknown as { push: (sid: string, kind: unknown, origin?: unknown) => void }).push(
+        "s-appr",
+        {
+          case: "approvalResolved",
+          value: { approvalId: "a1", decision: 3 },
+        },
+        { kind: OriginKind.LOCAL },
+      );
     });
     expect(host.querySelector(".dock")?.textContent).toContain(message("approval.handled_in_terminal"));
   });

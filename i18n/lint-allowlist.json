@@ -6040,11 +6040,6 @@
     "reason": "JSX lexical scan false positive spanning TypeScript statements between JSX blocks; not UI copy."
   },
   {
-    "path": "web/src/views/Dock.tsx",
-    "literal": "0 ? ticked : frozen || showError ? sent : ticked) : sent; const progress = [renderText(q.progressText) || step.header, multi ? i18n.t(\"dock.multiselect\") : \"\"].filter(Boolean).join(\" · \"); const answers = (",
-    "reason": "JSX lexical scan false positive spanning TypeScript comparison operator and JSX opening tag; not UI copy."
-  },
-  {
     "path": "web/src/views/Home.tsx",
     "literal": "status",
     "reason": "ARIA role attribute value (role=\"status\"); never rendered as UI copy."

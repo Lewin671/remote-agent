@@ -116,7 +116,7 @@ type HomeFocusState struct {
 	ItemID           string
 	Phase            corev1.HomeFocusPhase
 	PickedOptionNum  int32
-	PickedLabel      string
+	PickedText       *corev1.Text
 	SubmittedSummary *corev1.Text
 	ResolutionText   *corev1.Text
 	DenyingOpen      bool

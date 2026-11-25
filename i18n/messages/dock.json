@@ -708,6 +708,27 @@
     "zh-CN": "默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎"
   },
   {
+    "en": "Option {num}",
+    "key": "dock.option_number",
+    "notes": "提问选项缺少标签时使用的序号兜底显示。短标签；参数 num 为从 1 开始的选项编号。",
+    "params": {
+      "num": {
+        "example": 1,
+        "type": "integer"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "选项 {num}"
+  },
+  {
     "en": "Answered",
     "key": "dock.question_answered",
     "notes": "多步提问最后一步提交成功、等待服务端移除提问前在停靠区或完整页显示的已回答状态文案。短标签，无变量。",

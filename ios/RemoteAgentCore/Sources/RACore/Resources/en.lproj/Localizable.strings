@@ -14,6 +14,7 @@
 "approval_deny" = "Deny";
 "approval_details" = "Approval details";
 "approval_full_command" = "View full command";
+"approval_handled" = "Handled";
 "approval_handled_in_terminal" = "Handled in terminal";
 "approval_handled_other_device" = "Handled on another device";
 "approval_ios_decision_deny" = "Deny";
@@ -186,6 +187,7 @@
 "dock_ios_question_unknown" = "The previous answer “%1$@” could not be confirmed; the terminal question may have changed. Tap any option to resend the same answer.";
 "dock_multiselect" = "Select multiple";
 "dock_none_fit" = "None of these?";
+"dock_option_number" = "Option %1$lld";
 "dock_other_terminal" = "Other answer: go to terminal";
 "dock_plan_clear" = "Clear context and execute";
 "dock_plan_clear_record" = "Execute plan with cleared context";

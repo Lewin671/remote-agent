@@ -887,6 +887,42 @@ func buildSessionActions(
 	return out
 }
 
+// SessionSimpleCommandAllowed reports whether a semantic simple session command
+// (compact, interrupt, stop) satisfies the same capability/state preconditions
+// used to derive SessionActionsView.CanCompact / CanInterrupt / CanEnd.
+func SessionSimpleCommandAllowed(
+	in world.SessionSnapshot,
+	st *State,
+	ui *SessionUIState,
+	kind corev1.SessionSimpleCommandKind,
+) bool {
+	if !in.Found || st == nil || in.Session == nil {
+		return false
+	}
+	ls := findListSession(st, in.Session.ID, in.Session)
+	lm := findListMachine(st, ls, in.Machine)
+	caps := lists.AgentInfo(sessionEffectiveAgent(ls, in.Session))
+	header := buildSessionHeader(in, st, ls, lm, caps, nil, false)
+	onlineReady := machineOnlineReady(in.Conn, st.DisplayGrace, header.ComputerOnline, header.ComputerUnlinked, header.ProtocolMismatch, in.AccountControlLost, in.Removed)
+	runningTurn := in.Projection != nil && in.Projection.Running
+	exited := header.Exited
+	slotBlocked := func(slotKey string) bool {
+		s := commandSlotState(ui, slotKey, nil, nil)
+		return s != nil && (s.Expired || (s.Frozen && !s.CanAbandon))
+	}
+	switch kind {
+	case corev1.SessionSimpleCommandKind_SESSION_SIMPLE_COMMAND_KIND_INTERRUPT:
+		return onlineReady && !exited && runningTurn && !slotBlocked("interrupt:"+ls.ID)
+	case corev1.SessionSimpleCommandKind_SESSION_SIMPLE_COMMAND_KIND_STOP:
+		return onlineReady && !exited && !slotBlocked("stop:"+ls.ID)
+	case corev1.SessionSimpleCommandKind_SESSION_SIMPLE_COMMAND_KIND_COMPACT:
+		return header.Capabilities != nil && header.Capabilities.SupportsCompact &&
+			onlineReady && !exited && !runningTurn && !slotBlocked("compact:"+ls.ID)
+	default:
+		return true
+	}
+}
+
 func buildSessionMenuItems(found bool, header *corev1.SessionHeaderView, actions *corev1.SessionActionsView) []*corev1.SessionMenuItemView {
 	if header == nil || actions == nil {
 		return nil

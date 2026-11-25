@@ -9308,7 +9308,7 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"\x04plan\x18\x16 \x01(\v2(.remoteagent.core.v1.SessionPlanDockViewH\x00R\x04plan\x12Z\n" +
 	"\x0eterminal_popup\x18\x17 \x01(\v21.remoteagent.core.v1.SessionTerminalPopupDockViewH\x00R\rterminalPopupB\b\n" +
 	"\x06detailJ\x04\b\t\x10\n" +
-	"R\ttime_left\"\xbb\x05\n" +
+	"R\ttime_left\"\xc7\x05\n" +
 	"\x17SessionApprovalDockView\x12\x1f\n" +
 	"\vapproval_id\x18\x01 \x01(\tR\n" +
 	"approvalId\x12\x1b\n" +
@@ -9328,7 +9328,7 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"\x17deny_reason_placeholder\x18\f \x01(\v2\x19.remoteagent.core.v1.TextR\x15denyReasonPlaceholder\x12K\n" +
 	"\x14delivery_failed_note\x18\r \x01(\v2\x19.remoteagent.core.v1.TextR\x12deliveryFailedNote\x12!\n" +
 	"\fdenying_open\x18\x0f \x01(\bR\vdenyingOpen\x12$\n" +
-	"\x0ehold_open_card\x18\x11 \x01(\bR\fholdOpenCard\"\x94\x01\n" +
+	"\x0ehold_open_card\x18\x11 \x01(\bR\fholdOpenCardJ\x04\b\x0e\x10\x0fJ\x04\b\x10\x10\x11\"\x94\x01\n" +
 	"\x19SessionQuestionOptionView\x12\x1d\n" +
 	"\n" +
 	"option_num\x18\x01 \x01(\x05R\toptionNum\x12\x14\n" +

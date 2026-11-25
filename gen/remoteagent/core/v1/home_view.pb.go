@@ -567,6 +567,7 @@ const (
 	ResolutionOutcome_RESOLUTION_OUTCOME_OTHER_CLIENT ResolutionOutcome = 2
 	ResolutionOutcome_RESOLUTION_OUTCOME_TERMINAL     ResolutionOutcome = 3
 	ResolutionOutcome_RESOLUTION_OUTCOME_FAILED       ResolutionOutcome = 4
+	ResolutionOutcome_RESOLUTION_OUTCOME_SYSTEM       ResolutionOutcome = 5
 )
 
 // Enum value maps for ResolutionOutcome.
@@ -577,6 +578,7 @@ var (
 		2: "RESOLUTION_OUTCOME_OTHER_CLIENT",
 		3: "RESOLUTION_OUTCOME_TERMINAL",
 		4: "RESOLUTION_OUTCOME_FAILED",
+		5: "RESOLUTION_OUTCOME_SYSTEM",
 	}
 	ResolutionOutcome_value = map[string]int32{
 		"RESOLUTION_OUTCOME_UNSPECIFIED":  0,
@@ -584,6 +586,7 @@ var (
 		"RESOLUTION_OUTCOME_OTHER_CLIENT": 2,
 		"RESOLUTION_OUTCOME_TERMINAL":     3,
 		"RESOLUTION_OUTCOME_FAILED":       4,
+		"RESOLUTION_OUTCOME_SYSTEM":       5,
 	}
 )
 
@@ -2996,7 +2999,7 @@ const file_remoteagent_core_v1_home_view_proto_rawDesc = "" +
 	"\vstatus_text\x18\v \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
 	"statusText\x12#\n" +
 	"\rsucceeded_seq\x18\f \x01(\x04R\fsucceededSeq\x12F\n" +
-	"\x11submitted_summary\x18\r \x01(\v2\x19.remoteagent.core.v1.TextR\x10submittedSummary\"\x99\b\n" +
+	"\x11submitted_summary\x18\r \x01(\v2\x19.remoteagent.core.v1.TextR\x10submittedSummary\"\x9f\b\n" +
 	"\x11AttentionCardView\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
@@ -3029,7 +3032,7 @@ const file_remoteagent_core_v1_home_view_proto_rawDesc = "" +
 	"\x17deny_reason_placeholder\x18\x1a \x01(\v2\x19.remoteagent.core.v1.TextR\x15denyReasonPlaceholder\x12 \n" +
 	"\vdescription\x18\x1b \x01(\tR\vdescription\x12\x1f\n" +
 	"\vis_skeleton\x18\x1c \x01(\bR\n" +
-	"isSkeleton\"\xc6\x02\n" +
+	"isSkeletonJ\x04\b\x16\x10\x17\"\xc6\x02\n" +
 	"\x10AttentionRowView\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
@@ -3291,13 +3294,14 @@ const file_remoteagent_core_v1_home_view_proto_rawDesc = "" +
 	"\x1bSESSION_COMMAND_STATUS_IDLE\x10\x01\x12\"\n" +
 	"\x1eSESSION_COMMAND_STATUS_PENDING\x10\x02\x12!\n" +
 	"\x1dSESSION_COMMAND_STATUS_FAILED\x10\x03\x12\"\n" +
-	"\x1eSESSION_COMMAND_STATUS_UNKNOWN\x10\x04*\xc0\x01\n" +
+	"\x1eSESSION_COMMAND_STATUS_UNKNOWN\x10\x04*\xdf\x01\n" +
 	"\x11ResolutionOutcome\x12\"\n" +
 	"\x1eRESOLUTION_OUTCOME_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eRESOLUTION_OUTCOME_THIS_CLIENT\x10\x01\x12#\n" +
 	"\x1fRESOLUTION_OUTCOME_OTHER_CLIENT\x10\x02\x12\x1f\n" +
 	"\x1bRESOLUTION_OUTCOME_TERMINAL\x10\x03\x12\x1d\n" +
-	"\x19RESOLUTION_OUTCOME_FAILED\x10\x04*\xdf\x01\n" +
+	"\x19RESOLUTION_OUTCOME_FAILED\x10\x04\x12\x1d\n" +
+	"\x19RESOLUTION_OUTCOME_SYSTEM\x10\x05*\xdf\x01\n" +
 	"\x0eHomeFocusPhase\x12 \n" +
 	"\x1cHOME_FOCUS_PHASE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15HOME_FOCUS_PHASE_IDLE\x10\x01\x12\x1f\n" +

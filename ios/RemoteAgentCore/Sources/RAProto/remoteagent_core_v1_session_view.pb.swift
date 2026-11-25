@@ -7579,7 +7579,7 @@ extension PBSessionDockView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
 
 extension PBSessionApprovalDockView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionApprovalDockView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}approval_id\0\u{3}tool_name\0\u{3}command_preview\0\u{1}body\0\u{3}body_truncated\0\u{3}is_skeleton\0\u{1}description\0\u{3}can_always_allow\0\u{3}always_kind\0\u{3}always_target\0\u{3}always_label\0\u{3}deny_reason_placeholder\0\u{3}delivery_failed_note\0\u{4}\u{2}denying_open\0\u{4}\u{2}hold_open_card\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}approval_id\0\u{3}tool_name\0\u{3}command_preview\0\u{1}body\0\u{3}body_truncated\0\u{3}is_skeleton\0\u{1}description\0\u{3}can_always_allow\0\u{3}always_kind\0\u{3}always_target\0\u{3}always_label\0\u{3}deny_reason_placeholder\0\u{3}delivery_failed_note\0\u{4}\u{2}denying_open\0\u{4}\u{2}hold_open_card\0\u{c}\u{e}\u{1}\u{c}\u{10}\u{1}")
 
   fileprivate class _StorageClass {
     var _approvalID: String = String()

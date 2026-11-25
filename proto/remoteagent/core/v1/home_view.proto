@@ -151,6 +151,7 @@ enum ResolutionOutcome {
   RESOLUTION_OUTCOME_OTHER_CLIENT = 2;
   RESOLUTION_OUTCOME_TERMINAL = 3;
   RESOLUTION_OUTCOME_FAILED = 4;
+  RESOLUTION_OUTCOME_SYSTEM = 5;
 }
 
 enum HomeFocusPhase {
@@ -181,6 +182,7 @@ message AttentionCardView {
   bool locked = 16;
   SessionCommandState command = 20;
   bool denying_open = 21;
+  reserved 22;
   HomeFocusPhase phase = 23;
   Text resolution_text = 24;
   bool hold_open_card = 25;

@@ -355,6 +355,7 @@ message SessionApprovalDockView {
   Text always_label = 11;
   Text deny_reason_placeholder = 12;
   Text delivery_failed_note = 13;
+  reserved 14, 16;
   bool denying_open = 15;
   bool hold_open_card = 17;
 }

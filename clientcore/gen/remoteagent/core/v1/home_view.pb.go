@@ -121,6 +121,7 @@ const (
 	ResolutionOutcome_RESOLUTION_OUTCOME_OTHER_CLIENT ResolutionOutcome = 2
 	ResolutionOutcome_RESOLUTION_OUTCOME_TERMINAL     ResolutionOutcome = 3
 	ResolutionOutcome_RESOLUTION_OUTCOME_FAILED       ResolutionOutcome = 4
+	ResolutionOutcome_RESOLUTION_OUTCOME_SYSTEM       ResolutionOutcome = 5
 )
 
 type HomeFocusPhase int32

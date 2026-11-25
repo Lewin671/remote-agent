@@ -483,6 +483,22 @@
     "zh-CN": "重试拒绝"
   },
   {
+    "en": "Handled",
+    "key": "approval.handled",
+    "notes": "审批或提问由系统自动处理完成时的中性状态提示。短标签，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "已处理"
+  },
+  {
     "en": "Handled in terminal",
     "key": "approval.handled_in_terminal",
     "notes": "拒绝输入或查看期间对端已在终端处理的提示文字。无变量。",

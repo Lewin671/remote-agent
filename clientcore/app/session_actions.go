@@ -7,6 +7,7 @@ import (
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
@@ -28,6 +29,10 @@ func homeFocusHoldKey(kind screens.HomeFocusKind, sid, itemID string) string {
 		tag = "q"
 	}
 	return homeFocusHoldTimerKeyPrefix + tag + ":" + sid + ":" + itemID
+}
+
+func approvalSlotKey(sid, aid string) string {
+	return "approval:" + sid + ":" + aid
 }
 
 func isSlotInFlight(ui *screens.SessionUIState, slotKey string) bool {
@@ -228,9 +233,9 @@ func planChoiceSummaryText(choice v1.PlanChoice) *corev1.Text {
 	}
 }
 
-func questionOptionLabels(snap world.SessionSnapshot, qID string, activeIdx int32, nums []int32) string {
+func questionOptionSummaryText(snap world.SessionSnapshot, qID string, activeIdx int32, nums []int32) *corev1.Text {
 	if len(nums) == 0 {
-		return ""
+		return nil
 	}
 	var opts []*v1.QuestionOption
 	if snap.Projection != nil {
@@ -242,37 +247,36 @@ func questionOptionLabels(snap world.SessionSnapshot, qID string, activeIdx int3
 			}
 		}
 	}
+	parts := make([]*corev1.Text, 0, len(nums))
 	if len(opts) == 0 && snap.Session != nil && snap.Session.Pending.Question != nil &&
 		snap.Session.Pending.Question.QuestionID == qID && activeIdx == 0 {
-		labels := make([]string, 0, len(nums))
 		for _, num := range nums {
 			idx := int(num - 1)
 			if idx >= 0 && idx < len(snap.Session.Pending.Question.Options) {
 				lbl, _ := lists.OptionLabel(snap.Session.Pending.Question.Options[idx].Label)
 				lbl = strings.TrimSpace(lbl)
 				if lbl != "" {
-					labels = append(labels, lbl)
+					parts = append(parts, text.Plain(lbl))
 					continue
 				}
 			}
-			labels = append(labels, "#"+strconv.Itoa(int(num)))
+			parts = append(parts, text.Msg(text.KeyDockOptionNumber, text.Int("num", int64(num))))
 		}
-		return strings.Join(labels, "、")
+		return text.Join(text.KeyCommonListSeparator, parts...)
 	}
-	labels := make([]string, 0, len(nums))
 	for _, num := range nums {
 		idx := int(num - 1)
 		if idx >= 0 && idx < len(opts) && opts[idx] != nil {
 			lbl, _ := lists.OptionLabel(opts[idx].Label)
 			lbl = strings.TrimSpace(lbl)
 			if lbl != "" {
-				labels = append(labels, lbl)
+				parts = append(parts, text.Plain(lbl))
 				continue
 			}
 		}
-		labels = append(labels, "#"+strconv.Itoa(int(num)))
+		parts = append(parts, text.Msg(text.KeyDockOptionNumber, text.Int("num", int64(num))))
 	}
-	return strings.Join(labels, "、")
+	return text.Join(text.KeyCommonListSeparator, parts...)
 }
 
 func isPendingApprovalSkeleton(snap world.SessionSnapshot, approvalID string) bool {
@@ -478,8 +482,8 @@ func (c *Core) handleSessionAnswerQuestion(ctx *sync.StepContext, store *session
 	c.submitSessionCommandDirect(ctx, store, ui, act.SessionId, machineID, slotKey, slotKindAnswerQuestion, act.QuestionId, activeIdx, "", cmd)
 	if rec := ui.Commands[slotKey]; rec != nil {
 		rec.SubmittedOptionNums = append([]int32(nil), picked...)
-		if lbl := questionOptionLabels(snap, act.QuestionId, activeIdx, picked); lbl != "" {
-			rec.SubmittedSummary = text.Plain(lbl)
+		if sum := questionOptionSummaryText(snap, act.QuestionId, activeIdx, picked); sum != nil {
+			rec.SubmittedSummary = sum
 		}
 		if rec.RequestID != "" {
 			ui.LocalResolvedRequestID["question:"+act.QuestionId] = rec.RequestID
@@ -533,8 +537,11 @@ func (c *Core) handleSessionSimpleCommand(ctx *sync.StepContext, store *sessionS
 	if act == nil || act.SessionId == "" {
 		return nil
 	}
-	machineID, _, ui, ok := c.resolveSessionActionTarget(store, act.SessionId)
+	machineID, snap, ui, ok := c.resolveSessionActionTarget(store, act.SessionId)
 	if !ok {
+		return nil
+	}
+	if !screens.SessionSimpleCommandAllowed(snap, c.m.state, ui, act.Kind) {
 		return nil
 	}
 	var cmd *v1.Command
@@ -593,8 +600,10 @@ func (c *Core) handleSessionRename(ctx *sync.StepContext, store *sessionStore, a
 		return nil
 	}
 	clean := strings.TrimSpace(lists.TitleInput(strings.TrimSpace(act.Title)))
-	plainTitle, hasCustom, _ := lists.ResolveTitle(snap.Session, c.m.state.Cal)
-	if clean == strings.TrimSpace(plainTitle) || (!hasCustom && clean == "") {
+	plainTitle, hasCustom, resolvedTitle := lists.ResolveTitle(snap.Session, c.m.state.Cal)
+	normalizedPlain := strings.TrimSpace(lists.TitleInput(strings.TrimSpace(plainTitle)))
+	normalizedResolved := strings.TrimSpace(lists.TitleInput(strings.TrimSpace(resolvedTitle)))
+	if clean == normalizedPlain || (!hasCustom && (clean == "" || clean == normalizedResolved)) {
 		syncFrozen, syncExpired, _ := c.m.sync.AttemptState(slotKey)
 		prev := ui.Commands[slotKey]
 		if syncExpired || (prev != nil && prev.Expired) {
@@ -847,7 +856,7 @@ func (c *Core) handleHomeResolveApproval(ctx *sync.StepContext, act *corev1.Home
 	}
 	ui := store.ensureUI(act.SessionId)
 	summary := approvalSummaryText(act.Allow, act.Always)
-	if rec := ui.Commands["approval:"+act.SessionId+":"+act.ApprovalId]; rec != nil && rec.SubmittedSummary != nil {
+	if rec := ui.Commands[approvalSlotKey(act.SessionId, act.ApprovalId)]; rec != nil && rec.SubmittedSummary != nil {
 		summary = rec.SubmittedSummary
 	}
 	c.m.state.HomeFocus = &screens.HomeFocusState{
@@ -875,20 +884,20 @@ func (c *Core) handleHomeAnswerQuestion(ctx *sync.StepContext, act *corev1.HomeA
 	} else if c.m.state.HomeLastTopQuestion != nil && c.m.state.HomeLastTopSessionID == act.SessionId && c.m.state.HomeLastTopItemID == act.QuestionId {
 		held = c.m.state.HomeLastTopQuestion
 	}
-	var pickedLabel string
+	var pickedText *corev1.Text
 	var observedSeq uint64
 	if held != nil {
 		observedSeq = held.ObservedEventSeq
 		for _, opt := range held.Options {
-			if opt != nil && opt.OptionNum == act.OptionNum {
-				pickedLabel = opt.Label
+			if opt != nil && opt.OptionNum == act.OptionNum && strings.TrimSpace(opt.Label) != "" {
+				pickedText = text.Plain(strings.TrimSpace(opt.Label))
 				break
 			}
 		}
 	}
-	if pickedLabel == "" {
+	if pickedText == nil {
 		snap := c.m.sync.SessionSnapshot(act.SessionId)
-		pickedLabel = questionOptionLabels(snap, act.QuestionId, 0, []int32{act.OptionNum})
+		pickedText = questionOptionSummaryText(snap, act.QuestionId, 0, []int32{act.OptionNum})
 	}
 	eff, submitted := c.handleSessionAnswerQuestion(ctx, store, &corev1.SessionAnswerQuestionAction{
 		SessionId:  act.SessionId,
@@ -904,7 +913,7 @@ func (c *Core) handleHomeAnswerQuestion(ctx *sync.StepContext, act *corev1.HomeA
 		ItemID:          act.QuestionId,
 		Phase:           corev1.HomeFocusPhase_HOME_FOCUS_PHASE_SUBMITTING,
 		PickedOptionNum: act.OptionNum,
-		PickedLabel:     pickedLabel,
+		PickedText:      pickedText,
 		HeldQuestion:    held,
 	}
 	ctx.Dirty.Add(true, false, false)
@@ -989,8 +998,10 @@ func classifyResolutionOrigin(origin *v1.Origin, selfDeviceID, localReqID string
 				return corev1.ResolutionOutcome_RESOLUTION_OUTCOME_THIS_CLIENT
 			}
 			return corev1.ResolutionOutcome_RESOLUTION_OUTCOME_OTHER_CLIENT
-		case v1.OriginKind_ORIGIN_KIND_LOCAL, v1.OriginKind_ORIGIN_KIND_SYSTEM:
+		case v1.OriginKind_ORIGIN_KIND_LOCAL:
 			return corev1.ResolutionOutcome_RESOLUTION_OUTCOME_TERMINAL
+		case v1.OriginKind_ORIGIN_KIND_SYSTEM:
+			return corev1.ResolutionOutcome_RESOLUTION_OUTCOME_SYSTEM
 		}
 	}
 	if localSucceeded {
@@ -1005,9 +1016,21 @@ func externalResolutionNoticeText(outcome corev1.ResolutionOutcome) *corev1.Text
 		return text.Msg(text.KeyApprovalHandledInTerminal)
 	case corev1.ResolutionOutcome_RESOLUTION_OUTCOME_OTHER_CLIENT:
 		return text.Msg(text.KeyApprovalHandledOtherDevice)
+	case corev1.ResolutionOutcome_RESOLUTION_OUTCOME_SYSTEM:
+		return text.Msg(text.KeyApprovalHandled)
 	default:
 		return nil
 	}
+}
+
+func isExternalNoticeOutcome(outcome corev1.ResolutionOutcome) bool {
+	return outcome == corev1.ResolutionOutcome_RESOLUTION_OUTCOME_OTHER_CLIENT ||
+		outcome == corev1.ResolutionOutcome_RESOLUTION_OUTCOME_TERMINAL ||
+		outcome == corev1.ResolutionOutcome_RESOLUTION_OUTCOME_SYSTEM
+}
+
+func sortStringsDet(ss []string) {
+	sortutil.Sort(len(ss), func(i, j int) bool { return ss[i] < ss[j] }, func(i, j int) { ss[i], ss[j] = ss[j], ss[i] })
 }
 
 func (c *Core) notifyHomeAttentionSettled(
@@ -1038,11 +1061,15 @@ func (c *Core) notifyHomeAttentionSettled(
 	hf.Phase = corev1.HomeFocusPhase_HOME_FOCUS_PHASE_RESOLVED_THIS_CLIENT
 	hf.DenyingOpen = false
 	if hf.Kind == screens.HomeFocusQuestion {
-		answerText := hf.PickedLabel
-		if answerText == "" && summary != nil {
-			answerText = summary.Literal
+		answerText := hf.PickedText
+		if answerText == nil {
+			answerText = summary
 		}
-		hf.ResolutionText = text.Msg(text.KeyHomeQuestionAnsweredLine, text.Str("answer", answerText))
+		if answerText != nil {
+			hf.ResolutionText = text.Msg(text.KeyHomeQuestionAnsweredLine, text.ArgText("answer", answerText))
+		} else {
+			hf.ResolutionText = text.Msg(text.KeyHomeQuestionAnsweredLine, text.Str("answer", ""))
+		}
 	} else {
 		if summary != nil {
 			hf.ResolutionText = summary
@@ -1256,7 +1283,13 @@ func (c *Core) reconcileSessionExternalResolutions(ctx *sync.StepContext) {
 	if store == nil {
 		return
 	}
-	for sid, ui := range store.uiBySession {
+	sids := make([]string, 0, len(store.uiBySession))
+	for sid := range store.uiBySession {
+		sids = append(sids, sid)
+	}
+	sortStringsDet(sids)
+	for _, sid := range sids {
+		ui := store.uiBySession[sid]
 		if ui == nil || (len(ui.ApprovalDenyOpen) == 0 && len(ui.QuestionDraftByKey) == 0) {
 			continue
 		}
@@ -1264,8 +1297,14 @@ func (c *Core) reconcileSessionExternalResolutions(ctx *sync.StepContext) {
 		if !snap.Found || snap.Projection == nil {
 			continue
 		}
-		// Check approvals that had denying_open.
-		for aid, open := range ui.ApprovalDenyOpen {
+		// Check approvals that had denying_open (in deterministic order).
+		aids := make([]string, 0, len(ui.ApprovalDenyOpen))
+		for aid := range ui.ApprovalDenyOpen {
+			aids = append(aids, aid)
+		}
+		sortStringsDet(aids)
+		for _, aid := range aids {
+			open := ui.ApprovalDenyOpen[aid]
 			if !open {
 				delete(ui.ApprovalDenyOpen, aid)
 				continue
@@ -1287,13 +1326,9 @@ func (c *Core) reconcileSessionExternalResolutions(ctx *sync.StepContext) {
 			}
 			itemKey := "approval:" + aid
 			resOutcome := classifyResolutionOrigin(origin, snap.ThisDeviceID, ui.LocalResolvedRequestID[itemKey], ui.LocalSucceededItems[itemKey])
-			if resOutcome == corev1.ResolutionOutcome_RESOLUTION_OUTCOME_UNSPECIFIED {
-				resOutcome = corev1.ResolutionOutcome_RESOLUTION_OUTCOME_TERMINAL
-			}
 			delete(ui.LocalResolvedRequestID, itemKey)
 			delete(ui.LocalSucceededItems, itemKey)
-			if resOutcome == corev1.ResolutionOutcome_RESOLUTION_OUTCOME_OTHER_CLIENT ||
-				resOutcome == corev1.ResolutionOutcome_RESOLUTION_OUTCOME_TERMINAL {
+			if isExternalNoticeOutcome(resOutcome) {
 				ui.ExternalResolution = &corev1.SessionResolutionNoticeView{
 					Outcome: resOutcome,
 					Text:    externalResolutionNoticeText(resOutcome),
@@ -1303,8 +1338,14 @@ func (c *Core) reconcileSessionExternalResolutions(ctx *sync.StepContext) {
 			}
 		}
 
-		// Check multi-select questions that had active drafted ticks.
-		for qKey, draft := range ui.QuestionDraftByKey {
+		// Check multi-select questions that had active drafted ticks (in deterministic order).
+		qKeys := make([]string, 0, len(ui.QuestionDraftByKey))
+		for qKey := range ui.QuestionDraftByKey {
+			qKeys = append(qKeys, qKey)
+		}
+		sortStringsDet(qKeys)
+		for _, qKey := range qKeys {
+			draft := ui.QuestionDraftByKey[qKey]
 			if len(draft) == 0 {
 				delete(ui.QuestionDraftByKey, qKey)
 				continue
@@ -1327,13 +1368,9 @@ func (c *Core) reconcileSessionExternalResolutions(ctx *sync.StepContext) {
 			}
 			itemKey := "question:" + qID
 			resOutcome := classifyResolutionOrigin(origin, snap.ThisDeviceID, ui.LocalResolvedRequestID[itemKey], ui.LocalSucceededItems[itemKey])
-			if resOutcome == corev1.ResolutionOutcome_RESOLUTION_OUTCOME_UNSPECIFIED {
-				resOutcome = corev1.ResolutionOutcome_RESOLUTION_OUTCOME_TERMINAL
-			}
 			delete(ui.LocalResolvedRequestID, itemKey)
 			delete(ui.LocalSucceededItems, itemKey)
-			if resOutcome == corev1.ResolutionOutcome_RESOLUTION_OUTCOME_OTHER_CLIENT ||
-				resOutcome == corev1.ResolutionOutcome_RESOLUTION_OUTCOME_TERMINAL {
+			if isExternalNoticeOutcome(resOutcome) {
 				ui.ExternalResolution = &corev1.SessionResolutionNoticeView{
 					Outcome: resOutcome,
 					Text:    externalResolutionNoticeText(resOutcome),
@@ -1411,25 +1448,30 @@ func (c *Core) reconcileHomeFocusState(ctx *sync.StepContext) {
 				st.HomeFocus.DenyingOpen
 
 			// For Home inline question: always show confirmation / elsewhere hold bar.
-			// For Home approval: show hold bar if this client was submitting or had deny open.
-			shouldHold := prevKind == screens.HomeFocusQuestion || wasHomeSubmitting || wasHomeDenying
+			// For Home approval: show hold bar if this client was submitting, or had deny open with a known external origin.
+			isThisClient := resOutcome == corev1.ResolutionOutcome_RESOLUTION_OUTCOME_THIS_CLIENT ||
+				(resOutcome == corev1.ResolutionOutcome_RESOLUTION_OUTCOME_UNSPECIFIED && wasHomeSubmitting)
+			shouldHold := prevKind == screens.HomeFocusQuestion || wasHomeSubmitting || (wasHomeDenying && isExternalNoticeOutcome(resOutcome))
 			if shouldHold {
 				var phase corev1.HomeFocusPhase
 				var resText *corev1.Text
-				if resOutcome == corev1.ResolutionOutcome_RESOLUTION_OUTCOME_THIS_CLIENT ||
-					(resOutcome == corev1.ResolutionOutcome_RESOLUTION_OUTCOME_UNSPECIFIED && wasHomeSubmitting) {
+				if isThisClient {
 					phase = corev1.HomeFocusPhase_HOME_FOCUS_PHASE_RESOLVED_THIS_CLIENT
 					if prevKind == screens.HomeFocusQuestion {
-						lbl := ""
+						var picked *corev1.Text
 						if st.HomeFocus != nil {
-							lbl = st.HomeFocus.PickedLabel
+							picked = st.HomeFocus.PickedText
 						}
-						resText = text.Msg(text.KeyHomeQuestionAnsweredLine, text.Str("answer", lbl))
+						if picked != nil {
+							resText = text.Msg(text.KeyHomeQuestionAnsweredLine, text.ArgText("answer", picked))
+						} else {
+							resText = text.Msg(text.KeyHomeQuestionAnsweredLine, text.Str("answer", ""))
+						}
 					} else {
 						if st.HomeFocus != nil && st.HomeFocus.SessionID == prevSID && st.HomeFocus.ItemID == prevItemID && st.HomeFocus.SubmittedSummary != nil {
 							resText = st.HomeFocus.SubmittedSummary
 						} else if ui != nil {
-							if rec := ui.Commands["approval:"+prevSID+":"+prevItemID]; rec != nil && rec.SubmittedSummary != nil {
+							if rec := ui.Commands[approvalSlotKey(prevSID, prevItemID)]; rec != nil && rec.SubmittedSummary != nil {
 								resText = rec.SubmittedSummary
 							}
 						}
@@ -1439,26 +1481,25 @@ func (c *Core) reconcileHomeFocusState(ctx *sync.StepContext) {
 					}
 				} else {
 					phase = corev1.HomeFocusPhase_HOME_FOCUS_PHASE_RESOLVED_ELSEWHERE
-					if prevKind == screens.HomeFocusQuestion {
-						if resOutcome == corev1.ResolutionOutcome_RESOLUTION_OUTCOME_TERMINAL {
-							resText = text.Msg(text.KeyApprovalHandledInTerminal)
-						} else {
+					switch resOutcome {
+					case corev1.ResolutionOutcome_RESOLUTION_OUTCOME_TERMINAL:
+						resText = text.Msg(text.KeyApprovalHandledInTerminal)
+					case corev1.ResolutionOutcome_RESOLUTION_OUTCOME_SYSTEM:
+						resText = text.Msg(text.KeyApprovalHandled)
+					default:
+						if prevKind == screens.HomeFocusQuestion {
 							resText = text.Msg(text.KeyHomeQuestionAnsweredElsewhere)
-						}
-					} else {
-						if resOutcome == corev1.ResolutionOutcome_RESOLUTION_OUTCOME_TERMINAL {
-							resText = text.Msg(text.KeyApprovalHandledInTerminal)
 						} else {
 							resText = text.Msg(text.KeyApprovalHandledOtherDevice)
 						}
 					}
 				}
 				var pickedNum int32
-				var pickedLbl string
+				var pickedTxt *corev1.Text
 				var submittedSummary *corev1.Text
 				if st.HomeFocus != nil && st.HomeFocus.SessionID == prevSID && st.HomeFocus.ItemID == prevItemID {
 					pickedNum = st.HomeFocus.PickedOptionNum
-					pickedLbl = st.HomeFocus.PickedLabel
+					pickedTxt = st.HomeFocus.PickedText
 					submittedSummary = st.HomeFocus.SubmittedSummary
 				}
 				st.HomeFocus = &screens.HomeFocusState{
@@ -1467,7 +1508,7 @@ func (c *Core) reconcileHomeFocusState(ctx *sync.StepContext) {
 					ItemID:           prevItemID,
 					Phase:            phase,
 					PickedOptionNum:  pickedNum,
-					PickedLabel:      pickedLbl,
+					PickedText:       pickedTxt,
 					SubmittedSummary: submittedSummary,
 					ResolutionText:   resText,
 					HeldApproval:     st.HomeLastTopApproval,

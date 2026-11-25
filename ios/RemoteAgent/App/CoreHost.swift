@@ -2794,7 +2794,8 @@ actor CoreHost: SyncEngine {
              .attachmentUploadPoll,
              .attachmentUploadReconnect,
              .draftExpiry,
-             .terminalHistoryTimeout:
+             .terminalHistoryTimeout,
+             .uiTransient:
             return true
         default:
             return false

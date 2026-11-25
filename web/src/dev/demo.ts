@@ -3105,12 +3105,13 @@ export class DemoRemote extends Remote {
     return e;
   }
 
-  private push(sid: string, kind: EventKind) {
+  private push(sid: string, kind: EventKind, origin?: MessageInitShape<typeof EventSchema>["origin"]) {
     const list = this.demoEvents(sid);
     const ev = create(EventSchema, {
       seq: BigInt(list.length + 1),
       sessionId: sid,
       time: timestampFromMs(Date.now()),
+      origin,
       kind,
     });
     list.push(ev);

@@ -18,6 +18,7 @@
     <string name="approval_denying" formatted="false">"正在拒绝…"</string>
     <string name="approval_details" formatted="false">"审批详情"</string>
     <string name="approval_full_command" formatted="false">"看完整命令"</string>
+    <string name="approval_handled" formatted="false">"已处理"</string>
     <string name="approval_handled_in_terminal" formatted="false">"已在终端处理"</string>
     <string name="approval_handled_other_device" formatted="false">"已在另一端处理"</string>
     <string name="approval_reason_placeholder" formatted="false">"说说该怎么做，可以不填"</string>
@@ -199,6 +200,7 @@
     </plurals>
     <string name="dock_multiselect" formatted="false">"可多选"</string>
     <string name="dock_none_fit" formatted="false">"都不合适？"</string>
+    <string name="dock_option_number">"选项 %1$d"</string>
     <string name="dock_other_terminal" formatted="false">"其他回答：去终端"</string>
     <string name="dock_plan_clear" formatted="false">"清空上下文后执行"</string>
     <string name="dock_plan_clear_record" formatted="false">"清空上下文后执行计划"</string>

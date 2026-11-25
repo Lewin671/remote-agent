@@ -497,6 +497,7 @@ public enum PBCoreResolutionOutcome: SwiftProtobuf.Enum, Swift.CaseIterable {
   case otherClient // = 2
   case terminal // = 3
   case failed // = 4
+  case system // = 5
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -510,6 +511,7 @@ public enum PBCoreResolutionOutcome: SwiftProtobuf.Enum, Swift.CaseIterable {
     case 2: self = .otherClient
     case 3: self = .terminal
     case 4: self = .failed
+    case 5: self = .system
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -521,6 +523,7 @@ public enum PBCoreResolutionOutcome: SwiftProtobuf.Enum, Swift.CaseIterable {
     case .otherClient: return 2
     case .terminal: return 3
     case .failed: return 4
+    case .system: return 5
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -532,6 +535,7 @@ public enum PBCoreResolutionOutcome: SwiftProtobuf.Enum, Swift.CaseIterable {
     .otherClient,
     .terminal,
     .failed,
+    .system,
   ]
 
 }
@@ -1932,7 +1936,7 @@ extension PBCoreSessionCommandStatus: SwiftProtobuf._ProtoNameProviding {
 }
 
 extension PBCoreResolutionOutcome: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0RESOLUTION_OUTCOME_UNSPECIFIED\0\u{1}RESOLUTION_OUTCOME_THIS_CLIENT\0\u{1}RESOLUTION_OUTCOME_OTHER_CLIENT\0\u{1}RESOLUTION_OUTCOME_TERMINAL\0\u{1}RESOLUTION_OUTCOME_FAILED\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0RESOLUTION_OUTCOME_UNSPECIFIED\0\u{1}RESOLUTION_OUTCOME_THIS_CLIENT\0\u{1}RESOLUTION_OUTCOME_OTHER_CLIENT\0\u{1}RESOLUTION_OUTCOME_TERMINAL\0\u{1}RESOLUTION_OUTCOME_FAILED\0\u{1}RESOLUTION_OUTCOME_SYSTEM\0")
 }
 
 extension PBCoreHomeFocusPhase: SwiftProtobuf._ProtoNameProviding {
@@ -2402,7 +2406,7 @@ extension PBCoreSessionCommandState: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 extension PBCoreAttentionCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".AttentionCardView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}machine_id\0\u{3}approval_id\0\u{1}title\0\u{3}kind_text\0\u{1}where\0\u{1}time\0\u{1}hot\0\u{1}body\0\u{3}tool_name\0\u{3}is_command\0\u{1}truncated\0\u{3}always_kind\0\u{3}always_arg\0\u{3}always_label\0\u{1}locked\0\u{2}\u{4}command\0\u{3}denying_open\0\u{2}\u{2}phase\0\u{3}resolution_text\0\u{3}hold_open_card\0\u{3}deny_reason_placeholder\0\u{1}description\0\u{3}is_skeleton\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}machine_id\0\u{3}approval_id\0\u{1}title\0\u{3}kind_text\0\u{1}where\0\u{1}time\0\u{1}hot\0\u{1}body\0\u{3}tool_name\0\u{3}is_command\0\u{1}truncated\0\u{3}always_kind\0\u{3}always_arg\0\u{3}always_label\0\u{1}locked\0\u{2}\u{4}command\0\u{3}denying_open\0\u{2}\u{2}phase\0\u{3}resolution_text\0\u{3}hold_open_card\0\u{3}deny_reason_placeholder\0\u{1}description\0\u{3}is_skeleton\0\u{c}\u{16}\u{1}")
 
   fileprivate class _StorageClass {
     var _sessionID: String = String()

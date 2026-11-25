@@ -31,6 +31,10 @@ public enum ResolutionOutcome
    * <code>RESOLUTION_OUTCOME_FAILED = 4;</code>
    */
   RESOLUTION_OUTCOME_FAILED(4),
+  /**
+   * <code>RESOLUTION_OUTCOME_SYSTEM = 5;</code>
+   */
+  RESOLUTION_OUTCOME_SYSTEM(5),
   UNRECOGNIZED(-1),
   ;
 
@@ -54,6 +58,10 @@ public enum ResolutionOutcome
    * <code>RESOLUTION_OUTCOME_FAILED = 4;</code>
    */
   public static final int RESOLUTION_OUTCOME_FAILED_VALUE = 4;
+  /**
+   * <code>RESOLUTION_OUTCOME_SYSTEM = 5;</code>
+   */
+  public static final int RESOLUTION_OUTCOME_SYSTEM_VALUE = 5;
 
 
   @java.lang.Override
@@ -82,6 +90,7 @@ public enum ResolutionOutcome
       case 2: return RESOLUTION_OUTCOME_OTHER_CLIENT;
       case 3: return RESOLUTION_OUTCOME_TERMINAL;
       case 4: return RESOLUTION_OUTCOME_FAILED;
+      case 5: return RESOLUTION_OUTCOME_SYSTEM;
       default: return null;
     }
   }

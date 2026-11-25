@@ -18,6 +18,7 @@
     <string name="approval_denying" formatted="false">"Denying…"</string>
     <string name="approval_details" formatted="false">"Approval details"</string>
     <string name="approval_full_command" formatted="false">"View full command"</string>
+    <string name="approval_handled" formatted="false">"Handled"</string>
     <string name="approval_handled_in_terminal" formatted="false">"Handled in terminal"</string>
     <string name="approval_handled_other_device" formatted="false">"Handled on another device"</string>
     <string name="approval_reason_placeholder" formatted="false">"Suggest what to do instead (optional)"</string>
@@ -205,6 +206,7 @@
     </plurals>
     <string name="dock_multiselect" formatted="false">"Select multiple"</string>
     <string name="dock_none_fit" formatted="false">"None of these?"</string>
+    <string name="dock_option_number">"Option %1$d"</string>
     <string name="dock_other_terminal" formatted="false">"Other answer: go to terminal"</string>
     <string name="dock_plan_clear" formatted="false">"Clear context and execute"</string>
     <string name="dock_plan_clear_record" formatted="false">"Execute plan with cleared context"</string>

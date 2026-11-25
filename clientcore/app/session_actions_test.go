@@ -169,12 +169,14 @@ func TestSessionSemanticSimpleAndModeCommands(t *testing.T) {
 
 	cases := []struct {
 		name      string
+		running   bool
 		event     *corev1.Event
 		checkCmd  func(t *testing.T, cmd *v1.Command)
 		slotField func(vm *corev1.SessionViewModel) *corev1.SessionCommandState
 	}{
 		{
-			name: "interrupt",
+			name:    "interrupt",
+			running: true,
 			event: &corev1.Event{
 				NowMs: 1_791_078_061_000,
 				Event: &corev1.Event_SessionSimpleCommand{
@@ -285,7 +287,9 @@ func TestSessionSemanticSimpleAndModeCommands(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			c := makeSemanticTestCore(t, sess, nil)
+			s := *sess
+			s.Checkpoint = &v1.LiveSnapshot{Running: tc.running}
+			c := makeSemanticTestCore(t, &s, nil)
 			batch := c.Dispatch(tc.event)
 			effs, cmds := decodeDispatchedCommands(t, batch)
 			if len(cmds) != 1 {
@@ -643,6 +647,19 @@ func TestSessionApprovalExternalResolutionByOrigin(t *testing.T) {
 			wantOutcome: corev1.ResolutionOutcome_RESOLUTION_OUTCOME_TERMINAL,
 			wantTextKey: text.KeyApprovalHandledInTerminal,
 			wantNotice:  true,
+		},
+		{
+			name:        "system_neutral_handled",
+			origin:      &v1.Origin{Kind: v1.OriginKind_ORIGIN_KIND_SYSTEM},
+			wantOutcome: corev1.ResolutionOutcome_RESOLUTION_OUTCOME_SYSTEM,
+			wantTextKey: text.KeyApprovalHandled,
+			wantNotice:  true,
+		},
+		{
+			name:        "unspecified_no_external_banner",
+			origin:      &v1.Origin{Kind: v1.OriginKind_ORIGIN_KIND_UNSPECIFIED},
+			wantOutcome: corev1.ResolutionOutcome_RESOLUTION_OUTCOME_UNSPECIFIED,
+			wantNotice:  false,
 		},
 		{
 			name:        "this_client_no_external_banner",
@@ -1609,5 +1626,152 @@ func TestSessionQuestionSelectedOptionNums(t *testing.T) {
 	settleCommandFailed(c, 1_791_078_061_120, effsS[0], "failed_precondition")
 	if got := getSelected(); !slices.Equal(got, []int32{2}) {
 		t.Fatalf("single-select failed selected = %v, want [2]", got)
+	}
+}
+
+func TestSessionSimpleCommandGuardsAndRenameAutoTitleNoop(t *testing.T) {
+	// 1) Idle session: INTERRUPT must be rejected (!CanInterrupt), COMPACT allowed.
+	idleSess := &corev1.PlainSession{
+		SessionId: "s-guard",
+		MachineId: "m-on",
+		UpdatedMs: 1_791_078_060_000,
+		Meta: &v1.Session{
+			Id:     "s-guard",
+			Cwd:    "/Users/me/proj",
+			Agent:  v1.Agent_AGENT_CLAUDE,
+			Status: v1.SessionStatus_SESSION_STATUS_IDLE,
+			// Title longer than 60 codepoints (TitleInput truncates to 60 codepoints).
+			Title: strings.Repeat("a", 80),
+		},
+		Checkpoint: &v1.LiveSnapshot{Running: false},
+	}
+	c := makeSemanticTestCore(t, idleSess, nil)
+	bIntIdle := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_061_000,
+		Event: &corev1.Event_SessionSimpleCommand{
+			SessionSimpleCommand: &corev1.SessionSimpleCommandAction{
+				SessionId: "s-guard",
+				Kind:      corev1.SessionSimpleCommandKind_SESSION_SIMPLE_COMMAND_KIND_INTERRUPT,
+			},
+		},
+	})
+	if effs, _ := decodeDispatchedCommands(t, bIntIdle); len(effs) != 0 {
+		t.Fatalf("expected INTERRUPT rejected on idle session (!CanInterrupt), got %d cmds", len(effs))
+	}
+
+	// Saving the 60-codepoint capped auto-title unchanged must be a no-op (no RenameSession command)!
+	bRenCap := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_061_050,
+		Event: &corev1.Event_SessionRename{
+			SessionRename: &corev1.SessionRenameAction{
+				SessionId: "s-guard",
+				Title:     strings.Repeat("a", 60),
+			},
+		},
+	})
+	if effs, _ := decodeDispatchedCommands(t, bRenCap); len(effs) != 0 {
+		t.Fatalf("saving 60-codepoint capped auto-title must be no-op, got %d cmds", len(effs))
+	}
+
+	// 2) Running session: COMPACT rejected (!CanCompact), INTERRUPT allowed.
+	runSess := &corev1.PlainSession{
+		SessionId: "s-run-g",
+		MachineId: "m-on",
+		UpdatedMs: 1_791_078_060_000,
+		Meta: &v1.Session{
+			Id:     "s-run-g",
+			Cwd:    "/Users/me/proj",
+			Agent:  v1.Agent_AGENT_CLAUDE,
+			Status: v1.SessionStatus_SESSION_STATUS_RUNNING,
+		},
+		Checkpoint: &v1.LiveSnapshot{Running: true},
+	}
+	cRun := makeSemanticTestCore(t, runSess, nil)
+	bCmpRun := cRun.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_061_000,
+		Event: &corev1.Event_SessionSimpleCommand{
+			SessionSimpleCommand: &corev1.SessionSimpleCommandAction{
+				SessionId: "s-run-g",
+				Kind:      corev1.SessionSimpleCommandKind_SESSION_SIMPLE_COMMAND_KIND_COMPACT,
+			},
+		},
+	})
+	if effs, _ := decodeDispatchedCommands(t, bCmpRun); len(effs) != 0 {
+		t.Fatalf("expected COMPACT rejected while running (!CanCompact), got %d cmds", len(effs))
+	}
+
+	// 3) Exited session: STOP rejected (!CanEnd).
+	exitedSess := &corev1.PlainSession{
+		SessionId: "s-exit-g",
+		MachineId: "m-on",
+		UpdatedMs: 1_791_078_060_000,
+		Meta: &v1.Session{
+			Id:     "s-exit-g",
+			Cwd:    "/Users/me/proj",
+			Agent:  v1.Agent_AGENT_CLAUDE,
+			Status: v1.SessionStatus_SESSION_STATUS_EXITED,
+		},
+	}
+	cExit := makeSemanticTestCore(t, exitedSess, nil)
+	bStopExit := cExit.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_061_000,
+		Event: &corev1.Event_SessionSimpleCommand{
+			SessionSimpleCommand: &corev1.SessionSimpleCommandAction{
+				SessionId: "s-exit-g",
+				Kind:      corev1.SessionSimpleCommandKind_SESSION_SIMPLE_COMMAND_KIND_STOP,
+			},
+		},
+	})
+	if effs, _ := decodeDispatchedCommands(t, bStopExit); len(effs) != 0 {
+		t.Fatalf("expected STOP rejected on exited session (!CanEnd), got %d cmds", len(effs))
+	}
+}
+
+func TestQuestionOptionSummaryTextUsesI18nSeparatorAndFallback(t *testing.T) {
+	sess := &corev1.PlainSession{
+		SessionId: "s-qi18n",
+		MachineId: "m-on",
+		UpdatedMs: 1_791_078_060_000,
+		Meta:      &v1.Session{Id: "s-qi18n", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_CLAUDE},
+		Checkpoint: &v1.LiveSnapshot{
+			Actions: []*v1.Event{
+				{
+					Seq: 3,
+					Kind: &v1.Event_QuestionAsked{
+						QuestionAsked: &v1.QuestionAsked{
+							QuestionId: "q-i18n",
+							Questions: []*v1.Question{
+								{
+									Header:      "Opt",
+									Text:        "Pick",
+									MultiSelect: true,
+									Options:     []*v1.QuestionOption{{Label: "Alpha"}, {Label: ""}},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	c := makeSemanticTestCore(t, sess, nil)
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_061_000,
+		Event: &corev1.Event_SessionAnswerQuestion{
+			SessionAnswerQuestion: &corev1.SessionAnswerQuestionAction{
+				SessionId:  "s-qi18n",
+				QuestionId: "q-i18n",
+				OptionNums: []int32{1, 2},
+			},
+		},
+	})
+	vm, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-qi18n"}}})
+	sum := vm.GetSession().GetDock().GetCommand().GetSubmittedSummary()
+	if sum == nil || sum.SeparatorKey != text.KeyCommonListSeparator {
+		t.Fatalf("expected i18n Join with KeyCommonListSeparator, got %+v", sum)
+	}
+	parts := sum.Join
+	if len(parts) != 2 || parts[0].GetLiteral() != "Alpha" || parts[1].GetKey() != text.KeyDockOptionNumber {
+		t.Fatalf("expected [Plain(Alpha), Msg(dock.option_number)], got %+v", parts)
 	}
 }

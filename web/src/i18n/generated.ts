@@ -53,6 +53,7 @@ export interface MessageArgs {
   "approval.denying": { [name: string]: never };
   "approval.details": { [name: string]: never };
   "approval.full_command": { [name: string]: never };
+  "approval.handled": { [name: string]: never };
   "approval.handled_in_terminal": { [name: string]: never };
   "approval.handled_other_device": { [name: string]: never };
   "approval.reason_placeholder": { [name: string]: never };
@@ -214,6 +215,7 @@ export interface MessageArgs {
   "dock.more": { count: number };
   "dock.multiselect": { [name: string]: never };
   "dock.none_fit": { [name: string]: never };
+  "dock.option_number": { num: number };
   "dock.other_terminal": { [name: string]: never };
   "dock.plan_clear": { [name: string]: never };
   "dock.plan_clear_record": { [name: string]: never };
@@ -1817,6 +1819,7 @@ export const messages = {
     "approval.denying": "Denying…",
     "approval.details": "Approval details",
     "approval.full_command": "View full command",
+    "approval.handled": "Handled",
     "approval.handled_in_terminal": "Handled in terminal",
     "approval.handled_other_device": "Handled on another device",
     "approval.reason_placeholder": "Suggest what to do instead (optional)",
@@ -2014,6 +2017,7 @@ export const messages = {
     },
     "dock.multiselect": "Select multiple",
     "dock.none_fit": "None of these?",
+    "dock.option_number": "Option {num}",
     "dock.other_terminal": "Other answer: go to terminal",
     "dock.plan_clear": "Clear context and execute",
     "dock.plan_clear_record": "Execute plan with cleared context",
@@ -4179,6 +4183,7 @@ export const messages = {
     "approval.denying": "正在拒绝…",
     "approval.details": "审批详情",
     "approval.full_command": "看完整命令",
+    "approval.handled": "已处理",
     "approval.handled_in_terminal": "已在终端处理",
     "approval.handled_other_device": "已在另一端处理",
     "approval.reason_placeholder": "说说该怎么做，可以不填",
@@ -4370,6 +4375,7 @@ export const messages = {
     },
     "dock.multiselect": "可多选",
     "dock.none_fit": "都不合适？",
+    "dock.option_number": "选项 {num}",
     "dock.other_terminal": "其他回答：去终端",
     "dock.plan_clear": "清空上下文后执行",
     "dock.plan_clear_record": "清空上下文后执行计划",
