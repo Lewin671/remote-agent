@@ -707,11 +707,7 @@ func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExt
 		vm.UnlinkedBannerText = text.Msg(text.KeySettingsThisDeviceWasRemovedFromTheAccount)
 	}
 	if vm.RecoveryPending {
-		if isMgr {
-			vm.RecoveryBannerText = text.Msg(text.KeySecuritySomeoneIsRequestingManagementTakeoverWithARecoveryCode)
-		} else {
-			vm.RecoveryBannerText = text.Msg(text.KeySettingsRecoveryWaitingBanner)
-		}
+		vm.RecoveryBannerText = buildRecoveryBannerText(isMgr, 0)
 	}
 	if len(vm.Machines) > 2 {
 		vm.MachineCountText = text.Msg(text.KeySettingsMachineCount, text.Int("count", int64(len(vm.Machines))))
@@ -759,22 +755,14 @@ func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExt
 		secSummary = text.Msg(text.KeySettingsSecuritySummaryNonAuthority, text.Str("name", authName))
 	}
 	selfID := syncView.GetSelfDeviceId()
-	canPrepareHandoff := false
-	if !isMgr && selfID != "" {
-		for _, d := range syncView.GetDevices() {
-			if d != nil && d.DeviceId == selfID && d.Kind == v1.DeviceKind_DEVICE_KIND_CLIENT {
-				canPrepareHandoff = true
-				break
-			}
-		}
-	}
+	canPrep := canPrepareHandoff(isMgr, selfID, syncView.GetDevices())
 	vm.Security = &corev1.SecuritySummaryView{
 		IsManager:           isMgr,
 		Unlinked:            unlinked,
 		AuthorityDeviceId:   syncView.GetAuthorityDeviceId(),
 		AuthorityName:       authName,
 		AuthorityNameText:   syncView.GetManagerName(),
-		CanPrepareHandoff:   canPrepareHandoff,
+		CanPrepareHandoff:   canPrep,
 		LeaseRenewalAdvice:  syncView.GetLeaseRenewalAdvice(),
 		RecoveryPending:     syncView.GetRecoveryPending(),
 		RecoveryReadyMs:     syncView.GetRecoveryReadyMs(),
@@ -788,18 +776,42 @@ func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExt
 	return vm
 }
 
-func buildHandoffCandidates(syncView *corev1.SyncStateView) []*corev1.HandoffCandidateView {
-	if syncView == nil {
-		return nil
+func buildRecoveryBannerText(isManager bool, readyMs int64) *corev1.Text {
+	if !isManager {
+		return text.Msg(text.KeySettingsRecoveryWaitingBanner)
 	}
-	selfID := syncView.GetSelfDeviceId()
-	sorted := machine.SortClients(syncView.GetDevices(), selfID)
+	if readyMs > 0 {
+		return text.Msg(
+			text.KeySecuritySomeoneIsRequestingManagementTakeoverWithARecoveryCode,
+			text.ArgTimestamp("value", readyMs, corev1.TimestampStyle_TIMESTAMP_STYLE_DATE_TIME),
+		)
+	}
+	return text.Msg(
+		text.KeySecuritySomeoneIsRequestingManagementTakeoverWithARecoveryCode,
+		text.ArgText("value", text.Msg(text.KeySecurityDuration48Hours)),
+	)
+}
+
+func canPrepareHandoff(isManager bool, selfID string, devices []*corev1.SyncDeviceView) bool {
+	if isManager || selfID == "" {
+		return false
+	}
+	for _, d := range devices {
+		if d != nil && d.DeviceId == selfID && d.Kind == v1.DeviceKind_DEVICE_KIND_CLIENT {
+			return true
+		}
+	}
+	return false
+}
+
+func buildHandoffCandidatesFromDevices(devices []*corev1.SyncDeviceView, selfID string, securityLoaded bool) []*corev1.HandoffCandidateView {
+	sorted := machine.SortClients(devices, selfID)
 	var out []*corev1.HandoffCandidateView
 	for _, d := range sorted {
 		if d == nil || d.DeviceId == "" || d.DeviceId == selfID || d.Kind != v1.DeviceKind_DEVICE_KIND_CLIENT {
 			continue
 		}
-		if syncView.GetSecurityLoaded() && !d.GetTrusted() {
+		if securityLoaded && !d.GetTrusted() {
 			continue
 		}
 		if d.Meta == nil || len(d.Meta.HandoffRecoveryEd) != 32 {
@@ -812,6 +824,13 @@ func buildHandoffCandidates(syncView *corev1.SyncStateView) []*corev1.HandoffCan
 		})
 	}
 	return out
+}
+
+func buildHandoffCandidates(syncView *corev1.SyncStateView) []*corev1.HandoffCandidateView {
+	if syncView == nil {
+		return nil
+	}
+	return buildHandoffCandidatesFromDevices(syncView.GetDevices(), syncView.GetSelfDeviceId(), syncView.GetSecurityLoaded())
 }
 
 // BuildMachineSettings builds the per-machine details & daemon configuration ViewModel.

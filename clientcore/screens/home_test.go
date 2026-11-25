@@ -534,14 +534,22 @@ func TestNewSessionPrefsBlocked(t *testing.T) {
 			wantKey:     "common.loading",
 		},
 		{
-			name:        "clock_skewed",
-			mutate:      func(st *State) { st.World.Connection = lists.ConnConnected; st.World.PrefsLoaded = true; st.World.AccountClockSkewed = true },
+			name: "clock_skewed",
+			mutate: func(st *State) {
+				st.World.Connection = lists.ConnConnected
+				st.World.PrefsLoaded = true
+				st.World.AccountClockSkewed = true
+			},
 			wantBlocked: true,
 			wantKey:     "errors.this_device_s_clock_is_behind_the_account_state_remote",
 		},
 		{
-			name:        "control_lost",
-			mutate:      func(st *State) { st.World.Connection = lists.ConnConnected; st.World.PrefsLoaded = true; st.World.AccountControlLost = true },
+			name: "control_lost",
+			mutate: func(st *State) {
+				st.World.Connection = lists.ConnConnected
+				st.World.PrefsLoaded = true
+				st.World.AccountControlLost = true
+			},
 			wantBlocked: true,
 			wantKey:     "errors.remote_control_expired_saving_changes_session_control_and_new",
 		},

@@ -19,10 +19,10 @@ import (
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/security"
 	"github.com/Lewin671/remote-agent/clientcore/transport"
+	stdv1 "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/Lewin671/remote-agent/shared/linkcore"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
-	stdv1 "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"google.golang.org/protobuf/proto"
 )
 

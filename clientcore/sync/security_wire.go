@@ -286,6 +286,7 @@ func (e *Engine) syncSecurityStateFromEngine(ctx *StepContext, pushToTransport b
 	e.maybeDescribeSelf(ctx)
 	e.updateLivePollers(ctx)
 	ctx.Dirty.MarkAll()
+	ctx.Dirty.MarkSecurity()
 }
 
 func (e *Engine) recomputeMachineReplacements() {
@@ -417,7 +418,8 @@ func (e *Engine) handleSecurityRpcResult(ctx *StepContext, ev *corev1.SecurityRp
 
 func (e *Engine) handleSecurityForeground(ctx *StepContext, ev *corev1.SecurityForegroundEvent) {
 	if ev != nil {
-		e.secEngine.SetForeground(ev.Foreground)
+		effs := e.secEngine.HandleForeground(e.nowMs, ev.Foreground)
+		e.emitSecurityEffects(ctx, effs)
 	}
 }
 
@@ -576,6 +578,7 @@ func (e *Engine) handleSeedDemoWorld(ctx *StepContext, ev *corev1.SeedDemoWorldE
 	}
 	if ev.Security != nil {
 		e.pruneUntrustedCaches(ctx)
+		ctx.Dirty.MarkSecurity()
 	}
 	e.updateLivePollers(ctx)
 	ctx.Dirty.MarkAll()
@@ -1319,6 +1322,7 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 		e.pruneUntrustedCaches(stepCtx)
 		e.maybeDescribeSelf(stepCtx)
 		stepCtx.Dirty.MarkAll()
+		stepCtx.Dirty.MarkSecurity()
 	case dirKindStreamMachine:
 		if !e.running || e.legID != m.legID || len(outM) == 0 {
 			return
@@ -1368,6 +1372,7 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 		e.pruneUntrustedCaches(stepCtx)
 		e.maybeDescribeSelf(stepCtx)
 		stepCtx.Dirty.Add(true, false, false)
+		stepCtx.Dirty.MarkSecurity()
 	case dirKindPrefsLoad:
 		var dp *decodedPrefs
 		if len(outP) > 0 {
@@ -1882,4 +1887,120 @@ func (e *Engine) finishSealPrefs(stepCtx *StepContext, op *pendingSecOp, sr secu
 
 func (e *Engine) cloneRefreshSnapshots() (mp, sp, rp, dp map[string]uint64) {
 	return maps.Clone(e.refreshSnapshotM), maps.Clone(e.refreshSnapshotS), maps.Clone(e.refreshSnapshotR), maps.Clone(e.refreshSnapshotD)
+}
+
+// SecurityEngine returns the engine's embedded security.Engine.
+func (e *Engine) SecurityEngine() *security.Engine {
+	return e.secEngine
+}
+
+// SetSecurityPollObserver registers an observer for managed TIMER_KIND_SECURITY_POLL updates.
+func (e *Engine) SetSecurityPollObserver(obs security.PollObserver) {
+	if e != nil && e.secEngine != nil {
+		e.secEngine.SetPollObserver(obs)
+	}
+}
+
+// EmitSecurityEffects routes security effects through sync's timer/token/meta pipeline.
+func (e *Engine) EmitSecurityEffects(ctx *StepContext, effs []*corev1.Effect) {
+	e.emitSecurityEffects(ctx, effs)
+	e.maybeRequestEntropy(ctx)
+}
+
+// SecurityDeviceOffers returns verified client device metadata from the sync directory.
+func (e *Engine) SecurityDeviceOffers() []security.DeviceOfferInfo {
+	return e.securityDeviceOffers()
+}
+
+// RefreshDevices triggers a device directory refresh when sync is running.
+func (e *Engine) RefreshDevices(ctx *StepContext, force bool) {
+	if e != nil && e.running && !e.removed {
+		e.startRefreshDevices(ctx, force)
+	}
+}
+
+// SyncRemoved reports whether sync has marked the current device removed.
+func (e *Engine) SyncRemoved() bool {
+	return e != nil && e.removed
+}
+
+// SetPlatformIdentity records the shell's platform and device description metadata.
+func (e *Engine) SetPlatformIdentity(platform, description string) {
+	if e == nil {
+		return
+	}
+	if platform != "" {
+		e.selfPlatform = platform
+	}
+	if description != "" {
+		e.selfDescription = description
+	}
+}
+
+// SetInitialNetworkState seeds network availability and signature prior to starting sync.
+func (e *Engine) SetInitialNetworkState(available bool, signature string) {
+	if e == nil {
+		return
+	}
+	e.networkAvailable = available
+	if signature != "" {
+		e.networkSignature = signature
+	}
+}
+
+// StopAllForLogout stops sync, cancels all active timers/streams/direct routes, and discards cached tokens.
+func (e *Engine) StopAllForLogout(ctx *StepContext) {
+	if e == nil {
+		return
+	}
+	if e.cachedToken != "" {
+		ctx.emit(&corev1.Effect{
+			Effect: &corev1.Effect_DiscardToken{
+				DiscardToken: &corev1.DiscardTokenEffect{Token: e.cachedToken},
+			},
+		})
+		e.cachedToken = ""
+		e.tokenExpiresMs = 0
+	}
+	e.handleLifecycle(ctx, &corev1.SyncLifecycleAction{
+		Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_STOP,
+	})
+}
+
+// DeviceDisplayName returns the human-readable name for a synced device ID, if known.
+func (e *Engine) DeviceDisplayName(deviceID string) string {
+	if e == nil || deviceID == "" {
+		return ""
+	}
+	d := e.devices[deviceID]
+	if d == nil || d.Meta == nil {
+		return ""
+	}
+	if d.Meta.Name != "" {
+		return d.Meta.Name
+	}
+	return d.Meta.Description
+}
+
+// MachineDisplayName returns the human-readable name for a synced machine ID, if known.
+func (e *Engine) MachineDisplayName(machineID string) string {
+	if e == nil || machineID == "" {
+		return ""
+	}
+	m := e.machines[machineID]
+	if m == nil || m.Meta == nil {
+		return ""
+	}
+	return m.Meta.Hostname
+}
+
+// HasSelfClientDevice reports whether the current device is listed as a client device in the directory.
+func (e *Engine) HasSelfClientDevice(selfID string) bool {
+	if e == nil || selfID == "" {
+		return false
+	}
+	if d := e.devices[selfID]; d != nil {
+		return d.Kind == v1.DeviceKind_DEVICE_KIND_CLIENT
+	}
+	return e.security.TrustedClients[selfID]
 }

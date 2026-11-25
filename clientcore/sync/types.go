@@ -65,6 +65,7 @@ type DirtyFlags struct {
 	Connection  bool
 	SessionData bool
 	Direct      bool
+	Security    bool
 }
 
 // Add merges additional dirty screen markers (and marks SyncState when any view changes).
@@ -80,6 +81,11 @@ func (d *DirtyFlags) Add(home, project, newSession bool) {
 // MarkSyncState marks the transitional SyncState view dirty.
 func (d *DirtyFlags) MarkSyncState() {
 	d.SyncState = true
+}
+
+// MarkSecurity marks security/device-dependent views (AccountSecurity, Handoff, AddDevice) dirty.
+func (d *DirtyFlags) MarkSecurity() {
+	d.Security = true
 }
 
 // MarkConnection marks connection-derived views (Connection, Session, SyncState) dirty.
@@ -110,7 +116,7 @@ func (d *DirtyFlags) MarkAll() {
 
 // Any reports whether at least one screen or transitional view is dirty.
 func (d DirtyFlags) Any() bool {
-	return d.Home || d.Project || d.NewSession || d.SyncState || d.Connection || d.SessionData || d.Direct
+	return d.Home || d.Project || d.NewSession || d.SyncState || d.Connection || d.SessionData || d.Direct || d.Security
 }
 
 // ScreenTargets returns ordered corev1.ScreenTarget entries for RenderEffect.
@@ -596,6 +602,37 @@ func NewEngine() *Engine {
 func (e *Engine) allocOpID() uint64 {
 	e.nextOpSeq++
 	return e.nextOpSeq
+}
+
+// NextOpSeq returns the monotonic op sequence high-water mark for in-place reset preservation.
+func (e *Engine) NextOpSeq() uint64 {
+	if e == nil {
+		return 0
+	}
+	return e.nextOpSeq
+}
+
+// SetNextOpSeq seeds the op sequence counter above an exited account's high-water mark.
+func (e *Engine) SetNextOpSeq(v uint64) {
+	if e != nil && v > e.nextOpSeq {
+		e.nextOpSeq = v
+	}
+}
+
+// Foreground reports the engine's current foreground visibility state.
+func (e *Engine) Foreground() bool {
+	if e == nil {
+		return true
+	}
+	return e.foreground
+}
+
+// NetworkState returns the engine's current network availability and signature.
+func (e *Engine) NetworkState() (bool, string) {
+	if e == nil {
+		return true, ""
+	}
+	return e.networkAvailable, e.networkSignature
 }
 
 func (e *Engine) allocLegID() uint64 {

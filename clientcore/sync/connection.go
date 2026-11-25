@@ -144,7 +144,7 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		wasForeground := e.foreground
 		e.foreground = true
 		if e.secEngine != nil {
-			e.secEngine.SetForeground(true)
+			e.emitSecurityEffects(ctx, e.secEngine.HandleForeground(e.nowMs, true))
 		}
 		e.emitCoordEffects(ctx, e.ensureTransportCoord().SetLifecycle(e.nowMs, true))
 		e.updateLivePollers(ctx)
@@ -177,7 +177,7 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 	case corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_BACKGROUND:
 		e.foreground = false
 		if e.secEngine != nil {
-			e.secEngine.SetForeground(false)
+			e.emitSecurityEffects(ctx, e.secEngine.HandleForeground(e.nowMs, false))
 		}
 		e.clearDisplayGrace(ctx)
 		e.clearColdStartGrace(ctx)

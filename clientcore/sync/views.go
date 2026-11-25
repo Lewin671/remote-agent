@@ -171,6 +171,44 @@ func (e *Engine) SessionErrorReasons(sessionID string) (errReason, fetchErrReaso
 	return world.Reason{}, world.Reason{}
 }
 
+// SecurityScreenSnapshot is a lightweight O(devices) read-only projection for security ViewModels,
+// avoiding the O(sessions + machines) BuildSyncStateView allocation on every security render.
+type SecurityScreenSnapshot struct {
+	Loaded              bool
+	IsManager           bool
+	MachinesListed      bool
+	LeaseEndMs          int64
+	RecoveryPending     bool
+	RecoveryReadyMs     int64
+	RecoveryStatusStale bool
+	SelfDeviceID        string
+	AuthorityDeviceID   string
+	Devices             []*corev1.SyncDeviceView
+}
+
+// SecuritySnapshot returns security & client-device metadata without copying sessions or machines.
+func (e *Engine) SecuritySnapshot() SecurityScreenSnapshot {
+	devices := make([]*corev1.SyncDeviceView, 0, len(e.devices))
+	for _, d := range e.devices {
+		if dv := e.buildSyncDeviceView(d); dv != nil {
+			devices = append(devices, dv)
+		}
+	}
+	sortutil.SortInterface(syncDevicesByID(devices))
+	return SecurityScreenSnapshot{
+		Loaded:              e.security.Loaded,
+		IsManager:           e.w.World.IsManager,
+		MachinesListed:      e.w.World.MachinesListed,
+		LeaseEndMs:          e.security.LeaseEndMs,
+		RecoveryPending:     e.security.RecoveryPending,
+		RecoveryReadyMs:     e.security.RecoveryReadyMs,
+		RecoveryStatusStale: e.security.RecoveryStatusStale,
+		SelfDeviceID:        e.security.SelfDeviceID,
+		AuthorityDeviceID:   e.security.AuthorityDeviceID,
+		Devices:             devices,
+	}
+}
+
 // BuildSyncStateView constructs the transitional SyncStateView snapshot for unmigrated Step 3-4 screens
 // from the engine's world. Text fields (ConnectionReason, ConnectionStep, ManagerName, SessionListError,
 // DevicesErrorText) are left nil here and populated by screens.ApplySyncStateTexts.

@@ -395,6 +395,7 @@ func (e *Engine) handleListsFetched(ctx *StepContext, ev *corev1.ListsFetchedEve
 		e.RequestMoreSessions(ctx)
 	}
 	ctx.Dirty.MarkAll()
+	ctx.Dirty.MarkSecurity()
 }
 
 func (e *Engine) handleSessionsPageFetched(ctx *StepContext, ev *corev1.SessionsPageFetchedEvent) {
@@ -534,6 +535,7 @@ func (e *Engine) handleDevicesFetched(ctx *StepContext, ev *corev1.DevicesFetche
 	e.pruneUntrustedCaches(ctx)
 	e.maybeDescribeSelf(ctx)
 	ctx.Dirty.MarkAll()
+	ctx.Dirty.MarkSecurity()
 }
 
 func (e *Engine) handleStreamFrame(ctx *StepContext, ev *corev1.StreamFrameEvent) {
@@ -619,6 +621,7 @@ func (e *Engine) handleStreamFrame(ctx *StepContext, ev *corev1.StreamFrameEvent
 			e.pruneUntrustedCaches(ctx)
 			e.maybeDescribeSelf(ctx)
 			ctx.Dirty.Add(true, false, false)
+			ctx.Dirty.MarkSecurity()
 		}
 	case *corev1.StreamFrameEvent_DeviceRemovedId:
 		if f.DeviceRemovedId != "" {
@@ -628,6 +631,7 @@ func (e *Engine) handleStreamFrame(ctx *StepContext, ev *corev1.StreamFrameEvent
 			e.secEngine.SetDeviceDirectory(e.securityDeviceOffers())
 			e.requestSyncSecurity(ctx, true)
 			ctx.Dirty.Add(true, false, false)
+			ctx.Dirty.MarkSecurity()
 		}
 	case *corev1.StreamFrameEvent_WireMachineUpdated:
 		if f.WireMachineUpdated != nil && f.WireMachineUpdated.Id != "" {

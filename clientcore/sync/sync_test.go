@@ -1196,7 +1196,6 @@ func TestCommandLifecycleFrozenRetryAndObservedActions(t *testing.T) {
 	}
 }
 
-
 func TestSyncStateAndSessionDataTransitionViews(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
