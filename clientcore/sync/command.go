@@ -620,6 +620,10 @@ func (e *Engine) finishCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 				return
 			}
 			prep.Dispatch.PriorUnknown = true
+			if ev.TransportCode == errCodeUnavailable {
+				e.handleRetryableTransportOutcome(ctx, prep, ev)
+				return
+			}
 			e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, world.Reason{Kind: world.ReasonReplyUnverified}, false)
 			return
 		}
@@ -712,7 +716,11 @@ func (e *Engine) handleRetryableTransportOutcome(ctx *StepContext, prep *Prepare
 		e.scheduleTimer(ctx, corev1.TimerKind_TIMER_KIND_COMMAND_RETRY, prep.RequestID, CommandUnavailableRetryMs)
 		return
 	}
-	if isTransientRetryCode(ev.TransportCode) && prep.AttemptCount < CommandRetryMaxAttempts && e.nowMs+2_000 < prep.DeadlineMs {
+	retryLimit := prep.DeadlineMs
+	if prep.Dispatch.HasPrior() && prep.RecoveryDeadlineMs > retryLimit {
+		retryLimit = prep.RecoveryDeadlineMs
+	}
+	if isTransientRetryCode(ev.TransportCode) && prep.AttemptCount < CommandRetryMaxAttempts && e.nowMs+2_000 < retryLimit {
 		prep.AttemptCount++
 		wait := int64(1_000) * int64(prep.AttemptCount)
 		e.retryReqByTimer[prep.RequestID] = prep.RequestID

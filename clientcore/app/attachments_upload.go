@@ -16,6 +16,23 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
+func uploadCompleteSlotKey(machineID, transferID string) string {
+	if machineID == "" || transferID == "" {
+		return ""
+	}
+	return "upload-complete:" + machineID + ":" + transferID
+}
+
+func (c *Core) abandonUploadComplete(ctx *sync.StepContext, machineID, transferID string, completing bool) {
+	if ctx == nil || machineID == "" || transferID == "" {
+		return
+	}
+	slotKey := uploadCompleteSlotKey(machineID, transferID)
+	if completing || c.m.sync.HasFrozenAttempt(slotKey) {
+		c.m.sync.AbandonAttempt(ctx, slotKey)
+	}
+}
+
 func uploadTimerKey(ownerKind uint8, ownerKey, itemID string) string {
 	prefix := "d"
 	if ownerKind == attOwnerResend {
@@ -107,6 +124,7 @@ func (c *Core) invalidateItem(
 
 	// Synchronously bump generation and clear all remote/progress state first.
 	it.generation++
+	c.abandonUploadComplete(ctx, oldMachine, oldTransferID, it.phase == attPhaseCompleting)
 	if it.activeReqID != "" {
 		reqID := it.activeReqID
 		it.activeReqID = ""
@@ -570,6 +588,15 @@ func (c *Core) beginOrResumeItemUpload(
 	}
 	it.state = corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_UPLOADING
 	if it.transferID != "" && it.beginDone {
+		slotKey := uploadCompleteSlotKey(it.targetMachineID, it.transferID)
+		frozen, expired, _ := c.m.sync.AttemptState(slotKey)
+		if expired {
+			c.m.sync.AbandonAttempt(ctx, slotKey)
+		} else if frozen {
+			// Replay the unknown CompleteImageUpload with its original RequestID.
+			c.submitUploadComplete(ctx, ownerKind, ownerKey, it, effects)
+			return
+		}
 		// Resume existing transfer via read-only GetImageUploadStatus!
 		it.statusProbeForComplete = false
 		c.submitUploadStatusProbe(ctx, ownerKind, ownerKey, it, effects)
@@ -825,6 +852,7 @@ func (c *Core) submitUploadComplete(
 	}
 	it.phase = attPhaseCompleting
 	reqID, _ := c.m.sync.SubmitCommand(ctx, sync.SubmitCommandParams{
+		SlotKey:   uploadCompleteSlotKey(it.targetMachineID, it.transferID),
 		MachineID: it.targetMachineID,
 		Command:   cmd,
 	})
@@ -1034,8 +1062,11 @@ func (c *Core) handleUploadStepFailure(
 	if attachments.ShouldRestartUpload(sc.FromDaemon, sc.ErrorCode) && !it.restartedOnce {
 		it.restartedOnce = true
 		oldTransfer := it.transferID
-		if oldTransfer != "" && !c.isTransferProtected(it.targetMachineID, oldTransfer) {
-			c.emitAbortUpload(ctx, it.targetMachineID, oldTransfer)
+		if oldTransfer != "" {
+			c.abandonUploadComplete(ctx, it.targetMachineID, oldTransfer, meta.step == attPhaseCompleting)
+			if !c.isTransferProtected(it.targetMachineID, oldTransfer) {
+				c.emitAbortUpload(ctx, it.targetMachineID, oldTransfer)
+			}
 		}
 		it.transferID = c.m.sync.NextID(ctx)
 		it.beginDone = false
@@ -1050,13 +1081,15 @@ func (c *Core) handleUploadStepFailure(
 
 	// 2. Retryable transient/unknown error (never retry daemon business errors or conflicts).
 	isRetryable := !sc.FromDaemon &&
+		!sc.Expired &&
 		sc.Category != outcome.Conflict &&
 		(sc.Category == outcome.Unknown || attachments.IsUploadTransientCode(sc.ErrorCode))
 
 	if isRetryable {
-		// If computer is online and we still have per-step retries left: probe status (for put/complete) or retry begin/status.
-		_, onlineReady := c.resolveAttachmentCaps(it.targetMachineID, false)
-		if onlineReady && it.stepRetries < attachments.UploadStepMaxRetries {
+		// Use uploadNetworkReady (not resolveAttachmentCaps, which stays true during DisplayGrace
+		// after a stream drop) so retries wait for real connectivity instead of burning synchronously.
+		netReady := c.uploadNetworkReady(it.targetMachineID)
+		if netReady && it.stepRetries < attachments.UploadStepMaxRetries {
 			it.stepRetries++
 			switch meta.step {
 			case attPhaseBegin:
@@ -1065,8 +1098,17 @@ func (c *Core) handleUploadStepFailure(
 				it.statusProbeForComplete = false
 				c.submitUploadStatusProbe(ctx, meta.ownerKind, meta.ownerKey, it, effects)
 			case attPhaseCompleting:
-				it.statusProbeForComplete = true
-				c.submitUploadStatusProbe(ctx, meta.ownerKind, meta.ownerKey, it, effects)
+				slotKey := uploadCompleteSlotKey(it.targetMachineID, it.transferID)
+				frozen, expired, _ := c.m.sync.AttemptState(slotKey)
+				if frozen && !expired {
+					c.submitUploadComplete(ctx, meta.ownerKind, meta.ownerKey, it, effects)
+				} else {
+					if expired {
+						c.m.sync.AbandonAttempt(ctx, slotKey)
+					}
+					it.statusProbeForComplete = true
+					c.submitUploadStatusProbe(ctx, meta.ownerKind, meta.ownerKey, it, effects)
+				}
 			case attPhaseStatusProbe:
 				c.submitUploadStatusProbe(ctx, meta.ownerKind, meta.ownerKey, it, effects)
 			}
@@ -1083,7 +1125,7 @@ func (c *Core) handleUploadStepFailure(
 			nowMono := c.m.sync.MonoMs()
 			it.reconnectDeadlineMonoMs = nowMono + attachments.UploadReconnectWindowMs
 			delay := attachments.UploadReconnectWindowMs
-			if onlineReady {
+			if netReady {
 				it.reconnectNotBeforeMs = nowMono + attachments.UploadOnlineJitterMs
 				delay = attachments.UploadOnlineJitterMs
 			} else {
@@ -1163,6 +1205,7 @@ func (c *Core) failItem(
 	effects *[]*corev1.Effect,
 ) {
 	c.releaseFileUploadGate(ownerKind, ownerKey, it.id)
+	c.abandonUploadComplete(ctx, it.targetMachineID, it.transferID, it.phase == attPhaseCompleting)
 	if it.activeReqID != "" {
 		delete(c.m.attachments.reqToUpload, it.activeReqID)
 		if ctx != nil {
@@ -1240,6 +1283,9 @@ func (c *Core) pauseUploadItem(ctx *sync.StepContext, ownerKind uint8, ownerKey 
 		it.activeReqID = ""
 		delete(mgr.reqToUpload, reqID)
 		if ctx != nil {
+			if it.phase == attPhaseCompleting {
+				c.abandonUploadComplete(ctx, it.targetMachineID, it.transferID, true)
+			}
 			c.m.sync.CancelCommand(ctx, reqID)
 		}
 	}
@@ -1322,8 +1368,7 @@ func (c *Core) handleUploadReconnectTimer(ctx *sync.StepContext, timerKey string
 	}
 	var effects []*corev1.Effect
 	nowMono := c.m.sync.MonoMs()
-	_, onlineReady := c.resolveAttachmentCaps(machineID, false)
-	if onlineReady {
+	if c.uploadNetworkReady(machineID) {
 		it.phase = attPhaseIdle
 		c.startItemPipeline(ctx, ownerKind, ownerKey, scope, machineID, original, it, &effects)
 		c.pumpAttachmentQueues(ctx, &effects)

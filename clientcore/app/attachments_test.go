@@ -3690,3 +3690,238 @@ func TestDraftRestoreAdvancesItemIDSequence(t *testing.T) {
 		t.Fatalf("item IDs = [%q, %q], want [\"att-1\", \"att-6\"]", vm.Images[0].ItemId, vm.Images[1].ItemId)
 	}
 }
+
+func TestAttachments_CompleteUnknownOnDisconnect_RetriesSameRequestIDAfterReconnect(t *testing.T) {
+	h := newAttHarness(t, false, false)
+	scope := h.sessionScope()
+
+	eff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{pickedImage("pic.jpg", 4, "src-pic", true)},
+			},
+		},
+	})
+	prep := findPrepareEffects(eff)[0]
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentPrepareImageResult{
+			AttachmentPrepareImageResult: &corev1.AttachmentPrepareImageResultEvent{
+				OpId:        prep.OpId,
+				Ok:          true,
+				PreparedRef: "prep-pic",
+				ThumbRef:    "thumb-pic",
+				Format:      v1.ImageFormat_IMAGE_FORMAT_JPEG,
+				SizeBytes:   4,
+				Width:       100,
+				Height:      100,
+				Sha256:      attTestHash(0x91),
+			},
+		},
+	})
+	beginCmd := findDispatchedCmds(eff)[0]
+	tid := beginCmd.cmd.GetBeginImageUpload().TransferId
+	eff = h.settleCmdOK(beginCmd.dc, beginOK(tid, 0, 4, h.nowMs+600_000))
+	readEff := findReadChunkEffects(eff)[0]
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentReadChunkResult{
+			AttachmentReadChunkResult: &corev1.AttachmentReadChunkResultEvent{
+				OpId: readEff.OpId, Ok: true, Offset: 0, Data: []byte("abcd"),
+			},
+		},
+	})
+	putCmd := findDispatchedCmds(eff)[0]
+	eff = h.settleCmdOK(putCmd.dc, putOK(tid, 4))
+
+	comp1 := findDispatchedCmds(eff)[0]
+	if comp1.cmd.GetCompleteImageUpload() == nil {
+		t.Fatalf("expected CompleteImageUpload, got %+v", comp1.cmd)
+	}
+	origReqID := comp1.dc.GetRequestId()
+
+	// Machine disconnects mid-CompleteImageUpload (server broadcasts offline + returns errUnknown deadline_exceeded).
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: 1,
+				Frame: &corev1.StreamFrameEvent_MachineUpdated{
+					MachineUpdated: &corev1.PlainMachine{
+						MachineId: h.machineA,
+						Online:    false,
+						MetaRev:   2,
+						Meta: &v1.MachineMeta{
+							Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 17,
+							Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true},
+						},
+					},
+				},
+			},
+		},
+	})
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:     origReqID,
+				AttemptId:     comp1.dc.GetAttemptId(),
+				Source:        corev1.OutcomeSource_OUTCOME_SOURCE_SERVER,
+				NotForwarded:  false,
+				AttemptBound:  false,
+				TransportCode: "deadline_exceeded",
+			},
+		},
+	})
+
+	// Drive sync's internal command retries while the machine stays offline (all hitting machine_offline).
+	for iter := 0; iter < 30; iter++ {
+		if h.draftView(scope).Images[0].State == corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_WAITING_RECONNECT {
+			break
+		}
+		retryTimers := findTimers(eff, corev1.TimerKind_TIMER_KIND_COMMAND_RETRY)
+		if len(retryTimers) == 0 {
+			t.Fatalf("iter=%d: expected TIMER_KIND_COMMAND_RETRY or WAITING_RECONNECT, got state=%v", iter, h.draftView(scope).Images[0].State)
+		}
+		h.advance(retryTimers[0].DelayMs)
+		eff = h.dispatch(&corev1.Event{
+			Event: &corev1.Event_TimerFired{
+				TimerFired: &corev1.TimerFiredEvent{
+					TimerId: retryTimers[0].TimerId,
+					Kind:    retryTimers[0].Kind,
+					Key:     retryTimers[0].Key,
+				},
+			},
+		})
+		cmds := findDispatchedCmds(eff)
+		if len(cmds) != 1 || cmds[0].dc.GetRequestId() != origReqID {
+			t.Fatalf("iter=%d: expected retry with same RequestID %q, got %+v", iter, origReqID, cmds)
+		}
+		eff = h.dispatch(&corev1.Event{
+			Event: &corev1.Event_CommandOutcome{
+				CommandOutcome: &corev1.CommandOutcomeEvent{
+					RequestId:     origReqID,
+					AttemptId:     cmds[0].dc.GetAttemptId(),
+					Source:        corev1.OutcomeSource_OUTCOME_SOURCE_SERVER,
+					NotForwarded:  true,
+					AttemptBound:  true,
+					OuterReason:   "machine_offline",
+					TransportCode: "unavailable",
+				},
+			},
+		})
+	}
+
+	dv := h.draftView(scope)
+	if dv.Images[0].State != corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_WAITING_RECONNECT {
+		t.Fatalf("expected WAITING_RECONNECT instead of UPLOAD_FAILED, got state=%v problem=%+v", dv.Images[0].State, dv.Images[0].Problem)
+	}
+
+	// 5 seconds later the daemon reconnects -> Core must automatically retry CompleteImageUpload with the EXACT SAME RequestID!
+	h.advance(5_000)
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: 1,
+				Frame: &corev1.StreamFrameEvent_MachineUpdated{
+					MachineUpdated: &corev1.PlainMachine{
+						MachineId: h.machineA,
+						Online:    true,
+						MetaRev:   3,
+						Meta: &v1.MachineMeta{
+							Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 17,
+							Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true},
+						},
+					},
+				},
+			},
+		},
+	})
+	resumed := findDispatchedCmds(eff)
+	if len(resumed) != 1 || resumed[0].cmd.GetCompleteImageUpload() == nil {
+		t.Fatalf("expected automatic CompleteImageUpload replay after reconnect, got %+v", resumed)
+	}
+	if resumed[0].dc.GetRequestId() != origReqID {
+		t.Fatalf("expected replay with SAME RequestID %q, got %q", origReqID, resumed[0].dc.GetRequestId())
+	}
+	if !resumed[0].dc.GetRetryOfUnknown() {
+		t.Fatalf("expected RetryOfUnknown=true on replayed CompleteImageUpload")
+	}
+
+	// Daemon replies with the completed upload -> item becomes READY cleanly without ever showing UPLOAD_FAILED!
+	h.settleCmdOK(resumed[0].dc, completeStatusOK(tid, v1.ImageUploadState_IMAGE_UPLOAD_STATE_COMPLETE, "img-recovered-1", "", 4, h.nowMs+600_000))
+	dv = h.draftView(scope)
+	if dv.Images[0].State != corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_READY || !dv.CanSend {
+		t.Fatalf("expected READY draft after replay, got state=%v canSend=%v problem=%+v", dv.Images[0].State, dv.CanSend, dv.Images[0].Problem)
+	}
+}
+
+func TestAttachments_CompleteUnknownBoundedFailure_ShowsUploadFailed(t *testing.T) {
+	h := newAttHarness(t, false, false)
+	scope := h.sessionScope()
+
+	eff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{pickedImage("fail.jpg", 4, "src-fail", true)},
+			},
+		},
+	})
+	prep := findPrepareEffects(eff)[0]
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentPrepareImageResult{
+			AttachmentPrepareImageResult: &corev1.AttachmentPrepareImageResultEvent{
+				OpId: prep.OpId, Ok: true, PreparedRef: "prep-fail", ThumbRef: "thumb-fail",
+				Format: v1.ImageFormat_IMAGE_FORMAT_JPEG, SizeBytes: 4, Width: 100, Height: 100, Sha256: attTestHash(0x92),
+			},
+		},
+	})
+	beginCmd := findDispatchedCmds(eff)[0]
+	tid := beginCmd.cmd.GetBeginImageUpload().TransferId
+	eff = h.settleCmdOK(beginCmd.dc, beginOK(tid, 0, 4, h.nowMs+600_000))
+	readEff := findReadChunkEffects(eff)[0]
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentReadChunkResult{
+			AttachmentReadChunkResult: &corev1.AttachmentReadChunkResultEvent{
+				OpId: readEff.OpId, Ok: true, Offset: 0, Data: []byte("abcd"),
+			},
+		},
+	})
+	putCmd := findDispatchedCmds(eff)[0]
+	eff = h.settleCmdOK(putCmd.dc, putOK(tid, 4))
+	comp1 := findDispatchedCmds(eff)[0]
+
+	// Machine goes offline and never comes back within the 30s reconnect window.
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: 1,
+				Frame: &corev1.StreamFrameEvent_MachineUpdated{
+					MachineUpdated: &corev1.PlainMachine{
+						MachineId: h.machineA, Online: false, MetaRev: 2,
+						Meta: &v1.MachineMeta{
+							Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 17,
+							Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true},
+						},
+					},
+				},
+			},
+		},
+	})
+	eff = h.settleCmdTransportDrop(comp1.dc, "timeout")
+	recTimers := findTimers(eff, corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT)
+	if len(recTimers) != 1 || recTimers[0].DelayMs != attachments.UploadReconnectWindowMs {
+		t.Fatalf("expected 30s reconnect timer, got %+v", recTimers)
+	}
+	h.advance(attachments.UploadReconnectWindowMs)
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_TimerFired{
+			TimerFired: &corev1.TimerFiredEvent{
+				TimerId: recTimers[0].TimerId, Kind: recTimers[0].Kind, Key: recTimers[0].Key,
+			},
+		},
+	})
+	dv := h.draftView(scope)
+	if dv.Images[0].State != corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_FAILED ||
+		dv.Images[0].Problem.GetKind() != corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_UPLOAD_FAILED {
+		t.Fatalf("expected FAILED/UPLOAD_FAILED after reconnect window expiry, got state=%v problem=%+v", dv.Images[0].State, dv.Images[0].Problem)
+	}
+}

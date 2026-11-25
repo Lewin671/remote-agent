@@ -3236,3 +3236,181 @@ func TestTerminalReadyAndWaitingView(t *testing.T) {
 		t.Fatalf("expected terminal_ready=false terminal_waiting=false after grace expires, got machine=%+v session=%+v", v4.Machines[0], v4.Sessions[0])
 	}
 }
+
+func TestCommandPriorUnknownRetriesThroughMachineOfflineRefusal(t *testing.T) {
+	e := NewEngine()
+	now := int64(1_700_000_000_000)
+	mono := int64(10_000)
+	_, listsOp := startAndConnect(t, e, now)
+	e.HandleEvent(&corev1.Event{
+		NowMs:  now + 20,
+		MonoMs: mono,
+		Event: &corev1.Event_ListsFetched{
+			ListsFetched: &corev1.ListsFetchedEvent{
+				OpId: listsOp,
+				Machines: []*corev1.PlainMachine{{
+					MachineId: "m1",
+					Online:    true,
+					Meta:      &v1.MachineMeta{Hostname: "Mac", ProtocolVersion: PeerVersion},
+				}},
+			},
+		},
+	})
+
+	prev, ctx := e.BeginStep()
+	reqID, dispatched := e.SubmitCommand(ctx, SubmitCommandParams{
+		SlotKey:   "upload-complete:m1:tr-1",
+		MachineID: "m1",
+		Command: &v1.Command{
+			Kind: &v1.Command_CompleteImageUpload{
+				CompleteImageUpload: &v1.CompleteImageUploadRequest{TransferId: "tr-1"},
+			},
+		},
+	})
+	step := e.EndStep(prev, ctx)
+	if !dispatched || reqID == "" {
+		t.Fatalf("expected CompleteImageUpload dispatched, got reqID=%q dispatched=%v", reqID, dispatched)
+	}
+	var att1 string
+	for _, ef := range step.Effects {
+		if dc := ef.GetDispatchCommand(); dc != nil {
+			att1 = dc.AttemptId
+		}
+	}
+	if att1 == "" {
+		t.Fatalf("missing initial DispatchCommand")
+	}
+
+	// Attempt 1: server returns errUnknown("the machine disconnected") as deadline_exceeded.
+	now += 500
+	mono += 500
+	_, r1 := e.HandleEvent(&corev1.Event{
+		NowMs:  now,
+		MonoMs: mono,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:     reqID,
+				AttemptId:     att1,
+				Source:        corev1.OutcomeSource_OUTCOME_SOURCE_SERVER,
+				NotForwarded:  false,
+				AttemptBound:  false,
+				TransportCode: "deadline_exceeded",
+			},
+		},
+	})
+	var timer1 *corev1.ScheduleTimerEffect
+	for _, ef := range r1.Effects {
+		if st := ef.GetScheduleTimer(); st != nil && st.Kind == corev1.TimerKind_TIMER_KIND_COMMAND_RETRY {
+			timer1 = st
+		}
+	}
+	if timer1 == nil {
+		t.Fatalf("expected retry timer after deadline_exceeded")
+	}
+
+	// Fire retry timer -> Attempt 2 must reuse the exact same RequestID.
+	now += timer1.DelayMs
+	mono += timer1.DelayMs
+	_, r2 := e.HandleEvent(&corev1.Event{
+		NowMs:  now,
+		MonoMs: mono,
+		Event: &corev1.Event_TimerFired{
+			TimerFired: &corev1.TimerFiredEvent{TimerId: timer1.TimerId, Kind: timer1.Kind, Key: timer1.Key},
+		},
+	})
+	var dc2 *corev1.DispatchCommandEffect
+	for _, ef := range r2.Effects {
+		if dc := ef.GetDispatchCommand(); dc != nil {
+			dc2 = dc
+		}
+	}
+	if dc2 == nil || dc2.RequestId != reqID || !dc2.RetryOfUnknown {
+		t.Fatalf("expected retry with same RequestID %q and RetryOfUnknown=true, got %+v", reqID, dc2)
+	}
+
+	// Attempt 2 hits server while daemon is mid-reconnect -> server refuses with machine_offline (NotForwarded && AttemptBound).
+	// Must NOT immediately settle Unknown; must schedule another retry within unavailable window!
+	now += 200
+	mono += 200
+	_, r3 := e.HandleEvent(&corev1.Event{
+		NowMs:  now,
+		MonoMs: mono,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:     reqID,
+				AttemptId:     dc2.AttemptId,
+				Source:        corev1.OutcomeSource_OUTCOME_SOURCE_SERVER,
+				NotForwarded:  true,
+				AttemptBound:  true,
+				OuterReason:   "machine_offline",
+				TransportCode: "unavailable",
+			},
+		},
+	})
+	if len(r3.Settled) != 0 {
+		t.Fatalf("prematurely settled command on machine_offline after prior unknown: %+v", r3.Settled)
+	}
+	var timer2 *corev1.ScheduleTimerEffect
+	for _, ef := range r3.Effects {
+		if st := ef.GetScheduleTimer(); st != nil && st.Kind == corev1.TimerKind_TIMER_KIND_COMMAND_RETRY {
+			timer2 = st
+		}
+	}
+	if timer2 == nil {
+		t.Fatalf("expected retry timer after machine_offline refusal on prior-unknown command")
+	}
+
+	// Fire retry timer -> Attempt 3 reuses same RequestID and receives daemon's cached COMPLETE result!
+	now += timer2.DelayMs
+	mono += timer2.DelayMs
+	_, r4 := e.HandleEvent(&corev1.Event{
+		NowMs:  now,
+		MonoMs: mono,
+		Event: &corev1.Event_TimerFired{
+			TimerFired: &corev1.TimerFiredEvent{TimerId: timer2.TimerId, Kind: timer2.Kind, Key: timer2.Key},
+		},
+	})
+	var dc3 *corev1.DispatchCommandEffect
+	for _, ef := range r4.Effects {
+		if dc := ef.GetDispatchCommand(); dc != nil {
+			dc3 = dc
+		}
+	}
+	if dc3 == nil || dc3.RequestId != reqID || !dc3.RetryOfUnknown {
+		t.Fatalf("expected 3rd attempt with same RequestID %q, got %+v", reqID, dc3)
+	}
+	_, r5 := e.HandleEvent(&corev1.Event{
+		NowMs:  now + 100,
+		MonoMs: mono + 100,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:         reqID,
+				AttemptId:         dc3.AttemptId,
+				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				Signed:            true,
+				HashesMatch:       true,
+				AttemptBound:      true,
+				OuterMatchesInner: true,
+				OuterOutcome:      "executed",
+				OuterReason:       "executed",
+				Result: &v1.CommandResult{
+					Outcome:         "executed",
+					Reason:          "executed",
+					ResultAvailable: true,
+					Kind: &v1.CommandResult_CompleteImageUpload{
+						CompleteImageUpload: &v1.CompleteImageUploadResponse{
+							Status: &v1.ImageUploadStatus{
+								TransferId: "tr-1",
+								State:      v1.ImageUploadState_IMAGE_UPLOAD_STATE_COMPLETE,
+								ImageId:    "img-1",
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+	if len(r5.Settled) != 1 || r5.Settled[0].Category != outcome.Executed || r5.Settled[0].RequestID != reqID {
+		t.Fatalf("expected settled Executed for %q, got %+v", reqID, r5.Settled)
+	}
+}
