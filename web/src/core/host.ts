@@ -1178,11 +1178,11 @@ export class CoreHost {
     this.clockTimer = setInterval(() => {
       if (!this.closed && this.started) this.emitClock();
     }, CLOCK_TICK_MS);
-    const available = this.remote ? this.remote.network : typeof navigator === "undefined" || navigator.onLine !== false;
     this.emitClock();
     this.ensureSecurityConfigured();
     const emitLifecycleStart = () => {
       if (this.closed || !this.started || gen !== this.startGen) return;
+      const available = this.remote ? this.remote.network : typeof navigator === "undefined" || navigator.onLine !== false;
       const storedPrefs = this.readStoredDirectPreferences();
       if (storedPrefs.length > 0) {
         this.emit({
@@ -1222,7 +1222,7 @@ export class CoreHost {
       });
       this.emit({
         case: "networkChanged",
-        value: create(NetworkChangedEventSchema, { available, signature: String(available) }),
+        value: create(NetworkChangedEventSchema, { available, signature: "" }),
       });
       try {
         if (localStorage.getItem("schedule-ended-open") === "true") {
@@ -1272,7 +1272,7 @@ export class CoreHost {
 
   setNetwork(available: boolean, signature?: string) {
     if (this.closed) return;
-    this.emit({ case: "networkChanged", value: create(NetworkChangedEventSchema, { available, signature: signature ?? String(available) }) });
+    this.emit({ case: "networkChanged", value: create(NetworkChangedEventSchema, { available, signature: signature ?? "" }) });
   }
 
   reconnectNow() {

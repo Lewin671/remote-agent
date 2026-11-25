@@ -445,3 +445,43 @@ test("cancelMachineCommand aborts only the matching request_id signal", async ()
   );
   await expect(p2).resolves.toBeUndefined();
 });
+
+test("cold-start networkChanged does not forge a signature or tear down the initial Ready stream on first real observation (audit #3)", async () => {
+  const closedLegs: bigint[] = [];
+  const openedLegs: bigint[] = [];
+  const exec = makeExecutor({
+    openStreamLeg(legId, _token, callbacks) {
+      openedLegs.push(legId);
+      exec.streamLegs.set(legId, callbacks);
+      callbacks.onReady(legId, BigInt(Date.now()));
+    },
+    closeStreamLeg(legId) {
+      closedLegs.push(legId);
+      exec.streamLegs.delete(legId);
+    },
+  });
+  const host = new CoreHost(undefined, { executor: exec });
+  hosts.push(host);
+  host.start();
+  await flushPromises();
+
+  expect(openedLegs).toHaveLength(1);
+  expect(closedLegs).toEqual([]);
+
+  // First real browser network observation after start() must only record the baseline.
+  host.setNetwork(true, JSON.stringify([true, ""]));
+  await flushPromises();
+  expect(closedLegs).toEqual([]);
+  expect(openedLegs).toHaveLength(1);
+
+  // Calling setNetwork without a real signature must not fabricate "true" and trigger sigChanged.
+  host.setNetwork(true);
+  await flushPromises();
+  expect(closedLegs).toEqual([]);
+  expect(openedLegs).toHaveLength(1);
+
+  // A subsequent genuine signature change must still retire the old stream leg.
+  host.setNetwork(true, JSON.stringify([true, "wifi"]));
+  await flushPromises();
+  expect(closedLegs).toEqual([openedLegs[0]]);
+});
