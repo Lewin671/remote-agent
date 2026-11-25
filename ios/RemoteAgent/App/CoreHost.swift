@@ -1141,6 +1141,13 @@ actor CoreHost: SyncEngine {
         await renderTargets([.newSession])
     }
 
+    func hideNewSession(projectKey: String) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.newSessionClose.projectKey = projectKey
+        }
+    }
+
     func setPersistClientPrefsHandler(_ handler: @escaping @MainActor @Sendable (PBPersistClientPrefsEffect) -> Void) {
         onPersistClientPrefs = handler
     }
@@ -2779,10 +2786,17 @@ actor CoreHost: SyncEngine {
 
             case .usageCacheWrite(let eff):
                 defaults.saveUsageCache(machineID: eff.machineID, snapshot: eff.snapshot)
+                if !closed {
+                    await dispatch {
+                        $0.usageCacheWritten.opID = eff.opID
+                        $0.usageCacheWritten.machineID = eff.machineID
+                    }
+                }
 
             case .watchedSessions,
                  .usageCacheRequest,
-                 .syncPushSubscription:
+                 .syncPushSubscription,
+                 .scheduleWriteCache:
                 // Handled by Web/Android in P2-4; iOS migrates off SyncStateView in P3-2.
                 break
 

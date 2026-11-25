@@ -56,6 +56,9 @@ struct NewTaskScreen: View {
                 )
             }
         }
+        .onDisappear {
+            Task { await context.coreHost.hideNewSession(projectKey: key) }
+        }
         .kitSheet(item: $settings) { request in
             CoreProjectSettingsSheet(open: request.page) { settings = nil }
         }

@@ -73,6 +73,9 @@ struct ProjectPageView: View {
                 await context.coreHost.dispatch(PBCoreEvent.with { $0.newSessionSelectMachine.machineID = machine })
             }
         }
+        .onDisappear {
+            Task { await context.coreHost.hideNewSession(projectKey: key) }
+        }
         .homeLaunchTweaks()
     }
 }

@@ -358,6 +358,9 @@ struct SessionScreen: View {
                     .task(id: key) {
                         await context.coreHost.showNewSession(projectKey: key)
                     }
+                    .onDisappear {
+                        Task { await context.coreHost.hideNewSession(projectKey: key) }
+                    }
             }
         }
         .sheet(isPresented: $scheduleSending) {
