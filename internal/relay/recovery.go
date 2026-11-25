@@ -115,7 +115,7 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 		r.mu.Unlock()
 	}()
 	onWake := func() {
-		d.security.networkChanged()
+		d.security.wake()
 		generation++
 		wakeRefreshRequired = true
 		wakeGen = generation

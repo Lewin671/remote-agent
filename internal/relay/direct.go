@@ -388,9 +388,18 @@ func (m *directManager) createLocked(binding deviceauth.PeerBinding, codec *peer
 	allow := func() bool {
 		return p.processValid.Load() && m.ctx.Err() == nil && m.d.security.directCurrent(binding.Self, binding.Peer, binding.Head)
 	}
+	allowReason := func() string {
+		if !p.processValid.Load() {
+			return "process_replaced"
+		}
+		if m.ctx.Err() != nil {
+			return "owner_closed"
+		}
+		return m.d.security.directCurrentReason(binding.Self, binding.Peer, binding.Head)
+	}
 	_, head, _ := m.d.security.endpoint.Snapshot()
 	authority := head.Core.AuthorityID
-	s, err := direct.NewSession(m.ctx, direct.SessionConfig{Self: m.self, Peer: peer, Codec: codec, Connection: connection, Deadline: deadline, Pool: m.pool, Allow: allow, Policy: func() bool { return m.policy.matches(id, p.policyVersion) }, STUN: m.stun, LoopbackOnly: m.loopback, Port: m.port, Now: m.nowTime,
+	s, err := direct.NewSession(m.ctx, direct.SessionConfig{Self: m.self, Peer: peer, Codec: codec, Connection: connection, Deadline: deadline, Pool: m.pool, Allow: allow, AllowReason: allowReason, Policy: func() bool { return m.policy.matches(id, p.policyVersion) }, STUN: m.stun, LoopbackOnly: m.loopback, Port: m.port, Now: m.nowTime,
 		Send:   func(out direct.Outbound) bool { return m.send(id, out) },
 		Chosen: func() { m.choose(p) }, BeforeOffer: func() { m.choose(p) },
 		Control: func(o peerwire.Opened, now uint64) (uint64, []byte) {

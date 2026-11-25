@@ -37,6 +37,8 @@ type SessionConfig struct {
 	Deadline     uint64
 	Pool         *Pool
 	Allow        func() bool
+	// AllowReason optionally refines a failed Allow gate for local diagnostics.
+	AllowReason  func() string
 	Send         func(Outbound) bool
 	Ready        func(use uint64, path *Path)
 	End          func()
@@ -397,7 +399,13 @@ func (s *Session) addCandidates(f linkcore.AddCandidatesPC) bool {
 func (s *Session) createPC(f linkcore.CreatePC) bool {
 	use, generation, id := f.Use, f.Generation, f.ID
 	gate := func() string {
-		return s.view().PCGate(use, generation, s.nowMs(), s.cfg.Deadline, s.cfg.Policy, s.cfg.Allow)
+		r := s.view().PCGate(use, generation, s.nowMs(), s.cfg.Deadline, s.cfg.Policy, s.cfg.Allow)
+		if r == "lease_or_process" && s.cfg.AllowReason != nil {
+			if detail := s.cfg.AllowReason(); detail != "" {
+				return detail
+			}
+		}
+		return r
 	}
 	var source atomic.Pointer[Path]
 	post := func(e linkcore.Event) {
