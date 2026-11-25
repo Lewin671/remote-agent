@@ -58,6 +58,10 @@ type Config struct {
 	ForwardTimeout time.Duration
 	// PingInterval is how often stream connections are checked.
 	PingInterval time.Duration
+	// PongTimeout is how long a stream connection may leave a Ping
+	// unanswered before it is dropped. It covers several TCP retransmissions
+	// on a lossy intercontinental path, matching the clients' 15 s floor.
+	PongTimeout time.Duration
 	// FCMServiceAccount is the path of a Firebase service account key file
 	// for Android pushes; empty turns FCM off.
 	FCMServiceAccount string
@@ -159,6 +163,9 @@ func New(cfg Config) (*Server, error) {
 	}
 	if cfg.PingInterval == 0 {
 		cfg.PingInterval = time.Second
+	}
+	if cfg.PongTimeout == 0 {
+		cfg.PongTimeout = 15 * time.Second
 	}
 	if cfg.ImageRetention == 0 {
 		cfg.ImageRetention = defaultImageRetention

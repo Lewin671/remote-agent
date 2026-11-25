@@ -217,6 +217,26 @@ func (h *hub) hello(ctx context.Context, conn *websocket.Conn) (string, error) {
 }
 
 func (h *hub) ping(ctx context.Context, conn *websocket.Conn, p *peer) {
+	// Probe the connection with Ping/Pong in its own loop: on a lossy,
+	// high-RTT path one Pong can take several seconds, and waiting for it
+	// must neither stop the visible heartbeat nor drop a connection that is
+	// still delivering frames.
+	go func() {
+		for {
+			pctx, cancel := context.WithTimeout(ctx, h.s.cfg.PongTimeout)
+			err := conn.Ping(pctx)
+			cancel()
+			if err != nil {
+				p.cancel()
+				return
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(h.s.cfg.PingInterval):
+			}
+		}
+	}()
 	t := time.NewTicker(h.s.cfg.PingInterval)
 	defer t.Stop()
 	for {
@@ -227,13 +247,6 @@ func (h *hub) ping(ctx context.Context, conn *websocket.Conn, p *peer) {
 			// Browsers cannot observe control-frame Ping/Pong. Send a visible
 			// heartbeat through the same bounded queue as the other frames.
 			h.send(p, &pb.ServerFrame{Kind: &pb.ServerFrame_Heartbeat{Heartbeat: &pb.Heartbeat{}}})
-			pctx, cancel := context.WithTimeout(ctx, 3*h.s.cfg.PingInterval)
-			err := conn.Ping(pctx)
-			cancel()
-			if err != nil {
-				p.cancel()
-				return
-			}
 		}
 	}
 }

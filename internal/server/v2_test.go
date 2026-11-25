@@ -378,3 +378,21 @@ func TestStreamSendsHeartbeatWithoutAccountActivity(t *testing.T) {
 		stream.next(t, func(f *pb.ServerFrame) bool { return f.GetHeartbeat() != nil })
 	}
 }
+
+// A Pong delayed by a lossy path (here: the client not reading, so not
+// answering Pings, for many ping intervals) must not drop a connection that
+// is still within PongTimeout.
+func TestStreamSurvivesPongDelayWithinTimeout(t *testing.T) {
+	ts := newTestServer(t)
+	ts.srv.cfg.PingInterval = 10 * time.Millisecond
+	ts.srv.cfg.PongTimeout = time.Minute
+	priv, id, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stream := ts.stream(t, ts.login(t, priv, id))
+	time.Sleep(300 * time.Millisecond) // 30 ping intervals without a Pong
+	for range 40 {
+		stream.next(t, func(f *pb.ServerFrame) bool { return f.GetHeartbeat() != nil })
+	}
+}
