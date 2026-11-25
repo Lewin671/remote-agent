@@ -22,6 +22,8 @@ import (
 const maxFrame = 16 << 10
 const fragmentPayload = maxFrame - 128
 
+var disconnectGrace = 3 * time.Second
+
 // MaxSingleFragmentBytes is the maximum payload size that fits in a single direct Fragment.
 const MaxSingleFragmentBytes = fragmentPayload
 
@@ -65,10 +67,12 @@ type Path struct {
 	cancel       context.CancelFunc
 	once         sync.Once
 	mu           sync.Mutex
-	confirmed    bool
-	confirmOnce  sync.Once
-	confirmation chan struct{}
-	pending      map[string]*partial
+	confirmed       bool
+	confirmOnce     sync.Once
+	confirmation    chan struct{}
+	disconnectTimer *time.Timer
+	disconnectSeq   uint64
+	pending         map[string]*partial
 	received     chan message
 	ready, low   chan struct{}
 	closed       chan struct{}
@@ -129,15 +133,7 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 			}
 		}
 	})
-	pc.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
-		if cfg.State != nil {
-			cfg.State(state)
-		}
-		p.diag.conn(state.String())
-		if state == webrtc.PeerConnectionStateFailed || state == webrtc.PeerConnectionStateClosed || state == webrtc.PeerConnectionStateDisconnected {
-			p.closeWhy("pc_" + state.String())
-		}
-	})
+	pc.OnConnectionStateChange(p.onConnectionState)
 	for id := uint16(0); id < 2; id++ {
 		negotiated, ordered, zero := true, id == 0, uint16(0)
 		init := &webrtc.DataChannelInit{ID: &id, Negotiated: &negotiated, Ordered: &ordered}
@@ -207,6 +203,48 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 		}
 	}()
 	return p, nil
+}
+
+func (p *Path) onConnectionState(state webrtc.PeerConnectionState) {
+	p.diag.conn(state.String())
+	if state == webrtc.PeerConnectionStateDisconnected {
+		p.mu.Lock()
+		if p.ctx.Err() != nil || p.disconnectTimer != nil {
+			p.mu.Unlock()
+			return
+		}
+		p.disconnectSeq++
+		seq := p.disconnectSeq
+		grace := disconnectGrace
+		p.disconnectTimer = time.AfterFunc(grace, func() {
+			p.mu.Lock()
+			if p.disconnectSeq != seq || p.ctx.Err() != nil {
+				p.mu.Unlock()
+				return
+			}
+			p.disconnectTimer = nil
+			p.mu.Unlock()
+			if p.cfg.State != nil {
+				p.cfg.State(webrtc.PeerConnectionStateDisconnected)
+			}
+			p.closeWhy("pc_disconnected")
+		})
+		p.mu.Unlock()
+		return
+	}
+	p.mu.Lock()
+	if p.disconnectTimer != nil {
+		p.disconnectTimer.Stop()
+		p.disconnectTimer = nil
+		p.disconnectSeq++
+	}
+	p.mu.Unlock()
+	if p.cfg.State != nil {
+		p.cfg.State(state)
+	}
+	if state == webrtc.PeerConnectionStateFailed || state == webrtc.PeerConnectionStateClosed {
+		p.closeWhy("pc_" + state.String())
+	}
 }
 
 // closeWhy closes the path and, if it is the first to do so, records why.
@@ -491,8 +529,9 @@ func (p *Path) receive(m webrtc.DataChannelMessage) {
 	if len(part.parts) != int(part.count) {
 		return
 	}
-	if part.held != int(part.length) || !p.cfg.Pool.reserve(p.cfg.Peer, 1, part.held, 1) {
-		p.drop(key, part)
+	delete(p.pending, key)
+	if part.held != int(part.length) {
+		p.cfg.Pool.free(p.cfg.Peer, 1, part.held, part.frames)
 		return
 	}
 	raw := make([]byte, 0, part.held)
@@ -500,16 +539,19 @@ func (p *Path) receive(m webrtc.DataChannelMessage) {
 		raw = append(raw, part.parts[i]...)
 	}
 	hash := sha256.Sum256(raw)
-	valid := bytes.Equal(hash[:], part.hash)
-	p.drop(key, part)
-	if valid {
+	if bytes.Equal(hash[:], part.hash) {
+		if part.frames > 1 {
+			p.cfg.Pool.free(p.cfg.Peer, 1, 0, part.frames-1)
+		}
 		select {
 		case p.received <- message{raw}:
 			return
 		default:
+			p.cfg.Pool.free(p.cfg.Peer, 1, len(raw), 1)
+			return
 		}
 	}
-	p.cfg.Pool.free(p.cfg.Peer, 1, len(raw), 1)
+	p.cfg.Pool.free(p.cfg.Peer, 1, part.held, part.frames)
 }
 func (p *Path) drop(key string, part *partial) {
 	delete(p.pending, key)
@@ -532,6 +574,11 @@ func (p *Path) Close() {
 			p.cfg.Ended()
 		}
 		p.mu.Lock()
+		if p.disconnectTimer != nil {
+			p.disconnectTimer.Stop()
+			p.disconnectTimer = nil
+			p.disconnectSeq++
+		}
 		for key, part := range p.pending {
 			p.drop(key, part)
 		}

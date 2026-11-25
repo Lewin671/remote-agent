@@ -246,3 +246,186 @@ func TestTryWriteLowSingleFragmentAndRejectsOversizeOrBusy(t *testing.T) {
 		t.Fatalf("payload mismatch: got %d bytes, want %d", len(got), len(payload))
 	}
 }
+
+func TestReceiveDoesNotDoubleChargeBudgetOnReassembly(t *testing.T) {
+	newTestPath := func(t *testing.T) (*Path, *Pool) {
+		t.Helper()
+		pool := NewPool(8)
+		if !pool.acquire("peer", "test", 1) {
+			t.Fatal("acquire")
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		t.Cleanup(func() {
+			cancel()
+			pool.release("peer", 1)
+		})
+		confirmed := make(chan struct{})
+		close(confirmed)
+		p := &Path{
+			ctx:          ctx,
+			cancel:       cancel,
+			cfg:          Config{Use: 1, Owner: "test", Peer: "peer", Pool: pool, Generation: 1, Allow: func() bool { return true }},
+			confirmed:    true,
+			confirmation: confirmed,
+			pending:      map[string]*partial{},
+			received:     make(chan message, 128),
+		}
+		return p, pool
+	}
+	sendChunks := func(p *Path, idByte byte, payload []byte, count uint32) {
+		hash := sha256.Sum256(payload)
+		msgID := bytes.Repeat([]byte{idByte}, 16)
+		chunkSize := (len(payload) + int(count) - 1) / int(count)
+		for i := uint32(0); i < count; i++ {
+			start := int(i) * chunkSize
+			end := min(len(payload), start+chunkSize)
+			f := &pb.Fragment{
+				MessageId:        msgID,
+				Index:            i,
+				Count:            count,
+				CiphertextLength: uint32(len(payload)),
+				CiphertextSha256: hash[:],
+				PathGeneration:   1,
+				Fragment:         payload[start:end],
+			}
+			b, err := proto.Marshal(f)
+			if err != nil {
+				t.Fatal(err)
+			}
+			p.receive(webrtc.DataChannelMessage{Data: b})
+		}
+	}
+
+	t.Run("128-fragment message delivers instead of hitting 129-frame double charge", func(t *testing.T) {
+		p, pool := newTestPath(t)
+		payload := bytes.Repeat([]byte{0x42}, 128*100)
+		sendChunks(p, 1, payload, 128)
+		if len(p.received) != 1 {
+			t.Fatalf("received len = %d, want 1", len(p.received))
+		}
+		got, err := p.Read(context.Background())
+		if err != nil || !bytes.Equal(got, payload) {
+			t.Fatalf("read failed: err=%v len=%d", err, len(got))
+		}
+		if pool.reserved(1) != 0 {
+			t.Fatalf("reserved = %d, want 0", pool.reserved(1))
+		}
+	})
+
+	t.Run("two pipelined 768KiB messages fit within 2MiB cap", func(t *testing.T) {
+		p, pool := newTestPath(t)
+		msg1 := bytes.Repeat([]byte{0x11}, 768<<10)
+		msg2 := bytes.Repeat([]byte{0x22}, 768<<10)
+		sendChunks(p, 2, msg1, 49)
+		sendChunks(p, 3, msg2, 49)
+		if len(p.received) != 2 {
+			t.Fatalf("received len = %d, want 2", len(p.received))
+		}
+		for idx, want := range [][]byte{msg1, msg2} {
+			got, err := p.Read(context.Background())
+			if err != nil || !bytes.Equal(got, want) {
+				t.Fatalf("msg %d read failed: err=%v len=%d", idx, err, len(got))
+			}
+		}
+		if pool.reserved(1) != 0 {
+			t.Fatalf("reserved = %d, want 0", pool.reserved(1))
+		}
+	})
+
+	t.Run("1B unread plus 1MiB message fits within 2MiB cap", func(t *testing.T) {
+		p, pool := newTestPath(t)
+		small := []byte{0xaa}
+		big := bytes.Repeat([]byte{0xbb}, 1<<20)
+		sendChunks(p, 4, small, 1)
+		sendChunks(p, 5, big, 65)
+		if len(p.received) != 2 {
+			t.Fatalf("received len = %d, want 2", len(p.received))
+		}
+		for idx, want := range [][]byte{small, big} {
+			got, err := p.Read(context.Background())
+			if err != nil || !bytes.Equal(got, want) {
+				t.Fatalf("msg %d read failed: err=%v len=%d", idx, err, len(got))
+			}
+		}
+		if pool.reserved(1) != 0 {
+			t.Fatalf("reserved = %d, want 0", pool.reserved(1))
+		}
+	})
+}
+
+func TestTransientPeerConnectionDisconnectedDoesNotCloseImmediately(t *testing.T) {
+	prevGrace := disconnectGrace
+	disconnectGrace = 60 * time.Millisecond
+	t.Cleanup(func() { disconnectGrace = prevGrace })
+
+	t.Run("recovers to Connected within grace window", func(t *testing.T) {
+		pool := NewPool(8)
+		var states []webrtc.PeerConnectionState
+		p, err := New(context.Background(), Config{
+			Use:          1,
+			Owner:        "test",
+			Peer:         "peer",
+			Generation:   1,
+			Pool:         pool,
+			Allow:        func() bool { return true },
+			LoopbackOnly: true,
+			State:        func(s webrtc.PeerConnectionState) { states = append(states, s) },
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { p.Close(); p.Wait() }()
+
+		p.onConnectionState(webrtc.PeerConnectionStateDisconnected)
+		select {
+		case <-p.Done():
+			t.Fatal("transient Disconnected closed path immediately")
+		default:
+		}
+		p.onConnectionState(webrtc.PeerConnectionStateConnected)
+		time.Sleep(100 * time.Millisecond)
+		select {
+		case <-p.Done():
+			t.Fatal("path closed after recovering to Connected")
+		default:
+		}
+		for _, s := range states {
+			if s == webrtc.PeerConnectionStateDisconnected {
+				t.Fatal("transient Disconnected was forwarded before grace elapsed")
+			}
+		}
+	})
+
+	t.Run("closes after grace expires without recovery", func(t *testing.T) {
+		pool := NewPool(8)
+		var sawDisconnected atomic.Bool
+		p, err := New(context.Background(), Config{
+			Use:          1,
+			Owner:        "test",
+			Peer:         "peer",
+			Generation:   1,
+			Pool:         pool,
+			Allow:        func() bool { return true },
+			LoopbackOnly: true,
+			State: func(s webrtc.PeerConnectionState) {
+				if s == webrtc.PeerConnectionStateDisconnected {
+					sawDisconnected.Store(true)
+				}
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { p.Close(); p.Wait() }()
+
+		p.onConnectionState(webrtc.PeerConnectionStateDisconnected)
+		select {
+		case <-p.Done():
+		case <-time.After(time.Second):
+			t.Fatal("persistent Disconnected did not close path after grace")
+		}
+		if !sawDisconnected.Load() {
+			t.Fatal("Disconnected state was not forwarded after grace expiry")
+		}
+	})
+}
