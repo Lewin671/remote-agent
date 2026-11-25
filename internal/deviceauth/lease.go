@@ -21,8 +21,17 @@ func leaseValid(r record, now uint64) error {
 func (e *Endpoint) InstallLease(l devicesec.LeaseCertificate, now uint64) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if e.closed {
+		return ErrStorage
+	}
 	if err := l.Verify(chainHead(e.data)); err != nil {
 		return err
+	}
+	if e.data.Lease != nil && e.data.Lease.Head == l.Head && e.data.Lease.IssuedAt == l.IssuedAt && e.data.Lease.NotAfter == l.NotAfter && bytes.Equal(e.data.Lease.Signature, l.Signature) {
+		if now > e.data.Floor {
+			e.data.Floor = now
+		}
+		return nil
 	}
 	raw, err := l.MarshalBinary()
 	if err != nil {
