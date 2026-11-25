@@ -7,7 +7,8 @@ import io.github.lewin671.remoteagent.core.Account
 import io.github.lewin671.remoteagent.core.Api
 import io.github.lewin671.remoteagent.core.LoginToken
 import io.github.lewin671.remoteagent.core.MemorySecurityStoreV4
-import io.github.lewin671.remoteagent.core.value
+import io.github.lewin671.remoteagent.core.executeRelayRpcUnary
+import io.github.lewin671.remoteagent.core.proto.RelayRpcMethod
 import io.github.lewin671.remoteagent.core.proto.SecurityStorageEffect
 import io.github.lewin671.remoteagent.core.proto.SecurityStorageOp
 import io.github.lewin671.remoteagent.core.proto.SecurityStorageWrite
@@ -114,7 +115,6 @@ class ColdOpenBenchmark {
                         .code(200).message("OK").header("Content-Type", "application/proto")
                         .body(response.toByteArray().toResponseBody("application/proto".toMediaType())).build()
                 }.build()
-                val api = Api(account.server, http)
                 val security = BenchmarkCoreSecurity(
                     vault,
                     BenchmarkVectors.ACCOUNT_ID,
@@ -125,18 +125,36 @@ class ColdOpenBenchmark {
                 try {
                     val start = System.nanoTime()
                     val token = if (newestFirst) vault.loadLoginToken(account.server, account.deviceId)!!.token else {
-                        api.auth.getChallenge(GetChallengeRequest.getDefaultInstance()).value()
-                        api.auth.login(LoginRequest.getDefaultInstance()).value().token
+                        val chalRes = executeRelayRpcUnary(
+                            http = http,
+                            method = RelayRpcMethod.RELAY_RPC_METHOD_GET_CHALLENGE,
+                            server = account.server,
+                            requestBytes = GetChallengeRequest.getDefaultInstance().toByteArray(),
+                        )
+                        assertEquals(0, chalRes.connectCode)
+                        val loginRes = executeRelayRpcUnary(
+                            http = http,
+                            method = RelayRpcMethod.RELAY_RPC_METHOD_LOGIN,
+                            server = account.server,
+                            requestBytes = LoginRequest.getDefaultInstance().toByteArray(),
+                        )
+                        assertEquals(0, loginRes.connectCode)
+                        LoginResponse.parseFrom(loginRes.responseBytes).token
                     }
                     delay(100) // Shared WS + list RTTs, deliberately equal for both paths.
                     var after = if (newestFirst) 600L else 0L
                     var visible = 0
                     do {
-                        val page = api.client.getEvents(
-                            GetEventsRequest.newBuilder().setSessionId("test-session")
-                                .setAfterSeq(after).setLimit(500).build(),
-                            Api.headers(token),
-                        ).value()
+                        val pageRes = executeRelayRpcUnary(
+                            http = http,
+                            method = RelayRpcMethod.RELAY_RPC_METHOD_GET_EVENTS,
+                            server = account.server,
+                            authToken = token,
+                            requestBytes = GetEventsRequest.newBuilder().setSessionId("test-session")
+                                .setAfterSeq(after).setLimit(500).build().toByteArray(),
+                        )
+                        assertEquals(0, pageRes.connectCode)
+                        val page = GetEventsResponse.parseFrom(pageRes.responseBytes)
                         for (event in page.eventsList) {
                             val opened = Event.parseFrom(security.openHistory(event.envelope, seed))
                             assertEquals(event.seq, opened.seq)

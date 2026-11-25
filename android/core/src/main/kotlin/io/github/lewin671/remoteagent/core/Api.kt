@@ -1,38 +1,15 @@
-// ConnectRPC clients for the server's services, and registering a device.
+// Account identity, HTTP defaults, and error display helpers (relay RPCs run through Core + SecurityExecutor).
 package io.github.lewin671.remoteagent.core
 
 import com.connectrpc.Code
 import com.connectrpc.ConnectException
-import com.connectrpc.ProtocolClientConfig
-import com.connectrpc.ResponseMessage
-import com.connectrpc.getOrThrow
-import com.connectrpc.impl.ProtocolClient
-import com.connectrpc.okhttp.ConnectOkHttpClient
-import com.connectrpc.protocols.NetworkProtocol
-import com.google.protobuf.ByteString
-import io.github.lewin671.remoteagent.core.proto.SecurityKeyKind
-import io.github.lewin671.remoteagent.proto.AuthServiceClient
-import io.github.lewin671.remoteagent.proto.ClientServiceClient
-import io.github.lewin671.remoteagent.proto.GetChallengeRequest
-import io.github.lewin671.remoteagent.proto.LoginRequest
-import io.github.lewin671.remoteagent.proto.LoginResponse
-import io.github.lewin671.remoteagent.proto.PairingServiceClient
-import io.github.lewin671.remoteagent.proto.RecoveryServiceClient
-import java.util.concurrent.TimeUnit
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody
-import okhttp3.Interceptor
-import okhttp3.Authenticator
-import okhttp3.Callback
-import okhttp3.Call
-import okhttp3.Response
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
+import okhttp3.Interceptor
+import okhttp3.OkHttpClient
+import okhttp3.RequestBody
+import okhttp3.Response
 
 class SecurityFailure(val code: String, message: String = code) : Exception(message)
 
@@ -51,113 +28,19 @@ data class Account(
     override fun toString(): String = "Account(server=$server, device=$deviceId)"
 }
 
-/** The server's services over the Connect protocol with binary protobuf. */
-class Api(
-    server: String,
-    http: OkHttpClient,
-    onUnauthenticated: ((String) -> Unit)? = null,
-    transport: com.connectrpc.http.HTTPClientInterface? = null,
-) {
-    // 10.0.2.2 is the emulator's host loopback. Release Android network
-    // policy still blocks all cleartext; no remote HTTP origin is accepted.
-    val server = Secret.checkServer(server, allowPlainHttp = true)
-    private val observedEpoch = AtomicReference("")
-    private val rpcHttp = http.newBuilder()
-        .retryOnConnectionFailure(false).followRedirects(false).followSslRedirects(false)
-        .authenticator(Authenticator.NONE).proxyAuthenticator(Authenticator.NONE)
-        .apply { interceptors().add(0, OneShotRPCBody) }.build()
-    private val source = transport ?: ConnectOkHttpClient(rpcHttp)
-
-    suspend fun relayEpoch(): String {
-        observedEpoch.get().takeIf { it.isNotEmpty() }?.let { return it }
-        return suspendCancellableCoroutine { continuation ->
-            val call = rpcHttp.newCall(Request.Builder().url(server.trimEnd('/') + "/healthz").build())
-            continuation.invokeOnCancellation { call.cancel() }
-            call.enqueue(object : Callback {
-                override fun onFailure(call: Call, e: IOException) { if (continuation.isActive) continuation.resumeWithException(e) }
-                override fun onResponse(call: Call, response: Response) {
-                    val epoch = response.use { it.header(RELAY_EPOCH_HEADER).orEmpty() }
-                    if (epoch.isNotEmpty()) observedEpoch.set(epoch)
-                    if (continuation.isActive) {
-                        if (epoch.isEmpty()) continuation.resumeWithException(CommandException("unavailable", UiMessages.errorsTheRelayDidNotProvideAVerifiableExecutionResult().messageText()))
-                        else continuation.resume(epoch)
-                    }
-                }
-            })
-        }
-    }
-    private val authenticatedTransport = object : com.connectrpc.http.HTTPClientInterface by source {
-        override fun unary(
-            request: com.connectrpc.http.UnaryHTTPRequest,
-            onResult: (com.connectrpc.http.HTTPResponse) -> Unit,
-        ): () -> Unit = source.unary(request) { response ->
-            response.headers.entries.firstOrNull { it.key.equals(RELAY_EPOCH_HEADER, true) }?.value?.firstOrNull()?.takeIf { it.isNotEmpty() }?.let(observedEpoch::set)
-            if (response.status == 401) {
-                request.headers.entries.firstOrNull { it.key.equals("Authorization", true) }
-                    ?.value?.firstOrNull()?.removePrefix("Bearer ")?.takeIf { it.isNotEmpty() }
-                    ?.let { onUnauthenticated?.invoke(it) }
-            }
-            onResult(response)
-        }
-    }
-    private val protocol =
-        ProtocolClient(
-            authenticatedTransport,
-            ProtocolClientConfig(
-                host = this.server,
-                serializationStrategy = LiteProtobufStrategy,
-                networkProtocol = NetworkProtocol.CONNECT,
-            ),
-        )
-    val auth = AuthServiceClient(protocol)
-    val client = ClientServiceClient(protocol)
-    val pairing = PairingServiceClient(protocol)
-    val recovery = RecoveryServiceClient(protocol)
-
-    companion object {
-        fun headers(token: String): Map<String, List<String>> =
-            if (token.isEmpty()) emptyMap() else mapOf("Authorization" to listOf("Bearer $token"))
-
-        /** An HTTP client with the timeouts the protocol expects: Forward waits up to 30 s. */
-        fun defaultHttp(): OkHttpClient =
-            OkHttpClient.Builder()
-                .retryOnConnectionFailure(false)
-                .followRedirects(false)
-                .followSslRedirects(false)
-                .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(45, TimeUnit.SECONDS)
-                .writeTimeout(30, TimeUnit.SECONDS)
-                .pingInterval(0, TimeUnit.SECONDS)
-                .build()
-    }
-}
-
-fun <T> ResponseMessage<T>.value(): T = getOrThrow()
-
-/** Logs in using the host [SecurityStoreV4] device Ed25519 key and returns the token with its expiry. */
-suspend fun loginWithStore(api: Api, deviceId: String, store: SecurityStoreV4): LoginResponse {
-    val ch = api.auth
-        .getChallenge(
-            GetChallengeRequest.newBuilder().setDeviceId(deviceId).build(),
-            emptyMap(),
-        )
-        .value()
-    val sig = store.signKey(
-        SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_ED,
-        "",
-        loginMessage(ch.challenge.toByteArray()),
-    )
-    return api.auth
-        .login(
-            LoginRequest.newBuilder()
-                .setProtocolVersion(RELAY_PROTOCOL_VERSION)
-                .setDeviceId(deviceId)
-                .setChallenge(ch.challenge)
-                .setSignature(ByteString.copyFrom(sig))
-                .build(),
-            emptyMap(),
-        )
-        .value()
+/** Shared HTTP client defaults (retained as [Api.defaultHttp] for RaApp & tests). */
+object Api {
+    /** An HTTP client with the timeouts the protocol expects: Forward waits up to 30 s. */
+    fun defaultHttp(): OkHttpClient =
+        OkHttpClient.Builder()
+            .retryOnConnectionFailure(false)
+            .followRedirects(false)
+            .followSslRedirects(false)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(45, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .pingInterval(0, TimeUnit.SECONDS)
+            .build()
 }
 
 /** A daemon's answer, or a failure to get one. [code] is a Connect code name. */

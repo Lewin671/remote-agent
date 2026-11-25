@@ -3426,21 +3426,23 @@ func (x *SecurityStorageEffect) GetDiscardSlots() []string {
 }
 
 type SecurityStorageResultEvent struct {
-	state         protoimpl.MessageState  `protogen:"open.v1"`
-	OpId          uint64                  `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
-	Found         bool                    `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
-	Revision      string                  `protobuf:"bytes,3,opt,name=revision,proto3" json:"revision,omitempty"`
-	Data          []byte                  `protobuf:"bytes,4,opt,name=data,proto3" json:"data,omitempty"`
-	Conflict      bool                    `protobuf:"varint,5,opt,name=conflict,proto3" json:"conflict,omitempty"`
-	Error         string                  `protobuf:"bytes,6,opt,name=error,proto3" json:"error,omitempty"`
-	Entries       []*SecurityStorageEntry `protobuf:"bytes,7,rep,name=entries,proto3" json:"entries,omitempty"`
-	HasDeviceEd   bool                    `protobuf:"varint,8,opt,name=has_device_ed,json=hasDeviceEd,proto3" json:"has_device_ed,omitempty"`
-	DeviceEdPub   []byte                  `protobuf:"bytes,9,opt,name=device_ed_pub,json=deviceEdPub,proto3" json:"device_ed_pub,omitempty"`
-	HasDeviceX    bool                    `protobuf:"varint,10,opt,name=has_device_x,json=hasDeviceX,proto3" json:"has_device_x,omitempty"`
-	DeviceXPub    []byte                  `protobuf:"bytes,11,opt,name=device_x_pub,json=deviceXPub,proto3" json:"device_x_pub,omitempty"`
-	LegacyCleared bool                    `protobuf:"varint,12,opt,name=legacy_cleared,json=legacyCleared,proto3" json:"legacy_cleared,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state               protoimpl.MessageState  `protogen:"open.v1"`
+	OpId                uint64                  `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
+	Found               bool                    `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
+	Revision            string                  `protobuf:"bytes,3,opt,name=revision,proto3" json:"revision,omitempty"`
+	Data                []byte                  `protobuf:"bytes,4,opt,name=data,proto3" json:"data,omitempty"`
+	Conflict            bool                    `protobuf:"varint,5,opt,name=conflict,proto3" json:"conflict,omitempty"`
+	Error               string                  `protobuf:"bytes,6,opt,name=error,proto3" json:"error,omitempty"`
+	Entries             []*SecurityStorageEntry `protobuf:"bytes,7,rep,name=entries,proto3" json:"entries,omitempty"`
+	HasDeviceEd         bool                    `protobuf:"varint,8,opt,name=has_device_ed,json=hasDeviceEd,proto3" json:"has_device_ed,omitempty"`
+	DeviceEdPub         []byte                  `protobuf:"bytes,9,opt,name=device_ed_pub,json=deviceEdPub,proto3" json:"device_ed_pub,omitempty"`
+	HasDeviceX          bool                    `protobuf:"varint,10,opt,name=has_device_x,json=hasDeviceX,proto3" json:"has_device_x,omitempty"`
+	DeviceXPub          []byte                  `protobuf:"bytes,11,opt,name=device_x_pub,json=deviceXPub,proto3" json:"device_x_pub,omitempty"`
+	LegacyCleared       bool                    `protobuf:"varint,12,opt,name=legacy_cleared,json=legacyCleared,proto3" json:"legacy_cleared,omitempty"`
+	LoginToken          string                  `protobuf:"bytes,13,opt,name=login_token,json=loginToken,proto3" json:"login_token,omitempty"`
+	LoginTokenExpiresMs int64                   `protobuf:"varint,14,opt,name=login_token_expires_ms,json=loginTokenExpiresMs,proto3" json:"login_token_expires_ms,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *SecurityStorageResultEvent) Reset() {
@@ -3555,6 +3557,20 @@ func (x *SecurityStorageResultEvent) GetLegacyCleared() bool {
 		return x.LegacyCleared
 	}
 	return false
+}
+
+func (x *SecurityStorageResultEvent) GetLoginToken() string {
+	if x != nil {
+		return x.LoginToken
+	}
+	return ""
+}
+
+func (x *SecurityStorageResultEvent) GetLoginTokenExpiresMs() int64 {
+	if x != nil {
+		return x.LoginTokenExpiresMs
+	}
+	return 0
 }
 
 type SecurityRpcEffect struct {
@@ -6883,7 +6899,7 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	" \x01(\tR\rpromoteEdSlot\x12$\n" +
 	"\x0epromote_x_slot\x18\v \x01(\tR\fpromoteXSlot\x12*\n" +
 	"\x11clear_login_token\x18\f \x01(\bR\x0fclearLoginToken\x12#\n" +
-	"\rdiscard_slots\x18\r \x03(\tR\fdiscardSlots\"\xa1\x03\n" +
+	"\rdiscard_slots\x18\r \x03(\tR\fdiscardSlots\"\xf7\x03\n" +
 	"\x1aSecurityStorageResultEvent\x12\x13\n" +
 	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12\x14\n" +
 	"\x05found\x18\x02 \x01(\bR\x05found\x12\x1a\n" +
@@ -6899,7 +6915,10 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"hasDeviceX\x12 \n" +
 	"\fdevice_x_pub\x18\v \x01(\fR\n" +
 	"deviceXPub\x12%\n" +
-	"\x0elegacy_cleared\x18\f \x01(\bR\rlegacyCleared\"\xc4\x01\n" +
+	"\x0elegacy_cleared\x18\f \x01(\bR\rlegacyCleared\x12\x1f\n" +
+	"\vlogin_token\x18\r \x01(\tR\n" +
+	"loginToken\x123\n" +
+	"\x16login_token_expires_ms\x18\x0e \x01(\x03R\x13loginTokenExpiresMs\"\xc4\x01\n" +
 	"\x11SecurityRpcEffect\x12\x13\n" +
 	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12>\n" +
 	"\x06method\x18\x02 \x01(\x0e2&.remoteagent.core.v1.SecurityRpcMethodR\x06method\x12\x16\n" +

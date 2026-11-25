@@ -621,7 +621,11 @@ export async function loadLoginToken(server: string, memberID: string, now = Dat
   if (!stored || stored.binding !== binding) return undefined;
   try {
     const token = JSON.parse(new TextDecoder().decode(await openLocalValue(stored))) as LoginToken;
-    if (typeof token.token !== "string" || !token.token || !Number.isFinite(token.expiresMs) || token.expiresMs < now + 86_400_000) {
+    if (typeof token.token !== "string" || !token.token || !Number.isFinite(token.expiresMs)) {
+      await clearLoginToken(server, memberID);
+      return undefined;
+    }
+    if (now > 0 && token.expiresMs < now + 86_400_000) {
       await clearLoginToken(server, memberID);
       return undefined;
     }

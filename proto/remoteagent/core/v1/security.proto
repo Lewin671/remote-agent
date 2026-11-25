@@ -391,6 +391,8 @@ message SecurityStorageResultEvent {
   bool has_device_x = 10;
   bytes device_x_pub = 11;
   bool legacy_cleared = 12;
+  string login_token = 13;
+  int64 login_token_expires_ms = 14;
 }
 
 // ---- S6 Unified Security RPC Transport ----

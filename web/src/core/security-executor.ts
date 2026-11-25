@@ -20,6 +20,7 @@ import {
   SecurityKeySignedEventSchema,
   SecurityRpcMethod,
   SecurityRpcResultEventSchema,
+  SecurityStorageOp,
   SecurityStorageResultEventSchema,
   type RpcErrorDetailBytes,
   type SecurityCryptoBatchEffect,
@@ -33,7 +34,7 @@ import {
   type SecurityStorageEffect,
 } from "../gen/remoteagent/core/v1/security_pb";
 import { relayFetch } from "../transport";
-import { SecurityStoreV4, securityStoreV4 } from "./security-store-v4";
+import { loadLoginToken, SecurityStoreV4, securityStoreV4 } from "./security-store-v4";
 
 const errorMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err));
 const RELAY_EPOCH_HEADER = "Remote-Agent-Relay-Epoch";
@@ -293,6 +294,7 @@ export class WebSecurityExecutor {
   private readonly store: SecurityStoreV4;
   private readonly fetchFn: typeof fetch;
   private readonly defaultServer?: string;
+  private readonly defaultDeviceId?: string;
   private closed = false;
 
   constructor(
@@ -309,6 +311,7 @@ export class WebSecurityExecutor {
     this.store = options.store ?? securityStoreV4;
     this.fetchFn = options.fetch ?? relayFetch;
     this.defaultServer = options.defaultServer;
+    this.defaultDeviceId = options.defaultDeviceId;
   }
 
   close() {
@@ -396,7 +399,21 @@ export class WebSecurityExecutor {
       "securityStorageResult",
       SecurityStorageResultEventSchema,
       eff.opId,
-      () => this.store.executeStorage(eff),
+      async () => {
+        const res = await this.store.executeStorage(eff);
+        if (eff.op === SecurityStorageOp.READ_BOOTSTRAP && this.defaultServer && this.defaultDeviceId && !res.loginToken) {
+          try {
+            const saved = await loadLoginToken(this.defaultServer, this.defaultDeviceId, 0);
+            if (saved && saved.token) {
+              res.loginToken = saved.token;
+              res.loginTokenExpiresMs = BigInt(Math.trunc(saved.expiresMs));
+            }
+          } catch {
+            /* Ignore unreadable login token; Core will run login challenge. */
+          }
+        }
+        return res;
+      },
       (v) => v,
     );
   }

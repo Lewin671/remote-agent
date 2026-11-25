@@ -1816,7 +1816,7 @@ export class DemoRemote extends Remote {
   }
 
   override useRelayPipe() { return false; }
-  override ensureToken(opId: bigint): Promise<TokenResultEvent> {
+  ensureToken(opId: bigint): Promise<TokenResultEvent> {
     if (this.demoSyncing) { this.syncTokenOpId = opId; return new Promise(() => {}); }
     return Promise.resolve(this.demoToken(opId));
   }

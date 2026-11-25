@@ -1,5 +1,5 @@
 import { DirectExecutor } from "./transport/direct-executor";
-import { abortable, ownedRound, PathChanged } from "./transport/recovery";
+import { ownedRound, PathChanged } from "./transport/recovery";
 import { cleanup } from "./cleanup";
 import { Link as DeviceLink } from "./transport/link";
 import { RelayPath } from "./transport/relay-path";
@@ -10,7 +10,6 @@ import type { ImagePrepareFn } from "./attachment-executor";
 import type { AttachmentStore } from "./attachment-store";
 import {
   clearLoginToken,
-  loadLoginToken,
   saveLoginToken,
   securityStoreV4,
   type SecurityStoreV4,
@@ -39,7 +38,6 @@ import {
   DirectEventsReceivedEventSchema,
   EventSchema as CoreEventSchema,
   OutcomeSource,
-  TokenResultEventSchema,
   type CacheBootstrapLoadedEvent,
   type CacheDeleteEffect,
   type CacheEventsLoadedEvent,
@@ -47,7 +45,6 @@ import {
   type CommandOutcomeEvent,
   type DispatchCommandEffect,
   type Effect,
-  type TokenResultEvent,
 } from "./gen/remoteagent/core/v1/app_pb";
 import {
   RelayRpcMethod,
@@ -57,7 +54,6 @@ import {
 import {
   SecurityBootstrapKind,
   SecurityErrorCode,
-  SecurityKeyKind,
   SecurityOpenEnvelopeOpSchema,
   SecuritySealEnvelopeOpSchema,
   type SecurityPairingInfo,
@@ -118,7 +114,6 @@ export enum Purpose {
 }
 
 import {
-  AuthService,
   GetImageRequestSchema,
   GetImageResponseSchema,
   ListMachinesResponseSchema,
@@ -145,16 +140,12 @@ import {
 import {
   Code,
   ConnectError,
-  createClient,
 } from "@connectrpc/connect";
-import { createConnectTransport } from "@connectrpc/connect-web";
 import { relayFetch } from "./transport";
 import { closeScheduleNotification, watchSecurityPush } from "./push";
 import {
   checkServer,
-  concat,
   newRequestID,
-  utf8,
 } from "./crypto";
 import {
   EnvelopeSchema,
@@ -173,7 +164,6 @@ import {
   type TerminalFrame,
 } from "./gen/remoteagent/v1/remote_pb";
 import { CACHE_PAGE_SIZE, eventCache, type CachedEvent, type EventCache } from "./eventcache";
-import { RELAY_PROTOCOL_VERSION } from "./protocol";
 import { type StoredAccount } from "./storage";
 
 export function apiBase(server: string): string {
@@ -219,23 +209,6 @@ function purposeOf(kind: PayloadKind): Purpose {
 
 type CacheWritePayload = { kind: "machine"; raw: RemoteMachine } | { kind: "session"; raw: RemoteSession } | { kind: "events"; sessionId: string; raw: CachedEvent[] } | { kind: "prefs"; raw: AccountPrefsObject };
 
-const CONNECT_CODES: Partial<Record<Code, string>> = {
-  [Code.DeadlineExceeded]: "deadline_exceeded",
-  [Code.FailedPrecondition]: "failed_precondition",
-  [Code.PermissionDenied]: "permission_denied",
-  [Code.InvalidArgument]: "invalid_argument",
-  [Code.NotFound]: "not_found",
-  [Code.Unauthenticated]: "unauthenticated",
-  [Code.Unavailable]: "unavailable",
-  [Code.Unknown]: "unknown",
-  [Code.Internal]: "internal",
-  [Code.Canceled]: "canceled",
-  [Code.Aborted]: "aborted",
-  [Code.AlreadyExists]: "already_exists",
-  [Code.ResourceExhausted]: "resource_exhausted",
-};
-const connectErrorCode = (code: Code) => CONNECT_CODES[code] ?? "unknown";
-
 function readStoredScopeToken(): string {
   try {
     const raw = localStorage.getItem(SCOPE_STORAGE_KEY) ?? "";
@@ -258,17 +231,11 @@ export class Remote implements CoreExecutor {
   readonly sharedFileStore?: SharedFileStore;
   readonly attachmentStore?: AttachmentStore;
   prepareImageOverride?: ImagePrepareFn;
-  private readonly secStore: SecurityStoreV4;
   private readonly secExec: WebSecurityExecutor;
-  private readonly fetchFn: typeof fetch;
   readonly deviceLink: DeviceLink;
 
   private unwatchSecurityPush?: () => void;
   private token = "";
-  private tokenExpires = 0;
-  private tokenWarmed = false;
-  private loggingIn?: Promise<void>;
-  private loginController?: AbortController;
   private tokenWrites: Promise<void> = Promise.resolve();
   private networkGeneration = 0;
   private wakeSecurity?: Promise<void>;
@@ -300,8 +267,6 @@ export class Remote implements CoreExecutor {
     store: SecurityStoreV4 = securityStoreV4,
     fetchFn: typeof fetch = relayFetch,
   ) {
-    this.secStore = store;
-    this.fetchFn = fetchFn;
     if (initialStatus) {
       this.applySecurityStatusSnapshot(initialStatus);
     }
@@ -309,6 +274,7 @@ export class Remote implements CoreExecutor {
       store,
       fetch: fetchFn,
       defaultServer: account.server,
+      defaultDeviceId: account.deviceId,
       emit: (ev) => this.hostBridge?.dispatchEvent(ev),
     });
     this.deviceLink = new DeviceLink(new RelayPath());
@@ -446,7 +412,7 @@ export class Remote implements CoreExecutor {
     if (status.isAuthority && status.deviceId) this.authorityDeviceId = status.deviceId;
     if (status.removed && !this.removalVerified) {
       this.removalVerified = true;
-      this.discardToken();
+      this.clearLocalToken();
       if (!this.closed) this.stop();
     } else if (status.pendingOp?.hasDelivery && !this.closed && this.started) {
       void this.watchPairingDelivery();
@@ -600,7 +566,8 @@ export class Remote implements CoreExecutor {
     this.secExec.relayRpcCancel(eff);
   }
 
-  openStreamLeg(legId: bigint, _token: string, callbacks: StreamLegCallbacks, helloFrame?: Uint8Array<ArrayBuffer>) {
+  openStreamLeg(legId: bigint, token: string, callbacks: StreamLegCallbacks, helloFrame?: Uint8Array<ArrayBuffer>) {
+    if (token) this.token = token;
     this.closeStreamLeg(legId);
     const ws = this.deviceLink.openPathStream(apiBase(this.account.server).replace(/^http/, "ws") + "/v1/stream");
     const state = { ws, stopped: false };
@@ -643,37 +610,8 @@ export class Remote implements CoreExecutor {
     leg.ws.close();
   }
 
-  private async warmTokenOnce() {
-    if (this.tokenWarmed) return;
-    this.tokenWarmed = true;
-    try {
-      const saved = await loadLoginToken(this.account.server, this.account.deviceId);
-      if (saved && !this.token) { this.token = saved.token; this.tokenExpires = saved.expiresMs; }
-    } catch { /* Ignore missing token. */ }
-  }
-
-  async ensureToken(opId: bigint, forceLogin: boolean, timeoutMs: bigint): Promise<TokenResultEvent> {
-    await this.warmTokenOnce();
-    if (!forceLogin && this.token && this.tokenExpires >= Date.now() + 86_400_000) {
-      return create(TokenResultEventSchema, { opId, token: this.token, expiresMs: BigInt(this.tokenExpires) });
-    }
-    this.discardToken(this.token);
-    await this.tokenWrites;
-    const stop = new AbortController();
-    const timer = setTimeout(() => stop.abort(new ConnectError(l10n.t("errors.connection_timed_out"), Code.DeadlineExceeded)), timeoutMs > 0n ? Number(timeoutMs) : this.roundBudget());
-    try {
-      await this.login(stop.signal);
-      if (this.closed) { this.token = ""; this.tokenExpires = 0; return create(TokenResultEventSchema, { opId, errorCode: "canceled", error: "stopped" }); }
-      return create(TokenResultEventSchema, { opId, token: this.token, expiresMs: BigInt(this.tokenExpires) });
-    } catch (e) {
-      return create(TokenResultEventSchema, { opId, removed: e instanceof ConnectError && e.code === Code.PermissionDenied, errorCode: e instanceof ConnectError ? connectErrorCode(e.code) : "error", error: errorText(e) });
-    } finally { clearTimeout(timer); }
-  }
-
-  discardToken(token?: string) {
-    if (token !== undefined && token !== "" && this.token && this.token !== token) return;
+  private clearLocalToken() {
     this.token = "";
-    this.tokenExpires = 0;
     this.tokenWrites = this.tokenWrites.then(() => clearLoginToken(this.account.server, this.account.deviceId)).catch(() => undefined);
   }
 
@@ -691,11 +629,10 @@ export class Remote implements CoreExecutor {
 
   securityTokenUpdated(eff: SecurityTokenUpdatedEffect) {
     if (eff.cleared) {
-      this.discardToken();
+      this.clearLocalToken();
       return;
     }
     this.token = eff.token;
-    this.tokenExpires = Number(eff.expiresMs);
     this.tokenWrites = this.tokenWrites
       .then(() => saveLoginToken(this.account.server, this.account.deviceId, { token: eff.token, expiresMs: Number(eff.expiresMs) }))
       .catch(() => undefined);
@@ -978,7 +915,6 @@ export class Remote implements CoreExecutor {
   private roundBudget(): number { return this.hostBridge?.viewConnection().liveLoaded || this.networkGeneration > 0 ? 3000 : SETUP_IDLE_MS; }
 
   private retireNetworkIO() {
-    this.loginController?.abort(new PathChanged());
     this.wakeController?.abort(new PathChanged());
     this.wakeSecurity = undefined;
     this.wakeRequired = true;
@@ -999,55 +935,6 @@ export class Remote implements CoreExecutor {
       void pending.catch(() => undefined);
     }
     return this.wakeSecurity;
-  }
-
-  private async login(waiter?: AbortSignal): Promise<void> {
-    while (true) {
-      waiter?.throwIfAborted();
-      let job = this.loggingIn, controller = this.loginController;
-      if (!job || !controller) {
-        controller = new AbortController();
-        const owner = controller;
-        const pending = ownedRound(owner, this.roundBudget(), (signal) => this.signIn(signal)).finally(() => {
-          if (this.loggingIn === pending) { this.loggingIn = undefined; this.loginController = undefined; }
-        });
-        job = pending;
-        this.loginController = owner;
-        this.loggingIn = pending;
-        void pending.catch(() => undefined);
-      }
-      try { return await abortable(job, waiter); }
-      catch (error) { if (controller.signal.reason instanceof PathChanged && !this.closed && !waiter?.aborted) continue; throw error; }
-    }
-  }
-
-  private async signIn(signal: AbortSignal) {
-    const auth = createClient(AuthService, createConnectTransport({ fetch: this.fetchFn, baseUrl: apiBase(this.account.server), useBinaryFormat: true, defaultTimeoutMs: OPEN_TIMEOUT_MS }));
-    for (let again = true; ; again = false) {
-      try {
-        const timeoutMs = this.hostBridge?.viewConnection().liveLoaded || this.networkGeneration > 0 ? 3000 : OPEN_TIMEOUT_MS;
-        const ch = await auth.getChallenge({ deviceId: this.account.deviceId }, { signal, timeoutMs });
-        signal.throwIfAborted();
-        const challengeMsg = concat(utf8("remote-agent/v1/login\0"), new Uint8Array(ch.challenge));
-        const signature = await this.secStore.signKey(SecurityKeyKind.DEVICE_ED, "", challengeMsg);
-        signal.throwIfAborted();
-        const res = await auth.login({ protocolVersion: RELAY_PROTOCOL_VERSION, deviceId: this.account.deviceId, challenge: ch.challenge, signature }, { signal, timeoutMs });
-        signal.throwIfAborted();
-        if (this.closed) return;
-        this.token = res.token;
-        this.tokenExpires = Number(res.expiresMs);
-        this.tokenWrites = this.tokenWrites.then(() => saveLoginToken(this.account.server, this.account.deviceId, { token: res.token, expiresMs: Number(res.expiresMs) })).catch(() => undefined);
-        await this.tokenWrites;
-        return;
-      } catch (e) {
-        signal.throwIfAborted();
-        if (!(e instanceof ConnectError) || e.code !== Code.PermissionDenied) throw e;
-        if (again) continue;
-        this.discardToken();
-        await this.tokenWrites;
-        throw e;
-      }
-    }
   }
 
   private keepValue(name: string, value: Record<string, unknown> | undefined) {

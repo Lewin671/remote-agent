@@ -8,6 +8,32 @@ import okhttp3.OkHttpClient
 private const val REGISTER_CONTEXT = "remote-agent/v1/register\u0000"
 private const val PAIR_APPROVAL_CONTEXT = "remote-agent/v1/pair-approval\u0000"
 
+/** Test helper: logs in using the host [SecurityStoreV4] device Ed25519 key. */
+internal suspend fun loginWithStore(api: TestApi, deviceId: String, store: SecurityStoreV4): LoginResponse {
+    val ch = api.auth
+        .getChallenge(
+            GetChallengeRequest.newBuilder().setDeviceId(deviceId).build(),
+            emptyMap(),
+        )
+        .value()
+    val sig = store.signKey(
+        io.github.lewin671.remoteagent.core.proto.SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_ED,
+        "",
+        loginMessage(ch.challenge.toByteArray()),
+    )
+    return api.auth
+        .login(
+            LoginRequest.newBuilder()
+                .setProtocolVersion(RELAY_PROTOCOL_VERSION)
+                .setDeviceId(deviceId)
+                .setChallenge(ch.challenge)
+                .setSignature(ByteString.copyFrom(sig))
+                .build(),
+            emptyMap(),
+        )
+        .value()
+}
+
 /** Creates a new account with its authority client and pins the genesis, as the app does. */
 suspend fun newAuthorityAccount(
     root: ByteArray,
@@ -29,7 +55,7 @@ suspend fun newAuthorityAccount(
         .build()
         .toByteArray()
     val sig = Corebind.ed25519Sign(root, REGISTER_CONTEXT.toByteArray() + reg)
-    val api = Api(server, http)
+    val api = TestApi(server, http)
     val res = api.auth.registerDevice(
         RegisterDeviceRequest.newBuilder()
             .setRegistration(ByteString.copyFrom(reg))
@@ -48,14 +74,14 @@ suspend fun newAuthorityAccount(
         PinSecurityDomainRequest.newBuilder()
             .setGenesisState(ByteString.copyFrom(genesis))
             .build(),
-        Api.headers(token),
+        TestApi.headers(token),
     ).value()
     val record = fixture.record(phone.deviceId)
     api.client.putSecurityState(
         PutSecurityStateRequest.newBuilder()
             .setLease(ByteString.copyFrom(record.lease))
             .build(),
-        Api.headers(token),
+        TestApi.headers(token),
     ).value()
     fixture.syncStoresForAll()
     return phone
@@ -85,14 +111,14 @@ suspend fun fixtureMember(
     val rootSeed = security.accountRoots[authority.accountId]
     val accountPub = rootSeed?.let { Corebind.ed25519PublicKey(it) } ?: ByteArray(0)
     val (record, state) = security.enroll(seed, kind)
-    val api = Api(authority.server, http)
+    val api = TestApi(authority.server, http)
     val authToken = loginWithStore(api, authority.deviceId, security.stores.getValue(authority.deviceId)).token
     api.client.putSecurityState(
         PutSecurityStateRequest.newBuilder()
             .setLease(ByteString.copyFrom(record.lease))
             .addStates(SecurityState.newBuilder().setState(ByteString.copyFrom(state)).build())
             .build(),
-        Api.headers(authToken),
+        TestApi.headers(authToken),
     ).value()
 
     val now = System.currentTimeMillis()
@@ -137,14 +163,14 @@ suspend fun removeAsAuthority(phone: Account, target: String, http: OkHttpClient
     val security = TestSecurity.get(phone.server)
     val nextState = security.remove(listOf(target))
     val updated = security.record(phone.deviceId)
-    val api = Api(phone.server, http)
+    val api = TestApi(phone.server, http)
     val token = loginWithStore(api, phone.deviceId, security.stores.getValue(phone.deviceId)).token
     api.client.putSecurityState(
         PutSecurityStateRequest.newBuilder()
             .setLease(ByteString.copyFrom(updated.lease))
             .addStates(SecurityState.newBuilder().setState(ByteString.copyFrom(nextState)).build())
             .build(),
-        Api.headers(token),
+        TestApi.headers(token),
     ).value()
     security.syncStoresForAll()
 }

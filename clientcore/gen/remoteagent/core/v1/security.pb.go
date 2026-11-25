@@ -2419,19 +2419,21 @@ func (m *SecurityStorageEffect) AppendMarshal(b []byte) []byte {
 }
 
 type SecurityStorageResultEvent struct {
-	_             [0]func()
-	OpId          uint64
-	Found         bool
-	Revision      string
-	Data          []byte
-	Conflict      bool
-	Error         string
-	Entries       []*SecurityStorageEntry
-	HasDeviceEd   bool
-	DeviceEdPub   []byte
-	HasDeviceX    bool
-	DeviceXPub    []byte
-	LegacyCleared bool
+	_                   [0]func()
+	OpId                uint64
+	Found               bool
+	Revision            string
+	Data                []byte
+	Conflict            bool
+	Error               string
+	Entries             []*SecurityStorageEntry
+	HasDeviceEd         bool
+	DeviceEdPub         []byte
+	HasDeviceX          bool
+	DeviceXPub          []byte
+	LegacyCleared       bool
+	LoginToken          string
+	LoginTokenExpiresMs int64
 }
 
 func (m *SecurityStorageResultEvent) GetOpId() uint64 {
@@ -2506,6 +2508,18 @@ func (m *SecurityStorageResultEvent) GetLegacyCleared() bool {
 	}
 	return false
 }
+func (m *SecurityStorageResultEvent) GetLoginToken() string {
+	if m != nil {
+		return m.LoginToken
+	}
+	return ""
+}
+func (m *SecurityStorageResultEvent) GetLoginTokenExpiresMs() int64 {
+	if m != nil {
+		return m.LoginTokenExpiresMs
+	}
+	return 0
+}
 
 var LitewireDesc_SecurityStorageResultEvent = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityStorageResultEvent{}) },
@@ -2521,6 +2535,8 @@ var LitewireDesc_SecurityStorageResultEvent = litewire.MessageDesc{
 		{Num: 10, Offset: unsafe.Offsetof(SecurityStorageResultEvent{}.HasDeviceX), Kind: litewire.KindBool},
 		{Num: 11, Offset: unsafe.Offsetof(SecurityStorageResultEvent{}.DeviceXPub), Kind: litewire.KindBytes},
 		{Num: 12, Offset: unsafe.Offsetof(SecurityStorageResultEvent{}.LegacyCleared), Kind: litewire.KindBool},
+		{Num: 13, Offset: unsafe.Offsetof(SecurityStorageResultEvent{}.LoginToken), Kind: litewire.KindString},
+		{Num: 14, Offset: unsafe.Offsetof(SecurityStorageResultEvent{}.LoginTokenExpiresMs), Kind: litewire.KindInt64},
 	},
 }
 

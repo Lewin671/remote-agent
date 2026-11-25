@@ -21,6 +21,7 @@ public  final class SecurityStorageResultEvent extends
     entries_ = emptyProtobufList();
     deviceEdPub_ = com.google.protobuf.ByteString.EMPTY;
     deviceXPub_ = com.google.protobuf.ByteString.EMPTY;
+    loginToken_ = "";
   }
   public static final int OP_ID_FIELD_NUMBER = 1;
   private long opId_;
@@ -450,6 +451,80 @@ public  final class SecurityStorageResultEvent extends
   private void clearLegacyCleared() {
 
     legacyCleared_ = false;
+  }
+
+  public static final int LOGIN_TOKEN_FIELD_NUMBER = 13;
+  private java.lang.String loginToken_;
+  /**
+   * <code>string login_token = 13 [json_name = "loginToken"];</code>
+   * @return The loginToken.
+   */
+  @java.lang.Override
+  public java.lang.String getLoginToken() {
+    return loginToken_;
+  }
+  /**
+   * <code>string login_token = 13 [json_name = "loginToken"];</code>
+   * @return The bytes for loginToken.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getLoginTokenBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(loginToken_);
+  }
+  /**
+   * <code>string login_token = 13 [json_name = "loginToken"];</code>
+   * @param value The loginToken to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setLoginToken(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    loginToken_ = value;
+  }
+  /**
+   * <code>string login_token = 13 [json_name = "loginToken"];</code>
+   */
+  private void clearLoginToken() {
+
+    loginToken_ = getDefaultInstance().getLoginToken();
+  }
+  /**
+   * <code>string login_token = 13 [json_name = "loginToken"];</code>
+   * @param value The bytes for loginToken to set.
+   */
+  private void setLoginTokenBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    loginToken_ = value.toStringUtf8();
+
+  }
+
+  public static final int LOGIN_TOKEN_EXPIRES_MS_FIELD_NUMBER = 14;
+  private long loginTokenExpiresMs_;
+  /**
+   * <code>int64 login_token_expires_ms = 14 [json_name = "loginTokenExpiresMs"];</code>
+   * @return The loginTokenExpiresMs.
+   */
+  @java.lang.Override
+  public long getLoginTokenExpiresMs() {
+    return loginTokenExpiresMs_;
+  }
+  /**
+   * <code>int64 login_token_expires_ms = 14 [json_name = "loginTokenExpiresMs"];</code>
+   * @param value The loginTokenExpiresMs to set.
+   */
+  private void setLoginTokenExpiresMs(long value) {
+    
+    loginTokenExpiresMs_ = value;
+  }
+  /**
+   * <code>int64 login_token_expires_ms = 14 [json_name = "loginTokenExpiresMs"];</code>
+   */
+  private void clearLoginTokenExpiresMs() {
+
+    loginTokenExpiresMs_ = 0L;
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecurityStorageResultEvent parseFrom(
@@ -1001,6 +1076,83 @@ public  final class SecurityStorageResultEvent extends
       return this;
     }
 
+    /**
+     * <code>string login_token = 13 [json_name = "loginToken"];</code>
+     * @return The loginToken.
+     */
+    @java.lang.Override
+    public java.lang.String getLoginToken() {
+      return instance.getLoginToken();
+    }
+    /**
+     * <code>string login_token = 13 [json_name = "loginToken"];</code>
+     * @return The bytes for loginToken.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getLoginTokenBytes() {
+      return instance.getLoginTokenBytes();
+    }
+    /**
+     * <code>string login_token = 13 [json_name = "loginToken"];</code>
+     * @param value The loginToken to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLoginToken(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setLoginToken(value);
+      return this;
+    }
+    /**
+     * <code>string login_token = 13 [json_name = "loginToken"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLoginToken() {
+      copyOnWrite();
+      instance.clearLoginToken();
+      return this;
+    }
+    /**
+     * <code>string login_token = 13 [json_name = "loginToken"];</code>
+     * @param value The bytes for loginToken to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLoginTokenBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setLoginTokenBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>int64 login_token_expires_ms = 14 [json_name = "loginTokenExpiresMs"];</code>
+     * @return The loginTokenExpiresMs.
+     */
+    @java.lang.Override
+    public long getLoginTokenExpiresMs() {
+      return instance.getLoginTokenExpiresMs();
+    }
+    /**
+     * <code>int64 login_token_expires_ms = 14 [json_name = "loginTokenExpiresMs"];</code>
+     * @param value The loginTokenExpiresMs to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLoginTokenExpiresMs(long value) {
+      copyOnWrite();
+      instance.setLoginTokenExpiresMs(value);
+      return this;
+    }
+    /**
+     * <code>int64 login_token_expires_ms = 14 [json_name = "loginTokenExpiresMs"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLoginTokenExpiresMs() {
+      copyOnWrite();
+      instance.clearLoginTokenExpiresMs();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityStorageResultEvent)
   }
   @java.lang.Override
@@ -1030,11 +1182,13 @@ public  final class SecurityStorageResultEvent extends
             "hasDeviceX_",
             "deviceXPub_",
             "legacyCleared_",
+            "loginToken_",
+            "loginTokenExpiresMs_",
           };
           java.lang.String info =
-              "\u0000\f\u0000\u0000\u0001\f\f\u0000\u0001\u0000\u0001\u0003\u0002\u0007\u0003\u0208" +
-              "\u0004\n\u0005\u0007\u0006\u0208\u0007\u001b\b\u0007\t\n\n\u0007\u000b\n\f\u0007" +
-              "";
+              "\u0000\u000e\u0000\u0000\u0001\u000e\u000e\u0000\u0001\u0000\u0001\u0003\u0002\u0007" +
+              "\u0003\u0208\u0004\n\u0005\u0007\u0006\u0208\u0007\u001b\b\u0007\t\n\n\u0007\u000b" +
+              "\n\f\u0007\r\u0208\u000e\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

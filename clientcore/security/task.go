@@ -139,11 +139,22 @@ type entropyTaskWait struct {
 	tag  uint8
 }
 
+// AuthTokenResult reports the outcome of a Core-managed login/token resolution.
+type AuthTokenResult struct {
+	Token          string
+	ExpiresMs      int64
+	Removed        bool
+	UnresolvedHost bool
+	ErrorCode      string
+	Error          string
+}
+
 // AsyncSink receives tagged async completions from Engine without per-call closures.
 type AsyncSink interface {
 	OnOpenBatchDone(tag uint64, results []OpenResult)
 	OnSealEnvelopeDone(tag uint64, res SealResult, err error)
 	OnSyncStatesDone(tag uint64, err error)
+	OnAuthTokenDone(tag uint64, res AuthTokenResult)
 	OnKeySignDone(tag uint64, sig []byte, err error)
 	OnKeyAgreeDone(tag uint64, shared []byte, err error)
 	OnSecurityStateChanged()
@@ -343,6 +354,11 @@ func (e *Engine) fireStorage(eff *corev1.SecurityStorageEffect) { e.waitStorage(
 
 //go:noinline
 func (e *Engine) waitRPC(method corev1.SecurityRpcMethod, server, token string, reqBytes []byte, task secTask, tag uint8) {
+	e.waitRPCTimeout(method, server, token, reqBytes, 0, task, tag)
+}
+
+//go:noinline
+func (e *Engine) waitRPCTimeout(method corev1.SecurityRpcMethod, server, token string, reqBytes []byte, timeoutMs int64, task secTask, tag uint8) uint64 {
 	var opID uint64
 	if task != nil {
 		opID = e.regTask(taskWait{task: task, tag: tag})
@@ -350,9 +366,11 @@ func (e *Engine) waitRPC(method corev1.SecurityRpcMethod, server, token string, 
 		opID = e.allocOp()
 	}
 	if e.useRelayPipe {
-		timeoutMs := int64(15_000)
-		if method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
-			timeoutMs = 5_000
+		if timeoutMs <= 0 {
+			timeoutMs = 15_000
+			if method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+				timeoutMs = 5_000
+			}
 		}
 		e.out = append(e.out, &corev1.Effect{
 			Effect: &corev1.Effect_RelayRpc{
@@ -366,13 +384,29 @@ func (e *Engine) waitRPC(method corev1.SecurityRpcMethod, server, token string, 
 				},
 			},
 		})
-		return
+		return opID
 	}
 	e.out = append(e.out, &corev1.Effect{
 		Effect: &corev1.Effect_SecurityRpc{
 			SecurityRpc: &corev1.SecurityRpcEffect{OpId: opID, Method: method, Server: server, AuthToken: token, RequestBytes: reqBytes},
 		},
 	})
+	return opID
+}
+
+//go:noinline
+func (e *Engine) cancelRPC(opID uint64) {
+	if opID == 0 {
+		return
+	}
+	delete(e.tasks, opID)
+	if e.useRelayPipe {
+		e.out = append(e.out, &corev1.Effect{
+			Effect: &corev1.Effect_RelayRpcCancel{
+				RelayRpcCancel: &corev1.RelayRpcCancelEffect{OpId: opID},
+			},
+		})
+	}
 }
 
 func (e *Engine) fireRPC(method corev1.SecurityRpcMethod, server, token string, reqBytes []byte) {
@@ -384,6 +418,11 @@ type wireMarshaler interface{ AppendMarshal([]byte) []byte }
 //go:noinline
 func (e *Engine) waitProtoRPC(method corev1.SecurityRpcMethod, server, token string, msg wireMarshaler, task secTask) {
 	e.waitRPC(method, server, token, msg.AppendMarshal(nil), task, 0)
+}
+
+//go:noinline
+func (e *Engine) waitProtoRPCTimeout(method corev1.SecurityRpcMethod, server, token string, msg wireMarshaler, timeoutMs int64, task secTask) uint64 {
+	return e.waitRPCTimeout(method, server, token, msg.AppendMarshal(nil), timeoutMs, task, 0)
 }
 
 //go:noinline

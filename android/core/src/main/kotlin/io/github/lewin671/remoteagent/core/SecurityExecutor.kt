@@ -300,7 +300,24 @@ internal class SecurityExecutor(
                 { SecurityStorageResultEvent.newBuilder().setOpId(eff.securityStorage.opId).setError(it).build() },
                 { setSecurityStorageResult(it) },
             ) {
-                store.executeStorage(eff.securityStorage)
+                val res = store.executeStorage(eff.securityStorage)
+                if (eff.securityStorage.op == io.github.lewin671.remoteagent.core.proto.SecurityStorageOp.SECURITY_STORAGE_OP_READ_BOOTSTRAP &&
+                    res.loginToken.isEmpty() &&
+                    defaultServer.isNotEmpty() &&
+                    defaultDeviceId.isNotEmpty()
+                ) {
+                    val saved = runCatching { store.loadLoginToken(defaultServer, defaultDeviceId) }.getOrNull()
+                    if (saved != null && saved.token.isNotEmpty()) {
+                        res.toBuilder()
+                            .setLoginToken(saved.token)
+                            .setLoginTokenExpiresMs(saved.expiresMs)
+                            .build()
+                    } else {
+                        res
+                    }
+                } else {
+                    res
+                }
             }
             Effect.EffectCase.SECURITY_RPC -> launchOp(
                 { rpcErr(eff.securityRpc.opId, 2, it) },

@@ -244,12 +244,13 @@ func (e *Engine) SyncStatesTag(nowMs int64, touch bool, authToken string, tag ui
 }
 
 type syncStatesTask struct {
-	server string
-	pages  int
-	touch  bool
-	cur    *PersistedRecord
-	head   devicesec.State
-	stage  uint8
+	server    string
+	authToken string
+	pages     int
+	touch     bool
+	cur       *PersistedRecord
+	head      devicesec.State
+	stage     uint8
 }
 
 const (
@@ -282,10 +283,7 @@ func (e *Engine) syncWait(touch bool, authToken string, waiter syncWaiter) {
 		e.finishSyncWaiters(ErrNotInitialized)
 		return
 	}
-	if authToken != "" {
-		wf.cachedToken = authToken
-	}
-	(&syncStatesTask{server: server, touch: touch}).nextPage(e)
+	(&syncStatesTask{server: server, authToken: authToken, touch: touch}).nextPage(e)
 }
 
 func (e *Engine) finishSyncWaiters(err error) {
@@ -337,9 +335,10 @@ func (t *syncStatesTask) fetchAfterTouch(e *Engine, rec *PersistedRecord) {
 		return
 	}
 	t.cur, t.head, t.stage = rec, head, syncStageFetch
-	e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES, t.server, 0, &v1.GetSecurityStatesRequest{
+	reqBytes := (&v1.GetSecurityStatesRequest{
 		AfterEpoch: head.Core.Epoch, Limit: 8,
-	}, parentTarget(t, 0))
+	}).AppendMarshal(nil)
+	e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES, t.server, t.authToken, false, 0, reqBytes, parentTarget(t, 0))
 }
 
 func (t *syncStatesTask) step(e *Engine, ev *secEvent) error {

@@ -49,16 +49,12 @@ it("does not open a stale main socket when stopped during login", async () => {
   const status = await r.getSecurityStatus();
   vi.spyOn((r as unknown as { ensureHost(): { securityClient: { syncNow: () => Promise<unknown> } } }).ensureHost().securityClient, "syncNow").mockResolvedValue(status);
   let finish!: () => void;
-  vi.spyOn(r as any, "login").mockImplementation(
-    () =>
-      new Promise<void>((resolve) => {
-        finish = () => {
-          (r as any).token = "tok";
-          (r as any).tokenExpires = Date.now() + 7 * 86_400_000;
-          resolve();
-        };
+  (r as unknown as { api: object }).api = {
+    login: () =>
+      new Promise<{ token: string; expiresMs: bigint }>((resolve) => {
+        finish = () => resolve({ token: "tok", expiresMs: BigInt(Date.now() + 7 * 86_400_000) });
       }),
-  );
+  };
   const settle = async () => {
     for (let i = 0; i < 50; i++) await Promise.resolve();
   };
@@ -111,10 +107,6 @@ it("closes a terminal socket even while its handshake is pending", async () => {
 it("drops oversized main stream frames without buffering an unbounded backlog", async () => {
   vi.stubGlobal("WebSocket", Socket);
   const r = await probe();
-  vi.spyOn(r as any, "login").mockImplementation(async () => {
-    (r as any).token = "tok";
-    (r as any).tokenExpires = Date.now() + 7 * 86_400_000;
-  });
   const { toBinary } = await import("@bufbuild/protobuf");
   const { ServerFrameSchema } = await import("./gen/remoteagent/v1/relay_pb");
   const frame = toBinary(
@@ -383,7 +375,8 @@ it("starts from what the browser kept: the token, and the last listing", async (
     get: vi.fn(async (k: string) => kept[k]),
     set: vi.fn(async () => undefined),
   };
-  const login = vi.spyOn(r as any, "login").mockResolvedValue(undefined);
+  const login = vi.fn(async () => ({ token: "fresh-token", expiresMs: BigInt(Date.now() + 7 * 86_400_000) }));
+  (r as unknown as { api: object }).api = { login };
   let notified = 0;
   r.subscribe(() => notified++);
   r.start();
@@ -420,9 +413,8 @@ it("starts from what the browser kept: the token, and the last listing", async (
       deviceId: "someone else",
     })),
   };
-  const otherLogin = vi
-    .spyOn(other as any, "login")
-    .mockResolvedValue(undefined);
+  const otherLogin = vi.fn(async () => ({ token: "other-tok", expiresMs: BigInt(Date.now() + 7 * 86_400_000) }));
+  (other as unknown as { api: object }).api = { login: otherLogin };
   patchSyncState(other, { sessions: new Map() });
   other.start();
   await vi.waitFor(() => expect(otherLogin).toHaveBeenCalled());

@@ -101,4 +101,22 @@ public interface SecurityStorageResultEventOrBuilder extends
    * @return The legacyCleared.
    */
   boolean getLegacyCleared();
+
+  /**
+   * <code>string login_token = 13 [json_name = "loginToken"];</code>
+   * @return The loginToken.
+   */
+  java.lang.String getLoginToken();
+  /**
+   * <code>string login_token = 13 [json_name = "loginToken"];</code>
+   * @return The bytes for loginToken.
+   */
+  com.google.protobuf.ByteString
+      getLoginTokenBytes();
+
+  /**
+   * <code>int64 login_token_expires_ms = 14 [json_name = "loginTokenExpiresMs"];</code>
+   * @return The loginTokenExpiresMs.
+   */
+  long getLoginTokenExpiresMs();
 }

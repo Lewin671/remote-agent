@@ -38,7 +38,7 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		}
 		if e.secEngine != nil {
 			e.secEngine.SetForeground(true)
-			e.secEngine.SetNetworkGeneration(e.networkGen)
+			e.setSecNetworkGen(ctx, e.networkGen)
 		}
 		e.connectGen++
 		e.connecting = false
@@ -130,6 +130,9 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		e.updateLivePollers(ctx)
 		e.cancelAllTimers(ctx)
 		e.cancelAllSyncRelayRpcs(ctx)
+		if e.relayPipe && e.secEngine != nil {
+			e.emitSecurityEffects(ctx, e.secEngine.CancelAuthToken())
+		}
 		c := e.ensureTransportCoord()
 		c.ClearTickets()
 		e.emitCoordEffects(ctx, c.SetMainLeg(e.nowMs, false))
@@ -157,7 +160,7 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 				e.networkGen++
 			}
 			if e.secEngine != nil {
-				e.secEngine.SetNetworkGeneration(e.networkGen)
+				e.setSecNetworkGen(ctx, e.networkGen)
 			}
 			if !e.w.LivePushConnected && !e.connecting {
 				if e.networkAvailable {
@@ -218,15 +221,19 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		e.clearColdStartGrace(ctx)
 		e.forceLogin = true
 		if e.cachedToken != "" {
-			ctx.emit(&corev1.Effect{
-				Effect: &corev1.Effect_DiscardToken{
-					DiscardToken: &corev1.DiscardTokenEffect{Token: e.cachedToken},
-				},
-			})
-			e.cachedToken = ""
-			e.tokenExpiresMs = 0
-			if e.secEngine != nil {
-				e.secEngine.SetAuthToken("", 0)
+			if e.relayPipe && e.secEngine != nil {
+				e.clearAuthTokenViaPipe(ctx)
+			} else {
+				ctx.emit(&corev1.Effect{
+					Effect: &corev1.Effect_DiscardToken{
+						DiscardToken: &corev1.DiscardTokenEffect{Token: e.cachedToken},
+					},
+				})
+				e.cachedToken = ""
+				e.tokenExpiresMs = 0
+				if e.secEngine != nil {
+					e.secEngine.SetAuthToken("", 0)
+				}
 			}
 		}
 		e.recovery.Ready()
@@ -250,7 +257,7 @@ func (e *Engine) handleNetworkChanged(ctx *StepContext, ev *corev1.NetworkChange
 	if sigChanged || (!prevAvail && ev.Available) {
 		e.networkGen++
 		if e.secEngine != nil {
-			e.secEngine.SetNetworkGeneration(e.networkGen)
+			e.setSecNetworkGen(ctx, e.networkGen)
 		}
 	}
 
@@ -347,15 +354,19 @@ func (e *Engine) beginConnect(ctx *StepContext) {
 		e.forceLogin = true
 	}
 	e.activeTokenOpID = e.allocOpID()
-	ctx.emit(&corev1.Effect{
-		Effect: &corev1.Effect_EnsureToken{
-			EnsureToken: &corev1.EnsureTokenEffect{
-				OpId:       e.activeTokenOpID,
-				ForceLogin: e.forceLogin,
-				TimeoutMs:  timeout,
+	if e.relayPipe && e.secEngine != nil {
+		e.startConnectAuthToken(ctx, e.activeTokenOpID, e.forceLogin, timeout)
+	} else {
+		ctx.emit(&corev1.Effect{
+			Effect: &corev1.Effect_EnsureToken{
+				EnsureToken: &corev1.EnsureTokenEffect{
+					OpId:       e.activeTokenOpID,
+					ForceLogin: e.forceLogin,
+					TimeoutMs:  timeout,
+				},
 			},
-		},
-	})
+		})
+	}
 	if e.secEngine != nil && e.secEngine.HasWorkflowBootstrapped() && e.cachedToken != "" &&
 		(!e.security.Loaded || e.security.VerifiedNetGen != e.networkGen) {
 		e.requestSyncSecurity(ctx, true)
@@ -363,11 +374,19 @@ func (e *Engine) beginConnect(ctx *StepContext) {
 	ctx.Dirty.Add(true, true, true)
 }
 
+func (e *Engine) setSecNetworkGen(ctx *StepContext, gen uint64) {
+	if e.secEngine == nil {
+		return
+	}
+	e.secEngine.SetNetworkGeneration(gen)
+	e.emitSecurityEffects(ctx, e.secEngine.DrainEffects())
+}
+
 func (e *Engine) requestSyncSecurity(ctx *StepContext, touch bool) {
 	if e.secEngine == nil {
 		return
 	}
-	e.secEngine.SetNetworkGeneration(e.networkGen)
+	e.setSecNetworkGen(ctx, e.networkGen)
 	if !e.secEngine.HasWorkflowBootstrapped() {
 		return
 	}
@@ -524,15 +543,19 @@ func (e *Engine) onLegDropped(ctx *StepContext, legID uint64, policyViolation, u
 	if policyViolation {
 		e.forceLogin = true
 		if e.cachedToken != "" {
-			ctx.emit(&corev1.Effect{
-				Effect: &corev1.Effect_DiscardToken{
-					DiscardToken: &corev1.DiscardTokenEffect{Token: e.cachedToken},
-				},
-			})
-			e.cachedToken = ""
-			e.tokenExpiresMs = 0
-			if e.secEngine != nil {
-				e.secEngine.SetAuthToken("", 0)
+			if e.relayPipe && e.secEngine != nil {
+				e.clearAuthTokenViaPipe(ctx)
+			} else {
+				ctx.emit(&corev1.Effect{
+					Effect: &corev1.Effect_DiscardToken{
+						DiscardToken: &corev1.DiscardTokenEffect{Token: e.cachedToken},
+					},
+				})
+				e.cachedToken = ""
+				e.tokenExpiresMs = 0
+				if e.secEngine != nil {
+					e.secEngine.SetAuthToken("", 0)
+				}
 			}
 		}
 	}

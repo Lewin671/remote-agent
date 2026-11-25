@@ -101,7 +101,7 @@ func (e *rpcError) isTokenInvalid() bool {
 	if r := e.relayReason(); r != v1.RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED {
 		return r == v1.RelayErrorReason_RELAY_ERROR_REASON_TOKEN_INVALID
 	}
-	return e.code == ConnectCodeUnauthenticated
+	return e.code == connectCodeUnauthenticated
 }
 
 func (e *rpcError) isSignupPowRequired() bool {
@@ -111,7 +111,7 @@ func (e *rpcError) isSignupPowRequired() bool {
 	if r := e.relayReason(); r != v1.RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED {
 		return r == v1.RelayErrorReason_RELAY_ERROR_REASON_SIGNUP_POW_REQUIRED
 	}
-	return e.code == ConnectCodeFailedPrecondition
+	return e.code == connectCodeFailedPrecondition
 }
 
 func (e *rpcError) isCreateInitLoginMissing() bool {
@@ -121,7 +121,7 @@ func (e *rpcError) isCreateInitLoginMissing() bool {
 	if r := e.relayReason(); r != v1.RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED {
 		return r == v1.RelayErrorReason_RELAY_ERROR_REASON_LOGIN_FAILED
 	}
-	return e.code == ConnectCodePermissionDenied || e.code == ConnectCodeNotFound || e.code == ConnectCodeUnauthenticated
+	return e.code == connectCodePermissionDenied || e.code == connectCodeNotFound || e.code == connectCodeUnauthenticated
 }
 
 func (e *rpcError) isRetainedLoginDenied() bool {
@@ -133,7 +133,7 @@ func (e *rpcError) isRetainedLoginDenied() bool {
 			r == v1.RelayErrorReason_RELAY_ERROR_REASON_DEVICE_NOT_MEMBER ||
 			r == v1.RelayErrorReason_RELAY_ERROR_REASON_ACCOUNT_SUSPENDED
 	}
-	return e.code == ConnectCodePermissionDenied
+	return e.code == connectCodePermissionDenied
 }
 
 func (e *rpcError) isPairingGone() bool {
@@ -143,7 +143,7 @@ func (e *rpcError) isPairingGone() bool {
 	if r := e.relayReason(); r != v1.RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED {
 		return r == v1.RelayErrorReason_RELAY_ERROR_REASON_PAIRING_INVALID_OR_EXPIRED
 	}
-	return e.code == ConnectCodeNotFound
+	return e.code == connectCodeNotFound
 }
 
 func (e *rpcError) isJoinPairingGone() bool {
@@ -155,7 +155,7 @@ func (e *rpcError) isJoinPairingGone() bool {
 			r == v1.RelayErrorReason_RELAY_ERROR_REASON_DEVICE_NOT_MEMBER ||
 			r == v1.RelayErrorReason_RELAY_ERROR_REASON_ACCOUNT_SUSPENDED
 	}
-	return e.code == ConnectCodeNotFound || e.code == ConnectCodePermissionDenied
+	return e.code == connectCodeNotFound || e.code == connectCodePermissionDenied
 }
 
 func (e *rpcError) isDeliveryFallback() bool {
@@ -165,7 +165,7 @@ func (e *rpcError) isDeliveryFallback() bool {
 	if r := e.relayReason(); r != v1.RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED {
 		return r == v1.RelayErrorReason_RELAY_ERROR_REASON_PAIRING_INVALID_OR_EXPIRED
 	}
-	return e.code == ConnectCodeNotFound || e.code == ConnectCodeFailedPrecondition || e.code == ConnectCodeCanceled
+	return e.code == connectCodeNotFound || e.code == connectCodeFailedPrecondition || e.code == connectCodeCanceled
 }
 
 func (e *rpcError) isResumeRegFallbackLogin() bool {
@@ -177,7 +177,7 @@ func (e *rpcError) isResumeRegFallbackLogin() bool {
 		// falling back to a login probe.
 		return false
 	}
-	return e.code == ConnectCodeAlreadyExists || e.code == ConnectCodePermissionDenied
+	return e.code == connectCodeAlreadyExists || e.code == connectCodePermissionDenied
 }
 
 type codeDraft struct {
@@ -239,16 +239,18 @@ type joinerPairingSession struct {
 }
 
 type storageReply struct {
-	found         bool
-	revision      string
-	data          []byte
-	conflict      bool
-	entries       []*corev1.SecurityStorageEntry
-	hasDeviceEd   bool
-	deviceEdPub   []byte
-	hasDeviceX    bool
-	deviceXPub    []byte
-	legacyCleared bool
+	found               bool
+	revision            string
+	data                []byte
+	conflict            bool
+	entries             []*corev1.SecurityStorageEntry
+	hasDeviceEd         bool
+	deviceEdPub         []byte
+	hasDeviceX          bool
+	deviceXPub          []byte
+	legacyCleared       bool
+	loginToken          string
+	loginTokenExpiresMs int64
 }
 
 type activePollKind int
@@ -282,8 +284,12 @@ type workflowState struct {
 	bootstrapError     string
 	legacyRepairNotice bool
 
-	cachedToken    string
-	tokenExpiresMs int64
+	cachedToken        string
+	tokenExpiresMs     int64
+	tokenWarmAttempted bool
+	warmTokenInFlight  bool
+	inFlightLogin      *loginTokenTask
+	loginWaiters       []authTokenWaiter
 
 	record          *PersistedRecord
 	recordRev       string
@@ -364,6 +370,9 @@ func u64Str(v uint64) string {
 func (e *Engine) SetNetworkGeneration(gen uint64) {
 	if gen > e.netGen {
 		e.netGen = gen
+		if e.wf != nil && e.wf.inFlightLogin != nil && e.useRelayPipe {
+			e.wf.inFlightLogin.resetForNetworkChange(e)
+		}
 	}
 }
 
@@ -406,6 +415,55 @@ func (e *Engine) HasWorkflowBootstrapped() bool { return e.wf != nil && e.wf.boo
 func (e *Engine) SetAuthToken(token string, expiresMs int64) {
 	wf := e.ensureWF()
 	wf.cachedToken, wf.tokenExpiresMs = token, expiresMs
+	if token != "" {
+		wf.tokenWarmAttempted = true
+	}
+}
+
+// ClearAuthToken discards any cached login token and notifies shells via SecurityTokenUpdatedEffect.
+func (e *Engine) ClearAuthToken() []*corev1.Effect {
+	wf := e.ensureWF()
+	if wf.cachedToken != "" || wf.tokenExpiresMs != 0 {
+		wf.cachedToken = ""
+		wf.tokenExpiresMs = 0
+		e.emitTokenUpdated("", 0, true)
+	}
+	return e.DrainEffects()
+}
+
+// CancelAuthToken cancels any in-flight shared login RPC and drops pending sink waiters.
+func (e *Engine) CancelAuthToken() []*corev1.Effect {
+	wf := e.ensureWF()
+	if wf.inFlightLogin != nil {
+		t := wf.inFlightLogin
+		wf.inFlightLogin = nil
+		t.canceled = true
+		e.cancelRPC(t.currentRpcOpID)
+		t.currentRpcOpID = 0
+	}
+	wf.warmTokenInFlight = false
+	if len(wf.loginWaiters) > 0 {
+		waiters := wf.loginWaiters
+		wf.loginWaiters = nil
+		for _, w := range waiters {
+			if w.hasSink {
+				if wf.asyncSink != nil {
+					wf.asyncSink.OnAuthTokenDone(w.sinkTag, AuthTokenResult{ErrorCode: "canceled", Error: "stopped"})
+				}
+			} else if w.target.kind != targetNone {
+				e.failTarget(w.target, &rpcError{code: connectCodeCanceled, msg: "stopped"})
+			}
+		}
+	}
+	return e.DrainEffects()
+}
+
+// EnsureAuthTokenTag resolves a valid login token (reusing cached/persisted token outside the
+// 24h refresh margin, or coalescing a single-flight GetChallenge -> Sign -> Login round).
+func (e *Engine) EnsureAuthTokenTag(nowMs int64, forceLogin bool, timeoutMs int64, tag uint64) []*corev1.Effect {
+	e.touchNow(nowMs)
+	e.ensureAuthToken(forceLogin, timeoutMs, authTokenWaiter{hasSink: true, sinkTag: tag})
+	return e.DrainEffects()
 }
 
 // FlushEntropy delivers buffered OS entropy to any pending workflow entropy waiters.
@@ -486,6 +544,7 @@ func (e *Engine) HandleStorageResult(nowMs int64, ev *corev1.SecurityStorageResu
 			storage: &storageReply{
 				found: ev.Found, revision: ev.Revision, data: ev.Data, conflict: ev.Conflict, entries: ev.Entries,
 				hasDeviceEd: ev.HasDeviceEd, deviceEdPub: ev.DeviceEdPub, hasDeviceX: ev.HasDeviceX, deviceXPub: ev.DeviceXPub, legacyCleared: ev.LegacyCleared,
+				loginToken: ev.LoginToken, loginTokenExpiresMs: ev.LoginTokenExpiresMs,
 			},
 		})
 	}
@@ -588,18 +647,18 @@ func (e *Engine) emitActionResult(actionID uint64, res *corev1.SecurityWorkflowR
 			res.StructuredErrorCode = StructuredErrorCode(err)
 			if re := asRpcError(err); re != nil {
 				switch re.code {
-				case ConnectCodePermissionDenied:
+				case connectCodePermissionDenied:
 					res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_PERMISSION_DENIED
-				case ConnectCodeNotFound:
+				case connectCodeNotFound:
 					res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_NOT_FOUND
-				case ConnectCodeFailedPrecondition:
+				case connectCodeFailedPrecondition:
 					res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_FAILED_PRECONDITION
-				case ConnectCodeResourceExhausted:
+				case connectCodeResourceExhausted:
 					res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_RESOURCE_EXHAUSTED
-				case ConnectCodeCanceled:
+				case connectCodeCanceled:
 					res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_CANCELED
 				default:
-					if re.code == ConnectCodeUnavailable || re.network {
+					if re.code == connectCodeUnavailable || re.network {
 						res.Retryable, res.Uncertain = true, true
 						res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_UNAVAILABLE
 					}
@@ -949,6 +1008,11 @@ func (t *bootstrapTask) step(e *Engine, ev *secEvent) error {
 		if wf.record.Server != "" {
 			wf.server = wf.record.Server
 		}
+		if st.loginToken != "" && wf.cachedToken == "" {
+			wf.cachedToken = st.loginToken
+			wf.tokenExpiresMs = st.loginTokenExpiresMs
+			wf.tokenWarmAttempted = true
+		}
 		if !wf.deviceEdPresent || !wf.deviceXPresent {
 			return t.finish(e, wf, devicesec.ErrInvalid)
 		}
@@ -1070,12 +1134,217 @@ func (e *Engine) buildNotifyRecordBytes(rec *PersistedRecord, head devicesec.Sta
 	return raw
 }
 
+type authTokenWaiter struct {
+	target  taskTarget
+	hasSink bool
+	sinkTag uint64
+}
+
+type warmTokenTask struct {
+	timeoutMs int64
+}
+
+func (t *warmTokenTask) onError(e *Engine, _ error) {
+	wf := e.ensureWF()
+	wf.warmTokenInFlight = false
+	wf.tokenWarmAttempted = true
+	e.startSharedLogin(t.timeoutMs)
+}
+
+func isTokenFresh(token string, expiresMs, nowMs int64) bool {
+	if token == "" || expiresMs <= 0 {
+		return false
+	}
+	if nowMs > 0 && expiresMs < nowMs+dayMs {
+		return false
+	}
+	return true
+}
+
+func (t *warmTokenTask) step(e *Engine, ev *secEvent) error {
+	wf := e.ensureWF()
+	wf.warmTokenInFlight = false
+	wf.tokenWarmAttempted = true
+	if ev != nil && ev.err == nil && ev.storage != nil && ev.storage.loginToken != "" {
+		tok := ev.storage.loginToken
+		exp := ev.storage.loginTokenExpiresMs
+		if isTokenFresh(tok, exp, e.lastNowMs) {
+			wf.cachedToken = tok
+			wf.tokenExpiresMs = exp
+			e.finishSharedLogin(AuthTokenResult{Token: tok, ExpiresMs: exp}, nil)
+			return nil
+		}
+		// Stored token is expired or within the 24h refresh margin: clear it and log in fresh.
+		e.emitTokenUpdated("", 0, true)
+	}
+	e.startSharedLogin(t.timeoutMs)
+	return nil
+}
+
+func (e *Engine) ensureAuthToken(forceLogin bool, timeoutMs int64, waiter authTokenWaiter) {
+	wf := e.ensureWF()
+	if !forceLogin && isTokenFresh(wf.cachedToken, wf.tokenExpiresMs, e.lastNowMs) {
+		e.deliverAuthTokenWaiter(waiter, AuthTokenResult{Token: wf.cachedToken, ExpiresMs: wf.tokenExpiresMs}, nil)
+		return
+	}
+	if forceLogin || (wf.cachedToken != "" && !isTokenFresh(wf.cachedToken, wf.tokenExpiresMs, e.lastNowMs)) {
+		if wf.cachedToken != "" || wf.tokenExpiresMs != 0 {
+			wf.cachedToken = ""
+			wf.tokenExpiresMs = 0
+			e.emitTokenUpdated("", 0, true)
+		}
+		if forceLogin {
+			wf.tokenWarmAttempted = true
+		}
+	}
+	wf.loginWaiters = append(wf.loginWaiters, waiter)
+	if wf.inFlightLogin != nil || wf.warmTokenInFlight {
+		return
+	}
+	if !forceLogin && !wf.tokenWarmAttempted {
+		wf.warmTokenInFlight = true
+		e.readBootstrapStorage(&warmTokenTask{timeoutMs: timeoutMs})
+		return
+	}
+	e.startSharedLogin(timeoutMs)
+}
+
+func (e *Engine) startSharedLogin(timeoutMs int64) {
+	wf := e.ensureWF()
+	if len(wf.loginWaiters) == 0 || wf.inFlightLogin != nil {
+		return
+	}
+	server := e.effectiveServer()
+	if e.selfDeviceID == "" {
+		e.finishSharedLogin(AuthTokenResult{ErrorCode: "untrusted", Error: devicesec.ErrUntrusted.Error()}, devicesec.ErrUntrusted)
+		return
+	}
+	t := &loginTokenTask{
+		server:      server,
+		keyKind:     keyDevEd,
+		deviceID:    e.selfDeviceID,
+		cacheResult: true,
+		shared:      true,
+		timeoutMs:   timeoutMs,
+		attempt:     1,
+	}
+	wf.inFlightLogin = t
+	t.currentRpcOpID = e.waitProtoRPCTimeout(
+		corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_CHALLENGE,
+		server,
+		"",
+		&v1.GetChallengeRequest{DeviceId: e.selfDeviceID},
+		timeoutMs,
+		t,
+	)
+}
+
+func (e *Engine) deliverAuthTokenWaiter(w authTokenWaiter, res AuthTokenResult, err error) {
+	if w.hasSink {
+		if wf := e.wf; wf != nil && wf.asyncSink != nil {
+			wf.asyncSink.OnAuthTokenDone(w.sinkTag, res)
+		}
+		return
+	}
+	if w.target.kind == targetNone {
+		return
+	}
+	if err != nil {
+		e.failTarget(w.target, err)
+	} else {
+		e.completeTarget(w.target, &secEvent{str: res.Token})
+	}
+}
+
+func (e *Engine) finishSharedLogin(res AuthTokenResult, err error) {
+	wf := e.ensureWF()
+	wf.inFlightLogin = nil
+	waiters := wf.loginWaiters
+	wf.loginWaiters = nil
+	for _, w := range waiters {
+		e.deliverAuthTokenWaiter(w, res, err)
+	}
+}
+
+func authTokenResultFromError(err error) AuthTokenResult {
+	if err == nil {
+		return AuthTokenResult{}
+	}
+	res := AuthTokenResult{Error: err.Error()}
+	if re := asRpcError(err); re != nil {
+		res.Removed = re.isRetainedLoginDenied()
+		res.UnresolvedHost = re.unresolvedHost
+		switch {
+		case re.unresolvedHost:
+			res.ErrorCode = "unresolved_host"
+		case re.code != 0:
+			res.ErrorCode = ConnectCodeName(re.code)
+		case re.network:
+			res.ErrorCode = "network"
+		default:
+			res.ErrorCode = "error"
+		}
+		if re.msg != "" {
+			res.Error = re.msg
+		}
+		return res
+	}
+	res.ErrorCode = "error"
+	return res
+}
+
 type loginTokenTask struct {
 	taskBase
 	server, slot, deviceID string
 	keyKind                corev1.SecurityKeyKind
 	fgCheck, cacheResult   bool
+	shared                 bool
+	canceled               bool
+	retriedStaleChallenge  bool
+	timeoutMs              int64
+	attempt                uint64
+	currentRpcOpID         uint64
 	challenge              []byte
+}
+
+func (t *loginTokenTask) resetForNetworkChange(e *Engine) {
+	if t.canceled || !t.shared {
+		return
+	}
+	if t.currentRpcOpID != 0 {
+		e.cancelRPC(t.currentRpcOpID)
+		t.currentRpcOpID = 0
+	}
+	t.attempt++
+	t.stage = loginStageChallenge
+	t.retriedStaleChallenge = false
+	t.challenge = nil
+	t.currentRpcOpID = e.waitProtoRPCTimeout(
+		corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_CHALLENGE,
+		t.server,
+		"",
+		&v1.GetChallengeRequest{DeviceId: t.deviceID},
+		t.timeoutMs,
+		t,
+	)
+}
+
+func (t *loginTokenTask) onError(e *Engine, err error) {
+	if t.canceled {
+		return
+	}
+	if t.shared {
+		res := authTokenResultFromError(err)
+		if res.Removed {
+			wf := e.ensureWF()
+			wf.cachedToken = ""
+			wf.tokenExpiresMs = 0
+			e.emitTokenUpdated("", 0, true)
+		}
+		e.finishSharedLogin(res, err)
+		return
+	}
+	e.failTarget(t.target, err)
 }
 
 func (e *Engine) withAuthToken(server, preferred string, fgCheck bool, capturedGen uint64, target taskTarget) {
@@ -1090,8 +1359,12 @@ func (e *Engine) withAuthToken(server, preferred string, fgCheck bool, capturedG
 		return
 	}
 	wf := e.ensureWF()
-	if wf.cachedToken != "" && (wf.tokenExpiresMs == 0 || e.lastNowMs == 0 || wf.tokenExpiresMs > e.lastNowMs+dayMs) {
+	if isTokenFresh(wf.cachedToken, wf.tokenExpiresMs, e.lastNowMs) {
 		e.completeTarget(target, &secEvent{str: wf.cachedToken})
+		return
+	}
+	if !fgCheck && e.useRelayPipe && (server == "" || server == e.effectiveServer()) {
+		e.ensureAuthToken(false, 0, authTokenWaiter{target: target})
 		return
 	}
 	e.forceLoginToken(server, keyDevEd, "", e.selfDeviceID, fgCheck, capturedGen, true, target)
@@ -1103,10 +1376,23 @@ func (e *Engine) forceLoginToken(server string, keyKind corev1.SecurityKeyKind, 
 		e.failTarget(target, devicesec.ErrUntrusted)
 		return
 	}
-	e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_CHALLENGE, server, "", &v1.GetChallengeRequest{DeviceId: deviceID}, &loginTokenTask{
+	if cacheResult && !fgCheck && keyKind == keyDevEd && slot == "" && deviceID == e.selfDeviceID && e.useRelayPipe && (server == "" || server == e.effectiveServer()) {
+		e.ensureAuthToken(true, 0, authTokenWaiter{target: target})
+		return
+	}
+	t := &loginTokenTask{
 		taskBase: taskBase{fgGen: capturedGen, target: target},
 		server:   server, keyKind: keyKind, slot: slot, deviceID: deviceID, fgCheck: fgCheck, cacheResult: cacheResult,
-	})
+		attempt: 1,
+	}
+	t.currentRpcOpID = e.waitProtoRPCTimeout(
+		corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_CHALLENGE,
+		server,
+		"",
+		&v1.GetChallengeRequest{DeviceId: deviceID},
+		0,
+		t,
+	)
 }
 
 const (
@@ -1115,8 +1401,55 @@ const (
 	loginStageLogin
 )
 
+type loginSignTask struct {
+	parent  *loginTokenTask
+	attempt uint64
+}
+
+func (s *loginSignTask) onError(e *Engine, err error) {
+	if s.parent.canceled || s.parent.attempt != s.attempt {
+		return
+	}
+	s.parent.onError(e, err)
+}
+
+func (s *loginSignTask) step(e *Engine, ev *secEvent) error {
+	if s.parent.canceled || s.parent.attempt != s.attempt {
+		return nil
+	}
+	return s.parent.step(e, ev)
+}
+
 func (t *loginTokenTask) step(e *Engine, ev *secEvent) error {
+	if t.canceled {
+		return nil
+	}
+	if ev != nil && ev.kind == evSign && t.stage != loginStageSign {
+		return nil
+	}
+	if ev != nil && ev.kind == evRPC {
+		if t.stage == loginStageSign {
+			return nil
+		}
+		t.currentRpcOpID = 0
+	}
 	if ev != nil && ev.err != nil {
+		// Retry once on a single Login denial: a server restart may have forgotten the challenge.
+		if t.stage == loginStageLogin && t.shared && !t.retriedStaleChallenge && ev.rpcErr != nil && ev.rpcErr.isRetainedLoginDenied() {
+			t.retriedStaleChallenge = true
+			t.attempt++
+			t.stage = loginStageChallenge
+			t.challenge = nil
+			t.currentRpcOpID = e.waitProtoRPCTimeout(
+				corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_CHALLENGE,
+				t.server,
+				"",
+				&v1.GetChallengeRequest{DeviceId: t.deviceID},
+				t.timeoutMs,
+				t,
+			)
+			return nil
+		}
 		return ev.err
 	}
 	var fg uint64
@@ -1135,7 +1468,7 @@ func (t *loginTokenTask) step(e *Engine, ev *secEvent) error {
 			}
 		}
 		t.challenge, t.stage = chal.Challenge, loginStageSign
-		e.waitSign(t.keyKind, t.slot, append(append([]byte{}, loginContext...), chal.Challenge...), t, 0)
+		e.waitSign(t.keyKind, t.slot, append(append([]byte{}, loginContext...), chal.Challenge...), &loginSignTask{parent: t, attempt: t.attempt}, 0)
 	case loginStageSign:
 		if fg != 0 {
 			if err := e.checkFG(fg); err != nil {
@@ -1143,9 +1476,16 @@ func (t *loginTokenTask) step(e *Engine, ev *secEvent) error {
 			}
 		}
 		t.stage = loginStageLogin
-		e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LOGIN, t.server, "", &v1.LoginRequest{
-			DeviceId: t.deviceID, Challenge: t.challenge, Signature: ev.bytes, ProtocolVersion: e.relayVersion,
-		}, t)
+		t.currentRpcOpID = e.waitProtoRPCTimeout(
+			corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LOGIN,
+			t.server,
+			"",
+			&v1.LoginRequest{
+				DeviceId: t.deviceID, Challenge: t.challenge, Signature: ev.bytes, ProtocolVersion: e.relayVersion,
+			},
+			t.timeoutMs,
+			t,
+		)
 	case loginStageLogin:
 		var lr v1.LoginResponse
 		if lr.Unmarshal(ev.bytes) != nil || lr.Token == "" {
@@ -1154,9 +1494,14 @@ func (t *loginTokenTask) step(e *Engine, ev *secEvent) error {
 		if t.cacheResult {
 			wf := e.ensureWF()
 			wf.cachedToken, wf.tokenExpiresMs = lr.Token, lr.ExpiresMs
+			wf.tokenWarmAttempted = true
 			e.emitTokenUpdated(lr.Token, lr.ExpiresMs, false)
 		}
-		e.completeTarget(t.target, &secEvent{str: lr.Token})
+		if t.shared {
+			e.finishSharedLogin(AuthTokenResult{Token: lr.Token, ExpiresMs: lr.ExpiresMs}, nil)
+		} else {
+			e.completeTarget(t.target, &secEvent{str: lr.Token})
+		}
 	}
 	return nil
 }

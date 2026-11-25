@@ -425,8 +425,7 @@ export interface CoreExecutor {
   useRelayPipe?(): boolean;
   openStreamLeg(legId: bigint, token: string, callbacks: StreamLegCallbacks, helloFrame?: Uint8Array<ArrayBuffer>): void;
   closeStreamLeg(legId: bigint): void;
-  ensureToken(opId: bigint, forceLogin: boolean, timeoutMs: bigint): Promise<TokenResultEvent>;
-  discardToken(token: string): void;
+  ensureToken?(opId: bigint, forceLogin: boolean, timeoutMs: bigint): Promise<TokenResultEvent>;
   securityConfig?(): { account: string; deviceId: string; server?: string } | undefined;
   readBootstrapCache(opId: bigint): Promise<CacheBootstrapLoadedEvent>;
   readEventsCache(
@@ -1055,6 +1054,7 @@ export class CoreHost {
       value: create(LocaleChangedEventSchema, { uiLocale: l10n.localeStore.snapshot() }),
     });
     if (this.executor?.useRelayPipe?.()) {
+      this.ensureSecurityConfigured();
       this.emit({
         case: "relayPipeConfig",
         value: create(RelayPipeConfigEventSchema, { enabled: true }),
@@ -2914,16 +2914,14 @@ export class CoreHost {
 
       case "ensureToken": {
         const { opId, forceLogin, timeoutMs } = val.value;
-        void this.executor?.ensureToken(opId, forceLogin, timeoutMs).then(
+        const ensure = this.executor?.ensureToken;
+        if (!ensure) break;
+        void ensure.call(this.executor, opId, forceLogin, timeoutMs).then(
           (value) => !this.closed && this.emit({ case: "tokenResult", value }),
           (err) => !this.closed && this.emit({ case: "tokenResult", value: create(TokenResultEventSchema, { opId, error: errorMessage(err) }) }),
         );
         break;
       }
-
-      case "discardToken":
-        this.executor?.discardToken(val.value.token);
-        break;
 
       case "cacheRead": {
         const kind = val.value.kind;

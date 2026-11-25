@@ -73,7 +73,6 @@ function makeExecutor(overrides: Partial<CoreExecutor> = {}): CoreExecutor & {
         expiresMs: BigInt(Date.now() + 600_000),
       });
     },
-    discardToken() {},
     async readBootstrapCache(opId) {
       return create(CacheBootstrapLoadedEventSchema, {
         opId,

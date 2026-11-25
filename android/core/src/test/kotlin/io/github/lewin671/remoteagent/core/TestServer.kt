@@ -222,7 +222,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
     var answer: (Header, Command) -> CommandResult = { _, c -> defaultResult(c) }
 
     suspend fun login() {
-        token = loginWithStore(Api(account.server, http), account.deviceId, store).token
+        token = loginWithStore(TestApi(account.server, http), account.deviceId, store).token
     }
 
     suspend fun putMachine(
@@ -250,7 +250,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                 header(PayloadKind.PAYLOAD_KIND_MACHINE_META).setSeq(metaRev).build(),
                 meta.toByteArray(),
             )
-        api.putMachine(PutMachineRequest.newBuilder().setMeta(env).build(), Api.headers(token))
+        api.putMachine(PutMachineRequest.newBuilder().setMeta(env).build(), TestApi.headers(token))
             .value()
     }
 
@@ -280,7 +280,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                     .setMeta(meta)
                     .setEndedMs(endedMs)
                     .build(),
-                Api.headers(token),
+                TestApi.headers(token),
             )
             .value()
     }
@@ -309,7 +309,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                     .setImageId(imageId)
                     .setImage(env)
                     .build(),
-                Api.headers(token),
+                TestApi.headers(token),
             )
             .value()
     }
@@ -345,7 +345,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
             }
         api.uploadEvents(
                 UploadEventsRequest.newBuilder().setSessionId(sid).addAllEvents(stored).build(),
-                Api.headers(token),
+                TestApi.headers(token),
             )
             .value()
     }

@@ -290,7 +290,10 @@ class Vault internal constructor(
             return emptyMap()
         }
         val data = bucketsFile.readBytes()
-        if (Build.VERSION.SDK_INT >= 28 && keyguard.isDeviceLocked) clearMemoryCache()
+        if (Build.VERSION.SDK_INT >= 28 && keyguard.isDeviceLocked) {
+            clearMemoryCache()
+            throw SecurityFailure("locked")
+        }
         if (bucketsCiphertext?.contentEquals(data) == true) return bucketsCache ?: emptyMap()
         bucketsCiphertext = null
         bucketsCache = null
@@ -315,7 +318,10 @@ class Vault internal constructor(
             return emptyMap()
         }
         val data = keysFile.readBytes()
-        if (Build.VERSION.SDK_INT >= 28 && keyguard.isDeviceLocked) clearMemoryCache()
+        if (Build.VERSION.SDK_INT >= 28 && keyguard.isDeviceLocked) {
+            clearMemoryCache()
+            throw SecurityFailure("locked")
+        }
         if (keysCiphertext?.contentEquals(data) == true) return keysCache ?: emptyMap()
         keysCiphertext = null
         keysCache = null

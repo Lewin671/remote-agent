@@ -282,7 +282,6 @@ describe("CoreHost cold-boot security ordering", () => {
       async ensureToken(opId) {
         return create(TokenResultEventSchema, { opId, token: "t", expiresMs: BigInt(Date.now() + 60_000) });
       },
-      discardToken() {},
       securityConfig() {
         return { account: vectors.account, deviceId: "dev-client" };
       },

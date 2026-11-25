@@ -422,6 +422,7 @@ func TestRelayErrorWorkflowDecisions(t *testing.T) {
 				e.selfDeviceID = "dev-1"
 				wf := e.ensureWF()
 				wf.cachedToken = "cached-tok"
+				wf.tokenExpiresMs = 1_000_000_000_000
 				const actionID uint64 = 103
 				e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES, "https://example.com", "", false, 0, nil, actionTarget(actionID, targetAction))
 				listEff := findRPCEffect(e.DrainEffects(), corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES)
@@ -496,6 +497,7 @@ func TestRelayErrorWorkflowDecisions(t *testing.T) {
 				e.head.Core.AuthorityID = "auth-1"
 				wf := e.ensureWF()
 				wf.cachedToken = "tok"
+				wf.tokenExpiresMs = 1_000_000_000_000
 				wf.initPairings["p1"] = &initiatorPairingSession{pairingID: "p1", server: "https://example.com"}
 				const actionID uint64 = 105
 				e.startPollPairingInitiator(wf.fgGen, "p1", actionTarget(actionID, targetAction))
@@ -637,6 +639,7 @@ func TestRelayErrorWorkflowDecisions(t *testing.T) {
 				e.SetForeground(true)
 				wf := e.ensureWF()
 				wf.cachedToken = "tok"
+				wf.tokenExpiresMs = 1_000_000_000_000
 				const actionID uint64 = 108
 				op := &PersistedOperation{Server: "https://example.com"}
 				task := &continueStateOpTask{

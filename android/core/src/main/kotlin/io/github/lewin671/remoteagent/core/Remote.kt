@@ -111,7 +111,6 @@ class Remote(
         if (dispatcher == null || dispatcher === Dispatchers.Unconfined) Dispatchers.IO.limitedParallelism(1)
         else this.dispatcher
 
-    val api = Api(account.server, http, ::rejectToken, rpcTransport)
     private val directServerHost: String =
         if (stunUrls != null) "" else runCatching { java.net.URI(account.server).host.orEmpty() }.getOrDefault("")
     private val directConfiguredStun: String = stunUrls?.joinToString(",") ?: ""
@@ -131,10 +130,7 @@ class Remote(
 
     // --- Token & stream runtime state ---
 
-    private val tokenMutex = Mutex()
     @Volatile private var cachedToken: LoginToken? = null
-    private var inFlightToken: CompletableDeferred<LoginToken>? = null
-    @Volatile private var inFlightLoginJob: Job? = null
     @Volatile private var networkAvailable = true
     @Volatile private var lastNetworkSignature: String? = null
     @Volatile private var running = false
@@ -209,6 +205,7 @@ class Remote(
         rpcTransport = rpcTransport,
         dispatcher = if (rpcTransport != null) this.dispatcher else Dispatchers.IO,
         defaultServer = account.server,
+        defaultDeviceId = account.deviceId,
     )
 
     private class ActiveTerminalStream(
@@ -472,6 +469,7 @@ class Remote(
         coreHost.resolveUiMessage = { uiMessageResolver(it) }
         coreHost.onDismissUpgradeNotice = { securityStore.dismissUpgradeNotice() }
         coreHost.onSecurityEffect = securityExecutor::handleEffect
+        ensureSecurityConfigured()
         coreHost.sendRelayPipeConfig(true)
         coreHost.onSecurityTokenUpdated = ::handleSecurityTokenUpdated
         coreHost.onSecurityStatusChanged = { eff ->
@@ -510,9 +508,12 @@ class Remote(
         coreHost.onSaveHomeScope = { eff ->
             homeScopeStore?.writeToken(eff.scopeToken.ifEmpty { encodeHomeScopeToken(account.localKey, eff.scopeKey) })
         }
-        coreHost.onEnsureToken = { eff -> scope.launch { ensureTokenForCore(eff.opId, eff.forceLogin) } }
-        coreHost.onDiscardToken = { eff -> scope.launch { discardToken(eff.token) } }
-        coreHost.onOpenStream = { eff -> scope.launch { openStreamForCore(eff.legId, eff.helloFrame.toByteArray()) } }
+        coreHost.onOpenStream = { eff ->
+            if (eff.token.isNotEmpty() && cachedToken == null) {
+                cachedToken = LoginToken(eff.token, 0L)
+            }
+            scope.launch { openStreamForCore(eff.legId, eff.helloFrame.toByteArray()) }
+        }
         coreHost.onCloseStream = { eff -> scope.launch { closeStreamLeg(eff.legId) } }
         coreHost.onCacheRead = { eff ->
             if (cache == null) scope.launch { executeCacheRead(eff) }
@@ -634,112 +635,12 @@ class Remote(
         }
     }
 
-    // --- Token Gate ---
+    // --- Token Cache (owned by Core security engine) ---
 
-    private suspend fun ensureTokenForCore(opId: Long, forceLogin: Boolean) {
-        val b = TokenResultEvent.newBuilder().setOpId(opId)
-        try {
-            val tok = resolveLoginToken(forceLogin = forceLogin)
-            b.setToken(tok.token).setExpiresMs(tok.expiresMs)
-        } catch (_: AccountRemoved) {
-            b.setRemoved(true).setErrorCode("unauthenticated")
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            report(e)
-            b.setUnresolvedHost(unresolvedHost(e))
-            if (e is ConnectException) b.setErrorCode(e.code.name.lowercase())
-            b.setError(e.message ?: e.javaClass.simpleName)
-        }
-        coreHost.dispatch(CoreEvent.newBuilder().setTokenResult(b).build())
-    }
-
-    suspend fun currentToken(): String = resolveLoginToken(forceLogin = false).token
-
-    private class NetworkResetException : CancellationException("network changed during login")
-
-    private suspend fun resolveLoginToken(forceLogin: Boolean): LoginToken {
-        while (true) {
-            val now = clock()
-            if (!forceLogin) {
-                cachedToken?.takeIf { it.expiresMs - LOGIN_REFRESH_MARGIN_MS > now }?.let { return it }
-                securityStore.loadLoginToken(account.server, account.deviceId)?.let { stored ->
-                    if (stored.expiresMs - LOGIN_REFRESH_MARGIN_MS > now) {
-                        cachedToken = stored
-                        return stored
-                    }
-                    securityStore.clearLoginToken(account.server, account.deviceId)
-                }
-            }
-            val (deferred, owner) = tokenMutex.withLock {
-                val nowLocked = clock()
-                if (!forceLogin) {
-                    cachedToken?.takeIf { it.expiresMs - LOGIN_REFRESH_MARGIN_MS > nowLocked }?.let { return it }
-                } else {
-                    cachedToken = null
-                    securityStore.clearLoginToken(account.server, account.deviceId)
-                }
-                val cur = inFlightToken
-                if (cur != null && !cur.isCompleted) {
-                    cur to false
-                } else {
-                    CompletableDeferred<LoginToken>().also { inFlightToken = it } to true
-                }
-            }
-            if (!owner) {
-                try {
-                    return deferred.await()
-                } catch (_: NetworkResetException) {
-                    continue
-                }
-            }
-            val loginJob = scope.launch {
-                try {
-                    val res = loginWithStore(api, account.deviceId, securityStore)
-                    val tok = LoginToken(res.token, res.expiresMs)
-                    cachedToken = tok
-                    securityStore.saveLoginToken(account.server, account.deviceId, tok)
-                    deferred.complete(tok)
-                } catch (t: Throwable) {
-                    if (loginDenied(t)) {
-                        cachedToken = null
-                        securityStore.clearLoginToken(account.server, account.deviceId)
-                        deferred.completeExceptionally(AccountRemoved())
-                    } else {
-                        deferred.completeExceptionally(t)
-                    }
-                } finally {
-                    tokenMutex.withLock {
-                        if (inFlightToken === deferred) {
-                            inFlightToken = null
-                            inFlightLoginJob = null
-                        }
-                    }
-                }
-            }
-            inFlightLoginJob = loginJob
-            try {
-                return deferred.await()
-            } catch (_: NetworkResetException) {
-                continue
-            }
-        }
-    }
-
-    private suspend fun discardToken(token: String) {
-        if (token.isEmpty()) return
-        tokenMutex.withLock {
-            if (cachedToken?.token == token) {
-                cachedToken = null
-                securityStore.clearLoginToken(account.server, account.deviceId)
-            }
-        }
-    }
-
-    private fun rejectToken(rejected: String) {
-        scope.launch {
-            discardToken(rejected)
-        }
-    }
+    suspend fun currentToken(): String =
+        cachedToken?.token
+            ?: runCatching { securityStore.loadLoginToken(account.server, account.deviceId)?.token }.getOrNull()
+            ?: ""
 
     // --- Security Status & Workflow Hooks ---
 
@@ -1190,15 +1091,8 @@ class Remote(
     }
 
     fun networkChanged(signature: String, available: Boolean) {
-        val realChange = lastNetworkSignature != null && (lastNetworkSignature != signature || networkAvailable != available)
         lastNetworkSignature = signature
         networkAvailable = available
-        if (realChange) {
-            inFlightToken?.completeExceptionally(NetworkResetException())
-            inFlightToken = null
-            inFlightLoginJob?.cancel()
-            inFlightLoginJob = null
-        }
         coreHost.networkChanged(available, signature)
     }
 
@@ -1761,7 +1655,6 @@ class Remote(
                         }
                     }
                     override fun onClosing(stream: FrameStream, code: Int) {
-                        if (code == POLICY_VIOLATION) rejectToken(tok)
                         if (socket.get() !== stream) return
                         stream.close()
                         if (!opened.isCompleted) {
@@ -1781,7 +1674,6 @@ class Remote(
                         )
                     }
                     override fun onEnd(stream: FrameStream, code: Int) {
-                        if (code == POLICY_VIOLATION) rejectToken(tok)
                         if (socket.get() !== stream) return
                         if (!opened.isCompleted) {
                             finish(UiMessages.errorsTerminalConnectionClosed().messageText())

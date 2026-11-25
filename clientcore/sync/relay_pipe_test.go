@@ -48,6 +48,13 @@ func TestRelayPipe_StreamRawFrameReadyClockSkewAndRefreshJoin(t *testing.T) {
 	e.HandleEvent(&corev1.Event{
 		NowMs:  1_000_000,
 		MonoMs: 1_000,
+		Event: &corev1.Event_SecurityConfig{
+			SecurityConfig: &corev1.SecurityConfigEvent{Account: "acct-1", DeviceId: "dev-1", Server: "https://relay.example.com"},
+		},
+	})
+	e.HandleEvent(&corev1.Event{
+		NowMs:  1_000_000,
+		MonoMs: 1_000,
 		Event:  &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true}},
 	})
 	_, startRes := e.HandleEvent(&corev1.Event{
@@ -55,21 +62,28 @@ func TestRelayPipe_StreamRawFrameReadyClockSkewAndRefreshJoin(t *testing.T) {
 		MonoMs: 1_000,
 		Event:  &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}},
 	})
-	var tokenOp uint64
+	var bootOp uint64
 	for _, eff := range startRes.Effects {
-		if et := eff.GetEnsureToken(); et != nil {
-			tokenOp = et.OpId
+		if eff.GetEnsureToken() != nil {
+			t.Fatal("relayPipe mode must NOT emit legacy EnsureTokenEffect")
+		}
+		if st := eff.GetSecurityStorage(); st != nil && st.Op == corev1.SecurityStorageOp_SECURITY_STORAGE_OP_READ_BOOTSTRAP {
+			bootOp = st.OpId
 		}
 	}
-	if tokenOp == 0 {
-		t.Fatal("expected EnsureTokenEffect")
+	if bootOp == 0 {
+		t.Fatal("expected READ_BOOTSTRAP storage effect to hydrate saved login token")
 	}
 
 	_, tokRes := e.HandleEvent(&corev1.Event{
 		NowMs:  1_000_100,
 		MonoMs: 1_100,
-		Event: &corev1.Event_TokenResult{
-			TokenResult: &corev1.TokenResultEvent{OpId: tokenOp, Token: "tok-1", ExpiresMs: 9_000_000},
+		Event: &corev1.Event_SecurityStorageResult{
+			SecurityStorageResult: &corev1.SecurityStorageResultEvent{
+				OpId:                bootOp,
+				LoginToken:          "tok-1",
+				LoginTokenExpiresMs: 1_000_100 + 3*24*3600_000,
+			},
 		},
 	})
 	var openStream *corev1.OpenStreamEffect
@@ -292,6 +306,8 @@ func TestRelayPipe_PushRpcAction(t *testing.T) {
 	})
 	e.running = true
 	e.cachedToken = "tok-push"
+	e.tokenExpiresMs = 1000 + 7*24*3600*1000
+	e.secEngine.SetAuthToken("tok-push", e.tokenExpiresMs)
 
 	_, step1 := e.HandleEvent(&corev1.Event{
 		NowMs: 1000,
@@ -342,5 +358,107 @@ func TestRelayPipe_PushRpcAction(t *testing.T) {
 	}
 	if pushRes == nil || pushRes.OpId != 77 || !pushRes.Ok || !pushRes.Enabled {
 		t.Fatalf("unexpected PushRpcResultEffect: %+v", pushRes)
+	}
+}
+
+func TestRelayPipe_Auto401RefreshAndRetryOnce(t *testing.T) {
+	e := NewEngine()
+	now := int64(2_000_000)
+	e.HandleEvent(&corev1.Event{
+		NowMs: now, MonoMs: 1_000,
+		Event: &corev1.Event_SecurityConfig{
+			SecurityConfig: &corev1.SecurityConfigEvent{Account: "acct-1", DeviceId: "dev-1", Server: "https://relay.example.com"},
+		},
+	})
+	e.HandleEvent(&corev1.Event{
+		NowMs: now, MonoMs: 1_000,
+		Event: &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true}},
+	})
+	e.secEngine.SetAuthToken("old-tok", now+3*24*3600_000)
+	e.cachedToken = "old-tok"
+	e.tokenExpiresMs = now + 3*24*3600_000
+	e.running = true
+
+	// Trigger ListDevices via RefreshDevicesAction.
+	_, devRes := e.HandleEvent(&corev1.Event{
+		NowMs: now, MonoMs: 1_100,
+		Event: &corev1.Event_RefreshDevices{RefreshDevices: &corev1.RefreshDevicesAction{}},
+	})
+	rpcs := findRelayRpcs(devRes.Effects)
+	if len(rpcs) != 1 || rpcs[0].Method != corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_DEVICES || rpcs[0].AuthToken != "old-tok" {
+		t.Fatalf("expected LIST_DEVICES with old-tok, got %+v", rpcs)
+	}
+
+	// Server returns 401 UNAUTHENTICATED: Core clears old-tok and triggers GET_CHALLENGE automatically.
+	_, unauthRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 10, MonoMs: 1_110,
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId:              rpcs[0].OpId,
+				ConnectCode:       security.ConnectCodeUnauthenticated,
+				DiagnosticMessage: "token expired",
+			},
+		},
+	})
+	var chalRpc *corev1.RelayRpcEffect
+	var clearedToken bool
+	for _, eff := range unauthRes.Effects {
+		if tu := eff.GetSecurityTokenUpdated(); tu != nil && tu.Cleared {
+			clearedToken = true
+		}
+		if r := eff.GetRelayRpc(); r != nil && r.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_CHALLENGE {
+			chalRpc = r
+		}
+	}
+	if !clearedToken || chalRpc == nil {
+		t.Fatalf("expected token clear and GET_CHALLENGE refresh on 401; cleared=%v chal=%+v", clearedToken, chalRpc)
+	}
+
+	// Complete GetChallenge -> Sign -> Login -> Core automatically retries LIST_DEVICES with fresh-tok.
+	_, chalRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 20, MonoMs: 1_120,
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId:          chalRpc.OpId,
+				ResponseBytes: mustMarshalStd(t, &genpb.GetChallengeResponse{Challenge: bytes.Repeat([]byte{9}, 32)}),
+			},
+		},
+	})
+	var signOp uint64
+	for _, eff := range chalRes.Effects {
+		if ks := eff.GetSecurityKeySign(); ks != nil {
+			signOp = ks.OpId
+		}
+	}
+	if signOp == 0 {
+		t.Fatal("expected SecurityKeySignEffect")
+	}
+	_, signRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 30, MonoMs: 1_130,
+		Event: &corev1.Event_SecurityKeySigned{
+			SecurityKeySigned: &corev1.SecurityKeySignedEvent{OpId: signOp, Signature: bytes.Repeat([]byte{7}, 64)},
+		},
+	})
+	var loginRpc *corev1.RelayRpcEffect
+	for _, eff := range signRes.Effects {
+		if r := eff.GetRelayRpc(); r != nil && r.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_LOGIN {
+			loginRpc = r
+		}
+	}
+	if loginRpc == nil {
+		t.Fatal("expected LOGIN RelayRpc")
+	}
+	_, loginRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 40, MonoMs: 1_140,
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId:          loginRpc.OpId,
+				ResponseBytes: mustMarshalStd(t, &genpb.LoginResponse{Token: "fresh-tok", ExpiresMs: now + 7*24*3600_000}),
+			},
+		},
+	})
+	retryRpcs := findRelayRpcs(loginRes.Effects)
+	if len(retryRpcs) != 1 || retryRpcs[0].Method != corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_DEVICES || retryRpcs[0].AuthToken != "fresh-tok" {
+		t.Fatalf("expected automatic LIST_DEVICES retry with fresh-tok, got %+v", retryRpcs)
 	}
 }

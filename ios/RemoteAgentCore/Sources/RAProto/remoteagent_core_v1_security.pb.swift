@@ -1428,6 +1428,10 @@ public struct PBSecurityStorageResultEvent: Sendable {
 
   public var legacyCleared: Bool = false
 
+  public var loginToken: String = String()
+
+  public var loginTokenExpiresMs: Int64 = 0
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -4895,7 +4899,7 @@ extension PBSecurityStorageEffect: SwiftProtobuf.Message, SwiftProtobuf._Message
 
 extension PBSecurityStorageResultEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityStorageResultEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}found\0\u{1}revision\0\u{1}data\0\u{1}conflict\0\u{1}error\0\u{1}entries\0\u{3}has_device_ed\0\u{3}device_ed_pub\0\u{3}has_device_x\0\u{3}device_x_pub\0\u{3}legacy_cleared\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}found\0\u{1}revision\0\u{1}data\0\u{1}conflict\0\u{1}error\0\u{1}entries\0\u{3}has_device_ed\0\u{3}device_ed_pub\0\u{3}has_device_x\0\u{3}device_x_pub\0\u{3}legacy_cleared\0\u{3}login_token\0\u{3}login_token_expires_ms\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4915,6 +4919,8 @@ extension PBSecurityStorageResultEvent: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 10: try { try decoder.decodeSingularBoolField(value: &self.hasDeviceX_p) }()
       case 11: try { try decoder.decodeSingularBytesField(value: &self.deviceXPub) }()
       case 12: try { try decoder.decodeSingularBoolField(value: &self.legacyCleared) }()
+      case 13: try { try decoder.decodeSingularStringField(value: &self.loginToken) }()
+      case 14: try { try decoder.decodeSingularInt64Field(value: &self.loginTokenExpiresMs) }()
       default: break
       }
     }
@@ -4957,6 +4963,12 @@ extension PBSecurityStorageResultEvent: SwiftProtobuf.Message, SwiftProtobuf._Me
     if self.legacyCleared != false {
       try visitor.visitSingularBoolField(value: self.legacyCleared, fieldNumber: 12)
     }
+    if !self.loginToken.isEmpty {
+      try visitor.visitSingularStringField(value: self.loginToken, fieldNumber: 13)
+    }
+    if self.loginTokenExpiresMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.loginTokenExpiresMs, fieldNumber: 14)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -4973,6 +4985,8 @@ extension PBSecurityStorageResultEvent: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.hasDeviceX_p != rhs.hasDeviceX_p {return false}
     if lhs.deviceXPub != rhs.deviceXPub {return false}
     if lhs.legacyCleared != rhs.legacyCleared {return false}
+    if lhs.loginToken != rhs.loginToken {return false}
+    if lhs.loginTokenExpiresMs != rhs.loginTokenExpiresMs {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

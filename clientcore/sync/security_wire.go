@@ -614,6 +614,10 @@ const (
 	secOpSealCmd
 	secOpOpenCmdOutcome
 	secOpSealPrefs
+	secOpAuthToken
+	secOpAuthRetry
+	secOpForwardAuth
+	secOpPushAuth
 )
 
 type dirBatchKind uint8
@@ -691,6 +695,8 @@ type pendingSecOp struct {
 	headOpID       string
 	baseRev        uint64
 	nextPrefs      *v1.ProjectPrefs
+	fwdLeg         *pendingForwardLeg
+	push           *pendingPushRpc
 }
 
 func (e *Engine) allocSecOp(op *pendingSecOp) uint64 {
@@ -732,6 +738,37 @@ func (e *Engine) OnSyncStatesDone(tag uint64, err error) {
 		e.emitCoordEffects(stepCtx, e.ensureTransportCoord().OnAuthorizeDone(e.nowMs, false))
 	} else {
 		e.syncSecurityStateFromEngine(stepCtx, true)
+	}
+	e.maybeRequestEntropy(stepCtx)
+}
+
+// OnAuthTokenDone implements security.AsyncSink.
+func (e *Engine) OnAuthTokenDone(tag uint64, res security.AuthTokenResult) {
+	op := e.takeSecOp(tag)
+	if op == nil {
+		return
+	}
+	stepCtx := e.activeStepCtx
+	if stepCtx == nil {
+		return
+	}
+	switch op.kind {
+	case secOpAuthToken:
+		e.handleTokenResult(stepCtx, &corev1.TokenResultEvent{
+			OpId:           op.opID,
+			Token:          res.Token,
+			ExpiresMs:      res.ExpiresMs,
+			Removed:        res.Removed,
+			UnresolvedHost: res.UnresolvedHost,
+			ErrorCode:      res.ErrorCode,
+			Error:          res.Error,
+		})
+	case secOpAuthRetry:
+		e.finishAuthRetry(stepCtx, res)
+	case secOpForwardAuth:
+		e.finishForwardAuth(stepCtx, op.fwdLeg, res)
+	case secOpPushAuth:
+		e.finishPushAuth(stepCtx, op.push, res)
 	}
 	e.maybeRequestEntropy(stepCtx)
 }

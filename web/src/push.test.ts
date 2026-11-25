@@ -20,7 +20,7 @@ it("registers existing push preferences for the newly paired device without aski
     constructor() { super({ server: "https://ra.example.com", deviceId: "new-device" } as any, undefined); }
     override useRelayPipe() { return false; }
     override securityConfig() { return undefined; }
-    override ensureToken(opId: bigint) {
+    ensureToken(opId: bigint) {
       return Promise.resolve(create(TokenResultEventSchema, { opId, token: "tok", expiresMs: BigInt(Date.now() + 3600_000) }));
     }
     override openStreamLeg(legId: bigint, _token: string, callbacks: StreamLegCallbacks) {

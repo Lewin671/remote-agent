@@ -43,7 +43,12 @@ const (
 type pendingRelayRpc struct {
 	kind          relayRpcKind
 	opID          uint64 // sync-internal logical opID (e.g. refreshOpID, pageOpID, push op_id)
+	method        corev1.RelayRpcMethod
+	timeoutMs     int64
+	attemptHeader string
+	reqBytes      []byte
 	usedToken     string
+	retriedAuth   bool
 	sid           string
 	requestID     string
 	attemptID     string
@@ -51,6 +56,11 @@ type pendingRelayRpc struct {
 	startedMonoMs int64
 	bundle        *pendingRefreshBundle
 	push          *pendingPushRpc
+}
+
+type pendingAuthRetry struct {
+	op     *pendingRelayRpc
+	origEv *corev1.RelayRpcResultEvent
 }
 
 type pendingRefreshBundle struct {
@@ -110,6 +120,10 @@ func (e *Engine) emitRelayRpc(
 	meta *pendingRelayRpc,
 ) uint64 {
 	opID := e.allocRelayOpID()
+	meta.method = method
+	meta.timeoutMs = timeoutMs
+	meta.attemptHeader = attemptHeader
+	meta.reqBytes = reqBytes
 	meta.usedToken = token
 	if e.relayRpcOps == nil {
 		e.relayRpcOps = make(map[uint64]*pendingRelayRpc)
@@ -210,6 +224,14 @@ func (e *Engine) cancelAllSyncRelayRpcs(ctx *StepContext) {
 			e.dispatchRelayRpcResult(ctx, op, canceledEv)
 		}
 	}
+	queue := e.authRetryQueue
+	e.authRetryInFlight = false
+	e.authRetryQueue = nil
+	for _, item := range queue {
+		if item != nil && item.op != nil && item.origEv != nil {
+			e.dispatchRelayRpcResult(ctx, item.op, item.origEv)
+		}
+	}
 }
 
 func (e *Engine) RelayPipeEnabled() bool { return e.relayPipe }
@@ -296,6 +318,17 @@ func (e *Engine) emitCommandRelayLegViaPipe(ctx *StepContext, prep *PreparedComm
 		machineID: prep.MachineID,
 		envelope:  prep.SealedEnvelope,
 	}
+	if e.cachedToken == "" && e.secEngine != nil {
+		tag := e.allocSecOp(&pendingSecOp{kind: secOpForwardAuth, fwdLeg: leg})
+		effs := e.secEngine.EnsureAuthTokenTag(e.nowMs, false, relayRpcDefaultTimeoutMs, tag)
+		e.emitSecurityEffects(ctx, effs)
+		e.maybeRequestEntropy(ctx)
+		return
+	}
+	e.proceedForwardLeg(ctx, leg)
+}
+
+func (e *Engine) proceedForwardLeg(ctx *StepContext, leg *pendingForwardLeg) {
 	if e.relayEpoch != "" {
 		e.sendForwardLegWithEpoch(ctx, leg, e.relayEpoch)
 		return
@@ -313,6 +346,31 @@ func (e *Engine) emitCommandRelayLegViaPipe(ctx *StepContext, prep *PreparedComm
 			&pendingRelayRpc{kind: relayRpcHealthz},
 		)
 	}
+}
+
+func (e *Engine) finishForwardAuth(ctx *StepContext, leg *pendingForwardLeg, res security.AuthTokenResult) {
+	if leg == nil || e.inFlightCmds[leg.requestID] == nil {
+		return
+	}
+	if res.Error != "" || res.Token == "" {
+		code := res.ErrorCode
+		if code == "" {
+			code = errCodeUnauthenticated
+		}
+		e.handleCommandOutcome(ctx, &corev1.CommandOutcomeEvent{
+			RequestId:       leg.requestID,
+			AttemptId:       leg.attemptID,
+			Source:          corev1.OutcomeSource_OUTCOME_SOURCE_LOCAL,
+			NotForwarded:    true,
+			HandedOff:       false,
+			TransportCode:   code,
+			TransportDetail: res.Error,
+		})
+		return
+	}
+	e.cachedToken = res.Token
+	e.tokenExpiresMs = res.ExpiresMs
+	e.proceedForwardLeg(ctx, leg)
 }
 
 func (e *Engine) sendForwardLegWithEpoch(ctx *StepContext, leg *pendingForwardLeg, epoch string) {
@@ -385,15 +443,56 @@ func (e *Engine) handlePushRpcAction(ctx *StepContext, act *corev1.PushRpcAction
 		target:           act.Target,
 		kinds:            append([]v1.NotifyKind(nil), act.Kinds...),
 	}
+	if !p.getKey && !p.setWebSub && !p.setTarget {
+		e.emitPushRpcResult(ctx, &corev1.PushRpcResultEffect{
+			OpId:  act.OpId,
+			Ok:    false,
+			Error: "empty push rpc action",
+		})
+		return
+	}
+	if e.secEngine != nil {
+		tag := e.allocSecOp(&pendingSecOp{kind: secOpPushAuth, push: p})
+		effs := e.secEngine.EnsureAuthTokenTag(e.nowMs, false, relayRpcDefaultTimeoutMs, tag)
+		e.emitSecurityEffects(ctx, effs)
+		e.maybeRequestEntropy(ctx)
+		return
+	}
+	e.startPushRpcWithToken(ctx, p, e.cachedToken)
+}
+
+func (e *Engine) finishPushAuth(ctx *StepContext, p *pendingPushRpc, res security.AuthTokenResult) {
+	if p == nil {
+		return
+	}
+	if res.Error != "" || res.Token == "" || res.Removed {
+		errText := res.Error
+		if errText == "" {
+			errText = errCodeUnauthenticated
+		}
+		e.emitPushRpcResult(ctx, &corev1.PushRpcResultEffect{
+			OpId:      p.opID,
+			Ok:        false,
+			Retryable: !res.Removed,
+			Error:     errText,
+		})
+		return
+	}
+	e.cachedToken = res.Token
+	e.tokenExpiresMs = res.ExpiresMs
+	e.startPushRpcWithToken(ctx, p, res.Token)
+}
+
+func (e *Engine) startPushRpcWithToken(ctx *StepContext, p *pendingPushRpc, token string) {
 	if p.getKey {
 		e.emitRelayRpc(
 			ctx,
 			corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_PUSH_KEY,
-			e.cachedToken,
+			token,
 			relayRpcDefaultTimeoutMs,
 			"",
 			(&v1.GetPushKeyRequest{}).AppendMarshal(nil),
-			&pendingRelayRpc{kind: relayRpcPushKey, opID: act.OpId, push: p},
+			&pendingRelayRpc{kind: relayRpcPushKey, opID: p.opID, push: p},
 		)
 		return
 	}
@@ -402,22 +501,22 @@ func (e *Engine) handlePushRpcAction(ctx *StepContext, act *corev1.PushRpcAction
 			e.emitRelayRpc(
 				ctx,
 				corev1.RelayRpcMethod_RELAY_RPC_METHOD_SET_PUSH_SUBSCRIPTION,
-				e.cachedToken,
+				token,
 				relayRpcDefaultTimeoutMs,
 				"",
 				(&v1.SetPushSubscriptionRequest{}).AppendMarshal(nil),
-				&pendingRelayRpc{kind: relayRpcPushSub, opID: act.OpId, push: p},
+				&pendingRelayRpc{kind: relayRpcPushSub, opID: p.opID, push: p},
 			)
 			return
 		}
 		e.emitRelayRpc(
 			ctx,
 			corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_PUSH_KEY,
-			e.cachedToken,
+			token,
 			relayRpcDefaultTimeoutMs,
 			"",
 			(&v1.GetPushKeyRequest{}).AppendMarshal(nil),
-			&pendingRelayRpc{kind: relayRpcPushKey, opID: act.OpId, push: p},
+			&pendingRelayRpc{kind: relayRpcPushKey, opID: p.opID, push: p},
 		)
 		return
 	}
@@ -426,30 +525,25 @@ func (e *Engine) handlePushRpcAction(ctx *StepContext, act *corev1.PushRpcAction
 			e.emitRelayRpc(
 				ctx,
 				corev1.RelayRpcMethod_RELAY_RPC_METHOD_SET_PUSH_TARGET,
-				e.cachedToken,
+				token,
 				relayRpcDefaultTimeoutMs,
 				"",
 				(&v1.SetPushTargetRequest{Type: p.pushType}).AppendMarshal(nil),
-				&pendingRelayRpc{kind: relayRpcPushTarget, opID: act.OpId, push: p},
+				&pendingRelayRpc{kind: relayRpcPushTarget, opID: p.opID, push: p},
 			)
 			return
 		}
 		e.emitRelayRpc(
 			ctx,
 			corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_PUSH_KEY,
-			e.cachedToken,
+			token,
 			relayRpcDefaultTimeoutMs,
 			"",
 			(&v1.GetPushKeyRequest{}).AppendMarshal(nil),
-			&pendingRelayRpc{kind: relayRpcPushKey, opID: act.OpId, push: p},
+			&pendingRelayRpc{kind: relayRpcPushKey, opID: p.opID, push: p},
 		)
 		return
 	}
-	e.emitPushRpcResult(ctx, &corev1.PushRpcResultEffect{
-		OpId:  act.OpId,
-		Ok:    false,
-		Error: "empty push rpc action",
-	})
 }
 
 func (e *Engine) emitPushRpcResult(ctx *StepContext, res *corev1.PushRpcResultEffect) {
@@ -473,6 +567,22 @@ func machineNotificationKinds(kinds []v1.NotifyKind, advertised bool) []v1.Notif
 	return out
 }
 
+func (e *Engine) startConnectAuthToken(ctx *StepContext, tokenOpID uint64, forceLogin bool, timeoutMs int64) {
+	tag := e.allocSecOp(&pendingSecOp{kind: secOpAuthToken, opID: tokenOpID})
+	effs := e.secEngine.EnsureAuthTokenTag(e.nowMs, forceLogin, timeoutMs, tag)
+	e.emitSecurityEffects(ctx, effs)
+	e.maybeRequestEntropy(ctx)
+}
+
+func (e *Engine) clearAuthTokenViaPipe(ctx *StepContext) {
+	e.cachedToken = ""
+	e.tokenExpiresMs = 0
+	if e.secEngine != nil {
+		effs := e.secEngine.ClearAuthToken()
+		e.emitSecurityEffects(ctx, effs)
+	}
+}
+
 func (e *Engine) handleRelayRpcResult(ctx *StepContext, ev *corev1.RelayRpcResultEvent) {
 	if ev == nil {
 		return
@@ -494,7 +604,35 @@ func (e *Engine) handleRelayRpcResult(ctx *StepContext, ev *corev1.RelayRpcResul
 	}
 	delete(e.relayRpcOps, ev.OpId)
 
-	// Invalidate stale token on UNAUTHENTICATED if it still matches what this call sent.
+	// Automatically refresh token once and retry non-Forward unary RPCs on 401 UNAUTHENTICATED.
+	// Forward MUST NOT blindly retry without a verified NotForwarded proof (handled in handleForwardRelayResult).
+	isPushOp := op.kind == relayRpcPushKey || op.kind == relayRpcPushSub || op.kind == relayRpcPushTarget
+	if ev.ConnectCode == security.ConnectCodeUnauthenticated &&
+		!op.retriedAuth &&
+		op.kind != relayRpcForward &&
+		op.kind != relayRpcHealthz &&
+		e.secEngine != nil &&
+		(e.running || isPushOp || op.kind == relayRpcPrefsPut) &&
+		!e.removed {
+		// If another call already refreshed the token since this RPC was sent, retry immediately
+		// with the new cached token instead of invalidating it and triggering another login.
+		if e.cachedToken != "" && e.cachedToken != op.usedToken {
+			e.reemitRelayRpcWithToken(ctx, op, e.cachedToken)
+			return
+		}
+		if op.usedToken != "" && op.usedToken == e.cachedToken {
+			e.invalidateCachedToken(ctx, op.usedToken)
+		}
+		e.authRetryQueue = append(e.authRetryQueue, &pendingAuthRetry{op: op, origEv: ev})
+		if !e.authRetryInFlight {
+			e.authRetryInFlight = true
+			tag := e.allocSecOp(&pendingSecOp{kind: secOpAuthRetry})
+			effs := e.secEngine.EnsureAuthTokenTag(e.nowMs, true, relayRpcDefaultTimeoutMs, tag)
+			e.emitSecurityEffects(ctx, effs)
+			e.maybeRequestEntropy(ctx)
+		}
+		return
+	}
 	if ev.ConnectCode == security.ConnectCodeUnauthenticated && op.usedToken != "" && op.usedToken == e.cachedToken {
 		e.invalidateCachedToken(ctx, op.usedToken)
 	}
@@ -527,8 +665,65 @@ func (e *Engine) dispatchRelayRpcResult(ctx *StepContext, op *pendingRelayRpc, e
 	}
 }
 
+func (e *Engine) reemitRelayRpcWithToken(ctx *StepContext, op *pendingRelayRpc, token string) {
+	if op.bundle != nil && e.refreshBundle != op.bundle {
+		return
+	}
+	op.retriedAuth = true
+	newOpID := e.emitRelayRpc(ctx, op.method, token, op.timeoutMs, op.attemptHeader, op.reqBytes, op)
+	if op.bundle != nil {
+		switch op.kind {
+		case relayRpcRefreshMachines:
+			op.bundle.machinesOpID = newOpID
+		case relayRpcRefreshSessions:
+			op.bundle.sessionsOpID = newOpID
+		case relayRpcRefreshDevices:
+			op.bundle.devicesOpID = newOpID
+		}
+	}
+}
+
+func (e *Engine) finishAuthRetry(ctx *StepContext, res security.AuthTokenResult) {
+	e.authRetryInFlight = false
+	queue := e.authRetryQueue
+	e.authRetryQueue = nil
+	if len(queue) == 0 {
+		return
+	}
+	if res.Error != "" || res.Token == "" || res.Removed {
+		if res.Removed {
+			e.activeTokenOpID = e.allocOpID()
+			e.handleTokenResult(ctx, &corev1.TokenResultEvent{
+				OpId:      e.activeTokenOpID,
+				Removed:   true,
+				ErrorCode: res.ErrorCode,
+				Error:     res.Error,
+			})
+		}
+		for _, item := range queue {
+			e.dispatchRelayRpcResult(ctx, item.op, item.origEv)
+		}
+		return
+	}
+	e.cachedToken = res.Token
+	e.tokenExpiresMs = res.ExpiresMs
+	for _, item := range queue {
+		op := item.op
+		isPush := op.kind == relayRpcPushKey || op.kind == relayRpcPushSub || op.kind == relayRpcPushTarget
+		if !e.running && !isPush && op.kind != relayRpcPrefsPut {
+			e.dispatchRelayRpcResult(ctx, op, item.origEv)
+			continue
+		}
+		e.reemitRelayRpcWithToken(ctx, op, res.Token)
+	}
+}
+
 func (e *Engine) invalidateCachedToken(ctx *StepContext, staleToken string) {
 	if staleToken == "" || e.cachedToken != staleToken {
+		return
+	}
+	if e.relayPipe && e.secEngine != nil {
+		e.clearAuthTokenViaPipe(ctx)
 		return
 	}
 	e.cachedToken = ""

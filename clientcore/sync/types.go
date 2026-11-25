@@ -496,6 +496,8 @@ type Engine struct {
 	healthzWaiters          []*pendingForwardLeg
 	refreshBundle           *pendingRefreshBundle
 	forwardRelayOpByAttempt map[string]uint64
+	authRetryInFlight       bool
+	authRetryQueue          []*pendingAuthRetry
 }
 
 type connStateSnap struct {

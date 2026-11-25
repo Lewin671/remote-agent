@@ -31,19 +31,31 @@ class TransportSecurityTest {
                     }
                 } catch (_: java.net.SocketTimeoutException) { count }
             }
-            val api = Api("http://127.0.0.1:${server.localPort}", OkHttpClient())
-            try { api.auth.getChallenge(GetChallengeRequest.newBuilder().setDeviceId("test").build(), emptyMap()).value() }
-            catch (_: Exception) { }
+            val res = executeRelayRpcUnary(
+                http = OkHttpClient(),
+                method = io.github.lewin671.remoteagent.core.proto.RelayRpcMethod.RELAY_RPC_METHOD_GET_CHALLENGE,
+                server = "http://127.0.0.1:${server.localPort}",
+                requestBytes = GetChallengeRequest.newBuilder().setDeviceId("test").build().toByteArray(),
+            )
+            assertNotEquals(0, res.connectCode)
             assertEquals(1, requests.get(5, TimeUnit.SECONDS))
         }
     }
 
-    @Test fun everyRpcEntryRejectsInsecureRemoteOrigins() {
+    @Test fun everyRpcEntryRejectsInsecureRemoteOrigins() = runBlocking {
         for (server in listOf("http://relay.example", "http://192.168.1.2:8080", "https://user:password@relay.example")) {
-            try { Api(server, OkHttpClient()); fail("Accepted insecure origin") }
+            try { Secret.checkServer(server, allowPlainHttp = true); fail("Accepted insecure origin") }
             catch (_: IllegalArgumentException) { }
+            val res = runCatching {
+                executeRelayRpcUnary(
+                    http = OkHttpClient(),
+                    method = io.github.lewin671.remoteagent.core.proto.RelayRpcMethod.RELAY_RPC_METHOD_GET_CHALLENGE,
+                    server = server,
+                )
+            }
+            assertTrue("Expected insecure origin rejected for $server", res.isFailure)
         }
-        assertEquals("http://10.0.2.2:8080", Api("http://10.0.2.2:8080", OkHttpClient()).server)
+        assertEquals("http://10.0.2.2:8080", Secret.checkServer("http://10.0.2.2:8080", allowPlainHttp = true))
     }
 
     @Test fun defaultClientNeverFollowsHttpOrTlsDowngradeRedirects() {
