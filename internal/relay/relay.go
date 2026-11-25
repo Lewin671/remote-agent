@@ -92,9 +92,9 @@ type Relay struct {
 	timing           retryTiming
 	// These durations are per relay so integration tests can exercise the
 	// real timeout and retry paths without waiting on production intervals.
-	networkChanges   func(context.Context) <-chan uint64
-	wakeEvents       func(context.Context) <-chan struct{}
-	routeAvailable   func(net.IP) bool
+	networkChanges        func(context.Context) <-chan uint64
+	wakeEvents            func(context.Context) <-chan struct{}
+	routeAvailable        func(net.IP) bool
 	beforeDialResult      func(uint64)
 	beforeHello           func()
 	onFrame               func(bool)
@@ -238,12 +238,12 @@ type conn struct {
 	diskAlertNow  func() time.Time
 	nextDiskAlert time.Time // publisher syncLoop owns the volatile retry deadline
 
-	lifetime          context.Context // stream lifetime, independent of one command deadline
-	writes            connectionWrites
-	security          *securitySession
-	r                 *Relay
-	acct              *Account
-	machine           remoteagentv1connect.MachineServiceClient
+	lifetime            context.Context // stream lifetime, independent of one command deadline
+	writes              connectionWrites
+	security            *securitySession
+	r                   *Relay
+	acct                *Account
+	machine             remoteagentv1connect.MachineServiceClient
 	publishMu           sync.Mutex
 	checkpointPending   atomic.Bool
 	checkpointMu        sync.Mutex

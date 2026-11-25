@@ -138,7 +138,10 @@ func TestRecoveryBlackholeBecomesUsableWithoutSocketClose(t *testing.T) {
 		relay.SetRecoveryNowForTest(r, nowFn)
 		relay.SetOnFrameForTest(r, func(isHeartbeat bool) {
 			if isHeartbeat {
-				hbProcessed <- struct{}{}
+				select {
+				case hbProcessed <- struct{}{}:
+				default: // later legs keep beating; never block the reader
+				}
 			}
 		})
 		relay.ObserveRecoveryForTest(r, func(ev string) {
@@ -272,7 +275,10 @@ func TestRecoverySuspectDialAbortsIfActiveLegResumesBeforeHello(t *testing.T) {
 		relay.SetRecoveryNowForTest(r, nowFn)
 		relay.SetOnFrameForTest(r, func(isHeartbeat bool) {
 			if isHeartbeat {
-				hbProcessed <- struct{}{}
+				select {
+				case hbProcessed <- struct{}{}:
+				default: // later legs keep beating; never block the reader
+				}
 			}
 		})
 		relay.SetBeforeHelloForTest(r, func() {
