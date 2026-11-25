@@ -444,28 +444,14 @@ class Remote(
     fun retrySessionCommand(sid: String, slotKey: String) =
         coreHost.retrySessionCommand(sid, slotKey)
 
-    private val pendingSessionLookups = ConcurrentHashMap<String, java.util.concurrent.CopyOnWriteArrayList<CompletableDeferred<Boolean>>>()
-
     init {
         coreHost.onDirectPreference = { eff ->
             runCatching { directPrefs.setEnabled(account.server, account.deviceId, eff.machineId, eff.enabled) }
         }
     }
 
-    private fun isMachineMember(machine: String): Boolean {
-        val conn = coreHost.connectionView.value
-        if (conn.removed || (conn.securityLoaded && !conn.isMember)) return false
-        if (!conn.securityLoaded) return true
-        val vm = coreHost.snapshotMachineSettingsView(machine)
-        return !vm.found || vm.member
-    }
-
     internal suspend fun cachedSchedules(machine: String): ByteArray? = withContext(dispatcher) {
         ensureSecurityBootstrapped()
-        if (!isMachineMember(machine)) {
-            cache?.removeBlob("schedule:$machine")
-            return@withContext null
-        }
         val raw = cache?.blob("schedule:$machine") ?: return@withContext null
         val snapshot = Json.parseToJsonElement(raw.decodeToString()).jsonObject
         val envText = (snapshot["envelope"] as? JsonPrimitive)?.contentOrNull.orEmpty()
@@ -477,10 +463,6 @@ class Remote(
             live = false,
         )
         require(reply.hasSchedule() && reply.errorCode.isEmpty())
-        if (!isMachineMember(machine)) {
-            cache?.removeBlob("schedule:$machine")
-            return@withContext null
-        }
         reply.schedule.resultJson.toByteArray()
     }
 
@@ -579,6 +561,18 @@ class Remote(
                 }
             }
         }
+        coreHost.onScheduleWriteCache = { eff ->
+            enqueueCacheOp {
+                try {
+                    if (eff.machineId.isNotEmpty() && !eff.sealedResultBytes.isEmpty) {
+                        val env = Envelope.parseFrom(eff.sealedResultBytes)
+                        cache?.putBlob("schedule:${eff.machineId}", scheduleSnapshot(eff.requestId, env))
+                    }
+                } finally {
+                    coreHost.deliverScheduleCacheWritten(eff.opId, eff.machineId)
+                }
+            }
+        }
         coreHost.onScheduleDeleteCache = { eff ->
             enqueueCacheOp {
                 cache?.removeBlob("schedule:${eff.machineId}")
@@ -612,11 +606,10 @@ class Remote(
             val snap = eff.snapshot
             if (mid.isNotEmpty() && eff.hasSnapshot() && snap.preset in USAGE_CACHE_PRESETS && cache != null) {
                 enqueueCacheOp {
-                    if (isMachineMember(mid)) {
+                    try {
                         cache?.putBlob(usageBlobKey(mid, snap.preset), snap.toByteArray())
-                        if (!isMachineMember(mid)) cache?.removeBlob(usageBlobKey(mid, snap.preset))
-                    } else {
-                        removeUsageBlobs(mid)
+                    } finally {
+                        coreHost.deliverUsageCacheWritten(eff.opId, mid)
                     }
                 }
             }
@@ -635,14 +628,10 @@ class Remote(
         coreHost.onHydrateUsageCache = { mid ->
             if (mid.isNotEmpty() && cache != null && usageHydratedMachines.add(mid)) {
                 enqueueCacheOp {
-                    if (!isMachineMember(mid)) {
-                        removeUsageBlobs(mid)
-                    } else {
-                        for (preset in USAGE_CACHE_PRESETS) {
-                            val bytes = runCatching { cache?.blob(usageBlobKey(mid, preset)) }.getOrNull() ?: continue
-                            val snap = runCatching { UsageStatsResponse.parseFrom(bytes) }.getOrNull() ?: continue
-                            coreHost.deliverUsageCacheLoaded(mid, snap)
-                        }
+                    for (preset in USAGE_CACHE_PRESETS) {
+                        val bytes = runCatching { cache?.blob(usageBlobKey(mid, preset)) }.getOrNull() ?: continue
+                        val snap = runCatching { UsageStatsResponse.parseFrom(bytes) }.getOrNull() ?: continue
+                        coreHost.deliverUsageCacheLoaded(mid, snap)
                     }
                 }
             }
@@ -1172,25 +1161,18 @@ class Remote(
             RpcEffect.KindCase.FETCH_SESSION_BY_ID -> {
                 val sid = eff.fetchSessionById.sessionId
                 val b = SessionByIdFetchedEvent.newBuilder().setOpId(opId)
-                var failure: Throwable? = null
-                var foundSession = false
                 try {
                     val req = ListRemoteSessionsRequest.newBuilder().addSessionIds(sid).setLimit(1).build()
                     val found = api.client.listRemoteSessions(req, Api.headers(currentToken())).value().sessionsList.firstOrNull { it.sessionId == sid }
                     if (found != null) {
                         b.setWireSession(found)
-                        foundSession = true
                     }
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
                     report(e)
-                    failure = e
                     b.setError(rpcErrorString(e))
                 }
                 coreHost.dispatchAndWait(CoreEvent.newBuilder().setSessionByIdFetched(b).build())
-                pendingSessionLookups.remove(sid)?.forEach { w ->
-                    if (failure != null) w.completeExceptionally(failure) else w.complete(foundSession)
-                }
             }
             RpcEffect.KindCase.GET_EVENTS -> runRpc(
                 make = { EventsPageFetchedEvent.newBuilder().setOpId(opId).setSessionId(eff.getEvents.sessionId) },
@@ -1313,27 +1295,6 @@ class Remote(
             }
             val dtMs = elapsedMs()
             val attemptBound = res.attemptId == attemptId
-            if (
-                cache != null &&
-                parsedCmd?.hasSchedule() == true &&
-                parsedCmd.schedule.operation == "list" &&
-                attemptBound &&
-                (useDirect || res.outcome == "executed") &&
-                isMachineMember(machineId)
-            ) {
-                val msg = runCatching {
-                    openSecureMessage(
-                        res.result,
-                        Place(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT, machineId = machineId, sessionId = sessionId, requestId = requestId),
-                        CommandResult::parseFrom,
-                        bulk = bulk,
-                    ).second
-                }.getOrNull()
-                if (msg != null && msg.hasSchedule() && msg.errorCode.isEmpty() && msg.outcome == "executed") {
-                    cache.putBlob("schedule:$machineId", scheduleSnapshot(requestId, res.result))
-                    if (!isMachineMember(machineId)) cache.removeBlob("schedule:$machineId")
-                }
-            }
             baseOutcome(OutcomeSource.OUTCOME_SOURCE_DAEMON)
                 .setAttemptBound(attemptBound)
                 .apply { if (res.hasResult()) setSealedResult(res.result) }
@@ -1602,14 +1563,6 @@ class Remote(
     fun closeSessionImageViewer(sid: String) =
         coreHost.closeSessionImageViewer(sid)
 
-    suspend fun fetchSession(sid: String): Boolean {
-        if (coreHost.currentSessionView(sid)?.header?.found == true) return true
-        val deferred = CompletableDeferred<Boolean>()
-        pendingSessionLookups.computeIfAbsent(sid) { java.util.concurrent.CopyOnWriteArrayList() }.add(deferred)
-        coreHost.fetchSession(sid)
-        return deferred.await()
-    }
-
     fun close() {
         closed = true
         running = false
@@ -1739,11 +1692,6 @@ class Remote(
             throw MessageArgumentException(UiMessages.errorsNamesCanOnlyBeChangedOnThatDevice().messageText())
         }
         withSecurity { updateDeviceMeta(deviceId = id, name = name.trim()) }
-        if (!closed) refreshDevices()
-    }
-
-    suspend fun describeSelf(platform: String, description: String) {
-        withSecurity { updateDeviceMeta(platform = platform, description = description, describeSelfOnly = true) }
         if (!closed) refreshDevices()
     }
 

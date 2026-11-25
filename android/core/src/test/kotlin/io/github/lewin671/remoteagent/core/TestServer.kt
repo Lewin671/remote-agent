@@ -229,6 +229,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
         hostname: String,
         protocol: Int = PEER_PROTOCOL_VERSION,
         projects: List<io.github.lewin671.remoteagent.proto.ProjectSummary> = emptyList(),
+        scheduledTasks: Boolean = false,
     ) {
         metaRev++
         val meta =
@@ -238,6 +239,11 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                 .setHome("/Users/me")
                 .setProtocolVersion(protocol)
                 .addAllProjects(projects)
+                .apply {
+                    if (scheduledTasks) {
+                        setCapabilities(MachineCapabilities.newBuilder().setScheduledTasks(true))
+                    }
+                }
                 .build()
         val env =
             seal(

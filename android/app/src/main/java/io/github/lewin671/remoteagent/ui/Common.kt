@@ -33,7 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.repeatOnLifecycle
 import io.github.lewin671.remoteagent.core.Remote
-import io.github.lewin671.remoteagent.core.proto.ConnectionBannerKind
+import io.github.lewin671.remoteagent.core.proto.ConnBannerKind
 import io.github.lewin671.remoteagent.core.proto.ConnectionViewModel
 import kotlinx.coroutines.delay
 
@@ -138,8 +138,8 @@ fun ConnBanner(conn: ConnectionViewModel) {
     if (!conn.hasBanner() || !conn.banner.visible) return
     val b = conn.banner
     val icon = when (b.kind) {
-        ConnectionBannerKind.CONNECTION_BANNER_KIND_NO_NETWORK -> Lucide.WifiOff
-        ConnectionBannerKind.CONNECTION_BANNER_KIND_NO_SERVER -> if (b.errorTone) Lucide.X else Lucide.CloudOff
+        ConnBannerKind.CONN_BANNER_KIND_NO_NETWORK -> Lucide.WifiOff
+        ConnBannerKind.CONN_BANNER_KIND_NO_SERVER -> if (b.errorTone) Lucide.X else Lucide.CloudOff
         else -> Lucide.LoaderCircle
     }
     val text = if (b.errorTone && b.hasFailedText()) uiText(b.failedText) else uiText(b.text)
@@ -166,8 +166,8 @@ fun ConnStrip(conn: ConnectionViewModel, modifier: Modifier = Modifier) {
     if (!conn.hasBanner() || !conn.banner.visible) return
     val b = conn.banner
     val icon = when (b.kind) {
-        ConnectionBannerKind.CONNECTION_BANNER_KIND_NO_NETWORK -> Lucide.WifiOff
-        ConnectionBannerKind.CONNECTION_BANNER_KIND_NO_SERVER -> if (b.errorTone) Lucide.X else Lucide.CloudOff
+        ConnBannerKind.CONN_BANNER_KIND_NO_NETWORK -> Lucide.WifiOff
+        ConnBannerKind.CONN_BANNER_KIND_NO_SERVER -> if (b.errorTone) Lucide.X else Lucide.CloudOff
         else -> Lucide.LoaderCircle
     }
     val text = if (b.errorTone && b.hasFailedText()) uiText(b.failedText) else uiText(b.text)
@@ -177,7 +177,7 @@ fun ConnStrip(conn: ConnectionViewModel, modifier: Modifier = Modifier) {
         action = if (b.showDetails) uiText(UiMessages.commonDetails()) else null,
         onClick = if (b.showDetails) ({ details = true }) else null,
         error = b.errorTone,
-        spin = b.kind == ConnectionBannerKind.CONNECTION_BANNER_KIND_WAITING,
+        spin = b.kind == ConnBannerKind.CONN_BANNER_KIND_WAITING,
     )
     if (details && b.showDetails) ServerDetails(conn) { details = false }
 }
@@ -188,11 +188,7 @@ internal fun ServerDetails(conn: ConnectionViewModel, onClose: () -> Unit) {
     val p = pal
     val remote = LocalRemote.current
     val d = conn.serverDetails
-    val reason = when {
-        d.hasReasonText() -> uiText(d.reasonText)
-        conn.hasReasonText() -> uiText(conn.reasonText)
-        else -> ""
-    }
+    val reason = if (d.hasReasonText()) uiText(d.reasonText) else ""
     Sheet(onClose) {
         SheetHead(uiText(UiMessages.connectionNoServer()))
         Text(

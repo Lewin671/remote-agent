@@ -2128,6 +2128,10 @@ fun PairScreen(replacesDeviceId: String = "") {
                 val settingsVm by remote.settingsView.collectAsState()
                 val label = settingsVm.machinesList.firstOrNull { it.machineId == replacesDeviceId }?.name
                     ?.takeIf { it.isNotEmpty() }
+                    ?: remember(remote, replacesDeviceId, settingsVm) {
+                        remote.coreHost.snapshotMachineSettingsView(replacesDeviceId)
+                            .takeIf { it.found }?.name?.takeIf { it.isNotEmpty() }
+                    }
                     ?: copy(UiMessages.commonUnknownComputer())
                 Hint(
                     copy(UiMessages.settingsAndroidAllowTheOriginalComputerToResumeValue1SRetainedSessions(label)),

@@ -8,6 +8,8 @@ import io.github.lewin671.remoteagent.core.proto.TerminalHistoryPhase
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -190,11 +192,17 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
     val term = remember(remote, sessionId) { RemoteTerminal(remote, sessionId, scope) }
     val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val connState = remote.coreHost.connectionView.collectAsStateWithLifecycle().value
-    val sessionVm = remember(remote, sessionId) { remote.watchSession(sessionId) }
-        .collectAsStateWithLifecycle(initialValue = remote.currentSessionView(sessionId) ?: io.github.lewin671.remoteagent.core.proto.SessionViewModel.getDefaultInstance()).value
-    val sessionHeader = sessionVm.header
-    val online = if (sessionHeader.found) sessionHeader.terminalReady else connState.connected
-    val waitingReachability = if (sessionHeader.found) sessionHeader.terminalWaiting else (!online && (connState.reachabilityUnknown || connState.displayGrace))
+    val initialHeader = remember(remote, sessionId) {
+        val h = remote.currentSessionView(sessionId)?.header
+        Triple(h?.found == true, h?.terminalReady == true, h?.terminalWaiting == true)
+    }
+    val (headerFound, headerTerminalReady, headerTerminalWaiting) = remember(remote, sessionId) {
+        remote.watchSession(sessionId)
+            .map { Triple(it.header.found, it.header.terminalReady, it.header.terminalWaiting) }
+            .distinctUntilChanged()
+    }.collectAsStateWithLifecycle(initialValue = initialHeader).value
+    val online = if (headerFound) headerTerminalReady else connState.connected
+    val waitingReachability = if (headerFound) headerTerminalWaiting else (!online && (connState.reachabilityUnknown || connState.displayGrace))
     DisposableEffect(term, owner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             when (event) {

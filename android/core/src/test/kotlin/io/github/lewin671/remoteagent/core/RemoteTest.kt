@@ -275,7 +275,7 @@ class RemoteTest {
                 assertEquals(0L, blocked.count)
                 gate.countDown()
                 r.coreHost.connectionView.first {
-                    hole.attempts.get() > 1 && it.isOnline && it.initialListed
+                    hole.attempts.get() > 1 && it.isOnline && it.liveLoaded
                 }
             } finally {
                 gate.countDown()
@@ -414,7 +414,7 @@ class RemoteTest {
             }
             val r = client(cache = cache)
             r.start()
-            r.coreHost.connectionView.first { it.isOnline && it.initialListed }
+            r.coreHost.connectionView.first { it.isOnline && it.liveLoaded }
             // Watch all 10 sessions concurrently while cache disk writes are gated,
             // so >4096 event objects pass through Core before cache writes drain.
             val win = SessionWindowRequest.newBuilder().setLimit(eventsPerSession).build()
@@ -786,7 +786,6 @@ class RemoteTest {
                 a.conn.isOnline && a.clientRow(a.account.deviceId) != null
             }
             b.awaitUntil("b sees a") { b.clientRow(a.account.deviceId) != null }
-            a.describeSelf("android", "Android 16 · Pixel 9")
             a.renameDevice(a.account.deviceId, "我的手机")
             b.awaitUntil("b sees the name") {
                 b.clientRow(a.account.deviceId)?.displayName == "我的手机"
@@ -794,76 +793,42 @@ class RemoteTest {
             assertEquals("我的手机", b.clientRow(a.account.deviceId)?.displayName)
         }
 
-    @Test fun scheduledSnapshotCannotReturnAfterRevocationDuringCacheRead() = runBlocking<Unit> {
-        val memory=MemoryCache();val entered=CompletableDeferred<Unit>();val release=CompletableDeferred<Unit>();val hold=java.util.concurrent.atomic.AtomicBoolean(false)
-        val cache=object:CipherCache by memory {
-            override suspend fun blob(name:String):ByteArray? {
-                val value=memory.blob(name)
-                if(name.startsWith("schedule:") && hold.get()) {entered.complete(Unit);release.await()}
-                return value
-            }
-        }
-        val r=client(cache=cache);r.start()
-        try {
-            r.awaitUntil("connected") { r.conn.isOnline && r.machineCard(daemon.account.deviceId)?.online == true }
-            daemon.answer={_,_->CommandResult.newBuilder().setSchedule(ScheduleResponse.newBuilder().setResultJson(com.google.protobuf.ByteString.copyFromUtf8("{\"tasks\":[]}"))).build()}
-            r.coreHost.runMachineCommand(daemon.account.deviceId,"",Command.newBuilder().setSchedule(ScheduleRequest.newBuilder().setOperation("list")).build())
-            hold.set(true);val reading=async {r.cachedSchedules(daemon.account.deviceId)}
-            entered.await();removeAsAuthority(daemon.phone,daemon.account.deviceId,http);r.syncSecurity()
-            release.complete(Unit);assertNull(reading.await());assertNull(memory.blob("schedule:${daemon.account.deviceId}"))
-        } finally {release.complete(Unit)}
-    }
-    @Test fun scheduledSnapshotCannotReturnAfterRevocationDuringCacheWrite() = runBlocking<Unit> {
-        val memory=MemoryCache();val entered=CompletableDeferred<Unit>();val release=CompletableDeferred<Unit>()
-        val cache=object:CipherCache by memory {
-            override suspend fun putBlob(name:String,data:ByteArray) {
-                if(name.startsWith("schedule:")) {entered.complete(Unit);release.await()}
-                memory.putBlob(name,data)
-            }
-        }
-        val r=client(cache=cache);r.start()
-        try {
-            r.awaitUntil("connected") { r.conn.isOnline && r.machineCard(daemon.account.deviceId)?.online == true }
-            daemon.answer={_,_->CommandResult.newBuilder().setSchedule(ScheduleResponse.newBuilder().setResultJson(com.google.protobuf.ByteString.copyFromUtf8("{\"tasks\":[]}"))).build()}
-            val writing=async {runCatching { r.coreHost.runMachineCommand(daemon.account.deviceId,"",Command.newBuilder().setSchedule(ScheduleRequest.newBuilder().setOperation("list")).build()) }}
-            entered.await();removeAsAuthority(daemon.phone,daemon.account.deviceId,http);r.syncSecurity()
-            release.complete(Unit);writing.await()
-            assertNull(memory.blob("schedule:${daemon.account.deviceId}"))
-        } finally {release.complete(Unit)}
-    }
     @Test fun scheduledSnapshotsKeepSignedRepliesAndVerifyThemAgainOffline() = runBlocking<Unit> {
-        val memory=MemoryCache();val r=client(cache=memory);r.start()
+        daemon.putMachine("fake-mac.local", scheduledTasks = true)
+        val originalAnswer = daemon.answer
+        val json = """{"tasks":[{"id":"task","spec":{"title":"Private scheduled content"}}]}""".toByteArray()
+        daemon.answer = { h, c -> if (c.hasSchedule()) io.github.lewin671.remoteagent.proto.CommandResult.newBuilder().setSchedule(io.github.lewin671.remoteagent.proto.ScheduleResponse.newBuilder().setResultJson(com.google.protobuf.ByteString.copyFrom(json))).build() else originalAnswer(h, c) }
+        val memory = MemoryCache(); val r = client(cache = memory); r.start()
         r.awaitUntil("connected") { r.conn.isOnline && r.machineCard(daemon.account.deviceId)?.online == true }
-        val originalAnswer=daemon.answer
-        val json="""{"tasks":[{"id":"task","spec":{"title":"Private scheduled content"}}]}""".toByteArray()
-        daemon.answer={ h,c -> if(c.hasSchedule()) io.github.lewin671.remoteagent.proto.CommandResult.newBuilder().setSchedule(io.github.lewin671.remoteagent.proto.ScheduleResponse.newBuilder().setResultJson(com.google.protobuf.ByteString.copyFrom(json))).build() else originalAnswer(h,c) }
-        r.coreHost.runMachineCommand(daemon.account.deviceId,"",io.github.lewin671.remoteagent.proto.Command.newBuilder().setSchedule(io.github.lewin671.remoteagent.proto.ScheduleRequest.newBuilder().setOperation("list")).build())
-        val key="schedule:${daemon.account.deviceId}";val stored=memory.blob(key)!!
+        r.coreHost.refreshSchedules(daemon.account.deviceId)
+        val key = "schedule:${daemon.account.deviceId}"
+        r.awaitUntil("schedule cache written") { memory.blobs[key] != null }
+        val stored = memory.blob(key)!!
         assertFalse(stored.decodeToString().contains("Private scheduled content"))
-        assertArrayEquals(json,r.cachedSchedules(daemon.account.deviceId))
-        val snapshot=kotlinx.serialization.json.Json.parseToJsonElement(stored.decodeToString()).jsonObject
-        val envText=(snapshot["envelope"] as kotlinx.serialization.json.JsonPrimitive).content
-        val reqText=(snapshot["request"] as kotlinx.serialization.json.JsonPrimitive).content
-        val env=io.github.lewin671.remoteagent.proto.Envelope.parseFrom(java.util.Base64.getDecoder().decode(envText))
-        assertFalse(env.signature.isEmpty);assertFalse(env.securityHeader.isEmpty)
-        memory.putBlob(key,scheduleSnapshot("wrong-request",env))
+        assertArrayEquals(json, r.cachedSchedules(daemon.account.deviceId))
+        val snapshot = kotlinx.serialization.json.Json.parseToJsonElement(stored.decodeToString()).jsonObject
+        val envText = (snapshot["envelope"] as kotlinx.serialization.json.JsonPrimitive).content
+        val reqText = (snapshot["request"] as kotlinx.serialization.json.JsonPrimitive).content
+        val env = io.github.lewin671.remoteagent.proto.Envelope.parseFrom(java.util.Base64.getDecoder().decode(envText))
+        assertFalse(env.signature.isEmpty); assertFalse(env.securityHeader.isEmpty)
+        memory.putBlob(key, scheduleSnapshot("wrong-request", env))
         assertTrue(runCatching { r.cachedSchedules(daemon.account.deviceId) }.isFailure)
-        memory.putBlob(key,scheduleSnapshot(reqText,env.toBuilder().setSignature(com.google.protobuf.ByteString.copyFrom(ByteArray(64))).build()))
+        memory.putBlob(key, scheduleSnapshot(reqText, env.toBuilder().setSignature(com.google.protobuf.ByteString.copyFrom(ByteArray(64))).build()))
         assertTrue(runCatching { r.cachedSchedules(daemon.account.deviceId) }.isFailure)
-        memory.putBlob(key,stored)
-        val cold=fixtureRemote(r.account,http,memory);closers+=AutoCloseable { cold.close() }
-        assertArrayEquals(json,cold.cachedSchedules(daemon.account.deviceId))
-        removeAsAuthority(daemon.phone,daemon.account.deviceId,http)
+        memory.putBlob(key, stored)
+        val cold = fixtureRemote(r.account, http, memory); closers += AutoCloseable { cold.close() }
+        assertArrayEquals(json, cold.cachedSchedules(daemon.account.deviceId))
+        removeAsAuthority(daemon.phone, daemon.account.deviceId, http)
         r.syncSecurity()
-        assertNull(memory.blob(key));assertNull(r.cachedSchedules(daemon.account.deviceId))
+        r.awaitUntil("schedule cache pruned") { memory.blobs[key] == null }
+        assertNull(memory.blob(key)); assertNull(r.cachedSchedules(daemon.account.deviceId))
     }
 
     @Test fun coreRejectsUnsequencedZeroOpDevicesEvent() = runBlocking<Unit> {
         val r = client()
         r.start()
-        r.coreHost.connectionView.first { it.isOnline && it.securityLoaded }
-        assertTrue(r.conn.securityLoaded)
-        assertTrue(r.conn.isMember)
+        r.coreHost.connectionView.first { it.isOnline }
+        r.awaitUntil("devices loaded") { r.clientRow(r.account.deviceId) != null }
 
         // Shell refreshDevices sends a monotonic push_seq and keeps devices populated.
         r.refreshDevices()

@@ -195,6 +195,7 @@ class CoreHost(
     var onSyncPushSubscription: () -> Unit = {}
     var onPrepareCleanupSession: (PrepareCleanupSessionEffect) -> Unit = {}
     var onScheduleReadCache: (ScheduleReadCacheEffect) -> Unit = {}
+    var onScheduleWriteCache: (ScheduleWriteCacheEffect) -> Unit = {}
     var onScheduleDeleteCache: (ScheduleDeleteCacheEffect) -> Unit = {}
     var onScheduleLoadSeen: (ScheduleLoadSeenEffect) -> Unit = {}
     var onScheduleSaveSeen: (ScheduleSaveSeenEffect) -> Unit = {}
@@ -566,6 +567,7 @@ class CoreHost(
                 _restoreComposerEvents.tryEmit(effect.sessionRestoreComposer)
             }
             Effect.EffectCase.SCHEDULE_READ_CACHE -> onScheduleReadCache(effect.scheduleReadCache)
+            Effect.EffectCase.SCHEDULE_WRITE_CACHE -> onScheduleWriteCache(effect.scheduleWriteCache)
             Effect.EffectCase.SCHEDULE_DELETE_CACHE -> onScheduleDeleteCache(effect.scheduleDeleteCache)
             Effect.EffectCase.SCHEDULE_LOAD_SEEN -> onScheduleLoadSeen(effect.scheduleLoadSeen)
             Effect.EffectCase.SCHEDULE_SAVE_SEEN -> onScheduleSaveSeen(effect.scheduleSaveSeen)
@@ -783,17 +785,6 @@ class CoreHost(
                     }
                 }
                 refreshAllKeyed(dirPickerWatchers, ::refreshDirPickerOnWorker)
-            }
-            ScreenTarget.SCREEN_TARGET_CONNECTION -> {
-                val slot = screenSlots[target]
-                if (slot != null) {
-                    val screen = slot.build()
-                    if (screen != null) {
-                        val vm = viewOnWorker(screen)
-                        if (vm != null) slot.update(vm)
-                    }
-                }
-                refreshAllKeyed(sessionWatchers, ::refreshSessionOnWorker)
             }
             else -> {
                 val slot = screenSlots[target] ?: return
@@ -1545,21 +1536,22 @@ class CoreHost(
     fun closeSessionImageViewer(sessionId: String) =
         send { setSessionImageViewerClose(SessionImageViewerCloseAction.newBuilder().setSessionId(sessionId)) }
 
-    fun fetchSession(sessionId: String) =
-        send { setFetchSession(FetchSessionAction.newBuilder().setSessionId(sessionId)) }
-
     fun resolveNotificationTap(
         sessionId: String,
-        scheduled: Boolean = false,
         scheduleSeq: Long = 0L,
-        approvalId: String = "",
     ) = send {
         setResolveNotificationTap(
             ResolveNotificationTapAction.newBuilder()
                 .setSessionId(sessionId)
-                .setScheduled(scheduled)
-                .setScheduleSeq(scheduleSeq)
-                .setApprovalId(approvalId),
+                .setScheduleSeq(scheduleSeq),
+        )
+    }
+
+    fun deliverScheduleCacheWritten(opId: Long, machineId: String) = send {
+        setScheduleCacheWritten(
+            ScheduleCacheWrittenEvent.newBuilder()
+                .setOpId(opId)
+                .setMachineId(machineId),
         )
     }
 
@@ -1692,6 +1684,18 @@ class CoreHost(
         sendOnWorker { setNewSessionOpen(NewSessionOpenAction.newBuilder().setProjectKey(projectKey)) }
     }
 
+    fun closeNewSession(projectKey: String) =
+        send { setNewSessionClose(NewSessionCloseAction.newBuilder().setProjectKey(projectKey)) }
+
+    fun deliverUsageCacheWritten(opId: Long, machineId: String) =
+        send {
+            setUsageCacheWritten(
+                UsageCacheWrittenEvent.newBuilder()
+                    .setOpId(opId)
+                    .setMachineId(machineId),
+            )
+        }
+
     fun selectNewSessionProject(projectKey: String) = dispatchAction {
         if (projectKey.isNotEmpty()) newSessionProjectKey = projectKey
         sendOnWorker { setNewSessionSelectProject(NewSessionSelectProjectAction.newBuilder().setProjectKey(projectKey)) }
@@ -1755,9 +1759,6 @@ class CoreHost(
     }
 
     fun watchMachineStatus(machineId: String, visible: Boolean, mode: MachinePollMode) = dispatchAction {
-        if (visible && machineId.isNotEmpty()) {
-            onHydrateUsageCache(machineId)
-        }
         if (visible && mode == MachinePollMode.MACHINE_POLL_MODE_LIVE && machineId.isNotEmpty()) {
             machineStatusId = machineId
         }
@@ -1833,7 +1834,6 @@ class CoreHost(
         applyFocus: Boolean = false,
     ) = dispatchAction {
         if (machineId.isEmpty()) return@dispatchAction
-        onHydrateUsageCache(machineId)
         val params = buildUsageOpenParams(
             preset = preset,
             customStartMs = customStartMs,

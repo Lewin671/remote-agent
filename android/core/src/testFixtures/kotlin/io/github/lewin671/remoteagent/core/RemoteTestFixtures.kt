@@ -82,19 +82,18 @@ data class RemoteState(
 
 /** Converts a test [RemoteState] fixture into a [ConnectionViewModel] for direct composable rendering tests. */
 fun RemoteState.toTestConnectionViewModel(selfDeviceId: String = "self"): ConnectionViewModel {
-    val authId = authorityDeviceId.ifEmpty { if (isAuthority) selfDeviceId else "authority" }
     val connProto = when {
         link == Link.NO_NETWORK -> CoreConnState.CONN_STATE_NO_NETWORK
         conn == ConnState.ONLINE -> CoreConnState.CONN_STATE_CONNECTED
         conn == ConnState.OFFLINE -> CoreConnState.CONN_STATE_OFFLINE
         else -> CoreConnState.CONN_STATE_CONNECTING
     }
-    val kept = loaded || sessions.isNotEmpty() || prefs != null
+    val kept = loaded || sessions.isNotEmpty()
     val bannerKind = when {
-        link == Link.NO_NETWORK -> ConnectionBannerKind.CONNECTION_BANNER_KIND_NO_NETWORK
-        removed || conn == ConnState.OFFLINE -> ConnectionBannerKind.CONNECTION_BANNER_KIND_NO_SERVER
-        conn == ConnState.ONLINE -> ConnectionBannerKind.CONNECTION_BANNER_KIND_NONE
-        else -> ConnectionBannerKind.CONNECTION_BANNER_KIND_WAITING
+        link == Link.NO_NETWORK -> ConnBannerKind.CONN_BANNER_KIND_NO_NETWORK
+        removed || conn == ConnState.OFFLINE -> ConnBannerKind.CONN_BANNER_KIND_NO_SERVER
+        conn == ConnState.ONLINE -> ConnBannerKind.CONN_BANNER_KIND_NONE
+        else -> ConnBannerKind.CONN_BANNER_KIND_WAITING
     }
     val reasonStr = connError.resolve { it.key }.ifEmpty { error.resolve { it.key } }
     val b = ConnectionViewModel.newBuilder()
@@ -103,39 +102,29 @@ fun RemoteState.toTestConnectionViewModel(selfDeviceId: String = "self"): Connec
         .setRemoved(removed)
         .setDisplayGrace(displayGrace)
         .setReachabilityUnknown(reachabilityUnknown)
-        .setNetworkAvailable(link != Link.NO_NETWORK)
         .setLiveLoaded(loaded || synced)
-        .setInitialListed(loaded)
-        .setSecurityLoaded(synced)
-        .setIsMember(!removed)
-        .setAccountClockSkewed(clockWarning)
-        .setAuthorityDeviceId(authId)
-        .setIsManager(isAuthority)
-    if (reasonStr.isNotEmpty()) {
-        b.setReasonText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral(reasonStr))
-    }
-    if (bannerKind != ConnectionBannerKind.CONNECTION_BANNER_KIND_NONE && !displayGrace) {
-        val banner = ConnectionBannerView.newBuilder()
+    if (bannerKind != ConnBannerKind.CONN_BANNER_KIND_NONE && !displayGrace) {
+        val banner = ConnBannerView.newBuilder()
             .setKind(bannerKind)
             .setVisible(true)
             .setKeptData(kept)
         when (bannerKind) {
-            ConnectionBannerKind.CONNECTION_BANNER_KIND_NO_NETWORK ->
+            ConnBannerKind.CONN_BANNER_KIND_NO_NETWORK ->
                 banner.setText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey(if (kept) "connection.no_network_previous" else "connection.no_network_empty"))
-            ConnectionBannerKind.CONNECTION_BANNER_KIND_NO_SERVER -> {
+            ConnBannerKind.CONN_BANNER_KIND_NO_SERVER -> {
                 banner.setShowDetails(true)
                 banner.setErrorTone(!kept)
                 banner.setText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey("connection.server_retrying"))
                 if (!kept && reasonStr.isNotEmpty()) {
                     banner.setFailedText(
                         io.github.lewin671.remoteagent.core.proto.Text.newBuilder()
-                            .setKey("connection.android_server_failed")
+                            .setKey("connection.server_failed")
                             .addArgs(io.github.lewin671.remoteagent.core.proto.TextArg.newBuilder().setName("reason").setStrValue(reasonStr)),
                     )
                 }
             }
             else ->
-                banner.setText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey(if (synced) "connection.reconnecting" else "connection.connecting"))
+                banner.setText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey(if (loaded) "connection.reconnecting" else "connection.connecting"))
         }
         b.setBanner(banner)
     }

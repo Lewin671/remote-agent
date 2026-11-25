@@ -166,7 +166,6 @@ class MainActivity : ComponentActivity() {
         val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
         // Start dismissing input and navigating in the same callback; neither waits for the IME.
         val actions = remember(nav, remote) { io.github.lewin671.remoteagent.ui.dismissPageInput(focus, keyboard) }
-        val notificationScope = rememberCoroutineScope()
         val target by openSession
         LaunchedEffect(openDevices.value) {
             if (openDevices.value) {
@@ -188,13 +187,13 @@ class MainActivity : ComponentActivity() {
                     val seq = io.github.lewin671.remoteagent.ui.ScheduleJump.requested.remove(sid) ?: 0L
                     remote.coreHost.resolveNotificationTap(
                         sessionId = sid,
-                        scheduled = true,
                         scheduleSeq = seq,
-                        approvalId = approval.orEmpty(),
                     )
-                } else actions.session(sid)
-                openScheduled.value = false
+                } else {
+                    actions.session(sid)
+                }
                 if (approval != null) actions.approval(sid, approval)
+                openScheduled.value = false
                 openSession.value = null
             }
         }

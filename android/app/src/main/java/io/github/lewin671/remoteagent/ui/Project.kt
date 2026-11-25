@@ -47,6 +47,7 @@ fun ProjectScreen(key: String, focus: Boolean) {
     val remote = LocalRemote.current
     val initialView = remember(remote, key) { remote.coreHost.snapshotNewSessionView(key) }
     LaunchedEffect(key) { remote.coreHost.openNewSession(key) }
+    DisposableEffect(remote, key) { onDispose { remote.coreHost.closeNewSession(key) } }
     val rawView by remote.newSessionView.collectAsState()
     val view = if (key.isEmpty() || rawView.projectKey == key) rawView else initialView
     val home by remote.homeView.collectAsState()
@@ -349,6 +350,7 @@ fun CoreProjectSettingsSheet(
     val remote = LocalRemote.current
     val initialView = remember(remote, projectKey) { remote.coreHost.snapshotNewSessionView(projectKey) }
     LaunchedEffect(projectKey) { remote.coreHost.openNewSession(projectKey) }
+    DisposableEffect(remote, projectKey) { onDispose { remote.coreHost.closeNewSession(projectKey) } }
     val rawView by remote.newSessionView.collectAsState()
     val view = if (projectKey.isEmpty() || rawView.projectKey == projectKey) rawView else initialView
     val panel = view.modelPanel
