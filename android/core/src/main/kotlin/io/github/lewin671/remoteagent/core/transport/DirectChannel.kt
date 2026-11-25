@@ -571,18 +571,29 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                 partial.remove(key)
                 val totalReserved = part.bytes
                 val totalParts = part.parts.size
-                if (part.bytes != part.length || !options.budget.reserve(options.peer, connOwner, options.use, 1, part.bytes, 1)) {
+                if (part.bytes != part.length) {
                     options.budget.free(options.peer, 1, totalReserved, totalParts)
                     return
                 }
-                val buf = ByteArray(part.length)
-                var offset = 0
-                for (i in 0 until part.count) {
-                    val p = part.parts[i]!!
-                    System.arraycopy(p, 0, buf, offset, p.size)
-                    offset += p.size
+                val buf = try {
+                    val assembled = ByteArray(part.length)
+                    var offset = 0
+                    for (i in 0 until part.count) {
+                        val p = part.parts[i]!!
+                        System.arraycopy(p, 0, assembled, offset, p.size)
+                        offset += p.size
+                    }
+                    assembled
+                } catch (t: Throwable) {
+                    options.budget.free(options.peer, 1, totalReserved, totalParts)
+                    throw t
                 }
-                options.budget.free(options.peer, 1, totalReserved, totalParts)
+                // Transfer the fragments' already-reserved bytes directly to the assembled message
+                // and release only the extra (totalParts - 1) frame slots to avoid a 2x byte spike
+                // or a 128+1 frame-count rejection during reassembly.
+                if (totalParts > 1) {
+                    options.budget.free(options.peer, 1, 0, totalParts - 1)
+                }
                 completed = buf
             }
         }
