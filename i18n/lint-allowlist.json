@@ -5301,7 +5301,7 @@
   },
   {
     "path": "ios/RemoteAgent/UI/Settings/AccountSecurityScreen.swift",
-    "literal": "handoffOffer",
+    "literal": "offer",
     "reason": "Internal pending operation kind discriminator returned by clientcore; never rendered to users."
   },
   {
