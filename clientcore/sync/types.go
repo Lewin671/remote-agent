@@ -120,6 +120,7 @@ func (d DirtyFlags) ScreenTargets() []corev1.ScreenTarget {
 	}
 	if d.SyncState {
 		out = append(out, corev1.ScreenTarget_SCREEN_TARGET_SYNC_STATE)
+		out = append(out, corev1.ScreenTarget_SCREEN_TARGET_CONNECTION)
 	}
 	if d.SessionData {
 		out = append(out, corev1.ScreenTarget_SCREEN_TARGET_SESSION_DATA)
@@ -462,6 +463,21 @@ type Engine struct {
 	directSessionScheduled bool
 	directTermAt           int64
 	directTermScheduled    bool
+
+	selfPlatform               string
+	selfDescription            string
+	selfDescribeActionID       uint64
+	selfDescribeAttemptedRev   uint64
+	selfDescribeAttemptedLease int64
+	selfDescribeAttempted      bool
+	wasConnectedForPush        bool
+	lastEmittedWatched         []watchedRoute
+	prunedUntrustedMachines    map[string]bool
+}
+
+type watchedRoute struct {
+	sessionID string
+	machineID string
 }
 
 // NewEngine constructs a fresh sans-IO sync Engine.
@@ -500,8 +516,9 @@ func NewEngine() *Engine {
 		reqIDByAttempt:      make(map[string]string),
 		attemptTrackers:     make(map[string]*AttemptTracker),
 		retryReqByTimer:     make(map[string]string),
-		lateDirectTickets:   make(map[string]uint64),
-		lateDirectDeadline:  make(map[string]int64),
+		lateDirectTickets:       make(map[string]uint64),
+		lateDirectDeadline:      make(map[string]int64),
+		prunedUntrustedMachines: make(map[string]bool),
 		transportCoord: transport.NewCoordinator(transport.CoordConfig{
 			ProtocolVersion: uint64(PeerVersion),
 			Entropy:         pool,

@@ -944,6 +944,7 @@ type SchedulesViewModel struct {
 	CanMarkAllRead      bool
 	SelectedMachineId   string
 	SelectedTaskId      string
+	InitialLoaded       bool
 }
 
 func (m *SchedulesViewModel) GetAttentionCount() int32 {
@@ -1096,6 +1097,12 @@ func (m *SchedulesViewModel) GetSelectedTaskId() string {
 	}
 	return ""
 }
+func (m *SchedulesViewModel) GetInitialLoaded() bool {
+	if m != nil {
+		return m.InitialLoaded
+	}
+	return false
+}
 
 var LitewireDesc_SchedulesViewModel = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -1124,6 +1131,7 @@ var LitewireDesc_SchedulesViewModel = litewire.MessageDesc{
 		{Num: 23, Offset: unsafe.Offsetof(SchedulesViewModel{}.CanMarkAllRead), Kind: litewire.KindBool},
 		{Num: 24, Offset: unsafe.Offsetof(SchedulesViewModel{}.SelectedMachineId), Kind: litewire.KindString},
 		{Num: 25, Offset: unsafe.Offsetof(SchedulesViewModel{}.SelectedTaskId), Kind: litewire.KindString},
+		{Num: 26, Offset: unsafe.Offsetof(SchedulesViewModel{}.InitialLoaded), Kind: litewire.KindBool},
 	},
 }
 
@@ -1636,6 +1644,7 @@ type ScheduleDetailViewModel struct {
 	ScopedMode           string
 	Actions              *ScheduleTaskActionsView
 	MenuSubtitle         *Text
+	InitialLoaded        bool
 }
 
 func (m *ScheduleDetailViewModel) GetFound() bool {
@@ -1932,6 +1941,12 @@ func (m *ScheduleDetailViewModel) GetMenuSubtitle() *Text {
 	}
 	return nil
 }
+func (m *ScheduleDetailViewModel) GetInitialLoaded() bool {
+	if m != nil {
+		return m.InitialLoaded
+	}
+	return false
+}
 
 var LitewireDesc_ScheduleDetailViewModel = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -1984,6 +1999,7 @@ var LitewireDesc_ScheduleDetailViewModel = litewire.MessageDesc{
 		{Num: 47, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.ScopedMode), Kind: litewire.KindString},
 		{Num: 48, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.Actions), Kind: litewire.KindMessage, Sub: &LitewireDesc_ScheduleTaskActionsView},
 		{Num: 49, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.MenuSubtitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 50, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.InitialLoaded), Kind: litewire.KindBool},
 	},
 }
 

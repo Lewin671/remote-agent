@@ -774,6 +774,7 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 		}
 		sid := k.SessionOpen.SessionId
 		store.opened[sid] = true
+		var effects []*corev1.Effect
 		c.m.sync.LookupSessionIfMissing(ctx, sid)
 		if sess := c.m.sync.SessionEntry(sid); sess != nil && sess.MachineID != "" {
 			agent := lists.DefaultAgent
@@ -783,11 +784,12 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 			if k.SessionOpen.RefreshModels {
 				delete(c.m.state.MachineModels, screens.MachineAgentKey{MachineID: sess.MachineID, Agent: agent})
 			}
+			c.maybeHydrateUsageCache(sess.MachineID, &effects)
 			c.m.maybeFetchMachineConfig(ctx, sess.MachineID, agent)
 			c.maybeFetchUsage(ctx, sess.MachineID, v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS, nil)
 		}
 		store.pendingDirty = true
-		return nil
+		return effects
 
 	case *corev1.Event_SessionRetryLoad:
 		if k.SessionRetryLoad == nil || k.SessionRetryLoad.SessionId == "" {

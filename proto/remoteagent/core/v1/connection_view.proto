@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package remoteagent.core.v1;
+
+import "remoteagent/core/v1/home_view.proto";
+import "remoteagent/core/v1/text.proto";
+
+// ConnectionScreenRequest requests the global connection, banner, and server details ViewModel.
+message ConnectionScreenRequest {}
+
+enum ConnectionBannerKind {
+  CONNECTION_BANNER_KIND_UNSPECIFIED = 0;
+  CONNECTION_BANNER_KIND_NONE = 1;
+  CONNECTION_BANNER_KIND_NO_NETWORK = 2;
+  CONNECTION_BANNER_KIND_NO_SERVER = 3;
+  CONNECTION_BANNER_KIND_WAITING = 4;
+}
+
+message ConnectionBannerView {
+  ConnectionBannerKind kind = 1;
+  bool visible = 2;
+  bool error_tone = 3;
+  bool kept_data = 4;
+  bool show_details = 5;
+  Text text = 6;
+  Text detail_text = 7;
+  Text failed_text = 8;
+}
+
+message ConnectionServerDetailsView {
+  bool show_disconnected_at = 1;
+  int64 disconnected_at_ms = 2;
+  Text disconnected_at_text = 3;
+  Text reason_text = 4;
+}
+
+// ConnectionViewModel exposes global connection status, banner presentation, server details,
+// and account-level connection notices without exposing raw wire sync objects.
+message ConnectionViewModel {
+  ConnState state = 1;
+  bool connected = 2;
+  bool removed = 3;
+  bool display_grace = 4;
+  bool reachability_unknown = 5;
+  bool network_available = 6;
+  bool live_loaded = 7;
+  bool initial_listed = 8;
+  bool security_loaded = 9;
+  bool is_member = 10;
+  bool account_clock_skewed = 11;
+  int64 disconnected_at_ms = 12;
+  Text reason_text = 13;
+  Text clock_skew_banner_text = 14;
+  Text lease_renewal_advice = 15;
+  ConnectionBannerView banner = 16;
+  ConnectionServerDetailsView server_details = 17;
+  string authority_device_id = 18;
+  bool is_manager = 19;
+}
+
+// WatchedSessionRoute pairs a watched session ID with its owning machine ID for direct-event gating.
+message WatchedSessionRoute {
+  string session_id = 1;
+  string machine_id = 2;
+}
+
+// WatchedSessionsEffect updates the shell's watched-session route table whenever watched sessions
+// or their owning machine IDs change.
+message WatchedSessionsEffect {
+  repeated WatchedSessionRoute sessions = 1;
+}
+
+// UsageCacheRequestEffect asks the shell to hydrate (delete_cache=false) or delete (delete_cache=true)
+// the cached 7-day usage snapshot for machine_id.
+message UsageCacheRequestEffect {
+  string machine_id = 1;
+  bool delete_cache = 2;
+}
+
+// SyncPushSubscriptionEffect notifies the shell to reconcile its push subscription after
+// establishing an authenticated connection.
+message SyncPushSubscriptionEffect {}
+
+// ResolveNotificationTapAction asks Core to resolve a tapped notification into a navigation effect.
+message ResolveNotificationTapAction {
+  string session_id = 1;
+  bool scheduled = 2;
+  uint64 schedule_seq = 3;
+  string approval_id = 4;
+}

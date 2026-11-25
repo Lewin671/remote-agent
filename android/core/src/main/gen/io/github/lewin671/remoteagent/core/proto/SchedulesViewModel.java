@@ -1254,6 +1254,32 @@ public  final class SchedulesViewModel extends
 
   }
 
+  public static final int INITIAL_LOADED_FIELD_NUMBER = 26;
+  private boolean initialLoaded_;
+  /**
+   * <code>bool initial_loaded = 26 [json_name = "initialLoaded"];</code>
+   * @return The initialLoaded.
+   */
+  @java.lang.Override
+  public boolean getInitialLoaded() {
+    return initialLoaded_;
+  }
+  /**
+   * <code>bool initial_loaded = 26 [json_name = "initialLoaded"];</code>
+   * @param value The initialLoaded to set.
+   */
+  private void setInitialLoaded(boolean value) {
+    
+    initialLoaded_ = value;
+  }
+  /**
+   * <code>bool initial_loaded = 26 [json_name = "initialLoaded"];</code>
+   */
+  private void clearInitialLoaded() {
+
+    initialLoaded_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SchedulesViewModel parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -2617,6 +2643,34 @@ public  final class SchedulesViewModel extends
       return this;
     }
 
+    /**
+     * <code>bool initial_loaded = 26 [json_name = "initialLoaded"];</code>
+     * @return The initialLoaded.
+     */
+    @java.lang.Override
+    public boolean getInitialLoaded() {
+      return instance.getInitialLoaded();
+    }
+    /**
+     * <code>bool initial_loaded = 26 [json_name = "initialLoaded"];</code>
+     * @param value The initialLoaded to set.
+     * @return This builder for chaining.
+     */
+    public Builder setInitialLoaded(boolean value) {
+      copyOnWrite();
+      instance.setInitialLoaded(value);
+      return this;
+    }
+    /**
+     * <code>bool initial_loaded = 26 [json_name = "initialLoaded"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearInitialLoaded() {
+      copyOnWrite();
+      instance.clearInitialLoaded();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SchedulesViewModel)
   }
   @java.lang.Override
@@ -2664,13 +2718,14 @@ public  final class SchedulesViewModel extends
             "canMarkAllRead_",
             "selectedMachineId_",
             "selectedTaskId_",
+            "initialLoaded_",
           };
           java.lang.String info =
-              "\u0000\u0019\u0000\u0001\u0001\u0019\u0019\u0000\u0005\u0000\u0001\u0004\u0002\u0007" +
+              "\u0000\u001a\u0000\u0001\u0001\u001a\u001a\u0000\u0005\u0000\u0001\u0004\u0002\u0007" +
               "\u0003\u0208\u0004\u0007\u0005\u1009\u0000\u0006\u1009\u0001\u0007\u0007\b\u1009" +
               "\u0002\t\u1009\u0003\n\u001b\u000b\u0007\f\u0007\r\u1009\u0004\u000e\u001b\u000f" +
               "\u001b\u0010\u001b\u0011\u001b\u0012\u0004\u0013\u0007\u0014\u0007\u0015\u1009\u0005" +
-              "\u0016\u1009\u0006\u0017\u0007\u0018\u0208\u0019\u0208";
+              "\u0016\u1009\u0006\u0017\u0007\u0018\u0208\u0019\u0208\u001a\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

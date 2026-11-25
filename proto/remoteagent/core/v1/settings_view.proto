@@ -192,6 +192,9 @@ message SecuritySummaryView {
   bool recovery_status_stale = 10;
   int64 lease_end_ms = 11;
   repeated HandoffCandidateView handoff_candidates = 12;
+  Text authority_name_text = 13;
+  bool can_prepare_handoff = 14;
+  Text lease_renewal_advice = 15;
 }
 
 message NotificationsView {

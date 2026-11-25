@@ -192,6 +192,17 @@ public interface ScreenOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.AttachmentDraftScreenRequest getAttachmentDraft();
 
   /**
+   * <code>.remoteagent.core.v1.ConnectionScreenRequest connection = 40 [json_name = "connection"];</code>
+   * @return Whether the connection field is set.
+   */
+  boolean hasConnection();
+  /**
+   * <code>.remoteagent.core.v1.ConnectionScreenRequest connection = 40 [json_name = "connection"];</code>
+   * @return The connection.
+   */
+  io.github.lewin671.remoteagent.core.proto.ConnectionScreenRequest getConnection();
+
+  /**
    * <code>.remoteagent.core.v1.SessionScreenRequest session = 10 [json_name = "session"];</code>
    * @return Whether the session field is set.
    */

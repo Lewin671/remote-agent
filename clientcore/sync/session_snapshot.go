@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
 	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
@@ -8,6 +9,10 @@ import (
 
 // SessionSnapshot gathers the current sync state and zero-copy shown events for sessionID.
 func (e *Engine) SessionSnapshot(sessionID string) world.SessionSnapshot {
+	reachUnknown := e.coldStartGraceActive()
+	displayGrace := e.displayGraceActive()
+	termReady := e.w.World.Connection == lists.ConnConnected
+	termWaiting := !termReady && (reachUnknown || displayGrace)
 	out := world.SessionSnapshot{
 		SessionsListed:      e.w.World.SessionsListed,
 		LiveLoaded:          e.w.World.LiveLoaded,
@@ -16,7 +21,10 @@ func (e *Engine) SessionSnapshot(sessionID string) world.SessionSnapshot {
 		AccountClockSkewed:  e.accountClockSkewed(),
 		Conn:                e.w.World.Connection,
 		Unlinked:            e.worldUnlinked(),
-		ReachabilityUnknown: e.coldStartGraceActive(),
+		ReachabilityUnknown: reachUnknown,
+		TerminalReady:       termReady,
+		TerminalWaiting:     termWaiting,
+		DisconnectedAtMs:    e.w.DisconnectedAtMs,
 		ProtocolVersion:     PeerVersion,
 		DeviceNames:         makeDeviceNameMap(e.devices),
 		ThisDeviceID:        e.security.SelfDeviceID,
@@ -47,6 +55,8 @@ func (e *Engine) SessionSnapshot(sessionID string) world.SessionSnapshot {
 		out.LastSeq = s.LastSeq
 		out.Retired = s.RetiredHistory
 		out.Session = &s.Session
+		out.TerminalReady = e.machineTerminalReady(s.MachineID)
+		out.TerminalWaiting = !out.TerminalReady && (reachUnknown || displayGrace)
 		if s.MachineID != "" && e.directReady[s.MachineID] {
 			out.Unlinked = false
 			out.ReachabilityUnknown = false

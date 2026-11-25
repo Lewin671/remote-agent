@@ -1022,6 +1022,29 @@ public struct PBSecuritySummaryView: @unchecked Sendable {
     set {_uniqueStorage()._handoffCandidates = newValue}
   }
 
+  public var authorityNameText: PBCoreText {
+    get {return _storage._authorityNameText ?? PBCoreText()}
+    set {_uniqueStorage()._authorityNameText = newValue}
+  }
+  /// Returns true if `authorityNameText` has been explicitly set.
+  public var hasAuthorityNameText: Bool {return _storage._authorityNameText != nil}
+  /// Clears the value of `authorityNameText`. Subsequent reads from it will return its default value.
+  public mutating func clearAuthorityNameText() {_uniqueStorage()._authorityNameText = nil}
+
+  public var canPrepareHandoff: Bool {
+    get {return _storage._canPrepareHandoff}
+    set {_uniqueStorage()._canPrepareHandoff = newValue}
+  }
+
+  public var leaseRenewalAdvice: PBCoreText {
+    get {return _storage._leaseRenewalAdvice ?? PBCoreText()}
+    set {_uniqueStorage()._leaseRenewalAdvice = newValue}
+  }
+  /// Returns true if `leaseRenewalAdvice` has been explicitly set.
+  public var hasLeaseRenewalAdvice: Bool {return _storage._leaseRenewalAdvice != nil}
+  /// Clears the value of `leaseRenewalAdvice`. Subsequent reads from it will return its default value.
+  public mutating func clearLeaseRenewalAdvice() {_uniqueStorage()._leaseRenewalAdvice = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -4299,7 +4322,7 @@ extension PBHandoffCandidateView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension PBSecuritySummaryView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecuritySummaryView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}is_manager\0\u{1}unlinked\0\u{3}authority_device_id\0\u{3}authority_name\0\u{3}recovery_pending\0\u{3}recovery_ready_ms\0\u{3}summary_text\0\u{3}recovery_notice\0\u{3}has_handoff_offer\0\u{3}recovery_status_stale\0\u{3}lease_end_ms\0\u{3}handoff_candidates\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}is_manager\0\u{1}unlinked\0\u{3}authority_device_id\0\u{3}authority_name\0\u{3}recovery_pending\0\u{3}recovery_ready_ms\0\u{3}summary_text\0\u{3}recovery_notice\0\u{3}has_handoff_offer\0\u{3}recovery_status_stale\0\u{3}lease_end_ms\0\u{3}handoff_candidates\0\u{3}authority_name_text\0\u{3}can_prepare_handoff\0\u{3}lease_renewal_advice\0")
 
   fileprivate class _StorageClass {
     var _isManager: Bool = false
@@ -4314,6 +4337,9 @@ extension PBSecuritySummaryView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _recoveryStatusStale: Bool = false
     var _leaseEndMs: Int64 = 0
     var _handoffCandidates: [PBHandoffCandidateView] = []
+    var _authorityNameText: PBCoreText? = nil
+    var _canPrepareHandoff: Bool = false
+    var _leaseRenewalAdvice: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -4336,6 +4362,9 @@ extension PBSecuritySummaryView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _recoveryStatusStale = source._recoveryStatusStale
       _leaseEndMs = source._leaseEndMs
       _handoffCandidates = source._handoffCandidates
+      _authorityNameText = source._authorityNameText
+      _canPrepareHandoff = source._canPrepareHandoff
+      _leaseRenewalAdvice = source._leaseRenewalAdvice
     }
   }
 
@@ -4366,6 +4395,9 @@ extension PBSecuritySummaryView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 10: try { try decoder.decodeSingularBoolField(value: &_storage._recoveryStatusStale) }()
         case 11: try { try decoder.decodeSingularInt64Field(value: &_storage._leaseEndMs) }()
         case 12: try { try decoder.decodeRepeatedMessageField(value: &_storage._handoffCandidates) }()
+        case 13: try { try decoder.decodeSingularMessageField(value: &_storage._authorityNameText) }()
+        case 14: try { try decoder.decodeSingularBoolField(value: &_storage._canPrepareHandoff) }()
+        case 15: try { try decoder.decodeSingularMessageField(value: &_storage._leaseRenewalAdvice) }()
         default: break
         }
       }
@@ -4414,6 +4446,15 @@ extension PBSecuritySummaryView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       if !_storage._handoffCandidates.isEmpty {
         try visitor.visitRepeatedMessageField(value: _storage._handoffCandidates, fieldNumber: 12)
       }
+      try { if let v = _storage._authorityNameText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
+      } }()
+      if _storage._canPrepareHandoff != false {
+        try visitor.visitSingularBoolField(value: _storage._canPrepareHandoff, fieldNumber: 14)
+      }
+      try { if let v = _storage._leaseRenewalAdvice {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 15)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4435,6 +4476,9 @@ extension PBSecuritySummaryView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._recoveryStatusStale != rhs_storage._recoveryStatusStale {return false}
         if _storage._leaseEndMs != rhs_storage._leaseEndMs {return false}
         if _storage._handoffCandidates != rhs_storage._handoffCandidates {return false}
+        if _storage._authorityNameText != rhs_storage._authorityNameText {return false}
+        if _storage._canPrepareHandoff != rhs_storage._canPrepareHandoff {return false}
+        if _storage._leaseRenewalAdvice != rhs_storage._leaseRenewalAdvice {return false}
         return true
       }
       if !storagesAreEqual {return false}

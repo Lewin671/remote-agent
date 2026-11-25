@@ -2063,6 +2063,32 @@ public  final class ScheduleDetailViewModel extends
     bitField0_ = (bitField0_ & ~0x00200000);
   }
 
+  public static final int INITIAL_LOADED_FIELD_NUMBER = 50;
+  private boolean initialLoaded_;
+  /**
+   * <code>bool initial_loaded = 50 [json_name = "initialLoaded"];</code>
+   * @return The initialLoaded.
+   */
+  @java.lang.Override
+  public boolean getInitialLoaded() {
+    return initialLoaded_;
+  }
+  /**
+   * <code>bool initial_loaded = 50 [json_name = "initialLoaded"];</code>
+   * @param value The initialLoaded to set.
+   */
+  private void setInitialLoaded(boolean value) {
+    
+    initialLoaded_ = value;
+  }
+  /**
+   * <code>bool initial_loaded = 50 [json_name = "initialLoaded"];</code>
+   */
+  private void clearInitialLoaded() {
+
+    initialLoaded_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.ScheduleDetailViewModel parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -4228,6 +4254,34 @@ public  final class ScheduleDetailViewModel extends
       return this;
     }
 
+    /**
+     * <code>bool initial_loaded = 50 [json_name = "initialLoaded"];</code>
+     * @return The initialLoaded.
+     */
+    @java.lang.Override
+    public boolean getInitialLoaded() {
+      return instance.getInitialLoaded();
+    }
+    /**
+     * <code>bool initial_loaded = 50 [json_name = "initialLoaded"];</code>
+     * @param value The initialLoaded to set.
+     * @return This builder for chaining.
+     */
+    public Builder setInitialLoaded(boolean value) {
+      copyOnWrite();
+      instance.setInitialLoaded(value);
+      return this;
+    }
+    /**
+     * <code>bool initial_loaded = 50 [json_name = "initialLoaded"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearInitialLoaded() {
+      copyOnWrite();
+      instance.clearInitialLoaded();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.ScheduleDetailViewModel)
   }
   @java.lang.Override
@@ -4295,16 +4349,17 @@ public  final class ScheduleDetailViewModel extends
             "scopedMode_",
             "actions_",
             "menuSubtitle_",
+            "initialLoaded_",
           };
           java.lang.String info =
-              "\u00001\u0000\u0001\u000111\u0000\u0001\u0000\u0001\u0007\u0002\u0007\u0003\u1009" +
+              "\u00002\u0000\u0001\u000122\u0000\u0001\u0000\u0001\u0007\u0002\u0007\u0003\u1009" +
               "\u0000\u0004\u0208\u0005\u0208\u0006\u0003\u0007\u0208\b\u1009\u0001\t\u1009\u0002" +
               "\n\u0007\u000b\u0007\f\u0007\r\u1009\u0003\u000e\u1009\u0004\u000f\u0007\u0010\u1009" +
               "\u0005\u0011\u1009\u0006\u0012\u1009\u0007\u0013\u1009\b\u0014\u001b\u0015\u0004" +
               "\u0016\u0007\u0017\u0007\u0018\u1009\t\u0019\u1009\n\u001a\u0007\u001b\u1009\u000b" +
               "\u001c\u0208\u001d\u1009\f\u001e\u0007\u001f\u0007 \u1009\r!\f\"\u0208#\u1009\u000e" +
               "$\u1009\u000f%\u0007&\u1009\u0010\'\u0007(\u0007)\u0208*\u1009\u0011+\u1009\u0012" +
-              ",\f-\u1009\u0013.\u0208/\u02080\u1009\u00141\u1009\u0015";
+              ",\f-\u1009\u0013.\u0208/\u02080\u1009\u00141\u1009\u00152\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

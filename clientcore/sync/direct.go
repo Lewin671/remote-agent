@@ -452,6 +452,7 @@ func (e *Engine) handleTerminalDirectConfirmRebuild(ctx *StepContext, ev *corev1
 }
 
 func (e *Engine) syncDirectWatched(ctx *StepContext) {
+	e.emitWatchedSessionsIfChanged(ctx)
 	if e.transportCoord == nil {
 		return
 	}

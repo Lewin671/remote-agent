@@ -1690,6 +1690,9 @@ type SessionHeaderView struct {
 	LookupErrorText       *Text                    `protobuf:"bytes,58,opt,name=lookup_error_text,json=lookupErrorText,proto3" json:"lookup_error_text,omitempty"`
 	MultipleMachines      bool                     `protobuf:"varint,59,opt,name=multiple_machines,json=multipleMachines,proto3" json:"multiple_machines,omitempty"`
 	ShortPath             string                   `protobuf:"bytes,60,opt,name=short_path,json=shortPath,proto3" json:"short_path,omitempty"`
+	TerminalReady         bool                     `protobuf:"varint,61,opt,name=terminal_ready,json=terminalReady,proto3" json:"terminal_ready,omitempty"`
+	TerminalWaiting       bool                     `protobuf:"varint,62,opt,name=terminal_waiting,json=terminalWaiting,proto3" json:"terminal_waiting,omitempty"`
+	FrozenAtMs            int64                    `protobuf:"varint,63,opt,name=frozen_at_ms,json=frozenAtMs,proto3" json:"frozen_at_ms,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -2142,6 +2145,27 @@ func (x *SessionHeaderView) GetShortPath() string {
 		return x.ShortPath
 	}
 	return ""
+}
+
+func (x *SessionHeaderView) GetTerminalReady() bool {
+	if x != nil {
+		return x.TerminalReady
+	}
+	return false
+}
+
+func (x *SessionHeaderView) GetTerminalWaiting() bool {
+	if x != nil {
+		return x.TerminalWaiting
+	}
+	return false
+}
+
+func (x *SessionHeaderView) GetFrozenAtMs() int64 {
+	if x != nil {
+		return x.FrozenAtMs
+	}
+	return 0
 }
 
 type SessionDirectChipView struct {
@@ -9078,7 +9102,7 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"\x12max_file_size_text\x18\x18 \x01(\tR\x0fmaxFileSizeText\x127\n" +
 	"\x18original_image_max_bytes\x18\x19 \x01(\x03R\x15originalImageMaxBytes\x12I\n" +
 	"\x13original_image_hint\x18\x1a \x01(\v2\x19.remoteagent.core.v1.TextR\x11originalImageHint\x12K\n" +
-	"\x14file_metadata_notice\x18\x1b \x01(\v2\x19.remoteagent.core.v1.TextR\x12fileMetadataNotice\"\xc4\x16\n" +
+	"\x14file_metadata_notice\x18\x1b \x01(\v2\x19.remoteagent.core.v1.TextR\x12fileMetadataNotice\"\xb8\x17\n" +
 	"\x11SessionHeaderView\x12\x14\n" +
 	"\x05found\x18\x01 \x01(\bR\x05found\x12'\n" +
 	"\x0fsessions_listed\x18\x02 \x01(\bR\x0esessionsListed\x12\x1f\n" +
@@ -9153,7 +9177,11 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"\x11lookup_error_text\x18: \x01(\v2\x19.remoteagent.core.v1.TextR\x0flookupErrorText\x12+\n" +
 	"\x11multiple_machines\x18; \x01(\bR\x10multipleMachines\x12\x1d\n" +
 	"\n" +
-	"short_path\x18< \x01(\tR\tshortPath\"\xaa\x03\n" +
+	"short_path\x18< \x01(\tR\tshortPath\x12%\n" +
+	"\x0eterminal_ready\x18= \x01(\bR\rterminalReady\x12)\n" +
+	"\x10terminal_waiting\x18> \x01(\bR\x0fterminalWaiting\x12 \n" +
+	"\ffrozen_at_ms\x18? \x01(\x03R\n" +
+	"frozenAtMs\"\xaa\x03\n" +
 	"\x15SessionDirectChipView\x12\x18\n" +
 	"\avisible\x18\x01 \x01(\bR\avisible\x12\x16\n" +
 	"\x06active\x18\x02 \x01(\bR\x06active\x12\x1f\n" +

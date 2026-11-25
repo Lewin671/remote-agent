@@ -1934,6 +1934,7 @@ type SchedulesViewModel struct {
 	CanMarkAllRead      bool                        `protobuf:"varint,23,opt,name=can_mark_all_read,json=canMarkAllRead,proto3" json:"can_mark_all_read,omitempty"`
 	SelectedMachineId   string                      `protobuf:"bytes,24,opt,name=selected_machine_id,json=selectedMachineId,proto3" json:"selected_machine_id,omitempty"`
 	SelectedTaskId      string                      `protobuf:"bytes,25,opt,name=selected_task_id,json=selectedTaskId,proto3" json:"selected_task_id,omitempty"`
+	InitialLoaded       bool                        `protobuf:"varint,26,opt,name=initial_loaded,json=initialLoaded,proto3" json:"initial_loaded,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -2141,6 +2142,13 @@ func (x *SchedulesViewModel) GetSelectedTaskId() string {
 		return x.SelectedTaskId
 	}
 	return ""
+}
+
+func (x *SchedulesViewModel) GetInitialLoaded() bool {
+	if x != nil {
+		return x.InitialLoaded
+	}
+	return false
 }
 
 type ScheduleAttentionView struct {
@@ -2734,6 +2742,7 @@ type ScheduleDetailViewModel struct {
 	ScopedMode           string                      `protobuf:"bytes,47,opt,name=scoped_mode,json=scopedMode,proto3" json:"scoped_mode,omitempty"`
 	Actions              *ScheduleTaskActionsView    `protobuf:"bytes,48,opt,name=actions,proto3" json:"actions,omitempty"`
 	MenuSubtitle         *Text                       `protobuf:"bytes,49,opt,name=menu_subtitle,json=menuSubtitle,proto3" json:"menu_subtitle,omitempty"`
+	InitialLoaded        bool                        `protobuf:"varint,50,opt,name=initial_loaded,json=initialLoaded,proto3" json:"initial_loaded,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -3109,6 +3118,13 @@ func (x *ScheduleDetailViewModel) GetMenuSubtitle() *Text {
 		return x.MenuSubtitle
 	}
 	return nil
+}
+
+func (x *ScheduleDetailViewModel) GetInitialLoaded() bool {
+	if x != nil {
+		return x.InitialLoaded
+	}
+	return false
 }
 
 type ScheduleJitterOptionView struct {
@@ -6124,8 +6140,7 @@ const file_remoteagent_core_v1_schedules_view_proto_rawDesc = "" +
 	"\tread_only\x18\x18 \x01(\bR\breadOnly\x12C\n" +
 	"\x10read_only_reason\x18\x19 \x01(\v2\x19.remoteagent.core.v1.TextR\x0ereadOnlyReason\x12F\n" +
 	"\aactions\x18\x1a \x01(\v2,.remoteagent.core.v1.ScheduleTaskActionsViewR\aactions\x12>\n" +
-	"\rmenu_subtitle\x18\x1b \x01(\v2\x19.remoteagent.core.v1.TextR\fmenuSubtitle\"\xe4\n" +
-	"\n" +
+	"\rmenu_subtitle\x18\x1b \x01(\v2\x19.remoteagent.core.v1.TextR\fmenuSubtitle\"\x8b\v\n" +
 	"\x12SchedulesViewModel\x12'\n" +
 	"\x0fattention_count\x18\x01 \x01(\x05R\x0eattentionCount\x12&\n" +
 	"\x0fhas_new_results\x18\x02 \x01(\bR\rhasNewResults\x120\n" +
@@ -6158,7 +6173,8 @@ const file_remoteagent_core_v1_schedules_view_proto_rawDesc = "" +
 	"\x14others_section_title\x18\x16 \x01(\v2\x19.remoteagent.core.v1.TextR\x12othersSectionTitle\x12)\n" +
 	"\x11can_mark_all_read\x18\x17 \x01(\bR\x0ecanMarkAllRead\x12.\n" +
 	"\x13selected_machine_id\x18\x18 \x01(\tR\x11selectedMachineId\x12(\n" +
-	"\x10selected_task_id\x18\x19 \x01(\tR\x0eselectedTaskId\"\xc7\x04\n" +
+	"\x10selected_task_id\x18\x19 \x01(\tR\x0eselectedTaskId\x12%\n" +
+	"\x0einitial_loaded\x18\x1a \x01(\bR\rinitialLoaded\"\xc7\x04\n" +
 	"\x15ScheduleAttentionView\x12\x12\n" +
 	"\x04show\x18\x01 \x01(\bR\x04show\x123\n" +
 	"\amessage\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\amessage\x12.\n" +
@@ -6216,7 +6232,7 @@ const file_remoteagent_core_v1_schedules_view_proto_rawDesc = "" +
 	"\bexpanded\x18\x03 \x01(\bR\bexpanded\x12<\n" +
 	"\ffolded_title\x18\x04 \x01(\v2\x19.remoteagent.core.v1.TextR\vfoldedTitle\x12@\n" +
 	"\x0efolded_summary\x18\x05 \x01(\v2\x19.remoteagent.core.v1.TextR\rfoldedSummary\x12;\n" +
-	"\x04runs\x18\x06 \x03(\v2'.remoteagent.core.v1.ScheduleRunRowViewR\x04runs\"\xc9\x14\n" +
+	"\x04runs\x18\x06 \x03(\v2'.remoteagent.core.v1.ScheduleRunRowViewR\x04runs\"\xf0\x14\n" +
 	"\x17ScheduleDetailViewModel\x12\x14\n" +
 	"\x05found\x18\x01 \x01(\bR\x05found\x12\x18\n" +
 	"\aloading\x18\x02 \x01(\bR\aloading\x12?\n" +
@@ -6277,7 +6293,8 @@ const file_remoteagent_core_v1_schedules_view_proto_rawDesc = "" +
 	"\vscoped_mode\x18/ \x01(\tR\n" +
 	"scopedMode\x12F\n" +
 	"\aactions\x180 \x01(\v2,.remoteagent.core.v1.ScheduleTaskActionsViewR\aactions\x12>\n" +
-	"\rmenu_subtitle\x181 \x01(\v2\x19.remoteagent.core.v1.TextR\fmenuSubtitle\"\x81\x01\n" +
+	"\rmenu_subtitle\x181 \x01(\v2\x19.remoteagent.core.v1.TextR\fmenuSubtitle\x12%\n" +
+	"\x0einitial_loaded\x182 \x01(\bR\rinitialLoaded\"\x81\x01\n" +
 	"\x18ScheduleJitterOptionView\x12\x18\n" +
 	"\aminutes\x18\x01 \x01(\x03R\aminutes\x12/\n" +
 	"\x05label\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\x05label\x12\x1a\n" +

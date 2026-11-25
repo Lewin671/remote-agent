@@ -648,6 +648,9 @@ type SecuritySummaryView struct {
 	RecoveryStatusStale bool
 	LeaseEndMs          int64
 	HandoffCandidates   []*HandoffCandidateView
+	AuthorityNameText   *Text
+	CanPrepareHandoff   bool
+	LeaseRenewalAdvice  *Text
 }
 
 func (m *SecuritySummaryView) GetIsManager() bool {
@@ -722,6 +725,24 @@ func (m *SecuritySummaryView) GetHandoffCandidates() []*HandoffCandidateView {
 	}
 	return nil
 }
+func (m *SecuritySummaryView) GetAuthorityNameText() *Text {
+	if m != nil {
+		return m.AuthorityNameText
+	}
+	return nil
+}
+func (m *SecuritySummaryView) GetCanPrepareHandoff() bool {
+	if m != nil {
+		return m.CanPrepareHandoff
+	}
+	return false
+}
+func (m *SecuritySummaryView) GetLeaseRenewalAdvice() *Text {
+	if m != nil {
+		return m.LeaseRenewalAdvice
+	}
+	return nil
+}
 
 var LitewireDesc_SecuritySummaryView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -737,6 +758,9 @@ var LitewireDesc_SecuritySummaryView = litewire.MessageDesc{
 		{Num: 10, Offset: unsafe.Offsetof(SecuritySummaryView{}.RecoveryStatusStale), Kind: litewire.KindBool},
 		{Num: 11, Offset: unsafe.Offsetof(SecuritySummaryView{}.LeaseEndMs), Kind: litewire.KindInt64},
 		{Num: 12, Offset: unsafe.Offsetof(SecuritySummaryView{}.HandoffCandidates), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_HandoffCandidateView},
+		{Num: 13, Offset: unsafe.Offsetof(SecuritySummaryView{}.AuthorityNameText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 14, Offset: unsafe.Offsetof(SecuritySummaryView{}.CanPrepareHandoff), Kind: litewire.KindBool},
+		{Num: 15, Offset: unsafe.Offsetof(SecuritySummaryView{}.LeaseRenewalAdvice), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 

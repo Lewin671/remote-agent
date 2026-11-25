@@ -279,6 +279,14 @@ message ProjectListingView {
   bool load_failed = 11;
 }
 
+message HomePrefsBannerView {
+  bool visible = 1;
+  bool syncing = 2;
+  bool error_tone = 3;
+  Text text = 4;
+  bool can_retry = 5;
+}
+
 message HomeViewModel {
   bool scope_selectable = 2;
   string scope_key = 3;
@@ -308,6 +316,10 @@ message HomeViewModel {
   string selected_session_id = 27;
   bool has_more_ended = 28;
   HomeQuestionCardView top_attention_question = 29;
+  Text list_error_text = 30;
+  Text clock_skew_banner_text = 31;
+  HomePrefsBannerView prefs_banner = 32;
+  bool has_more_sessions = 33;
 }
 
 message HomeQuestionOptionView {

@@ -71,6 +71,7 @@ func (e *Engine) handleCacheBootstrapLoaded(ctx *StepContext, ev *corev1.CacheBo
 	if !e.prefs.Loaded && ev.Prefs != nil {
 		e.applyAccountPrefs(ev.Prefs, false)
 	}
+	e.emitWatchedSessionsIfChanged(ctx)
 	e.updateLivePollers(ctx)
 	ctx.Dirty.MarkAll()
 }
@@ -445,6 +446,7 @@ func (e *Engine) handleSessionByIDFetched(ctx *StepContext, ev *corev1.SessionBy
 	delete(e.sessionByIDFailed, sid)
 	delete(e.sessionByIDErrors, sid)
 	e.putSession(ctx, ev.Session, false)
+	e.emitWatchedSessionsIfChanged(ctx)
 	e.updateLivePollers(ctx)
 	ctx.Dirty.MarkAll()
 }
@@ -488,6 +490,8 @@ func (e *Engine) handleDevicesFetched(ctx *StepContext, ev *corev1.DevicesFetche
 	e.devicesLoadFailed = false
 	e.devicesError = world.Reason{}
 	e.reconcileDevices(ev.Devices, removedSnapshot, deviceSnapshot, true)
+	e.pruneUntrustedCaches(ctx)
+	e.maybeDescribeSelf(ctx)
 	ctx.Dirty.MarkAll()
 }
 
@@ -541,6 +545,7 @@ func (e *Engine) handleStreamFrame(ctx *StepContext, ev *corev1.StreamFrameEvent
 				prevServerSeq = prev.ServerLastSeq
 			}
 			e.putSession(ctx, f.SessionUpdated, true)
+			e.emitWatchedSessionsIfChanged(ctx)
 			updated := e.sessions[sid]
 			b := e.buffers[sid]
 			needGapFill := b != nil && len(b.pending) > 0 && updated != nil && updated.ServerLastSeq > uint64(len(b.prefix))
@@ -570,6 +575,8 @@ func (e *Engine) handleStreamFrame(ctx *StepContext, ev *corev1.StreamFrameEvent
 			if e.deviceNeedsSecuritySync(f.DeviceUpdated) {
 				e.requestSyncSecurity(ctx, true)
 			}
+			e.pruneUntrustedCaches(ctx)
+			e.maybeDescribeSelf(ctx)
 			ctx.Dirty.Add(true, false, false)
 		}
 	case *corev1.StreamFrameEvent_DeviceRemovedId:

@@ -275,6 +275,39 @@ public interface EffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect getUsageCacheWrite();
 
   /**
+   * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
+   * @return Whether the watchedSessions field is set.
+   */
+  boolean hasWatchedSessions();
+  /**
+   * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
+   * @return The watchedSessions.
+   */
+  io.github.lewin671.remoteagent.core.proto.WatchedSessionsEffect getWatchedSessions();
+
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheRequestEffect usage_cache_request = 78 [json_name = "usageCacheRequest"];</code>
+   * @return Whether the usageCacheRequest field is set.
+   */
+  boolean hasUsageCacheRequest();
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheRequestEffect usage_cache_request = 78 [json_name = "usageCacheRequest"];</code>
+   * @return The usageCacheRequest.
+   */
+  io.github.lewin671.remoteagent.core.proto.UsageCacheRequestEffect getUsageCacheRequest();
+
+  /**
+   * <code>.remoteagent.core.v1.SyncPushSubscriptionEffect sync_push_subscription = 79 [json_name = "syncPushSubscription"];</code>
+   * @return Whether the syncPushSubscription field is set.
+   */
+  boolean hasSyncPushSubscription();
+  /**
+   * <code>.remoteagent.core.v1.SyncPushSubscriptionEffect sync_push_subscription = 79 [json_name = "syncPushSubscription"];</code>
+   * @return The syncPushSubscription.
+   */
+  io.github.lewin671.remoteagent.core.proto.SyncPushSubscriptionEffect getSyncPushSubscription();
+
+  /**
    * <code>.remoteagent.core.v1.DraftStorageListEffect draft_storage_list = 80 [json_name = "draftStorageList"];</code>
    * @return Whether the draftStorageList field is set.
    */

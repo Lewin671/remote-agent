@@ -491,6 +491,128 @@ public  final class SecuritySummaryView extends
     handoffCandidates_.remove(index);
   }
 
+  public static final int AUTHORITY_NAME_TEXT_FIELD_NUMBER = 13;
+  private io.github.lewin671.remoteagent.core.proto.Text authorityNameText_;
+  /**
+   * <code>.remoteagent.core.v1.Text authority_name_text = 13 [json_name = "authorityNameText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAuthorityNameText() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text authority_name_text = 13 [json_name = "authorityNameText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getAuthorityNameText() {
+    return authorityNameText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : authorityNameText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text authority_name_text = 13 [json_name = "authorityNameText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAuthorityNameText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    authorityNameText_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text authority_name_text = 13 [json_name = "authorityNameText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeAuthorityNameText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (authorityNameText_ != null &&
+        authorityNameText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      authorityNameText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(authorityNameText_).mergeFrom(value).buildPartial();
+    } else {
+      authorityNameText_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text authority_name_text = 13 [json_name = "authorityNameText"];</code>
+   */
+  private void clearAuthorityNameText() {
+    authorityNameText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
+  public static final int CAN_PREPARE_HANDOFF_FIELD_NUMBER = 14;
+  private boolean canPrepareHandoff_;
+  /**
+   * <code>bool can_prepare_handoff = 14 [json_name = "canPrepareHandoff"];</code>
+   * @return The canPrepareHandoff.
+   */
+  @java.lang.Override
+  public boolean getCanPrepareHandoff() {
+    return canPrepareHandoff_;
+  }
+  /**
+   * <code>bool can_prepare_handoff = 14 [json_name = "canPrepareHandoff"];</code>
+   * @param value The canPrepareHandoff to set.
+   */
+  private void setCanPrepareHandoff(boolean value) {
+    
+    canPrepareHandoff_ = value;
+  }
+  /**
+   * <code>bool can_prepare_handoff = 14 [json_name = "canPrepareHandoff"];</code>
+   */
+  private void clearCanPrepareHandoff() {
+
+    canPrepareHandoff_ = false;
+  }
+
+  public static final int LEASE_RENEWAL_ADVICE_FIELD_NUMBER = 15;
+  private io.github.lewin671.remoteagent.core.proto.Text leaseRenewalAdvice_;
+  /**
+   * <code>.remoteagent.core.v1.Text lease_renewal_advice = 15 [json_name = "leaseRenewalAdvice"];</code>
+   */
+  @java.lang.Override
+  public boolean hasLeaseRenewalAdvice() {
+    return ((bitField0_ & 0x00000008) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text lease_renewal_advice = 15 [json_name = "leaseRenewalAdvice"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getLeaseRenewalAdvice() {
+    return leaseRenewalAdvice_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : leaseRenewalAdvice_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text lease_renewal_advice = 15 [json_name = "leaseRenewalAdvice"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setLeaseRenewalAdvice(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    leaseRenewalAdvice_ = value;
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text lease_renewal_advice = 15 [json_name = "leaseRenewalAdvice"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeLeaseRenewalAdvice(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (leaseRenewalAdvice_ != null &&
+        leaseRenewalAdvice_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      leaseRenewalAdvice_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(leaseRenewalAdvice_).mergeFrom(value).buildPartial();
+    } else {
+      leaseRenewalAdvice_ = value;
+    }
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text lease_renewal_advice = 15 [json_name = "leaseRenewalAdvice"];</code>
+   */
+  private void clearLeaseRenewalAdvice() {
+    leaseRenewalAdvice_ = null;
+    bitField0_ = (bitField0_ & ~0x00000008);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SecuritySummaryView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1078,6 +1200,128 @@ public  final class SecuritySummaryView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text authority_name_text = 13 [json_name = "authorityNameText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAuthorityNameText() {
+      return instance.hasAuthorityNameText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text authority_name_text = 13 [json_name = "authorityNameText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getAuthorityNameText() {
+      return instance.getAuthorityNameText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text authority_name_text = 13 [json_name = "authorityNameText"];</code>
+     */
+    public Builder setAuthorityNameText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setAuthorityNameText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text authority_name_text = 13 [json_name = "authorityNameText"];</code>
+     */
+    public Builder setAuthorityNameText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAuthorityNameText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text authority_name_text = 13 [json_name = "authorityNameText"];</code>
+     */
+    public Builder mergeAuthorityNameText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeAuthorityNameText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text authority_name_text = 13 [json_name = "authorityNameText"];</code>
+     */
+    public Builder clearAuthorityNameText() {  copyOnWrite();
+      instance.clearAuthorityNameText();
+      return this;
+    }
+
+    /**
+     * <code>bool can_prepare_handoff = 14 [json_name = "canPrepareHandoff"];</code>
+     * @return The canPrepareHandoff.
+     */
+    @java.lang.Override
+    public boolean getCanPrepareHandoff() {
+      return instance.getCanPrepareHandoff();
+    }
+    /**
+     * <code>bool can_prepare_handoff = 14 [json_name = "canPrepareHandoff"];</code>
+     * @param value The canPrepareHandoff to set.
+     * @return This builder for chaining.
+     */
+    public Builder setCanPrepareHandoff(boolean value) {
+      copyOnWrite();
+      instance.setCanPrepareHandoff(value);
+      return this;
+    }
+    /**
+     * <code>bool can_prepare_handoff = 14 [json_name = "canPrepareHandoff"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearCanPrepareHandoff() {
+      copyOnWrite();
+      instance.clearCanPrepareHandoff();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text lease_renewal_advice = 15 [json_name = "leaseRenewalAdvice"];</code>
+     */
+    @java.lang.Override
+    public boolean hasLeaseRenewalAdvice() {
+      return instance.hasLeaseRenewalAdvice();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text lease_renewal_advice = 15 [json_name = "leaseRenewalAdvice"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getLeaseRenewalAdvice() {
+      return instance.getLeaseRenewalAdvice();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text lease_renewal_advice = 15 [json_name = "leaseRenewalAdvice"];</code>
+     */
+    public Builder setLeaseRenewalAdvice(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setLeaseRenewalAdvice(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text lease_renewal_advice = 15 [json_name = "leaseRenewalAdvice"];</code>
+     */
+    public Builder setLeaseRenewalAdvice(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setLeaseRenewalAdvice(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text lease_renewal_advice = 15 [json_name = "leaseRenewalAdvice"];</code>
+     */
+    public Builder mergeLeaseRenewalAdvice(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeLeaseRenewalAdvice(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text lease_renewal_advice = 15 [json_name = "leaseRenewalAdvice"];</code>
+     */
+    public Builder clearLeaseRenewalAdvice() {  copyOnWrite();
+      instance.clearLeaseRenewalAdvice();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecuritySummaryView)
   }
   @java.lang.Override
@@ -1108,11 +1352,15 @@ public  final class SecuritySummaryView extends
             "leaseEndMs_",
             "handoffCandidates_",
             io.github.lewin671.remoteagent.core.proto.HandoffCandidateView.class,
+            "authorityNameText_",
+            "canPrepareHandoff_",
+            "leaseRenewalAdvice_",
           };
           java.lang.String info =
-              "\u0000\f\u0000\u0001\u0001\f\f\u0000\u0001\u0000\u0001\u0007\u0002\u0007\u0003\u0208" +
-              "\u0004\u0208\u0005\u0007\u0006\u0002\u0007\u1009\u0000\b\u1009\u0001\t\u0007\n\u0007" +
-              "\u000b\u0002\f\u001b";
+              "\u0000\u000f\u0000\u0001\u0001\u000f\u000f\u0000\u0001\u0000\u0001\u0007\u0002\u0007" +
+              "\u0003\u0208\u0004\u0208\u0005\u0007\u0006\u0002\u0007\u1009\u0000\b\u1009\u0001" +
+              "\t\u0007\n\u0007\u000b\u0002\f\u001b\r\u1009\u0002\u000e\u0007\u000f\u1009\u0003" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

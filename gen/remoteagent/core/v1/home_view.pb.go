@@ -2144,6 +2144,82 @@ func (x *ProjectListingView) GetLoadFailed() bool {
 	return false
 }
 
+type HomePrefsBannerView struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Visible       bool                   `protobuf:"varint,1,opt,name=visible,proto3" json:"visible,omitempty"`
+	Syncing       bool                   `protobuf:"varint,2,opt,name=syncing,proto3" json:"syncing,omitempty"`
+	ErrorTone     bool                   `protobuf:"varint,3,opt,name=error_tone,json=errorTone,proto3" json:"error_tone,omitempty"`
+	Text          *Text                  `protobuf:"bytes,4,opt,name=text,proto3" json:"text,omitempty"`
+	CanRetry      bool                   `protobuf:"varint,5,opt,name=can_retry,json=canRetry,proto3" json:"can_retry,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HomePrefsBannerView) Reset() {
+	*x = HomePrefsBannerView{}
+	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HomePrefsBannerView) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HomePrefsBannerView) ProtoMessage() {}
+
+func (x *HomePrefsBannerView) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HomePrefsBannerView.ProtoReflect.Descriptor instead.
+func (*HomePrefsBannerView) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_home_view_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *HomePrefsBannerView) GetVisible() bool {
+	if x != nil {
+		return x.Visible
+	}
+	return false
+}
+
+func (x *HomePrefsBannerView) GetSyncing() bool {
+	if x != nil {
+		return x.Syncing
+	}
+	return false
+}
+
+func (x *HomePrefsBannerView) GetErrorTone() bool {
+	if x != nil {
+		return x.ErrorTone
+	}
+	return false
+}
+
+func (x *HomePrefsBannerView) GetText() *Text {
+	if x != nil {
+		return x.Text
+	}
+	return nil
+}
+
+func (x *HomePrefsBannerView) GetCanRetry() bool {
+	if x != nil {
+		return x.CanRetry
+	}
+	return false
+}
+
 type HomeViewModel struct {
 	state                  protoimpl.MessageState `protogen:"open.v1"`
 	ScopeSelectable        bool                   `protobuf:"varint,2,opt,name=scope_selectable,json=scopeSelectable,proto3" json:"scope_selectable,omitempty"`
@@ -2174,13 +2250,17 @@ type HomeViewModel struct {
 	SelectedSessionId      string                 `protobuf:"bytes,27,opt,name=selected_session_id,json=selectedSessionId,proto3" json:"selected_session_id,omitempty"`
 	HasMoreEnded           bool                   `protobuf:"varint,28,opt,name=has_more_ended,json=hasMoreEnded,proto3" json:"has_more_ended,omitempty"`
 	TopAttentionQuestion   *HomeQuestionCardView  `protobuf:"bytes,29,opt,name=top_attention_question,json=topAttentionQuestion,proto3" json:"top_attention_question,omitempty"`
+	ListErrorText          *Text                  `protobuf:"bytes,30,opt,name=list_error_text,json=listErrorText,proto3" json:"list_error_text,omitempty"`
+	ClockSkewBannerText    *Text                  `protobuf:"bytes,31,opt,name=clock_skew_banner_text,json=clockSkewBannerText,proto3" json:"clock_skew_banner_text,omitempty"`
+	PrefsBanner            *HomePrefsBannerView   `protobuf:"bytes,32,opt,name=prefs_banner,json=prefsBanner,proto3" json:"prefs_banner,omitempty"`
+	HasMoreSessions        bool                   `protobuf:"varint,33,opt,name=has_more_sessions,json=hasMoreSessions,proto3" json:"has_more_sessions,omitempty"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
 
 func (x *HomeViewModel) Reset() {
 	*x = HomeViewModel{}
-	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[13]
+	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2192,7 +2272,7 @@ func (x *HomeViewModel) String() string {
 func (*HomeViewModel) ProtoMessage() {}
 
 func (x *HomeViewModel) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[13]
+	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2205,7 +2285,7 @@ func (x *HomeViewModel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HomeViewModel.ProtoReflect.Descriptor instead.
 func (*HomeViewModel) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_home_view_proto_rawDescGZIP(), []int{13}
+	return file_remoteagent_core_v1_home_view_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *HomeViewModel) GetScopeSelectable() bool {
@@ -2404,6 +2484,34 @@ func (x *HomeViewModel) GetTopAttentionQuestion() *HomeQuestionCardView {
 	return nil
 }
 
+func (x *HomeViewModel) GetListErrorText() *Text {
+	if x != nil {
+		return x.ListErrorText
+	}
+	return nil
+}
+
+func (x *HomeViewModel) GetClockSkewBannerText() *Text {
+	if x != nil {
+		return x.ClockSkewBannerText
+	}
+	return nil
+}
+
+func (x *HomeViewModel) GetPrefsBanner() *HomePrefsBannerView {
+	if x != nil {
+		return x.PrefsBanner
+	}
+	return nil
+}
+
+func (x *HomeViewModel) GetHasMoreSessions() bool {
+	if x != nil {
+		return x.HasMoreSessions
+	}
+	return false
+}
+
 type HomeQuestionOptionView struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	OptionNum     int32                  `protobuf:"varint,1,opt,name=option_num,json=optionNum,proto3" json:"option_num,omitempty"`
@@ -2416,7 +2524,7 @@ type HomeQuestionOptionView struct {
 
 func (x *HomeQuestionOptionView) Reset() {
 	*x = HomeQuestionOptionView{}
-	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[14]
+	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2428,7 +2536,7 @@ func (x *HomeQuestionOptionView) String() string {
 func (*HomeQuestionOptionView) ProtoMessage() {}
 
 func (x *HomeQuestionOptionView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[14]
+	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2441,7 +2549,7 @@ func (x *HomeQuestionOptionView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HomeQuestionOptionView.ProtoReflect.Descriptor instead.
 func (*HomeQuestionOptionView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_home_view_proto_rawDescGZIP(), []int{14}
+	return file_remoteagent_core_v1_home_view_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *HomeQuestionOptionView) GetOptionNum() int32 {
@@ -2497,7 +2605,7 @@ type HomeQuestionCardView struct {
 
 func (x *HomeQuestionCardView) Reset() {
 	*x = HomeQuestionCardView{}
-	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[15]
+	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2509,7 +2617,7 @@ func (x *HomeQuestionCardView) String() string {
 func (*HomeQuestionCardView) ProtoMessage() {}
 
 func (x *HomeQuestionCardView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[15]
+	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2522,7 +2630,7 @@ func (x *HomeQuestionCardView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HomeQuestionCardView.ProtoReflect.Descriptor instead.
 func (*HomeQuestionCardView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_home_view_proto_rawDescGZIP(), []int{15}
+	return file_remoteagent_core_v1_home_view_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *HomeQuestionCardView) GetSessionId() string {
@@ -2657,7 +2765,7 @@ type HomeResolveApprovalAction struct {
 
 func (x *HomeResolveApprovalAction) Reset() {
 	*x = HomeResolveApprovalAction{}
-	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[16]
+	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2669,7 +2777,7 @@ func (x *HomeResolveApprovalAction) String() string {
 func (*HomeResolveApprovalAction) ProtoMessage() {}
 
 func (x *HomeResolveApprovalAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[16]
+	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2682,7 +2790,7 @@ func (x *HomeResolveApprovalAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HomeResolveApprovalAction.ProtoReflect.Descriptor instead.
 func (*HomeResolveApprovalAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_home_view_proto_rawDescGZIP(), []int{16}
+	return file_remoteagent_core_v1_home_view_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *HomeResolveApprovalAction) GetSessionId() string {
@@ -2731,7 +2839,7 @@ type HomeEditApprovalDenyAction struct {
 
 func (x *HomeEditApprovalDenyAction) Reset() {
 	*x = HomeEditApprovalDenyAction{}
-	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[17]
+	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2743,7 +2851,7 @@ func (x *HomeEditApprovalDenyAction) String() string {
 func (*HomeEditApprovalDenyAction) ProtoMessage() {}
 
 func (x *HomeEditApprovalDenyAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[17]
+	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2756,7 +2864,7 @@ func (x *HomeEditApprovalDenyAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HomeEditApprovalDenyAction.ProtoReflect.Descriptor instead.
 func (*HomeEditApprovalDenyAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_home_view_proto_rawDescGZIP(), []int{17}
+	return file_remoteagent_core_v1_home_view_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *HomeEditApprovalDenyAction) GetSessionId() string {
@@ -2791,7 +2899,7 @@ type HomeAnswerQuestionAction struct {
 
 func (x *HomeAnswerQuestionAction) Reset() {
 	*x = HomeAnswerQuestionAction{}
-	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[18]
+	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2803,7 +2911,7 @@ func (x *HomeAnswerQuestionAction) String() string {
 func (*HomeAnswerQuestionAction) ProtoMessage() {}
 
 func (x *HomeAnswerQuestionAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[18]
+	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2816,7 +2924,7 @@ func (x *HomeAnswerQuestionAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HomeAnswerQuestionAction.ProtoReflect.Descriptor instead.
 func (*HomeAnswerQuestionAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_home_view_proto_rawDescGZIP(), []int{18}
+	return file_remoteagent_core_v1_home_view_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *HomeAnswerQuestionAction) GetSessionId() string {
@@ -2850,7 +2958,7 @@ type HomeRetryAttentionAction struct {
 
 func (x *HomeRetryAttentionAction) Reset() {
 	*x = HomeRetryAttentionAction{}
-	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[19]
+	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2862,7 +2970,7 @@ func (x *HomeRetryAttentionAction) String() string {
 func (*HomeRetryAttentionAction) ProtoMessage() {}
 
 func (x *HomeRetryAttentionAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[19]
+	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2875,7 +2983,7 @@ func (x *HomeRetryAttentionAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HomeRetryAttentionAction.ProtoReflect.Descriptor instead.
 func (*HomeRetryAttentionAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_home_view_proto_rawDescGZIP(), []int{19}
+	return file_remoteagent_core_v1_home_view_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *HomeRetryAttentionAction) GetSessionId() string {
@@ -2902,7 +3010,7 @@ type HomeAbandonAttentionAction struct {
 
 func (x *HomeAbandonAttentionAction) Reset() {
 	*x = HomeAbandonAttentionAction{}
-	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[20]
+	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2914,7 +3022,7 @@ func (x *HomeAbandonAttentionAction) String() string {
 func (*HomeAbandonAttentionAction) ProtoMessage() {}
 
 func (x *HomeAbandonAttentionAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[20]
+	mi := &file_remoteagent_core_v1_home_view_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2927,7 +3035,7 @@ func (x *HomeAbandonAttentionAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HomeAbandonAttentionAction.ProtoReflect.Descriptor instead.
 func (*HomeAbandonAttentionAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_home_view_proto_rawDescGZIP(), []int{20}
+	return file_remoteagent_core_v1_home_view_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *HomeAbandonAttentionAction) GetSessionId() string {
@@ -3126,7 +3234,14 @@ const file_remoteagent_core_v1_home_view_proto_rawDesc = "" +
 	"\asyncing\x18\n" +
 	" \x01(\bR\asyncing\x12\x1f\n" +
 	"\vload_failed\x18\v \x01(\bR\n" +
-	"loadFailed\"\xf4\v\n" +
+	"loadFailed\"\xb4\x01\n" +
+	"\x13HomePrefsBannerView\x12\x18\n" +
+	"\avisible\x18\x01 \x01(\bR\avisible\x12\x18\n" +
+	"\asyncing\x18\x02 \x01(\bR\asyncing\x12\x1d\n" +
+	"\n" +
+	"error_tone\x18\x03 \x01(\bR\terrorTone\x12-\n" +
+	"\x04text\x18\x04 \x01(\v2\x19.remoteagent.core.v1.TextR\x04text\x12\x1b\n" +
+	"\tcan_retry\x18\x05 \x01(\bR\bcanRetry\"\x80\x0e\n" +
 	"\rHomeViewModel\x12)\n" +
 	"\x10scope_selectable\x18\x02 \x01(\bR\x0fscopeSelectable\x12\x1b\n" +
 	"\tscope_key\x18\x03 \x01(\tR\bscopeKey\x12:\n" +
@@ -3165,7 +3280,11 @@ const file_remoteagent_core_v1_home_view_proto_rawDesc = "" +
 	"\tcan_start\x18\x1a \x01(\bR\bcanStart\x12.\n" +
 	"\x13selected_session_id\x18\x1b \x01(\tR\x11selectedSessionId\x12$\n" +
 	"\x0ehas_more_ended\x18\x1c \x01(\bR\fhasMoreEnded\x12_\n" +
-	"\x16top_attention_question\x18\x1d \x01(\v2).remoteagent.core.v1.HomeQuestionCardViewR\x14topAttentionQuestion\"\x91\x01\n" +
+	"\x16top_attention_question\x18\x1d \x01(\v2).remoteagent.core.v1.HomeQuestionCardViewR\x14topAttentionQuestion\x12A\n" +
+	"\x0flist_error_text\x18\x1e \x01(\v2\x19.remoteagent.core.v1.TextR\rlistErrorText\x12N\n" +
+	"\x16clock_skew_banner_text\x18\x1f \x01(\v2\x19.remoteagent.core.v1.TextR\x13clockSkewBannerText\x12K\n" +
+	"\fprefs_banner\x18  \x01(\v2(.remoteagent.core.v1.HomePrefsBannerViewR\vprefsBanner\x12*\n" +
+	"\x11has_more_sessions\x18! \x01(\bR\x0fhasMoreSessions\"\x91\x01\n" +
 	"\x16HomeQuestionOptionView\x12\x1d\n" +
 	"\n" +
 	"option_num\x18\x01 \x01(\x05R\toptionNum\x12\x14\n" +
@@ -3324,7 +3443,7 @@ func file_remoteagent_core_v1_home_view_proto_rawDescGZIP() []byte {
 }
 
 var file_remoteagent_core_v1_home_view_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
-var file_remoteagent_core_v1_home_view_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_remoteagent_core_v1_home_view_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_remoteagent_core_v1_home_view_proto_goTypes = []any{
 	(ConnState)(0),                     // 0: remoteagent.core.v1.ConnState
 	(SessionTone)(0),                   // 1: remoteagent.core.v1.SessionTone
@@ -3350,96 +3469,101 @@ var file_remoteagent_core_v1_home_view_proto_goTypes = []any{
 	(*ScopeRowView)(nil),               // 21: remoteagent.core.v1.ScopeRowView
 	(*ProjectRowView)(nil),             // 22: remoteagent.core.v1.ProjectRowView
 	(*ProjectListingView)(nil),         // 23: remoteagent.core.v1.ProjectListingView
-	(*HomeViewModel)(nil),              // 24: remoteagent.core.v1.HomeViewModel
-	(*HomeQuestionOptionView)(nil),     // 25: remoteagent.core.v1.HomeQuestionOptionView
-	(*HomeQuestionCardView)(nil),       // 26: remoteagent.core.v1.HomeQuestionCardView
-	(*HomeResolveApprovalAction)(nil),  // 27: remoteagent.core.v1.HomeResolveApprovalAction
-	(*HomeEditApprovalDenyAction)(nil), // 28: remoteagent.core.v1.HomeEditApprovalDenyAction
-	(*HomeAnswerQuestionAction)(nil),   // 29: remoteagent.core.v1.HomeAnswerQuestionAction
-	(*HomeRetryAttentionAction)(nil),   // 30: remoteagent.core.v1.HomeRetryAttentionAction
-	(*HomeAbandonAttentionAction)(nil), // 31: remoteagent.core.v1.HomeAbandonAttentionAction
-	(*Text)(nil),                       // 32: remoteagent.core.v1.Text
-	(v1.Agent)(0),                      // 33: remoteagent.v1.Agent
+	(*HomePrefsBannerView)(nil),        // 24: remoteagent.core.v1.HomePrefsBannerView
+	(*HomeViewModel)(nil),              // 25: remoteagent.core.v1.HomeViewModel
+	(*HomeQuestionOptionView)(nil),     // 26: remoteagent.core.v1.HomeQuestionOptionView
+	(*HomeQuestionCardView)(nil),       // 27: remoteagent.core.v1.HomeQuestionCardView
+	(*HomeResolveApprovalAction)(nil),  // 28: remoteagent.core.v1.HomeResolveApprovalAction
+	(*HomeEditApprovalDenyAction)(nil), // 29: remoteagent.core.v1.HomeEditApprovalDenyAction
+	(*HomeAnswerQuestionAction)(nil),   // 30: remoteagent.core.v1.HomeAnswerQuestionAction
+	(*HomeRetryAttentionAction)(nil),   // 31: remoteagent.core.v1.HomeRetryAttentionAction
+	(*HomeAbandonAttentionAction)(nil), // 32: remoteagent.core.v1.HomeAbandonAttentionAction
+	(*Text)(nil),                       // 33: remoteagent.core.v1.Text
+	(v1.Agent)(0),                      // 34: remoteagent.v1.Agent
 }
 var file_remoteagent_core_v1_home_view_proto_depIdxs = []int32{
 	0,  // 0: remoteagent.core.v1.ConnectionStatusView.state:type_name -> remoteagent.core.v1.ConnState
-	32, // 1: remoteagent.core.v1.ConnectionStatusView.badge_text:type_name -> remoteagent.core.v1.Text
-	32, // 2: remoteagent.core.v1.ConnectionStatusView.detail_text:type_name -> remoteagent.core.v1.Text
-	32, // 3: remoteagent.core.v1.ConnectionStatusView.sidebar_badge_text:type_name -> remoteagent.core.v1.Text
+	33, // 1: remoteagent.core.v1.ConnectionStatusView.badge_text:type_name -> remoteagent.core.v1.Text
+	33, // 2: remoteagent.core.v1.ConnectionStatusView.detail_text:type_name -> remoteagent.core.v1.Text
+	33, // 3: remoteagent.core.v1.ConnectionStatusView.sidebar_badge_text:type_name -> remoteagent.core.v1.Text
 	3,  // 4: remoteagent.core.v1.HomeHeadlineView.kind:type_name -> remoteagent.core.v1.HeadlineKind
-	32, // 5: remoteagent.core.v1.HomeHeadlineView.title:type_name -> remoteagent.core.v1.Text
-	32, // 6: remoteagent.core.v1.HomeHeadlineView.sub:type_name -> remoteagent.core.v1.Text
+	33, // 5: remoteagent.core.v1.HomeHeadlineView.title:type_name -> remoteagent.core.v1.Text
+	33, // 6: remoteagent.core.v1.HomeHeadlineView.sub:type_name -> remoteagent.core.v1.Text
 	4,  // 7: remoteagent.core.v1.HomeEmptyView.kind:type_name -> remoteagent.core.v1.HomeEmptyKind
-	32, // 8: remoteagent.core.v1.HomeEmptyView.message:type_name -> remoteagent.core.v1.Text
+	33, // 8: remoteagent.core.v1.HomeEmptyView.message:type_name -> remoteagent.core.v1.Text
 	8,  // 9: remoteagent.core.v1.SessionCommandState.status:type_name -> remoteagent.core.v1.SessionCommandStatus
-	32, // 10: remoteagent.core.v1.SessionCommandState.error_text:type_name -> remoteagent.core.v1.Text
-	32, // 11: remoteagent.core.v1.SessionCommandState.status_text:type_name -> remoteagent.core.v1.Text
-	32, // 12: remoteagent.core.v1.SessionCommandState.submitted_summary:type_name -> remoteagent.core.v1.Text
-	32, // 13: remoteagent.core.v1.AttentionCardView.title:type_name -> remoteagent.core.v1.Text
-	32, // 14: remoteagent.core.v1.AttentionCardView.kind_text:type_name -> remoteagent.core.v1.Text
-	32, // 15: remoteagent.core.v1.AttentionCardView.where:type_name -> remoteagent.core.v1.Text
-	32, // 16: remoteagent.core.v1.AttentionCardView.time:type_name -> remoteagent.core.v1.Text
+	33, // 10: remoteagent.core.v1.SessionCommandState.error_text:type_name -> remoteagent.core.v1.Text
+	33, // 11: remoteagent.core.v1.SessionCommandState.status_text:type_name -> remoteagent.core.v1.Text
+	33, // 12: remoteagent.core.v1.SessionCommandState.submitted_summary:type_name -> remoteagent.core.v1.Text
+	33, // 13: remoteagent.core.v1.AttentionCardView.title:type_name -> remoteagent.core.v1.Text
+	33, // 14: remoteagent.core.v1.AttentionCardView.kind_text:type_name -> remoteagent.core.v1.Text
+	33, // 15: remoteagent.core.v1.AttentionCardView.where:type_name -> remoteagent.core.v1.Text
+	33, // 16: remoteagent.core.v1.AttentionCardView.time:type_name -> remoteagent.core.v1.Text
 	7,  // 17: remoteagent.core.v1.AttentionCardView.always_kind:type_name -> remoteagent.core.v1.AlwaysAllowKind
-	32, // 18: remoteagent.core.v1.AttentionCardView.always_label:type_name -> remoteagent.core.v1.Text
+	33, // 18: remoteagent.core.v1.AttentionCardView.always_label:type_name -> remoteagent.core.v1.Text
 	14, // 19: remoteagent.core.v1.AttentionCardView.command:type_name -> remoteagent.core.v1.SessionCommandState
 	10, // 20: remoteagent.core.v1.AttentionCardView.phase:type_name -> remoteagent.core.v1.HomeFocusPhase
-	32, // 21: remoteagent.core.v1.AttentionCardView.resolution_text:type_name -> remoteagent.core.v1.Text
-	32, // 22: remoteagent.core.v1.AttentionCardView.deny_reason_placeholder:type_name -> remoteagent.core.v1.Text
-	32, // 23: remoteagent.core.v1.AttentionRowView.title:type_name -> remoteagent.core.v1.Text
-	32, // 24: remoteagent.core.v1.AttentionRowView.kind_text:type_name -> remoteagent.core.v1.Text
-	32, // 25: remoteagent.core.v1.AttentionRowView.summary:type_name -> remoteagent.core.v1.Text
-	32, // 26: remoteagent.core.v1.AttentionRowView.detail:type_name -> remoteagent.core.v1.Text
-	32, // 27: remoteagent.core.v1.SessionRowView.title:type_name -> remoteagent.core.v1.Text
-	32, // 28: remoteagent.core.v1.SessionRowView.time:type_name -> remoteagent.core.v1.Text
+	33, // 21: remoteagent.core.v1.AttentionCardView.resolution_text:type_name -> remoteagent.core.v1.Text
+	33, // 22: remoteagent.core.v1.AttentionCardView.deny_reason_placeholder:type_name -> remoteagent.core.v1.Text
+	33, // 23: remoteagent.core.v1.AttentionRowView.title:type_name -> remoteagent.core.v1.Text
+	33, // 24: remoteagent.core.v1.AttentionRowView.kind_text:type_name -> remoteagent.core.v1.Text
+	33, // 25: remoteagent.core.v1.AttentionRowView.summary:type_name -> remoteagent.core.v1.Text
+	33, // 26: remoteagent.core.v1.AttentionRowView.detail:type_name -> remoteagent.core.v1.Text
+	33, // 27: remoteagent.core.v1.SessionRowView.title:type_name -> remoteagent.core.v1.Text
+	33, // 28: remoteagent.core.v1.SessionRowView.time:type_name -> remoteagent.core.v1.Text
 	2,  // 29: remoteagent.core.v1.SessionRowView.status:type_name -> remoteagent.core.v1.SessionDisplayStatus
 	1,  // 30: remoteagent.core.v1.SessionRowView.tone:type_name -> remoteagent.core.v1.SessionTone
-	32, // 31: remoteagent.core.v1.SessionRowView.status_text:type_name -> remoteagent.core.v1.Text
-	32, // 32: remoteagent.core.v1.SessionRowView.preview:type_name -> remoteagent.core.v1.Text
-	32, // 33: remoteagent.core.v1.SessionRowView.second_line:type_name -> remoteagent.core.v1.Text
-	33, // 34: remoteagent.core.v1.SessionRowView.agent:type_name -> remoteagent.v1.Agent
-	32, // 35: remoteagent.core.v1.SessionRowView.meta_line:type_name -> remoteagent.core.v1.Text
-	32, // 36: remoteagent.core.v1.EndedRowView.title:type_name -> remoteagent.core.v1.Text
-	32, // 37: remoteagent.core.v1.EndedRowView.right:type_name -> remoteagent.core.v1.Text
+	33, // 31: remoteagent.core.v1.SessionRowView.status_text:type_name -> remoteagent.core.v1.Text
+	33, // 32: remoteagent.core.v1.SessionRowView.preview:type_name -> remoteagent.core.v1.Text
+	33, // 33: remoteagent.core.v1.SessionRowView.second_line:type_name -> remoteagent.core.v1.Text
+	34, // 34: remoteagent.core.v1.SessionRowView.agent:type_name -> remoteagent.v1.Agent
+	33, // 35: remoteagent.core.v1.SessionRowView.meta_line:type_name -> remoteagent.core.v1.Text
+	33, // 36: remoteagent.core.v1.EndedRowView.title:type_name -> remoteagent.core.v1.Text
+	33, // 37: remoteagent.core.v1.EndedRowView.right:type_name -> remoteagent.core.v1.Text
 	5,  // 38: remoteagent.core.v1.EndedGroupView.group_kind:type_name -> remoteagent.core.v1.EndedGroupKind
-	32, // 39: remoteagent.core.v1.EndedGroupView.label:type_name -> remoteagent.core.v1.Text
+	33, // 39: remoteagent.core.v1.EndedGroupView.label:type_name -> remoteagent.core.v1.Text
 	18, // 40: remoteagent.core.v1.EndedGroupView.items:type_name -> remoteagent.core.v1.EndedRowView
 	6,  // 41: remoteagent.core.v1.TailRowView.kind:type_name -> remoteagent.core.v1.TailKind
-	32, // 42: remoteagent.core.v1.TailRowView.text:type_name -> remoteagent.core.v1.Text
-	32, // 43: remoteagent.core.v1.ScopeRowView.name:type_name -> remoteagent.core.v1.Text
-	32, // 44: remoteagent.core.v1.ScopeRowView.subtitle:type_name -> remoteagent.core.v1.Text
-	32, // 45: remoteagent.core.v1.ProjectRowView.name:type_name -> remoteagent.core.v1.Text
-	32, // 46: remoteagent.core.v1.ProjectRowView.subtitle:type_name -> remoteagent.core.v1.Text
-	32, // 47: remoteagent.core.v1.ProjectRowView.save_error:type_name -> remoteagent.core.v1.Text
+	33, // 42: remoteagent.core.v1.TailRowView.text:type_name -> remoteagent.core.v1.Text
+	33, // 43: remoteagent.core.v1.ScopeRowView.name:type_name -> remoteagent.core.v1.Text
+	33, // 44: remoteagent.core.v1.ScopeRowView.subtitle:type_name -> remoteagent.core.v1.Text
+	33, // 45: remoteagent.core.v1.ProjectRowView.name:type_name -> remoteagent.core.v1.Text
+	33, // 46: remoteagent.core.v1.ProjectRowView.subtitle:type_name -> remoteagent.core.v1.Text
+	33, // 47: remoteagent.core.v1.ProjectRowView.save_error:type_name -> remoteagent.core.v1.Text
 	22, // 48: remoteagent.core.v1.ProjectListingView.pinned:type_name -> remoteagent.core.v1.ProjectRowView
 	22, // 49: remoteagent.core.v1.ProjectListingView.others:type_name -> remoteagent.core.v1.ProjectRowView
-	32, // 50: remoteagent.core.v1.ProjectListingView.empty_match:type_name -> remoteagent.core.v1.Text
-	32, // 51: remoteagent.core.v1.HomeViewModel.scope_title:type_name -> remoteagent.core.v1.Text
-	11, // 52: remoteagent.core.v1.HomeViewModel.connection:type_name -> remoteagent.core.v1.ConnectionStatusView
-	12, // 53: remoteagent.core.v1.HomeViewModel.headline:type_name -> remoteagent.core.v1.HomeHeadlineView
-	13, // 54: remoteagent.core.v1.HomeViewModel.empty:type_name -> remoteagent.core.v1.HomeEmptyView
-	32, // 55: remoteagent.core.v1.HomeViewModel.filter_summary:type_name -> remoteagent.core.v1.Text
-	15, // 56: remoteagent.core.v1.HomeViewModel.top_attention_card:type_name -> remoteagent.core.v1.AttentionCardView
-	16, // 57: remoteagent.core.v1.HomeViewModel.attention:type_name -> remoteagent.core.v1.AttentionRowView
-	17, // 58: remoteagent.core.v1.HomeViewModel.running:type_name -> remoteagent.core.v1.SessionRowView
-	19, // 59: remoteagent.core.v1.HomeViewModel.ended_groups:type_name -> remoteagent.core.v1.EndedGroupView
-	20, // 60: remoteagent.core.v1.HomeViewModel.ended_tail:type_name -> remoteagent.core.v1.TailRowView
-	21, // 61: remoteagent.core.v1.HomeViewModel.scope_menu:type_name -> remoteagent.core.v1.ScopeRowView
-	23, // 62: remoteagent.core.v1.HomeViewModel.sidebar_projects:type_name -> remoteagent.core.v1.ProjectListingView
-	26, // 63: remoteagent.core.v1.HomeViewModel.top_attention_question:type_name -> remoteagent.core.v1.HomeQuestionCardView
-	32, // 64: remoteagent.core.v1.HomeQuestionCardView.badge_text:type_name -> remoteagent.core.v1.Text
-	32, // 65: remoteagent.core.v1.HomeQuestionCardView.time_text:type_name -> remoteagent.core.v1.Text
-	32, // 66: remoteagent.core.v1.HomeQuestionCardView.title:type_name -> remoteagent.core.v1.Text
-	32, // 67: remoteagent.core.v1.HomeQuestionCardView.where:type_name -> remoteagent.core.v1.Text
-	25, // 68: remoteagent.core.v1.HomeQuestionCardView.options:type_name -> remoteagent.core.v1.HomeQuestionOptionView
-	32, // 69: remoteagent.core.v1.HomeQuestionCardView.offline_note:type_name -> remoteagent.core.v1.Text
-	14, // 70: remoteagent.core.v1.HomeQuestionCardView.command:type_name -> remoteagent.core.v1.SessionCommandState
-	10, // 71: remoteagent.core.v1.HomeQuestionCardView.phase:type_name -> remoteagent.core.v1.HomeFocusPhase
-	32, // 72: remoteagent.core.v1.HomeQuestionCardView.resolution_text:type_name -> remoteagent.core.v1.Text
-	73, // [73:73] is the sub-list for method output_type
-	73, // [73:73] is the sub-list for method input_type
-	73, // [73:73] is the sub-list for extension type_name
-	73, // [73:73] is the sub-list for extension extendee
-	0,  // [0:73] is the sub-list for field type_name
+	33, // 50: remoteagent.core.v1.ProjectListingView.empty_match:type_name -> remoteagent.core.v1.Text
+	33, // 51: remoteagent.core.v1.HomePrefsBannerView.text:type_name -> remoteagent.core.v1.Text
+	33, // 52: remoteagent.core.v1.HomeViewModel.scope_title:type_name -> remoteagent.core.v1.Text
+	11, // 53: remoteagent.core.v1.HomeViewModel.connection:type_name -> remoteagent.core.v1.ConnectionStatusView
+	12, // 54: remoteagent.core.v1.HomeViewModel.headline:type_name -> remoteagent.core.v1.HomeHeadlineView
+	13, // 55: remoteagent.core.v1.HomeViewModel.empty:type_name -> remoteagent.core.v1.HomeEmptyView
+	33, // 56: remoteagent.core.v1.HomeViewModel.filter_summary:type_name -> remoteagent.core.v1.Text
+	15, // 57: remoteagent.core.v1.HomeViewModel.top_attention_card:type_name -> remoteagent.core.v1.AttentionCardView
+	16, // 58: remoteagent.core.v1.HomeViewModel.attention:type_name -> remoteagent.core.v1.AttentionRowView
+	17, // 59: remoteagent.core.v1.HomeViewModel.running:type_name -> remoteagent.core.v1.SessionRowView
+	19, // 60: remoteagent.core.v1.HomeViewModel.ended_groups:type_name -> remoteagent.core.v1.EndedGroupView
+	20, // 61: remoteagent.core.v1.HomeViewModel.ended_tail:type_name -> remoteagent.core.v1.TailRowView
+	21, // 62: remoteagent.core.v1.HomeViewModel.scope_menu:type_name -> remoteagent.core.v1.ScopeRowView
+	23, // 63: remoteagent.core.v1.HomeViewModel.sidebar_projects:type_name -> remoteagent.core.v1.ProjectListingView
+	27, // 64: remoteagent.core.v1.HomeViewModel.top_attention_question:type_name -> remoteagent.core.v1.HomeQuestionCardView
+	33, // 65: remoteagent.core.v1.HomeViewModel.list_error_text:type_name -> remoteagent.core.v1.Text
+	33, // 66: remoteagent.core.v1.HomeViewModel.clock_skew_banner_text:type_name -> remoteagent.core.v1.Text
+	24, // 67: remoteagent.core.v1.HomeViewModel.prefs_banner:type_name -> remoteagent.core.v1.HomePrefsBannerView
+	33, // 68: remoteagent.core.v1.HomeQuestionCardView.badge_text:type_name -> remoteagent.core.v1.Text
+	33, // 69: remoteagent.core.v1.HomeQuestionCardView.time_text:type_name -> remoteagent.core.v1.Text
+	33, // 70: remoteagent.core.v1.HomeQuestionCardView.title:type_name -> remoteagent.core.v1.Text
+	33, // 71: remoteagent.core.v1.HomeQuestionCardView.where:type_name -> remoteagent.core.v1.Text
+	26, // 72: remoteagent.core.v1.HomeQuestionCardView.options:type_name -> remoteagent.core.v1.HomeQuestionOptionView
+	33, // 73: remoteagent.core.v1.HomeQuestionCardView.offline_note:type_name -> remoteagent.core.v1.Text
+	14, // 74: remoteagent.core.v1.HomeQuestionCardView.command:type_name -> remoteagent.core.v1.SessionCommandState
+	10, // 75: remoteagent.core.v1.HomeQuestionCardView.phase:type_name -> remoteagent.core.v1.HomeFocusPhase
+	33, // 76: remoteagent.core.v1.HomeQuestionCardView.resolution_text:type_name -> remoteagent.core.v1.Text
+	77, // [77:77] is the sub-list for method output_type
+	77, // [77:77] is the sub-list for method input_type
+	77, // [77:77] is the sub-list for extension type_name
+	77, // [77:77] is the sub-list for extension extendee
+	0,  // [0:77] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_home_view_proto_init() }
@@ -3454,7 +3578,7 @@ func file_remoteagent_core_v1_home_view_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_core_v1_home_view_proto_rawDesc), len(file_remoteagent_core_v1_home_view_proto_rawDesc)),
 			NumEnums:      11,
-			NumMessages:   21,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

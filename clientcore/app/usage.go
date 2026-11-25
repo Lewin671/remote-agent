@@ -134,8 +134,11 @@ func (c *Core) dispatchUsageUI(ctx *sync.StepContext, ev *corev1.Event) []*corev
 			}
 		}
 		c.m.usageActive = true
+		var effects []*corev1.Effect
+		c.maybeHydrateUsageCache(u.MachineId, &effects)
 		c.fetchUsage(ctx, u.MachineId, u.Preset, u.CustomStartMs, u.CustomEndMs, u)
 		c.m.usageDirty = true
+		return effects
 
 	case *corev1.Event_UsageScreenRetry:
 		if k.UsageScreenRetry == nil || k.UsageScreenRetry.MachineId == "" {
@@ -216,6 +219,44 @@ func (c *Core) dispatchUsageUI(ctx *sync.StepContext, ev *corev1.Event) []*corev
 		}
 	}
 	return nil
+}
+
+func (c *Core) maybeHydrateUsageCache(machineID string, effects *[]*corev1.Effect) {
+	if machineID == "" || effects == nil {
+		return
+	}
+	if c.m.usageCacheRequested == nil {
+		c.m.usageCacheRequested = make(map[string]bool)
+	}
+	if c.m.usageCacheRequested[machineID] {
+		return
+	}
+	c.m.usageCacheRequested[machineID] = true
+	*effects = append(*effects, &corev1.Effect{
+		Effect: &corev1.Effect_UsageCacheRequest{
+			UsageCacheRequest: &corev1.UsageCacheRequestEffect{
+				MachineId:   machineID,
+				DeleteCache: false,
+			},
+		},
+	})
+}
+
+func (c *Core) forgetUsageMachine(machineID string) {
+	if machineID == "" {
+		return
+	}
+	delete(c.m.usageCacheRequested, machineID)
+	for k := range c.m.state.UsageSnapshots {
+		if k.MachineID == machineID {
+			delete(c.m.state.UsageSnapshots, k)
+		}
+	}
+	for k := range c.m.lastUsageFetchedMs {
+		if k.MachineID == machineID {
+			delete(c.m.lastUsageFetchedMs, k)
+		}
+	}
 }
 
 func (c *Core) maybeFetchUsage(ctx *sync.StepContext, machineID string, preset v1.UsageRangePreset, openEv *corev1.UsageScreenOpenEvent) {

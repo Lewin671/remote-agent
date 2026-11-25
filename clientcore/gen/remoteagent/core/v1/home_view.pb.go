@@ -1369,6 +1369,64 @@ func (m *ProjectListingView) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ProjectListingView)
 }
 
+type HomePrefsBannerView struct {
+	_         [0]func()
+	Visible   bool
+	Syncing   bool
+	ErrorTone bool
+	Text      *Text
+	CanRetry  bool
+}
+
+func (m *HomePrefsBannerView) GetVisible() bool {
+	if m != nil {
+		return m.Visible
+	}
+	return false
+}
+func (m *HomePrefsBannerView) GetSyncing() bool {
+	if m != nil {
+		return m.Syncing
+	}
+	return false
+}
+func (m *HomePrefsBannerView) GetErrorTone() bool {
+	if m != nil {
+		return m.ErrorTone
+	}
+	return false
+}
+func (m *HomePrefsBannerView) GetText() *Text {
+	if m != nil {
+		return m.Text
+	}
+	return nil
+}
+func (m *HomePrefsBannerView) GetCanRetry() bool {
+	if m != nil {
+		return m.CanRetry
+	}
+	return false
+}
+
+var LitewireDesc_HomePrefsBannerView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(HomePrefsBannerView{}.Visible), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(HomePrefsBannerView{}.Syncing), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(HomePrefsBannerView{}.ErrorTone), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(HomePrefsBannerView{}.Text), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(HomePrefsBannerView{}.CanRetry), Kind: litewire.KindBool},
+	},
+}
+
+func (m *HomePrefsBannerView) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *HomePrefsBannerView) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_HomePrefsBannerView)
+}
+
 type HomeViewModel struct {
 	_                      [0]func()
 	ScopeSelectable        bool
@@ -1399,6 +1457,10 @@ type HomeViewModel struct {
 	SelectedSessionId      string
 	HasMoreEnded           bool
 	TopAttentionQuestion   *HomeQuestionCardView
+	ListErrorText          *Text
+	ClockSkewBannerText    *Text
+	PrefsBanner            *HomePrefsBannerView
+	HasMoreSessions        bool
 }
 
 func (m *HomeViewModel) GetScopeSelectable() bool {
@@ -1569,6 +1631,30 @@ func (m *HomeViewModel) GetTopAttentionQuestion() *HomeQuestionCardView {
 	}
 	return nil
 }
+func (m *HomeViewModel) GetListErrorText() *Text {
+	if m != nil {
+		return m.ListErrorText
+	}
+	return nil
+}
+func (m *HomeViewModel) GetClockSkewBannerText() *Text {
+	if m != nil {
+		return m.ClockSkewBannerText
+	}
+	return nil
+}
+func (m *HomeViewModel) GetPrefsBanner() *HomePrefsBannerView {
+	if m != nil {
+		return m.PrefsBanner
+	}
+	return nil
+}
+func (m *HomeViewModel) GetHasMoreSessions() bool {
+	if m != nil {
+		return m.HasMoreSessions
+	}
+	return false
+}
 
 var LitewireDesc_HomeViewModel = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -1600,6 +1686,10 @@ var LitewireDesc_HomeViewModel = litewire.MessageDesc{
 		{Num: 27, Offset: unsafe.Offsetof(HomeViewModel{}.SelectedSessionId), Kind: litewire.KindString},
 		{Num: 28, Offset: unsafe.Offsetof(HomeViewModel{}.HasMoreEnded), Kind: litewire.KindBool},
 		{Num: 29, Offset: unsafe.Offsetof(HomeViewModel{}.TopAttentionQuestion), Kind: litewire.KindMessage, Sub: &LitewireDesc_HomeQuestionCardView},
+		{Num: 30, Offset: unsafe.Offsetof(HomeViewModel{}.ListErrorText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 31, Offset: unsafe.Offsetof(HomeViewModel{}.ClockSkewBannerText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 32, Offset: unsafe.Offsetof(HomeViewModel{}.PrefsBanner), Kind: litewire.KindMessage, Sub: &LitewireDesc_HomePrefsBannerView},
+		{Num: 33, Offset: unsafe.Offsetof(HomeViewModel{}.HasMoreSessions), Kind: litewire.KindBool},
 	},
 }
 

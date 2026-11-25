@@ -488,6 +488,10 @@ public struct PBSecurityConfigEvent: Sendable {
 
   public var foreground: Bool = false
 
+  public var platform: String = String()
+
+  public var deviceDescription: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2814,7 +2818,7 @@ extension PBSecurityBootstrapKind: SwiftProtobuf._ProtoNameProviding {
 
 extension PBSecurityConfigEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityConfigEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}account\0\u{3}device_id\0\u{3}inline_crypto\0\u{1}server\0\u{3}legacy_cleared\0\u{1}foreground\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}account\0\u{3}device_id\0\u{3}inline_crypto\0\u{1}server\0\u{3}legacy_cleared\0\u{1}foreground\0\u{1}platform\0\u{3}device_description\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2828,6 +2832,8 @@ extension PBSecurityConfigEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       case 4: try { try decoder.decodeSingularStringField(value: &self.server) }()
       case 5: try { try decoder.decodeSingularBoolField(value: &self.legacyCleared) }()
       case 6: try { try decoder.decodeSingularBoolField(value: &self.foreground) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.platform) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self.deviceDescription) }()
       default: break
       }
     }
@@ -2852,6 +2858,12 @@ extension PBSecurityConfigEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if self.foreground != false {
       try visitor.visitSingularBoolField(value: self.foreground, fieldNumber: 6)
     }
+    if !self.platform.isEmpty {
+      try visitor.visitSingularStringField(value: self.platform, fieldNumber: 7)
+    }
+    if !self.deviceDescription.isEmpty {
+      try visitor.visitSingularStringField(value: self.deviceDescription, fieldNumber: 8)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2862,6 +2874,8 @@ extension PBSecurityConfigEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if lhs.server != rhs.server {return false}
     if lhs.legacyCleared != rhs.legacyCleared {return false}
     if lhs.foreground != rhs.foreground {return false}
+    if lhs.platform != rhs.platform {return false}
+    if lhs.deviceDescription != rhs.deviceDescription {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

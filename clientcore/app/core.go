@@ -91,6 +91,13 @@ func (c *Core) View(screen *corev1.Screen) (*corev1.ViewModel, error) {
 			},
 		}, nil
 
+	case *corev1.Screen_Connection:
+		return &corev1.ViewModel{
+			View: &corev1.ViewModel_Connection{
+				Connection: screens.BuildConnection(c.m.state, c.buildSyncStateView()),
+			},
+		}, nil
+
 	case *corev1.Screen_SessionData:
 		var sid string
 		if s.SessionData != nil {
@@ -218,6 +225,18 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 
 	var effects []*corev1.Effect
 	var dirty sync.DirtyFlags
+	for _, eff := range res.Effects {
+		if req := eff.GetUsageCacheRequest(); req != nil && req.DeleteCache && req.MachineId != "" {
+			c.forgetUsageMachine(req.MachineId)
+		}
+	}
+	if c.m.sessions != nil && len(c.m.sessions.opened) > 0 {
+		for sid := range c.m.sessions.opened {
+			if sess := c.m.sync.SessionEntry(sid); sess != nil && sess.MachineID != "" {
+				c.maybeHydrateUsageCache(sess.MachineID, &effects)
+			}
+		}
+	}
 	for _, sc := range res.Settled {
 		if c.settlePlanPreflight(sc, &effects, &dirty) {
 			continue
@@ -482,6 +501,9 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 			if d.Config.MachineID != "" {
 				c.m.maybeFetchMachineConfig(extraCtx, d.Config.MachineID, d.Config.Agent)
 			}
+			if key == c.m.activeNewSessionPagingKey && !psr.Settled && c.m.state.World.HasMoreSessions {
+				c.m.sync.RequestMoreSessions(extraCtx)
+			}
 		}
 		extraRes := c.m.sync.EndStep(extraPrev, extraCtx)
 		effects = append(effects, extraRes.Effects...)
@@ -511,6 +533,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 	}
 
 	c.processSchedulesSyncStep(res, &effects)
+	c.reconcilePendingNotifTap(&effects)
 	c.reconcileSharedFileDownloads(&effects, &dirty)
 	c.reconcileAttachments(&effects, &dirty)
 	if res.Dirty.Home || res.Dirty.SessionData || dirty.Home || dirty.SessionData {
@@ -775,9 +798,16 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 				if d.Config.MachineID != "" {
 					c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
 				}
+				c.m.activeNewSessionPagingKey = key
+				if !psr.Settled && st.World.HasMoreSessions {
+					c.m.sync.RequestMoreSessions(ctx)
+				}
 			}
 			ctx.Dirty.Add(false, false, true)
 		}
+
+	case *corev1.Event_ResolveNotificationTap:
+		effects = append(effects, c.handleResolveNotificationTap(ctx, k.ResolveNotificationTap)...)
 
 	case *corev1.Event_NewSessionSelectProject:
 		if k.NewSessionSelectProject != nil && k.NewSessionSelectProject.ProjectKey != "" {
@@ -787,6 +817,10 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 			c.m.syncDraftAutoSupport(st.StandaloneProjectKey, psr)
 			if d.Config.MachineID != "" {
 				c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
+			}
+			c.m.activeNewSessionPagingKey = st.StandaloneProjectKey
+			if !psr.Settled && st.World.HasMoreSessions {
+				c.m.sync.RequestMoreSessions(ctx)
 			}
 			ctx.Dirty.Add(false, false, true)
 		}
@@ -838,6 +872,10 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 				c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
 				op := buildFullSettingsOp(d.Config, false)
 				c.m.sync.EnqueuePrefsOp(ctx, op, true, key)
+				c.m.activeNewSessionPagingKey = key
+				if !psr.Settled && st.World.HasMoreSessions {
+					c.m.sync.RequestMoreSessions(ctx)
+				}
 				ctx.Dirty.Add(false, false, true)
 			}
 		}

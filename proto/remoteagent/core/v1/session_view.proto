@@ -152,6 +152,9 @@ message SessionHeaderView {
   Text lookup_error_text = 58;
   bool multiple_machines = 59;
   string short_path = 60;
+  bool terminal_ready = 61;
+  bool terminal_waiting = 62;
+  int64 frozen_at_ms = 63;
 }
 
 message SessionDirectChipView {

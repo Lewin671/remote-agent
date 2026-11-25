@@ -252,4 +252,10 @@ public interface SchedulesViewModelOrBuilder extends
    */
   com.google.protobuf.ByteString
       getSelectedTaskIdBytes();
+
+  /**
+   * <code>bool initial_loaded = 26 [json_name = "initialLoaded"];</code>
+   * @return The initialLoaded.
+   */
+  boolean getInitialLoaded();
 }

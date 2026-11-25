@@ -18,6 +18,8 @@ public  final class SecurityConfigEvent extends
     account_ = "";
     deviceId_ = "";
     server_ = "";
+    platform_ = "";
+    deviceDescription_ = "";
   }
   public static final int ACCOUNT_FIELD_NUMBER = 1;
   private java.lang.String account_;
@@ -254,6 +256,102 @@ public  final class SecurityConfigEvent extends
   private void clearForeground() {
 
     foreground_ = false;
+  }
+
+  public static final int PLATFORM_FIELD_NUMBER = 7;
+  private java.lang.String platform_;
+  /**
+   * <code>string platform = 7 [json_name = "platform"];</code>
+   * @return The platform.
+   */
+  @java.lang.Override
+  public java.lang.String getPlatform() {
+    return platform_;
+  }
+  /**
+   * <code>string platform = 7 [json_name = "platform"];</code>
+   * @return The bytes for platform.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getPlatformBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(platform_);
+  }
+  /**
+   * <code>string platform = 7 [json_name = "platform"];</code>
+   * @param value The platform to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPlatform(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    platform_ = value;
+  }
+  /**
+   * <code>string platform = 7 [json_name = "platform"];</code>
+   */
+  private void clearPlatform() {
+
+    platform_ = getDefaultInstance().getPlatform();
+  }
+  /**
+   * <code>string platform = 7 [json_name = "platform"];</code>
+   * @param value The bytes for platform to set.
+   */
+  private void setPlatformBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    platform_ = value.toStringUtf8();
+
+  }
+
+  public static final int DEVICE_DESCRIPTION_FIELD_NUMBER = 8;
+  private java.lang.String deviceDescription_;
+  /**
+   * <code>string device_description = 8 [json_name = "deviceDescription"];</code>
+   * @return The deviceDescription.
+   */
+  @java.lang.Override
+  public java.lang.String getDeviceDescription() {
+    return deviceDescription_;
+  }
+  /**
+   * <code>string device_description = 8 [json_name = "deviceDescription"];</code>
+   * @return The bytes for deviceDescription.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getDeviceDescriptionBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(deviceDescription_);
+  }
+  /**
+   * <code>string device_description = 8 [json_name = "deviceDescription"];</code>
+   * @param value The deviceDescription to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDeviceDescription(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    deviceDescription_ = value;
+  }
+  /**
+   * <code>string device_description = 8 [json_name = "deviceDescription"];</code>
+   */
+  private void clearDeviceDescription() {
+
+    deviceDescription_ = getDefaultInstance().getDeviceDescription();
+  }
+  /**
+   * <code>string device_description = 8 [json_name = "deviceDescription"];</code>
+   * @param value The bytes for deviceDescription to set.
+   */
+  private void setDeviceDescriptionBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    deviceDescription_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecurityConfigEvent parseFrom(
@@ -599,6 +697,104 @@ public  final class SecurityConfigEvent extends
       return this;
     }
 
+    /**
+     * <code>string platform = 7 [json_name = "platform"];</code>
+     * @return The platform.
+     */
+    @java.lang.Override
+    public java.lang.String getPlatform() {
+      return instance.getPlatform();
+    }
+    /**
+     * <code>string platform = 7 [json_name = "platform"];</code>
+     * @return The bytes for platform.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getPlatformBytes() {
+      return instance.getPlatformBytes();
+    }
+    /**
+     * <code>string platform = 7 [json_name = "platform"];</code>
+     * @param value The platform to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPlatform(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setPlatform(value);
+      return this;
+    }
+    /**
+     * <code>string platform = 7 [json_name = "platform"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPlatform() {
+      copyOnWrite();
+      instance.clearPlatform();
+      return this;
+    }
+    /**
+     * <code>string platform = 7 [json_name = "platform"];</code>
+     * @param value The bytes for platform to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPlatformBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setPlatformBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>string device_description = 8 [json_name = "deviceDescription"];</code>
+     * @return The deviceDescription.
+     */
+    @java.lang.Override
+    public java.lang.String getDeviceDescription() {
+      return instance.getDeviceDescription();
+    }
+    /**
+     * <code>string device_description = 8 [json_name = "deviceDescription"];</code>
+     * @return The bytes for deviceDescription.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getDeviceDescriptionBytes() {
+      return instance.getDeviceDescriptionBytes();
+    }
+    /**
+     * <code>string device_description = 8 [json_name = "deviceDescription"];</code>
+     * @param value The deviceDescription to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDeviceDescription(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setDeviceDescription(value);
+      return this;
+    }
+    /**
+     * <code>string device_description = 8 [json_name = "deviceDescription"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDeviceDescription() {
+      copyOnWrite();
+      instance.clearDeviceDescription();
+      return this;
+    }
+    /**
+     * <code>string device_description = 8 [json_name = "deviceDescription"];</code>
+     * @param value The bytes for deviceDescription to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDeviceDescriptionBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setDeviceDescriptionBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityConfigEvent)
   }
   @java.lang.Override
@@ -621,10 +817,12 @@ public  final class SecurityConfigEvent extends
             "server_",
             "legacyCleared_",
             "foreground_",
+            "platform_",
+            "deviceDescription_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0007\u0004\u0208\u0005\u0007\u0006\u0007";
+              "\u0000\b\u0000\u0000\u0001\b\b\u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\u0007" +
+              "\u0004\u0208\u0005\u0007\u0006\u0007\u0007\u0208\b\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

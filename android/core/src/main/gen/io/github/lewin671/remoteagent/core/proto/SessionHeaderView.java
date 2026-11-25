@@ -2301,6 +2301,84 @@ public  final class SessionHeaderView extends
 
   }
 
+  public static final int TERMINAL_READY_FIELD_NUMBER = 61;
+  private boolean terminalReady_;
+  /**
+   * <code>bool terminal_ready = 61 [json_name = "terminalReady"];</code>
+   * @return The terminalReady.
+   */
+  @java.lang.Override
+  public boolean getTerminalReady() {
+    return terminalReady_;
+  }
+  /**
+   * <code>bool terminal_ready = 61 [json_name = "terminalReady"];</code>
+   * @param value The terminalReady to set.
+   */
+  private void setTerminalReady(boolean value) {
+    
+    terminalReady_ = value;
+  }
+  /**
+   * <code>bool terminal_ready = 61 [json_name = "terminalReady"];</code>
+   */
+  private void clearTerminalReady() {
+
+    terminalReady_ = false;
+  }
+
+  public static final int TERMINAL_WAITING_FIELD_NUMBER = 62;
+  private boolean terminalWaiting_;
+  /**
+   * <code>bool terminal_waiting = 62 [json_name = "terminalWaiting"];</code>
+   * @return The terminalWaiting.
+   */
+  @java.lang.Override
+  public boolean getTerminalWaiting() {
+    return terminalWaiting_;
+  }
+  /**
+   * <code>bool terminal_waiting = 62 [json_name = "terminalWaiting"];</code>
+   * @param value The terminalWaiting to set.
+   */
+  private void setTerminalWaiting(boolean value) {
+    
+    terminalWaiting_ = value;
+  }
+  /**
+   * <code>bool terminal_waiting = 62 [json_name = "terminalWaiting"];</code>
+   */
+  private void clearTerminalWaiting() {
+
+    terminalWaiting_ = false;
+  }
+
+  public static final int FROZEN_AT_MS_FIELD_NUMBER = 63;
+  private long frozenAtMs_;
+  /**
+   * <code>int64 frozen_at_ms = 63 [json_name = "frozenAtMs"];</code>
+   * @return The frozenAtMs.
+   */
+  @java.lang.Override
+  public long getFrozenAtMs() {
+    return frozenAtMs_;
+  }
+  /**
+   * <code>int64 frozen_at_ms = 63 [json_name = "frozenAtMs"];</code>
+   * @param value The frozenAtMs to set.
+   */
+  private void setFrozenAtMs(long value) {
+    
+    frozenAtMs_ = value;
+  }
+  /**
+   * <code>int64 frozen_at_ms = 63 [json_name = "frozenAtMs"];</code>
+   */
+  private void clearFrozenAtMs() {
+
+    frozenAtMs_ = 0L;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SessionHeaderView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -4742,6 +4820,90 @@ public  final class SessionHeaderView extends
       return this;
     }
 
+    /**
+     * <code>bool terminal_ready = 61 [json_name = "terminalReady"];</code>
+     * @return The terminalReady.
+     */
+    @java.lang.Override
+    public boolean getTerminalReady() {
+      return instance.getTerminalReady();
+    }
+    /**
+     * <code>bool terminal_ready = 61 [json_name = "terminalReady"];</code>
+     * @param value The terminalReady to set.
+     * @return This builder for chaining.
+     */
+    public Builder setTerminalReady(boolean value) {
+      copyOnWrite();
+      instance.setTerminalReady(value);
+      return this;
+    }
+    /**
+     * <code>bool terminal_ready = 61 [json_name = "terminalReady"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearTerminalReady() {
+      copyOnWrite();
+      instance.clearTerminalReady();
+      return this;
+    }
+
+    /**
+     * <code>bool terminal_waiting = 62 [json_name = "terminalWaiting"];</code>
+     * @return The terminalWaiting.
+     */
+    @java.lang.Override
+    public boolean getTerminalWaiting() {
+      return instance.getTerminalWaiting();
+    }
+    /**
+     * <code>bool terminal_waiting = 62 [json_name = "terminalWaiting"];</code>
+     * @param value The terminalWaiting to set.
+     * @return This builder for chaining.
+     */
+    public Builder setTerminalWaiting(boolean value) {
+      copyOnWrite();
+      instance.setTerminalWaiting(value);
+      return this;
+    }
+    /**
+     * <code>bool terminal_waiting = 62 [json_name = "terminalWaiting"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearTerminalWaiting() {
+      copyOnWrite();
+      instance.clearTerminalWaiting();
+      return this;
+    }
+
+    /**
+     * <code>int64 frozen_at_ms = 63 [json_name = "frozenAtMs"];</code>
+     * @return The frozenAtMs.
+     */
+    @java.lang.Override
+    public long getFrozenAtMs() {
+      return instance.getFrozenAtMs();
+    }
+    /**
+     * <code>int64 frozen_at_ms = 63 [json_name = "frozenAtMs"];</code>
+     * @param value The frozenAtMs to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFrozenAtMs(long value) {
+      copyOnWrite();
+      instance.setFrozenAtMs(value);
+      return this;
+    }
+    /**
+     * <code>int64 frozen_at_ms = 63 [json_name = "frozenAtMs"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearFrozenAtMs() {
+      copyOnWrite();
+      instance.clearFrozenAtMs();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionHeaderView)
   }
   @java.lang.Override
@@ -4819,9 +4981,12 @@ public  final class SessionHeaderView extends
             "lookupErrorText_",
             "multipleMachines_",
             "shortPath_",
+            "terminalReady_",
+            "terminalWaiting_",
+            "frozenAtMs_",
           };
           java.lang.String info =
-              "\u0000<\u0000\u0001\u0001<<\u0000\u0000\u0000\u0001\u0007\u0002\u0007\u0003\u0007" +
+              "\u0000?\u0000\u0001\u0001??\u0000\u0000\u0000\u0001\u0007\u0002\u0007\u0003\u0007" +
               "\u0004\u0007\u0005\u1009\u0000\u0006\u1009\u0001\u0007\u0208\b\u0208\t\f\n\u0208" +
               "\u000b\f\f\f\r\u1009\u0002\u000e\u1009\u0003\u000f\f\u0010\u0208\u0011\u1009\u0004" +
               "\u0012\u0007\u0013\u0208\u0014\u0208\u0015\u0208\u0016\u1009\u0005\u0017\u0007\u0018" +
@@ -4829,7 +4994,7 @@ public  final class SessionHeaderView extends
               "\u001f\u0208 \u1009\u0007!\u0007\"\u0007#\u0002$\u1009\b%\f&\u0007\'\u000b(\u000b" +
               ")\u1009\t*\u0007+\u0002,\u1009\n-\u0007.\u0208/\u1009\u000b0\u00071\u02082\u0208" +
               "3\u00074\u1009\f5\u1009\r6\f7\u1009\u000e8\u00079\u0007:\u1009\u000f;\u0007<\u0208" +
-              "";
+              "=\u0007>\u0007?\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

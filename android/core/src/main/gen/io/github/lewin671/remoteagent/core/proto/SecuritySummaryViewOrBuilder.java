@@ -111,4 +111,32 @@ public interface SecuritySummaryViewOrBuilder extends
    * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
    */
   int getHandoffCandidatesCount();
+
+  /**
+   * <code>.remoteagent.core.v1.Text authority_name_text = 13 [json_name = "authorityNameText"];</code>
+   * @return Whether the authorityNameText field is set.
+   */
+  boolean hasAuthorityNameText();
+  /**
+   * <code>.remoteagent.core.v1.Text authority_name_text = 13 [json_name = "authorityNameText"];</code>
+   * @return The authorityNameText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getAuthorityNameText();
+
+  /**
+   * <code>bool can_prepare_handoff = 14 [json_name = "canPrepareHandoff"];</code>
+   * @return The canPrepareHandoff.
+   */
+  boolean getCanPrepareHandoff();
+
+  /**
+   * <code>.remoteagent.core.v1.Text lease_renewal_advice = 15 [json_name = "leaseRenewalAdvice"];</code>
+   * @return Whether the leaseRenewalAdvice field is set.
+   */
+  boolean hasLeaseRenewalAdvice();
+  /**
+   * <code>.remoteagent.core.v1.Text lease_renewal_advice = 15 [json_name = "leaseRenewalAdvice"];</code>
+   * @return The leaseRenewalAdvice.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getLeaseRenewalAdvice();
 }

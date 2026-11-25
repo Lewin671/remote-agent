@@ -1484,6 +1484,35 @@ public struct PBCoreProjectListingView: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
+public struct PBCoreHomePrefsBannerView: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var visible: Bool = false
+
+  public var syncing: Bool = false
+
+  public var errorTone: Bool = false
+
+  public var text: PBCoreText {
+    get {return _text ?? PBCoreText()}
+    set {_text = newValue}
+  }
+  /// Returns true if `text` has been explicitly set.
+  public var hasText: Bool {return self._text != nil}
+  /// Clears the value of `text`. Subsequent reads from it will return its default value.
+  public mutating func clearText() {self._text = nil}
+
+  public var canRetry: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _text: PBCoreText? = nil
+}
+
 public struct PBCoreHomeViewModel: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -1664,6 +1693,38 @@ public struct PBCoreHomeViewModel: @unchecked Sendable {
   public var hasTopAttentionQuestion: Bool {return _storage._topAttentionQuestion != nil}
   /// Clears the value of `topAttentionQuestion`. Subsequent reads from it will return its default value.
   public mutating func clearTopAttentionQuestion() {_uniqueStorage()._topAttentionQuestion = nil}
+
+  public var listErrorText: PBCoreText {
+    get {return _storage._listErrorText ?? PBCoreText()}
+    set {_uniqueStorage()._listErrorText = newValue}
+  }
+  /// Returns true if `listErrorText` has been explicitly set.
+  public var hasListErrorText: Bool {return _storage._listErrorText != nil}
+  /// Clears the value of `listErrorText`. Subsequent reads from it will return its default value.
+  public mutating func clearListErrorText() {_uniqueStorage()._listErrorText = nil}
+
+  public var clockSkewBannerText: PBCoreText {
+    get {return _storage._clockSkewBannerText ?? PBCoreText()}
+    set {_uniqueStorage()._clockSkewBannerText = newValue}
+  }
+  /// Returns true if `clockSkewBannerText` has been explicitly set.
+  public var hasClockSkewBannerText: Bool {return _storage._clockSkewBannerText != nil}
+  /// Clears the value of `clockSkewBannerText`. Subsequent reads from it will return its default value.
+  public mutating func clearClockSkewBannerText() {_uniqueStorage()._clockSkewBannerText = nil}
+
+  public var prefsBanner: PBCoreHomePrefsBannerView {
+    get {return _storage._prefsBanner ?? PBCoreHomePrefsBannerView()}
+    set {_uniqueStorage()._prefsBanner = newValue}
+  }
+  /// Returns true if `prefsBanner` has been explicitly set.
+  public var hasPrefsBanner: Bool {return _storage._prefsBanner != nil}
+  /// Clears the value of `prefsBanner`. Subsequent reads from it will return its default value.
+  public mutating func clearPrefsBanner() {_uniqueStorage()._prefsBanner = nil}
+
+  public var hasMoreSessions_p: Bool {
+    get {return _storage._hasMoreSessions_p}
+    set {_uniqueStorage()._hasMoreSessions_p = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3505,9 +3566,63 @@ extension PBCoreProjectListingView: SwiftProtobuf.Message, SwiftProtobuf._Messag
   }
 }
 
+extension PBCoreHomePrefsBannerView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".HomePrefsBannerView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}visible\0\u{1}syncing\0\u{3}error_tone\0\u{1}text\0\u{3}can_retry\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBoolField(value: &self.visible) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.syncing) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.errorTone) }()
+      case 4: try { try decoder.decodeSingularMessageField(value: &self._text) }()
+      case 5: try { try decoder.decodeSingularBoolField(value: &self.canRetry) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if self.visible != false {
+      try visitor.visitSingularBoolField(value: self.visible, fieldNumber: 1)
+    }
+    if self.syncing != false {
+      try visitor.visitSingularBoolField(value: self.syncing, fieldNumber: 2)
+    }
+    if self.errorTone != false {
+      try visitor.visitSingularBoolField(value: self.errorTone, fieldNumber: 3)
+    }
+    try { if let v = self._text {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+    } }()
+    if self.canRetry != false {
+      try visitor.visitSingularBoolField(value: self.canRetry, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreHomePrefsBannerView, rhs: PBCoreHomePrefsBannerView) -> Bool {
+    if lhs.visible != rhs.visible {return false}
+    if lhs.syncing != rhs.syncing {return false}
+    if lhs.errorTone != rhs.errorTone {return false}
+    if lhs._text != rhs._text {return false}
+    if lhs.canRetry != rhs.canRetry {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 extension PBCoreHomeViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".HomeViewModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{4}\u{2}scope_selectable\0\u{3}scope_key\0\u{3}scope_title\0\u{3}scope_short_path\0\u{1}connection\0\u{1}headline\0\u{1}empty\0\u{3}can_filter\0\u{3}filter_query\0\u{3}filter_summary\0\u{3}no_matches\0\u{3}waiting_total\0\u{3}live_total\0\u{3}ended_total\0\u{3}timeline_total\0\u{3}top_attention_session_id\0\u{3}top_attention_actionable\0\u{3}top_attention_card\0\u{1}attention\0\u{1}running\0\u{3}ended_groups\0\u{3}ended_tail\0\u{3}scope_menu\0\u{3}sidebar_projects\0\u{3}can_start\0\u{3}selected_session_id\0\u{3}has_more_ended\0\u{3}top_attention_question\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{4}\u{2}scope_selectable\0\u{3}scope_key\0\u{3}scope_title\0\u{3}scope_short_path\0\u{1}connection\0\u{1}headline\0\u{1}empty\0\u{3}can_filter\0\u{3}filter_query\0\u{3}filter_summary\0\u{3}no_matches\0\u{3}waiting_total\0\u{3}live_total\0\u{3}ended_total\0\u{3}timeline_total\0\u{3}top_attention_session_id\0\u{3}top_attention_actionable\0\u{3}top_attention_card\0\u{1}attention\0\u{1}running\0\u{3}ended_groups\0\u{3}ended_tail\0\u{3}scope_menu\0\u{3}sidebar_projects\0\u{3}can_start\0\u{3}selected_session_id\0\u{3}has_more_ended\0\u{3}top_attention_question\0\u{3}list_error_text\0\u{3}clock_skew_banner_text\0\u{3}prefs_banner\0\u{3}has_more_sessions\0")
 
   fileprivate class _StorageClass {
     var _scopeSelectable: Bool = false
@@ -3538,6 +3653,10 @@ extension PBCoreHomeViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     var _selectedSessionID: String = String()
     var _hasMoreEnded_p: Bool = false
     var _topAttentionQuestion: PBCoreHomeQuestionCardView? = nil
+    var _listErrorText: PBCoreText? = nil
+    var _clockSkewBannerText: PBCoreText? = nil
+    var _prefsBanner: PBCoreHomePrefsBannerView? = nil
+    var _hasMoreSessions_p: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3576,6 +3695,10 @@ extension PBCoreHomeViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       _selectedSessionID = source._selectedSessionID
       _hasMoreEnded_p = source._hasMoreEnded_p
       _topAttentionQuestion = source._topAttentionQuestion
+      _listErrorText = source._listErrorText
+      _clockSkewBannerText = source._clockSkewBannerText
+      _prefsBanner = source._prefsBanner
+      _hasMoreSessions_p = source._hasMoreSessions_p
     }
   }
 
@@ -3622,6 +3745,10 @@ extension PBCoreHomeViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         case 27: try { try decoder.decodeSingularStringField(value: &_storage._selectedSessionID) }()
         case 28: try { try decoder.decodeSingularBoolField(value: &_storage._hasMoreEnded_p) }()
         case 29: try { try decoder.decodeSingularMessageField(value: &_storage._topAttentionQuestion) }()
+        case 30: try { try decoder.decodeSingularMessageField(value: &_storage._listErrorText) }()
+        case 31: try { try decoder.decodeSingularMessageField(value: &_storage._clockSkewBannerText) }()
+        case 32: try { try decoder.decodeSingularMessageField(value: &_storage._prefsBanner) }()
+        case 33: try { try decoder.decodeSingularBoolField(value: &_storage._hasMoreSessions_p) }()
         default: break
         }
       }
@@ -3718,6 +3845,18 @@ extension PBCoreHomeViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       try { if let v = _storage._topAttentionQuestion {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 29)
       } }()
+      try { if let v = _storage._listErrorText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 30)
+      } }()
+      try { if let v = _storage._clockSkewBannerText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 31)
+      } }()
+      try { if let v = _storage._prefsBanner {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 32)
+      } }()
+      if _storage._hasMoreSessions_p != false {
+        try visitor.visitSingularBoolField(value: _storage._hasMoreSessions_p, fieldNumber: 33)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -3755,6 +3894,10 @@ extension PBCoreHomeViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         if _storage._selectedSessionID != rhs_storage._selectedSessionID {return false}
         if _storage._hasMoreEnded_p != rhs_storage._hasMoreEnded_p {return false}
         if _storage._topAttentionQuestion != rhs_storage._topAttentionQuestion {return false}
+        if _storage._listErrorText != rhs_storage._listErrorText {return false}
+        if _storage._clockSkewBannerText != rhs_storage._clockSkewBannerText {return false}
+        if _storage._prefsBanner != rhs_storage._prefsBanner {return false}
+        if _storage._hasMoreSessions_p != rhs_storage._hasMoreSessions_p {return false}
         return true
       }
       if !storagesAreEqual {return false}

@@ -39,23 +39,50 @@ func BuildHome(st *State, endedLimit int) *corev1.HomeViewModel {
 	}
 
 	sessionListErr := ReasonText(st.SessionListError)
+	headline := buildHomeHeadlineView(homeData.Headline, st.World.LiveLoaded, sessionListErr)
+	if st.DisplayGrace && st.World.Connection != lists.ConnConnected && headline != nil && headline.IsConnecting {
+		headline = nil
+	}
+	var clockSkewBanner *corev1.Text
+	if st.World.AccountClockSkewed {
+		clockSkewBanner = text.Msg(text.KeyErrorsThisDeviceSClockIsBehindTheAccountState)
+	}
+	var prefsBanner *corev1.HomePrefsBannerView
+	if st.World.PrefsSyncing {
+		prefsBanner = &corev1.HomePrefsBannerView{
+			Visible: true,
+			Syncing: true,
+			Text:    text.Msg(text.KeyProjectsSyncing),
+		}
+	} else if (st.World.PrefsLoadFailed || st.PrefsBroken) && st.World.Prefs == nil {
+		prefsBanner = &corev1.HomePrefsBannerView{
+			Visible:   true,
+			ErrorTone: true,
+			CanRetry:  true,
+			Text:      text.Msg(text.KeyProjectsLoadFailed),
+		}
+	}
 	vm := &corev1.HomeViewModel{
-		ScopeSelectable:   len(projRes.Listed) > 1,
-		ScopeKey:          scope.Key,
-		ScopeTitle:        scopeTitle,
-		ScopeShortPath:    scope.ShortPath,
-		Connection:        buildConnectionStatus(st),
-		Headline:          buildHomeHeadlineView(homeData.Headline, st.World.LiveLoaded, sessionListErr),
-		Empty:             buildHomeEmptyView(homeData.Empty, st),
-		CanFilter:         homeData.ShowFilter,
-		FilterQuery:       st.HomeFilterQuery,
-		WaitingTotal:      homeData.WaitingTotal,
-		LiveTotal:         homeData.RunningTotal,
-		EndedTotal:        homeData.EndedTotal,
-		TimelineTotal:     homeData.TimelineTotal,
-		CanStart:          canStart,
-		SelectedSessionId: st.HomeSelectedSessionID,
-		HasMoreEnded:      homeData.HasMoreEnded,
+		ScopeSelectable:     len(projRes.Listed) > 1,
+		ScopeKey:            scope.Key,
+		ScopeTitle:          scopeTitle,
+		ScopeShortPath:      scope.ShortPath,
+		Connection:          buildConnectionStatus(st),
+		Headline:            headline,
+		Empty:               buildHomeEmptyView(homeData.Empty, st),
+		CanFilter:           homeData.ShowFilter,
+		FilterQuery:         st.HomeFilterQuery,
+		WaitingTotal:        homeData.WaitingTotal,
+		LiveTotal:           homeData.RunningTotal,
+		EndedTotal:          homeData.EndedTotal,
+		TimelineTotal:       homeData.TimelineTotal,
+		CanStart:            canStart,
+		SelectedSessionId:   st.HomeSelectedSessionID,
+		HasMoreEnded:        homeData.HasMoreEnded,
+		ListErrorText:       sessionListErr,
+		ClockSkewBannerText: clockSkewBanner,
+		PrefsBanner:         prefsBanner,
+		HasMoreSessions:     st.World.HasMoreSessions,
 	}
 
 	if st.HomeFilterQuery != "" {

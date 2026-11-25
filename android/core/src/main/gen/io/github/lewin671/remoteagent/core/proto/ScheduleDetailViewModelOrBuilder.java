@@ -479,4 +479,10 @@ public interface ScheduleDetailViewModelOrBuilder extends
    * @return The menuSubtitle.
    */
   io.github.lewin671.remoteagent.core.proto.Text getMenuSubtitle();
+
+  /**
+   * <code>bool initial_loaded = 50 [json_name = "initialLoaded"];</code>
+   * @return The initialLoaded.
+   */
+  boolean getInitialLoaded();
 }

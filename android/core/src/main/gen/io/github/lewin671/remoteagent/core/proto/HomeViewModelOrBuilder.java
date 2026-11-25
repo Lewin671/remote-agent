@@ -284,4 +284,43 @@ public interface HomeViewModelOrBuilder extends
    * @return The topAttentionQuestion.
    */
   io.github.lewin671.remoteagent.core.proto.HomeQuestionCardView getTopAttentionQuestion();
+
+  /**
+   * <code>.remoteagent.core.v1.Text list_error_text = 30 [json_name = "listErrorText"];</code>
+   * @return Whether the listErrorText field is set.
+   */
+  boolean hasListErrorText();
+  /**
+   * <code>.remoteagent.core.v1.Text list_error_text = 30 [json_name = "listErrorText"];</code>
+   * @return The listErrorText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getListErrorText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 31 [json_name = "clockSkewBannerText"];</code>
+   * @return Whether the clockSkewBannerText field is set.
+   */
+  boolean hasClockSkewBannerText();
+  /**
+   * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 31 [json_name = "clockSkewBannerText"];</code>
+   * @return The clockSkewBannerText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getClockSkewBannerText();
+
+  /**
+   * <code>.remoteagent.core.v1.HomePrefsBannerView prefs_banner = 32 [json_name = "prefsBanner"];</code>
+   * @return Whether the prefsBanner field is set.
+   */
+  boolean hasPrefsBanner();
+  /**
+   * <code>.remoteagent.core.v1.HomePrefsBannerView prefs_banner = 32 [json_name = "prefsBanner"];</code>
+   * @return The prefsBanner.
+   */
+  io.github.lewin671.remoteagent.core.proto.HomePrefsBannerView getPrefsBanner();
+
+  /**
+   * <code>bool has_more_sessions = 33 [json_name = "hasMoreSessions"];</code>
+   * @return The hasMoreSessions.
+   */
+  boolean getHasMoreSessions();
 }

@@ -1379,6 +1379,9 @@ type SecuritySummaryView struct {
 	RecoveryStatusStale bool                    `protobuf:"varint,10,opt,name=recovery_status_stale,json=recoveryStatusStale,proto3" json:"recovery_status_stale,omitempty"`
 	LeaseEndMs          int64                   `protobuf:"varint,11,opt,name=lease_end_ms,json=leaseEndMs,proto3" json:"lease_end_ms,omitempty"`
 	HandoffCandidates   []*HandoffCandidateView `protobuf:"bytes,12,rep,name=handoff_candidates,json=handoffCandidates,proto3" json:"handoff_candidates,omitempty"`
+	AuthorityNameText   *Text                   `protobuf:"bytes,13,opt,name=authority_name_text,json=authorityNameText,proto3" json:"authority_name_text,omitempty"`
+	CanPrepareHandoff   bool                    `protobuf:"varint,14,opt,name=can_prepare_handoff,json=canPrepareHandoff,proto3" json:"can_prepare_handoff,omitempty"`
+	LeaseRenewalAdvice  *Text                   `protobuf:"bytes,15,opt,name=lease_renewal_advice,json=leaseRenewalAdvice,proto3" json:"lease_renewal_advice,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -1493,6 +1496,27 @@ func (x *SecuritySummaryView) GetLeaseEndMs() int64 {
 func (x *SecuritySummaryView) GetHandoffCandidates() []*HandoffCandidateView {
 	if x != nil {
 		return x.HandoffCandidates
+	}
+	return nil
+}
+
+func (x *SecuritySummaryView) GetAuthorityNameText() *Text {
+	if x != nil {
+		return x.AuthorityNameText
+	}
+	return nil
+}
+
+func (x *SecuritySummaryView) GetCanPrepareHandoff() bool {
+	if x != nil {
+		return x.CanPrepareHandoff
+	}
+	return false
+}
+
+func (x *SecuritySummaryView) GetLeaseRenewalAdvice() *Text {
+	if x != nil {
+		return x.LeaseRenewalAdvice
 	}
 	return nil
 }
@@ -6229,7 +6253,7 @@ const file_remoteagent_core_v1_settings_view_proto_rawDesc = "" +
 	"\x14HandoffCandidateView\x12\x1b\n" +
 	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12E\n" +
-	"\x11display_name_text\x18\x03 \x01(\v2\x19.remoteagent.core.v1.TextR\x0fdisplayNameText\"\xdc\x04\n" +
+	"\x11display_name_text\x18\x03 \x01(\v2\x19.remoteagent.core.v1.TextR\x0fdisplayNameText\"\xa4\x06\n" +
 	"\x13SecuritySummaryView\x12\x1d\n" +
 	"\n" +
 	"is_manager\x18\x01 \x01(\bR\tisManager\x12\x1a\n" +
@@ -6245,7 +6269,10 @@ const file_remoteagent_core_v1_settings_view_proto_rawDesc = "" +
 	" \x01(\bR\x13recoveryStatusStale\x12 \n" +
 	"\flease_end_ms\x18\v \x01(\x03R\n" +
 	"leaseEndMs\x12X\n" +
-	"\x12handoff_candidates\x18\f \x03(\v2).remoteagent.core.v1.HandoffCandidateViewR\x11handoffCandidates\"\xeb\x04\n" +
+	"\x12handoff_candidates\x18\f \x03(\v2).remoteagent.core.v1.HandoffCandidateViewR\x11handoffCandidates\x12I\n" +
+	"\x13authority_name_text\x18\r \x01(\v2\x19.remoteagent.core.v1.TextR\x11authorityNameText\x12.\n" +
+	"\x13can_prepare_handoff\x18\x0e \x01(\bR\x11canPrepareHandoff\x12K\n" +
+	"\x14lease_renewal_advice\x18\x0f \x01(\v2\x19.remoteagent.core.v1.TextR\x12leaseRenewalAdvice\"\xeb\x04\n" +
 	"\x11NotificationsView\x12\x1c\n" +
 	"\tsupported\x18\x01 \x01(\bR\tsupported\x12P\n" +
 	"\n" +
@@ -6969,165 +6996,167 @@ var file_remoteagent_core_v1_settings_view_proto_depIdxs = []int32{
 	68,  // 20: remoteagent.core.v1.SecuritySummaryView.summary_text:type_name -> remoteagent.core.v1.Text
 	68,  // 21: remoteagent.core.v1.SecuritySummaryView.recovery_notice:type_name -> remoteagent.core.v1.Text
 	19,  // 22: remoteagent.core.v1.SecuritySummaryView.handoff_candidates:type_name -> remoteagent.core.v1.HandoffCandidateView
-	6,   // 23: remoteagent.core.v1.NotificationsView.permission:type_name -> remoteagent.core.v1.NotificationPermissionState
-	7,   // 24: remoteagent.core.v1.NotificationsView.push_state:type_name -> remoteagent.core.v1.PushRegistrationState
-	68,  // 25: remoteagent.core.v1.NotificationsView.status_text:type_name -> remoteagent.core.v1.Text
-	68,  // 26: remoteagent.core.v1.NotificationsView.hint_text:type_name -> remoteagent.core.v1.Text
-	68,  // 27: remoteagent.core.v1.NotificationsView.summary_text:type_name -> remoteagent.core.v1.Text
-	5,   // 28: remoteagent.core.v1.AppearanceView.theme:type_name -> remoteagent.core.v1.ThemePreference
-	68,  // 29: remoteagent.core.v1.AppearanceView.label:type_name -> remoteagent.core.v1.Text
-	68,  // 30: remoteagent.core.v1.ClientUpdateView.status_text:type_name -> remoteagent.core.v1.Text
-	68,  // 31: remoteagent.core.v1.ClientUpdateView.error_text:type_name -> remoteagent.core.v1.Text
-	8,   // 32: remoteagent.core.v1.ConnCheckSummaryView.server_state:type_name -> remoteagent.core.v1.ConnProbeState
-	68,  // 33: remoteagent.core.v1.ConnCheckSummaryView.status_word:type_name -> remoteagent.core.v1.Text
-	68,  // 34: remoteagent.core.v1.ConnCheckSummaryView.summary_text:type_name -> remoteagent.core.v1.Text
-	68,  // 35: remoteagent.core.v1.ConnCheckSummaryView.last_failure_text:type_name -> remoteagent.core.v1.Text
-	72,  // 36: remoteagent.core.v1.ConnCheckSummaryView.conn_state:type_name -> remoteagent.core.v1.ConnState
-	68,  // 37: remoteagent.core.v1.ConnCheckSummaryView.conn_step:type_name -> remoteagent.core.v1.Text
-	68,  // 38: remoteagent.core.v1.ConnCheckSummaryView.banner_text:type_name -> remoteagent.core.v1.Text
-	68,  // 39: remoteagent.core.v1.ConnCheckSummaryView.footer_text:type_name -> remoteagent.core.v1.Text
-	68,  // 40: remoteagent.core.v1.SettingsViewModel.recovery_banner_text:type_name -> remoteagent.core.v1.Text
-	68,  // 41: remoteagent.core.v1.SettingsViewModel.unlinked_banner_text:type_name -> remoteagent.core.v1.Text
-	68,  // 42: remoteagent.core.v1.SettingsViewModel.clock_skew_banner_text:type_name -> remoteagent.core.v1.Text
-	17,  // 43: remoteagent.core.v1.SettingsViewModel.machines:type_name -> remoteagent.core.v1.MachineListCardView
-	68,  // 44: remoteagent.core.v1.SettingsViewModel.add_device_hint:type_name -> remoteagent.core.v1.Text
-	68,  // 45: remoteagent.core.v1.SettingsViewModel.empty_machines_text:type_name -> remoteagent.core.v1.Text
-	18,  // 46: remoteagent.core.v1.SettingsViewModel.recent_clients:type_name -> remoteagent.core.v1.ClientRowView
-	20,  // 47: remoteagent.core.v1.SettingsViewModel.security:type_name -> remoteagent.core.v1.SecuritySummaryView
-	21,  // 48: remoteagent.core.v1.SettingsViewModel.notifications:type_name -> remoteagent.core.v1.NotificationsView
-	22,  // 49: remoteagent.core.v1.SettingsViewModel.appearance:type_name -> remoteagent.core.v1.AppearanceView
-	24,  // 50: remoteagent.core.v1.SettingsViewModel.update:type_name -> remoteagent.core.v1.ClientUpdateView
-	25,  // 51: remoteagent.core.v1.SettingsViewModel.conn_check:type_name -> remoteagent.core.v1.ConnCheckSummaryView
-	73,  // 52: remoteagent.core.v1.SettingsViewModel.disk_reminders:type_name -> remoteagent.core.v1.DiskReminderView
-	74,  // 53: remoteagent.core.v1.SettingsViewModel.quota_banner:type_name -> remoteagent.core.v1.QuotaBannerView
-	68,  // 54: remoteagent.core.v1.SettingsViewModel.machine_count_text:type_name -> remoteagent.core.v1.Text
-	68,  // 55: remoteagent.core.v1.SettingsViewModel.clients_summary_text:type_name -> remoteagent.core.v1.Text
-	68,  // 56: remoteagent.core.v1.SettingsViewModel.empty_machines_body:type_name -> remoteagent.core.v1.Text
-	0,   // 57: remoteagent.core.v1.DirectRouteReport.state:type_name -> remoteagent.core.v1.DirectRouteState
-	1,   // 58: remoteagent.core.v1.DirectRouteReport.reason:type_name -> remoteagent.core.v1.DirectRouteReason
-	2,   // 59: remoteagent.core.v1.DirectRouteReport.file_route:type_name -> remoteagent.core.v1.DirectPathChoice
-	2,   // 60: remoteagent.core.v1.DirectRouteReport.read_route:type_name -> remoteagent.core.v1.DirectPathChoice
-	2,   // 61: remoteagent.core.v1.DirectRouteReport.terminal_route:type_name -> remoteagent.core.v1.DirectPathChoice
-	3,   // 62: remoteagent.core.v1.ConnCheckDirectRowView.stage:type_name -> remoteagent.core.v1.ConnectionGroupStage
-	4,   // 63: remoteagent.core.v1.ConnCheckDirectRowView.tone:type_name -> remoteagent.core.v1.ConnectionGroupTone
-	68,  // 64: remoteagent.core.v1.ConnCheckDirectRowView.label_text:type_name -> remoteagent.core.v1.Text
-	68,  // 65: remoteagent.core.v1.ConnCheckDirectRowView.status_text:type_name -> remoteagent.core.v1.Text
-	68,  // 66: remoteagent.core.v1.ConnCheckDirectRowView.detail_text:type_name -> remoteagent.core.v1.Text
-	68,  // 67: remoteagent.core.v1.ConnCheckDirectRowView.metric_text:type_name -> remoteagent.core.v1.Text
-	3,   // 68: remoteagent.core.v1.ConnectionGroupView.stage:type_name -> remoteagent.core.v1.ConnectionGroupStage
-	4,   // 69: remoteagent.core.v1.ConnectionGroupView.tone:type_name -> remoteagent.core.v1.ConnectionGroupTone
-	68,  // 70: remoteagent.core.v1.ConnectionGroupView.status_text:type_name -> remoteagent.core.v1.Text
-	68,  // 71: remoteagent.core.v1.ConnectionGroupView.metric_text:type_name -> remoteagent.core.v1.Text
-	68,  // 72: remoteagent.core.v1.ConnectionGroupView.detail_text:type_name -> remoteagent.core.v1.Text
-	68,  // 73: remoteagent.core.v1.ConnectionGroupView.file_speed_text:type_name -> remoteagent.core.v1.Text
-	68,  // 74: remoteagent.core.v1.ConnectionGroupView.read_latency_text:type_name -> remoteagent.core.v1.Text
-	68,  // 75: remoteagent.core.v1.ConnectionGroupView.footer_text:type_name -> remoteagent.core.v1.Text
-	70,  // 76: remoteagent.core.v1.ConnectionGroupView.row_dot:type_name -> remoteagent.core.v1.MachineStatusDot
-	68,  // 77: remoteagent.core.v1.ConnectionGroupView.row_value_text:type_name -> remoteagent.core.v1.Text
-	68,  // 78: remoteagent.core.v1.ConnectionGroupView.row_subtitle_text:type_name -> remoteagent.core.v1.Text
-	69,  // 79: remoteagent.core.v1.CliVersionView.agent:type_name -> remoteagent.v1.Agent
-	68,  // 80: remoteagent.core.v1.CliVersionView.unverified_label:type_name -> remoteagent.core.v1.Text
-	68,  // 81: remoteagent.core.v1.CliVersionView.default_model_label:type_name -> remoteagent.core.v1.Text
-	68,  // 82: remoteagent.core.v1.CliVersionView.default_mode_label:type_name -> remoteagent.core.v1.Text
-	68,  // 83: remoteagent.core.v1.CliVersionView.disabled_label:type_name -> remoteagent.core.v1.Text
-	35,  // 84: remoteagent.core.v1.CliVersionView.defaults:type_name -> remoteagent.core.v1.MachineAgentDefaultsView
-	68,  // 85: remoteagent.core.v1.ModelChoiceView.label:type_name -> remoteagent.core.v1.Text
-	68,  // 86: remoteagent.core.v1.EffortChoiceView.label:type_name -> remoteagent.core.v1.Text
-	75,  // 87: remoteagent.core.v1.ModeChoiceView.mode:type_name -> remoteagent.v1.ApprovalMode
-	68,  // 88: remoteagent.core.v1.ModeChoiceView.label:type_name -> remoteagent.core.v1.Text
-	68,  // 89: remoteagent.core.v1.ModeChoiceView.disabled_reason:type_name -> remoteagent.core.v1.Text
-	69,  // 90: remoteagent.core.v1.MachineAgentDefaultsView.agent:type_name -> remoteagent.v1.Agent
-	68,  // 91: remoteagent.core.v1.MachineAgentDefaultsView.selected_model_label:type_name -> remoteagent.core.v1.Text
-	32,  // 92: remoteagent.core.v1.MachineAgentDefaultsView.model_choices:type_name -> remoteagent.core.v1.ModelChoiceView
-	33,  // 93: remoteagent.core.v1.MachineAgentDefaultsView.effort_choices:type_name -> remoteagent.core.v1.EffortChoiceView
-	75,  // 94: remoteagent.core.v1.MachineAgentDefaultsView.selected_mode:type_name -> remoteagent.v1.ApprovalMode
-	34,  // 95: remoteagent.core.v1.MachineAgentDefaultsView.mode_choices:type_name -> remoteagent.core.v1.ModeChoiceView
-	68,  // 96: remoteagent.core.v1.MachineAgentDefaultsView.auto_unavailable_notice:type_name -> remoteagent.core.v1.Text
-	68,  // 97: remoteagent.core.v1.MachineAgentDefaultsView.footer_text:type_name -> remoteagent.core.v1.Text
-	68,  // 98: remoteagent.core.v1.TimeoutChoiceView.label:type_name -> remoteagent.core.v1.Text
-	68,  // 99: remoteagent.core.v1.IdleCloseChoiceView.label:type_name -> remoteagent.core.v1.Text
-	68,  // 100: remoteagent.core.v1.QuotaSizeChoiceView.label:type_name -> remoteagent.core.v1.Text
-	68,  // 101: remoteagent.core.v1.AttachmentStorageView.uploaded_text:type_name -> remoteagent.core.v1.Text
-	68,  // 102: remoteagent.core.v1.AttachmentStorageView.uploaded_detail:type_name -> remoteagent.core.v1.Text
-	38,  // 103: remoteagent.core.v1.AttachmentStorageView.quota_choices:type_name -> remoteagent.core.v1.QuotaSizeChoiceView
-	68,  // 104: remoteagent.core.v1.AttachmentStorageView.preview_cache_text:type_name -> remoteagent.core.v1.Text
-	68,  // 105: remoteagent.core.v1.AttachmentStorageView.emergency_reserve_text:type_name -> remoteagent.core.v1.Text
-	68,  // 106: remoteagent.core.v1.AttachmentStorageView.clear_button_label:type_name -> remoteagent.core.v1.Text
-	68,  // 107: remoteagent.core.v1.AttachmentStorageView.footer_text:type_name -> remoteagent.core.v1.Text
-	68,  // 108: remoteagent.core.v1.AttachmentStorageView.summary_text:type_name -> remoteagent.core.v1.Text
-	68,  // 109: remoteagent.core.v1.AttachmentStorageView.used_total_text:type_name -> remoteagent.core.v1.Text
-	68,  // 110: remoteagent.core.v1.AttachmentStorageView.limit_label:type_name -> remoteagent.core.v1.Text
-	68,  // 111: remoteagent.core.v1.MachineProjectView.last_active_text:type_name -> remoteagent.core.v1.Text
-	68,  // 112: remoteagent.core.v1.MachineManagementActionsView.explanation_text:type_name -> remoteagent.core.v1.Text
-	68,  // 113: remoteagent.core.v1.MachineSettingsViewModel.offline_or_mismatch_banner:type_name -> remoteagent.core.v1.Text
-	68,  // 114: remoteagent.core.v1.MachineSettingsViewModel.removed_banner:type_name -> remoteagent.core.v1.Text
-	76,  // 115: remoteagent.core.v1.MachineSettingsViewModel.status_rings:type_name -> remoteagent.core.v1.MachineRingView
-	77,  // 116: remoteagent.core.v1.MachineSettingsViewModel.quota_rows:type_name -> remoteagent.core.v1.QuotaCliSection
-	30,  // 117: remoteagent.core.v1.MachineSettingsViewModel.connection:type_name -> remoteagent.core.v1.ConnectionGroupView
-	31,  // 118: remoteagent.core.v1.MachineSettingsViewModel.cli_versions:type_name -> remoteagent.core.v1.CliVersionView
-	68,  // 119: remoteagent.core.v1.MachineSettingsViewModel.settings_error:type_name -> remoteagent.core.v1.Text
-	68,  // 120: remoteagent.core.v1.MachineSettingsViewModel.save_error:type_name -> remoteagent.core.v1.Text
-	69,  // 121: remoteagent.core.v1.MachineSettingsViewModel.available_agents:type_name -> remoteagent.v1.Agent
-	69,  // 122: remoteagent.core.v1.MachineSettingsViewModel.selected_agent:type_name -> remoteagent.v1.Agent
-	35,  // 123: remoteagent.core.v1.MachineSettingsViewModel.agent_defaults:type_name -> remoteagent.core.v1.MachineAgentDefaultsView
-	36,  // 124: remoteagent.core.v1.MachineSettingsViewModel.approval_timeout_choices:type_name -> remoteagent.core.v1.TimeoutChoiceView
-	37,  // 125: remoteagent.core.v1.MachineSettingsViewModel.idle_close_choices:type_name -> remoteagent.core.v1.IdleCloseChoiceView
-	39,  // 126: remoteagent.core.v1.MachineSettingsViewModel.attachment_storage:type_name -> remoteagent.core.v1.AttachmentStorageView
-	40,  // 127: remoteagent.core.v1.MachineSettingsViewModel.projects:type_name -> remoteagent.core.v1.MachineProjectView
-	41,  // 128: remoteagent.core.v1.MachineSettingsViewModel.management:type_name -> remoteagent.core.v1.MachineManagementActionsView
-	68,  // 129: remoteagent.core.v1.MachineSettingsViewModel.cli_switches_disabled_reason:type_name -> remoteagent.core.v1.Text
-	68,  // 130: remoteagent.core.v1.MachineSettingsViewModel.cli_switches_conflict_banner:type_name -> remoteagent.core.v1.Text
-	68,  // 131: remoteagent.core.v1.MachineSettingsViewModel.cli_switches_footer:type_name -> remoteagent.core.v1.Text
-	70,  // 132: remoteagent.core.v1.MachineSettingsViewModel.header_dot:type_name -> remoteagent.core.v1.MachineStatusDot
-	68,  // 133: remoteagent.core.v1.MachineSettingsViewModel.header_subtitle:type_name -> remoteagent.core.v1.Text
-	70,  // 134: remoteagent.core.v1.MachineSettingsViewModel.status_card_dot:type_name -> remoteagent.core.v1.MachineStatusDot
-	68,  // 135: remoteagent.core.v1.MachineSettingsViewModel.status_card_badge:type_name -> remoteagent.core.v1.Text
-	68,  // 136: remoteagent.core.v1.MachineSettingsViewModel.usage_empty_text:type_name -> remoteagent.core.v1.Text
-	68,  // 137: remoteagent.core.v1.MachineSettingsViewModel.project_count_text:type_name -> remoteagent.core.v1.Text
-	68,  // 138: remoteagent.core.v1.MachineSettingsViewModel.usage_tokens_text:type_name -> remoteagent.core.v1.Text
-	68,  // 139: remoteagent.core.v1.DevicesViewModel.add_device_hint:type_name -> remoteagent.core.v1.Text
-	17,  // 140: remoteagent.core.v1.DevicesViewModel.computers:type_name -> remoteagent.core.v1.MachineListCardView
-	18,  // 141: remoteagent.core.v1.DevicesViewModel.clients:type_name -> remoteagent.core.v1.ClientRowView
-	18,  // 142: remoteagent.core.v1.DevicesViewModel.unfinished_pairings:type_name -> remoteagent.core.v1.ClientRowView
-	68,  // 143: remoteagent.core.v1.DevicesViewModel.error_text:type_name -> remoteagent.core.v1.Text
-	68,  // 144: remoteagent.core.v1.DevicesViewModel.empty_computers_text:type_name -> remoteagent.core.v1.Text
-	68,  // 145: remoteagent.core.v1.DevicesViewModel.client_count_text:type_name -> remoteagent.core.v1.Text
-	12,  // 146: remoteagent.core.v1.PlainDiagCheckView.mark:type_name -> remoteagent.core.v1.DiagCheckMark
-	68,  // 147: remoteagent.core.v1.PlainDiagCheckView.label_text:type_name -> remoteagent.core.v1.Text
-	68,  // 148: remoteagent.core.v1.PlainDiagCheckView.detail_text:type_name -> remoteagent.core.v1.Text
-	68,  // 149: remoteagent.core.v1.PlainDiagCheckView.status_text:type_name -> remoteagent.core.v1.Text
-	68,  // 150: remoteagent.core.v1.DiagRowView.label_text:type_name -> remoteagent.core.v1.Text
-	68,  // 151: remoteagent.core.v1.DiagRowView.value_text:type_name -> remoteagent.core.v1.Text
-	68,  // 152: remoteagent.core.v1.DiagGroupView.title_text:type_name -> remoteagent.core.v1.Text
-	47,  // 153: remoteagent.core.v1.DiagGroupView.rows:type_name -> remoteagent.core.v1.DiagRowView
-	68,  // 154: remoteagent.core.v1.DirectDiagnosticsViewModel.title_text:type_name -> remoteagent.core.v1.Text
-	68,  // 155: remoteagent.core.v1.DirectDiagnosticsViewModel.body_text:type_name -> remoteagent.core.v1.Text
-	68,  // 156: remoteagent.core.v1.DirectDiagnosticsViewModel.verdict_text:type_name -> remoteagent.core.v1.Text
-	46,  // 157: remoteagent.core.v1.DirectDiagnosticsViewModel.checks:type_name -> remoteagent.core.v1.PlainDiagCheckView
-	48,  // 158: remoteagent.core.v1.DirectDiagnosticsViewModel.groups:type_name -> remoteagent.core.v1.DiagGroupView
-	48,  // 159: remoteagent.core.v1.DirectDiagnosticsViewModel.result_group:type_name -> remoteagent.core.v1.DiagGroupView
-	68,  // 160: remoteagent.core.v1.DirectDiagnosticsViewModel.report_lines:type_name -> remoteagent.core.v1.Text
-	28,  // 161: remoteagent.core.v1.DirectDiagnosticsViewModel.report:type_name -> remoteagent.core.v1.DirectRouteReport
-	68,  // 162: remoteagent.core.v1.ClientDetailViewModel.role_label:type_name -> remoteagent.core.v1.Text
-	68,  // 163: remoteagent.core.v1.ClientDetailViewModel.last_used_text:type_name -> remoteagent.core.v1.Text
-	68,  // 164: remoteagent.core.v1.ClientDetailViewModel.added_text:type_name -> remoteagent.core.v1.Text
-	68,  // 165: remoteagent.core.v1.ClientDetailViewModel.rename_error:type_name -> remoteagent.core.v1.Text
-	68,  // 166: remoteagent.core.v1.ClientDetailViewModel.management_hint:type_name -> remoteagent.core.v1.Text
-	69,  // 167: remoteagent.core.v1.ToggleMachineAgentEvent.agent:type_name -> remoteagent.v1.Agent
-	69,  // 168: remoteagent.core.v1.MachineSettingsSelectAgentEvent.agent:type_name -> remoteagent.v1.Agent
-	69,  // 169: remoteagent.core.v1.UpdateMachineAgentDefaultsEvent.agent:type_name -> remoteagent.v1.Agent
-	75,  // 170: remoteagent.core.v1.UpdateMachineAgentDefaultsEvent.mode:type_name -> remoteagent.v1.ApprovalMode
-	6,   // 171: remoteagent.core.v1.SetNotificationPrefEvent.permission:type_name -> remoteagent.core.v1.NotificationPermissionState
-	7,   // 172: remoteagent.core.v1.SetNotificationPrefEvent.push_state:type_name -> remoteagent.core.v1.PushRegistrationState
-	5,   // 173: remoteagent.core.v1.SetAppearancePrefEvent.theme:type_name -> remoteagent.core.v1.ThemePreference
-	8,   // 174: remoteagent.core.v1.ConnCheckStatusEvent.server_state:type_name -> remoteagent.core.v1.ConnProbeState
-	23,  // 175: remoteagent.core.v1.ClientUpdateStateEvent.releases:type_name -> remoteagent.core.v1.ReleaseCandidateInfo
-	5,   // 176: remoteagent.core.v1.PersistClientPrefsEffect.theme:type_name -> remoteagent.core.v1.ThemePreference
-	177, // [177:177] is the sub-list for method output_type
-	177, // [177:177] is the sub-list for method input_type
-	177, // [177:177] is the sub-list for extension type_name
-	177, // [177:177] is the sub-list for extension extendee
-	0,   // [0:177] is the sub-list for field type_name
+	68,  // 23: remoteagent.core.v1.SecuritySummaryView.authority_name_text:type_name -> remoteagent.core.v1.Text
+	68,  // 24: remoteagent.core.v1.SecuritySummaryView.lease_renewal_advice:type_name -> remoteagent.core.v1.Text
+	6,   // 25: remoteagent.core.v1.NotificationsView.permission:type_name -> remoteagent.core.v1.NotificationPermissionState
+	7,   // 26: remoteagent.core.v1.NotificationsView.push_state:type_name -> remoteagent.core.v1.PushRegistrationState
+	68,  // 27: remoteagent.core.v1.NotificationsView.status_text:type_name -> remoteagent.core.v1.Text
+	68,  // 28: remoteagent.core.v1.NotificationsView.hint_text:type_name -> remoteagent.core.v1.Text
+	68,  // 29: remoteagent.core.v1.NotificationsView.summary_text:type_name -> remoteagent.core.v1.Text
+	5,   // 30: remoteagent.core.v1.AppearanceView.theme:type_name -> remoteagent.core.v1.ThemePreference
+	68,  // 31: remoteagent.core.v1.AppearanceView.label:type_name -> remoteagent.core.v1.Text
+	68,  // 32: remoteagent.core.v1.ClientUpdateView.status_text:type_name -> remoteagent.core.v1.Text
+	68,  // 33: remoteagent.core.v1.ClientUpdateView.error_text:type_name -> remoteagent.core.v1.Text
+	8,   // 34: remoteagent.core.v1.ConnCheckSummaryView.server_state:type_name -> remoteagent.core.v1.ConnProbeState
+	68,  // 35: remoteagent.core.v1.ConnCheckSummaryView.status_word:type_name -> remoteagent.core.v1.Text
+	68,  // 36: remoteagent.core.v1.ConnCheckSummaryView.summary_text:type_name -> remoteagent.core.v1.Text
+	68,  // 37: remoteagent.core.v1.ConnCheckSummaryView.last_failure_text:type_name -> remoteagent.core.v1.Text
+	72,  // 38: remoteagent.core.v1.ConnCheckSummaryView.conn_state:type_name -> remoteagent.core.v1.ConnState
+	68,  // 39: remoteagent.core.v1.ConnCheckSummaryView.conn_step:type_name -> remoteagent.core.v1.Text
+	68,  // 40: remoteagent.core.v1.ConnCheckSummaryView.banner_text:type_name -> remoteagent.core.v1.Text
+	68,  // 41: remoteagent.core.v1.ConnCheckSummaryView.footer_text:type_name -> remoteagent.core.v1.Text
+	68,  // 42: remoteagent.core.v1.SettingsViewModel.recovery_banner_text:type_name -> remoteagent.core.v1.Text
+	68,  // 43: remoteagent.core.v1.SettingsViewModel.unlinked_banner_text:type_name -> remoteagent.core.v1.Text
+	68,  // 44: remoteagent.core.v1.SettingsViewModel.clock_skew_banner_text:type_name -> remoteagent.core.v1.Text
+	17,  // 45: remoteagent.core.v1.SettingsViewModel.machines:type_name -> remoteagent.core.v1.MachineListCardView
+	68,  // 46: remoteagent.core.v1.SettingsViewModel.add_device_hint:type_name -> remoteagent.core.v1.Text
+	68,  // 47: remoteagent.core.v1.SettingsViewModel.empty_machines_text:type_name -> remoteagent.core.v1.Text
+	18,  // 48: remoteagent.core.v1.SettingsViewModel.recent_clients:type_name -> remoteagent.core.v1.ClientRowView
+	20,  // 49: remoteagent.core.v1.SettingsViewModel.security:type_name -> remoteagent.core.v1.SecuritySummaryView
+	21,  // 50: remoteagent.core.v1.SettingsViewModel.notifications:type_name -> remoteagent.core.v1.NotificationsView
+	22,  // 51: remoteagent.core.v1.SettingsViewModel.appearance:type_name -> remoteagent.core.v1.AppearanceView
+	24,  // 52: remoteagent.core.v1.SettingsViewModel.update:type_name -> remoteagent.core.v1.ClientUpdateView
+	25,  // 53: remoteagent.core.v1.SettingsViewModel.conn_check:type_name -> remoteagent.core.v1.ConnCheckSummaryView
+	73,  // 54: remoteagent.core.v1.SettingsViewModel.disk_reminders:type_name -> remoteagent.core.v1.DiskReminderView
+	74,  // 55: remoteagent.core.v1.SettingsViewModel.quota_banner:type_name -> remoteagent.core.v1.QuotaBannerView
+	68,  // 56: remoteagent.core.v1.SettingsViewModel.machine_count_text:type_name -> remoteagent.core.v1.Text
+	68,  // 57: remoteagent.core.v1.SettingsViewModel.clients_summary_text:type_name -> remoteagent.core.v1.Text
+	68,  // 58: remoteagent.core.v1.SettingsViewModel.empty_machines_body:type_name -> remoteagent.core.v1.Text
+	0,   // 59: remoteagent.core.v1.DirectRouteReport.state:type_name -> remoteagent.core.v1.DirectRouteState
+	1,   // 60: remoteagent.core.v1.DirectRouteReport.reason:type_name -> remoteagent.core.v1.DirectRouteReason
+	2,   // 61: remoteagent.core.v1.DirectRouteReport.file_route:type_name -> remoteagent.core.v1.DirectPathChoice
+	2,   // 62: remoteagent.core.v1.DirectRouteReport.read_route:type_name -> remoteagent.core.v1.DirectPathChoice
+	2,   // 63: remoteagent.core.v1.DirectRouteReport.terminal_route:type_name -> remoteagent.core.v1.DirectPathChoice
+	3,   // 64: remoteagent.core.v1.ConnCheckDirectRowView.stage:type_name -> remoteagent.core.v1.ConnectionGroupStage
+	4,   // 65: remoteagent.core.v1.ConnCheckDirectRowView.tone:type_name -> remoteagent.core.v1.ConnectionGroupTone
+	68,  // 66: remoteagent.core.v1.ConnCheckDirectRowView.label_text:type_name -> remoteagent.core.v1.Text
+	68,  // 67: remoteagent.core.v1.ConnCheckDirectRowView.status_text:type_name -> remoteagent.core.v1.Text
+	68,  // 68: remoteagent.core.v1.ConnCheckDirectRowView.detail_text:type_name -> remoteagent.core.v1.Text
+	68,  // 69: remoteagent.core.v1.ConnCheckDirectRowView.metric_text:type_name -> remoteagent.core.v1.Text
+	3,   // 70: remoteagent.core.v1.ConnectionGroupView.stage:type_name -> remoteagent.core.v1.ConnectionGroupStage
+	4,   // 71: remoteagent.core.v1.ConnectionGroupView.tone:type_name -> remoteagent.core.v1.ConnectionGroupTone
+	68,  // 72: remoteagent.core.v1.ConnectionGroupView.status_text:type_name -> remoteagent.core.v1.Text
+	68,  // 73: remoteagent.core.v1.ConnectionGroupView.metric_text:type_name -> remoteagent.core.v1.Text
+	68,  // 74: remoteagent.core.v1.ConnectionGroupView.detail_text:type_name -> remoteagent.core.v1.Text
+	68,  // 75: remoteagent.core.v1.ConnectionGroupView.file_speed_text:type_name -> remoteagent.core.v1.Text
+	68,  // 76: remoteagent.core.v1.ConnectionGroupView.read_latency_text:type_name -> remoteagent.core.v1.Text
+	68,  // 77: remoteagent.core.v1.ConnectionGroupView.footer_text:type_name -> remoteagent.core.v1.Text
+	70,  // 78: remoteagent.core.v1.ConnectionGroupView.row_dot:type_name -> remoteagent.core.v1.MachineStatusDot
+	68,  // 79: remoteagent.core.v1.ConnectionGroupView.row_value_text:type_name -> remoteagent.core.v1.Text
+	68,  // 80: remoteagent.core.v1.ConnectionGroupView.row_subtitle_text:type_name -> remoteagent.core.v1.Text
+	69,  // 81: remoteagent.core.v1.CliVersionView.agent:type_name -> remoteagent.v1.Agent
+	68,  // 82: remoteagent.core.v1.CliVersionView.unverified_label:type_name -> remoteagent.core.v1.Text
+	68,  // 83: remoteagent.core.v1.CliVersionView.default_model_label:type_name -> remoteagent.core.v1.Text
+	68,  // 84: remoteagent.core.v1.CliVersionView.default_mode_label:type_name -> remoteagent.core.v1.Text
+	68,  // 85: remoteagent.core.v1.CliVersionView.disabled_label:type_name -> remoteagent.core.v1.Text
+	35,  // 86: remoteagent.core.v1.CliVersionView.defaults:type_name -> remoteagent.core.v1.MachineAgentDefaultsView
+	68,  // 87: remoteagent.core.v1.ModelChoiceView.label:type_name -> remoteagent.core.v1.Text
+	68,  // 88: remoteagent.core.v1.EffortChoiceView.label:type_name -> remoteagent.core.v1.Text
+	75,  // 89: remoteagent.core.v1.ModeChoiceView.mode:type_name -> remoteagent.v1.ApprovalMode
+	68,  // 90: remoteagent.core.v1.ModeChoiceView.label:type_name -> remoteagent.core.v1.Text
+	68,  // 91: remoteagent.core.v1.ModeChoiceView.disabled_reason:type_name -> remoteagent.core.v1.Text
+	69,  // 92: remoteagent.core.v1.MachineAgentDefaultsView.agent:type_name -> remoteagent.v1.Agent
+	68,  // 93: remoteagent.core.v1.MachineAgentDefaultsView.selected_model_label:type_name -> remoteagent.core.v1.Text
+	32,  // 94: remoteagent.core.v1.MachineAgentDefaultsView.model_choices:type_name -> remoteagent.core.v1.ModelChoiceView
+	33,  // 95: remoteagent.core.v1.MachineAgentDefaultsView.effort_choices:type_name -> remoteagent.core.v1.EffortChoiceView
+	75,  // 96: remoteagent.core.v1.MachineAgentDefaultsView.selected_mode:type_name -> remoteagent.v1.ApprovalMode
+	34,  // 97: remoteagent.core.v1.MachineAgentDefaultsView.mode_choices:type_name -> remoteagent.core.v1.ModeChoiceView
+	68,  // 98: remoteagent.core.v1.MachineAgentDefaultsView.auto_unavailable_notice:type_name -> remoteagent.core.v1.Text
+	68,  // 99: remoteagent.core.v1.MachineAgentDefaultsView.footer_text:type_name -> remoteagent.core.v1.Text
+	68,  // 100: remoteagent.core.v1.TimeoutChoiceView.label:type_name -> remoteagent.core.v1.Text
+	68,  // 101: remoteagent.core.v1.IdleCloseChoiceView.label:type_name -> remoteagent.core.v1.Text
+	68,  // 102: remoteagent.core.v1.QuotaSizeChoiceView.label:type_name -> remoteagent.core.v1.Text
+	68,  // 103: remoteagent.core.v1.AttachmentStorageView.uploaded_text:type_name -> remoteagent.core.v1.Text
+	68,  // 104: remoteagent.core.v1.AttachmentStorageView.uploaded_detail:type_name -> remoteagent.core.v1.Text
+	38,  // 105: remoteagent.core.v1.AttachmentStorageView.quota_choices:type_name -> remoteagent.core.v1.QuotaSizeChoiceView
+	68,  // 106: remoteagent.core.v1.AttachmentStorageView.preview_cache_text:type_name -> remoteagent.core.v1.Text
+	68,  // 107: remoteagent.core.v1.AttachmentStorageView.emergency_reserve_text:type_name -> remoteagent.core.v1.Text
+	68,  // 108: remoteagent.core.v1.AttachmentStorageView.clear_button_label:type_name -> remoteagent.core.v1.Text
+	68,  // 109: remoteagent.core.v1.AttachmentStorageView.footer_text:type_name -> remoteagent.core.v1.Text
+	68,  // 110: remoteagent.core.v1.AttachmentStorageView.summary_text:type_name -> remoteagent.core.v1.Text
+	68,  // 111: remoteagent.core.v1.AttachmentStorageView.used_total_text:type_name -> remoteagent.core.v1.Text
+	68,  // 112: remoteagent.core.v1.AttachmentStorageView.limit_label:type_name -> remoteagent.core.v1.Text
+	68,  // 113: remoteagent.core.v1.MachineProjectView.last_active_text:type_name -> remoteagent.core.v1.Text
+	68,  // 114: remoteagent.core.v1.MachineManagementActionsView.explanation_text:type_name -> remoteagent.core.v1.Text
+	68,  // 115: remoteagent.core.v1.MachineSettingsViewModel.offline_or_mismatch_banner:type_name -> remoteagent.core.v1.Text
+	68,  // 116: remoteagent.core.v1.MachineSettingsViewModel.removed_banner:type_name -> remoteagent.core.v1.Text
+	76,  // 117: remoteagent.core.v1.MachineSettingsViewModel.status_rings:type_name -> remoteagent.core.v1.MachineRingView
+	77,  // 118: remoteagent.core.v1.MachineSettingsViewModel.quota_rows:type_name -> remoteagent.core.v1.QuotaCliSection
+	30,  // 119: remoteagent.core.v1.MachineSettingsViewModel.connection:type_name -> remoteagent.core.v1.ConnectionGroupView
+	31,  // 120: remoteagent.core.v1.MachineSettingsViewModel.cli_versions:type_name -> remoteagent.core.v1.CliVersionView
+	68,  // 121: remoteagent.core.v1.MachineSettingsViewModel.settings_error:type_name -> remoteagent.core.v1.Text
+	68,  // 122: remoteagent.core.v1.MachineSettingsViewModel.save_error:type_name -> remoteagent.core.v1.Text
+	69,  // 123: remoteagent.core.v1.MachineSettingsViewModel.available_agents:type_name -> remoteagent.v1.Agent
+	69,  // 124: remoteagent.core.v1.MachineSettingsViewModel.selected_agent:type_name -> remoteagent.v1.Agent
+	35,  // 125: remoteagent.core.v1.MachineSettingsViewModel.agent_defaults:type_name -> remoteagent.core.v1.MachineAgentDefaultsView
+	36,  // 126: remoteagent.core.v1.MachineSettingsViewModel.approval_timeout_choices:type_name -> remoteagent.core.v1.TimeoutChoiceView
+	37,  // 127: remoteagent.core.v1.MachineSettingsViewModel.idle_close_choices:type_name -> remoteagent.core.v1.IdleCloseChoiceView
+	39,  // 128: remoteagent.core.v1.MachineSettingsViewModel.attachment_storage:type_name -> remoteagent.core.v1.AttachmentStorageView
+	40,  // 129: remoteagent.core.v1.MachineSettingsViewModel.projects:type_name -> remoteagent.core.v1.MachineProjectView
+	41,  // 130: remoteagent.core.v1.MachineSettingsViewModel.management:type_name -> remoteagent.core.v1.MachineManagementActionsView
+	68,  // 131: remoteagent.core.v1.MachineSettingsViewModel.cli_switches_disabled_reason:type_name -> remoteagent.core.v1.Text
+	68,  // 132: remoteagent.core.v1.MachineSettingsViewModel.cli_switches_conflict_banner:type_name -> remoteagent.core.v1.Text
+	68,  // 133: remoteagent.core.v1.MachineSettingsViewModel.cli_switches_footer:type_name -> remoteagent.core.v1.Text
+	70,  // 134: remoteagent.core.v1.MachineSettingsViewModel.header_dot:type_name -> remoteagent.core.v1.MachineStatusDot
+	68,  // 135: remoteagent.core.v1.MachineSettingsViewModel.header_subtitle:type_name -> remoteagent.core.v1.Text
+	70,  // 136: remoteagent.core.v1.MachineSettingsViewModel.status_card_dot:type_name -> remoteagent.core.v1.MachineStatusDot
+	68,  // 137: remoteagent.core.v1.MachineSettingsViewModel.status_card_badge:type_name -> remoteagent.core.v1.Text
+	68,  // 138: remoteagent.core.v1.MachineSettingsViewModel.usage_empty_text:type_name -> remoteagent.core.v1.Text
+	68,  // 139: remoteagent.core.v1.MachineSettingsViewModel.project_count_text:type_name -> remoteagent.core.v1.Text
+	68,  // 140: remoteagent.core.v1.MachineSettingsViewModel.usage_tokens_text:type_name -> remoteagent.core.v1.Text
+	68,  // 141: remoteagent.core.v1.DevicesViewModel.add_device_hint:type_name -> remoteagent.core.v1.Text
+	17,  // 142: remoteagent.core.v1.DevicesViewModel.computers:type_name -> remoteagent.core.v1.MachineListCardView
+	18,  // 143: remoteagent.core.v1.DevicesViewModel.clients:type_name -> remoteagent.core.v1.ClientRowView
+	18,  // 144: remoteagent.core.v1.DevicesViewModel.unfinished_pairings:type_name -> remoteagent.core.v1.ClientRowView
+	68,  // 145: remoteagent.core.v1.DevicesViewModel.error_text:type_name -> remoteagent.core.v1.Text
+	68,  // 146: remoteagent.core.v1.DevicesViewModel.empty_computers_text:type_name -> remoteagent.core.v1.Text
+	68,  // 147: remoteagent.core.v1.DevicesViewModel.client_count_text:type_name -> remoteagent.core.v1.Text
+	12,  // 148: remoteagent.core.v1.PlainDiagCheckView.mark:type_name -> remoteagent.core.v1.DiagCheckMark
+	68,  // 149: remoteagent.core.v1.PlainDiagCheckView.label_text:type_name -> remoteagent.core.v1.Text
+	68,  // 150: remoteagent.core.v1.PlainDiagCheckView.detail_text:type_name -> remoteagent.core.v1.Text
+	68,  // 151: remoteagent.core.v1.PlainDiagCheckView.status_text:type_name -> remoteagent.core.v1.Text
+	68,  // 152: remoteagent.core.v1.DiagRowView.label_text:type_name -> remoteagent.core.v1.Text
+	68,  // 153: remoteagent.core.v1.DiagRowView.value_text:type_name -> remoteagent.core.v1.Text
+	68,  // 154: remoteagent.core.v1.DiagGroupView.title_text:type_name -> remoteagent.core.v1.Text
+	47,  // 155: remoteagent.core.v1.DiagGroupView.rows:type_name -> remoteagent.core.v1.DiagRowView
+	68,  // 156: remoteagent.core.v1.DirectDiagnosticsViewModel.title_text:type_name -> remoteagent.core.v1.Text
+	68,  // 157: remoteagent.core.v1.DirectDiagnosticsViewModel.body_text:type_name -> remoteagent.core.v1.Text
+	68,  // 158: remoteagent.core.v1.DirectDiagnosticsViewModel.verdict_text:type_name -> remoteagent.core.v1.Text
+	46,  // 159: remoteagent.core.v1.DirectDiagnosticsViewModel.checks:type_name -> remoteagent.core.v1.PlainDiagCheckView
+	48,  // 160: remoteagent.core.v1.DirectDiagnosticsViewModel.groups:type_name -> remoteagent.core.v1.DiagGroupView
+	48,  // 161: remoteagent.core.v1.DirectDiagnosticsViewModel.result_group:type_name -> remoteagent.core.v1.DiagGroupView
+	68,  // 162: remoteagent.core.v1.DirectDiagnosticsViewModel.report_lines:type_name -> remoteagent.core.v1.Text
+	28,  // 163: remoteagent.core.v1.DirectDiagnosticsViewModel.report:type_name -> remoteagent.core.v1.DirectRouteReport
+	68,  // 164: remoteagent.core.v1.ClientDetailViewModel.role_label:type_name -> remoteagent.core.v1.Text
+	68,  // 165: remoteagent.core.v1.ClientDetailViewModel.last_used_text:type_name -> remoteagent.core.v1.Text
+	68,  // 166: remoteagent.core.v1.ClientDetailViewModel.added_text:type_name -> remoteagent.core.v1.Text
+	68,  // 167: remoteagent.core.v1.ClientDetailViewModel.rename_error:type_name -> remoteagent.core.v1.Text
+	68,  // 168: remoteagent.core.v1.ClientDetailViewModel.management_hint:type_name -> remoteagent.core.v1.Text
+	69,  // 169: remoteagent.core.v1.ToggleMachineAgentEvent.agent:type_name -> remoteagent.v1.Agent
+	69,  // 170: remoteagent.core.v1.MachineSettingsSelectAgentEvent.agent:type_name -> remoteagent.v1.Agent
+	69,  // 171: remoteagent.core.v1.UpdateMachineAgentDefaultsEvent.agent:type_name -> remoteagent.v1.Agent
+	75,  // 172: remoteagent.core.v1.UpdateMachineAgentDefaultsEvent.mode:type_name -> remoteagent.v1.ApprovalMode
+	6,   // 173: remoteagent.core.v1.SetNotificationPrefEvent.permission:type_name -> remoteagent.core.v1.NotificationPermissionState
+	7,   // 174: remoteagent.core.v1.SetNotificationPrefEvent.push_state:type_name -> remoteagent.core.v1.PushRegistrationState
+	5,   // 175: remoteagent.core.v1.SetAppearancePrefEvent.theme:type_name -> remoteagent.core.v1.ThemePreference
+	8,   // 176: remoteagent.core.v1.ConnCheckStatusEvent.server_state:type_name -> remoteagent.core.v1.ConnProbeState
+	23,  // 177: remoteagent.core.v1.ClientUpdateStateEvent.releases:type_name -> remoteagent.core.v1.ReleaseCandidateInfo
+	5,   // 178: remoteagent.core.v1.PersistClientPrefsEffect.theme:type_name -> remoteagent.core.v1.ThemePreference
+	179, // [179:179] is the sub-list for method output_type
+	179, // [179:179] is the sub-list for method input_type
+	179, // [179:179] is the sub-list for extension type_name
+	179, // [179:179] is the sub-list for extension extendee
+	0,   // [0:179] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_settings_view_proto_init() }

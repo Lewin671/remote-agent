@@ -687,6 +687,9 @@ type SessionHeaderView struct {
 	LookupErrorText       *Text
 	MultipleMachines      bool
 	ShortPath             string
+	TerminalReady         bool
+	TerminalWaiting       bool
+	FrozenAtMs            int64
 }
 
 func (m *SessionHeaderView) GetFound() bool {
@@ -1049,6 +1052,24 @@ func (m *SessionHeaderView) GetShortPath() string {
 	}
 	return ""
 }
+func (m *SessionHeaderView) GetTerminalReady() bool {
+	if m != nil {
+		return m.TerminalReady
+	}
+	return false
+}
+func (m *SessionHeaderView) GetTerminalWaiting() bool {
+	if m != nil {
+		return m.TerminalWaiting
+	}
+	return false
+}
+func (m *SessionHeaderView) GetFrozenAtMs() int64 {
+	if m != nil {
+		return m.FrozenAtMs
+	}
+	return 0
+}
 
 var LitewireDesc_SessionHeaderView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -1112,6 +1133,9 @@ var LitewireDesc_SessionHeaderView = litewire.MessageDesc{
 		{Num: 58, Offset: unsafe.Offsetof(SessionHeaderView{}.LookupErrorText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 59, Offset: unsafe.Offsetof(SessionHeaderView{}.MultipleMachines), Kind: litewire.KindBool},
 		{Num: 60, Offset: unsafe.Offsetof(SessionHeaderView{}.ShortPath), Kind: litewire.KindString},
+		{Num: 61, Offset: unsafe.Offsetof(SessionHeaderView{}.TerminalReady), Kind: litewire.KindBool},
+		{Num: 62, Offset: unsafe.Offsetof(SessionHeaderView{}.TerminalWaiting), Kind: litewire.KindBool},
+		{Num: 63, Offset: unsafe.Offsetof(SessionHeaderView{}.FrozenAtMs), Kind: litewire.KindInt64},
 	},
 }
 

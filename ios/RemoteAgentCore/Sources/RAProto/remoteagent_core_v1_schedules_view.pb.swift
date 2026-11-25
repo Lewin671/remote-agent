@@ -1527,6 +1527,11 @@ public struct PBSchedulesViewModel: @unchecked Sendable {
     set {_uniqueStorage()._selectedTaskID = newValue}
   }
 
+  public var initialLoaded: Bool {
+    get {return _storage._initialLoaded}
+    set {_uniqueStorage()._initialLoaded = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2182,6 +2187,11 @@ public struct PBScheduleDetailViewModel: @unchecked Sendable {
   public var hasMenuSubtitle: Bool {return _storage._menuSubtitle != nil}
   /// Clears the value of `menuSubtitle`. Subsequent reads from it will return its default value.
   public mutating func clearMenuSubtitle() {_uniqueStorage()._menuSubtitle = nil}
+
+  public var initialLoaded: Bool {
+    get {return _storage._initialLoaded}
+    set {_uniqueStorage()._initialLoaded = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -4464,7 +4474,7 @@ extension PBScheduleTaskItemView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension PBSchedulesViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SchedulesViewModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}attention_count\0\u{3}has_new_results\0\u{3}attention_badge_text\0\u{3}can_create\0\u{1}connection\0\u{1}headline\0\u{3}any_machine_supported\0\u{3}unsupported_notice\0\u{3}offline_notice\0\u{3}machine_errors\0\u{1}loading\0\u{3}show_empty_hint\0\u{3}empty_hint\0\u{1}attention\0\u{1}fresh\0\u{1}others\0\u{1}ended\0\u{3}total_ended\0\u{3}has_more_ended\0\u{3}ended_expanded\0\u{3}ended_label\0\u{3}others_section_title\0\u{3}can_mark_all_read\0\u{3}selected_machine_id\0\u{3}selected_task_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}attention_count\0\u{3}has_new_results\0\u{3}attention_badge_text\0\u{3}can_create\0\u{1}connection\0\u{1}headline\0\u{3}any_machine_supported\0\u{3}unsupported_notice\0\u{3}offline_notice\0\u{3}machine_errors\0\u{1}loading\0\u{3}show_empty_hint\0\u{3}empty_hint\0\u{1}attention\0\u{1}fresh\0\u{1}others\0\u{1}ended\0\u{3}total_ended\0\u{3}has_more_ended\0\u{3}ended_expanded\0\u{3}ended_label\0\u{3}others_section_title\0\u{3}can_mark_all_read\0\u{3}selected_machine_id\0\u{3}selected_task_id\0\u{3}initial_loaded\0")
 
   fileprivate class _StorageClass {
     var _attentionCount: Int32 = 0
@@ -4492,6 +4502,7 @@ extension PBSchedulesViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     var _canMarkAllRead: Bool = false
     var _selectedMachineID: String = String()
     var _selectedTaskID: String = String()
+    var _initialLoaded: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -4527,6 +4538,7 @@ extension PBSchedulesViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       _canMarkAllRead = source._canMarkAllRead
       _selectedMachineID = source._selectedMachineID
       _selectedTaskID = source._selectedTaskID
+      _initialLoaded = source._initialLoaded
     }
   }
 
@@ -4570,6 +4582,7 @@ extension PBSchedulesViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         case 23: try { try decoder.decodeSingularBoolField(value: &_storage._canMarkAllRead) }()
         case 24: try { try decoder.decodeSingularStringField(value: &_storage._selectedMachineID) }()
         case 25: try { try decoder.decodeSingularStringField(value: &_storage._selectedTaskID) }()
+        case 26: try { try decoder.decodeSingularBoolField(value: &_storage._initialLoaded) }()
         default: break
         }
       }
@@ -4657,6 +4670,9 @@ extension PBSchedulesViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       if !_storage._selectedTaskID.isEmpty {
         try visitor.visitSingularStringField(value: _storage._selectedTaskID, fieldNumber: 25)
       }
+      if _storage._initialLoaded != false {
+        try visitor.visitSingularBoolField(value: _storage._initialLoaded, fieldNumber: 26)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4691,6 +4707,7 @@ extension PBSchedulesViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         if _storage._canMarkAllRead != rhs_storage._canMarkAllRead {return false}
         if _storage._selectedMachineID != rhs_storage._selectedMachineID {return false}
         if _storage._selectedTaskID != rhs_storage._selectedTaskID {return false}
+        if _storage._initialLoaded != rhs_storage._initialLoaded {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -5284,7 +5301,7 @@ extension PBScheduleHistoryGroupView: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 extension PBScheduleDetailViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ScheduleDetailViewModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}found\0\u{1}loading\0\u{3}not_found_text\0\u{3}machine_id\0\u{3}task_id\0\u{1}revision\0\u{1}title\0\u{1}subtitle\0\u{1}connection\0\u{3}machine_online\0\u{3}machine_supported\0\u{3}read_only\0\u{3}read_only_notice\0\u{3}machine_error\0\u{3}can_retry_machine_list\0\u{1}mutation\0\u{1}attention\0\u{3}active_run\0\u{3}result_card\0\u{3}earlier_groups\0\u{3}total_earlier_runs\0\u{3}has_more_earlier_runs\0\u{3}show_all_runs\0\u{3}earlier_count_text\0\u{3}view_all_text\0\u{3}empty_history\0\u{3}empty_history_text\0\u{1}message\0\u{3}timing_text\0\u{3}notify_on_finish\0\u{3}has_limits\0\u{3}limits_text\0\u{3}target_type\0\u{3}target_session_id\0\u{3}target_label\0\u{3}target_value\0\u{3}can_open_target_session\0\u{3}permissions_text\0\u{3}permissions_is_danger\0\u{3}can_edit_permissions\0\u{3}task_name\0\u{3}creation_footer\0\u{3}run_once_footer\0\u{1}source\0\u{1}takeover\0\u{3}scoped_session_id\0\u{3}scoped_mode\0\u{1}actions\0\u{3}menu_subtitle\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}found\0\u{1}loading\0\u{3}not_found_text\0\u{3}machine_id\0\u{3}task_id\0\u{1}revision\0\u{1}title\0\u{1}subtitle\0\u{1}connection\0\u{3}machine_online\0\u{3}machine_supported\0\u{3}read_only\0\u{3}read_only_notice\0\u{3}machine_error\0\u{3}can_retry_machine_list\0\u{1}mutation\0\u{1}attention\0\u{3}active_run\0\u{3}result_card\0\u{3}earlier_groups\0\u{3}total_earlier_runs\0\u{3}has_more_earlier_runs\0\u{3}show_all_runs\0\u{3}earlier_count_text\0\u{3}view_all_text\0\u{3}empty_history\0\u{3}empty_history_text\0\u{1}message\0\u{3}timing_text\0\u{3}notify_on_finish\0\u{3}has_limits\0\u{3}limits_text\0\u{3}target_type\0\u{3}target_session_id\0\u{3}target_label\0\u{3}target_value\0\u{3}can_open_target_session\0\u{3}permissions_text\0\u{3}permissions_is_danger\0\u{3}can_edit_permissions\0\u{3}task_name\0\u{3}creation_footer\0\u{3}run_once_footer\0\u{1}source\0\u{1}takeover\0\u{3}scoped_session_id\0\u{3}scoped_mode\0\u{1}actions\0\u{3}menu_subtitle\0\u{3}initial_loaded\0")
 
   fileprivate class _StorageClass {
     var _found: Bool = false
@@ -5336,6 +5353,7 @@ extension PBScheduleDetailViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _scopedMode: String = String()
     var _actions: PBScheduleTaskActionsView? = nil
     var _menuSubtitle: PBCoreText? = nil
+    var _initialLoaded: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5395,6 +5413,7 @@ extension PBScheduleDetailViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
       _scopedMode = source._scopedMode
       _actions = source._actions
       _menuSubtitle = source._menuSubtitle
+      _initialLoaded = source._initialLoaded
     }
   }
 
@@ -5462,6 +5481,7 @@ extension PBScheduleDetailViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
         case 47: try { try decoder.decodeSingularStringField(value: &_storage._scopedMode) }()
         case 48: try { try decoder.decodeSingularMessageField(value: &_storage._actions) }()
         case 49: try { try decoder.decodeSingularMessageField(value: &_storage._menuSubtitle) }()
+        case 50: try { try decoder.decodeSingularBoolField(value: &_storage._initialLoaded) }()
         default: break
         }
       }
@@ -5621,6 +5641,9 @@ extension PBScheduleDetailViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
       try { if let v = _storage._menuSubtitle {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 49)
       } }()
+      if _storage._initialLoaded != false {
+        try visitor.visitSingularBoolField(value: _storage._initialLoaded, fieldNumber: 50)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -5679,6 +5702,7 @@ extension PBScheduleDetailViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
         if _storage._scopedMode != rhs_storage._scopedMode {return false}
         if _storage._actions != rhs_storage._actions {return false}
         if _storage._menuSubtitle != rhs_storage._menuSubtitle {return false}
+        if _storage._initialLoaded != rhs_storage._initialLoaded {return false}
         return true
       }
       if !storagesAreEqual {return false}

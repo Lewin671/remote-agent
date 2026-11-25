@@ -1654,6 +1654,21 @@ public struct PBSessionHeaderView: @unchecked Sendable {
     set {_uniqueStorage()._shortPath = newValue}
   }
 
+  public var terminalReady: Bool {
+    get {return _storage._terminalReady}
+    set {_uniqueStorage()._terminalReady = newValue}
+  }
+
+  public var terminalWaiting: Bool {
+    get {return _storage._terminalWaiting}
+    set {_uniqueStorage()._terminalWaiting = newValue}
+  }
+
+  public var frozenAtMs: Int64 {
+    get {return _storage._frozenAtMs}
+    set {_uniqueStorage()._frozenAtMs = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -5665,7 +5680,7 @@ extension PBSessionCapabilitiesView: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 extension PBSessionHeaderView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionHeaderView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}found\0\u{3}sessions_listed\0\u{3}live_loaded\0\u{1}missing\0\u{1}title\0\u{3}project_name\0\u{3}project_key\0\u{1}cwd\0\u{1}agent\0\u{3}agent_name\0\u{1}status\0\u{1}tone\0\u{3}status_text\0\u{3}live_summary\0\u{3}approval_mode\0\u{3}approval_mode_raw\0\u{3}approval_mode_label\0\u{3}terminal_mode_override\0\u{1}model\0\u{3}model_label\0\u{1}effort\0\u{3}effort_label\0\u{3}standard_context\0\u{3}model_unknown\0\u{3}has_context\0\u{3}context_percent\0\u{3}context_tokens\0\u{3}context_window\0\u{3}context_text\0\u{3}high_context_warning\0\u{3}machine_id\0\u{3}computer_name\0\u{3}computer_online\0\u{3}computer_unlinked\0\u{3}offline_since_ms\0\u{3}offline_text\0\u{3}conn_state\0\u{3}protocol_mismatch\0\u{3}daemon_protocol_version\0\u{3}client_protocol_version\0\u{3}protocol_mismatch_text\0\u{1}exited\0\u{3}ended_at_ms\0\u{3}ended_text\0\u{3}idle_closed\0\u{3}forked_from_id\0\u{3}forked_from_title\0\u{3}is_scheduled\0\u{3}scheduled_task_id\0\u{3}scheduled_title\0\u{3}scheduled_closed\0\u{1}capabilities\0\u{3}missing_text\0\u{3}computer_reachability\0\u{3}direct_chip\0\u{3}task_owned\0\u{3}lookup_failed\0\u{3}lookup_error_text\0\u{3}multiple_machines\0\u{3}short_path\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}found\0\u{3}sessions_listed\0\u{3}live_loaded\0\u{1}missing\0\u{1}title\0\u{3}project_name\0\u{3}project_key\0\u{1}cwd\0\u{1}agent\0\u{3}agent_name\0\u{1}status\0\u{1}tone\0\u{3}status_text\0\u{3}live_summary\0\u{3}approval_mode\0\u{3}approval_mode_raw\0\u{3}approval_mode_label\0\u{3}terminal_mode_override\0\u{1}model\0\u{3}model_label\0\u{1}effort\0\u{3}effort_label\0\u{3}standard_context\0\u{3}model_unknown\0\u{3}has_context\0\u{3}context_percent\0\u{3}context_tokens\0\u{3}context_window\0\u{3}context_text\0\u{3}high_context_warning\0\u{3}machine_id\0\u{3}computer_name\0\u{3}computer_online\0\u{3}computer_unlinked\0\u{3}offline_since_ms\0\u{3}offline_text\0\u{3}conn_state\0\u{3}protocol_mismatch\0\u{3}daemon_protocol_version\0\u{3}client_protocol_version\0\u{3}protocol_mismatch_text\0\u{1}exited\0\u{3}ended_at_ms\0\u{3}ended_text\0\u{3}idle_closed\0\u{3}forked_from_id\0\u{3}forked_from_title\0\u{3}is_scheduled\0\u{3}scheduled_task_id\0\u{3}scheduled_title\0\u{3}scheduled_closed\0\u{1}capabilities\0\u{3}missing_text\0\u{3}computer_reachability\0\u{3}direct_chip\0\u{3}task_owned\0\u{3}lookup_failed\0\u{3}lookup_error_text\0\u{3}multiple_machines\0\u{3}short_path\0\u{3}terminal_ready\0\u{3}terminal_waiting\0\u{3}frozen_at_ms\0")
 
   fileprivate class _StorageClass {
     var _found: Bool = false
@@ -5728,6 +5743,9 @@ extension PBSessionHeaderView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     var _lookupErrorText: PBCoreText? = nil
     var _multipleMachines: Bool = false
     var _shortPath: String = String()
+    var _terminalReady: Bool = false
+    var _terminalWaiting: Bool = false
+    var _frozenAtMs: Int64 = 0
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5798,6 +5816,9 @@ extension PBSessionHeaderView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       _lookupErrorText = source._lookupErrorText
       _multipleMachines = source._multipleMachines
       _shortPath = source._shortPath
+      _terminalReady = source._terminalReady
+      _terminalWaiting = source._terminalWaiting
+      _frozenAtMs = source._frozenAtMs
     }
   }
 
@@ -5876,6 +5897,9 @@ extension PBSessionHeaderView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         case 58: try { try decoder.decodeSingularMessageField(value: &_storage._lookupErrorText) }()
         case 59: try { try decoder.decodeSingularBoolField(value: &_storage._multipleMachines) }()
         case 60: try { try decoder.decodeSingularStringField(value: &_storage._shortPath) }()
+        case 61: try { try decoder.decodeSingularBoolField(value: &_storage._terminalReady) }()
+        case 62: try { try decoder.decodeSingularBoolField(value: &_storage._terminalWaiting) }()
+        case 63: try { try decoder.decodeSingularInt64Field(value: &_storage._frozenAtMs) }()
         default: break
         }
       }
@@ -6068,6 +6092,15 @@ extension PBSessionHeaderView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       if !_storage._shortPath.isEmpty {
         try visitor.visitSingularStringField(value: _storage._shortPath, fieldNumber: 60)
       }
+      if _storage._terminalReady != false {
+        try visitor.visitSingularBoolField(value: _storage._terminalReady, fieldNumber: 61)
+      }
+      if _storage._terminalWaiting != false {
+        try visitor.visitSingularBoolField(value: _storage._terminalWaiting, fieldNumber: 62)
+      }
+      if _storage._frozenAtMs != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._frozenAtMs, fieldNumber: 63)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -6137,6 +6170,9 @@ extension PBSessionHeaderView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         if _storage._lookupErrorText != rhs_storage._lookupErrorText {return false}
         if _storage._multipleMachines != rhs_storage._multipleMachines {return false}
         if _storage._shortPath != rhs_storage._shortPath {return false}
+        if _storage._terminalReady != rhs_storage._terminalReady {return false}
+        if _storage._terminalWaiting != rhs_storage._terminalWaiting {return false}
+        if _storage._frozenAtMs != rhs_storage._frozenAtMs {return false}
         return true
       }
       if !storagesAreEqual {return false}

@@ -330,6 +330,11 @@ func buildSessionHeader(
 		Agent:                 caps.Agent,
 		AgentName:             caps.Name,
 		ClientProtocolVersion: in.ProtocolVersion,
+		TerminalReady:         in.TerminalReady,
+		TerminalWaiting:       in.TerminalWaiting,
+	}
+	if !in.Found && in.DisconnectedAtMs > 0 {
+		out.FrozenAtMs = in.DisconnectedAtMs
 	}
 
 	if !in.Found {
@@ -501,6 +506,15 @@ func buildSessionHeader(
 		out.ComputerReachability = corev1.ComputerReachability_COMPUTER_REACHABILITY_OFFLINE
 	}
 	out.ComputerUnlinked = unlinked
+	if !out.ComputerOnline {
+		if out.OfflineSinceMs > 0 {
+			out.FrozenAtMs = out.OfflineSinceMs
+		} else if in.DisconnectedAtMs > 0 {
+			out.FrozenAtMs = in.DisconnectedAtMs
+		} else if st != nil && st.DisconnectedAtMs > 0 {
+			out.FrozenAtMs = st.DisconnectedAtMs
+		}
+	}
 	if lm != nil && !out.ComputerOnline && !reachabilityUnknown {
 		if lm.LastSeenMs > 0 {
 			out.OfflineText = text.Msg(text.KeySessionOfflineNote,

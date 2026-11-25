@@ -551,4 +551,22 @@ public interface SessionHeaderViewOrBuilder extends
    */
   com.google.protobuf.ByteString
       getShortPathBytes();
+
+  /**
+   * <code>bool terminal_ready = 61 [json_name = "terminalReady"];</code>
+   * @return The terminalReady.
+   */
+  boolean getTerminalReady();
+
+  /**
+   * <code>bool terminal_waiting = 62 [json_name = "terminalWaiting"];</code>
+   * @return The terminalWaiting.
+   */
+  boolean getTerminalWaiting();
+
+  /**
+   * <code>int64 frozen_at_ms = 63 [json_name = "frozenAtMs"];</code>
+   * @return The frozenAtMs.
+   */
+  long getFrozenAtMs();
 }

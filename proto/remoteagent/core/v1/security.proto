@@ -21,6 +21,8 @@ message SecurityConfigEvent {
   string server = 4;
   bool legacy_cleared = 5;
   bool foreground = 6;
+  string platform = 7;
+  string device_description = 8;
 }
 
 message SecurityForegroundEvent {

@@ -792,6 +792,17 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.UsageScreenScrubEvent getUsageScreenScrub();
 
   /**
+   * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
+   * @return Whether the resolveNotificationTap field is set.
+   */
+  boolean hasResolveNotificationTap();
+  /**
+   * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
+   * @return The resolveNotificationTap.
+   */
+  io.github.lewin671.remoteagent.core.proto.ResolveNotificationTapAction getResolveNotificationTap();
+
+  /**
    * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>
    * @return Whether the updateClientName field is set.
    */

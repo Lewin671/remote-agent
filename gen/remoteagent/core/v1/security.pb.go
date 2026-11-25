@@ -487,12 +487,14 @@ type SecurityConfigEvent struct {
 	DeviceId string                 `protobuf:"bytes,2,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
 	// False on Web (heavy batch Ed25519 verify >8 and AEAD >16 KiB route via CryptoBatchEffect).
 	// True on Android/iOS (Core executes crypto synchronously in Go).
-	InlineCrypto  bool   `protobuf:"varint,3,opt,name=inline_crypto,json=inlineCrypto,proto3" json:"inline_crypto,omitempty"`
-	Server        string `protobuf:"bytes,4,opt,name=server,proto3" json:"server,omitempty"`
-	LegacyCleared bool   `protobuf:"varint,5,opt,name=legacy_cleared,json=legacyCleared,proto3" json:"legacy_cleared,omitempty"`
-	Foreground    bool   `protobuf:"varint,6,opt,name=foreground,proto3" json:"foreground,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	InlineCrypto      bool   `protobuf:"varint,3,opt,name=inline_crypto,json=inlineCrypto,proto3" json:"inline_crypto,omitempty"`
+	Server            string `protobuf:"bytes,4,opt,name=server,proto3" json:"server,omitempty"`
+	LegacyCleared     bool   `protobuf:"varint,5,opt,name=legacy_cleared,json=legacyCleared,proto3" json:"legacy_cleared,omitempty"`
+	Foreground        bool   `protobuf:"varint,6,opt,name=foreground,proto3" json:"foreground,omitempty"`
+	Platform          string `protobuf:"bytes,7,opt,name=platform,proto3" json:"platform,omitempty"`
+	DeviceDescription string `protobuf:"bytes,8,opt,name=device_description,json=deviceDescription,proto3" json:"device_description,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *SecurityConfigEvent) Reset() {
@@ -565,6 +567,20 @@ func (x *SecurityConfigEvent) GetForeground() bool {
 		return x.Foreground
 	}
 	return false
+}
+
+func (x *SecurityConfigEvent) GetPlatform() string {
+	if x != nil {
+		return x.Platform
+	}
+	return ""
+}
+
+func (x *SecurityConfigEvent) GetDeviceDescription() string {
+	if x != nil {
+		return x.DeviceDescription
+	}
+	return ""
 }
 
 type SecurityForegroundEvent struct {
@@ -6604,7 +6620,7 @@ var File_remoteagent_core_v1_security_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\n" +
-	"\"remoteagent/core/v1/security.proto\x12\x13remoteagent.core.v1\x1a'remoteagent/core/v1/settings_view.proto\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1dremoteagent/v1/envelope.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\x1a\x1bremoteagent/v1/remote.proto\"\xd0\x01\n" +
+	"\"remoteagent/core/v1/security.proto\x12\x13remoteagent.core.v1\x1a'remoteagent/core/v1/settings_view.proto\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1dremoteagent/v1/envelope.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\x1a\x1bremoteagent/v1/remote.proto\"\x9b\x02\n" +
 	"\x13SecurityConfigEvent\x12\x18\n" +
 	"\aaccount\x18\x01 \x01(\tR\aaccount\x12\x1b\n" +
 	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId\x12#\n" +
@@ -6613,7 +6629,9 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\x0elegacy_cleared\x18\x05 \x01(\bR\rlegacyCleared\x12\x1e\n" +
 	"\n" +
 	"foreground\x18\x06 \x01(\bR\n" +
-	"foreground\"9\n" +
+	"foreground\x12\x1a\n" +
+	"\bplatform\x18\a \x01(\tR\bplatform\x12-\n" +
+	"\x12device_description\x18\b \x01(\tR\x11deviceDescription\"9\n" +
 	"\x17SecurityForegroundEvent\x12\x1e\n" +
 	"\n" +
 	"foreground\x18\x01 \x01(\bR\n" +

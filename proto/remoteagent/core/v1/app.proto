@@ -4,6 +4,7 @@ package remoteagent.core.v1;
 
 import "remoteagent/core/v1/attachments.proto";
 import "remoteagent/core/v1/attachments_view.proto";
+import "remoteagent/core/v1/connection_view.proto";
 import "remoteagent/core/v1/home_view.proto";
 import "remoteagent/core/v1/machine_view.proto";
 import "remoteagent/core/v1/new_session_view.proto";
@@ -67,6 +68,7 @@ message Screen {
     DirectDiagnosticsScreenRequest direct_diagnostics = 37;
     AttachmentEvalScreenRequest attachment_eval = 38;
     AttachmentDraftScreenRequest attachment_draft = 39;
+    ConnectionScreenRequest connection = 40;
     SessionScreenRequest session = 10;
     SchedulesScreenRequest schedules = 20;
     ScheduleDetailScreenRequest schedule_detail = 21;
@@ -94,6 +96,7 @@ message ViewModel {
     DirectDiagnosticsViewModel direct_diagnostics = 37;
     AttachmentEvalViewModel attachment_eval = 38;
     AttachmentDraftViewModel attachment_draft = 39;
+    ConnectionViewModel connection = 40;
     SessionViewModel session = 10;
     SchedulesViewModel schedules = 20;
     ScheduleDetailViewModel schedule_detail = 21;
@@ -590,6 +593,7 @@ message Event {
     UsageScreenSelectSortEvent usage_screen_select_sort = 383;
     UsageScreenSelectSeriesEvent usage_screen_select_series = 384;
     UsageScreenScrubEvent usage_screen_scrub = 385;
+    ResolveNotificationTapAction resolve_notification_tap = 390;
     UpdateClientNameEvent update_client_name = 370;
     SetNotificationPrefEvent set_notification_pref = 375;
     SetAppearancePrefEvent set_appearance_pref = 376;
@@ -771,6 +775,7 @@ enum ScreenTarget {
   SCREEN_TARGET_USAGE = 36;
   SCREEN_TARGET_DIRECT_DIAGNOSTICS = 37;
   SCREEN_TARGET_ATTACHMENT_DRAFT = 39;
+  SCREEN_TARGET_CONNECTION = 40;
   SCREEN_TARGET_SESSION = 10;
   SCREEN_TARGET_SCHEDULES = 20;
   SCREEN_TARGET_SCHEDULE_DETAIL = 21;
@@ -1011,6 +1016,9 @@ message Effect {
     PersistClientPrefsEffect persist_client_prefs = 74;
     PrepareCleanupSessionEffect prepare_cleanup_session = 75;
     UsageCacheWriteEffect usage_cache_write = 76;
+    WatchedSessionsEffect watched_sessions = 77;
+    UsageCacheRequestEffect usage_cache_request = 78;
+    SyncPushSubscriptionEffect sync_push_subscription = 79;
     DraftStorageListEffect draft_storage_list = 80;
     DraftStorageReadEffect draft_storage_read = 81;
     DraftStorageWriteEffect draft_storage_write = 82;

@@ -176,6 +176,13 @@ func (e *Engine) emitSecurityEffects(ctx *StepContext, effs []*corev1.Effect) {
 			e.cancelTimer(ctx, ct.Kind, ct.Key)
 			continue
 		}
+		if res := eff.GetSecurityWorkflowResult(); res != nil && e.selfDescribeActionID != 0 && res.ActionId == e.selfDescribeActionID {
+			e.selfDescribeActionID = 0
+			if res.Ok && e.running && !e.removed {
+				e.startRefreshDevices(ctx, false)
+			}
+			continue
+		}
 		if tu := eff.GetSecurityTokenUpdated(); tu != nil {
 			if tu.Cleared {
 				e.cachedToken = ""
@@ -274,6 +281,8 @@ func (e *Engine) syncSecurityStateFromEngine(ctx *StepContext, pushToTransport b
 		}
 	}
 	e.recomputeMachineReplacements()
+	e.pruneUntrustedCaches(ctx)
+	e.maybeDescribeSelf(ctx)
 	e.updateLivePollers(ctx)
 	ctx.Dirty.MarkAll()
 }
@@ -333,6 +342,13 @@ func (e *Engine) handleSecurityConfig(ctx *StepContext, ev *corev1.SecurityConfi
 	if ev.DeviceId != "" {
 		e.security.SelfDeviceID = ev.DeviceId
 	}
+	if ev.Platform != "" {
+		e.selfPlatform = ev.Platform
+	}
+	if ev.DeviceDescription != "" {
+		e.selfDescription = ev.DeviceDescription
+	}
+	e.maybeDescribeSelf(ctx)
 	e.maybeRequestEntropy(ctx)
 }
 
@@ -992,6 +1008,8 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 		if !e.prefs.Loaded && len(outP) > 0 && outP[0] != nil {
 			e.applyAccountPrefsDecoded(outP[0], false)
 		}
+		e.emitWatchedSessionsIfChanged(stepCtx)
+		e.pruneUntrustedCaches(stepCtx)
 		e.updateLivePollers(stepCtx)
 		stepCtx.Dirty.MarkAll()
 	case dirKindListsFetched:
@@ -1040,6 +1058,7 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 		delete(e.sessionByIDFailed, m.sid)
 		delete(e.sessionByIDErrors, m.sid)
 		e.putSessionDecoded(stepCtx, outS[0], false)
+		e.emitWatchedSessionsIfChanged(stepCtx)
 		e.updateLivePollers(stepCtx)
 		stepCtx.Dirty.MarkAll()
 	case dirKindDevices:
@@ -1049,6 +1068,8 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 		e.devicesLoadFailed = false
 		e.devicesError = world.Reason{}
 		e.reconcileDecodedDevices(e.buildAuthoritativeDevices(outD), m.mp, m.sp, true)
+		e.pruneUntrustedCaches(stepCtx)
+		e.maybeDescribeSelf(stepCtx)
 		stepCtx.Dirty.MarkAll()
 	case dirKindStreamMachine:
 		if !e.running || e.legID != m.legID || len(outM) == 0 {
@@ -1070,6 +1091,7 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 			prevServerSeq = prev.ServerLastSeq
 		}
 		e.putSessionDecoded(stepCtx, outS[0], true)
+		e.emitWatchedSessionsIfChanged(stepCtx)
 		updated := e.sessions[m.sid]
 		b := e.buffers[m.sid]
 		needGapFill := b != nil && len(b.pending) > 0 && updated != nil && updated.ServerLastSeq > uint64(len(b.prefix))
@@ -1095,6 +1117,8 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 		if e.deviceKindNeedsSecuritySync(m.wd.Id, m.wd.Kind) {
 			e.requestSyncSecurity(stepCtx, true)
 		}
+		e.pruneUntrustedCaches(stepCtx)
+		e.maybeDescribeSelf(stepCtx)
 		stepCtx.Dirty.Add(true, false, false)
 	case dirKindPrefsLoad:
 		var dp *decodedPrefs
@@ -1301,6 +1325,8 @@ func (e *Engine) applyListsDecoded(
 	e.w.World.SessionsNext = pageNext
 	e.w.World.HasMoreSessions = pageNext != nil
 
+	e.pruneUntrustedCaches(ctx)
+	e.maybeDescribeSelf(ctx)
 	e.updateLivePollers(ctx)
 	e.syncDirectWatched(ctx)
 	if e.wantAllSessions && e.w.World.SessionsNext != nil {

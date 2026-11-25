@@ -80,6 +80,10 @@ public enum ScreenTarget
    */
   SCREEN_TARGET_ATTACHMENT_DRAFT(39),
   /**
+   * <code>SCREEN_TARGET_CONNECTION = 40;</code>
+   */
+  SCREEN_TARGET_CONNECTION(40),
+  /**
    * <code>SCREEN_TARGET_SESSION = 10;</code>
    */
   SCREEN_TARGET_SESSION(10),
@@ -171,6 +175,10 @@ public enum ScreenTarget
    */
   public static final int SCREEN_TARGET_ATTACHMENT_DRAFT_VALUE = 39;
   /**
+   * <code>SCREEN_TARGET_CONNECTION = 40;</code>
+   */
+  public static final int SCREEN_TARGET_CONNECTION_VALUE = 40;
+  /**
    * <code>SCREEN_TARGET_SESSION = 10;</code>
    */
   public static final int SCREEN_TARGET_SESSION_VALUE = 10;
@@ -228,6 +236,7 @@ public enum ScreenTarget
       case 36: return SCREEN_TARGET_USAGE;
       case 37: return SCREEN_TARGET_DIRECT_DIAGNOSTICS;
       case 39: return SCREEN_TARGET_ATTACHMENT_DRAFT;
+      case 40: return SCREEN_TARGET_CONNECTION;
       case 10: return SCREEN_TARGET_SESSION;
       case 20: return SCREEN_TARGET_SCHEDULES;
       case 21: return SCREEN_TARGET_SCHEDULE_DETAIL;

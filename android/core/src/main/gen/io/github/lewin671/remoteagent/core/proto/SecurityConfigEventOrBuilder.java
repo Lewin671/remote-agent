@@ -68,4 +68,28 @@ public interface SecurityConfigEventOrBuilder extends
    * @return The foreground.
    */
   boolean getForeground();
+
+  /**
+   * <code>string platform = 7 [json_name = "platform"];</code>
+   * @return The platform.
+   */
+  java.lang.String getPlatform();
+  /**
+   * <code>string platform = 7 [json_name = "platform"];</code>
+   * @return The bytes for platform.
+   */
+  com.google.protobuf.ByteString
+      getPlatformBytes();
+
+  /**
+   * <code>string device_description = 8 [json_name = "deviceDescription"];</code>
+   * @return The deviceDescription.
+   */
+  java.lang.String getDeviceDescription();
+  /**
+   * <code>string device_description = 8 [json_name = "deviceDescription"];</code>
+   * @return The bytes for deviceDescription.
+   */
+  com.google.protobuf.ByteString
+      getDeviceDescriptionBytes();
 }

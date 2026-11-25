@@ -27,6 +27,10 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		e.running = true
 		e.foreground = true
 		e.removed = false
+		e.wasConnectedForPush = false
+		e.selfDescribeAttempted = false
+		e.selfDescribeActionID = 0
+		clear(e.prunedUntrustedMachines)
 		e.lifecycleGen++
 		if e.security.Loaded || e.everReady {
 			e.networkGen++
@@ -81,6 +85,8 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 
 	case corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_STOP:
 		e.running = false
+		e.wasConnectedForPush = false
+		e.selfDescribeActionID = 0
 		e.w.World.Connection = lists.ConnOffline
 		e.displayGraceUntilMs = 0
 		e.coldStartGraceUntilMs = 0
@@ -373,6 +379,7 @@ func (e *Engine) handleTokenResult(ctx *StepContext, ev *corev1.TokenResultEvent
 	e.activeTokenOpID = 0
 	if ev.Removed {
 		e.removed = true
+		e.wasConnectedForPush = false
 		e.clearDisplayGrace(ctx)
 		e.clearColdStartGrace(ctx)
 		e.connecting = false
@@ -391,6 +398,7 @@ func (e *Engine) handleTokenResult(ctx *StepContext, ev *corev1.TokenResultEvent
 		e.w.ConnectionReason = world.Reason{Kind: world.ReasonDeviceUnrecognized}
 		e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_LINK_GRACE, "")
 		e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_RECONNECT, "")
+		e.pruneUntrustedCaches(ctx)
 		e.updateLivePollers(ctx)
 		ctx.Dirty.MarkAll()
 		return
@@ -466,6 +474,15 @@ func (e *Engine) handleStreamReady(ctx *StepContext, ev *corev1.StreamReadyEvent
 		}
 	}
 	e.emitCoordEffects(ctx, e.ensureTransportCoord().SetMainLeg(e.nowMs, true))
+	if !e.removed && !e.wasConnectedForPush {
+		e.wasConnectedForPush = true
+		ctx.emit(&corev1.Effect{
+			Effect: &corev1.Effect_SyncPushSubscription{
+				SyncPushSubscription: &corev1.SyncPushSubscriptionEffect{},
+			},
+		})
+	}
+	e.maybeDescribeSelf(ctx)
 	ctx.Dirty.MarkAll()
 }
 
@@ -514,6 +531,7 @@ func (e *Engine) onLegDropped(ctx *StepContext, legID uint64, policyViolation, u
 
 func (e *Engine) onConnectFailure(ctx *StepContext, unresolvedHost bool, errCode, errMsg string) {
 	wasConnected := e.w.World.Connection == lists.ConnConnected
+	e.wasConnectedForPush = false
 	e.connStep = world.ConnectStepNone
 	e.w.ConnectionReason = classifyConnectError(unresolvedHost, errCode, errMsg)
 	if !e.networkAvailable {

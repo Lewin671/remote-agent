@@ -538,6 +538,7 @@ func (c *Core) dispatchSettingsUI(ctx *sync.StepContext, ev *corev1.Event) []*co
 		feed.Mode = w.Mode
 		effects = append(effects, c.reconcilePollFeed(ctx, w.MachineId, feed, prevMode != w.Mode)...)
 		if w.Visible {
+			c.maybeHydrateUsageCache(w.MachineId, &effects)
 			c.maybeFetchUsage(ctx, w.MachineId, v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS, nil)
 		}
 
@@ -685,6 +686,7 @@ func (c *Core) dispatchSettingsUI(ctx *sync.StepContext, ev *corev1.Event) []*co
 		if se := c.m.state.MachineSettings[id]; se == nil || (!se.Loading && !se.Loaded) {
 			c.submitGetSettings(ctx, id)
 		}
+		c.maybeHydrateUsageCache(id, &effects)
 		c.maybeFetchUsage(ctx, id, v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS, nil)
 		c.m.settingsDirty.MachineSettings = true
 

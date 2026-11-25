@@ -195,6 +195,7 @@ func (e *Engine) refreshWorld() {
 	w.World.Prefs = e.prefs.Prefs
 	w.World.PrefsLoaded = e.prefs.Loaded
 	w.World.PrefsLoadFailed = e.prefs.LoadFailed
+	w.PrefsBroken = e.prefs.Broken
 	w.World.PrefsSyncing = len(e.prefsQueue) > 0
 	w.World.IsManager = e.isManager()
 	w.World.ManagerName = e.managerDevicePlainName()

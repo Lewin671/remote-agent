@@ -2780,6 +2780,12 @@ actor CoreHost: SyncEngine {
             case .usageCacheWrite(let eff):
                 defaults.saveUsageCache(machineID: eff.machineID, snapshot: eff.snapshot)
 
+            case .watchedSessions,
+                 .usageCacheRequest,
+                 .syncPushSubscription:
+                // Handled by Web/Android in P2-4; iOS migrates off SyncStateView in P3-2.
+                break
+
             case .sharedFileScanLocal,
                  .sharedFileInspectDisk,
                  .sharedFileWriteChunk,

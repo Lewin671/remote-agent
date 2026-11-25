@@ -34,6 +34,7 @@ public  final class ViewModel extends
     DIRECT_DIAGNOSTICS(37),
     ATTACHMENT_EVAL(38),
     ATTACHMENT_DRAFT(39),
+    CONNECTION(40),
     SESSION(10),
     SCHEDULES(20),
     SCHEDULE_DETAIL(21),
@@ -69,6 +70,7 @@ public  final class ViewModel extends
         case 37: return DIRECT_DIAGNOSTICS;
         case 38: return ATTACHMENT_EVAL;
         case 39: return ATTACHMENT_DRAFT;
+        case 40: return CONNECTION;
         case 10: return SESSION;
         case 20: return SCHEDULES;
         case 21: return SCHEDULE_DETAIL;
@@ -910,6 +912,58 @@ public  final class ViewModel extends
    */
   private void clearAttachmentDraft() {
     if (viewCase_ == 39) {
+      viewCase_ = 0;
+      view_ = null;
+    }
+  }
+
+  public static final int CONNECTION_FIELD_NUMBER = 40;
+  /**
+   * <code>.remoteagent.core.v1.ConnectionViewModel connection = 40 [json_name = "connection"];</code>
+   */
+  @java.lang.Override
+  public boolean hasConnection() {
+    return viewCase_ == 40;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnectionViewModel connection = 40 [json_name = "connection"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ConnectionViewModel getConnection() {
+    if (viewCase_ == 40) {
+       return (io.github.lewin671.remoteagent.core.proto.ConnectionViewModel) view_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ConnectionViewModel.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnectionViewModel connection = 40 [json_name = "connection"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setConnection(io.github.lewin671.remoteagent.core.proto.ConnectionViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    view_ = value;
+    viewCase_ = 40;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnectionViewModel connection = 40 [json_name = "connection"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeConnection(io.github.lewin671.remoteagent.core.proto.ConnectionViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    if (viewCase_ == 40 &&
+        view_ != io.github.lewin671.remoteagent.core.proto.ConnectionViewModel.getDefaultInstance()) {
+      view_ = io.github.lewin671.remoteagent.core.proto.ConnectionViewModel.newBuilder((io.github.lewin671.remoteagent.core.proto.ConnectionViewModel) view_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      view_ = value;
+    }
+    viewCase_ = 40;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnectionViewModel connection = 40 [json_name = "connection"];</code>
+   */
+  private void clearConnection() {
+    if (viewCase_ == 40) {
       viewCase_ = 0;
       view_ = null;
     }
@@ -2053,6 +2107,54 @@ public  final class ViewModel extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.ConnectionViewModel connection = 40 [json_name = "connection"];</code>
+     */
+    @java.lang.Override
+    public boolean hasConnection() {
+      return instance.hasConnection();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnectionViewModel connection = 40 [json_name = "connection"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ConnectionViewModel getConnection() {
+      return instance.getConnection();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnectionViewModel connection = 40 [json_name = "connection"];</code>
+     */
+    public Builder setConnection(io.github.lewin671.remoteagent.core.proto.ConnectionViewModel value) {
+      copyOnWrite();
+      instance.setConnection(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnectionViewModel connection = 40 [json_name = "connection"];</code>
+     */
+    public Builder setConnection(
+        io.github.lewin671.remoteagent.core.proto.ConnectionViewModel.Builder builderForValue) {
+      copyOnWrite();
+      instance.setConnection(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnectionViewModel connection = 40 [json_name = "connection"];</code>
+     */
+    public Builder mergeConnection(io.github.lewin671.remoteagent.core.proto.ConnectionViewModel value) {
+      copyOnWrite();
+      instance.mergeConnection(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnectionViewModel connection = 40 [json_name = "connection"];</code>
+     */
+    public Builder clearConnection() {
+      copyOnWrite();
+      instance.clearConnection();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.SessionViewModel session = 10 [json_name = "session"];</code>
      */
     @java.lang.Override
@@ -2330,12 +2432,13 @@ public  final class ViewModel extends
             io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsViewModel.class,
             io.github.lewin671.remoteagent.core.proto.AttachmentEvalViewModel.class,
             io.github.lewin671.remoteagent.core.proto.AttachmentDraftViewModel.class,
+            io.github.lewin671.remoteagent.core.proto.ConnectionViewModel.class,
           };
           java.lang.String info =
-              "\u0000\u0014\u0001\u0000\u0001\'\u0014\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
+              "\u0000\u0015\u0001\u0000\u0001(\u0015\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
               "\u0003<\u0000\u0004<\u0000\u0005<\u0000\n<\u0000\u0014<\u0000\u0015<\u0000\u0016" +
               "<\u0000\u0017<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$" +
-              "<\u0000%<\u0000&<\u0000\'<\u0000";
+              "<\u0000%<\u0000&<\u0000\'<\u0000(<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -43,6 +43,9 @@ public  final class Effect extends
     PERSIST_CLIENT_PREFS(74),
     PREPARE_CLEANUP_SESSION(75),
     USAGE_CACHE_WRITE(76),
+    WATCHED_SESSIONS(77),
+    USAGE_CACHE_REQUEST(78),
+    SYNC_PUSH_SUBSCRIPTION(79),
     DRAFT_STORAGE_LIST(80),
     DRAFT_STORAGE_READ(81),
     DRAFT_STORAGE_WRITE(82),
@@ -138,6 +141,9 @@ public  final class Effect extends
         case 74: return PERSIST_CLIENT_PREFS;
         case 75: return PREPARE_CLEANUP_SESSION;
         case 76: return USAGE_CACHE_WRITE;
+        case 77: return WATCHED_SESSIONS;
+        case 78: return USAGE_CACHE_REQUEST;
+        case 79: return SYNC_PUSH_SUBSCRIPTION;
         case 80: return DRAFT_STORAGE_LIST;
         case 81: return DRAFT_STORAGE_READ;
         case 82: return DRAFT_STORAGE_WRITE;
@@ -1458,6 +1464,162 @@ public  final class Effect extends
    */
   private void clearUsageCacheWrite() {
     if (effectCase_ == 76) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int WATCHED_SESSIONS_FIELD_NUMBER = 77;
+  /**
+   * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
+   */
+  @java.lang.Override
+  public boolean hasWatchedSessions() {
+    return effectCase_ == 77;
+  }
+  /**
+   * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.WatchedSessionsEffect getWatchedSessions() {
+    if (effectCase_ == 77) {
+       return (io.github.lewin671.remoteagent.core.proto.WatchedSessionsEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.WatchedSessionsEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setWatchedSessions(io.github.lewin671.remoteagent.core.proto.WatchedSessionsEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 77;
+  }
+  /**
+   * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeWatchedSessions(io.github.lewin671.remoteagent.core.proto.WatchedSessionsEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 77 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.WatchedSessionsEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.WatchedSessionsEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.WatchedSessionsEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 77;
+  }
+  /**
+   * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
+   */
+  private void clearWatchedSessions() {
+    if (effectCase_ == 77) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int USAGE_CACHE_REQUEST_FIELD_NUMBER = 78;
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheRequestEffect usage_cache_request = 78 [json_name = "usageCacheRequest"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUsageCacheRequest() {
+    return effectCase_ == 78;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheRequestEffect usage_cache_request = 78 [json_name = "usageCacheRequest"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UsageCacheRequestEffect getUsageCacheRequest() {
+    if (effectCase_ == 78) {
+       return (io.github.lewin671.remoteagent.core.proto.UsageCacheRequestEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.UsageCacheRequestEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheRequestEffect usage_cache_request = 78 [json_name = "usageCacheRequest"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUsageCacheRequest(io.github.lewin671.remoteagent.core.proto.UsageCacheRequestEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 78;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheRequestEffect usage_cache_request = 78 [json_name = "usageCacheRequest"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeUsageCacheRequest(io.github.lewin671.remoteagent.core.proto.UsageCacheRequestEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 78 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.UsageCacheRequestEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.UsageCacheRequestEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.UsageCacheRequestEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 78;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheRequestEffect usage_cache_request = 78 [json_name = "usageCacheRequest"];</code>
+   */
+  private void clearUsageCacheRequest() {
+    if (effectCase_ == 78) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SYNC_PUSH_SUBSCRIPTION_FIELD_NUMBER = 79;
+  /**
+   * <code>.remoteagent.core.v1.SyncPushSubscriptionEffect sync_push_subscription = 79 [json_name = "syncPushSubscription"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSyncPushSubscription() {
+    return effectCase_ == 79;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SyncPushSubscriptionEffect sync_push_subscription = 79 [json_name = "syncPushSubscription"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SyncPushSubscriptionEffect getSyncPushSubscription() {
+    if (effectCase_ == 79) {
+       return (io.github.lewin671.remoteagent.core.proto.SyncPushSubscriptionEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SyncPushSubscriptionEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SyncPushSubscriptionEffect sync_push_subscription = 79 [json_name = "syncPushSubscription"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSyncPushSubscription(io.github.lewin671.remoteagent.core.proto.SyncPushSubscriptionEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 79;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SyncPushSubscriptionEffect sync_push_subscription = 79 [json_name = "syncPushSubscription"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSyncPushSubscription(io.github.lewin671.remoteagent.core.proto.SyncPushSubscriptionEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 79 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.SyncPushSubscriptionEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.SyncPushSubscriptionEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SyncPushSubscriptionEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 79;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SyncPushSubscriptionEffect sync_push_subscription = 79 [json_name = "syncPushSubscription"];</code>
+   */
+  private void clearSyncPushSubscription() {
+    if (effectCase_ == 79) {
       effectCase_ = 0;
       effect_ = null;
     }
@@ -5657,6 +5819,150 @@ public  final class Effect extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
+     */
+    @java.lang.Override
+    public boolean hasWatchedSessions() {
+      return instance.hasWatchedSessions();
+    }
+    /**
+     * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.WatchedSessionsEffect getWatchedSessions() {
+      return instance.getWatchedSessions();
+    }
+    /**
+     * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
+     */
+    public Builder setWatchedSessions(io.github.lewin671.remoteagent.core.proto.WatchedSessionsEffect value) {
+      copyOnWrite();
+      instance.setWatchedSessions(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
+     */
+    public Builder setWatchedSessions(
+        io.github.lewin671.remoteagent.core.proto.WatchedSessionsEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setWatchedSessions(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
+     */
+    public Builder mergeWatchedSessions(io.github.lewin671.remoteagent.core.proto.WatchedSessionsEffect value) {
+      copyOnWrite();
+      instance.mergeWatchedSessions(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.WatchedSessionsEffect watched_sessions = 77 [json_name = "watchedSessions"];</code>
+     */
+    public Builder clearWatchedSessions() {
+      copyOnWrite();
+      instance.clearWatchedSessions();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheRequestEffect usage_cache_request = 78 [json_name = "usageCacheRequest"];</code>
+     */
+    @java.lang.Override
+    public boolean hasUsageCacheRequest() {
+      return instance.hasUsageCacheRequest();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheRequestEffect usage_cache_request = 78 [json_name = "usageCacheRequest"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UsageCacheRequestEffect getUsageCacheRequest() {
+      return instance.getUsageCacheRequest();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheRequestEffect usage_cache_request = 78 [json_name = "usageCacheRequest"];</code>
+     */
+    public Builder setUsageCacheRequest(io.github.lewin671.remoteagent.core.proto.UsageCacheRequestEffect value) {
+      copyOnWrite();
+      instance.setUsageCacheRequest(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheRequestEffect usage_cache_request = 78 [json_name = "usageCacheRequest"];</code>
+     */
+    public Builder setUsageCacheRequest(
+        io.github.lewin671.remoteagent.core.proto.UsageCacheRequestEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setUsageCacheRequest(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheRequestEffect usage_cache_request = 78 [json_name = "usageCacheRequest"];</code>
+     */
+    public Builder mergeUsageCacheRequest(io.github.lewin671.remoteagent.core.proto.UsageCacheRequestEffect value) {
+      copyOnWrite();
+      instance.mergeUsageCacheRequest(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheRequestEffect usage_cache_request = 78 [json_name = "usageCacheRequest"];</code>
+     */
+    public Builder clearUsageCacheRequest() {
+      copyOnWrite();
+      instance.clearUsageCacheRequest();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SyncPushSubscriptionEffect sync_push_subscription = 79 [json_name = "syncPushSubscription"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSyncPushSubscription() {
+      return instance.hasSyncPushSubscription();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SyncPushSubscriptionEffect sync_push_subscription = 79 [json_name = "syncPushSubscription"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SyncPushSubscriptionEffect getSyncPushSubscription() {
+      return instance.getSyncPushSubscription();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SyncPushSubscriptionEffect sync_push_subscription = 79 [json_name = "syncPushSubscription"];</code>
+     */
+    public Builder setSyncPushSubscription(io.github.lewin671.remoteagent.core.proto.SyncPushSubscriptionEffect value) {
+      copyOnWrite();
+      instance.setSyncPushSubscription(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SyncPushSubscriptionEffect sync_push_subscription = 79 [json_name = "syncPushSubscription"];</code>
+     */
+    public Builder setSyncPushSubscription(
+        io.github.lewin671.remoteagent.core.proto.SyncPushSubscriptionEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSyncPushSubscription(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SyncPushSubscriptionEffect sync_push_subscription = 79 [json_name = "syncPushSubscription"];</code>
+     */
+    public Builder mergeSyncPushSubscription(io.github.lewin671.remoteagent.core.proto.SyncPushSubscriptionEffect value) {
+      copyOnWrite();
+      instance.mergeSyncPushSubscription(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SyncPushSubscriptionEffect sync_push_subscription = 79 [json_name = "syncPushSubscription"];</code>
+     */
+    public Builder clearSyncPushSubscription() {
+      copyOnWrite();
+      instance.clearSyncPushSubscription();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.DraftStorageListEffect draft_storage_list = 80 [json_name = "draftStorageList"];</code>
      */
     @java.lang.Override
@@ -8426,6 +8732,9 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.PersistClientPrefsEffect.class,
             io.github.lewin671.remoteagent.core.proto.PrepareCleanupSessionEffect.class,
             io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect.class,
+            io.github.lewin671.remoteagent.core.proto.WatchedSessionsEffect.class,
+            io.github.lewin671.remoteagent.core.proto.UsageCacheRequestEffect.class,
+            io.github.lewin671.remoteagent.core.proto.SyncPushSubscriptionEffect.class,
             io.github.lewin671.remoteagent.core.proto.DraftStorageListEffect.class,
             io.github.lewin671.remoteagent.core.proto.DraftStorageReadEffect.class,
             io.github.lewin671.remoteagent.core.proto.DraftStorageWriteEffect.class,
@@ -8468,17 +8777,17 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.SecurityTokenUpdatedEffect.class,
           };
           java.lang.String info =
-              "\u0000P\u0001\u0000\u0001\u0091P\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "\u0000S\u0001\u0000\u0001\u0091S\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
               "<\u0000\u0004<\u0000\u0005<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<\u0000\u000b<" +
               "\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0011<\u0000\u0012<\u0000\u0013" +
               "<\u0000(<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/<\u00000<\u00001<\u00002" +
               "<\u0000<<\u0000=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000G<\u0000H<\u0000I" +
-              "<\u0000J<\u0000K<\u0000L<\u0000P<\u0000Q<\u0000R<\u0000S<\u0000T<\u0000U<\u0000V" +
-              "<\u0000W<\u0000X<\u0000f<\u0000g<\u0000h<\u0000i<\u0000j<\u0000k<\u0000l<\u0000m" +
-              "<\u0000o<\u0000p<\u0000q<\u0000r<\u0000s<\u0000t<\u0000u<\u0000v<\u0000w<\u0000x" +
-              "<\u0000\u0082<\u0000\u0083<\u0000\u0087<\u0000\u0088<\u0000\u0089<\u0000\u008a<\u0000" +
-              "\u008b<\u0000\u008c<\u0000\u008d<\u0000\u008e<\u0000\u008f<\u0000\u0090<\u0000\u0091" +
-              "<\u0000";
+              "<\u0000J<\u0000K<\u0000L<\u0000M<\u0000N<\u0000O<\u0000P<\u0000Q<\u0000R<\u0000S" +
+              "<\u0000T<\u0000U<\u0000V<\u0000W<\u0000X<\u0000f<\u0000g<\u0000h<\u0000i<\u0000j" +
+              "<\u0000k<\u0000l<\u0000m<\u0000o<\u0000p<\u0000q<\u0000r<\u0000s<\u0000t<\u0000u" +
+              "<\u0000v<\u0000w<\u0000x<\u0000\u0082<\u0000\u0083<\u0000\u0087<\u0000\u0088<\u0000" +
+              "\u0089<\u0000\u008a<\u0000\u008b<\u0000\u008c<\u0000\u008d<\u0000\u008e<\u0000\u008f" +
+              "<\u0000\u0090<\u0000\u0091<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

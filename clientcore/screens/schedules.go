@@ -884,6 +884,7 @@ func BuildSchedules(st *State, endedLimit int) *corev1.SchedulesViewModel {
 		CanMarkAllRead:      len(fresh) > 1,
 		SelectedMachineId:   ss.SelectedMachineID,
 		SelectedTaskId:      ss.SelectedTaskID,
+		InitialLoaded:       st.World.MachinesListed || st.World.SessionsListed || st.World.PrefsLoaded,
 	}
 }
 
@@ -940,6 +941,7 @@ func BuildScheduleDetail(st *State, machineID, taskID string, earlierLimit int) 
 			MachineOnline:    lists.MachineReachable(mac),
 			MachineSupported: supported,
 			ReadOnly:         true,
+			InitialLoaded:    st.World.MachinesListed || st.World.SessionsListed || st.World.PrefsLoaded,
 		}
 	}
 
@@ -1285,6 +1287,7 @@ func BuildScheduleDetail(st *State, machineID, taskID string, earlierLimit int) 
 		ScopedMode:           task.ScopedMode,
 		Actions:              actions,
 		MenuSubtitle:         taskMenuSubtitle(st, entry, bounds),
+		InitialLoaded:        st.World.MachinesListed || st.World.SessionsListed || st.World.PrefsLoaded,
 	}
 }
 

@@ -287,6 +287,7 @@ message SchedulesViewModel {
   bool can_mark_all_read = 23;
   string selected_machine_id = 24;
   string selected_task_id = 25;
+  bool initial_loaded = 26;
 }
 
 // --- Detail Screen ViewModel ---
@@ -401,6 +402,7 @@ message ScheduleDetailViewModel {
   string scoped_mode = 47;
   ScheduleTaskActionsView actions = 48;
   Text menu_subtitle = 49;
+  bool initial_loaded = 50;
 }
 
 // --- Form Screen ViewModel ---

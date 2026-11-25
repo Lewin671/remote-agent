@@ -23,6 +23,7 @@ type State struct {
 	AuthorityDeviceID   string
 	DisconnectedAtMs    int64
 	LivePushConnected   bool
+	PrefsBroken         bool
 
 	ProjectChangedElsewhere bool
 	PrefsGlobalError        Reason
@@ -62,6 +63,9 @@ type SessionSnapshot struct {
 	Conn                 lists.ConnectionKind
 	Unlinked             bool
 	ReachabilityUnknown  bool
+	TerminalReady        bool
+	TerminalWaiting      bool
+	DisconnectedAtMs     int64
 	LookingUp            bool
 	LookupFailed         bool
 	LookupError          Reason

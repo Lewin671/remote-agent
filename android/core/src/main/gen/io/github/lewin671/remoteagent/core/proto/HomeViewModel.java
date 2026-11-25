@@ -1346,6 +1346,176 @@ public  final class HomeViewModel extends
     bitField0_ = (bitField0_ & ~0x00000100);
   }
 
+  public static final int LIST_ERROR_TEXT_FIELD_NUMBER = 30;
+  private io.github.lewin671.remoteagent.core.proto.Text listErrorText_;
+  /**
+   * <code>.remoteagent.core.v1.Text list_error_text = 30 [json_name = "listErrorText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasListErrorText() {
+    return ((bitField0_ & 0x00000200) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text list_error_text = 30 [json_name = "listErrorText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getListErrorText() {
+    return listErrorText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : listErrorText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text list_error_text = 30 [json_name = "listErrorText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setListErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    listErrorText_ = value;
+    bitField0_ |= 0x00000200;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text list_error_text = 30 [json_name = "listErrorText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeListErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (listErrorText_ != null &&
+        listErrorText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      listErrorText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(listErrorText_).mergeFrom(value).buildPartial();
+    } else {
+      listErrorText_ = value;
+    }
+    bitField0_ |= 0x00000200;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text list_error_text = 30 [json_name = "listErrorText"];</code>
+   */
+  private void clearListErrorText() {
+    listErrorText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000200);
+  }
+
+  public static final int CLOCK_SKEW_BANNER_TEXT_FIELD_NUMBER = 31;
+  private io.github.lewin671.remoteagent.core.proto.Text clockSkewBannerText_;
+  /**
+   * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 31 [json_name = "clockSkewBannerText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasClockSkewBannerText() {
+    return ((bitField0_ & 0x00000400) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 31 [json_name = "clockSkewBannerText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getClockSkewBannerText() {
+    return clockSkewBannerText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : clockSkewBannerText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 31 [json_name = "clockSkewBannerText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setClockSkewBannerText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    clockSkewBannerText_ = value;
+    bitField0_ |= 0x00000400;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 31 [json_name = "clockSkewBannerText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeClockSkewBannerText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (clockSkewBannerText_ != null &&
+        clockSkewBannerText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      clockSkewBannerText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(clockSkewBannerText_).mergeFrom(value).buildPartial();
+    } else {
+      clockSkewBannerText_ = value;
+    }
+    bitField0_ |= 0x00000400;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 31 [json_name = "clockSkewBannerText"];</code>
+   */
+  private void clearClockSkewBannerText() {
+    clockSkewBannerText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000400);
+  }
+
+  public static final int PREFS_BANNER_FIELD_NUMBER = 32;
+  private io.github.lewin671.remoteagent.core.proto.HomePrefsBannerView prefsBanner_;
+  /**
+   * <code>.remoteagent.core.v1.HomePrefsBannerView prefs_banner = 32 [json_name = "prefsBanner"];</code>
+   */
+  @java.lang.Override
+  public boolean hasPrefsBanner() {
+    return ((bitField0_ & 0x00000800) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomePrefsBannerView prefs_banner = 32 [json_name = "prefsBanner"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.HomePrefsBannerView getPrefsBanner() {
+    return prefsBanner_ == null ? io.github.lewin671.remoteagent.core.proto.HomePrefsBannerView.getDefaultInstance() : prefsBanner_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomePrefsBannerView prefs_banner = 32 [json_name = "prefsBanner"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPrefsBanner(io.github.lewin671.remoteagent.core.proto.HomePrefsBannerView value) {
+    value.getClass();  // minimal bytecode null check
+    prefsBanner_ = value;
+    bitField0_ |= 0x00000800;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomePrefsBannerView prefs_banner = 32 [json_name = "prefsBanner"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergePrefsBanner(io.github.lewin671.remoteagent.core.proto.HomePrefsBannerView value) {
+    value.getClass();  // minimal bytecode null check
+    if (prefsBanner_ != null &&
+        prefsBanner_ != io.github.lewin671.remoteagent.core.proto.HomePrefsBannerView.getDefaultInstance()) {
+      prefsBanner_ =
+        io.github.lewin671.remoteagent.core.proto.HomePrefsBannerView.newBuilder(prefsBanner_).mergeFrom(value).buildPartial();
+    } else {
+      prefsBanner_ = value;
+    }
+    bitField0_ |= 0x00000800;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomePrefsBannerView prefs_banner = 32 [json_name = "prefsBanner"];</code>
+   */
+  private void clearPrefsBanner() {
+    prefsBanner_ = null;
+    bitField0_ = (bitField0_ & ~0x00000800);
+  }
+
+  public static final int HAS_MORE_SESSIONS_FIELD_NUMBER = 33;
+  private boolean hasMoreSessions_;
+  /**
+   * <code>bool has_more_sessions = 33 [json_name = "hasMoreSessions"];</code>
+   * @return The hasMoreSessions.
+   */
+  @java.lang.Override
+  public boolean getHasMoreSessions() {
+    return hasMoreSessions_;
+  }
+  /**
+   * <code>bool has_more_sessions = 33 [json_name = "hasMoreSessions"];</code>
+   * @param value The hasMoreSessions to set.
+   */
+  private void setHasMoreSessions(boolean value) {
+    
+    hasMoreSessions_ = value;
+  }
+  /**
+   * <code>bool has_more_sessions = 33 [json_name = "hasMoreSessions"];</code>
+   */
+  private void clearHasMoreSessions() {
+
+    hasMoreSessions_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.HomeViewModel parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -2799,6 +2969,175 @@ public  final class HomeViewModel extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text list_error_text = 30 [json_name = "listErrorText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasListErrorText() {
+      return instance.hasListErrorText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text list_error_text = 30 [json_name = "listErrorText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getListErrorText() {
+      return instance.getListErrorText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text list_error_text = 30 [json_name = "listErrorText"];</code>
+     */
+    public Builder setListErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setListErrorText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text list_error_text = 30 [json_name = "listErrorText"];</code>
+     */
+    public Builder setListErrorText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setListErrorText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text list_error_text = 30 [json_name = "listErrorText"];</code>
+     */
+    public Builder mergeListErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeListErrorText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text list_error_text = 30 [json_name = "listErrorText"];</code>
+     */
+    public Builder clearListErrorText() {  copyOnWrite();
+      instance.clearListErrorText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 31 [json_name = "clockSkewBannerText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasClockSkewBannerText() {
+      return instance.hasClockSkewBannerText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 31 [json_name = "clockSkewBannerText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getClockSkewBannerText() {
+      return instance.getClockSkewBannerText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 31 [json_name = "clockSkewBannerText"];</code>
+     */
+    public Builder setClockSkewBannerText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setClockSkewBannerText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 31 [json_name = "clockSkewBannerText"];</code>
+     */
+    public Builder setClockSkewBannerText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setClockSkewBannerText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 31 [json_name = "clockSkewBannerText"];</code>
+     */
+    public Builder mergeClockSkewBannerText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeClockSkewBannerText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 31 [json_name = "clockSkewBannerText"];</code>
+     */
+    public Builder clearClockSkewBannerText() {  copyOnWrite();
+      instance.clearClockSkewBannerText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.HomePrefsBannerView prefs_banner = 32 [json_name = "prefsBanner"];</code>
+     */
+    @java.lang.Override
+    public boolean hasPrefsBanner() {
+      return instance.hasPrefsBanner();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomePrefsBannerView prefs_banner = 32 [json_name = "prefsBanner"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.HomePrefsBannerView getPrefsBanner() {
+      return instance.getPrefsBanner();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomePrefsBannerView prefs_banner = 32 [json_name = "prefsBanner"];</code>
+     */
+    public Builder setPrefsBanner(io.github.lewin671.remoteagent.core.proto.HomePrefsBannerView value) {
+      copyOnWrite();
+      instance.setPrefsBanner(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.HomePrefsBannerView prefs_banner = 32 [json_name = "prefsBanner"];</code>
+     */
+    public Builder setPrefsBanner(
+        io.github.lewin671.remoteagent.core.proto.HomePrefsBannerView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setPrefsBanner(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomePrefsBannerView prefs_banner = 32 [json_name = "prefsBanner"];</code>
+     */
+    public Builder mergePrefsBanner(io.github.lewin671.remoteagent.core.proto.HomePrefsBannerView value) {
+      copyOnWrite();
+      instance.mergePrefsBanner(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomePrefsBannerView prefs_banner = 32 [json_name = "prefsBanner"];</code>
+     */
+    public Builder clearPrefsBanner() {  copyOnWrite();
+      instance.clearPrefsBanner();
+      return this;
+    }
+
+    /**
+     * <code>bool has_more_sessions = 33 [json_name = "hasMoreSessions"];</code>
+     * @return The hasMoreSessions.
+     */
+    @java.lang.Override
+    public boolean getHasMoreSessions() {
+      return instance.getHasMoreSessions();
+    }
+    /**
+     * <code>bool has_more_sessions = 33 [json_name = "hasMoreSessions"];</code>
+     * @param value The hasMoreSessions to set.
+     * @return This builder for chaining.
+     */
+    public Builder setHasMoreSessions(boolean value) {
+      copyOnWrite();
+      instance.setHasMoreSessions(value);
+      return this;
+    }
+    /**
+     * <code>bool has_more_sessions = 33 [json_name = "hasMoreSessions"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearHasMoreSessions() {
+      copyOnWrite();
+      instance.clearHasMoreSessions();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.HomeViewModel)
   }
   @java.lang.Override
@@ -2848,14 +3187,18 @@ public  final class HomeViewModel extends
             "selectedSessionId_",
             "hasMoreEnded_",
             "topAttentionQuestion_",
+            "listErrorText_",
+            "clockSkewBannerText_",
+            "prefsBanner_",
+            "hasMoreSessions_",
           };
           java.lang.String info =
-              "\u0000\u001c\u0000\u0001\u0002\u001d\u001c\u0000\u0004\u0000\u0002\u0007\u0003\u0208" +
-              "\u0004\u1009\u0000\u0005\u0208\u0006\u1009\u0001\u0007\u1009\u0002\b\u1009\u0003" +
-              "\t\u0007\n\u0208\u000b\u1009\u0004\f\u0007\r\u0004\u000e\u0004\u000f\u0004\u0010" +
-              "\u0004\u0011\u0208\u0012\u0007\u0013\u1009\u0005\u0014\u001b\u0015\u001b\u0016\u001b" +
-              "\u0017\u1009\u0006\u0018\u001b\u0019\u1009\u0007\u001a\u0007\u001b\u0208\u001c\u0007" +
-              "\u001d\u1009\b";
+              "\u0000 \u0000\u0001\u0002! \u0000\u0004\u0000\u0002\u0007\u0003\u0208\u0004\u1009" +
+              "\u0000\u0005\u0208\u0006\u1009\u0001\u0007\u1009\u0002\b\u1009\u0003\t\u0007\n\u0208" +
+              "\u000b\u1009\u0004\f\u0007\r\u0004\u000e\u0004\u000f\u0004\u0010\u0004\u0011\u0208" +
+              "\u0012\u0007\u0013\u1009\u0005\u0014\u001b\u0015\u001b\u0016\u001b\u0017\u1009\u0006" +
+              "\u0018\u001b\u0019\u1009\u0007\u001a\u0007\u001b\u0208\u001c\u0007\u001d\u1009\b" +
+              "\u001e\u1009\t\u001f\u1009\n \u1009\u000b!\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

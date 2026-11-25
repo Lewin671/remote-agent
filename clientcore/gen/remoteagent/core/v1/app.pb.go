@@ -76,6 +76,7 @@ const (
 	ScreenTarget_SCREEN_TARGET_USAGE                  ScreenTarget = 36
 	ScreenTarget_SCREEN_TARGET_DIRECT_DIAGNOSTICS     ScreenTarget = 37
 	ScreenTarget_SCREEN_TARGET_ATTACHMENT_DRAFT       ScreenTarget = 39
+	ScreenTarget_SCREEN_TARGET_CONNECTION             ScreenTarget = 40
 	ScreenTarget_SCREEN_TARGET_SESSION                ScreenTarget = 10
 	ScreenTarget_SCREEN_TARGET_SCHEDULES              ScreenTarget = 20
 	ScreenTarget_SCREEN_TARGET_SCHEDULE_DETAIL        ScreenTarget = 21
@@ -348,6 +349,13 @@ type Screen_AttachmentDraft struct {
 
 func (*Screen_AttachmentDraft) isScreen_Screen() {}
 
+type Screen_Connection struct {
+	_          [0]func()
+	Connection *ConnectionScreenRequest
+}
+
+func (*Screen_Connection) isScreen_Screen() {}
+
 type Screen_Session struct {
 	_       [0]func()
 	Session *SessionScreenRequest
@@ -479,6 +487,12 @@ func (m *Screen) GetAttachmentDraft() *AttachmentDraftScreenRequest {
 	}
 	return nil
 }
+func (m *Screen) GetConnection() *ConnectionScreenRequest {
+	if x, ok := m.GetScreen().(*Screen_Connection); ok && x != nil {
+		return x.Connection
+	}
+	return nil
+}
 func (m *Screen) GetSession() *SessionScreenRequest {
 	if x, ok := m.GetScreen().(*Screen_Session); ok && x != nil {
 		return x.Session
@@ -523,7 +537,7 @@ func extraUnmarshal_Screen(base unsafe.Pointer, num litewire.Number, wtyp litewi
 	switch {
 	case num <= 31:
 		return m.extraUnmarshalPart0(num, wtyp, bp)
-	case num <= 39:
+	case num <= 40:
 		return m.extraUnmarshalPart1(num, wtyp, bp)
 	}
 	return false, nil
@@ -693,6 +707,13 @@ func (m *Screen) extraUnmarshalPart1(num litewire.Number, wtyp litewire.Type, bp
 				m.Screen = w
 			}
 			sub = w.AttachmentDraft
+		case 40:
+			w, _ := m.Screen.(*Screen_Connection)
+			if w == nil || w.Connection == nil {
+				w = &Screen_Connection{Connection: &ConnectionScreenRequest{}}
+				m.Screen = w
+			}
+			sub = w.Connection
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -815,6 +836,13 @@ type ViewModel_AttachmentDraft struct {
 }
 
 func (*ViewModel_AttachmentDraft) isViewModel_View() {}
+
+type ViewModel_Connection struct {
+	_          [0]func()
+	Connection *ConnectionViewModel
+}
+
+func (*ViewModel_Connection) isViewModel_View() {}
 
 type ViewModel_Session struct {
 	_       [0]func()
@@ -944,6 +972,12 @@ func (m *ViewModel) GetAttachmentEval() *AttachmentEvalViewModel {
 func (m *ViewModel) GetAttachmentDraft() *AttachmentDraftViewModel {
 	if x, ok := m.GetView().(*ViewModel_AttachmentDraft); ok && x != nil {
 		return x.AttachmentDraft
+	}
+	return nil
+}
+func (m *ViewModel) GetConnection() *ConnectionViewModel {
+	if x, ok := m.GetView().(*ViewModel_Connection); ok && x != nil {
+		return x.Connection
 	}
 	return nil
 }
@@ -1082,6 +1116,10 @@ func (m *ViewModel) appendMarshalViewPart1(b []byte) ([]byte, bool) {
 	case *ViewModel_AttachmentDraft:
 		if x != nil && x.AttachmentDraft != nil {
 			onum, omsg = 39, x.AttachmentDraft
+		}
+	case *ViewModel_Connection:
+		if x != nil && x.Connection != nil {
+			onum, omsg = 40, x.Connection
 		}
 	case *ViewModel_Session:
 		if x != nil && x.Session != nil {
@@ -4482,6 +4520,13 @@ type Event_UsageScreenScrub struct {
 
 func (*Event_UsageScreenScrub) isEvent_Event() {}
 
+type Event_ResolveNotificationTap struct {
+	_                      [0]func()
+	ResolveNotificationTap *ResolveNotificationTapAction
+}
+
+func (*Event_ResolveNotificationTap) isEvent_Event() {}
+
 type Event_UpdateClientName struct {
 	_                [0]func()
 	UpdateClientName *UpdateClientNameEvent
@@ -5978,6 +6023,12 @@ func (m *Event) GetUsageScreenScrub() *UsageScreenScrubEvent {
 	}
 	return nil
 }
+func (m *Event) GetResolveNotificationTap() *ResolveNotificationTapAction {
+	if x, ok := m.GetEvent().(*Event_ResolveNotificationTap); ok && x != nil {
+		return x.ResolveNotificationTap
+	}
+	return nil
+}
 func (m *Event) GetUpdateClientName() *UpdateClientNameEvent {
 	if x, ok := m.GetEvent().(*Event_UpdateClientName); ok && x != nil {
 		return x.UpdateClientName
@@ -6962,11 +7013,11 @@ func extraUnmarshal_Event(base unsafe.Pointer, num litewire.Number, wtyp litewir
 		return m.extraUnmarshalPart13(num, wtyp, bp)
 	case num <= 382:
 		return m.extraUnmarshalPart14(num, wtyp, bp)
-	case num <= 411:
+	case num <= 410:
 		return m.extraUnmarshalPart15(num, wtyp, bp)
-	case num <= 423:
+	case num <= 422:
 		return m.extraUnmarshalPart16(num, wtyp, bp)
-	case num <= 458:
+	case num <= 457:
 		return m.extraUnmarshalPart17(num, wtyp, bp)
 	case num <= 465:
 		return m.extraUnmarshalPart18(num, wtyp, bp)
@@ -8531,6 +8582,13 @@ func (m *Event) extraUnmarshalPart15(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.UsageScreenScrub
+		case 390:
+			w, _ := m.Event.(*Event_ResolveNotificationTap)
+			if w == nil || w.ResolveNotificationTap == nil {
+				w = &Event_ResolveNotificationTap{ResolveNotificationTap: &ResolveNotificationTapAction{}}
+				m.Event = w
+			}
+			sub = w.ResolveNotificationTap
 		case 400:
 			w, _ := m.Event.(*Event_TransportConfig)
 			if w == nil || w.TransportConfig == nil {
@@ -8587,13 +8645,6 @@ func (m *Event) extraUnmarshalPart15(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.DirectPcLocalCandidate
-		case 411:
-			w, _ := m.Event.(*Event_DirectPcState)
-			if w == nil || w.DirectPcState == nil {
-				w = &Event_DirectPcState{DirectPcState: &DirectPcStateEvent{}}
-				m.Event = w
-			}
-			sub = w.DirectPcState
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -8612,6 +8663,13 @@ func (m *Event) extraUnmarshalPart16(num litewire.Number, wtyp litewire.Type, bp
 	var sub litewire.Unmarshaler
 	if wtyp == litewire.BytesType {
 		switch num {
+		case 411:
+			w, _ := m.Event.(*Event_DirectPcState)
+			if w == nil || w.DirectPcState == nil {
+				w = &Event_DirectPcState{DirectPcState: &DirectPcStateEvent{}}
+				m.Event = w
+			}
+			sub = w.DirectPcState
 		case 412:
 			w, _ := m.Event.(*Event_DirectPcStunError)
 			if w == nil || w.DirectPcStunError == nil {
@@ -8689,13 +8747,6 @@ func (m *Event) extraUnmarshalPart16(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.TerminalHistory
-		case 423:
-			w, _ := m.Event.(*Event_DirectPcProbeReceived)
-			if w == nil || w.DirectPcProbeReceived == nil {
-				w = &Event_DirectPcProbeReceived{DirectPcProbeReceived: &DirectPcProbeReceivedEvent{}}
-				m.Event = w
-			}
-			sub = w.DirectPcProbeReceived
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -8714,6 +8765,13 @@ func (m *Event) extraUnmarshalPart17(num litewire.Number, wtyp litewire.Type, bp
 	var sub litewire.Unmarshaler
 	if wtyp == litewire.BytesType {
 		switch num {
+		case 423:
+			w, _ := m.Event.(*Event_DirectPcProbeReceived)
+			if w == nil || w.DirectPcProbeReceived == nil {
+				w = &Event_DirectPcProbeReceived{DirectPcProbeReceived: &DirectPcProbeReceivedEvent{}}
+				m.Event = w
+			}
+			sub = w.DirectPcProbeReceived
 		case 424:
 			w, _ := m.Event.(*Event_TerminalDirectOpen)
 			if w == nil || w.TerminalDirectOpen == nil {
@@ -8791,13 +8849,6 @@ func (m *Event) extraUnmarshalPart17(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityOpRequest
-		case 458:
-			w, _ := m.Event.(*Event_SeedDemoWorld)
-			if w == nil || w.SeedDemoWorld == nil {
-				w = &Event_SeedDemoWorld{SeedDemoWorld: &SeedDemoWorldEvent{}}
-				m.Event = w
-			}
-			sub = w.SeedDemoWorld
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -8816,6 +8867,13 @@ func (m *Event) extraUnmarshalPart18(num litewire.Number, wtyp litewire.Type, bp
 	var sub litewire.Unmarshaler
 	if wtyp == litewire.BytesType {
 		switch num {
+		case 458:
+			w, _ := m.Event.(*Event_SeedDemoWorld)
+			if w == nil || w.SeedDemoWorld == nil {
+				w = &Event_SeedDemoWorld{SeedDemoWorld: &SeedDemoWorldEvent{}}
+				m.Event = w
+			}
+			sub = w.SeedDemoWorld
 		case 459:
 			w, _ := m.Event.(*Event_SecurityKeyGenerated)
 			if w == nil || w.SecurityKeyGenerated == nil {
@@ -10577,6 +10635,27 @@ type Effect_UsageCacheWrite struct {
 
 func (*Effect_UsageCacheWrite) isEffect_Effect() {}
 
+type Effect_WatchedSessions struct {
+	_               [0]func()
+	WatchedSessions *WatchedSessionsEffect
+}
+
+func (*Effect_WatchedSessions) isEffect_Effect() {}
+
+type Effect_UsageCacheRequest struct {
+	_                 [0]func()
+	UsageCacheRequest *UsageCacheRequestEffect
+}
+
+func (*Effect_UsageCacheRequest) isEffect_Effect() {}
+
+type Effect_SyncPushSubscription struct {
+	_                    [0]func()
+	SyncPushSubscription *SyncPushSubscriptionEffect
+}
+
+func (*Effect_SyncPushSubscription) isEffect_Effect() {}
+
 type Effect_DraftStorageList struct {
 	_                [0]func()
 	DraftStorageList *DraftStorageListEffect
@@ -11119,6 +11198,24 @@ func (m *Effect) GetUsageCacheWrite() *UsageCacheWriteEffect {
 	}
 	return nil
 }
+func (m *Effect) GetWatchedSessions() *WatchedSessionsEffect {
+	if x, ok := m.GetEffect().(*Effect_WatchedSessions); ok && x != nil {
+		return x.WatchedSessions
+	}
+	return nil
+}
+func (m *Effect) GetUsageCacheRequest() *UsageCacheRequestEffect {
+	if x, ok := m.GetEffect().(*Effect_UsageCacheRequest); ok && x != nil {
+		return x.UsageCacheRequest
+	}
+	return nil
+}
+func (m *Effect) GetSyncPushSubscription() *SyncPushSubscriptionEffect {
+	if x, ok := m.GetEffect().(*Effect_SyncPushSubscription); ok && x != nil {
+		return x.SyncPushSubscription
+	}
+	return nil
+}
 func (m *Effect) GetDraftStorageList() *DraftStorageListEffect {
 	if x, ok := m.GetEffect().(*Effect_DraftStorageList); ok && x != nil {
 		return x.DraftStorageList
@@ -11626,6 +11723,18 @@ func (m *Effect) appendMarshalEffectPart2(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_WatchedSessions:
+		if x != nil && x.WatchedSessions != nil {
+			onum, omsg = 77, x.WatchedSessions
+		}
+	case *Effect_UsageCacheRequest:
+		if x != nil && x.UsageCacheRequest != nil {
+			onum, omsg = 78, x.UsageCacheRequest
+		}
+	case *Effect_SyncPushSubscription:
+		if x != nil && x.SyncPushSubscription != nil {
+			onum, omsg = 79, x.SyncPushSubscription
+		}
 	case *Effect_DraftStorageList:
 		if x != nil && x.DraftStorageList != nil {
 			onum, omsg = 80, x.DraftStorageList
@@ -11662,18 +11771,6 @@ func (m *Effect) appendMarshalEffectPart2(b []byte) ([]byte, bool) {
 		if x != nil && x.AttachmentReleaseLocal != nil {
 			onum, omsg = 88, x.AttachmentReleaseLocal
 		}
-	case *Effect_SessionRestoreComposer:
-		if x != nil && x.SessionRestoreComposer != nil {
-			onum, omsg = 40, x.SessionRestoreComposer
-		}
-	case *Effect_SharedFileScanLocal:
-		if x != nil && x.SharedFileScanLocal != nil {
-			onum, omsg = 42, x.SharedFileScanLocal
-		}
-	case *Effect_SharedFileInspectDisk:
-		if x != nil && x.SharedFileInspectDisk != nil {
-			onum, omsg = 43, x.SharedFileInspectDisk
-		}
 	default:
 		return b, false
 	}
@@ -11688,6 +11785,18 @@ func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_SessionRestoreComposer:
+		if x != nil && x.SessionRestoreComposer != nil {
+			onum, omsg = 40, x.SessionRestoreComposer
+		}
+	case *Effect_SharedFileScanLocal:
+		if x != nil && x.SharedFileScanLocal != nil {
+			onum, omsg = 42, x.SharedFileScanLocal
+		}
+	case *Effect_SharedFileInspectDisk:
+		if x != nil && x.SharedFileInspectDisk != nil {
+			onum, omsg = 43, x.SharedFileInspectDisk
+		}
 	case *Effect_SharedFileWriteChunk:
 		if x != nil && x.SharedFileWriteChunk != nil {
 			onum, omsg = 44, x.SharedFileWriteChunk
@@ -11724,18 +11833,6 @@ func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
 		if x != nil && x.ScheduleDeleteCache != nil {
 			onum, omsg = 61, x.ScheduleDeleteCache
 		}
-	case *Effect_ScheduleLoadSeen:
-		if x != nil && x.ScheduleLoadSeen != nil {
-			onum, omsg = 62, x.ScheduleLoadSeen
-		}
-	case *Effect_ScheduleSaveSeen:
-		if x != nil && x.ScheduleSaveSeen != nil {
-			onum, omsg = 63, x.ScheduleSaveSeen
-		}
-	case *Effect_ScheduleDismissNotifications:
-		if x != nil && x.ScheduleDismissNotifications != nil {
-			onum, omsg = 64, x.ScheduleDismissNotifications
-		}
 	default:
 		return b, false
 	}
@@ -11750,6 +11847,18 @@ func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_ScheduleLoadSeen:
+		if x != nil && x.ScheduleLoadSeen != nil {
+			onum, omsg = 62, x.ScheduleLoadSeen
+		}
+	case *Effect_ScheduleSaveSeen:
+		if x != nil && x.ScheduleSaveSeen != nil {
+			onum, omsg = 63, x.ScheduleSaveSeen
+		}
+	case *Effect_ScheduleDismissNotifications:
+		if x != nil && x.ScheduleDismissNotifications != nil {
+			onum, omsg = 64, x.ScheduleDismissNotifications
+		}
 	case *Effect_ScheduleNavigate:
 		if x != nil && x.ScheduleNavigate != nil {
 			onum, omsg = 65, x.ScheduleNavigate
@@ -11786,18 +11895,6 @@ func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
 		if x != nil && x.DirectDcReadStats != nil {
 			onum, omsg = 109, x.DirectDcReadStats
 		}
-	case *Effect_DirectBulkRoute:
-		if x != nil && x.DirectBulkRoute != nil {
-			onum, omsg = 111, x.DirectBulkRoute
-		}
-	case *Effect_TerminalReopen:
-		if x != nil && x.TerminalReopen != nil {
-			onum, omsg = 112, x.TerminalReopen
-		}
-	case *Effect_DirectRetryNowResult:
-		if x != nil && x.DirectRetryNowResult != nil {
-			onum, omsg = 113, x.DirectRetryNowResult
-		}
 	default:
 		return b, false
 	}
@@ -11812,6 +11909,18 @@ func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_DirectBulkRoute:
+		if x != nil && x.DirectBulkRoute != nil {
+			onum, omsg = 111, x.DirectBulkRoute
+		}
+	case *Effect_TerminalReopen:
+		if x != nil && x.TerminalReopen != nil {
+			onum, omsg = 112, x.TerminalReopen
+		}
+	case *Effect_DirectRetryNowResult:
+		if x != nil && x.DirectRetryNowResult != nil {
+			onum, omsg = 113, x.DirectRetryNowResult
+		}
 	case *Effect_TerminalHistorySendRequest:
 		if x != nil && x.TerminalHistorySendRequest != nil {
 			onum, omsg = 114, x.TerminalHistorySendRequest
@@ -11848,18 +11957,6 @@ func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
 		if x != nil && x.SecurityKeyAgree != nil {
 			onum, omsg = 131, x.SecurityKeyAgree
 		}
-	case *Effect_SecurityCryptoBatch:
-		if x != nil && x.SecurityCryptoBatch != nil {
-			onum, omsg = 135, x.SecurityCryptoBatch
-		}
-	case *Effect_SecurityOpResult:
-		if x != nil && x.SecurityOpResult != nil {
-			onum, omsg = 136, x.SecurityOpResult
-		}
-	case *Effect_SecurityKeyGenerate:
-		if x != nil && x.SecurityKeyGenerate != nil {
-			onum, omsg = 137, x.SecurityKeyGenerate
-		}
 	default:
 		return b, false
 	}
@@ -11874,6 +11971,18 @@ func (m *Effect) appendMarshalEffectPart6(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_SecurityCryptoBatch:
+		if x != nil && x.SecurityCryptoBatch != nil {
+			onum, omsg = 135, x.SecurityCryptoBatch
+		}
+	case *Effect_SecurityOpResult:
+		if x != nil && x.SecurityOpResult != nil {
+			onum, omsg = 136, x.SecurityOpResult
+		}
+	case *Effect_SecurityKeyGenerate:
+		if x != nil && x.SecurityKeyGenerate != nil {
+			onum, omsg = 137, x.SecurityKeyGenerate
+		}
 	case *Effect_SecurityKeyEncapsulate:
 		if x != nil && x.SecurityKeyEncapsulate != nil {
 			onum, omsg = 138, x.SecurityKeyEncapsulate

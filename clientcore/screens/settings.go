@@ -758,11 +758,24 @@ func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExt
 	} else {
 		secSummary = text.Msg(text.KeySettingsSecuritySummaryNonAuthority, text.Str("name", authName))
 	}
+	selfID := syncView.GetSelfDeviceId()
+	canPrepareHandoff := false
+	if !isMgr && selfID != "" {
+		for _, d := range syncView.GetDevices() {
+			if d != nil && d.DeviceId == selfID && d.Kind == v1.DeviceKind_DEVICE_KIND_CLIENT {
+				canPrepareHandoff = true
+				break
+			}
+		}
+	}
 	vm.Security = &corev1.SecuritySummaryView{
 		IsManager:           isMgr,
 		Unlinked:            unlinked,
 		AuthorityDeviceId:   syncView.GetAuthorityDeviceId(),
 		AuthorityName:       authName,
+		AuthorityNameText:   syncView.GetManagerName(),
+		CanPrepareHandoff:   canPrepareHandoff,
+		LeaseRenewalAdvice:  syncView.GetLeaseRenewalAdvice(),
 		RecoveryPending:     syncView.GetRecoveryPending(),
 		RecoveryReadyMs:     syncView.GetRecoveryReadyMs(),
 		SummaryText:         secSummary,
@@ -1096,10 +1109,17 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 
 	// Machine management availability
 	isAuth := m.ID == authID
+	inDeviceDir := false
+	for _, d := range syncView.GetDevices() {
+		if d != nil && d.DeviceId == m.ID {
+			inDeviceDir = true
+			break
+		}
+	}
 	vm.Management = &corev1.MachineManagementActionsView{
 		IsAuthorityDevice: isAuth,
 		CanRejoin:         !vm.Member && isMgr && onlineWorld,
-		CanDeleteRecords:  !vm.Member && isMgr,
+		CanDeleteRecords:  !vm.Member && isMgr && !inDeviceDir,
 		CanRemove:         vm.Member && isMgr && !isAuth && onlineWorld,
 	}
 	if isAuth {

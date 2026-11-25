@@ -113,13 +113,15 @@ const (
 )
 
 type SecurityConfigEvent struct {
-	_             [0]func()
-	Account       string
-	DeviceId      string
-	InlineCrypto  bool
-	Server        string
-	LegacyCleared bool
-	Foreground    bool
+	_                 [0]func()
+	Account           string
+	DeviceId          string
+	InlineCrypto      bool
+	Server            string
+	LegacyCleared     bool
+	Foreground        bool
+	Platform          string
+	DeviceDescription string
 }
 
 func (m *SecurityConfigEvent) GetAccount() string {
@@ -158,6 +160,18 @@ func (m *SecurityConfigEvent) GetForeground() bool {
 	}
 	return false
 }
+func (m *SecurityConfigEvent) GetPlatform() string {
+	if m != nil {
+		return m.Platform
+	}
+	return ""
+}
+func (m *SecurityConfigEvent) GetDeviceDescription() string {
+	if m != nil {
+		return m.DeviceDescription
+	}
+	return ""
+}
 
 var LitewireDesc_SecurityConfigEvent = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityConfigEvent{}) },
@@ -168,6 +182,8 @@ var LitewireDesc_SecurityConfigEvent = litewire.MessageDesc{
 		{Num: 4, Offset: unsafe.Offsetof(SecurityConfigEvent{}.Server), Kind: litewire.KindString},
 		{Num: 5, Offset: unsafe.Offsetof(SecurityConfigEvent{}.LegacyCleared), Kind: litewire.KindBool},
 		{Num: 6, Offset: unsafe.Offsetof(SecurityConfigEvent{}.Foreground), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(SecurityConfigEvent{}.Platform), Kind: litewire.KindString},
+		{Num: 8, Offset: unsafe.Offsetof(SecurityConfigEvent{}.DeviceDescription), Kind: litewire.KindString},
 	},
 }
 
