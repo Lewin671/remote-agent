@@ -32,13 +32,22 @@ func errFullReason(what string, reason pb.RelayErrorReason) error {
 	return relayError(connect.CodeResourceExhausted, errors.New(what), reason)
 }
 
+// withRelayDetail returns a cloned *connect.Error carrying detail without
+// mutating err (which may be a shared sentinel error).
 func withRelayDetail(err error, detail *pb.RelayErrorDetail) error {
 	var ce *connect.Error
 	if !errors.As(err, &ce) || detail == nil || detail.Reason == pb.RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED {
 		return err
 	}
-	if d, e := connect.NewErrorDetail(detail); e == nil {
-		ce.AddDetail(d)
+	clone := connect.NewError(ce.Code(), errors.New(ce.Message()))
+	for key, values := range ce.Meta() {
+		clone.Meta()[key] = append([]string(nil), values...)
 	}
-	return ce
+	for _, existing := range ce.Details() {
+		clone.AddDetail(existing)
+	}
+	if d, e := connect.NewErrorDetail(detail); e == nil {
+		clone.AddDetail(d)
+	}
+	return clone
 }

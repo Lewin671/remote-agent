@@ -521,4 +521,19 @@ func TestRelayErrorDetails(t *testing.T) {
 			t.Errorf("RelayErrorReason %s (%d) has no server test coverage", name, num)
 		}
 	}
+
+	// Ensure withRelayDetail never mutates its input error.
+	orig := connect.NewError(connect.CodeInvalidArgument, errors.New("shared sentinel"))
+	orig.Meta().Set("X-Test", "1")
+	wrapped := withRelayDetail(orig, &pb.RelayErrorDetail{Reason: pb.RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_INVALID})
+	if len(orig.Details()) != 0 {
+		t.Fatalf("withRelayDetail mutated input error details: %d", len(orig.Details()))
+	}
+	if d := extractRelayErrorDetail(wrapped); d == nil || d.Reason != pb.RelayErrorReason_RELAY_ERROR_REASON_RECOVERY_INVALID {
+		t.Fatalf("wrapped detail = %+v, want RECOVERY_INVALID", d)
+	}
+	var wce *connect.Error
+	if !errors.As(wrapped, &wce) || wce.Meta().Get("X-Test") != "1" {
+		t.Fatalf("wrapped error did not preserve headers")
+	}
 }
