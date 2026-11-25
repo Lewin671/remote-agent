@@ -462,11 +462,13 @@ internal fun QuestionBody(
         if (answered && q.hasAnsweredText()) {
             Text(uiText(q.answeredText), style = T.s13, color = CardColors.text2, modifier = Modifier.padding(top = 10.dp))
         } else if (!busy && frozen) {
+            val separator = uiText(UiMessages.commonListSeparator())
+            val optionLabels = submittedNums.map { num ->
+                cur.optionsList.firstOrNull { it.optionNum == num }?.label ?: uiText(UiMessages.dockOptionNumber(num))
+            }
             val shown = cmd.takeIf { it.hasSubmittedSummary() }?.let { uiText(it.submittedSummary) }.orEmpty()
                 .ifEmpty {
-                    submittedNums.joinToString("、") { num ->
-                        cur.optionsList.firstOrNull { it.optionNum == num }?.label ?: num.toString()
-                    }
+                    optionLabels.joinToString(separator)
                 }
             CardNote(
                 if (expired) copy(UiMessages.dockAndroidAnswerExpired(answer = shown))
