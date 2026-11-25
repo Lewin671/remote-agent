@@ -18,11 +18,19 @@ const (
 	recoveryCtxPrefix   = "ra3/recovery-context\x00"
 	recoveryDonePrefix  = "ra3/recovery-complete\x00"
 
-	dayMs              int64 = 24 * 60 * 60 * 1000
-	halfDayMs          int64 = 12 * 60 * 60 * 1000
-	maxPairWindowMs    int64 = 5 * 60 * 1000
-	maxPairWindowSlack int64 = 5 * 1000
-	pairPollIntervalMs int64 = 1000
+	dayMs                          int64 = 24 * 60 * 60 * 1000
+	halfDayMs                      int64 = 12 * 60 * 60 * 1000
+	maxPairWindowMs                int64 = 5 * 60 * 1000
+	maxPairWindowSlack             int64 = 5 * 1000
+	pairPollIntervalMs             int64 = 1000
+	pairJoinApprovedPollIntervalMs int64 = 1200
+	pairInitJoinedPollIntervalMs   int64 = 1200
+	pairInitMetaPollIntervalMs     int64 = 1000
+	pairInitMetaMaxPolls                 = 15
+	pairInitDeliveryPollIntervalMs int64 = 1200
+	recoveryPollSlowIntervalMs     int64 = 30_000
+	recoveryPollFastIntervalMs     int64 = 2_000
+	recoveryPollFastThresholdMs    int64 = 10_000
 )
 
 // DeviceOfferInfo carries verified client device metadata from sync directory.
@@ -253,13 +261,17 @@ type storageReply struct {
 	loginTokenExpiresMs int64
 }
 
-type activePollKind int
+// ActivePollKind identifies which security poll currently owns TIMER_KIND_SECURITY_POLL.
+type ActivePollKind int
 
 const (
-	pollNone activePollKind = iota
-	pollJoinRevealed
-	pollJoinApproved
-	pollRecoveryStatus
+	PollNone ActivePollKind = iota
+	PollJoinRevealed
+	PollJoinApproved
+	PollInitiatorJoined
+	PollInitiatorJoinerMeta
+	PollInitiatorDelivery
+	PollRecoveryWindow
 )
 
 type syncWaiter struct {
@@ -269,20 +281,45 @@ type syncWaiter struct {
 }
 
 type activePoll struct {
-	kind      activePollKind
-	pairingID string
-	actionID  uint64
+	kind          ActivePollKind
+	pairingID     string
+	actionID      uint64
+	metaPollCount int
+	inFlight      bool
+	readyMs       int64
+}
+
+// PollUpdate delivers structured progress from managed TIMER_KIND_SECURITY_POLL ticks to upper layers.
+type PollUpdate struct {
+	Kind      ActivePollKind
+	PairingID string
+	Pairing   *corev1.SecurityPairingInfo
+	Recovery  *corev1.SecurityRecoveryInfo
+	Delivered bool
+	MetaDone  bool
+	Err       error
+	Meta      WorkflowMeta
+	ErrCode   corev1.SecurityErrorCode
+	Retryable bool
+	Uncertain bool
+}
+
+// PollObserver receives progress updates from managed security polls.
+type PollObserver interface {
+	OnSecurityPollUpdate(u PollUpdate)
+	OnSecurityDevicesMayHaveChanged()
 }
 
 type workflowState struct {
-	server             string
-	foreground         bool
-	fgGen              uint64
-	bootstrapped       bool
-	bootstrapInvalid   bool
-	bootstrapErrReason WorkflowReason
-	bootstrapError     string
-	legacyRepairNotice bool
+	server              string
+	foreground          bool
+	managedPollsEnabled bool
+	fgGen               uint64
+	bootstrapped        bool
+	bootstrapInvalid    bool
+	bootstrapErrReason  WorkflowReason
+	bootstrapError      string
+	legacyRepairNotice  bool
 
 	cachedToken        string
 	tokenExpiresMs     int64
@@ -316,6 +353,7 @@ type workflowState struct {
 
 	onStateChanged func()
 	asyncSink      AsyncSink
+	pollObserver   PollObserver
 	devicesSnap    []DeviceOfferInfo
 
 	initPairings map[string]*initiatorPairingSession
@@ -376,6 +414,17 @@ func (e *Engine) SetNetworkGeneration(gen uint64) {
 	}
 }
 
+// SetPollObserver registers an observer for managed security poll progress.
+func (e *Engine) SetPollObserver(obs PollObserver) { e.ensureWF().pollObserver = obs }
+
+// EnableManagedPolls opts this engine into Core-managed foreground auto-polling
+// (paused on background, resumed on foreground, automatic delivery poll on foreground).
+// Legacy callers (such as iOS prior to P3-3) that do not send ClientInitEvent keep their
+// own foreground delivery loops untouched.
+func (e *Engine) EnableManagedPolls() {
+	e.ensureWF().managedPollsEnabled = true
+}
+
 // SetForeground updates foreground visibility and invalidates captured foreground checks when hidden.
 func (e *Engine) SetForeground(fg bool) {
 	wf := e.ensureWF()
@@ -385,7 +434,34 @@ func (e *Engine) SetForeground(fg bool) {
 	wf.foreground = fg
 	if !fg {
 		wf.fgGen++
+		if wf.managedPollsEnabled && wf.activePoll != nil {
+			e.cancelSecurityPollTimer()
+		}
+		return
 	}
+	if !wf.managedPollsEnabled {
+		return
+	}
+	if wf.activePoll != nil {
+		if !wf.activePoll.inFlight {
+			e.runActivePollTick()
+		}
+		return
+	}
+	if wf.pendingOp != nil && len(wf.pendingOp.Delivery) > 0 {
+		pid := ""
+		if wf.pendingOp.Pair != nil {
+			pid = wf.pendingOp.Pair.PairingID
+		}
+		e.startInitiatorDeliveryPoll(pid)
+	}
+}
+
+// HandleForeground updates foreground visibility and returns any timer/poll effects.
+func (e *Engine) HandleForeground(nowMs int64, fg bool) []*corev1.Effect {
+	e.touchNow(nowMs)
+	e.SetForeground(fg)
+	return e.DrainEffects()
 }
 
 // SetStateChangedCallback registers a hook invoked whenever verified security state installs or clears.
@@ -767,16 +843,7 @@ func (e *Engine) effectiveServer() string {
 // HandleSecurityPollTick drives pairing and recovery polling timers scheduled by Core.
 func (e *Engine) HandleSecurityPollTick(nowMs int64) []*corev1.Effect {
 	e.touchNow(nowMs)
-	p := e.ensureWF().activePoll
-	if p == nil {
-		return nil
-	}
-	switch p.kind {
-	case pollJoinRevealed:
-		e.pollJoinState(p.pairingID, v1.PairingState_PAIRING_STATE_REVEALED)
-	case pollJoinApproved:
-		e.pollJoinState(p.pairingID, v1.PairingState_PAIRING_STATE_APPROVED)
-	}
+	e.runActivePollTick()
 	return e.DrainEffects()
 }
 

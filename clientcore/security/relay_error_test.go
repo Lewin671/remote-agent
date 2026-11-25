@@ -546,7 +546,7 @@ func TestRelayErrorWorkflowDecisions(t *testing.T) {
 				e := NewEngine(nil, 17)
 				const actionID uint64 = 106
 				wf := e.ensureWF()
-				wf.activePoll = &activePoll{kind: pollJoinRevealed, pairingID: "p2", actionID: actionID}
+				wf.activePoll = &activePoll{kind: PollJoinRevealed, pairingID: "p2", actionID: actionID}
 				sess := &joinerPairingSession{pairingID: "p2", server: "https://example.com"}
 				task := &pollJoinTask{
 					taskBase:  taskBase{target: actionTarget(actionID, targetAction), stage: pollJoinGet},

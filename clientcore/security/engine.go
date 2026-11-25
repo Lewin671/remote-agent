@@ -309,6 +309,22 @@ func (e *Engine) allocOp() uint64 {
 	return e.nextOpID
 }
 
+// NextOpID returns the current monotonic op_id high-water mark so in-place Core reset
+// can preserve counters and guarantee late responses from an exited account never collide.
+func (e *Engine) NextOpID() uint64 {
+	if e == nil {
+		return 0
+	}
+	return e.nextOpID
+}
+
+// SetNextOpID seeds the monotonic op_id counter above a previous account's high-water mark.
+func (e *Engine) SetNextOpID(v uint64) {
+	if e != nil && v > e.nextOpID {
+		e.nextOpID = v
+	}
+}
+
 func (e *Engine) touchNow(nowMs int64) {
 	if nowMs > e.lastNowMs {
 		e.lastNowMs = nowMs

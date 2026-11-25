@@ -9,10 +9,22 @@ import (
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
-func (e *Engine) scheduleSecurityPollTimer() {
+func (e *Engine) scheduleSecurityPollTimerDelay(delayMs int64) {
+	if delayMs < 0 {
+		delayMs = 0
+	}
 	e.out = append(e.out, &corev1.Effect{
-		Effect: &corev1.Effect_ScheduleTimer{ScheduleTimer: &corev1.ScheduleTimerEffect{Kind: corev1.TimerKind_TIMER_KIND_SECURITY_POLL, Key: "security-poll", DelayMs: pairPollIntervalMs}},
+		Effect: &corev1.Effect_ScheduleTimer{ScheduleTimer: &corev1.ScheduleTimerEffect{Kind: corev1.TimerKind_TIMER_KIND_SECURITY_POLL, Key: "security-poll", DelayMs: delayMs}},
 	})
+}
+
+func (e *Engine) scheduleSecurityPollTimer() {
+	wf := e.ensureWF()
+	delay := pairPollIntervalMs
+	if wf.managedPollsEnabled && wf.activePoll != nil && wf.activePoll.kind == PollJoinApproved {
+		delay = pairJoinApprovedPollIntervalMs
+	}
+	e.scheduleSecurityPollTimerDelay(delay)
 }
 
 func (e *Engine) cancelSecurityPollTimer() {
@@ -1013,7 +1025,7 @@ func (t *startJoinPairingTask) step(e *Engine, ev *secEvent) error {
 			ephemSlot: t.ephemSlot, ephemPub: slices.Clone(t.ephemPub), edSlot: t.edSlot, xSlot: t.xSlot,
 			edPublic: slices.Clone(t.edPub), xPublic: slices.Clone(t.xPub), reusesDeviceEd: t.existingRepair, candidateToken: jr.CandidateToken,
 		}
-		wf.activePoll = &activePoll{kind: pollJoinRevealed, pairingID: jr.PairingId, actionID: t.target.actionID}
+		wf.activePoll = &activePoll{kind: PollJoinRevealed, pairingID: jr.PairingId, actionID: t.target.actionID}
 		e.pollJoinState(jr.PairingId, v1.PairingState_PAIRING_STATE_REVEALED)
 	}
 	return nil
@@ -1028,7 +1040,7 @@ func (e *Engine) confirmJoinSasAction(actionID uint64, pairingID string) {
 	}
 	sess.sasConfirmed = true
 	e.clearActivePollWithError(fatalWfError("canceled", WorkflowReasonPairingCanceled, ""))
-	wf.activePoll = &activePoll{kind: pollJoinApproved, pairingID: pairingID, actionID: actionID}
+	wf.activePoll = &activePoll{kind: PollJoinApproved, pairingID: pairingID, actionID: actionID}
 	e.pollJoinState(pairingID, v1.PairingState_PAIRING_STATE_APPROVED)
 }
 
