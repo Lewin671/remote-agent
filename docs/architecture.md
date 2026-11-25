@@ -562,7 +562,7 @@ Go daemon 在 Ready 后立即读取 stream 和回应 ping，再同步或发布 c
 | `token`（默认） | 带 server 配置里的 setup token | owner：32 台设备、16 台机器 |
 | `open` | 任何人，先完成工作量证明：`GetSignupChallenge` 给一个 5 分钟有效的随机 challenge，客户端找一个 nonce 让 SHA-256(challenge‖nonce) 有足够多的前导零位（默认 20 位，普通电脑一秒内） | trial：8 台设备、2 台机器、200 个会话、256 MiB 事件、64 MiB 图片 |
 
-open 模式下带对 setup token 的照样建 owner 账户。工作量证明挡批量脚本，另有每个地址每分钟 10 个 challenge、每小时 3 个新账户，全局每小时 30 个新账户；地址只认 `--trusted-proxies` 里的反向代理写进 `X-Forwarded-For` 的最后一跳，IPv6 按 /64 计。全中继最多 `--max-accounts` 个账户（token 模式默认 1，open 默认 100），每分钟检查一次磁盘，剩余不足 `--min-free-bytes`（默认 2 GiB）期间，所有账户都不能再添加设备、会话、事件、图片和偏好对象。没有协议版本变化：server 用错误码告诉客户端缺什么（缺 token 回 PermissionDenied，要工作量证明回 FailedPrecondition），daemon 照着补上再试。
+open 模式下带对 setup token 的照样建 owner 账户。工作量证明挡批量脚本，另有每个地址每分钟 10 个 challenge、每小时 3 个新账户，全局每小时 30 个新账户；地址只认 `--trusted-proxies` 里的反向代理写进 `X-Forwarded-For` 的最后一跳，IPv6 按 /64 计。全中继最多 `--max-accounts` 个账户（token 模式默认 1，open 默认 100），每分钟检查一次磁盘，剩余不足 `--min-free-bytes`（默认 2 GiB）期间，所有账户都不能再添加设备、会话、事件、图片和偏好对象。中继在 Connect 错误上附加 `RelayErrorDetail`（原 Connect 错误码和消息不变，不升 `RelayVersion`）：客户端核心优先按认识的 `reason` 判定（如缺 token 对应 `SETUP_TOKEN_REQUIRED`、需工作量证明对应 `SIGNUP_POW_REQUIRED`），缺省或遇到不认识的 `reason` 时回退按原 Connect 错误码处理；三端执行器只把 `details[].{type,value}` 原样转给核心，不解释业务错误。
 
 **运维**：`remote-agent-server admin` 直接打开数据库，列出账户（只有 server 本来就看得到的计数和大小），暂停、恢复、换额度或删除账户。暂停的账户不能登录和登记，数据保留；运行中的 server 每 30 秒扫一遍在线的流（主流和终端流），断开被暂停、删除的账户的设备。server 不会自动删除闲置账户。
 
