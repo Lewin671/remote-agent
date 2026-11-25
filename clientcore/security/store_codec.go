@@ -20,6 +20,23 @@ const (
 	maxStoreBlobBytes = 2 << 20
 	maxStoreStringLen = 64 << 10
 	maxStoreListCount = 8192
+
+	// Persisted pending operation kind, action, and phase constants shared across security, app, and screens.
+	PendingOpKindCreate        = "create"
+	PendingOpKindRecovery      = "recovery"
+	PendingOpKindLease         = "lease"
+	PendingOpKindOffer         = "offer"
+	PendingOpKindState         = "state"
+	PendingOpKindDeleteRecords = "delete-records"
+
+	PendingOpActionRecovery = "recovery"
+	PendingOpActionPair     = "pair"
+	PendingOpActionRemove   = "remove"
+	PendingOpActionHandoff  = "handoff"
+
+	PendingOpPhasePrepared  = "PREPARED"
+	PendingOpPhasePublished = "PUBLISHED"
+	PendingOpPhaseDelivered = "DELIVERED"
 )
 
 var errStoreCorrupt = errors.New("security: corrupt persisted record")
@@ -407,11 +424,11 @@ type PersistedOperation struct {
 
 func phaseOrder(p string) int {
 	switch p {
-	case "PREPARED":
+	case PendingOpPhasePrepared:
 		return 1
-	case "PUBLISHED":
+	case PendingOpPhasePublished:
 		return 2
-	case "DELIVERED":
+	case PendingOpPhaseDelivered:
 		return 3
 	default:
 		return 0
@@ -557,7 +574,7 @@ func DecodePersistedOperation(raw []byte) (*PersistedOperation, error) {
 		return nil, errStoreCorrupt
 	}
 	switch op.Kind {
-	case "create", "state", "lease", "recovery", "offer", "delete-records":
+	case PendingOpKindCreate, PendingOpKindState, PendingOpKindLease, PendingOpKindRecovery, PendingOpKindOffer, PendingOpKindDeleteRecords:
 		return &op, nil
 	default:
 		return nil, errStoreCorrupt

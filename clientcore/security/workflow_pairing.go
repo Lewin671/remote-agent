@@ -696,7 +696,7 @@ func (t *approvePairingTask) step(e *Engine, ev *secEvent) error {
 		}
 		hh := e.headHash
 		t.stage = approvePairClaim
-		op := e.newPreparedOp(sess.server, e.selfDeviceID, "state", "pair", hh)
+		op := e.newPreparedOp(sess.server, e.selfDeviceID, PendingOpKindState, PendingOpActionPair, hh)
 		op.TargetDeviceID = sess.candidateID
 		op.Pair = &PersistedOpPair{
 			PairingID: sess.pairingID, CandidateID: sess.candidateID, CandidateEd: slices.Clone(sess.candidateEd),
@@ -714,7 +714,7 @@ func (t *approvePairingTask) step(e *Engine, ev *secEvent) error {
 			return nil
 		}
 		t.sess.approved = true
-		pairPending := wf.pendingOp != nil && wf.pendingOp.Kind == "state" && wf.pendingOp.Pair != nil && wf.pendingOp.Pair.PairingID == t.pairingID
+		pairPending := wf.pendingOp != nil && wf.pendingOp.Kind == PendingOpKindState && wf.pendingOp.Pair != nil && wf.pendingOp.Pair.PairingID == t.pairingID
 		if !pairPending {
 			if len(t.sess.removeDeviceIDs) > 0 {
 				ids := t.sess.removeDeviceIDs
@@ -761,7 +761,7 @@ func (t *finishPairingDeliveryTask) step(e *Engine, ev *secEvent) error {
 		if err := e.checkFG(t.fgGen); err != nil {
 			return err
 		}
-		if op := wf.pendingOp; op != nil && op.Kind == "state" && op.Pair != nil && (t.pairingID == "" || op.Pair.PairingID == t.pairingID) {
+		if op := wf.pendingOp; op != nil && op.Kind == PendingOpKindState && op.Pair != nil && (t.pairingID == "" || op.Pair.PairingID == t.pairingID) {
 			t.pid = op.Pair.PairingID
 			e.startResumePendingOp(t.fgGen, parentTarget(t, 0))
 			return nil
@@ -774,7 +774,7 @@ func (t *finishPairingDeliveryTask) step(e *Engine, ev *secEvent) error {
 		return nil
 	}
 	sess := wf.initPairings[t.pid]
-	pairPending := wf.pendingOp != nil && wf.pendingOp.Kind == "state" && wf.pendingOp.Pair != nil && wf.pendingOp.Pair.PairingID == t.pid
+	pairPending := wf.pendingOp != nil && wf.pendingOp.Kind == PendingOpKindState && wf.pendingOp.Pair != nil && wf.pendingOp.Pair.PairingID == t.pid
 	if !pairPending {
 		if sess != nil && len(sess.removeDeviceIDs) > 0 {
 			ids := sess.removeDeviceIDs
@@ -807,7 +807,7 @@ type cancelPairingInitiatorTask struct {
 }
 
 func (t *cancelPairingInitiatorTask) cleanupDraft(e *Engine) {
-	if op := e.ensureWF().pendingOp; op != nil && op.Pair != nil && op.Pair.PairingID == t.pairingID && op.Phase == "PREPARED" && len(op.Signed) == 0 {
+	if op := e.ensureWF().pendingOp; op != nil && op.Pair != nil && op.Pair.PairingID == t.pairingID && op.Phase == PendingOpPhasePrepared && len(op.Signed) == 0 {
 		t.stage = cancelInitClear
 		e.clearOperationCAS(op, parentTarget(t, 0))
 		return

@@ -34,6 +34,22 @@ const (
 	WorkflowReasonNamesOnlyChangedOnThatDevice
 	WorkflowReasonServerMustUseHTTPS
 	WorkflowReasonInvalidRecoveryCode
+	WorkflowReasonProtocolMismatch
+	WorkflowReasonPairingCodeInvalidOrUsed
+	WorkflowReasonRateLimited
+	WorkflowReasonClockBehind
+	WorkflowReasonSecurityChainFull
+	WorkflowReasonSuccessUncertain
+	WorkflowReasonSetupTokenRequired
+	WorkflowReasonRecoveryNotReady
+	WorkflowReasonRecoveryRejected
+	WorkflowReasonPermissionDenied
+	WorkflowReasonNotAuthority
+	WorkflowReasonNotFound
+	WorkflowReasonInvalidArgument
+	WorkflowReasonFailedPrecondition
+	WorkflowReasonOperationCanceled
+	WorkflowReasonCommandFailed
 )
 
 // ExitAdviceReason identifies the structured warning for leaving/clearing local security state.

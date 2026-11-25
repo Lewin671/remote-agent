@@ -638,33 +638,9 @@ func (e *Engine) emitActionResult(actionID uint64, res *corev1.SecurityWorkflowR
 		}
 	}
 	if err != nil {
-		meta.ErrRaw = err.Error()
-		if we := asWfError(err); we != nil {
-			res.Retryable, res.Uncertain, res.ErrorAction = we.retryable, we.uncertain, we.action
-			res.StructuredErrorCode = StructuredErrorCodeFromString(we.code)
-			meta.ErrReason = we.reason
-		} else {
-			res.StructuredErrorCode = StructuredErrorCode(err)
-			if re := asRpcError(err); re != nil {
-				switch re.code {
-				case connectCodePermissionDenied:
-					res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_PERMISSION_DENIED
-				case connectCodeNotFound:
-					res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_NOT_FOUND
-				case connectCodeFailedPrecondition:
-					res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_FAILED_PRECONDITION
-				case connectCodeResourceExhausted:
-					res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_RESOURCE_EXHAUSTED
-				case connectCodeCanceled:
-					res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_CANCELED
-				default:
-					if re.code == connectCodeUnavailable || re.network {
-						res.Retryable, res.Uncertain = true, true
-						res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_UNAVAILABLE
-					}
-				}
-			}
-		}
+		var code corev1.SecurityErrorCode
+		meta, code, res.Retryable, res.Uncertain, res.ErrorAction = classifyWorkflowError(err, meta)
+		res.StructuredErrorCode = code
 	}
 	e.recordWorkflowMeta(actionID, meta)
 	e.out = append(e.out, &corev1.Effect{Effect: &corev1.Effect_SecurityWorkflowResult{SecurityWorkflowResult: res}})
@@ -694,9 +670,9 @@ func (e *Engine) BuildWorkflowStatus() *corev1.SecurityWorkflowStatus {
 	switch {
 	case !wf.bootstrapped:
 		st.Bootstrap = corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_UNSPECIFIED
-	case wf.pendingOp != nil && wf.pendingOp.Kind == "create":
+	case wf.pendingOp != nil && wf.pendingOp.Kind == PendingOpKindCreate:
 		st.Bootstrap = corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_PENDING_CREATE
-	case wf.pendingOp != nil && wf.pendingOp.Kind == "recovery":
+	case wf.pendingOp != nil && wf.pendingOp.Kind == PendingOpKindRecovery:
 		st.Bootstrap = corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_PENDING_RECOVERY
 	case wf.regIntent != nil:
 		st.Bootstrap = corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_PENDING_REGISTRATION
@@ -838,7 +814,7 @@ func (e *Engine) HandleWorkflowAction(nowMs int64, ev *corev1.SecurityWorkflowAc
 	case *corev1.SecurityWorkflowActionEvent_PrepareCreation:
 		e.runOpTask(aid, true, &prepareCreationTask{rawServer: a.PrepareCreation.GetServer(), storagePersisted: a.PrepareCreation.GetStoragePersisted()})
 	case *corev1.SecurityWorkflowActionEvent_ConfirmCreationCodeSaved:
-		e.runOpTask(aid, true, &confirmOpSavedTask{kind: "create"})
+		e.runOpTask(aid, true, &confirmOpSavedTask{kind: PendingOpKindCreate})
 	case *corev1.SecurityWorkflowActionEvent_ContinueCreation:
 		e.runOpTask(aid, true, &continueCreationTask{setupToken: a.ContinueCreation.GetValue()})
 	case *corev1.SecurityWorkflowActionEvent_AdoptCreationWithoutCode:
@@ -850,13 +826,13 @@ func (e *Engine) HandleWorkflowAction(nowMs int64, ev *corev1.SecurityWorkflowAc
 	case *corev1.SecurityWorkflowActionEvent_DeleteAccount:
 		e.runOpTask(aid, true, &deleteAccountTask{})
 	case *corev1.SecurityWorkflowActionEvent_PrepareRecoveryRotation:
-		e.runOpTask(aid, true, &prepareCodeTask{kind: "state"})
+		e.runOpTask(aid, true, &prepareCodeTask{kind: PendingOpKindState})
 	case *corev1.SecurityWorkflowActionEvent_ConfirmRecoveryRotation:
-		e.runOpTask(aid, true, &confirmCodeTask{kind: "state"})
+		e.runOpTask(aid, true, &confirmCodeTask{kind: PendingOpKindState})
 	case *corev1.SecurityWorkflowActionEvent_PrepareHandoffCode:
-		e.runOpTask(aid, true, &prepareCodeTask{kind: "offer", storagePersisted: a.PrepareHandoffCode.GetFlag()})
+		e.runOpTask(aid, true, &prepareCodeTask{kind: PendingOpKindOffer, storagePersisted: a.PrepareHandoffCode.GetFlag()})
 	case *corev1.SecurityWorkflowActionEvent_PublishHandoffOffer:
-		e.runOpTask(aid, true, &confirmCodeTask{kind: "offer"})
+		e.runOpTask(aid, true, &confirmCodeTask{kind: PendingOpKindOffer})
 	case *corev1.SecurityWorkflowActionEvent_HandoffAuthority:
 		e.runOpTask(aid, true, &handoffAuthorityTask{incomingID: a.HandoffAuthority.GetValue()})
 	case *corev1.SecurityWorkflowActionEvent_ListHandoffCandidates:
@@ -888,7 +864,7 @@ func (e *Engine) HandleWorkflowAction(nowMs int64, ev *corev1.SecurityWorkflowAc
 	case *corev1.SecurityWorkflowActionEvent_ContinueRecoverySigning:
 		e.runOpTask(aid, true, &continueRecoverySigningTask{oldCode: a.ContinueRecoverySigning.GetValue()})
 	case *corev1.SecurityWorkflowActionEvent_ConfirmRecoveryCodeSaved:
-		e.runOpTask(aid, true, &confirmOpSavedTask{kind: "recovery"})
+		e.runOpTask(aid, true, &confirmOpSavedTask{kind: PendingOpKindRecovery})
 	case *corev1.SecurityWorkflowActionEvent_ResumeRecovery:
 		e.runOpTask(aid, true, &resumeRecoveryTask{})
 	case *corev1.SecurityWorkflowActionEvent_CompleteRecovery:

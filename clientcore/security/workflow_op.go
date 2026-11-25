@@ -180,7 +180,7 @@ func (t *confirmOpSavedTask) step(e *Engine, ev *secEvent) error {
 		return ev.err
 	}
 	if ev.kind == evChildDone {
-		if t.kind == "create" && ev.op.Phase == "PUBLISHED" {
+		if t.kind == PendingOpKindCreate && ev.op.Phase == PendingOpPhasePublished {
 			e.startAdoptCreationOp(ev.op, t.target)
 			return nil
 		}
@@ -260,27 +260,27 @@ func (t *resumePendingTask) step(e *Engine, ev *secEvent) error {
 		e.okTarget(t.target, nil)
 		return nil
 	}
-	if wf.record != nil && op.Kind != "create" && op.Kind != "recovery" && (op.Server != e.effectiveServer() || op.MemberID != e.selfDeviceID) {
+	if wf.record != nil && op.Kind != PendingOpKindCreate && op.Kind != PendingOpKindRecovery && (op.Server != e.effectiveServer() || op.MemberID != e.selfDeviceID) {
 		return devicesec.ErrStale
 	}
-	if op.Kind == "create" || op.Kind == "recovery" {
+	if op.Kind == PendingOpKindCreate || op.Kind == PendingOpKindRecovery {
 		return newWfError("conflict", WorkflowReasonReturnToCreationOrRecovery)
 	}
 	nextTarget := t.target
-	if t.includePendingRemovals && op.Kind != "lease" {
+	if t.includePendingRemovals && op.Kind != PendingOpKindLease {
 		t.stage = resumePendingAfterOp
 		nextTarget = parentTarget(t, 0)
 	}
 	switch op.Kind {
-	case "offer":
+	case PendingOpKindOffer:
 		e.startResumeOfferOp(op, t.fgGen, nextTarget)
-	case "delete-records":
+	case PendingOpKindDeleteRecords:
 		e.startResumeDeleteRecordsOp(op, t.fgGen, nextTarget)
-	case "lease":
+	case PendingOpKindLease:
 		t.op = op
 		t.stage = resumePendingLeaseSync
 		e.syncStates(false, "", parentTarget(t, 0))
-	case "state":
+	case PendingOpKindState:
 		e.startResumeStateOp(op, t.fgGen, nextTarget)
 	default:
 		return devicesec.ErrInvalid
@@ -330,7 +330,7 @@ func (t *resumeOfferTask) finishOffer(e *Engine, ok bool) error {
 	if !ok {
 		next.OfferRejected, t.stage = true, offerSaveRejected
 	} else {
-		next.Phase, t.stage = "DELIVERED", offerSaveDelivered
+		next.Phase, t.stage = PendingOpPhaseDelivered, offerSaveDelivered
 	}
 	e.saveOperationCAS(t.op, &next, parentTarget(t, 0))
 	return nil
@@ -642,7 +642,7 @@ type resumeStateTask struct {
 
 func (e *Engine) startResumeStateOp(op *PersistedOperation, fgGen uint64, target taskTarget) {
 	if len(op.Signed) == 0 {
-		if op.Action == "recovery" && !op.CodeSaved {
+		if op.Action == PendingOpActionRecovery && !op.CodeSaved {
 			e.okTarget(target, nil)
 			return
 		}
@@ -780,7 +780,7 @@ func (t *signStateDraftTask) step(e *Engine, ev *secEvent) error {
 		zeroBytes(newSecret[:])
 		var kemMembers []devicesec.Member
 		switch t.op.Action {
-		case "remove":
+		case PendingOpActionRemove:
 			var members []devicesec.Member
 			for _, m := range parent.Core.Members {
 				if m.ID != t.op.TargetDeviceID {
@@ -790,14 +790,14 @@ func (t *signStateDraftTask) step(e *Engine, ev *secEvent) error {
 			removed := append(slices.Clone(parent.Core.Removed), t.op.TargetDeviceID)
 			sortutil.Strings(removed)
 			kemMembers, params.kind, params.members, params.removed = members, kemBuildMembership, members, removed
-		case "recovery":
+		case PendingOpActionRecovery:
 			if len(t.op.RecoveryEd) != 32 {
 				params.zeroSecrets()
 				return devicesec.ErrInvalid
 			}
 			copy(params.recoveryEd[:], t.op.RecoveryEd)
 			kemMembers, params.kind = parent.Core.Members, kemBuildRecoveryRot
-		case "handoff":
+		case PendingOpActionHandoff:
 			if len(t.op.RecoveryEd) != 32 {
 				params.zeroSecrets()
 				return devicesec.ErrInvalid
@@ -809,7 +809,7 @@ func (t *signStateDraftTask) step(e *Engine, ev *secEvent) error {
 				}
 			}
 			params.kind, params.targetID = kemBuildHandoff, t.op.TargetDeviceID
-		case "pair":
+		case PendingOpActionPair:
 			p := t.op.Pair
 			if p == nil {
 				params.zeroSecrets()
@@ -1032,7 +1032,7 @@ func (e *Engine) startContinueStateOpAfterSign(op *PersistedOperation, fgGen uin
 	}
 	if !e.isMember && e.byHash[targetHash].Core.Epoch == targetState.Core.Epoch && targetState.Core.AuthorityID != e.selfDeviceID {
 		delivered := *op
-		delivered.Phase, t.stage = "DELIVERED", contStateEarlyDelivered
+		delivered.Phase, t.stage = PendingOpPhaseDelivered, contStateEarlyDelivered
 		e.saveOperationCAS(op, &delivered, parentTarget(t, 0))
 		return
 	}
@@ -1041,13 +1041,13 @@ func (e *Engine) startContinueStateOpAfterSign(op *PersistedOperation, fgGen uin
 
 func (t *continueStateOpTask) deliverIfNeeded(e *Engine, curOp *PersistedOperation) {
 	pubOp := *curOp
-	pubOp.Phase, t.op, t.stage = "PUBLISHED", curOp, contStateSavePub
+	pubOp.Phase, t.op, t.stage = PendingOpPhasePublished, curOp, contStateSavePub
 	e.saveOperationCAS(curOp, &pubOp, parentTarget(t, 0))
 }
 
 func (t *continueStateOpTask) finishDeliveryAndClear(e *Engine, curOp *PersistedOperation) {
 	delivered := *curOp
-	delivered.Phase, t.op, t.stage = "DELIVERED", curOp, contStateSaveDelivered
+	delivered.Phase, t.op, t.stage = PendingOpPhaseDelivered, curOp, contStateSaveDelivered
 	e.saveOperationCAS(curOp, &delivered, parentTarget(t, 0))
 }
 
@@ -1117,11 +1117,11 @@ func (t *continueStateOpTask) step(e *Engine, ev *secEvent) error {
 		} else if e.headHash != t.op.Parent {
 			return devicesec.ErrStale
 		}
-		if t.op.Phase == "DELIVERED" {
+		if t.op.Phase == PendingOpPhaseDelivered {
 			if !t.installed {
 				return devicesec.ErrStale
 			}
-			if t.op.Action == "recovery" && t.op.CodeSaved {
+			if t.op.Action == PendingOpActionRecovery && t.op.CodeSaved {
 				t.stage = contStateClearRotPre
 				e.installRecordCAS(nil, nil, nil, nil, 0, clearNeedsRotationPatch(), parentTarget(t, 0))
 				return nil
@@ -1249,7 +1249,7 @@ func (t *continueStateOpTask) step(e *Engine, ev *secEvent) error {
 			return err
 		}
 		t.op = ev.op
-		if ev.op.Action == "recovery" && ev.op.CodeSaved {
+		if ev.op.Action == PendingOpActionRecovery && ev.op.CodeSaved {
 			t.stage = contStateClearRotPost
 			e.installRecordCAS(nil, nil, nil, nil, 0, clearNeedsRotationPatch(), parentTarget(t, 0))
 			return nil
@@ -1289,16 +1289,16 @@ func (t *discardPendingTask) step(e *Engine, ev *secEvent) error {
 		return nil
 	}
 	switch {
-	case op.Kind == "offer" && op.Phase == "PREPARED":
+	case op.Kind == PendingOpKindOffer && op.Phase == PendingOpPhasePrepared:
 		if !t.acknowledgePublished && op.CodeSaved && len(op.Signed) > 0 {
 			return devicesec.ErrStale
 		}
-	case op.Kind == "create" && op.Phase == "PREPARED" && !op.CodeSaved:
+	case op.Kind == PendingOpKindCreate && op.Phase == PendingOpPhasePrepared && !op.CodeSaved:
 		if op.Create != nil {
 			e.discardCandidatePair(op.Create.EdSlot, op.Create.XSlot)
 		}
-	case op.Kind == "state" && op.Phase == "PREPARED" && len(op.Signed) == 0 && !(op.Action == "recovery" && op.CodeSaved):
-	case op.Kind == "recovery" && op.Phase == "PREPARED" && len(op.Signed) == 0:
+	case op.Kind == PendingOpKindState && op.Phase == PendingOpPhasePrepared && len(op.Signed) == 0 && !(op.Action == PendingOpActionRecovery && op.CodeSaved):
+	case op.Kind == PendingOpKindRecovery && op.Phase == PendingOpPhasePrepared && len(op.Signed) == 0:
 		if op.Recovery != nil {
 			e.discardCandidatePair(op.Recovery.EdSlot, op.Recovery.XSlot)
 		}

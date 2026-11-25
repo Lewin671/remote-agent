@@ -35,7 +35,7 @@ func (t *renewLeaseTask) uploadPendingLease(e *Engine, curPending *PersistedOper
 }
 
 func (t *renewLeaseTask) runAfterPre(e *Engine) {
-	if p := e.ensureWF().pendingOp; p != nil && p.Kind != "offer" && p.Kind != "delete-records" {
+	if p := e.ensureWF().pendingOp; p != nil && p.Kind != PendingOpKindOffer && p.Kind != PendingOpKindDeleteRecords {
 		e.okTarget(t.target, nil)
 		return
 	}
@@ -55,7 +55,7 @@ func (t *renewLeaseTask) step(e *Engine, ev *secEvent) error {
 			if err := e.checkFG(t.fgGen); err != nil {
 				return err
 			}
-			if wf.pendingOp != nil && wf.pendingOp.Kind != "delete-records" {
+			if wf.pendingOp != nil && wf.pendingOp.Kind != PendingOpKindDeleteRecords {
 				e.startResumePendingOp(t.fgGen, parentTarget(t, 0))
 				return nil
 			}
@@ -104,7 +104,7 @@ func (t *renewLeaseTask) step(e *Engine, ev *secEvent) error {
 		}
 		hh := e.headHash
 		t.stage = renewLeaseClaim
-		e.claimOperationCAS(e.newPreparedOp(e.effectiveServer(), e.selfDeviceID, "lease", "", hh), &hh, e.selfDeviceID, parentTarget(t, 0))
+		e.claimOperationCAS(e.newPreparedOp(e.effectiveServer(), e.selfDeviceID, PendingOpKindLease, "", hh), &hh, e.selfDeviceID, parentTarget(t, 0))
 	case renewLeasePendingSign:
 		if err := e.checkFG(t.fgGen); err != nil {
 			return err
@@ -238,7 +238,7 @@ func (t *prepareCreationTask) step(e *Engine, ev *secEvent) error {
 			return err
 		}
 		if op := wf.pendingOp; op != nil {
-			if op.Kind != "create" || op.Server != server {
+			if op.Kind != PendingOpKindCreate || op.Server != server {
 				return newWfError("conflict", WorkflowReasonFinishOriginalOpFirst)
 			}
 			persisted := t.storagePersisted
@@ -282,7 +282,7 @@ func (t *prepareCreationTask) step(e *Engine, ev *secEvent) error {
 			return err
 		}
 		t.stage = prepCreateClaim
-		op := e.newPreparedOp(t.server, t.memberID, "create", "", devicesec.Hash{})
+		op := e.newPreparedOp(t.server, t.memberID, PendingOpKindCreate, "", devicesec.Hash{})
 		op.Signed, op.StoragePersisted = t.regReqBytes, t.storagePersisted
 		op.Create = &PersistedCreateDraft{
 			AccountPublicKey: t.acctPub, EdSlot: t.edSlot, XSlot: t.xSlot, StoragePersisted: t.storagePersisted, States: [][]byte{genBytes},
@@ -346,10 +346,10 @@ func (t *continueCreationTask) step(e *Engine, ev *secEvent) error {
 			return err
 		}
 		op := wf.pendingOp
-		if op == nil || op.Kind != "create" || op.Create == nil || len(op.Create.States) == 0 || len(op.Signed) == 0 {
+		if op == nil || op.Kind != PendingOpKindCreate || op.Create == nil || len(op.Create.States) == 0 || len(op.Signed) == 0 {
 			return devicesec.ErrStale
 		}
-		if op.Phase == "PUBLISHED" {
+		if op.Phase == PendingOpPhasePublished {
 			if op.CodeSaved {
 				e.startAdoptCreationOp(op, t.target)
 				return nil
@@ -444,7 +444,7 @@ func (t *continueCreationTask) step(e *Engine, ev *secEvent) error {
 			return err
 		}
 		pubOp := *t.op
-		pubOp.Phase, t.stage = "PUBLISHED", contCreateSavePub
+		pubOp.Phase, t.stage = PendingOpPhasePublished, contCreateSavePub
 		e.saveOperationCAS(t.op, &pubOp, parentTarget(t, 0))
 	case contCreateSavePub:
 		pubSaved := ev.op
@@ -497,7 +497,7 @@ func (t *adoptCreationWithoutCodeTask) step(e *Engine, ev *secEvent) error {
 		return err
 	}
 	op := e.ensureWF().pendingOp
-	if op == nil || op.Kind != "create" || op.Phase != "PUBLISHED" {
+	if op == nil || op.Kind != PendingOpKindCreate || op.Phase != PendingOpPhasePublished {
 		return devicesec.ErrStale
 	}
 	e.startAdoptCreationOp(op, t.target)
@@ -666,7 +666,7 @@ func (t *removeDeviceTask) step(e *Engine, ev *secEvent) error {
 		}
 		hh := e.headHash
 		t.stage = removeDevClaim
-		op := e.newPreparedOp(e.effectiveServer(), e.selfDeviceID, "state", "remove", hh)
+		op := e.newPreparedOp(e.effectiveServer(), e.selfDeviceID, PendingOpKindState, PendingOpActionRemove, hh)
 		op.TargetDeviceID = t.id
 		e.claimOperationCAS(op, &hh, e.selfDeviceID, parentTarget(t, 0))
 	case removeDevClaim:
@@ -725,7 +725,7 @@ func (t *deleteMachineRecordsTask) step(e *Engine, ev *secEvent) error {
 		}
 		hh := e.headHash
 		t.stage = delMachClaim
-		op := e.newPreparedOp(e.effectiveServer(), e.selfDeviceID, "delete-records", "", hh)
+		op := e.newPreparedOp(e.effectiveServer(), e.selfDeviceID, PendingOpKindDeleteRecords, "", hh)
 		op.TargetDeviceID = t.machineID
 		op.Signed = (&v1.DeleteMachineRecordsRequest{MachineId: t.machineID}).AppendMarshal(nil)
 		e.claimOperationCAS(op, &hh, e.selfDeviceID, parentTarget(t, 0))
@@ -823,7 +823,7 @@ func (t *prepareCodeTask) step(e *Engine, ev *secEvent) error {
 	switch t.stage {
 	case prepCodePre:
 		if ev.kind == evStart {
-			if t.kind == "offer" {
+			if t.kind == PendingOpKindOffer {
 				if err := e.checkFG(t.fgGen); err != nil {
 					return err
 				}
@@ -843,7 +843,7 @@ func (t *prepareCodeTask) step(e *Engine, ev *secEvent) error {
 		if err := e.checkFG(t.fgGen); err != nil {
 			return err
 		}
-		if t.kind == "state" {
+		if t.kind == PendingOpKindState {
 			if !e.isAuthority() {
 				return devicesec.ErrUntrusted
 			}
@@ -872,7 +872,7 @@ func (t *prepareCodeTask) step(e *Engine, ev *secEvent) error {
 		zeroBytes(seed[:])
 		wf.codeDraft = &codeDraft{kind: t.kind, parent: e.headHash, recoveryEd: pub, storagePersisted: t.storagePersisted}
 		res := &corev1.SecurityWorkflowResultEffect{RecoveryCode: code}
-		if t.kind == "offer" {
+		if t.kind == PendingOpKindOffer {
 			res.Flag = t.storagePersisted
 		}
 		e.okTarget(t.target, res)
@@ -903,7 +903,7 @@ func (t *confirmCodeTask) step(e *Engine, ev *secEvent) error {
 			return err
 		}
 		if op := wf.pendingOp; op != nil {
-			if op.Kind != t.kind || (t.kind == "state" && op.Action != "recovery") || op.Server != e.effectiveServer() || op.MemberID != e.selfDeviceID {
+			if op.Kind != t.kind || (t.kind == PendingOpKindState && op.Action != PendingOpActionRecovery) || op.Server != e.effectiveServer() || op.MemberID != e.selfDeviceID {
 				return devicesec.ErrStale
 			}
 			if !op.CodeSaved {
@@ -930,7 +930,7 @@ func (t *confirmCodeTask) step(e *Engine, ev *secEvent) error {
 		if err := e.checkFG(t.fgGen); err != nil {
 			return err
 		}
-		if t.kind == "state" {
+		if t.kind == PendingOpKindState {
 			if !e.isAuthority() || e.headHash != t.draft.parent {
 				return devicesec.ErrStale
 			}
@@ -940,8 +940,8 @@ func (t *confirmCodeTask) step(e *Engine, ev *secEvent) error {
 		hh := e.headHash
 		op := e.newPreparedOp(e.effectiveServer(), e.selfDeviceID, t.kind, "", hh)
 		op.CodeSaved, op.RecoveryEd, op.StoragePersisted = true, slices.Clone(t.draft.recoveryEd), t.draft.storagePersisted
-		if t.kind == "state" {
-			op.Action = "recovery"
+		if t.kind == PendingOpKindState {
+			op.Action = PendingOpActionRecovery
 		}
 		t.stage = confirmCodeClaim
 		e.claimOperationCAS(op, &hh, e.selfDeviceID, parentTarget(t, 0))
@@ -1090,7 +1090,7 @@ func (t *handoffAuthorityTask) proceed(e *Engine, list []*corev1.SecurityHandoff
 	}
 	hh := e.headHash
 	t.stage = handoffClaim
-	op := e.newPreparedOp(e.effectiveServer(), e.selfDeviceID, "state", "handoff", hh)
+	op := e.newPreparedOp(e.effectiveServer(), e.selfDeviceID, PendingOpKindState, PendingOpActionHandoff, hh)
 	op.TargetDeviceID, op.RecoveryEd = t.incomingID, slices.Clone(offer.RecoveryEd)
 	e.claimOperationCAS(op, &hh, e.selfDeviceID, parentTarget(t, 0))
 	return nil

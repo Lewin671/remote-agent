@@ -422,7 +422,7 @@ func (e *Engine) afterSyncSuccess(rec *PersistedRecord) {
 		e.republishRecoveryObjects(taskTarget{})
 	}
 	if rec != nil && e.isAuthority() && wf.foreground && !wf.opBusy && !e.isClockSkewed(e.lastNowMs) {
-		if wf.pendingOp == nil || wf.pendingOp.Kind == "offer" || wf.pendingOp.Kind == "delete-records" {
+		if wf.pendingOp == nil || wf.pendingOp.Kind == PendingOpKindOffer || wf.pendingOp.Kind == PendingOpKindDeleteRecords {
 			var curLease *devicesec.LeaseCertificate
 			if e.hasLease && e.lease.Head == e.headHash {
 				l := e.lease

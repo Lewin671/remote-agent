@@ -469,7 +469,7 @@ func (e *Engine) batchCommitStorage(promoteEd, promoteX string, discard []string
 }
 
 func (e *Engine) newPreparedOp(server, memberID, kind, action string, parent devicesec.Hash) *PersistedOperation {
-	return &PersistedOperation{ID: e.nextWorkflowToken(), Revision: 1, Server: server, MemberID: memberID, Kind: kind, Parent: parent, Phase: "PREPARED", Action: action}
+	return &PersistedOperation{ID: e.nextWorkflowToken(), Revision: 1, Server: server, MemberID: memberID, Kind: kind, Parent: parent, Phase: PendingOpPhasePrepared, Action: action}
 }
 
 //go:noinline

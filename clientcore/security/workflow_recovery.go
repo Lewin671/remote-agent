@@ -272,7 +272,7 @@ func (t *prepareEmergencyRecoveryTask) step(e *Engine, ev *secEvent) error {
 		headHash, _ := t.head.Hash()
 		candID := devicesec.ID(t.candEdPub)
 		now := max(uint64(max(1, e.lastNowMs)), t.head.Core.IssuedAt)
-		op := e.newPreparedOp(t.server, candID, "recovery", "", headHash)
+		op := e.newPreparedOp(t.server, candID, PendingOpKindRecovery, "", headHash)
 		op.Recovery = &PersistedRecoveryDraft{
 			AccountID: t.pin.Account, AccountPublicKey: slices.Clone(t.acctPub[:]), Domain: t.pin.Domain, Genesis: t.pin.Genesis,
 			EdSlot: t.edSlot, XSlot: t.xSlot, CandidateEdPub: slices.Clone(t.candEdPub), CandidateXPub: slices.Clone(ev.bytes),
@@ -472,7 +472,7 @@ func (t *continueRecoverySigningTask) step(e *Engine, ev *secEvent) error {
 			return err
 		}
 		op := wf.pendingOp
-		if op == nil || op.Kind != "recovery" || op.Recovery == nil {
+		if op == nil || op.Kind != PendingOpKindRecovery || op.Recovery == nil {
 			return devicesec.ErrStale
 		}
 		if len(op.Signed) > 0 {
@@ -500,7 +500,7 @@ func (t *continueRecoverySigningTask) step(e *Engine, ev *secEvent) error {
 		nextDraft := *t.op.Recovery
 		nextDraft.RecoveryID, nextDraft.ReadyMs = sr.RecoveryId, int64(sr.ReadyMs)
 		nextOp := *t.op
-		nextOp.Phase, nextOp.Recovery, t.recoveryID, t.readyMs, t.stage = "PUBLISHED", &nextDraft, sr.RecoveryId, int64(sr.ReadyMs), contRecSave
+		nextOp.Phase, nextOp.Recovery, t.recoveryID, t.readyMs, t.stage = PendingOpPhasePublished, &nextDraft, sr.RecoveryId, int64(sr.ReadyMs), contRecSave
 		e.saveOperationCAS(t.op, &nextOp, parentTarget(t, 0))
 	case contRecSave:
 		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{
@@ -541,7 +541,7 @@ func (t *resumeRecoveryTask) step(e *Engine, ev *secEvent) error {
 			return err
 		}
 		op := wf.pendingOp
-		if op == nil || op.Kind != "recovery" || op.Recovery == nil {
+		if op == nil || op.Kind != PendingOpKindRecovery || op.Recovery == nil {
 			e.okTarget(t.target, nil)
 			return nil
 		}
@@ -563,7 +563,7 @@ func (t *resumeRecoveryTask) step(e *Engine, ev *secEvent) error {
 		nextDraft := *t.op.Recovery
 		nextDraft.RecoveryID, nextDraft.ReadyMs = sr.RecoveryId, int64(sr.ReadyMs)
 		nextOp := *t.op
-		nextOp.Phase, nextOp.Recovery, t.stage = "PUBLISHED", &nextDraft, resumeRecSavePub
+		nextOp.Phase, nextOp.Recovery, t.stage = PendingOpPhasePublished, &nextDraft, resumeRecSavePub
 		e.saveOperationCAS(t.op, &nextOp, parentTarget(t, 0))
 	case resumeRecSavePub:
 		t.fetchContext(e, ev.op)
@@ -700,7 +700,7 @@ func (t *completeRecoveryTask) step(e *Engine, ev *secEvent) error {
 			return err
 		}
 		op := e.ensureWF().pendingOp
-		if op == nil || op.Kind != "recovery" || op.Recovery == nil || op.Recovery.RecoveryID == "" ||
+		if op == nil || op.Kind != PendingOpKindRecovery || op.Recovery == nil || op.Recovery.RecoveryID == "" ||
 			len(op.Recovery.TargetState) == 0 || len(op.Recovery.Proof) == 0 || len(op.Recovery.Secret) != 32 {
 			return devicesec.ErrStale
 		}
@@ -858,7 +858,7 @@ func (t *discardUnsignedRecoveryTask) step(e *Engine, ev *secEvent) error {
 		return err
 	}
 	op := e.ensureWF().pendingOp
-	if op == nil || op.Kind != "recovery" || op.Phase != "PREPARED" || len(op.Signed) > 0 || op.Recovery == nil {
+	if op == nil || op.Kind != PendingOpKindRecovery || op.Phase != PendingOpPhasePrepared || len(op.Signed) > 0 || op.Recovery == nil {
 		return devicesec.ErrStale
 	}
 	t.edSlot, t.xSlot = op.Recovery.EdSlot, op.Recovery.XSlot
@@ -889,7 +889,7 @@ func (t *discardRejectedRecoveryTask) step(e *Engine, ev *secEvent) error {
 			return err
 		}
 		op := e.ensureWF().pendingOp
-		if op == nil || op.Kind != "recovery" || op.Recovery == nil || op.Recovery.RecoveryID == "" {
+		if op == nil || op.Kind != PendingOpKindRecovery || op.Recovery == nil || op.Recovery.RecoveryID == "" {
 			return devicesec.ErrStale
 		}
 		t.op, t.edSlot, t.xSlot, t.stage = op, op.Recovery.EdSlot, op.Recovery.XSlot, discardRejCtx

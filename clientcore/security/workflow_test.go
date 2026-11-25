@@ -45,9 +45,9 @@ type fakeClientHarness struct {
 	nowMs   int64
 	entByte byte
 
-	store         map[mockStoreKey]mockStoreEntry
-	legacyCleared bool
-	conflictOnce  bool
+	store          map[mockStoreKey]mockStoreEntry
+	legacyCleared  bool
+	conflictOnce   bool
 	storageReadErr string
 	keyAgreeErr    string
 
@@ -76,16 +76,16 @@ func newFakeClientHarness(t *testing.T, relay *fakeRelay, tag byte) *fakeClientH
 	pool := &entropy.Pool{}
 	eng := NewEngine(pool, testRelayVersion)
 	h := &fakeClientHarness{
-		t:             t,
-		relay:         relay,
-		pool:          pool,
-		eng:           eng,
-		nowMs:         relay.nowMs,
-		entByte:       tag,
-		store:         make(map[mockStoreKey]mockStoreEntry),
-		candEd:        make(map[string]ed25519.PrivateKey),
-		candX:         make(map[string]*ecdh.PrivateKey),
-		ephemX:        make(map[string]*ecdh.PrivateKey),
+		t:              t,
+		relay:          relay,
+		pool:           pool,
+		eng:            eng,
+		nowMs:          relay.nowMs,
+		entByte:        tag,
+		store:          make(map[mockStoreKey]mockStoreEntry),
+		candEd:         make(map[string]ed25519.PrivateKey),
+		candX:          make(map[string]*ecdh.PrivateKey),
+		ephemX:         make(map[string]*ecdh.PrivateKey),
 		actionResults:  make(map[uint64]*corev1.SecurityWorkflowResultEffect),
 		notifyOpened:   make(map[uint64]*corev1.SecurityNotifyOpenedEffect),
 		notifyOutcomes: make(map[uint64]NotifyOutcome),
@@ -1989,8 +1989,8 @@ func TestEmitActionResultPreservesRawErrorMeta(t *testing.T) {
 	if got := meta[2]; got.ErrReason != WorkflowReasonNone || got.ErrRaw != devicesec.ErrStale.Error() {
 		t.Fatalf("devicesec.ErrStale meta = %+v, want ErrRaw=%q", got, devicesec.ErrStale.Error())
 	}
-	if got := meta[3]; got.ErrReason != WorkflowReasonNone || got.ErrRaw != "login failed" {
-		t.Fatalf("rpcError meta = %+v, want ErrRaw='login failed'", got)
+	if got := meta[3]; got.ErrReason != WorkflowReasonPermissionDenied || got.ErrRaw != "login failed" {
+		t.Fatalf("rpcError meta = %+v, want ErrReason=WorkflowReasonPermissionDenied ErrRaw='login failed'", got)
 	}
 }
 

@@ -198,17 +198,24 @@ func buildSyncConnBanner(v *corev1.SyncStateView, w *world.State) *corev1.ConnBa
 	return out
 }
 
-func buildSyncLeaseRenewalAdvice(v *corev1.SyncStateView) *corev1.Text {
-	if v == nil || !v.SecurityLoaded {
+func leaseRenewalAdvice(loaded, isManager bool, managerName *corev1.Text) *corev1.Text {
+	if !loaded {
 		return nil
 	}
-	if v.IsManager {
+	if isManager {
 		return text.Msg(text.KeySecurityRenewNow)
 	}
-	if !text.IsEmpty(v.ManagerName) {
-		return text.Msg(text.KeySecurityOpenToRenew, text.ArgText("value", v.ManagerName))
+	if !text.IsEmpty(managerName) {
+		return text.Msg(text.KeySecurityOpenToRenew, text.ArgText("value", managerName))
 	}
 	return nil
+}
+
+func buildSyncLeaseRenewalAdvice(v *corev1.SyncStateView) *corev1.Text {
+	if v == nil {
+		return nil
+	}
+	return leaseRenewalAdvice(v.SecurityLoaded, v.IsManager, v.ManagerName)
 }
 
 // ApplySyncStateTexts populates all localized Text fields on SyncStateView from
@@ -295,6 +302,35 @@ func SecurityWorkflowReasonText(r security.WorkflowReason, rawFallback string) *
 		return text.Msg(text.KeyErrorsTheServerMustUseHttps)
 	case security.WorkflowReasonInvalidRecoveryCode:
 		return text.Msg(text.KeySecurityInvalidRecoveryCode)
+	case security.WorkflowReasonProtocolMismatch:
+		return text.Msg(text.KeySecurityThisPageAndTheServerOrPairingDeviceUse)
+	case security.WorkflowReasonPairingCodeInvalidOrUsed:
+		return text.Msg(text.KeySecurityThePairingCodeIsWrongOrHasAlreadyBeen)
+	case security.WorkflowReasonRateLimited:
+		return text.Msg(text.KeySecurityTooManyAttemptsWaitAMinuteAndRetry)
+	case security.WorkflowReasonClockBehind:
+		return text.Msg(text.KeySecurityThisDeviceSClockIsBehindTheManagingClient)
+	case security.WorkflowReasonSecurityChainFull:
+		return text.Msg(text.KeySecurityTheAccountSStateChainIsTooLongTo)
+	case security.WorkflowReasonSuccessUncertain:
+		return text.Msg(text.KeySecuritySuccessIsUncertainConnectionLost)
+	case security.WorkflowReasonSetupTokenRequired:
+		return text.Msg(text.KeySecuritySetupTokenOptionalWithOpenRegistration)
+	case security.WorkflowReasonRecoveryNotReady:
+		return text.Msg(text.KeySecurityRecoveryRequestPending)
+	case security.WorkflowReasonRecoveryRejected:
+		return text.Msg(text.KeySecurityRecoveryWasRejectedYouCanApplyAgain)
+	case security.WorkflowReasonPermissionDenied:
+		return text.Msg(text.KeyErrorsTheServerDoesNotRecognizeThisDeviceItMay)
+	case security.WorkflowReasonNotAuthority:
+		return text.Msg(text.KeyErrorsThisDeviceSSecurityStateCouldNotBeVerified)
+	case security.WorkflowReasonInvalidArgument:
+		return text.Msg(text.KeyErrorsInvalidCommand)
+	case security.WorkflowReasonNotFound,
+		security.WorkflowReasonFailedPrecondition,
+		security.WorkflowReasonOperationCanceled,
+		security.WorkflowReasonCommandFailed:
+		return text.Msg(text.KeyErrorsCommandFailed)
 	default:
 		if rawFallback != "" {
 			return text.Plain(rawFallback)
