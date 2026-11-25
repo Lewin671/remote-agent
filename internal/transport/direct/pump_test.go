@@ -159,6 +159,7 @@ func (p *pump) wait() {
 	if i > 0 && ok && owners[i-1] != nil {
 		e := owners[i-1]
 		e.s.handle(e.s.admit(v.Interface().(linkcore.Event)))
+		p.checkView(e)
 	}
 }
 
@@ -177,4 +178,18 @@ func (p *pump) checkView(e *pumpEnd) {
 	}
 }
 
-func (e *pumpEnd) bothReady() bool { return e.ready[1] != nil && e.ready[2] != nil }
+// useReady reports whether use currently has a live, business-confirmed path
+// matching the session's active generation and PC ID. A path confirmed in an
+// earlier generation that has since been reset or closed does not count as
+// ready for a subsequent generation.
+func (e *pumpEnd) useReady(use uint64) bool {
+	p := e.ready[use]
+	if p == nil || !pathAlive(p) {
+		return false
+	}
+	v := e.s.core.View()
+	id := v.PC[use-1]
+	return v.Business[use-1] && id != 0 && e.s.paths[id] == p && p.cfg.Generation == v.Generation[use-1]
+}
+
+func (e *pumpEnd) bothReady() bool { return e.useReady(1) && e.useReady(2) }
