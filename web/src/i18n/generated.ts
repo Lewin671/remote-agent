@@ -1548,6 +1548,7 @@ export interface MessageArgs {
   "tools.exit_code": { code: string };
   "tools.tool": { [name: string]: never };
   "tools.waiting_sync": { [name: string]: never };
+  "transport.card_relay": { [name: string]: never };
   "transport.conn_footer_unsupported_app": { [name: string]: never };
   "transport.conn_footer_unsupported_browser": { [name: string]: never };
   "transport.detail_daemon_disabled": { [name: string]: never };
@@ -3887,6 +3888,7 @@ export const messages = {
     "tools.exit_code": "Exit code {code}",
     "tools.tool": "Tool",
     "tools.waiting_sync": "Waiting to sync",
+    "transport.card_relay": "Relay",
     "transport.conn_footer_unsupported_app": "This app version does not support direct connections yet; everything connects via relay.",
     "transport.conn_footer_unsupported_browser": "This browser does not support direct connections; everything connects via relay.",
     "transport.detail_daemon_disabled": "Turn it on from this computer to use direct connections",
@@ -6154,6 +6156,7 @@ export const messages = {
     "tools.exit_code": "退出码 {code}",
     "tools.tool": "工具",
     "tools.waiting_sync": "等待同步",
+    "transport.card_relay": "中继",
     "transport.conn_footer_unsupported_app": "当前应用版本暂不支持直连，已全部经中继连接。",
     "transport.conn_footer_unsupported_browser": "这个浏览器不支持直连，已全部经中继连接。",
     "transport.detail_daemon_disabled": "在这台电脑上开启后可用",

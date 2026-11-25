@@ -1712,6 +1712,7 @@
 "tools_ios_running_label" = "In progress, %1$@";
 "tools_tool" = "Tool";
 "tools_waiting_sync" = "Waiting to sync";
+"transport_card_relay" = "Relay";
 "transport_conn_footer_unsupported_app" = "This app version does not support direct connections yet; everything connects via relay.";
 "transport_conn_footer_unsupported_browser" = "This browser does not support direct connections; everything connects via relay.";
 "transport_detail_daemon_disabled" = "Turn it on from this computer to use direct connections";

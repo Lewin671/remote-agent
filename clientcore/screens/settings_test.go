@@ -1007,6 +1007,16 @@ func TestMachineCardPlanBStatesAndConnCheckFooter(t *testing.T) {
 							t.Fatalf("%s: expected direct meta segment, got %+v", m.MachineId, m.MetaSegments)
 						}
 					}
+					hasRelay := false
+					for _, seg := range m.MetaSegments {
+						if seg.GetText().GetKey() == text.KeyTransportCardRelay {
+							hasRelay = true
+						}
+					}
+					wantRelay := m.MachineId != "m3" && !m.DirectActive && !(m.MachineId == "m1" && tc.m1ProtoVer != 0)
+					if hasRelay != wantRelay {
+						t.Fatalf("%s: relay meta segment=%v want %v (%+v)", m.MachineId, hasRelay, wantRelay, m.MetaSegments)
+					}
 				}
 			})
 		}

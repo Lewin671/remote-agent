@@ -1811,6 +1811,7 @@ object UiMessages {
     fun toolsExitCode(code: String): UiMessage = UiMessage("tools.exit_code", mapOf("code" to code))
     fun toolsTool(): UiMessage = UiMessage("tools.tool", emptyMap())
     fun toolsWaitingSync(): UiMessage = UiMessage("tools.waiting_sync", emptyMap())
+    fun transportCardRelay(): UiMessage = UiMessage("transport.card_relay", emptyMap())
     fun transportConnFooterUnsupportedApp(): UiMessage = UiMessage("transport.conn_footer_unsupported_app", emptyMap())
     fun transportConnFooterUnsupportedBrowser(): UiMessage = UiMessage("transport.conn_footer_unsupported_browser", emptyMap())
     fun transportDetailDaemonDisabled(): UiMessage = UiMessage("transport.detail_daemon_disabled", emptyMap())

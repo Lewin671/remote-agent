@@ -374,6 +374,22 @@
     }
   },
   {
+    "key": "transport.card_relay",
+    "zh-CN": "中继",
+    "en": "Relay",
+    "notes": "设置页电脑卡片状态行里的路线标签，接在「在线 · 」后面：电脑在线但读取没有走直连（直连未建立、正在建立、已关闭或较慢退回）时显示，表示经服务器中转。走直连时改显示「⚡ 直连」。保持一个词。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "transport.use_file",
     "zh-CN": "用于文件",
     "en": "Used for files",

@@ -1712,6 +1712,7 @@
 "tools_ios_running_label" = "进行中，%1$@";
 "tools_tool" = "工具";
 "tools_waiting_sync" = "等待同步";
+"transport_card_relay" = "中继";
 "transport_conn_footer_unsupported_app" = "当前应用版本暂不支持直连，已全部经中继连接。";
 "transport_conn_footer_unsupported_browser" = "这个浏览器不支持直连，已全部经中继连接。";
 "transport_detail_daemon_disabled" = "在这台电脑上开启后可用";

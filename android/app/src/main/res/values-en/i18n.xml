@@ -2100,6 +2100,7 @@
     <string name="tools_exit_code">"Exit code %1$s"</string>
     <string name="tools_tool" formatted="false">"Tool"</string>
     <string name="tools_waiting_sync" formatted="false">"Waiting to sync"</string>
+    <string name="transport_card_relay" formatted="false">"Relay"</string>
     <string name="transport_conn_footer_unsupported_app" formatted="false">"This app version does not support direct connections yet; everything connects via relay."</string>
     <string name="transport_conn_footer_unsupported_browser" formatted="false">"This browser does not support direct connections; everything connects via relay."</string>
     <string name="transport_detail_daemon_disabled" formatted="false">"Turn it on from this computer to use direct connections"</string>

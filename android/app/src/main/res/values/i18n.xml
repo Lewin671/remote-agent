@@ -2005,6 +2005,7 @@
     <string name="tools_exit_code">"退出码 %1$s"</string>
     <string name="tools_tool" formatted="false">"工具"</string>
     <string name="tools_waiting_sync" formatted="false">"等待同步"</string>
+    <string name="transport_card_relay" formatted="false">"中继"</string>
     <string name="transport_conn_footer_unsupported_app" formatted="false">"当前应用版本暂不支持直连，已全部经中继连接。"</string>
     <string name="transport_conn_footer_unsupported_browser" formatted="false">"这个浏览器不支持直连，已全部经中继连接。"</string>
     <string name="transport_detail_daemon_disabled" formatted="false">"在这台电脑上开启后可用"</string>

@@ -352,6 +352,12 @@ func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines [
 				Text: text.Msg(text.KeyTransportDirect),
 				Icon: corev1.MachineCardMetaIcon_MACHINE_CARD_META_ICON_DIRECT,
 			})
+		} else if includeSummary && online && !unlinked && !archived && mismatch == 0 {
+			// Online but reads go through the relay (direct off, still
+			// connecting, or fell back): name the route so it is never ambiguous.
+			metaSegments = append(metaSegments, &corev1.MachineCardMetaSegment{
+				Text: text.Msg(text.KeyTransportCardRelay),
+			})
 		}
 		if !text.IsEmpty(secondaryNote) {
 			metaSegments = append(metaSegments, &corev1.MachineCardMetaSegment{Text: secondaryNote})

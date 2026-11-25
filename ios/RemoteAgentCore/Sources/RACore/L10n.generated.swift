@@ -7247,6 +7247,10 @@ public enum L10n {
         let key = "tools_waiting_sync"
         return format(key, locale: locale, args: [])
     }
+    public static func transportCardRelay(locale: String = MessageLocale.current) -> String {
+        let key = "transport_card_relay"
+        return format(key, locale: locale, args: [])
+    }
     public static func transportConnFooterUnsupportedApp(locale: String = MessageLocale.current) -> String {
         let key = "transport_conn_footer_unsupported_app"
         return format(key, locale: locale, args: [])
@@ -15471,6 +15475,10 @@ public enum L10nMessage {
         let key = "tools_waiting_sync"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func transportCardRelay() -> LocalizedMessage {
+        let key = "transport_card_relay"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func transportConnFooterUnsupportedApp() -> LocalizedMessage {
         let key = "transport_conn_footer_unsupported_app"
         return LocalizedMessage(key: key, arguments: [])
@@ -18412,6 +18420,7 @@ public enum L10nText {
         case "tools.ios_running_label": return L10n.format("tools_ios_running_label", locale: locale, args: [strArg(args["title"])])
         case "tools.tool": return L10n.format("tools_tool", locale: locale, args: [])
         case "tools.waiting_sync": return L10n.format("tools_waiting_sync", locale: locale, args: [])
+        case "transport.card_relay": return L10n.format("transport_card_relay", locale: locale, args: [])
         case "transport.conn_footer_unsupported_app": return L10n.format("transport_conn_footer_unsupported_app", locale: locale, args: [])
         case "transport.conn_footer_unsupported_browser": return L10n.format("transport_conn_footer_unsupported_browser", locale: locale, args: [])
         case "transport.detail_daemon_disabled": return L10n.format("transport_detail_daemon_disabled", locale: locale, args: [])
@@ -18555,12 +18564,12 @@ public enum L10nText {
         case "transport.file_speed_direct": return L10n.format("transport_file_speed_direct", locale: locale, args: [strArg(args["direct"])])
         case "transport.file_speed_relay": return L10n.format("transport_file_speed_relay", locale: locale, args: [strArg(args["relay"])])
         case "transport.footer": return L10n.format("transport_footer", locale: locale, args: [])
-        case "transport.popover_a11y": return L10n.format("transport_popover_a11y", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve13(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "transport.popover_a11y": return L10n.format("transport_popover_a11y", locale: locale, args: [])
         case "transport.popover_direct_body": return L10n.format("transport_popover_direct_body", locale: locale, args: [])
         case "transport.popover_direct_title": return L10n.format("transport_popover_direct_title", locale: locale, args: [strArg(args["name"])])
         case "transport.popover_direct_title_rtt": return L10n.format("transport_popover_direct_title_rtt", locale: locale, args: [strArg(args["ms"]), strArg(args["name"])])

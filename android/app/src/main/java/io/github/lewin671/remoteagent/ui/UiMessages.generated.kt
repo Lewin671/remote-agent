@@ -6055,6 +6055,9 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "tools.waiting_sync" -> {
             resources.getString(R.string.tools_waiting_sync)
         }
+        "transport.card_relay" -> {
+            resources.getString(R.string.transport_card_relay)
+        }
         "transport.conn_footer_unsupported_app" -> {
             resources.getString(R.string.transport_conn_footer_unsupported_app)
         }
@@ -6513,15 +6516,15 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
             val relay = message.args.getValue("relay") as String
             resources.getString(R.string.transport_file_speed_relay, relay)
         }
-        "transport.footer" -> {
-            resources.getString(R.string.transport_footer)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "transport.footer" -> {
+            resources.getString(R.string.transport_footer)
+        }
         "transport.popover_a11y" -> {
             resources.getString(R.string.transport_popover_a11y)
         }
