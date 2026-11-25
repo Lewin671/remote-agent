@@ -17,14 +17,21 @@ trap 'rm -f "$tmp"' EXIT
 "$ROOT/scripts/build-go.sh" "$tmp" ./cmd/remote-agent
 # macOS remembers privacy permissions (such as access to Downloads) by code
 # identity. Go gives the binary only an ad hoc signature, so every build looks
-# like a new program and asks again. Sign with a stable identifier and the
-# first Apple Development certificate in the keychain (or
-# RA_CODESIGN_IDENTITY) so a permission granted once survives reinstalls.
+# like a new program and asks again. Sign with the identifier and kind of
+# certificate the released macOS daemons carry (scripts/sign-macos-dist.sh):
+# with a Developer ID, macOS identifies the program by identifier and team, so
+# a permission granted once survives reinstalls, releases and certificate
+# renewals. An Apple Development certificate is the fallback; it keeps
+# permissions across reinstalls only. RA_CODESIGN_IDENTITY picks another.
 if [ "$(uname)" = Darwin ]; then
-	identity=${RA_CODESIGN_IDENTITY:-$(security find-identity -v -p codesigning 2>/dev/null |
-		sed -n 's/.*"\(Apple Development: [^"]*\)".*/\1/p' | head -n 1)}
+	identities=$(security find-identity -v -p codesigning 2>/dev/null || true)
+	identity=${RA_CODESIGN_IDENTITY:-$(printf '%s\n' "$identities" |
+		sed -n 's/.*"\(Developer ID Application: [^"]*\)".*/\1/p' | head -n 1)}
+	[ -n "$identity" ] || identity=$(printf '%s\n' "$identities" |
+		sed -n 's/.*"\(Apple Development: [^"]*\)".*/\1/p' | head -n 1)
 	if [ -n "$identity" ]; then
-		codesign --force --sign "$identity" --identifier com.github.lewin671.remote-agent "$tmp" ||
+		codesign --force --sign "$identity" --identifier com.github.lewin671.remote-agent \
+			--options runtime "$tmp" ||
 			echo "codesign failed: macOS may ask again for permissions it already granted" >&2
 	fi
 fi

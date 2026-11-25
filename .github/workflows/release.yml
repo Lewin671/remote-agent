@@ -219,6 +219,66 @@ jobs:
           compression-level: 0
           if-no-files-found: error
 
+  # The macOS daemons that dist builds on Linux get the Developer ID signature
+  # and Apple's notarization here, where codesign runs. The identifier matches
+  # scripts/install.sh, so macOS keeps permissions across both kinds of build.
+  dist-macos:
+    needs: dist
+    runs-on: xcode-27
+    timeout-minutes: 30
+    outputs:
+      commit: ${{ steps.source.outputs.commit }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ needs.dist.outputs.commit }}
+      - id: source
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist
+          path: dist
+      - name: Sign and notarize the macOS daemons
+        env:
+          MACOS_SIGNING: ${{ secrets.MACOS_SIGNING }}
+          ASC_API_KEY: ${{ secrets.ASC_API_KEY }}
+        run: |
+          set -eu
+          test -n "$MACOS_SIGNING" && test -n "$ASC_API_KEY"
+          work="$RUNNER_TEMP/macos-signing"
+          mkdir -p "$work" && chmod 700 "$work"
+          keychain="$work/signing.keychain-db"
+          password=$(openssl rand -base64 24)
+          printf '%s' "$MACOS_SIGNING" | jq -r .certificate | base64 --decode >"$work/signing.p12"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          security import "$work/signing.p12" -k "$keychain" -T /usr/bin/codesign \
+            -P "$(printf '%s' "$MACOS_SIGNING" | jq -r .password)"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$password" "$keychain" >/dev/null
+          existing=$(security list-keychains -d user | tr -d '"' | xargs)
+          # shellcheck disable=SC2086 # keychain paths without spaces, one word each
+          security list-keychains -d user -s "$keychain" $existing
+          printf '%s' "$ASC_API_KEY" | jq -r .key >"$work/notary.p8"
+          RA_NOTARY_KEY="$work/notary.p8" \
+            RA_NOTARY_KEY_ID=$(printf '%s' "$ASC_API_KEY" | jq -r .key_id) \
+            RA_NOTARY_ISSUER=$(printf '%s' "$ASC_API_KEY" | jq -r .issuer_id) \
+            scripts/sign-macos-dist.sh
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dist
+          path: dist/*.tar.gz
+          overwrite: true
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
+      - name: Remove signing material
+        if: always()
+        run: |
+          keychain="$RUNNER_TEMP/macos-signing/signing.keychain-db"
+          if [ -f "$keychain" ]; then security delete-keychain "$keychain"; fi
+          rm -rf "$RUNNER_TEMP/macos-signing"
+
   android-checks:
     needs: source
     runs-on: ubuntu-latest
@@ -516,12 +576,13 @@ jobs:
         run: xcodebuild -quiet -jobs 4 -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -configuration Release -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/DerivedDataRelease" -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages" ARCHS=arm64 CODE_SIGNING_ALLOWED=NO build
 
   publish:
-    needs: [source, go-checks, web-checks, android-checks, android-build, dist, ios-checks]
+    needs: [source, go-checks, web-checks, android-checks, android-build, dist, dist-macos, ios-checks]
     if: >-
       ${{ !cancelled() && (github.event_name == 'push' || inputs.tag != '') &&
           needs.source.result == 'success' && needs.go-checks.result == 'success' &&
           needs.web-checks.result == 'success' && needs.android-checks.result == 'success' &&
           needs.android-build.result == 'success' && needs.dist.result == 'success' &&
+          needs.dist-macos.result == 'success' &&
           needs.ios-checks.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -558,7 +619,7 @@ jobs:
           WEB_CHECKS_COMMIT: ${{ needs.web-checks.outputs.commit }}
           ANDROID_CHECKS_COMMIT: ${{ needs.android-checks.outputs.commit }}
           ANDROID_BUILD_COMMIT: ${{ needs.android-build.outputs.commit }}
-          DIST_COMMIT: ${{ needs.dist.outputs.commit }}
+          DIST_COMMIT: ${{ needs.dist-macos.outputs.commit }}
           IOS_CHECKS_COMMIT: ${{ needs.ios-checks.outputs.commit }}
         run: |
           RELEASE_TAG=${TAG_INPUT:-v$(sed -n 's/^version=//p' version.properties)}

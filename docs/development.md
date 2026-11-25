@@ -129,6 +129,14 @@ iOS 有两条独立的自动上传路径，共用 `ASC_API_KEY`、`IOS_SIGNING`�
 
 本地演练需要 Ruby 3.3、Bundler 4 和 Xcode 27。在 `ios/` 执行 `bundle install`，再执行 `IOS_OUTPUT_DIR=/tmp/ios-release-check bundle exec fastlane ios verify`（加 `beta:true` 可演练 beta 版本号与构建号注入）。演练额外执行无签名归档；正式发布与内部测试上传只执行后续的分发签名归档。需单独验证签名时，传入 `IOS_SOURCE_DIR`（tag 的干净 checkout）、`IOS_OUTPUT_DIR` 和 `IOS_SIGNING` 后运行 `bundle exec fastlane ios package`，只生成 IPA。签名配置仅临时用于 App 的 Release 目标，构建结束后原样恢复工程，并再次核对 checkout 干净。自动发布工具的 Ruby 依赖由 `ios/Gemfile.lock` 固定；正式发布工具从 main 读取，产品源码来自不可移动的正式 tag，旧 tag 无需包含这些工具。只改发布工具本身不升产品版本。
 
+## macOS daemon 的签名与公证
+
+macOS 按代码身份记隐私授权（如访问「下载」文件夹）。Go 编出的程序只有临时签名，每次构建都像一个新程序，系统会重新询问。所以 macOS 上的 daemon 统一用标识符 `com.github.lewin671.remote-agent` 加 Developer ID Application 证书签名：系统按标识符和团队识别它，源码安装、Release 版本和证书续期之间授权都不丢。
+
+- **Release**：`dist` 在 Linux 上构建，`dist-macos` job 在 `xcode-27` runner 上用 `scripts/sign-macos-dist.sh` 给两个 darwin 包里的程序签名（hardened runtime、时间戳），提交 Apple 公证，再按原格式重新打包，`publish` 依赖它。Secret `MACOS_SIGNING` 是 JSON：`certificate`（含私钥和 Developer ID G2 中间证书的 p12 的 Base64）、`password`（p12 密码）；公证复用 `ASC_API_KEY`。单个可执行文件无法装订公证票据，Gatekeeper 在线查询。
+- **源码安装**：`scripts/install.sh` 在 macOS 上优先用钥匙串里的 Developer ID Application 身份，没有时退回 Apple Development（只在重装之间保住授权），可用 `RA_CODESIGN_IDENTITY` 指定。私钥放在独立的签名钥匙串里，设好 partition list 并加入用户钥匙串搜索列表，codesign 才能无人值守使用；放进登录钥匙串而没有登录密码设置 partition list 时，codesign 报 `errSecInternalComponent`。
+- **续期**：Developer ID 证书只能由账号持有人在开发者网站创建（API 密钥会被拒绝）。到期前用同一私钥或新 CSR 换发，更新本机签名钥匙串和 `MACOS_SIGNING`；团队不变，已授予的权限不受影响。
+
 ## 文案生成与检查
 
 ```sh
