@@ -167,6 +167,9 @@ class MainActivity : ComponentActivity() {
         // Start dismissing input and navigating in the same callback; neither waits for the IME.
         val actions = remember(nav, remote) { io.github.lewin671.remoteagent.ui.dismissPageInput(focus, keyboard) }
         val target by openSession
+        // A scheduled tap's approval opens only after the core has routed the tap
+        // (resolved or timed out), so the approval page lands on top of it.
+        val tapApproval = remember { mutableStateOf<Pair<String, String>?>(null) }
         LaunchedEffect(openDevices.value) {
             if (openDevices.value) {
                 actions.devices()
@@ -184,6 +187,7 @@ class MainActivity : ComponentActivity() {
             target?.let { (sid, approval) ->
                 val scheduled = openScheduled.value
                 if (scheduled) {
+                    tapApproval.value = approval?.let { sid to it }
                     val seq = io.github.lewin671.remoteagent.ui.ScheduleJump.requested.remove(sid) ?: 0L
                     remote.coreHost.resolveNotificationTap(
                         sessionId = sid,
@@ -191,8 +195,8 @@ class MainActivity : ComponentActivity() {
                     )
                 } else {
                     actions.session(sid)
+                    if (approval != null) actions.approval(sid, approval)
                 }
-                if (approval != null) actions.approval(sid, approval)
                 openScheduled.value = false
                 openSession.value = null
             }
@@ -243,8 +247,13 @@ class MainActivity : ComponentActivity() {
                                 if (nav.currentBackStackEntry?.destination?.route?.startsWith("newtask") == true) {
                                     nav.popBackStack()
                                 }
+                                return@collect
                             }
-                            else -> {}
+                            else -> return@collect
+                        }
+                        tapApproval.value?.let { (sid, approval) ->
+                            tapApproval.value = null
+                            actions.approval(sid, approval)
                         }
                     }
                 }
