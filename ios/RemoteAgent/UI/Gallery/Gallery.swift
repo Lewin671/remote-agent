@@ -420,8 +420,8 @@
             .padding(.horizontal, 16)
             SectionLabel("上下文")
             VStack(spacing: 8) {
-                ContextBox(percent: 32, detail: "上下文 243k / 760k", action: "压缩") {}
-                ContextBox(percent: 86, detail: "上下文 654k / 760k", action: "正在压缩…", enabled: false)
+                ContextBox(percent: 32, warn: false, detail: "上下文 243k / 760k", action: "压缩") {}
+                ContextBox(percent: 86, warn: true, detail: "上下文 654k / 760k", action: "正在压缩…", enabled: false)
                 {}
             }
             .padding(.horizontal, 16)

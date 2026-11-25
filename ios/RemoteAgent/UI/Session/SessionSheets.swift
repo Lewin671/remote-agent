@@ -207,6 +207,7 @@ struct SessionModelSheet: View {
                 let ctxDetail = header.hasContextText ? header.contextText.rendered() : L10n.sessionIosContextOccupancy()
                 ContextBox(
                     percent: Int(header.contextPercent),
+                    warn: header.highContextWarning,
                     detail: ctxDetail,
                     action: compactRunning ? L10n.sessionCompacting() : L10n.sessionCompact(),
                     enabled: actions.canCompact && !compactRunning

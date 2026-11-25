@@ -64,7 +64,6 @@ struct ScheduleMessageEditorContent: View {
     let onClose: () -> Void
 
     @State private var text = ""
-    @State private var initialMessage = ""
     @State private var capturedFormKey = ""
     @FocusState private var focused: Bool
     @State private var discard = false
@@ -84,13 +83,13 @@ struct ScheduleMessageEditorContent: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity).background(DS.paper.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { Button(L10n.commonCancel()) { if text != initialMessage { discard = true } else { onClose() } }.tint(DS.ink).disabled(busy) }
+                ToolbarItem(placement: .topBarLeading) { Button(L10n.commonCancel()) { if vm.hasUnsavedChanges_p || text != vm.message { discard = true } else { onClose() } }.tint(DS.ink).disabled(busy) }
                 ToolbarItem(placement: .principal) { Text(L10n.scheduleWhatShouldTheAgentDo()).font(.headline).ink(DS.ink) }
                 ToolbarItem(placement: .topBarTrailing) { Button(busy ? L10n.commonIosSaving() : L10n.commonSave(), action: onSave).tint(DS.blue).disabled(!(vm.editable && vm.canSubmit && !busy)) }
             }
             .confirm(isPresented: $discard, title: L10n.scheduleDiscardChanges(), text: L10n.scheduleIosUnsavedChangesWillBeLost(), confirm: L10n.newSessionIosAbandon(), danger: true, onConfirm: onClose)
             .onChange(of: vm.formKey, initial: true) { _, key in
-                if !key.isEmpty && key != capturedFormKey { capturedFormKey = key; initialMessage = vm.message; text = vm.message }
+                if !key.isEmpty && key != capturedFormKey { capturedFormKey = key; text = vm.message }
             }
             .onAppear { focused = true }
         }

@@ -159,7 +159,7 @@ struct NewScheduleContent: View {
                     GroupCard {
                         let ph = vm.hasTitlePlaceholder ? vm.titlePlaceholder.rendered() : (vm.autoTitle.isEmpty ? L10n.scheduleTaskName() : vm.autoTitle)
                         TextField(ph, text: $titleText).padding(.horizontal, 14).padding(.vertical, 12).disabled(!vm.editable || busy)
-                            .onChange(of: titleText) { _, new in let f = String(new.prefix(60)); if f != new { titleText = f; return }; if f != vm.title { onSetTitle(f) } }
+                            .onChange(of: titleText) { _, new in let f = titleInput(new); if f != new { titleText = f; return }; if f != vm.title { onSetTitle(f) } }
                     }
                 }.padding(.horizontal, 16).padding(.vertical, 12)
             }

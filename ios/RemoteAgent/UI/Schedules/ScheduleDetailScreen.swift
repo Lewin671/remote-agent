@@ -290,7 +290,7 @@ private struct ScheduleRenameDialog: ViewModifier {
             DialogCard {
                 Text(L10n.scheduleRenameTask()).font(.headline).ink(DS.ink).multilineTextAlignment(.center).padding(.bottom, 12).accessibilityAddTraits(.isHeader)
                 InputField(text: $value, placeholder: L10n.scheduleLeaveBlankToUseTheMessageSFirstSentence(), lines: 1...1, focusOnAppear: true, onSubmit: { submit() })
-                    .onChange(of: value) { _, new in let s = String(new.map { $0 == "\n" || $0 == "\r" ? " " : $0 }.prefix(60)); if s != new { value = s } }
+                    .onChange(of: value) { _, new in let s = titleInput(new); if s != new { value = s } }
                     .padding(.bottom, 8)
                 if hasError {
                     Text(L10n.commonIosSaveFailed(reason: mutation.error.rendered())).font(.subheadline).ink(DS.red).multilineTextAlignment(.center).padding(.bottom, 8)

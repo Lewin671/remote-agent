@@ -125,13 +125,15 @@ struct ChoiceGrid: View {
 /// The context box of 会话设置: the percent, what it is of, and one action (压缩).
 struct ContextBox: View {
     private let percent: Int
+    private let warn: Bool
     private let detail: String
     private let action: String?
     private let enabled: Bool
     private let onAction: () -> Void
 
-    init(percent: Int, detail: String, action: String? = nil, enabled: Bool = true, onAction: @escaping () -> Void = {}) {
+    init(percent: Int, warn: Bool = false, detail: String, action: String? = nil, enabled: Bool = true, onAction: @escaping () -> Void = {}) {
         self.percent = percent
+        self.warn = warn
         self.detail = detail
         self.action = action
         self.enabled = enabled
@@ -142,7 +144,7 @@ struct ContextBox: View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 0) {
                 // Nearly full is the one case a count turns orange (design-system §1).
-                Text("\(percent)%").font(.title2.bold()).ink(percent > 80 ? DS.orangeInk : DS.ink)
+                Text("\(percent)%").font(.title2.bold()).ink(warn ? DS.orangeInk : DS.ink)
                 Text(detail).font(.subheadline).ink(DS.ink2)
             }
             .accessibilityElement(children: .combine)

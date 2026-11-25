@@ -166,9 +166,10 @@ struct MachineStatusScreen: View {
         let current = context.core.machineStatus
         if current.machineID == id { return current }
         let m = context.core.settings.machines.first { $0.machineID == id }
+        let shortID = id.unicodeScalars.count <= 8 ? id : "…" + String(id.unicodeScalars.suffix(8))
         return PBMachineStatusViewModel.with {
             $0.machineID = id
-            $0.machineName = (m?.name ?? "").or(String(id.prefix(8))).or(L10n.commonUnknownComputer())
+            $0.machineName = (m?.name ?? "").or(shortID).or(L10n.commonUnknownComputer())
             $0.found = m != nil
             $0.supported = true
             $0.online = m?.online ?? false
