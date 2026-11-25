@@ -191,7 +191,6 @@ import {
   ImagePayloadSchema,
   ProjectPrefsSchema,
   TerminalFrameSchema,
-  type CommandResult,
   type MachineMeta,
   type ProjectPrefs,
   type TerminalFrame,
@@ -321,7 +320,6 @@ export class Remote implements CoreExecutor {
   private loginController?: AbortController;
   private tokenWrites: Promise<void> = Promise.resolve();
   private networkGeneration = 0;
-  private verifiedNetworkGeneration = 0;
   private wakeSecurity?: Promise<void>;
   private wakeController?: AbortController;
   private wakeRequired = false;
@@ -1080,10 +1078,12 @@ export class Remote implements CoreExecutor {
           return this.rpcEv({ case: "accountPrefsFetched", value: create(AccountPrefsFetchedEventSchema, { opId, error: errorText(e) }) });
         }
       case "putAccountPrefs": {
-        const { objectId, expectedRevision, nextPrefs, sealedEnvelope } = eff.kind.value;
+        const { objectId, expectedRevision, sealedEnvelope } = eff.kind.value;
+        if (!sealedEnvelope) {
+          return this.rpcEv({ case: "accountPrefsPutResult", value: create(AccountPrefsPutResultEventSchema, { opId, error: "missing sealed account prefs" }) });
+        }
         try {
-          const env = sealedEnvelope ?? (await this.sealSecureMessage({ kind: PayloadKind.ACCOUNT_PREFS, requestId: objectId || PREFS_OBJECT, seq: expectedRevision + 1n, sender: this.account.deviceId }, ProjectPrefsSchema, nextPrefs ?? emptyPrefs())).envelope;
-          const res = await this.api.putAccountPrefs({ objectId: objectId || PREFS_OBJECT, expectedRevision, envelope: env });
+          const res = await this.api.putAccountPrefs({ objectId: objectId || PREFS_OBJECT, expectedRevision, envelope: sealedEnvelope });
           return this.rpcEv({ case: "accountPrefsPutResult", value: create(AccountPrefsPutResultEventSchema, { opId, applied: res.applied, wireCurrent: res.object }) });
         } catch (e) {
           const sealConflict = e instanceof SecurityError && (e.code === "clock" || e.code === "lease" || e.code === "conflict" || e.code === "stale");
@@ -1170,7 +1170,6 @@ export class Remote implements CoreExecutor {
     signal?: AbortSignal;
   }): Promise<{
     outcome: CommandOutcomeEvent;
-    msg?: CommandResult;
     rawEnvelope?: Envelope;
     elapsedMs: number;
     observedBytes: bigint;
@@ -1198,30 +1197,25 @@ export class Remote implements CoreExecutor {
         ok: false,
       };
     }
+    if (!params.sealedEnvelope) {
+      return {
+        outcome: mk({
+          source: OutcomeSource.LOCAL,
+          notForwarded: !params.priorUnknown,
+          transportCode: params.priorUnknown ? "unknown" : "failed_precondition",
+          transportDetail: "missing sealed command",
+          routeWasDirect: isDirect,
+        }),
+        elapsedMs: 0,
+        observedBytes: 0n,
+        ok: false,
+      };
+    }
 
     let parsedCmd: ReturnType<typeof fromBinary<typeof CommandSchema>> | undefined;
     try { parsedCmd = fromBinary(CommandSchema, params.commandBytes); } catch { parsedCmd = undefined; }
 
-    let envelope: Envelope;
-    let requestKeyHash: Uint8Array<ArrayBuffer> | undefined;
-    let payloadHash: Uint8Array<ArrayBuffer> | undefined;
-    try {
-      if (params.sealedEnvelope) {
-        envelope = params.sealedEnvelope;
-      } else {
-        await this.checkNetworkSecurity();
-        const sealed = await this.sealCommandBytes(params.machineId, params.sessionId, params.requestId, BigInt(params.deadlineMs), params.commandBytes);
-        envelope = sealed.envelope;
-        requestKeyHash = sealed.requestKeyHash;
-        payloadHash = sealed.payloadHash;
-      }
-    } catch (e) {
-      if (params.priorUnknown) {
-        return { outcome: mk({ source: OutcomeSource.LOCAL, notForwarded: false, handedOff: true, transportCode: "unknown", transportDetail: errorText(e), routeWasDirect: isDirect }), elapsedMs: 0, observedBytes: 0n, ok: false };
-      }
-      const code = e instanceof SecurityError && e.code === "clock" ? "clock" : e instanceof SecurityError && (e.code === "lease" || e.code === "stale") ? "failed_precondition" : "security_unavailable";
-      return { outcome: mk({ source: OutcomeSource.LOCAL, notForwarded: true, transportCode: code, transportDetail: errorText(e), routeWasDirect: isDirect }), elapsedMs: 0, observedBytes: 0n, ok: false };
-    }
+    const envelope = params.sealedEnvelope;
 
     let handedOff = false;
     const handoff = () => {
@@ -1253,101 +1247,39 @@ export class Remote implements CoreExecutor {
 
       const elapsedMs = performance.now() - routeStarted;
       const attemptBound = res.attemptId === attemptId;
-      if (params.sealedEnvelope) {
-        if (
-          parsedCmd?.kind.case === "schedule" &&
-          parsedCmd.kind.value.operation === "list" &&
-          res.result &&
-          this.isMachineAuthorized(params.machineId)
-        ) {
-          try {
-            const { msg: schedMsg } = await this.openSecureMessage(
-              res.result,
-              { kind: PayloadKind.COMMAND_RESULT, machineId: params.machineId, sessionId: params.sessionId, requestId: params.requestId },
-              CommandResultSchema,
-            );
-            if (!schedMsg.errorCode && schedMsg.outcome === "executed" && schedMsg.kind.case === "schedule" && schedMsg.kind.value.resultJson.length) {
-              await this.keepValue("schedules:" + params.machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId: params.requestId });
-            }
-          } catch {
-            // Core will reject/report any unverified envelope.
-          }
-        }
-        return {
-          rawEnvelope: res.result,
-          elapsedMs,
-          observedBytes: BigInt(parsedCmd?.kind.case === "putImageChunk" ? parsedCmd.kind.value.data?.length ?? 0 : 0),
-          ok: attemptBound && (isDirect || res.outcome === "executed"),
-          outcome: mk({
-            source: OutcomeSource.DAEMON,
-            attemptBound,
-            outerOutcome: isDirect ? "" : res.outcome,
-            outerReason: isDirect ? "" : res.reason,
-            sealedResult: res.result,
-            handedOff,
-            routeWasDirect: isDirect,
-            elapsedMs,
-          }),
-        };
-      }
-
-      let msg: CommandResult;
-      try {
-        msg = (await this.openSecureMessage(res.result, { kind: PayloadKind.COMMAND_RESULT, machineId: params.machineId, sessionId: params.sessionId, requestId: params.requestId }, CommandResultSchema)).msg;
-      } catch {
-        return {
-          outcome: mk({
-            source: OutcomeSource.DAEMON,
-            attemptBound,
-            signed: false,
-            hashesMatch: false,
-            handedOff,
-            routeWasDirect: isDirect,
-            elapsedMs,
-          }),
-          elapsedMs,
-          observedBytes: 0n,
-          ok: false,
-        };
-      }
-      const hashesMatch = !!requestKeyHash && !!payloadHash && equalBytes(msg.requestKeyHash, requestKeyHash) && equalBytes(msg.payloadHash, payloadHash) && (msg.outcome === "conflict" || msg.conflictKind === "");
-      const outerMatchesInner = isDirect || (res.outcome === msg.outcome && res.reason === msg.reason);
-      const bytes = BigInt(
-        parsedCmd?.kind.case === "putImageChunk"
-          ? parsedCmd.kind.value.data?.length ?? 0
-          : msg.kind.case === "getSharedFileChunk"
-            ? msg.kind.value.data.length
-            : 0,
-      );
-      const ok = hashesMatch && attemptBound && outerMatchesInner && !msg.errorCode && msg.outcome === "executed";
       if (
         parsedCmd?.kind.case === "schedule" &&
         parsedCmd.kind.value.operation === "list" &&
-        ok &&
         res.result &&
         this.isMachineAuthorized(params.machineId)
       ) {
-        await this.keepValue("schedules:" + params.machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId: params.requestId });
+        try {
+          const { msg: schedMsg } = await this.openSecureMessage(
+            res.result,
+            { kind: PayloadKind.COMMAND_RESULT, machineId: params.machineId, sessionId: params.sessionId, requestId: params.requestId },
+            CommandResultSchema,
+          );
+          if (!schedMsg.errorCode && schedMsg.outcome === "executed" && schedMsg.kind.case === "schedule" && schedMsg.kind.value.resultJson.length) {
+            await this.keepValue("schedules:" + params.machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId: params.requestId });
+          }
+        } catch {
+          // Core will reject/report any unverified envelope.
+        }
       }
       return {
-        msg,
         rawEnvelope: res.result,
         elapsedMs,
-        observedBytes: bytes,
-        ok,
+        observedBytes: BigInt(parsedCmd?.kind.case === "putImageChunk" ? parsedCmd.kind.value.data?.length ?? 0 : 0),
+        ok: attemptBound && (isDirect || res.outcome === "executed"),
         outcome: mk({
           source: OutcomeSource.DAEMON,
-          signed: true,
-          hashesMatch,
           attemptBound,
-          outerMatchesInner,
-          outerOutcome: isDirect ? msg.outcome : res.outcome,
-          outerReason: isDirect ? msg.reason : res.reason,
-          result: msg,
+          outerOutcome: isDirect ? "" : res.outcome,
+          outerReason: isDirect ? "" : res.reason,
+          sealedResult: res.result,
           handedOff,
           routeWasDirect: isDirect,
           elapsedMs,
-          observedBytes: bytes,
         }),
       };
     } catch (e) {
@@ -1450,25 +1382,11 @@ export class Remote implements CoreExecutor {
     }
   }
 
-  private async checkNetworkSecurity() {
-    if (this.verifiedNetworkGeneration === this.networkGeneration) return;
-    const generation = this.networkGeneration, wake = this.wakeRevision;
-    await this.ensureHost().securityClient.syncNow(false, this.token);
-    this.confirmWake(generation, wake);
-    if (generation !== this.networkGeneration) throw new SecurityError("stale");
-    this.verifiedNetworkGeneration = generation;
-  }
-
-  private sealCommandBytes(machineId: string, sessionId: string, requestId: string, deadlineMs: bigint, commandBytes: Uint8Array<ArrayBuffer>) {
-    return this.sealSecureMessage({ kind: PayloadKind.COMMAND, machineId, sessionId, requestId, seq: 0n, deadlineMs, sender: this.account.deviceId }, CommandSchema, create(CommandSchema), undefined, commandBytes);
-  }
-
   private async sealSecureMessage<D extends DescMessage>(
     h: Omit<Partial<Header>, "$typeName">,
-    schema: D, msg: MessageShape<D>, beforeSign?: () => void, preparedBytes?: Uint8Array<ArrayBuffer>,
+    schema: D, msg: MessageShape<D>,
   ): Promise<{ envelope: Envelope; requestKeyHash: Uint8Array<ArrayBuffer>; payloadHash: Uint8Array<ArrayBuffer> }> {
     await this.ensureWakeSecurity();
-    if (h.kind === PayloadKind.COMMAND) await this.checkNetworkSecurity();
     let purpose = purposeOf(h.kind ?? PayloadKind.UNSPECIFIED);
     if (h.kind === PayloadKind.TERMINAL_INPUT) {
       const f = msg as unknown as { kind: { case?: string } };
@@ -1476,8 +1394,7 @@ export class Remote implements CoreExecutor {
       else if (f.kind.case === "historyRequest") purpose = Purpose.TerminalHistory;
     }
     const useSessionSeed = purpose === Purpose.TerminalInput || purpose === Purpose.TerminalResize || purpose === Purpose.TerminalHistory;
-    const plaintext = preparedBytes ?? (toBinary(schema, msg) as Uint8Array<ArrayBuffer>);
-    beforeSign?.();
+    const plaintext = toBinary(schema, msg) as Uint8Array<ArrayBuffer>;
     const res = await this.ensureHost().securityOp({
       case: "sealEnvelope",
       value: create(SecuritySealEnvelopeOpSchema, {
@@ -1518,7 +1435,6 @@ export class Remote implements CoreExecutor {
       const pending = ownedRound(controller, this.roundBudget(), async () => {
         await this.ensureHost().securityClient.syncNow(false, this.token);
         this.confirmWake(generation, wake);
-        this.verifiedNetworkGeneration = generation;
       }).finally(() => { if (this.wakeSecurity === pending) { this.wakeSecurity = undefined; this.wakeController = undefined; } });
       this.wakeSecurity = pending;
       void pending.catch(() => undefined);
@@ -2206,10 +2122,6 @@ export function errorText(e: unknown): string {
   }
   if (e instanceof Error) return e.message;
   return String(e);
-}
-
-function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
-  return a.length === b.length && a.every((x, i) => x === b[i]);
 }
 
 export { translateSecurityErrorMessage };

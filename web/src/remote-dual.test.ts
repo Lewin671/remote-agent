@@ -1,12 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
+import { getCoreHost } from "./core/host";
+import { Purpose } from "./remote";
 import { SyntheticRemote } from "./test/remote-fixture";
 import { parseTestHeader, testRequestIdentity } from "./test/stored-security-fixture";
 import { EnvelopeSchema, PayloadKind, type Envelope } from "./gen/remoteagent/v1/envelope_pb";
 import { NotForwardedSchema } from "./gen/remoteagent/v1/relay_pb";
 import { CommandResultSchema, CommandSchema } from "./gen/remoteagent/v1/remote_pb";
 import { DispatchCommandEffectSchema, OutcomeSource } from "./gen/remoteagent/core/v1/app_pb";
+import { SecuritySealEnvelopeOpSchema } from "./gen/remoteagent/core/v1/security_pb";
 import { CommandRouteLeg, DirectSignalSendEffectSchema } from "./gen/remoteagent/core/v1/transport_pb";
 import type { FrameStream } from "./transport/path";
 
@@ -19,8 +22,30 @@ function makeCmdBytes(): Uint8Array<ArrayBuffer> {
   ) as Uint8Array<ArrayBuffer>;
 }
 
+async function sealCmd(
+  r: SyntheticRemote,
+  requestId: string,
+  deadlineMs: bigint,
+  commandBytes: Uint8Array<ArrayBuffer>,
+): Promise<Envelope> {
+  const sealed = await getCoreHost(r).securityOp({
+    case: "sealEnvelope",
+    value: create(SecuritySealEnvelopeOpSchema, {
+      purpose: Purpose.Command,
+      machineId: r.machine,
+      requestId,
+      deadlineMs,
+      plaintext: commandBytes,
+    }),
+  });
+  if (sealed.result.case !== "sealed" || !sealed.result.value.envelope) {
+    throw new Error("expected sealed command envelope");
+  }
+  return sealed.result.value.envelope;
+}
+
 describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
-  it("routes CommandRouteLeg.DIRECT through DirectExecutor.sendRpc and validates sealed result hashes", async () => {
+  it("routes CommandRouteLeg.DIRECT through DirectExecutor.sendRpc and forwards sealed result to Core", async () => {
     const r = await SyntheticRemote.create();
     const holder = r as unknown as {
       directExec: {
@@ -34,12 +59,13 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
         ) => Promise<Envelope>;
       };
     };
+    let expectedResult: Envelope | undefined;
     const sendRpcSpy = vi.spyOn(holder.directExec, "sendRpc").mockImplementation(async (_pcId, _reqId, reqEnvBytes, _timeoutMs, handoff) => {
       handoff();
       const env = fromBinary(EnvelopeSchema, reqEnvBytes);
       const h = parseTestHeader(new Uint8Array(env.securityHeader));
       const binding = await testRequestIdentity(h, makeCmdBytes());
-      return await r.seal(
+      expectedResult = await r.seal(
         { kind: PayloadKind.COMMAND_RESULT, requestId: h.request },
         CommandResultSchema,
         create(CommandResultSchema, {
@@ -48,17 +74,22 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
           payloadHash: binding.payload,
         }),
       );
+      return expectedResult;
     });
 
     try {
       const cmdBytes = makeCmdBytes();
+      const requestId = "req-direct-test-0001";
+      const deadlineMs = BigInt(Date.now() + 30_000);
+      const sealedEnvelope = await sealCmd(r, requestId, deadlineMs, cmdBytes);
       const outcome = await r.executeCommandAttempt(create(DispatchCommandEffectSchema, {
-        requestId: "req-direct-test-0001",
+        requestId,
         attemptId: "att-direct-1",
         machineId: r.machine,
         sessionId: "",
-        deadlineMs: BigInt(Date.now() + 30_000),
+        deadlineMs,
         commandBytes: cmdBytes,
+        sealedEnvelope,
         routeLeg: CommandRouteLeg.DIRECT,
         directPcId: 7n,
         directTimeoutMs: 5_000n,
@@ -70,11 +101,9 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
         routeWasDirect: true,
       });
       expect(outcome.directTicketId).toBe(99n);
-      expect(outcome.signed).toBe(true);
-      expect(outcome.hashesMatch).toBe(true);
       expect(outcome.attemptBound).toBe(true);
       expect(outcome.handedOff).toBe(true);
-      expect(outcome.outerOutcome).toBe("executed");
+      expect(outcome.sealedResult).toEqual(expectedResult);
     } finally {
       await r.dispose();
     }
@@ -96,13 +125,17 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
     };
     const spy = vi.spyOn(holder.directExec, "sendRpc");
     try {
+      const cmdBytes = makeCmdBytes();
+      const deadlineMs = BigInt(Date.now() + 30_000);
+      const preEnv = await sealCmd(r, "req-direct-pre-0001", deadlineMs, cmdBytes);
       spy.mockRejectedValueOnce(new Error("dc closed before send"));
       const pre = await r.executeCommandAttempt(create(DispatchCommandEffectSchema, {
         requestId: "req-direct-pre-0001",
         attemptId: "att-direct-pre",
         machineId: r.machine,
-        deadlineMs: BigInt(Date.now() + 30_000),
-        commandBytes: makeCmdBytes(),
+        deadlineMs,
+        commandBytes: cmdBytes,
+        sealedEnvelope: preEnv,
         routeLeg: CommandRouteLeg.DIRECT,
         directPcId: 7n,
         directTimeoutMs: 5_000n,
@@ -115,6 +148,7 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
         handedOff: false,
       });
 
+      const postEnv = await sealCmd(r, "req-direct-post-0001", deadlineMs, cmdBytes);
       spy.mockImplementationOnce(async (_pcId, _reqId, _bytes, _timeout, handoff) => {
         handoff();
         throw new Error("dc dropped after write");
@@ -123,8 +157,9 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
         requestId: "req-direct-post-0001",
         attemptId: "att-direct-post",
         machineId: r.machine,
-        deadlineMs: BigInt(Date.now() + 30_000),
-        commandBytes: makeCmdBytes(),
+        deadlineMs,
+        commandBytes: cmdBytes,
+        sealedEnvelope: postEnv,
         routeLeg: CommandRouteLeg.DIRECT,
         directPcId: 7n,
         directTimeoutMs: 5_000n,
@@ -143,6 +178,9 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
     const r = await SyntheticRemote.create();
     const holder = r as unknown as { api: unknown };
     try {
+      const cmdBytes = makeCmdBytes();
+      const deadlineMs = BigInt(Date.now() + 30_000);
+      const boundEnv = await sealCmd(r, "req-relay-bound-0001", deadlineMs, cmdBytes);
       holder.api = {
         forward: async (q: { attemptId: string; relayEpoch: string }) => {
           throw new ConnectError("offline", Code.Unavailable, undefined, [
@@ -157,8 +195,9 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
         requestId: "req-relay-bound-0001",
         attemptId: "att-relay-bound",
         machineId: r.machine,
-        deadlineMs: BigInt(Date.now() + 30_000),
-        commandBytes: makeCmdBytes(),
+        deadlineMs,
+        commandBytes: cmdBytes,
+        sealedEnvelope: boundEnv,
         routeLeg: CommandRouteLeg.RELAY,
       }));
       expect(bound).toMatchObject({
@@ -169,6 +208,7 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
       expect(bound.attemptBound).toBe(true);
       expect(bound.outerReason).toBe("machine_offline");
 
+      const staleEnv = await sealCmd(r, "req-relay-stale-0001", deadlineMs, cmdBytes);
       holder.api = {
         forward: async (q: { attemptId: string }) => {
           throw new ConnectError("offline", Code.Unavailable, undefined, [
@@ -183,8 +223,9 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
         requestId: "req-relay-stale-0001",
         attemptId: "att-relay-stale",
         machineId: r.machine,
-        deadlineMs: BigInt(Date.now() + 30_000),
-        commandBytes: makeCmdBytes(),
+        deadlineMs,
+        commandBytes: cmdBytes,
+        sealedEnvelope: staleEnv,
         routeLeg: CommandRouteLeg.RELAY,
       }));
       expect(stale.source).toBe(OutcomeSource.SERVER);

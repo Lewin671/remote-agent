@@ -679,7 +679,7 @@ it("caches verified schedule list responses on executeCommandAttempt and decrypt
 
   expect(await r.readScheduleCache(1n, r.machine)).toMatchObject({ opId: 1n, machineId: r.machine, resultJson: new Uint8Array() });
 
-  const outcome = await r.executeCommandAttempt(
+  const unsealed = await r.executeCommandAttempt(
     create(DispatchCommandEffectSchema, {
       requestId: newRequestID(),
       attemptId: newRequestID(),
@@ -687,6 +687,38 @@ it("caches verified schedule list responses on executeCommandAttempt and decrypt
       deadlineMs: BigInt(Date.now() + 30_000),
       routeHint: CommandRouteHint.READ,
       commandBytes: cmdBytes,
+    }),
+  );
+  expect(unsealed.transportCode).toBe("failed_precondition");
+  expect(unsealed.transportDetail).toBe("missing sealed command");
+
+  const { getCoreHost } = await import("./core/host");
+  const { SecuritySealEnvelopeOpSchema } = await import("./gen/remoteagent/core/v1/security_pb");
+  const { Purpose } = await import("./remote");
+  const reqId = newRequestID();
+  const deadlineMs = BigInt(Date.now() + 30_000);
+  const sealed = await getCoreHost(r).securityOp({
+    case: "sealEnvelope",
+    value: create(SecuritySealEnvelopeOpSchema, {
+      purpose: Purpose.Command,
+      machineId: r.machine,
+      requestId: reqId,
+      deadlineMs,
+      plaintext: cmdBytes,
+    }),
+  });
+  expect(sealed.result.case).toBe("sealed");
+  if (sealed.result.case !== "sealed") throw new Error("expected sealed envelope");
+
+  const outcome = await r.executeCommandAttempt(
+    create(DispatchCommandEffectSchema, {
+      requestId: reqId,
+      attemptId: newRequestID(),
+      machineId: r.machine,
+      deadlineMs,
+      routeHint: CommandRouteHint.READ,
+      commandBytes: cmdBytes,
+      sealedEnvelope: sealed.result.value.envelope,
     }),
   );
   expect(outcome.transportCode).toBe("");
