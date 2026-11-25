@@ -1166,6 +1166,7 @@ func (c *Core) completeItemUpload(
 	effects *[]*corev1.Effect,
 ) {
 	c.releaseFileUploadGate(ownerKind, ownerKey, it.id)
+	c.abandonUploadComplete(ctx, it.targetMachineID, it.transferID, false)
 	it.state = corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_READY
 	it.phase = attPhaseIdle
 	it.remoteID = remoteID

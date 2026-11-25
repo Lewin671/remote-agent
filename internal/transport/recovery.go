@@ -12,8 +12,6 @@ import (
 // adapt them to the daemon: times become monotonic milliseconds, jitter comes
 // from math/rand, and state shared across goroutines is locked here.
 
-const SuspectAfter = linkcore.SuspectAfterMs * time.Millisecond
-
 // processStart anchors MonotonicMs. time.Now() carries a monotonic reading.
 var processStart = time.Now()
 

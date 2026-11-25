@@ -3925,3 +3925,75 @@ func TestAttachments_CompleteUnknownBoundedFailure_ShowsUploadFailed(t *testing.
 		t.Fatalf("expected FAILED/UPLOAD_FAILED after reconnect window expiry, got state=%v problem=%+v", dv.Images[0].State, dv.Images[0].Problem)
 	}
 }
+
+func TestAttachments_CompleteItemUploadClearsFrozenCompleteTracker(t *testing.T) {
+	h := newAttHarness(t, false, false)
+	scope := h.sessionScope()
+
+	eff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{pickedImage("probe.jpg", 4, "src-probe", true)},
+			},
+		},
+	})
+	prep := findPrepareEffects(eff)[0]
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentPrepareImageResult{
+			AttachmentPrepareImageResult: &corev1.AttachmentPrepareImageResultEvent{
+				OpId: prep.OpId, Ok: true, PreparedRef: "prep-probe", ThumbRef: "thumb-probe",
+				Format: v1.ImageFormat_IMAGE_FORMAT_JPEG, SizeBytes: 4, Width: 100, Height: 100, Sha256: attTestHash(0x93),
+			},
+		},
+	})
+	beginCmd := findDispatchedCmds(eff)[0]
+	tid := beginCmd.cmd.GetBeginImageUpload().TransferId
+	eff = h.settleCmdOK(beginCmd.dc, beginOK(tid, 0, 4, h.nowMs+600_000))
+	readEff := findReadChunkEffects(eff)[0]
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentReadChunkResult{
+			AttachmentReadChunkResult: &corev1.AttachmentReadChunkResultEvent{
+				OpId: readEff.OpId, Ok: true, Offset: 0, Data: []byte("abcd"),
+			},
+		},
+	})
+	putCmd := findDispatchedCmds(eff)[0]
+	eff = h.settleCmdOK(putCmd.dc, putOK(tid, 4))
+	comp1 := findDispatchedCmds(eff)[0]
+
+	// Freeze the CompleteImageUpload slot via an unknown transport drop while machine goes offline.
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: 1,
+				Frame: &corev1.StreamFrameEvent_MachineUpdated{
+					MachineUpdated: &corev1.PlainMachine{
+						MachineId: h.machineA, Online: false, MetaRev: 2,
+						Meta: &v1.MachineMeta{
+							Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 17,
+							Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true},
+						},
+					},
+				},
+			},
+		},
+	})
+	h.settleCmdTransportDrop(comp1.dc, "timeout")
+	slotKey := uploadCompleteSlotKey(h.machineA, tid)
+	if !h.core.m.sync.HasFrozenAttempt(slotKey) {
+		t.Fatalf("expected frozen CompleteImageUpload tracker for %s", slotKey)
+	}
+
+	// If upload subsequently completes via a status probe path, completeItemUpload must clear the frozen tracker.
+	draftKey := attachments.ScopeStorageKey(scope)
+	it := h.core.m.attachments.drafts[draftKey].items[0]
+	prev, ctx := h.core.m.sync.BeginStep()
+	var effects []*corev1.Effect
+	h.core.completeItemUpload(ctx, attOwnerDraft, draftKey, scope, it, "img-from-probe", h.nowMs+600_000, &effects)
+	h.core.m.sync.EndStep(prev, ctx)
+
+	if h.core.m.sync.HasFrozenAttempt(slotKey) {
+		t.Fatalf("completeItemUpload leaked frozen tracker for %s", slotKey)
+	}
+}
