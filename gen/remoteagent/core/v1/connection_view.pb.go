@@ -574,13 +574,11 @@ func (*SyncPushSubscriptionEffect) Descriptor() ([]byte, []int) {
 	return file_remoteagent_core_v1_connection_view_proto_rawDescGZIP(), []int{7}
 }
 
-// ResolveNotificationTapAction asks Core to resolve a tapped notification into a navigation effect.
+// ResolveNotificationTapAction asks Core to resolve a tapped scheduled notification into a navigation effect.
 type ResolveNotificationTapAction struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Scheduled     bool                   `protobuf:"varint,2,opt,name=scheduled,proto3" json:"scheduled,omitempty"`
 	ScheduleSeq   uint64                 `protobuf:"varint,3,opt,name=schedule_seq,json=scheduleSeq,proto3" json:"schedule_seq,omitempty"`
-	ApprovalId    string                 `protobuf:"bytes,4,opt,name=approval_id,json=approvalId,proto3" json:"approval_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -622,25 +620,11 @@ func (x *ResolveNotificationTapAction) GetSessionId() string {
 	return ""
 }
 
-func (x *ResolveNotificationTapAction) GetScheduled() bool {
-	if x != nil {
-		return x.Scheduled
-	}
-	return false
-}
-
 func (x *ResolveNotificationTapAction) GetScheduleSeq() uint64 {
 	if x != nil {
 		return x.ScheduleSeq
 	}
 	return 0
-}
-
-func (x *ResolveNotificationTapAction) GetApprovalId() string {
-	if x != nil {
-		return x.ApprovalId
-	}
-	return ""
 }
 
 var File_remoteagent_core_v1_connection_view_proto protoreflect.FileDescriptor
@@ -691,14 +675,11 @@ const file_remoteagent_core_v1_connection_view_proto_rawDesc = "" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12!\n" +
 	"\fdelete_cache\x18\x02 \x01(\bR\vdeleteCache\"\x1c\n" +
-	"\x1aSyncPushSubscriptionEffect\"\x9f\x01\n" +
+	"\x1aSyncPushSubscriptionEffect\"\x84\x01\n" +
 	"\x1cResolveNotificationTapAction\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1c\n" +
-	"\tscheduled\x18\x02 \x01(\bR\tscheduled\x12!\n" +
-	"\fschedule_seq\x18\x03 \x01(\x04R\vscheduleSeq\x12\x1f\n" +
-	"\vapproval_id\x18\x04 \x01(\tR\n" +
-	"approvalId*\xac\x01\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12!\n" +
+	"\fschedule_seq\x18\x03 \x01(\x04R\vscheduleSeqJ\x04\b\x02\x10\x03J\x04\b\x04\x10\x05R\tscheduledR\vapproval_id*\xac\x01\n" +
 	"\x0eConnBannerKind\x12 \n" +
 	"\x1cCONN_BANNER_KIND_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15CONN_BANNER_KIND_NONE\x10\x01\x12\x1f\n" +

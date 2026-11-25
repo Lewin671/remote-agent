@@ -76,10 +76,11 @@ message UsageCacheRequestEffect {
 // establishing an authenticated connection.
 message SyncPushSubscriptionEffect {}
 
-// ResolveNotificationTapAction asks Core to resolve a tapped notification into a navigation effect.
+// ResolveNotificationTapAction asks Core to resolve a tapped scheduled notification into a navigation effect.
 message ResolveNotificationTapAction {
+  reserved 2, 4;
+  reserved "scheduled", "approval_id";
+
   string session_id = 1;
-  bool scheduled = 2;
   uint64 schedule_seq = 3;
-  string approval_id = 4;
 }

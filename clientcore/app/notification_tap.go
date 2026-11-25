@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/Lewin671/remote-agent/clientcore/domain/schedule"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	"github.com/Lewin671/remote-agent/clientcore/sync"
 )
@@ -10,25 +11,21 @@ const (
 	notifTapTimeoutMs = 3_000
 )
 
+func (c *Core) cancelPendingNotifTap(ctx *sync.StepContext) {
+	if c.m.pendingNotifTap == nil {
+		return
+	}
+	c.m.pendingNotifTap = nil
+	if ctx != nil {
+		c.m.sync.CancelAppTimer(ctx, corev1.TimerKind_TIMER_KIND_UI_TRANSIENT, notifTapTimerKey)
+	}
+}
+
 func (c *Core) handleResolveNotificationTap(ctx *sync.StepContext, act *corev1.ResolveNotificationTapAction) []*corev1.Effect {
 	if act == nil || act.SessionId == "" {
 		return nil
 	}
-	c.m.pendingNotifTap = nil
-	c.m.sync.CancelAppTimer(ctx, corev1.TimerKind_TIMER_KIND_UI_TRANSIENT, notifTapTimerKey)
-
-	if !act.Scheduled {
-		return []*corev1.Effect{
-			{
-				Effect: &corev1.Effect_Navigate{
-					Navigate: &corev1.NavigateEffect{
-						Route:     corev1.NavigateRoute_NAVIGATE_ROUTE_SESSION,
-						SessionId: act.SessionId,
-					},
-				},
-			},
-		}
-	}
+	c.cancelPendingNotifTap(ctx)
 
 	var effects []*corev1.Effect
 	if c.tryResolveScheduledNotifTap(ctx, act, &effects) {
@@ -36,9 +33,7 @@ func (c *Core) handleResolveNotificationTap(ctx *sync.StepContext, act *corev1.R
 	}
 	c.m.pendingNotifTap = &corev1.ResolveNotificationTapAction{
 		SessionId:   act.SessionId,
-		Scheduled:   act.Scheduled,
 		ScheduleSeq: act.ScheduleSeq,
-		ApprovalId:  act.ApprovalId,
 	}
 	c.m.sync.LookupSessionIfMissing(ctx, act.SessionId)
 	c.m.sync.ScheduleAppTimer(ctx, corev1.TimerKind_TIMER_KIND_UI_TRANSIENT, notifTapTimerKey, notifTapTimeoutMs)
@@ -53,8 +48,7 @@ func (c *Core) reconcilePendingNotifTap(effects *[]*corev1.Effect) {
 	prev, ctx := c.m.sync.BeginStep()
 	resolved := c.tryResolveScheduledNotifTap(ctx, act, effects)
 	if resolved {
-		c.m.pendingNotifTap = nil
-		c.m.sync.CancelAppTimer(ctx, corev1.TimerKind_TIMER_KIND_UI_TRANSIENT, notifTapTimerKey)
+		c.cancelPendingNotifTap(ctx)
 	}
 	res := c.m.sync.EndStep(prev, ctx)
 	*effects = append(*effects, res.Effects...)
@@ -139,9 +133,15 @@ func (c *Core) triggerScheduleRefreshForMachine(ctx *sync.StepContext, machineID
 	if machineID == "" {
 		return
 	}
-	c.m.schedActive = true
 	ss := ensureSchedState(c.m.state)
 	snap := ensureSchedMachine(ss, machineID)
 	snap.PendingRefresh = true
-	c.reconcileSchedules(ctx, effects)
+	snap.HasFetchedOnce = false
+	if c.m.schedActive {
+		c.reconcileSchedules(ctx, effects)
+		return
+	}
+	if mac := c.m.findMachine(machineID); mac != nil && schedule.Writable(&c.m.state.World, machineID) && !snap.Loading {
+		c.submitScheduleList(ctx, machineID, mac.Meta.GetScheduleRevision())
+	}
 }

@@ -422,6 +422,12 @@ func (c *Core) onSyncEventConsumed(ev *corev1.Event, effects *[]*corev1.Effect) 
 	if lc := ev.GetSyncLifecycle(); lc != nil {
 		if lc.Kind == corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_STOP {
 			c.m.activeNewSessionPagingKey = ""
+			if c.m.pendingNotifTap != nil {
+				prev, stepCtx := c.m.sync.BeginStep()
+				c.cancelPendingNotifTap(stepCtx)
+				res := c.m.sync.EndStep(prev, stepCtx)
+				*effects = append(*effects, res.Effects...)
+			}
 		}
 	}
 	if sw := ev.GetSessionWatch(); sw != nil && sw.Watched && sw.SessionId != "" {

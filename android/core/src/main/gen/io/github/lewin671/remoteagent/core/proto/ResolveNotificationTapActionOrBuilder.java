@@ -23,26 +23,8 @@ public interface ResolveNotificationTapActionOrBuilder extends
       getSessionIdBytes();
 
   /**
-   * <code>bool scheduled = 2 [json_name = "scheduled"];</code>
-   * @return The scheduled.
-   */
-  boolean getScheduled();
-
-  /**
    * <code>uint64 schedule_seq = 3 [json_name = "scheduleSeq"];</code>
    * @return The scheduleSeq.
    */
   long getScheduleSeq();
-
-  /**
-   * <code>string approval_id = 4 [json_name = "approvalId"];</code>
-   * @return The approvalId.
-   */
-  java.lang.String getApprovalId();
-  /**
-   * <code>string approval_id = 4 [json_name = "approvalId"];</code>
-   * @return The bytes for approvalId.
-   */
-  com.google.protobuf.ByteString
-      getApprovalIdBytes();
 }

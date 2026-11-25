@@ -294,7 +294,7 @@ public struct PBSyncPushSubscriptionEffect: Sendable {
   public init() {}
 }
 
-/// ResolveNotificationTapAction asks Core to resolve a tapped notification into a navigation effect.
+/// ResolveNotificationTapAction asks Core to resolve a tapped scheduled notification into a navigation effect.
 public struct PBResolveNotificationTapAction: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -302,11 +302,7 @@ public struct PBResolveNotificationTapAction: Sendable {
 
   public var sessionID: String = String()
 
-  public var scheduled: Bool = false
-
   public var scheduleSeq: UInt64 = 0
-
-  public var approvalID: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -750,7 +746,7 @@ extension PBSyncPushSubscriptionEffect: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 extension PBResolveNotificationTapAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ResolveNotificationTapAction"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{1}scheduled\0\u{3}schedule_seq\0\u{3}approval_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{4}\u{2}schedule_seq\0\u{b}scheduled\0\u{b}approval_id\0\u{c}\u{2}\u{1}\u{c}\u{4}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -759,9 +755,7 @@ extension PBResolveNotificationTapAction: SwiftProtobuf.Message, SwiftProtobuf._
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
-      case 2: try { try decoder.decodeSingularBoolField(value: &self.scheduled) }()
       case 3: try { try decoder.decodeSingularUInt64Field(value: &self.scheduleSeq) }()
-      case 4: try { try decoder.decodeSingularStringField(value: &self.approvalID) }()
       default: break
       }
     }
@@ -771,23 +765,15 @@ extension PBResolveNotificationTapAction: SwiftProtobuf.Message, SwiftProtobuf._
     if !self.sessionID.isEmpty {
       try visitor.visitSingularStringField(value: self.sessionID, fieldNumber: 1)
     }
-    if self.scheduled != false {
-      try visitor.visitSingularBoolField(value: self.scheduled, fieldNumber: 2)
-    }
     if self.scheduleSeq != 0 {
       try visitor.visitSingularUInt64Field(value: self.scheduleSeq, fieldNumber: 3)
-    }
-    if !self.approvalID.isEmpty {
-      try visitor.visitSingularStringField(value: self.approvalID, fieldNumber: 4)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBResolveNotificationTapAction, rhs: PBResolveNotificationTapAction) -> Bool {
     if lhs.sessionID != rhs.sessionID {return false}
-    if lhs.scheduled != rhs.scheduled {return false}
     if lhs.scheduleSeq != rhs.scheduleSeq {return false}
-    if lhs.approvalID != rhs.approvalID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

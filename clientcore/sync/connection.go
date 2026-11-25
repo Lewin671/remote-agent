@@ -482,6 +482,7 @@ func (e *Engine) handleStreamReady(ctx *StepContext, ev *corev1.StreamReadyEvent
 			},
 		})
 	}
+	e.selfDescribeAttempted = false
 	e.maybeDescribeSelf(ctx)
 	ctx.Dirty.MarkAll()
 }

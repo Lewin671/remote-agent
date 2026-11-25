@@ -361,7 +361,7 @@ func (e *Engine) handleCacheEventsLoaded(ctx *StepContext, ev *corev1.CacheEvent
 		if rawLen > 0 && ev.WireEvents[rawLen-1] != nil {
 			lastSeq = ev.WireEvents[rawLen-1].Seq
 		}
-		if !wasBackfilling && s != nil && s.LastSeq > 0 && lastSeq > s.LastSeq {
+		if !wasBackfilling && s != nil && lastSeq > s.LastSeq {
 			e.dropCorruptCacheAndRefetch(ctx, ev.SessionId, b, agent)
 			return
 		}

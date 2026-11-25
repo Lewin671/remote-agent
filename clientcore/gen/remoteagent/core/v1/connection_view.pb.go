@@ -353,9 +353,7 @@ func (m *SyncPushSubscriptionEffect) AppendMarshal(b []byte) []byte {
 type ResolveNotificationTapAction struct {
 	_           [0]func()
 	SessionId   string
-	Scheduled   bool
 	ScheduleSeq uint64
-	ApprovalId  string
 }
 
 func (m *ResolveNotificationTapAction) GetSessionId() string {
@@ -364,32 +362,18 @@ func (m *ResolveNotificationTapAction) GetSessionId() string {
 	}
 	return ""
 }
-func (m *ResolveNotificationTapAction) GetScheduled() bool {
-	if m != nil {
-		return m.Scheduled
-	}
-	return false
-}
 func (m *ResolveNotificationTapAction) GetScheduleSeq() uint64 {
 	if m != nil {
 		return m.ScheduleSeq
 	}
 	return 0
 }
-func (m *ResolveNotificationTapAction) GetApprovalId() string {
-	if m != nil {
-		return m.ApprovalId
-	}
-	return ""
-}
 
 var LitewireDesc_ResolveNotificationTapAction = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&ResolveNotificationTapAction{}) },
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(ResolveNotificationTapAction{}.SessionId), Kind: litewire.KindString},
-		{Num: 2, Offset: unsafe.Offsetof(ResolveNotificationTapAction{}.Scheduled), Kind: litewire.KindBool},
 		{Num: 3, Offset: unsafe.Offsetof(ResolveNotificationTapAction{}.ScheduleSeq), Kind: litewire.KindUint64},
-		{Num: 4, Offset: unsafe.Offsetof(ResolveNotificationTapAction{}.ApprovalId), Kind: litewire.KindString},
 	},
 }
 

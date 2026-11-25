@@ -7,7 +7,7 @@ package io.github.lewin671.remoteagent.core.proto;
 
 /**
  * <pre>
- * ResolveNotificationTapAction asks Core to resolve a tapped notification into a navigation effect.
+ * ResolveNotificationTapAction asks Core to resolve a tapped scheduled notification into a navigation effect.
  * </pre>
  *
  * Protobuf type {@code remoteagent.core.v1.ResolveNotificationTapAction}
@@ -20,7 +20,6 @@ public  final class ResolveNotificationTapAction extends
     ResolveNotificationTapActionOrBuilder {
   private ResolveNotificationTapAction() {
     sessionId_ = "";
-    approvalId_ = "";
   }
   public static final int SESSION_ID_FIELD_NUMBER = 1;
   private java.lang.String sessionId_;
@@ -70,32 +69,6 @@ public  final class ResolveNotificationTapAction extends
 
   }
 
-  public static final int SCHEDULED_FIELD_NUMBER = 2;
-  private boolean scheduled_;
-  /**
-   * <code>bool scheduled = 2 [json_name = "scheduled"];</code>
-   * @return The scheduled.
-   */
-  @java.lang.Override
-  public boolean getScheduled() {
-    return scheduled_;
-  }
-  /**
-   * <code>bool scheduled = 2 [json_name = "scheduled"];</code>
-   * @param value The scheduled to set.
-   */
-  private void setScheduled(boolean value) {
-    
-    scheduled_ = value;
-  }
-  /**
-   * <code>bool scheduled = 2 [json_name = "scheduled"];</code>
-   */
-  private void clearScheduled() {
-
-    scheduled_ = false;
-  }
-
   public static final int SCHEDULE_SEQ_FIELD_NUMBER = 3;
   private long scheduleSeq_;
   /**
@@ -120,54 +93,6 @@ public  final class ResolveNotificationTapAction extends
   private void clearScheduleSeq() {
 
     scheduleSeq_ = 0L;
-  }
-
-  public static final int APPROVAL_ID_FIELD_NUMBER = 4;
-  private java.lang.String approvalId_;
-  /**
-   * <code>string approval_id = 4 [json_name = "approvalId"];</code>
-   * @return The approvalId.
-   */
-  @java.lang.Override
-  public java.lang.String getApprovalId() {
-    return approvalId_;
-  }
-  /**
-   * <code>string approval_id = 4 [json_name = "approvalId"];</code>
-   * @return The bytes for approvalId.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getApprovalIdBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(approvalId_);
-  }
-  /**
-   * <code>string approval_id = 4 [json_name = "approvalId"];</code>
-   * @param value The approvalId to set.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setApprovalId(
-      java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-
-    approvalId_ = value;
-  }
-  /**
-   * <code>string approval_id = 4 [json_name = "approvalId"];</code>
-   */
-  private void clearApprovalId() {
-
-    approvalId_ = getDefaultInstance().getApprovalId();
-  }
-  /**
-   * <code>string approval_id = 4 [json_name = "approvalId"];</code>
-   * @param value The bytes for approvalId to set.
-   */
-  private void setApprovalIdBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    approvalId_ = value.toStringUtf8();
-
   }
 
   public static io.github.lewin671.remoteagent.core.proto.ResolveNotificationTapAction parseFrom(
@@ -255,7 +180,7 @@ public  final class ResolveNotificationTapAction extends
 
   /**
    * <pre>
-   * ResolveNotificationTapAction asks Core to resolve a tapped notification into a navigation effect.
+   * ResolveNotificationTapAction asks Core to resolve a tapped scheduled notification into a navigation effect.
    * </pre>
    *
    * Protobuf type {@code remoteagent.core.v1.ResolveNotificationTapAction}
@@ -321,34 +246,6 @@ public  final class ResolveNotificationTapAction extends
     }
 
     /**
-     * <code>bool scheduled = 2 [json_name = "scheduled"];</code>
-     * @return The scheduled.
-     */
-    @java.lang.Override
-    public boolean getScheduled() {
-      return instance.getScheduled();
-    }
-    /**
-     * <code>bool scheduled = 2 [json_name = "scheduled"];</code>
-     * @param value The scheduled to set.
-     * @return This builder for chaining.
-     */
-    public Builder setScheduled(boolean value) {
-      copyOnWrite();
-      instance.setScheduled(value);
-      return this;
-    }
-    /**
-     * <code>bool scheduled = 2 [json_name = "scheduled"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearScheduled() {
-      copyOnWrite();
-      instance.clearScheduled();
-      return this;
-    }
-
-    /**
      * <code>uint64 schedule_seq = 3 [json_name = "scheduleSeq"];</code>
      * @return The scheduleSeq.
      */
@@ -376,55 +273,6 @@ public  final class ResolveNotificationTapAction extends
       return this;
     }
 
-    /**
-     * <code>string approval_id = 4 [json_name = "approvalId"];</code>
-     * @return The approvalId.
-     */
-    @java.lang.Override
-    public java.lang.String getApprovalId() {
-      return instance.getApprovalId();
-    }
-    /**
-     * <code>string approval_id = 4 [json_name = "approvalId"];</code>
-     * @return The bytes for approvalId.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getApprovalIdBytes() {
-      return instance.getApprovalIdBytes();
-    }
-    /**
-     * <code>string approval_id = 4 [json_name = "approvalId"];</code>
-     * @param value The approvalId to set.
-     * @return This builder for chaining.
-     */
-    public Builder setApprovalId(
-        java.lang.String value) {
-      copyOnWrite();
-      instance.setApprovalId(value);
-      return this;
-    }
-    /**
-     * <code>string approval_id = 4 [json_name = "approvalId"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearApprovalId() {
-      copyOnWrite();
-      instance.clearApprovalId();
-      return this;
-    }
-    /**
-     * <code>string approval_id = 4 [json_name = "approvalId"];</code>
-     * @param value The bytes for approvalId to set.
-     * @return This builder for chaining.
-     */
-    public Builder setApprovalIdBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setApprovalIdBytes(value);
-      return this;
-    }
-
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.ResolveNotificationTapAction)
   }
   @java.lang.Override
@@ -442,13 +290,11 @@ public  final class ResolveNotificationTapAction extends
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
             "sessionId_",
-            "scheduled_",
             "scheduleSeq_",
-            "approvalId_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\u0007" +
-              "\u0003\u0003\u0004\u0208";
+              "\u0000\u0002\u0000\u0000\u0001\u0003\u0002\u0000\u0000\u0000\u0001\u0208\u0003\u0003" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
