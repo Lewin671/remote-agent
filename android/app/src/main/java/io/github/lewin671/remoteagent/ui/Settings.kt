@@ -1575,7 +1575,7 @@ internal fun DeviceScreenContent(
     if (showDirectSheet && vm.hasConnection()) {
         DirectConnectionSheet(
             machineId = vm.machineId,
-            computerName = vm.name,
+            computerName = vm.name.ifEmpty { vm.shortId },
             view = vm.connection,
             diagVm = directDiagnostics,
             onToggle = onToggleDirect,

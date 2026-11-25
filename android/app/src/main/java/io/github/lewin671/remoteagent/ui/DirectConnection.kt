@@ -182,9 +182,8 @@ internal fun DirectConnectionSheet(
 
     val canRetryVm = !matchingDiag || diagVm.machineId.isEmpty() || (diagVm.supported && diagVm.canRetry)
     val retryDisabled = running || cooldown || connected || peerOutdated || !supported || !canRetryVm
-    val displayComputerName = computerName.ifEmpty { machineId.take(8) }
     val diagLines = if (matchingDiag) diagVm.reportLinesList.map { uiText(it) } else emptyList()
-    val reportPayload = remember(title, diagLines, displayComputerName) {
+    val reportPayload = remember(title, diagLines, computerName) {
         buildString {
             if (diagLines.any { it.isNotEmpty() }) {
                 for (line in diagLines) appendLine(line)
@@ -194,7 +193,7 @@ internal fun DirectConnectionSheet(
                 appendLine("Client: Android ${android.os.Build.VERSION.RELEASE}")
                 appendLine(copy(UiMessages.transportDiagVerdictNone()))
             }
-            if (displayComputerName.isNotEmpty()) appendLine("Computer: $displayComputerName")
+            if (computerName.isNotEmpty()) appendLine("Computer: $computerName")
             appendLine("Time: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())}")
         }.trim()
     }
