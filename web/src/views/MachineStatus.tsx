@@ -37,7 +37,8 @@ import { Roll, flipBox, useFlipList, usePageVisible, useReducedMotion } from "./
 type Go = (route: string) => void;
 type Main = "cpu" | "mem";
 
-const HEIGHT = 104, DOT_INSET = 4, PAD = 4, DEFAULT_WINDOW_MS = 120_000, DEFAULT_GAP_MS = 10_000;
+// Fallback chart window/gap match clientcore/domain/machine/status.go (ChartWindowMs, ChartGapMs).
+const HEIGHT = 104, DOT_INSET = 4, PAD = 4, DEFAULT_WINDOW_MS = 116_000, DEFAULT_GAP_MS = 10_000;
 type Pt = { x: number; y: number };
 const PRESSURE_TONE: Record<number, "" | "warn" | "crit"> = { [MachinePressureTone.HIGH]: "warn", [MachinePressureTone.CRITICAL]: "crit" };
 const DISK_TONE: Record<number, "" | "warn" | "crit"> = { [DiskPressureState.LOW]: "warn", [DiskPressureState.CRITICAL]: "crit" };
