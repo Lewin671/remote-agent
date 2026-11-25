@@ -245,20 +245,17 @@ describe("DirectExecutor", () => {
     exec.close();
   });
 
-  it("leaves unconfirmed failed PC open for Core restart/close while allowing getStats (audit #2)", async () => {
+  it("closes failed PC after bounded getStats even without Core dcReadStats and abandons hung stats at 300ms timeout (audit #2)", async () => {
+    vi.useFakeTimers();
     const sdk = fakeRTC();
     const events: CoreEvent[] = [];
     const exec = new DirectExecutor({
-      emit: (ev) => {
-        events.push(ev);
-        if (ev.event.case === "directPcState" && ev.event.value.kind === DirectStateKind.CONN && ev.event.value.value === "failed") {
-          void exec.dcReadStats(create(DirectDcReadStatsEffectSchema, { pcId: ev.event.value.pcId }));
-        }
-      },
+      emit: (ev) => events.push(ev),
       onPushedEvent: () => {},
       factory: sdk.factory,
     });
 
+    // Case 1: unconfirmed PC fails without Core calling dcReadStats -> still reads stats once, emits directDcStats before directPcClosed, and closes PC.
     exec.pcCreate(create(DirectPcCreateEffectSchema, {
       pcId: 22n,
       machineId: "mac",
@@ -267,11 +264,67 @@ describe("DirectExecutor", () => {
       generation: 1n,
       stunServers: [],
     }));
-    const pc = sdk.pcs[0]!;
-    pc.state("failed");
-    await vi.waitFor(() => expect(events.some((e) => e.event.case === "directDcStats")).toBe(true));
+    const pc1 = sdk.pcs[0]!;
+    pc1.report = [
+      { id: "lc", type: "local-candidate", candidateType: "host", address: "10.0.0.2" },
+      { id: "rc", type: "remote-candidate", candidateType: "srflx", address: "203.0.113.9" },
+      { id: "cp", type: "candidate-pair", localCandidateId: "lc", remoteCandidateId: "rc", nominated: true, state: "failed" },
+    ];
+    pc1.state("failed");
+    await vi.advanceTimersByTimeAsync(10);
+    const stats1Idx = events.findIndex((e) => e.event.case === "directDcStats" && e.event.value.pcId === 22n);
+    const closed1Idx = events.findIndex((e) => e.event.case === "directPcClosed" && e.event.value.pcId === 22n);
+    expect(stats1Idx).toBeGreaterThan(-1);
+    expect(closed1Idx).toBeGreaterThan(stats1Idx);
+    expect(pc1.connectionState).toBe("closed");
+
+    // Case 2: confirmed PC fails with hung getStats -> times out at 300ms, closes PC, emits directPcClosed, and drops late stats.
+    events.length = 0;
+    exec.pcCreate(create(DirectPcCreateEffectSchema, {
+      pcId: 23n,
+      machineId: "mac",
+      roundId: 2n,
+      use: 1,
+      generation: 1n,
+      stunServers: [],
+    }));
+    const pc2 = sdk.pcs[1]!;
+    const dc2 = pc2.channels[0]!;
+    dc2.readyState = "open";
+    dc2.onopen?.();
+    pc2.state("connected");
+    exec.pcConfirm(create(DirectPcConfirmEffectSchema, { pcId: 23n, machineId: "mac", use: 1 }));
+
+    let resolveHungStats!: (val: { forEach: (cb: (v: Record<string, unknown>) => void) => void }) => void;
+    pc2.getStats.mockImplementationOnce(() => new Promise((res) => { resolveHungStats = res; }));
+
+    pc2.state("failed");
+    await vi.advanceTimersByTimeAsync(299);
     expect(events.some((e) => e.event.case === "directPcClosed")).toBe(false);
-    expect(pc.connectionState).toBe("failed");
+    expect(pc2.connectionState).toBe("failed");
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(events.some((e) => e.event.case === "directPcClosed" && e.event.value.pcId === 23n)).toBe(true);
+    expect(pc2.connectionState).toBe("closed");
+
+    // Late resolution of hung getStats must be abandoned (no directDcStats after directPcClosed).
+    resolveHungStats({ forEach: () => {} });
+    await vi.advanceTimersByTimeAsync(10);
+    expect(events.some((e) => e.event.case === "directDcStats" && e.event.value.pcId === 23n)).toBe(false);
+
+    // Case 3: connectionState=closed still closes immediately.
+    events.length = 0;
+    exec.pcCreate(create(DirectPcCreateEffectSchema, {
+      pcId: 24n,
+      machineId: "mac",
+      roundId: 3n,
+      use: 1,
+      generation: 1n,
+      stunServers: [],
+    }));
+    const pc3 = sdk.pcs[2]!;
+    pc3.state("closed");
+    expect(events.some((e) => e.event.case === "directPcClosed" && e.event.value.pcId === 24n)).toBe(true);
     exec.close();
   });
 

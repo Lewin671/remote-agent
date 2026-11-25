@@ -30,6 +30,7 @@ import { DirectBudget, DirectChannel } from "./direct-channel";
 import { PathChanged, abortable, combineSignals } from "./recovery";
 
 const utf8Dec = new TextDecoder("utf-8", { fatal: true });
+const FAILED_STATS_TIMEOUT_MS = 300;
 
 /** Reads the bounded ServerFrame body without re-encoding signed peer bytes. */
 export function peerFrameBody(raw: Uint8Array<ArrayBuffer>, field: 11 | 12): Uint8Array<ArrayBuffer> | undefined {
@@ -177,8 +178,8 @@ export class DirectExecutor {
         state: (kind, value) => {
           if (this.closed || this.pcs.get(eff.pcId) !== entry) return;
           this.emit({ case: "directPcState", value: create(DirectPcStateEventSchema, { pcId: eff.pcId, kind, value }) });
-          if (kind === DirectStateKind.CONN && value === "failed" && entry.confirmed && this.pcs.get(eff.pcId) === entry) {
-            this.closeConfirmedAfterStats(eff.pcId, entry);
+          if (kind === DirectStateKind.CONN && value === "failed" && this.pcs.get(eff.pcId) === entry) {
+            this.closeOnFailure(eff.pcId, entry);
           }
         },
         dcState: (open) => {
@@ -301,26 +302,26 @@ export class DirectExecutor {
       this.emit({ case: "directDcStats", value: create(DirectDcStatsEventSchema, { pcId: eff.pcId }) });
       return;
     }
-    const task = (async () => {
-      const report = await entry.channel.readStats();
-      this.emit({ case: "directDcStats", value: create(DirectDcStatsEventSchema, { pcId: eff.pcId, report }) });
-    })();
-    entry.statsInFlight = task;
-    try {
-      await task;
-    } finally {
-      if (entry.statsInFlight === task) entry.statsInFlight = undefined;
-    }
+    await (entry.statsInFlight ?? this.readStatsForEntry(eff.pcId, entry));
   }
 
-  private closeConfirmedAfterStats(pcId: bigint, entry: PcEntry) {
+  private readStatsForEntry(pcId: bigint, entry: PcEntry): Promise<void> {
+    const task = (async () => {
+      const report = await entry.channel.readStats();
+      if (!this.closed && this.pcs.get(pcId) === entry) {
+        this.emit({ case: "directDcStats", value: create(DirectDcStatsEventSchema, { pcId, report }) });
+      }
+    })();
+    entry.statsInFlight = task;
+    return task.finally(() => {
+      if (entry.statsInFlight === task) entry.statsInFlight = undefined;
+    });
+  }
+
+  private closeOnFailure(pcId: bigint, entry: PcEntry) {
     if (entry.closingOnFailure) return;
     entry.closingOnFailure = true;
-    const stats = entry.statsInFlight;
-    if (!stats) {
-      if (!this.closed && this.pcs.get(pcId) === entry) entry.channel.close();
-      return;
-    }
+    const stats = entry.statsInFlight ?? this.readStatsForEntry(pcId, entry);
     let done = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const onAbort = () => {
@@ -336,7 +337,7 @@ export class DirectExecutor {
       if (!this.closed && this.pcs.get(pcId) === entry) entry.channel.close();
     };
     entry.channel.signal.addEventListener("abort", onAbort, { once: true });
-    timer = setTimeout(settle, 500);
+    timer = setTimeout(settle, FAILED_STATS_TIMEOUT_MS);
     void stats.then(settle, settle);
   }
 
