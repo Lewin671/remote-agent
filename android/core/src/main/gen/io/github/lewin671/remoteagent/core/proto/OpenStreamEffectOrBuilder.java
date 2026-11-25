@@ -33,4 +33,10 @@ public interface OpenStreamEffectOrBuilder extends
    * @return The timeoutMs.
    */
   long getTimeoutMs();
+
+  /**
+   * <code>bytes hello_frame = 4 [json_name = "helloFrame"];</code>
+   * @return The helloFrame.
+   */
+  com.google.protobuf.ByteString getHelloFrame();
 }

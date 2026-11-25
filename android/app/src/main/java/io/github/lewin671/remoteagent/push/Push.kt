@@ -21,10 +21,9 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
 import io.github.lewin671.remoteagent.R
 import io.github.lewin671.remoteagent.RaApp
-import io.github.lewin671.remoteagent.core.setMachinePushTarget
-import io.github.lewin671.remoteagent.core.Api
 import io.github.lewin671.remoteagent.core.Remote
-import io.github.lewin671.remoteagent.core.value
+import io.github.lewin671.remoteagent.core.executeRelayRpcUnary
+import io.github.lewin671.remoteagent.core.proto.RelayRpcMethod
 import io.github.lewin671.remoteagent.proto.NotifyKind
 import io.github.lewin671.remoteagent.proto.PushType
 import io.github.lewin671.remoteagent.proto.SetPushTargetRequest
@@ -63,10 +62,7 @@ object Push {
     suspend fun unregister(remote: Remote) {
         kotlinx.coroutines.withTimeoutOrNull(5_000) {
             try {
-                remote.api.client.setPushTarget(
-                    SetPushTargetRequest.newBuilder().setType(PushType.PUSH_TYPE_FCM).build(),
-                    Api.headers(remote.currentToken()),
-                ).value()
+                remote.setPushTarget(PushType.PUSH_TYPE_FCM, "", emptyList())
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -80,10 +76,15 @@ object Push {
         if (server.isBlank() || token.isBlank()) return
         kotlinx.coroutines.withTimeoutOrNull(5_000) {
             try {
-                Api(server, http).client.setPushTarget(
-                    SetPushTargetRequest.newBuilder().setType(PushType.PUSH_TYPE_FCM).build(),
-                    Api.headers(token),
-                ).value()
+                val body = SetPushTargetRequest.newBuilder().setType(PushType.PUSH_TYPE_FCM).build().toByteArray()
+                executeRelayRpcUnary(
+                    http = http,
+                    method = RelayRpcMethod.RELAY_RPC_METHOD_SET_PUSH_TARGET,
+                    server = server,
+                    authToken = token,
+                    timeoutMs = 5_000L,
+                    requestBytes = body,
+                )
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -156,7 +157,7 @@ object Push {
             } catch (e: Exception) {
                 return tokenFailure(e)
             }
-            val res = remote.api.setMachinePushTarget(remote.currentToken(), PushType.PUSH_TYPE_FCM, fcm, kinds)
+            val res = remote.setPushTarget(PushType.PUSH_TYPE_FCM, fcm, kinds)
 
             val status = if (res.enabled) PushStatus() else PushStatus(sessionText(UiMessages.notificationsAndroidTheServerHasNotConfiguredFcmPushIsUnavailable()))
             // Only the length: the token identifies this phone to FCM.
@@ -165,8 +166,10 @@ object Push {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            val retry = e is java.io.IOException || e is com.connectrpc.ConnectException &&
-                e.code in setOf(com.connectrpc.Code.UNKNOWN, com.connectrpc.Code.UNAVAILABLE, com.connectrpc.Code.DEADLINE_EXCEEDED)
+            val retry = e is java.io.IOException ||
+                (e is io.github.lewin671.remoteagent.core.PushRpcException && e.retryable) ||
+                (e is com.connectrpc.ConnectException &&
+                    e.code in setOf(com.connectrpc.Code.UNKNOWN, com.connectrpc.Code.UNAVAILABLE, com.connectrpc.Code.DEADLINE_EXCEEDED))
             val problem = when {
                 retry && autoRetry -> sessionText(UiMessages.notificationsAndroidCouldNotSyncTheNotificationSubscriptionRetryingAutomatically())
                 retry -> sessionText(UiMessages.notificationsAndroidCouldNotSyncTheNotificationSubscriptionRetry())

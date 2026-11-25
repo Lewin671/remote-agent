@@ -16,6 +16,7 @@ public  final class OpenStreamEffect extends
     OpenStreamEffectOrBuilder {
   private OpenStreamEffect() {
     token_ = "";
+    helloFrame_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int LEG_ID_FIELD_NUMBER = 1;
   private long legId_;
@@ -115,6 +116,33 @@ public  final class OpenStreamEffect extends
   private void clearTimeoutMs() {
 
     timeoutMs_ = 0L;
+  }
+
+  public static final int HELLO_FRAME_FIELD_NUMBER = 4;
+  private com.google.protobuf.ByteString helloFrame_;
+  /**
+   * <code>bytes hello_frame = 4 [json_name = "helloFrame"];</code>
+   * @return The helloFrame.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getHelloFrame() {
+    return helloFrame_;
+  }
+  /**
+   * <code>bytes hello_frame = 4 [json_name = "helloFrame"];</code>
+   * @param value The helloFrame to set.
+   */
+  private void setHelloFrame(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    helloFrame_ = value;
+  }
+  /**
+   * <code>bytes hello_frame = 4 [json_name = "helloFrame"];</code>
+   */
+  private void clearHelloFrame() {
+
+    helloFrame_ = getDefaultInstance().getHelloFrame();
   }
 
   public static io.github.lewin671.remoteagent.core.proto.OpenStreamEffect parseFrom(
@@ -319,6 +347,34 @@ public  final class OpenStreamEffect extends
       return this;
     }
 
+    /**
+     * <code>bytes hello_frame = 4 [json_name = "helloFrame"];</code>
+     * @return The helloFrame.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getHelloFrame() {
+      return instance.getHelloFrame();
+    }
+    /**
+     * <code>bytes hello_frame = 4 [json_name = "helloFrame"];</code>
+     * @param value The helloFrame to set.
+     * @return This builder for chaining.
+     */
+    public Builder setHelloFrame(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setHelloFrame(value);
+      return this;
+    }
+    /**
+     * <code>bytes hello_frame = 4 [json_name = "helloFrame"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearHelloFrame() {
+      copyOnWrite();
+      instance.clearHelloFrame();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.OpenStreamEffect)
   }
   @java.lang.Override
@@ -338,10 +394,11 @@ public  final class OpenStreamEffect extends
             "legId_",
             "token_",
             "timeoutMs_",
+            "helloFrame_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0003\u0002\u0208" +
-              "\u0003\u0002";
+              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0003\u0002\u0208" +
+              "\u0003\u0002\u0004\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -36,6 +36,9 @@ public  final class Effect extends
     REQUEST_ENTROPY(17),
     RUN_MACHINE_COMMAND_RESULT(18),
     CANCEL_DISPATCH(19),
+    RELAY_RPC(20),
+    RELAY_RPC_CANCEL(21),
+    PUSH_RPC_RESULT(22),
     SCHEDULE_MACHINE_POLL(70),
     DIRECT_PREFERENCE(71),
     RENAME_CLIENT(72),
@@ -135,6 +138,9 @@ public  final class Effect extends
         case 17: return REQUEST_ENTROPY;
         case 18: return RUN_MACHINE_COMMAND_RESULT;
         case 19: return CANCEL_DISPATCH;
+        case 20: return RELAY_RPC;
+        case 21: return RELAY_RPC_CANCEL;
+        case 22: return PUSH_RPC_RESULT;
         case 70: return SCHEDULE_MACHINE_POLL;
         case 71: return DIRECT_PREFERENCE;
         case 72: return RENAME_CLIENT;
@@ -1102,6 +1108,182 @@ public  final class Effect extends
    */
   private void clearCancelDispatch() {
     if (effectCase_ == 19) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int RELAY_RPC_FIELD_NUMBER = 20;
+  /**
+   * <pre>
+   * Unified relay byte-pipe effects (20-29 reserved for P2-5).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.RelayRpcEffect relay_rpc = 20 [json_name = "relayRpc"];</code>
+   */
+  @java.lang.Override
+  public boolean hasRelayRpc() {
+    return effectCase_ == 20;
+  }
+  /**
+   * <pre>
+   * Unified relay byte-pipe effects (20-29 reserved for P2-5).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.RelayRpcEffect relay_rpc = 20 [json_name = "relayRpc"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.RelayRpcEffect getRelayRpc() {
+    if (effectCase_ == 20) {
+       return (io.github.lewin671.remoteagent.core.proto.RelayRpcEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.RelayRpcEffect.getDefaultInstance();
+  }
+  /**
+   * <pre>
+   * Unified relay byte-pipe effects (20-29 reserved for P2-5).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.RelayRpcEffect relay_rpc = 20 [json_name = "relayRpc"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setRelayRpc(io.github.lewin671.remoteagent.core.proto.RelayRpcEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 20;
+  }
+  /**
+   * <pre>
+   * Unified relay byte-pipe effects (20-29 reserved for P2-5).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.RelayRpcEffect relay_rpc = 20 [json_name = "relayRpc"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeRelayRpc(io.github.lewin671.remoteagent.core.proto.RelayRpcEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 20 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.RelayRpcEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.RelayRpcEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.RelayRpcEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 20;
+  }
+  /**
+   * <pre>
+   * Unified relay byte-pipe effects (20-29 reserved for P2-5).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.RelayRpcEffect relay_rpc = 20 [json_name = "relayRpc"];</code>
+   */
+  private void clearRelayRpc() {
+    if (effectCase_ == 20) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int RELAY_RPC_CANCEL_FIELD_NUMBER = 21;
+  /**
+   * <code>.remoteagent.core.v1.RelayRpcCancelEffect relay_rpc_cancel = 21 [json_name = "relayRpcCancel"];</code>
+   */
+  @java.lang.Override
+  public boolean hasRelayRpcCancel() {
+    return effectCase_ == 21;
+  }
+  /**
+   * <code>.remoteagent.core.v1.RelayRpcCancelEffect relay_rpc_cancel = 21 [json_name = "relayRpcCancel"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.RelayRpcCancelEffect getRelayRpcCancel() {
+    if (effectCase_ == 21) {
+       return (io.github.lewin671.remoteagent.core.proto.RelayRpcCancelEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.RelayRpcCancelEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.RelayRpcCancelEffect relay_rpc_cancel = 21 [json_name = "relayRpcCancel"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setRelayRpcCancel(io.github.lewin671.remoteagent.core.proto.RelayRpcCancelEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 21;
+  }
+  /**
+   * <code>.remoteagent.core.v1.RelayRpcCancelEffect relay_rpc_cancel = 21 [json_name = "relayRpcCancel"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeRelayRpcCancel(io.github.lewin671.remoteagent.core.proto.RelayRpcCancelEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 21 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.RelayRpcCancelEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.RelayRpcCancelEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.RelayRpcCancelEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 21;
+  }
+  /**
+   * <code>.remoteagent.core.v1.RelayRpcCancelEffect relay_rpc_cancel = 21 [json_name = "relayRpcCancel"];</code>
+   */
+  private void clearRelayRpcCancel() {
+    if (effectCase_ == 21) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int PUSH_RPC_RESULT_FIELD_NUMBER = 22;
+  /**
+   * <code>.remoteagent.core.v1.PushRpcResultEffect push_rpc_result = 22 [json_name = "pushRpcResult"];</code>
+   */
+  @java.lang.Override
+  public boolean hasPushRpcResult() {
+    return effectCase_ == 22;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PushRpcResultEffect push_rpc_result = 22 [json_name = "pushRpcResult"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.PushRpcResultEffect getPushRpcResult() {
+    if (effectCase_ == 22) {
+       return (io.github.lewin671.remoteagent.core.proto.PushRpcResultEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.PushRpcResultEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.PushRpcResultEffect push_rpc_result = 22 [json_name = "pushRpcResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPushRpcResult(io.github.lewin671.remoteagent.core.proto.PushRpcResultEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 22;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PushRpcResultEffect push_rpc_result = 22 [json_name = "pushRpcResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergePushRpcResult(io.github.lewin671.remoteagent.core.proto.PushRpcResultEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 22 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.PushRpcResultEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.PushRpcResultEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.PushRpcResultEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 22;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PushRpcResultEffect push_rpc_result = 22 [json_name = "pushRpcResult"];</code>
+   */
+  private void clearPushRpcResult() {
+    if (effectCase_ == 22) {
       effectCase_ = 0;
       effect_ = null;
     }
@@ -5557,6 +5739,174 @@ public  final class Effect extends
     }
 
     /**
+     * <pre>
+     * Unified relay byte-pipe effects (20-29 reserved for P2-5).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.RelayRpcEffect relay_rpc = 20 [json_name = "relayRpc"];</code>
+     */
+    @java.lang.Override
+    public boolean hasRelayRpc() {
+      return instance.hasRelayRpc();
+    }
+    /**
+     * <pre>
+     * Unified relay byte-pipe effects (20-29 reserved for P2-5).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.RelayRpcEffect relay_rpc = 20 [json_name = "relayRpc"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.RelayRpcEffect getRelayRpc() {
+      return instance.getRelayRpc();
+    }
+    /**
+     * <pre>
+     * Unified relay byte-pipe effects (20-29 reserved for P2-5).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.RelayRpcEffect relay_rpc = 20 [json_name = "relayRpc"];</code>
+     */
+    public Builder setRelayRpc(io.github.lewin671.remoteagent.core.proto.RelayRpcEffect value) {
+      copyOnWrite();
+      instance.setRelayRpc(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Unified relay byte-pipe effects (20-29 reserved for P2-5).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.RelayRpcEffect relay_rpc = 20 [json_name = "relayRpc"];</code>
+     */
+    public Builder setRelayRpc(
+        io.github.lewin671.remoteagent.core.proto.RelayRpcEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setRelayRpc(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Unified relay byte-pipe effects (20-29 reserved for P2-5).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.RelayRpcEffect relay_rpc = 20 [json_name = "relayRpc"];</code>
+     */
+    public Builder mergeRelayRpc(io.github.lewin671.remoteagent.core.proto.RelayRpcEffect value) {
+      copyOnWrite();
+      instance.mergeRelayRpc(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Unified relay byte-pipe effects (20-29 reserved for P2-5).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.RelayRpcEffect relay_rpc = 20 [json_name = "relayRpc"];</code>
+     */
+    public Builder clearRelayRpc() {
+      copyOnWrite();
+      instance.clearRelayRpc();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.RelayRpcCancelEffect relay_rpc_cancel = 21 [json_name = "relayRpcCancel"];</code>
+     */
+    @java.lang.Override
+    public boolean hasRelayRpcCancel() {
+      return instance.hasRelayRpcCancel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.RelayRpcCancelEffect relay_rpc_cancel = 21 [json_name = "relayRpcCancel"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.RelayRpcCancelEffect getRelayRpcCancel() {
+      return instance.getRelayRpcCancel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.RelayRpcCancelEffect relay_rpc_cancel = 21 [json_name = "relayRpcCancel"];</code>
+     */
+    public Builder setRelayRpcCancel(io.github.lewin671.remoteagent.core.proto.RelayRpcCancelEffect value) {
+      copyOnWrite();
+      instance.setRelayRpcCancel(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.RelayRpcCancelEffect relay_rpc_cancel = 21 [json_name = "relayRpcCancel"];</code>
+     */
+    public Builder setRelayRpcCancel(
+        io.github.lewin671.remoteagent.core.proto.RelayRpcCancelEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setRelayRpcCancel(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.RelayRpcCancelEffect relay_rpc_cancel = 21 [json_name = "relayRpcCancel"];</code>
+     */
+    public Builder mergeRelayRpcCancel(io.github.lewin671.remoteagent.core.proto.RelayRpcCancelEffect value) {
+      copyOnWrite();
+      instance.mergeRelayRpcCancel(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.RelayRpcCancelEffect relay_rpc_cancel = 21 [json_name = "relayRpcCancel"];</code>
+     */
+    public Builder clearRelayRpcCancel() {
+      copyOnWrite();
+      instance.clearRelayRpcCancel();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.PushRpcResultEffect push_rpc_result = 22 [json_name = "pushRpcResult"];</code>
+     */
+    @java.lang.Override
+    public boolean hasPushRpcResult() {
+      return instance.hasPushRpcResult();
+    }
+    /**
+     * <code>.remoteagent.core.v1.PushRpcResultEffect push_rpc_result = 22 [json_name = "pushRpcResult"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.PushRpcResultEffect getPushRpcResult() {
+      return instance.getPushRpcResult();
+    }
+    /**
+     * <code>.remoteagent.core.v1.PushRpcResultEffect push_rpc_result = 22 [json_name = "pushRpcResult"];</code>
+     */
+    public Builder setPushRpcResult(io.github.lewin671.remoteagent.core.proto.PushRpcResultEffect value) {
+      copyOnWrite();
+      instance.setPushRpcResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PushRpcResultEffect push_rpc_result = 22 [json_name = "pushRpcResult"];</code>
+     */
+    public Builder setPushRpcResult(
+        io.github.lewin671.remoteagent.core.proto.PushRpcResultEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setPushRpcResult(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PushRpcResultEffect push_rpc_result = 22 [json_name = "pushRpcResult"];</code>
+     */
+    public Builder mergePushRpcResult(io.github.lewin671.remoteagent.core.proto.PushRpcResultEffect value) {
+      copyOnWrite();
+      instance.mergePushRpcResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PushRpcResultEffect push_rpc_result = 22 [json_name = "pushRpcResult"];</code>
+     */
+    public Builder clearPushRpcResult() {
+      copyOnWrite();
+      instance.clearPushRpcResult();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.ScheduleMachinePollEffect schedule_machine_poll = 70 [json_name = "scheduleMachinePoll"];</code>
      */
     @java.lang.Override
@@ -8855,6 +9205,9 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.RequestEntropyEffect.class,
             io.github.lewin671.remoteagent.core.proto.RunMachineCommandResultEffect.class,
             io.github.lewin671.remoteagent.core.proto.CancelDispatchEffect.class,
+            io.github.lewin671.remoteagent.core.proto.RelayRpcEffect.class,
+            io.github.lewin671.remoteagent.core.proto.RelayRpcCancelEffect.class,
+            io.github.lewin671.remoteagent.core.proto.PushRpcResultEffect.class,
             io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect.class,
             io.github.lewin671.remoteagent.core.proto.SharedFileScanLocalEffect.class,
             io.github.lewin671.remoteagent.core.proto.SharedFileInspectDiskEffect.class,
@@ -8924,17 +9277,17 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.SecurityTokenUpdatedEffect.class,
           };
           java.lang.String info =
-              "\u0000T\u0001\u0000\u0001\u0091T\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "\u0000W\u0001\u0000\u0001\u0091W\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
               "<\u0000\u0004<\u0000\u0005<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<\u0000\u000b<" +
               "\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0011<\u0000\u0012<\u0000\u0013" +
-              "<\u0000(<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/<\u00000<\u00001<\u00002" +
-              "<\u0000<<\u0000=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000G<\u0000H<\u0000I" +
-              "<\u0000J<\u0000K<\u0000L<\u0000M<\u0000N<\u0000O<\u0000P<\u0000Q<\u0000R<\u0000S" +
-              "<\u0000T<\u0000U<\u0000V<\u0000W<\u0000X<\u0000Y<\u0000f<\u0000g<\u0000h<\u0000i" +
-              "<\u0000j<\u0000k<\u0000l<\u0000m<\u0000o<\u0000p<\u0000q<\u0000r<\u0000s<\u0000t" +
-              "<\u0000u<\u0000v<\u0000w<\u0000x<\u0000\u0082<\u0000\u0083<\u0000\u0087<\u0000\u0088" +
-              "<\u0000\u0089<\u0000\u008a<\u0000\u008b<\u0000\u008c<\u0000\u008d<\u0000\u008e<\u0000" +
-              "\u008f<\u0000\u0090<\u0000\u0091<\u0000";
+              "<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000(<\u0000*<\u0000+<\u0000,<\u0000-<" +
+              "\u0000.<\u0000/<\u00000<\u00001<\u00002<\u0000<<\u0000=<\u0000><\u0000?<\u0000@<" +
+              "\u0000A<\u0000F<\u0000G<\u0000H<\u0000I<\u0000J<\u0000K<\u0000L<\u0000M<\u0000N<" +
+              "\u0000O<\u0000P<\u0000Q<\u0000R<\u0000S<\u0000T<\u0000U<\u0000V<\u0000W<\u0000X<" +
+              "\u0000Y<\u0000f<\u0000g<\u0000h<\u0000i<\u0000j<\u0000k<\u0000l<\u0000m<\u0000o<" +
+              "\u0000p<\u0000q<\u0000r<\u0000s<\u0000t<\u0000u<\u0000v<\u0000w<\u0000x<\u0000\u0082" +
+              "<\u0000\u0083<\u0000\u0087<\u0000\u0088<\u0000\u0089<\u0000\u008a<\u0000\u008b<\u0000" +
+              "\u008c<\u0000\u008d<\u0000\u008e<\u0000\u008f<\u0000\u0090<\u0000\u0091<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

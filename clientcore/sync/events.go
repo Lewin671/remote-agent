@@ -564,6 +564,18 @@ func allTailHeld(b *EventBuffer, after, pageSize uint64) bool {
 
 func (e *Engine) emitGetEvents(ctx *StepContext, sid string, b *EventBuffer, after uint64) {
 	b.activeFetchOpID = e.allocOpID()
+	if e.relayPipe {
+		e.emitRelayRpc(
+			ctx,
+			corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_EVENTS,
+			e.cachedToken,
+			relayRpcDefaultTimeoutMs,
+			"",
+			(&v1.GetEventsRequest{SessionId: sid, AfterSeq: after, Limit: EventsPageLimit}).AppendMarshal(nil),
+			&pendingRelayRpc{kind: relayRpcEvents, opID: b.activeFetchOpID, sid: sid},
+		)
+		return
+	}
 	ctx.emit(&corev1.Effect{
 		Effect: &corev1.Effect_Rpc{
 			Rpc: &corev1.RpcEffect{

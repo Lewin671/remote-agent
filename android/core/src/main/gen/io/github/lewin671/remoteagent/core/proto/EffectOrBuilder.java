@@ -198,6 +198,47 @@ public interface EffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.CancelDispatchEffect getCancelDispatch();
 
   /**
+   * <pre>
+   * Unified relay byte-pipe effects (20-29 reserved for P2-5).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.RelayRpcEffect relay_rpc = 20 [json_name = "relayRpc"];</code>
+   * @return Whether the relayRpc field is set.
+   */
+  boolean hasRelayRpc();
+  /**
+   * <pre>
+   * Unified relay byte-pipe effects (20-29 reserved for P2-5).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.RelayRpcEffect relay_rpc = 20 [json_name = "relayRpc"];</code>
+   * @return The relayRpc.
+   */
+  io.github.lewin671.remoteagent.core.proto.RelayRpcEffect getRelayRpc();
+
+  /**
+   * <code>.remoteagent.core.v1.RelayRpcCancelEffect relay_rpc_cancel = 21 [json_name = "relayRpcCancel"];</code>
+   * @return Whether the relayRpcCancel field is set.
+   */
+  boolean hasRelayRpcCancel();
+  /**
+   * <code>.remoteagent.core.v1.RelayRpcCancelEffect relay_rpc_cancel = 21 [json_name = "relayRpcCancel"];</code>
+   * @return The relayRpcCancel.
+   */
+  io.github.lewin671.remoteagent.core.proto.RelayRpcCancelEffect getRelayRpcCancel();
+
+  /**
+   * <code>.remoteagent.core.v1.PushRpcResultEffect push_rpc_result = 22 [json_name = "pushRpcResult"];</code>
+   * @return Whether the pushRpcResult field is set.
+   */
+  boolean hasPushRpcResult();
+  /**
+   * <code>.remoteagent.core.v1.PushRpcResultEffect push_rpc_result = 22 [json_name = "pushRpcResult"];</code>
+   * @return The pushRpcResult.
+   */
+  io.github.lewin671.remoteagent.core.proto.PushRpcResultEffect getPushRpcResult();
+
+  /**
    * <code>.remoteagent.core.v1.ScheduleMachinePollEffect schedule_machine_poll = 70 [json_name = "scheduleMachinePoll"];</code>
    * @return Whether the scheduleMachinePoll field is set.
    */

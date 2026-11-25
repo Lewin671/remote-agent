@@ -50,6 +50,15 @@ in: remoteagent.v1.PairingPayload
 in: remoteagent.v1.DeviceRegistration
 in: remoteagent.v1.PairApproval
 in: remoteagent.v1.RelayErrorDetail
+in: remoteagent.v1.ListRemoteSessionsResponse
+in: remoteagent.v1.GetEventsResponse
+in: remoteagent.v1.ForwardResponse
+in: remoteagent.v1.NotForwarded
+in: remoteagent.v1.GetPushKeyResponse
+in: remoteagent.v1.SetPushSubscriptionResponse
+in: remoteagent.v1.SetPushTargetResponse
+in: remoteagent.v1.ServerFrame
+in: remoteagent.v1.PeerFrameResult
 
 # Core -> Shell (Size, AppendMarshal, Marshal)
 out: remoteagent.core.v1.ViewModel
@@ -90,6 +99,13 @@ out: remoteagent.v1.PutAccountPrefsRequest
 out: remoteagent.v1.PairingPayload
 out: remoteagent.v1.DeviceRegistration
 out: remoteagent.v1.PairApproval
+out: remoteagent.v1.ListRemoteSessionsRequest
+out: remoteagent.v1.GetEventsRequest
+out: remoteagent.v1.ForwardRequest
+out: remoteagent.v1.GetPushKeyRequest
+out: remoteagent.v1.SetPushSubscriptionRequest
+out: remoteagent.v1.SetPushTargetRequest
+out: remoteagent.v1.PeerFrame
 
 # Strict validation (reject unknown fields recursively on Unmarshal)
 strict: remoteagent.v1.Envelope

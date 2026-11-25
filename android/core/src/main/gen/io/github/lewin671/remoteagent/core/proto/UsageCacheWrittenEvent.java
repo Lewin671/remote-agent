@@ -17,32 +17,6 @@ public  final class UsageCacheWrittenEvent extends
   private UsageCacheWrittenEvent() {
     machineId_ = "";
   }
-  public static final int OP_ID_FIELD_NUMBER = 1;
-  private long opId_;
-  /**
-   * <code>uint64 op_id = 1 [json_name = "opId"];</code>
-   * @return The opId.
-   */
-  @java.lang.Override
-  public long getOpId() {
-    return opId_;
-  }
-  /**
-   * <code>uint64 op_id = 1 [json_name = "opId"];</code>
-   * @param value The opId to set.
-   */
-  private void setOpId(long value) {
-    
-    opId_ = value;
-  }
-  /**
-   * <code>uint64 op_id = 1 [json_name = "opId"];</code>
-   */
-  private void clearOpId() {
-
-    opId_ = 0L;
-  }
-
   public static final int MACHINE_ID_FIELD_NUMBER = 2;
   private java.lang.String machineId_;
   /**
@@ -189,34 +163,6 @@ public  final class UsageCacheWrittenEvent extends
 
 
     /**
-     * <code>uint64 op_id = 1 [json_name = "opId"];</code>
-     * @return The opId.
-     */
-    @java.lang.Override
-    public long getOpId() {
-      return instance.getOpId();
-    }
-    /**
-     * <code>uint64 op_id = 1 [json_name = "opId"];</code>
-     * @param value The opId to set.
-     * @return This builder for chaining.
-     */
-    public Builder setOpId(long value) {
-      copyOnWrite();
-      instance.setOpId(value);
-      return this;
-    }
-    /**
-     * <code>uint64 op_id = 1 [json_name = "opId"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearOpId() {
-      copyOnWrite();
-      instance.clearOpId();
-      return this;
-    }
-
-    /**
      * <code>string machine_id = 2 [json_name = "machineId"];</code>
      * @return The machineId.
      */
@@ -281,12 +227,10 @@ public  final class UsageCacheWrittenEvent extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
-            "opId_",
             "machineId_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0003\u0002\u0208" +
-              "";
+              "\u0000\u0001\u0000\u0000\u0002\u0002\u0001\u0000\u0000\u0000\u0002\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

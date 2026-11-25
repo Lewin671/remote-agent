@@ -235,6 +235,11 @@ public  final class Event extends
     TERMINAL_DIRECT_INPUT(427),
     TERMINAL_DIRECT_OUTPUT(428),
     TERMINAL_DIRECT_CONFIRM_REBUILD(429),
+    RELAY_PIPE_CONFIG(430),
+    RELAY_RPC_RESULT(431),
+    STREAM_RAW_FRAME(432),
+    REFRESH_DEVICES(433),
+    PUSH_RPC(434),
     SECURITY_CONFIG(450),
     SECURITY_KEY_SIGNED(452),
     SECURITY_KEY_AGREED(453),
@@ -477,6 +482,11 @@ public  final class Event extends
         case 427: return TERMINAL_DIRECT_INPUT;
         case 428: return TERMINAL_DIRECT_OUTPUT;
         case 429: return TERMINAL_DIRECT_CONFIRM_REBUILD;
+        case 430: return RELAY_PIPE_CONFIG;
+        case 431: return RELAY_RPC_RESULT;
+        case 432: return STREAM_RAW_FRAME;
+        case 433: return REFRESH_DEVICES;
+        case 434: return PUSH_RPC;
         case 450: return SECURITY_CONFIG;
         case 452: return SECURITY_KEY_SIGNED;
         case 453: return SECURITY_KEY_AGREED;
@@ -11654,6 +11664,286 @@ public  final class Event extends
    */
   private void clearTerminalDirectConfirmRebuild() {
     if (eventCase_ == 429) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int RELAY_PIPE_CONFIG_FIELD_NUMBER = 430;
+  /**
+   * <pre>
+   * Unified relay byte-pipe events (430-449 reserved for P2-5).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
+   */
+  @java.lang.Override
+  public boolean hasRelayPipeConfig() {
+    return eventCase_ == 430;
+  }
+  /**
+   * <pre>
+   * Unified relay byte-pipe events (430-449 reserved for P2-5).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent getRelayPipeConfig() {
+    if (eventCase_ == 430) {
+       return (io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent.getDefaultInstance();
+  }
+  /**
+   * <pre>
+   * Unified relay byte-pipe events (430-449 reserved for P2-5).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setRelayPipeConfig(io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 430;
+  }
+  /**
+   * <pre>
+   * Unified relay byte-pipe events (430-449 reserved for P2-5).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeRelayPipeConfig(io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 430 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 430;
+  }
+  /**
+   * <pre>
+   * Unified relay byte-pipe events (430-449 reserved for P2-5).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
+   */
+  private void clearRelayPipeConfig() {
+    if (eventCase_ == 430) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int RELAY_RPC_RESULT_FIELD_NUMBER = 431;
+  /**
+   * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
+   */
+  @java.lang.Override
+  public boolean hasRelayRpcResult() {
+    return eventCase_ == 431;
+  }
+  /**
+   * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.RelayRpcResultEvent getRelayRpcResult() {
+    if (eventCase_ == 431) {
+       return (io.github.lewin671.remoteagent.core.proto.RelayRpcResultEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.RelayRpcResultEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setRelayRpcResult(io.github.lewin671.remoteagent.core.proto.RelayRpcResultEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 431;
+  }
+  /**
+   * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeRelayRpcResult(io.github.lewin671.remoteagent.core.proto.RelayRpcResultEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 431 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.RelayRpcResultEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.RelayRpcResultEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.RelayRpcResultEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 431;
+  }
+  /**
+   * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
+   */
+  private void clearRelayRpcResult() {
+    if (eventCase_ == 431) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int STREAM_RAW_FRAME_FIELD_NUMBER = 432;
+  /**
+   * <code>.remoteagent.core.v1.StreamRawFrameEvent stream_raw_frame = 432 [json_name = "streamRawFrame"];</code>
+   */
+  @java.lang.Override
+  public boolean hasStreamRawFrame() {
+    return eventCase_ == 432;
+  }
+  /**
+   * <code>.remoteagent.core.v1.StreamRawFrameEvent stream_raw_frame = 432 [json_name = "streamRawFrame"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.StreamRawFrameEvent getStreamRawFrame() {
+    if (eventCase_ == 432) {
+       return (io.github.lewin671.remoteagent.core.proto.StreamRawFrameEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.StreamRawFrameEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.StreamRawFrameEvent stream_raw_frame = 432 [json_name = "streamRawFrame"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setStreamRawFrame(io.github.lewin671.remoteagent.core.proto.StreamRawFrameEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 432;
+  }
+  /**
+   * <code>.remoteagent.core.v1.StreamRawFrameEvent stream_raw_frame = 432 [json_name = "streamRawFrame"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeStreamRawFrame(io.github.lewin671.remoteagent.core.proto.StreamRawFrameEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 432 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.StreamRawFrameEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.StreamRawFrameEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.StreamRawFrameEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 432;
+  }
+  /**
+   * <code>.remoteagent.core.v1.StreamRawFrameEvent stream_raw_frame = 432 [json_name = "streamRawFrame"];</code>
+   */
+  private void clearStreamRawFrame() {
+    if (eventCase_ == 432) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int REFRESH_DEVICES_FIELD_NUMBER = 433;
+  /**
+   * <code>.remoteagent.core.v1.RefreshDevicesAction refresh_devices = 433 [json_name = "refreshDevices"];</code>
+   */
+  @java.lang.Override
+  public boolean hasRefreshDevices() {
+    return eventCase_ == 433;
+  }
+  /**
+   * <code>.remoteagent.core.v1.RefreshDevicesAction refresh_devices = 433 [json_name = "refreshDevices"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.RefreshDevicesAction getRefreshDevices() {
+    if (eventCase_ == 433) {
+       return (io.github.lewin671.remoteagent.core.proto.RefreshDevicesAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.RefreshDevicesAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.RefreshDevicesAction refresh_devices = 433 [json_name = "refreshDevices"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setRefreshDevices(io.github.lewin671.remoteagent.core.proto.RefreshDevicesAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 433;
+  }
+  /**
+   * <code>.remoteagent.core.v1.RefreshDevicesAction refresh_devices = 433 [json_name = "refreshDevices"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeRefreshDevices(io.github.lewin671.remoteagent.core.proto.RefreshDevicesAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 433 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.RefreshDevicesAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.RefreshDevicesAction.newBuilder((io.github.lewin671.remoteagent.core.proto.RefreshDevicesAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 433;
+  }
+  /**
+   * <code>.remoteagent.core.v1.RefreshDevicesAction refresh_devices = 433 [json_name = "refreshDevices"];</code>
+   */
+  private void clearRefreshDevices() {
+    if (eventCase_ == 433) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int PUSH_RPC_FIELD_NUMBER = 434;
+  /**
+   * <code>.remoteagent.core.v1.PushRpcAction push_rpc = 434 [json_name = "pushRpc"];</code>
+   */
+  @java.lang.Override
+  public boolean hasPushRpc() {
+    return eventCase_ == 434;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PushRpcAction push_rpc = 434 [json_name = "pushRpc"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.PushRpcAction getPushRpc() {
+    if (eventCase_ == 434) {
+       return (io.github.lewin671.remoteagent.core.proto.PushRpcAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.PushRpcAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.PushRpcAction push_rpc = 434 [json_name = "pushRpc"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPushRpc(io.github.lewin671.remoteagent.core.proto.PushRpcAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 434;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PushRpcAction push_rpc = 434 [json_name = "pushRpc"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergePushRpc(io.github.lewin671.remoteagent.core.proto.PushRpcAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 434 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.PushRpcAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.PushRpcAction.newBuilder((io.github.lewin671.remoteagent.core.proto.PushRpcAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 434;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PushRpcAction push_rpc = 434 [json_name = "pushRpc"];</code>
+   */
+  private void clearPushRpc() {
+    if (eventCase_ == 434) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -22980,6 +23270,270 @@ public  final class Event extends
 
     /**
      * <pre>
+     * Unified relay byte-pipe events (430-449 reserved for P2-5).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
+     */
+    @java.lang.Override
+    public boolean hasRelayPipeConfig() {
+      return instance.hasRelayPipeConfig();
+    }
+    /**
+     * <pre>
+     * Unified relay byte-pipe events (430-449 reserved for P2-5).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent getRelayPipeConfig() {
+      return instance.getRelayPipeConfig();
+    }
+    /**
+     * <pre>
+     * Unified relay byte-pipe events (430-449 reserved for P2-5).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
+     */
+    public Builder setRelayPipeConfig(io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent value) {
+      copyOnWrite();
+      instance.setRelayPipeConfig(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Unified relay byte-pipe events (430-449 reserved for P2-5).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
+     */
+    public Builder setRelayPipeConfig(
+        io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setRelayPipeConfig(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Unified relay byte-pipe events (430-449 reserved for P2-5).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
+     */
+    public Builder mergeRelayPipeConfig(io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent value) {
+      copyOnWrite();
+      instance.mergeRelayPipeConfig(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Unified relay byte-pipe events (430-449 reserved for P2-5).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
+     */
+    public Builder clearRelayPipeConfig() {
+      copyOnWrite();
+      instance.clearRelayPipeConfig();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
+     */
+    @java.lang.Override
+    public boolean hasRelayRpcResult() {
+      return instance.hasRelayRpcResult();
+    }
+    /**
+     * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.RelayRpcResultEvent getRelayRpcResult() {
+      return instance.getRelayRpcResult();
+    }
+    /**
+     * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
+     */
+    public Builder setRelayRpcResult(io.github.lewin671.remoteagent.core.proto.RelayRpcResultEvent value) {
+      copyOnWrite();
+      instance.setRelayRpcResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
+     */
+    public Builder setRelayRpcResult(
+        io.github.lewin671.remoteagent.core.proto.RelayRpcResultEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setRelayRpcResult(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
+     */
+    public Builder mergeRelayRpcResult(io.github.lewin671.remoteagent.core.proto.RelayRpcResultEvent value) {
+      copyOnWrite();
+      instance.mergeRelayRpcResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
+     */
+    public Builder clearRelayRpcResult() {
+      copyOnWrite();
+      instance.clearRelayRpcResult();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.StreamRawFrameEvent stream_raw_frame = 432 [json_name = "streamRawFrame"];</code>
+     */
+    @java.lang.Override
+    public boolean hasStreamRawFrame() {
+      return instance.hasStreamRawFrame();
+    }
+    /**
+     * <code>.remoteagent.core.v1.StreamRawFrameEvent stream_raw_frame = 432 [json_name = "streamRawFrame"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.StreamRawFrameEvent getStreamRawFrame() {
+      return instance.getStreamRawFrame();
+    }
+    /**
+     * <code>.remoteagent.core.v1.StreamRawFrameEvent stream_raw_frame = 432 [json_name = "streamRawFrame"];</code>
+     */
+    public Builder setStreamRawFrame(io.github.lewin671.remoteagent.core.proto.StreamRawFrameEvent value) {
+      copyOnWrite();
+      instance.setStreamRawFrame(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.StreamRawFrameEvent stream_raw_frame = 432 [json_name = "streamRawFrame"];</code>
+     */
+    public Builder setStreamRawFrame(
+        io.github.lewin671.remoteagent.core.proto.StreamRawFrameEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setStreamRawFrame(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.StreamRawFrameEvent stream_raw_frame = 432 [json_name = "streamRawFrame"];</code>
+     */
+    public Builder mergeStreamRawFrame(io.github.lewin671.remoteagent.core.proto.StreamRawFrameEvent value) {
+      copyOnWrite();
+      instance.mergeStreamRawFrame(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.StreamRawFrameEvent stream_raw_frame = 432 [json_name = "streamRawFrame"];</code>
+     */
+    public Builder clearStreamRawFrame() {
+      copyOnWrite();
+      instance.clearStreamRawFrame();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.RefreshDevicesAction refresh_devices = 433 [json_name = "refreshDevices"];</code>
+     */
+    @java.lang.Override
+    public boolean hasRefreshDevices() {
+      return instance.hasRefreshDevices();
+    }
+    /**
+     * <code>.remoteagent.core.v1.RefreshDevicesAction refresh_devices = 433 [json_name = "refreshDevices"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.RefreshDevicesAction getRefreshDevices() {
+      return instance.getRefreshDevices();
+    }
+    /**
+     * <code>.remoteagent.core.v1.RefreshDevicesAction refresh_devices = 433 [json_name = "refreshDevices"];</code>
+     */
+    public Builder setRefreshDevices(io.github.lewin671.remoteagent.core.proto.RefreshDevicesAction value) {
+      copyOnWrite();
+      instance.setRefreshDevices(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.RefreshDevicesAction refresh_devices = 433 [json_name = "refreshDevices"];</code>
+     */
+    public Builder setRefreshDevices(
+        io.github.lewin671.remoteagent.core.proto.RefreshDevicesAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setRefreshDevices(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.RefreshDevicesAction refresh_devices = 433 [json_name = "refreshDevices"];</code>
+     */
+    public Builder mergeRefreshDevices(io.github.lewin671.remoteagent.core.proto.RefreshDevicesAction value) {
+      copyOnWrite();
+      instance.mergeRefreshDevices(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.RefreshDevicesAction refresh_devices = 433 [json_name = "refreshDevices"];</code>
+     */
+    public Builder clearRefreshDevices() {
+      copyOnWrite();
+      instance.clearRefreshDevices();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.PushRpcAction push_rpc = 434 [json_name = "pushRpc"];</code>
+     */
+    @java.lang.Override
+    public boolean hasPushRpc() {
+      return instance.hasPushRpc();
+    }
+    /**
+     * <code>.remoteagent.core.v1.PushRpcAction push_rpc = 434 [json_name = "pushRpc"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.PushRpcAction getPushRpc() {
+      return instance.getPushRpc();
+    }
+    /**
+     * <code>.remoteagent.core.v1.PushRpcAction push_rpc = 434 [json_name = "pushRpc"];</code>
+     */
+    public Builder setPushRpc(io.github.lewin671.remoteagent.core.proto.PushRpcAction value) {
+      copyOnWrite();
+      instance.setPushRpc(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PushRpcAction push_rpc = 434 [json_name = "pushRpc"];</code>
+     */
+    public Builder setPushRpc(
+        io.github.lewin671.remoteagent.core.proto.PushRpcAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setPushRpc(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PushRpcAction push_rpc = 434 [json_name = "pushRpc"];</code>
+     */
+    public Builder mergePushRpc(io.github.lewin671.remoteagent.core.proto.PushRpcAction value) {
+      copyOnWrite();
+      instance.mergePushRpc(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PushRpcAction push_rpc = 434 [json_name = "pushRpc"];</code>
+     */
+    public Builder clearPushRpc() {
+      copyOnWrite();
+      instance.clearPushRpc();
+      return this;
+    }
+
+    /**
+     * <pre>
      * Security engine (450-499 reserved for security).
      * </pre>
      *
@@ -24079,6 +24633,11 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.TerminalDirectInputEvent.class,
             io.github.lewin671.remoteagent.core.proto.TerminalDirectOutputEvent.class,
             io.github.lewin671.remoteagent.core.proto.TerminalDirectConfirmRebuildAction.class,
+            io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent.class,
+            io.github.lewin671.remoteagent.core.proto.RelayRpcResultEvent.class,
+            io.github.lewin671.remoteagent.core.proto.StreamRawFrameEvent.class,
+            io.github.lewin671.remoteagent.core.proto.RefreshDevicesAction.class,
+            io.github.lewin671.remoteagent.core.proto.PushRpcAction.class,
             io.github.lewin671.remoteagent.core.proto.SecurityConfigEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeySignedEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreedEvent.class,
@@ -24094,7 +24653,7 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.SecurityOpenNotifyEvent.class,
           };
           java.lang.String info =
-              "\u0000\u00e7\u0001\u0000\u0001\u01d1\u00e7\u0000\u0002\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u00ec\u0001\u0000\u0001\u01d1\u00ec\u0000\u0002\u0000\u0001<\u0000\u0002<" +
               "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000" +
               "\t<\u0000\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010" +
               "<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000" +
@@ -24126,9 +24685,10 @@ public  final class Event extends
               "\u0197<\u0000\u0198<\u0000\u0199<\u0000\u019a<\u0000\u019b<\u0000\u019c<\u0000\u019d" +
               "<\u0000\u019e<\u0000\u019f<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000" +
               "\u01a4<\u0000\u01a5<\u0000\u01a6<\u0000\u01a7<\u0000\u01a8<\u0000\u01a9<\u0000\u01aa" +
-              "<\u0000\u01ab<\u0000\u01ac<\u0000\u01ad<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000" +
-              "\u01c8<\u0000\u01c9<\u0000\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01ce" +
-              "<\u0000\u01cf<\u0000\u01d0<\u0000\u01d1<\u0000";
+              "<\u0000\u01ab<\u0000\u01ac<\u0000\u01ad<\u0000\u01ae<\u0000\u01af<\u0000\u01b0<\u0000" +
+              "\u01b1<\u0000\u01b2<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000\u01c9" +
+              "<\u0000\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01ce<\u0000\u01cf<\u0000" +
+              "\u01d0<\u0000\u01d1<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -209,6 +209,9 @@ func (e *Engine) CancelCommand(ctx *StepContext, requestID string) {
 	e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_COMMAND_RETRY, requestID)
 	for aid := range prep.PendingAttempts {
 		delete(e.reqIDByAttempt, aid)
+		if e.relayPipe {
+			e.cancelRelayForwardAttempt(ctx, aid)
+		}
 	}
 	e.releaseOrDeferLegs(prep, "")
 	clear(prep.PendingAttempts)
@@ -327,6 +330,10 @@ func (e *Engine) emitCommandLeg(
 		AttemptID: attemptID,
 		Direct:    isDirect,
 		TicketID:  dec.ticketID,
+	}
+	if e.relayPipe && !isDirect {
+		e.emitCommandRelayLegViaPipe(ctx, prep, attemptID)
+		return
 	}
 	ctx.emit(&corev1.Effect{
 		Effect: &corev1.Effect_DispatchCommand{
@@ -518,6 +525,9 @@ func (e *Engine) finishCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 
 		if prep.DualMode && leg != nil {
 			if daemonOK {
+				if e.relayPipe && prep.RelayLegID != "" && leg.AttemptID != prep.RelayLegID {
+					e.cancelRelayForwardAttempt(ctx, prep.RelayLegID)
+				}
 				e.releaseOrDeferLegs(prep, leg.AttemptID)
 				prep.DualMode = false
 				clear(prep.ActiveLegs)
@@ -772,6 +782,9 @@ func (e *Engine) settleCommand(
 	e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_COMMAND_RETRY, prep.RequestID)
 	for aid := range prep.PendingAttempts {
 		delete(e.reqIDByAttempt, aid)
+		if e.relayPipe {
+			e.cancelRelayForwardAttempt(ctx, aid)
+		}
 	}
 	e.releaseOrDeferLegs(prep, "")
 	clear(prep.PendingAttempts)

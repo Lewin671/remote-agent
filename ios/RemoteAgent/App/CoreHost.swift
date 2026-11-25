@@ -2795,8 +2795,11 @@ actor CoreHost: SyncEngine {
             case .watchedSessions,
                  .usageCacheRequest,
                  .syncPushSubscription,
-                 .scheduleWriteCache:
-                // Handled by Web/Android in P2-4; iOS migrates off SyncStateView in P3-2.
+                 .scheduleWriteCache,
+                 .relayRpc,
+                 .relayRpcCancel,
+                 .pushRpcResult:
+                // Handled by Web/Android in P2-4/P2-5; iOS migrates in P3-2.
                 break
 
             case .sharedFileScanLocal,

@@ -4,36 +4,33 @@ import {createServer as httpServer} from "node:http";
 import type {AddressInfo} from "node:net";
 import {fileURLToPath} from "node:url";
 import {createServer as viteServer} from "vite";
-import {Remote,apiBase} from "./remote";
+import {apiBase} from "./remote";
 import {getCoreHost} from "./core/host";
-import {relayFetch} from "./transport";
 import { SyntheticRemote, remoteConnState } from "./test/remote-fixture";
 import {CommandResultSchema} from "./gen/remoteagent/v1/remote_pb";
 import { parseTestHeader } from "./test/stored-security-fixture";
 import type {Envelope} from "./gen/remoteagent/v1/envelope_pb";
 
 afterEach(()=>{vi.unstubAllGlobals();vi.unstubAllEnvs();});
-function useProductionDiscovery(r:Remote) {
- const discover=(Remote.prototype as unknown as {relayEpoch:()=>Promise<string>}).relayEpoch;
- Object.defineProperty(r,"relayEpoch",{value:()=>discover.call(r)});
-}
 
 test.each([true,false])("proxy-only command uses effective API origin (cached=%s)",async(warm)=>{
  vi.stubEnv("VITE_SAME_ORIGIN_API","1");
  const page=`https://proxy-${warm?"warm":"cold"}.example`;
  vi.stubGlobal("location",new URL(page));
- const fetch=vi.fn(async(input:RequestInfo|URL)=>{
-  const url=new URL(String(input));
-  if(url.origin!==page)throw Error("direct relay requests are blocked");
-  return new Response("ok",{headers:{"Remote-Agent-Relay-Epoch":"proxied-epoch"}});
- });
- vi.stubGlobal("fetch",fetch);
- const r=await SyntheticRemote.create();useProductionDiscovery(r);
+ const healthzCalls: string[] = [];
+ const r=await SyntheticRemote.create();
+ r.mockRelayEpoch = warm ? "proxied-epoch" : "";
  let calls=0;
  (r as unknown as {token:string;tokenExpires:number;openStreamLeg:(id:bigint,t:string,cb:{onReady:(id:bigint,ms:bigint)=>void})=>void}).token="tok";
  (r as unknown as {tokenExpires:number}).tokenExpires=Date.now()+7*86_400_000;
  (r as unknown as {openStreamLeg:(id:bigint,t:string,cb:{onReady:(id:bigint,ms:bigint)=>void})=>void}).openStreamLeg=(legId,_t,cb)=>cb.onReady(legId,BigInt(Date.now()));
  (r as unknown as {api:unknown}).api={
+  healthz: async (url: string) => {
+   const parsed = new URL(url);
+   if (parsed.origin !== page) throw Error("direct relay requests are blocked");
+   healthzCalls.push(url);
+   return new Response("ok", { headers: { "Remote-Agent-Relay-Epoch": "proxied-epoch" } });
+  },
   listMachines:async()=>({machines:[{id:r.machine,online:true,lastSeenMs:0n}]}),
   listRemoteSessions:async()=>({sessions:[]}),
   listDevices:async()=>({devices:[]}),
@@ -48,11 +45,9 @@ test.each([true,false])("proxy-only command uses effective API origin (cached=%s
   r.start();
   await vi.waitFor(()=>expect(remoteConnState(r)).toBe("online"));
   expect(apiBase(r.account.server)).toBe(page);
-  if(warm)await relayFetch(page+"/remoteagent.v1.AuthService/Login",{method:"POST"});
   await expect(getCoreHost(r).runMachineCommand(r.machine,"",{case:"createSession",value:{cwd:"/work/example"}})).resolves.toBeUndefined();
   expect(calls).toBe(1);
-  expect(fetch).toHaveBeenCalledTimes(1);
-  expect(String(fetch.mock.calls[0][0])).toBe(page+(warm?"/remoteagent.v1.AuthService/Login":"/healthz"));
+  expect(healthzCalls).toEqual(warm ? [] : [page + "/healthz"]);
  } finally {await r.dispose();}
 });
 

@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+package remoteagent.core.v1;
+
+import "remoteagent/core/v1/security.proto";
+import "remoteagent/v1/relay.proto";
+
+// Unified unary relay RPC methods (evolved from SecurityRpcMethod to cover all
+// Auth / Pairing / Recovery / ClientService unary calls + /healthz epoch probe).
+// Enum values 1..25 intentionally match SecurityRpcMethod 1-to-1.
+enum RelayRpcMethod {
+  RELAY_RPC_METHOD_UNSPECIFIED = 0;
+  RELAY_RPC_METHOD_GET_SECURITY_STATES = 1;
+  RELAY_RPC_METHOD_PUT_SECURITY_STATE = 2;
+  RELAY_RPC_METHOD_PIN_SECURITY_DOMAIN = 3;
+  RELAY_RPC_METHOD_CREATE_PAIRING = 4;
+  RELAY_RPC_METHOD_PEEK_PAIRING = 5;
+  RELAY_RPC_METHOD_JOIN_PAIRING = 6;
+  RELAY_RPC_METHOD_REVEAL_PAIRING = 7;
+  RELAY_RPC_METHOD_APPROVE_PAIRING = 8;
+  RELAY_RPC_METHOD_GET_PAIRING = 9;
+  RELAY_RPC_METHOD_CANCEL_PAIRING = 10;
+  RELAY_RPC_METHOD_GET_RECOVERY_CHALLENGE = 11;
+  RELAY_RPC_METHOD_GET_RECOVERY_CONTEXT = 12;
+  RELAY_RPC_METHOD_SUBMIT_RECOVERY = 13;
+  RELAY_RPC_METHOD_COMPLETE_RECOVERY = 14;
+  RELAY_RPC_METHOD_DELETE_MACHINE_RECORDS = 15;
+  RELAY_RPC_METHOD_DELETE_ACCOUNT = 16;
+  RELAY_RPC_METHOD_GET_CHALLENGE = 17;
+  RELAY_RPC_METHOD_LOGIN = 18;
+  RELAY_RPC_METHOD_GET_SIGNUP_CHALLENGE = 19;
+  RELAY_RPC_METHOD_REGISTER_DEVICE = 20;
+  RELAY_RPC_METHOD_PUT_DEVICE_META = 21;
+  RELAY_RPC_METHOD_LIST_DEVICES = 22;
+  RELAY_RPC_METHOD_LIST_MACHINES = 23;
+  RELAY_RPC_METHOD_GET_ACCOUNT_PREFS = 24;
+  RELAY_RPC_METHOD_PUT_ACCOUNT_PREFS = 25;
+  RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS = 26;
+  RELAY_RPC_METHOD_GET_EVENTS = 27;
+  RELAY_RPC_METHOD_FORWARD = 28;
+  RELAY_RPC_METHOD_GET_IMAGE = 29;
+  RELAY_RPC_METHOD_GET_PUSH_KEY = 30;
+  RELAY_RPC_METHOD_SET_PUSH_SUBSCRIPTION = 31;
+  RELAY_RPC_METHOD_SET_PUSH_TARGET = 32;
+  RELAY_RPC_METHOD_HEALTHZ = 33;
+}
+
+// Opts the Core instance into the unified byte-pipe mode (RelayRpcEffect,
+// StreamRawFrameEvent, Core-managed login/token refresh, opaque caches, image
+// fetch, and Core-owned terminal crypto/lifecycle). Shells that do not send
+// this event (iOS before P3-2) continue using transitional effects.
+message RelayPipeConfigEvent {
+  bool enabled = 1;
+}
+
+// Universal unary HTTP/Connect byte-pipe effect. The shell sends request_bytes
+// verbatim to the path for method (or GET /healthz for RELAY_RPC_METHOD_HEALTHZ)
+// and returns raw response bytes + Connect error metadata without parsing any
+// business protobuf payload.
+message RelayRpcEffect {
+  uint64 op_id = 1;
+  RelayRpcMethod method = 2;
+  string server = 3;
+  string auth_token = 4;
+  int64 timeout_ms = 5;
+  string attempt_header = 6;
+  bytes request_bytes = 7;
+}
+
+// Cancels an in-flight RelayRpcEffect with the given op_id.
+message RelayRpcCancelEffect {
+  uint64 op_id = 1;
+}
+
+// Result of a RelayRpcEffect.
+message RelayRpcResultEvent {
+  uint64 op_id = 1;
+  bytes response_bytes = 2;
+  int32 connect_code = 3;
+  string relay_epoch = 4;
+  repeated RpcErrorDetailBytes error_details = 5;
+  bool network_error = 6;
+  bool unresolved_host = 7;
+  string diagnostic_message = 8;
+}
+
+// Raw ServerFrame protobuf bytes received on /v1/stream; Core decodes Ready,
+// clock skew, direct signals/receipts, and directory/event updates directly.
+message StreamRawFrameEvent {
+  uint64 leg_id = 1;
+  bytes raw_server_frame = 2;
+}
+
+// Requests Core to refresh the device list via the unified relay byte pipe.
+message RefreshDevicesAction {}
+
+// One-shot push subscription/target RPC driven by Core over RelayRpcEffect.
+message PushRpcAction {
+  uint64 op_id = 1;
+  bool get_key = 2;
+  bool set_web_subscription = 3;
+  bool set_target = 4;
+  string subscription_json = 5;
+  int32 push_type = 6;
+  string target = 7;
+  repeated remoteagent.v1.NotifyKind kinds = 8;
+}
+
+// Result of a PushRpcAction.
+message PushRpcResultEffect {
+  uint64 op_id = 1;
+  bool ok = 2;
+  string public_key = 3;
+  bool enabled = 4;
+  bool retryable = 5;
+  string error = 6;
+}

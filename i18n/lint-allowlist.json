@@ -6078,5 +6078,55 @@
     "path": "internal/relay/sync.go",
     "literal": "relay: current checkpoint pending; normal session sync continues",
     "reason": "Internal daemon slog.Warn diagnostic log; never rendered as user-facing product copy."
+  },
+  {
+    "path": "clientcore/sync/relay_pipe.go",
+    "literal": "missing relay epoch",
+    "reason": "Internal transport diagnostic detail when /healthz omits Remote-Agent-Relay-Epoch; never rendered as user copy."
+  },
+  {
+    "path": "web/src/core/security-executor.ts",
+    "literal": "Remote-Agent-Relay-Epoch",
+    "reason": "HTTP protocol header name; matched by lexical sink scanner only because adjacent helper is named error."
+  },
+  {
+    "path": "web/src/core/security-executor.ts",
+    "literal": "closed",
+    "reason": "Internal AbortController cancellation reason on executor shutdown; never rendered to users."
+  },
+  {
+    "path": "web/src/core/host.ts",
+    "literal": "closed",
+    "reason": "Internal host shutdown rejection code; never rendered as product copy."
+  },
+  {
+    "path": "web/src/core/host.ts",
+    "literal": "push rpc failed",
+    "reason": "Internal fallback rejection diagnostic when PushRpcResultEffect has empty error."
+  },
+  {
+    "path": "web/src/core/host.ts",
+    "literal": "dispatchCommand",
+    "reason": "TypeScript discriminated-union case tag; matched by lexical sink scanner near adjacent Error() call."
+  },
+  {
+    "path": "web/src/push.ts",
+    "literal": "HTTP ${res.status}",
+    "reason": "Best-effort standalone push unregister HTTP diagnostic swallowed by caller; never rendered as UI copy."
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "relay forward moved to core",
+    "reason": "Internal developer contract sentinel for unused RelayPath forward callback."
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "missing stream hello frame",
+    "reason": "Internal protocol invariant guard when Core omits hello_frame on OpenStreamEffect."
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "getImage failed",
+    "reason": "Internal fallback diagnostic for GetImage RPC error before Commit 4 moves image loading into Core."
   }
 ]

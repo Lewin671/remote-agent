@@ -215,11 +215,11 @@ type SecurityState struct {
 
 // SettledCommand notifies upper layers (e.g. app) when a dispatched command finishes.
 type SettledCommand struct {
-	_          [0]func()
-	RequestID  string
-	SlotKey    string
-	MachineID  string
-	SessionID  string
+	_           [0]func()
+	RequestID   string
+	SlotKey     string
+	MachineID   string
+	SessionID   string
 	Category    outcome.Category
 	Result      *v1.CommandResult
 	ErrorCode   string
@@ -400,10 +400,10 @@ type Engine struct {
 	cachedToken       string
 	tokenExpiresMs    int64
 	forceLogin        bool
-	legID           uint64
-	connStartedAtMs int64
-	connStep        world.ConnectStep
-	serverAhead     bool
+	legID             uint64
+	connStartedAtMs   int64
+	connStep          world.ConnectStep
+	serverAhead       bool
 	listBackoffMs     int64
 	prefsBackoffMs    int64
 
@@ -427,11 +427,11 @@ type Engine struct {
 	lastDevicesPushSeq uint64
 	devicesSnapshotR   map[string]uint64
 	devicesSnapshotD   map[string]uint64
-	devicesLoadFailed bool
-	devicesError      world.Reason
-	sessionByIDOps    map[uint64]string
-	sessionByIDFailed map[string]bool
-	sessionByIDErrors map[string]world.Reason
+	devicesLoadFailed  bool
+	devicesError       world.Reason
+	sessionByIDOps     map[uint64]string
+	sessionByIDFailed  map[string]bool
+	sessionByIDErrors  map[string]world.Reason
 	machinePushes      map[string]uint64
 	sessionPushes      map[string]uint64
 	removedPushes      map[string]uint64
@@ -486,6 +486,16 @@ type Engine struct {
 	prunedUntrustedMachines    map[string]bool
 	connSnap                   connStateSnap
 	connSnapInit               bool
+
+	relayPipe               bool
+	relayEpoch              string
+	nextRelayOpSeq          uint64
+	relayRpcOps             map[uint64]*pendingRelayRpc
+	healthzInFlight         bool
+	healthzOpID             uint64
+	healthzWaiters          []*pendingForwardLeg
+	refreshBundle           *pendingRefreshBundle
+	forwardRelayOpByAttempt map[string]uint64
 }
 
 type connStateSnap struct {
@@ -801,6 +811,16 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 		e.handleSecurityOpenNotify(ctx, k.SecurityOpenNotify)
 	case *corev1.Event_SeedDemoWorld:
 		e.handleSeedDemoWorld(ctx, k.SeedDemoWorld)
+	case *corev1.Event_RelayPipeConfig:
+		e.handleRelayPipeConfig(k.RelayPipeConfig)
+	case *corev1.Event_RelayRpcResult:
+		e.handleRelayRpcResult(ctx, k.RelayRpcResult)
+	case *corev1.Event_StreamRawFrame:
+		e.handleStreamRawFrame(ctx, k.StreamRawFrame)
+	case *corev1.Event_RefreshDevices:
+		e.startRefreshDevices(ctx, true)
+	case *corev1.Event_PushRpc:
+		e.handlePushRpcAction(ctx, k.PushRpc)
 	default:
 		consumed = false
 	}

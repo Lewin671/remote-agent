@@ -88,6 +88,10 @@ func (e *Engine) startRefresh(ctx *StepContext) {
 	e.refreshSnapshotR = maps.Clone(e.removedPushes)
 	e.refreshSnapshotD = maps.Clone(e.devicePushes)
 
+	if e.relayPipe {
+		e.startRefreshViaRelayPipe(ctx)
+		return
+	}
 	ctx.emit(&corev1.Effect{
 		Effect: &corev1.Effect_Rpc{
 			Rpc: &corev1.RpcEffect{
@@ -101,12 +105,24 @@ func (e *Engine) startRefresh(ctx *StepContext) {
 }
 
 func (e *Engine) startRefreshDevices(ctx *StepContext, force bool) {
-	if !e.running {
+	if !force && !e.running {
 		return
 	}
 	e.devicesOpID = e.allocOpID()
 	e.devicesSnapshotR = maps.Clone(e.removedPushes)
 	e.devicesSnapshotD = maps.Clone(e.devicePushes)
+	if e.relayPipe {
+		e.emitRelayRpc(
+			ctx,
+			corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_DEVICES,
+			e.cachedToken,
+			relayRpcDefaultTimeoutMs,
+			"",
+			(&v1.ListDevicesRequest{}).AppendMarshal(nil),
+			&pendingRelayRpc{kind: relayRpcDevices, opID: e.devicesOpID},
+		)
+		return
+	}
 	ctx.emit(&corev1.Effect{
 		Effect: &corev1.Effect_Rpc{
 			Rpc: &corev1.RpcEffect{
@@ -139,22 +155,35 @@ func (e *Engine) RequestMoreSessions(ctx *StepContext) {
 	e.w.World.SessionListError = ""
 	e.pageOpID = e.allocOpID()
 	e.pageListingGen = e.listingGen
-	ctx.emit(&corev1.Effect{
-		Effect: &corev1.Effect_Rpc{
-			Rpc: &corev1.RpcEffect{
-				OpId: e.pageOpID,
-				Kind: &corev1.RpcEffect_FetchSessionsPage{
-					FetchSessionsPage: &corev1.FetchSessionsPageRpc{
-						After: &v1.SessionCursor{
-							EndedMs:   e.w.World.SessionsNext.EndedMs,
-							SessionId: e.w.World.SessionsNext.SessionID,
+	after := &v1.SessionCursor{
+		EndedMs:   e.w.World.SessionsNext.EndedMs,
+		SessionId: e.w.World.SessionsNext.SessionID,
+	}
+	if e.relayPipe {
+		e.emitRelayRpc(
+			ctx,
+			corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS,
+			e.cachedToken,
+			relayRpcDefaultTimeoutMs,
+			"",
+			(&v1.ListRemoteSessionsRequest{After: after, Limit: SessionPageLimit}).AppendMarshal(nil),
+			&pendingRelayRpc{kind: relayRpcSessionsPage, opID: e.pageOpID},
+		)
+	} else {
+		ctx.emit(&corev1.Effect{
+			Effect: &corev1.Effect_Rpc{
+				Rpc: &corev1.RpcEffect{
+					OpId: e.pageOpID,
+					Kind: &corev1.RpcEffect_FetchSessionsPage{
+						FetchSessionsPage: &corev1.FetchSessionsPageRpc{
+							After: after,
+							Limit: SessionPageLimit,
 						},
-						Limit: SessionPageLimit,
 					},
 				},
 			},
-		},
-	})
+		})
+	}
 	ctx.Dirty.Add(true, true, false)
 }
 
@@ -179,6 +208,18 @@ func (e *Engine) fetchSessionByID(ctx *StepContext, sessionID string) {
 	delete(e.sessionByIDErrors, sessionID)
 	opID := e.allocOpID()
 	e.sessionByIDOps[opID] = sessionID
+	if e.relayPipe {
+		e.emitRelayRpc(
+			ctx,
+			corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS,
+			e.cachedToken,
+			relayRpcDefaultTimeoutMs,
+			"",
+			(&v1.ListRemoteSessionsRequest{SessionIds: []string{sessionID}, Limit: 1}).AppendMarshal(nil),
+			&pendingRelayRpc{kind: relayRpcSessionByID, opID: opID, sid: sessionID},
+		)
+		return
+	}
 	ctx.emit(&corev1.Effect{
 		Effect: &corev1.Effect_Rpc{
 			Rpc: &corev1.RpcEffect{

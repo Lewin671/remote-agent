@@ -1815,6 +1815,7 @@ export class DemoRemote extends Remote {
     this.changed();
   }
 
+  override useRelayPipe() { return false; }
   override ensureToken(opId: bigint): Promise<TokenResultEvent> {
     if (this.demoSyncing) { this.syncTokenOpId = opId; return new Promise(() => {}); }
     return Promise.resolve(this.demoToken(opId));
@@ -1905,7 +1906,7 @@ export class DemoRemote extends Remote {
     return create(CoreEventSchema, {});
   }
 
-  override async executeRpc(eff: RpcEffect): Promise<CoreEvent> {
+  async executeRpc(eff: RpcEffect): Promise<CoreEvent> {
     if (this.demoSyncing) { this.syncRpcQueue.push(eff); return new Promise(() => {}); }
     const opId = eff.opId;
     switch (eff.kind.case) {

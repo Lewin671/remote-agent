@@ -16,16 +16,31 @@ import { CommandResultSchema, MachineMetaSchema, type LiveSnapshot, type Machine
 import { SessionSchema, type Session } from "../gen/remoteagent/v1/local_pb";
 import { SessionStatus } from "../gen/remoteagent/v1/event_pb";
 import {
+  ForwardRequestSchema,
+  ForwardResponseSchema,
+  GetAccountPrefsRequestSchema,
   GetAccountPrefsResponseSchema,
   GetChallengeResponseSchema,
+  GetEventsRequestSchema,
+  GetEventsResponseSchema,
+  GetImageRequestSchema,
+  GetImageResponseSchema,
+  GetPushKeyResponseSchema,
   GetSecurityStatesRequestSchema,
   GetSecurityStatesResponseSchema,
   ListDevicesResponseSchema,
   ListMachinesResponseSchema,
+  ListRemoteSessionsRequestSchema,
+  ListRemoteSessionsResponseSchema,
   LoginResponseSchema,
+  PutAccountPrefsRequestSchema,
   PutAccountPrefsResponseSchema,
   PutDeviceMetaRequestSchema,
   PutDeviceMetaResponseSchema,
+  SetPushSubscriptionRequestSchema,
+  SetPushSubscriptionResponseSchema,
+  SetPushTargetRequestSchema,
+  SetPushTargetResponseSchema,
 } from "../gen/remoteagent/v1/relay_pb";
 import {
   EventSchema as CoreEventSchema,
@@ -187,9 +202,7 @@ type B = Uint8Array<ArrayBuffer>;
 type Fields = Omit<Partial<Header>, "$typeName">;
 
 export class SyntheticRemote extends Remote {
-  protected override relayEpoch() {
-    return Promise.resolve("fixture-epoch");
-  }
+  mockRelayEpoch = "fixture-epoch";
   readonly testSessions = new Map<string, SessionView>();
   readonly testMachines = new Map<string, MachineView>();
   protected override sessionMachineId(sid: string): string {
@@ -206,7 +219,7 @@ export class SyntheticRemote extends Remote {
     readonly member: Awaited<ReturnType<typeof webMember>>,
     seed: B,
   ) {
-    const rpcHolder: { handle?: (url: string, body: Uint8Array) => Promise<Response> } = {};
+    const rpcHolder: { handle?: (url: string, body: Uint8Array, signal?: AbortSignal) => Promise<Response> } = {};
     const fetchFn: typeof fetch = async (input, init) => {
       const url = typeof input === "string" ? input : input instanceof Request ? input.url : String(input);
       let body: Uint8Array = new Uint8Array();
@@ -217,11 +230,11 @@ export class SyntheticRemote extends Remote {
       } else if (typeof init?.body === "string") {
         body = new TextEncoder().encode(init.body);
       }
-      return rpcHolder.handle!(url, body);
+      return rpcHolder.handle!(url, body, init?.signal ?? undefined);
     };
     super(member.account, undefined, undefined, undefined, undefined, member.store, fetchFn);
     this.seed = seed;
-    rpcHolder.handle = (url, body) => this.handleMockRpc(url, body);
+    rpcHolder.handle = (url, body, signal) => this.handleMockRpc(url, body, signal);
     this.defaults = {
       getEvents: async () => ({ events: [], more: false }),
       listDevices: async () => ({ devices: [], currentDeviceId: member.account.deviceId }),
@@ -232,6 +245,9 @@ export class SyntheticRemote extends Remote {
       putDeviceMeta: async () => ({ applied: true }),
       putAccountPrefs: async () => ({ applied: true }),
       getAccountPrefs: async () => ({}),
+      getPushKey: async () => ({ publicKey: "AAAA", machineDiskNotifications: false }),
+      setPushSubscription: async () => ({}),
+      setPushTarget: async () => ({ enabled: true }),
       getChallenge: async () => ({ challenge: crypto.getRandomValues(new Uint8Array(32)) }),
       login: async () => ({
         token: "synthetic-token",
@@ -246,47 +262,7 @@ export class SyntheticRemote extends Remote {
       get: () => ({
         ...this.defaults,
         ...this.custom,
-        forward: async (req: unknown, opts?: unknown) => {
-          const forward = this.custom.forward as ((req: unknown, opts?: unknown) => Promise<unknown>) | undefined;
-          if (forward) {
-            const request = req as { command: Envelope; attemptId: string };
-            const res = (await forward(req, opts)) as {
-              result?: Envelope;
-              outcome?: string;
-              reason?: string;
-              attemptId?: string;
-            };
-            try {
-              if (res.result) {
-                const original = await this.world.fixture.open(this.machine, request.command);
-                const opened = await this.world.fixture.open(this.member.account.deviceId, res.result);
-                const proof = fromBinary(
-                  CommandResultSchema,
-                  unpackTestBody(parseTestHeader(new Uint8Array(res.result.securityHeader)), opened.plaintext),
-                );
-                if (!proof.outcome) {
-                  const binding = await testRequestIdentity(
-                    parseTestHeader(new Uint8Array(request.command.securityHeader)),
-                    unpackTestBody(parseTestHeader(new Uint8Array(request.command.securityHeader)), original.plaintext),
-                  );
-                  proof.outcome = "executed";
-                  proof.reason = "completed";
-                  proof.resultAvailable = true;
-                  proof.requestKeyHash = binding.key;
-                  proof.payloadHash = binding.payload;
-                  res.result = await this.seal({ ...opened.header, compression: 0 }, CommandResultSchema, proof);
-                }
-                res.outcome ??= proof.outcome;
-                res.reason ??= proof.reason;
-                res.attemptId ??= request.attemptId;
-              }
-            } catch {
-              /* Keep deliberate signature/ciphertext corruption. */
-            }
-            return res;
-          }
-          throw new ConnectError("synthetic endpoint offline", Code.Unavailable);
-        },
+        forward: (req: unknown, opts?: unknown) => this.invokeMockForward(req, opts),
       }),
       set: (api: Record<string, unknown>) => {
         this.custom = api;
@@ -294,15 +270,68 @@ export class SyntheticRemote extends Remote {
     });
   }
 
-  private async handleMockRpc(url: string, body: Uint8Array): Promise<Response> {
+  private async invokeMockForward(req: unknown, opts?: unknown): Promise<Record<string, unknown>> {
+    const forward = this.custom.forward as ((req: unknown, opts?: unknown) => Promise<unknown>) | undefined;
+    if (!forward) {
+      throw new ConnectError("synthetic endpoint offline", Code.Unavailable);
+    }
+    const request = req as { command?: Envelope; attemptId: string };
+    const res = (await forward(req, opts)) as {
+      result?: Envelope;
+      outcome?: string;
+      reason?: string;
+      attemptId?: string;
+    };
+    try {
+      if (res.result && request.command) {
+        const original = await this.world.fixture.open(this.machine, request.command);
+        const opened = await this.world.fixture.open(this.member.account.deviceId, res.result);
+        const proof = fromBinary(
+          CommandResultSchema,
+          unpackTestBody(parseTestHeader(new Uint8Array(res.result.securityHeader)), opened.plaintext),
+        );
+        if (!proof.outcome) {
+          const binding = await testRequestIdentity(
+            parseTestHeader(new Uint8Array(request.command.securityHeader)),
+            unpackTestBody(parseTestHeader(new Uint8Array(request.command.securityHeader)), original.plaintext),
+          );
+          proof.outcome = "executed";
+          proof.reason = "completed";
+          proof.resultAvailable = true;
+          proof.requestKeyHash = binding.key;
+          proof.payloadHash = binding.payload;
+          res.result = await this.seal({ ...opened.header, compression: 0 }, CommandResultSchema, proof);
+        }
+        res.outcome ??= proof.outcome;
+        res.reason ??= proof.reason;
+        res.attemptId ??= request.attemptId;
+      }
+    } catch {
+      /* Keep deliberate signature/ciphertext corruption. */
+    }
+    return res as Record<string, unknown>;
+  }
+
+  private async handleMockRpc(url: string, body: Uint8Array, signal?: AbortSignal): Promise<Response> {
     const path = new URL(url, "https://ra.example.com").pathname;
     const protoOk = <D extends DescMessage>(schema: D, msg: MessageShape<D>) =>
       new Response(new Uint8Array(toBinary(schema, msg)), {
         status: 200,
-        headers: { "Content-Type": "application/proto" },
+        headers: {
+          "Content-Type": "application/proto",
+          ...(this.mockRelayEpoch ? { "Remote-Agent-Relay-Epoch": this.mockRelayEpoch } : {}),
+        },
       });
     try {
       switch (path) {
+        case "/healthz": {
+          const fn = this.custom.healthz as ((url: string, opts?: { signal?: AbortSignal }) => Promise<Response>) | undefined;
+          if (fn) return await fn(url, { signal });
+          return new Response("ok", {
+            status: 200,
+            headers: this.mockRelayEpoch ? { "Remote-Agent-Relay-Epoch": this.mockRelayEpoch } : {},
+          });
+        }
         case "/remoteagent.v1.ClientService/GetSecurityStates": {
           const req = fromBinary(GetSecurityStatesRequestSchema, body);
           const fn = (this.custom.getSecurityStates ?? this.defaults.getSecurityStates) as (
@@ -336,18 +365,71 @@ export class SyntheticRemote extends Remote {
           const res = await fn({});
           return protoOk(ListMachinesResponseSchema, create(ListMachinesResponseSchema, res as never));
         }
-        case "/remoteagent.v1.ClientService/GetAccountPrefs": {
-          const fn = (this.custom.getAccountPrefs ?? this.defaults.getAccountPrefs) as (
+        case "/remoteagent.v1.ClientService/ListRemoteSessions": {
+          const req = fromBinary(ListRemoteSessionsRequestSchema, body);
+          const fn = (this.custom.listRemoteSessions ?? this.defaults.listRemoteSessions) as (
+            q: typeof req,
+          ) => Promise<Record<string, unknown>>;
+          const res = await fn(req);
+          return protoOk(ListRemoteSessionsResponseSchema, create(ListRemoteSessionsResponseSchema, res as never));
+        }
+        case "/remoteagent.v1.ClientService/GetEvents": {
+          const req = fromBinary(GetEventsRequestSchema, body);
+          const fn = (this.custom.getEvents ?? this.defaults.getEvents) as (
+            q: typeof req,
+          ) => Promise<Record<string, unknown>>;
+          const res = await fn(req);
+          return protoOk(GetEventsResponseSchema, create(GetEventsResponseSchema, res as never));
+        }
+        case "/remoteagent.v1.ClientService/Forward": {
+          const req = fromBinary(ForwardRequestSchema, body);
+          const res = await this.invokeMockForward(req, { signal });
+          return protoOk(ForwardResponseSchema, create(ForwardResponseSchema, res as never));
+        }
+        case "/remoteagent.v1.ClientService/GetImage": {
+          const req = fromBinary(GetImageRequestSchema, body);
+          const fn = this.custom.getImage as ((q: typeof req) => Promise<Record<string, unknown>>) | undefined;
+          if (!fn) throw new ConnectError("no such image", Code.NotFound);
+          const res = await fn(req);
+          return protoOk(GetImageResponseSchema, create(GetImageResponseSchema, res as never));
+        }
+        case "/remoteagent.v1.ClientService/GetPushKey": {
+          const fn = (this.custom.getPushKey ?? this.defaults.getPushKey) as (
             q: unknown,
           ) => Promise<Record<string, unknown>>;
           const res = await fn({});
+          return protoOk(GetPushKeyResponseSchema, create(GetPushKeyResponseSchema, res as never));
+        }
+        case "/remoteagent.v1.ClientService/SetPushSubscription": {
+          const req = fromBinary(SetPushSubscriptionRequestSchema, body);
+          const fn = (this.custom.setPushSubscription ?? this.defaults.setPushSubscription) as (
+            q: typeof req,
+          ) => Promise<Record<string, unknown>>;
+          const res = await fn(req);
+          return protoOk(SetPushSubscriptionResponseSchema, create(SetPushSubscriptionResponseSchema, res as never));
+        }
+        case "/remoteagent.v1.ClientService/SetPushTarget": {
+          const req = fromBinary(SetPushTargetRequestSchema, body);
+          const fn = (this.custom.setPushTarget ?? this.defaults.setPushTarget) as (
+            q: typeof req,
+          ) => Promise<Record<string, unknown>>;
+          const res = await fn(req);
+          return protoOk(SetPushTargetResponseSchema, create(SetPushTargetResponseSchema, res as never));
+        }
+        case "/remoteagent.v1.ClientService/GetAccountPrefs": {
+          const req = fromBinary(GetAccountPrefsRequestSchema, body);
+          const fn = (this.custom.getAccountPrefs ?? this.defaults.getAccountPrefs) as (
+            q: typeof req,
+          ) => Promise<Record<string, unknown>>;
+          const res = await fn(req);
           return protoOk(GetAccountPrefsResponseSchema, create(GetAccountPrefsResponseSchema, res as never));
         }
         case "/remoteagent.v1.ClientService/PutAccountPrefs": {
+          const req = fromBinary(PutAccountPrefsRequestSchema, body);
           const fn = (this.custom.putAccountPrefs ?? this.defaults.putAccountPrefs) as (
-            q: unknown,
+            q: typeof req,
           ) => Promise<Record<string, unknown>>;
-          const res = await fn({});
+          const res = await fn(req);
           return protoOk(PutAccountPrefsResponseSchema, create(PutAccountPrefsResponseSchema, res as never));
         }
         case "/remoteagent.v1.AuthService/GetChallenge": {
@@ -371,13 +453,40 @@ export class SyntheticRemote extends Remote {
           });
       }
     } catch (err) {
+      if (signal?.aborted || (err instanceof Error && err.name === "AbortError")) {
+        throw err;
+      }
       if (err instanceof ConnectError) {
+        const details: Array<{ type: string; value: string }> = [];
+        for (const d of err.details ?? []) {
+          let type = "";
+          let bytes: Uint8Array | undefined;
+          if ("type" in d && "value" in d && d.value instanceof Uint8Array) {
+            type = d.type;
+            bytes = d.value;
+          } else if ("desc" in d && d.desc && "value" in d) {
+            type = d.desc.typeName;
+            bytes = toBinary(d.desc, create(d.desc, d.value as never));
+          }
+          if (type && bytes) {
+            let bin = "";
+            for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+            details.push({ type, value: btoa(bin) });
+          }
+        }
         return new Response(
           JSON.stringify({
             code: CONNECT_CODE_NAMES[err.code] ?? "unknown",
             message: err.rawMessage || err.message,
+            ...(details.length > 0 ? { details } : {}),
           }),
-          { status: 400, headers: { "Content-Type": "application/json" } },
+          {
+            status: 400,
+            headers: {
+              "Content-Type": "application/json",
+              ...(this.mockRelayEpoch ? { "Remote-Agent-Relay-Epoch": this.mockRelayEpoch } : {}),
+            },
+          },
         );
       }
       return new Response(

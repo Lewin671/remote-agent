@@ -39,6 +39,14 @@ const (
 	NotifyKind_NOTIFY_KIND_MACHINE_DISK NotifyKind = 5
 )
 
+type PushType int32
+
+const (
+	PushType_PUSH_TYPE_UNSPECIFIED PushType = 0
+	PushType_PUSH_TYPE_WEB_PUSH    PushType = 1
+	PushType_PUSH_TYPE_FCM         PushType = 2
+)
+
 type RelayErrorReason int32
 
 const (
@@ -1343,6 +1351,1094 @@ func extraUnmarshal_ListMachinesResponse(base unsafe.Pointer, num litewire.Numbe
 	return false, nil
 }
 
+type ListRemoteSessionsRequest struct {
+	_          [0]func()
+	After      *SessionCursor
+	Limit      uint32
+	SessionIds []string
+}
+
+func (m *ListRemoteSessionsRequest) GetAfter() *SessionCursor {
+	if m != nil {
+		return m.After
+	}
+	return nil
+}
+func (m *ListRemoteSessionsRequest) GetLimit() uint32 {
+	if m != nil {
+		return m.Limit
+	}
+	return 0
+}
+func (m *ListRemoteSessionsRequest) GetSessionIds() []string {
+	if m != nil {
+		return m.SessionIds
+	}
+	return nil
+}
+
+var LitewireDesc_ListRemoteSessionsRequest = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ListRemoteSessionsRequest{}.After), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionCursor},
+		{Num: 2, Offset: unsafe.Offsetof(ListRemoteSessionsRequest{}.Limit), Kind: litewire.KindUint32},
+		{Num: 3, Offset: unsafe.Offsetof(ListRemoteSessionsRequest{}.SessionIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+	},
+}
+
+func (m *ListRemoteSessionsRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ListRemoteSessionsRequest) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ListRemoteSessionsRequest)
+}
+
+type ListRemoteSessionsResponse struct {
+	_        [0]func()
+	Sessions []*RemoteSession
+	Next     *SessionCursor
+}
+
+func (m *ListRemoteSessionsResponse) GetSessions() []*RemoteSession {
+	if m != nil {
+		return m.Sessions
+	}
+	return nil
+}
+func (m *ListRemoteSessionsResponse) GetNext() *SessionCursor {
+	if m != nil {
+		return m.Next
+	}
+	return nil
+}
+
+var LitewireDesc_ListRemoteSessionsResponse = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ListRemoteSessionsResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 2, Offset: unsafe.Offsetof(ListRemoteSessionsResponse{}.Next), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionCursor},
+	},
+}
+
+func (m *ListRemoteSessionsResponse) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ListRemoteSessionsResponse)
+}
+
+func extraUnmarshal_ListRemoteSessionsResponse(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*ListRemoteSessionsResponse)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
+		switch num {
+		case 1:
+			elem := &RemoteSession{}
+			m.Sessions = append(m.Sessions, elem)
+			if err := litewire.ReadMessage(&b, elem); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+type GetEventsRequest struct {
+	_         [0]func()
+	SessionId string
+	AfterSeq  uint64
+	Limit     uint32
+}
+
+func (m *GetEventsRequest) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *GetEventsRequest) GetAfterSeq() uint64 {
+	if m != nil {
+		return m.AfterSeq
+	}
+	return 0
+}
+func (m *GetEventsRequest) GetLimit() uint32 {
+	if m != nil {
+		return m.Limit
+	}
+	return 0
+}
+
+var LitewireDesc_GetEventsRequest = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(GetEventsRequest{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(GetEventsRequest{}.AfterSeq), Kind: litewire.KindUint64},
+		{Num: 3, Offset: unsafe.Offsetof(GetEventsRequest{}.Limit), Kind: litewire.KindUint32},
+	},
+}
+
+func (m *GetEventsRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *GetEventsRequest) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_GetEventsRequest)
+}
+
+type GetEventsResponse struct {
+	_      [0]func()
+	Events []*StoredEvent
+	More   bool
+}
+
+func (m *GetEventsResponse) GetEvents() []*StoredEvent {
+	if m != nil {
+		return m.Events
+	}
+	return nil
+}
+func (m *GetEventsResponse) GetMore() bool {
+	if m != nil {
+		return m.More
+	}
+	return false
+}
+
+var LitewireDesc_GetEventsResponse = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&GetEventsResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 2, Offset: unsafe.Offsetof(GetEventsResponse{}.More), Kind: litewire.KindBool},
+	},
+}
+
+func (m *GetEventsResponse) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_GetEventsResponse)
+}
+
+func extraUnmarshal_GetEventsResponse(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*GetEventsResponse)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
+		switch num {
+		case 1:
+			elem := &StoredEvent{}
+			m.Events = append(m.Events, elem)
+			if err := litewire.ReadMessage(&b, elem); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+type ForwardRequest struct {
+	_          [0]func()
+	MachineId  string
+	Command    *Envelope
+	AttemptId  string
+	RelayEpoch string
+}
+
+func (m *ForwardRequest) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+func (m *ForwardRequest) GetCommand() *Envelope {
+	if m != nil {
+		return m.Command
+	}
+	return nil
+}
+func (m *ForwardRequest) GetAttemptId() string {
+	if m != nil {
+		return m.AttemptId
+	}
+	return ""
+}
+func (m *ForwardRequest) GetRelayEpoch() string {
+	if m != nil {
+		return m.RelayEpoch
+	}
+	return ""
+}
+
+var LitewireDesc_ForwardRequest = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ForwardRequest{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ForwardRequest{}.Command), Kind: litewire.KindMessage, Sub: &LitewireDesc_Envelope},
+		{Num: 3, Offset: unsafe.Offsetof(ForwardRequest{}.AttemptId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ForwardRequest{}.RelayEpoch), Kind: litewire.KindString},
+	},
+}
+
+func (m *ForwardRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ForwardRequest) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ForwardRequest)
+}
+
+type ForwardResponse struct {
+	_         [0]func()
+	Result    *Envelope
+	Outcome   string
+	Reason    string
+	AttemptId string
+}
+
+func (m *ForwardResponse) GetResult() *Envelope {
+	if m != nil {
+		return m.Result
+	}
+	return nil
+}
+func (m *ForwardResponse) GetOutcome() string {
+	if m != nil {
+		return m.Outcome
+	}
+	return ""
+}
+func (m *ForwardResponse) GetReason() string {
+	if m != nil {
+		return m.Reason
+	}
+	return ""
+}
+func (m *ForwardResponse) GetAttemptId() string {
+	if m != nil {
+		return m.AttemptId
+	}
+	return ""
+}
+
+var LitewireDesc_ForwardResponse = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ForwardResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ForwardResponse{}.Result), Kind: litewire.KindMessage, Sub: &LitewireDesc_Envelope},
+		{Num: 2, Offset: unsafe.Offsetof(ForwardResponse{}.Outcome), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ForwardResponse{}.Reason), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ForwardResponse{}.AttemptId), Kind: litewire.KindString},
+	},
+}
+
+func (m *ForwardResponse) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ForwardResponse)
+}
+
+type NotForwarded struct {
+	_          [0]func()
+	AttemptId  string
+	Reason     string
+	RelayEpoch string
+}
+
+func (m *NotForwarded) GetAttemptId() string {
+	if m != nil {
+		return m.AttemptId
+	}
+	return ""
+}
+func (m *NotForwarded) GetReason() string {
+	if m != nil {
+		return m.Reason
+	}
+	return ""
+}
+func (m *NotForwarded) GetRelayEpoch() string {
+	if m != nil {
+		return m.RelayEpoch
+	}
+	return ""
+}
+
+var LitewireDesc_NotForwarded = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&NotForwarded{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(NotForwarded{}.AttemptId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(NotForwarded{}.Reason), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(NotForwarded{}.RelayEpoch), Kind: litewire.KindString},
+	},
+}
+
+func (m *NotForwarded) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_NotForwarded)
+}
+
+type StreamHello struct {
+	_     [0]func()
+	Token string
+}
+
+func (m *StreamHello) GetToken() string {
+	if m != nil {
+		return m.Token
+	}
+	return ""
+}
+
+var LitewireDesc_StreamHello = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(StreamHello{}.Token), Kind: litewire.KindString},
+	},
+}
+
+func (m *StreamHello) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *StreamHello) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_StreamHello)
+}
+
+type PeerFrame struct {
+	_    [0]func()
+	Kind isPeerFrame_Kind
+}
+
+type isPeerFrame_Kind interface{ isPeerFrame_Kind() }
+type PeerFrame_Hello struct {
+	_     [0]func()
+	Hello *StreamHello
+}
+
+func (*PeerFrame_Hello) isPeerFrame_Kind() {}
+
+type PeerFrame_ForwardReply struct {
+	_            [0]func()
+	ForwardReply *ForwardReply
+}
+
+func (*PeerFrame_ForwardReply) isPeerFrame_Kind() {}
+
+type PeerFrame_DirectedPeerFrame struct {
+	_                 [0]func()
+	DirectedPeerFrame *DirectedPeerFrame
+}
+
+func (*PeerFrame_DirectedPeerFrame) isPeerFrame_Kind() {}
+
+func (m *PeerFrame) GetKind() isPeerFrame_Kind {
+	if m != nil {
+		return m.Kind
+	}
+	return nil
+}
+func (m *PeerFrame) GetHello() *StreamHello {
+	if x, ok := m.GetKind().(*PeerFrame_Hello); ok && x != nil {
+		return x.Hello
+	}
+	return nil
+}
+func (m *PeerFrame) GetForwardReply() *ForwardReply {
+	if x, ok := m.GetKind().(*PeerFrame_ForwardReply); ok && x != nil {
+		return x.ForwardReply
+	}
+	return nil
+}
+func (m *PeerFrame) GetDirectedPeerFrame() *DirectedPeerFrame {
+	if x, ok := m.GetKind().(*PeerFrame_DirectedPeerFrame); ok && x != nil {
+		return x.DirectedPeerFrame
+	}
+	return nil
+}
+
+var LitewireDesc_PeerFrame = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: litewire.Number(1), Kind: litewire.KindCustom},
+	},
+}
+
+func (m *PeerFrame) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *PeerFrame) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_PeerFrame)
+}
+
+func extraMarshal_PeerFrame(base unsafe.Pointer, b []byte, idx litewire.Number) []byte {
+	m := (*PeerFrame)(base)
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Kind.(type) {
+	case *PeerFrame_Hello:
+		if x != nil && x.Hello != nil {
+			onum, omsg = 1, x.Hello
+		}
+	case *PeerFrame_ForwardReply:
+		if x != nil && x.ForwardReply != nil {
+			onum, omsg = 2, x.ForwardReply
+		}
+	case *PeerFrame_DirectedPeerFrame:
+		if x != nil && x.DirectedPeerFrame != nil {
+			onum, omsg = 3, x.DirectedPeerFrame
+		}
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b
+}
+
+type ServerFrame struct {
+	_    [0]func()
+	Kind isServerFrame_Kind
+}
+
+type isServerFrame_Kind interface{ isServerFrame_Kind() }
+type ServerFrame_Ready struct {
+	_     [0]func()
+	Ready *Ready
+}
+
+func (*ServerFrame_Ready) isServerFrame_Kind() {}
+
+type ServerFrame_Heartbeat struct {
+	_         [0]func()
+	Heartbeat *Heartbeat
+}
+
+func (*ServerFrame_Heartbeat) isServerFrame_Kind() {}
+
+type ServerFrame_PeerFrameDelivery struct {
+	_                 [0]func()
+	PeerFrameDelivery *PeerFrameDelivery
+}
+
+func (*ServerFrame_PeerFrameDelivery) isServerFrame_Kind() {}
+
+type ServerFrame_PeerFrameResult struct {
+	_               [0]func()
+	PeerFrameResult *PeerFrameResult
+}
+
+func (*ServerFrame_PeerFrameResult) isServerFrame_Kind() {}
+
+type ServerFrame_EventsAppended struct {
+	_              [0]func()
+	EventsAppended *EventsAppended
+}
+
+func (*ServerFrame_EventsAppended) isServerFrame_Kind() {}
+
+type ServerFrame_SessionUpdated struct {
+	_              [0]func()
+	SessionUpdated *SessionUpdated
+}
+
+func (*ServerFrame_SessionUpdated) isServerFrame_Kind() {}
+
+type ServerFrame_MachineUpdated struct {
+	_              [0]func()
+	MachineUpdated *MachineUpdated
+}
+
+func (*ServerFrame_MachineUpdated) isServerFrame_Kind() {}
+
+type ServerFrame_MachineRemoved struct {
+	_              [0]func()
+	MachineRemoved *MachineRemoved
+}
+
+func (*ServerFrame_MachineRemoved) isServerFrame_Kind() {}
+
+type ServerFrame_AccountPrefsUpdated struct {
+	_                   [0]func()
+	AccountPrefsUpdated *AccountPrefsUpdated
+}
+
+func (*ServerFrame_AccountPrefsUpdated) isServerFrame_Kind() {}
+
+type ServerFrame_DeviceUpdated struct {
+	_             [0]func()
+	DeviceUpdated *DeviceUpdated
+}
+
+func (*ServerFrame_DeviceUpdated) isServerFrame_Kind() {}
+
+type ServerFrame_DeviceRemoved struct {
+	_             [0]func()
+	DeviceRemoved *DeviceRemoved
+}
+
+func (*ServerFrame_DeviceRemoved) isServerFrame_Kind() {}
+
+type ServerFrame_ForwardCall struct {
+	_           [0]func()
+	ForwardCall *ForwardCall
+}
+
+func (*ServerFrame_ForwardCall) isServerFrame_Kind() {}
+
+func (m *ServerFrame) GetKind() isServerFrame_Kind {
+	if m != nil {
+		return m.Kind
+	}
+	return nil
+}
+func (m *ServerFrame) GetReady() *Ready {
+	if x, ok := m.GetKind().(*ServerFrame_Ready); ok && x != nil {
+		return x.Ready
+	}
+	return nil
+}
+func (m *ServerFrame) GetHeartbeat() *Heartbeat {
+	if x, ok := m.GetKind().(*ServerFrame_Heartbeat); ok && x != nil {
+		return x.Heartbeat
+	}
+	return nil
+}
+func (m *ServerFrame) GetPeerFrameDelivery() *PeerFrameDelivery {
+	if x, ok := m.GetKind().(*ServerFrame_PeerFrameDelivery); ok && x != nil {
+		return x.PeerFrameDelivery
+	}
+	return nil
+}
+func (m *ServerFrame) GetPeerFrameResult() *PeerFrameResult {
+	if x, ok := m.GetKind().(*ServerFrame_PeerFrameResult); ok && x != nil {
+		return x.PeerFrameResult
+	}
+	return nil
+}
+func (m *ServerFrame) GetEventsAppended() *EventsAppended {
+	if x, ok := m.GetKind().(*ServerFrame_EventsAppended); ok && x != nil {
+		return x.EventsAppended
+	}
+	return nil
+}
+func (m *ServerFrame) GetSessionUpdated() *SessionUpdated {
+	if x, ok := m.GetKind().(*ServerFrame_SessionUpdated); ok && x != nil {
+		return x.SessionUpdated
+	}
+	return nil
+}
+func (m *ServerFrame) GetMachineUpdated() *MachineUpdated {
+	if x, ok := m.GetKind().(*ServerFrame_MachineUpdated); ok && x != nil {
+		return x.MachineUpdated
+	}
+	return nil
+}
+func (m *ServerFrame) GetMachineRemoved() *MachineRemoved {
+	if x, ok := m.GetKind().(*ServerFrame_MachineRemoved); ok && x != nil {
+		return x.MachineRemoved
+	}
+	return nil
+}
+func (m *ServerFrame) GetAccountPrefsUpdated() *AccountPrefsUpdated {
+	if x, ok := m.GetKind().(*ServerFrame_AccountPrefsUpdated); ok && x != nil {
+		return x.AccountPrefsUpdated
+	}
+	return nil
+}
+func (m *ServerFrame) GetDeviceUpdated() *DeviceUpdated {
+	if x, ok := m.GetKind().(*ServerFrame_DeviceUpdated); ok && x != nil {
+		return x.DeviceUpdated
+	}
+	return nil
+}
+func (m *ServerFrame) GetDeviceRemoved() *DeviceRemoved {
+	if x, ok := m.GetKind().(*ServerFrame_DeviceRemoved); ok && x != nil {
+		return x.DeviceRemoved
+	}
+	return nil
+}
+func (m *ServerFrame) GetForwardCall() *ForwardCall {
+	if x, ok := m.GetKind().(*ServerFrame_ForwardCall); ok && x != nil {
+		return x.ForwardCall
+	}
+	return nil
+}
+
+var LitewireDesc_ServerFrame = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ServerFrame{}) },
+}
+
+func (m *ServerFrame) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ServerFrame)
+}
+
+func extraUnmarshal_ServerFrame(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*ServerFrame)(base)
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
+		case 1:
+			w, _ := m.Kind.(*ServerFrame_Ready)
+			if w == nil || w.Ready == nil {
+				w = &ServerFrame_Ready{Ready: &Ready{}}
+				m.Kind = w
+			}
+			sub = w.Ready
+		case 10:
+			w, _ := m.Kind.(*ServerFrame_Heartbeat)
+			if w == nil || w.Heartbeat == nil {
+				w = &ServerFrame_Heartbeat{Heartbeat: &Heartbeat{}}
+				m.Kind = w
+			}
+			sub = w.Heartbeat
+		case 11:
+			w, _ := m.Kind.(*ServerFrame_PeerFrameDelivery)
+			if w == nil || w.PeerFrameDelivery == nil {
+				w = &ServerFrame_PeerFrameDelivery{PeerFrameDelivery: &PeerFrameDelivery{}}
+				m.Kind = w
+			}
+			sub = w.PeerFrameDelivery
+		case 12:
+			w, _ := m.Kind.(*ServerFrame_PeerFrameResult)
+			if w == nil || w.PeerFrameResult == nil {
+				w = &ServerFrame_PeerFrameResult{PeerFrameResult: &PeerFrameResult{}}
+				m.Kind = w
+			}
+			sub = w.PeerFrameResult
+		case 2:
+			w, _ := m.Kind.(*ServerFrame_EventsAppended)
+			if w == nil || w.EventsAppended == nil {
+				w = &ServerFrame_EventsAppended{EventsAppended: &EventsAppended{}}
+				m.Kind = w
+			}
+			sub = w.EventsAppended
+		case 3:
+			w, _ := m.Kind.(*ServerFrame_SessionUpdated)
+			if w == nil || w.SessionUpdated == nil {
+				w = &ServerFrame_SessionUpdated{SessionUpdated: &SessionUpdated{}}
+				m.Kind = w
+			}
+			sub = w.SessionUpdated
+		case 4:
+			w, _ := m.Kind.(*ServerFrame_MachineUpdated)
+			if w == nil || w.MachineUpdated == nil {
+				w = &ServerFrame_MachineUpdated{MachineUpdated: &MachineUpdated{}}
+				m.Kind = w
+			}
+			sub = w.MachineUpdated
+		case 6:
+			w, _ := m.Kind.(*ServerFrame_MachineRemoved)
+			if w == nil || w.MachineRemoved == nil {
+				w = &ServerFrame_MachineRemoved{MachineRemoved: &MachineRemoved{}}
+				m.Kind = w
+			}
+			sub = w.MachineRemoved
+		case 7:
+			w, _ := m.Kind.(*ServerFrame_AccountPrefsUpdated)
+			if w == nil || w.AccountPrefsUpdated == nil {
+				w = &ServerFrame_AccountPrefsUpdated{AccountPrefsUpdated: &AccountPrefsUpdated{}}
+				m.Kind = w
+			}
+			sub = w.AccountPrefsUpdated
+		case 8:
+			w, _ := m.Kind.(*ServerFrame_DeviceUpdated)
+			if w == nil || w.DeviceUpdated == nil {
+				w = &ServerFrame_DeviceUpdated{DeviceUpdated: &DeviceUpdated{}}
+				m.Kind = w
+			}
+			sub = w.DeviceUpdated
+		case 9:
+			w, _ := m.Kind.(*ServerFrame_DeviceRemoved)
+			if w == nil || w.DeviceRemoved == nil {
+				w = &ServerFrame_DeviceRemoved{DeviceRemoved: &DeviceRemoved{}}
+				m.Kind = w
+			}
+			sub = w.DeviceRemoved
+		case 5:
+			w, _ := m.Kind.(*ServerFrame_ForwardCall)
+			if w == nil || w.ForwardCall == nil {
+				w = &ServerFrame_ForwardCall{ForwardCall: &ForwardCall{}}
+				m.Kind = w
+			}
+			sub = w.ForwardCall
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+type Heartbeat struct {
+}
+
+var LitewireDesc_Heartbeat = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&Heartbeat{}) },
+}
+
+func (m *Heartbeat) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_Heartbeat)
+}
+
+type Ready struct {
+	_            [0]func()
+	ServerTimeMs int64
+}
+
+func (m *Ready) GetServerTimeMs() int64 {
+	if m != nil {
+		return m.ServerTimeMs
+	}
+	return 0
+}
+
+var LitewireDesc_Ready = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&Ready{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(Ready{}.ServerTimeMs), Kind: litewire.KindInt64},
+	},
+}
+
+func (m *Ready) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_Ready)
+}
+
+type EventsAppended struct {
+	_         [0]func()
+	MachineId string
+	SessionId string
+	Events    []*StoredEvent
+}
+
+func (m *EventsAppended) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+func (m *EventsAppended) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *EventsAppended) GetEvents() []*StoredEvent {
+	if m != nil {
+		return m.Events
+	}
+	return nil
+}
+
+var LitewireDesc_EventsAppended = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&EventsAppended{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(EventsAppended{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(EventsAppended{}.SessionId), Kind: litewire.KindString},
+	},
+}
+
+func (m *EventsAppended) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_EventsAppended)
+}
+
+func extraUnmarshal_EventsAppended(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*EventsAppended)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
+		switch num {
+		case 3:
+			elem := &StoredEvent{}
+			m.Events = append(m.Events, elem)
+			if err := litewire.ReadMessage(&b, elem); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+type SessionUpdated struct {
+	_       [0]func()
+	Session *RemoteSession
+}
+
+func (m *SessionUpdated) GetSession() *RemoteSession {
+	if m != nil {
+		return m.Session
+	}
+	return nil
+}
+
+var LitewireDesc_SessionUpdated = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionUpdated{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionUpdated{}.Session), Kind: litewire.KindMessage, Sub: &LitewireDesc_RemoteSession},
+	},
+}
+
+func (m *SessionUpdated) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionUpdated)
+}
+
+type MachineUpdated struct {
+	_       [0]func()
+	Machine *Machine
+}
+
+func (m *MachineUpdated) GetMachine() *Machine {
+	if m != nil {
+		return m.Machine
+	}
+	return nil
+}
+
+var LitewireDesc_MachineUpdated = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&MachineUpdated{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(MachineUpdated{}.Machine), Kind: litewire.KindMessage, Sub: &LitewireDesc_Machine},
+	},
+}
+
+func (m *MachineUpdated) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_MachineUpdated)
+}
+
+type MachineRemoved struct {
+	_         [0]func()
+	MachineId string
+}
+
+func (m *MachineRemoved) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+
+var LitewireDesc_MachineRemoved = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&MachineRemoved{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(MachineRemoved{}.MachineId), Kind: litewire.KindString},
+	},
+}
+
+func (m *MachineRemoved) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_MachineRemoved)
+}
+
+type ForwardCall struct {
+	_                           [0]func()
+	CallId                      uint64
+	Command                     *Envelope
+	SenderDeviceId              string
+	SenderRegistration          []byte
+	SenderRegistrationSignature []byte
+	AttemptId                   string
+}
+
+func (m *ForwardCall) GetCallId() uint64 {
+	if m != nil {
+		return m.CallId
+	}
+	return 0
+}
+func (m *ForwardCall) GetCommand() *Envelope {
+	if m != nil {
+		return m.Command
+	}
+	return nil
+}
+func (m *ForwardCall) GetSenderDeviceId() string {
+	if m != nil {
+		return m.SenderDeviceId
+	}
+	return ""
+}
+func (m *ForwardCall) GetSenderRegistration() []byte {
+	if m != nil {
+		return m.SenderRegistration
+	}
+	return nil
+}
+func (m *ForwardCall) GetSenderRegistrationSignature() []byte {
+	if m != nil {
+		return m.SenderRegistrationSignature
+	}
+	return nil
+}
+func (m *ForwardCall) GetAttemptId() string {
+	if m != nil {
+		return m.AttemptId
+	}
+	return ""
+}
+
+var LitewireDesc_ForwardCall = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ForwardCall{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ForwardCall{}.CallId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(ForwardCall{}.Command), Kind: litewire.KindMessage, Sub: &LitewireDesc_Envelope},
+		{Num: 3, Offset: unsafe.Offsetof(ForwardCall{}.SenderDeviceId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ForwardCall{}.SenderRegistration), Kind: litewire.KindBytes},
+		{Num: 5, Offset: unsafe.Offsetof(ForwardCall{}.SenderRegistrationSignature), Kind: litewire.KindBytes},
+		{Num: 6, Offset: unsafe.Offsetof(ForwardCall{}.AttemptId), Kind: litewire.KindString},
+	},
+}
+
+func (m *ForwardCall) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ForwardCall)
+}
+
+type ForwardReply struct {
+	_            [0]func()
+	CallId       uint64
+	Result       *Envelope
+	Reason       string
+	Outcome      string
+	AttemptId    string
+	EntryFailure bool
+}
+
+func (m *ForwardReply) GetCallId() uint64 {
+	if m != nil {
+		return m.CallId
+	}
+	return 0
+}
+func (m *ForwardReply) GetResult() *Envelope {
+	if m != nil {
+		return m.Result
+	}
+	return nil
+}
+func (m *ForwardReply) GetReason() string {
+	if m != nil {
+		return m.Reason
+	}
+	return ""
+}
+func (m *ForwardReply) GetOutcome() string {
+	if m != nil {
+		return m.Outcome
+	}
+	return ""
+}
+func (m *ForwardReply) GetAttemptId() string {
+	if m != nil {
+		return m.AttemptId
+	}
+	return ""
+}
+func (m *ForwardReply) GetEntryFailure() bool {
+	if m != nil {
+		return m.EntryFailure
+	}
+	return false
+}
+
+var LitewireDesc_ForwardReply = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ForwardReply{}.CallId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(ForwardReply{}.Result), Kind: litewire.KindMessage, Sub: &LitewireDesc_Envelope},
+		{Num: 3, Offset: unsafe.Offsetof(ForwardReply{}.Reason), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ForwardReply{}.Outcome), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(ForwardReply{}.AttemptId), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(ForwardReply{}.EntryFailure), Kind: litewire.KindBool},
+	},
+}
+
+func (m *ForwardReply) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ForwardReply) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ForwardReply)
+}
+
+type GetPushKeyRequest struct {
+}
+
+var LitewireDesc_GetPushKeyRequest = litewire.MessageDesc{}
+
+func (m *GetPushKeyRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *GetPushKeyRequest) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_GetPushKeyRequest)
+}
+
+type GetPushKeyResponse struct {
+	_                        [0]func()
+	PublicKey                string
+	MachineDiskNotifications bool
+}
+
+func (m *GetPushKeyResponse) GetPublicKey() string {
+	if m != nil {
+		return m.PublicKey
+	}
+	return ""
+}
+func (m *GetPushKeyResponse) GetMachineDiskNotifications() bool {
+	if m != nil {
+		return m.MachineDiskNotifications
+	}
+	return false
+}
+
+var LitewireDesc_GetPushKeyResponse = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&GetPushKeyResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(GetPushKeyResponse{}.PublicKey), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(GetPushKeyResponse{}.MachineDiskNotifications), Kind: litewire.KindBool},
+	},
+}
+
+func (m *GetPushKeyResponse) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_GetPushKeyResponse)
+}
+
+type SetPushSubscriptionRequest struct {
+	_                [0]func()
+	SubscriptionJson string
+	Kinds            []NotifyKind
+}
+
+func (m *SetPushSubscriptionRequest) GetSubscriptionJson() string {
+	if m != nil {
+		return m.SubscriptionJson
+	}
+	return ""
+}
+func (m *SetPushSubscriptionRequest) GetKinds() []NotifyKind {
+	if m != nil {
+		return m.Kinds
+	}
+	return nil
+}
+
+var LitewireDesc_SetPushSubscriptionRequest = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SetPushSubscriptionRequest{}.SubscriptionJson), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SetPushSubscriptionRequest{}.Kinds), Kind: litewire.KindInt32, Flags: litewire.FlagRepeated | litewire.FlagPacked | litewire.FlagMarshalOnly},
+	},
+}
+
+func (m *SetPushSubscriptionRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SetPushSubscriptionRequest) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SetPushSubscriptionRequest)
+}
+
+type SetPushSubscriptionResponse struct {
+}
+
+var LitewireDesc_SetPushSubscriptionResponse = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SetPushSubscriptionResponse{}) },
+}
+
+func (m *SetPushSubscriptionResponse) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SetPushSubscriptionResponse)
+}
+
 type PinSecurityDomainRequest struct {
 	_            [0]func()
 	GenesisState []byte
@@ -1913,6 +3009,71 @@ func (m *CompleteRecoveryResponse) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_CompleteRecoveryResponse)
 }
 
+type SetPushTargetRequest struct {
+	_      [0]func()
+	Type   PushType
+	Target string
+	Kinds  []NotifyKind
+}
+
+func (m *SetPushTargetRequest) GetType() PushType {
+	if m != nil {
+		return m.Type
+	}
+	return 0
+}
+func (m *SetPushTargetRequest) GetTarget() string {
+	if m != nil {
+		return m.Target
+	}
+	return ""
+}
+func (m *SetPushTargetRequest) GetKinds() []NotifyKind {
+	if m != nil {
+		return m.Kinds
+	}
+	return nil
+}
+
+var LitewireDesc_SetPushTargetRequest = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SetPushTargetRequest{}.Type), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(SetPushTargetRequest{}.Target), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SetPushTargetRequest{}.Kinds), Kind: litewire.KindInt32, Flags: litewire.FlagRepeated | litewire.FlagPacked | litewire.FlagMarshalOnly},
+	},
+}
+
+func (m *SetPushTargetRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SetPushTargetRequest) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SetPushTargetRequest)
+}
+
+type SetPushTargetResponse struct {
+	_       [0]func()
+	Enabled bool
+}
+
+func (m *SetPushTargetResponse) GetEnabled() bool {
+	if m != nil {
+		return m.Enabled
+	}
+	return false
+}
+
+var LitewireDesc_SetPushTargetResponse = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SetPushTargetResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SetPushTargetResponse{}.Enabled), Kind: litewire.KindBool},
+	},
+}
+
+func (m *SetPushTargetResponse) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SetPushTargetResponse)
+}
+
 type Device struct {
 	_            [0]func()
 	Id           string
@@ -2292,6 +3453,75 @@ func (m *PutAccountPrefsResponse) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_PutAccountPrefsResponse)
 }
 
+type AccountPrefsUpdated struct {
+	_      [0]func()
+	Object *AccountPrefsObject
+}
+
+func (m *AccountPrefsUpdated) GetObject() *AccountPrefsObject {
+	if m != nil {
+		return m.Object
+	}
+	return nil
+}
+
+var LitewireDesc_AccountPrefsUpdated = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&AccountPrefsUpdated{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(AccountPrefsUpdated{}.Object), Kind: litewire.KindMessage, Sub: &LitewireDesc_AccountPrefsObject},
+	},
+}
+
+func (m *AccountPrefsUpdated) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_AccountPrefsUpdated)
+}
+
+type DeviceUpdated struct {
+	_      [0]func()
+	Device *Device
+}
+
+func (m *DeviceUpdated) GetDevice() *Device {
+	if m != nil {
+		return m.Device
+	}
+	return nil
+}
+
+var LitewireDesc_DeviceUpdated = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DeviceUpdated{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DeviceUpdated{}.Device), Kind: litewire.KindMessage, Sub: &LitewireDesc_Device},
+	},
+}
+
+func (m *DeviceUpdated) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DeviceUpdated)
+}
+
+type DeviceRemoved struct {
+	_        [0]func()
+	DeviceId string
+}
+
+func (m *DeviceRemoved) GetDeviceId() string {
+	if m != nil {
+		return m.DeviceId
+	}
+	return ""
+}
+
+var LitewireDesc_DeviceRemoved = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DeviceRemoved{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DeviceRemoved{}.DeviceId), Kind: litewire.KindString},
+	},
+}
+
+func (m *DeviceRemoved) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DeviceRemoved)
+}
+
 type DeleteMachineRecordsRequest struct {
 	_         [0]func()
 	MachineId string
@@ -2401,6 +3631,11 @@ func (m *RelayErrorDetail) Unmarshal(b []byte) error {
 
 func init() {
 	LitewireDesc_ListMachinesResponse.ExtraUnmarshal = extraUnmarshal_ListMachinesResponse
+	LitewireDesc_ListRemoteSessionsResponse.ExtraUnmarshal = extraUnmarshal_ListRemoteSessionsResponse
+	LitewireDesc_GetEventsResponse.ExtraUnmarshal = extraUnmarshal_GetEventsResponse
+	LitewireDesc_PeerFrame.ExtraMarshal = extraMarshal_PeerFrame
+	LitewireDesc_ServerFrame.ExtraUnmarshal = extraUnmarshal_ServerFrame
+	LitewireDesc_EventsAppended.ExtraUnmarshal = extraUnmarshal_EventsAppended
 	LitewireDesc_PutSecurityStateRequest.ExtraUnmarshal = extraUnmarshal_PutSecurityStateRequest
 	LitewireDesc_GetSecurityStatesResponse.ExtraUnmarshal = extraUnmarshal_GetSecurityStatesResponse
 	LitewireDesc_GetRecoveryContextResponse.ExtraUnmarshal = extraUnmarshal_GetRecoveryContextResponse

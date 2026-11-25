@@ -349,6 +349,25 @@ func (e *Engine) waitRPC(method corev1.SecurityRpcMethod, server, token string, 
 	} else {
 		opID = e.allocOp()
 	}
+	if e.useRelayPipe {
+		timeoutMs := int64(15_000)
+		if method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+			timeoutMs = 5_000
+		}
+		e.out = append(e.out, &corev1.Effect{
+			Effect: &corev1.Effect_RelayRpc{
+				RelayRpc: &corev1.RelayRpcEffect{
+					OpId:         opID,
+					Method:       corev1.RelayRpcMethod(method),
+					Server:       server,
+					AuthToken:    token,
+					TimeoutMs:    timeoutMs,
+					RequestBytes: reqBytes,
+				},
+			},
+		})
+		return
+	}
 	e.out = append(e.out, &corev1.Effect{
 		Effect: &corev1.Effect_SecurityRpc{
 			SecurityRpc: &corev1.SecurityRpcEffect{OpId: opID, Method: method, Server: server, AuthToken: token, RequestBytes: reqBytes},

@@ -1,10 +1,9 @@
-import { DirectExecutor, peerFrameBody } from "./transport/direct-executor";
+import { DirectExecutor } from "./transport/direct-executor";
 import { abortable, ownedRound, PathChanged } from "./transport/recovery";
 import { cleanup } from "./cleanup";
 import { Link as DeviceLink } from "./transport/link";
 import { RelayPath } from "./transport/relay-path";
 import type { FrameStream } from "./transport/path";
-import { machineNotificationKinds } from "./machine-notifications";
 import * as l10n from "./i18n";
 import { UnsupportedHistoryError } from "./crypto";
 import type { ImagePrepareFn } from "./attachment-executor";
@@ -34,20 +33,12 @@ import {
   translateSecurityErrorMessage,
 } from "./core/security-client";
 import {
-  AccountPrefsFetchedEventSchema,
-  AccountPrefsPutResultEventSchema,
   CacheBootstrapLoadedEventSchema,
   CacheEventsLoadedEventSchema,
   CommandOutcomeEventSchema,
-  DevicesFetchedEventSchema,
   DirectEventsReceivedEventSchema,
   EventSchema as CoreEventSchema,
-  EventsAppendedFrameSchema,
-  EventsPageFetchedEventSchema,
-  ListsFetchedEventSchema,
   OutcomeSource,
-  SessionByIdFetchedEventSchema,
-  SessionsPageFetchedEventSchema,
   TokenResultEventSchema,
   type CacheBootstrapLoadedEvent,
   type CacheDeleteEffect,
@@ -56,10 +47,13 @@ import {
   type CommandOutcomeEvent,
   type DispatchCommandEffect,
   type Effect,
-  type Event as CoreEvent,
-  type RpcEffect,
   type TokenResultEvent,
 } from "./gen/remoteagent/core/v1/app_pb";
+import {
+  RelayRpcMethod,
+  type RelayRpcCancelEffect,
+  type RelayRpcEffect,
+} from "./gen/remoteagent/core/v1/relay_pipe_pb";
 import {
   SecurityBootstrapKind,
   SecurityErrorCode,
@@ -106,8 +100,6 @@ import { ScreenTarget } from "./gen/remoteagent/core/v1/app_pb";
 import type { SharedFileStore } from "./shared-file-store";
 import { dispatchSecurityEffect, WebSecurityExecutor } from "./core/security-executor";
 
-export const MAX_CLOCK_SKEW = 5 * 60 * 1000;
-
 export enum Purpose {
   Event = 1,
   SessionMeta = 2,
@@ -127,13 +119,13 @@ export enum Purpose {
 
 import {
   AuthService,
-  ClientService,
-  ForwardResponseSchema,
+  GetImageRequestSchema,
+  GetImageResponseSchema,
   ListMachinesResponseSchema,
   ListRemoteSessionsResponseSchema,
   NotifyKind,
-  PeerFrameSchema,
-  ServerFrameSchema,
+  RelayErrorDetailSchema,
+  RelayErrorReason,
   StoredEventSchema,
   TermHelloSchema,
   AccountPrefsObjectSchema,
@@ -142,7 +134,6 @@ import {
   type RemoteSession,
   type StoredEvent,
 } from "./gen/remoteagent/v1/relay_pb";
-import { PeerFrameResultSchema } from "./gen/remoteagent/v1/transport_pb";
 import {
   create,
   fromBinary,
@@ -155,11 +146,9 @@ import {
   Code,
   ConnectError,
   createClient,
-  type Client,
-  type Interceptor,
 } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
-import { relayFetch, relayEpoch } from "./transport";
+import { relayFetch } from "./transport";
 import { closeScheduleNotification, watchSecurityPush } from "./push";
 import {
   checkServer,
@@ -179,7 +168,6 @@ import {
 import { matchesFormat, mimeOf } from "./imageview";
 import {
   CommandResultSchema,
-  CommandSchema,
   ImagePayloadSchema,
   TerminalFrameSchema,
   type TerminalFrame,
@@ -262,8 +250,6 @@ export class Remote implements CoreExecutor {
   private persistedSessions = new Map<string, RemoteSession>();
 
   private watchedSessions = new Map<string, string>();
-  private devicesPushSeq = 1n;
-  private serverAhead = false;
   private securityStatusSnapshot?: SecurityWorkflowStatus;
   authorityDeviceId = "";
   authorityError = "";
@@ -274,9 +260,9 @@ export class Remote implements CoreExecutor {
   prepareImageOverride?: ImagePrepareFn;
   private readonly secStore: SecurityStoreV4;
   private readonly secExec: WebSecurityExecutor;
+  private readonly fetchFn: typeof fetch;
   readonly deviceLink: DeviceLink;
 
-  protected api: Client<typeof ClientService>;
   private unwatchSecurityPush?: () => void;
   private token = "";
   private tokenExpires = 0;
@@ -315,41 +301,17 @@ export class Remote implements CoreExecutor {
     fetchFn: typeof fetch = relayFetch,
   ) {
     this.secStore = store;
+    this.fetchFn = fetchFn;
     if (initialStatus) {
       this.applySecurityStatusSnapshot(initialStatus);
     }
-    const auth: Interceptor = (next) => (req) => {
-      const sentToken = this.token;
-      req.header.set("Authorization", "Bearer " + sentToken);
-      return next(req).catch((e: unknown) => {
-        if (e instanceof ConnectError && e.code === Code.Unauthenticated && this.token === sentToken) {
-          this.discardToken(sentToken);
-        }
-        throw e;
-      });
-    };
-    this.api = createClient(
-      ClientService,
-      createConnectTransport({
-        fetch: fetchFn,
-        baseUrl: apiBase(account.server),
-        useBinaryFormat: true,
-        defaultTimeoutMs: RPC_TIMEOUT_MS,
-        interceptors: [auth],
-      }),
-    );
     this.secExec = new WebSecurityExecutor({
       store,
       fetch: fetchFn,
+      defaultServer: account.server,
       emit: (ev) => this.hostBridge?.dispatchEvent(ev),
     });
-    this.deviceLink = new DeviceLink(
-      new RelayPath(
-        () => this.relayEpoch(),
-        (request, options) => this.api.forward(request, options),
-        (signal) => this.login(signal),
-      ),
-    );
+    this.deviceLink = new DeviceLink(new RelayPath());
     this.directExec = this.newDirectExecutor();
   }
 
@@ -626,14 +588,23 @@ export class Remote implements CoreExecutor {
   get securityClient(): SecurityClient { return this.ensureHost().securityClient; }
   demoFlag(_name: string): boolean { return false; }
 
-  // --- CoreExecutor: Stream / Auth / Security / Cache / RPC ---
+  // --- CoreExecutor: Stream / Auth / Security / Cache / Relay Pipe ---
 
-  openStreamLeg(legId: bigint, token: string, callbacks: StreamLegCallbacks) {
+  useRelayPipe(): boolean { return true; }
+
+  relayRpc(eff: RelayRpcEffect) {
+    void this.secExec.relayRpc(eff);
+  }
+
+  relayRpcCancel(eff: RelayRpcCancelEffect) {
+    this.secExec.relayRpcCancel(eff);
+  }
+
+  openStreamLeg(legId: bigint, _token: string, callbacks: StreamLegCallbacks, helloFrame?: Uint8Array<ArrayBuffer>) {
     this.closeStreamLeg(legId);
     const ws = this.deviceLink.openPathStream(apiBase(this.account.server).replace(/^http/, "ws") + "/v1/stream");
     const state = { ws, stopped: false };
     this.legs.set(legId, state);
-    let processing = Promise.resolve(), queuedBytes = 0, queuedFrames = 0;
 
     const drop = (error: string, code?: number) => {
       if (state.stopped) return;
@@ -646,49 +617,20 @@ export class Remote implements CoreExecutor {
 
     ws.onOpen = () => {
       if (state.stopped || this.legs.get(legId) !== state) return;
-      try { ws.send(toBinary(PeerFrameSchema, create(PeerFrameSchema, { kind: { case: "hello", value: { token } } })) as Uint8Array<ArrayBuffer>); }
-      catch (e) { drop(errorText(e)); }
+      try {
+        if (!helloFrame || helloFrame.byteLength === 0) throw new Error("missing stream hello frame");
+        ws.send(helloFrame);
+        this.directExec.attachLeg(ws);
+      } catch (e) {
+        drop(errorText(e));
+      }
     };
     ws.onError = () => drop(l10n.t("errors.disconnected_from_server"));
     ws.onEnd = (code) => drop(l10n.t("errors.disconnected_from_server"), code);
     ws.onFrame = (data) => {
       if (state.stopped || this.legs.get(legId) !== state) return;
       if (data.byteLength > 2 * 1024 * 1024) { drop(l10n.t("errors.push_backlog_reconnecting")); return; }
-      let frame;
-      try { frame = fromBinary(ServerFrameSchema, new Uint8Array(data)); }
-      catch (e) { drop(errorText(e)); return; }
-      if (frame.kind.case === "ready") {
-        this.serverAhead = BigInt(Date.now()) - frame.kind.value.serverTimeMs > BigInt(MAX_CLOCK_SKEW);
-        this.directExec.attachLeg(ws);
-        callbacks.onReady(legId, frame.kind.value.serverTimeMs);
-        return;
-      }
-      if (frame.kind.case === "peerFrameDelivery" || frame.kind.case === "peerFrameResult") {
-        const raw = peerFrameBody(new Uint8Array(data), frame.kind.case === "peerFrameDelivery" ? 11 : 12);
-        if (raw) {
-          if (frame.kind.case === "peerFrameDelivery") {
-            this.hostBridge?.dispatchDirectSignal(raw);
-          } else {
-            try {
-              const res = fromBinary(PeerFrameResultSchema, raw);
-              this.hostBridge?.dispatchDirectSignalDelivery(new Uint8Array(res.frameId), res.status, Number(res.retryAfterMs));
-            } catch { /* Ignore malformed receipt. */ }
-          }
-        }
-        return;
-      }
-      queuedBytes += data.byteLength;
-      queuedFrames++;
-      if (queuedBytes > 8 * 1024 * 1024 || queuedFrames > 1024) { drop(l10n.t("errors.push_backlog_reconnecting")); return; }
-      processing = processing.then(async () => {
-        if (state.stopped || this.legs.get(legId) !== state) return;
-        const mapped = await this.mapStreamFrame(frame.kind);
-        if (mapped) {
-          callbacks.onFrame(legId, mapped);
-        }
-      }).catch((e) => {
-        if (!state.stopped && this.legs.get(legId) === state) drop(errorText(e));
-      }).finally(() => { queuedBytes -= data.byteLength; queuedFrames--; });
+      callbacks.onRawFrame(legId, new Uint8Array(data));
     };
   }
 
@@ -699,20 +641,6 @@ export class Remote implements CoreExecutor {
     this.legs.delete(legId);
     this.directExec.detachLeg(leg.ws);
     leg.ws.close();
-  }
-
-  private mapStreamFrame(kind: ReturnType<typeof fromBinary<typeof ServerFrameSchema>>["kind"]) {
-    switch (kind.case) {
-      case "heartbeat": return { case: "heartbeat" as const, value: true };
-      case "machineUpdated": return kind.value.machine ? { case: "wireMachineUpdated" as const, value: kind.value.machine } : undefined;
-      case "machineRemoved": return { case: "machineRemovedId" as const, value: kind.value.machineId };
-      case "sessionUpdated": return kind.value.session ? { case: "wireSessionUpdated" as const, value: kind.value.session } : undefined;
-      case "eventsAppended": return { case: "eventsAppended" as const, value: create(EventsAppendedFrameSchema, { sessionId: kind.value.sessionId, wireEvents: kind.value.events }) };
-      case "accountPrefsUpdated": return kind.value.object ? { case: "wireAccountPrefsUpdated" as const, value: kind.value.object } : undefined;
-      case "deviceUpdated": return kind.value.device ? { case: "wireDeviceUpdated" as const, value: kind.value.device } : undefined;
-      case "deviceRemoved": return { case: "deviceRemovedId" as const, value: kind.value.deviceId };
-      default: return undefined;
-    }
   }
 
   private async warmTokenOnce() {
@@ -884,83 +812,7 @@ export class Remote implements CoreExecutor {
   private persistMachinesList = () => this.keepValue("machines", { bytes: toBinary(ListMachinesResponseSchema, create(ListMachinesResponseSchema, { machines: [...this.persistedMachines.values()] })) });
   private persistSessionsList = () => this.keepValue("sessions", { bytes: toBinary(ListRemoteSessionsResponseSchema, create(ListRemoteSessionsResponseSchema, { sessions: [...this.persistedSessions.values()] })) });
 
-  private rpcEv(event: CoreEvent["event"]): CoreEvent {
-    return create(CoreEventSchema, { event });
-  }
-
-  async executeRpc(eff: RpcEffect): Promise<CoreEvent> {
-    const opId = eff.opId;
-    switch (eff.kind.case) {
-      case "fetchLists":
-        try {
-          const [mRes, sRes, dRes] = await Promise.all([
-            this.api.listMachines({}),
-            this.api.listRemoteSessions({ limit: eff.kind.value.limit || this.sessionPageSize }),
-            this.api.listDevices({}),
-          ]);
-          return this.rpcEv({ case: "listsFetched", value: create(ListsFetchedEventSchema, { opId, wireMachines: mRes.machines, wireSessions: sRes.sessions, next: sRes.next, wireDevices: dRes.devices }) });
-        } catch (e) {
-          return this.rpcEv({ case: "listsFetched", value: create(ListsFetchedEventSchema, { opId, error: errorText(e) }) });
-        }
-      case "fetchSessionsPage":
-        try {
-          const res = await this.api.listRemoteSessions({ after: eff.kind.value.after, limit: eff.kind.value.limit || this.sessionPageSize });
-          return this.rpcEv({ case: "sessionsPageFetched", value: create(SessionsPageFetchedEventSchema, { opId, wireSessions: res.sessions, next: res.next }) });
-        } catch (e) {
-          return this.rpcEv({ case: "sessionsPageFetched", value: create(SessionsPageFetchedEventSchema, { opId, error: errorText(e) }) });
-        }
-      case "fetchSessionById": {
-        const sid = eff.kind.value.sessionId;
-        try {
-          const res = await this.api.listRemoteSessions({ sessionIds: [sid], limit: 1 });
-          const found = res.sessions.find((s) => s.sessionId === sid);
-          return this.rpcEv({ case: "sessionByIdFetched", value: create(SessionByIdFetchedEventSchema, { opId, wireSession: found }) });
-        } catch (e) {
-          return this.rpcEv({ case: "sessionByIdFetched", value: create(SessionByIdFetchedEventSchema, { opId, error: errorText(e) }) });
-        }
-      }
-      case "getEvents": {
-        const { sessionId, afterSeq, limit } = eff.kind.value;
-        try {
-          const res = await this.api.getEvents({ sessionId, afterSeq, limit: limit || this.historyPageSize });
-          return this.rpcEv({ case: "eventsPageFetched", value: create(EventsPageFetchedEventSchema, { opId, sessionId, wireEvents: res.events, more: res.more }) });
-        } catch (e) {
-          return this.rpcEv({ case: "eventsPageFetched", value: create(EventsPageFetchedEventSchema, { opId, sessionId, error: errorText(e) }) });
-        }
-      }
-      case "getAccountPrefs":
-        try {
-          const res = await this.api.getAccountPrefs({ objectId: eff.kind.value.objectId || PREFS_OBJECT });
-          return this.rpcEv({ case: "accountPrefsFetched", value: create(AccountPrefsFetchedEventSchema, { opId, wirePrefs: res.object }) });
-        } catch (e) {
-          return this.rpcEv({ case: "accountPrefsFetched", value: create(AccountPrefsFetchedEventSchema, { opId, error: errorText(e) }) });
-        }
-      case "putAccountPrefs": {
-        const { objectId, expectedRevision, sealedEnvelope } = eff.kind.value;
-        if (!sealedEnvelope) {
-          return this.rpcEv({ case: "accountPrefsPutResult", value: create(AccountPrefsPutResultEventSchema, { opId, error: "missing sealed account prefs" }) });
-        }
-        try {
-          const res = await this.api.putAccountPrefs({ objectId: objectId || PREFS_OBJECT, expectedRevision, envelope: sealedEnvelope });
-          return this.rpcEv({ case: "accountPrefsPutResult", value: create(AccountPrefsPutResultEventSchema, { opId, applied: res.applied, wireCurrent: res.object }) });
-        } catch (e) {
-          const sealConflict = e instanceof SecurityError && (e.code === "clock" || e.code === "lease" || e.code === "conflict" || e.code === "stale");
-          return this.rpcEv({ case: "accountPrefsPutResult", value: create(AccountPrefsPutResultEventSchema, { opId, sealConflict, error: errorText(e) }) });
-        }
-      }
-      case "fetchDevices":
-        try {
-          const res = await this.api.listDevices({});
-          return this.rpcEv({ case: "devicesFetched", value: create(DevicesFetchedEventSchema, { opId, wireDevices: res.devices }) });
-        } catch (e) {
-          return this.rpcEv({ case: "devicesFetched", value: create(DevicesFetchedEventSchema, { opId, error: errorText(e) }) });
-        }
-      default:
-        throw new Error("unexpected rpc effect");
-    }
-  }
-
-  // --- CoreExecutor: Single-Attempt Command Dispatch (including Direct-First + Interactive Dual-Send) ---
+  // --- CoreExecutor: Direct DataChannel Command Dispatch (relay legs run in Core) ---
 
   directSignalSend(eff: DirectSignalSendEffect) { this.directExec.signalSend(eff); }
   directPcCreate(eff: DirectPcCreateEffect) { this.directExec.pcCreate(eff); }
@@ -987,182 +839,58 @@ export class Remote implements CoreExecutor {
   }
 
   async executeCommandAttempt(eff: DispatchCommandEffect, signal?: AbortSignal): Promise<CommandOutcomeEvent> {
-    const directRoute = eff.routeLeg === CommandRouteLeg.DIRECT && eff.directPcId > 0n
-      ? { pcId: eff.directPcId, ticketId: eff.directTicketId, timeoutMs: eff.directTimeoutMs }
-      : undefined;
-    const { outcome } = await this.executeSealedAttempt({
-      requestId: eff.requestId,
-      attemptId: eff.attemptId,
-      machineId: eff.machineId,
-      sessionId: eff.sessionId,
-      deadlineMs: Number(eff.deadlineMs),
-      commandBytes: new Uint8Array(eff.commandBytes),
-      sealedEnvelope: eff.sealedEnvelope,
-      priorUnknown: eff.retryOfUnknown,
-      directRoute,
-      directTicketId: eff.directTicketId,
-      signal,
-    });
-    return outcome;
-  }
-
-  private async executeSealedAttempt(params: {
-    requestId: string;
-    attemptId: string;
-    machineId: string;
-    sessionId: string;
-    deadlineMs: number;
-    commandBytes: Uint8Array<ArrayBuffer>;
-    sealedEnvelope?: Envelope;
-    priorUnknown: boolean;
-    directRoute?: { pcId: bigint; ticketId: bigint; timeoutMs: bigint };
-    directTicketId?: bigint;
-    signal?: AbortSignal;
-  }): Promise<{
-    outcome: CommandOutcomeEvent;
-    rawEnvelope?: Envelope;
-    elapsedMs: number;
-    observedBytes: bigint;
-    ok: boolean;
-  }> {
-    const ticketId = params.directRoute?.ticketId ?? params.directTicketId ?? 0n;
-    const isDirect = Boolean(params.directRoute && params.directRoute.pcId > 0n);
-    const base = { requestId: params.requestId, attemptId: params.attemptId, directTicketId: ticketId };
+    const ticketId = eff.directTicketId;
+    const isDirect = eff.routeLeg === CommandRouteLeg.DIRECT && eff.directPcId > 0n;
+    const base = { requestId: eff.requestId, attemptId: eff.attemptId, directTicketId: ticketId };
     const mk = (fields: Omit<Partial<CommandOutcomeEvent>, "$typeName" | "requestId" | "attemptId" | "directTicketId">) =>
       create(CommandOutcomeEventSchema, { ...base, ...fields });
     if (this.closed) {
-      return { outcome: mk({ source: OutcomeSource.LOCAL, notForwarded: true, transportCode: "canceled", routeWasDirect: isDirect }), elapsedMs: 0, observedBytes: 0n, ok: false };
+      return mk({ source: OutcomeSource.LOCAL, notForwarded: true, transportCode: "canceled", routeWasDirect: isDirect });
     }
-    if (this.serverAhead) {
-      return {
-        outcome: mk({
-          source: OutcomeSource.LOCAL,
-          notForwarded: !params.priorUnknown,
-          transportCode: params.priorUnknown ? "unknown" : "clock",
-          transportDetail: l10n.t("errors.this_device_s_clock_is_behind_the_account_state_remote"),
-          routeWasDirect: isDirect,
-        }),
-        elapsedMs: 0,
-        observedBytes: 0n,
-        ok: false,
-      };
+    if (!isDirect || !eff.sealedEnvelope) {
+      return mk({
+        source: OutcomeSource.LOCAL,
+        notForwarded: !eff.retryOfUnknown,
+        transportCode: eff.retryOfUnknown ? "unknown" : "failed_precondition",
+        transportDetail: !eff.sealedEnvelope ? "missing sealed command" : "relay leg handled by core",
+        routeWasDirect: isDirect,
+      });
     }
-    if (!params.sealedEnvelope) {
-      return {
-        outcome: mk({
-          source: OutcomeSource.LOCAL,
-          notForwarded: !params.priorUnknown,
-          transportCode: params.priorUnknown ? "unknown" : "failed_precondition",
-          transportDetail: "missing sealed command",
-          routeWasDirect: isDirect,
-        }),
-        elapsedMs: 0,
-        observedBytes: 0n,
-        ok: false,
-      };
-    }
-
-    let parsedCmd: ReturnType<typeof fromBinary<typeof CommandSchema>> | undefined;
-    try { parsedCmd = fromBinary(CommandSchema, params.commandBytes); } catch { parsedCmd = undefined; }
-
-    const envelope = params.sealedEnvelope;
-
     let handedOff = false;
-    const handoff = () => {
-      if (!handedOff) {
-        handedOff = true;
-      }
-    };
-    const relayAttempt = isDirect ? undefined : this.deviceLink.path.attempt(handoff);
-    const attemptId = isDirect ? params.attemptId : relayAttempt!.attemptId;
+    const handoff = () => { handedOff = true; };
     const routeStarted = performance.now();
-
     try {
-      params.signal?.throwIfAborted();
-      let res;
-      if (isDirect) {
-        const env = await this.directExec.sendRpc(
-          params.directRoute!.pcId,
-          params.requestId,
-          toBinary(EnvelopeSchema, envelope) as Uint8Array<ArrayBuffer>,
-          params.directRoute!.timeoutMs,
-          handoff,
-          params.signal,
-        );
-        res = create(ForwardResponseSchema, { result: env, attemptId });
-      } else {
-        await relayAttempt!.prepare();
-        res = await relayAttempt!.send(params.machineId, envelope, params.signal);
-      }
-
-      const elapsedMs = performance.now() - routeStarted;
-      const attemptBound = res.attemptId === attemptId;
-      return {
-        rawEnvelope: res.result,
-        elapsedMs,
-        observedBytes: BigInt(parsedCmd?.kind.case === "putImageChunk" ? parsedCmd.kind.value.data?.length ?? 0 : 0),
-        ok: attemptBound && (isDirect || res.outcome === "executed"),
-        outcome: mk({
-          source: OutcomeSource.DAEMON,
-          attemptBound,
-          outerOutcome: isDirect ? "" : res.outcome,
-          outerReason: isDirect ? "" : res.reason,
-          sealedResult: res.result,
-          handedOff,
-          routeWasDirect: isDirect,
-          elapsedMs,
-        }),
-      };
+      signal?.throwIfAborted();
+      const env = await this.directExec.sendRpc(
+        eff.directPcId,
+        eff.requestId,
+        toBinary(EnvelopeSchema, eff.sealedEnvelope) as Uint8Array<ArrayBuffer>,
+        eff.directTimeoutMs,
+        handoff,
+        signal,
+      );
+      return mk({
+        source: OutcomeSource.DAEMON,
+        attemptBound: true,
+        sealedResult: env,
+        handedOff,
+        routeWasDirect: true,
+        elapsedMs: performance.now() - routeStarted,
+      });
     } catch (e) {
       const elapsedMs = performance.now() - routeStarted;
       if (e instanceof PathChanged) {
-        return {
-          outcome: mk({ source: OutcomeSource.TRANSPORT, notForwarded: !handedOff, handedOff, transportCode: "path_changed", routeWasDirect: isDirect, elapsedMs }),
-          elapsedMs,
-          observedBytes: 0n,
-          ok: false,
-        };
+        return mk({ source: OutcomeSource.TRANSPORT, notForwarded: !handedOff, handedOff, transportCode: "path_changed", routeWasDirect: true, elapsedMs });
       }
-      if (!isDirect && e instanceof ConnectError && relayAttempt) {
-        const refusal = relayAttempt.refusal(e);
-        if (refusal !== undefined) {
-          return {
-            outcome: mk({
-              source: OutcomeSource.SERVER,
-              notForwarded: true,
-              attemptBound: true,
-              outerReason: refusal.reason ?? "",
-              transportCode: connectErrorCode(e.code),
-              transportDetail: refusal.reason === "machine_offline" ? "" : (e.rawMessage || e.message),
-              routeWasDirect: false,
-              elapsedMs,
-            }),
-            elapsedMs,
-            observedBytes: 0n,
-            ok: false,
-          };
-        }
-        if (!handedOff && e.code === Code.Unauthenticated) {
-          return {
-            outcome: mk({ source: OutcomeSource.SERVER, notForwarded: true, attemptBound: true, transportCode: "unauthenticated", transportDetail: e.rawMessage || e.message, routeWasDirect: false, elapsedMs }),
-            elapsedMs,
-            observedBytes: 0n,
-            ok: false,
-          };
-        }
-        return {
-          outcome: mk({ source: OutcomeSource.SERVER, notForwarded: !handedOff, handedOff, attemptBound: false, transportCode: connectErrorCode(e.code), transportDetail: e.rawMessage || e.message, routeWasDirect: false, elapsedMs }),
-          elapsedMs,
-          observedBytes: 0n,
-          ok: false,
-        };
-      }
-      return {
-        outcome: mk({ source: OutcomeSource.TRANSPORT, notForwarded: !handedOff, handedOff, transportCode: !this.network ? "network" : "unknown", transportDetail: errorText(e), routeWasDirect: isDirect, elapsedMs }),
+      return mk({
+        source: OutcomeSource.TRANSPORT,
+        notForwarded: !handedOff,
+        handedOff,
+        transportCode: !this.network ? "network" : "unknown",
+        transportDetail: errorText(e),
+        routeWasDirect: true,
         elapsedMs,
-        observedBytes: 0n,
-        ok: false,
-      };
+      });
     }
   }
 
@@ -1294,7 +1022,7 @@ export class Remote implements CoreExecutor {
   }
 
   private async signIn(signal: AbortSignal) {
-    const auth = createClient(AuthService, createConnectTransport({ fetch: relayFetch, baseUrl: apiBase(this.account.server), useBinaryFormat: true, defaultTimeoutMs: OPEN_TIMEOUT_MS }));
+    const auth = createClient(AuthService, createConnectTransport({ fetch: this.fetchFn, baseUrl: apiBase(this.account.server), useBinaryFormat: true, defaultTimeoutMs: OPEN_TIMEOUT_MS }));
     for (let again = true; ; again = false) {
       try {
         const timeoutMs = this.hostBridge?.viewConnection().liveLoaded || this.networkGeneration > 0 ? 3000 : OPEN_TIMEOUT_MS;
@@ -1325,8 +1053,6 @@ export class Remote implements CoreExecutor {
   private keepValue(name: string, value: Record<string, unknown> | undefined) {
     return this.cache?.set(name, value && { ...value, deviceId: this.account.deviceId, server: this.account.server }).catch(() => undefined);
   }
-
-  protected relayEpoch(): Promise<string> { return relayEpoch(apiBase(this.account.server)); }
 
   // --- Schedules / Images / Terminal / Devices ---
 
@@ -1720,12 +1446,19 @@ export class Remote implements CoreExecutor {
     const machineId = this.sessionMachineId(sid);
     if (!machineId) throw new Error(l10n.t("session.android_unknown"));
     let res;
-    try {
-      res = await this.api.getImage({ sessionId: sid, imageId });
-    } catch (e) {
-      if (e instanceof ConnectError && e.code === Code.NotFound) return { kind: "missing" };
-      throw e;
+    const raw = await this.secExec.executeUnary({
+      opId: 0n,
+      method: RelayRpcMethod.GET_IMAGE,
+      server: this.account.server,
+      authToken: this.token,
+      timeoutMs: RPC_TIMEOUT_MS,
+      requestBytes: toBinary(GetImageRequestSchema, create(GetImageRequestSchema, { sessionId: sid, imageId })),
+    });
+    if (raw.connectCode === Code.NotFound) return { kind: "missing" };
+    if (raw.connectCode !== 0 || raw.networkError || raw.diagnosticMessage) {
+      throw new Error(raw.diagnosticMessage || "getImage failed");
     }
+    res = fromBinary(GetImageResponseSchema, raw.responseBytes);
     if (res.expired || !res.image) return { kind: "expired" };
     let out: ImageResult;
     try {
@@ -1750,11 +1483,11 @@ export class Remote implements CoreExecutor {
 
   cachedImage(sid: string, imageId: string): ImageResult | undefined { return this.imageCache.get(sid + "/" + imageId); }
   authHeader(): string { return "Bearer " + this.token; }
-  async pushKey(): Promise<string> { return (await this.api.getPushKey({})).publicKey; }
+  async pushKey(): Promise<string> {
+    return (await this.ensureHost().pushRpc({ getKey: true })).publicKey;
+  }
   async setPushSubscription(subscriptionJson: string, kinds: NotifyKind[]): Promise<void> {
-    const capability = subscriptionJson ? await this.api.getPushKey({}) : undefined;
-    const selected = subscriptionJson ? machineNotificationKinds(kinds, capability?.machineDiskNotifications === true) : [];
-    await this.api.setPushSubscription({ subscriptionJson, kinds: selected });
+    await this.ensureHost().pushRpc({ setWebSubscription: true, subscriptionJson, kinds });
   }
 
   async pingServer(timeoutMs = 8000, signal?: AbortSignal): Promise<number> {
@@ -1798,41 +1531,13 @@ export class Remote implements CoreExecutor {
   }
 
   async loadDevices(_describe = true): Promise<void> {
-    const devPushSeq = this.devicesPushSeq++;
     try {
       await this.ensureHost().securityClient.syncNow(false, this.token);
-      const res = await this.api.listDevices({});
-      await new Promise<void>((resolve) => {
-        this.ensureHost().dispatchEvent(
-          create(CoreEventSchema, {
-            event: {
-              case: "devicesFetched",
-              value: create(DevicesFetchedEventSchema, {
-                opId: 0n,
-                pushSeq: devPushSeq,
-                wireDevices: res.devices,
-              }),
-            },
-          }),
-          resolve,
-        );
-      });
+      await this.ensureHost().refreshDevices();
       this.devicesStatus = "ready";
       this.changed();
-    } catch (e) {
+    } catch {
       this.devicesStatus = "error";
-      this.ensureHost().dispatchEvent(
-        create(CoreEventSchema, {
-          event: {
-            case: "devicesFetched",
-            value: create(DevicesFetchedEventSchema, {
-              opId: 0n,
-              pushSeq: devPushSeq,
-              error: errorText(e) || l10n.t("settings.could_not_read_the_device_list"),
-            }),
-          },
-        }),
-      );
       this.changed();
     }
   }
@@ -1933,7 +1638,8 @@ export function errorText(e: unknown): string {
     if (e.code === "conflict") return l10n.t("errors.membership_chain_conflict_security_operations_stopped_verify_devices_and");
   }
   if (e instanceof ConnectError) {
-    if (e.code === Code.PermissionDenied && e.rawMessage === "login failed") {
+    const relayReason = e.findDetails(RelayErrorDetailSchema)[0]?.reason;
+    if (relayReason === RelayErrorReason.LOGIN_FAILED) {
       return l10n.t("errors.the_server_does_not_recognize_this_device_it_may");
     }
     return e.rawMessage || e.message;

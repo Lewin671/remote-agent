@@ -149,6 +149,15 @@ import {
   type DraftScope,
 } from "../gen/remoteagent/core/v1/attachments_pb";
 import {
+  PushRpcActionSchema,
+  RefreshDevicesActionSchema,
+  RelayPipeConfigEventSchema,
+  StreamRawFrameEventSchema,
+  type PushRpcResultEffect,
+  type RelayRpcCancelEffect,
+  type RelayRpcEffect,
+} from "../gen/remoteagent/core/v1/relay_pipe_pb";
+import {
   SecurityConfigEventSchema,
   SecurityErrorCode,
   SecurityForegroundEventSchema,
@@ -375,6 +384,7 @@ export interface DraftCandidateEntry {
 export interface StreamLegCallbacks {
   onReady(legId: bigint, serverTimeMs: bigint): void;
   onFrame(legId: bigint, frame: StreamFrameEvent["frame"], onProcessed?: () => void): void;
+  onRawFrame(legId: bigint, rawServerFrame: Uint8Array<ArrayBuffer>): void;
   onClosed(legId: bigint, info: Omit<StreamClosedEvent, "$typeName" | "legId">): void;
 }
 
@@ -390,6 +400,8 @@ export interface HostBridge {
   retryPrefs(): void;
   retrySession(sessionId: string): void;
   retryEvents(sessionId: string): void;
+  refreshDevices(): Promise<void>;
+  pushRpc(req: Omit<MessageInitShape<typeof PushRpcActionSchema>, "opId">): Promise<PushRpcResultEffect>;
   readonly securityClient: SecurityClient;
   securityOp(op: SecurityOpRequestEvent["op"]): Promise<SecurityOpResultEffect>;
   dispatchDirectSignal(raw: Uint8Array<ArrayBuffer>): void;
@@ -410,7 +422,8 @@ export interface HostBridge {
 }
 
 export interface CoreExecutor {
-  openStreamLeg(legId: bigint, token: string, callbacks: StreamLegCallbacks): void;
+  useRelayPipe?(): boolean;
+  openStreamLeg(legId: bigint, token: string, callbacks: StreamLegCallbacks, helloFrame?: Uint8Array<ArrayBuffer>): void;
   closeStreamLeg(legId: bigint): void;
   ensureToken(opId: bigint, forceLogin: boolean, timeoutMs: bigint): Promise<TokenResultEvent>;
   discardToken(token: string): void;
@@ -427,7 +440,9 @@ export interface CoreExecutor {
   releaseEventRefs?(ev: Event): void;
   writeCache(eff: CacheWriteEffect): Promise<void>;
   deleteCache(eff: CacheDeleteEffect): Promise<void>;
-  executeRpc(eff: RpcEffect): Promise<Event>;
+  executeRpc?(eff: RpcEffect): Promise<Event>;
+  relayRpc?(eff: RelayRpcEffect): void;
+  relayRpcCancel?(eff: RelayRpcCancelEffect): void;
   executeCommandAttempt(eff: DispatchCommandEffect, signal?: AbortSignal): Promise<CommandOutcomeEvent>;
   readScheduleCache?(opId: bigint, machineId: string): Promise<ScheduleCacheLoadedEvent>;
   writeScheduleCache?(machineId: string, requestId: string, sealedResultBytes: Uint8Array): Promise<void>;
@@ -937,6 +952,8 @@ export class CoreHost {
   readonly securityClient: SecurityClient;
   private nextSecurityOpId = 1n;
   private securityOpWaiters = new Map<bigint, { resolve: (eff: SecurityOpResultEffect) => void; reject: (err: Error) => void }>();
+  private nextPushRpcOpId = 1n;
+  private pushRpcWaiters = new Map<bigint, { resolve: (eff: PushRpcResultEffect) => void; reject: (err: Error) => void }>();
   private readonly scheduleCacheReads = new Map<bigint, Promise<void>>();
 
   constructor(remote?: Remote, opts: CoreHostOptions = {}) {
@@ -1000,6 +1017,8 @@ export class CoreHost {
         retryPrefs: () => this.retryPrefs(),
         retrySession: (sid) => this.retrySession(sid),
         retryEvents: (sid) => this.retryEvents(sid),
+        refreshDevices: () => this.refreshDevices(),
+        pushRpc: (req) => this.pushRpc(req),
         securityClient: this.securityClient,
         securityOp: (op) => this.securityOp(op),
         dispatchDirectSignal: (raw) => this.dispatchDirectSignal(raw),
@@ -1035,6 +1054,12 @@ export class CoreHost {
       case: "localeChanged",
       value: create(LocaleChangedEventSchema, { uiLocale: l10n.localeStore.snapshot() }),
     });
+    if (this.executor?.useRelayPipe?.()) {
+      this.emit({
+        case: "relayPipeConfig",
+        value: create(RelayPipeConfigEventSchema, { enabled: true }),
+      });
+    }
     this.unsubscribeLocale = l10n.localeStore.subscribe(() => {
       if (!this.closed) {
         this.emit({
@@ -1273,6 +1298,10 @@ export class CoreHost {
     this.rejectSecurityOps();
     this.securityClient.rejectAll();
     if (!this.closed) this.emit({ case: "syncLifecycle", value: create(SyncLifecycleActionSchema, { kind: SyncLifecycleKind.STOP }) });
+    for (const w of this.pushRpcWaiters.values()) {
+      w.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
+    }
+    this.pushRpcWaiters.clear();
   }
 
   private rejectSecurityOps() {
@@ -1331,6 +1360,36 @@ export class CoreHost {
 
   retryEvents(sessionId: string) {
     this.retrySession(sessionId);
+  }
+
+  refreshDevices(): Promise<void> {
+    if (this.closed) return Promise.resolve();
+    this.ensureSecurityConfigured();
+    return new Promise<void>((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        unsub();
+        resolve();
+      };
+      const unsub = this.subscribe(ScreenTarget.DEVICES, finish);
+      const timer = setTimeout(finish, 15_000);
+      this.emit({ case: "refreshDevices", value: create(RefreshDevicesActionSchema) });
+    });
+  }
+
+  pushRpc(req: Omit<MessageInitShape<typeof PushRpcActionSchema>, "opId">): Promise<PushRpcResultEffect> {
+    if (this.closed) return Promise.reject(new Error("closed"));
+    const opId = this.nextPushRpcOpId++;
+    return new Promise<PushRpcResultEffect>((resolve, reject) => {
+      this.pushRpcWaiters.set(opId, { resolve, reject });
+      this.emit({
+        case: "pushRpc",
+        value: create(PushRpcActionSchema, { ...req, opId } as MessageInitShape<typeof PushRpcActionSchema>),
+      });
+    });
   }
 
   sharedFileStartDownload(sessionId: string, fileId: string, autoOpenIfStaying: boolean) {
@@ -2834,12 +2893,19 @@ export class CoreHost {
       }
 
       case "openStream":
-        this.executor?.openStreamLeg(val.value.legId, val.value.token, {
-          onReady: (id, serverTimeMs) => !this.closed && this.emit({ case: "streamReady", value: create(StreamReadyEventSchema, { legId: id, serverTimeMs }) }),
-          onFrame: (id, frame, onProcessed) =>
-            this.closed ? onProcessed?.() : this.emit({ case: "streamFrame", value: create(StreamFrameEventSchema, { legId: id, frame }) }, onProcessed),
-          onClosed: (id, info) => !this.closed && this.emit({ case: "streamClosed", value: create(StreamClosedEventSchema, { legId: id, ...info }) }),
-        });
+        this.executor?.openStreamLeg(
+          val.value.legId,
+          val.value.token,
+          {
+            onReady: (id, serverTimeMs) => !this.closed && this.emit({ case: "streamReady", value: create(StreamReadyEventSchema, { legId: id, serverTimeMs }) }),
+            onFrame: (id, frame, onProcessed) =>
+              this.closed ? onProcessed?.() : this.emit({ case: "streamFrame", value: create(StreamFrameEventSchema, { legId: id, frame }) }, onProcessed),
+            onRawFrame: (id, rawServerFrame) =>
+              !this.closed && this.emit({ case: "streamRawFrame", value: create(StreamRawFrameEventSchema, { legId: id, rawServerFrame }) }),
+            onClosed: (id, info) => !this.closed && this.emit({ case: "streamClosed", value: create(StreamClosedEventSchema, { legId: id, ...info }) }),
+          },
+          val.value.helloFrame.byteLength > 0 ? new Uint8Array(val.value.helloFrame) : undefined,
+        );
         break;
 
       case "closeStream":
@@ -2907,8 +2973,29 @@ export class CoreHost {
       }
 
       case "rpc":
-        void this.executor?.executeRpc(val.value).then((ev) => !this.closed && this.dispatch(ev), () => undefined);
+        void this.executor?.executeRpc?.(val.value).then((ev) => !this.closed && this.dispatch(ev), () => undefined);
         break;
+
+      case "relayRpc":
+        if (this.executor?.relayRpc) this.executor.relayRpc(val.value);
+        else this.executor?.securityEffect?.(val);
+        break;
+
+      case "relayRpcCancel":
+        if (this.executor?.relayRpcCancel) this.executor.relayRpcCancel(val.value);
+        else this.executor?.securityEffect?.(val);
+        break;
+
+      case "pushRpcResult": {
+        const res = val.value;
+        const w = this.pushRpcWaiters.get(res.opId);
+        if (w) {
+          this.pushRpcWaiters.delete(res.opId);
+          if (res.ok) w.resolve(res);
+          else w.reject(new Error(res.error || "push rpc failed"));
+        }
+        break;
+      }
 
       case "dispatchCommand": {
         if (!this.executor) break;
@@ -3625,6 +3712,10 @@ export class CoreHost {
       w.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
     }
     this.machineCmdWaiters.clear();
+    for (const w of this.pushRpcWaiters.values()) {
+      w.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
+    }
+    this.pushRpcWaiters.clear();
     for (const list of this.retryNowWaiters.values()) {
       for (const fn of list) fn(false);
     }

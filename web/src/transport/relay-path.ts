@@ -1,32 +1,7 @@
-import { newRequestID } from "../crypto";
-import { NotForwardedSchema } from "../gen/remoteagent/v1/relay_pb";
-import type { Path, Forward, FrameStream, PathAttempt } from "./path";
+import type { Path, FrameStream } from "./path";
 
-/** The existing relay HTTP adapter. Main-WS observations are inputs to this
- * adapter; neither a cached offline bit nor a lost WS cancels a handed-off RPC. */
+/** Physical WebSocket stream adapter for relay legs (unary RPCs run through Core's byte pipe). */
 export class RelayPath implements Path {
-  constructor(
-    readonly epoch: () => Promise<string>,
-    readonly forward: Forward,
-    private readonly renew: (signal?: AbortSignal) => Promise<void> = async () => {},
-  ) {}
-  attempt(handoff: () => void): PathAttempt {
-    const attemptId = newRequestID();
-    let epoch = "";
-    return {
-      attemptId,
-      prepare: async () => {},
-      send: async (machineId, command, signal) => {
-        const current = await this.epoch();
-        signal?.throwIfAborted();
-        handoff();
-        epoch = current;
-        return this.forward({ machineId, command, attemptId, relayEpoch: current }, { signal, headers: { "Remote-Agent-Attempt": attemptId } });
-      },
-      refusal: error => error.findDetails(NotForwardedSchema).find(d => d.attemptId === attemptId && d.relayEpoch === epoch && !!epoch),
-      refreshAuth: (_prior, signal) => this.renew(signal),
-    };
-  }
   openStream(address: string): FrameStream { return new RelayStream(address); }
 }
 

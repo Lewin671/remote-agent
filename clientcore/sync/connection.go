@@ -4,6 +4,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
+	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/shared/linkcore"
 )
 
@@ -81,6 +82,9 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		e.emitCoordEffects(ctx, c.SetLifecycle(e.nowMs, true))
 		e.emitCoordEffects(ctx, c.SetMainLeg(e.nowMs, false))
 		e.beginConnect(ctx)
+		if len(e.prefsQueue) > 0 && e.prefsQueue[0].ActiveOpID == 0 {
+			e.startNextPrefsOp(ctx)
+		}
 		ctx.Dirty.MarkAll()
 
 	case corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_STOP:
@@ -105,6 +109,7 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		e.activeCacheBootID = 0
 		e.refreshOpID = 0
 		e.pageOpID = 0
+		e.w.World.LoadingMoreSessions = false
 		e.devicesOpID = 0
 		e.prefsLoadOpID = 0
 		clear(e.directReady)
@@ -124,6 +129,7 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		}
 		e.updateLivePollers(ctx)
 		e.cancelAllTimers(ctx)
+		e.cancelAllSyncRelayRpcs(ctx)
 		c := e.ensureTransportCoord()
 		c.ClearTickets()
 		e.emitCoordEffects(ctx, c.SetMainLeg(e.nowMs, false))
@@ -421,12 +427,21 @@ func (e *Engine) handleTokenResult(ctx *StepContext, ev *corev1.TokenResultEvent
 	e.connStep = world.ConnectStepEstablishingPush
 	legID := e.allocLegID()
 	e.legID = legID
+	var helloFrame []byte
+	if e.relayPipe {
+		helloFrame = (&v1.PeerFrame{
+			Kind: &v1.PeerFrame_Hello{
+				Hello: &v1.StreamHello{Token: ev.Token},
+			},
+		}).AppendMarshal(nil)
+	}
 	ctx.emit(&corev1.Effect{
 		Effect: &corev1.Effect_OpenStream{
 			OpenStream: &corev1.OpenStreamEffect{
-				LegId:     legID,
-				Token:     ev.Token,
-				TimeoutMs: StreamOpenTimeoutMs,
+				LegId:      legID,
+				Token:      ev.Token,
+				TimeoutMs:  StreamOpenTimeoutMs,
+				HelloFrame: helloFrame,
 			},
 		},
 	})

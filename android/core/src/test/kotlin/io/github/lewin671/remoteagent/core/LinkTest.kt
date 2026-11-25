@@ -22,7 +22,7 @@ class LinkTest {
                 override fun cancel() {}
             }.also { socket = it }
         }
-        val path = RelayPath(Api("https://example.com", Api.defaultHttp()), { factory })
+        val path = RelayPath(sockets = { factory })
         val link = io.github.lewin671.remoteagent.core.transport.Link(path)
         var endings = 0
         var closes = 0

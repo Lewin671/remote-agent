@@ -9,6 +9,7 @@ import "remoteagent/core/v1/home_view.proto";
 import "remoteagent/core/v1/machine_view.proto";
 import "remoteagent/core/v1/new_session_view.proto";
 import "remoteagent/core/v1/project_view.proto";
+import "remoteagent/core/v1/relay_pipe.proto";
 import "remoteagent/core/v1/settings_view.proto";
 import "remoteagent/core/v1/session_view.proto";
 import "remoteagent/core/v1/shared_files.proto";
@@ -742,6 +743,13 @@ message Event {
     TerminalDirectOutputEvent terminal_direct_output = 428;
     TerminalDirectConfirmRebuildAction terminal_direct_confirm_rebuild = 429;
 
+    // Unified relay byte-pipe events (430-449 reserved for P2-5).
+    RelayPipeConfigEvent relay_pipe_config = 430;
+    RelayRpcResultEvent relay_rpc_result = 431;
+    StreamRawFrameEvent stream_raw_frame = 432;
+    RefreshDevicesAction refresh_devices = 433;
+    PushRpcAction push_rpc = 434;
+
     // Security engine (450-499 reserved for security).
     SecurityConfigEvent security_config = 450;
     SecurityKeySignedEvent security_key_signed = 452;
@@ -799,6 +807,7 @@ message OpenStreamEffect {
   uint64 leg_id = 1;
   string token = 2;
   int64 timeout_ms = 3;
+  bytes hello_frame = 4;
 }
 
 message CloseStreamEffect {
@@ -1017,6 +1026,10 @@ message Effect {
     RequestEntropyEffect request_entropy = 17;
     RunMachineCommandResultEffect run_machine_command_result = 18;
     CancelDispatchEffect cancel_dispatch = 19;
+    // Unified relay byte-pipe effects (20-29 reserved for P2-5).
+    RelayRpcEffect relay_rpc = 20;
+    RelayRpcCancelEffect relay_rpc_cancel = 21;
+    PushRpcResultEffect push_rpc_result = 22;
     ScheduleMachinePollEffect schedule_machine_poll = 70;
     DirectPreferenceEffect direct_preference = 71;
     RenameClientEffect rename_client = 72;

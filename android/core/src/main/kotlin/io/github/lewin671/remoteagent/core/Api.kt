@@ -215,15 +215,17 @@ fun errorText(e: Throwable, leaseRenewalAdvice: io.github.lewin671.remoteagent.c
         }
         is ConnectException -> networkText(e.exception, copy) ?: when (e.code) {
             Code.UNAVAILABLE -> e.message?.let { copy(UiMessages.errorsAndroidServerUnavailableReason(it)) } ?: copy(UiMessages.connectionNoServer())
-            Code.PERMISSION_DENIED -> if (e.message == LOGIN_FAILED) copy(UiMessages.errorsTheServerDoesNotRecognizeThisDeviceItMay()) else e.message ?: e.code.codeName
+            Code.PERMISSION_DENIED -> if (hasRelayErrorReason(e, io.github.lewin671.remoteagent.proto.RelayErrorReason.RELAY_ERROR_REASON_LOGIN_FAILED)) {
+                copy(UiMessages.errorsTheServerDoesNotRecognizeThisDeviceItMay())
+            } else {
+                e.message ?: e.code.codeName
+            }
             Code.UNAUTHENTICATED -> copy(UiMessages.errorsAndroidLoginExpired(e.message.orEmpty()))
             else -> e.message ?: e.code.codeName
         }
         else -> networkText(e, copy) ?: e.message ?: e.javaClass.simpleName
     }
 }
-
-private const val LOGIN_FAILED = "login failed"
 
 /**
  * The server's address did not resolve: on a phone, the network is down whatever the status bar
@@ -240,6 +242,16 @@ private fun networkText(e: Throwable?, copy: MessageResolver): String? = when (e
     else -> null
 }
 
+private fun hasRelayErrorReason(
+    e: ConnectException,
+    reason: io.github.lewin671.remoteagent.proto.RelayErrorReason,
+): Boolean = e.details.any { d ->
+    (d.type == "remoteagent.v1.RelayErrorDetail" || d.type.endsWith("/remoteagent.v1.RelayErrorDetail")) &&
+        runCatching {
+            io.github.lewin671.remoteagent.proto.RelayErrorDetail.parseFrom(d.payload.toByteArray()).reason == reason
+        }.getOrDefault(false)
+}
+
 /** Only meaningful for an error returned by a login attempt. */
 fun loginDenied(error: Throwable): Boolean =
     error is ConnectException && error.code == Code.PERMISSION_DENIED
@@ -247,7 +259,7 @@ fun loginDenied(error: Throwable): Boolean =
 internal const val RELAY_EPOCH_HEADER = "Remote-Agent-Relay-Epoch"
 
 /** Outermost interceptor: inner interceptors/follow-ups share the same body guard. */
-private object OneShotRPCBody : Interceptor {
+internal object OneShotRPCBody : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
         val body = request.body ?: return chain.proceed(request)

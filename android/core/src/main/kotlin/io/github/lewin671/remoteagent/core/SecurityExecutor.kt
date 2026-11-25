@@ -13,6 +13,10 @@ import okio.Buffer
 import io.github.lewin671.remoteagent.core.proto.Effect
 import io.github.lewin671.remoteagent.core.proto.EffectBatch
 import io.github.lewin671.remoteagent.core.proto.Event as CoreEvent
+import io.github.lewin671.remoteagent.core.proto.RelayRpcCancelEffect
+import io.github.lewin671.remoteagent.core.proto.RelayRpcEffect
+import io.github.lewin671.remoteagent.core.proto.RelayRpcMethod
+import io.github.lewin671.remoteagent.core.proto.RelayRpcResultEvent
 import io.github.lewin671.remoteagent.core.proto.RpcErrorDetailBytes
 import io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreeEffect
 import io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreedEvent
@@ -26,7 +30,6 @@ import io.github.lewin671.remoteagent.core.proto.SecurityKeySignedEvent
 import io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay
 import io.github.lewin671.remoteagent.core.proto.SecurityOpenNotifyEvent
 import io.github.lewin671.remoteagent.core.proto.SecurityRpcEffect
-import io.github.lewin671.remoteagent.core.proto.SecurityRpcMethod
 import io.github.lewin671.remoteagent.core.proto.SecurityRpcResultEvent
 import io.github.lewin671.remoteagent.core.proto.SecurityStorageEffect
 import io.github.lewin671.remoteagent.core.proto.SecurityStorageResultEvent
@@ -37,6 +40,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -55,38 +59,50 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.IOException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.util.Base64
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 
 private val PROTO_MEDIA_TYPE = "application/proto".toMediaType()
 
-private val SECURITY_RPC_PATHS: Map<SecurityRpcMethod, String> = mapOf(
-    SecurityRpcMethod.SECURITY_RPC_METHOD_GET_SECURITY_STATES to "/remoteagent.v1.ClientService/GetSecurityStates",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_PUT_SECURITY_STATE to "/remoteagent.v1.ClientService/PutSecurityState",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_PIN_SECURITY_DOMAIN to "/remoteagent.v1.ClientService/PinSecurityDomain",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_CREATE_PAIRING to "/remoteagent.v1.PairingService/CreatePairing",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_PEEK_PAIRING to "/remoteagent.v1.PairingService/PeekPairing",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_JOIN_PAIRING to "/remoteagent.v1.PairingService/JoinPairing",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_REVEAL_PAIRING to "/remoteagent.v1.PairingService/RevealPairing",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_APPROVE_PAIRING to "/remoteagent.v1.PairingService/ApprovePairing",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_GET_PAIRING to "/remoteagent.v1.PairingService/GetPairing",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_CANCEL_PAIRING to "/remoteagent.v1.PairingService/CancelPairing",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_GET_RECOVERY_CHALLENGE to "/remoteagent.v1.RecoveryService/GetRecoveryChallenge",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_GET_RECOVERY_CONTEXT to "/remoteagent.v1.RecoveryService/GetRecoveryContext",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_SUBMIT_RECOVERY to "/remoteagent.v1.RecoveryService/SubmitRecovery",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_COMPLETE_RECOVERY to "/remoteagent.v1.RecoveryService/CompleteRecovery",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_DELETE_MACHINE_RECORDS to "/remoteagent.v1.ClientService/DeleteMachineRecords",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_DELETE_ACCOUNT to "/remoteagent.v1.ClientService/DeleteAccount",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_PUT_DEVICE_META to "/remoteagent.v1.ClientService/PutDeviceMeta",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_LIST_DEVICES to "/remoteagent.v1.ClientService/ListDevices",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_LIST_MACHINES to "/remoteagent.v1.ClientService/ListMachines",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_GET_ACCOUNT_PREFS to "/remoteagent.v1.ClientService/GetAccountPrefs",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_PUT_ACCOUNT_PREFS to "/remoteagent.v1.ClientService/PutAccountPrefs",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_GET_CHALLENGE to "/remoteagent.v1.AuthService/GetChallenge",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_LOGIN to "/remoteagent.v1.AuthService/Login",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_GET_SIGNUP_CHALLENGE to "/remoteagent.v1.AuthService/GetSignupChallenge",
-    SecurityRpcMethod.SECURITY_RPC_METHOD_REGISTER_DEVICE to "/remoteagent.v1.AuthService/RegisterDevice",
+private val RELAY_RPC_PATHS: Map<RelayRpcMethod, String> = mapOf(
+    RelayRpcMethod.RELAY_RPC_METHOD_GET_SECURITY_STATES to "/remoteagent.v1.ClientService/GetSecurityStates",
+    RelayRpcMethod.RELAY_RPC_METHOD_PUT_SECURITY_STATE to "/remoteagent.v1.ClientService/PutSecurityState",
+    RelayRpcMethod.RELAY_RPC_METHOD_PIN_SECURITY_DOMAIN to "/remoteagent.v1.ClientService/PinSecurityDomain",
+    RelayRpcMethod.RELAY_RPC_METHOD_CREATE_PAIRING to "/remoteagent.v1.PairingService/CreatePairing",
+    RelayRpcMethod.RELAY_RPC_METHOD_PEEK_PAIRING to "/remoteagent.v1.PairingService/PeekPairing",
+    RelayRpcMethod.RELAY_RPC_METHOD_JOIN_PAIRING to "/remoteagent.v1.PairingService/JoinPairing",
+    RelayRpcMethod.RELAY_RPC_METHOD_REVEAL_PAIRING to "/remoteagent.v1.PairingService/RevealPairing",
+    RelayRpcMethod.RELAY_RPC_METHOD_APPROVE_PAIRING to "/remoteagent.v1.PairingService/ApprovePairing",
+    RelayRpcMethod.RELAY_RPC_METHOD_GET_PAIRING to "/remoteagent.v1.PairingService/GetPairing",
+    RelayRpcMethod.RELAY_RPC_METHOD_CANCEL_PAIRING to "/remoteagent.v1.PairingService/CancelPairing",
+    RelayRpcMethod.RELAY_RPC_METHOD_GET_RECOVERY_CHALLENGE to "/remoteagent.v1.RecoveryService/GetRecoveryChallenge",
+    RelayRpcMethod.RELAY_RPC_METHOD_GET_RECOVERY_CONTEXT to "/remoteagent.v1.RecoveryService/GetRecoveryContext",
+    RelayRpcMethod.RELAY_RPC_METHOD_SUBMIT_RECOVERY to "/remoteagent.v1.RecoveryService/SubmitRecovery",
+    RelayRpcMethod.RELAY_RPC_METHOD_COMPLETE_RECOVERY to "/remoteagent.v1.RecoveryService/CompleteRecovery",
+    RelayRpcMethod.RELAY_RPC_METHOD_DELETE_MACHINE_RECORDS to "/remoteagent.v1.ClientService/DeleteMachineRecords",
+    RelayRpcMethod.RELAY_RPC_METHOD_DELETE_ACCOUNT to "/remoteagent.v1.ClientService/DeleteAccount",
+    RelayRpcMethod.RELAY_RPC_METHOD_PUT_DEVICE_META to "/remoteagent.v1.ClientService/PutDeviceMeta",
+    RelayRpcMethod.RELAY_RPC_METHOD_LIST_DEVICES to "/remoteagent.v1.ClientService/ListDevices",
+    RelayRpcMethod.RELAY_RPC_METHOD_LIST_MACHINES to "/remoteagent.v1.ClientService/ListMachines",
+    RelayRpcMethod.RELAY_RPC_METHOD_GET_ACCOUNT_PREFS to "/remoteagent.v1.ClientService/GetAccountPrefs",
+    RelayRpcMethod.RELAY_RPC_METHOD_PUT_ACCOUNT_PREFS to "/remoteagent.v1.ClientService/PutAccountPrefs",
+    RelayRpcMethod.RELAY_RPC_METHOD_GET_CHALLENGE to "/remoteagent.v1.AuthService/GetChallenge",
+    RelayRpcMethod.RELAY_RPC_METHOD_LOGIN to "/remoteagent.v1.AuthService/Login",
+    RelayRpcMethod.RELAY_RPC_METHOD_GET_SIGNUP_CHALLENGE to "/remoteagent.v1.AuthService/GetSignupChallenge",
+    RelayRpcMethod.RELAY_RPC_METHOD_REGISTER_DEVICE to "/remoteagent.v1.AuthService/RegisterDevice",
+    RelayRpcMethod.RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS to "/remoteagent.v1.ClientService/ListRemoteSessions",
+    RelayRpcMethod.RELAY_RPC_METHOD_GET_EVENTS to "/remoteagent.v1.ClientService/GetEvents",
+    RelayRpcMethod.RELAY_RPC_METHOD_FORWARD to "/remoteagent.v1.ClientService/Forward",
+    RelayRpcMethod.RELAY_RPC_METHOD_GET_IMAGE to "/remoteagent.v1.ClientService/GetImage",
+    RelayRpcMethod.RELAY_RPC_METHOD_GET_PUSH_KEY to "/remoteagent.v1.ClientService/GetPushKey",
+    RelayRpcMethod.RELAY_RPC_METHOD_SET_PUSH_SUBSCRIPTION to "/remoteagent.v1.ClientService/SetPushSubscription",
+    RelayRpcMethod.RELAY_RPC_METHOD_SET_PUSH_TARGET to "/remoteagent.v1.ClientService/SetPushTarget",
+    RelayRpcMethod.RELAY_RPC_METHOD_HEALTHZ to "/healthz",
 )
 
 private val CONNECT_CODE_MAP: Map<String, Int> = mapOf(
@@ -123,14 +139,19 @@ private fun connectCodeFromHttpStatus(status: Int): Int = when (status) {
 
 private fun errorMessage(t: Throwable): String = t.message?.takeIf { it.isNotEmpty() } ?: t.javaClass.simpleName
 
-internal fun parseSecurityRpcError(
-    opId: Long,
+private data class ParsedRpcError(
+    val code: Int,
+    val message: String,
+    val details: List<RpcErrorDetailBytes>,
+)
+
+private fun parseConnectErrorBody(
     httpCode: Int,
     bodyBytes: ByteArray,
     causeCode: Int? = null,
     causeMsg: String? = null,
     fallbackDetails: List<RpcErrorDetailBytes> = emptyList(),
-): SecurityRpcResultEvent {
+): ParsedRpcError {
     var code = causeCode ?: connectCodeFromHttpStatus(httpCode)
     var msg = causeMsg?.takeIf { it.isNotEmpty() } ?: "HTTP $httpCode"
     val details = mutableListOf<RpcErrorDetailBytes>()
@@ -158,19 +179,31 @@ internal fun parseSecurityRpcError(
     if (details.isEmpty() && fallbackDetails.isNotEmpty()) {
         details += fallbackDetails
     }
+    return ParsedRpcError(code, msg, details)
+}
+
+internal fun parseSecurityRpcError(
+    opId: Long,
+    httpCode: Int,
+    bodyBytes: ByteArray,
+    causeCode: Int? = null,
+    causeMsg: String? = null,
+    fallbackDetails: List<RpcErrorDetailBytes> = emptyList(),
+): SecurityRpcResultEvent {
+    val parsed = parseConnectErrorBody(httpCode, bodyBytes, causeCode, causeMsg, fallbackDetails)
     return SecurityRpcResultEvent.newBuilder()
         .setOpId(opId)
-        .setConnectCode(code)
-        .setError(msg)
-        .apply { if (details.isNotEmpty()) addAllErrorDetails(details) }
+        .setConnectCode(parsed.code)
+        .setError(parsed.message)
+        .apply { if (parsed.details.isNotEmpty()) addAllErrorDetails(parsed.details) }
         .build()
 }
 
 /**
- * Executes all host-side S6 security effects emitted by Go `clientcore`:
+ * Executes all host-side security and universal relay byte-pipe effects emitted by Go `clientcore`:
  * - Key generation, Ed25519 signing, X25519 agreement, KEM encapsulation, discard
  * - CAS storage operations & bootstrap / clear-all
- * - Connect unary binary-protobuf RPC transport for security workflows
+ * - Connect unary binary-protobuf RPC & /healthz transport with one-shot body guard and cancellation
  */
 internal class SecurityExecutor(
     private val store: SecurityStoreV4,
@@ -180,19 +213,25 @@ internal class SecurityExecutor(
     private val allowPlainHttp: Boolean = true,
     private val rpcTransport: HTTPClientInterface? = null,
     dispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val defaultServer: String = "",
+    private val defaultDeviceId: String = "",
 ) {
     private val closed = AtomicBoolean(false)
     private val scope = CoroutineScope(SupervisorJob(parentScope.coroutineContext[kotlinx.coroutines.Job]) + dispatcher)
+    private val activeRelayJobs = ConcurrentHashMap<Long, Job>()
     private val rpcHttp = http.newBuilder()
         .retryOnConnectionFailure(false)
         .followRedirects(false)
         .followSslRedirects(false)
         .authenticator(Authenticator.NONE)
         .proxyAuthenticator(Authenticator.NONE)
+        .apply { interceptors().add(0, OneShotRPCBody) }
         .build()
 
     fun close() {
         if (closed.compareAndSet(false, true)) {
+            activeRelayJobs.values.forEach { it.cancel() }
+            activeRelayJobs.clear()
             scope.cancel()
         }
     }
@@ -260,18 +299,47 @@ internal class SecurityExecutor(
             Effect.EffectCase.SECURITY_STORAGE -> launchOp(
                 { SecurityStorageResultEvent.newBuilder().setOpId(eff.securityStorage.opId).setError(it).build() },
                 { setSecurityStorageResult(it) },
-            ) { store.executeStorage(eff.securityStorage) }
+            ) {
+                store.executeStorage(eff.securityStorage)
+            }
             Effect.EffectCase.SECURITY_RPC -> launchOp(
                 { rpcErr(eff.securityRpc.opId, 2, it) },
                 { setSecurityRpcResult(it) },
             ) { executeRpcUnary(eff.securityRpc) }
+            Effect.EffectCase.RELAY_RPC -> handleRelayRpc(eff.relayRpc)
+            Effect.EffectCase.RELAY_RPC_CANCEL -> handleRelayRpcCancel(eff.relayRpcCancel)
             else -> return false
         }
         return true
     }
 
-    private fun rpcOk(opId: Long, bodyBytes: ByteArray): SecurityRpcResultEvent =
-        SecurityRpcResultEvent.newBuilder().setOpId(opId).setResponseBytes(ByteString.copyFrom(bodyBytes)).build()
+    fun handleRelayRpc(eff: RelayRpcEffect) {
+        if (closed.get()) return
+        val opId = eff.opId
+        val job = scope.launch {
+            val res = try {
+                executeRelayUnary(
+                    opId = opId,
+                    method = eff.method,
+                    server = eff.server,
+                    authToken = eff.authToken,
+                    timeoutMs = eff.timeoutMs,
+                    attemptHeader = eff.attemptHeader,
+                    requestBytes = eff.requestBytes.toByteArray(),
+                )
+            } catch (t: Throwable) {
+                if (t is CancellationException) throw t
+                relayErr(opId, 2, errorMessage(t))
+            }
+            emitIfOpen { setRelayRpcResult(res) }
+        }
+        activeRelayJobs[opId] = job
+        job.invokeOnCompletion { activeRelayJobs.remove(opId, job) }
+    }
+
+    fun handleRelayRpcCancel(eff: RelayRpcCancelEffect) {
+        activeRelayJobs.remove(eff.opId)?.cancel()
+    }
 
     private fun rpcErr(
         opId: Long,
@@ -290,86 +358,231 @@ internal class SecurityExecutor(
             }
             .build()
 
-    private fun parseRpcError(
+    private fun relayOk(opId: Long, bodyBytes: ByteArray, relayEpoch: String): RelayRpcResultEvent =
+        relayRpcOk(opId, bodyBytes, relayEpoch)
+
+    private fun relayErr(
         opId: Long,
-        httpCode: Int,
-        bodyBytes: ByteArray,
-        causeCode: Int? = null,
-        causeMsg: String? = null,
-        fallbackDetails: List<RpcErrorDetailBytes> = emptyList(),
-    ): SecurityRpcResultEvent = parseSecurityRpcError(opId, httpCode, bodyBytes, causeCode, causeMsg, fallbackDetails)
+        code: Int,
+        msg: String,
+        relayEpoch: String = "",
+        networkError: Boolean = false,
+        unresolvedHost: Boolean = false,
+        errorDetails: List<RpcErrorDetailBytes> = emptyList(),
+    ): RelayRpcResultEvent = relayRpcErr(opId, code, msg, relayEpoch, networkError, unresolvedHost, errorDetails)
+
+    internal suspend fun executeRelayUnary(
+        opId: Long,
+        method: RelayRpcMethod,
+        server: String,
+        authToken: String = "",
+        timeoutMs: Long = 0L,
+        attemptHeader: String = "",
+        requestBytes: ByteArray = ByteArray(0),
+    ): RelayRpcResultEvent = executeRelayRpcUnary(
+        http = rpcHttp,
+        method = method,
+        server = server.ifEmpty { defaultServer },
+        authToken = authToken,
+        timeoutMs = timeoutMs,
+        attemptHeader = attemptHeader,
+        requestBytes = requestBytes,
+        allowPlainHttp = allowPlainHttp,
+        rpcTransport = rpcTransport,
+        opId = opId,
+        preconfiguredHttp = true,
+    )
 
     private suspend fun executeRpcUnary(eff: SecurityRpcEffect): SecurityRpcResultEvent {
-        val path = SECURITY_RPC_PATHS[eff.method]
+        val method = RelayRpcMethod.forNumber(eff.method.number)
             ?: return rpcErr(eff.opId, 12, "unknown rpc method: ${eff.method.number}")
-        val url = Secret.checkServer(eff.server, allowPlainHttp = allowPlainHttp).trimEnd('/') + path
-        if (rpcTransport != null) {
-            val headers = buildMap<String, List<String>> {
+        val res = executeRelayUnary(
+            opId = eff.opId,
+            method = method,
+            server = eff.server,
+            authToken = eff.authToken,
+            requestBytes = eff.requestBytes.toByteArray(),
+        )
+        return if (res.connectCode == 0 && !res.networkError && !res.unresolvedHost && res.diagnosticMessage.isEmpty()) {
+            SecurityRpcResultEvent.newBuilder().setOpId(eff.opId).setResponseBytes(res.responseBytes).build()
+        } else {
+            rpcErr(eff.opId, res.connectCode, res.diagnosticMessage, res.networkError, res.errorDetailsList)
+        }
+    }
+}
+
+private fun relayRpcOk(opId: Long, bodyBytes: ByteArray, relayEpoch: String): RelayRpcResultEvent =
+    RelayRpcResultEvent.newBuilder()
+        .setOpId(opId)
+        .setResponseBytes(ByteString.copyFrom(bodyBytes))
+        .apply { if (relayEpoch.isNotEmpty()) setRelayEpoch(relayEpoch) }
+        .build()
+
+private fun relayRpcErr(
+    opId: Long,
+    code: Int,
+    msg: String,
+    relayEpoch: String = "",
+    networkError: Boolean = false,
+    unresolvedHost: Boolean = false,
+    errorDetails: List<RpcErrorDetailBytes> = emptyList(),
+): RelayRpcResultEvent =
+    RelayRpcResultEvent.newBuilder()
+        .setOpId(opId)
+        .setConnectCode(code)
+        .setDiagnosticMessage(msg)
+        .apply {
+            if (relayEpoch.isNotEmpty()) setRelayEpoch(relayEpoch)
+            if (networkError) setNetworkError(true)
+            if (unresolvedHost) setUnresolvedHost(true)
+            if (errorDetails.isNotEmpty()) addAllErrorDetails(errorDetails)
+        }
+        .build()
+
+/** Executes a single unary relay ConnectRPC/HTTP call reusing [SecurityExecutor]'s path table and redirect/auth hardening. */
+suspend fun executeRelayRpcUnary(
+    http: OkHttpClient,
+    method: RelayRpcMethod,
+    server: String,
+    authToken: String = "",
+    timeoutMs: Long = 15_000L,
+    attemptHeader: String = "",
+    requestBytes: ByteArray = ByteArray(0),
+    allowPlainHttp: Boolean = true,
+    rpcTransport: HTTPClientInterface? = null,
+    opId: Long = 0L,
+    preconfiguredHttp: Boolean = false,
+): RelayRpcResultEvent {
+    val path = RELAY_RPC_PATHS[method]
+        ?: return relayRpcErr(opId, 12, "unknown rpc method: ${method.number}")
+    if (server.isEmpty()) {
+        return relayRpcErr(opId, 3, "missing relay server")
+    }
+    val url = Secret.checkServer(server, allowPlainHttp = allowPlainHttp).trimEnd('/') + path
+    val isHealthz = method == RelayRpcMethod.RELAY_RPC_METHOD_HEALTHZ
+    if (rpcTransport != null) {
+        val headers = buildMap<String, List<String>> {
+            if (isHealthz) {
+                put("Cache-Control", listOf("no-store"))
+            } else {
                 put("Content-Type", listOf("application/proto"))
                 put("Connect-Protocol-Version", listOf("1"))
-                if (eff.authToken.isNotEmpty()) put("Authorization", listOf("Bearer ${eff.authToken}"))
-            }
-            val unaryReq = UnaryHTTPRequest(
-                url = Url(url),
-                contentType = "application/proto",
-                timeout = null,
-                headers = headers,
-                methodSpec = MethodSpec(
-                    path = path,
-                    requestClass = ByteArray::class,
-                    responseClass = ByteArray::class,
-                    streamType = StreamType.UNARY,
-                    idempotency = Idempotency.UNKNOWN,
-                ),
-                message = Buffer().write(eff.requestBytes.toByteArray()),
-                httpMethod = HTTPMethod.POST,
-            )
-            return suspendCancellableCoroutine { cont ->
-                val cancel = rpcTransport.unary(unaryReq) { res ->
-                    val bodyBytes = runCatching { res.message.readByteArray() }.getOrElse { ByteArray(0) }
-                    val cause = res.cause
-                    val status = res.status
-                    val causeDetails = cause?.details?.mapNotNull { d ->
-                        val bytes = d.payload.toByteArray()
-                        if (d.type.isEmpty() || bytes.isEmpty()) null
-                        else RpcErrorDetailBytes.newBuilder().setTypeName(d.type).setValue(ByteString.copyFrom(bytes)).build()
-                    }.orEmpty()
-                    val result = when {
-                        status != null && status in 200..299 && cause == null -> rpcOk(eff.opId, bodyBytes)
-                        cause != null && status == null ->
-                            rpcErr(eff.opId, cause.code.value, cause.message ?: cause.code.codeName, cause.code == Code.UNAVAILABLE, causeDetails)
-                        else -> parseRpcError(eff.opId, status ?: 502, bodyBytes, cause?.code?.value, cause?.message, causeDetails)
-                    }
-                    if (cont.isActive) cont.resume(result)
-                }
-                cont.invokeOnCancellation { cancel() }
+                if (authToken.isNotEmpty()) put("Authorization", listOf("Bearer $authToken"))
+                if (attemptHeader.isNotEmpty()) put("Remote-Agent-Attempt", listOf(attemptHeader))
             }
         }
-        val req = Request.Builder()
-            .url(url)
+        val unaryReq = UnaryHTTPRequest(
+            url = Url(url),
+            contentType = if (isHealthz) "" else "application/proto",
+            timeout = null,
+            headers = headers,
+            methodSpec = MethodSpec(
+                path = path,
+                requestClass = ByteArray::class,
+                responseClass = ByteArray::class,
+                streamType = StreamType.UNARY,
+                idempotency = Idempotency.UNKNOWN,
+            ),
+            message = if (isHealthz) Buffer() else Buffer().write(requestBytes),
+            httpMethod = if (isHealthz) HTTPMethod.GET else HTTPMethod.POST,
+        )
+        return suspendCancellableCoroutine { cont ->
+            val cancel = rpcTransport.unary(unaryReq) { res ->
+                val bodyBytes = runCatching { res.message.readByteArray() }.getOrElse { ByteArray(0) }
+                val epoch = res.headers.entries
+                    .firstOrNull { it.key.equals(RELAY_EPOCH_HEADER, ignoreCase = true) }
+                    ?.value?.firstOrNull().orEmpty()
+                val cause = res.cause
+                val status = res.status
+                val causeDetails = cause?.details?.mapNotNull { d ->
+                    val bytes = d.payload.toByteArray()
+                    if (d.type.isEmpty() || bytes.isEmpty()) null
+                    else RpcErrorDetailBytes.newBuilder().setTypeName(d.type).setValue(ByteString.copyFrom(bytes)).build()
+                }.orEmpty()
+                val result = when {
+                    status != null && status in 200..299 && cause == null -> relayRpcOk(opId, bodyBytes, epoch)
+                    cause != null && status == null -> relayRpcErr(
+                        opId = opId,
+                        code = cause.code.value,
+                        msg = cause.message ?: cause.code.codeName,
+                        relayEpoch = epoch,
+                        networkError = cause.code == Code.UNAVAILABLE || cause.code == Code.DEADLINE_EXCEEDED,
+                        unresolvedHost = cause.exception is UnknownHostException,
+                        errorDetails = causeDetails,
+                    )
+                    else -> {
+                        val parsed = parseConnectErrorBody(status ?: 502, bodyBytes, cause?.code?.value, cause?.message, causeDetails)
+                        relayRpcErr(opId, parsed.code, parsed.message, relayEpoch = epoch, errorDetails = parsed.details)
+                    }
+                }
+                if (cont.isActive) cont.resume(result)
+            }
+            cont.invokeOnCancellation { cancel() }
+        }
+    }
+    val reqBuilder = Request.Builder().url(url)
+    if (isHealthz) {
+        reqBuilder.header("Cache-Control", "no-store").get()
+    } else {
+        reqBuilder
             .header("Content-Type", "application/proto")
             .header("Connect-Protocol-Version", "1")
-            .apply { if (eff.authToken.isNotEmpty()) header("Authorization", "Bearer ${eff.authToken}") }
-            .post(eff.requestBytes.toByteArray().toRequestBody(PROTO_MEDIA_TYPE))
-            .build()
-        return suspendCancellableCoroutine { cont ->
-            val call = rpcHttp.newCall(req)
-            cont.invokeOnCancellation { call.cancel() }
-            call.enqueue(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-                    if (cont.isActive) cont.resume(rpcErr(eff.opId, 14, errorMessage(e), networkError = true))
+            .apply {
+                if (authToken.isNotEmpty()) header("Authorization", "Bearer $authToken")
+                if (attemptHeader.isNotEmpty()) header("Remote-Agent-Attempt", attemptHeader)
+            }
+            .post(requestBytes.toRequestBody(PROTO_MEDIA_TYPE))
+    }
+    val baseHttp = if (preconfiguredHttp) http else http.newBuilder()
+        .retryOnConnectionFailure(false)
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .authenticator(Authenticator.NONE)
+        .proxyAuthenticator(Authenticator.NONE)
+        .apply { interceptors().add(0, OneShotRPCBody) }
+        .build()
+    val client = if (timeoutMs > 0L) {
+        baseHttp.newBuilder().callTimeout(timeoutMs, TimeUnit.MILLISECONDS).build()
+    } else {
+        baseHttp
+    }
+    return suspendCancellableCoroutine { cont ->
+        val call = client.newCall(reqBuilder.build())
+        cont.invokeOnCancellation { call.cancel() }
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                if (!cont.isActive) return
+                val isTimeout = e is SocketTimeoutException || (e is java.io.InterruptedIOException && !call.isCanceled())
+                val code = when {
+                    call.isCanceled() -> 1
+                    isTimeout -> 4
+                    else -> 14
                 }
+                cont.resume(
+                    relayRpcErr(
+                        opId = opId,
+                        code = code,
+                        msg = errorMessage(e),
+                        networkError = !call.isCanceled(),
+                        unresolvedHost = e is UnknownHostException,
+                    ),
+                )
+            }
 
-                override fun onResponse(call: Call, response: Response) {
-                    val result = response.use { res ->
-                        val bodyBytes = res.body?.bytes() ?: ByteArray(0)
-                        if (res.isSuccessful) rpcOk(eff.opId, bodyBytes)
-                        else parseRpcError(eff.opId, res.code, bodyBytes, causeMsg = res.message)
+            override fun onResponse(call: Call, response: Response) {
+                val result = response.use { res ->
+                    val epoch = res.header(RELAY_EPOCH_HEADER).orEmpty()
+                    val bodyBytes = res.body?.bytes() ?: ByteArray(0)
+                    if (res.isSuccessful) {
+                        relayRpcOk(opId, bodyBytes, epoch)
+                    } else {
+                        val parsed = parseConnectErrorBody(res.code, bodyBytes, causeMsg = res.message)
+                        relayRpcErr(opId, parsed.code, parsed.message, relayEpoch = epoch, errorDetails = parsed.details)
                     }
-                    if (cont.isActive) cont.resume(result)
                 }
-            })
-        }
+                if (cont.isActive) cont.resume(result)
+            }
+        })
     }
 }
 

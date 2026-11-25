@@ -17,12 +17,15 @@ import {
   SecurityWorkflowStatusSchema,
 } from "./gen/remoteagent/core/v1/security_pb";
 import { TextSchema } from "./gen/remoteagent/core/v1/text_pb";
+import { RelayErrorDetailSchema, RelayErrorReason } from "./gen/remoteagent/v1/relay_pb";
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 let host: HTMLDivElement, root: Root;
 afterEach(() => { if (root) act(() => root.unmount()); host?.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 it("keeps the login denial distinct from a bad pairing code", () => {
-  const error = new ConnectError("login failed", Code.PermissionDenied);
+  const error = new ConnectError("login failed", Code.PermissionDenied, undefined, [
+    { desc: RelayErrorDetailSchema, value: { reason: RelayErrorReason.LOGIN_FAILED } },
+  ]);
   const text = "服务器不认识这台设备（可能已被移除，或服务已重建）";
   expect(errorText(error)).toBe(text);
   expect(joinBanner(error).text).toBe(text);

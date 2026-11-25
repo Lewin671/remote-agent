@@ -108,20 +108,13 @@ it("closes a terminal socket even while its handshake is pending", async () => {
   expect(Socket.all[0].readyState).toBe(3);
 });
 
-it("serializes the main stream and drops a bounded backlog", async () => {
+it("drops oversized main stream frames without buffering an unbounded backlog", async () => {
   vi.stubGlobal("WebSocket", Socket);
   const r = await probe();
   vi.spyOn(r as any, "login").mockImplementation(async () => {
     (r as any).token = "tok";
     (r as any).tokenExpires = Date.now() + 7 * 86_400_000;
   });
-  let release!: () => void;
-  const handler = vi.spyOn(r as any, "mapStreamFrame").mockImplementation(
-    () =>
-      new Promise<undefined>((resolve) => {
-        release = () => resolve(undefined);
-      }),
-  );
   const { toBinary } = await import("@bufbuild/protobuf");
   const { ServerFrameSchema } = await import("./gen/remoteagent/v1/relay_pb");
   const frame = toBinary(
@@ -132,14 +125,10 @@ it("serializes the main stream and drops a bounded backlog", async () => {
   await vi.waitFor(() => expect(Socket.all).toHaveLength(1));
   const ws = Socket.all[0];
   ws.open();
-  ws.onmessage?.({ data: frame });
-  await vi.waitFor(() => expect(handler).toHaveBeenCalledTimes(1));
-  for (let i = 0; i < 1024; i++) ws.onmessage?.({ data: frame });
+  for (let i = 0; i < 16; i++) ws.onmessage?.({ data: frame });
+  expect(ws.readyState).toBe(1);
+  ws.onmessage?.({ data: new ArrayBuffer(2 * 1024 * 1024 + 1) });
   expect(ws.readyState).toBe(3);
-  release();
-  await Promise.resolve();
-  await Promise.resolve();
-  expect(handler).toHaveBeenCalledTimes(1);
   r.stop();
 });
 

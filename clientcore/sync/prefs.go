@@ -45,6 +45,18 @@ func (e *Engine) startLoadPrefs(ctx *StepContext) {
 	}
 	e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_PREFS_RETRY, "")
 	e.prefsLoadOpID = e.allocOpID()
+	if e.relayPipe {
+		e.emitRelayRpc(
+			ctx,
+			corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_ACCOUNT_PREFS,
+			e.cachedToken,
+			relayRpcDefaultTimeoutMs,
+			"",
+			(&v1.GetAccountPrefsRequest{ObjectId: ProjectPrefsObjectID}).AppendMarshal(nil),
+			&pendingRelayRpc{kind: relayRpcPrefsGet, opID: e.prefsLoadOpID},
+		)
+		return
+	}
 	ctx.emit(&corev1.Effect{
 		Effect: &corev1.Effect_Rpc{
 			Rpc: &corev1.RpcEffect{
@@ -133,6 +145,18 @@ func (e *Engine) startNextPrefsOp(ctx *StepContext) {
 	head.ActiveOpID = e.allocOpID()
 	if head.Attempt == 0 {
 		head.InitialBase = e.prefs.Revision
+	}
+	if e.relayPipe {
+		e.emitRelayRpc(
+			ctx,
+			corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_ACCOUNT_PREFS,
+			e.cachedToken,
+			relayRpcDefaultTimeoutMs,
+			"",
+			(&v1.GetAccountPrefsRequest{ObjectId: ProjectPrefsObjectID}).AppendMarshal(nil),
+			&pendingRelayRpc{kind: relayRpcPrefsGet, opID: head.ActiveOpID},
+		)
+		return
 	}
 	ctx.emit(&corev1.Effect{
 		Effect: &corev1.Effect_Rpc{

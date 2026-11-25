@@ -1,6 +1,5 @@
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { type Envelope } from "./gen/remoteagent/v1/envelope_pb";
-import { LoginResponseSchema } from "./gen/remoteagent/v1/relay_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { afterEach, expect, it, vi } from "vitest";
 import { newRequestID } from "./crypto";
@@ -125,19 +124,8 @@ it("preserves concurrent project edits through server CAS", async () => {
     a.changePrefs("hide", "/synthetic/blog"),
     b.changePrefs("pin", "/synthetic/billing"),
   ]);
-  const { RpcEffectSchema } = await import("./gen/remoteagent/core/v1/app_pb");
   const { fromBinary } = await import("@bufbuild/protobuf");
   const { ProjectPrefsSchema } = await import("./gen/remoteagent/v1/remote_pb");
-  for (const r of [a, b]) {
-    getCoreHost(r).dispatch(
-      await r.executeRpc(
-        create(RpcEffectSchema, {
-          opId: 0n,
-          kind: { case: "getAccountPrefs", value: { objectId: "project-prefs" } },
-        }),
-      ),
-    );
-  }
   expect(stored.revision).toBe(3n);
   const opened = await a.world.fixture.open(a.account.deviceId, stored.envelope!);
   const prefs = fromBinary(ProjectPrefsSchema, opened.plaintext);
@@ -273,30 +261,23 @@ it("stops and says so once the server no longer knows this device", async () => 
       close() {}
     },
   );
-  vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
-    const name = String(input instanceof Request ? input.url : input)
-      .split("/")
-      .pop()!;
-    calls.push(name);
-    if (name === "GetChallenge")
-      return new Response(new Uint8Array(), {
-        headers: { "Content-Type": "application/proto" },
-      });
-    if (denied-- > 0)
-      return new Response(
-        JSON.stringify({ code: "permission_denied", message: "login failed" }),
-        { status: 403, headers: { "Content-Type": "application/json" } },
-      );
-    return new Response(
-      name === "Login"
-        ? new Uint8Array(toBinary(LoginResponseSchema, create(LoginResponseSchema, { token: "t", expiresMs: BigInt(Date.now() + 7 * 86_400_000) })))
-        : new Uint8Array(),
-      { headers: { "Content-Type": "application/proto" } },
-    );
-  });
+  const installAuth = (target: SyntheticRemote) => {
+    (target as unknown as { api: object }).api = {
+      getChallenge: async () => {
+        calls.push("GetChallenge");
+        return { challenge: new Uint8Array(32) };
+      },
+      login: async () => {
+        calls.push("Login");
+        if (denied-- > 0) throw new ConnectError("login failed", Code.PermissionDenied);
+        return { token: "t", expiresMs: BigInt(Date.now() + 7 * 86_400_000) };
+      },
+    };
+  };
   try {
     // One denial alone is a challenge the server forgot: the next login works.
     const r = await probe();
+    installAuth(r);
     r.start();
     await vi.waitFor(() =>
       expect(calls.filter((c) => c === "Login")).toHaveLength(2),
@@ -308,6 +289,7 @@ it("stops and says so once the server no longer knows this device", async () => 
     denied = 2;
     calls.length = 0;
     const gone = await probe();
+    installAuth(gone);
     gone.start();
     await vi.waitFor(() => expect(gone.removed).toBe(true));
     expect(remoteConnState(gone)).toBe("offline");
@@ -658,26 +640,6 @@ it("stores signed schedule cache via writeScheduleCache and decrypts via readSch
     }),
   );
 
-  (r as unknown as { api: object }).api = {
-    forward: async (req: { command: Envelope }) => {
-      const opened = await r.world.fixture.open(r.machine, req.command);
-      const resEnv = await r.seal(
-        {
-          kind: PayloadKind.COMMAND_RESULT,
-          machineId: r.machine,
-          sessionId: "",
-          requestId: opened.header.requestId,
-          compression: 0,
-        },
-        CommandResultSchema,
-        create(CommandResultSchema, {
-          kind: { case: "schedule", value: { resultJson: listJson } },
-        }),
-      );
-      return { result: resEnv };
-    },
-  };
-
   expect(await r.readScheduleCache(1n, r.machine)).toMatchObject({ opId: 1n, machineId: r.machine, resultJson: new Uint8Array() });
 
   const unsealed = await r.executeCommandAttempt(
@@ -693,41 +655,25 @@ it("stores signed schedule cache via writeScheduleCache and decrypts via readSch
   expect(unsealed.transportCode).toBe("failed_precondition");
   expect(unsealed.transportDetail).toBe("missing sealed command");
 
-  const { getCoreHost } = await import("./core/host");
-  const { SecuritySealEnvelopeOpSchema } = await import("./gen/remoteagent/core/v1/security_pb");
-  const { Purpose } = await import("./remote");
   const reqId = newRequestID();
-  const deadlineMs = BigInt(Date.now() + 30_000);
-  const sealed = await getCoreHost(r).securityOp({
-    case: "sealEnvelope",
-    value: create(SecuritySealEnvelopeOpSchema, {
-      purpose: Purpose.Command,
+  const resEnv = await r.seal(
+    {
+      kind: PayloadKind.COMMAND_RESULT,
       machineId: r.machine,
+      sessionId: "",
       requestId: reqId,
-      deadlineMs,
-      plaintext: cmdBytes,
-    }),
-  });
-  expect(sealed.result.case).toBe("sealed");
-  if (sealed.result.case !== "sealed") throw new Error("expected sealed envelope");
-
-  const outcome = await r.executeCommandAttempt(
-    create(DispatchCommandEffectSchema, {
-      requestId: reqId,
-      attemptId: newRequestID(),
-      machineId: r.machine,
-      deadlineMs,
-      routeHint: CommandRouteHint.READ,
-      commandBytes: cmdBytes,
-      sealedEnvelope: sealed.result.value.envelope,
+      compression: 0,
+    },
+    CommandResultSchema,
+    create(CommandResultSchema, {
+      kind: { case: "schedule", value: { resultJson: listJson } },
     }),
   );
-  expect(outcome.transportCode).toBe("");
-  expect(outcome.sealedResult).toBeDefined();
-  // Shell must NOT write schedule cache ad hoc during executeCommandAttempt; Core drives writeScheduleCache.
+
+  // Shell must NOT write schedule cache ad hoc; Core drives writeScheduleCache.
   expect(await r.readScheduleCache(2n, r.machine)).toMatchObject({ opId: 2n, machineId: r.machine, resultJson: new Uint8Array() });
 
-  await r.writeScheduleCache(r.machine, reqId, toBinary(EnvelopeSchema, outcome.sealedResult!));
+  await r.writeScheduleCache(r.machine, reqId, toBinary(EnvelopeSchema, resEnv));
   const cached = await r.readScheduleCache(3n, r.machine);
   expect(cached.error).toBe("");
   expect(new TextDecoder().decode(cached.resultJson)).toBe(new TextDecoder().decode(listJson));

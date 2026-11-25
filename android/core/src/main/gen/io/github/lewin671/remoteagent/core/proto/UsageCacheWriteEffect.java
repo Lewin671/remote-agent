@@ -114,32 +114,6 @@ public  final class UsageCacheWriteEffect extends
     bitField0_ = (bitField0_ & ~0x00000001);
   }
 
-  public static final int OP_ID_FIELD_NUMBER = 3;
-  private long opId_;
-  /**
-   * <code>uint64 op_id = 3 [json_name = "opId"];</code>
-   * @return The opId.
-   */
-  @java.lang.Override
-  public long getOpId() {
-    return opId_;
-  }
-  /**
-   * <code>uint64 op_id = 3 [json_name = "opId"];</code>
-   * @param value The opId to set.
-   */
-  private void setOpId(long value) {
-    
-    opId_ = value;
-  }
-  /**
-   * <code>uint64 op_id = 3 [json_name = "opId"];</code>
-   */
-  private void clearOpId() {
-
-    opId_ = 0L;
-  }
-
   public static io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -333,34 +307,6 @@ public  final class UsageCacheWriteEffect extends
       return this;
     }
 
-    /**
-     * <code>uint64 op_id = 3 [json_name = "opId"];</code>
-     * @return The opId.
-     */
-    @java.lang.Override
-    public long getOpId() {
-      return instance.getOpId();
-    }
-    /**
-     * <code>uint64 op_id = 3 [json_name = "opId"];</code>
-     * @param value The opId to set.
-     * @return This builder for chaining.
-     */
-    public Builder setOpId(long value) {
-      copyOnWrite();
-      instance.setOpId(value);
-      return this;
-    }
-    /**
-     * <code>uint64 op_id = 3 [json_name = "opId"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearOpId() {
-      copyOnWrite();
-      instance.clearOpId();
-      return this;
-    }
-
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.UsageCacheWriteEffect)
   }
   @java.lang.Override
@@ -380,11 +326,10 @@ public  final class UsageCacheWriteEffect extends
             "bitField0_",
             "machineId_",
             "snapshot_",
-            "opId_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0001\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\u1009" +
-              "\u0000\u0003\u0003";
+              "\u0000\u0002\u0000\u0001\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0208\u0002\u1009" +
+              "\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

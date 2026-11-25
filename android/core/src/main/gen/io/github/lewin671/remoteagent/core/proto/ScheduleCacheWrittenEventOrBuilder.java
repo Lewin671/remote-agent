@@ -11,12 +11,6 @@ public interface ScheduleCacheWrittenEventOrBuilder extends
     com.google.protobuf.MessageLiteOrBuilder {
 
   /**
-   * <code>uint64 op_id = 1 [json_name = "opId"];</code>
-   * @return The opId.
-   */
-  long getOpId();
-
-  /**
    * <code>string machine_id = 2 [json_name = "machineId"];</code>
    * @return The machineId.
    */

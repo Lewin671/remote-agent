@@ -223,8 +223,10 @@ class CoreHost(
 
     private val nextMachineCmdOpId = AtomicLong(1L)
     private val nextSecurityOpSeq = AtomicLong(1L)
+    private val nextPushRpcOpId = AtomicLong(1L)
     private val pendingMachineCmds = ConcurrentHashMap<Long, CompletableDeferred<CommandResult>>()
     private val pendingSecurityOps = ConcurrentHashMap<Long, CompletableDeferred<SecurityOpResultEffect>>()
+    private val pendingPushRpcs = ConcurrentHashMap<Long, CompletableDeferred<PushRpcResultEffect>>()
     private val retryNowWaiters = ConcurrentHashMap<String, MutableList<CompletableDeferred<Boolean>>>()
     private val terminalReopenListeners = ConcurrentHashMap<String, () -> Unit>()
     private val terminalHistoryRequestListeners = ConcurrentHashMap<String, (TerminalHistorySendRequestEffect) -> Unit>()
@@ -607,8 +609,14 @@ class CoreHost(
             Effect.EffectCase.SECURITY_KEY_ENCAPSULATE,
             Effect.EffectCase.SECURITY_KEY_DISCARD,
             Effect.EffectCase.SECURITY_STORAGE,
-            Effect.EffectCase.SECURITY_RPC -> {
+            Effect.EffectCase.SECURITY_RPC,
+            Effect.EffectCase.RELAY_RPC,
+            Effect.EffectCase.RELAY_RPC_CANCEL -> {
                 onSecurityEffect(effect)
+            }
+            Effect.EffectCase.PUSH_RPC_RESULT -> {
+                val res = effect.pushRpcResult
+                pendingPushRpcs.remove(res.opId)?.complete(res)
             }
             Effect.EffectCase.SECURITY_TOKEN_UPDATED -> onSecurityTokenUpdated(effect.securityTokenUpdated)
             Effect.EffectCase.SECURITY_WORKFLOW_RESULT ->
@@ -1234,6 +1242,37 @@ class CoreHost(
 
     fun retrySessionLoad(sessionId: String) =
         send { setSessionRetryLoad(SessionRetryLoadAction.newBuilder().setSessionId(sessionId)) }
+
+    fun sendRelayPipeConfig(enabled: Boolean) =
+        send { setRelayPipeConfig(RelayPipeConfigEvent.newBuilder().setEnabled(enabled)) }
+
+    fun dispatchStreamRawFrame(legId: Long, raw: ByteArray) = send {
+        setStreamRawFrame(
+            StreamRawFrameEvent.newBuilder()
+                .setLegId(legId)
+                .setRawServerFrame(ByteString.copyFrom(raw)),
+        )
+    }
+
+    suspend fun refreshDevices() {
+        dispatchAndWait(CoreEvent.newBuilder().setRefreshDevices(RefreshDevicesAction.getDefaultInstance()).build())
+    }
+
+    suspend fun pushRpc(block: PushRpcAction.Builder.() -> Unit): PushRpcResultEffect {
+        val opId = nextPushRpcOpId.getAndIncrement()
+        val deferred = CompletableDeferred<PushRpcResultEffect>()
+        pendingPushRpcs[opId] = deferred
+        dispatch(
+            CoreEvent.newBuilder()
+                .setPushRpc(PushRpcAction.newBuilder().setOpId(opId).apply(block))
+                .build(),
+        )
+        return try {
+            deferred.await()
+        } finally {
+            pendingPushRpcs.remove(opId, deferred)
+        }
+    }
 
     fun sendSharedFileConfig(
         localCacheMaxBytes: Long = 0L,

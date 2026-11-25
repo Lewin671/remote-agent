@@ -137,10 +137,8 @@ class Remote(
     @Volatile private var inFlightLoginJob: Job? = null
     @Volatile private var networkAvailable = true
     @Volatile private var lastNetworkSignature: String? = null
-    private val devicesPushSeq = AtomicLong(1L)
     @Volatile private var running = false
     @Volatile private var closed = false
-    @Volatile private var serverAhead = false
 
     private class ActiveStreamLeg(val legId: Long, val socket: FrameStream)
 
@@ -210,6 +208,7 @@ class Remote(
         parentScope = scope,
         rpcTransport = rpcTransport,
         dispatcher = if (rpcTransport != null) this.dispatcher else Dispatchers.IO,
+        defaultServer = account.server,
     )
 
     private class ActiveTerminalStream(
@@ -238,9 +237,7 @@ class Remote(
     )
 
     internal var deviceLink = DeviceLink(RelayPath(
-        api = api,
         sockets = { socketFactory ?: streamHttp },
-        token = { currentToken() },
     ))
 
     fun directEnabled(machineId: String): Boolean =
@@ -250,7 +247,6 @@ class Remote(
     fun filePath(machineId: String): DirectPathChoice =
         if (directRouteReport(machineId).fileRoute == DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT) DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT
         else DirectPathChoice.DIRECT_PATH_CHOICE_RELAY
-    @Volatile internal var parseServerFrame: (ByteArray) -> ServerFrame = ServerFrame::parseFrom
 
     private fun ensureSecurityConfigured() {
         if (closed) return
@@ -476,6 +472,7 @@ class Remote(
         coreHost.resolveUiMessage = { uiMessageResolver(it) }
         coreHost.onDismissUpgradeNotice = { securityStore.dismissUpgradeNotice() }
         coreHost.onSecurityEffect = securityExecutor::handleEffect
+        coreHost.sendRelayPipeConfig(true)
         coreHost.onSecurityTokenUpdated = ::handleSecurityTokenUpdated
         coreHost.onSecurityStatusChanged = { eff ->
             if (eff.hasStatus()) {
@@ -515,7 +512,7 @@ class Remote(
         }
         coreHost.onEnsureToken = { eff -> scope.launch { ensureTokenForCore(eff.opId, eff.forceLogin) } }
         coreHost.onDiscardToken = { eff -> scope.launch { discardToken(eff.token) } }
-        coreHost.onOpenStream = { eff -> scope.launch { openStreamForCore(eff.legId, eff.token) } }
+        coreHost.onOpenStream = { eff -> scope.launch { openStreamForCore(eff.legId, eff.helloFrame.toByteArray()) } }
         coreHost.onCloseStream = { eff -> scope.launch { closeStreamLeg(eff.legId) } }
         coreHost.onCacheRead = { eff ->
             if (cache == null) scope.launch { executeCacheRead(eff) }
@@ -529,7 +526,6 @@ class Remote(
                 enqueueCacheOp { executeCacheDelete(eff) }
             }
         }
-        coreHost.onRpc = { eff -> scope.launch { executeRpc(eff) } }
         coreHost.onDispatchCommand = { eff ->
             val job = scope.launch { executeDispatchCommand(eff) }
             inFlightDispatches[eff.attemptId] = eff to job
@@ -775,9 +771,8 @@ class Remote(
 
     // --- Stream Driver ---
 
-    private suspend fun openStreamForCore(legId: Long, token: String) {
+    private suspend fun openStreamForCore(legId: Long, helloFrame: ByteArray) {
         val url = account.server.replaceFirst(Regex("^http"), "ws") + "/v1/stream"
-        val hello = PeerFrame.newBuilder().setHello(StreamHello.newBuilder().setToken(token)).build().toByteArray()
         val queuedBytes = AtomicLong()
         val frames = Channel<ByteArray>(frameQueue, onUndeliveredElement = { queuedBytes.addAndGet(-it.size.toLong()) })
         val closed = AtomicBoolean(false)
@@ -787,28 +782,23 @@ class Remote(
 
         val listener = object : FrameListener() {
             override fun onOpen(stream: FrameStream) {
-                stream.send(hello)
+                if (helloFrame.isNotEmpty()) {
+                    stream.send(helloFrame)
+                    directExecutor.attachLeg(stream)
+                }
             }
 
             override fun onFrame(stream: FrameStream, bytes: ByteArray) {
-                val deliveryBody = peerFrameBody(bytes, 11)
-                val resultBody = if (deliveryBody == null) peerFrameBody(bytes, 12) else null
-                if (deliveryBody != null || resultBody != null) {
-                    val cur = activeStreamLeg
-                    if (cur == null || cur.legId != legId || cur.socket !== stream || !running) return
-                    runCatching {
-                        if (deliveryBody != null) {
-                            directSignalSink?.invoke(deliveryBody) ?: coreHost.dispatchDirectSignal(deliveryBody)
-                        } else if (resultBody != null) {
-                            val res = PeerFrameResult.parseFrom(resultBody)
-                            coreHost.dispatchDirectSignalDelivery(
-                                res.frameId.toByteArray(),
-                                res.statusValue,
-                                res.retryAfterMs.toLong(),
-                            )
+                val sink = directSignalSink
+                if (sink != null) {
+                    val deliveryBody = extractRawFieldBytes(bytes, 11)
+                    if (deliveryBody != null) {
+                        val cur = activeStreamLeg
+                        if (cur != null && cur.legId == legId && cur.socket === stream && running) {
+                            runCatching { sink(deliveryBody) }
                         }
+                        return
                     }
-                    return
                 }
                 fun dropStream() = cleanup({ stream.cancel() }, { frames.close(java.io.IOException("stream overflow")) })
                 if (bytes.size > STREAM_FRAME_BYTES) {
@@ -842,56 +832,14 @@ class Remote(
             }
         }
 
-        fun sendFrame(block: StreamFrameEvent.Builder.() -> Unit) =
-            sendEvent { setStreamFrame(StreamFrameEvent.newBuilder().setLegId(legId).apply(block)) }
-
         val socket = deviceLink.path.openStream(url, listener)
         legJob = scope.launch {
             var notifyClose = true
             try {
                 for (raw in frames) {
                     ensureActive()
-                    val frame = parseServerFrame(raw)
-                    when (frame.kindCase) {
-                        ServerFrame.KindCase.READY -> {
-                            serverAhead = clock() - frame.ready.serverTimeMs > MAX_CLOCK_SKEW_MS
-                            directExecutor.attachLeg(socket)
-                            sendEvent { setStreamReady(StreamReadyEvent.newBuilder().setLegId(legId).setServerTimeMs(frame.ready.serverTimeMs)) }
-                        }
-                        ServerFrame.KindCase.HEARTBEAT -> sendFrame { setHeartbeat(true) }
-                        ServerFrame.KindCase.MACHINE_UPDATED -> {
-                            sendFrame { setWireMachineUpdated(frame.machineUpdated.machine) }
-                        }
-                        ServerFrame.KindCase.MACHINE_REMOVED -> {
-                            sendFrame { setMachineRemovedId(frame.machineRemoved.machineId) }
-                        }
-                        ServerFrame.KindCase.SESSION_UPDATED -> {
-                            sendFrame { setWireSessionUpdated(frame.sessionUpdated.session) }
-                        }
-                        ServerFrame.KindCase.EVENTS_APPENDED -> {
-                            val ea = frame.eventsAppended
-                            sendFrame {
-                                setEventsAppended(
-                                    EventsAppendedFrame.newBuilder()
-                                        .setSessionId(ea.sessionId)
-                                        .addAllWireEvents(ea.eventsList),
-                                )
-                            }
-                        }
-                        ServerFrame.KindCase.ACCOUNT_PREFS_UPDATED -> {
-                            val obj = frame.accountPrefsUpdated.`object`
-                            if (obj.objectId == PROJECT_PREFS) {
-                                sendFrame { setWireAccountPrefsUpdated(obj) }
-                            }
-                        }
-                        ServerFrame.KindCase.DEVICE_UPDATED -> {
-                            sendFrame { setWireDeviceUpdated(frame.deviceUpdated.device) }
-                        }
-                        ServerFrame.KindCase.DEVICE_REMOVED -> {
-                            sendFrame { setDeviceRemovedId(frame.deviceRemoved.deviceId) }
-                        }
-                        else -> {}
-                    }
+                    queuedBytes.addAndGet(-raw.size.toLong())
+                    coreHost.dispatchStreamRawFrame(legId, raw)
                 }
             } catch (e: CancellationException) {
                 notifyClose = false
@@ -963,7 +911,7 @@ class Remote(
         toClose.first?.cancel()
     }
 
-    private fun peerFrameBody(raw: ByteArray, fieldNumber: Int): ByteArray? =
+    private fun extractRawFieldBytes(raw: ByteArray, fieldNumber: Int): ByteArray? =
         runCatching {
             val input = com.google.protobuf.CodedInputStream.newInstance(raw)
             while (!input.isAtEnd) {
@@ -1097,150 +1045,11 @@ class Remote(
         }
     }
 
-    // --- RPC Executor ---
-
     private inline fun sendEvent(
         block: CoreEvent.Builder.() -> Unit,
     ) = coreHost.dispatch(CoreEvent.newBuilder().apply(block).build())
 
-    private suspend inline fun <B> runRpc(
-        make: () -> B,
-        onError: B.(String, Boolean) -> Unit,
-        crossinline emit: CoreEvent.Builder.(B) -> Unit,
-        block: B.() -> Unit,
-    ) {
-        val b = make()
-        try {
-            b.block()
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            report(e)
-            b.onError(rpcErrorString(e), unresolvedHost(e))
-        }
-        sendEvent { emit(b) }
-    }
-
-    private suspend fun executeRpc(eff: RpcEffect) {
-        val opId = eff.opId
-        when (eff.kindCase) {
-            RpcEffect.KindCase.FETCH_LISTS -> runRpc(
-                make = { ListsFetchedEvent.newBuilder().setOpId(opId) },
-                onError = { err, host -> setUnresolvedHost(host).setError(err) },
-                emit = { setListsFetched(it) },
-            ) {
-                val headers = Api.headers(currentToken())
-                coroutineScope {
-                    val reqSessions = ListRemoteSessionsRequest.newBuilder().apply {
-                        if (eff.fetchLists.limit > 0) setLimit(eff.fetchLists.limit)
-                    }.build()
-                    val ms = async { api.client.listMachines(ListMachinesRequest.getDefaultInstance(), headers).value() }
-                    val ss = async { api.client.listRemoteSessions(reqSessions, headers).value() }
-                    val ds = async { api.client.listDevices(ListDevicesRequest.getDefaultInstance(), headers).value() }
-                    val machinesRes = ms.await()
-                    val sessionsRes = ss.await()
-                    val devicesRes = ds.await()
-                    addAllWireMachines(machinesRes.machinesList)
-                    addAllWireSessions(sessionsRes.sessionsList)
-                    if (sessionsRes.hasNext()) setNext(sessionsRes.next)
-                    addAllWireDevices(devicesRes.devicesList)
-                }
-            }
-            RpcEffect.KindCase.FETCH_SESSIONS_PAGE -> runRpc(
-                make = { SessionsPageFetchedEvent.newBuilder().setOpId(opId) },
-                onError = { err, _ -> setError(err) },
-                emit = { setSessionsPageFetched(it) },
-            ) {
-                val req = ListRemoteSessionsRequest.newBuilder().apply {
-                    if (eff.fetchSessionsPage.hasAfter()) setAfter(eff.fetchSessionsPage.after)
-                    if (eff.fetchSessionsPage.limit > 0) setLimit(eff.fetchSessionsPage.limit)
-                }.build()
-                val res = api.client.listRemoteSessions(req, Api.headers(currentToken())).value()
-                addAllWireSessions(res.sessionsList)
-                if (res.hasNext()) setNext(res.next)
-            }
-            RpcEffect.KindCase.FETCH_SESSION_BY_ID -> {
-                val sid = eff.fetchSessionById.sessionId
-                val b = SessionByIdFetchedEvent.newBuilder().setOpId(opId)
-                try {
-                    val req = ListRemoteSessionsRequest.newBuilder().addSessionIds(sid).setLimit(1).build()
-                    val found = api.client.listRemoteSessions(req, Api.headers(currentToken())).value().sessionsList.firstOrNull { it.sessionId == sid }
-                    if (found != null) {
-                        b.setWireSession(found)
-                    }
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    report(e)
-                    b.setError(rpcErrorString(e))
-                }
-                coreHost.dispatchAndWait(CoreEvent.newBuilder().setSessionByIdFetched(b).build())
-            }
-            RpcEffect.KindCase.GET_EVENTS -> runRpc(
-                make = { EventsPageFetchedEvent.newBuilder().setOpId(opId).setSessionId(eff.getEvents.sessionId) },
-                onError = { err, _ -> setError(err) },
-                emit = { setEventsPageFetched(it) },
-            ) {
-                val r = eff.getEvents
-                val req = GetEventsRequest.newBuilder().setSessionId(r.sessionId).setAfterSeq(r.afterSeq).setLimit(r.limit).build()
-                val res = api.client.getEvents(req, Api.headers(currentToken())).value()
-                setMore(res.more).addAllWireEvents(res.eventsList)
-            }
-            RpcEffect.KindCase.GET_ACCOUNT_PREFS -> runRpc(
-                make = { AccountPrefsFetchedEvent.newBuilder().setOpId(opId) },
-                onError = { err, _ -> setError(err) },
-                emit = { setAccountPrefsFetched(it) },
-            ) {
-                val objectId = eff.getAccountPrefs.objectId.ifEmpty { PROJECT_PREFS }
-                val obj = api.client.getAccountPrefs(GetAccountPrefsRequest.newBuilder().setObjectId(objectId).build(), Api.headers(currentToken())).value().`object`
-                setWirePrefs(obj)
-            }
-            RpcEffect.KindCase.PUT_ACCOUNT_PREFS -> {
-                val putRpc = eff.putAccountPrefs
-                val objectId = putRpc.objectId.ifEmpty { PROJECT_PREFS }
-                val b = AccountPrefsPutResultEvent.newBuilder().setOpId(opId)
-                try {
-                    val env = if (putRpc.hasSealedEnvelope()) {
-                        putRpc.sealedEnvelope
-                    } else {
-                        sealEnvelopeOp(
-                            PURPOSE_PREFS,
-                            request = objectId,
-                            seq = (putRpc.expectedRevision + 1).toULong(),
-                            plain = putRpc.nextPrefs.toByteArray(),
-                        ).envelope
-                    }
-                    val res = api.client.putAccountPrefs(
-                        PutAccountPrefsRequest.newBuilder().setObjectId(objectId).setExpectedRevision(putRpc.expectedRevision).setEnvelope(env).build(),
-                        Api.headers(currentToken()),
-                    ).value()
-                    b.setApplied(res.applied)
-                    if (res.hasObject()) b.setWireCurrent(res.`object`)
-                } catch (e: SecurityFailure) {
-                    if (e.code == "conflict") b.setSealConflict(true)
-                    b.setError(e.message ?: e.code)
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    report(e)
-                    b.setError(rpcErrorString(e))
-                }
-                sendEvent { setAccountPrefsPutResult(b) }
-            }
-            RpcEffect.KindCase.FETCH_DEVICES -> runRpc(
-                make = { DevicesFetchedEvent.newBuilder().setOpId(opId) },
-                onError = { err, _ -> setError(err) },
-                emit = { setDevicesFetched(it) },
-            ) {
-                val ds = api.client.listDevices(ListDevicesRequest.getDefaultInstance(), Api.headers(currentToken())).value()
-                addAllWireDevices(ds.devicesList)
-            }
-            else -> {}
-        }
-    }
-
-    private fun rpcErrorString(e: Exception): String =
-        if (e is ConnectException) "${e.code.name.lowercase()}: ${e.message ?: ""}".trimEnd(':', ' ')
-        else e.message ?: e.javaClass.simpleName
-
-    // --- Stateless single-attempt command executor ---
+    // --- Direct DataChannel Command Executor (relay legs run in Core) ---
 
     private suspend fun executeDispatchCommand(eff: io.github.lewin671.remoteagent.core.proto.DispatchCommandEffect) {
         val outcome = try {
@@ -1260,85 +1069,6 @@ class Remote(
         coreHost.dispatch(CoreEvent.newBuilder().setCommandOutcome(outcome).build())
     }
 
-    private suspend fun executeCommandLeg(
-        machineId: String,
-        sessionId: String,
-        requestId: String,
-        attemptId: String,
-        parsedCmd: Command?,
-        authorized: Envelope,
-        prior: Boolean,
-        bulk: Boolean,
-        useDirect: Boolean,
-        directPcId: Long,
-        directTimeoutMs: Long,
-    ): CommandOutcomeEvent {
-        var handedOff = false
-        val handoff: () -> Unit = { handedOff = true }
-        val relayAttempt = if (useDirect) null else deviceLink.path.attempt(attemptId, handoff)
-        val startedNs = System.nanoTime()
-        fun elapsedMs(): Double = maxOf((System.nanoTime() - startedNs) / 1_000_000.0, 0.01)
-        fun baseOutcome(source: OutcomeSource): CommandOutcomeEvent.Builder =
-            CommandOutcomeEvent.newBuilder()
-                .setRequestId(requestId)
-                .setAttemptId(attemptId)
-                .setSource(source)
-                .setRouteWasDirect(useDirect)
-
-        return try {
-            val res = if (useDirect) {
-                val env = directExecutor.sendRpc(directPcId, requestId, authorized.toByteArray(), directTimeoutMs, handoff)
-                ForwardResponse.newBuilder().setResult(env).setAttemptId(attemptId).build()
-            } else {
-                relayAttempt!!.prepare(prior)
-                relayAttempt.send(machineId, authorized)
-            }
-            val dtMs = elapsedMs()
-            val attemptBound = res.attemptId == attemptId
-            baseOutcome(OutcomeSource.OUTCOME_SOURCE_DAEMON)
-                .setAttemptBound(attemptBound)
-                .apply { if (res.hasResult()) setSealedResult(res.result) }
-                .setOuterOutcome(res.outcome)
-                .setOuterReason(res.reason)
-                .setHandedOff(handedOff)
-                .setElapsedMs(dtMs)
-                .build()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: PathChanged) {
-            baseOutcome(if (handedOff) OutcomeSource.OUTCOME_SOURCE_TRANSPORT else OutcomeSource.OUTCOME_SOURCE_LOCAL)
-                .setNotForwarded(!handedOff)
-                .setHandedOff(handedOff)
-                .setTransportCode("path_changed")
-                .setElapsedMs(elapsedMs())
-                .build()
-        } catch (ce: ConnectException) {
-            val dtMs = elapsedMs()
-            val refusal = relayAttempt?.refusal(ce)
-            if (refusal != null) {
-                baseOutcome(OutcomeSource.OUTCOME_SOURCE_SERVER).setNotForwarded(true).setAttemptBound(true)
-                    .setOuterReason(refusal.reason).setTransportCode(mapConnectCode(ce.code))
-                    .setTransportDetail(ce.message ?: "").setElapsedMs(dtMs).build()
-            } else {
-                baseOutcome(OutcomeSource.OUTCOME_SOURCE_TRANSPORT).setNotForwarded(!handedOff).setHandedOff(handedOff)
-                    .setTransportCode(if (unresolvedHost(ce)) "unresolved_host" else mapConnectCode(ce.code))
-                    .setTransportDetail(ce.message ?: "").setElapsedMs(dtMs).build()
-            }
-        } catch (e: IOException) {
-            baseOutcome(OutcomeSource.OUTCOME_SOURCE_TRANSPORT).setNotForwarded(!handedOff).setHandedOff(handedOff)
-                .setTransportCode(if (unresolvedHost(e)) "unresolved_host" else "network")
-                .setTransportDetail(e.message ?: e.javaClass.simpleName).setElapsedMs(elapsedMs()).build()
-        } catch (e: Exception) {
-            baseOutcome(if (handedOff) OutcomeSource.OUTCOME_SOURCE_TRANSPORT else OutcomeSource.OUTCOME_SOURCE_LOCAL)
-                .setNotForwarded(!handedOff)
-                .setHandedOff(handedOff)
-                .setTransportCode("failed_precondition")
-                .setTransportDetail(e.message ?: e.javaClass.simpleName)
-                .setElapsedMs(elapsedMs())
-                .build()
-        }
-    }
-
     internal suspend fun dispatchSingleCommand(
         eff: io.github.lewin671.remoteagent.core.proto.DispatchCommandEffect,
     ): CommandOutcomeEvent {
@@ -1352,34 +1082,57 @@ class Remote(
                 .setTransportDetail(detail)
                 .build()
 
-        val cmdBytes = eff.commandBytes.toByteArray()
-        val parsedCmd = runCatching { Command.parseFrom(cmdBytes) }.getOrNull()
-        val bulk = eff.bulkUpload || eff.routeHint == CommandRouteHint.COMMAND_ROUTE_HINT_BULK
-
-        if (serverAhead || coreHost.securityClient.currentStatus?.clockSkewed == true) return localFailure("failed_precondition", "clock skew")
+        if (coreHost.securityClient.currentStatus?.clockSkewed == true) return localFailure("failed_precondition", "clock skew")
         if (!eff.hasSealedEnvelope()) return localFailure("failed_precondition", "missing sealed command")
 
         val useDirect = eff.routeLeg == CommandRouteLeg.COMMAND_ROUTE_LEG_DIRECT && eff.directPcId > 0L
-        return executeCommandLeg(
-            machineId = eff.machineId,
-            sessionId = eff.sessionId,
-            requestId = eff.requestId,
-            attemptId = eff.attemptId,
-            parsedCmd = parsedCmd,
-            authorized = eff.sealedEnvelope,
-            prior = eff.retryOfUnknown,
-            bulk = bulk,
-            useDirect = useDirect,
-            directPcId = eff.directPcId,
-            directTimeoutMs = eff.directTimeoutMs,
-        )
-    }
+        if (!useDirect) return localFailure("failed_precondition", "relay leg handled by core")
 
-    private fun mapConnectCode(code: Code): String = when (code) {
-        Code.UNAUTHENTICATED -> "unauthenticated"
-        Code.FAILED_PRECONDITION -> "failed_precondition"
-        Code.UNAVAILABLE, Code.DEADLINE_EXCEEDED -> "unavailable"
-        else -> code.name.lowercase()
+        var handedOff = false
+        val handoff: () -> Unit = { handedOff = true }
+        val startedNs = System.nanoTime()
+        fun elapsedMs(): Double = maxOf((System.nanoTime() - startedNs) / 1_000_000.0, 0.01)
+        fun baseOutcome(source: OutcomeSource): CommandOutcomeEvent.Builder =
+            CommandOutcomeEvent.newBuilder()
+                .setRequestId(eff.requestId)
+                .setAttemptId(eff.attemptId)
+                .setSource(source)
+                .setRouteWasDirect(true)
+
+        return try {
+            val env = directExecutor.sendRpc(eff.directPcId, eff.requestId, eff.sealedEnvelope.toByteArray(), eff.directTimeoutMs, handoff)
+            baseOutcome(OutcomeSource.OUTCOME_SOURCE_DAEMON)
+                .setAttemptBound(true)
+                .setSealedResult(env)
+                .setHandedOff(handedOff)
+                .setElapsedMs(elapsedMs())
+                .build()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: PathChanged) {
+            baseOutcome(if (handedOff) OutcomeSource.OUTCOME_SOURCE_TRANSPORT else OutcomeSource.OUTCOME_SOURCE_LOCAL)
+                .setNotForwarded(!handedOff)
+                .setHandedOff(handedOff)
+                .setTransportCode("path_changed")
+                .setElapsedMs(elapsedMs())
+                .build()
+        } catch (e: IOException) {
+            baseOutcome(OutcomeSource.OUTCOME_SOURCE_TRANSPORT)
+                .setNotForwarded(!handedOff)
+                .setHandedOff(handedOff)
+                .setTransportCode(if (unresolvedHost(e)) "unresolved_host" else "network")
+                .setTransportDetail(e.message ?: e.javaClass.simpleName)
+                .setElapsedMs(elapsedMs())
+                .build()
+        } catch (e: Exception) {
+            baseOutcome(if (handedOff) OutcomeSource.OUTCOME_SOURCE_TRANSPORT else OutcomeSource.OUTCOME_SOURCE_LOCAL)
+                .setNotForwarded(!handedOff)
+                .setHandedOff(handedOff)
+                .setTransportCode("failed_precondition")
+                .setTransportDetail(e.message ?: e.javaClass.simpleName)
+                .setElapsedMs(elapsedMs())
+                .build()
+        }
     }
 
     // --- Lifecycle ---
@@ -1634,10 +1387,19 @@ class Remote(
     }
 
     suspend fun refreshDevices() {
-        val pushSeq = devicesPushSeq.getAndIncrement()
-        val ds = api.client.listDevices(ListDevicesRequest.getDefaultInstance(), Api.headers(currentToken())).value()
-        val ev = DevicesFetchedEvent.newBuilder().setOpId(0L).setPushSeq(pushSeq).addAllWireDevices(ds.devicesList).build()
-        coreHost.dispatchAndWait(CoreEvent.newBuilder().setDevicesFetched(ev).build())
+        ensureSecurityConfigured()
+        coreHost.refreshDevices()
+    }
+
+    suspend fun setPushTarget(type: PushType, target: String, kinds: List<NotifyKind>): SetPushTargetResponse {
+        val res = coreHost.pushRpc {
+            setTarget = true
+            pushType = type.number
+            this.target = target
+            addAllKinds(kinds)
+        }
+        if (!res.ok) throw PushRpcException(res.error.ifEmpty { "push rpc failed" }, res.retryable)
+        return SetPushTargetResponse.newBuilder().setEnabled(res.enabled).build()
     }
 
     suspend fun getSecurityStatus(): SecurityWorkflowStatus =
@@ -1757,15 +1519,20 @@ class Remote(
         val cacheKey = "$sid/$imageId"
         var env = runCatching { cache?.image(cacheKey)?.let { Envelope.parseFrom(it) } }.getOrNull()
         if (env == null) {
-            val r = try {
-                api.client.getImage(
-                    GetImageRequest.newBuilder().setSessionId(sid).setImageId(imageId).build(),
-                    Api.headers(currentToken()),
-                ).value()
-            } catch (e: ConnectException) {
-                if (e.code == Code.NOT_FOUND) return@withContext ImageResult.Missing
-                throw e
+            val reqBytes = GetImageRequest.newBuilder().setSessionId(sid).setImageId(imageId).build().toByteArray()
+            val raw = securityExecutor.executeRelayUnary(
+                opId = 0L,
+                method = RelayRpcMethod.RELAY_RPC_METHOD_GET_IMAGE,
+                server = account.server,
+                authToken = currentToken(),
+                timeoutMs = 15_000L,
+                requestBytes = reqBytes,
+            )
+            if (raw.connectCode == Code.NOT_FOUND.value) return@withContext ImageResult.Missing
+            if (raw.connectCode != 0 || raw.networkError || raw.unresolvedHost || raw.diagnosticMessage.isNotEmpty()) {
+                throw CommandException("unavailable", raw.diagnosticMessage.ifEmpty { "getImage failed" })
             }
+            val r = GetImageResponse.parseFrom(raw.responseBytes)
             if (r.expired || !r.hasImage()) return@withContext ImageResult.Expired
             env = r.image
         }
@@ -2294,8 +2061,6 @@ class Remote(
     }
 
     companion object {
-        private const val MAX_CLOCK_SKEW_MS = 5L * 60_000L
-        private const val PURPOSE_PREFS = 12
         private const val PURPOSE_TERMINAL_INPUT = 8
         private const val PURPOSE_TERMINAL_RESIZE = 14
         private const val PURPOSE_TERMINAL_HISTORY = 15
@@ -2306,6 +2071,8 @@ class Remote(
         )
     }
 }
+
+class PushRpcException(message: String, val retryable: Boolean) : Exception(message)
 
 /** The exact signed response plus its original request binding, never locally re-encrypted JSON. */
 internal fun scheduleSnapshot(request: String, envelope: Envelope): ByteArray = buildJsonObject {

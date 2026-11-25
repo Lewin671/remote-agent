@@ -5544,6 +5544,41 @@ type Event_TerminalDirectConfirmRebuild struct {
 
 func (*Event_TerminalDirectConfirmRebuild) isEvent_Event() {}
 
+type Event_RelayPipeConfig struct {
+	_               [0]func()
+	RelayPipeConfig *RelayPipeConfigEvent
+}
+
+func (*Event_RelayPipeConfig) isEvent_Event() {}
+
+type Event_RelayRpcResult struct {
+	_              [0]func()
+	RelayRpcResult *RelayRpcResultEvent
+}
+
+func (*Event_RelayRpcResult) isEvent_Event() {}
+
+type Event_StreamRawFrame struct {
+	_              [0]func()
+	StreamRawFrame *StreamRawFrameEvent
+}
+
+func (*Event_StreamRawFrame) isEvent_Event() {}
+
+type Event_RefreshDevices struct {
+	_              [0]func()
+	RefreshDevices *RefreshDevicesAction
+}
+
+func (*Event_RefreshDevices) isEvent_Event() {}
+
+type Event_PushRpc struct {
+	_       [0]func()
+	PushRpc *PushRpcAction
+}
+
+func (*Event_PushRpc) isEvent_Event() {}
+
 type Event_SecurityConfig struct {
 	_              [0]func()
 	SecurityConfig *SecurityConfigEvent
@@ -6925,6 +6960,36 @@ func (m *Event) GetTerminalDirectConfirmRebuild() *TerminalDirectConfirmRebuildA
 	}
 	return nil
 }
+func (m *Event) GetRelayPipeConfig() *RelayPipeConfigEvent {
+	if x, ok := m.GetEvent().(*Event_RelayPipeConfig); ok && x != nil {
+		return x.RelayPipeConfig
+	}
+	return nil
+}
+func (m *Event) GetRelayRpcResult() *RelayRpcResultEvent {
+	if x, ok := m.GetEvent().(*Event_RelayRpcResult); ok && x != nil {
+		return x.RelayRpcResult
+	}
+	return nil
+}
+func (m *Event) GetStreamRawFrame() *StreamRawFrameEvent {
+	if x, ok := m.GetEvent().(*Event_StreamRawFrame); ok && x != nil {
+		return x.StreamRawFrame
+	}
+	return nil
+}
+func (m *Event) GetRefreshDevices() *RefreshDevicesAction {
+	if x, ok := m.GetEvent().(*Event_RefreshDevices); ok && x != nil {
+		return x.RefreshDevices
+	}
+	return nil
+}
+func (m *Event) GetPushRpc() *PushRpcAction {
+	if x, ok := m.GetEvent().(*Event_PushRpc); ok && x != nil {
+		return x.PushRpc
+	}
+	return nil
+}
 func (m *Event) GetSecurityConfig() *SecurityConfigEvent {
 	if x, ok := m.GetEvent().(*Event_SecurityConfig); ok && x != nil {
 		return x.SecurityConfig
@@ -7079,10 +7144,12 @@ func extraUnmarshal_Event(base unsafe.Pointer, num litewire.Number, wtyp litewir
 		return m.extraUnmarshalPart15(num, wtyp, bp)
 	case num <= 419:
 		return m.extraUnmarshalPart16(num, wtyp, bp)
-	case num <= 452:
+	case num <= 431:
 		return m.extraUnmarshalPart17(num, wtyp, bp)
-	case num <= 465:
+	case num <= 461:
 		return m.extraUnmarshalPart18(num, wtyp, bp)
+	case num <= 465:
+		return m.extraUnmarshalPart19(num, wtyp, bp)
 	}
 	return false, nil
 }
@@ -8897,20 +8964,20 @@ func (m *Event) extraUnmarshalPart17(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.TerminalDirectConfirmRebuild
-		case 450:
-			w, _ := m.Event.(*Event_SecurityConfig)
-			if w == nil || w.SecurityConfig == nil {
-				w = &Event_SecurityConfig{SecurityConfig: &SecurityConfigEvent{}}
+		case 430:
+			w, _ := m.Event.(*Event_RelayPipeConfig)
+			if w == nil || w.RelayPipeConfig == nil {
+				w = &Event_RelayPipeConfig{RelayPipeConfig: &RelayPipeConfigEvent{}}
 				m.Event = w
 			}
-			sub = w.SecurityConfig
-		case 452:
-			w, _ := m.Event.(*Event_SecurityKeySigned)
-			if w == nil || w.SecurityKeySigned == nil {
-				w = &Event_SecurityKeySigned{SecurityKeySigned: &SecurityKeySignedEvent{}}
+			sub = w.RelayPipeConfig
+		case 431:
+			w, _ := m.Event.(*Event_RelayRpcResult)
+			if w == nil || w.RelayRpcResult == nil {
+				w = &Event_RelayRpcResult{RelayRpcResult: &RelayRpcResultEvent{}}
 				m.Event = w
 			}
-			sub = w.SecurityKeySigned
+			sub = w.RelayRpcResult
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -8929,6 +8996,41 @@ func (m *Event) extraUnmarshalPart18(num litewire.Number, wtyp litewire.Type, bp
 	var sub litewire.Unmarshaler
 	if wtyp == litewire.BytesType {
 		switch num {
+		case 432:
+			w, _ := m.Event.(*Event_StreamRawFrame)
+			if w == nil || w.StreamRawFrame == nil {
+				w = &Event_StreamRawFrame{StreamRawFrame: &StreamRawFrameEvent{}}
+				m.Event = w
+			}
+			sub = w.StreamRawFrame
+		case 433:
+			w, _ := m.Event.(*Event_RefreshDevices)
+			if w == nil || w.RefreshDevices == nil {
+				w = &Event_RefreshDevices{RefreshDevices: &RefreshDevicesAction{}}
+				m.Event = w
+			}
+			sub = w.RefreshDevices
+		case 434:
+			w, _ := m.Event.(*Event_PushRpc)
+			if w == nil || w.PushRpc == nil {
+				w = &Event_PushRpc{PushRpc: &PushRpcAction{}}
+				m.Event = w
+			}
+			sub = w.PushRpc
+		case 450:
+			w, _ := m.Event.(*Event_SecurityConfig)
+			if w == nil || w.SecurityConfig == nil {
+				w = &Event_SecurityConfig{SecurityConfig: &SecurityConfigEvent{}}
+				m.Event = w
+			}
+			sub = w.SecurityConfig
+		case 452:
+			w, _ := m.Event.(*Event_SecurityKeySigned)
+			if w == nil || w.SecurityKeySigned == nil {
+				w = &Event_SecurityKeySigned{SecurityKeySigned: &SecurityKeySignedEvent{}}
+				m.Event = w
+			}
+			sub = w.SecurityKeySigned
 		case 453:
 			w, _ := m.Event.(*Event_SecurityKeyAgreed)
 			if w == nil || w.SecurityKeyAgreed == nil {
@@ -8978,6 +9080,24 @@ func (m *Event) extraUnmarshalPart18(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityStorageResult
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart19(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 462:
 			w, _ := m.Event.(*Event_SecurityRpcResult)
 			if w == nil || w.SecurityRpcResult == nil {
@@ -9045,10 +9165,11 @@ func (m *RenderEffect) AppendMarshal(b []byte) []byte {
 }
 
 type OpenStreamEffect struct {
-	_         [0]func()
-	LegId     uint64
-	Token     string
-	TimeoutMs int64
+	_          [0]func()
+	LegId      uint64
+	Token      string
+	TimeoutMs  int64
+	HelloFrame []byte
 }
 
 func (m *OpenStreamEffect) GetLegId() uint64 {
@@ -9069,12 +9190,19 @@ func (m *OpenStreamEffect) GetTimeoutMs() int64 {
 	}
 	return 0
 }
+func (m *OpenStreamEffect) GetHelloFrame() []byte {
+	if m != nil {
+		return m.HelloFrame
+	}
+	return nil
+}
 
 var LitewireDesc_OpenStreamEffect = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(OpenStreamEffect{}.LegId), Kind: litewire.KindUint64},
 		{Num: 2, Offset: unsafe.Offsetof(OpenStreamEffect{}.Token), Kind: litewire.KindString},
 		{Num: 3, Offset: unsafe.Offsetof(OpenStreamEffect{}.TimeoutMs), Kind: litewire.KindInt64},
+		{Num: 4, Offset: unsafe.Offsetof(OpenStreamEffect{}.HelloFrame), Kind: litewire.KindBytes},
 	},
 }
 
@@ -10669,6 +10797,27 @@ type Effect_CancelDispatch struct {
 
 func (*Effect_CancelDispatch) isEffect_Effect() {}
 
+type Effect_RelayRpc struct {
+	_        [0]func()
+	RelayRpc *RelayRpcEffect
+}
+
+func (*Effect_RelayRpc) isEffect_Effect() {}
+
+type Effect_RelayRpcCancel struct {
+	_              [0]func()
+	RelayRpcCancel *RelayRpcCancelEffect
+}
+
+func (*Effect_RelayRpcCancel) isEffect_Effect() {}
+
+type Effect_PushRpcResult struct {
+	_             [0]func()
+	PushRpcResult *PushRpcResultEffect
+}
+
+func (*Effect_PushRpcResult) isEffect_Effect() {}
+
 type Effect_ScheduleMachinePoll struct {
 	_                   [0]func()
 	ScheduleMachinePoll *ScheduleMachinePollEffect
@@ -11246,6 +11395,24 @@ func (m *Effect) GetCancelDispatch() *CancelDispatchEffect {
 	}
 	return nil
 }
+func (m *Effect) GetRelayRpc() *RelayRpcEffect {
+	if x, ok := m.GetEffect().(*Effect_RelayRpc); ok && x != nil {
+		return x.RelayRpc
+	}
+	return nil
+}
+func (m *Effect) GetRelayRpcCancel() *RelayRpcCancelEffect {
+	if x, ok := m.GetEffect().(*Effect_RelayRpcCancel); ok && x != nil {
+		return x.RelayRpcCancel
+	}
+	return nil
+}
+func (m *Effect) GetPushRpcResult() *PushRpcResultEffect {
+	if x, ok := m.GetEffect().(*Effect_PushRpcResult); ok && x != nil {
+		return x.PushRpcResult
+	}
+	return nil
+}
 func (m *Effect) GetScheduleMachinePoll() *ScheduleMachinePollEffect {
 	if x, ok := m.GetEffect().(*Effect_ScheduleMachinePoll); ok && x != nil {
 		return x.ScheduleMachinePoll
@@ -11686,6 +11853,9 @@ func extraMarshal_Effect(base unsafe.Pointer, b []byte, idx litewire.Number) []b
 		if !ok {
 			b, ok = m.appendMarshalEffectPart6(b)
 		}
+		if !ok {
+			b, ok = m.appendMarshalEffectPart7(b)
+		}
 	}
 	return b
 }
@@ -11777,6 +11947,18 @@ func (m *Effect) appendMarshalEffectPart1(b []byte) ([]byte, bool) {
 		if x != nil && x.CancelDispatch != nil {
 			onum, omsg = 19, x.CancelDispatch
 		}
+	case *Effect_RelayRpc:
+		if x != nil && x.RelayRpc != nil {
+			onum, omsg = 20, x.RelayRpc
+		}
+	case *Effect_RelayRpcCancel:
+		if x != nil && x.RelayRpcCancel != nil {
+			onum, omsg = 21, x.RelayRpcCancel
+		}
+	case *Effect_PushRpcResult:
+		if x != nil && x.PushRpcResult != nil {
+			onum, omsg = 22, x.PushRpcResult
+		}
 	case *Effect_ScheduleMachinePoll:
 		if x != nil && x.ScheduleMachinePoll != nil {
 			onum, omsg = 70, x.ScheduleMachinePoll
@@ -11793,18 +11975,6 @@ func (m *Effect) appendMarshalEffectPart1(b []byte) ([]byte, bool) {
 		if x != nil && x.CheckUpdates != nil {
 			onum, omsg = 73, x.CheckUpdates
 		}
-	case *Effect_PersistClientPrefs:
-		if x != nil && x.PersistClientPrefs != nil {
-			onum, omsg = 74, x.PersistClientPrefs
-		}
-	case *Effect_PrepareCleanupSession:
-		if x != nil && x.PrepareCleanupSession != nil {
-			onum, omsg = 75, x.PrepareCleanupSession
-		}
-	case *Effect_UsageCacheWrite:
-		if x != nil && x.UsageCacheWrite != nil {
-			onum, omsg = 76, x.UsageCacheWrite
-		}
 	default:
 		return b, false
 	}
@@ -11819,6 +11989,18 @@ func (m *Effect) appendMarshalEffectPart2(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_PersistClientPrefs:
+		if x != nil && x.PersistClientPrefs != nil {
+			onum, omsg = 74, x.PersistClientPrefs
+		}
+	case *Effect_PrepareCleanupSession:
+		if x != nil && x.PrepareCleanupSession != nil {
+			onum, omsg = 75, x.PrepareCleanupSession
+		}
+	case *Effect_UsageCacheWrite:
+		if x != nil && x.UsageCacheWrite != nil {
+			onum, omsg = 76, x.UsageCacheWrite
+		}
 	case *Effect_WatchedSessions:
 		if x != nil && x.WatchedSessions != nil {
 			onum, omsg = 77, x.WatchedSessions
@@ -11855,18 +12037,6 @@ func (m *Effect) appendMarshalEffectPart2(b []byte) ([]byte, bool) {
 		if x != nil && x.AttachmentPrepareImage != nil {
 			onum, omsg = 85, x.AttachmentPrepareImage
 		}
-	case *Effect_AttachmentHashFile:
-		if x != nil && x.AttachmentHashFile != nil {
-			onum, omsg = 86, x.AttachmentHashFile
-		}
-	case *Effect_AttachmentReadChunk:
-		if x != nil && x.AttachmentReadChunk != nil {
-			onum, omsg = 87, x.AttachmentReadChunk
-		}
-	case *Effect_AttachmentReleaseLocal:
-		if x != nil && x.AttachmentReleaseLocal != nil {
-			onum, omsg = 88, x.AttachmentReleaseLocal
-		}
 	default:
 		return b, false
 	}
@@ -11881,6 +12051,18 @@ func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_AttachmentHashFile:
+		if x != nil && x.AttachmentHashFile != nil {
+			onum, omsg = 86, x.AttachmentHashFile
+		}
+	case *Effect_AttachmentReadChunk:
+		if x != nil && x.AttachmentReadChunk != nil {
+			onum, omsg = 87, x.AttachmentReadChunk
+		}
+	case *Effect_AttachmentReleaseLocal:
+		if x != nil && x.AttachmentReleaseLocal != nil {
+			onum, omsg = 88, x.AttachmentReleaseLocal
+		}
 	case *Effect_ScheduleWriteCache:
 		if x != nil && x.ScheduleWriteCache != nil {
 			onum, omsg = 89, x.ScheduleWriteCache
@@ -11917,18 +12099,6 @@ func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
 		if x != nil && x.SharedFileDeleteSession != nil {
 			onum, omsg = 48, x.SharedFileDeleteSession
 		}
-	case *Effect_SharedFileClearAll:
-		if x != nil && x.SharedFileClearAll != nil {
-			onum, omsg = 49, x.SharedFileClearAll
-		}
-	case *Effect_SharedFileCompleted:
-		if x != nil && x.SharedFileCompleted != nil {
-			onum, omsg = 50, x.SharedFileCompleted
-		}
-	case *Effect_ScheduleReadCache:
-		if x != nil && x.ScheduleReadCache != nil {
-			onum, omsg = 60, x.ScheduleReadCache
-		}
 	default:
 		return b, false
 	}
@@ -11943,6 +12113,18 @@ func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_SharedFileClearAll:
+		if x != nil && x.SharedFileClearAll != nil {
+			onum, omsg = 49, x.SharedFileClearAll
+		}
+	case *Effect_SharedFileCompleted:
+		if x != nil && x.SharedFileCompleted != nil {
+			onum, omsg = 50, x.SharedFileCompleted
+		}
+	case *Effect_ScheduleReadCache:
+		if x != nil && x.ScheduleReadCache != nil {
+			onum, omsg = 60, x.ScheduleReadCache
+		}
 	case *Effect_ScheduleDeleteCache:
 		if x != nil && x.ScheduleDeleteCache != nil {
 			onum, omsg = 61, x.ScheduleDeleteCache
@@ -11979,18 +12161,6 @@ func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
 		if x != nil && x.DirectPcSetRemote != nil {
 			onum, omsg = 105, x.DirectPcSetRemote
 		}
-	case *Effect_DirectPcAddCandidates:
-		if x != nil && x.DirectPcAddCandidates != nil {
-			onum, omsg = 106, x.DirectPcAddCandidates
-		}
-	case *Effect_DirectPcConfirm:
-		if x != nil && x.DirectPcConfirm != nil {
-			onum, omsg = 107, x.DirectPcConfirm
-		}
-	case *Effect_DirectPcClose:
-		if x != nil && x.DirectPcClose != nil {
-			onum, omsg = 108, x.DirectPcClose
-		}
 	default:
 		return b, false
 	}
@@ -12005,6 +12175,18 @@ func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_DirectPcAddCandidates:
+		if x != nil && x.DirectPcAddCandidates != nil {
+			onum, omsg = 106, x.DirectPcAddCandidates
+		}
+	case *Effect_DirectPcConfirm:
+		if x != nil && x.DirectPcConfirm != nil {
+			onum, omsg = 107, x.DirectPcConfirm
+		}
+	case *Effect_DirectPcClose:
+		if x != nil && x.DirectPcClose != nil {
+			onum, omsg = 108, x.DirectPcClose
+		}
 	case *Effect_DirectDcReadStats:
 		if x != nil && x.DirectDcReadStats != nil {
 			onum, omsg = 109, x.DirectDcReadStats
@@ -12041,18 +12223,6 @@ func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
 		if x != nil && x.TerminalDirectDeliver != nil {
 			onum, omsg = 118, x.TerminalDirectDeliver
 		}
-	case *Effect_TerminalDirectAttachRelay:
-		if x != nil && x.TerminalDirectAttachRelay != nil {
-			onum, omsg = 119, x.TerminalDirectAttachRelay
-		}
-	case *Effect_TerminalDirectState:
-		if x != nil && x.TerminalDirectState != nil {
-			onum, omsg = 120, x.TerminalDirectState
-		}
-	case *Effect_SecurityKeySign:
-		if x != nil && x.SecurityKeySign != nil {
-			onum, omsg = 130, x.SecurityKeySign
-		}
 	default:
 		return b, false
 	}
@@ -12067,6 +12237,18 @@ func (m *Effect) appendMarshalEffectPart6(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_TerminalDirectAttachRelay:
+		if x != nil && x.TerminalDirectAttachRelay != nil {
+			onum, omsg = 119, x.TerminalDirectAttachRelay
+		}
+	case *Effect_TerminalDirectState:
+		if x != nil && x.TerminalDirectState != nil {
+			onum, omsg = 120, x.TerminalDirectState
+		}
+	case *Effect_SecurityKeySign:
+		if x != nil && x.SecurityKeySign != nil {
+			onum, omsg = 130, x.SecurityKeySign
+		}
 	case *Effect_SecurityKeyAgree:
 		if x != nil && x.SecurityKeyAgree != nil {
 			onum, omsg = 131, x.SecurityKeyAgree
@@ -12103,6 +12285,20 @@ func (m *Effect) appendMarshalEffectPart6(b []byte) ([]byte, bool) {
 		if x != nil && x.SecurityWorkflowResult != nil {
 			onum, omsg = 142, x.SecurityWorkflowResult
 		}
+	default:
+		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
+}
+
+//go:noinline
+func (m *Effect) appendMarshalEffectPart7(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Effect.(type) {
 	case *Effect_SecurityStatusChanged:
 		if x != nil && x.SecurityStatusChanged != nil {
 			onum, omsg = 143, x.SecurityStatusChanged

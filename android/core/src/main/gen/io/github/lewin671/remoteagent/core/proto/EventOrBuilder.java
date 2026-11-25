@@ -2374,6 +2374,69 @@ public interface EventOrBuilder extends
 
   /**
    * <pre>
+   * Unified relay byte-pipe events (430-449 reserved for P2-5).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
+   * @return Whether the relayPipeConfig field is set.
+   */
+  boolean hasRelayPipeConfig();
+  /**
+   * <pre>
+   * Unified relay byte-pipe events (430-449 reserved for P2-5).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
+   * @return The relayPipeConfig.
+   */
+  io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent getRelayPipeConfig();
+
+  /**
+   * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
+   * @return Whether the relayRpcResult field is set.
+   */
+  boolean hasRelayRpcResult();
+  /**
+   * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
+   * @return The relayRpcResult.
+   */
+  io.github.lewin671.remoteagent.core.proto.RelayRpcResultEvent getRelayRpcResult();
+
+  /**
+   * <code>.remoteagent.core.v1.StreamRawFrameEvent stream_raw_frame = 432 [json_name = "streamRawFrame"];</code>
+   * @return Whether the streamRawFrame field is set.
+   */
+  boolean hasStreamRawFrame();
+  /**
+   * <code>.remoteagent.core.v1.StreamRawFrameEvent stream_raw_frame = 432 [json_name = "streamRawFrame"];</code>
+   * @return The streamRawFrame.
+   */
+  io.github.lewin671.remoteagent.core.proto.StreamRawFrameEvent getStreamRawFrame();
+
+  /**
+   * <code>.remoteagent.core.v1.RefreshDevicesAction refresh_devices = 433 [json_name = "refreshDevices"];</code>
+   * @return Whether the refreshDevices field is set.
+   */
+  boolean hasRefreshDevices();
+  /**
+   * <code>.remoteagent.core.v1.RefreshDevicesAction refresh_devices = 433 [json_name = "refreshDevices"];</code>
+   * @return The refreshDevices.
+   */
+  io.github.lewin671.remoteagent.core.proto.RefreshDevicesAction getRefreshDevices();
+
+  /**
+   * <code>.remoteagent.core.v1.PushRpcAction push_rpc = 434 [json_name = "pushRpc"];</code>
+   * @return Whether the pushRpc field is set.
+   */
+  boolean hasPushRpc();
+  /**
+   * <code>.remoteagent.core.v1.PushRpcAction push_rpc = 434 [json_name = "pushRpc"];</code>
+   * @return The pushRpc.
+   */
+  io.github.lewin671.remoteagent.core.proto.PushRpcAction getPushRpc();
+
+  /**
+   * <pre>
    * Security engine (450-499 reserved for security).
    * </pre>
    *

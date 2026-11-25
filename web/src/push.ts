@@ -1,11 +1,11 @@
 import * as l10n from "./i18n";
 // Web Push: subscribe this browser and choose which notifications to get.
 
-import { createClient } from "@connectrpc/connect";
-import { createConnectTransport } from "@connectrpc/connect-web";
-import { checkServer } from "./crypto";
+import { create, toBinary } from "@bufbuild/protobuf";
 import { getCoreHost } from "./core/host";
-import { ClientService, NotifyKind } from "./gen/remoteagent/v1/relay_pb";
+import { executeRelayRpcUnary } from "./core/security-executor";
+import { RelayRpcMethod } from "./gen/remoteagent/core/v1/relay_pipe_pb";
+import { NotifyKind, SetPushSubscriptionRequestSchema } from "./gen/remoteagent/v1/relay_pb";
 import type { Remote } from "./remote";
 
 /** A run only identifies its last execution-log notification. Never match a
@@ -134,26 +134,26 @@ export function createStandalonePushUnsubscriber(opts: {
     async setPushSubscription(subscriptionJson: string, kinds: NotifyKind[]): Promise<void> {
       const rawServer = opts.server?.trim();
       if (!rawServer) return;
-      const origin = checkServer(rawServer);
-      const baseUrl = import.meta.env.VITE_SAME_ORIGIN_API ? location.origin : origin;
       let token = opts.getToken();
       if (!token && opts.ensureToken) {
         token = (await opts.ensureToken()) ?? "";
       }
       if (!token) return;
-      const api = createClient(
-        ClientService,
-        createConnectTransport({
-          baseUrl,
-          useBinaryFormat: true,
-          defaultTimeoutMs: 4000,
-          fetch: opts.fetch,
-        }),
+      const body = toBinary(
+        SetPushSubscriptionRequestSchema,
+        create(SetPushSubscriptionRequestSchema, { subscriptionJson, kinds }),
       );
-      await api.setPushSubscription(
-        { subscriptionJson, kinds },
-        { headers: { Authorization: "Bearer " + token } },
-      );
+      const res = await executeRelayRpcUnary({
+        method: RelayRpcMethod.SET_PUSH_SUBSCRIPTION,
+        server: rawServer,
+        authToken: token,
+        timeoutMs: 4000,
+        requestBytes: body,
+        fetch: opts.fetch,
+      });
+      if (res.connectCode !== 0 || res.networkError) {
+        throw new Error(res.diagnosticMessage || l10n.t("errors.command_failed"));
+      }
     },
   };
 }

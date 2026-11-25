@@ -18,6 +18,7 @@ it("registers existing push preferences for the newly paired device without aski
   const setPushSubscription = vi.fn(async () => undefined);
   class Probe extends Remote {
     constructor() { super({ server: "https://ra.example.com", deviceId: "new-device" } as any, undefined); }
+    override useRelayPipe() { return false; }
     override securityConfig() { return undefined; }
     override ensureToken(opId: bigint) {
       return Promise.resolve(create(TokenResultEventSchema, { opId, token: "tok", expiresMs: BigInt(Date.now() + 3600_000) }));
@@ -25,7 +26,7 @@ it("registers existing push preferences for the newly paired device without aski
     override openStreamLeg(legId: bigint, _token: string, callbacks: StreamLegCallbacks) {
       callbacks.onReady(legId, BigInt(Date.now()));
     }
-    override executeRpc() { return Promise.resolve(create(EventSchema, {})); }
+    executeRpc() { return Promise.resolve(create(EventSchema, {})); }
   }
   const remote = new Probe();
   remote.setPushSubscription = setPushSubscription;

@@ -174,15 +174,35 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
     }
   });
 
-  it("routes CommandRouteLeg.RELAY via api.forward and distinguishes bound NotForwarded from stale epoch", async () => {
+  it("routes CommandRouteLeg.RELAY through Core RelayRpcEffect and distinguishes bound NotForwarded from stale epoch", async () => {
     const r = await SyntheticRemote.create();
     const holder = r as unknown as { api: unknown };
     try {
       const cmdBytes = makeCmdBytes();
       const deadlineMs = BigInt(Date.now() + 30_000);
-      const boundEnv = await sealCmd(r, "req-relay-bound-0001", deadlineMs, cmdBytes);
+      const env = await sealCmd(r, "req-relay-only-0001", deadlineMs, cmdBytes);
+      // Shell executeCommandAttempt only executes direct legs; relay legs run inside Core via RelayRpcEffect.
+      const shellRelay = await r.executeCommandAttempt(create(DispatchCommandEffectSchema, {
+        requestId: "req-relay-only-0001",
+        attemptId: "att-relay-only",
+        machineId: r.machine,
+        deadlineMs,
+        commandBytes: cmdBytes,
+        sealedEnvelope: env,
+        routeLeg: CommandRouteLeg.RELAY,
+      }));
+      expect(shellRelay.source).toBe(OutcomeSource.LOCAL);
+      expect(shellRelay.transportCode).toBe("failed_precondition");
+
+      r.start();
+      await vi.waitFor(() => expect((r as unknown as { token: string }).token).not.toBe(""));
+
+      const boundAttempts: string[] = [];
+      let seenRelayEpoch = "";
       holder.api = {
         forward: async (q: { attemptId: string; relayEpoch: string }) => {
+          seenRelayEpoch = q.relayEpoch;
+          boundAttempts.push(q.attemptId);
           throw new ConnectError("offline", Code.Unavailable, undefined, [
             {
               desc: NotForwardedSchema,
@@ -191,26 +211,17 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
           ]);
         },
       };
-      const bound = await r.executeCommandAttempt(create(DispatchCommandEffectSchema, {
-        requestId: "req-relay-bound-0001",
-        attemptId: "att-relay-bound",
-        machineId: r.machine,
-        deadlineMs,
-        commandBytes: cmdBytes,
-        sealedEnvelope: boundEnv,
-        routeLeg: CommandRouteLeg.RELAY,
-      }));
-      expect(bound).toMatchObject({
-        source: OutcomeSource.SERVER,
-        routeWasDirect: false,
-        notForwarded: true,
-      });
-      expect(bound.attemptBound).toBe(true);
-      expect(bound.outerReason).toBe("machine_offline");
+      // Bound NotForwarded proves the daemon never received the command: settles NotSent immediately on 1st attempt.
+      await expect(getCoreHost(r).runMachineCommand(r.machine, "", { case: "createSession", value: { cwd: "/work/example" } }, undefined, true)).rejects.toThrow();
+      expect(seenRelayEpoch).not.toBe("");
+      expect(boundAttempts).toHaveLength(1);
 
-      const staleEnv = await sealCmd(r, "req-relay-stale-0001", deadlineMs, cmdBytes);
+      const staleAttempts: string[] = [];
+      const staleAc = new AbortController();
       holder.api = {
         forward: async (q: { attemptId: string }) => {
+          staleAttempts.push(q.attemptId);
+          if (staleAttempts.length >= 2) staleAc.abort();
           throw new ConnectError("offline", Code.Unavailable, undefined, [
             {
               desc: NotForwardedSchema,
@@ -219,18 +230,10 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
           ]);
         },
       };
-      const stale = await r.executeCommandAttempt(create(DispatchCommandEffectSchema, {
-        requestId: "req-relay-stale-0001",
-        attemptId: "att-relay-stale",
-        machineId: r.machine,
-        deadlineMs,
-        commandBytes: cmdBytes,
-        sealedEnvelope: staleEnv,
-        routeLeg: CommandRouteLeg.RELAY,
-      }));
-      expect(stale.source).toBe(OutcomeSource.SERVER);
-      expect(stale.notForwarded).toBe(false);
-      expect(stale.attemptBound).toBe(false);
+      // Stale epoch invalidates the NotForwarded proof: Core must treat outcome as unknown and retry instead of settling NotSent.
+      await expect(getCoreHost(r).runMachineCommand(r.machine, "", { case: "createSession", value: { cwd: "/work/example" } }, staleAc.signal, true)).rejects.toThrow();
+      expect(staleAttempts.length).toBeGreaterThanOrEqual(2);
+      expect(staleAttempts[1]).not.toBe(staleAttempts[0]);
     } finally {
       await r.dispose();
     }

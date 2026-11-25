@@ -1604,6 +1604,22 @@ func (e *Engine) finishSealPrefs(stepCtx *StepContext, op *pendingSecOp, sr secu
 	curHead := &e.prefsQueue[0]
 	curHead.Phase = prefsPhasePut
 	curHead.ActiveOpID = e.allocOpID()
+	if e.relayPipe {
+		e.emitRelayRpc(
+			stepCtx,
+			corev1.RelayRpcMethod_RELAY_RPC_METHOD_PUT_ACCOUNT_PREFS,
+			e.cachedToken,
+			relayRpcDefaultTimeoutMs,
+			"",
+			(&v1.PutAccountPrefsRequest{
+				ObjectId:         ProjectPrefsObjectID,
+				ExpectedRevision: op.baseRev,
+				Envelope:         sr.Envelope,
+			}).AppendMarshal(nil),
+			&pendingRelayRpc{kind: relayRpcPrefsPut, opID: curHead.ActiveOpID},
+		)
+		return
+	}
 	stepCtx.emit(&corev1.Effect{
 		Effect: &corev1.Effect_Rpc{
 			Rpc: &corev1.RpcEffect{

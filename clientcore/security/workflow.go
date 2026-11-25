@@ -23,19 +23,6 @@ const (
 	maxPairWindowMs    int64 = 5 * 60 * 1000
 	maxPairWindowSlack int64 = 5 * 1000
 	pairPollIntervalMs int64 = 1000
-
-	connectCodeCanceled           int32 = 1
-	connectCodeUnknown            int32 = 2
-	connectCodeInvalidArgument    int32 = 3
-	connectCodeDeadlineExceeded   int32 = 4
-	connectCodeNotFound           int32 = 5
-	connectCodeAlreadyExists      int32 = 6
-	connectCodePermissionDenied   int32 = 7
-	connectCodeResourceExhausted  int32 = 8
-	connectCodeFailedPrecondition int32 = 9
-	connectCodeAborted            int32 = 10
-	connectCodeUnavailable        int32 = 14
-	connectCodeUnauthenticated    int32 = 16
 )
 
 // DeviceOfferInfo carries verified client device metadata from sync directory.
@@ -86,10 +73,11 @@ func fatalWfError(code string, reason WorkflowReason, action string) *wfError {
 }
 
 type rpcError struct {
-	code    int32
-	msg     string
-	network bool
-	detail  *v1.RelayErrorDetail
+	code           int32
+	msg            string
+	network        bool
+	unresolvedHost bool
+	detail         *v1.RelayErrorDetail
 }
 
 func (e *rpcError) Error() string {
@@ -113,7 +101,7 @@ func (e *rpcError) isTokenInvalid() bool {
 	if r := e.relayReason(); r != v1.RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED {
 		return r == v1.RelayErrorReason_RELAY_ERROR_REASON_TOKEN_INVALID
 	}
-	return e.code == connectCodeUnauthenticated
+	return e.code == ConnectCodeUnauthenticated
 }
 
 func (e *rpcError) isSignupPowRequired() bool {
@@ -123,7 +111,7 @@ func (e *rpcError) isSignupPowRequired() bool {
 	if r := e.relayReason(); r != v1.RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED {
 		return r == v1.RelayErrorReason_RELAY_ERROR_REASON_SIGNUP_POW_REQUIRED
 	}
-	return e.code == connectCodeFailedPrecondition
+	return e.code == ConnectCodeFailedPrecondition
 }
 
 func (e *rpcError) isCreateInitLoginMissing() bool {
@@ -133,7 +121,7 @@ func (e *rpcError) isCreateInitLoginMissing() bool {
 	if r := e.relayReason(); r != v1.RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED {
 		return r == v1.RelayErrorReason_RELAY_ERROR_REASON_LOGIN_FAILED
 	}
-	return e.code == connectCodePermissionDenied || e.code == connectCodeNotFound || e.code == connectCodeUnauthenticated
+	return e.code == ConnectCodePermissionDenied || e.code == ConnectCodeNotFound || e.code == ConnectCodeUnauthenticated
 }
 
 func (e *rpcError) isRetainedLoginDenied() bool {
@@ -145,7 +133,7 @@ func (e *rpcError) isRetainedLoginDenied() bool {
 			r == v1.RelayErrorReason_RELAY_ERROR_REASON_DEVICE_NOT_MEMBER ||
 			r == v1.RelayErrorReason_RELAY_ERROR_REASON_ACCOUNT_SUSPENDED
 	}
-	return e.code == connectCodePermissionDenied
+	return e.code == ConnectCodePermissionDenied
 }
 
 func (e *rpcError) isPairingGone() bool {
@@ -155,7 +143,7 @@ func (e *rpcError) isPairingGone() bool {
 	if r := e.relayReason(); r != v1.RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED {
 		return r == v1.RelayErrorReason_RELAY_ERROR_REASON_PAIRING_INVALID_OR_EXPIRED
 	}
-	return e.code == connectCodeNotFound
+	return e.code == ConnectCodeNotFound
 }
 
 func (e *rpcError) isJoinPairingGone() bool {
@@ -167,7 +155,7 @@ func (e *rpcError) isJoinPairingGone() bool {
 			r == v1.RelayErrorReason_RELAY_ERROR_REASON_DEVICE_NOT_MEMBER ||
 			r == v1.RelayErrorReason_RELAY_ERROR_REASON_ACCOUNT_SUSPENDED
 	}
-	return e.code == connectCodeNotFound || e.code == connectCodePermissionDenied
+	return e.code == ConnectCodeNotFound || e.code == ConnectCodePermissionDenied
 }
 
 func (e *rpcError) isDeliveryFallback() bool {
@@ -177,7 +165,7 @@ func (e *rpcError) isDeliveryFallback() bool {
 	if r := e.relayReason(); r != v1.RelayErrorReason_RELAY_ERROR_REASON_UNSPECIFIED {
 		return r == v1.RelayErrorReason_RELAY_ERROR_REASON_PAIRING_INVALID_OR_EXPIRED
 	}
-	return e.code == connectCodeNotFound || e.code == connectCodeFailedPrecondition || e.code == connectCodeCanceled
+	return e.code == ConnectCodeNotFound || e.code == ConnectCodeFailedPrecondition || e.code == ConnectCodeCanceled
 }
 
 func (e *rpcError) isResumeRegFallbackLogin() bool {
@@ -189,7 +177,7 @@ func (e *rpcError) isResumeRegFallbackLogin() bool {
 		// falling back to a login probe.
 		return false
 	}
-	return e.code == connectCodeAlreadyExists || e.code == connectCodePermissionDenied
+	return e.code == ConnectCodeAlreadyExists || e.code == ConnectCodePermissionDenied
 }
 
 type codeDraft struct {
@@ -526,6 +514,29 @@ func (e *Engine) HandleRpcResult(nowMs int64, ev *corev1.SecurityRpcResultEvent)
 	return e.DrainEffects()
 }
 
+// HandleRelayRpcResult dispatches unified RelayRpcResultEvent completions belonging to security tasks.
+func (e *Engine) HandleRelayRpcResult(nowMs int64, ev *corev1.RelayRpcResultEvent) []*corev1.Effect {
+	e.touchNow(nowMs)
+	if ev == nil {
+		return nil
+	}
+	if w, ok := e.takeTask(ev.OpId); ok && w.task != nil {
+		se := &secEvent{kind: evRPC, tag: w.tag, bytes: ev.ResponseBytes}
+		if ev.DiagnosticMessage != "" || ev.ConnectCode != 0 || ev.NetworkError || ev.UnresolvedHost || len(ev.ErrorDetails) > 0 {
+			rErr := &rpcError{
+				code:           ev.ConnectCode,
+				msg:            ev.DiagnosticMessage,
+				network:        ev.NetworkError,
+				unresolvedHost: ev.UnresolvedHost,
+				detail:         ParseRelayErrorDetail(ev.ErrorDetails),
+			}
+			se.rpcErr, se.err = rErr, rErr
+		}
+		e.stepTask(w.task, se)
+	}
+	return e.DrainEffects()
+}
+
 //go:noinline
 func (e *Engine) checkFG(capturedGen uint64) error {
 	wf := e.ensureWF()
@@ -577,18 +588,18 @@ func (e *Engine) emitActionResult(actionID uint64, res *corev1.SecurityWorkflowR
 			res.StructuredErrorCode = StructuredErrorCode(err)
 			if re := asRpcError(err); re != nil {
 				switch re.code {
-				case connectCodePermissionDenied:
+				case ConnectCodePermissionDenied:
 					res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_PERMISSION_DENIED
-				case connectCodeNotFound:
+				case ConnectCodeNotFound:
 					res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_NOT_FOUND
-				case connectCodeFailedPrecondition:
+				case ConnectCodeFailedPrecondition:
 					res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_FAILED_PRECONDITION
-				case connectCodeResourceExhausted:
+				case ConnectCodeResourceExhausted:
 					res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_RESOURCE_EXHAUSTED
-				case connectCodeCanceled:
+				case ConnectCodeCanceled:
 					res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_CANCELED
 				default:
-					if re.code == connectCodeUnavailable || re.network {
+					if re.code == ConnectCodeUnavailable || re.network {
 						res.Retryable, res.Uncertain = true, true
 						res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_UNAVAILABLE
 					}

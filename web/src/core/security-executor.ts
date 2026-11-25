@@ -3,6 +3,13 @@ import { Code } from "@connectrpc/connect";
 import { checkServer } from "../crypto";
 import { EventSchema as CoreEventSchema, type Effect, type Event as CoreEvent } from "../gen/remoteagent/core/v1/app_pb";
 import {
+  RelayRpcMethod,
+  RelayRpcResultEventSchema,
+  type RelayRpcCancelEffect,
+  type RelayRpcEffect,
+  type RelayRpcResultEvent,
+} from "../gen/remoteagent/core/v1/relay_pipe_pb";
+import {
   RpcErrorDetailBytesSchema,
   SecurityCryptoBatchDoneEventSchema,
   SecurityCryptoBatchResultSchema,
@@ -29,6 +36,7 @@ import { relayFetch } from "../transport";
 import { SecurityStoreV4, securityStoreV4 } from "./security-store-v4";
 
 const errorMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err));
+const RELAY_EPOCH_HEADER = "Remote-Agent-Relay-Epoch";
 
 function decodeConnectDetailBase64(raw: string): Uint8Array | null {
   const cleaned = raw.replace(/\s+/g, "").replace(/-/g, "+").replace(/_/g, "/");
@@ -49,32 +57,40 @@ function rpcBase(server: string): string {
   return import.meta.env?.VITE_SAME_ORIGIN_API && typeof location !== "undefined" ? location.origin : origin;
 }
 
-const RPC_PATHS: Partial<Record<SecurityRpcMethod, string>> = {
-  [SecurityRpcMethod.GET_SECURITY_STATES]: "/remoteagent.v1.ClientService/GetSecurityStates",
-  [SecurityRpcMethod.PUT_SECURITY_STATE]: "/remoteagent.v1.ClientService/PutSecurityState",
-  [SecurityRpcMethod.PIN_SECURITY_DOMAIN]: "/remoteagent.v1.ClientService/PinSecurityDomain",
-  [SecurityRpcMethod.CREATE_PAIRING]: "/remoteagent.v1.PairingService/CreatePairing",
-  [SecurityRpcMethod.PEEK_PAIRING]: "/remoteagent.v1.PairingService/PeekPairing",
-  [SecurityRpcMethod.JOIN_PAIRING]: "/remoteagent.v1.PairingService/JoinPairing",
-  [SecurityRpcMethod.REVEAL_PAIRING]: "/remoteagent.v1.PairingService/RevealPairing",
-  [SecurityRpcMethod.APPROVE_PAIRING]: "/remoteagent.v1.PairingService/ApprovePairing",
-  [SecurityRpcMethod.GET_PAIRING]: "/remoteagent.v1.PairingService/GetPairing",
-  [SecurityRpcMethod.CANCEL_PAIRING]: "/remoteagent.v1.PairingService/CancelPairing",
-  [SecurityRpcMethod.GET_RECOVERY_CHALLENGE]: "/remoteagent.v1.RecoveryService/GetRecoveryChallenge",
-  [SecurityRpcMethod.GET_RECOVERY_CONTEXT]: "/remoteagent.v1.RecoveryService/GetRecoveryContext",
-  [SecurityRpcMethod.SUBMIT_RECOVERY]: "/remoteagent.v1.RecoveryService/SubmitRecovery",
-  [SecurityRpcMethod.COMPLETE_RECOVERY]: "/remoteagent.v1.RecoveryService/CompleteRecovery",
-  [SecurityRpcMethod.DELETE_MACHINE_RECORDS]: "/remoteagent.v1.ClientService/DeleteMachineRecords",
-  [SecurityRpcMethod.DELETE_ACCOUNT]: "/remoteagent.v1.ClientService/DeleteAccount",
-  [SecurityRpcMethod.GET_CHALLENGE]: "/remoteagent.v1.AuthService/GetChallenge",
-  [SecurityRpcMethod.LOGIN]: "/remoteagent.v1.AuthService/Login",
-  [SecurityRpcMethod.GET_SIGNUP_CHALLENGE]: "/remoteagent.v1.AuthService/GetSignupChallenge",
-  [SecurityRpcMethod.REGISTER_DEVICE]: "/remoteagent.v1.AuthService/RegisterDevice",
-  [SecurityRpcMethod.PUT_DEVICE_META]: "/remoteagent.v1.ClientService/PutDeviceMeta",
-  [SecurityRpcMethod.LIST_DEVICES]: "/remoteagent.v1.ClientService/ListDevices",
-  [SecurityRpcMethod.LIST_MACHINES]: "/remoteagent.v1.ClientService/ListMachines",
-  [SecurityRpcMethod.GET_ACCOUNT_PREFS]: "/remoteagent.v1.ClientService/GetAccountPrefs",
-  [SecurityRpcMethod.PUT_ACCOUNT_PREFS]: "/remoteagent.v1.ClientService/PutAccountPrefs",
+const RELAY_RPC_PATHS: Partial<Record<RelayRpcMethod, string>> = {
+  [RelayRpcMethod.GET_SECURITY_STATES]: "/remoteagent.v1.ClientService/GetSecurityStates",
+  [RelayRpcMethod.PUT_SECURITY_STATE]: "/remoteagent.v1.ClientService/PutSecurityState",
+  [RelayRpcMethod.PIN_SECURITY_DOMAIN]: "/remoteagent.v1.ClientService/PinSecurityDomain",
+  [RelayRpcMethod.CREATE_PAIRING]: "/remoteagent.v1.PairingService/CreatePairing",
+  [RelayRpcMethod.PEEK_PAIRING]: "/remoteagent.v1.PairingService/PeekPairing",
+  [RelayRpcMethod.JOIN_PAIRING]: "/remoteagent.v1.PairingService/JoinPairing",
+  [RelayRpcMethod.REVEAL_PAIRING]: "/remoteagent.v1.PairingService/RevealPairing",
+  [RelayRpcMethod.APPROVE_PAIRING]: "/remoteagent.v1.PairingService/ApprovePairing",
+  [RelayRpcMethod.GET_PAIRING]: "/remoteagent.v1.PairingService/GetPairing",
+  [RelayRpcMethod.CANCEL_PAIRING]: "/remoteagent.v1.PairingService/CancelPairing",
+  [RelayRpcMethod.GET_RECOVERY_CHALLENGE]: "/remoteagent.v1.RecoveryService/GetRecoveryChallenge",
+  [RelayRpcMethod.GET_RECOVERY_CONTEXT]: "/remoteagent.v1.RecoveryService/GetRecoveryContext",
+  [RelayRpcMethod.SUBMIT_RECOVERY]: "/remoteagent.v1.RecoveryService/SubmitRecovery",
+  [RelayRpcMethod.COMPLETE_RECOVERY]: "/remoteagent.v1.RecoveryService/CompleteRecovery",
+  [RelayRpcMethod.DELETE_MACHINE_RECORDS]: "/remoteagent.v1.ClientService/DeleteMachineRecords",
+  [RelayRpcMethod.DELETE_ACCOUNT]: "/remoteagent.v1.ClientService/DeleteAccount",
+  [RelayRpcMethod.GET_CHALLENGE]: "/remoteagent.v1.AuthService/GetChallenge",
+  [RelayRpcMethod.LOGIN]: "/remoteagent.v1.AuthService/Login",
+  [RelayRpcMethod.GET_SIGNUP_CHALLENGE]: "/remoteagent.v1.AuthService/GetSignupChallenge",
+  [RelayRpcMethod.REGISTER_DEVICE]: "/remoteagent.v1.AuthService/RegisterDevice",
+  [RelayRpcMethod.PUT_DEVICE_META]: "/remoteagent.v1.ClientService/PutDeviceMeta",
+  [RelayRpcMethod.LIST_DEVICES]: "/remoteagent.v1.ClientService/ListDevices",
+  [RelayRpcMethod.LIST_MACHINES]: "/remoteagent.v1.ClientService/ListMachines",
+  [RelayRpcMethod.GET_ACCOUNT_PREFS]: "/remoteagent.v1.ClientService/GetAccountPrefs",
+  [RelayRpcMethod.PUT_ACCOUNT_PREFS]: "/remoteagent.v1.ClientService/PutAccountPrefs",
+  [RelayRpcMethod.LIST_REMOTE_SESSIONS]: "/remoteagent.v1.ClientService/ListRemoteSessions",
+  [RelayRpcMethod.GET_EVENTS]: "/remoteagent.v1.ClientService/GetEvents",
+  [RelayRpcMethod.FORWARD]: "/remoteagent.v1.ClientService/Forward",
+  [RelayRpcMethod.GET_IMAGE]: "/remoteagent.v1.ClientService/GetImage",
+  [RelayRpcMethod.GET_PUSH_KEY]: "/remoteagent.v1.ClientService/GetPushKey",
+  [RelayRpcMethod.SET_PUSH_SUBSCRIPTION]: "/remoteagent.v1.ClientService/SetPushSubscription",
+  [RelayRpcMethod.SET_PUSH_TARGET]: "/remoteagent.v1.ClientService/SetPushTarget",
+  [RelayRpcMethod.HEALTHZ]: "/healthz",
 };
 
 const CONNECT_NAME_TO_CODE: Record<string, Code> = {
@@ -113,6 +129,115 @@ const HTTP_TO_CONNECT: Record<number, Code> = {
 const httpStatusToConnectCode = (status: number): Code =>
   HTTP_TO_CONNECT[status] ?? (status >= 500 ? Code.Internal : Code.Unknown);
 
+export interface RelayRpcUnaryParams {
+  opId?: bigint;
+  method: RelayRpcMethod;
+  server?: string;
+  authToken?: string;
+  timeoutMs?: number;
+  attemptHeader?: string;
+  requestBytes?: Uint8Array;
+  fetch?: typeof fetch;
+  signal?: AbortSignal;
+}
+
+/** Executes a single unary relay ConnectRPC/HTTP call using the shared path table and error parser. */
+export async function executeRelayRpcUnary(params: RelayRpcUnaryParams): Promise<RelayRpcResultEvent> {
+  const opId = params.opId ?? 0n;
+  const path = RELAY_RPC_PATHS[params.method];
+  if (!path) {
+    return create(RelayRpcResultEventSchema, {
+      opId,
+      connectCode: Code.InvalidArgument,
+      diagnosticMessage: "unsupported relay rpc method",
+    });
+  }
+  const server = params.server || "";
+  if (!server) {
+    return create(RelayRpcResultEventSchema, {
+      opId,
+      connectCode: Code.InvalidArgument,
+      diagnosticMessage: "missing relay server",
+    });
+  }
+  const ctrl = new AbortController();
+  let timedOut = false;
+  const onExternalAbort = () => ctrl.abort(params.signal?.reason);
+  if (params.signal) {
+    if (params.signal.aborted) ctrl.abort(params.signal.reason);
+    else params.signal.addEventListener("abort", onExternalAbort, { once: true });
+  }
+  const timeoutMs = params.timeoutMs && params.timeoutMs > 0
+    ? params.timeoutMs
+    : params.method === RelayRpcMethod.GET_SECURITY_STATES ? 5000 : 15000;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    ctrl.abort(new Error("timeout"));
+  }, timeoutMs);
+  try {
+    const isHealthz = params.method === RelayRpcMethod.HEALTHZ;
+    const headers: Record<string, string> = isHealthz
+      ? {}
+      : { "Content-Type": "application/proto", "Connect-Protocol-Version": "1" };
+    if (!isHealthz && params.authToken) headers["Authorization"] = `Bearer ${params.authToken}`;
+    if (!isHealthz && params.attemptHeader) headers["Remote-Agent-Attempt"] = params.attemptHeader;
+    const res = await (params.fetch ?? relayFetch)(rpcBase(server) + path, {
+      method: isHealthz ? "GET" : "POST",
+      ...(isHealthz ? { cache: "no-store" as const } : { body: new Uint8Array(params.requestBytes ?? new Uint8Array()) }),
+      headers,
+      signal: ctrl.signal,
+    });
+    const relayEpoch = res.headers?.get(RELAY_EPOCH_HEADER)?.trim() ?? "";
+    if (!res.ok) {
+      let code = httpStatusToConnectCode(res.status);
+      let msg = `HTTP ${res.status}`;
+      const errorDetails: RpcErrorDetailBytes[] = [];
+      try {
+        const parsed = JSON.parse(await res.text()) as {
+          code?: string;
+          message?: string;
+          details?: Array<{ type?: unknown; value?: unknown }>;
+        };
+        if (parsed.code && parsed.code in CONNECT_NAME_TO_CODE) code = CONNECT_NAME_TO_CODE[parsed.code];
+        if (parsed.message) msg = parsed.message;
+        if (Array.isArray(parsed.details)) {
+          for (const d of parsed.details) {
+            if (typeof d?.type !== "string" || !d.type || typeof d.value !== "string") continue;
+            const value = decodeConnectDetailBase64(d.value);
+            if (value && value.byteLength > 0) {
+              errorDetails.push(create(RpcErrorDetailBytesSchema, { typeName: d.type, value }));
+            }
+          }
+        }
+      } catch { /* keep HTTP status fallback */ }
+      return create(RelayRpcResultEventSchema, {
+        opId,
+        connectCode: code,
+        relayEpoch,
+        errorDetails,
+        diagnosticMessage: msg,
+      });
+    }
+    const responseBytes = new Uint8Array(await res.arrayBuffer());
+    return create(RelayRpcResultEventSchema, {
+      opId,
+      responseBytes,
+      relayEpoch,
+    });
+  } catch (err) {
+    const isAbort = ctrl.signal.aborted || (err instanceof Error && err.name === "AbortError");
+    return create(RelayRpcResultEventSchema, {
+      opId,
+      connectCode: timedOut ? Code.DeadlineExceeded : isAbort ? Code.Canceled : Code.Unavailable,
+      diagnosticMessage: timedOut ? "connection timed out" : isAbort ? "canceled" : errorMessage(err),
+      networkError: !isAbort || timedOut,
+    });
+  } finally {
+    clearTimeout(timer);
+    params.signal?.removeEventListener("abort", onExternalAbort);
+  }
+}
+
 export interface SecurityEffectHandler {
   securityKeyGenerate?(eff: SecurityKeyGenerateEffect): void;
   securityKeySign?(eff: SecurityKeySignEffect): void;
@@ -137,6 +262,8 @@ export function dispatchSecurityEffect(exec: SecurityEffectHandler | WebSecurity
       securityStorage: (v) => void exec.storage(v),
       securityRpc: (v) => void exec.rpc(v),
       securityCryptoBatch: (v) => void exec.cryptoBatch(v),
+      relayRpc: (v) => void exec.relayRpc(v),
+      relayRpcCancel: (v) => exec.relayRpcCancel(v),
     };
     const fn = eff.case ? h[eff.case] : undefined;
     if (!fn) return false;
@@ -158,18 +285,22 @@ export function dispatchSecurityEffect(exec: SecurityEffectHandler | WebSecurity
 
 /**
  * Executes asynchronous non-extractable WebCrypto operations, v4 IndexedDB CAS storage,
- * and unary Connect-RPC calls requested by clientcore/security.
+ * and universal unary Connect-RPC / HTTP byte-pipe calls requested by clientcore.
  */
 export class WebSecurityExecutor {
   private readonly caches = new Map<string, Promise<CryptoKey>>();
+  private readonly activeRpcs = new Map<bigint, AbortController>();
   private readonly store: SecurityStoreV4;
   private readonly fetchFn: typeof fetch;
+  private readonly defaultServer?: string;
   private closed = false;
 
   constructor(
     private readonly options: {
       store?: SecurityStoreV4;
       fetch?: typeof fetch;
+      defaultServer?: string;
+      defaultDeviceId?: string;
       devicePrivate?: () => CryptoKey | undefined;
       xPrivate?: () => CryptoKey | undefined;
       emit: (ev: CoreEvent) => void;
@@ -177,10 +308,13 @@ export class WebSecurityExecutor {
   ) {
     this.store = options.store ?? securityStoreV4;
     this.fetchFn = options.fetch ?? relayFetch;
+    this.defaultServer = options.defaultServer;
   }
 
   close() {
     this.closed = true;
+    for (const ctrl of this.activeRpcs.values()) ctrl.abort(new Error("closed"));
+    this.activeRpcs.clear();
     this.caches.clear();
   }
 
@@ -267,61 +401,79 @@ export class WebSecurityExecutor {
     );
   }
 
-  async rpc(eff: SecurityRpcEffect): Promise<void> {
-    const emitRpc = (fields: MessageInitShape<typeof SecurityRpcResultEventSchema>) =>
-      this.emit({ case: "securityRpcResult", value: create(SecurityRpcResultEventSchema, { opId: eff.opId, ...fields }) });
-    const path = RPC_PATHS[eff.method];
-    if (!path) {
-      emitRpc({ connectCode: Code.InvalidArgument, error: "unsupported security rpc method" });
-      return;
+  relayRpcCancel(eff: RelayRpcCancelEffect): void {
+    const ctrl = this.activeRpcs.get(eff.opId);
+    if (ctrl) {
+      this.activeRpcs.delete(eff.opId);
+      ctrl.abort(new DOMException("canceled", "AbortError"));
     }
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(new Error("timeout")), eff.method === SecurityRpcMethod.GET_SECURITY_STATES ? 5000 : 15000);
+  }
+
+  async executeUnary(params: {
+    opId: bigint;
+    method: RelayRpcMethod;
+    server: string;
+    authToken?: string;
+    timeoutMs?: number;
+    attemptHeader?: string;
+    requestBytes?: Uint8Array;
+    trackCancel?: boolean;
+  }): Promise<RelayRpcResultEvent> {
+    const ctrl = params.trackCancel ? new AbortController() : undefined;
+    if (ctrl) this.activeRpcs.set(params.opId, ctrl);
     try {
-      const headers: Record<string, string> = { "Content-Type": "application/proto", "Connect-Protocol-Version": "1" };
-      if (eff.authToken) headers["Authorization"] = `Bearer ${eff.authToken}`;
-      const res = await this.fetchFn(rpcBase(eff.server) + path, {
-        method: "POST",
-        headers,
-        body: new Uint8Array(eff.requestBytes),
-        signal: ctrl.signal,
-      });
-      if (!res.ok) {
-        let code = httpStatusToConnectCode(res.status);
-        let msg = `HTTP ${res.status}`;
-        const errorDetails: RpcErrorDetailBytes[] = [];
-        try {
-          const parsed = JSON.parse(await res.text()) as {
-            code?: string;
-            message?: string;
-            details?: Array<{ type?: unknown; value?: unknown }>;
-          };
-          if (parsed.code && parsed.code in CONNECT_NAME_TO_CODE) code = CONNECT_NAME_TO_CODE[parsed.code];
-          if (parsed.message) msg = parsed.message;
-          if (Array.isArray(parsed.details)) {
-            for (const d of parsed.details) {
-              if (typeof d?.type !== "string" || !d.type || typeof d.value !== "string") continue;
-              const value = decodeConnectDetailBase64(d.value);
-              if (value && value.byteLength > 0) {
-                errorDetails.push(create(RpcErrorDetailBytesSchema, { typeName: d.type, value }));
-              }
-            }
-          }
-        } catch { /* keep HTTP status fallback */ }
-        emitRpc({ connectCode: code, error: msg, errorDetails });
-        return;
-      }
-      emitRpc({ responseBytes: new Uint8Array(await res.arrayBuffer()) });
-    } catch (err) {
-      const isTimeout = err instanceof Error && err.name === "AbortError";
-      emitRpc({
-        connectCode: isTimeout ? Code.DeadlineExceeded : Code.Unavailable,
-        error: isTimeout ? "connection timed out" : errorMessage(err),
-        networkError: true,
+      return await executeRelayRpcUnary({
+        opId: params.opId,
+        method: params.method,
+        server: params.server || this.defaultServer || "",
+        authToken: params.authToken,
+        timeoutMs: params.timeoutMs,
+        attemptHeader: params.attemptHeader,
+        requestBytes: params.requestBytes,
+        fetch: this.fetchFn,
+        signal: ctrl?.signal,
       });
     } finally {
-      clearTimeout(timer);
+      if (ctrl && this.activeRpcs.get(params.opId) === ctrl) {
+        this.activeRpcs.delete(params.opId);
+      }
     }
+  }
+
+  async relayRpc(eff: RelayRpcEffect): Promise<void> {
+    const res = await this.executeUnary({
+      opId: eff.opId,
+      method: eff.method,
+      server: eff.server,
+      authToken: eff.authToken,
+      timeoutMs: Number(eff.timeoutMs),
+      attemptHeader: eff.attemptHeader,
+      requestBytes: eff.requestBytes,
+      trackCancel: true,
+    });
+    this.emit({ case: "relayRpcResult", value: res });
+  }
+
+  async rpc(eff: SecurityRpcEffect): Promise<void> {
+    const res = await this.executeUnary({
+      opId: eff.opId,
+      method: eff.method as unknown as RelayRpcMethod,
+      server: eff.server,
+      authToken: eff.authToken,
+      timeoutMs: eff.method === SecurityRpcMethod.GET_SECURITY_STATES ? 5000 : 15000,
+      requestBytes: eff.requestBytes,
+    });
+    this.emit({
+      case: "securityRpcResult",
+      value: create(SecurityRpcResultEventSchema, {
+        opId: eff.opId,
+        responseBytes: res.responseBytes,
+        connectCode: res.connectCode,
+        error: res.diagnosticMessage,
+        networkError: res.networkError,
+        errorDetails: res.errorDetails,
+      }),
+    });
   }
 
   cryptoBatch(eff: SecurityCryptoBatchEffect): Promise<void> {
