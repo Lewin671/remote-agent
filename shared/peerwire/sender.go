@@ -106,12 +106,18 @@ func (s *Sender) NetworkChanged(g uint64) { s.NetworkGeneration = max(s.NetworkG
 
 // CandidateBatcher owns one SDK callback generation and a 50ms collection timer.
 // It returns original candidate bytes; the adapter adds the bound ufrag/mid.
+// Wire protocol allows at most 4 batches of 16 candidates (index 0..3) and 64
+// candidates total. Batches 0..2 flush on the 50ms timer to preserve Trickle
+// ICE; batch 3 holds until 16 candidates accumulate or gathering ends so the
+// 4-batch wire limit is never exceeded.
 type CandidateBatcher struct {
 	Generation, Deadline, Binding uint64
 	Due                           uint64
 	Pending                       [][]byte
 	Count, Batches                int
+	Seen                          int
 	Ended                         bool
+	noEarlyFlush                  bool // frozen 1a vector replay only
 }
 
 func (b *CandidateBatcher) Add(raw []byte, g, now, binding uint64) bool {
@@ -120,10 +126,18 @@ func (b *CandidateBatcher) Add(raw []byte, g, now, binding uint64) bool {
 		b.Pending = nil
 		b.Due = 0
 	}
-	if b.Ended || binding != b.Binding || g != b.Generation || b.Count >= 64 || len(raw) > 1024 {
+	if b.Ended || binding != b.Binding || g != b.Generation || b.Seen >= 64 || len(raw) > 1024 {
 		return false
 	}
-	if len(b.Pending) == 0 {
+	b.Seen++
+	// Wire allows at most 4 batches of 16 candidates. If early trickle batches
+	// used fewer than 16 candidates, drop candidates past the remaining wire
+	// batch capacity without panicking or breaking the 64-candidate budget.
+	remCap := (4 - b.Batches) * 16
+	if len(b.Pending) >= remCap {
+		return true
+	}
+	if len(b.Pending) == 0 && (b.noEarlyFlush || b.Batches < 3) {
 		b.Due = now + 50
 	}
 	b.Pending = append(b.Pending, append([]byte(nil), raw...))
@@ -144,17 +158,18 @@ func (b *CandidateBatcher) Flush(now uint64, end bool, g, binding uint64) [][][]
 		return nil
 	}
 	var out [][][]byte
-	for len(b.Pending) >= 16 || (end && len(b.Pending) > 0) {
+	for len(b.Pending) >= 16 || (end && len(b.Pending) > 0) || (!b.noEarlyFlush && b.Batches < 3 && len(b.Pending) > 0) {
+		if b.Batches >= 4 {
+			b.Pending = nil
+			break
+		}
 		n := min(16, len(b.Pending))
 		out = append(out, b.Pending[:n])
 		b.Pending = b.Pending[n:]
 		b.Batches++
-		if b.Batches > 4 {
-			panic("candidate batches")
-		}
 	}
 	b.Due = 0
-	if len(b.Pending) > 0 {
+	if len(b.Pending) > 0 && b.Batches < 4 && (b.noEarlyFlush || b.Batches < 3) {
 		b.Due = now + 50
 	}
 	return out

@@ -61,7 +61,7 @@ func TestFrozenSignalVectors(t *testing.T) {
 			gates = [2]*Signal{newTestSignal(codec, a, b.Public, conn, n(p[6]), 1700000000000), newTestSignal(codec, b, a.Public, conn, n(p[6]), 1700000000000)}
 			cases++
 		case "BATCH_CASE":
-			batch = &CandidateBatcher{Generation: n(p[2]), Deadline: n(p[3]), Binding: n(p[4])}
+			batch = &CandidateBatcher{Generation: n(p[2]), Deadline: n(p[3]), Binding: n(p[4]), noEarlyFlush: true}
 			cases++
 		case "BATCH_ADD":
 			if batch.Add(raw(p[3]), n(p[2]), n(p[1]), 1) != (p[4] == "1") {
