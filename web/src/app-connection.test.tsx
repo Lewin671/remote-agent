@@ -142,3 +142,13 @@ it("uses the same waiting delay in the narrow home header", async () => {
   expect(host!.textContent).toContain("正在重连");
   remote.stop();
 });
+
+it("calls setForeground(true) only once when returning from hidden to visible (audit opt 1)", async () => {
+  const { remote, visibility } = await mount();
+  const fg = vi.spyOn(remote, "setForeground");
+  await visibility(true);
+  expect(fg.mock.calls).toEqual([[false]]);
+  fg.mockClear();
+  await visibility(false);
+  expect(fg.mock.calls).toEqual([[true]]);
+});
