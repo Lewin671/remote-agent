@@ -24,6 +24,15 @@ const fragmentPayload = maxFrame - 128
 
 var disconnectGrace = 3 * time.Second
 
+// iceCheckBudget is how many checks Pion sends a candidate pair before giving
+// it up for good; its default of 7 (about 1.4 s at the 200 ms check interval)
+// is shorter than the peer can take to send its first check on that pair. As
+// the controlling side Pion never re-checks a failed pair when the peer's
+// check later arrives on it, so a peer behind a stateful firewall, whose
+// checks then succeed, waits for a nomination that never comes. 50 checks
+// keep each pair alive for the whole 10 s round.
+const iceCheckBudget = 50
+
 // MaxSingleFragmentBytes is the maximum payload size that fits in a single direct Fragment.
 const MaxSingleFragmentBytes = fragmentPayload
 
@@ -100,6 +109,7 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 	se.SetNetworkTypes([]webrtc.NetworkType{webrtc.NetworkTypeUDP4, webrtc.NetworkTypeUDP6})
 	se.SetSCTPMaxMessageSize(maxFrame)
 	se.SetSCTPMaxReceiveBufferSize(1 << 20)
+	se.SetICEMaxBindingRequests(iceCheckBudget)
 	if cfg.LoopbackOnly {
 		se.SetIncludeLoopbackCandidate(true)
 		se.SetIPFilter(func(ip net.IP) bool { return ip.IsLoopback() })
