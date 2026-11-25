@@ -6073,5 +6073,10 @@
     "path": "web/src/views/Session.tsx",
     "literal": "); const interruptCmd = actions?.interrupt; const activeDraft = draftView ?? composer?.draft; const resolvedTrayView = trayView ?? (activeDraft ?",
     "reason": "JSX lexical scan false positive spanning TypeScript statements between JSX expressions; not UI copy."
+  },
+  {
+    "path": "internal/relay/sync.go",
+    "literal": "relay: current checkpoint pending; normal session sync continues",
+    "reason": "Internal daemon slog.Warn diagnostic log; never rendered as user-facing product copy."
   }
 ]

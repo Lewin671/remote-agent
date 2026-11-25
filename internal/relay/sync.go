@@ -565,7 +565,7 @@ func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.S
 		}
 	}
 	if checkpointErr != nil {
-		c.checkpointPending.Store(true)
+		c.markCheckpointDirty(id)
 		slog.Warn("relay: current checkpoint pending; normal session sync continues", "session", id, "err", checkpointErr)
 	}
 	_, err = c.machine.PutSession(ctx, connect.NewRequest(request))

@@ -98,8 +98,9 @@ type Relay struct {
 	beforeDialResult func(uint64)
 	beforeHello      func()
 	recoveryNow      func() time.Time
-	readyTimeout     time.Duration
-	syncRetryBase    time.Duration
+	readyTimeout          time.Duration
+	syncRetryBase         time.Duration
+	publishSessionTimeout time.Duration
 	// keyMu makes reading or creating a session's key one step across
 	// concurrent uploads and terminal requests.
 	keyMu sync.Mutex
@@ -118,9 +119,18 @@ type Relay struct {
 	owedNotify map[string][]*pb.Event
 }
 
+const defaultPublishSessionTimeout = 15 * time.Second
+
+func (r *Relay) sessionPublishTimeout() time.Duration {
+	if r != nil && r.publishSessionTimeout > 0 {
+		return r.publishSessionTimeout
+	}
+	return defaultPublishSessionTimeout
+}
+
 // New returns a relay for backend.
 func New(backend Backend) *Relay {
-	return &Relay{backend: backend, machineRPCs: make(chan struct{}, maxConcurrentMachineRPCs), backlog: make(chan struct{}, 1), sentMeta: map[string]*pb.Session{}, owedNotify: map[string][]*pb.Event{}, Retry: time.Second, syncInterval: 5 * time.Second, securityInterval: 12 * time.Second, readyTimeout: 15 * time.Second, syncRetryBase: time.Second}
+	return &Relay{backend: backend, machineRPCs: make(chan struct{}, maxConcurrentMachineRPCs), backlog: make(chan struct{}, 1), sentMeta: map[string]*pb.Session{}, owedNotify: map[string][]*pb.Event{}, Retry: time.Second, syncInterval: 5 * time.Second, securityInterval: 12 * time.Second, readyTimeout: 15 * time.Second, syncRetryBase: time.Second, publishSessionTimeout: defaultPublishSessionTimeout}
 }
 
 // Connected reports whether the relay currently has a stream to the server.
@@ -233,11 +243,56 @@ type conn struct {
 	r                 *Relay
 	acct              *Account
 	machine           remoteagentv1connect.MachineServiceClient
-	publishMu         sync.Mutex
-	checkpointPending atomic.Bool
-	publishNow        chan struct{}
-	onSyncReady       func()
+	publishMu           sync.Mutex
+	checkpointPending   atomic.Bool
+	checkpointMu        sync.Mutex
+	dirtyCheckpoints    map[string]bool
+	publishedEpoch      uint64
+	publishedInProgress bool
+	publishedMachine    *pb.MachineMeta
+	publishedSessions   map[string]*pb.Session
+	publishNow          chan struct{}
+	onSyncReady         func()
 }
+
+func (c *conn) markCheckpointDirty(id string) {
+	c.checkpointMu.Lock()
+	if c.dirtyCheckpoints == nil {
+		c.dirtyCheckpoints = map[string]bool{}
+	}
+	c.dirtyCheckpoints[id] = true
+	c.checkpointMu.Unlock()
+	c.checkpointPending.Store(true)
+}
+
+func (c *conn) clearCheckpointDirty(id string) {
+	c.checkpointMu.Lock()
+	delete(c.dirtyCheckpoints, id)
+	c.checkpointMu.Unlock()
+}
+
+func (c *conn) isCheckpointDirty(id string) bool {
+	c.checkpointMu.Lock()
+	dirty := c.dirtyCheckpoints[id]
+	c.checkpointMu.Unlock()
+	return dirty
+}
+
+func (c *conn) hasDirtyCheckpoints() bool {
+	c.checkpointMu.Lock()
+	n := len(c.dirtyCheckpoints)
+	c.checkpointMu.Unlock()
+	return n > 0
+}
+
+type republishBatchError struct {
+	err error
+}
+
+func (e *republishBatchError) Error() string { return e.err.Error() }
+func (e *republishBatchError) Unwrap() error { return e.err }
+
+var errCheckpointsPending = errors.New("current checkpoints remain pending")
 
 func login(ctx context.Context, acct *Account) (string, error) {
 	token, _, err := loginWithExpiry(ctx, acct)
@@ -316,8 +371,9 @@ func revision() uint64 {
 // the new content key after a recovery boundary. Old events and images are
 // never re-encrypted: the new phone must not receive old plaintext. The
 // published content epoch is written last, so a crash before it makes the
-// next sync retry the whole republish.
-func (c *conn) publishCurrentCheckpoint(ctx context.Context) (retErr error) {
+// next sync retry the whole republish. Each session uses an independent
+// timeout and converged unchanged sessions are skipped on subsequent retries.
+func (c *conn) publishCurrentCheckpoint(ctx context.Context, startedEpoch uint64, markerMatches bool) (retErr error) {
 	// A full pass is also the retry of checkpoints that failed during ordinary
 	// session sync. Individual writers only set this flag; they never clear it.
 	c.checkpointPending.Store(false)
@@ -326,55 +382,146 @@ func (c *conn) publishCurrentCheckpoint(ctx context.Context) (retErr error) {
 			c.checkpointPending.Store(true)
 		}
 	}()
-	_, head, _ := c.security.endpoint.Snapshot()
-	startedEpoch := head.Core.ContentEpoch
-	if err := c.putMachine(ctx, c.r.backend.MachineMeta()); err != nil {
-		return err
+	if !c.publishedInProgress || c.publishedEpoch != startedEpoch {
+		if !markerMatches || c.publishedEpoch != startedEpoch {
+			c.publishedMachine = nil
+			c.publishedSessions = map[string]*pb.Session{}
+		}
+		c.publishedEpoch = startedEpoch
+		c.publishedInProgress = true
 	}
-	ids := c.r.backend.SessionIDs()
-	floors := map[string]uint64{}
-	if len(ids) > 0 {
-		res, err := c.machine.ListSessionHeads(ctx, connect.NewRequest(&pb.ListSessionHeadsRequest{}))
+	if c.publishedSessions == nil {
+		c.publishedSessions = map[string]*pb.Session{}
+	}
+
+	opTimeout := c.r.sessionPublishTimeout()
+	machineMeta := c.r.backend.MachineMeta()
+	if c.publishedMachine == nil || !proto.Equal(c.publishedMachine, machineMeta) {
+		mctx, mcancel := context.WithTimeout(ctx, opTimeout)
+		err := c.putMachine(mctx, machineMeta)
+		mcancel()
 		if err != nil {
 			return err
 		}
-		for _, h := range res.Msg.Sessions {
-			floors[h.SessionId] = h.MetaRevision
+		c.publishedMachine = proto.CloneOf(machineMeta)
+	}
+
+	ids := c.r.backend.SessionIDs()
+	activeIDs := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		activeIDs[id] = struct{}{}
+	}
+	for id := range c.publishedSessions {
+		if _, ok := activeIDs[id]; !ok {
+			delete(c.publishedSessions, id)
 		}
 	}
+	c.checkpointMu.Lock()
+	for id := range c.dirtyCheckpoints {
+		if _, ok := activeIDs[id]; !ok {
+			delete(c.dirtyCheckpoints, id)
+		}
+	}
+	c.checkpointMu.Unlock()
+
+	type pendingSession struct {
+		id      string
+		info    *pb.Session
+		curMeta *pb.Session
+	}
+	var pending []pendingSession
 	var firstErr error
+	failed := 0
+	deferred := 0
+	published := 0
 	for _, id := range ids {
 		info, err := c.r.backend.SessionInfo(id)
 		if err != nil {
+			failed++
 			if firstErr == nil {
 				firstErr = err
 			}
 			continue
 		}
-		key, err := c.sessionKey(id, true)
-		if err != nil {
-			if firstErr == nil {
-				firstErr = err
+		curMeta := syncMeta(info)
+		if !c.isCheckpointDirty(id) {
+			if prev, ok := c.publishedSessions[id]; ok && proto.Equal(prev, curMeta) {
+				continue
 			}
-			continue
 		}
-		rev, err := c.putSession(ctx, id, key, info, floors[id])
+		pending = append(pending, pendingSession{id: id, info: info, curMeta: curMeta})
+	}
+
+	if len(pending) > 0 {
+		lctx, lcancel := context.WithTimeout(ctx, opTimeout)
+		res, err := c.machine.ListSessionHeads(lctx, connect.NewRequest(&pb.ListSessionHeadsRequest{}))
+		lcancel()
 		if err != nil {
-			slog.Warn("relay: republish session after recovery", "session", id, "err", err)
-			if firstErr == nil {
-				firstErr = err
+			return err
+		}
+		floors := make(map[string]uint64, len(res.Msg.Sessions))
+		for _, h := range res.Msg.Sessions {
+			floors[h.SessionId] = h.MetaRevision
+		}
+		for i, p := range pending {
+			if err := ctx.Err(); err != nil {
+				deferred += len(pending) - i
+				if firstErr == nil {
+					firstErr = err
+				}
+				break
 			}
-		} else {
-			c.noteSentMeta(id, key, syncMeta(info), rev)
+			floor := floors[p.id]
+			key, err := c.sessionKey(p.id, true)
+			if err != nil {
+				failed++
+				if firstErr == nil {
+					firstErr = err
+				}
+				continue
+			}
+			c.clearCheckpointDirty(p.id)
+			sctx, scancel := context.WithTimeout(ctx, opTimeout)
+			rev, err := c.putSession(sctx, p.id, key, p.info, floor)
+			scancel()
+			if err != nil {
+				failed++
+				if firstErr == nil {
+					firstErr = err
+				}
+				continue
+			}
+			c.noteSentMeta(p.id, key, p.curMeta, rev)
+			if c.isCheckpointDirty(p.id) {
+				failed++
+				if firstErr == nil {
+					firstErr = errCheckpointsPending
+				}
+				continue
+			}
+			c.publishedSessions[p.id] = p.curMeta
+			published++
 		}
 	}
-	if firstErr != nil {
-		return firstErr
+
+	if failed > 0 || deferred > 0 {
+		slog.Warn("relay: republish sessions incomplete",
+			"failed", failed,
+			"deferred", deferred,
+			"published", published,
+			"total", len(ids),
+			"first_err", firstErr,
+		)
+		return &republishBatchError{err: firstErr}
 	}
-	if c.checkpointPending.Load() {
-		return errors.New("current checkpoints remain pending")
+	if c.checkpointPending.Load() || c.hasDirtyCheckpoints() {
+		return errCheckpointsPending
 	}
-	return c.writeDisk(func() error { return writePublishedEpoch(startedEpoch) })
+	if err := c.writeDisk(func() error { return writePublishedEpoch(startedEpoch) }); err != nil {
+		return err
+	}
+	c.publishedInProgress = false
+	return nil
 }
 
 // ensurePublished republishes current metadata on the first run and after a
@@ -386,10 +533,11 @@ func (c *conn) ensurePublished(ctx context.Context) error {
 	defer c.publishMu.Unlock()
 	marker, err := readPublishedEpoch()
 	_, head, _ := c.security.endpoint.Snapshot()
-	if err == nil && head.Core.ContentEpoch == marker && !c.checkpointPending.Load() {
+	markerMatches := err == nil && head.Core.ContentEpoch == marker
+	if markerMatches && !c.checkpointPending.Load() {
 		return nil
 	}
-	return c.publishCurrentCheckpoint(ctx)
+	return c.publishCurrentCheckpoint(ctx, head.Core.ContentEpoch, markerMatches)
 }
 
 func (c *conn) putMachine(ctx context.Context, meta *pb.MachineMeta) error {

@@ -3,12 +3,15 @@ package relay
 import (
 	"context"
 	"crypto/ed25519"
+	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -392,5 +395,229 @@ func TestCheckpointCombinedMetadataBudgetKeepsOrdinarySyncAvailable(t *testing.T
 				t.Fatal("oversize checkpoint not retained independently of metadata")
 			}
 		})
+	}
+}
+
+type capturedWarnHandler struct {
+	mu      sync.Mutex
+	records []slog.Record
+}
+
+func (h *capturedWarnHandler) Enabled(_ context.Context, level slog.Level) bool {
+	return level >= slog.LevelWarn
+}
+
+func (h *capturedWarnHandler) Handle(_ context.Context, r slog.Record) error {
+	h.mu.Lock()
+	h.records = append(h.records, r.Clone())
+	h.mu.Unlock()
+	return nil
+}
+
+func (h *capturedWarnHandler) WithAttrs([]slog.Attr) slog.Handler { return h }
+func (h *capturedWarnHandler) WithGroup(string) slog.Handler      { return h }
+
+func (h *capturedWarnHandler) reset() []slog.Record {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	out := h.records
+	h.records = nil
+	return out
+}
+
+type multiSessionPublishBackend struct {
+	publishBackend
+	ids  []string
+	dirs map[string]string
+}
+
+func (b multiSessionPublishBackend) SessionIDs() []string { return b.ids }
+func (b multiSessionPublishBackend) SessionInfo(id string) (*pb.Session, error) {
+	return &pb.Session{Id: id}, nil
+}
+func (b multiSessionPublishBackend) SessionDir(id string) string { return b.dirs[id] }
+
+type selectivePublishMachine struct {
+	publishMachine
+	mu       sync.Mutex
+	lists    int
+	putCount map[string]int
+	putsByID map[string]uint64
+	onPutSes func(ctx context.Context, id string) error
+}
+
+func (m *selectivePublishMachine) ListSessionHeads(context.Context, *connect.Request[pb.ListSessionHeadsRequest]) (*connect.Response[pb.ListSessionHeadsResponse], error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.lists++
+	var heads []*pb.SessionHead
+	for id, floor := range m.putsByID {
+		heads = append(heads, &pb.SessionHead{SessionId: id, MetaRevision: floor})
+	}
+	return connect.NewResponse(&pb.ListSessionHeadsResponse{Sessions: heads}), nil
+}
+
+func (m *selectivePublishMachine) PutSession(ctx context.Context, r *connect.Request[pb.PutSessionRequest]) (*connect.Response[pb.PutSessionResponse], error) {
+	m.mu.Lock()
+	m.putCount[r.Msg.SessionId]++
+	cb := m.onPutSes
+	m.mu.Unlock()
+	if cb != nil {
+		if err := cb(ctx, r.Msg.SessionId); err != nil {
+			return nil, err
+		}
+	}
+	h, err := devicesec.ParseHeader(r.Msg.Meta.SecurityHeader)
+	if err != nil {
+		return nil, err
+	}
+	m.mu.Lock()
+	m.putsByID[r.Msg.SessionId] = h.Seq
+	m.mu.Unlock()
+	return connect.NewResponse(&pb.PutSessionResponse{}), nil
+}
+
+func TestEnsurePublishedIsolatesSlowSessionAndConvergesAcrossPasses(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	ids := []string{"s1", "s2", "s3", "s4"}
+	backend := multiSessionPublishBackend{ids: ids, dirs: map[string]string{}}
+	for _, id := range ids {
+		backend.dirs[id] = t.TempDir()
+	}
+	r := New(backend)
+	r.publishSessionTimeout = 250 * time.Millisecond
+	c := &conn{r: r, acct: &Account{}}
+	initializeTestSecurityKeys(t, c)
+
+	stallS2 := true
+	service := &selectivePublishMachine{
+		putCount: map[string]int{},
+		putsByID: map[string]uint64{},
+	}
+	service.onPutSes = func(ctx context.Context, id string) error {
+		if id == "s2" && stallS2 {
+			<-ctx.Done()
+			return ctx.Err()
+		}
+		return nil
+	}
+	mux := http.NewServeMux()
+	path, h := remoteagentv1connect.NewMachineServiceHandler(service)
+	mux.Handle(path, h)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	c.machine = remoteagentv1connect.NewMachineServiceClient(http.DefaultClient, srv.URL)
+	for _, id := range ids {
+		if _, err := c.sessionKey(id, false); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	capture := &capturedWarnHandler{}
+	prevLogger := slog.Default()
+	slog.SetDefault(slog.New(capture))
+	defer slog.SetDefault(prevLogger)
+
+	// Pass 1: s2 hits its independent 40ms timeout, while s1, s3, s4 all succeed within the 2s batch ctx.
+	ctx1, cancel1 := context.WithTimeout(context.Background(), 2*time.Second)
+	err := c.ensurePublished(ctx1)
+	cancel1()
+	if err == nil {
+		t.Fatal("expected pass 1 to return error while s2 timed out")
+	}
+	for _, id := range []string{"s1", "s3", "s4"} {
+		if service.putCount[id] != 1 {
+			t.Fatalf("session %s putCount = %d, want 1 (slow s2 must not starve later sessions)", id, service.putCount[id])
+		}
+	}
+	warns := capture.reset()
+	if len(warns) != 1 {
+		t.Fatalf("expected exactly 1 summary WARN log for pass 1, got %d", len(warns))
+	}
+
+	// Pass 2: s2 now succeeds; already-published unchanged sessions s1/s3/s4 and PutMachine must NOT be resent!
+	stallS2 = false
+	ctx2, cancel2 := context.WithTimeout(context.Background(), 2*time.Second)
+	err = c.ensurePublished(ctx2)
+	cancel2()
+	if err != nil {
+		t.Fatalf("pass 2 failed: %v", err)
+	}
+	if service.puts != 1 {
+		t.Fatalf("PutMachine resent on pass 2: count=%d, want 1", service.puts)
+	}
+	for _, id := range []string{"s1", "s3", "s4"} {
+		if service.putCount[id] != 1 {
+			t.Fatalf("unchanged session %s was resent on pass 2: putCount=%d, want 1", id, service.putCount[id])
+		}
+	}
+	if service.putCount["s2"] != 2 {
+		t.Fatalf("session s2 putCount = %d, want 2 (1 failed + 1 retry)", service.putCount["s2"])
+	}
+
+	// Pass 3: converged -> zero RPCs.
+	listsBefore := service.lists
+	if err := c.ensurePublished(context.Background()); err != nil {
+		t.Fatalf("pass 3 failed: %v", err)
+	}
+	if service.lists != listsBefore {
+		t.Fatalf("converged pass 3 still called ListSessionHeads")
+	}
+}
+
+func TestEnsurePublishedSummarizesBatchFailureInSingleWarn(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	ids := []string{"f1", "f2", "f3", "f4", "f5"}
+	backend := multiSessionPublishBackend{ids: ids, dirs: map[string]string{}}
+	for _, id := range ids {
+		backend.dirs[id] = t.TempDir()
+	}
+	c := &conn{r: New(backend), acct: &Account{}}
+	initializeTestSecurityKeys(t, c)
+
+	service := &selectivePublishMachine{
+		putCount: map[string]int{},
+		putsByID: map[string]uint64{},
+		onPutSes: func(context.Context, string) error {
+			return connect.NewError(connect.CodeUnavailable, errors.New("link loss"))
+		},
+	}
+	mux := http.NewServeMux()
+	path, h := remoteagentv1connect.NewMachineServiceHandler(service)
+	mux.Handle(path, h)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	c.machine = remoteagentv1connect.NewMachineServiceClient(http.DefaultClient, srv.URL)
+	for _, id := range ids {
+		if _, err := c.sessionKey(id, false); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	capture := &capturedWarnHandler{}
+	prevLogger := slog.Default()
+	slog.SetDefault(slog.New(capture))
+	defer slog.SetDefault(prevLogger)
+
+	if err := c.ensurePublished(context.Background()); err == nil {
+		t.Fatal("expected error when all 5 sessions fail")
+	}
+	warns := capture.reset()
+	if len(warns) != 1 {
+		t.Fatalf("expected 1 batch summary WARN for 5 failed sessions, got %d", len(warns))
+	}
+	var failedAttr int64
+	var hasFirstErr bool
+	warns[0].Attrs(func(a slog.Attr) bool {
+		if a.Key == "failed" {
+			failedAttr = a.Value.Int64()
+		}
+		if a.Key == "first_err" {
+			hasFirstErr = true
+		}
+		return true
+	})
+	if failedAttr != 5 || !hasFirstErr {
+		t.Fatalf("expected summary WARN with failed=5 and first_err, got failed=%d hasFirstErr=%v", failedAttr, hasFirstErr)
 	}
 }

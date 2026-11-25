@@ -133,7 +133,10 @@ func (c *conn) checkpointLoop(ctx context.Context) {
 		err := c.ensurePublished(attempt)
 		cancel()
 		if err != nil && ctx.Err() == nil {
-			slog.Warn("relay: republishing current state failed; retrying next sync", "code", connect.CodeOf(err).String())
+			var batchErr *republishBatchError
+			if !errors.As(err, &batchErr) {
+				slog.Warn("relay: republishing current state failed; retrying next sync", "code", connect.CodeOf(err).String())
+			}
 		}
 	}
 }
