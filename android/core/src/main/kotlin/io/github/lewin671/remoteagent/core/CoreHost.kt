@@ -29,8 +29,21 @@ private val DEFAULT_SESSION_WINDOW: SessionWindowRequest =
     SessionWindowRequest.newBuilder().setLimit(CORE_SESSION_WINDOW_LIMIT).build()
 private const val CALENDAR_MONTH_HISTORY = 35
 private const val INITIAL_ENTROPY_IDS = 32
+private const val BOOTSTRAP_RETRY_TIMEOUT_MS = 30_000L
 private const val INITIAL_ENTROPY_FLOATS = 32
 private const val INITIAL_ENTROPY_RANDOM_BYTES = 4096
+private val LAZY_SUBSCREENS = setOf(
+    ScreenTarget.SCREEN_TARGET_DEVICES,
+    ScreenTarget.SCREEN_TARGET_QUOTA,
+    ScreenTarget.SCREEN_TARGET_USAGE,
+    ScreenTarget.SCREEN_TARGET_DIRECT_DIAGNOSTICS,
+    ScreenTarget.SCREEN_TARGET_SCHEDULES,
+    ScreenTarget.SCREEN_TARGET_SCHEDULE_DETAIL,
+    ScreenTarget.SCREEN_TARGET_SCHEDULE_FORM,
+    ScreenTarget.SCREEN_TARGET_ADD_DEVICE,
+    ScreenTarget.SCREEN_TARGET_ACCOUNT_SECURITY,
+    ScreenTarget.SCREEN_TARGET_HANDOFF,
+)
 
 fun uiMessage(key: String, args: Map<String, Any> = emptyMap()): UiMessage = UiMessage(key, args)
 
@@ -116,6 +129,7 @@ class CoreHost(
 
     private val timers = HashMap<Long, Job>()
     private val machinePollTimers = HashMap<String, Job>()
+    private var lazySubJob: Job? = null
 
     private class KeyedWatcher<V, K>(
         val flow: MutableStateFlow<V>,
@@ -127,8 +141,14 @@ class CoreHost(
         initial: V,
         val build: () -> Screen?,
         private val extract: (ViewModel) -> V?,
+        lazy: Boolean = false,
     ) {
         val flow = MutableStateFlow(initial)
+        private val dirty = AtomicBoolean(lazy)
+        val view: StateFlow<V> = flow.asStateFlow()
+        fun markDirty() { dirty.set(true) }
+        fun clearDirty() { dirty.set(false) }
+        fun consumeDirty(): Boolean = dirty.getAndSet(false)
         fun update(vm: ViewModel) { extract(vm)?.let { flow.value = it } }
     }
 
@@ -138,7 +158,7 @@ class CoreHost(
         initial: V,
         build: () -> Screen?,
         extract: (ViewModel) -> V?,
-    ): ScreenSlot<V> = ScreenSlot(initial, build, extract).also { screenSlots[target] = it }
+    ): ScreenSlot<V> = ScreenSlot(initial, build, extract, lazy = target in LAZY_SUBSCREENS).also { screenSlots[target] = it }
 
     private val sessionWatchers = LinkedHashMap<String, KeyedWatcher<SessionViewModel, SessionWindowRequest>>()
     private val testSessionViews = HashMap<String, SessionViewModel>()
@@ -164,6 +184,11 @@ class CoreHost(
     var onSecurityTokenUpdated: (SecurityTokenUpdatedEffect) -> Unit = {}
     var onSecurityStatusChanged: (SecurityStatusChangedEffect) -> Unit = {}
     var onDismissUpgradeNotice: () -> Unit = {}
+    var onRequestStoragePersist: (RequestStoragePersistEffect) -> Unit = {}
+    var onUnregisterPushOnExit: (UnregisterPushOnExitEffect) -> Unit = {}
+    var onClearAccountCaches: (ClearAccountCachesEffect) -> Unit = {}
+    var onAccountRuntimeChanged: (AccountRuntimeChangedEffect) -> Unit = {}
+    var onPersistLastServer: (PersistLastServerEffect) -> Unit = {}
     var resolveUiMessage: MessageResolver = { it.key }
     val securityClient: SecurityClient by lazy {
         SecurityClient(
@@ -229,6 +254,10 @@ class CoreHost(
     private val nextSecurityOpSeq = AtomicLong(1L)
     private val nextPushRpcOpId = AtomicLong(1L)
     private val nextImageFetchOpId = AtomicLong(1L)
+    private val nextOnboardingEditSeq = AtomicLong(0L)
+    private val processedOnboardingEditSeq = AtomicLong(0L)
+    private val _settledOnboardingEditSeq = MutableStateFlow(0L)
+    val settledOnboardingEditSeq: StateFlow<Long> = _settledOnboardingEditSeq.asStateFlow()
     private val pendingMachineCmds = ConcurrentHashMap<Long, CompletableDeferred<CommandResult>>()
     private val pendingSecurityOps = ConcurrentHashMap<Long, CompletableDeferred<SecurityOpResultEffect>>()
     private val pendingPushRpcs = ConcurrentHashMap<Long, CompletableDeferred<PushRpcResultEffect>>()
@@ -320,28 +349,28 @@ class CoreHost(
         { directDiagnosticsId.takeIf { it.isNotEmpty() }?.let { Screen.newBuilder().setDirectDiagnostics(DirectDiagnosticsScreenRequest.newBuilder().setMachineId(it)).build() } },
         { if (it.viewCase == ViewModel.ViewCase.DIRECT_DIAGNOSTICS) it.directDiagnostics else null },
     )
-    val directDiagnosticsView: StateFlow<DirectDiagnosticsViewModel> = directDiagnosticsSlot.flow.asStateFlow()
+    val directDiagnosticsView: StateFlow<DirectDiagnosticsViewModel> = directDiagnosticsSlot.view
 
     private val quotaSlot = registerScreen(
         ScreenTarget.SCREEN_TARGET_QUOTA, QuotaViewModel.getDefaultInstance(),
         { Screen.newBuilder().setQuota(QuotaScreenRequest.newBuilder().setMachineId(quotaMachineId).setFilterAgent(quotaFilterAgent)).build() },
         { if (it.viewCase == ViewModel.ViewCase.QUOTA) it.quota else null },
     )
-    val quotaView: StateFlow<QuotaViewModel> = quotaSlot.flow.asStateFlow()
+    val quotaView: StateFlow<QuotaViewModel> = quotaSlot.view
 
     private val devicesSlot = registerScreen(
         ScreenTarget.SCREEN_TARGET_DEVICES, DevicesViewModel.getDefaultInstance(),
         { Screen.newBuilder().setDevices(DevicesScreenRequest.getDefaultInstance()).build() },
         { if (it.viewCase == ViewModel.ViewCase.DEVICES) it.devices else null },
     )
-    val devicesView: StateFlow<DevicesViewModel> = devicesSlot.flow.asStateFlow()
+    val devicesView: StateFlow<DevicesViewModel> = devicesSlot.view
 
     private val clientDetailSlot = registerScreen(
         ScreenTarget.SCREEN_TARGET_CLIENT_DETAIL, ClientDetailViewModel.getDefaultInstance(),
         { clientDetailId.takeIf { it.isNotEmpty() }?.let { Screen.newBuilder().setClientDetail(ClientDetailScreenRequest.newBuilder().setDeviceId(it)).build() } },
         { if (it.viewCase == ViewModel.ViewCase.CLIENT_DETAIL) it.clientDetail else null },
     )
-    val clientDetailView: StateFlow<ClientDetailViewModel> = clientDetailSlot.flow.asStateFlow()
+    val clientDetailView: StateFlow<ClientDetailViewModel> = clientDetailSlot.view
 
     private val usageSlot = registerScreen(
         ScreenTarget.SCREEN_TARGET_USAGE, UsageViewModel.getDefaultInstance(),
@@ -360,14 +389,14 @@ class CoreHost(
         },
         { if (it.viewCase == ViewModel.ViewCase.USAGE) it.usage else null },
     )
-    val usageView: StateFlow<UsageViewModel> = usageSlot.flow.asStateFlow()
+    val usageView: StateFlow<UsageViewModel> = usageSlot.view
 
     private val schedulesSlot = registerScreen(
         ScreenTarget.SCREEN_TARGET_SCHEDULES, SchedulesViewModel.getDefaultInstance(),
         { Screen.newBuilder().setSchedules(SchedulesScreenRequest.getDefaultInstance()).build() },
         { if (it.viewCase == ViewModel.ViewCase.SCHEDULES) it.schedules else null },
     )
-    val schedulesView: StateFlow<SchedulesViewModel> = schedulesSlot.flow.asStateFlow()
+    val schedulesView: StateFlow<SchedulesViewModel> = schedulesSlot.view
 
     private val scheduleDetailSlot = registerScreen(
         ScreenTarget.SCREEN_TARGET_SCHEDULE_DETAIL, ScheduleDetailViewModel.getDefaultInstance(),
@@ -379,14 +408,57 @@ class CoreHost(
         },
         { if (it.viewCase == ViewModel.ViewCase.SCHEDULE_DETAIL) it.scheduleDetail else null },
     )
-    val scheduleDetailView: StateFlow<ScheduleDetailViewModel> = scheduleDetailSlot.flow.asStateFlow()
+    val scheduleDetailView: StateFlow<ScheduleDetailViewModel> = scheduleDetailSlot.view
 
     private val scheduleFormSlot = registerScreen(
         ScreenTarget.SCREEN_TARGET_SCHEDULE_FORM, ScheduleFormViewModel.getDefaultInstance(),
         { Screen.newBuilder().setScheduleForm(ScheduleFormScreenRequest.getDefaultInstance()).build() },
         { if (it.viewCase == ViewModel.ViewCase.SCHEDULE_FORM) it.scheduleForm else null },
     )
-    val scheduleFormView: StateFlow<ScheduleFormViewModel> = scheduleFormSlot.flow.asStateFlow()
+    val scheduleFormView: StateFlow<ScheduleFormViewModel> = scheduleFormSlot.view
+
+    private val appRootSettleWaiters = mutableListOf<CompletableDeferred<AppRootViewModel>>()
+    private val appRootSlot = registerScreen(
+        ScreenTarget.SCREEN_TARGET_APP_ROOT, AppRootViewModel.getDefaultInstance(),
+        { Screen.newBuilder().setAppRoot(AppRootScreenRequest.getDefaultInstance()).build() },
+        { if (it.viewCase == ViewModel.ViewCase.APP_ROOT) it.appRoot else null },
+    )
+    val appRootView: StateFlow<AppRootViewModel> = appRootSlot.view
+
+    private val onboardingSlot = registerScreen(
+        ScreenTarget.SCREEN_TARGET_ONBOARDING, OnboardingViewModel.getDefaultInstance(),
+        { Screen.newBuilder().setOnboarding(OnboardingScreenRequest.getDefaultInstance()).build() },
+        { if (it.viewCase == ViewModel.ViewCase.ONBOARDING) it.onboarding else null },
+    )
+    val onboardingView: StateFlow<OnboardingViewModel> = onboardingSlot.view
+
+    private val addDeviceSlot = registerScreen(
+        ScreenTarget.SCREEN_TARGET_ADD_DEVICE, AddDeviceViewModel.getDefaultInstance(),
+        { Screen.newBuilder().setAddDevice(AddDeviceScreenRequest.getDefaultInstance()).build() },
+        { if (it.viewCase == ViewModel.ViewCase.ADD_DEVICE) it.addDevice else null },
+    )
+    val addDeviceView: StateFlow<AddDeviceViewModel> = addDeviceSlot.view
+
+    private val accountSecuritySlot = registerScreen(
+        ScreenTarget.SCREEN_TARGET_ACCOUNT_SECURITY, AccountSecurityViewModel.getDefaultInstance(),
+        { Screen.newBuilder().setAccountSecurity(AccountSecurityScreenRequest.getDefaultInstance()).build() },
+        { if (it.viewCase == ViewModel.ViewCase.ACCOUNT_SECURITY) it.accountSecurity else null },
+    )
+    val accountSecurityView: StateFlow<AccountSecurityViewModel> = accountSecuritySlot.view
+
+    private val handoffSlot = registerScreen(
+        ScreenTarget.SCREEN_TARGET_HANDOFF, HandoffViewModel.getDefaultInstance(),
+        { Screen.newBuilder().setHandoff(HandoffScreenRequest.getDefaultInstance()).build() },
+        { if (it.viewCase == ViewModel.ViewCase.HANDOFF) it.handoff else null },
+    )
+    val handoffView: StateFlow<HandoffViewModel> = handoffSlot.view
+
+    private val exitConfirmSlot = registerScreen(
+        ScreenTarget.SCREEN_TARGET_EXIT_CONFIRM, ExitConfirmView.getDefaultInstance(),
+        { Screen.newBuilder().setExitConfirm(ExitConfirmScreenRequest.getDefaultInstance()).build() },
+        { if (it.viewCase == ViewModel.ViewCase.EXIT_CONFIRM) it.exitConfirm else null },
+    )
+    val exitConfirmView: StateFlow<ExitConfirmView> = exitConfirmSlot.flow.asStateFlow()
 
     private val _navigationEvents = MutableSharedFlow<NavigateEffect>(extraBufferCapacity = 16)
     val navigationEvents: SharedFlow<NavigateEffect> = _navigationEvents.asSharedFlow()
@@ -437,7 +509,6 @@ class CoreHost(
                     refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_PROJECT)
                     refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_NEW_SESSION)
                     refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_CONNECTION)
-                    refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_SCHEDULES)
                 }
             }
             scope.launch(dispatcher) {
@@ -452,7 +523,25 @@ class CoreHost(
                         }
                     } finally {
                         flushPendingRenders()
+                        val settled = processedOnboardingEditSeq.get()
+                        if (_settledOnboardingEditSeq.value != settled) {
+                            _settledOnboardingEditSeq.value = settled
+                        }
                         coalescingRenders = false
+                    }
+                }
+            }
+            val lazySubCounts = LAZY_SUBSCREENS.mapNotNull { target ->
+                screenSlots[target]?.let { slot ->
+                    slot.flow.subscriptionCount.map { count -> target to count }
+                }
+            }
+            if (lazySubCounts.isNotEmpty()) {
+                lazySubJob = scope.launch(Dispatchers.Unconfined) {
+                    merge(*lazySubCounts.toTypedArray()).collect { (target, count) ->
+                        if (count > 0 && screenSlots[target]?.consumeDirty() == true) {
+                            dispatchAction { refreshScreenOnWorker(target) }
+                        }
                     }
                 }
             }
@@ -524,7 +613,7 @@ class CoreHost(
             pendingRenders.toList().also { pendingRenders.clear() }
         }
         if (!testOverrideViews) {
-            for (target in targets) refreshScreenOnWorker(target)
+            for (target in targets) refreshScreenOnWorker(target, fromRender = true)
         }
     }
 
@@ -540,7 +629,7 @@ class CoreHost(
                     }
                 } else {
                     if (!testOverrideViews) {
-                        for (target in targets) refreshScreenOnWorker(target)
+                        for (target in targets) refreshScreenOnWorker(target, fromRender = true)
                     }
                 }
             }
@@ -705,6 +794,12 @@ class CoreHost(
             Effect.EffectCase.ATTACHMENT_HASH_FILE -> onAttachmentHashFile(effect.attachmentHashFile)
             Effect.EffectCase.ATTACHMENT_READ_CHUNK -> onAttachmentReadChunk(effect.attachmentReadChunk)
             Effect.EffectCase.ATTACHMENT_RELEASE_LOCAL -> onAttachmentReleaseLocal(effect.attachmentReleaseLocal)
+            Effect.EffectCase.REQUEST_STORAGE_PERSIST -> onRequestStoragePersist(effect.requestStoragePersist)
+            Effect.EffectCase.UNREGISTER_PUSH_ON_EXIT -> onUnregisterPushOnExit(effect.unregisterPushOnExit)
+            Effect.EffectCase.CLEAR_ACCOUNT_CACHES -> onClearAccountCaches(effect.clearAccountCaches)
+            Effect.EffectCase.ACCOUNT_RUNTIME_CHANGED -> onAccountRuntimeChanged(effect.accountRuntimeChanged)
+            Effect.EffectCase.DISMISS_UPGRADE_NOTICE -> onDismissUpgradeNotice()
+            Effect.EffectCase.PERSIST_LAST_SERVER -> onPersistLastServer(effect.persistLastServer)
             else -> {}
         }
     }
@@ -793,7 +888,7 @@ class CoreHost(
         }
     }
 
-    fun refreshScreenOnWorker(target: ScreenTarget) {
+    fun refreshScreenOnWorker(target: ScreenTarget, fromRender: Boolean = false) {
         if (closed.get() || testOverrideViews || target in testOverriddenTargets) return
         when (target) {
             ScreenTarget.SCREEN_TARGET_SESSION -> refreshAllKeyed(sessionWatchers, ::refreshSessionOnWorker)
@@ -812,9 +907,23 @@ class CoreHost(
             }
             else -> {
                 val slot = screenSlots[target] ?: return
+                if (fromRender && target in LAZY_SUBSCREENS && slot.flow.subscriptionCount.value == 0) {
+                    slot.markDirty()
+                    return
+                }
                 val screen = slot.build() ?: return
                 val vm = viewOnWorker(screen) ?: return
+                slot.clearDirty()
                 slot.update(vm)
+                if (target == ScreenTarget.SCREEN_TARGET_APP_ROOT && vm.viewCase == ViewModel.ViewCase.APP_ROOT) {
+                    val ar = vm.appRoot
+                    if (ar.stage != AppRootStage.APP_ROOT_STAGE_LOADING && ar.stage != AppRootStage.APP_ROOT_STAGE_UNSPECIFIED) {
+                        val waiters = synchronized(appRootSettleWaiters) {
+                            appRootSettleWaiters.toList().also { appRootSettleWaiters.clear() }
+                        }
+                        waiters.forEach { it.complete(ar) }
+                    }
+                }
             }
         }
     }
@@ -2195,6 +2304,198 @@ class CoreHost(
         )
     }
 
+    /** Clears only Remote-owned sync/transport/cache callbacks when detaching Remote from a shared CoreHost. */
+    fun clearRemoteCallbacks() {
+        onOpenStream = {}
+        onCloseStream = {}
+        onEnsureToken = {}
+        onDiscardToken = {}
+        onCacheRead = {}
+        onCacheWrite = {}
+        onCacheDelete = {}
+        onRpc = {}
+        onDispatchCommand = {}
+        onCancelDispatch = {}
+        onSaveHomeScope = {}
+        onDirectPreference = {}
+        onSecurityTokenUpdated = {}
+        onSecurityStatusChanged = {}
+        onDirectSignalSend = {}
+        onDirectPcCreate = {}
+        onDirectPcDescribe = {}
+        onDirectPcSetRemote = {}
+        onDirectPcAddCandidates = {}
+        onDirectPcConfirm = {}
+        onDirectPcClose = {}
+        onDirectPcSendProbe = {}
+        onDirectDcReadStats = {}
+        onTerminalDirectSend = {}
+        onTerminalDirectDeliver = {}
+        onTerminalDirectAttachRelay = {}
+        onTerminalDirectState = {}
+        onWatchedSessions = {}
+        onUsageCacheRequest = {}
+        onUsageCacheWrite = {}
+        onHydrateUsageCache = {}
+        onScheduleReadCache = {}
+        onScheduleWriteCache = {}
+        onScheduleDeleteCache = {}
+        onScheduleLoadSeen = {}
+        onScheduleSaveSeen = {}
+        onScheduleDismissNotifications = {}
+    }
+
+    fun clientInit(
+        uiLocale: String = initialLocale,
+        platform: String = "android",
+        deviceDescription: String = "",
+        inlineCrypto: Boolean = true,
+        foreground: Boolean = true,
+        networkAvailable: Boolean = true,
+        networkSignature: String = "",
+        initialUrl: String = "",
+        defaultServer: String = "",
+        requestStoragePersist: Boolean = false,
+    ) = send {
+        setClientInit(
+            ClientInitEvent.newBuilder()
+                .setUiLocale(uiLocale).setPlatform(platform).setDeviceDescription(deviceDescription)
+                .setInlineCrypto(inlineCrypto).setForeground(foreground).setNetworkAvailable(networkAvailable)
+                .setNetworkSignature(networkSignature).setInitialUrl(initialUrl)
+                .setDefaultServer(defaultServer).setRequestStoragePersist(requestStoragePersist),
+        )
+    }
+
+    fun sendStoragePersistResult(opId: Long, persisted: Boolean) = send {
+        setStoragePersistResult(StoragePersistResultEvent.newBuilder().setOpId(opId).setPersisted(persisted))
+    }
+
+    fun sendPushUnregistered(opId: Long) = send {
+        setPushUnregistered(PushUnregisteredEvent.newBuilder().setOpId(opId))
+    }
+
+    fun sendAccountCachesCleared(opId: Long, error: String = "") = send {
+        setAccountCachesCleared(AccountCachesClearedEvent.newBuilder().setOpId(opId).setError(error))
+    }
+
+    fun appRootRetryBootstrap() = send { setAppRootRetryBootstrap(AppRootRetryBootstrapAction.getDefaultInstance()) }
+
+    /** Re-runs bootstrap and waits for it to settle; a bootstrap that never settles fails after [timeoutMs]. */
+    suspend fun retryBootstrapAndAwait(timeoutMs: Long = BOOTSTRAP_RETRY_TIMEOUT_MS): AppRootViewModel {
+        if (closed.get()) throw IllegalStateException("core closed")
+        val d = CompletableDeferred<AppRootViewModel>()
+        dispatchAction {
+            synchronized(appRootSettleWaiters) { appRootSettleWaiters.add(d) }
+            sendOnWorker { setAppRootRetryBootstrap(AppRootRetryBootstrapAction.getDefaultInstance()) }
+        }
+        try {
+            return withTimeout(timeoutMs) { d.await() }
+        } finally {
+            synchronized(appRootSettleWaiters) { appRootSettleWaiters.remove(d) }
+        }
+    }
+
+    fun appRootVerifyPendingOp() = send { setAppRootVerifyPendingOp(AppRootVerifyPendingOpAction.getDefaultInstance()) }
+    fun appRootDismissUpgradeNotice() = send { setAppRootDismissUpgradeNotice(AppRootDismissUpgradeNoticeAction.getDefaultInstance()) }
+
+    fun onboardingSetMode(mode: OnboardingMode, initialUrl: String = "", existingRepair: Boolean = false, existingServer: String = "") = send {
+        setOnboardingSetMode(
+            OnboardingSetModeAction.newBuilder()
+                .setMode(mode).setInitialUrl(initialUrl).setExistingRepair(existingRepair).setExistingServer(existingServer),
+        )
+    }
+
+    private inline fun sendOnboardingEdit(block: CoreEvent.Builder.() -> Unit): Long {
+        val seq = nextOnboardingEditSeq.incrementAndGet()
+        dispatch(CoreEvent.newBuilder().apply(block).build()) {
+            processedOnboardingEditSeq.accumulateAndGet(seq, ::maxOf)
+        }
+        return seq
+    }
+
+    fun onboardingCreateEdit(serverInput: String? = null, codeSavedChecked: Boolean? = null): Long = sendOnboardingEdit {
+        val b = OnboardingCreateEditAction.newBuilder()
+        if (serverInput != null) b.setHasServerInput(true).setServerInput(serverInput)
+        if (codeSavedChecked != null) b.setHasCodeSavedChecked(true).setCodeSavedChecked(codeSavedChecked)
+        setOnboardingCreateEdit(b)
+    }
+
+    fun onboardingCreateSubmit(serverInput: String = "", setupToken: String = "", confirmCodeSaved: Boolean = false) = send {
+        setOnboardingCreateSubmit(
+            OnboardingCreateSubmitAction.newBuilder()
+                .setServerInput(serverInput).setSetupToken(setupToken).setConfirmCodeSaved(confirmCodeSaved),
+        )
+    }
+
+    fun onboardingJoinEdit(codeInput: String? = null, serverInput: String? = null): Long = sendOnboardingEdit {
+        val b = OnboardingJoinEditAction.newBuilder()
+        if (codeInput != null) b.setHasCodeInput(true).setCodeInput(codeInput)
+        if (serverInput != null) b.setHasServerInput(true).setServerInput(serverInput)
+        setOnboardingJoinEdit(b)
+    }
+
+    fun onboardingJoinSubmit(rawLink: String = "", serverInput: String = "", codeInput: String = "") = send {
+        setOnboardingJoinSubmit(OnboardingJoinSubmitAction.newBuilder().setRawLink(rawLink).setServerInput(serverInput).setCodeInput(codeInput))
+    }
+
+    fun onboardingJoinConfirmSas() = send { setOnboardingJoinConfirmSas(OnboardingJoinConfirmSasAction.getDefaultInstance()) }
+    fun onboardingJoinCancel() = send { setOnboardingJoinCancel(OnboardingJoinCancelAction.getDefaultInstance()) }
+    fun onboardingJoinBannerAction() = send { setOnboardingJoinBannerAction(OnboardingJoinBannerAction.getDefaultInstance()) }
+
+    fun onboardingRecoveryEdit(serverInput: String? = null, codeSavedChecked: Boolean? = null): Long = sendOnboardingEdit {
+        val b = OnboardingRecoveryEditAction.newBuilder()
+        if (serverInput != null) b.setHasServerInput(true).setServerInput(serverInput)
+        if (codeSavedChecked != null) b.setHasCodeSavedChecked(true).setCodeSavedChecked(codeSavedChecked)
+        setOnboardingRecoveryEdit(b)
+    }
+
+    fun onboardingRecoveryAction(kind: OnboardingRecoveryActionKind, serverInput: String = "", oldCode: String = "") = send {
+        setOnboardingRecoveryAction(OnboardingRecoveryAction.newBuilder().setKind(kind).setServerInput(serverInput).setOldCode(oldCode))
+    }
+
+    fun addDeviceOpen(replacesDeviceId: String = "", webOrigin: String = "", autoStart: Boolean = true) = dispatchAction {
+        sendOnWorker {
+            setAddDeviceOpen(AddDeviceOpenAction.newBuilder().setReplacesDeviceId(replacesDeviceId).setWebOrigin(webOrigin).setAutoStart(autoStart))
+        }
+        refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_ADD_DEVICE)
+    }
+
+    fun addDeviceClose(replacesDeviceId: String = "") = send {
+        setAddDeviceClose(AddDeviceCloseAction.newBuilder().setReplacesDeviceId(replacesDeviceId))
+    }
+
+    fun addDeviceAction(kind: AddDeviceActionKind, flag: Boolean = false, deviceId: String = "") = send {
+        setAddDeviceAction(AddDeviceAction.newBuilder().setKind(kind).setFlag(flag).setDeviceId(deviceId))
+    }
+
+    fun accountSecurityOpen(subpage: AccountSecuritySubpage = AccountSecuritySubpage.ACCOUNT_SECURITY_SUBPAGE_OVERVIEW) = dispatchAction {
+        sendOnWorker { setAccountSecurityOpen(AccountSecurityOpenAction.newBuilder().setSubpage(subpage)) }
+        refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_ACCOUNT_SECURITY)
+    }
+
+    fun accountSecurityAction(
+        kind: AccountSecurityActionKind,
+        subpage: AccountSecuritySubpage = AccountSecuritySubpage.ACCOUNT_SECURITY_SUBPAGE_UNSPECIFIED,
+        flag: Boolean = false,
+    ) = send {
+        setAccountSecurityAction(AccountSecurityAction.newBuilder().setKind(kind).setSubpage(subpage).setFlag(flag))
+    }
+
+    fun handoffAction(kind: HandoffActionKind, targetDeviceId: String = "", flag: Boolean = false, recoveryCode: String = "") = dispatchAction {
+        sendOnWorker {
+            setHandoffAction(HandoffAction.newBuilder().setKind(kind).setTargetDeviceId(targetDeviceId).setFlag(flag).setRecoveryCode(recoveryCode))
+        }
+        refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_HANDOFF)
+    }
+
+    fun exitRequest(intent: ExitIntentKind, server: String = "") = send {
+        setExitRequest(ExitRequestAction.newBuilder().setIntent(intent).setServer(server))
+    }
+
+    fun accountSecurityClose() = send { setAccountSecurityClose(AccountSecurityCloseAction.getDefaultInstance()) }
+    fun externalLogout() = send { setExternalLogout(ExternalLogoutEvent.getDefaultInstance()) }
+    fun exitConfirm(confirm: Boolean) = send { setExitConfirm(ExitConfirmAction.newBuilder().setConfirm(confirm)) }
+
     suspend fun securityOp(configure: SecurityOpRequestEvent.Builder.() -> Unit): SecurityOpResultEffect {
         if (closed.get()) throw IllegalStateException("core closed")
         val opId = nextSecurityOpSeq.getAndIncrement()
@@ -2648,6 +2949,12 @@ class CoreHost(
         scheduleStrips: Map<String, ScheduleSessionStripViewModel> = emptyMap(),
         sessions: Map<String, SessionViewModel> = emptyMap(),
         usage: UsageViewModel? = null,
+        appRoot: AppRootViewModel? = null,
+        onboarding: OnboardingViewModel? = null,
+        addDevice: AddDeviceViewModel? = null,
+        accountSecurity: AccountSecurityViewModel? = null,
+        handoff: HandoffViewModel? = null,
+        exitConfirm: ExitConfirmView? = null,
     ) {
         if (home != null || project != null || newSession != null || connection != null) {
             testOverrideViews = true
@@ -2656,6 +2963,12 @@ class CoreHost(
         overrideSlot(ScreenTarget.SCREEN_TARGET_SCHEDULE_DETAIL, scheduleDetailSlot, scheduleDetail)
         overrideSlot(ScreenTarget.SCREEN_TARGET_SCHEDULE_FORM, scheduleFormSlot, scheduleForm)
         overrideSlot(ScreenTarget.SCREEN_TARGET_DIRECT_DIAGNOSTICS, directDiagnosticsSlot, directDiagnostics)
+        overrideSlot(ScreenTarget.SCREEN_TARGET_APP_ROOT, appRootSlot, appRoot)
+        overrideSlot(ScreenTarget.SCREEN_TARGET_ONBOARDING, onboardingSlot, onboarding)
+        overrideSlot(ScreenTarget.SCREEN_TARGET_ADD_DEVICE, addDeviceSlot, addDevice)
+        overrideSlot(ScreenTarget.SCREEN_TARGET_ACCOUNT_SECURITY, accountSecuritySlot, accountSecurity)
+        overrideSlot(ScreenTarget.SCREEN_TARGET_HANDOFF, handoffSlot, handoff)
+        overrideSlot(ScreenTarget.SCREEN_TARGET_EXIT_CONFIRM, exitConfirmSlot, exitConfirm)
         home?.let { homeSlot.flow.value = it }
         project?.let { projectSlot.flow.value = it }
         newSession?.let { newSessionSlot.flow.value = it }
@@ -2663,8 +2976,8 @@ class CoreHost(
         settings?.let { settingsSlot.flow.value = it }
         machineStatus?.let { machineStatusSlot.flow.value = it }
         machineSettings?.let { machineSettingsSlot.flow.value = it }
-        quota?.let { quotaSlot.flow.value = it }
-        devices?.let { devicesSlot.flow.value = it }
+        overrideSlot(ScreenTarget.SCREEN_TARGET_QUOTA, quotaSlot, quota)
+        overrideSlot(ScreenTarget.SCREEN_TARGET_DEVICES, devicesSlot, devices)
         clientDetail?.let { clientDetailSlot.flow.value = it }
         usage?.let { overrideSlot(ScreenTarget.SCREEN_TARGET_USAGE, usageSlot, it) }
         if (scheduleStrips.isNotEmpty()) {
@@ -2718,6 +3031,10 @@ class CoreHost(
                     w.completeExceptionally(CommandException("canceled", UiMessages.terminalAndroidClosed().messageText()))
                 }
             }
+            synchronized(appRootSettleWaiters) {
+                appRootSettleWaiters.forEach { it.completeExceptionally(IllegalStateException("core closed")) }
+                appRootSettleWaiters.clear()
+            }
             synchronized(retryNowWaiters) {
                 for (list in retryNowWaiters.values) list.forEach { it.complete(false) }
                 retryNowWaiters.clear()
@@ -2725,6 +3042,8 @@ class CoreHost(
             terminalReopenListeners.clear()
             terminalHistoryRequestListeners.clear()
             terminalHistoryUpdatedListeners.clear()
+            lazySubJob?.cancel()
+            lazySubJob = null
             mailbox.close()
             if (ownsScope) scope.cancel()
             synchronized(coreLock) { core.close() }

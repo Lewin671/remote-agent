@@ -954,6 +954,7 @@ export interface MessageArgs {
   "security.allow_to_join": { [name: string]: never };
   "security.also_remove_old_devices": { [name: string]: never };
   "security.also_remove_old_devices_hint": { [name: string]: never };
+  "security.android_this_is_not_a_remote_agent_pairing_qr_code": { [name: string]: never };
   "security.apply_again": { [name: string]: never };
   "security.approved_waiting_for_the_new_device_to_finish_binding": { [name: string]: never };
   "security.asked_the_browser_to_retain_data": { [name: string]: never };
@@ -1095,7 +1096,6 @@ export interface MessageArgs {
   "security.the_new_recovery_code_backup_is_unconfirmed_replace_the": { [name: string]: never };
   "security.the_original_creation_draft_is_preserved_continue_with_the": { [name: string]: never };
   "security.the_original_device_identity_keys_and_history_are_preserved": { [name: string]: never };
-  "security.the_original_operation_is_unfinished_continue_verifying": { [name: string]: never };
   "security.the_original_recovery_draft_is_preserved_the_new_recovery": { [name: string]: never };
   "security.the_page_is_paused_return_to_the_foreground_to": { [name: string]: never };
   "security.the_pairing_code_is_wrong_or_has_already_been": { [name: string]: never };
@@ -1124,7 +1124,6 @@ export interface MessageArgs {
   "security.use_when_the_managing_client_is_lost": { [name: string]: never };
   "security.verify_and_continue": { [name: string]: never };
   "security.verifying_management_identity_and_unfinished_security_operations": { [name: string]: never };
-  "security.waiting_for_comparison": { [name: string]: never };
   "security.waiting_for_the_new_device_to_enter_the_pairing": { [name: string]: never };
   "security.waiting_for_the_successor_device_to_generate_and_save": { [name: string]: never };
   "session.abandon_fork": { [name: string]: never };
@@ -3197,6 +3196,7 @@ export const messages = {
     "security.allow_to_join": "Allow to join",
     "security.also_remove_old_devices": "Also remove old devices",
     "security.also_remove_old_devices_hint": "Existing entries for this device model were found. After approval succeeds, these old entries will be removed:",
+    "security.android_this_is_not_a_remote_agent_pairing_qr_code": "This is not a remote-agent pairing QR code",
     "security.apply_again": "Apply again",
     "security.approved_waiting_for_the_new_device_to_finish_binding": "Approved. Waiting for the new device to finish binding…",
     "security.asked_the_browser_to_retain_data": "Asked the browser to retain data",
@@ -3344,7 +3344,6 @@ export const messages = {
     "security.the_new_recovery_code_backup_is_unconfirmed_replace_the": "The new recovery code backup is unconfirmed. Replace the code and save it offline immediately.",
     "security.the_original_creation_draft_is_preserved_continue_with_the": "The original creation draft is preserved. Continue with the same account. The recovery code will not be shown again; if you have no backup, replace it immediately after entering the account.",
     "security.the_original_device_identity_keys_and_history_are_preserved": "The original device identity, keys, and history are preserved. On the managing client, open Settings › Add device, enter its 8-digit code here, then compare four patterns to finish binding.",
-    "security.the_original_operation_is_unfinished_continue_verifying": "The original operation is unfinished. Continue verifying.",
     "security.the_original_recovery_draft_is_preserved_the_new_recovery": "The original recovery draft is preserved. The new recovery code will not be shown again; you can still finish the original recovery without saving it. Replace it immediately after entering the account.",
     "security.the_page_is_paused_return_to_the_foreground_to": "The page is paused. Return to the foreground to continue security operations.",
     "security.the_pairing_code_is_wrong_or_has_already_been": "The pairing code is wrong or has already been used",
@@ -3373,7 +3372,6 @@ export const messages = {
     "security.use_when_the_managing_client_is_lost": "Use when the managing client is lost",
     "security.verify_and_continue": "Verify and continue",
     "security.verifying_management_identity_and_unfinished_security_operations": "Verifying management identity and unfinished security operations…",
-    "security.waiting_for_comparison": "Waiting for comparison…",
     "security.waiting_for_the_new_device_to_enter_the_pairing": "Waiting for the new device to enter the pairing code…",
     "security.waiting_for_the_successor_device_to_generate_and_save": "Waiting for the successor device to generate and save a recovery code",
     "session.abandon_fork": "Abandon previous fork",
@@ -5485,6 +5483,7 @@ export const messages = {
     "security.allow_to_join": "允许加入",
     "security.also_remove_old_devices": "同时移除旧设备",
     "security.also_remove_old_devices_hint": "检测到已有同型号设备，批准成功后将自动移除以下旧记录：",
+    "security.android_this_is_not_a_remote_agent_pairing_qr_code": "这不是 remote-agent 的配对二维码",
     "security.apply_again": "重新申请",
     "security.approved_waiting_for_the_new_device_to_finish_binding": "已批准，等待新设备完成绑定…",
     "security.asked_the_browser_to_retain_data": "已请求浏览器保留数据",
@@ -5631,7 +5630,6 @@ export const messages = {
     "security.the_new_recovery_code_backup_is_unconfirmed_replace_the": "新恢复码尚未确认备份，请立即换码并离线保存。",
     "security.the_original_creation_draft_is_preserved_continue_with_the": "原创建草稿已保留，继续同一个账户。恢复码不会再次显示；没有备份时，进入账户后立即换码。",
     "security.the_original_device_identity_keys_and_history_are_preserved": "原设备身份、密钥和历史保留。在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里，再核对 4 个图案完成加入。",
-    "security.the_original_operation_is_unfinished_continue_verifying": "原操作尚未完成，请继续核实",
     "security.the_original_recovery_draft_is_preserved_the_new_recovery": "原恢复草稿已保留。新恢复码不会再次显示；未保存时仍可完成原恢复，进入账户后立即换码。",
     "security.the_page_is_paused_return_to_the_foreground_to": "页面已暂停，请回到前台继续安全操作",
     "security.the_pairing_code_is_wrong_or_has_already_been": "配对码不对，或者已经用过了",
@@ -5660,7 +5658,6 @@ export const messages = {
     "security.use_when_the_managing_client_is_lost": "管理端丢失时使用",
     "security.verify_and_continue": "核实并继续",
     "security.verifying_management_identity_and_unfinished_security_operations": "正在核实管理身份和未完成的安全操作…",
-    "security.waiting_for_comparison": "等待核对…",
     "security.waiting_for_the_new_device_to_enter_the_pairing": "等待新设备输入配对码…",
     "security.waiting_for_the_successor_device_to_generate_and_save": "等待接任设备生成并保存恢复码",
     "session.abandon_fork": "放弃上次的分叉",

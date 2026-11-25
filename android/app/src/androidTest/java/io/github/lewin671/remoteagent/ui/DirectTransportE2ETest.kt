@@ -17,7 +17,6 @@ import androidx.compose.ui.test.onRoot
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.lewin671.remoteagent.MainActivity
 import io.github.lewin671.remoteagent.RaApp
-import io.github.lewin671.remoteagent.core.PairingUiState
 import io.github.lewin671.remoteagent.core.proto.DirectPathChoice
 import io.github.lewin671.remoteagent.core.proto.DirectRouteState
 import io.github.lewin671.remoteagent.core.proto.SessionDockKind

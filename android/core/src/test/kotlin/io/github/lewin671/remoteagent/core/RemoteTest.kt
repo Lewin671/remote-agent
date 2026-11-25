@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.After
@@ -634,19 +635,22 @@ class RemoteTest {
             r.start()
             r.coreHost.connectionView.first { it.isOnline }
             val started = r.securityClient.startPairing("https://app.example.com")
-            val link = PairLink.parse(started.url)!!
-            assertEquals(started.code, link.code)
+            assertTrue(started.url.contains("code=${started.code}"))
 
             val joinStore = MemorySecurityStoreV4()
-            val joinHost = StandaloneSecurityHost(joinStore, http)
-            closers += AutoCloseable { joinHost.close() }
-            joinHost.client.bootstrap()
+            val joinHost = CoreHost()
+            val joinExecScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO)
+            val joinExec = SecurityExecutor(store = joinStore, http = http, emit = joinHost::dispatch, parentScope = joinExecScope)
+            joinHost.onSecurityEffect = joinExec::handleEffect
+            joinHost.sendSecurityConfig(account = "", deviceId = "", inlineCrypto = true, foreground = true)
+            closers += AutoCloseable {
+                joinExec.close()
+                joinExecScope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
+                joinHost.close()
+            }
+            joinHost.securityClient.bootstrap()
             val joinDeferred = async {
-                joinHost.client.startJoinPairing(
-                    server = link.server,
-                    code = link.code,
-                    commitHint = link.commit,
-                )
+                joinHost.securityClient.startJoinPairing(rawLink = started.url)
             }
             var polled = started
             while (!polled.joined) {
@@ -663,7 +667,7 @@ class RemoteTest {
                 }
                 res
             }
-            val joined = joinHost.client.confirmJoinSas(joinInfo.pairingId)
+            val joined = joinHost.securityClient.confirmJoinSas(joinInfo.pairingId)
             approved.await()
             assertEquals(server.url, joined.status.server)
             assertEquals(daemon.phone.accountId, joined.status.accountId)
@@ -821,9 +825,11 @@ class RemoteTest {
         val badReq = fixtureRemote(r.account, http, memory); closers += AutoCloseable { badReq.close() }
         badReq.start()
         badReq.awaitUntil("badReq online") { badReq.conn.isOnline && badReq.machineCard(daemon.account.deviceId) != null }
+        val badReqSub = launch { badReq.coreHost.schedulesView.collect {} }
         badReq.coreHost.openScheduleList(true)
         delay(250)
         assertTrue(allTasks(badReq.coreHost.schedulesView.value).isEmpty())
+        badReqSub.cancel()
         badReq.close()
 
         memory.putBlob(
@@ -836,18 +842,23 @@ class RemoteTest {
         val badSig = fixtureRemote(r.account, http, memory); closers += AutoCloseable { badSig.close() }
         badSig.start()
         badSig.awaitUntil("badSig online") { badSig.conn.isOnline && badSig.machineCard(daemon.account.deviceId) != null }
+        val badSigSub = launch { badSig.coreHost.schedulesView.collect {} }
         badSig.coreHost.openScheduleList(true)
         delay(250)
         assertTrue(allTasks(badSig.coreHost.schedulesView.value).isEmpty())
+        badSigSub.cancel()
         badSig.close()
 
         // Valid opaque blob restores schedule task offline on cold start without hitting the daemon.
+        // Subscribe only AFTER openScheduleList(true) to prove lazy sub-screens proactively refresh on first subscribe.
         memory.putBlob(key, stored)
         val cold = fixtureRemote(r.account, http, memory); closers += AutoCloseable { cold.close() }
         cold.start()
         cold.awaitUntil("cold online") { cold.conn.isOnline && cold.machineCard(daemon.account.deviceId) != null }
         cold.coreHost.openScheduleList(true)
-        cold.coreHost.schedulesView.first { vm -> allTasks(vm).any { it.taskId == "task" && it.title == "Private scheduled content" } }
+        withTimeout(10_000L) {
+            cold.coreHost.schedulesView.first { vm -> allTasks(vm).any { it.taskId == "task" && it.title == "Private scheduled content" } }
+        }
         cold.close()
 
         // Removing the machine prunes its persisted schedule cache blob.

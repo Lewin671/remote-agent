@@ -443,12 +443,11 @@ class ApprovalReceiver : BroadcastReceiver() {
             Notifier.update(context, nid, sessionText(UiMessages.notificationsAndroidThisApprovalTimedOutAndWasRejectedByPolicy()), true)
             return
         }
-        val acct =
-            try {
-                RaApp.instance.loadAccountForBackgroundWork()
-            } catch (e: Exception) {
-                null
-            } ?: return Notifier.update(context, nid, sessionText(UiMessages.notificationsAndroidCouldNotReadTheAccountOpenTheAppToContinue()), true)
+        try {
+            RaApp.instance.ensureRemoteForBackgroundWork()
+        } catch (e: Exception) {
+            null
+        } ?: return Notifier.update(context, nid, sessionText(UiMessages.notificationsAndroidCouldNotReadTheAccountOpenTheAppToContinue()), true)
         val sourceSeq = intent.getLongExtra("sourceSeq", 0)
         Notifier.update(context, nid, if (allow) sessionText(UiMessages.notificationsAndroidAllowing()) else sessionText(UiMessages.notificationsAndroidRejecting()), false)
         val data =
@@ -525,9 +524,9 @@ class ApprovalWorker(context: Context, params: WorkerParameters) :
             if (over.isNotEmpty()) records.edit().apply { over.forEach { remove(it) } }.commit()
         }
         if (recorded() == ApprovalRecord.DONE) return done()
-        val acct =
+        val remote =
             try {
-                RaApp.instance.loadAccountForBackgroundWork()
+                RaApp.instance.ensureRemoteForBackgroundWork()
             } catch (e: Exception) {
                 if (deadline == 0L || System.currentTimeMillis() + 5_000 < deadline) {
                     Notifier.update(applicationContext, nid, sessionText(UiMessages.notificationsAndroidPhoneLockedSubmissionContinuesAfterUnlocking()), false)
@@ -536,9 +535,9 @@ class ApprovalWorker(context: Context, params: WorkerParameters) :
                 return finish(if (wasUnknown()) sessionText(UiMessages.notificationsAndroidOutcomeUnknownOpenTheAppToCheck()) else sessionText(UiMessages.notificationsAndroidCouldNotSubmitPhoneStayedLockedUntilApprovalTimedOut()))
             } ?: return finish(if (wasUnknown()) sessionText(UiMessages.notificationsAndroidOutcomeUnknownOpenTheAppToCheck()) else sessionText(UiMessages.notificationsAndroidCouldNotSubmitThisPhoneHasNoAccount()))
         if (machine.isEmpty() || session.isEmpty() || approval.isEmpty()) return Result.failure()
-        val remote = Remote(acct, RaApp.instance.http, securityStore = RaApp.instance.vault)
+        val startedByWorker = !RaApp.instance.isForeground
         try {
-            remote.start()
+            if (startedByWorker) remote.start()
             val vmFlow = remote.watchSession(session)
             val ready = withTimeoutOrNull(10_000L) {
                 vmFlow.first { vm ->
@@ -631,7 +630,7 @@ class ApprovalWorker(context: Context, params: WorkerParameters) :
         } catch (e: Exception) {
             return finish(if (wasUnknown()) sessionText(UiMessages.notificationsAndroidOutcomeUnknownOpenTheAppToCheck()) else sessionText(UiMessages.dockSubmitFailed(e.message ?: e.javaClass.simpleName)))
         } finally {
-            remote.close()
+            if (startedByWorker && !RaApp.instance.isForeground) remote.stop()
         }
     }
 

@@ -53,13 +53,30 @@ internal class AttachedRaApp(context: Context) : AutoCloseable {
 
     override fun close() {
         try { stopJobs(null) }
-        finally { instance.set(null, previous) }
+        finally {
+            resetPrefsDataStoreForTest()
+            instance.set(null, previous)
+        }
+    }
+
+    /**
+     * Robolectric deletes each test's temp filesDir after the test while keeping the sandbox
+     * classloader alive; clearing the top-level preferencesDataStore delegate singleton lets the
+     * next test bind to its own fresh filesDir instead of writing into a deleted directory.
+     */
+    private fun resetPrefsDataStoreForTest() {
+        runCatching {
+            val prefsKt = Class.forName("io.github.lewin671.remoteagent.data.PrefsKt")
+            val delegateField = prefsKt.getDeclaredField("store\$delegate").apply { isAccessible = true }
+            val delegate = delegateField.get(null) ?: return
+            val instField = delegate.javaClass.getDeclaredField("INSTANCE").apply { isAccessible = true }
+            instField.set(delegate, null)
+        }
     }
 
     fun stopJobs(awaitStopped: ((() -> Boolean) -> Unit)?) {
-        val pairing = RaApp::class.java.getDeclaredField("pairingScope").apply { isAccessible = true }
-            .get(app) as CoroutineScope
-        val jobs = listOfNotNull(app.scope.coroutineContext[Job], pairing.coroutineContext[Job])
+        app.closeCoreHostForTest()
+        val jobs = listOfNotNull(app.scope.coroutineContext[Job])
         jobs.forEach { it.cancel() }
         // Cancellation alone does not finish a running draft IO operation.
         // Compose fixtures pump their own test scheduler before it is torn

@@ -151,32 +151,45 @@ class SecurityStoreV4Test {
     }
 
     @Test
-    fun standaloneHostPersistsPendingCreationDraftAndSurvivesRebootstrap() = runBlocking {
+    fun coreHostPersistsPendingCreationDraftAndSurvivesRebootstrap() = runBlocking {
         val store = MemorySecurityStoreV4()
         store.seedLegacyForTest()
-        val host1 = StandaloneSecurityHost(store, Api.defaultHttp())
+        fun openHost(): Triple<CoreHost, SecurityExecutor, kotlinx.coroutines.CoroutineScope> {
+            val h = CoreHost()
+            val execScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+            val exec = SecurityExecutor(store = store, http = Api.defaultHttp(), emit = h::dispatch, parentScope = execScope)
+            h.onSecurityEffect = exec::handleEffect
+            h.onDismissUpgradeNotice = { store.dismissUpgradeNotice() }
+            h.sendSecurityConfig(account = "", deviceId = "", inlineCrypto = true, foreground = true)
+            return Triple(h, exec, execScope)
+        }
+        val (host1, exec1, scope1) = openHost()
         try {
-            val st1 = host1.client.bootstrap()
+            val st1 = host1.securityClient.bootstrap()
             assertEquals(SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_EMPTY, st1.bootstrap)
             assertTrue(st1.legacyRepairNotice)
 
-            val dismissed = host1.client.dismissUpgradeNotice()
+            val dismissed = host1.securityClient.dismissUpgradeNotice()
             assertFalse(dismissed.legacyRepairNotice)
 
-            val prep = host1.client.prepareCreation("https://example.com", storagePersisted = true)
-            assertTrue(prep.recoveryCode.isNotBlank())
-            host1.client.confirmCreationCodeSaved()
+            val prep = host1.securityClient.prepareCreation("https://example.com", storagePersisted = true)
+            assertTrue(prep.isNotBlank())
+            host1.securityClient.confirmCreationCodeSaved()
         } finally {
+            exec1.close()
+            scope1.coroutineContext[kotlinx.coroutines.Job]?.cancel()
             host1.close()
         }
 
-        val host2 = StandaloneSecurityHost(store, Api.defaultHttp())
+        val (host2, exec2, scope2) = openHost()
         try {
-            val st2 = host2.client.bootstrap()
+            val st2 = host2.securityClient.bootstrap()
             assertEquals(SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_PENDING_CREATE, st2.bootstrap)
             assertTrue(st2.pendingOp.codeSaved)
             assertFalse(st2.legacyRepairNotice)
         } finally {
+            exec2.close()
+            scope2.coroutineContext[kotlinx.coroutines.Job]?.cancel()
             host2.close()
         }
     }

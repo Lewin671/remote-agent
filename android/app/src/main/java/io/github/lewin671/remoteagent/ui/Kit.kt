@@ -449,7 +449,7 @@ fun Alert(title: String, text: String, confirm: String, danger: Boolean = false,
         if (text.isNotEmpty()) Text(text, style = T.s15, color = pal.ink2, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 18.dp))
         Btns {
             PillButton(cancel, onDismiss, Modifier.weight(1f))
-            PillButton(confirm, { onDismiss(); onConfirm() }, Modifier.weight(1f), if (danger) ButtonKind.DANGER else ButtonKind.INK)
+            PillButton(confirm, onConfirm, Modifier.weight(1f), if (danger) ButtonKind.DANGER else ButtonKind.INK)
         }
     }
 }
@@ -567,7 +567,7 @@ fun InputAlert(title: String, initial: String, placeholder: String, confirm: Str
         if (text != null) Text(text, style = T.s13, color = pal.ink2, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
         Btns(Modifier.padding(top = 14.dp)) {
             PillButton(dismiss, onDismiss, Modifier.weight(1f))
-            PillButton(confirm, { onDismiss(); onConfirm(value) }, Modifier.weight(1f), ButtonKind.INK)
+            PillButton(confirm, { onConfirm(value) }, Modifier.weight(1f), ButtonKind.INK)
         }
     }
 }

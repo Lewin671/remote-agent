@@ -55,9 +55,13 @@ import io.github.lewin671.remoteagent.proto.Session
 import io.github.lewin671.remoteagent.proto.SessionStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.ZoneId
@@ -662,6 +666,41 @@ class CoreHostSmokeTest {
             )
             val res2 = second.await()
             assertEquals("executed", res2.outcome)
+        } finally {
+            h.close()
+        }
+    }
+
+    @Test
+    fun lazySubscreensSkipUnsubscribedRendersAndRefreshOnFirstSubscribe() = runBlocking<Unit> {
+        val nowMs = 1_700_000_000_000L
+        val h = CoreHost(clock = { nowMs }, monotonic = { 10_000L })
+        try {
+            h.dispatchAndWait(
+                CoreEvent.newBuilder()
+                    .setSeedDemoWorld(
+                        SeedDemoWorldEvent.newBuilder()
+                            .setSecurity(
+                                DemoSecurity.newBuilder()
+                                    .setIsMember(true)
+                                    .setSelfDeviceId("c1")
+                                    .setAuthorityDeviceId("c1")
+                                    .addTrustedMachineIds("m1")
+                                    .setHeadEpoch(1L)
+                                    .setLeaseEndMs(nowMs + 3_600_000L),
+                            ),
+                    )
+                    .build(),
+            )
+            // With 0 subscribers, RenderEffect for lazy sub-screens (e.g. DEVICES) must skip FFI rendering.
+            assertFalse(h.devicesView.value.isManager)
+            assertEquals(0L, h.devicesView.value.leaseEndMs)
+
+            // Subscribing for the first time must proactively refresh and deliver the up-to-date ViewModel.
+            val devicesVm = withTimeout(5_000L) {
+                h.devicesView.first { it.isManager }
+            }
+            assertEquals(nowMs + 3_600_000L, devicesVm.leaseEndMs)
         } finally {
             h.close()
         }

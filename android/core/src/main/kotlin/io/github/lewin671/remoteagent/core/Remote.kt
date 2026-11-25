@@ -89,6 +89,7 @@ class Remote(
     private val directJitter: (() -> Double)? = null,
     private val devicePlatform: String = "",
     private val deviceDescription: String = "",
+    sharedCoreHost: CoreHost? = null,
 ) {
     private val dispatcher = dispatcher ?: Dispatchers.IO.limitedParallelism(1)
     private val bulkCpuDispatcher =
@@ -182,16 +183,20 @@ class Remote(
     private val securityBootstrapMutex = Mutex()
     private var securityBootstrapJob: Deferred<Unit>? = null
 
-    private val securityExecutor = SecurityExecutor(
-        store = securityStore,
-        http = http,
-        emit = { ev -> coreHost.dispatch(ev) },
-        parentScope = scope,
-        rpcTransport = rpcTransport,
-        dispatcher = if (rpcTransport != null) this.dispatcher else Dispatchers.IO,
-        defaultServer = account.server,
-        defaultDeviceId = account.deviceId,
-    )
+    // Only allocated when a standalone Remote creates its own CoreHost (unit tests);
+    // production RaApp always passes its lazy singleton CoreHost with SecurityExecutor already wired.
+    private val standaloneSecurityExecutor: SecurityExecutor? = if (sharedCoreHost == null) {
+        SecurityExecutor(
+            store = securityStore,
+            http = http,
+            emit = { ev -> coreHost.dispatch(ev) },
+            parentScope = scope,
+            rpcTransport = rpcTransport,
+            dispatcher = if (rpcTransport != null) this.dispatcher else Dispatchers.IO,
+            defaultServer = account.server,
+            defaultDeviceId = account.deviceId,
+        )
+    } else null
 
     private class PendingTerminalOpen(
         val onOpenSocket: (TerminalOpenSocketEffect) -> Unit,
@@ -260,7 +265,18 @@ class Remote(
             if (securityBootstrapped || closed) null
             else securityBootstrapJob ?: scope.async {
                 try {
-                    val st = coreHost.securityClient.bootstrap()
+                    val existing = coreHost.securityClient.status.value
+                    val st = if (existing != null &&
+                        (existing.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_READY ||
+                            existing.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_REMOVED)
+                    ) {
+                        existing
+                    } else {
+                        coreHost.securityClient.getStatus().takeIf {
+                            it.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_READY ||
+                                it.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_REMOVED
+                        } ?: coreHost.securityClient.bootstrap()
+                    }
                     applySecurityStatusSnapshotAndPrune(st)
                     securityBootstrapped = true
                 } catch (t: Throwable) {
@@ -297,7 +313,7 @@ class Remote(
     /** True once the initial encrypted cache bootstrap has been loaded and rendered into Core views. */
     val bootstrapped: StateFlow<Boolean> = _bootstrapped.asStateFlow()
 
-    val coreHost = CoreHost(
+    val coreHost = sharedCoreHost ?: CoreHost(
         workerDispatcher = if (dispatcher != null) this.dispatcher else null,
         clock = clock,
         monotonic = monotonic,
@@ -366,8 +382,10 @@ class Remote(
             runCatching { directPrefs.setEnabled(account.server, account.deviceId, eff.machineId, eff.enabled) }
         }
         coreHost.resolveUiMessage = { uiMessageResolver(it) }
-        coreHost.onDismissUpgradeNotice = { securityStore.dismissUpgradeNotice() }
-        coreHost.onSecurityEffect = securityExecutor::handleEffect
+        standaloneSecurityExecutor?.let { exec ->
+            coreHost.onDismissUpgradeNotice = { securityStore.dismissUpgradeNotice() }
+            coreHost.onSecurityEffect = exec::handleEffect
+        }
         coreHost.sendRelayPipeConfig(true)
         coreHost.onSecurityTokenUpdated = ::handleSecurityTokenUpdated
         coreHost.onSecurityStatusChanged = { eff ->
@@ -1040,8 +1058,11 @@ class Remote(
         cleanup(
             { directExecutor.close() },
             { deviceLink.closeStreams() },
-            { securityExecutor.close() },
-            { coreHost.securityClient.rejectAll() },
+            { standaloneSecurityExecutor?.close() },
+            {
+                if (standaloneSecurityExecutor != null) coreHost.securityClient.rejectAll()
+                else coreHost.clearRemoteCallbacks()
+            },
             { cache?.close() },
             {
                 scope.launch {
@@ -1049,7 +1070,7 @@ class Remote(
                         closeStreamLeg(0L)
                     } finally {
                         try {
-                            coreHost.close()
+                            if (standaloneSecurityExecutor != null) coreHost.close()
                         } finally {
                             synchronized(pendingCacheOps) {
                                 pendingCacheOps.clear()
@@ -1121,16 +1142,7 @@ class Remote(
         return SetPushTargetResponse.newBuilder().setEnabled(res.enabled).build()
     }
 
-    suspend fun getSecurityStatus(): SecurityWorkflowStatus =
-        withSecurity { getStatus() }.also { applySecurityStatusSnapshotAndPrune(it) }
-
-    suspend fun resumeSecurityOperation(@Suppress("UNUSED_PARAMETER") dispatchSnapshot: Boolean = true) {
-        withSecurity { resumePendingOp() }
-        if (!closed) refreshDevices()
-    }
-
     fun renewLeaseIfNeeded() = renewLease(force = false)
-    fun renewLeaseNow() = renewLease(force = true)
 
     private fun renewLease(force: Boolean): Job =
         scope.launch {
@@ -1146,15 +1158,17 @@ class Remote(
 
     suspend fun renewLeaseBlocking(force: Boolean = true): SecurityWorkflowStatus =
         withSecurity { renewLease(force) }.also { applySecurityStatusSnapshotAndPrune(it) }
-    suspend fun prepareRecoveryRotation(): String = withSecurity { prepareRecoveryRotation() }
-    suspend fun confirmRecoveryRotation() { withSecurity { confirmRecoveryRotation() } }
-    suspend fun prepareHandoffCode(storagePersisted: Boolean = true): String = withSecurity { prepareHandoffCode(storagePersisted) }
-    suspend fun publishHandoffOffer() { withSecurity { publishHandoffOffer() }; if (!closed) refreshDevices() }
+
+    suspend fun prepareHandoffCode(storagePersisted: Boolean = true): String =
+        withSecurity { prepareHandoffCode(storagePersisted) }
+
+    suspend fun publishHandoffOffer() {
+        withSecurity { publishHandoffOffer() }
+        if (!closed) refreshDevices()
+    }
+
     suspend fun handoffAuthority(incoming: String) { withSecurity { handoffAuthority(incoming) } }
-    suspend fun finishPairingDelivery(pairingId: String): SecurityPairingInfo =
-        withSecurity { finishPairingDelivery(pairingId) }.also { if (it.delivered && !closed) refreshDevices() }
-    suspend fun discardPendingOp(abandonHandoff: Boolean = false) { withSecurity { discardPendingOp(abandonHandoff) } }
-    suspend fun checkExitAdvice(): SecurityExitAdvice = withSecurity { checkExitAdvice() }
+
     suspend fun renameDevice(id: String, name: String) {
         if (id != account.deviceId) throw MessageArgumentException(UiMessages.errorsNamesCanOnlyBeChangedOnThatDevice().messageText())
         withSecurity { updateDeviceMeta(deviceId = id, name = name.trim()) }

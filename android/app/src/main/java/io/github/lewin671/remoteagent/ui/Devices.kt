@@ -407,6 +407,7 @@ internal fun ClientScreenContent(
             danger = true,
             onDismiss = { confirmRemove = false },
         ) {
+            confirmRemove = false
             onRemove()
         }
     }
@@ -418,6 +419,7 @@ internal fun ClientScreenContent(
             copy(UiMessages.commonSave()),
             onDismiss = { editing = false },
         ) { name ->
+            editing = false
             onRename(name.trim())
         }
 }

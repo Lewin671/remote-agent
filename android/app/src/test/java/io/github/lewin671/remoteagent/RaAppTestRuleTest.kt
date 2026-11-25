@@ -15,18 +15,19 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class RaAppTestRuleTest {
-    @Test fun aFailedAppTestReleasesBothScopes() {
+    @Test fun aFailedAppTestReleasesScopeAndCoreHost() {
         assertNull(RaApp.scopeOrNull())
         val rule = RaAppTestRule()
         val failure = AssertionError("fixture failure")
         lateinit var main: Job
-        lateinit var pairing: Job
+        lateinit var failedApp: RaApp
         val body = object : Statement() {
             override fun evaluate() {
+                failedApp = rule.app
                 assertSame(rule.app.scope, RaApp.scopeOrNull())
                 main = rule.app.scope.coroutineContext[Job]!!
-                pairing = (RaApp::class.java.getDeclaredField("pairingScope").apply { isAccessible = true }
-                    .get(rule.app) as CoroutineScope).coroutineContext[Job]!!
+                rule.app.ensureCoreHost()
+                assertTrue(rule.app.hasCoreHostForTest)
                 throw failure
             }
         }
@@ -38,7 +39,7 @@ class RaAppTestRuleTest {
         }
         assertNull(RaApp.scopeOrNull())
         assertTrue(main.isCancelled)
-        assertTrue(pairing.isCancelled)
+        assertFalse(failedApp.hasCoreHostForTest)
     }
 
     @Test fun nestedAppFixturesRestoreThePreviousOwnerWithoutCancelingIt() {

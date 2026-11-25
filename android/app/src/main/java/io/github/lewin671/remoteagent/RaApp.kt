@@ -1,14 +1,11 @@
 package io.github.lewin671.remoteagent
 
-import io.github.lewin671.remoteagent.ui.sessionText
-
-import io.github.lewin671.remoteagent.core.UiMessages
-
 import android.app.Application
+import android.app.KeyguardManager
 import android.app.NotificationManager
 import android.net.ConnectivityManager
-import android.net.Network
 import android.net.LinkProperties
+import android.net.Network
 import android.net.NetworkCapabilities
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -16,13 +13,16 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import io.github.lewin671.remoteagent.core.Account
 import io.github.lewin671.remoteagent.core.Api
-import io.github.lewin671.remoteagent.core.PairingController
+import io.github.lewin671.remoteagent.core.CoreHost
 import io.github.lewin671.remoteagent.core.Remote
+import io.github.lewin671.remoteagent.core.SecurityExecutor
 import io.github.lewin671.remoteagent.core.SecurityStoreV4
-import io.github.lewin671.remoteagent.core.StandaloneSecurityHost
-import io.github.lewin671.remoteagent.core.proto.SecurityBootstrapKind
-import io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice
-import io.github.lewin671.remoteagent.core.proto.SecurityWorkflowStatus
+import io.github.lewin671.remoteagent.core.UiMessages
+import io.github.lewin671.remoteagent.core.proto.AccountRuntimeChangedEffect
+import io.github.lewin671.remoteagent.core.proto.AppRootStage
+import io.github.lewin671.remoteagent.core.proto.AppRootViewModel
+import io.github.lewin671.remoteagent.core.proto.ClearAccountCachesEffect
+import io.github.lewin671.remoteagent.core.proto.UnregisterPushOnExitEffect
 import io.github.lewin671.remoteagent.data.CacheDb
 import io.github.lewin671.remoteagent.data.Prefs
 import io.github.lewin671.remoteagent.data.RoomCache
@@ -31,12 +31,14 @@ import io.github.lewin671.remoteagent.data.everyStep
 import io.github.lewin671.remoteagent.data.finishAccountChange
 import io.github.lewin671.remoteagent.push.Push
 import io.github.lewin671.remoteagent.ui.AccountMemory
+import io.github.lewin671.remoteagent.ui.sessionText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -44,29 +46,12 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 
 /**
- * The app's single graph: the account, the sync engine and the cache. The main stream is only kept
- * while the app is in the foreground (architecture §15); in the background notifications come by
- * push.
+ * The app's single graph: a lazy singleton [CoreHost], the account sync engine ([Remote]), and the
+ * local encrypted cache. The [CoreHost] is NEVER instantiated in [onCreate] or by lock-screen FCM
+ * push delivery so background notifications never touch unlock-gated Android Keystore private keys.
  */
 class RaApp : Application() {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-
-    // Pairing approval outlives its page and foreground stream. The Remote still
-    // gates authority signatures; waiting for an already signed delivery does not.
-    private var pairingScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private val pairings = mutableMapOf<Triple<Remote, String, String>, PairingController>()
-
-    fun pairing(remote: Remote, replacesDeviceId: String, webOrigin: String = ""): PairingController =
-        pairings.getOrPut(Triple(remote, replacesDeviceId, webOrigin)) {
-            PairingController(
-                scope = pairingScope,
-                operationScope = pairingScope,
-                client = remote.securityClient,
-                webOrigin = webOrigin,
-                replacesDeviceId = replacesDeviceId,
-                onCompleted = { scope.launch { runCatching { remote.refreshDevices() } } },
-            )
-        }
 
     // What BuildConfig would hold, read from the manifest and resources:
     // see the note on buildConfig in app/build.gradle.kts.
@@ -80,55 +65,64 @@ class RaApp : Application() {
         get() = applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0
 
     val vault: Vault by lazy { Vault(this, onLegacyWipe = { clearNonSettingsCaches() }) }
+    @Volatile internal var testSecurityStore: SecurityStoreV4? = null
+    @Volatile internal var testDeviceLocked: (() -> Boolean)? = null
+    private fun isDeviceLocked(): Boolean = testDeviceLocked?.invoke()
+        ?: (getSystemService(KeyguardManager::class.java)?.isDeviceLocked == true)
+    private fun AppRootViewModel.isStorageBootstrapError(): Boolean =
+        stage == AppRootStage.APP_ROOT_STAGE_BOOTSTRAP_ERROR && !bootstrapError.canReset
     val prefs: Prefs by lazy { Prefs(this) }
     internal val directPrefs by lazy { io.github.lewin671.remoteagent.transport.SharedPrefsDirectPreferenceStore(this) }
     internal val rtcFactory: io.github.lewin671.remoteagent.core.transport.RtcFactory by lazy { io.github.lewin671.remoteagent.transport.AndroidRtcFactory(this) }
     @Volatile internal var testRtcFactory: io.github.lewin671.remoteagent.core.transport.RtcFactory? = null
     @Volatile internal var testStunUrls: List<String>? = null
-    val db: CacheDb by lazy { CacheDb.open(this) }
+    private val dbLazy = lazy { CacheDb.open(this) }
+    val db: CacheDb get() = dbLazy.value
     val eventAccess by lazy { io.github.lewin671.remoteagent.data.EventAccess(this) }
-    val http: OkHttpClient by lazy { Api.defaultHttp() }
+    private val httpLazy = lazy { Api.defaultHttp() }
+    val http: OkHttpClient get() = httpLazy.value
     val attachments by lazy { io.github.lewin671.remoteagent.data.AttachmentManager(this) { _remote.value } }
     val imageEnvelopes by lazy { io.github.lewin671.remoteagent.data.ImageEnvelopes(this) }
     val sharedFiles by lazy { io.github.lewin671.remoteagent.data.SharedFileManager(this) { _remote.value } }
 
+    private val coreHostLock = Any()
+    @Volatile private var _coreHost: CoreHost? = null
+    private var coreSecurityExecutor: SecurityExecutor? = null
+    @Volatile private var clientInitDispatched = false
+
+    /** Exposed for tests verifying that lock-screen push delivery never instantiates CoreHost. */
+    internal val hasCoreHostForTest: Boolean
+        get() = _coreHost != null
+
+    /** Releases the lazy singleton CoreHost, active Remote, and test resources during fixture teardown. */
+    internal fun closeCoreHostForTest() {
+        _remote.value?.close()
+        _remote.value = null
+        Push.close()
+        io.github.lewin671.remoteagent.ui.SettingsExecutor.detach()
+        synchronized(coreHostLock) {
+            coreSecurityExecutor?.close()
+            coreSecurityExecutor = null
+            _coreHost?.close()
+            _coreHost = null
+            clientInitDispatched = false
+        }
+        if (dbLazy.isInitialized()) runCatching { db.close() }
+        if (httpLazy.isInitialized()) runCatching {
+            http.dispatcher.cancelAll()
+            http.connectionPool.evictAll()
+        }
+    }
+
+    private val foregroundGatedSecurityStore: SecurityStoreV4
+        get() = testSecurityStore ?: object : SecurityStoreV4 by vault {
+            override fun loadLoginToken(server: String, deviceId: String) =
+                if (foreground) vault.loadLoginToken(server, deviceId) else null
+        }
+
     private val _remote = MutableStateFlow<Remote?>(null)
     val remote: StateFlow<Remote?> = _remote.asStateFlow()
-    private val _bootstrapStatus = MutableStateFlow<SecurityWorkflowStatus?>(null)
-    val bootstrapStatus: StateFlow<SecurityWorkflowStatus?> = _bootstrapStatus.asStateFlow()
-    private val _retainedDenied = MutableStateFlow(false)
-    val retainedDenied: StateFlow<Boolean> = _retainedDenied.asStateFlow()
-    private val _joinGeneration = MutableStateFlow(0)
-    val joinGeneration: StateFlow<Int> = _joinGeneration.asStateFlow()
-    var joinDirectly = false
-        private set
 
-    internal fun updateBootstrapStatus(status: SecurityWorkflowStatus) {
-        _bootstrapStatus.value = status
-        if (status.server.isNotEmpty()) lastServer = status.server
-    }
-
-    internal fun setRetainedDenied(denied: Boolean) {
-        _retainedDenied.value = denied
-    }
-
-    internal fun clearJoinState(pairing: Boolean) {
-        _bootstrapStatus.value?.server?.takeIf { it.isNotEmpty() }?.let { lastServer = it }
-        _bootstrapStatus.value = null
-        _retainedDenied.value = false
-        joinDirectly = pairing
-        _joinGeneration.value += 1
-    }
-
-    private val _loaded = MutableStateFlow(false)
-    /** The stored account has been read, or there is none. */
-    val loaded: StateFlow<Boolean> = _loaded.asStateFlow()
-    private val _accountError = MutableStateFlow("")
-    /** Why the stored account could not be read, e.g. the phone was locked. */
-    val accountError: StateFlow<String> = _accountError.asStateFlow()
-    private val _accountErrorAllowsReset = MutableStateFlow(true)
-    /** False when the failure is a transient Keystore/storage lock rather than confirmed corruption. */
-    val accountErrorAllowsReset: StateFlow<Boolean> = _accountErrorAllowsReset.asStateFlow()
     /** The session page currently visible; cleared when its activity stops or leaves it. */
     @Volatile internal var visibleSession: String? = null
         set(value) {
@@ -136,25 +130,107 @@ class RaApp : Application() {
             _remote.value?.coreHost?.setScheduleVisibleSession(value.orEmpty())
         }
     @Volatile private var foreground = false
-    private var loading = false
+    internal val isForeground: Boolean
+        get() = foreground
     @Volatile private var erasePending = false
-    private var erasing = false
     val acceptsPush: Boolean
         get() = !erasePending && vault.hasAccount()
 
-    // Reading the stored account, storing a joined one and erasing on logout
-    // go one at a time: a read beside an erase would find the account being
-    // removed and put it back in use, and an erase beside a join would take
-    // the new account's keys.
+    /** The server of the account just left, to fill in when joining again. Only in memory. */
+    @Volatile var lastServer = ""
+
+    // Serializes Remote attach/detach and exit cache clearing so network/lifecycle callbacks
+    // never race with logout or account enrollment.
     private val accountLock = Mutex()
-    // The device has a default network, by the system's word.
     @Volatile private var online = true
     private var networkSignature: String? = null
+
+    /**
+     * Returns the process-wide lazy singleton [CoreHost], creating it on first foreground UI entry
+     * or post-unlock background approval work. Never called during [onCreate] or lock-screen FCM.
+     */
+    fun ensureCoreHost(): CoreHost {
+        _coreHost?.let { return it }
+        return synchronized(coreHostLock) {
+            _coreHost?.let { return it }
+            val host = CoreHost(
+                clock = System::currentTimeMillis,
+                monotonic = android.os.SystemClock::elapsedRealtime,
+            )
+            val exec = SecurityExecutor(
+                store = foregroundGatedSecurityStore,
+                http = http,
+                emit = host::dispatch,
+                parentScope = scope,
+                allowPlainHttp = true,
+            )
+            host.resolveUiMessage = ::sessionText
+            host.onDismissUpgradeNotice = { vault.dismissUpgradeNotice() }
+            host.onSecurityEffect = exec::handleEffect
+            host.onPersistLastServer = { eff ->
+                if (eff.server.isNotEmpty()) lastServer = eff.server
+            }
+            host.onRequestStoragePersist = { eff ->
+                host.sendStoragePersistResult(eff.opId, persisted = true)
+            }
+            host.onUnregisterPushOnExit = { eff ->
+                scope.launch { handleUnregisterPushOnExit(host, eff) }
+            }
+            host.onClearAccountCaches = { eff ->
+                scope.launch { handleClearAccountCaches(host, eff) }
+            }
+            host.onAccountRuntimeChanged = { eff ->
+                scope.launch { handleAccountRuntimeChanged(host, eff) }
+            }
+            coreSecurityExecutor = exec
+            _coreHost = host
+            host
+        }
+    }
+
+    /**
+     * Ensures the lazy singleton [CoreHost] exists and has received its initial [ClientInitEvent].
+     * Called from foreground lifecycle and Activity UI only — never from background push delivery.
+     */
+    fun ensureForegroundCoreHost(): CoreHost {
+        val host = ensureCoreHost()
+        var retryStorage = false
+        synchronized(coreHostLock) {
+            if (!clientInitDispatched) {
+                clientInitDispatched = true
+                host.clientInit(
+                    platform = "android", deviceDescription = androidDeviceDescription(this),
+                    inlineCrypto = true, foreground = foreground, networkAvailable = online,
+                    networkSignature = networkSignature.orEmpty(), defaultServer = lastServer,
+                    requestStoragePersist = false,
+                )
+            } else if (foreground && !isDeviceLocked() && host.appRootView.value.isStorageBootstrapError()) {
+                retryStorage = true
+            }
+        }
+        if (retryStorage) host.appRootRetryBootstrap()
+        return host
+    }
+
+    internal fun onForegroundStart() {
+        foreground = true
+        prewarmRtcIfAccountPresent()
+        val host = ensureForegroundCoreHost()
+        host.sendSecurityForeground(true)
+        io.github.lewin671.remoteagent.update.Updater.check(this)
+        _remote.value?.let { r ->
+            r.foregroundChanged(true)
+            r.start()
+            r.renewLeaseIfNeeded()
+            Push.register(this, r)
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
         instance = this
-        // Kept light: a push may start the process just to show a notification.
+        // Kept light: a push may start the process while locked just to show a notification.
+        // Do NOT instantiate CoreHost or touch unlock-gated Vault/Keystore here.
         Push.createChannels(this)
         // Images shared last time have reached the other app by now.
         scope.launch(Dispatchers.IO) {
@@ -164,22 +240,12 @@ class RaApp : Application() {
             .lifecycle
             .addObserver(
                 object : DefaultLifecycleObserver {
-                    override fun onStart(owner: LifecycleOwner) {
-                        foreground = true
-                        prewarmRtcIfAccountPresent()
-                        loadAccount()
-                        io.github.lewin671.remoteagent.update.Updater.check(this@RaApp)
-                        _remote.value?.let { r ->
-                            r.foregroundChanged(true)
-                            r.start()
-                            r.renewLeaseIfNeeded()
-                            Push.register(this@RaApp, r)
-                        }
-                    }
+                    override fun onStart(owner: LifecycleOwner) = onForegroundStart()
 
                     override fun onStop(owner: LifecycleOwner) {
                         foreground = false
                         Push.stop()
+                        _coreHost?.sendSecurityForeground(false)
                         _remote.value?.let { r ->
                             r.foregroundChanged(false)
                             r.stop()
@@ -209,9 +275,6 @@ class RaApp : Application() {
             override fun onAvailable(network: Network) {
                 if (current != network) {
                     current = network
-                    // Avoid synchronous getLinkProperties/getNetworkCapabilities inside onAvailable;
-                    // ConnectivityManager immediately delivers onCapabilitiesChanged and
-                    // onLinkPropertiesChanged, which coalesce into a single stable observation.
                     properties = null
                     capabilities = null
                 }
@@ -258,8 +321,14 @@ class RaApp : Application() {
 
     private fun observeCurrentNetwork(connectivity: ConnectivityManager) {
         val network = connectivity.activeNetwork
-        observeNetwork(networkIdentity(network, network?.let(connectivity::getLinkProperties),
-            network?.let(connectivity::getNetworkCapabilities)), network != null)
+        observeNetwork(
+            networkIdentity(
+                network,
+                network?.let(connectivity::getLinkProperties),
+                network?.let(connectivity::getNetworkCapabilities),
+            ),
+            network != null,
+        )
     }
 
     /** Called on the app's main dispatcher, including observations before account loading. */
@@ -284,16 +353,6 @@ class RaApp : Application() {
             _remote.value?.let { Push.register(this, it, token, autoRetry = foreground) }
     }
 
-    /**
-     * Reads the account, only in the foreground (architecture §15): a process a push started while
-     * the phone was locked could not open it, and does not need the root key to show a
-     * notification. A failure, such as a phone locked again meanwhile, is retried at the next
-     * start.
-     */
-    fun discardAccount() {
-        scope.launch { logout() }
-    }
-
     private fun clearNonSettingsCaches() {
         runCatching { db.clearAllTables() }
         runCatching { eventAccess.clear() }
@@ -305,109 +364,136 @@ class RaApp : Application() {
         runCatching { getSharedPreferences("schedule-seen", MODE_PRIVATE).edit().clear().commit() }
     }
 
-    private suspend fun runBootstrapHost(): Pair<SecurityWorkflowStatus, Boolean> {
-        val host = StandaloneSecurityHost(
-            store = vault,
-            http = http,
-            messageResolver = ::sessionText,
-            allowPlainHttp = true,
-            monotonic = android.os.SystemClock::elapsedRealtime,
-        )
-        return try {
-            var st = host.client.bootstrap()
-            if (st.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_PENDING_REGISTRATION) {
-                val resumed = host.client.resumePendingOp()
-                if (resumed.hasStatus()) st = resumed.status
-            }
-            var denied = false
-            if (st.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_EMPTY &&
-                st.deviceId.isNotEmpty() && st.server.isNotEmpty()
-            ) {
-                denied = host.client.checkRetainedDenied()
-            }
-            when (st.bootstrap) {
-                SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_CLOCK_SKEWED ->
-                    throw IllegalStateException(sessionText(UiMessages.errorsThisDeviceSClockIsBehindTheAccountState()))
-                SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_INVALID ->
-                    throw IllegalStateException(sessionText(UiMessages.errorsThisDeviceSSecurityStateCouldNotBeVerified()))
-                else -> {}
-            }
-            st to denied
-        } finally {
-            host.close()
-        }
-    }
-
     /**
-     * Loads the stored account for background actions (notifications). Keystore unlock failure when
-     * locked propagates so callers retry after unlock; empty store returns null.
+     * Ensures the shared singleton [CoreHost] (initialized via [ensureForegroundCoreHost]) and
+     * [Remote] are ready for post-unlock background actions (notification quick-approval).
+     * Keystore unlock failure when locked propagates so callers retry after unlock; empty store
+     * returns null. Never called by lock-screen push display.
      */
-    suspend fun loadAccountForBackgroundWork(): Account? {
-        _remote.value?.account?.let { return it }
-        if (!vault.hasAccount()) return null
-        val (st, _) = withContext(Dispatchers.IO) { runBootstrapHost() }
-        if ((st.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_READY ||
-                st.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_REMOVED ||
-                st.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_CLOCK_SKEWED) &&
-            st.server.isNotEmpty() && st.deviceId.isNotEmpty()
-        ) {
-            return Account(st.server, st.deviceId, st.accountId)
-        }
-        return null
-    }
-
-    fun loadAccount() {
-        if (erasePending) {
-            if (!erasing) scope.launch { logout(pairing = joinDirectly) }
-            return
-        }
-        if (_remote.value != null || _loaded.value || loading) return
-        loading = true
-        scope.launch {
-            accountLock.withLock {
-                if (erasePending) {
-                    loading = false
-                    return@withLock
-                }
-                val result = withContext(Dispatchers.IO) { runCatching { runBootstrapHost() } }
-                loading = false
-                result
-                    .onSuccess { (st, denied) ->
-                        _accountError.value = ""
-                        _accountErrorAllowsReset.value = true
-                        _bootstrapStatus.value = st
-                        _retainedDenied.value = denied
-                        if (st.server.isNotEmpty()) lastServer = st.server
-                        val readyForRemote =
-                            st.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_READY ||
-                                st.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_REMOVED
-                        if (readyForRemote &&
-                            st.server.isNotEmpty() && st.deviceId.isNotEmpty() &&
-                            _remote.value == null
-                        ) {
-                            use(Account(st.server, st.deviceId, st.accountId))
-                        }
-                        _loaded.value = true
-                    }
-                    .onFailure { e ->
-                        vault.clearMemoryCache()
-                        Log.w(TAG, "stored account does not open: ${e.javaClass.simpleName}")
-                        val transientKeyAccess =
-                            (e as? io.github.lewin671.remoteagent.core.SecurityWorkflowError)?.code ==
-                                io.github.lewin671.remoteagent.core.proto.SecurityErrorCode.SECURITY_ERROR_CODE_STORAGE
-                        _accountErrorAllowsReset.value = !transientKeyAccess
-                        _accountError.value =
-                            io.github.lewin671.remoteagent.ui.displayError(e) +
-                                sessionText(UiMessages.commonAndroidTheOriginalRequestAndKeysAreSavedForRetryIf())
-                    }
+    suspend fun ensureRemoteForBackgroundWork(): Remote? {
+        _remote.value?.let { return it }
+        if (testSecurityStore == null && !vault.hasAccount()) return null
+        if (isDeviceLocked()) throw IllegalStateException("device locked")
+        val wasDispatched = clientInitDispatched
+        val host = ensureForegroundCoreHost()
+        val root = if (wasDispatched && host.appRootView.value.isStorageBootstrapError()) {
+            host.retryBootstrapAndAwait()
+        } else {
+            host.appRootView.first {
+                it.stage != AppRootStage.APP_ROOT_STAGE_LOADING &&
+                    it.stage != AppRootStage.APP_ROOT_STAGE_UNSPECIFIED
             }
         }
+        if (root.stage == AppRootStage.APP_ROOT_STAGE_BOOTSTRAP_ERROR) {
+            throw IllegalStateException("account bootstrap failed or keystore locked")
+        }
+        if (root.stage != AppRootStage.APP_ROOT_STAGE_READY) return null
+        return _remote.first { it != null }
     }
 
-    private suspend fun use(acct: Account) {
+    private suspend fun handleAccountRuntimeChanged(host: CoreHost, eff: AccountRuntimeChangedEffect) {
+        accountLock.withLock {
+            if (!eff.active) {
+                if (!eff.removed) {
+                    val old = _remote.value
+                    _remote.value = null
+                    Push.close()
+                    io.github.lewin671.remoteagent.ui.SettingsExecutor.detach()
+                    old?.close()
+                }
+                return@withLock
+            }
+            if (eff.server.isEmpty() || eff.deviceId.isEmpty()) return@withLock
+            val cur = _remote.value
+            if (cur != null &&
+                cur.account.server == eff.server &&
+                cur.account.deviceId == eff.deviceId &&
+                cur.account.accountId == eff.accountId
+            ) {
+                return@withLock
+            }
+            _remote.value = null
+            io.github.lewin671.remoteagent.ui.SettingsExecutor.detach()
+            cur?.close()
+            use(Account(eff.server, eff.deviceId, eff.accountId), host)
+        }
+    }
+
+    private suspend fun handleUnregisterPushOnExit(host: CoreHost, eff: UnregisterPushOnExitEffect) {
+        erasePending = true
+        Push.close()
+        val cur = _remote.value
+        runCatching {
+            if (cur != null) {
+                Push.unregister(cur)
+            } else {
+                val srv = eff.server.ifEmpty { lastServer }
+                val tok = eff.authToken.ifEmpty {
+                    if (srv.isNotEmpty()) {
+                        val devId = host.appRootView.value.deviceId
+                        if (devId.isNotEmpty()) {
+                            withContext(Dispatchers.IO) { runCatching { vault.loadLoginToken(srv, devId)?.token }.getOrNull() }.orEmpty()
+                        } else ""
+                    } else ""
+                }
+                if (srv.isNotEmpty() && tok.isNotEmpty()) {
+                    Push.unregisterStandalone(http, srv, tok)
+                }
+            }
+        }
+        host.sendPushUnregistered(eff.opId)
+    }
+
+    private suspend fun handleClearAccountCaches(host: CoreHost, eff: ClearAccountCachesEffect) = finishAccountChange {
+        var err = ""
+        accountLock.withLock {
+            erasePending = true
+            if (eff.preserveServer.isNotEmpty()) lastServer = eff.preserveServer
+            val leaving = _remote.value
+            leaving?.let { if (lastServer.isEmpty()) lastServer = it.account.server }
+            _remote.value = null
+            Push.close()
+            AccountMemory.clear()
+            io.github.lewin671.remoteagent.ui.SettingsExecutor.detach()
+            io.github.lewin671.remoteagent.ui.HomeScopes.clear(this@RaApp)
+            getSystemService(NotificationManager::class.java).cancelAll()
+            leaving?.clearAllDrafts()
+            leaving?.clearAllSharedFiles()
+            leaving?.close()
+            try {
+                withContext(Dispatchers.IO) {
+                    if (testSecurityStore == null) vault.clear()
+                    everyStep(
+                        { db.clearAllTables() },
+                        { eventAccess.clear() },
+                        { imageEnvelopes.clear() },
+                        { attachments.clearAllOnDisk() },
+                        { sharedFiles.clearAllOnDisk() },
+                        {
+                            contentResolver.persistedUriPermissions.forEach { permission ->
+                                runCatching {
+                                    contentResolver.releasePersistableUriPermission(
+                                        permission.uri,
+                                        android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                                    )
+                                }
+                            }
+                        },
+                        { prefs.clear() },
+                        { directPrefs.clear() },
+                    )
+                }
+                erasePending = false
+            } catch (e: Exception) {
+                Log.w(TAG, "account erase failed: ${e.javaClass.simpleName}")
+                err = sessionText(UiMessages.commonAndroidCouldNotClearTheAccountAndCacheOnThisPhone())
+            }
+        }
+        host.sendAccountCachesCleared(eff.opId, err)
+    }
+
+    private suspend fun use(acct: Account, sharedHost: CoreHost) {
         val cacheDb = withContext(Dispatchers.IO) { db }
-        joinDirectly = false
-        _retainedDenied.value = false
         // Local drafts and pending sends belong to this account.
         AccountMemory.use("${acct.server} ${acct.deviceId}")
         val r =
@@ -424,10 +510,7 @@ class RaApp : Application() {
                 monotonic = android.os.SystemClock::elapsedRealtime,
                 devicePlatform = "android",
                 deviceDescription = androidDeviceDescription(this),
-                securityStore = object : SecurityStoreV4 by vault {
-                    override fun loadLoginToken(server: String, deviceId: String) =
-                        if (foreground) vault.loadLoginToken(server, deviceId) else null
-                },
+                securityStore = foregroundGatedSecurityStore,
                 scheduleSeenStore = object : io.github.lewin671.remoteagent.core.ScheduleSeenStore {
                     private fun keyFor(machineId: String): String =
                         "ra-schedule-seen:" + kotlinx.serialization.json.JsonArray(
@@ -483,6 +566,7 @@ class RaApp : Application() {
                 rtcFactory = testRtcFactory ?: rtcFactory,
                 directPrefs = directPrefs,
                 stunUrls = testStunUrls,
+                sharedCoreHost = sharedHost,
             )
         r.homeScopeStore = io.github.lewin671.remoteagent.ui.HomeScopes.storeAdapter(this@RaApp)
         r.uiMessageResolver = { msg -> io.github.lewin671.remoteagent.ui.sessionText(msg) }
@@ -498,120 +582,6 @@ class RaApp : Application() {
             r.start()
             r.renewLeaseIfNeeded()
             Push.register(this@RaApp, r)
-        }
-    }
-
-    /** Adopts a newly enrolled account (created, recovered, or joined) persisted by Core and starts syncing. */
-    suspend fun adoptBootstrappedAccount(status: SecurityWorkflowStatus? = null) = accountLock.withLock {
-        val resolved = if (status != null &&
-            (status.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_READY ||
-                status.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_REMOVED) &&
-            status.server.isNotEmpty() && status.deviceId.isNotEmpty()
-        ) {
-            status
-        } else {
-            withContext(Dispatchers.IO) { runBootstrapHost().first }
-        }
-        check(
-            (resolved.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_READY ||
-                resolved.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_REMOVED) &&
-                resolved.server.isNotEmpty() && resolved.deviceId.isNotEmpty(),
-        ) { "Security account is not ready" }
-        _bootstrapStatus.value = resolved
-        _retainedDenied.value = false
-        _loaded.value = true
-        use(Account(resolved.server, resolved.deviceId, resolved.accountId))
-    }
-
-    /** Evaluates exit advice when no active [Remote] exists (unauthenticated/removed exit). */
-    suspend fun checkExitAdvice(): SecurityExitAdvice = withContext(Dispatchers.IO) {
-        val host = StandaloneSecurityHost(
-            store = vault,
-            http = http,
-            messageResolver = ::sessionText,
-            allowPlainHttp = true,
-            monotonic = android.os.SystemClock::elapsedRealtime,
-        )
-        try {
-            runCatching { host.client.bootstrap() }
-            host.client.checkExitAdvice()
-        } finally {
-            host.close()
-        }
-    }
-
-    /** The server of the account just left, to fill in when joining again. Only in memory. */
-    var lastServer = ""
-
-    /**
-     * Forgets the account, the cache and the keys on this device. The keys go first; once they are
-     * gone every other store is cleared whichever of them fails, so one that does not go cannot
-     * leave the next account the images that waited to be sent.
-     */
-    suspend fun logout(pairing: Boolean = false) = finishAccountChange {
-        if (erasing) return@finishAccountChange
-        erasing = true
-        try {
-            accountLock.withLock {
-                erasePending = true
-                _loaded.value = false
-                _accountError.value = ""
-                val leavingStatus = _bootstrapStatus.value
-                clearJoinState(pairing)
-                val leaving = _remote.value
-                leaving?.let { lastServer = it.account.server }
-                // Before anything here suspends: a network callback or a return
-                // to the foreground meanwhile must not find the account, start
-                // it and register it for push again.
-                _remote.value = null
-                pairingScope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
-                pairings.clear()
-                pairingScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-                Push.close()
-                AccountMemory.clear()
-                io.github.lewin671.remoteagent.ui.SettingsExecutor.detach()
-                io.github.lewin671.remoteagent.ui.HomeScopes.clear(this@RaApp)
-                getSystemService(NotificationManager::class.java).cancelAll()
-                if (leaving != null) {
-                    Push.unregister(leaving)
-                } else {
-                    val srv = leavingStatus?.server.orEmpty().ifEmpty { lastServer }
-                    val devId = leavingStatus?.deviceId.orEmpty()
-                    if (srv.isNotEmpty() && devId.isNotEmpty()) {
-                        val tok = withContext(Dispatchers.IO) { runCatching { vault.loadLoginToken(srv, devId)?.token }.getOrNull() }
-                        if (!tok.isNullOrEmpty()) Push.unregisterStandalone(http, srv, tok)
-                    }
-                }
-                leaving?.clearAllDrafts()
-                leaving?.clearAllSharedFiles()
-                leaving?.close()
-                try {
-                    withContext(Dispatchers.IO) {
-                        vault.clear()
-                        everyStep(
-                            { db.clearAllTables() },
-                            { eventAccess.clear() },
-                            { imageEnvelopes.clear() },
-                            { attachments.clearAllOnDisk() },
-                            { sharedFiles.clearAllOnDisk() },
-                            { contentResolver.persistedUriPermissions.forEach { permission ->
-                                runCatching { contentResolver.releasePersistableUriPermission(permission.uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
-                            } },
-                            { prefs.clear() },
-                            { directPrefs.clear() },
-                        )
-                    }
-                    erasePending = false
-                    _bootstrapStatus.value = null
-                    _retainedDenied.value = false
-                    _loaded.value = true
-                } catch (e: Exception) {
-                    Log.w(TAG, "account erase failed: ${e.javaClass.simpleName}")
-                    _accountError.value = sessionText(UiMessages.commonAndroidCouldNotClearTheAccountAndCacheOnThisPhone())
-                }
-            }
-        } finally {
-            erasing = false
         }
     }
 

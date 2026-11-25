@@ -205,7 +205,7 @@ internal fun parseSecurityRpcError(
  * - CAS storage operations & bootstrap / clear-all
  * - Connect unary binary-protobuf RPC & /healthz transport with one-shot body guard and cancellation
  */
-internal class SecurityExecutor(
+class SecurityExecutor(
     private val store: SecurityStoreV4,
     http: OkHttpClient,
     private val emit: (CoreEvent) -> Unit,

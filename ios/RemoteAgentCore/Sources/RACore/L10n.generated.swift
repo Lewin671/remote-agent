@@ -4085,6 +4085,10 @@ public enum L10n {
         let key = "security_also_remove_old_devices_hint"
         return format(key, locale: locale, args: [])
     }
+    public static func securityAndroidThisIsNotARemoteAgentPairingQrCode(locale: String = MessageLocale.current) -> String {
+        let key = "security_android_this_is_not_a_remote_agent_pairing_qr_code"
+        return format(key, locale: locale, args: [])
+    }
     public static func securityApplyAgain(locale: String = MessageLocale.current) -> String {
         let key = "security_apply_again"
         return format(key, locale: locale, args: [])
@@ -5085,10 +5089,6 @@ public enum L10n {
         let key = "security_the_original_device_identity_keys_and_history_are_preserved"
         return format(key, locale: locale, args: [])
     }
-    public static func securityTheOriginalOperationIsUnfinishedContinueVerifying(locale: String = MessageLocale.current) -> String {
-        let key = "security_the_original_operation_is_unfinished_continue_verifying"
-        return format(key, locale: locale, args: [])
-    }
     public static func securityTheOriginalRecoveryDraftIsPreservedTheNewRecovery(locale: String = MessageLocale.current) -> String {
         let key = "security_the_original_recovery_draft_is_preserved_the_new_recovery"
         return format(key, locale: locale, args: [])
@@ -5199,10 +5199,6 @@ public enum L10n {
     }
     public static func securityVerifyingManagementIdentityAndUnfinishedSecurityOperations(locale: String = MessageLocale.current) -> String {
         let key = "security_verifying_management_identity_and_unfinished_security_operations"
-        return format(key, locale: locale, args: [])
-    }
-    public static func securityWaitingForComparison(locale: String = MessageLocale.current) -> String {
-        let key = "security_waiting_for_comparison"
         return format(key, locale: locale, args: [])
     }
     public static func securityWaitingForTheNewDeviceToEnterThePairing(locale: String = MessageLocale.current) -> String {
@@ -12325,6 +12321,10 @@ public enum L10nMessage {
         let key = "security_also_remove_old_devices_hint"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func securityAndroidThisIsNotARemoteAgentPairingQrCode() -> LocalizedMessage {
+        let key = "security_android_this_is_not_a_remote_agent_pairing_qr_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func securityApplyAgain() -> LocalizedMessage {
         let key = "security_apply_again"
         return LocalizedMessage(key: key, arguments: [])
@@ -13325,10 +13325,6 @@ public enum L10nMessage {
         let key = "security_the_original_device_identity_keys_and_history_are_preserved"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func securityTheOriginalOperationIsUnfinishedContinueVerifying() -> LocalizedMessage {
-        let key = "security_the_original_operation_is_unfinished_continue_verifying"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func securityTheOriginalRecoveryDraftIsPreservedTheNewRecovery() -> LocalizedMessage {
         let key = "security_the_original_recovery_draft_is_preserved_the_new_recovery"
         return LocalizedMessage(key: key, arguments: [])
@@ -13439,10 +13435,6 @@ public enum L10nMessage {
     }
     public static func securityVerifyingManagementIdentityAndUnfinishedSecurityOperations() -> LocalizedMessage {
         let key = "security_verifying_management_identity_and_unfinished_security_operations"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func securityWaitingForComparison() -> LocalizedMessage {
-        let key = "security_waiting_for_comparison"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func securityWaitingForTheNewDeviceToEnterThePairing() -> LocalizedMessage {
@@ -17614,6 +17606,7 @@ public enum L10nText {
         case "security.allow_to_join": return L10n.format("security_allow_to_join", locale: locale, args: [])
         case "security.also_remove_old_devices": return L10n.format("security_also_remove_old_devices", locale: locale, args: [])
         case "security.also_remove_old_devices_hint": return L10n.format("security_also_remove_old_devices_hint", locale: locale, args: [])
+        case "security.android_this_is_not_a_remote_agent_pairing_qr_code": return L10n.format("security_android_this_is_not_a_remote_agent_pairing_qr_code", locale: locale, args: [])
         case "security.apply_again": return L10n.format("security_apply_again", locale: locale, args: [])
         case "security.approved_waiting_for_the_new_device_to_finish_binding": return L10n.format("security_approved_waiting_for_the_new_device_to_finish_binding", locale: locale, args: [])
         case "security.asked_the_browser_to_retain_data": return L10n.format("security_asked_the_browser_to_retain_data", locale: locale, args: [])
@@ -17645,12 +17638,12 @@ public enum L10nText {
         case "security.delete_records": return L10n.format("security_delete_records", locale: locale, args: [])
         case "security.delete_this_computer_s_records": return L10n.format("security_delete_this_computer_s_records", locale: locale, args: [])
         case "security.delete_this_computer_s_records_device_management": return L10n.format("security_delete_this_computer_s_records_device_management", locale: locale, args: [])
-        case "security.device_information_changed_the_original_transfer_request_was_not": return L10n.format("security_device_information_changed_the_original_transfer_request_was_not", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve7(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "security.device_information_changed_the_original_transfer_request_was_not": return L10n.format("security_device_information_changed_the_original_transfer_request_was_not", locale: locale, args: [])
         case "security.device_joined": return L10n.format("security_device_joined", locale: locale, args: [])
         case "security.duration_48_hours": return L10n.format("security_duration_48_hours", locale: locale, args: [])
         case "security.eligible_at": return L10n.format("security_eligible_at", locale: locale, args: [strArg(args["value"])])
@@ -17800,12 +17793,12 @@ public enum L10nText {
         case "security.only_this_computer_can_rejoin_its_original_archive_with": return L10n.format("security_only_this_computer_can_rejoin_its_original_archive_with", locale: locale, args: [])
         case "security.open_to_renew": return L10n.format("security_open_to_renew", locale: locale, args: [strArg(args["value"])])
         case "security.original_recovery_code": return L10n.format("security_original_recovery_code", locale: locale, args: [])
-        case "security.pair_again": return L10n.format("security_pair_again", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve8(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "security.pair_again": return L10n.format("security_pair_again", locale: locale, args: [])
         case "security.pair_valid_until": return L10n.format("security_pair_valid_until", locale: locale, args: [strArg(args["time"])])
         case "security.paired": return L10n.format("security_paired", locale: locale, args: [])
         case "security.pairing_canceled": return L10n.format("security_pairing_canceled", locale: locale, args: [])
@@ -17874,7 +17867,6 @@ public enum L10nText {
         case "security.the_new_recovery_code_backup_is_unconfirmed_replace_the": return L10n.format("security_the_new_recovery_code_backup_is_unconfirmed_replace_the", locale: locale, args: [])
         case "security.the_original_creation_draft_is_preserved_continue_with_the": return L10n.format("security_the_original_creation_draft_is_preserved_continue_with_the", locale: locale, args: [])
         case "security.the_original_device_identity_keys_and_history_are_preserved": return L10n.format("security_the_original_device_identity_keys_and_history_are_preserved", locale: locale, args: [])
-        case "security.the_original_operation_is_unfinished_continue_verifying": return L10n.format("security_the_original_operation_is_unfinished_continue_verifying", locale: locale, args: [])
         case "security.the_original_recovery_draft_is_preserved_the_new_recovery": return L10n.format("security_the_original_recovery_draft_is_preserved_the_new_recovery", locale: locale, args: [])
         case "security.the_page_is_paused_return_to_the_foreground_to": return L10n.format("security_the_page_is_paused_return_to_the_foreground_to", locale: locale, args: [])
         case "security.the_pairing_code_is_wrong_or_has_already_been": return L10n.format("security_the_pairing_code_is_wrong_or_has_already_been", locale: locale, args: [])
@@ -17903,7 +17895,6 @@ public enum L10nText {
         case "security.use_when_the_managing_client_is_lost": return L10n.format("security_use_when_the_managing_client_is_lost", locale: locale, args: [])
         case "security.verify_and_continue": return L10n.format("security_verify_and_continue", locale: locale, args: [])
         case "security.verifying_management_identity_and_unfinished_security_operations": return L10n.format("security_verifying_management_identity_and_unfinished_security_operations", locale: locale, args: [])
-        case "security.waiting_for_comparison": return L10n.format("security_waiting_for_comparison", locale: locale, args: [])
         case "security.waiting_for_the_new_device_to_enter_the_pairing": return L10n.format("security_waiting_for_the_new_device_to_enter_the_pairing", locale: locale, args: [])
         case "security.waiting_for_the_successor_device_to_generate_and_save": return L10n.format("security_waiting_for_the_successor_device_to_generate_and_save", locale: locale, args: [])
         case "session.abandon_fork": return L10n.format("session_abandon_fork", locale: locale, args: [])
@@ -17956,12 +17947,12 @@ public enum L10nText {
         case "session.ios_history_failed": return L10n.format("session_ios_history_failed", locale: locale, args: [strArg(args["reason"])])
         case "session.ios_history_partial": return L10n.format("session_ios_history_partial", locale: locale, args: [])
         case "session.ios_interrupt_failed": return L10n.format("session_ios_interrupt_failed", locale: locale, args: [strArg(args["reason"])])
+        case "session.ios_latest": return L10n.format("session_ios_latest", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve9(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
-        case "session.ios_latest": return L10n.format("session_ios_latest", locale: locale, args: [])
         case "session.ios_message_text": return L10n.format("session_ios_message_text", locale: locale, args: [])
         case "session.ios_missing": return L10n.format("session_ios_missing", locale: locale, args: [])
         case "session.ios_models_failed": return L10n.format("session_ios_models_failed", locale: locale, args: [strArg(args["reason"])])
@@ -18111,12 +18102,12 @@ public enum L10nText {
         case "settings.exit_and_delete_local_keys": return L10n.format("settings_exit_and_delete_local_keys", locale: locale, args: [])
         case "settings.follow_configuration": return L10n.format("settings_follow_configuration", locale: locale, args: [strArg(args["value"])])
         case "settings.header_subtitle_pair": return L10n.format("settings_header_subtitle_pair", locale: locale, args: [strArg(args["left"]), strArg(args["right"])])
+        case "settings.how_to_enable": return L10n.format("settings_how_to_enable", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve10(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
-        case "settings.how_to_enable": return L10n.format("settings_how_to_enable", locale: locale, args: [])
         case "settings.idle_close_off": return L10n.format("settings_idle_close_off", locale: locale, args: [])
         case "settings.idle_close_short": return L10n.format("settings_idle_close_short", locale: locale, args: [])
         case "settings.ios_approvals_questions_and_plans_waiting_for_you_appear_at": return L10n.format("settings_ios_approvals_questions_and_plans_waiting_for_you_appear_at", locale: locale, args: [])
@@ -18266,12 +18257,12 @@ public enum L10nText {
         case "settings.unanswered_approvals_are_denied_after_this_time": return L10n.format("settings_unanswered_approvals_are_denied_after_this_time", locale: locale, args: [])
         case "settings.unfinished_pairing": return L10n.format("settings_unfinished_pairing", locale: locale, args: [])
         case "settings.unnamed": return L10n.format("settings_unnamed", locale: locale, args: [])
+        case "settings.unverified": return L10n.format("settings_unverified", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve11(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
-        case "settings.unverified": return L10n.format("settings_unverified", locale: locale, args: [])
         case "settings.up_to_date": return L10n.format("settings_up_to_date", locale: locale, args: [])
         case "settings.uploaded_images_and_files": return L10n.format("settings_uploaded_images_and_files", locale: locale, args: [])
         case "settings.uploading": return L10n.format("settings_uploading", locale: locale, args: [strArg(args["value"])])
@@ -18433,12 +18424,12 @@ public enum L10nText {
         case "tools.completed_commands": return L10n.format("tools_completed_commands", locale: locale, args: [intArg(args["count"])])
         case "tools.completed_files": return L10n.format("tools_completed_files", locale: locale, args: [intArg(args["count"])])
         case "tools.elapsed": return L10n.format("tools_elapsed", locale: locale, args: [strArg(args["duration"])])
+        case "tools.elapsed_sync": return L10n.format("tools_elapsed_sync", locale: locale, args: [strArg(args["elapsed"])])
         default: return nil
         }
     }
     private static func resolve12(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
-        case "tools.elapsed_sync": return L10n.format("tools_elapsed_sync", locale: locale, args: [strArg(args["elapsed"])])
         case "tools.exit_code": return L10n.format("tools_exit_code", locale: locale, args: [strArg(args["code"])])
         case "tools.ios_completed_label": return L10n.format("tools_ios_completed_label", locale: locale, args: [strArg(args["title"])])
         case "tools.ios_edit": return L10n.format("tools_ios_edit", locale: locale, args: [])
@@ -18588,12 +18579,12 @@ public enum L10nText {
         case "transport.direct": return L10n.format("transport_direct", locale: locale, args: [])
         case "transport.direct_slow": return L10n.format("transport_direct_slow", locale: locale, args: [])
         case "transport.file_speed_both": return L10n.format("transport_file_speed_both", locale: locale, args: [strArg(args["direct"]), strArg(args["relay"])])
+        case "transport.file_speed_direct": return L10n.format("transport_file_speed_direct", locale: locale, args: [strArg(args["direct"])])
         default: return nil
         }
     }
     private static func resolve13(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
-        case "transport.file_speed_direct": return L10n.format("transport_file_speed_direct", locale: locale, args: [strArg(args["direct"])])
         case "transport.file_speed_relay": return L10n.format("transport_file_speed_relay", locale: locale, args: [strArg(args["relay"])])
         case "transport.footer": return L10n.format("transport_footer", locale: locale, args: [])
         case "transport.popover_a11y": return L10n.format("transport_popover_a11y", locale: locale, args: [])

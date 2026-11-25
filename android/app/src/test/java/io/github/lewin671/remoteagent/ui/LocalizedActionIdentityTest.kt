@@ -21,8 +21,21 @@ class LocalizedActionIdentityTest {
     @Test fun changingLocaleWhileConfirmingDoesNotRequireASecondConsentForTheSameRisk() {
         var locale by mutableStateOf("zh-CN")
         var exits = 0
+        var vm by mutableStateOf(io.github.lewin671.remoteagent.core.proto.ExitConfirmView.getDefaultInstance())
         ui.setContent { RaTheme(ThemeMode.LIGHT) { CompositionLocalProvider(LocalMessageLocale provides locale) {
-            Column { AccountExitAction(readAdvice = { io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice.getDefaultInstance() }, exit = { exits++ }) }
+            Column {
+                AccountExitActionContent(
+                    exitView = vm,
+                    onRequestExit = {
+                        vm = io.github.lewin671.remoteagent.core.proto.ExitConfirmView.newBuilder()
+                            .setIntent(io.github.lewin671.remoteagent.core.proto.ExitIntentKind.EXIT_INTENT_KIND_LEAVE_ACCOUNT)
+                            .setStep(io.github.lewin671.remoteagent.core.proto.ExitConfirmStep.EXIT_CONFIRM_STEP_AWAITING_CONFIRM)
+                            .setWarningBody(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey("security.exiting_deletes_local_keys_you_will_need_to_pair"))
+                            .build()
+                    },
+                    onConfirmExit = { if (it) exits++ },
+                )
+            }
         } } }
         ui.onNodeWithText(messageTextForTest(UiMessages.settingsExitAndDeleteLocalKeys())).performClick()
         ui.runOnIdle { locale = "en" }

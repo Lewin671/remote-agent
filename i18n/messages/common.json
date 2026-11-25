@@ -89,20 +89,6 @@
     }
   },
   {
-    "key": "common.android_the_original_request_and_keys_are_saved_for_retry_if",
-    "zh-CN": "。原请求和密钥已保留，可重试；若批准已过期或被拒绝，请退出并重新配对或创建。",
-    "en": ". The original request and keys are saved for retry. If approval expired or was rejected, exit and pair again or create an account.",
-    "notes": "Android RaApp 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "common.android_this_app_version_is_old_update_and_retry",
     "zh-CN": "这个 App 版本较旧，请更新后再试",
     "en": "This app version is old. Update and retry",

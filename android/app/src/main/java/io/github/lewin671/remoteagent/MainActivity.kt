@@ -114,28 +114,50 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 Surface(Modifier.fillMaxSize(), color = pal.paper) {
-                    val loaded by app.loaded.collectAsState()
+                    val coreHost = remember(app) { app.ensureForegroundCoreHost() }
+                    val uiLocale = io.github.lewin671.remoteagent.ui.LocalMessageLocale.current
+                    LaunchedEffect(coreHost, uiLocale) {
+                        coreHost.setUiLocale(uiLocale)
+                    }
+                    val appRoot by coreHost.appRootView.collectAsState()
                     val remote by app.remote.collectAsState()
-                    val accountError by app.accountError.collectAsState()
-                    val accountErrorAllowsReset by app.accountErrorAllowsReset.collectAsState()
                     val r = remote
                     val cacheReady = if (r != null) r.bootstrapped.collectAsState().value else false
-                    when {
-                        !loaded && accountError.isNotEmpty() -> io.github.lewin671.remoteagent.ui.AppSafeArea {
-                            io.github.lewin671.remoteagent.ui.AccountLoadFailure(
-                                accountError,
-                                { app.loadAccount() },
-                                { app.discardAccount() },
-                                canDiscard = accountErrorAllowsReset,
-                                checkAdvice = { runCatching { app.checkExitAdvice() }.getOrNull() },
-                            )
+                    when (appRoot.stage) {
+                        io.github.lewin671.remoteagent.core.proto.AppRootStage.APP_ROOT_STAGE_BOOTSTRAP_ERROR ->
+                            io.github.lewin671.remoteagent.ui.AppSafeArea {
+                                io.github.lewin671.remoteagent.ui.AccountLoadFailure(
+                                    error = appRoot.bootstrapError,
+                                    coreHost = coreHost,
+                                )
+                            }
+                        io.github.lewin671.remoteagent.core.proto.AppRootStage.APP_ROOT_STAGE_RETAINED_DENIED ->
+                            io.github.lewin671.remoteagent.ui.AppSafeArea {
+                                io.github.lewin671.remoteagent.ui.RetainedDeniedScreen(
+                                    view = appRoot.retainedDenied,
+                                    coreHost = coreHost,
+                                )
+                            }
+                        io.github.lewin671.remoteagent.core.proto.AppRootStage.APP_ROOT_STAGE_ONBOARDING ->
+                            io.github.lewin671.remoteagent.ui.AppSafeArea {
+                                io.github.lewin671.remoteagent.ui.JoinScreen(app, coreHost)
+                            }
+                        io.github.lewin671.remoteagent.core.proto.AppRootStage.APP_ROOT_STAGE_REMOVED ->
+                            io.github.lewin671.remoteagent.ui.AppSafeArea {
+                                io.github.lewin671.remoteagent.ui.RemovedScreen(
+                                    view = appRoot.removed,
+                                    coreHost = coreHost,
+                                    remote = r,
+                                )
+                            }
+                        io.github.lewin671.remoteagent.core.proto.AppRootStage.APP_ROOT_STAGE_READY -> {
+                            if (r == null || !cacheReady) {
+                                io.github.lewin671.remoteagent.ui.StartupShell(null)
+                            } else {
+                                Main(r)
+                            }
                         }
-                        !loaded || (r != null && !cacheReady) ->
-                            io.github.lewin671.remoteagent.ui.StartupShell(null)
-                        r == null -> io.github.lewin671.remoteagent.ui.AppSafeArea { JoinScreen(app) }
-                        r.coreHost.connectionView.collectAsState().value.removed -> io.github.lewin671.remoteagent.ui.AppSafeArea { RemovedScreen(app, r) }
-                        // The first-level pages run under the system bars; every other page keeps clear of them.
-                        else -> Main(r)
+                        else -> io.github.lewin671.remoteagent.ui.StartupShell(null)
                     }
                 }
             }
@@ -324,8 +346,8 @@ class MainActivity : ComponentActivity() {
                     PairScreen(it.arguments?.getString("replace").orEmpty())
                 }
                 page("recovery") { RecoveryScreen { nav.popBackStack() } }
-                page("recover") { RecoverScreen(RaApp.instance) { nav.popBackStack() } }
-                page("create") { CreateAccountScreen(RaApp.instance) { nav.popBackStack() } }
+                page("recover") { RecoverScreen(remote.coreHost, allowPlainHttp = RaApp.instance.debuggable) { nav.popBackStack() } }
+                page("create") { CreateAccountScreen(remote.coreHost, allowPlainHttp = RaApp.instance.debuggable) { nav.popBackStack() } }
                 page("approval/{sid}/{aid}") {
                     ApprovalPage(
                         it.arguments?.getString("sid").orEmpty(),

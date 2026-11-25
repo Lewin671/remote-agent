@@ -14,44 +14,11 @@
     }
   },
   {
-    "key": "security.android_already_registering_this_phone_wait_for_the_result",
-    "zh-CN": "已经在登记这台手机，稍等结果",
-    "en": "Already registering this phone. Wait for the result",
-    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.android_backup_not_confirmed_this_phone_has_no_recovery_private_key",
     "zh-CN": "尚未确认保存；本机没有恢复码私钥，完成后立即换码",
     "en": "Backup not confirmed. This phone has no recovery private key; replace the code immediately after completion",
     "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.android_cannot_confirm_whether_this_phone_joined_value1_check_the_client",
-    "zh-CN": "不确定这台手机有没有加入：{value1}。可以在管理端的设置里看看客户端列表",
-    "en": "Cannot confirm whether this phone joined: {value1}. Check the client list in Settings on the managing client",
-    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：原始错误详情或已经本地化的完整错误，不翻译 CLI/daemon 原文。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
     "platforms": [
       "android"
     ],
@@ -164,25 +131,6 @@
     }
   },
   {
-    "key": "security.android_could_not_read_security_operation_state_before_exiting_value1",
-    "zh-CN": "退出前没能读取安全操作状态：{value1}",
-    "en": "Could not read security operation state before exiting: {value1}",
-    "notes": "Android AccountExit 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：原始错误详情或已经本地化的完整错误，不翻译 CLI/daemon 原文。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.android_create_account",
     "zh-CN": "创建账户",
     "en": "Create account",
@@ -258,25 +206,6 @@
     "en": "Exit and delete local keys in Settings",
     "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.android_exit_incomplete_value1",
-    "zh-CN": "退出未完成：{value1}",
-    "en": "Exit incomplete: {value1}",
-    "notes": "Android AccountExit 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：原始错误详情或已经本地化的完整错误，不翻译 CLI/daemon 原文。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
     "platforms": [
       "android"
     ],
@@ -458,34 +387,6 @@
     "zh-CN": "可留空",
     "en": "Optional",
     "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.android_outcome_unconfirmed_retry_the_same_approval_after_returning_to_the",
-    "zh-CN": "结果尚未确定，回到前台后重试同一次批准",
-    "en": "Outcome unconfirmed. Retry the same approval after returning to the foreground",
-    "notes": "Android PairingController 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.android_paused_retry_after_returning_to_the_foreground",
-    "zh-CN": "已暂停，回到前台后可重试",
-    "en": "Paused. Retry after returning to the foreground",
-    "notes": "Android PairingController 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
@@ -823,20 +724,6 @@
     }
   },
   {
-    "key": "security.android_the_original_security_operation_is_verified_complete",
-    "zh-CN": "原安全操作已核实完成。",
-    "en": "The original security operation is verified complete.",
-    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.android_the_server_rejected_this_device_s_login",
     "zh-CN": "服务器拒绝了这台设备的登录",
     "en": "The server rejected this device's login",
@@ -855,20 +742,6 @@
     "zh-CN": "这个客户端已不在当前成员列表中",
     "en": "This client is no longer in the current member list",
     "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.android_this_deletes_the_account_keys_and_cache_on_this_phone",
-    "zh-CN": "这会删除这台手机上的账户密钥和缓存，电脑上的会话不受影响。",
-    "en": "This deletes the account keys and cache on this phone. Computer sessions are unaffected.",
-    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
@@ -913,35 +786,9 @@
     "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.android_this_is_the_only_managing_client_transfer_management_first_exiting",
-    "zh-CN": "本机是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。",
-    "en": "This is the only managing client. Transfer management first. Exiting deletes the management key; without a recovery code backup, management access will be lost.",
-    "notes": "Android AccountExit 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.android_this_join_attempt_was_cancelled_the_old_request_may_still",
-    "zh-CN": "已取消本次加入。旧请求可能还占着配对码：请在管理端上拒绝它，再生成新的配对码",
-    "en": "This join attempt was cancelled. The old request may still occupy the pairing code. Reject it on the managing client, then generate a new code",
-    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -952,20 +799,6 @@
     "key": "security.android_this_phone_will_become_the_managing_client_the_account_root",
     "zh-CN": "这台手机会成为管理端。账户根密钥和设备身份只保存在手机上；恢复码只显示一次，请准备好纸笔或相机。",
     "en": "This phone will become the managing client. The account root key and device identity are stored only on the phone. The recovery code appears once; prepare paper or a camera.",
-    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.android_this_recovery_is_complete",
-    "zh-CN": "这次恢复已经完成。",
-    "en": "This recovery is complete.",
     "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
@@ -1365,22 +1198,6 @@
     "key": "security.confirmed_here_waiting_for_managing_client_approval_and_binding",
     "zh-CN": "本机已确认，等待管理端批准并完成绑定…",
     "en": "Confirmed here. Waiting for managing client approval and binding…",
-    "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.waiting_for_comparison",
-    "zh-CN": "等待核对…",
-    "en": "Waiting for comparison…",
     "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -3589,22 +3406,6 @@
     "zh-CN": "放弃未签名的操作",
     "en": "Abandon unsigned operation",
     "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.the_original_operation_is_unfinished_continue_verifying",
-    "zh-CN": "原操作尚未完成，请继续核实",
-    "en": "The original operation is unfinished. Continue verifying.",
-    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
       "web",

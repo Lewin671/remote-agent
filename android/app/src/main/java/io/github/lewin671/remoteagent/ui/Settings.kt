@@ -78,11 +78,15 @@ import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import io.github.lewin671.remoteagent.RaApp
 import androidx.compose.foundation.relocation.bringIntoViewRequester
-import io.github.lewin671.remoteagent.core.PairingUiState
 import io.github.lewin671.remoteagent.core.agentName
+import io.github.lewin671.remoteagent.core.proto.AddDeviceActionKind
+import io.github.lewin671.remoteagent.core.proto.AddDeviceStep
+import io.github.lewin671.remoteagent.core.proto.AddDeviceViewModel
 import io.github.lewin671.remoteagent.core.proto.AttachmentStorageView
 import io.github.lewin671.remoteagent.core.proto.CliVersionView
 import io.github.lewin671.remoteagent.core.proto.ConnProbeState
+import io.github.lewin671.remoteagent.core.proto.ExitConfirmView
+import io.github.lewin671.remoteagent.core.proto.ExitIntentKind
 import io.github.lewin671.remoteagent.core.proto.MachineAgentDefaultsView
 import io.github.lewin671.remoteagent.core.proto.MachineAlertKind
 import io.github.lewin671.remoteagent.core.proto.MachineCardAppearance
@@ -203,6 +207,7 @@ fun SettingsScreen() {
             val c = app.buildCommit.take(7)
             if (c.isEmpty() || c in v) v else "$v · $c"
         }
+    val exitView by remote.coreHost.exitConfirmView.collectAsState()
     SettingsScreenContent(
         vm = vm,
         connView = connView,
@@ -222,8 +227,9 @@ fun SettingsScreen() {
         onOpenUpdate = { updating = true },
         onLicenses = nav.licenses,
         onOpenConnCheck = { checking = true },
-        readExitAdvice = remote::checkExitAdvice,
-        onExitAccount = { app.logout() },
+        exitConfirmView = exitView,
+        onRequestExit = { remote.coreHost.exitRequest(ExitIntentKind.EXIT_INTENT_KIND_LEAVE_ACCOUNT) },
+        onConfirmExit = { remote.coreHost.exitConfirm(it) },
     )
     if (checking) ConnCheckSheet { checking = false }
     if (updating) UpdateSheet { updating = false }
@@ -258,10 +264,9 @@ internal fun SettingsScreenContent(
     onOpenUpdate: () -> Unit = {},
     onLicenses: () -> Unit = {},
     onOpenConnCheck: () -> Unit = {},
-    readExitAdvice: suspend () -> io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice = {
-        io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice.getDefaultInstance()
-    },
-    onExitAccount: suspend () -> Unit = {},
+    exitConfirmView: ExitConfirmView = ExitConfirmView.getDefaultInstance(),
+    onRequestExit: () -> Unit = {},
+    onConfirmExit: (Boolean) -> Unit = {},
 ) {
     val copy = uiText()
     val p = pal
@@ -454,10 +459,10 @@ internal fun SettingsScreenContent(
             if (vm.canExitAccount) {
                 Group(
                     rows = listOf {
-                        AccountExitAction(
-                            leaseRenewalAdvice = connView.takeIf { it.hasLeaseRenewalAdvice() }?.leaseRenewalAdvice,
-                            readAdvice = readExitAdvice,
-                            exit = onExitAccount,
+                        AccountExitActionContent(
+                            exitView = exitConfirmView,
+                            onRequestExit = onRequestExit,
+                            onConfirmExit = onConfirmExit,
                         )
                     },
                 )
@@ -1551,6 +1556,7 @@ internal fun DeviceScreenContent(
             danger = true,
             onDismiss = { confirmRemove = false },
         ) {
+            confirmRemove = false
             onRemove()
         }
     }
@@ -2099,50 +2105,86 @@ fun webOrigin(server: String, pref: String): String {
     return if (host.startsWith("ra.")) "https://app." + host.removePrefix("ra.") else server
 }
 
-/** 添加设备: show a code and QR, compare emoji, then hand over the root key. */
+/** 添加设备: Core drives AddDeviceViewModel (code, QR, SAS, replacement candidates, delivery). */
 @Composable
 fun PairScreen(replacesDeviceId: String = "") {
-    val copy = uiText()
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val settings by RaApp.instance.prefs.settings.collectAsState(Settings())
-    val p = pal
-    val model = remember(remote, replacesDeviceId, settings.webOrigin) {
-        RaApp.instance.pairing(
-            remote,
-            replacesDeviceId,
-            webOrigin(remote.account.server, settings.webOrigin),
-        )
+    val origin = remember(remote.account.server, settings.webOrigin) {
+        webOrigin(remote.account.server, settings.webOrigin)
     }
-    val state by model.state.collectAsState()
-    AuthorityStartEffect(model) { model.enter() }
-    DisposableEffect(model) { onDispose { model.leave() } }
+    val vm by remote.coreHost.addDeviceView.collectAsState()
+    AuthorityStartEffect(Pair(replacesDeviceId, origin)) {
+        remote.coreHost.addDeviceOpen(replacesDeviceId = replacesDeviceId, webOrigin = origin, autoStart = true)
+    }
+    DisposableEffect(replacesDeviceId) {
+        onDispose { remote.coreHost.addDeviceClose(replacesDeviceId) }
+    }
+    PairScreenContent(
+        vm = vm,
+        replacesDeviceId = replacesDeviceId,
+        onToggleRemoveCandidate = { id, checked ->
+            remote.coreHost.addDeviceAction(
+                AddDeviceActionKind.ADD_DEVICE_ACTION_KIND_TOGGLE_REMOVE_CANDIDATE,
+                flag = checked,
+                deviceId = id,
+            )
+        },
+        onApprove = {
+            remote.coreHost.addDeviceAction(AddDeviceActionKind.ADD_DEVICE_ACTION_KIND_SET_SAS_CONFIRMED, flag = true)
+            remote.coreHost.addDeviceAction(AddDeviceActionKind.ADD_DEVICE_ACTION_KIND_APPROVE)
+        },
+        onDeny = {
+            remote.coreHost.addDeviceAction(AddDeviceActionKind.ADD_DEVICE_ACTION_KIND_CANCEL)
+            nav.back()
+        },
+        onRetry = {
+            remote.coreHost.addDeviceAction(AddDeviceActionKind.ADD_DEVICE_ACTION_KIND_RETRY)
+        },
+        onDone = nav.back,
+    )
+}
+
+@Composable
+internal fun PairScreenContent(
+    vm: AddDeviceViewModel,
+    replacesDeviceId: String = "",
+    onToggleRemoveCandidate: (String, Boolean) -> Unit = { _, _ -> },
+    onApprove: () -> Unit = {},
+    onDeny: () -> Unit = {},
+    onRetry: () -> Unit = {},
+    onDone: () -> Unit = {},
+) {
+    val copy = uiText()
+    val p = pal
     PageScaffold(copy(UiMessages.homeAddDevice())) {
         FormColumn(
             Modifier.fillMaxWidth()
-            .verticalScrollFaded(),
+                .verticalScrollFaded(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Hint(copy(UiMessages.securityComputerRunRemoteAgentAccountJoinAndEnterThe()))
             if (replacesDeviceId.isNotEmpty()) {
-                val settingsVm by remote.settingsView.collectAsState()
-                val label = settingsVm.machinesList.firstOrNull { it.machineId == replacesDeviceId }?.name
-                    ?.takeIf { it.isNotEmpty() }
-                    ?: remember(remote, replacesDeviceId, settingsVm) {
-                        remote.coreHost.snapshotMachineSettingsView(replacesDeviceId)
-                            .takeIf { it.found }?.name?.takeIf { it.isNotEmpty() }
-                    }
-                    ?: copy(UiMessages.commonUnknownComputer())
+                val label = uiText(vm.replacesMachineName).ifEmpty { copy(UiMessages.commonUnknownComputer()) }
                 Hint(
                     copy(UiMessages.settingsAndroidAllowTheOriginalComputerToResumeValue1SRetainedSessions(label)),
                 )
             } else {
                 Hint(copy(UiMessages.settingsAndroidToResumeARemovedComputerSSessionsOpenItsRetained()))
             }
-            when (val step = state) {
-                PairingUiState.Starting -> Skeleton()
-                is PairingUiState.Waiting -> {
-                    val bmp = remember(step.url) { qrBitmap(step.url) }
+            when (vm.step) {
+                AddDeviceStep.ADD_DEVICE_STEP_UNSPECIFIED,
+                AddDeviceStep.ADD_DEVICE_STEP_IDLE,
+                AddDeviceStep.ADD_DEVICE_STEP_GENERATING -> Skeleton()
+
+                AddDeviceStep.ADD_DEVICE_STEP_NOT_MANAGER -> {
+                    val hint = uiText(vm.nonManagerHint)
+                    if (hint.isNotEmpty()) Hint(hint)
+                }
+
+                AddDeviceStep.ADD_DEVICE_STEP_WAITING_JOINER -> {
+                    val bmp = remember(vm.qrUrl) { qrBitmap(vm.qrUrl) }
                     Box(
                         Modifier.padding(top = 14.dp, bottom = 10.dp)
                             .size(170.dp)
@@ -2158,7 +2200,7 @@ fun PairScreen(replacesDeviceId: String = "") {
                         )
                     }
                     Text(
-                        step.code.chunked(4).joinToString(" "),
+                        vm.formattedCode.ifEmpty { vm.rawCode.chunked(4).joinToString(" ") },
                         style =
                             TextStyle(
                                 fontFamily = MonoFamily,
@@ -2169,13 +2211,20 @@ fun PairScreen(replacesDeviceId: String = "") {
                             ),
                         color = p.ink,
                     )
-                    Text(
-                        copy(UiMessages.securityPairValidUntil(io.github.lewin671.remoteagent.core.securityTime(step.expiresMs, timeOnly = true, copy = copy))),
-                        style = T.s13,
-                        color = p.ink2,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 10.dp),
-                    )
+                    val validText = if (vm.expiresMs > 0L) {
+                        copy(UiMessages.securityPairValidUntil(io.github.lewin671.remoteagent.core.securityTime(vm.expiresMs, timeOnly = true, copy = copy)))
+                    } else {
+                        uiText(vm.validUntilText)
+                    }
+                    if (validText.isNotEmpty()) {
+                        Text(
+                            validText,
+                            style = T.s13,
+                            color = p.ink2,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(top = 10.dp),
+                        )
+                    }
                     IconText(
                         Lucide.LoaderCircle,
                         copy(UiMessages.settingsAndroidWaitingForANewDevice()),
@@ -2184,21 +2233,11 @@ fun PairScreen(replacesDeviceId: String = "") {
                         Modifier.padding(top = 10.dp),
                     )
                 }
-                is PairingUiState.Compare,
-                is PairingUiState.Sending -> {
-                    val sending = step is PairingUiState.Sending
-                    val emoji =
-                        when (step) {
-                            is PairingUiState.Compare -> step.emoji
-                            is PairingUiState.Sending -> step.emoji
-                            else -> emptyList()
-                        }
-                    val kind =
-                        when (step) {
-                            is PairingUiState.Compare -> step.kind
-                            is PairingUiState.Sending -> step.kind
-                            else -> DeviceKind.DEVICE_KIND_UNSPECIFIED
-                        }
+
+                AddDeviceStep.ADD_DEVICE_STEP_COMPARE_SAS,
+                AddDeviceStep.ADD_DEVICE_STEP_APPROVING,
+                AddDeviceStep.ADD_DEVICE_STEP_DELIVERING -> {
+                    val sending = vm.step != AddDeviceStep.ADD_DEVICE_STEP_COMPARE_SAS
                     Column(
                         Modifier.padding(top = 14.dp)
                             .fillMaxWidth()
@@ -2209,14 +2248,14 @@ fun PairScreen(replacesDeviceId: String = "") {
                     ) {
                         Row(Modifier.fillMaxWidth()) {
                             Text(
-                                if (kind == DeviceKind.DEVICE_KIND_MACHINE) copy(UiMessages.settingsAndroidNewComputer()) else copy(UiMessages.settingsAndroidNewDevice()),
+                                if (vm.joinerKind == DeviceKind.DEVICE_KIND_MACHINE) copy(UiMessages.settingsAndroidNewComputer()) else copy(UiMessages.settingsAndroidNewDevice()),
                                 style = T.s13b,
                                 color = p.ink,
                             )
                             Text(copy(UiMessages.settingsAndroidRequestsToJoin()), style = T.s13, color = p.ink2)
                         }
                         Text(
-                            emoji.joinToString("  "),
+                            vm.sasEmojiList.joinToString("  "),
                             fontSize = 30.sp,
                             modifier = Modifier.padding(top = 10.dp, bottom = 12.dp),
                         )
@@ -2228,7 +2267,7 @@ fun PairScreen(replacesDeviceId: String = "") {
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(bottom = 10.dp),
                         )
-                        if (step is PairingUiState.Compare && step.replacementCandidates.isNotEmpty()) {
+                        if (!sending && vm.replacementCandidatesList.isNotEmpty()) {
                             Column(
                                 Modifier.fillMaxWidth()
                                     .padding(bottom = 12.dp)
@@ -2237,13 +2276,12 @@ fun PairScreen(replacesDeviceId: String = "") {
                                     .padding(10.dp),
                             ) {
                                 Text(
-                                    step.replaceOldLabel?.let { uiText(it) }?.ifEmpty { null }
-                                        ?: copy(UiMessages.securityAlsoRemoveOldDevices()),
+                                    uiText(vm.replaceOldLabel).ifEmpty { copy(UiMessages.securityAlsoRemoveOldDevices()) },
                                     style = T.s15b,
                                     color = p.ink,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                 )
-                                val hintStr = step.replaceOldHint?.let { uiText(it) }.orEmpty()
+                                val hintStr = uiText(vm.replaceOldHint)
                                 if (hintStr.isNotEmpty()) {
                                     Text(
                                         hintStr,
@@ -2252,27 +2290,20 @@ fun PairScreen(replacesDeviceId: String = "") {
                                         modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 6.dp),
                                     )
                                 }
-                                step.replacementCandidates.forEach { cand ->
-                                    val checked = cand.deviceId in step.selectedRemoveIds
-                                    val title = cand.displayName.ifEmpty { cand.description.ifEmpty { cand.shortId } }
-                                    val lastActive = if (cand.hasLastActiveText()) uiText(cand.lastActiveText) else ""
-                                    val detail = listOfNotNull(
-                                        cand.description.takeIf { it.isNotEmpty() && it != title },
-                                        cand.shortId.takeIf { it.isNotEmpty() },
-                                        lastActive.takeIf { it.isNotEmpty() },
-                                    ).joinToString(" · ")
+                                vm.replacementCandidatesList.forEach { cand ->
+                                    val detail = uiText(cand.subtitle)
                                     Row(
                                         Modifier.fillMaxWidth()
-                                            .clickable { model.toggleRemoveCandidate(cand.deviceId, !checked) }
+                                            .clickable { onToggleRemoveCandidate(cand.deviceId, !cand.selected) }
                                             .padding(vertical = 2.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         androidx.compose.material3.Checkbox(
-                                            checked = checked,
-                                            onCheckedChange = { model.toggleRemoveCandidate(cand.deviceId, it) },
+                                            checked = cand.selected,
+                                            onCheckedChange = { onToggleRemoveCandidate(cand.deviceId, it) },
                                         )
                                         Column(Modifier.weight(1f).padding(end = 8.dp)) {
-                                            Text(title, style = T.s13b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            Text(cand.title, style = T.s13b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                             if (detail.isNotEmpty()) {
                                                 Text(detail, style = T.s13, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                             }
@@ -2284,33 +2315,31 @@ fun PairScreen(replacesDeviceId: String = "") {
                         Btns {
                             PillButton(
                                 copy(UiMessages.approvalAndroidDenyDecision()),
-                                {
-                                    model.leave()
-                                    nav.back()
-                                },
+                                onDeny,
                                 Modifier.weight(1f),
                                 ButtonKind.SECONDARY,
                                 enabled = !sending,
                             )
                             PillButton(
                                 if (sending) copy(UiMessages.settingsAndroidWaitingForTheNewDeviceToConfirm()) else copy(UiMessages.securityAllowToJoin()),
-                                model::approve,
+                                onApprove,
                                 Modifier.weight(1f),
                                 ButtonKind.INK,
-                                enabled = !sending,
+                                enabled = !sending && vm.sasEmojiList.isNotEmpty(),
                             )
                         }
                     }
                 }
-                is PairingUiState.Done -> {
+
+                AddDeviceStep.ADD_DEVICE_STEP_DONE -> {
                     Notice(
                         copy(UiMessages.settingsAndroidNewDeviceJoined()),
                         Modifier.padding(top = 14.dp),
                         action = uiText(UiMessages.commonDone()),
-                        onAction = nav.back,
+                        onAction = onDone,
                         icon = Lucide.Check,
                     )
-                    val warnText = step.warning?.let { uiText(it) }.orEmpty()
+                    val warnText = uiText(vm.removeOldWarning)
                     if (warnText.isNotEmpty()) {
                         Notice(
                             warnText,
@@ -2319,14 +2348,20 @@ fun PairScreen(replacesDeviceId: String = "") {
                         )
                     }
                 }
-                is PairingUiState.Failed ->
+
+                AddDeviceStep.ADD_DEVICE_STEP_FAILED -> {
+                    val msg = uiText(vm.banner.text)
+                    val tone = bannerTone(vm.banner.tone)
                     Notice(
-                        uiText(step.message),
+                        msg,
                         Modifier.padding(top = 14.dp),
-                        if (step.uncertain) NoticeTone.PLAIN else NoticeTone.ERROR,
-                        action = if (step.canRetry) uiText(UiMessages.commonRetry()) else copy(UiMessages.securityStartOver()),
-                        onAction = model::retry,
+                        tone = tone,
+                        action = if (vm.canRetry) uiText(UiMessages.commonRetry()) else copy(UiMessages.securityStartOver()),
+                        onAction = onRetry,
                     )
+                }
+
+                else -> {}
             }
         }
     }

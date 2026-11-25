@@ -503,6 +503,7 @@ internal fun SharedFileHost(
             confirm = copy(UiMessages.sharedFileActionSaveToPhone()),
             onDismiss = { liveHost.unopenableTarget = null },
             onConfirm = {
+                liveHost.unopenableTarget = null
                 runWithStoragePermission(context, liveHost) {
                     scope.launch {
                         val res = manager.saveToDownloads(target.localFile, name)

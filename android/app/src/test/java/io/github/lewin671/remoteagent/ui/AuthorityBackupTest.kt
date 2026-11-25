@@ -1,20 +1,29 @@
 package io.github.lewin671.remoteagent.ui
 
 import android.app.Application
-import androidx.compose.runtime.*
-import androidx.compose.ui.test.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.createComposeRule
-import io.github.lewin671.remoteagent.core.*
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel
+import io.github.lewin671.remoteagent.core.proto.HandoffRole
+import io.github.lewin671.remoteagent.core.proto.HandoffViewModel
+import io.github.lewin671.remoteagent.core.proto.SecurityBannerTone
+import io.github.lewin671.remoteagent.core.proto.SecurityBannerView
+import io.github.lewin671.remoteagent.core.proto.Text as CoreText
 import io.github.lewin671.remoteagent.data.ThemeMode
-import io.github.lewin671.remoteagent.proto.DeviceKind
-import io.github.lewin671.remoteagent.proto.DeviceMeta
-import com.google.protobuf.ByteString
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.annotation.Config
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
@@ -31,50 +40,89 @@ class AuthorityBackupTest {
     }
 
     @Test
-    fun handoffOfferRequiresBackupConfirmationAndFailureRetainsTheCode() {
-        var attempts = 0
-        var offerPublished by mutableStateOf(false)
+    fun handoffOfferRendersCodeAndErrorBannerFromViewModel() {
+        var publishes = 0
+        var vm by mutableStateOf(
+            HandoffViewModel.newBuilder()
+                .setRole(HandoffRole.HANDOFF_ROLE_INCOMING_CANDIDATE)
+                .setCanPrepareCode(true)
+                .build(),
+        )
         show {
-                HandoffPreparationContent(
-                    hasHandoffOffer = offerPublished,
-                    prepareCode = { "synthetic-offline-code" },
-                ) {
-                    attempts++
-                    if (attempts == 1) throw IllegalStateException("save failed")
-                    offerPublished = true
-                }
+            HandoffPreparationContent(
+                vm = vm,
+                onPrepareCode = {
+                    vm = vm.toBuilder().setPreparedCode("synthetic-offline-code").setCanPublishOffer(true).build()
+                },
+                onPublishOffer = {
+                    publishes++
+                    vm = if (publishes == 1) {
+                        vm.toBuilder()
+                            .setErrorBanner(
+                                SecurityBannerView.newBuilder()
+                                    .setVisible(true)
+                                    .setTone(SecurityBannerTone.SECURITY_BANNER_TONE_ERROR)
+                                    .setText(CoreText.newBuilder().setLiteral("save failed")),
+                            )
+                            .build()
+                    } else {
+                        vm.toBuilder()
+                            .clearPreparedCode()
+                            .clearErrorBanner()
+                            .setHasPublishedOffer(true)
+                            .build()
+                    }
+                },
+            )
         }
         ui.onNodeWithText("我已保存，通知管理端").assertDoesNotExist()
         ui.onNodeWithText("生成新的恢复码").performClick()
-        ui.runOnIdle { assertEquals(0, attempts) }
+        assertEquals(0, publishes)
         ui.onNodeWithContentDescription("恢复码二维码").assertExists()
         ui.onNodeWithText("我已保存，通知管理端").performScrollTo().performClick()
         ui.onNodeWithText("save failed").assertExists()
         ui.onNodeWithContentDescription("恢复码二维码").assertExists()
-        ui.onNodeWithText("恢复码已确认保存，等待当前管理端批准；可以重新打开此页查看。").assertDoesNotExist()
         ui.onNodeWithText("我已保存，通知管理端").performScrollTo().performClick()
         ui.onNodeWithText("恢复码已确认保存，等待当前管理端批准；可以重新打开此页查看。").assertExists()
-        ui.runOnIdle { assertEquals(2, attempts) }
+        assertEquals(2, publishes)
     }
 
     @Test
-    fun rotationRequiresBackupConfirmationAndFailedPublicationDoesNotNavigateAway() {
-        var attempts = 0
-        var backs = 0
+    fun rotationRendersCodeAndErrorBannerFromViewModel() {
+        var publishes = 0
+        var vm by mutableStateOf(
+            AccountSecurityViewModel.newBuilder()
+                .setIsManager(true)
+                .setCanPrepareRotation(true)
+                .build(),
+        )
         show {
-                RotateRecoveryContent(prepareCode = { "synthetic-offline-code" }, publishCode = {
-                    attempts++
-                    if (attempts == 1) throw IllegalStateException("save failed")
-                }, onBack = { backs++ })
+            RotateRecoveryContent(
+                vm = vm,
+                onPrepare = {
+                    vm = vm.toBuilder().setPreparedCode("synthetic-offline-code").build()
+                },
+                onPublish = {
+                    publishes++
+                    vm = vm.toBuilder()
+                        .setErrorBanner(
+                            SecurityBannerView.newBuilder()
+                                .setVisible(true)
+                                .setTone(SecurityBannerTone.SECURITY_BANNER_TONE_ERROR)
+                                .setText(CoreText.newBuilder().setLiteral("save failed")),
+                        )
+                        .build()
+                },
+                onBack = {},
+            )
         }
         ui.onNodeWithText("我已保存，发布换码").assertDoesNotExist()
         ui.onNodeWithText("生成新的恢复码").performClick()
-        ui.runOnIdle { assertEquals(0, attempts) }
+        assertEquals(0, publishes)
+        ui.onNodeWithContentDescription("恢复码二维码").assertExists()
         ui.onNodeWithText("我已保存，发布换码").performScrollTo().performClick()
         ui.onNodeWithText("save failed").assertExists()
         ui.onNodeWithContentDescription("恢复码二维码").assertExists()
-        ui.runOnIdle { assertEquals(0, backs) }
-        ui.onNodeWithText("我已保存，发布换码").performScrollTo().performClick()
-        ui.runOnIdle { assertEquals(1, backs) }
+        assertEquals(1, publishes)
     }
 }

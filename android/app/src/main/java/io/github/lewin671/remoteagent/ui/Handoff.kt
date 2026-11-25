@@ -6,41 +6,38 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.core.UiMessages
-import io.github.lewin671.remoteagent.core.proto.HandoffCandidateView
-import io.github.lewin671.remoteagent.core.proto.SettingsViewModel
-import io.github.lewin671.remoteagent.core.proto.Text as CoreText
+import io.github.lewin671.remoteagent.core.proto.HandoffActionKind
+import io.github.lewin671.remoteagent.core.proto.HandoffViewModel
 import kotlinx.coroutines.launch
 
 /** The successor client only offers its public recovery key after explicit backup confirmation. */
 @Composable
 fun HandoffPreparation(onBack: (() -> Unit)? = null) {
     val remote = LocalRemote.current
-    val connView by remote.coreHost.connectionView.collectAsState()
-    val settingsView by remote.settingsView.collectAsState()
-    val advice = settingsView.security.takeIf { it.hasLeaseRenewalAdvice() }?.leaseRenewalAdvice
-        ?: connView.takeIf { it.hasLeaseRenewalAdvice() }?.leaseRenewalAdvice
+    val host = remote.coreHost
+    val vm by host.handoffView.collectAsState()
+    LaunchedEffect(host) { host.handoffAction(HandoffActionKind.HANDOFF_ACTION_KIND_OPEN) }
     HandoffPreparationContent(
-        leaseRenewalAdvice = advice,
-        hasHandoffOffer = settingsView.security.hasHandoffOffer,
-        prepareCode = { remote.prepareHandoffCode(storagePersisted = true) },
+        vm = vm,
+        onPrepareCode = { host.handoffAction(HandoffActionKind.HANDOFF_ACTION_KIND_PREPARE_CODE) },
+        onPublishOffer = {
+            host.handoffAction(HandoffActionKind.HANDOFF_ACTION_KIND_SET_CODE_SAVED, flag = true)
+            host.handoffAction(HandoffActionKind.HANDOFF_ACTION_KIND_PUBLISH_OFFER)
+        },
         onBack = onBack,
-        publishOffer = remote::publishHandoffOffer,
     )
 }
 
 @Composable
 internal fun HandoffPreparationContent(
-    leaseRenewalAdvice: CoreText? = null,
-    hasHandoffOffer: Boolean = false,
-    prepareCode: suspend () -> String,
+    vm: HandoffViewModel,
+    onPrepareCode: () -> Unit,
+    onPublishOffer: () -> Unit,
     onBack: (() -> Unit)? = null,
-    publishOffer: suspend () -> Unit,
 ) {
     val copy = uiText()
-    val scope = rememberAuthorityScope()
-    var prepared by remember { mutableStateOf<String?>(null) }
-    var error by remember { mutableStateOf("") }
-    var busy by remember { mutableStateOf(false) }
+    val err = if (vm.errorBanner.visible) uiText(vm.errorBanner.text) else ""
+    val msg = uiText(vm.messageBanner)
     PageScaffold(copy(UiMessages.securityTakeOverManagement()), onBack = onBack) {
         FormColumn(Modifier.fillMaxWidth().verticalScrollFaded().padding(vertical = 16.dp)) {
             Text(
@@ -48,53 +45,29 @@ internal fun HandoffPreparationContent(
                 style = T.s13,
                 color = pal.ink2,
             )
-            val codeValue = prepared
-            if (codeValue != null) {
-                RecoveryCodeFigure(codeValue)
+            if (vm.preparedCode.isNotEmpty()) {
+                RecoveryCodeFigure(vm.preparedCode)
                 PillButton(
                     copy(UiMessages.securitySavedNotifyManagingClient()),
-                    {
-                        busy = true
-                        error = ""
-                        scope.launch {
-                            try {
-                                publishOffer()
-                                prepared = null
-                            } catch (e: Exception) {
-                                error = displayError(e, leaseRenewalAdvice)
-                            } finally {
-                                busy = false
-                            }
-                        }
-                    },
+                    onPublishOffer,
                     Modifier.fillMaxWidth().padding(top = 12.dp),
                     ButtonKind.INK,
-                    enabled = !busy,
+                    enabled = !vm.busy,
                 )
             } else {
-                if (hasHandoffOffer)
+                if (vm.hasPublishedOffer) {
                     Hint(copy(UiMessages.securityRecoveryCodeSavedAndConfirmedWaitingForTheCurrent()), Modifier.padding(vertical = 12.dp))
+                }
                 PillButton(
-                    if (hasHandoffOffer) copy(UiMessages.securityRegenerateRecoveryCode()) else copy(UiMessages.securityGenerateNewRecoveryCode()),
-                    {
-                        busy = true
-                        error = ""
-                        scope.launch {
-                            try {
-                                prepared = prepareCode()
-                            } catch (e: Exception) {
-                                error = displayError(e, leaseRenewalAdvice)
-                            } finally {
-                                busy = false
-                            }
-                        }
-                    },
+                    if (vm.hasPublishedOffer) copy(UiMessages.securityRegenerateRecoveryCode()) else copy(UiMessages.securityGenerateNewRecoveryCode()),
+                    onPrepareCode,
                     Modifier.fillMaxWidth().padding(top = 12.dp),
                     ButtonKind.SECONDARY,
-                    enabled = !busy,
+                    enabled = !vm.busy,
                 )
             }
-            if (error.isNotEmpty()) Notice(error, Modifier.padding(top = 12.dp), NoticeTone.ERROR)
+            if (msg.isNotEmpty()) Notice(msg, Modifier.padding(top = 12.dp), NoticeTone.PLAIN)
+            if (err.isNotEmpty()) Notice(err, Modifier.padding(top = 12.dp), NoticeTone.ERROR)
         }
     }
 }
@@ -103,62 +76,67 @@ internal fun HandoffPreparationContent(
 @Composable
 fun HandoffControls() {
     val remote = LocalRemote.current
-    val initialVm = remember(remote) { remote.coreHost.snapshotSettingsView() }
-    val rawVm by remote.settingsView.collectAsState()
-    val vm = if (rawVm != SettingsViewModel.getDefaultInstance()) rawVm else initialVm
+    val host = remote.coreHost
+    val vm by host.handoffView.collectAsState()
+    LaunchedEffect(host) { host.handoffAction(HandoffActionKind.HANDOFF_ACTION_KIND_OPEN) }
     HandoffControlsContent(
-        candidates = vm.security.handoffCandidatesList,
-        onTransfer = { id -> remote.handoffAuthority(id) },
-        leaseRenewalAdviceProvider = {
-            remote.coreHost.connectionView.value.takeIf { it.hasLeaseRenewalAdvice() }?.leaseRenewalAdvice
+        vm = vm,
+        onRefresh = { host.handoffAction(HandoffActionKind.HANDOFF_ACTION_KIND_REFRESH_CANDIDATES) },
+        onRequestTransfer = { id ->
+            host.handoffAction(HandoffActionKind.HANDOFF_ACTION_KIND_REQUEST_TRANSFER, targetDeviceId = id)
+        },
+        onCancelTransfer = { host.handoffAction(HandoffActionKind.HANDOFF_ACTION_KIND_CANCEL_TRANSFER) },
+        onConfirmTransfer = { id ->
+            host.handoffAction(HandoffActionKind.HANDOFF_ACTION_KIND_CONFIRM_TRANSFER, targetDeviceId = id)
         },
     )
 }
 
 @Composable
 internal fun HandoffControlsContent(
-    candidates: List<HandoffCandidateView>,
-    onTransfer: suspend (String) -> Unit,
-    leaseRenewalAdviceProvider: () -> CoreText? = { null },
+    vm: HandoffViewModel,
+    onRefresh: () -> Unit = {},
+    onRequestTransfer: (String) -> Unit = {},
+    onCancelTransfer: () -> Unit = {},
+    onConfirmTransfer: (String) -> Unit = {},
 ) {
     val copy = uiText()
-    val scope = rememberAuthorityScope()
-    var target by remember { mutableStateOf<HandoffCandidateView?>(null) }
-    var busy by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf("") }
-    fun candidateLabel(c: HandoffCandidateView): String =
-        if (c.hasDisplayNameText()) io.github.lewin671.remoteagent.core.coreTextToMessageText(c.displayNameText).resolve(copy)
-        else c.displayName
+    val err = if (vm.errorBanner.visible) uiText(vm.errorBanner.text) else ""
+    val msg = uiText(vm.messageBanner)
     GLabel(copy(UiMessages.securityTransferManagement()))
     Hint(copy(UiMessages.securityOnceTheSuccessorDeviceJoinsAndConfirmsSavingIts()), Modifier)
-    for (c in candidates) PillButton(
-        copy(UiMessages.securityAndroidTransferTo(candidateLabel(c))),
-        { target = c },
-        Modifier.fillMaxWidth().padding(top = 8.dp),
-        ButtonKind.SECONDARY,
-        enabled = !busy,
-    )
-    if (candidates.isEmpty()) Hint(copy(UiMessages.securityWaitingForTheSuccessorDeviceToGenerateAndSave()), Modifier.padding(vertical = 8.dp))
-    if (error.isNotEmpty()) Notice(error, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
-    target?.let { cand ->
+    for (c in vm.candidatesList) {
+        val label = uiText(c.displayName).ifEmpty { c.deviceId }
+        PillButton(
+            copy(UiMessages.securityAndroidTransferTo(label)),
+            { onRequestTransfer(c.deviceId) },
+            Modifier.fillMaxWidth().padding(top = 8.dp),
+            ButtonKind.SECONDARY,
+            enabled = vm.canTransfer && !vm.busy,
+        )
+    }
+    if (vm.candidatesList.isEmpty()) {
+        Hint(copy(UiMessages.securityWaitingForTheSuccessorDeviceToGenerateAndSave()), Modifier.padding(vertical = 8.dp))
+    }
+    if (vm.canRefresh) {
+        TextAction(copy(UiMessages.securityRefreshSuccessorDevices()), onRefresh, enabled = !vm.busy)
+    }
+    if (msg.isNotEmpty()) Notice(msg, Modifier.padding(vertical = 8.dp), NoticeTone.PLAIN)
+    if (err.isNotEmpty()) Notice(err, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
+    if (vm.confirmingTargetId.isNotEmpty()) {
+        val targetId = vm.confirmingTargetId
+        val body = uiText(vm.confirmDialogBody).ifEmpty {
+            val candLabel = vm.candidatesList.firstOrNull { it.deviceId == targetId }?.let { uiText(it.displayName) }?.ifEmpty { targetId } ?: targetId
+            copy(UiMessages.securityConfirmThatTheSuccessorDeviceSavedTheNewRecovery(candLabel))
+        }
         Alert(
             copy(UiMessages.securityTransferManagement()),
-            copy(UiMessages.securityConfirmThatTheSuccessorDeviceSavedTheNewRecovery(candidateLabel(cand))),
+            body,
             copy(UiMessages.securityConfirmTransfer()),
             danger = true,
-            onDismiss = { target = null },
+            onDismiss = onCancelTransfer,
         ) {
-            target = null
-            busy = true
-            scope.launch {
-                try {
-                    onTransfer(cand.deviceId)
-                } catch (e: Exception) {
-                    error = displayError(e, leaseRenewalAdviceProvider())
-                } finally {
-                    busy = false
-                }
-            }
+            onConfirmTransfer(targetId)
         }
     }
 }

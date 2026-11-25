@@ -246,17 +246,66 @@ class I18nBatchCTest(private val locale: String) {
     @Test fun storage() { show { PhoneImageStoragePage {} }; shot("phone-storage") }
     @Test fun devices() { show { DevicesScreen() }; shot("devices") }
     @Test fun client() { show { ClientScreen(client.id) }; shot("client") }
-    @Test fun security() { show { Column { AccountSecurityContent(state.copy(recoveryPending = true, recoveryReadyMs = stamp + 172_800_000).toTestSecuritySummaryView(client.id)) } }; shot("security") }
-    @Test fun securityMember() { show { Column { AccountSecurityContent(state.copy(isAuthority = false).toTestSecuritySummaryView(client.id)) } }; shot("security-member") }
-    @Test fun recover() { show { RecoverScreen(appFixture.app) }; shot("recover") }
-    @Test fun createAccount() { show { CreateAccountScreen(appFixture.app) }; shot("create-account") }
-    @Test fun rotateRecovery() { show { RotateRecoveryContent(prepareCode = { error("Preview does not publish") }, publishCode = {}, onBack = {}) }; shot("rotate-recovery") }
-    @Test fun recoveryStatus() { show { Column(Modifier.padding(20.dp)) { RecoveryStatus(GetRecoveryContextResponse.Phase.PHASE_READY, false, "", {}, {}, {}) } }; shot("recovery-ready") }
-    @Test fun handoff() { show { HandoffPreparationContent(prepareCode = { "EXAMPLE RECOVERY CODE" }, publishOffer = {}) }; shot("handoff") }
-    @Test fun join() { show { JoinScreen(appFixture.app) }; shot("join") }
-    @Test fun removed() { show { RemovedScreen(appFixture.app, remote) }; shot("removed") }
+    @Test fun security() {
+        val vm = io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel.newBuilder()
+            .setIsManager(true)
+            .setRecoveryPending(true)
+            .setCanVetoRecovery(true)
+            .setCanRenewNow(true)
+            .setCanOpenRecovery(true)
+            .setCanOpenHandoff(true)
+            .setRecoveryTakeoverBanner(
+                io.github.lewin671.remoteagent.core.proto.Text.newBuilder()
+                    .setKey("security.someone_is_requesting_management_takeover_with_a_recovery_code")
+                    .addArgs(
+                        io.github.lewin671.remoteagent.core.proto.TextArg.newBuilder()
+                            .setName("value")
+                            .setTimestampValue(
+                                io.github.lewin671.remoteagent.core.proto.TimestampArg.newBuilder()
+                                    .setUnixMs(stamp + 172_800_000)
+                                    .setStyle(io.github.lewin671.remoteagent.core.proto.TimestampStyle.TIMESTAMP_STYLE_DATE_TIME),
+                            ),
+                    ),
+            )
+            .build()
+        show { Column { AccountSecurityContent(vm) } }; shot("security")
+    }
+    @Test fun securityMember() {
+        val vm = io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel.newBuilder()
+            .setIsManager(false)
+            .setCanOpenHandoff(true)
+            .build()
+        show { Column { AccountSecurityContent(vm) } }; shot("security-member")
+    }
+    @Test fun recover() { show { RecoverScreen(remote.coreHost) }; shot("recover") }
+    @Test fun createAccount() { show { CreateAccountScreen(remote.coreHost) }; shot("create-account") }
+    @Test fun rotateRecovery() {
+        val vm = io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel.newBuilder().setIsManager(true).setCanPrepareRotation(true).build()
+        show { RotateRecoveryContent(vm = vm, onPrepare = {}, onPublish = {}, onBack = {}) }; shot("rotate-recovery")
+    }
+    @Test fun recoveryStatus() {
+        val rec = io.github.lewin671.remoteagent.core.proto.EmergencyRecoveryView.newBuilder()
+            .setPhase(io.github.lewin671.remoteagent.core.proto.SecurityRecoveryPhase.SECURITY_RECOVERY_PHASE_READY_TO_COMPLETE)
+            .setCanSubmitOrRefresh(true)
+            .setCanComplete(true)
+            .build()
+        show { Column(Modifier.padding(20.dp)) { RecoveryStatus(rec, "", {}, {}, {}) } }
+        shot("recovery-ready")
+    }
+    @Test fun handoff() {
+        val vm = io.github.lewin671.remoteagent.core.proto.HandoffViewModel.newBuilder()
+            .setRole(io.github.lewin671.remoteagent.core.proto.HandoffRole.HANDOFF_ROLE_INCOMING_CANDIDATE)
+            .setPreparedCode("EXAMPLE RECOVERY CODE")
+            .build()
+        show { HandoffPreparationContent(vm = vm, onPrepareCode = {}, onPublishOffer = {}) }; shot("handoff")
+    }
+    @Test fun join() { show { JoinScreen(appFixture.app, remote.coreHost) }; shot("join") }
+    @Test fun removed() {
+        show { RemovedScreen(io.github.lewin671.remoteagent.core.proto.RemovedDeviceView.newBuilder().setCanRetryLogin(true).build(), remote.coreHost, remote) }
+        shot("removed")
+    }
     @Test fun pair() { show { PairScreen() }; shot("pair") }
-    @Test fun startup() { show { AccountLoadFailure(text(UiMessages.errorsDisconnectedFromServer()), {}, {}) }; shot("startup-error") }
+    @Test fun startup() { show { AccountLoadFailureContent(text(UiMessages.errorsDisconnectedFromServer())) }; shot("startup-error") }
     @Test fun connection() {
         val vm = io.github.lewin671.remoteagent.core.proto.SettingsViewModel.newBuilder()
             .setConnCheck(

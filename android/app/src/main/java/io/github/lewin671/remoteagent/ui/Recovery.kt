@@ -1,10 +1,10 @@
 package io.github.lewin671.remoteagent.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -16,45 +16,29 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import io.github.lewin671.remoteagent.RaApp
-import io.github.lewin671.remoteagent.core.Secret
-import io.github.lewin671.remoteagent.core.SecurityClient
-import io.github.lewin671.remoteagent.core.StandaloneSecurityHost
+import io.github.lewin671.remoteagent.core.CoreHost
 import io.github.lewin671.remoteagent.core.UiMessages
-import io.github.lewin671.remoteagent.core.proto.SecurityBootstrapKind
-import io.github.lewin671.remoteagent.core.proto.SecurityPendingOpSummary
-import io.github.lewin671.remoteagent.core.proto.SecurityRecoveryInfo
-import io.github.lewin671.remoteagent.core.proto.SecurityWorkflowStatus
-import io.github.lewin671.remoteagent.proto.GetRecoveryContextResponse
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-
-internal fun activePendingOp(status: SecurityWorkflowStatus?): SecurityPendingOpSummary? =
-    status?.takeIf { it.hasPendingOp() }?.pendingOp
-
-internal fun canDiscardUnsignedPendingOp(op: SecurityPendingOpSummary?): Boolean =
-    op != null &&
-        op.phase == "PREPARED" &&
-        !op.signed &&
-        ((op.kind == "state" && !(op.action == "recovery" && op.codeSaved)) ||
-            op.kind == "recovery" ||
-            (op.kind == "create" && !op.codeSaved))
+import io.github.lewin671.remoteagent.core.proto.AccountSecurityActionKind
+import io.github.lewin671.remoteagent.core.proto.AccountSecuritySubpage
+import io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel
+import io.github.lewin671.remoteagent.core.proto.CreateAccountStep
+import io.github.lewin671.remoteagent.core.proto.EmergencyRecoveryView
+import io.github.lewin671.remoteagent.core.proto.HandoffActionKind
+import io.github.lewin671.remoteagent.core.proto.OnboardingRecoveryActionKind
+import io.github.lewin671.remoteagent.core.proto.PendingSecurityOpKind
+import io.github.lewin671.remoteagent.core.proto.SecurityRecoveryPhase
 
 @Composable
 internal fun PendingSecurityOperationPage(
-    pendingOp: SecurityPendingOpSummary?,
-    busy: Boolean = false,
-    error: String = "",
+    vm: AccountSecurityViewModel,
     onBack: () -> Unit = {},
     onContinue: () -> Unit = {},
     onDiscard: (abandonHandoff: Boolean) -> Unit = {},
 ) {
     val copy = uiText()
     var confirmAbandonOffer by remember { mutableStateOf(false) }
+    val err = if (vm.errorBanner.visible) uiText(vm.errorBanner.text) else ""
     PageScaffold(copy(UiMessages.securityUnfinishedSecurityOperation()), onBack = onBack) {
         FormColumn(Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
             Hint(copy(UiMessages.securityTheSecurityOperationSOutcomeIsUnverifiedContinueThe()))
@@ -63,41 +47,36 @@ internal fun PendingSecurityOperationPage(
                 onContinue,
                 Modifier.fillMaxWidth(),
                 ButtonKind.INK,
-                enabled = !busy,
+                enabled = vm.canContinuePending && !vm.busy,
             )
-            if (pendingOp != null && pendingOp.kind == "offer" && pendingOp.phase == "PREPARED") {
+            if (vm.canDiscardPending) {
+                val label = when (vm.pendingKind) {
+                    PendingSecurityOpKind.PENDING_SECURITY_OP_KIND_HANDOFF_OFFER ->
+                        copy(UiMessages.securityAbandonThisSuccessionPreparationSecurity())
+                    PendingSecurityOpKind.PENDING_SECURITY_OP_KIND_RECOVERY_ROTATION ->
+                        copy(UiMessages.securityAbandonUnpublishedRecoveryCode())
+                    else ->
+                        copy(UiMessages.securityAbandonUnsignedOperation())
+                }
                 PillButton(
-                    copy(UiMessages.securityAbandonThisSuccessionPreparationSecurity()),
+                    label,
                     {
-                        if (pendingOp.codeSaved && pendingOp.signed) confirmAbandonOffer = true
+                        if (vm.discardRequiresConfirm) confirmAbandonOffer = true
                         else onDiscard(false)
                     },
                     Modifier.fillMaxWidth().padding(top = 10.dp),
                     ButtonKind.SECONDARY,
-                    enabled = !busy,
-                )
-            } else if (canDiscardUnsignedPendingOp(pendingOp)) {
-                val label = if (pendingOp!!.kind == "recovery" || (pendingOp.kind == "state" && pendingOp.action == "recovery")) {
-                    copy(UiMessages.securityAbandonUnpublishedRecoveryCode())
-                } else {
-                    copy(UiMessages.securityAbandonUnsignedOperation())
-                }
-                PillButton(
-                    label,
-                    { onDiscard(false) },
-                    Modifier.fillMaxWidth().padding(top = 10.dp),
-                    ButtonKind.SECONDARY,
-                    enabled = !busy,
+                    enabled = !vm.busy,
                 )
             }
-            if (error.isNotEmpty()) Notice(error, Modifier.padding(top = 12.dp), tone = NoticeTone.ERROR)
+            if (err.isNotEmpty()) Notice(err, Modifier.padding(top = 12.dp), tone = bannerTone(vm.errorBanner.tone))
         }
     }
     if (confirmAbandonOffer) {
         Confirm(
-            copy(UiMessages.securityAbandonThisSuccessionPreparationSecurity()),
-            copy(UiMessages.securityTheSecurityOperationSOutcomeIsUnverifiedContinueThe()),
             copy(UiMessages.securityAbandonThisSuccessionPreparation()),
+            copy(UiMessages.securityThePublicKeyMayAlreadyBePublishedAbandoningOnly()),
+            copy(UiMessages.newSessionAndroidAbandon()),
             danger = true,
             onDismiss = { confirmAbandonOffer = false },
         ) {
@@ -108,454 +87,296 @@ internal fun PendingSecurityOperationPage(
 }
 
 /**
- * 管理端 · 恢复: a pending recovery can be vetoed here. The new code is shown and saved first; the
- * rotated state is published only after the user confirms.
+ * 管理端 · 恢复: Core drives AccountSecurityViewModel (overview, pending op, recovery rotation)
+ * and HandoffViewModel (transfer / takeover).
  */
 @Composable
 fun RecoveryScreen(onBack: () -> Unit = {}) {
     val copy = uiText()
     val remote = LocalRemote.current
-    val initialVm = remember(remote) { remote.coreHost.snapshotSettingsView() }
-    val rawVm by remote.settingsView.collectAsState()
-    val settingsVm = if (rawVm != io.github.lewin671.remoteagent.core.proto.SettingsViewModel.getDefaultInstance()) rawVm else initialVm
-    val sec = settingsVm.security
-    val advice = sec.takeIf { it.hasLeaseRenewalAdvice() }?.leaseRenewalAdvice
-    val secStatus by remote.securityStatus.collectAsState()
-    val pendingOp = activePendingOp(secStatus)
-    val scope = rememberAuthorityScope()
-    var page by remember { mutableStateOf("overview") }
-    var error by remember { mutableStateOf("") }
-    var busy by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { remote.coreHost.openSettings() }
-    suspend fun read() {
-        try {
-            remote.getSecurityStatus()
-            error = ""
-        } catch (e: Exception) {
-            error = displayError(e, advice)
+    val host = remote.coreHost
+    val vm by host.accountSecurityView.collectAsState()
+    var showHandoff by remember { mutableStateOf(false) }
+
+    LaunchedEffect(host) {
+        host.accountSecurityOpen(AccountSecuritySubpage.ACCOUNT_SECURITY_SUBPAGE_OVERVIEW)
+    }
+    DisposableEffect(host) {
+        onDispose { host.accountSecurityClose() }
+    }
+
+    val onSubpageBack: () -> Unit = {
+        if (showHandoff) {
+            showHandoff = false
+        } else {
+            host.accountSecurityAction(
+                AccountSecurityActionKind.ACCOUNT_SECURITY_ACTION_KIND_SET_SUBPAGE,
+                subpage = AccountSecuritySubpage.ACCOUNT_SECURITY_SUBPAGE_OVERVIEW,
+            )
         }
     }
-    LaunchedEffect(sec.leaseEndMs, sec.authorityDeviceId) { read() }
-    if (page != "overview") androidx.activity.compose.BackHandler { page = "overview" }
-    when (page) {
-        "recovery" -> RotateRecoveryScreen { page = "overview" }
-        "handoff" -> if (!sec.isManager) HandoffPreparation { page = "overview" } else PageScaffold(copy(UiMessages.securityTransferManagement()), onBack = { page = "overview" }) {
-            FormColumn(Modifier.fillMaxWidth().verticalScrollFaded().padding(vertical = 16.dp)) { HandoffControls() }
+
+    val inSubpage = showHandoff || vm.subpage != AccountSecuritySubpage.ACCOUNT_SECURITY_SUBPAGE_OVERVIEW
+    if (inSubpage) BackHandler { onSubpageBack() }
+
+    when {
+        showHandoff -> {
+            if (!vm.isManager) {
+                HandoffPreparation { showHandoff = false }
+            } else {
+                PageScaffold(copy(UiMessages.securityTransferManagement()), onBack = { showHandoff = false }) {
+                    FormColumn(Modifier.fillMaxWidth().verticalScrollFaded().padding(vertical = 16.dp)) {
+                        HandoffControls()
+                    }
+                }
+            }
         }
-        "pending" -> PendingSecurityOperationPage(
-            pendingOp = pendingOp,
-            busy = busy,
-            error = error,
-            onBack = { page = "overview" },
-            onContinue = {
-                busy = true
-                scope.launch {
-                    try {
-                        remote.resumeSecurityOperation()
-                        val curPending = activePendingOp(remote.securityStatus.value)
-                        if (curPending != null && curPending.hasDelivery && curPending.deliveryPairingId.isNotEmpty()) {
-                            val res = remote.finishPairingDelivery(curPending.deliveryPairingId)
-                            if (!res.delivered) error = copy(UiMessages.securityTheOriginalOperationIsUnfinishedContinueVerifying())
-                        }
-                        val latest = remote.getSecurityStatus()
-                        if (!latest.hasPendingOp()) {
-                            error = ""
-                            page = "overview"
-                        }
-                    } catch (e: Exception) {
-                        error = displayError(e, advice)
-                    } finally {
-                        busy = false
-                    }
-                }
-            },
-            onDiscard = { abandonHandoff ->
-                busy = true
-                error = ""
-                scope.launch {
-                    try {
-                        remote.discardPendingOp(abandonHandoff)
-                        val latest = remote.getSecurityStatus()
-                        if (!latest.hasPendingOp()) page = "overview"
-                    } catch (e: Exception) {
-                        error = displayError(e, advice)
-                    } finally {
-                        busy = false
-                    }
-                }
-            },
-        )
-        else -> AccountSecurityContent(
-            security = sec,
-            pending = pendingOp != null,
-            pendingRemoveNotice = secStatus?.takeIf { it.hasPendingRemoveNotice() }?.pendingRemoveNotice?.let { uiText(it) } ?: "",
-            onRetryPendingRemove = {
-                scope.launch {
-                    try {
-                        remote.resumeSecurityOperation()
-                        read()
-                    } catch (e: Exception) {
-                        error = displayError(e, advice)
-                    }
-                }
-            },
-            onPending = { page = "pending" },
-            onRecovery = { page = "recovery" },
-            onHandoff = { page = "handoff" },
-            onRenew = { scope.launch { remote.renewLeaseNow(); read() } },
-            error = error,
-        )
+        vm.subpage == AccountSecuritySubpage.ACCOUNT_SECURITY_SUBPAGE_ROTATE_RECOVERY -> {
+            RotateRecoveryScreen { onSubpageBack() }
+        }
+        vm.subpage == AccountSecuritySubpage.ACCOUNT_SECURITY_SUBPAGE_PENDING_OP -> {
+            PendingSecurityOperationPage(
+                vm = vm,
+                onBack = onSubpageBack,
+                onContinue = {
+                    host.accountSecurityAction(AccountSecurityActionKind.ACCOUNT_SECURITY_ACTION_KIND_CONTINUE_PENDING)
+                },
+                onDiscard = { abandonHandoff ->
+                    host.accountSecurityAction(
+                        AccountSecurityActionKind.ACCOUNT_SECURITY_ACTION_KIND_DISCARD_PENDING,
+                        flag = abandonHandoff,
+                    )
+                },
+            )
+        }
+        else -> {
+            AccountSecurityContent(
+                vm = vm,
+                onRetryPendingRemove = {
+                    host.accountSecurityAction(AccountSecurityActionKind.ACCOUNT_SECURITY_ACTION_KIND_RETRY_PENDING_REMOVE)
+                },
+                onPending = {
+                    host.accountSecurityAction(
+                        AccountSecurityActionKind.ACCOUNT_SECURITY_ACTION_KIND_SET_SUBPAGE,
+                        subpage = AccountSecuritySubpage.ACCOUNT_SECURITY_SUBPAGE_PENDING_OP,
+                    )
+                },
+                onRecovery = {
+                    host.accountSecurityAction(
+                        AccountSecurityActionKind.ACCOUNT_SECURITY_ACTION_KIND_SET_SUBPAGE,
+                        subpage = AccountSecuritySubpage.ACCOUNT_SECURITY_SUBPAGE_ROTATE_RECOVERY,
+                    )
+                },
+                onHandoff = {
+                    host.handoffAction(HandoffActionKind.HANDOFF_ACTION_KIND_OPEN)
+                    showHandoff = true
+                },
+                onRenew = {
+                    host.accountSecurityAction(AccountSecurityActionKind.ACCOUNT_SECURITY_ACTION_KIND_RENEW_LEASE)
+                },
+            )
+        }
     }
 }
 
 @Composable
 internal fun AccountSecurityContent(
-    security: io.github.lewin671.remoteagent.core.proto.SecuritySummaryView,
-    pending: Boolean = false,
-    pendingRemoveNotice: String = "",
+    vm: AccountSecurityViewModel,
     onRetryPendingRemove: () -> Unit = {},
     onPending: () -> Unit = {},
     onRecovery: () -> Unit = {},
     onHandoff: () -> Unit = {},
     onRenew: () -> Unit = {},
-    error: String = "",
 ) {
     val copy = uiText()
-    val t = now()
-    val managerName = when {
-        security.hasAuthorityNameText() -> io.github.lewin671.remoteagent.core.coreTextToMessageText(security.authorityNameText).resolve(copy)
-        security.authorityName.isNotEmpty() -> security.authorityName
-        else -> copy(UiMessages.securityClient())
+    val managerName = uiText(vm.managerDisplay).ifEmpty {
+        if (vm.isManager) copy(UiMessages.securityThisDevice()) else copy(UiMessages.securityClient())
     }
+    val leaseExpiry = uiText(vm.leaseExpiryText)
+    val pendingRemove = uiText(vm.pendingRemoveBanner)
+    val err = if (vm.errorBanner.visible) uiText(vm.errorBanner.text) else uiText(vm.authorityErrorBanner)
+    val success = uiText(vm.successNotice)
     PageScaffold(copy(UiMessages.securityAccountSecurity()), readable = true) {
         Column(Modifier.fillMaxWidth().verticalScrollFaded().padding(vertical = 16.dp)) {
-            if (security.recoveryPending) Notice(
-                copy(UiMessages.securitySomeoneIsRequestingManagementTakeoverWithARecoveryCode((io.github.lewin671.remoteagent.core.securityTime(security.recoveryReadyMs, t, copy = copy)).toString())),
-                Modifier.padding(horizontal = 16.dp, vertical = 6.dp), NoticeTone.WARN,
-                action = if (security.isManager) copy(UiMessages.securityReject()) else null, onAction = onRecovery,
-            )
-            if (pendingRemoveNotice.isNotEmpty()) Notice(
-                pendingRemoveNotice,
-                Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                NoticeTone.WARN,
-                action = copy(UiMessages.commonRetry()),
-                onAction = onRetryPendingRemove,
-            )
-            if (error.isNotEmpty()) Notice(error, Modifier.padding(16.dp), NoticeTone.ERROR)
-            if (pending) Group(rows = listOf({ GRow(copy(UiMessages.securityUnfinishedSecurityOperation()), chevron = true, onClick = onPending) }))
-            Group(rows = listOf<@Composable () -> Unit>(
-                { GRow(copy(UiMessages.securityCurrentManagingClient()), if (security.isManager) copy(UiMessages.securityThisDevice()) else managerName) },
-                { GRow(copy(UiMessages.securityRemoteControlExpiry()), io.github.lewin671.remoteagent.core.securityTime(security.leaseEndMs, t, copy = copy)) },
-            ) + if (security.isManager) listOf<@Composable () -> Unit>({ GRow(copy(UiMessages.securityRenewNow()), action = true, onClick = onRenew) }) else emptyList())
-            Hint(copy(UiMessages.securityAndroidRenewsAutomaticallyWhenYouReturnToTheManagingClientAfter()), Modifier.padding(bottom = 8.dp))
-            if (!security.isManager) Hint(copy(UiMessages.securityOpenToRenew(managerName)), Modifier.padding(bottom = 8.dp))
-            if (security.isManager) Group(rows = listOf(
-                { GRow(copy(UiMessages.securityRecoveryCode()), chevron = true, onClick = onRecovery) },
-                { GRow(copy(UiMessages.securityTransferManagement()), chevron = true, onClick = onHandoff) },
-            )) else if (security.canPrepareHandoff)
-                Group(rows = listOf({ GRow(copy(UiMessages.securityTakeOverManagement()), chevron = true, onClick = onHandoff) }))
-        }
-    }
-}
-
-@Composable
-private fun rememberStandaloneOrExternalClient(
-    app: RaApp,
-    externalClient: SecurityClient?,
-): SecurityClient {
-    val ownHost = remember(app, externalClient) {
-        if (externalClient == null) {
-            StandaloneSecurityHost(
-                store = app.vault,
-                http = app.http,
-                messageResolver = ::sessionText,
-                allowPlainHttp = true,
-                monotonic = android.os.SystemClock::elapsedRealtime,
-            )
-        } else {
-            null
-        }
-    }
-    DisposableEffect(ownHost) {
-        onDispose { ownHost?.close() }
-    }
-    LaunchedEffect(ownHost) {
-        if (ownHost != null) {
-            ownHost.client.setForeground(true)
-            runCatching {
-                val st = ownHost.client.bootstrap()
-                app.updateBootstrapStatus(st)
-            }
-        }
-    }
-    return externalClient ?: ownHost!!.client
-}
-
-/** 紧急恢复: the recovering client submits the old recovery code and shows the new one once. */
-@Composable
-fun RecoverScreen(app: RaApp, client: SecurityClient? = null, onBack: () -> Unit = {}) {
-    val copy = uiText()
-    val p = pal
-    val scope = rememberAuthorityScope()
-    val secClient = rememberStandaloneOrExternalClient(app, client)
-    val secStatus by secClient.status.collectAsState()
-    val pending = secStatus?.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_PENDING_RECOVERY
-
-    var oldCode by remember { mutableStateOf("") }
-    var server by remember {
-        mutableStateOf(
-            secStatus?.server?.takeIf { it.isNotEmpty() }
-                ?: app.lastServer.ifEmpty { "https://" },
-        )
-    }
-    var newRecoveryCode by remember { mutableStateOf("") }
-    var codeSaved by remember { mutableStateOf(false) }
-    var recoveryInfo by remember { mutableStateOf<SecurityRecoveryInfo?>(null) }
-    var signatureMissing by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf("") }
-    var busy by remember { mutableStateOf(false) }
-    val t = now()
-
-    fun checkedServer(s: String) = Secret.checkServer(s, allowPlainHttp = app.debuggable)
-
-    LaunchedEffect(secStatus?.bootstrap, secStatus?.pendingOp?.recoveryId) {
-        val op = activePendingOp(secStatus)
-        if (pending && op != null) {
-            if (op.codeSaved) codeSaved = true
-            if (op.server.isNotEmpty()) {
-                server = op.server
-                app.lastServer = op.server
-            }
-            if (!op.signed && newRecoveryCode.isEmpty()) {
-                signatureMissing = true
-            }
-            if (recoveryInfo == null && op.recoveryId.isNotEmpty()) {
-                recoveryInfo = SecurityRecoveryInfo.newBuilder()
-                    .setRecoveryId(op.recoveryId)
-                    .setReadyMs(op.recoveryReadyMs)
-                    .build()
-            }
-        }
-    }
-
-    PageScaffold(copy(UiMessages.securityRecoverManagementWithARecoveryCode()), onBack = onBack, wrapTitle = true) {
-        LegacyRepairBanner(secStatus, {
-            scope.launch {
-                runCatching {
-                    val next = secClient.dismissUpgradeNotice()
-                    app.updateBootstrapStatus(next)
+            if (vm.recoveryPending) {
+                val banner = uiText(vm.recoveryTakeoverBanner)
+                if (banner.isNotEmpty()) {
+                    Notice(
+                        banner,
+                        Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                        NoticeTone.WARN,
+                        action = if (vm.canVetoRecovery) copy(UiMessages.securityReject()) else null,
+                        onAction = if (vm.canVetoRecovery) onRecovery else null,
+                    )
                 }
             }
-        })
-        if (error.isNotEmpty() && !busy) DiscardSetup(app, onBack)
+            if (pendingRemove.isNotEmpty()) {
+                Notice(
+                    pendingRemove,
+                    Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                    NoticeTone.WARN,
+                    action = copy(UiMessages.commonRetry()),
+                    onAction = onRetryPendingRemove,
+                )
+            }
+            if (success.isNotEmpty()) Notice(success, Modifier.padding(16.dp), NoticeTone.PLAIN)
+            if (err.isNotEmpty()) Notice(err, Modifier.padding(16.dp), NoticeTone.ERROR)
+            if (vm.hasPendingOp) {
+                Group(rows = listOf({ GRow(copy(UiMessages.securityUnfinishedSecurityOperation()), chevron = true, onClick = onPending) }))
+            }
+            Group(
+                rows = listOf<@Composable () -> Unit>(
+                    { GRow(copy(UiMessages.securityCurrentManagingClient()), managerName) },
+                    { GRow(copy(UiMessages.securityRemoteControlExpiry()), leaseExpiry) },
+                ) + if (vm.isManager) listOf<@Composable () -> Unit>({ GRow(copy(UiMessages.securityRenewNow()), action = true, enabled = vm.canRenewNow, onClick = onRenew) }) else emptyList(),
+            )
+            Hint(copy(UiMessages.securityAndroidRenewsAutomaticallyWhenYouReturnToTheManagingClientAfter()), Modifier.padding(bottom = 8.dp))
+            if (!vm.isManager) Hint(copy(UiMessages.securityOpenToRenew(managerName)), Modifier.padding(bottom = 8.dp))
+            if (vm.canOpenRecovery && vm.canOpenHandoff) {
+                Group(rows = listOf(
+                    { GRow(copy(UiMessages.securityRecoveryCode()), chevron = true, onClick = onRecovery) },
+                    { GRow(copy(UiMessages.securityTransferManagement()), chevron = true, onClick = onHandoff) },
+                ))
+            } else if (vm.canOpenHandoff) {
+                Group(rows = listOf({ GRow(copy(UiMessages.securityTakeOverManagement()), chevron = true, onClick = onHandoff) }))
+            }
+        }
+    }
+}
+
+/** 紧急恢复: Core drives EmergencyRecoveryView and SecurityRecoveryPhase. */
+@Composable
+fun RecoverScreen(
+    coreHost: CoreHost,
+    allowPlainHttp: Boolean = true,
+    onBack: () -> Unit = {},
+) {
+    val copy = uiText()
+    val p = pal
+    val ob by coreHost.onboardingView.collectAsState()
+    val rec = ob.recovery
+    val phase = rec.phase
+    val inForm = phase == SecurityRecoveryPhase.SECURITY_RECOVERY_PHASE_FORM ||
+        phase == SecurityRecoveryPhase.SECURITY_RECOVERY_PHASE_UNSPECIFIED
+
+    var oldCode by remember { mutableStateOf("") }
+    val settledEditSeq by coreHost.settledOnboardingEditSeq.collectAsState()
+    var serverWaitSeq by remember { mutableStateOf(0L) }
+    val bannerErr = if (rec.banner.visible) uiText(rec.banner.text) else ""
+    val t = now()
+
+    PageScaffold(copy(UiMessages.securityRecoverManagementWithARecoveryCode()), onBack = onBack, wrapTitle = true) {
+        LegacyRepairBanner(ob.showLegacyRepairBanner, coreHost::appRootDismissUpgradeNotice)
+        if ((bannerErr.isNotEmpty() || rec.showSetupReset) && !rec.busy) DiscardSetup(coreHost)
         FormColumn(
             Modifier.fillMaxWidth()
                 .verticalScrollFaded()
                 .imePadding(),
         ) {
-            if (!pending) {
+            if (inForm) {
                 Text(
                     copy(UiMessages.securityAndroidEnterTheRecoveryCodeSavedDuringSetupAfterSubmittingWait()),
                     style = T.s13,
                     color = p.ink2,
                     modifier = Modifier.padding(vertical = 10.dp),
                 )
-                if (error.isNotEmpty()) Notice(error, Modifier.padding(bottom = 10.dp), NoticeTone.ERROR)
-                RecoveryField(copy(UiMessages.securityRecoveryCode()), oldCode, { oldCode = it }, "XXXX-XXXX-…", lines = 3)
-                RecoveryField(copy(UiMessages.securityServer()), server, { server = it.trim() }, "https://")
+                if (bannerErr.isNotEmpty()) Notice(bannerErr, Modifier.padding(bottom = 10.dp), NoticeTone.ERROR)
+                SecurityField(copy(UiMessages.securityRecoveryCode()), oldCode, { oldCode = it }, "XXXX-XXXX-…", lines = 3)
+                SecurityField(
+                    copy(UiMessages.securityServer()),
+                    rec.serverInput,
+                    { serverWaitSeq = coreHost.onboardingRecoveryEdit(serverInput = it) },
+                    "https://",
+                    editPending = settledEditSeq < serverWaitSeq,
+                )
                 PillButton(
-                    if (busy) copy(UiMessages.securityAndroidSubmitting()) else copy(UiMessages.securityAndroidSubmitRecovery()),
+                    if (rec.busy) copy(UiMessages.securityAndroidSubmitting()) else copy(UiMessages.securityAndroidSubmitRecovery()),
                     {
-                        busy = true
-                        error = ""
-                        scope.launch {
-                            try {
-                                val url = checkedServer(server)
-                                app.lastServer = url
-                                val prep = secClient.prepareEmergencyRecovery(url, oldCode)
-                                newRecoveryCode = prep.recoveryCode
-                                recoveryInfo = prep.recovery
-                                codeSaved = false
-                                signatureMissing = false
-                                oldCode = ""
-                            } catch (e: Exception) {
-                                error = displayError(e)
-                            } finally {
-                                busy = false
-                            }
-                        }
+                        val codeToSubmit = oldCode
+                        oldCode = ""
+                        coreHost.onboardingRecoveryAction(
+                            kind = OnboardingRecoveryActionKind.ONBOARDING_RECOVERY_ACTION_KIND_PREPARE,
+                            serverInput = rec.serverInput.trim(),
+                            oldCode = codeToSubmit,
+                        )
                     },
                     Modifier.fillMaxWidth().padding(top = 8.dp),
                     ButtonKind.INK,
-                    enabled = !busy && oldCode.isNotBlank() && server.length > 8,
+                    enabled = rec.canPrepare && oldCode.isNotBlank(),
                 )
-                TextAction(
-                    copy(UiMessages.commonCancel()),
-                    {
-                        app.lastServer = server
-                        onBack()
-                    },
-                    alignment = Alignment.CenterStart,
-                )
+                TextAction(copy(UiMessages.commonCancel()), onBack, alignment = Alignment.CenterStart)
             } else {
-                val info = recoveryInfo
-                val rejected = recoveryNextAction(info?.phase) == RecoveryNextAction.RESTART
+                val rejected = phase == SecurityRecoveryPhase.SECURITY_RECOVERY_PHASE_REJECTED
                 if (rejected) {
                     Hint(copy(UiMessages.securityAndroidThisRecoveryWasVetoedTheNewRecoveryCodeGeneratedFor()), Modifier)
-                } else if (newRecoveryCode.isNotEmpty()) {
+                } else if (rec.newRecoveryCode.isNotEmpty()) {
                     GLabel(copy(UiMessages.securityNewRecoveryCodeShownOnlyOnce()))
-                    RecoveryCodeFigure(newRecoveryCode)
+                    RecoveryCodeFigure(rec.newRecoveryCode)
                     Hint(copy(UiMessages.securityAndroidTakesEffectAfter48HoursAVetoFromTheOriginal()), Modifier)
                 } else {
                     Hint(copy(UiMessages.securityAndroidThisRecoveryWasSubmittedIfYouHaveNotSavedThe()), Modifier)
                 }
 
-                if (signatureMissing && activePendingOp(secStatus)?.signed == false) {
-                    RecoveryField(copy(UiMessages.securityOriginalRecoveryCode()), oldCode, { oldCode = it }, "XXXX-XXXX-…", lines = 3)
+                if (phase == SecurityRecoveryPhase.SECURITY_RECOVERY_PHASE_UNSIGNED_DRAFT) {
+                    SecurityField(copy(UiMessages.securityOriginalRecoveryCode()), oldCode, { oldCode = it }, "XXXX-XXXX-…", lines = 3)
                     PillButton(
                         copy(UiMessages.securityContinueOriginalDraft()),
                         {
-                            busy = true
-                            error = ""
-                            scope.launch {
-                                try {
-                                    val next = secClient.continueRecoverySigning(oldCode)
-                                    if (next != null) recoveryInfo = next
-                                    signatureMissing = false
-                                    oldCode = ""
-                                } catch (e: Exception) {
-                                    error = displayError(e)
-                                } finally {
-                                    busy = false
-                                }
-                            }
+                            val c = oldCode
+                            oldCode = ""
+                            coreHost.onboardingRecoveryAction(
+                                kind = OnboardingRecoveryActionKind.ONBOARDING_RECOVERY_ACTION_KIND_CONTINUE_SIGNING,
+                                oldCode = c,
+                            )
                         },
                         Modifier.fillMaxWidth().padding(top = 8.dp),
                         ButtonKind.SECONDARY,
-                        enabled = !busy && oldCode.isNotBlank(),
+                        enabled = rec.canContinueSigning && !rec.busy && oldCode.isNotBlank(),
                     )
                     TextAction(
                         copy(UiMessages.securityAbandonUnsignedDraft()),
                         {
-                            busy = true
-                            error = ""
-                            scope.launch {
-                                try {
-                                    secClient.discardUnsignedRecovery()
-                                    newRecoveryCode = ""
-                                    codeSaved = false
-                                    recoveryInfo = null
-                                    signatureMissing = false
-                                    oldCode = ""
-                                } catch (e: Exception) {
-                                    error = displayError(e)
-                                } finally {
-                                    busy = false
-                                }
-                            }
+                            oldCode = ""
+                            coreHost.onboardingRecoveryAction(OnboardingRecoveryActionKind.ONBOARDING_RECOVERY_ACTION_KIND_DISCARD_UNSIGNED)
                         },
-                        enabled = !busy,
+                        enabled = rec.canDiscard && !rec.busy,
                     )
                 }
 
-                if (!rejected && newRecoveryCode.isNotEmpty() && !codeSaved) {
+                if (!rejected && rec.canConfirmCodeSaved) {
                     PillButton(
                         copy(UiMessages.securityAndroidISavedTheNewRecoveryCodeOffline()),
                         {
-                            busy = true
-                            error = ""
-                            scope.launch {
-                                try {
-                                    secClient.confirmRecoveryCodeSaved()
-                                    codeSaved = true
-                                } catch (e: Exception) {
-                                    error = displayError(e)
-                                } finally {
-                                    busy = false
-                                }
-                            }
+                            coreHost.onboardingRecoveryAction(OnboardingRecoveryActionKind.ONBOARDING_RECOVERY_ACTION_KIND_CONFIRM_CODE_SAVED)
                         },
                         Modifier.fillMaxWidth().padding(top = 8.dp),
                         ButtonKind.SECONDARY,
-                        enabled = !busy,
+                        enabled = !rec.busy,
                     )
                 }
                 GLabel(copy(UiMessages.securityAndroidRecoveryCodeBackupStatus()))
                 Hint(
-                    if (codeSaved) copy(UiMessages.securityAndroidNewRecoveryCodeConfirmedSavedOffline())
-                    else if (newRecoveryCode.isNotEmpty()) copy(UiMessages.securityAndroidTheNewCodeIsStillOnThisPageSaveIt())
-                    else copy(UiMessages.securityAndroidBackupNotConfirmedThisPhoneHasNoRecoveryPrivateKey()),
+                    when {
+                        rec.codeSavedChecked -> copy(UiMessages.securityAndroidNewRecoveryCodeConfirmedSavedOffline())
+                        rec.newRecoveryCode.isNotEmpty() -> copy(UiMessages.securityAndroidTheNewCodeIsStillOnThisPageSaveIt())
+                        else -> copy(UiMessages.securityAndroidBackupNotConfirmedThisPhoneHasNoRecoveryPrivateKey())
+                    },
                     Modifier,
                 )
                 GLabel(copy(UiMessages.securityAndroidWait()))
-                val readyMs = info?.readyMs ?: activePendingOp(secStatus)?.recoveryReadyMs ?: 0L
                 Hint(
-                    if (readyMs > 0L) copy(UiMessages.securityAndroidRecoveryEligibleAt(io.github.lewin671.remoteagent.core.securityTime(readyMs, t, copy = copy)))
+                    if (rec.readyMs > 0L) copy(UiMessages.securityAndroidRecoveryEligibleAt(io.github.lewin671.remoteagent.core.securityTime(rec.readyMs, t, copy = copy)))
                     else copy(UiMessages.securityAndroidCompletionRequires48Hours()),
                     Modifier,
                 )
                 RecoveryStatus(
-                    phase = info?.phase,
-                    busy = busy,
-                    error = error,
-                    onRefresh = {
-                        busy = true
-                        error = ""
-                        scope.launch {
-                            try {
-                                val next = secClient.resumeRecovery()
-                                if (next != null) recoveryInfo = next else signatureMissing = true
-                            } catch (e: Exception) {
-                                error = displayError(e)
-                            } finally {
-                                busy = false
-                            }
-                        }
-                    },
-                    onComplete = {
-                        busy = true
-                        error = ""
-                        scope.launch {
-                            try {
-                                completeRecoveryAndAdopt(
-                                    complete = {
-                                        if (codeSaved) secClient.confirmRecoveryCodeSaved()
-                                        secClient.completeRecovery().status
-                                    },
-                                    adopt = { st -> withContext(NonCancellable) { app.adoptBootstrappedAccount(st) } },
-                                )
-                            } catch (e: CancellationException) {
-                                throw e
-                            } catch (e: Exception) {
-                                error = displayError(e)
-                            } finally {
-                                busy = false
-                            }
-                        }
-                    },
+                    rec = rec,
+                    error = bannerErr,
+                    onRefresh = { coreHost.onboardingRecoveryAction(OnboardingRecoveryActionKind.ONBOARDING_RECOVERY_ACTION_KIND_REFRESH_OR_SUBMIT) },
+                    onComplete = { coreHost.onboardingRecoveryAction(OnboardingRecoveryActionKind.ONBOARDING_RECOVERY_ACTION_KIND_COMPLETE) },
                     onRestart = {
-                        busy = true
-                        error = ""
-                        scope.launch {
-                            try {
-                                restartRejectedRecovery(
-                                    recoveryInfo?.phase,
-                                    clearPending = { secClient.discardRejectedRecovery() },
-                                    resetScreen = {
-                                        oldCode = ""
-                                        newRecoveryCode = ""
-                                        codeSaved = false
-                                        recoveryInfo = null
-                                        signatureMissing = false
-                                        error = ""
-                                    },
-                                )
-                            } catch (e: Exception) {
-                                error = displayError(e)
-                            } finally {
-                                busy = false
-                            }
-                        }
+                        oldCode = ""
+                        coreHost.onboardingRecoveryAction(OnboardingRecoveryActionKind.ONBOARDING_RECOVERY_ACTION_KIND_DISCARD_REJECTED)
                     },
                 )
             }
@@ -563,295 +384,193 @@ fun RecoverScreen(app: RaApp, client: SecurityClient? = null, onBack: () -> Unit
     }
 }
 
-/** Status and actions share the same verified recovery phase. */
+/** Status and actions driven directly by Core's [EmergencyRecoveryView] flags and phase. */
 @Composable
 internal fun RecoveryStatus(
-    phase: GetRecoveryContextResponse.Phase?,
-    busy: Boolean,
-    error: String,
+    rec: EmergencyRecoveryView,
+    error: String = if (rec.banner.visible) uiText(rec.banner.text) else "",
     onRefresh: () -> Unit,
     onComplete: () -> Unit,
     onRestart: () -> Unit,
 ) {
     val copy = uiText()
-    TextAction(copy(UiMessages.securityAndroidViewStatus()), onRefresh, enabled = !busy, alignment = Alignment.CenterStart)
-    when (phase) {
-        GetRecoveryContextResponse.Phase.PHASE_READY -> Hint(copy(UiMessages.securityAndroidRecoveryCanNowBeCompleted()), Modifier)
-        GetRecoveryContextResponse.Phase.PHASE_PENDING -> Hint(copy(UiMessages.securityAndroidStillWithinThe48HourWaitingPeriod()), Modifier)
-        GetRecoveryContextResponse.Phase.PHASE_REJECTED -> Hint(copy(UiMessages.securityAndroidTheOriginalManagingClientVetoedThisRecovery()), Modifier)
-        GetRecoveryContextResponse.Phase.PHASE_PUBLISHED -> Hint(copy(UiMessages.securityAndroidThisRecoveryIsComplete()), Modifier)
+    TextAction(copy(UiMessages.securityAndroidViewStatus()), onRefresh, enabled = rec.canSubmitOrRefresh, alignment = Alignment.CenterStart)
+    when (rec.phase) {
+        SecurityRecoveryPhase.SECURITY_RECOVERY_PHASE_READY_TO_COMPLETE ->
+            Hint(copy(UiMessages.securityAndroidRecoveryCanNowBeCompleted()), Modifier)
+        SecurityRecoveryPhase.SECURITY_RECOVERY_PHASE_SUBMITTED_WAITING ->
+            Hint(copy(UiMessages.securityAndroidStillWithinThe48HourWaitingPeriod()), Modifier)
+        SecurityRecoveryPhase.SECURITY_RECOVERY_PHASE_REJECTED ->
+            Hint(copy(UiMessages.securityAndroidTheOriginalManagingClientVetoedThisRecovery()), Modifier)
         else -> {}
     }
     if (error.isNotEmpty()) Notice(error, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
-    if (recoveryNextAction(phase) == RecoveryNextAction.COMPLETE) {
-        PillButton(
-            if (busy) copy(UiMessages.securityAndroidCompleting()) else copy(UiMessages.securityCompleteRecovery()),
-            onComplete,
-            Modifier.fillMaxWidth().padding(top = 10.dp),
-            ButtonKind.INK,
-            enabled = !busy,
-        )
-        Hint(copy(UiMessages.securityAndroidIf48HoursHaveNotPassedOrTheOriginalManaging()), Modifier.padding(top = 8.dp))
-    } else {
+    if (rec.phase == SecurityRecoveryPhase.SECURITY_RECOVERY_PHASE_REJECTED) {
         Hint(copy(UiMessages.securityAndroidTheNewRecoveryCodeGeneratedForThisRequestIsInvalid()), Modifier)
         PillButton(
-            if (busy) copy(UiMessages.securityAndroidClearing()) else copy(UiMessages.securityAndroidAbandonThisRecoveryAndEnterANewCode()),
+            if (rec.busy) copy(UiMessages.securityAndroidClearing()) else copy(UiMessages.securityAndroidAbandonThisRecoveryAndEnterANewCode()),
             onRestart,
             Modifier.fillMaxWidth().padding(top = 10.dp),
             ButtonKind.SECONDARY,
-            enabled = !busy,
+            enabled = rec.canDiscard,
         )
+    } else {
+        PillButton(
+            if (rec.busy) copy(UiMessages.securityAndroidCompleting()) else copy(UiMessages.securityCompleteRecovery()),
+            onComplete,
+            Modifier.fillMaxWidth().padding(top = 10.dp),
+            ButtonKind.INK,
+            enabled = rec.canComplete,
+        )
+        Hint(copy(UiMessages.securityAndroidIf48HoursHaveNotPassedOrTheOriginalManaging()), Modifier.padding(top = 8.dp))
     }
 }
 
-/** 新账户: create the root key, device identity and recovery code on this phone. */
+/** 新账户: Core drives CreateAccountView; setup token stays transient in Compose state only. */
 @Composable
-fun CreateAccountScreen(app: RaApp, client: SecurityClient? = null, onBack: () -> Unit = {}) {
+fun CreateAccountScreen(
+    coreHost: CoreHost,
+    allowPlainHttp: Boolean = true,
+    onBack: () -> Unit = {},
+) {
     val copy = uiText()
     val p = pal
-    val scope = rememberAuthorityScope()
-    val secClient = rememberStandaloneOrExternalClient(app, client)
-    val secStatus by secClient.status.collectAsState()
-    val pending = secStatus?.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_PENDING_CREATE
-
-    var server by remember {
-        mutableStateOf(
-            secStatus?.server?.takeIf { it.isNotEmpty() }
-                ?: app.lastServer.ifEmpty { "https://" },
-        )
-    }
+    val ob by coreHost.onboardingView.collectAsState()
+    val cv = ob.create
     var setupToken by remember { mutableStateOf("") }
-    var recoveryCode by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf("") }
-    var busy by remember { mutableStateOf(false) }
-
-    fun checkedServer(s: String) = Secret.checkServer(s, allowPlainHttp = app.debuggable)
+    val settledEditSeq by coreHost.settledOnboardingEditSeq.collectAsState()
+    var serverWaitSeq by remember { mutableStateOf(0L) }
+    val err = if (cv.banner.visible) uiText(cv.banner.text) else ""
+    val inForm = cv.step == CreateAccountStep.CREATE_ACCOUNT_STEP_FORM ||
+        cv.step == CreateAccountStep.CREATE_ACCOUNT_STEP_UNSPECIFIED
 
     PageScaffold(copy(UiMessages.securityCreateAccount()), onBack = onBack) {
-        LegacyRepairBanner(secStatus, {
-            scope.launch {
-                runCatching {
-                    val next = secClient.dismissUpgradeNotice()
-                    app.updateBootstrapStatus(next)
-                }
-            }
-        })
-        if (error.isNotEmpty() && !busy) DiscardSetup(app, onBack)
+        LegacyRepairBanner(ob.showLegacyRepairBanner, coreHost::appRootDismissUpgradeNotice)
+        if ((err.isNotEmpty() || cv.showSetupReset) && !cv.busy) DiscardSetup(coreHost)
         FormColumn(
             Modifier.fillMaxWidth()
                 .verticalScrollFaded()
                 .imePadding(),
         ) {
-            if (!pending) {
+            if (inForm) {
                 Text(
                     copy(UiMessages.securityAndroidThisPhoneWillBecomeTheManagingClientTheAccountRoot()),
                     style = T.s13,
                     color = p.ink2,
                     modifier = Modifier.padding(vertical = 10.dp),
                 )
-                if (error.isNotEmpty()) Notice(error, Modifier.padding(bottom = 10.dp), NoticeTone.ERROR)
-                RecoveryField(copy(UiMessages.securityServer()), server, { server = it.trim() }, "https://")
-                RecoveryField(copy(UiMessages.securityAndroidSetupTokenIfRequiredByTheServer()), setupToken, { setupToken = it }, copy(UiMessages.securityAndroidOptional()))
+                if (err.isNotEmpty()) Notice(err, Modifier.padding(bottom = 10.dp), NoticeTone.ERROR)
+                SecurityField(
+                    copy(UiMessages.securityServer()),
+                    cv.serverInput,
+                    { serverWaitSeq = coreHost.onboardingCreateEdit(serverInput = it) },
+                    "https://",
+                    editPending = settledEditSeq < serverWaitSeq,
+                )
+                SecurityField(copy(UiMessages.securityAndroidSetupTokenIfRequiredByTheServer()), setupToken, { setupToken = it }, copy(UiMessages.securityAndroidOptional()))
                 PillButton(
-                    if (busy) copy(UiMessages.scheduleCreating()) else copy(UiMessages.securityAndroidCreateAccount()),
-                    {
-                        busy = true
-                        error = ""
-                        scope.launch {
-                            try {
-                                val url = checkedServer(server)
-                                app.lastServer = url
-                                val prep = secClient.prepareCreation(url, storagePersisted = true)
-                                recoveryCode = prep.recoveryCode
-                            } catch (e: Exception) {
-                                error = displayError(e)
-                            } finally {
-                                busy = false
-                            }
-                        }
-                    },
+                    if (cv.busy) copy(UiMessages.scheduleCreating()) else copy(UiMessages.securityAndroidCreateAccount()),
+                    { coreHost.onboardingCreateSubmit(serverInput = cv.serverInput.trim(), setupToken = setupToken.trim(), confirmCodeSaved = false) },
                     Modifier.fillMaxWidth().padding(top = 8.dp),
                     ButtonKind.INK,
-                    enabled = !busy && server.length > 8,
+                    enabled = cv.canSubmit,
                 )
             } else {
-                if (recoveryCode.isNotEmpty()) {
+                if (cv.recoveryCode.isNotEmpty()) {
                     GLabel(copy(UiMessages.securityAndroidRecoveryCodeShownOnlyOnce()))
-                    RecoveryCodeFigure(recoveryCode)
+                    RecoveryCodeFigure(cv.recoveryCode)
                     Hint(copy(UiMessages.securityAndroidUseThisToRecoverManagementIfTheManagingClientIs()), Modifier)
                 } else {
                     Hint(copy(UiMessages.securityTheOriginalCreationDraftIsPreservedContinueWithThe()), Modifier)
-                    RecoveryField(copy(UiMessages.securityAndroidSetupTokenIfRequiredByTheServer()), setupToken, { setupToken = it }, copy(UiMessages.securityAndroidOptional()))
+                    SecurityField(copy(UiMessages.securityAndroidSetupTokenIfRequiredByTheServer()), setupToken, { setupToken = it }, copy(UiMessages.securityAndroidOptional()))
                 }
-                if (error.isNotEmpty()) {
-                    Notice(error, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
-                }
+                if (err.isNotEmpty()) Notice(err, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
                 PillButton(
-                    if (busy) copy(UiMessages.securityAndroidSaving()) else copy(UiMessages.securityAndroidISavedItStartUsingTheApp()),
-                    {
-                        busy = true
-                        error = ""
-                        scope.launch {
-                            try {
-                                if (recoveryCode.isNotEmpty()) {
-                                    secClient.confirmCreationCodeSaved()
-                                }
-                                var res = secClient.continueCreation(setupToken.trim())
-                                var st = res.status
-                                if (recoveryCode.isEmpty() &&
-                                    st.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_PENDING_CREATE &&
-                                    !st.pendingOp.codeSaved
-                                ) {
-                                    res = secClient.adoptCreationWithoutCode()
-                                    st = res.status
-                                }
-                                withContext(NonCancellable) { app.adoptBootstrappedAccount(st) }
-                            } catch (e: CancellationException) {
-                                throw e
-                            } catch (e: Exception) {
-                                error = displayError(e)
-                                busy = false
-                            }
-                        }
-                    },
+                    if (cv.busy) copy(UiMessages.securityAndroidSaving()) else copy(UiMessages.securityAndroidISavedItStartUsingTheApp()),
+                    { coreHost.onboardingCreateSubmit(serverInput = cv.serverInput.trim(), setupToken = setupToken.trim(), confirmCodeSaved = true) },
                     Modifier.fillMaxWidth().padding(top = 12.dp),
                     ButtonKind.INK,
-                    enabled = !busy,
+                    enabled = !cv.busy,
                 )
             }
         }
     }
 }
 
-@Composable
-private fun RecoveryField(
-    label: String,
-    value: String,
-    onValue: (String) -> Unit,
-    placeholder: String,
-    lines: Int = 1,
-) {
-    val p = pal
-    androidx.compose.foundation.text.BasicTextField(
-        value,
-        onValue,
-        Modifier.fillMaxWidth().padding(bottom = 10.dp),
-        textStyle = (if (lines > 1) T.mono12 else T.s15).copy(color = p.ink),
-        singleLine = lines == 1,
-        minLines = lines,
-        keyboardOptions =
-            KeyboardOptions(keyboardType = if (lines == 1) KeyboardType.Uri else KeyboardType.Text),
-        cursorBrush = androidx.compose.ui.graphics.SolidColor(p.blue),
-        decorationBox = { inner ->
-            FieldBox {
-                Column {
-                    Text(
-                        label,
-                        style = T.s12,
-                        color = p.ink2,
-                        modifier = Modifier.padding(bottom = 2.dp),
-                    )
-                    androidx.compose.foundation.layout.Box {
-                        if (value.isEmpty()) Text(placeholder, style = T.s15, color = p.ink2)
-                        inner()
-                    }
-                }
-            }
-        },
-    )
-}
-
-/** 更换恢复码: rotate on suspected leak, with the same save-before-publish order. */
+/** 更换恢复码: Core drives preparedCode / publish / error state. */
 @Composable
 fun RotateRecoveryScreen(onBack: () -> Unit = {}) {
     val remote = LocalRemote.current
-    val connView by remote.coreHost.connectionView.collectAsState()
-    val advice = connView.takeIf { it.hasLeaseRenewalAdvice() }?.leaseRenewalAdvice
-    RotateRecoveryContent(advice, remote::prepareRecoveryRotation, remote::confirmRecoveryRotation, onBack)
+    val host = remote.coreHost
+    val vm by host.accountSecurityView.collectAsState()
+    RotateRecoveryContent(
+        vm = vm,
+        onPrepare = { host.accountSecurityAction(AccountSecurityActionKind.ACCOUNT_SECURITY_ACTION_KIND_PREPARE_ROTATION) },
+        onPublish = {
+            host.accountSecurityAction(AccountSecurityActionKind.ACCOUNT_SECURITY_ACTION_KIND_SET_ROTATION_SAVED, flag = true)
+            host.accountSecurityAction(AccountSecurityActionKind.ACCOUNT_SECURITY_ACTION_KIND_PUBLISH_ROTATION)
+        },
+        onCancelPrepared = {
+            host.accountSecurityAction(AccountSecurityActionKind.ACCOUNT_SECURITY_ACTION_KIND_DISCARD_PENDING, flag = false)
+        },
+        onBack = onBack,
+    )
 }
 
 @Composable
 internal fun RotateRecoveryContent(
-    leaseRenewalAdvice: io.github.lewin671.remoteagent.core.proto.Text? = null,
-    prepareCode: suspend () -> String,
-    publishCode: suspend () -> Unit,
+    vm: AccountSecurityViewModel,
+    onPrepare: () -> Unit,
+    onPublish: () -> Unit,
+    onCancelPrepared: () -> Unit = {},
     onBack: () -> Unit,
 ) {
     val copy = uiText()
     val p = pal
-    val scope = rememberAuthorityScope()
-    var prepared by remember { mutableStateOf<String?>(null) }
-    var error by remember { mutableStateOf("") }
-    var busy by remember { mutableStateOf(false) }
+    val err = if (vm.errorBanner.visible) uiText(vm.errorBanner.text) else ""
+    val success = uiText(vm.successNotice)
     PageScaffold(copy(UiMessages.securityRecoveryCode()), onBack = onBack) {
         FormColumn(
             Modifier.fillMaxWidth()
                 .verticalScrollFaded()
                 .imePadding(),
         ) {
-            val codeValue = prepared
-            if (codeValue == null) {
+            if (success.isNotEmpty()) {
+                Notice(success, Modifier.padding(vertical = 8.dp), NoticeTone.PLAIN)
+            }
+            if (vm.preparedCode.isEmpty()) {
                 Text(
                     copy(UiMessages.securityReplacingTheRecoveryCodeImmediatelyInvalidatesTheOldCode()),
                     style = T.s13,
                     color = p.ink2,
                     modifier = Modifier.padding(vertical = 10.dp),
                 )
-                if (error.isNotEmpty()) {
-                    Notice(error, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
-                }
+                if (err.isNotEmpty()) Notice(err, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
                 PillButton(
-                    if (busy) copy(UiMessages.securityAndroidGenerating()) else copy(UiMessages.securityGenerateNewRecoveryCode()),
-                    {
-                        busy = true
-                        error = ""
-                        scope.launch {
-                            try {
-                                prepared = prepareCode()
-                            } catch (e: Exception) {
-                                error = displayError(e, leaseRenewalAdvice)
-                            } finally {
-                                busy = false
-                            }
-                        }
-                    },
+                    if (vm.busy) copy(UiMessages.securityAndroidGenerating()) else copy(UiMessages.securityGenerateNewRecoveryCode()),
+                    onPrepare,
                     Modifier.fillMaxWidth().padding(top = 8.dp),
                     ButtonKind.INK,
-                    enabled = !busy,
+                    enabled = vm.canPrepareRotation && !vm.busy,
                 )
             } else {
                 GLabel(copy(UiMessages.securityNewRecoveryCodeShownOnlyOnce()))
-                RecoveryCodeFigure(codeValue)
+                RecoveryCodeFigure(vm.preparedCode)
                 Hint(copy(UiMessages.securityAndroidWriteItDownOrPhotographItBeforePublishingPublishingImmediately()), Modifier)
-                if (error.isNotEmpty()) {
-                    Notice(error, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
-                }
+                if (err.isNotEmpty()) Notice(err, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
                 PillButton(
-                    if (busy) copy(UiMessages.securityAndroidPublishing()) else copy(UiMessages.securitySavedPublishReplacement()),
-                    {
-                        busy = true
-                        error = ""
-                        scope.launch {
-                            try {
-                                publishCode()
-                                onBack()
-                            } catch (e: Exception) {
-                                error = displayError(e, leaseRenewalAdvice)
-                            } finally {
-                                busy = false
-                            }
-                        }
-                    },
+                    if (vm.busy) copy(UiMessages.securityAndroidPublishing()) else copy(UiMessages.securitySavedPublishReplacement()),
+                    onPublish,
                     Modifier.fillMaxWidth().padding(top = 12.dp),
                     ButtonKind.INK,
-                    enabled = !busy,
+                    enabled = !vm.busy,
                 )
                 PillButton(
                     copy(UiMessages.securityAndroidDoNotPublishYet()),
-                    { prepared = null },
+                    onCancelPrepared,
                     Modifier.fillMaxWidth().padding(top = 6.dp),
                     ButtonKind.SECONDARY,
-                    enabled = !busy,
+                    enabled = !vm.busy,
                 )
             }
         }

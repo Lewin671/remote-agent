@@ -441,28 +441,46 @@ class V8Gallery {
 
     @Test fun accountSecurityAuthority() {
         val state = accountState().copy(isAuthority = true, authorityDeviceId = remote.account.deviceId, leaseEndMs = now + 48 * 3600_000)
-        shoot("50-security-authority", state) { AccountSecurityContent(state.toTestSecuritySummaryView(remote.account.deviceId)) }
+        val vm = io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel.newBuilder()
+            .setIsManager(true)
+            .build()
+        shoot("50-security-authority", state) { AccountSecurityContent(vm) }
     }
 
     @Test fun accountSecurityMember() {
         val state = accountState().copy(authorityDeviceId = "b71c00000000b71c", leaseEndMs = now + 48 * 3600_000)
-        shoot("51-security-member", state) { AccountSecurityContent(state.toTestSecuritySummaryView(remote.account.deviceId)) }
+        val vm = io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel.newBuilder()
+            .setIsManager(false)
+            .build()
+        shoot("51-security-member", state) { AccountSecurityContent(vm) }
     }
 
     @Test fun accountSecurityPending() {
         val state = accountState().copy(isAuthority = true, authorityDeviceId = remote.account.deviceId, leaseEndMs = now + 48 * 3600_000, recoveryPending = true, recoveryReadyMs = now + 24 * 3600_000)
-        shoot("52-security-pending", state) { AccountSecurityContent(state.toTestSecuritySummaryView(remote.account.deviceId), pending = true) }
+        val vm = io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel.newBuilder()
+            .setIsManager(true)
+            .setHasPendingOp(true)
+            .build()
+        shoot("52-security-pending", state) { AccountSecurityContent(vm) }
     }
 
     @Test fun recoveryCode() {
         val state = accountState().copy(isAuthority = true)
-        shoot("53-recovery-code", state, then = { ui.onNodeWithText("生成新的恢复码").performClick() }) { RotateRecoveryContent(prepareCode = { "synthetic-offline-code" }, publishCode = {}, onBack = {}) }
+        val vm = io.github.lewin671.remoteagent.core.proto.AccountSecurityViewModel.newBuilder()
+            .setIsManager(true)
+            .setPreparedCode("synthetic-offline-code")
+            .build()
+        shoot("53-recovery-code", state) { RotateRecoveryContent(vm = vm, onPrepare = {}, onPublish = {}, onBack = {}) }
     }
 
     @Test fun takeover() {
         val state = accountState().copy(authorityDeviceId = "b71c00000000b71c")
-        shoot("54-takeover", state, then = { ui.onNodeWithText("生成新的恢复码").performClick() }) {
-            HandoffPreparationContent(prepareCode = { "synthetic-offline-code" }) {}
+        val vm = io.github.lewin671.remoteagent.core.proto.HandoffViewModel.newBuilder()
+            .setRole(io.github.lewin671.remoteagent.core.proto.HandoffRole.HANDOFF_ROLE_INCOMING_CANDIDATE)
+            .setPreparedCode("synthetic-offline-code")
+            .build()
+        shoot("54-takeover", state) {
+            HandoffPreparationContent(vm = vm, onPrepareCode = {}, onPublishOffer = {})
         }
     }
 

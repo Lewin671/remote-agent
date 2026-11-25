@@ -5,8 +5,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.*
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import io.github.lewin671.remoteagent.core.proto.EmergencyRecoveryView
+import io.github.lewin671.remoteagent.core.proto.SecurityRecoveryPhase
 import io.github.lewin671.remoteagent.data.ThemeMode
-import io.github.lewin671.remoteagent.proto.GetRecoveryContextResponse.Phase
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -21,22 +22,40 @@ class RecoveryStatusTest {
 
     @Test
     fun statusCanBeCheckedAgainAfterWaitingAndAFailedCompletionToDiscoverAVeto() {
-        var phase by mutableStateOf<Phase?>(null)
+        var rec by mutableStateOf(
+            EmergencyRecoveryView.newBuilder()
+                .setPhase(SecurityRecoveryPhase.SECURITY_RECOVERY_PHASE_SUBMITTED_WAITING)
+                .setCanSubmitOrRefresh(true)
+                .setCanComplete(false)
+                .build(),
+        )
         var error by mutableStateOf("")
-        var next = Phase.PHASE_PENDING
+        var step = 0
         var refreshes = 0
         var restarts = 0
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 Column {
                     RecoveryStatus(
-                        phase,
-                        false,
-                        error,
+                        rec = rec,
+                        error = error,
                         onRefresh = {
-                            phase = next
+                            step++
                             error = ""
                             refreshes++
+                            rec = when (step) {
+                                1 -> EmergencyRecoveryView.newBuilder()
+                                    .setPhase(SecurityRecoveryPhase.SECURITY_RECOVERY_PHASE_READY_TO_COMPLETE)
+                                    .setCanSubmitOrRefresh(true)
+                                    .setCanComplete(true)
+                                    .build()
+                                else -> EmergencyRecoveryView.newBuilder()
+                                    .setPhase(SecurityRecoveryPhase.SECURITY_RECOVERY_PHASE_REJECTED)
+                                    .setCanSubmitOrRefresh(false)
+                                    .setCanComplete(false)
+                                    .setCanDiscard(true)
+                                    .build()
+                            }
                         },
                         onComplete = { error = "恢复尚不能完成" },
                         onRestart = { restarts++ },
@@ -44,18 +63,18 @@ class RecoveryStatusTest {
                 }
             }
         }
-        ui.onNodeWithText("查看状态").performClick()
         ui.onNodeWithText("还在 48 小时等待期内。").assertIsDisplayed()
-        ui.onNodeWithText("查看状态").assertIsDisplayed().performClick()
-        ui.onNodeWithText("完成恢复").performClick()
+        ui.onNodeWithText("完成恢复").assertIsNotEnabled()
+        ui.onNodeWithText("查看状态").assertIsEnabled().performClick()
+        ui.onNodeWithText("已经可以完成恢复。").assertIsDisplayed()
+        ui.onNodeWithText("完成恢复").assertIsEnabled().performClick()
         ui.onNodeWithText("恢复尚不能完成").assertIsDisplayed()
-        next = Phase.PHASE_REJECTED
-        ui.onNodeWithText("查看状态").performClick()
+        ui.onNodeWithText("查看状态").assertIsEnabled().performClick()
         ui.onNodeWithText("这次恢复被原管理端否决了。").assertIsDisplayed()
         ui.onNodeWithText("完成恢复").assertDoesNotExist()
-        ui.onNodeWithText("放弃这次恢复，输入新恢复码").performClick()
+        ui.onNodeWithText("放弃这次恢复，输入新恢复码").assertIsEnabled().performClick()
         ui.runOnIdle {
-            assertEquals(3, refreshes)
+            assertEquals(2, refreshes)
             assertEquals(1, restarts)
         }
     }

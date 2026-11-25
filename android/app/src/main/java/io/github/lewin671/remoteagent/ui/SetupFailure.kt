@@ -1,88 +1,130 @@
 package io.github.lewin671.remoteagent.ui
 
-import io.github.lewin671.remoteagent.core.UiMessages
-import io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice
-import io.github.lewin671.remoteagent.core.renderExitAdviceMessage
-
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
-import io.github.lewin671.remoteagent.RaApp
-import kotlinx.coroutines.launch
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.fillMaxWidth
+import io.github.lewin671.remoteagent.core.CoreHost
+import io.github.lewin671.remoteagent.core.UiMessages
+import io.github.lewin671.remoteagent.core.proto.BootstrapErrorView
+import io.github.lewin671.remoteagent.core.proto.ExitConfirmStep
+import io.github.lewin671.remoteagent.core.proto.ExitConfirmView
+import io.github.lewin671.remoteagent.core.proto.ExitIntentKind
 
 @Composable
-fun AccountLoadFailure(
-    message: String,
-    retry: () -> Unit,
-    discard: () -> Unit,
-    canDiscard: Boolean = true,
-    checkAdvice: (suspend () -> SecurityExitAdvice?)? = null,
+fun ExitConfirmDialog(
+    view: ExitConfirmView,
+    onConfirm: (Boolean) -> Unit,
 ) {
     val copy = uiText()
-    Column(Modifier.padding(24.dp)) {
-        Text(message, style = T.s17, color = pal.ink)
-        PillButton(copy(UiMessages.commonRetry()), retry, Modifier.fillMaxWidth().padding(top = 16.dp), ButtonKind.INK)
-        if (canDiscard) DiscardSetupAction(discard, checkAdvice)
+    if (view.step == ExitConfirmStep.EXIT_CONFIRM_STEP_FAILED) {
+        val err = uiText(view.errorText)
+        if (err.isNotEmpty()) {
+            Notice(err, Modifier.padding(top = 8.dp), tone = NoticeTone.ERROR)
+        }
+        return
+    }
+    if (view.step != ExitConfirmStep.EXIT_CONFIRM_STEP_AWAITING_CONFIRM) return
+    val title = when (view.intent) {
+        ExitIntentKind.EXIT_INTENT_KIND_REJOIN_PAIRING -> copy(UiMessages.securityDeleteLocalKeysAndRejoin())
+        else -> copy(UiMessages.securityExitAndDeleteLocalKeys())
+    }
+    val baseBody = uiText(view.warningBody).ifEmpty {
+        copy(UiMessages.securityTheLocalAccountUnfinishedRegistrationAndSecurityOperationsWill())
+    }
+    val body = if (view.showRejoinDeletesCacheNote) {
+        baseBody + "\n\n" + copy(UiMessages.securityThisDeletesTheAccountKeysAndCacheOnThis())
+    } else {
+        baseBody
+    }
+    val ok = when {
+        view.busy -> copy(UiMessages.securityExiting())
+        view.intent == ExitIntentKind.EXIT_INTENT_KIND_REJOIN_PAIRING -> copy(UiMessages.securityRejoin())
+        view.intent == ExitIntentKind.EXIT_INTENT_KIND_LEAVE_ACCOUNT -> copy(UiMessages.securityExit())
+        else -> copy(UiMessages.securityConfirmExit())
+    }
+    Confirm(
+        title,
+        body,
+        ok,
+        danger = true,
+        onDismiss = { if (!view.busy) onConfirm(false) },
+    ) {
+        if (!view.busy) onConfirm(true)
     }
 }
 
 @Composable
-fun DiscardSetupAction(
-    discard: () -> Unit,
-    checkAdvice: (suspend () -> SecurityExitAdvice?)? = null,
-) {
-    val copy = uiText()
-    val scope = rememberCoroutineScope()
-    var asking by remember { mutableStateOf(false) }
-    var adviceText by remember { mutableStateOf("") }
-    TextLink(
-        copy(UiMessages.securityExitAndStartOver()),
-        {
-            if (checkAdvice == null) {
-                adviceText = copy(UiMessages.securityTheLocalAccountUnfinishedRegistrationAndSecurityOperationsWill())
-                asking = true
-            } else {
-                scope.launch {
-                    val adv = runCatching { checkAdvice() }.getOrNull()
-                    val resolved = adv?.takeIf { it.authority || it.unresolved }
-                        ?.let { renderExitAdviceMessage(it, copy) }
-                        ?.takeIf { it.isNotEmpty() }
-                    adviceText = resolved
-                        ?: copy(UiMessages.securityTheLocalAccountUnfinishedRegistrationAndSecurityOperationsWill())
-                    asking = true
-                }
-            }
-        },
-        Modifier.fillMaxWidth(),
-        danger = true,
-    )
-    if (asking)
-        Confirm(
-            copy(UiMessages.securityExitAndDeleteLocalKeys()),
-            adviceText.ifEmpty { copy(UiMessages.securityTheLocalAccountUnfinishedRegistrationAndSecurityOperationsWill()) },
-            copy(UiMessages.securityConfirmExit()),
-            danger = true,
-            onDismiss = { asking = false },
-        ) {
-            asking = false
-            discard()
-        }
+fun ExitConfirmDialog(coreHost: CoreHost) {
+    val view by coreHost.exitConfirmView.collectAsState()
+    ExitConfirmDialog(view = view, onConfirm = coreHost::exitConfirm)
 }
 
 @Composable
-fun DiscardSetup(app: RaApp, onDiscarded: () -> Unit = {}) {
-    val scope = rememberCoroutineScope()
-    DiscardSetupAction(
-        discard = {
-            scope.launch {
-                app.logout()
-                onDiscarded()
-            }
-        },
-        checkAdvice = { runCatching { app.checkExitAdvice() }.getOrNull() },
+fun AccountLoadFailure(
+    error: BootstrapErrorView,
+    coreHost: CoreHost,
+) {
+    val copy = uiText()
+    val exitView by coreHost.exitConfirmView.collectAsState()
+    AccountLoadFailureContent(
+        message = uiText(error.message).ifEmpty { copy(UiMessages.errorsDisconnectedFromServer()) },
+        canRetry = error.canRetry,
+        canReset = error.canReset,
+        exitView = exitView,
+        onRetry = coreHost::appRootRetryBootstrap,
+        onRequestReset = { coreHost.exitRequest(ExitIntentKind.EXIT_INTENT_KIND_SETUP_RESET) },
+        onConfirmExit = coreHost::exitConfirm,
     )
+}
+
+@Composable
+fun AccountLoadFailureContent(
+    message: String,
+    canRetry: Boolean = true,
+    canReset: Boolean = true,
+    exitView: ExitConfirmView = ExitConfirmView.getDefaultInstance(),
+    onRetry: () -> Unit = {},
+    onRequestReset: () -> Unit = {},
+    onConfirmExit: (Boolean) -> Unit = {},
+) {
+    val copy = uiText()
+    Column(Modifier.padding(24.dp)) {
+        Text(message, style = T.s17, color = pal.ink)
+        if (canRetry) {
+            PillButton(
+                copy(UiMessages.commonRetry()),
+                onRetry,
+                Modifier.fillMaxWidth().padding(top = 16.dp),
+                ButtonKind.INK,
+            )
+        }
+        if (canReset) {
+            TextLink(
+                copy(UiMessages.securityExitAndStartOver()),
+                onRequestReset,
+                Modifier.fillMaxWidth(),
+                danger = true,
+            )
+        }
+        ExitConfirmDialog(view = exitView, onConfirm = onConfirmExit)
+    }
+}
+
+@Composable
+fun DiscardSetup(coreHost: CoreHost) {
+    val copy = uiText()
+    val exitView by coreHost.exitConfirmView.collectAsState()
+    TextLink(
+        copy(UiMessages.securityExitAndStartOver()),
+        { coreHost.exitRequest(ExitIntentKind.EXIT_INTENT_KIND_SETUP_RESET) },
+        Modifier.fillMaxWidth(),
+        danger = true,
+    )
+    ExitConfirmDialog(view = exitView, onConfirm = coreHost::exitConfirm)
 }

@@ -56,8 +56,8 @@ class ScheduleLocalE2ETest {
         val code = ui.onAllNodes(hasText("",substring=true)).fetchSemanticsNodes().flatMap { it.config.getOrElse(androidx.compose.ui.semantics.SemanticsProperties.Text) { emptyList() } }.map { it.text }.first { Regex("[A-Z0-9]{4} [A-Z0-9]{4}").matches(it) }
         File(output,"pair-code").writeText(code.replace(" ",""))
         waitText("允许加入",120_000)
-        val comparison=RaApp.instance.pairing(requireNotNull(RaApp.instance.remote.value),"").state.value as PairingUiState.Compare
-        File(output,"pair-emoji").writeText(comparison.emoji.joinToString(" "))
+        val emoji = RaApp.instance.ensureCoreHost().addDeviceView.value.sasEmojiList
+        File(output,"pair-emoji").writeText(emoji.joinToString(" "))
         ui.waitUntil(120_000) { File(output,"host-confirmed").exists() }
         ui.onNodeWithText("允许加入").performClick()
         waitText("设备已加入",60_000)
