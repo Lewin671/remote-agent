@@ -81,8 +81,8 @@ internal fun ConnCheckSheet(
     val cc = settingsView.connCheck
     val isConnected = cc.connState == CoreConnState.CONN_STATE_CONNECTED
     val startedAt = cc.connStartedAtMs.takeIf { it > 0L }
-    val stepText = if (cc.hasConnStep()) uiText(cc.connStep) else ""
-    val connecting = !isConnected && stepText.isNotEmpty() && startedAt != null
+    val hasConnStep = cc.connStep.isCoreTextNotEmpty()
+    val connecting = cc.isConnecting && hasConnStep && startedAt != null
     var tick by remember(startedAt) { mutableStateOf(clock()) }
     LaunchedEffect(connecting, startedAt) {
         if (connecting) {
@@ -218,13 +218,13 @@ internal fun ConnCheckSheet(
             val rawFailure = if (cc.hasLastFailureText()) uiText(cc.lastFailureText) else ""
             Hint(
                 when {
-                    stepText.isNotEmpty() && startedAt != null -> {
-                        val seconds = ((tick - startedAt) / 1000).coerceAtLeast(0)
+                    connecting -> {
+                        val seconds = ((tick - startedAt!!) / 1000).coerceAtLeast(0)
                         val failureClause = if (rawFailure.isEmpty()) "" else copy(UiMessages.connectionLastFailure(rawFailure))
                         copy(
                             UiMessages.connectionSecElapsed(
                                 seconds.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
-                                stepText,
+                                uiText(cc.connStep),
                                 failureClause,
                                 copy(if (cc.everOnline) UiMessages.connectionReconnectingConnCheckLabel() else UiMessages.connectionConnectingConnCheckLabel()),
                             ),

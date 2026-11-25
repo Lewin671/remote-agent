@@ -40,7 +40,7 @@ class FilesLayoutTest {
                             name = "data.csv",
                             sizeText = "0 B",
                             state = io.github.lewin671.remoteagent.core.proto.AttachmentItemState.ATTACHMENT_ITEM_STATE_FAILED,
-                            errorText = "Missing file",
+                            statusText = "Missing file",
                             onRetry = {},
                             onRemove = {},
                         )

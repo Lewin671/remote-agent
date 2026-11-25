@@ -307,7 +307,7 @@ class I18nBatchBTest(private val locale: String) {
     @Test fun attachmentRows() {
         show { Column(Modifier.padding(16.dp)) {
             FileChip("example.patch", "2.0 KB", AttachmentItemState.ATTACHMENT_ITEM_STATE_UPLOADING, progress = .42f, onRetry = {}, onRemove = {})
-            FileChip("notes.txt", "320 B", AttachmentItemState.ATTACHMENT_ITEM_STATE_FAILED, errorText = "Raw transport diagnostic", onRetry = {}, onRemove = {})
+            FileChip("notes.txt", "320 B", AttachmentItemState.ATTACHMENT_ITEM_STATE_FAILED, statusText = "Raw transport diagnostic", onRetry = {}, onRemove = {})
             Text(uiText(UiMessages.attachmentMetadata()))
             GeneratedCard("generated", listOf(ImageRef.newBuilder().setImageId("image").setWidth(640).setHeight(360).build()), "Original image prompt") {}
         } }; shot("attachments")

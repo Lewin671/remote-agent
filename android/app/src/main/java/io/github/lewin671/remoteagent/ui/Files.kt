@@ -85,7 +85,6 @@ internal fun FileChip(
     state: AttachmentItemState? = null,
     progress: Float = 0f,
     statusText: String = "",
-    errorText: String = "",
     onPause: (() -> Unit)? = null,
     onResume: (() -> Unit)? = null,
     onRetry: (() -> Unit)? = null,
@@ -169,9 +168,6 @@ internal fun FileChip(
                             .background(p.ink),
                     )
                 }
-            }
-            if (isFailed && errorText.isNotEmpty() && errorText != statusText) {
-                Text(errorText, style = T.s13, color = p.red)
             }
         }
         if (onPause != null) {
@@ -272,7 +268,6 @@ internal fun FileStrip(
                 state = item.state,
                 progress = item.progress.toFloat(),
                 statusText = if (item.hasStatusText()) uiText(item.statusText) else "",
-                errorText = if (item.hasFileErrorText()) uiText(item.fileErrorText) else "",
                 onPause = if (item.canPause) ({ remote.pauseAttachmentUpload(scope, item.itemId) }) else null,
                 onResume = if (item.canResume) ({ remote.resumeAttachmentUpload(scope, item.itemId) }) else null,
                 onRetry = if (item.canRetry) ({ remote.retryDraftItem(scope, item.itemId) }) else null,
