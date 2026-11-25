@@ -371,8 +371,11 @@ fun ModelSheet(sid: String, vm: SessionViewModel, onOpenUsage: (() -> Unit)? = n
                 val few = list.size == offered.size
                 SheetList {
                     list.forEachIndexed { i, m ->
-                        val note = if (m.effortsCount == 0) copy(UiMessages.sessionNoEffort())
-                        else m.effortsList.lastOrNull()?.takeIf { it != "high" }?.let { copy(UiMessages.sessionMaxEffort(effort = it)) }
+                        val note = when {
+                            m.effortsCount == 0 -> copy(UiMessages.sessionNoEffort())
+                            m.maxEffortHint.isCoreTextNotEmpty() -> uiText(m.maxEffortHint)
+                            else -> null
+                        }
                         ListItem(
                             m.displayName.ifEmpty { m.slug },
                             small = note,
