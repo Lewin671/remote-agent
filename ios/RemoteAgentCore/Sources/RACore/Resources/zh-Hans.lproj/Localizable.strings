@@ -523,7 +523,6 @@
 "modes_ask" = "询问";
 "modes_ask_desc" = "需要审批时由你确认，超时拒绝";
 "modes_ask_generic_desc" = "需要审批时由你确认";
-"modes_ask_permission_desc" = "需要权限时由你确认";
 "modes_auto" = "自动";
 "modes_auto_desc" = "由 %1$@ 自己判断，拿不准的在对话里问你";
 "modes_current_terminal" = "当前：%1$@（在终端设置）";
@@ -539,7 +538,6 @@
 "modes_model_no_auto" = "这个模型没有自动模式，换一种审批模式再开始";
 "modes_permission_notice" = "照实显示终端中的模式；不提供切到 accept edits 的按钮。";
 "modes_plan" = "计划";
-"modes_plan_propose_desc" = "先出方案，再批准执行";
 "modes_switch" = "切换";
 "modes_switch_failed" = "没能切换：%1$@";
 "modes_switching" = "正在切换…";

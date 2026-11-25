@@ -600,7 +600,6 @@
     <string name="modes_ask" formatted="false">"询问"</string>
     <string name="modes_ask_desc" formatted="false">"需要审批时由你确认，超时拒绝"</string>
     <string name="modes_ask_generic_desc" formatted="false">"需要审批时由你确认"</string>
-    <string name="modes_ask_permission_desc" formatted="false">"需要权限时由你确认"</string>
     <string name="modes_auto" formatted="false">"自动"</string>
     <string name="modes_auto_desc">"由 %1$s 自己判断，拿不准的在对话里问你"</string>
     <string name="modes_current_terminal">"当前：%1$s（在终端设置）"</string>
@@ -615,7 +614,6 @@
     <string name="modes_model_no_auto" formatted="false">"这个模型没有自动模式，换一种审批模式再开始"</string>
     <string name="modes_permission_notice" formatted="false">"照实显示终端中的模式；不提供切到 accept edits 的按钮。"</string>
     <string name="modes_plan" formatted="false">"计划"</string>
-    <string name="modes_plan_propose_desc" formatted="false">"先出方案，再批准执行"</string>
     <string name="modes_switch" formatted="false">"切换"</string>
     <string name="modes_switch_failed">"没能切换：%1$s"</string>
     <string name="modes_switching" formatted="false">"正在切换…"</string>

@@ -128,7 +128,7 @@ function HeroSection({
     const selectedLabel = renderText(hero.scopeText, locale) || hero.selectedModel;
     scopeNode = (
       <>
-        <AgentMark agent={hero.selectedAgent} />
+        <AgentMark agent={hero.selectedAgent} name={hero.selectedAgentName} />
         <span className="nm" title={selectedLabel}>
           {middleEllipsis(selectedLabel, 46)}
         </span>
@@ -584,7 +584,7 @@ function ModelTableSection({
             onClick={() => onRowClick(row)}
           >
             <div className="u-l1">
-              <AgentMark agent={row.agent} />
+              <AgentMark agent={row.agent} name={row.agentName} />
               <span className="nm" title={row.model}>
                 {middleEllipsis(row.model, nameMax)}
               </span>

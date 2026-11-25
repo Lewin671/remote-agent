@@ -216,7 +216,7 @@ function Curve({ chart, tone, stale, reduced, moving, onScrub, onClearScrub }: {
 
 const usageIcon = (agent: Agent) => (
   <span className={agent !== Agent.UNSPECIFIED ? "ms-ic" : "ms-ic pr"} aria-hidden="true">
-    {agent !== Agent.UNSPECIFIED ? <AgentMark agent={agent} /> : <TerminalIcon />}
+    {agent !== Agent.UNSPECIFIED ? <AgentMark agent={agent} named /> : <TerminalIcon />}
   </span>
 );
 

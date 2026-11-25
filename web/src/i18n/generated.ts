@@ -518,7 +518,6 @@ export interface MessageArgs {
   "modes.ask": { [name: string]: never };
   "modes.ask_desc": { [name: string]: never };
   "modes.ask_generic_desc": { [name: string]: never };
-  "modes.ask_permission_desc": { [name: string]: never };
   "modes.auto": { [name: string]: never };
   "modes.auto_desc": { agent: string };
   "modes.current_terminal": { mode: string };
@@ -533,7 +532,6 @@ export interface MessageArgs {
   "modes.model_no_auto": { [name: string]: never };
   "modes.permission_notice": { [name: string]: never };
   "modes.plan": { [name: string]: never };
-  "modes.plan_propose_desc": { [name: string]: never };
   "modes.switch": { [name: string]: never };
   "modes.switch_failed": { reason: string };
   "modes.switching": { [name: string]: never };
@@ -2492,7 +2490,6 @@ export const messages = {
     "modes.ask": "Ask",
     "modes.ask_desc": "You confirm approval requests; deny on timeout",
     "modes.ask_generic_desc": "You confirm approval requests",
-    "modes.ask_permission_desc": "You confirm permission requests",
     "modes.auto": "Auto",
     "modes.auto_desc": "{agent} decides, and asks you in the conversation when unsure",
     "modes.current_terminal": "Current: {mode} (set in terminal)",
@@ -2507,7 +2504,6 @@ export const messages = {
     "modes.model_no_auto": "This model does not support Auto mode. Choose another approval mode before starting.",
     "modes.permission_notice": "Shows the mode reported by the terminal; switching to accept edits is not offered.",
     "modes.plan": "Plan",
-    "modes.plan_propose_desc": "Propose a plan, then approve execution",
     "modes.switch": "Switch",
     "modes.switch_failed": "Could not switch: {reason}",
     "modes.switching": "Switching…",
@@ -4819,7 +4815,6 @@ export const messages = {
     "modes.ask": "询问",
     "modes.ask_desc": "需要审批时由你确认，超时拒绝",
     "modes.ask_generic_desc": "需要审批时由你确认",
-    "modes.ask_permission_desc": "需要权限时由你确认",
     "modes.auto": "自动",
     "modes.auto_desc": "由 {agent} 自己判断，拿不准的在对话里问你",
     "modes.current_terminal": "当前：{mode}（在终端设置）",
@@ -4834,7 +4829,6 @@ export const messages = {
     "modes.model_no_auto": "这个模型没有自动模式，换一种审批模式再开始",
     "modes.permission_notice": "照实显示终端中的模式；不提供切到 accept edits 的按钮。",
     "modes.plan": "计划",
-    "modes.plan_propose_desc": "先出方案，再批准执行",
     "modes.switch": "切换",
     "modes.switch_failed": "没能切换：{reason}",
     "modes.switching": "正在切换…",

@@ -523,7 +523,6 @@
 "modes_ask" = "Ask";
 "modes_ask_desc" = "You confirm approval requests; deny on timeout";
 "modes_ask_generic_desc" = "You confirm approval requests";
-"modes_ask_permission_desc" = "You confirm permission requests";
 "modes_auto" = "Auto";
 "modes_auto_desc" = "%1$@ decides, and asks you in the conversation when unsure";
 "modes_current_terminal" = "Current: %1$@ (set in terminal)";
@@ -539,7 +538,6 @@
 "modes_model_no_auto" = "This model does not support Auto mode. Choose another approval mode before starting.";
 "modes_permission_notice" = "Shows the mode reported by the terminal; switching to accept edits is not offered.";
 "modes_plan" = "Plan";
-"modes_plan_propose_desc" = "Propose a plan, then approve execution";
 "modes_switch" = "Switch";
 "modes_switch_failed" = "Could not switch: %1$@";
 "modes_switching" = "Switching…";

@@ -4,9 +4,6 @@ import { Agent } from "./gen/remoteagent/v1/event_pb";
 interface AgentEntry {
   readonly agent: Agent;
   readonly name: string;
-  // Retained until i18n/messages/modes.json drops orphan keys modes.ask_permission_desc and modes.plan_propose_desc.
-  readonly askModeDesc?: string;
-  readonly planModeDesc?: string;
 }
 
 const CODEX_ENTRY: AgentEntry = {
@@ -17,8 +14,6 @@ const CODEX_ENTRY: AgentEntry = {
 const CLAUDE_ENTRY: AgentEntry = {
   agent: Agent.CLAUDE,
   name: "Claude Code",
-  get askModeDesc() { return i18n.t("modes.ask_permission_desc"); },
-  get planModeDesc() { return i18n.t("modes.plan_propose_desc"); },
 };
 
 const ANTIGRAVITY_ENTRY: AgentEntry = {

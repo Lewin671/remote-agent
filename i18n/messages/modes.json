@@ -115,22 +115,6 @@
     }
   },
   {
-    "key": "modes.ask_permission_desc",
-    "zh-CN": "需要权限时由你确认",
-    "en": "You confirm permission requests",
-    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "modes.ask_generic_desc",
     "zh-CN": "需要审批时由你确认",
     "en": "You confirm approval requests",
@@ -402,22 +386,6 @@
     "key": "modes.plan",
     "zh-CN": "计划",
     "en": "Plan",
-    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "modes.plan_propose_desc",
-    "zh-CN": "先出方案，再批准执行",
-    "en": "Propose a plan, then approve execution",
     "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [

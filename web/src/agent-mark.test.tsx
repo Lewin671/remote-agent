@@ -13,8 +13,9 @@ describe("AgentMark", () => {
     }
   });
 
-  it("says the name alone, and is decoration beside the written name", () => {
+  it("says the name alone, prefers ViewModel label, and is decoration beside the written name", () => {
     expect(renderToStaticMarkup(<AgentMark agent={Agent.CLAUDE} />)).toContain('aria-label="Claude Code"');
+    expect(renderToStaticMarkup(<AgentMark agent={Agent.CLAUDE} name="Claude Code (VM)" />)).toContain('aria-label="Claude Code (VM)"');
     const named = renderToStaticMarkup(<AgentMark agent={Agent.CLAUDE} named />);
     expect(named).toContain('aria-hidden="true"');
     expect(named).not.toContain("aria-label");

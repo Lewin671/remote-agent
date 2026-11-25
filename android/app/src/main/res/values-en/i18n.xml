@@ -636,7 +636,6 @@
     <string name="modes_ask" formatted="false">"Ask"</string>
     <string name="modes_ask_desc" formatted="false">"You confirm approval requests; deny on timeout"</string>
     <string name="modes_ask_generic_desc" formatted="false">"You confirm approval requests"</string>
-    <string name="modes_ask_permission_desc" formatted="false">"You confirm permission requests"</string>
     <string name="modes_auto" formatted="false">"Auto"</string>
     <string name="modes_auto_desc">"%1$s decides, and asks you in the conversation when unsure"</string>
     <string name="modes_current_terminal">"Current: %1$s (set in terminal)"</string>
@@ -651,7 +650,6 @@
     <string name="modes_model_no_auto" formatted="false">"This model does not support Auto mode. Choose another approval mode before starting."</string>
     <string name="modes_permission_notice" formatted="false">"Shows the mode reported by the terminal; switching to accept edits is not offered."</string>
     <string name="modes_plan" formatted="false">"Plan"</string>
-    <string name="modes_plan_propose_desc" formatted="false">"Propose a plan, then approve execution"</string>
     <string name="modes_switch" formatted="false">"Switch"</string>
     <string name="modes_switch_failed">"Could not switch: %1$s"</string>
     <string name="modes_switching" formatted="false">"Switching…"</string>

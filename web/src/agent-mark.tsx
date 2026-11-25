@@ -15,13 +15,20 @@ const MARKS: Partial<Record<Agent, { box: string; d: string }>> = {
 
 /** The mark of a CLI, sized by the font size around it. `named` is for
  * where the name is written next to it: the mark is then decoration. */
-export function AgentMark({ agent, named }: { agent: Agent; named?: boolean }) {
+export function AgentMark({ agent, named, name }: { agent: Agent; named?: boolean; name?: string }) {
   const m = MARKS[agent];
   if (!m) return null;
-  const name = agentName(agent);
+  if (named) {
+    return (
+      <svg className="amark" viewBox={m.box} fill="currentColor" aria-hidden="true">
+        <path d={m.d} />
+      </svg>
+    );
+  }
+  const resolved = name || agentName(agent);
   return (
-    <svg className="amark" viewBox={m.box} fill="currentColor" {...(named ? { "aria-hidden": true } : { role: "img", "aria-label": name })}>
-      {!named && <title>{name}</title>}
+    <svg className="amark" viewBox={m.box} fill="currentColor" role="img" aria-label={resolved}>
+      <title>{resolved}</title>
       <path d={m.d} />
     </svg>
   );
