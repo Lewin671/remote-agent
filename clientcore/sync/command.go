@@ -454,7 +454,7 @@ func (e *Engine) finishCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 					classifyDaemonOutcome(ev, true) != outcome.Unknown
 				if daemonOK {
 					e.emitCoordEffects(ctx, c.ObserveTicket(e.nowMs, lateTicketID, ev.RouteWasDirect, ev.ObservedBytes, ev.ElapsedMs))
-				} else if ev.RouteWasDirect {
+				} else if ev.RouteWasDirect && ev.Source != corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON {
 					e.emitCoordEffects(ctx, c.FailTicket(e.nowMs, lateTicketID))
 				} else {
 					c.ReleaseTicket(lateTicketID)
@@ -496,8 +496,6 @@ func (e *Engine) finishCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 			if ticketID != 0 {
 				if daemonOK {
 					e.emitCoordEffects(ctx, c.ObserveTicket(e.nowMs, ticketID, ev.RouteWasDirect, ev.ObservedBytes, ev.ElapsedMs))
-				} else if ev.RouteWasDirect {
-					e.emitCoordEffects(ctx, c.FailTicket(e.nowMs, ticketID))
 				} else {
 					c.ReleaseTicket(ticketID)
 				}

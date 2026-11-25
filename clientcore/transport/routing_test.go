@@ -201,3 +201,41 @@ func TestMeasuredDisplay(t *testing.T) {
 		t.Fatal("a zero duration is not a sample")
 	}
 }
+
+func TestRoutingFallbackCountResetsAfterStableWindow(t *testing.T) {
+	// Audit core B15: non-consecutive fallbacks separated by a passing comparison
+	// window must reset fallbacks back to 60s instead of compounding to 120s..10m.
+	var r Routing
+	now := int64(100_000)
+
+	// First read fallback -> 60s wait.
+	r.Fail(UseRead, now)
+	if r.ReadRoute(now+59_999) != Relay || r.ReadRoute(now+60_000) != Direct {
+		t.Fatal("expected initial 60s read fallback")
+	}
+	now += 60_000
+	// Complete a full healthy read comparison window (8 direct + 4 relay) where direct is faster.
+	for i := 0; i < ReadDirectMin; i++ {
+		r.Observe(read, Direct, 0, 15, now+int64(i))
+	}
+	for i := 0; i < ReadRelayMin; i++ {
+		r.Observe(read, Relay, 0, 100, now+100+int64(i))
+	}
+	// Next fallback much later is NOT consecutive -> wait must be 60s again, not 120s.
+	now += 1000
+	r.Fail(UseRead, now)
+	if r.ReadRoute(now+60_000) != Direct {
+		t.Fatalf("B15: read fallbacks did not reset after healthy window (still Relay at +60s)")
+	}
+
+	// Same for bulk segments.
+	r.Fail(UseBulk, now)
+	now += 60_000
+	r.Observe(bulk("f1"), Direct, BulkDirectMin, 100, now)
+	r.Observe(bulk("f1"), Relay, BulkRelayMin, 100, now) // direct 2x faster than relay -> passes segment
+	now += 1000
+	r.Fail(UseBulk, now)
+	if r.FileRoute(now+60_000) != Direct {
+		t.Fatalf("B15: bulk fallbacks did not reset after passing segment (still Relay at +60s)")
+	}
+}

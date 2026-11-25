@@ -233,6 +233,8 @@ type coordRound struct {
 	curNow         int64
 	session        *linkcore.Session
 	sentFrames     map[string]struct{}
+	sentFrameRing  []string
+	sentFrameHead  int
 	prevMarks      [2][5]bool
 	localToGlobal  map[uint64]uint64
 	globalPC       [3]uint64 // indexed by UseRead (1), UseBulk (2)
@@ -246,8 +248,24 @@ type coordRound struct {
 	useUnsupp      [3]bool
 	attemptedUse   [3]bool
 	clientCapsSent bool
+	bootNotified   bool
 	deadlineTicked bool
 	ended          bool
+}
+
+func (r *coordRound) recordSentFrame(id string) {
+	if _, exists := r.sentFrames[id]; exists {
+		return
+	}
+	const maxSentFrames = 256
+	if len(r.sentFrameRing) < maxSentFrames {
+		r.sentFrameRing = append(r.sentFrameRing, id)
+	} else {
+		delete(r.sentFrames, r.sentFrameRing[r.sentFrameHead])
+		r.sentFrameRing[r.sentFrameHead] = id
+		r.sentFrameHead = (r.sentFrameHead + 1) % maxSentFrames
+	}
+	r.sentFrames[id] = struct{}{}
 }
 
 type trackedTicket struct {
@@ -422,7 +440,7 @@ func (c *Coordinator) ProvideRandomBytesWithShared(now int64, raw []byte, append
 		c.drainPendingSignalsReady(now)
 	}
 	if !wasHasInstance && c.hasInstance && c.hasSnap && c.mainOnline && c.foreground && len(c.rounds) == 0 && len(c.pendingStarts) == 0 {
-		c.handleEngine(now, NetworkChanged{})
+		c.handleEngine(now, DiscoverNow{})
 	}
 	c.maybeNeedPendingEntropy()
 	return c.take()
@@ -595,7 +613,7 @@ func (c *Coordinator) stepProbeTrackers(now int64) {
 			if r.globalPC[b.use] == pcID {
 				r.globalPC[b.use] = 0
 			}
-			c.markPCClosed(now, r, b)
+			c.markPCClosed(now, r, b, pcID)
 			delete(c.pcs, pcID)
 			_ = c.stepSession(now, r, linkcore.PCClosed{ID: b.localID})
 			c.emit(CoordPcClose{PCID: pcID, Reason: "probe_timeout"})
@@ -856,11 +874,15 @@ func (c *Coordinator) drainPendingStarts(now int64) {
 		}
 		if now >= ps.deadlineAt || c.engine.rounds[id] == nil {
 			delete(c.pendingStarts, id)
+			if c.engine.rounds[id] != nil {
+				c.handleEngine(now, RoundEnded{Round: id, TimedOut: true})
+			}
 			continue
 		}
 		m, ok := c.members[ps.machine]
 		if !ok || !m.isMachine() || m.XPub != ps.xPub {
 			delete(c.pendingStarts, id)
+			c.handleEngine(now, RoundEnded{Round: id})
 			continue
 		}
 		shared, ready := c.dhCache[dhKey{peerID: m.ID, xPub: m.XPub}]
@@ -947,6 +969,9 @@ func (c *Coordinator) processSignalFrame(now int64, source string, member CoordM
 			}
 		})
 		if acceptedID == 0 || !c.engine.SignalAuthorized(now, acceptedID) {
+			if acceptedID != 0 {
+				c.handleEngine(now, RoundEnded{Round: acceptedID})
+			}
 			return
 		}
 		peer := peerwire.Public{
@@ -1019,9 +1044,16 @@ func (c *Coordinator) OnPcCreated(now int64, pcID uint64, ok bool) []CoordEffect
 	if b == nil {
 		return nil
 	}
+	if ok {
+		c.handleEngine(now, DiagAttempt{Round: r.id, Use: b.use})
+	}
 	_ = c.stepSession(now, r, linkcore.PCCreated{ID: b.localID, OK: ok})
 	if !ok {
 		c.handleEngine(now, DiagBlocked{Round: r.id, Use: b.use})
+		delete(r.localToGlobal, b.localID)
+		if r.globalPC[b.use] == pcID {
+			r.globalPC[b.use] = 0
+		}
 		delete(c.pcs, pcID)
 	}
 	return c.take()
@@ -1141,7 +1173,7 @@ func (c *Coordinator) OnDcState(now int64, pcID uint64, open bool) []CoordEffect
 	r.dcOpen[b.use] = open
 	if !open {
 		b.probe.Reset()
-		c.markPCClosed(now, r, b)
+		c.markPCClosed(now, r, b, pcID)
 	}
 	return c.take()
 }
@@ -1167,7 +1199,8 @@ func (c *Coordinator) OnPcClosed(now int64, pcID uint64) []CoordEffect {
 		r.globalPC[b.use] = 0
 	}
 	_ = c.stepSession(now, r, linkcore.PCClosed{ID: b.localID})
-	c.markPCClosed(now, r, b)
+	c.markPCClosed(now, r, b, pcID)
+	delete(r.localToGlobal, b.localID)
 	delete(c.pcs, pcID)
 	if !r.ended && r.deadlineTicked && r.globalPC[UseRead] == 0 && r.globalPC[UseBulk] == 0 {
 		_ = c.stepSession(now, r, linkcore.Tick{})
@@ -1175,14 +1208,12 @@ func (c *Coordinator) OnPcClosed(now int64, pcID uint64) []CoordEffect {
 	return c.take()
 }
 
-func (c *Coordinator) markPCClosed(now int64, r *coordRound, b *pcBinding) {
+func (c *Coordinator) markPCClosed(now int64, r *coordRound, b *pcBinding, pcID uint64) {
 	if b.confirmed && !b.closedNotified {
 		b.closedNotified = true
 		r.confirmed[b.use] = false
-		if b.use == UseRead {
-			if pcID := r.localToGlobal[b.localID]; pcID != 0 {
-				c.detachDirectTerminalsForPC(now, pcID)
-			}
+		if b.use == UseRead && pcID != 0 {
+			c.detachDirectTerminalsForPC(now, pcID)
 		}
 		c.handleEngine(now, PathClosed{Round: r.id, Use: b.use})
 	}
@@ -1668,6 +1699,7 @@ func (c *Coordinator) maybeNeedPendingEntropy() {
 
 func (c *Coordinator) onStartRound(now int64, eff StartRound) {
 	if c.codec == nil {
+		c.handleEngine(now, RoundEnded{Round: eff.Round})
 		return
 	}
 	m, ok := c.members[eff.Machine]
@@ -1722,9 +1754,11 @@ func (c *Coordinator) startOutboundRound(now int64, id RoundID, member CoordMemb
 
 func (c *Coordinator) createRound(now int64, id RoundID, machine string, peer peerwire.Public, shared, conn []byte, deadline uint64, initiate bool) *coordRound {
 	if c.codec == nil || len(shared) != 32 || len(conn) != 16 || !c.hasInstance {
+		c.handleEngine(now, RoundEnded{Round: id})
 		return nil
 	}
 	if deadline <= uint64(now) {
+		c.handleEngine(now, RoundEnded{Round: id, TimedOut: true})
 		return nil
 	}
 	r := &coordRound{
@@ -1774,6 +1808,12 @@ func (c *Coordinator) stepSession(now int64, r *coordRound, ev linkcore.Event) e
 	r.curNow = now
 	effects := r.session.Handle(ev, uint64(now))
 	c.applySessionEffects(now, r, effects)
+	if !r.ended && !r.bootNotified {
+		if boot := r.session.Peer().Boot; len(boot) == 32 {
+			r.bootNotified = true
+			c.handleEngine(now, RoundBooted{Round: r.id, Boot: string(boot)})
+		}
+	}
 	c.syncMarks(now, r)
 	c.maybeLowWater()
 	return nil
@@ -1789,6 +1829,9 @@ func (c *Coordinator) applySessionEffects(now int64, r *coordRound, effects []li
 			c.emit(CoordKeySign{OpID: opID, Message: eff.Message})
 
 		case linkcore.TransmitFrame:
+			if !eff.Current(r.session.View()) {
+				continue
+			}
 			if !c.engine.AllowSignal(now, r.id, len(eff.Raw)) {
 				continue
 			}
@@ -1796,9 +1839,7 @@ func (c *Coordinator) applySessionEffects(now int64, r *coordRound, effects []li
 			if err != nil {
 				continue
 			}
-			if len(r.sentFrames) < 256 {
-				r.sentFrames[string(fields[4].B)] = struct{}{}
-			}
+			r.recordSentFrame(string(fields[4].B))
 			c.emit(CoordSignalSend{
 				ToDevice:   fields[2].B,
 				FrameClass: uint32(fields[3].U),
@@ -1831,7 +1872,6 @@ func (c *Coordinator) applySessionEffects(now int64, r *coordRound, effects []li
 			c.pcs[pcID] = &pcBinding{roundID: r.id, localID: eff.ID, use: u}
 			r.anyPC = true
 			r.attemptedUse[u] = true
-			c.handleEngine(now, DiagAttempt{Round: r.id, Use: u})
 			c.emit(CoordPcCreate{
 				RoundID:    r.id,
 				MachineID:  r.machine,
@@ -1900,7 +1940,7 @@ func (c *Coordinator) applySessionEffects(now int64, r *coordRound, effects []li
 				if r.globalPC[b.use] == pcID {
 					r.globalPC[b.use] = 0
 				}
-				c.markPCClosed(now, r, b)
+				c.markPCClosed(now, r, b, pcID)
 				delete(c.pcs, pcID)
 			}
 			c.emit(CoordPcClose{PCID: pcID, Reason: eff.Reason})
@@ -2007,7 +2047,7 @@ func (c *Coordinator) closeRoundNow(now int64, r *coordRound) {
 	for localID, pcID := range r.localToGlobal {
 		delete(r.localToGlobal, localID)
 		if b := c.pcs[pcID]; b != nil {
-			c.markPCClosed(now, r, b)
+			c.markPCClosed(now, r, b, pcID)
 			delete(c.pcs, pcID)
 		}
 		c.emit(CoordPcClose{PCID: pcID, Reason: "round_ended"})

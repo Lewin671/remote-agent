@@ -251,6 +251,8 @@ func (r *Routing) Observe(h Hint, p Route, bytes int64, ms float64, now int64) {
 			r.Fail(UseBulk, now)
 		} else {
 			*seg = segment{}
+			r.bulk.fallbacks = 0
+			r.bulk.slow = false
 		}
 	}
 }
@@ -260,8 +262,13 @@ func (r *Routing) decideReads(now int64) {
 		return
 	}
 	relay, direct := r.live(Relay, ReadWindowMs, now), r.live(Direct, ReadWindowMs, now)
-	if len(direct) >= ReadDirectMin && len(relay) >= ReadRelayMin && median(direct) > ReadMedianRatio*median(relay)+ReadSlackMs {
-		r.Fail(UseRead, now)
+	if len(direct) >= ReadDirectMin && len(relay) >= ReadRelayMin {
+		if median(direct) > ReadMedianRatio*median(relay)+ReadSlackMs {
+			r.Fail(UseRead, now)
+		} else {
+			r.read.fallbacks = 0
+			r.read.slow = false
+		}
 	}
 }
 

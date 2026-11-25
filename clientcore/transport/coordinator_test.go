@@ -920,3 +920,201 @@ func TestCoordinatorProbeLivenessAndTimeout(t *testing.T) {
 		t.Fatalf("expected probe_timeout close after 3 misses, got %q", closedReason)
 	}
 }
+
+func TestCoordinatorMarkPCClosedDetachesDirectTerminals(t *testing.T) {
+	// Audit core B1: probe_timeout and SetNetworkChanged (closeRoundNow) must
+	// detach direct terminals and emit TermStateReconnecting when relay is closed.
+	runCase := func(t *testing.T, trigger func(coord *Coordinator, now int64, pcID uint64) []CoordEffect) {
+		t.Helper()
+		coord, _, _, now, _, rid, _ := driveEstablishedCoordRound(t, "127.0.0.1", "")
+		r := coord.rounds[rid]
+		readPC := r.globalPC[UseRead]
+		// Mark terminal direct ready via Capabilities.
+		coord.handleEngine(now, Capabilities{Round: rid, Seq: 1, Terminal: true})
+		streamID := "stream-b1-0000000000000000000001"
+		_ = coord.TerminalDirectOpen(now+1, streamID, r.machine, "sess-1", []byte("relayleg00000001"))
+		_ = coord.TerminalDirectLeg(now+2, streamID, []byte("relayleg00000001"), false, true, 0)
+		ct := coord.termStreams[streamID]
+		if ct == nil || !ct.directAttached || ct.directPCID != readPC {
+			t.Fatalf("expected terminal attached to direct PC %d, got %+v", readPC, ct)
+		}
+		// Close relay leg so only direct remains.
+		ct.relayOpen = false
+		ct.stream.CloseLeg("relay", ct.relayGen)
+
+		effs := trigger(coord, now+10, readPC)
+		sawReconnecting := false
+		for _, e := range effs {
+			if st, ok := e.(CoordTerminalState); ok && st.StreamID == streamID && st.State == TermStateReconnecting {
+				sawReconnecting = true
+			}
+		}
+		if !sawReconnecting || ct.directAttached || !ct.disconnectedAll {
+			t.Fatalf("B1: direct terminal was not detached on PC close (reconnecting=%v directAttached=%v disconnectedAll=%v)",
+				sawReconnecting, ct.directAttached, ct.disconnectedAll)
+		}
+	}
+
+	t.Run("closeRoundNow_NetworkChanged", func(t *testing.T) {
+		runCase(t, func(coord *Coordinator, now int64, _ uint64) []CoordEffect {
+			return coord.SetNetworkChanged(now)
+		})
+	})
+	t.Run("probe_timeout", func(t *testing.T) {
+		runCase(t, func(coord *Coordinator, now int64, pcID uint64) []CoordEffect {
+			var all []CoordEffect
+			cur := now
+			for step := 0; step < 6; step++ {
+				cur += int64(linkcore.ProbeIntervalMs)
+				all = append(all, coord.OnSessionTimer(cur)...)
+			}
+			return all
+		})
+	})
+}
+
+func TestCoordinatorLastPCCloseRetainsSessionWindow(t *testing.T) {
+	// Audit core B4: closing the sole ready PC via OnPcClosed must retire the
+	// session for RetainMs instead of immediately destroying it with not_allowed.
+	coord, _, _, now, _, rid, _ := driveEstablishedCoordRound(t, "127.0.0.1", "")
+	r := coord.rounds[rid]
+	// Close bulk first if present, then close read.
+	if bulkPC := r.globalPC[UseBulk]; bulkPC != 0 {
+		coord.OnPcClosed(now+1, bulkPC)
+	}
+	readPC := r.globalPC[UseRead]
+	coord.OnPcClosed(now+2, readPC)
+	if r.ended {
+		t.Fatal("B4: round was immediately ended instead of retained after last PC closed")
+	}
+	_, _, sessAt, sessOK, _, _ := coord.NextTimers(now + 2)
+	if !sessOK || sessAt < int64(r.session.RetainUntil()) {
+		t.Fatalf("B4: expected retained replay window timer >= %d, got ok=%v at=%d", r.session.RetainUntil(), sessOK, sessAt)
+	}
+}
+
+func TestCoordinatorSentFramesRingTracksPast256(t *testing.T) {
+	// Audit core B10a: after sending >256 frames on a long-lived round,
+	// OnSignalDelivery for the newest frame must still route to the round.
+	coord, _, _, now, _, rid, _ := driveEstablishedCoordRound(t, "127.0.0.1", "")
+	r := coord.rounds[rid]
+	var lastID []byte
+	for i := 0; i < 270; i++ {
+		id := make([]byte, 16)
+		id[0] = byte(i >> 8)
+		id[1] = byte(i)
+		raw := peerwire.PB(
+			peerwire.B(1, coord.selfPub.ID),
+			peerwire.B(2, r.peer.ID),
+			peerwire.U(3, 2),
+			peerwire.B(4, id),
+			peerwire.B(5, []byte("x")),
+		)
+		coord.applySessionEffects(now+int64(i), r, []linkcore.Effect{
+			linkcore.TransmitFrame{Raw: raw, Deadline: uint64(now + 5000), Class: 2, Type: 4},
+		})
+		coord.take()
+		lastID = id
+	}
+	coord.OnSignalDelivery(now+300, lastID, 3, 2000)
+	rounds, _, _ := coord.Diagnostics(r.machine)
+	if len(rounds) == 0 || rounds[0].Limited == 0 {
+		t.Fatalf("B10a: delivery result for frame #270 was dropped (Limited=0)")
+	}
+}
+
+func TestCoordinatorEarlyReturnEmitsRoundEnded(t *testing.T) {
+	// Audit core B11: early return in onStartRound (codec == nil) must emit
+	// RoundEnded so Engine does not stay stuck in StateConnecting forever.
+	coord := NewCoordinator(CoordConfig{Supported: true, Account: "acct-1", ProtocolVersion: 17})
+	now := int64(1_700_000_000_000)
+	coord.ProvideRandomBytes(now, make([]byte, 256))
+	coord.SetMainLeg(now, true)
+	// Supply a security snapshot with Epoch=0 so rebuildCodec leaves codec == nil.
+	snap := CoordSecuritySnapshot{
+		Member:        true,
+		Account:       "acct-1",
+		Head:          "head-1",
+		Epoch:         0, // codec == nil!
+		StartedAt:     now,
+		LeaseNotAfter: now + 60_000,
+		SelfID:        "client-0000000000000000000000001",
+		Members: []CoordMember{
+			{ID: "mach-000000000000000000000000001", Kind: MemberKindMachine},
+		},
+	}
+	coord.OnSecuritySnapshot(now, snap)
+	st := coord.Status(now, "mach-000000000000000000000000001")
+	if st.State == StateConnecting {
+		t.Fatalf("B11: Engine stuck in StateConnecting after onStartRound saw codec==nil")
+	}
+}
+
+func TestCoordinatorInitialEntropyDoesNotWipeFreshness(t *testing.T) {
+	// Audit core B12: ProvideRandomBytes receiving initial 48B entropy must
+	// trigger discovery without calling NetworkChanged{} (which wipes freshUntil).
+	coord := NewCoordinator(CoordConfig{Supported: true, Account: "acct-1", ProtocolVersion: 17})
+	now := int64(1_700_000_000_000)
+	coord.SetMainLeg(now, true)
+	snap := CoordSecuritySnapshot{
+		Member:        true,
+		Account:       "acct-1",
+		Head:          "head-1",
+		Epoch:         1,
+		StartedAt:     now,
+		LeaseNotAfter: now + 60_000,
+		SelfID:        "client-0000000000000000000000001",
+		Members:       nil, // no machines yet so len(rounds)==0 && len(pendingStarts)==0
+	}
+	coord.OnSecuritySnapshot(now, snap)
+	if coord.engine.freshUntil <= now {
+		t.Fatalf("expected valid freshUntil after snapshot, got %d", coord.engine.freshUntil)
+	}
+	coord.ProvideRandomBytes(now+10, make([]byte, 256))
+	if coord.engine.freshUntil <= now+10 {
+		t.Fatalf("B12: initial ProvideRandomBytes wiped engine.freshUntil to %d", coord.engine.freshUntil)
+	}
+}
+
+func TestCoordinatorVerdictCreateFailedReachable(t *testing.T) {
+	// Audit core B14: OnPcCreated(false) must leave PC Attempts empty so
+	// VerdictOf reports VerdictCreateFailed instead of VerdictNoSDP, and clean localToGlobal/globalPC.
+	coord, _, _, now, _, rid, _ := driveEstablishedCoordRound(t, "127.0.0.1", "")
+	// Create a fresh round and fail CreatePC on both uses.
+	r := coord.rounds[rid]
+	machine := r.machine
+	coord.SetNetworkChanged(now + 100)
+	// Start a new round via OnSecuritySnapshot + CreatePC failure.
+	now2 := now + 200
+	coord.OnSecuritySnapshot(now2, coord.snap)
+	// Find newly created round.
+	var newR *coordRound
+	for _, id := range coord.sortedRoundIDs() {
+		if id != rid {
+			newR = coord.rounds[id]
+		}
+	}
+	if newR == nil {
+		t.Fatal("expected new round after snapshot")
+	}
+	coord.handleEngine(now2, DiagMark{Round: newR.id, Use: UseRead, Mark: MarkBoot})
+	coord.applySessionEffects(now2, newR, []linkcore.Effect{
+		linkcore.CreatePC{ID: 99, Use: uint64(UseRead), Generation: 1},
+	})
+	pcID := newR.localToGlobal[99]
+	if pcID == 0 {
+		t.Fatal("expected global pcID allocated")
+	}
+	coord.OnPcCreated(now2+1, pcID, false)
+	if newR.localToGlobal[99] != 0 || newR.globalPC[UseRead] != 0 {
+		t.Fatalf("B14: OnPcCreated(false) leaked localToGlobal=%d globalPC=%d", newR.localToGlobal[99], newR.globalPC[UseRead])
+	}
+	coord.finishSession(now2+10_000, newR, "round_deadline")
+	rounds, _, _ := coord.Diagnostics(machine)
+	if len(rounds) == 0 {
+		t.Fatal("expected diagnostics")
+	}
+	if v := VerdictOf(rounds[0], false); v != VerdictCreateFailed {
+		t.Fatalf("B14: expected VerdictCreateFailed(%d), got %d", VerdictCreateFailed, v)
+	}
+}

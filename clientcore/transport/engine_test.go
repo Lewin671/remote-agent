@@ -906,3 +906,83 @@ func TestUnsupportedSuppressesEntropyTickAndAuthorizeUntilSupported(t *testing.T
 		t.Fatalf("expected RequestEntropy, ScheduleTick, and Authorize once supported, got %#v", effs)
 	}
 }
+
+func TestEngineClosedKeepsSignalAuthorizedForRetireRetention(t *testing.T) {
+	// Audit core B4: when the last ready path closes, Engine retires the round
+	// without setting p.live=false so SignalAuthorized stays true for the 5m replay window.
+	r := newRig(t, 0.5)
+	id := r.connected("m1", UseRead)
+	out := r.do(PathClosed{Round: id, Use: UseRead})
+	if !slices.Contains(out, Effect(RetireRound{Round: id})) {
+		t.Fatalf("expected RetireRound, got %#v", out)
+	}
+	if !r.e.SignalAuthorized(r.now, id) {
+		t.Fatal("B4: SignalAuthorized became false immediately on last PathClosed, killing replay retention")
+	}
+}
+
+func TestEngineOfferedDetectsDaemonRestartAndClearsBackoff(t *testing.T) {
+	// Audit core B9:
+	// 1) Active outbound round whose peer boot was learned via RoundBooted closes when offered with new boot.
+	// 2) Backoff after a round ended is cleared when a new boot arrives.
+	r := newRig(t, 0.5)
+	id := r.connected("m1", UseRead)
+	r.do(RoundBooted{Round: id, Boot: "boot-1"})
+	// Scenario 1: daemon restarts with boot-2 while outbound round id is still active.
+	out := r.do(RoundOffered{Machine: "m1", Boot: "boot-2", DeadlineAt: r.now + RoundMs})
+	if !slices.Contains(out, Effect(CloseRound{Round: id})) {
+		t.Fatalf("B9: expected old outbound round %d closed on new boot, got %#v", id, out)
+	}
+	acc := of[AcceptRound](out)
+	if len(acc) != 1 {
+		t.Fatalf("expected AcceptRound for boot-2, got %#v", out)
+	}
+	// Scenario 2: boot-2 round ends and enters backoff; daemon restarts with boot-3.
+	r.fail(acc[0].Round, FailureNone)
+	if r.e.failureCount["m1"] == 0 || r.e.retryAfter["m1"] <= r.now {
+		t.Fatalf("expected backoff after failure, count=%d retry=%d", r.e.failureCount["m1"], r.e.retryAfter["m1"])
+	}
+	r.do(RoundOffered{Machine: "m1", Boot: "boot-3", DeadlineAt: r.now + RoundMs})
+	if r.e.failureCount["m1"] != 0 || r.e.retryAfter["m1"] != 0 {
+		t.Fatalf("B9: new daemon boot after ended round did not clear backoff: count=%d retry=%d",
+			r.e.failureCount["m1"], r.e.retryAfter["m1"])
+	}
+}
+
+func TestEngineInteractiveFailedDoesNotPolluteReadFallback(t *testing.T) {
+	// Audit core B15: dual-send interactive direct failures must not compound UseRead fallback backoff.
+	r := newRig(t, 0.5)
+	id := r.connected("m1", UseRead)
+	_ = id
+	tk, ok := r.e.AttemptInteractive(r.now, "m1")
+	if !ok {
+		t.Fatal("expected interactive direct ticket")
+	}
+	r.e.Failed(r.now, tk)
+	if r.e.routing("m1").ReadSlow(r.now) || r.e.routing("m1").ReadRoute(r.now) != Direct {
+		t.Fatal("B15: interactive direct failure polluted UseRead fallback state")
+	}
+}
+
+func TestEngineOfflineIdleCancelsTickAndSortedRoundsScales(t *testing.T) {
+	// Audit core O5:
+	// 1) Offline with no peers/rounds cancels the 1s idle tick.
+	// 2) sortedRounds stays fast and ordered even when lastRound is huge.
+	r := newRig(t, 0.5)
+	r.e.Handle(r.now, MainLeg{Ready: false})
+	// Advance past freshness so no active rounds remain.
+	r.advance(FreshMs + 1000)
+	out := r.do(Tick{})
+	if !has[CancelTick](out) || has[ScheduleTick](out) {
+		t.Fatalf("O5: expected CancelTick and no ScheduleTick when offline with no rounds, got %#v", out)
+	}
+	// Verify sortedRounds returns exact ascending IDs when lastRound is huge.
+	r.e.lastRound = 500_000
+	r.e.rounds[400_000] = &round{id: 400_000}
+	r.e.rounds[10] = &round{id: 10}
+	r.e.rounds[250_000] = &round{id: 250_000}
+	got := r.e.sortedRounds()
+	if len(got) != 3 || got[0].id != 10 || got[1].id != 250_000 || got[2].id != 400_000 {
+		t.Fatalf("O5: unexpected sortedRounds order: %+v", got)
+	}
+}

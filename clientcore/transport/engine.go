@@ -95,6 +95,7 @@ type Engine struct {
 	retryAfter   map[string]int64
 	failures     map[string]Failure // why the last round ended without a path
 	failureCount map[string]int
+	lastBoot     map[string]string // last observed daemon boot nonce per machine
 	watched      map[string][]string
 
 	units        []float64
@@ -122,6 +123,7 @@ func NewEngine(supported bool) *Engine {
 		retryAfter:   map[string]int64{},
 		failures:     map[string]Failure{},
 		failureCount: map[string]int{},
+		lastBoot:     map[string]string{},
 		watched:      map[string][]string{},
 	}
 }
@@ -138,6 +140,13 @@ func (e *Engine) Handle(now int64, ev Event) []Effect {
 		e.mainLeg(now, ev.Ready)
 	case NetworkChanged:
 		e.invalidate(now)
+	case DiscoverNow:
+		e.refreshAndDiscover(now)
+	case RoundBooted:
+		if p := e.rounds[ev.Round]; p != nil && ev.Boot != "" {
+			p.boot = ev.Boot
+			e.lastBoot[p.machine] = ev.Boot
+		}
 	case Tick:
 		e.tick(now)
 	case Entropy:
@@ -356,6 +365,10 @@ func (e *Engine) tick(now int64) {
 	if e.foreground && e.legReady && (e.freshUntil-now <= AuthorizeNearMs || !e.hasAuthAt || now-e.authorizeAt >= AuthorizeEveryMs) {
 		e.authorize(now, false)
 	}
+	if !e.legReady && len(e.peers) == 0 && len(e.rounds) == 0 {
+		e.cancelTick()
+		return
+	}
 	e.emit(ScheduleTick{DelayMs: TickMs})
 }
 
@@ -391,6 +404,9 @@ func (e *Engine) synced(now int64, ev SecuritySynced) {
 	if !ev.Member || now >= ev.StartedAt+FreshMs {
 		e.invalidate(now)
 		return
+	}
+	if ev.Account != e.account {
+		clear(e.lastBoot)
 	}
 	if ev.Head != e.head {
 		e.lifetime++
@@ -489,7 +505,7 @@ func (e *Engine) discover(now int64) {
 		if p := e.peers[m]; !e.enabled(m) || p != nil && e.active(p, now) || now < e.retryAfter[m] {
 			continue
 		}
-		if len(e.peers) >= MaxPeers {
+		if e.peers[m] == nil && len(e.peers) >= MaxPeers {
 			e.blocked(now, m)
 			break
 		}
@@ -560,9 +576,12 @@ func (e *Engine) closeRound(now int64, p *round) {
 // sortedRounds lists rounds oldest first so effects come out in a stable order.
 func (e *Engine) sortedRounds() []*round {
 	out := make([]*round, 0, len(e.rounds))
-	for id := RoundID(1); len(out) < len(e.rounds) && id <= e.lastRound; id++ {
-		if p := e.rounds[id]; p != nil {
-			out = append(out, p)
+	for _, p := range e.rounds {
+		out = append(out, p)
+	}
+	for i := 1; i < len(out); i++ {
+		for j := i; j > 0 && out[j].id < out[j-1].id; j-- {
+			out[j], out[j-1] = out[j-1], out[j]
 		}
 	}
 	return out
@@ -572,13 +591,32 @@ func (e *Engine) offered(now int64, ev RoundOffered) {
 	if !e.legReady || !e.current(now) || !e.enabled(ev.Machine) || !e.isMachine(ev.Machine) {
 		return
 	}
-	for _, p := range e.sortedRounds() {
-		if p.machine == ev.Machine && p.boot != "" && p.boot != ev.Boot {
-			// A new computer process: its old rounds are gone, and so is their backoff.
-			e.closeRound(now, p)
-			delete(e.retryAfter, ev.Machine)
-			delete(e.failureCount, ev.Machine)
+	if ev.Boot != "" && e.lastBoot[ev.Machine] != "" && e.lastBoot[ev.Machine] != ev.Boot {
+		// A new computer process: its old rounds are gone, and so is their backoff.
+		for _, p := range e.sortedRounds() {
+			if p.machine == ev.Machine {
+				e.closeRound(now, p)
+			}
 		}
+		delete(e.peers, ev.Machine)
+		delete(e.retryAfter, ev.Machine)
+		delete(e.failureCount, ev.Machine)
+		e.routing(ev.Machine).Reset(UseBoth)
+	} else {
+		for _, p := range e.sortedRounds() {
+			if p.machine == ev.Machine && p.boot != "" && p.boot != ev.Boot {
+				// A new computer process: its old rounds are gone, and so is their backoff.
+				e.closeRound(now, p)
+				if e.peers[ev.Machine] == p {
+					delete(e.peers, ev.Machine)
+				}
+				delete(e.retryAfter, ev.Machine)
+				delete(e.failureCount, ev.Machine)
+			}
+		}
+	}
+	if ev.Boot != "" {
+		e.lastBoot[ev.Machine] = ev.Boot
 	}
 	if p := e.create(now, ev.Machine, ev.DeadlineAt, ev.Boot); p != nil {
 		e.emit(AcceptRound{Round: p.id, Machine: ev.Machine, DeadlineAt: p.deadline})
@@ -656,8 +694,8 @@ func (e *Engine) closed(now int64, p *round, u Use) {
 		delete(e.peers, m)
 		e.retryAfter[m] = now + e.delay(now, p)
 		if !p.ended {
-			// No path is left: this round has nothing more to offer.
-			p.live = false
+			// No path is left: retire while keeping p.live true so replay/ACK
+			// retention remains authorized until RetainUntil.
 			e.retire(p)
 		}
 	}
@@ -829,13 +867,14 @@ func (e *Engine) FileRoute(now int64, m string) Route {
 // Ticket ties a request's completion to the round and path it was sent on.
 // A completion that arrives after either changed is not counted.
 type Ticket struct {
-	Machine  string
-	Hint     Hint
-	Round    RoundID
-	Path     uint64
-	lifetime uint64
-	owner    uint64
-	hasPeer  bool
+	Machine     string
+	Hint        Hint
+	Round       RoundID
+	Path        uint64
+	lifetime    uint64
+	owner       uint64
+	hasPeer     bool
+	interactive bool
 }
 
 // Track captures the current round and path for a request about to be sent.
@@ -883,7 +922,9 @@ func (e *Engine) AttemptInteractive(now int64, m string) (Ticket, bool) {
 	if !e.Ready(now, m, h) {
 		return Ticket{}, false
 	}
-	return e.Track(m, h), true
+	t := e.Track(m, h)
+	t.interactive = true
+	return t, true
 }
 
 // Observe records a verified completion of a tracked request.
@@ -901,7 +942,7 @@ func (e *Engine) Observe(now int64, t Ticket, direct bool, bytes int64, ms float
 
 // Failed records that a tracked direct request failed after it was handed off.
 func (e *Engine) Failed(now int64, t Ticket) []Effect {
-	if !e.tracked(t) {
+	if !e.tracked(t) || t.interactive {
 		return nil
 	}
 	e.routing(t.Machine).Fail(useOf(t.Hint), now)

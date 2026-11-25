@@ -42,6 +42,15 @@ type MainLeg struct{ Ready bool }
 // NetworkChanged: sync saw a new network generation.
 type NetworkChanged struct{}
 
+// DiscoverNow: trigger discovery without invalidating freshness or active rounds.
+type DiscoverNow struct{}
+
+// RoundBooted: bootstrap learned the computer process's boot nonce for Round.
+type RoundBooted struct {
+	Round RoundID
+	Boot  string
+}
+
 // Tick: the ScheduleTick timer fired.
 type Tick struct{}
 
@@ -216,6 +225,8 @@ func (SetSupported) event()       {}
 func (Lifecycle) event()          {}
 func (MainLeg) event()            {}
 func (NetworkChanged) event()     {}
+func (DiscoverNow) event()        {}
+func (RoundBooted) event()        {}
 func (Tick) event()               {}
 func (Entropy) event()            {}
 func (PreferencesLoaded) event()  {}
