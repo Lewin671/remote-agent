@@ -135,33 +135,30 @@ object Push {
                 add(NotifyKind.NOTIFY_KIND_SECURITY)
                 if (s.notifyScheduled) add(NotifyKind.NOTIFY_KIND_SCHEDULED)
             }
-            // Turning notifications off must not depend on obtaining a Google token.
-            val fcm = if (kinds.isEmpty()) "" else {
-                val gms = GoogleApiAvailabilityLight.getInstance().isGooglePlayServicesAvailable(context)
-                if (gms != ConnectionResult.SUCCESS) {
-                    val problem = when (gms) {
-                        ConnectionResult.SERVICE_MISSING -> sessionText(UiMessages.notificationsAndroidGooglePlayServicesAreNotInstalledPushIsUnavailable())
-                        ConnectionResult.SERVICE_DISABLED -> sessionText(UiMessages.notificationsAndroidGooglePlayServicesAreDisabledPushIsUnavailable())
-                        ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED -> sessionText(UiMessages.notificationsAndroidGooglePlayServicesNeedAnUpdatePushIsUnavailable())
-                        ConnectionResult.SERVICE_UPDATING -> sessionText(UiMessages.notificationsAndroidGooglePlayServicesAreUpdatingBackgroundAlertsAreTemporarilyUnavailable())
-                        else -> sessionText(UiMessages.notificationsAndroidGooglePlayServicesAreUnavailablePushIsUnavailable())
-                    }
-                    return PushAttempt(PushStatus(problem, sessionText(UiMessages.notificationsAndroidFix())), retry = gms == ConnectionResult.SERVICE_UPDATING)
+            val gms = GoogleApiAvailabilityLight.getInstance().isGooglePlayServicesAvailable(context)
+            if (gms != ConnectionResult.SUCCESS) {
+                val problem = when (gms) {
+                    ConnectionResult.SERVICE_MISSING -> sessionText(UiMessages.notificationsAndroidGooglePlayServicesAreNotInstalledPushIsUnavailable())
+                    ConnectionResult.SERVICE_DISABLED -> sessionText(UiMessages.notificationsAndroidGooglePlayServicesAreDisabledPushIsUnavailable())
+                    ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED -> sessionText(UiMessages.notificationsAndroidGooglePlayServicesNeedAnUpdatePushIsUnavailable())
+                    ConnectionResult.SERVICE_UPDATING -> sessionText(UiMessages.notificationsAndroidGooglePlayServicesAreUpdatingBackgroundAlertsAreTemporarilyUnavailable())
+                    else -> sessionText(UiMessages.notificationsAndroidGooglePlayServicesAreUnavailablePushIsUnavailable())
                 }
-                if (!permitted(context)) {
-                    return PushAttempt(PushStatus(sessionText(UiMessages.notificationsAndroidSystemNotificationPermissionIsDisabled()), sessionText(UiMessages.settingsEnable())))
-                }
-                try {
-                    token ?: fcmToken()
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    return tokenFailure(e)
-                }
+                return PushAttempt(PushStatus(problem, sessionText(UiMessages.notificationsAndroidFix())), retry = gms == ConnectionResult.SERVICE_UPDATING)
             }
-            val res = remote.api.setMachinePushTarget(remote.currentToken(),PushType.PUSH_TYPE_FCM,if(kinds.isEmpty()) "" else fcm,kinds)
+            if (!permitted(context)) {
+                return PushAttempt(PushStatus(sessionText(UiMessages.notificationsAndroidSystemNotificationPermissionIsDisabled()), sessionText(UiMessages.settingsEnable())))
+            }
+            val fcm = try {
+                token ?: fcmToken()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                return tokenFailure(e)
+            }
+            val res = remote.api.setMachinePushTarget(remote.currentToken(), PushType.PUSH_TYPE_FCM, fcm, kinds)
 
-            val status = if (res.enabled || kinds.isEmpty()) PushStatus() else PushStatus(sessionText(UiMessages.notificationsAndroidTheServerHasNotConfiguredFcmPushIsUnavailable()))
+            val status = if (res.enabled) PushStatus() else PushStatus(sessionText(UiMessages.notificationsAndroidTheServerHasNotConfiguredFcmPushIsUnavailable()))
             // Only the length: the token identifies this phone to FCM.
             Log.i(TAG, "push registered, token length ${fcm.length}")
             return PushAttempt(status)
