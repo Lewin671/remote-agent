@@ -15,6 +15,19 @@ BIN=$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")
 tmp=$BIN.new.$$
 trap 'rm -f "$tmp"' EXIT
 "$ROOT/scripts/build-go.sh" "$tmp" ./cmd/remote-agent
+# macOS remembers privacy permissions (such as access to Downloads) by code
+# identity. Go gives the binary only an ad hoc signature, so every build looks
+# like a new program and asks again. Sign with a stable identifier and the
+# first Apple Development certificate in the keychain (or
+# RA_CODESIGN_IDENTITY) so a permission granted once survives reinstalls.
+if [ "$(uname)" = Darwin ]; then
+	identity=${RA_CODESIGN_IDENTITY:-$(security find-identity -v -p codesigning 2>/dev/null |
+		sed -n 's/.*"\(Apple Development: [^"]*\)".*/\1/p' | head -n 1)}
+	if [ -n "$identity" ]; then
+		codesign --force --sign "$identity" --identifier com.github.lewin671.remote-agent "$tmp" ||
+			echo "codesign failed: macOS may ask again for permissions it already granted" >&2
+	fi
+fi
 mv -f "$tmp" "$BIN"
 echo "installed $BIN"
 
