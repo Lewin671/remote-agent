@@ -20,13 +20,23 @@ func TestClaudeParserDedupAndThinkingInclusion(t *testing.T) {
 	}
 	// Two content blocks sharing req_1: thinking + text, preceded by api-request.
 	// output_tokens (100) already includes thinking_tokens (40).
-	// Also a short reply (output=10) that counts in usage & cache hit rate, NOT speed/TTFT.
+	// The thinking block took 300ms, so its first token came at 0.2s.
+	// Also a short reply (output=10) that counts in usage & cache hit rate, NOT speed/TTFT,
+	// and a text + tool_use reply without thinking: block lines carry completion times
+	// only, so its first-token time is unknown and it must not yield a speed sample.
+	// req_4's thinking block arrived in one burst (55 thinking tokens in 2ms): no speed sample either.
 	jsonl := "" +
 		`{"type":"api-request","timestamp":"2026-11-18T10:00:00.000Z","uuid":"u0"}` + "\n" +
-		`{"type":"assistant","timestamp":"2026-11-18T10:00:00.500Z","uuid":"u1","parentUuid":"u0","requestId":"req_1","message":{"id":"msg_1","model":"claude-opus-5-5","usage":{"input_tokens":100,"cache_creation_input_tokens":200,"cache_read_input_tokens":700,"output_tokens":100,"output_tokens_details":{"thinking_tokens":40}},"content":[{"type":"thinking"}]}}` + "\n" +
+		`{"type":"assistant","timestamp":"2026-11-18T10:00:00.500Z","uuid":"u1","parentUuid":"u0","requestId":"req_1","thinkingDurationMs":300,"message":{"id":"msg_1","model":"claude-opus-5-5","usage":{"input_tokens":100,"cache_creation_input_tokens":200,"cache_read_input_tokens":700,"output_tokens":100,"output_tokens_details":{"thinking_tokens":40}},"content":[{"type":"thinking"}]}}` + "\n" +
 		`{"type":"assistant","timestamp":"2026-11-18T10:00:01.500Z","uuid":"u2","parentUuid":"u1","requestId":"req_1","message":{"id":"msg_1","model":"claude-opus-5-5","usage":{"input_tokens":100,"cache_creation_input_tokens":200,"cache_read_input_tokens":700,"output_tokens":100,"output_tokens_details":{"thinking_tokens":40}},"content":[{"type":"text"}]}}` + "\n" +
 		`{"type":"api-request","timestamp":"2026-11-18T10:01:00.000Z","uuid":"u3"}` + "\n" +
-		`{"type":"assistant","timestamp":"2026-11-18T10:01:00.800Z","uuid":"u4","parentUuid":"u3","requestId":"req_2","message":{"id":"msg_2","model":"claude-opus-5-5","usage":{"input_tokens":50,"cache_creation_input_tokens":0,"cache_read_input_tokens":950,"output_tokens":10},"content":[{"type":"tool_use"}]}}` + "\n"
+		`{"type":"assistant","timestamp":"2026-11-18T10:01:00.800Z","uuid":"u4","parentUuid":"u3","requestId":"req_2","message":{"id":"msg_2","model":"claude-opus-5-5","usage":{"input_tokens":50,"cache_creation_input_tokens":0,"cache_read_input_tokens":950,"output_tokens":10},"content":[{"type":"tool_use"}]}}` + "\n" +
+		`{"type":"api-request","timestamp":"2026-11-18T10:02:00.000Z","uuid":"u5"}` + "\n" +
+		`{"type":"assistant","timestamp":"2026-11-18T10:02:04.000Z","uuid":"u6","parentUuid":"u5","requestId":"req_3","message":{"id":"msg_3","model":"claude-opus-5-5","usage":{"input_tokens":0,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":500},"content":[{"type":"text"}]}}` + "\n" +
+		`{"type":"assistant","timestamp":"2026-11-18T10:02:04.500Z","uuid":"u7","parentUuid":"u6","requestId":"req_3","message":{"id":"msg_3","model":"claude-opus-5-5","usage":{"input_tokens":0,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":500},"content":[{"type":"tool_use"}]}}` + "\n" +
+		`{"type":"api-request","timestamp":"2026-11-18T10:03:00.000Z","uuid":"u8"}` + "\n" +
+		`{"type":"assistant","timestamp":"2026-11-18T10:03:08.000Z","uuid":"u9","parentUuid":"u8","requestId":"req_4","thinkingDurationMs":2,"message":{"id":"msg_4","model":"claude-opus-5-5","usage":{"input_tokens":0,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":300,"output_tokens_details":{"thinking_tokens":55}},"content":[{"type":"thinking"}]}}` + "\n" +
+		`{"type":"assistant","timestamp":"2026-11-18T10:03:08.250Z","uuid":"u10","parentUuid":"u9","requestId":"req_4","message":{"id":"msg_4","model":"claude-opus-5-5","usage":{"input_tokens":0,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":300,"output_tokens_details":{"thinking_tokens":55}},"content":[{"type":"text"}]}}` + "\n"
 	if err := os.WriteFile(filepath.Join(claudeProj, "s1.jsonl"), []byte(jsonl), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -58,22 +68,22 @@ func TestClaudeParserDedupAndThinkingInclusion(t *testing.T) {
 	}
 	s := resp.Series[0]
 	cur := s.Current
-	// Total tokens = (100+200+700+100) + (50+0+950+10) = 1100 + 1010 = 2110 (thinking NOT double counted).
-	if cur.UncachedInputTokens != 150 || cur.CacheWriteTokens != 200 || cur.CacheReadTokens != 1650 || cur.OutputTokens != 110 || cur.ReasoningOutputTokens != 40 {
+	// Total tokens = (100+200+700+100) + (50+0+950+10) + 500 + 300 = 2910 (thinking NOT double counted).
+	if cur.UncachedInputTokens != 150 || cur.CacheWriteTokens != 200 || cur.CacheReadTokens != 1650 || cur.OutputTokens != 910 || cur.ReasoningOutputTokens != 95 {
 		t.Fatalf("unexpected token breakdown: %+v", cur)
 	}
-	if cur.UsageRequestCount != 2 || cur.SpeedRequestCount != 1 {
+	if cur.UsageRequestCount != 4 || cur.SpeedRequestCount != 1 {
 		t.Fatalf("unexpected request counts: usage=%d speed=%d", cur.UsageRequestCount, cur.SpeedRequestCount)
 	}
 	// Weighted cache hit = 1650 / (150 + 200 + 1650) = 1650 / 2000 = 0.825
 	if !cur.HasCacheHitRate || cur.CacheHitRate < 0.824 || cur.CacheHitRate > 0.826 {
 		t.Fatalf("unexpected cache hit rate: %v", cur.CacheHitRate)
 	}
-	// Speed = 100 tok / 1.0s = 100 tok/s; TTFT = 500ms
-	if !cur.HasSpeed || cur.SpeedP50 < 99.9 || cur.SpeedP50 > 100.1 {
+	// Speed = 100 tok / (1.5s - 0.2s) = 76.92 tok/s; TTFT = 200ms
+	if !cur.HasSpeed || cur.SpeedP50 < 76.8 || cur.SpeedP50 > 77.0 {
 		t.Fatalf("unexpected speed p50: %v", cur.SpeedP50)
 	}
-	if !cur.HasTtft || cur.TtftP50Ms < 499 || cur.TtftP50Ms > 501 {
+	if !cur.HasTtft || cur.TtftP50Ms < 199 || cur.TtftP50Ms > 201 {
 		t.Fatalf("unexpected ttft p50: %v", cur.TtftP50Ms)
 	}
 	// Antigravity must report OK source state when HasAntigravity is true.

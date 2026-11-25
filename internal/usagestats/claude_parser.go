@@ -17,7 +17,10 @@ type claudeLine struct {
 	UUID       string    `json:"uuid"`
 	ParentUUID string    `json:"parentUuid"`
 	RequestID  string    `json:"requestId"`
-	Message    *struct {
+	// ThinkingDurationMs is set on a thinking block's line, which Claude Code
+	// writes when the block completes; subtracting it gives the block's start.
+	ThinkingDurationMs *int64 `json:"thinkingDurationMs"`
+	Message            *struct {
 		ID      string `json:"id"`
 		Model   string `json:"model"`
 		Content []struct {
@@ -58,6 +61,9 @@ func scanClaudeFile(path string, fromOffset int64) (samples []requestSample, new
 		tReq      int64
 		tFirst    int64
 		tEnd      int64
+		// firstThinkMs is the thinking duration of the earliest block, or -1
+		// when that block is not a timed thinking block.
+		firstThinkMs int64
 	}
 
 	uuidTS := map[string]int64{}
@@ -113,10 +119,11 @@ func scanClaudeFile(path string, fromOffset int64) (samples []requestSample, new
 						}
 						lastAPIReqTS = 0
 						cur = &agg{
-							key:      dedupKey,
-							model:    rec.Message.Model,
-							parentID: rec.ParentUUID,
-							tReq:     tReq,
+							key:          dedupKey,
+							model:        rec.Message.Model,
+							parentID:     rec.ParentUUID,
+							tReq:         tReq,
+							firstThinkMs: -1,
 						}
 						requests[dedupKey] = cur
 						order = append(order, dedupKey)
@@ -136,6 +143,10 @@ func scanClaudeFile(path string, fromOffset int64) (samples []requestSample, new
 					if tsMs > 0 {
 						if cur.tFirst == 0 || tsMs < cur.tFirst {
 							cur.tFirst = tsMs
+							cur.firstThinkMs = -1
+							if d := rec.ThinkingDurationMs; d != nil && *d >= 0 && hasContentType(rec.Message.Content, "thinking") {
+								cur.firstThinkMs = *d
+							}
 						}
 						if tsMs > cur.tEnd {
 							cur.tEnd = tsMs
@@ -174,18 +185,37 @@ func scanClaudeFile(path string, fromOffset int64) (samples []requestSample, new
 			reasoningOutput:     min(cur.reasoning, cur.output),
 			cacheWriteSupported: true,
 		}
-		if cur.output >= 16 && cur.tReq > 0 && cur.tFirst > 0 && cur.tEnd > cur.tFirst && cur.tReq <= cur.tFirst {
-			genMs := cur.tEnd - cur.tFirst
-			if genMs >= 200 {
+		// Claude Code writes one line per content block when the block completes,
+		// so the earliest line marks the end of the first block, not its first
+		// token. Only a leading thinking block carries its own duration, which
+		// recovers the first-token time; other requests count toward usage only.
+		// A thinking block delivered in one burst reports a near-zero duration
+		// (real thinking runs well under 1 tok/ms), which would leave its
+		// generation inside TTFT and inflate tok/s, so it is skipped too.
+		if cur.firstThinkMs > 0 && cur.reasoning <= uint64(cur.firstThinkMs) && cur.output >= 16 && cur.tReq > 0 {
+			tTok := cur.tFirst - cur.firstThinkMs
+			genMs := cur.tEnd - tTok
+			if tTok >= cur.tReq && genMs >= 200 {
 				rs.speedValid = true
 				rs.generationMs = genMs
 				rs.speedTokPerSec = float64(cur.output) * 1000.0 / float64(genMs)
-				rs.ttftMs = float64(cur.tFirst - cur.tReq)
+				rs.ttftMs = float64(tTok - cur.tReq)
 			}
 		}
 		out = append(out, rs)
 	}
 	return out, offset, nil
+}
+
+func hasContentType(content []struct {
+	Type string `json:"type"`
+}, typ string) bool {
+	for _, c := range content {
+		if c.Type == typ {
+			return true
+		}
+	}
+	return false
 }
 
 func nonNegU64(v int64) uint64 {
