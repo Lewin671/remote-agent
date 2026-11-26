@@ -169,6 +169,24 @@ import UIKit
         #expect(text(host) == "fresh")
     }
 
+    @Test func screenTitleStringsDoNotPrintAndOscTitlesStaySilent() {
+        // Without filtering, SwiftTerm 1.11.2 leaves ESC k to ground and prints its body;
+        // OSC 1 / OSC 2 titles are already absorbed by the emulator.
+        let bare = host()
+        bare.snapshot(cols: 80, rows: 24, data: Data())
+        bare.terminal.feed(byteArray: [UInt8]("\u{1B}kTITLE\u{1B}\\\u{1B}]1;T1\u{07}\u{1B}]2;T2\u{1B}\\".utf8)[...])
+        #expect(text(bare) == "TITLE")
+
+        let view = host()
+        view.snapshot(cols: 80, rows: 24, data: Data("before".utf8))
+        view.append(Data("\u{1B}kseq\u{1B}\\1\u{1B}]1;T1\u{07}\u{1B}]2;T2\u{1B}\\".utf8))
+        #expect(text(view) == "before1")
+        let split = Data("\u{1B}kprintf\u{1B}\\a".utf8)
+        view.append(split.prefix(4))
+        view.append(split.dropFirst(4))
+        #expect(text(view) == "before1a")
+    }
+
     /// How many images the emulator holds in its lines. SwiftTerm keeps them out of its public interface.
     private func images(_ host: TerminalHostView) -> Int {
         let emulator = host.terminal.getTerminal()

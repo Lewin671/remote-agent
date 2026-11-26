@@ -1,14 +1,17 @@
-// Takes device control strings and application program commands out of
-// terminal output before the emulator reads it. SwiftTerm 1.11.2 decodes
-// Sixel (a DCS) and Kitty graphics (an APC) into images it puts in the
-// buffer itself, with nothing the app can refuse them by; output could
-// then draw over the screen and hold as much memory as it likes
-// (docs/ios-client.md 「终端」). Nothing else the app shows comes in these
-// strings: their other uses are queries, whose answers are not sent back.
+// Takes device control strings, application program commands, and screen
+// title strings (`ESC k … ST`) out of terminal output before the emulator
+// reads it. SwiftTerm 1.11.2 decodes Sixel (a DCS) and Kitty graphics (an
+// APC) into images it puts in the buffer itself, with nothing the app can
+// refuse them by; output could then draw over the screen and hold as much
+// memory as it likes (docs/ios-client.md 「终端」). It also does not handle
+// `ESC k`, returning to plain text immediately so the title body (such as
+// oh-my-zsh preexec command names under screen*/tmux*) is printed to the
+// screen. Nothing else the app shows comes in these strings: their other
+// uses are queries, whose answers are not sent back.
 //
 // Whether a byte begins such a string depends on where the emulator's
-// parser stands: `P` and `_` do right after ESC, the raw bytes 0x90 and
-// 0x9F do anywhere but in plain text, where they are part of a character
+// parser stands: `P`, `_`, and `k` do right after ESC, the raw bytes 0x90
+// and 0x9F do anywhere but in plain text, where they are part of a character
 // (吐 is E5 90 90). So the filter follows the parser, state for state, as
 // EscapeSequenceParser.swift of 1.11.2 moves: it reads what it lets
 // through exactly as the emulator will. Where a string would begin, the
@@ -33,6 +36,8 @@ public struct TerminalStringFilter: Sendable {
     private enum Dropping {
         case dcsEntry, dcsParam, dcsIntermediate, dcsIgnore, dcsPassthrough
         case apc
+        /// A screen title string (`ESC k … ST`), ending at ST, BEL, CAN, SUB, or another ESC sequence.
+        case screenTitle
         /// An ESC inside the string: with `\` it ends it, with anything else a new sequence begins.
         case escape
     }
@@ -67,6 +72,16 @@ public struct TerminalStringFilter: Sendable {
             }
             return
         }
+        if d == .screenTitle {
+            switch byte {
+            case 0x1B: dropping = .escape
+            case 0x07, 0x18, 0x1A:
+                dropping = nil
+                parser = .ground
+            default: break
+            }
+            return
+        }
         if d == .apc, run {
             if byte == 0x07 || byte == 0x18 || byte == 0x1B { run = false } else { return }
         }
@@ -93,7 +108,7 @@ public struct TerminalStringFilter: Sendable {
         default:
             let executable = byte <= 0x18 || (0x1C...0x1F).contains(byte)
             switch d {
-            case .escape:
+            case .escape, .screenTitle:
                 break
             case .apc:
                 if byte == 0x07 || byte == 0x18 { leave() } else if !executable { run = true }
@@ -167,6 +182,7 @@ public struct TerminalStringFilter: Sendable {
                 switch byte {
                 case 0x50: return drop(.dcsEntry, &out, &run)  // P
                 case 0x5F: return drop(.apc, &out, &run)  // _
+                case 0x6B: return drop(.screenTitle, &out, &run)  // k
                 case 0x5B: parser = .csiEntry  // [
                 case 0x5D: parser = .osc  // ]
                 case 0x58, 0x5E: parser = .sosPm  // X ^

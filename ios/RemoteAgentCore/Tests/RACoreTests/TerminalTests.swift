@@ -287,18 +287,26 @@ import Testing
         #expect(run("a\u{1B}Pq~\u{18}~\u{1B}\\b") == "a\u{1B}\u{1A}b")
         // CAN does not take the emulator out of a sequence: what follows it can still begin a string.
         #expect(run("a\u{1B}\u{18}Pq~\u{1B}\\b") == "a\u{1B}\u{18}\u{1A}b")
+        // Screen title strings (ESC k … ST) are dropped too: SwiftTerm prints their body as text.
+        #expect(run("a\u{1B}kseq\u{1B}\\1") == "a\u{1B}\u{1A}1")
+        #expect(run("a\u{1B}kTITLE\u{07}b") == "a\u{1B}\u{1A}b")
+        #expect(run("a\u{1B}kTITLE\u{18}b\u{1B}kMORE\u{1A}c") == "a\u{1B}\u{1A}b\u{1B}\u{1A}c")
+        #expect(run("a\u{1B}k吐槽本\u{1B}\\b") == "a\u{1B}\u{1A}b")
         // Other sequences, and text of more than one byte, pass through.
-        let plain = "\u{1B}[31m红吐\u{1B}]0;吐槽 title\u{07}\u{1B}(B é\u{1B}[0m\u{1B}]8;;x\u{1B}\\吐"
+        let plain = "\u{1B}[31m红吐\u{1B}]0;吐槽 title\u{07}\u{1B}]1;tab\u{07}\u{1B}]2;win\u{1B}\\\u{1B}(B é\u{1B}[0m\u{1B}]8;;x\u{1B}\\吐"
         #expect(run(plain) == plain)
     }
 
     @Test func aStringMayBeginInOneFrameAndEndInAnother() {
         #expect(run([[0x61, esc], [0x50, 0x71, 0x23], [0x7E, esc], [0x5C, 0x62]]) == [0x61, esc, sub, 0x62])
+        #expect(run([[0x61, esc], [0x6B, 0x54], [0x49, esc], [0x5C, 0x62]]) == [0x61, esc, sub, 0x62])
+        #expect(run([[0x61, esc, 0x6B, 0xE6], [0x9C, 0xAC, esc, 0x5C, 0x62]]) == [0x61, esc, sub, 0x62])
         #expect(run([[esc, 0x5B, 0x31], [0x6D, 0x61]]) == [esc, 0x5B, 0x31, 0x6D, 0x61])
     }
 
     @Test func anEscapeSequenceInsideAStringEndsItAndIsRead() {
         #expect(run("a\u{1B}Pq~~\u{1B}[1mb") == "a\u{1B}\u{1A}\u{1B}[1mb")
+        #expect(run("a\u{1B}kTITLE\u{1B}[1mb") == "a\u{1B}\u{1A}\u{1B}[1mb")
         // Also another string.
         #expect(run("a\u{1B}Pq~~\u{1B}_G;AA\u{1B}\\b") == "a\u{1B}\u{1A}\u{1B}\u{1A}b")
     }
