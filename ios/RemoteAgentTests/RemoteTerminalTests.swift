@@ -10,27 +10,25 @@ import Testing
 /// screen (Android has no test of this).
 @MainActor
 @Suite struct RemoteTerminalTests {
-    // These tests observe frames at sealing, not network delivery. A real
-    // socket to a refused port stops TermConn after its first send and makes
-    // every later frame depend on that asynchronous connection failure.
-    private struct AcceptingSocket: TerminalSocket {
-        func send(_ data: Data, done: @escaping @Sendable (Error?) -> Void) { done(nil) }
-        func cancel() {}
-        func close() {}
-    }
-
     /// The streams asked for, each with the listener it was given, and what was sent on those that opened.
     private final class Streams: @unchecked Sendable {
         private let lock = NSLock()
         private var heard: [any TermListener] = []
         private var answered: [Int: TermConn] = [:]
         private var typed: [PBTerminalFrame] = []
+        private var historyDeliverer: (@MainActor (PBTerminalHistoryPage) -> Void)?
         /// Whether a stream's opening command answers at once, or when `answer` says.
         private let answers: Bool
         init(answers: Bool = true) { self.answers = answers }
         var count: Int { lock.withLock { heard.count } }
         var sent: [PBTerminalFrame] { lock.withLock { typed } }
         func listener(_ i: Int) -> any TermListener { lock.withLock { heard[i] } }
+        @MainActor func setHistoryDeliverer(_ fn: @escaping @MainActor (PBTerminalHistoryPage) -> Void) {
+            historyDeliverer = fn
+        }
+        @MainActor func deliverHistory(_ page: PBTerminalHistoryPage) {
+            historyDeliverer?(page)
+        }
         func add(_ l: any TermListener) -> Int {
             let i = lock.withLock {
                 heard.append(l)
@@ -42,14 +40,14 @@ import Testing
 
         func conn(_ i: Int) -> TermConn? { lock.withLock { answered[i] } }
 
-        /// The opening command of stream `i` answers; frames are accepted in memory and kept as sealed.
+        /// The opening command of stream `i` answers; frames are captured directly in memory.
         func answer(_ i: Int) {
             let conn = TermConn(
-                socket: AcceptingSocket(),
-                seal: { [self] frame, _, _ in
+                sendFrame: { [self] frame in
                     lock.withLock { typed.append(frame) }
-                    return (Data(), Data(), true)
-                }, finish: { _ in }, closeLocal: {})
+                },
+                closeLocal: {}
+            )
             lock.withLock { answered[i] = conn }
         }
     }
@@ -153,6 +151,9 @@ import Testing
     {
         let terminal = RemoteTerminal()
         let historyDriver = CoreHistoryDriver()
+        streams.setHistoryDeliverer { page in
+            historyDriver.send(terminalID: terminal.terminalId, kind: .pageReceived, page: page)
+        }
         terminal.host.frame = CGRect(x: 0, y: 0, width: 400, height: 500)
         terminal.host.layoutIfNeeded()
         terminal.use(
@@ -245,16 +246,14 @@ import Testing
         let request = streams.sent.last!.historyRequest
         #expect(!request.requestID.isEmpty && request.cursor.isEmpty)
 
-        streams.listener(0).onFrame(
+        streams.deliverHistory(
             .with {
-                $0.historyPage = .with {
-                    $0.requestID = request.requestID
-                    $0.lines = ["older"]
-                    $0.nextCursor = "capture:200"
-                }
+                $0.requestID = request.requestID
+                $0.lines = ["older"]
+                $0.nextCursor = "capture:200"
             })
         streams.listener(0).onFrame(output(" output"))
-        await eventually { !t.history.pending }
+        await eventually { !t.history.pending && t.hasNewOutput }
         #expect(t.history.open && plainLines(t.history.pages.first) == ["older"])
         t.readUp(90)
         #expect(t.entryPull == 65)
@@ -314,12 +313,10 @@ import Testing
         t.readUp(40)
         await eventually { streams.sent.last?.historyRequest.requestID.isEmpty == false }
         let first = streams.sent.last!.historyRequest
-        streams.listener(0).onFrame(
+        streams.deliverHistory(
             .with {
-                $0.historyPage = .with {
-                    $0.requestID = first.requestID
-                    $0.error = "cannot capture terminal history; retry"
-                }
+                $0.requestID = first.requestID
+                $0.error = "cannot capture terminal history; retry"
             })
         await eventually { t.history.phase == .openingFailed }
         #expect(
@@ -338,12 +335,10 @@ import Testing
         t.readUp(40)
         await eventually { streams.sent.last?.historyRequest.requestID.isEmpty == false }
         let asked = streams.sent.last!.historyRequest
-        streams.listener(0).onFrame(
+        streams.deliverHistory(
             .with {
-                $0.historyPage = .with {
-                    $0.requestID = asked.requestID
-                    $0.error = "cannot capture terminal history; retry"
-                }
+                $0.requestID = asked.requestID
+                $0.error = "cannot capture terminal history; retry"
             })
         await eventually { t.history.phase == .openingFailed }
         t.leaveReading()
@@ -356,13 +351,11 @@ import Testing
         #expect(t.history.phase == .opening && streams.sent.count == before + 1)
         let second = streams.sent.last!.historyRequest
         #expect(second.cursor.isEmpty && second.requestID != first.requestID)
-        streams.listener(0).onFrame(
+        streams.deliverHistory(
             .with {
-                $0.historyPage = .with {
-                    $0.requestID = second.requestID
-                    $0.lines = ["older"]
-                    $0.nextCursor = "capture:200"
-                }
+                $0.requestID = second.requestID
+                $0.lines = ["older"]
+                $0.nextCursor = "capture:200"
             })
         await eventually { t.history.open }
         #expect(plainLines(t.history.pages.first) == ["older"])

@@ -56,6 +56,7 @@ extension Remote {
     }
 
     public nonisolated func handleTerminalDirectSend(_ eff: PBCoreTerminalDirectSendEffect) {
+        activeTerminals.onSentOut(streamId: eff.streamID)
         if eff.sendRelay {
             activeTerminals.sendRelay(streamId: eff.streamID, raw: eff.sealedEnvelope)
         }
@@ -64,16 +65,20 @@ extension Remote {
         }
     }
 
-    public nonisolated func handleTerminalDirectDeliver(_ eff: PBCoreTerminalDirectDeliverEffect) {
-        activeTerminals.deliver(streamId: eff.streamID, payloads: eff.payloads)
+    public nonisolated func handleTerminalOpenSocket(_ eff: PBTerminalOpenSocketEffect) {
+        activeTerminals.handleOpenSocket(eff)
     }
 
-    public nonisolated func handleTerminalDirectAttachRelay(_ eff: PBCoreTerminalDirectAttachRelayEffect) {
-        activeTerminals.attachRelay(streamId: eff.streamID, legId: eff.legID)
+    public nonisolated func handleTerminalCloseSocket(_ eff: PBTerminalCloseSocketEffect) {
+        activeTerminals.handleCloseSocket(eff)
     }
 
-    public nonisolated func handleTerminalDirectState(_ eff: PBCoreTerminalDirectStateEffect) {
-        activeTerminals.onState(streamId: eff.streamID, state: eff.state, reason: eff.reason, needsConfirmation: eff.needsConfirmation)
+    public nonisolated func handleTerminalDeliverOutput(_ eff: PBTerminalDeliverOutputEffect) {
+        activeTerminals.handleDeliverOutput(eff)
+    }
+
+    public nonisolated func handleTerminalStateChanged(_ eff: PBTerminalStateChangedEffect) {
+        activeTerminals.handleStateChanged(eff)
     }
 
     public func handleDirectDcReadStats(_ eff: PBCoreDirectDcReadStatsEffect) async {

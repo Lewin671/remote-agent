@@ -499,6 +499,7 @@ final class CoreSecurityDriver: @unchecked Sendable {
     private let onTokenUpdated: (@Sendable (PBSecurityTokenUpdatedEffect) -> Void)?
     private let onDispatchCommand: (@Sendable (PBCoreDispatchCommandEffect) async -> PBCoreCommandOutcomeEvent)?
     private let onTerminalEffect: (@Sendable (PBCoreEffect) -> Void)?
+    private let onSessionImageLoaded: (@Sendable (PBSessionImageLoadedEffect) -> Void)?
     private let queue = DispatchQueue(label: "ra.core.security.driver")
     private let lock = NSLock()
     private var closed = false
@@ -517,6 +518,7 @@ final class CoreSecurityDriver: @unchecked Sendable {
         onTokenUpdated: (@Sendable (PBSecurityTokenUpdatedEffect) -> Void)? = nil,
         onDispatchCommand: (@Sendable (PBCoreDispatchCommandEffect) async -> PBCoreCommandOutcomeEvent)? = nil,
         onTerminalEffect: (@Sendable (PBCoreEffect) -> Void)? = nil,
+        onSessionImageLoaded: (@Sendable (PBSessionImageLoadedEffect) -> Void)? = nil,
         initialConfig: PBSecurityConfigEvent? = nil,
         relayPipe: Bool = false
     ) throws {
@@ -529,6 +531,7 @@ final class CoreSecurityDriver: @unchecked Sendable {
         self.onTokenUpdated = onTokenUpdated
         self.onDispatchCommand = onDispatchCommand
         self.onTerminalEffect = onTerminalEffect
+        self.onSessionImageLoaded = onSessionImageLoaded
         enqueueEvent(PBCoreEvent.with {
             $0.entropyProvided = Self.buildEntropy(minIds: 16, minFloats: 16, minRandomBytes: 4096)
         })
@@ -742,7 +745,9 @@ final class CoreSecurityDriver: @unchecked Sendable {
                     fromDaemon: fromDaemon
                 )))
             }
-        case .terminalDirectSend, .terminalDirectDeliver, .terminalDirectAttachRelay, .terminalDirectState:
+        case .sessionImageLoaded(let res):
+            onSessionImageLoaded?(res)
+        case .terminalDirectSend, .terminalOpenSocket, .terminalCloseSocket, .terminalDeliverOutput, .terminalStateChanged:
             onTerminalEffect?(eff)
         default: break
         }

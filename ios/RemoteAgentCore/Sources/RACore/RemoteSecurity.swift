@@ -79,11 +79,15 @@ extension Remote {
                 guard let self else { return }
                 switch eff.effect {
                 case .terminalDirectSend(let e)?: self.handleTerminalDirectSend(e)
-                case .terminalDirectDeliver(let e)?: self.handleTerminalDirectDeliver(e)
-                case .terminalDirectAttachRelay(let e)?: self.handleTerminalDirectAttachRelay(e)
-                case .terminalDirectState(let e)?: self.handleTerminalDirectState(e)
+                case .terminalOpenSocket(let e)?: self.handleTerminalOpenSocket(e)
+                case .terminalCloseSocket(let e)?: self.handleTerminalCloseSocket(e)
+                case .terminalDeliverOutput(let e)?: self.handleTerminalDeliverOutput(e)
+                case .terminalStateChanged(let e)?: self.handleTerminalStateChanged(e)
                 default: break
                 }
+            },
+            onSessionImageLoaded: { [weak self] eff in
+                self?.handleSessionImageLoaded(eff)
             },
             relayPipe: true
         )
@@ -136,7 +140,7 @@ extension Remote {
 
     @discardableResult
     public func syncSecurity(touch: Bool = false) async throws -> PBSecurityWorkflowStatus {
-        let tok = await currentToken()
+        let tok = cachedToken?.token ?? ""
         return try await withSecurityStatus { try await $0.syncNow(touch: touch, authToken: tok) }
     }
 
@@ -317,63 +321,5 @@ extension Remote {
             throw SecurityFailure.invalid
         }
         return opened
-    }
-
-    func hasSessionSeed(_ sid: String) async -> Bool {
-        guard !sid.isEmpty else { return false }
-        do {
-            let res = try await runSecurityOp {
-                $0.getSessionSeed = .with { $0.sessionID = sid }
-            }
-            if case .sessionSeed(let seed)? = res.result {
-                return seed.count == keySize
-            }
-            return false
-        } catch {
-            return false
-        }
-    }
-
-    private static let purposeByKind: [PBPayloadKind: SecurityPurpose] = [
-        .event: .event, .sessionMeta: .sessionMeta, .sessionKey: .sessionKey, .machineMeta: .machineMeta,
-        .command: .command, .commandResult: .result, .terminalOutput: .terminalOutput, .terminalInput: .terminalInput,
-        .notify: .notify, .image: .image, .accountPrefs: .prefs, .deviceMeta: .deviceMeta,
-    ]
-
-    func openSecureMessage<M: SwiftProtobuf.Message>(
-        envelope: PBEnvelope?,
-        want: Place,
-        as type: M.Type,
-        history: Bool = false
-    ) async throws -> (PBHeader, M) {
-        guard let envelope, let expectedPurpose = Self.purposeByKind[want.kind] else { throw SecurityFailure.invalid }
-        let history = history || [PBPayloadKind.accountPrefs, .deviceMeta, .machineMeta, .sessionMeta, .image].contains(want.kind)
-        let opened = try await openEnvelopeOp(
-            envelope: envelope,
-            expectedPurpose: expectedPurpose,
-            machineId: want.machineId,
-            sessionId: want.sessionId,
-            requestId: want.requestId,
-            seq: want.seq,
-            history: history
-        )
-        return (Self.projection(opened), try M(serializedBytes: opened.plaintext))
-    }
-
-    private static func projection(_ r: PBSecurityOpenEnvelopeResult) -> PBHeader {
-        var out = PBHeader()
-        out.version = 3
-        let rawKind: Int = (r.purpose == SecurityPurpose.terminalResize.rawValue
-            || r.purpose == SecurityPurpose.terminalHistory.rawValue)
-            ? Int(SecurityPurpose.terminalInput.rawValue)
-            : Int(r.purpose)
-        out.kind = PBPayloadKind(rawValue: rawKind) ?? .unspecified
-        out.machineID = r.machineID
-        out.sessionID = r.sessionID
-        out.requestID = r.requestID
-        out.seq = r.seq
-        out.deadlineMs = r.deadlineMs
-        out.sender = r.sender
-        return out
     }
 }

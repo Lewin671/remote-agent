@@ -64,7 +64,7 @@ extension ServerTests {
             await cache.putImage(key: "s1/retired", envelope: try image.serializedData())
             let r = try await w.client(cache: cache)
             _ = try await r.syncSecurity()
-            let tok = await r.currentToken()
+            let tok = r.securityStore.loadLoginToken(server: r.account.server, deviceId: r.account.deviceId)?.token ?? ""
             let reqBytes = try PBListRemoteSessionsRequest.with { $0.limit = 50 }.serializedData()
             let listRes = await SecurityExecutor.executeRelayRpcUnary(
                 http: r.http,

@@ -139,7 +139,7 @@ private extension Remote {
     @discardableResult
     func hydrateExecutorState() async throws -> [String: PBSession] {
         _ = try await syncSecurity()
-        let tok = await currentToken()
+        let tok = securityStore.loadLoginToken(server: account.server, deviceId: account.deviceId)?.token ?? ""
         let reqBytes = try PBListRemoteSessionsRequest.with { $0.limit = 50 }.serializedData()
         let res = await SecurityExecutor.executeRelayRpcUnary(
             http: http,
@@ -159,9 +159,11 @@ private extension Remote {
                     envelope: rs.key, expectedPurpose: .sessionKey,
                     machineId: rs.machineID, sessionId: rs.sessionID, history: true)
             }
-            if rs.hasMeta, let opened = try? await openSecureMessage(
-                envelope: rs.meta, want: Place(.sessionMeta, machineId: rs.machineID, sessionId: rs.sessionID), as: PBSession.self) {
-                openedSessions[rs.sessionID] = opened.1
+            if rs.hasMeta, let opened = try? await openEnvelopeOp(
+                envelope: rs.meta, expectedPurpose: .sessionMeta,
+                machineId: rs.machineID, sessionId: rs.sessionID, history: true),
+               let session = try? PBSession(serializedBytes: opened.plaintext) {
+                openedSessions[rs.sessionID] = session
             }
             routes.append(.with {
                 $0.sessionID = rs.sessionID

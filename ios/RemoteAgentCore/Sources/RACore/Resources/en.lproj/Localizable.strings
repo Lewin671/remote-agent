@@ -219,8 +219,6 @@
 "errors_ios_already_registering_wait_for_the_result" = "Already registering %1$@. Wait for the result.";
 "errors_ios_cannot_find_the_server_check_your_network" = "Cannot find the server. Check your network.";
 "errors_ios_could_not_read_this_phone_s_account_state_management" = "Could not read this phone’s account state. Management keys or unfinished security operations may remain. Continuing deletes local account keys and cache, so the original operation cannot continue. Computer sessions are unaffected.";
-"errors_ios_image_content_does_not_match_its_format" = "Image content does not match its format";
-"errors_ios_image_content_or_origin_could_not_be_verified" = "Image content or origin could not be verified";
 "errors_ios_invalid_server_address" = "Invalid server address";
 "errors_ios_joining_canceled_the_old_request_may_still_occupy_the" = "Joining canceled. The old request may still occupy the code: reject it on the managing client, then generate a new pairing code.";
 "errors_ios_only_the_device_itself_can_change_its_name" = "Only the device itself can change its name";
@@ -228,12 +226,8 @@
 "errors_ios_remote_control_expired_saving_changes_session_control_and_new" = "Remote control expired. Saving changes, session control, and new uploads are paused. Open Settings › Account security to find the managing client and renew, then retry. History remains available.";
 "errors_ios_secure_connection_failed" = "Secure connection failed: %1$@";
 "errors_ios_terminal_closed" = "Terminal closed";
-"errors_ios_terminal_connection_dropped" = "Terminal connection dropped: %1$@";
-"errors_ios_terminal_input_failed_to_send_stopped" = "Terminal input failed to send. Stopped.";
-"errors_ios_terminal_input_waiting_to_send_stopped" = "Terminal input waiting to send. Stopped.";
 "errors_ios_the_original_request_and_keys_are_retained_retry_if" = "%1$@. The original request and keys are retained. Retry; if approval has expired or was denied, exit and pair again.";
 "errors_ios_this_deletes_the_account_keys_and_cache_on_this" = "This deletes the account keys and cache on this phone. Sessions on your computers are unaffected.";
-"errors_ios_unknown_session" = "Unknown session";
 "errors_ios_unsure_whether_the_computer_executed_this" = "Unsure whether the computer executed this: %1$@";
 "errors_it_may_have_been_deleted_or_belong_to_a" = "It may have been deleted, or belong to a computer that was removed.";
 "errors_membership_chain_conflict_security_operations_stopped_verify_devices_and" = "Membership chain conflict. Security operations stopped; verify devices and explicitly rejoin.";

@@ -163,68 +163,48 @@ extension Remote {
         return (ContinuousClock.now - started).milliseconds
     }
 
-    /// The bearer token last issued by Core's security engine (transitional for Step 4 terminal/image).
-    public func currentToken() async -> String {
-        if let t = cachedToken?.token, !t.isEmpty { return t }
-        if let saved = securityStore.loadLoginToken(server: account.server, deviceId: account.deviceId), !saved.token.isEmpty {
-            cachedToken = saved
-            return saved.token
-        }
-        return ""
-    }
-
-    // --- images (migrates to Core SessionFetchImageAction in Step 4) ---
+    // --- images (fetched, decrypted, and validated in Go clientcore) ---
 
     public func image(_ sid: String, imageId: String) async throws -> ImageResult {
-        guard let machineId = machineIdForSessionIfKnown(sid), await hasSessionSeed(sid) else {
-            throw CommandError("not_found", L10nMessage.errorsIosUnknownSession())
-        }
+        try await ensureSecurityBootstrapped()
         let cacheKey = "\(sid)/\(imageId)"
-        var env = await cache?.image(key: cacheKey).flatMap { try? PBEnvelope(serializedBytes: $0) }
-        if env == nil {
-            var askReq = PBGetImageRequest()
-            askReq.sessionID = sid
-            askReq.imageID = imageId
-            let reqBytes = try askReq.serializedData()
-            let res = await SecurityExecutor.executeRelayRpcUnary(
-                http: http,
-                method: .getImage,
-                server: origin.server,
-                authToken: await currentToken(),
-                requestBytes: reqBytes,
-                allowPlainHttp: allowPlainHttp
-            )
-            guard let res else { throw CancellationError() }
-            if res.connectCode == 5 { return .missing }
-            if res.connectCode != 0 || res.networkError || res.unresolvedHost {
-                let code = res.unresolvedHost ? "unresolved_host" : "unavailable"
-                if res.diagnosticMessage.isEmpty {
-                    throw CommandError(code, L10nMessage.connectionNoServer())
-                }
-                throw CommandError(code, res.diagnosticMessage)
+        let cachedEnvelope = await cache?.image(key: cacheKey)
+        let machineId = machineIdForSessionIfKnown(sid) ?? ""
+        let res = try await fetchSessionImageViaCore(
+            sessionId: sid,
+            imageId: imageId,
+            cachedEnvelope: cachedEnvelope,
+            machineId: machineId
+        )
+        switch res.status {
+        case .ok:
+            if !res.cacheEnvelopeBytes.isEmpty {
+                await cache?.putImage(key: cacheKey, envelope: res.cacheEnvelopeBytes)
             }
-            let r = try PBGetImageResponse(serializedBytes: res.responseBytes)
-            if r.expired || !r.hasImage { return .expired }
-            env = r.image
+            var payload = PBImagePayload()
+            payload.format = res.format
+            payload.width = Int32(res.width)
+            payload.height = Int32(res.height)
+            payload.data = res.data
+            return .loaded(payload)
+        case .missing:
+            return .missing
+        case .expired:
+            return .expired
+        case .bad:
+            if res.retiredHistory { return .retiredHistory }
+            let msg = res.hasErrorText
+                ? renderCoreText(res.errorText)
+                : L10n.errorsInvalidCiphertextSignatureKeyOrContentVerificationFailed()
+            return .corrupt(why: msg.isEmpty ? L10n.errorsInvalidCiphertextSignatureKeyOrContentVerificationFailed() : msg)
+        default:
+            let code = res.errorCode.isEmpty ? "unavailable" : res.errorCode
+            let rendered = res.hasErrorText ? renderCoreText(res.errorText) : ""
+            throw CommandError(
+                code,
+                rendered.isEmpty ? L10nMessage.connectionNoServer() : LocalizedMessage(raw: rendered)
+            )
         }
-        let payload: PBImagePayload
-        do {
-            (_, payload) = try await openSecureMessage(
-                envelope: env,
-                want: Place(.image, machineId: machineId, sessionId: sid, requestId: imageId),
-                as: PBImagePayload.self, history: true)
-        } catch is UnsupportedHistoryError {
-            return .retiredHistory
-        } catch {
-            return .corrupt(why: L10n.errorsIosImageContentOrOriginCouldNotBeVerified())
-        }
-        if detectFormat(payload.data) != payload.format {
-            return .corrupt(why: L10n.errorsIosImageContentDoesNotMatchItsFormat())
-        }
-        if let env, let bytes: Data = try? env.serializedData() {
-            await cache?.putImage(key: cacheKey, envelope: bytes)
-        }
-        return .loaded(payload)
     }
 }
 

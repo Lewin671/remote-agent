@@ -303,7 +303,6 @@ final class RemoteTerminal {
 
     private func apply(_ step: TerminalStep) {
         switch step {
-        case .history(let page): link?.sendHistory(terminalId, .pageReceived, page)
         case .snapshot(let cols, let rows, let data):
             host.snapshot(cols: cols, rows: rows, data: data)
             size = TerminalSize(cols, rows)

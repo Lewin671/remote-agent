@@ -4,14 +4,14 @@ import os
 /// Owns logical stream tracking over the relay WebSocket path;
 /// Core owns route selection, command lifecycle, retries, and outcome classification.
 final class Link: Sendable {
-    let relay: RelayPath
+    let relay: any Path
     private struct Streams {
         var closed = false
         var active: [UUID: Stream] = [:]
     }
     private let streams = OSAllocatedUnfairLock(initialState: Streams())
 
-    init(relay: RelayPath) {
+    init(relay: any Path) {
         self.relay = relay
     }
 

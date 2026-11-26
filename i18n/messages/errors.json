@@ -1045,34 +1045,6 @@
     "zh-CN": "没能读取这台手机的账户状态，可能还有管理密钥或未完成的安全操作。继续会删除本机账户密钥和缓存，无法继续原操作；电脑上的会话不受影响。"
   },
   {
-    "en": "Image content does not match its format",
-    "key": "errors.ios_image_content_does_not_match_its_format",
-    "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "图片内容和格式对不上"
-  },
-  {
-    "en": "Image content or origin could not be verified",
-    "key": "errors.ios_image_content_or_origin_could_not_be_verified",
-    "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "图片的内容或来源无法核实"
-  },
-  {
     "en": "Invalid server address",
     "key": "errors.ios_invalid_server_address",
     "notes": "iOS E2e.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
@@ -1176,53 +1148,6 @@
     "zh-CN": "终端连接已关闭"
   },
   {
-    "en": "Terminal connection dropped: {value}",
-    "key": "errors.ios_terminal_connection_dropped",
-    "notes": "iOS RemoteTerminal.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 errorText($0)；用户内容和系统/CLI 原文不翻译。",
-    "params": {
-      "value": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "终端连接断开：{value}"
-  },
-  {
-    "en": "Terminal input failed to send. Stopped.",
-    "key": "errors.ios_terminal_input_failed_to_send_stopped",
-    "notes": "iOS RemoteTerminal.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "终端输入发送失败，已停止"
-  },
-  {
-    "en": "Terminal input waiting to send. Stopped.",
-    "key": "errors.ios_terminal_input_waiting_to_send_stopped",
-    "notes": "iOS RemoteTerminal.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "终端输入等待发送，已停止"
-  },
-  {
     "en": "{value}. The original request and keys are retained. Retry; if approval has expired or was denied, exit and pair again.",
     "key": "errors.ios_the_original_request_and_keys_are_retained_retry_if",
     "notes": "iOS AppModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 error.localizedDescription；用户内容和系统/CLI 原文不翻译。",
@@ -1254,20 +1179,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "这会删除这台手机上的账户密钥和缓存，电脑上的会话不受影响。"
-  },
-  {
-    "en": "Unknown session",
-    "key": "errors.ios_unknown_session",
-    "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "未知会话"
   },
   {
     "en": "Unsure whether the computer executed this: {value}",

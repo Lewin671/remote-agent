@@ -91,6 +91,7 @@ public final actor Remote {
     private nonisolated let coreEventChain: SerialChain
     nonisolated let directExecutor: DirectExecutor
     nonisolated let activeTerminals = ActiveTerminalRegistry()
+    private nonisolated let imageWaiters = OSAllocatedUnfairLock<(waiters: [UInt64: ContinuationWaiter<PBSessionImageLoadedEffect>], nextOpId: UInt64)>(initialState: ([:], 1))
 
     nonisolated let deviceLink: Link
 
@@ -166,6 +167,46 @@ public final actor Remote {
         directPreferences: any DirectPreferenceStore = UserDefaultsDirectPreferences(),
         directStun: [String]? = nil
     ) throws {
+        try self.init(
+            account: account,
+            http: http,
+            cache: cache,
+            log: log,
+            clock: clock,
+            sleep: sleep,
+            jitter: jitter,
+            frameQueue: frameQueue,
+            frameQueueBytes: frameQueueBytes,
+            streamOpenMs: streamOpenMs,
+            securityStore: securityStore,
+            allowPlainHttp: allowPlainHttp,
+            monotonic: monotonic,
+            rtc: rtc,
+            directPreferences: directPreferences,
+            directStun: directStun,
+            relayPath: nil
+        )
+    }
+
+    init(
+        account: Account,
+        http: HTTP,
+        cache: (any CipherCache)? = nil,
+        log: @escaping @Sendable (String) -> Void = { _ in },
+        clock: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
+        sleep: @escaping Sleeper = realSleep,
+        jitter: @escaping @Sendable () -> Double = { Double.random(in: 0..<1) },
+        frameQueue: Int = 1024,
+        frameQueueBytes: Int = 32 << 20,
+        streamOpenMs: Int64 = 15_000,
+        securityStore: (any SecurityStoreV4)? = nil,
+        allowPlainHttp: Bool = false,
+        monotonic: (@Sendable () -> Int64)? = nil,
+        rtc: (any RtcFactory)? = nil,
+        directPreferences: any DirectPreferenceStore = UserDefaultsDirectPreferences(),
+        directStun: [String]? = nil,
+        relayPath: (any Path)?
+    ) throws {
         self.account = account
         self.allowPlainHttp = allowPlainHttp
         self.directPreferences = directPreferences
@@ -235,8 +276,8 @@ public final actor Remote {
                     gate.release(sid, bytes: size)
                 }
             },
-            onTerminalOutput: { machineId, pcId, env, header, raw in
-                terminals.onDirectOutput(streamId: header.requestID, machineId: machineId, pcId: pcId, env: env, raw: raw)
+            onTerminalOutput: { machineId, pcId, _, header, raw in
+                terminals.onDirectBytes(streamId: header.requestID, machineId: machineId, pcId: pcId, raw: raw)
             },
             factory: rtc,
             clock: { UInt64(max(0, clock())) },
@@ -247,7 +288,7 @@ public final actor Remote {
                 return Double(DispatchTime.now().uptimeNanoseconds) / 1e6
             }
         )
-        deviceLink = Link(relay: RelayPath(origin: builtOrigin, http: http, sleep: sleep))
+        deviceLink = Link(relay: relayPath ?? RelayPath(origin: builtOrigin, http: http, sleep: sleep))
         holder.remote = self
     }
 
@@ -380,8 +421,61 @@ public final actor Remote {
         await callbacks.onClosed(closedEvent)
     }
 
+    public nonisolated func handleSessionImageLoaded(_ eff: PBSessionImageLoadedEffect) {
+        let waiter = imageWaiters.withLock { $0.waiters.removeValue(forKey: eff.opID) }
+        waiter?.resolve(.success(eff))
+    }
+
+    func fetchSessionImageViaCore(
+        sessionId: String,
+        imageId: String,
+        cachedEnvelope: Data?,
+        machineId: String
+    ) async throws -> PBSessionImageLoadedEffect {
+        let waiter = ContinuationWaiter<PBSessionImageLoadedEffect>()
+        let opId = imageWaiters.withLock { s -> UInt64 in
+            let id = s.nextOpId
+            s.nextOpId &+= 1
+            s.waiters[id] = waiter
+            return id
+        }
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { cont in
+                guard waiter.install(cont) else { return }
+                if closedLock.withLock({ $0 }) {
+                    _ = imageWaiters.withLock { $0.waiters.removeValue(forKey: opId) }
+                    waiter.resolve(.failure(CancellationError()))
+                    return
+                }
+                Task { [weak self] in
+                    guard let self else { return }
+                    await self.emitCoreEvent(PBCoreEvent.with {
+                        $0.sessionFetchImage = .with {
+                            $0.opID = opId
+                            $0.sessionID = sessionId
+                            $0.imageID = imageId
+                            $0.machineID = machineId
+                            if let cachedEnvelope, !cachedEnvelope.isEmpty {
+                                $0.cachedEnvelope = cachedEnvelope
+                            }
+                        }
+                    })
+                }
+            }
+        } onCancel: {
+            let w = imageWaiters.withLock { $0.waiters.removeValue(forKey: opId) }
+            w?.resolve(.failure(CancellationError()))
+        }
+    }
+
     public nonisolated func close() {
         closedLock.withLock { $0 = true }
+        let pendingImages = imageWaiters.withLock { s -> [ContinuationWaiter<PBSessionImageLoadedEffect>] in
+            let list = Array(s.waiters.values)
+            s.waiters.removeAll()
+            return list
+        }
+        for w in pendingImages { w.resolve(.failure(CancellationError())) }
         directGate.markClosed()
         deviceLink.closeStreams()
         directExecutor.close()

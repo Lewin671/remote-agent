@@ -147,9 +147,11 @@ protocol CoreHostExecutor: AnyObject, Sendable {
     func handleDirectPcSendProbe(_ eff: PBCoreDirectPcSendProbeEffect)
     func handleDirectDcReadStats(_ eff: PBCoreDirectDcReadStatsEffect) async
     func handleTerminalDirectSend(_ eff: PBCoreTerminalDirectSendEffect)
-    func handleTerminalDirectDeliver(_ eff: PBCoreTerminalDirectDeliverEffect)
-    func handleTerminalDirectAttachRelay(_ eff: PBCoreTerminalDirectAttachRelayEffect)
-    func handleTerminalDirectState(_ eff: PBCoreTerminalDirectStateEffect)
+    func handleTerminalOpenSocket(_ eff: PBTerminalOpenSocketEffect)
+    func handleTerminalCloseSocket(_ eff: PBTerminalCloseSocketEffect)
+    func handleTerminalDeliverOutput(_ eff: PBTerminalDeliverOutputEffect)
+    func handleTerminalStateChanged(_ eff: PBTerminalStateChangedEffect)
+    func handleSessionImageLoaded(_ eff: PBSessionImageLoadedEffect)
     func close() async
 }
 
@@ -180,9 +182,11 @@ extension CoreHostExecutor {
     func handleDirectPcSendProbe(_ eff: PBCoreDirectPcSendProbeEffect) {}
     func handleDirectDcReadStats(_ eff: PBCoreDirectDcReadStatsEffect) async {}
     func handleTerminalDirectSend(_ eff: PBCoreTerminalDirectSendEffect) {}
-    func handleTerminalDirectDeliver(_ eff: PBCoreTerminalDirectDeliverEffect) {}
-    func handleTerminalDirectAttachRelay(_ eff: PBCoreTerminalDirectAttachRelayEffect) {}
-    func handleTerminalDirectState(_ eff: PBCoreTerminalDirectStateEffect) {}
+    func handleTerminalOpenSocket(_ eff: PBTerminalOpenSocketEffect) {}
+    func handleTerminalCloseSocket(_ eff: PBTerminalCloseSocketEffect) {}
+    func handleTerminalDeliverOutput(_ eff: PBTerminalDeliverOutputEffect) {}
+    func handleTerminalStateChanged(_ eff: PBTerminalStateChangedEffect) {}
+    func handleSessionImageLoaded(_ eff: PBSessionImageLoadedEffect) {}
     func setWatchedSessions(_ routes: [PBWatchedSessionRoute]) async {}
     func renameDevice(_ id: String, name: String) async throws {}
 }
@@ -2792,14 +2796,25 @@ actor CoreHost: SyncEngine {
             case .terminalDirectSend(let eff):
                 executor.handleTerminalDirectSend(eff)
 
-            case .terminalDirectDeliver(let eff):
-                executor.handleTerminalDirectDeliver(eff)
+            case .terminalOpenSocket(let eff):
+                executor.handleTerminalOpenSocket(eff)
 
-            case .terminalDirectAttachRelay(let eff):
-                executor.handleTerminalDirectAttachRelay(eff)
+            case .terminalCloseSocket(let eff):
+                executor.handleTerminalCloseSocket(eff)
 
-            case .terminalDirectState(let eff):
-                executor.handleTerminalDirectState(eff)
+            case .terminalDeliverOutput(let eff):
+                executor.handleTerminalDeliverOutput(eff)
+
+            case .terminalStateChanged(let eff):
+                executor.handleTerminalStateChanged(eff)
+
+            case .sessionImageLoaded(let eff):
+                executor.handleSessionImageLoaded(eff)
+
+            case .terminalDirectDeliver,
+                 .terminalDirectAttachRelay,
+                 .terminalDirectState:
+                break
 
             case .securityKeyGenerate, .securityKeySign, .securityKeyAgree,
                  .securityKeyEncapsulate, .securityKeyDiscard, .securityStorage,
@@ -2905,13 +2920,8 @@ actor CoreHost: SyncEngine {
                 // iOS has no OS push delivery adapter; push sync is a no-op here.
                 break
 
-            case .pushRpcResult,
-                 .sessionImageLoaded,
-                 .terminalOpenSocket,
-                 .terminalCloseSocket,
-                 .terminalDeliverOutput,
-                 .terminalStateChanged:
-                // Migrated in subsequent P3-2 commits.
+            case .pushRpcResult:
+                // iOS has no OS push delivery adapter.
                 break
 
             case .requestStoragePersist,

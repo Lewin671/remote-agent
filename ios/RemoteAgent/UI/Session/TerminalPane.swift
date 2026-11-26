@@ -107,7 +107,7 @@ struct TerminalPane: View {
         let historyQueue = SerialMainQueue()
         terminal.use(
             RemoteTerminal.Link(
-                open: { try await remote.openTerminal(sid, listener: $0) },
+                open: { try await remote.openTerminal(sid, listener: $0, terminalId: terminal.terminalId) },
                 online: {
                     Self.readiness(core: core, sessionID: sid).ready && app.foreground
                 },

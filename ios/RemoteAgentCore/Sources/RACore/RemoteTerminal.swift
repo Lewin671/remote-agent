@@ -1,9 +1,9 @@
 // A session's terminal (architecture §11, docs/transport.md §5):
-// This shell is a stateless executor: it opens /v1/term sockets, seals/opens
-// envelopes with the session key, and routes frames through Core's TerminalStream
-// (reordering, duplicate suppression without closing, hot-standby dual-send, and
-// AttachPath recovery).
-import CryptoKit
+// This shell is a stateless byte-pipe executor: it opens /v1/term sockets using
+// Core's pre-built TermHello bytes, forwards raw inbound envelope bytes to Core
+// (TerminalInboundBytesEvent), sends user input/resize/history actions to Core
+// (TerminalInputAction), and delivers Core-decrypted output frames and lifecycle
+// state transitions directly to the terminal UI.
 import Foundation
 import RAProto
 import os
@@ -29,150 +29,136 @@ public extension TermListener {
     func onRebuildConfirmed() {}
 }
 
-/// Stateless lookup table mapping active logical terminal stream IDs to their I/O callbacks.
+/// Bounded shell-side terminal pipe budgets aligned with Android (Remote.kt).
+enum TerminalPipeLimits {
+    static let maxInboundFrameBytes = 1 << 20        // 1 MiB single frame
+    static let maxInboundPendingFrames = 128         // 128 unacknowledged frames
+    static let maxInboundPendingBytes = 2 << 20      // 2 MiB unacknowledged bytes
+    static let maxOutboundFrameBytes = 64 * 1024     // 64 KiB single outbound frame
+    static let maxOutboundPendingFrames = 64         // 64 unacknowledged outbound frames
+    static let socketFailureCodes: Set<String> = ["socket_error", "closed"]
+}
+
+/// Stateless lookup table mapping pending open op_ids and active logical terminal
+/// stream IDs to their I/O callbacks.
 final class ActiveTerminalRegistry: @unchecked Sendable {
-    struct Entry: Sendable {
-        let sendRelay: @Sendable (Data) -> Void
-        let deliver: @Sendable ([Data]) -> Void
-        let attachRelay: @Sendable (Data) -> Void
-        let onState: @Sendable (UInt32, String, Bool) -> Void
-        let onDirectOutput: @Sendable (String, UInt64, PBEnvelope, Data) -> Void
+    struct PendingOpen: Sendable {
+        let onOpenSocket: @Sendable (PBTerminalOpenSocketEffect) -> Void
+        let onStateChanged: @Sendable (PBTerminalStateChangedEffect) -> Void
     }
 
-    private let lock = OSAllocatedUnfairLock(initialState: [String: Entry]())
+    struct Entry: Sendable {
+        let sendRelay: @Sendable (Data) -> Void
+        let onSentOut: @Sendable () -> Void
+        let onOpenSocket: @Sendable (PBTerminalOpenSocketEffect) -> Void
+        let onCloseSocket: @Sendable () -> Void
+        let onDeliver: @Sendable (PBTerminalDeliverOutputEffect) -> Void
+        let onStateChanged: @Sendable (PBTerminalStateChangedEffect) -> Void
+        let onDirectBytes: @Sendable (String, UInt64, Data) -> Void
+    }
+
+    private struct State {
+        var pending: [UInt64: PendingOpen] = [:]
+        var active: [String: Entry] = [:]
+        var nextOpId: UInt64 = 1
+    }
+
+    private let state = OSAllocatedUnfairLock(initialState: State())
+
+    func allocateOpId() -> UInt64 {
+        state.withLock { s in
+            let id = s.nextOpId
+            s.nextOpId &+= 1
+            return id
+        }
+    }
+
+    func registerPending(_ opId: UInt64, _ pending: PendingOpen) {
+        state.withLock { $0.pending[opId] = pending }
+    }
+
+    func unregisterPending(_ opId: UInt64) {
+        state.withLock { _ = $0.pending.removeValue(forKey: opId) }
+    }
 
     func register(_ streamId: String, _ entry: Entry) {
-        lock.withLock { $0[streamId] = entry }
+        state.withLock { $0.active[streamId] = entry }
     }
 
     func unregister(_ streamId: String) {
-        lock.withLock { _ = $0.removeValue(forKey: streamId) }
+        state.withLock { _ = $0.active.removeValue(forKey: streamId) }
+    }
+
+    func handleOpenSocket(_ eff: PBTerminalOpenSocketEffect) {
+        let pending = state.withLock { $0.pending[eff.opID] }
+        if let pending {
+            pending.onOpenSocket(eff)
+            return
+        }
+        let active = state.withLock { $0.active[eff.streamID] }
+        active?.onOpenSocket(eff)
+    }
+
+    func handleCloseSocket(_ eff: PBTerminalCloseSocketEffect) {
+        let active = state.withLock { $0.active[eff.streamID] }
+        active?.onCloseSocket()
+    }
+
+    func handleDeliverOutput(_ eff: PBTerminalDeliverOutputEffect) {
+        let active = state.withLock { $0.active[eff.streamID] }
+        active?.onDeliver(eff)
+    }
+
+    func handleStateChanged(_ eff: PBTerminalStateChangedEffect) {
+        let target: (@Sendable (PBTerminalStateChangedEffect) -> Void)? = state.withLock { s in
+            if !eff.streamID.isEmpty, let active = s.active[eff.streamID] {
+                return active.onStateChanged
+            }
+            if eff.opID != 0, let pending = s.pending[eff.opID] {
+                return pending.onStateChanged
+            }
+            return nil
+        }
+        target?(eff)
     }
 
     func sendRelay(streamId: String, raw: Data) {
-        lock.withLock { $0[streamId] }?.sendRelay(raw)
+        let active = state.withLock { $0.active[streamId] }
+        active?.sendRelay(raw)
     }
 
-    func deliver(streamId: String, payloads: [Data]) {
-        lock.withLock { $0[streamId] }?.deliver(payloads)
+    func onSentOut(streamId: String) {
+        let active = state.withLock { $0.active[streamId] }
+        active?.onSentOut()
     }
 
-    func attachRelay(streamId: String, legId: Data) {
-        lock.withLock { $0[streamId] }?.attachRelay(legId)
-    }
-
-    func onState(streamId: String, state: UInt32, reason: String, needsConfirmation: Bool) {
-        lock.withLock { $0[streamId] }?.onState(state, reason, needsConfirmation)
-    }
-
-    func onDirectOutput(streamId: String, machineId: String, pcId: UInt64, env: PBEnvelope, raw: Data) {
-        lock.withLock { $0[streamId] }?.onDirectOutput(machineId, pcId, env, raw)
+    func onDirectBytes(streamId: String, machineId: String, pcId: UInt64, raw: Data) {
+        let active = state.withLock { $0.active[streamId] }
+        active?.onDirectBytes(machineId, pcId, raw)
     }
 }
 
-/// Input may wait this long, in bytes, to be written before the terminal is given up on.
-private let termSendBudget = 16 << 20
-
 public final class TermConn: Sendable {
-    private struct Out {
-        var stopped = false
-        var seq: UInt64 = 0
-        var queued = 0
-        var tail: Task<Void, Never>?
-    }
-
-    private let socketBox: OSAllocatedUnfairLock<any TerminalSocket>
-    private let sendBudget: Int
-    private let out = OSAllocatedUnfairLock(initialState: Out())
-    private let seal: @Sendable (PBTerminalFrame, UInt64, UInt64) async throws -> (Data, Data, Bool)
-    private let dispatchInput: (@Sendable (UInt64, Bool, Data, Data) async -> Bool)?
-    private let finish: @Sendable (String) -> Void
+    private let sendFrame: @Sendable (PBTerminalFrame) -> Void
     private let closeLocal: @Sendable () -> Void
     private let confirmRebuildAction: @Sendable () -> Void
 
     init(
-        socket: any TerminalSocket,
-        socketBox: OSAllocatedUnfairLock<any TerminalSocket>? = nil,
-        sendBudget: Int = termSendBudget,
-        seal: @escaping @Sendable (PBTerminalFrame, UInt64, UInt64) async throws -> (Data, Data, Bool),
-        dispatchInput: (@Sendable (UInt64, Bool, Data, Data) async -> Bool)? = nil,
-        finish: @escaping @Sendable (String) -> Void,
+        sendFrame: @escaping @Sendable (PBTerminalFrame) -> Void,
         closeLocal: @escaping @Sendable () -> Void,
         confirmRebuild: @escaping @Sendable () -> Void = {}
     ) {
-        self.socketBox = socketBox ?? OSAllocatedUnfairLock(initialState: socket)
-        self.sendBudget = sendBudget
-        self.seal = seal
-        self.dispatchInput = dispatchInput
-        self.finish = finish
+        self.sendFrame = sendFrame
         self.closeLocal = closeLocal
         self.confirmRebuildAction = confirmRebuild
     }
 
-    /// Sends a frame. Frames go out in the order of the calls, each with the next number.
     public func send(_ frame: PBTerminalFrame) {
-        let bytes = (try? frame.serializedData().count) ?? 0
-        let deadline = UInt64(Date().timeIntervalSince1970 * 1000) + 60_000
-        let failure: String? = out.withLock { o in
-            guard !o.stopped else { return nil }
-            guard bytes <= sendBudget - o.queued else {
-                o.stopped = true
-                return L10n.errorsIosTerminalInputWaitingToSendStopped()
-            }
-            o.seq += 1
-            o.queued += bytes
-            let seq = o.seq
-            let previous = o.tail
-            o.tail = Task { [socketBox, seal, dispatchInput, finish, out, sendBudget] in
-                await previous?.value
-                var reserved = bytes
-                defer {
-                    let released = reserved
-                    out.withLock { $0.queued -= released }
-                }
-                guard !out.withLock({ $0.stopped }) else { return }
-                do {
-                    try Task.checkCancellation()
-                    let (encoded, frameHash, isInput) = try await seal(frame, seq, deadline)
-                    let accepted = out.withLock { o in
-                        guard !o.stopped, encoded.count - bytes <= sendBudget - o.queued else { return false }
-                        o.queued += encoded.count - bytes
-                        return true
-                    }
-                    guard accepted else { throw SecurityFailure.capacity }
-                    reserved = encoded.count
-                    if let dispatchInput, await dispatchInput(seq, isInput, encoded, frameHash) {
-                        return
-                    }
-                    let sock = socketBox.withLock { $0 }
-                    try await withCheckedThrowingContinuation { (c: CheckedContinuation<Void, Error>) in
-                        sock.send(encoded) { error in
-                            if let error { c.resume(throwing: error) } else { c.resume() }
-                        }
-                    }
-                } catch {
-                    let first = out.withLock { o in
-                        defer { o.stopped = true }
-                        return !o.stopped
-                    }
-                    if first {
-                        finish(L10n.errorsIosTerminalInputFailedToSendStopped())
-                        socketBox.withLock { $0 }.cancel()
-                    }
-                }
-            }
-            return nil
-        }
-        if let failure {
-            finish(failure)
-            socketBox.withLock { $0 }.cancel()
-        }
+        sendFrame(frame)
     }
 
     public func close() {
-        out.withLock { $0.stopped = true }
         closeLocal()
-        socketBox.withLock { $0 }.close()
     }
 
     public func confirmRebuild() {
@@ -180,307 +166,392 @@ public final class TermConn: Sendable {
     }
 }
 
-extension Remote {
-    /// Joins a session's terminal stream using Core's Phase 3 logical continuity
-    /// and direct + hot-standby executors.
-    public func openTerminal(_ sid: String, listener: any TermListener) async throws -> TermConn {
-        guard let machineId = machineIdForSessionIfKnown(sid), await hasSessionSeed(sid) else {
-            throw CommandError("not_found", L10nMessage.errorsIosUnknownSession())
+/// Thread-safe inbound/outbound terminal backlog tracker enforcing bounded memory
+/// before frames cross into Go clientcore.
+final class TerminalBacklog: Sendable {
+    private struct Counts {
+        var inFrames = 0
+        var inBytes = 0
+        var outFrames = 0
+    }
+
+    private let counts = OSAllocatedUnfairLock(initialState: Counts())
+
+    func reserveInbound(bytes: Int) -> Bool {
+        guard bytes <= TerminalPipeLimits.maxInboundFrameBytes else { return false }
+        return counts.withLock { c in
+            if c.inFrames + 1 > TerminalPipeLimits.maxInboundPendingFrames
+                || c.inBytes + bytes > TerminalPipeLimits.maxInboundPendingBytes
+            {
+                return false
+            }
+            c.inFrames += 1
+            c.inBytes += bytes
+            return true
         }
-        let tok = await currentToken()
-        let streamId = newRequestId()
+    }
+
+    func releaseInbound(frames: UInt32, bytes: UInt32) {
+        counts.withLock { c in
+            c.inFrames = max(0, c.inFrames - Int(frames))
+            c.inBytes = max(0, c.inBytes - Int(bytes))
+        }
+    }
+
+    func reserveOutbound(bytes: Int) -> Bool {
+        guard bytes <= TerminalPipeLimits.maxOutboundFrameBytes else { return false }
+        return counts.withLock { c in
+            if c.outFrames + 1 > TerminalPipeLimits.maxOutboundPendingFrames {
+                return false
+            }
+            c.outFrames += 1
+            return true
+        }
+    }
+
+    func releaseOutboundOne() {
+        counts.withLock { c in
+            c.outFrames = max(0, c.outFrames - 1)
+        }
+    }
+}
+
+extension Remote {
+    /// Joins a session's terminal stream using Core's unified byte-pipe
+    /// (`TerminalOpenAction` / `TerminalOpenSocketEffect` / `TerminalInboundBytesEvent` /
+    /// `TerminalInputAction` / `TerminalDeliverOutputEffect` / `TerminalStateChangedEffect`).
+    public func openTerminal(_ sid: String, listener: any TermListener, terminalId: String = "") async throws -> TermConn {
+        try await ensureSecurityBootstrapped()
+        let sessionMachineId = machineIdForSessionIfKnown(sid) ?? ""
+        let opId = activeTerminals.allocateOpId()
+        let openedWaiter = ContinuationWaiter<Void>()
+        let openedSettled = OSAllocatedUnfairLock(initialState: false)
         let closed = OSAllocatedUnfairLock(initialState: false)
-        var hello = PBTermHello()
-        hello.token = tok
-        hello.streamID = streamId
-        hello.machineID = machineId
-        let initialSocket = deviceLink.relay.openStream("/v1/term", hello: try hello.serializedData())
-        let socketBox = OSAllocatedUnfairLock<any TerminalSocket>(initialState: initialSocket)
-        let activeLegBox = OSAllocatedUnfairLock<Data>(initialState: Data(streamId.utf8))
-        let lastRelayError = OSAllocatedUnfairLock<(any Error)?>(initialState: nil)
+        let streamIdBox = OSAllocatedUnfairLock<String>(initialState: "")
+        let socketsState = OSAllocatedUnfairLock<(active: (any FrameStream)?, all: [any FrameStream])>(initialState: (nil, []))
+        let backlog = TerminalBacklog()
+        let inboundChain = SerialChain()
+        let outboundChain = SerialChain()
         let terminals = activeTerminals
 
-        let stream = deviceLink.openStream(stop: { [weak self] cancelPath in
-            closed.withLock { $0 = true }
-            terminals.unregister(streamId)
-            Task { [weak self] in
-                var ev = PBCoreEvent()
-                ev.terminalDirectClose = .with { $0.streamID = streamId }
-                await self?.emitCoreEvent(ev)
+        let settleOpen: @Sendable (Result<Void, Error>) -> Void = { result in
+            let first = openedSettled.withLock { s -> Bool in
+                guard !s else { return false }
+                s = true
+                return true
             }
-            if cancelPath { socketBox.withLock { $0 }.cancel() }
+            if first { openedWaiter.resolve(result) }
+        }
+
+        let cancelAllSockets: @Sendable () -> Void = {
+            let list = socketsState.withLock { s -> [any FrameStream] in
+                let cur = s.all
+                s.all.removeAll()
+                s.active = nil
+                return cur
+            }
+            for ws in list { ws.cancel() }
+        }
+
+        let stream = deviceLink.openStream(stop: { [weak self] _ in
+            let first = closed.withLock { c -> Bool in
+                guard !c else { return false }
+                c = true
+                return true
+            }
+            guard first else { return }
+            terminals.unregisterPending(opId)
+            let sidStr = streamIdBox.withLock { $0 }
+            if !sidStr.isEmpty {
+                terminals.unregister(sidStr)
+            }
+            cancelAllSockets()
+            settleOpen(.failure(UserError(L10nMessage.errorsIosTerminalClosed())))
+            Task { [weak self] in
+                await self?.emitCoreEvent(PBCoreEvent.with {
+                    $0.terminalClose = .with {
+                        $0.streamID = sidStr
+                        $0.opID = opId
+                    }
+                })
+            }
         }, onClose: listener.onClose)
+
         let finish: @Sendable (String) -> Void = { reason in stream.end(reason) }
 
-        // The upgrade gets 20 s, the time the server keeps the first side waiting for the other.
-        let sleep = self.sleep
-        let limit = Task {
-            if (try? await sleep(20_000)) != nil { socketBox.withLock { $0 }.cancel() }
-        }
-        let open = await initialSocket.opened()
-        limit.cancel()
-        if !open {
-            stream.end()
-            throw UserError(L10nMessage.errorsCannotConnectToTerminal())
-        }
-
-        let handleInbound: @Sendable (PBEnvelope, Bool, UInt64) async -> Void = { [weak self] env, fromDirect, pcId in
+        let sendInbound: @Sendable (String, Data, Bool, UInt64) -> Void = { [weak self] sidStr, raw, fromDirect, pcId in
             guard let self, !closed.withLock({ $0 }) else { return }
-            do {
-                let res = try await self.openEnvelopeOp(
-                    envelope: env,
-                    expectedPurpose: .terminalOutput,
-                    machineId: machineId,
-                    sessionId: sid,
-                    requestId: streamId,
-                    history: false
-                )
-                guard res.purpose == SecurityPurpose.terminalOutput.rawValue,
-                      res.machineID == machineId,
-                      res.sessionID == sid,
-                      res.requestID == streamId
-                else { throw SecurityFailure.untrusted }
-                let frameHash = Data(SHA256.hash(data: res.plaintext))
-                var ev = PBCoreEvent()
-                ev.terminalDirectOutput = .with {
-                    $0.streamID = streamId
-                    $0.seq = res.seq
-                    $0.frameHash = frameHash
-                    $0.payload = res.plaintext
-                    $0.fromDirect = fromDirect
-                    $0.pcID = pcId
-                }
-                await self.emitCoreEvent(ev)
-            } catch {
-                if !fromDirect {
-                    finish(errorText(error))
-                    socketBox.withLock { $0 }.cancel()
-                }
+            guard backlog.reserveInbound(bytes: raw.count) else {
+                finish(L10n.errorsTerminalOutputBacklogReconnectForTheLatestDisplay())
+                return
+            }
+            inboundChain.run { [weak self] in
+                await self?.emitCoreEvent(PBCoreEvent.with {
+                    $0.terminalInboundBytes = .with {
+                        $0.streamID = sidStr
+                        $0.rawEnvelope = raw
+                        $0.fromDirect = fromDirect
+                        $0.pcID = pcId
+                    }
+                })
             }
         }
 
-        let startReadLoop: @Sendable (any FrameStream, Data) -> Void = { [weak self] sock, legData in
-            Task.detached {
-                while let bytes = try? await sock.receive() {
-                    if closed.withLock({ $0 }) { continue }
-                    guard bytes.count <= 1 << 20 else {
-                        finish(L10n.errorsTerminalConnectionDropped())
-                        sock.cancel()
-                        break
-                    }
-                    if let env = try? PBEnvelope(serializedBytes: bytes) {
-                        await handleInbound(env, false, 0)
-                    } else {
-                        finish(L10n.errorsTerminalConnectionDropped())
-                        sock.cancel()
-                        break
-                    }
-                }
-                let isCurrent = socketBox.withLock { $0 as AnyObject === sock as AnyObject }
-                if !isCurrent || closed.withLock({ $0 }) { return }
-                let end = await sock.ended()
-                if let err = end.error {
-                    lastRelayError.withLock { $0 = err }
-                }
-                if let self {
-                    var ev = PBCoreEvent()
-                    ev.terminalDirectLeg = .with {
-                        $0.streamID = streamId
-                        $0.legID = legData
-                        $0.direct = false
-                        $0.open = false
-                    }
-                    await self.emitCoreEvent(ev)
-                }
+        let openSocket: @Sendable (PBTerminalOpenSocketEffect) -> Void = { [weak self] eff in
+            guard let self, !closed.withLock({ $0 }) else { return }
+            let sidStr = eff.streamID
+            let legBytes = eff.legID
+            let nextSock = self.deviceLink.relay.openStream("/v1/term", hello: eff.helloBytes)
+            let added = socketsState.withLock { s -> Bool in
+                guard !closed.withLock({ $0 }) else { return false }
+                s.all.append(nextSock)
+                if eff.isInitial { s.active = nextSock }
+                return true
             }
-        }
+            guard added else {
+                nextSock.cancel()
+                return
+            }
 
-        let relayChain = SerialChain()
-        terminals.register(streamId, ActiveTerminalRegistry.Entry(
-            sendRelay: { raw in
-                guard !closed.withLock({ $0 }) else { return }
-                let sock = socketBox.withLock { $0 }
-                sock.send(raw) { _ in }
-            },
-            deliver: { payloads in
-                for raw in payloads {
-                    if closed.withLock({ $0 }) { break }
-                    if let frame = try? PBTerminalFrame(serializedBytes: raw) {
-                        listener.onFrame(frame)
-                    }
+            Task.detached { [weak self] in
+                guard let self else { return }
+                let sleep = self.sleep
+                let timeoutTask = Task {
+                    if (try? await sleep(20_000)) != nil { nextSock.cancel() }
                 }
-            },
-            attachRelay: { [weak self] legId in
-                guard let self, !closed.withLock({ $0 }) else { return }
-                let legStr = String(decoding: legId, as: UTF8.self)
-                Task {
-                    var nextHello = PBTermHello()
-                    nextHello.token = tok
-                    nextHello.streamID = legStr
-                    nextHello.machineID = machineId
-                    guard let helloBytes = try? nextHello.serializedData() else { return }
-                    let nextSock = self.deviceLink.relay.openStream("/v1/term", hello: helloBytes)
-                    guard await nextSock.opened(), !closed.withLock({ $0 }) else {
-                        nextSock.cancel()
-                        if !closed.withLock({ $0 }) {
-                            var failEv = PBCoreEvent()
-                            failEv.terminalDirectLeg = .with {
-                                $0.streamID = streamId
-                                $0.legID = legId
-                                $0.direct = false
-                                $0.open = false
-                            }
-                            await self.emitCoreEvent(failEv)
-                        }
+                let isOpen = await nextSock.opened()
+                timeoutTask.cancel()
+                guard isOpen, !closed.withLock({ $0 }) else {
+                    nextSock.cancel()
+                    socketsState.withLock { s in
+                        s.all.removeAll { $0 as AnyObject === nextSock as AnyObject }
+                        if s.active as AnyObject? === nextSock as AnyObject { s.active = nil }
+                    }
+                    guard !closed.withLock({ $0 }) else { return }
+                    if !openedSettled.withLock({ $0 }) && eff.isInitial {
+                        settleOpen(.failure(UserError(L10nMessage.errorsCannotConnectToTerminal())))
+                        stream.end()
                         return
                     }
-                    let prev = socketBox.withLock { cur -> any TerminalSocket in
-                        let old = cur
-                        cur = nextSock
+                    let end = await nextSock.ended()
+                    await self.emitCoreEvent(PBCoreEvent.with {
+                        $0.terminalSocket = .with {
+                            $0.streamID = sidStr
+                            $0.legID = legBytes
+                            $0.closed = true
+                            $0.policyViolation = end.closeCode == policyViolation
+                            if let err = end.error { $0.error = errorText(err) }
+                        }
+                    })
+                    return
+                }
+
+                let prev = socketsState.withLock { s -> (any FrameStream)? in
+                    let old = s.active
+                    s.active = nextSock
+                    if let old, old as AnyObject !== nextSock as AnyObject {
+                        s.all.removeAll { $0 as AnyObject === old as AnyObject }
                         return old
                     }
-                    activeLegBox.withLock { $0 = legId }
-                    prev.close()
-                    startReadLoop(nextSock, legId)
-                    var ev = PBCoreEvent()
-                    ev.terminalDirectLeg = .with {
-                        $0.streamID = streamId
-                        $0.legID = legId
-                        $0.direct = false
-                        $0.open = true
+                    return nil
+                }
+                prev?.close()
+
+                await self.emitCoreEvent(PBCoreEvent.with {
+                    $0.terminalSocket = .with {
+                        $0.streamID = sidStr
+                        $0.legID = legBytes
+                        $0.opened = true
                     }
-                    await self.emitCoreEvent(ev)
+                })
+
+                while let bytes = try? await nextSock.receive() {
+                    if closed.withLock({ $0 }) { break }
+                    let isCurrent = socketsState.withLock { $0.active as AnyObject? === nextSock as AnyObject }
+                    guard isCurrent else { break }
+                    sendInbound(sidStr, bytes, false, 0)
                 }
-            },
-            onState: { st, reason, needsConfirm in
-                // M4/M5: NeedsConfirmation enters user confirmation UI without auto-closing;
-                // rebuild_confirmed closes the old stream silently and triggers a fresh open.
-                guard !closed.withLock({ $0 }) else { return }
-                if needsConfirm {
-                    listener.onConfirmRebuild(st == 4 ? .restart : .input)
-                    return
-                }
-                if st == 5 && reason == "rebuild_confirmed" {
-                    stream.end(cancelPath: true)
-                    listener.onRebuildConfirmed()
-                    return
-                }
-                if st == 5 {
-                    let msg: String
-                    if reason == "conflict" {
-                        msg = L10n.errorsTerminalFramesAreOutOfOrder()
-                    } else if reason == "replay_overflow" {
-                        msg = L10n.terminalReplayOverflow()
-                    } else if let err = lastRelayError.withLock({ let e = $0; $0 = nil; return e }) {
-                        msg = L10n.errorsIosTerminalConnectionDropped(value: String(describing: errorText(err)))
-                    } else {
-                        msg = L10n.errorsTerminalConnectionDropped()
+
+                let isCurrent = socketsState.withLock { $0.active as AnyObject? === nextSock as AnyObject }
+                guard isCurrent, !closed.withLock({ $0 }) else { return }
+                let end = await nextSock.ended()
+                await self.emitCoreEvent(PBCoreEvent.with {
+                    $0.terminalSocket = .with {
+                        $0.streamID = sidStr
+                        $0.legID = legBytes
+                        $0.closed = true
+                        $0.policyViolation = end.closeCode == policyViolation
+                        if let err = end.error { $0.error = errorText(err) }
                     }
-                    finish(msg)
-                    socketBox.withLock { $0 }.cancel()
-                }
-            },
-            onDirectOutput: { mId, pcId, env, _ in
-                guard mId == machineId, !closed.withLock({ $0 }) else { return }
-                relayChain.run {
-                    await handleInbound(env, true, pcId)
+                })
+            }
+        }
+
+        let onDeliver: @Sendable (PBTerminalDeliverOutputEffect) -> Void = { eff in
+            guard !closed.withLock({ $0 }) else { return }
+            defer {
+                if eff.consumedFrames > 0 || eff.consumedBytes > 0 {
+                    backlog.releaseInbound(frames: eff.consumedFrames, bytes: eff.consumedBytes)
                 }
             }
+            for f in eff.frames {
+                if closed.withLock({ $0 }) { break }
+                var frame = PBTerminalFrame()
+                switch f.kind {
+                case .output(let data)?:
+                    frame.output = data
+                case .snapshot(let snap)?:
+                    frame.snapshot.cols = snap.cols
+                    frame.snapshot.rows = snap.rows
+                    frame.snapshot.data = snap.data
+                case .closed(let reason)?:
+                    frame.closed = reason
+                case nil:
+                    continue
+                }
+                listener.onFrame(frame)
+            }
+        }
+
+        let onStateChanged: @Sendable (PBTerminalStateChangedEffect) -> Void = { eff in
+            guard !closed.withLock({ $0 }) else { return }
+            if eff.openSettled && !openedSettled.withLock({ $0 }) {
+                if eff.openOk {
+                    settleOpen(.success(()))
+                    return
+                }
+                let code = eff.reasonCode.isEmpty ? "failed" : eff.reasonCode
+                let rendered = eff.hasOpenError
+                    ? renderCoreText(eff.openError)
+                    : (eff.hasReasonText ? renderCoreText(eff.reasonText) : "")
+                let err: Error
+                if TerminalPipeLimits.socketFailureCodes.contains(code) {
+                    err = UserError(L10nMessage.errorsCannotConnectToTerminal())
+                } else {
+                    err = CommandError(
+                        code,
+                        rendered.isEmpty ? L10nMessage.errorsTerminalConnectionClosed() : LocalizedMessage(raw: rendered)
+                    )
+                }
+                settleOpen(.failure(err))
+                stream.end()
+                return
+            }
+            switch eff.state {
+            case .confirmInput:
+                listener.onConfirmRebuild(.input)
+            case .confirmRestart:
+                listener.onConfirmRebuild(.restart)
+            case .rebuild:
+                stream.end(cancelPath: true)
+                listener.onRebuildConfirmed()
+            case .closed:
+                let rendered = eff.hasReasonText ? renderCoreText(eff.reasonText) : ""
+                finish(rendered.isEmpty ? L10n.errorsTerminalConnectionDropped() : rendered)
+            default:
+                break
+            }
+        }
+
+        terminals.registerPending(opId, ActiveTerminalRegistry.PendingOpen(
+            onOpenSocket: { eff in
+                guard !closed.withLock({ $0 }) else { return }
+                streamIdBox.withLock { $0 = eff.streamID }
+                terminals.unregisterPending(opId)
+                terminals.register(eff.streamID, ActiveTerminalRegistry.Entry(
+                    sendRelay: { raw in
+                        guard !closed.withLock({ $0 }) else { return }
+                        let sock = socketsState.withLock { $0.active }
+                        sock?.send(raw) { _ in }
+                    },
+                    onSentOut: {
+                        backlog.releaseOutboundOne()
+                    },
+                    onOpenSocket: openSocket,
+                    onCloseSocket: cancelAllSockets,
+                    onDeliver: onDeliver,
+                    onStateChanged: onStateChanged,
+                    onDirectBytes: { mId, pcId, raw in
+                        guard !closed.withLock({ $0 }),
+                              sessionMachineId.isEmpty || mId == sessionMachineId else { return }
+                        sendInbound(eff.streamID, raw, true, pcId)
+                    }
+                ))
+                openSocket(eff)
+            },
+            onStateChanged: onStateChanged
         ))
 
-        startReadLoop(initialSocket, activeLegBox.withLock { $0 })
-
-        // M6: register in Core before sending openTerminal RPC so early frames are never lost.
-        var openEv = PBCoreEvent()
-        openEv.terminalDirectOpen = .with {
-            $0.streamID = streamId
-            $0.machineID = machineId
-            $0.sessionID = sid
-            $0.relayLegID = activeLegBox.withLock { $0 }
-        }
-        await emitCoreEvent(openEv)
-
         do {
-            var cmd = PBCommand()
-            cmd.openTerminal.sessionID = sid
-            cmd.openTerminal.streamID = streamId
-            _ = try await runMachineCommand(machineId: machineId, sessionId: sid, cmd, skipConnectivityPreflight: true)
+            await emitCoreEvent(PBCoreEvent.with {
+                $0.terminalOpen = .with {
+                    $0.opID = opId
+                    $0.sessionID = sid
+                    $0.machineID = sessionMachineId
+                    $0.terminalID = terminalId
+                }
+            })
+            try await withTimeout(20_000, sleep: sleep) {
+                try await withTaskCancellationHandler {
+                    try await withCheckedThrowingContinuation { cont in
+                        _ = openedWaiter.install(cont)
+                    }
+                } onCancel: {
+                    settleOpen(.failure(CancellationError()))
+                }
+            }
+            if closed.withLock({ $0 }) {
+                throw UserError(L10nMessage.errorsIosTerminalClosed())
+            }
+        } catch is TimedOut {
+            stream.end()
+            throw UserError(L10nMessage.errorsCannotConnectToTerminal())
         } catch {
             stream.end()
             throw error
         }
-        // H-B: signal Core that daemon confirmed openTerminal so direct AttachPath fires now.
-        if !closed.withLock({ $0 }) {
-            var readyEv = PBCoreEvent()
-            readyEv.terminalDirectLeg = .with {
-                $0.streamID = streamId
-                $0.legID = activeLegBox.withLock { $0 }
-                $0.direct = false
-                $0.open = true
-            }
-            await emitCoreEvent(readyEv)
-        }
 
-        let sealFn: @Sendable (PBTerminalFrame, UInt64, UInt64) async throws -> (Data, Data, Bool) = { [weak self] frame, seq, deadline in
-            guard let self, !closed.withLock({ $0 }) else { throw SecurityFailure.storage }
-            let purpose: SecurityPurpose
-            let isInput: Bool
-            switch frame.kind {
-            case .input:
-                purpose = .terminalInput
-                isInput = true
-            case .resize:
-                purpose = .terminalResize
-                isInput = false
-            case .historyRequest:
-                purpose = .terminalHistory
-                isInput = false
-            default:
-                throw SecurityFailure.invalid
-            }
-            let plain = try frame.serializedData()
-            let sealed = try await self.sealEnvelopeOp(
-                purpose: purpose,
-                machineId: machineId,
-                sessionId: sid,
-                requestId: streamId,
-                seq: seq,
-                deadlineMs: Int64(bitPattern: deadline),
-                plaintext: plain,
-                useSessionSeed: true
-            )
-            guard !closed.withLock({ $0 }) else { throw SecurityFailure.storage }
-            let hash = Data(SHA256.hash(data: plain))
-            return (try sealed.envelope.serializedData(), hash, isInput)
-        }
-
-        let dispatchInputFn: @Sendable (UInt64, Bool, Data, Data) async -> Bool = { [weak self] seq, isInput, encoded, frameHash in
-            guard let self else { return false }
-            var ev = PBCoreEvent()
-            ev.terminalDirectInput = .with {
-                $0.streamID = streamId
-                $0.seq = seq
-                $0.isInput = isInput
-                $0.sealedEnvelope = encoded
-                $0.frameHash = frameHash
-            }
-            await self.emitCoreEvent(ev)
-            return true
-        }
-
+        let sidStr = streamIdBox.withLock { $0 }
         return TermConn(
-            socket: initialSocket,
-            socketBox: socketBox,
-            seal: sealFn,
-            dispatchInput: dispatchInputFn,
-            finish: finish,
+            sendFrame: { [weak self] frame in
+                guard let self, !closed.withLock({ $0 }) else { return }
+                let size = (try? frame.serializedData().count) ?? 0
+                guard backlog.reserveOutbound(bytes: size) else {
+                    finish(L10n.errorsTerminalInputBacklogReconnect())
+                    return
+                }
+                var action = PBTerminalInputAction()
+                action.streamID = sidStr
+                switch frame.kind {
+                case .input(let data)?:
+                    action.input = data
+                case .resize(let r)?:
+                    action.resize = .with {
+                        $0.cols = r.cols
+                        $0.rows = r.rows
+                        $0.fit = r.fit
+                    }
+                case .historyRequest(let h)?:
+                    action.history = .with {
+                        $0.requestID = h.requestID
+                        $0.cursor = h.cursor
+                    }
+                default:
+                    backlog.releaseOutboundOne()
+                    return
+                }
+                let finalAction = action
+                outboundChain.run { [weak self] in
+                    await self?.emitCoreEvent(PBCoreEvent.with { $0.terminalInput = finalAction })
+                }
+            },
             closeLocal: { stream.end(cancelPath: false) },
             confirmRebuild: { [weak self] in
-                guard let self, !closed.withLock({ $0 }) else { return }
-                Task {
-                    var ev = PBCoreEvent()
-                    ev.terminalDirectConfirmRebuild = .with { $0.streamID = streamId }
-                    await self.emitCoreEvent(ev)
+                guard let self, !closed.withLock({ $0 }), !sidStr.isEmpty else { return }
+                Task { [weak self] in
+                    await self?.emitCoreEvent(PBCoreEvent.with {
+                        $0.terminalConfirmRebuild = .with { $0.streamID = sidStr }
+                    })
                 }
             }
         )
