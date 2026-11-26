@@ -1465,7 +1465,9 @@ func (c *Core) handleAccountSecurityAction(ctx *sync.StepContext, act *corev1.Ac
 			}
 			ui.SecSubpage = act.Subpage
 		}
-		ui.SecSuccessNotice = nil
+		if act.Subpage != corev1.AccountSecuritySubpage_ACCOUNT_SECURITY_SUBPAGE_OVERVIEW {
+			ui.SecSuccessNotice = nil
+		}
 		ui.SecErrorBanner = clearBanner
 
 	case corev1.AccountSecurityActionKind_ACCOUNT_SECURITY_ACTION_KIND_REFRESH:

@@ -2775,3 +2775,40 @@ func TestAppRootDismissUpgradeNoticeMarksDirty(t *testing.T) {
 	}
 }
 
+func TestAccountSecurityReturnToOverviewPreservesSuccessNotice(t *testing.T) {
+	c := New()
+	sc := c.m.ensureSec()
+	sc.ui.SecSubpage = corev1.AccountSecuritySubpage_ACCOUNT_SECURITY_SUBPAGE_ROTATE_RECOVERY
+	sc.ui.SecSuccessNotice = text.Msg(text.KeySecurityRecoveryCodeUpdatedThePreviousCodeAndPendingRecovery)
+
+	// Returning from ROTATE_RECOVERY to OVERVIEW keeps the just-published success notice visible.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1000,
+		Event: &corev1.Event_AccountSecurityAction{
+			AccountSecurityAction: &corev1.AccountSecurityAction{
+				Kind:    corev1.AccountSecurityActionKind_ACCOUNT_SECURITY_ACTION_KIND_SET_SUBPAGE,
+				Subpage: corev1.AccountSecuritySubpage_ACCOUNT_SECURITY_SUBPAGE_OVERVIEW,
+			},
+		},
+	})
+	if sc.ui.SecSubpage != corev1.AccountSecuritySubpage_ACCOUNT_SECURITY_SUBPAGE_OVERVIEW {
+		t.Fatalf("subpage = %v, want OVERVIEW", sc.ui.SecSubpage)
+	}
+	if sc.ui.SecSuccessNotice == nil {
+		t.Fatal("expected SecSuccessNotice preserved when returning to OVERVIEW")
+	}
+
+	// Entering ROTATE_RECOVERY again clears the prior notice before starting a new rotation.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1100,
+		Event: &corev1.Event_AccountSecurityAction{
+			AccountSecurityAction: &corev1.AccountSecurityAction{
+				Kind:    corev1.AccountSecurityActionKind_ACCOUNT_SECURITY_ACTION_KIND_SET_SUBPAGE,
+				Subpage: corev1.AccountSecuritySubpage_ACCOUNT_SECURITY_SUBPAGE_ROTATE_RECOVERY,
+			},
+		},
+	})
+	if sc.ui.SecSuccessNotice != nil {
+		t.Fatalf("expected SecSuccessNotice cleared when entering ROTATE_RECOVERY, got %+v", sc.ui.SecSuccessNotice)
+	}
+}
