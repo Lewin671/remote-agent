@@ -306,6 +306,28 @@ private final class TimeoutRPCProtocol: URLProtocol, @unchecked Sendable {
         try await stopped.wait(timeoutMs: 5_000, label: "stalled relay rpc cancel")
         #expect(cancelMailbox.all.isEmpty)
     }
+
+    @Test func opaqueScheduleCacheBlobRoundTripAndMachineDeletion() async throws {
+        let cache = MemoryCache()
+        let remote = try Remote(
+            account: Account(server: "https://example.com", deviceId: "dev-1", accountId: "acc-1"),
+            http: HTTP(),
+            cache: cache,
+            securityStore: MemorySecurityStoreV4()
+        )
+        defer { remote.close() }
+
+        let opaque = Data([0xde, 0xad, 0xbe, 0xef, 0x01, 0x02])
+        await remote.writeScheduleCacheBlob("m1", blob: opaque)
+        #expect(await remote.readScheduleCacheBlob("m1") == opaque)
+
+        await remote.executeCacheDelete(.with { $0.removeMachineID = "m1" })
+        #expect(await remote.readScheduleCacheBlob("m1") == nil)
+
+        await remote.writeScheduleCacheBlob("m2", blob: opaque)
+        await remote.deleteScheduleCache("m2")
+        #expect(await remote.readScheduleCacheBlob("m2") == nil)
+    }
 }
 
 extension ServerTests {

@@ -81,6 +81,7 @@ extension Remote {
             await cache?.unlistSession(id: sid)
         case .removeMachineID(let mid):
             await cache?.removeMachine(id: mid)
+            await cache?.removeBlob(name: "schedules/" + mid)
         case nil:
             break
         }

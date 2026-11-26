@@ -123,7 +123,8 @@ protocol CoreHostExecutor: AnyObject, Sendable {
     func executeCacheDelete(_ effect: PBCoreCacheDeleteEffect, onSessionRemoved: (@Sendable (String) async -> Void)?) async
     func dispatchCommandAttempt(_ effect: PBCoreDispatchCommandEffect) async -> PBCoreCommandOutcomeEvent
     func setWatchedSessions(_ routes: [PBWatchedSessionRoute]) async
-    func cachedScheduleResultJson(_ machineId: String) async -> Data?
+    func readScheduleCacheBlob(_ machineId: String) async -> Data?
+    func writeScheduleCacheBlob(_ machineId: String, blob: Data) async
     func deleteScheduleCache(_ machineId: String) async
     func renameDevice(_ id: String, name: String) async throws
     func loadDirectPreferences() -> [String: Bool]
@@ -163,7 +164,8 @@ extension CoreHostExecutor {
     func applySecurityTokenUpdated(_ eff: PBSecurityTokenUpdatedEffect) async {}
     func applySecurityStatusSnapshot(_ status: PBSecurityWorkflowStatus) async {}
     @discardableResult func syncSecurity(touch: Bool) async throws -> PBSecurityWorkflowStatus { PBSecurityWorkflowStatus() }
-    func cachedScheduleResultJson(_ machineId: String) async -> Data? { nil }
+    func readScheduleCacheBlob(_ machineId: String) async -> Data? { nil }
+    func writeScheduleCacheBlob(_ machineId: String, blob: Data) async {}
     func deleteScheduleCache(_ machineId: String) async {}
     func loadDirectPreferences() -> [String: Bool] { [:] }
     func persistDirectPreference(_ machineId: String, enabled: Bool) {}
@@ -246,18 +248,16 @@ struct ScopeDefaults: @unchecked Sendable {
         return AccountDefaults.key("usageCache:" + encoded)
     }
 
-    func loadUsageCache(machineID: String) -> [PBUsageStatsResponse] {
+    func loadUsageCache(machineID: String) -> [(preset: PBUsageRangePreset, raw: Data)] {
         let presets: [PBUsageRangePreset] = [.today, .sevenDays, .thirtyDays]
         return presets.compactMap { preset in
-            guard let data = raw.data(forKey: usageCacheKey(machineID: machineID, preset: preset)) else { return nil }
-            return try? PBUsageStatsResponse(serializedBytes: data)
+            guard let data = raw.data(forKey: usageCacheKey(machineID: machineID, preset: preset)), !data.isEmpty else { return nil }
+            return (preset, data)
         }
     }
 
-    func saveUsageCache(machineID: String, snapshot: PBUsageStatsResponse) {
-        let preset = snapshot.preset
-        guard preset == .today || preset == .sevenDays || preset == .thirtyDays,
-              let data = try? snapshot.serializedData() else { return }
+    func saveUsageCache(machineID: String, preset: PBUsageRangePreset, raw data: Data) {
+        guard preset == .today || preset == .sevenDays || preset == .thirtyDays, !data.isEmpty else { return }
         raw.set(data, forKey: usageCacheKey(machineID: machineID, preset: preset))
     }
 
@@ -1159,7 +1159,6 @@ actor CoreHost: SyncEngine {
     func openMachineSettings(machineID: String) async {
         guard !closed, !machineID.isEmpty else { return }
         activeMachineSettingsID = machineID
-        await hydrateUsageCache(machineID: machineID)
         await dispatch {
             $0.machineSettingsOpen.machineID = machineID
         }
@@ -1292,12 +1291,13 @@ actor CoreHost: SyncEngine {
 
     private func hydrateUsageCache(machineID: String) async {
         guard !machineID.isEmpty, usageHydratedMachines.insert(machineID).inserted else { return }
-        let snapshots = defaults.loadUsageCache(machineID: machineID)
-        for snap in snapshots {
+        let entries = defaults.loadUsageCache(machineID: machineID)
+        for item in entries {
             await dispatch {
                 $0.usageCacheLoaded = .with {
                     $0.machineID = machineID
-                    $0.snapshot = snap
+                    $0.preset = item.preset
+                    $0.rawSnapshot = item.raw
                 }
             }
         }
@@ -1388,7 +1388,6 @@ actor CoreHost: SyncEngine {
 
     private func dispatchUsageScreenOpen(applyFocus: Bool) async {
         guard !usageMachineID.isEmpty else { return }
-        await hydrateUsageCache(machineID: usageMachineID)
         let params = Self.buildUsageOpenParams(
             preset: usagePreset,
             customStartMs: usageCustomStartMs,
@@ -1422,7 +1421,6 @@ actor CoreHost: SyncEngine {
         machineStatusWatches[token] = MachineStatusWatchEntry(token: token, machineID: machineID, mode: mode)
         if mode == .live {
             activeMachineStatusID = machineID
-            await hydrateUsageCache(machineID: machineID)
         }
         await syncMachineStatusWatch(machineID: machineID)
         if mode == .live {
@@ -2685,13 +2683,25 @@ actor CoreHost: SyncEngine {
                     continue
                 }
                 spawnIO { host in
-                    let data = await host.executor.cachedScheduleResultJson(r.machineID)
+                    let blob = await host.executor.readScheduleCacheBlob(r.machineID)
                     await host.dispatch {
                         $0.scheduleCacheLoaded = .with {
                             $0.opID = r.opID
                             $0.machineID = r.machineID
-                            if let data { $0.resultJson = data }
+                            if let blob, !blob.isEmpty { $0.rawBlob = blob }
                         }
+                    }
+                }
+
+            case .scheduleWriteCache(let w):
+                guard !demoMode, !w.machineID.isEmpty, !w.blob.isEmpty else { continue }
+                let mid = w.machineID
+                let blob = w.blob
+                enqueueCacheOp { [weak self] executor in
+                    await executor.writeScheduleCacheBlob(mid, blob: blob)
+                    guard let self else { return }
+                    await self.dispatch {
+                        $0.scheduleCacheWritten.machineID = mid
                     }
                 }
 
@@ -2869,12 +2879,9 @@ actor CoreHost: SyncEngine {
                 }
 
             case .usageCacheWrite(let eff):
-                if !eff.rawSnapshot.isEmpty,
-                   let snap = try? PBUsageStatsResponse(serializedBytes: eff.rawSnapshot)
-                {
-                    defaults.saveUsageCache(machineID: eff.machineID, snapshot: snap)
-                } else if eff.hasSnapshot {
-                    defaults.saveUsageCache(machineID: eff.machineID, snapshot: eff.snapshot)
+                guard !demoMode else { continue }
+                if !eff.rawSnapshot.isEmpty {
+                    defaults.saveUsageCache(machineID: eff.machineID, preset: eff.preset, raw: eff.rawSnapshot)
                 }
                 if !closed {
                     await dispatch {
@@ -2898,8 +2905,7 @@ actor CoreHost: SyncEngine {
                 // iOS has no OS push delivery adapter; push sync is a no-op here.
                 break
 
-            case .scheduleWriteCache,
-                 .pushRpcResult,
+            case .pushRpcResult,
                  .sessionImageLoaded,
                  .terminalOpenSocket,
                  .terminalCloseSocket,

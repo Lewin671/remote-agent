@@ -1366,6 +1366,25 @@ private final class PipeTraceRecorder: @unchecked Sendable {
         await host.releaseDirPicker(t2)
     }
 
+    @Test func scopeDefaultsStoresUsageCacheAsOpaqueBytes() {
+        let suite = "ra-opaque-usage-test-\(UUID().uuidString)"
+        let ud = UserDefaults(suiteName: suite)!
+        defer { ud.removePersistentDomain(forName: suite) }
+        let defaults = ScopeDefaults(ud, scope: ["https://example.com", "dev-1"])
+        let raw7 = Data([0xff, 0x00, 0xca, 0xfe])
+        let raw30 = Data([0xaa, 0xbb, 0xcc])
+        defaults.saveUsageCache(machineID: "m1", preset: .sevenDays, raw: raw7)
+        defaults.saveUsageCache(machineID: "m1", preset: .thirtyDays, raw: raw30)
+        // Custom preset is never cached on disk.
+        defaults.saveUsageCache(machineID: "m1", preset: .custom, raw: Data([1, 2, 3]))
+        let loaded = defaults.loadUsageCache(machineID: "m1")
+        #expect(loaded.count == 2)
+        #expect(loaded.first(where: { $0.preset == .sevenDays })?.raw == raw7)
+        #expect(loaded.first(where: { $0.preset == .thirtyDays })?.raw == raw30)
+        defaults.deleteUsageCache(machineID: "m1")
+        #expect(defaults.loadUsageCache(machineID: "m1").isEmpty)
+    }
+
     private func render<V: View>(_ view: V) {
         let host = UIHostingController(rootView: view)
         let size = host.sizeThatFits(in: CGSize(width: 390, height: 1200))
