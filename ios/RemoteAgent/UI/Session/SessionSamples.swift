@@ -710,18 +710,9 @@ enum SessionSamples {
             ("sample-ended", "u1", "再把采样率调到 100%"),
         ]
         for item in items {
-            await coreHost.submitSessionCommand(
-                sessionID: item.sid,
-                command: .with {
-                    $0.send = .with {
-                        $0.sessionID = item.sid
-                        $0.requestID = item.id
-                        $0.text = item.body
-                        $0.mode = .steer
-                    }
-                },
-                machineID: machine
-            )
+            let scope = PBDraftScope.session(item.sid)
+            await coreHost.setDraftText(scope: scope, text: item.body)
+            await coreHost.sendSessionDraft(sessionID: item.sid, mode: .steer)
         }
     }
 

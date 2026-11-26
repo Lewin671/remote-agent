@@ -12,15 +12,15 @@
 "approval_denial_reason" = "拒绝的理由";
 "approval_denied" = "已拒绝";
 "approval_deny" = "拒绝";
+"approval_denying" = "正在拒绝…";
 "approval_details" = "审批详情";
 "approval_full_command" = "看完整命令";
 "approval_handled" = "已处理";
 "approval_handled_in_terminal" = "已在终端处理";
 "approval_handled_other_device" = "已在另一端处理";
-"approval_ios_decision_deny" = "拒绝";
-"approval_ios_expired" = "不确定「%1$@」有没有送到，它已过期，不会再重发。审批超时后会自动拒绝";
 "approval_ios_unknown_result" = "结果未知";
 "approval_reason_placeholder" = "说说该怎么做，可以不填";
+"approval_retry_deny" = "重试拒绝";
 "approval_timed_out" = "超时，已拒绝";
 "approval_timeout_note" = "%1$@，超时拒绝";
 "approval_title" = "审批";
@@ -315,8 +315,10 @@
 "home_nothing_waiting" = "没有等你的事";
 "home_online_start" = "%1$@ 在线，可以开始第一个会话。";
 "home_project_no_sessions" = "这个项目还没有会话";
+"home_question_answer_in_terminal" = "去终端回答";
 "home_question_answered_elsewhere" = "已在另一端回答";
 "home_question_answered_line" = "已回答 · %1$@";
+"home_question_send_failed" = "没送到：%1$@";
 "home_scheduled_frequency" = "定时 %1$@";
 "home_schedules_tab" = "定时";
 "home_scope_label" = "范围：%1$@";
@@ -1251,7 +1253,6 @@
 "session_interrupt_turn" = "中断本轮";
 "session_interrupted" = "已中断";
 "session_ios_agent_reply" = "%1$@ 的回复";
-"session_ios_change_idle" = "只在空闲时能切换；这一轮结束后再选";
 "session_ios_collapse_title" = "收起%1$@";
 "session_ios_collapsed" = "已收起";
 "session_ios_connect_read" = "连上服务器后读取这个会话";
@@ -1271,7 +1272,6 @@
 "session_ios_select_text" = "选择文字";
 "session_ios_select_text_hint" = "长按文字，再拖动两端选择要复制的内容";
 "session_ios_title_field" = "会话标题";
-"session_ios_update_required" = "请更新电脑上的 remote-agent";
 "session_ios_your_message" = "你发的消息";
 "session_latest" = "回到最新消息";
 "session_loading_earlier" = "正在读取更早的记录…";

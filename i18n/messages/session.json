@@ -900,20 +900,6 @@
     "zh-CN": "{agent} 的回复"
   },
   {
-    "en": "Can only switch while idle; choose after this turn ends",
-    "key": "session.ios_change_idle",
-    "notes": "SessionSheets.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "只在空闲时能切换；这一轮结束后再选"
-  },
-  {
     "en": "Collapse {title}",
     "key": "session.ios_collapse_title",
     "notes": "ChatRowViews.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：title 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
@@ -1273,20 +1259,6 @@
       },
       "plural": "count"
     }
-  },
-  {
-    "en": "Update remote-agent",
-    "key": "session.ios_update_required",
-    "notes": "SessionScreen.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "请更新电脑上的 remote-agent"
   },
   {
     "en": "Your message",

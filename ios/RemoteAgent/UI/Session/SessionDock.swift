@@ -1,7 +1,7 @@
 // What waits for the user, docked above the message box: an approval, a
 // question, a plan, or a terminal popup, rendered directly from Core's
-// `PBSessionDockView`. Commands submit via `CoreHost.submitSessionCommand`
-// and command status comes from `PBSessionDockView.command`.
+// `PBSessionDockView`. Commands submit via Core semantic actions and
+// command status comes from `PBSessionDockView.command`.
 import RACore
 import RAProto
 import SwiftUI
@@ -27,19 +27,6 @@ extension EnvironmentValues {
 
 func dockFoldKey(sessionID: String, _ dock: PBSessionDockView) -> String {
     "\(sessionID):\(dock.kind.rawValue):\(dock.itemID)"
-}
-
-private func commandRunning(_ st: PBCoreSessionCommandState?) -> Bool {
-    st?.status == .pending || st?.busy == true
-}
-
-private func commandErrorText(_ st: PBCoreSessionCommandState?) -> String {
-    guard let st else { return "" }
-    if st.hasErrorText {
-        let rendered = st.errorText.rendered()
-        if !rendered.isEmpty { return rendered }
-    }
-    return st.errorCode
 }
 
 /// Open from the start, until the user folds it: one line then, 「● 类型 ·
@@ -264,6 +251,28 @@ struct DockFoot: View {
     }
 }
 
+// MARK: External Resolution Notice
+
+/// Brief confirmation line when a docked item was handled in the terminal or on another device.
+struct ExternalResolutionLine: View {
+    let text: String
+
+    var body: some View {
+        DarkCard(floating: true) {
+            HStack(spacing: 8) {
+                StatusMark(.waiting)
+                Text(text)
+                    .font(.footnote)
+                    .foregroundStyle(DS.ink2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .accessibilityElement(children: .combine)
+        }
+        .padding(.horizontal, DS.Space.m)
+        .padding(.bottom, 8)
+    }
+}
+
 // MARK: Approvals
 
 let actionsWidth: CGFloat = 480
@@ -271,23 +280,19 @@ let actionsWidth: CGFloat = 480
 /// An approval, docked: rendered from Core's `PBSessionDockView`.
 struct ApprovalDock: View {
     let sessionID: String
-    let machineID: String
     let dock: PBSessionDockView
     @Binding var open: Bool
     var startReason = false
     let onOpen: () -> Void
     @Environment(AccountContext.self) private var context
-    @State private var denying = false
-    @State private var chosen: Bool?
 
     var body: some View {
         let approval = dock.approval
-        let target = ApprovalTarget(sessionId: sessionID, machineId: machineID, dock: dock)
-        let choice = context.sessionStore.approvalChoice(approval.approvalID)
-        let submitted = target.isSubmitted(choice: choice)
+        let target = ApprovalTarget(sessionId: sessionID, dock: dock)
+        let compact = target.showCompactSubmitted
         Group {
-            if submitted {
-                ApprovalSubmitted(target: target, chosen: chosen)
+            if compact {
+                ApprovalSubmitted(target: target)
                     .padding(.horizontal, DS.Space.m).padding(.bottom, 8)
                     .transition(Motion.roomy())
             } else {
@@ -304,18 +309,24 @@ struct ApprovalDock: View {
                         open: $open,
                         onOpen: onOpen
                     ) {
-                        ApprovalContent(approval: approval, isSkeleton: dock.isSkeleton, denying: denying)
+                        ApprovalContent(approval: approval, isSkeleton: dock.isSkeleton, denying: target.denyingOpen)
                     } actions: {
                         if !dock.isSkeleton {
-                            ApprovalDecision(target: target, denying: $denying, chosen: $chosen)
+                            ApprovalDecision(target: target)
                         }
                     }
                 }
                 .transition(Motion.roomy())
             }
         }
-        .animation(Motion.enter(), value: submitted)
-        .onAppear { if startReason { denying = true } }
+        .animation(Motion.enter(), value: compact)
+        .onAppear {
+            if startReason && !approval.denyingOpen {
+                Task {
+                    await context.coreHost.editApprovalDeny(sessionID: sessionID, approvalID: approval.approvalID, denyingOpen: true)
+                }
+            }
+        }
     }
 }
 
@@ -339,7 +350,6 @@ struct QuestionBody: View {
     enum Part { case content, actions }
 
     let sessionID: String
-    let machineID: String
     let dock: PBSessionDockView
     let part: Part
     let full: Bool
@@ -347,41 +357,36 @@ struct QuestionBody: View {
     var onLong: () -> Void = {}
     var onAnswered: () -> Void = {}
     @Environment(AccountContext.self) private var context
-    @State private var lastSentPicks: [Int] = []
-    @State private var submittedLastStep = false
+    @State private var initialSucceededSeq: UInt64?
 
-    private var store: SessionStore { context.sessionStore }
     private var qDock: PBSessionQuestionDockView { dock.question }
     private var qid: String { qDock.questionID }
     private var index: Int { Int(qDock.activeIndex) }
     private var cur: PBSessionQuestionStepView { qDock.question }
     private var cmd: PBCoreSessionCommandState { dock.command }
-    private var isRunning: Bool { commandRunning(cmd) }
+    private var isRunning: Bool { cmd.isRunning }
 
-    private func submit(_ options: [Int]) {
-        guard !cur.questionText.isEmpty || !cur.options.isEmpty else { return }
-        let qi = index
-        let count = Int(qDock.totalQuestions)
-        let multi = cur.multiSelect
-        let isLast = qi + 1 >= max(count, 1)
-        lastSentPicks = options
-        if multi { store.multiPick["\(qid)#\(qi)"] = Set(options) }
-        else { store.singlePick["\(qid)#\(qi)"] = options.first }
-        submittedLastStep = isLast
-        let cmdPayload = PBCommand.with {
-            $0.answerQuestion = .with {
-                $0.sessionID = sessionID
-                $0.questionID = qid
-                if multi { $0.options = options.map { Int32($0 + 1) } }
-                else { $0.option = Int32((options.first ?? 0) + 1) }
-                if count > 1 { $0.questionIndex = Int32(qi) }
-                if dock.observedSeq > 0 { $0.observedEventSeq = dock.observedSeq }
-            }
-        }
+    private func toggleOption(_ optionNum: Int32) {
+        Haptics.selection()
         Task {
-            await context.coreHost.submitSessionCommand(
-                sessionID: sessionID, command: cmdPayload, machineID: machineID, slotKey: cmd.slotKey
-            )
+            await context.coreHost.toggleQuestionOption(sessionID: sessionID, questionID: qid, optionNum: optionNum)
+        }
+    }
+
+    private func submitSingle(_ optionNum: Int32) {
+        if initialSucceededSeq == nil { initialSucceededSeq = cmd.succeededSeq }
+        SessionHaptics.tap()
+        Task {
+            await context.coreHost.answerQuestion(sessionID: sessionID, questionID: qid, optionNum: optionNum)
+        }
+    }
+
+    private func submitMulti(_ optionNums: [Int32]) {
+        guard shouldSubmitMultiSelect(optionNums) else { return }
+        if initialSucceededSeq == nil { initialSucceededSeq = cmd.succeededSeq }
+        SessionHaptics.tap()
+        Task {
+            await context.coreHost.answerQuestion(sessionID: sessionID, questionID: qid, optionNums: optionNums)
         }
     }
 
@@ -395,9 +400,12 @@ struct QuestionBody: View {
                 case .actions: actions
                 }
             }
-            .onChange(of: cmd.status) { old, new in
-                if old == .pending && new == .idle && !cmd.frozen && commandErrorText(cmd).isEmpty && submittedLastStep {
-                    submittedLastStep = false
+            .onAppear {
+                if initialSucceededSeq == nil { initialSucceededSeq = cmd.succeededSeq }
+            }
+            .onChange(of: cmd.succeededSeq) { _, newSeq in
+                if shouldDismissQuestionScreen(baseline: initialSucceededSeq, current: newSeq, isLastStep: qDock.isLastStep) {
+                    initialSucceededSeq = newSeq
                     onAnswered()
                 }
             }
@@ -406,8 +414,10 @@ struct QuestionBody: View {
 
     @ViewBuilder private var content: some View {
         let count = Int(qDock.totalQuestions)
-        let key = "\(qid)#\(index)"
         let progress = qDock.hasProgressText ? qDock.progressText.rendered() : ""
+        let selectedNums = Set(qDock.selectedOptionNums)
+        let submittedNums = qDock.submittedOptionNums
+        let answered = qDock.answered
         if full {
             if !progress.isEmpty { Text(progress).font(.footnote).ink(DS.ink2).padding(.top, 12) }
         } else if count > 1 {
@@ -424,25 +434,32 @@ struct QuestionBody: View {
             .buttonStyle(PressStyle())
         }
         ForEach(Array(cur.options.enumerated()), id: \.offset) { i, option in
-            let selected = cur.multiSelect ? store.multiPick[key]?.contains(i) == true : store.singlePick[key] == i
+            let num = option.optionNum > 0 ? option.optionNum : Int32(i + 1)
+            let selected = selectedNums.contains(num)
+            let submitting = selected && isRunning && !cur.multiSelect
             QuestionOptionRow(
-                option: option, multi: cur.multiSelect, selected: selected, submitting: selected && isRunning && !cur.multiSelect,
+                option: option, multi: cur.multiSelect, selected: selected, submitting: submitting,
                 dark: !full
             ) {
                 if cur.multiSelect {
-                    var set = store.multiPick[key] ?? []
-                    if set.remove(i) == nil { set.insert(i) }
-                    store.multiPick[key] = set
-                    Haptics.selection()
+                    toggleOption(num)
                 } else {
-                    submit([i])
+                    submitSingle(num)
                 }
             }
-            .disabled(isRunning)
+            .disabled(answered || isRunning || cmd.frozen)
         }
-        if !isRunning && cmd.frozen {
-            let shown = lastSentPicks.map { i in i < cur.options.count ? cur.options[i].label : "\(i + 1)" }
-                .joined(separator: L10n.commonIosListSeparator())
+        if answered && qDock.hasAnsweredText {
+            let text = qDock.answeredText.rendered()
+            if !text.isEmpty {
+                Text(text).font(.footnote).ink(DS.ink2).padding(.top, 6)
+            }
+        } else if !isRunning && cmd.frozen {
+            let summary = cmd.hasSubmittedSummary ? cmd.submittedSummary.rendered() : ""
+            let fallback = submittedNums.map { num in
+                cur.options.first { $0.optionNum == num }?.label ?? "\(num)"
+            }.joined(separator: L10n.commonIosListSeparator())
+            let shown = summary.isEmpty ? fallback : summary
             Banner(
                 cmd.expired
                     ? L10n.dockIosQuestionExpired(answer: shown)
@@ -455,30 +472,48 @@ struct QuestionBody: View {
             )
             .padding(.top, 6)
         } else if !isRunning && cmd.status == .failed {
-            let reason = commandErrorText(cmd)
+            let reason = cmd.renderedErrorText
             Banner(L10n.dockIosQuestionFailed(reason: reason), tone: .error).padding(.top, 6)
         }
     }
 
+    @ViewBuilder private func primaryActionButton(_ label: String, enabled: Bool = true, action: @escaping () -> Void) -> some View {
+        if full {
+            Btn(label, kind: .primary, enabled: enabled, action: action)
+        } else {
+            Button(label, action: action)
+                .buttonStyle(.darkCard(primary: true))
+                .disabled(!enabled)
+        }
+    }
+
     @ViewBuilder private var actions: some View {
-        let key = "\(qid)#\(index)"
-        if cur.multiSelect {
-            let picked = store.multiPick[key] ?? []
-            let label = isRunning ? L10n.dockSubmitting() : picked.isEmpty ? L10n.dockSelectThenSubmit() : L10n.dockSubmitSelected(count: Int(picked.count))
-            Group {
-                if full {
-                    Btn(label, kind: .primary, enabled: !isRunning && !picked.isEmpty) { submit(picked.sorted()) }
-                } else {
-                    Button(label) { submit(picked.sorted()) }
-                        .buttonStyle(.darkCard(primary: true))
-                        .disabled(isRunning || picked.isEmpty)
+        let picked = qDock.draftedOptionNums
+        let showError = cmd.isFailed
+        let canRetry = showError && !cmd.expired && cmd.canRetry && !cmd.slotKey.isEmpty
+        if cur.multiSelect && !(showError && cmd.frozen) {
+            let label: String = {
+                if qDock.hasSubmitButtonLabel {
+                    let s = qDock.submitButtonLabel.rendered()
+                    if !s.isEmpty { return s }
                 }
+                return isRunning ? L10n.dockSubmitting() : picked.isEmpty ? L10n.dockSelectThenSubmit() : L10n.dockSubmitSelected(count: picked.count)
+            }()
+            primaryActionButton(label, enabled: qDock.canSubmitMulti) { submitMulti(picked) }
+                .padding(.top, 6)
+        }
+        if canRetry {
+            primaryActionButton(L10n.commonRetry()) {
+                Task { await context.coreHost.retrySessionCommand(sessionID: sessionID, slotKey: cmd.slotKey) }
             }
             .padding(.top, 6)
-            DockFoot(picked.isEmpty ? "" : L10n.dockSelected(count: Int(picked.count)), link: L10n.dockOtherTerminal(), arrow: true, onLink: onTerminal)
-        } else {
-            DockFoot(L10n.dockNoneFit(), link: L10n.dockOtherTerminal(), arrow: true, onLink: onTerminal)
         }
+        DockFoot(
+            cur.multiSelect ? (picked.isEmpty ? "" : L10n.dockSelected(count: picked.count)) : L10n.dockNoneFit(),
+            link: L10n.dockOtherTerminal(),
+            arrow: true,
+            onLink: onTerminal
+        )
     }
 
     private func isLongStep(_ step: PBSessionQuestionStepView) -> Bool {
@@ -532,7 +567,6 @@ private struct QuestionOptionRow: View {
 
 struct QuestionDock: View {
     let sessionID: String
-    let machineID: String
     let dock: PBSessionDockView
     @Binding var open: Bool
     let onOpen: () -> Void
@@ -549,9 +583,9 @@ struct QuestionDock: View {
             open: $open,
             onOpen: onOpen
         ) {
-            QuestionBody(sessionID: sessionID, machineID: machineID, dock: dock, part: .content, full: false, onLong: onLong)
+            QuestionBody(sessionID: sessionID, dock: dock, part: .content, full: false, onLong: onLong)
         } actions: {
-            QuestionBody(sessionID: sessionID, machineID: machineID, dock: dock, part: .actions, full: false, onTerminal: onTerminal)
+            QuestionBody(sessionID: sessionID, dock: dock, part: .actions, full: false, onTerminal: onTerminal)
         }
     }
 }
@@ -560,7 +594,6 @@ struct QuestionDock: View {
 
 struct PlanDock: View {
     let sessionID: String
-    let machineID: String
     let dock: PBSessionDockView
     @Binding var open: Bool
     let onOpen: () -> Void
@@ -583,7 +616,7 @@ struct PlanDock: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, 4).padding(.bottom, 4)
             } actions: {
-                PlanButtons(sessionID: sessionID, machineID: machineID, dock: dock, full: false)
+                PlanButtons(sessionID: sessionID, dock: dock, full: false)
             }
         }
     }
@@ -591,18 +624,20 @@ struct PlanDock: View {
 
 struct PlanButtons: View {
     let sessionID: String
-    let machineID: String
     let dock: PBSessionDockView
     let full: Bool
     var onDone: () -> Void = {}
     @Environment(AccountContext.self) private var context
-    @State private var awaitingDone = false
+    @State private var initialSucceededSeq: UInt64?
 
     private var plan: PBSessionPlanDockView { dock.plan }
     private var cmd: PBCoreSessionCommandState { dock.command }
-    private var isRunning: Bool { commandRunning(cmd) }
+    private var isRunning: Bool { cmd.isRunning }
 
     private func labelFor(_ choice: PBPlanChoice) -> String {
+        if isRunning && plan.submittedChoice == choice {
+            return L10n.dockSubmitting()
+        }
         if let hit = plan.choices.first(where: { $0.choice == choice && $0.hasLabel }) {
             let s = hit.label.rendered()
             if !s.isEmpty { return s }
@@ -617,19 +652,10 @@ struct PlanButtons: View {
 
     private func answer(_ choice: PBPlanChoice) {
         guard !plan.markdown.isEmpty else { return }
-        awaitingDone = true
-        let cmdPayload = PBCommand.with {
-            $0.answerPlan = .with {
-                $0.sessionID = sessionID
-                $0.choice = choice
-                if dock.observedSeq > 0 { $0.observedEventSeq = dock.observedSeq }
-                if !plan.screenHash.isEmpty { $0.observedScreenHash = plan.screenHash }
-            }
-        }
+        if initialSucceededSeq == nil { initialSucceededSeq = cmd.succeededSeq }
+        SessionHaptics.tap()
         Task {
-            await context.coreHost.submitSessionCommand(
-                sessionID: sessionID, command: cmdPayload, machineID: machineID, slotKey: cmd.slotKey
-            )
+            await context.coreHost.answerPlan(sessionID: sessionID, choice: choice)
         }
     }
 
@@ -639,28 +665,30 @@ struct PlanButtons: View {
         }
         .frame(maxWidth: actionsWidth, alignment: .leading)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .onChange(of: cmd.status) { old, new in
-            if awaitingDone && old == .pending && new == .idle && !cmd.frozen && commandErrorText(cmd).isEmpty {
-                awaitingDone = false
+        .onAppear {
+            if initialSucceededSeq == nil { initialSucceededSeq = cmd.succeededSeq }
+        }
+        .onChange(of: cmd.succeededSeq) { _, newSeq in
+            if shouldCloseAfterCommandSuccess(baseline: initialSucceededSeq, current: newSeq) {
+                initialSucceededSeq = newSeq
                 onDone()
-            } else if new == .failed || new == .unknown {
-                awaitingDone = false
             }
         }
     }
 
     @ViewBuilder private var choices: some View {
+        let locked = isRunning || cmd.frozen
         let keepLabel = labelFor(.keepPlanning)
-        let approveLabel = isRunning ? L10n.dockSubmitting() : labelFor(.implement)
+        let approveLabel = labelFor(.implement)
         if full {
             Btns {
-                Btn(keepLabel, enabled: !isRunning) { answer(.keepPlanning) }
-                Btn(approveLabel, kind: .primary, enabled: !isRunning) { answer(.implement) }
+                Btn(keepLabel, enabled: !locked) { answer(.keepPlanning) }
+                Btn(approveLabel, kind: .primary, enabled: !locked) { answer(.implement) }
             }
         } else {
             ViewThatFits(in: .horizontal) {
-                HStack(spacing: 8) { darkChoices(keepLabel: keepLabel, approveLabel: approveLabel) }
-                VStack(spacing: 8) { darkChoices(keepLabel: keepLabel, approveLabel: approveLabel) }
+                HStack(spacing: 8) { darkChoices(keepLabel: keepLabel, approveLabel: approveLabel, locked: locked) }
+                VStack(spacing: 8) { darkChoices(keepLabel: keepLabel, approveLabel: approveLabel, locked: locked) }
             }
         }
         if plan.hasNote {
@@ -669,26 +697,33 @@ struct PlanButtons: View {
         }
         if full && plan.clearContextAvailable_p {
             DockFoot("", link: labelFor(.clearAndImplement)) { answer(.clearAndImplement) }
-                .disabled(isRunning)
+                .disabled(locked)
         }
-        let err = commandErrorText(cmd)
-        if !isRunning && !err.isEmpty {
+        let err = cmd.renderedErrorText
+        if !isRunning && (!err.isEmpty || cmd.frozen) {
+            let actionTitle: String? = cmd.canRetry && !cmd.expired && !cmd.slotKey.isEmpty
+                ? L10n.commonRetry()
+                : (cmd.canAbandon ? L10n.newSessionIosAbandon() : nil)
             Banner(
-                L10n.dockSubmitFailed(reason: err),
+                L10n.dockSubmitFailed(reason: err.isEmpty ? L10n.approvalIosUnknownResult() : err),
                 tone: .error,
-                action: cmd.canAbandon ? L10n.newSessionIosAbandon() : nil,
+                action: actionTitle,
                 onAction: {
-                    Task { await context.coreHost.abandonSessionCommand(sessionID: sessionID, slotKey: cmd.slotKey) }
+                    if cmd.canRetry && !cmd.expired && !cmd.slotKey.isEmpty {
+                        Task { await context.coreHost.retrySessionCommand(sessionID: sessionID, slotKey: cmd.slotKey) }
+                    } else if cmd.canAbandon {
+                        Task { await context.coreHost.abandonSessionCommand(sessionID: sessionID, slotKey: cmd.slotKey) }
+                    }
                 }
             )
             .padding(.top, 8)
         }
     }
 
-    @ViewBuilder private func darkChoices(keepLabel: String, approveLabel: String) -> some View {
-        Button(keepLabel) { answer(.keepPlanning) }.buttonStyle(.darkCard()).disabled(isRunning)
+    @ViewBuilder private func darkChoices(keepLabel: String, approveLabel: String, locked: Bool) -> some View {
+        Button(keepLabel) { answer(.keepPlanning) }.buttonStyle(.darkCard()).disabled(locked)
         Button(approveLabel) { answer(.implement) }
-            .buttonStyle(.darkCard(primary: true)).disabled(isRunning)
+            .buttonStyle(.darkCard(primary: true)).disabled(locked)
     }
 }
 

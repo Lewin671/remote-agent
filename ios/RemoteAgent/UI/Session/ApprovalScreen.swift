@@ -3,14 +3,12 @@ import RAProto
 import SwiftUI
 
 /// 审批详情: an approval on a page of its own, as opened from a link, rendered
-/// from Core's `PBSessionViewModel.dock` and decided via `CoreHost.submitSessionCommand`.
+/// from Core's `PBSessionViewModel.dock` and decided via Core semantic actions.
 struct ApprovalScreen: View {
     let session: String
     let approval: String
 
     @Environment(AccountContext.self) private var context
-    @State private var denying = false
-    @State private var chosen: Bool?
 
     var body: some View {
         let vm = context.core.sessions[session]
@@ -31,21 +29,18 @@ struct ApprovalScreen: View {
                         if dock.isSkeleton {
                             PageNote(L10n.sessionSkeleton())
                         } else {
-                            let target = ApprovalTarget(
-                                sessionId: session,
-                                machineId: header?.machineID ?? "",
-                                dock: dock
-                            )
-                            let choice = context.sessionStore.approvalChoice(approval)
+                            let target = ApprovalTarget(sessionId: session, dock: dock)
                             ScrollView {
                                 Group {
-                                    if target.isSubmitted(choice: choice) {
-                                        ApprovalSubmitted(target: target, chosen: chosen, floating: false)
+                                    if target.showCompactSubmitted {
+                                        ApprovalSubmitted(target: target, floating: false)
                                     } else {
                                         DarkCard {
                                             DarkCardHead(kind: dock.approval.commandPreview.isEmpty ? dock.approval.toolName : dock.approval.commandPreview)
-                                            ApprovalContent(approval: dock.approval, isSkeleton: dock.isSkeleton, denying: denying).textSelection(.enabled).padding(.top, 14)
-                                            ApprovalDecision(target: target, denying: $denying, chosen: $chosen)
+                                            ApprovalContent(approval: dock.approval, isSkeleton: dock.isSkeleton, denying: target.denyingOpen)
+                                                .textSelection(.enabled)
+                                                .padding(.top, 14)
+                                            ApprovalDecision(target: target)
                                                 .padding(.top, 16)
                                         }
                                     }
@@ -54,7 +49,13 @@ struct ApprovalScreen: View {
                                 .readableColumn()
                             }
                             .scrollDismissesKeyboard(.interactively)
-                            .onAppear { if SessionDebug.shows("reason") { denying = true } }
+                            .onAppear {
+                                if SessionDebug.shows("reason") && !dock.approval.denyingOpen {
+                                    Task {
+                                        await context.coreHost.editApprovalDeny(sessionID: session, approvalID: approval, denyingOpen: true)
+                                    }
+                                }
+                            }
                         }
                     } else if header?.missing == true {
                         PageNote(header?.missingText.rendered() ?? L10n.sessionIosMissing())

@@ -1,57 +1,9 @@
 // The sheets and the dialog of a session's ⋯ menu: 审批模式, 会话设置 (context,
 // model and reasoning effort) and 重命名会话. Rendered from Core's
-// `PBSessionViewModel.{header, actions}` and dispatched via `CoreHost`.
+// `PBSessionViewModel.{header, actions}` and dispatched via Core semantic actions.
 import RACore
 import RAProto
 import SwiftUI
-
-private func commandPending(_ st: PBCoreSessionCommandState?) -> Bool {
-    st?.status == .pending || st?.busy == true
-}
-
-private func commandError(_ st: PBCoreSessionCommandState?) -> String {
-    guard let st else { return "" }
-    if st.hasErrorText {
-        let rendered = st.errorText.rendered()
-        if !rendered.isEmpty { return rendered }
-    }
-    return st.errorCode
-}
-
-/// Awaits Core command settlement (when `status` leaves `.pending`/busy) on the MainActor without polling.
-@MainActor
-private func awaitSessionCommand(
-    context: AccountContext,
-    sessionID: String,
-    extract: @MainActor @escaping (PBSessionViewModel) -> PBCoreSessionCommandState,
-    send: @escaping () -> Void
-) async throws {
-    let initial = context.core.sessions[sessionID].map(extract)
-    let wasFrozen = initial?.frozen == true
-    send()
-    for _ in 0..<256 {
-        guard let vm = context.core.sessions[sessionID] else { return }
-        let st = extract(vm)
-        if !commandPending(st) {
-            if st.frozen && !wasFrozen {
-                let msg = commandError(st)
-                throw CommandError(CommandError.unknownOutcome, msg.isEmpty ? L10nMessage.errorsTheRelayDidNotProvideAVerifiableExecutionResult() : LocalizedMessage(raw: msg), outcome: .unknown)
-            }
-            let msg = commandError(st)
-            if !msg.isEmpty || st.status == .failed || st.status == .unknown {
-                throw UserError(msg.isEmpty ? L10nMessage.errorsTheRelayDidNotProvideAVerifiableExecutionResult() : LocalizedMessage(raw: msg))
-            }
-            return
-        }
-        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-            withObservationTracking {
-                _ = context.core.sessions[sessionID].map(extract)
-            } onChange: {
-                cont.resume()
-            }
-        }
-    }
-}
 
 /// 审批模式: the four modes; full access is confirmed first; only this session changes.
 struct SessionModeSheet: View {
@@ -60,7 +12,7 @@ struct SessionModeSheet: View {
     let onClose: () -> Void
     @Environment(AccountContext.self) private var context
     @State private var confirmFull = false
-    @State private var waitingClose = false
+    @State private var initialSucceededSeq: UInt64?
 
     private var vm: PBSessionViewModel? { context.core.sessions[sessionID] }
     private var header: PBSessionHeaderView { vm?.header ?? PBSessionHeaderView() }
@@ -68,20 +20,9 @@ struct SessionModeSheet: View {
 
     private func set(_ mode: PBApprovalMode, choice: PBSessionModeChoiceView?) {
         if let choice, !choice.available { return }
-        waitingClose = true
-        let machineID = header.machineID
+        if initialSucceededSeq == nil { initialSucceededSeq = actions.setMode.succeededSeq }
         Task {
-            await context.coreHost.submitSessionCommand(
-                sessionID: sessionID,
-                command: .with {
-                    $0.setApprovalMode = .with {
-                        $0.sessionID = sessionID
-                        $0.mode = mode
-                    }
-                },
-                machineID: machineID,
-                slotKey: actions.setMode.slotKey
-            )
+            await context.coreHost.setApprovalMode(sessionID: sessionID, mode: mode)
         }
     }
 
@@ -89,8 +30,8 @@ struct SessionModeSheet: View {
         let choices = actions.modeChoices
         let current = header.approvalMode
         let cmd = actions.setMode
-        let running = commandPending(cmd)
-        let errorText = commandError(cmd)
+        let running = cmd.isRunning
+        let errorText = cmd.renderedErrorText
         let outside: String? = header.terminalModeOverride ? header.approvalModeLabel.rendered() : nil
         Group {
             SheetHead(L10n.modesTitle())
@@ -135,12 +76,13 @@ struct SessionModeSheet: View {
             let fullChoice = choices.first { $0.mode == .fullAccess }
             set(.fullAccess, choice: fullChoice)
         }
-        .onChange(of: cmd.status) { old, new in
-            if waitingClose && old == .pending && new == .idle && !cmd.frozen && commandError(cmd).isEmpty {
-                waitingClose = false
+        .onAppear {
+            if initialSucceededSeq == nil { initialSucceededSeq = cmd.succeededSeq }
+        }
+        .onChange(of: cmd.succeededSeq) { _, newSeq in
+            if shouldCloseAfterCommandSuccess(baseline: initialSucceededSeq, current: newSeq) {
+                initialSucceededSeq = newSeq
                 onClose()
-            } else if new == .failed || new == .unknown {
-                waitingClose = false
             }
         }
         .task {
@@ -165,9 +107,8 @@ struct SessionModelSheet: View {
     let onClose: () -> Void
     @Environment(AccountContext.self) private var context
     @State private var all = false
-    @State private var picked = ""
-    @State private var waitingModel = false
-    @State private var waitingCompact = false
+    @State private var initialModelSeq: UInt64?
+    @State private var initialCompactSeq: UInt64?
 
     private var vm: PBSessionViewModel? { context.core.sessions[sessionID] }
     private var header: PBSessionHeaderView { vm?.header ?? PBSessionHeaderView() }
@@ -175,32 +116,19 @@ struct SessionModelSheet: View {
 
     private func setModel(_ slug: String, _ effort: String) {
         guard actions.canSwitchModel else { return }
-        waitingModel = true
-        let machineID = header.machineID
+        if initialModelSeq == nil { initialModelSeq = actions.setModel.succeededSeq }
         Task {
-            await context.coreHost.submitSessionCommand(
-                sessionID: sessionID,
-                command: .with {
-                    $0.setModel = .with {
-                        $0.sessionID = sessionID
-                        $0.model = slug
-                        if !effort.isEmpty { $0.effort = effort }
-                    }
-                },
-                machineID: machineID,
-                slotKey: actions.setModel.slotKey
-            )
+            await context.coreHost.setSessionModel(sessionID: sessionID, model: slug, effort: effort)
         }
     }
 
     var body: some View {
         let modelCmd = actions.setModel
-        let modelRunning = commandPending(modelCmd)
-        let modelError = commandError(modelCmd)
+        let modelRunning = modelCmd.isRunning
+        let modelError = modelCmd.renderedErrorText
         let compactCmd = actions.compact
-        let compactRunning = commandPending(compactCmd)
-        let compactError = commandError(compactCmd)
-        let running = header.status == .running || header.status == .starting
+        let compactRunning = compactCmd.isRunning
+        let compactError = compactCmd.renderedErrorText
         Group {
             SheetHead(L10n.sessionSettings())
             if header.hasContext_p {
@@ -212,15 +140,9 @@ struct SessionModelSheet: View {
                     action: compactRunning ? L10n.sessionCompacting() : L10n.sessionCompact(),
                     enabled: actions.canCompact && !compactRunning
                 ) {
-                    waitingCompact = true
-                    let machineID = header.machineID
+                    if initialCompactSeq == nil { initialCompactSeq = compactCmd.succeededSeq }
                     Task {
-                        await context.coreHost.submitSessionCommand(
-                            sessionID: sessionID,
-                            command: .with { $0.compact = .with { $0.sessionID = sessionID } },
-                            machineID: machineID,
-                            slotKey: compactCmd.slotKey
-                        )
+                        await context.coreHost.sessionSimpleCommand(sessionID: sessionID, kind: .compact)
                     }
                 }
                 if !compactRunning && !compactError.isEmpty {
@@ -247,10 +169,10 @@ struct SessionModelSheet: View {
                 } else if !actions.modelsLoaded && actions.modelsLoading {
                     LoadingRow(inset: 0)
                 } else {
-                    list(actions.modelChoices, running: running, modelRunning: modelRunning)
+                    list(modelRunning: modelRunning)
                 }
                 let blockedNote = actions.hasModelSwitchBlockedReason ? actions.modelSwitchBlockedReason.rendered() : ""
-                Hint(!blockedNote.isEmpty ? blockedNote : (running ? L10n.sessionIosChangeIdle() : L10n.sessionIosEffortNote()))
+                Hint(!blockedNote.isEmpty ? blockedNote : L10n.sessionIosEffortNote())
                 if modelRunning { Hint(L10n.modesSwitching()) }
                 if !modelRunning && !modelError.isEmpty { Hint(L10n.modesSwitchFailed(reason: modelError), color: DS.red) }
             }
@@ -258,25 +180,20 @@ struct SessionModelSheet: View {
                 usageEntrySection(actions.usageEntry)
             }
         }
-        .onChange(of: actions.modelChoices, initial: true) { _, choices in
-            if picked.isEmpty {
-                picked = choices.first(where: \.selected)?.slug ?? ""
+        .onAppear {
+            if initialModelSeq == nil { initialModelSeq = modelCmd.succeededSeq }
+            if initialCompactSeq == nil { initialCompactSeq = compactCmd.succeededSeq }
+        }
+        .onChange(of: modelCmd.succeededSeq) { _, newSeq in
+            if shouldCloseAfterCommandSuccess(baseline: initialModelSeq, current: newSeq) {
+                initialModelSeq = newSeq
+                onClose()
             }
         }
-        .onChange(of: modelCmd.status) { old, new in
-            if waitingModel && old == .pending && new == .idle && !modelCmd.frozen && commandError(modelCmd).isEmpty {
-                waitingModel = false
+        .onChange(of: compactCmd.succeededSeq) { _, newSeq in
+            if shouldCloseAfterCommandSuccess(baseline: initialCompactSeq, current: newSeq) {
+                initialCompactSeq = newSeq
                 onClose()
-            } else if new == .failed || new == .unknown {
-                waitingModel = false
-            }
-        }
-        .onChange(of: compactCmd.status) { old, new in
-            if waitingCompact && old == .pending && new == .idle && !compactCmd.frozen && commandError(compactCmd).isEmpty {
-                waitingCompact = false
-                onClose()
-            } else if new == .failed || new == .unknown {
-                waitingCompact = false
             }
         }
         .task {
@@ -306,34 +223,49 @@ struct SessionModelSheet: View {
         }
     }
 
-    @ViewBuilder private func list(_ offered: [PBSessionModelChoiceView], running: Bool, modelRunning: Bool) -> some View {
-        let disabled = !actions.canSwitchModel || running || modelRunning
-        let selectedChoice = offered.first { $0.slug == picked } ?? offered.first(where: \.selected)
-        let shown = shownModels(offered, picked: selectedChoice, all: all)
-        let few = shown.count == offered.count
+    @ViewBuilder private func list(modelRunning: Bool) -> some View {
+        let disabled = !actions.canSwitchModel || modelRunning
+        let offered = actions.modelChoices
+        let folded = actions.foldedModelChoices
+        let shown = (all || folded.isEmpty) ? offered : folded
+        let hasMore = !all && actions.hasMoreModels_p
+        let current = offered.first(where: \.selected)
         ForEach(Array(shown.enumerated()), id: \.element.slug) { i, m in
             let effortHint = m.hasMaxEffortHint ? m.maxEffortHint.rendered() : ""
             ListItem(
                 m.displayName.isEmpty ? m.slug : m.displayName,
-                checked: m.slug == (selectedChoice?.slug ?? picked),
+                checked: m.selected,
                 enabled: !disabled,
                 small: effortHint.isEmpty ? nil : effortHint,
-                last: i == shown.count - 1 && few
+                last: i == shown.count - 1 && !hasMore
             ) {
-                picked = m.slug
-                if m.efforts.isEmpty && !m.selected {
+                if !m.selected {
                     setModel(m.slug, "")
                 }
             }
         }
-        if !few { TextAction(L10n.modelsAll(), style: .body, arrow: true) { all = true } }
-        if let chosen = offered.first(where: { $0.slug == (picked.isEmpty ? (selectedChoice?.slug ?? "") : picked) }), !chosen.efforts.isEmpty {
+        if hasMore { TextAction(L10n.modelsAll(), style: .body, arrow: true) { all = true } }
+        let efforts = actions.effortChoices
+        if !efforts.isEmpty, let chosen = current {
             FieldLabel(L10n.modelsEffort())
             ChoiceGrid(
-                chosen.efforts,
-                selected: chosen.selected ? (header.effort.isEmpty ? nil : header.effort) : nil,
-                enabled: !disabled
+                efforts.map(\.id),
+                selected: efforts.first(where: \.selected)?.id,
+                enabled: !disabled,
+                label: { id in
+                    if let hit = efforts.first(where: { $0.id == id }), hit.hasLabel {
+                        let s = hit.label.rendered()
+                        if !s.isEmpty { return s }
+                    }
+                    return id
+                }
             ) { setModel(chosen.slug, $0) }
+        } else if let chosen = current, chosen.hasFixedEffortNote {
+            let note = chosen.fixedEffortNote.rendered()
+            if !note.isEmpty {
+                FieldLabel(L10n.modelsEffort())
+                Hint(note)
+            }
         }
     }
 }
@@ -344,39 +276,43 @@ private struct SessionRename: ViewModifier {
     @Binding var isPresented: Bool
     let sessionID: String
     @Environment(AccountContext.self) private var context
+    @State private var initialSucceededSeq: UInt64?
 
     func body(content: Content) -> some View {
         let vm = context.core.sessions[sessionID]
-        let rawTitle = vm?.header.found == true ? vm!.header.title.rendered() : ""
-        let initial = titleInput(rawTitle.trimmingCharacters(in: .whitespacesAndNewlines))
-        let machineID = vm?.header.machineID ?? ""
-        let slotKey = vm?.actions.rename.slotKey ?? ""
-        content.inputAlert(
-            isPresented: $isPresented, title: L10n.sessionRenameTitle(), initial: initial, placeholder: L10n.sessionIosTitleField(), text: L10n.sessionAutoTitleHint(),
-            limit: .max, lines: 1...1, filter: titleInput, debugSignal: "session.rename.save", debugText: { SessionDebug.text }
-        ) { typed in
-            let clean = titleInput(typed).trimmingCharacters(in: .whitespacesAndNewlines)
-            guard clean != initial else { return }
-            try await awaitSessionCommand(
-                context: context,
-                sessionID: sessionID,
-                extract: { $0.actions.rename }
-            ) {
-                Task {
-                    await context.coreHost.submitSessionCommand(
-                        sessionID: sessionID,
-                        command: .with {
-                            $0.renameSession = .with {
-                                $0.sessionID = sessionID
-                                $0.title = clean
-                            }
-                        },
-                        machineID: machineID,
-                        slotKey: slotKey
-                    )
-                }
+        let rawTitle = vm?.header.found == true ? vm!.header.title.rendered().trimmingCharacters(in: .whitespacesAndNewlines) : ""
+        let cmd = vm?.actions.rename ?? PBCoreSessionCommandState()
+        let running = cmd.isRunning
+        let errorText = running ? "" : cmd.renderedErrorText
+        content
+            .inputAlert(
+                isPresented: $isPresented,
+                title: L10n.sessionRenameTitle(),
+                initial: titleInput(rawTitle),
+                placeholder: L10n.sessionIosTitleField(),
+                text: L10n.sessionAutoTitleHint(),
+                limit: titleMax,
+                lines: 1...1,
+                filter: titleInput,
+                debugSignal: "session.rename.save",
+                debugText: { SessionDebug.text },
+                running: running,
+                error: errorText
+            ) { title in
+                if initialSucceededSeq == nil { initialSucceededSeq = cmd.succeededSeq }
+                let host = context.coreHost
+                let sid = sessionID
+                Task { await host.renameSession(sessionID: sid, title: title) }
             }
-        }
+            .onChange(of: isPresented) { _, shown in
+                initialSucceededSeq = shown ? cmd.succeededSeq : nil
+            }
+            .onChange(of: cmd.succeededSeq) { _, newSeq in
+                guard isPresented, shouldCloseAfterCommandSuccess(baseline: initialSucceededSeq, current: newSeq) else { return }
+                initialSucceededSeq = newSeq
+                Haptics.confirm()
+                isPresented = false
+            }
     }
 }
 

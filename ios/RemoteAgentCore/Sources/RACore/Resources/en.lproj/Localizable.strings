@@ -12,15 +12,15 @@
 "approval_denial_reason" = "Reason for denial";
 "approval_denied" = "Denied";
 "approval_deny" = "Deny";
+"approval_denying" = "Denying…";
 "approval_details" = "Approval details";
 "approval_full_command" = "View full command";
 "approval_handled" = "Handled";
 "approval_handled_in_terminal" = "Handled in terminal";
 "approval_handled_other_device" = "Handled on another device";
-"approval_ios_decision_deny" = "Deny";
-"approval_ios_expired" = "It is unclear whether “%1$@” arrived. It has expired and will not be resent. Approval requests are automatically denied after the timeout.";
 "approval_ios_unknown_result" = "Unknown result";
 "approval_reason_placeholder" = "Suggest what to do instead (optional)";
+"approval_retry_deny" = "Retry deny";
 "approval_timed_out" = "Timed out; denied";
 "approval_timeout_note" = "%1$@; deny on timeout";
 "approval_title" = "Approval";
@@ -315,8 +315,10 @@
 "home_nothing_waiting" = "Nothing needs your attention";
 "home_online_start" = "%1$@ is online. Start your first session.";
 "home_project_no_sessions" = "No sessions in this project yet";
+"home_question_answer_in_terminal" = "Answer in terminal";
 "home_question_answered_elsewhere" = "Answered on another device";
 "home_question_answered_line" = "Answered · %1$@";
+"home_question_send_failed" = "Not delivered: %1$@";
 "home_scheduled_frequency" = "Scheduled %1$@";
 "home_schedules_tab" = "Schedules";
 "home_scope_label" = "Scope: %1$@";
@@ -1251,7 +1253,6 @@
 "session_interrupt_turn" = "Interrupt turn";
 "session_interrupted" = "Interrupted";
 "session_ios_agent_reply" = "Reply from %1$@";
-"session_ios_change_idle" = "Can only switch while idle; choose after this turn ends";
 "session_ios_collapse_title" = "Collapse %1$@";
 "session_ios_collapsed" = "Collapsed";
 "session_ios_connect_read" = "Connect to the server to read this session";
@@ -1271,7 +1272,6 @@
 "session_ios_select_text" = "Select text";
 "session_ios_select_text_hint" = "Touch and hold, then drag both ends to select text to copy";
 "session_ios_title_field" = "Title";
-"session_ios_update_required" = "Update remote-agent";
 "session_ios_your_message" = "Your message";
 "session_latest" = "Back to latest";
 "session_loading_earlier" = "Loading earlier history…";

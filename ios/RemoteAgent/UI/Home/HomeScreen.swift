@@ -68,6 +68,23 @@ struct HomeScreen: View {
     }
 }
 
+/// Pure helper: excludes whichever session is already promoted to Home's top focus card
+/// (approval or inline question) while not filtering.
+func homeFilteredAttentionRows(home: PBCoreHomeViewModel) -> [PBCoreAttentionRowView] {
+    let showCard = home.filterQuery.isEmpty && home.hasTopAttentionCard && !home.topAttentionCard.approvalID.isEmpty
+    let showQuestion = !showCard && home.filterQuery.isEmpty && home.hasTopAttentionQuestion && !home.topAttentionQuestion.questionID.isEmpty
+    let excludedTopID: String
+    if showCard {
+        excludedTopID = home.topAttentionCard.sessionID.isEmpty ? home.topAttentionSessionID : home.topAttentionCard.sessionID
+    } else if showQuestion {
+        excludedTopID = home.topAttentionQuestion.sessionID.isEmpty ? home.topAttentionSessionID : home.topAttentionQuestion.sessionID
+    } else {
+        excludedTopID = ""
+    }
+    guard !excludedTopID.isEmpty else { return home.attention }
+    return home.attention.filter { $0.sessionID != excludedTopID }
+}
+
 /// Pure presentation body for `HomeScreen`, driven solely by `PBCoreHomeViewModel`.
 struct HomeContent: View {
     let home: PBCoreHomeViewModel
@@ -132,12 +149,26 @@ struct HomeContent: View {
         }
     }
 
+    private var showTopCard: Bool {
+        home.filterQuery.isEmpty && home.hasTopAttentionCard && !home.topAttentionCard.approvalID.isEmpty
+    }
+
+    private var showTopQuestion: Bool {
+        !showTopCard && home.filterQuery.isEmpty && home.hasTopAttentionQuestion && !home.topAttentionQuestion.questionID.isEmpty
+    }
+
+    private var filteredAttentionRows: [PBCoreAttentionRowView] {
+        homeFilteredAttentionRows(home: home)
+    }
+
     private var timelineAnimationIDs: [String] {
         var ids: [String] = []
-        if home.topAttentionActionable && !home.topAttentionCard.approvalID.isEmpty {
+        if showTopCard {
             ids.append("card:\(home.topAttentionCard.sessionID)")
+        } else if showTopQuestion {
+            ids.append("qcard:\(home.topAttentionQuestion.sessionID)")
         }
-        ids += home.attention.map { "att:\($0.sessionID)" }
+        ids += filteredAttentionRows.map { "att:\($0.sessionID)" }
         ids += home.running.map { "run:\($0.sessionID)" }
         for g in home.endedGroups {
             ids.append("grp:\(g.groupKey)")
@@ -176,15 +207,20 @@ struct HomeContent: View {
     }
 
     @ViewBuilder private var attentionSection: some View {
-        if home.topAttentionActionable && !home.topAttentionCard.approvalID.isEmpty {
+        if showTopCard {
             HomeApprovalCard(card: home.topAttentionCard)
                 .id(home.topAttentionCard.approvalID)
                 .padding(.top, 20)
+        } else if showTopQuestion {
+            HomeQuestionCard(question: home.topAttentionQuestion)
+                .id(home.topAttentionQuestion.questionID)
+                .padding(.top, 20)
         }
+        let attentionRows = filteredAttentionRows
         let rows = allAttention || !home.filterQuery.isEmpty
-            ? home.attention
-            : Array(home.attention.prefix(attentionMax))
-        let hidden = max(0, home.attention.count - rows.count)
+            ? attentionRows
+            : Array(attentionRows.prefix(attentionMax))
+        let hidden = max(0, attentionRows.count - rows.count)
         ForEach(Array(rows.enumerated()), id: \.element.sessionID) { index, row in
             HomePendingRow(
                 row: row,

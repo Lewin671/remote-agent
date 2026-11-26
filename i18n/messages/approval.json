@@ -274,39 +274,6 @@
     "zh-CN": "看完整命令"
   },
   {
-    "en": "Deny",
-    "key": "approval.ios_decision_deny",
-    "notes": " iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "拒绝"
-  },
-  {
-    "en": "It is unclear whether “{decision}” arrived. It has expired and will not be resent. Approval requests are automatically denied after the timeout.",
-    "key": "approval.ios_expired",
-    "notes": "ApprovalCard.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：decision 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
-    "params": {
-      "decision": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "不确定「{decision}」有没有送到，它已过期，不会再重发。审批超时后会自动拒绝"
-  },
-  {
     "en": "Unknown result",
     "key": "approval.ios_unknown_result",
     "notes": " iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
@@ -459,7 +426,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "en": "draft",
@@ -474,7 +442,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "en": "draft",

@@ -1808,19 +1808,150 @@ actor CoreHost: SyncEngine {
         }
     }
 
-    func submitSessionCommand(
-        sessionID: String,
-        command: PBCommand,
-        machineID: String = "",
-        slotKey: String = ""
-    ) async {
-        guard !closed else { return }
+    func editApprovalDeny(sessionID: String, approvalID: String, denyingOpen: Bool) async {
         await dispatch {
-            $0.sessionSubmitCommand = .with {
-                $0.slotKey = slotKey
-                $0.machineID = machineID
+            $0.sessionEditApprovalDeny = .with {
                 $0.sessionID = sessionID
-                $0.command = command
+                $0.approvalID = approvalID
+                $0.denyingOpen = denyingOpen
+            }
+        }
+    }
+
+    func resolveApproval(sessionID: String, approvalID: String, allow: Bool, always: Bool = false, denyReason: String = "") async {
+        await dispatch {
+            $0.sessionResolveApproval = .with {
+                $0.sessionID = sessionID
+                $0.approvalID = approvalID
+                $0.allow = allow
+                $0.always = always
+                $0.denyReason = denyReason
+            }
+        }
+    }
+
+    func toggleQuestionOption(sessionID: String, questionID: String, optionNum: Int32) async {
+        await dispatch {
+            $0.sessionToggleQuestionOption = .with {
+                $0.sessionID = sessionID
+                $0.questionID = questionID
+                $0.optionNum = optionNum
+            }
+        }
+    }
+
+    func answerQuestion(sessionID: String, questionID: String, optionNum: Int32 = 0, optionNums: [Int32] = []) async {
+        await dispatch {
+            $0.sessionAnswerQuestion = .with {
+                $0.sessionID = sessionID
+                $0.questionID = questionID
+                if optionNum > 0 { $0.optionNum = optionNum }
+                if !optionNums.isEmpty { $0.optionNums = optionNums }
+            }
+        }
+    }
+
+    func answerPlan(sessionID: String, choice: PBPlanChoice) async {
+        await dispatch {
+            $0.sessionAnswerPlan = .with {
+                $0.sessionID = sessionID
+                $0.choice = choice
+            }
+        }
+    }
+
+    func sessionSimpleCommand(sessionID: String, kind: PBSessionSimpleCommandKind) async {
+        await dispatch {
+            $0.sessionSimpleCommand = .with {
+                $0.sessionID = sessionID
+                $0.kind = kind
+            }
+        }
+    }
+
+    func renameSession(sessionID: String, title: String) async {
+        await dispatch {
+            $0.sessionRename = .with {
+                $0.sessionID = sessionID
+                $0.title = title
+            }
+        }
+    }
+
+    func setApprovalMode(sessionID: String, mode: PBApprovalMode) async {
+        await dispatch {
+            $0.sessionSetApprovalMode = .with {
+                $0.sessionID = sessionID
+                $0.mode = mode
+            }
+        }
+    }
+
+    func setSessionModel(sessionID: String, model: String, effort: String = "") async {
+        await dispatch {
+            $0.sessionSetModel = .with {
+                $0.sessionID = sessionID
+                $0.model = model
+                $0.effort = effort
+            }
+        }
+    }
+
+    func retrySessionCommand(sessionID: String, slotKey: String) async {
+        await dispatch {
+            $0.sessionRetryCommand = .with {
+                $0.sessionID = sessionID
+                $0.slotKey = slotKey
+            }
+        }
+    }
+
+    func homeEditApprovalDeny(sessionID: String, approvalID: String, denyingOpen: Bool) async {
+        await dispatch {
+            $0.homeEditApprovalDeny = .with {
+                $0.sessionID = sessionID
+                $0.approvalID = approvalID
+                $0.denyingOpen = denyingOpen
+            }
+        }
+    }
+
+    func homeResolveApproval(sessionID: String, approvalID: String, allow: Bool, always: Bool = false, denyReason: String = "") async {
+        await dispatch {
+            $0.homeResolveApproval = .with {
+                $0.sessionID = sessionID
+                $0.approvalID = approvalID
+                $0.allow = allow
+                $0.always = always
+                $0.denyReason = denyReason
+            }
+        }
+    }
+
+    func homeAnswerQuestion(sessionID: String, questionID: String, optionNum: Int32) async {
+        await dispatch {
+            $0.homeAnswerQuestion = .with {
+                $0.sessionID = sessionID
+                $0.questionID = questionID
+                $0.optionNum = optionNum
+            }
+        }
+    }
+
+    func homeRetryAttention(sessionID: String, itemID: String) async {
+        await dispatch {
+            $0.homeRetryAttention = .with {
+                $0.sessionID = sessionID
+                $0.itemID = itemID
+            }
+        }
+    }
+
+    func homeAbandonAttention(sessionID: String, itemID: String) async {
+        await dispatch {
+            $0.homeAbandonAttention = .with {
+                $0.sessionID = sessionID
+                $0.itemID = itemID
             }
         }
     }
@@ -2269,8 +2400,19 @@ actor CoreHost: SyncEngine {
         await dispatch(ev)
     }
 
+#if DEBUG
+    private var debugEventObserver: (@Sendable (PBCoreEvent) -> Void)?
+
+    func setDebugEventObserver(_ observer: (@Sendable (PBCoreEvent) -> Void)?) {
+        debugEventObserver = observer
+    }
+#endif
+
     func dispatch(_ event: PBCoreEvent) async {
         guard !closed else { return }
+#if DEBUG
+        debugEventObserver?(event)
+#endif
         var envelope = event
         envelope.nowMs = clock()
         envelope.monoMs = monoClock()

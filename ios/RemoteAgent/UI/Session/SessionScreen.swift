@@ -99,14 +99,6 @@ struct SessionScreen: View {
         UserDefaults.standard.set(newTab, forKey: sessionTabKey)
     }
 
-    private func afterMenu(_ action: @escaping @MainActor () -> Void) {
-        menu = false
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(350))
-            action()
-        }
-    }
-
     private var windowRequest: PBSessionWindowRequest {
         let jump = context.sessionStore.scheduledJump(id)
         return PBSessionWindowRequest.with {
@@ -171,7 +163,6 @@ struct SessionScreen: View {
         let modeText = header.hasApprovalModeLabel ? header.approvalModeLabel.rendered() : ""
         let modeDanger = header.approvalMode == .fullAccess
         let high = header.highContextWarning
-        let live = !header.exited && header.computerOnline && !header.computerUnlinked
         let popup = header.status == .popup
         let machineID = header.machineID
         let actionError: String = {
@@ -320,7 +311,7 @@ struct SessionScreen: View {
         }
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(term ? .dark : nil, for: .navigationBar)
-        .menuSheet(isPresented: $menu, groups: groups(header: header, actions: actions, live: live)) {
+        .menuSheet(isPresented: $menu, groups: groups(actions: actions)) {
             let computerText = header.hasComputerName ? header.computerName.rendered() : L10n.commonUnknownComputer()
             let projectText = header.hasProjectName ? header.projectName.rendered() : projectName(header.projectKey)
             let parts = [header.agentName.isEmpty ? agentName(header.agent) : header.agentName, projectText]
@@ -336,8 +327,8 @@ struct SessionScreen: View {
                 }
             }
         }
-        .onChange(of: actions.fork.status) { old, new in
-            if old == .pending && new == .idle && !actions.fork.frozen && commandErrorText(actions.fork).isEmpty {
+        .onChange(of: actions.fork.succeededSeq) { old, new in
+            if shouldCloseAfterCommandSuccess(baseline: old, current: new) {
                 menu = false
             }
         }
@@ -381,12 +372,7 @@ struct SessionScreen: View {
             danger: true
         ) {
             Task {
-                await context.coreHost.submitSessionCommand(
-                    sessionID: id,
-                    command: .with { $0.stopSession = .with { $0.sessionID = id } },
-                    machineID: machineID,
-                    slotKey: actions.end.slotKey
-                )
+                await context.coreHost.sessionSimpleCommand(sessionID: id, kind: .stop)
             }
         }
         .task {
@@ -445,111 +431,54 @@ struct SessionScreen: View {
         )
     }
 
-    private func commandErrorText(_ st: PBCoreSessionCommandState) -> String {
-        if st.hasErrorText {
-            let rendered = st.errorText.rendered()
-            if !rendered.isEmpty { return rendered }
-        }
-        return st.errorCode
-    }
-
-    private func groups(header: PBSessionHeaderView, actions: PBSessionActionsView, live: Bool) -> [[SheetAction]] {
-        let forkCmd = actions.fork
-        let forkAction = actions.forkAction
-        let forking = forkAction.busy || forkCmd.status == .pending
-        let running = header.status == .running || header.status == .starting
-        var settings: [SheetAction] = []
-        var list: [SheetAction] = []
-        var end: [SheetAction] = []
-        if live {
-            if header.hasApprovalModeLabel {
-                let modeLabel = header.approvalModeLabel.rendered()
-                if !modeLabel.isEmpty {
-                    settings.append(SheetAction(L10n.modesTitle(), value: modeLabel, danger: header.approvalMode == .fullAccess, enabled: !forking) {
-                        afterMenu { sheet = .mode }
-                    })
-                }
-            }
-            let modelVal: String = {
-                if header.modelLabel.isEmpty && header.model.isEmpty { return "" }
-                let m = header.modelLabel.isEmpty ? header.model : header.modelLabel
-                let eff = header.hasEffortLabel ? header.effortLabel.rendered() : ""
-                return eff.isEmpty ? m : "\(m) · \(eff)"
-            }()
-            settings.append(SheetAction(
-                modelVal.isEmpty ? L10n.sessionSettings() : L10n.modelsTitle(),
-                value: modelVal,
-                enabled: !forking
-            ) {
-                afterMenu { sheet = .model }
-            })
-            if header.hasContext_p {
-                settings.append(SheetAction(
-                    L10n.sessionContext(),
-                    value: "\(header.contextPercent)%",
-                    warn: header.highContextWarning,
-                    enabled: !forking
-                ) {
-                    afterMenu { sheet = .model }
-                })
-            }
-        }
-        list.append(SheetAction(L10n.projectsIosSettings(), enabled: !forking && !header.projectKey.isEmpty) {
-            afterMenu { projectSettings = ProjectSettingsRequest() }
-        })
-        let supportsSchedule = header.computerOnline && !header.computerUnlinked && header.capabilities.supportsSchedule
-        list.append(SheetAction(
-            L10n.sessionScheduleSend(),
-            enabled: supportsSchedule,
-            note: header.capabilities.supportsSchedule ? "" : L10n.sessionIosUpdateRequired()
-        ) {
-            afterMenu { scheduleSending = true }
-        })
-        if actions.canRename {
-            list.append(SheetAction(L10n.sessionRename(), enabled: !forking) { afterMenu { rename = true } })
-        }
-        if forkAction.visible {
-            let forkLabel = forkAction.hasLabel ? forkAction.label.rendered() : L10n.sessionFork()
-            let forkNote = forkAction.hasNote ? forkAction.note.rendered() : ""
-            list.append(SheetAction(
-                forkLabel,
-                enabled: forkAction.enabled || forkAction.busy,
-                note: forkNote,
-                noteError: forkAction.noteError,
-                busy: forkAction.busy,
-                keepOpen: true
-            ) {
-                guard !forkAction.busy, forkAction.enabled else { return }
-                if forkAction.abandons && forkAction.canAbandon {
-                    Task { await context.coreHost.abandonSessionCommand(sessionID: id, slotKey: forkCmd.slotKey) }
-                } else {
-                    Task {
-                        await context.coreHost.submitSessionCommand(
-                            sessionID: id,
-                            command: .with { $0.forkSession = .with { $0.sessionID = id } },
-                            machineID: header.machineID,
-                            slotKey: forkCmd.slotKey
-                        )
+    private func groups(actions: PBSessionActionsView) -> [[SheetAction]] {
+        (0...2).map { grp in
+            actions.menuItems
+                .filter { $0.group == Int32(grp) }
+                .map { item in
+                    let labelText = item.label.rendered()
+                    let renderedValue = item.hasValueText ? item.valueText.rendered() : ""
+                    let value: String? = !renderedValue.isEmpty ? renderedValue : (item.kind == .model ? "" : nil)
+                    let noteText = item.hasNoteText ? item.noteText.rendered() : ""
+                    return SheetAction(
+                        labelText,
+                        value: value,
+                        danger: item.danger,
+                        warn: item.warn,
+                        enabled: item.enabled,
+                        note: noteText,
+                        noteError: item.noteError,
+                        busy: item.busy,
+                        keepOpen: item.keepMenuOpen
+                    ) {
+                        switch item.kind {
+                        case .mode:
+                            sheet = .mode
+                        case .model, .context:
+                            sheet = .model
+                        case .projectSettings:
+                            projectSettings = ProjectSettingsRequest()
+                        case .schedule:
+                            scheduleSending = true
+                        case .rename:
+                            rename = true
+                        case .fork:
+                            Task { await context.coreHost.sessionSimpleCommand(sessionID: id, kind: .fork) }
+                        case .abandonFork:
+                            let slotKey = actions.fork.slotKey
+                            if !slotKey.isEmpty {
+                                Task { await context.coreHost.abandonSessionCommand(sessionID: id, slotKey: slotKey) }
+                            }
+                        case .interrupt:
+                            Task { await context.coreHost.sessionSimpleCommand(sessionID: id, kind: .interrupt) }
+                        case .endSession:
+                            confirmStop = true
+                        case .unspecified, .UNRECOGNIZED:
+                            break
+                        }
                     }
                 }
-            })
         }
-        if running && actions.canInterrupt {
-            list.append(SheetAction(L10n.sessionInterrupt(), danger: true, enabled: !forking) {
-                Task {
-                    await context.coreHost.submitSessionCommand(
-                        sessionID: id,
-                        command: .with { $0.interrupt = .with { $0.sessionID = id } },
-                        machineID: header.machineID,
-                        slotKey: actions.interrupt.slotKey
-                    )
-                }
-            })
-        }
-        if actions.canEnd {
-            end.append(SheetAction(L10n.sessionEndAction(), danger: true, enabled: !forking) { afterMenu { confirmStop = true } })
-        }
-        return [settings, list, end]
     }
 }
 

@@ -141,6 +141,8 @@ struct SheetAction {
 enum InputSave {
     case now((String) -> Void)
     case saving((String) async throws -> Void)
+    /// Driven reactively by an external owner (such as Core's command state).
+    case driven(running: Bool, error: String, submit: (String) -> Void)
 }
 
 private struct InputDialog: View {
@@ -181,11 +183,25 @@ private struct InputDialog: View {
                 Haptics.confirm()
                 onDismiss()
             })
+        case .driven(let running, _, let send):
+            guard !running else { return }
+            send(value)
         }
     }
 
+    private var running: Bool {
+        if case .driven(let r, _, _) = save { return r }
+        return runner.running
+    }
+
+    private var errorMessage: String {
+        if case .driven(_, let e, _) = save { return e }
+        return runner.error
+    }
+
     var body: some View {
-        let running = runner.running
+        let running = self.running
+        let errorMessage = self.errorMessage
         DialogCard {
             Text(title).font(.headline).ink(DS.ink).multilineTextAlignment(.center).padding(.bottom, 12)
                 .accessibilityAddTraits(.isHeader)
@@ -196,8 +212,8 @@ private struct InputDialog: View {
             )
             .onChange(of: value) { _, new in typed(new) }
             .padding(.bottom, 8)
-            if !runner.error.isEmpty {
-                Text(L10n.commonIosSaveFailed(reason: runner.error)).font(.subheadline).ink(DS.red).multilineTextAlignment(.center).padding(.bottom, 8)
+            if !errorMessage.isEmpty {
+                Text(L10n.commonIosSaveFailed(reason: errorMessage)).font(.subheadline).ink(DS.red).multilineTextAlignment(.center).padding(.bottom, 8)
             } else if let text {
                 Text(text).font(.subheadline).ink(DS.ink2).multilineTextAlignment(.center).padding(.bottom, 8)
             }
@@ -297,6 +313,19 @@ extension View {
         modifier(InputAlert(
             isPresented: isPresented, title: title, initial: initial, placeholder: placeholder, confirm: confirm, dismiss: dismiss,
             text: text, limit: limit, lines: lines, filter: filter, debugSignal: debugSignal, debugText: debugText, save: .saving(save)))
+    }
+
+    /// Input dialog whose busy/error state is owned externally (for Core semantic actions).
+    func inputAlert(
+        isPresented: Binding<Bool>, title: String, initial: String = "", placeholder: String, confirm: String? = nil,
+        dismiss: String? = nil, text: String? = nil, limit: Int = 40, lines: ClosedRange<Int> = 1...4,
+        filter: ((String) -> String)? = nil, debugSignal: String? = nil, debugText: @escaping () -> String = { "" },
+        running: Bool, error: String, submit: @escaping (String) -> Void
+    ) -> some View {
+        modifier(InputAlert(
+            isPresented: isPresented, title: title, initial: initial, placeholder: placeholder, confirm: confirm, dismiss: dismiss,
+            text: text, limit: limit, lines: lines, filter: filter, debugSignal: debugSignal, debugText: debugText,
+            save: .driven(running: running, error: error, submit: submit)))
     }
 
     /// A dialog of a screen's own over the whole window, on the scrim the

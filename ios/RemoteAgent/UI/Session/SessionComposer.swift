@@ -184,14 +184,8 @@ struct SessionComposer: View {
     }
 
     private func sendInterrupt() {
-        let interruptState = actions.interrupt
         Task {
-            await context.coreHost.submitSessionCommand(
-                sessionID: sessionID,
-                command: .with { $0.interrupt = .with { $0.sessionID = sessionID } },
-                machineID: machineID,
-                slotKey: interruptState.slotKey
-            )
+            await context.coreHost.sessionSimpleCommand(sessionID: sessionID, kind: .interrupt)
         }
     }
 

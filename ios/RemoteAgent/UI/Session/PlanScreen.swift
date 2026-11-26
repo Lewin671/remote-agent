@@ -35,7 +35,6 @@ struct PlanScreen: View {
                         VStack(alignment: .leading, spacing: 0) {
                             PlanButtons(
                                 sessionID: session,
-                                machineID: header?.machineID ?? "",
                                 dock: dock,
                                 full: true
                             ) {

@@ -611,7 +611,14 @@ struct ChatPane: View {
                 text: offlineDesc
             ) { EmptyView() }
         } else {
+            let externalNotice = (dock?.hasExternalResolution == true && dock?.externalResolution.hasText == true)
+                ? dock!.externalResolution.text.rendered()
+                : ""
             VStack(spacing: 0) {
+                if !externalNotice.isEmpty {
+                    ExternalResolutionLine(text: externalNotice)
+                        .transition(Motion.roomy(rise: Motion.dockRise))
+                }
                 if let dock, dock.hasItem_p {
                     let hide = { typing = false }
                     let store = context.sessionStore
@@ -628,7 +635,6 @@ struct ChatPane: View {
                         case .approval:
                             ApprovalDock(
                                 sessionID: sessionID,
-                                machineID: header.machineID,
                                 dock: dock,
                                 open: openBinding,
                                 startReason: SessionDebug.shows("reason"),
@@ -637,7 +643,6 @@ struct ChatPane: View {
                         case .question:
                             QuestionDock(
                                 sessionID: sessionID,
-                                machineID: header.machineID,
                                 dock: dock,
                                 open: openBinding,
                                 onOpen: hide,
@@ -646,7 +651,6 @@ struct ChatPane: View {
                         case .plan:
                             PlanDock(
                                 sessionID: sessionID,
-                                machineID: header.machineID,
                                 dock: dock,
                                 open: openBinding,
                                 onOpen: hide
@@ -747,12 +751,7 @@ private struct EndedCard: View {
 
     private func restore() {
         Task {
-            await context.coreHost.submitSessionCommand(
-                sessionID: sessionID,
-                command: .with { $0.resumeSession.sessionID = sessionID },
-                machineID: header.machineID,
-                slotKey: actions.resume.slotKey
-            )
+            await context.coreHost.sessionSimpleCommand(sessionID: sessionID, kind: .resume)
         }
     }
 }

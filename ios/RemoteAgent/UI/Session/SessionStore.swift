@@ -1,8 +1,7 @@
-// Pure shell-local UI state for session screens: denial reasons, temporary
-// approval choices before Core confirms, dock fold toggles, multi-select
-// question picks, and schedule scroll jumps.
-// Composer draft text, attachments, outbox, retries, and command delivery
-// are owned by Core (`PBSessionViewModel` + `CoreHost`).
+// Pure shell-local UI state for session screens: denial reason text drafts,
+// dock fold toggles, and schedule scroll jumps.
+// Composer draft text, attachments, outbox, retries, question selections, and
+// command delivery are owned by Core (`PBSessionViewModel` + `CoreHost`).
 import Foundation
 import Observation
 
@@ -25,24 +24,6 @@ final class SessionStore {
         if reasons[approvalId] ?? "" != text { reasons[approvalId] = text.isEmpty ? nil : text }
     }
 
-    // MARK: Approvals
-
-    struct ApprovalChoice: Equatable, Sendable {
-        var allow: Bool
-        var message: String
-        var always: Bool
-    }
-
-    private var approvalChoices: [String: ApprovalChoice] = [:]
-
-    func approvalChoice(_ approvalId: String) -> ApprovalChoice? {
-        approvalChoices[approvalId]
-    }
-
-    func setApprovalChoice(_ approvalId: String, _ choice: ApprovalChoice?) {
-        approvalChoices[approvalId] = choice
-    }
-
     // MARK: The dock
 
     private var dockChosen: [String: Bool] = [:]
@@ -59,11 +40,6 @@ final class SessionStore {
     func setDockOpen(_ key: String, _ open: Bool) {
         dockChosen[key] = open
     }
-
-    // MARK: Questions
-
-    var singlePick: [String: Int] = [:]
-    var multiPick: [String: Set<Int>] = [:]
 }
 
 extension AccountContext {

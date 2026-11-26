@@ -25,7 +25,6 @@ struct QuestionScreen: View {
             VStack(spacing: 0) {
                 ConnectionBar()
                 if let dock = activeQuestion {
-                    let machineID = header?.machineID ?? ""
                     let toTerminal = {
                         nav.back()
                         nav.open(.session(id: session, terminal: true))
@@ -34,11 +33,9 @@ struct QuestionScreen: View {
                         VStack(alignment: .leading, spacing: 0) {
                             QuestionBody(
                                 sessionID: session,
-                                machineID: machineID,
                                 dock: dock,
                                 part: .content,
-                                full: true,
-                                onAnswered: { nav.back(from: page) }
+                                full: true
                             )
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -48,7 +45,6 @@ struct QuestionScreen: View {
                     VStack(alignment: .leading, spacing: 0) {
                         QuestionBody(
                             sessionID: session,
-                            machineID: machineID,
                             dock: dock,
                             part: .actions,
                             full: true,

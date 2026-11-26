@@ -44,15 +44,6 @@ import Testing
         #expect(plain("修 `bug`") == "修 bug")
     }
 
-    @Test func aLongModelListShowsThreeAndThePickedOne() {
-        let few = ["a", "b", "c", "d", "e"]
-        #expect(shownModels(few, picked: nil, all: false) == few)
-        let many = few + ["f", "g"]
-        #expect(shownModels(many, picked: "b", all: false) == ["a", "b", "c"])
-        #expect(shownModels(many, picked: "g", all: false) == ["a", "b", "c", "g"])
-        #expect(shownModels(many, picked: "g", all: true) == many)
-    }
-
     // --- not in Android's tests: what the JVM does to text, kept the same here ---
 
     @Test func previewsDropMarksTheWayJavasRegexDoes() {

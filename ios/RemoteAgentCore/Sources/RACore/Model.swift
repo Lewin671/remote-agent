@@ -1,5 +1,5 @@
-// Remaining shell helpers: wall-clock timestamp, running timer, title input clamping,
-// one-line plan preview stripping, relative disconnect time, and model list folding.
+// Remaining shell helpers: wall-clock timestamp, running timer, schedule title
+// clamping, one-line plan preview stripping, and relative disconnect time.
 import Foundation
 
 /// The wall clock in milliseconds since the epoch.
@@ -73,14 +73,4 @@ public func whenText(_ ms: Int64, now: Int64 = nowMs(), zone: TimeZone = .curren
         return L10n.timeYesterday()
     }
     return L10n.timeMonthDay(day: then.day ?? 1, month: then.month ?? 1)
-}
-
-/// The models a picker lists before 全部模型: a short list whole, so none is out
-/// of reach; a long one its first three and the picked one, so 推理强度 below
-/// the list stays in sight.
-public func shownModels<M: Equatable>(_ models: [M], picked: M?, all: Bool) -> [M] {
-    if all || models.count <= 5 { return models }
-    let top = Array(models.prefix(3))
-    guard let picked, !top.contains(picked) else { return top }
-    return top + [picked]
 }
