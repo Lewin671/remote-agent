@@ -49,7 +49,7 @@ struct ImageViewerScreen: View {
         let viewer = vm?.imageViewer
         let all = tl?.viewerImages ?? []
         let previews = previewLookup(from: tl?.items ?? [])
-        let loader = ViewerLoader(center: ImageCenter.of(context.remote), session: session)
+        let loader = ViewerLoader(center: ImageCenter.of(context), session: session)
         let activeCount = openedInCore ? all.count : 0
         let shown: PBSessionViewerImageView? = all.indices.contains(localPage) ? all[localPage] : (viewer?.hasCurrentImage == true ? viewer?.currentImage : nil)
         let emptyNote: String = {

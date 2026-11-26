@@ -71,7 +71,7 @@ struct SharedFileCardView: View {
     private var key: SharedFileKey { SharedFileKey(sessionId: env.session, fileId: file.fileID) }
 
     var body: some View {
-        let center = SharedFileCenter.of(context.remote)
+        let center = SharedFileCenter.of(context)
         let item = resolvedSharedFileItem(file)
         SharedFileCardBody(item: item, thumbnail: resolvedSharedFileThumbnail(center: center, key: key, item: item))
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { box.frame = $0 }

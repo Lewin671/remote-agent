@@ -204,7 +204,12 @@ final class Harness {
         #expect(h.model.screens.appRoot.stage == .ready)
         #expect(h.model.account?.deviceId == fix.clientId)
         #expect(h.model.account?.accountId == fix.accountId)
-        #expect(h.model.context?.remote === h.executor.remote)
+        let ctx = try #require(h.model.context)
+        #expect(ctx.remote === h.executor.remote)
+        // Media centers must already be installed the instant `context` is published (no inert fallback).
+        #expect(ImageCenter.of(ctx) === ImageCenter.of(ctx.remote))
+        #expect(!ctx.isUnloaded)
+        _ = SharedFileCenter.of(ctx)
         let key = CipherStore.accountKey(server: fix.server, deviceId: fix.clientId)
         #expect(FileManager.default.fileExists(atPath: h.root.appending(path: "cache/\(key)/cache.sqlite").path))
     }

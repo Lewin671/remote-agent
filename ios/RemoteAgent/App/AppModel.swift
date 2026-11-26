@@ -28,6 +28,13 @@ final class AccountContext {
     let coreHost: CoreHost
     var dismissNewTask: (@MainActor () -> Void)?
     var dismissNewSchedule: (@MainActor () -> Void)?
+    /// Set to `true` by `AppModel` when this account runtime is torn down so late SwiftUI teardown
+    /// layout passes can distinguish an unloaded context from a missing-install bug on an active one.
+    @ObservationIgnored private(set) var isUnloaded = false
+
+    func markUnloaded() {
+        isUnloaded = true
+    }
 
     /// This client's device ID.
     var me: String { account.deviceId }
@@ -473,8 +480,10 @@ final class AppModel {
     /// the prior `CipherStore` for closing or erasing.
     private func unloadAccountRuntime(clearPendingMedia: Bool = false) async -> CipherStore? {
         closeTerminals()
-        let leavingRemote = context?.remote
+        let leavingContext = context
+        let leavingRemote = leavingContext?.remote
         let store = cache
+        leavingContext?.markUnloaded()
         context = nil
         cache = nil
         if let host = _coreHost {
@@ -585,7 +594,6 @@ final class AppModel {
             try? store?.close()
             return
         }
-        cache = store
         let ctx = AccountContext(
             account: acct,
             remote: remote,
@@ -594,13 +602,14 @@ final class AppModel {
             core: screens,
             coreHost: host
         )
-        context = ctx
+        let imageCenter = ImageCenter.install(remote: remote, coreHost: host, pending: pendingScope)
+        let sharedCenter = SharedFileCenter.install(remote: remote, coreHost: host, root: SharedFileCenter.defaultRoot)
         await host.setDeviceDescription(parts.deviceDescription)
         let cleanup: @Sendable (String) async -> Void = { [weak ctx] sid in
             guard let ctx else { return }
             await ctx.coreHost.forgetDraftSession(sid)
             await MainActor.run {
-                SharedFileCenter.of(ctx.remote).forgetSession(sid)
+                SharedFileCenter.of(ctx).forgetSession(sid)
             }
         }
         await host.setSessionRemovedHandler(cleanup)
@@ -609,11 +618,19 @@ final class AppModel {
         }
         await host.reportAppearancePref(settings.settings.theme.proto)
         await host.reportNotificationPref(supported: false)
-        let imageCenter = ImageCenter.install(remote: remote, coreHost: host, pending: pendingScope)
         await host.setAttachmentHandlers(imageCenter.handlers())
         await host.configureAttachments(persistDrafts: !isDemo, persistOutbox: !isDemo, scanStorage: !isDemo)
-        let sharedCenter = SharedFileCenter.install(remote: remote, coreHost: host, root: SharedFileCenter.defaultRoot)
         await host.setSharedFileHandlers(sharedCenter.handlers())
+        guard gen == generation else {
+            ctx.markUnloaded()
+            ImageCenter.remove(remote)
+            SharedFileCenter.remove(remote)
+            await host.detachAccount()
+            try? store?.close()
+            return
+        }
+        cache = store
+        context = ctx
         if hasObservedPath {
             host.networkChanged(path.signature, available: path.available)
         } else {
@@ -725,7 +742,6 @@ final class AppModel {
                 demoMode: true,
                 core: screens
             )
-            context = ctx
             let imageCenter = ImageCenter.install(remote: remote, coreHost: ctx.coreHost, pending: demoPending, live: false)
             let sharedCenter = SharedFileCenter.install(
                 remote: remote,
@@ -733,6 +749,7 @@ final class AppModel {
                 root: demoSharedRoot,
                 allowMissingReports: SharedFileDebug.fake
             )
+            context = ctx
             screens.appRoot = PBAppRootViewModel.with {
                 $0.stage = world.removed ? .removed : .ready
                 $0.server = account.server
@@ -808,13 +825,16 @@ final class AppModel {
         func closeSyncForTest() {
             generation += 1
             closeTerminals()
-            if let remote { ImageCenter.remove(remote); SharedFileCenter.remove(remote) }
+            let leavingContext = context
+            let leavingRemote = leavingContext?.remote
+            leavingContext?.markUnloaded()
+            context = nil
             let host = _coreHost
             _coreHost = nil
             clientInitDispatched = false
-            context?.coreHost.close()
+            leavingContext?.coreHost.close()
             host?.close()
-            context = nil
+            if let leavingRemote { ImageCenter.remove(leavingRemote); SharedFileCenter.remove(leavingRemote) }
             try? cache?.close()
             cache = nil
         }

@@ -84,7 +84,7 @@ private struct SharedFileMenuView: View {
     }
 
     var body: some View {
-        let center = SharedFileCenter.of(context.remote)
+        let center = SharedFileCenter.of(context)
         let item = liveItem
         GeometryReader { proxy in
             let screen = proxy.size
@@ -144,7 +144,7 @@ private struct SharedFileMenuView: View {
 
     private func choose(_ menuItem: PBSharedFileMenuItemView, for item: PBSessionSharedFileItem) {
         guard menuItem.enabled else { return }
-        let center = SharedFileCenter.of(context.remote)
+        let center = SharedFileCenter.of(context)
         let sessionId = request.env.session
         dismiss {
             center.runMenuAction(menuItem.action, item: item, sessionId: sessionId)

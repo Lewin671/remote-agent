@@ -77,7 +77,7 @@ private func sessionViewModel(
         defer { defaults.removePersistentDomain(forName: defaultsName) }
         let model = AppModel(settings: SettingsStore(defaults: defaults))
         model.showDemo(account: Demo.account, remote: remote, world: world, events: [:])
-        defer { ImageCenter.remove(remote) }
+        defer { model.closeSyncForTest() }
         let context = try #require(model.context)
         let session = try #require(world.sessions["api"])
         let sessionID = session.sessionID
@@ -111,6 +111,7 @@ private func sessionViewModel(
         window.makeKeyAndVisible()
         defer {
             window.isHidden = true
+            window.rootViewController = nil
             if let previousKey, !previousKey.isHidden { previousKey.makeKey() }
         }
         func find(_ view: UIView) -> UIScrollView? {
@@ -180,7 +181,7 @@ private func sessionViewModel(
         defer { defaults.removePersistentDomain(forName: defaultsName) }
         let model = AppModel(settings: SettingsStore(defaults: defaults))
         model.showDemo(account: Demo.account, remote: remote, world: world, events: [:])
-        defer { ImageCenter.remove(remote) }
+        defer { model.closeSyncForTest() }
         let context = try #require(model.context)
         let session = try #require(world.sessions["api"])
         let sessionID = session.sessionID
@@ -238,6 +239,7 @@ private func sessionViewModel(
         window.makeKeyAndVisible()
         defer {
             window.isHidden = true
+            window.rootViewController = nil
             if let previousKey, !previousKey.isHidden { previousKey.makeKey() }
         }
         func descendants(_ view: UIView) -> [UIView] {

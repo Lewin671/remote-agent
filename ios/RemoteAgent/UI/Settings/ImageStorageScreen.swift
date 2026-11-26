@@ -54,7 +54,7 @@ struct ImageStorageScreen: View {
         #if DEBUG
         if model.isDemo { return .demo(SettingsDemo.state) }
         #endif
-        return .stores(cache: model.imageCache, pending: model.pendingImages, shared: model.context.map { SharedFileCenter.of($0.remote) })
+        return .stores(cache: model.imageCache, pending: model.pendingImages, shared: model.context.map { SharedFileCenter.of($0) })
     }
 }
 

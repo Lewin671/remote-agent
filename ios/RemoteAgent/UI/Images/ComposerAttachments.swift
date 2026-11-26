@@ -56,7 +56,7 @@ struct ComposerAttachments {
     let draft: PBAttachmentDraftView
 
     init(context: AccountContext, scope: PBDraftScope, draft: PBAttachmentDraftView) {
-        self.center = ImageCenter.of(context.remote)
+        self.center = ImageCenter.of(context)
         self.host = context.coreHost
         self.scope = scope
         self.draft = draft

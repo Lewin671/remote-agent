@@ -207,7 +207,7 @@ struct SessionScreen: View {
                     GlassStrip(text: header.protocolMismatchText.rendered(), symbol: "exclamationmark.triangle", tone: .attention)
                 }
                 if !actionError.isEmpty { GlassStrip(text: actionError, symbol: "xmark", tone: .error) }
-                if let notice = SharedFileCenter.of(context.remote).notice {
+                if let notice = SharedFileCenter.of(context).notice {
                     GlassStrip(text: notice.text, symbol: notice.symbol, tone: notice.failed ? .error : .plain)
                         .transition(Motion.appear(rise: -Motion.bubbleRise))
                 }
@@ -224,7 +224,7 @@ struct SessionScreen: View {
                   nav.path.last == page, !nav.path.dropLast().contains(.schedule(machine: machineID, id: header.scheduledTaskID)) else { return }
             nav.path.insert(.schedule(machine: machineID, id: header.scheduledTaskID), at: max(0, nav.path.count - 1))
         }
-        .animation(Motion.enter(), value: SharedFileCenter.of(context.remote).notice)
+        .animation(Motion.enter(), value: SharedFileCenter.of(context).notice)
         .navigationBarTitleDisplayMode(.inline)
         .navigationTitle(titleText)
         .toolbarRole(.editor)

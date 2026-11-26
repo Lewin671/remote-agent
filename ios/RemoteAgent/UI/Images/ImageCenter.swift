@@ -77,6 +77,21 @@ final class ImageCenter {
         return c
     }
 
+    /// Returns the account's installed center, or a closed inert center ONLY when `context` has
+    /// already been unloaded (a SwiftUI view finishing its teardown layout pass). Looking up an
+    /// active context before `ImageCenter.install` triggers `assertionFailure`.
+    static func of(_ context: AccountContext) -> ImageCenter {
+        if let c = centers[ObjectIdentifier(context.remote)] {
+            return c
+        }
+        if !context.isUnloaded {
+            assertionFailure("ImageCenter.install must be called before ImageCenter.of for an active AccountContext")
+        }
+        let inert = ImageCenter(remote: context.remote, coreHost: context.coreHost, pending: context.pendingStore, live: false)
+        inert.close()
+        return inert
+    }
+
     // MARK: State
 
     @ObservationIgnored let remote: Remote

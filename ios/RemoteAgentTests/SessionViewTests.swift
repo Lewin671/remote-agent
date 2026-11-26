@@ -55,7 +55,7 @@ private struct ComposerWrapper: View {
         let model = AppModel(settings: settings)
         let world = Demo.world(.everyday, now: 1_791_000_000_000)
         model.showDemo(account: Demo.account, remote: remote, world: world, events: [:])
-        defer { ImageCenter.remove(remote) }
+        defer { model.closeSyncForTest() }
         guard let context = model.context else { Issue.record("missing context"); return }
         let nav = Navigator()
 

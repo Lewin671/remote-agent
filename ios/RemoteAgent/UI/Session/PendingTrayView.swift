@@ -262,7 +262,7 @@ struct PendingTrayView: View {
 
                 if expanded && !item.localAttachments.isEmpty {
                     OutboxAttachmentPreviews(
-                        center: ImageCenter.of(context.remote),
+                        center: ImageCenter.of(context),
                         attachments: item.localAttachments
                     )
                     .padding(.top, 6)

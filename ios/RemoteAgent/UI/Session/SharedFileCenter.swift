@@ -53,13 +53,18 @@ final class SharedFileCenter {
         centers.removeValue(forKey: ObjectIdentifier(remote))?.close()
     }
 
-    /// The files of the account `remote` syncs; one that was never installed (a test's, the sample data's) keeps its copies in a temporary folder.
-    static func of(_ remote: Remote) -> SharedFileCenter {
-        if let c = centers[ObjectIdentifier(remote)] { return c }
-        let root = FileManager.default.temporaryDirectory.appending(path: "shared-files-\(ObjectIdentifier(remote).hashValue)", directoryHint: .isDirectory)
-        let c = SharedFileCenter(store: SharedFileStore(root: root), coreHost: nil, allowMissingReports: false)
-        centers[ObjectIdentifier(remote)] = c
-        return c
+    /// Returns the account's installed shared-file center, or a closed inert center ONLY when
+    /// `context` has already been unloaded (a SwiftUI view finishing its teardown layout pass).
+    /// Looking up an active context before `SharedFileCenter.install` triggers `assertionFailure`.
+    static func of(_ context: AccountContext) -> SharedFileCenter {
+        if let c = centers[ObjectIdentifier(context.remote)] { return c }
+        if !context.isUnloaded {
+            assertionFailure("SharedFileCenter.install must be called before SharedFileCenter.of for an active AccountContext")
+        }
+        let root = FileManager.default.temporaryDirectory.appending(path: "shared-files-unloaded-\(ObjectIdentifier(context.remote).hashValue)", directoryHint: .isDirectory)
+        let inert = SharedFileCenter(store: SharedFileStore(root: root), coreHost: nil, allowMissingReports: false)
+        inert.close()
+        return inert
     }
 
     /// Where the copies of an account are: the system's cache, which it may take back (and the
