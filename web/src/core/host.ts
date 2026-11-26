@@ -62,6 +62,7 @@ import {
   CacheBootstrapLoadedEventSchema,
   CacheEventsLoadedEventSchema,
   CancelMachineCommandActionSchema,
+  CancelPingMachineActionSchema,
   CommandOutcomeEventSchema,
   DirNavigateActionSchema,
   DirPickerCloseActionSchema,
@@ -89,6 +90,7 @@ import {
   NewSessionSelectModelActionSchema,
   NewSessionSubmitActionSchema,
   OutcomeSource,
+  PingMachineActionSchema,
   ProjectAddActionSchema,
   ProjectKeyActionSchema,
   ProjectScreenRequestSchema,
@@ -484,6 +486,7 @@ export interface HostBridge {
   securityOp(op: SecurityOpRequestEvent["op"]): Promise<SecurityOpResultEffect>;
   dispatchDirectSignal(raw: Uint8Array<ArrayBuffer>): void;
   dispatchDirectSignalDelivery(frameId: Uint8Array<ArrayBuffer>, status: number, retryAfterMs: number): void;
+  pingMachine(machineId: string, signal?: AbortSignal): Promise<void>;
   runMachineCommand(
     machineId: string,
     sessionId: string,
@@ -1012,6 +1015,8 @@ export class CoreHost {
   private usageHydratedMachines = new Set<string>();
   private nextMachineCmdOpId = 0n;
   private machineCmdWaiters = new Map<bigint, { resolve: () => void; reject: (err: Error) => void }>();
+  private nextPingOpId = 0n;
+  private pingWaiters = new Map<bigint, { resolve: () => void; reject: (err: Error) => void }>();
   private inFlightDispatches = new Map<string, Map<string, AbortController>>();
   private retryNowWaiters = new Map<string, Array<(started: boolean) => void>>();
   private terminalReopenListeners = new Map<string, () => void>();
@@ -1247,6 +1252,7 @@ export class CoreHost {
       dispatchDirectSignal: (raw) => this.dispatchDirectSignal(raw),
       dispatchDirectSignalDelivery: (frameId, status, retryAfterMs) =>
         this.dispatchDirectSignalDelivery(frameId, status, retryAfterMs),
+      pingMachine: (machineId, signal) => this.pingMachine(machineId, signal),
       runMachineCommand: (machineId, sessionId, cmd, signal, skipConnectivityPreflight) =>
         this.runMachineCommand(machineId, sessionId, cmd, signal, skipConnectivityPreflight),
       changeProjectPref: (kind, path) =>
@@ -2949,6 +2955,37 @@ export class CoreHost {
     }
   }
 
+  pingMachine(machineId: string, signal?: AbortSignal): Promise<void>;
+  pingMachine(machineId: string, signal?: AbortSignal): Promise<void> {
+    if (this.closed) return Promise.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
+    if (signal?.aborted) return Promise.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
+    const opId = ++this.nextPingOpId;
+    return new Promise<void>((resolve, reject) => {
+      const onAbort = () => {
+        if (!this.pingWaiters.delete(opId)) return;
+        if (!this.closed) {
+          this.emit({ case: "cancelPingMachine", value: create(CancelPingMachineActionSchema, { opId }) });
+        }
+        reject(new Error(l10n.t("errors.terminal_connection_canceled")));
+      };
+      if (signal) signal.addEventListener("abort", onAbort, { once: true });
+      this.pingWaiters.set(opId, {
+        resolve: () => {
+          signal?.removeEventListener("abort", onAbort);
+          resolve();
+        },
+        reject: (err) => {
+          signal?.removeEventListener("abort", onAbort);
+          reject(err);
+        },
+      });
+      this.emit({
+        case: "pingMachine",
+        value: create(PingMachineActionSchema, { opId, machineId }),
+      });
+    });
+  }
+
   runMachineCommand(
     machineId: string,
     sessionId: string,
@@ -3615,6 +3652,21 @@ export class CoreHost {
             event: { case: "entropyProvided", value: buildEntropyProvided(val.value.minIds, val.value.minFloats, val.value.minRandomBytes) },
           }),
         });
+        break;
+      }
+
+      case "pingMachineResult": {
+        const res = val.value;
+        const w = this.pingWaiters.get(res.opId);
+        if (w) {
+          this.pingWaiters.delete(res.opId);
+          if (res.ok) {
+            w.resolve();
+          } else {
+            const msg = renderText(res.errorText) || res.errorCode || l10n.t("errors.connection_timed_out");
+            w.reject(new Error(msg));
+          }
+        }
         break;
       }
 
@@ -4340,6 +4392,10 @@ export class CoreHost {
       for (const ac of map.values()) ac.abort();
     }
     this.inFlightDispatches.clear();
+    for (const w of this.pingWaiters.values()) {
+      w.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
+    }
+    this.pingWaiters.clear();
     for (const w of this.machineCmdWaiters.values()) {
       w.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
     }

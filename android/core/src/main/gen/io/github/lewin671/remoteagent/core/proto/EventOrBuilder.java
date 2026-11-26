@@ -793,7 +793,7 @@ public interface EventOrBuilder extends
 
   /**
    * <pre>
-   * P2-4 housekeeping &amp; cache gate events (390-394).
+   * P2-4 housekeeping &amp; cache gate events (390-395).
    * </pre>
    *
    * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
@@ -802,7 +802,7 @@ public interface EventOrBuilder extends
   boolean hasResolveNotificationTap();
   /**
    * <pre>
-   * P2-4 housekeeping &amp; cache gate events (390-394).
+   * P2-4 housekeeping &amp; cache gate events (390-395).
    * </pre>
    *
    * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
@@ -842,6 +842,28 @@ public interface EventOrBuilder extends
    * @return The usageCacheWritten.
    */
   io.github.lewin671.remoteagent.core.proto.UsageCacheWrittenEvent getUsageCacheWritten();
+
+  /**
+   * <code>.remoteagent.core.v1.PingMachineAction ping_machine = 394 [json_name = "pingMachine"];</code>
+   * @return Whether the pingMachine field is set.
+   */
+  boolean hasPingMachine();
+  /**
+   * <code>.remoteagent.core.v1.PingMachineAction ping_machine = 394 [json_name = "pingMachine"];</code>
+   * @return The pingMachine.
+   */
+  io.github.lewin671.remoteagent.core.proto.PingMachineAction getPingMachine();
+
+  /**
+   * <code>.remoteagent.core.v1.CancelPingMachineAction cancel_ping_machine = 395 [json_name = "cancelPingMachine"];</code>
+   * @return Whether the cancelPingMachine field is set.
+   */
+  boolean hasCancelPingMachine();
+  /**
+   * <code>.remoteagent.core.v1.CancelPingMachineAction cancel_ping_machine = 395 [json_name = "cancelPingMachine"];</code>
+   * @return The cancelPingMachine.
+   */
+  io.github.lewin671.remoteagent.core.proto.CancelPingMachineAction getCancelPingMachine();
 
   /**
    * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>

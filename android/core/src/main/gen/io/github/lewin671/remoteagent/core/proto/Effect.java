@@ -64,6 +64,7 @@ public  final class Effect extends
     ATTACHMENT_READ_CHUNK(87),
     ATTACHMENT_RELEASE_LOCAL(88),
     SCHEDULE_WRITE_CACHE(89),
+    PING_MACHINE_RESULT(90),
     SESSION_RESTORE_COMPOSER(40),
     SHARED_FILE_SCAN_LOCAL(42),
     SHARED_FILE_INSPECT_DISK(43),
@@ -174,6 +175,7 @@ public  final class Effect extends
         case 87: return ATTACHMENT_READ_CHUNK;
         case 88: return ATTACHMENT_RELEASE_LOCAL;
         case 89: return SCHEDULE_WRITE_CACHE;
+        case 90: return PING_MACHINE_RESULT;
         case 40: return SESSION_RESTORE_COMPOSER;
         case 42: return SHARED_FILE_SCAN_LOCAL;
         case 43: return SHARED_FILE_INSPECT_DISK;
@@ -2620,6 +2622,58 @@ public  final class Effect extends
    */
   private void clearScheduleWriteCache() {
     if (effectCase_ == 89) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int PING_MACHINE_RESULT_FIELD_NUMBER = 90;
+  /**
+   * <code>.remoteagent.core.v1.PingMachineResultEffect ping_machine_result = 90 [json_name = "pingMachineResult"];</code>
+   */
+  @java.lang.Override
+  public boolean hasPingMachineResult() {
+    return effectCase_ == 90;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PingMachineResultEffect ping_machine_result = 90 [json_name = "pingMachineResult"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.PingMachineResultEffect getPingMachineResult() {
+    if (effectCase_ == 90) {
+       return (io.github.lewin671.remoteagent.core.proto.PingMachineResultEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.PingMachineResultEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.PingMachineResultEffect ping_machine_result = 90 [json_name = "pingMachineResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPingMachineResult(io.github.lewin671.remoteagent.core.proto.PingMachineResultEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 90;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PingMachineResultEffect ping_machine_result = 90 [json_name = "pingMachineResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergePingMachineResult(io.github.lewin671.remoteagent.core.proto.PingMachineResultEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 90 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.PingMachineResultEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.PingMachineResultEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.PingMachineResultEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 90;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PingMachineResultEffect ping_machine_result = 90 [json_name = "pingMachineResult"];</code>
+   */
+  private void clearPingMachineResult() {
+    if (effectCase_ == 90) {
       effectCase_ = 0;
       effect_ = null;
     }
@@ -7563,6 +7617,54 @@ public  final class Effect extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.PingMachineResultEffect ping_machine_result = 90 [json_name = "pingMachineResult"];</code>
+     */
+    @java.lang.Override
+    public boolean hasPingMachineResult() {
+      return instance.hasPingMachineResult();
+    }
+    /**
+     * <code>.remoteagent.core.v1.PingMachineResultEffect ping_machine_result = 90 [json_name = "pingMachineResult"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.PingMachineResultEffect getPingMachineResult() {
+      return instance.getPingMachineResult();
+    }
+    /**
+     * <code>.remoteagent.core.v1.PingMachineResultEffect ping_machine_result = 90 [json_name = "pingMachineResult"];</code>
+     */
+    public Builder setPingMachineResult(io.github.lewin671.remoteagent.core.proto.PingMachineResultEffect value) {
+      copyOnWrite();
+      instance.setPingMachineResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PingMachineResultEffect ping_machine_result = 90 [json_name = "pingMachineResult"];</code>
+     */
+    public Builder setPingMachineResult(
+        io.github.lewin671.remoteagent.core.proto.PingMachineResultEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setPingMachineResult(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PingMachineResultEffect ping_machine_result = 90 [json_name = "pingMachineResult"];</code>
+     */
+    public Builder mergePingMachineResult(io.github.lewin671.remoteagent.core.proto.PingMachineResultEffect value) {
+      copyOnWrite();
+      instance.mergePingMachineResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PingMachineResultEffect ping_machine_result = 90 [json_name = "pingMachineResult"];</code>
+     */
+    public Builder clearPingMachineResult() {
+      copyOnWrite();
+      instance.clearPingMachineResult();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.SessionRestoreComposerEffect session_restore_composer = 40 [json_name = "sessionRestoreComposer"];</code>
      */
     @java.lang.Override
@@ -10065,6 +10167,7 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.AttachmentReadChunkEffect.class,
             io.github.lewin671.remoteagent.core.proto.AttachmentReleaseLocalEffect.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleWriteCacheEffect.class,
+            io.github.lewin671.remoteagent.core.proto.PingMachineResultEffect.class,
             io.github.lewin671.remoteagent.core.proto.DirectSignalSendEffect.class,
             io.github.lewin671.remoteagent.core.proto.DirectPcCreateEffect.class,
             io.github.lewin671.remoteagent.core.proto.DirectPcDescribeEffect.class,
@@ -10101,19 +10204,19 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.PersistLastServerEffect.class,
           };
           java.lang.String info =
-              "\u0000_\u0001\u0000\u0001\u0097_\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "\u0000`\u0001\u0000\u0001\u0097`\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
               "<\u0000\u0004<\u0000\u0005<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<\u0000\u000b<" +
               "\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0011<\u0000\u0012<\u0000\u0013" +
               "<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000\u0018<\u0000\u0019<\u0000" +
               "\u001a<\u0000\u001b<\u0000(<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/<\u0000" +
               "0<\u00001<\u00002<\u0000<<\u0000=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000" +
               "G<\u0000H<\u0000I<\u0000J<\u0000K<\u0000L<\u0000M<\u0000N<\u0000O<\u0000P<\u0000" +
-              "Q<\u0000R<\u0000S<\u0000T<\u0000U<\u0000V<\u0000W<\u0000X<\u0000Y<\u0000f<\u0000" +
-              "g<\u0000h<\u0000i<\u0000j<\u0000k<\u0000l<\u0000m<\u0000o<\u0000p<\u0000q<\u0000" +
-              "r<\u0000s<\u0000t<\u0000u<\u0000\u0082<\u0000\u0083<\u0000\u0087<\u0000\u0088<\u0000" +
-              "\u0089<\u0000\u008a<\u0000\u008b<\u0000\u008c<\u0000\u008d<\u0000\u008e<\u0000\u008f" +
-              "<\u0000\u0090<\u0000\u0091<\u0000\u0092<\u0000\u0093<\u0000\u0094<\u0000\u0095<\u0000" +
-              "\u0096<\u0000\u0097<\u0000";
+              "Q<\u0000R<\u0000S<\u0000T<\u0000U<\u0000V<\u0000W<\u0000X<\u0000Y<\u0000Z<\u0000" +
+              "f<\u0000g<\u0000h<\u0000i<\u0000j<\u0000k<\u0000l<\u0000m<\u0000o<\u0000p<\u0000" +
+              "q<\u0000r<\u0000s<\u0000t<\u0000u<\u0000\u0082<\u0000\u0083<\u0000\u0087<\u0000\u0088" +
+              "<\u0000\u0089<\u0000\u008a<\u0000\u008b<\u0000\u008c<\u0000\u008d<\u0000\u008e<\u0000" +
+              "\u008f<\u0000\u0090<\u0000\u0091<\u0000\u0092<\u0000\u0093<\u0000\u0094<\u0000\u0095" +
+              "<\u0000\u0096<\u0000\u0097<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

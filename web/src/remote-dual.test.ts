@@ -212,7 +212,7 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
         },
       };
       // Bound NotForwarded proves the daemon never received the command: settles NotSent immediately on 1st attempt.
-      await expect(getCoreHost(r).runMachineCommand(r.machine, "", { case: "createSession", value: { cwd: "/work/example" } }, undefined, true)).rejects.toThrow();
+      await expect(getCoreHost(r).pingMachine(r.machine)).rejects.toThrow();
       expect(seenRelayEpoch).not.toBe("");
       expect(boundAttempts).toHaveLength(1);
 
@@ -231,7 +231,7 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
         },
       };
       // Stale epoch invalidates the NotForwarded proof: Core must treat outcome as unknown and retry instead of settling NotSent.
-      await expect(getCoreHost(r).runMachineCommand(r.machine, "", { case: "createSession", value: { cwd: "/work/example" } }, staleAc.signal, true)).rejects.toThrow();
+      await expect(getCoreHost(r).pingMachine(r.machine, staleAc.signal)).rejects.toThrow();
       expect(staleAttempts.length).toBeGreaterThanOrEqual(2);
       expect(staleAttempts[1]).not.toBe(staleAttempts[0]);
     } finally {

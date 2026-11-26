@@ -1044,7 +1044,7 @@ export class Remote implements CoreExecutor {
     const timer = setTimeout(() => { timedOut = true; stop.abort(); }, timeoutMs);
     const started = performance.now();
     try {
-      await this.ensureHost().runMachineCommand(machineId, "", { case: "getSettings", value: {} }, stop.signal, true);
+      await this.ensureHost().pingMachine(machineId, stop.signal);
       return Math.round(performance.now() - started);
     } catch (e) {
       throw timedOut ? new Error(l10n.t("connection.no_response")) : e;

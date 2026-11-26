@@ -538,8 +538,7 @@ class RemoteTest {
             r.machineCard(daemon.id)?.protocolMismatch == wantMismatch
         }
         try {
-            val command=Command.newBuilder().setGetSettings(io.github.lewin671.remoteagent.proto.GetSettingsRequest.getDefaultInstance()).build()
-            r.coreHost.runMachineCommand(daemon.id, "", command)
+            r.coreHost.pingMachine(daemon.id)
             throw AssertionError("expected a version error")
         } catch (e: CommandException) {
             // Nothing was sent.

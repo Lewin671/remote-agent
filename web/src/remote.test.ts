@@ -17,7 +17,7 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-it("routes pingMachine through CoreHost runMachineCommand and cancels on timeout", async () => {
+it("routes pingMachine through CoreHost pingMachine and cancels on timeout", async () => {
   const r = await probe();
   const { CommandResultSchema } = await import("./gen/remoteagent/v1/remote_pb");
   const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");

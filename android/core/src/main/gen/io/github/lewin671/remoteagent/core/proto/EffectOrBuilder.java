@@ -522,6 +522,17 @@ public interface EffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.ScheduleWriteCacheEffect getScheduleWriteCache();
 
   /**
+   * <code>.remoteagent.core.v1.PingMachineResultEffect ping_machine_result = 90 [json_name = "pingMachineResult"];</code>
+   * @return Whether the pingMachineResult field is set.
+   */
+  boolean hasPingMachineResult();
+  /**
+   * <code>.remoteagent.core.v1.PingMachineResultEffect ping_machine_result = 90 [json_name = "pingMachineResult"];</code>
+   * @return The pingMachineResult.
+   */
+  io.github.lewin671.remoteagent.core.proto.PingMachineResultEffect getPingMachineResult();
+
+  /**
    * <code>.remoteagent.core.v1.SessionRestoreComposerEffect session_restore_composer = 40 [json_name = "sessionRestoreComposer"];</code>
    * @return Whether the sessionRestoreComposer field is set.
    */

@@ -598,11 +598,13 @@ message Event {
     UsageScreenSelectSortEvent usage_screen_select_sort = 383;
     UsageScreenSelectSeriesEvent usage_screen_select_series = 384;
     UsageScreenScrubEvent usage_screen_scrub = 385;
-    // P2-4 housekeeping & cache gate events (390-394).
+    // P2-4 housekeeping & cache gate events (390-395).
     ResolveNotificationTapAction resolve_notification_tap = 390;
     NewSessionCloseAction new_session_close = 391;
     ScheduleCacheWrittenEvent schedule_cache_written = 392;
     UsageCacheWrittenEvent usage_cache_written = 393;
+    PingMachineAction ping_machine = 394;
+    CancelPingMachineAction cancel_ping_machine = 395;
     UpdateClientNameEvent update_client_name = 370;
     SetNotificationPrefEvent set_notification_pref = 375;
     SetAppearancePrefEvent set_appearance_pref = 376;
@@ -1018,6 +1020,7 @@ message RequestEntropyEffect {
   int32 min_random_bytes = 3;
 }
 
+// Test/benchmark harness only (zero production callers); production connectivity probes use PingMachineAction.
 message RunMachineCommandAction {
   uint64 op_id = 1;
   string machine_id = 2;
@@ -1036,6 +1039,22 @@ message RunMachineCommandResultEffect {
   string error_code = 3;
   Text error_text = 4;
   remoteagent.v1.CommandResult result = 5;
+}
+
+message PingMachineAction {
+  uint64 op_id = 1;
+  string machine_id = 2;
+}
+
+message CancelPingMachineAction {
+  uint64 op_id = 1;
+}
+
+message PingMachineResultEffect {
+  uint64 op_id = 1;
+  bool ok = 2;
+  string error_code = 3;
+  Text error_text = 4;
 }
 
 message Effect {
@@ -1089,6 +1108,7 @@ message Effect {
     AttachmentReadChunkEffect attachment_read_chunk = 87;
     AttachmentReleaseLocalEffect attachment_release_local = 88;
     ScheduleWriteCacheEffect schedule_write_cache = 89;
+    PingMachineResultEffect ping_machine_result = 90;
     SessionRestoreComposerEffect session_restore_composer = 40;
     SharedFileScanLocalEffect shared_file_scan_local = 42;
     SharedFileInspectDiskEffect shared_file_inspect_disk = 43;

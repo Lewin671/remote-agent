@@ -560,6 +560,8 @@ actor CoreHost: SyncEngine {
     private var securityOpWaiters: [UInt64: CheckedContinuation<PBSecurityOpResultEffect, Never>] = [:]
     private var nextMachineCmdOpID: UInt64 = 1
     private var machineCmdWaiters: [UInt64: CheckedContinuation<PBCommandResult, Error>] = [:]
+    private var nextPingOpID: UInt64 = 1
+    private var pingWaiters: [UInt64: CheckedContinuation<Void, Error>] = [:]
     private var retryNowWaiters: [String: [CheckedContinuation<Bool, Never>]] = [:]
     private var terminalReopenListeners: [String: (token: UUID, handler: @MainActor @Sendable () -> Void)] = [:]
     private var terminalHistoryRequestListeners: [String: (token: UUID, handler: @MainActor @Sendable (PBCoreTerminalHistorySendRequestEffect) -> Void)] = [:]
@@ -774,6 +776,11 @@ actor CoreHost: SyncEngine {
         terminalReopenListeners.removeAll()
         terminalHistoryRequestListeners.removeAll()
         terminalHistoryUpdatedListeners.removeAll()
+        let pendingPings = pingWaiters
+        pingWaiters.removeAll()
+        for continuation in pendingPings.values {
+            continuation.resume(throwing: CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()))
+        }
         let pendingCmds = machineCmdWaiters
         machineCmdWaiters.removeAll()
         for continuation in pendingCmds.values {
@@ -825,6 +832,12 @@ actor CoreHost: SyncEngine {
                     command: command,
                     skipConnectivityPreflight: skipPreflight
                 )
+            },
+            onPingMachine: { [weak self] machineID in
+                guard let self else {
+                    throw CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled())
+                }
+                try await self.pingMachine(machineID: machineID)
             }
         ))
     }
@@ -1268,6 +1281,11 @@ actor CoreHost: SyncEngine {
                 $0.error = "host closed"
                 $0.structuredErrorCode = .storage
             })
+        }
+        let pendingPings = pingWaiters
+        pingWaiters.removeAll()
+        for continuation in pendingPings.values {
+            continuation.resume(throwing: CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()))
         }
         let pendingCmds = machineCmdWaiters
         machineCmdWaiters.removeAll()
@@ -3219,6 +3237,9 @@ actor CoreHost: SyncEngine {
             case .cancelDispatch(let eff):
                 cancelInFlightDispatches(requestID: eff.requestID)
 
+            case .pingMachineResult(let eff):
+                handlePingMachineResult(eff)
+
             case .runMachineCommandResult(let eff):
                 handleRunMachineCommandResult(eff)
 
@@ -3817,6 +3838,67 @@ actor CoreHost: SyncEngine {
             for task in byAttempt.values {
                 task.cancel()
             }
+        }
+    }
+
+    func pingMachine(machineID: String) async throws {
+        guard !closed else {
+            throw CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled())
+        }
+        try Task.checkCancellation()
+        let opID = nextPingOpID
+        nextPingOpID &+= 1
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                if closed {
+                    continuation.resume(throwing: CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()))
+                    return
+                }
+                if Task.isCancelled {
+                    continuation.resume(throwing: CancellationError())
+                    return
+                }
+                pingWaiters[opID] = continuation
+                Task {
+                    await self.dispatchPingMachine(opID: opID, machineID: machineID)
+                }
+            }
+        } onCancel: {
+            Task { await self.cancelPingMachine(opID: opID) }
+        }
+    }
+
+    private func dispatchPingMachine(opID: UInt64, machineID: String) async {
+        guard !closed, pingWaiters[opID] != nil else { return }
+        await dispatch {
+            $0.pingMachine = .with {
+                $0.opID = opID
+                $0.machineID = machineID
+            }
+        }
+    }
+
+    private func cancelPingMachine(opID: UInt64) async {
+        if let waiter = pingWaiters.removeValue(forKey: opID) {
+            waiter.resume(throwing: CancellationError())
+        }
+        guard !closed else { return }
+        await dispatch {
+            $0.cancelPingMachine = .with { $0.opID = opID }
+        }
+    }
+
+    private func handlePingMachineResult(_ eff: PBCorePingMachineResultEffect) {
+        guard let waiter = pingWaiters.removeValue(forKey: eff.opID) else { return }
+        if eff.ok {
+            waiter.resume(returning: ())
+        } else {
+            let code = eff.errorCode.isEmpty ? "failed" : eff.errorCode
+            let msg = eff.hasErrorText ? eff.errorText.rendered() : ""
+            waiter.resume(throwing: CommandError(
+                code,
+                msg.isEmpty ? L10nMessage.errorsCommandFailed() : LocalizedMessage(raw: msg)
+            ))
         }
     }
 

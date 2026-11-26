@@ -373,7 +373,7 @@ test("CoreHost dispatches LocaleChangedEvent on init and locale changes and unsu
   expect(rendered).toEqual([]);
 });
 
-test("cancelMachineCommand aborts only the matching request_id signal", async () => {
+test("cancelPingMachine aborts only the matching request_id signal", async () => {
   const attempts: Array<{ eff: DispatchCommandEffect; signal?: AbortSignal; resolve: (ev: ReturnType<typeof create<typeof CommandOutcomeEventSchema>>) => void }> = [];
   const exec = makeExecutor({
     executeCommandAttempt(eff, signal) {
@@ -415,8 +415,8 @@ test("cancelMachineCommand aborts only the matching request_id signal", async ()
 
   const ac1 = new AbortController();
   const ac2 = new AbortController();
-  const p1 = host.runMachineCommand("m1", "", { case: "getSettings", value: {} }, ac1.signal);
-  const p2 = host.runMachineCommand("m1", "", { case: "getSettings", value: {} }, ac2.signal);
+  const p1 = host.pingMachine("m1", ac1.signal);
+  const p2 = host.pingMachine("m1", ac2.signal);
   expect(attempts).toHaveLength(2);
   expect(attempts[0].eff.requestId).not.toBe(attempts[1].eff.requestId);
   expect(attempts[0].signal?.aborted).toBe(false);

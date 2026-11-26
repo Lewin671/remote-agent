@@ -6,6 +6,10 @@
 package io.github.lewin671.remoteagent.core.proto;
 
 /**
+ * <pre>
+ * Test/benchmark harness only (zero production callers); production connectivity probes use PingMachineAction.
+ * </pre>
+ *
  * Protobuf type {@code remoteagent.core.v1.RunMachineCommandAction}
  */
 @com.google.protobuf.Generated
@@ -299,6 +303,10 @@ public  final class RunMachineCommandAction extends
   }
 
   /**
+   * <pre>
+   * Test/benchmark harness only (zero production callers); production connectivity probes use PingMachineAction.
+   * </pre>
+   *
    * Protobuf type {@code remoteagent.core.v1.RunMachineCommandAction}
    */
   public static final class Builder extends

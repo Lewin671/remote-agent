@@ -562,7 +562,7 @@ class CoreHostSmokeTest {
     }
 
     @Test
-    fun cancelMachineCommandCancelsOnlyMatchingRequestId() = kotlinx.coroutines.runBlocking {
+    fun cancelPingMachineCancelsOnlyMatchingRequestId() = kotlinx.coroutines.runBlocking {
         val nowMs = 1_776_000_000_000L
         val h = CoreHost(
             workerDispatcher = Dispatchers.Unconfined,
@@ -626,11 +626,8 @@ class CoreHostSmokeTest {
             h.onDispatchCommand = { eff -> dispatched.add(eff) }
             h.onCancelDispatch = { eff -> canceledRequestIds.add(eff.requestId) }
 
-            val cmd = io.github.lewin671.remoteagent.proto.Command.newBuilder()
-                .setGetSettings(io.github.lewin671.remoteagent.proto.GetSettingsRequest.getDefaultInstance())
-                .build()
-            val first = launch(Dispatchers.Unconfined) { h.runMachineCommand("m1", "", cmd) }
-            val second = async(Dispatchers.Unconfined) { h.runMachineCommand("m1", "", cmd) }
+            val first = launch(Dispatchers.Unconfined) { h.pingMachine("m1") }
+            val second = async(Dispatchers.Unconfined) { h.pingMachine("m1") }
 
             assertEquals(2, dispatched.size)
             val d1 = dispatched[0]

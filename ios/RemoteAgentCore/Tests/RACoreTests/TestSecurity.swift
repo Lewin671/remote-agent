@@ -468,6 +468,7 @@ final class TestCoreDriver: @unchecked Sendable {
     private var timers: [String: (id: UInt64, task: Task<Void, Never>)] = [:]
     private var securityOpWaiters: [UInt64: ContinuationWaiter<PBSecurityOpResultEffect>] = [:]
     private var machineCmdWaiters: [UInt64: ContinuationWaiter<PBCommandResult>] = [:]
+    private var pingWaiters: [UInt64: ContinuationWaiter<Void>] = [:]
     private var inFlightDispatches: [String: [String: Task<Void, Never>]] = [:]
 
     init(
@@ -540,6 +541,40 @@ final class TestCoreDriver: @unchecked Sendable {
                 configure(&req)
                 req.opID = id
                 enqueueEvent(PBCoreEvent.with { $0.securityOpRequest = req })
+            }
+        )
+    }
+
+    func pingMachine(machineID: String) async throws {
+        try await awaitWaiter(
+            isClosed: { self.isClosed() },
+            closedError: { CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()) },
+            register: { waiter in
+                try lock.withLock {
+                    guard !closed else { throw CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()) }
+                    try Task.checkCancellation()
+                    let id = nextOpID
+                    nextOpID &+= 1
+                    pingWaiters[id] = waiter
+                    return id
+                }
+            },
+            unregister: { [self] id in
+                let removed = lock.withLock { pingWaiters.removeValue(forKey: id) }
+                if removed != nil && !self.isClosed() {
+                    self.enqueueEvent(PBCoreEvent.with {
+                        $0.cancelPingMachine = .with { $0.opID = id }
+                    })
+                }
+                return removed
+            },
+            dispatch: { id in
+                enqueueEvent(PBCoreEvent.with {
+                    $0.pingMachine = .with {
+                        $0.opID = id
+                        $0.machineID = machineID
+                    }
+                })
             }
         )
     }
@@ -692,6 +727,18 @@ final class TestCoreDriver: @unchecked Sendable {
                 eff.requestID.isEmpty ? [] : Array((inFlightDispatches.removeValue(forKey: eff.requestID) ?? [:]).values)
             }
             for task in tasks { task.cancel() }
+        case .pingMachineResult(let res):
+            let waiter = lock.withLock { pingWaiters.removeValue(forKey: res.opID) }
+            if res.ok {
+                waiter?.resolve(.success(()))
+            } else {
+                let code = res.errorCode.isEmpty ? "failed" : res.errorCode
+                let msg = res.hasErrorText ? renderCoreText(res.errorText) : ""
+                waiter?.resolve(.failure(CommandError(
+                    code,
+                    msg.isEmpty ? L10nMessage.errorsCommandFailed() : LocalizedMessage(raw: msg)
+                )))
+            }
         case .runMachineCommandResult(let res):
             let waiter = lock.withLock { machineCmdWaiters.removeValue(forKey: res.opID) }
             if res.ok {
@@ -715,24 +762,27 @@ final class TestCoreDriver: @unchecked Sendable {
     }
 
     func close() {
-        let (pendingTimers, pendingOps, pendingCmds, pendingDispatches) = lock.withLock {
-            () -> ([Task<Void, Never>], [ContinuationWaiter<PBSecurityOpResultEffect>], [ContinuationWaiter<PBCommandResult>], [Task<Void, Never>]) in
-            guard !closed else { return ([], [], [], []) }
+        let (pendingTimers, pendingOps, pendingCmds, pendingPings, pendingDispatches) = lock.withLock {
+            () -> ([Task<Void, Never>], [ContinuationWaiter<PBSecurityOpResultEffect>], [ContinuationWaiter<PBCommandResult>], [ContinuationWaiter<Void>], [Task<Void, Never>]) in
+            guard !closed else { return ([], [], [], [], []) }
             closed = true
             let ts = timers.values.map(\.task)
             let ops = Array(securityOpWaiters.values)
             let cmds = Array(machineCmdWaiters.values)
+            let pings = Array(pingWaiters.values)
             let dispatches = inFlightDispatches.values.flatMap(\.values)
             timers.removeAll()
             securityOpWaiters.removeAll()
             machineCmdWaiters.removeAll()
+            pingWaiters.removeAll()
             inFlightDispatches.removeAll()
-            return (ts, ops, cmds, dispatches)
+            return (ts, ops, cmds, pings, dispatches)
         }
         for t in pendingTimers { t.cancel() }
         for t in pendingDispatches { t.cancel() }
         for waiter in pendingOps { waiter.resolve(.failure(SecurityFailure.storage)) }
         for waiter in pendingCmds { waiter.resolve(.failure(CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()))) }
+        for waiter in pendingPings { waiter.resolve(.failure(CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()))) }
         queue.sync {
             core.close()
         }
@@ -819,6 +869,9 @@ func attachTestCoreDriver(
                 command: cmd,
                 skipConnectivityPreflight: skip
             )
+        },
+        onPingMachine: { machineId in
+            try await driver.pingMachine(machineID: machineId)
         },
         onClose: {
             driver.close()

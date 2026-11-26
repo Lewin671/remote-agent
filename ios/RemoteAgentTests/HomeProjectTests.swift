@@ -1157,17 +1157,15 @@ private final class PipeTraceRecorder: @unchecked Sendable {
         await waitUntil { screens.connection.state == .connected }
 
         await host.dispatch(PBCoreEvent.with {
-            $0.runMachineCommand = .with {
+            $0.pingMachine = .with {
                 $0.opID = 77
                 $0.machineID = executor.machineID
-                $0.command = .with { $0.getSettings = PBGetSettingsRequest() }
-                $0.skipConnectivityPreflight = true
             }
         })
         await waitUntil { started.withLock { $0 } }
 
         await host.dispatch(PBCoreEvent.with {
-            $0.cancelMachineCommand = .with { $0.opID = 77 }
+            $0.cancelPingMachine = .with { $0.opID = 77 }
         })
         await waitUntil { cancelled.withLock { $0 } }
         #expect(cancelled.withLock { $0 })
@@ -1176,10 +1174,10 @@ private final class PipeTraceRecorder: @unchecked Sendable {
         defaults.removePersistentDomain(forName: suiteName)
     }
 
-    @Test func runMachineCommandReturnsResultAndPropagatesCancellation() async throws {
+    @Test func pingMachineSucceedsAndPropagatesCancellation() async throws {
         let executor = try await FakeCoreExecutor.makeDefault()
         let screens = CoreScreens()
-        let suiteName = "corehost-run-cmd-" + UUID().uuidString
+        let suiteName = "corehost-ping-" + UUID().uuidString
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
 
@@ -1190,20 +1188,10 @@ private final class PipeTraceRecorder: @unchecked Sendable {
         )
         await waitUntil { screens.connection.state == .connected }
 
-        // 1. Happy path returns the daemon CommandResult through Core over the relay byte pipe.
-        let okRes = try await host.runMachineCommand(
-            machineID: executor.machineID,
-            command: .with { $0.getSettings = PBGetSettingsRequest() },
-            skipConnectivityPreflight: true
-        )
-        #expect(okRes.outcome == "executed")
-        if case .getSettings = okRes.kind {
-            // expected
-        } else {
-            Issue.record("expected getSettings command result")
-        }
+        // 1. Happy path completes through Core over the relay byte pipe.
+        try await host.pingMachine(machineID: executor.machineID)
 
-        // 2. Cancelling the caller task sends CancelMachineCommandAction and cancels the in-flight relay Forward RPC.
+        // 2. Cancelling the caller task sends CancelPingMachineAction and cancels the in-flight relay Forward RPC.
         let started = OSAllocatedUnfairLock(initialState: false)
         let cancelled = OSAllocatedUnfairLock(initialState: false)
         await executor.setForwardHandler { _, _ in
@@ -1216,11 +1204,7 @@ private final class PipeTraceRecorder: @unchecked Sendable {
             return nil
         }
         let task = Task {
-            try await host.runMachineCommand(
-                machineID: executor.machineID,
-                command: .with { $0.getSettings = PBGetSettingsRequest() },
-                skipConnectivityPreflight: true
-            )
+            try await host.pingMachine(machineID: executor.machineID)
         }
         await waitUntil { started.withLock { $0 } }
         task.cancel()

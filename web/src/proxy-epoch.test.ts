@@ -45,7 +45,7 @@ test.each([true,false])("proxy-only command uses effective API origin (cached=%s
   r.start();
   await vi.waitFor(()=>expect(remoteConnState(r)).toBe("online"));
   expect(apiBase(r.account.server)).toBe(page);
-  await expect(getCoreHost(r).runMachineCommand(r.machine,"",{case:"createSession",value:{cwd:"/work/example"}})).resolves.toBeUndefined();
+  await expect(getCoreHost(r).pingMachine(r.machine)).resolves.toBeUndefined();
   expect(calls).toBe(1);
   expect(healthzCalls).toEqual(warm ? [] : [page + "/healthz"]);
  } finally {await r.dispose();}

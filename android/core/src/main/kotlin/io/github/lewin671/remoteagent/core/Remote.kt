@@ -1201,12 +1201,7 @@ class Remote(
         val started = System.nanoTime()
         try {
             withTimeout(timeoutMs) {
-                coreHost.runMachineCommand(
-                    machineId,
-                    "",
-                    Command.newBuilder().setGetSettings(GetSettingsRequest.getDefaultInstance()).build(),
-                    skipConnectivityPreflight = true,
-                )
+                coreHost.pingMachine(machineId)
             }
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
             throw MessageException(UiMessages.connectionNoResponse().messageText(), e)

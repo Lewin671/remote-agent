@@ -142,17 +142,22 @@ extension Remote {
     }
 
     public nonisolated func pingMachine(_ machineId: String, timeoutMs: Int64 = 15_000) async throws -> Int64 {
-        var cmd = PBCommand()
-        cmd.getSettings = PBGetSettingsRequest()
         let started = ContinuousClock.now
         do {
-            _ = try await withTimeout(timeoutMs, sleep: sleep) { [cmd] in
-                try await self.runMachineCommand(machineId: machineId, sessionId: "", cmd, skipConnectivityPreflight: true)
+            try await withTimeout(timeoutMs, sleep: sleep) {
+                try await self.runPingMachine(machineId: machineId)
             }
         } catch is TimedOut {
             throw UserError(L10nMessage.connectionNoResponse())
         }
         return (ContinuousClock.now - started).milliseconds
+    }
+
+    private func runPingMachine(machineId: String) async throws {
+        guard let onPing = hostHooks?.onPingMachine else {
+            throw CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled())
+        }
+        try await onPing(machineId)
     }
 
     // --- images (fetched, decrypted, and validated in Go clientcore) ---

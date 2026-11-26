@@ -248,6 +248,7 @@ class CoreHost(
     var onTerminalStateChanged: (TerminalStateChangedEffect) -> Unit = {}
 
     private val nextMachineCmdOpId = AtomicLong(1L)
+    private val nextPingOpId = AtomicLong(1L)
     private val nextSecurityOpSeq = AtomicLong(1L)
     private val nextPushRpcOpId = AtomicLong(1L)
     private val nextImageFetchOpId = AtomicLong(1L)
@@ -256,6 +257,7 @@ class CoreHost(
     private val _settledOnboardingEditSeq = MutableStateFlow(0L)
     val settledOnboardingEditSeq: StateFlow<Long> = _settledOnboardingEditSeq.asStateFlow()
     private val pendingMachineCmds = ConcurrentHashMap<Long, CompletableDeferred<CommandResult>>()
+    private val pendingPings = ConcurrentHashMap<Long, CompletableDeferred<Unit>>()
     private val pendingSecurityOps = ConcurrentHashMap<Long, CompletableDeferred<SecurityOpResultEffect>>()
     private val pendingPushRpcs = ConcurrentHashMap<Long, CompletableDeferred<PushRpcResultEffect>>()
     private val pendingImageFetches = ConcurrentHashMap<Long, CompletableDeferred<SessionImageLoadedEffect>>()
@@ -734,6 +736,18 @@ class CoreHost(
             Effect.EffectCase.DIRECT_PC_CLOSE -> onDirectPcClose(effect.directPcClose)
             Effect.EffectCase.DIRECT_PC_SEND_PROBE -> onDirectPcSendProbe(effect.directPcSendProbe)
             Effect.EffectCase.DIRECT_DC_READ_STATS -> onDirectDcReadStats(effect.directDcReadStats)
+            Effect.EffectCase.PING_MACHINE_RESULT -> {
+                val res = effect.pingMachineResult
+                pendingPings.remove(res.opId)?.let { waiter ->
+                    if (res.ok) {
+                        waiter.complete(Unit)
+                    } else {
+                        val code = res.errorCode.ifEmpty { "failed" }
+                        val msg = if (res.hasErrorText()) coreTextToMessageText(res.errorText) else code.messageText()
+                        waiter.completeExceptionally(CommandException(code, msg))
+                    }
+                }
+            }
             Effect.EffectCase.RUN_MACHINE_COMMAND_RESULT -> {
                 val res = effect.runMachineCommandResult
                 pendingMachineCmds.remove(res.opId)?.let { waiter ->
@@ -2526,6 +2540,36 @@ class CoreHost(
         }
     }
 
+    suspend fun pingMachine(machineId: String) {
+        if (closed.get()) throw CommandException("canceled", UiMessages.terminalAndroidClosed().messageText())
+        val opId = nextPingOpId.getAndIncrement()
+        val deferred = CompletableDeferred<Unit>()
+        pendingPings[opId] = deferred
+        dispatch(
+            CoreEvent.newBuilder()
+                .setPingMachine(
+                    PingMachineAction.newBuilder()
+                        .setOpId(opId)
+                        .setMachineId(machineId),
+                )
+                .build(),
+        )
+        try {
+            if (closed.get() && !deferred.isCompleted) {
+                pendingPings.remove(opId, deferred)
+                throw CommandException("canceled", UiMessages.terminalAndroidClosed().messageText())
+            }
+            deferred.await()
+        } catch (e: CancellationException) {
+            if (pendingPings.remove(opId, deferred)) {
+                if (!closed.get()) {
+                    send { setCancelPingMachine(CancelPingMachineAction.newBuilder().setOpId(opId)) }
+                }
+            }
+            throw e
+        }
+    }
+
     suspend fun runMachineCommand(
         machineId: String,
         sessionId: String,
@@ -2996,6 +3040,11 @@ class CoreHost(
             synchronized(machinePollTimers) {
                 machinePollTimers.values.forEach { it.cancel() }
                 machinePollTimers.clear()
+            }
+            for ((k, w) in pendingPings.entries.toList()) {
+                if (pendingPings.remove(k, w)) {
+                    w.completeExceptionally(CommandException("canceled", UiMessages.terminalAndroidClosed().messageText()))
+                }
             }
             for ((k, w) in pendingMachineCmds.entries.toList()) {
                 if (pendingMachineCmds.remove(k, w)) {

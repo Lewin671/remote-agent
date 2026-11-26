@@ -96,6 +96,8 @@ public  final class Event extends
     NEW_SESSION_CLOSE(391),
     SCHEDULE_CACHE_WRITTEN(392),
     USAGE_CACHE_WRITTEN(393),
+    PING_MACHINE(394),
+    CANCEL_PING_MACHINE(395),
     UPDATE_CLIENT_NAME(370),
     SET_NOTIFICATION_PREF(375),
     SET_APPEARANCE_PREF(376),
@@ -370,6 +372,8 @@ public  final class Event extends
         case 391: return NEW_SESSION_CLOSE;
         case 392: return SCHEDULE_CACHE_WRITTEN;
         case 393: return USAGE_CACHE_WRITTEN;
+        case 394: return PING_MACHINE;
+        case 395: return CANCEL_PING_MACHINE;
         case 370: return UPDATE_CLIENT_NAME;
         case 375: return SET_NOTIFICATION_PREF;
         case 376: return SET_APPEARANCE_PREF;
@@ -4270,7 +4274,7 @@ public  final class Event extends
   public static final int RESOLVE_NOTIFICATION_TAP_FIELD_NUMBER = 390;
   /**
    * <pre>
-   * P2-4 housekeeping &amp; cache gate events (390-394).
+   * P2-4 housekeeping &amp; cache gate events (390-395).
    * </pre>
    *
    * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
@@ -4281,7 +4285,7 @@ public  final class Event extends
   }
   /**
    * <pre>
-   * P2-4 housekeeping &amp; cache gate events (390-394).
+   * P2-4 housekeeping &amp; cache gate events (390-395).
    * </pre>
    *
    * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
@@ -4295,7 +4299,7 @@ public  final class Event extends
   }
   /**
    * <pre>
-   * P2-4 housekeeping &amp; cache gate events (390-394).
+   * P2-4 housekeeping &amp; cache gate events (390-395).
    * </pre>
    *
    * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
@@ -4308,7 +4312,7 @@ public  final class Event extends
   }
   /**
    * <pre>
-   * P2-4 housekeeping &amp; cache gate events (390-394).
+   * P2-4 housekeeping &amp; cache gate events (390-395).
    * </pre>
    *
    * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
@@ -4327,7 +4331,7 @@ public  final class Event extends
   }
   /**
    * <pre>
-   * P2-4 housekeeping &amp; cache gate events (390-394).
+   * P2-4 housekeeping &amp; cache gate events (390-395).
    * </pre>
    *
    * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
@@ -4490,6 +4494,110 @@ public  final class Event extends
    */
   private void clearUsageCacheWritten() {
     if (eventCase_ == 393) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int PING_MACHINE_FIELD_NUMBER = 394;
+  /**
+   * <code>.remoteagent.core.v1.PingMachineAction ping_machine = 394 [json_name = "pingMachine"];</code>
+   */
+  @java.lang.Override
+  public boolean hasPingMachine() {
+    return eventCase_ == 394;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PingMachineAction ping_machine = 394 [json_name = "pingMachine"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.PingMachineAction getPingMachine() {
+    if (eventCase_ == 394) {
+       return (io.github.lewin671.remoteagent.core.proto.PingMachineAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.PingMachineAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.PingMachineAction ping_machine = 394 [json_name = "pingMachine"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPingMachine(io.github.lewin671.remoteagent.core.proto.PingMachineAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 394;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PingMachineAction ping_machine = 394 [json_name = "pingMachine"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergePingMachine(io.github.lewin671.remoteagent.core.proto.PingMachineAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 394 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.PingMachineAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.PingMachineAction.newBuilder((io.github.lewin671.remoteagent.core.proto.PingMachineAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 394;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PingMachineAction ping_machine = 394 [json_name = "pingMachine"];</code>
+   */
+  private void clearPingMachine() {
+    if (eventCase_ == 394) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int CANCEL_PING_MACHINE_FIELD_NUMBER = 395;
+  /**
+   * <code>.remoteagent.core.v1.CancelPingMachineAction cancel_ping_machine = 395 [json_name = "cancelPingMachine"];</code>
+   */
+  @java.lang.Override
+  public boolean hasCancelPingMachine() {
+    return eventCase_ == 395;
+  }
+  /**
+   * <code>.remoteagent.core.v1.CancelPingMachineAction cancel_ping_machine = 395 [json_name = "cancelPingMachine"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.CancelPingMachineAction getCancelPingMachine() {
+    if (eventCase_ == 395) {
+       return (io.github.lewin671.remoteagent.core.proto.CancelPingMachineAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.CancelPingMachineAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.CancelPingMachineAction cancel_ping_machine = 395 [json_name = "cancelPingMachine"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setCancelPingMachine(io.github.lewin671.remoteagent.core.proto.CancelPingMachineAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 395;
+  }
+  /**
+   * <code>.remoteagent.core.v1.CancelPingMachineAction cancel_ping_machine = 395 [json_name = "cancelPingMachine"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeCancelPingMachine(io.github.lewin671.remoteagent.core.proto.CancelPingMachineAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 395 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.CancelPingMachineAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.CancelPingMachineAction.newBuilder((io.github.lewin671.remoteagent.core.proto.CancelPingMachineAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 395;
+  }
+  /**
+   * <code>.remoteagent.core.v1.CancelPingMachineAction cancel_ping_machine = 395 [json_name = "cancelPingMachine"];</code>
+   */
+  private void clearCancelPingMachine() {
+    if (eventCase_ == 395) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -17860,7 +17968,7 @@ public  final class Event extends
 
     /**
      * <pre>
-     * P2-4 housekeeping &amp; cache gate events (390-394).
+     * P2-4 housekeeping &amp; cache gate events (390-395).
      * </pre>
      *
      * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
@@ -17871,7 +17979,7 @@ public  final class Event extends
     }
     /**
      * <pre>
-     * P2-4 housekeeping &amp; cache gate events (390-394).
+     * P2-4 housekeeping &amp; cache gate events (390-395).
      * </pre>
      *
      * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
@@ -17882,7 +17990,7 @@ public  final class Event extends
     }
     /**
      * <pre>
-     * P2-4 housekeeping &amp; cache gate events (390-394).
+     * P2-4 housekeeping &amp; cache gate events (390-395).
      * </pre>
      *
      * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
@@ -17894,7 +18002,7 @@ public  final class Event extends
     }
     /**
      * <pre>
-     * P2-4 housekeeping &amp; cache gate events (390-394).
+     * P2-4 housekeeping &amp; cache gate events (390-395).
      * </pre>
      *
      * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
@@ -17907,7 +18015,7 @@ public  final class Event extends
     }
     /**
      * <pre>
-     * P2-4 housekeeping &amp; cache gate events (390-394).
+     * P2-4 housekeeping &amp; cache gate events (390-395).
      * </pre>
      *
      * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
@@ -17919,7 +18027,7 @@ public  final class Event extends
     }
     /**
      * <pre>
-     * P2-4 housekeeping &amp; cache gate events (390-394).
+     * P2-4 housekeeping &amp; cache gate events (390-395).
      * </pre>
      *
      * <code>.remoteagent.core.v1.ResolveNotificationTapAction resolve_notification_tap = 390 [json_name = "resolveNotificationTap"];</code>
@@ -18071,6 +18179,102 @@ public  final class Event extends
     public Builder clearUsageCacheWritten() {
       copyOnWrite();
       instance.clearUsageCacheWritten();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.PingMachineAction ping_machine = 394 [json_name = "pingMachine"];</code>
+     */
+    @java.lang.Override
+    public boolean hasPingMachine() {
+      return instance.hasPingMachine();
+    }
+    /**
+     * <code>.remoteagent.core.v1.PingMachineAction ping_machine = 394 [json_name = "pingMachine"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.PingMachineAction getPingMachine() {
+      return instance.getPingMachine();
+    }
+    /**
+     * <code>.remoteagent.core.v1.PingMachineAction ping_machine = 394 [json_name = "pingMachine"];</code>
+     */
+    public Builder setPingMachine(io.github.lewin671.remoteagent.core.proto.PingMachineAction value) {
+      copyOnWrite();
+      instance.setPingMachine(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PingMachineAction ping_machine = 394 [json_name = "pingMachine"];</code>
+     */
+    public Builder setPingMachine(
+        io.github.lewin671.remoteagent.core.proto.PingMachineAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setPingMachine(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PingMachineAction ping_machine = 394 [json_name = "pingMachine"];</code>
+     */
+    public Builder mergePingMachine(io.github.lewin671.remoteagent.core.proto.PingMachineAction value) {
+      copyOnWrite();
+      instance.mergePingMachine(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PingMachineAction ping_machine = 394 [json_name = "pingMachine"];</code>
+     */
+    public Builder clearPingMachine() {
+      copyOnWrite();
+      instance.clearPingMachine();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.CancelPingMachineAction cancel_ping_machine = 395 [json_name = "cancelPingMachine"];</code>
+     */
+    @java.lang.Override
+    public boolean hasCancelPingMachine() {
+      return instance.hasCancelPingMachine();
+    }
+    /**
+     * <code>.remoteagent.core.v1.CancelPingMachineAction cancel_ping_machine = 395 [json_name = "cancelPingMachine"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.CancelPingMachineAction getCancelPingMachine() {
+      return instance.getCancelPingMachine();
+    }
+    /**
+     * <code>.remoteagent.core.v1.CancelPingMachineAction cancel_ping_machine = 395 [json_name = "cancelPingMachine"];</code>
+     */
+    public Builder setCancelPingMachine(io.github.lewin671.remoteagent.core.proto.CancelPingMachineAction value) {
+      copyOnWrite();
+      instance.setCancelPingMachine(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.CancelPingMachineAction cancel_ping_machine = 395 [json_name = "cancelPingMachine"];</code>
+     */
+    public Builder setCancelPingMachine(
+        io.github.lewin671.remoteagent.core.proto.CancelPingMachineAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setCancelPingMachine(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.CancelPingMachineAction cancel_ping_machine = 395 [json_name = "cancelPingMachine"];</code>
+     */
+    public Builder mergeCancelPingMachine(io.github.lewin671.remoteagent.core.proto.CancelPingMachineAction value) {
+      copyOnWrite();
+      instance.mergeCancelPingMachine(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.CancelPingMachineAction cancel_ping_machine = 395 [json_name = "cancelPingMachine"];</code>
+     */
+    public Builder clearCancelPingMachine() {
+      copyOnWrite();
+      instance.clearCancelPingMachine();
       return this;
     }
 
@@ -27403,6 +27607,8 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.NewSessionCloseAction.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleCacheWrittenEvent.class,
             io.github.lewin671.remoteagent.core.proto.UsageCacheWrittenEvent.class,
+            io.github.lewin671.remoteagent.core.proto.PingMachineAction.class,
+            io.github.lewin671.remoteagent.core.proto.CancelPingMachineAction.class,
             io.github.lewin671.remoteagent.core.proto.TransportConfigEvent.class,
             io.github.lewin671.remoteagent.core.proto.DirectSignalReceivedEvent.class,
             io.github.lewin671.remoteagent.core.proto.DirectSignalDeliveryEvent.class,
@@ -27478,7 +27684,7 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.ExitConfirmAction.class,
           };
           java.lang.String info =
-              "\u0000\u0107\u0001\u0000\u0001\u01f3\u0107\u0000\u0002\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u0109\u0001\u0000\u0001\u01f3\u0109\u0000\u0002\u0000\u0001<\u0000\u0002<" +
               "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000" +
               "\t<\u0000\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010" +
               "<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000" +
@@ -27506,18 +27712,18 @@ public  final class Event extends
               "\u0169<\u0000\u016a<\u0000\u016b<\u0000\u016c<\u0000\u016e<\u0000\u0172<\u0000\u0177" +
               "<\u0000\u0178<\u0000\u0179<\u0000\u017a<\u0000\u017b<\u0000\u017c<\u0000\u017d<\u0000" +
               "\u017e<\u0000\u017f<\u0000\u0180<\u0000\u0181<\u0000\u0186<\u0000\u0187<\u0000\u0188" +
-              "<\u0000\u0189<\u0000\u0190<\u0000\u0192<\u0000\u0193<\u0000\u0196<\u0000\u0197<\u0000" +
-              "\u0198<\u0000\u0199<\u0000\u019a<\u0000\u019b<\u0000\u019c<\u0000\u019d<\u0000\u019e" +
-              "<\u0000\u019f<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000\u01a4<\u0000" +
-              "\u01a5<\u0000\u01a6<\u0000\u01a7<\u0000\u01ae<\u0000\u01af<\u0000\u01b0<\u0000\u01b1" +
-              "<\u0000\u01b2<\u0000\u01b3<\u0000\u01b4<\u0000\u01b5<\u0000\u01b6<\u0000\u01b7<\u0000" +
-              "\u01b8<\u0000\u01b9<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000\u01c9" +
-              "<\u0000\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01ce<\u0000\u01cf<\u0000" +
-              "\u01d0<\u0000\u01d1<\u0000\u01d6<\u0000\u01d7<\u0000\u01d8<\u0000\u01d9<\u0000\u01da" +
-              "<\u0000\u01db<\u0000\u01dc<\u0000\u01dd<\u0000\u01de<\u0000\u01df<\u0000\u01e0<\u0000" +
-              "\u01e1<\u0000\u01e2<\u0000\u01e3<\u0000\u01e4<\u0000\u01e5<\u0000\u01e6<\u0000\u01e9" +
-              "<\u0000\u01ea<\u0000\u01eb<\u0000\u01ed<\u0000\u01ee<\u0000\u01ef<\u0000\u01f0<\u0000" +
-              "\u01f1<\u0000\u01f2<\u0000\u01f3<\u0000";
+              "<\u0000\u0189<\u0000\u018a<\u0000\u018b<\u0000\u0190<\u0000\u0192<\u0000\u0193<\u0000" +
+              "\u0196<\u0000\u0197<\u0000\u0198<\u0000\u0199<\u0000\u019a<\u0000\u019b<\u0000\u019c" +
+              "<\u0000\u019d<\u0000\u019e<\u0000\u019f<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2<\u0000" +
+              "\u01a3<\u0000\u01a4<\u0000\u01a5<\u0000\u01a6<\u0000\u01a7<\u0000\u01ae<\u0000\u01af" +
+              "<\u0000\u01b0<\u0000\u01b1<\u0000\u01b2<\u0000\u01b3<\u0000\u01b4<\u0000\u01b5<\u0000" +
+              "\u01b6<\u0000\u01b7<\u0000\u01b8<\u0000\u01b9<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5" +
+              "<\u0000\u01c8<\u0000\u01c9<\u0000\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000" +
+              "\u01ce<\u0000\u01cf<\u0000\u01d0<\u0000\u01d1<\u0000\u01d6<\u0000\u01d7<\u0000\u01d8" +
+              "<\u0000\u01d9<\u0000\u01da<\u0000\u01db<\u0000\u01dc<\u0000\u01dd<\u0000\u01de<\u0000" +
+              "\u01df<\u0000\u01e0<\u0000\u01e1<\u0000\u01e2<\u0000\u01e3<\u0000\u01e4<\u0000\u01e5" +
+              "<\u0000\u01e6<\u0000\u01e9<\u0000\u01ea<\u0000\u01eb<\u0000\u01ed<\u0000\u01ee<\u0000" +
+              "\u01ef<\u0000\u01f0<\u0000\u01f1<\u0000\u01f2<\u0000\u01f3<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

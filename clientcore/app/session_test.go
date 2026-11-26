@@ -3184,4 +3184,88 @@ func TestRunMachineCommandSkipConnectivityPreflight(t *testing.T) {
 	if okRes == nil || !okRes.Ok || okRes.OpId != 2 {
 		t.Fatalf("expected op 2 to succeed after bypass dispatch, got %+v", okRes)
 	}
+
+	// Semantic PingMachineAction also bypasses connectivity preflight and supports cancellation.
+	pinged := c.Dispatch(&corev1.Event{
+		NowMs: now + 50,
+		Event: &corev1.Event_PingMachine{
+			PingMachine: &corev1.PingMachineAction{
+				OpId:      10,
+				MachineId: "m-off",
+			},
+		},
+	})
+	var pingDC *corev1.DispatchCommandEffect
+	for _, ef := range pinged.GetEffects() {
+		if d := ef.GetDispatchCommand(); d != nil {
+			pingDC = d
+		}
+		if r := ef.GetPingMachineResult(); r != nil {
+			t.Fatalf("expected PingMachine not to fail in preflight, got %+v", r)
+		}
+	}
+	if pingDC == nil {
+		t.Fatalf("expected DispatchCommandEffect for PingMachine, got %+v", pinged.GetEffects())
+	}
+	var pingCmd v1.Command
+	if err := pingCmd.Unmarshal(pingDC.CommandBytes); err != nil || pingCmd.GetGetSettings() == nil {
+		t.Fatalf("expected PingMachine to dispatch GetSettings, err=%v cmd=%+v", err, &pingCmd)
+	}
+	pingDone := c.Dispatch(&corev1.Event{
+		NowMs: now + 60,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:         pingDC.RequestId,
+				AttemptId:         pingDC.AttemptId,
+				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				Signed:            true,
+				HashesMatch:       true,
+				AttemptBound:      true,
+				OuterMatchesInner: true,
+				OuterOutcome:      "executed",
+				OuterReason:       "ok",
+				Result:            &v1.CommandResult{Outcome: "executed", Reason: "ok", ResultAvailable: true},
+			},
+		},
+	})
+	var pingOK *corev1.PingMachineResultEffect
+	for _, ef := range pingDone.GetEffects() {
+		if r := ef.GetPingMachineResult(); r != nil {
+			pingOK = r
+		}
+	}
+	if pingOK == nil || !pingOK.Ok || pingOK.OpId != 10 {
+		t.Fatalf("expected ping op 10 to succeed, got %+v", pingOK)
+	}
+
+	pingCanceled := c.Dispatch(&corev1.Event{
+		NowMs: now + 70,
+		Event: &corev1.Event_PingMachine{
+			PingMachine: &corev1.PingMachineAction{OpId: 11, MachineId: "m-off"},
+		},
+	})
+	var cancelReqID string
+	for _, ef := range pingCanceled.GetEffects() {
+		if d := ef.GetDispatchCommand(); d != nil {
+			cancelReqID = d.RequestId
+		}
+	}
+	if cancelReqID == "" {
+		t.Fatalf("expected DispatchCommandEffect for ping op 11")
+	}
+	cancelBatch := c.Dispatch(&corev1.Event{
+		NowMs: now + 75,
+		Event: &corev1.Event_CancelPingMachine{
+			CancelPingMachine: &corev1.CancelPingMachineAction{OpId: 11},
+		},
+	})
+	var sawCancel bool
+	for _, ef := range cancelBatch.GetEffects() {
+		if cd := ef.GetCancelDispatch(); cd != nil && cd.RequestId == cancelReqID {
+			sawCancel = true
+		}
+	}
+	if !sawCancel {
+		t.Fatalf("expected CancelDispatchEffect for canceled ping op 11, got %+v", cancelBatch.GetEffects())
+	}
 }

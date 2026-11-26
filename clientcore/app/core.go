@@ -492,6 +492,30 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				},
 			})
 
+		case cmdKindPingMachine:
+			delete(c.m.pingReqByOp, meta.opID)
+			ok := sc.Category == outcome.Executed && sc.ErrorCode == ""
+			errCode := sc.ErrorCode
+			errText := screens.ReasonText(sc.ErrorReason)
+			if !ok {
+				if errCode == "" {
+					errCode = "failed"
+				}
+				if errText == nil {
+					errText = text.Msg(text.KeyErrorsCommandFailed)
+				}
+			}
+			effects = append(effects, &corev1.Effect{
+				Effect: &corev1.Effect_PingMachineResult{
+					PingMachineResult: &corev1.PingMachineResultEffect{
+						OpId:      meta.opID,
+						Ok:        ok,
+						ErrorCode: errCode,
+						ErrorText: errText,
+					},
+				},
+			})
+
 		case cmdKindListDirs:
 			if meta.pickerKey == "" {
 				continue
@@ -1224,6 +1248,61 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 		if act := k.CancelMachineCommand; act != nil && act.OpId != 0 {
 			if reqID, ok := c.m.oneShotReqByOp[act.OpId]; ok {
 				delete(c.m.oneShotReqByOp, act.OpId)
+				delete(c.m.pendingCmdMeta, reqID)
+				c.m.sync.CancelCommand(ctx, reqID)
+			}
+		}
+
+	case *corev1.Event_PingMachine:
+		if act := k.PingMachine; act != nil && act.OpId != 0 {
+			if prevReq, exists := c.m.pingReqByOp[act.OpId]; exists {
+				delete(c.m.pingReqByOp, act.OpId)
+				delete(c.m.pendingCmdMeta, prevReq)
+				c.m.sync.CancelCommand(ctx, prevReq)
+			}
+			if act.MachineId == "" {
+				effects = append(effects, &corev1.Effect{
+					Effect: &corev1.Effect_PingMachineResult{
+						PingMachineResult: &corev1.PingMachineResultEffect{
+							OpId:      act.OpId,
+							Ok:        false,
+							ErrorCode: "invalid_argument",
+							ErrorText: text.Msg(text.KeyErrorsInvalidCommand),
+						},
+					},
+				})
+				break
+			}
+			reqID, _ := c.m.sync.SubmitCommand(ctx, sync.SubmitCommandParams{
+				MachineID:                 act.MachineId,
+				Command:                   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
+				SkipConnectivityPreflight: true,
+			})
+			if reqID == "" {
+				effects = append(effects, &corev1.Effect{
+					Effect: &corev1.Effect_PingMachineResult{
+						PingMachineResult: &corev1.PingMachineResultEffect{
+							OpId:      act.OpId,
+							Ok:        false,
+							ErrorCode: "failed",
+							ErrorText: text.Msg(text.KeyErrorsCommandFailed),
+						},
+					},
+				})
+				break
+			}
+			c.m.pendingCmdMeta[reqID] = cmdMeta{
+				kind:      cmdKindPingMachine,
+				machineID: act.MachineId,
+				opID:      act.OpId,
+			}
+			c.m.pingReqByOp[act.OpId] = reqID
+		}
+
+	case *corev1.Event_CancelPingMachine:
+		if act := k.CancelPingMachine; act != nil && act.OpId != 0 {
+			if reqID, ok := c.m.pingReqByOp[act.OpId]; ok {
+				delete(c.m.pingReqByOp, act.OpId)
 				delete(c.m.pendingCmdMeta, reqID)
 				c.m.sync.CancelCommand(ctx, reqID)
 			}
