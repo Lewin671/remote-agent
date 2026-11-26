@@ -21,7 +21,7 @@ func (e *Engine) scheduleSecurityPollTimerDelay(delayMs int64) {
 func (e *Engine) scheduleSecurityPollTimer() {
 	wf := e.ensureWF()
 	delay := pairPollIntervalMs
-	if wf.managedPollsEnabled && wf.activePoll != nil && wf.activePoll.kind == PollJoinApproved {
+	if wf.activePoll != nil && wf.activePoll.kind == PollJoinApproved {
 		delay = pairJoinApprovedPollIntervalMs
 	}
 	e.scheduleSecurityPollTimerDelay(delay)

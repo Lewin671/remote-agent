@@ -125,7 +125,6 @@ func TestManagedInitiatorJoinAndMetaPollCap(t *testing.T) {
 
 func TestManagedRecoveryWindowPollAdaptiveIntervalsAndForeground(t *testing.T) {
 	e := NewEngine(nil, 17)
-	e.EnableManagedPolls()
 	obs := &recordingPollObserver{}
 	e.SetPollObserver(obs)
 	wf := e.ensureWF()
@@ -220,24 +219,7 @@ func TestManagedRecoveryWindowPollAdaptiveIntervalsAndForeground(t *testing.T) {
 }
 
 func TestManagedDeliveryPollAutoResumesOnForeground(t *testing.T) {
-	// Legacy callers (e.g. iOS prior to P3-3) that never opted into ClientInit/EnableManagedPolls
-	// must NOT auto-start a duplicate delivery poll on foreground transitions.
-	legacy := NewEngine(nil, 17)
-	lwf := legacy.ensureWF()
-	lwf.foreground = false
-	lwf.pendingOp = &PersistedOperation{
-		Kind:     PendingOpKindState,
-		Action:   PendingOpActionPair,
-		Server:   "https://relay.example.com",
-		Delivery: []byte{1, 2, 3},
-		Pair:     &PersistedOpPair{PairingID: "pair-legacy"},
-	}
-	if effs := legacy.HandleForeground(1_000, true); len(effs) != 0 || activePollKindForTest(legacy) != PollNone {
-		t.Fatalf("legacy engine must not auto-start delivery poll on foreground: effs=%d kind=%v", len(effs), activePollKindForTest(legacy))
-	}
-
 	e := NewEngine(nil, 17)
-	e.EnableManagedPolls()
 	obs := &recordingPollObserver{}
 	e.SetPollObserver(obs)
 	wf := e.ensureWF()

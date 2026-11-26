@@ -507,7 +507,6 @@ func (c *Core) applyRuntimeConfigToModel(uiLocale string, foreground, networkAva
 	c.m.state.UILocale = usage.NormalizeUILocale(uiLocale)
 	c.m.sync.SetInitialNetworkState(networkAvailable, networkSignature)
 	secEng := c.m.sync.SecurityEngine()
-	secEng.EnableManagedPolls()
 	if cfg := c.clientCfg; cfg != nil {
 		c.m.sync.SetPlatformIdentity(cfg.platform, cfg.deviceDescription)
 		secEng.Configure(&corev1.SecurityConfigEvent{

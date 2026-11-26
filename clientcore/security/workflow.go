@@ -313,7 +313,6 @@ type PollObserver interface {
 type workflowState struct {
 	server              string
 	foreground          bool
-	managedPollsEnabled bool
 	fgGen               uint64
 	bootstrapped        bool
 	bootstrapInvalid    bool
@@ -454,14 +453,6 @@ func (e *Engine) invalidateAccountAuthLocked() {
 // SetPollObserver registers an observer for managed security poll progress.
 func (e *Engine) SetPollObserver(obs PollObserver) { e.ensureWF().pollObserver = obs }
 
-// EnableManagedPolls opts this engine into Core-managed foreground auto-polling
-// (paused on background, resumed on foreground, automatic delivery poll on foreground).
-// Legacy callers (such as iOS prior to P3-3) that do not send ClientInitEvent keep their
-// own foreground delivery loops untouched.
-func (e *Engine) EnableManagedPolls() {
-	e.ensureWF().managedPollsEnabled = true
-}
-
 // SetForeground updates foreground visibility and invalidates captured foreground checks when hidden.
 func (e *Engine) SetForeground(fg bool) {
 	wf := e.ensureWF()
@@ -471,12 +462,9 @@ func (e *Engine) SetForeground(fg bool) {
 	wf.foreground = fg
 	if !fg {
 		wf.fgGen++
-		if wf.managedPollsEnabled && wf.activePoll != nil {
+		if wf.activePoll != nil {
 			e.cancelSecurityPollTimer()
 		}
-		return
-	}
-	if !wf.managedPollsEnabled {
 		return
 	}
 	if wf.activePoll != nil {
