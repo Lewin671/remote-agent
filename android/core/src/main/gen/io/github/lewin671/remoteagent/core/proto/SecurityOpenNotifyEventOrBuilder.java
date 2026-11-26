@@ -29,17 +29,6 @@ public interface SecurityOpenNotifyEventOrBuilder extends
   com.google.protobuf.ByteString getRecordBlob();
 
   /**
-   * <code>.remoteagent.v1.Envelope envelope = 4 [json_name = "envelope"];</code>
-   * @return Whether the envelope field is set.
-   */
-  boolean hasEnvelope();
-  /**
-   * <code>.remoteagent.v1.Envelope envelope = 4 [json_name = "envelope"];</code>
-   * @return The envelope.
-   */
-  io.github.lewin671.remoteagent.proto.Envelope getEnvelope();
-
-  /**
    * <code>int64 now_ms = 5 [json_name = "nowMs"];</code>
    * @return The nowMs.
    */
@@ -120,4 +109,10 @@ public interface SecurityOpenNotifyEventOrBuilder extends
    */
   com.google.protobuf.ByteString
       getFallbackBodyBytes();
+
+  /**
+   * <code>bytes raw_envelope = 12 [json_name = "rawEnvelope"];</code>
+   * @return The rawEnvelope.
+   */
+  com.google.protobuf.ByteString getRawEnvelope();
 }

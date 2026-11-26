@@ -1289,7 +1289,7 @@ func TestTerminalPipe_CrossCompatWithLegacyHandleSecurityOp(t *testing.T) {
 		Event: &corev1.Event_SecurityOpRequest{SecurityOpRequest: &corev1.SecurityOpRequestEvent{
 			OpId: 9901,
 			Op: &corev1.SecurityOpRequestEvent_OpenEnvelope{OpenEnvelope: &corev1.SecurityOpenEnvelopeOp{
-				Envelope:            &envIn,
+				RawEnvelope:         envIn.AppendMarshal(nil),
 				ExpectedPurpose:     uint32(devicesec.TerminalInput),
 				MachineId:           trusted.id,
 				SessionId:           "s-compat",
@@ -1334,7 +1334,7 @@ func TestTerminalPipe_CrossCompatWithLegacyHandleSecurityOp(t *testing.T) {
 			}},
 		}},
 	})
-	var legacyEnv *v1.Envelope
+	var legacyEnvBytes []byte
 	for q := append([]*corev1.Effect(nil), bSeal.Effects...); len(q) > 0; {
 		eff := q[0]
 		q = q[1:]
@@ -1350,13 +1350,13 @@ func TestTerminalPipe_CrossCompatWithLegacyHandleSecurityOp(t *testing.T) {
 			if r.Error != "" {
 				t.Fatalf("legacy SealEnvelope failed: %s", r.Error)
 			}
-			legacyEnv = r.GetSealed().GetEnvelope()
+			legacyEnvBytes = r.GetSealed().GetRawEnvelope()
 		}
 	}
-	if legacyEnv == nil {
+	if len(legacyEnvBytes) == 0 {
 		t.Fatal("missing legacy SealEnvelope result")
 	}
-	hdrLeg, plainLeg := openDaemonEnvelopeWithSeed(t, legacyEnv.AppendMarshal(nil), sec, seed, phone.edP)
+	hdrLeg, plainLeg := openDaemonEnvelopeWithSeed(t, legacyEnvBytes, sec, seed, phone.edP)
 	var tfLeg stdv1.TerminalFrame
 	_ = proto.Unmarshal(plainLeg, &tfLeg)
 	if hdrLeg.Purpose != devicesec.TerminalInput || hdrLeg.Seq != 2 || string(tfLeg.GetInput()) != "compat-legacy-in" {
@@ -1371,7 +1371,7 @@ func TestTerminalPipe_CrossCompatWithLegacyHandleSecurityOp(t *testing.T) {
 		Event: &corev1.Event_SecurityOpRequest{SecurityOpRequest: &corev1.SecurityOpRequestEvent{
 			OpId: 9903,
 			Op: &corev1.SecurityOpRequestEvent_OpenEnvelope{OpenEnvelope: &corev1.SecurityOpenEnvelopeOp{
-				Envelope:            outEnv,
+				RawEnvelope:         rawOut,
 				ExpectedPurpose:     uint32(devicesec.TerminalOutput),
 				MachineId:           trusted.id,
 				SessionId:           "s-compat",

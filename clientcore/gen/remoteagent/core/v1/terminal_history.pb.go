@@ -5,7 +5,6 @@ package corev1
 
 import (
 	litewire "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
-	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	unsafe "unsafe"
 )
 
@@ -66,7 +65,7 @@ type TerminalHistoryEvent struct {
 	_          [0]func()
 	TerminalId string
 	Kind       TerminalHistoryEventKind
-	Page       *v1.TerminalHistoryPage
+	RawPage    []byte
 }
 
 func (m *TerminalHistoryEvent) GetTerminalId() string {
@@ -81,9 +80,9 @@ func (m *TerminalHistoryEvent) GetKind() TerminalHistoryEventKind {
 	}
 	return 0
 }
-func (m *TerminalHistoryEvent) GetPage() *v1.TerminalHistoryPage {
+func (m *TerminalHistoryEvent) GetRawPage() []byte {
 	if m != nil {
-		return m.Page
+		return m.RawPage
 	}
 	return nil
 }
@@ -93,7 +92,7 @@ var LitewireDesc_TerminalHistoryEvent = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(TerminalHistoryEvent{}.TerminalId), Kind: litewire.KindString},
 		{Num: 2, Offset: unsafe.Offsetof(TerminalHistoryEvent{}.Kind), Kind: litewire.KindInt32},
-		{Num: 3, Offset: unsafe.Offsetof(TerminalHistoryEvent{}.Page), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_TerminalHistoryPage},
+		{Num: 4, Offset: unsafe.Offsetof(TerminalHistoryEvent{}.RawPage), Kind: litewire.KindBytes},
 	},
 }
 

@@ -62,7 +62,7 @@ class MachineNotificationReceiverTest {
                 val tag = "${machine.deviceId}/NOTIFY_KIND_MACHINE_DISK"
                 val result = openNotifyEnvelopeViaCore(
                     notifyBlob = key,
-                    envelope = env,
+                    rawEnvelope = env.toByteArray(),
                     machineId = machine.deviceId,
                     tag = tag,
                     expectedKind = NotifyKind.NOTIFY_KIND_MACHINE_DISK,
@@ -79,7 +79,7 @@ class MachineNotificationReceiverTest {
                 assertNull(
                     openNotifyEnvelopeViaCore(
                         notifyBlob = key,
-                        envelope = env.toBuilder().setSignature(com.google.protobuf.ByteString.copyFrom(signature)).build(),
+                        rawEnvelope = env.toBuilder().setSignature(com.google.protobuf.ByteString.copyFrom(signature)).build().toByteArray(),
                         machineId = machine.deviceId,
                         tag = tag,
                         expectedKind = NotifyKind.NOTIFY_KIND_MACHINE_DISK,

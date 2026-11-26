@@ -415,7 +415,7 @@ private final class FakeRelayAuthority: @unchecked Sendable {
             }
         }
         guard res.error.isEmpty else { throw TestError("sealMachineMeta: \(res.error)") }
-        return res.sealed.envelope
+        return try PBEnvelope(serializedBytes: res.sealed.rawEnvelope)
     }
 
     func sealSession(sessionID: String, meta: PBSession, seq: UInt64 = 1) async throws -> (key: PBEnvelope, meta: PBEnvelope) {
@@ -441,7 +441,10 @@ private final class FakeRelayAuthority: @unchecked Sendable {
             }
         }
         guard metaRes.error.isEmpty else { throw TestError("sealSessionMeta: \(metaRes.error)") }
-        return (keyRes.sealed.envelope, metaRes.sealed.envelope)
+        return (
+            try PBEnvelope(serializedBytes: keyRes.sealed.rawEnvelope),
+            try PBEnvelope(serializedBytes: metaRes.sealed.rawEnvelope)
+        )
     }
 
     func sealPrefs(_ prefs: PBProjectPrefs, revision: UInt64) async throws -> PBEnvelope {
@@ -455,13 +458,14 @@ private final class FakeRelayAuthority: @unchecked Sendable {
             }
         }
         guard res.error.isEmpty else { throw TestError("sealPrefs: \(res.error)") }
-        return res.sealed.envelope
+        return try PBEnvelope(serializedBytes: res.sealed.rawEnvelope)
     }
 
     func openPrefs(_ envelope: PBEnvelope, revision: UInt64) async throws -> PBProjectPrefs {
+        let rawEnv = try envelope.serializedData()
         let res = try await clientNode.securityOp {
             $0.openEnvelope = .with {
-                $0.envelope = envelope
+                $0.rawEnvelope = rawEnv
                 $0.expectedPurpose = UInt32(PBPayloadKind.accountPrefs.rawValue)
                 $0.requestID = "project-prefs"
                 $0.seq = revision
@@ -473,9 +477,10 @@ private final class FakeRelayAuthority: @unchecked Sendable {
 
     func openCommand(_ envelope: PBEnvelope) async throws -> (header: PBHeader, command: PBCommand, plain: Data) {
         let header = try PBHeader(serializedBytes: envelope.header)
+        let rawEnv = try envelope.serializedData()
         let res = try await machineNode.securityOp {
             $0.openEnvelope = .with {
-                $0.envelope = envelope
+                $0.rawEnvelope = rawEnv
                 $0.expectedPurpose = UInt32(PBPayloadKind.command.rawValue)
                 $0.machineID = machineID
                 $0.sessionID = header.sessionID
@@ -519,7 +524,7 @@ private final class FakeRelayAuthority: @unchecked Sendable {
             }
         }
         guard res.error.isEmpty else { throw TestError("sealCommandResult: \(res.error)") }
-        return res.sealed.envelope
+        return try PBEnvelope(serializedBytes: res.sealed.rawEnvelope)
     }
 }
 

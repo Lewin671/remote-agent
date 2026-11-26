@@ -35,20 +35,11 @@ public interface TerminalHistoryEventOrBuilder extends
 
   /**
    * <pre>
-   * Populated only when kind == PAGE_RECEIVED.
+   * Serialized remoteagent.v1.TerminalHistoryPage bytes; populated only by tests/demo when kind == PAGE_RECEIVED.
    * </pre>
    *
-   * <code>.remoteagent.v1.TerminalHistoryPage page = 3 [json_name = "page"];</code>
-   * @return Whether the page field is set.
+   * <code>bytes raw_page = 4 [json_name = "rawPage"];</code>
+   * @return The rawPage.
    */
-  boolean hasPage();
-  /**
-   * <pre>
-   * Populated only when kind == PAGE_RECEIVED.
-   * </pre>
-   *
-   * <code>.remoteagent.v1.TerminalHistoryPage page = 3 [json_name = "page"];</code>
-   * @return The page.
-   */
-  io.github.lewin671.remoteagent.proto.TerminalHistoryPage getPage();
+  com.google.protobuf.ByteString getRawPage();
 }

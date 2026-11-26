@@ -3,7 +3,6 @@ syntax = "proto3";
 package remoteagent.core.v1;
 
 import "remoteagent/core/v1/text.proto";
-import "remoteagent/v1/remote.proto";
 
 enum TerminalHistoryEventKind {
   TERMINAL_HISTORY_EVENT_KIND_UNSPECIFIED = 0;
@@ -24,10 +23,12 @@ enum TerminalHistoryEventKind {
 }
 
 message TerminalHistoryEvent {
+  reserved 3;
+  reserved "page";
   string terminal_id = 1;
   TerminalHistoryEventKind kind = 2;
-  // Populated only when kind == PAGE_RECEIVED.
-  remoteagent.v1.TerminalHistoryPage page = 3;
+  // Serialized remoteagent.v1.TerminalHistoryPage bytes; populated only by tests/demo when kind == PAGE_RECEIVED.
+  bytes raw_page = 4;
 }
 
 enum TerminalHistoryPhase {

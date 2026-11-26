@@ -124,9 +124,9 @@ struct TerminalPane: View {
                         Task { await host.unregisterTerminalReopen(terminalID: id, token: token) }
                     }
                 },
-                sendHistory: { id, kind, page in
+                sendHistory: { id, kind, rawPage in
                     historyQueue.enqueue {
-                        await host.sendTerminalHistory(terminalID: id, kind: kind, page: page)
+                        await host.sendTerminalHistory(terminalID: id, kind: kind, rawPage: rawPage)
                     }
                 },
                 subscribeHistory: { id, onRequest, onUpdated in

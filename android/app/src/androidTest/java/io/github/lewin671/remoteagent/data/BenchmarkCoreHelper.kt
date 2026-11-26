@@ -375,7 +375,7 @@ internal class BenchmarkCoreSecurity(
         val effs = step(CoreEvent.newBuilder().setNowMs(nowMs).setSecurityOpRequest(req).build())
         val res = effs.last { it.hasSecurityOpResult() && it.securityOpResult.opId == id }.securityOpResult
         check(res.error.isEmpty() && res.hasSealed()) { "sealEvent failed: ${res.error}" }
-        return res.sealed.envelope
+        return Envelope.parseFrom(res.sealed.rawEnvelope)
     }
 
     fun openHistory(env: Envelope, seed: ByteArray): ByteArray {
@@ -385,7 +385,7 @@ internal class BenchmarkCoreSecurity(
                 .setOpId(id)
                 .setOpenEnvelope(
                     SecurityOpenEnvelopeOp.newBuilder()
-                        .setEnvelope(env)
+                        .setRawEnvelope(env.toByteString())
                         .setExpectedPurpose(PayloadKind.PAYLOAD_KIND_EVENT.number)
                         .setHistory(true)
                         .setOverrideSessionSeed(ByteString.copyFrom(seed)),

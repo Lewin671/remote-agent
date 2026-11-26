@@ -51,17 +51,6 @@ public interface SecurityOpResultEffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SecuritySealEnvelopeResult getSealed();
 
   /**
-   * <code>bytes session_seed = 6 [json_name = "sessionSeed"];</code>
-   * @return Whether the sessionSeed field is set.
-   */
-  boolean hasSessionSeed();
-  /**
-   * <code>bytes session_seed = 6 [json_name = "sessionSeed"];</code>
-   * @return The sessionSeed.
-   */
-  com.google.protobuf.ByteString getSessionSeed();
-
-  /**
    * <code>.remoteagent.core.v1.SecurityErrorCode structured_error_code = 7 [json_name = "structuredErrorCode"];</code>
    * @return The enum numeric value on the wire for structuredErrorCode.
    */

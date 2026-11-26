@@ -954,12 +954,16 @@ func TestEngineOverrideSessionSeedAndNotifyOpening(t *testing.T) {
 			opRes = r
 		}
 	}
-	if opRes == nil || opRes.Error != "" || opRes.GetSealed() == nil || opRes.GetSealed().Envelope == nil {
+	if opRes == nil || opRes.Error != "" || opRes.GetSealed() == nil || len(opRes.GetSealed().RawEnvelope) == 0 {
 		t.Fatalf("expected SealEnvelope with OverrideSessionSeed to succeed, got %+v", opRes)
+	}
+	var sealedEnv v1.Envelope
+	if err := sealedEnv.Unmarshal(opRes.GetSealed().RawEnvelope); err != nil {
+		t.Fatalf("unmarshal sealed raw envelope: %v", err)
 	}
 	var opened []OpenResult
 	eng.OpenBatch(nowMs+100, []OpenItem{{
-		Env:             opRes.GetSealed().Envelope,
+		Env:             &sealedEnv,
 		ExpectedPurpose: devicesec.TerminalInput,
 		MachineID:       machine.id,
 		SessionID:       "sess-term",
@@ -1011,10 +1015,14 @@ func TestEngineOverrideSessionSeedAndNotifyOpening(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	rawNEnv, err := nEnv.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
 	openEffs := eng.HandleOpenNotify(nowMs+100, &corev1.SecurityOpenNotifyEvent{
 		OpId:         88,
 		NotifyBlob:   ntfBlob,
-		Envelope:     nEnv,
+		RawEnvelope:  rawNEnv,
 		SessionId:    "s-n",
 		Tag:          "s-n/NOTIFY_KIND_TURN_ENDED",
 		ExpectedKind: v1.NotifyKind_NOTIFY_KIND_TURN_ENDED,

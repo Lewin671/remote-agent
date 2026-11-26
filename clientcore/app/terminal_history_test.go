@@ -80,16 +80,20 @@ func TestCoreTerminalHistoryLifecycleAndTimeout(t *testing.T) {
 	}
 
 	// 2. Receive first page -> cancels timer, parses SGR runs once, opens reader.
+	rawPage, err := (&v1.TerminalHistoryPage{
+		RequestId:  "th-1",
+		Lines:      []string{"\x1b[31mred\x1b[0m 中文"},
+		NextCursor: "cap:200",
+	}).Marshal()
+	if err != nil {
+		t.Fatalf("marshal page: %v", err)
+	}
 	b = c.Dispatch(&corev1.Event{
 		Event: &corev1.Event_TerminalHistory{
 			TerminalHistory: &corev1.TerminalHistoryEvent{
 				TerminalId: tid,
 				Kind:       corev1.TerminalHistoryEventKind_TERMINAL_HISTORY_EVENT_KIND_PAGE_RECEIVED,
-				Page: &v1.TerminalHistoryPage{
-					RequestId:  "th-1",
-					Lines:      []string{"\x1b[31mred\x1b[0m 中文"},
-					NextCursor: "cap:200",
-				},
+				RawPage:    rawPage,
 			},
 		},
 	})

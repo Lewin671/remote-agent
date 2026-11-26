@@ -613,7 +613,7 @@ suspend fun executeRelayRpcUnary(
  */
 fun openNotifyEnvelopeViaCore(
     notifyBlob: ByteArray,
-    envelope: Envelope,
+    rawEnvelope: ByteArray,
     nowMs: Long = System.currentTimeMillis(),
     sessionId: String = "",
     tag: String = "",
@@ -621,7 +621,7 @@ fun openNotifyEnvelopeViaCore(
     expectedKind: NotifyKind = NotifyKind.NOTIFY_KIND_UNSPECIFIED,
     eventKey: String = "",
 ): SecurityNotifyDisplay? {
-    if (notifyBlob.isEmpty()) return null
+    if (notifyBlob.isEmpty() || rawEnvelope.isEmpty()) return null
     val core = Corebind.new_()
     return try {
         val ev = CoreEvent.newBuilder()
@@ -630,7 +630,7 @@ fun openNotifyEnvelopeViaCore(
                 SecurityOpenNotifyEvent.newBuilder()
                     .setOpId(1L)
                     .setNotifyBlob(ByteString.copyFrom(notifyBlob))
-                    .setEnvelope(envelope)
+                    .setRawEnvelope(ByteString.copyFrom(rawEnvelope))
                     .setNowMs(nowMs)
                     .setSessionId(sessionId)
                     .setTag(tag)

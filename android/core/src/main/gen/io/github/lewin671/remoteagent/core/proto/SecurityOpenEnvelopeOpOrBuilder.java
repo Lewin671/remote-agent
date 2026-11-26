@@ -11,17 +11,6 @@ public interface SecurityOpenEnvelopeOpOrBuilder extends
     com.google.protobuf.MessageLiteOrBuilder {
 
   /**
-   * <code>.remoteagent.v1.Envelope envelope = 1 [json_name = "envelope"];</code>
-   * @return Whether the envelope field is set.
-   */
-  boolean hasEnvelope();
-  /**
-   * <code>.remoteagent.v1.Envelope envelope = 1 [json_name = "envelope"];</code>
-   * @return The envelope.
-   */
-  io.github.lewin671.remoteagent.proto.Envelope getEnvelope();
-
-  /**
    * <code>uint32 expected_purpose = 2 [json_name = "expectedPurpose"];</code>
    * @return The expectedPurpose.
    */
@@ -80,4 +69,10 @@ public interface SecurityOpenEnvelopeOpOrBuilder extends
    * @return The overrideSessionSeed.
    */
   com.google.protobuf.ByteString getOverrideSessionSeed();
+
+  /**
+   * <code>bytes raw_envelope = 9 [json_name = "rawEnvelope"];</code>
+   * @return The rawEnvelope.
+   */
+  com.google.protobuf.ByteString getRawEnvelope();
 }

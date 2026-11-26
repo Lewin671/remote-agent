@@ -25,7 +25,7 @@ import UIKit
                     $0.terminalHistory = .with {
                         $0.terminalID = terminalID
                         $0.kind = kind
-                        if let page { $0.page = page }
+                        if let page, let raw = try? page.serializedData() { $0.rawPage = raw }
                     }
                 })
             consume(batch)

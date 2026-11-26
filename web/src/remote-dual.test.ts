@@ -38,10 +38,10 @@ async function sealCmd(
       plaintext: commandBytes,
     }),
   });
-  if (sealed.result.case !== "sealed" || !sealed.result.value.envelope) {
+  if (sealed.result.case !== "sealed" || sealed.result.value.rawEnvelope.length === 0) {
     throw new Error("expected sealed command envelope");
   }
-  return sealed.result.value.envelope;
+  return fromBinary(EnvelopeSchema, sealed.result.value.rawEnvelope);
 }
 
 describe("Core-driven command attempt execution (Direct & Relay legs)", () => {

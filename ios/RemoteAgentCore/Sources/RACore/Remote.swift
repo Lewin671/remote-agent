@@ -125,7 +125,6 @@ public final actor Remote {
     public struct CoreHooks: Sendable {
         public var onRefresh: @Sendable () async -> Void
         public var onRefreshDevices: @Sendable () async -> Void
-        public var onSecurityOp: (@Sendable (PBSecurityOpRequestEvent) async -> PBSecurityOpResultEffect)?
         public var onCoreEvent: @Sendable (PBCoreEvent) async -> Void
         public var onRunMachineCommand: (@Sendable (String, String, PBCommand, Bool) async throws -> PBCommandResult)?
         public var onPingMachine: (@Sendable (String) async throws -> Void)?
@@ -133,7 +132,6 @@ public final actor Remote {
         public init(
             onRefresh: @escaping @Sendable () async -> Void,
             onRefreshDevices: @escaping @Sendable () async -> Void,
-            onSecurityOp: (@Sendable (PBSecurityOpRequestEvent) async -> PBSecurityOpResultEffect)? = nil,
             onCoreEvent: @escaping @Sendable (PBCoreEvent) async -> Void = { _ in },
             onRunMachineCommand: (@Sendable (String, String, PBCommand, Bool) async throws -> PBCommandResult)? = nil,
             onPingMachine: (@Sendable (String) async throws -> Void)? = nil,
@@ -141,7 +139,6 @@ public final actor Remote {
         ) {
             self.onRefresh = onRefresh
             self.onRefreshDevices = onRefreshDevices
-            self.onSecurityOp = onSecurityOp
             self.onCoreEvent = onCoreEvent
             self.onRunMachineCommand = onRunMachineCommand
             self.onPingMachine = onPingMachine

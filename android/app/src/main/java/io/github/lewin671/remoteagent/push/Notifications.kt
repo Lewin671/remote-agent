@@ -115,10 +115,10 @@ class RaMessagingService : FirebaseMessagingService() {
     ): SecurityNotifyDisplay? =
         try {
             val blob = RaApp.instance.vault.readNotifyBlob() ?: return null
-            val env = Envelope.parseFrom(Base64.decode(b64, Base64.DEFAULT))
+            val rawEnv = Base64.decode(b64, Base64.DEFAULT)
             openNotifyEnvelopeViaCore(
                 notifyBlob = blob,
-                envelope = env,
+                rawEnvelope = rawEnv,
                 sessionId = session,
                 tag = tag,
                 machineId = machine,

@@ -471,10 +471,14 @@ func TestDevicesecBuildersNotifyAndSeedSigningRoundTrip(t *testing.T) {
 	eng := NewEngine(&entropy.Pool{}, 0)
 	eng.Configure(&corev1.SecurityConfigEvent{Account: phone.id, DeviceId: phone.id, InlineCrypto: true})
 	_ = leaseRaw
+	rawNEnv, err := nEnv.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
 	openEffs := eng.HandleOpenNotify(int64(nowMs+20), &corev1.SecurityOpenNotifyEvent{
 		OpId:         9,
 		NotifyBlob:   ntfRaw,
-		Envelope:     nEnv,
+		RawEnvelope:  rawNEnv,
 		SessionId:    "sess-n1",
 		Tag:          "sess-n1/NOTIFY_KIND_TURN_ENDED",
 		ExpectedKind: v1.NotifyKind_NOTIFY_KIND_TURN_ENDED,

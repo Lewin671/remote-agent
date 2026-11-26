@@ -73,7 +73,7 @@ final class RemoteTerminal {
         var release: @MainActor (UUID) -> Void
         var reportStream: @MainActor (String, PBCoreTerminalStreamEventKind, Bool) -> Void = { _, _, _ in }
         var subscribeReopen: @MainActor (String, @escaping @MainActor @Sendable () -> Void) -> () -> Void = { _, _ in {} }
-        var sendHistory: @MainActor (String, PBCoreTerminalHistoryEventKind, PBTerminalHistoryPage?) -> Void = { _, _, _ in }
+        var sendHistory: @MainActor (String, PBCoreTerminalHistoryEventKind, Data?) -> Void = { _, _, _ in }
         var subscribeHistory: @MainActor (
             String,
             @escaping @MainActor @Sendable (PBCoreTerminalHistorySendRequestEffect) -> Void,
@@ -475,15 +475,16 @@ final class RemoteTerminal {
             if case .terminalHistorySendRequest(let r)? = eff.effect { return r.requestID }
             return nil
         }.first ?? "sample"
+        let samplePageBytes = (try? PBTerminalHistoryPage.with {
+            $0.requestID = reqID
+            $0.lines = lines
+        }.serializedData()) ?? Data()
         let pageBatch = try? core.dispatch(
             .with {
                 $0.terminalHistory = .with {
                     $0.terminalID = sampleID
                     $0.kind = .pageReceived
-                    $0.page = .with {
-                        $0.requestID = reqID
-                        $0.lines = lines
-                    }
+                    $0.rawPage = samplePageBytes
                 }
             })
         for eff in pageBatch?.effects ?? [] {

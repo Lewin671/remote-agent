@@ -65,7 +65,7 @@ class TerminalHistoryTest {
         host.sendTerminalHistory(
             "term-test-1",
             TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_PAGE_RECEIVED,
-            TerminalHistoryPage.newBuilder().setRequestId(requests[0].requestId).build(),
+            TerminalHistoryPage.newBuilder().setRequestId(requests[0].requestId).build().toByteArray(),
         )
         runCurrent()
         assertFalse(state.get().visible)
@@ -92,7 +92,8 @@ class TerminalHistoryTest {
                 .addLines("a")
                 .addLines("new \u001b[31m中文\u001b[0m")
                 .setNextCursor("capture:200")
-                .build(),
+                .build()
+                .toByteArray(),
         )
         runCurrent()
 
@@ -117,7 +118,8 @@ class TerminalHistoryTest {
             TerminalHistoryPage.newBuilder()
                 .setRequestId(secondReq.requestId)
                 .addLines("1234567890")
-                .build(),
+                .build()
+                .toByteArray(),
         )
         runCurrent()
 
@@ -148,7 +150,8 @@ class TerminalHistoryTest {
                 .setRequestId(requests.last().requestId)
                 .setError("history expired; reopen history")
                 .setErrorCode(TerminalHistoryErrorCode.TERMINAL_HISTORY_ERROR_CODE_EXPIRED)
-                .build(),
+                .build()
+                .toByteArray(),
         )
         runCurrent()
         assertEquals(TerminalHistoryPhase.TERMINAL_HISTORY_PHASE_OPENING_FAILED, state.get().phase)
@@ -166,7 +169,8 @@ class TerminalHistoryTest {
                 .setRequestId(requests.last().requestId)
                 .addLines("here")
                 .setNextCursor("capture:5")
-                .build(),
+                .build()
+                .toByteArray(),
         )
         runCurrent()
         assertTrue(state.get().entered)
@@ -182,7 +186,7 @@ class TerminalHistoryTest {
         host.sendTerminalHistory(
             "term-test-1",
             TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_PAGE_RECEIVED,
-            TerminalHistoryPage.newBuilder().setRequestId(timedOutId).addLines("late").build(),
+            TerminalHistoryPage.newBuilder().setRequestId(timedOutId).addLines("late").build().toByteArray(),
         )
         runCurrent()
         assertEquals(1, state.get().items.size)
@@ -198,7 +202,8 @@ class TerminalHistoryTest {
                 .setRequestId(requests.last().requestId)
                 .setError("history expired; reopen history")
                 .setErrorCode(TerminalHistoryErrorCode.TERMINAL_HISTORY_ERROR_CODE_EXPIRED)
-                .build(),
+                .build()
+                .toByteArray(),
         )
         runCurrent()
         assertEquals(TerminalHistoryStatus.TERMINAL_HISTORY_STATUS_EXPIRED, state.get().status)
@@ -220,7 +225,7 @@ class TerminalHistoryTest {
         host.sendTerminalHistory(
             "term-test-1",
             TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_PAGE_RECEIVED,
-            TerminalHistoryPage.newBuilder().setRequestId(requests.last().requestId).addLines("line").build(),
+            TerminalHistoryPage.newBuilder().setRequestId(requests.last().requestId).addLines("line").build().toByteArray(),
         )
         runCurrent()
         assertTrue(state.get().visible)

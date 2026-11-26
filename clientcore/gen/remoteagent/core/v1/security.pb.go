@@ -798,7 +798,6 @@ func extraUnmarshal_SecurityCryptoBatchDoneEvent(base unsafe.Pointer, num litewi
 
 type SecurityOpenEnvelopeOp struct {
 	_                   [0]func()
-	Envelope            *v1.Envelope
 	ExpectedPurpose     uint32
 	MachineId           string
 	SessionId           string
@@ -806,14 +805,9 @@ type SecurityOpenEnvelopeOp struct {
 	Seq                 uint64
 	History             bool
 	OverrideSessionSeed []byte
+	RawEnvelope         []byte
 }
 
-func (m *SecurityOpenEnvelopeOp) GetEnvelope() *v1.Envelope {
-	if m != nil {
-		return m.Envelope
-	}
-	return nil
-}
 func (m *SecurityOpenEnvelopeOp) GetExpectedPurpose() uint32 {
 	if m != nil {
 		return m.ExpectedPurpose
@@ -856,11 +850,16 @@ func (m *SecurityOpenEnvelopeOp) GetOverrideSessionSeed() []byte {
 	}
 	return nil
 }
+func (m *SecurityOpenEnvelopeOp) GetRawEnvelope() []byte {
+	if m != nil {
+		return m.RawEnvelope
+	}
+	return nil
+}
 
 var LitewireDesc_SecurityOpenEnvelopeOp = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityOpenEnvelopeOp{}) },
 	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(SecurityOpenEnvelopeOp{}.Envelope), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_Envelope},
 		{Num: 2, Offset: unsafe.Offsetof(SecurityOpenEnvelopeOp{}.ExpectedPurpose), Kind: litewire.KindUint32},
 		{Num: 3, Offset: unsafe.Offsetof(SecurityOpenEnvelopeOp{}.MachineId), Kind: litewire.KindString},
 		{Num: 4, Offset: unsafe.Offsetof(SecurityOpenEnvelopeOp{}.SessionId), Kind: litewire.KindString},
@@ -868,6 +867,7 @@ var LitewireDesc_SecurityOpenEnvelopeOp = litewire.MessageDesc{
 		{Num: 6, Offset: unsafe.Offsetof(SecurityOpenEnvelopeOp{}.Seq), Kind: litewire.KindUint64},
 		{Num: 7, Offset: unsafe.Offsetof(SecurityOpenEnvelopeOp{}.History), Kind: litewire.KindBool},
 		{Num: 8, Offset: unsafe.Offsetof(SecurityOpenEnvelopeOp{}.OverrideSessionSeed), Kind: litewire.KindBytes},
+		{Num: 9, Offset: unsafe.Offsetof(SecurityOpenEnvelopeOp{}.RawEnvelope), Kind: litewire.KindBytes},
 	},
 }
 
@@ -962,29 +962,6 @@ func (m *SecuritySealEnvelopeOp) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecuritySealEnvelopeOp)
 }
 
-type SecurityGetSessionSeedOp struct {
-	_         [0]func()
-	SessionId string
-}
-
-func (m *SecurityGetSessionSeedOp) GetSessionId() string {
-	if m != nil {
-		return m.SessionId
-	}
-	return ""
-}
-
-var LitewireDesc_SecurityGetSessionSeedOp = litewire.MessageDesc{
-	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityGetSessionSeedOp{}) },
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(SecurityGetSessionSeedOp{}.SessionId), Kind: litewire.KindString},
-	},
-}
-
-func (m *SecurityGetSessionSeedOp) Unmarshal(b []byte) error {
-	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityGetSessionSeedOp)
-}
-
 type SecurityOpRequestEvent struct {
 	_    [0]func()
 	OpId uint64
@@ -1005,13 +982,6 @@ type SecurityOpRequestEvent_SealEnvelope struct {
 }
 
 func (*SecurityOpRequestEvent_SealEnvelope) isSecurityOpRequestEvent_Op() {}
-
-type SecurityOpRequestEvent_GetSessionSeed struct {
-	_              [0]func()
-	GetSessionSeed *SecurityGetSessionSeedOp
-}
-
-func (*SecurityOpRequestEvent_GetSessionSeed) isSecurityOpRequestEvent_Op() {}
 
 func (m *SecurityOpRequestEvent) GetOp() isSecurityOpRequestEvent_Op {
 	if m != nil {
@@ -1034,12 +1004,6 @@ func (m *SecurityOpRequestEvent) GetOpenEnvelope() *SecurityOpenEnvelopeOp {
 func (m *SecurityOpRequestEvent) GetSealEnvelope() *SecuritySealEnvelopeOp {
 	if x, ok := m.GetOp().(*SecurityOpRequestEvent_SealEnvelope); ok && x != nil {
 		return x.SealEnvelope
-	}
-	return nil
-}
-func (m *SecurityOpRequestEvent) GetGetSessionSeed() *SecurityGetSessionSeedOp {
-	if x, ok := m.GetOp().(*SecurityOpRequestEvent_GetSessionSeed); ok && x != nil {
-		return x.GetSessionSeed
 	}
 	return nil
 }
@@ -1075,13 +1039,6 @@ func extraUnmarshal_SecurityOpRequestEvent(base unsafe.Pointer, num litewire.Num
 				m.Op = w
 			}
 			sub = w.SealEnvelope
-		case 4:
-			w, _ := m.Op.(*SecurityOpRequestEvent_GetSessionSeed)
-			if w == nil || w.GetSessionSeed == nil {
-				w = &SecurityOpRequestEvent_GetSessionSeed{GetSessionSeed: &SecurityGetSessionSeedOp{}}
-				m.Op = w
-			}
-			sub = w.GetSessionSeed
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -1202,17 +1159,11 @@ func (m *SecurityOpenEnvelopeResult) AppendMarshal(b []byte) []byte {
 
 type SecuritySealEnvelopeResult struct {
 	_              [0]func()
-	Envelope       *v1.Envelope
 	RequestKeyHash []byte
 	PayloadHash    []byte
+	RawEnvelope    []byte
 }
 
-func (m *SecuritySealEnvelopeResult) GetEnvelope() *v1.Envelope {
-	if m != nil {
-		return m.Envelope
-	}
-	return nil
-}
 func (m *SecuritySealEnvelopeResult) GetRequestKeyHash() []byte {
 	if m != nil {
 		return m.RequestKeyHash
@@ -1225,12 +1176,18 @@ func (m *SecuritySealEnvelopeResult) GetPayloadHash() []byte {
 	}
 	return nil
 }
+func (m *SecuritySealEnvelopeResult) GetRawEnvelope() []byte {
+	if m != nil {
+		return m.RawEnvelope
+	}
+	return nil
+}
 
 var LitewireDesc_SecuritySealEnvelopeResult = litewire.MessageDesc{
 	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(SecuritySealEnvelopeResult{}.Envelope), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_Envelope},
 		{Num: 2, Offset: unsafe.Offsetof(SecuritySealEnvelopeResult{}.RequestKeyHash), Kind: litewire.KindBytes},
 		{Num: 3, Offset: unsafe.Offsetof(SecuritySealEnvelopeResult{}.PayloadHash), Kind: litewire.KindBytes},
+		{Num: 4, Offset: unsafe.Offsetof(SecuritySealEnvelopeResult{}.RawEnvelope), Kind: litewire.KindBytes},
 	},
 }
 
@@ -1265,13 +1222,6 @@ type SecurityOpResultEffect_Sealed struct {
 
 func (*SecurityOpResultEffect_Sealed) isSecurityOpResultEffect_Result() {}
 
-type SecurityOpResultEffect_SessionSeed struct {
-	_           [0]func()
-	SessionSeed []byte
-}
-
-func (*SecurityOpResultEffect_SessionSeed) isSecurityOpResultEffect_Result() {}
-
 func (m *SecurityOpResultEffect) GetResult() isSecurityOpResultEffect_Result {
 	if m != nil {
 		return m.Result
@@ -1299,12 +1249,6 @@ func (m *SecurityOpResultEffect) GetOpened() *SecurityOpenEnvelopeResult {
 func (m *SecurityOpResultEffect) GetSealed() *SecuritySealEnvelopeResult {
 	if x, ok := m.GetResult().(*SecurityOpResultEffect_Sealed); ok && x != nil {
 		return x.Sealed
-	}
-	return nil
-}
-func (m *SecurityOpResultEffect) GetSessionSeed() []byte {
-	if x, ok := m.GetResult().(*SecurityOpResultEffect_SessionSeed); ok && x != nil {
-		return x.SessionSeed
 	}
 	return nil
 }
@@ -1344,10 +1288,6 @@ func extraMarshal_SecurityOpResultEffect(base unsafe.Pointer, b []byte, idx lite
 	case *SecurityOpResultEffect_Sealed:
 		if x != nil && x.Sealed != nil {
 			onum, omsg = 5, x.Sealed
-		}
-	case *SecurityOpResultEffect_SessionSeed:
-		if x != nil {
-			b = litewire.AppendBytesAlways(b, 6, x.SessionSeed)
 		}
 	}
 	if omsg != nil {
@@ -5010,7 +4950,6 @@ type SecurityOpenNotifyEvent struct {
 	OpId         uint64
 	NotifyBlob   []byte
 	RecordBlob   []byte
-	Envelope     *v1.Envelope
 	NowMs        int64
 	SessionId    string
 	Tag          string
@@ -5018,6 +4957,7 @@ type SecurityOpenNotifyEvent struct {
 	ExpectedKind v1.NotifyKind
 	EventKey     string
 	FallbackBody *string
+	RawEnvelope  []byte
 }
 
 func (m *SecurityOpenNotifyEvent) GetOpId() uint64 {
@@ -5035,12 +4975,6 @@ func (m *SecurityOpenNotifyEvent) GetNotifyBlob() []byte {
 func (m *SecurityOpenNotifyEvent) GetRecordBlob() []byte {
 	if m != nil {
 		return m.RecordBlob
-	}
-	return nil
-}
-func (m *SecurityOpenNotifyEvent) GetEnvelope() *v1.Envelope {
-	if m != nil {
-		return m.Envelope
 	}
 	return nil
 }
@@ -5086,6 +5020,12 @@ func (m *SecurityOpenNotifyEvent) GetFallbackBody() string {
 	}
 	return ""
 }
+func (m *SecurityOpenNotifyEvent) GetRawEnvelope() []byte {
+	if m != nil {
+		return m.RawEnvelope
+	}
+	return nil
+}
 
 var LitewireDesc_SecurityOpenNotifyEvent = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityOpenNotifyEvent{}) },
@@ -5093,7 +5033,6 @@ var LitewireDesc_SecurityOpenNotifyEvent = litewire.MessageDesc{
 		{Num: 1, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.OpId), Kind: litewire.KindUint64},
 		{Num: 2, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.NotifyBlob), Kind: litewire.KindBytes},
 		{Num: 3, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.RecordBlob), Kind: litewire.KindBytes},
-		{Num: 4, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.Envelope), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_Envelope},
 		{Num: 5, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.NowMs), Kind: litewire.KindInt64},
 		{Num: 6, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.SessionId), Kind: litewire.KindString},
 		{Num: 7, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.Tag), Kind: litewire.KindString},
@@ -5101,6 +5040,7 @@ var LitewireDesc_SecurityOpenNotifyEvent = litewire.MessageDesc{
 		{Num: 9, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.ExpectedKind), Kind: litewire.KindInt32},
 		{Num: 10, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.EventKey), Kind: litewire.KindString},
 		{Num: 11, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.FallbackBody), Kind: litewire.KindString, Flags: litewire.FlagOptional},
+		{Num: 12, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.RawEnvelope), Kind: litewire.KindBytes},
 	},
 }
 

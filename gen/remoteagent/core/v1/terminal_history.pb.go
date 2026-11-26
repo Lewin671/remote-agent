@@ -7,7 +7,6 @@
 package corev1
 
 import (
-	v1 "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -322,8 +321,8 @@ type TerminalHistoryEvent struct {
 	state      protoimpl.MessageState   `protogen:"open.v1"`
 	TerminalId string                   `protobuf:"bytes,1,opt,name=terminal_id,json=terminalId,proto3" json:"terminal_id,omitempty"`
 	Kind       TerminalHistoryEventKind `protobuf:"varint,2,opt,name=kind,proto3,enum=remoteagent.core.v1.TerminalHistoryEventKind" json:"kind,omitempty"`
-	// Populated only when kind == PAGE_RECEIVED.
-	Page          *v1.TerminalHistoryPage `protobuf:"bytes,3,opt,name=page,proto3" json:"page,omitempty"`
+	// Serialized remoteagent.v1.TerminalHistoryPage bytes; populated only by tests/demo when kind == PAGE_RECEIVED.
+	RawPage       []byte `protobuf:"bytes,4,opt,name=raw_page,json=rawPage,proto3" json:"raw_page,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -372,9 +371,9 @@ func (x *TerminalHistoryEvent) GetKind() TerminalHistoryEventKind {
 	return TerminalHistoryEventKind_TERMINAL_HISTORY_EVENT_KIND_UNSPECIFIED
 }
 
-func (x *TerminalHistoryEvent) GetPage() *v1.TerminalHistoryPage {
+func (x *TerminalHistoryEvent) GetRawPage() []byte {
 	if x != nil {
-		return x.Page
+		return x.RawPage
 	}
 	return nil
 }
@@ -802,12 +801,12 @@ var File_remoteagent_core_v1_terminal_history_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_terminal_history_proto_rawDesc = "" +
 	"\n" +
-	"*remoteagent/core/v1/terminal_history.proto\x12\x13remoteagent.core.v1\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1bremoteagent/v1/remote.proto\"\xb3\x01\n" +
+	"*remoteagent/core/v1/terminal_history.proto\x12\x13remoteagent.core.v1\x1a\x1eremoteagent/core/v1/text.proto\"\xa1\x01\n" +
 	"\x14TerminalHistoryEvent\x12\x1f\n" +
 	"\vterminal_id\x18\x01 \x01(\tR\n" +
 	"terminalId\x12A\n" +
-	"\x04kind\x18\x02 \x01(\x0e2-.remoteagent.core.v1.TerminalHistoryEventKindR\x04kind\x127\n" +
-	"\x04page\x18\x03 \x01(\v2#.remoteagent.v1.TerminalHistoryPageR\x04page\"\x99\x03\n" +
+	"\x04kind\x18\x02 \x01(\x0e2-.remoteagent.core.v1.TerminalHistoryEventKindR\x04kind\x12\x19\n" +
+	"\braw_page\x18\x04 \x01(\fR\arawPageJ\x04\b\x03\x10\x04R\x04page\"\x99\x03\n" +
 	"\x12TerminalHistoryRun\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12B\n" +
 	"\afg_kind\x18\x02 \x01(\x0e2).remoteagent.core.v1.TerminalSgrColorKindR\x06fgKind\x12\x19\n" +
@@ -911,26 +910,24 @@ var file_remoteagent_core_v1_terminal_history_proto_goTypes = []any{
 	(*TerminalHistoryParsedPage)(nil),        // 8: remoteagent.core.v1.TerminalHistoryParsedPage
 	(*TerminalHistorySendRequestEffect)(nil), // 9: remoteagent.core.v1.TerminalHistorySendRequestEffect
 	(*TerminalHistoryUpdatedEffect)(nil),     // 10: remoteagent.core.v1.TerminalHistoryUpdatedEffect
-	(*v1.TerminalHistoryPage)(nil),           // 11: remoteagent.v1.TerminalHistoryPage
-	(*Text)(nil),                             // 12: remoteagent.core.v1.Text
+	(*Text)(nil),                             // 11: remoteagent.core.v1.Text
 }
 var file_remoteagent_core_v1_terminal_history_proto_depIdxs = []int32{
 	0,  // 0: remoteagent.core.v1.TerminalHistoryEvent.kind:type_name -> remoteagent.core.v1.TerminalHistoryEventKind
-	11, // 1: remoteagent.core.v1.TerminalHistoryEvent.page:type_name -> remoteagent.v1.TerminalHistoryPage
-	3,  // 2: remoteagent.core.v1.TerminalHistoryRun.fg_kind:type_name -> remoteagent.core.v1.TerminalSgrColorKind
-	3,  // 3: remoteagent.core.v1.TerminalHistoryRun.bg_kind:type_name -> remoteagent.core.v1.TerminalSgrColorKind
-	4,  // 4: remoteagent.core.v1.TerminalHistoryRun.width:type_name -> remoteagent.core.v1.TerminalRunWidth
-	6,  // 5: remoteagent.core.v1.TerminalHistoryLine.runs:type_name -> remoteagent.core.v1.TerminalHistoryRun
-	7,  // 6: remoteagent.core.v1.TerminalHistoryParsedPage.lines:type_name -> remoteagent.core.v1.TerminalHistoryLine
-	1,  // 7: remoteagent.core.v1.TerminalHistoryUpdatedEffect.phase:type_name -> remoteagent.core.v1.TerminalHistoryPhase
-	2,  // 8: remoteagent.core.v1.TerminalHistoryUpdatedEffect.status:type_name -> remoteagent.core.v1.TerminalHistoryStatus
-	12, // 9: remoteagent.core.v1.TerminalHistoryUpdatedEffect.status_text:type_name -> remoteagent.core.v1.Text
-	8,  // 10: remoteagent.core.v1.TerminalHistoryUpdatedEffect.added_page:type_name -> remoteagent.core.v1.TerminalHistoryParsedPage
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	3,  // 1: remoteagent.core.v1.TerminalHistoryRun.fg_kind:type_name -> remoteagent.core.v1.TerminalSgrColorKind
+	3,  // 2: remoteagent.core.v1.TerminalHistoryRun.bg_kind:type_name -> remoteagent.core.v1.TerminalSgrColorKind
+	4,  // 3: remoteagent.core.v1.TerminalHistoryRun.width:type_name -> remoteagent.core.v1.TerminalRunWidth
+	6,  // 4: remoteagent.core.v1.TerminalHistoryLine.runs:type_name -> remoteagent.core.v1.TerminalHistoryRun
+	7,  // 5: remoteagent.core.v1.TerminalHistoryParsedPage.lines:type_name -> remoteagent.core.v1.TerminalHistoryLine
+	1,  // 6: remoteagent.core.v1.TerminalHistoryUpdatedEffect.phase:type_name -> remoteagent.core.v1.TerminalHistoryPhase
+	2,  // 7: remoteagent.core.v1.TerminalHistoryUpdatedEffect.status:type_name -> remoteagent.core.v1.TerminalHistoryStatus
+	11, // 8: remoteagent.core.v1.TerminalHistoryUpdatedEffect.status_text:type_name -> remoteagent.core.v1.Text
+	8,  // 9: remoteagent.core.v1.TerminalHistoryUpdatedEffect.added_page:type_name -> remoteagent.core.v1.TerminalHistoryParsedPage
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_terminal_history_proto_init() }

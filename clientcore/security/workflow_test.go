@@ -1123,12 +1123,16 @@ func TestWorkflowLeaseRenewalClockSkewLegacyAndNotify(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	rawEnv, err := pbEnv.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Path A succeeds with validated display
 	h.pump(h.eng.HandleOpenNotify(h.nowMs, &corev1.SecurityOpenNotifyEvent{
 		OpId:         9001,
 		NotifyBlob:   ntfEntry.data,
-		Envelope:     pbEnv,
+		RawEnvelope:  rawEnv,
 		SessionId:    "sess-1",
 		Tag:          "sess-1/NOTIFY_KIND_TURN_ENDED",
 		ExpectedKind: v1.NotifyKind_NOTIFY_KIND_TURN_ENDED,
@@ -1141,7 +1145,7 @@ func TestWorkflowLeaseRenewalClockSkewLegacyAndNotify(t *testing.T) {
 	h.pump(h.eng.HandleOpenNotify(h.nowMs, &corev1.SecurityOpenNotifyEvent{
 		OpId:         9002,
 		RecordBlob:   recEntry.data,
-		Envelope:     pbEnv,
+		RawEnvelope:  rawEnv,
 		NowMs:        h.nowMs,
 		SessionId:    "sess-1",
 		Tag:          "sess-1/NOTIFY_KIND_TURN_ENDED",
@@ -1153,9 +1157,9 @@ func TestWorkflowLeaseRenewalClockSkewLegacyAndNotify(t *testing.T) {
 
 	// Omitting ExpectedKind fails closed without leaking plaintext title/body.
 	h.pump(h.eng.HandleOpenNotify(h.nowMs, &corev1.SecurityOpenNotifyEvent{
-		OpId:       9006,
-		NotifyBlob: ntfEntry.data,
-		Envelope:   pbEnv,
+		OpId:        9006,
+		NotifyBlob:  ntfEntry.data,
+		RawEnvelope: rawEnv,
 	}))
 	if res, out := h.notifyOpened[9006], h.notifyOutcomes[9006]; res == nil || res.Error != "" || out.Valid || out.Title != "" || out.Text != "" {
 		t.Fatalf("expected UNSPECIFIED ExpectedKind to fail closed without title/body, got eff=%+v outcome=%+v", res, out)
@@ -1171,16 +1175,16 @@ func TestWorkflowLeaseRenewalClockSkewLegacyAndNotify(t *testing.T) {
 		t.Fatalf("expected removing unfinished pairing candidate to abandon its pending delivery op, got %+v", remMach)
 	}
 	h.pump(h.eng.HandleOpenNotify(h.nowMs, &corev1.SecurityOpenNotifyEvent{
-		OpId:       9003,
-		NotifyBlob: ntfEntry.data, // bound to older head before RemoveDevice
-		Envelope:   pbEnv,
+		OpId:        9003,
+		NotifyBlob:  ntfEntry.data, // bound to older head before RemoveDevice
+		RawEnvelope: rawEnv,
 	}))
 	// ntfEntry matches pbEnv's h.State (older head), whereas current NotifyBlob is updated to new head:
 	curNtf := h.store[mockStoreKey{corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_NOTIFY_RECORD, "notify"}]
 	h.pump(h.eng.HandleOpenNotify(h.nowMs, &corev1.SecurityOpenNotifyEvent{
-		OpId:       9005,
-		NotifyBlob: curNtf.data,
-		Envelope:   pbEnv,
+		OpId:        9005,
+		NotifyBlob:  curNtf.data,
+		RawEnvelope: rawEnv,
 	}))
 	if res := h.notifyOpened[9005]; res == nil || res.Error == "" {
 		t.Fatalf("expected stale h.State != headHash to reject Path A, got %+v", res)
@@ -1206,11 +1210,15 @@ func TestWorkflowLeaseRenewalClockSkewLegacyAndNotify(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	rawEnvAfter, err := pbEnvAfter.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
 	h.pump(h.eng.HandleOpenNotify(h.nowMs, &corev1.SecurityOpenNotifyEvent{
-		OpId:       9004,
-		RecordBlob: recAfterRem.data,
-		Envelope:   pbEnvAfter,
-		NowMs:      h.nowMs,
+		OpId:        9004,
+		RecordBlob:  recAfterRem.data,
+		RawEnvelope: rawEnvAfter,
+		NowMs:       h.nowMs,
 	}))
 	if res := h.notifyOpened[9004]; res == nil || res.Error == "" {
 		t.Fatalf("expected post-removal machine notification to be rejected by Path B, got %+v", res)
@@ -1950,7 +1958,7 @@ func TestStructuredSecurityErrorCodeAndNotifyDisplayValidation(t *testing.T) {
 	eng.finishNotifyPlain(
 		&corev1.SecurityOpenNotifyEvent{
 			OpId:         42,
-			Envelope:     &v1.Envelope{Header: []byte("hdr")},
+			RawEnvelope:  (&v1.Envelope{Header: []byte("hdr")}).AppendMarshal(nil),
 			SessionId:    "s1",
 			Tag:          "s1/scheduled:7/NOTIFY_KIND_SCHEDULED",
 			EventKey:     "scheduled:999", // mismatch -> invalid

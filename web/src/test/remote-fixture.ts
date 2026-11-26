@@ -554,7 +554,7 @@ export class SyntheticRemote extends Remote {
     await getCoreHost(this).securityOp({
       case: "openEnvelope",
       value: create(SecurityOpenEnvelopeOpSchema, {
-        envelope: keyEnv,
+        rawEnvelope: toBinary(EnvelopeSchema, keyEnv) as Uint8Array<ArrayBuffer>,
         expectedPurpose: Purpose.SessionKey,
         machineId: this.machine,
         sessionId,

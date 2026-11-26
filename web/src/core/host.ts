@@ -434,7 +434,6 @@ import {
   type TerminalHistorySendRequestEffect,
   type TerminalHistoryUpdatedEffect,
 } from "../gen/remoteagent/core/v1/terminal_history_pb";
-import type { TerminalHistoryPage } from "../gen/remoteagent/v1/remote_pb";
 import type { Remote } from "../remote";
 import type { WasmAppCore } from "./projection";
 import { getCore } from "./runtime";
@@ -2903,11 +2902,11 @@ export class CoreHost {
     };
   }
 
-  sendTerminalHistory(terminalId: string, kind: TerminalHistoryEventKind, page?: TerminalHistoryPage) {
+  sendTerminalHistory(terminalId: string, kind: TerminalHistoryEventKind, rawPage?: Uint8Array<ArrayBuffer>) {
     if (terminalId && !this.closed) {
       this.emit({
         case: "terminalHistory",
-        value: create(TerminalHistoryEventSchema, { terminalId, kind, page }),
+        value: create(TerminalHistoryEventSchema, { terminalId, kind, rawPage }),
       });
     }
   }

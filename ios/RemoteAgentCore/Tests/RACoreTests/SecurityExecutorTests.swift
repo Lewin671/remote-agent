@@ -366,7 +366,7 @@ extension ServerTests {
                     }
                 }
                 #expect(sealed.error.isEmpty)
-                let envData = try sealed.sealed.envelope.serializedData()
+                let envData = sealed.sealed.rawEnvelope
                 let expectedTag = "\(daemon.id)/NOTIFY_KIND_MACHINE_DISK"
                 let noticeEn = try receiveMachineDiskNotification(
                     envelope: envData,

@@ -249,7 +249,6 @@ class CoreHost(
 
     private val nextMachineCmdOpId = AtomicLong(1L)
     private val nextPingOpId = AtomicLong(1L)
-    private val nextSecurityOpSeq = AtomicLong(1L)
     private val nextPushRpcOpId = AtomicLong(1L)
     private val nextImageFetchOpId = AtomicLong(1L)
     private val nextOnboardingEditSeq = AtomicLong(0L)
@@ -258,7 +257,6 @@ class CoreHost(
     val settledOnboardingEditSeq: StateFlow<Long> = _settledOnboardingEditSeq.asStateFlow()
     private val pendingMachineCmds = ConcurrentHashMap<Long, CompletableDeferred<CommandResult>>()
     private val pendingPings = ConcurrentHashMap<Long, CompletableDeferred<Unit>>()
-    private val pendingSecurityOps = ConcurrentHashMap<Long, CompletableDeferred<SecurityOpResultEffect>>()
     private val pendingPushRpcs = ConcurrentHashMap<Long, CompletableDeferred<PushRpcResultEffect>>()
     private val pendingImageFetches = ConcurrentHashMap<Long, CompletableDeferred<SessionImageLoadedEffect>>()
     private val retryNowWaiters = ConcurrentHashMap<String, MutableList<CompletableDeferred<Boolean>>>()
@@ -723,10 +721,6 @@ class CoreHost(
                 onSecurityStatusChanged(st)
             }
             Effect.EffectCase.SECURITY_NOTIFY_OPENED -> {}
-            Effect.EffectCase.SECURITY_OP_RESULT -> {
-                val res = effect.securityOpResult
-                pendingSecurityOps.remove(res.opId)?.complete(res)
-            }
             Effect.EffectCase.DIRECT_SIGNAL_SEND -> onDirectSignalSend(effect.directSignalSend)
             Effect.EffectCase.DIRECT_PC_CREATE -> onDirectPcCreate(effect.directPcCreate)
             Effect.EffectCase.DIRECT_PC_DESCRIBE -> onDirectPcDescribe(effect.directPcDescribe)
@@ -2504,25 +2498,6 @@ class CoreHost(
     fun externalLogout() = send { setExternalLogout(ExternalLogoutEvent.getDefaultInstance()) }
     fun exitConfirm(confirm: Boolean) = send { setExitConfirm(ExitConfirmAction.newBuilder().setConfirm(confirm)) }
 
-    suspend fun securityOp(configure: SecurityOpRequestEvent.Builder.() -> Unit): SecurityOpResultEffect {
-        if (closed.get()) throw IllegalStateException("core closed")
-        val opId = nextSecurityOpSeq.getAndIncrement()
-        val deferred = CompletableDeferred<SecurityOpResultEffect>()
-        pendingSecurityOps[opId] = deferred
-        val req = SecurityOpRequestEvent.newBuilder().setOpId(opId).apply(configure).build()
-        dispatch(CoreEvent.newBuilder().setSecurityOpRequest(req).build())
-        return try {
-            if (closed.get() && !deferred.isCompleted) {
-                pendingSecurityOps.remove(opId, deferred)
-                throw IllegalStateException("core closed")
-            }
-            deferred.await()
-        } catch (t: Throwable) {
-            pendingSecurityOps.remove(opId, deferred)
-            throw t
-        }
-    }
-
     fun dispatchDirectSignal(raw: ByteArray) {
         if (raw.isEmpty() || closed.get()) return
         send { setDirectSignalReceived(DirectSignalReceivedEvent.newBuilder().setRaw(ByteString.copyFrom(raw))) }
@@ -2628,7 +2603,7 @@ class CoreHost(
     fun sendTerminalHistory(
         terminalId: String,
         kind: TerminalHistoryEventKind,
-        page: io.github.lewin671.remoteagent.proto.TerminalHistoryPage? = null,
+        rawPage: ByteArray? = null,
         onProcessed: (() -> Unit)? = null,
     ) {
         if (terminalId.isEmpty() || closed.get()) {
@@ -2638,7 +2613,7 @@ class CoreHost(
         val b = TerminalHistoryEvent.newBuilder()
             .setTerminalId(terminalId)
             .setKind(kind)
-        if (page != null) b.setPage(page)
+        if (rawPage != null && rawPage.isNotEmpty()) b.setRawPage(ByteString.copyFrom(rawPage))
         dispatch(CoreEvent.newBuilder().setTerminalHistory(b).build(), onProcessed)
     }
 
@@ -3049,11 +3024,6 @@ class CoreHost(
             for ((k, w) in pendingMachineCmds.entries.toList()) {
                 if (pendingMachineCmds.remove(k, w)) {
                     w.completeExceptionally(CommandException("canceled", UiMessages.terminalAndroidClosed().messageText()))
-                }
-            }
-            for ((k, w) in pendingSecurityOps.entries.toList()) {
-                if (pendingSecurityOps.remove(k, w)) {
-                    w.completeExceptionally(IllegalStateException("core closed"))
                 }
             }
             for ((k, w) in pendingPushRpcs.entries.toList()) {

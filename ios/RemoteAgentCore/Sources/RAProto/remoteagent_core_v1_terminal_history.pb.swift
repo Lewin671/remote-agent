@@ -8,6 +8,7 @@
 // For information on using the generated types, please see the documentation:
 //   https://github.com/apple/swift-protobuf/
 
+import Foundation
 import SwiftProtobuf
 
 // If the compiler emits an error on this type, it is because this file
@@ -295,21 +296,12 @@ public struct PBCoreTerminalHistoryEvent: Sendable {
 
   public var kind: PBCoreTerminalHistoryEventKind = .unspecified
 
-  /// Populated only when kind == PAGE_RECEIVED.
-  public var page: PBTerminalHistoryPage {
-    get {return _page ?? PBTerminalHistoryPage()}
-    set {_page = newValue}
-  }
-  /// Returns true if `page` has been explicitly set.
-  public var hasPage: Bool {return self._page != nil}
-  /// Clears the value of `page`. Subsequent reads from it will return its default value.
-  public mutating func clearPage() {self._page = nil}
+  /// Serialized remoteagent.v1.TerminalHistoryPage bytes; populated only by tests/demo when kind == PAGE_RECEIVED.
+  public var rawPage: Data = Data()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
-
-  fileprivate var _page: PBTerminalHistoryPage? = nil
 }
 
 public struct PBCoreTerminalHistoryRun: Sendable {
@@ -496,7 +488,7 @@ extension PBCoreTerminalRunWidth: SwiftProtobuf._ProtoNameProviding {
 
 extension PBCoreTerminalHistoryEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".TerminalHistoryEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}terminal_id\0\u{1}kind\0\u{1}page\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}terminal_id\0\u{1}kind\0\u{4}\u{2}raw_page\0\u{b}page\0\u{c}\u{3}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -506,33 +498,29 @@ extension PBCoreTerminalHistoryEvent: SwiftProtobuf.Message, SwiftProtobuf._Mess
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.terminalID) }()
       case 2: try { try decoder.decodeSingularEnumField(value: &self.kind) }()
-      case 3: try { try decoder.decodeSingularMessageField(value: &self._page) }()
+      case 4: try { try decoder.decodeSingularBytesField(value: &self.rawPage) }()
       default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
     if !self.terminalID.isEmpty {
       try visitor.visitSingularStringField(value: self.terminalID, fieldNumber: 1)
     }
     if self.kind != .unspecified {
       try visitor.visitSingularEnumField(value: self.kind, fieldNumber: 2)
     }
-    try { if let v = self._page {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
-    } }()
+    if !self.rawPage.isEmpty {
+      try visitor.visitSingularBytesField(value: self.rawPage, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCoreTerminalHistoryEvent, rhs: PBCoreTerminalHistoryEvent) -> Bool {
     if lhs.terminalID != rhs.terminalID {return false}
     if lhs.kind != rhs.kind {return false}
-    if lhs._page != rhs._page {return false}
+    if lhs.rawPage != rhs.rawPage {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

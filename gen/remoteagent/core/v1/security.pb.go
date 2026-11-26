@@ -1411,7 +1411,6 @@ func (x *SecurityCryptoBatchDoneEvent) GetError() string {
 
 type SecurityOpenEnvelopeOp struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
-	Envelope            *v1.Envelope           `protobuf:"bytes,1,opt,name=envelope,proto3" json:"envelope,omitempty"`
 	ExpectedPurpose     uint32                 `protobuf:"varint,2,opt,name=expected_purpose,json=expectedPurpose,proto3" json:"expected_purpose,omitempty"`
 	MachineId           string                 `protobuf:"bytes,3,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
 	SessionId           string                 `protobuf:"bytes,4,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
@@ -1419,6 +1418,7 @@ type SecurityOpenEnvelopeOp struct {
 	Seq                 uint64                 `protobuf:"varint,6,opt,name=seq,proto3" json:"seq,omitempty"`
 	History             bool                   `protobuf:"varint,7,opt,name=history,proto3" json:"history,omitempty"`
 	OverrideSessionSeed []byte                 `protobuf:"bytes,8,opt,name=override_session_seed,json=overrideSessionSeed,proto3" json:"override_session_seed,omitempty"`
+	RawEnvelope         []byte                 `protobuf:"bytes,9,opt,name=raw_envelope,json=rawEnvelope,proto3" json:"raw_envelope,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -1451,13 +1451,6 @@ func (x *SecurityOpenEnvelopeOp) ProtoReflect() protoreflect.Message {
 // Deprecated: Use SecurityOpenEnvelopeOp.ProtoReflect.Descriptor instead.
 func (*SecurityOpenEnvelopeOp) Descriptor() ([]byte, []int) {
 	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{14}
-}
-
-func (x *SecurityOpenEnvelopeOp) GetEnvelope() *v1.Envelope {
-	if x != nil {
-		return x.Envelope
-	}
-	return nil
 }
 
 func (x *SecurityOpenEnvelopeOp) GetExpectedPurpose() uint32 {
@@ -1505,6 +1498,13 @@ func (x *SecurityOpenEnvelopeOp) GetHistory() bool {
 func (x *SecurityOpenEnvelopeOp) GetOverrideSessionSeed() []byte {
 	if x != nil {
 		return x.OverrideSessionSeed
+	}
+	return nil
+}
+
+func (x *SecurityOpenEnvelopeOp) GetRawEnvelope() []byte {
+	if x != nil {
+		return x.RawEnvelope
 	}
 	return nil
 }
@@ -1617,50 +1617,6 @@ func (x *SecuritySealEnvelopeOp) GetOverrideSessionSeed() []byte {
 	return nil
 }
 
-type SecurityGetSessionSeedOp struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SecurityGetSessionSeedOp) Reset() {
-	*x = SecurityGetSessionSeedOp{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[16]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SecurityGetSessionSeedOp) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SecurityGetSessionSeedOp) ProtoMessage() {}
-
-func (x *SecurityGetSessionSeedOp) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[16]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SecurityGetSessionSeedOp.ProtoReflect.Descriptor instead.
-func (*SecurityGetSessionSeedOp) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{16}
-}
-
-func (x *SecurityGetSessionSeedOp) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
-}
-
 type SecurityOpRequestEvent struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	OpId  uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
@@ -1668,7 +1624,6 @@ type SecurityOpRequestEvent struct {
 	//
 	//	*SecurityOpRequestEvent_OpenEnvelope
 	//	*SecurityOpRequestEvent_SealEnvelope
-	//	*SecurityOpRequestEvent_GetSessionSeed
 	Op            isSecurityOpRequestEvent_Op `protobuf_oneof:"op"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1676,7 +1631,7 @@ type SecurityOpRequestEvent struct {
 
 func (x *SecurityOpRequestEvent) Reset() {
 	*x = SecurityOpRequestEvent{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[17]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1688,7 +1643,7 @@ func (x *SecurityOpRequestEvent) String() string {
 func (*SecurityOpRequestEvent) ProtoMessage() {}
 
 func (x *SecurityOpRequestEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[17]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1701,7 +1656,7 @@ func (x *SecurityOpRequestEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityOpRequestEvent.ProtoReflect.Descriptor instead.
 func (*SecurityOpRequestEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{17}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *SecurityOpRequestEvent) GetOpId() uint64 {
@@ -1736,15 +1691,6 @@ func (x *SecurityOpRequestEvent) GetSealEnvelope() *SecuritySealEnvelopeOp {
 	return nil
 }
 
-func (x *SecurityOpRequestEvent) GetGetSessionSeed() *SecurityGetSessionSeedOp {
-	if x != nil {
-		if x, ok := x.Op.(*SecurityOpRequestEvent_GetSessionSeed); ok {
-			return x.GetSessionSeed
-		}
-	}
-	return nil
-}
-
 type isSecurityOpRequestEvent_Op interface {
 	isSecurityOpRequestEvent_Op()
 }
@@ -1757,15 +1703,9 @@ type SecurityOpRequestEvent_SealEnvelope struct {
 	SealEnvelope *SecuritySealEnvelopeOp `protobuf:"bytes,3,opt,name=seal_envelope,json=sealEnvelope,proto3,oneof"`
 }
 
-type SecurityOpRequestEvent_GetSessionSeed struct {
-	GetSessionSeed *SecurityGetSessionSeedOp `protobuf:"bytes,4,opt,name=get_session_seed,json=getSessionSeed,proto3,oneof"`
-}
-
 func (*SecurityOpRequestEvent_OpenEnvelope) isSecurityOpRequestEvent_Op() {}
 
 func (*SecurityOpRequestEvent_SealEnvelope) isSecurityOpRequestEvent_Op() {}
-
-func (*SecurityOpRequestEvent_GetSessionSeed) isSecurityOpRequestEvent_Op() {}
 
 type SecurityOpenEnvelopeResult struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1786,7 +1726,7 @@ type SecurityOpenEnvelopeResult struct {
 
 func (x *SecurityOpenEnvelopeResult) Reset() {
 	*x = SecurityOpenEnvelopeResult{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[18]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1798,7 +1738,7 @@ func (x *SecurityOpenEnvelopeResult) String() string {
 func (*SecurityOpenEnvelopeResult) ProtoMessage() {}
 
 func (x *SecurityOpenEnvelopeResult) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[18]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1811,7 +1751,7 @@ func (x *SecurityOpenEnvelopeResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityOpenEnvelopeResult.ProtoReflect.Descriptor instead.
 func (*SecurityOpenEnvelopeResult) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{18}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *SecurityOpenEnvelopeResult) GetHeader() []byte {
@@ -1893,16 +1833,16 @@ func (x *SecurityOpenEnvelopeResult) GetDeadlineMs() int64 {
 
 type SecuritySealEnvelopeResult struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	Envelope       *v1.Envelope           `protobuf:"bytes,1,opt,name=envelope,proto3" json:"envelope,omitempty"`
 	RequestKeyHash []byte                 `protobuf:"bytes,2,opt,name=request_key_hash,json=requestKeyHash,proto3" json:"request_key_hash,omitempty"`
 	PayloadHash    []byte                 `protobuf:"bytes,3,opt,name=payload_hash,json=payloadHash,proto3" json:"payload_hash,omitempty"`
+	RawEnvelope    []byte                 `protobuf:"bytes,4,opt,name=raw_envelope,json=rawEnvelope,proto3" json:"raw_envelope,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
 func (x *SecuritySealEnvelopeResult) Reset() {
 	*x = SecuritySealEnvelopeResult{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[19]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1914,7 +1854,7 @@ func (x *SecuritySealEnvelopeResult) String() string {
 func (*SecuritySealEnvelopeResult) ProtoMessage() {}
 
 func (x *SecuritySealEnvelopeResult) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[19]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1927,14 +1867,7 @@ func (x *SecuritySealEnvelopeResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecuritySealEnvelopeResult.ProtoReflect.Descriptor instead.
 func (*SecuritySealEnvelopeResult) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{19}
-}
-
-func (x *SecuritySealEnvelopeResult) GetEnvelope() *v1.Envelope {
-	if x != nil {
-		return x.Envelope
-	}
-	return nil
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *SecuritySealEnvelopeResult) GetRequestKeyHash() []byte {
@@ -1951,6 +1884,13 @@ func (x *SecuritySealEnvelopeResult) GetPayloadHash() []byte {
 	return nil
 }
 
+func (x *SecuritySealEnvelopeResult) GetRawEnvelope() []byte {
+	if x != nil {
+		return x.RawEnvelope
+	}
+	return nil
+}
+
 type SecurityOpResultEffect struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	OpId  uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
@@ -1959,7 +1899,6 @@ type SecurityOpResultEffect struct {
 	//
 	//	*SecurityOpResultEffect_Opened
 	//	*SecurityOpResultEffect_Sealed
-	//	*SecurityOpResultEffect_SessionSeed
 	Result              isSecurityOpResultEffect_Result `protobuf_oneof:"result"`
 	StructuredErrorCode SecurityErrorCode               `protobuf:"varint,7,opt,name=structured_error_code,json=structuredErrorCode,proto3,enum=remoteagent.core.v1.SecurityErrorCode" json:"structured_error_code,omitempty"`
 	unknownFields       protoimpl.UnknownFields
@@ -1968,7 +1907,7 @@ type SecurityOpResultEffect struct {
 
 func (x *SecurityOpResultEffect) Reset() {
 	*x = SecurityOpResultEffect{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[20]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1980,7 +1919,7 @@ func (x *SecurityOpResultEffect) String() string {
 func (*SecurityOpResultEffect) ProtoMessage() {}
 
 func (x *SecurityOpResultEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[20]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1993,7 +1932,7 @@ func (x *SecurityOpResultEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityOpResultEffect.ProtoReflect.Descriptor instead.
 func (*SecurityOpResultEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{20}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *SecurityOpResultEffect) GetOpId() uint64 {
@@ -2035,15 +1974,6 @@ func (x *SecurityOpResultEffect) GetSealed() *SecuritySealEnvelopeResult {
 	return nil
 }
 
-func (x *SecurityOpResultEffect) GetSessionSeed() []byte {
-	if x != nil {
-		if x, ok := x.Result.(*SecurityOpResultEffect_SessionSeed); ok {
-			return x.SessionSeed
-		}
-	}
-	return nil
-}
-
 func (x *SecurityOpResultEffect) GetStructuredErrorCode() SecurityErrorCode {
 	if x != nil {
 		return x.StructuredErrorCode
@@ -2063,15 +1993,9 @@ type SecurityOpResultEffect_Sealed struct {
 	Sealed *SecuritySealEnvelopeResult `protobuf:"bytes,5,opt,name=sealed,proto3,oneof"`
 }
 
-type SecurityOpResultEffect_SessionSeed struct {
-	SessionSeed []byte `protobuf:"bytes,6,opt,name=session_seed,json=sessionSeed,proto3,oneof"`
-}
-
 func (*SecurityOpResultEffect_Opened) isSecurityOpResultEffect_Result() {}
 
 func (*SecurityOpResultEffect_Sealed) isSecurityOpResultEffect_Result() {}
-
-func (*SecurityOpResultEffect_SessionSeed) isSecurityOpResultEffect_Result() {}
 
 type DemoMachine struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -2085,7 +2009,7 @@ type DemoMachine struct {
 
 func (x *DemoMachine) Reset() {
 	*x = DemoMachine{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[21]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2097,7 +2021,7 @@ func (x *DemoMachine) String() string {
 func (*DemoMachine) ProtoMessage() {}
 
 func (x *DemoMachine) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[21]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2110,7 +2034,7 @@ func (x *DemoMachine) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DemoMachine.ProtoReflect.Descriptor instead.
 func (*DemoMachine) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{21}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *DemoMachine) GetMachineId() string {
@@ -2156,7 +2080,7 @@ type DemoSession struct {
 
 func (x *DemoSession) Reset() {
 	*x = DemoSession{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[22]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2168,7 +2092,7 @@ func (x *DemoSession) String() string {
 func (*DemoSession) ProtoMessage() {}
 
 func (x *DemoSession) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[22]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2181,7 +2105,7 @@ func (x *DemoSession) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DemoSession.ProtoReflect.Descriptor instead.
 func (*DemoSession) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{22}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *DemoSession) GetSessionId() string {
@@ -2246,7 +2170,7 @@ type DemoDevice struct {
 
 func (x *DemoDevice) Reset() {
 	*x = DemoDevice{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[23]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2258,7 +2182,7 @@ func (x *DemoDevice) String() string {
 func (*DemoDevice) ProtoMessage() {}
 
 func (x *DemoDevice) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[23]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2271,7 +2195,7 @@ func (x *DemoDevice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DemoDevice.ProtoReflect.Descriptor instead.
 func (*DemoDevice) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{23}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *DemoDevice) GetDeviceId() string {
@@ -2319,7 +2243,7 @@ type DemoSessionEvents struct {
 
 func (x *DemoSessionEvents) Reset() {
 	*x = DemoSessionEvents{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[24]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2331,7 +2255,7 @@ func (x *DemoSessionEvents) String() string {
 func (*DemoSessionEvents) ProtoMessage() {}
 
 func (x *DemoSessionEvents) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[24]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2344,7 +2268,7 @@ func (x *DemoSessionEvents) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DemoSessionEvents.ProtoReflect.Descriptor instead.
 func (*DemoSessionEvents) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{24}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *DemoSessionEvents) GetSessionId() string {
@@ -2383,7 +2307,7 @@ type DemoSecurity struct {
 
 func (x *DemoSecurity) Reset() {
 	*x = DemoSecurity{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[25]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2395,7 +2319,7 @@ func (x *DemoSecurity) String() string {
 func (*DemoSecurity) ProtoMessage() {}
 
 func (x *DemoSecurity) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[25]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2408,7 +2332,7 @@ func (x *DemoSecurity) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DemoSecurity.ProtoReflect.Descriptor instead.
 func (*DemoSecurity) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{25}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *DemoSecurity) GetIsMember() bool {
@@ -2520,7 +2444,7 @@ type DemoDirectReport struct {
 
 func (x *DemoDirectReport) Reset() {
 	*x = DemoDirectReport{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[26]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2532,7 +2456,7 @@ func (x *DemoDirectReport) String() string {
 func (*DemoDirectReport) ProtoMessage() {}
 
 func (x *DemoDirectReport) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[26]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2545,7 +2469,7 @@ func (x *DemoDirectReport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DemoDirectReport.ProtoReflect.Descriptor instead.
 func (*DemoDirectReport) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{26}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *DemoDirectReport) GetMachineId() string {
@@ -2585,7 +2509,7 @@ type SeedDemoWorldEvent struct {
 
 func (x *SeedDemoWorldEvent) Reset() {
 	*x = SeedDemoWorldEvent{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[27]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2597,7 +2521,7 @@ func (x *SeedDemoWorldEvent) String() string {
 func (*SeedDemoWorldEvent) ProtoMessage() {}
 
 func (x *SeedDemoWorldEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[27]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2610,7 +2534,7 @@ func (x *SeedDemoWorldEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SeedDemoWorldEvent.ProtoReflect.Descriptor instead.
 func (*SeedDemoWorldEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{27}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *SeedDemoWorldEvent) GetMachines() []*DemoMachine {
@@ -2679,7 +2603,7 @@ type CacheWriteStoredEvents struct {
 
 func (x *CacheWriteStoredEvents) Reset() {
 	*x = CacheWriteStoredEvents{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[28]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2691,7 +2615,7 @@ func (x *CacheWriteStoredEvents) String() string {
 func (*CacheWriteStoredEvents) ProtoMessage() {}
 
 func (x *CacheWriteStoredEvents) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[28]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2704,7 +2628,7 @@ func (x *CacheWriteStoredEvents) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CacheWriteStoredEvents.ProtoReflect.Descriptor instead.
 func (*CacheWriteStoredEvents) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{28}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *CacheWriteStoredEvents) GetSessionId() string {
@@ -2733,7 +2657,7 @@ type SecurityKeyGenerateEffect struct {
 
 func (x *SecurityKeyGenerateEffect) Reset() {
 	*x = SecurityKeyGenerateEffect{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[29]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2745,7 +2669,7 @@ func (x *SecurityKeyGenerateEffect) String() string {
 func (*SecurityKeyGenerateEffect) ProtoMessage() {}
 
 func (x *SecurityKeyGenerateEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[29]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2758,7 +2682,7 @@ func (x *SecurityKeyGenerateEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityKeyGenerateEffect.ProtoReflect.Descriptor instead.
 func (*SecurityKeyGenerateEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{29}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *SecurityKeyGenerateEffect) GetOpId() uint64 {
@@ -2800,7 +2724,7 @@ type SecurityKeyGeneratedEvent struct {
 
 func (x *SecurityKeyGeneratedEvent) Reset() {
 	*x = SecurityKeyGeneratedEvent{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[30]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2812,7 +2736,7 @@ func (x *SecurityKeyGeneratedEvent) String() string {
 func (*SecurityKeyGeneratedEvent) ProtoMessage() {}
 
 func (x *SecurityKeyGeneratedEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[30]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2825,7 +2749,7 @@ func (x *SecurityKeyGeneratedEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityKeyGeneratedEvent.ProtoReflect.Descriptor instead.
 func (*SecurityKeyGeneratedEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{30}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *SecurityKeyGeneratedEvent) GetOpId() uint64 {
@@ -2859,7 +2783,7 @@ type SecurityEncapsulateRecipient struct {
 
 func (x *SecurityEncapsulateRecipient) Reset() {
 	*x = SecurityEncapsulateRecipient{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[31]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2871,7 +2795,7 @@ func (x *SecurityEncapsulateRecipient) String() string {
 func (*SecurityEncapsulateRecipient) ProtoMessage() {}
 
 func (x *SecurityEncapsulateRecipient) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[31]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2884,7 +2808,7 @@ func (x *SecurityEncapsulateRecipient) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityEncapsulateRecipient.ProtoReflect.Descriptor instead.
 func (*SecurityEncapsulateRecipient) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{31}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *SecurityEncapsulateRecipient) GetMemberId() string {
@@ -2911,7 +2835,7 @@ type SecurityKeyEncapsulateEffect struct {
 
 func (x *SecurityKeyEncapsulateEffect) Reset() {
 	*x = SecurityKeyEncapsulateEffect{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[32]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2923,7 +2847,7 @@ func (x *SecurityKeyEncapsulateEffect) String() string {
 func (*SecurityKeyEncapsulateEffect) ProtoMessage() {}
 
 func (x *SecurityKeyEncapsulateEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[32]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2936,7 +2860,7 @@ func (x *SecurityKeyEncapsulateEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityKeyEncapsulateEffect.ProtoReflect.Descriptor instead.
 func (*SecurityKeyEncapsulateEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{32}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *SecurityKeyEncapsulateEffect) GetOpId() uint64 {
@@ -2964,7 +2888,7 @@ type SecurityEncapsulatedPair struct {
 
 func (x *SecurityEncapsulatedPair) Reset() {
 	*x = SecurityEncapsulatedPair{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[33]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2976,7 +2900,7 @@ func (x *SecurityEncapsulatedPair) String() string {
 func (*SecurityEncapsulatedPair) ProtoMessage() {}
 
 func (x *SecurityEncapsulatedPair) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[33]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2989,7 +2913,7 @@ func (x *SecurityEncapsulatedPair) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityEncapsulatedPair.ProtoReflect.Descriptor instead.
 func (*SecurityEncapsulatedPair) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{33}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *SecurityEncapsulatedPair) GetMemberId() string {
@@ -3024,7 +2948,7 @@ type SecurityKeyEncapsulatedEvent struct {
 
 func (x *SecurityKeyEncapsulatedEvent) Reset() {
 	*x = SecurityKeyEncapsulatedEvent{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[34]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3036,7 +2960,7 @@ func (x *SecurityKeyEncapsulatedEvent) String() string {
 func (*SecurityKeyEncapsulatedEvent) ProtoMessage() {}
 
 func (x *SecurityKeyEncapsulatedEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[34]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3049,7 +2973,7 @@ func (x *SecurityKeyEncapsulatedEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityKeyEncapsulatedEvent.ProtoReflect.Descriptor instead.
 func (*SecurityKeyEncapsulatedEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{34}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *SecurityKeyEncapsulatedEvent) GetOpId() uint64 {
@@ -3083,7 +3007,7 @@ type SecurityKeyDiscardEffect struct {
 
 func (x *SecurityKeyDiscardEffect) Reset() {
 	*x = SecurityKeyDiscardEffect{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[35]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3095,7 +3019,7 @@ func (x *SecurityKeyDiscardEffect) String() string {
 func (*SecurityKeyDiscardEffect) ProtoMessage() {}
 
 func (x *SecurityKeyDiscardEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[35]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3108,7 +3032,7 @@ func (x *SecurityKeyDiscardEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityKeyDiscardEffect.ProtoReflect.Descriptor instead.
 func (*SecurityKeyDiscardEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{35}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *SecurityKeyDiscardEffect) GetKeyKind() SecurityKeyKind {
@@ -3137,7 +3061,7 @@ type SecurityStorageEntry struct {
 
 func (x *SecurityStorageEntry) Reset() {
 	*x = SecurityStorageEntry{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[36]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3149,7 +3073,7 @@ func (x *SecurityStorageEntry) String() string {
 func (*SecurityStorageEntry) ProtoMessage() {}
 
 func (x *SecurityStorageEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[36]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3162,7 +3086,7 @@ func (x *SecurityStorageEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityStorageEntry.ProtoReflect.Descriptor instead.
 func (*SecurityStorageEntry) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{36}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *SecurityStorageEntry) GetBucket() SecurityStoreBucket {
@@ -3208,7 +3132,7 @@ type SecurityStorageWrite struct {
 
 func (x *SecurityStorageWrite) Reset() {
 	*x = SecurityStorageWrite{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[37]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3220,7 +3144,7 @@ func (x *SecurityStorageWrite) String() string {
 func (*SecurityStorageWrite) ProtoMessage() {}
 
 func (x *SecurityStorageWrite) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[37]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3233,7 +3157,7 @@ func (x *SecurityStorageWrite) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityStorageWrite.ProtoReflect.Descriptor instead.
 func (*SecurityStorageWrite) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{37}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *SecurityStorageWrite) GetBucket() SecurityStoreBucket {
@@ -3306,7 +3230,7 @@ type SecurityStorageEffect struct {
 
 func (x *SecurityStorageEffect) Reset() {
 	*x = SecurityStorageEffect{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[38]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3318,7 +3242,7 @@ func (x *SecurityStorageEffect) String() string {
 func (*SecurityStorageEffect) ProtoMessage() {}
 
 func (x *SecurityStorageEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[38]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3331,7 +3255,7 @@ func (x *SecurityStorageEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityStorageEffect.ProtoReflect.Descriptor instead.
 func (*SecurityStorageEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{38}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *SecurityStorageEffect) GetOpId() uint64 {
@@ -3447,7 +3371,7 @@ type SecurityStorageResultEvent struct {
 
 func (x *SecurityStorageResultEvent) Reset() {
 	*x = SecurityStorageResultEvent{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[39]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3459,7 +3383,7 @@ func (x *SecurityStorageResultEvent) String() string {
 func (*SecurityStorageResultEvent) ProtoMessage() {}
 
 func (x *SecurityStorageResultEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[39]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3472,7 +3396,7 @@ func (x *SecurityStorageResultEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityStorageResultEvent.ProtoReflect.Descriptor instead.
 func (*SecurityStorageResultEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{39}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *SecurityStorageResultEvent) GetOpId() uint64 {
@@ -3586,7 +3510,7 @@ type SecurityRpcEffect struct {
 
 func (x *SecurityRpcEffect) Reset() {
 	*x = SecurityRpcEffect{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[40]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3598,7 +3522,7 @@ func (x *SecurityRpcEffect) String() string {
 func (*SecurityRpcEffect) ProtoMessage() {}
 
 func (x *SecurityRpcEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[40]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3611,7 +3535,7 @@ func (x *SecurityRpcEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityRpcEffect.ProtoReflect.Descriptor instead.
 func (*SecurityRpcEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{40}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *SecurityRpcEffect) GetOpId() uint64 {
@@ -3659,7 +3583,7 @@ type RpcErrorDetailBytes struct {
 
 func (x *RpcErrorDetailBytes) Reset() {
 	*x = RpcErrorDetailBytes{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[41]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3671,7 +3595,7 @@ func (x *RpcErrorDetailBytes) String() string {
 func (*RpcErrorDetailBytes) ProtoMessage() {}
 
 func (x *RpcErrorDetailBytes) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[41]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3684,7 +3608,7 @@ func (x *RpcErrorDetailBytes) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RpcErrorDetailBytes.ProtoReflect.Descriptor instead.
 func (*RpcErrorDetailBytes) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{41}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *RpcErrorDetailBytes) GetTypeName() string {
@@ -3715,7 +3639,7 @@ type SecurityRpcResultEvent struct {
 
 func (x *SecurityRpcResultEvent) Reset() {
 	*x = SecurityRpcResultEvent{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[42]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3727,7 +3651,7 @@ func (x *SecurityRpcResultEvent) String() string {
 func (*SecurityRpcResultEvent) ProtoMessage() {}
 
 func (x *SecurityRpcResultEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[42]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3740,7 +3664,7 @@ func (x *SecurityRpcResultEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityRpcResultEvent.ProtoReflect.Descriptor instead.
 func (*SecurityRpcResultEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{42}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *SecurityRpcResultEvent) GetOpId() uint64 {
@@ -3796,7 +3720,7 @@ type SecurityTokenUpdatedEffect struct {
 
 func (x *SecurityTokenUpdatedEffect) Reset() {
 	*x = SecurityTokenUpdatedEffect{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[43]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3808,7 +3732,7 @@ func (x *SecurityTokenUpdatedEffect) String() string {
 func (*SecurityTokenUpdatedEffect) ProtoMessage() {}
 
 func (x *SecurityTokenUpdatedEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[43]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3821,7 +3745,7 @@ func (x *SecurityTokenUpdatedEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityTokenUpdatedEffect.ProtoReflect.Descriptor instead.
 func (*SecurityTokenUpdatedEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{43}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *SecurityTokenUpdatedEffect) GetToken() string {
@@ -3866,7 +3790,7 @@ type SecurityPendingOpSummary struct {
 
 func (x *SecurityPendingOpSummary) Reset() {
 	*x = SecurityPendingOpSummary{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[44]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3878,7 +3802,7 @@ func (x *SecurityPendingOpSummary) String() string {
 func (*SecurityPendingOpSummary) ProtoMessage() {}
 
 func (x *SecurityPendingOpSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[44]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3891,7 +3815,7 @@ func (x *SecurityPendingOpSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityPendingOpSummary.ProtoReflect.Descriptor instead.
 func (*SecurityPendingOpSummary) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{44}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *SecurityPendingOpSummary) GetKind() string {
@@ -4017,7 +3941,7 @@ type SecurityWorkflowStatus struct {
 
 func (x *SecurityWorkflowStatus) Reset() {
 	*x = SecurityWorkflowStatus{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[45]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4029,7 +3953,7 @@ func (x *SecurityWorkflowStatus) String() string {
 func (*SecurityWorkflowStatus) ProtoMessage() {}
 
 func (x *SecurityWorkflowStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[45]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4042,7 +3966,7 @@ func (x *SecurityWorkflowStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityWorkflowStatus.ProtoReflect.Descriptor instead.
 func (*SecurityWorkflowStatus) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{45}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *SecurityWorkflowStatus) GetBootstrap() SecurityBootstrapKind {
@@ -4228,7 +4152,7 @@ type SecurityPairingReplacementCandidate struct {
 
 func (x *SecurityPairingReplacementCandidate) Reset() {
 	*x = SecurityPairingReplacementCandidate{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[46]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4240,7 +4164,7 @@ func (x *SecurityPairingReplacementCandidate) String() string {
 func (*SecurityPairingReplacementCandidate) ProtoMessage() {}
 
 func (x *SecurityPairingReplacementCandidate) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[46]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4253,7 +4177,7 @@ func (x *SecurityPairingReplacementCandidate) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use SecurityPairingReplacementCandidate.ProtoReflect.Descriptor instead.
 func (*SecurityPairingReplacementCandidate) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{46}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *SecurityPairingReplacementCandidate) GetDeviceId() string {
@@ -4329,7 +4253,7 @@ type SecurityPairingInfo struct {
 
 func (x *SecurityPairingInfo) Reset() {
 	*x = SecurityPairingInfo{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[47]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4341,7 +4265,7 @@ func (x *SecurityPairingInfo) String() string {
 func (*SecurityPairingInfo) ProtoMessage() {}
 
 func (x *SecurityPairingInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[47]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4354,7 +4278,7 @@ func (x *SecurityPairingInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityPairingInfo.ProtoReflect.Descriptor instead.
 func (*SecurityPairingInfo) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{47}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *SecurityPairingInfo) GetPairingId() string {
@@ -4480,7 +4404,7 @@ type SecurityRecoveryInfo struct {
 
 func (x *SecurityRecoveryInfo) Reset() {
 	*x = SecurityRecoveryInfo{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[48]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4492,7 +4416,7 @@ func (x *SecurityRecoveryInfo) String() string {
 func (*SecurityRecoveryInfo) ProtoMessage() {}
 
 func (x *SecurityRecoveryInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[48]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4505,7 +4429,7 @@ func (x *SecurityRecoveryInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityRecoveryInfo.ProtoReflect.Descriptor instead.
 func (*SecurityRecoveryInfo) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{48}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *SecurityRecoveryInfo) GetRecoveryId() string {
@@ -4540,7 +4464,7 @@ type SecurityHandoffCandidate struct {
 
 func (x *SecurityHandoffCandidate) Reset() {
 	*x = SecurityHandoffCandidate{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[49]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4552,7 +4476,7 @@ func (x *SecurityHandoffCandidate) String() string {
 func (*SecurityHandoffCandidate) ProtoMessage() {}
 
 func (x *SecurityHandoffCandidate) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[49]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4565,7 +4489,7 @@ func (x *SecurityHandoffCandidate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityHandoffCandidate.ProtoReflect.Descriptor instead.
 func (*SecurityHandoffCandidate) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{49}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *SecurityHandoffCandidate) GetDeviceId() string {
@@ -4600,7 +4524,7 @@ type SecurityExitAdvice struct {
 
 func (x *SecurityExitAdvice) Reset() {
 	*x = SecurityExitAdvice{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[50]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4612,7 +4536,7 @@ func (x *SecurityExitAdvice) String() string {
 func (*SecurityExitAdvice) ProtoMessage() {}
 
 func (x *SecurityExitAdvice) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[50]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4625,7 +4549,7 @@ func (x *SecurityExitAdvice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityExitAdvice.ProtoReflect.Descriptor instead.
 func (*SecurityExitAdvice) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{50}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *SecurityExitAdvice) GetAuthority() bool {
@@ -4661,7 +4585,7 @@ type SecurityAccountAdopted struct {
 
 func (x *SecurityAccountAdopted) Reset() {
 	*x = SecurityAccountAdopted{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[51]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4673,7 +4597,7 @@ func (x *SecurityAccountAdopted) String() string {
 func (*SecurityAccountAdopted) ProtoMessage() {}
 
 func (x *SecurityAccountAdopted) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[51]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4686,7 +4610,7 @@ func (x *SecurityAccountAdopted) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityAccountAdopted.ProtoReflect.Descriptor instead.
 func (*SecurityAccountAdopted) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{51}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *SecurityAccountAdopted) GetServer() string {
@@ -4725,7 +4649,7 @@ type SecurityActionEmpty struct {
 
 func (x *SecurityActionEmpty) Reset() {
 	*x = SecurityActionEmpty{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[52]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4737,7 +4661,7 @@ func (x *SecurityActionEmpty) String() string {
 func (*SecurityActionEmpty) ProtoMessage() {}
 
 func (x *SecurityActionEmpty) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[52]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4750,7 +4674,7 @@ func (x *SecurityActionEmpty) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityActionEmpty.ProtoReflect.Descriptor instead.
 func (*SecurityActionEmpty) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{52}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{51}
 }
 
 type SecurityBoolAction struct {
@@ -4762,7 +4686,7 @@ type SecurityBoolAction struct {
 
 func (x *SecurityBoolAction) Reset() {
 	*x = SecurityBoolAction{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[53]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4774,7 +4698,7 @@ func (x *SecurityBoolAction) String() string {
 func (*SecurityBoolAction) ProtoMessage() {}
 
 func (x *SecurityBoolAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[53]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4787,7 +4711,7 @@ func (x *SecurityBoolAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityBoolAction.ProtoReflect.Descriptor instead.
 func (*SecurityBoolAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{53}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *SecurityBoolAction) GetFlag() bool {
@@ -4806,7 +4730,7 @@ type SecurityStringAction struct {
 
 func (x *SecurityStringAction) Reset() {
 	*x = SecurityStringAction{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[54]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4818,7 +4742,7 @@ func (x *SecurityStringAction) String() string {
 func (*SecurityStringAction) ProtoMessage() {}
 
 func (x *SecurityStringAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[54]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4831,7 +4755,7 @@ func (x *SecurityStringAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityStringAction.ProtoReflect.Descriptor instead.
 func (*SecurityStringAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{54}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *SecurityStringAction) GetValue() string {
@@ -4851,7 +4775,7 @@ type SecuritySyncNowAction struct {
 
 func (x *SecuritySyncNowAction) Reset() {
 	*x = SecuritySyncNowAction{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[55]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4863,7 +4787,7 @@ func (x *SecuritySyncNowAction) String() string {
 func (*SecuritySyncNowAction) ProtoMessage() {}
 
 func (x *SecuritySyncNowAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[55]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4876,7 +4800,7 @@ func (x *SecuritySyncNowAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecuritySyncNowAction.ProtoReflect.Descriptor instead.
 func (*SecuritySyncNowAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{55}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *SecuritySyncNowAction) GetTouch() bool {
@@ -4903,7 +4827,7 @@ type SecurityPrepareCreationAction struct {
 
 func (x *SecurityPrepareCreationAction) Reset() {
 	*x = SecurityPrepareCreationAction{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[56]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4915,7 +4839,7 @@ func (x *SecurityPrepareCreationAction) String() string {
 func (*SecurityPrepareCreationAction) ProtoMessage() {}
 
 func (x *SecurityPrepareCreationAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[56]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4928,7 +4852,7 @@ func (x *SecurityPrepareCreationAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityPrepareCreationAction.ProtoReflect.Descriptor instead.
 func (*SecurityPrepareCreationAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{56}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *SecurityPrepareCreationAction) GetServer() string {
@@ -4954,7 +4878,7 @@ type SecurityRemoveDeviceAction struct {
 
 func (x *SecurityRemoveDeviceAction) Reset() {
 	*x = SecurityRemoveDeviceAction{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[57]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4966,7 +4890,7 @@ func (x *SecurityRemoveDeviceAction) String() string {
 func (*SecurityRemoveDeviceAction) ProtoMessage() {}
 
 func (x *SecurityRemoveDeviceAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[57]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4979,7 +4903,7 @@ func (x *SecurityRemoveDeviceAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityRemoveDeviceAction.ProtoReflect.Descriptor instead.
 func (*SecurityRemoveDeviceAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{57}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *SecurityRemoveDeviceAction) GetDeviceId() string {
@@ -4999,7 +4923,7 @@ type SecurityServerCodeAction struct {
 
 func (x *SecurityServerCodeAction) Reset() {
 	*x = SecurityServerCodeAction{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[58]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5011,7 +4935,7 @@ func (x *SecurityServerCodeAction) String() string {
 func (*SecurityServerCodeAction) ProtoMessage() {}
 
 func (x *SecurityServerCodeAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[58]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5024,7 +4948,7 @@ func (x *SecurityServerCodeAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityServerCodeAction.ProtoReflect.Descriptor instead.
 func (*SecurityServerCodeAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{58}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *SecurityServerCodeAction) GetServer() string {
@@ -5051,7 +4975,7 @@ type SecurityStartPairingAction struct {
 
 func (x *SecurityStartPairingAction) Reset() {
 	*x = SecurityStartPairingAction{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[59]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5063,7 +4987,7 @@ func (x *SecurityStartPairingAction) String() string {
 func (*SecurityStartPairingAction) ProtoMessage() {}
 
 func (x *SecurityStartPairingAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[59]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5076,7 +5000,7 @@ func (x *SecurityStartPairingAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityStartPairingAction.ProtoReflect.Descriptor instead.
 func (*SecurityStartPairingAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{59}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *SecurityStartPairingAction) GetWebOrigin() string {
@@ -5104,7 +5028,7 @@ type SecurityApprovePairingAction struct {
 
 func (x *SecurityApprovePairingAction) Reset() {
 	*x = SecurityApprovePairingAction{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[60]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5116,7 +5040,7 @@ func (x *SecurityApprovePairingAction) String() string {
 func (*SecurityApprovePairingAction) ProtoMessage() {}
 
 func (x *SecurityApprovePairingAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[60]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5129,7 +5053,7 @@ func (x *SecurityApprovePairingAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityApprovePairingAction.ProtoReflect.Descriptor instead.
 func (*SecurityApprovePairingAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{60}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *SecurityApprovePairingAction) GetPairingId() string {
@@ -5169,7 +5093,7 @@ type SecurityStartJoinPairingAction struct {
 
 func (x *SecurityStartJoinPairingAction) Reset() {
 	*x = SecurityStartJoinPairingAction{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[61]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5181,7 +5105,7 @@ func (x *SecurityStartJoinPairingAction) String() string {
 func (*SecurityStartJoinPairingAction) ProtoMessage() {}
 
 func (x *SecurityStartJoinPairingAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[61]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5194,7 +5118,7 @@ func (x *SecurityStartJoinPairingAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityStartJoinPairingAction.ProtoReflect.Descriptor instead.
 func (*SecurityStartJoinPairingAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{61}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *SecurityStartJoinPairingAction) GetServer() string {
@@ -5266,7 +5190,7 @@ type SecurityUpdateDeviceMetaAction struct {
 
 func (x *SecurityUpdateDeviceMetaAction) Reset() {
 	*x = SecurityUpdateDeviceMetaAction{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[62]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5278,7 +5202,7 @@ func (x *SecurityUpdateDeviceMetaAction) String() string {
 func (*SecurityUpdateDeviceMetaAction) ProtoMessage() {}
 
 func (x *SecurityUpdateDeviceMetaAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[62]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5291,7 +5215,7 @@ func (x *SecurityUpdateDeviceMetaAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityUpdateDeviceMetaAction.ProtoReflect.Descriptor instead.
 func (*SecurityUpdateDeviceMetaAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{62}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *SecurityUpdateDeviceMetaAction) GetDeviceId() string {
@@ -5382,7 +5306,7 @@ type SecurityWorkflowActionEvent struct {
 
 func (x *SecurityWorkflowActionEvent) Reset() {
 	*x = SecurityWorkflowActionEvent{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[63]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5394,7 +5318,7 @@ func (x *SecurityWorkflowActionEvent) String() string {
 func (*SecurityWorkflowActionEvent) ProtoMessage() {}
 
 func (x *SecurityWorkflowActionEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[63]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5407,7 +5331,7 @@ func (x *SecurityWorkflowActionEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityWorkflowActionEvent.ProtoReflect.Descriptor instead.
 func (*SecurityWorkflowActionEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{63}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *SecurityWorkflowActionEvent) GetActionId() uint64 {
@@ -6070,7 +5994,7 @@ type SecurityWorkflowResultEffect struct {
 
 func (x *SecurityWorkflowResultEffect) Reset() {
 	*x = SecurityWorkflowResultEffect{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[64]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6082,7 +6006,7 @@ func (x *SecurityWorkflowResultEffect) String() string {
 func (*SecurityWorkflowResultEffect) ProtoMessage() {}
 
 func (x *SecurityWorkflowResultEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[64]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6095,7 +6019,7 @@ func (x *SecurityWorkflowResultEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityWorkflowResultEffect.ProtoReflect.Descriptor instead.
 func (*SecurityWorkflowResultEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{64}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *SecurityWorkflowResultEffect) GetActionId() uint64 {
@@ -6233,7 +6157,7 @@ type SecurityStatusChangedEffect struct {
 
 func (x *SecurityStatusChangedEffect) Reset() {
 	*x = SecurityStatusChangedEffect{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[65]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6245,7 +6169,7 @@ func (x *SecurityStatusChangedEffect) String() string {
 func (*SecurityStatusChangedEffect) ProtoMessage() {}
 
 func (x *SecurityStatusChangedEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[65]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6258,7 +6182,7 @@ func (x *SecurityStatusChangedEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityStatusChangedEffect.ProtoReflect.Descriptor instead.
 func (*SecurityStatusChangedEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{65}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *SecurityStatusChangedEffect) GetStatus() *SecurityWorkflowStatus {
@@ -6273,7 +6197,6 @@ type SecurityOpenNotifyEvent struct {
 	OpId          uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
 	NotifyBlob    []byte                 `protobuf:"bytes,2,opt,name=notify_blob,json=notifyBlob,proto3" json:"notify_blob,omitempty"`
 	RecordBlob    []byte                 `protobuf:"bytes,3,opt,name=record_blob,json=recordBlob,proto3" json:"record_blob,omitempty"`
-	Envelope      *v1.Envelope           `protobuf:"bytes,4,opt,name=envelope,proto3" json:"envelope,omitempty"`
 	NowMs         int64                  `protobuf:"varint,5,opt,name=now_ms,json=nowMs,proto3" json:"now_ms,omitempty"`
 	SessionId     string                 `protobuf:"bytes,6,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	Tag           string                 `protobuf:"bytes,7,opt,name=tag,proto3" json:"tag,omitempty"`
@@ -6281,13 +6204,14 @@ type SecurityOpenNotifyEvent struct {
 	ExpectedKind  v1.NotifyKind          `protobuf:"varint,9,opt,name=expected_kind,json=expectedKind,proto3,enum=remoteagent.v1.NotifyKind" json:"expected_kind,omitempty"`
 	EventKey      string                 `protobuf:"bytes,10,opt,name=event_key,json=eventKey,proto3" json:"event_key,omitempty"`
 	FallbackBody  *string                `protobuf:"bytes,11,opt,name=fallback_body,json=fallbackBody,proto3,oneof" json:"fallback_body,omitempty"`
+	RawEnvelope   []byte                 `protobuf:"bytes,12,opt,name=raw_envelope,json=rawEnvelope,proto3" json:"raw_envelope,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SecurityOpenNotifyEvent) Reset() {
 	*x = SecurityOpenNotifyEvent{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[66]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6299,7 +6223,7 @@ func (x *SecurityOpenNotifyEvent) String() string {
 func (*SecurityOpenNotifyEvent) ProtoMessage() {}
 
 func (x *SecurityOpenNotifyEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[66]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6312,7 +6236,7 @@ func (x *SecurityOpenNotifyEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityOpenNotifyEvent.ProtoReflect.Descriptor instead.
 func (*SecurityOpenNotifyEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{66}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *SecurityOpenNotifyEvent) GetOpId() uint64 {
@@ -6332,13 +6256,6 @@ func (x *SecurityOpenNotifyEvent) GetNotifyBlob() []byte {
 func (x *SecurityOpenNotifyEvent) GetRecordBlob() []byte {
 	if x != nil {
 		return x.RecordBlob
-	}
-	return nil
-}
-
-func (x *SecurityOpenNotifyEvent) GetEnvelope() *v1.Envelope {
-	if x != nil {
-		return x.Envelope
 	}
 	return nil
 }
@@ -6392,6 +6309,13 @@ func (x *SecurityOpenNotifyEvent) GetFallbackBody() string {
 	return ""
 }
 
+func (x *SecurityOpenNotifyEvent) GetRawEnvelope() []byte {
+	if x != nil {
+		return x.RawEnvelope
+	}
+	return nil
+}
+
 type SecurityNotifyDisplay struct {
 	state                 protoimpl.MessageState `protogen:"open.v1"`
 	Valid                 bool                   `protobuf:"varint,1,opt,name=valid,proto3" json:"valid,omitempty"`
@@ -6417,7 +6341,7 @@ type SecurityNotifyDisplay struct {
 
 func (x *SecurityNotifyDisplay) Reset() {
 	*x = SecurityNotifyDisplay{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[67]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6429,7 +6353,7 @@ func (x *SecurityNotifyDisplay) String() string {
 func (*SecurityNotifyDisplay) ProtoMessage() {}
 
 func (x *SecurityNotifyDisplay) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[67]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6442,7 +6366,7 @@ func (x *SecurityNotifyDisplay) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityNotifyDisplay.ProtoReflect.Descriptor instead.
 func (*SecurityNotifyDisplay) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{67}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *SecurityNotifyDisplay) GetValid() bool {
@@ -6576,7 +6500,7 @@ type SecurityNotifyOpenedEffect struct {
 
 func (x *SecurityNotifyOpenedEffect) Reset() {
 	*x = SecurityNotifyOpenedEffect{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[68]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6588,7 +6512,7 @@ func (x *SecurityNotifyOpenedEffect) String() string {
 func (*SecurityNotifyOpenedEffect) ProtoMessage() {}
 
 func (x *SecurityNotifyOpenedEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[68]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6601,7 +6525,7 @@ func (x *SecurityNotifyOpenedEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityNotifyOpenedEffect.ProtoReflect.Descriptor instead.
 func (*SecurityNotifyOpenedEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{68}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *SecurityNotifyOpenedEffect) GetOpId() uint64 {
@@ -6636,7 +6560,7 @@ var File_remoteagent_core_v1_security_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\n" +
-	"\"remoteagent/core/v1/security.proto\x12\x13remoteagent.core.v1\x1a'remoteagent/core/v1/security_view.proto\x1a'remoteagent/core/v1/settings_view.proto\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1dremoteagent/v1/envelope.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\x1a\x1bremoteagent/v1/remote.proto\"\x9b\x02\n" +
+	"\"remoteagent/core/v1/security.proto\x12\x13remoteagent.core.v1\x1a'remoteagent/core/v1/security_view.proto\x1a'remoteagent/core/v1/settings_view.proto\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\x1a\x1bremoteagent/v1/remote.proto\"\x9b\x02\n" +
 	"\x13SecurityConfigEvent\x12\x18\n" +
 	"\aaccount\x18\x01 \x01(\tR\aaccount\x12\x1b\n" +
 	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId\x12#\n" +
@@ -6706,9 +6630,8 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\x1cSecurityCryptoBatchDoneEvent\x12\x13\n" +
 	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12H\n" +
 	"\aresults\x18\x02 \x03(\v2..remoteagent.core.v1.SecurityCryptoBatchResultR\aresults\x12\x14\n" +
-	"\x05error\x18\x03 \x01(\tR\x05error\"\xb6\x02\n" +
-	"\x16SecurityOpenEnvelopeOp\x124\n" +
-	"\benvelope\x18\x01 \x01(\v2\x18.remoteagent.v1.EnvelopeR\benvelope\x12)\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"\xb3\x02\n" +
+	"\x16SecurityOpenEnvelopeOp\x12)\n" +
 	"\x10expected_purpose\x18\x02 \x01(\rR\x0fexpectedPurpose\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x03 \x01(\tR\tmachineId\x12\x1d\n" +
@@ -6718,7 +6641,8 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"request_id\x18\x05 \x01(\tR\trequestId\x12\x10\n" +
 	"\x03seq\x18\x06 \x01(\x04R\x03seq\x12\x18\n" +
 	"\ahistory\x18\a \x01(\bR\ahistory\x122\n" +
-	"\x15override_session_seed\x18\b \x01(\fR\x13overrideSessionSeed\"\xbe\x02\n" +
+	"\x15override_session_seed\x18\b \x01(\fR\x13overrideSessionSeed\x12!\n" +
+	"\fraw_envelope\x18\t \x01(\fR\vrawEnvelopeJ\x04\b\x01\x10\x02R\benvelope\"\xbe\x02\n" +
 	"\x16SecuritySealEnvelopeOp\x12\x18\n" +
 	"\apurpose\x18\x01 \x01(\rR\apurpose\x12\x1d\n" +
 	"\n" +
@@ -6732,16 +6656,12 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"deadlineMs\x12\x1c\n" +
 	"\tplaintext\x18\a \x01(\fR\tplaintext\x12(\n" +
 	"\x10use_session_seed\x18\b \x01(\bR\x0euseSessionSeed\x122\n" +
-	"\x15override_session_seed\x18\t \x01(\fR\x13overrideSessionSeed\"9\n" +
-	"\x18SecurityGetSessionSeedOp\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\"\xb6\x02\n" +
+	"\x15override_session_seed\x18\t \x01(\fR\x13overrideSessionSeed\"\xf3\x01\n" +
 	"\x16SecurityOpRequestEvent\x12\x13\n" +
 	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12R\n" +
 	"\ropen_envelope\x18\x02 \x01(\v2+.remoteagent.core.v1.SecurityOpenEnvelopeOpH\x00R\fopenEnvelope\x12R\n" +
-	"\rseal_envelope\x18\x03 \x01(\v2+.remoteagent.core.v1.SecuritySealEnvelopeOpH\x00R\fsealEnvelope\x12Y\n" +
-	"\x10get_session_seed\x18\x04 \x01(\v2-.remoteagent.core.v1.SecurityGetSessionSeedOpH\x00R\x0egetSessionSeedB\x04\n" +
-	"\x02op\"\xcf\x02\n" +
+	"\rseal_envelope\x18\x03 \x01(\v2+.remoteagent.core.v1.SecuritySealEnvelopeOpH\x00R\fsealEnvelopeB\x04\n" +
+	"\x02opJ\x04\b\x04\x10\x05R\x10get_session_seed\"\xcf\x02\n" +
 	"\x1aSecurityOpenEnvelopeResult\x12\x16\n" +
 	"\x06header\x18\x01 \x01(\fR\x06header\x12\x1c\n" +
 	"\tplaintext\x18\x02 \x01(\fR\tplaintext\x12\x14\n" +
@@ -6758,20 +6678,19 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"request_id\x18\n" +
 	" \x01(\tR\trequestId\x12\x1f\n" +
 	"\vdeadline_ms\x18\v \x01(\x03R\n" +
-	"deadlineMs\"\x9f\x01\n" +
-	"\x1aSecuritySealEnvelopeResult\x124\n" +
-	"\benvelope\x18\x01 \x01(\v2\x18.remoteagent.v1.EnvelopeR\benvelope\x12(\n" +
+	"deadlineMs\"\x9c\x01\n" +
+	"\x1aSecuritySealEnvelopeResult\x12(\n" +
 	"\x10request_key_hash\x18\x02 \x01(\fR\x0erequestKeyHash\x12!\n" +
-	"\fpayload_hash\x18\x03 \x01(\fR\vpayloadHash\"\xf6\x02\n" +
+	"\fpayload_hash\x18\x03 \x01(\fR\vpayloadHash\x12!\n" +
+	"\fraw_envelope\x18\x04 \x01(\fR\vrawEnvelopeJ\x04\b\x01\x10\x02R\benvelope\"\xe5\x02\n" +
 	"\x16SecurityOpResultEffect\x12\x13\n" +
 	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12\x14\n" +
 	"\x05error\x18\x02 \x01(\tR\x05error\x12I\n" +
 	"\x06opened\x18\x04 \x01(\v2/.remoteagent.core.v1.SecurityOpenEnvelopeResultH\x00R\x06opened\x12I\n" +
-	"\x06sealed\x18\x05 \x01(\v2/.remoteagent.core.v1.SecuritySealEnvelopeResultH\x00R\x06sealed\x12#\n" +
-	"\fsession_seed\x18\x06 \x01(\fH\x00R\vsessionSeed\x12Z\n" +
+	"\x06sealed\x18\x05 \x01(\v2/.remoteagent.core.v1.SecuritySealEnvelopeResultH\x00R\x06sealed\x12Z\n" +
 	"\x15structured_error_code\x18\a \x01(\x0e2&.remoteagent.core.v1.SecurityErrorCodeR\x13structuredErrorCodeB\b\n" +
-	"\x06resultJ\x04\b\x03\x10\x04R\n" +
-	"error_code\"\x97\x01\n" +
+	"\x06resultJ\x04\b\x03\x10\x04J\x04\b\x06\x10\aR\n" +
+	"error_codeR\fsession_seed\"\x97\x01\n" +
 	"\vDemoMachine\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x16\n" +
@@ -7157,14 +7076,13 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"error_text\x18\x14 \x01(\v2\x19.remoteagent.core.v1.TextR\terrorTextJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05R\x05errorR\n" +
 	"error_code\"b\n" +
 	"\x1bSecurityStatusChangedEffect\x12C\n" +
-	"\x06status\x18\x01 \x01(\v2+.remoteagent.core.v1.SecurityWorkflowStatusR\x06status\"\xa7\x03\n" +
+	"\x06status\x18\x01 \x01(\v2+.remoteagent.core.v1.SecurityWorkflowStatusR\x06status\"\xa4\x03\n" +
 	"\x17SecurityOpenNotifyEvent\x12\x13\n" +
 	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12\x1f\n" +
 	"\vnotify_blob\x18\x02 \x01(\fR\n" +
 	"notifyBlob\x12\x1f\n" +
 	"\vrecord_blob\x18\x03 \x01(\fR\n" +
-	"recordBlob\x124\n" +
-	"\benvelope\x18\x04 \x01(\v2\x18.remoteagent.v1.EnvelopeR\benvelope\x12\x15\n" +
+	"recordBlob\x12\x15\n" +
 	"\x06now_ms\x18\x05 \x01(\x03R\x05nowMs\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x06 \x01(\tR\tsessionId\x12\x10\n" +
@@ -7174,8 +7092,9 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\rexpected_kind\x18\t \x01(\x0e2\x1a.remoteagent.v1.NotifyKindR\fexpectedKind\x12\x1b\n" +
 	"\tevent_key\x18\n" +
 	" \x01(\tR\beventKey\x12(\n" +
-	"\rfallback_body\x18\v \x01(\tH\x00R\ffallbackBody\x88\x01\x01B\x10\n" +
-	"\x0e_fallback_body\"\xfa\x05\n" +
+	"\rfallback_body\x18\v \x01(\tH\x00R\ffallbackBody\x88\x01\x01\x12!\n" +
+	"\fraw_envelope\x18\f \x01(\fR\vrawEnvelopeB\x10\n" +
+	"\x0e_fallback_bodyJ\x04\b\x04\x10\x05R\benvelope\"\xfa\x05\n" +
 	"\x15SecurityNotifyDisplay\x12\x14\n" +
 	"\x05valid\x18\x01 \x01(\bR\x05valid\x12.\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1a.remoteagent.v1.NotifyKindR\x04kind\x12\x10\n" +
@@ -7303,7 +7222,7 @@ func file_remoteagent_core_v1_security_proto_rawDescGZIP() []byte {
 }
 
 var file_remoteagent_core_v1_security_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_remoteagent_core_v1_security_proto_msgTypes = make([]protoimpl.MessageInfo, 69)
+var file_remoteagent_core_v1_security_proto_msgTypes = make([]protoimpl.MessageInfo, 68)
 var file_remoteagent_core_v1_security_proto_goTypes = []any{
 	(SecurityKeyKind)(0),                        // 0: remoteagent.core.v1.SecurityKeyKind
 	(SecurityErrorCode)(0),                      // 1: remoteagent.core.v1.SecurityErrorCode
@@ -7327,72 +7246,70 @@ var file_remoteagent_core_v1_security_proto_goTypes = []any{
 	(*SecurityCryptoBatchDoneEvent)(nil),        // 19: remoteagent.core.v1.SecurityCryptoBatchDoneEvent
 	(*SecurityOpenEnvelopeOp)(nil),              // 20: remoteagent.core.v1.SecurityOpenEnvelopeOp
 	(*SecuritySealEnvelopeOp)(nil),              // 21: remoteagent.core.v1.SecuritySealEnvelopeOp
-	(*SecurityGetSessionSeedOp)(nil),            // 22: remoteagent.core.v1.SecurityGetSessionSeedOp
-	(*SecurityOpRequestEvent)(nil),              // 23: remoteagent.core.v1.SecurityOpRequestEvent
-	(*SecurityOpenEnvelopeResult)(nil),          // 24: remoteagent.core.v1.SecurityOpenEnvelopeResult
-	(*SecuritySealEnvelopeResult)(nil),          // 25: remoteagent.core.v1.SecuritySealEnvelopeResult
-	(*SecurityOpResultEffect)(nil),              // 26: remoteagent.core.v1.SecurityOpResultEffect
-	(*DemoMachine)(nil),                         // 27: remoteagent.core.v1.DemoMachine
-	(*DemoSession)(nil),                         // 28: remoteagent.core.v1.DemoSession
-	(*DemoDevice)(nil),                          // 29: remoteagent.core.v1.DemoDevice
-	(*DemoSessionEvents)(nil),                   // 30: remoteagent.core.v1.DemoSessionEvents
-	(*DemoSecurity)(nil),                        // 31: remoteagent.core.v1.DemoSecurity
-	(*DemoDirectReport)(nil),                    // 32: remoteagent.core.v1.DemoDirectReport
-	(*SeedDemoWorldEvent)(nil),                  // 33: remoteagent.core.v1.SeedDemoWorldEvent
-	(*CacheWriteStoredEvents)(nil),              // 34: remoteagent.core.v1.CacheWriteStoredEvents
-	(*SecurityKeyGenerateEffect)(nil),           // 35: remoteagent.core.v1.SecurityKeyGenerateEffect
-	(*SecurityKeyGeneratedEvent)(nil),           // 36: remoteagent.core.v1.SecurityKeyGeneratedEvent
-	(*SecurityEncapsulateRecipient)(nil),        // 37: remoteagent.core.v1.SecurityEncapsulateRecipient
-	(*SecurityKeyEncapsulateEffect)(nil),        // 38: remoteagent.core.v1.SecurityKeyEncapsulateEffect
-	(*SecurityEncapsulatedPair)(nil),            // 39: remoteagent.core.v1.SecurityEncapsulatedPair
-	(*SecurityKeyEncapsulatedEvent)(nil),        // 40: remoteagent.core.v1.SecurityKeyEncapsulatedEvent
-	(*SecurityKeyDiscardEffect)(nil),            // 41: remoteagent.core.v1.SecurityKeyDiscardEffect
-	(*SecurityStorageEntry)(nil),                // 42: remoteagent.core.v1.SecurityStorageEntry
-	(*SecurityStorageWrite)(nil),                // 43: remoteagent.core.v1.SecurityStorageWrite
-	(*SecurityStorageEffect)(nil),               // 44: remoteagent.core.v1.SecurityStorageEffect
-	(*SecurityStorageResultEvent)(nil),          // 45: remoteagent.core.v1.SecurityStorageResultEvent
-	(*SecurityRpcEffect)(nil),                   // 46: remoteagent.core.v1.SecurityRpcEffect
-	(*RpcErrorDetailBytes)(nil),                 // 47: remoteagent.core.v1.RpcErrorDetailBytes
-	(*SecurityRpcResultEvent)(nil),              // 48: remoteagent.core.v1.SecurityRpcResultEvent
-	(*SecurityTokenUpdatedEffect)(nil),          // 49: remoteagent.core.v1.SecurityTokenUpdatedEffect
-	(*SecurityPendingOpSummary)(nil),            // 50: remoteagent.core.v1.SecurityPendingOpSummary
-	(*SecurityWorkflowStatus)(nil),              // 51: remoteagent.core.v1.SecurityWorkflowStatus
-	(*SecurityPairingReplacementCandidate)(nil), // 52: remoteagent.core.v1.SecurityPairingReplacementCandidate
-	(*SecurityPairingInfo)(nil),                 // 53: remoteagent.core.v1.SecurityPairingInfo
-	(*SecurityRecoveryInfo)(nil),                // 54: remoteagent.core.v1.SecurityRecoveryInfo
-	(*SecurityHandoffCandidate)(nil),            // 55: remoteagent.core.v1.SecurityHandoffCandidate
-	(*SecurityExitAdvice)(nil),                  // 56: remoteagent.core.v1.SecurityExitAdvice
-	(*SecurityAccountAdopted)(nil),              // 57: remoteagent.core.v1.SecurityAccountAdopted
-	(*SecurityActionEmpty)(nil),                 // 58: remoteagent.core.v1.SecurityActionEmpty
-	(*SecurityBoolAction)(nil),                  // 59: remoteagent.core.v1.SecurityBoolAction
-	(*SecurityStringAction)(nil),                // 60: remoteagent.core.v1.SecurityStringAction
-	(*SecuritySyncNowAction)(nil),               // 61: remoteagent.core.v1.SecuritySyncNowAction
-	(*SecurityPrepareCreationAction)(nil),       // 62: remoteagent.core.v1.SecurityPrepareCreationAction
-	(*SecurityRemoveDeviceAction)(nil),          // 63: remoteagent.core.v1.SecurityRemoveDeviceAction
-	(*SecurityServerCodeAction)(nil),            // 64: remoteagent.core.v1.SecurityServerCodeAction
-	(*SecurityStartPairingAction)(nil),          // 65: remoteagent.core.v1.SecurityStartPairingAction
-	(*SecurityApprovePairingAction)(nil),        // 66: remoteagent.core.v1.SecurityApprovePairingAction
-	(*SecurityStartJoinPairingAction)(nil),      // 67: remoteagent.core.v1.SecurityStartJoinPairingAction
-	(*SecurityUpdateDeviceMetaAction)(nil),      // 68: remoteagent.core.v1.SecurityUpdateDeviceMetaAction
-	(*SecurityWorkflowActionEvent)(nil),         // 69: remoteagent.core.v1.SecurityWorkflowActionEvent
-	(*SecurityWorkflowResultEffect)(nil),        // 70: remoteagent.core.v1.SecurityWorkflowResultEffect
-	(*SecurityStatusChangedEffect)(nil),         // 71: remoteagent.core.v1.SecurityStatusChangedEffect
-	(*SecurityOpenNotifyEvent)(nil),             // 72: remoteagent.core.v1.SecurityOpenNotifyEvent
-	(*SecurityNotifyDisplay)(nil),               // 73: remoteagent.core.v1.SecurityNotifyDisplay
-	(*SecurityNotifyOpenedEffect)(nil),          // 74: remoteagent.core.v1.SecurityNotifyOpenedEffect
-	(*v1.Envelope)(nil),                         // 75: remoteagent.v1.Envelope
-	(*v1.MachineMeta)(nil),                      // 76: remoteagent.v1.MachineMeta
-	(*v1.Session)(nil),                          // 77: remoteagent.v1.Session
-	(*v1.LiveSnapshot)(nil),                     // 78: remoteagent.v1.LiveSnapshot
-	(v1.DeviceKind)(0),                          // 79: remoteagent.v1.DeviceKind
-	(*v1.DeviceMeta)(nil),                       // 80: remoteagent.v1.DeviceMeta
-	(*v1.Event)(nil),                            // 81: remoteagent.v1.Event
-	(*DirectRouteReport)(nil),                   // 82: remoteagent.core.v1.DirectRouteReport
-	(*v1.ProjectPrefs)(nil),                     // 83: remoteagent.v1.ProjectPrefs
-	(*v1.StoredEvent)(nil),                      // 84: remoteagent.v1.StoredEvent
-	(*Text)(nil),                                // 85: remoteagent.core.v1.Text
-	(SecurityRecoveryPhase)(0),                  // 86: remoteagent.core.v1.SecurityRecoveryPhase
-	(v1.NotifyKind)(0),                          // 87: remoteagent.v1.NotifyKind
+	(*SecurityOpRequestEvent)(nil),              // 22: remoteagent.core.v1.SecurityOpRequestEvent
+	(*SecurityOpenEnvelopeResult)(nil),          // 23: remoteagent.core.v1.SecurityOpenEnvelopeResult
+	(*SecuritySealEnvelopeResult)(nil),          // 24: remoteagent.core.v1.SecuritySealEnvelopeResult
+	(*SecurityOpResultEffect)(nil),              // 25: remoteagent.core.v1.SecurityOpResultEffect
+	(*DemoMachine)(nil),                         // 26: remoteagent.core.v1.DemoMachine
+	(*DemoSession)(nil),                         // 27: remoteagent.core.v1.DemoSession
+	(*DemoDevice)(nil),                          // 28: remoteagent.core.v1.DemoDevice
+	(*DemoSessionEvents)(nil),                   // 29: remoteagent.core.v1.DemoSessionEvents
+	(*DemoSecurity)(nil),                        // 30: remoteagent.core.v1.DemoSecurity
+	(*DemoDirectReport)(nil),                    // 31: remoteagent.core.v1.DemoDirectReport
+	(*SeedDemoWorldEvent)(nil),                  // 32: remoteagent.core.v1.SeedDemoWorldEvent
+	(*CacheWriteStoredEvents)(nil),              // 33: remoteagent.core.v1.CacheWriteStoredEvents
+	(*SecurityKeyGenerateEffect)(nil),           // 34: remoteagent.core.v1.SecurityKeyGenerateEffect
+	(*SecurityKeyGeneratedEvent)(nil),           // 35: remoteagent.core.v1.SecurityKeyGeneratedEvent
+	(*SecurityEncapsulateRecipient)(nil),        // 36: remoteagent.core.v1.SecurityEncapsulateRecipient
+	(*SecurityKeyEncapsulateEffect)(nil),        // 37: remoteagent.core.v1.SecurityKeyEncapsulateEffect
+	(*SecurityEncapsulatedPair)(nil),            // 38: remoteagent.core.v1.SecurityEncapsulatedPair
+	(*SecurityKeyEncapsulatedEvent)(nil),        // 39: remoteagent.core.v1.SecurityKeyEncapsulatedEvent
+	(*SecurityKeyDiscardEffect)(nil),            // 40: remoteagent.core.v1.SecurityKeyDiscardEffect
+	(*SecurityStorageEntry)(nil),                // 41: remoteagent.core.v1.SecurityStorageEntry
+	(*SecurityStorageWrite)(nil),                // 42: remoteagent.core.v1.SecurityStorageWrite
+	(*SecurityStorageEffect)(nil),               // 43: remoteagent.core.v1.SecurityStorageEffect
+	(*SecurityStorageResultEvent)(nil),          // 44: remoteagent.core.v1.SecurityStorageResultEvent
+	(*SecurityRpcEffect)(nil),                   // 45: remoteagent.core.v1.SecurityRpcEffect
+	(*RpcErrorDetailBytes)(nil),                 // 46: remoteagent.core.v1.RpcErrorDetailBytes
+	(*SecurityRpcResultEvent)(nil),              // 47: remoteagent.core.v1.SecurityRpcResultEvent
+	(*SecurityTokenUpdatedEffect)(nil),          // 48: remoteagent.core.v1.SecurityTokenUpdatedEffect
+	(*SecurityPendingOpSummary)(nil),            // 49: remoteagent.core.v1.SecurityPendingOpSummary
+	(*SecurityWorkflowStatus)(nil),              // 50: remoteagent.core.v1.SecurityWorkflowStatus
+	(*SecurityPairingReplacementCandidate)(nil), // 51: remoteagent.core.v1.SecurityPairingReplacementCandidate
+	(*SecurityPairingInfo)(nil),                 // 52: remoteagent.core.v1.SecurityPairingInfo
+	(*SecurityRecoveryInfo)(nil),                // 53: remoteagent.core.v1.SecurityRecoveryInfo
+	(*SecurityHandoffCandidate)(nil),            // 54: remoteagent.core.v1.SecurityHandoffCandidate
+	(*SecurityExitAdvice)(nil),                  // 55: remoteagent.core.v1.SecurityExitAdvice
+	(*SecurityAccountAdopted)(nil),              // 56: remoteagent.core.v1.SecurityAccountAdopted
+	(*SecurityActionEmpty)(nil),                 // 57: remoteagent.core.v1.SecurityActionEmpty
+	(*SecurityBoolAction)(nil),                  // 58: remoteagent.core.v1.SecurityBoolAction
+	(*SecurityStringAction)(nil),                // 59: remoteagent.core.v1.SecurityStringAction
+	(*SecuritySyncNowAction)(nil),               // 60: remoteagent.core.v1.SecuritySyncNowAction
+	(*SecurityPrepareCreationAction)(nil),       // 61: remoteagent.core.v1.SecurityPrepareCreationAction
+	(*SecurityRemoveDeviceAction)(nil),          // 62: remoteagent.core.v1.SecurityRemoveDeviceAction
+	(*SecurityServerCodeAction)(nil),            // 63: remoteagent.core.v1.SecurityServerCodeAction
+	(*SecurityStartPairingAction)(nil),          // 64: remoteagent.core.v1.SecurityStartPairingAction
+	(*SecurityApprovePairingAction)(nil),        // 65: remoteagent.core.v1.SecurityApprovePairingAction
+	(*SecurityStartJoinPairingAction)(nil),      // 66: remoteagent.core.v1.SecurityStartJoinPairingAction
+	(*SecurityUpdateDeviceMetaAction)(nil),      // 67: remoteagent.core.v1.SecurityUpdateDeviceMetaAction
+	(*SecurityWorkflowActionEvent)(nil),         // 68: remoteagent.core.v1.SecurityWorkflowActionEvent
+	(*SecurityWorkflowResultEffect)(nil),        // 69: remoteagent.core.v1.SecurityWorkflowResultEffect
+	(*SecurityStatusChangedEffect)(nil),         // 70: remoteagent.core.v1.SecurityStatusChangedEffect
+	(*SecurityOpenNotifyEvent)(nil),             // 71: remoteagent.core.v1.SecurityOpenNotifyEvent
+	(*SecurityNotifyDisplay)(nil),               // 72: remoteagent.core.v1.SecurityNotifyDisplay
+	(*SecurityNotifyOpenedEffect)(nil),          // 73: remoteagent.core.v1.SecurityNotifyOpenedEffect
+	(*v1.MachineMeta)(nil),                      // 74: remoteagent.v1.MachineMeta
+	(*v1.Session)(nil),                          // 75: remoteagent.v1.Session
+	(*v1.LiveSnapshot)(nil),                     // 76: remoteagent.v1.LiveSnapshot
+	(v1.DeviceKind)(0),                          // 77: remoteagent.v1.DeviceKind
+	(*v1.DeviceMeta)(nil),                       // 78: remoteagent.v1.DeviceMeta
+	(*v1.Event)(nil),                            // 79: remoteagent.v1.Event
+	(*DirectRouteReport)(nil),                   // 80: remoteagent.core.v1.DirectRouteReport
+	(*v1.ProjectPrefs)(nil),                     // 81: remoteagent.v1.ProjectPrefs
+	(*v1.StoredEvent)(nil),                      // 82: remoteagent.v1.StoredEvent
+	(*Text)(nil),                                // 83: remoteagent.core.v1.Text
+	(SecurityRecoveryPhase)(0),                  // 84: remoteagent.core.v1.SecurityRecoveryPhase
+	(v1.NotifyKind)(0),                          // 85: remoteagent.v1.NotifyKind
 }
 var file_remoteagent_core_v1_security_proto_depIdxs = []int32{
 	0,   // 0: remoteagent.core.v1.SecurityKeySignEffect.key_kind:type_name -> remoteagent.core.v1.SecurityKeyKind
@@ -7403,117 +7320,113 @@ var file_remoteagent_core_v1_security_proto_depIdxs = []int32{
 	15,  // 5: remoteagent.core.v1.SecurityCryptoBatchItem.sha256:type_name -> remoteagent.core.v1.CryptoBatchSha256Item
 	16,  // 6: remoteagent.core.v1.SecurityCryptoBatchEffect.items:type_name -> remoteagent.core.v1.SecurityCryptoBatchItem
 	18,  // 7: remoteagent.core.v1.SecurityCryptoBatchDoneEvent.results:type_name -> remoteagent.core.v1.SecurityCryptoBatchResult
-	75,  // 8: remoteagent.core.v1.SecurityOpenEnvelopeOp.envelope:type_name -> remoteagent.v1.Envelope
-	20,  // 9: remoteagent.core.v1.SecurityOpRequestEvent.open_envelope:type_name -> remoteagent.core.v1.SecurityOpenEnvelopeOp
-	21,  // 10: remoteagent.core.v1.SecurityOpRequestEvent.seal_envelope:type_name -> remoteagent.core.v1.SecuritySealEnvelopeOp
-	22,  // 11: remoteagent.core.v1.SecurityOpRequestEvent.get_session_seed:type_name -> remoteagent.core.v1.SecurityGetSessionSeedOp
-	75,  // 12: remoteagent.core.v1.SecuritySealEnvelopeResult.envelope:type_name -> remoteagent.v1.Envelope
-	24,  // 13: remoteagent.core.v1.SecurityOpResultEffect.opened:type_name -> remoteagent.core.v1.SecurityOpenEnvelopeResult
-	25,  // 14: remoteagent.core.v1.SecurityOpResultEffect.sealed:type_name -> remoteagent.core.v1.SecuritySealEnvelopeResult
-	1,   // 15: remoteagent.core.v1.SecurityOpResultEffect.structured_error_code:type_name -> remoteagent.core.v1.SecurityErrorCode
-	76,  // 16: remoteagent.core.v1.DemoMachine.meta:type_name -> remoteagent.v1.MachineMeta
-	77,  // 17: remoteagent.core.v1.DemoSession.meta:type_name -> remoteagent.v1.Session
-	78,  // 18: remoteagent.core.v1.DemoSession.checkpoint:type_name -> remoteagent.v1.LiveSnapshot
-	79,  // 19: remoteagent.core.v1.DemoDevice.kind:type_name -> remoteagent.v1.DeviceKind
-	80,  // 20: remoteagent.core.v1.DemoDevice.meta:type_name -> remoteagent.v1.DeviceMeta
-	81,  // 21: remoteagent.core.v1.DemoSessionEvents.events:type_name -> remoteagent.v1.Event
-	82,  // 22: remoteagent.core.v1.DemoDirectReport.report:type_name -> remoteagent.core.v1.DirectRouteReport
-	27,  // 23: remoteagent.core.v1.SeedDemoWorldEvent.machines:type_name -> remoteagent.core.v1.DemoMachine
-	28,  // 24: remoteagent.core.v1.SeedDemoWorldEvent.sessions:type_name -> remoteagent.core.v1.DemoSession
-	29,  // 25: remoteagent.core.v1.SeedDemoWorldEvent.devices:type_name -> remoteagent.core.v1.DemoDevice
-	83,  // 26: remoteagent.core.v1.SeedDemoWorldEvent.prefs:type_name -> remoteagent.v1.ProjectPrefs
-	30,  // 27: remoteagent.core.v1.SeedDemoWorldEvent.session_events:type_name -> remoteagent.core.v1.DemoSessionEvents
-	31,  // 28: remoteagent.core.v1.SeedDemoWorldEvent.security:type_name -> remoteagent.core.v1.DemoSecurity
-	32,  // 29: remoteagent.core.v1.SeedDemoWorldEvent.direct_reports:type_name -> remoteagent.core.v1.DemoDirectReport
-	84,  // 30: remoteagent.core.v1.CacheWriteStoredEvents.events:type_name -> remoteagent.v1.StoredEvent
-	0,   // 31: remoteagent.core.v1.SecurityKeyGenerateEffect.key_kind:type_name -> remoteagent.core.v1.SecurityKeyKind
-	37,  // 32: remoteagent.core.v1.SecurityKeyEncapsulateEffect.recipients:type_name -> remoteagent.core.v1.SecurityEncapsulateRecipient
-	39,  // 33: remoteagent.core.v1.SecurityKeyEncapsulatedEvent.pairs:type_name -> remoteagent.core.v1.SecurityEncapsulatedPair
-	0,   // 34: remoteagent.core.v1.SecurityKeyDiscardEffect.key_kind:type_name -> remoteagent.core.v1.SecurityKeyKind
-	2,   // 35: remoteagent.core.v1.SecurityStorageEntry.bucket:type_name -> remoteagent.core.v1.SecurityStoreBucket
-	2,   // 36: remoteagent.core.v1.SecurityStorageWrite.bucket:type_name -> remoteagent.core.v1.SecurityStoreBucket
-	3,   // 37: remoteagent.core.v1.SecurityStorageEffect.op:type_name -> remoteagent.core.v1.SecurityStorageOp
-	2,   // 38: remoteagent.core.v1.SecurityStorageEffect.bucket:type_name -> remoteagent.core.v1.SecurityStoreBucket
-	43,  // 39: remoteagent.core.v1.SecurityStorageEffect.batch:type_name -> remoteagent.core.v1.SecurityStorageWrite
-	42,  // 40: remoteagent.core.v1.SecurityStorageResultEvent.entries:type_name -> remoteagent.core.v1.SecurityStorageEntry
-	4,   // 41: remoteagent.core.v1.SecurityRpcEffect.method:type_name -> remoteagent.core.v1.SecurityRpcMethod
-	47,  // 42: remoteagent.core.v1.SecurityRpcResultEvent.error_details:type_name -> remoteagent.core.v1.RpcErrorDetailBytes
-	5,   // 43: remoteagent.core.v1.SecurityWorkflowStatus.bootstrap:type_name -> remoteagent.core.v1.SecurityBootstrapKind
-	50,  // 44: remoteagent.core.v1.SecurityWorkflowStatus.pending_op:type_name -> remoteagent.core.v1.SecurityPendingOpSummary
-	85,  // 45: remoteagent.core.v1.SecurityWorkflowStatus.error_text:type_name -> remoteagent.core.v1.Text
-	85,  // 46: remoteagent.core.v1.SecurityWorkflowStatus.pending_remove_notice:type_name -> remoteagent.core.v1.Text
-	85,  // 47: remoteagent.core.v1.SecurityPairingReplacementCandidate.last_active_text:type_name -> remoteagent.core.v1.Text
-	79,  // 48: remoteagent.core.v1.SecurityPairingInfo.joiner_kind:type_name -> remoteagent.v1.DeviceKind
-	52,  // 49: remoteagent.core.v1.SecurityPairingInfo.replacement_candidates:type_name -> remoteagent.core.v1.SecurityPairingReplacementCandidate
-	85,  // 50: remoteagent.core.v1.SecurityPairingInfo.replace_old_label:type_name -> remoteagent.core.v1.Text
-	85,  // 51: remoteagent.core.v1.SecurityPairingInfo.replace_old_hint:type_name -> remoteagent.core.v1.Text
-	85,  // 52: remoteagent.core.v1.SecurityPairingInfo.remove_old_notice:type_name -> remoteagent.core.v1.Text
-	86,  // 53: remoteagent.core.v1.SecurityRecoveryInfo.recovery_phase:type_name -> remoteagent.core.v1.SecurityRecoveryPhase
-	85,  // 54: remoteagent.core.v1.SecurityExitAdvice.message_text:type_name -> remoteagent.core.v1.Text
-	58,  // 55: remoteagent.core.v1.SecurityWorkflowActionEvent.bootstrap:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	58,  // 56: remoteagent.core.v1.SecurityWorkflowActionEvent.dismiss_upgrade_notice:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	61,  // 57: remoteagent.core.v1.SecurityWorkflowActionEvent.sync_now:type_name -> remoteagent.core.v1.SecuritySyncNowAction
-	59,  // 58: remoteagent.core.v1.SecurityWorkflowActionEvent.renew_lease:type_name -> remoteagent.core.v1.SecurityBoolAction
-	58,  // 59: remoteagent.core.v1.SecurityWorkflowActionEvent.resume_pending_op:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	59,  // 60: remoteagent.core.v1.SecurityWorkflowActionEvent.discard_pending_op:type_name -> remoteagent.core.v1.SecurityBoolAction
-	62,  // 61: remoteagent.core.v1.SecurityWorkflowActionEvent.prepare_creation:type_name -> remoteagent.core.v1.SecurityPrepareCreationAction
-	58,  // 62: remoteagent.core.v1.SecurityWorkflowActionEvent.confirm_creation_code_saved:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	60,  // 63: remoteagent.core.v1.SecurityWorkflowActionEvent.continue_creation:type_name -> remoteagent.core.v1.SecurityStringAction
-	58,  // 64: remoteagent.core.v1.SecurityWorkflowActionEvent.adopt_creation_without_code:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	63,  // 65: remoteagent.core.v1.SecurityWorkflowActionEvent.remove_device:type_name -> remoteagent.core.v1.SecurityRemoveDeviceAction
-	60,  // 66: remoteagent.core.v1.SecurityWorkflowActionEvent.delete_machine_records:type_name -> remoteagent.core.v1.SecurityStringAction
-	58,  // 67: remoteagent.core.v1.SecurityWorkflowActionEvent.delete_account:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	58,  // 68: remoteagent.core.v1.SecurityWorkflowActionEvent.prepare_recovery_rotation:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	58,  // 69: remoteagent.core.v1.SecurityWorkflowActionEvent.confirm_recovery_rotation:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	59,  // 70: remoteagent.core.v1.SecurityWorkflowActionEvent.prepare_handoff_code:type_name -> remoteagent.core.v1.SecurityBoolAction
-	58,  // 71: remoteagent.core.v1.SecurityWorkflowActionEvent.publish_handoff_offer:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	60,  // 72: remoteagent.core.v1.SecurityWorkflowActionEvent.handoff_authority:type_name -> remoteagent.core.v1.SecurityStringAction
-	64,  // 73: remoteagent.core.v1.SecurityWorkflowActionEvent.complete_account_public_profile:type_name -> remoteagent.core.v1.SecurityServerCodeAction
-	65,  // 74: remoteagent.core.v1.SecurityWorkflowActionEvent.start_pairing:type_name -> remoteagent.core.v1.SecurityStartPairingAction
-	60,  // 75: remoteagent.core.v1.SecurityWorkflowActionEvent.poll_pairing:type_name -> remoteagent.core.v1.SecurityStringAction
-	66,  // 76: remoteagent.core.v1.SecurityWorkflowActionEvent.approve_pairing:type_name -> remoteagent.core.v1.SecurityApprovePairingAction
-	60,  // 77: remoteagent.core.v1.SecurityWorkflowActionEvent.finish_pairing_delivery:type_name -> remoteagent.core.v1.SecurityStringAction
-	60,  // 78: remoteagent.core.v1.SecurityWorkflowActionEvent.cancel_pairing:type_name -> remoteagent.core.v1.SecurityStringAction
-	67,  // 79: remoteagent.core.v1.SecurityWorkflowActionEvent.start_join_pairing:type_name -> remoteagent.core.v1.SecurityStartJoinPairingAction
-	60,  // 80: remoteagent.core.v1.SecurityWorkflowActionEvent.confirm_join_sas:type_name -> remoteagent.core.v1.SecurityStringAction
-	60,  // 81: remoteagent.core.v1.SecurityWorkflowActionEvent.cancel_join_pairing:type_name -> remoteagent.core.v1.SecurityStringAction
-	64,  // 82: remoteagent.core.v1.SecurityWorkflowActionEvent.prepare_emergency_recovery:type_name -> remoteagent.core.v1.SecurityServerCodeAction
-	60,  // 83: remoteagent.core.v1.SecurityWorkflowActionEvent.continue_recovery_signing:type_name -> remoteagent.core.v1.SecurityStringAction
-	58,  // 84: remoteagent.core.v1.SecurityWorkflowActionEvent.confirm_recovery_code_saved:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	58,  // 85: remoteagent.core.v1.SecurityWorkflowActionEvent.resume_recovery:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	58,  // 86: remoteagent.core.v1.SecurityWorkflowActionEvent.complete_recovery:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	58,  // 87: remoteagent.core.v1.SecurityWorkflowActionEvent.discard_unsigned_recovery:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	58,  // 88: remoteagent.core.v1.SecurityWorkflowActionEvent.discard_rejected_recovery:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	58,  // 89: remoteagent.core.v1.SecurityWorkflowActionEvent.check_exit_advice:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	58,  // 90: remoteagent.core.v1.SecurityWorkflowActionEvent.clear_security:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	68,  // 91: remoteagent.core.v1.SecurityWorkflowActionEvent.update_device_meta:type_name -> remoteagent.core.v1.SecurityUpdateDeviceMetaAction
-	58,  // 92: remoteagent.core.v1.SecurityWorkflowActionEvent.list_handoff_candidates:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	58,  // 93: remoteagent.core.v1.SecurityWorkflowActionEvent.get_status:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	58,  // 94: remoteagent.core.v1.SecurityWorkflowActionEvent.check_retained_denied:type_name -> remoteagent.core.v1.SecurityActionEmpty
-	59,  // 95: remoteagent.core.v1.SecurityWorkflowActionEvent.republish_recovery_objects:type_name -> remoteagent.core.v1.SecurityBoolAction
-	51,  // 96: remoteagent.core.v1.SecurityWorkflowResultEffect.status:type_name -> remoteagent.core.v1.SecurityWorkflowStatus
-	53,  // 97: remoteagent.core.v1.SecurityWorkflowResultEffect.pairing:type_name -> remoteagent.core.v1.SecurityPairingInfo
-	54,  // 98: remoteagent.core.v1.SecurityWorkflowResultEffect.recovery:type_name -> remoteagent.core.v1.SecurityRecoveryInfo
-	55,  // 99: remoteagent.core.v1.SecurityWorkflowResultEffect.handoff_candidates:type_name -> remoteagent.core.v1.SecurityHandoffCandidate
-	56,  // 100: remoteagent.core.v1.SecurityWorkflowResultEffect.exit_advice:type_name -> remoteagent.core.v1.SecurityExitAdvice
-	57,  // 101: remoteagent.core.v1.SecurityWorkflowResultEffect.account_adopted:type_name -> remoteagent.core.v1.SecurityAccountAdopted
-	1,   // 102: remoteagent.core.v1.SecurityWorkflowResultEffect.structured_error_code:type_name -> remoteagent.core.v1.SecurityErrorCode
-	85,  // 103: remoteagent.core.v1.SecurityWorkflowResultEffect.error_text:type_name -> remoteagent.core.v1.Text
-	51,  // 104: remoteagent.core.v1.SecurityStatusChangedEffect.status:type_name -> remoteagent.core.v1.SecurityWorkflowStatus
-	75,  // 105: remoteagent.core.v1.SecurityOpenNotifyEvent.envelope:type_name -> remoteagent.v1.Envelope
-	87,  // 106: remoteagent.core.v1.SecurityOpenNotifyEvent.expected_kind:type_name -> remoteagent.v1.NotifyKind
-	87,  // 107: remoteagent.core.v1.SecurityNotifyDisplay.kind:type_name -> remoteagent.v1.NotifyKind
-	85,  // 108: remoteagent.core.v1.SecurityNotifyDisplay.title:type_name -> remoteagent.core.v1.Text
-	85,  // 109: remoteagent.core.v1.SecurityNotifyDisplay.body:type_name -> remoteagent.core.v1.Text
-	85,  // 110: remoteagent.core.v1.SecurityNotifyDisplay.sub_text:type_name -> remoteagent.core.v1.Text
-	85,  // 111: remoteagent.core.v1.SecurityNotifyDisplay.big_text:type_name -> remoteagent.core.v1.Text
-	85,  // 112: remoteagent.core.v1.SecurityNotifyDisplay.full_generic_body:type_name -> remoteagent.core.v1.Text
-	73,  // 113: remoteagent.core.v1.SecurityNotifyOpenedEffect.display:type_name -> remoteagent.core.v1.SecurityNotifyDisplay
-	114, // [114:114] is the sub-list for method output_type
-	114, // [114:114] is the sub-list for method input_type
-	114, // [114:114] is the sub-list for extension type_name
-	114, // [114:114] is the sub-list for extension extendee
-	0,   // [0:114] is the sub-list for field type_name
+	20,  // 8: remoteagent.core.v1.SecurityOpRequestEvent.open_envelope:type_name -> remoteagent.core.v1.SecurityOpenEnvelopeOp
+	21,  // 9: remoteagent.core.v1.SecurityOpRequestEvent.seal_envelope:type_name -> remoteagent.core.v1.SecuritySealEnvelopeOp
+	23,  // 10: remoteagent.core.v1.SecurityOpResultEffect.opened:type_name -> remoteagent.core.v1.SecurityOpenEnvelopeResult
+	24,  // 11: remoteagent.core.v1.SecurityOpResultEffect.sealed:type_name -> remoteagent.core.v1.SecuritySealEnvelopeResult
+	1,   // 12: remoteagent.core.v1.SecurityOpResultEffect.structured_error_code:type_name -> remoteagent.core.v1.SecurityErrorCode
+	74,  // 13: remoteagent.core.v1.DemoMachine.meta:type_name -> remoteagent.v1.MachineMeta
+	75,  // 14: remoteagent.core.v1.DemoSession.meta:type_name -> remoteagent.v1.Session
+	76,  // 15: remoteagent.core.v1.DemoSession.checkpoint:type_name -> remoteagent.v1.LiveSnapshot
+	77,  // 16: remoteagent.core.v1.DemoDevice.kind:type_name -> remoteagent.v1.DeviceKind
+	78,  // 17: remoteagent.core.v1.DemoDevice.meta:type_name -> remoteagent.v1.DeviceMeta
+	79,  // 18: remoteagent.core.v1.DemoSessionEvents.events:type_name -> remoteagent.v1.Event
+	80,  // 19: remoteagent.core.v1.DemoDirectReport.report:type_name -> remoteagent.core.v1.DirectRouteReport
+	26,  // 20: remoteagent.core.v1.SeedDemoWorldEvent.machines:type_name -> remoteagent.core.v1.DemoMachine
+	27,  // 21: remoteagent.core.v1.SeedDemoWorldEvent.sessions:type_name -> remoteagent.core.v1.DemoSession
+	28,  // 22: remoteagent.core.v1.SeedDemoWorldEvent.devices:type_name -> remoteagent.core.v1.DemoDevice
+	81,  // 23: remoteagent.core.v1.SeedDemoWorldEvent.prefs:type_name -> remoteagent.v1.ProjectPrefs
+	29,  // 24: remoteagent.core.v1.SeedDemoWorldEvent.session_events:type_name -> remoteagent.core.v1.DemoSessionEvents
+	30,  // 25: remoteagent.core.v1.SeedDemoWorldEvent.security:type_name -> remoteagent.core.v1.DemoSecurity
+	31,  // 26: remoteagent.core.v1.SeedDemoWorldEvent.direct_reports:type_name -> remoteagent.core.v1.DemoDirectReport
+	82,  // 27: remoteagent.core.v1.CacheWriteStoredEvents.events:type_name -> remoteagent.v1.StoredEvent
+	0,   // 28: remoteagent.core.v1.SecurityKeyGenerateEffect.key_kind:type_name -> remoteagent.core.v1.SecurityKeyKind
+	36,  // 29: remoteagent.core.v1.SecurityKeyEncapsulateEffect.recipients:type_name -> remoteagent.core.v1.SecurityEncapsulateRecipient
+	38,  // 30: remoteagent.core.v1.SecurityKeyEncapsulatedEvent.pairs:type_name -> remoteagent.core.v1.SecurityEncapsulatedPair
+	0,   // 31: remoteagent.core.v1.SecurityKeyDiscardEffect.key_kind:type_name -> remoteagent.core.v1.SecurityKeyKind
+	2,   // 32: remoteagent.core.v1.SecurityStorageEntry.bucket:type_name -> remoteagent.core.v1.SecurityStoreBucket
+	2,   // 33: remoteagent.core.v1.SecurityStorageWrite.bucket:type_name -> remoteagent.core.v1.SecurityStoreBucket
+	3,   // 34: remoteagent.core.v1.SecurityStorageEffect.op:type_name -> remoteagent.core.v1.SecurityStorageOp
+	2,   // 35: remoteagent.core.v1.SecurityStorageEffect.bucket:type_name -> remoteagent.core.v1.SecurityStoreBucket
+	42,  // 36: remoteagent.core.v1.SecurityStorageEffect.batch:type_name -> remoteagent.core.v1.SecurityStorageWrite
+	41,  // 37: remoteagent.core.v1.SecurityStorageResultEvent.entries:type_name -> remoteagent.core.v1.SecurityStorageEntry
+	4,   // 38: remoteagent.core.v1.SecurityRpcEffect.method:type_name -> remoteagent.core.v1.SecurityRpcMethod
+	46,  // 39: remoteagent.core.v1.SecurityRpcResultEvent.error_details:type_name -> remoteagent.core.v1.RpcErrorDetailBytes
+	5,   // 40: remoteagent.core.v1.SecurityWorkflowStatus.bootstrap:type_name -> remoteagent.core.v1.SecurityBootstrapKind
+	49,  // 41: remoteagent.core.v1.SecurityWorkflowStatus.pending_op:type_name -> remoteagent.core.v1.SecurityPendingOpSummary
+	83,  // 42: remoteagent.core.v1.SecurityWorkflowStatus.error_text:type_name -> remoteagent.core.v1.Text
+	83,  // 43: remoteagent.core.v1.SecurityWorkflowStatus.pending_remove_notice:type_name -> remoteagent.core.v1.Text
+	83,  // 44: remoteagent.core.v1.SecurityPairingReplacementCandidate.last_active_text:type_name -> remoteagent.core.v1.Text
+	77,  // 45: remoteagent.core.v1.SecurityPairingInfo.joiner_kind:type_name -> remoteagent.v1.DeviceKind
+	51,  // 46: remoteagent.core.v1.SecurityPairingInfo.replacement_candidates:type_name -> remoteagent.core.v1.SecurityPairingReplacementCandidate
+	83,  // 47: remoteagent.core.v1.SecurityPairingInfo.replace_old_label:type_name -> remoteagent.core.v1.Text
+	83,  // 48: remoteagent.core.v1.SecurityPairingInfo.replace_old_hint:type_name -> remoteagent.core.v1.Text
+	83,  // 49: remoteagent.core.v1.SecurityPairingInfo.remove_old_notice:type_name -> remoteagent.core.v1.Text
+	84,  // 50: remoteagent.core.v1.SecurityRecoveryInfo.recovery_phase:type_name -> remoteagent.core.v1.SecurityRecoveryPhase
+	83,  // 51: remoteagent.core.v1.SecurityExitAdvice.message_text:type_name -> remoteagent.core.v1.Text
+	57,  // 52: remoteagent.core.v1.SecurityWorkflowActionEvent.bootstrap:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	57,  // 53: remoteagent.core.v1.SecurityWorkflowActionEvent.dismiss_upgrade_notice:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	60,  // 54: remoteagent.core.v1.SecurityWorkflowActionEvent.sync_now:type_name -> remoteagent.core.v1.SecuritySyncNowAction
+	58,  // 55: remoteagent.core.v1.SecurityWorkflowActionEvent.renew_lease:type_name -> remoteagent.core.v1.SecurityBoolAction
+	57,  // 56: remoteagent.core.v1.SecurityWorkflowActionEvent.resume_pending_op:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	58,  // 57: remoteagent.core.v1.SecurityWorkflowActionEvent.discard_pending_op:type_name -> remoteagent.core.v1.SecurityBoolAction
+	61,  // 58: remoteagent.core.v1.SecurityWorkflowActionEvent.prepare_creation:type_name -> remoteagent.core.v1.SecurityPrepareCreationAction
+	57,  // 59: remoteagent.core.v1.SecurityWorkflowActionEvent.confirm_creation_code_saved:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	59,  // 60: remoteagent.core.v1.SecurityWorkflowActionEvent.continue_creation:type_name -> remoteagent.core.v1.SecurityStringAction
+	57,  // 61: remoteagent.core.v1.SecurityWorkflowActionEvent.adopt_creation_without_code:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	62,  // 62: remoteagent.core.v1.SecurityWorkflowActionEvent.remove_device:type_name -> remoteagent.core.v1.SecurityRemoveDeviceAction
+	59,  // 63: remoteagent.core.v1.SecurityWorkflowActionEvent.delete_machine_records:type_name -> remoteagent.core.v1.SecurityStringAction
+	57,  // 64: remoteagent.core.v1.SecurityWorkflowActionEvent.delete_account:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	57,  // 65: remoteagent.core.v1.SecurityWorkflowActionEvent.prepare_recovery_rotation:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	57,  // 66: remoteagent.core.v1.SecurityWorkflowActionEvent.confirm_recovery_rotation:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	58,  // 67: remoteagent.core.v1.SecurityWorkflowActionEvent.prepare_handoff_code:type_name -> remoteagent.core.v1.SecurityBoolAction
+	57,  // 68: remoteagent.core.v1.SecurityWorkflowActionEvent.publish_handoff_offer:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	59,  // 69: remoteagent.core.v1.SecurityWorkflowActionEvent.handoff_authority:type_name -> remoteagent.core.v1.SecurityStringAction
+	63,  // 70: remoteagent.core.v1.SecurityWorkflowActionEvent.complete_account_public_profile:type_name -> remoteagent.core.v1.SecurityServerCodeAction
+	64,  // 71: remoteagent.core.v1.SecurityWorkflowActionEvent.start_pairing:type_name -> remoteagent.core.v1.SecurityStartPairingAction
+	59,  // 72: remoteagent.core.v1.SecurityWorkflowActionEvent.poll_pairing:type_name -> remoteagent.core.v1.SecurityStringAction
+	65,  // 73: remoteagent.core.v1.SecurityWorkflowActionEvent.approve_pairing:type_name -> remoteagent.core.v1.SecurityApprovePairingAction
+	59,  // 74: remoteagent.core.v1.SecurityWorkflowActionEvent.finish_pairing_delivery:type_name -> remoteagent.core.v1.SecurityStringAction
+	59,  // 75: remoteagent.core.v1.SecurityWorkflowActionEvent.cancel_pairing:type_name -> remoteagent.core.v1.SecurityStringAction
+	66,  // 76: remoteagent.core.v1.SecurityWorkflowActionEvent.start_join_pairing:type_name -> remoteagent.core.v1.SecurityStartJoinPairingAction
+	59,  // 77: remoteagent.core.v1.SecurityWorkflowActionEvent.confirm_join_sas:type_name -> remoteagent.core.v1.SecurityStringAction
+	59,  // 78: remoteagent.core.v1.SecurityWorkflowActionEvent.cancel_join_pairing:type_name -> remoteagent.core.v1.SecurityStringAction
+	63,  // 79: remoteagent.core.v1.SecurityWorkflowActionEvent.prepare_emergency_recovery:type_name -> remoteagent.core.v1.SecurityServerCodeAction
+	59,  // 80: remoteagent.core.v1.SecurityWorkflowActionEvent.continue_recovery_signing:type_name -> remoteagent.core.v1.SecurityStringAction
+	57,  // 81: remoteagent.core.v1.SecurityWorkflowActionEvent.confirm_recovery_code_saved:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	57,  // 82: remoteagent.core.v1.SecurityWorkflowActionEvent.resume_recovery:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	57,  // 83: remoteagent.core.v1.SecurityWorkflowActionEvent.complete_recovery:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	57,  // 84: remoteagent.core.v1.SecurityWorkflowActionEvent.discard_unsigned_recovery:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	57,  // 85: remoteagent.core.v1.SecurityWorkflowActionEvent.discard_rejected_recovery:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	57,  // 86: remoteagent.core.v1.SecurityWorkflowActionEvent.check_exit_advice:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	57,  // 87: remoteagent.core.v1.SecurityWorkflowActionEvent.clear_security:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	67,  // 88: remoteagent.core.v1.SecurityWorkflowActionEvent.update_device_meta:type_name -> remoteagent.core.v1.SecurityUpdateDeviceMetaAction
+	57,  // 89: remoteagent.core.v1.SecurityWorkflowActionEvent.list_handoff_candidates:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	57,  // 90: remoteagent.core.v1.SecurityWorkflowActionEvent.get_status:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	57,  // 91: remoteagent.core.v1.SecurityWorkflowActionEvent.check_retained_denied:type_name -> remoteagent.core.v1.SecurityActionEmpty
+	58,  // 92: remoteagent.core.v1.SecurityWorkflowActionEvent.republish_recovery_objects:type_name -> remoteagent.core.v1.SecurityBoolAction
+	50,  // 93: remoteagent.core.v1.SecurityWorkflowResultEffect.status:type_name -> remoteagent.core.v1.SecurityWorkflowStatus
+	52,  // 94: remoteagent.core.v1.SecurityWorkflowResultEffect.pairing:type_name -> remoteagent.core.v1.SecurityPairingInfo
+	53,  // 95: remoteagent.core.v1.SecurityWorkflowResultEffect.recovery:type_name -> remoteagent.core.v1.SecurityRecoveryInfo
+	54,  // 96: remoteagent.core.v1.SecurityWorkflowResultEffect.handoff_candidates:type_name -> remoteagent.core.v1.SecurityHandoffCandidate
+	55,  // 97: remoteagent.core.v1.SecurityWorkflowResultEffect.exit_advice:type_name -> remoteagent.core.v1.SecurityExitAdvice
+	56,  // 98: remoteagent.core.v1.SecurityWorkflowResultEffect.account_adopted:type_name -> remoteagent.core.v1.SecurityAccountAdopted
+	1,   // 99: remoteagent.core.v1.SecurityWorkflowResultEffect.structured_error_code:type_name -> remoteagent.core.v1.SecurityErrorCode
+	83,  // 100: remoteagent.core.v1.SecurityWorkflowResultEffect.error_text:type_name -> remoteagent.core.v1.Text
+	50,  // 101: remoteagent.core.v1.SecurityStatusChangedEffect.status:type_name -> remoteagent.core.v1.SecurityWorkflowStatus
+	85,  // 102: remoteagent.core.v1.SecurityOpenNotifyEvent.expected_kind:type_name -> remoteagent.v1.NotifyKind
+	85,  // 103: remoteagent.core.v1.SecurityNotifyDisplay.kind:type_name -> remoteagent.v1.NotifyKind
+	83,  // 104: remoteagent.core.v1.SecurityNotifyDisplay.title:type_name -> remoteagent.core.v1.Text
+	83,  // 105: remoteagent.core.v1.SecurityNotifyDisplay.body:type_name -> remoteagent.core.v1.Text
+	83,  // 106: remoteagent.core.v1.SecurityNotifyDisplay.sub_text:type_name -> remoteagent.core.v1.Text
+	83,  // 107: remoteagent.core.v1.SecurityNotifyDisplay.big_text:type_name -> remoteagent.core.v1.Text
+	83,  // 108: remoteagent.core.v1.SecurityNotifyDisplay.full_generic_body:type_name -> remoteagent.core.v1.Text
+	72,  // 109: remoteagent.core.v1.SecurityNotifyOpenedEffect.display:type_name -> remoteagent.core.v1.SecurityNotifyDisplay
+	110, // [110:110] is the sub-list for method output_type
+	110, // [110:110] is the sub-list for method input_type
+	110, // [110:110] is the sub-list for extension type_name
+	110, // [110:110] is the sub-list for extension extendee
+	0,   // [0:110] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_security_proto_init() }
@@ -7530,17 +7443,15 @@ func file_remoteagent_core_v1_security_proto_init() {
 		(*SecurityCryptoBatchItem_AeadSeal)(nil),
 		(*SecurityCryptoBatchItem_Sha256)(nil),
 	}
-	file_remoteagent_core_v1_security_proto_msgTypes[17].OneofWrappers = []any{
+	file_remoteagent_core_v1_security_proto_msgTypes[16].OneofWrappers = []any{
 		(*SecurityOpRequestEvent_OpenEnvelope)(nil),
 		(*SecurityOpRequestEvent_SealEnvelope)(nil),
-		(*SecurityOpRequestEvent_GetSessionSeed)(nil),
 	}
-	file_remoteagent_core_v1_security_proto_msgTypes[20].OneofWrappers = []any{
+	file_remoteagent_core_v1_security_proto_msgTypes[19].OneofWrappers = []any{
 		(*SecurityOpResultEffect_Opened)(nil),
 		(*SecurityOpResultEffect_Sealed)(nil),
-		(*SecurityOpResultEffect_SessionSeed)(nil),
 	}
-	file_remoteagent_core_v1_security_proto_msgTypes[63].OneofWrappers = []any{
+	file_remoteagent_core_v1_security_proto_msgTypes[62].OneofWrappers = []any{
 		(*SecurityWorkflowActionEvent_Bootstrap)(nil),
 		(*SecurityWorkflowActionEvent_DismissUpgradeNotice)(nil),
 		(*SecurityWorkflowActionEvent_SyncNow)(nil),
@@ -7583,14 +7494,14 @@ func file_remoteagent_core_v1_security_proto_init() {
 		(*SecurityWorkflowActionEvent_CheckRetainedDenied)(nil),
 		(*SecurityWorkflowActionEvent_RepublishRecoveryObjects)(nil),
 	}
-	file_remoteagent_core_v1_security_proto_msgTypes[66].OneofWrappers = []any{}
+	file_remoteagent_core_v1_security_proto_msgTypes[65].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_core_v1_security_proto_rawDesc), len(file_remoteagent_core_v1_security_proto_rawDesc)),
 			NumEnums:      6,
-			NumMessages:   69,
+			NumMessages:   68,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

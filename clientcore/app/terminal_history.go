@@ -3,6 +3,7 @@ package app
 import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/termhistory"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
+	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/sync"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
@@ -61,7 +62,14 @@ func (c *Core) handleTerminalHistoryEvent(ctx *sync.StepContext, ev *corev1.Term
 	case corev1.TerminalHistoryEventKind_TERMINAL_HISTORY_EVENT_KIND_DISCONNECTED:
 		tr = h.Disconnected()
 	case corev1.TerminalHistoryEventKind_TERMINAL_HISTORY_EVENT_KIND_PAGE_RECEIVED:
-		tr = h.ReceivePage(ev.Page)
+		var page *v1.TerminalHistoryPage
+		if len(ev.RawPage) > 0 {
+			var decoded v1.TerminalHistoryPage
+			if err := decoded.Unmarshal(ev.RawPage); err == nil {
+				page = &decoded
+			}
+		}
+		tr = h.ReceivePage(page)
 	default:
 		return nil
 	}

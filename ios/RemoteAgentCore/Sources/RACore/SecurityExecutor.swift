@@ -476,7 +476,7 @@ public final class SecurityExecutor: @unchecked Sendable {
 /// Fail-closed: returns `nil` whenever `expectedKind` is unspecified or Core marks `display.valid == false`.
 public func openNotifyDisplayViaCore(
     notifyBlob: Data,
-    envelope: PBEnvelope,
+    rawEnvelope: Data,
     expectedKind: PBNotifyKind,
     nowMs: Int64 = Int64(Date().timeIntervalSince1970 * 1000),
     machineId: String = "",
@@ -485,7 +485,7 @@ public func openNotifyDisplayViaCore(
     eventKey: String = "",
     fallbackBody: String? = nil
 ) throws -> PBSecurityNotifyDisplay? {
-    guard expectedKind != .unspecified else { return nil }
+    guard expectedKind != .unspecified, !rawEnvelope.isEmpty else { return nil }
     let core = try CoreClient()
     defer { core.close() }
     let batch = try core.dispatch(PBCoreEvent.with {
@@ -495,7 +495,7 @@ public func openNotifyDisplayViaCore(
         $0.securityOpenNotify = .with {
             $0.opID = 1
             $0.notifyBlob = notifyBlob
-            $0.envelope = envelope
+            $0.rawEnvelope = rawEnvelope
             $0.nowMs = nowMs
             $0.expectedKind = expectedKind
             $0.machineID = machineId

@@ -13,7 +13,6 @@ import {
   SecurityOpenNotifyEventSchema,
   type SecurityNotifyOpenedEffect,
 } from "./gen/remoteagent/core/v1/security_pb";
-import { EnvelopeSchema } from "./gen/remoteagent/v1/envelope_pb";
 import { NotifyKind } from "./gen/remoteagent/v1/relay_pb";
 import * as l10n from "./i18n";
 
@@ -61,7 +60,7 @@ async function openNotifyViaCore(
   core: RemoteAgentCore,
   recordBlob: Uint8Array,
   xPrivate: CryptoKey,
-  env: ReturnType<typeof fromBinary<typeof EnvelopeSchema>>,
+  rawEnvelope: Uint8Array,
   expectedKind: NotifyKind,
   sessionId: string,
   machineId: string,
@@ -81,7 +80,7 @@ async function openNotifyViaCore(
           value: create(SecurityOpenNotifyEventSchema, {
             opId: 1n,
             recordBlob: new Uint8Array(recordBlob),
-            envelope: env,
+            rawEnvelope: new Uint8Array(rawEnvelope),
             nowMs: BigInt(Date.now()),
             sessionId,
             tag,
@@ -159,7 +158,7 @@ export async function pushContent(d: PushData): Promise<{ title: string; body: s
     if (typeof d.content !== "string" || !d.content.length ||
         new TextEncoder().encode(JSON.stringify(d)).length > MAX_PAYLOAD) return generic;
     const core = await ensureSwCore();
-    const env = fromBinary(EnvelopeSchema, Uint8Array.from(atob(d.content), (c) => c.charCodeAt(0)));
+    const rawEnv = Uint8Array.from(atob(d.content), (c) => c.charCodeAt(0));
     const v4 = await readV4RecordForNotify();
     if (!v4) throw new Error("missing v4 record");
 
@@ -177,7 +176,7 @@ export async function pushContent(d: PushData): Promise<{ title: string; body: s
       core,
       v4.recordBlob,
       v4.xPrivate,
-      env,
+      rawEnv,
       expectedKind,
       sessionId,
       d.machine ?? "",

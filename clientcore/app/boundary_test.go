@@ -83,9 +83,6 @@ var legacyWireAllowlist = map[string]string{
 	"PlainSession.meta -> v1.Session":                                        "legacy-relay-pipe (P2-5/P3-2/P4-1)",
 	"PutAccountPrefsRpc.next_prefs -> v1.ProjectPrefs":                       "legacy-relay-pipe (P2-5/P3-2/P4-1)",
 	"PutAccountPrefsRpc.sealed_envelope -> v1.Envelope":                      "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"SecurityOpenEnvelopeOp.envelope -> v1.Envelope":                         "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"SecurityOpenNotifyEvent.envelope -> v1.Envelope":                        "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"SecuritySealEnvelopeResult.envelope -> v1.Envelope":                     "legacy-relay-pipe (P2-5/P3-2/P4-1)",
 	"SessionByIdFetchedEvent.wire_session -> v1.RemoteSession":               "legacy-relay-pipe (P2-5/P3-2/P4-1)",
 	"SessionsPageFetchedEvent.next -> v1.SessionCursor":                      "legacy-relay-pipe (P2-5/P3-2/P4-1)",
 	"SessionsPageFetchedEvent.wire_sessions -> v1.RemoteSession":             "legacy-relay-pipe (P2-5/P3-2/P4-1)",
@@ -93,7 +90,6 @@ var legacyWireAllowlist = map[string]string{
 	"StreamFrameEvent.wire_device_updated -> v1.Device":                      "legacy-relay-pipe (P2-5/P3-2/P4-1)",
 	"StreamFrameEvent.wire_machine_updated -> v1.Machine":                    "legacy-relay-pipe (P2-5/P3-2/P4-1)",
 	"StreamFrameEvent.wire_session_updated -> v1.RemoteSession":              "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"TerminalHistoryEvent.page -> v1.TerminalHistoryPage":                    "legacy-relay-pipe (P2-5/P3-2/P4-1)",
 
 	// Demo seeding event (only used by ?demo / preview fixtures).
 	"DemoDevice.meta -> v1.DeviceMeta":          "demo-seed (P4-1)",

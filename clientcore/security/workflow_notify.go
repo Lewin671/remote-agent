@@ -289,10 +289,14 @@ func (t *openNotifyTask) step(e *Engine, ev *secEvent) error {
 }
 
 func (e *Engine) handleOpenNotifyErr(ev *corev1.SecurityOpenNotifyEvent) error {
-	if ev.Envelope == nil {
+	if len(ev.RawEnvelope) == 0 {
 		return devicesec.ErrInvalid
 	}
-	ct, err := FromProtoEnvelope(ev.Envelope)
+	var env v1.Envelope
+	if err := env.Unmarshal(ev.RawEnvelope); err != nil {
+		return devicesec.ErrInvalid
+	}
+	ct, err := FromProtoEnvelope(&env)
 	if err != nil {
 		return err
 	}

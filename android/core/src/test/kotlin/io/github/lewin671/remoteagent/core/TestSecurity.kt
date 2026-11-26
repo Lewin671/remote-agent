@@ -446,7 +446,7 @@ internal class CoreMemoryBridge(
                     },
             )
         }
-        return res.sealed.envelope
+        return Envelope.parseFrom(res.sealed.rawEnvelope)
     }
 
     fun open(
@@ -458,7 +458,7 @@ internal class CoreMemoryBridge(
         val res = runOp {
             setOpenEnvelope(
                 SecurityOpenEnvelopeOp.newBuilder()
-                    .setEnvelope(env)
+                    .setRawEnvelope(env.toByteString())
                     .setExpectedPurpose(expectedPurpose)
                     .setHistory(history)
                     .apply {

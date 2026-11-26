@@ -2,7 +2,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { create } from "@bufbuild/protobuf";
+import { create, toBinary } from "@bufbuild/protobuf";
 import {
   CoreHost,
   TerminalHistoryEventKind,
@@ -144,11 +144,14 @@ it("drives terminal history paging, SGR parsing, width runs, and 10s timeout thr
     coreHost.sendTerminalHistory(
       tid,
       TerminalHistoryEventKind.PAGE_RECEIVED,
-      create(TerminalHistoryPageSchema, {
-        requestId: sent[0].requestId,
-        lines: ["\u001b[38;2;255;123;114mdiff\u001b[0m 中文✅👨\u200d👩\u200d👧"],
-        nextCursor: "cap:200",
-      }),
+      toBinary(
+        TerminalHistoryPageSchema,
+        create(TerminalHistoryPageSchema, {
+          requestId: sent[0].requestId,
+          lines: ["\u001b[38;2;255;123;114mdiff\u001b[0m 中文✅👨\u200d👩\u200d👧"],
+          nextCursor: "cap:200",
+        }),
+      ) as Uint8Array<ArrayBuffer>,
     );
     expect(state.phase).toBe(TerminalHistoryPhase.OPEN);
     expect(state.canLoadEarlier).toBe(true);
@@ -201,10 +204,13 @@ describe("Core-driven wide and cluster spans", () => {
       coreHost.sendTerminalHistory(
         tid,
         TerminalHistoryEventKind.PAGE_RECEIVED,
-        create(TerminalHistoryPageSchema, {
-          requestId: sent[0].requestId,
-          lines: ["a中文✅☀\ufe0f👨\u200d👩\u200d👧e\u0301b"],
-        }),
+        toBinary(
+          TerminalHistoryPageSchema,
+          create(TerminalHistoryPageSchema, {
+            requestId: sent[0].requestId,
+            lines: ["a中文✅☀\ufe0f👨\u200d👩\u200d👧e\u0301b"],
+          }),
+        ) as Uint8Array<ArrayBuffer>,
       );
       expect(state.maxCells).toBe(13);
       host = document.createElement("div");

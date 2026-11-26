@@ -5,7 +5,6 @@ package remoteagent.core.v1;
 import "remoteagent/core/v1/security_view.proto";
 import "remoteagent/core/v1/settings_view.proto";
 import "remoteagent/core/v1/text.proto";
-import "remoteagent/v1/envelope.proto";
 import "remoteagent/v1/event.proto";
 import "remoteagent/v1/local.proto";
 import "remoteagent/v1/relay.proto";
@@ -119,10 +118,11 @@ message SecurityCryptoBatchDoneEvent {
   string error = 3;
 }
 
-// ---- Stateful Shell Op Bridge (for workflows still in shells in S5) ----
+// ---- Test-Fixture Crypto Bridge (zero production callers) ----
 
 message SecurityOpenEnvelopeOp {
-  remoteagent.v1.Envelope envelope = 1;
+  reserved 1;
+  reserved "envelope";
   uint32 expected_purpose = 2;
   string machine_id = 3;
   string session_id = 4;
@@ -130,6 +130,7 @@ message SecurityOpenEnvelopeOp {
   uint64 seq = 6;
   bool history = 7;
   bytes override_session_seed = 8;
+  bytes raw_envelope = 9;
 }
 
 message SecuritySealEnvelopeOp {
@@ -144,16 +145,13 @@ message SecuritySealEnvelopeOp {
   bytes override_session_seed = 9;
 }
 
-message SecurityGetSessionSeedOp {
-  string session_id = 1;
-}
-
 message SecurityOpRequestEvent {
+  reserved 4;
+  reserved "get_session_seed";
   uint64 op_id = 1;
   oneof op {
     SecurityOpenEnvelopeOp open_envelope = 2;
     SecuritySealEnvelopeOp seal_envelope = 3;
-    SecurityGetSessionSeedOp get_session_seed = 4;
   }
 }
 
@@ -172,9 +170,11 @@ message SecurityOpenEnvelopeResult {
 }
 
 message SecuritySealEnvelopeResult {
-  remoteagent.v1.Envelope envelope = 1;
+  reserved 1;
+  reserved "envelope";
   bytes request_key_hash = 2;
   bytes payload_hash = 3;
+  bytes raw_envelope = 4;
 }
 
 enum SecurityErrorCode {
@@ -199,14 +199,13 @@ enum SecurityErrorCode {
 }
 
 message SecurityOpResultEffect {
-  reserved 3;
-  reserved "error_code";
+  reserved 3, 6;
+  reserved "error_code", "session_seed";
   uint64 op_id = 1;
   string error = 2;
   oneof result {
     SecurityOpenEnvelopeResult opened = 4;
     SecuritySealEnvelopeResult sealed = 5;
-    bytes session_seed = 6;
   }
   SecurityErrorCode structured_error_code = 7;
 }
@@ -710,10 +709,11 @@ message SecurityStatusChangedEffect {
 }
 
 message SecurityOpenNotifyEvent {
+  reserved 4;
+  reserved "envelope";
   uint64 op_id = 1;
   bytes notify_blob = 2;
   bytes record_blob = 3;
-  remoteagent.v1.Envelope envelope = 4;
   int64 now_ms = 5;
   string session_id = 6;
   string tag = 7;
@@ -721,6 +721,7 @@ message SecurityOpenNotifyEvent {
   remoteagent.v1.NotifyKind expected_kind = 9;
   string event_key = 10;
   optional string fallback_body = 11;
+  bytes raw_envelope = 12;
 }
 
 message SecurityNotifyDisplay {

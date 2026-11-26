@@ -1487,11 +1487,16 @@ func (t *sealEnvelopeTask) finish(e *Engine, sr SealResult) {
 			e.emitSecurityOpErr(t.secOpID, sr.Err)
 			return
 		}
+		rawEnv, err := sr.Envelope.Marshal()
+		if err != nil {
+			e.emitSecurityOpErr(t.secOpID, err)
+			return
+		}
 		e.emitSecurityOpResult(&corev1.SecurityOpResultEffect{
 			OpId: t.secOpID,
 			Result: &corev1.SecurityOpResultEffect_Sealed{
 				Sealed: &corev1.SecuritySealEnvelopeResult{
-					Envelope: sr.Envelope, RequestKeyHash: sr.RequestKeyHash, PayloadHash: sr.PayloadHash,
+					RawEnvelope: rawEnv, RequestKeyHash: sr.RequestKeyHash, PayloadHash: sr.PayloadHash,
 				},
 			},
 		})
@@ -1686,18 +1691,23 @@ func (e *Engine) HandleSecurityOp(nowMs int64, req *corev1.SecurityOpRequestEven
 	}
 	switch op := req.Op.(type) {
 	case *corev1.SecurityOpRequestEvent_OpenEnvelope:
-		if op.OpenEnvelope == nil {
+		if op.OpenEnvelope == nil || len(op.OpenEnvelope.RawEnvelope) == 0 {
 			e.emitSecurityOpErr(req.OpId, devicesec.ErrInvalid)
 			return e.DrainEffects()
 		}
 		o := op.OpenEnvelope
+		var env v1.Envelope
+		if err := env.Unmarshal(o.RawEnvelope); err != nil {
+			e.emitSecurityOpErr(req.OpId, devicesec.ErrInvalid)
+			return e.DrainEffects()
+		}
 		e.startOpenBatch(nowMs, &openBatchTask{
 			items: []OpenItem{{
-				Env: o.Envelope, ExpectedPurpose: devicesec.Purpose(o.ExpectedPurpose),
+				Env: &env, ExpectedPurpose: devicesec.Purpose(o.ExpectedPurpose),
 				MachineID: o.MachineId, SessionID: o.SessionId, RequestID: o.RequestId,
 				Seq: o.Seq, History: o.History, Replacements: replacements, OverrideSeed: o.OverrideSessionSeed,
 			}},
-			secOpID: req.OpId, secOpHeader: o.Envelope.GetSecurityHeader(),
+			secOpID: req.OpId, secOpHeader: env.GetSecurityHeader(),
 		})
 	case *corev1.SecurityOpRequestEvent_SealEnvelope:
 		if op.SealEnvelope == nil {
@@ -1710,19 +1720,6 @@ func (e *Engine) HandleSecurityOp(nowMs int64, req *corev1.SecurityOpRequestEven
 			requestID: s.RequestId, seq: s.Seq, deadlineMs: uint64(max(0, s.DeadlineMs)),
 			plain: s.Plaintext, useSessionSeed: s.UseSessionSeed, overrideSeed: s.OverrideSessionSeed, secOpID: req.OpId,
 		})
-	case *corev1.SecurityOpRequestEvent_GetSessionSeed:
-		var seed []byte
-		var ok bool
-		if op.GetSessionSeed != nil {
-			seed, ok = e.SessionSeed(op.GetSessionSeed.SessionId)
-		}
-		if !ok {
-			e.emitSecurityOpErr(req.OpId, devicesec.ErrInvalid)
-		} else {
-			e.emitSecurityOpResult(&corev1.SecurityOpResultEffect{
-				OpId: req.OpId, Result: &corev1.SecurityOpResultEffect_SessionSeed{SessionSeed: seed},
-			})
-		}
 	default:
 		e.emitSecurityOpErr(req.OpId, devicesec.ErrInvalid)
 	}

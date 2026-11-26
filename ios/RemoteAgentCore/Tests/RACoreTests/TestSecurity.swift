@@ -849,16 +849,10 @@ func attachTestCoreDriver(
         },
         relayPipe: true
     )
+    TestCoreDriverRegistry.register(remote: remote, driver: driver)
     await remote.installCoreHooks(.init(
         onRefresh: {},
         onRefreshDevices: {},
-        onSecurityOp: { req in
-            (try? await driver.runSecurityOp { $0 = req }) ?? PBSecurityOpResultEffect.with {
-                $0.opID = req.opID
-                $0.error = "driver closed"
-                $0.structuredErrorCode = .storage
-            }
-        },
         onCoreEvent: { ev in
             driver.enqueueEvent(ev)
         },
@@ -874,9 +868,75 @@ func attachTestCoreDriver(
             try await driver.pingMachine(machineID: machineId)
         },
         onClose: {
+            TestCoreDriverRegistry.unregister(remote: remote)
             driver.close()
         }
     ))
+}
+
+private enum TestCoreDriverRegistry {
+    private static let lock = NSLock()
+    private static var drivers: [ObjectIdentifier: TestCoreDriver] = [:]
+
+    static func register(remote: Remote, driver: TestCoreDriver) {
+        lock.withLock { drivers[ObjectIdentifier(remote)] = driver }
+    }
+
+    static func unregister(remote: Remote) {
+        lock.withLock { _ = drivers.removeValue(forKey: ObjectIdentifier(remote)) }
+    }
+
+    static func driver(for remote: Remote) -> TestCoreDriver? {
+        lock.withLock { drivers[ObjectIdentifier(remote)] }
+    }
+}
+
+extension Remote {
+    func openEnvelopeOp(
+        envelope: PBEnvelope,
+        expectedPurpose: SecurityPurpose,
+        machineId: String = "",
+        sessionId: String = "",
+        requestId: String = "",
+        seq: UInt64 = 0,
+        history: Bool = false,
+        overrideSessionSeed: Data = Data()
+    ) async throws -> PBSecurityOpenEnvelopeResult {
+        guard let driver = TestCoreDriverRegistry.driver(for: self) else {
+            throw SecurityFailure.storage
+        }
+        let rawEnv = try envelope.serializedData()
+        let res = try await driver.runSecurityOp {
+            $0.openEnvelope = .with {
+                $0.rawEnvelope = rawEnv
+                $0.expectedPurpose = expectedPurpose.rawValue
+                $0.machineID = machineId
+                $0.sessionID = sessionId
+                $0.requestID = requestId
+                $0.seq = seq
+                $0.history = history
+                if !overrideSessionSeed.isEmpty { $0.overrideSessionSeed = overrideSessionSeed }
+            }
+        }
+        if !res.error.isEmpty {
+            switch res.structuredErrorCode {
+            case .unsupportedHistory: throw UnsupportedHistoryError()
+            case .recoveryUnavailable: throw SecurityFailure.unavailable
+            case .leaseExpired: throw SecurityFailure.lease
+            case .stale: throw SecurityFailure.stale
+            case .clockSkewed: throw SecurityFailure.clock
+            case .untrusted: throw SecurityFailure.untrusted
+            case .capacity: throw SecurityFailure.capacity
+            case .storage: throw SecurityFailure.storage
+            case .conflict: throw SecurityFailure.conflict
+            default: throw SecurityFailure.invalid
+            }
+        }
+        guard case .opened(let opened)? = res.result else {
+            throw SecurityFailure.invalid
+        }
+        return opened
+    }
 }
 
 /// Test-only standalone Go `CoreClient` + `SecurityExecutor` harness for `RACoreTests`.

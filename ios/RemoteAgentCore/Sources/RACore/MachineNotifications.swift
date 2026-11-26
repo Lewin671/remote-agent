@@ -24,7 +24,7 @@ public func receiveMachineDiskNotification(
 ) throws -> MachineDiskNotice? {
     guard let display = try openNotifyDisplayViaCore(
         notifyBlob: notifyRecord,
-        envelope: PBEnvelope(serializedBytes: envelope),
+        rawEnvelope: envelope,
         expectedKind: .machineDisk,
         nowMs: nowMs,
         machineId: machineID,

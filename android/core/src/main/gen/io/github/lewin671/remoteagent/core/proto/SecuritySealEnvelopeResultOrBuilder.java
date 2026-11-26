@@ -11,17 +11,6 @@ public interface SecuritySealEnvelopeResultOrBuilder extends
     com.google.protobuf.MessageLiteOrBuilder {
 
   /**
-   * <code>.remoteagent.v1.Envelope envelope = 1 [json_name = "envelope"];</code>
-   * @return Whether the envelope field is set.
-   */
-  boolean hasEnvelope();
-  /**
-   * <code>.remoteagent.v1.Envelope envelope = 1 [json_name = "envelope"];</code>
-   * @return The envelope.
-   */
-  io.github.lewin671.remoteagent.proto.Envelope getEnvelope();
-
-  /**
    * <code>bytes request_key_hash = 2 [json_name = "requestKeyHash"];</code>
    * @return The requestKeyHash.
    */
@@ -32,4 +21,10 @@ public interface SecuritySealEnvelopeResultOrBuilder extends
    * @return The payloadHash.
    */
   com.google.protobuf.ByteString getPayloadHash();
+
+  /**
+   * <code>bytes raw_envelope = 4 [json_name = "rawEnvelope"];</code>
+   * @return The rawEnvelope.
+   */
+  com.google.protobuf.ByteString getRawEnvelope();
 }

@@ -112,7 +112,7 @@ import Testing
             }
         }
 
-        func send(terminalID: String, kind: PBCoreTerminalHistoryEventKind, page: PBTerminalHistoryPage?) {
+        func send(terminalID: String, kind: PBCoreTerminalHistoryEventKind, rawPage: Data?) {
             seq += 1
             let batch = try! core.dispatch(
                 .with {
@@ -120,7 +120,7 @@ import Testing
                     $0.terminalHistory = .with {
                         $0.terminalID = terminalID
                         $0.kind = kind
-                        if let page { $0.page = page }
+                        if let rawPage, !rawPage.isEmpty { $0.rawPage = rawPage }
                     }
                 })
             for eff in batch.effects {
@@ -181,8 +181,8 @@ import Testing
                     recorder.setReopen(handler)
                     return { recorder.clearReopen() }
                 },
-                sendHistory: { id, kind, page in
-                    historyDriver.send(terminalID: id, kind: kind, page: page)
+                sendHistory: { id, kind, rawPage in
+                    historyDriver.send(terminalID: id, kind: kind, rawPage: rawPage)
                 },
                 subscribeHistory: { _, onRequest, onUpdated in
                     historyDriver.subscribe(onRequest: onRequest, onUpdated: onUpdated)

@@ -21,7 +21,6 @@ public  final class SecurityOpRequestEvent extends
   public enum OpCase {
     OPEN_ENVELOPE(2),
     SEAL_ENVELOPE(3),
-    GET_SESSION_SEED(4),
     OP_NOT_SET(0);
     private final int value;
     private OpCase(int value) {
@@ -39,7 +38,6 @@ public  final class SecurityOpRequestEvent extends
       switch (value) {
         case 2: return OPEN_ENVELOPE;
         case 3: return SEAL_ENVELOPE;
-        case 4: return GET_SESSION_SEED;
         case 0: return OP_NOT_SET;
         default: return null;
       }
@@ -186,58 +184,6 @@ public  final class SecurityOpRequestEvent extends
    */
   private void clearSealEnvelope() {
     if (opCase_ == 3) {
-      opCase_ = 0;
-      op_ = null;
-    }
-  }
-
-  public static final int GET_SESSION_SEED_FIELD_NUMBER = 4;
-  /**
-   * <code>.remoteagent.core.v1.SecurityGetSessionSeedOp get_session_seed = 4 [json_name = "getSessionSeed"];</code>
-   */
-  @java.lang.Override
-  public boolean hasGetSessionSeed() {
-    return opCase_ == 4;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityGetSessionSeedOp get_session_seed = 4 [json_name = "getSessionSeed"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecurityGetSessionSeedOp getGetSessionSeed() {
-    if (opCase_ == 4) {
-       return (io.github.lewin671.remoteagent.core.proto.SecurityGetSessionSeedOp) op_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SecurityGetSessionSeedOp.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityGetSessionSeedOp get_session_seed = 4 [json_name = "getSessionSeed"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setGetSessionSeed(io.github.lewin671.remoteagent.core.proto.SecurityGetSessionSeedOp value) {
-    value.getClass();  // minimal bytecode null check
-    op_ = value;
-    opCase_ = 4;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityGetSessionSeedOp get_session_seed = 4 [json_name = "getSessionSeed"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeGetSessionSeed(io.github.lewin671.remoteagent.core.proto.SecurityGetSessionSeedOp value) {
-    value.getClass();  // minimal bytecode null check
-    if (opCase_ == 4 &&
-        op_ != io.github.lewin671.remoteagent.core.proto.SecurityGetSessionSeedOp.getDefaultInstance()) {
-      op_ = io.github.lewin671.remoteagent.core.proto.SecurityGetSessionSeedOp.newBuilder((io.github.lewin671.remoteagent.core.proto.SecurityGetSessionSeedOp) op_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      op_ = value;
-    }
-    opCase_ = 4;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityGetSessionSeedOp get_session_seed = 4 [json_name = "getSessionSeed"];</code>
-   */
-  private void clearGetSessionSeed() {
-    if (opCase_ == 4) {
       opCase_ = 0;
       op_ = null;
     }
@@ -476,54 +422,6 @@ public  final class SecurityOpRequestEvent extends
       return this;
     }
 
-    /**
-     * <code>.remoteagent.core.v1.SecurityGetSessionSeedOp get_session_seed = 4 [json_name = "getSessionSeed"];</code>
-     */
-    @java.lang.Override
-    public boolean hasGetSessionSeed() {
-      return instance.hasGetSessionSeed();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityGetSessionSeedOp get_session_seed = 4 [json_name = "getSessionSeed"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecurityGetSessionSeedOp getGetSessionSeed() {
-      return instance.getGetSessionSeed();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityGetSessionSeedOp get_session_seed = 4 [json_name = "getSessionSeed"];</code>
-     */
-    public Builder setGetSessionSeed(io.github.lewin671.remoteagent.core.proto.SecurityGetSessionSeedOp value) {
-      copyOnWrite();
-      instance.setGetSessionSeed(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityGetSessionSeedOp get_session_seed = 4 [json_name = "getSessionSeed"];</code>
-     */
-    public Builder setGetSessionSeed(
-        io.github.lewin671.remoteagent.core.proto.SecurityGetSessionSeedOp.Builder builderForValue) {
-      copyOnWrite();
-      instance.setGetSessionSeed(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityGetSessionSeedOp get_session_seed = 4 [json_name = "getSessionSeed"];</code>
-     */
-    public Builder mergeGetSessionSeed(io.github.lewin671.remoteagent.core.proto.SecurityGetSessionSeedOp value) {
-      copyOnWrite();
-      instance.mergeGetSessionSeed(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityGetSessionSeedOp get_session_seed = 4 [json_name = "getSessionSeed"];</code>
-     */
-    public Builder clearGetSessionSeed() {
-      copyOnWrite();
-      instance.clearGetSessionSeed();
-      return this;
-    }
-
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityOpRequestEvent)
   }
   @java.lang.Override
@@ -545,11 +443,10 @@ public  final class SecurityOpRequestEvent extends
             "opId_",
             io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeOp.class,
             io.github.lewin671.remoteagent.core.proto.SecuritySealEnvelopeOp.class,
-            io.github.lewin671.remoteagent.core.proto.SecurityGetSessionSeedOp.class,
           };
           java.lang.String info =
-              "\u0000\u0004\u0001\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0003\u0002<\u0000" +
-              "\u0003<\u0000\u0004<\u0000";
+              "\u0000\u0003\u0001\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0003\u0002<\u0000" +
+              "\u0003<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

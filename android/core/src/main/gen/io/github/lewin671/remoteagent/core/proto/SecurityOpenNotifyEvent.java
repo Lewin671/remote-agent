@@ -22,6 +22,7 @@ public  final class SecurityOpenNotifyEvent extends
     machineId_ = "";
     eventKey_ = "";
     fallbackBody_ = "";
+    rawEnvelope_ = com.google.protobuf.ByteString.EMPTY;
   }
   private int bitField0_;
   public static final int OP_ID_FIELD_NUMBER = 1;
@@ -102,54 +103,6 @@ public  final class SecurityOpenNotifyEvent extends
   private void clearRecordBlob() {
 
     recordBlob_ = getDefaultInstance().getRecordBlob();
-  }
-
-  public static final int ENVELOPE_FIELD_NUMBER = 4;
-  private io.github.lewin671.remoteagent.proto.Envelope envelope_;
-  /**
-   * <code>.remoteagent.v1.Envelope envelope = 4 [json_name = "envelope"];</code>
-   */
-  @java.lang.Override
-  public boolean hasEnvelope() {
-    return ((bitField0_ & 0x00000001) != 0);
-  }
-  /**
-   * <code>.remoteagent.v1.Envelope envelope = 4 [json_name = "envelope"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.Envelope getEnvelope() {
-    return envelope_ == null ? io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance() : envelope_;
-  }
-  /**
-   * <code>.remoteagent.v1.Envelope envelope = 4 [json_name = "envelope"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setEnvelope(io.github.lewin671.remoteagent.proto.Envelope value) {
-    value.getClass();  // minimal bytecode null check
-    envelope_ = value;
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.v1.Envelope envelope = 4 [json_name = "envelope"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeEnvelope(io.github.lewin671.remoteagent.proto.Envelope value) {
-    value.getClass();  // minimal bytecode null check
-    if (envelope_ != null &&
-        envelope_ != io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance()) {
-      envelope_ =
-        io.github.lewin671.remoteagent.proto.Envelope.newBuilder(envelope_).mergeFrom(value).buildPartial();
-    } else {
-      envelope_ = value;
-    }
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.v1.Envelope envelope = 4 [json_name = "envelope"];</code>
-   */
-  private void clearEnvelope() {
-    envelope_ = null;
-    bitField0_ = (bitField0_ & ~0x00000001);
   }
 
   public static final int NOW_MS_FIELD_NUMBER = 5;
@@ -420,7 +373,7 @@ public  final class SecurityOpenNotifyEvent extends
    */
   @java.lang.Override
   public boolean hasFallbackBody() {
-    return ((bitField0_ & 0x00000002) != 0);
+    return ((bitField0_ & 0x00000001) != 0);
   }
   /**
    * <code>optional string fallback_body = 11 [json_name = "fallbackBody"];</code>
@@ -447,14 +400,14 @@ public  final class SecurityOpenNotifyEvent extends
   private void setFallbackBody(
       java.lang.String value) {
     value.getClass();  // minimal bytecode null check
-    bitField0_ |= 0x00000002;
+    bitField0_ |= 0x00000001;
     fallbackBody_ = value;
   }
   /**
    * <code>optional string fallback_body = 11 [json_name = "fallbackBody"];</code>
    */
   private void clearFallbackBody() {
-    bitField0_ = (bitField0_ & ~0x00000002);
+    bitField0_ = (bitField0_ & ~0x00000001);
     fallbackBody_ = getDefaultInstance().getFallbackBody();
   }
   /**
@@ -465,7 +418,34 @@ public  final class SecurityOpenNotifyEvent extends
       com.google.protobuf.ByteString value) {
     checkByteStringIsUtf8(value);
     fallbackBody_ = value.toStringUtf8();
-    bitField0_ |= 0x00000002;
+    bitField0_ |= 0x00000001;
+  }
+
+  public static final int RAW_ENVELOPE_FIELD_NUMBER = 12;
+  private com.google.protobuf.ByteString rawEnvelope_;
+  /**
+   * <code>bytes raw_envelope = 12 [json_name = "rawEnvelope"];</code>
+   * @return The rawEnvelope.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getRawEnvelope() {
+    return rawEnvelope_;
+  }
+  /**
+   * <code>bytes raw_envelope = 12 [json_name = "rawEnvelope"];</code>
+   * @param value The rawEnvelope to set.
+   */
+  private void setRawEnvelope(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    rawEnvelope_ = value;
+  }
+  /**
+   * <code>bytes raw_envelope = 12 [json_name = "rawEnvelope"];</code>
+   */
+  private void clearRawEnvelope() {
+
+    rawEnvelope_ = getDefaultInstance().getRawEnvelope();
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecurityOpenNotifyEvent parseFrom(
@@ -646,53 +626,6 @@ public  final class SecurityOpenNotifyEvent extends
     public Builder clearRecordBlob() {
       copyOnWrite();
       instance.clearRecordBlob();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.v1.Envelope envelope = 4 [json_name = "envelope"];</code>
-     */
-    @java.lang.Override
-    public boolean hasEnvelope() {
-      return instance.hasEnvelope();
-    }
-    /**
-     * <code>.remoteagent.v1.Envelope envelope = 4 [json_name = "envelope"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.Envelope getEnvelope() {
-      return instance.getEnvelope();
-    }
-    /**
-     * <code>.remoteagent.v1.Envelope envelope = 4 [json_name = "envelope"];</code>
-     */
-    public Builder setEnvelope(io.github.lewin671.remoteagent.proto.Envelope value) {
-      copyOnWrite();
-      instance.setEnvelope(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.v1.Envelope envelope = 4 [json_name = "envelope"];</code>
-     */
-    public Builder setEnvelope(
-        io.github.lewin671.remoteagent.proto.Envelope.Builder builderForValue) {
-      copyOnWrite();
-      instance.setEnvelope(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.Envelope envelope = 4 [json_name = "envelope"];</code>
-     */
-    public Builder mergeEnvelope(io.github.lewin671.remoteagent.proto.Envelope value) {
-      copyOnWrite();
-      instance.mergeEnvelope(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.Envelope envelope = 4 [json_name = "envelope"];</code>
-     */
-    public Builder clearEnvelope() {  copyOnWrite();
-      instance.clearEnvelope();
       return this;
     }
 
@@ -1023,6 +956,34 @@ public  final class SecurityOpenNotifyEvent extends
       return this;
     }
 
+    /**
+     * <code>bytes raw_envelope = 12 [json_name = "rawEnvelope"];</code>
+     * @return The rawEnvelope.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getRawEnvelope() {
+      return instance.getRawEnvelope();
+    }
+    /**
+     * <code>bytes raw_envelope = 12 [json_name = "rawEnvelope"];</code>
+     * @param value The rawEnvelope to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRawEnvelope(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setRawEnvelope(value);
+      return this;
+    }
+    /**
+     * <code>bytes raw_envelope = 12 [json_name = "rawEnvelope"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRawEnvelope() {
+      copyOnWrite();
+      instance.clearRawEnvelope();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityOpenNotifyEvent)
   }
   @java.lang.Override
@@ -1043,7 +1004,6 @@ public  final class SecurityOpenNotifyEvent extends
             "opId_",
             "notifyBlob_",
             "recordBlob_",
-            "envelope_",
             "nowMs_",
             "sessionId_",
             "tag_",
@@ -1051,11 +1011,12 @@ public  final class SecurityOpenNotifyEvent extends
             "expectedKind_",
             "eventKey_",
             "fallbackBody_",
+            "rawEnvelope_",
           };
           java.lang.String info =
-              "\u0000\u000b\u0000\u0001\u0001\u000b\u000b\u0000\u0000\u0000\u0001\u0003\u0002\n" +
-              "\u0003\n\u0004\u1009\u0000\u0005\u0002\u0006\u0208\u0007\u0208\b\u0208\t\f\n\u0208" +
-              "\u000b\u1208\u0001";
+              "\u0000\u000b\u0000\u0001\u0001\f\u000b\u0000\u0000\u0000\u0001\u0003\u0002\n\u0003" +
+              "\n\u0005\u0002\u0006\u0208\u0007\u0208\b\u0208\t\f\n\u0208\u000b\u1208\u0000\f\n" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

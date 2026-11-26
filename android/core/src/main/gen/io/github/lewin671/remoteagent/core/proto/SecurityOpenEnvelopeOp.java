@@ -19,56 +19,8 @@ public  final class SecurityOpenEnvelopeOp extends
     sessionId_ = "";
     requestId_ = "";
     overrideSessionSeed_ = com.google.protobuf.ByteString.EMPTY;
+    rawEnvelope_ = com.google.protobuf.ByteString.EMPTY;
   }
-  private int bitField0_;
-  public static final int ENVELOPE_FIELD_NUMBER = 1;
-  private io.github.lewin671.remoteagent.proto.Envelope envelope_;
-  /**
-   * <code>.remoteagent.v1.Envelope envelope = 1 [json_name = "envelope"];</code>
-   */
-  @java.lang.Override
-  public boolean hasEnvelope() {
-    return ((bitField0_ & 0x00000001) != 0);
-  }
-  /**
-   * <code>.remoteagent.v1.Envelope envelope = 1 [json_name = "envelope"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.Envelope getEnvelope() {
-    return envelope_ == null ? io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance() : envelope_;
-  }
-  /**
-   * <code>.remoteagent.v1.Envelope envelope = 1 [json_name = "envelope"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setEnvelope(io.github.lewin671.remoteagent.proto.Envelope value) {
-    value.getClass();  // minimal bytecode null check
-    envelope_ = value;
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.v1.Envelope envelope = 1 [json_name = "envelope"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeEnvelope(io.github.lewin671.remoteagent.proto.Envelope value) {
-    value.getClass();  // minimal bytecode null check
-    if (envelope_ != null &&
-        envelope_ != io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance()) {
-      envelope_ =
-        io.github.lewin671.remoteagent.proto.Envelope.newBuilder(envelope_).mergeFrom(value).buildPartial();
-    } else {
-      envelope_ = value;
-    }
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.v1.Envelope envelope = 1 [json_name = "envelope"];</code>
-   */
-  private void clearEnvelope() {
-    envelope_ = null;
-    bitField0_ = (bitField0_ & ~0x00000001);
-  }
-
   public static final int EXPECTED_PURPOSE_FIELD_NUMBER = 2;
   private int expectedPurpose_;
   /**
@@ -318,6 +270,33 @@ public  final class SecurityOpenEnvelopeOp extends
     overrideSessionSeed_ = getDefaultInstance().getOverrideSessionSeed();
   }
 
+  public static final int RAW_ENVELOPE_FIELD_NUMBER = 9;
+  private com.google.protobuf.ByteString rawEnvelope_;
+  /**
+   * <code>bytes raw_envelope = 9 [json_name = "rawEnvelope"];</code>
+   * @return The rawEnvelope.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getRawEnvelope() {
+    return rawEnvelope_;
+  }
+  /**
+   * <code>bytes raw_envelope = 9 [json_name = "rawEnvelope"];</code>
+   * @param value The rawEnvelope to set.
+   */
+  private void setRawEnvelope(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    rawEnvelope_ = value;
+  }
+  /**
+   * <code>bytes raw_envelope = 9 [json_name = "rawEnvelope"];</code>
+   */
+  private void clearRawEnvelope() {
+
+    rawEnvelope_ = getDefaultInstance().getRawEnvelope();
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeOp parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -414,53 +393,6 @@ public  final class SecurityOpenEnvelopeOp extends
       super(DEFAULT_INSTANCE);
     }
 
-
-    /**
-     * <code>.remoteagent.v1.Envelope envelope = 1 [json_name = "envelope"];</code>
-     */
-    @java.lang.Override
-    public boolean hasEnvelope() {
-      return instance.hasEnvelope();
-    }
-    /**
-     * <code>.remoteagent.v1.Envelope envelope = 1 [json_name = "envelope"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.Envelope getEnvelope() {
-      return instance.getEnvelope();
-    }
-    /**
-     * <code>.remoteagent.v1.Envelope envelope = 1 [json_name = "envelope"];</code>
-     */
-    public Builder setEnvelope(io.github.lewin671.remoteagent.proto.Envelope value) {
-      copyOnWrite();
-      instance.setEnvelope(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.v1.Envelope envelope = 1 [json_name = "envelope"];</code>
-     */
-    public Builder setEnvelope(
-        io.github.lewin671.remoteagent.proto.Envelope.Builder builderForValue) {
-      copyOnWrite();
-      instance.setEnvelope(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.Envelope envelope = 1 [json_name = "envelope"];</code>
-     */
-    public Builder mergeEnvelope(io.github.lewin671.remoteagent.proto.Envelope value) {
-      copyOnWrite();
-      instance.mergeEnvelope(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.Envelope envelope = 1 [json_name = "envelope"];</code>
-     */
-    public Builder clearEnvelope() {  copyOnWrite();
-      instance.clearEnvelope();
-      return this;
-    }
 
     /**
      * <code>uint32 expected_purpose = 2 [json_name = "expectedPurpose"];</code>
@@ -721,6 +653,34 @@ public  final class SecurityOpenEnvelopeOp extends
       return this;
     }
 
+    /**
+     * <code>bytes raw_envelope = 9 [json_name = "rawEnvelope"];</code>
+     * @return The rawEnvelope.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getRawEnvelope() {
+      return instance.getRawEnvelope();
+    }
+    /**
+     * <code>bytes raw_envelope = 9 [json_name = "rawEnvelope"];</code>
+     * @param value The rawEnvelope to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRawEnvelope(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setRawEnvelope(value);
+      return this;
+    }
+    /**
+     * <code>bytes raw_envelope = 9 [json_name = "rawEnvelope"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRawEnvelope() {
+      copyOnWrite();
+      instance.clearRawEnvelope();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityOpenEnvelopeOp)
   }
   @java.lang.Override
@@ -737,8 +697,6 @@ public  final class SecurityOpenEnvelopeOp extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
-            "bitField0_",
-            "envelope_",
             "expectedPurpose_",
             "machineId_",
             "sessionId_",
@@ -746,10 +704,11 @@ public  final class SecurityOpenEnvelopeOp extends
             "seq_",
             "history_",
             "overrideSessionSeed_",
+            "rawEnvelope_",
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0000\u0000\u0001\u1009\u0000\u0002\u000b\u0003" +
-              "\u0208\u0004\u0208\u0005\u0208\u0006\u0003\u0007\u0007\b\n";
+              "\u0000\b\u0000\u0000\u0002\t\b\u0000\u0000\u0000\u0002\u000b\u0003\u0208\u0004\u0208" +
+              "\u0005\u0208\u0006\u0003\u0007\u0007\b\n\t\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

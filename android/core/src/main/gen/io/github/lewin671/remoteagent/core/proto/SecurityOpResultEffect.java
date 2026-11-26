@@ -22,7 +22,6 @@ public  final class SecurityOpResultEffect extends
   public enum ResultCase {
     OPENED(4),
     SEALED(5),
-    SESSION_SEED(6),
     RESULT_NOT_SET(0);
     private final int value;
     private ResultCase(int value) {
@@ -40,7 +39,6 @@ public  final class SecurityOpResultEffect extends
       switch (value) {
         case 4: return OPENED;
         case 5: return SEALED;
-        case 6: return SESSION_SEED;
         case 0: return RESULT_NOT_SET;
         default: return null;
       }
@@ -235,45 +233,6 @@ public  final class SecurityOpResultEffect extends
    */
   private void clearSealed() {
     if (resultCase_ == 5) {
-      resultCase_ = 0;
-      result_ = null;
-    }
-  }
-
-  public static final int SESSION_SEED_FIELD_NUMBER = 6;
-  /**
-   * <code>bytes session_seed = 6 [json_name = "sessionSeed"];</code>
-   * @return Whether the sessionSeed field is set.
-   */
-  @java.lang.Override
-  public boolean hasSessionSeed() {
-    return resultCase_ == 6;
-  }
-  /**
-   * <code>bytes session_seed = 6 [json_name = "sessionSeed"];</code>
-   * @return The sessionSeed.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString getSessionSeed() {
-    if (resultCase_ == 6) {
-      return (com.google.protobuf.ByteString) result_;
-    }
-    return com.google.protobuf.ByteString.EMPTY;
-  }
-  /**
-   * <code>bytes session_seed = 6 [json_name = "sessionSeed"];</code>
-   * @param value The sessionSeed to set.
-   */
-  private void setSessionSeed(com.google.protobuf.ByteString value) {
-    java.lang.Class<?> valueClass = value.getClass();
-  resultCase_ = 6;
-    result_ = value;
-  }
-  /**
-   * <code>bytes session_seed = 6 [json_name = "sessionSeed"];</code>
-   */
-  private void clearSessionSeed() {
-    if (resultCase_ == 6) {
       resultCase_ = 0;
       result_ = null;
     }
@@ -604,42 +563,6 @@ public  final class SecurityOpResultEffect extends
     }
 
     /**
-     * <code>bytes session_seed = 6 [json_name = "sessionSeed"];</code>
-     * @return Whether the sessionSeed field is set.
-     */
-    @java.lang.Override
-    public boolean hasSessionSeed() {
-      return instance.hasSessionSeed();
-    }
-    /**
-     * <code>bytes session_seed = 6 [json_name = "sessionSeed"];</code>
-     * @return The sessionSeed.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString getSessionSeed() {
-      return instance.getSessionSeed();
-    }
-    /**
-     * <code>bytes session_seed = 6 [json_name = "sessionSeed"];</code>
-     * @param value The sessionSeed to set.
-     * @return This builder for chaining.
-     */
-    public Builder setSessionSeed(com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setSessionSeed(value);
-      return this;
-    }
-    /**
-     * <code>bytes session_seed = 6 [json_name = "sessionSeed"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearSessionSeed() {
-      copyOnWrite();
-      instance.clearSessionSeed();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.SecurityErrorCode structured_error_code = 7 [json_name = "structuredErrorCode"];</code>
      * @return The enum numeric value on the wire for structuredErrorCode.
      */
@@ -710,8 +633,8 @@ public  final class SecurityOpResultEffect extends
             "structuredErrorCode_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0001\u0000\u0001\u0007\u0006\u0000\u0000\u0000\u0001\u0003\u0002\u0208" +
-              "\u0004<\u0000\u0005<\u0000\u0006=\u0000\u0007\f";
+              "\u0000\u0005\u0001\u0000\u0001\u0007\u0005\u0000\u0000\u0000\u0001\u0003\u0002\u0208" +
+              "\u0004<\u0000\u0005<\u0000\u0007\f";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

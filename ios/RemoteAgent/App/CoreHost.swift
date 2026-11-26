@@ -556,8 +556,6 @@ actor CoreHost: SyncEngine {
     private var machineStatusWatches: [UUID: MachineStatusWatchEntry] = [:]
     private var activeDirectDiagnosticsID = ""
     private var hooksInstalled = false
-    private var nextSecurityOpID: UInt64 = 1
-    private var securityOpWaiters: [UInt64: CheckedContinuation<PBSecurityOpResultEffect, Never>] = [:]
     private var nextMachineCmdOpID: UInt64 = 1
     private var machineCmdWaiters: [UInt64: CheckedContinuation<PBCommandResult, Error>] = [:]
     private var nextPingOpID: UInt64 = 1
@@ -811,13 +809,6 @@ actor CoreHost: SyncEngine {
             },
             onRefreshDevices: { [weak self] in
                 await self?.dispatch { $0.refreshDevices = PBRefreshDevicesAction() }
-            },
-            onSecurityOp: { [weak self] req in
-                await self?.runSecurityOp(req) ?? .with {
-                    $0.opID = req.opID
-                    $0.error = "host closed"
-                    $0.structuredErrorCode = .storage
-                }
             },
             onCoreEvent: { [weak self] ev in
                 await self?.dispatch(ev)
@@ -1213,37 +1204,6 @@ actor CoreHost: SyncEngine {
         }
     }
 
-    private func runSecurityOp(_ req: PBSecurityOpRequestEvent) async -> PBSecurityOpResultEffect {
-        guard !closed, !demoMode else {
-            return .with {
-                $0.opID = req.opID
-                $0.error = "security host unavailable"
-                $0.structuredErrorCode = .storage
-            }
-        }
-        let opID = nextSecurityOpID
-        nextSecurityOpID &+= 1
-        var outgoing = req
-        outgoing.opID = opID
-        let captured = outgoing
-        return await withCheckedContinuation { continuation in
-            securityOpWaiters[opID] = continuation
-            Task { await self.sendSecurityOp(opID: opID, request: captured) }
-        }
-    }
-
-    private func sendSecurityOp(opID: UInt64, request: PBSecurityOpRequestEvent) async {
-        guard !closed, !demoMode else {
-            securityOpWaiters.removeValue(forKey: opID)?.resume(returning: .with {
-                $0.opID = opID
-                $0.error = "host closed"
-                $0.structuredErrorCode = .storage
-            })
-            return
-        }
-        await dispatch { $0.securityOpRequest = request }
-    }
-
     private func handleNetworkChange(signature: String, available: Bool) async {
         guard !closed else { return }
         lastNetworkAvailable = available
@@ -1273,15 +1233,6 @@ actor CoreHost: SyncEngine {
         attachmentHandlers = nil
         visibleSessions.removeAll()
         currentVisibleSessionID = ""
-        let pendingOps = securityOpWaiters
-        securityOpWaiters.removeAll()
-        for (opID, continuation) in pendingOps {
-            continuation.resume(returning: .with {
-                $0.opID = opID
-                $0.error = "host closed"
-                $0.structuredErrorCode = .storage
-            })
-        }
         let pendingPings = pingWaiters
         pingWaiters.removeAll()
         for continuation in pendingPings.values {
@@ -1399,14 +1350,14 @@ actor CoreHost: SyncEngine {
     func sendTerminalHistory(
         terminalID: String,
         kind: PBCoreTerminalHistoryEventKind,
-        page: PBTerminalHistoryPage? = nil
+        rawPage: Data? = nil
     ) async {
         guard !closed, !terminalID.isEmpty else { return }
         await dispatch {
             $0.terminalHistory = .with {
                 $0.terminalID = terminalID
                 $0.kind = kind
-                if let page { $0.page = page }
+                if let rawPage, !rawPage.isEmpty { $0.rawPage = rawPage }
             }
         }
     }
@@ -3218,9 +3169,6 @@ actor CoreHost: SyncEngine {
                         $0.error = "crypto batch unavailable on iOS"
                     }
                 }
-
-            case .securityOpResult(let eff):
-                securityOpWaiters.removeValue(forKey: eff.opID)?.resume(returning: eff)
 
             case .directBulkRoute:
                 break

@@ -16,8 +16,8 @@ public  final class TerminalHistoryEvent extends
     TerminalHistoryEventOrBuilder {
   private TerminalHistoryEvent() {
     terminalId_ = "";
+    rawPage_ = com.google.protobuf.ByteString.EMPTY;
   }
-  private int bitField0_;
   public static final int TERMINAL_ID_FIELD_NUMBER = 1;
   private java.lang.String terminalId_;
   /**
@@ -108,72 +108,43 @@ public  final class TerminalHistoryEvent extends
     kind_ = 0;
   }
 
-  public static final int PAGE_FIELD_NUMBER = 3;
-  private io.github.lewin671.remoteagent.proto.TerminalHistoryPage page_;
+  public static final int RAW_PAGE_FIELD_NUMBER = 4;
+  private com.google.protobuf.ByteString rawPage_;
   /**
    * <pre>
-   * Populated only when kind == PAGE_RECEIVED.
+   * Serialized remoteagent.v1.TerminalHistoryPage bytes; populated only by tests/demo when kind == PAGE_RECEIVED.
    * </pre>
    *
-   * <code>.remoteagent.v1.TerminalHistoryPage page = 3 [json_name = "page"];</code>
+   * <code>bytes raw_page = 4 [json_name = "rawPage"];</code>
+   * @return The rawPage.
    */
   @java.lang.Override
-  public boolean hasPage() {
-    return ((bitField0_ & 0x00000001) != 0);
+  public com.google.protobuf.ByteString getRawPage() {
+    return rawPage_;
   }
   /**
    * <pre>
-   * Populated only when kind == PAGE_RECEIVED.
+   * Serialized remoteagent.v1.TerminalHistoryPage bytes; populated only by tests/demo when kind == PAGE_RECEIVED.
    * </pre>
    *
-   * <code>.remoteagent.v1.TerminalHistoryPage page = 3 [json_name = "page"];</code>
+   * <code>bytes raw_page = 4 [json_name = "rawPage"];</code>
+   * @param value The rawPage to set.
    */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.TerminalHistoryPage getPage() {
-    return page_ == null ? io.github.lewin671.remoteagent.proto.TerminalHistoryPage.getDefaultInstance() : page_;
+  private void setRawPage(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    rawPage_ = value;
   }
   /**
    * <pre>
-   * Populated only when kind == PAGE_RECEIVED.
+   * Serialized remoteagent.v1.TerminalHistoryPage bytes; populated only by tests/demo when kind == PAGE_RECEIVED.
    * </pre>
    *
-   * <code>.remoteagent.v1.TerminalHistoryPage page = 3 [json_name = "page"];</code>
+   * <code>bytes raw_page = 4 [json_name = "rawPage"];</code>
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setPage(io.github.lewin671.remoteagent.proto.TerminalHistoryPage value) {
-    value.getClass();  // minimal bytecode null check
-    page_ = value;
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <pre>
-   * Populated only when kind == PAGE_RECEIVED.
-   * </pre>
-   *
-   * <code>.remoteagent.v1.TerminalHistoryPage page = 3 [json_name = "page"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergePage(io.github.lewin671.remoteagent.proto.TerminalHistoryPage value) {
-    value.getClass();  // minimal bytecode null check
-    if (page_ != null &&
-        page_ != io.github.lewin671.remoteagent.proto.TerminalHistoryPage.getDefaultInstance()) {
-      page_ =
-        io.github.lewin671.remoteagent.proto.TerminalHistoryPage.newBuilder(page_).mergeFrom(value).buildPartial();
-    } else {
-      page_ = value;
-    }
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <pre>
-   * Populated only when kind == PAGE_RECEIVED.
-   * </pre>
-   *
-   * <code>.remoteagent.v1.TerminalHistoryPage page = 3 [json_name = "page"];</code>
-   */
-  private void clearPage() {
-    page_ = null;
-    bitField0_ = (bitField0_ & ~0x00000001);
+  private void clearRawPage() {
+
+    rawPage_ = getDefaultInstance().getRawPage();
   }
 
   public static io.github.lewin671.remoteagent.core.proto.TerminalHistoryEvent parseFrom(
@@ -370,72 +341,41 @@ public  final class TerminalHistoryEvent extends
 
     /**
      * <pre>
-     * Populated only when kind == PAGE_RECEIVED.
+     * Serialized remoteagent.v1.TerminalHistoryPage bytes; populated only by tests/demo when kind == PAGE_RECEIVED.
      * </pre>
      *
-     * <code>.remoteagent.v1.TerminalHistoryPage page = 3 [json_name = "page"];</code>
+     * <code>bytes raw_page = 4 [json_name = "rawPage"];</code>
+     * @return The rawPage.
      */
     @java.lang.Override
-    public boolean hasPage() {
-      return instance.hasPage();
+    public com.google.protobuf.ByteString getRawPage() {
+      return instance.getRawPage();
     }
     /**
      * <pre>
-     * Populated only when kind == PAGE_RECEIVED.
+     * Serialized remoteagent.v1.TerminalHistoryPage bytes; populated only by tests/demo when kind == PAGE_RECEIVED.
      * </pre>
      *
-     * <code>.remoteagent.v1.TerminalHistoryPage page = 3 [json_name = "page"];</code>
+     * <code>bytes raw_page = 4 [json_name = "rawPage"];</code>
+     * @param value The rawPage to set.
+     * @return This builder for chaining.
      */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.TerminalHistoryPage getPage() {
-      return instance.getPage();
-    }
-    /**
-     * <pre>
-     * Populated only when kind == PAGE_RECEIVED.
-     * </pre>
-     *
-     * <code>.remoteagent.v1.TerminalHistoryPage page = 3 [json_name = "page"];</code>
-     */
-    public Builder setPage(io.github.lewin671.remoteagent.proto.TerminalHistoryPage value) {
+    public Builder setRawPage(com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.setPage(value);
-      return this;
-      }
-    /**
-     * <pre>
-     * Populated only when kind == PAGE_RECEIVED.
-     * </pre>
-     *
-     * <code>.remoteagent.v1.TerminalHistoryPage page = 3 [json_name = "page"];</code>
-     */
-    public Builder setPage(
-        io.github.lewin671.remoteagent.proto.TerminalHistoryPage.Builder builderForValue) {
-      copyOnWrite();
-      instance.setPage(builderForValue.build());
+      instance.setRawPage(value);
       return this;
     }
     /**
      * <pre>
-     * Populated only when kind == PAGE_RECEIVED.
+     * Serialized remoteagent.v1.TerminalHistoryPage bytes; populated only by tests/demo when kind == PAGE_RECEIVED.
      * </pre>
      *
-     * <code>.remoteagent.v1.TerminalHistoryPage page = 3 [json_name = "page"];</code>
+     * <code>bytes raw_page = 4 [json_name = "rawPage"];</code>
+     * @return This builder for chaining.
      */
-    public Builder mergePage(io.github.lewin671.remoteagent.proto.TerminalHistoryPage value) {
+    public Builder clearRawPage() {
       copyOnWrite();
-      instance.mergePage(value);
-      return this;
-    }
-    /**
-     * <pre>
-     * Populated only when kind == PAGE_RECEIVED.
-     * </pre>
-     *
-     * <code>.remoteagent.v1.TerminalHistoryPage page = 3 [json_name = "page"];</code>
-     */
-    public Builder clearPage() {  copyOnWrite();
-      instance.clearPage();
+      instance.clearRawPage();
       return this;
     }
 
@@ -455,14 +395,13 @@ public  final class TerminalHistoryEvent extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
-            "bitField0_",
             "terminalId_",
             "kind_",
-            "page_",
+            "rawPage_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0001\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\f" +
-              "\u0003\u1009\u0000";
+              "\u0000\u0003\u0000\u0000\u0001\u0004\u0003\u0000\u0000\u0000\u0001\u0208\u0002\f" +
+              "\u0004\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -126,7 +126,7 @@ class SecurityExecutorTest {
         val nowMs = parseLeaseIssuedAt(lease) + 1000L
         val opened = openNotifyEnvelopeViaCore(
             notifyBlob = notifyBlob,
-            envelope = env,
+            rawEnvelope = env.toByteArray(),
             nowMs = nowMs,
             sessionId = "s-notify",
             tag = "s-notify/NOTIFY_KIND_ATTENTION",
@@ -144,7 +144,7 @@ class SecurityExecutorTest {
         assertNull(
             openNotifyEnvelopeViaCore(
                 notifyBlob = notifyBlob,
-                envelope = tampered,
+                rawEnvelope = tampered.toByteArray(),
                 nowMs = nowMs,
                 sessionId = "s-notify",
                 tag = "s-notify/NOTIFY_KIND_ATTENTION",
