@@ -416,7 +416,6 @@ struct QuestionBody: View {
         let count = Int(qDock.totalQuestions)
         let progress = qDock.hasProgressText ? qDock.progressText.rendered() : ""
         let selectedNums = Set(qDock.selectedOptionNums)
-        let submittedNums = qDock.submittedOptionNums
         let answered = qDock.answered
         if full {
             if !progress.isEmpty { Text(progress).font(.footnote).ink(DS.ink2).padding(.top, 12) }
@@ -455,15 +454,8 @@ struct QuestionBody: View {
                 Text(text).font(.footnote).ink(DS.ink2).padding(.top, 6)
             }
         } else if !isRunning && cmd.frozen {
-            let summary = cmd.hasSubmittedSummary ? cmd.submittedSummary.rendered() : ""
-            let fallback = submittedNums.map { num in
-                cur.options.first { $0.optionNum == num }?.label ?? "\(num)"
-            }.joined(separator: L10n.commonIosListSeparator())
-            let shown = summary.isEmpty ? fallback : summary
             Banner(
-                cmd.expired
-                    ? L10n.dockIosQuestionExpired(answer: shown)
-                    : L10n.dockIosQuestionUnknown(answer: shown),
+                cmd.hasStatusText ? cmd.statusText.rendered() : cmd.renderedErrorText,
                 tone: .error,
                 action: cmd.canAbandon ? L10n.newSessionIosAbandon() : nil,
                 onAction: {

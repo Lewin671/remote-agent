@@ -12,15 +12,15 @@ extension PBCoreSessionCommandState {
     var isRunning: Bool { status == .pending || busy }
     var isFailed: Bool { !isRunning && (status == .failed || status == .unknown || frozen) }
 
-    /// Localized failure/status copy: prefers `statusText` (covers both FAILED and UNKNOWN/expired
-    /// slots from Core), then `errorText`, then raw `errorCode`.
+    /// Localized failure/status copy, in the web's order: Core's `errorText` (the actual
+    /// reason), then `statusText` (Core's generic FAILED/UNKNOWN/expired line), then `errorCode`.
     var renderedErrorText: String {
-        if !isRunning && hasStatusText {
-            let text = statusText.rendered()
-            if !text.isEmpty { return text }
-        }
         if hasErrorText {
             let text = errorText.rendered()
+            if !text.isEmpty { return text }
+        }
+        if !isRunning && hasStatusText {
+            let text = statusText.rendered()
             if !text.isEmpty { return text }
         }
         return errorCode

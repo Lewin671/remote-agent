@@ -184,7 +184,7 @@
     <string name="dock_agent_waiting">"%1$s 在等你"</string>
     <string name="dock_agy_plan_note" formatted="false">"批准后回到默认模式（询问）"</string>
     <string name="dock_android_answer_expired">"不确定「%1$s」有没有提交，它已过期，不会再重发。请去终端看看"</string>
-    <string name="dock_android_answer_unknown">"上次的回答「%1$s」没能确认，终端里的问题可能已经变了。再点任一选项会重发同一个回答"</string>
+    <string name="dock_android_answer_unknown">"上次的回答「%1$s」没能确认，终端里的问题可能已经变了。点「重试」会重发同一个回答，也可以放弃"</string>
     <string name="dock_android_plan_expired">"不确定「%1$s」有没有送到，它已过期，不会再重发。请先去终端确认，放弃后可以重新选择"</string>
     <string name="dock_android_plan_unknown">"「%1$s」的结果不确定。重试会重发同一个请求，电脑收到过就不会再执行一次"</string>
     <string name="dock_android_question_answered" formatted="false">"这个问题已经回答了。"</string>

@@ -174,7 +174,7 @@
 "dock_agent_waiting" = "%1$@ is waiting for you";
 "dock_agy_plan_note" = "Return to the default mode (Ask) after approval";
 "dock_android_answer_expired" = "It is unclear whether “%1$@” was submitted. It has expired and will not be resent. Check the terminal";
-"dock_android_answer_unknown" = "The previous answer “%1$@” could not be confirmed; the terminal question may have changed. Tap any option to resend the same answer";
+"dock_android_answer_unknown" = "The previous answer “%1$@” could not be confirmed; the terminal question may have changed. Tap Retry to resend the same answer, or discard it";
 "dock_android_plan_expired" = "It is unclear whether “%1$@” arrived. It has expired and will not be resent. Check the terminal first; abandon it to choose again";
 "dock_android_plan_unknown" = "The result of “%1$@” is unknown. Retry resends the same request; the computer will not execute it twice";
 "dock_answer_title" = "Answer question";
@@ -183,9 +183,7 @@
 "dock_handle" = "Handle";
 "dock_handle_terminal" = "Handle in terminal";
 "dock_ios_question_answered" = "This question has already been answered.";
-"dock_ios_question_expired" = "It is unclear whether “%1$@” was submitted. It has expired and will not be resent. Check the terminal.";
 "dock_ios_question_failed" = "Could not submit; the terminal question may have changed: %1$@";
-"dock_ios_question_unknown" = "The previous answer “%1$@” could not be confirmed; the terminal question may have changed. Tap any option to resend the same answer.";
 "dock_multiselect" = "Select multiple";
 "dock_none_fit" = "None of these?";
 "dock_option_number" = "Option %1$lld";

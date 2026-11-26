@@ -506,15 +506,24 @@ private struct ComposerWrapper: View {
         #expect(shouldSubmitMultiSelect([1]))
         #expect(shouldSubmitMultiSelect([1, 3]))
 
-        // Shared command error text prioritizes statusText when not running, then errorText, then errorCode.
-        let statusFirst = PBCoreSessionCommandState.with {
+        // Shared command error text prefers the actual reason (errorText), then Core's generic
+        // statusText, then errorCode, matching the web.
+        let errorFirst = PBCoreSessionCommandState.with {
             $0.status = .unknown
             $0.frozen = true
             $0.statusText = .with { $0.literal = "expired status copy" }
             $0.errorText = .with { $0.literal = "raw transport error" }
             $0.errorCode = "ERR_NET"
         }
-        #expect(statusFirst.renderedErrorText == "expired status copy")
+        #expect(errorFirst.renderedErrorText == "raw transport error")
+
+        let statusFallback = PBCoreSessionCommandState.with {
+            $0.status = .unknown
+            $0.frozen = true
+            $0.statusText = .with { $0.literal = "expired status copy" }
+            $0.errorCode = "ERR_NET"
+        }
+        #expect(statusFallback.renderedErrorText == "expired status copy")
 
         let errorFallback = PBCoreSessionCommandState.with {
             $0.status = .failed
