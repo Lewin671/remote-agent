@@ -99,7 +99,10 @@ struct AccountStorage: Sendable {
     var pending: PendingStore
 
     static func standard() -> AccountStorage {
-        let vault = Vault()
-        return AccountStorage(vault: vault, cacheRoot: CipherStore.defaultRoot, pending: PendingStore(vault: vault))
+        let cacheRoot = CipherStore.defaultRoot
+        let vault = Vault(onLegacyWipe: {
+            try? CipherStore.eraseAll(root: cacheRoot)
+        })
+        return AccountStorage(vault: vault, cacheRoot: cacheRoot, pending: PendingStore(vault: vault))
     }
 }

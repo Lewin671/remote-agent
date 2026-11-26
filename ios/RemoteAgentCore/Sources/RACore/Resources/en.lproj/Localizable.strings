@@ -226,7 +226,6 @@
 "errors_ios_remote_control_expired_saving_changes_session_control_and_new" = "Remote control expired. Saving changes, session control, and new uploads are paused. Open Settings › Account security to find the managing client and renew, then retry. History remains available.";
 "errors_ios_secure_connection_failed" = "Secure connection failed: %1$@";
 "errors_ios_terminal_closed" = "Terminal closed";
-"errors_ios_the_original_request_and_keys_are_retained_retry_if" = "%1$@. The original request and keys are retained. Retry; if approval has expired or was denied, exit and pair again.";
 "errors_ios_this_deletes_the_account_keys_and_cache_on_this" = "This deletes the account keys and cache on this phone. Sessions on your computers are unaffected.";
 "errors_ios_unsure_whether_the_computer_executed_this" = "Unsure whether the computer executed this: %1$@";
 "errors_it_may_have_been_deleted_or_belong_to_a" = "It may have been deleted, or belong to a computer that was removed.";

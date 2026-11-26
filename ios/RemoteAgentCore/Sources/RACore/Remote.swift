@@ -83,6 +83,7 @@ public final actor Remote {
     public nonisolated let securityStore: any SecurityStoreV4
     public nonisolated let securityExecutor: SecurityExecutor
     public nonisolated let securityClient: SecurityClient
+    private nonisolated let ownsSecurityExecutor: Bool
     private nonisolated let closedLock = OSAllocatedUnfairLock(initialState: false)
     nonisolated let directPreferences: any DirectPreferenceStore
     public nonisolated let directServerHost: String
@@ -161,6 +162,8 @@ public final actor Remote {
         frameQueueBytes: Int = 32 << 20,
         streamOpenMs: Int64 = 15_000,
         securityStore: (any SecurityStoreV4)? = nil,
+        securityExecutor: SecurityExecutor? = nil,
+        securityClient: SecurityClient? = nil,
         allowPlainHttp: Bool = false,
         monotonic: (@Sendable () -> Int64)? = nil,
         rtc: (any RtcFactory)? = nil,
@@ -179,6 +182,8 @@ public final actor Remote {
             frameQueueBytes: frameQueueBytes,
             streamOpenMs: streamOpenMs,
             securityStore: securityStore,
+            securityExecutor: securityExecutor,
+            securityClient: securityClient,
             allowPlainHttp: allowPlainHttp,
             monotonic: monotonic,
             rtc: rtc,
@@ -200,6 +205,8 @@ public final actor Remote {
         frameQueueBytes: Int = 32 << 20,
         streamOpenMs: Int64 = 15_000,
         securityStore: (any SecurityStoreV4)? = nil,
+        securityExecutor: SecurityExecutor? = nil,
+        securityClient: SecurityClient? = nil,
         allowPlainHttp: Bool = false,
         monotonic: (@Sendable () -> Int64)? = nil,
         rtc: (any RtcFactory)? = nil,
@@ -233,7 +240,8 @@ public final actor Remote {
         let closedFlag = self.closedLock
         let gate = DirectEventQueueGate()
         let eventChain = SerialChain()
-        self.securityExecutor = SecurityExecutor(
+        self.ownsSecurityExecutor = securityExecutor == nil
+        self.securityExecutor = securityExecutor ?? SecurityExecutor(
             store: store,
             http: http,
             allowPlainHttp: allowPlainHttp,
@@ -243,7 +251,7 @@ public final actor Remote {
                 await holder.remote?.emitSecurityCoreEvent(ev)
             }
         )
-        self.securityClient = SecurityClient(
+        self.securityClient = securityClient ?? SecurityClient(
             dispatchEvent: { ev in
                 Task { await holder.remote?.emitSecurityCoreEvent(ev) }
             },
@@ -253,6 +261,10 @@ public final actor Remote {
             isClosedFn: { closedFlag.withLock { $0 } },
             onDismissUpgradeNotice: { store.dismissLegacyRepairNotice() }
         )
+        if !self.ownsSecurityExecutor {
+            self.securityConfiguredInCore = true
+            self.securityBootstrapped = true
+        }
         self.directGate = gate
         self.coreEventChain = eventChain
         let terminals = activeTerminals
@@ -479,8 +491,10 @@ public final actor Remote {
         directGate.markClosed()
         deviceLink.closeStreams()
         directExecutor.close()
-        securityExecutor.close()
-        securityClient.rejectAll()
+        if ownsSecurityExecutor {
+            securityExecutor.close()
+            securityClient.rejectAll()
+        }
         Task { await self.closeActor() }
     }
 
@@ -500,8 +514,10 @@ public final actor Remote {
         activeLegId = nil
         deviceLink.closeStreams()
         directExecutor.close()
-        securityExecutor.close()
-        securityClient.rejectAll()
+        if ownsSecurityExecutor {
+            securityExecutor.close()
+            securityClient.rejectAll()
+        }
         fallbackSecurityDriver?.close()
         fallbackSecurityDriver = nil
     }

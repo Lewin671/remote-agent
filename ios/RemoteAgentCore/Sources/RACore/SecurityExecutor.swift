@@ -7,11 +7,13 @@ import SwiftProtobuf
 /// unary Connect/HTTP byte-pipe RPC calls requested by Go `clientcore`.
 public final class SecurityExecutor: @unchecked Sendable {
     public typealias RpcOverride = @Sendable (PBSecurityRpcEffect) async -> PBSecurityRpcResultEvent
+    public typealias RelayRpcOverride = @Sendable (PBRelayRpcEffect) async -> PBRelayRpcResultEvent
 
     public let store: any SecurityStoreV4
     private let http: HTTP?
     private let emit: @Sendable (PBCoreEvent) async -> Void
     private let rpcOverride: RpcOverride?
+    private let relayRpcOverride: RelayRpcOverride?
     private let allowPlainHttp: Bool
     private let lock = NSLock()
     private var defaultServer: String
@@ -27,6 +29,7 @@ public final class SecurityExecutor: @unchecked Sendable {
         defaultServer: String = "",
         defaultDeviceId: String = "",
         rpcOverride: RpcOverride? = nil,
+        relayRpcOverride: RelayRpcOverride? = nil,
         emit: @escaping @Sendable (PBCoreEvent) async -> Void
     ) {
         self.store = store
@@ -35,7 +38,15 @@ public final class SecurityExecutor: @unchecked Sendable {
         self.defaultServer = defaultServer
         self.defaultDeviceId = defaultDeviceId
         self.rpcOverride = rpcOverride
+        self.relayRpcOverride = relayRpcOverride
         self.emit = emit
+    }
+
+    public func setDefaultAccount(server: String, deviceId: String) {
+        lock.withLock {
+            defaultServer = server
+            defaultDeviceId = deviceId
+        }
     }
 
     public func close() {
@@ -210,6 +221,9 @@ public final class SecurityExecutor: @unchecked Sendable {
     }
 
     private func executeRelayUnary(_ eff: PBRelayRpcEffect) async -> PBRelayRpcResultEvent? {
+        if let relayRpcOverride {
+            return await relayRpcOverride(eff)
+        }
         let fallbackServer = lock.withLock { defaultServer }
         let server = eff.server.isEmpty ? fallbackServer : eff.server
         return await Self.executeRelayRpcUnary(

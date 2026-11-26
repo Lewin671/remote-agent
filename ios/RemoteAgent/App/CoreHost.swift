@@ -8,6 +8,7 @@ import Observation
 import RACore
 import RAProto
 import Security
+import os
 
 /// In-memory Core proto snapshot for `-demo` / preview launches (no `RemoteState` reverse-conversion).
 struct DemoWorld: Equatable, Sendable {
@@ -44,6 +45,13 @@ final class CoreScreens {
     var home = PBCoreHomeViewModel()
     var connection = PBConnectionViewModel()
     var appRoot = PBAppRootViewModel()
+    var onboarding = PBOnboardingViewModel()
+    var addDevice = PBAddDeviceViewModel()
+    var accountSecurity = PBAccountSecurityViewModel()
+    var handoff = PBHandoffViewModel()
+    var exitConfirm = PBExitConfirmView()
+    /// Monotonic edit sequence settled back from Core for onboarding fields (pairing code/server).
+    var settledOnboardingEditSeq: UInt64 = 0
     var projectDetail = PBCoreProjectDetailView()
     var manageProjects = PBCoreManageProjectsView()
     var dirPickers: [String: PBCoreDirPickerView] = [:]
@@ -68,6 +76,11 @@ final class CoreScreens {
         case home
         case connection
         case appRoot
+        case onboarding
+        case addDevice
+        case accountSecurity
+        case handoff
+        case exitConfirm
         case projectDetail
         case manageProjects
         case dirPicker(String)
@@ -96,6 +109,33 @@ final class CoreScreens {
         }
         appliedRenderSeq[slot] = seq
         return true
+    }
+
+    func resetAccountViews() {
+        home = PBCoreHomeViewModel()
+        connection = PBConnectionViewModel()
+        addDevice = PBAddDeviceViewModel()
+        accountSecurity = PBAccountSecurityViewModel()
+        handoff = PBHandoffViewModel()
+        projectDetail = PBCoreProjectDetailView()
+        manageProjects = PBCoreManageProjectsView()
+        dirPickers.removeAll()
+        newSession = PBCoreNewSessionViewModel()
+        sessions.removeAll()
+        schedules = PBSchedulesViewModel()
+        scheduleDetail = PBScheduleDetailViewModel()
+        scheduleForm = PBScheduleFormViewModel()
+        scheduleStrips.removeAll()
+        settings = PBSettingsViewModel()
+        machineStatus = PBMachineStatusViewModel()
+        machineSettings = PBMachineSettingsViewModel()
+        usageView = PBCoreUsageViewModel()
+        quota = PBQuotaViewModel()
+        devices = PBDevicesViewModel()
+        clientDetail = PBClientDetailViewModel()
+        directDiagnostics = PBDirectDiagnosticsViewModel()
+        pendingComposerRestores.removeAll()
+        pendingCleanup = nil
     }
 
     func consumeComposerRestores(_ ids: Set<UUID>) {
@@ -439,15 +479,35 @@ actor CoreHost: SyncEngine {
         var onClearAllLocal: @MainActor @Sendable () -> Void = {}
     }
 
+    struct SecurityHostCallbacks: Sendable {
+        var onRequestStoragePersist: (@Sendable (PBRequestStoragePersistEffect) async -> Void)?
+        var onUnregisterPushOnExit: @Sendable (PBUnregisterPushOnExitEffect) async -> Void = { _ in }
+        var onClearAccountCaches: @Sendable (PBClearAccountCachesEffect) async -> Void = { _ in }
+        var onAccountRuntimeChanged: @Sendable (PBAccountRuntimeChangedEffect) async -> Void = { _ in }
+        var onDismissUpgradeNotice: @Sendable () -> Void = {}
+        var onPersistLastServer: @Sendable (String) async -> Void = { _ in }
+    }
+
+    private final class WeakHost: @unchecked Sendable {
+        weak var host: CoreHost?
+    }
+
     private let client: CoreClient
-    private let executor: any CoreHostExecutor
+    private var executor: (any CoreHostExecutor)?
+    private let accountBox: OSAllocatedUnfairLock<Account>
+    nonisolated let sharedSecurityExecutor: SecurityExecutor?
+    nonisolated let sharedSecurityClient: SecurityClient?
+    private let singleCoreMode: Bool
+    private var securityCallbacks = SecurityHostCallbacks()
+    private let closedFlag: OSAllocatedUnfairLock<Bool>
+    private let onboardingEditSeqLock = OSAllocatedUnfairLock<UInt64>(initialState: 0)
     private let screens: CoreScreens
-    private let defaults: ScopeDefaults
-    private let scopeHmacKey: Data
-    private let sharedFileStore: SharedFileStore
+    private var defaults: ScopeDefaults
+    private var scopeHmacKey: Data
+    private var sharedFileStore: SharedFileStore
     private let sharedFileQueue: SharedFileStorageQueue
     private var sharedFileHandlers: SharedFileHandlers?
-    private let pendingStore: PendingScope
+    private var pendingStore: PendingScope
     private let draftStorageQueue: DraftStorageQueue
     private var attachmentHandlers: AttachmentHandlers?
     private var attachmentConfigured = false
@@ -548,7 +608,72 @@ actor CoreHost: SyncEngine {
         return renderSeq
     }
 
-    nonisolated var account: Account { executor.account }
+    nonisolated var account: Account { accountBox.withLock { $0 } }
+
+    /// Creates a process-wide single-core host that starts via `ClientInitEvent` before any
+    /// account is loaded and keeps one `CoreClient` + `SecurityExecutor` across account lifecycles.
+    static func singleCore(
+        store: any SecurityStoreV4,
+        http: HTTP,
+        allowPlainHttp: Bool,
+        screens: CoreScreens,
+        defaults: UserDefaults = .standard,
+        sharedFileQueue: SharedFileStorageQueue = .shared,
+        draftStorageQueue: DraftStorageQueue = .shared,
+        clock: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
+        sleep: @escaping Sleeper = realSleep,
+        relayRpcOverride: SecurityExecutor.RelayRpcOverride? = nil,
+        callbacks: SecurityHostCallbacks = SecurityHostCallbacks()
+    ) throws -> CoreHost {
+        let client = try CoreClient()
+        let holder = WeakHost()
+        let closedFlag = OSAllocatedUnfairLock<Bool>(initialState: false)
+        let secExec = SecurityExecutor(
+            store: store,
+            http: http,
+            allowPlainHttp: allowPlainHttp,
+            relayRpcOverride: relayRpcOverride,
+            emit: { ev in
+                await holder.host?.dispatch(ev)
+            }
+        )
+        let secClient = SecurityClient(
+            dispatchEvent: { ev in
+                Task { await holder.host?.dispatch(ev) }
+            },
+            setForegroundFn: { fg in
+                Task { await holder.host?.setSecurityForeground(fg) }
+            },
+            isClosedFn: { closedFlag.withLock { $0 } },
+            onDismissUpgradeNotice: { store.dismissLegacyRepairNotice() }
+        )
+        let host = CoreHost(
+            client: client,
+            executor: nil,
+            sharedSecurityExecutor: secExec,
+            sharedSecurityClient: secClient,
+            singleCoreMode: true,
+            closedFlag: closedFlag,
+            securityCallbacks: callbacks,
+            screens: screens,
+            defaults: ScopeDefaults(defaults),
+            scopeHmacKey: Data(),
+            sharedFileStore: SharedFileStore(root: SharedFileCenter.defaultRoot),
+            sharedFileQueue: sharedFileQueue,
+            pendingStore: PendingStore.ephemeral().scoped(),
+            draftStorageQueue: draftStorageQueue,
+            clock: clock,
+            monoClock: hostMonoMs,
+            sleep: sleep,
+            demoDirectories: nil,
+            demoModels: [:],
+            demoMode: false,
+            onNavigate: { _ in },
+            onScheduleNavigate: { _ in }
+        )
+        holder.host = host
+        return host
+    }
 
     static func live(
         remote: Remote,
@@ -595,7 +720,12 @@ actor CoreHost: SyncEngine {
 
     init(
         client: CoreClient,
-        executor: any CoreHostExecutor,
+        executor: (any CoreHostExecutor)?,
+        sharedSecurityExecutor: SecurityExecutor? = nil,
+        sharedSecurityClient: SecurityClient? = nil,
+        singleCoreMode: Bool = false,
+        closedFlag: OSAllocatedUnfairLock<Bool> = OSAllocatedUnfairLock<Bool>(initialState: false),
+        securityCallbacks: SecurityHostCallbacks = SecurityHostCallbacks(),
         screens: CoreScreens,
         defaults: ScopeDefaults = ScopeDefaults(),
         scopeHmacKey: Data = Data(),
@@ -614,6 +744,12 @@ actor CoreHost: SyncEngine {
     ) {
         self.client = client
         self.executor = executor
+        self.accountBox = OSAllocatedUnfairLock(initialState: executor?.account ?? Account(server: "", deviceId: "", accountId: ""))
+        self.sharedSecurityExecutor = sharedSecurityExecutor
+        self.sharedSecurityClient = sharedSecurityClient
+        self.singleCoreMode = singleCoreMode
+        self.closedFlag = closedFlag
+        self.securityCallbacks = securityCallbacks
         self.screens = screens
         self.defaults = defaults
         self.scopeHmacKey = scopeHmacKey
@@ -633,8 +769,88 @@ actor CoreHost: SyncEngine {
         self.unitFloatPool = (0..<16).map { _ in Double.random(in: 0..<1) }
     }
 
+    func setSecurityCallbacks(_ callbacks: SecurityHostCallbacks) {
+        securityCallbacks = callbacks
+    }
+
+    func attachAccount(
+        executor: any CoreHostExecutor,
+        account: Account,
+        defaults: ScopeDefaults,
+        pendingStore: PendingScope,
+        sharedFileStore: SharedFileStore
+    ) async {
+        guard !closed else { return }
+        self.executor = executor
+        self.accountBox.withLock { $0 = account }
+        self.defaults = defaults
+        self.scopeHmacKey = RACore.scopeHmacKey(localKey: account.localKey)
+        self.pendingStore = pendingStore
+        self.sharedFileStore = sharedFileStore
+        self.attachmentConfigured = false
+        self.hooksInstalled = false
+        self.usageHydratedMachines.removeAll()
+        await wireExecutorHooks()
+    }
+
+    func detachAccount() async {
+        started = false
+        hooksInstalled = false
+        attachmentConfigured = false
+        cancelAllMachinePollTimers()
+        cancelAllInFlightDispatches()
+        cacheChain?.cancel()
+        cacheChain = nil
+        sharedFileHandlers = nil
+        attachmentHandlers = nil
+        onSessionRemoved = nil
+        onPersistClientPrefs = nil
+        visibleSessions.removeAll()
+        currentVisibleSessionID = ""
+        usageHydratedMachines.removeAll()
+        sessionWatches.removeAll()
+        sessionWatchOrder.removeAll()
+        scheduleStripWatches.removeAll()
+        activeDirPickers.removeAll()
+        machineStatusWatches.removeAll()
+        activeProjectKey = ""
+        activeNewSessionProjectKey = ""
+        activeManageMachineID = ""
+        manageSubscribers = 0
+        activeMachineStatusID = ""
+        activeMachineSettingsID = ""
+        activeQuotaMachineID = ""
+        activeClientDetailID = ""
+        usageMachineID = ""
+        activeScheduleDetail = nil
+        activeScheduleFormKey = ""
+        activeDirectDiagnosticsID = ""
+        terminalReopenListeners.removeAll()
+        terminalHistoryRequestListeners.removeAll()
+        terminalHistoryUpdatedListeners.removeAll()
+        let pendingCmds = machineCmdWaiters
+        machineCmdWaiters.removeAll()
+        for continuation in pendingCmds.values {
+            continuation.resume(throwing: CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()))
+        }
+        let pendingRetry = retryNowWaiters
+        retryNowWaiters.removeAll()
+        for list in pendingRetry.values {
+            for continuation in list { continuation.resume(returning: false) }
+        }
+        if let old = executor {
+            old.detachDirectStreams()
+            await old.close()
+        }
+        executor = nil
+        accountBox.withLock { $0 = Account(server: "", deviceId: "", accountId: "") }
+        await MainActor.run { [screens] in
+            screens.resetAccountViews()
+        }
+    }
+
     func wireExecutorHooks() async {
-        guard !hooksInstalled else { return }
+        guard !hooksInstalled, let executor else { return }
         hooksInstalled = true
         await executor.installCoreHooks(Remote.CoreHooks(
             onRefresh: { [weak self] in
@@ -709,6 +925,9 @@ actor CoreHost: SyncEngine {
 
     func startAsync() async {
         guard !closed else { return }
+        if singleCoreMode && executor == nil {
+            return
+        }
         await wireExecutorHooks()
         started = true
         foregrounded = true
@@ -725,7 +944,7 @@ actor CoreHost: SyncEngine {
                 $0.randomBytes = Self.randomBytes(4096)
             }
         }
-        if !demoMode {
+        if !demoMode, let executor {
             let acct = executor.account
             let supported = executor.directSupported
             let serverHost = executor.directServerHost
@@ -756,19 +975,21 @@ actor CoreHost: SyncEngine {
             await dispatch {
                 $0.relayPipeConfig = .with { $0.enabled = true }
             }
-            let desc = await deviceDescription()
-            await dispatch {
-                $0.securityConfig = .with {
-                    $0.account = acct.accountId
-                    $0.deviceID = acct.deviceId
-                    $0.server = acct.server
-                    $0.inlineCrypto = true
-                    $0.foreground = self.foregrounded
-                    $0.platform = "ios"
-                    $0.deviceDescription = desc
+            if !singleCoreMode {
+                let desc = await deviceDescription()
+                await dispatch {
+                    $0.securityConfig = .with {
+                        $0.account = acct.accountId
+                        $0.deviceID = acct.deviceId
+                        $0.server = acct.server
+                        $0.inlineCrypto = true
+                        $0.foreground = self.foregrounded
+                        $0.platform = "ios"
+                        $0.deviceDescription = desc
+                    }
                 }
+                try? await executor.ensureSecurityBootstrapped()
             }
-            try? await executor.ensureSecurityBootstrapped()
         }
         let savedScope = defaults.homeScopeToken()
         await dispatch { [scopeHmacKey] ev in
@@ -790,6 +1011,193 @@ actor CoreHost: SyncEngine {
         }
         await setUILocale(MessageLocale.current)
         await dispatchClockUpdated()
+    }
+
+    // MARK: - Single-Core Security Lifecycle & Semantic UI Actions
+
+    func clientInit(
+        platform: String = "ios",
+        deviceDescription: String,
+        inlineCrypto: Bool = true,
+        foreground: Bool,
+        networkAvailable: Bool,
+        networkSignature: String,
+        initialURL: String = "",
+        defaultServer: String = "",
+        requestStoragePersist: Bool = false
+    ) async {
+        guard !closed else { return }
+        foregrounded = foreground
+        startClockTicker()
+        replenishEntropy(minIds: 16, minFloats: 16)
+        let initIds = randomIdPool
+        let initFloats = unitFloatPool
+        randomIdPool.removeAll(keepingCapacity: true)
+        unitFloatPool.removeAll(keepingCapacity: true)
+        await dispatch {
+            $0.entropyProvided = .with {
+                $0.randomIds = initIds
+                $0.unitFloats = initFloats
+                $0.randomBytes = Self.randomBytes(4096)
+            }
+        }
+        await dispatch {
+            $0.relayPipeConfig = .with { $0.enabled = true }
+        }
+        await dispatchClockUpdated()
+        let locale = MessageLocale.current
+        await dispatch {
+            $0.clientInit = .with {
+                $0.uiLocale = locale
+                $0.platform = platform
+                $0.deviceDescription = deviceDescription
+                $0.inlineCrypto = inlineCrypto
+                $0.foreground = foreground
+                $0.networkAvailable = networkAvailable
+                $0.networkSignature = networkSignature
+                $0.initialURL = initialURL
+                $0.defaultServer = defaultServer
+                $0.requestStoragePersist = requestStoragePersist
+            }
+        }
+    }
+
+    func setSecurityForeground(_ foreground: Bool) async {
+        foregrounded = foreground
+        await dispatch { $0.securityForeground = .with { $0.foreground = foreground } }
+    }
+
+    func storagePersistResult(opID: UInt64, persisted: Bool) async {
+        await dispatch { $0.storagePersistResult = .with { $0.opID = opID; $0.persisted = persisted } }
+    }
+
+    func pushUnregistered(opID: UInt64) async {
+        await dispatch { $0.pushUnregistered = .with { $0.opID = opID } }
+    }
+
+    func accountCachesCleared(opID: UInt64, error: String = "") async {
+        await dispatch { $0.accountCachesCleared = .with { $0.opID = opID; $0.error = error } }
+    }
+
+    func externalLogout() async { await dispatch { $0.externalLogout = PBExternalLogoutEvent() } }
+    func appRootRetryBootstrap() async { await dispatch { $0.appRootRetryBootstrap = PBAppRootRetryBootstrapAction() } }
+    func appRootVerifyPendingOp() async { await dispatch { $0.appRootVerifyPendingOp = PBAppRootVerifyPendingOpAction() } }
+    func appRootDismissUpgradeNotice() async { await dispatch { $0.appRootDismissUpgradeNotice = PBAppRootDismissUpgradeNoticeAction() } }
+
+    nonisolated func nextOnboardingEditSeq() -> UInt64 {
+        onboardingEditSeqLock.withLock { seq in seq &+= 1; return seq }
+    }
+
+    private func settleOnboardingEditSeq(_ seq: UInt64) async {
+        guard seq > 0 else { return }
+        await MainActor.run { [screens, seq] in
+            if seq > screens.settledOnboardingEditSeq { screens.settledOnboardingEditSeq = seq }
+        }
+    }
+
+    func onboardingSetMode(_ mode: PBOnboardingMode, initialURL: String = "", existingRepair: Bool = false, existingServer: String = "") async {
+        await dispatch {
+            $0.onboardingSetMode = .with {
+                $0.mode = mode; $0.initialURL = initialURL
+                $0.existingRepair = existingRepair; $0.existingServer = existingServer
+            }
+        }
+    }
+
+    func onboardingCreateEdit(serverInput: String? = nil, codeSavedChecked: Bool? = nil, seq: UInt64 = 0) async {
+        await dispatch {
+            $0.onboardingCreateEdit = .with {
+                if let serverInput { $0.hasServerInput_p = true; $0.serverInput = serverInput }
+                if let codeSavedChecked { $0.hasCodeSavedChecked_p = true; $0.codeSavedChecked = codeSavedChecked }
+            }
+        }
+        await settleOnboardingEditSeq(seq)
+    }
+
+    func onboardingCreateSubmit(serverInput: String = "", setupToken: String = "", confirmCodeSaved: Bool = false) async {
+        await dispatch {
+            $0.onboardingCreateSubmit = .with {
+                $0.serverInput = serverInput; $0.setupToken = setupToken; $0.confirmCodeSaved = confirmCodeSaved
+            }
+        }
+    }
+
+    func onboardingJoinEdit(codeInput: String? = nil, serverInput: String? = nil, seq: UInt64 = 0) async {
+        await dispatch {
+            $0.onboardingJoinEdit = .with {
+                if let codeInput { $0.hasCodeInput_p = true; $0.codeInput = codeInput }
+                if let serverInput { $0.hasServerInput_p = true; $0.serverInput = serverInput }
+            }
+        }
+        await settleOnboardingEditSeq(seq)
+    }
+
+    func onboardingJoinSubmit(rawLink: String = "", serverInput: String = "", codeInput: String = "") async {
+        await dispatch {
+            $0.onboardingJoinSubmit = .with {
+                $0.rawLink = rawLink; $0.serverInput = serverInput; $0.codeInput = codeInput
+            }
+        }
+    }
+
+    func onboardingJoinConfirmSAS() async { await dispatch { $0.onboardingJoinConfirmSas = PBOnboardingJoinConfirmSasAction() } }
+    func onboardingJoinCancel() async { await dispatch { $0.onboardingJoinCancel = PBOnboardingJoinCancelAction() } }
+    func onboardingJoinBannerAction() async { await dispatch { $0.onboardingJoinBannerAction = PBOnboardingJoinBannerAction() } }
+
+    func onboardingRecoveryEdit(serverInput: String? = nil, codeSavedChecked: Bool? = nil, seq: UInt64 = 0) async {
+        await dispatch {
+            $0.onboardingRecoveryEdit = .with {
+                if let serverInput { $0.hasServerInput_p = true; $0.serverInput = serverInput }
+                if let codeSavedChecked { $0.hasCodeSavedChecked_p = true; $0.codeSavedChecked = codeSavedChecked }
+            }
+        }
+        await settleOnboardingEditSeq(seq)
+    }
+
+    func onboardingRecoveryAction(_ kind: PBOnboardingRecoveryActionKind, serverInput: String = "", oldCode: String = "") async {
+        await dispatch {
+            $0.onboardingRecoveryAction = .with { $0.kind = kind; $0.serverInput = serverInput; $0.oldCode = oldCode }
+        }
+    }
+
+    func addDeviceOpen(replacesDeviceID: String = "", webOrigin: String = "", autoStart: Bool = true) async {
+        await dispatch {
+            $0.addDeviceOpen = .with { $0.replacesDeviceID = replacesDeviceID; $0.webOrigin = webOrigin; $0.autoStart = autoStart }
+        }
+    }
+
+    func addDeviceClose(replacesDeviceID: String = "") async {
+        await dispatch { $0.addDeviceClose = .with { $0.replacesDeviceID = replacesDeviceID } }
+    }
+
+    func addDeviceAction(_ kind: PBAddDeviceActionKind, flag: Bool = false, deviceID: String = "") async {
+        await dispatch { $0.addDeviceAction = .with { $0.kind = kind; $0.flag = flag; $0.deviceID = deviceID } }
+    }
+
+    func accountSecurityOpen(subpage: PBAccountSecuritySubpage = .overview) async {
+        await dispatch { $0.accountSecurityOpen = .with { $0.subpage = subpage } }
+    }
+
+    func accountSecurityClose() async { await dispatch { $0.accountSecurityClose = PBAccountSecurityCloseAction() } }
+
+    func accountSecurityAction(_ kind: PBAccountSecurityActionKind, subpage: PBAccountSecuritySubpage = .unspecified, flag: Bool = false) async {
+        await dispatch { $0.accountSecurityAction = .with { $0.kind = kind; $0.subpage = subpage; $0.flag = flag } }
+    }
+
+    func handoffAction(_ kind: PBHandoffActionKind, targetDeviceID: String = "", flag: Bool = false, recoveryCode: String = "") async {
+        await dispatch {
+            $0.handoffAction = .with {
+                $0.kind = kind; $0.targetDeviceID = targetDeviceID; $0.flag = flag; $0.recoveryCode = recoveryCode
+            }
+        }
+    }
+
+    func exitRequest(intent: PBExitIntentKind, server: String = "") async {
+        await dispatch { $0.exitRequest = .with { $0.intent = intent; $0.server = server } }
+    }
+
+    func exitConfirm(_ confirm: Bool) async {
+        await dispatch { $0.exitConfirm = .with { $0.confirm = confirm } }
     }
 
     /// Sends `AttachmentConfigEvent` once per host lifetime before any `Draft*`/`Attachment*` event.
@@ -831,21 +1239,25 @@ actor CoreHost: SyncEngine {
         cancelAllMachinePollTimers()
         cancelAllInFlightDispatches()
         cancelIOTasks()
-        executor.detachDirectStreams()
-        await executor.setSecurityForeground(false)
+        executor?.detachDirectStreams()
+        await executor?.setSecurityForeground(false)
         await dispatch { $0.securityForeground = .with { $0.foreground = false } }
-        await dispatch { $0.syncLifecycle.kind = .stop }
+        if executor != nil || !singleCoreMode {
+            await dispatch { $0.syncLifecycle.kind = .stop }
+        }
     }
 
     func setForeground(_ foreground: Bool) async {
-        guard !closed, started else { return }
+        guard !closed else { return }
         foregrounded = foreground
         if foreground {
             await dispatchClockUpdated()
         }
-        await executor.setSecurityForeground(foreground)
+        await executor?.setSecurityForeground(foreground)
         await dispatch { $0.securityForeground = .with { $0.foreground = foreground } }
-        await dispatch { $0.syncLifecycle.kind = foreground ? .foreground : .background }
+        if started && (executor != nil || !singleCoreMode) {
+            await dispatch { $0.syncLifecycle.kind = foreground ? .foreground : .background }
+        }
     }
 
     func reconnectNowAsync() async {
@@ -908,6 +1320,7 @@ actor CoreHost: SyncEngine {
     func closeAsync() async {
         guard !closed else { return }
         closed = true
+        closedFlag.withLock { $0 = true }
         started = false
         clockTask?.cancel()
         clockTask = nil
@@ -945,8 +1358,11 @@ actor CoreHost: SyncEngine {
         terminalReopenListeners.removeAll()
         terminalHistoryRequestListeners.removeAll()
         terminalHistoryUpdatedListeners.removeAll()
-        executor.detachDirectStreams()
-        await executor.close()
+        executor?.detachDirectStreams()
+        await executor?.close()
+        executor = nil
+        sharedSecurityExecutor?.close()
+        sharedSecurityClient?.rejectAll()
         client.close()
     }
 
@@ -1485,7 +1901,7 @@ actor CoreHost: SyncEngine {
         enqueueDraftStorageEffects(remaining)
         await handleEffects(remaining)
         if let r = renameEffect {
-            try await executor.renameDevice(r.deviceID, name: r.name)
+            try await executor?.renameDevice(r.deviceID, name: r.name)
         }
     }
 
@@ -2570,7 +2986,7 @@ actor CoreHost: SyncEngine {
                 renderTargets.formUnion(r.screens)
 
             case .openStream(let s):
-                guard !demoMode else { continue }
+                guard !demoMode, let executor else { continue }
                 let legId = s.legID
                 let hello = s.helloFrame
                 await executor.openStream(
@@ -2592,7 +3008,7 @@ actor CoreHost: SyncEngine {
                 )
 
             case .closeStream(let s):
-                guard !demoMode else { continue }
+                guard !demoMode, let executor else { continue }
                 await executor.closeStream(legId: s.legID)
 
             case .ensureToken, .discardToken:
@@ -2616,8 +3032,9 @@ actor CoreHost: SyncEngine {
                     if let ev = demoCacheReadReply(r) { demoReplies.append(ev) }
                     continue
                 }
+                guard let exec = executor else { continue }
                 spawnIO { host in
-                    let event = await host.executor.executeCacheRead(r)
+                    let event = await exec.executeCacheRead(r)
                     await host.dispatch(event)
                 }
 
@@ -2686,8 +3103,9 @@ actor CoreHost: SyncEngine {
                     })
                     continue
                 }
+                guard let exec = executor else { continue }
                 spawnIO { host in
-                    let blob = await host.executor.readScheduleCacheBlob(r.machineID)
+                    let blob = await exec.readScheduleCacheBlob(r.machineID)
                     await host.dispatch {
                         $0.scheduleCacheLoaded = .with {
                             $0.opID = r.opID
@@ -2756,78 +3174,97 @@ actor CoreHost: SyncEngine {
                 scheduleMachinePoll(eff)
 
             case .directPreference(let eff):
-                executor.persistDirectPreference(eff.machineID, enabled: eff.enabled)
+                executor?.persistDirectPreference(eff.machineID, enabled: eff.enabled)
 
             case .directSignalSend(let eff):
-                _ = executor.handleDirectSignalSend(eff)
+                _ = executor?.handleDirectSignalSend(eff)
 
             case .directPcCreate(let eff):
-                executor.handleDirectPcCreate(eff)
+                executor?.handleDirectPcCreate(eff)
 
             case .directPcDescribe(let eff):
-                spawnIO { host in
-                    await host.executor.handleDirectPcDescribe(eff)
+                guard let exec = executor else { continue }
+                spawnIO { _ in
+                    await exec.handleDirectPcDescribe(eff)
                 }
 
             case .directPcSetRemote(let eff):
-                spawnIO { host in
-                    await host.executor.handleDirectPcSetRemote(eff)
+                guard let exec = executor else { continue }
+                spawnIO { _ in
+                    await exec.handleDirectPcSetRemote(eff)
                 }
 
             case .directPcAddCandidates(let eff):
-                spawnIO { host in
-                    await host.executor.handleDirectPcAddCandidates(eff)
+                guard let exec = executor else { continue }
+                spawnIO { _ in
+                    await exec.handleDirectPcAddCandidates(eff)
                 }
 
             case .directPcConfirm(let eff):
-                executor.handleDirectPcConfirm(eff)
+                executor?.handleDirectPcConfirm(eff)
 
             case .directPcClose(let eff):
-                executor.handleDirectPcClose(eff)
+                executor?.handleDirectPcClose(eff)
 
             case .directPcSendProbe(let eff):
-                executor.handleDirectPcSendProbe(eff)
+                executor?.handleDirectPcSendProbe(eff)
 
             case .directDcReadStats(let eff):
-                spawnIO { host in
-                    await host.executor.handleDirectDcReadStats(eff)
+                guard let exec = executor else { continue }
+                spawnIO { _ in
+                    await exec.handleDirectDcReadStats(eff)
                 }
 
             case .terminalDirectSend(let eff):
-                executor.handleTerminalDirectSend(eff)
+                executor?.handleTerminalDirectSend(eff)
 
             case .terminalOpenSocket(let eff):
-                executor.handleTerminalOpenSocket(eff)
+                executor?.handleTerminalOpenSocket(eff)
 
             case .terminalCloseSocket(let eff):
-                executor.handleTerminalCloseSocket(eff)
+                executor?.handleTerminalCloseSocket(eff)
 
             case .terminalDeliverOutput(let eff):
-                executor.handleTerminalDeliverOutput(eff)
+                executor?.handleTerminalDeliverOutput(eff)
 
             case .terminalStateChanged(let eff):
-                executor.handleTerminalStateChanged(eff)
+                executor?.handleTerminalStateChanged(eff)
 
             case .sessionImageLoaded(let eff):
-                executor.handleSessionImageLoaded(eff)
+                executor?.handleSessionImageLoaded(eff)
 
             case .securityKeyGenerate, .securityKeySign, .securityKeyAgree,
                  .securityKeyEncapsulate, .securityKeyDiscard, .securityStorage,
                  .securityRpc, .relayRpc, .relayRpcCancel:
                 guard !demoMode else { continue }
-                executor.handleCoreSecurityEffect(eff)
+                if let secExec = sharedSecurityExecutor {
+                    _ = secExec.handleEffect(eff)
+                } else {
+                    executor?.handleCoreSecurityEffect(eff)
+                }
 
             case .securityTokenUpdated(let eff):
                 guard !demoMode else { continue }
-                await executor.applySecurityTokenUpdated(eff)
+                if let executor {
+                    await executor.applySecurityTokenUpdated(eff)
+                } else if let secExec = sharedSecurityExecutor {
+                    let acct = self.account
+                    if !acct.server.isEmpty && !acct.deviceId.isEmpty {
+                        if eff.cleared {
+                            secExec.store.clearLoginToken(server: acct.server, deviceId: acct.deviceId)
+                        } else if !eff.token.isEmpty {
+                            secExec.store.saveLoginToken(SavedLogin(token: eff.token, expiresMs: eff.expiresMs), server: acct.server, deviceId: acct.deviceId)
+                        }
+                    }
+                }
 
             case .securityWorkflowResult(let eff):
                 guard !demoMode else { continue }
-                executor.optionalSecurityClient?.handleWorkflowResult(eff)
-                if eff.hasStatus {
+                (sharedSecurityClient ?? executor?.optionalSecurityClient)?.handleWorkflowResult(eff)
+                if eff.hasStatus, let exec = executor {
                     let st = eff.status
-                    spawnIO { host in
-                        await host.executor.applySecurityStatusSnapshot(st)
+                    spawnIO { _ in
+                        await exec.applySecurityStatusSnapshot(st)
                     }
                 }
 
@@ -2835,9 +3272,11 @@ actor CoreHost: SyncEngine {
                 guard !demoMode else { continue }
                 if eff.hasStatus {
                     let st = eff.status
-                    executor.optionalSecurityClient?.handleStatusChanged(st)
-                    spawnIO { host in
-                        await host.executor.applySecurityStatusSnapshot(st)
+                    (sharedSecurityClient ?? executor?.optionalSecurityClient)?.handleStatusChanged(st)
+                    if let exec = executor {
+                        spawnIO { _ in
+                            await exec.applySecurityStatusSnapshot(st)
+                        }
                     }
                 }
 
@@ -2871,8 +3310,9 @@ actor CoreHost: SyncEngine {
                 handleRunMachineCommandResult(eff)
 
             case .renameClient(let eff):
-                spawnIO { host in
-                    try? await host.executor.renameDevice(eff.deviceID, name: eff.name)
+                guard let exec = executor else { continue }
+                spawnIO { _ in
+                    try? await exec.renameDevice(eff.deviceID, name: eff.name)
                 }
 
             case .checkUpdates:
@@ -2900,7 +3340,7 @@ actor CoreHost: SyncEngine {
                 }
 
             case .watchedSessions(let eff):
-                await executor.setWatchedSessions(eff.sessions)
+                await executor?.setWatchedSessions(eff.sessions)
 
             case .usageCacheRequest(let eff):
                 guard !eff.machineID.isEmpty else { continue }
@@ -2919,14 +3359,31 @@ actor CoreHost: SyncEngine {
                 // iOS has no OS push delivery adapter.
                 break
 
-            case .requestStoragePersist,
-                 .unregisterPushOnExit,
-                 .clearAccountCaches_p,
-                 .accountRuntimeChanged,
-                 .dismissUpgradeNotice,
-                 .persistLastServer:
-                // Handled by Web/Android in P2-6; iOS migrates to security view models in P3-3.
-                break
+            case .requestStoragePersist(let eff):
+                if let handler = securityCallbacks.onRequestStoragePersist {
+                    Task { await handler(eff) }
+                } else {
+                    await storagePersistResult(opID: eff.opID, persisted: true)
+                }
+
+            case .unregisterPushOnExit(let eff):
+                let handler = securityCallbacks.onUnregisterPushOnExit
+                Task { await handler(eff) }
+
+            case .clearAccountCaches_p(let eff):
+                let handler = securityCallbacks.onClearAccountCaches
+                Task { await handler(eff) }
+
+            case .accountRuntimeChanged(let eff):
+                let handler = securityCallbacks.onAccountRuntimeChanged
+                Task { await handler(eff) }
+
+            case .dismissUpgradeNotice:
+                securityCallbacks.onDismissUpgradeNotice()
+
+            case .persistLastServer(let eff):
+                let handler = securityCallbacks.onPersistLastServer
+                Task { await handler(eff.server) }
 
             case .sharedFileScanLocal,
                  .sharedFileInspectDisk,
@@ -3407,11 +3864,12 @@ actor CoreHost: SyncEngine {
             }
         }
 
+        guard let exec = executor else { return }
         let requestID = c.requestID
         let attemptID = c.attemptID
         let task = Task { [weak self] in
             guard let self else { return }
-            let outcome = await self.executor.dispatchCommandAttempt(c)
+            let outcome = await exec.dispatchCommandAttempt(c)
             let shouldEmit = await self.finishInFlightDispatch(requestID: requestID, attemptID: attemptID)
             if shouldEmit && !Task.isCancelled {
                 await self.dispatch { $0.commandOutcome = outcome }
@@ -3541,6 +3999,11 @@ actor CoreHost: SyncEngine {
         var newSessionVM: PBCoreNewSessionViewModel?
         var connectionVM: PBConnectionViewModel?
         var appRootVM: PBAppRootViewModel?
+        var onboardingVM: PBOnboardingViewModel?
+        var addDeviceVM: PBAddDeviceViewModel?
+        var accountSecurityVM: PBAccountSecurityViewModel?
+        var handoffVM: PBHandoffViewModel?
+        var exitConfirmVM: PBExitConfirmView?
         var schedulesVM: PBSchedulesViewModel?
         var scheduleDetailVM: PBScheduleDetailViewModel?
         var scheduleFormVM: PBScheduleFormViewModel?
@@ -3629,6 +4092,31 @@ actor CoreHost: SyncEngine {
                 $0.appRoot = PBAppRootScreenRequest()
             }).appRoot
         }
+        if targets.contains(.onboarding) {
+            onboardingVM = try? client.view(PBCoreScreen.with {
+                $0.onboarding = PBOnboardingScreenRequest()
+            }).onboarding
+        }
+        if targets.contains(.addDevice) {
+            addDeviceVM = try? client.view(PBCoreScreen.with {
+                $0.addDevice = PBAddDeviceScreenRequest()
+            }).addDevice
+        }
+        if targets.contains(.accountSecurity) {
+            accountSecurityVM = try? client.view(PBCoreScreen.with {
+                $0.accountSecurity = PBAccountSecurityScreenRequest()
+            }).accountSecurity
+        }
+        if targets.contains(.handoff) {
+            handoffVM = try? client.view(PBCoreScreen.with {
+                $0.handoff = PBHandoffScreenRequest()
+            }).handoff
+        }
+        if targets.contains(.exitConfirm) {
+            exitConfirmVM = try? client.view(PBCoreScreen.with {
+                $0.exitConfirm = PBExitConfirmScreenRequest()
+            }).exitConfirm
+        }
         if targets.contains(.settings) || targets.contains(.home) || targets.contains(.connection) {
             settingsVM = try? client.view(PBCoreScreen.with {
                 $0.settings = PBSettingsScreenRequest()
@@ -3703,7 +4191,8 @@ actor CoreHost: SyncEngine {
         let seq = nextRenderSeq()
 
         await MainActor.run { [
-            screens, seq, homeVM, connectionVM, appRootVM, projectVM, dirPickerVMs, newSessionVM,
+            screens, seq, homeVM, connectionVM, appRootVM, onboardingVM, addDeviceVM,
+            accountSecurityVM, handoffVM, exitConfirmVM, projectVM, dirPickerVMs, newSessionVM,
             schedulesVM, scheduleDetailVM, scheduleFormVM,
             settingsVM, machineStatusVM, machineSettingsVM, quotaVM, usageVM, devicesVM, clientDetailVM,
             directDiagnosticsVM, sessionVMs, scheduleStripVMs
@@ -3711,6 +4200,11 @@ actor CoreHost: SyncEngine {
             if let homeVM, screens.acceptRender(.home, seq: seq) { screens.home = homeVM }
             if let connectionVM, screens.acceptRender(.connection, seq: seq) { screens.connection = connectionVM }
             if let appRootVM, screens.acceptRender(.appRoot, seq: seq) { screens.appRoot = appRootVM }
+            if let onboardingVM, screens.acceptRender(.onboarding, seq: seq) { screens.onboarding = onboardingVM }
+            if let addDeviceVM, screens.acceptRender(.addDevice, seq: seq) { screens.addDevice = addDeviceVM }
+            if let accountSecurityVM, screens.acceptRender(.accountSecurity, seq: seq) { screens.accountSecurity = accountSecurityVM }
+            if let handoffVM, screens.acceptRender(.handoff, seq: seq) { screens.handoff = handoffVM }
+            if let exitConfirmVM, screens.acceptRender(.exitConfirm, seq: seq) { screens.exitConfirm = exitConfirmVM }
             if let projectVM {
                 if projectVM.hasDetail, screens.acceptRender(.projectDetail, seq: seq) { screens.projectDetail = projectVM.detail }
                 if projectVM.hasManage, screens.acceptRender(.manageProjects, seq: seq) { screens.manageProjects = projectVM.manage }
@@ -3988,8 +4482,8 @@ actor CoreHost: SyncEngine {
     }
 
     private func enqueueCacheOp(_ work: @escaping @Sendable (any CoreHostExecutor) async -> Void) {
+        guard let executor = self.executor else { return }
         let previous = cacheChain
-        let executor = self.executor
         cacheChain = Task {
             await previous?.value
             guard !Task.isCancelled else { return }
@@ -4275,6 +4769,26 @@ actor CoreHost: SyncEngine {
             break
         }
         await renderTargets([.connection, .home, .project, .newSession, .session, .schedules, .settings, .devices, .machineSettings, .quota, .clientDetail])
+        let demoRoot = PBAppRootViewModel.with {
+            $0.stage = demoWorld.removed ? .removed : .ready
+            $0.server = self.account.server
+            $0.deviceID = self.account.deviceId
+            $0.accountID = self.account.accountId
+            $0.isManager = self.demoWorld.authorityDeviceId == self.account.deviceId
+            if demoWorld.removed {
+                $0.removed = .with {
+                    $0.removalVerified = true
+                    $0.server = self.account.server
+                    $0.canRetryLogin = true
+                }
+            }
+        }
+        let demoSeq = nextRenderSeq()
+        await MainActor.run { [screens, demoRoot, demoSeq] in
+            if screens.acceptRender(.appRoot, seq: demoSeq) {
+                screens.appRoot = demoRoot
+            }
+        }
         if !activeMachineSettingsID.isEmpty {
             await openMachineSettings(machineID: activeMachineSettingsID)
         }
@@ -4370,6 +4884,26 @@ actor CoreHost: SyncEngine {
             }
         }
         await renderTargets([.connection, .home, .project, .newSession, .session, .schedules, .settings, .devices, .machineSettings, .quota, .clientDetail])
+        let demoRoot = PBAppRootViewModel.with {
+            $0.stage = demoWorld.removed ? .removed : .ready
+            $0.server = self.account.server
+            $0.deviceID = self.account.deviceId
+            $0.accountID = self.account.accountId
+            $0.isManager = self.demoWorld.authorityDeviceId == self.account.deviceId
+            if demoWorld.removed {
+                $0.removed = .with {
+                    $0.removalVerified = true
+                    $0.server = self.account.server
+                    $0.canRetryLogin = true
+                }
+            }
+        }
+        let demoSeq = nextRenderSeq()
+        await MainActor.run { [screens, demoRoot, demoSeq] in
+            if screens.acceptRender(.appRoot, seq: demoSeq) {
+                screens.appRoot = demoRoot
+            }
+        }
         if !activeMachineSettingsID.isEmpty {
             await openMachineSettings(machineID: activeMachineSettingsID)
         }

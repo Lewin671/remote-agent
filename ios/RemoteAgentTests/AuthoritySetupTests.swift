@@ -67,18 +67,24 @@ import Testing
         #expect(rotation.code == "DEMO-CODE-1" && handoff.code == "DEMO-CODE-2")
     }
 
-    @Test func rePairingReplacesTheEngineWithoutErasingIdentityOrHistory() async throws {
+    @Test func rePairingPreservesIdentityDefaultsAndPendingDrafts() async throws {
         let h = Harness()
         defer { h.cleanUp() }
-        try await h.ready()
-        let old = h.engine
+        try await h.activateSyntheticAccount()
         let before = h.model.context
         h.defaults.set("project", forKey: AccountDefaults.key("home-scope"))
         #expect(h.pending.write(opID: 1, bucket: .draft, key: "draft:session:s1", data: Data([1, 2, 3])).ok)
-        try await h.model.joined(h.account)
-        #expect(old.calls.contains("close"))
-        #expect(h.engines.count == 2 && h.engine !== old)
-        #expect(h.model.context !== before && h.model.stage == .ready)
+        await h.model.coreHost.processEffectBatchForTesting([
+            PBCoreEffect.with {
+                $0.accountRuntimeChanged = .with {
+                    $0.active = true
+                    $0.server = h.account.server
+                    $0.deviceID = h.account.deviceId
+                    $0.accountID = h.account.accountId
+                }
+            }
+        ])
+        #expect(h.model.context === before)
         #expect(h.model.account == h.account)
         #expect(h.defaults.string(forKey: AccountDefaults.key("home-scope")) == "project")
         #expect(h.pending.read(opID: 2, bucket: .draft, key: "draft:session:s1").data == Data([1, 2, 3]))

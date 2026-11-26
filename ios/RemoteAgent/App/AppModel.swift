@@ -191,51 +191,32 @@ final class AppModel {
                 root: root,
                 account: CipherStore.accountKey(server: account.server, deviceId: account.deviceId))
         }
-        var makeEngine:
+        /// Builds the account's `Remote` sharing the single `CoreHost`'s `SecurityExecutor` & `SecurityClient`.
+        var makeRemote:
             @MainActor (
-                _ account: Account, _ cache: (any CipherCache)?,
-                _ securityStore: any SecurityStoreV4, _ pending: PendingScope
-            ) throws -> EngineParts = { account, cache, securityStore, pending in
+                _ account: Account,
+                _ cache: (any CipherCache)?,
+                _ securityStore: any SecurityStoreV4,
+                _ securityExecutor: SecurityExecutor,
+                _ securityClient: SecurityClient,
+                _ allowPlainHttp: Bool
+            ) throws -> Remote = { account, cache, securityStore, securityExecutor, securityClient, allowPlainHttp in
                 let log = Logger(subsystem: "io.github.lewin671.remoteagent", category: "sync")
                 // The engine hands over error texts only, never content or keys.
-                let remote = try Remote(
-                    account: account, http: AppModel.http, cache: cache,
+                return try Remote(
+                    account: account,
+                    http: AppModel.http,
+                    cache: cache,
                     log: { log.info("\($0, privacy: .public)") },
                     securityStore: securityStore,
-                    allowPlainHttp: false,
-                    rtc: WebRtcFactory())
-                let screens = CoreScreens()
-                let host = try CoreHost.live(
-                    remote: remote, account: account, defaults: .standard,
-                    screens: screens, pendingStore: pending, onNavigate: { _ in })
-                return EngineParts(engine: host, remote: remote, coreHost: host, coreScreens: screens)
+                    securityExecutor: securityExecutor,
+                    securityClient: securityClient,
+                    allowPlainHttp: allowPlainHttp,
+                    rtc: WebRtcFactory()
+                )
             }
-        var bootstrapSecurity: @Sendable (_ vault: Vault) async throws -> PBSecurityWorkflowStatus = { vault in
-            let host = try StandaloneSecurityHost(store: vault, http: AppModel.http, allowPlainHttp: false)
-            defer { host.close() }
-            return try await host.client.bootstrap()
-        }
-        var checkExitAdvice: @Sendable (_ vault: Vault) async throws -> PBSecurityExitAdvice = { vault in
-            let host = try StandaloneSecurityHost(store: vault, http: AppModel.http, allowPlainHttp: false)
-            defer { host.close() }
-            var bootErr: Error?
-            do {
-                let st = try await host.client.bootstrap()
-                if st.bootstrap == .invalid {
-                    bootErr = VaultError.unreadable
-                }
-            } catch {
-                bootErr = error
-            }
-            if let adv = try? await host.client.checkExitAdvice(),
-               adv.authority || adv.unresolved || bootErr == nil {
-                return adv
-            }
-            throw bootErr ?? VaultError.unreadable
-        }
-        var wipeLegacyCaches: @Sendable (AccountStorage) -> Void = { storage in
-            try? CipherStore.eraseAll(root: storage.cacheRoot)
-        }
+        /// Optional test-only hook replacing the default `Remote` executor attached to `CoreHost`.
+        var makeExecutor: (@MainActor (_ account: Account, _ cache: (any CipherCache)?, _ securityStore: any SecurityStoreV4) throws -> (any CoreHostExecutor, Remote))? = nil
         /// What this client says it runs on, as Android's "Android 16 · Pixel 9".
         var deviceDescription: @MainActor @Sendable () -> String = AppModel.defaultDeviceDescription
         /// Erases what is stored for the account: the keys, the cache and the pending images. Called off the main actor.
@@ -260,9 +241,28 @@ final class AppModel {
 
     // MARK: What screens read
 
-    private(set) var stage = Stage.loading
+    /// Process-wide Core view models observed by SwiftUI (`AppRootViewModel`, `OnboardingViewModel`, etc.).
+    let screens = CoreScreens()
+
+    /// Legacy derived stage bridged from `screens.appRoot.stage` for screens pending Commit 2 migration.
+    var stage: Stage {
+        switch screens.appRoot.stage {
+        case .unspecified, .loading:
+            return .loading
+        case .bootstrapError:
+            let msg = screens.appRoot.bootstrapError.message.rendered()
+            return .failed(msg.isEmpty ? VaultError.unreadable.localizedDescription : msg)
+        case .onboarding, .retainedDenied:
+            return .join
+        case .removed, .ready:
+            return .ready
+        case .UNRECOGNIZED:
+            return .loading
+        }
+    }
+
     /// False when startup failed due to transient Keychain/storage unavailability rather than confirmed corruption.
-    private(set) var bootstrapCanReset = true
+    var bootstrapCanReset: Bool { screens.appRoot.bootstrapError.canReset }
     /// The account in use and its engine; nil until one is, and after logout.
     private(set) var context: AccountContext?
     /// The app is in front. Screens that tick or hold a terminal follow it:
@@ -271,17 +271,92 @@ final class AppModel {
     var recoveryRotationRequired = false
     var authorityHandoffComplete = false
     private(set) var securityStatus: PBSecurityWorkflowStatus?
-    private(set) var legacyRepairNotice = false
+    var legacyRepairNotice: Bool {
+        screens.onboarding.showLegacyRepairBanner || screens.appRoot.retainedDenied.showLegacyRepairBanner
+    }
 
     /// The server of the account just left, to fill in when joining again. Only in memory.
     private(set) var lastServer = ""
-    private(set) var retainedIdentityDenied = false
+    var retainedIdentityDenied: Bool { screens.appRoot.stage == .retainedDenied }
     /// Recreates JoinScreen's local flow after an account is discarded.
     private(set) var joinGeneration = 0
     private(set) var joinDirectly = false
 
     func makeStandaloneSecurityHost() throws -> StandaloneSecurityHost {
         try StandaloneSecurityHost(store: parts.storage.vault, http: Self.http, allowPlainHttp: parts.allowPlainHttp)
+    }
+
+    /// Returns the app's lazy singleton `CoreHost`, creating it once on first foreground/UI entry.
+    var coreHost: CoreHost { ensureCoreHost() }
+
+    @discardableResult
+    func ensureCoreHost() -> CoreHost {
+        if let existing = _coreHost { return existing }
+        let vault = parts.storage.vault
+        let host = try! CoreHost.singleCore(
+            store: vault,
+            http: Self.http,
+            allowPlainHttp: parts.allowPlainHttp,
+            screens: screens,
+            defaults: parts.defaults,
+            callbacks: CoreHost.SecurityHostCallbacks(
+                onRequestStoragePersist: nil,
+                onUnregisterPushOnExit: { [weak self] eff in
+                    await self?.enqueueRuntimeWork { model in
+                        await model.handleUnregisterPushOnExit(eff)
+                    }
+                },
+                onClearAccountCaches: { [weak self] eff in
+                    await self?.enqueueRuntimeWork { model in
+                        await model.handleClearAccountCaches(eff)
+                    }
+                },
+                onAccountRuntimeChanged: { [weak self] eff in
+                    await self?.enqueueRuntimeWork { model in
+                        await model.handleAccountRuntimeChanged(eff)
+                    }
+                },
+                onDismissUpgradeNotice: {
+                    Task.detached { vault.dismissLegacyRepairNotice() }
+                },
+                onPersistLastServer: { [weak self] server in
+                    await MainActor.run {
+                        if !server.isEmpty { self?.lastServer = server }
+                    }
+                }
+            )
+        )
+        _coreHost = host
+        return host
+    }
+
+    @discardableResult
+    func ensureForegroundCoreHost() -> CoreHost {
+        let host = ensureCoreHost()
+        if !clientInitDispatched {
+            clientInitDispatched = true
+            let desc = parts.deviceDescription()
+            let fg = foreground
+            let netAvail = path.available
+            let netSig = hasObservedPath ? path.signature : ""
+            let defServer = lastServer
+            Task {
+                await host.setDeviceDescription(parts.deviceDescription)
+                await host.clientInit(
+                    platform: "ios",
+                    deviceDescription: desc,
+                    inlineCrypto: true,
+                    foreground: fg,
+                    networkAvailable: netAvail,
+                    networkSignature: netSig,
+                    defaultServer: defServer,
+                    requestStoragePersist: false
+                )
+            }
+        } else if foreground && screens.appRoot.stage == .bootstrapError && !screens.appRoot.bootstrapError.canReset {
+            Task { await host.appRootRetryBootstrap() }
+        }
+        return host
     }
 
     nonisolated static func hardwareModelIdentifier() -> String {
@@ -342,10 +417,10 @@ final class AppModel {
 
     var account: Account? { context?.account }
     var remote: Remote? { context?.remote }
-    func reconnectNow() { engine?.reconnectNow() }
+    func reconnectNow() { _coreHost?.reconnectNow() }
     /// The server turned this device away (architecture §13 「移除设备」): only the notice is shown.
     var removed: Bool {
-        stage == .ready && (context?.core.connection.removed ?? false)
+        screens.appRoot.stage == .removed
     }
 
     /// The account's cache of ciphertext, where viewed images are kept as sealed envelopes; nil while none is
@@ -357,15 +432,10 @@ final class AppModel {
     // MARK: Private state
 
     @ObservationIgnored private let parts: Parts
-    @ObservationIgnored private var engine: (any SyncEngine)?
+    @ObservationIgnored private var _coreHost: CoreHost?
+    @ObservationIgnored private var clientInitDispatched = false
+    @ObservationIgnored private var runtimeTail: Task<Void, Never>?
     @ObservationIgnored private var cache: CipherStore?
-    @ObservationIgnored private var loading = false
-    @ObservationIgnored private var loadId: UUID?
-    @ObservationIgnored private var loadTask: Task<Void, Never>?
-    /// A logout is erasing what is stored. Nothing is read meanwhile: the account it is removing would come back.
-    @ObservationIgnored private var erasing = false
-    /// The last erase failed: the next read erases again first.
-    @ObservationIgnored private var unerased = false
     /// Bumped whenever the account in use changes: a step that awaited meanwhile finds its work unwanted.
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var path = NetworkPath.unknown
@@ -383,6 +453,17 @@ final class AppModel {
         }
     }
 
+    private func enqueueRuntimeWork(_ work: @escaping @MainActor (AppModel) async -> Void) async {
+        let prev = runtimeTail
+        let next = Task { @MainActor [weak self] in
+            await prev?.value
+            guard let self else { return }
+            await work(self)
+        }
+        runtimeTail = next
+        await next.value
+    }
+
     // MARK: Lifecycle
 
     /// The scene's phase, from the app. Inactive (the app switcher, a system
@@ -396,18 +477,24 @@ final class AppModel {
         watchNetwork()
         guard front != foreground else { return }
         foreground = front
+        guard !isDemo else {
+            if !front { closeTerminals() }
+            return
+        }
         if front {
-            loadAccount()
-            if let host = engine as? CoreHost {
-                Task { await host.setForeground(true) }
+            let host = ensureForegroundCoreHost()
+            Task { await host.setForeground(true) }
+            if context != nil {
+                host.start()
             }
-            engine?.start()
         } else {
             closeTerminals()
-            if let host = engine as? CoreHost {
+            if let host = _coreHost {
                 Task { await host.setForeground(false) }
+                if context != nil {
+                    host.stop()
+                }
             }
-            engine?.stop()
         }
     }
 
@@ -424,175 +511,173 @@ final class AppModel {
         guard !hasObservedPath || path != new else { return }
         path = new
         hasObservedPath = true
-        // Remote records the first observation and retires every later change.
-        engine?.networkChanged(new.signature, available: new.available)
+        _coreHost?.networkChanged(new.signature, available: new.available)
     }
 
     func dismissUpgradeNotice() {
-        legacyRepairNotice = false
-        securityStatus?.legacyRepairNotice = false
-        let vault = parts.storage.vault
-        Task.detached {
-            vault.dismissLegacyRepairNotice()
+        guard !isDemo else { return }
+        let host = ensureCoreHost()
+        Task { await host.appRootDismissUpgradeNotice() }
+    }
+
+    func loadAccount() {
+        guard !isDemo, foreground else { return }
+        let host = ensureForegroundCoreHost()
+        if screens.appRoot.stage == .bootstrapError {
+            Task { await host.appRootRetryBootstrap() }
         }
     }
 
     func reloadAfterSecuritySetup(account: Account? = nil, rotationRequired: Bool = false) async {
         recoveryRotationRequired = rotationRequired
-        securityStatus = nil
-        legacyRepairNotice = false
-        if let account {
-            do {
-                try await joined(account)
-            } catch {
-                stage = .failed(errorText(error))
-            }
-        } else {
-            loadAccount()
+        if !isDemo {
+            let host = ensureForegroundCoreHost()
+            await host.appRootRetryBootstrap()
         }
     }
 
-    // MARK: The account
+    // MARK: Single-Core Effect Handlers
 
-    /// Reads the stored account via Go `clientcore` bootstrap, only in the foreground: a process started
-    /// in the background while the device is locked could not open the Keychain.
-    func loadAccount() {
-        guard context == nil, !loading, !erasing, !isDemo, foreground else {
+    private func handleUnregisterPushOnExit(_ eff: PBUnregisterPushOnExitEffect) async {
+        parts.unregisterRemoteNotifications()
+        if let host = _coreHost {
+            await host.pushUnregistered(opID: eff.opID)
+        }
+    }
+
+    /// Detaches any active account runtime (terminals, host attachment, media centers) and returns
+    /// the prior `CipherStore` for closing or erasing.
+    private func unloadAccountRuntime(clearPendingMedia: Bool = false) async -> CipherStore? {
+        closeTerminals()
+        let leavingRemote = context?.remote
+        let store = cache
+        context = nil
+        cache = nil
+        if let host = _coreHost {
+            if clearPendingMedia {
+                await host.clearAllSharedFiles()
+                await host.clearAllDrafts()
+            }
+            await host.detachAccount()
+        }
+        if let leavingRemote {
+            ImageCenter.remove(leavingRemote)
+            SharedFileCenter.remove(leavingRemote)
+        }
+        return store
+    }
+
+    private func handleClearAccountCaches(_ eff: PBClearAccountCachesEffect) async {
+        if !eff.preserveServer.isEmpty { lastServer = eff.preserveServer }
+        else if let leaving = account, lastServer.isEmpty { lastServer = leaving.server }
+        recoveryRotationRequired = false
+        authorityHandoffComplete = false
+        generation += 1
+        let store = await unloadAccountRuntime(clearPendingMedia: true)
+        LibraryVideos.discardAll()
+        parts.unregisterRemoteNotifications()
+        parts.clearNotifications()
+        let storage = parts.storage
+        let erase = parts.erase
+        let result = await Task.detached {
+            Result {
+                try? store?.close()
+                try erase(storage)
+            }
+        }.value
+        var errText = ""
+        switch result {
+        case .success:
+            settings.clear()
+            AccountDefaults.clear(parts.defaults)
+        case .failure(let error):
+            log.error("erasing the account failed: \(String(describing: type(of: error)), privacy: .public)")
+            errText = error.localizedDescription
+        }
+        if let host = _coreHost {
+            await host.accountCachesCleared(opID: eff.opID, error: errText)
+        }
+    }
+
+    private func handleAccountRuntimeChanged(_ eff: PBAccountRuntimeChangedEffect) async {
+        guard let host = _coreHost, !isDemo else { return }
+        if !eff.active {
+            if !eff.removed {
+                host.sharedSecurityExecutor?.setDefaultAccount(server: "", deviceId: "")
+                recoveryRotationRequired = false
+                authorityHandoffComplete = false
+                generation += 1
+                let store = await unloadAccountRuntime()
+                await Task.detached { try? store?.close() }.value
+            }
             return
         }
-        loading = true
-        let id = UUID()
-        loadId = id
-        let storage = parts.storage
-        let erase = unerased ? parts.erase : nil
-        let bootstrap = parts.bootstrapSecurity
-        let wipeCaches = parts.wipeLegacyCaches
-        let gen = generation
-        loadTask = Task {
-            defer {
-                if self.loadId == id {
-                    self.loading = false
-                    self.loadTask = nil
-                    self.loadId = nil
-                }
-            }
-            let prepResult: Result<Bool, Error> = await Task.detached {
-                Result {
-                    try erase?(storage)
-                    return try storage.vault.detectAndClearLegacy {
-                        wipeCaches(storage)
-                    }
-                }
-            }.value
-            guard gen == generation, !erasing, context == nil else { return }
-            switch prepResult {
-            case .failure(let error):
-                log.error(
-                    "stored account preparation failed: \(String(describing: type(of: error)), privacy: .public)"
-                )
-                stage = .failed(error.localizedDescription)
-                return
-            case .success:
-                unerased = false
-            }
-
-            let legacyWipedNow = (try? prepResult.get()) == true
-            let bootResult: Result<PBSecurityWorkflowStatus, Error>
-            do {
-                let status = try await bootstrap(storage.vault)
-                bootResult = .success(status)
-            } catch {
-                bootResult = .failure(error)
-            }
-            guard gen == generation, !erasing, context == nil else { return }
-            switch bootResult {
-            case .failure(let error):
-                log.error(
-                    "stored account does not open: \(String(describing: type(of: error)), privacy: .public)"
-                )
-                let transientKeyAccess =
-                    (error as? SecurityWorkflowError)?.code == .storage
-                    || (error as? VaultError)?.status == errSecInteractionNotAllowed
-                bootstrapCanReset = !transientKeyAccess
-                stage = .failed(error.localizedDescription)
-            case .success(let status):
-                bootstrapCanReset = true
-                securityStatus = status
-                legacyRepairNotice = status.legacyRepairNotice || legacyWipedNow
-                switch status.bootstrap {
-                case .ready, .removed:
-                    legacyRepairNotice = false
-                    recoveryRotationRequired = status.needsRecoveryCodeRotation
-                    let acct = Account(
-                        server: status.server,
-                        deviceId: status.deviceID,
-                        accountId: status.accountID
-                    )
-                    await use(acct)
-                case .pendingCreate, .pendingRecovery:
-                    if !status.server.isEmpty { lastServer = status.server }
-                    stage = .join
-                case .pendingRegistration:
-                    if !status.server.isEmpty { lastServer = status.server }
-                    let regErr = status.hasErrorText ? renderCoreText(status.errorText) : ""
-                    if !regErr.isEmpty {
-                        stage = .failed(L10n.errorsIosTheOriginalRequestAndKeysAreRetainedRetryIf(value: regErr))
-                    } else {
-                        stage = .join
-                    }
-                case .invalid, .clockSkewed:
-                    let statusErr = status.hasErrorText ? renderCoreText(status.errorText) : ""
-                    let msg = statusErr.isEmpty ? VaultError.unreadable.localizedDescription : statusErr
-                    stage = .failed(msg)
-                case .empty, .unspecified, .UNRECOGNIZED:
-                    retainedIdentityDenied = false
-                    stage = .join
-                }
-            }
+        guard !eff.server.isEmpty && !eff.deviceID.isEmpty else { return }
+        host.sharedSecurityExecutor?.setDefaultAccount(server: eff.server, deviceId: eff.deviceID)
+        let acct = Account(server: eff.server, deviceId: eff.deviceID, accountId: eff.accountID)
+        if let existing = context, existing.account == acct {
+            recoveryRotationRequired = eff.needsRecoveryRotation
+            return
         }
-    }
-
-    private func use(_ account: Account) async {
-        retainedIdentityDenied = false
-        joinDirectly = false
-        legacyRepairNotice = false
-        securityStatus = nil
         generation += 1
         let gen = generation
+        // Detach any prior account runtime cleanly before attaching the new one.
+        if context != nil || cache != nil {
+            let oldStore = await unloadAccountRuntime()
+            await Task.detached { try? oldStore?.close() }.value
+        }
         let root = parts.storage.cacheRoot
         let open = parts.openCache
-        let store = await Task.detached { try? open(root, account) }.value
+        let store = await Task.detached { try? open(root, acct) }.value
         guard gen == generation else {
             try? store?.close()
             return
         }
         if store == nil { log.error("the cache does not open; going on without it") }
         let pendingScope = parts.storage.pending.scoped()
-        let made: EngineParts
+        let executor: any CoreHostExecutor
+        let remote: Remote
         do {
-            made = try parts.makeEngine(account, store, parts.storage.vault, pendingScope)
+            if let makeExec = parts.makeExecutor {
+                (executor, remote) = try makeExec(acct, store, parts.storage.vault)
+            } else {
+                guard let secExec = host.sharedSecurityExecutor, let secClient = host.sharedSecurityClient else {
+                    try? store?.close()
+                    return
+                }
+                let built = try parts.makeRemote(acct, store, parts.storage.vault, secExec, secClient, parts.allowPlainHttp)
+                executor = built
+                remote = built
+            }
         } catch {
             try? store?.close()
-            stage = .failed(errorText(error))
+            log.error("creating account runtime failed: \(String(describing: type(of: error)), privacy: .public)")
             return
         }
-        await adopt(account: account, made: made, store: store, pending: pendingScope)
-        if foreground { made.engine.start() }
-    }
-
-    private func adopt(account: Account, made: EngineParts, store: CipherStore?, pending: PendingScope) async {
+        await host.attachAccount(
+            executor: executor,
+            account: acct,
+            defaults: ScopeDefaults(parts.defaults, scope: [acct.server, acct.deviceId]),
+            pendingStore: pendingScope,
+            sharedFileStore: SharedFileStore(root: SharedFileCenter.defaultRoot)
+        )
+        guard gen == generation else {
+            await host.detachAccount()
+            try? store?.close()
+            return
+        }
         cache = store
-        engine = made.engine
         let ctx = AccountContext(
-            account: account,
-            remote: made.remote,
+            account: acct,
+            remote: remote,
             preferenceDefaults: parts.defaults,
-            pendingStore: pending,
-            core: made.coreScreens,
-            coreHost: made.coreHost
+            pendingStore: pendingScope,
+            core: screens,
+            coreHost: host
         )
         context = ctx
-        await ctx.coreHost.setDeviceDescription(parts.deviceDescription)
+        recoveryRotationRequired = eff.needsRecoveryRotation
+        await host.setDeviceDescription(parts.deviceDescription)
         let cleanup: @Sendable (String) async -> Void = { [weak ctx] sid in
             guard let ctx else { return }
             await ctx.coreHost.forgetDraftSession(sid)
@@ -600,49 +685,65 @@ final class AppModel {
                 SharedFileCenter.of(ctx.remote).forgetSession(sid)
             }
         }
-        await ctx.coreHost.setSessionRemovedHandler(cleanup)
-        await ctx.coreHost.setPersistClientPrefsHandler { [weak self] eff in
+        await host.setSessionRemovedHandler(cleanup)
+        await host.setPersistClientPrefsHandler { [weak self] eff in
             self?.settings.update { $0.theme = ThemeMode.from(eff.theme) }
         }
-        await ctx.coreHost.reportAppearancePref(settings.settings.theme.proto)
-        await ctx.coreHost.reportNotificationPref(supported: false)
-        // The account's own view of the store: what is still writing when the account is erased writes nothing.
-        let imageCenter = ImageCenter.install(remote: made.remote, coreHost: ctx.coreHost, pending: pending)
-        await ctx.coreHost.setAttachmentHandlers(imageCenter.handlers())
-        // Configure Core attachments before any screen mounts (`stage = .ready`) so DraftStorageList runs first.
-        await ctx.coreHost.configureAttachments(persistDrafts: !isDemo, persistOutbox: !isDemo, scanStorage: !isDemo)
-        // What the agent shared is kept in the cache, per session, and counts in 附件存储.
-        let sharedCenter = SharedFileCenter.install(remote: made.remote, coreHost: ctx.coreHost, root: SharedFileCenter.defaultRoot)
-        await ctx.coreHost.setSharedFileHandlers(sharedCenter.handlers())
-        stage = .ready
+        await host.reportAppearancePref(settings.settings.theme.proto)
+        await host.reportNotificationPref(supported: false)
+        let imageCenter = ImageCenter.install(remote: remote, coreHost: host, pending: pendingScope)
+        await host.setAttachmentHandlers(imageCenter.handlers())
+        await host.configureAttachments(persistDrafts: !isDemo, persistOutbox: !isDemo, scanStorage: !isDemo)
+        let sharedCenter = SharedFileCenter.install(remote: remote, coreHost: host, root: SharedFileCenter.defaultRoot)
+        await host.setSharedFileHandlers(sharedCenter.handlers())
         if hasObservedPath {
-            made.engine.networkChanged(path.signature, available: path.available)
+            host.networkChanged(path.signature, available: path.available)
         } else {
-            // The monitor has not supplied a real baseline yet.
-            made.engine.setNetwork(path.available)
+            host.setNetwork(path.available)
+        }
+        if foreground {
+            await host.startAsync()
         }
     }
 
     /// Starts syncing with a newly joined or re-paired account (`SecurityClient` already persisted v4 state).
     func joined(_ account: Account) async throws {
-        // A real account from here on, whatever was being shown.
         isDemo = false
-        if context != nil {
-            // Re-pairing retains identity and history but replaces the active X key.
-            generation += 1
-            closeTerminals(); engine?.close(); engine = nil
-            if let remote { ImageCenter.remove(remote); SharedFileCenter.remove(remote) }
-            context = nil
-            let oldCache = cache; cache = nil
-            try? oldCache?.close()
-            stage = .loading
-        }
-        await use(account)
+        let host = ensureForegroundCoreHost()
+        await host.appRootRetryBootstrap()
     }
 
     /// Tries the login again after the server turned this device away.
     func retryLogin() {
-        engine?.retryLogin()
+        _coreHost?.retryLogin()
+    }
+
+    /// Unconditional Core in-place logout + local wipe (used by `-resetAccount` launch arg and post-AccountDeletion).
+    func resetLocalAccountAndLogout() async {
+        if isDemo {
+            await logout()
+            return
+        }
+        if let leaving = account { lastServer = leaving.server }
+        recoveryRotationRequired = false
+        authorityHandoffComplete = false
+        generation += 1
+        // Notify Core first so in-flight sync/security writers stop before local storage is erased.
+        if let host = _coreHost {
+            await host.externalLogout()
+        }
+        let store = await unloadAccountRuntime(clearPendingMedia: true)
+        LibraryVideos.discardAll()
+        parts.unregisterRemoteNotifications()
+        parts.clearNotifications()
+        let storage = parts.storage
+        let erase = parts.erase
+        _ = await Task.detached {
+            try? store?.close()
+            try? erase(storage)
+        }.value
+        settings.clear()
+        AccountDefaults.clear(parts.defaults)
     }
 
     /// The confirmation captures security facts, independently of its displayed language.
@@ -668,10 +769,10 @@ final class AppModel {
     }
 
     private func fetchExitAdvice() async throws -> PBSecurityExitAdvice {
-        if let remote = context?.remote {
-            return try await remote.checkExitAdvice()
+        if let client = ensureCoreHost().sharedSecurityClient {
+            return try await client.checkExitAdvice()
         }
-        return try await parts.checkExitAdvice(parts.storage.vault)
+        throw VaultError.unreadable
     }
 
     /// Confirmation is needed only for management keys or unfinished work.
@@ -687,8 +788,6 @@ final class AppModel {
             }
             return nil
         } catch {
-            // An unreadable vault is not proof that there is no management key
-            // or unfinished work. Keep an explicit, warned way to erase it.
             return .unreadable
         }
     }
@@ -711,73 +810,30 @@ final class AppModel {
     /// Forgets the account, the cache and the keys on this device, then
     /// shows the join flow with the server filled in.
     func logout(pairing: Bool = false) async {
-        if let leaving = account { lastServer = leaving.server }
-        else if let st = securityStatus, !st.server.isEmpty { lastServer = st.server }
-        retainedIdentityDenied = false
-        joinDirectly = pairing
-        joinGeneration += 1
-        recoveryRotationRequired = false
-        authorityHandoffComplete = false
-        securityStatus = nil
-        legacyRepairNotice = false
-        generation += 1
-        loadTask?.cancel()
-        loadTask = nil
-        loadId = nil
-        loading = false
-        closeTerminals()
-        let leavingHost = context?.coreHost
-        let leavingRemote = remote
-        let store = cache
-        if let leavingEngine = engine, (leavingEngine as AnyObject) !== (leavingHost as AnyObject) {
-            leavingEngine.close()
-        }
-        engine = nil
-        // Detach the UI from the old account synchronously before any await so
-        // SwiftUI unmounts screens (and cannot call ImageCenter.of) while async
-        // shared-file cleanup drains on the shared FIFO queue.
-        context = nil
-        cache = nil
-        stage = .loading
-        if !isDemo {
-            erasing = true
-        }
-        if let leavingHost {
-            await leavingHost.clearAllSharedFiles()
-            await leavingHost.clearAllDrafts()
-            await leavingHost.closeAsync()
-        }
-        // Drafts, thumbnails and viewed images held in memory go with the account, and the videos copied for its drafts.
-        if let leavingRemote { ImageCenter.remove(leavingRemote); SharedFileCenter.remove(leavingRemote) }
-        LibraryVideos.discardAll()
         if isDemo {
-            // Sample data: nothing was stored, and the real account is not this one's to erase.
-            stage = .join
+            joinDirectly = pairing
+            joinGeneration += 1
+            recoveryRotationRequired = false
+            authorityHandoffComplete = false
+            closeTerminals()
+            if let leavingHost = context?.coreHost {
+                await leavingHost.clearAllSharedFiles()
+                await leavingHost.clearAllDrafts()
+                await leavingHost.closeAsync()
+            }
+            if let leavingRemote = context?.remote {
+                ImageCenter.remove(leavingRemote)
+                SharedFileCenter.remove(leavingRemote)
+            }
+            context = nil
+            screens.resetAccountViews()
+            screens.appRoot = PBAppRootViewModel.with { $0.stage = .onboarding }
+            screens.onboarding = PBOnboardingViewModel.with { $0.mode = pairing ? .join : .entry }
             return
         }
-        parts.unregisterRemoteNotifications()
-        parts.clearNotifications()
-        let storage = parts.storage
-        let erase = parts.erase
-        let result = await Task.detached {
-            Result {
-                // SQLite must let go of its files before they are removed.
-                try? store?.close()
-                try erase(storage)
-            }
-        }.value
-        erasing = false
-        if case .failure = result { unerased = true } else { unerased = false }
-        settings.clear()
-        AccountDefaults.clear(parts.defaults)
-        switch result {
-        case .success:
-            stage = .join
-        case .failure(let error):
-            log.error(
-                "erasing the account failed: \(String(describing: type(of: error)), privacy: .public)"
-            )
-            stage = .failed(error.localizedDescription)
+        await resetLocalAccountAndLogout()
+        if pairing, let host = _coreHost {
+            await host.onboardingSetMode(.join)
         }
     }
 
@@ -822,7 +878,8 @@ final class AppModel {
                 sharedFileRoot: demoSharedRoot,
                 demoDirectories: Demo.directories,
                 demoModels: models,
-                demoMode: true
+                demoMode: true,
+                core: screens
             )
             context = ctx
             let imageCenter = ImageCenter.install(remote: remote, coreHost: ctx.coreHost, pending: demoPending, live: false)
@@ -832,7 +889,20 @@ final class AppModel {
                 root: demoSharedRoot,
                 allowMissingReports: SharedFileDebug.fake
             )
-            stage = .ready
+            screens.appRoot = PBAppRootViewModel.with {
+                $0.stage = world.removed ? .removed : .ready
+                $0.server = account.server
+                $0.deviceID = account.deviceId
+                $0.accountID = account.accountId
+                $0.isManager = world.authorityDeviceId == account.deviceId
+                if world.removed {
+                    $0.removed = .with {
+                        $0.removalVerified = true
+                        $0.server = account.server
+                        $0.canRetryLogin = true
+                    }
+                }
+            }
             let host = ctx.coreHost
             let initialTheme = settings.settings.theme.proto
             Task { [weak self] in
@@ -861,24 +931,47 @@ final class AppModel {
         func showJoinForDemo(lastServer: String) {
             isDemo = true
             self.lastServer = lastServer
-            stage = .join
+            screens.appRoot = PBAppRootViewModel.with { $0.stage = .onboarding }
+            screens.onboarding = PBOnboardingViewModel.with {
+                $0.mode = .join
+                $0.join = .with {
+                    $0.step = .form
+                    $0.serverInput = lastServer
+                    $0.serverEditable = true
+                }
+            }
         }
 
-        func waitForLoadForTest() async {
-            await loadTask?.value
+        struct LoadTimeoutError: Error, CustomStringConvertible {
+            let timeoutMs: Int64
+            let stage: PBAppRootStage
+            var description: String { "AppModel.waitForLoadForTest timed out after \(timeoutMs)ms at stage \(stage)" }
+        }
+
+        func waitForLoadForTest(timeoutMs: Int64 = 5_000) async throws {
+            let deadline = ContinuousClock.now + .milliseconds(timeoutMs)
+            while ContinuousClock.now < deadline {
+                try Task.checkCancellation()
+                let stage = screens.appRoot.stage
+                if stage != .unspecified && stage != .loading {
+                    if stage != .ready || context != nil {
+                        return
+                    }
+                }
+                try await Task.sleep(nanoseconds: 10_000_000)
+            }
+            throw LoadTimeoutError(timeoutMs: timeoutMs, stage: screens.appRoot.stage)
         }
 
         func closeSyncForTest() {
             generation += 1
-            loadTask?.cancel()
-            loadTask = nil
-            loadId = nil
-            loading = false
             closeTerminals()
-            engine?.close()
-            engine = nil
             if let remote { ImageCenter.remove(remote); SharedFileCenter.remove(remote) }
+            let host = _coreHost
+            _coreHost = nil
+            clientInitDispatched = false
             context?.coreHost.close()
+            host?.close()
             context = nil
             try? cache?.close()
             cache = nil

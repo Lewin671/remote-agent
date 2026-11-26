@@ -1148,25 +1148,6 @@
     "zh-CN": "终端连接已关闭"
   },
   {
-    "en": "{value}. The original request and keys are retained. Retry; if approval has expired or was denied, exit and pair again.",
-    "key": "errors.ios_the_original_request_and_keys_are_retained_retry_if",
-    "notes": "iOS AppModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 error.localizedDescription；用户内容和系统/CLI 原文不翻译。",
-    "params": {
-      "value": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "{value}。原请求和密钥已保留，可重试；若批准已过期或被拒绝，可退出并重新配对。"
-  },
-  {
     "en": "This deletes the account keys and cache on this phone. Sessions on your computers are unaffected.",
     "key": "errors.ios_this_deletes_the_account_keys_and_cache_on_this",
     "notes": "iOS AppModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",

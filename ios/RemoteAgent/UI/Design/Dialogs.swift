@@ -268,21 +268,79 @@ private struct InputAlert: ViewModifier {
     }
 }
 
+/// Builds the dismissal binding for Core-driven confirmation dialogs: only invokes `onCancel`
+/// when dismissing while dismissible and not busy; confirming bypasses this binding entirely.
+@MainActor
+func coreConfirmDismissBinding(
+    isPresented: Bool,
+    canDismiss: Bool,
+    busy: Bool,
+    onCancel: @escaping () -> Void
+) -> Binding<Bool> {
+    Binding<Bool>(
+        get: { isPresented },
+        set: { next in
+            if !next && canDismiss && !busy {
+                onCancel()
+            }
+        }
+    )
+}
+
 extension View {
     /// A confirmation: the title in the text colour, the danger is the
     /// button's. 取消 at the left, the action at the right, solid red when it
     /// deletes, removes, leaves, ends, or switches to full access.
     func confirm(isPresented: Binding<Bool>, title: String, text: String, confirm: String, danger: Bool = false, onConfirm: @escaping () -> Void) -> some View {
-        modifier(OverlayCover(isPresented: isPresented, alignment: .center, canDismiss: { true }) {
+        self.confirm(
+            isPresented: isPresented.wrappedValue,
+            title: title,
+            text: text,
+            confirm: confirm,
+            danger: danger,
+            onCancel: { isPresented.wrappedValue = false },
+            onConfirm: {
+                isPresented.wrappedValue = false
+                onConfirm()
+            }
+        )
+    }
+
+    /// Core-driven confirmation: tapping confirm ONLY calls `onConfirm` and NEVER invokes
+    /// `onCancel`; cancel button, scrim tap, and escape gesture invoke `onCancel`.
+    func confirm(
+        isPresented: Bool,
+        title: String,
+        text: String,
+        confirm: String,
+        danger: Bool = false,
+        busy: Bool = false,
+        errorText: String = "",
+        canDismiss: Bool = true,
+        onCancel: @escaping () -> Void,
+        onConfirm: @escaping () -> Void
+    ) -> some View {
+        let dismissBinding = coreConfirmDismissBinding(
+            isPresented: isPresented,
+            canDismiss: canDismiss,
+            busy: busy,
+            onCancel: onCancel
+        )
+        return modifier(OverlayCover(isPresented: dismissBinding, alignment: .center, canDismiss: { canDismiss && !busy }) {
             DialogCard {
                 Text(title).font(.headline).ink(DS.ink).multilineTextAlignment(.center).padding(.bottom, 6)
                     .accessibilityAddTraits(.isHeader)
-                Text(text).font(.subheadline).ink(DS.ink2).multilineTextAlignment(.center).padding(.bottom, 14)
+                if !text.isEmpty {
+                    Text(text).font(.subheadline).ink(DS.ink2).multilineTextAlignment(.center)
+                        .padding(.bottom, errorText.isEmpty ? 14 : 8)
+                }
+                if !errorText.isEmpty {
+                    Text(errorText).font(.subheadline).ink(DS.red).multilineTextAlignment(.center).padding(.bottom, 12)
+                }
                 Btns {
-                    Btn(L10n.commonCancel()) { isPresented.wrappedValue = false }
-                    Btn(confirm, kind: danger ? .danger : .primary) {
+                    Btn(L10n.commonCancel(), enabled: !busy) { onCancel() }
+                    Btn(confirm, kind: danger ? .danger : .primary, enabled: !busy) {
                         if danger { Haptics.destructive() } else { Haptics.confirm() }
-                        isPresented.wrappedValue = false
                         onConfirm()
                     }
                 }

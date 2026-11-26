@@ -226,7 +226,6 @@
 "errors_ios_remote_control_expired_saving_changes_session_control_and_new" = "远程控制有效期已过，无法保存更改、控制会话或上传新内容；在「设置 › 账户安全」查看管理端并续期后重试。历史仍可查看";
 "errors_ios_secure_connection_failed" = "安全连接失败：%1$@";
 "errors_ios_terminal_closed" = "终端连接已关闭";
-"errors_ios_the_original_request_and_keys_are_retained_retry_if" = "%1$@。原请求和密钥已保留，可重试；若批准已过期或被拒绝，可退出并重新配对。";
 "errors_ios_this_deletes_the_account_keys_and_cache_on_this" = "这会删除这台手机上的账户密钥和缓存，电脑上的会话不受影响。";
 "errors_ios_unsure_whether_the_computer_executed_this" = "不确定电脑有没有执行：%1$@";
 "errors_it_may_have_been_deleted_or_belong_to_a" = "它可能已经被删除，或者属于一台被移除的电脑。";

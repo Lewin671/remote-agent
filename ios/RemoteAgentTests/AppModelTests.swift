@@ -1,138 +1,136 @@
-import Connect
 import Foundation
 import RACore
 import RAProto
+import Security
 import Testing
 import os
 
 @testable import RemoteAgent
 
-/// The engine as the lifecycle sees it: a Remote that is never started shows
-/// what the test tells it to, and every call is written down.
-final class FakeEngine: SyncEngine, @unchecked Sendable {
-    let remote: Remote
-    private let lock = NSLock()
-    private var log: [String] = []
-    private var signatures: [String] = []
-    var networkSignatures: [String] { lock.withLock { signatures } }
-
-    init(account: Account) throws {
-        remote = try Remote(account: account, http: HTTP(), allowPlainHttp: true)
-    }
-
-    var account: Account { remote.account }
-    var calls: [String] { lock.withLock { log } }
-    private func note(_ call: String) { lock.withLock { log.append(call) } }
-    func forget() { lock.withLock { log.removeAll() } }
-
-    func start() { note("start") }
-    func stop() { note("stop") }
-    func setNetwork(_ available: Bool) { note("network \(available)") }
-    func networkChanged(_ signature: String, available: Bool) {
-        lock.withLock {
-            let previous = signatures.last
-            guard previous != signature else { return }
-            signatures.append(signature)
-            log.append("network \(available)")
-            if previous != nil && available { log.append("reconnect") }
-        }
-    }
-    func reconnectNow() { note("reconnect") }
-    func retryLogin() { note("retryLogin") }
-    func close() { note("close") }
-}
-
-/// A network that says only what the test says.
+/// A network watcher that says only what the test tells it.
 final class FakeNetwork: NetworkWatching, @unchecked Sendable {
     func start(_ onChange: @escaping @Sendable (NetworkPath) -> Void) {}
     func stop() {}
 }
 
-/// An AppModel on a Keychain service, a cache directory and defaults of its own.
+/// Minimal `CoreHostExecutor` recording lifecycle & network events forwarded by `CoreHost`.
+final class RecordingExecutor: CoreHostExecutor, @unchecked Sendable {
+    let account: Account
+    let remote: Remote
+    private let lock = NSLock()
+    private var log: [String] = []
+
+    init(account: Account) throws {
+        self.account = account
+        self.remote = try Remote(account: account, http: HTTP(), allowPlainHttp: true)
+    }
+
+    var calls: [String] { lock.withLock { log } }
+    private func note(_ s: String) { lock.withLock { log.append(s) } }
+    func forget() { lock.withLock { log.removeAll() } }
+
+    func installCoreHooks(_ hooks: Remote.CoreHooks) async { note("installHooks") }
+    func openStream(legId: UInt64, helloFrame: Data, callbacks: Remote.StreamCallbacks) async { note("openStream") }
+    func closeStream(legId: UInt64) async { note("closeStream") }
+    func executeCacheRead(_ effect: PBCoreCacheReadEffect) async -> PBCoreEvent {
+        switch effect.kind {
+        case .bootstrap(let b):
+            return .with { $0.cacheBootstrapLoaded = .with { $0.opID = b.opID } }
+        case .events(let e):
+            return .with { $0.cacheEventsLoaded = .with { $0.opID = e.opID; $0.sessionID = e.sessionID } }
+        case nil:
+            return PBCoreEvent()
+        }
+    }
+    func executeCacheWrite(_ effect: PBCoreCacheWriteEffect) async {}
+    func executeCacheDelete(_ effect: PBCoreCacheDeleteEffect, onSessionRemoved: (@Sendable (String) async -> Void)?) async {}
+    func dispatchCommandAttempt(_ effect: PBCoreDispatchCommandEffect) async -> PBCoreCommandOutcomeEvent {
+        PBCoreCommandOutcomeEvent.with {
+            $0.requestID = effect.requestID
+            $0.attemptID = effect.attemptID
+            $0.source = .local
+            $0.notForwarded = true
+            $0.transportCode = "unavailable"
+        }
+    }
+    func close() async {
+        note("close")
+        remote.close()
+    }
+}
+
+/// An AppModel on an isolated Keychain service, cache directory, and UserDefaults suite.
 @MainActor
 final class Harness {
-    let vault = Vault(service: "io.github.lewin671.remoteagent.tests.\(UUID().uuidString)")
     let root = FileManager.default.temporaryDirectory.appending(
         path: "ra-app-\(UUID().uuidString)", directoryHint: .isDirectory)
     let suite = "ra-app-\(UUID().uuidString)"
+    let service = "io.github.lewin671.remoteagent.tests.\(UUID().uuidString)"
     let defaults: UserDefaults
     let settings: SettingsStore
+    let vault: Vault
     let pending: PendingStore
     let account = Account(
         server: "http://127.0.0.1:1",
         deviceId: "00112233445566778899aabbccddeeff",
         accountId: "11111111111111111111111111111111")
-    private(set) var engines: [FakeEngine] = []
+    private(set) var executors: [RecordingExecutor] = []
     var cleared = 0
     var unregisteredPush = 0
-    var bootstrapStatus: PBSecurityWorkflowStatus?
-    var bootstrapError: (any Error)?
-    var exitAdvice = PBSecurityExitAdvice()
-
-    /// What the erase of a logout does instead of erasing, when set: called off the main actor.
     var erase: (@Sendable (AccountStorage) throws -> Void)?
-    lazy var model: AppModel = {
+
+    lazy var model: AppModel = makeModel()
+
+    init(keychain: KeychainOps = .live) {
+        defaults = UserDefaults(suiteName: suite)!
+        settings = SettingsStore(defaults: defaults)
+        let cacheRoot = root.appending(path: "cache")
+        vault = Vault(
+            service: service,
+            onLegacyWipe: { try? CipherStore.eraseAll(root: cacheRoot) },
+            keychain: keychain
+        )
+        pending = PendingStore(directory: root.appending(path: "pending"), vault: vault)
+    }
+
+    func makeModel() -> AppModel {
         var parts = AppModel.Parts()
         parts.storage = AccountStorage(
             vault: vault, cacheRoot: root.appending(path: "cache"), pending: pending)
         parts.network = FakeNetwork()
         parts.defaults = defaults
         parts.allowPlainHttp = true
-        parts.bootstrapSecurity = { [unowned self] vault in
-            let (err, status) = await MainActor.run { (self.bootstrapError, self.bootstrapStatus) }
-            if let err { throw err }
-            if let status { return status }
-            let host = try StandaloneSecurityHost(store: vault, http: AppModel.http, allowPlainHttp: true)
-            defer { host.close() }
-            return try await host.client.bootstrap()
-        }
-        parts.checkExitAdvice = { [unowned self] _ in await MainActor.run { self.exitAdvice } }
-        parts.makeEngine = { [unowned self] account, _, _, _ in
-            let engine = try FakeEngine(account: account)
-            self.engines.append(engine)
-            return EngineParts(engine: engine, remote: engine.remote)
+        parts.makeExecutor = { [unowned self] account, _, _ in
+            let exec = try RecordingExecutor(account: account)
+            self.executors.append(exec)
+            return (exec, exec.remote)
         }
         parts.deviceDescription = { "iOS 26.0 · iPhone" }
         parts.unregisterRemoteNotifications = { [unowned self] in self.unregisteredPush += 1 }
         parts.clearNotifications = { [unowned self] in self.cleared += 1 }
         if let erase { parts.erase = erase }
         return AppModel(settings: settings, parts: parts)
-    }()
-
-    init() {
-        defaults = UserDefaults(suiteName: suite)!
-        settings = SettingsStore(defaults: defaults)
-        pending = PendingStore(
-            directory: root.appending(path: "pending"), vault: vault)
     }
 
-    var engine: FakeEngine { engines.last! }
+    var executor: RecordingExecutor { executors.last! }
 
-    func storeReady() throws {
-        _ = vault.executeStorage(.with {
-            $0.op = .writeCas
-            $0.bucket = .record
-            $0.key = "record"
-            $0.createOnly = true
-            $0.nextRevision = "r1"
-            $0.data = Data("ready".utf8)
-        })
-        bootstrapStatus = .with {
-            $0.bootstrap = .ready
-            $0.server = account.server
-            $0.deviceID = account.deviceId
-            $0.accountID = account.accountId
-            $0.isMember = true
-        }
-        bootstrapError = nil
-    }
-
-    /// An account on the device, read and in use, in the foreground.
-    func ready() async throws {
-        try storeReady()
+    /// Activates an account on the single CoreHost by emitting `AccountRuntimeChangedEffect`.
+    func activateSyntheticAccount() async throws {
         model.setForeground(true)
-        await model.waitForLoadForTest()
-        #expect(model.stage == .ready)
+        try await model.waitForLoadForTest()
+        let host = model.coreHost
+        await host.processEffectBatchForTesting([
+            PBCoreEffect.with {
+                $0.accountRuntimeChanged = .with {
+                    $0.active = true
+                    $0.removed = false
+                    $0.server = account.server
+                    $0.deviceID = account.deviceId
+                    $0.accountID = account.accountId
+                }
+            }
+        ])
+        await eventually("context attached") { self.model.context != nil }
     }
 
     func cleanUp() {
@@ -145,11 +143,28 @@ final class Harness {
 
 @MainActor
 @Suite struct AppModelTests {
-    let h = Harness()
+    @Test func withoutAnAccountOnboardingIsShownAndNoExecutorIsCreated() async throws {
+        let h = Harness(); defer { h.cleanUp() }
+        #expect(h.model.screens.appRoot.stage == .unspecified)
+        h.model.setForeground(true)
+        try await h.model.waitForLoadForTest()
+        #expect(h.model.screens.appRoot.stage == .onboarding)
+        #expect(h.model.screens.onboarding.mode == .entry)
+        #expect(h.model.context == nil)
+        #expect(h.executors.isEmpty)
+    }
 
-    @Test func failedPendingRegistrationCanBeExplicitlyDiscardedWithoutAnAccount() async throws {
-        defer { h.cleanUp() }
-        // Seed malformed registration intent bytes so real Go bootstrap reports .invalid cleanly.
+    @Test func nothingIsReadInTheBackground() async {
+        let h = Harness(); defer { h.cleanUp() }
+        h.model.setForeground(false)
+        h.model.loadAccount()
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        #expect(h.model.screens.appRoot.stage == .unspecified)
+        #expect(h.executors.isEmpty)
+    }
+
+    @Test func corruptRegistrationIntentSurfacesBootstrapErrorAndSetupResetRecoversInPlace() async throws {
+        let h = Harness(); defer { h.cleanUp() }
         _ = h.vault.executeStorage(.with {
             $0.op = .writeCas
             $0.bucket = .registrationIntent
@@ -159,23 +174,23 @@ final class Harness {
             $0.data = Data("synthetic-invalid-receipt".utf8)
         })
         h.model.setForeground(true)
-        await h.model.waitForLoadForTest()
-        guard case .failed = h.model.stage else {
-            Issue.record("expected failed pending registration, got \(h.model.stage)")
-            return
-        }
+        try await h.model.waitForLoadForTest()
+        #expect(h.model.screens.appRoot.stage == .bootstrapError)
+        #expect(h.model.screens.appRoot.bootstrapError.canReset)
         #expect(h.vault.hasPersistedState())
-        await h.model.logout()
-        #expect(h.model.stage == .join)
+
+        await h.model.coreHost.exitRequest(intent: .setupReset)
+        await eventually("exit confirm shown") { h.model.screens.exitConfirm.step == .awaitingConfirm }
+        await h.model.coreHost.exitConfirm(true)
+        await eventually("reset to onboarding") { h.model.screens.appRoot.stage == .onboarding }
+
         #expect(!h.vault.hasPersistedState())
-        h.model.loadAccount()
-        await h.model.waitForLoadForTest()
-        #expect(h.model.stage == .join)
+        #expect(h.unregisteredPush == 1)
+        #expect(h.cleared == 1)
     }
 
-    @Test func corruptRecordSurfacesUnreadableExitAdviceAndAllowsSetupReset() async throws {
-        defer { h.cleanUp() }
-        // Seed a corrupt record blob (no device keys) using real Go bootstrap & real checkExitAdvice.
+    @Test func corruptRecordSurfacesBootstrapErrorAndSetupResetClearsState() async throws {
+        let h = Harness(); defer { h.cleanUp() }
         _ = h.vault.executeStorage(.with {
             $0.op = .writeCas
             $0.bucket = .record
@@ -184,135 +199,167 @@ final class Harness {
             $0.nextRevision = "r1"
             $0.data = Data([1, 2, 3, 4])
         })
-        var parts = AppModel.Parts()
-        parts.storage = AccountStorage(
-            vault: h.vault, cacheRoot: h.root.appending(path: "cache"), pending: h.pending)
-        parts.network = FakeNetwork()
-        parts.defaults = h.defaults
-        parts.allowPlainHttp = true
-        var pushUnregistered = 0
-        parts.unregisterRemoteNotifications = { pushUnregistered += 1 }
-        parts.clearNotifications = { [unowned h] in h.cleared += 1 }
-        let model = AppModel(settings: h.settings, parts: parts)
-        model.setForeground(true)
-        await model.waitForLoadForTest()
-        guard case .failed = model.stage else {
-            Issue.record("expected failed stage on corrupt record, got \(model.stage)")
-            return
-        }
-        // SetupReset confirmation queries rejoinAdvice(); must report .unreadable rather than deadlocking.
-        let advice = await model.rejoinAdvice()
-        #expect(advice == .unreadable)
-        await model.logout()
-        #expect(model.stage == .join)
-        #expect(pushUnregistered == 1)
+        h.model.setForeground(true)
+        try await h.model.waitForLoadForTest()
+        #expect(h.model.screens.appRoot.stage == .bootstrapError)
+        #expect(h.model.screens.appRoot.bootstrapError.canReset)
+
+        await h.model.coreHost.exitRequest(intent: .setupReset)
+        await eventually("exit confirm shown") { h.model.screens.exitConfirm.step == .awaitingConfirm }
+        await h.model.coreHost.exitConfirm(true)
+        await eventually("onboarding after reset") { h.model.screens.appRoot.stage == .onboarding }
+        #expect(h.unregisteredPush == 1)
         #expect(!h.vault.hasPersistedState())
     }
 
-    @Test func withoutAnAccountTheJoinFlowIsShown() async {
-        defer { h.cleanUp() }
-        #expect(h.model.stage == .loading)
+    @Test func lockedKeychainDisablesResetAndAutoRetriesOnForegroundResume() async throws {
+        let locked = OSAllocatedUnfairLock(initialState: true)
+        let ops = KeychainOps(
+            copyMatching: { query, out in
+                if locked.withLock({ $0 }) { return errSecInteractionNotAllowed }
+                return KeychainOps.live.copyMatching(query, out)
+            },
+            add: { query, out in
+                if locked.withLock({ $0 }) { return errSecInteractionNotAllowed }
+                return KeychainOps.live.add(query, out)
+            },
+            update: { query, attrs in
+                if locked.withLock({ $0 }) { return errSecInteractionNotAllowed }
+                return KeychainOps.live.update(query, attrs)
+            },
+            delete: { query in
+                if locked.withLock({ $0 }) { return errSecInteractionNotAllowed }
+                return KeychainOps.live.delete(query)
+            }
+        )
+        let h = Harness(keychain: ops); defer {
+            locked.withLock { $0 = false }
+            h.cleanUp()
+        }
         h.model.setForeground(true)
-        await h.model.waitForLoadForTest()
-        #expect(h.model.stage == .join)
-        #expect(h.model.context == nil)
-        #expect(h.engines.isEmpty)
-    }
+        try await h.model.waitForLoadForTest()
+        #expect(h.model.screens.appRoot.stage == .bootstrapError)
+        #expect(!h.model.screens.appRoot.bootstrapError.canReset)
+        #expect(h.model.screens.appRoot.bootstrapError.canRetry)
 
-    @Test func theStoredAccountIsReadAndItsEngineStarted() async throws {
-        defer { h.cleanUp() }
-        try await h.ready()
-        #expect(h.model.account?.deviceId == h.account.deviceId)
-        #expect(h.model.context?.remote === h.engine.remote)
-        // Told of the network before it connects.
-        #expect(h.engine.calls == ["network true", "start"])
-        // The cache is the account's own directory, named by neither the server nor the device.
-        let key = CipherStore.accountKey(server: h.account.server, deviceId: h.account.deviceId)
-        #expect(
-            FileManager.default.fileExists(
-                atPath: h.root.appending(path: "cache/\(key)/cache.sqlite").path))
-    }
-
-    @Test func nothingIsReadInTheBackground() async throws {
-        defer { h.cleanUp() }
-        try h.storeReady()
+        // Unlock device and resume foreground: AppModel automatically retries bootstrap.
+        locked.withLock { $0 = false }
         h.model.setForeground(false)
-        h.model.loadAccount()
-        await h.model.waitForLoadForTest()
-        await Task.yield()
-        #expect(h.model.stage == .loading)
-        #expect(h.engines.isEmpty)
-    }
-
-    @Test func aKeychainThatCannotBeReadIsSaidAndTriedAgain() async throws {
-        defer { h.cleanUp() }
-        h.bootstrapError = VaultError.unreadable
         h.model.setForeground(true)
-        await h.model.waitForLoadForTest()
-        #expect(h.model.stage == .failed(VaultError.unreadable.localizedDescription))
-        try h.storeReady()
-        h.model.loadAccount()
-        await h.model.waitForLoadForTest()
-        #expect(h.model.stage == .ready)
+        await eventually("recovered to onboarding") { h.model.screens.appRoot.stage == .onboarding }
     }
 
-    @Test func theBackgroundStopsTheStreamAndTheForegroundStartsItAgain() async throws {
-        defer { h.cleanUp() }
-        try await h.ready()
-        h.engine.forget()
-        h.model.scenePhase(.background)
-        #expect(!h.model.foreground)
-        #expect(h.engine.calls == ["stop"])
-        // Inactive is still in front: the app switcher does not drop the stream.
-        h.model.scenePhase(.inactive)
-        h.model.scenePhase(.active)
-        #expect(h.model.foreground)
-        #expect(h.engine.calls == ["stop", "start"])
-        #expect(h.engines.count == 1)
+    @Test func legacyV3WipeClearsCipherCachePreservesPendingKeyAndPersistsRepairNoticeAcrossColdRestart() async throws {
+        let h = Harness(); defer { h.cleanUp() }
+        try h.vault.writeRawKeychainItemForTest(account: "account", data: Data("v3-acct".utf8))
+        try h.vault.writeRawKeychainItemForTest(account: "security-v3", data: Data("v3-sec".utf8))
+        try h.vault.write(.pendingKey, Data(repeating: 9, count: 32))
+        let cache = try CipherStore.open(root: h.root.appending(path: "cache"), account: "legacy")
+        await cache.putBlob(name: "stale", data: Data([1]))
+        try cache.close()
+
+        h.model.setForeground(true)
+        try await h.model.waitForLoadForTest()
+        #expect(h.model.screens.appRoot.stage == .onboarding)
+        #expect(h.model.screens.onboarding.showLegacyRepairBanner)
+        #expect(try h.vault.read(.pendingKey) == Data(repeating: 9, count: 32))
+        #expect(!FileManager.default.fileExists(atPath: h.root.appending(path: "cache").path))
+
+        // Cold restart still sees the banner until dismissed through Core.
+        let second = h.makeModel(); defer { second.closeSyncForTest() }
+        second.setForeground(true)
+        try await second.waitForLoadForTest()
+        #expect(second.screens.appRoot.stage == .onboarding)
+        #expect(second.screens.onboarding.showLegacyRepairBanner)
+
+        await second.coreHost.appRootDismissUpgradeNotice()
+        await eventually("banner dismissed") { !second.screens.onboarding.showLegacyRepairBanner }
+        await eventually("upgrade notice deleted in vault") { !h.vault.hasUpgradeNotice() }
     }
 
-    @Test func aNetworkThatComesOrChangesReconnectsAndOneThatGoesIsOnlyTold() async throws {
-        defer { h.cleanUp() }
-        try await h.ready()
-        h.engine.forget()
-        let wifi = NetworkPath(available: true, interface: "en0")
-        h.model.networkChanged(wifi)
-        h.model.networkChanged(wifi)
-        #expect(h.engine.calls == ["network true"])
-        h.engine.forget()
-        h.model.networkChanged(NetworkPath(available: false, interface: ""))
-        #expect(h.engine.calls == ["network false"])
-        h.model.networkChanged(NetworkPath(available: true, interface: "pdp_ip0"))
-        #expect(h.engine.calls == ["network false", "network true", "reconnect"])
-        h.model.networkChanged(wifi)
-        #expect(h.engine.calls.suffix(2) == ["network true", "reconnect"])
-        #expect(h.engine.calls.count == 5)
+    @Test func accountRuntimeChangedAttachesToSingleCoreAndOpensCipherCache() async throws {
+        let h = Harness(); defer { h.cleanUp() }
+        try await h.activateSyntheticAccount()
+        #expect(h.model.account == h.account)
+        #expect(h.model.context?.coreHost === h.model.coreHost)
+        #expect(h.model.context?.core === h.model.screens)
+        let key = CipherStore.accountKey(server: h.account.server, deviceId: h.account.deviceId)
+        #expect(FileManager.default.fileExists(atPath: h.root.appending(path: "cache/\(key)/cache.sqlite").path))
     }
 
-    @Test func engineReceivesTheNetworkObservedBeforeAccountLoading() async throws {
-        defer { h.cleanUp() }
-        let wifi = NetworkPath(available: true, interface: "en0")
-        let cellular = NetworkPath(available: true, interface: "pdp_ip0")
-        h.model.networkChanged(wifi)
-        try await h.ready()
-        #expect(h.engine.networkSignatures == [wifi.signature])
-        #expect(h.engine.calls == ["network true", "start"])
-        h.model.networkChanged(cellular)
-        #expect(h.engine.networkSignatures == [wifi.signature, cellular.signature])
-        #expect(h.engine.calls.suffix(2) == ["network true", "reconnect"])
+    @Test func clearAccountCachesWipesStorageAndResetsContext() async throws {
+        let h = Harness(); defer { h.cleanUp() }
+        try await h.activateSyntheticAccount()
+        try h.vault.writeRawKeychainItemForTest(account: "security-v4-notify", data: Data(repeating: 3, count: 32), afterFirstUnlock: true)
+        #expect(h.pending.write(opID: 1, bucket: .draft, key: "draft:session:s", data: Data([1, 2, 3])).ok)
+        h.settings.update { $0.theme = .dark }
+        h.defaults.set("x", forKey: AccountDefaults.key("home-scope"))
+        h.defaults.set("kept", forKey: "other")
+        let oldContext = try #require(h.model.context)
+        let oldExecutor = h.executor
+        let cache = h.root.appending(path: "cache")
+        #expect(FileManager.default.fileExists(atPath: cache.path))
+
+        await h.model.resetLocalAccountAndLogout()
+
+        #expect(h.model.context == nil)
+        #expect(h.model.account == nil)
+        #expect(h.model.lastServer == h.account.server)
+        #expect(oldExecutor.calls.contains("close"))
+        #expect(!h.vault.hasPersistedState())
+        #expect(h.vault.readNotifyBlob() == nil)
+        #expect(try h.vault.read(.pendingKey) == nil)
+        #expect(!FileManager.default.fileExists(atPath: cache.path))
+        #expect(!FileManager.default.fileExists(atPath: h.root.appending(path: "pending").path))
+        #expect(h.settings.settings == LocalSettings())
+        #expect(h.defaults.object(forKey: AccountDefaults.key("home-scope")) == nil)
+        #expect(h.defaults.string(forKey: "other") == "kept")
+        #expect(h.unregisteredPush == 1)
+        #expect(h.cleared == 1)
+
+        // Re-attaching an account yields a fresh AccountContext with clean memory on the same CoreHost.
+        let host = h.model.coreHost
+        await host.processEffectBatchForTesting([
+            PBCoreEffect.with {
+                $0.accountRuntimeChanged = .with {
+                    $0.active = true
+                    $0.server = h.account.server
+                    $0.deviceID = h.account.deviceId
+                    $0.accountID = h.account.accountId
+                }
+            }
+        ])
+        await eventually("re-attached") { h.model.context != nil }
+        let next = try #require(h.model.context)
+        #expect(next !== oldContext)
+        #expect(next.coreHost === host)
     }
 
-    @Test func firstObservationAfterEngineAttachmentIsForwardedAsItsBaseline() async throws {
-        defer { h.cleanUp() }
-        try await h.ready()
-        #expect(h.engine.networkSignatures.isEmpty)
-        let wifi = NetworkPath(available: true, interface: "en0")
-        h.model.networkChanged(wifi)
-        #expect(h.engine.networkSignatures == [wifi.signature])
-        #expect(!h.engine.calls.contains("reconnect"))
-        let cellular = NetworkPath(available: true, interface: "pdp_ip0")
-        h.model.networkChanged(cellular)
-        #expect(h.engine.calls.filter { $0 == "reconnect" }.count == 1)
+    @Test func pendingCreateResumesInOnboardingAndSetupResetClearsIt() async throws {
+        let h = Harness(); defer { h.cleanUp() }
+        h.model.setForeground(true)
+        try await h.model.waitForLoadForTest()
+        #expect(h.model.screens.appRoot.stage == .onboarding)
+
+        await h.model.coreHost.onboardingSetMode(.create)
+        await h.model.coreHost.onboardingCreateSubmit(serverInput: "https://relay.example.com")
+        await eventually("recovery code generated") { !h.model.screens.onboarding.create.recoveryCode.isEmpty }
+        #expect(h.vault.hasPersistedState())
+
+        // Cold restart resumes directly in onboarding create mode with pending create.
+        let second = h.makeModel(); defer { second.closeSyncForTest() }
+        second.setForeground(true)
+        try await second.waitForLoadForTest()
+        #expect(second.screens.appRoot.stage == .onboarding)
+        #expect(second.screens.onboarding.mode == .create)
+
+        await second.coreHost.exitRequest(intent: .setupReset)
+        await eventually("exit confirm awaits") { second.screens.exitConfirm.step == .awaitingConfirm }
+        await second.coreHost.exitConfirm(true)
+        await eventually("reset back to entry") {
+            second.screens.appRoot.stage == .onboarding && second.screens.onboarding.mode == .entry
+        }
+        #expect(!h.vault.hasPersistedState())
     }
 
     @Test func networkChangesAreJudgedByWhatChanged() {
@@ -334,210 +381,5 @@ final class Harness {
         next = old; next.constrained = true
         #expect(NetworkChange.from(old, to: next) == .gained)
         #expect(NetworkChange.from(next, to: next) == .none)
-    }
-
-    @Test func anAccountOfflineAtStartIsToldSo() async throws {
-        defer { h.cleanUp() }
-        h.model.networkChanged(NetworkPath(available: false, interface: ""))
-        try await h.ready()
-        #expect(h.engine.calls == ["network false", "start"])
-    }
-
-    @Test func aDeviceTheServerTurnedAwayShowsOnlyTheNoticeAndCanTryAgain() async throws {
-        defer { h.cleanUp() }
-        try await h.ready()
-        #expect(!h.model.removed)
-        h.model.context?.core.connection.removed = true
-        #expect(h.model.removed)
-        #expect(h.vault.hasPersistedState())
-        h.model.retryLogin()
-        #expect(h.engine.calls.last == "retryLogin")
-    }
-
-    @Test func joiningStartsSyncingForTheJoinedAccount() async throws {
-        defer { h.cleanUp() }
-        h.model.setForeground(true)
-        await h.model.waitForLoadForTest()
-        #expect(h.model.stage == .join)
-        try await h.model.joined(h.account)
-        #expect(h.model.stage == .ready)
-        #expect(h.model.account == h.account)
-        #expect(h.engine.calls == ["network true", "start"])
-    }
-
-    @Test func loggingOutWipesTheKeysTheCacheAndWhatWasKeptForTheAccount() async throws {
-        defer { h.cleanUp() }
-        try await h.ready()
-        try h.vault.writeRawKeychainItemForTest(account: "security-v4-notify", data: Data(repeating: 3, count: 32), afterFirstUnlock: true)
-        #expect(h.pending.write(opID: 1, bucket: .draft, key: "draft:session:s", data: Data([1, 2, 3])).ok)
-        h.settings.update { $0.theme = .dark }
-        h.defaults.set("x", forKey: AccountDefaults.key("home-scope"))
-        h.defaults.set("kept", forKey: "other")
-        let engine = h.engine
-        let context = try #require(h.model.context)
-        _ = context.memory.value(String.self) { "draft" }
-        let cache = h.root.appending(path: "cache")
-        #expect(FileManager.default.fileExists(atPath: cache.path))
-
-        await h.model.logout()
-
-        #expect(h.model.stage == .join)
-        #expect(h.model.context == nil)
-        #expect(h.model.account == nil)
-        #expect(h.model.lastServer == h.account.server)
-        #expect(engine.calls.last == "close")
-        #expect(!h.vault.hasPersistedState())
-        #expect(h.vault.readNotifyBlob() == nil)
-        #expect(try h.vault.read(.pendingKey) == nil)
-        #expect(!FileManager.default.fileExists(atPath: cache.path))
-        #expect(!FileManager.default.fileExists(atPath: h.root.appending(path: "pending").path))
-        #expect(h.settings.settings == LocalSettings())
-        #expect(h.defaults.object(forKey: AccountDefaults.key("home-scope")) == nil)
-        #expect(h.defaults.string(forKey: "other") == "kept")
-        #expect(h.unregisteredPush == 1)
-        #expect(h.cleared == 1)
-        try await h.model.joined(h.account)
-        let next = try #require(h.model.context)
-        #expect(next !== context)
-        #expect(next.memory.value(String.self) { "" } == "")
-    }
-
-    @Test func nothingIsReadWhileALogoutIsErasing() async throws {
-        defer { h.cleanUp() }
-        let started = OSAllocatedUnfairLock(initialState: false)
-        let go = DispatchSemaphore(value: 0)
-        h.erase = { storage in
-            started.withLock { $0 = true }
-            go.wait()
-            try LocalAccountData.erase(
-                vault: storage.vault, cacheRoot: storage.cacheRoot, pending: storage.pending)
-        }
-        try await h.ready()
-        let leaving = Task { await h.model.logout() }
-        await eventually("erasing") { started.withLock { $0 } }
-        h.model.scenePhase(.background)
-        h.model.scenePhase(.active)
-        h.model.loadAccount()
-        await h.model.waitForLoadForTest()
-        #expect(h.model.stage == .loading)
-        #expect(h.model.context == nil)
-        #expect(h.engines.count == 1)
-        go.signal()
-        await leaving.value
-        #expect(h.model.stage == .join)
-        #expect(h.model.context == nil && h.engines.count == 1)
-        #expect(!h.vault.hasPersistedState())
-    }
-
-    @Test func anEraseThatFailedIsFinishedBeforeAnythingIsReadAgain() async throws {
-        defer { h.cleanUp() }
-        struct Stuck: LocalizedError { var errorDescription: String? { "没能删除缓存" } }
-        let tries = OSAllocatedUnfairLock(initialState: 0)
-        h.erase = { storage in
-            if tries.withLock({ $0 += 1; return $0 }) == 1 {
-                try storage.vault.clear()
-                throw Stuck()
-            }
-            try LocalAccountData.erase(
-                vault: storage.vault, cacheRoot: storage.cacheRoot, pending: storage.pending)
-        }
-        try await h.ready()
-        #expect(h.pending.write(opID: 1, bucket: .draft, key: "draft:session:s", data: Data([1, 2, 3])).ok)
-        await h.model.logout()
-        #expect(h.model.stage == .failed("没能删除缓存"))
-        #expect(FileManager.default.fileExists(atPath: h.root.appending(path: "cache").path))
-        h.bootstrapStatus = nil
-        h.model.loadAccount()
-        await h.model.waitForLoadForTest()
-        #expect(h.model.stage == .join)
-        #expect(tries.withLock { $0 } == 2)
-        #expect(!FileManager.default.fileExists(atPath: h.root.appending(path: "pending").path))
-        #expect(!FileManager.default.fileExists(atPath: h.root.appending(path: "cache").path))
-        h.model.scenePhase(.background)
-        h.model.scenePhase(.active)
-        await h.model.waitForLoadForTest()
-        #expect(tries.withLock { $0 } == 2)
-    }
-
-    @Test func legacyV3WipeClearsCipherCachePreservesPendingKeyAndPersistsRepairNoticeAcrossColdRestart() async throws {
-        defer { h.cleanUp() }
-        try h.vault.writeRawKeychainItemForTest(account: "account", data: Data("v3-acct".utf8))
-        try h.vault.writeRawKeychainItemForTest(account: "security-v3", data: Data("v3-sec".utf8))
-        try h.vault.write(.pendingKey, Data(repeating: 9, count: 32))
-        let cache = try CipherStore.open(root: h.root.appending(path: "cache"), account: "legacy")
-        await cache.putBlob(name: "stale", data: Data([1]))
-        try cache.close()
-
-        h.model.setForeground(true)
-        await h.model.waitForLoadForTest()
-        #expect(h.model.stage == .join)
-        #expect(h.model.legacyRepairNotice)
-        #expect(try h.vault.read(.pendingKey) == Data(repeating: 9, count: 32))
-        #expect(!FileManager.default.fileExists(atPath: h.root.appending(path: "cache").path))
-
-        // Cold restart still sees the banner until dismissed.
-        var parts = AppModel.Parts()
-        parts.storage = AccountStorage(vault: h.vault, cacheRoot: h.root.appending(path: "cache"), pending: h.pending)
-        parts.network = FakeNetwork()
-        parts.defaults = h.defaults
-        parts.allowPlainHttp = true
-        let second = AppModel(settings: h.settings, parts: parts)
-        second.setForeground(true)
-        await second.waitForLoadForTest()
-        #expect(second.stage == .join)
-        #expect(second.legacyRepairNotice)
-
-        second.dismissUpgradeNotice()
-        await Task.yield()
-        #expect(!second.legacyRepairNotice)
-        try await Task.sleep(nanoseconds: 50_000_000)
-        #expect(!h.vault.hasUpgradeNotice())
-    }
-
-    @Test func logoutClearsPendingBootstrapAndDoesNotResumeIt() async throws {
-        let h = Harness(); defer { h.cleanUp() }
-        let host = try StandaloneSecurityHost(store: h.vault, http: AppModel.http, allowPlainHttp: true)
-        _ = try await host.client.prepareCreation(server: "https://relay.example.com")
-        host.close()
-        h.model.setForeground(true)
-        await h.model.waitForLoadForTest()
-        #expect(h.model.securityStatus?.bootstrap == .pendingCreate)
-        h.exitAdvice = .with {
-            $0.authority = true
-            $0.unresolved = true
-            $0.messageText = PBCoreText.with { $0.key = "security.the_security_operation_s_outcome_is_unverified_continue_the" }
-        }
-        let adv = await h.model.rejoinAdvice()
-        #expect(adv?.text.contains(L10n.securityTheSecurityOperationSOutcomeIsUnverifiedContinueThe()) == true)
-        h.exitAdvice = .with {
-            $0.authority = true
-            $0.unresolved = false
-            $0.messageText = PBCoreText.with { $0.key = "security.this_device_is_the_only_managing_client_transfer_management" }
-        }
-        let authorityExit = await h.model.exitAdviceText()
-        #expect(authorityExit.contains(L10n.securityThisDeviceIsTheOnlyManagingClientTransferManagement()))
-        #expect(!authorityExit.contains("浏览器"))
-        #expect(!authorityExit.lowercased().contains("browser"))
-        await h.model.logout()
-        #expect(h.model.securityStatus == nil)
-        #expect(!h.vault.hasPersistedState())
-        h.model.loadAccount()
-        await h.model.waitForLoadForTest()
-        #expect(h.model.stage == .join)
-        #expect(h.model.securityStatus?.bootstrap == .empty)
-    }
-
-    @Test func unreadableSecurityRequiresConfirmationButDoesNotTrapTheUser() async throws {
-        let h = Harness(); defer { h.cleanUp() }
-        try h.vault.writeRawKeychainItemForTest(account: "security-v4-buckets", data: Data([0]))
-        var parts = AppModel.Parts()
-        parts.storage = AccountStorage(vault: h.vault, cacheRoot: h.root.appending(path: "cache"), pending: h.pending)
-        parts.network = FakeNetwork()
-        parts.defaults = h.defaults
-        parts.allowPlainHttp = true
-        let realModel = AppModel(settings: h.settings, parts: parts)
-        let adv = await realModel.rejoinAdvice()
-        #expect(adv?.text.contains("没能读取") == true)
-        #expect(adv?.text.contains("电脑上的会话不受影响") == true)
     }
 }

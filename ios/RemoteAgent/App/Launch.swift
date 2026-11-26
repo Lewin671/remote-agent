@@ -232,10 +232,10 @@ enum LaunchDriver {
     /// What the stage asks of the launch arguments: an account that is not
     /// the one asked for is forgotten, so that the join flow comes up.
     static func stageChanged(_ model: AppModel) async {
-        guard model.stage == .ready, !model.isDemo else { return }
+        guard model.screens.appRoot.stage == .ready, !model.isDemo else { return }
         if reset {
             reset = false
-            await model.logout()
+            await model.resetLocalAccountAndLogout()
         }
     }
 

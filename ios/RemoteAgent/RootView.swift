@@ -1,17 +1,16 @@
 import RACore
+import RAProto
 import SwiftUI
 
-/// The root of the window: which of the app's few whole-screen states is
-/// showing. It follows `AppModel.stage`, as MainActivity.kt follows RaApp:
-/// nothing until the account has been read, the reason when it could not
-/// be, the join flow without one, and with one the app itself, or only the
-/// notice once the server has turned this device away.
+/// The root of the window: routes strictly on Go `clientcore`'s `AppRootViewModel.stage`
+/// (matching Android `MainActivity.kt` / Web `App.tsx`).
 struct RootView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
         content
-            .task(id: model.stage) {
+            .modifier(ExitConfirmOverlay())
+            .task(id: model.screens.appRoot.stage) {
                 await LaunchDriver.stageChanged(model)
                 #if DEBUG
                 await ScheduleAcceptance.bootstrap(model)
@@ -32,64 +31,90 @@ struct RootView: View {
     }
 
     @ViewBuilder private var main: some View {
-        switch model.stage {
-        case .loading:
+        let root = model.screens.appRoot
+        switch root.stage {
+        case .unspecified, .loading, .UNRECOGNIZED:
             StartupShell()
-        case .failed(let why):
+        case .bootstrapError:
+            let err = root.bootstrapError
             Page {
-                VStack(spacing: 0) {
+                VStack(spacing: 12) {
                     Spacer()
-                    ErrorRow(why) { model.loadAccount() }
-                    if model.bootstrapCanReset {
-                        SetupDiscardButton { await model.logout() }
+                    ErrorRow(err.message.rendered().or(VaultError.unreadable.localizedDescription)) {
+                        if err.canRetry {
+                            Task { await model.coreHost.appRootRetryBootstrap() }
+                        }
+                    }
+                    if err.canReset {
+                        Button(L10n.securityExitAndStartOver(), role: .destructive) {
+                            Task { await model.coreHost.exitRequest(intent: .setupReset) }
+                        }
                     }
                     Spacer()
                 }
             }
-        case .join:
-            JoinScreen().id(model.joinGeneration)
+        case .onboarding:
+            JoinScreen()
+        case .retainedDenied:
+            RetainedIdentityDeniedScreen()
+        case .removed:
+            RemovedScreen()
         case .ready:
-            if model.removed {
-                RemovedScreen()
-            } else if let context = model.context {
+            if let context = model.context {
                 // A new account is a new stack: nothing of the one before stays on it.
-                MainView(context: context, start: model.recoveryRotationRequired ? .recoveryCode : LaunchDriver.startRoute).id(ObjectIdentifier(context))
+                MainView(context: context, start: LaunchDriver.startRoute)
+                    .id(ObjectIdentifier(context))
+            } else {
+                StartupShell()
             }
         }
     }
 }
 
-/// Available before sign-in; no account navigation or remote environment is required.
+/// Core-driven exit/reset confirmation dialog rendered at root from `ExitConfirmView`.
+/// Tapping confirm ONLY dispatches `ExitConfirmAction(confirm: true)` and never cancels first.
+struct ExitConfirmOverlay: ViewModifier {
+    @Environment(AppModel.self) private var model
+
+    func body(content: Content) -> some View {
+        let vm = model.screens.exitConfirm
+        let presented = vm.step == .awaitingConfirm || vm.step == .executing || vm.step == .failed
+        let title = vm.intent == .rejoinPairing
+            ? L10n.securityDeleteLocalKeysAndRejoin()
+            : L10n.securityExitAndDeleteLocalKeys()
+        let confirmLabel = vm.intent == .rejoinPairing
+            ? L10n.securityRejoin()
+            : L10n.securityExit()
+        let warning = vm.warningBody.rendered()
+        let fullText = vm.showRejoinDeletesCacheNote && !warning.isEmpty
+            ? warning + L10n.errorsIosThisDeletesTheAccountKeysAndCacheOnThis()
+            : warning
+        content.confirm(
+            isPresented: presented,
+            title: title,
+            text: fullText,
+            confirm: confirmLabel,
+            danger: true,
+            busy: vm.busy || vm.step == .executing,
+            errorText: vm.step == .failed ? vm.errorText.rendered() : "",
+            canDismiss: vm.step != .executing,
+            onCancel: {
+                Task { await model.coreHost.exitConfirm(false) }
+            },
+            onConfirm: {
+                Task { await model.coreHost.exitConfirm(true) }
+            }
+        )
+    }
+}
+
+/// Legacy bridge button kept until Commit 2 migrates `JoinScreen`/`AuthoritySetupScreen`.
 struct SetupDiscardButton: View {
     let discard: @MainActor () async -> Void
     @Environment(AppModel.self) private var model
-    @State private var asking = false
-    @State private var advice: AppModel.RejoinAdvice?
-    @State private var error = ""
     var body: some View {
-        if !error.isEmpty { Banner(error, tone: .error) }
         Button(L10n.securityExitAndStartOver(), role: .destructive) {
-            Task {
-                if let warning = await model.rejoinAdvice() {
-                    advice = warning
-                    asking = true
-                } else {
-                    await discard()
-                }
-            }
+            Task { await model.coreHost.exitRequest(intent: .setupReset) }
         }
-            .confirmationDialog(L10n.securityExitAndDeleteLocalKeys(), isPresented: $asking, titleVisibility: .visible) {
-                Button(L10n.securityConfirmExit(), role: .destructive) {
-                    Task {
-                        do {
-                            guard await model.rejoinAdvice() == advice else { throw UserError(L10nMessage.securityIosSecurityOperationStateChangedChooseHowToExitAgain()) }
-                            await discard()
-                        } catch { self.error = errorText(error) }
-                    }
-                }
-                Button(L10n.commonCancel(), role: .cancel) {}
-            } message: {
-                Text(advice?.text ?? "")
-            }
     }
 }
