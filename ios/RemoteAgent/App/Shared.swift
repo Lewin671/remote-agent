@@ -8,7 +8,7 @@ import RACore
 import RAProto
 import SwiftUI
 
-/// Resolved banner presentation derived from Core's `sync.connBanner` and `sync.clockSkewBannerText`.
+/// Resolved banner presentation derived from Core's `ConnectionViewModel` and clock-skew banner text.
 struct ConnectionBannerPresentation: Equatable {
     enum Tone: Equatable { case plain, attention, error }
     let text: String
@@ -17,9 +17,9 @@ struct ConnectionBannerPresentation: Equatable {
     let tone: Tone
     let showDetails: Bool
 
-    static func resolve(sync: PBCoreSyncStateView, fallbackClockWarning: String = "") -> ConnectionBannerPresentation? {
-        if sync.hasConnBanner && sync.connBanner.visible {
-            let banner = sync.connBanner
+    static func resolve(connection: PBConnectionViewModel, clockSkewBannerText: String = "") -> ConnectionBannerPresentation? {
+        if connection.hasBanner && connection.banner.visible {
+            let banner = connection.banner
             switch banner.kind {
             case .noNetwork:
                 return ConnectionBannerPresentation(
@@ -27,7 +27,7 @@ struct ConnectionBannerPresentation: Equatable {
                     symbol: "wifi.slash",
                     spinning: false,
                     tone: .plain,
-                    showDetails: false
+                    showDetails: banner.showDetails
                 )
             case .waiting:
                 return ConnectionBannerPresentation(
@@ -35,7 +35,7 @@ struct ConnectionBannerPresentation: Equatable {
                     symbol: nil,
                     spinning: true,
                     tone: .plain,
-                    showDetails: false
+                    showDetails: banner.showDetails
                 )
             case .noServer:
                 if banner.errorTone {
@@ -45,7 +45,7 @@ struct ConnectionBannerPresentation: Equatable {
                         symbol: "xmark",
                         spinning: false,
                         tone: .error,
-                        showDetails: true
+                        showDetails: banner.showDetails
                     )
                 }
                 return ConnectionBannerPresentation(
@@ -53,18 +53,15 @@ struct ConnectionBannerPresentation: Equatable {
                     symbol: "icloud.slash",
                     spinning: false,
                     tone: .plain,
-                    showDetails: true
+                    showDetails: banner.showDetails
                 )
             case .none, .unspecified, .UNRECOGNIZED:
                 break
             }
         }
-        let clockText = sync.hasClockSkewBannerText
-            ? sync.clockSkewBannerText.rendered()
-            : (sync.accountClockSkewed ? fallbackClockWarning : "")
-        if !clockText.isEmpty {
+        if !clockSkewBannerText.isEmpty {
             return ConnectionBannerPresentation(
-                text: clockText, symbol: "clock", spinning: false, tone: .attention, showDetails: false)
+                text: clockSkewBannerText, symbol: "clock", spinning: false, tone: .attention, showDetails: false)
         }
         return nil
     }
@@ -77,8 +74,8 @@ struct ConnectionBar: View {
     var body: some View {
         if let context,
            ConnectionBannerPresentation.resolve(
-               sync: context.core.syncState,
-               fallbackClockWarning: context.core.settings.clockSkewBannerText.rendered()
+               connection: context.core.connection,
+               clockSkewBannerText: context.core.settings.clockSkewBannerText.rendered()
            ) != nil
         {
             ConnectionStrip().padding(.horizontal, DS.Space.l).padding(.vertical, 6)
@@ -88,17 +85,17 @@ struct ConnectionBar: View {
 
 /// How the way to the server stands, as a strip of glass under a page's
 /// title (design-system §6 「连接状态」, architecture §9 「断线时显示什么」):
-/// driven by Core's `sync.connBanner` and `sync.clockSkewBannerText`.
+/// driven by Core's `ConnectionViewModel`.
 struct ConnectionStrip: View {
     @Environment(AccountContext.self) private var context: AccountContext?
     @State private var details = false
 
     var body: some View {
         if let context {
-            let sync = context.core.syncState
+            let connection = context.core.connection
             let banner = ConnectionBannerPresentation.resolve(
-                sync: sync,
-                fallbackClockWarning: context.core.settings.clockSkewBannerText.rendered()
+                connection: connection,
+                clockSkewBannerText: context.core.settings.clockSkewBannerText.rendered()
             )
             Group {
                 if let banner {
@@ -126,7 +123,7 @@ struct ConnectionStrip: View {
                 }
             }
             .kitSheet(isPresented: $details) {
-                ServerDetails(sync: sync) { details = false }
+                ServerDetails(connection: connection) { details = false }
             }
         }
     }
@@ -134,13 +131,13 @@ struct ConnectionStrip: View {
 
 /// Why the server is out of reach: the judgement first, the failure in the system's words last.
 struct ServerDetails: View {
-    let sync: PBCoreSyncStateView
+    let connection: PBConnectionViewModel
     let onClose: () -> Void
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        let synced = sync.machinesListed && sync.sessionsListed
-        let reason = sync.hasConnectionReason ? sync.connectionReason.rendered() : ""
+        let details = connection.serverDetails
+        let reason = details.hasReasonText ? details.reasonText.rendered() : ""
         SheetHead(L10n.connectionNoServer())
         Text(L10n.connectionIosExplanation())
             .font(.subheadline).ink(DS.ink2)
@@ -148,9 +145,9 @@ struct ServerDetails: View {
             Text(L10n.connectionIosHost(host: hostOf(server))).font(.subheadline).ink(DS.ink2).padding(.top, 10)
         }
         // Since start nothing was reached: when it was last is not known here.
-        if synced {
+        if details.showDisconnectedAt {
             Ticking { now in
-                Text(L10n.connectionIosDisconnectedAt(time: whenText(sync.disconnectedAtMs, now: now))).font(.subheadline).ink(DS.ink2).padding(.top, 2)
+                Text(L10n.connectionIosDisconnectedAt(time: whenText(details.disconnectedAtMs, now: now))).font(.subheadline).ink(DS.ink2).padding(.top, 2)
             }
         }
         if !reason.isEmpty { Text(L10n.connectionIosReason(reason: reason)).font(.subheadline).ink(DS.ink2).padding(.top, 2) }

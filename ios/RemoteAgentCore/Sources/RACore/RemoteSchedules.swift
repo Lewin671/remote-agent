@@ -38,10 +38,6 @@ extension Remote {
         if let st = securityClient.currentStatus, (!st.isMember || st.removed) {
             return false
         }
-        if let v = await currentCoreSyncStateView(), v.securityLoaded {
-            if v.removed || !v.isMember { return false }
-            return v.trustedMachineIds.contains(id)
-        }
         return true
     }
 

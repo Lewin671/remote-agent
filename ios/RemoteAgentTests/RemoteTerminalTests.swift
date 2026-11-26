@@ -592,38 +592,4 @@ import Testing
         await eventually { streams.count == 2 }
         t.close()
     }
-
-    @Test func terminalReadinessReadsCoreSyncFields() {
-        var sync = PBCoreSyncStateView()
-        sync.connection = .offline
-        sync.displayGrace = true
-        sync.sessions = [
-            PBCoreSyncSessionView.with {
-                $0.sessionID = "s1"
-                $0.machineID = "m1"
-                $0.terminalReady = true
-                $0.terminalWaiting = false
-            },
-            PBCoreSyncSessionView.with {
-                $0.sessionID = "s2"
-                $0.machineID = "m2"
-                $0.terminalReady = false
-                $0.terminalWaiting = true
-            },
-        ]
-        sync.machines = [
-            PBCoreSyncMachineView.with {
-                $0.machineID = "m3"
-                $0.terminalReady = true
-            }
-        ]
-        let r1 = TerminalReadiness.state(sync: sync, sessionID: "s1")
-        #expect(r1.ready && !r1.waiting)
-        let r2 = TerminalReadiness.state(sync: sync, sessionID: "s2")
-        #expect(!r2.ready && r2.waiting)
-        let r3 = TerminalReadiness.state(sync: sync, sessionID: "unknown", machineID: "m3")
-        #expect(r3.ready && !r3.waiting)
-        let r4 = TerminalReadiness.state(sync: sync, sessionID: "unknown", machineID: "missing")
-        #expect(!r4.ready && r4.waiting)
-    }
 }

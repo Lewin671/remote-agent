@@ -25,7 +25,7 @@ struct HomeScreen: View {
         HomeContent(
             home: home,
             settings: settings,
-            sync: context.core.syncState,
+            connection: context.core.connection,
             isAuthority: settings.isManager,
             authorityHint: authorityHint,
             allAttention: $allAttention,
@@ -89,7 +89,7 @@ func homeFilteredAttentionRows(home: PBCoreHomeViewModel) -> [PBCoreAttentionRow
 struct HomeContent: View {
     let home: PBCoreHomeViewModel
     var settings: PBSettingsViewModel = PBSettingsViewModel()
-    var sync: PBCoreSyncStateView = PBCoreSyncStateView()
+    var connection: PBConnectionViewModel = PBConnectionViewModel()
     var isAuthority: Bool = true
     var authorityHint: String = ""
     @Binding var allAttention: Bool
@@ -108,10 +108,10 @@ struct HomeContent: View {
         let timelineIDs = timelineAnimationIDs
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
-                HomeHeadlineView(headline: home.headline, sync: sync)
+                HomeHeadlineView(headline: home.headline, connection: connection)
                 HomeNotices(
+                    home: home,
                     settings: settings,
-                    sync: sync,
                     onOpenSecurity: onOpenSecurity
                 )
                 .padding(.horizontal, DS.Space.card)
@@ -355,7 +355,7 @@ private struct HomeTopBar: View {
 /// The sentence at the top (design-system §6 「大标题」).
 private struct HomeHeadlineView: View {
     let headline: PBCoreHomeHeadlineView
-    let sync: PBCoreSyncStateView
+    let connection: PBConnectionViewModel
     @State private var details = false
 
     var body: some View {
@@ -385,7 +385,7 @@ private struct HomeHeadlineView: View {
         .padding(.top, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
         .kitSheet(isPresented: $details) {
-            ServerDetails(sync: sync) { details = false }
+            ServerDetails(connection: connection) { details = false }
         }
     }
 
@@ -404,14 +404,12 @@ private struct HomeHeadlineView: View {
 
 /// Notices under the headline: device clock skew and recovery requests.
 private struct HomeNotices: View {
+    let home: PBCoreHomeViewModel
     let settings: PBSettingsViewModel
-    let sync: PBCoreSyncStateView
     let onOpenSecurity: () -> Void
 
     var body: some View {
-        let clockWarning = sync.hasClockSkewBannerText
-            ? sync.clockSkewBannerText.rendered()
-            : (settings.clockSkewed ? settings.clockSkewBannerText.rendered() : "")
+        let clockWarning = home.hasClockSkewBannerText ? home.clockSkewBannerText.rendered() : ""
         VStack(spacing: 8) {
             if !clockWarning.isEmpty {
                 Notice(clockWarning, tone: .attention, symbol: "clock")

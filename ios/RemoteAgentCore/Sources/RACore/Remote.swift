@@ -149,21 +149,18 @@ public final actor Remote {
     public struct CoreHooks: Sendable {
         public var onRefresh: @Sendable () async -> Void
         public var onRefreshDevices: @Sendable () async -> Void
-        public var onQuerySyncState: (@Sendable () async -> PBCoreSyncStateView?)?
         public var onSecurityOp: (@Sendable (PBSecurityOpRequestEvent) async -> PBSecurityOpResultEffect)?
         public var onCoreEvent: @Sendable (PBCoreEvent) async -> Void
         public var onRunMachineCommand: (@Sendable (String, String, PBCommand, Bool) async throws -> PBCommandResult)?
         public init(
             onRefresh: @escaping @Sendable () async -> Void,
             onRefreshDevices: @escaping @Sendable () async -> Void,
-            onQuerySyncState: (@Sendable () async -> PBCoreSyncStateView?)? = nil,
             onSecurityOp: (@Sendable (PBSecurityOpRequestEvent) async -> PBSecurityOpResultEffect)? = nil,
             onCoreEvent: @escaping @Sendable (PBCoreEvent) async -> Void = { _ in },
             onRunMachineCommand: (@Sendable (String, String, PBCommand, Bool) async throws -> PBCommandResult)? = nil
         ) {
             self.onRefresh = onRefresh
             self.onRefreshDevices = onRefreshDevices
-            self.onQuerySyncState = onQuerySyncState
             self.onSecurityOp = onSecurityOp
             self.onCoreEvent = onCoreEvent
             self.onRunMachineCommand = onRunMachineCommand
@@ -290,20 +287,13 @@ public final actor Remote {
         self.hostHooks = hooks
     }
 
-    public func applyCoreSyncState(_ v: PBCoreSyncStateView) {
-        self.clockSkewed = v.accountClockSkewed
-        // Keep sessionMachines in sync so directGate / terminal know owner machine IDs.
-        if v.sessions.contains(where: { sessionMachines[$0.sessionID] != $0.machineID }) {
-            var nextMachines = sessionMachines
-            for s in v.sessions {
-                nextMachines[s.sessionID] = s.machineID
-            }
-            sessionMachines = nextMachines
+    public func setWatchedSessions(_ routes: [PBWatchedSessionRoute]) {
+        watchedSessionIds = routes.map(\.sessionID)
+        var nextMachines = sessionMachines
+        for route in routes where !route.machineID.isEmpty {
+            nextMachines[route.sessionID] = route.machineID
         }
-    }
-
-    public func setWatchedSessions(_ sessionIds: [String]) {
-        watchedSessionIds = sessionIds
+        sessionMachines = nextMachines
     }
 
     func emitCoreEvent(_ ev: PBCoreEvent) async {
@@ -690,17 +680,6 @@ public final actor Remote {
     }
 
     // MARK: - Transitional Step 3-4 Forwarding to Core
-
-    @discardableResult
-    public func refresh() async -> Bool {
-        if let hooks = hostHooks {
-            await hooks.onRefresh()
-            if let v = await currentCoreSyncStateView() {
-                return v.connection == .connected
-            }
-        }
-        return false
-    }
 
     public func refreshDevices() async {
         await hostHooks?.onRefreshDevices()

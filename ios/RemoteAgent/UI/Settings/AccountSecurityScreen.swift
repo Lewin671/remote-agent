@@ -61,9 +61,9 @@ struct AccountSecurityDetails: View {
         GroupNote(L10n.securityIosAutomaticallyRenewsWhenYouReturnToTheManagingClient())
         GroupNote(iosAuthorityNotice)
         if !sec.isManager {
-            let sync = context.core.syncState
-            let advice = sync.hasLeaseRenewalAdvice
-                ? sync.leaseRenewalAdvice.rendered()
+            let conn = context.core.connection
+            let advice = conn.hasLeaseRenewalAdvice
+                ? conn.leaseRenewalAdvice.rendered()
                 : L10n.securityOpenToRenew(value: String(describing: sec.authorityName))
             if !advice.isEmpty { GroupNote(advice) }
         }

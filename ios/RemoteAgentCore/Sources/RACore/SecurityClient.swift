@@ -618,16 +618,6 @@ final class CoreSecurityDriver: @unchecked Sendable {
         )
     }
 
-    func syncStateView() -> PBCoreSyncStateView? {
-        guard !isClosed() else { return nil }
-        return queue.sync {
-            guard !isClosed() else { return nil }
-            return try? core.view(PBCoreScreen.with {
-                $0.syncState = PBCoreSyncStateScreenRequest()
-            }).syncState
-        }
-    }
-
     private func dispatchOnWorker(_ initial: PBCoreEvent) {
         var queueEvents = [initial]
         var idx = 0
@@ -862,10 +852,6 @@ public final class StandaloneSecurityHost: @unchecked Sendable {
 
     public func securityOp(_ configure: @Sendable (inout PBSecurityOpRequestEvent) -> Void) async throws -> PBSecurityOpResultEffect {
         try await driver.runSecurityOp(configure)
-    }
-
-    public func syncStateView() -> PBCoreSyncStateView? {
-        driver.syncStateView()
     }
 
     public func close() {

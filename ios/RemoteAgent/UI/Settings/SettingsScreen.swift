@@ -67,10 +67,7 @@ struct SettingsScreen: View {
     // MARK: Banners
 
     @ViewBuilder private func banners(_ vm: PBSettingsViewModel) -> some View {
-        let sync = context.core.syncState
-        let clockMsg = sync.hasClockSkewBannerText
-            ? sync.clockSkewBannerText.rendered()
-            : (vm.clockSkewed ? vm.clockSkewBannerText.rendered() : "")
+        let clockMsg = vm.clockSkewed ? vm.clockSkewBannerText.rendered() : ""
         if !clockMsg.isEmpty {
             GroupBanner(clockMsg, tone: .warn)
         }

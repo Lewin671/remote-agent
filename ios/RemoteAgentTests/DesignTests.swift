@@ -68,35 +68,38 @@ import UIKit
 
 @Suite struct ConnectionBannerPresentationTests {
     @Test func resolvesCoreConnBannerAndClockSkewText() {
-        var sync = PBCoreSyncStateView()
-        #expect(ConnectionBannerPresentation.resolve(sync: sync) == nil)
+        var conn = PBConnectionViewModel()
+        #expect(ConnectionBannerPresentation.resolve(connection: conn) == nil)
 
-        sync.connBanner = .with {
+        conn.banner = .with {
             $0.visible = true
             $0.kind = .noNetwork
             $0.text = .with { $0.key = "connection.no_network_empty" }
         }
-        let noNet = ConnectionBannerPresentation.resolve(sync: sync)
+        let noNet = ConnectionBannerPresentation.resolve(connection: conn)
         #expect(noNet?.symbol == "wifi.slash")
         #expect(noNet?.showDetails == false)
         #expect(noNet?.text == L10n.connectionNoNetworkEmpty())
 
-        sync.connBanner = .with {
+        conn.banner = .with {
             $0.visible = true
             $0.kind = .noServer
             $0.errorTone = true
+            $0.showDetails = true
             $0.text = .with { $0.key = "connection.server_retrying" }
             $0.detailText = .with { $0.literal = "Server error: 503" }
         }
-        let errBanner = ConnectionBannerPresentation.resolve(sync: sync)
+        let errBanner = ConnectionBannerPresentation.resolve(connection: conn)
         #expect(errBanner?.tone == .error)
         #expect(errBanner?.symbol == "xmark")
         #expect(errBanner?.showDetails == true)
         #expect(errBanner?.text == "Server error: 503")
 
-        sync.clearConnBanner()
-        sync.clockSkewBannerText = .with { $0.key = "errors.this_device_s_clock_is_behind_the_account_state" }
-        let skew = ConnectionBannerPresentation.resolve(sync: sync)
+        conn.clearBanner()
+        let skew = ConnectionBannerPresentation.resolve(
+            connection: conn,
+            clockSkewBannerText: L10n.errorsThisDeviceSClockIsBehindTheAccountState()
+        )
         #expect(skew?.tone == .attention)
         #expect(skew?.symbol == "clock")
         #expect(skew?.text == L10n.errorsThisDeviceSClockIsBehindTheAccountState())

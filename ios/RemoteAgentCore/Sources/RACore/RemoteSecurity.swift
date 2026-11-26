@@ -99,19 +99,6 @@ extension Remote {
         }
     }
 
-    func currentCoreSyncStateView() async -> PBCoreSyncStateView? {
-        if let onQuery = hostHooks?.onQuerySyncState {
-            return await onQuery()
-        }
-        return fallbackSecurityDriver?.syncStateView()
-    }
-
-    func cachedAllowedMachines() async -> Set<String>? {
-        guard let v = await currentCoreSyncStateView(), v.securityLoaded else { return nil }
-        if v.removed || !v.isMember { return [] }
-        return Set(v.trustedMachineIds).union(v.archiveMachineIds)
-    }
-
     public func applySecurityTokenUpdated(_ eff: PBSecurityTokenUpdatedEffect) {
         if eff.cleared {
             token = ""
@@ -132,34 +119,6 @@ extension Remote {
         clockSkewed = status.clockSkewed
         if status.removed {
             dropToken()
-        }
-        await pruneUntrustedCaches(status: status)
-    }
-
-    func pruneUntrustedCaches(status: PBSecurityWorkflowStatus? = nil) async {
-        guard let cache else { return }
-        let st = status ?? securityClient.currentStatus
-        var candidates = Set<String>()
-        for m in await cache.machines() { candidates.insert(m.id) }
-        let view = await currentCoreSyncStateView()
-        if let view {
-            for m in view.machines { candidates.insert(m.machineID) }
-            for d in view.devices where d.kind == .machine { candidates.insert(d.deviceID) }
-            if view.securityLoaded {
-                for mid in view.archiveMachineIds { candidates.insert(mid) }
-                if view.removed || !view.isMember {
-                    for mid in candidates { await cache.removeBlob(name: "schedules/" + mid) }
-                    return
-                }
-                let trusted = Set(view.trustedMachineIds)
-                for mid in candidates where !trusted.contains(mid) {
-                    await cache.removeBlob(name: "schedules/" + mid)
-                }
-                return
-            }
-        }
-        if let st, st.removed || !st.isMember {
-            for mid in candidates { await cache.removeBlob(name: "schedules/" + mid) }
         }
     }
 
@@ -245,10 +204,6 @@ extension Remote {
             throw CommandError("failed_precondition", L10nMessage.errorsIosOnlyTheDeviceItselfCanChangeItsName())
         }
         try await withSecurityAndRefresh { try await $0.updateDeviceMeta(deviceId: id, name: name.trimmingCharacters(in: .whitespacesAndNewlines)) }
-    }
-
-    public func describeSelf(platform: String, description: String) async throws {
-        try await withSecurityAndRefresh { try await $0.updateDeviceMeta(platform: platform, description: description, describeSelfOnly: true) }
     }
 
     public func removeDevice(_ id: String) async throws {

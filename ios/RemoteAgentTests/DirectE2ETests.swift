@@ -198,7 +198,7 @@ struct DirectE2ETests {
         say("paired")
         var machine = ""
         _ = try await wait("the computer online", seconds: 90) {
-            if let m = await MainActor.run(body: { screens.syncState.machines.first(where: \.reachable) }) {
+            if let m = await MainActor.run(body: { screens.settings.machines.first(where: { $0.online && $0.member }) }) {
                 machine = m.machineID
                 return true
             }

@@ -14,18 +14,12 @@ extension Remote {
             loaded.opID = req.opID
             do {
                 try await ensureSecurityBootstrapped()
-                await pruneUntrustedCaches()
                 if let cache {
-                    let allowed = await cachedAllowedMachines()
                     for var m in await cache.machines() {
-                        if let allowed, !allowed.contains(m.id) { continue }
                         m.online = false
                         loaded.wireMachines.append(m)
                     }
-                    for s in await cache.sessions() {
-                        if let allowed, !allowed.contains(s.machineID) { continue }
-                        loaded.wireSessions.append(s)
-                    }
+                    loaded.wireSessions = await cache.sessions()
                     if let blob = await cache.blob(name: projectPrefsID),
                        let obj = try? PBAccountPrefsObject(serializedBytes: blob) {
                         loaded.wirePrefs = obj

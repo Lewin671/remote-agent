@@ -398,7 +398,7 @@ struct ChatPane: View {
         let online = (header.computerOnline && !header.computerUnlinked) || header.computerReachability == .unknown
         let env = ChatEnv(
             agent: header.agent != .unspecified ? header.agent : defaultAgent,
-            frozenAt: online ? 0 : (header.offlineSinceMs > 0 ? header.offlineSinceMs : context.core.syncState.disconnectedAtMs),
+            frozenAt: header.frozenAtMs,
             session: sessionID
         )
         let jump = context.sessionStore.scheduledJump(sessionID)

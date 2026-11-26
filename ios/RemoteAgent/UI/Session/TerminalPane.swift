@@ -21,22 +21,6 @@ import RACore
 import RAProto
 import SwiftUI
 
-/// Resolves terminal reachability from Core's `PBCoreSyncStateView` (`terminal_ready` / `terminal_waiting`),
-/// matching Web (`Terminal.tsx`) and Android (`TerminalPane.kt`).
-enum TerminalReadiness {
-    static func state(sync: PBCoreSyncStateView, sessionID: String, machineID: String = "") -> (ready: Bool, waiting: Bool) {
-        if let s = sync.sessions.first(where: { $0.sessionID == sessionID }) {
-            return (s.terminalReady, s.terminalWaiting)
-        }
-        if !machineID.isEmpty, let m = sync.machines.first(where: { $0.machineID == machineID }) {
-            let ready = m.terminalReady
-            return (ready, !ready && (sync.reachabilityUnknown || sync.displayGrace))
-        }
-        let ready = sync.connection == .connected
-        return (ready, !ready && (sync.reachabilityUnknown || sync.displayGrace))
-    }
-}
-
 struct TerminalPane: View {
     let sessionId: String
     /// The session has not ended.
@@ -48,12 +32,16 @@ struct TerminalPane: View {
     @State private var font = TerminalFont.preferred
     @State private var details = false
 
+    private static func readiness(core: CoreScreens, sessionID: String) -> (ready: Bool, waiting: Bool) {
+        if let header = core.sessions[sessionID]?.header, header.found {
+            return (header.terminalReady, header.terminalWaiting)
+        }
+        let conn = core.connection
+        return (conn.connected, !conn.connected && (conn.reachabilityUnknown || conn.displayGrace))
+    }
+
     private var readiness: (ready: Bool, waiting: Bool) {
-        TerminalReadiness.state(
-            sync: context.core.syncState,
-            sessionID: sessionId,
-            machineID: context.core.sessions[sessionId]?.header.machineID ?? ""
-        )
+        Self.readiness(core: context.core, sessionID: sessionId)
     }
 
     /// Either the relay or the session's direct peer path is ready to open a terminal.
@@ -121,11 +109,7 @@ struct TerminalPane: View {
             RemoteTerminal.Link(
                 open: { try await remote.openTerminal(sid, listener: $0) },
                 online: {
-                    TerminalReadiness.state(
-                        sync: core.syncState,
-                        sessionID: sid,
-                        machineID: core.sessions[sid]?.header.machineID ?? ""
-                    ).ready && app.foreground
+                    Self.readiness(core: core, sessionID: sid).ready && app.foreground
                 },
                 hold: { app.holdTerminal($0) },
                 release: { app.releaseTerminal($0) },

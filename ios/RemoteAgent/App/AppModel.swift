@@ -344,7 +344,9 @@ final class AppModel {
     var remote: Remote? { context?.remote }
     func reconnectNow() { engine?.reconnectNow() }
     /// The server turned this device away (architecture §13 「移除设备」): only the notice is shown.
-    var removed: Bool { stage == .ready && (context?.core.syncState.removed ?? false) }
+    var removed: Bool {
+        stage == .ready && (context?.core.connection.removed ?? false)
+    }
 
     /// The account's cache of ciphertext, where viewed images are kept as sealed envelopes; nil while none is
     /// open (no account, sample data, or a cache that did not open).

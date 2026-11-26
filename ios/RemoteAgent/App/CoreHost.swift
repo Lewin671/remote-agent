@@ -42,7 +42,8 @@ final class CoreScreens {
     }
 
     var home = PBCoreHomeViewModel()
-    var syncState = PBCoreSyncStateView()
+    var connection = PBConnectionViewModel()
+    var appRoot = PBAppRootViewModel()
     var projectDetail = PBCoreProjectDetailView()
     var manageProjects = PBCoreManageProjectsView()
     var dirPickers: [String: PBCoreDirPickerView] = [:]
@@ -65,7 +66,8 @@ final class CoreScreens {
 
     enum RenderSlot: Hashable, Sendable {
         case home
-        case syncState
+        case connection
+        case appRoot
         case projectDetail
         case manageProjects
         case dirPicker(String)
@@ -114,7 +116,6 @@ protocol CoreHostExecutor: AnyObject, Sendable {
     var directServerHost: String { get }
     var directConfiguredStun: String { get }
     func installCoreHooks(_ hooks: Remote.CoreHooks) async
-    func applyCoreSyncState(_ snapshot: PBCoreSyncStateView) async
     func setNetworkGeneration(_ gen: UInt64) async
     func ensureToken(opId: UInt64, forceLogin: Bool, timeoutMs: Int64) async -> PBCoreTokenResultEvent
     func discardToken(_ rejected: String) async
@@ -125,8 +126,7 @@ protocol CoreHostExecutor: AnyObject, Sendable {
     func executeCacheDelete(_ effect: PBCoreCacheDeleteEffect, onSessionRemoved: (@Sendable (String) async -> Void)?) async
     func executeRpc(_ effect: PBCoreRpcEffect) async -> PBCoreEvent
     func dispatchCommandAttempt(_ effect: PBCoreDispatchCommandEffect) async -> PBCoreCommandOutcomeEvent
-    func setWatchedSessions(_ sessionIds: [String]) async
-    func describeSelf(platform: String, description: String) async throws
+    func setWatchedSessions(_ routes: [PBWatchedSessionRoute]) async
     func cachedScheduleResultJson(_ machineId: String) async -> Data?
     func deleteScheduleCache(_ machineId: String) async
     func renameDevice(_ id: String, name: String) async throws
@@ -186,7 +186,7 @@ extension CoreHostExecutor {
     func handleTerminalDirectAttachRelay(_ eff: PBCoreTerminalDirectAttachRelayEffect) {}
     func handleTerminalDirectState(_ eff: PBCoreTerminalDirectStateEffect) {}
     func discardToken(_ rejected: String) async {}
-    func setWatchedSessions(_ sessionIds: [String]) async {}
+    func setWatchedSessions(_ routes: [PBWatchedSessionRoute]) async {}
     func renameDevice(_ id: String, name: String) async throws {}
 }
 
@@ -262,6 +262,13 @@ struct ScopeDefaults: @unchecked Sendable {
         guard preset == .today || preset == .sevenDays || preset == .thirtyDays,
               let data = try? snapshot.serializedData() else { return }
         raw.set(data, forKey: usageCacheKey(machineID: machineID, preset: preset))
+    }
+
+    func deleteUsageCache(machineID: String) {
+        let presets: [PBUsageRangePreset] = [.today, .sevenDays, .thirtyDays]
+        for preset in presets {
+            raw.removeObject(forKey: usageCacheKey(machineID: machineID, preset: preset))
+        }
     }
 }
 
@@ -515,7 +522,6 @@ actor CoreHost: SyncEngine {
     private var terminalHistoryUpdatedListeners: [String: (token: UUID, handler: @MainActor @Sendable (PBCoreTerminalHistoryUpdatedEffect) -> Void)] = [:]
     private var onPersistClientPrefs: (@MainActor @Sendable (PBPersistClientPrefsEffect) -> Void)?
     private var deviceDescription: @MainActor @Sendable () -> String = { "" }
-    private var describedKey: String?
     #if DEBUG
     enum DemoCommandAction: Sendable {
         case hold
@@ -536,7 +542,6 @@ actor CoreHost: SyncEngine {
     private var cacheChain: Task<Void, Never>?
     private var clockTask: Task<Void, Never>?
     private var renderSeq: UInt64 = 0
-    private var lastAppliedSyncStateSeq: UInt64 = 0
 
     private func nextRenderSeq() -> UInt64 {
         renderSeq &+= 1
@@ -638,9 +643,6 @@ actor CoreHost: SyncEngine {
             onRefreshDevices: { [weak self] in
                 _ = try? await self?.executor.syncSecurity(touch: false)
             },
-            onQuerySyncState: { [weak self] in
-                await self?.querySyncStateView()
-            },
             onSecurityOp: { [weak self] req in
                 await self?.runSecurityOp(req) ?? .with {
                     $0.opID = req.opID
@@ -663,7 +665,6 @@ actor CoreHost: SyncEngine {
                 )
             }
         ))
-        await syncWatchedSessionsToExecutor()
     }
 
     // MARK: - SyncEngine Conformance
@@ -698,28 +699,6 @@ actor CoreHost: SyncEngine {
 
     func setDeviceDescription(_ provider: @escaping @MainActor @Sendable () -> String) {
         deviceDescription = provider
-    }
-
-    /// Says what this client is, sealed, so other clients can tell it apart.
-    func maybeDescribeSelf(_ v: PBCoreSyncStateView) async {
-        guard v.connection == .connected else {
-            // A try made on the connection that is gone may not have arrived: the next one tries again.
-            describedKey = nil
-            return
-        }
-        guard !demoMode,
-              let me = v.devices.first(where: { $0.deviceID == account.deviceId && $0.trusted }) else { return }
-        let description = await deviceDescription()
-        guard !description.isEmpty else { return }
-        guard !me.hasMeta || me.meta.platform != "ios" || me.meta.description_p != description else { return }
-        // One try per revision and connection: a failure waits for the next change instead of spinning.
-        let key = "\(me.metaRev):\(v.leaseEndMs)"
-        guard describedKey != key else { return }
-        describedKey = key
-        let exec = executor
-        Task {
-            try? await exec.describeSelf(platform: "ios", description: description)
-        }
     }
 
     private nonisolated func lastNetworkSignatureFor(_ available: Bool) -> String {
@@ -775,6 +754,7 @@ actor CoreHost: SyncEngine {
                 }
             }
             if executor.optionalSecurityExecutor != nil {
+                let desc = await deviceDescription()
                 await dispatch {
                     $0.securityConfig = .with {
                         $0.account = acct.accountId
@@ -782,6 +762,8 @@ actor CoreHost: SyncEngine {
                         $0.server = acct.server
                         $0.inlineCrypto = true
                         $0.foreground = self.foregrounded
+                        $0.platform = "ios"
+                        $0.deviceDescription = desc
                     }
                 }
                 try? await executor.ensureSecurityBootstrapped()
@@ -908,13 +890,6 @@ actor CoreHost: SyncEngine {
             return
         }
         await dispatch { $0.securityOpRequest = request }
-    }
-
-    private func querySyncStateView() -> PBCoreSyncStateView? {
-        guard !closed else { return nil }
-        return try? client.view(PBCoreScreen.with {
-            $0.syncState = PBCoreSyncStateScreenRequest()
-        }).syncState
     }
 
     private func handleNetworkChange(signature: String, available: Bool) async {
@@ -1123,7 +1098,7 @@ actor CoreHost: SyncEngine {
     func showHome() async {
         guard !closed else { return }
         await dispatchClockUpdated()
-        await renderTargets([.home, .syncState])
+        await renderTargets([.home, .connection])
     }
 
     func showProject(key: String) async {
@@ -1571,7 +1546,6 @@ actor CoreHost: SyncEngine {
         sessionWatches[token] = SessionWatchEntry(token: token, sessionID: sid, window: initialWindow)
         sessionWatchOrder.append(token)
         if !wasWatched {
-            await syncWatchedSessionsToExecutor()
             await dispatch {
                 $0.sessionWatch = .with {
                     $0.sessionID = sid
@@ -1581,16 +1555,6 @@ actor CoreHost: SyncEngine {
         }
         await refreshSessionViews(for: [sid])
         return token
-    }
-
-    private func syncWatchedSessionsToExecutor() async {
-        var seen = Set<String>()
-        var ordered: [String] = []
-        for token in sessionWatchOrder.reversed() {
-            guard let sid = sessionWatches[token]?.sessionID, !sid.isEmpty, seen.insert(sid).inserted else { continue }
-            ordered.append(sid)
-        }
-        await executor.setWatchedSessions(ordered)
     }
 
     func updateSessionWindow(token: UUID?, window: PBSessionWindowRequest) async {
@@ -1608,7 +1572,6 @@ actor CoreHost: SyncEngine {
         guard !closed else { return }
         let stillWatched = sessionWatches.values.contains { $0.sessionID == entry.sessionID }
         if !stillWatched {
-            await syncWatchedSessionsToExecutor()
             await dispatch {
                 $0.sessionWatch = .with {
                     $0.sessionID = entry.sessionID
@@ -2934,10 +2897,23 @@ actor CoreHost: SyncEngine {
                     }
                 }
 
-            case .watchedSessions,
-                 .usageCacheRequest,
-                 .syncPushSubscription,
-                 .scheduleWriteCache,
+            case .watchedSessions(let eff):
+                await executor.setWatchedSessions(eff.sessions)
+
+            case .usageCacheRequest(let eff):
+                guard !eff.machineID.isEmpty else { continue }
+                if eff.deleteCache {
+                    usageHydratedMachines.remove(eff.machineID)
+                    defaults.deleteUsageCache(machineID: eff.machineID)
+                } else {
+                    await hydrateUsageCache(machineID: eff.machineID)
+                }
+
+            case .syncPushSubscription:
+                // iOS has no OS push delivery adapter; push sync is a no-op here.
+                break
+
+            case .scheduleWriteCache,
                  .relayRpc,
                  .relayRpcCancel,
                  .pushRpcResult,
@@ -2946,7 +2922,7 @@ actor CoreHost: SyncEngine {
                  .terminalCloseSocket,
                  .terminalDeliverOutput,
                  .terminalStateChanged:
-                // Handled by Web/Android in P2-4/P2-5; iOS migrates in P3-2.
+                // Migrated in subsequent P3-2 commits.
                 break
 
             case .requestStoragePersist,
@@ -3569,7 +3545,8 @@ actor CoreHost: SyncEngine {
         var homeVM: PBCoreHomeViewModel?
         var projectVM: PBCoreProjectViewModel?
         var newSessionVM: PBCoreNewSessionViewModel?
-        var syncStateVM: PBCoreSyncStateView?
+        var connectionVM: PBConnectionViewModel?
+        var appRootVM: PBAppRootViewModel?
         var schedulesVM: PBSchedulesViewModel?
         var scheduleDetailVM: PBScheduleDetailViewModel?
         var scheduleFormVM: PBScheduleFormViewModel?
@@ -3648,12 +3625,17 @@ actor CoreHost: SyncEngine {
                 }
             }
         }
-        if targets.contains(.syncState) {
-            syncStateVM = try? client.view(PBCoreScreen.with {
-                $0.syncState = PBCoreSyncStateScreenRequest()
-            }).syncState
+        if targets.contains(.connection) {
+            connectionVM = try? client.view(PBCoreScreen.with {
+                $0.connection = PBConnectionScreenRequest()
+            }).connection
         }
-        if targets.contains(.settings) || targets.contains(.home) || targets.contains(.syncState) {
+        if targets.contains(.appRoot) {
+            appRootVM = try? client.view(PBCoreScreen.with {
+                $0.appRoot = PBAppRootScreenRequest()
+            }).appRoot
+        }
+        if targets.contains(.settings) || targets.contains(.home) || targets.contains(.connection) {
             settingsVM = try? client.view(PBCoreScreen.with {
                 $0.settings = PBSettingsScreenRequest()
             }).settings
@@ -3707,7 +3689,6 @@ actor CoreHost: SyncEngine {
             }).directDiagnostics
         }
         let refreshSessions = targets.contains(.session)
-            || targets.contains(.sessionData)
             || (targets.contains(.attachmentDraft) && !sessionWatches.isEmpty)
             || (targets.contains(.home) && !sessionWatches.isEmpty)
         if refreshSessions {
@@ -3728,13 +3709,14 @@ actor CoreHost: SyncEngine {
         let seq = nextRenderSeq()
 
         await MainActor.run { [
-            screens, seq, homeVM, syncStateVM, projectVM, dirPickerVMs, newSessionVM,
+            screens, seq, homeVM, connectionVM, appRootVM, projectVM, dirPickerVMs, newSessionVM,
             schedulesVM, scheduleDetailVM, scheduleFormVM,
             settingsVM, machineStatusVM, machineSettingsVM, quotaVM, usageVM, devicesVM, clientDetailVM,
             directDiagnosticsVM, sessionVMs, scheduleStripVMs
         ] in
             if let homeVM, screens.acceptRender(.home, seq: seq) { screens.home = homeVM }
-            if let syncStateVM, screens.acceptRender(.syncState, seq: seq) { screens.syncState = syncStateVM }
+            if let connectionVM, screens.acceptRender(.connection, seq: seq) { screens.connection = connectionVM }
+            if let appRootVM, screens.acceptRender(.appRoot, seq: seq) { screens.appRoot = appRootVM }
             if let projectVM {
                 if projectVM.hasDetail, screens.acceptRender(.projectDetail, seq: seq) { screens.projectDetail = projectVM.detail }
                 if projectVM.hasManage, screens.acceptRender(.manageProjects, seq: seq) { screens.manageProjects = projectVM.manage }
@@ -3760,12 +3742,6 @@ actor CoreHost: SyncEngine {
             for (sid, vm) in scheduleStripVMs where screens.acceptRender(.scheduleStrip(sid), seq: seq) {
                 screens.scheduleStrips[sid] = vm
             }
-        }
-
-        if let syncStateVM, seq >= lastAppliedSyncStateSeq {
-            lastAppliedSyncStateSeq = seq
-            await executor.applyCoreSyncState(syncStateVM)
-            await maybeDescribeSelf(syncStateVM)
         }
     }
 
@@ -4304,7 +4280,7 @@ actor CoreHost: SyncEngine {
         case .connected, .unspecified, .UNRECOGNIZED:
             break
         }
-        await renderTargets([.syncState, .home, .project, .newSession, .session, .schedules, .settings, .devices, .machineSettings, .quota, .clientDetail])
+        await renderTargets([.connection, .home, .project, .newSession, .session, .schedules, .settings, .devices, .machineSettings, .quota, .clientDetail])
         if !activeMachineSettingsID.isEmpty {
             await openMachineSettings(machineID: activeMachineSettingsID)
         }
@@ -4399,7 +4375,7 @@ actor CoreHost: SyncEngine {
                 }
             }
         }
-        await renderTargets([.syncState, .home, .project, .newSession, .session, .schedules, .settings, .devices, .machineSettings, .quota, .clientDetail])
+        await renderTargets([.connection, .home, .project, .newSession, .session, .schedules, .settings, .devices, .machineSettings, .quota, .clientDetail])
         if !activeMachineSettingsID.isEmpty {
             await openMachineSettings(machineID: activeMachineSettingsID)
         }

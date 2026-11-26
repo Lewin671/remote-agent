@@ -144,26 +144,8 @@ private extension Remote {
             $0.opID = 3
             $0.fetchLists = PBCoreFetchListsRpc.with { $0.limit = 50 }
         }).listsFetched
-        var sync = PBCoreSyncStateView()
-        sync.connection = .connected
-        sync.machinesListed = true
-        sync.sessionsListed = true
         var openedSessions: [String: PBSession] = [:]
-        for m in fetched.wireMachines {
-            var sm = PBCoreSyncMachineView.with {
-                $0.machineID = m.id
-                $0.online = m.online
-                $0.lastSeenMs = m.lastSeenMs
-            }
-            if m.hasMeta, let opened = try? await openSecureMessage(
-                envelope: m.meta, want: Place(.machineMeta, machineId: m.id), as: PBMachineMeta.self) {
-                sm.meta = opened.1
-                sm.metaRev = opened.0.seq
-                sm.protocolVersion = opened.1.protocolVersion
-            }
-            sync.machines.append(sm)
-            sync.trustedMachineIds.append(m.id)
-        }
+        var routes: [PBWatchedSessionRoute] = []
         for rs in fetched.wireSessions {
             if rs.hasKey {
                 _ = try? await openEnvelopeOp(
@@ -174,15 +156,12 @@ private extension Remote {
                 envelope: rs.meta, want: Place(.sessionMeta, machineId: rs.machineID, sessionId: rs.sessionID), as: PBSession.self) {
                 openedSessions[rs.sessionID] = opened.1
             }
-            sync.sessions.append(.with {
+            routes.append(.with {
                 $0.sessionID = rs.sessionID
                 $0.machineID = rs.machineID
-                $0.lastSeq = rs.lastSeq
-                $0.updatedMs = rs.updatedMs
-                $0.listedEndedMs = rs.endedMs
             })
         }
-        applyCoreSyncState(sync)
+        setWatchedSessions(routes)
         return openedSessions
     }
 }
@@ -411,14 +390,11 @@ extension SyncServerTests {
                 let newSeed = randomBytes(32)
                 let (enrolledAcct, _) = try await w.phone.enroll(seed: newSeed, kind: .machine)
                 let st1 = try await admin.syncSecurity()
-                #expect(st1.isMember)
-                let view1 = try #require(await admin.currentCoreSyncStateView())
-                #expect(view1.trustedMachineIds.contains(enrolledAcct.deviceId))
+                #expect(st1.isMember && !st1.removed && st1.headEpoch > 0)
 
                 try await w.phone.remove([enrolledAcct.deviceId])
-                _ = try await admin.syncSecurity()
-                let view2 = try #require(await admin.currentCoreSyncStateView())
-                #expect(!view2.trustedMachineIds.contains(enrolledAcct.deviceId) && view2.archiveMachineIds.contains(enrolledAcct.deviceId))
+                let st2 = try await admin.syncSecurity()
+                #expect(st2.isMember && !st2.removed && st2.headEpoch > st1.headEpoch)
             }
         }
     }

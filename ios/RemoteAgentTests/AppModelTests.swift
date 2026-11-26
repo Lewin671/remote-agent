@@ -347,7 +347,7 @@ final class Harness {
         defer { h.cleanUp() }
         try await h.ready()
         #expect(!h.model.removed)
-        h.model.context?.core.syncState.removed = true
+        h.model.context?.core.connection.removed = true
         #expect(h.model.removed)
         #expect(h.vault.hasPersistedState())
         h.model.retryLogin()
