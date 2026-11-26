@@ -1,4 +1,3 @@
-import Connect
 import Foundation
 import RAProto
 import Testing
@@ -15,22 +14,10 @@ import Testing
 @Suite(.timeLimit(.minutes(2))) struct ErrorTextTests {
     @Test func aRequestThatNeverLeftThePhoneNamesTheNetworkNotTheResolver() {
         let cause = URLError(.cannotFindHost)
-        let e = ConnectError(code: .unknown, message: cause.localizedDescription, exception: cause)
-        #expect(errorText(e) == L10n.errorsIosCannotFindTheServerCheckYourNetwork())
         #expect(errorText(cause) == L10n.errorsIosCannotFindTheServerCheckYourNetwork())
-        #expect(unresolvedHost(e))
-        #expect(detailText(e).hasPrefix("NSURLErrorDomain -1003: "))
+        #expect(unresolvedHost(cause))
+        #expect(detailText(cause).hasPrefix("NSURLErrorDomain -1003: "))
         #expect(!unresolvedHost(URLError(.timedOut)))
-    }
-
-    @Test func aServersOwnAnswerKeepsItsText() {
-        #expect(
-            errorText(ConnectError(code: .unauthenticated, message: "token expired"))
-                == "登录失效：token expired")
-        #expect(
-            errorText(ConnectError(code: .unavailable, message: "machine is offline"))
-                == "连不上服务器：machine is offline")
-        #expect(errorText(ConnectError(code: .notFound, message: nil)) == "not_found")
     }
 
     /// What Android says for java.net's failures, said for URLSession's.
@@ -50,12 +37,6 @@ import Testing
         // A WebSocket fails with the socket's own error.
         #expect(errorText(NSError(domain: NSPOSIXErrorDomain, code: Int(ECONNREFUSED))) == L10n.connectionNoServer())
         #expect(errorText(NSError(domain: NSPOSIXErrorDomain, code: Int(ETIMEDOUT))) == L10n.errorsConnectionTimedOut())
-        // Only a request that did not leave the device is known not to have run.
-        #expect(neverSent(URLError(.cannotFindHost)))
-        #expect(neverSent(URLError(.cannotConnectToHost)))
-        #expect(!neverSent(URLError(.timedOut)))
-        #expect(!neverSent(URLError(.networkConnectionLost)))
-        #expect(!neverSent(nil))
     }
 
     @Test func anErrorOfTheAppsOwnIsSaidInItsOwnWords() {
@@ -102,17 +83,5 @@ import Testing
         // Without a commitment, as a code typed by hand makes it.
         let bare = PairLink(code: "00000000", server: "http://127.0.0.1:8080")
         #expect(PairLink.parse(bare.url(web: "http://localhost:4173")) == bare)
-    }
-}
-
-@Suite(.timeLimit(.minutes(2))) struct LoginDenialTests {
-    @Test func translatesOnlyLoginDenialAndKeepsOfflineSeparate() {
-        let denied = ConnectError(code: .permissionDenied, message: "login failed")
-        #expect(loginDenied(denied))
-        #expect(errorText(denied) == L10n.errorsTheServerDoesNotRecognizeThisDeviceItMay())
-        #expect(!loginDenied(URLError(.notConnectedToInternet)))
-        #expect(!loginDenied(ConnectError(code: .unavailable, message: nil)))
-        #expect(!loginDenied(ConnectError(code: .notFound, message: nil)))
-        #expect(errorText(ConnectError(code: .permissionDenied, message: "operation denied")) == "operation denied")
     }
 }

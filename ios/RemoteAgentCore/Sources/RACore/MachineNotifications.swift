@@ -37,11 +37,3 @@ public func receiveMachineDiskNotification(
     let body = detailed ? display.body.rendered(locale: locale) : display.fullGenericBody.rendered(locale: locale)
     return MachineDiskNotice(machineID: display.machineID, tag: display.tag, title: title, body: body)
 }
-extension Remote {
-    public func setMachinePushTarget(type: PBPushType, target: String, kinds: [PBNotifyKind]) async throws -> PBSetPushTargetResponse {
-        let headers=Api.headers(token:try await currentToken())
-        let advertised = target.isEmpty ? false : try await api.client.getPushKey(request:PBGetPushKeyRequest(),headers:headers).value().machineDiskNotifications
-        var request=PBSetPushTargetRequest();request.type=type;request.target=target;request.kinds=target.isEmpty ? [] : machineNotificationKinds(kinds,advertised:advertised)
-        return try await api.client.setPushTarget(request:request,headers:headers).value()
-    }
-}

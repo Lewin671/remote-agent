@@ -1101,25 +1101,6 @@
     "zh-CN": "已取消本次加入。旧请求可能还占着配对码：请在管理端拒绝它，再生成新的配对码"
   },
   {
-    "en": "Login expired: {value}",
-    "key": "errors.ios_login_expired",
-    "notes": "iOS Api.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 ce.message ?? \"\"；用户内容和系统/CLI 原文不翻译。",
-    "params": {
-      "value": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "登录失效：{value}"
-  },
-  {
     "en": "Only the device itself can change its name",
     "key": "errors.ios_only_the_device_itself_can_change_its_name",
     "notes": "iOS RemoteLists.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
@@ -1259,25 +1240,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "{value}。原请求和密钥已保留，可重试；若批准已过期或被拒绝，可退出并重新配对。"
-  },
-  {
-    "en": "The request may have arrived, but login then failed ({value})",
-    "key": "errors.ios_the_request_may_have_arrived_but_login_then_failed",
-    "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 errorText(error)；用户内容和系统/CLI 原文不翻译。",
-    "params": {
-      "value": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "请求可能已经送到，之后登录失败（{value}）"
   },
   {
     "en": "This deletes the account keys and cache on this phone. Sessions on your computers are unaffected.",

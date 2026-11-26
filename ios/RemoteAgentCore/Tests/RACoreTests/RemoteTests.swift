@@ -138,15 +138,22 @@ private final class Frames: TermListener, Sendable {
 private extension Remote {
     @discardableResult
     func hydrateExecutorState() async throws -> [String: PBSession] {
-        _ = await ensureToken(opId: 1, forceLogin: false, timeoutMs: 15_000)
         _ = try await syncSecurity()
-        let fetched = await executeRpc(PBCoreRpcEffect.with {
-            $0.opID = 3
-            $0.fetchLists = PBCoreFetchListsRpc.with { $0.limit = 50 }
-        }).listsFetched
+        let tok = await currentToken()
+        let reqBytes = try PBListRemoteSessionsRequest.with { $0.limit = 50 }.serializedData()
+        let res = await SecurityExecutor.executeRelayRpcUnary(
+            http: http,
+            method: .listRemoteSessions,
+            server: origin.server,
+            authToken: tok,
+            requestBytes: reqBytes,
+            allowPlainHttp: allowPlainHttp,
+            opID: 3
+        )
+        let listed = try PBListRemoteSessionsResponse(serializedBytes: res?.responseBytes ?? Data())
         var openedSessions: [String: PBSession] = [:]
         var routes: [PBWatchedSessionRoute] = []
-        for rs in fetched.wireSessions {
+        for rs in listed.sessions {
             if rs.hasKey {
                 _ = try? await openEnvelopeOp(
                     envelope: rs.key, expectedPurpose: .sessionKey,
@@ -236,10 +243,10 @@ extension SyncServerTests {
         @Test func aQuietSocketThatIsAnsweredStaysOpen() async throws {
             try await world { w in
                 let acct = try await w.join()
-                let api = try Api(server: w.server.url, http: w.http)
+                let api = try TestApi(server: w.server.url, http: w.http)
                 let store = try #require(TestSecurity.find(w.server.url)?.store(acct.deviceId))
                 var hello = PBPeerFrame()
-                hello.hello.token = try await loginWithStore(api: api, deviceId: acct.deviceId, store: store).token
+                hello.hello.token = try await testLoginWithStore(api: api, deviceId: acct.deviceId, store: store).token
                 let http = HTTP(), ready = Signal(), answered = Signal()
                 let ticks = Counter()
                 let parked = AsyncStream<Void>.makeStream()
@@ -380,21 +387,6 @@ extension SyncServerTests {
                 }
                 w.server.stop()
                 await #expect(throws: (any Error).self) { try await r.pingServer(timeoutMs: 2_000) }
-            }
-        }
-
-        @Test func syncSecurityReflectsEnrolledAndRemovedDevices() async throws {
-            try await world { w in
-                let admin = try await w.remote(w.phone.account)
-                try await admin.ensureSecurityBootstrapped()
-                let newSeed = randomBytes(32)
-                let (enrolledAcct, _) = try await w.phone.enroll(seed: newSeed, kind: .machine)
-                let st1 = try await admin.syncSecurity()
-                #expect(st1.isMember && !st1.removed && st1.headEpoch > 0)
-
-                try await w.phone.remove([enrolledAcct.deviceId])
-                let st2 = try await admin.syncSecurity()
-                #expect(st2.isMember && !st2.removed && st2.headEpoch > st1.headEpoch)
             }
         }
     }

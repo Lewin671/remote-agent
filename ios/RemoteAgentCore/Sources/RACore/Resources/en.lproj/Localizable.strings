@@ -141,7 +141,6 @@
 "connection_ios_host" = "Server  %1$@";
 "connection_ios_reason" = "Reason  %1$@";
 "connection_ios_retry_now" = "Retry now";
-"connection_ios_server_error" = "Cannot reach the server: %1$@";
 "connection_last_failure" = "Last failure: %1$@";
 "connection_latency_footer_direct" = "Latency is one round trip. The server row measures this device to the server; computer rows measure a direct round trip to the computer.";
 "connection_latency_footer_mixed" = "Latency is one round trip. The server row measures this device to the server; each computer row follows its active route—directly to the computer when using direct, or through the server when using relay.";
@@ -224,7 +223,6 @@
 "errors_ios_image_content_or_origin_could_not_be_verified" = "Image content or origin could not be verified";
 "errors_ios_invalid_server_address" = "Invalid server address";
 "errors_ios_joining_canceled_the_old_request_may_still_occupy_the" = "Joining canceled. The old request may still occupy the code: reject it on the managing client, then generate a new pairing code.";
-"errors_ios_login_expired" = "Login expired: %1$@";
 "errors_ios_only_the_device_itself_can_change_its_name" = "Only the device itself can change its name";
 "errors_ios_recovery_request_state_may_be_out_of_date_connect" = "Recovery request state may be out of date. Connect to the server and verify again.";
 "errors_ios_remote_control_expired_saving_changes_session_control_and_new" = "Remote control expired. Saving changes, session control, and new uploads are paused. Open Settings › Account security to find the managing client and renew, then retry. History remains available.";
@@ -234,7 +232,6 @@
 "errors_ios_terminal_input_failed_to_send_stopped" = "Terminal input failed to send. Stopped.";
 "errors_ios_terminal_input_waiting_to_send_stopped" = "Terminal input waiting to send. Stopped.";
 "errors_ios_the_original_request_and_keys_are_retained_retry_if" = "%1$@. The original request and keys are retained. Retry; if approval has expired or was denied, exit and pair again.";
-"errors_ios_the_request_may_have_arrived_but_login_then_failed" = "The request may have arrived, but login then failed (%1$@)";
 "errors_ios_this_deletes_the_account_keys_and_cache_on_this" = "This deletes the account keys and cache on this phone. Sessions on your computers are unaffected.";
 "errors_ios_unknown_session" = "Unknown session";
 "errors_ios_unsure_whether_the_computer_executed_this" = "Unsure whether the computer executed this: %1$@";

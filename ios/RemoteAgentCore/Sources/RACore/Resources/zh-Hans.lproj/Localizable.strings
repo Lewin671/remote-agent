@@ -141,7 +141,6 @@
 "connection_ios_host" = "服务器　%1$@";
 "connection_ios_reason" = "原因　%1$@";
 "connection_ios_retry_now" = "重试";
-"connection_ios_server_error" = "连不上服务器：%1$@";
 "connection_last_failure" = "上一次失败：%1$@";
 "connection_latency_footer_direct" = "延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经直连往返电脑。";
 "connection_latency_footer_mixed" = "延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行按当前路线测量，走直连时直接往返电脑，走中继时经服务器再回来。";
@@ -224,7 +223,6 @@
 "errors_ios_image_content_or_origin_could_not_be_verified" = "图片的内容或来源无法核实";
 "errors_ios_invalid_server_address" = "server 地址无效";
 "errors_ios_joining_canceled_the_old_request_may_still_occupy_the" = "已取消本次加入。旧请求可能还占着配对码：请在管理端拒绝它，再生成新的配对码";
-"errors_ios_login_expired" = "登录失效：%1$@";
 "errors_ios_only_the_device_itself_can_change_its_name" = "名称只能在那台设备上修改";
 "errors_ios_recovery_request_state_may_be_out_of_date_connect" = "恢复申请状态可能过期，请连接服务器后重新核实。";
 "errors_ios_remote_control_expired_saving_changes_session_control_and_new" = "远程控制有效期已过，无法保存更改、控制会话或上传新内容；在「设置 › 账户安全」查看管理端并续期后重试。历史仍可查看";
@@ -234,7 +232,6 @@
 "errors_ios_terminal_input_failed_to_send_stopped" = "终端输入发送失败，已停止";
 "errors_ios_terminal_input_waiting_to_send_stopped" = "终端输入等待发送，已停止";
 "errors_ios_the_original_request_and_keys_are_retained_retry_if" = "%1$@。原请求和密钥已保留，可重试；若批准已过期或被拒绝，可退出并重新配对。";
-"errors_ios_the_request_may_have_arrived_but_login_then_failed" = "请求可能已经送到，之后登录失败（%1$@）";
 "errors_ios_this_deletes_the_account_keys_and_cache_on_this" = "这会删除这台手机上的账户密钥和缓存，电脑上的会话不受影响。";
 "errors_ios_unknown_session" = "未知会话";
 "errors_ios_unsure_whether_the_computer_executed_this" = "不确定电脑有没有执行：%1$@";

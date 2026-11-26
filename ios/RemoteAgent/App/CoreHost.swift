@@ -116,15 +116,11 @@ protocol CoreHostExecutor: AnyObject, Sendable {
     var directServerHost: String { get }
     var directConfiguredStun: String { get }
     func installCoreHooks(_ hooks: Remote.CoreHooks) async
-    func setNetworkGeneration(_ gen: UInt64) async
-    func ensureToken(opId: UInt64, forceLogin: Bool, timeoutMs: Int64) async -> PBCoreTokenResultEvent
-    func discardToken(_ rejected: String) async
-    func openStream(legId: UInt64, token: String, callbacks: Remote.StreamCallbacks) async
+    func openStream(legId: UInt64, helloFrame: Data, callbacks: Remote.StreamCallbacks) async
     func closeStream(legId: UInt64) async
     func executeCacheRead(_ effect: PBCoreCacheReadEffect) async -> PBCoreEvent
     func executeCacheWrite(_ effect: PBCoreCacheWriteEffect) async
     func executeCacheDelete(_ effect: PBCoreCacheDeleteEffect, onSessionRemoved: (@Sendable (String) async -> Void)?) async
-    func executeRpc(_ effect: PBCoreRpcEffect) async -> PBCoreEvent
     func dispatchCommandAttempt(_ effect: PBCoreDispatchCommandEffect) async -> PBCoreCommandOutcomeEvent
     func setWatchedSessions(_ routes: [PBWatchedSessionRoute]) async
     func cachedScheduleResultJson(_ machineId: String) async -> Data?
@@ -133,7 +129,7 @@ protocol CoreHostExecutor: AnyObject, Sendable {
     func loadDirectPreferences() -> [String: Bool]
     func persistDirectPreference(_ machineId: String, enabled: Bool)
     func detachDirectStreams()
-    var optionalSecurityExecutor: SecurityExecutor? { get }
+    func handleCoreSecurityEffect(_ eff: PBCoreEffect)
     var optionalSecurityClient: SecurityClient? { get }
     func ensureSecurityBootstrapped() async throws
     func setSecurityForeground(_ foreground: Bool) async
@@ -160,8 +156,8 @@ extension CoreHostExecutor {
     var directSupported: Bool { false }
     var directServerHost: String { "" }
     var directConfiguredStun: String { "" }
-    var optionalSecurityExecutor: SecurityExecutor? { nil }
     var optionalSecurityClient: SecurityClient? { nil }
+    func handleCoreSecurityEffect(_ eff: PBCoreEffect) {}
     func ensureSecurityBootstrapped() async throws {}
     func setSecurityForeground(_ foreground: Bool) async {}
     func applySecurityTokenUpdated(_ eff: PBSecurityTokenUpdatedEffect) async {}
@@ -185,13 +181,14 @@ extension CoreHostExecutor {
     func handleTerminalDirectDeliver(_ eff: PBCoreTerminalDirectDeliverEffect) {}
     func handleTerminalDirectAttachRelay(_ eff: PBCoreTerminalDirectAttachRelayEffect) {}
     func handleTerminalDirectState(_ eff: PBCoreTerminalDirectStateEffect) {}
-    func discardToken(_ rejected: String) async {}
     func setWatchedSessions(_ routes: [PBWatchedSessionRoute]) async {}
     func renameDevice(_ id: String, name: String) async throws {}
 }
 
 extension Remote: CoreHostExecutor {
-    nonisolated var optionalSecurityExecutor: SecurityExecutor? { securityExecutor }
+    nonisolated func handleCoreSecurityEffect(_ eff: PBCoreEffect) {
+        _ = securityExecutor.handleEffect(eff)
+    }
     nonisolated var optionalSecurityClient: SecurityClient? { securityClient }
 }
 
@@ -471,7 +468,6 @@ actor CoreHost: SyncEngine {
     private var demoMode: Bool
     private var started = false
     private var foregrounded = false
-    private var networkGen: UInt64 = 0
     private var lastNetworkAvailable = true
     private var lastNetworkSignature = ""
 
@@ -641,7 +637,7 @@ actor CoreHost: SyncEngine {
                 await self?.reconnectNowAsync()
             },
             onRefreshDevices: { [weak self] in
-                _ = try? await self?.executor.syncSecurity(touch: false)
+                await self?.dispatch { $0.refreshDevices = PBRefreshDevicesAction() }
             },
             onSecurityOp: { [weak self] req in
                 await self?.runSecurityOp(req) ?? .with {
@@ -753,21 +749,22 @@ actor CoreHost: SyncEngine {
                     }
                 }
             }
-            if executor.optionalSecurityExecutor != nil {
-                let desc = await deviceDescription()
-                await dispatch {
-                    $0.securityConfig = .with {
-                        $0.account = acct.accountId
-                        $0.deviceID = acct.deviceId
-                        $0.server = acct.server
-                        $0.inlineCrypto = true
-                        $0.foreground = self.foregrounded
-                        $0.platform = "ios"
-                        $0.deviceDescription = desc
-                    }
-                }
-                try? await executor.ensureSecurityBootstrapped()
+            await dispatch {
+                $0.relayPipeConfig = .with { $0.enabled = true }
             }
+            let desc = await deviceDescription()
+            await dispatch {
+                $0.securityConfig = .with {
+                    $0.account = acct.accountId
+                    $0.deviceID = acct.deviceId
+                    $0.server = acct.server
+                    $0.inlineCrypto = true
+                    $0.foreground = self.foregrounded
+                    $0.platform = "ios"
+                    $0.deviceDescription = desc
+                }
+            }
+            try? await executor.ensureSecurityBootstrapped()
         }
         let savedScope = defaults.homeScopeToken()
         await dispatch { [scopeHmacKey] ev in
@@ -894,13 +891,8 @@ actor CoreHost: SyncEngine {
 
     private func handleNetworkChange(signature: String, available: Bool) async {
         guard !closed else { return }
-        let changed = available != lastNetworkAvailable || signature != lastNetworkSignature
         lastNetworkAvailable = available
         lastNetworkSignature = signature
-        if changed {
-            networkGen &+= 1
-            await executor.setNetworkGeneration(networkGen)
-        }
         await dispatch {
             $0.networkChanged = .with {
                 $0.available = available
@@ -2365,9 +2357,14 @@ actor CoreHost: SyncEngine {
 
 #if DEBUG
     private var debugEventObserver: (@Sendable (PBCoreEvent) -> Void)?
+    private var debugEffectObserver: (@Sendable ([PBCoreEffect]) -> Void)?
 
     func setDebugEventObserver(_ observer: (@Sendable (PBCoreEvent) -> Void)?) {
         debugEventObserver = observer
+    }
+
+    func setDebugEffectObserver(_ observer: (@Sendable ([PBCoreEffect]) -> Void)?) {
+        debugEffectObserver = observer
     }
 #endif
 
@@ -2390,6 +2387,9 @@ actor CoreHost: SyncEngine {
         replenishEntropy(minIds: 8, minFloats: 8)
         do {
             let batch = try client.dispatch(envelope)
+#if DEBUG
+            debugEffectObserver?(batch.effects)
+#endif
             enqueueSharedFileStorageEffects(batch.effects)
             enqueueDraftStorageEffects(batch.effects)
             await handleEffects(batch.effects)
@@ -2570,21 +2570,18 @@ actor CoreHost: SyncEngine {
             case .openStream(let s):
                 guard !demoMode else { continue }
                 let legId = s.legID
-                let tok = s.token
+                let hello = s.helloFrame
                 await executor.openStream(
                     legId: legId,
-                    token: tok,
+                    helloFrame: hello,
                     callbacks: Remote.StreamCallbacks(
-                        onReady: { [weak self] id, serverTimeMs in
+                        onRawFrame: { [weak self] id, raw in
                             await self?.dispatch {
-                                $0.streamReady = .with {
+                                $0.streamRawFrame = .with {
                                     $0.legID = id
-                                    $0.serverTimeMs = serverTimeMs
+                                    $0.rawServerFrame = raw
                                 }
                             }
-                        },
-                        onFrame: { [weak self] frameEvent in
-                            await self?.dispatch { $0.streamFrame = frameEvent }
                         },
                         onClosed: { [weak self] closedEvent in
                             await self?.dispatch { $0.streamClosed = closedEvent }
@@ -2596,23 +2593,10 @@ actor CoreHost: SyncEngine {
                 guard !demoMode else { continue }
                 await executor.closeStream(legId: s.legID)
 
-            case .ensureToken(let req):
-                guard !demoMode else { continue }
-                spawnIO { host in
-                    let res = await host.executor.ensureToken(
-                        opId: req.opID,
-                        forceLogin: req.forceLogin,
-                        timeoutMs: req.timeoutMs
-                    )
-                    await host.dispatch { $0.tokenResult = res }
-                }
-
-            case .discardToken(let d):
-                guard !demoMode else { continue }
-                let tok = d.token
-                spawnIO { host in
-                    await host.executor.discardToken(tok)
-                }
+            case .ensureToken, .discardToken:
+                // Legacy token effects are unused in production (relayPipeConfig enables Core-managed auth);
+                // demo mode handles bootstrap synchronously.
+                continue
 
             case .securityNotifyOpened:
                 break
@@ -2649,14 +2633,8 @@ actor CoreHost: SyncEngine {
                 }
 
             case .rpc(let r):
-                if demoMode {
-                    if let ev = demoRpcReply(r) { demoReplies.append(ev) }
-                    continue
-                }
-                spawnIO { host in
-                    let event = await host.executor.executeRpc(r)
-                    await host.dispatch(event)
-                }
+                guard demoMode else { continue }
+                if let ev = demoRpcReply(r) { demoReplies.append(ev) }
 
             case .dispatchCommand(let c):
                 await handleDispatchCommand(c)
@@ -2814,9 +2792,10 @@ actor CoreHost: SyncEngine {
                 executor.handleTerminalDirectState(eff)
 
             case .securityKeyGenerate, .securityKeySign, .securityKeyAgree,
-                 .securityKeyEncapsulate, .securityKeyDiscard, .securityStorage, .securityRpc:
+                 .securityKeyEncapsulate, .securityKeyDiscard, .securityStorage,
+                 .securityRpc, .relayRpc, .relayRpcCancel:
                 guard !demoMode else { continue }
-                _ = executor.optionalSecurityExecutor?.handleEffect(eff)
+                executor.handleCoreSecurityEffect(eff)
 
             case .securityTokenUpdated(let eff):
                 guard !demoMode else { continue }
@@ -2890,7 +2869,13 @@ actor CoreHost: SyncEngine {
                 }
 
             case .usageCacheWrite(let eff):
-                defaults.saveUsageCache(machineID: eff.machineID, snapshot: eff.snapshot)
+                if !eff.rawSnapshot.isEmpty,
+                   let snap = try? PBUsageStatsResponse(serializedBytes: eff.rawSnapshot)
+                {
+                    defaults.saveUsageCache(machineID: eff.machineID, snapshot: snap)
+                } else if eff.hasSnapshot {
+                    defaults.saveUsageCache(machineID: eff.machineID, snapshot: eff.snapshot)
+                }
                 if !closed {
                     await dispatch {
                         $0.usageCacheWritten.machineID = eff.machineID
@@ -2914,8 +2899,6 @@ actor CoreHost: SyncEngine {
                 break
 
             case .scheduleWriteCache,
-                 .relayRpc,
-                 .relayRpcCancel,
                  .pushRpcResult,
                  .sessionImageLoaded,
                  .terminalOpenSocket,

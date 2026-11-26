@@ -1,9 +1,7 @@
-import Connect
 import Foundation
-import RAProto
 import os
 
-/// Owns logical stream tracking and relay delivery attempts;
+/// Owns logical stream tracking over the relay WebSocket path;
 /// Core owns route selection, command lifecycle, retries, and outcome classification.
 final class Link: Sendable {
     let relay: RelayPath
@@ -15,24 +13,6 @@ final class Link: Sendable {
 
     init(relay: RelayPath) {
         self.relay = relay
-    }
-
-    func delivery(
-        attemptId: String = newRequestId(),
-        handoff: @escaping @Sendable () throws -> Void = {}
-    ) -> Delivery {
-        Delivery(path: relay, attemptId: attemptId, handoff: handoff)
-    }
-
-    final class Delivery: PathAttempt {
-        var attemptId: String { attempt.attemptId }
-        private let attempt: any PathAttempt
-        init(path: RelayPath, attemptId: String, handoff: @escaping @Sendable () throws -> Void) {
-            attempt = path.attempt(attemptId: attemptId, handoff: handoff)
-        }
-        func prepare(prior: Bool) async throws { try await attempt.prepare(prior: prior) }
-        func send(machineId: String, command: PBEnvelope) async throws -> PBForwardResponse { try await attempt.send(machineId: machineId, command: command) }
-        func refusal(_ error: ConnectError) -> PathRefusal? { attempt.refusal(error) }
     }
 
     func openStream(stop: @escaping @Sendable (Bool) -> Void, onClose: @escaping @Sendable (String) -> Void) -> Stream {

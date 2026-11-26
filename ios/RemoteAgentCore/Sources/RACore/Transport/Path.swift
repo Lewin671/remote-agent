@@ -1,6 +1,4 @@
-import Connect
 import Foundation
-import RAProto
 
 struct PathEnd: Sendable {
     var closeCode: Int?
@@ -24,16 +22,8 @@ extension FrameStream {
 }
 
 struct PathChanged: Error, Sendable {}
-struct PathRefusal: Sendable { let reason: String }
-protocol PathAttempt: Sendable {
-    var attemptId: String { get }
-    func prepare(prior: Bool) async throws
-    func send(machineId: String, command: PBEnvelope) async throws -> PBForwardResponse
-    func refusal(_ error: ConnectError) -> PathRefusal?
-}
 
-/// Paths carry routing and sealed bytes, never command bodies or keys.
+/// Paths carry raw stream frames only; unary RPCs flow through Core's byte-pipe `RelayRpcEffect`.
 protocol Path: Sendable {
-    func attempt(handoff: @escaping @Sendable () throws -> Void) -> any PathAttempt
     func openStream(_ route: String, hello: Data) -> any FrameStream
 }

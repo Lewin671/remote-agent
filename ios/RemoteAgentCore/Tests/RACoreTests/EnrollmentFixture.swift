@@ -13,7 +13,7 @@ final class SyntheticPhone: @unchecked Sendable {
     let accountPublicKey: Data
     let server: String
     let http: HTTP
-    let api: Api
+    let api: TestApi
     let token: String
     let fixture: TestSecurity
 
@@ -22,7 +22,7 @@ final class SyntheticPhone: @unchecked Sendable {
         accountPublicKey: Data,
         server: String,
         http: HTTP,
-        api: Api,
+        api: TestApi,
         token: String,
         fixture: TestSecurity
     ) {
@@ -54,13 +54,13 @@ final class SyntheticPhone: @unchecked Sendable {
         reg.createdMs = Int64(Date().timeIntervalSince1970 * 1000)
         let regBytes = try reg.serializedData()
         let sig = try testEdSign(root, Data(testRegisterContext.utf8) + regBytes)
-        let api = try Api(server: server, http: http)
+        let api = try TestApi(server: server, http: http)
         var regReq = PBRegisterDeviceRequest()
         regReq.protocolVersion = relayProtocolVersion
         regReq.registration = regBytes
         regReq.signature = sig
         regReq.setupToken = setupToken
-        let regRes = try await api.auth.registerDevice(request: regReq).value()
+        let regRes = try await api.auth.registerDevice(request: regReq).testValue()
         guard regRes.deviceID == devId else { throw TestFailure("registered deviceId mismatch") }
 
         let phoneAccount = Account(server: api.server, deviceId: devId, accountId: accountId)
@@ -71,14 +71,14 @@ final class SyntheticPhone: @unchecked Sendable {
             recovery: recoverySeed
         )
         guard let store = fixture.store(devId) else { throw TestFailure("phone store missing") }
-        let tok = try await loginWithStore(api: api, deviceId: devId, store: store).token
+        let tok = try await testLoginWithStore(api: api, deviceId: devId, store: store).token
         var pinReq = PBPinSecurityDomainRequest()
         pinReq.genesisState = genesis
-        _ = try await api.client.pinSecurityDomain(request: pinReq, headers: Api.headers(token: tok)).value()
+        _ = try await api.client.pinSecurityDomain(request: pinReq, headers: TestApi.headers(token: tok)).testValue()
         let rec = try fixture.record(member: devId)
         var leaseReq = PBPutSecurityStateRequest()
         leaseReq.lease = rec.lease
-        _ = try await api.client.putSecurityState(request: leaseReq, headers: Api.headers(token: tok)).value()
+        _ = try await api.client.putSecurityState(request: leaseReq, headers: TestApi.headers(token: tok)).testValue()
         fixture.syncStoresForAll()
         return SyntheticPhone(
             account: phoneAccount,
@@ -124,7 +124,7 @@ final class SyntheticPhone: @unchecked Sendable {
         req.registration = regBytes
         req.approval = approvalBytes
         req.approvalSignature = approvalSig
-        let res = try await api.auth.registerDevice(request: req).value()
+        let res = try await api.auth.registerDevice(request: req).testValue()
         guard res.deviceID == rec.member else { throw TestFailure("enrolled deviceId mismatch") }
 
         try fixture.seedMemberStore(rec, edSeed: seed)
@@ -145,6 +145,6 @@ final class SyntheticPhone: @unchecked Sendable {
         var s = PBSecurityState()
         s.state = state
         req.states = [s]
-        _ = try await api.client.putSecurityState(request: req, headers: Api.headers(token: token)).value()
+        _ = try await api.client.putSecurityState(request: req, headers: TestApi.headers(token: token)).testValue()
     }
 }

@@ -1,4 +1,3 @@
-import Connect
 import Foundation
 import os
 import RAProto
@@ -25,10 +24,10 @@ public enum ImageResult: Equatable, Sendable {
 }
 
 extension Remote {
-    // MARK: - M2 Core Command Attempt Executor
+    // MARK: - Direct DataChannel Command Executor (relay legs run in Core)
 
-    /// Executes a single Core-managed command attempt and returns raw cryptographic and transport
-    /// evidence in `PBCoreCommandOutcomeEvent`. Core owns retry scheduling, freezing, and outcome classification.
+    /// Executes a single Core-managed direct DataChannel command attempt and returns raw
+    /// cryptographic and transport evidence in `PBCoreCommandOutcomeEvent`.
     public func dispatchCommandAttempt(_ effect: PBCoreDispatchCommandEffect) async -> PBCoreCommandOutcomeEvent {
         var ev = PBCoreCommandOutcomeEvent()
         ev.requestID = effect.requestID
@@ -42,73 +41,41 @@ extension Remote {
             return ev
         }
 
-        let cmd = try? PBCommand(serializedBytes: effect.commandBytes)
-
         let useDirect = effect.routeLeg == .direct && effect.directPcID > 0
+        guard useDirect else {
+            ev.source = .local
+            ev.notForwarded = true
+            ev.transportCode = "failed_precondition"
+            ev.transportDetail = "relay_leg_handled_by_core"
+            return ev
+        }
+
         let handedOffLock = OSAllocatedUnfairLock(initialState: false)
         let handoff: @Sendable () throws -> Void = {
             handedOffLock.withLock { $0 = true }
         }
-        let relayAttempt = useDirect ? nil : deviceLink.delivery(attemptId: effect.attemptID, handoff: handoff)
-        ev.routeWasDirect = useDirect
+        ev.routeWasDirect = true
         let started = ContinuousClock.now
         func elapsed() -> Double {
             Double(max((ContinuousClock.now - started).milliseconds, 1))
         }
 
         do {
-            if let relayAttempt {
-                try await relayAttempt.prepare(prior: effect.retryOfUnknown)
-            }
-
-            let envelope = effect.sealedEnvelope
             try Task.checkCancellation()
-
-            let res: PBForwardResponse
-            if useDirect {
-                let rawEnv = try envelope.serializedData()
-                let directEnv = try await directExecutor.sendRpc(
-                    pcId: effect.directPcID,
-                    requestId: effect.requestID,
-                    sealedBytes: rawEnv,
-                    timeoutMs: effect.directTimeoutMs,
-                    handoff: handoff
-                )
-                res = PBForwardResponse.with {
-                    $0.result = directEnv
-                    $0.attemptID = effect.attemptID
-                }
-            } else {
-                res = try await relayAttempt!.send(machineId: effect.machineID, command: envelope)
-            }
+            let rawEnv = try effect.sealedEnvelope.serializedData()
+            let directEnv = try await directExecutor.sendRpc(
+                pcId: effect.directPcID,
+                requestId: effect.requestID,
+                sealedBytes: rawEnv,
+                timeoutMs: effect.directTimeoutMs,
+                handoff: handoff
+            )
             ev.elapsedMs = elapsed()
             ev.handedOff = handedOffLock.withLock { $0 }
-
-            let bound = res.attemptID == effect.attemptID
-            if bound,
-               let cmd, case .schedule(let req)? = cmd.kind, req.operation == "list",
-               res.hasResult,
-               let (_, msg) = try? await openSecureMessage(
-                   envelope: res.result,
-                   want: Place(
-                       .commandResult,
-                       machineId: effect.machineID,
-                       sessionId: effect.sessionID,
-                       requestId: effect.requestID),
-                   as: PBCommandResult.self),
-               msg.outcome == "executed", msg.errorCode.isEmpty, msg.resultAvailable,
-               case .schedule? = msg.kind,
-               let envBytes = try? res.result.serializedData() {
-                await keepScheduleSnapshot(effect.machineID, data: envBytes)
-            }
             ev.source = .daemon
             ev.notForwarded = false
-            ev.attemptBound = bound
-            ev.outerOutcome = useDirect ? "" : res.outcome
-            ev.outerReason = useDirect ? "" : res.reason
-            if res.hasResult {
-                ev.sealedResult = res.result
-            }
+            ev.attemptBound = true
+            ev.sealedResult = directEnv
             return ev
         } catch let error as CommandError {
             ev.elapsedMs = elapsed()
@@ -118,37 +85,6 @@ extension Remote {
             ev.notForwarded = !handedOff
             ev.transportCode = error.code
             ev.transportDetail = error.message
-            return ev
-        } catch let error as ConnectError {
-            ev.elapsedMs = elapsed()
-            let handedOff = handedOffLock.withLock { $0 }
-            ev.handedOff = handedOff
-            if let relayAttempt, let refusal = relayAttempt.refusal(error) {
-                if error.code == .unauthenticated { dropToken() }
-                ev.source = .server
-                ev.notForwarded = true
-                ev.attemptBound = true
-                ev.outerReason = refusal.reason
-                ev.transportCode = error.code.name
-                ev.transportDetail = errorText(error)
-            } else if error.code == .unauthenticated {
-                dropToken()
-                ev.source = .server
-                ev.notForwarded = !handedOff
-                ev.transportCode = "unauthenticated"
-                ev.transportDetail = errorText(error)
-            } else if error.code == .unavailable {
-                ev.source = .transport
-                ev.notForwarded = !handedOff
-                ev.transportCode = CommandError.unavailable
-                ev.transportDetail = errorText(error)
-            } else {
-                ev.source = .server
-                ev.notForwarded = !handedOff
-                ev.attemptBound = false
-                ev.transportCode = error.code.name
-                ev.transportDetail = errorText(error)
-            }
             return ev
         } catch is PathChanged {
             ev.elapsedMs = elapsed()
@@ -194,7 +130,7 @@ extension Remote {
     }
 
     public nonisolated func pingServer(timeoutMs: Int64 = 8_000) async throws -> Int64 {
-        var request = URLRequest(url: URL(string: api.server + "/healthz")!)
+        var request = URLRequest(url: URL(string: origin.server + "/healthz")!)
         request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
         let http = self.http
         let started = ContinuousClock.now
@@ -227,23 +163,17 @@ extension Remote {
         return (ContinuousClock.now - started).milliseconds
     }
 
-    func relogin(_ mayHaveRun: Bool) async throws -> String {
-        do {
-            return try await signIn()
-        } catch {
-            if !mayHaveRun { throw error }
-            throw CommandError.unknownBecause(
-                L10n.errorsIosTheRequestMayHaveArrivedButLoginThenFailed(value: String(describing: errorText(error))))
+    /// The bearer token last issued by Core's security engine (transitional for Step 4 terminal/image).
+    public func currentToken() async -> String {
+        if let t = cachedToken?.token, !t.isEmpty { return t }
+        if let saved = securityStore.loadLoginToken(server: account.server, deviceId: account.deviceId), !saved.token.isEmpty {
+            cachedToken = saved
+            return saved.token
         }
+        return ""
     }
 
-    /// The bearer token of the current login, for services used outside this class.
-    public func currentToken() async throws -> String {
-        if token.isEmpty { return try await signIn() }
-        return token
-    }
-
-    // --- images ---
+    // --- images (migrates to Core SessionFetchImageAction in Step 4) ---
 
     public func image(_ sid: String, imageId: String) async throws -> ImageResult {
         guard let machineId = machineIdForSessionIfKnown(sid), await hasSessionSeed(sid) else {
@@ -255,15 +185,25 @@ extension Remote {
             var askReq = PBGetImageRequest()
             askReq.sessionID = sid
             askReq.imageID = imageId
-            let ask = askReq
-            let r: PBGetImageResponse
-            do {
-                r = try await withAuthRetry { [api] headers in
-                    try await api.client.getImage(request: ask, headers: headers).value()
+            let reqBytes = try askReq.serializedData()
+            let res = await SecurityExecutor.executeRelayRpcUnary(
+                http: http,
+                method: .getImage,
+                server: origin.server,
+                authToken: await currentToken(),
+                requestBytes: reqBytes,
+                allowPlainHttp: allowPlainHttp
+            )
+            guard let res else { throw CancellationError() }
+            if res.connectCode == 5 { return .missing }
+            if res.connectCode != 0 || res.networkError || res.unresolvedHost {
+                let code = res.unresolvedHost ? "unresolved_host" : "unavailable"
+                if res.diagnosticMessage.isEmpty {
+                    throw CommandError(code, L10nMessage.connectionNoServer())
                 }
-            } catch let e as ConnectError where e.code == .notFound {
-                return .missing
+                throw CommandError(code, res.diagnosticMessage)
             }
+            let r = try PBGetImageResponse(serializedBytes: res.responseBytes)
             if r.expired || !r.hasImage { return .expired }
             env = r.image
         }

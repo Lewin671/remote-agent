@@ -1,9 +1,114 @@
+import Connect
 import Foundation
 import RAProto
+import SwiftProtobuf
 import Testing
 import os
 
 @testable import RACore
+
+extension HTTP: HTTPClientInterface {
+    @discardableResult
+    public func unary(
+        request: HTTPRequest<Data?>, onMetrics: @escaping @Sendable (HTTPMetrics) -> Void,
+        onResponse: @escaping @Sendable (HTTPResponse) -> Void
+    ) -> Cancelable {
+        var r = URLRequest(url: request.url)
+        r.httpMethod = request.method.rawValue
+        r.httpBody = request.message
+        for (name, values) in request.headers {
+            r.setValue(values.joined(separator: ","), forHTTPHeaderField: name)
+        }
+        let task = session.dataTask(with: r) { data, response, error in
+            if error == nil, let http = response as? HTTPURLResponse {
+                var headers = Headers()
+                for (k, v) in http.allHeaderFields {
+                    guard let name = (k as? String)?.lowercased() else { continue }
+                    let value = v as? String ?? String(describing: v)
+                    headers[name] = value.components(separatedBy: ",").map {
+                        $0.trimmingCharacters(in: .whitespaces)
+                    }
+                }
+                onResponse(
+                    HTTPResponse(
+                        code: Code.fromHTTPStatus(http.statusCode), headers: headers, message: data,
+                        trailers: [:],
+                        error: nil, tracingInfo: .init(httpStatus: http.statusCode)))
+                return
+            }
+            let failure = error ?? URLError(.badServerResponse)
+            let code: Code
+            switch (failure as? URLError)?.code {
+            case .timedOut?: code = .deadlineExceeded
+            case .cancelled?: code = .canceled
+            default: code = .unknown
+            }
+            onResponse(
+                HTTPResponse(
+                    code: code, headers: [:], message: nil, trailers: [:],
+                    error: ConnectError(
+                        code: code, message: failure.localizedDescription, exception: failure),
+                    tracingInfo: nil))
+        }
+        task.resume()
+        return Cancelable { task.cancel() }
+    }
+
+    public func stream(request: HTTPRequest<Data?>, responseCallbacks: ResponseCallbacks)
+        -> RequestCallbacks<Data>
+    {
+        responseCallbacks.receiveClose(
+            .unimplemented, [:],
+            ConnectError(code: .unimplemented, message: "streaming RPCs are not used"))
+        return RequestCallbacks(cancel: {}, sendData: { _ in }, sendClose: {})
+    }
+}
+
+/// Test-only Connect client wrapper used by `FakeDaemon`, `SyntheticPhone`, and test fixtures.
+struct TestApi: Sendable {
+    let origin: RelayOrigin
+    var server: String { origin.server }
+    let protocolClient: ProtocolClient
+    let auth: PBAuthServiceClient
+    let client: PBClientServiceClient
+
+    init(server: String, http: HTTP) throws {
+        origin = try RelayOrigin(server: server)
+        protocolClient = ProtocolClient(
+            httpClient: http,
+            config: ProtocolClientConfig(
+                host: origin.server, networkProtocol: .connect, codec: ProtoCodec())
+        )
+        auth = PBAuthServiceClient(client: protocolClient)
+        client = PBClientServiceClient(client: protocolClient)
+    }
+
+    func socketURL(_ path: String) -> URL { origin.socketURL(path) }
+
+    static func headers(token: String) -> Headers {
+        token.isEmpty ? [:] : ["Authorization": ["Bearer \(token)"]]
+    }
+}
+
+extension ResponseMessage {
+    func testValue() throws -> Output {
+        if let e = error { throw e }
+        guard let m = message else { throw ConnectError(code: .unknown, message: "empty response") }
+        return m
+    }
+}
+
+func testLoginWithStore(api: TestApi, deviceId: String, store: any SecurityStoreV4) async throws -> PBLoginResponse {
+    var ask = PBGetChallengeRequest()
+    ask.deviceID = deviceId
+    let ch = try await api.auth.getChallenge(request: ask).testValue()
+    var req = PBLoginRequest()
+    req.protocolVersion = relayProtocolVersion
+    req.deviceID = deviceId
+    req.challenge = ch.challenge
+    req.signature = try store.signKey(kind: .deviceEd, slot: "", message: loginMessage(ch.challenge))
+    return try await api.auth.login(request: req).testValue()
+}
 
 /// The real Go server, built once per test run from this repository.
 enum GoServer {
@@ -255,7 +360,7 @@ actor FakeDaemon {
     private let http: HTTP
     private var security: TestSecurity { get throws { try TestSecurity.get(account.server) } }
     private let api: PBMachineServiceClient
-    private let rpc: Api
+    private let rpc: TestApi
     private var token = ""
     private var ready = false
     private var readyFailure: Error?
@@ -291,7 +396,7 @@ actor FakeDaemon {
         self.account = account
         self.http = http
         id = account.deviceId
-        rpc = try Api(server: account.server, http: http)
+        rpc = try TestApi(server: account.server, http: http)
         api = PBMachineServiceClient(client: rpc.protocolClient)
     }
 
@@ -304,7 +409,7 @@ actor FakeDaemon {
 
     func login() async throws {
         let store = try security.store(account.deviceId) ?? { throw TestFailure("missing daemon test store") }()
-        token = try await RACore.loginWithStore(api: rpc, deviceId: account.deviceId, store: store).token
+        token = try await testLoginWithStore(api: rpc, deviceId: account.deviceId, store: store).token
     }
 
     private func header(_ kind: PBPayloadKind) -> PBHeader {
@@ -328,7 +433,7 @@ actor FakeDaemon {
         h.seq = metaRev
         var req = PBPutMachineRequest()
         req.meta = try security.seal(account, h, meta)
-        _ = try await api.putMachine(request: req, headers: Api.headers(token: token)).value()
+        _ = try await api.putMachine(request: req, headers: TestApi.headers(token: token)).testValue()
     }
 
     /// `endedMs` is what the daemon tells the server in the clear to page the listing by: 0 while the session has not ended.
@@ -352,7 +457,7 @@ actor FakeDaemon {
         req.meta = try security.seal(account, mh, named)
         req.endedMs = endedMs
         req.taskOwned = info.taskOwned
-        _ = try await api.putSession(request: req, headers: Api.headers(token: token)).value()
+        _ = try await api.putSession(request: req, headers: TestApi.headers(token: token)).testValue()
     }
 
     /// Stores an image's display copy for a session, as the daemon does before the event that refers to it.
@@ -364,7 +469,7 @@ actor FakeDaemon {
         req.sessionID = sid
         req.imageID = imageId
         req.image = try security.seal(account, h, payload, seed: sessionKeys[sid]!)
-        _ = try await api.putImage(request: req, headers: Api.headers(token: token)).value()
+        _ = try await api.putImage(request: req, headers: TestApi.headers(token: token)).testValue()
     }
 
     /// Appends events to a session, numbering them.
@@ -391,7 +496,7 @@ actor FakeDaemon {
             stored.envelope = try security.seal(account, h, ev, seed: key)
             req.events.append(stored)
         }
-        _ = try await api.uploadEvents(request: req, headers: Api.headers(token: token)).value()
+        _ = try await api.uploadEvents(request: req, headers: TestApi.headers(token: token)).testValue()
     }
 
     /// Connects the stream and answers forwarded commands.

@@ -1,6 +1,5 @@
-// ConnectRPC clients for the server's services, registering a device, and
-// what a failure is called. Matches Android's core/Api.kt.
-import Connect
+// Relay origin validation, HTTP/WebSocket transport stack, and failure descriptions.
+// Matches Android's core/Api.kt.
 import Foundation
 import RAProto
 import os
@@ -48,18 +47,6 @@ public enum SecurityPurpose: UInt32, Sendable {
 public final class HTTP: Sendable {
     let session: URLSession
     private let delegate: SessionDelegate
-    private let relayEpochs = OSAllocatedUnfairLock<[String: String]>(initialState: [:])
-    private func origin(_ url: URL) -> String {
-        var parts = URLComponents(url: url, resolvingAgainstBaseURL: false)!
-        parts.path = ""; parts.query = nil; parts.fragment = nil
-        return parts.string!
-    }
-    func relayEpoch(for url: URL) -> String? { relayEpochs.withLock { $0[origin(url)] } }
-    private func observeEpoch(_ response: URLResponse?, for url: URL) {
-        guard let response = response as? HTTPURLResponse,
-              let epoch = response.value(forHTTPHeaderField: "Remote-Agent-Relay-Epoch"), !epoch.isEmpty else { return }
-        relayEpochs.withLock { $0[origin(url)] = epoch }
-    }
 
     /// `configuration` is copied by URLSession; tests add their URLProtocol classes to it.
     public init(configuration: URLSessionConfiguration = HTTP.defaultConfiguration()) {
@@ -94,7 +81,6 @@ public final class HTTP: Sendable {
             try await withCheckedThrowingContinuation {
                 (c: CheckedContinuation<(Data, HTTPURLResponse), Error>) in
                 let task = session.dataTask(with: request) { data, response, error in
-                    if let url = request.url { self.observeEpoch(response, for: url) }
                     if error == nil, let http = response as? HTTPURLResponse {
                         c.resume(returning: (data ?? Data(), http))
                     } else {
@@ -163,129 +149,20 @@ private final class SessionDelegate: NSObject, URLSessionWebSocketDelegate, URLS
     }
 }
 
-extension HTTP: HTTPClientInterface {
-    @discardableResult
-    public func unary(
-        request: HTTPRequest<Data?>, onMetrics: @escaping @Sendable (HTTPMetrics) -> Void,
-        onResponse: @escaping @Sendable (HTTPResponse) -> Void
-    ) -> Cancelable {
-        var r = URLRequest(url: request.url)
-        r.httpMethod = request.method.rawValue
-        r.httpBody = request.message
-        for (name, values) in request.headers {
-            r.setValue(values.joined(separator: ","), forHTTPHeaderField: name)
-        }
-        let task = session.dataTask(with: r) { data, response, error in
-            self.observeEpoch(response, for: request.url)
-            // An answer cut short is no answer: its status says nothing of what follows.
-            if error == nil, let http = response as? HTTPURLResponse {
-                var headers = Headers()
-                for (k, v) in http.allHeaderFields {
-                    guard let name = (k as? String)?.lowercased() else { continue }
-                    let value = v as? String ?? String(describing: v)
-                    headers[name] = value.components(separatedBy: ",").map {
-                        $0.trimmingCharacters(in: .whitespaces)
-                    }
-                }
-                onResponse(
-                    HTTPResponse(
-                        code: Code.fromHTTPStatus(http.statusCode), headers: headers, message: data,
-                        trailers: [:],
-                        error: nil, tracingInfo: .init(httpStatus: http.statusCode)))
-                return
-            }
-            // No answer at all. The code says only how it ended, as on
-            // Android: whether the request left the device is read from the
-            // failure itself (`neverSent`), which travels as the exception.
-            let failure = error ?? URLError(.badServerResponse)
-            let code: Code
-            switch (failure as? URLError)?.code {
-            case .timedOut?: code = .deadlineExceeded
-            case .cancelled?: code = .canceled
-            default: code = .unknown
-            }
-            onResponse(
-                HTTPResponse(
-                    code: code, headers: [:], message: nil, trailers: [:],
-                    error: ConnectError(
-                        code: code, message: failure.localizedDescription, exception: failure),
-                    tracingInfo: nil))
-        }
-        task.resume()
-        return Cancelable { task.cancel() }
-    }
-
-    /// The server has no streaming RPCs: its streams are WebSockets.
-    public func stream(request: HTTPRequest<Data?>, responseCallbacks: ResponseCallbacks)
-        -> RequestCallbacks<Data>
-    {
-        responseCallbacks.receiveClose(
-            .unimplemented, [:],
-            ConnectError(code: .unimplemented, message: "streaming RPCs are not used"))
-        return RequestCallbacks(cancel: {}, sendData: { _ in }, sendClose: {})
-    }
-}
-
-/// The server's services over the Connect protocol with binary protobuf.
-public final class Api: Sendable {
+/// Checked relay origin and WebSocket URL builder. Unary RPCs flow through Core's byte-pipe `RelayRpcEffect`.
+public struct RelayOrigin: Sendable, Equatable {
     public let server: String
-    public let http: HTTP
-    public let auth: PBAuthServiceClient
-    public let client: PBClientServiceClient
-    public let recovery: PBRecoveryServiceClient
-    public let pairing: PBPairingServiceClient
-    let protocolClient: ProtocolClient
 
     /// Throws for a server that is not an https origin; plain http only for local addresses.
-    public init(server: String, http: HTTP) throws {
+    public init(server: String) throws {
         self.server = try Secret.checkServer(server)
-        self.http = http
-        protocolClient = ProtocolClient(
-            httpClient: http,
-            config: ProtocolClientConfig(
-                host: self.server, networkProtocol: .connect, codec: ProtoCodec()))
-        auth = PBAuthServiceClient(client: protocolClient)
-        client = PBClientServiceClient(client: protocolClient)
-        pairing = PBPairingServiceClient(client: protocolClient)
-        recovery = PBRecoveryServiceClient(client: protocolClient)
-    }
-
-    /// Discovery carries no command; its epoch is frozen in each later Forward body.
-    func relayEpoch() async throws -> String {
-        let url = URL(string: server)!
-        if let epoch = http.relayEpoch(for: url) { return epoch }
-        _ = try await http.data(for: URLRequest(url: URL(string: server + "/healthz")!))
-        guard let epoch = http.relayEpoch(for: url) else { throw SecurityFailure.untrusted }
-        return epoch
-    }
-
-    public static func headers(token: String) -> Headers {
-        token.isEmpty ? [:] : ["Authorization": ["Bearer \(token)"]]
     }
 
     /// The server's address for a WebSocket path.
-    func socketURL(_ path: String) -> URL {
+    public func socketURL(_ path: String) -> URL {
         // checkServer left only http and https.
         URL(string: "ws" + server.dropFirst(4) + path)!
     }
-}
-
-extension ResponseMessage {
-    /// The message, or the error the call ended with.
-    public func value() throws -> Output { try result.get() }
-}
-
-/// Logs in with the device Ed25519 key in `SecurityStoreV4` and returns the login response with expiry.
-public func loginWithStore(api: Api, deviceId: String, store: any SecurityStoreV4) async throws -> PBLoginResponse {
-    var ask = PBGetChallengeRequest()
-    ask.deviceID = deviceId
-    let ch = try await api.auth.getChallenge(request: ask).value()
-    var req = PBLoginRequest()
-    req.protocolVersion = relayProtocolVersion
-    req.deviceID = deviceId
-    req.challenge = ch.challenge
-    req.signature = try store.signKey(kind: .deviceEd, slot: "", message: loginMessage(ch.challenge))
-    return try await api.auth.login(request: req).value()
 }
 
 /// Command outcome classification reported back from daemon/command execution.
@@ -362,7 +239,6 @@ enum NetworkFailure: Equatable {
 /// The network failure in or behind `e`, nil for anything else.
 func networkFailure(_ e: Error?) -> NetworkFailure? {
     guard let e else { return nil }
-    if let ce = e as? ConnectError { return networkFailure(ce.exception) }
     let ns = e as NSError
     if ns.domain == NSURLErrorDomain {
         switch ns.code {
@@ -431,51 +307,23 @@ public func errorText(_ e: Error) -> String {
     }
     if let sw = e as? SecurityWorkflowError { return sw.message }
     if let c = e as? CommandError { return c.message }
-    if let ce = e as? ConnectError {
-        // A request that never reached the server carries the network failure
-        // as its cause, and that failure's own message as its text.
-        if let t = networkText(ce.exception) { return t }
-        switch ce.code {
-        case .unavailable: return ce.message.map { L10n.connectionIosServerError(reason: String(describing: $0)) } ?? L10n.connectionNoServer()
-        case .permissionDenied where ce.message == "login failed":
-            return L10n.errorsTheServerDoesNotRecognizeThisDeviceItMay()
-        case .unauthenticated: return L10n.errorsIosLoginExpired(value: String(describing: ce.message ?? ""))
-        default: return ce.message ?? ce.code.name
-        }
-    }
     return networkText(e) ?? ownText(e)
 }
 
 /// The failure as the system worded it, for the details of a lost connection; without content.
 public func detailText(_ e: Error) -> String {
-    let cause = (e as? ConnectError)?.exception ?? e
     // A message of the app's own has no kind worth naming.
-    if cause is UserError { return ownText(cause) }
-    let ns = cause as NSError
+    if e is UserError { return ownText(e) }
+    let ns = e as NSError
     let kind: String
-    if cause is ConnectError {
-        kind = "ConnectError"
-    } else if isCocoa(cause) {
-        kind = "\(ns.domain) \(ns.code)"
+    if isCocoa(e) {
+        kind = ns.domain + " " + String(ns.code)
     } else {
-        kind = String(describing: type(of: cause))
+        kind = String(describing: type(of: e))
     }
-    let text = ownText(cause)
+    let text = ownText(e)
     return text == kind ? kind : "\(kind): \(text)"
 }
 
 /// The server's address did not resolve: on a phone, the network is down whatever the status bar shows.
 public func unresolvedHost(_ e: Error) -> Bool { networkFailure(e) == .unresolved }
-
-/// The request did not leave the device: nothing can have run.
-func neverSent(_ e: Error?) -> Bool {
-    switch networkFailure(e) {
-    case .unresolved?, .refused?: return true
-    default: return false
-    }
-}
-
-/// Call only for a login attempt: transport failures never establish identity rejection.
-public func loginDenied(_ error: Error) -> Bool {
-    (error as? ConnectError)?.code == .permissionDenied
-}

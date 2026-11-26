@@ -187,7 +187,7 @@ extension Remote {
         guard let machineId = machineIdForSessionIfKnown(sid), await hasSessionSeed(sid) else {
             throw CommandError("not_found", L10nMessage.errorsIosUnknownSession())
         }
-        let tok = try await currentToken()
+        let tok = await currentToken()
         let streamId = newRequestId()
         let closed = OSAllocatedUnfairLock(initialState: false)
         var hello = PBTermHello()

@@ -63,13 +63,20 @@ extension ServerTests {
             var image = PBEnvelope(); image.header = try header.serializedData()
             await cache.putImage(key: "s1/retired", envelope: try image.serializedData())
             let r = try await w.client(cache: cache)
-            _ = await r.ensureToken(opId: 1, forceLogin: false, timeoutMs: 15_000)
             _ = try await r.syncSecurity()
-            let fetched = await r.executeRpc(PBCoreRpcEffect.with {
-                $0.opID = 3
-                $0.fetchLists = PBCoreFetchListsRpc.with { $0.limit = 50 }
-            }).listsFetched
-            for rs in fetched.wireSessions {
+            let tok = await r.currentToken()
+            let reqBytes = try PBListRemoteSessionsRequest.with { $0.limit = 50 }.serializedData()
+            let listRes = await SecurityExecutor.executeRelayRpcUnary(
+                http: r.http,
+                method: .listRemoteSessions,
+                server: r.origin.server,
+                authToken: tok,
+                requestBytes: reqBytes,
+                allowPlainHttp: r.allowPlainHttp,
+                opID: 3
+            )
+            let listed = try PBListRemoteSessionsResponse(serializedBytes: listRes?.responseBytes ?? Data())
+            for rs in listed.sessions {
                 if rs.hasKey {
                     _ = try await r.openEnvelopeOp(
                         envelope: rs.key,

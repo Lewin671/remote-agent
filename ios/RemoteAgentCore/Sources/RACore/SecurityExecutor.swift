@@ -3,44 +3,8 @@ import Foundation
 import RAProto
 import SwiftProtobuf
 
-private final class RpcCallState: @unchecked Sendable {
-    private let waiter = ContinuationWaiter<HTTPResponse>()
-    private let lock = NSLock()
-    private var cancelable: Cancelable?
-    private var cancelled = false
-
-    func install(_ cont: CheckedContinuation<HTTPResponse, Error>) -> Bool {
-        waiter.install(cont)
-    }
-
-    func attach(_ cancelable: Cancelable) {
-        let cancelNow = lock.withLock { () -> Bool in
-            if cancelled { return true }
-            self.cancelable = cancelable
-            return false
-        }
-        if cancelNow { cancelable.cancel() }
-    }
-
-    func complete(_ response: HTTPResponse) {
-        lock.withLock { cancelable = nil }
-        waiter.resolve(.success(response))
-    }
-
-    func cancel() {
-        let cal = lock.withLock { () -> Cancelable? in
-            cancelled = true
-            let cal = cancelable
-            cancelable = nil
-            return cal
-        }
-        cal?.cancel()
-        waiter.resolve(.failure(CancellationError()))
-    }
-}
-
-/// Executes host-side key generation/agreement/signing, v4 storage transactions, and unary Connect
-/// RPC calls requested by Go `clientcore/security`.
+/// Executes host-side key generation/agreement/signing, v4 storage transactions, and universal
+/// unary Connect/HTTP byte-pipe RPC calls requested by Go `clientcore`.
 public final class SecurityExecutor: @unchecked Sendable {
     public typealias RpcOverride = @Sendable (PBSecurityRpcEffect) async -> PBSecurityRpcResultEvent
 
@@ -49,21 +13,27 @@ public final class SecurityExecutor: @unchecked Sendable {
     private let emit: @Sendable (PBCoreEvent) async -> Void
     private let rpcOverride: RpcOverride?
     private let allowPlainHttp: Bool
-    private let queue = DispatchQueue(label: "ra.security.executor", attributes: .concurrent)
     private let lock = NSLock()
+    private var defaultServer: String
+    private var defaultDeviceId: String
     private var closed = false
     private var inFlightTasks: [UUID: Task<Void, Never>] = [:]
+    private var activeRelayTasks: [UInt64: (id: UUID, task: Task<Void, Never>)] = [:]
 
     public init(
         store: any SecurityStoreV4,
         http: HTTP? = nil,
         allowPlainHttp: Bool = false,
+        defaultServer: String = "",
+        defaultDeviceId: String = "",
         rpcOverride: RpcOverride? = nil,
         emit: @escaping @Sendable (PBCoreEvent) async -> Void
     ) {
         self.store = store
         self.http = http
         self.allowPlainHttp = allowPlainHttp
+        self.defaultServer = defaultServer
+        self.defaultDeviceId = defaultDeviceId
         self.rpcOverride = rpcOverride
         self.emit = emit
     }
@@ -72,8 +42,9 @@ public final class SecurityExecutor: @unchecked Sendable {
         let tasks = lock.withLock { () -> [Task<Void, Never>] in
             guard !closed else { return [] }
             closed = true
-            let list = Array(inFlightTasks.values)
+            let list = Array(inFlightTasks.values) + activeRelayTasks.values.map(\.task)
             inFlightTasks.removeAll()
+            activeRelayTasks.removeAll()
             return list
         }
         for t in tasks { t.cancel() }
@@ -88,13 +59,15 @@ public final class SecurityExecutor: @unchecked Sendable {
         case .securityKeyDiscard(let d): keyDiscard(d)
         case .securityStorage(let s): storage(s)
         case .securityRpc(let r): rpc(r)
+        case .relayRpc(let r): relayRpc(r)
+        case .relayRpcCancel(let c): cancelRelayRpc(c)
         default: return false
         }
         return true
     }
 
     private func enqueueOp(_ work: @escaping @Sendable () async -> PBCoreEvent) {
-        enqueueIO { [self] in await sendEvent(await work()) }
+        spawnAsync { [self] in await sendEvent(await work()) }
     }
 
     public func keyGenerate(_ eff: PBSecurityKeyGenerateEffect) {
@@ -137,113 +110,215 @@ public final class SecurityExecutor: @unchecked Sendable {
     }
 
     public func keyDiscard(_ eff: PBSecurityKeyDiscardEffect) {
-        enqueueIO { [self] in store.discardKey(kind: eff.keyKind, slot: eff.slot) }
+        spawnAsync { [self] in store.discardKey(kind: eff.keyKind, slot: eff.slot) }
     }
 
     public func storage(_ eff: PBSecurityStorageEffect) {
-        enqueueOp { [self] in PBCoreEvent.with { $0.securityStorageResult = store.executeStorage(eff) } }
+        enqueueOp { [self] in
+            var res = store.executeStorage(eff)
+            if eff.op == .readBootstrap && res.loginToken.isEmpty {
+                let (server, deviceId) = lock.withLock { (defaultServer, defaultDeviceId) }
+                if !server.isEmpty && !deviceId.isEmpty,
+                   let saved = store.loadLoginToken(server: server, deviceId: deviceId),
+                   !saved.token.isEmpty
+                {
+                    res.loginToken = saved.token
+                    res.loginTokenExpiresMs = saved.expiresMs
+                }
+            }
+            return PBCoreEvent.with { $0.securityStorageResult = res }
+        }
     }
 
     public func rpc(_ eff: PBSecurityRpcEffect) {
         spawnAsync { [self] in
-            let res = if let rpcOverride { await rpcOverride(eff) } else { await executeUnaryRpc(eff) }
+            let res: PBSecurityRpcResultEvent
+            if let rpcOverride {
+                res = await rpcOverride(eff)
+            } else {
+                res = await executeUnaryRpc(eff)
+            }
             await sendEvent(PBCoreEvent.with { $0.securityRpcResult = res })
         }
     }
 
-    private func executeUnaryRpc(_ eff: PBSecurityRpcEffect) async -> PBSecurityRpcResultEvent {
-        var out = PBSecurityRpcResultEvent()
-        out.opID = eff.opID
-        guard let path = Self.rpcPaths[eff.method] else {
-            out.connectCode = Int32(Code.unimplemented.rawValue)
-            out.error = "unknown rpc method: \(eff.method.rawValue)"
-            return out
-        }
-        guard let http else {
-            out.connectCode = Int32(Code.unavailable.rawValue)
-            out.error = "http unavailable"
-            out.networkError = true
-            return out
-        }
-        do {
-            let base = try Self.checkedServerURL(eff.server, allowPlainHttp: allowPlainHttp)
-            guard let url = URL(string: base + path) else {
-                out.connectCode = Int32(Code.invalidArgument.rawValue)
-                out.error = "invalid server url"
-                return out
-            }
-            var headers: Headers = [
-                "Content-Type": ["application/proto"],
-                "Connect-Protocol-Version": ["1"],
-            ]
-            if !eff.authToken.isEmpty {
-                headers["Authorization"] = ["Bearer \(eff.authToken)"]
-            }
-            let finalHeaders = headers
-            let timeoutMs: Int64 = eff.method == .getSecurityStates ? 5_000 : 15_000
-            let call = RpcCallState()
-            let response: HTTPResponse = try await withTimeout(timeoutMs, sleep: realSleep) {
-                try await withTaskCancellationHandler {
-                    try await withCheckedThrowingContinuation { continuation in
-                        guard call.install(continuation) else { return }
-                        let req = HTTPRequest<Data?>(
-                            url: url,
-                            headers: finalHeaders,
-                            message: eff.requestBytes,
-                            method: .post,
-                            trailers: [:],
-                            idempotencyLevel: .unknown
-                        )
-                        let cancelable = http.unary(request: req, onMetrics: { _ in }) { resp in
-                            call.complete(resp)
+    public func relayRpc(_ eff: PBRelayRpcEffect) {
+        let opID = eff.opID
+        let token = UUID()
+        let oldTask: Task<Void, Never>? = lock.withLock {
+            guard !closed else { return nil }
+            let prev = activeRelayTasks[opID]?.task
+            let task = Task { [weak self] in
+                guard let self else { return }
+                defer {
+                    self.lock.withLock {
+                        if self.activeRelayTasks[opID]?.id == token {
+                            self.activeRelayTasks.removeValue(forKey: opID)
                         }
-                        call.attach(cancelable)
                     }
-                } onCancel: {
-                    call.cancel()
                 }
+                let result = await self.executeRelayUnary(eff)
+                guard let result, !Task.isCancelled else { return }
+                await self.sendEvent(PBCoreEvent.with { $0.relayRpcResult = result })
             }
-            if let err = response.error {
-                let ce = err as? ConnectError
-                out.connectCode = Int32(response.code.rawValue)
-                out.error = ce?.message ?? err.localizedDescription
-                out.networkError = ce.map { networkFailure($0.exception) != nil }
-                    ?? (response.code == .unavailable || response.code == .deadlineExceeded || response.code == .unknown)
-                if let ce {
-                    out.errorDetails = Self.mapConnectDetails(ce.details)
-                }
-                return out
+            activeRelayTasks[opID] = (token, task)
+            return prev
+        }
+        oldTask?.cancel()
+    }
+
+    public func cancelRelayRpc(_ eff: PBRelayRpcCancelEffect) {
+        let task = lock.withLock { activeRelayTasks.removeValue(forKey: eff.opID)?.task }
+        task?.cancel()
+    }
+
+    private func executeUnaryRpc(_ eff: PBSecurityRpcEffect) async -> PBSecurityRpcResultEvent {
+        guard let method = PBRelayRpcMethod(rawValue: eff.method.rawValue), method != .unspecified else {
+            return PBSecurityRpcResultEvent.with {
+                $0.opID = eff.opID
+                $0.connectCode = Int32(Code.unimplemented.rawValue)
+                $0.error = "unknown rpc method: \(eff.method.rawValue)"
             }
-            if response.code != .ok {
-                let parsed = Self.parseConnectErrorBody(response.message, fallbackCode: response.code)
-                out.connectCode = Int32(parsed.code.rawValue)
-                out.error = parsed.message
-                out.errorDetails = parsed.details
-                return out
+        }
+        let relayEff = PBRelayRpcEffect.with {
+            $0.opID = eff.opID
+            $0.method = method
+            $0.server = eff.server
+            $0.authToken = eff.authToken
+            $0.requestBytes = eff.requestBytes
+        }
+        guard let res = await executeRelayUnary(relayEff) else {
+            return PBSecurityRpcResultEvent.with {
+                $0.opID = eff.opID
+                $0.connectCode = Int32(Code.canceled.rawValue)
+                $0.error = "canceled"
             }
-            out.responseBytes = response.message ?? Data()
-            return out
-        } catch is TimedOut {
-            out.connectCode = Int32(Code.deadlineExceeded.rawValue)
-            out.error = "connection timed out"
-            out.networkError = true
-            return out
-        } catch let ce as ConnectError {
-            out.connectCode = Int32(ce.code.rawValue)
-            out.error = ce.message ?? ce.localizedDescription
-            out.networkError = networkFailure(ce.exception) != nil
-            out.errorDetails = Self.mapConnectDetails(ce.details)
-            return out
-        } catch {
-            out.connectCode = Int32(Code.unavailable.rawValue)
-            out.error = error.localizedDescription
-            out.networkError = true
-            return out
+        }
+        if res.connectCode == 0 && !res.networkError && !res.unresolvedHost && res.diagnosticMessage.isEmpty {
+            return PBSecurityRpcResultEvent.with {
+                $0.opID = eff.opID
+                $0.responseBytes = res.responseBytes
+            }
+        }
+        return PBSecurityRpcResultEvent.with {
+            $0.opID = eff.opID
+            $0.connectCode = res.connectCode
+            $0.error = res.diagnosticMessage
+            $0.networkError = res.networkError
+            $0.errorDetails = res.errorDetails
         }
     }
 
-    private func enqueueIO(_ work: @escaping @Sendable () async -> Void) {
-        spawnAsync(work)
+    private func executeRelayUnary(_ eff: PBRelayRpcEffect) async -> PBRelayRpcResultEvent? {
+        let fallbackServer = lock.withLock { defaultServer }
+        let server = eff.server.isEmpty ? fallbackServer : eff.server
+        return await Self.executeRelayRpcUnary(
+            http: http,
+            method: eff.method,
+            server: server,
+            authToken: eff.authToken,
+            timeoutMs: eff.timeoutMs,
+            attemptHeader: eff.attemptHeader,
+            requestBytes: eff.requestBytes,
+            allowPlainHttp: allowPlainHttp,
+            opID: eff.opID
+        )
+    }
+
+    /// Executes a single unary ConnectRPC/HTTP byte-pipe call. Returns `nil` when cancelled via Swift Task cancellation.
+    public static func executeRelayRpcUnary(
+        http: HTTP?,
+        method: PBRelayRpcMethod,
+        server: String,
+        authToken: String = "",
+        timeoutMs: Int64 = 0,
+        attemptHeader: String = "",
+        requestBytes: Data = Data(),
+        allowPlainHttp: Bool = false,
+        opID: UInt64 = 0
+    ) async -> PBRelayRpcResultEvent? {
+        var out = PBRelayRpcResultEvent()
+        out.opID = opID
+        guard let path = relayRpcPaths[method] else {
+            out.connectCode = 12 // unimplemented
+            out.diagnosticMessage = "unknown rpc method: \(method.rawValue)"
+            return out
+        }
+        guard let http else {
+            out.connectCode = 14 // unavailable
+            out.diagnosticMessage = "http unavailable"
+            out.networkError = true
+            return out
+        }
+        guard !server.isEmpty else {
+            out.connectCode = 3 // invalid_argument
+            out.diagnosticMessage = "missing relay server"
+            return out
+        }
+        do {
+            let base = try checkedServerURL(server, allowPlainHttp: allowPlainHttp)
+            guard let url = URL(string: base + path) else {
+                out.connectCode = 3 // invalid_argument
+                out.diagnosticMessage = "invalid server url"
+                return out
+            }
+            var req = URLRequest(url: url)
+            if method == .healthz {
+                req.httpMethod = "GET"
+                req.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+            } else {
+                req.httpMethod = "POST"
+                req.httpBody = requestBytes
+                req.setValue("application/proto", forHTTPHeaderField: "Content-Type")
+                req.setValue("1", forHTTPHeaderField: "Connect-Protocol-Version")
+                if !authToken.isEmpty {
+                    req.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+                }
+                if !attemptHeader.isEmpty {
+                    req.setValue(attemptHeader, forHTTPHeaderField: "Remote-Agent-Attempt")
+                }
+            }
+            let effectiveTimeout: Int64 = timeoutMs > 0
+                ? timeoutMs
+                : (method == .getSecurityStates ? 5_000 : 15_000)
+            let finalReq = req
+            let (data, response) = try await withTimeout(effectiveTimeout, sleep: realSleep) {
+                try await http.data(for: finalReq)
+            }
+            if let epoch = response.value(forHTTPHeaderField: "Remote-Agent-Relay-Epoch"), !epoch.isEmpty {
+                out.relayEpoch = epoch
+            }
+            if (200..<300).contains(response.statusCode) {
+                out.responseBytes = data
+                return out
+            }
+            let parsed = parseConnectErrorBody(data, fallbackCode: connectCodeFromHttpStatus(response.statusCode))
+            out.connectCode = Int32(parsed.code.rawValue)
+            out.diagnosticMessage = parsed.message
+            out.errorDetails = parsed.details
+            return out
+        } catch is CancellationError {
+            return nil
+        } catch is TimedOut {
+            out.connectCode = 4 // deadline_exceeded
+            out.diagnosticMessage = "connection timed out"
+            out.networkError = true
+            return out
+        } catch let e as URLError where e.code == .cancelled && Task.isCancelled {
+            return nil
+        } catch let e as URLError where e.code == .timedOut {
+            out.connectCode = 4 // deadline_exceeded
+            out.diagnosticMessage = "connection timed out"
+            out.networkError = true
+            return out
+        } catch {
+            if Task.isCancelled { return nil }
+            out.connectCode = 14 // unavailable
+            out.diagnosticMessage = errorText(error)
+            out.networkError = true
+            out.unresolvedHost = unresolvedHost(error)
+            return out
+        }
     }
 
     private func spawnAsync(_ work: @escaping @Sendable () async -> Void) {
@@ -284,7 +359,22 @@ public final class SecurityExecutor: @unchecked Sendable {
         }
     }
 
-    private static let rpcPaths: [PBSecurityRpcMethod: String] = [
+    static func connectCodeFromHttpStatus(_ status: Int) -> Code {
+        switch status {
+        case 400: .invalidArgument
+        case 401: .unauthenticated
+        case 403: .permissionDenied
+        case 404: .notFound
+        case 408, 504: .deadlineExceeded
+        case 409: .aborted
+        case 412: .failedPrecondition
+        case 429, 502, 503: .unavailable
+        case 500...599: .internalError
+        default: .unknown
+        }
+    }
+
+    private static let relayRpcPaths: [PBRelayRpcMethod: String] = [
         .getSecurityStates: "/remoteagent.v1.ClientService/GetSecurityStates",
         .putSecurityState: "/remoteagent.v1.ClientService/PutSecurityState",
         .pinSecurityDomain: "/remoteagent.v1.ClientService/PinSecurityDomain",
@@ -310,6 +400,14 @@ public final class SecurityExecutor: @unchecked Sendable {
         .listMachines: "/remoteagent.v1.ClientService/ListMachines",
         .getAccountPrefs: "/remoteagent.v1.ClientService/GetAccountPrefs",
         .putAccountPrefs: "/remoteagent.v1.ClientService/PutAccountPrefs",
+        .listRemoteSessions: "/remoteagent.v1.ClientService/ListRemoteSessions",
+        .getEvents: "/remoteagent.v1.ClientService/GetEvents",
+        .forward: "/remoteagent.v1.ClientService/Forward",
+        .getImage: "/remoteagent.v1.ClientService/GetImage",
+        .getPushKey: "/remoteagent.v1.ClientService/GetPushKey",
+        .setPushSubscription: "/remoteagent.v1.ClientService/SetPushSubscription",
+        .setPushTarget: "/remoteagent.v1.ClientService/SetPushTarget",
+        .healthz: "/healthz",
     ]
 
     private static let connectCodes: [String: Code] = [
@@ -320,16 +418,6 @@ public final class SecurityExecutor: @unchecked Sendable {
         "unimplemented": .unimplemented, "internal": .internalError, "unavailable": .unavailable,
         "data_loss": .dataLoss, "unauthenticated": .unauthenticated,
     ]
-
-    private static func mapConnectDetails(_ details: [ConnectError.Detail]) -> [PBRpcErrorDetailBytes] {
-        details.compactMap { d in
-            guard !d.type.isEmpty, let payload = d.payload, !payload.isEmpty else { return nil }
-            return PBRpcErrorDetailBytes.with {
-                $0.typeName = d.type
-                $0.value = payload
-            }
-        }
-    }
 
     private static func decodeConnectDetailBase64(_ raw: String) -> Data? {
         let cleaned = raw

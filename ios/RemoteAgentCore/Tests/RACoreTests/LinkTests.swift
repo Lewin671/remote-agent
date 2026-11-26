@@ -25,6 +25,27 @@ import Testing
         #expect(outcome.transportCode == "failed_precondition")
         #expect(outcome.transportDetail == "missing sealed command")
     }
+
+    @Test func relayLegCommandIsOwnedByCoreBytePipe() async throws {
+        let account = Account(server: "https://example.com", deviceId: "dev-1", accountId: "acc-1")
+        let remote = try Remote(account: account, http: HTTP(), securityStore: MemorySecurityStoreV4())
+        defer { remote.close() }
+        let eff = PBCoreDispatchCommandEffect.with {
+            $0.requestID = newRequestId()
+            $0.attemptID = newRequestId()
+            $0.machineID = "mach-1"
+            $0.deadlineMs = nowMs() + 60_000
+            $0.sealedEnvelope = PBEnvelope.with { $0.ciphertext = Data([1, 2, 3]) }
+            $0.routeLeg = .relay
+        }
+        let outcome = await remote.dispatchCommandAttempt(eff)
+        #expect(outcome.requestID == eff.requestID)
+        #expect(outcome.attemptID == eff.attemptID)
+        #expect(outcome.source == .local)
+        #expect(outcome.notForwarded)
+        #expect(outcome.transportCode == "failed_precondition")
+        #expect(outcome.transportDetail == "relay_leg_handled_by_core")
+    }
 }
 
 @Suite(.timeLimit(.minutes(2))) struct LinkStreamTests {
@@ -33,7 +54,7 @@ import Testing
     }
 
     @Test func closedLinkDisposesAStreamRegisteredAfterSuspendedOpening() throws {
-        let path = RelayPath(api: try Api(server: "https://example.com", http: HTTP()), sleep: Self.parkedSleep)
+        let path = RelayPath(origin: try RelayOrigin(server: "https://example.com"), http: HTTP(), sleep: Self.parkedSleep)
         let link = Link(relay: path)
         let stopped = Counter(), notified = Counter()
         link.closeStreams()
@@ -48,7 +69,7 @@ import Testing
     @Test func physicalPathEndingDoesNotOwnProductClose() async throws {
         let server = try StreamBlackhole(firstClose: 1000)
         defer { server.close() }
-        let path = RelayPath(api: try Api(server: server.url, http: HTTP()), sleep: Self.parkedSleep)
+        let path = RelayPath(origin: try RelayOrigin(server: server.url), http: HTTP(), sleep: Self.parkedSleep)
         let link = Link(relay: path)
         let closed = Counter(), stopped = Counter()
         let stream = link.openStream(stop: { _ in stopped.increment() }, onClose: { _ in closed.increment() })

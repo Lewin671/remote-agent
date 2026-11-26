@@ -517,7 +517,8 @@ final class CoreSecurityDriver: @unchecked Sendable {
         onTokenUpdated: (@Sendable (PBSecurityTokenUpdatedEffect) -> Void)? = nil,
         onDispatchCommand: (@Sendable (PBCoreDispatchCommandEffect) async -> PBCoreCommandOutcomeEvent)? = nil,
         onTerminalEffect: (@Sendable (PBCoreEffect) -> Void)? = nil,
-        initialConfig: PBSecurityConfigEvent? = nil
+        initialConfig: PBSecurityConfigEvent? = nil,
+        relayPipe: Bool = false
     ) throws {
         self.core = try CoreClient()
         self.executor = executor
@@ -531,6 +532,9 @@ final class CoreSecurityDriver: @unchecked Sendable {
         enqueueEvent(PBCoreEvent.with {
             $0.entropyProvided = Self.buildEntropy(minIds: 16, minFloats: 16, minRandomBytes: 4096)
         })
+        if relayPipe {
+            enqueueEvent(PBCoreEvent.with { $0.relayPipeConfig = .with { $0.enabled = true } })
+        }
         if let initialConfig {
             enqueueEvent(PBCoreEvent.with { $0.securityConfig = initialConfig })
         }
@@ -674,7 +678,8 @@ final class CoreSecurityDriver: @unchecked Sendable {
             }
             task?.cancel()
         case .securityKeyGenerate, .securityKeySign, .securityKeyAgree,
-             .securityKeyEncapsulate, .securityKeyDiscard, .securityStorage, .securityRpc:
+             .securityKeyEncapsulate, .securityKeyDiscard, .securityStorage,
+             .securityRpc, .relayRpc, .relayRpcCancel:
             _ = executor.handleEffect(eff)
         case .securityWorkflowResult(let r):
             client.handleWorkflowResult(r)

@@ -75,7 +75,7 @@ extension ServerTests {
 
                 let boot = try await joinHost.client.bootstrap()
                 #expect(boot.bootstrap == .ready)
-                let login = try await loginWithStore(api: Api(server: w.server.url, http: w.http), deviceId: boot.deviceID, store: joinStore)
+                let login = try await testLoginWithStore(api: TestApi(server: w.server.url, http: w.http), deviceId: boot.deviceID, store: joinStore)
                 #expect(!login.token.isEmpty)
             }
         }

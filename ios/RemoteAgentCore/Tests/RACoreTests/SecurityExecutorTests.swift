@@ -8,16 +8,32 @@ import Testing
 
 @testable import RACore
 
+/// Per-host-keyed stalled URLProtocol so concurrent tests never collide on static state.
 private final class StalledRPCProtocol: URLProtocol, @unchecked Sendable {
-    static let latches = OSAllocatedUnfairLock<(started: TestLatch?, stopped: TestLatch?)>(initialState: (nil, nil))
+    private struct Slot {
+        let started: TestLatch
+        let stopped: TestLatch
+    }
+    private static let slots = OSAllocatedUnfairLock<[String: Slot]>(initialState: [:])
+
+    static func register(host: String, started: TestLatch, stopped: TestLatch) {
+        slots.withLock { $0[host] = Slot(started: started, stopped: stopped) }
+    }
+
+    static func unregister(host: String) {
+        slots.withLock { _ = $0.removeValue(forKey: host) }
+    }
+
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
-        let started = Self.latches.withLock { $0.started }
+        guard let host = request.url?.host else { return }
+        let started = Self.slots.withLock { $0[host]?.started }
         if let started { Task { await started.open() } }
     }
     override func stopLoading() {
-        let stopped = Self.latches.withLock { $0.stopped }
+        guard let host = request.url?.host else { return }
+        let stopped = Self.slots.withLock { $0[host]?.stopped }
         if let stopped { Task { await stopped.open() } }
     }
 }
@@ -94,7 +110,7 @@ private final class TimeoutRPCProtocol: URLProtocol, @unchecked Sendable {
             isClosedFn: { false }
         )
         let waiter = Task { try await client.bootstrap() }
-        await dispatched.wait()
+        try await dispatched.wait(timeoutMs: 5_000, label: "bootstrap dispatch")
         waiter.cancel()
         await #expect(throws: CancellationError.self) {
             _ = try await waiter.value
@@ -103,8 +119,9 @@ private final class TimeoutRPCProtocol: URLProtocol, @unchecked Sendable {
         // 2. Closing executor cancels in-flight HTTP request and stops URLSession loading promptly.
         let started = TestLatch()
         let stopped = TestLatch()
-        StalledRPCProtocol.latches.withLock { $0 = (started, stopped) }
-        defer { StalledRPCProtocol.latches.withLock { $0 = (nil, nil) } }
+        let stallHost = "stall-sec-\(UUID().uuidString.lowercased()).example.com"
+        StalledRPCProtocol.register(host: stallHost, started: started, stopped: stopped)
+        defer { StalledRPCProtocol.unregister(host: stallHost) }
 
         let stalledCfg = HTTP.defaultConfiguration()
         stalledCfg.protocolClasses = [StalledRPCProtocol.self]
@@ -117,11 +134,11 @@ private final class TimeoutRPCProtocol: URLProtocol, @unchecked Sendable {
         stalledExec.rpc(.with {
             $0.opID = 77
             $0.method = .getSecurityStates
-            $0.server = "https://example.com"
+            $0.server = "https://\(stallHost)"
         })
-        await started.wait()
+        try await started.wait(timeoutMs: 5_000, label: "stalled security rpc start")
         stalledExec.close()
-        await stopped.wait()
+        try await stopped.wait(timeoutMs: 5_000, label: "stalled security rpc cancel")
 
         // 3. Timed-out HTTP unary call maps cleanly to deadlineExceeded with networkError = true.
         let timeoutCfg = HTTP.defaultConfiguration()
@@ -160,6 +177,134 @@ private final class TimeoutRPCProtocol: URLProtocol, @unchecked Sendable {
         #expect(parsed.details.count == 1)
         #expect(parsed.details[0].typeName == "remoteagent.v1.RelayErrorDetail")
         #expect(parsed.details[0].value == rawBytes)
+    }
+
+    @Test func relayRpcRoundTripHeadersErrorDetailsCancelAndBootstrapToken() async throws {
+        // 1. POST unary round-trip carries Authorization, Attempt, Connect-Protocol-Version, and returns body + relayEpoch.
+        let listener = try Listener()
+        defer { listener.close() }
+        let captured = OSAllocatedUnfairLock<String>(initialState: "")
+        let reqBody = try PBGetChallengeRequest.with { $0.deviceID = "dev-42" }.serializedData()
+        let respBody = try PBLoginResponse.with { $0.token = "resp-tok" }.serializedData()
+
+        var detail = PBNotForwarded()
+        detail.reason = "machine_offline"
+        let detailBytes = try detail.serializedData()
+        let detailB64 = detailBytes.base64EncodedString().replacingOccurrences(of: "=", with: "")
+        let errJson = Data("""
+        {"code":"unavailable","message":"offline","details":[{"type":"remoteagent.v1.NotForwarded","value":"\(detailB64)"}]}
+        """.utf8)
+
+        listener.serve { fd in
+            guard let headLines = readHead(fd) else { return }
+            let head = headLines.joined(separator: "\r\n")
+            captured.withLock { $0 = head }
+            if head.hasPrefix("GET /healthz ") {
+                let res = "HTTP/1.1 200 OK\r\nRemote-Agent-Relay-Epoch: 99\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok"
+                writeAll(fd, Data(res.utf8))
+            } else if head.contains("/Forward ") {
+                let header = "HTTP/1.1 503 Service Unavailable\r\nContent-Type: application/json\r\nRemote-Agent-Relay-Epoch: 77\r\nContent-Length: \(errJson.count)\r\nConnection: close\r\n\r\n"
+                writeAll(fd, Data(header.utf8) + errJson)
+            } else {
+                let header = "HTTP/1.1 200 OK\r\nContent-Type: application/proto\r\nRemote-Agent-Relay-Epoch: 55\r\nContent-Length: \(respBody.count)\r\nConnection: close\r\n\r\n"
+                writeAll(fd, Data(header.utf8) + respBody)
+            }
+        }
+
+        let mailbox = Mailbox<PBCoreEvent>()
+        let store = MemorySecurityStoreV4()
+        let serverURL = "http://127.0.0.1:\(listener.port)"
+        store.writeBuckets([
+            SecurityStoreBucketKey(bucket: 1, key: ""): SecurityStoreStoredBucket(bucket: 1, key: "", revision: "1", data: Data([1]))
+        ])
+        store.saveLoginToken(SavedLogin(token: "saved-tok", expiresMs: 9_876_543), server: serverURL, deviceId: "dev-42")
+        let exec = SecurityExecutor(
+            store: store,
+            http: HTTP(),
+            allowPlainHttp: true,
+            defaultServer: serverURL,
+            defaultDeviceId: "dev-42",
+            emit: { mailbox.put($0) }
+        )
+        defer { exec.close() }
+
+        // ReadBootstrap hydrates persisted login token for defaultDeviceId.
+        exec.storage(.with { $0.opID = 10; $0.op = .readBootstrap })
+        let bootRes = try await mailbox.take().securityStorageResult
+        #expect(bootRes.opID == 10)
+        #expect(bootRes.loginToken == "saved-tok")
+        #expect(bootRes.loginTokenExpiresMs == 9_876_543)
+
+        // POST round-trip.
+        exec.relayRpc(.with {
+            $0.opID = 11
+            $0.method = .getChallenge
+            $0.authToken = "tok-abc"
+            $0.attemptHeader = "att-7"
+            $0.requestBytes = reqBody
+        })
+        let postRes = try await mailbox.take().relayRpcResult
+        #expect(postRes.opID == 11)
+        #expect(postRes.connectCode == 0)
+        #expect(postRes.responseBytes == respBody)
+        #expect(postRes.relayEpoch == "55")
+        let lastHead = captured.withLock { $0 }
+        #expect(lastHead.contains("Authorization: Bearer tok-abc"))
+        #expect(lastHead.contains("Remote-Agent-Attempt: att-7"))
+        #expect(lastHead.contains("Connect-Protocol-Version: 1"))
+
+        // GET /healthz round-trip.
+        exec.relayRpc(.with {
+            $0.opID = 12
+            $0.method = .healthz
+        })
+        let healthRes = try await mailbox.take().relayRpcResult
+        #expect(healthRes.opID == 12)
+        #expect(healthRes.connectCode == 0)
+        #expect(healthRes.relayEpoch == "99")
+
+        // Connect error JSON + unpadded base64 details + relayEpoch passthrough.
+        exec.relayRpc(.with {
+            $0.opID = 13
+            $0.method = .forward
+            $0.authToken = "tok-abc"
+            $0.requestBytes = Data([1, 2])
+        })
+        let errRes = try await mailbox.take().relayRpcResult
+        #expect(errRes.opID == 13)
+        #expect(errRes.connectCode == Int32(Code.unavailable.rawValue))
+        #expect(errRes.diagnosticMessage == "offline")
+        #expect(errRes.relayEpoch == "77")
+        #expect(errRes.errorDetails.count == 1)
+        #expect(errRes.errorDetails[0].typeName == "remoteagent.v1.NotForwarded")
+        #expect(errRes.errorDetails[0].value == detailBytes)
+
+        // Cancel effect aborts an in-flight stalled request without emitting RelayRpcResultEvent.
+        let started = TestLatch()
+        let stopped = TestLatch()
+        let stallHost = "stall-relay-\(UUID().uuidString.lowercased()).example.com"
+        StalledRPCProtocol.register(host: stallHost, started: started, stopped: stopped)
+        defer { StalledRPCProtocol.unregister(host: stallHost) }
+
+        let stalledCfg = HTTP.defaultConfiguration()
+        stalledCfg.protocolClasses = [StalledRPCProtocol.self]
+        let cancelMailbox = Mailbox<PBCoreEvent>()
+        let cancelExec = SecurityExecutor(
+            store: MemorySecurityStoreV4(),
+            http: HTTP(configuration: stalledCfg),
+            allowPlainHttp: true,
+            defaultServer: "https://\(stallHost)",
+            emit: { cancelMailbox.put($0) }
+        )
+        defer { cancelExec.close() }
+        cancelExec.relayRpc(.with {
+            $0.opID = 99
+            $0.method = .listMachines
+        })
+        try await started.wait(timeoutMs: 5_000, label: "stalled relay rpc start")
+        cancelExec.cancelRelayRpc(.with { $0.opID = 99 })
+        try await stopped.wait(timeoutMs: 5_000, label: "stalled relay rpc cancel")
+        #expect(cancelMailbox.all.isEmpty)
     }
 }
 

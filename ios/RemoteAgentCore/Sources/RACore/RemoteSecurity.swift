@@ -84,7 +84,8 @@ extension Remote {
                 case .terminalDirectState(let e)?: self.handleTerminalDirectState(e)
                 default: break
                 }
-            }
+            },
+            relayPipe: true
         )
         fallbackSecurityDriver = driver
         return driver
@@ -101,24 +102,19 @@ extension Remote {
 
     public func applySecurityTokenUpdated(_ eff: PBSecurityTokenUpdatedEffect) {
         if eff.cleared {
-            token = ""
-            tokenExpires = 0
+            cachedToken = nil
             securityStore.clearLoginToken(server: account.server, deviceId: account.deviceId)
             return
         }
-        token = eff.token
-        tokenExpires = eff.expiresMs
-        securityStore.saveLoginToken(
-            SavedLogin(token: eff.token, expiresMs: eff.expiresMs),
-            server: account.server,
-            deviceId: account.deviceId
-        )
+        let saved = SavedLogin(token: eff.token, expiresMs: eff.expiresMs)
+        cachedToken = saved
+        securityStore.saveLoginToken(saved, server: account.server, deviceId: account.deviceId)
     }
 
     public func applySecurityStatusSnapshot(_ status: PBSecurityWorkflowStatus) async {
-        clockSkewed = status.clockSkewed
         if status.removed {
-            dropToken()
+            cachedToken = nil
+            securityStore.clearLoginToken(server: account.server, deviceId: account.deviceId)
         }
     }
 
@@ -140,7 +136,8 @@ extension Remote {
 
     @discardableResult
     public func syncSecurity(touch: Bool = false) async throws -> PBSecurityWorkflowStatus {
-        try await withSecurityStatus { try await $0.syncNow(touch: touch, authToken: token) }
+        let tok = await currentToken()
+        return try await withSecurityStatus { try await $0.syncNow(touch: touch, authToken: tok) }
     }
 
     public func getSecurityStatus() async throws -> PBSecurityWorkflowStatus {

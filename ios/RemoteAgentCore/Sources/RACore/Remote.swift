@@ -1,9 +1,8 @@
 // Transport & Security Gate executor for iOS.
 // Sync state (connection machine, directory/paging, event buffers/LRU, live polling,
-// prefs CAS, command retries/outcome classification) lives in Go `clientcore/sync`.
-// `Remote` only provides token login, WebSocket stream frames, RPC execution,
-// DirectExecutor bypass, CipherCache I/O, and cryptographic opening/sealing.
-import Connect
+// prefs CAS, command retries/outcome classification, login/token refresh) lives in Go `clientcore`.
+// `Remote` provides WebSocket stream frames, DirectExecutor bypass, CipherCache I/O,
+// and SecurityExecutor unary byte-pipe execution.
 import Foundation
 import RAProto
 import SwiftProtobuf
@@ -46,13 +45,6 @@ func withTimeout<T: Sendable>(
 public final actor Remote {
     // MARK: - Types
 
-    private struct LoginFlight {
-        let id: UUID
-        let generation: Int
-        let task: Task<Void, Never>
-        let result: SharedResult<String>
-    }
-
     final class StreamLeg {
         let legId: UInt64
         let socket: any FrameStream
@@ -67,16 +59,13 @@ public final actor Remote {
     }
 
     public struct StreamCallbacks: Sendable {
-        public let onReady: @Sendable (UInt64, Int64) async -> Void
-        public let onFrame: @Sendable (PBCoreStreamFrameEvent) async -> Void
+        public let onRawFrame: @Sendable (UInt64, Data) async -> Void
         public let onClosed: @Sendable (PBCoreStreamClosedEvent) async -> Void
         public init(
-            onReady: @escaping @Sendable (UInt64, Int64) async -> Void,
-            onFrame: @escaping @Sendable (PBCoreStreamFrameEvent) async -> Void,
+            onRawFrame: @escaping @Sendable (UInt64, Data) async -> Void,
             onClosed: @escaping @Sendable (PBCoreStreamClosedEvent) async -> Void
         ) {
-            self.onReady = onReady
-            self.onFrame = onFrame
+            self.onRawFrame = onRawFrame
             self.onClosed = onClosed
         }
     }
@@ -84,8 +73,9 @@ public final actor Remote {
     // MARK: - Properties
 
     public nonisolated let account: Account
-    public nonisolated let api: Api
+    public nonisolated let origin: RelayOrigin
     nonisolated let http: HTTP
+    nonisolated let allowPlainHttp: Bool
     nonisolated let cache: (any CipherCache)?
     nonisolated let log: @Sendable (String) -> Void
     nonisolated let clock: @Sendable () -> Int64
@@ -101,23 +91,14 @@ public final actor Remote {
     private nonisolated let coreEventChain: SerialChain
     nonisolated let directExecutor: DirectExecutor
     nonisolated let activeTerminals = ActiveTerminalRegistry()
-    private let peerBudget = StreamByteBudget(limit: 8 * 65536)
 
     nonisolated let deviceLink: Link
 
     private let frameQueue: Int
     private let frameQueueBytes: Int
-    private let frameParser = OSAllocatedUnfairLock<@Sendable (Data) throws -> PBServerFrame>(
-        initialState: { try PBServerFrame(serializedBytes: $0) }
-    )
 
-    // Token / Auth executor state
-    var token = ""
-    var tokenExpires: Int64 = 0
-    private var loginGeneration = 0
-    private var loginFlight: LoginFlight?
-    private var signingIn = false
-    private var signInWaiters: [CheckedContinuation<Void, Never>] = []
+    // Token cache owned by Core's security engine (updated solely via SecurityTokenUpdatedEffect).
+    var cachedToken: SavedLogin?
     var closed = false
 
     // Stream executor state (keyed by Core's leg_id)
@@ -136,9 +117,7 @@ public final actor Remote {
             if watchedSessionIds != oldValue { directGate.updateWatched(watchedSessionIds) }
         }
     }
-    var clockSkewed = false
     var foregroundActive = true
-    var networkGeneration: UInt64 = 0
     var fallbackSecurityDriver: CoreSecurityDriver?
     var securityConfiguredInCore = false
     var securityBootstrapped = false
@@ -182,13 +161,13 @@ public final actor Remote {
         streamOpenMs: Int64 = 15_000,
         securityStore: (any SecurityStoreV4)? = nil,
         allowPlainHttp: Bool = false,
-        rpcOverride: SecurityExecutor.RpcOverride? = nil,
         monotonic: (@Sendable () -> Int64)? = nil,
         rtc: (any RtcFactory)? = nil,
         directPreferences: any DirectPreferenceStore = UserDefaultsDirectPreferences(),
         directStun: [String]? = nil
     ) throws {
         self.account = account
+        self.allowPlainHttp = allowPlainHttp
         self.directPreferences = directPreferences
         if let overrideStun = directStun {
             self.directServerHost = ""
@@ -207,8 +186,8 @@ public final actor Remote {
         self.sleep = sleep
         self.frameQueue = frameQueue
         self.frameQueueBytes = frameQueueBytes
-        let builtApi = try Api(server: account.server, http: http)
-        api = builtApi
+        let builtOrigin = try RelayOrigin(server: account.server)
+        self.origin = builtOrigin
         let holder = WeakRemote()
         let closedFlag = self.closedLock
         let gate = DirectEventQueueGate()
@@ -217,7 +196,8 @@ public final actor Remote {
             store: store,
             http: http,
             allowPlainHttp: allowPlainHttp,
-            rpcOverride: rpcOverride,
+            defaultServer: builtOrigin.server,
+            defaultDeviceId: account.deviceId,
             emit: { ev in
                 await holder.remote?.emitSecurityCoreEvent(ev)
             }
@@ -267,17 +247,7 @@ public final actor Remote {
                 return Double(DispatchTime.now().uptimeNanoseconds) / 1e6
             }
         )
-        deviceLink = Link(relay: RelayPath(
-            api: builtApi, sleep: sleep,
-            prepare: { [holder] prior in
-                guard let remote = holder.remote else { throw SecurityFailure.storage }
-                try await remote.prepareRelayAttempt(prior)
-            },
-            token: { [holder] in
-                guard let remote = holder.remote else { throw SecurityFailure.storage }
-                return await remote.relayToken()
-            }
-        ))
+        deviceLink = Link(relay: RelayPath(origin: builtOrigin, http: http, sleep: sleep))
         holder.remote = self
     }
 
@@ -305,10 +275,6 @@ public final actor Remote {
         ensureFallbackSecurityDriver()?.enqueueEvent(ev)
     }
 
-    public func setNetworkGeneration(_ gen: UInt64) {
-        networkGeneration = gen
-    }
-
     func machineIdForSession(_ sid: String) -> String {
         sessionMachines[sid] ?? ""
     }
@@ -318,157 +284,11 @@ public final actor Remote {
         return id.isEmpty ? nil : id
     }
 
-    // MARK: - Login & Token Executor
-
-    func prepareRelayAttempt(_ prior: Bool) async throws {
-        if token.isEmpty { _ = try await relogin(prior) }
-    }
-
-    private func relayToken() -> String { token }
-
-    public func ensureToken(opId: UInt64, forceLogin: Bool, timeoutMs: Int64) async -> PBCoreTokenResultEvent {
-        var ev = PBCoreTokenResultEvent()
-        ev.opID = opId
-        if forceLogin {
-            dropToken()
-            retireLogin()
-        }
-        if !forceLogin {
-            if !token.isEmpty, tokenExpires == 0 || tokenExpires >= clock() + 86_400_000 {
-                ev.token = token
-                ev.expiresMs = tokenExpires
-                return ev
-            }
-            if let saved = securityStore.loadLoginToken(server: account.server, deviceId: account.deviceId),
-               saved.expiresMs == 0 || saved.expiresMs >= clock() + 86_400_000
-            {
-                token = saved.token
-                tokenExpires = saved.expiresMs
-                ev.token = saved.token
-                ev.expiresMs = saved.expiresMs
-                return ev
-            }
-        }
-        do {
-            let tok: String
-            if timeoutMs > 0 {
-                tok = try await withTimeout(timeoutMs, sleep: sleep) {
-                    try await self.signIn()
-                }
-            } else {
-                tok = try await signIn()
-            }
-            ev.token = tok
-            ev.expiresMs = tokenExpires
-            return ev
-        } catch let e as ConnectError where e.code == .permissionDenied {
-            dropToken()
-            ev.removed = true
-            ev.errorCode = "permission_denied"
-            ev.error = errorText(e)
-            return ev
-        } catch {
-            ev.errorCode = (error as? ConnectError)?.code.name ?? (error is TimedOut ? "deadline_exceeded" : "unavailable")
-            ev.error = errorText(error)
-            ev.unresolvedHost = unresolvedHost(error)
-            return ev
-        }
-    }
-
-    public func discardToken(_ rejected: String) {
-        rejectCredential(rejected)
-    }
-
-    func signIn() async throws -> String {
-        while true {
-            try Task.checkCancellation()
-            let flight: LoginFlight
-            if let existing = loginFlight {
-                flight = existing
-            } else {
-                let generation = loginGeneration
-                let id = UUID(), result = SharedResult<String>()
-                let task = Task {
-                    let outcome: Result<String, Error>
-                    do {
-                        outcome = .success(try await self.performSignIn())
-                    } catch {
-                        outcome = .failure(error)
-                    }
-                    if self.loginFlight?.id == id { self.loginFlight = nil }
-                    result.resolve(outcome)
-                }
-                flight = LoginFlight(id: id, generation: generation, task: task, result: result)
-                loginFlight = flight
-            }
-            do {
-                return try await flight.result.value
-            } catch {
-                if flight.generation != loginGeneration && !Task.isCancelled && !closed { continue }
-                throw error
-            }
-        }
-    }
-
-    func retireLogin() {
-        loginGeneration += 1
-        loginFlight?.task.cancel()
-        loginFlight = nil
-    }
-
-    private func performSignIn() async throws -> String {
-        while signingIn {
-            await withCheckedContinuation { signInWaiters.append($0) }
-        }
-        signingIn = true
-        defer {
-            signingIn = false
-            if !signInWaiters.isEmpty { signInWaiters.removeFirst().resume() }
-        }
-        try Task.checkCancellation()
-        let timeout: Int64 = networkGeneration > 0 ? 3000 : 15_000
-        do {
-            let response = try await withTimeout(timeout, sleep: sleep) { [api, account, securityStore] in
-                try await loginWithStore(api: api, deviceId: account.deviceId, store: securityStore)
-            }
-            try Task.checkCancellation()
-            return signedIn(response)
-        } catch let first as ConnectError where first.code == .permissionDenied {
-            let response = try await withTimeout(timeout, sleep: sleep) { [api, account, securityStore] in
-                try await loginWithStore(api: api, deviceId: account.deviceId, store: securityStore)
-            }
-            try Task.checkCancellation()
-            return signedIn(response)
-        }
-    }
-
-    private func signedIn(_ res: PBLoginResponse) -> String {
-        if !closed {
-            token = res.token
-            tokenExpires = res.expiresMs
-            let saved = SavedLogin(token: res.token, expiresMs: res.expiresMs)
-            securityStore.saveLoginToken(saved, server: account.server, deviceId: account.deviceId)
-        }
-        return res.token
-    }
-
-    func rejectCredential(_ rejected: String) {
-        if rejected.isEmpty || token == rejected { dropToken() }
-    }
-
-    func dropToken() {
-        token = ""
-        tokenExpires = 0
-        securityStore.clearLoginToken(server: account.server, deviceId: account.deviceId)
-    }
-
     // MARK: - Stream Executor (OpenStreamEffect / CloseStreamEffect)
 
-    public func openStream(legId: UInt64, token credential: String, callbacks: StreamCallbacks) {
+    public func openStream(legId: UInt64, helloFrame: Data, callbacks: StreamCallbacks) {
         closeStream(legId: legId)
-        var frame = PBPeerFrame()
-        frame.hello.token = credential
-        guard let hello: Data = try? frame.serializedData() else {
+        guard !helloFrame.isEmpty else {
             Task {
                 var closed = PBCoreStreamClosedEvent()
                 closed.legID = legId
@@ -477,38 +297,17 @@ public final actor Remote {
             }
             return
         }
-        let socket = deviceLink.relay.openStream("/v1/stream", hello: hello)
+        let socket = deviceLink.relay.openStream("/v1/stream", hello: helloFrame)
         let leg = StreamLeg(legId: legId, socket: socket)
         streamLegs[legId] = leg
-        let netGen = networkGeneration
 
         let (frames, queue) = AsyncStream<Data>.makeStream(
             bufferingPolicy: .bufferingOldest(max(frameQueue, 1)))
         leg.queue = queue
         let budget = StreamByteBudget(limit: frameQueueBytes)
-        let parse = frameParser.withLock { $0 }
-        let peerBudget = self.peerBudget
 
-        leg.receiveTask = Task.detached { [weak self] in
+        leg.receiveTask = Task.detached {
             while let bytes = try? await socket.receive() {
-                if let body = peerFrameBody(bytes, targetField: 11) {
-                    if peerBudget.reserve(65536) {
-                        Task {
-                            await self?.handlePeerDelivery(body, legId: legId, socket: socket, netGen: netGen)
-                            peerBudget.release(65536)
-                        }
-                    }
-                    continue
-                }
-                if let body = peerFrameBody(bytes, targetField: 12) {
-                    if peerBudget.reserve(65536) {
-                        Task {
-                            await self?.handlePeerResult(body, legId: legId, socket: socket, netGen: netGen)
-                            peerBudget.release(65536)
-                        }
-                    }
-                    continue
-                }
                 guard bytes.count <= streamFrameBytes, budget.reserve(bytes.count) else {
                     socket.cancel()
                     break
@@ -528,8 +327,6 @@ public final actor Remote {
                 legId: legId,
                 frames: frames,
                 budget: budget,
-                parse: parse,
-                credential: credential,
                 callbacks: callbacks
             )
         }
@@ -548,78 +345,21 @@ public final actor Remote {
         leg.socket.cancel()
     }
 
-    private func handlePeerDelivery(_ body: Data, legId: UInt64, socket: any FrameStream, netGen: UInt64) async {
-        guard !closed, networkGeneration == netGen, activeLegId == legId, streamLegs[legId]?.socket === socket else { return }
-        var ev = PBCoreEvent()
-        ev.directSignalReceived = .with { $0.raw = body }
-        await hostHooks?.onCoreEvent(ev)
-    }
-
-    private func handlePeerResult(_ body: Data, legId: UInt64, socket: any FrameStream, netGen: UInt64) async {
-        guard !closed, networkGeneration == netGen, activeLegId == legId, streamLegs[legId]?.socket === socket,
-              let res = try? PBPeerFrameResult(serializedBytes: body) else { return }
-        var ev = PBCoreEvent()
-        ev.directSignalDelivery = .with {
-            $0.frameID = res.frameID
-            $0.status = UInt32(res.status.rawValue)
-            $0.retryAfterMs = UInt64(res.retryAfterMs)
-        }
-        await hostHooks?.onCoreEvent(ev)
-    }
-
     private func processStream(
         legId: UInt64,
         frames: AsyncStream<Data>,
         budget: StreamByteBudget,
-        parse: @Sendable (Data) throws -> PBServerFrame,
-        credential: String,
         callbacks: StreamCallbacks
     ) async {
         guard let leg = streamLegs[legId] else { return }
-        func emit(_ fill: (inout PBCoreStreamFrameEvent) -> Void) async {
-            var ev = PBCoreStreamFrameEvent()
-            ev.legID = legId
-            fill(&ev)
-            await callbacks.onFrame(ev)
+        if await leg.socket.opened(), !closed, !leg.closed, streamLegs[legId] === leg {
+            activeLegId = legId
+            directExecutor.attachLeg(leg.socket)
         }
         for await bytes in frames {
             defer { budget.release(bytes.count) }
             guard !closed, !leg.closed, streamLegs[legId] === leg else { break }
-            do {
-                let serverFrame = try parse(bytes)
-                switch serverFrame.kind {
-                case .ready(let ready)?:
-                    activeLegId = legId
-                    directExecutor.attachLeg(leg.socket)
-                    await callbacks.onReady(legId, ready.serverTimeMs)
-                case .heartbeat?:
-                    await emit { $0.heartbeat = true }
-                case .machineUpdated(let u)?:
-                    await emit { $0.wireMachineUpdated = u.machine }
-                case .machineRemoved(let u)?:
-                    await emit { $0.machineRemovedID = u.machineID }
-                case .sessionUpdated(let u)?:
-                    await emit { $0.wireSessionUpdated = u.session }
-                case .eventsAppended(let a)?:
-                    await emit {
-                        $0.eventsAppended.sessionID = a.sessionID
-                        $0.eventsAppended.wireEvents = a.events
-                    }
-                case .accountPrefsUpdated(let u)?:
-                    if u.object.objectID == projectPrefsID {
-                        await emit { $0.wireAccountPrefsUpdated = u.object }
-                    }
-                case .deviceUpdated(let u)?:
-                    await emit { $0.wireDeviceUpdated = u.device }
-                case .deviceRemoved(let u)?:
-                    await emit { $0.deviceRemovedID = u.deviceID }
-                default:
-                    break
-                }
-            } catch {
-                if !Task.isCancelled && !leg.closed { report(error) }
-                break
-            }
+            await callbacks.onRawFrame(legId, bytes)
         }
         leg.socket.cancel()
         directExecutor.detachLeg(leg.socket)
@@ -628,14 +368,10 @@ public final actor Remote {
         if activeLegId == legId { activeLegId = nil }
         let end = await leg.socket.ended()
         guard !closed && !leg.closed else { return }
-        if end.closeCode == policyViolation && token == credential {
-            dropToken()
-        }
         var closedEvent = PBCoreStreamClosedEvent()
         closedEvent.legID = legId
         closedEvent.policyViolation = end.closeCode == policyViolation
         if let err = end.error {
-            closedEvent.errorCode = (err as? ConnectError)?.code.name ?? ""
             closedEvent.error = errorText(err)
             closedEvent.unresolvedHost = unresolvedHost(err)
         } else {
@@ -657,9 +393,6 @@ public final actor Remote {
     private func closeActor() {
         guard !closed else { return }
         closed = true
-        loginGeneration += 1
-        loginFlight?.task.cancel()
-        loginFlight = nil
         securityBootstrapTask?.cancel()
         securityBootstrapTask = nil
         for leg in streamLegs.values {
@@ -678,8 +411,6 @@ public final actor Remote {
         fallbackSecurityDriver?.close()
         fallbackSecurityDriver = nil
     }
-
-    // MARK: - Transitional Step 3-4 Forwarding to Core
 
     public func refreshDevices() async {
         await hostHooks?.onRefreshDevices()

@@ -81,11 +81,17 @@ private final class PingGate: @unchecked Sendable {
         let (listener, requests) = try redirector()
         defer { listener.close() }
         // The system's default configuration follows redirects; the stack built on it must not.
-        let api = try Api(
-            server: "http://127.0.0.1:\(listener.port)", http: HTTP(configuration: .default))
         var ask = PBGetChallengeRequest()
         ask.deviceID = "test"
-        #expect(await api.auth.getChallenge(request: ask).error != nil)
+        let res = await SecurityExecutor.executeRelayRpcUnary(
+            http: HTTP(configuration: .default),
+            method: .getChallenge,
+            server: "http://127.0.0.1:\(listener.port)",
+            requestBytes: (try? ask.serializedData()) ?? Data(),
+            allowPlainHttp: true,
+            opID: 1
+        )
+        #expect(res?.connectCode != 0)
         #expect(requests.value == 1)
     }
 
@@ -186,7 +192,7 @@ private final class PingGate: @unchecked Sendable {
             "http://relay.example", "http://192.168.1.2:8080",
             "https://user:password@relay.example", "ftp://relay.example", "",
         ] {
-            #expect(throws: UserError.self, "\(server)") { try Api(server: server, http: HTTP()) }
+            #expect(throws: UserError.self, "\(server)") { try RelayOrigin(server: server) }
             #expect(throws: UserError.self, "\(server)") {
                 try fixtureRemote(
                     account: Account(
@@ -196,16 +202,16 @@ private final class PingGate: @unchecked Sendable {
         }
         // Plain http only on this device: a simulator's server, or a test's.
         #expect(
-            try Api(server: "http://127.0.0.1:8080", http: HTTP()).server == "http://127.0.0.1:8080"
+            try RelayOrigin(server: "http://127.0.0.1:8080").server == "http://127.0.0.1:8080"
         )
         #expect(
-            try Api(server: " HTTPS://Relay.Example/ ", http: HTTP()).server
+            try RelayOrigin(server: " HTTPS://Relay.Example/ ").server
                 == "https://relay.example")
         #expect(
-            try Api(server: "https://relay.example", http: HTTP()).socketURL("/v1/stream")
+            try RelayOrigin(server: "https://relay.example").socketURL("/v1/stream")
                 .absoluteString == "wss://relay.example/v1/stream")
         #expect(
-            try Api(server: "http://localhost:8787", http: HTTP()).socketURL("/v1/term")
+            try RelayOrigin(server: "http://localhost:8787").socketURL("/v1/term")
                 .absoluteString == "ws://localhost:8787/v1/term")
     }
 
@@ -215,7 +221,5 @@ private final class PingGate: @unchecked Sendable {
         #expect(c.httpCookieStorage == nil)
         #expect(c.urlCredentialStorage == nil)
         #expect(c.requestCachePolicy == .reloadIgnoringLocalCacheData)
-        #expect(Api.headers(token: "") == [:])
-        #expect(Api.headers(token: "t") == ["Authorization": ["Bearer t"]])
     }
 }
