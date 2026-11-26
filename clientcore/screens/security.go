@@ -175,18 +175,11 @@ func NormalizePairingCodeDigits(raw string) string {
 	return b.String()
 }
 
-// DeriveRecoveryPhase maps live GetRecoveryContextResponse.Phase and/or persisted pendingOp into
+// DeriveRecoveryPhase maps live SecurityRecoveryInfo and/or persisted pendingOp into
 // Core's single SecurityRecoveryPhase enum.
 func DeriveRecoveryPhase(rec *corev1.SecurityRecoveryInfo, pendingOp *corev1.SecurityPendingOpSummary) corev1.SecurityRecoveryPhase {
-	if rec != nil {
-		switch rec.Phase {
-		case v1.GetRecoveryContextResponse_PHASE_READY, v1.GetRecoveryContextResponse_PHASE_PUBLISHED:
-			return corev1.SecurityRecoveryPhase_SECURITY_RECOVERY_PHASE_READY_TO_COMPLETE
-		case v1.GetRecoveryContextResponse_PHASE_REJECTED:
-			return corev1.SecurityRecoveryPhase_SECURITY_RECOVERY_PHASE_REJECTED
-		case v1.GetRecoveryContextResponse_PHASE_PENDING:
-			return corev1.SecurityRecoveryPhase_SECURITY_RECOVERY_PHASE_SUBMITTED_WAITING
-		}
+	if rec != nil && rec.RecoveryPhase != corev1.SecurityRecoveryPhase_SECURITY_RECOVERY_PHASE_UNSPECIFIED {
+		return rec.RecoveryPhase
 	}
 	if pendingOp != nil && pendingOp.Kind == security.PendingOpKindRecovery {
 		switch {

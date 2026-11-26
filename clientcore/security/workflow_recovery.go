@@ -10,6 +10,19 @@ import (
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
+func mapWireRecoveryPhase(p v1.GetRecoveryContextResponse_Phase) corev1.SecurityRecoveryPhase {
+	switch p {
+	case v1.GetRecoveryContextResponse_PHASE_PENDING:
+		return corev1.SecurityRecoveryPhase_SECURITY_RECOVERY_PHASE_SUBMITTED_WAITING
+	case v1.GetRecoveryContextResponse_PHASE_READY, v1.GetRecoveryContextResponse_PHASE_PUBLISHED:
+		return corev1.SecurityRecoveryPhase_SECURITY_RECOVERY_PHASE_READY_TO_COMPLETE
+	case v1.GetRecoveryContextResponse_PHASE_REJECTED:
+		return corev1.SecurityRecoveryPhase_SECURITY_RECOVERY_PHASE_REJECTED
+	default:
+		return corev1.SecurityRecoveryPhase_SECURITY_RECOVERY_PHASE_UNSPECIFIED
+	}
+}
+
 func buildRecoveryContextSignBytes(challenge, recoveryEd []byte, recoveryID string) []byte {
 	var ed [32]byte
 	copy(ed[:], recoveryEd)
@@ -504,7 +517,11 @@ func (t *continueRecoverySigningTask) step(e *Engine, ev *secEvent) error {
 		e.saveOperationCAS(t.op, &nextOp, parentTarget(t, 0))
 	case contRecSave:
 		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{
-			Recovery: &corev1.SecurityRecoveryInfo{RecoveryId: t.recoveryID, Phase: v1.GetRecoveryContextResponse_PHASE_PENDING, ReadyMs: t.readyMs},
+			Recovery: &corev1.SecurityRecoveryInfo{
+				RecoveryId:    t.recoveryID,
+				RecoveryPhase: corev1.SecurityRecoveryPhase_SECURITY_RECOVERY_PHASE_SUBMITTED_WAITING,
+				ReadyMs:       t.readyMs,
+			},
 		})
 	}
 	return nil
@@ -521,7 +538,7 @@ const (
 type resumeRecoveryTask struct {
 	taskBase
 	op    *PersistedOperation
-	phase v1.GetRecoveryContextResponse_Phase
+	phase corev1.SecurityRecoveryPhase
 }
 
 func (t *resumeRecoveryTask) fetchContext(e *Engine, op *PersistedOperation) {
@@ -569,7 +586,7 @@ func (t *resumeRecoveryTask) step(e *Engine, ev *secEvent) error {
 		t.fetchContext(e, ev.op)
 	case resumeRecFetchCtx:
 		resp, draft := ev.recCtx.resp, t.op.Recovery
-		t.phase = resp.Phase
+		t.phase = mapWireRecoveryPhase(resp.Phase)
 		if int64(resp.ReadyMs) > 0 && int64(resp.ReadyMs) != draft.ReadyMs {
 			nextDraft := *draft
 			nextDraft.ReadyMs = int64(resp.ReadyMs)
@@ -580,13 +597,13 @@ func (t *resumeRecoveryTask) step(e *Engine, ev *secEvent) error {
 		}
 		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{
 			ResumedDraft: true, CodeSaved: t.op.CodeSaved,
-			Recovery: &corev1.SecurityRecoveryInfo{RecoveryId: draft.RecoveryID, Phase: resp.Phase, ReadyMs: draft.ReadyMs},
+			Recovery: &corev1.SecurityRecoveryInfo{RecoveryId: draft.RecoveryID, RecoveryPhase: t.phase, ReadyMs: draft.ReadyMs},
 		})
 	case resumeRecSaveReady:
 		saved := ev.op
 		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{
 			ResumedDraft: true, CodeSaved: saved.CodeSaved,
-			Recovery: &corev1.SecurityRecoveryInfo{RecoveryId: saved.Recovery.RecoveryID, Phase: t.phase, ReadyMs: saved.Recovery.ReadyMs},
+			Recovery: &corev1.SecurityRecoveryInfo{RecoveryId: saved.Recovery.RecoveryID, RecoveryPhase: t.phase, ReadyMs: saved.Recovery.ReadyMs},
 		})
 	}
 	return nil

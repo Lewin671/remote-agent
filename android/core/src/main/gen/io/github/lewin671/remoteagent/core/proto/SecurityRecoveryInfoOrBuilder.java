@@ -23,19 +23,19 @@ public interface SecurityRecoveryInfoOrBuilder extends
       getRecoveryIdBytes();
 
   /**
-   * <code>.remoteagent.v1.GetRecoveryContextResponse.Phase phase = 2 [json_name = "phase"];</code>
-   * @return The enum numeric value on the wire for phase.
-   */
-  int getPhaseValue();
-  /**
-   * <code>.remoteagent.v1.GetRecoveryContextResponse.Phase phase = 2 [json_name = "phase"];</code>
-   * @return The phase.
-   */
-  io.github.lewin671.remoteagent.proto.GetRecoveryContextResponse.Phase getPhase();
-
-  /**
    * <code>int64 ready_ms = 3 [json_name = "readyMs"];</code>
    * @return The readyMs.
    */
   long getReadyMs();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityRecoveryPhase recovery_phase = 4 [json_name = "recoveryPhase"];</code>
+   * @return The enum numeric value on the wire for recoveryPhase.
+   */
+  int getRecoveryPhaseValue();
+  /**
+   * <code>.remoteagent.core.v1.SecurityRecoveryPhase recovery_phase = 4 [json_name = "recoveryPhase"];</code>
+   * @return The recoveryPhase.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityRecoveryPhase getRecoveryPhase();
 }

@@ -214,8 +214,8 @@ func TestManagedRecoveryWindowPollAdaptiveIntervalsAndForeground(t *testing.T) {
 		t.Fatalf("READY phase must clear activePoll, got %v", activePollKindForTest(e))
 	}
 	last := obs.updates[len(obs.updates)-1]
-	if last.Recovery == nil || last.Recovery.Phase != v1.GetRecoveryContextResponse_PHASE_READY {
-		t.Fatalf("last update = %+v, want PHASE_READY", last)
+	if last.Recovery == nil || last.Recovery.RecoveryPhase != corev1.SecurityRecoveryPhase_SECURITY_RECOVERY_PHASE_READY_TO_COMPLETE {
+		t.Fatalf("last update = %+v, want SECURITY_RECOVERY_PHASE_READY_TO_COMPLETE", last)
 	}
 }
 

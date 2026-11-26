@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package remoteagent.core.v1;
 
+import "remoteagent/core/v1/security_view.proto";
 import "remoteagent/core/v1/settings_view.proto";
 import "remoteagent/core/v1/text.proto";
 import "remoteagent/v1/envelope.proto";
@@ -545,9 +546,11 @@ message SecurityPairingInfo {
 }
 
 message SecurityRecoveryInfo {
+  reserved 2;
+  reserved "phase";
   string recovery_id = 1;
-  remoteagent.v1.GetRecoveryContextResponse.Phase phase = 2;
   int64 ready_ms = 3;
+  SecurityRecoveryPhase recovery_phase = 4;
 }
 
 message SecurityHandoffCandidate {

@@ -3326,10 +3326,10 @@ func (m *SecurityPairingInfo) AppendMarshal(b []byte) []byte {
 }
 
 type SecurityRecoveryInfo struct {
-	_          [0]func()
-	RecoveryId string
-	Phase      v1.GetRecoveryContextResponse_Phase
-	ReadyMs    int64
+	_             [0]func()
+	RecoveryId    string
+	ReadyMs       int64
+	RecoveryPhase SecurityRecoveryPhase
 }
 
 func (m *SecurityRecoveryInfo) GetRecoveryId() string {
@@ -3338,15 +3338,15 @@ func (m *SecurityRecoveryInfo) GetRecoveryId() string {
 	}
 	return ""
 }
-func (m *SecurityRecoveryInfo) GetPhase() v1.GetRecoveryContextResponse_Phase {
-	if m != nil {
-		return m.Phase
-	}
-	return 0
-}
 func (m *SecurityRecoveryInfo) GetReadyMs() int64 {
 	if m != nil {
 		return m.ReadyMs
+	}
+	return 0
+}
+func (m *SecurityRecoveryInfo) GetRecoveryPhase() SecurityRecoveryPhase {
+	if m != nil {
+		return m.RecoveryPhase
 	}
 	return 0
 }
@@ -3354,8 +3354,8 @@ func (m *SecurityRecoveryInfo) GetReadyMs() int64 {
 var LitewireDesc_SecurityRecoveryInfo = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(SecurityRecoveryInfo{}.RecoveryId), Kind: litewire.KindString},
-		{Num: 2, Offset: unsafe.Offsetof(SecurityRecoveryInfo{}.Phase), Kind: litewire.KindInt32},
 		{Num: 3, Offset: unsafe.Offsetof(SecurityRecoveryInfo{}.ReadyMs), Kind: litewire.KindInt64},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityRecoveryInfo{}.RecoveryPhase), Kind: litewire.KindInt32},
 	},
 }
 

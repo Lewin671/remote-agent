@@ -1833,9 +1833,9 @@ public struct PBSecurityRecoveryInfo: Sendable {
 
   public var recoveryID: String = String()
 
-  public var phase: PBGetRecoveryContextResponse.Phase = .unspecified
-
   public var readyMs: Int64 = 0
+
+  public var recoveryPhase: PBSecurityRecoveryPhase = .unspecified
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -5734,7 +5734,7 @@ extension PBSecurityPairingInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 extension PBSecurityRecoveryInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityRecoveryInfo"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}recovery_id\0\u{1}phase\0\u{3}ready_ms\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}recovery_id\0\u{4}\u{2}ready_ms\0\u{3}recovery_phase\0\u{b}phase\0\u{c}\u{2}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5743,8 +5743,8 @@ extension PBSecurityRecoveryInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.recoveryID) }()
-      case 2: try { try decoder.decodeSingularEnumField(value: &self.phase) }()
       case 3: try { try decoder.decodeSingularInt64Field(value: &self.readyMs) }()
+      case 4: try { try decoder.decodeSingularEnumField(value: &self.recoveryPhase) }()
       default: break
       }
     }
@@ -5754,19 +5754,19 @@ extension PBSecurityRecoveryInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     if !self.recoveryID.isEmpty {
       try visitor.visitSingularStringField(value: self.recoveryID, fieldNumber: 1)
     }
-    if self.phase != .unspecified {
-      try visitor.visitSingularEnumField(value: self.phase, fieldNumber: 2)
-    }
     if self.readyMs != 0 {
       try visitor.visitSingularInt64Field(value: self.readyMs, fieldNumber: 3)
+    }
+    if self.recoveryPhase != .unspecified {
+      try visitor.visitSingularEnumField(value: self.recoveryPhase, fieldNumber: 4)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBSecurityRecoveryInfo, rhs: PBSecurityRecoveryInfo) -> Bool {
     if lhs.recoveryID != rhs.recoveryID {return false}
-    if lhs.phase != rhs.phase {return false}
     if lhs.readyMs != rhs.readyMs {return false}
+    if lhs.recoveryPhase != rhs.recoveryPhase {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -1360,15 +1360,15 @@ func TestWorkflowHandoffAndEmergencyRecovery(t *testing.T) {
 	}
 	_ = d.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_ConfirmRecoveryCodeSaved{ConfirmRecoveryCodeSaved: &corev1.SecurityActionEmpty{}}})
 	dSub := d.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_ResumeRecovery{ResumeRecovery: &corev1.SecurityActionEmpty{}}})
-	if !dSub.Ok || dSub.Recovery == nil || dSub.Recovery.Phase != v1.GetRecoveryContextResponse_PHASE_PENDING {
-		t.Fatalf("expected PHASE_PENDING recovery on D via ResumeRecovery, got %+v", dSub)
+	if !dSub.Ok || dSub.Recovery == nil || dSub.Recovery.RecoveryPhase != corev1.SecurityRecoveryPhase_SECURITY_RECOVERY_PHASE_SUBMITTED_WAITING {
+		t.Fatalf("expected SUBMITTED_WAITING recovery on D via ResumeRecovery, got %+v", dSub)
 	}
 	bVetoRot := b.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_PrepareRecoveryRotation{PrepareRecoveryRotation: &corev1.SecurityActionEmpty{}}})
 	_ = b.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_ConfirmRecoveryRotation{ConfirmRecoveryRotation: &corev1.SecurityActionEmpty{}}})
 	currentCode = bVetoRot.RecoveryCode
 	dRes := d.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_ResumeRecovery{ResumeRecovery: &corev1.SecurityActionEmpty{}}})
-	if !dRes.Ok || dRes.Recovery.Phase != v1.GetRecoveryContextResponse_PHASE_REJECTED {
-		t.Fatalf("expected PHASE_REJECTED after veto, got %+v", dRes)
+	if !dRes.Ok || dRes.Recovery.RecoveryPhase != corev1.SecurityRecoveryPhase_SECURITY_RECOVERY_PHASE_REJECTED {
+		t.Fatalf("expected REJECTED after veto, got %+v", dRes)
 	}
 	dDisc := d.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_DiscardRejectedRecovery{DiscardRejectedRecovery: &corev1.SecurityActionEmpty{}}})
 	if !dDisc.Ok || len(d.candEd) != 0 || dDisc.Status.Bootstrap != corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_EMPTY {
@@ -1388,15 +1388,15 @@ func TestWorkflowHandoffAndEmergencyRecovery(t *testing.T) {
 	}
 	_ = c.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_ConfirmRecoveryCodeSaved{ConfirmRecoveryCodeSaved: &corev1.SecurityActionEmpty{}}})
 	cSub := c.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_ResumeRecovery{ResumeRecovery: &corev1.SecurityActionEmpty{}}})
-	if !cSub.Ok || cSub.Recovery == nil || cSub.Recovery.Phase != v1.GetRecoveryContextResponse_PHASE_PENDING || cSub.Recovery.ReadyMs <= c.nowMs {
-		t.Fatalf("expected PHASE_PENDING with future ReadyMs on C, got %+v", cSub)
+	if !cSub.Ok || cSub.Recovery == nil || cSub.Recovery.RecoveryPhase != corev1.SecurityRecoveryPhase_SECURITY_RECOVERY_PHASE_SUBMITTED_WAITING || cSub.Recovery.ReadyMs <= c.nowMs {
+		t.Fatalf("expected SUBMITTED_WAITING with future ReadyMs on C, got %+v", cSub)
 	}
 
 	c.nowMs += 49 * 60 * 60 * 1000
 	relay.nowMs = c.nowMs
 	cReady := c.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_ResumeRecovery{ResumeRecovery: &corev1.SecurityActionEmpty{}}})
-	if !cReady.Ok || cReady.Recovery.Phase != v1.GetRecoveryContextResponse_PHASE_READY {
-		t.Fatalf("expected PHASE_READY after 48h, got %+v", cReady)
+	if !cReady.Ok || cReady.Recovery.RecoveryPhase != corev1.SecurityRecoveryPhase_SECURITY_RECOVERY_PHASE_READY_TO_COMPLETE {
+		t.Fatalf("expected READY_TO_COMPLETE after 48h, got %+v", cReady)
 	}
 	cComp := c.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_CompleteRecovery{CompleteRecovery: &corev1.SecurityActionEmpty{}}})
 	if !cComp.Ok || cComp.AccountAdopted == nil || !cComp.Status.IsAuthority || !cComp.Status.LeaseValid {
@@ -1592,7 +1592,7 @@ func TestContinueRecoverySigningResumesUnsignedDraftAfterCrash(t *testing.T) {
 	cont := b.runAction(&corev1.SecurityWorkflowActionEvent{
 		Action: &corev1.SecurityWorkflowActionEvent_ContinueRecoverySigning{ContinueRecoverySigning: &corev1.SecurityStringAction{Value: prepA.RecoveryCode}},
 	})
-	if !cont.Ok || cont.Recovery == nil || cont.Recovery.Phase != v1.GetRecoveryContextResponse_PHASE_PENDING || cont.Recovery.RecoveryId == "" || cont.Recovery.ReadyMs <= b.nowMs {
+	if !cont.Ok || cont.Recovery == nil || cont.Recovery.RecoveryPhase != corev1.SecurityRecoveryPhase_SECURITY_RECOVERY_PHASE_SUBMITTED_WAITING || cont.Recovery.RecoveryId == "" || cont.Recovery.ReadyMs <= b.nowMs {
 		t.Fatalf("expected ContinueRecoverySigning to sign and submit recovery, got %+v", cont)
 	}
 	if len(b.eng.wf.pendingOp.Signed) == 0 {
@@ -2733,3 +2733,4 @@ func TestPairingOldDeviceRemovalFailurePersistsAndResumesAcrossRestart(t *testin
 		t.Fatalf("expected PendingRemoveDeviceIds cleared after successful removal, got %+v", st.Status)
 	}
 }
+

@@ -98,9 +98,6 @@ var legacyWireAllowlist = map[string]string{
 	"StreamFrameEvent.wire_session_updated -> v1.RemoteSession":              "legacy-relay-pipe (P2-5/P3-2/P4-1)",
 	"TerminalHistoryEvent.page -> v1.TerminalHistoryPage":                    "legacy-relay-pipe (P2-5/P3-2/P4-1)",
 
-	// Legacy nested RPC response enum in security workflow result (replaced in P2-6/P3-3/P4-1).
-	"SecurityRecoveryInfo.phase -> v1.GetRecoveryContextResponse.Phase": "legacy-security-recovery (P2-6/P3-3/P4-1)",
-
 	// Demo seeding event (only used by ?demo / preview fixtures).
 	"DemoDevice.meta -> v1.DeviceMeta":          "demo-seed (P4-1)",
 	"DemoMachine.meta -> v1.MachineMeta":        "demo-seed (P4-1)",

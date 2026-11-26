@@ -287,9 +287,8 @@ func (t *managedPollTask) step(e *Engine, ev *secEvent) error {
 			if rec.ReadyMs > 0 {
 				p.readyMs = rec.ReadyMs
 			}
-			if rec.Phase == v1.GetRecoveryContextResponse_PHASE_READY ||
-				rec.Phase == v1.GetRecoveryContextResponse_PHASE_PUBLISHED ||
-				rec.Phase == v1.GetRecoveryContextResponse_PHASE_REJECTED {
+			if rec.RecoveryPhase == corev1.SecurityRecoveryPhase_SECURITY_RECOVERY_PHASE_READY_TO_COMPLETE ||
+				rec.RecoveryPhase == corev1.SecurityRecoveryPhase_SECURITY_RECOVERY_PHASE_REJECTED {
 				wf.activePoll = nil
 				e.cancelSecurityPollTimer()
 				e.notifyPollUpdate(t.kind, "", nil, rec, false, false, nil)

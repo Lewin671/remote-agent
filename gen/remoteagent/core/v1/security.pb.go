@@ -4470,10 +4470,10 @@ func (x *SecurityPairingInfo) GetRemoveOldNotice() *Text {
 }
 
 type SecurityRecoveryInfo struct {
-	state         protoimpl.MessageState              `protogen:"open.v1"`
-	RecoveryId    string                              `protobuf:"bytes,1,opt,name=recovery_id,json=recoveryId,proto3" json:"recovery_id,omitempty"`
-	Phase         v1.GetRecoveryContextResponse_Phase `protobuf:"varint,2,opt,name=phase,proto3,enum=remoteagent.v1.GetRecoveryContextResponse_Phase" json:"phase,omitempty"`
-	ReadyMs       int64                               `protobuf:"varint,3,opt,name=ready_ms,json=readyMs,proto3" json:"ready_ms,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RecoveryId    string                 `protobuf:"bytes,1,opt,name=recovery_id,json=recoveryId,proto3" json:"recovery_id,omitempty"`
+	ReadyMs       int64                  `protobuf:"varint,3,opt,name=ready_ms,json=readyMs,proto3" json:"ready_ms,omitempty"`
+	RecoveryPhase SecurityRecoveryPhase  `protobuf:"varint,4,opt,name=recovery_phase,json=recoveryPhase,proto3,enum=remoteagent.core.v1.SecurityRecoveryPhase" json:"recovery_phase,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4515,18 +4515,18 @@ func (x *SecurityRecoveryInfo) GetRecoveryId() string {
 	return ""
 }
 
-func (x *SecurityRecoveryInfo) GetPhase() v1.GetRecoveryContextResponse_Phase {
-	if x != nil {
-		return x.Phase
-	}
-	return v1.GetRecoveryContextResponse_Phase(0)
-}
-
 func (x *SecurityRecoveryInfo) GetReadyMs() int64 {
 	if x != nil {
 		return x.ReadyMs
 	}
 	return 0
+}
+
+func (x *SecurityRecoveryInfo) GetRecoveryPhase() SecurityRecoveryPhase {
+	if x != nil {
+		return x.RecoveryPhase
+	}
+	return SecurityRecoveryPhase_SECURITY_RECOVERY_PHASE_UNSPECIFIED
 }
 
 type SecurityHandoffCandidate struct {
@@ -6636,7 +6636,7 @@ var File_remoteagent_core_v1_security_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\n" +
-	"\"remoteagent/core/v1/security.proto\x12\x13remoteagent.core.v1\x1a'remoteagent/core/v1/settings_view.proto\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1dremoteagent/v1/envelope.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\x1a\x1bremoteagent/v1/remote.proto\"\x9b\x02\n" +
+	"\"remoteagent/core/v1/security.proto\x12\x13remoteagent.core.v1\x1a'remoteagent/core/v1/security_view.proto\x1a'remoteagent/core/v1/settings_view.proto\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1dremoteagent/v1/envelope.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\x1a\x1bremoteagent/v1/remote.proto\"\x9b\x02\n" +
 	"\x13SecurityConfigEvent\x12\x18\n" +
 	"\aaccount\x18\x01 \x01(\tR\aaccount\x12\x1b\n" +
 	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId\x12#\n" +
@@ -7020,12 +7020,12 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\x11replace_old_label\x18\x0e \x01(\v2\x19.remoteagent.core.v1.TextR\x0freplaceOldLabel\x12C\n" +
 	"\x10replace_old_hint\x18\x0f \x01(\v2\x19.remoteagent.core.v1.TextR\x0ereplaceOldHint\x12-\n" +
 	"\x12joiner_description\x18\x10 \x01(\tR\x11joinerDescription\x12E\n" +
-	"\x11remove_old_notice\x18\x11 \x01(\v2\x19.remoteagent.core.v1.TextR\x0fremoveOldNoticeJ\x04\b\r\x10\x0eR\x12remove_old_default\"\x9a\x01\n" +
+	"\x11remove_old_notice\x18\x11 \x01(\v2\x19.remoteagent.core.v1.TextR\x0fremoveOldNoticeJ\x04\b\r\x10\x0eR\x12remove_old_default\"\xb2\x01\n" +
 	"\x14SecurityRecoveryInfo\x12\x1f\n" +
 	"\vrecovery_id\x18\x01 \x01(\tR\n" +
-	"recoveryId\x12F\n" +
-	"\x05phase\x18\x02 \x01(\x0e20.remoteagent.v1.GetRecoveryContextResponse.PhaseR\x05phase\x12\x19\n" +
-	"\bready_ms\x18\x03 \x01(\x03R\areadyMs\"{\n" +
+	"recoveryId\x12\x19\n" +
+	"\bready_ms\x18\x03 \x01(\x03R\areadyMs\x12Q\n" +
+	"\x0erecovery_phase\x18\x04 \x01(\x0e2*.remoteagent.core.v1.SecurityRecoveryPhaseR\rrecoveryPhaseJ\x04\b\x02\x10\x03R\x05phase\"{\n" +
 	"\x18SecurityHandoffCandidate\x12\x1b\n" +
 	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12\x1f\n" +
 	"\vrecovery_ed\x18\x02 \x01(\fR\n" +
@@ -7391,7 +7391,7 @@ var file_remoteagent_core_v1_security_proto_goTypes = []any{
 	(*v1.ProjectPrefs)(nil),                     // 83: remoteagent.v1.ProjectPrefs
 	(*v1.StoredEvent)(nil),                      // 84: remoteagent.v1.StoredEvent
 	(*Text)(nil),                                // 85: remoteagent.core.v1.Text
-	(v1.GetRecoveryContextResponse_Phase)(0),    // 86: remoteagent.v1.GetRecoveryContextResponse.Phase
+	(SecurityRecoveryPhase)(0),                  // 86: remoteagent.core.v1.SecurityRecoveryPhase
 	(v1.NotifyKind)(0),                          // 87: remoteagent.v1.NotifyKind
 }
 var file_remoteagent_core_v1_security_proto_depIdxs = []int32{
@@ -7448,7 +7448,7 @@ var file_remoteagent_core_v1_security_proto_depIdxs = []int32{
 	85,  // 50: remoteagent.core.v1.SecurityPairingInfo.replace_old_label:type_name -> remoteagent.core.v1.Text
 	85,  // 51: remoteagent.core.v1.SecurityPairingInfo.replace_old_hint:type_name -> remoteagent.core.v1.Text
 	85,  // 52: remoteagent.core.v1.SecurityPairingInfo.remove_old_notice:type_name -> remoteagent.core.v1.Text
-	86,  // 53: remoteagent.core.v1.SecurityRecoveryInfo.phase:type_name -> remoteagent.v1.GetRecoveryContextResponse.Phase
+	86,  // 53: remoteagent.core.v1.SecurityRecoveryInfo.recovery_phase:type_name -> remoteagent.core.v1.SecurityRecoveryPhase
 	85,  // 54: remoteagent.core.v1.SecurityExitAdvice.message_text:type_name -> remoteagent.core.v1.Text
 	58,  // 55: remoteagent.core.v1.SecurityWorkflowActionEvent.bootstrap:type_name -> remoteagent.core.v1.SecurityActionEmpty
 	58,  // 56: remoteagent.core.v1.SecurityWorkflowActionEvent.dismiss_upgrade_notice:type_name -> remoteagent.core.v1.SecurityActionEmpty
@@ -7521,6 +7521,7 @@ func file_remoteagent_core_v1_security_proto_init() {
 	if File_remoteagent_core_v1_security_proto != nil {
 		return
 	}
+	file_remoteagent_core_v1_security_view_proto_init()
 	file_remoteagent_core_v1_settings_view_proto_init()
 	file_remoteagent_core_v1_text_proto_init()
 	file_remoteagent_core_v1_security_proto_msgTypes[10].OneofWrappers = []any{

@@ -65,48 +65,6 @@ public  final class SecurityRecoveryInfo extends
 
   }
 
-  public static final int PHASE_FIELD_NUMBER = 2;
-  private int phase_;
-  /**
-   * <code>.remoteagent.v1.GetRecoveryContextResponse.Phase phase = 2 [json_name = "phase"];</code>
-   * @return The enum numeric value on the wire for phase.
-   */
-  @java.lang.Override
-  public int getPhaseValue() {
-    return phase_;
-  }
-  /**
-   * <code>.remoteagent.v1.GetRecoveryContextResponse.Phase phase = 2 [json_name = "phase"];</code>
-   * @return The phase.
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.GetRecoveryContextResponse.Phase getPhase() {
-    io.github.lewin671.remoteagent.proto.GetRecoveryContextResponse.Phase result = io.github.lewin671.remoteagent.proto.GetRecoveryContextResponse.Phase.forNumber(phase_);
-    return result == null ? io.github.lewin671.remoteagent.proto.GetRecoveryContextResponse.Phase.UNRECOGNIZED : result;
-  }
-  /**
-   * <code>.remoteagent.v1.GetRecoveryContextResponse.Phase phase = 2 [json_name = "phase"];</code>
-   * @param value The enum numeric value on the wire for phase to set.
-   */
-  private void setPhaseValue(int value) {
-      phase_ = value;
-  }
-  /**
-   * <code>.remoteagent.v1.GetRecoveryContextResponse.Phase phase = 2 [json_name = "phase"];</code>
-   * @param value The phase to set.
-   */
-  private void setPhase(io.github.lewin671.remoteagent.proto.GetRecoveryContextResponse.Phase value) {
-    phase_ = value.getNumber();
-
-  }
-  /**
-   * <code>.remoteagent.v1.GetRecoveryContextResponse.Phase phase = 2 [json_name = "phase"];</code>
-   */
-  private void clearPhase() {
-
-    phase_ = 0;
-  }
-
   public static final int READY_MS_FIELD_NUMBER = 3;
   private long readyMs_;
   /**
@@ -131,6 +89,48 @@ public  final class SecurityRecoveryInfo extends
   private void clearReadyMs() {
 
     readyMs_ = 0L;
+  }
+
+  public static final int RECOVERY_PHASE_FIELD_NUMBER = 4;
+  private int recoveryPhase_;
+  /**
+   * <code>.remoteagent.core.v1.SecurityRecoveryPhase recovery_phase = 4 [json_name = "recoveryPhase"];</code>
+   * @return The enum numeric value on the wire for recoveryPhase.
+   */
+  @java.lang.Override
+  public int getRecoveryPhaseValue() {
+    return recoveryPhase_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityRecoveryPhase recovery_phase = 4 [json_name = "recoveryPhase"];</code>
+   * @return The recoveryPhase.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SecurityRecoveryPhase getRecoveryPhase() {
+    io.github.lewin671.remoteagent.core.proto.SecurityRecoveryPhase result = io.github.lewin671.remoteagent.core.proto.SecurityRecoveryPhase.forNumber(recoveryPhase_);
+    return result == null ? io.github.lewin671.remoteagent.core.proto.SecurityRecoveryPhase.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityRecoveryPhase recovery_phase = 4 [json_name = "recoveryPhase"];</code>
+   * @param value The enum numeric value on the wire for recoveryPhase to set.
+   */
+  private void setRecoveryPhaseValue(int value) {
+      recoveryPhase_ = value;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityRecoveryPhase recovery_phase = 4 [json_name = "recoveryPhase"];</code>
+   * @param value The recoveryPhase to set.
+   */
+  private void setRecoveryPhase(io.github.lewin671.remoteagent.core.proto.SecurityRecoveryPhase value) {
+    recoveryPhase_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityRecoveryPhase recovery_phase = 4 [json_name = "recoveryPhase"];</code>
+   */
+  private void clearRecoveryPhase() {
+
+    recoveryPhase_ = 0;
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecurityRecoveryInfo parseFrom(
@@ -280,52 +280,6 @@ public  final class SecurityRecoveryInfo extends
     }
 
     /**
-     * <code>.remoteagent.v1.GetRecoveryContextResponse.Phase phase = 2 [json_name = "phase"];</code>
-     * @return The enum numeric value on the wire for phase.
-     */
-    @java.lang.Override
-    public int getPhaseValue() {
-      return instance.getPhaseValue();
-    }
-    /**
-     * <code>.remoteagent.v1.GetRecoveryContextResponse.Phase phase = 2 [json_name = "phase"];</code>
-     * @param value The phase to set.
-     * @return This builder for chaining.
-     */
-    public Builder setPhaseValue(int value) {
-      copyOnWrite();
-      instance.setPhaseValue(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.GetRecoveryContextResponse.Phase phase = 2 [json_name = "phase"];</code>
-     * @return The phase.
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.GetRecoveryContextResponse.Phase getPhase() {
-      return instance.getPhase();
-    }
-    /**
-     * <code>.remoteagent.v1.GetRecoveryContextResponse.Phase phase = 2 [json_name = "phase"];</code>
-     * @param value The enum numeric value on the wire for phase to set.
-     * @return This builder for chaining.
-     */
-    public Builder setPhase(io.github.lewin671.remoteagent.proto.GetRecoveryContextResponse.Phase value) {
-      copyOnWrite();
-      instance.setPhase(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.GetRecoveryContextResponse.Phase phase = 2 [json_name = "phase"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearPhase() {
-      copyOnWrite();
-      instance.clearPhase();
-      return this;
-    }
-
-    /**
      * <code>int64 ready_ms = 3 [json_name = "readyMs"];</code>
      * @return The readyMs.
      */
@@ -353,6 +307,52 @@ public  final class SecurityRecoveryInfo extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.SecurityRecoveryPhase recovery_phase = 4 [json_name = "recoveryPhase"];</code>
+     * @return The enum numeric value on the wire for recoveryPhase.
+     */
+    @java.lang.Override
+    public int getRecoveryPhaseValue() {
+      return instance.getRecoveryPhaseValue();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityRecoveryPhase recovery_phase = 4 [json_name = "recoveryPhase"];</code>
+     * @param value The recoveryPhase to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRecoveryPhaseValue(int value) {
+      copyOnWrite();
+      instance.setRecoveryPhaseValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityRecoveryPhase recovery_phase = 4 [json_name = "recoveryPhase"];</code>
+     * @return The recoveryPhase.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SecurityRecoveryPhase getRecoveryPhase() {
+      return instance.getRecoveryPhase();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityRecoveryPhase recovery_phase = 4 [json_name = "recoveryPhase"];</code>
+     * @param value The enum numeric value on the wire for recoveryPhase to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRecoveryPhase(io.github.lewin671.remoteagent.core.proto.SecurityRecoveryPhase value) {
+      copyOnWrite();
+      instance.setRecoveryPhase(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityRecoveryPhase recovery_phase = 4 [json_name = "recoveryPhase"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRecoveryPhase() {
+      copyOnWrite();
+      instance.clearRecoveryPhase();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityRecoveryInfo)
   }
   @java.lang.Override
@@ -370,12 +370,12 @@ public  final class SecurityRecoveryInfo extends
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
             "recoveryId_",
-            "phase_",
             "readyMs_",
+            "recoveryPhase_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\f" +
-              "\u0003\u0002";
+              "\u0000\u0003\u0000\u0000\u0001\u0004\u0003\u0000\u0000\u0000\u0001\u0208\u0003\u0002" +
+              "\u0004\f";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
