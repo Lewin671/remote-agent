@@ -19,7 +19,7 @@ public enum BigImage: Equatable, Sendable {
 }
 
 /// What the viewer writes over the picture for a state; nil while there is nothing to say.
-public func viewerNote(_ big: BigImage, sync: PBImageSync) -> String? {
+public func viewerNote(_ big: BigImage, sync: PBSessionImageSyncState) -> String? {
     switch big {
     case .loading, .ready: return nil
     case .notSynced: return sync == .nameOnly ? L10n.imageIosNameOnly() : L10n.imageOriginalOnComputer()

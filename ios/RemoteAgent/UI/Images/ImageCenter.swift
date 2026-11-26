@@ -221,11 +221,11 @@ final class ImageCenter {
         arrivals += 1
     }
 
-    func preview(_ ref: PBImageRef) -> UIImage? {
-        if ref.preview.isEmpty { return nil }
-        let key = "\(ref.imageID)/\(ref.preview.count)/\(ref.path)" as NSString
+    func preview(imageID: String, displayName: String, data: Data) -> UIImage? {
+        if data.isEmpty { return nil }
+        let key = "\(imageID)/\(data.count)/\(displayName)" as NSString
         if let held = previews.object(forKey: key) { return held }
-        guard let image = UIImage(data: ref.preview) else { return nil }
+        guard let image = UIImage(data: data) else { return nil }
         if !closed { previews.setObject(image, forKey: key) }
         return image
     }

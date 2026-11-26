@@ -37,9 +37,8 @@ import UIKit
     /// with 保存 and 分享 asked before that, and is told.
     @Test func whoAskedForADisplayCopyHearsWhenItIsHere() {
         let loader = ViewerLoader(center: center(), session: "s1")
-        let ref = PBImageRef.with { $0.imageID = "i1" }
         let viewerImg = PBSessionViewerImageView.with {
-            $0.ref = ref
+            $0.imageID = "i1"
             $0.displayName = "shot.png"
             $0.fileExtension = "png"
             $0.downloadName = "shot-1.png"
@@ -53,31 +52,32 @@ import UIKit
             heard.yes = true
         }
         let bytes = png(.red)
-        loader.keep(ref, ViewedImage(image: UIImage(data: bytes)!, bytes: bytes, format: .png))
+        loader.keep("i1", ViewedImage(image: UIImage(data: bytes)!, bytes: bytes, format: .png))
         #expect(heard.yes)
         let picture = ImageLeaving.picture(viewerImg, loader: loader)
         #expect(picture?.bytes == bytes && picture?.format == .png)
         #expect(picture?.name == "shot-1.png")
     }
 
-    /// A preview-only image can still leave via its embedded timeline preview ref when Core strips preview bytes from `viewer_images`.
-    @Test func strippedViewerImageFallsBackToTimelinePreviewRef() {
+    /// A preview-only image can still leave via its embedded timeline preview image when Core strips preview bytes from `viewer_images`.
+    @Test func strippedViewerImageFallsBackToTimelinePreviewImage() {
         let loader = ViewerLoader(center: center(), session: "s1")
         let previewBytes = png(.blue)
         let viewerImg = PBSessionViewerImageView.with {
-            $0.ref = .with { $0.imageID = "i2"; $0.sync = .previewOnly }
+            $0.imageID = "i2"
+            $0.syncState = .previewOnly
             $0.displayName = "clip.png"
             $0.fileExtension = "png"
             $0.hasDisplayCopy_p = false
         }
-        let previewRef = PBImageRef.with {
+        let previewImage = PBSessionImageView.with {
             $0.imageID = "i2"
-            $0.sync = .previewOnly
+            $0.syncState = .previewOnly
             $0.preview = previewBytes
             $0.previewFormat = .png
         }
         #expect(ImageLeaving.picture(viewerImg, loader: loader) == nil)
-        let picture = ImageLeaving.picture(viewerImg, previewRef: previewRef, loader: loader)
+        let picture = ImageLeaving.picture(viewerImg, previewImage: previewImage, loader: loader)
         #expect(picture?.bytes == previewBytes && picture?.format == .png)
     }
 
@@ -85,30 +85,25 @@ import UIKit
     @Test func decryptedPicturesGoWithTheAccount() {
         let first = center()
         let loader = ViewerLoader(center: first, session: "s1")
-        let ref = PBImageRef.with {
-            $0.imageID = "i1"
-            $0.path = "/tmp/a.png"
-            $0.preview = png(.red)
-        }
-        let shown = first.preview(ref)
-        #expect(shown != nil && first.preview(ref) === shown)
+        let redPreview = png(.red)
+        let shown = first.preview(imageID: "i1", displayName: "a.png", data: redPreview)
+        #expect(shown != nil && first.preview(imageID: "i1", displayName: "a.png", data: redPreview) === shown)
         let bytes = png(.blue)
-        loader.keep(ref, ViewedImage(image: UIImage(data: bytes)!, bytes: bytes, format: .png))
-        #expect(loader.held(ref) != nil)
+        loader.keep("i1", ViewedImage(image: UIImage(data: bytes)!, bytes: bytes, format: .png))
+        #expect(loader.held("i1") != nil)
 
         ImageCenter.remove(remote)
-        // Another account whose image has the same ID, path and preview length decodes its own.
-        var theirs = ref
-        theirs.preview = png(.green)
+        // Another account whose image has the same ID, name and preview length decodes its own.
+        let greenPreview = png(.green)
         let next = center()
-        let other = next.preview(theirs)
+        let other = next.preview(imageID: "i1", displayName: "a.png", data: greenPreview)
         #expect(other != nil && other !== shown)
         #expect(other?.pngData() != shown?.pngData())
-        #expect(ViewerLoader(center: next, session: "s1").held(ref) == nil)
+        #expect(ViewerLoader(center: next, session: "s1").held("i1") == nil)
         // What was still on its way for the account that was left is not held for it.
-        loader.keep(ref, ViewedImage(image: UIImage(data: bytes)!, bytes: bytes, format: .png))
-        #expect(loader.held(ref) == nil)
-        #expect(first.preview(ref) !== first.preview(ref))
+        loader.keep("i1", ViewedImage(image: UIImage(data: bytes)!, bytes: bytes, format: .png))
+        #expect(loader.held("i1") == nil)
+        #expect(first.preview(imageID: "i1", displayName: "a.png", data: redPreview) !== first.preview(imageID: "i1", displayName: "a.png", data: redPreview))
     }
 
     #if DEBUG

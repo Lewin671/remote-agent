@@ -73,7 +73,7 @@ enum ImageDebug {
         }
     }
 
-    static func viewerSample(_ image: PBSessionViewerImageView, previewRef: PBImageRef?, center: ImageCenter, online: Bool) async -> (state: BigImage, image: ViewedImage?)? {
+    static func viewerSample(_ image: PBSessionViewerImageView, previewImage: PBSessionImageView?, center: ImageCenter, online: Bool) async -> (state: BigImage, image: ViewedImage?)? {
         guard !center.live else { return nil }
         switch value("-viewerState") ?? (image.hasDisplayCopy_p ? "ready" : "notSynced") {
         case "loading":
@@ -86,12 +86,13 @@ enum ImageDebug {
         case "corrupt": return (.corrupt(why: "图片内容和格式对不上"), nil)
         default:
             try? await Task.sleep(for: .milliseconds(300))
-            return (.ready, sharp(previewRef ?? image.ref))
+            let previewData = previewImage?.preview.isEmpty == false ? previewImage!.preview : image.preview
+            return (.ready, sharp(previewData))
         }
     }
 
-    private static func sharp(_ ref: PBImageRef) -> ViewedImage? {
-        guard let preview = UIImage(data: ref.preview) else { return nil }
+    private static func sharp(_ previewData: Data) -> ViewedImage? {
+        guard let preview = UIImage(data: previewData) else { return nil }
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         let size = CGSize(width: preview.size.width * 8, height: preview.size.height * 8)

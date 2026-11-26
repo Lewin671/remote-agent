@@ -31,29 +31,29 @@ struct ViewerLoader {
     let center: ImageCenter
     let session: String
 
-    private func key(_ ref: PBImageRef) -> String { "\(session)/\(ref.imageID)" }
+    private func key(_ imageID: String) -> String { "\(session)/\(imageID)" }
 
     /// The display copy held in memory for an image, if it was loaded while the viewer was open.
-    func held(_ ref: PBImageRef) -> ViewedImage? { center.viewedImage(key(ref)) }
+    func held(_ imageID: String) -> ViewedImage? { center.viewedImage(key(imageID)) }
 
     /// Holds an image's display copy; whoever asked `held` for it is drawn again.
-    func keep(_ ref: PBImageRef, _ image: ViewedImage) { center.keepViewed(key(ref), image) }
+    func keep(_ imageID: String, _ image: ViewedImage) { center.keepViewed(key(imageID), image) }
 
     /// Where the image's display copy stands, fetching it if Core says there is one.
-    func load(_ image: PBSessionViewerImageView, previewRef: PBImageRef? = nil, online: Bool) async -> (state: BigImage, image: ViewedImage?) {
+    func load(_ image: PBSessionViewerImageView, previewImage: PBSessionImageView? = nil, online: Bool) async -> (state: BigImage, image: ViewedImage?) {
         #if DEBUG
-            if let sample = await ImageDebug.viewerSample(image, previewRef: previewRef, center: center, online: online) {
+            if let sample = await ImageDebug.viewerSample(image, previewImage: previewImage, center: center, online: online) {
                 return sample
             }
         #endif
-        let ref = image.ref
-        guard image.hasDisplayCopy_p else { return (.notSynced, nil) }
-        if let held = held(ref) {
+        let imageID = image.imageID
+        guard image.hasDisplayCopy_p, !imageID.isEmpty else { return (.notSynced, nil) }
+        if let held = held(imageID) {
             return (.ready, held)
         }
         let fetched: Result<ImageResult, any Error>
         do {
-            fetched = .success(try await center.remote.image(session, imageId: ref.imageID))
+            fetched = .success(try await center.remote.image(session, imageId: imageID))
         } catch {
             fetched = .failure(error)
         }
@@ -68,7 +68,7 @@ struct ViewerLoader {
                 image: image.preparingForDisplay() ?? image, bytes: data, format: format)
         }.value
         guard let decoded else { return (.corrupt(why: L10n.imageIosCannotDecodeImage()), nil) }
-        keep(ref, decoded)
+        keep(imageID, decoded)
         return (state, decoded)
     }
 }
@@ -77,8 +77,8 @@ struct ViewerLoader {
 struct ViewerPage: View {
     let loader: ViewerLoader
     let image: PBSessionViewerImageView
-    /// Optional timeline ref that still carries 320px preview bytes (stripped from `viewer_images[].ref`).
-    var previewRef: PBImageRef? = nil
+    /// Optional timeline image view carrying 320px preview bytes (stripped from `viewer_images`).
+    var previewImage: PBSessionImageView? = nil
     let online: Bool
     /// The page is the one on screen: only then does it follow `pokes`.
     let current: Bool
@@ -100,10 +100,9 @@ struct ViewerPage: View {
     }
 
     var body: some View {
-        let ref = image.ref
-        let previewSource = previewRef ?? ref
-        let shown = sharp ?? loader.center.preview(previewSource)
-        let note = viewerNote(big, sync: ref.sync)
+        let previewData = previewImage?.preview.isEmpty == false ? previewImage!.preview : image.preview
+        let shown = sharp ?? loader.center.preview(imageID: image.imageID, displayName: image.displayName, data: previewData)
+        let note = viewerNote(big, sync: image.syncState)
         let retry = viewerCanRetry(big)
         let label = image.displayName.isEmpty ? L10n.imageTitle() : image.displayName
         ZStack {
@@ -151,15 +150,15 @@ struct ViewerPage: View {
                 .padding(.top, 56)
             }
         }
-        .task(id: Ask(id: "\(image.seq)/\(image.eventImageIndex)/\(ref.imageID)", attempt: attempt, online: online)) {
+        .task(id: Ask(id: "\(image.seq)/\(image.eventImageIndex)/\(image.imageID)", attempt: attempt, online: online)) {
             // A copy already here is not asked for again when the connection comes and goes.
             if sharp != nil, big == .ready { return }
-            if let held = loader.held(ref) {
+            if let held = loader.held(image.imageID) {
                 (big, sharp) = (.ready, held.image)
                 return
             }
             big = .loading
-            let got = await loader.load(image, previewRef: previewRef, online: online)
+            let got = await loader.load(image, previewImage: previewImage, online: online)
             if Task.isCancelled { return }
             sharp = got.image?.image
             big = got.state
@@ -206,14 +205,15 @@ struct PhotoAccessDenied: Error {}
 enum ImageLeaving {
     /// What would leave for an image now: the display copy if it was loaded, else the preview; nil without either.
     @MainActor
-    static func picture(_ image: PBSessionViewerImageView, previewRef: PBImageRef? = nil, loader: ViewerLoader) -> LeavingImage? {
+    static func picture(_ image: PBSessionViewerImageView, previewImage: PBSessionImageView? = nil, loader: ViewerLoader) -> LeavingImage? {
         let name = image.downloadName
-        if let held = loader.held(image.ref) {
+        if let held = loader.held(image.imageID) {
             return LeavingImage(bytes: held.bytes, format: held.format, name: name)
         }
-        let previewSource = previewRef ?? image.ref
-        if previewSource.preview.isEmpty { return nil }
-        return LeavingImage(bytes: previewSource.preview, format: previewSource.previewFormat, name: name)
+        let previewData = previewImage?.preview.isEmpty == false ? previewImage!.preview : image.preview
+        if previewData.isEmpty { return nil }
+        let previewFormat = previewImage?.preview.isEmpty == false ? previewImage!.previewFormat : image.previewFormat
+        return LeavingImage(bytes: previewData, format: previewFormat, name: name)
     }
 
     /// Adds the picture to the photo library, with the access that only adds: the app never reads the library.

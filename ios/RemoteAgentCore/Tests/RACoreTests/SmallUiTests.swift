@@ -56,14 +56,3 @@ import Testing
         #expect(f.on)
     }
 }
-
-/// Words the screens share; Android has no tests of these.
-@Suite(.timeLimit(.minutes(2))) struct CommonTests {
-    @Test func imageHelpers() {
-        #expect(fileName("/tmp/a/shot.png") == "shot.png")
-        #expect(fileName("/tmp/a/") == L10n.imageTitle())
-        #expect(aspect(.with { $0.width = 400; $0.height = 100 }) == 2.5)
-        #expect(aspect(.with { $0.previewWidth = 30; $0.previewHeight = 40; $0.width = 400; $0.height = 100 }) == 0.75)
-        #expect(aspect(PBImageRef()) == 4.0 / 3.0)
-    }
-}

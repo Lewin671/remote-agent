@@ -73,7 +73,7 @@ struct ImageViewerScreen: View {
                 return ViewerPage(
                     loader: loader,
                     image: img,
-                    previewRef: previews[ViewerPreviewKey(seq: img.seq, index: img.eventImageIndex)],
+                    previewImage: previews[ViewerPreviewKey(seq: img.seq, index: img.eventImageIndex)],
                     online: header?.connState == .connected || context.core.settings.online,
                     current: i == localPage,
                     pokes: pokes,
@@ -85,7 +85,7 @@ struct ImageViewerScreen: View {
                 let img = all[i]
                 return info(
                     img,
-                    previewRef: previews[ViewerPreviewKey(seq: img.seq, index: img.eventImageIndex)],
+                    previewImage: previews[ViewerPreviewKey(seq: img.seq, index: img.eventImageIndex)],
                     header: header,
                     loader: loader
                 )
@@ -131,14 +131,14 @@ struct ImageViewerScreen: View {
         }
         .onChange(of: pokes.save) {
             if let shown {
-                save(shown, previewRef: previews[ViewerPreviewKey(seq: shown.seq, index: shown.eventImageIndex)], loader)
+                save(shown, previewImage: previews[ViewerPreviewKey(seq: shown.seq, index: shown.eventImageIndex)], loader)
             }
         }
         .onChange(of: pokes.share) {
             if let shown {
                 sharing = ImageLeaving.picture(
                     shown,
-                    previewRef: previews[ViewerPreviewKey(seq: shown.seq, index: shown.eventImageIndex)],
+                    previewImage: previews[ViewerPreviewKey(seq: shown.seq, index: shown.eventImageIndex)],
                     loader: loader
                 )
             }
@@ -147,7 +147,7 @@ struct ImageViewerScreen: View {
 
     private func info(
         _ image: PBSessionViewerImageView,
-        previewRef: PBImageRef?,
+        previewImage: PBSessionImageView?,
         header: PBSessionHeaderView?,
         loader: ViewerLoader
     ) -> some View {
@@ -155,7 +155,7 @@ struct ImageViewerScreen: View {
         let sizeText = image.sizeText.isEmpty ? nil : image.sizeText
         let details = [sizeText, sessionTitle].compactMap { $0 }.joined(separator: " · ")
         let large = typeSize.isAccessibilitySize
-        let canLeave = ImageLeaving.picture(image, previewRef: previewRef, loader: loader) != nil
+        let canLeave = ImageLeaving.picture(image, previewImage: previewImage, loader: loader) != nil
         return VStack(alignment: .leading, spacing: 2) {
             Text(image.sourceLabel.rendered()).font(.subheadline.weight(.semibold)).ink(ViewerInk.text)
             if !image.displayPath.isEmpty {
@@ -163,9 +163,9 @@ struct ImageViewerScreen: View {
             }
             if !details.isEmpty { Text(details).font(.footnote).ink(ViewerInk.meta).lineLimit(large ? 3 : 1) }
             let actions = Group {
-                action(saving ? L10n.commonIosSaving() : L10n.commonSave(), enabled: !saving) { save(image, previewRef: previewRef, loader) }
+                action(saving ? L10n.commonIosSaving() : L10n.commonSave(), enabled: !saving) { save(image, previewImage: previewImage, loader) }
                 action(L10n.imageShare(), enabled: true) {
-                    if let picture = ImageLeaving.picture(image, previewRef: previewRef, loader: loader) { sharing = picture }
+                    if let picture = ImageLeaving.picture(image, previewImage: previewImage, loader: loader) { sharing = picture }
                 }
                 if !message.isEmpty { Text(message).font(.footnote).ink(ViewerInk.text).padding(.vertical, 4) }
             }
@@ -191,8 +191,8 @@ struct ImageViewerScreen: View {
         .disabled(!enabled)
     }
 
-    private func save(_ image: PBSessionViewerImageView, previewRef: PBImageRef?, _ loader: ViewerLoader) {
-        guard !saving, let picture = ImageLeaving.picture(image, previewRef: previewRef, loader: loader) else { return }
+    private func save(_ image: PBSessionViewerImageView, previewImage: PBSessionImageView?, _ loader: ViewerLoader) {
+        guard !saving, let picture = ImageLeaving.picture(image, previewImage: previewImage, loader: loader) else { return }
         saving = true
         message = ""
         Task {
@@ -216,29 +216,29 @@ private struct ViewerPreviewKey: Hashable {
     let index: Int32
 }
 
-private func previewLookup(from items: [PBSessionTimelineItem]) -> [ViewerPreviewKey: PBImageRef] {
-    var out: [ViewerPreviewKey: PBImageRef] = [:]
+private func previewLookup(from items: [PBSessionTimelineItem]) -> [ViewerPreviewKey: PBSessionImageView] {
+    var out: [ViewerPreviewKey: PBSessionImageView] = [:]
     func visit(_ item: PBSessionTimelineItem) {
         switch item.kind {
         case .userMessage(let m)?:
-            for (i, r) in m.images.enumerated() where !r.preview.isEmpty {
-                out[ViewerPreviewKey(seq: item.seq, index: Int32(i))] = r
+            for (i, img) in m.imageViews.enumerated() where !img.preview.isEmpty {
+                out[ViewerPreviewKey(seq: item.seq, index: Int32(i))] = img
             }
         case .toolCall(let t)?:
             let s = t.seq > 0 ? t.seq : item.seq
-            for (i, r) in t.images.enumerated() where !r.preview.isEmpty {
-                out[ViewerPreviewKey(seq: s, index: Int32(i))] = r
+            for (i, img) in t.imageViews.enumerated() where !img.preview.isEmpty {
+                out[ViewerPreviewKey(seq: s, index: Int32(i))] = img
             }
         case .toolGroup(let g)?:
             for c in g.calls {
                 let s = c.seq > 0 ? c.seq : item.seq
-                for (i, r) in c.images.enumerated() where !r.preview.isEmpty {
-                    out[ViewerPreviewKey(seq: s, index: Int32(i))] = r
+                for (i, img) in c.imageViews.enumerated() where !img.preview.isEmpty {
+                    out[ViewerPreviewKey(seq: s, index: Int32(i))] = img
                 }
             }
         case .generatedImages(let g)?:
-            for (i, r) in g.images.enumerated() where !r.preview.isEmpty {
-                out[ViewerPreviewKey(seq: item.seq, index: Int32(i))] = r
+            for (i, img) in g.imageViews.enumerated() where !img.preview.isEmpty {
+                out[ViewerPreviewKey(seq: item.seq, index: Int32(i))] = img
             }
         case .quietScheduledGroup(let g)?:
             for child in g.items { visit(child) }

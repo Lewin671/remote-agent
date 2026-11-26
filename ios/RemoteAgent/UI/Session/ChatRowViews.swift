@@ -87,8 +87,8 @@ struct ChatRowView: View, Equatable {
             } else {
                 ChatBubble(displayText, caption: caption) {
                     FileChips(refs: m.files)
-                    if !m.images.isEmpty {
-                        ChatImageRow(m.images) { actions.image(tlItem.seq, $0) }.padding(.bottom, 4)
+                    if !m.imageViews.isEmpty {
+                        ChatImageRow(m.imageViews) { actions.image(tlItem.seq, $0) }.padding(.bottom, 4)
                     }
                 }
                 .messageMenu(m.text, actions: actions)
@@ -139,9 +139,9 @@ struct ChatRowView: View, Equatable {
                 ExpandableToolRow(key: callKey, text: commandOf(kind: t.toolKind, title: t.title, input: t.rawInput)) {
                     TimelineToolRow(call: t, env: env)
                 }
-                if !t.images.isEmpty {
+                if !t.imageViews.isEmpty {
                     let callSeq = t.seq > 0 ? t.seq : tlItem.seq
-                    ChatImageRow(t.images) { actions.image(callSeq, $0) }.padding(.leading, 21).padding(.bottom, 6)
+                    ChatImageRow(t.imageViews) { actions.image(callSeq, $0) }.padding(.leading, 21).padding(.bottom, 6)
                 }
             }
             .padding(.horizontal, chatMargin)
@@ -237,9 +237,9 @@ struct ChatRowView: View, Equatable {
                 case nil: return ""
                 }
             }.joined()
-            return rendered.allSatisfy(\.isWhitespace) && (!m.images.isEmpty || !m.files.isEmpty) ? nil : rendered
+            return rendered.allSatisfy(\.isWhitespace) && (!m.imageViews.isEmpty || !m.files.isEmpty) ? nil : rendered
         }
-        return m.text.allSatisfy(\.isWhitespace) && (!m.images.isEmpty || !m.files.isEmpty) ? nil : m.text
+        return m.text.allSatisfy(\.isWhitespace) && (!m.imageViews.isEmpty || !m.files.isEmpty) ? nil : m.text
     }
 
     private func erasedBody(_ item: PBSessionTimelineItem) -> AnyView {
@@ -729,20 +729,20 @@ private struct ToolGroupRow: View {
                                 .font(.footnote.monospaced()).ink(DS.ink2).lineLimit(1)
                                 .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
                         }
-                        if !call.images.isEmpty {
+                        if !call.imageViews.isEmpty {
                             let callSeq = call.seq > 0 ? call.seq : seq
-                            ChatImageRow(call.images) { actions.image(callSeq, $0) }.padding(.leading, 21).padding(.bottom, 6)
+                            ChatImageRow(call.imageViews) { actions.image(callSeq, $0) }.padding(.leading, 21).padding(.bottom, 6)
                         }
                     }
                 }
                 .padding(.leading, 12)
             } else {
-                let indexed: [(seq: UInt64, index: Int, ref: PBImageRef)] = group.calls.flatMap { call in
+                let indexed: [(seq: UInt64, index: Int, image: PBSessionImageView)] = group.calls.flatMap { call in
                     let callSeq = call.seq > 0 ? call.seq : seq
-                    return call.images.enumerated().map { (callSeq, $0.offset, $0.element) }
+                    return call.imageViews.enumerated().map { (callSeq, $0.offset, $0.element) }
                 }
                 if !indexed.isEmpty {
-                    ChatImageRow(indexed.map(\.ref)) { i in
+                    ChatImageRow(indexed.map(\.image)) { i in
                         guard indexed.indices.contains(i) else { return }
                         actions.image(indexed[i].seq, indexed[i].index)
                     }

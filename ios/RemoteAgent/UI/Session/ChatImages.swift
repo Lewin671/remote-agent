@@ -19,15 +19,19 @@ private enum ChatPreviews {
         return c
     }()
 
-    /// The preview embedded in an image ref; nil without one or when it does not decode.
-    static func image(_ ref: PBImageRef) -> UIImage? {
-        if ref.preview.isEmpty { return nil }
-        let key = "\(ref.imageID)/\(ref.preview.count)/\(ref.path)" as NSString
+    /// The preview embedded in an image view; nil without one or when it does not decode.
+    static func image(_ image: PBSessionImageView) -> UIImage? {
+        if image.preview.isEmpty { return nil }
+        let key = "\(image.imageID)/\(image.preview.count)/\(image.displayName)" as NSString
         if let held = cache.object(forKey: key) { return held }
-        guard let image = UIImage(data: ref.preview) else { return nil }
-        cache.setObject(image, forKey: key)
-        return image
+        guard let decoded = UIImage(data: image.preview) else { return nil }
+        cache.setObject(decoded, forKey: key)
+        return decoded
     }
+}
+
+private func clampedAspect(_ image: PBSessionImageView) -> CGFloat {
+    image.clampedAspectRatio > 0 ? CGFloat(image.clampedAspectRatio) : 1
 }
 
 /// Thumbnails side by side at one height, each as wide as its picture; when
@@ -66,28 +70,28 @@ private struct ThumbStrip: Layout {
 /// CLI's [Image #N], so it matches the text and the terminal. A tap opens
 /// the viewer at that image.
 struct ChatImageRow: View {
-    private let refs: [PBImageRef]
+    private let images: [PBSessionImageView]
     private let height: CGFloat
     private let onOpen: (Int) -> Void
 
-    init(_ refs: [PBImageRef], height: CGFloat = 88, onOpen: @escaping (Int) -> Void) {
-        self.refs = refs
+    init(_ images: [PBSessionImageView], height: CGFloat = 88, onOpen: @escaping (Int) -> Void) {
+        self.images = images
         self.height = height
         self.onOpen = onOpen
     }
 
     var body: some View {
-        let shown = Array(refs.prefix(4))
-        ThumbStrip(aspects: shown.map { CGFloat(aspect($0)) }, height: height, maxWidth: 180, spacing: 6) {
-            ForEach(Array(shown.enumerated()), id: \.offset) { i, ref in
-                ChatThumb(ref: ref, more: i == 3 && refs.count > 4 ? refs.count - 4 : 0) { onOpen(i) }
+        let shown = Array(images.prefix(4))
+        ThumbStrip(aspects: shown.map(clampedAspect), height: height, maxWidth: 180, spacing: 6) {
+            ForEach(Array(shown.enumerated()), id: \.offset) { i, image in
+                ChatThumb(image: image, more: i == 3 && images.count > 4 ? images.count - 4 : 0) { onOpen(i) }
             }
         }
     }
 }
 
 private struct ChatThumb: View {
-    let ref: PBImageRef
+    let image: PBSessionImageView
     let more: Int
     let onOpen: () -> Void
 
@@ -99,7 +103,7 @@ private struct ChatThumb: View {
     }
 
     var body: some View {
-        let preview = ChatPreviews.image(ref)
+        let preview = ChatPreviews.image(image)
         Button(action: onOpen) {
             DS.fill
                 .overlay {
@@ -108,16 +112,16 @@ private struct ChatThumb: View {
                     } else {
                         // Not even a preview: the file's name is all there is.
                         VStack(spacing: 0) {
-                            Text(ref.sync == .nameOnly ? L10n.imageUnsynced() : L10n.imageIosNoPreview()).font(.caption2).ink(DS.ink2)
-                            if !ref.path.isEmpty { Text(fileName(ref.path)).font(.caption2).ink(DS.ink3).lineLimit(2) }
+                            Text(image.syncState == .nameOnly ? L10n.imageUnsynced() : L10n.imageIosNoPreview()).font(.caption2).ink(DS.ink2)
+                            if !image.displayName.isEmpty { Text(image.displayName).font(.caption2).ink(DS.ink3).lineLimit(2) }
                         }
                         .multilineTextAlignment(.center).padding(6)
                     }
                 }
-                .overlay(alignment: .topLeading) { if ref.cliIndex > 0 { badge("\(ref.cliIndex)") } }
+                .overlay(alignment: .topLeading) { if image.cliIndex > 0 { badge("\(image.cliIndex)") } }
                 .overlay(alignment: .bottomLeading) {
                     // On a thumbnail too narrow for the words the viewer says it instead.
-                    if ref.sync == .previewOnly && more == 0 {
+                    if image.syncState == .previewOnly && more == 0 {
                         ViewThatFits(in: .horizontal) {
                             badge(L10n.imagePreviewOnly()).fixedSize()
                             Color.clear.frame(width: 0, height: 0)
@@ -133,8 +137,8 @@ private struct ChatThumb: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())
-        .accessibilityLabel(more > 0 ? L10n.imageIosMoreImages(count: Int(more)) : ref.cliIndex > 0 ? L10n.imageNumbered(index: Int(ref.cliIndex)) : L10n.imageTitle())
-        .accessibilityValue(ref.path.isEmpty ? "" : fileName(ref.path))
+        .accessibilityLabel(more > 0 ? L10n.imageIosMoreImages(count: Int(more)) : image.cliIndex > 0 ? L10n.imageNumbered(index: Int(image.cliIndex)) : L10n.imageTitle())
+        .accessibilityValue(image.displayName)
         .accessibilityHint(L10n.imageIosOpen())
     }
 }
@@ -149,13 +153,13 @@ struct GeneratedCard: View {
     var body: some View {
         let isOpen = open.isOpen(key)
         VStack(alignment: .leading, spacing: 8) {
-            ForEach(Array(item.images.enumerated()), id: \.offset) { i, ref in
-                let preview = ChatPreviews.image(ref)
+            ForEach(Array(item.imageViews.enumerated()), id: \.offset) { i, image in
+                let preview = ChatPreviews.image(image)
                 Button {
                     onOpen(i)
                 } label: {
                     DS.fill
-                        .aspectRatio(CGFloat(aspect(ref)), contentMode: .fit)
+                        .aspectRatio(clampedAspect(image), contentMode: .fit)
                         .overlay {
                             if let preview {
                                 Image(uiImage: preview).resizable().scaledToFit()
@@ -172,8 +176,8 @@ struct GeneratedCard: View {
                 .accessibilityHint(L10n.imageIosOpen())
             }
             HStack(spacing: 8) {
-                let first = item.images.first
-                let size = first.map { $0.width > 0 ? " · \($0.width) × \($0.height)" : "" } ?? ""
+                let first = item.imageViews.first
+                let size = first.flatMap { $0.sizeText.isEmpty ? nil : " · \($0.sizeText)" } ?? ""
                 Text(L10n.imageIosGeneratedSize(size: size)).font(.footnote).ink(DS.ink2).frame(maxWidth: .infinity, alignment: .leading)
                 if !item.revisedPrompt.isEmpty {
                     Button {
