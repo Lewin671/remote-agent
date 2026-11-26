@@ -430,7 +430,7 @@ func fixtureRemote(
     streamOpenMs: Int64 = 15_000,
     securityStore: (any SecurityStoreV4)? = nil
 ) throws -> Remote {
-    try Remote(
+    let remote = try Remote(
         account: account,
         http: http,
         cache: cache,
@@ -446,4 +446,492 @@ func fixtureRemote(
             ?? MemorySecurityStoreV4(),
         allowPlainHttp: true
     )
+    return remote
+}
+
+/// Test-only Go `CoreClient` + `SecurityExecutor` event-loop driver for `RACoreTests`.
+final class TestCoreDriver: @unchecked Sendable {
+    private let core: CoreClient
+    private let executor: SecurityExecutor
+    private let client: SecurityClient
+    private let clock: @Sendable () -> Int64
+    private let sleep: Sleeper
+    private let onStatusSnapshot: (@Sendable (PBSecurityWorkflowStatus) -> Void)?
+    private let onTokenUpdated: (@Sendable (PBSecurityTokenUpdatedEffect) -> Void)?
+    private let onDispatchCommand: (@Sendable (PBCoreDispatchCommandEffect) async -> PBCoreCommandOutcomeEvent)?
+    private let onTerminalEffect: (@Sendable (PBCoreEffect) -> Void)?
+    private let onSessionImageLoaded: (@Sendable (PBSessionImageLoadedEffect) -> Void)?
+    private let queue = DispatchQueue(label: "ra.tests.core.driver")
+    private let lock = NSLock()
+    private var closed = false
+    private var nextOpID: UInt64 = 1
+    private var timers: [String: (id: UInt64, task: Task<Void, Never>)] = [:]
+    private var securityOpWaiters: [UInt64: ContinuationWaiter<PBSecurityOpResultEffect>] = [:]
+    private var machineCmdWaiters: [UInt64: ContinuationWaiter<PBCommandResult>] = [:]
+    private var inFlightDispatches: [String: [String: Task<Void, Never>]] = [:]
+
+    init(
+        executor: SecurityExecutor,
+        client: SecurityClient,
+        clock: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
+        sleep: @escaping Sleeper = realSleep,
+        onStatusSnapshot: (@Sendable (PBSecurityWorkflowStatus) -> Void)? = nil,
+        onTokenUpdated: (@Sendable (PBSecurityTokenUpdatedEffect) -> Void)? = nil,
+        onDispatchCommand: (@Sendable (PBCoreDispatchCommandEffect) async -> PBCoreCommandOutcomeEvent)? = nil,
+        onTerminalEffect: (@Sendable (PBCoreEffect) -> Void)? = nil,
+        onSessionImageLoaded: (@Sendable (PBSessionImageLoadedEffect) -> Void)? = nil,
+        initialConfig: PBSecurityConfigEvent? = nil,
+        relayPipe: Bool = false
+    ) throws {
+        self.core = try CoreClient()
+        self.executor = executor
+        self.client = client
+        self.clock = clock
+        self.sleep = sleep
+        self.onStatusSnapshot = onStatusSnapshot
+        self.onTokenUpdated = onTokenUpdated
+        self.onDispatchCommand = onDispatchCommand
+        self.onTerminalEffect = onTerminalEffect
+        self.onSessionImageLoaded = onSessionImageLoaded
+        enqueueEvent(PBCoreEvent.with {
+            $0.entropyProvided = Self.buildEntropy(minIds: 16, minFloats: 16, minRandomBytes: 4096)
+        })
+        if relayPipe {
+            enqueueEvent(PBCoreEvent.with { $0.relayPipeConfig = .with { $0.enabled = true } })
+        }
+        if let initialConfig {
+            enqueueEvent(PBCoreEvent.with { $0.securityConfig = initialConfig })
+        }
+        if onDispatchCommand != nil {
+            enqueueEvent(PBCoreEvent.with { $0.syncLifecycle.kind = .start })
+        }
+    }
+
+    private func isClosed() -> Bool { lock.withLock { closed } }
+
+    func enqueueEvent(_ ev: PBCoreEvent) {
+        guard !isClosed() else { return }
+        var stamped = ev
+        if stamped.nowMs == 0 { stamped.nowMs = clock() }
+        if stamped.monoMs == 0 { stamped.monoMs = stamped.nowMs }
+        let finalEvent = stamped
+        queue.async { [weak self] in
+            self?.dispatchOnWorker(finalEvent)
+        }
+    }
+
+    func runSecurityOp(_ configure: @Sendable (inout PBSecurityOpRequestEvent) -> Void) async throws -> PBSecurityOpResultEffect {
+        try await awaitWaiter(
+            isClosed: { self.isClosed() },
+            closedError: { SecurityFailure.storage },
+            register: { waiter in
+                try lock.withLock {
+                    guard !closed else { throw SecurityFailure.storage }
+                    try Task.checkCancellation()
+                    let id = nextOpID
+                    nextOpID &+= 1
+                    securityOpWaiters[id] = waiter
+                    return id
+                }
+            },
+            unregister: { [self] id in lock.withLock { securityOpWaiters.removeValue(forKey: id) } },
+            dispatch: { id in
+                var req = PBSecurityOpRequestEvent()
+                configure(&req)
+                req.opID = id
+                enqueueEvent(PBCoreEvent.with { $0.securityOpRequest = req })
+            }
+        )
+    }
+
+    func runMachineCommand(
+        machineID: String,
+        sessionID: String,
+        command: PBCommand,
+        skipConnectivityPreflight: Bool
+    ) async throws -> PBCommandResult {
+        try await awaitWaiter(
+            isClosed: { self.isClosed() },
+            closedError: { CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()) },
+            register: { waiter in
+                try lock.withLock {
+                    guard !closed else { throw CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()) }
+                    try Task.checkCancellation()
+                    let id = nextOpID
+                    nextOpID &+= 1
+                    machineCmdWaiters[id] = waiter
+                    return id
+                }
+            },
+            unregister: { [self] id in
+                let removed = lock.withLock { machineCmdWaiters.removeValue(forKey: id) }
+                if removed != nil && !self.isClosed() {
+                    self.enqueueEvent(PBCoreEvent.with {
+                        $0.cancelMachineCommand = .with { $0.opID = id }
+                    })
+                }
+                return removed
+            },
+            dispatch: { id in
+                enqueueEvent(PBCoreEvent.with {
+                    $0.runMachineCommand = .with {
+                        $0.opID = id
+                        $0.machineID = machineID
+                        $0.sessionID = sessionID
+                        $0.command = command
+                        $0.skipConnectivityPreflight = skipConnectivityPreflight
+                    }
+                })
+            }
+        )
+    }
+
+    private func dispatchOnWorker(_ initial: PBCoreEvent) {
+        var queueEvents = [initial]
+        var idx = 0
+        while idx < queueEvents.count && !isClosed() {
+            let ev = queueEvents[idx]
+            idx += 1
+            guard let batch = try? core.dispatch(ev) else { continue }
+            for eff in batch.effects {
+                if isClosed() { return }
+                handleEffect(eff, inlineQueue: &queueEvents)
+            }
+        }
+    }
+
+    private func handleEffect(_ eff: PBCoreEffect, inlineQueue: inout [PBCoreEvent]) {
+        switch eff.effect {
+        case .requestEntropy(let req):
+            let ids = max(Int(req.minIds), 16)
+            let floats = max(Int(req.minFloats), 16)
+            let rbytes = req.minRandomBytes > 0 ? max(Int(req.minRandomBytes), 4096) : 0
+            inlineQueue.append(PBCoreEvent.with {
+                $0.nowMs = clock()
+                $0.monoMs = clock()
+                $0.entropyProvided = Self.buildEntropy(minIds: ids, minFloats: floats, minRandomBytes: rbytes)
+            })
+        case .scheduleTimer(let st):
+            let tk = "\(st.kind.rawValue):\(st.key)"
+            lock.withLock { timers.removeValue(forKey: tk)?.task.cancel() }
+            let delayMs = max(0, st.delayMs)
+            let sleep = self.sleep
+            let task = Task { [weak self] in
+                if delayMs > 0 { try? await sleep(delayMs) }
+                guard let self, !Task.isCancelled, !self.isClosed() else { return }
+                let matches = self.lock.withLock { () -> Bool in
+                    guard let cur = self.timers[tk], cur.id == st.timerID else { return false }
+                    self.timers.removeValue(forKey: tk)
+                    return true
+                }
+                guard matches else { return }
+                self.enqueueEvent(PBCoreEvent.with {
+                    $0.timerFired = .with {
+                        $0.timerID = st.timerID
+                        $0.kind = st.kind
+                        $0.key = st.key
+                    }
+                })
+            }
+            lock.withLock { timers[tk] = (st.timerID, task) }
+        case .cancelTimer(let ct):
+            let tk = "\(ct.kind.rawValue):\(ct.key)"
+            let task = lock.withLock { () -> Task<Void, Never>? in
+                guard let cur = timers[tk], ct.timerID == 0 || cur.id == ct.timerID else { return nil }
+                return timers.removeValue(forKey: tk)?.task
+            }
+            task?.cancel()
+        case .securityKeyGenerate, .securityKeySign, .securityKeyAgree,
+             .securityKeyEncapsulate, .securityKeyDiscard, .securityStorage,
+             .securityRpc, .relayRpc, .relayRpcCancel:
+            _ = executor.handleEffect(eff)
+        case .securityWorkflowResult(let r):
+            client.handleWorkflowResult(r)
+            if r.hasStatus { onStatusSnapshot?(r.status) }
+        case .securityStatusChanged(let s):
+            if s.hasStatus {
+                client.handleStatusChanged(s.status)
+                onStatusSnapshot?(s.status)
+            }
+        case .securityTokenUpdated(let t):
+            onTokenUpdated?(t)
+        case .securityOpResult(let res):
+            let waiter = lock.withLock { securityOpWaiters.removeValue(forKey: res.opID) }
+            waiter?.resolve(.success(res))
+        case .dispatchCommand(let cmdEff):
+            guard let dispatchFn = onDispatchCommand else { break }
+            let reqID = cmdEff.requestID
+            let attID = cmdEff.attemptID
+            let task = Task { [weak self] in
+                guard let self else { return }
+                let outcome = await dispatchFn(cmdEff)
+                let stillTracked = self.lock.withLock { () -> Bool in
+                    guard var byAttempt = self.inFlightDispatches[reqID], byAttempt.removeValue(forKey: attID) != nil else {
+                        return false
+                    }
+                    if byAttempt.isEmpty {
+                        self.inFlightDispatches.removeValue(forKey: reqID)
+                    } else {
+                        self.inFlightDispatches[reqID] = byAttempt
+                    }
+                    return !self.closed
+                }
+                if stillTracked && !Task.isCancelled {
+                    self.enqueueEvent(PBCoreEvent.with { $0.commandOutcome = outcome })
+                }
+            }
+            lock.withLock {
+                if !closed {
+                    inFlightDispatches[reqID, default: [:]][attID] = task
+                } else {
+                    task.cancel()
+                }
+            }
+        case .cancelDispatch(let eff):
+            let tasks = lock.withLock {
+                eff.requestID.isEmpty ? [] : Array((inFlightDispatches.removeValue(forKey: eff.requestID) ?? [:]).values)
+            }
+            for task in tasks { task.cancel() }
+        case .runMachineCommandResult(let res):
+            let waiter = lock.withLock { machineCmdWaiters.removeValue(forKey: res.opID) }
+            if res.ok {
+                waiter?.resolve(.success(res.result))
+            } else {
+                let code = res.errorCode.isEmpty ? "failed" : res.errorCode
+                let msg = res.hasErrorText ? renderCoreText(res.errorText) : ""
+                let fromDaemon = res.hasResult && (!res.result.errorCode.isEmpty || !res.result.outcome.isEmpty)
+                waiter?.resolve(.failure(CommandError(
+                    code,
+                    msg.isEmpty ? L10nMessage.errorsCommandFailed() : LocalizedMessage(raw: msg),
+                    fromDaemon: fromDaemon
+                )))
+            }
+        case .sessionImageLoaded(let res):
+            onSessionImageLoaded?(res)
+        case .terminalDirectSend, .terminalOpenSocket, .terminalCloseSocket, .terminalDeliverOutput, .terminalStateChanged:
+            onTerminalEffect?(eff)
+        default: break
+        }
+    }
+
+    func close() {
+        let (pendingTimers, pendingOps, pendingCmds, pendingDispatches) = lock.withLock {
+            () -> ([Task<Void, Never>], [ContinuationWaiter<PBSecurityOpResultEffect>], [ContinuationWaiter<PBCommandResult>], [Task<Void, Never>]) in
+            guard !closed else { return ([], [], [], []) }
+            closed = true
+            let ts = timers.values.map(\.task)
+            let ops = Array(securityOpWaiters.values)
+            let cmds = Array(machineCmdWaiters.values)
+            let dispatches = inFlightDispatches.values.flatMap(\.values)
+            timers.removeAll()
+            securityOpWaiters.removeAll()
+            machineCmdWaiters.removeAll()
+            inFlightDispatches.removeAll()
+            return (ts, ops, cmds, dispatches)
+        }
+        for t in pendingTimers { t.cancel() }
+        for t in pendingDispatches { t.cancel() }
+        for waiter in pendingOps { waiter.resolve(.failure(SecurityFailure.storage)) }
+        for waiter in pendingCmds { waiter.resolve(.failure(CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()))) }
+        queue.sync {
+            core.close()
+        }
+    }
+
+    private static func buildEntropy(minIds: Int, minFloats: Int, minRandomBytes: Int) -> PBCoreEntropyProvided {
+        PBCoreEntropyProvided.with {
+            $0.randomIds = (0..<minIds).map { _ in newRequestId() }
+            $0.unitFloats = (0..<minFloats).map { _ in Double.random(in: 0..<1) }
+            if minRandomBytes > 0 {
+                var bytes = Data(count: minRandomBytes)
+                _ = bytes.withUnsafeMutableBytes { buf in
+                    guard let base = buf.baseAddress else { return errSecParam }
+                    return SecRandomCopyBytes(kSecRandomDefault, minRandomBytes, base)
+                }
+                $0.randomBytes = bytes
+            }
+        }
+    }
+}
+
+/// Attaches a `TestCoreDriver` to a headless `Remote` used in `RACoreTests` without a `CoreHost`.
+func attachTestCoreDriver(
+    to remote: Remote,
+    clock: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
+    sleep: @escaping Sleeper = realSleep
+) async throws {
+    let driver = try TestCoreDriver(
+        executor: remote.securityExecutor,
+        client: remote.securityClient,
+        clock: clock,
+        sleep: sleep,
+        onStatusSnapshot: { [weak remote] st in
+            Task { await remote?.applySecurityStatusSnapshot(st) }
+        },
+        onTokenUpdated: { [weak remote] eff in
+            Task { await remote?.applySecurityTokenUpdated(eff) }
+        },
+        onDispatchCommand: { [weak remote] eff in
+            guard let remote else {
+                return PBCoreCommandOutcomeEvent.with {
+                    $0.requestID = eff.requestID
+                    $0.attemptID = eff.attemptID
+                    $0.source = .local
+                    $0.notForwarded = true
+                    $0.transportCode = "canceled"
+                }
+            }
+            return await remote.dispatchCommandAttempt(eff)
+        },
+        onTerminalEffect: { [weak remote] eff in
+            guard let remote else { return }
+            switch eff.effect {
+            case .terminalDirectSend(let e)?: remote.handleTerminalDirectSend(e)
+            case .terminalOpenSocket(let e)?: remote.handleTerminalOpenSocket(e)
+            case .terminalCloseSocket(let e)?: remote.handleTerminalCloseSocket(e)
+            case .terminalDeliverOutput(let e)?: remote.handleTerminalDeliverOutput(e)
+            case .terminalStateChanged(let e)?: remote.handleTerminalStateChanged(e)
+            default: break
+            }
+        },
+        onSessionImageLoaded: { [weak remote] eff in
+            remote?.handleSessionImageLoaded(eff)
+        },
+        relayPipe: true
+    )
+    await remote.installCoreHooks(.init(
+        onRefresh: {},
+        onRefreshDevices: {},
+        onSecurityOp: { req in
+            (try? await driver.runSecurityOp { $0 = req }) ?? PBSecurityOpResultEffect.with {
+                $0.opID = req.opID
+                $0.error = "driver closed"
+                $0.structuredErrorCode = .storage
+            }
+        },
+        onCoreEvent: { ev in
+            driver.enqueueEvent(ev)
+        },
+        onRunMachineCommand: { machineId, sessionId, cmd, skip in
+            try await driver.runMachineCommand(
+                machineID: machineId,
+                sessionID: sessionId,
+                command: cmd,
+                skipConnectivityPreflight: skip
+            )
+        },
+        onClose: {
+            driver.close()
+        }
+    ))
+}
+
+/// Test-only standalone Go `CoreClient` + `SecurityExecutor` harness for `RACoreTests`.
+final class TestSecurityNode: @unchecked Sendable {
+    private final class Box: @unchecked Sendable {
+        let lock = NSLock()
+        var driver: TestCoreDriver?
+        var closed = false
+    }
+
+    private let box = Box()
+    private let executor: SecurityExecutor
+    private let driver: TestCoreDriver
+    nonisolated let client: SecurityClient
+
+    init(
+        store: any SecurityStoreV4,
+        http: HTTP? = nil,
+        allowPlainHttp: Bool = false,
+        clock: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
+        sleep: @escaping Sleeper = realSleep,
+        rpcOverride: SecurityExecutor.RpcOverride? = nil
+    ) throws {
+        let box = self.box
+        let executor = SecurityExecutor(
+            store: store,
+            http: http,
+            allowPlainHttp: allowPlainHttp,
+            rpcOverride: rpcOverride,
+            emit: { ev in
+                let drv = box.lock.withLock { box.closed ? nil : box.driver }
+                drv?.enqueueEvent(ev)
+            }
+        )
+        let client = SecurityClient(
+            dispatchEvent: { ev in
+                let drv = box.lock.withLock { box.closed ? nil : box.driver }
+                drv?.enqueueEvent(ev)
+            },
+            setForegroundFn: { fg in
+                let drv = box.lock.withLock { box.closed ? nil : box.driver }
+                drv?.enqueueEvent(PBCoreEvent.with {
+                    $0.securityForeground = .with { $0.foreground = fg }
+                })
+            },
+            isClosedFn: { box.lock.withLock { box.closed } }
+        )
+        let driver = try TestCoreDriver(
+            executor: executor,
+            client: client,
+            clock: clock,
+            sleep: sleep,
+            initialConfig: .with {
+                $0.inlineCrypto = true
+                $0.foreground = true
+            }
+        )
+        box.lock.withLock { box.driver = driver }
+        self.executor = executor
+        self.client = client
+        self.driver = driver
+    }
+
+    func securityOp(_ configure: @Sendable (inout PBSecurityOpRequestEvent) -> Void) async throws -> PBSecurityOpResultEffect {
+        try await driver.runSecurityOp(configure)
+    }
+
+    func close() {
+        box.lock.withLock {
+            box.closed = true
+            box.driver = nil
+        }
+        executor.close()
+        client.rejectAll()
+        driver.close()
+    }
+}
+
+extension Remote {
+    func testBootstrapSecurity() async throws {
+        _ = try await securityClient.bootstrap()
+    }
+
+    @discardableResult
+    func testSyncSecurity(touch: Bool = false) async throws -> PBSecurityWorkflowStatus {
+        _ = try await securityClient.bootstrap()
+        let res = try await securityClient.runAction {
+            $0.syncNow = .with { $0.touch = touch }
+        }
+        return res.status
+    }
+
+    @discardableResult
+    func testRenewLease(force: Bool = false) async throws -> PBSecurityWorkflowStatus {
+        _ = try await securityClient.bootstrap()
+        let res = try await securityClient.runAction {
+            $0.renewLease = .with { $0.flag = force }
+        }
+        return res.status
+    }
+}
+
+extension SecurityClient {
+    func testDismissUpgradeNotice(store: any SecurityStoreV4) async throws -> PBSecurityWorkflowStatus {
+        store.dismissLegacyRepairNotice()
+        let res = try await runAction {
+            $0.dismissUpgradeNotice = PBSecurityActionEmpty()
+        }
+        return res.status
+    }
 }

@@ -50,17 +50,17 @@ final class AccountContext {
         self.pendingStore = pendingStore
         let screens = core ?? CoreScreens()
         self.core = screens
-        self.coreHost = coreHost ?? (try! CoreHost.live(
-            remote: remote,
-            account: account,
-            defaults: preferenceDefaults,
+        self.coreHost = coreHost ?? (try! CoreHost.singleCore(
+            store: MemorySecurityStoreV4(),
+            http: AppModel.http,
+            allowPlainHttp: true,
             screens: screens,
+            defaults: preferenceDefaults,
             sharedFileStore: SharedFileStore(root: sharedFileRoot),
             pendingStore: pendingStore,
             demoDirectories: demoDirectories,
             demoModels: demoModels,
-            demoMode: demoMode,
-            onNavigate: { _ in }
+            demoMode: demoMode
         ))
     }
 

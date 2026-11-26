@@ -120,24 +120,26 @@ import Testing
         #expect(pairs[0].dh == agree)
     }
 
-    @Test func standaloneHostPersistsPendingCreationDraftAndSurvivesRebootstrap() async throws {
+    @Test func securityStorePersistsPendingCreationDraftAndSurvivesRebootstrap() async throws {
         let store = MemorySecurityStoreV4(seedLegacyMarker: true)
-        let host1 = try StandaloneSecurityHost(store: store, http: HTTP(), allowPlainHttp: true)
-        let st1 = try await host1.client.bootstrap()
+        let node1 = try TestSecurityNode(store: store, http: HTTP(), allowPlainHttp: true)
+        let st1 = try await node1.client.bootstrap()
         #expect(st1.bootstrap == .empty)
         #expect(st1.legacyRepairNotice)
 
-        let dismissed = try await host1.client.dismissUpgradeNotice()
+        let dismissed = try await node1.client.testDismissUpgradeNotice(store: store)
         #expect(!dismissed.legacyRepairNotice)
 
-        let prep = try await host1.client.prepareCreation(server: "https://example.com", storagePersisted: true)
+        let prep = try await node1.client.runAction {
+            $0.prepareCreation = .with { $0.server = "https://example.com"; $0.storagePersisted = true }
+        }
         #expect(!prep.recoveryCode.isEmpty)
-        try await host1.client.confirmCreationCodeSaved()
-        host1.close()
+        _ = try await node1.client.runAction { $0.confirmCreationCodeSaved = PBSecurityActionEmpty() }
+        node1.close()
 
-        let host2 = try StandaloneSecurityHost(store: store, http: HTTP(), allowPlainHttp: true)
-        defer { host2.close() }
-        let st2 = try await host2.client.bootstrap()
+        let node2 = try TestSecurityNode(store: store, http: HTTP(), allowPlainHttp: true)
+        defer { node2.close() }
+        let st2 = try await node2.client.bootstrap()
         #expect(st2.bootstrap == .pendingCreate)
         #expect(st2.pendingOp.codeSaved)
         #expect(!st2.legacyRepairNotice)

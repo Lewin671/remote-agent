@@ -112,15 +112,15 @@ private final class FakeUploadDaemon: @unchecked Sendable {
         let remote = try Remote(account: account, http: HTTP(), allowPlainHttp: true)
         let screens = CoreScreens()
         let scope = store.scoped()
-        let host = try CoreHost.live(
-            remote: remote,
-            account: account,
-            defaults: UserDefaults(suiteName: "att-test-\(UUID().uuidString)")!,
+        let host = try CoreHost.singleCore(
+            store: MemorySecurityStoreV4(),
+            http: HTTP(),
+            allowPlainHttp: true,
             screens: screens,
+            defaults: UserDefaults(suiteName: "att-test-\(UUID().uuidString)")!,
             pendingStore: scope,
             draftStorageQueue: queue,
-            demoMode: true,
-            onNavigate: { _ in }
+            demoMode: true
         )
         let center = ImageCenter.install(remote: remote, coreHost: host, pending: scope)
         await host.setAttachmentHandlers(center.handlers())
@@ -725,24 +725,18 @@ private final class FakeUploadDaemon: @unchecked Sendable {
 
         let store = PendingStore(directory: dir, vault: vault)
         let queue = DraftStorageQueue()
-        let account = Account(
-            server: "http://127.0.0.1:1",
-            deviceId: "00112233445566778899aabbccddeeff",
-            accountId: "11111111111111111111111111111111"
-        )
-        let remote = try Remote(account: account, http: HTTP(), allowPlainHttp: true)
         let navEntered = AsyncStream<Void>.makeStream()
         let resumeBatch1 = AsyncStream<Void>.makeStream()
 
-        let host = try CoreHost.live(
-            remote: remote,
-            account: account,
-            defaults: UserDefaults(suiteName: "att-order-\(UUID().uuidString)")!,
+        let host = try CoreHost.singleCore(
+            store: MemorySecurityStoreV4(),
+            http: HTTP(),
+            allowPlainHttp: true,
             screens: CoreScreens(),
+            defaults: UserDefaults(suiteName: "att-order-\(UUID().uuidString)")!,
             pendingStore: store.scoped(),
             draftStorageQueue: queue,
-            demoMode: true,
-            onNavigate: { _ in }
+            demoMode: true
         )
         await host.setNavigateSuspendHookForTesting {
             navEntered.continuation.yield(())
@@ -797,21 +791,15 @@ private final class FakeUploadDaemon: @unchecked Sendable {
         #expect(store.write(opID: 1, bucket: .draft, key: "draft:session:s1", data: Data("old-account".utf8)).ok)
 
         let makeHost: () throws -> CoreHost = {
-            let account = Account(
-                server: "http://127.0.0.1:1",
-                deviceId: "00112233445566778899aabbccddeeff",
-                accountId: "11111111111111111111111111111111"
-            )
-            let remote = try Remote(account: account, http: HTTP(), allowPlainHttp: true)
-            return try CoreHost.live(
-                remote: remote,
-                account: account,
-                defaults: UserDefaults(suiteName: "att-cross-\(UUID().uuidString)")!,
+            return try CoreHost.singleCore(
+                store: MemorySecurityStoreV4(),
+                http: HTTP(),
+                allowPlainHttp: true,
                 screens: CoreScreens(),
+                defaults: UserDefaults(suiteName: "att-cross-\(UUID().uuidString)")!,
                 pendingStore: store.scoped(),
                 draftStorageQueue: sharedQueue,
-                demoMode: true,
-                onNavigate: { _ in }
+                demoMode: true
             )
         }
 
@@ -851,14 +839,14 @@ private final class FakeUploadDaemon: @unchecked Sendable {
             accountId: "11111111111111111111111111111111"
         )
         let remote = try Remote(account: account, http: HTTP(), allowPlainHttp: true)
-        let host = try CoreHost.live(
-            remote: remote,
-            account: account,
-            defaults: UserDefaults(suiteName: "att-render-\(UUID().uuidString)")!,
+        let host = try CoreHost.singleCore(
+            store: MemorySecurityStoreV4(),
+            http: HTTP(),
+            allowPlainHttp: true,
             screens: CoreScreens(),
+            defaults: UserDefaults(suiteName: "att-render-\(UUID().uuidString)")!,
             pendingStore: store.scoped(),
-            demoMode: true,
-            onNavigate: { _ in }
+            demoMode: true
         )
         let center = ImageCenter.install(remote: remote, coreHost: host, pending: store.scoped())
         let thumbRef = try store.storeBlob(samplePNG(.systemGreen), prefix: "thumb")

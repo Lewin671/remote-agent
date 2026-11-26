@@ -7,7 +7,7 @@ extension ServerTests {
     @Test func retiredHeaderCannotEraseVerifiedRevisionOrAllowMetadataReplay() async throws {
         try await World.run(setUp: { w in try await w.daemon.putMachine("fixture-machine") }) { w in
             let r = try await w.client()
-            _ = try await r.syncSecurity()
+            _ = try await r.testSyncSecurity()
             let security = try TestSecurity.get(w.server.url)
             var h = PBHeader(); h.machineID = w.daemon.id; h.sessionID = "known"; h.seq = 1
             var older = PBRemoteSession(); older.sessionID = "known"; older.machineID = w.daemon.id
@@ -63,7 +63,7 @@ extension ServerTests {
             var image = PBEnvelope(); image.header = try header.serializedData()
             await cache.putImage(key: "s1/retired", envelope: try image.serializedData())
             let r = try await w.client(cache: cache)
-            _ = try await r.syncSecurity()
+            _ = try await r.testSyncSecurity()
             let tok = r.securityStore.loadLoginToken(server: r.account.server, deviceId: r.account.deviceId)?.token ?? ""
             let reqBytes = try PBListRemoteSessionsRequest.with { $0.limit = 50 }.serializedData()
             let listRes = await SecurityExecutor.executeRelayRpcUnary(
@@ -112,7 +112,7 @@ extension ServerTests {
     @Test func retiredSessionRemainsVisibleWithTheSameHistoryError() async throws {
         try await World.run(setUp: { w in try await w.daemon.putMachine("fixture-machine") }) { w in
             let r = try await w.client()
-            _ = try await r.syncSecurity()
+            _ = try await r.testSyncSecurity()
             var header = PBHeader(); header.version = 1; header.kind = .sessionKey
             var row = PBRemoteSession(); row.sessionID = "retired"; row.machineID = w.daemon.account.deviceId
             row.key.header = try header.serializedData()

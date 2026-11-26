@@ -170,13 +170,8 @@ protocol CoreHostExecutor: AnyObject, Sendable {
     func loadDirectPreferences() -> [String: Bool]
     func persistDirectPreference(_ machineId: String, enabled: Bool)
     func detachDirectStreams()
-    func handleCoreSecurityEffect(_ eff: PBCoreEffect)
-    var optionalSecurityClient: SecurityClient? { get }
-    func ensureSecurityBootstrapped() async throws
-    func setSecurityForeground(_ foreground: Bool) async
     func applySecurityTokenUpdated(_ eff: PBSecurityTokenUpdatedEffect) async
     func applySecurityStatusSnapshot(_ status: PBSecurityWorkflowStatus) async
-    @discardableResult func syncSecurity(touch: Bool) async throws -> PBSecurityWorkflowStatus
     func handleDirectSignalSend(_ eff: PBCoreDirectSignalSendEffect) -> Bool
     func handleDirectPcCreate(_ eff: PBCoreDirectPcCreateEffect)
     func handleDirectPcDescribe(_ eff: PBCoreDirectPcDescribeEffect) async
@@ -199,13 +194,8 @@ extension CoreHostExecutor {
     var directSupported: Bool { false }
     var directServerHost: String { "" }
     var directConfiguredStun: String { "" }
-    var optionalSecurityClient: SecurityClient? { nil }
-    func handleCoreSecurityEffect(_ eff: PBCoreEffect) {}
-    func ensureSecurityBootstrapped() async throws {}
-    func setSecurityForeground(_ foreground: Bool) async {}
     func applySecurityTokenUpdated(_ eff: PBSecurityTokenUpdatedEffect) async {}
     func applySecurityStatusSnapshot(_ status: PBSecurityWorkflowStatus) async {}
-    @discardableResult func syncSecurity(touch: Bool) async throws -> PBSecurityWorkflowStatus { PBSecurityWorkflowStatus() }
     func readScheduleCacheBlob(_ machineId: String) async -> Data? { nil }
     func writeScheduleCacheBlob(_ machineId: String, blob: Data) async {}
     func deleteScheduleCache(_ machineId: String) async {}
@@ -231,12 +221,7 @@ extension CoreHostExecutor {
     func renameDevice(_ id: String, name: String) async throws {}
 }
 
-extension Remote: CoreHostExecutor {
-    nonisolated func handleCoreSecurityEffect(_ eff: PBCoreEffect) {
-        _ = securityExecutor.handleEffect(eff)
-    }
-    nonisolated var optionalSecurityClient: SecurityClient? { securityClient }
-}
+extension Remote: CoreHostExecutor {}
 
 private let monotonicOrigin = ContinuousClock.now
 private func hostMonoMs() -> Int64 {
@@ -497,7 +482,6 @@ actor CoreHost: SyncEngine {
     private let accountBox: OSAllocatedUnfairLock<Account>
     nonisolated let sharedSecurityExecutor: SecurityExecutor?
     nonisolated let sharedSecurityClient: SecurityClient?
-    private let singleCoreMode: Bool
     private var securityCallbacks = SecurityHostCallbacks()
     private let closedFlag: OSAllocatedUnfairLock<Bool>
     private let onboardingEditSeqLock = OSAllocatedUnfairLock<UInt64>(initialState: 0)
@@ -618,12 +602,20 @@ actor CoreHost: SyncEngine {
         allowPlainHttp: Bool,
         screens: CoreScreens,
         defaults: UserDefaults = .standard,
+        sharedFileStore: SharedFileStore = SharedFileStore(root: SharedFileCenter.defaultRoot),
         sharedFileQueue: SharedFileStorageQueue = .shared,
+        pendingStore: PendingScope = PendingStore.ephemeral().scoped(),
         draftStorageQueue: DraftStorageQueue = .shared,
+        demoDirectories: DirectorySource? = nil,
+        demoModels: [String: PBListModelsResponse] = [:],
+        demoMode: Bool = false,
         clock: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
         sleep: @escaping Sleeper = realSleep,
+        rpcOverride: SecurityExecutor.RpcOverride? = nil,
         relayRpcOverride: SecurityExecutor.RelayRpcOverride? = nil,
-        callbacks: SecurityHostCallbacks = SecurityHostCallbacks()
+        callbacks: SecurityHostCallbacks = SecurityHostCallbacks(),
+        onNavigate: @escaping @MainActor @Sendable (PBCoreNavigateEffect) -> Void = { _ in },
+        onScheduleNavigate: @escaping @MainActor @Sendable (PBScheduleNavigateEffect) -> Void = { _ in }
     ) throws -> CoreHost {
         let client = try CoreClient()
         let holder = WeakHost()
@@ -632,6 +624,7 @@ actor CoreHost: SyncEngine {
             store: store,
             http: http,
             allowPlainHttp: allowPlainHttp,
+            rpcOverride: rpcOverride,
             relayRpcOverride: relayRpcOverride,
             emit: { ev in
                 await holder.host?.dispatch(ev)
@@ -644,61 +637,18 @@ actor CoreHost: SyncEngine {
             setForegroundFn: { fg in
                 Task { await holder.host?.setSecurityForeground(fg) }
             },
-            isClosedFn: { closedFlag.withLock { $0 } },
-            onDismissUpgradeNotice: { store.dismissLegacyRepairNotice() }
+            isClosedFn: { closedFlag.withLock { $0 } }
         )
         let host = CoreHost(
             client: client,
             executor: nil,
             sharedSecurityExecutor: secExec,
             sharedSecurityClient: secClient,
-            singleCoreMode: true,
             closedFlag: closedFlag,
             securityCallbacks: callbacks,
             screens: screens,
             defaults: ScopeDefaults(defaults),
             scopeHmacKey: Data(),
-            sharedFileStore: SharedFileStore(root: SharedFileCenter.defaultRoot),
-            sharedFileQueue: sharedFileQueue,
-            pendingStore: PendingStore.ephemeral().scoped(),
-            draftStorageQueue: draftStorageQueue,
-            clock: clock,
-            monoClock: hostMonoMs,
-            sleep: sleep,
-            demoDirectories: nil,
-            demoModels: [:],
-            demoMode: false,
-            onNavigate: { _ in },
-            onScheduleNavigate: { _ in }
-        )
-        holder.host = host
-        return host
-    }
-
-    static func live(
-        remote: Remote,
-        account: Account,
-        defaults: UserDefaults,
-        screens: CoreScreens,
-        sharedFileStore: SharedFileStore = SharedFileStore(root: SharedFileCenter.defaultRoot),
-        sharedFileQueue: SharedFileStorageQueue = .shared,
-        pendingStore: PendingScope = PendingStore.ephemeral().scoped(),
-        draftStorageQueue: DraftStorageQueue = .shared,
-        demoDirectories: DirectorySource? = nil,
-        demoModels: [String: PBListModelsResponse] = [:],
-        demoMode: Bool = false,
-        clock: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
-        sleep: @escaping Sleeper = realSleep,
-        onNavigate: @escaping @MainActor @Sendable (PBCoreNavigateEffect) -> Void,
-        onScheduleNavigate: @escaping @MainActor @Sendable (PBScheduleNavigateEffect) -> Void = { _ in }
-    ) throws -> CoreHost {
-        let client = try CoreClient()
-        let host = CoreHost(
-            client: client,
-            executor: remote,
-            screens: screens,
-            defaults: ScopeDefaults(defaults, scope: [account.server, account.deviceId]),
-            scopeHmacKey: RACore.scopeHmacKey(localKey: account.localKey),
             sharedFileStore: sharedFileStore,
             sharedFileQueue: sharedFileQueue,
             pendingStore: pendingStore,
@@ -712,9 +662,7 @@ actor CoreHost: SyncEngine {
             onNavigate: onNavigate,
             onScheduleNavigate: onScheduleNavigate
         )
-        Task {
-            await host.wireExecutorHooks()
-        }
+        holder.host = host
         return host
     }
 
@@ -723,7 +671,6 @@ actor CoreHost: SyncEngine {
         executor: (any CoreHostExecutor)?,
         sharedSecurityExecutor: SecurityExecutor? = nil,
         sharedSecurityClient: SecurityClient? = nil,
-        singleCoreMode: Bool = false,
         closedFlag: OSAllocatedUnfairLock<Bool> = OSAllocatedUnfairLock<Bool>(initialState: false),
         securityCallbacks: SecurityHostCallbacks = SecurityHostCallbacks(),
         screens: CoreScreens,
@@ -747,7 +694,6 @@ actor CoreHost: SyncEngine {
         self.accountBox = OSAllocatedUnfairLock(initialState: executor?.account ?? Account(server: "", deviceId: "", accountId: ""))
         self.sharedSecurityExecutor = sharedSecurityExecutor
         self.sharedSecurityClient = sharedSecurityClient
-        self.singleCoreMode = singleCoreMode
         self.closedFlag = closedFlag
         self.securityCallbacks = securityCallbacks
         self.screens = screens
@@ -924,10 +870,7 @@ actor CoreHost: SyncEngine {
     // MARK: - Lifecycle Actions
 
     func startAsync() async {
-        guard !closed else { return }
-        if singleCoreMode && executor == nil {
-            return
-        }
+        guard !closed, executor != nil || demoMode else { return }
         await wireExecutorHooks()
         started = true
         foregrounded = true
@@ -974,21 +917,6 @@ actor CoreHost: SyncEngine {
             }
             await dispatch {
                 $0.relayPipeConfig = .with { $0.enabled = true }
-            }
-            if !singleCoreMode {
-                let desc = await deviceDescription()
-                await dispatch {
-                    $0.securityConfig = .with {
-                        $0.account = acct.accountId
-                        $0.deviceID = acct.deviceId
-                        $0.server = acct.server
-                        $0.inlineCrypto = true
-                        $0.foreground = self.foregrounded
-                        $0.platform = "ios"
-                        $0.deviceDescription = desc
-                    }
-                }
-                try? await executor.ensureSecurityBootstrapped()
             }
         }
         let savedScope = defaults.homeScopeToken()
@@ -1240,9 +1168,8 @@ actor CoreHost: SyncEngine {
         cancelAllInFlightDispatches()
         cancelIOTasks()
         executor?.detachDirectStreams()
-        await executor?.setSecurityForeground(false)
         await dispatch { $0.securityForeground = .with { $0.foreground = false } }
-        if executor != nil || !singleCoreMode {
+        if executor != nil || demoMode {
             await dispatch { $0.syncLifecycle.kind = .stop }
         }
     }
@@ -1253,9 +1180,8 @@ actor CoreHost: SyncEngine {
         if foreground {
             await dispatchClockUpdated()
         }
-        await executor?.setSecurityForeground(foreground)
         await dispatch { $0.securityForeground = .with { $0.foreground = foreground } }
-        if started && (executor != nil || !singleCoreMode) {
+        if started && (executor != nil || demoMode) {
             await dispatch { $0.syncLifecycle.kind = foreground ? .foreground : .background }
         }
     }
@@ -3237,30 +3163,17 @@ actor CoreHost: SyncEngine {
                  .securityKeyEncapsulate, .securityKeyDiscard, .securityStorage,
                  .securityRpc, .relayRpc, .relayRpcCancel:
                 guard !demoMode else { continue }
-                if let secExec = sharedSecurityExecutor {
-                    _ = secExec.handleEffect(eff)
-                } else {
-                    executor?.handleCoreSecurityEffect(eff)
-                }
+                _ = sharedSecurityExecutor?.handleEffect(eff)
 
             case .securityTokenUpdated(let eff):
                 guard !demoMode else { continue }
                 if let executor {
                     await executor.applySecurityTokenUpdated(eff)
-                } else if let secExec = sharedSecurityExecutor {
-                    let acct = self.account
-                    if !acct.server.isEmpty && !acct.deviceId.isEmpty {
-                        if eff.cleared {
-                            secExec.store.clearLoginToken(server: acct.server, deviceId: acct.deviceId)
-                        } else if !eff.token.isEmpty {
-                            secExec.store.saveLoginToken(SavedLogin(token: eff.token, expiresMs: eff.expiresMs), server: acct.server, deviceId: acct.deviceId)
-                        }
-                    }
                 }
 
             case .securityWorkflowResult(let eff):
                 guard !demoMode else { continue }
-                (sharedSecurityClient ?? executor?.optionalSecurityClient)?.handleWorkflowResult(eff)
+                sharedSecurityClient?.handleWorkflowResult(eff)
                 if eff.hasStatus, let exec = executor {
                     let st = eff.status
                     spawnIO { _ in
@@ -3272,7 +3185,7 @@ actor CoreHost: SyncEngine {
                 guard !demoMode else { continue }
                 if eff.hasStatus {
                     let st = eff.status
-                    (sharedSecurityClient ?? executor?.optionalSecurityClient)?.handleStatusChanged(st)
+                    sharedSecurityClient?.handleStatusChanged(st)
                     if let exec = executor {
                         spawnIO { _ in
                             await exec.applySecurityStatusSnapshot(st)

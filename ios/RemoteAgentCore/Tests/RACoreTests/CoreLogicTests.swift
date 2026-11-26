@@ -52,36 +52,3 @@ import Testing
         #expect(detailText(Wordless()) == "Wordless")
     }
 }
-
-@Suite(.timeLimit(.minutes(2))) struct PairLinkSecurityTests {
-    @Test func rejectsMalformedQrWithoutThrowing() {
-        for query in [
-            "code=12345678&s=%", "code=12345678&s=%GG",
-            "code=12345678&s=https%3A%2F%2Frelay.example&c=%A",
-            "code=bad&s=https%3A%2F%2Frelay.example",
-            "code=12345678&s=https%3A%2F%2Frelay.example&c=AA",
-            "code=12345678&s=http%3A%2F%2Fremote.example",
-            "code=１２３４５６７８&s=https%3A%2F%2Frelay.example",
-            "code=12345678", "",
-        ] {
-            #expect(PairLink.parse("https://app.example/#/pair?\(query)") == nil, "\(query)")
-        }
-        #expect(
-            PairLink.parse("https://app.example/?code=12345678&s=https%3A%2F%2Frelay.example")
-                == nil)
-    }
-
-    @Test func validQrRoundTrips() throws {
-        let link = PairLink(
-            code: "12345678", server: "https://relay.example",
-            commit: Data((0..<32).map { UInt8($0) }))
-        let url = link.url(web: "https://app.example/")
-        #expect(url.hasPrefix("https://app.example/#/pair?code=12345678&c="))
-        #expect(url.hasSuffix("&s=https%3A%2F%2Frelay.example"))
-        let parsed = try #require(PairLink.parse(url))
-        #expect(parsed == link)
-        // Without a commitment, as a code typed by hand makes it.
-        let bare = PairLink(code: "00000000", server: "http://127.0.0.1:8080")
-        #expect(PairLink.parse(bare.url(web: "http://localhost:4173")) == bare)
-    }
-}

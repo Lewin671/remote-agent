@@ -115,18 +115,10 @@ extension Remote {
         _ cmd: PBCommand,
         skipConnectivityPreflight: Bool = false
     ) async throws -> PBCommandResult {
-        if let onRun = hostHooks?.onRunMachineCommand {
-            return try await onRun(machineId, sessionId, cmd, skipConnectivityPreflight)
-        }
-        guard let driver = ensureFallbackSecurityDriver() else {
+        guard let onRun = hostHooks?.onRunMachineCommand else {
             throw CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled())
         }
-        return try await driver.runMachineCommand(
-            machineID: machineId,
-            sessionID: sessionId,
-            command: cmd,
-            skipConnectivityPreflight: skipConnectivityPreflight
-        )
+        return try await onRun(machineId, sessionId, cmd, skipConnectivityPreflight)
     }
 
     public nonisolated func pingServer(timeoutMs: Int64 = 8_000) async throws -> Int64 {
@@ -166,7 +158,6 @@ extension Remote {
     // --- images (fetched, decrypted, and validated in Go clientcore) ---
 
     public func image(_ sid: String, imageId: String) async throws -> ImageResult {
-        try await ensureSecurityBootstrapped()
         let cacheKey = "\(sid)/\(imageId)"
         let cachedEnvelope = await cache?.image(key: cacheKey)
         let machineId = machineIdForSessionIfKnown(sid) ?? ""

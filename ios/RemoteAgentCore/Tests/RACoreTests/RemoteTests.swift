@@ -93,6 +93,7 @@ final class World: @unchecked Sendable {
             account: account, http: http ?? self.http, cache: cache, frameQueue: frameQueue,
             frameQueueBytes: frameQueueBytes, streamOpenMs: streamOpenMs,
             securityStore: TestSecurity.find(server.url)?.store(account.deviceId))
+        try await attachTestCoreDriver(to: r)
         onClose { r.close() }
         return r
     }
@@ -138,7 +139,7 @@ private final class Frames: TermListener, Sendable {
 private extension Remote {
     @discardableResult
     func hydrateExecutorState() async throws -> [String: PBSession] {
-        _ = try await syncSecurity()
+        _ = try await testSyncSecurity()
         let tok = securityStore.loadLoginToken(server: account.server, deviceId: account.deviceId)?.token ?? ""
         let reqBytes = try PBListRemoteSessionsRequest.with { $0.limit = 50 }.serializedData()
         let res = await SecurityExecutor.executeRelayRpcUnary(
@@ -298,34 +299,46 @@ extension SyncServerTests {
             try await world { w in
                 let admin = try await w.remote(w.phone.account)
                 try await admin.hydrateExecutorState()
-                let started = try await admin.securityClient.startPairing(webOrigin: "https://app.example.com")
-                let link = try #require(PairLink.parse(started.url))
-                #expect(link.code == started.code)
+                let started = try await admin.securityClient.runAction {
+                    $0.startPairing = .with { $0.webOrigin = "https://app.example.com" }
+                }.pairing
+                #expect(started.url.contains("code=\(started.code)"))
 
                 let joinStore = MemorySecurityStoreV4()
-                let joinHost = try StandaloneSecurityHost(store: joinStore, http: w.http, allowPlainHttp: true)
-                defer { joinHost.close() }
-                async let joining = joinHost.client.startJoinPairing(rawLink: started.url)
+                let joinNode = try TestSecurityNode(store: joinStore, http: w.http, allowPlainHttp: true)
+                defer { joinNode.close() }
+                async let joining = joinNode.client.runAction {
+                    $0.startJoinPairing = .with { $0.rawLink = started.url }
+                }.pairing
 
-                var polled = try await admin.securityClient.pollPairing(pairingId: started.pairingID)
+                var polled = try await admin.securityClient.runAction {
+                    $0.pollPairing = .with { $0.value = started.pairingID }
+                }.pairing
                 while !polled.joined {
                     try await realSleep(10)
-                    polled = try await admin.securityClient.pollPairing(pairingId: started.pairingID)
+                    polled = try await admin.securityClient.runAction {
+                        $0.pollPairing = .with { $0.value = started.pairingID }
+                    }.pairing
                 }
                 let joinerInfo = try await joining
                 #expect(polled.joinerKind == .client)
                 #expect(polled.sasEmoji.count == 4)
                 #expect(joinerInfo.sasEmoji == polled.sasEmoji)
 
-                async let confirmJoin: PBSecurityWorkflowResultEffect = joinHost.client.confirmJoinSas(pairingId: joinerInfo.pairingID)
-                async let approveAdmin = admin.securityClient.approvePairing(pairingId: started.pairingID, sasConfirmed: true)
+                async let confirmJoin: PBSecurityWorkflowResultEffect = joinNode.client.runAction {
+                    $0.confirmJoinSas = .with { $0.value = joinerInfo.pairingID }
+                }
+                async let approveAdmin = admin.securityClient.runAction {
+                    $0.approvePairing = .with { $0.pairingID = started.pairingID; $0.sasConfirmed = true }
+                }
                 _ = try await (confirmJoin, approveAdmin)
 
-                let status = try await joinHost.client.bootstrap()
+                let status = try await joinNode.client.bootstrap()
                 #expect(status.bootstrap == .ready)
                 #expect(status.accountID == w.phone.account.accountId)
                 let acct = Account(server: w.server.url, deviceId: status.deviceID, accountId: status.accountID)
-                let joined = try Remote(account: acct, http: w.http, securityStore: joinStore, allowPlainHttp: true)
+                let joined = try fixtureRemote(account: acct, http: w.http, securityStore: joinStore)
+                try await attachTestCoreDriver(to: joined)
                 defer { joined.close() }
                 let openedSessions = try await joined.hydrateExecutorState()
                 #expect(openedSessions["s1"] != nil)

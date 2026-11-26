@@ -108,22 +108,16 @@ private func nextEvent<T: Sendable>(_ events: AsyncStream<T>) async -> T? {
         scanLocal: Bool = true
     ) async throws -> Harness {
         let root = existingRoot ?? FileManager.default.temporaryDirectory.appendingPathComponent("sf-smoke-\(UUID().uuidString)")
-        let account = Account(
-            server: "http://127.0.0.1:1",
-            deviceId: "00112233445566778899aabbccddeeff",
-            accountId: "11111111111111111111111111111111"
-        )
-        let remote = try Remote(account: account, http: HTTP(), allowPlainHttp: true)
         let screens = CoreScreens()
         let store = SharedFileStore(root: root)
-        let host = try CoreHost.live(
-            remote: remote,
-            account: account,
-            defaults: UserDefaults(suiteName: "sf-test-\(UUID().uuidString)")!,
+        let host = try CoreHost.singleCore(
+            store: MemorySecurityStoreV4(),
+            http: HTTP(),
+            allowPlainHttp: true,
             screens: screens,
+            defaults: UserDefaults(suiteName: "sf-test-\(UUID().uuidString)")!,
             sharedFileStore: store,
-            demoMode: true,
-            onNavigate: { _ in }
+            demoMode: true
         )
         let opened = Opened()
         let center = SharedFileCenter(store: store, coreHost: host, allowMissingReports: true, open: { opened.record($0) })
@@ -336,12 +330,6 @@ private func nextEvent<T: Sendable>(_ events: AsyncStream<T>) async -> T? {
     @Test func sharedFileStorageEffectsEnqueueInBatchOrderAcrossActorReentrancy() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("sf-order-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: root) }
-        let account = Account(
-            server: "http://127.0.0.1:1",
-            deviceId: "00112233445566778899aabbccddeeff",
-            accountId: "11111111111111111111111111111111"
-        )
-        let remote = try Remote(account: account, http: HTTP(), allowPlainHttp: true)
         let screens = CoreScreens()
         let store = SharedFileStore(root: root)
 
@@ -349,14 +337,14 @@ private func nextEvent<T: Sendable>(_ events: AsyncStream<T>) async -> T? {
         let hash = Data(SHA256.hash(data: payload))
         let navEntered = AsyncStream<Void>.makeStream()
         let resumeBatch1 = AsyncStream<Void>.makeStream()
-        let host = try CoreHost.live(
-            remote: remote,
-            account: account,
-            defaults: UserDefaults(suiteName: "sf-order-\(UUID().uuidString)")!,
+        let host = try CoreHost.singleCore(
+            store: MemorySecurityStoreV4(),
+            http: HTTP(),
+            allowPlainHttp: true,
             screens: screens,
+            defaults: UserDefaults(suiteName: "sf-order-\(UUID().uuidString)")!,
             sharedFileStore: store,
-            demoMode: true,
-            onNavigate: { _ in }
+            demoMode: true
         )
         defer { Task { await host.closeAsync() } }
         await host.setNavigateSuspendHookForTesting {
@@ -464,22 +452,16 @@ private func nextEvent<T: Sendable>(_ events: AsyncStream<T>) async -> T? {
         #expect(store.usedBytes() > 0)
 
         let makeHost: () throws -> (CoreHost, CoreScreens) = {
-            let account = Account(
-                server: "http://127.0.0.1:1",
-                deviceId: "00112233445566778899aabbccddeeff",
-                accountId: "11111111111111111111111111111111"
-            )
-            let remote = try Remote(account: account, http: HTTP(), allowPlainHttp: true)
             let screens = CoreScreens()
-            let host = try CoreHost.live(
-                remote: remote,
-                account: account,
-                defaults: UserDefaults(suiteName: "sf-cross-\(UUID().uuidString)")!,
+            let host = try CoreHost.singleCore(
+                store: MemorySecurityStoreV4(),
+                http: HTTP(),
+                allowPlainHttp: true,
                 screens: screens,
+                defaults: UserDefaults(suiteName: "sf-cross-\(UUID().uuidString)")!,
                 sharedFileStore: store,
                 sharedFileQueue: sharedQueue,
-                demoMode: true,
-                onNavigate: { _ in }
+                demoMode: true
             )
             return (host, screens)
         }

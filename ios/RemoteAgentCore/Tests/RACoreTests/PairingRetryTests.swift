@@ -13,25 +13,33 @@ extension ServerTests {
                 try await w.daemon.waitReady()
             }) { w in
                 let admin = try await w.remote(w.phone.account)
-                try await admin.ensureSecurityBootstrapped()
-                let started = try await admin.securityClient.startPairing(webOrigin: "https://app.example.com")
+                try await admin.testBootstrapSecurity()
+                let started = try await admin.securityClient.runAction {
+                    $0.startPairing = .with { $0.webOrigin = "https://app.example.com" }
+                }.pairing
 
                 let joinStore = MemorySecurityStoreV4()
-                let joinHost = try StandaloneSecurityHost(store: joinStore, http: w.http, allowPlainHttp: true)
-                defer { joinHost.close() }
-                async let joining = joinHost.client.startJoinPairing(rawLink: started.url)
+                let joinNode = try TestSecurityNode(store: joinStore, http: w.http, allowPlainHttp: true)
+                defer { joinNode.close() }
+                async let joining = joinNode.client.runAction {
+                    $0.startJoinPairing = .with { $0.rawLink = started.url }
+                }.pairing
 
-                var polled = try await admin.securityClient.pollPairing(pairingId: started.pairingID)
+                var polled = try await admin.securityClient.runAction {
+                    $0.pollPairing = .with { $0.value = started.pairingID }
+                }.pairing
                 while !polled.joined {
                     try await realSleep(10)
-                    polled = try await admin.securityClient.pollPairing(pairingId: started.pairingID)
+                    polled = try await admin.securityClient.runAction {
+                        $0.pollPairing = .with { $0.value = started.pairingID }
+                    }.pairing
                 }
                 let joined = try await joining
                 #expect(joined.sasEmoji == polled.sasEmoji)
 
                 // User cancels instead of confirming SAS: no record persisted and not added to chain.
-                try await joinHost.client.cancelJoinPairing(pairingId: joined.pairingID)
-                let afterBoot = try await joinHost.client.bootstrap()
+                _ = try await joinNode.client.runAction { $0.cancelJoinPairing = .with { $0.value = joined.pairingID } }
+                let afterBoot = try await joinNode.client.bootstrap()
                 #expect(afterBoot.bootstrap == .empty)
                 #expect(!joinStore.hasPersistedState())
             }
@@ -44,8 +52,10 @@ extension ServerTests {
                 try await w.daemon.waitReady()
             }) { w in
                 let admin = try await w.remote(w.phone.account)
-                try await admin.ensureSecurityBootstrapped()
-                let started = try await admin.securityClient.startPairing(webOrigin: "https://app.example.com")
+                try await admin.testBootstrapSecurity()
+                let started = try await admin.securityClient.runAction {
+                    $0.startPairing = .with { $0.webOrigin = "https://app.example.com" }
+                }.pairing
 
                 let faulty = Intercept.http(for: w.server.url) { request in
                     if request.url?.path.hasSuffix("/GetPairing") == true,
@@ -58,22 +68,30 @@ extension ServerTests {
                     return request
                 }
                 let joinStore = MemorySecurityStoreV4()
-                let joinHost = try StandaloneSecurityHost(store: joinStore, http: faulty, allowPlainHttp: true)
-                defer { joinHost.close() }
-                async let joining = joinHost.client.startJoinPairing(rawLink: started.url)
+                let joinNode = try TestSecurityNode(store: joinStore, http: faulty, allowPlainHttp: true)
+                defer { joinNode.close() }
+                async let joining = joinNode.client.runAction {
+                    $0.startJoinPairing = .with { $0.rawLink = started.url }
+                }.pairing
 
-                var polled = try await admin.securityClient.pollPairing(pairingId: started.pairingID)
+                var polled = try await admin.securityClient.runAction {
+                    $0.pollPairing = .with { $0.value = started.pairingID }
+                }.pairing
                 while !polled.joined {
                     try await realSleep(10)
-                    polled = try await admin.securityClient.pollPairing(pairingId: started.pairingID)
+                    polled = try await admin.securityClient.runAction {
+                        $0.pollPairing = .with { $0.value = started.pairingID }
+                    }.pairing
                 }
                 let joined = try await joining
 
-                async let confirmJoin = joinHost.client.confirmJoinSas(pairingId: joined.pairingID)
-                async let approveAdmin = admin.securityClient.approvePairing(pairingId: started.pairingID, sasConfirmed: true)
+                async let confirmJoin = joinNode.client.runAction { $0.confirmJoinSas = .with { $0.value = joined.pairingID } }
+                async let approveAdmin = admin.securityClient.runAction {
+                    $0.approvePairing = .with { $0.pairingID = started.pairingID; $0.sasConfirmed = true }
+                }
                 _ = try await (confirmJoin, approveAdmin)
 
-                let boot = try await joinHost.client.bootstrap()
+                let boot = try await joinNode.client.bootstrap()
                 #expect(boot.bootstrap == .ready)
                 let login = try await testLoginWithStore(api: TestApi(server: w.server.url, http: w.http), deviceId: boot.deviceID, store: joinStore)
                 #expect(!login.token.isEmpty)
@@ -96,7 +114,7 @@ extension ServerTests {
                 $0.authority = true
                 $0.messageText = PBCoreText.with { $0.key = "security.this_device_is_the_only_managing_client_transfer_management" }
             }
-            let rendered = renderExitAdviceMessage(adv)
+            let rendered = renderCoreText(adv.messageText)
             #expect(rendered == L10n.securityThisDeviceIsTheOnlyManagingClientTransferManagement())
             #expect(!rendered.contains("浏览器"))
             #expect(!rendered.lowercased().contains("browser"))

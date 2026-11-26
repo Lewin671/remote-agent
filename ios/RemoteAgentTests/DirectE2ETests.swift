@@ -155,43 +155,95 @@ struct DirectE2ETests {
         let server = try read("url"), token = try read("setup-token")
         let vault = Vault(service: "io.github.lewin671.remoteagent.e2e.\(UUID().uuidString)")
         let http = HTTP()
-        var setupHost: StandaloneSecurityHost? = try StandaloneSecurityHost(store: vault, http: http, allowPlainHttp: true)
-        defer { setupHost?.close() }
-        guard let hostClient = setupHost?.client else { throw UserError("missing host") }
-        _ = try await hostClient.bootstrap()
-        _ = try await hostClient.prepareCreation(server: server)
-        try await hostClient.confirmCreationCodeSaved()
-        let created = try await hostClient.continueCreation(setupToken: token)
-        let st = created.status
-        let account = Account(
-            server: !created.accountAdopted.server.isEmpty ? created.accountAdopted.server : st.server,
-            deviceId: !created.accountAdopted.deviceID.isEmpty ? created.accountAdopted.deviceID : st.deviceID,
-            accountId: !created.accountAdopted.accountID.isEmpty ? created.accountAdopted.accountID : st.accountID
+        let screens = await MainActor.run { CoreScreens() }
+        let host = try CoreHost.singleCore(
+            store: vault,
+            http: http,
+            allowPlainHttp: true,
+            screens: screens
         )
-        setupHost?.close()
-        setupHost = nil
+        await host.clientInit(
+            platform: "ios",
+            deviceDescription: "iOS E2E",
+            foreground: true,
+            networkAvailable: true,
+            networkSignature: "wifi",
+            defaultServer: server
+        )
+        _ = try await wait("onboarding ready", seconds: 15) {
+            screens.appRoot.stage == .onboarding
+        }
+        await host.onboardingSetMode(.create)
+        await host.onboardingCreateEdit(serverInput: server)
+        await host.onboardingCreateSubmit(serverInput: server)
+        _ = try await wait("recovery code prepared", seconds: 15) {
+            !screens.onboarding.create.recoveryCode.isEmpty
+        }
+        await host.onboardingCreateEdit(codeSavedChecked: true)
+        await host.onboardingCreateSubmit(serverInput: server, setupToken: token, confirmCodeSaved: true)
+        _ = try await wait("account created", seconds: 30) {
+            screens.appRoot.stage == .ready && !screens.appRoot.deviceID.isEmpty
+        }
+        let account = await MainActor.run {
+            Account(
+                server: screens.appRoot.server.isEmpty ? server : screens.appRoot.server,
+                deviceId: screens.appRoot.deviceID,
+                accountId: screens.appRoot.accountID
+            )
+        }
         say("account made")
         let factory = E2EFactory()
         factory.log = { [dir, started] in e2eSay(dir, started, $0) }
         factory.swallow = E2E.scenario == "udpdrop"
         let prefs: any DirectPreferenceStore = E2E.scenario == "switchoff" ? E2EOff() : UserDefaultsDirectPreferences(UserDefaults(suiteName: "e2e-\(UUID().uuidString)")!)
-        let remote = try Remote(account: account, http: http, log: { [dir, started] line in e2eSay(dir, started, "remote: " + line) }, securityStore: vault, allowPlainHttp: true, rtc: factory, directPreferences: prefs, directStun: [try read("stun-url")])
-        let screens = await MainActor.run { CoreScreens() }
-        let host = try CoreHost.live(remote: remote, account: account, defaults: .standard, screens: screens, onNavigate: { _ in })
+        let remote = try Remote(
+            account: account,
+            http: http,
+            log: { [dir, started] line in e2eSay(dir, started, "remote: " + line) },
+            securityStore: vault,
+            securityExecutor: host.sharedSecurityExecutor,
+            securityClient: host.sharedSecurityClient,
+            allowPlainHttp: true,
+            rtc: factory,
+            directPreferences: prefs,
+            directStun: [try read("stun-url")]
+        )
+        let pendingDir = FileManager.default.temporaryDirectory.appendingPathComponent("e2e-pending-\(UUID().uuidString)")
+        let pendingStore = PendingStore(directory: pendingDir, vault: vault)
+        await host.attachAccount(
+            executor: remote,
+            account: account,
+            defaults: ScopeDefaults(.standard),
+            pendingStore: pendingStore.scoped(),
+            sharedFileStore: SharedFileStore(root: SharedFileCenter.defaultRoot)
+        )
         await host.startAsync()
-        let initiation = try await remote.securityClient.startPairing(webOrigin: "https://example.com")
+        let initiationRes = try await remote.securityClient.runAction {
+            $0.startPairing = PBSecurityStartPairingAction.with { $0.webOrigin = "https://example.com" }
+        }
+        let initiation = initiationRes.pairing
         try initiation.url.write(toFile: dir + "/link", atomically: true, encoding: .utf8)
         say("pairing code written")
         var polled = initiation
         _ = try await wait("a joining computer", seconds: 90) {
-            polled = try await remote.securityClient.pollPairing(pairingId: initiation.pairingID)
+            let pollRes = try await remote.securityClient.runAction {
+                $0.pollPairing = PBSecurityStringAction.with { $0.value = initiation.pairingID }
+            }
+            polled = pollRes.pairing
             return polled.joined
         }
-        _ = try await remote.securityClient.approvePairing(pairingId: initiation.pairingID, sasConfirmed: true)
+        _ = try await remote.securityClient.runAction {
+            $0.approvePairing = PBSecurityApprovePairingAction.with {
+                $0.pairingID = initiation.pairingID
+                $0.sasConfirmed = true
+            }
+        }
         for _ in 0..<100 {
-            try await remote.resumeSecurityOperation()
-            _ = try await remote.finishPairingDelivery(pairingId: initiation.pairingID)
-            let cur = try await remote.getSecurityStatus()
+            _ = try await remote.securityClient.runAction { $0.resumePendingOp = PBSecurityActionEmpty() }
+            _ = try await remote.securityClient.runAction {
+                $0.finishPairingDelivery = PBSecurityStringAction.with { $0.value = initiation.pairingID }
+            }
+            let cur = try await remote.securityClient.runAction { $0.getStatus = PBSecurityActionEmpty() }.status
             if !cur.hasPendingOp { break }
             try await Task.sleep(nanoseconds: 100_000_000)
         }

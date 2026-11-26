@@ -7,7 +7,7 @@ import SwiftProtobuf
 /// unary Connect/HTTP byte-pipe RPC calls requested by Go `clientcore`.
 public final class SecurityExecutor: @unchecked Sendable {
     public typealias RpcOverride = @Sendable (PBSecurityRpcEffect) async -> PBSecurityRpcResultEvent
-    public typealias RelayRpcOverride = @Sendable (PBRelayRpcEffect) async -> PBRelayRpcResultEvent
+    public typealias RelayRpcOverride = @Sendable (PBRelayRpcEffect) async -> PBRelayRpcResultEvent?
 
     public let store: any SecurityStoreV4
     private let http: HTTP?

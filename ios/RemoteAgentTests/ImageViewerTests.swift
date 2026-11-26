@@ -15,13 +15,13 @@ import UIKit
         http: AppModel.http)
 
     private func center() -> ImageCenter {
-        let host = try! CoreHost.live(
-            remote: remote,
-            account: remote.account,
-            defaults: UserDefaults(suiteName: "ra-viewer-center-\(UUID().uuidString)")!,
+        let host = try! CoreHost.singleCore(
+            store: MemorySecurityStoreV4(),
+            http: HTTP(),
+            allowPlainHttp: true,
             screens: CoreScreens(),
-            demoMode: true,
-            onNavigate: { _ in }
+            defaults: UserDefaults(suiteName: "ra-viewer-center-\(UUID().uuidString)")!,
+            demoMode: true
         )
         return ImageCenter.install(remote: remote, coreHost: host, pending: PendingStore.ephemeral().scoped())
     }

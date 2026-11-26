@@ -39,10 +39,14 @@ struct AuthorityDemoCode: View {
 
 struct AuthorityDemoPairCode: View {
     let server: String
+    private var qrPayload: String {
+        let commit = Data(repeating: 5, count: 32).base64URL
+        let encodedServer = server.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? server
+        return "https://app.example.com/#/pair?code=12345678&c=" + commit + "&s=" + encodedServer
+    }
     var body: some View {
         VStack(spacing: 12) {
-            QRCodeView(text: PairLink(code: "12345678", server: server, commit: Data(repeating: 5, count: 32))
-                .url(web: "https://app.example.com"), label: "添加设备的配对二维码")
+            QRCodeView(text: qrPayload, label: L10n.securityQrCodeForAddingADevice())
             Text("1234 5678").font(.title2.monospaced().weight(.semibold)).ink(DS.ink)
             Text("有效期至 " + securityTime(UInt64(nowMs() + 5 * 60_000), timeOnly: true)).font(.footnote).ink(DS.ink2)
             Btn("复制配对码") {}

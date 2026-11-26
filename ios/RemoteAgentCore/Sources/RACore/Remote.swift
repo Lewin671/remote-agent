@@ -83,7 +83,6 @@ public final actor Remote {
     public nonisolated let securityStore: any SecurityStoreV4
     public nonisolated let securityExecutor: SecurityExecutor
     public nonisolated let securityClient: SecurityClient
-    private nonisolated let ownsSecurityExecutor: Bool
     private nonisolated let closedLock = OSAllocatedUnfairLock(initialState: false)
     nonisolated let directPreferences: any DirectPreferenceStore
     public nonisolated let directServerHost: String
@@ -120,10 +119,6 @@ public final actor Remote {
         }
     }
     var foregroundActive = true
-    var fallbackSecurityDriver: CoreSecurityDriver?
-    var securityConfiguredInCore = false
-    var securityBootstrapped = false
-    var securityBootstrapTask: Task<Void, Error>?
 
     // Hooks installed by CoreHost so Core receives executor events and drives direct transport.
     var hostHooks: CoreHooks?
@@ -133,18 +128,21 @@ public final actor Remote {
         public var onSecurityOp: (@Sendable (PBSecurityOpRequestEvent) async -> PBSecurityOpResultEffect)?
         public var onCoreEvent: @Sendable (PBCoreEvent) async -> Void
         public var onRunMachineCommand: (@Sendable (String, String, PBCommand, Bool) async throws -> PBCommandResult)?
+        public var onClose: (@Sendable () -> Void)?
         public init(
             onRefresh: @escaping @Sendable () async -> Void,
             onRefreshDevices: @escaping @Sendable () async -> Void,
             onSecurityOp: (@Sendable (PBSecurityOpRequestEvent) async -> PBSecurityOpResultEffect)? = nil,
             onCoreEvent: @escaping @Sendable (PBCoreEvent) async -> Void = { _ in },
-            onRunMachineCommand: (@Sendable (String, String, PBCommand, Bool) async throws -> PBCommandResult)? = nil
+            onRunMachineCommand: (@Sendable (String, String, PBCommand, Bool) async throws -> PBCommandResult)? = nil,
+            onClose: (@Sendable () -> Void)? = nil
         ) {
             self.onRefresh = onRefresh
             self.onRefreshDevices = onRefreshDevices
             self.onSecurityOp = onSecurityOp
             self.onCoreEvent = onCoreEvent
             self.onRunMachineCommand = onRunMachineCommand
+            self.onClose = onClose
         }
     }
 
@@ -240,7 +238,6 @@ public final actor Remote {
         let closedFlag = self.closedLock
         let gate = DirectEventQueueGate()
         let eventChain = SerialChain()
-        self.ownsSecurityExecutor = securityExecutor == nil
         self.securityExecutor = securityExecutor ?? SecurityExecutor(
             store: store,
             http: http,
@@ -258,13 +255,8 @@ public final actor Remote {
             setForegroundFn: { fg in
                 Task { await holder.remote?.setSecurityForeground(fg) }
             },
-            isClosedFn: { closedFlag.withLock { $0 } },
-            onDismissUpgradeNotice: { store.dismissLegacyRepairNotice() }
+            isClosedFn: { closedFlag.withLock { $0 } }
         )
-        if !self.ownsSecurityExecutor {
-            self.securityConfiguredInCore = true
-            self.securityBootstrapped = true
-        }
         self.directGate = gate
         self.coreEventChain = eventChain
         let terminals = activeTerminals
@@ -323,9 +315,7 @@ public final actor Remote {
         guard !closed else { return }
         if let onCore = hostHooks?.onCoreEvent {
             await onCore(ev)
-            return
         }
-        ensureFallbackSecurityDriver()?.enqueueEvent(ev)
     }
 
     func machineIdForSession(_ sid: String) -> String {
@@ -491,18 +481,12 @@ public final actor Remote {
         directGate.markClosed()
         deviceLink.closeStreams()
         directExecutor.close()
-        if ownsSecurityExecutor {
-            securityExecutor.close()
-            securityClient.rejectAll()
-        }
         Task { await self.closeActor() }
     }
 
     private func closeActor() {
         guard !closed else { return }
         closed = true
-        securityBootstrapTask?.cancel()
-        securityBootstrapTask = nil
         for leg in streamLegs.values {
             leg.closed = true
             leg.queue?.finish()
@@ -514,12 +498,9 @@ public final actor Remote {
         activeLegId = nil
         deviceLink.closeStreams()
         directExecutor.close()
-        if ownsSecurityExecutor {
-            securityExecutor.close()
-            securityClient.rejectAll()
-        }
-        fallbackSecurityDriver?.close()
-        fallbackSecurityDriver = nil
+        let closeHook = hostHooks?.onClose
+        hostHooks = nil
+        closeHook?()
     }
 
     public func refreshDevices() async {

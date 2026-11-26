@@ -338,15 +338,15 @@ extension ServerTests {
             }) { w in
                 let adminStore = try #require(TestSecurity.find(w.server.url)?.store(w.phone.account.deviceId))
                 let admin = try await w.remote(w.phone.account)
-                _ = try await admin.syncSecurity()
-                _ = try await admin.renewLeaseBlocking(force: true)
+                _ = try await admin.testSyncSecurity()
+                _ = try await admin.testRenewLease(force: true)
                 let notifyBlob = try #require(adminStore.readNotifyBlob())
 
                 let daemon = w.daemon
                 let daemonStore = try #require(TestSecurity.find(w.server.url)?.store(daemon.id))
-                let daemonHost = try StandaloneSecurityHost(store: daemonStore, http: w.http, allowPlainHttp: true)
-                defer { daemonHost.close() }
-                let daemonBoot = try await daemonHost.client.bootstrap()
+                let daemonNode = try TestSecurityNode(store: daemonStore, http: w.http, allowPlainHttp: true)
+                defer { daemonNode.close() }
+                let daemonBoot = try await daemonNode.client.bootstrap()
                 #expect(daemonBoot.bootstrap == .ready)
 
                 var content = PBNotifyContent()
@@ -357,7 +357,7 @@ extension ServerTests {
                 content.diskStatus.availableBytes = 1_500_000_000
                 content.diskStatus.pressure = .critical
                 let payload = try content.serializedData()
-                let sealed = try await daemonHost.securityOp {
+                let sealed = try await daemonNode.securityOp {
                     $0.sealEnvelope = .with {
                         $0.purpose = SecurityPurpose.notify.rawValue
                         $0.machineID = daemon.id

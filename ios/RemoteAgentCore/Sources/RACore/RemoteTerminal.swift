@@ -221,7 +221,6 @@ extension Remote {
     /// (`TerminalOpenAction` / `TerminalOpenSocketEffect` / `TerminalInboundBytesEvent` /
     /// `TerminalInputAction` / `TerminalDeliverOutputEffect` / `TerminalStateChangedEffect`).
     public func openTerminal(_ sid: String, listener: any TermListener, terminalId: String = "") async throws -> TermConn {
-        try await ensureSecurityBootstrapped()
         let sessionMachineId = machineIdForSessionIfKnown(sid) ?? ""
         let opId = activeTerminals.allocateOpId()
         let openedWaiter = ContinuationWaiter<Void>()

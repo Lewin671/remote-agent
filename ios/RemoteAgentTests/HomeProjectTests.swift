@@ -36,7 +36,7 @@ private func withTimeout<T: Sendable>(
 }
 
 /// Minimal test-only Go `CoreClient` + `SecurityExecutor` node for driving real Core security
-/// workflows and envelope ops without any production `StandaloneSecurityHost` or `CoreSecurityDriver`.
+/// workflows and envelope ops directly in unit tests.
 private final class TestCoreNode: @unchecked Sendable {
     private let core: CoreClient
     private let executor: SecurityExecutor
@@ -528,8 +528,6 @@ private actor FakeCoreExecutor: CoreHostExecutor {
     nonisolated let account: Account
     nonisolated let machineID: String
     nonisolated let securityStore: MemorySecurityStoreV4
-    nonisolated let securityClient: SecurityClient
-    nonisolated var optionalSecurityClient: SecurityClient? { securityClient }
 
     private final class HooksBox: @unchecked Sendable {
         let lock = NSLock()
@@ -537,8 +535,6 @@ private actor FakeCoreExecutor: CoreHostExecutor {
         var closed = false
     }
     private nonisolated let hooksBox = HooksBox()
-    private nonisolated let securityExecutor: SecurityExecutor
-    private var inFlightRelayTasks: [UInt64: Task<Void, Never>] = [:]
 
     var watchedRoutes: [PBWatchedSessionRoute] = []
     var openedLegs: [UInt64] = []
@@ -566,35 +562,7 @@ private actor FakeCoreExecutor: CoreHostExecutor {
         self.authority = authority
         self.account = authority.account
         self.machineID = authority.machineID
-        let store = authority.makeClientStore()
-        self.securityStore = store
-        let box = self.hooksBox
-        self.securityExecutor = SecurityExecutor(
-            store: store,
-            defaultServer: authority.account.server,
-            defaultDeviceId: authority.account.deviceId,
-            emit: { ev in
-                let hooks = box.lock.withLock { box.closed ? nil : box.hooks }
-                await hooks?.onCoreEvent(ev)
-            }
-        )
-        self.securityClient = SecurityClient(
-            dispatchEvent: { ev in
-                Task {
-                    let hooks = box.lock.withLock { box.closed ? nil : box.hooks }
-                    await hooks?.onCoreEvent(ev)
-                }
-            },
-            setForegroundFn: { fg in
-                Task {
-                    let hooks = box.lock.withLock { box.closed ? nil : box.hooks }
-                    await hooks?.onCoreEvent(PBCoreEvent.with {
-                        $0.securityForeground = .with { $0.foreground = fg }
-                    })
-                }
-            },
-            isClosedFn: { box.lock.withLock { box.closed } }
-        )
+        self.securityStore = authority.makeClientStore()
         self.machines = machines
         self.sessions = sessions
         self.prefsEnvelope = prefsEnvelope
@@ -667,32 +635,7 @@ private actor FakeCoreExecutor: CoreHostExecutor {
         hooksBox.lock.withLock { hooksBox.hooks = hooks }
     }
 
-    func ensureSecurityBootstrapped() async throws {
-        _ = try await securityClient.bootstrap()
-    }
-
-    nonisolated func handleCoreSecurityEffect(_ eff: PBCoreEffect) {
-        switch eff.effect {
-        case .securityKeyGenerate, .securityKeySign, .securityKeyAgree,
-             .securityKeyEncapsulate, .securityKeyDiscard, .securityStorage:
-            _ = securityExecutor.handleEffect(eff)
-        case .securityRpc(let r):
-            Task { await self.handleSecurityRpc(r) }
-        case .relayRpc(let r):
-            Task { await self.startRelayRpc(r) }
-        case .relayRpcCancel(let c):
-            Task { await self.cancelRelayRpc(c.opID) }
-        default:
-            break
-        }
-    }
-
-    private func emitCoreEvent(_ ev: PBCoreEvent) async {
-        let hooks = hooksBox.lock.withLock { hooksBox.closed ? nil : hooksBox.hooks }
-        await hooks?.onCoreEvent(ev)
-    }
-
-    private func handleSecurityRpc(_ eff: PBSecurityRpcEffect) async {
+    func handleSecurityRpc(_ eff: PBSecurityRpcEffect) async -> PBSecurityRpcResultEvent {
         var res = PBSecurityRpcResultEvent()
         res.opID = eff.opID
         do {
@@ -734,30 +677,10 @@ private actor FakeCoreExecutor: CoreHostExecutor {
             res.connectCode = 13
             res.error = error.localizedDescription
         }
-        await emitCoreEvent(.with { $0.securityRpcResult = res })
+        return res
     }
 
-    private func startRelayRpc(_ eff: PBRelayRpcEffect) {
-        let opID = eff.opID
-        inFlightRelayTasks[opID]?.cancel()
-        inFlightRelayTasks[opID] = Task { [weak self] in
-            guard let self else { return }
-            let result = await self.executeRelayRpc(eff)
-            await self.finishRelayRpc(opID: opID, result: result)
-        }
-    }
-
-    private func finishRelayRpc(opID: UInt64, result: PBRelayRpcResultEvent?) async {
-        inFlightRelayTasks.removeValue(forKey: opID)
-        guard let result, !Task.isCancelled else { return }
-        await emitCoreEvent(.with { $0.relayRpcResult = result })
-    }
-
-    private func cancelRelayRpc(_ opID: UInt64) {
-        inFlightRelayTasks.removeValue(forKey: opID)?.cancel()
-    }
-
-    private func executeRelayRpc(_ eff: PBRelayRpcEffect) async -> PBRelayRpcResultEvent? {
+    func executeRelayRpc(_ eff: PBRelayRpcEffect) async -> PBRelayRpcResultEvent? {
         var res = PBRelayRpcResultEvent()
         res.opID = eff.opID
         res.relayEpoch = "epoch-1"
@@ -1004,10 +927,6 @@ private actor FakeCoreExecutor: CoreHostExecutor {
             hooksBox.closed = true
             hooksBox.hooks = nil
         }
-        for task in inFlightRelayTasks.values { task.cancel() }
-        inFlightRelayTasks.removeAll()
-        securityExecutor.close()
-        securityClient.rejectAll()
     }
 }
 
@@ -1046,32 +965,67 @@ private final class PipeTraceRecorder: @unchecked Sendable {
 
 @MainActor
 @Suite struct HomeProjectTests {
+    private func makeStartedHost(
+        executor: FakeCoreExecutor,
+        screens: CoreScreens,
+        defaults: UserDefaults,
+        draftStorageQueue: DraftStorageQueue = .shared,
+        trace: PipeTraceRecorder? = nil,
+        onNavigate: @escaping @MainActor @Sendable (PBCoreNavigateEffect) -> Void = { _ in }
+    ) async throws -> CoreHost {
+        let host = try CoreHost.singleCore(
+            store: executor.securityStore,
+            http: HTTP(),
+            allowPlainHttp: true,
+            screens: screens,
+            defaults: defaults,
+            draftStorageQueue: draftStorageQueue,
+            clock: { FakeRelayAuthority.nowMs },
+            sleep: { _ in try? await Task.sleep(for: .milliseconds(5)) },
+            rpcOverride: { await executor.handleSecurityRpc($0) },
+            relayRpcOverride: { await executor.executeRelayRpc($0) },
+            onNavigate: onNavigate
+        )
+        if let trace {
+            await host.setDebugEventObserver { trace.recordEvent($0) }
+            await host.setDebugEffectObserver { trace.recordEffects($0) }
+        }
+        await host.clientInit(
+            deviceDescription: "iOS Test",
+            foreground: true,
+            networkAvailable: true,
+            networkSignature: "wifi"
+        )
+        await waitUntil { screens.appRoot.stage == .ready }
+        await host.attachAccount(
+            executor: executor,
+            account: executor.account,
+            defaults: ScopeDefaults(defaults),
+            pendingStore: PendingStore.ephemeral().scoped(),
+            sharedFileStore: SharedFileStore(root: SharedFileCenter.defaultRoot)
+        )
+        await host.startAsync()
+        return host
+    }
+
     @Test func coreHostDrivesRealCoreAndPublishesObservableScreens() async throws {
         let screens = CoreScreens()
         let executor = try await FakeCoreExecutor.makeDefault()
         let navRecorder = NavRecorder()
         let trace = PipeTraceRecorder()
-        let client = try CoreClient()
         let suiteName = "corehost-test-" + UUID().uuidString
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
-        let key = scopeHmacKey(localKey: Demo.account.localKey)
+        let key = scopeHmacKey(localKey: executor.account.localKey)
 
-        let host = CoreHost(
-            client: client,
+        let host = try await makeStartedHost(
             executor: executor,
             screens: screens,
-            defaults: ScopeDefaults(defaults),
-            scopeHmacKey: key,
+            defaults: defaults,
             draftStorageQueue: DraftStorageQueue(),
-            clock: { FakeRelayAuthority.nowMs },
-            sleep: { _ in try? await Task.sleep(for: .milliseconds(5)) },
+            trace: trace,
             onNavigate: { eff in Task { await navRecorder.record(eff) } }
         )
-        await host.setDebugEventObserver { trace.recordEvent($0) }
-        await host.setDebugEffectObserver { trace.recordEffects($0) }
-        await host.wireExecutorHooks()
-        await host.startAsync()
         await host.showHome()
 
         await waitUntil { screens.home.canStart && screens.home.running.count == 1 && screens.home.scopeMenu.count >= 2 }
@@ -1123,24 +1077,17 @@ private final class PipeTraceRecorder: @unchecked Sendable {
     @Test func coreHostSmokeLifecycleConnectListsDisconnectAndReconnectCatchUp() async throws {
         let screens = CoreScreens()
         let executor = try await FakeCoreExecutor.makeDefault()
-        let client = try CoreClient()
         let suiteName = "corehost-smoke-" + UUID().uuidString
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
 
-        let host = CoreHost(
-            client: client,
+        let host = try await makeStartedHost(
             executor: executor,
             screens: screens,
-            defaults: ScopeDefaults(defaults),
-            scopeHmacKey: scopeHmacKey(localKey: Demo.account.localKey),
-            clock: { FakeRelayAuthority.nowMs },
-            sleep: { _ in try? await Task.sleep(for: .milliseconds(5)) }
+            defaults: defaults
         )
-        await host.wireExecutorHooks()
 
         // 1. Start -> online -> lists -> home rows
-        await host.startAsync()
         await host.showHome()
         await waitUntil {
             let fetches = await executor.fetchListsCount
@@ -1186,7 +1133,6 @@ private final class PipeTraceRecorder: @unchecked Sendable {
     @Test func cancelDispatchEffectCancelsInFlightAttemptByRequestId() async throws {
         let executor = try await FakeCoreExecutor.makeDefault()
         let screens = CoreScreens()
-        let client = try CoreClient()
         let suiteName = "corehost-cancel-" + UUID().uuidString
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
@@ -1203,17 +1149,11 @@ private final class PipeTraceRecorder: @unchecked Sendable {
             return nil
         }
 
-        let host = CoreHost(
-            client: client,
+        let host = try await makeStartedHost(
             executor: executor,
             screens: screens,
-            defaults: ScopeDefaults(defaults),
-            scopeHmacKey: scopeHmacKey(localKey: Demo.account.localKey),
-            clock: { FakeRelayAuthority.nowMs },
-            sleep: { _ in try? await Task.sleep(for: .milliseconds(5)) }
+            defaults: defaults
         )
-        await host.wireExecutorHooks()
-        await host.startAsync()
         await waitUntil { screens.connection.state == .connected }
 
         await host.dispatch(PBCoreEvent.with {
@@ -1239,22 +1179,15 @@ private final class PipeTraceRecorder: @unchecked Sendable {
     @Test func runMachineCommandReturnsResultAndPropagatesCancellation() async throws {
         let executor = try await FakeCoreExecutor.makeDefault()
         let screens = CoreScreens()
-        let client = try CoreClient()
         let suiteName = "corehost-run-cmd-" + UUID().uuidString
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
 
-        let host = CoreHost(
-            client: client,
+        let host = try await makeStartedHost(
             executor: executor,
             screens: screens,
-            defaults: ScopeDefaults(defaults),
-            scopeHmacKey: scopeHmacKey(localKey: Demo.account.localKey),
-            clock: { FakeRelayAuthority.nowMs },
-            sleep: { _ in try? await Task.sleep(for: .milliseconds(5)) }
+            defaults: defaults
         )
-        await host.wireExecutorHooks()
-        await host.startAsync()
         await waitUntil { screens.connection.state == .connected }
 
         // 1. Happy path returns the daemon CommandResult through Core over the relay byte pipe.

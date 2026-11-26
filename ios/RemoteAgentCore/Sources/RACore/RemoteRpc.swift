@@ -11,22 +11,16 @@ extension Remote {
         case .bootstrap(let req):
             var loaded = PBCoreCacheBootstrapLoadedEvent()
             loaded.opID = req.opID
-            do {
-                try await ensureSecurityBootstrapped()
-                if let cache {
-                    for var m in await cache.machines() {
-                        m.online = false
-                        loaded.wireMachines.append(m)
-                    }
-                    loaded.wireSessions = await cache.sessions()
-                    if let blob = await cache.blob(name: projectPrefsID),
-                       let obj = try? PBAccountPrefsObject(serializedBytes: blob) {
-                        loaded.wirePrefs = obj
-                    }
+            if let cache {
+                for var m in await cache.machines() {
+                    m.online = false
+                    loaded.wireMachines.append(m)
                 }
-            } catch {
-                loaded.error = errorText(error)
-                report(error)
+                loaded.wireSessions = await cache.sessions()
+                if let blob = await cache.blob(name: projectPrefsID),
+                   let obj = try? PBAccountPrefsObject(serializedBytes: blob) {
+                    loaded.wirePrefs = obj
+                }
             }
             event.cacheBootstrapLoaded = loaded
         case .events(let req):
