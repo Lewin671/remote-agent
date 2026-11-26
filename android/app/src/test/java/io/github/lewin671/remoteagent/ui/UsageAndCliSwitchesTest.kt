@@ -728,7 +728,7 @@ class UsageAndCliSwitchesTest {
                 )
                 .build()
 
-            remote.coreHost.deliverUsageCacheLoaded("m1", snap)
+            remote.coreHost.deliverUsageCacheLoadedRaw("m1", snap.preset, snap.toByteArray())
             val view = remote.coreHost.snapshotUsageView(
                 machineId = "m1",
                 preset = UsageRangePreset.USAGE_RANGE_PRESET_SEVEN_DAYS,

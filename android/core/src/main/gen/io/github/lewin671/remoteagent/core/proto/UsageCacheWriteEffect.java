@@ -18,7 +18,6 @@ public  final class UsageCacheWriteEffect extends
     machineId_ = "";
     rawSnapshot_ = com.google.protobuf.ByteString.EMPTY;
   }
-  private int bitField0_;
   public static final int MACHINE_ID_FIELD_NUMBER = 1;
   private java.lang.String machineId_;
   /**
@@ -65,54 +64,6 @@ public  final class UsageCacheWriteEffect extends
     checkByteStringIsUtf8(value);
     machineId_ = value.toStringUtf8();
 
-  }
-
-  public static final int SNAPSHOT_FIELD_NUMBER = 2;
-  private io.github.lewin671.remoteagent.proto.UsageStatsResponse snapshot_;
-  /**
-   * <code>.remoteagent.v1.UsageStatsResponse snapshot = 2 [json_name = "snapshot"];</code>
-   */
-  @java.lang.Override
-  public boolean hasSnapshot() {
-    return ((bitField0_ & 0x00000001) != 0);
-  }
-  /**
-   * <code>.remoteagent.v1.UsageStatsResponse snapshot = 2 [json_name = "snapshot"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.UsageStatsResponse getSnapshot() {
-    return snapshot_ == null ? io.github.lewin671.remoteagent.proto.UsageStatsResponse.getDefaultInstance() : snapshot_;
-  }
-  /**
-   * <code>.remoteagent.v1.UsageStatsResponse snapshot = 2 [json_name = "snapshot"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSnapshot(io.github.lewin671.remoteagent.proto.UsageStatsResponse value) {
-    value.getClass();  // minimal bytecode null check
-    snapshot_ = value;
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.v1.UsageStatsResponse snapshot = 2 [json_name = "snapshot"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeSnapshot(io.github.lewin671.remoteagent.proto.UsageStatsResponse value) {
-    value.getClass();  // minimal bytecode null check
-    if (snapshot_ != null &&
-        snapshot_ != io.github.lewin671.remoteagent.proto.UsageStatsResponse.getDefaultInstance()) {
-      snapshot_ =
-        io.github.lewin671.remoteagent.proto.UsageStatsResponse.newBuilder(snapshot_).mergeFrom(value).buildPartial();
-    } else {
-      snapshot_ = value;
-    }
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.v1.UsageStatsResponse snapshot = 2 [json_name = "snapshot"];</code>
-   */
-  private void clearSnapshot() {
-    snapshot_ = null;
-    bitField0_ = (bitField0_ & ~0x00000001);
   }
 
   public static final int RAW_SNAPSHOT_FIELD_NUMBER = 3;
@@ -343,53 +294,6 @@ public  final class UsageCacheWriteEffect extends
     }
 
     /**
-     * <code>.remoteagent.v1.UsageStatsResponse snapshot = 2 [json_name = "snapshot"];</code>
-     */
-    @java.lang.Override
-    public boolean hasSnapshot() {
-      return instance.hasSnapshot();
-    }
-    /**
-     * <code>.remoteagent.v1.UsageStatsResponse snapshot = 2 [json_name = "snapshot"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.UsageStatsResponse getSnapshot() {
-      return instance.getSnapshot();
-    }
-    /**
-     * <code>.remoteagent.v1.UsageStatsResponse snapshot = 2 [json_name = "snapshot"];</code>
-     */
-    public Builder setSnapshot(io.github.lewin671.remoteagent.proto.UsageStatsResponse value) {
-      copyOnWrite();
-      instance.setSnapshot(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.v1.UsageStatsResponse snapshot = 2 [json_name = "snapshot"];</code>
-     */
-    public Builder setSnapshot(
-        io.github.lewin671.remoteagent.proto.UsageStatsResponse.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSnapshot(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.UsageStatsResponse snapshot = 2 [json_name = "snapshot"];</code>
-     */
-    public Builder mergeSnapshot(io.github.lewin671.remoteagent.proto.UsageStatsResponse value) {
-      copyOnWrite();
-      instance.mergeSnapshot(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.UsageStatsResponse snapshot = 2 [json_name = "snapshot"];</code>
-     */
-    public Builder clearSnapshot() {  copyOnWrite();
-      instance.clearSnapshot();
-      return this;
-    }
-
-    /**
      * <pre>
      * Opaque serialized remoteagent.v1.UsageStatsResponse bytes for pure-byte shell storage.
      * </pre>
@@ -491,15 +395,13 @@ public  final class UsageCacheWriteEffect extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
-            "bitField0_",
             "machineId_",
-            "snapshot_",
             "rawSnapshot_",
             "preset_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0001\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\u1009" +
-              "\u0000\u0003\n\u0004\f";
+              "\u0000\u0003\u0000\u0000\u0001\u0004\u0003\u0000\u0000\u0000\u0001\u0208\u0003\n" +
+              "\u0004\f";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

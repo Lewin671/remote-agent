@@ -65,8 +65,6 @@ const (
 	ScreenTarget_SCREEN_TARGET_HOME                   ScreenTarget = 1
 	ScreenTarget_SCREEN_TARGET_PROJECT                ScreenTarget = 2
 	ScreenTarget_SCREEN_TARGET_NEW_SESSION            ScreenTarget = 3
-	ScreenTarget_SCREEN_TARGET_SYNC_STATE             ScreenTarget = 4
-	ScreenTarget_SCREEN_TARGET_SESSION_DATA           ScreenTarget = 5
 	ScreenTarget_SCREEN_TARGET_SETTINGS               ScreenTarget = 30
 	ScreenTarget_SCREEN_TARGET_MACHINE_STATUS         ScreenTarget = 31
 	ScreenTarget_SCREEN_TARGET_MACHINE_SETTINGS       ScreenTarget = 32
@@ -210,40 +208,6 @@ func (m *NewSessionScreenRequest) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_NewSessionScreenRequest)
 }
 
-type SyncStateScreenRequest struct {
-}
-
-var LitewireDesc_SyncStateScreenRequest = litewire.MessageDesc{
-	New: func() unsafe.Pointer { return unsafe.Pointer(&SyncStateScreenRequest{}) },
-}
-
-func (m *SyncStateScreenRequest) Unmarshal(b []byte) error {
-	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SyncStateScreenRequest)
-}
-
-type SessionDataScreenRequest struct {
-	_         [0]func()
-	SessionId string
-}
-
-func (m *SessionDataScreenRequest) GetSessionId() string {
-	if m != nil {
-		return m.SessionId
-	}
-	return ""
-}
-
-var LitewireDesc_SessionDataScreenRequest = litewire.MessageDesc{
-	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionDataScreenRequest{}) },
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(SessionDataScreenRequest{}.SessionId), Kind: litewire.KindString},
-	},
-}
-
-func (m *SessionDataScreenRequest) Unmarshal(b []byte) error {
-	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionDataScreenRequest)
-}
-
 type Screen struct {
 	_      [0]func()
 	Screen isScreen_Screen
@@ -270,20 +234,6 @@ type Screen_NewSession struct {
 }
 
 func (*Screen_NewSession) isScreen_Screen() {}
-
-type Screen_SyncState struct {
-	_         [0]func()
-	SyncState *SyncStateScreenRequest
-}
-
-func (*Screen_SyncState) isScreen_Screen() {}
-
-type Screen_SessionData struct {
-	_           [0]func()
-	SessionData *SessionDataScreenRequest
-}
-
-func (*Screen_SessionData) isScreen_Screen() {}
 
 type Screen_Settings struct {
 	_        [0]func()
@@ -463,18 +413,6 @@ func (m *Screen) GetNewSession() *NewSessionScreenRequest {
 	}
 	return nil
 }
-func (m *Screen) GetSyncState() *SyncStateScreenRequest {
-	if x, ok := m.GetScreen().(*Screen_SyncState); ok && x != nil {
-		return x.SyncState
-	}
-	return nil
-}
-func (m *Screen) GetSessionData() *SessionDataScreenRequest {
-	if x, ok := m.GetScreen().(*Screen_SessionData); ok && x != nil {
-		return x.SessionData
-	}
-	return nil
-}
 func (m *Screen) GetSettings() *SettingsScreenRequest {
 	if x, ok := m.GetScreen().(*Screen_Settings); ok && x != nil {
 		return x.Settings
@@ -619,9 +557,9 @@ func (m *Screen) Unmarshal(b []byte) error {
 func extraUnmarshal_Screen(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
 	m := (*Screen)(base)
 	switch {
-	case num <= 31:
+	case num <= 33:
 		return m.extraUnmarshalPart0(num, wtyp, bp)
-	case num <= 52:
+	case num <= 54:
 		return m.extraUnmarshalPart1(num, wtyp, bp)
 	case num <= 55:
 		return m.extraUnmarshalPart2(num, wtyp, bp)
@@ -656,20 +594,6 @@ func (m *Screen) extraUnmarshalPart0(num litewire.Number, wtyp litewire.Type, bp
 				m.Screen = w
 			}
 			sub = w.NewSession
-		case 4:
-			w, _ := m.Screen.(*Screen_SyncState)
-			if w == nil || w.SyncState == nil {
-				w = &Screen_SyncState{SyncState: &SyncStateScreenRequest{}}
-				m.Screen = w
-			}
-			sub = w.SyncState
-		case 5:
-			w, _ := m.Screen.(*Screen_SessionData)
-			if w == nil || w.SessionData == nil {
-				w = &Screen_SessionData{SessionData: &SessionDataScreenRequest{}}
-				m.Screen = w
-			}
-			sub = w.SessionData
 		case 10:
 			w, _ := m.Screen.(*Screen_Session)
 			if w == nil || w.Session == nil {
@@ -719,6 +643,20 @@ func (m *Screen) extraUnmarshalPart0(num litewire.Number, wtyp litewire.Type, bp
 				m.Screen = w
 			}
 			sub = w.MachineStatus
+		case 32:
+			w, _ := m.Screen.(*Screen_MachineSettings)
+			if w == nil || w.MachineSettings == nil {
+				w = &Screen_MachineSettings{MachineSettings: &MachineSettingsScreenRequest{}}
+				m.Screen = w
+			}
+			sub = w.MachineSettings
+		case 33:
+			w, _ := m.Screen.(*Screen_Quota)
+			if w == nil || w.Quota == nil {
+				w = &Screen_Quota{Quota: &QuotaScreenRequest{}}
+				m.Screen = w
+			}
+			sub = w.Quota
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -737,20 +675,6 @@ func (m *Screen) extraUnmarshalPart1(num litewire.Number, wtyp litewire.Type, bp
 	var sub litewire.Unmarshaler
 	if wtyp == litewire.BytesType {
 		switch num {
-		case 32:
-			w, _ := m.Screen.(*Screen_MachineSettings)
-			if w == nil || w.MachineSettings == nil {
-				w = &Screen_MachineSettings{MachineSettings: &MachineSettingsScreenRequest{}}
-				m.Screen = w
-			}
-			sub = w.MachineSettings
-		case 33:
-			w, _ := m.Screen.(*Screen_Quota)
-			if w == nil || w.Quota == nil {
-				w = &Screen_Quota{Quota: &QuotaScreenRequest{}}
-				m.Screen = w
-			}
-			sub = w.Quota
 		case 34:
 			w, _ := m.Screen.(*Screen_Devices)
 			if w == nil || w.Devices == nil {
@@ -821,6 +745,20 @@ func (m *Screen) extraUnmarshalPart1(num litewire.Number, wtyp litewire.Type, bp
 				m.Screen = w
 			}
 			sub = w.AddDevice
+		case 53:
+			w, _ := m.Screen.(*Screen_AccountSecurity)
+			if w == nil || w.AccountSecurity == nil {
+				w = &Screen_AccountSecurity{AccountSecurity: &AccountSecurityScreenRequest{}}
+				m.Screen = w
+			}
+			sub = w.AccountSecurity
+		case 54:
+			w, _ := m.Screen.(*Screen_Handoff)
+			if w == nil || w.Handoff == nil {
+				w = &Screen_Handoff{Handoff: &HandoffScreenRequest{}}
+				m.Screen = w
+			}
+			sub = w.Handoff
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -836,33 +774,15 @@ func (m *Screen) extraUnmarshalPart1(num litewire.Number, wtyp litewire.Type, bp
 //go:noinline
 func (m *Screen) extraUnmarshalPart2(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
 	b := *bp
-	var sub litewire.Unmarshaler
 	if wtyp == litewire.BytesType {
 		switch num {
-		case 53:
-			w, _ := m.Screen.(*Screen_AccountSecurity)
-			if w == nil || w.AccountSecurity == nil {
-				w = &Screen_AccountSecurity{AccountSecurity: &AccountSecurityScreenRequest{}}
-				m.Screen = w
-			}
-			sub = w.AccountSecurity
-		case 54:
-			w, _ := m.Screen.(*Screen_Handoff)
-			if w == nil || w.Handoff == nil {
-				w = &Screen_Handoff{Handoff: &HandoffScreenRequest{}}
-				m.Screen = w
-			}
-			sub = w.Handoff
 		case 55:
 			w, _ := m.Screen.(*Screen_ExitConfirm)
 			if w == nil || w.ExitConfirm == nil {
 				w = &Screen_ExitConfirm{ExitConfirm: &ExitConfirmScreenRequest{}}
 				m.Screen = w
 			}
-			sub = w.ExitConfirm
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
+			if err := litewire.ReadMessage(&b, w.ExitConfirm); err != nil {
 				return false, err
 			}
 			*bp = b
@@ -898,20 +818,6 @@ type ViewModel_NewSession struct {
 }
 
 func (*ViewModel_NewSession) isViewModel_View() {}
-
-type ViewModel_SyncState struct {
-	_         [0]func()
-	SyncState *SyncStateView
-}
-
-func (*ViewModel_SyncState) isViewModel_View() {}
-
-type ViewModel_SessionData struct {
-	_           [0]func()
-	SessionData *SessionDataView
-}
-
-func (*ViewModel_SessionData) isViewModel_View() {}
 
 type ViewModel_Settings struct {
 	_        [0]func()
@@ -1088,18 +994,6 @@ func (m *ViewModel) GetProject() *ProjectViewModel {
 func (m *ViewModel) GetNewSession() *NewSessionViewModel {
 	if x, ok := m.GetView().(*ViewModel_NewSession); ok && x != nil {
 		return x.NewSession
-	}
-	return nil
-}
-func (m *ViewModel) GetSyncState() *SyncStateView {
-	if x, ok := m.GetView().(*ViewModel_SyncState); ok && x != nil {
-		return x.SyncState
-	}
-	return nil
-}
-func (m *ViewModel) GetSessionData() *SessionDataView {
-	if x, ok := m.GetView().(*ViewModel_SessionData); ok && x != nil {
-		return x.SessionData
 	}
 	return nil
 }
@@ -1282,14 +1176,6 @@ func (m *ViewModel) appendMarshalViewPart0(b []byte) ([]byte, bool) {
 		if x != nil && x.NewSession != nil {
 			onum, omsg = 3, x.NewSession
 		}
-	case *ViewModel_SyncState:
-		if x != nil && x.SyncState != nil {
-			onum, omsg = 4, x.SyncState
-		}
-	case *ViewModel_SessionData:
-		if x != nil && x.SessionData != nil {
-			onum, omsg = 5, x.SessionData
-		}
 	case *ViewModel_Settings:
 		if x != nil && x.Settings != nil {
 			onum, omsg = 30, x.Settings
@@ -1318,6 +1204,14 @@ func (m *ViewModel) appendMarshalViewPart0(b []byte) ([]byte, bool) {
 		if x != nil && x.Usage != nil {
 			onum, omsg = 36, x.Usage
 		}
+	case *ViewModel_DirectDiagnostics:
+		if x != nil && x.DirectDiagnostics != nil {
+			onum, omsg = 37, x.DirectDiagnostics
+		}
+	case *ViewModel_AttachmentEval:
+		if x != nil && x.AttachmentEval != nil {
+			onum, omsg = 38, x.AttachmentEval
+		}
 	default:
 		return b, false
 	}
@@ -1332,14 +1226,6 @@ func (m *ViewModel) appendMarshalViewPart1(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.View.(type) {
-	case *ViewModel_DirectDiagnostics:
-		if x != nil && x.DirectDiagnostics != nil {
-			onum, omsg = 37, x.DirectDiagnostics
-		}
-	case *ViewModel_AttachmentEval:
-		if x != nil && x.AttachmentEval != nil {
-			onum, omsg = 38, x.AttachmentEval
-		}
 	case *ViewModel_AttachmentDraft:
 		if x != nil && x.AttachmentDraft != nil {
 			onum, omsg = 39, x.AttachmentDraft
@@ -1380,6 +1266,14 @@ func (m *ViewModel) appendMarshalViewPart1(b []byte) ([]byte, bool) {
 		if x != nil && x.AddDevice != nil {
 			onum, omsg = 52, x.AddDevice
 		}
+	case *ViewModel_AccountSecurity:
+		if x != nil && x.AccountSecurity != nil {
+			onum, omsg = 53, x.AccountSecurity
+		}
+	case *ViewModel_Handoff:
+		if x != nil && x.Handoff != nil {
+			onum, omsg = 54, x.Handoff
+		}
 	default:
 		return b, false
 	}
@@ -1391,26 +1285,16 @@ func (m *ViewModel) appendMarshalViewPart1(b []byte) ([]byte, bool) {
 
 //go:noinline
 func (m *ViewModel) appendMarshalViewPart2(b []byte) ([]byte, bool) {
-	var onum litewire.Number
-	var omsg litewire.Marshaler
 	switch x := m.View.(type) {
-	case *ViewModel_AccountSecurity:
-		if x != nil && x.AccountSecurity != nil {
-			onum, omsg = 53, x.AccountSecurity
-		}
-	case *ViewModel_Handoff:
-		if x != nil && x.Handoff != nil {
-			onum, omsg = 54, x.Handoff
-		}
 	case *ViewModel_ExitConfirm:
-		if x != nil && x.ExitConfirm != nil {
-			onum, omsg = 55, x.ExitConfirm
+		if x != nil {
+			if x.ExitConfirm != nil {
+				b = litewire.AppendMessage(b, 55, x.ExitConfirm)
+			}
 		}
+		return b, true
 	default:
 		return b, false
-	}
-	if omsg != nil {
-		b = litewire.AppendMessage(b, onum, omsg)
 	}
 	return b, true
 }
@@ -5767,48 +5651,6 @@ type Event_DirectPcProbeReceived struct {
 
 func (*Event_DirectPcProbeReceived) isEvent_Event() {}
 
-type Event_TerminalDirectOpen struct {
-	_                  [0]func()
-	TerminalDirectOpen *TerminalDirectOpenEvent
-}
-
-func (*Event_TerminalDirectOpen) isEvent_Event() {}
-
-type Event_TerminalDirectClose struct {
-	_                   [0]func()
-	TerminalDirectClose *TerminalDirectCloseEvent
-}
-
-func (*Event_TerminalDirectClose) isEvent_Event() {}
-
-type Event_TerminalDirectLeg struct {
-	_                 [0]func()
-	TerminalDirectLeg *TerminalDirectLegEvent
-}
-
-func (*Event_TerminalDirectLeg) isEvent_Event() {}
-
-type Event_TerminalDirectInput struct {
-	_                   [0]func()
-	TerminalDirectInput *TerminalDirectInputEvent
-}
-
-func (*Event_TerminalDirectInput) isEvent_Event() {}
-
-type Event_TerminalDirectOutput struct {
-	_                    [0]func()
-	TerminalDirectOutput *TerminalDirectOutputEvent
-}
-
-func (*Event_TerminalDirectOutput) isEvent_Event() {}
-
-type Event_TerminalDirectConfirmRebuild struct {
-	_                            [0]func()
-	TerminalDirectConfirmRebuild *TerminalDirectConfirmRebuildAction
-}
-
-func (*Event_TerminalDirectConfirmRebuild) isEvent_Event() {}
-
 type Event_RelayPipeConfig struct {
 	_               [0]func()
 	RelayPipeConfig *RelayPipeConfigEvent
@@ -7427,42 +7269,6 @@ func (m *Event) GetDirectPcProbeReceived() *DirectPcProbeReceivedEvent {
 	}
 	return nil
 }
-func (m *Event) GetTerminalDirectOpen() *TerminalDirectOpenEvent {
-	if x, ok := m.GetEvent().(*Event_TerminalDirectOpen); ok && x != nil {
-		return x.TerminalDirectOpen
-	}
-	return nil
-}
-func (m *Event) GetTerminalDirectClose() *TerminalDirectCloseEvent {
-	if x, ok := m.GetEvent().(*Event_TerminalDirectClose); ok && x != nil {
-		return x.TerminalDirectClose
-	}
-	return nil
-}
-func (m *Event) GetTerminalDirectLeg() *TerminalDirectLegEvent {
-	if x, ok := m.GetEvent().(*Event_TerminalDirectLeg); ok && x != nil {
-		return x.TerminalDirectLeg
-	}
-	return nil
-}
-func (m *Event) GetTerminalDirectInput() *TerminalDirectInputEvent {
-	if x, ok := m.GetEvent().(*Event_TerminalDirectInput); ok && x != nil {
-		return x.TerminalDirectInput
-	}
-	return nil
-}
-func (m *Event) GetTerminalDirectOutput() *TerminalDirectOutputEvent {
-	if x, ok := m.GetEvent().(*Event_TerminalDirectOutput); ok && x != nil {
-		return x.TerminalDirectOutput
-	}
-	return nil
-}
-func (m *Event) GetTerminalDirectConfirmRebuild() *TerminalDirectConfirmRebuildAction {
-	if x, ok := m.GetEvent().(*Event_TerminalDirectConfirmRebuild); ok && x != nil {
-		return x.TerminalDirectConfirmRebuild
-	}
-	return nil
-}
 func (m *Event) GetRelayPipeConfig() *RelayPipeConfigEvent {
 	if x, ok := m.GetEvent().(*Event_RelayPipeConfig); ok && x != nil {
 		return x.RelayPipeConfig
@@ -7851,18 +7657,16 @@ func extraUnmarshal_Event(base unsafe.Pointer, num litewire.Number, wtyp litewir
 		return m.extraUnmarshalPart15(num, wtyp, bp)
 	case num <= 419:
 		return m.extraUnmarshalPart16(num, wtyp, bp)
-	case num <= 431:
+	case num <= 437:
 		return m.extraUnmarshalPart17(num, wtyp, bp)
-	case num <= 452:
+	case num <= 460:
 		return m.extraUnmarshalPart18(num, wtyp, bp)
-	case num <= 470:
+	case num <= 476:
 		return m.extraUnmarshalPart19(num, wtyp, bp)
-	case num <= 482:
+	case num <= 490:
 		return m.extraUnmarshalPart20(num, wtyp, bp)
-	case num <= 497:
-		return m.extraUnmarshalPart21(num, wtyp, bp)
 	case num <= 499:
-		return m.extraUnmarshalPart22(num, wtyp, bp)
+		return m.extraUnmarshalPart21(num, wtyp, bp)
 	}
 	return false, nil
 }
@@ -9635,48 +9439,6 @@ func (m *Event) extraUnmarshalPart17(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.DirectPcProbeReceived
-		case 424:
-			w, _ := m.Event.(*Event_TerminalDirectOpen)
-			if w == nil || w.TerminalDirectOpen == nil {
-				w = &Event_TerminalDirectOpen{TerminalDirectOpen: &TerminalDirectOpenEvent{}}
-				m.Event = w
-			}
-			sub = w.TerminalDirectOpen
-		case 425:
-			w, _ := m.Event.(*Event_TerminalDirectClose)
-			if w == nil || w.TerminalDirectClose == nil {
-				w = &Event_TerminalDirectClose{TerminalDirectClose: &TerminalDirectCloseEvent{}}
-				m.Event = w
-			}
-			sub = w.TerminalDirectClose
-		case 426:
-			w, _ := m.Event.(*Event_TerminalDirectLeg)
-			if w == nil || w.TerminalDirectLeg == nil {
-				w = &Event_TerminalDirectLeg{TerminalDirectLeg: &TerminalDirectLegEvent{}}
-				m.Event = w
-			}
-			sub = w.TerminalDirectLeg
-		case 427:
-			w, _ := m.Event.(*Event_TerminalDirectInput)
-			if w == nil || w.TerminalDirectInput == nil {
-				w = &Event_TerminalDirectInput{TerminalDirectInput: &TerminalDirectInputEvent{}}
-				m.Event = w
-			}
-			sub = w.TerminalDirectInput
-		case 428:
-			w, _ := m.Event.(*Event_TerminalDirectOutput)
-			if w == nil || w.TerminalDirectOutput == nil {
-				w = &Event_TerminalDirectOutput{TerminalDirectOutput: &TerminalDirectOutputEvent{}}
-				m.Event = w
-			}
-			sub = w.TerminalDirectOutput
-		case 429:
-			w, _ := m.Event.(*Event_TerminalDirectConfirmRebuild)
-			if w == nil || w.TerminalDirectConfirmRebuild == nil {
-				w = &Event_TerminalDirectConfirmRebuild{TerminalDirectConfirmRebuild: &TerminalDirectConfirmRebuildAction{}}
-				m.Event = w
-			}
-			sub = w.TerminalDirectConfirmRebuild
 		case 430:
 			w, _ := m.Event.(*Event_RelayPipeConfig)
 			if w == nil || w.RelayPipeConfig == nil {
@@ -9691,24 +9453,6 @@ func (m *Event) extraUnmarshalPart17(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.RelayRpcResult
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart18(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 432:
 			w, _ := m.Event.(*Event_StreamRawFrame)
 			if w == nil || w.StreamRawFrame == nil {
@@ -9751,6 +9495,24 @@ func (m *Event) extraUnmarshalPart18(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.TerminalClose
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart18(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 438:
 			w, _ := m.Event.(*Event_TerminalSocket)
 			if w == nil || w.TerminalSocket == nil {
@@ -9793,24 +9555,6 @@ func (m *Event) extraUnmarshalPart18(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityKeySigned
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart19(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 453:
 			w, _ := m.Event.(*Event_SecurityKeyAgreed)
 			if w == nil || w.SecurityKeyAgreed == nil {
@@ -9853,6 +9597,24 @@ func (m *Event) extraUnmarshalPart19(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityKeyEncapsulated
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart19(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 461:
 			w, _ := m.Event.(*Event_SecurityStorageResult)
 			if w == nil || w.SecurityStorageResult == nil {
@@ -9895,24 +9657,6 @@ func (m *Event) extraUnmarshalPart19(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.ClientInit
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart20(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 471:
 			w, _ := m.Event.(*Event_StoragePersistResult)
 			if w == nil || w.StoragePersistResult == nil {
@@ -9955,6 +9699,24 @@ func (m *Event) extraUnmarshalPart20(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.AppRootDismissUpgradeNotice
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart20(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 477:
 			w, _ := m.Event.(*Event_OnboardingSetMode)
 			if w == nil || w.OnboardingSetMode == nil {
@@ -9997,24 +9759,6 @@ func (m *Event) extraUnmarshalPart20(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.OnboardingJoinConfirmSas
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart21(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 483:
 			w, _ := m.Event.(*Event_OnboardingJoinCancel)
 			if w == nil || w.OnboardingJoinCancel == nil {
@@ -10057,6 +9801,24 @@ func (m *Event) extraUnmarshalPart21(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.AddDeviceClose
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart21(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 491:
 			w, _ := m.Event.(*Event_AddDeviceAction)
 			if w == nil || w.AddDeviceAction == nil {
@@ -10099,24 +9861,6 @@ func (m *Event) extraUnmarshalPart21(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.ExternalLogout
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart22(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 498:
 			w, _ := m.Event.(*Event_ExitRequest)
 			if w == nil || w.ExitRequest == nil {
@@ -12215,27 +11959,6 @@ type Effect_TerminalDirectSend struct {
 
 func (*Effect_TerminalDirectSend) isEffect_Effect() {}
 
-type Effect_TerminalDirectDeliver struct {
-	_                     [0]func()
-	TerminalDirectDeliver *TerminalDirectDeliverEffect
-}
-
-func (*Effect_TerminalDirectDeliver) isEffect_Effect() {}
-
-type Effect_TerminalDirectAttachRelay struct {
-	_                         [0]func()
-	TerminalDirectAttachRelay *TerminalDirectAttachRelayEffect
-}
-
-func (*Effect_TerminalDirectAttachRelay) isEffect_Effect() {}
-
-type Effect_TerminalDirectState struct {
-	_                   [0]func()
-	TerminalDirectState *TerminalDirectStateEffect
-}
-
-func (*Effect_TerminalDirectState) isEffect_Effect() {}
-
 type Effect_SecurityKeySign struct {
 	_               [0]func()
 	SecurityKeySign *SecurityKeySignEffect
@@ -12831,24 +12554,6 @@ func (m *Effect) GetTerminalDirectSend() *TerminalDirectSendEffect {
 	}
 	return nil
 }
-func (m *Effect) GetTerminalDirectDeliver() *TerminalDirectDeliverEffect {
-	if x, ok := m.GetEffect().(*Effect_TerminalDirectDeliver); ok && x != nil {
-		return x.TerminalDirectDeliver
-	}
-	return nil
-}
-func (m *Effect) GetTerminalDirectAttachRelay() *TerminalDirectAttachRelayEffect {
-	if x, ok := m.GetEffect().(*Effect_TerminalDirectAttachRelay); ok && x != nil {
-		return x.TerminalDirectAttachRelay
-	}
-	return nil
-}
-func (m *Effect) GetTerminalDirectState() *TerminalDirectStateEffect {
-	if x, ok := m.GetEffect().(*Effect_TerminalDirectState); ok && x != nil {
-		return x.TerminalDirectState
-	}
-	return nil
-}
 func (m *Effect) GetSecurityKeySign() *SecurityKeySignEffect {
 	if x, ok := m.GetEffect().(*Effect_SecurityKeySign); ok && x != nil {
 		return x.SecurityKeySign
@@ -13003,9 +12708,6 @@ func extraMarshal_Effect(base unsafe.Pointer, b []byte, idx litewire.Number) []b
 		}
 		if !ok {
 			b, ok = m.appendMarshalEffectPart7(b)
-		}
-		if !ok {
-			b, ok = m.appendMarshalEffectPart8(b)
 		}
 	}
 	return b
@@ -13404,18 +13106,6 @@ func (m *Effect) appendMarshalEffectPart6(b []byte) ([]byte, bool) {
 		if x != nil && x.TerminalDirectSend != nil {
 			onum, omsg = 117, x.TerminalDirectSend
 		}
-	case *Effect_TerminalDirectDeliver:
-		if x != nil && x.TerminalDirectDeliver != nil {
-			onum, omsg = 118, x.TerminalDirectDeliver
-		}
-	case *Effect_TerminalDirectAttachRelay:
-		if x != nil && x.TerminalDirectAttachRelay != nil {
-			onum, omsg = 119, x.TerminalDirectAttachRelay
-		}
-	case *Effect_TerminalDirectState:
-		if x != nil && x.TerminalDirectState != nil {
-			onum, omsg = 120, x.TerminalDirectState
-		}
 	case *Effect_SecurityKeySign:
 		if x != nil && x.SecurityKeySign != nil {
 			onum, omsg = 130, x.SecurityKeySign
@@ -13436,6 +13126,18 @@ func (m *Effect) appendMarshalEffectPart6(b []byte) ([]byte, bool) {
 		if x != nil && x.SecurityKeyGenerate != nil {
 			onum, omsg = 137, x.SecurityKeyGenerate
 		}
+	case *Effect_SecurityKeyEncapsulate:
+		if x != nil && x.SecurityKeyEncapsulate != nil {
+			onum, omsg = 138, x.SecurityKeyEncapsulate
+		}
+	case *Effect_SecurityKeyDiscard:
+		if x != nil && x.SecurityKeyDiscard != nil {
+			onum, omsg = 139, x.SecurityKeyDiscard
+		}
+	case *Effect_SecurityStorage:
+		if x != nil && x.SecurityStorage != nil {
+			onum, omsg = 140, x.SecurityStorage
+		}
 	default:
 		return b, false
 	}
@@ -13450,18 +13152,6 @@ func (m *Effect) appendMarshalEffectPart7(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
-	case *Effect_SecurityKeyEncapsulate:
-		if x != nil && x.SecurityKeyEncapsulate != nil {
-			onum, omsg = 138, x.SecurityKeyEncapsulate
-		}
-	case *Effect_SecurityKeyDiscard:
-		if x != nil && x.SecurityKeyDiscard != nil {
-			onum, omsg = 139, x.SecurityKeyDiscard
-		}
-	case *Effect_SecurityStorage:
-		if x != nil && x.SecurityStorage != nil {
-			onum, omsg = 140, x.SecurityStorage
-		}
 	case *Effect_SecurityRpc:
 		if x != nil && x.SecurityRpc != nil {
 			onum, omsg = 141, x.SecurityRpc
@@ -13498,20 +13188,6 @@ func (m *Effect) appendMarshalEffectPart7(b []byte) ([]byte, bool) {
 		if x != nil && x.AccountRuntimeChanged != nil {
 			onum, omsg = 149, x.AccountRuntimeChanged
 		}
-	default:
-		return b, false
-	}
-	if omsg != nil {
-		b = litewire.AppendMessage(b, onum, omsg)
-	}
-	return b, true
-}
-
-//go:noinline
-func (m *Effect) appendMarshalEffectPart8(b []byte) ([]byte, bool) {
-	var onum litewire.Number
-	var omsg litewire.Marshaler
-	switch x := m.Effect.(type) {
 	case *Effect_DismissUpgradeNotice:
 		if x != nil && x.DismissUpgradeNotice != nil {
 			onum, omsg = 150, x.DismissUpgradeNotice

@@ -16,7 +16,6 @@ public  final class SessionGeneratedImagesItem extends
     SessionGeneratedImagesItemOrBuilder {
   private SessionGeneratedImagesItem() {
     revisedPrompt_ = "";
-    images_ = emptyProtobufList();
     imageViews_ = emptyProtobufList();
   }
   public static final int REVISED_PROMPT_FIELD_NUMBER = 1;
@@ -65,103 +64,6 @@ public  final class SessionGeneratedImagesItem extends
     checkByteStringIsUtf8(value);
     revisedPrompt_ = value.toStringUtf8();
 
-  }
-
-  public static final int IMAGES_FIELD_NUMBER = 2;
-  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.ImageRef> images_;
-  /**
-   * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-   */
-  @java.lang.Override
-  public java.util.List<io.github.lewin671.remoteagent.proto.ImageRef> getImagesList() {
-    return images_;
-  }
-  /**
-   * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-   */
-  public java.util.List<? extends io.github.lewin671.remoteagent.proto.ImageRefOrBuilder> 
-      getImagesOrBuilderList() {
-    return images_;
-  }
-  /**
-   * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-   */
-  @java.lang.Override
-  public int getImagesCount() {
-    return images_.size();
-  }
-  /**
-   * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.ImageRef getImages(int index) {
-    return images_.get(index);
-  }
-  /**
-   * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-   */
-  public io.github.lewin671.remoteagent.proto.ImageRefOrBuilder getImagesOrBuilder(
-      int index) {
-    return images_.get(index);
-  }
-  private void ensureImagesIsMutable() {
-    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.ImageRef> tmp = images_;
-    if (!tmp.isModifiable()) {
-      images_ =
-          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
-     }
-  }
-
-  /**
-   * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setImages(
-      int index, io.github.lewin671.remoteagent.proto.ImageRef value) {
-    value.getClass();  // minimal bytecode null check
-    ensureImagesIsMutable();
-    images_.set(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addImages(io.github.lewin671.remoteagent.proto.ImageRef value) {
-    value.getClass();  // minimal bytecode null check
-    ensureImagesIsMutable();
-    images_.add(value);
-  }
-  /**
-   * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addImages(
-      int index, io.github.lewin671.remoteagent.proto.ImageRef value) {
-    value.getClass();  // minimal bytecode null check
-    ensureImagesIsMutable();
-    images_.add(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-   */
-  private void addAllImages(
-      java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.ImageRef> values) {
-    ensureImagesIsMutable();
-    com.google.protobuf.AbstractMessageLite.addAll(
-        values, images_);
-  }
-  /**
-   * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-   */
-  private void clearImages() {
-    images_ = emptyProtobufList();
-  }
-  /**
-   * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-   */
-  private void removeImages(int index) {
-    ensureImagesIsMutable();
-    images_.remove(index);
   }
 
   public static final int IMAGE_VIEWS_FIELD_NUMBER = 20;
@@ -408,108 +310,6 @@ public  final class SessionGeneratedImagesItem extends
     }
 
     /**
-     * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-     */
-    @java.lang.Override
-    public java.util.List<io.github.lewin671.remoteagent.proto.ImageRef> getImagesList() {
-      return java.util.Collections.unmodifiableList(
-          instance.getImagesList());
-    }
-    /**
-     * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-     */
-    @java.lang.Override
-    public int getImagesCount() {
-      return instance.getImagesCount();
-    }/**
-     * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.ImageRef getImages(int index) {
-      return instance.getImages(index);
-    }
-    /**
-     * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-     */
-    public Builder setImages(
-        int index, io.github.lewin671.remoteagent.proto.ImageRef value) {
-      copyOnWrite();
-      instance.setImages(index, value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-     */
-    public Builder setImages(
-        int index, io.github.lewin671.remoteagent.proto.ImageRef.Builder builderForValue) {
-      copyOnWrite();
-      instance.setImages(index,
-          builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-     */
-    public Builder addImages(io.github.lewin671.remoteagent.proto.ImageRef value) {
-      copyOnWrite();
-      instance.addImages(value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-     */
-    public Builder addImages(
-        int index, io.github.lewin671.remoteagent.proto.ImageRef value) {
-      copyOnWrite();
-      instance.addImages(index, value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-     */
-    public Builder addImages(
-        io.github.lewin671.remoteagent.proto.ImageRef.Builder builderForValue) {
-      copyOnWrite();
-      instance.addImages(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-     */
-    public Builder addImages(
-        int index, io.github.lewin671.remoteagent.proto.ImageRef.Builder builderForValue) {
-      copyOnWrite();
-      instance.addImages(index,
-          builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-     */
-    public Builder addAllImages(
-        java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.ImageRef> values) {
-      copyOnWrite();
-      instance.addAllImages(values);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-     */
-    public Builder clearImages() {
-      copyOnWrite();
-      instance.clearImages();
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-     */
-    public Builder removeImages(int index) {
-      copyOnWrite();
-      instance.removeImages(index);
-      return this;
-    }
-
-    /**
      * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
      */
     @java.lang.Override
@@ -628,14 +428,12 @@ public  final class SessionGeneratedImagesItem extends
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
             "revisedPrompt_",
-            "images_",
-            io.github.lewin671.remoteagent.proto.ImageRef.class,
             "imageViews_",
             io.github.lewin671.remoteagent.core.proto.SessionImageView.class,
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0014\u0003\u0000\u0002\u0000\u0001\u0208\u0002\u001b" +
-              "\u0014\u001b";
+              "\u0000\u0002\u0000\u0000\u0001\u0014\u0002\u0000\u0001\u0000\u0001\u0208\u0014\u001b" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

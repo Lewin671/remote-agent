@@ -3538,10 +3538,6 @@ public struct PBScheduleWriteCacheEffect: Sendable {
 
   public var machineID: String = String()
 
-  public var requestID: String = String()
-
-  public var sealedResultBytes: Data = Data()
-
   /// Opaque encoded ScheduleCacheBlob bytes for pure-byte shell storage.
   public var blob: Data = Data()
 
@@ -8141,7 +8137,7 @@ extension PBScheduleFormUpdateTimingAction: SwiftProtobuf.Message, SwiftProtobuf
 
 extension PBScheduleWriteCacheEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ScheduleWriteCacheEffect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{4}\u{2}machine_id\0\u{3}request_id\0\u{3}sealed_result_bytes\0\u{1}blob\0\u{c}\u{1}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{4}\u{2}machine_id\0\u{2}\u{3}blob\0\u{b}request_id\0\u{b}sealed_result_bytes\0\u{c}\u{1}\u{1}\u{c}\u{3}\u{1}\u{c}\u{4}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -8150,8 +8146,6 @@ extension PBScheduleWriteCacheEffect: SwiftProtobuf.Message, SwiftProtobuf._Mess
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 2: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.requestID) }()
-      case 4: try { try decoder.decodeSingularBytesField(value: &self.sealedResultBytes) }()
       case 5: try { try decoder.decodeSingularBytesField(value: &self.blob) }()
       default: break
       }
@@ -8162,12 +8156,6 @@ extension PBScheduleWriteCacheEffect: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if !self.machineID.isEmpty {
       try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 2)
     }
-    if !self.requestID.isEmpty {
-      try visitor.visitSingularStringField(value: self.requestID, fieldNumber: 3)
-    }
-    if !self.sealedResultBytes.isEmpty {
-      try visitor.visitSingularBytesField(value: self.sealedResultBytes, fieldNumber: 4)
-    }
     if !self.blob.isEmpty {
       try visitor.visitSingularBytesField(value: self.blob, fieldNumber: 5)
     }
@@ -8176,8 +8164,6 @@ extension PBScheduleWriteCacheEffect: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
   public static func ==(lhs: PBScheduleWriteCacheEffect, rhs: PBScheduleWriteCacheEffect) -> Bool {
     if lhs.machineID != rhs.machineID {return false}
-    if lhs.requestID != rhs.requestID {return false}
-    if lhs.sealedResultBytes != rhs.sealedResultBytes {return false}
     if lhs.blob != rhs.blob {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true

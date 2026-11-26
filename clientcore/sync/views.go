@@ -2,7 +2,6 @@ package sync
 
 import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
-	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
@@ -311,93 +310,4 @@ func (e *Engine) BuildSyncStateView() *corev1.SyncStateView {
 		DevicesLoadFailed:      e.devicesLoadFailed,
 		HasHandoffOffer:        e.security.HasHandoffOffer,
 	}
-}
-
-// BuildSessionDataView constructs the transitional SessionDataView for sessionID.
-func (e *Engine) BuildSessionDataView(sessionID string) *corev1.SessionDataView {
-	s := e.sessions[sessionID]
-	buf := e.buffers[sessionID]
-	if s == nil && buf == nil {
-		return &corev1.SessionDataView{
-			SessionId: sessionID,
-			Found:     false,
-		}
-	}
-
-	out := &corev1.SessionDataView{
-		SessionId: sessionID,
-		Found:     true,
-		Session:   e.buildSyncSessionView(s),
-	}
-
-	var meta *v1.Session
-	var liveSnap *v1.LiveSnapshot
-	var agent v1.Agent
-	if s != nil {
-		out.LastSeq = s.LastSeq
-		out.Retired = s.RetiredHistory
-		meta = s.Info
-		if s.Info != nil {
-			agent = s.Info.Agent
-		}
-		if s.Checkpoint != nil {
-			liveSnap = s.Checkpoint.Clone()
-			out.LiveSnapshot = liveSnap
-		}
-	}
-
-	var ps *corev1.ProjectionState
-	if buf != nil {
-		out.Loading = buf.awaitingCache || buf.fetching
-		out.Loaded = buf.loaded
-		out.AwaitingCache = buf.awaitingCache
-		out.Backfilling = buf.backfilling
-		out.Fetching = buf.fetching
-		out.HasGap = (s != nil && buf.hasServerGap(s.ServerLastSeq)) || (s == nil && len(buf.pending) > 0)
-		out.TailRequested = buf.tailRequested
-		out.Retired = out.Retired || buf.retired
-		out.RetryingCorruptCache = buf.retryingCorruptCache
-		out.PrefixLen = uint64(len(buf.prefix))
-		out.PendingCount = int32(len(buf.pending))
-
-		if len(buf.unavailableSeqs) > 0 {
-			seqs := make([]uint64, 0, len(buf.unavailableSeqs))
-			for seq := range buf.unavailableSeqs {
-				seqs = append(seqs, seq)
-			}
-			sortutil.Uint64s(seqs)
-			out.UnavailableSeqs = seqs
-			out.UnavailableCount = uint32(len(seqs))
-		}
-
-		if len(buf.prefix) > 0 {
-			if buf.reducer == nil {
-				buf.rebuildReducer(agent)
-			}
-			if liveSnap != nil {
-				ps = buf.reducer.CurrentActions(liveSnap)
-			} else {
-				ps = buf.reducer.Snapshot()
-			}
-		} else if liveSnap != nil {
-			ps = projection.CurrentActions(nil, liveSnap, nil)
-		}
-
-		shown := buf.ShownEvents()
-		if len(shown) > 0 {
-			events := make([]*v1.Event, 0, len(shown))
-			for _, ev := range shown {
-				if ev != nil {
-					events = append(events, ev.Clone())
-				}
-			}
-			out.Events = events
-		}
-	} else if liveSnap != nil {
-		ps = projection.CurrentActions(nil, liveSnap, nil)
-	}
-
-	out.Projection = ps
-	out.Pending = syncPendingFromLists(pendingFromProjection(ps, meta))
-	return out
 }

@@ -1333,7 +1333,7 @@ func TestScheduleCacheGateAndRevocationDuringWrite(t *testing.T) {
 	outEffs := pumpCoreSecurityEffects(t, c, phone, secStore, nowMs+100, bOut)
 	wroteCache := false
 	for _, eff := range outEffs {
-		if wc := eff.GetScheduleWriteCache(); wc != nil && wc.MachineId == trusted.id && len(wc.SealedResultBytes) > 0 {
+		if wc := eff.GetScheduleWriteCache(); wc != nil && wc.MachineId == trusted.id && len(wc.Blob) > 0 {
 			wroteCache = true
 		}
 	}

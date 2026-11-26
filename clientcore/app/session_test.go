@@ -3126,12 +3126,12 @@ func TestRunMachineCommandSkipConnectivityPreflight(t *testing.T) {
 		},
 	})
 	vm, err := c.View(&corev1.Screen{
-		Screen: &corev1.Screen_SyncState{SyncState: &corev1.SyncStateScreenRequest{}},
+		Screen: &corev1.Screen_Connection{Connection: &corev1.ConnectionScreenRequest{}},
 	})
 	if err != nil {
-		t.Fatalf("View(SyncState): %v", err)
+		t.Fatalf("View(Connection): %v", err)
 	}
-	if got := vm.GetSyncState().GetConnection(); got == corev1.ConnState_CONN_STATE_CONNECTED {
+	if got := vm.GetConnection().GetState(); got == corev1.ConnState_CONN_STATE_CONNECTED {
 		t.Fatalf("expected non-connected state after StreamClosed, got %v", got)
 	}
 

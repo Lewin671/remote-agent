@@ -22,8 +22,6 @@ public  final class ViewModel extends
     HOME(1),
     PROJECT(2),
     NEW_SESSION(3),
-    SYNC_STATE(4),
-    SESSION_DATA(5),
     SETTINGS(30),
     MACHINE_STATUS(31),
     MACHINE_SETTINGS(32),
@@ -64,8 +62,6 @@ public  final class ViewModel extends
         case 1: return HOME;
         case 2: return PROJECT;
         case 3: return NEW_SESSION;
-        case 4: return SYNC_STATE;
-        case 5: return SESSION_DATA;
         case 30: return SETTINGS;
         case 31: return MACHINE_STATUS;
         case 32: return MACHINE_SETTINGS;
@@ -260,150 +256,6 @@ public  final class ViewModel extends
    */
   private void clearNewSession() {
     if (viewCase_ == 3) {
-      viewCase_ = 0;
-      view_ = null;
-    }
-  }
-
-  public static final int SYNC_STATE_FIELD_NUMBER = 4;
-  /**
-   * <pre>
-   * Transitional view; delete after Steps 3-4 migrate remaining views into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SyncStateView sync_state = 4 [json_name = "syncState"];</code>
-   */
-  @java.lang.Override
-  public boolean hasSyncState() {
-    return viewCase_ == 4;
-  }
-  /**
-   * <pre>
-   * Transitional view; delete after Steps 3-4 migrate remaining views into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SyncStateView sync_state = 4 [json_name = "syncState"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SyncStateView getSyncState() {
-    if (viewCase_ == 4) {
-       return (io.github.lewin671.remoteagent.core.proto.SyncStateView) view_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SyncStateView.getDefaultInstance();
-  }
-  /**
-   * <pre>
-   * Transitional view; delete after Steps 3-4 migrate remaining views into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SyncStateView sync_state = 4 [json_name = "syncState"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSyncState(io.github.lewin671.remoteagent.core.proto.SyncStateView value) {
-    value.getClass();  // minimal bytecode null check
-    view_ = value;
-    viewCase_ = 4;
-  }
-  /**
-   * <pre>
-   * Transitional view; delete after Steps 3-4 migrate remaining views into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SyncStateView sync_state = 4 [json_name = "syncState"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeSyncState(io.github.lewin671.remoteagent.core.proto.SyncStateView value) {
-    value.getClass();  // minimal bytecode null check
-    if (viewCase_ == 4 &&
-        view_ != io.github.lewin671.remoteagent.core.proto.SyncStateView.getDefaultInstance()) {
-      view_ = io.github.lewin671.remoteagent.core.proto.SyncStateView.newBuilder((io.github.lewin671.remoteagent.core.proto.SyncStateView) view_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      view_ = value;
-    }
-    viewCase_ = 4;
-  }
-  /**
-   * <pre>
-   * Transitional view; delete after Steps 3-4 migrate remaining views into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SyncStateView sync_state = 4 [json_name = "syncState"];</code>
-   */
-  private void clearSyncState() {
-    if (viewCase_ == 4) {
-      viewCase_ = 0;
-      view_ = null;
-    }
-  }
-
-  public static final int SESSION_DATA_FIELD_NUMBER = 5;
-  /**
-   * <pre>
-   * Transitional view; delete after Step 3 migrates the session view into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SessionDataView session_data = 5 [json_name = "sessionData"];</code>
-   */
-  @java.lang.Override
-  public boolean hasSessionData() {
-    return viewCase_ == 5;
-  }
-  /**
-   * <pre>
-   * Transitional view; delete after Step 3 migrates the session view into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SessionDataView session_data = 5 [json_name = "sessionData"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SessionDataView getSessionData() {
-    if (viewCase_ == 5) {
-       return (io.github.lewin671.remoteagent.core.proto.SessionDataView) view_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SessionDataView.getDefaultInstance();
-  }
-  /**
-   * <pre>
-   * Transitional view; delete after Step 3 migrates the session view into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SessionDataView session_data = 5 [json_name = "sessionData"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSessionData(io.github.lewin671.remoteagent.core.proto.SessionDataView value) {
-    value.getClass();  // minimal bytecode null check
-    view_ = value;
-    viewCase_ = 5;
-  }
-  /**
-   * <pre>
-   * Transitional view; delete after Step 3 migrates the session view into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SessionDataView session_data = 5 [json_name = "sessionData"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeSessionData(io.github.lewin671.remoteagent.core.proto.SessionDataView value) {
-    value.getClass();  // minimal bytecode null check
-    if (viewCase_ == 5 &&
-        view_ != io.github.lewin671.remoteagent.core.proto.SessionDataView.getDefaultInstance()) {
-      view_ = io.github.lewin671.remoteagent.core.proto.SessionDataView.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionDataView) view_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      view_ = value;
-    }
-    viewCase_ = 5;
-  }
-  /**
-   * <pre>
-   * Transitional view; delete after Step 3 migrates the session view into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SessionDataView session_data = 5 [json_name = "sessionData"];</code>
-   */
-  private void clearSessionData() {
-    if (viewCase_ == 5) {
       viewCase_ = 0;
       view_ = null;
     }
@@ -1807,150 +1659,6 @@ public  final class ViewModel extends
     }
 
     /**
-     * <pre>
-     * Transitional view; delete after Steps 3-4 migrate remaining views into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SyncStateView sync_state = 4 [json_name = "syncState"];</code>
-     */
-    @java.lang.Override
-    public boolean hasSyncState() {
-      return instance.hasSyncState();
-    }
-    /**
-     * <pre>
-     * Transitional view; delete after Steps 3-4 migrate remaining views into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SyncStateView sync_state = 4 [json_name = "syncState"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SyncStateView getSyncState() {
-      return instance.getSyncState();
-    }
-    /**
-     * <pre>
-     * Transitional view; delete after Steps 3-4 migrate remaining views into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SyncStateView sync_state = 4 [json_name = "syncState"];</code>
-     */
-    public Builder setSyncState(io.github.lewin671.remoteagent.core.proto.SyncStateView value) {
-      copyOnWrite();
-      instance.setSyncState(value);
-      return this;
-    }
-    /**
-     * <pre>
-     * Transitional view; delete after Steps 3-4 migrate remaining views into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SyncStateView sync_state = 4 [json_name = "syncState"];</code>
-     */
-    public Builder setSyncState(
-        io.github.lewin671.remoteagent.core.proto.SyncStateView.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSyncState(builderForValue.build());
-      return this;
-    }
-    /**
-     * <pre>
-     * Transitional view; delete after Steps 3-4 migrate remaining views into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SyncStateView sync_state = 4 [json_name = "syncState"];</code>
-     */
-    public Builder mergeSyncState(io.github.lewin671.remoteagent.core.proto.SyncStateView value) {
-      copyOnWrite();
-      instance.mergeSyncState(value);
-      return this;
-    }
-    /**
-     * <pre>
-     * Transitional view; delete after Steps 3-4 migrate remaining views into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SyncStateView sync_state = 4 [json_name = "syncState"];</code>
-     */
-    public Builder clearSyncState() {
-      copyOnWrite();
-      instance.clearSyncState();
-      return this;
-    }
-
-    /**
-     * <pre>
-     * Transitional view; delete after Step 3 migrates the session view into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SessionDataView session_data = 5 [json_name = "sessionData"];</code>
-     */
-    @java.lang.Override
-    public boolean hasSessionData() {
-      return instance.hasSessionData();
-    }
-    /**
-     * <pre>
-     * Transitional view; delete after Step 3 migrates the session view into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SessionDataView session_data = 5 [json_name = "sessionData"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SessionDataView getSessionData() {
-      return instance.getSessionData();
-    }
-    /**
-     * <pre>
-     * Transitional view; delete after Step 3 migrates the session view into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SessionDataView session_data = 5 [json_name = "sessionData"];</code>
-     */
-    public Builder setSessionData(io.github.lewin671.remoteagent.core.proto.SessionDataView value) {
-      copyOnWrite();
-      instance.setSessionData(value);
-      return this;
-    }
-    /**
-     * <pre>
-     * Transitional view; delete after Step 3 migrates the session view into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SessionDataView session_data = 5 [json_name = "sessionData"];</code>
-     */
-    public Builder setSessionData(
-        io.github.lewin671.remoteagent.core.proto.SessionDataView.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSessionData(builderForValue.build());
-      return this;
-    }
-    /**
-     * <pre>
-     * Transitional view; delete after Step 3 migrates the session view into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SessionDataView session_data = 5 [json_name = "sessionData"];</code>
-     */
-    public Builder mergeSessionData(io.github.lewin671.remoteagent.core.proto.SessionDataView value) {
-      copyOnWrite();
-      instance.mergeSessionData(value);
-      return this;
-    }
-    /**
-     * <pre>
-     * Transitional view; delete after Step 3 migrates the session view into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SessionDataView session_data = 5 [json_name = "sessionData"];</code>
-     */
-    public Builder clearSessionData() {
-      copyOnWrite();
-      instance.clearSessionData();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.SettingsViewModel settings = 30 [json_name = "settings"];</code>
      */
     @java.lang.Override
@@ -3027,8 +2735,6 @@ public  final class ViewModel extends
             io.github.lewin671.remoteagent.core.proto.HomeViewModel.class,
             io.github.lewin671.remoteagent.core.proto.ProjectViewModel.class,
             io.github.lewin671.remoteagent.core.proto.NewSessionViewModel.class,
-            io.github.lewin671.remoteagent.core.proto.SyncStateView.class,
-            io.github.lewin671.remoteagent.core.proto.SessionDataView.class,
             io.github.lewin671.remoteagent.core.proto.SessionViewModel.class,
             io.github.lewin671.remoteagent.core.proto.SchedulesViewModel.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleDetailViewModel.class,
@@ -3053,11 +2759,10 @@ public  final class ViewModel extends
             io.github.lewin671.remoteagent.core.proto.ExitConfirmView.class,
           };
           java.lang.String info =
-              "\u0000\u001b\u0001\u0000\u00017\u001b\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
-              "\u0003<\u0000\u0004<\u0000\u0005<\u0000\n<\u0000\u0014<\u0000\u0015<\u0000\u0016" +
-              "<\u0000\u0017<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$" +
-              "<\u0000%<\u0000&<\u0000\'<\u0000(<\u00002<\u00003<\u00004<\u00005<\u00006<\u0000" +
-              "7<\u0000";
+              "\u0000\u0019\u0001\u0000\u00017\u0019\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
+              "\u0003<\u0000\n<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000\u001e" +
+              "<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$<\u0000%<\u0000&<\u0000\'<" +
+              "\u0000(<\u00002<\u00003<\u00004<\u00005<\u00006<\u00007<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

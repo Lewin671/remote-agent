@@ -4325,11 +4325,9 @@ func extraUnmarshal_ScheduleFormUpdateTimingAction(base unsafe.Pointer, num lite
 }
 
 type ScheduleWriteCacheEffect struct {
-	_                 [0]func()
-	MachineId         string
-	RequestId         string
-	SealedResultBytes []byte
-	Blob              []byte
+	_         [0]func()
+	MachineId string
+	Blob      []byte
 }
 
 func (m *ScheduleWriteCacheEffect) GetMachineId() string {
@@ -4337,18 +4335,6 @@ func (m *ScheduleWriteCacheEffect) GetMachineId() string {
 		return m.MachineId
 	}
 	return ""
-}
-func (m *ScheduleWriteCacheEffect) GetRequestId() string {
-	if m != nil {
-		return m.RequestId
-	}
-	return ""
-}
-func (m *ScheduleWriteCacheEffect) GetSealedResultBytes() []byte {
-	if m != nil {
-		return m.SealedResultBytes
-	}
-	return nil
 }
 func (m *ScheduleWriteCacheEffect) GetBlob() []byte {
 	if m != nil {
@@ -4360,8 +4346,6 @@ func (m *ScheduleWriteCacheEffect) GetBlob() []byte {
 var LitewireDesc_ScheduleWriteCacheEffect = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 2, Offset: unsafe.Offsetof(ScheduleWriteCacheEffect{}.MachineId), Kind: litewire.KindString},
-		{Num: 3, Offset: unsafe.Offsetof(ScheduleWriteCacheEffect{}.RequestId), Kind: litewire.KindString},
-		{Num: 4, Offset: unsafe.Offsetof(ScheduleWriteCacheEffect{}.SealedResultBytes), Kind: litewire.KindBytes},
 		{Num: 5, Offset: unsafe.Offsetof(ScheduleWriteCacheEffect{}.Blob), Kind: litewire.KindBytes},
 	},
 }

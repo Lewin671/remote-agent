@@ -54,31 +54,7 @@ var legacyWireAllowlist = map[string]string{
 	"RunMachineCommandAction.command -> v1.Command":        "legacy-run-machine-command (P2-4/P2-5/P4-1)",
 	"RunMachineCommandResultEffect.result -> v1.CommandResult": "legacy-run-machine-command (P2-4/P2-5/P4-1)",
 
-	// Legacy SyncStateView / SessionDataView & ProjectionState tree (retired in P2-4/P3-2/P4-1).
-	"AcceptedInput.files -> v1.SentFile":              "legacy-sync-view (P2-4/P3-2/P4-1)",
-	"AcceptedInput.origin -> v1.Origin":               "legacy-sync-view (P2-4/P3-2/P4-1)",
-	"AcceptedInput.stage -> v1.InputStage":            "legacy-sync-view (P2-4/P3-2/P4-1)",
-	"AnsweredQuestion.origin -> v1.Origin":            "legacy-sync-view (P2-4/P3-2/P4-1)",
-	"InputProjection.detail -> v1.InputState":         "legacy-sync-view (P2-4/P3-2/P4-1)",
-	"InputProjection.status -> v1.InputStatus":        "legacy-sync-view (P2-4/P3-2/P4-1)",
-	"PendingApproval.request -> v1.ApprovalRequested": "legacy-sync-view (P2-4/P3-2/P4-1)",
-	"PendingInput.files -> v1.SentFile":               "legacy-sync-view (P2-4/P3-2/P4-1)",
-	"PendingInput.origin -> v1.Origin":                "legacy-sync-view (P2-4/P3-2/P4-1)",
-	"PendingQuestion.request -> v1.QuestionAsked":     "legacy-sync-view (P2-4/P3-2/P4-1)",
-	"ProjectionState.plan -> v1.PlanProposed":         "legacy-sync-view (P2-4/P3-2/P4-1)",
-	"ProjectionState.usage -> v1.TokenUsage":          "legacy-sync-view (P2-4/P3-2/P4-1)",
-	"ResolvedApproval.decision -> v1.ApprovalDecision": "legacy-sync-view (P2-4/P3-2/P4-1)",
-	"ResolvedApproval.origin -> v1.Origin":            "legacy-sync-view (P2-4/P3-2/P4-1)",
-	"SessionDataView.events -> v1.Event":              "legacy-sync-view (P2-4/P3-2/P4-1)",
-	"SessionDataView.live_snapshot -> v1.LiveSnapshot": "legacy-sync-view (P2-4/P3-2/P4-1)",
-	"SyncDeviceView.meta -> v1.DeviceMeta":            "legacy-sync-view (P2-4/P3-2/P4-1)",
-	"SyncMachineView.meta -> v1.MachineMeta":          "legacy-sync-view (P2-4/P3-2/P4-1)",
-	"SyncSessionView.checkpoint -> v1.LiveSnapshot":   "legacy-sync-view (P2-4/P3-2/P4-1)",
-	"SyncSessionView.info -> v1.Session":              "legacy-sync-view (P2-4/P3-2/P4-1)",
-	"SyncStateView.next_cursor -> v1.SessionCursor":   "legacy-sync-view (P2-4/P3-2/P4-1)",
-	"SyncStateView.prefs -> v1.ProjectPrefs":          "legacy-sync-view (P2-4/P3-2/P4-1)",
-
-	// Legacy typed RPC / stream / cache / envelope / terminal / usage-cache edges (retired in P2-5/P3-2/P4-1).
+	// Legacy typed RPC / stream / cache / envelope / terminal edges (retired in P2-5/P3-2/P4-1).
 	"AccountPrefsFetchedEvent.wire_prefs -> v1.AccountPrefsObject":           "legacy-relay-pipe (P2-5/P3-2/P4-1)",
 	"AccountPrefsPutResultEvent.wire_current -> v1.AccountPrefsObject":       "legacy-relay-pipe (P2-5/P3-2/P4-1)",
 	"CacheBootstrapLoadedEvent.wire_machines -> v1.Machine":                  "legacy-relay-pipe (P2-5/P3-2/P4-1)",
@@ -121,8 +97,6 @@ var legacyWireAllowlist = map[string]string{
 	"StreamFrameEvent.wire_machine_updated -> v1.Machine":                    "legacy-relay-pipe (P2-5/P3-2/P4-1)",
 	"StreamFrameEvent.wire_session_updated -> v1.RemoteSession":              "legacy-relay-pipe (P2-5/P3-2/P4-1)",
 	"TerminalHistoryEvent.page -> v1.TerminalHistoryPage":                    "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"UsageCacheLoadedEvent.snapshot -> v1.UsageStatsResponse":                "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"UsageCacheWriteEffect.snapshot -> v1.UsageStatsResponse":                "legacy-relay-pipe (P2-5/P3-2/P4-1)",
 
 	// Legacy nested RPC response enum in security workflow result (replaced in P2-6/P3-3/P4-1).
 	"SecurityRecoveryInfo.phase -> v1.GetRecoveryContextResponse.Phase": "legacy-security-recovery (P2-6/P3-3/P4-1)",

@@ -23,17 +23,6 @@ public interface UsageCacheWriteEffectOrBuilder extends
       getMachineIdBytes();
 
   /**
-   * <code>.remoteagent.v1.UsageStatsResponse snapshot = 2 [json_name = "snapshot"];</code>
-   * @return Whether the snapshot field is set.
-   */
-  boolean hasSnapshot();
-  /**
-   * <code>.remoteagent.v1.UsageStatsResponse snapshot = 2 [json_name = "snapshot"];</code>
-   * @return The snapshot.
-   */
-  io.github.lewin671.remoteagent.proto.UsageStatsResponse getSnapshot();
-
-  /**
    * <pre>
    * Opaque serialized remoteagent.v1.UsageStatsResponse bytes for pure-byte shell storage.
    * </pre>

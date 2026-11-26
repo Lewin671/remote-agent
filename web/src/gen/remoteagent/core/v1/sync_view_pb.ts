@@ -8,12 +8,8 @@ import type { ConnBannerView } from "./connection_view_pb";
 import { file_remoteagent_core_v1_connection_view } from "./connection_view_pb";
 import type { ConnState } from "./home_view_pb";
 import { file_remoteagent_core_v1_home_view } from "./home_view_pb";
-import type { ProjectionState } from "./projection_pb";
-import { file_remoteagent_core_v1_projection } from "./projection_pb";
 import type { Text } from "./text_pb";
 import { file_remoteagent_core_v1_text } from "./text_pb";
-import type { Event } from "../../v1/event_pb";
-import { file_remoteagent_v1_event } from "../../v1/event_pb";
 import type { Session } from "../../v1/local_pb";
 import { file_remoteagent_v1_local } from "../../v1/local_pb";
 import type { DeviceKind, SessionCursor } from "../../v1/relay_pb";
@@ -26,7 +22,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file remoteagent/core/v1/sync_view.proto.
  */
 export const file_remoteagent_core_v1_sync_view: GenFile = /*@__PURE__*/
-  fileDesc("CiNyZW1vdGVhZ2VudC9jb3JlL3YxL3N5bmNfdmlldy5wcm90bxITcmVtb3RlYWdlbnQuY29yZS52MSI/ChlTeW5jUGVuZGluZ1F1ZXN0aW9uT3B0aW9uEg0KBWxhYmVsGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJIqQCChNTeW5jUGVuZGluZ1F1ZXN0aW9uEhMKC3F1ZXN0aW9uX2lkGAEgASgJEhQKDHF1ZXN0aW9uX2tleRgCIAEoCRIOCgZoZWFkZXIYAyABKAkSDAoEdGV4dBgEIAEoCRIUCgxtdWx0aV9zZWxlY3QYBSABKAgSFgoOcXVlc3Rpb25fY291bnQYBiABKAUSPwoHb3B0aW9ucxgHIAMoCzIuLnJlbW90ZWFnZW50LmNvcmUudjEuU3luY1BlbmRpbmdRdWVzdGlvbk9wdGlvbhIVCg1jYW5fZnJlZV90ZXh0GAggASgIEg0KBWFzeW5jGAkgASgIEhoKEm9ic2VydmVkX2V2ZW50X3NlcRgKIAEoBBITCgthc2tlZF9hdF9tcxgLIAEoAyLZAgoRU3luY1BlbmRpbmdBY3Rpb24SFAoMaGFzX2FwcHJvdmFsGAEgASgIEhMKC2FwcHJvdmFsX2lkGAIgASgJEhoKEmFwcHJvdmFsX3Rvb2xfbmFtZRgDIAEoCRIYChBhcHByb3ZhbF9jb21tYW5kGAQgASgJEhsKE2FwcHJvdmFsX3Rvb2xfaW5wdXQYBSABKAkSGgoSYXBwcm92YWxfdHJ1bmNhdGVkGAYgASgIEhwKFGFwcHJvdmFsX2RlYWRsaW5lX21zGAcgASgDEhQKDGhhc19xdWVzdGlvbhgIIAEoCBIQCghoYXNfcGxhbhgJIAEoCBIRCgloYXNfcG9wdXAYCiABKAgSFQoNcG9wdXBfcHJldmlldxgLIAEoCRI6CghxdWVzdGlvbhgMIAEoCzIoLnJlbW90ZWFnZW50LmNvcmUudjEuU3luY1BlbmRpbmdRdWVzdGlvbiL2AgoPU3luY01hY2hpbmVWaWV3EhIKCm1hY2hpbmVfaWQYASABKAkSDgoGb25saW5lGAIgASgIEhQKDGxhc3Rfc2Vlbl9tcxgDIAEoAxIpCgRtZXRhGAQgASgLMhsucmVtb3RlYWdlbnQudjEuTWFjaGluZU1ldGESEAoIbWV0YV9yZXYYBSABKAQSEwoLbWV0YV9icm9rZW4YBiABKAgSEQoJcmVhY2hhYmxlGAcgASgIEhAKCHVubGlua2VkGAggASgIEhQKDGRpcmVjdF9yZWFkeRgJIAEoCBIYChBwcm90b2NvbF92ZXJzaW9uGAogASgNEhoKEmRhZW1vbl9vdXRfb2ZfZGF0ZRgLIAEoCBIaChJjbGllbnRfb3V0X29mX2RhdGUYDCABKAgSHAoUcmVhY2hhYmlsaXR5X3Vua25vd24YDSABKAgSFgoOdGVybWluYWxfcmVhZHkYDiABKAgSFAoMZGlzcGxheV9uYW1lGA8gASgJIuwDCg9TeW5jU2Vzc2lvblZpZXcSEgoKc2Vzc2lvbl9pZBgBIAEoCRISCgptYWNoaW5lX2lkGAIgASgJEiUKBGluZm8YAyABKAsyFy5yZW1vdGVhZ2VudC52MS5TZXNzaW9uEhAKCG1ldGFfcmV2GAQgASgEEhAKCGxhc3Rfc2VxGAUgASgEEhIKCmNyZWF0ZWRfbXMYBiABKAMSEgoKdXBkYXRlZF9tcxgHIAEoAxIXCg9saXN0ZWRfZW5kZWRfbXMYCCABKAMSDgoGbGlzdGVkGAkgASgIEjAKCmNoZWNrcG9pbnQYCiABKAsyHC5yZW1vdGVhZ2VudC52MS5MaXZlU25hcHNob3QSGgoSY2hlY2twb2ludF9pbnZhbGlkGAsgASgIEhcKD3JldGlyZWRfaGlzdG9yeRgMIAEoCBITCgtvcGVuX2ZhaWxlZBgNIAEoCBIVCg1zY2hlZHVsZV9uYW1lGA4gASgJEhcKD3NjaGVkdWxlX3VucmVhZBgPIAEoCBI3CgdwZW5kaW5nGBAgASgLMiYucmVtb3RlYWdlbnQuY29yZS52MS5TeW5jUGVuZGluZ0FjdGlvbhIWCg50ZXJtaW5hbF9yZWFkeRgRIAEoCBIYChB0ZXJtaW5hbF93YWl0aW5nGBIgASgIIu0BCg5TeW5jRGV2aWNlVmlldxIRCglkZXZpY2VfaWQYASABKAkSKAoEa2luZBgCIAEoDjIaLnJlbW90ZWFnZW50LnYxLkRldmljZUtpbmQSEgoKY3JlYXRlZF9tcxgDIAEoAxIUCgxsYXN0X3NlZW5fbXMYBCABKAMSKAoEbWV0YRgFIAEoCzIaLnJlbW90ZWFnZW50LnYxLkRldmljZU1ldGESEAoIbWV0YV9yZXYYBiABKAQSEwoLbWV0YV9icm9rZW4YByABKAgSDwoHdHJ1c3RlZBgIIAEoCBISCgpyZWdpc3RlcmVkGAkgASgIIuINCg1TeW5jU3RhdGVWaWV3EjIKCmNvbm5lY3Rpb24YASABKA4yHi5yZW1vdGVhZ2VudC5jb3JlLnYxLkNvbm5TdGF0ZRI0ChFjb25uZWN0aW9uX3JlYXNvbhgCIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dBIyCg9jb25uZWN0aW9uX3N0ZXAYAyABKAsyGS5yZW1vdGVhZ2VudC5jb3JlLnYxLlRleHQSGgoSZGlzY29ubmVjdGVkX2F0X21zGAQgASgDEhsKE2xpdmVfcHVzaF9jb25uZWN0ZWQYBSABKAgSEAoIdW5saW5rZWQYBiABKAgSEgoKaXNfbWFuYWdlchgHIAEoCBIWCg5zZWxmX2RldmljZV9pZBgIIAEoCRIbChNhdXRob3JpdHlfZGV2aWNlX2lkGAkgASgJEi8KDG1hbmFnZXJfbmFtZRgKIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dBIcChRhY2NvdW50X2NvbnRyb2xfbG9zdBgLIAEoCBIcChRhY2NvdW50X2Nsb2NrX3NrZXdlZBgMIAEoCBIPCgdyZW1vdmVkGA0gASgIEhcKD3NlY3VyaXR5X2xvYWRlZBgOIAEoCBIRCglpc19tZW1iZXIYDyABKAgSFAoMbGVhc2VfZW5kX21zGBAgASgDEhgKEHJlY292ZXJ5X3BlbmRpbmcYESABKAgSGQoRcmVjb3ZlcnlfcmVhZHlfbXMYEiABKAMSIAoYcmVjb3Zlcnlfb2JqZWN0c19wZW5kaW5nGBMgASgIEh8KF2NsaWVudF9wcm90b2NvbF92ZXJzaW9uGBQgASgNEjYKCG1hY2hpbmVzGBUgAygLMiQucmVtb3RlYWdlbnQuY29yZS52MS5TeW5jTWFjaGluZVZpZXcSFwoPbWFjaGluZXNfbGlzdGVkGBYgASgIEjYKCHNlc3Npb25zGBcgAygLMiQucmVtb3RlYWdlbnQuY29yZS52MS5TeW5jU2Vzc2lvblZpZXcSFwoPc2Vzc2lvbnNfbGlzdGVkGBggASgIEhMKC2xpdmVfbG9hZGVkGBkgASgIEhkKEWhhc19tb3JlX3Nlc3Npb25zGBogASgIEjIKC25leHRfY3Vyc29yGBsgASgLMh0ucmVtb3RlYWdlbnQudjEuU2Vzc2lvbkN1cnNvchIdChVsb2FkaW5nX21vcmVfc2Vzc2lvbnMYHCABKAgSGwoTc2Vzc2lvbl9saXN0X2ZhaWxlZBgdIAEoCBI1ChJzZXNzaW9uX2xpc3RfZXJyb3IYHiABKAsyGS5yZW1vdGVhZ2VudC5jb3JlLnYxLlRleHQSFAoMcHJlZnNfbG9hZGVkGB8gASgIEhkKEXByZWZzX2xvYWRfZmFpbGVkGCAgASgIEhQKDHByZWZzX2Jyb2tlbhghIAEoCBIWCg5wcmVmc19yZXZpc2lvbhgiIAEoBBIVCg1wcmVmc19zeW5jaW5nGCMgASgIEisKBXByZWZzGCQgASgLMhwucmVtb3RlYWdlbnQudjEuUHJvamVjdFByZWZzEjQKB2RldmljZXMYJSADKAsyIy5yZW1vdGVhZ2VudC5jb3JlLnYxLlN5bmNEZXZpY2VWaWV3EhUKDWRpc3BsYXlfZ3JhY2UYJiABKAgSHAoUcmVhY2hhYmlsaXR5X3Vua25vd24YJyABKAgSGwoTdHJ1c3RlZF9tYWNoaW5lX2lkcxgoIAMoCRIbChNhcmNoaXZlX21hY2hpbmVfaWRzGCkgAygJEiAKGGNvbm5lY3Rpb25fc3RhcnRlZF9hdF9tcxgqIAEoAxIZChFuZXR3b3JrX2F2YWlsYWJsZRgrIAEoCBITCgtldmVyX29ubGluZRgsIAEoCBIYChBjb25uZWN0X2ZhaWx1cmVzGC0gASgFEh0KFXJlY292ZXJ5X3N0YXR1c19zdGFsZRguIAEoCBIbChNkZXZpY2VzX2xvYWRfZmFpbGVkGC8gASgIEjUKEmRldmljZXNfZXJyb3JfdGV4dBgwIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dBIZChFoYXNfaGFuZG9mZl9vZmZlchgxIAEoCBI4Cgtjb25uX2Jhbm5lchgyIAEoCzIjLnJlbW90ZWFnZW50LmNvcmUudjEuQ29ubkJhbm5lclZpZXcSOQoWY2xvY2tfc2tld19iYW5uZXJfdGV4dBgzIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dBI3ChRsZWFzZV9yZW5ld2FsX2FkdmljZRg0IAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dCLABQoPU2Vzc2lvbkRhdGFWaWV3EhIKCnNlc3Npb25faWQYASABKAkSDQoFZm91bmQYAiABKAgSNQoHc2Vzc2lvbhgDIAEoCzIkLnJlbW90ZWFnZW50LmNvcmUudjEuU3luY1Nlc3Npb25WaWV3Eg8KB2xvYWRpbmcYBCABKAgSDgoGbG9hZGVkGAUgASgIEhYKDmF3YWl0aW5nX2NhY2hlGAYgASgIEhMKC2JhY2tmaWxsaW5nGAcgASgIEhAKCGZldGNoaW5nGAggASgIEg8KB2hhc19nYXAYCSABKAgSFgoOdGFpbF9yZXF1ZXN0ZWQYCiABKAgSDwoHcmV0aXJlZBgLIAEoCBIeChZyZXRyeWluZ19jb3JydXB0X2NhY2hlGAwgASgIEigKBWVycm9yGA0gASgLMhkucmVtb3RlYWdlbnQuY29yZS52MS5UZXh0Ei4KC2ZldGNoX2Vycm9yGA4gASgLMhkucmVtb3RlYWdlbnQuY29yZS52MS5UZXh0EhIKCnByZWZpeF9sZW4YDyABKAQSFQoNcGVuZGluZ19jb3VudBgQIAEoBRIQCghsYXN0X3NlcRgRIAEoBBIYChB1bmF2YWlsYWJsZV9zZXFzGBIgAygEEhkKEXVuYXZhaWxhYmxlX2NvdW50GBMgASgNEjgKCnByb2plY3Rpb24YFCABKAsyJC5yZW1vdGVhZ2VudC5jb3JlLnYxLlByb2plY3Rpb25TdGF0ZRIzCg1saXZlX3NuYXBzaG90GBUgASgLMhwucmVtb3RlYWdlbnQudjEuTGl2ZVNuYXBzaG90EjcKB3BlbmRpbmcYFiABKAsyJi5yZW1vdGVhZ2VudC5jb3JlLnYxLlN5bmNQZW5kaW5nQWN0aW9uEiUKBmV2ZW50cxgXIAMoCzIVLnJlbW90ZWFnZW50LnYxLkV2ZW50YgZwcm90bzM", [file_remoteagent_core_v1_connection_view, file_remoteagent_core_v1_home_view, file_remoteagent_core_v1_projection, file_remoteagent_core_v1_text, file_remoteagent_v1_event, file_remoteagent_v1_local, file_remoteagent_v1_relay, file_remoteagent_v1_remote]);
+  fileDesc("CiNyZW1vdGVhZ2VudC9jb3JlL3YxL3N5bmNfdmlldy5wcm90bxITcmVtb3RlYWdlbnQuY29yZS52MSI/ChlTeW5jUGVuZGluZ1F1ZXN0aW9uT3B0aW9uEg0KBWxhYmVsGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJIqQCChNTeW5jUGVuZGluZ1F1ZXN0aW9uEhMKC3F1ZXN0aW9uX2lkGAEgASgJEhQKDHF1ZXN0aW9uX2tleRgCIAEoCRIOCgZoZWFkZXIYAyABKAkSDAoEdGV4dBgEIAEoCRIUCgxtdWx0aV9zZWxlY3QYBSABKAgSFgoOcXVlc3Rpb25fY291bnQYBiABKAUSPwoHb3B0aW9ucxgHIAMoCzIuLnJlbW90ZWFnZW50LmNvcmUudjEuU3luY1BlbmRpbmdRdWVzdGlvbk9wdGlvbhIVCg1jYW5fZnJlZV90ZXh0GAggASgIEg0KBWFzeW5jGAkgASgIEhoKEm9ic2VydmVkX2V2ZW50X3NlcRgKIAEoBBITCgthc2tlZF9hdF9tcxgLIAEoAyLZAgoRU3luY1BlbmRpbmdBY3Rpb24SFAoMaGFzX2FwcHJvdmFsGAEgASgIEhMKC2FwcHJvdmFsX2lkGAIgASgJEhoKEmFwcHJvdmFsX3Rvb2xfbmFtZRgDIAEoCRIYChBhcHByb3ZhbF9jb21tYW5kGAQgASgJEhsKE2FwcHJvdmFsX3Rvb2xfaW5wdXQYBSABKAkSGgoSYXBwcm92YWxfdHJ1bmNhdGVkGAYgASgIEhwKFGFwcHJvdmFsX2RlYWRsaW5lX21zGAcgASgDEhQKDGhhc19xdWVzdGlvbhgIIAEoCBIQCghoYXNfcGxhbhgJIAEoCBIRCgloYXNfcG9wdXAYCiABKAgSFQoNcG9wdXBfcHJldmlldxgLIAEoCRI6CghxdWVzdGlvbhgMIAEoCzIoLnJlbW90ZWFnZW50LmNvcmUudjEuU3luY1BlbmRpbmdRdWVzdGlvbiL2AgoPU3luY01hY2hpbmVWaWV3EhIKCm1hY2hpbmVfaWQYASABKAkSDgoGb25saW5lGAIgASgIEhQKDGxhc3Rfc2Vlbl9tcxgDIAEoAxIpCgRtZXRhGAQgASgLMhsucmVtb3RlYWdlbnQudjEuTWFjaGluZU1ldGESEAoIbWV0YV9yZXYYBSABKAQSEwoLbWV0YV9icm9rZW4YBiABKAgSEQoJcmVhY2hhYmxlGAcgASgIEhAKCHVubGlua2VkGAggASgIEhQKDGRpcmVjdF9yZWFkeRgJIAEoCBIYChBwcm90b2NvbF92ZXJzaW9uGAogASgNEhoKEmRhZW1vbl9vdXRfb2ZfZGF0ZRgLIAEoCBIaChJjbGllbnRfb3V0X29mX2RhdGUYDCABKAgSHAoUcmVhY2hhYmlsaXR5X3Vua25vd24YDSABKAgSFgoOdGVybWluYWxfcmVhZHkYDiABKAgSFAoMZGlzcGxheV9uYW1lGA8gASgJIuwDCg9TeW5jU2Vzc2lvblZpZXcSEgoKc2Vzc2lvbl9pZBgBIAEoCRISCgptYWNoaW5lX2lkGAIgASgJEiUKBGluZm8YAyABKAsyFy5yZW1vdGVhZ2VudC52MS5TZXNzaW9uEhAKCG1ldGFfcmV2GAQgASgEEhAKCGxhc3Rfc2VxGAUgASgEEhIKCmNyZWF0ZWRfbXMYBiABKAMSEgoKdXBkYXRlZF9tcxgHIAEoAxIXCg9saXN0ZWRfZW5kZWRfbXMYCCABKAMSDgoGbGlzdGVkGAkgASgIEjAKCmNoZWNrcG9pbnQYCiABKAsyHC5yZW1vdGVhZ2VudC52MS5MaXZlU25hcHNob3QSGgoSY2hlY2twb2ludF9pbnZhbGlkGAsgASgIEhcKD3JldGlyZWRfaGlzdG9yeRgMIAEoCBITCgtvcGVuX2ZhaWxlZBgNIAEoCBIVCg1zY2hlZHVsZV9uYW1lGA4gASgJEhcKD3NjaGVkdWxlX3VucmVhZBgPIAEoCBI3CgdwZW5kaW5nGBAgASgLMiYucmVtb3RlYWdlbnQuY29yZS52MS5TeW5jUGVuZGluZ0FjdGlvbhIWCg50ZXJtaW5hbF9yZWFkeRgRIAEoCBIYChB0ZXJtaW5hbF93YWl0aW5nGBIgASgIIu0BCg5TeW5jRGV2aWNlVmlldxIRCglkZXZpY2VfaWQYASABKAkSKAoEa2luZBgCIAEoDjIaLnJlbW90ZWFnZW50LnYxLkRldmljZUtpbmQSEgoKY3JlYXRlZF9tcxgDIAEoAxIUCgxsYXN0X3NlZW5fbXMYBCABKAMSKAoEbWV0YRgFIAEoCzIaLnJlbW90ZWFnZW50LnYxLkRldmljZU1ldGESEAoIbWV0YV9yZXYYBiABKAQSEwoLbWV0YV9icm9rZW4YByABKAgSDwoHdHJ1c3RlZBgIIAEoCBISCgpyZWdpc3RlcmVkGAkgASgIIuINCg1TeW5jU3RhdGVWaWV3EjIKCmNvbm5lY3Rpb24YASABKA4yHi5yZW1vdGVhZ2VudC5jb3JlLnYxLkNvbm5TdGF0ZRI0ChFjb25uZWN0aW9uX3JlYXNvbhgCIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dBIyCg9jb25uZWN0aW9uX3N0ZXAYAyABKAsyGS5yZW1vdGVhZ2VudC5jb3JlLnYxLlRleHQSGgoSZGlzY29ubmVjdGVkX2F0X21zGAQgASgDEhsKE2xpdmVfcHVzaF9jb25uZWN0ZWQYBSABKAgSEAoIdW5saW5rZWQYBiABKAgSEgoKaXNfbWFuYWdlchgHIAEoCBIWCg5zZWxmX2RldmljZV9pZBgIIAEoCRIbChNhdXRob3JpdHlfZGV2aWNlX2lkGAkgASgJEi8KDG1hbmFnZXJfbmFtZRgKIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dBIcChRhY2NvdW50X2NvbnRyb2xfbG9zdBgLIAEoCBIcChRhY2NvdW50X2Nsb2NrX3NrZXdlZBgMIAEoCBIPCgdyZW1vdmVkGA0gASgIEhcKD3NlY3VyaXR5X2xvYWRlZBgOIAEoCBIRCglpc19tZW1iZXIYDyABKAgSFAoMbGVhc2VfZW5kX21zGBAgASgDEhgKEHJlY292ZXJ5X3BlbmRpbmcYESABKAgSGQoRcmVjb3ZlcnlfcmVhZHlfbXMYEiABKAMSIAoYcmVjb3Zlcnlfb2JqZWN0c19wZW5kaW5nGBMgASgIEh8KF2NsaWVudF9wcm90b2NvbF92ZXJzaW9uGBQgASgNEjYKCG1hY2hpbmVzGBUgAygLMiQucmVtb3RlYWdlbnQuY29yZS52MS5TeW5jTWFjaGluZVZpZXcSFwoPbWFjaGluZXNfbGlzdGVkGBYgASgIEjYKCHNlc3Npb25zGBcgAygLMiQucmVtb3RlYWdlbnQuY29yZS52MS5TeW5jU2Vzc2lvblZpZXcSFwoPc2Vzc2lvbnNfbGlzdGVkGBggASgIEhMKC2xpdmVfbG9hZGVkGBkgASgIEhkKEWhhc19tb3JlX3Nlc3Npb25zGBogASgIEjIKC25leHRfY3Vyc29yGBsgASgLMh0ucmVtb3RlYWdlbnQudjEuU2Vzc2lvbkN1cnNvchIdChVsb2FkaW5nX21vcmVfc2Vzc2lvbnMYHCABKAgSGwoTc2Vzc2lvbl9saXN0X2ZhaWxlZBgdIAEoCBI1ChJzZXNzaW9uX2xpc3RfZXJyb3IYHiABKAsyGS5yZW1vdGVhZ2VudC5jb3JlLnYxLlRleHQSFAoMcHJlZnNfbG9hZGVkGB8gASgIEhkKEXByZWZzX2xvYWRfZmFpbGVkGCAgASgIEhQKDHByZWZzX2Jyb2tlbhghIAEoCBIWCg5wcmVmc19yZXZpc2lvbhgiIAEoBBIVCg1wcmVmc19zeW5jaW5nGCMgASgIEisKBXByZWZzGCQgASgLMhwucmVtb3RlYWdlbnQudjEuUHJvamVjdFByZWZzEjQKB2RldmljZXMYJSADKAsyIy5yZW1vdGVhZ2VudC5jb3JlLnYxLlN5bmNEZXZpY2VWaWV3EhUKDWRpc3BsYXlfZ3JhY2UYJiABKAgSHAoUcmVhY2hhYmlsaXR5X3Vua25vd24YJyABKAgSGwoTdHJ1c3RlZF9tYWNoaW5lX2lkcxgoIAMoCRIbChNhcmNoaXZlX21hY2hpbmVfaWRzGCkgAygJEiAKGGNvbm5lY3Rpb25fc3RhcnRlZF9hdF9tcxgqIAEoAxIZChFuZXR3b3JrX2F2YWlsYWJsZRgrIAEoCBITCgtldmVyX29ubGluZRgsIAEoCBIYChBjb25uZWN0X2ZhaWx1cmVzGC0gASgFEh0KFXJlY292ZXJ5X3N0YXR1c19zdGFsZRguIAEoCBIbChNkZXZpY2VzX2xvYWRfZmFpbGVkGC8gASgIEjUKEmRldmljZXNfZXJyb3JfdGV4dBgwIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dBIZChFoYXNfaGFuZG9mZl9vZmZlchgxIAEoCBI4Cgtjb25uX2Jhbm5lchgyIAEoCzIjLnJlbW90ZWFnZW50LmNvcmUudjEuQ29ubkJhbm5lclZpZXcSOQoWY2xvY2tfc2tld19iYW5uZXJfdGV4dBgzIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dBI3ChRsZWFzZV9yZW5ld2FsX2FkdmljZRg0IAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dGIGcHJvdG8z", [file_remoteagent_core_v1_connection_view, file_remoteagent_core_v1_home_view, file_remoteagent_core_v1_text, file_remoteagent_v1_local, file_remoteagent_v1_relay, file_remoteagent_v1_remote]);
 
 /**
  * @generated from message remoteagent.core.v1.SyncPendingQuestionOption
@@ -722,139 +718,4 @@ export type SyncStateView = Message<"remoteagent.core.v1.SyncStateView"> & {
  */
 export const SyncStateViewSchema: GenMessage<SyncStateView> = /*@__PURE__*/
   messageDesc(file_remoteagent_core_v1_sync_view, 6);
-
-/**
- * Transitional view exposing per-session buffer status, Core-derived ProjectionState, latest LiveSnapshot,
- * and transitional transcript events for the unmigrated Step 3 session screen.
- * Delete once Step 3 moves the session timeline/screen into Core.
- *
- * @generated from message remoteagent.core.v1.SessionDataView
- */
-export type SessionDataView = Message<"remoteagent.core.v1.SessionDataView"> & {
-  /**
-   * @generated from field: string session_id = 1;
-   */
-  sessionId: string;
-
-  /**
-   * @generated from field: bool found = 2;
-   */
-  found: boolean;
-
-  /**
-   * @generated from field: remoteagent.core.v1.SyncSessionView session = 3;
-   */
-  session?: SyncSessionView | undefined;
-
-  /**
-   * @generated from field: bool loading = 4;
-   */
-  loading: boolean;
-
-  /**
-   * @generated from field: bool loaded = 5;
-   */
-  loaded: boolean;
-
-  /**
-   * @generated from field: bool awaiting_cache = 6;
-   */
-  awaitingCache: boolean;
-
-  /**
-   * @generated from field: bool backfilling = 7;
-   */
-  backfilling: boolean;
-
-  /**
-   * @generated from field: bool fetching = 8;
-   */
-  fetching: boolean;
-
-  /**
-   * @generated from field: bool has_gap = 9;
-   */
-  hasGap: boolean;
-
-  /**
-   * @generated from field: bool tail_requested = 10;
-   */
-  tailRequested: boolean;
-
-  /**
-   * @generated from field: bool retired = 11;
-   */
-  retired: boolean;
-
-  /**
-   * @generated from field: bool retrying_corrupt_cache = 12;
-   */
-  retryingCorruptCache: boolean;
-
-  /**
-   * @generated from field: remoteagent.core.v1.Text error = 13;
-   */
-  error?: Text | undefined;
-
-  /**
-   * @generated from field: remoteagent.core.v1.Text fetch_error = 14;
-   */
-  fetchError?: Text | undefined;
-
-  /**
-   * @generated from field: uint64 prefix_len = 15;
-   */
-  prefixLen: bigint;
-
-  /**
-   * @generated from field: int32 pending_count = 16;
-   */
-  pendingCount: number;
-
-  /**
-   * @generated from field: uint64 last_seq = 17;
-   */
-  lastSeq: bigint;
-
-  /**
-   * @generated from field: repeated uint64 unavailable_seqs = 18;
-   */
-  unavailableSeqs: bigint[];
-
-  /**
-   * @generated from field: uint32 unavailable_count = 19;
-   */
-  unavailableCount: number;
-
-  /**
-   * @generated from field: remoteagent.core.v1.ProjectionState projection = 20;
-   */
-  projection?: ProjectionState | undefined;
-
-  /**
-   * @generated from field: remoteagent.v1.LiveSnapshot live_snapshot = 21;
-   */
-  liveSnapshot?: LiveSnapshot | undefined;
-
-  /**
-   * @generated from field: remoteagent.core.v1.SyncPendingAction pending = 22;
-   */
-  pending?: SyncPendingAction | undefined;
-
-  /**
-   * Transitional raw transcript events (contiguous tail or prefix from Core's EventBuffer) needed only because
-   * ProjectionState does not carry chat rows (UserMessage, AgentMessage, Reasoning, ToolCall, TurnEnded, etc.)
-   * for Step 3's unmigrated shell chat builders. Remove when Step 3 migrates the session screen into Core.
-   *
-   * @generated from field: repeated remoteagent.v1.Event events = 23;
-   */
-  events: Event[];
-};
-
-/**
- * Describes the message remoteagent.core.v1.SessionDataView.
- * Use `create(SessionDataViewSchema)` to create a new message.
- */
-export const SessionDataViewSchema: GenMessage<SessionDataView> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_sync_view, 7);
 

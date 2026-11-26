@@ -239,17 +239,6 @@ func ApplySyncStateTexts(v *corev1.SyncStateView, w *world.State, connStep world
 	return v
 }
 
-// ApplySessionDataTexts populates localized Text fields on SessionDataView from
-// structured sync event buffer reasons.
-func ApplySessionDataTexts(v *corev1.SessionDataView, errReason, fetchErrReason world.Reason) *corev1.SessionDataView {
-	if v == nil {
-		return nil
-	}
-	v.Error = ReasonText(errReason)
-	v.FetchError = ReasonText(fetchErrReason)
-	return v
-}
-
 // SecurityWorkflowReasonText translates a structured security.WorkflowReason (or raw fallback)
 // into a localized corev1.Text.
 func SecurityWorkflowReasonText(r security.WorkflowReason, rawFallback string) *corev1.Text {

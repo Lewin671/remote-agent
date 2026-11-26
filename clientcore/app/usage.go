@@ -212,18 +212,14 @@ func (c *Core) dispatchUsageUI(ctx *sync.StepContext, ev *corev1.Event) []*corev
 				},
 			}}
 		}
-		var snap *v1.UsageStatsResponse
-		if len(k.UsageCacheLoaded.RawSnapshot) > 0 {
-			var parsed v1.UsageStatsResponse
-			if parsed.Unmarshal(k.UsageCacheLoaded.RawSnapshot) != nil {
-				return nil
-			}
-			snap = &parsed
-		} else if k.UsageCacheLoaded.Snapshot != nil {
-			snap = k.UsageCacheLoaded.Snapshot
-		} else {
+		if len(k.UsageCacheLoaded.RawSnapshot) == 0 {
 			return nil
 		}
+		var parsed v1.UsageStatsResponse
+		if parsed.Unmarshal(k.UsageCacheLoaded.RawSnapshot) != nil {
+			return nil
+		}
+		snap := &parsed
 		preset := snap.Preset
 		if preset == v1.UsageRangePreset_USAGE_RANGE_PRESET_UNSPECIFIED {
 			preset = k.UsageCacheLoaded.Preset
@@ -407,13 +403,9 @@ func (c *Core) onUsageStatsSettled(sc sync.SettledCommand, meta cmdMeta, dirty *
 				entry.CachedAtMs = nowMs
 			}
 			eff := &corev1.UsageCacheWriteEffect{
-				MachineId: meta.machineID,
-				Preset:    resp.Preset,
-			}
-			if c.m.sync.RelayPipeEnabled() {
-				eff.RawSnapshot = resp.AppendMarshal(nil)
-			} else {
-				eff.Snapshot = resp.Clone()
+				MachineId:   meta.machineID,
+				Preset:      resp.Preset,
+				RawSnapshot: resp.AppendMarshal(nil),
 			}
 			out = append(out, &corev1.Effect{
 				Effect: &corev1.Effect_UsageCacheWrite{UsageCacheWrite: eff},

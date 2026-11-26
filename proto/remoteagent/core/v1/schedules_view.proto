@@ -726,10 +726,9 @@ message ScheduleFormUpdateTimingAction {
 }
 
 message ScheduleWriteCacheEffect {
-  reserved 1;
+  reserved 1, 3, 4;
+  reserved "request_id", "sealed_result_bytes";
   string machine_id = 2;
-  string request_id = 3;
-  bytes sealed_result_bytes = 4;
   // Opaque encoded ScheduleCacheBlob bytes for pure-byte shell storage.
   bytes blob = 5;
 }

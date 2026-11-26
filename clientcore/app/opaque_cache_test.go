@@ -451,23 +451,11 @@ func TestOpaqueCache_SingleFormatByRelayPipeMode(t *testing.T) {
 			if wc == nil {
 				t.Fatal("expected ScheduleWriteCacheEffect")
 			}
-			if pipeMode {
-				if len(wc.Blob) == 0 {
-					t.Fatal("relayPipe mode must populate ScheduleWriteCacheEffect.Blob")
-				}
-				if wc.RequestId != "" || len(wc.SealedResultBytes) != 0 {
-					t.Fatalf("relayPipe mode must NOT duplicate legacy fields: reqId=%q sealedLen=%d", wc.RequestId, len(wc.SealedResultBytes))
-				}
-			} else {
-				if len(wc.Blob) != 0 {
-					t.Fatal("legacy mode must NOT populate ScheduleWriteCacheEffect.Blob")
-				}
-				if wc.RequestId != reqID || len(wc.SealedResultBytes) == 0 {
-					t.Fatalf("legacy mode must populate legacy fields: reqId=%q sealedLen=%d", wc.RequestId, len(wc.SealedResultBytes))
-				}
+			if len(wc.Blob) == 0 {
+				t.Fatal("ScheduleWriteCacheEffect must populate opaque Blob")
 			}
 
-			// 2. Usage cache write: check single-format contract via real settle handler.
+			// 2. Usage cache write: always emits opaque RawSnapshot bytes.
 			usageSnap := &v1.UsageStatsResponse{
 				Preset:        v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS,
 				GeneratedAtMs: nowMs + 20,
@@ -493,20 +481,8 @@ func TestOpaqueCache_SingleFormatByRelayPipeMode(t *testing.T) {
 			if uw == nil {
 				t.Fatal("expected UsageCacheWriteEffect")
 			}
-			if pipeMode {
-				if len(uw.RawSnapshot) == 0 {
-					t.Fatal("relayPipe mode must populate UsageCacheWriteEffect.RawSnapshot")
-				}
-				if uw.Snapshot != nil {
-					t.Fatal("relayPipe mode must NOT duplicate legacy UsageCacheWriteEffect.Snapshot")
-				}
-			} else {
-				if len(uw.RawSnapshot) != 0 {
-					t.Fatal("legacy mode must NOT populate UsageCacheWriteEffect.RawSnapshot")
-				}
-				if uw.Snapshot == nil {
-					t.Fatal("legacy mode must populate legacy UsageCacheWriteEffect.Snapshot")
-				}
+			if len(uw.RawSnapshot) == 0 {
+				t.Fatal("UsageCacheWriteEffect must populate opaque RawSnapshot")
 			}
 		})
 	}

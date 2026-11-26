@@ -28,22 +28,6 @@ public enum ScreenTarget
    */
   SCREEN_TARGET_NEW_SESSION(3),
   /**
-   * <pre>
-   * Transitional render target; delete after Steps 3-4 complete.
-   * </pre>
-   *
-   * <code>SCREEN_TARGET_SYNC_STATE = 4;</code>
-   */
-  SCREEN_TARGET_SYNC_STATE(4),
-  /**
-   * <pre>
-   * Transitional render target; delete after Step 3 completes.
-   * </pre>
-   *
-   * <code>SCREEN_TARGET_SESSION_DATA = 5;</code>
-   */
-  SCREEN_TARGET_SESSION_DATA(5),
-  /**
    * <code>SCREEN_TARGET_SETTINGS = 30;</code>
    */
   SCREEN_TARGET_SETTINGS(30),
@@ -146,22 +130,6 @@ public enum ScreenTarget
    * <code>SCREEN_TARGET_NEW_SESSION = 3;</code>
    */
   public static final int SCREEN_TARGET_NEW_SESSION_VALUE = 3;
-  /**
-   * <pre>
-   * Transitional render target; delete after Steps 3-4 complete.
-   * </pre>
-   *
-   * <code>SCREEN_TARGET_SYNC_STATE = 4;</code>
-   */
-  public static final int SCREEN_TARGET_SYNC_STATE_VALUE = 4;
-  /**
-   * <pre>
-   * Transitional render target; delete after Step 3 completes.
-   * </pre>
-   *
-   * <code>SCREEN_TARGET_SESSION_DATA = 5;</code>
-   */
-  public static final int SCREEN_TARGET_SESSION_DATA_VALUE = 5;
   /**
    * <code>SCREEN_TARGET_SETTINGS = 30;</code>
    */
@@ -273,8 +241,6 @@ public enum ScreenTarget
       case 1: return SCREEN_TARGET_HOME;
       case 2: return SCREEN_TARGET_PROJECT;
       case 3: return SCREEN_TARGET_NEW_SESSION;
-      case 4: return SCREEN_TARGET_SYNC_STATE;
-      case 5: return SCREEN_TARGET_SESSION_DATA;
       case 30: return SCREEN_TARGET_SETTINGS;
       case 31: return SCREEN_TARGET_MACHINE_STATUS;
       case 32: return SCREEN_TARGET_MACHINE_SETTINGS;

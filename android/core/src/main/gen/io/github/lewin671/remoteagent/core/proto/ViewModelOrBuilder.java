@@ -44,44 +44,6 @@ public interface ViewModelOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.NewSessionViewModel getNewSession();
 
   /**
-   * <pre>
-   * Transitional view; delete after Steps 3-4 migrate remaining views into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SyncStateView sync_state = 4 [json_name = "syncState"];</code>
-   * @return Whether the syncState field is set.
-   */
-  boolean hasSyncState();
-  /**
-   * <pre>
-   * Transitional view; delete after Steps 3-4 migrate remaining views into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SyncStateView sync_state = 4 [json_name = "syncState"];</code>
-   * @return The syncState.
-   */
-  io.github.lewin671.remoteagent.core.proto.SyncStateView getSyncState();
-
-  /**
-   * <pre>
-   * Transitional view; delete after Step 3 migrates the session view into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SessionDataView session_data = 5 [json_name = "sessionData"];</code>
-   * @return Whether the sessionData field is set.
-   */
-  boolean hasSessionData();
-  /**
-   * <pre>
-   * Transitional view; delete after Step 3 migrates the session view into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SessionDataView session_data = 5 [json_name = "sessionData"];</code>
-   * @return The sessionData.
-   */
-  io.github.lewin671.remoteagent.core.proto.SessionDataView getSessionData();
-
-  /**
    * <code>.remoteagent.core.v1.SettingsViewModel settings = 30 [json_name = "settings"];</code>
    * @return Whether the settings field is set.
    */

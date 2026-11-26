@@ -6049,10 +6049,8 @@ func (x *ScheduleFormUpdateTimingAction) GetJitterMinutes() int64 {
 }
 
 type ScheduleWriteCacheEffect struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	MachineId         string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	RequestId         string                 `protobuf:"bytes,3,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
-	SealedResultBytes []byte                 `protobuf:"bytes,4,opt,name=sealed_result_bytes,json=sealedResultBytes,proto3" json:"sealed_result_bytes,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	MachineId string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
 	// Opaque encoded ScheduleCacheBlob bytes for pure-byte shell storage.
 	Blob          []byte `protobuf:"bytes,5,opt,name=blob,proto3" json:"blob,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -6094,20 +6092,6 @@ func (x *ScheduleWriteCacheEffect) GetMachineId() string {
 		return x.MachineId
 	}
 	return ""
-}
-
-func (x *ScheduleWriteCacheEffect) GetRequestId() string {
-	if x != nil {
-		return x.RequestId
-	}
-	return ""
-}
-
-func (x *ScheduleWriteCacheEffect) GetSealedResultBytes() []byte {
-	if x != nil {
-		return x.SealedResultBytes
-	}
-	return nil
 }
 
 func (x *ScheduleWriteCacheEffect) GetBlob() []byte {
@@ -6721,14 +6705,12 @@ const file_remoteagent_core_v1_schedules_view_proto_rawDesc = "" +
 	"\v_zone_validB\r\n" +
 	"\v_at_dst_gapB\x10\n" +
 	"\x0e_until_dst_gapB\x11\n" +
-	"\x0f_jitter_minutes\"\xa2\x01\n" +
+	"\x0f_jitter_minutes\"\x80\x01\n" +
 	"\x18ScheduleWriteCacheEffect\x12\x1d\n" +
 	"\n" +
-	"machine_id\x18\x02 \x01(\tR\tmachineId\x12\x1d\n" +
-	"\n" +
-	"request_id\x18\x03 \x01(\tR\trequestId\x12.\n" +
-	"\x13sealed_result_bytes\x18\x04 \x01(\fR\x11sealedResultBytes\x12\x12\n" +
-	"\x04blob\x18\x05 \x01(\fR\x04blobJ\x04\b\x01\x10\x02\"@\n" +
+	"machine_id\x18\x02 \x01(\tR\tmachineId\x12\x12\n" +
+	"\x04blob\x18\x05 \x01(\fR\x04blobJ\x04\b\x01\x10\x02J\x04\b\x03\x10\x04J\x04\b\x04\x10\x05R\n" +
+	"request_idR\x13sealed_result_bytes\"@\n" +
 	"\x19ScheduleCacheWrittenEvent\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x02 \x01(\tR\tmachineIdJ\x04\b\x01\x10\x02*\xca\x01\n" +

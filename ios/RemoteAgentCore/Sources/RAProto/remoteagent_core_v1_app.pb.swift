@@ -241,12 +241,6 @@ public enum PBCoreScreenTarget: SwiftProtobuf.Enum, Swift.CaseIterable {
   case home // = 1
   case project // = 2
   case newSession // = 3
-
-  /// Transitional render target; delete after Steps 3-4 complete.
-  case syncState // = 4
-
-  /// Transitional render target; delete after Step 3 completes.
-  case sessionData // = 5
   case settings // = 30
   case machineStatus // = 31
   case machineSettings // = 32
@@ -280,8 +274,6 @@ public enum PBCoreScreenTarget: SwiftProtobuf.Enum, Swift.CaseIterable {
     case 1: self = .home
     case 2: self = .project
     case 3: self = .newSession
-    case 4: self = .syncState
-    case 5: self = .sessionData
     case 10: self = .session
     case 20: self = .schedules
     case 21: self = .scheduleDetail
@@ -313,8 +305,6 @@ public enum PBCoreScreenTarget: SwiftProtobuf.Enum, Swift.CaseIterable {
     case .home: return 1
     case .project: return 2
     case .newSession: return 3
-    case .syncState: return 4
-    case .sessionData: return 5
     case .session: return 10
     case .schedules: return 20
     case .scheduleDetail: return 21
@@ -346,8 +336,6 @@ public enum PBCoreScreenTarget: SwiftProtobuf.Enum, Swift.CaseIterable {
     .home,
     .project,
     .newSession,
-    .syncState,
-    .sessionData,
     .settings,
     .machineStatus,
     .machineSettings,
@@ -505,30 +493,6 @@ public struct PBCoreNewSessionScreenRequest: Sendable {
   public init() {}
 }
 
-/// Transitional screen request for SyncStateView (Step 3-4 migration bridge; delete afterward).
-public struct PBCoreSyncStateScreenRequest: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
-/// Transitional screen request for SessionDataView (Step 3 migration bridge; delete afterward).
-public struct PBCoreSessionDataScreenRequest: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var sessionID: String = String()
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
 public struct PBCoreScreen: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -558,24 +522,6 @@ public struct PBCoreScreen: Sendable {
       return PBCoreNewSessionScreenRequest()
     }
     set {screen = .newSession(newValue)}
-  }
-
-  /// Transitional screen; delete after Steps 3-4 migrate remaining views into Core.
-  public var syncState: PBCoreSyncStateScreenRequest {
-    get {
-      if case .syncState(let v)? = screen {return v}
-      return PBCoreSyncStateScreenRequest()
-    }
-    set {screen = .syncState(newValue)}
-  }
-
-  /// Transitional screen; delete after Step 3 migrates the session view into Core.
-  public var sessionData: PBCoreSessionDataScreenRequest {
-    get {
-      if case .sessionData(let v)? = screen {return v}
-      return PBCoreSessionDataScreenRequest()
-    }
-    set {screen = .sessionData(newValue)}
   }
 
   public var settings: PBSettingsScreenRequest {
@@ -760,10 +706,6 @@ public struct PBCoreScreen: Sendable {
     case home(PBCoreHomeScreenRequest)
     case project(PBCoreProjectScreenRequest)
     case newSession(PBCoreNewSessionScreenRequest)
-    /// Transitional screen; delete after Steps 3-4 migrate remaining views into Core.
-    case syncState(PBCoreSyncStateScreenRequest)
-    /// Transitional screen; delete after Step 3 migrates the session view into Core.
-    case sessionData(PBCoreSessionDataScreenRequest)
     case settings(PBSettingsScreenRequest)
     case machineStatus(PBMachineStatusScreenRequest)
     case machineSettings(PBMachineSettingsScreenRequest)
@@ -821,24 +763,6 @@ public struct PBCoreViewModel: Sendable {
       return PBCoreNewSessionViewModel()
     }
     set {view = .newSession(newValue)}
-  }
-
-  /// Transitional view; delete after Steps 3-4 migrate remaining views into Core.
-  public var syncState: PBCoreSyncStateView {
-    get {
-      if case .syncState(let v)? = view {return v}
-      return PBCoreSyncStateView()
-    }
-    set {view = .syncState(newValue)}
-  }
-
-  /// Transitional view; delete after Step 3 migrates the session view into Core.
-  public var sessionData: PBCoreSessionDataView {
-    get {
-      if case .sessionData(let v)? = view {return v}
-      return PBCoreSessionDataView()
-    }
-    set {view = .sessionData(newValue)}
   }
 
   public var settings: PBSettingsViewModel {
@@ -1023,10 +947,6 @@ public struct PBCoreViewModel: Sendable {
     case home(PBCoreHomeViewModel)
     case project(PBCoreProjectViewModel)
     case newSession(PBCoreNewSessionViewModel)
-    /// Transitional view; delete after Steps 3-4 migrate remaining views into Core.
-    case syncState(PBCoreSyncStateView)
-    /// Transitional view; delete after Step 3 migrates the session view into Core.
-    case sessionData(PBCoreSessionDataView)
     case settings(PBSettingsViewModel)
     case machineStatus(PBMachineStatusViewModel)
     case machineSettings(PBMachineSettingsViewModel)
@@ -4042,54 +3962,6 @@ public struct PBCoreEvent: @unchecked Sendable {
     set {_uniqueStorage()._event = .directPcProbeReceived(newValue)}
   }
 
-  public var terminalDirectOpen: PBCoreTerminalDirectOpenEvent {
-    get {
-      if case .terminalDirectOpen(let v)? = _storage._event {return v}
-      return PBCoreTerminalDirectOpenEvent()
-    }
-    set {_uniqueStorage()._event = .terminalDirectOpen(newValue)}
-  }
-
-  public var terminalDirectClose: PBCoreTerminalDirectCloseEvent {
-    get {
-      if case .terminalDirectClose(let v)? = _storage._event {return v}
-      return PBCoreTerminalDirectCloseEvent()
-    }
-    set {_uniqueStorage()._event = .terminalDirectClose(newValue)}
-  }
-
-  public var terminalDirectLeg: PBCoreTerminalDirectLegEvent {
-    get {
-      if case .terminalDirectLeg(let v)? = _storage._event {return v}
-      return PBCoreTerminalDirectLegEvent()
-    }
-    set {_uniqueStorage()._event = .terminalDirectLeg(newValue)}
-  }
-
-  public var terminalDirectInput: PBCoreTerminalDirectInputEvent {
-    get {
-      if case .terminalDirectInput(let v)? = _storage._event {return v}
-      return PBCoreTerminalDirectInputEvent()
-    }
-    set {_uniqueStorage()._event = .terminalDirectInput(newValue)}
-  }
-
-  public var terminalDirectOutput: PBCoreTerminalDirectOutputEvent {
-    get {
-      if case .terminalDirectOutput(let v)? = _storage._event {return v}
-      return PBCoreTerminalDirectOutputEvent()
-    }
-    set {_uniqueStorage()._event = .terminalDirectOutput(newValue)}
-  }
-
-  public var terminalDirectConfirmRebuild: PBCoreTerminalDirectConfirmRebuildAction {
-    get {
-      if case .terminalDirectConfirmRebuild(let v)? = _storage._event {return v}
-      return PBCoreTerminalDirectConfirmRebuildAction()
-    }
-    set {_uniqueStorage()._event = .terminalDirectConfirmRebuild(newValue)}
-  }
-
   /// Unified relay byte-pipe events (430-449 reserved for P2-5).
   public var relayPipeConfig: PBRelayPipeConfigEvent {
     get {
@@ -4741,12 +4613,6 @@ public struct PBCoreEvent: @unchecked Sendable {
     case directPreferencesLoaded(PBCoreDirectPreferencesLoadedEvent)
     case terminalHistory(PBCoreTerminalHistoryEvent)
     case directPcProbeReceived(PBCoreDirectPcProbeReceivedEvent)
-    case terminalDirectOpen(PBCoreTerminalDirectOpenEvent)
-    case terminalDirectClose(PBCoreTerminalDirectCloseEvent)
-    case terminalDirectLeg(PBCoreTerminalDirectLegEvent)
-    case terminalDirectInput(PBCoreTerminalDirectInputEvent)
-    case terminalDirectOutput(PBCoreTerminalDirectOutputEvent)
-    case terminalDirectConfirmRebuild(PBCoreTerminalDirectConfirmRebuildAction)
     /// Unified relay byte-pipe events (430-449 reserved for P2-5).
     case relayPipeConfig(PBRelayPipeConfigEvent)
     case relayRpcResult(PBRelayRpcResultEvent)
@@ -6175,30 +6041,6 @@ public struct PBCoreEffect: Sendable {
     set {effect = .terminalDirectSend(newValue)}
   }
 
-  public var terminalDirectDeliver: PBCoreTerminalDirectDeliverEffect {
-    get {
-      if case .terminalDirectDeliver(let v)? = effect {return v}
-      return PBCoreTerminalDirectDeliverEffect()
-    }
-    set {effect = .terminalDirectDeliver(newValue)}
-  }
-
-  public var terminalDirectAttachRelay: PBCoreTerminalDirectAttachRelayEffect {
-    get {
-      if case .terminalDirectAttachRelay(let v)? = effect {return v}
-      return PBCoreTerminalDirectAttachRelayEffect()
-    }
-    set {effect = .terminalDirectAttachRelay(newValue)}
-  }
-
-  public var terminalDirectState: PBCoreTerminalDirectStateEffect {
-    get {
-      if case .terminalDirectState(let v)? = effect {return v}
-      return PBCoreTerminalDirectStateEffect()
-    }
-    set {effect = .terminalDirectState(newValue)}
-  }
-
   /// Security engine (130-159 reserved for security).
   public var securityKeySign: PBSecurityKeySignEffect {
     get {
@@ -6433,9 +6275,6 @@ public struct PBCoreEffect: Sendable {
     case terminalHistoryUpdated(PBCoreTerminalHistoryUpdatedEffect)
     case directPcSendProbe(PBCoreDirectPcSendProbeEffect)
     case terminalDirectSend(PBCoreTerminalDirectSendEffect)
-    case terminalDirectDeliver(PBCoreTerminalDirectDeliverEffect)
-    case terminalDirectAttachRelay(PBCoreTerminalDirectAttachRelayEffect)
-    case terminalDirectState(PBCoreTerminalDirectStateEffect)
     /// Security engine (130-159 reserved for security).
     case securityKeySign(PBSecurityKeySignEffect)
     case securityKeyAgree(PBSecurityKeyAgreeEffect)
@@ -6491,7 +6330,7 @@ extension PBCoreOutcomeSource: SwiftProtobuf._ProtoNameProviding {
 }
 
 extension PBCoreScreenTarget: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SCREEN_TARGET_UNSPECIFIED\0\u{1}SCREEN_TARGET_HOME\0\u{1}SCREEN_TARGET_PROJECT\0\u{1}SCREEN_TARGET_NEW_SESSION\0\u{1}SCREEN_TARGET_SYNC_STATE\0\u{1}SCREEN_TARGET_SESSION_DATA\0\u{2}\u{5}SCREEN_TARGET_SESSION\0\u{2}\u{a}SCREEN_TARGET_SCHEDULES\0\u{1}SCREEN_TARGET_SCHEDULE_DETAIL\0\u{1}SCREEN_TARGET_SCHEDULE_FORM\0\u{1}SCREEN_TARGET_SCHEDULE_SESSION_STRIP\0\u{2}\u{7}SCREEN_TARGET_SETTINGS\0\u{1}SCREEN_TARGET_MACHINE_STATUS\0\u{1}SCREEN_TARGET_MACHINE_SETTINGS\0\u{1}SCREEN_TARGET_QUOTA\0\u{1}SCREEN_TARGET_DEVICES\0\u{1}SCREEN_TARGET_CLIENT_DETAIL\0\u{1}SCREEN_TARGET_USAGE\0\u{1}SCREEN_TARGET_DIRECT_DIAGNOSTICS\0\u{2}\u{2}SCREEN_TARGET_ATTACHMENT_DRAFT\0\u{1}SCREEN_TARGET_CONNECTION\0\u{2}\u{a}SCREEN_TARGET_APP_ROOT\0\u{1}SCREEN_TARGET_ONBOARDING\0\u{1}SCREEN_TARGET_ADD_DEVICE\0\u{1}SCREEN_TARGET_ACCOUNT_SECURITY\0\u{1}SCREEN_TARGET_HANDOFF\0\u{1}SCREEN_TARGET_EXIT_CONFIRM\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SCREEN_TARGET_UNSPECIFIED\0\u{1}SCREEN_TARGET_HOME\0\u{1}SCREEN_TARGET_PROJECT\0\u{1}SCREEN_TARGET_NEW_SESSION\0\u{2}\u{7}SCREEN_TARGET_SESSION\0\u{2}\u{a}SCREEN_TARGET_SCHEDULES\0\u{1}SCREEN_TARGET_SCHEDULE_DETAIL\0\u{1}SCREEN_TARGET_SCHEDULE_FORM\0\u{1}SCREEN_TARGET_SCHEDULE_SESSION_STRIP\0\u{2}\u{7}SCREEN_TARGET_SETTINGS\0\u{1}SCREEN_TARGET_MACHINE_STATUS\0\u{1}SCREEN_TARGET_MACHINE_SETTINGS\0\u{1}SCREEN_TARGET_QUOTA\0\u{1}SCREEN_TARGET_DEVICES\0\u{1}SCREEN_TARGET_CLIENT_DETAIL\0\u{1}SCREEN_TARGET_USAGE\0\u{1}SCREEN_TARGET_DIRECT_DIAGNOSTICS\0\u{2}\u{2}SCREEN_TARGET_ATTACHMENT_DRAFT\0\u{1}SCREEN_TARGET_CONNECTION\0\u{2}\u{a}SCREEN_TARGET_APP_ROOT\0\u{1}SCREEN_TARGET_ONBOARDING\0\u{1}SCREEN_TARGET_ADD_DEVICE\0\u{1}SCREEN_TARGET_ACCOUNT_SECURITY\0\u{1}SCREEN_TARGET_HANDOFF\0\u{1}SCREEN_TARGET_EXIT_CONFIRM\0")
 }
 
 extension PBCoreCommandRouteHint: SwiftProtobuf._ProtoNameProviding {
@@ -6612,58 +6451,9 @@ extension PBCoreNewSessionScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._M
   }
 }
 
-extension PBCoreSyncStateScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".SyncStateScreenRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    // Load everything into unknown fields
-    while try decoder.nextFieldNumber() != nil {}
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: PBCoreSyncStateScreenRequest, rhs: PBCoreSyncStateScreenRequest) -> Bool {
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
-extension PBCoreSessionDataScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".SessionDataScreenRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.sessionID.isEmpty {
-      try visitor.visitSingularStringField(value: self.sessionID, fieldNumber: 1)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: PBCoreSessionDataScreenRequest, rhs: PBCoreSessionDataScreenRequest) -> Bool {
-    if lhs.sessionID != rhs.sessionID {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
 extension PBCoreScreen: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Screen"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}home\0\u{1}project\0\u{3}new_session\0\u{3}sync_state\0\u{3}session_data\0\u{2}\u{5}session\0\u{2}\u{a}schedules\0\u{3}schedule_detail\0\u{3}schedule_form\0\u{3}schedule_session_strip\0\u{2}\u{7}settings\0\u{3}machine_status\0\u{3}machine_settings\0\u{1}quota\0\u{1}devices\0\u{3}client_detail\0\u{1}usage\0\u{3}direct_diagnostics\0\u{3}attachment_eval\0\u{3}attachment_draft\0\u{1}connection\0\u{4}\u{a}app_root\0\u{1}onboarding\0\u{3}add_device\0\u{3}account_security\0\u{1}handoff\0\u{3}exit_confirm\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}home\0\u{1}project\0\u{3}new_session\0\u{2}\u{7}session\0\u{2}\u{a}schedules\0\u{3}schedule_detail\0\u{3}schedule_form\0\u{3}schedule_session_strip\0\u{2}\u{7}settings\0\u{3}machine_status\0\u{3}machine_settings\0\u{1}quota\0\u{1}devices\0\u{3}client_detail\0\u{1}usage\0\u{3}direct_diagnostics\0\u{3}attachment_eval\0\u{3}attachment_draft\0\u{1}connection\0\u{4}\u{a}app_root\0\u{1}onboarding\0\u{3}add_device\0\u{3}account_security\0\u{1}handoff\0\u{3}exit_confirm\0\u{b}sync_state\0\u{b}session_data\0\u{c}\u{4}\u{1}\u{c}\u{5}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -6708,32 +6498,6 @@ extension PBCoreScreen: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
         if let v = v {
           if hadOneofValue {try decoder.handleConflictingOneOf()}
           self.screen = .newSession(v)
-        }
-      }()
-      case 4: try {
-        var v: PBCoreSyncStateScreenRequest?
-        var hadOneofValue = false
-        if let current = self.screen {
-          hadOneofValue = true
-          if case .syncState(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.screen = .syncState(v)
-        }
-      }()
-      case 5: try {
-        var v: PBCoreSessionDataScreenRequest?
-        var hadOneofValue = false
-        if let current = self.screen {
-          hadOneofValue = true
-          if case .sessionData(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.screen = .sessionData(v)
         }
       }()
       case 10: try {
@@ -7045,14 +6809,6 @@ extension PBCoreScreen: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
       guard case .newSession(let v)? = self.screen else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
     }()
-    case .syncState?: try {
-      guard case .syncState(let v)? = self.screen else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
-    }()
-    case .sessionData?: try {
-      guard case .sessionData(let v)? = self.screen else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
-    }()
     case .session?: try {
       guard case .session(let v)? = self.screen else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
@@ -7155,7 +6911,7 @@ extension PBCoreScreen: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
 
 extension PBCoreViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ViewModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}home\0\u{1}project\0\u{3}new_session\0\u{3}sync_state\0\u{3}session_data\0\u{2}\u{5}session\0\u{2}\u{a}schedules\0\u{3}schedule_detail\0\u{3}schedule_form\0\u{3}schedule_session_strip\0\u{2}\u{7}settings\0\u{3}machine_status\0\u{3}machine_settings\0\u{1}quota\0\u{1}devices\0\u{3}client_detail\0\u{1}usage\0\u{3}direct_diagnostics\0\u{3}attachment_eval\0\u{3}attachment_draft\0\u{1}connection\0\u{4}\u{a}app_root\0\u{1}onboarding\0\u{3}add_device\0\u{3}account_security\0\u{1}handoff\0\u{3}exit_confirm\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}home\0\u{1}project\0\u{3}new_session\0\u{2}\u{7}session\0\u{2}\u{a}schedules\0\u{3}schedule_detail\0\u{3}schedule_form\0\u{3}schedule_session_strip\0\u{2}\u{7}settings\0\u{3}machine_status\0\u{3}machine_settings\0\u{1}quota\0\u{1}devices\0\u{3}client_detail\0\u{1}usage\0\u{3}direct_diagnostics\0\u{3}attachment_eval\0\u{3}attachment_draft\0\u{1}connection\0\u{4}\u{a}app_root\0\u{1}onboarding\0\u{3}add_device\0\u{3}account_security\0\u{1}handoff\0\u{3}exit_confirm\0\u{b}sync_state\0\u{b}session_data\0\u{c}\u{4}\u{1}\u{c}\u{5}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -7200,32 +6956,6 @@ extension PBCoreViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
         if let v = v {
           if hadOneofValue {try decoder.handleConflictingOneOf()}
           self.view = .newSession(v)
-        }
-      }()
-      case 4: try {
-        var v: PBCoreSyncStateView?
-        var hadOneofValue = false
-        if let current = self.view {
-          hadOneofValue = true
-          if case .syncState(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.view = .syncState(v)
-        }
-      }()
-      case 5: try {
-        var v: PBCoreSessionDataView?
-        var hadOneofValue = false
-        if let current = self.view {
-          hadOneofValue = true
-          if case .sessionData(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.view = .sessionData(v)
         }
       }()
       case 10: try {
@@ -7536,14 +7266,6 @@ extension PBCoreViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     case .newSession?: try {
       guard case .newSession(let v)? = self.view else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
-    }()
-    case .syncState?: try {
-      guard case .syncState(let v)? = self.view else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
-    }()
-    case .sessionData?: try {
-      guard case .sessionData(let v)? = self.view else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
     }()
     case .session?: try {
       guard case .session(let v)? = self.view else { preconditionFailure() }
@@ -10474,7 +10196,7 @@ extension PBCoreNewSessionSubmitAction: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Event"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}clock_updated\0\u{3}entropy_provided\0\u{3}sync_lifecycle\0\u{3}network_changed\0\u{3}timer_fired\0\u{3}cache_bootstrap_loaded\0\u{3}cache_events_loaded\0\u{3}token_result\0\u{3}locale_changed\0\u{3}stream_ready\0\u{3}stream_closed\0\u{3}stream_frame\0\u{3}lists_fetched\0\u{3}sessions_page_fetched\0\u{3}session_by_id_fetched\0\u{3}events_page_fetched\0\u{3}account_prefs_fetched\0\u{3}account_prefs_put_result\0\u{3}devices_fetched\0\u{3}command_outcome\0\u{3}session_watch\0\u{3}session_pin\0\u{3}retry_session_events\0\u{3}fetch_session\0\u{4}\u{2}session_schedule_hints\0\u{3}direct_events_received\0\u{4}\u{3}home_set_scope\0\u{3}home_set_filter\0\u{3}home_load_more_ended\0\u{3}home_retry_load\0\u{3}home_select_session\0\u{3}home_resolve_approval\0\u{3}home_edit_approval_deny\0\u{3}home_answer_question\0\u{3}home_retry_attention\0\u{3}home_abandon_attention\0\u{3}project_set_search\0\u{3}project_toggle_pin\0\u{3}project_toggle_hide\0\u{3}project_add\0\u{3}project_load_more_ended\0\u{3}project_open_dir_picker\0\u{3}project_dir_navigate\0\u{3}project_close_dir_picker\0\u{4}\u{3}new_session_open\0\u{3}new_session_select_project\0\u{3}new_session_select_machine\0\u{3}new_session_select_agent\0\u{3}new_session_select_model\0\u{4}\u{2}new_session_retry_models\0\u{3}new_session_retry_save_config\0\u{3}new_session_submit\0\u{3}new_session_abandon_start\0\u{4}'now_ms\0\u{3}mono_ms\0\u{3}random_ids\0\u{3}unit_floats\0\u{4}c\u{1}session_submit_command\0\u{3}session_abandon_command\0\u{3}session_open\0\u{3}run_machine_command\0\u{3}cancel_machine_command\0\u{3}session_set_question_index\0\u{3}session_load_earlier\0\u{3}session_cancel_tray_item\0\u{3}session_ignore_tray_item\0\u{3}session_promote_tray_item\0\u{3}session_restore_tray_item\0\u{3}session_retry_tray_item\0\u{3}session_resume_tray_item\0\u{3}session_cancel_all_paused\0\u{3}session_undo_cancel\0\u{3}session_retry_load\0\u{4}\u{2}session_image_viewer_open\0\u{3}session_image_viewer_navigate\0\u{3}session_image_viewer_close\0\u{3}shared_file_config\0\u{3}shared_file_local_scanned\0\u{3}shared_file_start_download\0\u{3}shared_file_pause_download\0\u{3}shared_file_cancel_download\0\u{3}shared_file_delete_local\0\u{3}shared_file_set_visible_session\0\u{3}shared_file_forget_session\0\u{3}shared_file_duration_probed\0\u{3}shared_file_local_missing\0\u{3}shared_file_clear_all\0\u{3}shared_file_disk_inspected\0\u{3}shared_file_write_chunk_result\0\u{3}shared_file_verify_and_commit_result\0\u{4}\u{7}attachment_config\0\u{3}draft_storage_listed\0\u{3}draft_storage_read_result\0\u{3}draft_storage_write_result\0\u{3}draft_open\0\u{3}draft_set_text\0\u{3}draft_set_target_machine\0\u{3}draft_reserve_slots\0\u{3}draft_release_slots\0\u{3}draft_add_items\0\u{3}draft_remove_item\0\u{3}draft_retry_item\0\u{3}draft_set_original\0\u{3}draft_clear\0\u{3}draft_forget_session\0\u{3}draft_clear_all\0\u{3}draft_dismiss_notice\0\u{3}attachment_pause_upload\0\u{3}attachment_resume_upload\0\u{3}attachment_prepare_image_result\0\u{3}attachment_hash_file_result\0\u{3}attachment_read_chunk_result\0\u{3}draft_send_session\0\u{3}draft_put_back_input\0\u{3}draft_image_viewer_open\0\u{3}draft_image_viewer_navigate\0\u{3}draft_image_viewer_close\0\u{3}draft_append_text\0\u{4}\u{3}session_edit_approval_deny\0\u{3}session_resolve_approval\0\u{3}session_toggle_question_option\0\u{3}session_answer_question\0\u{3}session_answer_plan\0\u{3}session_simple_command\0\u{3}session_rename\0\u{3}session_set_approval_mode\0\u{3}session_set_model\0\u{3}session_retry_command\0\u{4}\u{15}schedule_cache_loaded\0\u{3}schedule_seen_loaded\0\u{3}schedule_local_context\0\u{3}schedule_refresh\0\u{3}schedule_set_visible_session\0\u{4}\u{6}schedule_list_open\0\u{3}schedule_select_task\0\u{3}schedule_toggle_ended\0\u{3}schedule_mark_read\0\u{3}schedule_mark_unread\0\u{4}\u{6}schedule_detail_open\0\u{3}schedule_detail_hide\0\u{3}schedule_detail_close\0\u{3}schedule_detail_show_latest_result\0\u{3}schedule_detail_toggle_quiet_group\0\u{3}schedule_detail_show_all_runs\0\u{3}schedule_detail_open_run\0\u{4}\u{4}schedule_operate\0\u{3}schedule_rename\0\u{3}schedule_set_notify\0\u{3}schedule_update_message\0\u{3}schedule_abandon_mutation\0\u{3}schedule_retry_mutation\0\u{4}\u{3}schedule_form_open\0\u{3}schedule_form_close\0\u{3}schedule_form_set_message\0\u{3}schedule_form_set_title\0\u{3}schedule_form_set_notify\0\u{3}schedule_form_select_project\0\u{3}schedule_form_select_machine\0\u{3}schedule_form_select_agent\0\u{3}schedule_form_select_model\0\u{3}schedule_form_update_timing\0\u{3}schedule_form_submit\0\u{3}schedule_form_retry_models\0\u{3}machine_status_watch\0\u{3}machine_status_retry\0\u{3}machine_status_tab\0\u{3}machine_status_scrub\0\u{3}machine_status_cleanup\0\u{3}machine_status_poll_tick\0\u{4}\u{5}machine_settings_open\0\u{3}machine_settings_select_agent\0\u{3}update_machine_agent_defaults\0\u{3}update_machine_daemon_settings\0\u{3}update_direct_preference\0\u{4}\u{2}toggle_machine_agent\0\u{4}\u{4}update_client_name\0\u{4}\u{5}set_notification_pref\0\u{3}set_appearance_pref\0\u{3}conn_check_status\0\u{3}client_update_state\0\u{3}check_for_updates\0\u{3}usage_screen_open\0\u{3}usage_screen_retry\0\u{3}usage_cache_loaded\0\u{3}usage_screen_select_sort\0\u{3}usage_screen_select_series\0\u{3}usage_screen_scrub\0\u{4}\u{5}resolve_notification_tap\0\u{3}new_session_close\0\u{3}schedule_cache_written\0\u{3}usage_cache_written\0\u{4}\u{7}transport_config\0\u{4}\u{2}direct_signal_received\0\u{3}direct_signal_delivery\0\u{4}\u{3}direct_pc_created\0\u{3}direct_pc_description\0\u{3}direct_pc_remote_set\0\u{3}direct_pc_candidates_added\0\u{3}direct_pc_local_candidate\0\u{3}direct_pc_state\0\u{3}direct_pc_stun_error\0\u{3}direct_pc_closed\0\u{3}direct_dc_state\0\u{3}direct_dc_stats\0\u{3}direct_retry_now\0\u{3}direct_refresh_diagnostics\0\u{3}direct_bulk_transfer_begin\0\u{3}direct_bulk_transfer_done\0\u{3}terminal_stream\0\u{3}direct_preferences_loaded\0\u{3}terminal_history\0\u{3}direct_pc_probe_received\0\u{3}terminal_direct_open\0\u{3}terminal_direct_close\0\u{3}terminal_direct_leg\0\u{3}terminal_direct_input\0\u{3}terminal_direct_output\0\u{3}terminal_direct_confirm_rebuild\0\u{3}relay_pipe_config\0\u{3}relay_rpc_result\0\u{3}stream_raw_frame\0\u{3}refresh_devices\0\u{3}push_rpc\0\u{3}session_fetch_image\0\u{3}terminal_open\0\u{3}terminal_close\0\u{3}terminal_socket\0\u{3}terminal_inbound_bytes\0\u{3}terminal_input\0\u{3}terminal_confirm_rebuild\0\u{4}\u{9}security_config\0\u{4}\u{2}security_key_signed\0\u{3}security_key_agreed\0\u{4}\u{3}security_crypto_batch_done\0\u{3}security_op_request\0\u{3}seed_demo_world\0\u{3}security_key_generated\0\u{3}security_key_encapsulated\0\u{3}security_storage_result\0\u{3}security_rpc_result\0\u{3}security_foreground\0\u{3}security_action\0\u{3}security_open_notify\0\u{4}\u{5}client_init\0\u{3}storage_persist_result\0\u{3}push_unregistered\0\u{3}account_caches_cleared\0\u{3}app_root_retry_bootstrap\0\u{3}app_root_verify_pending_op\0\u{3}app_root_dismiss_upgrade_notice\0\u{3}onboarding_set_mode\0\u{3}onboarding_create_edit\0\u{3}onboarding_create_submit\0\u{3}onboarding_join_edit\0\u{3}onboarding_join_submit\0\u{3}onboarding_join_confirm_sas\0\u{3}onboarding_join_cancel\0\u{3}onboarding_join_banner_action\0\u{3}onboarding_recovery_edit\0\u{3}onboarding_recovery_action\0\u{4}\u{3}add_device_open\0\u{3}add_device_close\0\u{3}add_device_action\0\u{4}\u{2}account_security_open\0\u{3}account_security_action\0\u{3}account_security_close\0\u{3}handoff_action\0\u{3}external_logout\0\u{3}exit_request\0\u{3}exit_confirm\0\u{b}new_session_set_prompt\0\u{b}shared_file_local_state\0\u{c}7\u{1}\u{c}X\u{3}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}clock_updated\0\u{3}entropy_provided\0\u{3}sync_lifecycle\0\u{3}network_changed\0\u{3}timer_fired\0\u{3}cache_bootstrap_loaded\0\u{3}cache_events_loaded\0\u{3}token_result\0\u{3}locale_changed\0\u{3}stream_ready\0\u{3}stream_closed\0\u{3}stream_frame\0\u{3}lists_fetched\0\u{3}sessions_page_fetched\0\u{3}session_by_id_fetched\0\u{3}events_page_fetched\0\u{3}account_prefs_fetched\0\u{3}account_prefs_put_result\0\u{3}devices_fetched\0\u{3}command_outcome\0\u{3}session_watch\0\u{3}session_pin\0\u{3}retry_session_events\0\u{3}fetch_session\0\u{4}\u{2}session_schedule_hints\0\u{3}direct_events_received\0\u{4}\u{3}home_set_scope\0\u{3}home_set_filter\0\u{3}home_load_more_ended\0\u{3}home_retry_load\0\u{3}home_select_session\0\u{3}home_resolve_approval\0\u{3}home_edit_approval_deny\0\u{3}home_answer_question\0\u{3}home_retry_attention\0\u{3}home_abandon_attention\0\u{3}project_set_search\0\u{3}project_toggle_pin\0\u{3}project_toggle_hide\0\u{3}project_add\0\u{3}project_load_more_ended\0\u{3}project_open_dir_picker\0\u{3}project_dir_navigate\0\u{3}project_close_dir_picker\0\u{4}\u{3}new_session_open\0\u{3}new_session_select_project\0\u{3}new_session_select_machine\0\u{3}new_session_select_agent\0\u{3}new_session_select_model\0\u{4}\u{2}new_session_retry_models\0\u{3}new_session_retry_save_config\0\u{3}new_session_submit\0\u{3}new_session_abandon_start\0\u{4}'now_ms\0\u{3}mono_ms\0\u{3}random_ids\0\u{3}unit_floats\0\u{4}c\u{1}session_submit_command\0\u{3}session_abandon_command\0\u{3}session_open\0\u{3}run_machine_command\0\u{3}cancel_machine_command\0\u{3}session_set_question_index\0\u{3}session_load_earlier\0\u{3}session_cancel_tray_item\0\u{3}session_ignore_tray_item\0\u{3}session_promote_tray_item\0\u{3}session_restore_tray_item\0\u{3}session_retry_tray_item\0\u{3}session_resume_tray_item\0\u{3}session_cancel_all_paused\0\u{3}session_undo_cancel\0\u{3}session_retry_load\0\u{4}\u{2}session_image_viewer_open\0\u{3}session_image_viewer_navigate\0\u{3}session_image_viewer_close\0\u{3}shared_file_config\0\u{3}shared_file_local_scanned\0\u{3}shared_file_start_download\0\u{3}shared_file_pause_download\0\u{3}shared_file_cancel_download\0\u{3}shared_file_delete_local\0\u{3}shared_file_set_visible_session\0\u{3}shared_file_forget_session\0\u{3}shared_file_duration_probed\0\u{3}shared_file_local_missing\0\u{3}shared_file_clear_all\0\u{3}shared_file_disk_inspected\0\u{3}shared_file_write_chunk_result\0\u{3}shared_file_verify_and_commit_result\0\u{4}\u{7}attachment_config\0\u{3}draft_storage_listed\0\u{3}draft_storage_read_result\0\u{3}draft_storage_write_result\0\u{3}draft_open\0\u{3}draft_set_text\0\u{3}draft_set_target_machine\0\u{3}draft_reserve_slots\0\u{3}draft_release_slots\0\u{3}draft_add_items\0\u{3}draft_remove_item\0\u{3}draft_retry_item\0\u{3}draft_set_original\0\u{3}draft_clear\0\u{3}draft_forget_session\0\u{3}draft_clear_all\0\u{3}draft_dismiss_notice\0\u{3}attachment_pause_upload\0\u{3}attachment_resume_upload\0\u{3}attachment_prepare_image_result\0\u{3}attachment_hash_file_result\0\u{3}attachment_read_chunk_result\0\u{3}draft_send_session\0\u{3}draft_put_back_input\0\u{3}draft_image_viewer_open\0\u{3}draft_image_viewer_navigate\0\u{3}draft_image_viewer_close\0\u{3}draft_append_text\0\u{4}\u{3}session_edit_approval_deny\0\u{3}session_resolve_approval\0\u{3}session_toggle_question_option\0\u{3}session_answer_question\0\u{3}session_answer_plan\0\u{3}session_simple_command\0\u{3}session_rename\0\u{3}session_set_approval_mode\0\u{3}session_set_model\0\u{3}session_retry_command\0\u{4}\u{15}schedule_cache_loaded\0\u{3}schedule_seen_loaded\0\u{3}schedule_local_context\0\u{3}schedule_refresh\0\u{3}schedule_set_visible_session\0\u{4}\u{6}schedule_list_open\0\u{3}schedule_select_task\0\u{3}schedule_toggle_ended\0\u{3}schedule_mark_read\0\u{3}schedule_mark_unread\0\u{4}\u{6}schedule_detail_open\0\u{3}schedule_detail_hide\0\u{3}schedule_detail_close\0\u{3}schedule_detail_show_latest_result\0\u{3}schedule_detail_toggle_quiet_group\0\u{3}schedule_detail_show_all_runs\0\u{3}schedule_detail_open_run\0\u{4}\u{4}schedule_operate\0\u{3}schedule_rename\0\u{3}schedule_set_notify\0\u{3}schedule_update_message\0\u{3}schedule_abandon_mutation\0\u{3}schedule_retry_mutation\0\u{4}\u{3}schedule_form_open\0\u{3}schedule_form_close\0\u{3}schedule_form_set_message\0\u{3}schedule_form_set_title\0\u{3}schedule_form_set_notify\0\u{3}schedule_form_select_project\0\u{3}schedule_form_select_machine\0\u{3}schedule_form_select_agent\0\u{3}schedule_form_select_model\0\u{3}schedule_form_update_timing\0\u{3}schedule_form_submit\0\u{3}schedule_form_retry_models\0\u{3}machine_status_watch\0\u{3}machine_status_retry\0\u{3}machine_status_tab\0\u{3}machine_status_scrub\0\u{3}machine_status_cleanup\0\u{3}machine_status_poll_tick\0\u{4}\u{5}machine_settings_open\0\u{3}machine_settings_select_agent\0\u{3}update_machine_agent_defaults\0\u{3}update_machine_daemon_settings\0\u{3}update_direct_preference\0\u{4}\u{2}toggle_machine_agent\0\u{4}\u{4}update_client_name\0\u{4}\u{5}set_notification_pref\0\u{3}set_appearance_pref\0\u{3}conn_check_status\0\u{3}client_update_state\0\u{3}check_for_updates\0\u{3}usage_screen_open\0\u{3}usage_screen_retry\0\u{3}usage_cache_loaded\0\u{3}usage_screen_select_sort\0\u{3}usage_screen_select_series\0\u{3}usage_screen_scrub\0\u{4}\u{5}resolve_notification_tap\0\u{3}new_session_close\0\u{3}schedule_cache_written\0\u{3}usage_cache_written\0\u{4}\u{7}transport_config\0\u{4}\u{2}direct_signal_received\0\u{3}direct_signal_delivery\0\u{4}\u{3}direct_pc_created\0\u{3}direct_pc_description\0\u{3}direct_pc_remote_set\0\u{3}direct_pc_candidates_added\0\u{3}direct_pc_local_candidate\0\u{3}direct_pc_state\0\u{3}direct_pc_stun_error\0\u{3}direct_pc_closed\0\u{3}direct_dc_state\0\u{3}direct_dc_stats\0\u{3}direct_retry_now\0\u{3}direct_refresh_diagnostics\0\u{3}direct_bulk_transfer_begin\0\u{3}direct_bulk_transfer_done\0\u{3}terminal_stream\0\u{3}direct_preferences_loaded\0\u{3}terminal_history\0\u{3}direct_pc_probe_received\0\u{4}\u{7}relay_pipe_config\0\u{3}relay_rpc_result\0\u{3}stream_raw_frame\0\u{3}refresh_devices\0\u{3}push_rpc\0\u{3}session_fetch_image\0\u{3}terminal_open\0\u{3}terminal_close\0\u{3}terminal_socket\0\u{3}terminal_inbound_bytes\0\u{3}terminal_input\0\u{3}terminal_confirm_rebuild\0\u{4}\u{9}security_config\0\u{4}\u{2}security_key_signed\0\u{3}security_key_agreed\0\u{4}\u{3}security_crypto_batch_done\0\u{3}security_op_request\0\u{3}seed_demo_world\0\u{3}security_key_generated\0\u{3}security_key_encapsulated\0\u{3}security_storage_result\0\u{3}security_rpc_result\0\u{3}security_foreground\0\u{3}security_action\0\u{3}security_open_notify\0\u{4}\u{5}client_init\0\u{3}storage_persist_result\0\u{3}push_unregistered\0\u{3}account_caches_cleared\0\u{3}app_root_retry_bootstrap\0\u{3}app_root_verify_pending_op\0\u{3}app_root_dismiss_upgrade_notice\0\u{3}onboarding_set_mode\0\u{3}onboarding_create_edit\0\u{3}onboarding_create_submit\0\u{3}onboarding_join_edit\0\u{3}onboarding_join_submit\0\u{3}onboarding_join_confirm_sas\0\u{3}onboarding_join_cancel\0\u{3}onboarding_join_banner_action\0\u{3}onboarding_recovery_edit\0\u{3}onboarding_recovery_action\0\u{4}\u{3}add_device_open\0\u{3}add_device_close\0\u{3}add_device_action\0\u{4}\u{2}account_security_open\0\u{3}account_security_action\0\u{3}account_security_close\0\u{3}handoff_action\0\u{3}external_logout\0\u{3}exit_request\0\u{3}exit_confirm\0\u{b}new_session_set_prompt\0\u{b}shared_file_local_state\0\u{b}terminal_direct_open\0\u{b}terminal_direct_close\0\u{b}terminal_direct_leg\0\u{b}terminal_direct_input\0\u{b}terminal_direct_output\0\u{b}terminal_direct_confirm_rebuild\0\u{c}7\u{1}\u{c}X\u{3}\u{1}\u{c}h\u{6}\u{6}")
 
   fileprivate class _StorageClass {
     var _event: PBCoreEvent.OneOf_Event?
@@ -13223,84 +12945,6 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
             _storage._event = .directPcProbeReceived(v)
           }
         }()
-        case 424: try {
-          var v: PBCoreTerminalDirectOpenEvent?
-          var hadOneofValue = false
-          if let current = _storage._event {
-            hadOneofValue = true
-            if case .terminalDirectOpen(let m) = current {v = m}
-          }
-          try decoder.decodeSingularMessageField(value: &v)
-          if let v = v {
-            if hadOneofValue {try decoder.handleConflictingOneOf()}
-            _storage._event = .terminalDirectOpen(v)
-          }
-        }()
-        case 425: try {
-          var v: PBCoreTerminalDirectCloseEvent?
-          var hadOneofValue = false
-          if let current = _storage._event {
-            hadOneofValue = true
-            if case .terminalDirectClose(let m) = current {v = m}
-          }
-          try decoder.decodeSingularMessageField(value: &v)
-          if let v = v {
-            if hadOneofValue {try decoder.handleConflictingOneOf()}
-            _storage._event = .terminalDirectClose(v)
-          }
-        }()
-        case 426: try {
-          var v: PBCoreTerminalDirectLegEvent?
-          var hadOneofValue = false
-          if let current = _storage._event {
-            hadOneofValue = true
-            if case .terminalDirectLeg(let m) = current {v = m}
-          }
-          try decoder.decodeSingularMessageField(value: &v)
-          if let v = v {
-            if hadOneofValue {try decoder.handleConflictingOneOf()}
-            _storage._event = .terminalDirectLeg(v)
-          }
-        }()
-        case 427: try {
-          var v: PBCoreTerminalDirectInputEvent?
-          var hadOneofValue = false
-          if let current = _storage._event {
-            hadOneofValue = true
-            if case .terminalDirectInput(let m) = current {v = m}
-          }
-          try decoder.decodeSingularMessageField(value: &v)
-          if let v = v {
-            if hadOneofValue {try decoder.handleConflictingOneOf()}
-            _storage._event = .terminalDirectInput(v)
-          }
-        }()
-        case 428: try {
-          var v: PBCoreTerminalDirectOutputEvent?
-          var hadOneofValue = false
-          if let current = _storage._event {
-            hadOneofValue = true
-            if case .terminalDirectOutput(let m) = current {v = m}
-          }
-          try decoder.decodeSingularMessageField(value: &v)
-          if let v = v {
-            if hadOneofValue {try decoder.handleConflictingOneOf()}
-            _storage._event = .terminalDirectOutput(v)
-          }
-        }()
-        case 429: try {
-          var v: PBCoreTerminalDirectConfirmRebuildAction?
-          var hadOneofValue = false
-          if let current = _storage._event {
-            hadOneofValue = true
-            if case .terminalDirectConfirmRebuild(let m) = current {v = m}
-          }
-          try decoder.decodeSingularMessageField(value: &v)
-          if let v = v {
-            if hadOneofValue {try decoder.handleConflictingOneOf()}
-            _storage._event = .terminalDirectConfirmRebuild(v)
-          }
-        }()
         case 430: try {
           var v: PBRelayPipeConfigEvent?
           var hadOneofValue = false
@@ -14836,30 +14480,6 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
       case .directPcProbeReceived?: try {
         guard case .directPcProbeReceived(let v)? = _storage._event else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 423)
-      }()
-      case .terminalDirectOpen?: try {
-        guard case .terminalDirectOpen(let v)? = _storage._event else { preconditionFailure() }
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 424)
-      }()
-      case .terminalDirectClose?: try {
-        guard case .terminalDirectClose(let v)? = _storage._event else { preconditionFailure() }
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 425)
-      }()
-      case .terminalDirectLeg?: try {
-        guard case .terminalDirectLeg(let v)? = _storage._event else { preconditionFailure() }
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 426)
-      }()
-      case .terminalDirectInput?: try {
-        guard case .terminalDirectInput(let v)? = _storage._event else { preconditionFailure() }
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 427)
-      }()
-      case .terminalDirectOutput?: try {
-        guard case .terminalDirectOutput(let v)? = _storage._event else { preconditionFailure() }
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 428)
-      }()
-      case .terminalDirectConfirmRebuild?: try {
-        guard case .terminalDirectConfirmRebuild(let v)? = _storage._event else { preconditionFailure() }
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 429)
       }()
       case .relayPipeConfig?: try {
         guard case .relayPipeConfig(let v)? = _storage._event else { preconditionFailure() }
@@ -16629,7 +16249,7 @@ extension PBCoreRunMachineCommandResultEffect: SwiftProtobuf.Message, SwiftProto
 
 extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Effect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}render\0\u{3}open_stream\0\u{3}close_stream\0\u{3}ensure_token\0\u{3}discard_token\0\u{4}\u{2}schedule_timer\0\u{3}cancel_timer\0\u{3}cache_read\0\u{3}cache_write\0\u{3}cache_delete\0\u{1}rpc\0\u{3}dispatch_command\0\u{3}save_home_scope\0\u{1}navigate\0\u{4}\u{2}request_entropy\0\u{3}run_machine_command_result\0\u{3}cancel_dispatch\0\u{3}relay_rpc\0\u{3}relay_rpc_cancel\0\u{3}push_rpc_result\0\u{3}session_image_loaded\0\u{3}terminal_open_socket\0\u{3}terminal_close_socket\0\u{3}terminal_deliver_output\0\u{3}terminal_state_changed\0\u{4}\u{d}session_restore_composer\0\u{4}\u{2}shared_file_scan_local\0\u{3}shared_file_inspect_disk\0\u{3}shared_file_write_chunk\0\u{3}shared_file_verify_and_commit\0\u{3}shared_file_delete_partial\0\u{3}shared_file_delete_local\0\u{3}shared_file_delete_session\0\u{3}shared_file_clear_all\0\u{3}shared_file_completed\0\u{4}\u{a}schedule_read_cache\0\u{3}schedule_delete_cache\0\u{3}schedule_load_seen\0\u{3}schedule_save_seen\0\u{3}schedule_dismiss_notifications\0\u{3}schedule_navigate\0\u{4}\u{5}schedule_machine_poll\0\u{3}direct_preference\0\u{3}rename_client\0\u{3}check_updates\0\u{3}persist_client_prefs\0\u{3}prepare_cleanup_session\0\u{3}usage_cache_write\0\u{3}watched_sessions\0\u{3}usage_cache_request\0\u{3}sync_push_subscription\0\u{3}draft_storage_list\0\u{3}draft_storage_read\0\u{3}draft_storage_write\0\u{3}draft_storage_delete\0\u{3}draft_storage_clear_all\0\u{3}attachment_prepare_image\0\u{3}attachment_hash_file\0\u{3}attachment_read_chunk\0\u{3}attachment_release_local\0\u{3}schedule_write_cache\0\u{4}\u{d}direct_signal_send\0\u{3}direct_pc_create\0\u{3}direct_pc_describe\0\u{3}direct_pc_set_remote\0\u{3}direct_pc_add_candidates\0\u{3}direct_pc_confirm\0\u{3}direct_pc_close\0\u{3}direct_dc_read_stats\0\u{4}\u{2}direct_bulk_route\0\u{3}terminal_reopen\0\u{3}direct_retry_now_result\0\u{3}terminal_history_send_request\0\u{3}terminal_history_updated\0\u{3}direct_pc_send_probe\0\u{3}terminal_direct_send\0\u{3}terminal_direct_deliver\0\u{3}terminal_direct_attach_relay\0\u{3}terminal_direct_state\0\u{4}\u{a}security_key_sign\0\u{3}security_key_agree\0\u{4}\u{4}security_crypto_batch\0\u{3}security_op_result\0\u{3}security_key_generate\0\u{3}security_key_encapsulate\0\u{3}security_key_discard\0\u{3}security_storage\0\u{3}security_rpc\0\u{3}security_workflow_result\0\u{3}security_status_changed\0\u{3}security_notify_opened\0\u{3}security_token_updated\0\u{3}request_storage_persist\0\u{3}unregister_push_on_exit\0\u{3}clear_account_caches\0\u{3}account_runtime_changed\0\u{3}dismiss_upgrade_notice\0\u{3}persist_last_server\0\u{b}attachments_settled\0\u{b}session_resend_attachments\0\u{c}\u{10}\u{1}\u{c})\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}render\0\u{3}open_stream\0\u{3}close_stream\0\u{3}ensure_token\0\u{3}discard_token\0\u{4}\u{2}schedule_timer\0\u{3}cancel_timer\0\u{3}cache_read\0\u{3}cache_write\0\u{3}cache_delete\0\u{1}rpc\0\u{3}dispatch_command\0\u{3}save_home_scope\0\u{1}navigate\0\u{4}\u{2}request_entropy\0\u{3}run_machine_command_result\0\u{3}cancel_dispatch\0\u{3}relay_rpc\0\u{3}relay_rpc_cancel\0\u{3}push_rpc_result\0\u{3}session_image_loaded\0\u{3}terminal_open_socket\0\u{3}terminal_close_socket\0\u{3}terminal_deliver_output\0\u{3}terminal_state_changed\0\u{4}\u{d}session_restore_composer\0\u{4}\u{2}shared_file_scan_local\0\u{3}shared_file_inspect_disk\0\u{3}shared_file_write_chunk\0\u{3}shared_file_verify_and_commit\0\u{3}shared_file_delete_partial\0\u{3}shared_file_delete_local\0\u{3}shared_file_delete_session\0\u{3}shared_file_clear_all\0\u{3}shared_file_completed\0\u{4}\u{a}schedule_read_cache\0\u{3}schedule_delete_cache\0\u{3}schedule_load_seen\0\u{3}schedule_save_seen\0\u{3}schedule_dismiss_notifications\0\u{3}schedule_navigate\0\u{4}\u{5}schedule_machine_poll\0\u{3}direct_preference\0\u{3}rename_client\0\u{3}check_updates\0\u{3}persist_client_prefs\0\u{3}prepare_cleanup_session\0\u{3}usage_cache_write\0\u{3}watched_sessions\0\u{3}usage_cache_request\0\u{3}sync_push_subscription\0\u{3}draft_storage_list\0\u{3}draft_storage_read\0\u{3}draft_storage_write\0\u{3}draft_storage_delete\0\u{3}draft_storage_clear_all\0\u{3}attachment_prepare_image\0\u{3}attachment_hash_file\0\u{3}attachment_read_chunk\0\u{3}attachment_release_local\0\u{3}schedule_write_cache\0\u{4}\u{d}direct_signal_send\0\u{3}direct_pc_create\0\u{3}direct_pc_describe\0\u{3}direct_pc_set_remote\0\u{3}direct_pc_add_candidates\0\u{3}direct_pc_confirm\0\u{3}direct_pc_close\0\u{3}direct_dc_read_stats\0\u{4}\u{2}direct_bulk_route\0\u{3}terminal_reopen\0\u{3}direct_retry_now_result\0\u{3}terminal_history_send_request\0\u{3}terminal_history_updated\0\u{3}direct_pc_send_probe\0\u{3}terminal_direct_send\0\u{4}\u{d}security_key_sign\0\u{3}security_key_agree\0\u{4}\u{4}security_crypto_batch\0\u{3}security_op_result\0\u{3}security_key_generate\0\u{3}security_key_encapsulate\0\u{3}security_key_discard\0\u{3}security_storage\0\u{3}security_rpc\0\u{3}security_workflow_result\0\u{3}security_status_changed\0\u{3}security_notify_opened\0\u{3}security_token_updated\0\u{3}request_storage_persist\0\u{3}unregister_push_on_exit\0\u{3}clear_account_caches\0\u{3}account_runtime_changed\0\u{3}dismiss_upgrade_notice\0\u{3}persist_last_server\0\u{b}attachments_settled\0\u{b}session_resend_attachments\0\u{b}terminal_direct_deliver\0\u{b}terminal_direct_attach_relay\0\u{b}terminal_direct_state\0\u{c}\u{10}\u{1}\u{c})\u{1}\u{c}v\u{1}\u{1}\u{c}w\u{1}\u{1}\u{c}x\u{1}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -17625,45 +17245,6 @@ extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
           self.effect = .terminalDirectSend(v)
         }
       }()
-      case 118: try {
-        var v: PBCoreTerminalDirectDeliverEffect?
-        var hadOneofValue = false
-        if let current = self.effect {
-          hadOneofValue = true
-          if case .terminalDirectDeliver(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.effect = .terminalDirectDeliver(v)
-        }
-      }()
-      case 119: try {
-        var v: PBCoreTerminalDirectAttachRelayEffect?
-        var hadOneofValue = false
-        if let current = self.effect {
-          hadOneofValue = true
-          if case .terminalDirectAttachRelay(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.effect = .terminalDirectAttachRelay(v)
-        }
-      }()
-      case 120: try {
-        var v: PBCoreTerminalDirectStateEffect?
-        var hadOneofValue = false
-        if let current = self.effect {
-          hadOneofValue = true
-          if case .terminalDirectState(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.effect = .terminalDirectState(v)
-        }
-      }()
       case 130: try {
         var v: PBSecurityKeySignEffect?
         var hadOneofValue = false
@@ -18225,18 +17806,6 @@ extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
     case .terminalDirectSend?: try {
       guard case .terminalDirectSend(let v)? = self.effect else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 117)
-    }()
-    case .terminalDirectDeliver?: try {
-      guard case .terminalDirectDeliver(let v)? = self.effect else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 118)
-    }()
-    case .terminalDirectAttachRelay?: try {
-      guard case .terminalDirectAttachRelay(let v)? = self.effect else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 119)
-    }()
-    case .terminalDirectState?: try {
-      guard case .terminalDirectState(let v)? = self.effect else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 120)
     }()
     case .securityKeySign?: try {
       guard case .securityKeySign(let v)? = self.effect else { preconditionFailure() }

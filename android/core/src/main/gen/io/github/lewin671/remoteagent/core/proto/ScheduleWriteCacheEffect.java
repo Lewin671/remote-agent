@@ -16,8 +16,6 @@ public  final class ScheduleWriteCacheEffect extends
     ScheduleWriteCacheEffectOrBuilder {
   private ScheduleWriteCacheEffect() {
     machineId_ = "";
-    requestId_ = "";
-    sealedResultBytes_ = com.google.protobuf.ByteString.EMPTY;
     blob_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int MACHINE_ID_FIELD_NUMBER = 2;
@@ -66,81 +64,6 @@ public  final class ScheduleWriteCacheEffect extends
     checkByteStringIsUtf8(value);
     machineId_ = value.toStringUtf8();
 
-  }
-
-  public static final int REQUEST_ID_FIELD_NUMBER = 3;
-  private java.lang.String requestId_;
-  /**
-   * <code>string request_id = 3 [json_name = "requestId"];</code>
-   * @return The requestId.
-   */
-  @java.lang.Override
-  public java.lang.String getRequestId() {
-    return requestId_;
-  }
-  /**
-   * <code>string request_id = 3 [json_name = "requestId"];</code>
-   * @return The bytes for requestId.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getRequestIdBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(requestId_);
-  }
-  /**
-   * <code>string request_id = 3 [json_name = "requestId"];</code>
-   * @param value The requestId to set.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setRequestId(
-      java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-
-    requestId_ = value;
-  }
-  /**
-   * <code>string request_id = 3 [json_name = "requestId"];</code>
-   */
-  private void clearRequestId() {
-
-    requestId_ = getDefaultInstance().getRequestId();
-  }
-  /**
-   * <code>string request_id = 3 [json_name = "requestId"];</code>
-   * @param value The bytes for requestId to set.
-   */
-  private void setRequestIdBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    requestId_ = value.toStringUtf8();
-
-  }
-
-  public static final int SEALED_RESULT_BYTES_FIELD_NUMBER = 4;
-  private com.google.protobuf.ByteString sealedResultBytes_;
-  /**
-   * <code>bytes sealed_result_bytes = 4 [json_name = "sealedResultBytes"];</code>
-   * @return The sealedResultBytes.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString getSealedResultBytes() {
-    return sealedResultBytes_;
-  }
-  /**
-   * <code>bytes sealed_result_bytes = 4 [json_name = "sealedResultBytes"];</code>
-   * @param value The sealedResultBytes to set.
-   */
-  private void setSealedResultBytes(com.google.protobuf.ByteString value) {
-    java.lang.Class<?> valueClass = value.getClass();
-  
-    sealedResultBytes_ = value;
-  }
-  /**
-   * <code>bytes sealed_result_bytes = 4 [json_name = "sealedResultBytes"];</code>
-   */
-  private void clearSealedResultBytes() {
-
-    sealedResultBytes_ = getDefaultInstance().getSealedResultBytes();
   }
 
   public static final int BLOB_FIELD_NUMBER = 5;
@@ -329,83 +252,6 @@ public  final class ScheduleWriteCacheEffect extends
     }
 
     /**
-     * <code>string request_id = 3 [json_name = "requestId"];</code>
-     * @return The requestId.
-     */
-    @java.lang.Override
-    public java.lang.String getRequestId() {
-      return instance.getRequestId();
-    }
-    /**
-     * <code>string request_id = 3 [json_name = "requestId"];</code>
-     * @return The bytes for requestId.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getRequestIdBytes() {
-      return instance.getRequestIdBytes();
-    }
-    /**
-     * <code>string request_id = 3 [json_name = "requestId"];</code>
-     * @param value The requestId to set.
-     * @return This builder for chaining.
-     */
-    public Builder setRequestId(
-        java.lang.String value) {
-      copyOnWrite();
-      instance.setRequestId(value);
-      return this;
-    }
-    /**
-     * <code>string request_id = 3 [json_name = "requestId"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearRequestId() {
-      copyOnWrite();
-      instance.clearRequestId();
-      return this;
-    }
-    /**
-     * <code>string request_id = 3 [json_name = "requestId"];</code>
-     * @param value The bytes for requestId to set.
-     * @return This builder for chaining.
-     */
-    public Builder setRequestIdBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setRequestIdBytes(value);
-      return this;
-    }
-
-    /**
-     * <code>bytes sealed_result_bytes = 4 [json_name = "sealedResultBytes"];</code>
-     * @return The sealedResultBytes.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString getSealedResultBytes() {
-      return instance.getSealedResultBytes();
-    }
-    /**
-     * <code>bytes sealed_result_bytes = 4 [json_name = "sealedResultBytes"];</code>
-     * @param value The sealedResultBytes to set.
-     * @return This builder for chaining.
-     */
-    public Builder setSealedResultBytes(com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setSealedResultBytes(value);
-      return this;
-    }
-    /**
-     * <code>bytes sealed_result_bytes = 4 [json_name = "sealedResultBytes"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearSealedResultBytes() {
-      copyOnWrite();
-      instance.clearSealedResultBytes();
-      return this;
-    }
-
-    /**
      * <pre>
      * Opaque encoded ScheduleCacheBlob bytes for pure-byte shell storage.
      * </pre>
@@ -462,13 +308,11 @@ public  final class ScheduleWriteCacheEffect extends
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
             "machineId_",
-            "requestId_",
-            "sealedResultBytes_",
             "blob_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0000\u0002\u0005\u0004\u0000\u0000\u0000\u0002\u0208\u0003\u0208" +
-              "\u0004\n\u0005\n";
+              "\u0000\u0002\u0000\u0000\u0002\u0005\u0002\u0000\u0000\u0000\u0002\u0208\u0005\n" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

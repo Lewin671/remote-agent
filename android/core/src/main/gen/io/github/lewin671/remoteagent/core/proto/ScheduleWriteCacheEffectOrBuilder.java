@@ -23,24 +23,6 @@ public interface ScheduleWriteCacheEffectOrBuilder extends
       getMachineIdBytes();
 
   /**
-   * <code>string request_id = 3 [json_name = "requestId"];</code>
-   * @return The requestId.
-   */
-  java.lang.String getRequestId();
-  /**
-   * <code>string request_id = 3 [json_name = "requestId"];</code>
-   * @return The bytes for requestId.
-   */
-  com.google.protobuf.ByteString
-      getRequestIdBytes();
-
-  /**
-   * <code>bytes sealed_result_bytes = 4 [json_name = "sealedResultBytes"];</code>
-   * @return The sealedResultBytes.
-   */
-  com.google.protobuf.ByteString getSealedResultBytes();
-
-  /**
    * <pre>
    * Opaque encoded ScheduleCacheBlob bytes for pure-byte shell storage.
    * </pre>

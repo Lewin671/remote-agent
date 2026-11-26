@@ -114,29 +114,10 @@ func (c *Core) View(screen *corev1.Screen) (*corev1.ViewModel, error) {
 			},
 		}, nil
 
-	case *corev1.Screen_SyncState:
-		return &corev1.ViewModel{
-			View: &corev1.ViewModel_SyncState{
-				SyncState: c.buildSyncStateView(),
-			},
-		}, nil
-
 	case *corev1.Screen_Connection:
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_Connection{
 				Connection: screens.BuildConnection(c.m.state, c.buildSyncStateView()),
-			},
-		}, nil
-
-	case *corev1.Screen_SessionData:
-		var sid string
-		if s.SessionData != nil {
-			sid = s.SessionData.SessionId
-		}
-		errReason, fetchErrReason := c.m.sync.SessionErrorReasons(sid)
-		return &corev1.ViewModel{
-			View: &corev1.ViewModel_SessionData{
-				SessionData: screens.ApplySessionDataTexts(c.m.sync.BuildSessionDataView(sid), errReason, fetchErrReason),
 			},
 		}, nil
 

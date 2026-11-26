@@ -701,12 +701,9 @@ func (c *Core) processSchedulesSyncStep(res sync.StepResult, effects *[]*corev1.
 					if sc.SealedResult != nil && len(sc.Result.GetSchedule().GetResultJson()) > 0 {
 						if c.m.sync.CanUseMachineCache(meta.machineID) {
 							if sealedBytes, err := sc.SealedResult.Marshal(); err == nil && len(sealedBytes) > 0 {
-								eff := &corev1.ScheduleWriteCacheEffect{MachineId: meta.machineID}
-								if c.m.sync.RelayPipeEnabled() {
-									eff.Blob = encodeScheduleCacheBlob(sc.RequestID, sealedBytes)
-								} else {
-									eff.RequestId = sc.RequestID
-									eff.SealedResultBytes = sealedBytes
+								eff := &corev1.ScheduleWriteCacheEffect{
+									MachineId: meta.machineID,
+									Blob:      encodeScheduleCacheBlob(sc.RequestID, sealedBytes),
 								}
 								*effects = append(*effects, &corev1.Effect{
 									Effect: &corev1.Effect_ScheduleWriteCache{ScheduleWriteCache: eff},

@@ -264,10 +264,7 @@ import {
   type DirectPcSetRemoteEffect,
   type DirectPreferenceEntry,
   type DirectSignalSendEffect,
-  type TerminalDirectAttachRelayEffect,
-  type TerminalDirectDeliverEffect,
   type TerminalDirectSendEffect,
-  type TerminalDirectStateEffect,
 } from "../gen/remoteagent/core/v1/transport_pb";
 import { ApprovalMode, SendMode, type Agent } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice, UsageRangePreset } from "../gen/remoteagent/v1/local_pb";
@@ -544,9 +541,6 @@ export interface CoreExecutor {
   directPcSendProbe?(eff: DirectPcSendProbeEffect): void;
   directDcReadStats?(eff: DirectDcReadStatsEffect): void;
   terminalDirectSend?(eff: TerminalDirectSendEffect): void;
-  terminalDirectDeliver?(eff: TerminalDirectDeliverEffect): void;
-  terminalDirectAttachRelay?(eff: TerminalDirectAttachRelayEffect): void;
-  terminalDirectState?(eff: TerminalDirectStateEffect): void;
   terminalOpenSocket?(eff: TerminalOpenSocketEffect): void;
   terminalCloseSocket?(eff: TerminalCloseSocketEffect): void;
   terminalDeliverOutput?(eff: TerminalDeliverOutputEffect): void;
@@ -3984,18 +3978,6 @@ export class CoreHost {
 
       case "terminalDirectSend":
         this.executor?.terminalDirectSend?.(val.value);
-        break;
-
-      case "terminalDirectDeliver":
-        this.executor?.terminalDirectDeliver?.(val.value);
-        break;
-
-      case "terminalDirectAttachRelay":
-        this.executor?.terminalDirectAttachRelay?.(val.value);
-        break;
-
-      case "terminalDirectState":
-        this.executor?.terminalDirectState?.(val.value);
         break;
 
       case "terminalOpenSocket":

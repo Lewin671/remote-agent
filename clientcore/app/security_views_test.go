@@ -1075,12 +1075,12 @@ func TestExternalLogoutResetsCoreInPlaceAndIsolatesNewAccount(t *testing.T) {
 			},
 		},
 	})
-	sv, err := c.View(&corev1.Screen{Screen: &corev1.Screen_SyncState{SyncState: &corev1.SyncStateScreenRequest{}}})
+	dv, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Devices{Devices: &corev1.DevicesScreenRequest{}}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sv.GetSyncState().SelfDeviceId != "dev-b" || len(sv.GetSyncState().Machines) != 1 || sv.GetSyncState().Machines[0].MachineId != "mach-b" {
-		t.Fatalf("Account B contaminated after ExternalLogout: %+v", sv.GetSyncState().Machines)
+	if dv.GetDevices().AuthorityDeviceId != "dev-b" || len(dv.GetDevices().Computers) != 1 || dv.GetDevices().Computers[0].MachineId != "mach-b" {
+		t.Fatalf("Account B contaminated after ExternalLogout: auth=%q computers=%+v", dv.GetDevices().AuthorityDeviceId, dv.GetDevices().Computers)
 	}
 }
 

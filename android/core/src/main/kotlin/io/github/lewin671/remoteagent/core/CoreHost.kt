@@ -209,9 +209,6 @@ class CoreHost(
     var onDirectPcSendProbe: (DirectPcSendProbeEffect) -> Unit = {}
     var onDirectDcReadStats: (DirectDcReadStatsEffect) -> Unit = {}
     var onTerminalDirectSend: (TerminalDirectSendEffect) -> Unit = {}
-    var onTerminalDirectDeliver: (TerminalDirectDeliverEffect) -> Unit = {}
-    var onTerminalDirectAttachRelay: (TerminalDirectAttachRelayEffect) -> Unit = {}
-    var onTerminalDirectState: (TerminalDirectStateEffect) -> Unit = {}
     var onRenameClient: (RenameClientEffect) -> Unit = {}
     var onCheckUpdates: (CheckUpdatesEffect) -> Unit = {}
     var onPersistClientPrefs: (PersistClientPrefsEffect) -> Unit = {}
@@ -620,9 +617,7 @@ class CoreHost(
     private fun handleEffectOnWorker(effect: Effect) {
         when (effect.effectCase) {
             Effect.EffectCase.RENDER -> {
-                val targets = effect.render.screensList.map {
-                    if (it == ScreenTarget.SCREEN_TARGET_SESSION_DATA) ScreenTarget.SCREEN_TARGET_SESSION else it
-                }.distinct()
+                val targets = effect.render.screensList.distinct()
                 if (coalescingRenders) {
                     synchronized(pendingRenders) {
                         pendingRenders.addAll(targets)
@@ -769,9 +764,6 @@ class CoreHost(
                 terminalHistoryUpdatedListeners[eff.terminalId]?.invoke(eff)
             }
             Effect.EffectCase.TERMINAL_DIRECT_SEND -> onTerminalDirectSend(effect.terminalDirectSend)
-            Effect.EffectCase.TERMINAL_DIRECT_DELIVER -> onTerminalDirectDeliver(effect.terminalDirectDeliver)
-            Effect.EffectCase.TERMINAL_DIRECT_ATTACH_RELAY -> onTerminalDirectAttachRelay(effect.terminalDirectAttachRelay)
-            Effect.EffectCase.TERMINAL_DIRECT_STATE -> onTerminalDirectState(effect.terminalDirectState)
             Effect.EffectCase.TERMINAL_OPEN_SOCKET -> onTerminalOpenSocket(effect.terminalOpenSocket)
             Effect.EffectCase.TERMINAL_CLOSE_SOCKET -> onTerminalCloseSocket(effect.terminalCloseSocket)
             Effect.EffectCase.TERMINAL_DELIVER_OUTPUT -> onTerminalDeliverOutput(effect.terminalDeliverOutput)
@@ -2071,17 +2063,6 @@ class CoreHost(
         if (machineId.isNotEmpty() && !closed.get()) onHydrateUsageCache(machineId)
     }
 
-    fun deliverUsageCacheLoaded(machineId: String, snapshot: UsageStatsResponse) {
-        if (machineId.isEmpty() || closed.get()) return
-        send {
-            setUsageCacheLoaded(
-                UsageCacheLoadedEvent.newBuilder()
-                    .setMachineId(machineId)
-                    .setSnapshot(snapshot),
-            )
-        }
-    }
-
     fun deliverUsageCacheLoadedRaw(machineId: String, preset: UsageRangePreset, rawSnapshot: ByteArray) {
         if (machineId.isEmpty() || rawSnapshot.isEmpty() || closed.get()) return
         send {
@@ -2346,9 +2327,6 @@ class CoreHost(
         onDirectPcSendProbe = {}
         onDirectDcReadStats = {}
         onTerminalDirectSend = {}
-        onTerminalDirectDeliver = {}
-        onTerminalDirectAttachRelay = {}
-        onTerminalDirectState = {}
         onWatchedSessions = {}
         onUsageCacheRequest = {}
         onUsageCacheWrite = {}

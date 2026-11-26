@@ -4,9 +4,7 @@ package remoteagent.core.v1;
 
 import "remoteagent/core/v1/connection_view.proto";
 import "remoteagent/core/v1/home_view.proto";
-import "remoteagent/core/v1/projection.proto";
 import "remoteagent/core/v1/text.proto";
-import "remoteagent/v1/event.proto";
 import "remoteagent/v1/local.proto";
 import "remoteagent/v1/relay.proto";
 import "remoteagent/v1/remote.proto";
@@ -164,40 +162,4 @@ message SyncStateView {
   ConnBannerView conn_banner = 50;
   Text clock_skew_banner_text = 51;
   Text lease_renewal_advice = 52;
-}
-
-// Transitional view exposing per-session buffer status, Core-derived ProjectionState, latest LiveSnapshot,
-// and transitional transcript events for the unmigrated Step 3 session screen.
-// Delete once Step 3 moves the session timeline/screen into Core.
-message SessionDataView {
-  string session_id = 1;
-  bool found = 2;
-  SyncSessionView session = 3;
-
-  bool loading = 4;
-  bool loaded = 5;
-  bool awaiting_cache = 6;
-  bool backfilling = 7;
-  bool fetching = 8;
-  bool has_gap = 9;
-  bool tail_requested = 10;
-  bool retired = 11;
-  bool retrying_corrupt_cache = 12;
-  Text error = 13;
-  Text fetch_error = 14;
-
-  uint64 prefix_len = 15;
-  int32 pending_count = 16;
-  uint64 last_seq = 17;
-  repeated uint64 unavailable_seqs = 18;
-  uint32 unavailable_count = 19;
-
-  ProjectionState projection = 20;
-  remoteagent.v1.LiveSnapshot live_snapshot = 21;
-  SyncPendingAction pending = 22;
-
-  // Transitional raw transcript events (contiguous tail or prefix from Core's EventBuffer) needed only because
-  // ProjectionState does not carry chat rows (UserMessage, AgentMessage, Reasoning, ToolCall, TurnEnded, etc.)
-  // for Step 3's unmigrated shell chat builders. Remove when Step 3 migrates the session screen into Core.
-  repeated remoteagent.v1.Event events = 23;
 }

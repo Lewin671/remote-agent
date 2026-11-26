@@ -1259,8 +1259,8 @@ func TestSyncStateAndSessionDataTransitionViews(t *testing.T) {
 		},
 	})
 	targets := listsRes.Dirty.ScreenTargets()
-	if !slices.Contains(targets, corev1.ScreenTarget_SCREEN_TARGET_SYNC_STATE) || !slices.Contains(targets, corev1.ScreenTarget_SCREEN_TARGET_SESSION_DATA) {
-		t.Fatalf("expected SyncState and SessionData render targets on ListsFetched, got %v", targets)
+	if !slices.Contains(targets, corev1.ScreenTarget_SCREEN_TARGET_HOME) || !slices.Contains(targets, corev1.ScreenTarget_SCREEN_TARGET_CONNECTION) {
+		t.Fatalf("expected Home and Connection render targets on ListsFetched, got %v", targets)
 	}
 
 	sv := e.BuildSyncStateView()
@@ -1277,8 +1277,8 @@ func TestSyncStateAndSessionDataTransitionViews(t *testing.T) {
 		t.Fatalf("unexpected SyncStateView devices: %+v", sv.Devices)
 	}
 
-	if missing := e.BuildSessionDataView("missing"); missing.Found {
-		t.Fatalf("expected missing session Found=false")
+	if e.Buffer("missing") != nil || e.sessions["missing"] != nil {
+		t.Fatalf("expected missing session to have no session entry or buffer")
 	}
 
 	// Watch s1 -> awaiting cache -> broken cache -> retrying_corrupt_cache -> fetched with unavailable + approval.
@@ -1295,9 +1295,9 @@ func TestSyncStateAndSessionDataTransitionViews(t *testing.T) {
 			cacheOp = cr.GetEvents().OpId
 		}
 	}
-	loadingView := e.BuildSessionDataView("s1")
-	if !loadingView.Found || !loadingView.Loading || !loadingView.AwaitingCache || loadingView.Loaded {
-		t.Fatalf("expected Loading+AwaitingCache before CacheEventsLoaded, got %+v", loadingView)
+	loadingBuf := e.Buffer("s1")
+	if loadingBuf == nil || !loadingBuf.awaitingCache || loadingBuf.loaded {
+		t.Fatalf("expected awaitingCache=true loaded=false before CacheEventsLoaded, got %+v", loadingBuf)
 	}
 
 	_, brokenRes := e.HandleEvent(&corev1.Event{
@@ -1306,9 +1306,8 @@ func TestSyncStateAndSessionDataTransitionViews(t *testing.T) {
 			CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{OpId: cacheOp, SessionId: "s1", Broken: true},
 		},
 	})
-	corruptView := e.BuildSessionDataView("s1")
-	if !corruptView.RetryingCorruptCache || !corruptView.Fetching {
-		t.Fatalf("expected RetryingCorruptCache+Fetching after broken cache drop, got %+v", corruptView)
+	if !loadingBuf.retryingCorruptCache || !loadingBuf.fetching {
+		t.Fatalf("expected retryingCorruptCache+fetching after broken cache drop, got retry=%v fetch=%v", loadingBuf.retryingCorruptCache, loadingBuf.fetching)
 	}
 	var getEventsOp uint64
 	for _, eff := range brokenRes.Effects {
@@ -1334,16 +1333,17 @@ func TestSyncStateAndSessionDataTransitionViews(t *testing.T) {
 	if !evRes.Dirty.SessionData {
 		t.Fatalf("expected Dirty.SessionData on EventsPageFetched")
 	}
-	doneView := e.BuildSessionDataView("s1")
-	if !doneView.Loaded || doneView.Loading || doneView.HasGap || doneView.RetryingCorruptCache {
-		t.Fatalf("unexpected SessionDataView load state: loaded=%v loading=%v gap=%v corrupt=%v", doneView.Loaded, doneView.Loading, doneView.HasGap, doneView.RetryingCorruptCache)
+	s1 := e.sessions["s1"]
+	if !loadingBuf.loaded || loadingBuf.awaitingCache || loadingBuf.fetching || loadingBuf.hasServerGap(s1.ServerLastSeq) || loadingBuf.retryingCorruptCache {
+		t.Fatalf("unexpected EventBuffer load state: loaded=%v awaiting=%v fetching=%v gap=%v corrupt=%v",
+			loadingBuf.loaded, loadingBuf.awaitingCache, loadingBuf.fetching, loadingBuf.hasServerGap(s1.ServerLastSeq), loadingBuf.retryingCorruptCache)
 	}
-	if doneView.UnavailableCount != 1 || len(doneView.UnavailableSeqs) != 1 || doneView.UnavailableSeqs[0] != 1 {
-		t.Fatalf("expected UnavailableSeqs=[1], got count=%d seqs=%v", doneView.UnavailableCount, doneView.UnavailableSeqs)
+	if len(loadingBuf.unavailableSeqs) != 1 || !loadingBuf.unavailableSeqs[1] {
+		t.Fatalf("expected unavailableSeqs={1}, got %v", loadingBuf.unavailableSeqs)
 	}
-	if doneView.Projection == nil || doneView.LiveSnapshot == nil || !doneView.Pending.HasQuestion || len(doneView.Events) != 3 {
-		t.Fatalf("expected projection, live snapshot, pending question, and 3 events; got proj=%v live=%v pending=%+v events=%d",
-			doneView.Projection != nil, doneView.LiveSnapshot != nil, doneView.Pending, len(doneView.Events))
+	if s1.Checkpoint == nil || !s1.Pending.HasQuestion || len(loadingBuf.ShownEvents()) != 3 {
+		t.Fatalf("expected live checkpoint, pending question, and 3 shown events; got cp=%v pending=%+v events=%d",
+			s1.Checkpoint != nil, s1.Pending, len(loadingBuf.ShownEvents()))
 	}
 }
 
@@ -2374,8 +2374,8 @@ func TestDirectAheadGapDoesNotFalseErrorAndTriggersServerGapFill(t *testing.T) {
 	if buf := e.Buffer("s1"); buf.PrefixLen() != 40 || buf.PendingCount() != 0 {
 		t.Fatalf("gapped direct seq=42 must be dropped (prefix=40 pending=0), got prefix=%d pending=%d", buf.PrefixLen(), buf.PendingCount())
 	}
-	if view := e.BuildSessionDataView("s1"); view.HasGap || !view.Loaded || view.FetchError != nil {
-		t.Fatalf("dropped direct gap event must not report HasGap/FetchError: %+v", view)
+	if buf := e.Buffer("s1"); buf.hasServerGap(e.sessions["s1"].ServerLastSeq) || !buf.loaded || !buf.fetchErrorReason.IsZero() {
+		t.Fatalf("dropped direct gap event must not report hasServerGap/fetchErrorReason: loaded=%v err=%+v", buf.loaded, buf.fetchErrorReason)
 	}
 	// ApplyLiveSnapshot (over direct) still advances LastSeq to 42 without touching ServerLastSeq.
 	e.Run(func(ctx *StepContext) {
@@ -2408,8 +2408,8 @@ func TestDirectAheadGapDoesNotFalseErrorAndTriggersServerGapFill(t *testing.T) {
 			EventsPageFetched: &corev1.EventsPageFetchedEvent{OpId: midOp, SessionId: "s1", More: false},
 		},
 	})
-	if view := e.BuildSessionDataView("s1"); view.FetchError != nil || view.HasGap || !view.Loaded {
-		t.Fatalf("finishFetchCycle with empty server gap must not set FetchError/HasGap: %+v", view)
+	if buf := e.Buffer("s1"); !buf.fetchErrorReason.IsZero() || buf.hasServerGap(e.sessions["s1"].ServerLastSeq) || !buf.loaded {
+		t.Fatalf("finishFetchCycle with empty server gap must not set fetchErrorReason/hasServerGap: loaded=%v err=%+v", buf.loaded, buf.fetchErrorReason)
 	}
 
 	// Now server commits 41..42 and broadcasts SessionUpdated(LastSeq=42) (suppose EventsAppended was dropped).

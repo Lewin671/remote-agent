@@ -1167,40 +1167,38 @@ func TestSyncDirectLegacyDaemonCreateSessionStaysRelayOnly(t *testing.T) {
 	}
 }
 
-// TestSyncDirectTerminalConfirmationFlowM4 verifies M4 Core-driven confirmation UI wiring:
-// - Fail-stop sets TerminalDirectStateEffect.NeedsConfirmation=true with KeyTerminalConfirmRebuildInputBody
-// - Daemon restart (Available=false) sets NeedsConfirmation=true with KeyTerminalConfirmRebuildRestartBody
-// - TerminalDirectConfirmRebuildAction clears the gate and emits TermStateClosed("rebuild_confirmed")
+// TestSyncDirectTerminalConfirmationFlowM4 verifies M4 Core-driven confirmation UI wiring
+// through the unified terminal byte-pipe effects (TerminalStateChangedEffect + TerminalConfirmRebuildAction).
 func TestSyncDirectTerminalConfirmationFlowM4(t *testing.T) {
 	h := newDirectSyncHarness(t)
 	sid := "sess-m4-ui"
 	h.connectMainAndList(sid)
 	h.driveDirectHandshake()
 
-	// Helper to convert CoordTerminalState through Engine.emitCoordEffects cleanly.
+	// Register an active terminal stream directly on the Engine so CoordTerminalState
+	// transitions emit TerminalStateChangedEffect.
 	streamID := "m4ui0123456789abcdef0123456789ab"
-	h.step(&corev1.Event{
-		Event: &corev1.Event_TerminalDirectOpen{
-			TerminalDirectOpen: &corev1.TerminalDirectOpenEvent{
-				StreamId:   streamID,
-				MachineId:  h.daemon.id,
-				SessionId:  sid,
-				RelayLegId: []byte("relay00000000099"),
-			},
+	h.eng.activeTerminals = map[string]*activeTerminal{
+		streamID: {
+			opID:             91,
+			streamID:         streamID,
+			sessionID:        sid,
+			machineID:        h.daemon.id,
+			initialLegID:     []byte("relay00000000099"),
+			initialLegOpened: true,
+			openConfirmed:    true,
 		},
-	})
-	h.step(&corev1.Event{
-		Event: &corev1.Event_TerminalDirectLeg{
-			TerminalDirectLeg: &corev1.TerminalDirectLegEvent{
-				StreamId: streamID,
-				LegId:    []byte("relay00000000099"),
-				Direct:   false,
-				Open:     true,
-			},
-		},
+	}
+	h.eng.Run(func(ctx *StepContext) {
+		h.eng.emitCoordEffects(ctx, h.eng.ensureTransportCoord().TerminalDirectOpen(
+			h.eng.nowMs, streamID, h.daemon.id, sid, []byte("relay00000000099"),
+		))
+		h.eng.emitCoordEffects(ctx, h.eng.ensureTransportCoord().TerminalDirectLeg(
+			h.eng.nowMs, streamID, []byte("relay00000000099"), false, true, 0,
+		))
 	})
 
-	// Emit CoordTerminalState(TermStateFailStop, NeedsConfirmation=true) through Engine.
+	// Emit CoordTerminalState(TermStateFailStop, NeedsConfirmation=true) -> CONFIRM_INPUT.
 	res1 := h.eng.Run(func(ctx *StepContext) {
 		h.eng.emitCoordEffects(ctx, []transport.CoordEffect{
 			transport.CoordTerminalState{
@@ -1211,17 +1209,17 @@ func TestSyncDirectTerminalConfirmationFlowM4(t *testing.T) {
 			},
 		})
 	})
-	var gotInputConfirm *corev1.TerminalDirectStateEffect
+	var gotInputConfirm *corev1.TerminalStateChangedEffect
 	for _, eff := range res1.Effects {
-		if st := eff.GetTerminalDirectState(); st != nil {
+		if st := eff.GetTerminalStateChanged(); st != nil {
 			gotInputConfirm = st
 		}
 	}
-	if gotInputConfirm == nil || !gotInputConfirm.NeedsConfirmation || gotInputConfirm.State != transport.TermStateFailStop || gotInputConfirm.Reason != "stream_failed" {
-		t.Fatalf("expected input confirmation TermStateFailStop/stream_failed, got %+v", gotInputConfirm)
+	if gotInputConfirm == nil || gotInputConfirm.State != corev1.TerminalLifecycleState_TERMINAL_LIFECYCLE_STATE_CONFIRM_INPUT || gotInputConfirm.ReasonCode != "stream_failed" {
+		t.Fatalf("expected input confirmation CONFIRM_INPUT/stream_failed, got %+v", gotInputConfirm)
 	}
 
-	// Emit CoordTerminalState(TermStateInstanceChange, NeedsConfirmation=true) through Engine.
+	// Emit CoordTerminalState(TermStateInstanceChange, NeedsConfirmation=true) -> CONFIRM_RESTART.
 	res2 := h.eng.Run(func(ctx *StepContext) {
 		h.eng.emitCoordEffects(ctx, []transport.CoordEffect{
 			transport.CoordTerminalState{
@@ -1232,29 +1230,29 @@ func TestSyncDirectTerminalConfirmationFlowM4(t *testing.T) {
 			},
 		})
 	})
-	var gotRestartConfirm *corev1.TerminalDirectStateEffect
+	var gotRestartConfirm *corev1.TerminalStateChangedEffect
 	for _, eff := range res2.Effects {
-		if st := eff.GetTerminalDirectState(); st != nil {
+		if st := eff.GetTerminalStateChanged(); st != nil {
 			gotRestartConfirm = st
 		}
 	}
-	if gotRestartConfirm == nil || !gotRestartConfirm.NeedsConfirmation || gotRestartConfirm.State != transport.TermStateInstanceChange || gotRestartConfirm.Reason != "daemon_unavailable" {
-		t.Fatalf("expected restart confirmation TermStateInstanceChange/daemon_unavailable, got %+v", gotRestartConfirm)
+	if gotRestartConfirm == nil || gotRestartConfirm.State != corev1.TerminalLifecycleState_TERMINAL_LIFECYCLE_STATE_CONFIRM_RESTART || gotRestartConfirm.ReasonCode != "daemon_unavailable" {
+		t.Fatalf("expected restart confirmation CONFIRM_RESTART/daemon_unavailable, got %+v", gotRestartConfirm)
 	}
 
-	// Dispatch TerminalDirectConfirmRebuildAction -> emits TermStateClosed("rebuild_confirmed") without NeedsConfirmation.
+	// Dispatch TerminalConfirmRebuildAction -> emits TERMINAL_LIFECYCLE_STATE_REBUILD("rebuild_confirmed").
 	res3 := h.step(&corev1.Event{
-		Event: &corev1.Event_TerminalDirectConfirmRebuild{
-			TerminalDirectConfirmRebuild: &corev1.TerminalDirectConfirmRebuildAction{StreamId: streamID},
+		Event: &corev1.Event_TerminalConfirmRebuild{
+			TerminalConfirmRebuild: &corev1.TerminalConfirmRebuildAction{StreamId: streamID},
 		},
 	})
-	var gotRebuild *corev1.TerminalDirectStateEffect
+	var gotRebuild *corev1.TerminalStateChangedEffect
 	for _, eff := range res3.Effects {
-		if st := eff.GetTerminalDirectState(); st != nil {
+		if st := eff.GetTerminalStateChanged(); st != nil {
 			gotRebuild = st
 		}
 	}
-	if gotRebuild == nil || gotRebuild.State != transport.TermStateClosed || gotRebuild.Reason != "rebuild_confirmed" || gotRebuild.NeedsConfirmation {
-		t.Fatalf("expected TermStateClosed(rebuild_confirmed), got %+v", gotRebuild)
+	if gotRebuild == nil || gotRebuild.State != corev1.TerminalLifecycleState_TERMINAL_LIFECYCLE_STATE_REBUILD || gotRebuild.ReasonCode != "rebuild_confirmed" {
+		t.Fatalf("expected TERMINAL_LIFECYCLE_STATE_REBUILD(rebuild_confirmed), got %+v", gotRebuild)
 	}
 }

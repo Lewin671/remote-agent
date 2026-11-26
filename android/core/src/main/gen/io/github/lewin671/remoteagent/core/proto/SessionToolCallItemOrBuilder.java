@@ -192,20 +192,6 @@ public interface SessionToolCallItemOrBuilder extends
   boolean getDecisionAllowed();
 
   /**
-   * <code>repeated .remoteagent.v1.ImageRef images = 19 [json_name = "images"];</code>
-   */
-  java.util.List<io.github.lewin671.remoteagent.proto.ImageRef> 
-      getImagesList();
-  /**
-   * <code>repeated .remoteagent.v1.ImageRef images = 19 [json_name = "images"];</code>
-   */
-  io.github.lewin671.remoteagent.proto.ImageRef getImages(int index);
-  /**
-   * <code>repeated .remoteagent.v1.ImageRef images = 19 [json_name = "images"];</code>
-   */
-  int getImagesCount();
-
-  /**
    * <code>uint64 seq = 22 [json_name = "seq"];</code>
    * @return The seq.
    */

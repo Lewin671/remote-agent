@@ -1499,7 +1499,6 @@ func (m *UsageScreenScrubEvent) Unmarshal(b []byte) error {
 type UsageCacheLoadedEvent struct {
 	_           [0]func()
 	MachineId   string
-	Snapshot    *v1.UsageStatsResponse
 	RawSnapshot []byte
 	Preset      v1.UsageRangePreset
 }
@@ -1509,12 +1508,6 @@ func (m *UsageCacheLoadedEvent) GetMachineId() string {
 		return m.MachineId
 	}
 	return ""
-}
-func (m *UsageCacheLoadedEvent) GetSnapshot() *v1.UsageStatsResponse {
-	if m != nil {
-		return m.Snapshot
-	}
-	return nil
 }
 func (m *UsageCacheLoadedEvent) GetRawSnapshot() []byte {
 	if m != nil {
@@ -1533,7 +1526,6 @@ var LitewireDesc_UsageCacheLoadedEvent = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&UsageCacheLoadedEvent{}) },
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(UsageCacheLoadedEvent{}.MachineId), Kind: litewire.KindString},
-		{Num: 2, Offset: unsafe.Offsetof(UsageCacheLoadedEvent{}.Snapshot), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_UsageStatsResponse},
 		{Num: 3, Offset: unsafe.Offsetof(UsageCacheLoadedEvent{}.RawSnapshot), Kind: litewire.KindBytes},
 		{Num: 4, Offset: unsafe.Offsetof(UsageCacheLoadedEvent{}.Preset), Kind: litewire.KindInt32},
 	},
@@ -1546,7 +1538,6 @@ func (m *UsageCacheLoadedEvent) Unmarshal(b []byte) error {
 type UsageCacheWriteEffect struct {
 	_           [0]func()
 	MachineId   string
-	Snapshot    *v1.UsageStatsResponse
 	RawSnapshot []byte
 	Preset      v1.UsageRangePreset
 }
@@ -1556,12 +1547,6 @@ func (m *UsageCacheWriteEffect) GetMachineId() string {
 		return m.MachineId
 	}
 	return ""
-}
-func (m *UsageCacheWriteEffect) GetSnapshot() *v1.UsageStatsResponse {
-	if m != nil {
-		return m.Snapshot
-	}
-	return nil
 }
 func (m *UsageCacheWriteEffect) GetRawSnapshot() []byte {
 	if m != nil {
@@ -1579,7 +1564,6 @@ func (m *UsageCacheWriteEffect) GetPreset() v1.UsageRangePreset {
 var LitewireDesc_UsageCacheWriteEffect = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(UsageCacheWriteEffect{}.MachineId), Kind: litewire.KindString},
-		{Num: 2, Offset: unsafe.Offsetof(UsageCacheWriteEffect{}.Snapshot), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_UsageStatsResponse},
 		{Num: 3, Offset: unsafe.Offsetof(UsageCacheWriteEffect{}.RawSnapshot), Kind: litewire.KindBytes},
 		{Num: 4, Offset: unsafe.Offsetof(UsageCacheWriteEffect{}.Preset), Kind: litewire.KindInt32},
 	},

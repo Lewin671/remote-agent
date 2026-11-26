@@ -23,19 +23,8 @@ public interface UsageCacheLoadedEventOrBuilder extends
       getMachineIdBytes();
 
   /**
-   * <code>.remoteagent.v1.UsageStatsResponse snapshot = 2 [json_name = "snapshot"];</code>
-   * @return Whether the snapshot field is set.
-   */
-  boolean hasSnapshot();
-  /**
-   * <code>.remoteagent.v1.UsageStatsResponse snapshot = 2 [json_name = "snapshot"];</code>
-   * @return The snapshot.
-   */
-  io.github.lewin671.remoteagent.proto.UsageStatsResponse getSnapshot();
-
-  /**
    * <pre>
-   * Opaque serialized remoteagent.v1.UsageStatsResponse bytes (Web/Android); Core unmarshals.
+   * Opaque serialized remoteagent.v1.UsageStatsResponse bytes; Core unmarshals.
    * </pre>
    *
    * <code>bytes raw_snapshot = 3 [json_name = "rawSnapshot"];</code>

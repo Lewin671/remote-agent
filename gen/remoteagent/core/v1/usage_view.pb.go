@@ -1959,8 +1959,7 @@ func (x *UsageScreenScrubEvent) GetClear() bool {
 type UsageCacheLoadedEvent struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	MachineId string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	Snapshot  *v1.UsageStatsResponse `protobuf:"bytes,2,opt,name=snapshot,proto3" json:"snapshot,omitempty"`
-	// Opaque serialized remoteagent.v1.UsageStatsResponse bytes (Web/Android); Core unmarshals.
+	// Opaque serialized remoteagent.v1.UsageStatsResponse bytes; Core unmarshals.
 	RawSnapshot   []byte              `protobuf:"bytes,3,opt,name=raw_snapshot,json=rawSnapshot,proto3" json:"raw_snapshot,omitempty"`
 	Preset        v1.UsageRangePreset `protobuf:"varint,4,opt,name=preset,proto3,enum=remoteagent.v1.UsageRangePreset" json:"preset,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -2004,13 +2003,6 @@ func (x *UsageCacheLoadedEvent) GetMachineId() string {
 	return ""
 }
 
-func (x *UsageCacheLoadedEvent) GetSnapshot() *v1.UsageStatsResponse {
-	if x != nil {
-		return x.Snapshot
-	}
-	return nil
-}
-
 func (x *UsageCacheLoadedEvent) GetRawSnapshot() []byte {
 	if x != nil {
 		return x.RawSnapshot
@@ -2028,7 +2020,6 @@ func (x *UsageCacheLoadedEvent) GetPreset() v1.UsageRangePreset {
 type UsageCacheWriteEffect struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	MachineId string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	Snapshot  *v1.UsageStatsResponse `protobuf:"bytes,2,opt,name=snapshot,proto3" json:"snapshot,omitempty"`
 	// Opaque serialized remoteagent.v1.UsageStatsResponse bytes for pure-byte shell storage.
 	RawSnapshot   []byte              `protobuf:"bytes,3,opt,name=raw_snapshot,json=rawSnapshot,proto3" json:"raw_snapshot,omitempty"`
 	Preset        v1.UsageRangePreset `protobuf:"varint,4,opt,name=preset,proto3,enum=remoteagent.v1.UsageRangePreset" json:"preset,omitempty"`
@@ -2071,13 +2062,6 @@ func (x *UsageCacheWriteEffect) GetMachineId() string {
 		return x.MachineId
 	}
 	return ""
-}
-
-func (x *UsageCacheWriteEffect) GetSnapshot() *v1.UsageStatsResponse {
-	if x != nil {
-		return x.Snapshot
-	}
-	return nil
 }
 
 func (x *UsageCacheWriteEffect) GetRawSnapshot() []byte {
@@ -2346,19 +2330,17 @@ const file_remoteagent_core_v1_usage_view_proto_rawDesc = "" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12!\n" +
 	"\fbucket_index\x18\x02 \x01(\x05R\vbucketIndex\x12\x14\n" +
-	"\x05clear\x18\x03 \x01(\bR\x05clear\"\xd3\x01\n" +
+	"\x05clear\x18\x03 \x01(\bR\x05clear\"\xa3\x01\n" +
 	"\x15UsageCacheLoadedEvent\x12\x1d\n" +
 	"\n" +
-	"machine_id\x18\x01 \x01(\tR\tmachineId\x12>\n" +
-	"\bsnapshot\x18\x02 \x01(\v2\".remoteagent.v1.UsageStatsResponseR\bsnapshot\x12!\n" +
+	"machine_id\x18\x01 \x01(\tR\tmachineId\x12!\n" +
 	"\fraw_snapshot\x18\x03 \x01(\fR\vrawSnapshot\x128\n" +
-	"\x06preset\x18\x04 \x01(\x0e2 .remoteagent.v1.UsageRangePresetR\x06preset\"\xd3\x01\n" +
+	"\x06preset\x18\x04 \x01(\x0e2 .remoteagent.v1.UsageRangePresetR\x06presetJ\x04\b\x02\x10\x03R\bsnapshot\"\xa3\x01\n" +
 	"\x15UsageCacheWriteEffect\x12\x1d\n" +
 	"\n" +
-	"machine_id\x18\x01 \x01(\tR\tmachineId\x12>\n" +
-	"\bsnapshot\x18\x02 \x01(\v2\".remoteagent.v1.UsageStatsResponseR\bsnapshot\x12!\n" +
+	"machine_id\x18\x01 \x01(\tR\tmachineId\x12!\n" +
 	"\fraw_snapshot\x18\x03 \x01(\fR\vrawSnapshot\x128\n" +
-	"\x06preset\x18\x04 \x01(\x0e2 .remoteagent.v1.UsageRangePresetR\x06preset\"=\n" +
+	"\x06preset\x18\x04 \x01(\x0e2 .remoteagent.v1.UsageRangePresetR\x06presetJ\x04\b\x02\x10\x03R\bsnapshot\"=\n" +
 	"\x16UsageCacheWrittenEvent\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x02 \x01(\tR\tmachineIdJ\x04\b\x01\x10\x02*\xac\x01\n" +
@@ -2427,7 +2409,6 @@ var file_remoteagent_core_v1_usage_view_proto_goTypes = []any{
 	(v1.UsageRangePreset)(0),             // 24: remoteagent.v1.UsageRangePreset
 	(v1.UsageSourceState)(0),             // 25: remoteagent.v1.UsageSourceState
 	(v1.UsageBucketGranularity)(0),       // 26: remoteagent.v1.UsageBucketGranularity
-	(*v1.UsageStatsResponse)(nil),        // 27: remoteagent.v1.UsageStatsResponse
 }
 var file_remoteagent_core_v1_usage_view_proto_depIdxs = []int32{
 	2,  // 0: remoteagent.core.v1.UsageBannerView.kind:type_name -> remoteagent.core.v1.UsageBannerKind
@@ -2481,15 +2462,13 @@ var file_remoteagent_core_v1_usage_view_proto_depIdxs = []int32{
 	24, // 48: remoteagent.core.v1.UsageScreenOpenEvent.preset:type_name -> remoteagent.v1.UsageRangePreset
 	23, // 49: remoteagent.core.v1.UsageScreenOpenEvent.focus_agent:type_name -> remoteagent.v1.Agent
 	0,  // 50: remoteagent.core.v1.UsageScreenSelectSortEvent.sort_by:type_name -> remoteagent.core.v1.UsageSortColumn
-	27, // 51: remoteagent.core.v1.UsageCacheLoadedEvent.snapshot:type_name -> remoteagent.v1.UsageStatsResponse
-	24, // 52: remoteagent.core.v1.UsageCacheLoadedEvent.preset:type_name -> remoteagent.v1.UsageRangePreset
-	27, // 53: remoteagent.core.v1.UsageCacheWriteEffect.snapshot:type_name -> remoteagent.v1.UsageStatsResponse
-	24, // 54: remoteagent.core.v1.UsageCacheWriteEffect.preset:type_name -> remoteagent.v1.UsageRangePreset
-	55, // [55:55] is the sub-list for method output_type
-	55, // [55:55] is the sub-list for method input_type
-	55, // [55:55] is the sub-list for extension type_name
-	55, // [55:55] is the sub-list for extension extendee
-	0,  // [0:55] is the sub-list for field type_name
+	24, // 51: remoteagent.core.v1.UsageCacheLoadedEvent.preset:type_name -> remoteagent.v1.UsageRangePreset
+	24, // 52: remoteagent.core.v1.UsageCacheWriteEffect.preset:type_name -> remoteagent.v1.UsageRangePreset
+	53, // [53:53] is the sub-list for method output_type
+	53, // [53:53] is the sub-list for method input_type
+	53, // [53:53] is the sub-list for extension type_name
+	53, // [53:53] is the sub-list for extension extendee
+	0,  // [0:53] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_usage_view_proto_init() }

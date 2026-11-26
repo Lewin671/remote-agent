@@ -131,14 +131,8 @@ func (d DirtyFlags) ScreenTargets() []corev1.ScreenTarget {
 	if d.NewSession {
 		out = append(out, corev1.ScreenTarget_SCREEN_TARGET_NEW_SESSION)
 	}
-	if d.SyncState {
-		out = append(out, corev1.ScreenTarget_SCREEN_TARGET_SYNC_STATE)
-	}
 	if d.Connection {
 		out = append(out, corev1.ScreenTarget_SCREEN_TARGET_CONNECTION)
-	}
-	if d.SessionData {
-		out = append(out, corev1.ScreenTarget_SCREEN_TARGET_SESSION_DATA)
 	}
 	if d.Direct {
 		out = append(out, corev1.ScreenTarget_SCREEN_TARGET_DIRECT_DIAGNOSTICS)
@@ -869,18 +863,6 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 		e.handleDirectBulkTransferDone(ctx, k.DirectBulkTransferDone)
 	case *corev1.Event_TerminalStream:
 		e.handleTerminalStream(ctx, k.TerminalStream)
-	case *corev1.Event_TerminalDirectOpen:
-		e.handleTerminalDirectOpen(ctx, k.TerminalDirectOpen)
-	case *corev1.Event_TerminalDirectClose:
-		e.handleTerminalDirectClose(ctx, k.TerminalDirectClose)
-	case *corev1.Event_TerminalDirectLeg:
-		e.handleTerminalDirectLeg(ctx, k.TerminalDirectLeg)
-	case *corev1.Event_TerminalDirectInput:
-		e.handleTerminalDirectInput(ctx, k.TerminalDirectInput)
-	case *corev1.Event_TerminalDirectOutput:
-		e.handleTerminalDirectOutput(ctx, k.TerminalDirectOutput)
-	case *corev1.Event_TerminalDirectConfirmRebuild:
-		e.handleTerminalDirectConfirmRebuild(ctx, k.TerminalDirectConfirmRebuild)
 	case *corev1.Event_SecurityConfig:
 		e.handleSecurityConfig(ctx, k.SecurityConfig)
 	case *corev1.Event_SecurityKeySigned:

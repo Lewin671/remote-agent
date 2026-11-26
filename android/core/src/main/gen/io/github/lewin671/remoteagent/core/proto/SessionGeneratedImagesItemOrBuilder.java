@@ -23,20 +23,6 @@ public interface SessionGeneratedImagesItemOrBuilder extends
       getRevisedPromptBytes();
 
   /**
-   * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-   */
-  java.util.List<io.github.lewin671.remoteagent.proto.ImageRef> 
-      getImagesList();
-  /**
-   * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-   */
-  io.github.lewin671.remoteagent.proto.ImageRef getImages(int index);
-  /**
-   * <code>repeated .remoteagent.v1.ImageRef images = 2 [json_name = "images"];</code>
-   */
-  int getImagesCount();
-
-  /**
    * <code>repeated .remoteagent.core.v1.SessionImageView image_views = 20 [json_name = "imageViews"];</code>
    */
   java.util.List<io.github.lewin671.remoteagent.core.proto.SessionImageView> 

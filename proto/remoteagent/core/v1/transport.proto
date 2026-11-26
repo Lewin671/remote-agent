@@ -196,46 +196,6 @@ message DirectPcProbeReceivedEvent {
   bytes raw = 2;
 }
 
-message TerminalDirectOpenEvent {
-  string stream_id = 1;
-  string machine_id = 2;
-  string session_id = 3;
-  bytes relay_leg_id = 4;
-}
-
-message TerminalDirectCloseEvent {
-  string stream_id = 1;
-}
-
-message TerminalDirectLegEvent {
-  string stream_id = 1;
-  bytes leg_id = 2;
-  bool direct = 3;
-  bool open = 4;
-  uint64 pc_id = 5;
-}
-
-message TerminalDirectInputEvent {
-  string stream_id = 1;
-  uint64 seq = 2;
-  bool is_input = 3;
-  bytes sealed_envelope = 4;
-  bytes frame_hash = 5;
-}
-
-message TerminalDirectOutputEvent {
-  string stream_id = 1;
-  uint64 seq = 2;
-  bytes frame_hash = 3;
-  bytes payload = 4;
-  bool from_direct = 5;
-  uint64 pc_id = 6;
-}
-
-message TerminalDirectConfirmRebuildAction {
-  string stream_id = 1;
-}
-
 // ---- Effects (Core -> Shell) ----
 
 message DirectSignalSendEffect {
@@ -316,22 +276,4 @@ message TerminalDirectSendEffect {
   bool send_relay = 2;
   uint64 direct_pc_id = 3;
   bytes sealed_envelope = 4;
-}
-
-message TerminalDirectDeliverEffect {
-  string stream_id = 1;
-  repeated bytes payloads = 2;
-}
-
-message TerminalDirectAttachRelayEffect {
-  string stream_id = 1;
-  string machine_id = 2;
-  bytes leg_id = 3;
-}
-
-message TerminalDirectStateEffect {
-  string stream_id = 1;
-  uint32 state = 2;
-  string reason = 3;
-  bool needs_confirmation = 4;
 }

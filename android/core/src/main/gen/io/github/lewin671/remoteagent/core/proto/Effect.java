@@ -95,9 +95,6 @@ public  final class Effect extends
     TERMINAL_HISTORY_UPDATED(115),
     DIRECT_PC_SEND_PROBE(116),
     TERMINAL_DIRECT_SEND(117),
-    TERMINAL_DIRECT_DELIVER(118),
-    TERMINAL_DIRECT_ATTACH_RELAY(119),
-    TERMINAL_DIRECT_STATE(120),
     SECURITY_KEY_SIGN(130),
     SECURITY_KEY_AGREE(131),
     SECURITY_CRYPTO_BATCH(135),
@@ -208,9 +205,6 @@ public  final class Effect extends
         case 115: return TERMINAL_HISTORY_UPDATED;
         case 116: return DIRECT_PC_SEND_PROBE;
         case 117: return TERMINAL_DIRECT_SEND;
-        case 118: return TERMINAL_DIRECT_DELIVER;
-        case 119: return TERMINAL_DIRECT_ATTACH_RELAY;
-        case 120: return TERMINAL_DIRECT_STATE;
         case 130: return SECURITY_KEY_SIGN;
         case 131: return SECURITY_KEY_AGREE;
         case 135: return SECURITY_CRYPTO_BATCH;
@@ -4238,162 +4232,6 @@ public  final class Effect extends
    */
   private void clearTerminalDirectSend() {
     if (effectCase_ == 117) {
-      effectCase_ = 0;
-      effect_ = null;
-    }
-  }
-
-  public static final int TERMINAL_DIRECT_DELIVER_FIELD_NUMBER = 118;
-  /**
-   * <code>.remoteagent.core.v1.TerminalDirectDeliverEffect terminal_direct_deliver = 118 [json_name = "terminalDirectDeliver"];</code>
-   */
-  @java.lang.Override
-  public boolean hasTerminalDirectDeliver() {
-    return effectCase_ == 118;
-  }
-  /**
-   * <code>.remoteagent.core.v1.TerminalDirectDeliverEffect terminal_direct_deliver = 118 [json_name = "terminalDirectDeliver"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.TerminalDirectDeliverEffect getTerminalDirectDeliver() {
-    if (effectCase_ == 118) {
-       return (io.github.lewin671.remoteagent.core.proto.TerminalDirectDeliverEffect) effect_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.TerminalDirectDeliverEffect.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.TerminalDirectDeliverEffect terminal_direct_deliver = 118 [json_name = "terminalDirectDeliver"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setTerminalDirectDeliver(io.github.lewin671.remoteagent.core.proto.TerminalDirectDeliverEffect value) {
-    value.getClass();  // minimal bytecode null check
-    effect_ = value;
-    effectCase_ = 118;
-  }
-  /**
-   * <code>.remoteagent.core.v1.TerminalDirectDeliverEffect terminal_direct_deliver = 118 [json_name = "terminalDirectDeliver"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeTerminalDirectDeliver(io.github.lewin671.remoteagent.core.proto.TerminalDirectDeliverEffect value) {
-    value.getClass();  // minimal bytecode null check
-    if (effectCase_ == 118 &&
-        effect_ != io.github.lewin671.remoteagent.core.proto.TerminalDirectDeliverEffect.getDefaultInstance()) {
-      effect_ = io.github.lewin671.remoteagent.core.proto.TerminalDirectDeliverEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.TerminalDirectDeliverEffect) effect_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      effect_ = value;
-    }
-    effectCase_ = 118;
-  }
-  /**
-   * <code>.remoteagent.core.v1.TerminalDirectDeliverEffect terminal_direct_deliver = 118 [json_name = "terminalDirectDeliver"];</code>
-   */
-  private void clearTerminalDirectDeliver() {
-    if (effectCase_ == 118) {
-      effectCase_ = 0;
-      effect_ = null;
-    }
-  }
-
-  public static final int TERMINAL_DIRECT_ATTACH_RELAY_FIELD_NUMBER = 119;
-  /**
-   * <code>.remoteagent.core.v1.TerminalDirectAttachRelayEffect terminal_direct_attach_relay = 119 [json_name = "terminalDirectAttachRelay"];</code>
-   */
-  @java.lang.Override
-  public boolean hasTerminalDirectAttachRelay() {
-    return effectCase_ == 119;
-  }
-  /**
-   * <code>.remoteagent.core.v1.TerminalDirectAttachRelayEffect terminal_direct_attach_relay = 119 [json_name = "terminalDirectAttachRelay"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.TerminalDirectAttachRelayEffect getTerminalDirectAttachRelay() {
-    if (effectCase_ == 119) {
-       return (io.github.lewin671.remoteagent.core.proto.TerminalDirectAttachRelayEffect) effect_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.TerminalDirectAttachRelayEffect.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.TerminalDirectAttachRelayEffect terminal_direct_attach_relay = 119 [json_name = "terminalDirectAttachRelay"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setTerminalDirectAttachRelay(io.github.lewin671.remoteagent.core.proto.TerminalDirectAttachRelayEffect value) {
-    value.getClass();  // minimal bytecode null check
-    effect_ = value;
-    effectCase_ = 119;
-  }
-  /**
-   * <code>.remoteagent.core.v1.TerminalDirectAttachRelayEffect terminal_direct_attach_relay = 119 [json_name = "terminalDirectAttachRelay"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeTerminalDirectAttachRelay(io.github.lewin671.remoteagent.core.proto.TerminalDirectAttachRelayEffect value) {
-    value.getClass();  // minimal bytecode null check
-    if (effectCase_ == 119 &&
-        effect_ != io.github.lewin671.remoteagent.core.proto.TerminalDirectAttachRelayEffect.getDefaultInstance()) {
-      effect_ = io.github.lewin671.remoteagent.core.proto.TerminalDirectAttachRelayEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.TerminalDirectAttachRelayEffect) effect_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      effect_ = value;
-    }
-    effectCase_ = 119;
-  }
-  /**
-   * <code>.remoteagent.core.v1.TerminalDirectAttachRelayEffect terminal_direct_attach_relay = 119 [json_name = "terminalDirectAttachRelay"];</code>
-   */
-  private void clearTerminalDirectAttachRelay() {
-    if (effectCase_ == 119) {
-      effectCase_ = 0;
-      effect_ = null;
-    }
-  }
-
-  public static final int TERMINAL_DIRECT_STATE_FIELD_NUMBER = 120;
-  /**
-   * <code>.remoteagent.core.v1.TerminalDirectStateEffect terminal_direct_state = 120 [json_name = "terminalDirectState"];</code>
-   */
-  @java.lang.Override
-  public boolean hasTerminalDirectState() {
-    return effectCase_ == 120;
-  }
-  /**
-   * <code>.remoteagent.core.v1.TerminalDirectStateEffect terminal_direct_state = 120 [json_name = "terminalDirectState"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.TerminalDirectStateEffect getTerminalDirectState() {
-    if (effectCase_ == 120) {
-       return (io.github.lewin671.remoteagent.core.proto.TerminalDirectStateEffect) effect_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.TerminalDirectStateEffect.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.TerminalDirectStateEffect terminal_direct_state = 120 [json_name = "terminalDirectState"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setTerminalDirectState(io.github.lewin671.remoteagent.core.proto.TerminalDirectStateEffect value) {
-    value.getClass();  // minimal bytecode null check
-    effect_ = value;
-    effectCase_ = 120;
-  }
-  /**
-   * <code>.remoteagent.core.v1.TerminalDirectStateEffect terminal_direct_state = 120 [json_name = "terminalDirectState"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeTerminalDirectState(io.github.lewin671.remoteagent.core.proto.TerminalDirectStateEffect value) {
-    value.getClass();  // minimal bytecode null check
-    if (effectCase_ == 120 &&
-        effect_ != io.github.lewin671.remoteagent.core.proto.TerminalDirectStateEffect.getDefaultInstance()) {
-      effect_ = io.github.lewin671.remoteagent.core.proto.TerminalDirectStateEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.TerminalDirectStateEffect) effect_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      effect_ = value;
-    }
-    effectCase_ = 120;
-  }
-  /**
-   * <code>.remoteagent.core.v1.TerminalDirectStateEffect terminal_direct_state = 120 [json_name = "terminalDirectState"];</code>
-   */
-  private void clearTerminalDirectState() {
-    if (effectCase_ == 120) {
       effectCase_ = 0;
       effect_ = null;
     }
@@ -9213,150 +9051,6 @@ public  final class Effect extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.TerminalDirectDeliverEffect terminal_direct_deliver = 118 [json_name = "terminalDirectDeliver"];</code>
-     */
-    @java.lang.Override
-    public boolean hasTerminalDirectDeliver() {
-      return instance.hasTerminalDirectDeliver();
-    }
-    /**
-     * <code>.remoteagent.core.v1.TerminalDirectDeliverEffect terminal_direct_deliver = 118 [json_name = "terminalDirectDeliver"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.TerminalDirectDeliverEffect getTerminalDirectDeliver() {
-      return instance.getTerminalDirectDeliver();
-    }
-    /**
-     * <code>.remoteagent.core.v1.TerminalDirectDeliverEffect terminal_direct_deliver = 118 [json_name = "terminalDirectDeliver"];</code>
-     */
-    public Builder setTerminalDirectDeliver(io.github.lewin671.remoteagent.core.proto.TerminalDirectDeliverEffect value) {
-      copyOnWrite();
-      instance.setTerminalDirectDeliver(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.TerminalDirectDeliverEffect terminal_direct_deliver = 118 [json_name = "terminalDirectDeliver"];</code>
-     */
-    public Builder setTerminalDirectDeliver(
-        io.github.lewin671.remoteagent.core.proto.TerminalDirectDeliverEffect.Builder builderForValue) {
-      copyOnWrite();
-      instance.setTerminalDirectDeliver(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.TerminalDirectDeliverEffect terminal_direct_deliver = 118 [json_name = "terminalDirectDeliver"];</code>
-     */
-    public Builder mergeTerminalDirectDeliver(io.github.lewin671.remoteagent.core.proto.TerminalDirectDeliverEffect value) {
-      copyOnWrite();
-      instance.mergeTerminalDirectDeliver(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.TerminalDirectDeliverEffect terminal_direct_deliver = 118 [json_name = "terminalDirectDeliver"];</code>
-     */
-    public Builder clearTerminalDirectDeliver() {
-      copyOnWrite();
-      instance.clearTerminalDirectDeliver();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.TerminalDirectAttachRelayEffect terminal_direct_attach_relay = 119 [json_name = "terminalDirectAttachRelay"];</code>
-     */
-    @java.lang.Override
-    public boolean hasTerminalDirectAttachRelay() {
-      return instance.hasTerminalDirectAttachRelay();
-    }
-    /**
-     * <code>.remoteagent.core.v1.TerminalDirectAttachRelayEffect terminal_direct_attach_relay = 119 [json_name = "terminalDirectAttachRelay"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.TerminalDirectAttachRelayEffect getTerminalDirectAttachRelay() {
-      return instance.getTerminalDirectAttachRelay();
-    }
-    /**
-     * <code>.remoteagent.core.v1.TerminalDirectAttachRelayEffect terminal_direct_attach_relay = 119 [json_name = "terminalDirectAttachRelay"];</code>
-     */
-    public Builder setTerminalDirectAttachRelay(io.github.lewin671.remoteagent.core.proto.TerminalDirectAttachRelayEffect value) {
-      copyOnWrite();
-      instance.setTerminalDirectAttachRelay(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.TerminalDirectAttachRelayEffect terminal_direct_attach_relay = 119 [json_name = "terminalDirectAttachRelay"];</code>
-     */
-    public Builder setTerminalDirectAttachRelay(
-        io.github.lewin671.remoteagent.core.proto.TerminalDirectAttachRelayEffect.Builder builderForValue) {
-      copyOnWrite();
-      instance.setTerminalDirectAttachRelay(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.TerminalDirectAttachRelayEffect terminal_direct_attach_relay = 119 [json_name = "terminalDirectAttachRelay"];</code>
-     */
-    public Builder mergeTerminalDirectAttachRelay(io.github.lewin671.remoteagent.core.proto.TerminalDirectAttachRelayEffect value) {
-      copyOnWrite();
-      instance.mergeTerminalDirectAttachRelay(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.TerminalDirectAttachRelayEffect terminal_direct_attach_relay = 119 [json_name = "terminalDirectAttachRelay"];</code>
-     */
-    public Builder clearTerminalDirectAttachRelay() {
-      copyOnWrite();
-      instance.clearTerminalDirectAttachRelay();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.TerminalDirectStateEffect terminal_direct_state = 120 [json_name = "terminalDirectState"];</code>
-     */
-    @java.lang.Override
-    public boolean hasTerminalDirectState() {
-      return instance.hasTerminalDirectState();
-    }
-    /**
-     * <code>.remoteagent.core.v1.TerminalDirectStateEffect terminal_direct_state = 120 [json_name = "terminalDirectState"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.TerminalDirectStateEffect getTerminalDirectState() {
-      return instance.getTerminalDirectState();
-    }
-    /**
-     * <code>.remoteagent.core.v1.TerminalDirectStateEffect terminal_direct_state = 120 [json_name = "terminalDirectState"];</code>
-     */
-    public Builder setTerminalDirectState(io.github.lewin671.remoteagent.core.proto.TerminalDirectStateEffect value) {
-      copyOnWrite();
-      instance.setTerminalDirectState(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.TerminalDirectStateEffect terminal_direct_state = 120 [json_name = "terminalDirectState"];</code>
-     */
-    public Builder setTerminalDirectState(
-        io.github.lewin671.remoteagent.core.proto.TerminalDirectStateEffect.Builder builderForValue) {
-      copyOnWrite();
-      instance.setTerminalDirectState(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.TerminalDirectStateEffect terminal_direct_state = 120 [json_name = "terminalDirectState"];</code>
-     */
-    public Builder mergeTerminalDirectState(io.github.lewin671.remoteagent.core.proto.TerminalDirectStateEffect value) {
-      copyOnWrite();
-      instance.mergeTerminalDirectState(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.TerminalDirectStateEffect terminal_direct_state = 120 [json_name = "terminalDirectState"];</code>
-     */
-    public Builder clearTerminalDirectState() {
-      copyOnWrite();
-      instance.clearTerminalDirectState();
-      return this;
-    }
-
-    /**
      * <pre>
      * Security engine (130-159 reserved for security).
      * </pre>
@@ -10386,9 +10080,6 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.TerminalHistoryUpdatedEffect.class,
             io.github.lewin671.remoteagent.core.proto.DirectPcSendProbeEffect.class,
             io.github.lewin671.remoteagent.core.proto.TerminalDirectSendEffect.class,
-            io.github.lewin671.remoteagent.core.proto.TerminalDirectDeliverEffect.class,
-            io.github.lewin671.remoteagent.core.proto.TerminalDirectAttachRelayEffect.class,
-            io.github.lewin671.remoteagent.core.proto.TerminalDirectStateEffect.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeySignEffect.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreeEffect.class,
             io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchEffect.class,
@@ -10410,7 +10101,7 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.PersistLastServerEffect.class,
           };
           java.lang.String info =
-              "\u0000b\u0001\u0000\u0001\u0097b\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "\u0000_\u0001\u0000\u0001\u0097_\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
               "<\u0000\u0004<\u0000\u0005<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<\u0000\u000b<" +
               "\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0011<\u0000\u0012<\u0000\u0013" +
               "<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000\u0018<\u0000\u0019<\u0000" +
@@ -10419,10 +10110,10 @@ public  final class Effect extends
               "G<\u0000H<\u0000I<\u0000J<\u0000K<\u0000L<\u0000M<\u0000N<\u0000O<\u0000P<\u0000" +
               "Q<\u0000R<\u0000S<\u0000T<\u0000U<\u0000V<\u0000W<\u0000X<\u0000Y<\u0000f<\u0000" +
               "g<\u0000h<\u0000i<\u0000j<\u0000k<\u0000l<\u0000m<\u0000o<\u0000p<\u0000q<\u0000" +
-              "r<\u0000s<\u0000t<\u0000u<\u0000v<\u0000w<\u0000x<\u0000\u0082<\u0000\u0083<\u0000" +
-              "\u0087<\u0000\u0088<\u0000\u0089<\u0000\u008a<\u0000\u008b<\u0000\u008c<\u0000\u008d" +
-              "<\u0000\u008e<\u0000\u008f<\u0000\u0090<\u0000\u0091<\u0000\u0092<\u0000\u0093<\u0000" +
-              "\u0094<\u0000\u0095<\u0000\u0096<\u0000\u0097<\u0000";
+              "r<\u0000s<\u0000t<\u0000u<\u0000\u0082<\u0000\u0083<\u0000\u0087<\u0000\u0088<\u0000" +
+              "\u0089<\u0000\u008a<\u0000\u008b<\u0000\u008c<\u0000\u008d<\u0000\u008e<\u0000\u008f" +
+              "<\u0000\u0090<\u0000\u0091<\u0000\u0092<\u0000\u0093<\u0000\u0094<\u0000\u0095<\u0000" +
+              "\u0096<\u0000\u0097<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

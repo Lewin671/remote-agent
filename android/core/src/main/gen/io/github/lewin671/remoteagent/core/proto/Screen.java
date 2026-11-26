@@ -22,8 +22,6 @@ public  final class Screen extends
     HOME(1),
     PROJECT(2),
     NEW_SESSION(3),
-    SYNC_STATE(4),
-    SESSION_DATA(5),
     SETTINGS(30),
     MACHINE_STATUS(31),
     MACHINE_SETTINGS(32),
@@ -64,8 +62,6 @@ public  final class Screen extends
         case 1: return HOME;
         case 2: return PROJECT;
         case 3: return NEW_SESSION;
-        case 4: return SYNC_STATE;
-        case 5: return SESSION_DATA;
         case 30: return SETTINGS;
         case 31: return MACHINE_STATUS;
         case 32: return MACHINE_SETTINGS;
@@ -260,150 +256,6 @@ public  final class Screen extends
    */
   private void clearNewSession() {
     if (screenCase_ == 3) {
-      screenCase_ = 0;
-      screen_ = null;
-    }
-  }
-
-  public static final int SYNC_STATE_FIELD_NUMBER = 4;
-  /**
-   * <pre>
-   * Transitional screen; delete after Steps 3-4 migrate remaining views into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SyncStateScreenRequest sync_state = 4 [json_name = "syncState"];</code>
-   */
-  @java.lang.Override
-  public boolean hasSyncState() {
-    return screenCase_ == 4;
-  }
-  /**
-   * <pre>
-   * Transitional screen; delete after Steps 3-4 migrate remaining views into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SyncStateScreenRequest sync_state = 4 [json_name = "syncState"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SyncStateScreenRequest getSyncState() {
-    if (screenCase_ == 4) {
-       return (io.github.lewin671.remoteagent.core.proto.SyncStateScreenRequest) screen_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SyncStateScreenRequest.getDefaultInstance();
-  }
-  /**
-   * <pre>
-   * Transitional screen; delete after Steps 3-4 migrate remaining views into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SyncStateScreenRequest sync_state = 4 [json_name = "syncState"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSyncState(io.github.lewin671.remoteagent.core.proto.SyncStateScreenRequest value) {
-    value.getClass();  // minimal bytecode null check
-    screen_ = value;
-    screenCase_ = 4;
-  }
-  /**
-   * <pre>
-   * Transitional screen; delete after Steps 3-4 migrate remaining views into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SyncStateScreenRequest sync_state = 4 [json_name = "syncState"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeSyncState(io.github.lewin671.remoteagent.core.proto.SyncStateScreenRequest value) {
-    value.getClass();  // minimal bytecode null check
-    if (screenCase_ == 4 &&
-        screen_ != io.github.lewin671.remoteagent.core.proto.SyncStateScreenRequest.getDefaultInstance()) {
-      screen_ = io.github.lewin671.remoteagent.core.proto.SyncStateScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.SyncStateScreenRequest) screen_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      screen_ = value;
-    }
-    screenCase_ = 4;
-  }
-  /**
-   * <pre>
-   * Transitional screen; delete after Steps 3-4 migrate remaining views into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SyncStateScreenRequest sync_state = 4 [json_name = "syncState"];</code>
-   */
-  private void clearSyncState() {
-    if (screenCase_ == 4) {
-      screenCase_ = 0;
-      screen_ = null;
-    }
-  }
-
-  public static final int SESSION_DATA_FIELD_NUMBER = 5;
-  /**
-   * <pre>
-   * Transitional screen; delete after Step 3 migrates the session view into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SessionDataScreenRequest session_data = 5 [json_name = "sessionData"];</code>
-   */
-  @java.lang.Override
-  public boolean hasSessionData() {
-    return screenCase_ == 5;
-  }
-  /**
-   * <pre>
-   * Transitional screen; delete after Step 3 migrates the session view into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SessionDataScreenRequest session_data = 5 [json_name = "sessionData"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SessionDataScreenRequest getSessionData() {
-    if (screenCase_ == 5) {
-       return (io.github.lewin671.remoteagent.core.proto.SessionDataScreenRequest) screen_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SessionDataScreenRequest.getDefaultInstance();
-  }
-  /**
-   * <pre>
-   * Transitional screen; delete after Step 3 migrates the session view into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SessionDataScreenRequest session_data = 5 [json_name = "sessionData"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSessionData(io.github.lewin671.remoteagent.core.proto.SessionDataScreenRequest value) {
-    value.getClass();  // minimal bytecode null check
-    screen_ = value;
-    screenCase_ = 5;
-  }
-  /**
-   * <pre>
-   * Transitional screen; delete after Step 3 migrates the session view into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SessionDataScreenRequest session_data = 5 [json_name = "sessionData"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeSessionData(io.github.lewin671.remoteagent.core.proto.SessionDataScreenRequest value) {
-    value.getClass();  // minimal bytecode null check
-    if (screenCase_ == 5 &&
-        screen_ != io.github.lewin671.remoteagent.core.proto.SessionDataScreenRequest.getDefaultInstance()) {
-      screen_ = io.github.lewin671.remoteagent.core.proto.SessionDataScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionDataScreenRequest) screen_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      screen_ = value;
-    }
-    screenCase_ = 5;
-  }
-  /**
-   * <pre>
-   * Transitional screen; delete after Step 3 migrates the session view into Core.
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.SessionDataScreenRequest session_data = 5 [json_name = "sessionData"];</code>
-   */
-  private void clearSessionData() {
-    if (screenCase_ == 5) {
       screenCase_ = 0;
       screen_ = null;
     }
@@ -1807,150 +1659,6 @@ public  final class Screen extends
     }
 
     /**
-     * <pre>
-     * Transitional screen; delete after Steps 3-4 migrate remaining views into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SyncStateScreenRequest sync_state = 4 [json_name = "syncState"];</code>
-     */
-    @java.lang.Override
-    public boolean hasSyncState() {
-      return instance.hasSyncState();
-    }
-    /**
-     * <pre>
-     * Transitional screen; delete after Steps 3-4 migrate remaining views into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SyncStateScreenRequest sync_state = 4 [json_name = "syncState"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SyncStateScreenRequest getSyncState() {
-      return instance.getSyncState();
-    }
-    /**
-     * <pre>
-     * Transitional screen; delete after Steps 3-4 migrate remaining views into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SyncStateScreenRequest sync_state = 4 [json_name = "syncState"];</code>
-     */
-    public Builder setSyncState(io.github.lewin671.remoteagent.core.proto.SyncStateScreenRequest value) {
-      copyOnWrite();
-      instance.setSyncState(value);
-      return this;
-    }
-    /**
-     * <pre>
-     * Transitional screen; delete after Steps 3-4 migrate remaining views into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SyncStateScreenRequest sync_state = 4 [json_name = "syncState"];</code>
-     */
-    public Builder setSyncState(
-        io.github.lewin671.remoteagent.core.proto.SyncStateScreenRequest.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSyncState(builderForValue.build());
-      return this;
-    }
-    /**
-     * <pre>
-     * Transitional screen; delete after Steps 3-4 migrate remaining views into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SyncStateScreenRequest sync_state = 4 [json_name = "syncState"];</code>
-     */
-    public Builder mergeSyncState(io.github.lewin671.remoteagent.core.proto.SyncStateScreenRequest value) {
-      copyOnWrite();
-      instance.mergeSyncState(value);
-      return this;
-    }
-    /**
-     * <pre>
-     * Transitional screen; delete after Steps 3-4 migrate remaining views into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SyncStateScreenRequest sync_state = 4 [json_name = "syncState"];</code>
-     */
-    public Builder clearSyncState() {
-      copyOnWrite();
-      instance.clearSyncState();
-      return this;
-    }
-
-    /**
-     * <pre>
-     * Transitional screen; delete after Step 3 migrates the session view into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SessionDataScreenRequest session_data = 5 [json_name = "sessionData"];</code>
-     */
-    @java.lang.Override
-    public boolean hasSessionData() {
-      return instance.hasSessionData();
-    }
-    /**
-     * <pre>
-     * Transitional screen; delete after Step 3 migrates the session view into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SessionDataScreenRequest session_data = 5 [json_name = "sessionData"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SessionDataScreenRequest getSessionData() {
-      return instance.getSessionData();
-    }
-    /**
-     * <pre>
-     * Transitional screen; delete after Step 3 migrates the session view into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SessionDataScreenRequest session_data = 5 [json_name = "sessionData"];</code>
-     */
-    public Builder setSessionData(io.github.lewin671.remoteagent.core.proto.SessionDataScreenRequest value) {
-      copyOnWrite();
-      instance.setSessionData(value);
-      return this;
-    }
-    /**
-     * <pre>
-     * Transitional screen; delete after Step 3 migrates the session view into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SessionDataScreenRequest session_data = 5 [json_name = "sessionData"];</code>
-     */
-    public Builder setSessionData(
-        io.github.lewin671.remoteagent.core.proto.SessionDataScreenRequest.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSessionData(builderForValue.build());
-      return this;
-    }
-    /**
-     * <pre>
-     * Transitional screen; delete after Step 3 migrates the session view into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SessionDataScreenRequest session_data = 5 [json_name = "sessionData"];</code>
-     */
-    public Builder mergeSessionData(io.github.lewin671.remoteagent.core.proto.SessionDataScreenRequest value) {
-      copyOnWrite();
-      instance.mergeSessionData(value);
-      return this;
-    }
-    /**
-     * <pre>
-     * Transitional screen; delete after Step 3 migrates the session view into Core.
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.SessionDataScreenRequest session_data = 5 [json_name = "sessionData"];</code>
-     */
-    public Builder clearSessionData() {
-      copyOnWrite();
-      instance.clearSessionData();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.SettingsScreenRequest settings = 30 [json_name = "settings"];</code>
      */
     @java.lang.Override
@@ -3027,8 +2735,6 @@ public  final class Screen extends
             io.github.lewin671.remoteagent.core.proto.HomeScreenRequest.class,
             io.github.lewin671.remoteagent.core.proto.ProjectScreenRequest.class,
             io.github.lewin671.remoteagent.core.proto.NewSessionScreenRequest.class,
-            io.github.lewin671.remoteagent.core.proto.SyncStateScreenRequest.class,
-            io.github.lewin671.remoteagent.core.proto.SessionDataScreenRequest.class,
             io.github.lewin671.remoteagent.core.proto.SessionScreenRequest.class,
             io.github.lewin671.remoteagent.core.proto.SchedulesScreenRequest.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleDetailScreenRequest.class,
@@ -3053,11 +2759,10 @@ public  final class Screen extends
             io.github.lewin671.remoteagent.core.proto.ExitConfirmScreenRequest.class,
           };
           java.lang.String info =
-              "\u0000\u001b\u0001\u0000\u00017\u001b\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
-              "\u0003<\u0000\u0004<\u0000\u0005<\u0000\n<\u0000\u0014<\u0000\u0015<\u0000\u0016" +
-              "<\u0000\u0017<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$" +
-              "<\u0000%<\u0000&<\u0000\'<\u0000(<\u00002<\u00003<\u00004<\u00005<\u00006<\u0000" +
-              "7<\u0000";
+              "\u0000\u0019\u0001\u0000\u00017\u0019\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
+              "\u0003<\u0000\n<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000\u001e" +
+              "<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$<\u0000%<\u0000&<\u0000\'<" +
+              "\u0000(<\u00002<\u00003<\u00004<\u00005<\u00006<\u00007<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

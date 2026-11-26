@@ -1237,237 +1237,11 @@ func (x *SyncStateView) GetLeaseRenewalAdvice() *Text {
 	return nil
 }
 
-// Transitional view exposing per-session buffer status, Core-derived ProjectionState, latest LiveSnapshot,
-// and transitional transcript events for the unmigrated Step 3 session screen.
-// Delete once Step 3 moves the session timeline/screen into Core.
-type SessionDataView struct {
-	state                protoimpl.MessageState `protogen:"open.v1"`
-	SessionId            string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Found                bool                   `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
-	Session              *SyncSessionView       `protobuf:"bytes,3,opt,name=session,proto3" json:"session,omitempty"`
-	Loading              bool                   `protobuf:"varint,4,opt,name=loading,proto3" json:"loading,omitempty"`
-	Loaded               bool                   `protobuf:"varint,5,opt,name=loaded,proto3" json:"loaded,omitempty"`
-	AwaitingCache        bool                   `protobuf:"varint,6,opt,name=awaiting_cache,json=awaitingCache,proto3" json:"awaiting_cache,omitempty"`
-	Backfilling          bool                   `protobuf:"varint,7,opt,name=backfilling,proto3" json:"backfilling,omitempty"`
-	Fetching             bool                   `protobuf:"varint,8,opt,name=fetching,proto3" json:"fetching,omitempty"`
-	HasGap               bool                   `protobuf:"varint,9,opt,name=has_gap,json=hasGap,proto3" json:"has_gap,omitempty"`
-	TailRequested        bool                   `protobuf:"varint,10,opt,name=tail_requested,json=tailRequested,proto3" json:"tail_requested,omitempty"`
-	Retired              bool                   `protobuf:"varint,11,opt,name=retired,proto3" json:"retired,omitempty"`
-	RetryingCorruptCache bool                   `protobuf:"varint,12,opt,name=retrying_corrupt_cache,json=retryingCorruptCache,proto3" json:"retrying_corrupt_cache,omitempty"`
-	Error                *Text                  `protobuf:"bytes,13,opt,name=error,proto3" json:"error,omitempty"`
-	FetchError           *Text                  `protobuf:"bytes,14,opt,name=fetch_error,json=fetchError,proto3" json:"fetch_error,omitempty"`
-	PrefixLen            uint64                 `protobuf:"varint,15,opt,name=prefix_len,json=prefixLen,proto3" json:"prefix_len,omitempty"`
-	PendingCount         int32                  `protobuf:"varint,16,opt,name=pending_count,json=pendingCount,proto3" json:"pending_count,omitempty"`
-	LastSeq              uint64                 `protobuf:"varint,17,opt,name=last_seq,json=lastSeq,proto3" json:"last_seq,omitempty"`
-	UnavailableSeqs      []uint64               `protobuf:"varint,18,rep,packed,name=unavailable_seqs,json=unavailableSeqs,proto3" json:"unavailable_seqs,omitempty"`
-	UnavailableCount     uint32                 `protobuf:"varint,19,opt,name=unavailable_count,json=unavailableCount,proto3" json:"unavailable_count,omitempty"`
-	Projection           *ProjectionState       `protobuf:"bytes,20,opt,name=projection,proto3" json:"projection,omitempty"`
-	LiveSnapshot         *v1.LiveSnapshot       `protobuf:"bytes,21,opt,name=live_snapshot,json=liveSnapshot,proto3" json:"live_snapshot,omitempty"`
-	Pending              *SyncPendingAction     `protobuf:"bytes,22,opt,name=pending,proto3" json:"pending,omitempty"`
-	// Transitional raw transcript events (contiguous tail or prefix from Core's EventBuffer) needed only because
-	// ProjectionState does not carry chat rows (UserMessage, AgentMessage, Reasoning, ToolCall, TurnEnded, etc.)
-	// for Step 3's unmigrated shell chat builders. Remove when Step 3 migrates the session screen into Core.
-	Events        []*v1.Event `protobuf:"bytes,23,rep,name=events,proto3" json:"events,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SessionDataView) Reset() {
-	*x = SessionDataView{}
-	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SessionDataView) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SessionDataView) ProtoMessage() {}
-
-func (x *SessionDataView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SessionDataView.ProtoReflect.Descriptor instead.
-func (*SessionDataView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_sync_view_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *SessionDataView) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
-}
-
-func (x *SessionDataView) GetFound() bool {
-	if x != nil {
-		return x.Found
-	}
-	return false
-}
-
-func (x *SessionDataView) GetSession() *SyncSessionView {
-	if x != nil {
-		return x.Session
-	}
-	return nil
-}
-
-func (x *SessionDataView) GetLoading() bool {
-	if x != nil {
-		return x.Loading
-	}
-	return false
-}
-
-func (x *SessionDataView) GetLoaded() bool {
-	if x != nil {
-		return x.Loaded
-	}
-	return false
-}
-
-func (x *SessionDataView) GetAwaitingCache() bool {
-	if x != nil {
-		return x.AwaitingCache
-	}
-	return false
-}
-
-func (x *SessionDataView) GetBackfilling() bool {
-	if x != nil {
-		return x.Backfilling
-	}
-	return false
-}
-
-func (x *SessionDataView) GetFetching() bool {
-	if x != nil {
-		return x.Fetching
-	}
-	return false
-}
-
-func (x *SessionDataView) GetHasGap() bool {
-	if x != nil {
-		return x.HasGap
-	}
-	return false
-}
-
-func (x *SessionDataView) GetTailRequested() bool {
-	if x != nil {
-		return x.TailRequested
-	}
-	return false
-}
-
-func (x *SessionDataView) GetRetired() bool {
-	if x != nil {
-		return x.Retired
-	}
-	return false
-}
-
-func (x *SessionDataView) GetRetryingCorruptCache() bool {
-	if x != nil {
-		return x.RetryingCorruptCache
-	}
-	return false
-}
-
-func (x *SessionDataView) GetError() *Text {
-	if x != nil {
-		return x.Error
-	}
-	return nil
-}
-
-func (x *SessionDataView) GetFetchError() *Text {
-	if x != nil {
-		return x.FetchError
-	}
-	return nil
-}
-
-func (x *SessionDataView) GetPrefixLen() uint64 {
-	if x != nil {
-		return x.PrefixLen
-	}
-	return 0
-}
-
-func (x *SessionDataView) GetPendingCount() int32 {
-	if x != nil {
-		return x.PendingCount
-	}
-	return 0
-}
-
-func (x *SessionDataView) GetLastSeq() uint64 {
-	if x != nil {
-		return x.LastSeq
-	}
-	return 0
-}
-
-func (x *SessionDataView) GetUnavailableSeqs() []uint64 {
-	if x != nil {
-		return x.UnavailableSeqs
-	}
-	return nil
-}
-
-func (x *SessionDataView) GetUnavailableCount() uint32 {
-	if x != nil {
-		return x.UnavailableCount
-	}
-	return 0
-}
-
-func (x *SessionDataView) GetProjection() *ProjectionState {
-	if x != nil {
-		return x.Projection
-	}
-	return nil
-}
-
-func (x *SessionDataView) GetLiveSnapshot() *v1.LiveSnapshot {
-	if x != nil {
-		return x.LiveSnapshot
-	}
-	return nil
-}
-
-func (x *SessionDataView) GetPending() *SyncPendingAction {
-	if x != nil {
-		return x.Pending
-	}
-	return nil
-}
-
-func (x *SessionDataView) GetEvents() []*v1.Event {
-	if x != nil {
-		return x.Events
-	}
-	return nil
-}
-
 var File_remoteagent_core_v1_sync_view_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_sync_view_proto_rawDesc = "" +
 	"\n" +
-	"#remoteagent/core/v1/sync_view.proto\x12\x13remoteagent.core.v1\x1a)remoteagent/core/v1/connection_view.proto\x1a#remoteagent/core/v1/home_view.proto\x1a$remoteagent/core/v1/projection.proto\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\x1a\x1bremoteagent/v1/remote.proto\"S\n" +
+	"#remoteagent/core/v1/sync_view.proto\x12\x13remoteagent.core.v1\x1a)remoteagent/core/v1/connection_view.proto\x1a#remoteagent/core/v1/home_view.proto\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\x1a\x1bremoteagent/v1/remote.proto\"S\n" +
 	"\x19SyncPendingQuestionOption\x12\x14\n" +
 	"\x05label\x18\x01 \x01(\tR\x05label\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\"\xa1\x03\n" +
@@ -1623,37 +1397,7 @@ const file_remoteagent_core_v1_sync_view_proto_rawDesc = "" +
 	"\vconn_banner\x182 \x01(\v2#.remoteagent.core.v1.ConnBannerViewR\n" +
 	"connBanner\x12N\n" +
 	"\x16clock_skew_banner_text\x183 \x01(\v2\x19.remoteagent.core.v1.TextR\x13clockSkewBannerText\x12K\n" +
-	"\x14lease_renewal_advice\x184 \x01(\v2\x19.remoteagent.core.v1.TextR\x12leaseRenewalAdvice\"\xcb\a\n" +
-	"\x0fSessionDataView\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x14\n" +
-	"\x05found\x18\x02 \x01(\bR\x05found\x12>\n" +
-	"\asession\x18\x03 \x01(\v2$.remoteagent.core.v1.SyncSessionViewR\asession\x12\x18\n" +
-	"\aloading\x18\x04 \x01(\bR\aloading\x12\x16\n" +
-	"\x06loaded\x18\x05 \x01(\bR\x06loaded\x12%\n" +
-	"\x0eawaiting_cache\x18\x06 \x01(\bR\rawaitingCache\x12 \n" +
-	"\vbackfilling\x18\a \x01(\bR\vbackfilling\x12\x1a\n" +
-	"\bfetching\x18\b \x01(\bR\bfetching\x12\x17\n" +
-	"\ahas_gap\x18\t \x01(\bR\x06hasGap\x12%\n" +
-	"\x0etail_requested\x18\n" +
-	" \x01(\bR\rtailRequested\x12\x18\n" +
-	"\aretired\x18\v \x01(\bR\aretired\x124\n" +
-	"\x16retrying_corrupt_cache\x18\f \x01(\bR\x14retryingCorruptCache\x12/\n" +
-	"\x05error\x18\r \x01(\v2\x19.remoteagent.core.v1.TextR\x05error\x12:\n" +
-	"\vfetch_error\x18\x0e \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
-	"fetchError\x12\x1d\n" +
-	"\n" +
-	"prefix_len\x18\x0f \x01(\x04R\tprefixLen\x12#\n" +
-	"\rpending_count\x18\x10 \x01(\x05R\fpendingCount\x12\x19\n" +
-	"\blast_seq\x18\x11 \x01(\x04R\alastSeq\x12)\n" +
-	"\x10unavailable_seqs\x18\x12 \x03(\x04R\x0funavailableSeqs\x12+\n" +
-	"\x11unavailable_count\x18\x13 \x01(\rR\x10unavailableCount\x12D\n" +
-	"\n" +
-	"projection\x18\x14 \x01(\v2$.remoteagent.core.v1.ProjectionStateR\n" +
-	"projection\x12A\n" +
-	"\rlive_snapshot\x18\x15 \x01(\v2\x1c.remoteagent.v1.LiveSnapshotR\fliveSnapshot\x12@\n" +
-	"\apending\x18\x16 \x01(\v2&.remoteagent.core.v1.SyncPendingActionR\apending\x12-\n" +
-	"\x06events\x18\x17 \x03(\v2\x15.remoteagent.v1.EventR\x06eventsB\xd7\x01\n" +
+	"\x14lease_renewal_advice\x184 \x01(\v2\x19.remoteagent.core.v1.TextR\x12leaseRenewalAdviceB\xd7\x01\n" +
 	"\x17com.remoteagent.core.v1B\rSyncViewProtoP\x01Z?github.com/Lewin671/remote-agent/gen/remoteagent/core/v1;corev1\xa2\x02\x03RCX\xaa\x02\x13Remoteagent.Core.V1\xca\x02\x13Remoteagent\\Core\\V1\xe2\x02\x1fRemoteagent\\Core\\V1\\GPBMetadata\xea\x02\x15Remoteagent::Core::V1b\x06proto3"
 
 var (
@@ -1668,7 +1412,7 @@ func file_remoteagent_core_v1_sync_view_proto_rawDescGZIP() []byte {
 	return file_remoteagent_core_v1_sync_view_proto_rawDescData
 }
 
-var file_remoteagent_core_v1_sync_view_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_remoteagent_core_v1_sync_view_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_remoteagent_core_v1_sync_view_proto_goTypes = []any{
 	(*SyncPendingQuestionOption)(nil), // 0: remoteagent.core.v1.SyncPendingQuestionOption
 	(*SyncPendingQuestion)(nil),       // 1: remoteagent.core.v1.SyncPendingQuestion
@@ -1677,55 +1421,45 @@ var file_remoteagent_core_v1_sync_view_proto_goTypes = []any{
 	(*SyncSessionView)(nil),           // 4: remoteagent.core.v1.SyncSessionView
 	(*SyncDeviceView)(nil),            // 5: remoteagent.core.v1.SyncDeviceView
 	(*SyncStateView)(nil),             // 6: remoteagent.core.v1.SyncStateView
-	(*SessionDataView)(nil),           // 7: remoteagent.core.v1.SessionDataView
-	(*v1.MachineMeta)(nil),            // 8: remoteagent.v1.MachineMeta
-	(*v1.Session)(nil),                // 9: remoteagent.v1.Session
-	(*v1.LiveSnapshot)(nil),           // 10: remoteagent.v1.LiveSnapshot
-	(v1.DeviceKind)(0),                // 11: remoteagent.v1.DeviceKind
-	(*v1.DeviceMeta)(nil),             // 12: remoteagent.v1.DeviceMeta
-	(ConnState)(0),                    // 13: remoteagent.core.v1.ConnState
-	(*Text)(nil),                      // 14: remoteagent.core.v1.Text
-	(*v1.SessionCursor)(nil),          // 15: remoteagent.v1.SessionCursor
-	(*v1.ProjectPrefs)(nil),           // 16: remoteagent.v1.ProjectPrefs
-	(*ConnBannerView)(nil),            // 17: remoteagent.core.v1.ConnBannerView
-	(*ProjectionState)(nil),           // 18: remoteagent.core.v1.ProjectionState
-	(*v1.Event)(nil),                  // 19: remoteagent.v1.Event
+	(*v1.MachineMeta)(nil),            // 7: remoteagent.v1.MachineMeta
+	(*v1.Session)(nil),                // 8: remoteagent.v1.Session
+	(*v1.LiveSnapshot)(nil),           // 9: remoteagent.v1.LiveSnapshot
+	(v1.DeviceKind)(0),                // 10: remoteagent.v1.DeviceKind
+	(*v1.DeviceMeta)(nil),             // 11: remoteagent.v1.DeviceMeta
+	(ConnState)(0),                    // 12: remoteagent.core.v1.ConnState
+	(*Text)(nil),                      // 13: remoteagent.core.v1.Text
+	(*v1.SessionCursor)(nil),          // 14: remoteagent.v1.SessionCursor
+	(*v1.ProjectPrefs)(nil),           // 15: remoteagent.v1.ProjectPrefs
+	(*ConnBannerView)(nil),            // 16: remoteagent.core.v1.ConnBannerView
 }
 var file_remoteagent_core_v1_sync_view_proto_depIdxs = []int32{
 	0,  // 0: remoteagent.core.v1.SyncPendingQuestion.options:type_name -> remoteagent.core.v1.SyncPendingQuestionOption
 	1,  // 1: remoteagent.core.v1.SyncPendingAction.question:type_name -> remoteagent.core.v1.SyncPendingQuestion
-	8,  // 2: remoteagent.core.v1.SyncMachineView.meta:type_name -> remoteagent.v1.MachineMeta
-	9,  // 3: remoteagent.core.v1.SyncSessionView.info:type_name -> remoteagent.v1.Session
-	10, // 4: remoteagent.core.v1.SyncSessionView.checkpoint:type_name -> remoteagent.v1.LiveSnapshot
+	7,  // 2: remoteagent.core.v1.SyncMachineView.meta:type_name -> remoteagent.v1.MachineMeta
+	8,  // 3: remoteagent.core.v1.SyncSessionView.info:type_name -> remoteagent.v1.Session
+	9,  // 4: remoteagent.core.v1.SyncSessionView.checkpoint:type_name -> remoteagent.v1.LiveSnapshot
 	2,  // 5: remoteagent.core.v1.SyncSessionView.pending:type_name -> remoteagent.core.v1.SyncPendingAction
-	11, // 6: remoteagent.core.v1.SyncDeviceView.kind:type_name -> remoteagent.v1.DeviceKind
-	12, // 7: remoteagent.core.v1.SyncDeviceView.meta:type_name -> remoteagent.v1.DeviceMeta
-	13, // 8: remoteagent.core.v1.SyncStateView.connection:type_name -> remoteagent.core.v1.ConnState
-	14, // 9: remoteagent.core.v1.SyncStateView.connection_reason:type_name -> remoteagent.core.v1.Text
-	14, // 10: remoteagent.core.v1.SyncStateView.connection_step:type_name -> remoteagent.core.v1.Text
-	14, // 11: remoteagent.core.v1.SyncStateView.manager_name:type_name -> remoteagent.core.v1.Text
+	10, // 6: remoteagent.core.v1.SyncDeviceView.kind:type_name -> remoteagent.v1.DeviceKind
+	11, // 7: remoteagent.core.v1.SyncDeviceView.meta:type_name -> remoteagent.v1.DeviceMeta
+	12, // 8: remoteagent.core.v1.SyncStateView.connection:type_name -> remoteagent.core.v1.ConnState
+	13, // 9: remoteagent.core.v1.SyncStateView.connection_reason:type_name -> remoteagent.core.v1.Text
+	13, // 10: remoteagent.core.v1.SyncStateView.connection_step:type_name -> remoteagent.core.v1.Text
+	13, // 11: remoteagent.core.v1.SyncStateView.manager_name:type_name -> remoteagent.core.v1.Text
 	3,  // 12: remoteagent.core.v1.SyncStateView.machines:type_name -> remoteagent.core.v1.SyncMachineView
 	4,  // 13: remoteagent.core.v1.SyncStateView.sessions:type_name -> remoteagent.core.v1.SyncSessionView
-	15, // 14: remoteagent.core.v1.SyncStateView.next_cursor:type_name -> remoteagent.v1.SessionCursor
-	14, // 15: remoteagent.core.v1.SyncStateView.session_list_error:type_name -> remoteagent.core.v1.Text
-	16, // 16: remoteagent.core.v1.SyncStateView.prefs:type_name -> remoteagent.v1.ProjectPrefs
+	14, // 14: remoteagent.core.v1.SyncStateView.next_cursor:type_name -> remoteagent.v1.SessionCursor
+	13, // 15: remoteagent.core.v1.SyncStateView.session_list_error:type_name -> remoteagent.core.v1.Text
+	15, // 16: remoteagent.core.v1.SyncStateView.prefs:type_name -> remoteagent.v1.ProjectPrefs
 	5,  // 17: remoteagent.core.v1.SyncStateView.devices:type_name -> remoteagent.core.v1.SyncDeviceView
-	14, // 18: remoteagent.core.v1.SyncStateView.devices_error_text:type_name -> remoteagent.core.v1.Text
-	17, // 19: remoteagent.core.v1.SyncStateView.conn_banner:type_name -> remoteagent.core.v1.ConnBannerView
-	14, // 20: remoteagent.core.v1.SyncStateView.clock_skew_banner_text:type_name -> remoteagent.core.v1.Text
-	14, // 21: remoteagent.core.v1.SyncStateView.lease_renewal_advice:type_name -> remoteagent.core.v1.Text
-	4,  // 22: remoteagent.core.v1.SessionDataView.session:type_name -> remoteagent.core.v1.SyncSessionView
-	14, // 23: remoteagent.core.v1.SessionDataView.error:type_name -> remoteagent.core.v1.Text
-	14, // 24: remoteagent.core.v1.SessionDataView.fetch_error:type_name -> remoteagent.core.v1.Text
-	18, // 25: remoteagent.core.v1.SessionDataView.projection:type_name -> remoteagent.core.v1.ProjectionState
-	10, // 26: remoteagent.core.v1.SessionDataView.live_snapshot:type_name -> remoteagent.v1.LiveSnapshot
-	2,  // 27: remoteagent.core.v1.SessionDataView.pending:type_name -> remoteagent.core.v1.SyncPendingAction
-	19, // 28: remoteagent.core.v1.SessionDataView.events:type_name -> remoteagent.v1.Event
-	29, // [29:29] is the sub-list for method output_type
-	29, // [29:29] is the sub-list for method input_type
-	29, // [29:29] is the sub-list for extension type_name
-	29, // [29:29] is the sub-list for extension extendee
-	0,  // [0:29] is the sub-list for field type_name
+	13, // 18: remoteagent.core.v1.SyncStateView.devices_error_text:type_name -> remoteagent.core.v1.Text
+	16, // 19: remoteagent.core.v1.SyncStateView.conn_banner:type_name -> remoteagent.core.v1.ConnBannerView
+	13, // 20: remoteagent.core.v1.SyncStateView.clock_skew_banner_text:type_name -> remoteagent.core.v1.Text
+	13, // 21: remoteagent.core.v1.SyncStateView.lease_renewal_advice:type_name -> remoteagent.core.v1.Text
+	22, // [22:22] is the sub-list for method output_type
+	22, // [22:22] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_sync_view_proto_init() }
@@ -1735,7 +1469,6 @@ func file_remoteagent_core_v1_sync_view_proto_init() {
 	}
 	file_remoteagent_core_v1_connection_view_proto_init()
 	file_remoteagent_core_v1_home_view_proto_init()
-	file_remoteagent_core_v1_projection_proto_init()
 	file_remoteagent_core_v1_text_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -1743,7 +1476,7 @@ func file_remoteagent_core_v1_sync_view_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_core_v1_sync_view_proto_rawDesc), len(file_remoteagent_core_v1_sync_view_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

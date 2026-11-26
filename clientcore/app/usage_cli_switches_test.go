@@ -505,43 +505,47 @@ func TestUsageOfflineCacheAndMachineStatus30dFallback(t *testing.T) {
 		},
 	})
 
+	raw7d := (&v1.UsageStatsResponse{
+		Preset:        v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS,
+		GeneratedAtMs: 1_791_633_000_000,
+	}).AppendMarshal(nil)
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_633_600_060,
 		Event: &corev1.Event_UsageCacheLoaded{
 			UsageCacheLoaded: &corev1.UsageCacheLoadedEvent{
-				MachineId: "m-1",
-				Snapshot: &v1.UsageStatsResponse{
-					Preset:        v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS,
-					GeneratedAtMs: 1_791_633_000_000,
-				},
+				MachineId:   "m-1",
+				Preset:      v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS,
+				RawSnapshot: raw7d,
 			},
 		},
 	})
+	raw30d := (&v1.UsageStatsResponse{
+		Preset:        v1.UsageRangePreset_USAGE_RANGE_PRESET_THIRTY_DAYS,
+		GeneratedAtMs: 1_791_633_100_000,
+		Series: []*v1.UsageSeries{
+			{
+				Agent: v1.Agent_AGENT_CODEX,
+				Model: "gpt-5.4",
+				Current: &v1.UsagePeriodSummary{
+					UncachedInputTokens: 200_000,
+					OutputTokens:        50_000,
+					UsageRequestCount:   5,
+					SpeedRequestCount:   4,
+					HasCacheHitRate:     true,
+					CacheHitRate:        0.5,
+					HasSpeed:            true,
+					SpeedP50:            70,
+				},
+			},
+		},
+	}).AppendMarshal(nil)
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_633_600_070,
 		Event: &corev1.Event_UsageCacheLoaded{
 			UsageCacheLoaded: &corev1.UsageCacheLoadedEvent{
-				MachineId: "m-1",
-				Snapshot: &v1.UsageStatsResponse{
-					Preset:        v1.UsageRangePreset_USAGE_RANGE_PRESET_THIRTY_DAYS,
-					GeneratedAtMs: 1_791_633_100_000,
-					Series: []*v1.UsageSeries{
-						{
-							Agent: v1.Agent_AGENT_CODEX,
-							Model: "gpt-5.4",
-							Current: &v1.UsagePeriodSummary{
-								UncachedInputTokens: 200_000,
-								OutputTokens:        50_000,
-								UsageRequestCount:   5,
-								SpeedRequestCount:   4,
-								HasCacheHitRate:     true,
-								CacheHitRate:        0.5,
-								HasSpeed:            true,
-								SpeedP50:            70,
-							},
-						},
-					},
-				},
+				MachineId:   "m-1",
+				Preset:      v1.UsageRangePreset_USAGE_RANGE_PRESET_THIRTY_DAYS,
+				RawSnapshot: raw30d,
 			},
 		},
 	})

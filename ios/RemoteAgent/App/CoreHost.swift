@@ -2811,11 +2811,6 @@ actor CoreHost: SyncEngine {
             case .sessionImageLoaded(let eff):
                 executor.handleSessionImageLoaded(eff)
 
-            case .terminalDirectDeliver,
-                 .terminalDirectAttachRelay,
-                 .terminalDirectState:
-                break
-
             case .securityKeyGenerate, .securityKeySign, .securityKeyAgree,
                  .securityKeyEncapsulate, .securityKeyDiscard, .securityStorage,
                  .securityRpc, .relayRpc, .relayRpcCancel:
