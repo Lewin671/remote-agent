@@ -2719,3 +2719,59 @@ func TestExitInPlaceResetClearsRelayPipeStateAndPreservesCounters(t *testing.T) 
 		t.Fatalf("incomplete HEALTHZ logout cleanup: sawHzCancel=%v sawHzWaiterSettled=%v", sawHzCancel, sawHzWaiterSettled)
 	}
 }
+
+func TestAppRootDismissUpgradeNoticeMarksDirty(t *testing.T) {
+	c := New()
+	batch := c.Dispatch(&corev1.Event{
+		NowMs: 1000,
+		Event: &corev1.Event_ClientInit{
+			ClientInit: &corev1.ClientInitEvent{Platform: "ios", Foreground: true, NetworkAvailable: true},
+		},
+	})
+	bootEff := findStorageEffect(batch, corev1.SecurityStorageOp_SECURITY_STORAGE_OP_READ_BOOTSTRAP)
+	if bootEff == nil {
+		t.Fatal("expected READ_BOOTSTRAP storage effect")
+	}
+	c.Dispatch(&corev1.Event{
+		NowMs: 1050,
+		Event: &corev1.Event_SecurityStorageResult{
+			SecurityStorageResult: &corev1.SecurityStorageResultEvent{
+				OpId:          bootEff.OpId,
+				LegacyCleared: true,
+			},
+		},
+	})
+	if !mustViewOnboarding(t, c).ShowLegacyRepairBanner {
+		t.Fatal("expected ShowLegacyRepairBanner=true after LegacyCleared bootstrap")
+	}
+
+	dismissBatch := c.Dispatch(&corev1.Event{
+		NowMs: 1100,
+		Event: &corev1.Event_AppRootDismissUpgradeNotice{
+			AppRootDismissUpgradeNotice: &corev1.AppRootDismissUpgradeNoticeAction{},
+		},
+	})
+	var sawDismissEff, sawAppRootDirty, sawOnboardingDirty bool
+	for _, eff := range dismissBatch.Effects {
+		if eff.GetDismissUpgradeNotice() != nil {
+			sawDismissEff = true
+		}
+		if rnd := eff.GetRender(); rnd != nil {
+			for _, s := range rnd.Screens {
+				if s == corev1.ScreenTarget_SCREEN_TARGET_APP_ROOT {
+					sawAppRootDirty = true
+				}
+				if s == corev1.ScreenTarget_SCREEN_TARGET_ONBOARDING {
+					sawOnboardingDirty = true
+				}
+			}
+		}
+	}
+	if !sawDismissEff || !sawAppRootDirty || !sawOnboardingDirty {
+		t.Fatalf("dismiss batch missing effects/invalidations: dismiss=%v appRoot=%v onboarding=%v", sawDismissEff, sawAppRootDirty, sawOnboardingDirty)
+	}
+	if mustViewOnboarding(t, c).ShowLegacyRepairBanner {
+		t.Fatal("expected ShowLegacyRepairBanner=false immediately after AppRootDismissUpgradeNotice")
+	}
+}
+

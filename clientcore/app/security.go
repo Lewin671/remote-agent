@@ -659,7 +659,17 @@ func (c *Core) handleAppRootVerifyPendingOp(ctx *sync.StepContext) []*corev1.Eff
 }
 
 func (c *Core) handleAppRootDismissUpgradeNotice(ctx *sync.StepContext) []*corev1.Effect {
-	c.runSecOp(ctx, &corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_DismissUpgradeNotice{DismissUpgradeNotice: emptySec}}, nil)
+	sc := c.m.ensureSec()
+	if sc.ui.Status != nil {
+		sc.ui.Status.LegacyRepairNotice = false
+	}
+	sc.dirty.AppRoot = true
+	sc.dirty.Onboarding = true
+	c.runSecOp(ctx, &corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_DismissUpgradeNotice{DismissUpgradeNotice: emptySec}}, func(_ *sync.StepContext, _ *corev1.SecurityWorkflowResultEffect, _ security.WorkflowMeta, _ *corev1.Text) []*corev1.Effect {
+		sc.dirty.AppRoot = true
+		sc.dirty.Onboarding = true
+		return nil
+	})
 	return []*corev1.Effect{{Effect: &corev1.Effect_DismissUpgradeNotice{DismissUpgradeNotice: &corev1.DismissUpgradeNoticeEffect{}}}}
 }
 
