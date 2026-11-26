@@ -357,15 +357,12 @@ func TestApplySyncStateTextsManagerBannerClockSkewAndRenewalAdvice(t *testing.T)
 		t.Fatalf("expected KeySecurityBrowser for bare web device, got %+v", v.ManagerName)
 	}
 
-	// 2. Clock skew banner and lease renewal advice (non-manager vs manager).
+	// 2. Lease renewal advice (non-manager vs manager).
 	v.SecurityLoaded = true
 	v.AccountClockSkewed = true
 	v.IsManager = false
 	w.World.ManagerName = "My Phone"
 	ApplySyncStateTexts(v, w, world.ConnectStepNone, world.Reason{})
-	if v.GetClockSkewBannerText().GetKey() != text.KeyErrorsThisDeviceSClockIsBehindTheAccountState {
-		t.Fatalf("expected clock skew banner key, got %+v", v.ClockSkewBannerText)
-	}
 	if v.GetLeaseRenewalAdvice().GetKey() != text.KeySecurityOpenToRenew {
 		t.Fatalf("expected non-manager leaseRenewalAdvice=security.open_to_renew, got %+v", v.LeaseRenewalAdvice)
 	}

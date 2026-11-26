@@ -233,6 +233,16 @@ func TestBuildHomeBannersAndPrefs(t *testing.T) {
 	if vm.PrefsBanner != nil {
 		t.Fatalf("expected nil PrefsBanner when cached prefs exist, got %+v", vm.PrefsBanner)
 	}
+
+	// BuildConnection exposes ClockSkewNotice from the world and clears it when healthy.
+	connHealthy := BuildConnection(NewState(nil), &corev1.SyncStateView{Connection: corev1.ConnState_CONN_STATE_CONNECTED})
+	if connHealthy.ClockSkewNotice != nil {
+		t.Fatalf("expected nil ClockSkewNotice when healthy, got %+v", connHealthy.ClockSkewNotice)
+	}
+	connFromWorld := BuildConnection(st, &corev1.SyncStateView{Connection: corev1.ConnState_CONN_STATE_CONNECTED})
+	if connFromWorld.ClockSkewNotice.GetKey() != text.KeyErrorsThisDeviceSClockIsBehindTheAccountState {
+		t.Fatalf("ClockSkewNotice from world = %+v", connFromWorld.ClockSkewNotice)
+	}
 }
 
 func TestBuildSessionHeaderTerminalAndFrozenAt(t *testing.T) {

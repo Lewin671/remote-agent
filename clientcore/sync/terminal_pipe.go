@@ -793,7 +793,7 @@ func (e *Engine) handleTerminalCoordState(ctx *StepContext, eff transport.CoordT
 		})
 		reasonCode := eff.Reason
 		var reasonText *corev1.Text
-		if eff.Reason != "conflict" && eff.Reason != "replay_overflow" && ts.lastSocketErr != "" {
+		if eff.Reason != "conflict" && eff.Reason != "replay_overflow" && eff.Reason != "input_backlog" && eff.Reason != "backlog" && ts.lastSocketErr != "" {
 			reasonCode = "socket_error"
 			reasonText = &corev1.Text{Literal: ts.lastSocketErr}
 		}

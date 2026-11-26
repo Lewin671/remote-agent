@@ -220,6 +220,20 @@ func TestOpaqueScheduleCache_CrossVerifyAndNegativeSecurityCases(t *testing.T) {
 		t.Fatal("wrong purpose schedule cache blob must be rejected")
 	}
 
+	// Negative 3b: Legacy iOS raw PBEnvelope bytes (not wrapped in ScheduleCacheBlob) must be treated as a cache miss without crashing or loading tasks.
+	legacyBatch := c.Dispatch(&corev1.Event{
+		NowMs: nowMs + 102, MonoMs: 1102,
+		Event: &corev1.Event_ScheduleCacheLoaded{
+			ScheduleCacheLoaded: &corev1.ScheduleCacheLoadedEvent{OpId: 30, MachineId: trusted.id, RawBlob: sealedBytes},
+		},
+	})
+	if len(ensureSchedState(c.m.state).Machines[trusted.id].Tasks) != 0 {
+		t.Fatal("legacy raw Envelope bytes in schedules cache must be treated as a cache miss")
+	}
+	if legacyBatch == nil {
+		t.Fatal("expected non-nil EffectBatch on legacy schedule cache miss")
+	}
+
 	// Negative 4: Untrusted machine BEFORE open must reject and emit ScheduleDeleteCacheEffect.
 	untrustedBatch := c.Dispatch(&corev1.Event{
 		NowMs: nowMs + 103, MonoMs: 1103,

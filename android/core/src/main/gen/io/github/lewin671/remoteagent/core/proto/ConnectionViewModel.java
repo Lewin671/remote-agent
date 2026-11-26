@@ -338,6 +338,54 @@ public  final class ConnectionViewModel extends
     bitField0_ = (bitField0_ & ~0x00000004);
   }
 
+  public static final int CLOCK_SKEW_NOTICE_FIELD_NUMBER = 20;
+  private io.github.lewin671.remoteagent.core.proto.Text clockSkewNotice_;
+  /**
+   * <code>.remoteagent.core.v1.Text clock_skew_notice = 20 [json_name = "clockSkewNotice"];</code>
+   */
+  @java.lang.Override
+  public boolean hasClockSkewNotice() {
+    return ((bitField0_ & 0x00000008) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text clock_skew_notice = 20 [json_name = "clockSkewNotice"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getClockSkewNotice() {
+    return clockSkewNotice_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : clockSkewNotice_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text clock_skew_notice = 20 [json_name = "clockSkewNotice"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setClockSkewNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    clockSkewNotice_ = value;
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text clock_skew_notice = 20 [json_name = "clockSkewNotice"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeClockSkewNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (clockSkewNotice_ != null &&
+        clockSkewNotice_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      clockSkewNotice_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(clockSkewNotice_).mergeFrom(value).buildPartial();
+    } else {
+      clockSkewNotice_ = value;
+    }
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text clock_skew_notice = 20 [json_name = "clockSkewNotice"];</code>
+   */
+  private void clearClockSkewNotice() {
+    clockSkewNotice_ = null;
+    bitField0_ = (bitField0_ & ~0x00000008);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.ConnectionViewModel parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -767,6 +815,53 @@ public  final class ConnectionViewModel extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text clock_skew_notice = 20 [json_name = "clockSkewNotice"];</code>
+     */
+    @java.lang.Override
+    public boolean hasClockSkewNotice() {
+      return instance.hasClockSkewNotice();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text clock_skew_notice = 20 [json_name = "clockSkewNotice"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getClockSkewNotice() {
+      return instance.getClockSkewNotice();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text clock_skew_notice = 20 [json_name = "clockSkewNotice"];</code>
+     */
+    public Builder setClockSkewNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setClockSkewNotice(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text clock_skew_notice = 20 [json_name = "clockSkewNotice"];</code>
+     */
+    public Builder setClockSkewNotice(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setClockSkewNotice(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text clock_skew_notice = 20 [json_name = "clockSkewNotice"];</code>
+     */
+    public Builder mergeClockSkewNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeClockSkewNotice(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text clock_skew_notice = 20 [json_name = "clockSkewNotice"];</code>
+     */
+    public Builder clearClockSkewNotice() {  copyOnWrite();
+      instance.clearClockSkewNotice();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.ConnectionViewModel)
   }
   @java.lang.Override
@@ -793,11 +888,12 @@ public  final class ConnectionViewModel extends
             "leaseRenewalAdvice_",
             "banner_",
             "serverDetails_",
+            "clockSkewNotice_",
           };
           java.lang.String info =
-              "\u0000\t\u0000\u0001\u0001\u0011\t\u0000\u0000\u0000\u0001\f\u0002\u0007\u0003\u0007" +
+              "\u0000\n\u0000\u0001\u0001\u0014\n\u0000\u0000\u0000\u0001\f\u0002\u0007\u0003\u0007" +
               "\u0004\u0007\u0005\u0007\u0007\u0007\u000f\u1009\u0000\u0010\u1009\u0001\u0011\u1009" +
-              "\u0002";
+              "\u0002\u0014\u1009\u0003";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

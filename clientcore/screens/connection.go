@@ -2,6 +2,7 @@ package screens
 
 import (
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
+	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
 // BuildConnection constructs the ConnectionViewModel from world state and the
@@ -36,5 +37,15 @@ func BuildConnection(st *State, sv *corev1.SyncStateView) *corev1.ConnectionView
 		LeaseRenewalAdvice:  sv.LeaseRenewalAdvice,
 		Banner:              buildSyncConnBanner(sv, nil),
 		ServerDetails:       details,
+		ClockSkewNotice:     clockSkewNoticeText(st.World.AccountClockSkewed),
 	}
+}
+
+// clockSkewNoticeText is the one place that words "this device's clock is
+// behind the account state" for the home banner and the connection strip.
+func clockSkewNoticeText(skewed bool) *corev1.Text {
+	if !skewed {
+		return nil
+	}
+	return text.Msg(text.KeyErrorsThisDeviceSClockIsBehindTheAccountState)
 }

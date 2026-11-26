@@ -286,6 +286,7 @@ type ConnectionViewModel struct {
 	LeaseRenewalAdvice  *Text                        `protobuf:"bytes,15,opt,name=lease_renewal_advice,json=leaseRenewalAdvice,proto3" json:"lease_renewal_advice,omitempty"`
 	Banner              *ConnBannerView              `protobuf:"bytes,16,opt,name=banner,proto3" json:"banner,omitempty"`
 	ServerDetails       *ConnectionServerDetailsView `protobuf:"bytes,17,opt,name=server_details,json=serverDetails,proto3" json:"server_details,omitempty"`
+	ClockSkewNotice     *Text                        `protobuf:"bytes,20,opt,name=clock_skew_notice,json=clockSkewNotice,proto3" json:"clock_skew_notice,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -379,6 +380,13 @@ func (x *ConnectionViewModel) GetBanner() *ConnBannerView {
 func (x *ConnectionViewModel) GetServerDetails() *ConnectionServerDetailsView {
 	if x != nil {
 		return x.ServerDetails
+	}
+	return nil
+}
+
+func (x *ConnectionViewModel) GetClockSkewNotice() *Text {
+	if x != nil {
+		return x.ClockSkewNotice
 	}
 	return nil
 }
@@ -649,7 +657,7 @@ const file_remoteagent_core_v1_connection_view_proto_rawDesc = "" +
 	"\x14show_disconnected_at\x18\x01 \x01(\bR\x12showDisconnectedAt\x12,\n" +
 	"\x12disconnected_at_ms\x18\x02 \x01(\x03R\x10disconnectedAtMs\x12:\n" +
 	"\vreason_text\x18\x04 \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
-	"reasonTextJ\x04\b\x03\x10\x04R\x14disconnected_at_text\"\xca\x05\n" +
+	"reasonTextJ\x04\b\x03\x10\x04R\x14disconnected_at_text\"\x91\x06\n" +
 	"\x13ConnectionViewModel\x124\n" +
 	"\x05state\x18\x01 \x01(\x0e2\x1e.remoteagent.core.v1.ConnStateR\x05state\x12\x1c\n" +
 	"\tconnected\x18\x02 \x01(\bR\tconnected\x12\x18\n" +
@@ -660,7 +668,8 @@ const file_remoteagent_core_v1_connection_view_proto_rawDesc = "" +
 	"liveLoaded\x12K\n" +
 	"\x14lease_renewal_advice\x18\x0f \x01(\v2\x19.remoteagent.core.v1.TextR\x12leaseRenewalAdvice\x12;\n" +
 	"\x06banner\x18\x10 \x01(\v2#.remoteagent.core.v1.ConnBannerViewR\x06banner\x12W\n" +
-	"\x0eserver_details\x18\x11 \x01(\v20.remoteagent.core.v1.ConnectionServerDetailsViewR\rserverDetailsJ\x04\b\x06\x10\aJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
+	"\x0eserver_details\x18\x11 \x01(\v20.remoteagent.core.v1.ConnectionServerDetailsViewR\rserverDetails\x12E\n" +
+	"\x11clock_skew_notice\x18\x14 \x01(\v2\x19.remoteagent.core.v1.TextR\x0fclockSkewNoticeJ\x04\b\x06\x10\aJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
 	"J\x04\b\n" +
 	"\x10\vJ\x04\b\v\x10\fJ\x04\b\f\x10\rJ\x04\b\r\x10\x0eJ\x04\b\x0e\x10\x0fJ\x04\b\x12\x10\x13J\x04\b\x13\x10\x14R\x11network_availableR\x0einitial_listedR\x0fsecurity_loadedR\tis_memberR\x14account_clock_skewedR\x12disconnected_at_msR\vreason_textR\x16clock_skew_banner_textR\x13authority_device_idR\n" +
 	"is_manager\"S\n" +
@@ -726,12 +735,13 @@ var file_remoteagent_core_v1_connection_view_proto_depIdxs = []int32{
 	10, // 6: remoteagent.core.v1.ConnectionViewModel.lease_renewal_advice:type_name -> remoteagent.core.v1.Text
 	2,  // 7: remoteagent.core.v1.ConnectionViewModel.banner:type_name -> remoteagent.core.v1.ConnBannerView
 	3,  // 8: remoteagent.core.v1.ConnectionViewModel.server_details:type_name -> remoteagent.core.v1.ConnectionServerDetailsView
-	5,  // 9: remoteagent.core.v1.WatchedSessionsEffect.sessions:type_name -> remoteagent.core.v1.WatchedSessionRoute
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	10, // 9: remoteagent.core.v1.ConnectionViewModel.clock_skew_notice:type_name -> remoteagent.core.v1.Text
+	5,  // 10: remoteagent.core.v1.WatchedSessionsEffect.sessions:type_name -> remoteagent.core.v1.WatchedSessionRoute
+	11, // [11:11] is the sub-list for method output_type
+	11, // [11:11] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_connection_view_proto_init() }

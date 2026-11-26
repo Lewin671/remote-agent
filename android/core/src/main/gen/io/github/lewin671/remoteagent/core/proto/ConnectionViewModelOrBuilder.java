@@ -83,4 +83,15 @@ public interface ConnectionViewModelOrBuilder extends
    * @return The serverDetails.
    */
   io.github.lewin671.remoteagent.core.proto.ConnectionServerDetailsView getServerDetails();
+
+  /**
+   * <code>.remoteagent.core.v1.Text clock_skew_notice = 20 [json_name = "clockSkewNotice"];</code>
+   * @return Whether the clockSkewNotice field is set.
+   */
+  boolean hasClockSkewNotice();
+  /**
+   * <code>.remoteagent.core.v1.Text clock_skew_notice = 20 [json_name = "clockSkewNotice"];</code>
+   * @return The clockSkewNotice.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getClockSkewNotice();
 }

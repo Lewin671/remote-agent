@@ -96,10 +96,8 @@ import UIKit
         #expect(errBanner?.text == "Server error: 503")
 
         conn.clearBanner()
-        let skew = ConnectionBannerPresentation.resolve(
-            connection: conn,
-            clockSkewBannerText: L10n.errorsThisDeviceSClockIsBehindTheAccountState()
-        )
+        conn.clockSkewNotice = .with { $0.key = "errors.this_device_s_clock_is_behind_the_account_state" }
+        let skew = ConnectionBannerPresentation.resolve(connection: conn)
         #expect(skew?.tone == .attention)
         #expect(skew?.symbol == "clock")
         #expect(skew?.text == L10n.errorsThisDeviceSClockIsBehindTheAccountState())

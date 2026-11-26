@@ -230,6 +230,15 @@ public struct PBConnectionViewModel: @unchecked Sendable {
   /// Clears the value of `serverDetails`. Subsequent reads from it will return its default value.
   public mutating func clearServerDetails() {_uniqueStorage()._serverDetails = nil}
 
+  public var clockSkewNotice: PBCoreText {
+    get {return _storage._clockSkewNotice ?? PBCoreText()}
+    set {_uniqueStorage()._clockSkewNotice = newValue}
+  }
+  /// Returns true if `clockSkewNotice` has been explicitly set.
+  public var hasClockSkewNotice: Bool {return _storage._clockSkewNotice != nil}
+  /// Clears the value of `clockSkewNotice`. Subsequent reads from it will return its default value.
+  public mutating func clearClockSkewNotice() {_uniqueStorage()._clockSkewNotice = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -501,7 +510,7 @@ extension PBConnectionServerDetailsView: SwiftProtobuf.Message, SwiftProtobuf._M
 
 extension PBConnectionViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ConnectionViewModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}state\0\u{1}connected\0\u{1}removed\0\u{3}display_grace\0\u{3}reachability_unknown\0\u{4}\u{2}live_loaded\0\u{4}\u{8}lease_renewal_advice\0\u{1}banner\0\u{3}server_details\0\u{b}network_available\0\u{b}initial_listed\0\u{b}security_loaded\0\u{b}is_member\0\u{b}account_clock_skewed\0\u{b}disconnected_at_ms\0\u{b}reason_text\0\u{b}clock_skew_banner_text\0\u{b}authority_device_id\0\u{b}is_manager\0\u{c}\u{6}\u{1}\u{c}\u{8}\u{1}\u{c}\u{9}\u{1}\u{c}\u{a}\u{1}\u{c}\u{b}\u{1}\u{c}\u{c}\u{1}\u{c}\u{d}\u{1}\u{c}\u{e}\u{1}\u{c}\u{12}\u{1}\u{c}\u{13}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}state\0\u{1}connected\0\u{1}removed\0\u{3}display_grace\0\u{3}reachability_unknown\0\u{4}\u{2}live_loaded\0\u{4}\u{8}lease_renewal_advice\0\u{1}banner\0\u{3}server_details\0\u{4}\u{3}clock_skew_notice\0\u{b}network_available\0\u{b}initial_listed\0\u{b}security_loaded\0\u{b}is_member\0\u{b}account_clock_skewed\0\u{b}disconnected_at_ms\0\u{b}reason_text\0\u{b}clock_skew_banner_text\0\u{b}authority_device_id\0\u{b}is_manager\0\u{c}\u{6}\u{1}\u{c}\u{8}\u{1}\u{c}\u{9}\u{1}\u{c}\u{a}\u{1}\u{c}\u{b}\u{1}\u{c}\u{c}\u{1}\u{c}\u{d}\u{1}\u{c}\u{e}\u{1}\u{c}\u{12}\u{1}\u{c}\u{13}\u{1}")
 
   fileprivate class _StorageClass {
     var _state: PBCoreConnState = .unspecified
@@ -513,6 +522,7 @@ extension PBConnectionViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _leaseRenewalAdvice: PBCoreText? = nil
     var _banner: PBConnBannerView? = nil
     var _serverDetails: PBConnectionServerDetailsView? = nil
+    var _clockSkewNotice: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -532,6 +542,7 @@ extension PBConnectionViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _leaseRenewalAdvice = source._leaseRenewalAdvice
       _banner = source._banner
       _serverDetails = source._serverDetails
+      _clockSkewNotice = source._clockSkewNotice
     }
   }
 
@@ -559,6 +570,7 @@ extension PBConnectionViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 15: try { try decoder.decodeSingularMessageField(value: &_storage._leaseRenewalAdvice) }()
         case 16: try { try decoder.decodeSingularMessageField(value: &_storage._banner) }()
         case 17: try { try decoder.decodeSingularMessageField(value: &_storage._serverDetails) }()
+        case 20: try { try decoder.decodeSingularMessageField(value: &_storage._clockSkewNotice) }()
         default: break
         }
       }
@@ -598,6 +610,9 @@ extension PBConnectionViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       try { if let v = _storage._serverDetails {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 17)
       } }()
+      try { if let v = _storage._clockSkewNotice {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 20)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -616,6 +631,7 @@ extension PBConnectionViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._leaseRenewalAdvice != rhs_storage._leaseRenewalAdvice {return false}
         if _storage._banner != rhs_storage._banner {return false}
         if _storage._serverDetails != rhs_storage._serverDetails {return false}
+        if _storage._clockSkewNotice != rhs_storage._clockSkewNotice {return false}
         return true
       }
       if !storagesAreEqual {return false}

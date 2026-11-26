@@ -40,10 +40,7 @@ func BuildHome(st *State, endedLimit int) *corev1.HomeViewModel {
 
 	sessionListErr := ReasonText(st.SessionListError)
 	headline := buildHomeHeadlineView(homeData.Headline, st.World.LiveLoaded, sessionListErr)
-	var clockSkewBanner *corev1.Text
-	if st.World.AccountClockSkewed {
-		clockSkewBanner = text.Msg(text.KeyErrorsThisDeviceSClockIsBehindTheAccountState)
-	}
+	clockSkewBanner := clockSkewNoticeText(st.World.AccountClockSkewed)
 	var prefsBanner *corev1.HomePrefsBannerView
 	if st.World.PrefsSyncing {
 		prefsBanner = &corev1.HomePrefsBannerView{

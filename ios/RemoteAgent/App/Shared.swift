@@ -17,7 +17,7 @@ struct ConnectionBannerPresentation: Equatable {
     let tone: Tone
     let showDetails: Bool
 
-    static func resolve(connection: PBConnectionViewModel, clockSkewBannerText: String = "") -> ConnectionBannerPresentation? {
+    static func resolve(connection: PBConnectionViewModel) -> ConnectionBannerPresentation? {
         if connection.hasBanner && connection.banner.visible {
             let banner = connection.banner
             switch banner.kind {
@@ -59,9 +59,12 @@ struct ConnectionBannerPresentation: Equatable {
                 break
             }
         }
-        if !clockSkewBannerText.isEmpty {
-            return ConnectionBannerPresentation(
-                text: clockSkewBannerText, symbol: "clock", spinning: false, tone: .attention, showDetails: false)
+        if connection.hasClockSkewNotice {
+            let clockText = connection.clockSkewNotice.rendered()
+            if !clockText.isEmpty {
+                return ConnectionBannerPresentation(
+                    text: clockText, symbol: "clock", spinning: false, tone: .attention, showDetails: false)
+            }
         }
         return nil
     }
@@ -73,10 +76,7 @@ struct ConnectionBar: View {
 
     var body: some View {
         if let context,
-           ConnectionBannerPresentation.resolve(
-               connection: context.core.connection,
-               clockSkewBannerText: context.core.settings.clockSkewBannerText.rendered()
-           ) != nil
+           ConnectionBannerPresentation.resolve(connection: context.core.connection) != nil
         {
             ConnectionStrip().padding(.horizontal, DS.Space.l).padding(.vertical, 6)
         }
@@ -93,10 +93,7 @@ struct ConnectionStrip: View {
     var body: some View {
         if let context {
             let connection = context.core.connection
-            let banner = ConnectionBannerPresentation.resolve(
-                connection: connection,
-                clockSkewBannerText: context.core.settings.clockSkewBannerText.rendered()
-            )
+            let banner = ConnectionBannerPresentation.resolve(connection: connection)
             Group {
                 if let banner {
                     let stripTone: NoticeTone = switch banner.tone {

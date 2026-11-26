@@ -164,6 +164,7 @@ type ConnectionViewModel struct {
 	LeaseRenewalAdvice  *Text
 	Banner              *ConnBannerView
 	ServerDetails       *ConnectionServerDetailsView
+	ClockSkewNotice     *Text
 }
 
 func (m *ConnectionViewModel) GetState() ConnState {
@@ -220,6 +221,12 @@ func (m *ConnectionViewModel) GetServerDetails() *ConnectionServerDetailsView {
 	}
 	return nil
 }
+func (m *ConnectionViewModel) GetClockSkewNotice() *Text {
+	if m != nil {
+		return m.ClockSkewNotice
+	}
+	return nil
+}
 
 var LitewireDesc_ConnectionViewModel = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -232,6 +239,7 @@ var LitewireDesc_ConnectionViewModel = litewire.MessageDesc{
 		{Num: 15, Offset: unsafe.Offsetof(ConnectionViewModel{}.LeaseRenewalAdvice), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 16, Offset: unsafe.Offsetof(ConnectionViewModel{}.Banner), Kind: litewire.KindMessage, Sub: &LitewireDesc_ConnBannerView},
 		{Num: 17, Offset: unsafe.Offsetof(ConnectionViewModel{}.ServerDetails), Kind: litewire.KindMessage, Sub: &LitewireDesc_ConnectionServerDetailsView},
+		{Num: 20, Offset: unsafe.Offsetof(ConnectionViewModel{}.ClockSkewNotice), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 

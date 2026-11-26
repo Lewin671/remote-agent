@@ -1408,3 +1408,41 @@ func TestTerminalPipe_CrossCompatWithLegacyHandleSecurityOp(t *testing.T) {
 		t.Fatalf("cross-compat output mismatch: pipe=%+v legacy=%q", delivered, string(tfLegOut.GetOutput()))
 	}
 }
+
+func TestDecorateTerminalStateEffectsReasonTexts(t *testing.T) {
+	cases := []struct {
+		name       string
+		reasonCode string
+		literal    string
+		wantKey    string
+		wantArg    string
+	}{
+		{name: "conflict", reasonCode: "conflict", wantKey: text.KeyErrorsTerminalFramesAreOutOfOrder},
+		{name: "replay_overflow", reasonCode: "replay_overflow", wantKey: text.KeyTerminalReplayOverflow},
+		{name: "input_backlog", reasonCode: "input_backlog", wantKey: text.KeyErrorsTerminalInputBacklogReconnect},
+		{name: "backlog", reasonCode: "backlog", wantKey: text.KeyErrorsTerminalOutputBacklogReconnectForTheLatestDisplay},
+		{name: "socket_error", reasonCode: "socket_error", literal: "eof", wantKey: text.KeyErrorsTerminalConnectionDroppedReason, wantArg: "eof"},
+		{name: "unknown_default", reasonCode: "mystery", wantKey: text.KeyErrorsTerminalConnectionDropped},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			st := &corev1.TerminalStateChangedEffect{
+				State:      corev1.TerminalLifecycleState_TERMINAL_LIFECYCLE_STATE_CLOSED,
+				ReasonCode: tc.reasonCode,
+			}
+			if tc.literal != "" {
+				st.ReasonText = &corev1.Text{Literal: tc.literal}
+			}
+			effs := []*corev1.Effect{{Effect: &corev1.Effect_TerminalStateChanged{TerminalStateChanged: st}}}
+			decorateTerminalStateEffects(effs)
+			if st.ReasonText == nil || st.ReasonText.Key != tc.wantKey {
+				t.Fatalf("ReasonCode=%q -> ReasonText=%+v, want key %q", tc.reasonCode, st.ReasonText, tc.wantKey)
+			}
+			if tc.wantArg != "" {
+				if len(st.ReasonText.Args) != 1 || st.ReasonText.Args[0].GetStrValue() != tc.wantArg {
+					t.Fatalf("ReasonCode=%q -> args=%+v, want %q", tc.reasonCode, st.ReasonText.Args, tc.wantArg)
+				}
+			}
+		})
+	}
+}

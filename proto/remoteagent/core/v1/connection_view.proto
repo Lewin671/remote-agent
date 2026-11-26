@@ -51,6 +51,7 @@ message ConnectionViewModel {
   Text lease_renewal_advice = 15;
   ConnBannerView banner = 16;
   ConnectionServerDetailsView server_details = 17;
+  Text clock_skew_notice = 20;
 }
 
 // WatchedSessionRoute pairs a watched session ID with its owning machine ID for direct-event gating.

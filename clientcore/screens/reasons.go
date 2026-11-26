@@ -232,9 +232,6 @@ func ApplySyncStateTexts(v *corev1.SyncStateView, w *world.State, connStep world
 	v.ConnectionStep = ConnectStepText(connStep)
 	v.DevicesErrorText = ReasonText(devicesErr)
 	v.ConnBanner = buildSyncConnBanner(v, w)
-	if v.AccountClockSkewed {
-		v.ClockSkewBannerText = text.Msg(text.KeyErrorsThisDeviceSClockIsBehindTheAccountState)
-	}
 	v.LeaseRenewalAdvice = buildSyncLeaseRenewalAdvice(v)
 	return v
 }
