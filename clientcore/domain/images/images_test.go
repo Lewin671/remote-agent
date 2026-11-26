@@ -124,9 +124,7 @@ func TestCollectViewerImagesIncludesCollapsedScheduledGroupAndToolGroupSeqs(t *t
 		{
 			Seq: 1, TimestampMs: 100,
 			Kind: &corev1.SessionTimelineItem_UserMessage{
-				UserMessage: &corev1.SessionUserMessageItem{
-					Images: []*v1.ImageRef{ref("u1", v1.ImageSource_IMAGE_SOURCE_USER)},
-				},
+				UserMessage: &corev1.SessionUserMessageItem{},
 			},
 		},
 		{
@@ -134,8 +132,8 @@ func TestCollectViewerImagesIncludesCollapsedScheduledGroupAndToolGroupSeqs(t *t
 			Kind: &corev1.SessionTimelineItem_ToolGroup{
 				ToolGroup: &corev1.SessionToolGroupItem{
 					Calls: []*corev1.SessionToolCallItem{
-						{Seq: 2, Title: "Read a.png", Images: []*v1.ImageRef{ref("t1", v1.ImageSource_IMAGE_SOURCE_TOOL)}},
-						{Seq: 4, Title: "Read b.png", Images: []*v1.ImageRef{ref("t2", v1.ImageSource_IMAGE_SOURCE_TOOL)}},
+						{Seq: 2, Title: "Read a.png"},
+						{Seq: 4, Title: "Read b.png"},
 					},
 				},
 			},
@@ -152,7 +150,6 @@ func TestCollectViewerImagesIncludesCollapsedScheduledGroupAndToolGroupSeqs(t *t
 							Kind: &corev1.SessionTimelineItem_GeneratedImages{
 								GeneratedImages: &corev1.SessionGeneratedImagesItem{
 									RevisedPrompt: "a misty hill",
-									Images:        []*v1.ImageRef{ref("g1", v1.ImageSource_IMAGE_SOURCE_GENERATED)},
 								},
 							},
 						},
@@ -161,8 +158,14 @@ func TestCollectViewerImagesIncludesCollapsedScheduledGroupAndToolGroupSeqs(t *t
 			},
 		},
 	}
+	refsBySeq := map[uint64][]*v1.ImageRef{
+		1: {ref("u1", v1.ImageSource_IMAGE_SOURCE_USER)},
+		2: {ref("t1", v1.ImageSource_IMAGE_SOURCE_TOOL)},
+		4: {ref("t2", v1.ImageSource_IMAGE_SOURCE_TOOL)},
+		6: {ref("g1", v1.ImageSource_IMAGE_SOURCE_GENERATED)},
+	}
 
-	got := CollectViewerImages(items, "Codex", "/Users/alice")
+	got := CollectViewerImages(items, refsBySeq, "Codex", "/Users/alice")
 	if len(got) != 4 {
 		t.Fatalf("expected 4 viewer images (including collapsed scheduled group), got %d", len(got))
 	}
@@ -231,27 +234,25 @@ func TestAspectSizeAndFormatHelpers(t *testing.T) {
 		{
 			Seq: 1,
 			Kind: &corev1.SessionTimelineItem_UserMessage{
-				UserMessage: &corev1.SessionUserMessageItem{
-					Images: []*v1.ImageRef{
-						{
-							ImageId:       "img-prev",
-							Sync:          v1.ImageSync_IMAGE_SYNC_SYNCED,
-							Format:        v1.ImageFormat_IMAGE_FORMAT_JPEG,
-							Preview:       []byte{0xff, 0xd8, 0xff, 0xe0},
-							PreviewWidth:  320,
-							PreviewHeight: 160,
-						},
-					},
-				},
+				UserMessage: &corev1.SessionUserMessageItem{},
 			},
 		},
 	}
-	collected := CollectViewerImages(withPreview, "Codex", "/Users/me")
+	previewRefs := map[uint64][]*v1.ImageRef{
+		1: {
+			{
+				ImageId:       "img-prev",
+				Sync:          v1.ImageSync_IMAGE_SYNC_SYNCED,
+				Format:        v1.ImageFormat_IMAGE_FORMAT_JPEG,
+				Preview:       []byte{0xff, 0xd8, 0xff, 0xe0},
+				PreviewWidth:  320,
+				PreviewHeight: 160,
+			},
+		},
+	}
+	collected := CollectViewerImages(withPreview, previewRefs, "Codex", "/Users/me")
 	if len(collected) != 1 {
 		t.Fatalf("expected 1 viewer image, got %d", len(collected))
-	}
-	if len(collected[0].GetRef().GetPreview()) != 0 {
-		t.Fatalf("expected Preview bytes stripped from viewer image ref, got %d bytes", len(collected[0].GetRef().GetPreview()))
 	}
 	if collected[0].GetAspectRatio() != 2.0 {
 		t.Fatalf("expected AspectRatio 2.0 preserved from PreviewWidth/PreviewHeight, got %v", collected[0].GetAspectRatio())

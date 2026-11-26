@@ -618,10 +618,9 @@ message SessionImageView {
 }
 
 message SessionUserMessageItem {
-  reserved 4;
-  reserved "origin";
+  reserved 2, 4;
+  reserved "images", "origin";
   string text = 1;
-  repeated remoteagent.v1.ImageRef images = 2;
   repeated SessionFileRefView files = 3;
   Text origin_caption = 5;
   string scheduled_task_id = 6;
@@ -654,6 +653,8 @@ enum SessionToolStatus {
 }
 
 message SessionToolCallItem {
+  reserved 19;
+  reserved "images";
   string call_id = 1;
   remoteagent.v1.ToolKind tool_kind = 2;
   string item_type = 3;
@@ -674,7 +675,6 @@ message SessionToolCallItem {
   bool no_result = 16;
   Text decision_label = 17;
   bool decision_allowed = 18;
-  repeated remoteagent.v1.ImageRef images = 19;
   uint64 seq = 22;
   repeated SessionImageView image_views = 23;
 }
@@ -796,8 +796,9 @@ message SessionSharedFilesItem {
 }
 
 message SessionGeneratedImagesItem {
+  reserved 2;
+  reserved "images";
   string revised_prompt = 1;
-  repeated remoteagent.v1.ImageRef images = 2;
   repeated SessionImageView image_views = 20;
 }
 
@@ -809,12 +810,13 @@ enum SessionImageSourceKind {
 }
 
 message SessionViewerImageView {
+  reserved 6;
+  reserved "ref";
   int32 viewer_index = 1;
   uint64 seq = 2;
   int32 event_image_index = 3;
   int64 timestamp_ms = 4;
   SessionImageSourceKind kind = 5;
-  remoteagent.v1.ImageRef ref = 6;
   string tool_title = 7;
   string revised_prompt = 8;
   Text source_label = 9;

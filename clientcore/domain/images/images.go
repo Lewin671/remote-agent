@@ -317,38 +317,15 @@ func DownloadName(displayName, ext string, viewerIndex int32) string {
 	return "image-" + strconv.Itoa(int(idx)+1) + "." + cleanExt
 }
 
-func stripPreview(ref *v1.ImageRef) *v1.ImageRef {
-	if ref == nil {
-		return nil
-	}
-	return &v1.ImageRef{
-		ImageId:        ref.ImageId,
-		Source:         ref.Source,
-		Sync:           ref.Sync,
-		CliIndex:       ref.CliIndex,
-		Path:           ref.Path,
-		Format:         ref.Format,
-		Width:          ref.Width,
-		Height:         ref.Height,
-		Bytes:          ref.Bytes,
-		OriginalWidth:  ref.OriginalWidth,
-		OriginalHeight: ref.OriginalHeight,
-		DisplayWidth:   ref.DisplayWidth,
-		DisplayHeight:  ref.DisplayHeight,
-		Preview:        nil,
-		PreviewFormat:  ref.PreviewFormat,
-		PreviewWidth:   ref.PreviewWidth,
-		PreviewHeight:  ref.PreviewHeight,
-		UploadId:       ref.UploadId,
-	}
-}
-
 // CollectViewerImages walks timeline items in chronological order, including items inside
 // collapsed quiet scheduled groups (marking them with in_collapsed_group = true) so opening
 // the viewer from any image or paging across a session is consistent across all three shells.
-// The returned Ref strips embedded 320px preview bytes because the viewer fetches full images by image_id.
+// Raw wire ImageRefs are looked up by event seq from refsBySeq rather than stored on the
+// exported timeline items, and embedded 320px preview bytes are omitted because the viewer
+// fetches full images by image_id.
 func CollectViewerImages(
 	items []*corev1.SessionTimelineItem,
+	refsBySeq map[uint64][]*v1.ImageRef,
 	agentName, machineHome string,
 ) []*corev1.SessionViewerImageView {
 	var out []*corev1.SessionViewerImageView
@@ -377,7 +354,6 @@ func CollectViewerImages(
 			EventImageIndex:    evIdx,
 			TimestampMs:        ts,
 			Kind:               kind,
-			Ref:                stripPreview(ref),
 			ToolTitle:          toolTitle,
 			RevisedPrompt:      revisedPrompt,
 			SourceLabel:        SourceLabel(kind, agentName),
@@ -410,7 +386,7 @@ func CollectViewerImages(
 				if k.UserMessage == nil {
 					continue
 				}
-				for i, ref := range k.UserMessage.Images {
+				for i, ref := range refsBySeq[item.Seq] {
 					src := corev1.SessionImageSourceKind_SESSION_IMAGE_SOURCE_KIND_USER
 					if ref != nil {
 						switch ref.Source {
@@ -430,7 +406,7 @@ func CollectViewerImages(
 				if seq == 0 {
 					seq = item.Seq
 				}
-				for i, ref := range k.ToolCall.Images {
+				for i, ref := range refsBySeq[seq] {
 					appendRef(seq, int32(i), item.TimestampMs, corev1.SessionImageSourceKind_SESSION_IMAGE_SOURCE_KIND_TOOL, ref, k.ToolCall.Title, "", inCollapsed)
 				}
 			case *corev1.SessionTimelineItem_ToolGroup:
@@ -445,7 +421,7 @@ func CollectViewerImages(
 					if seq == 0 {
 						seq = item.Seq
 					}
-					for i, ref := range call.Images {
+					for i, ref := range refsBySeq[seq] {
 						appendRef(seq, int32(i), item.TimestampMs, corev1.SessionImageSourceKind_SESSION_IMAGE_SOURCE_KIND_TOOL, ref, call.Title, "", inCollapsed)
 					}
 				}
@@ -453,7 +429,7 @@ func CollectViewerImages(
 				if k.GeneratedImages == nil {
 					continue
 				}
-				for i, ref := range k.GeneratedImages.Images {
+				for i, ref := range refsBySeq[item.Seq] {
 					appendRef(item.Seq, int32(i), item.TimestampMs, corev1.SessionImageSourceKind_SESSION_IMAGE_SOURCE_KIND_GENERATED, ref, "", k.GeneratedImages.RevisedPrompt, inCollapsed)
 				}
 			case *corev1.SessionTimelineItem_QuietScheduledGroup:

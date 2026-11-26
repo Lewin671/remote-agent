@@ -46,17 +46,6 @@ public interface SessionViewerImageViewOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SessionImageSourceKind getKind();
 
   /**
-   * <code>.remoteagent.v1.ImageRef ref = 6 [json_name = "ref"];</code>
-   * @return Whether the ref field is set.
-   */
-  boolean hasRef();
-  /**
-   * <code>.remoteagent.v1.ImageRef ref = 6 [json_name = "ref"];</code>
-   * @return The ref.
-   */
-  io.github.lewin671.remoteagent.proto.ImageRef getRef();
-
-  /**
    * <code>string tool_title = 7 [json_name = "toolTitle"];</code>
    * @return The toolTitle.
    */

@@ -3771,11 +3771,6 @@ public struct PBSessionUserMessageItem: @unchecked Sendable {
     set {_uniqueStorage()._text = newValue}
   }
 
-  public var images: [PBImageRef] {
-    get {return _storage._images}
-    set {_uniqueStorage()._images = newValue}
-  }
-
   public var files: [PBSessionFileRefView] {
     get {return _storage._files}
     set {_uniqueStorage()._files = newValue}
@@ -3971,11 +3966,6 @@ public struct PBSessionToolCallItem: @unchecked Sendable {
   public var decisionAllowed: Bool {
     get {return _storage._decisionAllowed}
     set {_uniqueStorage()._decisionAllowed = newValue}
-  }
-
-  public var images: [PBImageRef] {
-    get {return _storage._images}
-    set {_uniqueStorage()._images = newValue}
   }
 
   public var seq: UInt64 {
@@ -4275,8 +4265,6 @@ public struct PBSessionGeneratedImagesItem: Sendable {
 
   public var revisedPrompt: String = String()
 
-  public var images: [PBImageRef] = []
-
   public var imageViews: [PBSessionImageView] = []
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -4313,15 +4301,6 @@ public struct PBSessionViewerImageView: @unchecked Sendable {
     get {return _storage._kind}
     set {_uniqueStorage()._kind = newValue}
   }
-
-  public var ref: PBImageRef {
-    get {return _storage._ref ?? PBImageRef()}
-    set {_uniqueStorage()._ref = newValue}
-  }
-  /// Returns true if `ref` has been explicitly set.
-  public var hasRef: Bool {return _storage._ref != nil}
-  /// Clears the value of `ref`. Subsequent reads from it will return its default value.
-  public mutating func clearRef() {_uniqueStorage()._ref = nil}
 
   public var toolTitle: String {
     get {return _storage._toolTitle}
@@ -9734,11 +9713,10 @@ extension PBSessionImageView: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
 
 extension PBSessionUserMessageItem: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionUserMessageItem"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}text\0\u{1}images\0\u{1}files\0\u{4}\u{2}origin_caption\0\u{3}scheduled_task_id\0\u{3}scheduled_run_id\0\u{3}is_scheduled\0\u{3}typed_locally\0\u{3}text_segments\0\u{4}\u{a}image_views\0\u{3}origin_request_id\0\u{b}origin\0\u{c}\u{4}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}text\0\u{2}\u{2}files\0\u{4}\u{2}origin_caption\0\u{3}scheduled_task_id\0\u{3}scheduled_run_id\0\u{3}is_scheduled\0\u{3}typed_locally\0\u{3}text_segments\0\u{4}\u{a}image_views\0\u{3}origin_request_id\0\u{b}images\0\u{b}origin\0\u{c}\u{2}\u{1}\u{c}\u{4}\u{1}")
 
   fileprivate class _StorageClass {
     var _text: String = String()
-    var _images: [PBImageRef] = []
     var _files: [PBSessionFileRefView] = []
     var _originCaption: PBCoreText? = nil
     var _scheduledTaskID: String = String()
@@ -9759,7 +9737,6 @@ extension PBSessionUserMessageItem: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
     init(copying source: _StorageClass) {
       _text = source._text
-      _images = source._images
       _files = source._files
       _originCaption = source._originCaption
       _scheduledTaskID = source._scheduledTaskID
@@ -9788,7 +9765,6 @@ extension PBSessionUserMessageItem: SwiftProtobuf.Message, SwiftProtobuf._Messag
         // enabled. https://github.com/apple/swift-protobuf/issues/1034
         switch fieldNumber {
         case 1: try { try decoder.decodeSingularStringField(value: &_storage._text) }()
-        case 2: try { try decoder.decodeRepeatedMessageField(value: &_storage._images) }()
         case 3: try { try decoder.decodeRepeatedMessageField(value: &_storage._files) }()
         case 5: try { try decoder.decodeSingularMessageField(value: &_storage._originCaption) }()
         case 6: try { try decoder.decodeSingularStringField(value: &_storage._scheduledTaskID) }()
@@ -9812,9 +9788,6 @@ extension PBSessionUserMessageItem: SwiftProtobuf.Message, SwiftProtobuf._Messag
       // https://github.com/apple/swift-protobuf/issues/1182
       if !_storage._text.isEmpty {
         try visitor.visitSingularStringField(value: _storage._text, fieldNumber: 1)
-      }
-      if !_storage._images.isEmpty {
-        try visitor.visitRepeatedMessageField(value: _storage._images, fieldNumber: 2)
       }
       if !_storage._files.isEmpty {
         try visitor.visitRepeatedMessageField(value: _storage._files, fieldNumber: 3)
@@ -9853,7 +9826,6 @@ extension PBSessionUserMessageItem: SwiftProtobuf.Message, SwiftProtobuf._Messag
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._text != rhs_storage._text {return false}
-        if _storage._images != rhs_storage._images {return false}
         if _storage._files != rhs_storage._files {return false}
         if _storage._originCaption != rhs_storage._originCaption {return false}
         if _storage._scheduledTaskID != rhs_storage._scheduledTaskID {return false}
@@ -9944,7 +9916,7 @@ extension PBSessionReasoningItem: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension PBSessionToolCallItem: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionToolCallItem"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}call_id\0\u{3}tool_kind\0\u{3}item_type\0\u{1}title\0\u{3}raw_input\0\u{1}detail\0\u{1}status\0\u{3}exit_code\0\u{3}has_exit_code\0\u{3}elapsed_ms\0\u{3}since_ms\0\u{3}frozen_at_ms\0\u{3}is_background\0\u{3}background_label\0\u{1}unconfirmed\0\u{3}no_result\0\u{3}decision_label\0\u{3}decision_allowed\0\u{1}images\0\u{3}background_kind\0\u{3}background_id\0\u{1}seq\0\u{3}image_views\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}call_id\0\u{3}tool_kind\0\u{3}item_type\0\u{1}title\0\u{3}raw_input\0\u{1}detail\0\u{1}status\0\u{3}exit_code\0\u{3}has_exit_code\0\u{3}elapsed_ms\0\u{3}since_ms\0\u{3}frozen_at_ms\0\u{3}is_background\0\u{3}background_label\0\u{1}unconfirmed\0\u{3}no_result\0\u{3}decision_label\0\u{3}decision_allowed\0\u{4}\u{2}background_kind\0\u{3}background_id\0\u{1}seq\0\u{3}image_views\0\u{b}images\0\u{c}\u{13}\u{1}")
 
   fileprivate class _StorageClass {
     var _callID: String = String()
@@ -9967,7 +9939,6 @@ extension PBSessionToolCallItem: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _noResult: Bool = false
     var _decisionLabel: PBCoreText? = nil
     var _decisionAllowed: Bool = false
-    var _images: [PBImageRef] = []
     var _seq: UInt64 = 0
     var _imageViews: [PBSessionImageView] = []
 
@@ -10000,7 +9971,6 @@ extension PBSessionToolCallItem: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _noResult = source._noResult
       _decisionLabel = source._decisionLabel
       _decisionAllowed = source._decisionAllowed
-      _images = source._images
       _seq = source._seq
       _imageViews = source._imageViews
     }
@@ -10039,7 +10009,6 @@ extension PBSessionToolCallItem: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 16: try { try decoder.decodeSingularBoolField(value: &_storage._noResult) }()
         case 17: try { try decoder.decodeSingularMessageField(value: &_storage._decisionLabel) }()
         case 18: try { try decoder.decodeSingularBoolField(value: &_storage._decisionAllowed) }()
-        case 19: try { try decoder.decodeRepeatedMessageField(value: &_storage._images) }()
         case 20: try { try decoder.decodeSingularEnumField(value: &_storage._backgroundKind) }()
         case 21: try { try decoder.decodeSingularStringField(value: &_storage._backgroundID) }()
         case 22: try { try decoder.decodeSingularUInt64Field(value: &_storage._seq) }()
@@ -10110,9 +10079,6 @@ extension PBSessionToolCallItem: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       if _storage._decisionAllowed != false {
         try visitor.visitSingularBoolField(value: _storage._decisionAllowed, fieldNumber: 18)
       }
-      if !_storage._images.isEmpty {
-        try visitor.visitRepeatedMessageField(value: _storage._images, fieldNumber: 19)
-      }
       if _storage._backgroundKind != .unspecified {
         try visitor.visitSingularEnumField(value: _storage._backgroundKind, fieldNumber: 20)
       }
@@ -10154,7 +10120,6 @@ extension PBSessionToolCallItem: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._noResult != rhs_storage._noResult {return false}
         if _storage._decisionLabel != rhs_storage._decisionLabel {return false}
         if _storage._decisionAllowed != rhs_storage._decisionAllowed {return false}
-        if _storage._images != rhs_storage._images {return false}
         if _storage._seq != rhs_storage._seq {return false}
         if _storage._imageViews != rhs_storage._imageViews {return false}
         return true
@@ -10621,7 +10586,7 @@ extension PBSessionSharedFilesItem: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 extension PBSessionGeneratedImagesItem: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionGeneratedImagesItem"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}revised_prompt\0\u{1}images\0\u{4}\u{12}image_views\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}revised_prompt\0\u{4}\u{13}image_views\0\u{b}images\0\u{c}\u{2}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -10630,7 +10595,6 @@ extension PBSessionGeneratedImagesItem: SwiftProtobuf.Message, SwiftProtobuf._Me
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.revisedPrompt) }()
-      case 2: try { try decoder.decodeRepeatedMessageField(value: &self.images) }()
       case 20: try { try decoder.decodeRepeatedMessageField(value: &self.imageViews) }()
       default: break
       }
@@ -10641,9 +10605,6 @@ extension PBSessionGeneratedImagesItem: SwiftProtobuf.Message, SwiftProtobuf._Me
     if !self.revisedPrompt.isEmpty {
       try visitor.visitSingularStringField(value: self.revisedPrompt, fieldNumber: 1)
     }
-    if !self.images.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.images, fieldNumber: 2)
-    }
     if !self.imageViews.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.imageViews, fieldNumber: 20)
     }
@@ -10652,7 +10613,6 @@ extension PBSessionGeneratedImagesItem: SwiftProtobuf.Message, SwiftProtobuf._Me
 
   public static func ==(lhs: PBSessionGeneratedImagesItem, rhs: PBSessionGeneratedImagesItem) -> Bool {
     if lhs.revisedPrompt != rhs.revisedPrompt {return false}
-    if lhs.images != rhs.images {return false}
     if lhs.imageViews != rhs.imageViews {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -10661,7 +10621,7 @@ extension PBSessionGeneratedImagesItem: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 extension PBSessionViewerImageView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionViewerImageView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}viewer_index\0\u{1}seq\0\u{3}event_image_index\0\u{3}timestamp_ms\0\u{1}kind\0\u{1}ref\0\u{3}tool_title\0\u{3}revised_prompt\0\u{3}source_label\0\u{3}size_text\0\u{3}aspect_ratio\0\u{3}clamped_aspect_ratio\0\u{3}has_display_copy\0\u{3}display_name\0\u{3}display_path\0\u{3}file_extension\0\u{3}mime_type\0\u{3}in_collapsed_group\0\u{3}download_name\0\u{3}image_id\0\u{3}sync_state\0\u{1}width\0\u{1}height\0\u{1}preview\0\u{3}preview_format\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}viewer_index\0\u{1}seq\0\u{3}event_image_index\0\u{3}timestamp_ms\0\u{1}kind\0\u{4}\u{2}tool_title\0\u{3}revised_prompt\0\u{3}source_label\0\u{3}size_text\0\u{3}aspect_ratio\0\u{3}clamped_aspect_ratio\0\u{3}has_display_copy\0\u{3}display_name\0\u{3}display_path\0\u{3}file_extension\0\u{3}mime_type\0\u{3}in_collapsed_group\0\u{3}download_name\0\u{3}image_id\0\u{3}sync_state\0\u{1}width\0\u{1}height\0\u{1}preview\0\u{3}preview_format\0\u{b}ref\0\u{c}\u{6}\u{1}")
 
   fileprivate class _StorageClass {
     var _viewerIndex: Int32 = 0
@@ -10669,7 +10629,6 @@ extension PBSessionViewerImageView: SwiftProtobuf.Message, SwiftProtobuf._Messag
     var _eventImageIndex: Int32 = 0
     var _timestampMs: Int64 = 0
     var _kind: PBSessionImageSourceKind = .unspecified
-    var _ref: PBImageRef? = nil
     var _toolTitle: String = String()
     var _revisedPrompt: String = String()
     var _sourceLabel: PBCoreText? = nil
@@ -10704,7 +10663,6 @@ extension PBSessionViewerImageView: SwiftProtobuf.Message, SwiftProtobuf._Messag
       _eventImageIndex = source._eventImageIndex
       _timestampMs = source._timestampMs
       _kind = source._kind
-      _ref = source._ref
       _toolTitle = source._toolTitle
       _revisedPrompt = source._revisedPrompt
       _sourceLabel = source._sourceLabel
@@ -10747,7 +10705,6 @@ extension PBSessionViewerImageView: SwiftProtobuf.Message, SwiftProtobuf._Messag
         case 3: try { try decoder.decodeSingularInt32Field(value: &_storage._eventImageIndex) }()
         case 4: try { try decoder.decodeSingularInt64Field(value: &_storage._timestampMs) }()
         case 5: try { try decoder.decodeSingularEnumField(value: &_storage._kind) }()
-        case 6: try { try decoder.decodeSingularMessageField(value: &_storage._ref) }()
         case 7: try { try decoder.decodeSingularStringField(value: &_storage._toolTitle) }()
         case 8: try { try decoder.decodeSingularStringField(value: &_storage._revisedPrompt) }()
         case 9: try { try decoder.decodeSingularMessageField(value: &_storage._sourceLabel) }()
@@ -10794,9 +10751,6 @@ extension PBSessionViewerImageView: SwiftProtobuf.Message, SwiftProtobuf._Messag
       if _storage._kind != .unspecified {
         try visitor.visitSingularEnumField(value: _storage._kind, fieldNumber: 5)
       }
-      try { if let v = _storage._ref {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
-      } }()
       if !_storage._toolTitle.isEmpty {
         try visitor.visitSingularStringField(value: _storage._toolTitle, fieldNumber: 7)
       }
@@ -10868,7 +10822,6 @@ extension PBSessionViewerImageView: SwiftProtobuf.Message, SwiftProtobuf._Messag
         if _storage._eventImageIndex != rhs_storage._eventImageIndex {return false}
         if _storage._timestampMs != rhs_storage._timestampMs {return false}
         if _storage._kind != rhs_storage._kind {return false}
-        if _storage._ref != rhs_storage._ref {return false}
         if _storage._toolTitle != rhs_storage._toolTitle {return false}
         if _storage._revisedPrompt != rhs_storage._revisedPrompt {return false}
         if _storage._sourceLabel != rhs_storage._sourceLabel {return false}

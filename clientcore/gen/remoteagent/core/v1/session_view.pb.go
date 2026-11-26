@@ -4337,7 +4337,6 @@ func (m *SessionImageView) AppendMarshal(b []byte) []byte {
 type SessionUserMessageItem struct {
 	_               [0]func()
 	Text            string
-	Images          []*v1.ImageRef
 	Files           []*SessionFileRefView
 	OriginCaption   *Text
 	ScheduledTaskId string
@@ -4354,12 +4353,6 @@ func (m *SessionUserMessageItem) GetText() string {
 		return m.Text
 	}
 	return ""
-}
-func (m *SessionUserMessageItem) GetImages() []*v1.ImageRef {
-	if m != nil {
-		return m.Images
-	}
-	return nil
 }
 func (m *SessionUserMessageItem) GetFiles() []*SessionFileRefView {
 	if m != nil {
@@ -4419,7 +4412,6 @@ func (m *SessionUserMessageItem) GetOriginRequestId() string {
 var LitewireDesc_SessionUserMessageItem = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(SessionUserMessageItem{}.Text), Kind: litewire.KindString},
-		{Num: 2, Offset: unsafe.Offsetof(SessionUserMessageItem{}.Images), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &v1.LitewireDesc_ImageRef},
 		{Num: 3, Offset: unsafe.Offsetof(SessionUserMessageItem{}.Files), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionFileRefView},
 		{Num: 5, Offset: unsafe.Offsetof(SessionUserMessageItem{}.OriginCaption), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 6, Offset: unsafe.Offsetof(SessionUserMessageItem{}.ScheduledTaskId), Kind: litewire.KindString},
@@ -4530,7 +4522,6 @@ type SessionToolCallItem struct {
 	NoResult        bool
 	DecisionLabel   *Text
 	DecisionAllowed bool
-	Images          []*v1.ImageRef
 	Seq             uint64
 	ImageViews      []*SessionImageView
 }
@@ -4655,12 +4646,6 @@ func (m *SessionToolCallItem) GetDecisionAllowed() bool {
 	}
 	return false
 }
-func (m *SessionToolCallItem) GetImages() []*v1.ImageRef {
-	if m != nil {
-		return m.Images
-	}
-	return nil
-}
 func (m *SessionToolCallItem) GetSeq() uint64 {
 	if m != nil {
 		return m.Seq
@@ -4696,7 +4681,6 @@ var LitewireDesc_SessionToolCallItem = litewire.MessageDesc{
 		{Num: 16, Offset: unsafe.Offsetof(SessionToolCallItem{}.NoResult), Kind: litewire.KindBool},
 		{Num: 17, Offset: unsafe.Offsetof(SessionToolCallItem{}.DecisionLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 18, Offset: unsafe.Offsetof(SessionToolCallItem{}.DecisionAllowed), Kind: litewire.KindBool},
-		{Num: 19, Offset: unsafe.Offsetof(SessionToolCallItem{}.Images), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &v1.LitewireDesc_ImageRef},
 		{Num: 22, Offset: unsafe.Offsetof(SessionToolCallItem{}.Seq), Kind: litewire.KindUint64},
 		{Num: 23, Offset: unsafe.Offsetof(SessionToolCallItem{}.ImageViews), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionImageView},
 	},
@@ -5113,7 +5097,6 @@ func (m *SessionSharedFilesItem) AppendMarshal(b []byte) []byte {
 type SessionGeneratedImagesItem struct {
 	_             [0]func()
 	RevisedPrompt string
-	Images        []*v1.ImageRef
 	ImageViews    []*SessionImageView
 }
 
@@ -5122,12 +5105,6 @@ func (m *SessionGeneratedImagesItem) GetRevisedPrompt() string {
 		return m.RevisedPrompt
 	}
 	return ""
-}
-func (m *SessionGeneratedImagesItem) GetImages() []*v1.ImageRef {
-	if m != nil {
-		return m.Images
-	}
-	return nil
 }
 func (m *SessionGeneratedImagesItem) GetImageViews() []*SessionImageView {
 	if m != nil {
@@ -5139,7 +5116,6 @@ func (m *SessionGeneratedImagesItem) GetImageViews() []*SessionImageView {
 var LitewireDesc_SessionGeneratedImagesItem = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(SessionGeneratedImagesItem{}.RevisedPrompt), Kind: litewire.KindString},
-		{Num: 2, Offset: unsafe.Offsetof(SessionGeneratedImagesItem{}.Images), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &v1.LitewireDesc_ImageRef},
 		{Num: 20, Offset: unsafe.Offsetof(SessionGeneratedImagesItem{}.ImageViews), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionImageView},
 	},
 }
@@ -5159,7 +5135,6 @@ type SessionViewerImageView struct {
 	EventImageIndex    int32
 	TimestampMs        int64
 	Kind               SessionImageSourceKind
-	Ref                *v1.ImageRef
 	ToolTitle          string
 	RevisedPrompt      string
 	SourceLabel        *Text
@@ -5210,12 +5185,6 @@ func (m *SessionViewerImageView) GetKind() SessionImageSourceKind {
 		return m.Kind
 	}
 	return 0
-}
-func (m *SessionViewerImageView) GetRef() *v1.ImageRef {
-	if m != nil {
-		return m.Ref
-	}
-	return nil
 }
 func (m *SessionViewerImageView) GetToolTitle() string {
 	if m != nil {
@@ -5339,7 +5308,6 @@ var LitewireDesc_SessionViewerImageView = litewire.MessageDesc{
 		{Num: 3, Offset: unsafe.Offsetof(SessionViewerImageView{}.EventImageIndex), Kind: litewire.KindInt32},
 		{Num: 4, Offset: unsafe.Offsetof(SessionViewerImageView{}.TimestampMs), Kind: litewire.KindInt64},
 		{Num: 5, Offset: unsafe.Offsetof(SessionViewerImageView{}.Kind), Kind: litewire.KindInt32},
-		{Num: 6, Offset: unsafe.Offsetof(SessionViewerImageView{}.Ref), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_ImageRef},
 		{Num: 7, Offset: unsafe.Offsetof(SessionViewerImageView{}.ToolTitle), Kind: litewire.KindString},
 		{Num: 8, Offset: unsafe.Offsetof(SessionViewerImageView{}.RevisedPrompt), Kind: litewire.KindString},
 		{Num: 9, Offset: unsafe.Offsetof(SessionViewerImageView{}.SourceLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},

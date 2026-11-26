@@ -2456,7 +2456,7 @@ func TestSessionImageViewerLifecycleAndPlaceholders(t *testing.T) {
 	})
 	v1m := view().GetImageViewer()
 	if !v1m.GetOpen() || v1m.GetCurrentIndex() != 1 || !v1m.GetHasPrev() || !v1m.GetHasNext() ||
-		v1m.GetPositionText().GetLiteral() != "2 / 3" || v1m.GetCurrentImage().GetRef().GetImageId() != "img2" {
+		v1m.GetPositionText().GetLiteral() != "2 / 3" || v1m.GetCurrentImage().GetImageId() != "img2" {
 		t.Fatalf("unexpected opened viewer: %+v", v1m)
 	}
 
@@ -2468,7 +2468,7 @@ func TestSessionImageViewerLifecycleAndPlaceholders(t *testing.T) {
 		},
 	})
 	v2m := view().GetImageViewer()
-	if v2m.GetCurrentIndex() != 2 || !v2m.GetHasPrev() || v2m.GetHasNext() || v2m.GetCurrentImage().GetRef().GetImageId() != "img3" {
+	if v2m.GetCurrentIndex() != 2 || !v2m.GetHasPrev() || v2m.GetHasNext() || v2m.GetCurrentImage().GetImageId() != "img3" {
 		t.Fatalf("unexpected next viewer: %+v", v2m)
 	}
 
@@ -2605,11 +2605,11 @@ func TestSessionImageViewerOutOfWindowAnchorAndNavigation(t *testing.T) {
 		t.Fatalf("expected all 3 session viewer_images despite Limit=2 window, got %d", len(s1.GetTimeline().GetViewerImages()))
 	}
 	for _, vi := range s1.GetTimeline().GetViewerImages() {
-		if len(vi.GetRef().GetPreview()) != 0 {
-			t.Fatalf("viewer image %s still carries preview bytes", vi.GetRef().GetImageId())
+		if len(vi.GetPreview()) != 0 {
+			t.Fatalf("viewer image %s still carries preview bytes", vi.GetImageId())
 		}
 	}
-	if iv := s1.GetImageViewer(); !iv.GetOpen() || iv.GetCurrentIndex() != 2 || iv.GetCurrentImage().GetRef().GetImageId() != "img3" {
+	if iv := s1.GetImageViewer(); !iv.GetOpen() || iv.GetCurrentIndex() != 2 || iv.GetCurrentImage().GetImageId() != "img3" {
 		t.Fatalf("expected navigate from out-of-window seq=2 (+1) before View to land on index 2 (img3), got %+v", iv)
 	}
 
@@ -2621,7 +2621,7 @@ func TestSessionImageViewerOutOfWindowAnchorAndNavigation(t *testing.T) {
 		},
 	})
 	s2 := viewSmallWindow()
-	if iv := s2.GetImageViewer(); iv.GetCurrentIndex() != 1 || iv.GetCurrentImage().GetRef().GetImageId() != "img2" || !iv.GetHasPrev() || !iv.GetHasNext() {
+	if iv := s2.GetImageViewer(); iv.GetCurrentIndex() != 1 || iv.GetCurrentImage().GetImageId() != "img2" || !iv.GetHasPrev() || !iv.GetHasNext() {
 		t.Fatalf("expected out-of-window anchor seq=2 -> index 1 (img2), got %+v", iv)
 	}
 	c.Dispatch(&corev1.Event{
@@ -2631,7 +2631,7 @@ func TestSessionImageViewerOutOfWindowAnchorAndNavigation(t *testing.T) {
 		},
 	})
 	s3 := viewSmallWindow()
-	if iv := s3.GetImageViewer(); iv.GetCurrentIndex() != 0 || iv.GetCurrentImage().GetRef().GetImageId() != "img1" || iv.GetHasPrev() {
+	if iv := s3.GetImageViewer(); iv.GetCurrentIndex() != 0 || iv.GetCurrentImage().GetImageId() != "img1" || iv.GetHasPrev() {
 		t.Fatalf("expected prev from out-of-window index 1 -> index 0 (img1), got %+v", iv)
 	}
 }

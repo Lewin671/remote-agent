@@ -47,12 +47,6 @@ var allowedWireEnums = map[protoreflect.FullName]bool{
 //   - When migrating a field off remoteagent.v1, delete its entry in the same commit;
 //     leaving a resolved entry here fails the test.
 var legacyWireAllowlist = map[string]string{
-	// Transitional view-model image fields kept populated only for iOS until P3-1/P4-1.
-	"SessionGeneratedImagesItem.images -> v1.ImageRef": "ios-transitional (P3-1/P4-1)",
-	"SessionToolCallItem.images -> v1.ImageRef":        "ios-transitional (P3-1/P4-1)",
-	"SessionUserMessageItem.images -> v1.ImageRef":     "ios-transitional (P3-1/P4-1)",
-	"SessionViewerImageView.ref -> v1.ImageRef":        "ios-transitional (P3-1/P4-1)",
-
 	// Legacy session command submission (replaced by semantic actions in P2-3/P3-1, deleted in P4-1).
 	"SessionSubmitCommandAction.command -> v1.Command": "legacy-session-command (P2-3/P3-1/P4-1)",
 

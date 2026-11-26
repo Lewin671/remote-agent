@@ -113,7 +113,6 @@ internal fun sessionFixtureVm(
                 val um = e.userMessage
                 val b = SessionUserMessageItem.newBuilder()
                     .setText(um.text)
-                    .addAllImages(um.imagesList)
                     .addAllImageViews(
                         um.imagesList.map { img ->
                             io.github.lewin671.remoteagent.core.proto.SessionImageView.newBuilder()

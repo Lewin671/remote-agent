@@ -43,10 +43,11 @@ type timelineCacheKey struct {
 }
 
 type timelineCache struct {
-	key      timelineCacheKey
-	hasFork  bool
-	rawItems []*corev1.SessionTimelineItem
-	spans    []quietSpan
+	key       timelineCacheKey
+	hasFork   bool
+	rawItems  []*corev1.SessionTimelineItem
+	spans     []quietSpan
+	refsBySeq map[uint64][]*v1.ImageRef
 }
 
 const (
@@ -413,7 +414,7 @@ func buildSessionTimeline(
 		if ui.timeline != nil && !ui.timeline.hasFork && ui.timeline.key == cacheKey {
 			folded := foldQuietScheduledItemsWithSpans(ui.timeline.rawItems, ui.timeline.spans, st.Cal, win)
 			applyTimelineWindow(out, folded, win)
-			out.ViewerImages = images.CollectViewerImages(folded, caps.Name, home)
+			out.ViewerImages = images.CollectViewerImages(folded, ui.timeline.refsBySeq, caps.Name, home)
 			return out
 		}
 	}
@@ -513,6 +514,16 @@ func buildSessionTimeline(
 	var turnStartInputTokens, turnStartOutputTokens int64
 	hasTurnTokenBase := false
 	hasFork := false
+	var refsBySeq map[uint64][]*v1.ImageRef
+	recordRefs := func(seq uint64, refs []*v1.ImageRef) {
+		if len(refs) == 0 {
+			return
+		}
+		if refsBySeq == nil {
+			refsBySeq = make(map[uint64][]*v1.ImageRef)
+		}
+		refsBySeq[seq] = refs
+	}
 
 	for _, e := range events {
 		if e == nil {
@@ -568,7 +579,10 @@ func buildSessionTimeline(
 
 		case *v1.Event_ToolStarted:
 			if ce := callAt[e.Seq]; ce != nil {
-				tools.add(&tcCtx, &rawItems, ce, ce.GetToolCall())
+				if tc := ce.GetToolCall(); tc != nil {
+					recordRefs(ce.Seq, tc.Images)
+					tools.add(&tcCtx, &rawItems, ce, tc)
+				}
 			} else if r := runningBySeq[e.Seq]; r != nil || unfinishedSet[e.Seq] {
 				tools.flush(&rawItems)
 				rt := r
@@ -591,6 +605,9 @@ func buildSessionTimeline(
 
 		case *v1.Event_ToolCall:
 			if !placed[e.Seq] {
+				if k.ToolCall != nil {
+					recordRefs(e.Seq, k.ToolCall.Images)
+				}
 				tools.add(&tcCtx, &rawItems, e, k.ToolCall)
 			}
 
@@ -632,6 +649,7 @@ func buildSessionTimeline(
 					SizeText:    text.Plain(sharedfiles.FormatFileSize(sf.SizeBytes)),
 				})
 			}
+			recordRefs(e.Seq, um.Images)
 			rawItems = append(rawItems, &corev1.SessionTimelineItem{
 				Id:          key,
 				Seq:         e.Seq,
@@ -641,7 +659,6 @@ func buildSessionTimeline(
 				Kind: &corev1.SessionTimelineItem_UserMessage{
 					UserMessage: &corev1.SessionUserMessageItem{
 						Text:            clean,
-						Images:          slices.Clone(um.Images),
 						ImageViews:      images.BuildImageViews(um.Images),
 						Files:           files,
 						OriginRequestId: e.GetOrigin().GetRequestId(),
@@ -812,6 +829,7 @@ func buildSessionTimeline(
 				continue
 			}
 			tools.flush(&rawItems)
+			recordRefs(e.Seq, k.ImageGenerated.Images)
 			rawItems = append(rawItems, &corev1.SessionTimelineItem{
 				Id:          key,
 				Seq:         e.Seq,
@@ -821,7 +839,6 @@ func buildSessionTimeline(
 				Kind: &corev1.SessionTimelineItem_GeneratedImages{
 					GeneratedImages: &corev1.SessionGeneratedImagesItem{
 						RevisedPrompt: k.ImageGenerated.RevisedPrompt,
-						Images:        slices.Clone(k.ImageGenerated.Images),
 						ImageViews:    images.BuildImageViews(k.ImageGenerated.Images),
 					},
 				},
@@ -1005,17 +1022,18 @@ func buildSessionTimeline(
 	spans := findQuietSpans(events, p)
 	if canUseCache {
 		ui.timeline = &timelineCache{
-			key:      cacheKey,
-			hasFork:  hasFork,
-			rawItems: rawItems,
-			spans:    spans,
+			key:       cacheKey,
+			hasFork:   hasFork,
+			rawItems:  rawItems,
+			spans:     spans,
+			refsBySeq: refsBySeq,
 		}
 	}
 	folded := foldQuietScheduledItemsWithSpans(rawItems, spans, st.Cal, win)
 
 	// Apply window pagination and anchor resolution; viewer_images always covers the full folded timeline.
 	applyTimelineWindow(out, folded, win)
-	out.ViewerImages = images.CollectViewerImages(folded, caps.Name, home)
+	out.ViewerImages = images.CollectViewerImages(folded, refsBySeq, caps.Name, home)
 	return out
 }
 
@@ -1207,7 +1225,6 @@ func buildToolCallView(
 		BackgroundLabel: bgLabel,
 		NoResult:        noResult,
 		Unconfirmed:     noResult,
-		Images:          slices.Clone(tc.Images),
 		ImageViews:      images.BuildImageViews(tc.Images),
 		Seq:             e.Seq,
 	}
@@ -1258,7 +1275,7 @@ func buildToolGroupItem(calls []*corev1.SessionToolCallItem) *corev1.SessionTool
 		default:
 			otherCount++
 		}
-		imgCount += int32(len(c.Images))
+		imgCount += int32(len(c.ImageViews))
 	}
 	n := int64(len(calls))
 	var summary *corev1.Text

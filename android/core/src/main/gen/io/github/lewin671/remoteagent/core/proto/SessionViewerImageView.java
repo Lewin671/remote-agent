@@ -173,54 +173,6 @@ public  final class SessionViewerImageView extends
     kind_ = 0;
   }
 
-  public static final int REF_FIELD_NUMBER = 6;
-  private io.github.lewin671.remoteagent.proto.ImageRef ref_;
-  /**
-   * <code>.remoteagent.v1.ImageRef ref = 6 [json_name = "ref"];</code>
-   */
-  @java.lang.Override
-  public boolean hasRef() {
-    return ((bitField0_ & 0x00000001) != 0);
-  }
-  /**
-   * <code>.remoteagent.v1.ImageRef ref = 6 [json_name = "ref"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.ImageRef getRef() {
-    return ref_ == null ? io.github.lewin671.remoteagent.proto.ImageRef.getDefaultInstance() : ref_;
-  }
-  /**
-   * <code>.remoteagent.v1.ImageRef ref = 6 [json_name = "ref"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setRef(io.github.lewin671.remoteagent.proto.ImageRef value) {
-    value.getClass();  // minimal bytecode null check
-    ref_ = value;
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.v1.ImageRef ref = 6 [json_name = "ref"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeRef(io.github.lewin671.remoteagent.proto.ImageRef value) {
-    value.getClass();  // minimal bytecode null check
-    if (ref_ != null &&
-        ref_ != io.github.lewin671.remoteagent.proto.ImageRef.getDefaultInstance()) {
-      ref_ =
-        io.github.lewin671.remoteagent.proto.ImageRef.newBuilder(ref_).mergeFrom(value).buildPartial();
-    } else {
-      ref_ = value;
-    }
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.v1.ImageRef ref = 6 [json_name = "ref"];</code>
-   */
-  private void clearRef() {
-    ref_ = null;
-    bitField0_ = (bitField0_ & ~0x00000001);
-  }
-
   public static final int TOOL_TITLE_FIELD_NUMBER = 7;
   private java.lang.String toolTitle_;
   /**
@@ -324,7 +276,7 @@ public  final class SessionViewerImageView extends
    */
   @java.lang.Override
   public boolean hasSourceLabel() {
-    return ((bitField0_ & 0x00000002) != 0);
+    return ((bitField0_ & 0x00000001) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text source_label = 9 [json_name = "sourceLabel"];</code>
@@ -340,7 +292,7 @@ public  final class SessionViewerImageView extends
   private void setSourceLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     sourceLabel_ = value;
-    bitField0_ |= 0x00000002;
+    bitField0_ |= 0x00000001;
   }
   /**
    * <code>.remoteagent.core.v1.Text source_label = 9 [json_name = "sourceLabel"];</code>
@@ -355,14 +307,14 @@ public  final class SessionViewerImageView extends
     } else {
       sourceLabel_ = value;
     }
-    bitField0_ |= 0x00000002;
+    bitField0_ |= 0x00000001;
   }
   /**
    * <code>.remoteagent.core.v1.Text source_label = 9 [json_name = "sourceLabel"];</code>
    */
   private void clearSourceLabel() {
     sourceLabel_ = null;
-    bitField0_ = (bitField0_ & ~0x00000002);
+    bitField0_ = (bitField0_ & ~0x00000001);
   }
 
   public static final int SIZE_TEXT_FIELD_NUMBER = 10;
@@ -1244,53 +1196,6 @@ public  final class SessionViewerImageView extends
     }
 
     /**
-     * <code>.remoteagent.v1.ImageRef ref = 6 [json_name = "ref"];</code>
-     */
-    @java.lang.Override
-    public boolean hasRef() {
-      return instance.hasRef();
-    }
-    /**
-     * <code>.remoteagent.v1.ImageRef ref = 6 [json_name = "ref"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.ImageRef getRef() {
-      return instance.getRef();
-    }
-    /**
-     * <code>.remoteagent.v1.ImageRef ref = 6 [json_name = "ref"];</code>
-     */
-    public Builder setRef(io.github.lewin671.remoteagent.proto.ImageRef value) {
-      copyOnWrite();
-      instance.setRef(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.v1.ImageRef ref = 6 [json_name = "ref"];</code>
-     */
-    public Builder setRef(
-        io.github.lewin671.remoteagent.proto.ImageRef.Builder builderForValue) {
-      copyOnWrite();
-      instance.setRef(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.ImageRef ref = 6 [json_name = "ref"];</code>
-     */
-    public Builder mergeRef(io.github.lewin671.remoteagent.proto.ImageRef value) {
-      copyOnWrite();
-      instance.mergeRef(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.ImageRef ref = 6 [json_name = "ref"];</code>
-     */
-    public Builder clearRef() {  copyOnWrite();
-      instance.clearRef();
-      return this;
-    }
-
-    /**
      * <code>string tool_title = 7 [json_name = "toolTitle"];</code>
      * @return The toolTitle.
      */
@@ -2108,7 +2013,6 @@ public  final class SessionViewerImageView extends
             "eventImageIndex_",
             "timestampMs_",
             "kind_",
-            "ref_",
             "toolTitle_",
             "revisedPrompt_",
             "sourceLabel_",
@@ -2130,11 +2034,10 @@ public  final class SessionViewerImageView extends
             "previewFormat_",
           };
           java.lang.String info =
-              "\u0000\u0019\u0000\u0001\u0001\u0019\u0019\u0000\u0000\u0000\u0001\u0004\u0002\u0003" +
-              "\u0003\u0004\u0004\u0002\u0005\f\u0006\u1009\u0000\u0007\u0208\b\u0208\t\u1009\u0001" +
-              "\n\u0208\u000b\u0000\f\u0000\r\u0007\u000e\u0208\u000f\u0208\u0010\u0208\u0011\u0208" +
-              "\u0012\u0007\u0013\u0208\u0014\u0208\u0015\f\u0016\u0004\u0017\u0004\u0018\n\u0019" +
-              "\f";
+              "\u0000\u0018\u0000\u0001\u0001\u0019\u0018\u0000\u0000\u0000\u0001\u0004\u0002\u0003" +
+              "\u0003\u0004\u0004\u0002\u0005\f\u0007\u0208\b\u0208\t\u1009\u0000\n\u0208\u000b" +
+              "\u0000\f\u0000\r\u0007\u000e\u0208\u000f\u0208\u0010\u0208\u0011\u0208\u0012\u0007" +
+              "\u0013\u0208\u0014\u0208\u0015\f\u0016\u0004\u0017\u0004\u0018\n\u0019\f";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
