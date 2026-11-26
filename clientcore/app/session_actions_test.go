@@ -1357,30 +1357,29 @@ func TestSessionTrackingMapsStayBounded(t *testing.T) {
 	var seq uint64 = 1
 
 	// Send 30 messages and settle each OK.
+	scope := &corev1.DraftScope{Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_SESSION, Id: "s-bnd"}
+	c.Dispatch(&corev1.Event{
+		NowMs: now,
+		Event: &corev1.Event_DraftOpen{DraftOpen: &corev1.DraftOpenAction{Scope: scope}},
+	})
 	for i := 0; i < 30; i++ {
 		now += 10
-		msgReqID := "msg-" + string(rune('a'+i/26)) + string(rune('a'+i%26))
+		c.Dispatch(&corev1.Event{
+			NowMs: now,
+			Event: &corev1.Event_DraftSetText{DraftSetText: &corev1.DraftSetTextAction{Scope: scope, Text: "msg"}},
+		})
 		b := c.Dispatch(&corev1.Event{
 			NowMs: now,
-			Event: &corev1.Event_SessionSubmitCommand{
-				SessionSubmitCommand: &corev1.SessionSubmitCommandAction{
+			Event: &corev1.Event_DraftSendSession{
+				DraftSendSession: &corev1.DraftSendSessionAction{
 					SessionId: "s-bnd",
-					Command: &v1.Command{
-						ProtocolVersion: sync.PeerVersion,
-						Kind: &v1.Command_Send{
-							Send: &v1.SendRequest{
-								SessionId: "s-bnd",
-								RequestId: msgReqID,
-								Text:      "msg",
-							},
-						},
-					},
+					Mode:      v1.SendMode_SEND_MODE_STEER,
 				},
 			},
 		})
-		effs, _ := decodeDispatchedCommands(t, b)
-		if len(effs) != 1 {
-			t.Fatalf("send %d: expected 1 command, got %d", i, len(effs))
+		effs, cmds := decodeDispatchedCommands(t, b)
+		if len(effs) != 1 || cmds[0].GetSend() == nil {
+			t.Fatalf("send %d: expected 1 send command, got %d", i, len(effs))
 		}
 		now += 10
 		settleCommandOK(c, now, effs[0], &v1.CommandResult{Outcome: "executed"})
@@ -1773,5 +1772,63 @@ func TestQuestionOptionSummaryTextUsesI18nSeparatorAndFallback(t *testing.T) {
 	parts := sum.Join
 	if len(parts) != 2 || parts[0].GetLiteral() != "Alpha" || parts[1].GetKey() != text.KeyDockOptionNumber {
 		t.Fatalf("expected [Plain(Alpha), Msg(dock.option_number)], got %+v", parts)
+	}
+}
+
+func TestSessionResolveApprovalPreservesExplicitObservedEventSeq(t *testing.T) {
+	sess := &corev1.PlainSession{
+		SessionId: "s-notif",
+		MachineId: "m-on",
+		UpdatedMs: 1_791_078_060_000,
+		Meta:      &v1.Session{Id: "s-notif", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_CODEX},
+		Checkpoint: &v1.LiveSnapshot{
+			Actions: []*v1.Event{
+				{
+					Seq: 42,
+					Kind: &v1.Event_ApprovalRequested{
+						ApprovalRequested: &v1.ApprovalRequested{ApprovalId: "ap-bg-1", Command: "rm -rf /tmp/foo"},
+					},
+				},
+			},
+		},
+	}
+	c := makeSemanticTestCore(t, sess, nil)
+
+	// Stale explicit observed_event_seq (from an older push notification) must not be
+	// overwritten by checkpoint seq and must fail preflight instead of dispatching.
+	bStale := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_061_000,
+		Event: &corev1.Event_SessionResolveApproval{
+			SessionResolveApproval: &corev1.SessionResolveApprovalAction{
+				SessionId:        "s-notif",
+				ApprovalId:       "ap-bg-1",
+				Allow:            true,
+				ObservedEventSeq: 41,
+			},
+		},
+	})
+	if _, staleCmds := decodeDispatchedCommands(t, bStale); len(staleCmds) != 0 {
+		t.Fatalf("expected stale observed_event_seq to fail preflight, got %+v", staleCmds)
+	}
+
+	// Matching explicit observed_event_seq dispatches with that exact seq preserved.
+	b := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_061_010,
+		Event: &corev1.Event_SessionResolveApproval{
+			SessionResolveApproval: &corev1.SessionResolveApprovalAction{
+				SessionId:        "s-notif",
+				ApprovalId:       "ap-bg-1",
+				Allow:            true,
+				ObservedEventSeq: 42,
+			},
+		},
+	})
+	_, cmds := decodeDispatchedCommands(t, b)
+	if len(cmds) != 1 || cmds[0].GetResolveApproval() == nil {
+		t.Fatalf("expected 1 ResolveApproval command, got %+v", cmds)
+	}
+	ra := cmds[0].GetResolveApproval()
+	if ra.ApprovalId != "ap-bg-1" || !ra.Allow || ra.ObservedEventSeq != 42 {
+		t.Fatalf("unexpected ResolveApproval payload: %+v", ra)
 	}
 }

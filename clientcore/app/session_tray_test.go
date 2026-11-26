@@ -343,23 +343,30 @@ func TestPendingTrayAllSevenGroupsOrderingHeadersAndNumbering(t *testing.T) {
 	}
 }
 
+func sendDraftMsg(t *testing.T, c *Core, now int64, sessID, msgText string, mode v1.SendMode) *corev1.EffectBatch {
+	t.Helper()
+	scope := &corev1.DraftScope{Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_SESSION, Id: sessID}
+	c.Dispatch(&corev1.Event{
+		NowMs: now,
+		Event: &corev1.Event_DraftOpen{DraftOpen: &corev1.DraftOpenAction{Scope: scope}},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: now,
+		Event: &corev1.Event_DraftSetText{DraftSetText: &corev1.DraftSetTextAction{Scope: scope, Text: msgText}},
+	})
+	return c.Dispatch(&corev1.Event{
+		NowMs: now,
+		Event: &corev1.Event_DraftSendSession{
+			DraftSendSession: &corev1.DraftSendSessionAction{SessionId: sessID, Mode: mode},
+		},
+	})
+}
+
 func TestCodexSteerVisibilityGraceAndNonCodexImmediate(t *testing.T) {
 	c, sessID := bootstrapTrayApp(t, v1.Agent_AGENT_CODEX, v1.SessionStatus_SESSION_STATUS_RUNNING, true)
 
 	// Send steer at t=1_791_078_060_100: must stay hidden until t+1000ms.
-	sendBatch := c.Dispatch(&corev1.Event{
-		NowMs: 1_791_078_060_100,
-		Event: &corev1.Event_SessionSubmitCommand{
-			SessionSubmitCommand: &corev1.SessionSubmitCommandAction{
-				SessionId: sessID,
-				Command: &v1.Command{
-					Kind: &v1.Command_Send{
-						Send: &v1.SendRequest{SessionId: sessID, RequestId: "steer-fast", Text: "focus auth", Mode: v1.SendMode_SEND_MODE_STEER},
-					},
-				},
-			},
-		},
-	})
+	sendBatch := sendDraftMsg(t, c, 1_791_078_060_100, sessID, "focus auth", v1.SendMode_SEND_MODE_STEER)
 	graceTimer := findScheduleTimer(sendBatch, corev1.TimerKind_TIMER_KIND_SESSION_STEER_GRACE)
 	if graceTimer == nil || graceTimer.DelayMs != 1000 {
 		t.Fatalf("expected 1000ms steer grace timer, got %+v", graceTimer)
@@ -368,12 +375,13 @@ func TestCodexSteerVisibilityGraceAndNonCodexImmediate(t *testing.T) {
 	if len(dcs) != 1 {
 		t.Fatalf("expected 1 Send command, got %d", len(dcs))
 	}
+	steerReqID := dcs[0].cmd.GetSend().GetRequestId()
 	dispatchExecutedOutcome(c, 1_791_078_060_120, dcs[0], "")
 	appendStreamEvents(c, sessID, 1_791_078_060_130, []*v1.Event{
 		{
 			Seq: 2,
 			Kind: &v1.Event_InputState{
-				InputState: &v1.InputState{RequestId: "steer-fast", Status: v1.InputStatus_INPUT_STATUS_QUEUED, Text: "focus auth", Mode: v1.SendMode_SEND_MODE_STEER},
+				InputState: &v1.InputState{RequestId: steerReqID, Status: v1.InputStatus_INPUT_STATUS_QUEUED, Text: "focus auth", Mode: v1.SendMode_SEND_MODE_STEER},
 			},
 		},
 	})
@@ -388,19 +396,7 @@ func TestCodexSteerVisibilityGraceAndNonCodexImmediate(t *testing.T) {
 	}
 
 	// Send QUEUE item on Codex: appears immediately without 1s delay.
-	qBatch := c.Dispatch(&corev1.Event{
-		NowMs: 1_791_078_060_200,
-		Event: &corev1.Event_SessionSubmitCommand{
-			SessionSubmitCommand: &corev1.SessionSubmitCommandAction{
-				SessionId: sessID,
-				Command: &v1.Command{
-					Kind: &v1.Command_Send{
-						Send: &v1.SendRequest{SessionId: sessID, RequestId: "q-immed", Text: "afterwards", Mode: v1.SendMode_SEND_MODE_QUEUE},
-					},
-				},
-			},
-		},
-	})
+	qBatch := sendDraftMsg(t, c, 1_791_078_060_200, sessID, "afterwards", v1.SendMode_SEND_MODE_QUEUE)
 	if findScheduleTimer(qBatch, corev1.TimerKind_TIMER_KIND_SESSION_STEER_GRACE) != nil {
 		t.Fatalf("did not expect steer grace timer for QUEUE mode")
 	}
@@ -433,26 +429,15 @@ func TestPromoteTrayItemThreeOutcomes(t *testing.T) {
 	c, sessID := bootstrapTrayApp(t, v1.Agent_AGENT_CLAUDE, v1.SessionStatus_SESSION_STATUS_RUNNING, true)
 
 	// Submit queued text message (t-id-ab / etc. will come from entropy).
-	sBatch := c.Dispatch(&corev1.Event{
-		NowMs: 1_791_078_060_100,
-		Event: &corev1.Event_SessionSubmitCommand{
-			SessionSubmitCommand: &corev1.SessionSubmitCommandAction{
-				SessionId: sessID,
-				Command: &v1.Command{
-					Kind: &v1.Command_Send{
-						Send: &v1.SendRequest{SessionId: sessID, RequestId: "q-orig", Text: "promote me", Mode: v1.SendMode_SEND_MODE_QUEUE},
-					},
-				},
-			},
-		},
-	})
+	sBatch := sendDraftMsg(t, c, 1_791_078_060_100, sessID, "promote me", v1.SendMode_SEND_MODE_QUEUE)
 	dcs := extractSendCommands(sBatch)
+	origReqID := dcs[0].cmd.GetSend().GetRequestId()
 	dispatchExecutedOutcome(c, 1_791_078_060_110, dcs[0], "")
 	appendStreamEvents(c, sessID, 1_791_078_060_120, []*v1.Event{
 		{
 			Seq: 2,
 			Kind: &v1.Event_InputState{
-				InputState: &v1.InputState{RequestId: "q-orig", Status: v1.InputStatus_INPUT_STATUS_QUEUED, Text: "promote me", Mode: v1.SendMode_SEND_MODE_QUEUE},
+				InputState: &v1.InputState{RequestId: origReqID, Status: v1.InputStatus_INPUT_STATUS_QUEUED, Text: "promote me", Mode: v1.SendMode_SEND_MODE_QUEUE},
 			},
 		},
 	})
@@ -461,7 +446,7 @@ func TestPromoteTrayItemThreeOutcomes(t *testing.T) {
 	p1 := c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_200,
 		Event: &corev1.Event_SessionPromoteTrayItem{
-			SessionPromoteTrayItem: &corev1.SessionTrayItemAction{SessionId: sessID, RequestId: "q-orig"},
+			SessionPromoteTrayItem: &corev1.SessionTrayItemAction{SessionId: sessID, RequestId: origReqID},
 		},
 	})
 	cancelCmds1 := extractCancelCommands(p1)
@@ -487,7 +472,7 @@ func TestPromoteTrayItemThreeOutcomes(t *testing.T) {
 	p2 := c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_300,
 		Event: &corev1.Event_SessionPromoteTrayItem{
-			SessionPromoteTrayItem: &corev1.SessionTrayItemAction{SessionId: sessID, RequestId: "q-orig"},
+			SessionPromoteTrayItem: &corev1.SessionTrayItemAction{SessionId: sessID, RequestId: origReqID},
 		},
 	})
 	cancelCmds2 := extractCancelCommands(p2)
@@ -519,43 +504,7 @@ func TestPromoteTrayItemThreeOutcomes(t *testing.T) {
 func TestRestoreCancelAllUndoTimerAndAttachmentRetention(t *testing.T) {
 	c, sessID := bootstrapTrayApp(t, v1.Agent_AGENT_CLAUDE, v1.SessionStatus_SESSION_STATUS_RUNNING, true)
 
-	// Send one message WITH attachments and one text-only paused message.
-	b1 := c.Dispatch(&corev1.Event{
-		NowMs: 1_791_078_060_100,
-		Event: &corev1.Event_SessionSubmitCommand{
-			SessionSubmitCommand: &corev1.SessionSubmitCommandAction{
-				SessionId: sessID,
-				Command: &v1.Command{
-					Kind: &v1.Command_Send{
-						Send: &v1.SendRequest{
-							SessionId: sessID,
-							RequestId: "att-1",
-							Text:      "check screenshot",
-							Mode:      v1.SendMode_SEND_MODE_QUEUE,
-							ImageIds:  []string{"img-1"},
-							FileIds:   []string{"file-1"},
-						},
-					},
-				},
-			},
-		},
-	})
-	dispatchExecutedOutcome(c, 1_791_078_060_110, extractSendCommands(b1)[0], "")
-	b2 := c.Dispatch(&corev1.Event{
-		NowMs: 1_791_078_060_120,
-		Event: &corev1.Event_SessionSubmitCommand{
-			SessionSubmitCommand: &corev1.SessionSubmitCommandAction{
-				SessionId: sessID,
-				Command: &v1.Command{
-					Kind: &v1.Command_Send{
-						Send: &v1.SendRequest{SessionId: sessID, RequestId: "txt-2", Text: "second paused", Mode: v1.SendMode_SEND_MODE_QUEUE},
-					},
-				},
-			},
-		},
-	})
-	dispatchExecutedOutcome(c, 1_791_078_060_130, extractSendCommands(b2)[0], "")
-
+	// Populate one paused message WITH attachments and one text-only paused message via stream events.
 	appendStreamEvents(c, sessID, 1_791_078_060_140, []*v1.Event{
 		{
 			Seq: 2,
@@ -667,24 +616,14 @@ func TestRestoreCancelAllUndoTimerAndAttachmentRetention(t *testing.T) {
 	}
 
 	// Cancel another item then fire 5s TIMER_KIND_SESSION_UNDO -> Undo disappears.
-	cFail := c.Dispatch(&corev1.Event{
-		NowMs: 1_791_078_061_300,
-		Event: &corev1.Event_SessionSubmitCommand{
-			SessionSubmitCommand: &corev1.SessionSubmitCommandAction{
-				SessionId: sessID,
-				Command: &v1.Command{
-					Kind: &v1.Command_Send{
-						Send: &v1.SendRequest{SessionId: sessID, RequestId: "fail-att", Text: "with img", Mode: v1.SendMode_SEND_MODE_QUEUE, ImageIds: []string{"img-x"}},
-					},
-				},
-			},
-		},
-	})
-	dispatchExecutedOutcome(c, 1_791_078_061_310, extractSendCommands(cFail)[0], "write_failed")
+	cFail := sendDraftMsg(t, c, 1_791_078_061_300, sessID, "fail local", v1.SendMode_SEND_MODE_QUEUE)
+	failDc := extractSendCommands(cFail)[0]
+	failReqID := failDc.cmd.GetSend().GetRequestId()
+	dispatchExecutedOutcome(c, 1_791_078_061_310, failDc, "write_failed")
 	cancelLocalBatch := c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_061_320,
 		Event: &corev1.Event_SessionCancelTrayItem{
-			SessionCancelTrayItem: &corev1.SessionTrayItemAction{SessionId: sessID, RequestId: "fail-att"},
+			SessionCancelTrayItem: &corev1.SessionTrayItemAction{SessionId: sessID, RequestId: failReqID},
 		},
 	})
 	undoExpTimer := findScheduleTimer(cancelLocalBatch, corev1.TimerKind_TIMER_KIND_SESSION_UNDO)

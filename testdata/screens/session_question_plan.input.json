@@ -261,16 +261,10 @@
       "event": {
         "nowMs": "1791078060080",
         "monoMs": "1200",
-        "sessionSubmitCommand": {
+        "sessionAnswerQuestion": {
           "sessionId": "s-qp",
-          "command": {
-            "answerQuestion": {
-              "sessionId": "s-qp",
-              "questionId": "q-1",
-              "option": 1,
-              "questionIndex": 0
-            }
-          }
+          "questionId": "q-1",
+          "optionNum": 1
         }
       }
     },
@@ -417,14 +411,9 @@
       "event": {
         "nowMs": "1791078060120",
         "monoMs": "1400",
-        "sessionSubmitCommand": {
+        "sessionAnswerPlan": {
           "sessionId": "s-qp",
-          "command": {
-            "answerPlan": {
-              "sessionId": "s-qp",
-              "choice": "PLAN_CHOICE_CLEAR_AND_IMPLEMENT"
-            }
-          }
+          "choice": "PLAN_CHOICE_CLEAR_AND_IMPLEMENT"
         }
       }
     },

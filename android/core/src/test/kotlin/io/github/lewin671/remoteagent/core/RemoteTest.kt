@@ -498,18 +498,13 @@ class RemoteTest {
             r.start()
             val vmFlow = r.watchSession("s1")
             vmFlow.first { r.conn.isOnline && it.header.found && it.header.computerOnline && it.timeline.loaded }
-            r.submitSessionCommand(
-                "s1",
-                Command.newBuilder()
-                    .setSend(
-                        SendRequest.newBuilder()
-                            .setSessionId("s1")
-                            .setText("跑一下测试")
-                            .setRequestId("q1"),
-                    )
-                    .build(),
-                machineId = daemon.id,
-            )
+            val scope = io.github.lewin671.remoteagent.core.proto.DraftScope.newBuilder()
+                .setKind(io.github.lewin671.remoteagent.core.proto.DraftScopeKind.DRAFT_SCOPE_KIND_SESSION)
+                .setId("s1")
+                .build()
+            r.coreHost.openDraft(scope, daemon.id)
+            r.coreHost.setDraftText(scope, "跑一下测试")
+            r.sendDraftSession("s1", SendMode.SEND_MODE_STEER)
             val (h, cmd) = withContext(Dispatchers.IO) { daemon.commands.take() }
             assertEquals("s1", h.sessionId)
             assertEquals("跑一下测试", cmd.send.text)
@@ -518,16 +513,7 @@ class RemoteTest {
             assertTrue(h.deadlineMs > System.currentTimeMillis())
 
             // The daemon's own error comes back in the session command slot.
-            r.submitSessionCommand(
-                "s1",
-                Command.newBuilder()
-                    .setCompact(
-                        io.github.lewin671.remoteagent.proto.CompactRequest.newBuilder()
-                            .setSessionId("s1"),
-                    )
-                    .build(),
-                machineId = daemon.id,
-            )
+            r.sessionSimpleCommand("s1", io.github.lewin671.remoteagent.core.proto.SessionSimpleCommandKind.SESSION_SIMPLE_COMMAND_KIND_COMPACT)
             val compactFailed = vmFlow.first {
                 it.actions.compact.status == io.github.lewin671.remoteagent.core.proto.SessionCommandStatus.SESSION_COMMAND_STATUS_FAILED
             }
@@ -535,16 +521,7 @@ class RemoteTest {
 
             daemon.disconnect()
             r.awaitUntil("offline machine") { r.machineCard(daemon.id)?.online == false }
-            r.submitSessionCommand(
-                "s1",
-                Command.newBuilder()
-                    .setInterrupt(
-                        io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder()
-                            .setSessionId("s1"),
-                    )
-                    .build(),
-                machineId = daemon.id,
-            )
+            r.sessionSimpleCommand("s1", io.github.lewin671.remoteagent.core.proto.SessionSimpleCommandKind.SESSION_SIMPLE_COMMAND_KIND_INTERRUPT)
             val interruptFailed = vmFlow.first {
                 it.actions.interrupt.status == io.github.lewin671.remoteagent.core.proto.SessionCommandStatus.SESSION_COMMAND_STATUS_FAILED
             }

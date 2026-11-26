@@ -958,14 +958,6 @@ message SessionSkeletonItem {
   Text text = 1;
 }
 
-// SessionSubmitCommandAction dispatches any session/machine command through sync.SubmitCommand.
-message SessionSubmitCommandAction {
-  string slot_key = 1;
-  string machine_id = 2;
-  string session_id = 3;
-  remoteagent.v1.Command command = 4;
-}
-
 // SessionSlotAction references one command attempt slot (e.g. abandon).
 message SessionSlotAction {
   string slot_key = 1;
@@ -1051,6 +1043,7 @@ message SessionResolveApprovalAction {
   bool allow = 3;
   bool always = 4;
   string deny_reason = 5;
+  uint64 observed_event_seq = 6;
 }
 
 // SessionToggleQuestionOptionAction toggles one option in a multi-select question step.

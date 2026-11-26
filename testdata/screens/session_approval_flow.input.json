@@ -277,16 +277,11 @@
       "event": {
         "nowMs": "1791078060090",
         "monoMs": "1250",
-        "sessionSubmitCommand": {
+        "sessionResolveApproval": {
           "sessionId": "s-ap",
-          "command": {
-            "resolveApproval": {
-              "sessionId": "s-ap",
-              "approvalId": "ap-1",
-              "allow": true,
-              "always": true
-            }
-          }
+          "approvalId": "ap-1",
+          "allow": true,
+          "always": true
         }
       },
       "views": [

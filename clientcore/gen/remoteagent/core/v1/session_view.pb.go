@@ -5920,53 +5920,6 @@ func (m *SessionSkeletonItem) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionSkeletonItem)
 }
 
-type SessionSubmitCommandAction struct {
-	_         [0]func()
-	SlotKey   string
-	MachineId string
-	SessionId string
-	Command   *v1.Command
-}
-
-func (m *SessionSubmitCommandAction) GetSlotKey() string {
-	if m != nil {
-		return m.SlotKey
-	}
-	return ""
-}
-func (m *SessionSubmitCommandAction) GetMachineId() string {
-	if m != nil {
-		return m.MachineId
-	}
-	return ""
-}
-func (m *SessionSubmitCommandAction) GetSessionId() string {
-	if m != nil {
-		return m.SessionId
-	}
-	return ""
-}
-func (m *SessionSubmitCommandAction) GetCommand() *v1.Command {
-	if m != nil {
-		return m.Command
-	}
-	return nil
-}
-
-var LitewireDesc_SessionSubmitCommandAction = litewire.MessageDesc{
-	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionSubmitCommandAction{}) },
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(SessionSubmitCommandAction{}.SlotKey), Kind: litewire.KindString},
-		{Num: 2, Offset: unsafe.Offsetof(SessionSubmitCommandAction{}.MachineId), Kind: litewire.KindString},
-		{Num: 3, Offset: unsafe.Offsetof(SessionSubmitCommandAction{}.SessionId), Kind: litewire.KindString},
-		{Num: 4, Offset: unsafe.Offsetof(SessionSubmitCommandAction{}.Command), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_Command},
-	},
-}
-
-func (m *SessionSubmitCommandAction) Unmarshal(b []byte) error {
-	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionSubmitCommandAction)
-}
-
 type SessionSlotAction struct {
 	_         [0]func()
 	SlotKey   string
@@ -6367,12 +6320,13 @@ func (m *SessionEditApprovalDenyAction) Unmarshal(b []byte) error {
 }
 
 type SessionResolveApprovalAction struct {
-	_          [0]func()
-	SessionId  string
-	ApprovalId string
-	Allow      bool
-	Always     bool
-	DenyReason string
+	_                [0]func()
+	SessionId        string
+	ApprovalId       string
+	Allow            bool
+	Always           bool
+	DenyReason       string
+	ObservedEventSeq uint64
 }
 
 func (m *SessionResolveApprovalAction) GetSessionId() string {
@@ -6405,6 +6359,12 @@ func (m *SessionResolveApprovalAction) GetDenyReason() string {
 	}
 	return ""
 }
+func (m *SessionResolveApprovalAction) GetObservedEventSeq() uint64 {
+	if m != nil {
+		return m.ObservedEventSeq
+	}
+	return 0
+}
 
 var LitewireDesc_SessionResolveApprovalAction = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionResolveApprovalAction{}) },
@@ -6414,6 +6374,7 @@ var LitewireDesc_SessionResolveApprovalAction = litewire.MessageDesc{
 		{Num: 3, Offset: unsafe.Offsetof(SessionResolveApprovalAction{}.Allow), Kind: litewire.KindBool},
 		{Num: 4, Offset: unsafe.Offsetof(SessionResolveApprovalAction{}.Always), Kind: litewire.KindBool},
 		{Num: 5, Offset: unsafe.Offsetof(SessionResolveApprovalAction{}.DenyReason), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(SessionResolveApprovalAction{}.ObservedEventSeq), Kind: litewire.KindUint64},
 	},
 }
 

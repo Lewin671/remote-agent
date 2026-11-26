@@ -910,17 +910,6 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.CheckForUpdatesEvent getCheckForUpdates();
 
   /**
-   * <code>.remoteagent.core.v1.SessionSubmitCommandAction session_submit_command = 200 [json_name = "sessionSubmitCommand"];</code>
-   * @return Whether the sessionSubmitCommand field is set.
-   */
-  boolean hasSessionSubmitCommand();
-  /**
-   * <code>.remoteagent.core.v1.SessionSubmitCommandAction session_submit_command = 200 [json_name = "sessionSubmitCommand"];</code>
-   * @return The sessionSubmitCommand.
-   */
-  io.github.lewin671.remoteagent.core.proto.SessionSubmitCommandAction getSessionSubmitCommand();
-
-  /**
    * <code>.remoteagent.core.v1.SessionSlotAction session_abandon_command = 201 [json_name = "sessionAbandonCommand"];</code>
    * @return Whether the sessionAbandonCommand field is set.
    */

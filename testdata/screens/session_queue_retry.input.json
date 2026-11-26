@@ -213,18 +213,36 @@
     },
     {
       "event": {
+        "nowMs": "1791078060078",
+        "monoMs": "1198",
+        "draftOpen": {
+          "scope": {
+            "kind": "DRAFT_SCOPE_KIND_SESSION",
+            "id": "s-qr"
+          }
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060079",
+        "monoMs": "1199",
+        "draftSetText": {
+          "scope": {
+            "kind": "DRAFT_SCOPE_KIND_SESSION",
+            "id": "s-qr"
+          },
+          "text": "steer failed msg"
+        }
+      }
+    },
+    {
+      "event": {
         "nowMs": "1791078060080",
         "monoMs": "1200",
-        "sessionSubmitCommand": {
+        "draftSendSession": {
           "sessionId": "s-qr",
-          "command": {
-            "send": {
-              "sessionId": "s-qr",
-              "requestId": "msg-fail",
-              "text": "steer failed msg",
-              "mode": "SEND_MODE_STEER"
-            }
-          }
+          "mode": "SEND_MODE_STEER"
         }
       }
     },
@@ -233,8 +251,8 @@
         "nowMs": "1791078060090",
         "monoMs": "1250",
         "commandOutcome": {
-          "requestId": "r-7",
-          "attemptId": "r-8",
+          "requestId": "r-8",
+          "attemptId": "r-9",
           "source": "OUTCOME_SOURCE_SERVER",
           "notForwarded": true,
           "attemptBound": true,
@@ -245,18 +263,24 @@
     },
     {
       "event": {
+        "nowMs": "1791078060099",
+        "monoMs": "1299",
+        "draftSetText": {
+          "scope": {
+            "kind": "DRAFT_SCOPE_KIND_SESSION",
+            "id": "s-qr"
+          },
+          "text": "queued second"
+        }
+      }
+    },
+    {
+      "event": {
         "nowMs": "1791078060100",
         "monoMs": "1300",
-        "sessionSubmitCommand": {
+        "draftSendSession": {
           "sessionId": "s-qr",
-          "command": {
-            "send": {
-              "sessionId": "s-qr",
-              "requestId": "msg-q",
-              "text": "queued second",
-              "mode": "SEND_MODE_QUEUE"
-            }
-          }
+          "mode": "SEND_MODE_QUEUE"
         }
       }
     },
@@ -265,8 +289,8 @@
         "nowMs": "1791078060110",
         "monoMs": "1350",
         "commandOutcome": {
-          "requestId": "r-9",
-          "attemptId": "r-10",
+          "requestId": "r-11",
+          "attemptId": "r-12",
           "source": "OUTCOME_SOURCE_DAEMON",
           "signed": false,
           "hashesMatch": true,
@@ -288,16 +312,9 @@
       "event": {
         "nowMs": "1791078060120",
         "monoMs": "1400",
-        "sessionSubmitCommand": {
+        "sessionRetryTrayItem": {
           "sessionId": "s-qr",
-          "command": {
-            "send": {
-              "sessionId": "s-qr",
-              "requestId": "msg-q",
-              "text": "queued second",
-              "mode": "SEND_MODE_QUEUE"
-            }
-          }
+          "requestId": "r-10"
         }
       }
     },
@@ -306,8 +323,8 @@
         "nowMs": "1791078060130",
         "monoMs": "1450",
         "commandOutcome": {
-          "requestId": "r-9",
-          "attemptId": "r-11",
+          "requestId": "r-11",
+          "attemptId": "r-13",
           "source": "OUTCOME_SOURCE_DAEMON",
           "signed": true,
           "hashesMatch": true,
@@ -352,7 +369,7 @@
                 "seq": "2",
                 "time": "2026-10-04T01:10:02Z",
                 "inputState": {
-                  "requestId": "msg-q",
+                  "requestId": "r-10",
                   "status": "INPUT_STATUS_QUEUED",
                   "text": "queued second",
                   "mode": "SEND_MODE_QUEUE"
@@ -379,7 +396,7 @@
         "monoMs": "1550",
         "sessionRestoreTrayItem": {
           "sessionId": "s-qr",
-          "requestId": "msg-fail"
+          "requestId": "r-7"
         }
       }
     }

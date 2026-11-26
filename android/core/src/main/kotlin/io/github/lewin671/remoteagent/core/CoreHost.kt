@@ -2668,16 +2668,6 @@ class CoreHost(
         )
     }
 
-    fun submitSessionCommand(sessionId: String, command: Command, machineId: String = "", slotKey: String = "") = send {
-        setSessionSubmitCommand(
-            SessionSubmitCommandAction.newBuilder()
-                .setSessionId(sessionId)
-                .setMachineId(machineId)
-                .setSlotKey(slotKey)
-                .setCommand(command),
-        )
-    }
-
     fun abandonSessionCommand(sessionId: String, slotKey: String) = send {
         setSessionAbandonCommand(SessionSlotAction.newBuilder().setSessionId(sessionId).setSlotKey(slotKey))
     }
@@ -2742,6 +2732,7 @@ class CoreHost(
         allow: Boolean,
         always: Boolean = false,
         denyReason: String = "",
+        observedEventSeq: Long = 0L,
     ) = send {
         setSessionResolveApproval(
             SessionResolveApprovalAction.newBuilder()
@@ -2749,7 +2740,8 @@ class CoreHost(
                 .setApprovalId(approvalId)
                 .setAllow(allow)
                 .setAlways(always)
-                .setDenyReason(denyReason),
+                .setDenyReason(denyReason)
+                .setObservedEventSeq(observedEventSeq),
         )
     }
 

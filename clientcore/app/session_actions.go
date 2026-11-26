@@ -356,11 +356,12 @@ func (c *Core) handleSessionResolveApproval(ctx *sync.StepContext, store *sessio
 		ProtocolVersion: sync.PeerVersion,
 		Kind: &v1.Command_ResolveApproval{
 			ResolveApproval: &v1.ResolveApprovalRequest{
-				SessionId:  act.SessionId,
-				ApprovalId: act.ApprovalId,
-				Allow:      act.Allow,
-				Always:     act.Always,
-				Message:    denyReason,
+				SessionId:        act.SessionId,
+				ApprovalId:       act.ApprovalId,
+				Allow:            act.Allow,
+				Always:           act.Always,
+				Message:          denyReason,
+				ObservedEventSeq: act.ObservedEventSeq,
 			},
 		},
 	}

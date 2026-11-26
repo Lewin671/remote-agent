@@ -4803,34 +4803,6 @@ public struct PBSessionSkeletonItem: Sendable {
   fileprivate var _text: PBCoreText? = nil
 }
 
-/// SessionSubmitCommandAction dispatches any session/machine command through sync.SubmitCommand.
-public struct PBSessionSubmitCommandAction: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var slotKey: String = String()
-
-  public var machineID: String = String()
-
-  public var sessionID: String = String()
-
-  public var command: PBCommand {
-    get {return _command ?? PBCommand()}
-    set {_command = newValue}
-  }
-  /// Returns true if `command` has been explicitly set.
-  public var hasCommand: Bool {return self._command != nil}
-  /// Clears the value of `command`. Subsequent reads from it will return its default value.
-  public mutating func clearCommand() {self._command = nil}
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-
-  fileprivate var _command: PBCommand? = nil
-}
-
 /// SessionSlotAction references one command attempt slot (e.g. abandon).
 public struct PBSessionSlotAction: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
@@ -5033,6 +5005,8 @@ public struct PBSessionResolveApprovalAction: Sendable {
   public var always: Bool = false
 
   public var denyReason: String = String()
+
+  public var observedEventSeq: UInt64 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -11627,55 +11601,6 @@ extension PBSessionSkeletonItem: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
   }
 }
 
-extension PBSessionSubmitCommandAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".SessionSubmitCommandAction"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}slot_key\0\u{3}machine_id\0\u{3}session_id\0\u{1}command\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.slotKey) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
-      case 4: try { try decoder.decodeSingularMessageField(value: &self._command) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if !self.slotKey.isEmpty {
-      try visitor.visitSingularStringField(value: self.slotKey, fieldNumber: 1)
-    }
-    if !self.machineID.isEmpty {
-      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 2)
-    }
-    if !self.sessionID.isEmpty {
-      try visitor.visitSingularStringField(value: self.sessionID, fieldNumber: 3)
-    }
-    try { if let v = self._command {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
-    } }()
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: PBSessionSubmitCommandAction, rhs: PBSessionSubmitCommandAction) -> Bool {
-    if lhs.slotKey != rhs.slotKey {return false}
-    if lhs.machineID != rhs.machineID {return false}
-    if lhs.sessionID != rhs.sessionID {return false}
-    if lhs._command != rhs._command {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
 extension PBSessionSlotAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionSlotAction"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}slot_key\0\u{3}session_id\0")
@@ -12113,7 +12038,7 @@ extension PBSessionEditApprovalDenyAction: SwiftProtobuf.Message, SwiftProtobuf.
 
 extension PBSessionResolveApprovalAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionResolveApprovalAction"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}approval_id\0\u{1}allow\0\u{1}always\0\u{3}deny_reason\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}approval_id\0\u{1}allow\0\u{1}always\0\u{3}deny_reason\0\u{3}observed_event_seq\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -12126,6 +12051,7 @@ extension PBSessionResolveApprovalAction: SwiftProtobuf.Message, SwiftProtobuf._
       case 3: try { try decoder.decodeSingularBoolField(value: &self.allow) }()
       case 4: try { try decoder.decodeSingularBoolField(value: &self.always) }()
       case 5: try { try decoder.decodeSingularStringField(value: &self.denyReason) }()
+      case 6: try { try decoder.decodeSingularUInt64Field(value: &self.observedEventSeq) }()
       default: break
       }
     }
@@ -12147,6 +12073,9 @@ extension PBSessionResolveApprovalAction: SwiftProtobuf.Message, SwiftProtobuf._
     if !self.denyReason.isEmpty {
       try visitor.visitSingularStringField(value: self.denyReason, fieldNumber: 5)
     }
+    if self.observedEventSeq != 0 {
+      try visitor.visitSingularUInt64Field(value: self.observedEventSeq, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -12156,6 +12085,7 @@ extension PBSessionResolveApprovalAction: SwiftProtobuf.Message, SwiftProtobuf._
     if lhs.allow != rhs.allow {return false}
     if lhs.always != rhs.always {return false}
     if lhs.denyReason != rhs.denyReason {return false}
+    if lhs.observedEventSeq != rhs.observedEventSeq {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

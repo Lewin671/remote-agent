@@ -40,10 +40,8 @@ import io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay
 import io.github.lewin671.remoteagent.core.proto.SessionCommandStatus
 import io.github.lewin671.remoteagent.core.proto.SessionDockKind
 import io.github.lewin671.remoteagent.data.Settings
-import io.github.lewin671.remoteagent.proto.Command
 import io.github.lewin671.remoteagent.proto.Envelope
 import io.github.lewin671.remoteagent.proto.NotifyKind
-import io.github.lewin671.remoteagent.proto.ResolveApprovalRequest
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -570,18 +568,11 @@ class ApprovalWorker(context: Context, params: WorkerParameters) :
             check(saveRecord(ApprovalRecord.SENT)) {
                 sessionText(UiMessages.notificationsAndroidCouldNotSaveApprovalSubmissionStateNothingWasSent())
             }
-            remote.submitSessionCommand(
-                session,
-                Command.newBuilder()
-                    .setResolveApproval(
-                        ResolveApprovalRequest.newBuilder()
-                            .setSessionId(session)
-                            .setApprovalId(approval)
-                            .setAllow(allow)
-                            .apply { if (sourceSeq > 0) setObservedEventSeq(sourceSeq) },
-                    )
-                    .build(),
-                machineId = machine,
+            remote.resolveApproval(
+                sid = session,
+                approvalId = approval,
+                allow = allow,
+                observedEventSeq = sourceSeq,
             )
             val settled = withTimeoutOrNull(30_000L) {
                 vmFlow.first { vm ->

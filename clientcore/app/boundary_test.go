@@ -47,9 +47,6 @@ var allowedWireEnums = map[protoreflect.FullName]bool{
 //   - When migrating a field off remoteagent.v1, delete its entry in the same commit;
 //     leaving a resolved entry here fails the test.
 var legacyWireAllowlist = map[string]string{
-	// Legacy session command submission (replaced by semantic actions in P2-3/P3-1, deleted in P4-1).
-	"SessionSubmitCommandAction.command -> v1.Command": "legacy-session-command (P2-3/P3-1/P4-1)",
-
 	// Legacy machine command bypass (retired in P2-4/P2-5/P4-1).
 	"RunMachineCommandAction.command -> v1.Command":        "legacy-run-machine-command (P2-4/P2-5/P4-1)",
 	"RunMachineCommandResultEffect.result -> v1.CommandResult": "legacy-run-machine-command (P2-4/P2-5/P4-1)",

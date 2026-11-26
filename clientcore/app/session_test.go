@@ -296,14 +296,10 @@ func TestSessionStartPromptDeduplicationAndForkNavigation(t *testing.T) {
 	// Now test ForkSession command emitting NavigateEffect on Executed.
 	forkBatch := c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_140,
-		Event: &corev1.Event_SessionSubmitCommand{
-			SessionSubmitCommand: &corev1.SessionSubmitCommandAction{
+		Event: &corev1.Event_SessionSimpleCommand{
+			SessionSimpleCommand: &corev1.SessionSimpleCommandAction{
 				SessionId: "s-created",
-				Command: &v1.Command{
-					Kind: &v1.Command_ForkSession{
-						ForkSession: &v1.ForkSessionRequest{SessionId: "s-created"},
-					},
-				},
+				Kind:      corev1.SessionSimpleCommandKind_SESSION_SIMPLE_COMMAND_KIND_FORK,
 			},
 		},
 	})
@@ -654,17 +650,10 @@ func TestAnswerPlanPreflightRejectsChangedSnapshot(t *testing.T) {
 	// Submit AnswerPlan: must dispatch GetLiveSnapshot first, NOT AnswerPlan.
 	sub := c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_100,
-		Event: &corev1.Event_SessionSubmitCommand{
-			SessionSubmitCommand: &corev1.SessionSubmitCommandAction{
+		Event: &corev1.Event_SessionAnswerPlan{
+			SessionAnswerPlan: &corev1.SessionAnswerPlanAction{
 				SessionId: "s-plan",
-				Command: &v1.Command{
-					Kind: &v1.Command_AnswerPlan{
-						AnswerPlan: &v1.AnswerPlanRequest{
-							SessionId: "s-plan",
-							Choice:    v1.PlanChoice_PLAN_CHOICE_IMPLEMENT,
-						},
-					},
-				},
+				Choice:    v1.PlanChoice_PLAN_CHOICE_IMPLEMENT,
 			},
 		},
 	})
@@ -754,17 +743,10 @@ func TestAnswerPlanPreflightMatchesAndFrozenRetry(t *testing.T) {
 	// Submit AnswerPlan -> dispatches GetLiveSnapshot.
 	sub := c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_100,
-		Event: &corev1.Event_SessionSubmitCommand{
-			SessionSubmitCommand: &corev1.SessionSubmitCommandAction{
+		Event: &corev1.Event_SessionAnswerPlan{
+			SessionAnswerPlan: &corev1.SessionAnswerPlanAction{
 				SessionId: "s-plan",
-				Command: &v1.Command{
-					Kind: &v1.Command_AnswerPlan{
-						AnswerPlan: &v1.AnswerPlanRequest{
-							SessionId: "s-plan",
-							Choice:    v1.PlanChoice_PLAN_CHOICE_CLEAR_AND_IMPLEMENT,
-						},
-					},
-				},
+				Choice:    v1.PlanChoice_PLAN_CHOICE_CLEAR_AND_IMPLEMENT,
 			},
 		},
 	})
@@ -842,17 +824,10 @@ func TestAnswerPlanPreflightMatchesAndFrozenRetry(t *testing.T) {
 	// Retry frozen attempt: must bypass GetLiveSnapshot and resend AnswerPlan directly.
 	retryBatch := c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_160,
-		Event: &corev1.Event_SessionSubmitCommand{
-			SessionSubmitCommand: &corev1.SessionSubmitCommandAction{
+		Event: &corev1.Event_SessionAnswerPlan{
+			SessionAnswerPlan: &corev1.SessionAnswerPlanAction{
 				SessionId: "s-plan",
-				Command: &v1.Command{
-					Kind: &v1.Command_AnswerPlan{
-						AnswerPlan: &v1.AnswerPlanRequest{
-							SessionId: "s-plan",
-							Choice:    v1.PlanChoice_PLAN_CHOICE_CLEAR_AND_IMPLEMENT,
-						},
-					},
-				},
+				Choice:    v1.PlanChoice_PLAN_CHOICE_CLEAR_AND_IMPLEMENT,
 			},
 		},
 	})

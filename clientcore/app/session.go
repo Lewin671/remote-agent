@@ -887,42 +887,6 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 		}
 		return nil
 
-	case *corev1.Event_SessionSubmitCommand:
-		if k.SessionSubmitCommand == nil || k.SessionSubmitCommand.Command == nil {
-			return nil
-		}
-		act := k.SessionSubmitCommand
-		cmd := act.Command.Clone()
-		sid := act.SessionId
-		if sid == "" {
-			sid = sessionIDFromCommand(cmd)
-		}
-		machineID := act.MachineId
-		if machineID == "" && sid != "" {
-			if se := c.m.sync.SessionEntry(sid); se != nil {
-				machineID = se.MachineID
-			}
-		}
-
-		ui := store.ensureUI(sid)
-		snap := c.m.sync.SessionSnapshot(sid)
-		reconcileSessionSnapshot(snap, ui)
-		fillObservedPreconditions(cmd, snap, ui)
-
-		slotKey := act.SlotKey
-		kind, qID, qIdx, outReqID := classifySessionCommand(cmd, sid)
-		if slotKey == "" {
-			slotKey = canonicalSlotKey(cmd, sid, qIdx)
-		}
-
-		if kind == slotKindAnswerPlan && !c.m.sync.HasFrozenAttempt(slotKey) {
-			c.submitPlanPreflight(ctx, store, ui, sid, machineID, slotKey, cmd)
-			return nil
-		}
-
-		c.submitSessionCommandDirect(ctx, store, ui, sid, machineID, slotKey, kind, qID, qIdx, outReqID, cmd)
-		return nil
-
 	case *corev1.Event_SessionAbandonCommand:
 		if k.SessionAbandonCommand == nil || k.SessionAbandonCommand.SlotKey == "" {
 			return nil
@@ -1096,46 +1060,6 @@ func (c *Core) appendSessionRenderTarget(dirty sync.DirtyFlags, effects []*corev
 			},
 		},
 	})
-}
-
-func sessionIDFromCommand(cmd *v1.Command) string {
-	if cmd == nil {
-		return ""
-	}
-	switch k := cmd.Kind.(type) {
-	case *v1.Command_Send:
-		return k.Send.GetSessionId()
-	case *v1.Command_Interrupt:
-		return k.Interrupt.GetSessionId()
-	case *v1.Command_ResolveApproval:
-		return k.ResolveApproval.GetSessionId()
-	case *v1.Command_AnswerQuestion:
-		return k.AnswerQuestion.GetSessionId()
-	case *v1.Command_StopSession:
-		return k.StopSession.GetSessionId()
-	case *v1.Command_CancelInput:
-		return k.CancelInput.GetSessionId()
-	case *v1.Command_SetModel:
-		return k.SetModel.GetSessionId()
-	case *v1.Command_SetApprovalMode:
-		return k.SetApprovalMode.GetSessionId()
-	case *v1.Command_Compact:
-		return k.Compact.GetSessionId()
-	case *v1.Command_AnswerPlan:
-		return k.AnswerPlan.GetSessionId()
-	case *v1.Command_OpenTerminal:
-		return k.OpenTerminal.GetSessionId()
-	case *v1.Command_ResumeSession:
-		return k.ResumeSession.GetSessionId()
-	case *v1.Command_ResumeInput:
-		return k.ResumeInput.GetSessionId()
-	case *v1.Command_RenameSession:
-		return k.RenameSession.GetSessionId()
-	case *v1.Command_ForkSession:
-		return k.ForkSession.GetSessionId()
-	default:
-		return ""
-	}
 }
 
 func classifySessionCommand(cmd *v1.Command, sid string) (kind sessionSlotKind, qID string, qIdx int32, outReqID string) {

@@ -609,7 +609,6 @@ message Event {
     ConnCheckStatusEvent conn_check_status = 377;
     ClientUpdateStateEvent client_update_state = 378;
     CheckForUpdatesEvent check_for_updates = 379;
-    SessionSubmitCommandAction session_submit_command = 200;
     SessionSlotAction session_abandon_command = 201;
     SessionOpenAction session_open = 202;
     RunMachineCommandAction run_machine_command = 203;
@@ -795,8 +794,8 @@ message Event {
     ExitRequestAction exit_request = 498;
     ExitConfirmAction exit_confirm = 499;
   }
-  reserved 216, 424 to 429;
-  reserved "shared_file_local_state", "terminal_direct_open", "terminal_direct_close", "terminal_direct_leg", "terminal_direct_input", "terminal_direct_output", "terminal_direct_confirm_rebuild";
+  reserved 200, 216, 424 to 429;
+  reserved "session_submit_command", "shared_file_local_state", "terminal_direct_open", "terminal_direct_close", "terminal_direct_leg", "terminal_direct_input", "terminal_direct_output", "terminal_direct_confirm_rebuild";
   int64 now_ms = 98;
   int64 mono_ms = 99;
   repeated string random_ids = 100;
