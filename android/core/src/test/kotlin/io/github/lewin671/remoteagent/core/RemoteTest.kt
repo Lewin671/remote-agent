@@ -801,10 +801,13 @@ class RemoteTest {
         daemon.putMachine("fake-mac.local", scheduledTasks = true)
         val originalAnswer = daemon.answer
         val json = """{"tasks":[{"id":"task","spec":{"title":"Private scheduled content"}}]}""".toByteArray()
-        daemon.answer = { h, c -> if (c.hasSchedule()) io.github.lewin671.remoteagent.proto.CommandResult.newBuilder().setSchedule(io.github.lewin671.remoteagent.proto.ScheduleResponse.newBuilder().setResultJson(com.google.protobuf.ByteString.copyFrom(json))).build() else originalAnswer(h, c) }
+        daemon.answer = { h, c ->
+            if (c.hasSchedule()) io.github.lewin671.remoteagent.proto.CommandResult.newBuilder().setSchedule(io.github.lewin671.remoteagent.proto.ScheduleResponse.newBuilder().setResultJson(com.google.protobuf.ByteString.copyFrom(json))).build()
+            else originalAnswer(h, c)
+        }
         val memory = MemoryCache(); val r = client(cache = memory); r.start()
         r.awaitUntil("connected") { r.conn.isOnline && r.machineCard(daemon.account.deviceId)?.online == true }
-        r.coreHost.refreshSchedules(daemon.account.deviceId)
+        r.coreHost.openScheduleList(true)
         val key = "schedule:${daemon.account.deviceId}"
         r.awaitUntil("schedule cache written") { memory.blobs[key] != null }
         val stored = memory.blob(key)!!
@@ -817,55 +820,67 @@ class RemoteTest {
         fun allTasks(vm: io.github.lewin671.remoteagent.core.proto.SchedulesViewModel) =
             vm.attention14List + vm.freshList + vm.othersList + vm.endedList
 
-        // Make daemon schedule.list fail so cold instances can only restore from the verified opaque cache.
-        daemon.answer = { h, c -> if (c.hasSchedule()) throw java.io.IOException("offline") else originalAnswer(h, c) }
+        // Disconnect daemon and stop the writer client before cold-start checks so:
+        // 1) no in-flight refresh from `r` can overwrite the tampered cache blob, and
+        // 2) cold instances deterministically see the machine offline and rely solely on cache verification.
+        daemon.disconnect()
+        r.awaitUntil("daemon offline") { r.machineCard(daemon.account.deviceId)?.online == false }
+        r.close()
+        daemon.answer = { h, c -> if (c.hasSchedule()) error("offline daemon must not answer schedule") else originalAnswer(h, c) }
 
         // Wrong request_id or tampered signature must not restore cached schedules on cold start.
-        memory.putBlob(key, blob.toBuilder().setRequestId("wrong-request").build().toByteArray())
-        val badReq = fixtureRemote(r.account, http, memory); closers += AutoCloseable { badReq.close() }
+        val badReqCache = MemoryCache()
+        badReqCache.putBlob(key, blob.toBuilder().setRequestId("wrong-request").build().toByteArray())
+        val badReq = fixtureRemote(r.account, http, badReqCache); closers += AutoCloseable { badReq.close() }
         badReq.start()
         badReq.awaitUntil("badReq online") { badReq.conn.isOnline && badReq.machineCard(daemon.account.deviceId) != null }
-        val badReqSub = launch { badReq.coreHost.schedulesView.collect {} }
         badReq.coreHost.openScheduleList(true)
-        delay(250)
-        assertTrue(allTasks(badReq.coreHost.schedulesView.value).isEmpty())
-        badReqSub.cancel()
+        val badReqVm = withTimeout(10_000L) {
+            badReq.coreHost.schedulesView.first { it.initialLoaded && it.anyMachineSupported && !it.loading }
+        }
+        assertTrue((badReqCache.blobReads[key]?.get() ?: 0) > 0)
+        assertTrue(allTasks(badReqVm).isEmpty())
+        assertTrue(badReqVm.showEmptyHint)
         badReq.close()
 
-        memory.putBlob(
+        val badSigCache = MemoryCache()
+        badSigCache.putBlob(
             key,
             blob.toBuilder()
                 .setSealedResult(env.toBuilder().setSignature(com.google.protobuf.ByteString.copyFrom(ByteArray(64))).build().toByteString())
                 .build()
                 .toByteArray(),
         )
-        val badSig = fixtureRemote(r.account, http, memory); closers += AutoCloseable { badSig.close() }
+        val badSig = fixtureRemote(r.account, http, badSigCache); closers += AutoCloseable { badSig.close() }
         badSig.start()
         badSig.awaitUntil("badSig online") { badSig.conn.isOnline && badSig.machineCard(daemon.account.deviceId) != null }
-        val badSigSub = launch { badSig.coreHost.schedulesView.collect {} }
         badSig.coreHost.openScheduleList(true)
-        delay(250)
-        assertTrue(allTasks(badSig.coreHost.schedulesView.value).isEmpty())
-        badSigSub.cancel()
+        val badSigVm = withTimeout(10_000L) {
+            badSig.coreHost.schedulesView.first { it.initialLoaded && it.anyMachineSupported && !it.loading }
+        }
+        assertTrue((badSigCache.blobReads[key]?.get() ?: 0) > 0)
+        assertTrue(allTasks(badSigVm).isEmpty())
+        assertTrue(badSigVm.showEmptyHint)
         badSig.close()
 
         // Valid opaque blob restores schedule task offline on cold start without hitting the daemon.
         // Subscribe only AFTER openScheduleList(true) to prove lazy sub-screens proactively refresh on first subscribe.
-        memory.putBlob(key, stored)
-        val cold = fixtureRemote(r.account, http, memory); closers += AutoCloseable { cold.close() }
+        val coldCache = MemoryCache()
+        coldCache.putBlob(key, stored)
+        val cold = fixtureRemote(r.account, http, coldCache); closers += AutoCloseable { cold.close() }
         cold.start()
         cold.awaitUntil("cold online") { cold.conn.isOnline && cold.machineCard(daemon.account.deviceId) != null }
         cold.coreHost.openScheduleList(true)
         withTimeout(10_000L) {
             cold.coreHost.schedulesView.first { vm -> allTasks(vm).any { it.taskId == "task" && it.title == "Private scheduled content" } }
         }
-        cold.close()
 
         // Removing the machine prunes its persisted schedule cache blob.
         removeAsAuthority(daemon.phone, daemon.account.deviceId, http)
-        r.syncSecurity()
-        r.awaitUntil("schedule cache pruned") { memory.blobs[key] == null }
-        assertNull(memory.blob(key))
+        cold.syncSecurity()
+        cold.awaitUntil("schedule cache pruned") { coldCache.blobs[key] == null }
+        assertNull(coldCache.blob(key))
+        cold.close()
     }
 
     @Test fun coreRejectsUnsequencedZeroOpDevicesEvent() = runBlocking<Unit> {
@@ -896,7 +911,11 @@ class RemoteTest {
 /** A CipherCache in memory, as the Room one behaves. */
 class MemoryCache : CipherCache {
     val blobs = ConcurrentHashMap<String, ByteArray>()
-    override suspend fun blob(name: String) = blobs[name]
+    val blobReads = ConcurrentHashMap<String, java.util.concurrent.atomic.AtomicInteger>()
+    override suspend fun blob(name: String): ByteArray? {
+        blobReads.computeIfAbsent(name) { java.util.concurrent.atomic.AtomicInteger() }.incrementAndGet()
+        return blobs[name]
+    }
     override suspend fun putBlob(name: String, data: ByteArray) { blobs[name] = data }
     override suspend fun removeBlob(name: String) { blobs.remove(name) }
     val images = ConcurrentHashMap<String, ByteArray>()

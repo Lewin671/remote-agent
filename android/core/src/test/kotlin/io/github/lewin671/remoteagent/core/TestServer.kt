@@ -217,9 +217,9 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
     @Volatile var garbleResults = false
 
     /** What to answer; the default is an empty success of the right kind. */
-    var liveSnapshot: ((String) -> LiveSnapshot)? = null
+    @Volatile var liveSnapshot: ((String) -> LiveSnapshot)? = null
 
-    var answer: (Header, Command) -> CommandResult = { _, c -> defaultResult(c) }
+    @Volatile var answer: (Header, Command) -> CommandResult = { _, c -> defaultResult(c) }
 
     suspend fun login() {
         token = loginWithStore(TestApi(account.server, http), account.deviceId, store).token
