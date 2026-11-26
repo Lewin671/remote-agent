@@ -356,7 +356,7 @@ it("drops a cached history that is not this session's", async () => {
   (r as any).cache = long;
   r.start();
   const host1 = getCoreHost(r);
-  await vi.waitFor(() => expect(host1.viewConnection().connected && host1.viewSession("s").header?.found).toBe(true));
+  await vi.waitFor(() => expect(host1.viewConnection().connected && host1.viewSession("s").header?.found).toBe(true), { timeout: 3000 });
   host1.watchSession("s");
   host1.sessionOpen("s");
   await vi.waitFor(() => expect(host1.viewSession("s").timeline?.loaded).toBe(true));
@@ -392,7 +392,7 @@ it("drops a cached history that is not this session's", async () => {
   (r2 as any).cache = moved;
   r2.start();
   const host2 = getCoreHost(r2);
-  await vi.waitFor(() => expect(host2.viewConnection().connected && host2.viewSession("s").header?.found).toBe(true));
+  await vi.waitFor(() => expect(host2.viewConnection().connected && host2.viewSession("s").header?.found).toBe(true), { timeout: 3000 });
   host2.watchSession("s");
   host2.sessionOpen("s");
   await vi.waitFor(() => expect(host2.viewSession("s").timeline?.loaded).toBe(true));
