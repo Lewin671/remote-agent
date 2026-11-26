@@ -5,6 +5,7 @@ import (
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
@@ -156,7 +157,7 @@ func ShortMachineID(id string) string {
 }
 
 // DefaultClientName returns the hardware/browser description fallback for a client device.
-func DefaultClientName(d *corev1.SyncDeviceView) string {
+func DefaultClientName(d *world.SyncDevice) string {
 	if d != nil && d.Meta != nil && strings.TrimSpace(d.Meta.Description) != "" {
 		return d.Meta.Description
 	}
@@ -164,7 +165,7 @@ func DefaultClientName(d *corev1.SyncDeviceView) string {
 }
 
 // ClientName returns custom name, else default hardware description, else empty string (callers use settings.unnamed).
-func ClientName(d *corev1.SyncDeviceView) string {
+func ClientName(d *world.SyncDevice) string {
 	if d != nil && d.Meta != nil && strings.TrimSpace(d.Meta.Name) != "" {
 		return strings.TrimSpace(d.Meta.Name)
 	}
@@ -184,7 +185,7 @@ type clientBase struct {
 	value string
 }
 
-func deviceClientBase(d *corev1.SyncDeviceView) clientBase {
+func deviceClientBase(d *world.SyncDevice) clientBase {
 	if d == nil || d.Meta == nil {
 		return clientBase{kind: clientBaseClient}
 	}
@@ -288,12 +289,12 @@ func BuildDisambiguators(items []MachineIdentity) map[string]string {
 	return out
 }
 
-func hasDuplicateClientBase(d *corev1.SyncDeviceView, base clientBase, allDevices []*corev1.SyncDeviceView) bool {
+func hasDuplicateClientBase(d *world.SyncDevice, base clientBase, allDevices []*world.SyncDevice) bool {
 	if d == nil {
 		return false
 	}
 	for _, other := range allDevices {
-		if other == nil || other.Kind != v1.DeviceKind_DEVICE_KIND_CLIENT || other.DeviceId == d.DeviceId {
+		if other == nil || other.Kind != v1.DeviceKind_DEVICE_KIND_CLIENT || other.DeviceID == d.DeviceID {
 			continue
 		}
 		if deviceClientBase(other) == base {
@@ -306,7 +307,7 @@ func hasDuplicateClientBase(d *corev1.SyncDeviceView, base clientBase, allDevice
 // ReadableClientNameText returns the canonical readable display name for a client device,
 // preserving platform + model formatting and appending the last 4 device ID characters
 // when another client shares the same default base identity.
-func ReadableClientNameText(d *corev1.SyncDeviceView, allDevices []*corev1.SyncDeviceView) *corev1.Text {
+func ReadableClientNameText(d *world.SyncDevice, allDevices []*world.SyncDevice) *corev1.Text {
 	if d != nil && d.Meta != nil {
 		if name := strings.TrimSpace(d.Meta.Name); name != "" {
 			return text.Plain(name)
@@ -322,15 +323,15 @@ func ReadableClientNameText(d *corev1.SyncDeviceView, allDevices []*corev1.SyncD
 	default:
 		baseText = text.Msg(text.KeySecurityClient)
 	}
-	if d != nil && d.DeviceId != "" && hasDuplicateClientBase(d, base, allDevices) {
-		return text.JoinLiteral(" · ", baseText, text.Plain(Last4(d.DeviceId)))
+	if d != nil && d.DeviceID != "" && hasDuplicateClientBase(d, base, allDevices) {
+		return text.JoinLiteral(" · ", baseText, text.Plain(Last4(d.DeviceID)))
 	}
 	return baseText
 }
 
 // ReadableClientPlainName returns the non-localized string representation for a client device
 // (empty when the canonical display name requires shell localization, unless disambiguated).
-func ReadableClientPlainName(d *corev1.SyncDeviceView, allDevices []*corev1.SyncDeviceView) string {
+func ReadableClientPlainName(d *world.SyncDevice, allDevices []*world.SyncDevice) string {
 	if d != nil && d.Meta != nil {
 		if name := strings.TrimSpace(d.Meta.Name); name != "" {
 			return name
@@ -338,20 +339,20 @@ func ReadableClientPlainName(d *corev1.SyncDeviceView, allDevices []*corev1.Sync
 	}
 	base := deviceClientBase(d)
 	if base.kind != clientBaseRaw {
-		if d != nil && d.DeviceId != "" {
-			return Last4(d.DeviceId)
+		if d != nil && d.DeviceID != "" {
+			return Last4(d.DeviceID)
 		}
 		return ""
 	}
-	if d != nil && d.DeviceId != "" && hasDuplicateClientBase(d, base, allDevices) {
-		return base.value + " · " + Last4(d.DeviceId)
+	if d != nil && d.DeviceID != "" && hasDuplicateClientBase(d, base, allDevices) {
+		return base.value + " · " + Last4(d.DeviceID)
 	}
 	return base.value
 }
 
-// SortClients orders clients: self first, then LastSeenMs desc, CreatedMs desc, DeviceId asc.
-func SortClients(devices []*corev1.SyncDeviceView, selfID string) []*corev1.SyncDeviceView {
-	out := make([]*corev1.SyncDeviceView, 0, len(devices))
+// SortClients orders clients: self first, then LastSeenMs desc, CreatedMs desc, DeviceID asc.
+func SortClients(devices []*world.SyncDevice, selfID string) []*world.SyncDevice {
+	out := make([]*world.SyncDevice, 0, len(devices))
 	for _, d := range devices {
 		if d != nil {
 			out = append(out, d)
@@ -359,8 +360,8 @@ func SortClients(devices []*corev1.SyncDeviceView, selfID string) []*corev1.Sync
 	}
 	sortutil.Sort(len(out), func(i, j int) bool {
 		a, b := out[i], out[j]
-		aSelf := a.DeviceId == selfID
-		bSelf := b.DeviceId == selfID
+		aSelf := a.DeviceID == selfID
+		bSelf := b.DeviceID == selfID
 		if aSelf != bSelf {
 			return aSelf
 		}
@@ -370,19 +371,19 @@ func SortClients(devices []*corev1.SyncDeviceView, selfID string) []*corev1.Sync
 		if a.CreatedMs != b.CreatedMs {
 			return a.CreatedMs > b.CreatedMs
 		}
-		return a.DeviceId < b.DeviceId
+		return a.DeviceID < b.DeviceID
 	}, func(i, j int) { out[i], out[j] = out[j], out[i] })
 	return out
 }
 
 // AuthorityName resolves a display name for the managing authority device.
-func AuthorityName(syncState *corev1.SyncStateView, machines []*lists.Machine) string {
+func AuthorityName(syncState *world.SyncState, machines []*lists.Machine) string {
 	if syncState == nil {
 		return ""
 	}
-	authID := syncState.AuthorityDeviceId
+	authID := syncState.AuthorityDeviceID
 	for _, d := range syncState.Devices {
-		if d != nil && d.DeviceId == authID {
+		if d != nil && d.DeviceID == authID {
 			if n := ClientName(d); n != "" {
 				return n
 			}

@@ -10,6 +10,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/quota"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	"github.com/Lewin671/remote-agent/clientcore/domain/usage"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
@@ -180,7 +181,10 @@ func isNativeAppPlatform(st *State) bool {
 	}
 }
 
-func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines []*lists.Machine, extra *SettingsExtra, includeSummary bool) ([]*corev1.MachineListCardView, map[string]bool) {
+func buildMachineListCards(st *State, syncView *world.SyncState, machines []*lists.Machine, extra *SettingsExtra, includeSummary bool) ([]*corev1.MachineListCardView, map[string]bool) {
+	if syncView == nil {
+		syncView = &world.SyncState{}
+	}
 	sorted := make([]*lists.Machine, 0, len(machines))
 	for _, m := range machines {
 		if m != nil {
@@ -188,29 +192,19 @@ func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines [
 		}
 	}
 	clientVer := st.World.ClientVersion
-	removed := st.Removed || syncView.GetRemoved()
+	removed := st.Removed || syncView.Removed
 	sortutil.SortInterface(settingsMachinesSorted{list: sorted, removed: removed})
 
 	var inDir map[string]bool
-	var directReady map[string]bool
-	if syncView != nil {
-		if len(syncView.Devices) > 0 {
-			inDir = make(map[string]bool, len(syncView.Devices))
-			for _, d := range syncView.Devices {
-				if d != nil && d.DeviceId != "" {
-					inDir[d.DeviceId] = true
-				}
-			}
-		}
-		if len(syncView.Machines) > 0 {
-			directReady = make(map[string]bool, len(syncView.Machines))
-			for _, sm := range syncView.Machines {
-				if sm != nil && sm.MachineId != "" && sm.DirectReady {
-					directReady[sm.MachineId] = true
-				}
+	if len(syncView.Devices) > 0 {
+		inDir = make(map[string]bool, len(syncView.Devices))
+		for _, d := range syncView.Devices {
+			if d != nil && d.DeviceID != "" {
+				inDir[d.DeviceID] = true
 			}
 		}
 	}
+	directReady := syncView.DirectReadyMachines
 
 	identities := make([]machine.MachineIdentity, 0, len(sorted))
 	for _, m := range sorted {
@@ -368,20 +362,23 @@ func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines [
 	return out, pingDirect
 }
 
-func buildClientRows(st *State, syncView *corev1.SyncStateView) (rows []*corev1.ClientRowView, unfinished []*corev1.ClientRowView) {
-	selfID := syncView.GetSelfDeviceId()
-	authID := syncView.GetAuthorityDeviceId()
-	sorted := machine.SortClients(syncView.GetDevices(), selfID)
+func buildClientRows(st *State, syncView *world.SyncState) (rows []*corev1.ClientRowView, unfinished []*corev1.ClientRowView) {
+	if syncView == nil {
+		syncView = &world.SyncState{}
+	}
+	selfID := syncView.SelfDeviceID
+	authID := syncView.AuthorityDeviceID
+	sorted := machine.SortClients(syncView.Devices, selfID)
 
 	for _, d := range sorted {
 		name := machine.ClientName(d)
 		if name == "" {
-			name = d.DeviceId
+			name = d.DeviceID
 		}
-		isSelf := d.DeviceId == selfID
-		isAuth := d.DeviceId == authID
+		isSelf := d.DeviceID == selfID
+		isAuth := d.DeviceID == authID
 		member := d.Trusted || isSelf || isAuth
-		incomplete := ((member && !d.Registered) || (syncView.GetSecurityLoaded() && !d.Trusted)) && !isSelf && !isAuth
+		incomplete := ((member && !d.Registered) || (syncView.SecurityLoaded && !d.Trusted)) && !isSelf && !isAuth
 
 		var role *corev1.Text
 		switch {
@@ -404,10 +401,10 @@ func buildClientRows(st *State, syncView *corev1.SyncStateView) (rows []*corev1.
 		}
 
 		row := &corev1.ClientRowView{
-			DeviceId:          d.DeviceId,
+			DeviceId:          d.DeviceID,
 			DisplayName:       name,
 			Description:       machine.DefaultClientName(d),
-			ShortId:           machine.ShortID(d.DeviceId),
+			ShortId:           machine.ShortID(d.DeviceID),
 			IsSelf:            isSelf,
 			IsAuthority:       isAuth,
 			Member:            member,
@@ -511,12 +508,14 @@ func buildAppearanceView(theme corev1.ThemePreference) *corev1.AppearanceView {
 	}
 }
 
-func buildConnCheckSummary(st *State, syncView *corev1.SyncStateView, cc ConnCheckState, machines []*corev1.MachineListCardView, pingDirect map[string]bool) *corev1.ConnCheckSummaryView {
+func buildConnCheckSummary(st *State, syncView *world.SyncState, cc ConnCheckState, machines []*corev1.MachineListCardView, pingDirect map[string]bool) *corev1.ConnCheckSummaryView {
 	connState := mapSessionConnState(st.World.Connection)
 	isConnecting := st.World.Connection == lists.ConnConnecting || st.World.Connection == lists.ConnReconnecting
 	networkAvailable := st.World.Connection != lists.ConnNoNetwork
 	if syncView != nil {
-		networkAvailable = syncView.GetNetworkAvailable()
+		networkAvailable = syncView.NetworkAvailable
+	} else {
+		syncView = &world.SyncState{}
 	}
 	var onlineMembers, directMembers int
 	var hasUnsupportedDirect bool
@@ -556,12 +555,12 @@ func buildConnCheckSummary(st *State, syncView *corev1.SyncStateView, cc ConnChe
 		LatencyMs:         cc.LatencyMs,
 		ConnState:         connState,
 		NetworkAvailable:  networkAvailable,
-		LivePushConnected: st.LivePushConnected || syncView.GetLivePushConnected(),
-		EverOnline:        syncView.GetEverOnline(),
-		Failures:          syncView.GetConnectFailures(),
-		ConnStartedAtMs:   syncView.GetConnectionStartedAtMs(),
-		ConnStep:          syncView.GetConnectionStep(),
-		DisplayGrace:      st.DisplayGrace || syncView.GetDisplayGrace(),
+		LivePushConnected: st.LivePushConnected || syncView.LivePushConnected,
+		EverOnline:        syncView.EverOnline,
+		Failures:          syncView.ConnectFailures,
+		ConnStartedAtMs:   syncView.ConnectionStartedAtMs,
+		ConnStep:          syncView.ConnectionStep,
+		DisplayGrace:      st.DisplayGrace || syncView.DisplayGrace,
 		IsConnecting:      isConnecting,
 		FooterText:        footerTxt,
 	}
@@ -647,13 +646,16 @@ func buildClientUpdateView(u UpdateState, clientProto uint32) *corev1.ClientUpda
 }
 
 // BuildSettings builds the top-level Settings screen ViewModel.
-func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExtra) *corev1.SettingsViewModel {
+func BuildSettings(st *State, syncView *world.SyncState, extra *SettingsExtra) *corev1.SettingsViewModel {
 	if extra == nil {
 		extra = NewSettingsExtra()
 	}
-	removed := st.Removed || syncView.GetRemoved()
-	unlinked := removed || syncView.GetUnlinked() || lists.WorldUnlinked(&st.World)
-	isMgr := syncView.GetIsManager() || st.World.IsManager
+	if syncView == nil {
+		syncView = &world.SyncState{}
+	}
+	removed := st.Removed || syncView.Removed
+	unlinked := removed || syncView.Unlinked || lists.WorldUnlinked(&st.World)
+	isMgr := syncView.IsManager || st.World.IsManager
 	authName := machine.AuthorityName(syncView, st.World.Machines)
 	online := st.World.Connection == lists.ConnConnected
 
@@ -678,13 +680,13 @@ func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExt
 
 	vm := &corev1.SettingsViewModel{
 		Online:            online,
-		ClockSkewed:       st.World.AccountClockSkewed || syncView.GetAccountClockSkewed(),
+		ClockSkewed:       st.World.AccountClockSkewed || syncView.AccountClockSkewed,
 		Unlinked:          unlinked,
-		HasAccount:        syncView.GetSelfDeviceId() != "",
+		HasAccount:        syncView.SelfDeviceID != "",
 		IsManager:         isMgr,
 		AuthorityName:     authName,
-		RecoveryPending:   syncView.GetRecoveryPending(),
-		RecoveryReadyMs:   syncView.GetRecoveryReadyMs(),
+		RecoveryPending:   syncView.RecoveryPending,
+		RecoveryReadyMs:   syncView.RecoveryReadyMs,
 		Machines:          machineCards,
 		CanAddDevice:      isMgr && !unlinked,
 		RecentClients:     recent,
@@ -696,7 +698,7 @@ func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExt
 		ConnCheck:         buildConnCheckSummary(st, syncView, extra.ConnCheck, machineCards, pingDirect),
 		DiskReminders:     machine.BuildDiskReminders(st.World.Machines),
 		QuotaBanner:       quota.Banner(st.World.Machines, st.Cal.NowMs),
-		CanExitAccount:    syncView.GetSelfDeviceId() != "",
+		CanExitAccount:    syncView.SelfDeviceID != "",
 		ExitNeedsTransfer: isMgr && otherClients > 0,
 	}
 
@@ -754,23 +756,23 @@ func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExt
 	} else {
 		secSummary = text.Msg(text.KeySettingsSecuritySummaryNonAuthority, text.Str("name", authName))
 	}
-	selfID := syncView.GetSelfDeviceId()
-	canPrep := canPrepareHandoff(isMgr, selfID, syncView.GetDevices())
+	selfID := syncView.SelfDeviceID
+	canPrep := canPrepareHandoff(isMgr, selfID, syncView.Devices)
 	vm.Security = &corev1.SecuritySummaryView{
 		IsManager:           isMgr,
 		Unlinked:            unlinked,
-		AuthorityDeviceId:   syncView.GetAuthorityDeviceId(),
+		AuthorityDeviceId:   syncView.AuthorityDeviceID,
 		AuthorityName:       authName,
-		AuthorityNameText:   syncView.GetManagerName(),
+		AuthorityNameText:   syncView.ManagerName,
 		CanPrepareHandoff:   canPrep,
-		LeaseRenewalAdvice:  syncView.GetLeaseRenewalAdvice(),
-		RecoveryPending:     syncView.GetRecoveryPending(),
-		RecoveryReadyMs:     syncView.GetRecoveryReadyMs(),
+		LeaseRenewalAdvice:  syncView.LeaseRenewalAdvice,
+		RecoveryPending:     syncView.RecoveryPending,
+		RecoveryReadyMs:     syncView.RecoveryReadyMs,
 		SummaryText:         secSummary,
 		RecoveryNotice:      vm.RecoveryBannerText,
-		HasHandoffOffer:     syncView.GetHasHandoffOffer(),
-		RecoveryStatusStale: syncView.GetRecoveryStatusStale(),
-		LeaseEndMs:          syncView.GetLeaseEndMs(),
+		HasHandoffOffer:     syncView.HasHandoffOffer,
+		RecoveryStatusStale: syncView.RecoveryStatusStale,
+		LeaseEndMs:          syncView.LeaseEndMs,
 		HandoffCandidates:   buildHandoffCandidates(syncView),
 	}
 	return vm
@@ -792,33 +794,33 @@ func buildRecoveryBannerText(isManager bool, readyMs int64) *corev1.Text {
 	)
 }
 
-func canPrepareHandoff(isManager bool, selfID string, devices []*corev1.SyncDeviceView) bool {
+func canPrepareHandoff(isManager bool, selfID string, devices []*world.SyncDevice) bool {
 	if isManager || selfID == "" {
 		return false
 	}
 	for _, d := range devices {
-		if d != nil && d.DeviceId == selfID && d.Kind == v1.DeviceKind_DEVICE_KIND_CLIENT {
+		if d != nil && d.DeviceID == selfID && d.Kind == v1.DeviceKind_DEVICE_KIND_CLIENT {
 			return true
 		}
 	}
 	return false
 }
 
-func buildHandoffCandidatesFromDevices(devices []*corev1.SyncDeviceView, selfID string, securityLoaded bool) []*corev1.HandoffCandidateView {
+func buildHandoffCandidatesFromDevices(devices []*world.SyncDevice, selfID string, securityLoaded bool) []*corev1.HandoffCandidateView {
 	sorted := machine.SortClients(devices, selfID)
 	var out []*corev1.HandoffCandidateView
 	for _, d := range sorted {
-		if d == nil || d.DeviceId == "" || d.DeviceId == selfID || d.Kind != v1.DeviceKind_DEVICE_KIND_CLIENT {
+		if d == nil || d.DeviceID == "" || d.DeviceID == selfID || d.Kind != v1.DeviceKind_DEVICE_KIND_CLIENT {
 			continue
 		}
-		if securityLoaded && !d.GetTrusted() {
+		if securityLoaded && !d.Trusted {
 			continue
 		}
 		if d.Meta == nil || len(d.Meta.HandoffRecoveryEd) != 32 {
 			continue
 		}
 		out = append(out, &corev1.HandoffCandidateView{
-			DeviceId:        d.DeviceId,
+			DeviceId:        d.DeviceID,
 			DisplayName:     machine.ReadableClientPlainName(d, sorted),
 			DisplayNameText: machine.ReadableClientNameText(d, sorted),
 		})
@@ -826,23 +828,26 @@ func buildHandoffCandidatesFromDevices(devices []*corev1.SyncDeviceView, selfID 
 	return out
 }
 
-func buildHandoffCandidates(syncView *corev1.SyncStateView) []*corev1.HandoffCandidateView {
+func buildHandoffCandidates(syncView *world.SyncState) []*corev1.HandoffCandidateView {
 	if syncView == nil {
 		return nil
 	}
-	return buildHandoffCandidatesFromDevices(syncView.GetDevices(), syncView.GetSelfDeviceId(), syncView.GetSecurityLoaded())
+	return buildHandoffCandidatesFromDevices(syncView.Devices, syncView.SelfDeviceID, syncView.SecurityLoaded)
 }
 
 // BuildMachineSettings builds the per-machine details & daemon configuration ViewModel.
-func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExtra, machineID string) *corev1.MachineSettingsViewModel {
+func BuildMachineSettings(st *State, syncView *world.SyncState, extra *SettingsExtra, machineID string) *corev1.MachineSettingsViewModel {
 	if extra == nil {
 		extra = NewSettingsExtra()
 	}
+	if syncView == nil {
+		syncView = &world.SyncState{}
+	}
 	m := findMachineByID(st, machineID)
-	removed := st.Removed || syncView.GetRemoved()
-	unlinked := removed || syncView.GetUnlinked() || lists.WorldUnlinked(&st.World)
-	isMgr := syncView.GetIsManager() || st.World.IsManager
-	authID := syncView.GetAuthorityDeviceId()
+	removed := st.Removed || syncView.Removed
+	unlinked := removed || syncView.Unlinked || lists.WorldUnlinked(&st.World)
+	isMgr := syncView.IsManager || st.World.IsManager
+	authID := syncView.AuthorityDeviceID
 	onlineWorld := st.World.Connection == lists.ConnConnected
 
 	vm := &corev1.MachineSettingsViewModel{
@@ -1059,7 +1064,7 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 			Defaults:          cliDef,
 		})
 	}
-	leaseExpired := syncView != nil && syncView.GetSecurityLoaded() && syncView.GetLeaseEndMs() > 0 && st.Cal.NowMs > 0 && st.Cal.NowMs >= syncView.GetLeaseEndMs()
+	leaseExpired := syncView.SecurityLoaded && syncView.LeaseEndMs > 0 && st.Cal.NowMs > 0 && st.Cal.NowMs >= syncView.LeaseEndMs
 	hasCliSwitchesCap := m.Meta != nil && m.Meta.Capabilities != nil && m.Meta.Capabilities.CliSwitches
 	vm.ShowCliSwitches = hasCliSwitchesCap && len(installedAgents) >= 2
 	vm.CliSwitchesLeaseExpired = leaseExpired
@@ -1129,8 +1134,8 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 	// Machine management availability
 	isAuth := m.ID == authID
 	inDeviceDir := false
-	for _, d := range syncView.GetDevices() {
-		if d != nil && d.DeviceId == m.ID {
+	for _, d := range syncView.Devices {
+		if d != nil && d.DeviceID == m.ID {
 			inDeviceDir = true
 			break
 		}
@@ -1412,12 +1417,15 @@ func buildAttachmentStorageView(quotaBytes int64, extra *MachineSettingsExtra, a
 }
 
 // BuildDevices builds the Devices / Clients list screen ViewModel.
-func BuildDevices(st *State, syncView *corev1.SyncStateView, extra *SettingsExtra) *corev1.DevicesViewModel {
+func BuildDevices(st *State, syncView *world.SyncState, extra *SettingsExtra) *corev1.DevicesViewModel {
 	if extra == nil {
 		extra = NewSettingsExtra()
 	}
-	isMgr := syncView.GetIsManager() || st.World.IsManager
-	unlinked := syncView.GetUnlinked() || lists.WorldUnlinked(&st.World)
+	if syncView == nil {
+		syncView = &world.SyncState{}
+	}
+	isMgr := syncView.IsManager || st.World.IsManager
+	unlinked := syncView.Unlinked || lists.WorldUnlinked(&st.World)
 	online := st.World.Connection == lists.ConnConnected
 	authName := machine.AuthorityName(syncView, st.World.Machines)
 	clients, unfinished := buildClientRows(st, syncView)
@@ -1427,17 +1435,17 @@ func BuildDevices(st *State, syncView *corev1.SyncStateView, extra *SettingsExtr
 		IsManager:          isMgr,
 		Online:             online,
 		Unlinked:           unlinked,
-		AuthorityDeviceId:  syncView.GetAuthorityDeviceId(),
+		AuthorityDeviceId:  syncView.AuthorityDeviceID,
 		AuthorityName:      authName,
 		CanAddDevice:       isMgr && !unlinked,
 		Computers:          deviceComputers,
 		Clients:            clients,
 		UnfinishedPairings: unfinished,
-		ErrorText:          syncView.GetDevicesErrorText(),
-		ClockSkewed:        st.World.AccountClockSkewed || syncView.GetAccountClockSkewed(),
-		RecoveryPending:    syncView.GetRecoveryPending(),
-		LeaseEndMs:         syncView.GetLeaseEndMs(),
-		LoadFailed:         syncView.GetDevicesLoadFailed(),
+		ErrorText:          syncView.DevicesErrorText,
+		ClockSkewed:        st.World.AccountClockSkewed || syncView.AccountClockSkewed,
+		RecoveryPending:    syncView.RecoveryPending,
+		LeaseEndMs:         syncView.LeaseEndMs,
+		LoadFailed:         syncView.DevicesLoadFailed,
 	}
 	if len(clients) > 0 {
 		vm.ClientCountText = text.Msg(text.KeySettingsClientsCount, text.Int("count", int64(len(clients))))
@@ -1457,18 +1465,21 @@ func BuildDevices(st *State, syncView *corev1.SyncStateView, extra *SettingsExtr
 }
 
 // BuildClientDetail builds the single-client details & rename/remove ViewModel.
-func BuildClientDetail(st *State, syncView *corev1.SyncStateView, extra *SettingsExtra, deviceID string) *corev1.ClientDetailViewModel {
+func BuildClientDetail(st *State, syncView *world.SyncState, extra *SettingsExtra, deviceID string) *corev1.ClientDetailViewModel {
 	if extra == nil {
 		extra = NewSettingsExtra()
 	}
-	selfID := syncView.GetSelfDeviceId()
-	authID := syncView.GetAuthorityDeviceId()
-	isMgr := syncView.GetIsManager() || st.World.IsManager
+	if syncView == nil {
+		syncView = &world.SyncState{}
+	}
+	selfID := syncView.SelfDeviceID
+	authID := syncView.AuthorityDeviceID
+	isMgr := syncView.IsManager || st.World.IsManager
 	online := st.World.Connection == lists.ConnConnected
 
-	var dev *corev1.SyncDeviceView
-	for _, d := range syncView.GetDevices() {
-		if d != nil && d.DeviceId == deviceID {
+	var dev *world.SyncDevice
+	for _, d := range syncView.Devices {
+		if d != nil && d.DeviceID == deviceID {
 			dev = d
 			break
 		}

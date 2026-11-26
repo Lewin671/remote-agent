@@ -333,27 +333,27 @@ func TestSecurityReasonTextAndBuildNotifyDisplay(t *testing.T) {
 
 func TestApplySyncStateTextsManagerBannerClockSkewAndRenewalAdvice(t *testing.T) {
 	// 1. Manager name fallbacks.
-	v := &corev1.SyncStateView{AuthorityDeviceId: "auth-1"}
+	v := &world.SyncState{AuthorityDeviceID: "auth-1"}
 	w := world.New()
 	ApplySyncStateTexts(v, w, world.ConnectStepNone, world.Reason{})
-	if v.GetManagerName().GetKey() != text.KeySecurityClient {
+	if v.ManagerName.GetKey() != text.KeySecurityClient {
 		t.Fatalf("expected KeySecurityClient when authority device absent, got %+v", v.ManagerName)
 	}
 
 	w.World.ManagerName = "Android 16 · Pixel 9"
 	ApplySyncStateTexts(v, w, world.ConnectStepNone, world.Reason{})
-	if v.GetManagerName().GetLiteral() != "Android 16 · Pixel 9" {
+	if v.ManagerName.GetLiteral() != "Android 16 · Pixel 9" {
 		t.Fatalf("expected description literal, got %+v", v.ManagerName)
 	}
 
 	w.World.ManagerName = ""
-	v.Devices = []*corev1.SyncDeviceView{{
-		DeviceId: "auth-1",
+	v.Devices = []*world.SyncDevice{{
+		DeviceID: "auth-1",
 		Kind:     v1.DeviceKind_DEVICE_KIND_CLIENT,
 		Meta:     &v1.DeviceMeta{Platform: "web"},
 	}}
 	ApplySyncStateTexts(v, w, world.ConnectStepNone, world.Reason{})
-	if v.GetManagerName().GetKey() != text.KeySecurityBrowser {
+	if v.ManagerName.GetKey() != text.KeySecurityBrowser {
 		t.Fatalf("expected KeySecurityBrowser for bare web device, got %+v", v.ManagerName)
 	}
 
@@ -363,31 +363,29 @@ func TestApplySyncStateTextsManagerBannerClockSkewAndRenewalAdvice(t *testing.T)
 	v.IsManager = false
 	w.World.ManagerName = "My Phone"
 	ApplySyncStateTexts(v, w, world.ConnectStepNone, world.Reason{})
-	if v.GetLeaseRenewalAdvice().GetKey() != text.KeySecurityOpenToRenew {
+	if v.LeaseRenewalAdvice.GetKey() != text.KeySecurityOpenToRenew {
 		t.Fatalf("expected non-manager leaseRenewalAdvice=security.open_to_renew, got %+v", v.LeaseRenewalAdvice)
 	}
 	v.IsManager = true
 	ApplySyncStateTexts(v, w, world.ConnectStepNone, world.Reason{})
-	if v.GetLeaseRenewalAdvice().GetKey() != text.KeySecurityRenewNow {
+	if v.LeaseRenewalAdvice.GetKey() != text.KeySecurityRenewNow {
 		t.Fatalf("expected manager leaseRenewalAdvice=security.renew_now, got %+v", v.LeaseRenewalAdvice)
 	}
 
 	// 3. ConnBanner: hidden when connected, NO_NETWORK when offline and not in display grace.
-	vConn := &corev1.SyncStateView{
+	vConn := &world.SyncState{
 		Connection:       corev1.ConnState_CONN_STATE_CONNECTED,
 		NetworkAvailable: true,
 	}
-	ApplySyncStateTexts(vConn, nil, world.ConnectStepNone, world.Reason{})
-	if vConn.ConnBanner != nil {
-		t.Fatalf("expected nil ConnBanner when connected, got %+v", vConn.ConnBanner)
+	if b := buildSyncConnBanner(vConn, nil); b != nil {
+		t.Fatalf("expected nil ConnBanner when connected, got %+v", b)
 	}
-	vNoNet := &corev1.SyncStateView{
+	vNoNet := &world.SyncState{
 		Connection:       corev1.ConnState_CONN_STATE_NO_NETWORK,
 		NetworkAvailable: false,
 		DisplayGrace:     false,
 	}
-	ApplySyncStateTexts(vNoNet, nil, world.ConnectStepNone, world.Reason{})
-	if vNoNet.ConnBanner == nil || !vNoNet.ConnBanner.Visible || vNoNet.ConnBanner.Kind != corev1.ConnBannerKind_CONN_BANNER_KIND_NO_NETWORK {
-		t.Fatalf("expected NO_NETWORK visible ConnBanner, got %+v", vNoNet.ConnBanner)
+	if b := buildSyncConnBanner(vNoNet, nil); b == nil || !b.Visible || b.Kind != corev1.ConnBannerKind_CONN_BANNER_KIND_NO_NETWORK {
+		t.Fatalf("expected NO_NETWORK visible ConnBanner, got %+v", b)
 	}
 }

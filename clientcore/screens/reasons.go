@@ -113,13 +113,13 @@ func ManagerNameText(w *world.State) *corev1.Text {
 	return nil
 }
 
-func syncManagerNameText(v *corev1.SyncStateView, w *world.State) *corev1.Text {
+func syncManagerNameText(v *world.SyncState, w *world.State) *corev1.Text {
 	if w != nil && w.World.ManagerName != "" {
 		return text.Plain(w.World.ManagerName)
 	}
-	if v != nil && v.AuthorityDeviceId != "" {
+	if v != nil && v.AuthorityDeviceID != "" {
 		for _, d := range v.Devices {
-			if d != nil && d.DeviceId == v.AuthorityDeviceId {
+			if d != nil && d.DeviceID == v.AuthorityDeviceID {
 				return machine.ReadableClientNameText(d, v.Devices)
 			}
 		}
@@ -128,7 +128,7 @@ func syncManagerNameText(v *corev1.SyncStateView, w *world.State) *corev1.Text {
 	return ManagerNameText(w)
 }
 
-func buildSyncConnBanner(v *corev1.SyncStateView, w *world.State) *corev1.ConnBannerView {
+func buildSyncConnBanner(v *world.SyncState, w *world.State) *corev1.ConnBannerView {
 	if v == nil {
 		return nil
 	}
@@ -163,7 +163,7 @@ func buildSyncConnBanner(v *corev1.SyncStateView, w *world.State) *corev1.ConnBa
 	if kind == corev1.ConnBannerKind_CONN_BANNER_KIND_NONE || v.DisplayGrace {
 		return nil
 	}
-	kept := (v.MachinesListed && v.SessionsListed) || len(v.Sessions) > 0
+	kept := (v.MachinesListed && v.SessionsListed) || v.HasSessions
 	out := &corev1.ConnBannerView{
 		Kind:     kind,
 		Visible:  true,
@@ -211,27 +211,25 @@ func leaseRenewalAdvice(loaded, isManager bool, managerName *corev1.Text) *corev
 	return nil
 }
 
-func buildSyncLeaseRenewalAdvice(v *corev1.SyncStateView) *corev1.Text {
+func buildSyncLeaseRenewalAdvice(v *world.SyncState) *corev1.Text {
 	if v == nil {
 		return nil
 	}
 	return leaseRenewalAdvice(v.SecurityLoaded, v.IsManager, v.ManagerName)
 }
 
-// ApplySyncStateTexts populates all localized Text fields on SyncStateView from
+// ApplySyncStateTexts populates localized Text fields on SyncState from
 // structured sync reasons so sync stays free of clientcore/text.
-func ApplySyncStateTexts(v *corev1.SyncStateView, w *world.State, connStep world.ConnectStep, devicesErr world.Reason) *corev1.SyncStateView {
+func ApplySyncStateTexts(v *world.SyncState, w *world.State, connStep world.ConnectStep, devicesErr world.Reason) *world.SyncState {
 	if v == nil {
 		return nil
 	}
 	if w != nil {
 		v.ConnectionReason = ReasonText(w.ConnectionReason)
-		v.SessionListError = ReasonText(w.SessionListError)
 	}
 	v.ManagerName = syncManagerNameText(v, w)
 	v.ConnectionStep = ConnectStepText(connStep)
 	v.DevicesErrorText = ReasonText(devicesErr)
-	v.ConnBanner = buildSyncConnBanner(v, w)
 	v.LeaseRenewalAdvice = buildSyncLeaseRenewalAdvice(v)
 	return v
 }

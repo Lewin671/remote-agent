@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/machine"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/security"
@@ -149,7 +150,7 @@ type SecurityViewContext struct {
 	SyncRecoveryReadyMs int64
 	SyncRecoveryStale   bool
 	SelfDeviceID        string
-	Devices             []*corev1.SyncDeviceView
+	Devices             []*world.SyncDevice
 	ManagerDisplay      *corev1.Text
 	MachineDisplayName  func(id string) string
 }
@@ -729,7 +730,7 @@ func BuildHandoff(ui *SecurityUIState, vc SecurityViewContext) *corev1.HandoffVi
 			}
 			if text.IsEmpty(name) {
 				for _, d := range sorted {
-					if d != nil && d.DeviceId == c.DeviceId {
+					if d != nil && d.DeviceID == c.DeviceId {
 						name = machine.ReadableClientNameText(d, sorted)
 						break
 					}

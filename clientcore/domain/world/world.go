@@ -94,3 +94,54 @@ type SessionSnapshot struct {
 	Projection           *corev1.ProjectionState
 	Events               []*v1.Event
 }
+
+// SyncDevice is a read-only device directory snapshot shared by sync, domain/machine, and screens.
+type SyncDevice struct {
+	DeviceID   string
+	Kind       v1.DeviceKind
+	CreatedMs  int64
+	LastSeenMs int64
+	Meta       *v1.DeviceMeta
+	MetaRev    uint64
+	MetaBroken bool
+	Trusted    bool
+	Registered bool
+}
+
+// SyncState is a lightweight Go-only snapshot of synchronized connection, security,
+// and optional device/direct-readiness metadata built on demand for screen builders.
+type SyncState struct {
+	Connection            corev1.ConnState
+	ConnectionReason      *corev1.Text
+	ConnectionStep        *corev1.Text
+	DisconnectedAtMs      int64
+	LivePushConnected     bool
+	Unlinked              bool
+	IsManager             bool
+	SelfDeviceID          string
+	AuthorityDeviceID     string
+	ManagerName           *corev1.Text
+	AccountClockSkewed    bool
+	Removed               bool
+	SecurityLoaded        bool
+	LeaseEndMs            int64
+	RecoveryPending       bool
+	RecoveryReadyMs       int64
+	RecoveryStatusStale   bool
+	HasHandoffOffer       bool
+	MachinesListed        bool
+	SessionsListed        bool
+	LiveLoaded            bool
+	HasSessions           bool
+	DisplayGrace          bool
+	ReachabilityUnknown   bool
+	ConnectionStartedAtMs int64
+	NetworkAvailable      bool
+	EverOnline            bool
+	ConnectFailures       int32
+	DevicesLoadFailed     bool
+	DevicesErrorText      *corev1.Text
+	LeaseRenewalAdvice    *corev1.Text
+	Devices               []*SyncDevice
+	DirectReadyMachines   map[string]bool
+}

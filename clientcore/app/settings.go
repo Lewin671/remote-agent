@@ -55,7 +55,7 @@ func (c *Core) viewSettings(screen *corev1.Screen) (*corev1.ViewModel, bool, err
 
 	switch s := screen.Screen.(type) {
 	case *corev1.Screen_Settings:
-		sv := c.buildSyncStateView()
+		sv := c.buildSyncState(sync.SyncStateOpts{IncludeDevices: true, IncludeDirectReady: true})
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_Settings{
 				Settings: screens.BuildSettings(st, sv, extra),
@@ -82,7 +82,7 @@ func (c *Core) viewSettings(screen *corev1.Screen) (*corev1.ViewModel, bool, err
 		if s.MachineSettings != nil {
 			id = s.MachineSettings.MachineId
 		}
-		sv := c.buildSyncStateView()
+		sv := c.buildSyncState(sync.SyncStateOpts{IncludeDevices: true})
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_MachineSettings{
 				MachineSettings: screens.BuildMachineSettings(st, sv, extra, id),
@@ -96,7 +96,7 @@ func (c *Core) viewSettings(screen *corev1.Screen) (*corev1.ViewModel, bool, err
 			id = s.Quota.MachineId
 			filter = s.Quota.FilterAgent
 		}
-		sv := c.buildSyncStateView()
+		sv := c.buildSyncState(sync.SyncStateOpts{})
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_Quota{
 				Quota: screens.BuildQuota(st, sv, id, filter),
@@ -104,7 +104,7 @@ func (c *Core) viewSettings(screen *corev1.Screen) (*corev1.ViewModel, bool, err
 		}, true, nil
 
 	case *corev1.Screen_Devices:
-		sv := c.buildSyncStateView()
+		sv := c.buildSyncState(sync.SyncStateOpts{IncludeDevices: true})
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_Devices{
 				Devices: screens.BuildDevices(st, sv, extra),
@@ -116,7 +116,7 @@ func (c *Core) viewSettings(screen *corev1.Screen) (*corev1.ViewModel, bool, err
 		if s.ClientDetail != nil {
 			id = s.ClientDetail.DeviceId
 		}
-		sv := c.buildSyncStateView()
+		sv := c.buildSyncState(sync.SyncStateOpts{IncludeDevices: true})
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_ClientDetail{
 				ClientDetail: screens.BuildClientDetail(st, sv, extra, id),

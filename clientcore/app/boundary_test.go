@@ -123,8 +123,7 @@ var allowedCoreLiteEntries = map[string]bool{
 }
 
 // Shrink-only allowlist for legacy internal core roots still exported in entries.txt
-// until corebind/projection.go (Android TestServer / EventProjectionTest) and
-// sync_view.proto are retired.
+// until corebind/projection.go (Android TestServer / EventProjectionTest) is retired.
 var legacyCoreLiteEntriesAllowlist = map[string]string{
 	"in:remoteagent.core.v1.EventBatch":       "legacy-corebind-projection",
 	"out:remoteagent.core.v1.ProjectionState": "legacy-corebind-projection",

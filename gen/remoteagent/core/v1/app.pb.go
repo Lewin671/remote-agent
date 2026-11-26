@@ -13082,7 +13082,7 @@ var File_remoteagent_core_v1_app_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\n" +
-	"\x1dremoteagent/core/v1/app.proto\x12\x13remoteagent.core.v1\x1a%remoteagent/core/v1/attachments.proto\x1a*remoteagent/core/v1/attachments_view.proto\x1a)remoteagent/core/v1/connection_view.proto\x1a#remoteagent/core/v1/home_view.proto\x1a&remoteagent/core/v1/machine_view.proto\x1a*remoteagent/core/v1/new_session_view.proto\x1a&remoteagent/core/v1/project_view.proto\x1a$remoteagent/core/v1/relay_pipe.proto\x1a'remoteagent/core/v1/settings_view.proto\x1a&remoteagent/core/v1/session_view.proto\x1a&remoteagent/core/v1/shared_files.proto\x1a(remoteagent/core/v1/schedules_view.proto\x1a\"remoteagent/core/v1/security.proto\x1a'remoteagent/core/v1/security_view.proto\x1a#remoteagent/core/v1/sync_view.proto\x1a*remoteagent/core/v1/terminal_history.proto\x1a\x1eremoteagent/core/v1/text.proto\x1a#remoteagent/core/v1/transport.proto\x1a$remoteagent/core/v1/usage_view.proto\x1a\x1dremoteagent/v1/envelope.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\x1a\x1bremoteagent/v1/remote.proto\"4\n" +
+	"\x1dremoteagent/core/v1/app.proto\x12\x13remoteagent.core.v1\x1a%remoteagent/core/v1/attachments.proto\x1a*remoteagent/core/v1/attachments_view.proto\x1a)remoteagent/core/v1/connection_view.proto\x1a#remoteagent/core/v1/home_view.proto\x1a&remoteagent/core/v1/machine_view.proto\x1a*remoteagent/core/v1/new_session_view.proto\x1a&remoteagent/core/v1/project_view.proto\x1a$remoteagent/core/v1/relay_pipe.proto\x1a'remoteagent/core/v1/settings_view.proto\x1a&remoteagent/core/v1/session_view.proto\x1a&remoteagent/core/v1/shared_files.proto\x1a(remoteagent/core/v1/schedules_view.proto\x1a\"remoteagent/core/v1/security.proto\x1a'remoteagent/core/v1/security_view.proto\x1a*remoteagent/core/v1/terminal_history.proto\x1a\x1eremoteagent/core/v1/text.proto\x1a#remoteagent/core/v1/transport.proto\x1a$remoteagent/core/v1/usage_view.proto\x1a\x1dremoteagent/v1/envelope.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\x1a\x1bremoteagent/v1/remote.proto\"4\n" +
 	"\x11HomeScreenRequest\x12\x1f\n" +
 	"\vended_limit\x18\x01 \x01(\x05R\n" +
 	"endedLimit\"\xae\x01\n" +
@@ -15079,7 +15079,6 @@ func file_remoteagent_core_v1_app_proto_init() {
 	file_remoteagent_core_v1_schedules_view_proto_init()
 	file_remoteagent_core_v1_security_proto_init()
 	file_remoteagent_core_v1_security_view_proto_init()
-	file_remoteagent_core_v1_sync_view_proto_init()
 	file_remoteagent_core_v1_terminal_history_proto_init()
 	file_remoteagent_core_v1_text_proto_init()
 	file_remoteagent_core_v1_transport_proto_init()

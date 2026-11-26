@@ -1,6 +1,7 @@
 package screens
 
 import (
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
@@ -8,12 +9,12 @@ import (
 // BuildConnection constructs the ConnectionViewModel from world state and the
 // engine's current sync snapshot, sharing buildSyncConnBanner as the single
 // source of truth for connection banner presentation.
-func BuildConnection(st *State, sv *corev1.SyncStateView) *corev1.ConnectionViewModel {
+func BuildConnection(st *State, sv *world.SyncState) *corev1.ConnectionViewModel {
 	if st == nil {
 		st = NewState(nil)
 	}
 	if sv == nil {
-		sv = &corev1.SyncStateView{}
+		sv = &world.SyncState{}
 	}
 
 	protoConn := sv.Connection

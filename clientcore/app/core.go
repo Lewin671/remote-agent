@@ -9,6 +9,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
 	"github.com/Lewin671/remote-agent/clientcore/domain/usage"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/screens"
@@ -115,9 +116,11 @@ func (c *Core) View(screen *corev1.Screen) (*corev1.ViewModel, error) {
 		}, nil
 
 	case *corev1.Screen_Connection:
+		w := c.m.sync.World()
+		needDevices := w.World.ManagerName == "" && w.AuthorityDeviceID != ""
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_Connection{
-				Connection: screens.BuildConnection(c.m.state, c.buildSyncStateView()),
+				Connection: screens.BuildConnection(c.m.state, c.buildSyncState(sync.SyncStateOpts{IncludeDevices: needDevices})),
 			},
 		}, nil
 
@@ -151,11 +154,11 @@ func (c *Core) View(screen *corev1.Screen) (*corev1.ViewModel, error) {
 	}
 }
 
-// buildSyncStateView builds the transitional SyncStateView with localized Text
-// fields populated by screens from structured sync reasons.
-func (c *Core) buildSyncStateView() *corev1.SyncStateView {
+// buildSyncState builds an internal SyncState snapshot on demand with localized
+// Text fields populated by screens from structured sync reasons.
+func (c *Core) buildSyncState(opts sync.SyncStateOpts) *world.SyncState {
 	return screens.ApplySyncStateTexts(
-		c.m.sync.BuildSyncStateView(),
+		c.m.sync.BuildSyncState(opts),
 		c.m.sync.World(),
 		c.m.sync.ConnectionStep(),
 		c.m.sync.DevicesError(),

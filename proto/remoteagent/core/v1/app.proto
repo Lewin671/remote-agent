@@ -16,7 +16,6 @@ import "remoteagent/core/v1/shared_files.proto";
 import "remoteagent/core/v1/schedules_view.proto";
 import "remoteagent/core/v1/security.proto";
 import "remoteagent/core/v1/security_view.proto";
-import "remoteagent/core/v1/sync_view.proto";
 import "remoteagent/core/v1/terminal_history.proto";
 import "remoteagent/core/v1/text.proto";
 import "remoteagent/core/v1/transport.proto";

@@ -1263,18 +1263,19 @@ func TestSyncStateAndSessionDataTransitionViews(t *testing.T) {
 		t.Fatalf("expected Home and Connection render targets on ListsFetched, got %v", targets)
 	}
 
-	sv := e.BuildSyncStateView()
-	if sv.Connection != corev1.ConnState_CONN_STATE_CONNECTED || !sv.LivePushConnected || !sv.IsManager || !sv.HasMoreSessions {
-		t.Fatalf("unexpected SyncStateView header: conn=%v live=%v mgr=%v more=%v", sv.Connection, sv.LivePushConnected, sv.IsManager, sv.HasMoreSessions)
+	sv := e.BuildSyncState(SyncStateOpts{IncludeDevices: true})
+	if sv.Connection != corev1.ConnState_CONN_STATE_CONNECTED || !sv.LivePushConnected || !sv.IsManager || !e.World().World.HasMoreSessions {
+		t.Fatalf("unexpected SyncState header: conn=%v live=%v mgr=%v more=%v", sv.Connection, sv.LivePushConnected, sv.IsManager, e.World().World.HasMoreSessions)
 	}
-	if len(sv.Machines) != 1 || !sv.Machines[0].DaemonOutOfDate || !sv.Machines[0].Reachable || sv.Machines[0].Meta.GetHostname() != "MacStudio" {
-		t.Fatalf("unexpected SyncStateView machines: %+v", sv.Machines)
+	if len(e.World().World.Machines) != 1 || !e.machines["m1"].DaemonOutOfDate || !e.machines["m1"].reachable || e.World().World.Machines[0].Meta.GetHostname() != "MacStudio" {
+		t.Fatalf("unexpected machines: %+v", e.World().World.Machines)
 	}
-	if len(sv.Sessions) != 1 || !sv.Sessions[0].Listed || sv.Sessions[0].CreatedMs != (now/1000)*1000 || !sv.Sessions[0].Pending.HasQuestion {
-		t.Fatalf("unexpected SyncStateView sessions: %+v", sv.Sessions)
+	snap1 := e.SessionSnapshot("s1")
+	if !snap1.Found || !e.listed["s1"] || snap1.Session == nil || !snap1.Session.Pending.HasQuestion {
+		t.Fatalf("unexpected session snapshot: %+v", snap1)
 	}
 	if len(sv.Devices) != 2 || !sv.Devices[1].Trusted {
-		t.Fatalf("unexpected SyncStateView devices: %+v", sv.Devices)
+		t.Fatalf("unexpected SyncState devices: %+v", sv.Devices)
 	}
 
 	if e.Buffer("missing") != nil || e.sessions["missing"] != nil {
@@ -1762,7 +1763,7 @@ func TestDisplayGraceHoldsConnectedViewDuringBackgroundResumeAndDisconnect(t *te
 						SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
 					},
 				})
-				v := e.BuildSyncStateView()
+				v := e.BuildSyncState(SyncStateOpts{})
 				if v.Connection != corev1.ConnState_CONN_STATE_CONNECTING || v.DisplayGrace {
 					t.Fatalf("expected connecting without display grace before ready, got conn=%v grace=%v", v.Connection, v.DisplayGrace)
 				}
@@ -1782,7 +1783,7 @@ func TestDisplayGraceHoldsConnectedViewDuringBackgroundResumeAndDisconnect(t *te
 						SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_STOP},
 					},
 				})
-				stopped := e.BuildSyncStateView()
+				stopped := e.BuildSyncState(SyncStateOpts{})
 				if e.Connection() != lists.ConnOffline || stopped.Connection != corev1.ConnState_CONN_STATE_OFFLINE {
 					t.Fatalf("expected real OFFLINE on STOP, got engine=%v proto=%v", e.Connection(), stopped.Connection)
 				}
@@ -1808,7 +1809,7 @@ func TestDisplayGraceHoldsConnectedViewDuringBackgroundResumeAndDisconnect(t *te
 						ClockUpdated: &corev1.LocalCalendar{NowMs: 6_400},
 					},
 				})
-				inside := e.BuildSyncStateView()
+				inside := e.BuildSyncState(SyncStateOpts{})
 				if inside.Connection != corev1.ConnState_CONN_STATE_RECONNECTING || !inside.DisplayGrace || !inside.Unlinked {
 					t.Fatalf("expected RECONNECTING + grace active + real unlinked at +1400ms, got conn=%v grace=%v unlinked=%v", inside.Connection, inside.DisplayGrace, inside.Unlinked)
 				}
@@ -1821,7 +1822,7 @@ func TestDisplayGraceHoldsConnectedViewDuringBackgroundResumeAndDisconnect(t *te
 						ClockUpdated: &corev1.LocalCalendar{NowMs: 6_500},
 					},
 				})
-				expired := e.BuildSyncStateView()
+				expired := e.BuildSyncState(SyncStateOpts{})
 				if expired.DisplayGrace || !expired.Unlinked {
 					t.Fatalf("expected grace expired at +1500ms, got grace=%v unlinked=%v", expired.DisplayGrace, expired.Unlinked)
 				}
@@ -1844,7 +1845,7 @@ func TestDisplayGraceHoldsConnectedViewDuringBackgroundResumeAndDisconnect(t *te
 				if timerID == 0 {
 					t.Fatalf("expected StreamClosed from connected state to schedule display grace timer")
 				}
-				inside := e.BuildSyncStateView()
+				inside := e.BuildSyncState(SyncStateOpts{})
 				if inside.Connection != corev1.ConnState_CONN_STATE_RECONNECTING || !inside.DisplayGrace {
 					t.Fatalf("expected RECONNECTING + DisplayGrace inside window, got conn=%v grace=%v", inside.Connection, inside.DisplayGrace)
 				}
@@ -1861,7 +1862,7 @@ func TestDisplayGraceHoldsConnectedViewDuringBackgroundResumeAndDisconnect(t *te
 						},
 					},
 				})
-				after := e.BuildSyncStateView()
+				after := e.BuildSyncState(SyncStateOpts{})
 				if after.DisplayGrace {
 					t.Fatalf("expected DisplayGrace=false after TimerFired")
 				}
@@ -1908,7 +1909,7 @@ func TestColdStartGraceHoldsUnknownReachabilityUntilListsOrExpiry(t *testing.T) 
 				if findColdStartTimer(startRes) == 0 {
 					t.Fatalf("expected START to schedule cold-start link grace timer")
 				}
-				v0 := e.BuildSyncStateView()
+				v0 := e.BuildSyncState(SyncStateOpts{})
 				if v0.Connection != corev1.ConnState_CONN_STATE_CONNECTING || v0.DisplayGrace || !v0.ReachabilityUnknown {
 					t.Fatalf("expected CONNECTING + ReachabilityUnknown without DisplayGrace on cold start, got conn=%v grace=%v unknown=%v",
 						v0.Connection, v0.DisplayGrace, v0.ReachabilityUnknown)
@@ -1942,9 +1943,8 @@ func TestColdStartGraceHoldsUnknownReachabilityUntilListsOrExpiry(t *testing.T) 
 						},
 					},
 				})
-				vBoot := e.BuildSyncStateView()
-				if len(vBoot.Machines) != 1 || !vBoot.Machines[0].ReachabilityUnknown {
-					t.Fatalf("expected cached machine m1 to carry ReachabilityUnknown=true, got %+v", vBoot.Machines)
+				if len(e.World().World.Machines) != 1 || !e.World().World.Machines[0].ReachabilityUnknown {
+					t.Fatalf("expected cached machine m1 to carry ReachabilityUnknown=true, got %+v", e.World().World.Machines)
 				}
 				snapBoot := e.SessionSnapshot("s1")
 				if !snapBoot.ReachabilityUnknown || snapBoot.Machine == nil || !snapBoot.Machine.ReachabilityUnknown {
@@ -1978,7 +1978,7 @@ func TestColdStartGraceHoldsUnknownReachabilityUntilListsOrExpiry(t *testing.T) 
 						listsOp = rpc.OpId
 					}
 				}
-				vStream := e.BuildSyncStateView()
+				vStream := e.BuildSyncState(SyncStateOpts{})
 				if vStream.Connection != corev1.ConnState_CONN_STATE_CONNECTED || !vStream.ReachabilityUnknown {
 					t.Fatalf("expected CONNECTED + ReachabilityUnknown=true between StreamReady and ListsFetched, got conn=%v unknown=%v",
 						vStream.Connection, vStream.ReachabilityUnknown)
@@ -1996,13 +1996,13 @@ func TestColdStartGraceHoldsUnknownReachabilityUntilListsOrExpiry(t *testing.T) 
 						},
 					},
 				})
-				vDone := e.BuildSyncStateView()
+				vDone := e.BuildSyncState(SyncStateOpts{})
 				if vDone.ReachabilityUnknown || vDone.Unlinked {
 					t.Fatalf("expected ListsFetched to clear ReachabilityUnknown and Unlinked, got unknown=%v unlinked=%v",
 						vDone.ReachabilityUnknown, vDone.Unlinked)
 				}
-				if len(vDone.Machines) != 1 || vDone.Machines[0].ReachabilityUnknown || !vDone.Machines[0].Online {
-					t.Fatalf("expected machine m1 Online=true and ReachabilityUnknown=false after ListsFetched, got %+v", vDone.Machines)
+				if len(e.World().World.Machines) != 1 || e.World().World.Machines[0].ReachabilityUnknown || !e.World().World.Machines[0].Online {
+					t.Fatalf("expected machine m1 Online=true and ReachabilityUnknown=false after ListsFetched, got %+v", e.World().World.Machines)
 				}
 			},
 		},
@@ -2042,7 +2042,7 @@ func TestColdStartGraceHoldsUnknownReachabilityUntilListsOrExpiry(t *testing.T) 
 					MonoMs: 2_400,
 					Event:  &corev1.Event_ClockUpdated{ClockUpdated: &corev1.LocalCalendar{NowMs: 2_400}},
 				})
-				inside := e.BuildSyncStateView()
+				inside := e.BuildSyncState(SyncStateOpts{})
 				if !inside.ReachabilityUnknown {
 					t.Fatalf("expected ReachabilityUnknown=true before 1500ms cold-start grace expiry")
 				}
@@ -2058,12 +2058,12 @@ func TestColdStartGraceHoldsUnknownReachabilityUntilListsOrExpiry(t *testing.T) 
 						},
 					},
 				})
-				expired := e.BuildSyncStateView()
+				expired := e.BuildSyncState(SyncStateOpts{})
 				if expired.ReachabilityUnknown {
 					t.Fatalf("expected ReachabilityUnknown=false after cold-start grace timer fired")
 				}
-				if len(expired.Machines) != 1 || expired.Machines[0].ReachabilityUnknown || expired.Machines[0].Online {
-					t.Fatalf("expected machine m1 to revert to offline (ReachabilityUnknown=false) after expiry, got %+v", expired.Machines)
+				if len(e.World().World.Machines) != 1 || e.World().World.Machines[0].ReachabilityUnknown || e.World().World.Machines[0].Online {
+					t.Fatalf("expected machine m1 to revert to offline (ReachabilityUnknown=false) after expiry, got %+v", e.World().World.Machines)
 				}
 				snapExpired := e.SessionSnapshot("")
 				if snapExpired.ReachabilityUnknown {
@@ -2091,7 +2091,7 @@ func TestColdStartGraceHoldsUnknownReachabilityUntilListsOrExpiry(t *testing.T) 
 						tokOp = et.OpId
 					}
 				}
-				if !e.BuildSyncStateView().ReachabilityUnknown {
+				if !e.BuildSyncState(SyncStateOpts{}).ReachabilityUnknown {
 					t.Fatalf("expected ReachabilityUnknown=true on start")
 				}
 				e.HandleEvent(&corev1.Event{
@@ -2101,7 +2101,7 @@ func TestColdStartGraceHoldsUnknownReachabilityUntilListsOrExpiry(t *testing.T) 
 						TokenResult: &corev1.TokenResultEvent{OpId: tokOp, Removed: true},
 					},
 				})
-				after := e.BuildSyncStateView()
+				after := e.BuildSyncState(SyncStateOpts{})
 				if after.ReachabilityUnknown || !after.Removed {
 					t.Fatalf("expected Removed=true and ReachabilityUnknown=false on account removal, got unknown=%v removed=%v",
 						after.ReachabilityUnknown, after.Removed)
@@ -3195,12 +3195,12 @@ func TestTerminalReadyAndWaitingView(t *testing.T) {
 		},
 	})
 	// 1. Relay connected: terminal_ready=true even if machine presence says offline.
-	v1 := e.BuildSyncStateView()
-	if !v1.Machines[0].TerminalReady || !v1.Sessions[0].TerminalReady || v1.Sessions[0].TerminalWaiting {
-		t.Fatalf("expected terminal_ready=true when relay connected, got machine=%+v session=%+v", v1.Machines[0], v1.Sessions[0])
+	snap1 := e.SessionSnapshot("s1")
+	if !e.machineTerminalReady("m1") || !snap1.TerminalReady || snap1.TerminalWaiting {
+		t.Fatalf("expected terminal_ready=true when relay connected, got snap=%+v", snap1)
 	}
-	if v1.Machines[0].DisplayName != "MacStudio" {
-		t.Fatalf("expected DisplayName=MacStudio, got %q", v1.Machines[0].DisplayName)
+	if lists.MachineName(snap1.Machine, "m1") != "MacStudio" {
+		t.Fatalf("expected DisplayName=MacStudio, got %q", lists.MachineName(snap1.Machine, "m1"))
 	}
 
 	// 2. Relay drops -> enters displayGrace: terminal_ready=false, terminal_waiting=true.
@@ -3211,16 +3211,16 @@ func TestTerminalReadyAndWaitingView(t *testing.T) {
 			StreamClosed: &corev1.StreamClosedEvent{LegId: legID, Error: "drop"},
 		},
 	})
-	v2 := e.BuildSyncStateView()
-	if v2.Machines[0].TerminalReady || v2.Sessions[0].TerminalReady || !v2.Sessions[0].TerminalWaiting {
-		t.Fatalf("expected terminal_ready=false terminal_waiting=true during displayGrace, got machine=%+v session=%+v", v2.Machines[0], v2.Sessions[0])
+	snap2 := e.SessionSnapshot("s1")
+	if e.machineTerminalReady("m1") || snap2.TerminalReady || !snap2.TerminalWaiting {
+		t.Fatalf("expected terminal_ready=false terminal_waiting=true during displayGrace, got snap=%+v", snap2)
 	}
 
 	// 3. Direct ready overrides relay disconnect: terminal_ready=true, terminal_waiting=false.
 	e.directReady["m1"] = true
-	v3 := e.BuildSyncStateView()
-	if !v3.Machines[0].TerminalReady || !v3.Sessions[0].TerminalReady || v3.Sessions[0].TerminalWaiting {
-		t.Fatalf("expected terminal_ready=true when directReady, got machine=%+v session=%+v", v3.Machines[0], v3.Sessions[0])
+	snap3 := e.SessionSnapshot("s1")
+	if !e.machineTerminalReady("m1") || !snap3.TerminalReady || snap3.TerminalWaiting {
+		t.Fatalf("expected terminal_ready=true when directReady, got snap=%+v", snap3)
 	}
 
 	// 4. Direct drops and displayGrace expires -> terminal_ready=false, terminal_waiting=false.
@@ -3230,9 +3230,9 @@ func TestTerminalReadyAndWaitingView(t *testing.T) {
 		MonoMs: now + 100 + DisplayGraceMs + 100,
 		Event:  &corev1.Event_ClockUpdated{ClockUpdated: &corev1.LocalCalendar{NowMs: now + 100 + DisplayGraceMs + 100}},
 	})
-	v4 := e.BuildSyncStateView()
-	if v4.Machines[0].TerminalReady || v4.Sessions[0].TerminalReady || v4.Sessions[0].TerminalWaiting {
-		t.Fatalf("expected terminal_ready=false terminal_waiting=false after grace expires, got machine=%+v session=%+v", v4.Machines[0], v4.Sessions[0])
+	snap4 := e.SessionSnapshot("s1")
+	if e.machineTerminalReady("m1") || snap4.TerminalReady || snap4.TerminalWaiting {
+		t.Fatalf("expected terminal_ready=false terminal_waiting=false after grace expires, got snap=%+v", snap4)
 	}
 }
 

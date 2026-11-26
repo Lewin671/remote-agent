@@ -56,8 +56,7 @@ func (m *Model) ensureUsageUI(machineID string) *screens.UsageUIState {
 }
 
 func (c *Core) viewUsage(req *corev1.UsageScreenRequest) (*corev1.ViewModel, error) {
-	sv := c.buildSyncStateView()
-	vm := screens.BuildUsageView(c.m.state, sv, req)
+	vm := screens.BuildUsageView(c.m.state, req)
 	return &corev1.ViewModel{
 		View: &corev1.ViewModel_Usage{
 			Usage: vm,

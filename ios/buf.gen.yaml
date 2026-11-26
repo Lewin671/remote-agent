@@ -32,9 +32,6 @@ managed:
       path: remoteagent/core/v1/text.proto
       value: PBCore
     - file_option: swift_prefix
-      path: remoteagent/core/v1/sync_view.proto
-      value: PBCore
-    - file_option: swift_prefix
       path: remoteagent/core/v1/usage_view.proto
       value: PBCore
     - file_option: swift_prefix

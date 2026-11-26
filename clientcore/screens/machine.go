@@ -8,6 +8,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/machine"
 	"github.com/Lewin671/remote-agent/clientcore/domain/quota"
 	"github.com/Lewin671/remote-agent/clientcore/domain/usage"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
@@ -376,10 +377,13 @@ func lookupUsageSnapshot(st *State, machineID string, preset v1.UsageRangePreset
 var _ = slices.Contains[[]v1.Agent]
 
 // BuildQuota renders the per-machine Account Quota screen ViewModel.
-func BuildQuota(st *State, syncView *corev1.SyncStateView, machineID string, filterAgent v1.Agent) *corev1.QuotaViewModel {
+func BuildQuota(st *State, syncView *world.SyncState, machineID string, filterAgent v1.Agent) *corev1.QuotaViewModel {
+	if syncView == nil {
+		syncView = &world.SyncState{}
+	}
 	m := findMachineByID(st, machineID)
-	removed := st.Removed || syncView.GetRemoved()
-	unlinked := removed || syncView.GetUnlinked() || lists.WorldUnlinked(&st.World)
+	removed := st.Removed || syncView.Removed
+	unlinked := removed || syncView.Unlinked || lists.WorldUnlinked(&st.World)
 	vm := &corev1.QuotaViewModel{
 		MachineId:  machineID,
 		Unlinked:   unlinked,

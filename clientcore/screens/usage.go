@@ -41,7 +41,7 @@ func computeRangeDays(preset v1.UsageRangePreset, startMs, endMs, customStartMs,
 }
 
 // BuildUsageView constructs the UsageViewModel for the Usage & Speed page.
-func BuildUsageView(st *State, syncView *corev1.SyncStateView, req *corev1.UsageScreenRequest) *corev1.UsageViewModel {
+func BuildUsageView(st *State, req *corev1.UsageScreenRequest) *corev1.UsageViewModel {
 	if st == nil {
 		st = NewState(nil)
 	}
@@ -76,7 +76,6 @@ func BuildUsageView(st *State, syncView *corev1.SyncStateView, req *corev1.Usage
 		OutputSpeedStrip: &corev1.UsageMetricStripView{LastValidIndex: -1},
 		TtftStrip:        &corev1.UsageMetricStripView{LastValidIndex: -1},
 	}
-	_ = syncView
 
 	if m == nil {
 		vm.MachineName = machine.ShortID(req.MachineId)

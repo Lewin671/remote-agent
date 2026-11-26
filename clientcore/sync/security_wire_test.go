@@ -1679,10 +1679,10 @@ func TestBuildAuthoritativeDevicesSeparatesTrustedAndRegistered(t *testing.T) {
 	auth := e.buildAuthoritativeDevices(opened)
 	e.reconcileDecodedDevices(auth, nil, nil, true)
 
-	sv := e.BuildSyncStateView()
-	byID := make(map[string]*corev1.SyncDeviceView, len(sv.Devices))
+	sv := e.BuildSyncState(SyncStateOpts{IncludeDevices: true})
+	byID := make(map[string]*world.SyncDevice, len(sv.Devices))
 	for _, d := range sv.Devices {
-		byID[d.DeviceId] = d
+		byID[d.DeviceID] = d
 	}
 	for _, id := range []string{"c-self", "m-reg"} {
 		d := byID[id]

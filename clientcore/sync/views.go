@@ -25,106 +25,11 @@ func protoConnState(c lists.ConnectionKind) corev1.ConnState {
 	}
 }
 
-func syncPendingFromLists(p lists.PendingAction) *corev1.SyncPendingAction {
-	var q *corev1.SyncPendingQuestion
-	if p.Question != nil {
-		opts := make([]*corev1.SyncPendingQuestionOption, 0, len(p.Question.Options))
-		for _, opt := range p.Question.Options {
-			opts = append(opts, &corev1.SyncPendingQuestionOption{
-				Label:       opt.Label,
-				Description: opt.Description,
-			})
-		}
-		q = &corev1.SyncPendingQuestion{
-			QuestionId:       p.Question.QuestionID,
-			QuestionKey:      p.Question.QuestionKey,
-			Header:           p.Question.Header,
-			Text:             p.Question.Text,
-			MultiSelect:      p.Question.MultiSelect,
-			QuestionCount:    p.Question.QuestionCount,
-			Options:          opts,
-			CanFreeText:      p.Question.CanFreeText,
-			Async:            p.Question.Async,
-			ObservedEventSeq: p.Question.ObservedEventSeq,
-			AskedAtMs:        p.Question.AskedAtMs,
-		}
-	}
-	return &corev1.SyncPendingAction{
-		HasApproval:        p.HasApproval,
-		ApprovalId:         p.ApprovalID,
-		ApprovalToolName:   p.ApprovalToolName,
-		ApprovalCommand:    p.ApprovalCommand,
-		ApprovalToolInput:  p.ApprovalToolInput,
-		ApprovalTruncated:  p.ApprovalTruncated,
-		ApprovalDeadlineMs: p.ApprovalDeadlineMs,
-		HasQuestion:        p.HasQuestion,
-		HasPlan:            p.HasPlan,
-		HasPopup:           p.HasPopup,
-		PopupPreview:       p.PopupPreview,
-		Question:           q,
-	}
-}
-
 func (e *Engine) machineTerminalReady(machineID string) bool {
 	return e.w.World.Connection == lists.ConnConnected || (machineID != "" && e.directReady[machineID])
 }
 
-func (e *Engine) buildSyncMachineView(m *MachineEntry) *corev1.SyncMachineView {
-	if m == nil {
-		return nil
-	}
-	return &corev1.SyncMachineView{
-		MachineId:           m.ID,
-		Online:              m.Online,
-		LastSeenMs:          m.LastSeenMs,
-		Meta:                m.Meta.Clone(),
-		MetaRev:             m.MetaRev,
-		MetaBroken:          m.MetaBroken,
-		Reachable:           m.reachable,
-		Unlinked:            m.unlinked,
-		DirectReady:         e.directReady[m.ID],
-		ProtocolVersion:     m.ProtocolVersion,
-		DaemonOutOfDate:     m.DaemonOutOfDate,
-		ClientOutOfDate:     m.ClientOutOfDate,
-		ReachabilityUnknown: e.machineReachabilityUnknown(m),
-		TerminalReady:       e.machineTerminalReady(m.ID),
-		DisplayName:         lists.MachineName(&lists.Machine{ID: m.ID, Meta: m.Meta}, m.ID),
-	}
-}
-
-func (e *Engine) buildSyncSessionView(s *SessionEntry) *corev1.SyncSessionView {
-	if s == nil {
-		return nil
-	}
-	var createdMs int64
-	if s.Info != nil && s.Info.CreatedAt != nil {
-		createdMs = s.Info.CreatedAt.Seconds*1000 + int64(s.Info.CreatedAt.Nanos)/1_000_000
-	}
-	termReady := e.machineTerminalReady(s.MachineID)
-	termWaiting := !termReady && (e.w.ReachabilityUnknown || e.w.DisplayGrace)
-	return &corev1.SyncSessionView{
-		SessionId:         s.ID,
-		MachineId:         s.MachineID,
-		Info:              s.Info.Clone(),
-		MetaRev:           s.MetaRev,
-		LastSeq:           s.LastSeq,
-		CreatedMs:         createdMs,
-		UpdatedMs:         s.UpdatedMs,
-		ListedEndedMs:     s.ListedEndedMs,
-		Listed:            e.listed[s.ID],
-		Checkpoint:        s.Checkpoint.Clone(),
-		CheckpointInvalid: s.CheckpointInvalid,
-		RetiredHistory:    s.RetiredHistory,
-		OpenFailed:        s.OpenFailed,
-		ScheduleName:      s.ScheduleName,
-		ScheduleUnread:    s.ScheduleUnread,
-		Pending:           syncPendingFromLists(s.Pending),
-		TerminalReady:     termReady,
-		TerminalWaiting:   termWaiting,
-	}
-}
-
-func (e *Engine) buildSyncDeviceView(d *DeviceEntry) *corev1.SyncDeviceView {
+func (e *Engine) buildSyncDevice(d *DeviceEntry) *world.SyncDevice {
 	if d == nil {
 		return nil
 	}
@@ -137,12 +42,12 @@ func (e *Engine) buildSyncDeviceView(d *DeviceEntry) *corev1.SyncDeviceView {
 			trusted = e.security.TrustedClients[d.ID]
 		}
 	}
-	return &corev1.SyncDeviceView{
-		DeviceId:   d.ID,
+	return &world.SyncDevice{
+		DeviceID:   d.ID,
 		Kind:       d.Kind,
 		CreatedMs:  d.CreatedMs,
 		LastSeenMs: d.LastSeenMs,
-		Meta:       d.Meta.Clone(),
+		Meta:       d.Meta,
 		MetaRev:    d.MetaRev,
 		MetaBroken: d.MetaBroken,
 		Trusted:    trusted,
@@ -150,11 +55,25 @@ func (e *Engine) buildSyncDeviceView(d *DeviceEntry) *corev1.SyncDeviceView {
 	}
 }
 
-type syncDevicesByID []*corev1.SyncDeviceView
+type syncDevicesByID []*world.SyncDevice
 
 func (s syncDevicesByID) Len() int           { return len(s) }
-func (s syncDevicesByID) Less(i, j int) bool { return s[i].DeviceId < s[j].DeviceId }
+func (s syncDevicesByID) Less(i, j int) bool { return s[i].DeviceID < s[j].DeviceID }
 func (s syncDevicesByID) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+
+func (e *Engine) sortedSyncDevices() []*world.SyncDevice {
+	if len(e.devices) == 0 {
+		return nil
+	}
+	devices := make([]*world.SyncDevice, 0, len(e.devices))
+	for _, d := range e.devices {
+		if dv := e.buildSyncDevice(d); dv != nil {
+			devices = append(devices, dv)
+		}
+	}
+	sortutil.SortInterface(syncDevicesByID(devices))
+	return devices
+}
 
 // ConnectionStep returns the current structured connection establishment step.
 func (e *Engine) ConnectionStep() world.ConnectStep { return e.connStep }
@@ -170,8 +89,7 @@ func (e *Engine) SessionErrorReasons(sessionID string) (errReason, fetchErrReaso
 	return world.Reason{}, world.Reason{}
 }
 
-// SecurityScreenSnapshot is a lightweight O(devices) read-only projection for security ViewModels,
-// avoiding the O(sessions + machines) BuildSyncStateView allocation on every security render.
+// SecurityScreenSnapshot is a lightweight O(devices) read-only projection for security ViewModels.
 type SecurityScreenSnapshot struct {
 	Loaded              bool
 	IsManager           bool
@@ -182,18 +100,11 @@ type SecurityScreenSnapshot struct {
 	RecoveryStatusStale bool
 	SelfDeviceID        string
 	AuthorityDeviceID   string
-	Devices             []*corev1.SyncDeviceView
+	Devices             []*world.SyncDevice
 }
 
 // SecuritySnapshot returns security & client-device metadata without copying sessions or machines.
 func (e *Engine) SecuritySnapshot() SecurityScreenSnapshot {
-	devices := make([]*corev1.SyncDeviceView, 0, len(e.devices))
-	for _, d := range e.devices {
-		if dv := e.buildSyncDeviceView(d); dv != nil {
-			devices = append(devices, dv)
-		}
-	}
-	sortutil.SortInterface(syncDevicesByID(devices))
 	return SecurityScreenSnapshot{
 		Loaded:              e.security.Loaded,
 		IsManager:           e.w.World.IsManager,
@@ -204,110 +115,65 @@ func (e *Engine) SecuritySnapshot() SecurityScreenSnapshot {
 		RecoveryStatusStale: e.security.RecoveryStatusStale,
 		SelfDeviceID:        e.security.SelfDeviceID,
 		AuthorityDeviceID:   e.security.AuthorityDeviceID,
-		Devices:             devices,
+		Devices:             e.sortedSyncDevices(),
 	}
 }
 
-// BuildSyncStateView constructs the transitional SyncStateView snapshot for unmigrated Step 3-4 screens
-// from the engine's world. Text fields (ConnectionReason, ConnectionStep, ManagerName, SessionListError,
-// DevicesErrorText) are left nil here and populated by screens.ApplySyncStateTexts.
-func (e *Engine) BuildSyncStateView() *corev1.SyncStateView {
+// SyncStateOpts controls optional collections populated by Engine.BuildSyncState.
+type SyncStateOpts struct {
+	IncludeDevices     bool
+	IncludeDirectReady bool
+}
+
+// BuildSyncState constructs a lightweight internal Go snapshot of synchronized
+// connection, security, and optional device/direct-readiness state on demand.
+// Text fields (ConnectionReason, ConnectionStep, ManagerName, DevicesErrorText,
+// LeaseRenewalAdvice) are populated by screens.ApplySyncStateTexts.
+func (e *Engine) BuildSyncState(opts SyncStateOpts) *world.SyncState {
 	w := &e.w
-	machines := make([]*corev1.SyncMachineView, 0, len(w.World.Machines))
-	for _, m := range w.World.Machines {
-		if mv := e.buildSyncMachineView(e.machines[m.ID]); mv != nil {
-			machines = append(machines, mv)
-		}
+	var devices []*world.SyncDevice
+	if opts.IncludeDevices {
+		devices = e.sortedSyncDevices()
 	}
-	sessions := make([]*corev1.SyncSessionView, 0, len(w.World.Sessions))
-	for _, s := range w.World.Sessions {
-		if sv := e.buildSyncSessionView(e.sessions[s.ID]); sv != nil {
-			sessions = append(sessions, sv)
-		}
-	}
-
-	devices := make([]*corev1.SyncDeviceView, 0, len(e.devices))
-	for _, d := range e.devices {
-		if dv := e.buildSyncDeviceView(d); dv != nil {
-			devices = append(devices, dv)
-		}
-	}
-	sortutil.SortInterface(syncDevicesByID(devices))
-
-	var nextCursor *v1.SessionCursor
-	if w.World.SessionsNext != nil {
-		nextCursor = &v1.SessionCursor{
-			EndedMs:   w.World.SessionsNext.EndedMs,
-			SessionId: w.World.SessionsNext.SessionID,
-		}
-	}
-
-	var prefsCopy *v1.ProjectPrefs
-	if w.World.Prefs != nil {
-		prefsCopy = w.World.Prefs.Clone()
-	}
-
-	var trustedMachineIDs []string
-	var archiveMachineIDs []string
-	if e.security.Loaded {
-		for id, ok := range e.security.TrustedMachines {
-			if ok {
-				trustedMachineIDs = append(trustedMachineIDs, id)
+	var directReady map[string]bool
+	if opts.IncludeDirectReady && len(e.directReady) > 0 {
+		for id, ready := range e.directReady {
+			if ready {
+				if directReady == nil {
+					directReady = make(map[string]bool, len(e.directReady))
+				}
+				directReady[id] = true
 			}
 		}
-		sortutil.Strings(trustedMachineIDs)
-		for id, ok := range e.security.ArchiveMachines {
-			if ok {
-				archiveMachineIDs = append(archiveMachineIDs, id)
-			}
-		}
-		sortutil.Strings(archiveMachineIDs)
 	}
-
-	return &corev1.SyncStateView{
-		Connection:             protoConnState(w.World.Connection),
-		DisconnectedAtMs:       w.DisconnectedAtMs,
-		LivePushConnected:      w.LivePushConnected,
-		Unlinked:               e.unlinkedFlag,
-		IsManager:              w.World.IsManager,
-		SelfDeviceId:           e.security.SelfDeviceID,
-		AuthorityDeviceId:      e.security.AuthorityDeviceID,
-		AccountControlLost:     w.World.AccountControlLost,
-		AccountClockSkewed:     w.World.AccountClockSkewed,
-		Removed:                e.removed,
-		SecurityLoaded:         e.security.Loaded,
-		IsMember:               e.security.IsMember,
-		LeaseEndMs:             e.security.LeaseEndMs,
-		RecoveryPending:        e.security.RecoveryPending,
-		RecoveryReadyMs:        e.security.RecoveryReadyMs,
-		RecoveryObjectsPending: e.security.RecoveryObjectsPending,
-		ClientProtocolVersion:  w.World.ClientVersion,
-		Machines:               machines,
-		MachinesListed:         w.World.MachinesListed,
-		Sessions:               sessions,
-		SessionsListed:         w.World.SessionsListed,
-		LiveLoaded:             w.World.LiveLoaded,
-		HasMoreSessions:        w.World.HasMoreSessions,
-		NextCursor:             nextCursor,
-		LoadingMoreSessions:    w.World.LoadingMoreSessions,
-		SessionListFailed:      w.World.SessionListFailed,
-		PrefsLoaded:            w.World.PrefsLoaded,
-		PrefsLoadFailed:        w.World.PrefsLoadFailed,
-		PrefsBroken:            e.prefs.Broken,
-		PrefsRevision:          e.prefs.Revision,
-		PrefsSyncing:           w.World.PrefsSyncing,
-		Prefs:                  prefsCopy,
-		Devices:                devices,
-		DisplayGrace:           w.DisplayGrace,
-		ReachabilityUnknown:    w.ReachabilityUnknown,
-		TrustedMachineIds:      trustedMachineIDs,
-		ArchiveMachineIds:      archiveMachineIDs,
-		ConnectionStartedAtMs:  e.connStartedAtMs,
-		NetworkAvailable:       e.networkAvailable,
-		EverOnline:             e.everReady,
-		ConnectFailures:        int32(e.recovery.Failures()),
-		RecoveryStatusStale:    e.security.RecoveryStatusStale,
-		DevicesLoadFailed:      e.devicesLoadFailed,
-		HasHandoffOffer:        e.security.HasHandoffOffer,
+	return &world.SyncState{
+		Connection:            protoConnState(w.World.Connection),
+		DisconnectedAtMs:      w.DisconnectedAtMs,
+		LivePushConnected:     w.LivePushConnected,
+		Unlinked:              e.unlinkedFlag,
+		IsManager:             w.World.IsManager,
+		SelfDeviceID:          e.security.SelfDeviceID,
+		AuthorityDeviceID:     e.security.AuthorityDeviceID,
+		AccountClockSkewed:    w.World.AccountClockSkewed,
+		Removed:               e.removed,
+		SecurityLoaded:        e.security.Loaded,
+		LeaseEndMs:            e.security.LeaseEndMs,
+		RecoveryPending:       e.security.RecoveryPending,
+		RecoveryReadyMs:       e.security.RecoveryReadyMs,
+		RecoveryStatusStale:   e.security.RecoveryStatusStale,
+		HasHandoffOffer:       e.security.HasHandoffOffer,
+		MachinesListed:        w.World.MachinesListed,
+		SessionsListed:        w.World.SessionsListed,
+		LiveLoaded:            w.World.LiveLoaded,
+		HasSessions:           len(w.World.Sessions) > 0,
+		DisplayGrace:          w.DisplayGrace,
+		ReachabilityUnknown:   w.ReachabilityUnknown,
+		ConnectionStartedAtMs: e.connStartedAtMs,
+		NetworkAvailable:      e.networkAvailable,
+		EverOnline:            e.everReady,
+		ConnectFailures:       int32(e.recovery.Failures()),
+		DevicesLoadFailed:     e.devicesLoadFailed,
+		Devices:               devices,
+		DirectReadyMachines:   directReady,
 	}
 }

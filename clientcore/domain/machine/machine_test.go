@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
@@ -307,12 +308,12 @@ func TestDirectConnectionAndClientsAndUpdates(t *testing.T) {
 	}
 
 	// Client sort puts self first, then LastSeen desc
-	sorted := SortClients([]*corev1.SyncDeviceView{
-		{DeviceId: "d1", LastSeenMs: 500},
-		{DeviceId: "self", LastSeenMs: 100},
-		{DeviceId: "d2", LastSeenMs: 900},
+	sorted := SortClients([]*world.SyncDevice{
+		{DeviceID: "d1", LastSeenMs: 500},
+		{DeviceID: "self", LastSeenMs: 100},
+		{DeviceID: "d2", LastSeenMs: 900},
 	}, "self")
-	if sorted[0].DeviceId != "self" || sorted[1].DeviceId != "d2" || sorted[2].DeviceId != "d1" {
+	if sorted[0].DeviceID != "self" || sorted[1].DeviceID != "d2" || sorted[2].DeviceID != "d1" {
 		t.Fatalf("unexpected client sort order: %+v", sorted)
 	}
 

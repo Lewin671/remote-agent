@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
@@ -17,27 +18,27 @@ func TestBuildDevicesAndSettingsExcludeMachinesFromClientRows(t *testing.T) {
 		{ID: "m1", Online: true, Meta: &v1.MachineMeta{Hostname: "BuildBox"}},
 	}
 
-	sv := &corev1.SyncStateView{
-		SelfDeviceId:      "c1",
-		AuthorityDeviceId: "c1",
+	sv := &world.SyncState{
+		SelfDeviceID:      "c1",
+		AuthorityDeviceID: "c1",
 		IsManager:         true,
-		Devices: []*corev1.SyncDeviceView{
+		Devices: []*world.SyncDevice{
 			{
-				DeviceId:   "m1",
+				DeviceID:   "m1",
 				Kind:       v1.DeviceKind_DEVICE_KIND_MACHINE,
 				Trusted:    true,
 				Registered: true,
 				Meta:       &v1.DeviceMeta{Name: "BuildBox"},
 			},
 			{
-				DeviceId:   "m-incomplete",
+				DeviceID:   "m-incomplete",
 				Kind:       v1.DeviceKind_DEVICE_KIND_MACHINE,
 				Trusted:    true,
 				Registered: false,
 				Meta:       &v1.DeviceMeta{Name: "JoiningMac"},
 			},
 			{
-				DeviceId:   "c1",
+				DeviceID:   "c1",
 				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
 				Trusted:    true,
 				Registered: true,
@@ -61,8 +62,8 @@ func TestBuildDevicesAndSettingsExcludeMachinesFromClientRows(t *testing.T) {
 
 	// Unfinished pairing with no Meta yet must still have a non-empty DisplayName
 	// (falling back to ShortId) so detail header and removal dialog never render blank.
-	sv.Devices = append(sv.Devices, &corev1.SyncDeviceView{
-		DeviceId:   "4b5cb72cf559ecbf3593590a77aafc04",
+	sv.Devices = append(sv.Devices, &world.SyncDevice{
+		DeviceID:   "4b5cb72cf559ecbf3593590a77aafc04",
 		Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
 		Trusted:    true,
 		Registered: false,
@@ -156,7 +157,7 @@ func TestMissingOrEmptyMachinesReportLoadingUntilListedOrOffline(t *testing.T) {
 			st.World.MachinesListed = tc.listed
 			unlinkedFlag := tc.unlinked
 			st.World.Unlinked = &unlinkedFlag
-			sv := &corev1.SyncStateView{Unlinked: tc.unlinked}
+			sv := &world.SyncState{Unlinked: tc.unlinked}
 
 			svm := BuildSettings(st, sv, nil)
 			if svm.MachinesLoading != tc.wantLoading {
@@ -267,15 +268,15 @@ func TestSettingsRedesignProjections(t *testing.T) {
 		Meta:     &v1.MachineMeta{Hostname: "ArchivedMac", ProtocolVersion: 16},
 	})
 
-	sv := &corev1.SyncStateView{
-		SelfDeviceId:      "c-self",
-		AuthorityDeviceId: "c-auth",
+	sv := &world.SyncState{
+		SelfDeviceID:      "c-self",
+		AuthorityDeviceID: "c-auth",
 		IsManager:         false,
 		RecoveryPending:   true,
-		Devices: []*corev1.SyncDeviceView{
-			{DeviceId: "c-self", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Trusted: true, Registered: true},
-			{DeviceId: "c-auth", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Trusted: true, Registered: true, Meta: &v1.DeviceMeta{Name: "Pixel 9"}},
-			{DeviceId: "c-pending", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Trusted: true, Registered: false},
+		Devices: []*world.SyncDevice{
+			{DeviceID: "c-self", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Trusted: true, Registered: true},
+			{DeviceID: "c-auth", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Trusted: true, Registered: true, Meta: &v1.DeviceMeta{Name: "Pixel 9"}},
+			{DeviceID: "c-pending", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Trusted: true, Registered: false},
 		},
 	}
 
@@ -429,12 +430,12 @@ func TestMachineSettingsRedesignProjections(t *testing.T) {
 		}, true
 	}
 
-	sv := &corev1.SyncStateView{
-		SelfDeviceId:      "c-self",
-		AuthorityDeviceId: "c-auth",
+	sv := &world.SyncState{
+		SelfDeviceID:      "c-self",
+		AuthorityDeviceID: "c-auth",
 		IsManager:         false,
-		Devices: []*corev1.SyncDeviceView{
-			{DeviceId: "c-auth", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Trusted: true, Registered: true, Meta: &v1.DeviceMeta{Name: "Pixel 9"}},
+		Devices: []*world.SyncDevice{
+			{DeviceID: "c-auth", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Trusted: true, Registered: true, Meta: &v1.DeviceMeta{Name: "Pixel 9"}},
 		},
 	}
 
@@ -506,8 +507,8 @@ func TestMachineSettingsRedesignProjections(t *testing.T) {
 	sv.ConnectFailures = 2
 	sv.ConnectionStartedAtMs = now - 5_000
 	sv.ConnectionStep = text.Plain("step")
-	sv.Machines = []*corev1.SyncMachineView{{MachineId: "1234567890abcdef", DirectReady: true}}
-	sv.Devices = append(sv.Devices, &corev1.SyncDeviceView{DeviceId: "1234567890abcdef", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE, Trusted: true, Registered: true})
+	sv.DirectReadyMachines = map[string]bool{"1234567890abcdef": true}
+	sv.Devices = append(sv.Devices, &world.SyncDevice{DeviceID: "1234567890abcdef", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE, Trusted: true, Registered: true})
 	setVM := BuildSettings(st, sv, nil)
 	if !setVM.Security.HasHandoffOffer || !setVM.Security.RecoveryStatusStale || setVM.Security.LeaseEndMs != now+600_000 {
 		t.Fatalf("unexpected SecuritySummaryView fields: %+v", setVM.Security)
@@ -532,84 +533,84 @@ func TestBuildSettingsHandoffCandidates(t *testing.T) {
 	st.World.Connection = lists.ConnConnected
 	key := make([]byte, 32)
 	key[0] = 7
-	sv := &corev1.SyncStateView{
-		SelfDeviceId:      "self-1111",
-		AuthorityDeviceId: "self-1111",
+	sv := &world.SyncState{
+		SelfDeviceID:      "self-1111",
+		AuthorityDeviceID: "self-1111",
 		IsManager:         true,
 		SecurityLoaded:    true,
-		Devices: []*corev1.SyncDeviceView{
+		Devices: []*world.SyncDevice{
 			{
-				DeviceId:   "self-1111",
+				DeviceID:   "self-1111",
 				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
 				Trusted:    true,
 				LastSeenMs: 500,
 				Meta:       &v1.DeviceMeta{Name: "Manager", Platform: "android", Description: "Android 16 · Pixel 9", HandoffRecoveryEd: key},
 			},
 			{
-				DeviceId:   "machine-2222",
+				DeviceID:   "machine-2222",
 				Kind:       v1.DeviceKind_DEVICE_KIND_MACHINE,
 				Trusted:    true,
 				LastSeenMs: 450,
 				Meta:       &v1.DeviceMeta{Name: "Box", HandoffRecoveryEd: key},
 			},
 			{
-				DeviceId:   "client-untrusted",
+				DeviceID:   "client-untrusted",
 				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
 				Trusted:    false,
 				LastSeenMs: 420,
 				Meta:       &v1.DeviceMeta{Name: "Revoked", Platform: "android", HandoffRecoveryEd: key},
 			},
 			{
-				DeviceId:   "client-no-offer",
+				DeviceID:   "client-no-offer",
 				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
 				Trusted:    true,
 				LastSeenMs: 400,
 				Meta:       &v1.DeviceMeta{Name: "NoOffer", Platform: "ios", Description: "iOS 18 · iPhone 16"},
 			},
 			{
-				DeviceId:   "client-aaaa",
+				DeviceID:   "client-aaaa",
 				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
 				Trusted:    true,
 				LastSeenMs: 300,
 				Meta:       &v1.DeviceMeta{Platform: "android", Description: "Android 16 · Pixel 9", HandoffRecoveryEd: key},
 			},
 			{
-				DeviceId:   "client-bbbb",
+				DeviceID:   "client-bbbb",
 				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
 				Trusted:    true,
 				LastSeenMs: 250,
 				Meta:       &v1.DeviceMeta{Platform: "ios", Description: "iOS 18 · iPhone 15", HandoffRecoveryEd: key},
 			},
 			{
-				DeviceId:   "client-cccc",
+				DeviceID:   "client-cccc",
 				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
 				Trusted:    true,
 				LastSeenMs: 200,
 				Meta:       &v1.DeviceMeta{Platform: "web", Description: "Chrome on macOS", HandoffRecoveryEd: key},
 			},
 			{
-				DeviceId:   "client-dddd",
+				DeviceID:   "client-dddd",
 				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
 				Trusted:    true,
 				LastSeenMs: 150,
 				Meta:       &v1.DeviceMeta{Platform: "web", HandoffRecoveryEd: key},
 			},
 			{
-				DeviceId:   "client-eeee",
+				DeviceID:   "client-eeee",
 				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
 				Trusted:    true,
 				LastSeenMs: 120,
 				Meta:       &v1.DeviceMeta{Platform: "web", HandoffRecoveryEd: key},
 			},
 			{
-				DeviceId:   "client-ffff",
+				DeviceID:   "client-ffff",
 				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
 				Trusted:    true,
 				LastSeenMs: 80,
 				Meta:       &v1.DeviceMeta{HandoffRecoveryEd: key},
 			},
 			{
-				DeviceId:   "client-9999",
+				DeviceID:   "client-9999",
 				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
 				Trusted:    true,
 				LastSeenMs: 50,
@@ -678,8 +679,8 @@ func TestOfflineNetworkDoesNotShowRemovedBannerOrRemovedMachines(t *testing.T) {
 			Meta:     &v1.MachineMeta{Hostname: "OldMac", ProtocolVersion: 17},
 		},
 	}
-	sv := &corev1.SyncStateView{
-		SelfDeviceId: "c1",
+	sv := &world.SyncState{
+		SelfDeviceID: "c1",
 		Unlinked:     true,
 		Removed:      false,
 	}
@@ -738,7 +739,7 @@ func TestMachineCardDisambiguatorOnlyForDuplicateNames(t *testing.T) {
 		mk("bbbbbbbb2222a91e", "Mac"),
 		mk("cccccccc33333333", "Studio"),
 	}
-	vm := BuildSettings(st, &corev1.SyncStateView{}, nil)
+	vm := BuildSettings(st, &world.SyncState{}, nil)
 	if len(vm.Machines) != 3 {
 		t.Fatalf("want 3 machine cards, got %d", len(vm.Machines))
 	}
@@ -783,7 +784,7 @@ func TestMachineCardDisambiguatorOnlyForDuplicateNames(t *testing.T) {
 			"yyab9999": "yab9999",
 			"unique01": "",
 		}
-		vm2 := BuildSettings(st2, &corev1.SyncStateView{}, nil)
+		vm2 := BuildSettings(st2, &world.SyncState{}, nil)
 		for _, c := range vm2.Machines {
 			if c.Disambiguator != want[c.MachineId] {
 				t.Fatalf("settings %s: disambiguator=%q want %q", c.MachineId, c.Disambiguator, want[c.MachineId])
@@ -827,7 +828,7 @@ func TestMachineCardPlanBStatesAndConnCheckFooter(t *testing.T) {
 					ID: "m1", Online: true,
 					Meta: &v1.MachineMeta{Hostname: "Lab", ProtocolVersion: tc.machineVer},
 				}}
-				vm := BuildSettings(st, &corev1.SyncStateView{}, nil)
+				vm := BuildSettings(st, &world.SyncState{}, nil)
 				c := vm.Machines[0]
 				if c.ProtocolMismatch != tc.wantDirSign || c.Dimmed {
 					t.Fatalf("mismatch=%d dimmed=%v want (%d, false)", c.ProtocolMismatch, c.Dimmed, tc.wantDirSign)
@@ -839,7 +840,7 @@ func TestMachineCardPlanBStatesAndConnCheckFooter(t *testing.T) {
 					t.Fatalf("mismatched machine must not show quotas or direct_active: %+v", c)
 				}
 
-				mvm := BuildMachineSettings(st, &corev1.SyncStateView{}, nil, "m1")
+				mvm := BuildMachineSettings(st, &world.SyncState{}, nil, "m1")
 				if mvm.GetOfflineOrMismatchBanner().GetKey() != tc.wantAlert {
 					t.Fatalf("MachineSettings banner=%q want %q", mvm.GetOfflineOrMismatchBanner().GetKey(), tc.wantAlert)
 				}
@@ -868,7 +869,7 @@ func TestMachineCardPlanBStatesAndConnCheckFooter(t *testing.T) {
 				},
 			},
 		}}
-		vm := BuildSettings(st, &corev1.SyncStateView{}, nil)
+		vm := BuildSettings(st, &world.SyncState{}, nil)
 		qs := vm.Machines[0].QuotaItems
 		if len(qs) != 2 {
 			t.Fatalf("want 2 quota items, got %+v", qs)
@@ -987,11 +988,11 @@ func TestMachineCardPlanBStatesAndConnCheckFooter(t *testing.T) {
 					r, ok := tc.reports[id]
 					return true, r, ok
 				}
-				syncView := &corev1.SyncStateView{}
+				syncView := &world.SyncState{}
 				if tc.directReady {
-					syncView.Machines = []*corev1.SyncMachineView{
-						{MachineId: "m1", DirectReady: true},
-						{MachineId: "m2", DirectReady: true},
+					syncView.DirectReadyMachines = map[string]bool{
+						"m1": true,
+						"m2": true,
 					}
 				}
 				vm := BuildSettings(st, syncView, nil)
@@ -1052,7 +1053,7 @@ func TestMachineCardPlanBStatesAndConnCheckFooter(t *testing.T) {
 				}
 				return false, nil, false
 			}
-			vm := BuildSettings(st, &corev1.SyncStateView{}, nil)
+			vm := BuildSettings(st, &world.SyncState{}, nil)
 			if got := vm.GetConnCheck().GetFooterText(); got.GetKey() != text.KeyCommonSentenceJoin || len(got.Args) != 2 || got.Args[1].GetTextValue().GetKey() != tc.wantKey {
 				t.Fatalf("platform=%s: unexpected unsupported footer %+v", tc.platform, got)
 			}

@@ -13,7 +13,7 @@ import (
 func TestBuildConnectionBannerAndDetails(t *testing.T) {
 	tests := []struct {
 		name            string
-		sv              *corev1.SyncStateView
+		sv              *world.SyncState
 		wantConnected   bool
 		wantBannerKind  corev1.ConnBannerKind
 		wantVisible     bool
@@ -26,7 +26,7 @@ func TestBuildConnectionBannerAndDetails(t *testing.T) {
 	}{
 		{
 			name: "connected hides banner",
-			sv: &corev1.SyncStateView{
+			sv: &world.SyncState{
 				Connection:       corev1.ConnState_CONN_STATE_CONNECTED,
 				NetworkAvailable: true,
 				MachinesListed:   true,
@@ -37,7 +37,7 @@ func TestBuildConnectionBannerAndDetails(t *testing.T) {
 		},
 		{
 			name: "display grace hides banner while reconnecting",
-			sv: &corev1.SyncStateView{
+			sv: &world.SyncState{
 				Connection:       corev1.ConnState_CONN_STATE_RECONNECTING,
 				NetworkAvailable: true,
 				DisplayGrace:     true,
@@ -48,7 +48,7 @@ func TestBuildConnectionBannerAndDetails(t *testing.T) {
 		},
 		{
 			name: "no network empty",
-			sv: &corev1.SyncStateView{
+			sv: &world.SyncState{
 				Connection:       corev1.ConnState_CONN_STATE_NO_NETWORK,
 				NetworkAvailable: false,
 			},
@@ -58,7 +58,7 @@ func TestBuildConnectionBannerAndDetails(t *testing.T) {
 		},
 		{
 			name: "no network with kept data",
-			sv: &corev1.SyncStateView{
+			sv: &world.SyncState{
 				Connection:       corev1.ConnState_CONN_STATE_NO_NETWORK,
 				NetworkAvailable: false,
 				MachinesListed:   true,
@@ -69,11 +69,10 @@ func TestBuildConnectionBannerAndDetails(t *testing.T) {
 			wantTextKey:    text.KeyConnectionNoNetworkPrevious,
 		},
 		{
-			name: "no network with only prefs loaded is still empty per buildSyncConnBanner",
-			sv: &corev1.SyncStateView{
+			name: "no network without listed sessions is still empty per buildSyncConnBanner",
+			sv: &world.SyncState{
 				Connection:       corev1.ConnState_CONN_STATE_NO_NETWORK,
 				NetworkAvailable: false,
-				PrefsLoaded:      true,
 			},
 			wantBannerKind: corev1.ConnBannerKind_CONN_BANNER_KIND_NO_NETWORK,
 			wantVisible:    true,
@@ -81,7 +80,7 @@ func TestBuildConnectionBannerAndDetails(t *testing.T) {
 		},
 		{
 			name: "no server cold failure has error tone and failed text",
-			sv: &corev1.SyncStateView{
+			sv: &world.SyncState{
 				Connection:       corev1.ConnState_CONN_STATE_OFFLINE,
 				NetworkAvailable: true,
 				ConnectionReason: text.Msg(text.KeyErrorsConnectionTimedOut),
@@ -96,7 +95,7 @@ func TestBuildConnectionBannerAndDetails(t *testing.T) {
 		},
 		{
 			name: "no server with kept data omits error tone and failed text",
-			sv: &corev1.SyncStateView{
+			sv: &world.SyncState{
 				Connection:       corev1.ConnState_CONN_STATE_OFFLINE,
 				NetworkAvailable: true,
 				MachinesListed:   true,
@@ -115,7 +114,7 @@ func TestBuildConnectionBannerAndDetails(t *testing.T) {
 		},
 		{
 			name: "connecting cold start",
-			sv: &corev1.SyncStateView{
+			sv: &world.SyncState{
 				Connection:       corev1.ConnState_CONN_STATE_CONNECTING,
 				NetworkAvailable: true,
 			},
@@ -125,7 +124,7 @@ func TestBuildConnectionBannerAndDetails(t *testing.T) {
 		},
 		{
 			name: "reconnecting before live loaded still says connecting per buildSyncConnBanner",
-			sv: &corev1.SyncStateView{
+			sv: &world.SyncState{
 				Connection:       corev1.ConnState_CONN_STATE_RECONNECTING,
 				NetworkAvailable: true,
 				SecurityLoaded:   true,
@@ -136,7 +135,7 @@ func TestBuildConnectionBannerAndDetails(t *testing.T) {
 		},
 		{
 			name: "reconnecting after live loaded",
-			sv: &corev1.SyncStateView{
+			sv: &world.SyncState{
 				Connection:       corev1.ConnState_CONN_STATE_RECONNECTING,
 				NetworkAvailable: true,
 				LiveLoaded:       true,
@@ -235,11 +234,11 @@ func TestBuildHomeBannersAndPrefs(t *testing.T) {
 	}
 
 	// BuildConnection exposes ClockSkewNotice from the world and clears it when healthy.
-	connHealthy := BuildConnection(NewState(nil), &corev1.SyncStateView{Connection: corev1.ConnState_CONN_STATE_CONNECTED})
+	connHealthy := BuildConnection(NewState(nil), &world.SyncState{Connection: corev1.ConnState_CONN_STATE_CONNECTED})
 	if connHealthy.ClockSkewNotice != nil {
 		t.Fatalf("expected nil ClockSkewNotice when healthy, got %+v", connHealthy.ClockSkewNotice)
 	}
-	connFromWorld := BuildConnection(st, &corev1.SyncStateView{Connection: corev1.ConnState_CONN_STATE_CONNECTED})
+	connFromWorld := BuildConnection(st, &world.SyncState{Connection: corev1.ConnState_CONN_STATE_CONNECTED})
 	if connFromWorld.ClockSkewNotice.GetKey() != text.KeyErrorsThisDeviceSClockIsBehindTheAccountState {
 		t.Fatalf("ClockSkewNotice from world = %+v", connFromWorld.ClockSkewNotice)
 	}
@@ -304,17 +303,16 @@ func TestSettingsSecuritySummaryAndMachineManagementFlags(t *testing.T) {
 	}
 
 	// Non-manager client in directory -> CanPrepareHandoff=true, AuthorityNameText populated.
-	memberSV := &corev1.SyncStateView{
+	memberSV := &world.SyncState{
 		Connection:        corev1.ConnState_CONN_STATE_CONNECTED,
 		SecurityLoaded:    true,
-		IsMember:          true,
 		IsManager:         false,
-		SelfDeviceId:      "client-2",
-		AuthorityDeviceId: "client-1",
-		Devices: []*corev1.SyncDeviceView{
-			{DeviceId: "client-1", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Meta: &v1.DeviceMeta{Name: "Main Phone"}},
-			{DeviceId: "client-2", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT},
-			{DeviceId: "m-in-dir", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE},
+		SelfDeviceID:      "client-2",
+		AuthorityDeviceID: "client-1",
+		Devices: []*world.SyncDevice{
+			{DeviceID: "client-1", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Meta: &v1.DeviceMeta{Name: "Main Phone"}},
+			{DeviceID: "client-2", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT},
+			{DeviceID: "m-in-dir", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE},
 		},
 	}
 	ApplySyncStateTexts(memberSV, nil, 0, world.Reason{})
@@ -330,16 +328,15 @@ func TestSettingsSecuritySummaryAndMachineManagementFlags(t *testing.T) {
 	}
 
 	// Manager viewing archived machine (not in device directory) vs in-dir machine -> CanDeleteRecords checks !inDeviceDir.
-	mgrSV := &corev1.SyncStateView{
+	mgrSV := &world.SyncState{
 		Connection:        corev1.ConnState_CONN_STATE_CONNECTED,
 		SecurityLoaded:    true,
-		IsMember:          true,
 		IsManager:         true,
-		SelfDeviceId:      "client-1",
-		AuthorityDeviceId: "client-1",
-		Devices: []*corev1.SyncDeviceView{
-			{DeviceId: "client-1", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT},
-			{DeviceId: "m-in-dir", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE},
+		SelfDeviceID:      "client-1",
+		AuthorityDeviceID: "client-1",
+		Devices: []*world.SyncDevice{
+			{DeviceID: "client-1", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT},
+			{DeviceID: "m-in-dir", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE},
 		},
 	}
 	ApplySyncStateTexts(mgrSV, nil, 0, world.Reason{})
