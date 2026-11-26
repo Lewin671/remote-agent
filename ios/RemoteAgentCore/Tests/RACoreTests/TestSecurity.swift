@@ -291,7 +291,7 @@ final class TestSecurity: @unchecked Sendable {
             stores[rec.member] = s
             return s
         }
-        target.seedTestRecord(
+        try target.seedTestRecord(
             edPrivate: edSeed,
             edPublic: edPub,
             xPrivate: rec.xPrivate,

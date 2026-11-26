@@ -1,5 +1,5 @@
 import Foundation
-import RACore
+@testable import RACore
 import RAProto
 import Security
 import Testing
@@ -114,11 +114,18 @@ final class Harness {
 
     var executor: RecordingExecutor { executors.last! }
 
-    /// Activates an account on the single CoreHost by emitting `AccountRuntimeChangedEffect`.
+    /// Activates an account on the single CoreHost by emitting `AccountRuntimeChangedEffect`
+    /// and waits until `handleAccountRuntimeChanged` completes `host.startAsync()`.
     func activateSyntheticAccount() async throws {
         model.setForeground(true)
         try await model.waitForLoadForTest()
         let host = model.coreHost
+        let started = OSAllocatedUnfairLock(initialState: false)
+        await host.setDebugEventObserver { ev in
+            if case .syncLifecycle(let lc)? = ev.event, lc.kind == .start {
+                started.withLock { $0 = true }
+            }
+        }
         await host.processEffectBatchForTesting([
             PBCoreEffect.with {
                 $0.accountRuntimeChanged = .with {
@@ -130,7 +137,10 @@ final class Harness {
                 }
             }
         ])
-        await eventually("context attached") { self.model.context != nil }
+        await eventually("context attached and started") {
+            self.model.context != nil && started.withLock { $0 }
+        }
+        await host.setDebugEventObserver(nil)
     }
 
     func cleanUp() {
@@ -158,9 +168,181 @@ final class Harness {
         let h = Harness(); defer { h.cleanUp() }
         h.model.setForeground(false)
         h.model.loadAccount()
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        await Task.yield()
+        #expect(!h.model.hasCoreHostForTest)
         #expect(h.model.screens.appRoot.stage == .unspecified)
         #expect(h.executors.isEmpty)
+    }
+
+    @Test func theStoredAccountIsReadAndItsEngineStarted() async throws {
+        struct GoFixture: Decodable {
+            let server: String
+            let accountId: String
+            let clientId: String
+            let clientEdSeed: Data
+            let clientEdPub: Data
+            let clientXPriv: Data
+            let clientXPub: Data
+            let clientRecord: Data
+        }
+        let h = Harness(); defer { h.cleanUp() }
+        let fixtureURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appending(path: "testdata/home-project-v4.json")
+        let fix = try JSONDecoder().decode(GoFixture.self, from: Data(contentsOf: fixtureURL))
+        try h.vault.seedTestRecord(
+            edPrivate: fix.clientEdSeed,
+            edPublic: fix.clientEdPub,
+            xPrivate: fix.clientXPriv,
+            xPublic: fix.clientXPub,
+            recordBytes: fix.clientRecord
+        )
+
+        h.model.setForeground(true)
+        try await h.model.waitForLoadForTest()
+        #expect(h.model.screens.appRoot.stage == .ready)
+        #expect(h.model.account?.deviceId == fix.clientId)
+        #expect(h.model.account?.accountId == fix.accountId)
+        #expect(h.model.context?.remote === h.executor.remote)
+        let key = CipherStore.accountKey(server: fix.server, deviceId: fix.clientId)
+        #expect(FileManager.default.fileExists(atPath: h.root.appending(path: "cache/\(key)/cache.sqlite").path))
+    }
+
+    @Test func theBackgroundStopsTheStreamAndTheForegroundStartsItAgain() async throws {
+        let h = Harness(); defer { h.cleanUp() }
+        try await h.activateSyntheticAccount()
+        let host = h.model.coreHost
+        let events = OSAllocatedUnfairLock<[PBCoreEvent]>(initialState: [])
+        await host.setDebugEventObserver { ev in events.withLock { $0.append(ev) } }
+        defer { Task { await host.setDebugEventObserver(nil) } }
+
+        h.model.scenePhase(.background)
+        #expect(!h.model.foreground)
+        await eventually("syncLifecycle stop") {
+            events.withLock { list in
+                list.contains { if case .syncLifecycle(let lc)? = $0.event { return lc.kind == .stop } else { return false } }
+            }
+        }
+        // Inactive stays in the foreground: the app switcher does not drop the stream.
+        events.withLock { $0.removeAll() }
+        h.model.scenePhase(.inactive)
+        h.model.scenePhase(.active)
+        #expect(h.model.foreground)
+        await eventually("syncLifecycle start") {
+            events.withLock { list in
+                list.contains { if case .syncLifecycle(let lc)? = $0.event { return lc.kind == .start } else { return false } }
+            }
+        }
+        #expect(h.executors.count == 1)
+    }
+
+    @Test func aNetworkThatComesOrChangesIsForwardedAndDuplicatesAreSuppressed() async throws {
+        let h = Harness(); defer { h.cleanUp() }
+        try await h.activateSyntheticAccount()
+        let host = h.model.coreHost
+        let netEvents = OSAllocatedUnfairLock<[(Bool, String)]>(initialState: [])
+        await host.setDebugEventObserver { ev in
+            if case .networkChanged(let n)? = ev.event {
+                netEvents.withLock { $0.append((n.available, n.signature)) }
+            }
+        }
+        defer { Task { await host.setDebugEventObserver(nil) } }
+
+        let wifi = NetworkPath(available: true, interface: "en0")
+        let none = NetworkPath(available: false, interface: "")
+        let cell = NetworkPath(available: true, interface: "pdp_ip0")
+        h.model.networkChanged(wifi)
+        h.model.networkChanged(wifi) // duplicate suppressed by AppModel
+        h.model.networkChanged(none)
+        h.model.networkChanged(cell)
+        h.model.networkChanged(wifi)
+        await eventually("four distinct network changes forwarded") {
+            netEvents.withLock { $0.count == 4 }
+        }
+        let recorded = netEvents.withLock { $0 }
+        #expect(recorded.map(\.0) == [true, false, true, true])
+        #expect(recorded.map(\.1) == [wifi.signature, none.signature, cell.signature, wifi.signature])
+    }
+
+    @Test func engineReceivesTheNetworkObservedBeforeAccountLoading() async throws {
+        let h = Harness(); defer { h.cleanUp() }
+        let wifi = NetworkPath(available: true, interface: "en0")
+        let cell = NetworkPath(available: true, interface: "pdp_ip0")
+        h.model.networkChanged(wifi)
+        h.model.setForeground(true)
+        try await h.model.waitForLoadForTest()
+        let host = h.model.coreHost
+        let netEvents = OSAllocatedUnfairLock<[(Bool, String)]>(initialState: [])
+        await host.setDebugEventObserver { ev in
+            if case .networkChanged(let n)? = ev.event {
+                netEvents.withLock { $0.append((n.available, n.signature)) }
+            }
+        }
+        defer { Task { await host.setDebugEventObserver(nil) } }
+
+        await host.processEffectBatchForTesting([
+            PBCoreEffect.with {
+                $0.accountRuntimeChanged = .with {
+                    $0.active = true
+                    $0.server = h.account.server
+                    $0.deviceID = h.account.deviceId
+                    $0.accountID = h.account.accountId
+                }
+            }
+        ])
+        await eventually("pre-load wifi signature forwarded on attach") {
+            netEvents.withLock { list in list.contains { $0.0 && $0.1 == wifi.signature } }
+        }
+        h.model.networkChanged(cell)
+        await eventually("post-load cell change forwarded") {
+            netEvents.withLock { list in list.contains { $0.0 && $0.1 == cell.signature } }
+        }
+    }
+
+    @Test func firstObservationAfterEngineAttachmentIsForwardedAsItsBaseline() async throws {
+        let h = Harness(); defer { h.cleanUp() }
+        try await h.activateSyntheticAccount()
+        let host = h.model.coreHost
+        let netEvents = OSAllocatedUnfairLock<[(Bool, String)]>(initialState: [])
+        await host.setDebugEventObserver { ev in
+            if case .networkChanged(let n)? = ev.event {
+                netEvents.withLock { $0.append((n.available, n.signature)) }
+            }
+        }
+        defer { Task { await host.setDebugEventObserver(nil) } }
+
+        let wifi = NetworkPath(available: true, interface: "en0")
+        let cell = NetworkPath(available: true, interface: "pdp_ip0")
+        h.model.networkChanged(wifi)
+        await eventually("first observation forwarded as baseline") {
+            netEvents.withLock { $0.count == 1 && $0[0] == (true, wifi.signature) }
+        }
+        h.model.networkChanged(cell)
+        await eventually("second observation forwarded") {
+            netEvents.withLock { $0.count == 2 && $0[1] == (true, cell.signature) }
+        }
+    }
+
+    @Test func aDeviceTheServerTurnedAwayKeepsLocalKeysAndCanRetryLogin() async throws {
+        let h = Harness(); defer { h.cleanUp() }
+        try await h.activateSyntheticAccount()
+        let host = h.model.coreHost
+        let events = OSAllocatedUnfairLock<[PBCoreEvent]>(initialState: [])
+        await host.setDebugEventObserver { ev in events.withLock { $0.append(ev) } }
+        defer { Task { await host.setDebugEventObserver(nil) } }
+
+        h.model.screens.appRoot = .with {
+            $0.stage = .removed
+            $0.removed = .with { $0.canRetryLogin = true; $0.server = h.account.server }
+        }
+        #expect(h.model.screens.appRoot.stage == .removed)
+        h.model.retryLogin()
+        await eventually("retryLogin forwarded to Core") {
+            events.withLock { list in
+                list.contains { if case .syncLifecycle(let lc)? = $0.event { return lc.kind == .retryLogin } else { return false } }
+            }
+        }
     }
 
     @Test func corruptRegistrationIntentSurfacesBootstrapErrorAndSetupResetRecoversInPlace() async throws {

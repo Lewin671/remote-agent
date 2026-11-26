@@ -11,112 +11,326 @@ import UIKit
 
 @testable import RemoteAgent
 
-private func appendU32BE(_ out: inout Data, _ val: UInt32) {
-    var v = val.bigEndian
-    withUnsafeBytes(of: &v) { out.append(contentsOf: $0) }
-}
-
-private func appendU64BE(_ out: inout Data, _ val: UInt64) {
-    var v = val.bigEndian
-    withUnsafeBytes(of: &v) { out.append(contentsOf: $0) }
-}
-
-private func appendLP(_ out: inout Data, _ data: Data) {
-    appendU32BE(&out, UInt32(data.count))
-    out.append(data)
-}
-
-private func appendLPStr(_ out: inout Data, _ str: String) {
-    appendLP(&out, Data(str.utf8))
-}
-
-private func requestIdentityHashes(
-    account: String,
-    domain: Data,
-    header: PBHeader,
-    plaintext: Data
-) -> (keyHash: Data, payloadHash: Data) {
-    var req = Data("ra4/request-key\u{0}".utf8)
-    appendLPStr(&req, account)
-    req.append(domain)
-    appendLPStr(&req, header.sender)
-    appendU32BE(&req, UInt32(header.kind.rawValue))
-    appendLPStr(&req, header.machineID)
-    appendLPStr(&req, header.sessionID)
-    appendLPStr(&req, header.requestID)
-    appendU64BE(&req, header.seq)
-    let keyHash = sha256(req)
-
-    var pay = Data("ra4/authorized-payload\u{0}".utf8)
-    appendLP(&pay, keyHash)
-    appendU32BE(&pay, UInt32(header.kind.rawValue))
-    appendU64BE(&pay, UInt64(bitPattern: header.deadlineMs))
-    appendLP(&pay, plaintext)
-    let payloadHash = sha256(pay)
-    return (keyHash, payloadHash)
-}
-
-private func extractDomainFromRecord(_ raw: Data) throws -> Data {
-    // Format: "RA4REC\0" (7) + u32 version (4) + lpstr account + 32-byte domain + 32-byte genesis + ...
-    let prefixLen = 7 + 4
-    guard raw.count >= prefixLen + 4 else { throw TestError("record too short") }
-    let acctLen = raw[prefixLen..<(prefixLen + 4)].reduce(0) { ($0 << 8) | Int($1) }
-    let domainStart = prefixLen + 4 + acctLen
-    guard raw.count >= domainStart + 32 else { throw TestError("record missing domain") }
-    return Data(raw[domainStart..<(domainStart + 32)])
-}
-
 private struct TestError: Error, CustomStringConvertible {
     let description: String
     init(_ description: String) { self.description = description }
 }
 
-/// Real in-memory v4 security authority (one client + one enrolled machine) built through
-/// `StandaloneSecurityHost`, allowing `FakeCoreExecutor` to serve genuine signed `PBEnvelope`s
-/// over the production `RelayRpcEffect` byte pipe without spawning external processes.
+private func withTimeout<T: Sendable>(
+    seconds: Double,
+    _ label: String,
+    operation: @escaping @Sendable () async throws -> T
+) async throws -> T {
+    try await withThrowingTaskGroup(of: T.self) { group in
+        group.addTask { try await operation() }
+        group.addTask {
+            try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            throw TestError("timed out after \(seconds)s: \(label)")
+        }
+        guard let first = try await group.next() else {
+            throw TestError("empty task group: \(label)")
+        }
+        group.cancelAll()
+        return first
+    }
+}
+
+/// Minimal test-only Go `CoreClient` + `SecurityExecutor` node for driving real Core security
+/// workflows and envelope ops without any production `StandaloneSecurityHost` or `CoreSecurityDriver`.
+private final class TestCoreNode: @unchecked Sendable {
+    private let core: CoreClient
+    private let executor: SecurityExecutor
+    private let clock: @Sendable () -> Int64
+    private let queue = DispatchQueue(label: "ra.tests.core.node")
+    private let lock = NSLock()
+    private var closed = false
+    private var nextID: UInt64 = 1
+    private var timers: [String: (id: UInt64, task: Task<Void, Never>)] = [:]
+    private var workflowWaiters: [UInt64: CheckedContinuation<PBSecurityWorkflowResultEffect, Error>] = [:]
+    private var opWaiters: [UInt64: CheckedContinuation<PBSecurityOpResultEffect, Error>] = [:]
+
+    private final class EmitBox: @unchecked Sendable {
+        var send: (@Sendable (PBCoreEvent) -> Void)?
+    }
+
+    init(
+        store: any SecurityStoreV4,
+        clock: @escaping @Sendable () -> Int64,
+        rpcOverride: SecurityExecutor.RpcOverride? = nil
+    ) throws {
+        self.core = try CoreClient()
+        self.clock = clock
+        let emitBox = EmitBox()
+        self.executor = SecurityExecutor(
+            store: store,
+            allowPlainHttp: true,
+            rpcOverride: rpcOverride,
+            emit: { ev in emitBox.send?(ev) }
+        )
+        emitBox.send = { [weak self] ev in self?.enqueue(ev) }
+        enqueue(.with { $0.entropyProvided = Self.buildEntropy(minIds: 16, minFloats: 16, minRandomBytes: 4096) })
+        enqueue(.with {
+            $0.securityConfig = .with {
+                $0.inlineCrypto = true
+                $0.foreground = true
+            }
+        })
+    }
+
+    private func isClosed() -> Bool { lock.withLock { closed } }
+
+    func enqueue(_ ev: PBCoreEvent) {
+        guard !isClosed() else { return }
+        var stamped = ev
+        if stamped.nowMs == 0 { stamped.nowMs = clock() }
+        if stamped.monoMs == 0 { stamped.monoMs = stamped.nowMs }
+        let finalEv = stamped
+        queue.async { [weak self] in self?.step(finalEv) }
+    }
+
+    @discardableResult
+    func runWorkflow(_ label: String = "", _ configure: @Sendable (inout PBSecurityWorkflowActionEvent) -> Void) async throws -> PBSecurityWorkflowResultEffect {
+        let id: UInt64 = lock.withLock {
+            let v = nextID
+            nextID &+= 1
+            return v
+        }
+        let res = try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { cont in
+                let closedNow: Bool = lock.withLock {
+                    if closed { return true }
+                    workflowWaiters[id] = cont
+                    return false
+                }
+                if closedNow {
+                    cont.resume(throwing: TestError("TestCoreNode closed (\(label))"))
+                    return
+                }
+                var action = PBSecurityWorkflowActionEvent()
+                action.actionID = id
+                configure(&action)
+                enqueue(.with { $0.securityAction = action })
+            }
+        } onCancel: {
+            let w = self.lock.withLock { self.workflowWaiters.removeValue(forKey: id) }
+            w?.resume(throwing: CancellationError())
+        }
+        guard res.ok else {
+            throw TestError("security workflow failed (\(label)): \(translateSecurityErrorMessage(res))")
+        }
+        return res
+    }
+
+    func securityOp(_ configure: @Sendable (inout PBSecurityOpRequestEvent) -> Void) async throws -> PBSecurityOpResultEffect {
+        let id: UInt64 = lock.withLock {
+            let v = nextID
+            nextID &+= 1
+            return v
+        }
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { cont in
+                let closedNow: Bool = lock.withLock {
+                    if closed { return true }
+                    opWaiters[id] = cont
+                    return false
+                }
+                if closedNow {
+                    cont.resume(throwing: TestError("TestCoreNode closed"))
+                    return
+                }
+                var req = PBSecurityOpRequestEvent()
+                req.opID = id
+                configure(&req)
+                enqueue(.with { $0.securityOpRequest = req })
+            }
+        } onCancel: {
+            let w = self.lock.withLock { self.opWaiters.removeValue(forKey: id) }
+            w?.resume(throwing: CancellationError())
+        }
+    }
+
+    private func step(_ initial: PBCoreEvent) {
+        var pending = [initial]
+        var idx = 0
+        while idx < pending.count && !isClosed() {
+            let ev = pending[idx]
+            idx += 1
+            guard let batch = try? core.dispatch(ev) else { continue }
+            for eff in batch.effects {
+                if isClosed() { return }
+                handle(eff, inline: &pending)
+            }
+        }
+    }
+
+    private func handle(_ eff: PBCoreEffect, inline: inout [PBCoreEvent]) {
+        switch eff.effect {
+        case .requestEntropy(let req):
+            inline.append(.with {
+                $0.nowMs = clock()
+                $0.monoMs = clock()
+                $0.entropyProvided = Self.buildEntropy(
+                    minIds: max(Int(req.minIds), 16),
+                    minFloats: max(Int(req.minFloats), 16),
+                    minRandomBytes: req.minRandomBytes > 0 ? max(Int(req.minRandomBytes), 4096) : 0
+                )
+            })
+        case .scheduleTimer(let st):
+            let key = "\(st.kind.rawValue):\(st.key)"
+            lock.withLock { timers.removeValue(forKey: key)?.task.cancel() }
+            // Keep pairing poll ticks fast in memory tests while still driving real Core timers.
+            let sleepMs = min(max(0, st.delayMs), 5)
+            let task = Task { [weak self] in
+                if sleepMs > 0 { try? await Task.sleep(nanoseconds: UInt64(sleepMs) * 1_000_000) }
+                guard let self, !Task.isCancelled, !self.isClosed() else { return }
+                let matches = self.lock.withLock { () -> Bool in
+                    guard let cur = self.timers[key], cur.id == st.timerID else { return false }
+                    self.timers.removeValue(forKey: key)
+                    return true
+                }
+                guard matches else { return }
+                self.enqueue(.with {
+                    $0.timerFired = .with {
+                        $0.timerID = st.timerID
+                        $0.kind = st.kind
+                        $0.key = st.key
+                    }
+                })
+            }
+            lock.withLock { timers[key] = (st.timerID, task) }
+        case .cancelTimer(let ct):
+            let key = "\(ct.kind.rawValue):\(ct.key)"
+            let task = lock.withLock { () -> Task<Void, Never>? in
+                guard let cur = timers[key], ct.timerID == 0 || cur.id == ct.timerID else { return nil }
+                return timers.removeValue(forKey: key)?.task
+            }
+            task?.cancel()
+        case .securityKeyGenerate, .securityKeySign, .securityKeyAgree,
+             .securityKeyEncapsulate, .securityKeyDiscard, .securityStorage, .securityRpc:
+            _ = executor.handleEffect(eff)
+        case .securityWorkflowResult(let res):
+            let waiter = lock.withLock { workflowWaiters.removeValue(forKey: res.actionID) }
+            waiter?.resume(returning: res)
+        case .securityOpResult(let res):
+            let waiter = lock.withLock { opWaiters.removeValue(forKey: res.opID) }
+            waiter?.resume(returning: res)
+        default:
+            break
+        }
+    }
+
+    func close() {
+        let (ts, ws, ops) = lock.withLock {
+            () -> ([Task<Void, Never>], [CheckedContinuation<PBSecurityWorkflowResultEffect, Error>], [CheckedContinuation<PBSecurityOpResultEffect, Error>]) in
+            guard !closed else { return ([], [], []) }
+            closed = true
+            let t = timers.values.map(\.task)
+            let w = Array(workflowWaiters.values)
+            let o = Array(opWaiters.values)
+            timers.removeAll()
+            workflowWaiters.removeAll()
+            opWaiters.removeAll()
+            return (t, w, o)
+        }
+        for t in ts { t.cancel() }
+        for w in ws { w.resume(throwing: TestError("TestCoreNode closed")) }
+        for o in ops { o.resume(throwing: TestError("TestCoreNode closed")) }
+        executor.close()
+        queue.sync { core.close() }
+    }
+
+    private static func buildEntropy(minIds: Int, minFloats: Int, minRandomBytes: Int) -> PBCoreEntropyProvided {
+        .with {
+            $0.randomIds = (0..<minIds).map { _ in newRequestId() }
+            $0.unitFloats = (0..<minFloats).map { _ in Double.random(in: 0..<1) }
+            if minRandomBytes > 0 {
+                var bytes = Data(count: minRandomBytes)
+                _ = bytes.withUnsafeMutableBytes { buf in
+                    guard let base = buf.baseAddress else { return errSecParam }
+                    return SecRandomCopyBytes(kSecRandomDefault, minRandomBytes, base)
+                }
+                $0.randomBytes = bytes
+            }
+        }
+    }
+}
+
+/// Real in-memory v4 security authority loaded from the Go-generated `ios/testdata/home-project-v4.json`
+/// fixture (produced and validated by `clientcore/security/ios_fixture_test.go`), allowing
+/// `FakeCoreExecutor` to seal/open genuine signed `PBEnvelope`s via `CoreClient` + `SecurityExecutor`
+/// with zero hand-rolled crypto formats, zero record-byte patching, and zero test-only Core flags.
 private final class FakeRelayAuthority: @unchecked Sendable {
-    static let nowMs: Int64 = 1_791_000_000_000
+    static let nowMs: Int64 = 1_791_000_000_100
     static let server = "https://relay.example.com"
+
+    private struct GoFixture: Decodable {
+        let server: String
+        let nowMs: Int64
+        let accountId: String
+        let clientId: String
+        let machineId: String
+        let clientEdSeed: Data
+        let clientEdPub: Data
+        let clientXPriv: Data
+        let clientXPub: Data
+        let machineEdSeed: Data
+        let machineEdPub: Data
+        let machineXPriv: Data
+        let machineXPub: Data
+        let states: [Data]
+        let lease: Data
+        let clientRecord: Data
+        let machineRecord: Data
+    }
 
     let account: Account
     let machineID: String
-    let domain: Data
     let securityStates: [PBSecurityState]
     let lease: Data
     let clientPubKey: Data
     let clientStoreSnapshot: ([SecurityStoreBucketKey: SecurityStoreStoredBucket], [SecurityStoreKeyId: SecurityStoreStoredKey])
-    let clientHost: StandaloneSecurityHost
-    let machineHost: StandaloneSecurityHost
+    let clientNode: TestCoreNode
+    let machineNode: TestCoreNode
 
     private init(
         account: Account,
         machineID: String,
-        domain: Data,
         securityStates: [PBSecurityState],
         lease: Data,
         clientPubKey: Data,
         clientStoreSnapshot: ([SecurityStoreBucketKey: SecurityStoreStoredBucket], [SecurityStoreKeyId: SecurityStoreStoredKey]),
-        clientHost: StandaloneSecurityHost,
-        machineHost: StandaloneSecurityHost
+        clientNode: TestCoreNode,
+        machineNode: TestCoreNode
     ) {
         self.account = account
         self.machineID = machineID
-        self.domain = domain
         self.securityStates = securityStates
         self.lease = lease
         self.clientPubKey = clientPubKey
         self.clientStoreSnapshot = clientStoreSnapshot
-        self.clientHost = clientHost
-        self.machineHost = machineHost
+        self.clientNode = clientNode
+        self.machineNode = machineNode
     }
 
     private actor Cache {
-        private var cached: FakeRelayAuthority?
+        private var buildTask: Task<FakeRelayAuthority, Error>?
+
         func getOrCreate() async throws -> FakeRelayAuthority {
-            if let cached { return cached }
-            let built = try await FakeRelayAuthority.build()
-            cached = built
-            return built
+            if let existing = buildTask {
+                return try await existing.value
+            }
+            let task = Task<FakeRelayAuthority, Error> {
+                try await withTimeout(seconds: 30, "FakeRelayAuthority.build") {
+                    try await FakeRelayAuthority.build()
+                }
+            }
+            buildTask = task
+            do {
+                return try await task.value
+            } catch {
+                if buildTask == task { buildTask = nil }
+                throw error
+            }
         }
     }
     private static let cache = Cache()
@@ -138,216 +352,61 @@ private final class FakeRelayAuthority: @unchecked Sendable {
     }
 
     private static func build() async throws -> FakeRelayAuthority {
-        actor RelayState {
-            var states: [PBSecurityState] = []
-            var lease = Data()
-            var devicePubs: [String: Data] = [:]
-            var pairingCommit = Data()
-            var pairingState: PBPairingState = .open
-            var joinerPublic = Data()
-            var joinerKind: PBDeviceKind = .machine
-            var joinerEdPub = Data()
-            var joinerXPub = Data()
-            var initiatorPublic = Data()
-            var trust = Data()
-            var approverPub = Data()
+        let fixtureURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appending(path: "testdata/home-project-v4.json")
+        let raw = try Data(contentsOf: fixtureURL)
+        let fix = try JSONDecoder().decode(GoFixture.self, from: raw)
 
-            func setJoiner(ephPub: Data, edPub: Data, xPub: Data) {
-                joinerPublic = ephPub
-                joinerKind = .machine
-                joinerEdPub = edPub
-                joinerXPub = xPub
-                pairingState = .joined
-            }
-
-            func handle(_ eff: PBSecurityRpcEffect) -> PBSecurityRpcResultEvent {
-                var res = PBSecurityRpcResultEvent()
-                res.opID = eff.opID
-                do {
-                    switch eff.method {
-                    case .registerDevice:
-                        let req = try PBRegisterDeviceRequest(serializedBytes: eff.requestBytes)
-                        let reg = try PBDeviceRegistration(serializedBytes: req.registration)
-                        let devId = deviceId(publicKey: reg.devicePublicKey)
-                        devicePubs[devId] = reg.devicePublicKey
-                        if approverPub.isEmpty { approverPub = reg.devicePublicKey }
-                        res.responseBytes = try PBRegisterDeviceResponse.with { $0.deviceID = devId }.serializedData()
-                    case .getChallenge:
-                        res.responseBytes = try PBGetChallengeResponse.with {
-                            $0.challenge = Data(repeating: 0x42, count: 32)
-                        }.serializedData()
-                    case .login:
-                        let req = try PBLoginRequest(serializedBytes: eff.requestBytes)
-                        res.responseBytes = try PBLoginResponse.with {
-                            $0.token = "tok-\(req.deviceID)"
-                            $0.expiresMs = FakeRelayAuthority.nowMs + 86_400_000
-                            $0.devicePublicKey = devicePubs[req.deviceID] ?? Data()
-                        }.serializedData()
-                    case .pinSecurityDomain:
-                        let req = try PBPinSecurityDomainRequest(serializedBytes: eff.requestBytes)
-                        states = [.with { $0.state = req.genesisState }]
-                        res.responseBytes = try PBPinSecurityDomainResponse().serializedData()
-                    case .putSecurityState:
-                        let req = try PBPutSecurityStateRequest(serializedBytes: eff.requestBytes)
-                        states.append(contentsOf: req.states)
-                        if !req.lease.isEmpty { lease = req.lease }
-                        let headEpoch = UInt64(states.count)
-                        let headBytes = states.last?.state ?? Data()
-                        res.responseBytes = try PBPutSecurityStateResponse.with {
-                            $0.headEpoch = headEpoch
-                            $0.head = headBytes
-                        }.serializedData()
-                    case .getSecurityStates:
-                        let req = try PBGetSecurityStatesRequest(serializedBytes: eff.requestBytes)
-                        let headEpoch = UInt64(states.count)
-                        let start = Int(req.afterEpoch)
-                        let slice = start < states.count ? Array(states[start...]) : []
-                        res.responseBytes = try PBGetSecurityStatesResponse.with {
-                            $0.states = slice
-                            $0.headEpoch = headEpoch
-                            $0.lease = lease
-                        }.serializedData()
-                    case .createPairing:
-                        let req = try PBCreatePairingRequest(serializedBytes: eff.requestBytes)
-                        pairingCommit = req.commit
-                        pairingState = .open
-                        res.responseBytes = try PBCreatePairingResponse.with {
-                            $0.pairingID = "pair-1"
-                            $0.code = "12345678"
-                            $0.expiresMs = FakeRelayAuthority.nowMs + 600_000
-                            $0.approverPublicKey = approverPub
-                        }.serializedData()
-                    case .getPairing:
-                        res.responseBytes = try PBGetPairingResponse.with {
-                            $0.state = pairingState
-                            $0.commit = pairingCommit
-                            $0.joinerPublic = joinerPublic
-                            $0.joinerKind = joinerKind
-                            $0.initiatorPublic = initiatorPublic
-                            $0.devicePublicKey = joinerEdPub
-                            $0.deviceHpkePublicKey = joinerXPub
-                            $0.trust = trust
-                        }.serializedData()
-                    case .revealPairing:
-                        let req = try PBRevealPairingRequest(serializedBytes: eff.requestBytes)
-                        initiatorPublic = req.initiatorPublic
-                        trust = req.trust
-                        pairingState = .revealed
-                        res.responseBytes = try PBRevealPairingResponse().serializedData()
-                    case .approvePairing:
-                        pairingState = .approved
-                        res.responseBytes = try PBApprovePairingResponse().serializedData()
-                    case .putDeviceMeta:
-                        res.responseBytes = try PBPutDeviceMetaResponse.with { $0.applied = true }.serializedData()
-                    default:
-                        res.connectCode = 12
-                        res.error = "unhandled setup rpc: \(eff.method)"
-                    }
-                } catch {
-                    res.connectCode = 13
-                    res.error = error.localizedDescription
-                }
-                return res
-            }
-        }
-
-        let relay = RelayState()
         let clientStore = MemorySecurityStoreV4()
-        let clientHost = try StandaloneSecurityHost(
-            store: clientStore,
-            allowPlainHttp: true,
-            clock: { FakeRelayAuthority.nowMs },
-            rpcOverride: { eff in await relay.handle(eff) }
+        try clientStore.seedTestRecord(
+            edPrivate: fix.clientEdSeed,
+            edPublic: fix.clientEdPub,
+            xPrivate: fix.clientXPriv,
+            xPublic: fix.clientXPub,
+            recordBytes: fix.clientRecord
         )
-
-        _ = try await clientHost.client.prepareCreation(server: Self.server, storagePersisted: true)
-        try await clientHost.client.confirmCreationCodeSaved()
-        let created = try await clientHost.client.continueCreation()
-        let acctId = created.status.accountID
-        let clientId = created.status.deviceID
-        guard !acctId.isEmpty, !clientId.isEmpty else {
-            throw TestError("failed to create test authority account")
+        let clientNode = try TestCoreNode(store: clientStore, clock: { fix.nowMs })
+        let clientBoot = try await clientNode.runWorkflow("client.bootstrap") { $0.bootstrap = PBSecurityActionEmpty() }
+        guard clientBoot.status.deviceID == fix.clientId, clientBoot.status.accountID == fix.accountId else {
+            throw TestError("client fixture bootstrap mismatch")
         }
 
-        let machineEdPriv = Curve25519.Signing.PrivateKey()
-        let machineEdPub = machineEdPriv.publicKey.rawRepresentation
-        let machineXPriv = Curve25519.KeyAgreement.PrivateKey()
-        let machineXPub = machineXPriv.publicKey.rawRepresentation
-        let machineEphPub = Curve25519.KeyAgreement.PrivateKey().publicKey.rawRepresentation
-        let machineId = deviceId(publicKey: machineEdPub)
-
-        let pairing = try await clientHost.client.startPairing(webOrigin: Self.server)
-        await relay.setJoiner(ephPub: machineEphPub, edPub: machineEdPub, xPub: machineXPub)
-        _ = try await clientHost.client.pollPairing(pairingId: pairing.pairingID)
-        _ = try await clientHost.client.approvePairing(pairingId: pairing.pairingID, sasConfirmed: true)
-
-        let recKey = SecurityStoreBucketKey(bucket: Int32(PBSecurityStoreBucket.record.rawValue), key: "record")
-        let clientBuckets = clientStore.readBuckets()
-        let clientKeys = clientStore.readKeys()
-        guard let clientRec = clientBuckets[recKey] else {
-            throw TestError("client record missing after pairing")
-        }
-        let domain = try extractDomainFromRecord(clientRec.data)
-
-        // Clone the authority's persisted record for the enrolled machine by swapping the
-        // fixed-length (32-char hex) MemberID and installing the machine's Ed25519/X25519 keys.
-        let clientIdBytes = Data(clientId.utf8)
-        let machineIdBytes = Data(machineId.utf8)
-        guard clientIdBytes.count == machineIdBytes.count,
-              let idRange = clientRec.data.range(of: clientIdBytes)
-        else {
-            throw TestError("unable to locate member ID in persisted record")
-        }
-        var machineRecData = clientRec.data
-        machineRecData.replaceSubrange(idRange, with: machineIdBytes)
-        var machineBuckets = clientBuckets
-        machineBuckets[recKey] = SecurityStoreStoredBucket(
-            bucket: recKey.bucket,
-            key: recKey.key,
-            revision: clientRec.revision,
-            data: machineRecData
-        )
+        // Note: `machineNode` runs the client Core bootstrapped with a Machine member's v4 record,
+        // relying on Core accepting that persisted record at bootstrap. If Core is later tightened
+        // to require `self.kind == Client`, replace `machineNode` sealing calls with envelopes
+        // generated by a Go fixture.
         let machineStore = MemorySecurityStoreV4()
-        machineStore.writeBuckets(machineBuckets)
-        let edKeyId = SecurityStoreKeyId(kind: Int32(PBSecurityKeyKind.deviceEd.rawValue), slot: "")
-        let xKeyId = SecurityStoreKeyId(kind: Int32(PBSecurityKeyKind.deviceX.rawValue), slot: "")
-        machineStore.writeKeys([
-            edKeyId: SecurityStoreStoredKey(
-                kind: edKeyId.kind, slot: "",
-                privateKey: machineEdPriv.rawRepresentation, publicKey: machineEdPub
-            ),
-            xKeyId: SecurityStoreStoredKey(
-                kind: xKeyId.kind, slot: "",
-                privateKey: machineXPriv.rawRepresentation, publicKey: machineXPub
-            ),
-        ])
-        let machineHost = try StandaloneSecurityHost(
-            store: machineStore,
-            allowPlainHttp: true,
-            clock: { FakeRelayAuthority.nowMs },
-            rpcOverride: { eff in await relay.handle(eff) }
+        try machineStore.seedTestRecord(
+            edPrivate: fix.machineEdSeed,
+            edPublic: fix.machineEdPub,
+            xPrivate: fix.machineXPriv,
+            xPublic: fix.machineXPub,
+            recordBytes: fix.machineRecord
         )
-        _ = try await machineHost.client.bootstrap()
+        let machineNode = try TestCoreNode(store: machineStore, clock: { fix.nowMs })
+        let machineBoot = try await machineNode.runWorkflow("machine.bootstrap") { $0.bootstrap = PBSecurityActionEmpty() }
+        guard machineBoot.status.deviceID == fix.machineId else {
+            throw TestError("machine fixture bootstrap mismatch")
+        }
 
-        let states = await relay.states
-        let lease = await relay.lease
-        let clientPub = await relay.devicePubs[clientId] ?? Data()
+        let states = fix.states.map { bytes in PBSecurityState.with { $0.state = bytes } }
         return FakeRelayAuthority(
-            account: Account(server: Self.server, deviceId: clientId, accountId: acctId),
-            machineID: machineId,
-            domain: domain,
+            account: Account(server: fix.server, deviceId: fix.clientId, accountId: fix.accountId),
+            machineID: fix.machineId,
             securityStates: states,
-            lease: lease,
-            clientPubKey: clientPub,
-            clientStoreSnapshot: (clientBuckets, clientKeys),
-            clientHost: clientHost,
-            machineHost: machineHost
+            lease: fix.lease,
+            clientPubKey: fix.clientEdPub,
+            clientStoreSnapshot: (clientStore.readBuckets(), clientStore.readKeys()),
+            clientNode: clientNode,
+            machineNode: machineNode
         )
     }
 
     func sealMachineMeta(_ meta: PBMachineMeta, seq: UInt64 = 1) async throws -> PBEnvelope {
         let plain = try meta.serializedData()
-        let res = try await machineHost.securityOp {
+        let res = try await machineNode.securityOp {
             $0.sealEnvelope = .with {
                 $0.purpose = UInt32(PBPayloadKind.machineMeta.rawValue)
                 $0.machineID = machineID
@@ -361,7 +420,7 @@ private final class FakeRelayAuthority: @unchecked Sendable {
 
     func sealSession(sessionID: String, meta: PBSession, seq: UInt64 = 1) async throws -> (key: PBEnvelope, meta: PBEnvelope) {
         let seed = sha256(Data("session-seed:\(sessionID)".utf8))
-        let keyRes = try await machineHost.securityOp {
+        let keyRes = try await machineNode.securityOp {
             $0.sealEnvelope = .with {
                 $0.purpose = UInt32(PBPayloadKind.sessionKey.rawValue)
                 $0.machineID = machineID
@@ -372,7 +431,7 @@ private final class FakeRelayAuthority: @unchecked Sendable {
         }
         guard keyRes.error.isEmpty else { throw TestError("sealSessionKey: \(keyRes.error)") }
         let plain = try meta.serializedData()
-        let metaRes = try await machineHost.securityOp {
+        let metaRes = try await machineNode.securityOp {
             $0.sealEnvelope = .with {
                 $0.purpose = UInt32(PBPayloadKind.sessionMeta.rawValue)
                 $0.machineID = machineID
@@ -387,7 +446,7 @@ private final class FakeRelayAuthority: @unchecked Sendable {
 
     func sealPrefs(_ prefs: PBProjectPrefs, revision: UInt64) async throws -> PBEnvelope {
         let plain = try prefs.serializedData()
-        let res = try await clientHost.securityOp {
+        let res = try await clientNode.securityOp {
             $0.sealEnvelope = .with {
                 $0.purpose = UInt32(PBPayloadKind.accountPrefs.rawValue)
                 $0.requestID = "project-prefs"
@@ -400,7 +459,7 @@ private final class FakeRelayAuthority: @unchecked Sendable {
     }
 
     func openPrefs(_ envelope: PBEnvelope, revision: UInt64) async throws -> PBProjectPrefs {
-        let res = try await clientHost.securityOp {
+        let res = try await clientNode.securityOp {
             $0.openEnvelope = .with {
                 $0.envelope = envelope
                 $0.expectedPurpose = UInt32(PBPayloadKind.accountPrefs.rawValue)
@@ -414,7 +473,7 @@ private final class FakeRelayAuthority: @unchecked Sendable {
 
     func openCommand(_ envelope: PBEnvelope) async throws -> (header: PBHeader, command: PBCommand, plain: Data) {
         let header = try PBHeader(serializedBytes: envelope.header)
-        let res = try await machineHost.securityOp {
+        let res = try await machineNode.securityOp {
             $0.openEnvelope = .with {
                 $0.envelope = envelope
                 $0.expectedPurpose = UInt32(PBPayloadKind.command.rawValue)
@@ -433,17 +492,24 @@ private final class FakeRelayAuthority: @unchecked Sendable {
         commandPlain: Data,
         result: PBCommandResult
     ) async throws -> PBEnvelope {
-        let (keyHash, payloadHash) = requestIdentityHashes(
-            account: account.accountId,
-            domain: domain,
-            header: header,
-            plaintext: commandPlain
-        )
+        // Compute authoritative requestKeyHash / payloadHash through Go Core's SealEnvelope op.
+        let cmdSeal = try await clientNode.securityOp {
+            $0.sealEnvelope = .with {
+                $0.purpose = UInt32(PBPayloadKind.command.rawValue)
+                $0.machineID = machineID
+                $0.sessionID = header.sessionID
+                $0.requestID = header.requestID
+                $0.seq = header.seq
+                $0.deadlineMs = header.deadlineMs
+                $0.plaintext = commandPlain
+            }
+        }
+        guard cmdSeal.error.isEmpty else { throw TestError("computeCommandHashes: \(cmdSeal.error)") }
         var bound = result
-        bound.requestKeyHash = keyHash
-        bound.payloadHash = payloadHash
+        bound.requestKeyHash = cmdSeal.sealed.requestKeyHash
+        bound.payloadHash = cmdSeal.sealed.payloadHash
         let plain = try bound.serializedData()
-        let res = try await machineHost.securityOp {
+        let res = try await machineNode.securityOp {
             $0.sealEnvelope = .with {
                 $0.purpose = UInt32(PBPayloadKind.commandResult.rawValue)
                 $0.machineID = machineID

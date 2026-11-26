@@ -588,7 +588,56 @@ public final class SecurityStoreV4Core: @unchecked Sendable {
             out.hasDeviceX_p = false
         }
     }
+#if DEBUG
+    /// Test-only helper kept `internal` (accessible only via `@testable import RACore`) so
+    /// production stores such as Keychain `Vault` do not expose a public record/key injection API.
+    func seedTestRecord(
+        edPrivate: Data,
+        edPublic: Data,
+        xPrivate: Data,
+        xPublic: Data,
+        recordBytes: Data,
+        notifyBytes: Data? = nil
+    ) throws {
+        try lock.withLock {
+            var keys = try backend.readKeys()
+            var buckets = try backend.readBuckets()
+            let edId = SecurityStoreKeyId(kind: Int32(PBSecurityKeyKind.deviceEd.rawValue), slot: "")
+            let xId = SecurityStoreKeyId(kind: Int32(PBSecurityKeyKind.deviceX.rawValue), slot: "")
+            keys[edId] = SecurityStoreStoredKey(kind: edId.kind, slot: "", privateKey: edPrivate, publicKey: edPublic)
+            keys[xId] = SecurityStoreStoredKey(kind: xId.kind, slot: "", privateKey: xPrivate, publicKey: xPublic)
+            let recBucket = SecurityStoreBucketKey(bucket: Int32(PBSecurityStoreBucket.record.rawValue), key: "record")
+            buckets[recBucket] = SecurityStoreStoredBucket(bucket: recBucket.bucket, key: "record", revision: "test-1", data: recordBytes)
+            if let notifyBytes {
+                try backend.writeNotify(notifyBytes)
+                let ntfBucket = SecurityStoreBucketKey(bucket: Int32(PBSecurityStoreBucket.notifyRecord.rawValue), key: "notify")
+                buckets[ntfBucket] = SecurityStoreStoredBucket(bucket: ntfBucket.bucket, key: "notify", revision: "test-ntf-1", data: notifyBytes)
+            }
+            try backend.writeKeys(keys)
+            try backend.writeBuckets(buckets)
+        }
+    }
+#endif
 }
+
+#if DEBUG
+extension SecurityStoreV4Proxy {
+    func seedTestRecord(
+        edPrivate: Data,
+        edPublic: Data,
+        xPrivate: Data,
+        xPublic: Data,
+        recordBytes: Data,
+        notifyBytes: Data? = nil
+    ) throws {
+        try securityCore.seedTestRecord(
+            edPrivate: edPrivate, edPublic: edPublic,
+            xPrivate: xPrivate, xPublic: xPublic,
+            recordBytes: recordBytes, notifyBytes: notifyBytes
+        )
+    }
+}
+#endif
 
 /// Pure-memory `SecurityStoreV4` for SwiftPM unit tests and headless `Remote` instances.
 public final class MemorySecurityStoreV4: SecurityStoreV4Proxy, SecurityStoreV4Backend, @unchecked Sendable {
@@ -628,28 +677,5 @@ public final class MemorySecurityStoreV4: SecurityStoreV4Proxy, SecurityStoreV4B
 
     public func seedLegacyStateForTesting() {
         lock.withLock { legacyMarker = true }
-    }
-
-    public func seedTestRecord(
-        edPrivate: Data,
-        edPublic: Data,
-        xPrivate: Data,
-        xPublic: Data,
-        recordBytes: Data,
-        notifyBytes: Data? = nil
-    ) {
-        lock.withLock {
-            let edId = SecurityStoreKeyId(kind: Int32(PBSecurityKeyKind.deviceEd.rawValue), slot: "")
-            let xId = SecurityStoreKeyId(kind: Int32(PBSecurityKeyKind.deviceX.rawValue), slot: "")
-            keys[edId] = SecurityStoreStoredKey(kind: edId.kind, slot: "", privateKey: edPrivate, publicKey: edPublic)
-            keys[xId] = SecurityStoreStoredKey(kind: xId.kind, slot: "", privateKey: xPrivate, publicKey: xPublic)
-            let recBucket = SecurityStoreBucketKey(bucket: Int32(PBSecurityStoreBucket.record.rawValue), key: "record")
-            buckets[recBucket] = SecurityStoreStoredBucket(bucket: recBucket.bucket, key: "record", revision: "test-1", data: recordBytes)
-            if let notifyBytes {
-                notifyData = notifyBytes
-                let ntfBucket = SecurityStoreBucketKey(bucket: Int32(PBSecurityStoreBucket.notifyRecord.rawValue), key: "notify")
-                buckets[ntfBucket] = SecurityStoreStoredBucket(bucket: ntfBucket.bucket, key: "notify", revision: "test-ntf-1", data: notifyBytes)
-            }
-        }
     }
 }
