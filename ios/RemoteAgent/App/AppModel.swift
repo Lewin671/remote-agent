@@ -156,27 +156,9 @@ enum AccountDefaults {
     }
 }
 
-/// The engine made for an account: what the lifecycle drives, and the `Remote` the screens use.
-struct EngineParts {
-    var engine: any SyncEngine
-    var remote: Remote
-    var coreHost: CoreHost? = nil
-    var coreScreens: CoreScreens? = nil
-}
-
 @MainActor
 @Observable
 final class AppModel {
-    enum Stage: Equatable {
-        /// The stored account has not been read yet, or is being erased.
-        case loading
-        /// The Keychain did not open, or did not let go: the reason, to show with 重试.
-        case failed(String)
-        /// No account on this device: the join flow.
-        case join
-        /// An account is in use; `context` is set.
-        case ready
-    }
 
     /// What the model is made of; the defaults are the real things.
     struct Parts {
@@ -244,47 +226,14 @@ final class AppModel {
     /// Process-wide Core view models observed by SwiftUI (`AppRootViewModel`, `OnboardingViewModel`, etc.).
     let screens = CoreScreens()
 
-    /// Legacy derived stage bridged from `screens.appRoot.stage` for screens pending Commit 2 migration.
-    var stage: Stage {
-        switch screens.appRoot.stage {
-        case .unspecified, .loading:
-            return .loading
-        case .bootstrapError:
-            let msg = screens.appRoot.bootstrapError.message.rendered()
-            return .failed(msg.isEmpty ? VaultError.unreadable.localizedDescription : msg)
-        case .onboarding, .retainedDenied:
-            return .join
-        case .removed, .ready:
-            return .ready
-        case .UNRECOGNIZED:
-            return .loading
-        }
-    }
-
-    /// False when startup failed due to transient Keychain/storage unavailability rather than confirmed corruption.
-    var bootstrapCanReset: Bool { screens.appRoot.bootstrapError.canReset }
     /// The account in use and its engine; nil until one is, and after logout.
     private(set) var context: AccountContext?
     /// The app is in front. Screens that tick or hold a terminal follow it:
     /// timers pause in the background and terminals are closed there.
     private(set) var foreground = false
-    var recoveryRotationRequired = false
-    var authorityHandoffComplete = false
-    private(set) var securityStatus: PBSecurityWorkflowStatus?
-    var legacyRepairNotice: Bool {
-        screens.onboarding.showLegacyRepairBanner || screens.appRoot.retainedDenied.showLegacyRepairBanner
-    }
 
     /// The server of the account just left, to fill in when joining again. Only in memory.
     private(set) var lastServer = ""
-    var retainedIdentityDenied: Bool { screens.appRoot.stage == .retainedDenied }
-    /// Recreates JoinScreen's local flow after an account is discarded.
-    private(set) var joinGeneration = 0
-    private(set) var joinDirectly = false
-
-    func makeStandaloneSecurityHost() throws -> StandaloneSecurityHost {
-        try StandaloneSecurityHost(store: parts.storage.vault, http: Self.http, allowPlainHttp: parts.allowPlainHttp)
-    }
 
     /// Returns the app's lazy singleton `CoreHost`, creating it once on first foreground/UI entry.
     var coreHost: CoreHost { ensureCoreHost() }
@@ -391,23 +340,6 @@ final class AppModel {
             systemVersion: UIDevice.current.systemVersion,
             hardwareModel: hardwareModelIdentifier(),
             idiom: UIDevice.current.userInterfaceIdiom
-        )
-    }
-
-    var joiningCalls: JoinCalls {
-        .live(
-            http: Self.http,
-            existing: nil,
-            vault: parts.storage.vault,
-            allowPlainHttp: parts.allowPlainHttp,
-            deviceDescription: parts.deviceDescription
-        )
-    }
-    func rePairingCalls(context: AccountContext) -> JoinCalls {
-        .live(
-            client: context.remote.securityClient,
-            existing: context.account,
-            deviceDescription: parts.deviceDescription
         )
     }
 
@@ -528,14 +460,6 @@ final class AppModel {
         }
     }
 
-    func reloadAfterSecuritySetup(account: Account? = nil, rotationRequired: Bool = false) async {
-        recoveryRotationRequired = rotationRequired
-        if !isDemo {
-            let host = ensureForegroundCoreHost()
-            await host.appRootRetryBootstrap()
-        }
-    }
-
     // MARK: Single-Core Effect Handlers
 
     private func handleUnregisterPushOnExit(_ eff: PBUnregisterPushOnExitEffect) async {
@@ -570,8 +494,6 @@ final class AppModel {
     private func handleClearAccountCaches(_ eff: PBClearAccountCachesEffect) async {
         if !eff.preserveServer.isEmpty { lastServer = eff.preserveServer }
         else if let leaving = account, lastServer.isEmpty { lastServer = leaving.server }
-        recoveryRotationRequired = false
-        authorityHandoffComplete = false
         generation += 1
         let store = await unloadAccountRuntime(clearPendingMedia: true)
         LibraryVideos.discardAll()
@@ -604,8 +526,6 @@ final class AppModel {
         if !eff.active {
             if !eff.removed {
                 host.sharedSecurityExecutor?.setDefaultAccount(server: "", deviceId: "")
-                recoveryRotationRequired = false
-                authorityHandoffComplete = false
                 generation += 1
                 let store = await unloadAccountRuntime()
                 await Task.detached { try? store?.close() }.value
@@ -616,7 +536,6 @@ final class AppModel {
         host.sharedSecurityExecutor?.setDefaultAccount(server: eff.server, deviceId: eff.deviceID)
         let acct = Account(server: eff.server, deviceId: eff.deviceID, accountId: eff.accountID)
         if let existing = context, existing.account == acct {
-            recoveryRotationRequired = eff.needsRecoveryRotation
             return
         }
         generation += 1
@@ -676,7 +595,6 @@ final class AppModel {
             coreHost: host
         )
         context = ctx
-        recoveryRotationRequired = eff.needsRecoveryRotation
         await host.setDeviceDescription(parts.deviceDescription)
         let cleanup: @Sendable (String) async -> Void = { [weak ctx] sid in
             guard let ctx else { return }
@@ -706,13 +624,6 @@ final class AppModel {
         }
     }
 
-    /// Starts syncing with a newly joined or re-paired account (`SecurityClient` already persisted v4 state).
-    func joined(_ account: Account) async throws {
-        isDemo = false
-        let host = ensureForegroundCoreHost()
-        await host.appRootRetryBootstrap()
-    }
-
     /// Tries the login again after the server turned this device away.
     func retryLogin() {
         _coreHost?.retryLogin()
@@ -725,8 +636,6 @@ final class AppModel {
             return
         }
         if let leaving = account { lastServer = leaving.server }
-        recoveryRotationRequired = false
-        authorityHandoffComplete = false
         generation += 1
         // Notify Core first so in-flight sync/security writers stop before local storage is erased.
         if let host = _coreHost {
@@ -746,75 +655,10 @@ final class AppModel {
         AccountDefaults.clear(parts.defaults)
     }
 
-    /// The confirmation captures security facts, independently of its displayed language.
-    enum RejoinAdvice: Equatable {
-        case sensitive(authority: Bool, unresolved: Bool, messageText: PBCoreText? = nil)
-        case unreadable
-        static func == (lhs: Self, rhs: Self) -> Bool {
-            switch (lhs, rhs) {
-            case (.unreadable, .unreadable): true
-            case (.sensitive(let la, let lu, _), .sensitive(let ra, let ru, _)): la == ra && lu == ru
-            default: false
-            }
-        }
-        var text: String {
-            switch self {
-            case .sensitive(let authority, let unresolved, let messageText):
-                let base = renderCoreText(messageText)
-                let body = base.isEmpty ? AuthorityAccess.exitAdvice(authority: authority, unresolved: unresolved) : base
-                return body + L10n.errorsIosThisDeletesTheAccountKeysAndCacheOnThis()
-            case .unreadable: return L10n.errorsIosCouldNotReadThisPhoneSAccountStateManagement()
-            }
-        }
-    }
-
-    private func fetchExitAdvice() async throws -> PBSecurityExitAdvice {
-        if let client = ensureCoreHost().sharedSecurityClient {
-            return try await client.checkExitAdvice()
-        }
-        throw VaultError.unreadable
-    }
-
-    /// Confirmation is needed only for management keys or unfinished work.
-    func rejoinAdvice() async -> RejoinAdvice? {
-        do {
-            let adv = try await fetchExitAdvice()
-            if adv.authority || adv.unresolved {
-                return .sensitive(
-                    authority: adv.authority,
-                    unresolved: adv.unresolved,
-                    messageText: adv.hasMessageText ? adv.messageText : nil
-                )
-            }
-            return nil
-        } catch {
-            return .unreadable
-        }
-    }
-
-    /// Full localized exit confirmation copy derived from Core's `SecurityExitAdvice.messageText`.
-    func exitAdviceText() async -> String {
-        do {
-            let adv = try await fetchExitAdvice()
-            let rendered = renderExitAdviceMessage(adv)
-            let body = rendered.isEmpty ? AuthorityAccess.exitAdvice(authority: adv.authority, unresolved: adv.unresolved) : rendered
-            if adv.authority || adv.unresolved {
-                return body + L10n.errorsIosThisDeletesTheAccountKeysAndCacheOnThis()
-            }
-            return body
-        } catch {
-            return RejoinAdvice.unreadable.text
-        }
-    }
-
     /// Forgets the account, the cache and the keys on this device, then
     /// shows the join flow with the server filled in.
     func logout(pairing: Bool = false) async {
         if isDemo {
-            joinDirectly = pairing
-            joinGeneration += 1
-            recoveryRotationRequired = false
-            authorityHandoffComplete = false
             closeTerminals()
             if let leavingHost = context?.coreHost {
                 await leavingHost.clearAllSharedFiles()
@@ -942,11 +786,9 @@ final class AppModel {
             }
         }
 
-        struct LoadTimeoutError: Error, CustomStringConvertible {
-            let timeoutMs: Int64
-            let stage: PBAppRootStage
-            var description: String { "AppModel.waitForLoadForTest timed out after \(timeoutMs)ms at stage \(stage)" }
-        }
+        enum LoadTimeoutError: Error { case timedOut }
+
+        var hasCoreHostForTest: Bool { _coreHost != nil }
 
         func waitForLoadForTest(timeoutMs: Int64 = 5_000) async throws {
             let deadline = ContinuousClock.now + .milliseconds(timeoutMs)
@@ -960,7 +802,7 @@ final class AppModel {
                 }
                 try await Task.sleep(nanoseconds: 10_000_000)
             }
-            throw LoadTimeoutError(timeoutMs: timeoutMs, stage: screens.appRoot.stage)
+            throw LoadTimeoutError.timedOut
         }
 
         func closeSyncForTest() {

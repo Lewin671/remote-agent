@@ -7,6 +7,12 @@ import Observation
 import RACore
 import RAProto
 import SwiftUI
+import UIKit
+
+/// How this device is called in iOS-specific sentences ("这台手机" / "这台 iPad").
+@MainActor var thisDeviceWord: String {
+    UIDevice.current.userInterfaceIdiom == .pad ? L10n.securityIosThisIpad() : L10n.securityIosThisPhone()
+}
 
 /// Resolved banner presentation derived from Core's `ConnectionViewModel` and clock-skew banner text.
 struct ConnectionBannerPresentation: Equatable {

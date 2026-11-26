@@ -31,7 +31,14 @@ struct RootView: View {
     }
 
     @ViewBuilder private var main: some View {
-        let root = model.screens.appRoot
+        Self.stageView(for: model.screens.appRoot, context: model.context, coreHost: model.coreHost)
+    }
+
+    @ViewBuilder static func stageView(
+        for root: PBAppRootViewModel,
+        context: AccountContext?,
+        coreHost: CoreHost
+    ) -> some View {
         switch root.stage {
         case .unspecified, .loading, .UNRECOGNIZED:
             StartupShell()
@@ -42,12 +49,12 @@ struct RootView: View {
                     Spacer()
                     ErrorRow(err.message.rendered().or(VaultError.unreadable.localizedDescription)) {
                         if err.canRetry {
-                            Task { await model.coreHost.appRootRetryBootstrap() }
+                            Task { await coreHost.appRootRetryBootstrap() }
                         }
                     }
                     if err.canReset {
                         Button(L10n.securityExitAndStartOver(), role: .destructive) {
-                            Task { await model.coreHost.exitRequest(intent: .setupReset) }
+                            Task { await coreHost.exitRequest(intent: .setupReset) }
                         }
                     }
                     Spacer()
@@ -60,7 +67,7 @@ struct RootView: View {
         case .removed:
             RemovedScreen()
         case .ready:
-            if let context = model.context {
+            if let context {
                 // A new account is a new stack: nothing of the one before stays on it.
                 MainView(context: context, start: LaunchDriver.startRoute)
                     .id(ObjectIdentifier(context))
@@ -77,7 +84,10 @@ struct ExitConfirmOverlay: ViewModifier {
     @Environment(AppModel.self) private var model
 
     func body(content: Content) -> some View {
-        let vm = model.screens.exitConfirm
+        Self.apply(to: content, vm: model.screens.exitConfirm, coreHost: model.coreHost)
+    }
+
+    static func apply<V: View>(to content: V, vm: PBExitConfirmView, coreHost: CoreHost) -> some View {
         let presented = vm.step == .awaitingConfirm || vm.step == .executing || vm.step == .failed
         let title = vm.intent == .rejoinPairing
             ? L10n.securityDeleteLocalKeysAndRejoin()
@@ -89,7 +99,7 @@ struct ExitConfirmOverlay: ViewModifier {
         let fullText = vm.showRejoinDeletesCacheNote && !warning.isEmpty
             ? warning + L10n.errorsIosThisDeletesTheAccountKeysAndCacheOnThis()
             : warning
-        content.confirm(
+        return content.confirm(
             isPresented: presented,
             title: title,
             text: fullText,
@@ -99,22 +109,11 @@ struct ExitConfirmOverlay: ViewModifier {
             errorText: vm.step == .failed ? vm.errorText.rendered() : "",
             canDismiss: vm.step != .executing,
             onCancel: {
-                Task { await model.coreHost.exitConfirm(false) }
+                Task { await coreHost.exitConfirm(false) }
             },
             onConfirm: {
-                Task { await model.coreHost.exitConfirm(true) }
+                Task { await coreHost.exitConfirm(true) }
             }
         )
-    }
-}
-
-/// Legacy bridge button kept until Commit 2 migrates `JoinScreen`/`AuthoritySetupScreen`.
-struct SetupDiscardButton: View {
-    let discard: @MainActor () async -> Void
-    @Environment(AppModel.self) private var model
-    var body: some View {
-        Button(L10n.securityExitAndStartOver(), role: .destructive) {
-            Task { await model.coreHost.exitRequest(intent: .setupReset) }
-        }
     }
 }

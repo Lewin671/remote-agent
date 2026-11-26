@@ -148,6 +148,7 @@
 //   gallery.save        保存 of the gallery's `saving` dialog
 import Foundation
 import RACore
+import RAProto
 import SwiftUI
 
 #if DEBUG
@@ -240,28 +241,71 @@ enum LaunchDriver {
     }
 
     /// Starts the join the launch arguments ask for, or shows the state they name.
-    static func drive(_ join: JoinModel) {
+    static func driveOnboarding(_ model: AppModel) async {
         if let step = joinStep {
-            preview(join, step)
+            preview(model, step)
         } else if let digits = code, let server = value("-joinServer") {
             code = nil
-            join.server = server
-            join.typeCode(digits)
-            join.joinWithCode()
+            await model.coreHost.onboardingSetMode(.join)
+            await model.coreHost.onboardingJoinSubmit(serverInput: server, codeInput: digits)
         }
     }
 
-    private static func preview(_ join: JoinModel, _ step: String) {
+    private static func preview(_ model: AppModel, _ step: String) {
         let emoji = ["🦊", "🌵", "🍉", "🌙"]
+        var join = PBJoinPairingView()
+        join.serverInput = "https://ra.example.com"
+        join.serverEditable = true
         switch step {
-        case "filled": join.show(step: .form, code: "48291756")
-        case "error": join.show(step: .form, code: "48291756", notice: L10n.securityThePairingCodeIsWrongOrHasAlreadyBeen(), error: true)
-        case "cancelled": join.show(step: .form, notice: L10n.errorsIosJoiningCanceledTheOldRequestMayStillOccupyThe())
-        case "working": join.show(step: .working, code: "48291756")
-        case "emoji": join.show(step: .emoji(emoji), code: "48291756")
-        case "registering": join.show(step: .emoji(emoji), code: "48291756", notice: L10n.errorsIosAlreadyRegisteringWaitForTheResult(value: String(describing: thisDeviceWord)))
-        case "scan", "scanDenied", "scanMissing": join.show(step: .scan)
-        default: join.show(step: .form, server: "https://")
+        case "filled":
+            join.step = .form
+            join.formattedCode = "4829 1756"
+            join.canSubmit = true
+        case "error":
+            join.step = .form
+            join.formattedCode = "4829 1756"
+            join.canSubmit = true
+            join.banner = .with {
+                $0.visible = true
+                $0.tone = .error
+                $0.text = .with { $0.literal = L10n.securityThePairingCodeIsWrongOrHasAlreadyBeen() }
+            }
+        case "cancelled":
+            join.step = .form
+            join.banner = .with {
+                $0.visible = true
+                $0.tone = .info
+                $0.text = .with { $0.literal = L10n.errorsIosJoiningCanceledTheOldRequestMayStillOccupyThe() }
+            }
+        case "working":
+            join.step = .working
+            join.formattedCode = "4829 1756"
+            join.busy = true
+            join.canCancel = true
+        case "emoji":
+            join.step = .compareSas
+            join.formattedCode = "4829 1756"
+            join.sasEmoji = emoji
+            join.canConfirmSas = true
+            join.canCancel = true
+        case "registering":
+            join.step = .waitingApproval
+            join.formattedCode = "4829 1756"
+            join.sasEmoji = emoji
+            join.busy = true
+            join.banner = .with {
+                $0.visible = true
+                $0.tone = .info
+                $0.text = .with { $0.literal = L10n.errorsIosAlreadyRegisteringWaitForTheResult(value: String(describing: thisDeviceWord)) }
+            }
+        default:
+            join.step = .form
+            join.serverInput = "https://"
+        }
+        model.screens.onboarding = PBOnboardingViewModel.with {
+            $0.mode = .join
+            $0.canBack = true
+            $0.join = join
         }
     }
 
@@ -326,7 +370,7 @@ enum LaunchDriver {
     static func prepare(_ model: AppModel) {}
     static func orient() {}
     static func stageChanged(_ model: AppModel) async {}
-    static func drive(_ join: JoinModel) {}
+    static func driveOnboarding(_ model: AppModel) async {}
 }
 
 extension View {

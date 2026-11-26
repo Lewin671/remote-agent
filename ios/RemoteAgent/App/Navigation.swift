@@ -298,7 +298,7 @@ extension Route {
         case .question(let sid, let qid): QuestionScreen(session: sid, question: qid)
         case .image(let sid, let seq, let index): ImageViewerScreen(session: sid, seq: seq, index: index)
         case .accountSecurity: AccountSecurityScreen()
-        case .recoveryCode: RecoveryCodeScreen()
+        case .recoveryCode: AccountSecurityScreen(initialSubpage: .rotateRecovery)
         case .handoff: HandoffScreen()
         case .rePair: RePairScreen()
         case .devices: DevicesScreen()

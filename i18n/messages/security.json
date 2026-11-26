@@ -3951,20 +3951,6 @@
     }
   },
   {
-    "key": "security.ios_account_public_key_information_restored_you_can_prepare_to",
-    "zh-CN": "账户公钥资料已补齐，可以准备接任。",
-    "en": "Account public key information restored. You can prepare to take over.",
-    "notes": "iOS HandoffScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.ios_add_another_device",
     "zh-CN": "添加另一台设备",
     "en": "Add another device",
@@ -4478,67 +4464,6 @@
     }
   },
   {
-    "key": "security.ios_joined_but_could_not_save_account_keys",
-    "zh-CN": "已经加入，但没能保存账户密钥：{value}",
-    "en": "Joined, but could not save account keys: {value}",
-    "notes": "iOS JoinModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 errorText(error)；用户内容和系统/CLI 原文不翻译。",
-    "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_joining_an_existing_account_requires_managing_client_approval_use",
-    "zh-CN": "加入已有账户需要在管理端批准，请使用配对码。",
-    "en": "Joining an existing account requires managing client approval. Use a pairing code.",
-    "notes": "iOS JoinModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_management_transferred",
-    "zh-CN": "已交接管理权",
-    "en": "Management transferred",
-    "notes": "iOS RemovedScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_management_transferred_this_device_was_removed",
-    "zh-CN": "已交接管理权，本机已移除。",
-    "en": "Management transferred. This device was removed.",
-    "notes": "iOS HandoffScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.ios_not_read_yet",
     "zh-CN": "尚未读取",
     "en": "Not read yet",
@@ -4581,20 +4506,6 @@
     }
   },
   {
-    "key": "security.ios_original_security_operation_verified_this_device_no_longer_has",
-    "zh-CN": "原安全操作已核实。本机已不再拥有管理权。",
-    "en": "Original security operation verified. This device no longer has management authority.",
-    "notes": "iOS RemovedScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.ios_pair_again_and_preserve_identity",
     "zh-CN": "重新配对并保留身份",
     "en": "Pair again and preserve identity",
@@ -4619,20 +4530,6 @@
         "example": "Example"
       }
     },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_pairing_abandoned_you_can_generate_a_new_pairing_code",
-    "zh-CN": "配对已放弃，可以重新生成配对码。",
-    "en": "Pairing abandoned. You can generate a new pairing code.",
-    "notes": "iOS AddDeviceScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
     "platforms": [
       "ios"
     ],
@@ -4702,20 +4599,6 @@
     "zh-CN": "隐私遮罩",
     "en": "Privacy shield",
     "notes": "iOS PrivacyShield.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_publication_result_unverified_continue_the_original_operation",
-    "zh-CN": "发布结果尚未核实，请继续原操作。",
-    "en": "Publication result unverified. Continue the original operation.",
-    "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
@@ -4852,37 +4735,9 @@
     }
   },
   {
-    "key": "security.ios_remote_control_renewed",
-    "zh-CN": "远程控制已续期",
-    "en": "Remote control renewed.",
-    "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.ios_remove_undelivered_candidate",
     "zh-CN": "移除未收件候选…",
     "en": "Remove undelivered candidate…",
-    "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_renewal_result_unverified_continue_the_original_operation",
-    "zh-CN": "续期结果尚未核实，请继续原操作。",
-    "en": "Renewal result unverified. Continue the original operation.",
     "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
@@ -4978,52 +4833,10 @@
     }
   },
   {
-    "key": "security.ios_save_the_recovery_code_offline_first",
-    "zh-CN": "请先离线保存恢复码。",
-    "en": "Save the recovery code offline first.",
-    "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.ios_scan_qr_code",
     "zh-CN": "扫描二维码",
     "en": "Scan QR code",
     "notes": "iOS JoinScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_security_operation_state_changed_choose_how_to_exit_again",
-    "zh-CN": "安全操作状态已变化，请重新选择退出。",
-    "en": "Security operation state changed. Choose how to exit again.",
-    "notes": "iOS RootView.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_security_operation_state_changed_choose_how_to_join_again",
-    "zh-CN": "安全操作状态已变化，请重新选择加入方式。",
-    "en": "Security operation state changed. Choose how to join again.",
-    "notes": "iOS RemovedScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
@@ -5076,34 +4889,6 @@
     }
   },
   {
-    "key": "security.ios_successor_device",
-    "zh-CN": "接任设备",
-    "en": "Successor device",
-    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_successor_preparation_result_unverified_continue_the_original_operation",
-    "zh-CN": "接任准备结果尚未核实，请继续原操作。",
-    "en": "Successor preparation result unverified. Continue the original operation.",
-    "notes": "iOS HandoffScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.ios_the_approved_candidate_without_confirmed_delivery_will_be_explicitly",
     "zh-CN": "已批准但未收件的候选会被明确移除，需要重新配对。",
     "en": "The approved candidate without confirmed delivery will be explicitly removed and must pair again.",
@@ -5121,20 +4906,6 @@
     "key": "security.ios_the_ios_app_has_no_background_security_alerts_open",
     "zh-CN": "iOS 版没有后台安全提醒，建议每天打开一次，以免错过恢复申请。",
     "en": "The iOS app has no background security alerts. Open it daily to avoid missing recovery requests.",
-    "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_the_new_recovery_code_is_active_the_old_code",
-    "zh-CN": "新恢复码已生效，旧码已作废。",
-    "en": "The new recovery code is active. The old code is invalid.",
     "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
@@ -5174,38 +4945,10 @@
     }
   },
   {
-    "key": "security.ios_the_original_request_is_retained_continue_the_original_operation",
-    "zh-CN": " 原请求已保留，请继续原操作。",
-    "en": " The original request is retained. Continue the original operation.",
-    "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.ios_the_previously_displayed_recovery_code_cannot_be_shown_again",
     "zh-CN": "上次显示的恢复码无法再次显示。先核实并完成原请求，再立即更换恢复码。",
     "en": "The previously displayed recovery code cannot be shown again. Verify and finish the original request, then replace the code immediately.",
     "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_the_server_rejected_this_device_s_login",
-    "zh-CN": "服务器拒绝了这台设备的登录",
-    "en": "The server rejected this device’s login",
-    "notes": "iOS RemovedScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
@@ -5272,37 +5015,9 @@
     }
   },
   {
-    "key": "security.ios_this_device_was_removed_the_successor_is_now_the",
-    "zh-CN": "本机已移除，接任设备成为唯一管理端。要再次加入，请重新配对。",
-    "en": "This device was removed. The successor is now the sole managing client. Pair again to rejoin.",
-    "notes": "iOS RemovedScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.ios_this_ipad",
     "zh-CN": "这台 iPad",
     "en": "this iPad",
-    "notes": "iOS JoinModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_this_is_not_a_remote_agent_pairing_qr_code",
-    "zh-CN": "这不是 remote-agent 的配对二维码",
-    "en": "This is not a remote-agent pairing QR code",
     "notes": "iOS JoinModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
@@ -5356,20 +5071,6 @@
     }
   },
   {
-    "key": "security.ios_transfer_result_unverified_continue_the_original_operation",
-    "zh-CN": "交接结果尚未核实，请继续原操作。",
-    "en": "Transfer result unverified. Continue the original operation.",
-    "notes": "iOS HandoffScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.ios_transfer_to",
     "zh-CN": "交接给 {value}",
     "en": "Transfer to {value}",
@@ -5394,29 +5095,6 @@
     "en": "Unknown error",
     "notes": "iOS Vault.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_unsure_whether_joined_check_the_client_list_in_the",
-    "zh-CN": "不确定{value}有没有加入：{detail}。可以在管理端的设置里看看客户端列表",
-    "en": "Unsure whether {value} joined: {detail}. Check the client list in the managing client’s settings.",
-    "notes": "iOS JoinModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 thisDeviceWord；detail = Swift 插值 errorText(error)；用户内容和系统/CLI 原文不翻译。",
-    "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      },
-      "detail": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
     "platforms": [
       "ios"
     ],

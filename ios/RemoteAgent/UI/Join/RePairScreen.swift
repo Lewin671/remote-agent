@@ -2,24 +2,27 @@ import RACore
 import SwiftUI
 
 /// Current protocol members can supplement their account profile by pairing again,
-/// keeping Ed identity and the existing pin; the core rotates only their X key.
+/// keeping Ed identity and the existing pin; Go `clientcore` rotates only their X key.
 struct RePairScreen: View {
     @Environment(AppModel.self) private var app
     @Environment(AccountContext.self) private var context
-    @State private var flow: JoinModel?
+
     var body: some View {
-        Group {
-            if let flow { JoinFlow(model: flow) }
-            else { Page { Color.clear } }
-        }
-        .navBar(L10n.securityIosPairAgainAndPreserveIdentity())
-        .task {
-            guard flow == nil, !app.isDemo else { return }
-            flow = JoinModel(lastServer: context.account.server,
-                calls: app.rePairingCalls(context: context), retainedIdentity: true) { account in
-                    try await app.joined(account)
-                }
-        }
-        .onDisappear { flow?.cancel() }
+        let vm = app.screens.onboarding
+        CoreJoinFlow(vm: vm.join, showLegacyRepairBanner: false, canBack: false)
+            .navBar(L10n.securityIosPairAgainAndPreserveIdentity())
+            .task {
+                guard !app.isDemo else { return }
+                await context.coreHost.onboardingSetMode(
+                    .join,
+                    existingRepair: true,
+                    existingServer: context.account.server
+                )
+            }
+            .onDisappear {
+                guard !app.isDemo else { return }
+                let host = context.coreHost
+                Task { await host.onboardingJoinCancel() }
+            }
     }
 }

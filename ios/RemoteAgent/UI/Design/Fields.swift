@@ -137,6 +137,193 @@ struct InputField: View {
     }
 }
 
+/// Maps a UTF-16 selection range from raw edited pairing-code text to Core's formatted
+/// pairing-code text (`1234 5678`) by preserving the count of ASCII digits before each endpoint.
+func mapPairingCodeSelection(
+    editedText: String,
+    editedSelection: (start: Int, end: Int),
+    formattedText: String
+) -> (start: Int, end: Int) {
+    func countDigits(in text: String, upToUTF16 offset: Int) -> Int {
+        let clamped = max(0, min(offset, text.utf16.count))
+        var count = 0
+        var i = 0
+        for unit in text.utf16 {
+            if i >= clamped { break }
+            if unit >= 48 && unit <= 57 { count += 1 }
+            i += 1
+        }
+        return count
+    }
+    func offsetForDigitCount(_ target: Int, in formatted: String) -> Int {
+        if target <= 0 { return 0 }
+        var seen = 0
+        var offset = 0
+        for unit in formatted.utf16 {
+            offset += 1
+            if unit >= 48 && unit <= 57 {
+                seen += 1
+                if seen == target { return offset }
+            }
+        }
+        return formatted.utf16.count
+    }
+    let startDigits = countDigits(in: editedText, upToUTF16: editedSelection.start)
+    let endDigits = countDigits(in: editedText, upToUTF16: editedSelection.end)
+    return (
+        offsetForDigitCount(startDigits, in: formattedText),
+        offsetForDigitCount(endDigits, in: formattedText)
+    )
+}
+
+/// Core-driven 8-digit pairing code field: sends raw user edits to Go `clientcore`, renders Core's
+/// `formattedCode`, and preserves cursor position by digit count across async round-trips.
+struct PairingCodeField: View {
+    let formattedCode: String
+    let settledEditSeq: UInt64
+    let placeholder: String
+    let onEdit: (String) -> UInt64
+    let onSubmit: () -> Void
+
+    var body: some View {
+        FieldBox {
+            PairingCodeTextFieldRepresentable(
+                formattedCode: formattedCode,
+                settledEditSeq: settledEditSeq,
+                placeholder: placeholder,
+                onEdit: onEdit,
+                onSubmit: onSubmit
+            )
+            .frame(minHeight: 34)
+        }
+        .accessibilityElement(children: .contain)
+    }
+}
+
+struct PairingCodeTextFieldRepresentable: UIViewRepresentable {
+    let formattedCode: String
+    let settledEditSeq: UInt64
+    let placeholder: String
+    let onEdit: (String) -> UInt64
+    let onSubmit: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onEdit: onEdit, onSubmit: onSubmit)
+    }
+
+    func makeUIView(context: Context) -> UITextField {
+        let tf = UITextField()
+        tf.delegate = context.coordinator
+        tf.keyboardType = .numberPad
+        tf.autocorrectionType = .no
+        tf.autocapitalizationType = .none
+        tf.spellCheckingType = .no
+        tf.textAlignment = .center
+        tf.returnKeyType = .next
+        tf.tintColor = UIColor(DS.blue)
+        tf.textColor = UIColor(DS.ink)
+        tf.attributedPlaceholder = NSAttributedString(
+            string: placeholder,
+            attributes: [
+                .foregroundColor: UIColor(DS.ink2),
+                .font: UIFont.preferredFont(forTextStyle: .body),
+            ]
+        )
+        tf.accessibilityLabel = placeholder
+        tf.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        tf.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        tf.addTarget(context.coordinator, action: #selector(Coordinator.editingChanged(_:)), for: .editingChanged)
+        applyText(tf, text: formattedCode, coordinator: context.coordinator, mapCursor: false)
+        return tf
+    }
+
+    func applyCoreUpdate(_ uiView: UITextField, coordinator: Coordinator) {
+        coordinator.onEdit = onEdit
+        coordinator.onSubmit = onSubmit
+        uiView.accessibilityLabel = placeholder
+        uiView.accessibilityValue = formattedCode.filter(\.isASCII).filter(\.isNumber).map(String.init).joined(separator: " ")
+        guard settledEditSeq >= coordinator.lastDispatchedSeq else { return }
+        if (uiView.text ?? "") != formattedCode {
+            applyText(uiView, text: formattedCode, coordinator: coordinator, mapCursor: true)
+        } else {
+            updateFont(uiView, empty: formattedCode.isEmpty)
+        }
+    }
+
+    func updateUIView(_ uiView: UITextField, context: Context) {
+        applyCoreUpdate(uiView, coordinator: context.coordinator)
+    }
+
+    private func updateFont(_ tf: UITextField, empty: Bool) {
+        if empty {
+            tf.font = UIFont.preferredFont(forTextStyle: .body)
+        } else {
+            let base = UIFont.preferredFont(forTextStyle: .title2)
+            tf.font = UIFont.monospacedSystemFont(ofSize: base.pointSize, weight: .semibold)
+        }
+    }
+
+    private func applyText(_ tf: UITextField, text: String, coordinator: Coordinator, mapCursor: Bool) {
+        let oldText = tf.text ?? ""
+        let oldSelection = currentUTF16Selection(in: tf)
+        coordinator.isUpdatingFromCore = true
+        tf.text = text
+        updateFont(tf, empty: text.isEmpty)
+        if mapCursor, tf.isFirstResponder {
+            let mapped = mapPairingCodeSelection(
+                editedText: oldText,
+                editedSelection: oldSelection,
+                formattedText: text
+            )
+            setUTF16Selection(mapped, in: tf)
+        }
+        coordinator.isUpdatingFromCore = false
+    }
+
+    private func currentUTF16Selection(in tf: UITextField) -> (Int, Int) {
+        guard let range = tf.selectedTextRange else {
+            let end = (tf.text ?? "").utf16.count
+            return (end, end)
+        }
+        let start = tf.offset(from: tf.beginningOfDocument, to: range.start)
+        let end = tf.offset(from: tf.beginningOfDocument, to: range.end)
+        return (start, end)
+    }
+
+    private func setUTF16Selection(_ sel: (start: Int, end: Int), in tf: UITextField) {
+        let count = (tf.text ?? "").utf16.count
+        let s = max(0, min(sel.start, count))
+        let e = max(s, min(sel.end, count))
+        if let startPos = tf.position(from: tf.beginningOfDocument, offset: s),
+           let endPos = tf.position(from: tf.beginningOfDocument, offset: e) {
+            tf.selectedTextRange = tf.textRange(from: startPos, to: endPos)
+        }
+    }
+
+    final class Coordinator: NSObject, UITextFieldDelegate {
+        var onEdit: (String) -> UInt64
+        var onSubmit: () -> Void
+        var lastDispatchedSeq: UInt64 = 0
+        var isUpdatingFromCore = false
+
+        init(onEdit: @escaping (String) -> UInt64, onSubmit: @escaping () -> Void) {
+            self.onEdit = onEdit
+            self.onSubmit = onSubmit
+        }
+
+        @objc func editingChanged(_ sender: UITextField) {
+            guard !isUpdatingFromCore else { return }
+            let raw = sender.text ?? ""
+            lastDispatchedSeq = onEdit(raw)
+        }
+
+        func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+            onSubmit()
+            return false
+        }
+    }
+}
+
 /// The filter of a list: a pill on `chip`, the search icon at the left, and
 /// an x to clear it once it has text. `inset` is what it keeps from the
 /// sides: the page's margin on a page, nothing inside a sheet, which has its own.

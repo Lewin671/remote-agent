@@ -1,89 +1,95 @@
-import Observation
+// Management handoff screen, driven strictly by Go `clientcore`'s `HandoffViewModel` (Screen 54).
+// Branches on `PBHandoffRole` enum; confirm dialog ONLY dispatches `confirmTransfer` (never cancel first).
 import RACore
 import RAProto
 import SwiftUI
-
-@MainActor @Observable
-final class HandoffDraft {
-    var code: String?
-    var saved = false
-    var offered = false
-    var canPublish: Bool { code != nil && saved }
-}
 
 struct HandoffScreen: View {
     @Environment(AppModel.self) private var app
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
-    @State private var draft = HandoffDraft()
-    @State private var action = ActionRunner()
-    @State private var target: PBHandoffCandidateView?
-    @State private var confirming = false
     @State private var publicCode = ""
-    @State private var completedProfile = false
-    @State private var handedOff = false
-
-    static func candidateLabel(_ candidate: PBHandoffCandidateView) -> String {
-        if candidate.hasDisplayNameText {
-            let rendered = candidate.displayNameText.rendered()
-            if !rendered.isEmpty { return rendered }
-        }
-        return candidate.displayName.or(L10n.securityClient())
-    }
 
     var body: some View {
-        let settings = context.core.settings
-        let sec = settings.security
-        let candidates = sec.handoffCandidates
-        let isClient = settings.hasAccount_p && !sec.unlinked
-        let addHint = settings.addDeviceHint.rendered().or(L10n.securityAddOnAuthority(name: sec.authorityName))
-        SettingsPage {
-            if sec.isManager { outgoing(candidates: candidates) }
-            else if isClient { incoming(hasHandoffOffer: sec.hasHandoffOffer_p) }
-            else { GroupNote(addHint) }
-            if !action.error.isEmpty { GroupBanner(action.error, tone: .error) }
+        let vm = context.core.handoff
+        let role: PBHandoffRole = app.isDemo
+            ? (context.core.settings.security.isManager ? .outgoingManager : (context.core.settings.hasAccount_p && !context.core.settings.security.unlinked ? .incomingCandidate : .unavailable))
+            : vm.role
+        let addHint = context.core.settings.addDeviceHint.rendered()
+            .or(L10n.securityAddOnAuthority(name: context.core.settings.security.authorityName))
+        let base = SettingsPage {
+            switch role {
+            case .outgoingManager:
+                outgoing(vm)
+            case .incomingCandidate:
+                incoming(vm)
+            case .unavailable, .unspecified, .UNRECOGNIZED:
+                GroupNote(addHint)
+            }
+            let message = vm.messageBanner.rendered()
+            if !message.isEmpty { GroupBanner(message) }
+            SecurityBanner(banner: vm.errorBanner)
+                .padding(.horizontal, 16).padding(.top, 8)
         }
-        .navBar(sec.isManager ? L10n.securityTransferManagement() : L10n.securityTakeOverManagement())
+        .navBar(role == .outgoingManager ? L10n.securityTransferManagement() : L10n.securityTakeOverManagement())
         .task {
             await context.coreHost.openSettings()
-            draft = context.memory.value { HandoffDraft() }
-            if !app.isDemo && context.core.settings.security.isManager {
-                refreshCandidates()
-            }
+            guard !app.isDemo else { return }
+            await context.coreHost.handoffAction(.open)
         }
-        .confirm(isPresented: $confirming, title: L10n.securityIosTransferManagement(),
-            text: L10n.securityConfirmThatTheSuccessorDeviceSavedTheNewRecovery(
-                value: String(describing: target.map(Self.candidateLabel) ?? L10n.securityIosSuccessorDevice())),
-            confirm: L10n.securityConfirmTransfer(), danger: true) {
-                action.run {
-                    guard let target else { return }
-                    try await context.remote.handoffAuthority(targetDeviceId: target.deviceID)
-                    let st = try await context.remote.getSecurityStatus()
-                    guard !st.hasPendingOp else {
-                        throw UserError(L10nMessage.securityIosTransferResultUnverifiedContinueTheOriginalOperation())
-                    }
-                    handedOff = true
-                    app.authorityHandoffComplete = true
-                }
-            }
+        Self.applyTransferConfirm(to: base, vm: vm, coreHost: context.coreHost)
     }
-    private func outgoing(candidates: [PBHandoffCandidateView]) -> some View {
+
+    static func applyTransferConfirm<V: View>(to content: V, vm: PBHandoffViewModel, coreHost: CoreHost) -> some View {
+        content.confirm(
+            isPresented: !vm.confirmingTargetID.isEmpty,
+            title: L10n.securityIosTransferManagement(),
+            text: vm.confirmDialogBody.rendered(),
+            confirm: L10n.securityConfirmTransfer(),
+            danger: true,
+            busy: vm.busy,
+            onCancel: {
+                Task { await coreHost.handoffAction(.cancelTransfer) }
+            },
+            onConfirm: {
+                let targetID = vm.confirmingTargetID
+                Task { await coreHost.handoffAction(.confirmTransfer, targetDeviceID: targetID) }
+            }
+        )
+    }
+
+    private func outgoing(_ vm: PBHandoffViewModel) -> some View {
         Group {
             GroupLabel(L10n.securityTransferManagement())
             GroupNote(L10n.securityOnceTheSuccessorDeviceJoinsAndConfirmsSavingIts())
             GroupCard {
-                ForEach(candidates, id: \.deviceID) { candidate in
-                    let label = Self.candidateLabel(candidate)
-                    GRow(L10n.securityIosTransferTo(value: String(describing: label)),
-                        chevron: true, enabled: !action.running) { target = candidate; confirming = true }
+                ForEach(vm.candidates, id: \.deviceID) { candidate in
+                    let label = candidate.displayName.rendered().or(L10n.securityClient())
+                    GRow(
+                        L10n.securityIosTransferTo(value: String(describing: label)),
+                        chevron: true,
+                        enabled: vm.canTransfer && !vm.busy
+                    ) {
+                        Task {
+                            await context.coreHost.handoffAction(
+                                .requestTransfer,
+                                targetDeviceID: candidate.deviceID
+                            )
+                        }
+                    }
                 }
-                GRow(L10n.securityRefreshSuccessorDevices(), action: true, enabled: !action.running) { refreshCandidates() }
+                GRow(L10n.securityRefreshSuccessorDevices(), action: true, enabled: vm.canRefresh && !vm.busy) {
+                    guard !app.isDemo else { return }
+                    Task { await context.coreHost.handoffAction(.refreshCandidates) }
+                }
             }
-            if candidates.isEmpty { GroupNote(L10n.securityWaitingForTheSuccessorDeviceToGenerateAndSave()) }
-            if handedOff { GroupBanner(L10n.securityIosManagementTransferredThisDeviceWasRemoved()) }
+            if vm.candidates.isEmpty {
+                GroupNote(L10n.securityWaitingForTheSuccessorDeviceToGenerateAndSave())
+            }
         }
     }
-    private func incoming(hasHandoffOffer: Bool) -> some View {
+
+    private func incoming(_ vm: PBHandoffViewModel) -> some View {
         Group {
             GroupLabel(L10n.securityTakeOverManagement())
             GroupNote(L10n.securitySaveTheNewRecoveryCodeFirstThenAskThe())
@@ -91,49 +97,61 @@ struct HandoffScreen: View {
             #if DEBUG
             if app.isDemo { AuthorityDemoCode(handoff: true) }
             #endif
-            if let code = draft.code {
-                RecoveryCodeFigure(code: code, saved: $draft.saved)
-                Btn(L10n.securitySavedNotifyManagingClient(), kind: .primary, enabled: draft.canPublish && !action.running) {
-                    action.run {
-                        guard draft.saved else { throw UserError(L10nMessage.securityIosSaveTheRecoveryCodeOfflineFirst()) }
-                        try await context.remote.publishHandoffOffer()
-                        let st = try await context.remote.getSecurityStatus()
-                        guard !st.hasPendingOp else {
-                            throw UserError(L10nMessage.securityIosSuccessorPreparationResultUnverifiedContinueTheOriginalOperation())
-                        }
-                        draft.offered = true; draft.code = nil; draft.saved = false
-                        await context.remote.refreshDevices()
+            if !app.isDemo {
+                if !vm.preparedCode.isEmpty {
+                    RecoveryCodeFigure(
+                        code: vm.preparedCode,
+                        saved: Binding(
+                            get: { vm.codeSavedChecked },
+                            set: { checked in
+                                Task { await context.coreHost.handoffAction(.setCodeSaved, flag: checked) }
+                            }
+                        )
+                    )
+                    Btn(
+                        L10n.securitySavedNotifyManagingClient(),
+                        kind: .primary,
+                        enabled: vm.canPublishOffer && !vm.busy
+                    ) {
+                        Task { await context.coreHost.handoffAction(.publishOffer) }
                     }
-                }.padding(.horizontal, 16)
-            } else if !app.isDemo {
-                if draft.offered || hasHandoffOffer {
+                    .padding(.horizontal, 16)
+                } else if vm.hasPublishedOffer_p {
                     GroupBanner(L10n.securityRecoveryCodeSavedAndConfirmedWaitingForTheCurrent())
-                }
-                Btn(draft.offered || hasHandoffOffer ? L10n.securityRegenerateRecoveryCode() : L10n.securityGenerateNewRecoveryCode(), kind: .primary, enabled: !action.running) {
-                    action.run {
-                        draft.code = try await context.remote.prepareHandoffCode()
-                        draft.saved = false
+                } else {
+                    Btn(
+                        L10n.securityGenerateNewRecoveryCode(),
+                        kind: .primary,
+                        enabled: !vm.busy && vm.canPrepareCode
+                    ) {
+                        Task { await context.coreHost.handoffAction(.prepareCode) }
                     }
-                }.padding(16)
-            }
-            GroupLabel(L10n.securityIosRestoreAccountPublicKeyInformation())
-            GroupNote(L10n.securityIosIfSuccessorPreparationReportsAMissingAccountPublicKey())
-            GroupCard { GRow(L10n.securityIosPairAgainAndPreserveIdentity(), chevron: true) { nav.open(.rePair) } }
-            InputField(L10n.securityIosCurrentRecoveryCode(), text: $publicCode, placeholder: L10n.securityRecoveryCode(), look: .mono, lines: 2...6)
-                .padding(.horizontal, 16).privacySensitive()
-            TextAction(L10n.securityIosRestoreInformation(), enabled: !publicCode.isEmpty && !action.running) {
-                action.run {
-                    try await context.remote.completeAccountPublicProfile(server: context.account.server, code: publicCode)
-                    publicCode = ""; completedProfile = true
+                    .padding(16)
                 }
-            }.padding(.horizontal, 16)
-            if completedProfile { GroupBanner(L10n.securityIosAccountPublicKeyInformationRestoredYouCanPrepareTo()) }
-        }
-    }
-    private func refreshCandidates() {
-        guard !app.isDemo else { return }
-        action.run {
-            await context.remote.refreshDevices()
+                if vm.needsPublicProfileRestore {
+                    GroupLabel(L10n.securityIosRestoreAccountPublicKeyInformation())
+                    GroupNote(L10n.securityIosIfSuccessorPreparationReportsAMissingAccountPublicKey())
+                    GroupCard {
+                        GRow(L10n.securityIosPairAgainAndPreserveIdentity(), chevron: true) { nav.open(.rePair) }
+                    }
+                    InputField(
+                        L10n.securityIosCurrentRecoveryCode(),
+                        text: $publicCode,
+                        placeholder: L10n.securityRecoveryCode(),
+                        look: .mono,
+                        lines: 2...6
+                    )
+                    .padding(.horizontal, 16).privacySensitive()
+                    TextAction(L10n.securityIosRestoreInformation(), enabled: !publicCode.isEmpty && !vm.busy) {
+                        let code = publicCode
+                        publicCode = ""
+                        Task {
+                            await context.coreHost.handoffAction(.restorePublicProfile, recoveryCode: code)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+            }
         }
     }
 }

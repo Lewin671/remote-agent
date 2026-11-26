@@ -6125,6 +6125,16 @@
     "reason": "Internal protocol invariant guard when Core omits hello_frame on OpenStreamEffect."
   },
   {
+    "path": "ios/RemoteAgent/App/AppModel.swift",
+    "literal": "creating account runtime failed: \\(String(describing: type(of: error)), privacy: .public)",
+    "reason": "Internal os.Logger diagnostic when account runtime creation fails; never rendered as UI copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Join/AuthoritySetupScreen.swift",
+    "literal": "https://",
+    "reason": "URL scheme prefix placeholder for relay server input in create and emergency recovery forms."
+  },
+  {
     "path": "web/src/views/AuthoritySetup.tsx",
     "literal": "https://ra.example.com",
     "reason": "RFC 2606 example URL placeholder for relay server input."

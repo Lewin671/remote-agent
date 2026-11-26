@@ -1,4 +1,5 @@
-import Observation
+// Account security & recovery code rotation screens, driven strictly by Go `clientcore`'s
+// `AccountSecurityViewModel` (Screen 53). Pending operations branch on `PBPendingSecurityOpKind`.
 import RACore
 import RAProto
 import SwiftUI
@@ -12,8 +13,13 @@ struct RecoveryPendingEntry: View {
         let sec = context.core.settings.security
         if sec.isManager {
             if sec.recoveryPending {
-                GroupBanner(L10n.securitySomeoneIsRequestingManagementTakeoverWithARecoveryCode(value: String(describing: securityTime(UInt64(max(0, sec.recoveryReadyMs))))),
-                    tone: .warn, action: L10n.dockHandle()) { nav.open(.accountSecurity) }
+                GroupBanner(
+                    L10n.securitySomeoneIsRequestingManagementTakeoverWithARecoveryCode(
+                        value: String(describing: securityTime(UInt64(max(0, sec.recoveryReadyMs))))
+                    ),
+                    tone: .warn,
+                    action: L10n.dockHandle()
+                ) { nav.open(.accountSecurity) }
             } else if sec.recoveryStatusStale {
                 GroupBanner(L10n.errorsIosRecoveryRequestStateMayBeOutOfDateConnect(), tone: .warn)
             }
@@ -21,162 +27,208 @@ struct RecoveryPendingEntry: View {
     }
 }
 
-struct AccountSecurityDetails: View {
-    var pending: Bool
-    var onPending: () -> Void
+struct AccountSecurityScreen: View {
+    var initialSubpage: PBAccountSecuritySubpage = .overview
     @Environment(AppModel.self) private var app
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
-    @State private var action = ActionRunner()
-    @State private var renewed = false
-    var body: some View {
-        let settings = context.core.settings
-        let sec = settings.security
-        if sec.recoveryPending {
-            GroupBanner(L10n.securitySomeoneIsRequestingManagementTakeoverWithARecoveryCode(value: String(describing: securityTime(UInt64(max(0, sec.recoveryReadyMs))))), tone: .warn, action: sec.isManager ? L10n.securityReject() : nil) { nav.open(.recoveryCode) }
-        }
-        if app.recoveryRotationRequired {
-            GroupBanner(L10n.securityIosRecoveryCodeBackupIsUnconfirmedReplaceTheCodeAnd(), tone: .warn, action: L10n.securityIosReplaceCode()) { nav.open(.recoveryCode) }
-        }
-        if sec.isManager && sec.leaseEndMs == 0 && sec.hasHandoffOffer_p {
-            GroupBanner(L10n.securityIosCompletingTakeoverWaitingForRemoteControlRenewal())
-        }
-        if pending { GroupCard { GRow(L10n.securityUnfinishedSecurityOperation(), chevron: true) { onPending() } } }
-        GroupCard {
-            GRow(L10n.securityCurrentManagingClient(), value: sec.isManager ? L10n.securityThisDevice() : sec.authorityName)
-            GRow(L10n.securityRemoteControlExpiry(), value: securityTime(UInt64(max(0, sec.leaseEndMs))))
-            if sec.isManager {
-                GRow(action.running ? L10n.securityIosRenewing() : L10n.securityRenewNow(), action: true, enabled: !action.running) {
-                    renewed = false
-                    action.run {
-                        await context.remote.renewLeaseNow()
-                        let st = try await context.remote.getSecurityStatus()
-                        guard !st.hasPendingOp else {
-                            throw UserError(L10nMessage.securityIosRenewalResultUnverifiedContinueTheOriginalOperation())
-                        }
-                    } onDone: { renewed = true }
-                }
-            }
-        }
-        GroupNote(L10n.securityIosAutomaticallyRenewsWhenYouReturnToTheManagingClient())
-        GroupNote(iosAuthorityNotice)
-        if !sec.isManager {
-            let conn = context.core.connection
-            let advice = conn.hasLeaseRenewalAdvice
-                ? conn.leaseRenewalAdvice.rendered()
-                : L10n.securityOpenToRenew(value: String(describing: sec.authorityName))
-            if !advice.isEmpty { GroupNote(advice) }
-        }
-        GroupCard {
-            if sec.isManager {
-                GRow(L10n.securityRecoveryCode(), chevron: true) { nav.open(.recoveryCode) }
-                GRow(L10n.securityTransferManagement(), chevron: true) { nav.open(.handoff) }
-            } else if settings.hasAccount_p && !sec.unlinked {
-                GRow(L10n.securityTakeOverManagement(), chevron: true) { nav.open(.handoff) }
-            }
-        }
-        if !action.error.isEmpty { GroupBanner(action.error, tone: .error) }
-        if renewed { GroupBanner(L10n.securityIosRemoteControlRenewed()) }
-    }
-}
+    @State private var confirmDiscard = false
+    @State private var confirmPublish = false
 
-struct AccountSecurityScreen: View {
-    @Environment(AppModel.self) private var app
-    @Environment(AccountContext.self) private var context
-    @State private var pending: PBSecurityPendingOpSummary?
-    @State private var pendingRemoveNotice: PBCoreText?
-    @State private var action = ActionRunner()
-    @State private var readError = ""
-    @State private var showPending = false
-    @State private var abandon = false
     var body: some View {
+        let vm = context.core.accountSecurity
+        let showPending = !app.isDemo && vm.subpage == .pendingOp && vm.hasPendingOp_p
+        let showRotate = app.isDemo ? (initialSubpage == .rotateRecovery) : (vm.subpage == .rotateRecovery)
+        let inSubpage = !app.isDemo && (showPending || showRotate) && initialSubpage == .overview
+        let navTitle = showPending
+            ? L10n.securityUnfinishedSecurityOperation()
+            : (showRotate ? L10n.securityRecoveryCode() : L10n.securityAccountSecurity())
         SettingsPage {
-            if !showPending, let notice = pendingRemoveNotice {
-                let text = notice.rendered()
-                if !text.isEmpty {
-                    GroupBanner(text, tone: .warn, action: L10n.commonRetry()) {
-                        action.run {
-                            try await context.remote.resumeSecurityOperation()
-                            await context.remote.refreshDevices()
-                            await read()
-                        }
-                    }
-                }
-            }
-            if !showPending { AccountSecurityDetails(pending: pending != nil) { showPending = true } }
-            if showPending, let pending {
-                GroupNote(L10n.securityTheSecurityOperationSOutcomeIsUnverifiedContinueThe())
-                Btn(L10n.securityIosContinueOriginalOperation(), kind: .primary, enabled: !action.running) {
-                    action.run {
-                        try await context.remote.resumeSecurityOperation()
-                        if pending.hasDelivery_p && !pending.deliveryPairingID.isEmpty {
-                            _ = try await context.remote.finishPairingDelivery(pairingId: pending.deliveryPairingID)
-                        }
-                        await read()
-                    }
-                }.padding(16)
-                if pending.kind == "offer" {
-                    TextAction(L10n.securityAbandonThisSuccessionPreparationSecurity(), color: DS.red) { abandon = true }.disabled(action.running).padding(.horizontal, 16)
-                } else if pending.hasDelivery_p {
-                    TextAction(L10n.securityIosRemoveUndeliveredCandidate(), color: DS.red) { abandon = true }.padding(.horizontal, 16)
-                }
-            }
-            if !readError.isEmpty { GroupBanner(readError, tone: .error, action: L10n.commonRetry()) { Task { await read() } } }
-            if !action.error.isEmpty { GroupBanner(action.error, tone: .error) }
-        }
-        .navBar(showPending ? L10n.securityUnfinishedSecurityOperation() : L10n.securityAccountSecurity())
-        .navigationBarBackButtonHidden(showPending)
-        .toolbar {
             if showPending {
+                pendingOpBody(vm)
+            } else if showRotate {
+                RecoveryCodeContent(vm: vm, onRequestPublish: { confirmPublish = true })
+            } else {
+                overviewBody(vm)
+            }
+            if !showRotate {
+                SecurityBanner(banner: vm.errorBanner) {
+                    Task { await context.coreHost.accountSecurityAction(.refresh) }
+                }
+                .padding(.horizontal, 16).padding(.top, 8)
+                let success = vm.successNotice.rendered()
+                if !success.isEmpty {
+                    GroupBanner(success)
+                }
+            }
+        }
+        .navBar(navTitle)
+        .navigationBarBackButtonHidden(inSubpage)
+        .toolbar {
+            if inSubpage {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button { showPending = false } label: { SymbolImage("chevron.left", size: 22, color: DS.blue) }.accessibilityLabel(L10n.commonBack())
+                    Button {
+                        Task { await context.coreHost.accountSecurityAction(.setSubpage, subpage: .overview) }
+                    } label: {
+                        SymbolImage("chevron.left", size: 22, color: DS.blue)
+                    }
+                    .accessibilityLabel(L10n.commonBack())
                 }
             }
         }
         .task {
             await context.coreHost.openSettings()
-            await read()
+            guard !app.isDemo else { return }
+            await context.coreHost.accountSecurityOpen(subpage: initialSubpage)
         }
-        .confirm(isPresented: $abandon, title: L10n.securityIosAbandonThisSecurityOperation(),
-            text: pending?.kind == "offer"
-                ? L10n.securityIosTheSuccessorSPublicKeyMayAlreadyBePublished()
-                : L10n.securityIosTheApprovedCandidateWithoutConfirmedDeliveryWillBeExplicitly(), confirm: L10n.newSessionIosAbandon(), danger: true) {
-                action.run {
-                    guard let pending else { return }
-                    if pending.kind == "offer" {
-                        try await context.remote.discardPendingOp(abandonHandoff: true)
-                    } else if !pending.deliveryCandidateID.isEmpty {
-                        try await context.remote.removeDevice(pending.deliveryCandidateID)
-                        if !pending.deliveryPairingID.isEmpty {
-                            context.memory.value { AuthorityPairingSessions() }.discard(pairingID: pending.deliveryPairingID)
-                        }
-                    } else {
-                        try await context.remote.discardPendingOp()
-                    }
-                    await read()
+        .onDisappear {
+            guard !app.isDemo else { return }
+            let host = context.coreHost
+            Task { await host.accountSecurityClose() }
+        }
+        .confirm(
+            isPresented: confirmDiscard,
+            title: L10n.securityIosAbandonThisSecurityOperation(),
+            text: discardConfirmText(for: vm.pendingKind),
+            confirm: L10n.newSessionIosAbandon(),
+            danger: true,
+            busy: vm.busy,
+            onCancel: { confirmDiscard = false },
+            onConfirm: {
+                confirmDiscard = false
+                Task { await context.coreHost.accountSecurityAction(.discardPending) }
+            }
+        )
+        .confirm(
+            isPresented: confirmPublish,
+            title: L10n.securityIosPublishNewRecoveryCode(),
+            text: L10n.securityIosTheOldRecoveryCodeIsImmediatelyInvalidatedAndPending(),
+            confirm: L10n.securityIosPublish(),
+            busy: vm.busy,
+            onCancel: { confirmPublish = false },
+            onConfirm: {
+                confirmPublish = false
+                Task { await context.coreHost.accountSecurityAction(.publishRotation) }
+            }
+        )
+    }
+
+    private func discardConfirmText(for kind: PBPendingSecurityOpKind) -> String {
+        switch kind {
+        case .handoffOffer:
+            return L10n.securityIosTheSuccessorSPublicKeyMayAlreadyBePublished()
+        case .pairingDelivery:
+            return L10n.securityIosTheApprovedCandidateWithoutConfirmedDeliveryWillBeExplicitly()
+        case .none, .stateChange, .lease, .recoveryRotation, .deleteRecords, .UNRECOGNIZED:
+            return L10n.securityTheSecurityOperationSOutcomeIsUnverifiedContinueThe()
+        }
+    }
+
+    private func openRotateSubpage() {
+        Task { await context.coreHost.accountSecurityAction(.setSubpage, subpage: .rotateRecovery) }
+    }
+
+    @ViewBuilder private func overviewBody(_ vm: PBAccountSecurityViewModel) -> some View {
+        let isManager = app.isDemo ? context.core.settings.security.isManager : vm.isManager
+        let pendingRemove = vm.pendingRemoveBanner.rendered()
+        if !pendingRemove.isEmpty {
+            GroupBanner(pendingRemove, tone: .warn, action: L10n.commonRetry()) {
+                Task { await context.coreHost.accountSecurityAction(.retryPendingRemove) }
+            }
+        }
+        if vm.recoveryPending {
+            let banner = vm.recoveryTakeoverBanner.rendered()
+            if !banner.isEmpty {
+                GroupBanner(banner, tone: .warn, action: vm.canVetoRecovery ? L10n.securityReject() : nil) {
+                    openRotateSubpage()
                 }
             }
+        } else if vm.recoveryStatusStale && isManager {
+            GroupBanner(L10n.errorsIosRecoveryRequestStateMayBeOutOfDateConnect(), tone: .warn)
+        }
+        if vm.needsRotationBanner {
+            GroupBanner(
+                L10n.securityIosRecoveryCodeBackupIsUnconfirmedReplaceTheCodeAnd(),
+                tone: .warn,
+                action: L10n.securityIosReplaceCode()
+            ) { openRotateSubpage() }
+        }
+        if vm.takingOver {
+            GroupBanner(L10n.securityIosCompletingTakeoverWaitingForRemoteControlRenewal())
+        }
+        let authErr = vm.authorityErrorBanner.rendered()
+        if !authErr.isEmpty {
+            GroupBanner(authErr, tone: .error)
+        }
+        if vm.hasPendingOp_p {
+            GroupCard {
+                GRow(L10n.securityUnfinishedSecurityOperation(), chevron: true) {
+                    Task { await context.coreHost.accountSecurityAction(.setSubpage, subpage: .pendingOp) }
+                }
+            }
+        }
+        let mgrText = app.isDemo
+            ? (context.core.settings.security.isManager ? L10n.securityThisDevice() : context.core.settings.security.authorityName)
+            : vm.managerDisplay.rendered().or(L10n.securityClient())
+        let leaseText = app.isDemo
+            ? securityTime(UInt64(max(0, context.core.settings.security.leaseEndMs)))
+            : vm.leaseExpiryText.rendered()
+        GroupCard {
+            GRow(L10n.securityCurrentManagingClient(), value: mgrText)
+            GRow(L10n.securityRemoteControlExpiry(), value: leaseText)
+            if isManager {
+                GRow(
+                    vm.busy ? L10n.securityIosRenewing() : L10n.securityRenewNow(),
+                    action: true,
+                    enabled: vm.canRenewNow && !vm.busy
+                ) {
+                    Task { await context.coreHost.accountSecurityAction(.renewLease) }
+                }
+            }
+        }
+        GroupNote(L10n.securityIosAutomaticallyRenewsWhenYouReturnToTheManagingClient())
+        GroupNote(iosAuthorityNotice)
+        let advice = vm.leaseRenewalAdvice.rendered()
+        if !isManager && !advice.isEmpty {
+            GroupNote(advice)
+        }
+        GroupCard {
+            if isManager {
+                GRow(L10n.securityRecoveryCode(), chevron: true) {
+                    if app.isDemo { nav.open(.recoveryCode) } else { openRotateSubpage() }
+                }
+                GRow(L10n.securityTransferManagement(), chevron: true) { nav.open(.handoff) }
+            } else if vm.canOpenHandoff || (app.isDemo && context.core.settings.hasAccount_p && !context.core.settings.security.unlinked) {
+                GRow(L10n.securityTakeOverManagement(), chevron: true) { nav.open(.handoff) }
+            }
+        }
     }
-    private func read() async {
-        guard !app.isDemo else { return }
-        do {
-            let st = try await context.remote.getSecurityStatus()
-            pending = st.hasPendingOp ? st.pendingOp : nil
-            pendingRemoveNotice = st.hasPendingRemoveNotice ? st.pendingRemoveNotice : nil
-            readError = ""
-            if pending == nil { showPending = false }
-        } catch { readError = errorText(error) }
-    }
-}
 
-/// Displayed only in memory. A failed write keeps the same material and the confirmation.
-@MainActor @Observable
-final class RecoveryCodeDraft {
-    var code: String?
-    var saved = false
-    var success = false
-    var offered = false
-    var canPublish: Bool { code != nil && saved }
+    @ViewBuilder private func pendingOpBody(_ vm: PBAccountSecurityViewModel) -> some View {
+        GroupNote(L10n.securityTheSecurityOperationSOutcomeIsUnverifiedContinueThe())
+        Btn(L10n.securityIosContinueOriginalOperation(), kind: .primary, enabled: vm.canContinuePending && !vm.busy) {
+            Task { await context.coreHost.accountSecurityAction(.continuePending) }
+        }
+        .padding(16)
+        if vm.canDiscardPending {
+            let label: String = switch vm.pendingKind {
+            case .handoffOffer:
+                L10n.securityAbandonThisSuccessionPreparationSecurity()
+            case .pairingDelivery:
+                L10n.securityIosRemoveUndeliveredCandidate()
+            case .none, .stateChange, .lease, .recoveryRotation, .deleteRecords, .UNRECOGNIZED:
+                L10n.securityAbandonUnsignedOperation()
+            }
+            TextAction(label, color: DS.red, enabled: !vm.busy) {
+                if vm.discardRequiresConfirm {
+                    confirmDiscard = true
+                } else {
+                    Task { await context.coreHost.accountSecurityAction(.discardPending) }
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+    }
 }
 
 struct RecoveryCodeFigure: View {
@@ -189,62 +241,64 @@ struct RecoveryCodeFigure: View {
                 .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.small))
             Hint(L10n.securitySaveTheRecoveryCodeOfflineAnyoneWithItCan())
             Toggle(L10n.securityISavedTheNewRecoveryCodeOffline(), isOn: $saved).font(.body).ink(DS.ink).tint(DS.blue)
-        }.padding(16)
+        }
+        .padding(16)
     }
 }
 
-struct RecoveryCodeScreen: View {
+struct RecoveryCodeContent: View {
     @Environment(AppModel.self) private var app
     @Environment(AccountContext.self) private var context
-    @State private var draft = RecoveryCodeDraft()
-    @State private var action = ActionRunner()
-    @State private var confirm = false
+    let vm: PBAccountSecurityViewModel
+    let onRequestPublish: () -> Void
+
     var body: some View {
-        let settings = context.core.settings
-        let isManager = settings.security.isManager
-        let addHint = settings.addDeviceHint.rendered().or(L10n.securityAddOnAuthority(name: settings.security.authorityName))
-        SettingsPage {
-            if isManager {
-                RecoveryPendingEntry()
-                GroupLabel(L10n.securityRecoveryCode())
-                GroupNote(L10n.securityReplacingTheRecoveryCodeImmediatelyInvalidatesTheOldCode())
-                #if DEBUG
-                if app.isDemo { AuthorityDemoCode(handoff: false) }
-                #endif
-                if let code = draft.code {
-                    RecoveryCodeFigure(code: code, saved: $draft.saved)
-                    Btn(L10n.securitySavedPublishReplacement(), kind: .primary, enabled: draft.canPublish && !action.running) { confirm = true }
-                        .padding(.horizontal, 16)
-                } else if !app.isDemo {
-                    Btn(L10n.securityGenerateNewRecoveryCode(), kind: .primary, enabled: !action.running) {
-                        action.run {
-                            draft.code = try await context.remote.prepareRecoveryRotation()
-                            draft.saved = false
-                            draft.success = false
-                        }
-                    }.padding(16)
+        let isManager = app.isDemo ? context.core.settings.security.isManager : vm.isManager
+        let addHint = context.core.settings.addDeviceHint.rendered()
+            .or(L10n.securityAddOnAuthority(name: context.core.settings.security.authorityName))
+        if isManager {
+            RecoveryPendingEntry()
+            GroupLabel(L10n.securityRecoveryCode())
+            GroupNote(L10n.securityReplacingTheRecoveryCodeImmediatelyInvalidatesTheOldCode())
+            #if DEBUG
+            if app.isDemo { AuthorityDemoCode(handoff: false) }
+            #endif
+            if !app.isDemo {
+                if !vm.preparedCode.isEmpty {
+                    RecoveryCodeFigure(
+                        code: vm.preparedCode,
+                        saved: Binding(
+                            get: { vm.codeSavedChecked },
+                            set: { checked in
+                                Task { await context.coreHost.accountSecurityAction(.setRotationSaved, flag: checked) }
+                            }
+                        )
+                    )
+                    Btn(
+                        L10n.securitySavedPublishReplacement(),
+                        kind: .primary,
+                        enabled: vm.canPublishRotation && !vm.busy
+                    ) {
+                        onRequestPublish()
+                    }
+                    .padding(.horizontal, 16)
+                } else {
+                    Btn(
+                        L10n.securityGenerateNewRecoveryCode(),
+                        kind: .primary,
+                        enabled: vm.canPrepareRotation && !vm.busy
+                    ) {
+                        Task { await context.coreHost.accountSecurityAction(.prepareRotation) }
+                    }
+                    .padding(16)
                 }
-                if draft.success { GroupBanner(L10n.securityIosTheNewRecoveryCodeIsActiveTheOldCode()) }
-                if !action.error.isEmpty { GroupBanner(action.error, tone: .error) }
-            } else { GroupNote(addHint) }
-        }
-        .navBar(L10n.securityRecoveryCode())
-        .task {
-            await context.coreHost.openSettings()
-            draft = context.memory.value { RecoveryCodeDraft() }
-        }
-        .confirm(isPresented: $confirm, title: L10n.securityIosPublishNewRecoveryCode(), text: L10n.securityIosTheOldRecoveryCodeIsImmediatelyInvalidatedAndPending(), confirm: L10n.securityIosPublish()) {
-            action.run {
-                guard draft.code != nil, draft.saved else { throw UserError(L10nMessage.securityIosSaveTheRecoveryCodeOfflineFirst()) }
-                try await context.remote.confirmRecoveryRotation()
-                let st = try await context.remote.getSecurityStatus()
-                guard !st.hasPendingOp else {
-                    throw UserError(L10nMessage.securityIosPublicationResultUnverifiedContinueTheOriginalOperation())
-                }
-                await context.remote.refreshDevices()
-                app.recoveryRotationRequired = false
-                draft.success = true; draft.code = nil; draft.saved = false
+                let success = vm.successNotice.rendered()
+                if !success.isEmpty { GroupBanner(success) }
+                SecurityBanner(banner: vm.errorBanner)
+                    .padding(.horizontal, 16).padding(.top, 8)
             }
+        } else {
+            GroupNote(addHint)
         }
     }
 }

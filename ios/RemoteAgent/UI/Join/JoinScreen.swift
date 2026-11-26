@@ -1,8 +1,7 @@
-// 加入账户, what a device shows until it has an account (mockup 「设置与
-// 配对」, Android's ui/Join.kt): the pairing code and the server, scanning
-// the other device's QR code, comparing the four pictures, and the account
-// The rules are in `JoinModel`; this file draws them.
+// First-run onboarding and pairing flow, driven strictly by Go `clientcore`'s
+// `OnboardingViewModel` (Screen 51).
 import RACore
+import RAProto
 import SwiftUI
 
 struct LegacyRepairBanner: View {
@@ -23,158 +22,194 @@ struct LegacyRepairBanner: View {
     }
 }
 
-/// First run: create, join, or recover an account.
-struct JoinScreen: View {
-    @Environment(AppModel.self) private var app
-    @State private var model: JoinModel?
-    @State private var selection: String?
-    @State private var setup: AuthoritySetupModel?
+struct SecurityBanner: View {
+    let banner: PBSecurityBannerView
+    var onAction: (() -> Void)? = nil
 
-    private func begin(_ mode: AuthoritySetupModel.Mode) {
-        setup = AuthoritySetupModel(
-            mode: mode,
-            server: app.lastServer,
-            status: app.securityStatus,
-            makeHost: { try app.makeStandaloneSecurityHost() }
-        )
-    }
-    var body: some View {
-        Group {
-            if app.retainedIdentityDenied {
-                RetainedIdentityDeniedScreen()
-            } else if let setup {
-                AuthoritySetupScreen(flow: setup, back: { self.setup = nil })
-            } else if selection == nil {
-                Page {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 28) {
-                            VStack(alignment: .leading, spacing: 0) {
-                                AppMark.badge(size: 56, radius: 14)
-                                Text("remote-agent")
-                                    .font(.largeTitle.bold())
-                                    .foregroundStyle(DS.ink)
-                                    .padding(.top, 18)
-                                Text(L10n.securityControlAiCodingClisOnYourComputerFromAny())
-                                    .font(.body)
-                                    .foregroundStyle(DS.ink2)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .padding(.top, 8)
-                            }
-                            .padding(.init(top: 28, leading: 24, bottom: 0, trailing: 24))
-                            Spacer(minLength: 0)
-                            LegacyRepairBanner(show: app.legacyRepairNotice) {
-                                app.dismissUpgradeNotice()
-                            }
-                            VStack(spacing: 12) {
-                                VStack(spacing: 0) {
-                                    EntryRow(
-                                        title: L10n.securityCreateAccount(),
-                                        subtitle: L10n.securityThisDeviceBecomesTheManagingClient()
-                                    ) { begin(.create) }
-                                    Rectangle().fill(DS.sep).frame(height: 0.5).padding(.leading, 18)
-                                    EntryRow(
-                                        title: L10n.securityJoinAnExistingAccount(),
-                                        subtitle: L10n.securityJoinWithACodeFromTheManagingClient()
-                                    ) { selection = "join" }
-                                    Rectangle().fill(DS.sep).frame(height: 0.5).padding(.leading, 18)
-                                    EntryRow(
-                                        title: L10n.securityRecoverManagementWithARecoveryCode(),
-                                        subtitle: L10n.securityUseWhenTheManagingClientIsLost()
-                                    ) { begin(.recover) }
-                                }
-                                .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.group, style: .continuous))
-                                .padding(.horizontal, 16)
-                                Text(L10n.securityEntryE2EeNote())
-                                    .font(.footnote)
-                                    .foregroundStyle(DS.ink2)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.horizontal, 24)
-                                PrivacyPolicyLink().frame(maxWidth: .infinity)
-                            }
-                        }
-                        .padding(.vertical, 24)
-                        .frame(maxWidth: 480)
-                        .containerRelativeFrame(.vertical)
-                        .frame(maxWidth: .infinity)
-                    }
-                    .scrollBounceBehavior(.basedOnSize)
-                }
-            } else if let model {
-                JoinFlow(model: model, discard: { await app.logout() })
-                    .safeAreaInset(edge: .bottom) {
-                        if model.step == .form && !model.retainedIdentity {
-                            TextAction(L10n.commonBack(), alignment: .center) { selection = nil }
-                        }
-                    }
-            } else {
-                StartupShell(status: L10n.securityIosConnecting())
-            }
+    private var tone: BannerTone {
+        switch banner.tone {
+        case .error: .error
+        case .warn: .warn
+        case .info, .unspecified, .UNRECOGNIZED: .plain
         }
-        .task {
-            guard model == nil else { return }
-            if let st = app.securityStatus,
-               st.bootstrap == .pendingCreate || st.bootstrap == .pendingRecovery {
-                setup = AuthoritySetupModel(
-                    mode: st.bootstrap == .pendingCreate ? .create : .recover,
-                    server: st.server.isEmpty ? app.lastServer : st.server,
-                    status: st,
-                    makeHost: { try app.makeStandaloneSecurityHost() }
-                )
-                return
+    }
+
+    private var actionLabel: String? {
+        switch banner.action {
+        case .retry: L10n.commonRetry()
+        case .refill: L10n.securityReEnter()
+        case .restart: L10n.securityStartOver()
+        case .none, .UNRECOGNIZED: nil
+        }
+    }
+
+    var body: some View {
+        let text = banner.hasText ? banner.text.rendered() : ""
+        if banner.visible && !text.isEmpty {
+            if let label = actionLabel, let onAction {
+                Banner(text, tone: tone, action: label, onAction: onAction)
+            } else {
+                Banner(text, tone: tone)
             }
-            let isPendingReg = app.securityStatus?.bootstrap == .pendingRegistration
-            if app.joinDirectly || isPendingReg { selection = "join" }
-            #if DEBUG
-                if LaunchDriver.joinStep != nil || LaunchDriver.joinRequested { selection = "join" }
-            #endif
-            let app = app
-            let initialServer = (isPendingReg ? app.securityStatus?.server : nil).flatMap { $0.isEmpty ? nil : $0 } ?? app.lastServer
-            let made = JoinModel(
-                lastServer: initialServer, calls: app.joiningCalls,
-                retainedIdentity: false,
-                pendingRegistration: isPendingReg
-            ) { account in
-                try await app.joined(account)
-            }
-            LaunchDriver.drive(made)
-            model = made
         }
     }
 }
 
-struct JoinFlow: View {
-    @Bindable var model: JoinModel
-    var discard: (@MainActor () async -> Void)? = nil
+/// First run: entry, create, join, or emergency recovery — routed strictly by `OnboardingViewModel.mode`.
+struct JoinScreen: View {
+    @Environment(AppModel.self) private var app
 
     var body: some View {
-        if model.step == .scan {
-            QRScanner(onResult: model.scanned, onCancel: model.showForm)
+        let vm = app.screens.onboarding
+        Group {
+            switch vm.mode {
+            case .entry, .unspecified, .UNRECOGNIZED:
+                OnboardingEntryView(vm: vm)
+            case .create:
+                CreateAccountScreen(vm: vm)
+            case .recovery:
+                EmergencyRecoveryScreen(vm: vm)
+            case .join:
+                CoreJoinFlow(vm: vm.join, showLegacyRepairBanner: vm.showLegacyRepairBanner, canBack: vm.canBack)
+            }
+        }
+        .task {
+            await LaunchDriver.driveOnboarding(app)
+        }
+    }
+}
+
+private struct OnboardingEntryView: View {
+    @Environment(AppModel.self) private var app
+    let vm: PBOnboardingViewModel
+
+    var body: some View {
+        Page {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 28) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        AppMark.badge(size: 56, radius: 14)
+                        Text("remote-agent")
+                            .font(.largeTitle.bold())
+                            .foregroundStyle(DS.ink)
+                            .padding(.top, 18)
+                        Text(L10n.securityControlAiCodingClisOnYourComputerFromAny())
+                            .font(.body)
+                            .foregroundStyle(DS.ink2)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 8)
+                    }
+                    .padding(.init(top: 28, leading: 24, bottom: 0, trailing: 24))
+                    Spacer(minLength: 0)
+                    LegacyRepairBanner(show: vm.showLegacyRepairBanner) {
+                        Task { await app.coreHost.appRootDismissUpgradeNotice() }
+                    }
+                    VStack(spacing: 12) {
+                        VStack(spacing: 0) {
+                            EntryRow(
+                                title: L10n.securityCreateAccount(),
+                                subtitle: L10n.securityThisDeviceBecomesTheManagingClient()
+                            ) {
+                                Task { await app.coreHost.onboardingSetMode(.create) }
+                            }
+                            Rectangle().fill(DS.sep).frame(height: 0.5).padding(.leading, 18)
+                            EntryRow(
+                                title: L10n.securityJoinAnExistingAccount(),
+                                subtitle: L10n.securityJoinWithACodeFromTheManagingClient()
+                            ) {
+                                Task { await app.coreHost.onboardingSetMode(.join) }
+                            }
+                            Rectangle().fill(DS.sep).frame(height: 0.5).padding(.leading, 18)
+                            EntryRow(
+                                title: L10n.securityRecoverManagementWithARecoveryCode(),
+                                subtitle: L10n.securityUseWhenTheManagingClientIsLost()
+                            ) {
+                                Task { await app.coreHost.onboardingSetMode(.recovery) }
+                            }
+                        }
+                        .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.group, style: .continuous))
+                        .padding(.horizontal, 16)
+                        Text(L10n.securityEntryE2EeNote())
+                            .font(.footnote)
+                            .foregroundStyle(DS.ink2)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 24)
+                        PrivacyPolicyLink().frame(maxWidth: .infinity)
+                    }
+                }
+                .padding(.vertical, 24)
+                .frame(maxWidth: 480)
+                .containerRelativeFrame(.vertical)
+                .frame(maxWidth: .infinity)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        }
+    }
+}
+
+/// Core-driven join/re-pair flow rendering `PBJoinPairingView`.
+struct CoreJoinFlow: View {
+    @Environment(AppModel.self) private var app
+    let vm: PBJoinPairingView
+    let showLegacyRepairBanner: Bool
+    let canBack: Bool
+    @State private var scanning = false
+
+    var body: some View {
+        if scanning {
+            QRScanner(
+                onResult: { raw in
+                    scanning = false
+                    Task { await app.coreHost.onboardingJoinSubmit(rawLink: raw) }
+                },
+                onCancel: { scanning = false }
+            )
         } else {
             Page {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        if model.retainedIdentity {
-                            JoinText(
-                                text:
-                                    L10n.securityIosTheOriginalDeviceIdentityKeysAndHistoryArePreserved()
-                            )
+                        if vm.isExistingRepair {
+                            JoinText(text: L10n.securityIosTheOriginalDeviceIdentityKeysAndHistoryArePreserved())
                         }
-                        if model.noticeIsError, let discard { SetupDiscardButton(discard: discard) }
-                        switch model.step {
-                        case .form, .scan: JoinForm(model: model)
-                        case .working: Working(model: model)
-                        case .emoji(let emoji): Compare(model: model, emoji: emoji)
+                        switch vm.step {
+                        case .form, .unspecified, .UNRECOGNIZED:
+                            JoinFormView(
+                                vm: vm,
+                                showLegacyRepairBanner: showLegacyRepairBanner,
+                                onOpenScanner: { scanning = true }
+                            )
+                        case .working:
+                            JoinWorkingView(vm: vm)
+                        case .compareSas, .waitingApproval:
+                            JoinCompareView(vm: vm)
+                        }
+                        if vm.showSetupReset {
+                            Button(L10n.securityExitAndStartOver(), role: .destructive) {
+                                Task { await app.coreHost.exitRequest(intent: .setupReset) }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.top, 12)
                         }
                     }
-                    // A phone's width on a wide screen: the page is a form, not a table.
                     .frame(maxWidth: 480)
                     .frame(maxWidth: .infinity)
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .scrollBounceBehavior(.basedOnSize)
             }
-            .debugSignal("join.cancel") { model.cancel() }
-            .debugSignal("join.confirm") { model.confirmPictures() }
+            .safeAreaInset(edge: .bottom) {
+                if canBack {
+                    TextAction(L10n.commonBack(), alignment: .center) {
+                        Task { await app.coreHost.onboardingSetMode(.entry) }
+                    }
+                }
+            }
+            .debugSignal("join.cancel") {
+                Task { await app.coreHost.onboardingJoinCancel() }
+            }
+            .debugSignal("join.confirm") {
+                Task { await app.coreHost.onboardingJoinConfirmSAS() }
+            }
         }
     }
 }
@@ -200,7 +235,6 @@ private struct JoinText: View {
     }
 }
 
-/// A way to another page of the flow: a line of blue text, as tall as anything else to tap.
 private struct JoinLink: View {
     let text: String
     let action: () -> Void
@@ -210,88 +244,122 @@ private struct JoinLink: View {
     }
 }
 
-private struct JoinNotice: View {
-    let model: JoinModel
-
-    var body: some View {
-        if !model.notice.isEmpty {
-            Banner(model.notice, tone: model.noticeIsError ? .error : .plain)
-                .padding(.horizontal, 16).padding(.bottom, 10)
-        }
-    }
-}
-
-private struct JoinForm: View {
+private struct JoinFormView: View {
     @Environment(AppModel.self) private var app
-    @Bindable var model: JoinModel
-    /// What the code field shows: the model's digits in two groups.
-    @State private var typed = ""
+    let vm: PBJoinPairingView
+    let showLegacyRepairBanner: Bool
+    let onOpenScanner: () -> Void
+    @State private var localServer = ""
+    @State private var lastServerEditSeq: UInt64 = 0
 
     var body: some View {
-        JoinTitle(text: model.retainedIdentity ? L10n.securityOneTimeSecuritySetup() : L10n.securityJoinAccount())
-        LegacyRepairBanner(show: app.legacyRepairNotice) {
-            app.dismissUpgradeNotice()
+        JoinTitle(text: vm.isExistingRepair ? L10n.securityOneTimeSecuritySetup() : L10n.securityJoinAccount())
+        LegacyRepairBanner(show: showLegacyRepairBanner) {
+            Task { await app.coreHost.appRootDismissUpgradeNotice() }
         }
         JoinText(text: L10n.securityIosOnTheManagingClientOpenSettingsAddDeviceScan())
-        JoinNotice(model: model)
-        InputField(
-            text: $typed, placeholder: L10n.securityIosEnter8DigitPairingCode(), look: .code, keyboard: .numberPad,
-            submitLabel: .next
+        SecurityBanner(banner: vm.banner) {
+            Task { await app.coreHost.onboardingJoinBannerAction() }
+        }
+        .padding(.horizontal, 16).padding(.bottom, 10)
+        PairingCodeField(
+            formattedCode: vm.formattedCode,
+            settledEditSeq: app.screens.settledOnboardingEditSeq,
+            placeholder: L10n.securityIosEnter8DigitPairingCode(),
+            onEdit: { raw in
+                let seq = app.coreHost.nextOnboardingEditSeq()
+                Task { await app.coreHost.onboardingJoinEdit(codeInput: raw, seq: seq) }
+                return seq
+            },
+            onSubmit: {
+                if vm.canSubmit {
+                    Task { await app.coreHost.onboardingJoinSubmit() }
+                }
+            }
         )
         .padding(.horizontal, 16).padding(.bottom, 10)
-        // Anything but digits is dropped as it is typed, and the groups are the field's doing.
-        .onChange(of: typed) { _, text in
-            model.typeCode(text)
-            if typed != model.shownCode { typed = model.shownCode }
-        }
-        .onChange(of: model.code, initial: true) { _, _ in
-            if typed != model.shownCode { typed = model.shownCode }
-        }
-        .accessibilityValue(model.code.map(String.init).joined(separator: " "))
         InputField(
-            L10n.securityServer(), text: $model.server, placeholder: "https://", keyboard: .URL, contentType: .URL,
+            L10n.securityServer(),
+            text: Binding(
+                get: { localServer },
+                set: { next in
+                    let trimmed = next.trimmingCharacters(in: .whitespacesAndNewlines)
+                    localServer = trimmed
+                    let seq = app.coreHost.nextOnboardingEditSeq()
+                    lastServerEditSeq = seq
+                    Task { await app.coreHost.onboardingJoinEdit(serverInput: trimmed, seq: seq) }
+                }
+            ),
+            placeholder: "https://",
+            keyboard: .URL,
+            contentType: .URL,
             submitLabel: .join
         ) {
-            if model.canJoin { model.joinWithCode() }
+            if vm.canSubmit {
+                Task { await app.coreHost.onboardingJoinSubmit() }
+            }
         }
+        .disabled(!vm.serverEditable)
         .padding(.horizontal, 16).padding(.bottom, 10)
-        .onChange(of: model.server) { _, text in
-            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmed != text { model.server = trimmed }
+        .onChange(of: vm.serverInput, initial: true) { _, next in
+            if app.screens.settledOnboardingEditSeq >= lastServerEditSeq && localServer != next {
+                localServer = next
+            }
         }
-        Btn(model.pendingRegistration ? L10n.commonRetry() : L10n.securityJoin(), kind: .primary, enabled: model.canJoin, action: model.joinWithCode)
-            .padding(.horizontal, 16).padding(.top, 6)
-        JoinLink(text: L10n.securityIosScanQrCode(), action: model.showScanner).padding(.top, 8)
+        Btn(
+            vm.pendingRegistration ? L10n.commonRetry() : L10n.securityJoin(),
+            kind: .primary,
+            enabled: vm.canSubmit && !vm.busy
+        ) {
+            Task { await app.coreHost.onboardingJoinSubmit() }
+        }
+        .padding(.horizontal, 16).padding(.top, 6)
+        JoinLink(text: L10n.securityIosScanQrCode(), action: onOpenScanner).padding(.top, 8)
     }
 }
 
-private struct Working: View {
-    let model: JoinModel
+private struct JoinWorkingView: View {
+    @Environment(AppModel.self) private var app
+    let vm: PBJoinPairingView
 
     var body: some View {
-        JoinTitle(text: model.retainedIdentity ? L10n.securityOneTimeSecuritySetup() : L10n.securityJoinAccount())
-        IconText(Mark.progress, L10n.securityIosConnecting())
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 16).padding(.top, 4)
-        if model.canCancel {
-            Btn(L10n.commonCancel(), action: model.cancel).padding(.horizontal, 16).padding(.top, 24)
+        JoinTitle(text: vm.isExistingRepair ? L10n.securityOneTimeSecuritySetup() : L10n.securityJoinAccount())
+        if vm.busy {
+            IconText(Mark.progress, L10n.securityIosConnecting())
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16).padding(.top, 4)
+        }
+        SecurityBanner(banner: vm.banner) {
+            Task { await app.coreHost.onboardingJoinBannerAction() }
+        }
+        .padding(.horizontal, 16).padding(.top, 12)
+        if vm.canCancel {
+            Btn(L10n.commonCancel()) {
+                Task { await app.coreHost.onboardingJoinCancel() }
+            }
+            .padding(.horizontal, 16).padding(.top, 24)
         }
     }
 }
 
-/// 核对图案: the four pictures, as large as they can be compared at a glance, and the ways out.
-private struct Compare: View {
-    let model: JoinModel
-    let emoji: [String]
+private struct JoinCompareView: View {
+    @Environment(AppModel.self) private var app
+    let vm: PBJoinPairingView
     @ScaledMetric(relativeTo: .largeTitle) private var size: CGFloat = 40
 
     var body: some View {
+        let emoji = vm.sasEmoji
+        let comparisonPending = vm.step == .compareSas
         ZStack {
             Text(L10n.securityComparePatterns()).font(.body.weight(.semibold)).ink(DS.ink).accessibilityAddTraits(.isHeader)
             HStack {
                 Spacer()
-                TextAction(L10n.commonCancel(), style: .body, alignment: .center, action: model.cancel).padding(
-                    .trailing, 8)
+                if vm.canCancel {
+                    TextAction(L10n.commonCancel(), style: .body, alignment: .center) {
+                        Task { await app.coreHost.onboardingJoinCancel() }
+                    }
+                    .padding(.trailing, 8)
+                }
             }
         }
         .frame(maxWidth: .infinity, minHeight: DS.minHit)
@@ -308,19 +376,25 @@ private struct Compare: View {
         Text(L10n.securityIosCompareTheManagingClientS4PatternsIfThey())
             .font(.subheadline).ink(DS.ink2).multilineTextAlignment(.center)
             .frame(maxWidth: .infinity).padding(.horizontal, 24)
-        if model.comparisonPending {
-            Btn(L10n.securityPatternsMatchTrustAndContinue(), kind: .primary, action: model.confirmPictures).padding(
-                .horizontal, 16
-            ).padding(.top, 16)
+        if comparisonPending {
+            Btn(L10n.securityPatternsMatchTrustAndContinue(), kind: .primary, enabled: vm.canConfirmSas && !vm.busy) {
+                Task { await app.coreHost.onboardingJoinConfirmSAS() }
+            }
+            .padding(.horizontal, 16).padding(.top, 16)
         }
-        IconText(Mark.progress, model.comparisonPending ? L10n.securityConfirmThePatternsOnThisDeviceFirst() : L10n.securityIosWaitingForManagingClientApprovalAndBinding())
-            .frame(maxWidth: .infinity).padding(.top, 24)
-        if !model.notice.isEmpty {
-            // Registering has begun: the join can no longer be left.
-            Banner(model.notice).padding(.horizontal, 16).padding(.top, 16)
+        IconText(
+            Mark.progress,
+            comparisonPending ? L10n.securityConfirmThePatternsOnThisDeviceFirst() : L10n.securityIosWaitingForManagingClientApprovalAndBinding()
+        )
+        .frame(maxWidth: .infinity).padding(.top, 24)
+        SecurityBanner(banner: vm.banner) {
+            Task { await app.coreHost.onboardingJoinBannerAction() }
         }
+        .padding(.horizontal, 16).padding(.top, 16)
         VStack(spacing: 0) {
-            Btn(L10n.securityPatternsDifferReturnToCodeEntry(), action: model.cancel).disabled(!model.canCancel)
+            Btn(L10n.securityPatternsDifferReturnToCodeEntry(), enabled: vm.canCancel) {
+                Task { await app.coreHost.onboardingJoinCancel() }
+            }
             Hint(L10n.securityReturningStopsThisWaitRejectTheOldRequestOn())
         }
         .padding(.init(top: 24, leading: 16, bottom: 16, trailing: 16))
@@ -355,12 +429,3 @@ private struct EntryRow: View {
         .buttonStyle(RowPressStyle())
     }
 }
-
-#if DEBUG
-    #Preview(L10n.securityJoinAccount()) {
-        JoinFlow(
-            model: JoinModel(lastServer: "https://ra.example.com", calls: .live(http: HTTP())) {
-                _ in
-            })
-    }
-#endif

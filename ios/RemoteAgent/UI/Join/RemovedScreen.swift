@@ -1,106 +1,98 @@
 import RACore
+import RAProto
 import SwiftUI
 
-/// Token rejection alone cannot prove revocation or a completed handoff.
+/// Shown when `AppRootViewModel.stage == .removed`, driven strictly by Core's `RemovedDeviceView`.
 struct RemovedScreen: View {
     @Environment(AppModel.self) private var model
-    @State private var leaving = false
-    @State private var pending = false
-    @State private var verified = false
-    @State private var advice: AppModel.RejoinAdvice?
-    @State private var action = ActionRunner()
+
+    static func copy(for removed: PBRemovedDeviceView) -> (title: String, text: String) {
+        (
+            title: removed.removalVerified
+                ? L10n.settingsThisDeviceWasRemovedFromTheAccount()
+                : L10n.settingsCannotSignInToTheRelayRightNow(),
+            text: removed.removalVerified
+                ? L10n.settingsSignedAccountStateConfirmsThisDeviceWasRemovedSessions()
+                : L10n.settingsTheDeviceMayHaveBeenRemovedTheServiceReset()
+        )
+    }
 
     var body: some View {
+        let removed = model.screens.appRoot.removed
+        let (title, text) = Self.copy(for: removed)
         Page {
             ScrollView {
                 VStack(spacing: 16) {
                     EmptyState(
-                        model.authorityHandoffComplete ? L10n.securityIosManagementTransferred() : L10n.securityIosTheServerRejectedThisDeviceSLogin(),
-                        text: model.authorityHandoffComplete ? L10n.securityIosThisDeviceWasRemovedTheSuccessorIsNowThe() : L10n.settingsTheDeviceMayHaveBeenRemovedTheServiceReset(),
-                        action: L10n.settingsRejoinAccount(), onAction: {
-                            action.run {
-                                if let warning = await model.rejoinAdvice() {
-                                    advice = warning
-                                    leaving = true
-                                } else {
-                                    await model.logout(pairing: true)
+                        title,
+                        text: text,
+                        action: L10n.settingsRejoinAccount(),
+                        onAction: {
+                            if model.isDemo {
+                                Task { await model.logout(pairing: true) }
+                            } else {
+                                Task {
+                                    await model.coreHost.exitRequest(
+                                        intent: .rejoinPairing,
+                                        server: removed.server
+                                    )
                                 }
                             }
                         },
                         note: L10n.securityIosThisDeviceSAccountKeysAndCacheWillBe(),
-                        link: L10n.sessionTryAgain(), onLink: { model.retryLogin() })
-                    if pending {
+                        link: removed.canRetryLogin ? L10n.sessionTryAgain() : nil,
+                        onLink: removed.canRetryLogin ? { model.retryLogin() } : nil
+                    )
+                    if removed.hasPendingOp_p {
                         Banner(L10n.securityIosASecurityOperationIsUnfinishedRetryOrVerifyIts(), tone: .warn)
-                        Btn(L10n.securityIosVerifyOriginalSecurityOperation(), kind: .primary, enabled: !action.running) {
-                            action.run {
-                                guard let remote = model.remote else { return }
-                                try await remote.resumeSecurityOperation()
-                                let st = try await remote.getSecurityStatus()
-                                pending = st.hasPendingOp
-                                verified = !pending
-                            }
+                        Btn(
+                            L10n.securityIosVerifyOriginalSecurityOperation(),
+                            kind: .primary,
+                            enabled: removed.canVerifyPending && !removed.busy
+                        ) {
+                            Task { await model.coreHost.appRootVerifyPendingOp() }
                         }
                     }
-                    if verified { Banner(L10n.securityIosOriginalSecurityOperationVerifiedThisDeviceNoLongerHas()) }
-                    if !action.error.isEmpty { Banner(action.error, tone: .error) }
-                }.padding(16)
-            }
-        }
-        .task {
-            guard !model.isDemo, let remote = model.remote else { return }
-            do {
-                let st = try await remote.getSecurityStatus()
-                pending = st.hasPendingOp
-            } catch { pending = true }
-        }
-        .confirm(isPresented: $leaving, title: L10n.securityExitAndDeleteLocalKeys(),
-            text: advice?.text ?? "",
-            confirm: L10n.securityExit(), danger: true) {
-                action.run {
-                    guard await model.rejoinAdvice() == advice else { throw UserError(L10nMessage.securityIosSecurityOperationStateChangedChooseHowToJoinAgain()) }
-                    await model.logout(pairing: true)
+                    let verifyText = removed.hasVerifyResultText ? removed.verifyResultText.rendered() : ""
+                    if !verifyText.isEmpty {
+                        Banner(verifyText)
+                    }
                 }
+                .padding(16)
             }
+        }
         .debugSignal("removed.retry") { model.retryLogin() }
     }
 }
 
-/// A definitive login rejection before the retained-identity setup form is shown.
+/// Shown when `AppRootViewModel.stage == .retainedDenied`, driven strictly by Core's `RetainedDeniedView`.
 struct RetainedIdentityDeniedScreen: View {
     @Environment(AppModel.self) private var model
-    @State private var advice: AppModel.RejoinAdvice?
-    @State private var asking = false
-    @State private var action = ActionRunner()
 
     private func rejoin() {
-        action.run {
-            if let warning = await model.rejoinAdvice() {
-                advice = warning
-                asking = true
-            } else {
-                await model.logout(pairing: true)
-            }
-        }
+        let server = model.screens.appRoot.retainedDenied.server
+        Task { await model.coreHost.exitRequest(intent: .rejoinPairing, server: server) }
     }
+
     var body: some View {
+        let denied = model.screens.appRoot.retainedDenied
         Page {
             VStack(spacing: 16) {
                 Spacer()
-                EmptyState(L10n.securityTheServerDoesNotRecognizeThisDevice(),
-                    text: L10n.securityItMayHaveBeenRemovedOrTheServiceMay(),
-                    action: L10n.securityRejoinWithAPairingCode(), onAction: rejoin,
-                    note: L10n.securityIosThisPhoneSAccountKeysAndCacheWillBe())
-                if !action.error.isEmpty { Banner(action.error, tone: .error) }
-                Spacer()
-            }.padding(16)
-        }
-        .confirm(isPresented: $asking, title: L10n.securityDeleteLocalKeysAndRejoin(),
-            text: advice?.text ?? "", confirm: L10n.securityRejoin(), danger: true) {
-                action.run {
-                    guard await model.rejoinAdvice() == advice else { throw UserError(L10nMessage.securityIosSecurityOperationStateChangedChooseHowToJoinAgain()) }
-                    await model.logout(pairing: true)
+                LegacyRepairBanner(show: denied.showLegacyRepairBanner) {
+                    Task { await model.coreHost.appRootDismissUpgradeNotice() }
                 }
+                EmptyState(
+                    L10n.securityTheServerDoesNotRecognizeThisDevice(),
+                    text: L10n.securityItMayHaveBeenRemovedOrTheServiceMay(),
+                    action: L10n.securityRejoinWithAPairingCode(),
+                    onAction: rejoin,
+                    note: L10n.securityIosThisPhoneSAccountKeysAndCacheWillBe()
+                )
+                Spacer()
             }
+            .padding(16)
+        }
         .debugSignal("join.rejoin", rejoin)
     }
 }

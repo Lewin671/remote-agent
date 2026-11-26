@@ -47,7 +47,7 @@ struct AccountDeletionScreen: View {
                         do {
                             try await context.remote.deleteAccount()
                             dismiss()
-                            await model.logout()
+                            await model.resetLocalAccountAndLogout()
                         } catch {
                             failure = errorText(error)
                             working = false

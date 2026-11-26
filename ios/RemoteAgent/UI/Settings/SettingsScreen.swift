@@ -10,10 +10,6 @@ struct SettingsScreen: View {
     @Environment(Navigator.self) private var nav
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.horizontalSizeClass) private var sizeClass
-    @State private var leaving = false
-    @State private var leavingAdvice: AppModel.RejoinAdvice?
-    @State private var exitText = ""
-    @State private var exitError = ""
     @State private var images: ImageStorageModel?
     @State private var deletingAccount = false
     @Environment(\.openURL) private var openURL
@@ -37,19 +33,6 @@ struct SettingsScreen: View {
             .startAtEndForScreenshots()
         }
         .sheet(isPresented: $deletingAccount) { AccountDeletionScreen() }
-        .confirm(
-            isPresented: $leaving, title: L10n.securityExitAndDeleteLocalKeys(),
-            text: exitText, confirm: L10n.securityExit(), danger: true
-        ) {
-            Task {
-                guard await model.rejoinAdvice() == leavingAdvice else {
-                    exitError = L10n.securityIosSecurityOperationStateChangedChooseHowToExitAgain()
-                    return
-                }
-                exitError = ""
-                await model.logout()
-            }
-        }
         // Read each time the page comes back: an image may have been viewed or sent meanwhile.
         .task {
             await context.coreHost.openSettings()
@@ -266,22 +249,18 @@ struct SettingsScreen: View {
     }
 
     @ViewBuilder private func dangerSection() -> some View {
-        if !exitError.isEmpty {
-            GroupBanner(exitError, tone: .error)
-        }
         GroupCard {
             // It asks first, as every row that ends in an ellipsis does (design-system §8).
             GRow(L10n.settingsExitAndDeleteLocalKeys(), danger: true) {
-                Task {
-                    exitError = ""
-                    let adv = await model.rejoinAdvice()
-                    leavingAdvice = adv
-                    if let adv {
-                        exitText = adv.text
-                    } else {
-                        exitText = await model.exitAdviceText()
+                if model.isDemo {
+                    Task { await model.logout() }
+                } else {
+                    Task {
+                        await model.coreHost.exitRequest(
+                            intent: .leaveAccount,
+                            server: context.account.server
+                        )
                     }
-                    leaving = true
                 }
             }
             GRow(L10n.settingsIosDeleteEntireAccount(), danger: true) { deletingAccount = true }
