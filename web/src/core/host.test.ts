@@ -576,3 +576,39 @@ test("viewSession + viewSessionHeader computes core.view(SESSION) at most once p
   expect(hdr2).toBe(vm2.header);
   expect(viewSpy).toHaveBeenCalledTimes(1);
 });
+
+test("viewSession invalidates cached not-found result when HOME renders before watchSession", async () => {
+  const r = await SyntheticRemote.create({ seedDefaultSession: false });
+  try {
+    const row = await r.sessionRow("s");
+    let releaseSessions!: () => void;
+    const sessionsDeferred = new Promise<{ sessions: typeof row[] }>((resolve) => {
+      releaseSessions = () => resolve({ sessions: [row] });
+    });
+    (r as unknown as { api: object }).api = {
+      listMachines: async () => ({ machines: [] }),
+      listRemoteSessions: () => sessionsDeferred,
+      listDevices: async () => ({ devices: [] }),
+      getAccountPrefs: async () => ({}),
+    };
+    (r as unknown as { openStreamLeg: (legId: bigint, t: string, cb: StreamLegCallbacks) => void }).openStreamLeg = (
+      legId,
+      _t,
+      cb,
+    ) => cb.onReady(legId, BigInt(Date.now()));
+
+    const host = getCoreHost(r);
+    r.start();
+    await vi.waitFor(() => expect(host.viewConnection().connected).toBe(true));
+
+    // Reading viewSession before watchSession/sessionOpen while listRemoteSessions is still
+    // in flight caches found=false. Core intentionally omits SCREEN_TARGET_SESSION when no
+    // session is opened/watched, so CoreHost must clear sessionCache on HOME/CONNECTION renders.
+    expect(host.viewSession("s").header?.found).toBe(false);
+
+    releaseSessions();
+    await vi.waitFor(() => expect(host.viewSession("s").header?.found).toBe(true), { timeout: 1000 });
+  } finally {
+    await r.dispose();
+  }
+});

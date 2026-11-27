@@ -4118,6 +4118,13 @@ export class CoreHost {
     this.dirtyTargets.clear();
 
     if (targets.includes(ScreenTarget.CONNECTION) || targets.includes(ScreenTarget.HOME) || targets.includes(ScreenTarget.PROJECT)) {
+      // Core omits SCREEN_TARGET_SESSION from RenderEffect when no session is
+      // opened/watched yet; clear any sessionCache entry (e.g. an early
+      // found=false read before watchSession/sessionOpen) so it cannot stick.
+      if (!targets.includes(ScreenTarget.SESSION)) {
+        this.invalidateTarget(ScreenTarget.SESSION);
+        if ((this.listeners.get(ScreenTarget.SESSION)?.size ?? 0) > 0) targets.push(ScreenTarget.SESSION);
+      }
       for (const st of SETTINGS_TARGETS) {
         if (!targets.includes(st)) {
           this.invalidateTarget(st);
