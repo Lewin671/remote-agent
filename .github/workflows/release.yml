@@ -152,7 +152,7 @@ jobs:
         working-directory: web
         env:
           RA_OFFICIAL_RELEASE: 'true'
-          VITE_DEFAULT_SERVER: https://ra.remote-agent.top
+          VITE_DEFAULT_SERVER: https://relay.remote-agent.top
         run: |
           pnpm install --frozen-lockfile --prefer-offline
           pnpm test

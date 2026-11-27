@@ -66,11 +66,11 @@ remote-agent-service install                                     # run the daemo
 **3. Join and start a session.** Open **Settings › Add device** in the client to get a pairing code, then:
 
 ```sh
-remote-agent account join --server https://ra.remote-agent.top --code <code from the authority>
+remote-agent account join --server https://relay.remote-agent.top --code <code from the authority>
 remote-agent codex                                               # or: remote-agent claude
 ```
 
-The session is now on your phone too. The relay `ra.remote-agent.top` and the page `remote-agent.top` are run by the maintainer for trying it out: still end-to-end encrypted, but you trust the maintainer's copy of the web page. Up to 8 devices, 2 computers and 200 sessions per account, no uptime promise.
+The session is now on your phone too. The relay `relay.remote-agent.top` and the page `remote-agent.top` are run by the maintainer for trying it out: still end-to-end encrypted, but you trust the maintainer's copy of the web page. Up to 8 devices, 2 computers and 200 sessions per account, no uptime promise.
 
 **Or let your coding agent do steps 2 and 3.** Paste this into Claude Code, Codex or Antigravity:
 

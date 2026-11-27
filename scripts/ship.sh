@@ -19,14 +19,23 @@
 # running the release is skipped, so after a failure run it again.
 # The App is not shipped: it updates itself from the public release.
 #
-# RA_DEPLOY_HOST is the server's ssh host (default root@ra.remote-agent.top),
-# RA_SERVER_URL the server and RA_WEB_URL the web client as users reach them.
+# Relays: every relay we run is upgraded in step 2, each as "<ssh host> <url>"
+# per line. The list comes from RA_RELAYS (same format, newline separated) or
+# ~/.config/remote-agent/relays, which is not in this public repository
+# because it may name relays we do not advertise; without either, only the
+# public relay root@relay.remote-agent.top is shipped. RA_WEB_URL is the web
+# client as users reach it.
 set -eu
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-HOST=${RA_DEPLOY_HOST:-root@ra.remote-agent.top}
-SERVER_URL=${RA_SERVER_URL:-https://ra.remote-agent.top}
+RELAYS=${RA_RELAYS:-}
+if [ -z "$RELAYS" ] && [ -r "$HOME/.config/remote-agent/relays" ]; then
+	RELAYS=$(grep -v '^[[:space:]]*\(#\|$\)' "$HOME/.config/remote-agent/relays")
+fi
+[ -n "$RELAYS" ] || RELAYS="root@relay.remote-agent.top https://relay.remote-agent.top"
 WEB_URL=${RA_WEB_URL:-https://remote-agent.top}
+# The relay the official web page offers by default: the public one.
+WEB_DEFAULT_SERVER=${RA_WEB_DEFAULT_SERVER:-https://relay.remote-agent.top}
 SHIP_SERVER=${RA_SHIP_SERVER:-auto}
 BIN=${BIN:-$HOME/bin/remote-agent}
 DIR=/opt/remote-agent
@@ -98,37 +107,52 @@ git -C "$ROOT" worktree add -q --detach "$work" "$commit"
 built_commit() { sed -n 's/.*(\([0-9a-f]\{40\}\)).*/\1/p'; }
 
 if [ "$web_only" = false ]; then
-say "server"
-deployed=$(ssh "$HOST" "$DIR/remote-agent-server --version" 2>/dev/null | built_commit) || deployed=
-deploy_server=$SHIP_SERVER
-if [ "$deploy_server" = auto ]; then
-	deploy_server=always
-	if [ "$deployed" = "$commit" ]; then
-		deploy_server=never
-	elif [ -n "$deployed" ] && git -C "$ROOT" cat-file -e "$deployed^{commit}" 2>/dev/null; then
-		# What the server is built from: its packages in this module, the
-		# module files and the deployment itself.
-		inputs=$(cd "$work" && go list -deps -f '{{if .Module}}{{if .Module.Main}}{{.ImportPath}}{{end}}{{end}}' ./cmd/remote-agent-server | sed -n "s|^$MODULE/||p")
-		# shellcheck disable=SC2086
-		if git -C "$work" diff --quiet "$deployed" "$commit" -- $inputs go.mod go.sum deploy/Dockerfile deploy/compose.yaml deploy/deploy.sh scripts/build-go.sh; then
+# ship_server HOST URL: deploys the server to one relay unless it already runs
+# this release or its code is unchanged since the deployed one.
+ship_server() {
+	HOST=$1
+	SERVER_URL=$2
+	say "server $SERVER_URL"
+	deployed=$(ssh "$HOST" "$DIR/remote-agent-server --version" 2>/dev/null | built_commit) || deployed=
+	deploy_server=$SHIP_SERVER
+	if [ "$deploy_server" = auto ]; then
+		deploy_server=always
+		if [ "$deployed" = "$commit" ]; then
 			deploy_server=never
+		elif [ -n "$deployed" ] && git -C "$ROOT" cat-file -e "$deployed^{commit}" 2>/dev/null; then
+			# What the server is built from: its packages in this module, the
+			# module files and the deployment itself.
+			inputs=$(cd "$work" && go list -deps -f '{{if .Module}}{{if .Module.Main}}{{.ImportPath}}{{end}}{{end}}' ./cmd/remote-agent-server | sed -n "s|^$MODULE/||p")
+			# shellcheck disable=SC2086
+			if git -C "$work" diff --quiet "$deployed" "$commit" -- $inputs go.mod go.sum deploy/Dockerfile deploy/compose.yaml deploy/deploy.sh scripts/build-go.sh; then
+				deploy_server=never
+			fi
 		fi
 	fi
-fi
-if [ "$deploy_server" = always ]; then
-	"$work/deploy/deploy.sh" "$HOST" "$DIR"
-	[ "$(ssh "$HOST" "$DIR/remote-agent-server --version" | built_commit)" = "$commit" ] || fail "the server's binary is not $tag"
-	ssh "$HOST" "cd $DIR && docker compose ps --status running --quiet | grep -q ." || fail "the server's container is not running"
-	i=0
-	until code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$SERVER_URL/") && [ "$code" -gt 0 ] && [ "$code" -lt 500 ]; do
-		i=$((i + 1))
-		[ $i -lt 12 ] || fail "$SERVER_URL does not answer (last status $code)"
-		sleep 5
-	done
-	echo "server runs $tag"
-else
-	echo "skipped: the server's code is unchanged since the deployed ${deployed:-?}"
-fi
+	if [ "$deploy_server" = always ]; then
+		"$work/deploy/deploy.sh" "$HOST" "$DIR"
+		[ "$(ssh "$HOST" "$DIR/remote-agent-server --version" | built_commit)" = "$commit" ] || fail "the server at $SERVER_URL is not $tag"
+		ssh "$HOST" "cd $DIR && docker compose ps --status running --quiet | grep -q ." || fail "the server's container at $SERVER_URL is not running"
+		i=0
+		until code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$SERVER_URL/") && [ "$code" -gt 0 ] && [ "$code" -lt 500 ]; do
+			i=$((i + 1))
+			[ $i -lt 12 ] || fail "$SERVER_URL does not answer (last status $code)"
+			sleep 5
+		done
+		echo "server runs $tag"
+	else
+		echo "skipped: the server's code is unchanged since the deployed ${deployed:-?}"
+	fi
+}
+# All relays move before the web and the daemon, so a protocol change never
+# leaves a client newer than the relay it talks to.
+# Read the list on fd 3: ssh and deploy.sh read stdin and would swallow it.
+while read -r relay_host relay_url <&3; do
+	[ -n "$relay_host" ] && [ -n "$relay_url" ] || fail "each relay line needs \"<ssh host> <url>\""
+	ship_server "$relay_host" "$relay_url"
+done 3<<RELAYS_EOF
+$RELAYS
+RELAYS_EOF
 
 fi
 
@@ -208,9 +232,9 @@ else
 		touch "$work/build/core/web/core.wasm"
 	fi
 	if [ "$web_only" = true ]; then
-		(cd "$work/web" && VITE_DEFAULT_SERVER=$SERVER_URL VITE_DIRECT_STUN_URL=$stun_url pnpm run deploy)
+		(cd "$work/web" && VITE_DEFAULT_SERVER=$WEB_DEFAULT_SERVER VITE_DIRECT_STUN_URL=$stun_url pnpm run deploy)
 	else
-		(cd "$work/web" && pnpm install --frozen-lockfile --prefer-offline --silent && VITE_DEFAULT_SERVER=$SERVER_URL VITE_DIRECT_STUN_URL=$stun_url pnpm run deploy)
+		(cd "$work/web" && pnpm install --frozen-lockfile --prefer-offline --silent && VITE_DEFAULT_SERVER=$WEB_DEFAULT_SERVER VITE_DIRECT_STUN_URL=$stun_url pnpm run deploy)
 	fi
 	i=0
 	until web_has "$commit"; do

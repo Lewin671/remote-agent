@@ -20,7 +20,7 @@
 | 端 | 形态 | 部署 |
 |---|---|---|
 | `remote-agent` | Go 单二进制：daemon、本地 CLI（`remote-agent codex` 等）和 hook 入口都在里面 | 每台电脑一个 |
-| `remote-agent-server` | Go 单二进制，SQLite 存储，不直接对外暴露端口 | VPS 上，前面由 Caddy 负责 HTTPS 和反向代理，域名为 `api.<域名>`（当前部署在 `ra.remote-agent.top`，见下文） |
+| `remote-agent-server` | Go 单二进制，SQLite 存储，不直接对外暴露端口 | VPS 上，前面由 Caddy 负责 HTTPS 和反向代理，域名为 `api.<域名>`（当前部署在 `relay.remote-agent.top`，见下文） |
 | `web` | PWA，React + Vite + TypeScript | Cloudflare Pages，和 server 在同一个注册域名下（当前在 `remote-agent.top`，见下文） |
 | `android` | 原生 App，Kotlin + Jetpack Compose，见 [android-client.md](android-client.md) | 自己签名的 APK，侧载安装 |
 | `ios` | 原生 App，Swift + SwiftUI，见 [ios-client.md](ios-client.md) | App Store 正式发布与 TestFlight 内部测试（流程见 [development.md](development.md#ios-app-store-自动发布)） |

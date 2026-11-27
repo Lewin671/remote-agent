@@ -66,11 +66,11 @@ remote-agent-service install                                     # 在后台运�
 **3. 加入账户，开一个会话**：在客户端的「设置 › 添加设备」里取配对码，然后：
 
 ```sh
-remote-agent account join --server https://ra.remote-agent.top --code <管理端显示的配对码>
+remote-agent account join --server https://relay.remote-agent.top --code <管理端显示的配对码>
 remote-agent codex                                               # 或：remote-agent claude
 ```
 
-这个会话现在手机上也有了。中继 `ra.remote-agent.top` 和网页 `remote-agent.top` 由维护者提供，用于试用：同样端到端加密，但你要信任维护者提供的这份网页。每个账户最多 8 台设备、2 台电脑、200 个会话，不保证可用性。
+这个会话现在手机上也有了。中继 `relay.remote-agent.top` 和网页 `remote-agent.top` 由维护者提供，用于试用：同样端到端加密，但你要信任维护者提供的这份网页。每个账户最多 8 台设备、2 台电脑、200 个会话，不保证可用性。
 
 **也可以让编程 agent 替你做第 2、3 步**，把下面这段贴进 Claude Code、Codex 或 Antigravity：
 
