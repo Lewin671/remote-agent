@@ -487,6 +487,9 @@ func (c *Core) onConnCheckCommandSettled(sc sync.SettledCommand, meta cmdMeta) [
 		if snap.HasNetwork {
 			snap.NetworkMs = latency.ClampNetworkMs(snap.NetworkMs, totalMs, snap.ComputerMs)
 		}
+		// The computer's self-reported time happens inside this round trip,
+		// so the total can never be smaller than it.
+		snap.TotalMs = max(snap.TotalMs, snap.ComputerMs)
 
 		snap.State = corev1.MachineLatencyState_MACHINE_LATENCY_STATE_DONE
 		job.phase = connCheckPhaseDone

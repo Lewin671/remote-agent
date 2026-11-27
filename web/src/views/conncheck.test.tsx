@@ -10,7 +10,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConnProbeState } from "../core/host";
 import { renderText } from "../core/text";
 import { DemoRemote } from "../dev/demo";
-import { setDemoDirect } from "../dev/direct-demo";
 import { ScreenGoldenFileSchema, type ScreenGoldenFile } from "../gen/remoteagent/core/v1/golden_pb";
 import { ConnState } from "../gen/remoteagent/core/v1/home_view_pb";
 import {
@@ -109,7 +108,7 @@ describe("connection check golden rendering", () => {
     expect(okRow.querySelector(".conn-top .mv .mark.online")).not.toBeNull();
     expect(okRow.getAttribute("aria-label")).toContain("38");
     expect(segmentsOf(okRow)).toEqual([
-      { label: "网络往返", slowTag: "", value: "6 ms", detail: "", emphasized: false },
+      { label: "网络往返", slowTag: "", value: "11 ms", detail: "", emphasized: false },
       { label: "电脑处理", slowTag: "", value: "21 ms", detail: "", emphasized: false },
     ]);
 
@@ -119,7 +118,7 @@ describe("connection check golden rendering", () => {
     expect(slowRow.querySelector(".conn-top .mv .mark.off")).not.toBeNull();
     const slowSegs = segmentsOf(slowRow);
     expect(slowSegs).toHaveLength(2);
-    expect(slowSegs[0]).toEqual({ label: "网络往返", slowTag: "", value: "8 ms", detail: "", emphasized: false });
+    expect(slowSegs[0]).toEqual({ label: "网络往返", slowTag: "", value: "20 ms", detail: "", emphasized: false });
     expect(slowSegs[1].label).toBe("电脑处理");
     expect(slowSegs[1].slowTag).toBe("较慢");
     expect(slowSegs[1].emphasized).toBe(true);
@@ -151,7 +150,7 @@ describe("connection check golden rendering", () => {
     expect(timeoutMv.querySelector(".mark")).toBeNull();
     const timeoutSegs = segmentsOf(timeoutRow);
     expect(timeoutSegs).toHaveLength(2);
-    expect(timeoutSegs[0]).toEqual({ label: "网络往返", slowTag: "较慢", value: "520 ms", detail: "", emphasized: true });
+    expect(timeoutSegs[0]).toEqual({ label: "网络往返", slowTag: "", value: "302 ms", detail: "", emphasized: false });
     expect(timeoutSegs[1]).toEqual({ label: "电脑处理", slowTag: "", value: "超过 15 秒", detail: "", emphasized: true });
 
     // Footer renders text directly from core
@@ -301,7 +300,11 @@ describe("connection check event wiring and core integration", () => {
   });
 
   describe("live core smoke with DemoRemote", () => {
-    const base = () => message("connection.latency_is_one_round_trip_the_server_row_measures");
+    const base = () =>
+      message("common.sentence_join", {
+        first: message("connection.latency_is_one_round_trip_the_server_row_measures"),
+        second: message("connection.latency_footer_breakdown"),
+      });
     const footer = () => host.querySelector(".gf")!.textContent!;
     const settle = () =>
       vi.waitFor(() => expect(host.querySelector<HTMLButtonElement>(".conn-again button")!.disabled).toBe(false));
@@ -320,11 +323,13 @@ describe("connection check event wiring and core integration", () => {
     }
 
     it("measures via clientcore probe_latency and renders direct summary + two breakdown rows", async () => {
-      openDemo("", (r) => { setDemoDirect(r, "mac", { preset: "direct", rttMs: 16 }); });
+      // Demo runs no transport, so a direct machine has no keepalive samples
+      // and the core waits its 3 s before probing; direct rows are covered by
+      // the golden test above, so this smoke stays on the relay.
+      openDemo("");
       await settle();
 
       const mac = machineRow("mac");
-      expect(mac.querySelector(".conn-top .mt small.direct-line")?.textContent).toBe("正在用直连");
       expect(mac.querySelectorAll(".mark").length).toBe(1);
       expect(segmentsOf(mac).map((s) => s.label)).toEqual(["网络往返", "电脑处理"]);
 

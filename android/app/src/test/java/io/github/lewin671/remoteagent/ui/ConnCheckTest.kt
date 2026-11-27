@@ -304,7 +304,7 @@ class ConnCheckTest {
         // 1. MacBook: direct normal
         ui.onNodeWithText("MacBook").assertExists()
         ui.onNodeWithText("38 ms").assertExists()
-        ui.onNodeWithText("6 ms").assertExists()
+        ui.onNodeWithText("11 ms").assertExists()
         ui.onNodeWithText("21 ms").assertExists()
 
         // 2. Studio: slow computer with queued detail
@@ -326,11 +326,10 @@ class ConnCheckTest {
         ui.onNodeWithText("版本较旧").assertExists()
         ui.onNodeWithText("更新电脑上的 remote-agent 后，可显示网络往返和电脑处理的耗时").assertExists()
 
-        // 5. VPS-dev: computer timeout with slow network & stuck computer segment
+        // 5. VPS-dev: computer timeout over the relay, network fine, computer segment stuck
         ui.onNodeWithText("VPS-dev").performScrollTo().assertExists()
         ui.onNodeWithText("电脑没有及时回应").assertExists()
-        ui.onNodeWithText("网络往返 · 较慢").assertExists()
-        ui.onNodeWithText("520 ms").assertExists()
+        ui.onNodeWithText("302 ms").assertExists()
         ui.onNodeWithText("超过 15 秒").assertExists()
 
         // Footer
