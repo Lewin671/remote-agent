@@ -429,3 +429,104 @@ func TestTransientPeerConnectionDisconnectedDoesNotCloseImmediately(t *testing.T
 		}
 	})
 }
+
+func unconfirmedLocalPair(t *testing.T, allowB *atomic.Bool) (*Path, *Path, context.Context) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	t.Cleanup(cancel)
+	ac, bc := make(chan *webrtc.ICECandidateInit, 65), make(chan *webrtc.ICECandidateInit, 65)
+	a, err := New(ctx, Config{Use: 1, Owner: "test", Peer: "peer-b", Generation: 1, Pool: NewPool(8), Allow: func() bool { return true }, LoopbackOnly: true, Candidate: func(c *webrtc.ICECandidateInit) { ac <- c }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { a.Close(); a.Wait() })
+	b, err := New(ctx, Config{Use: 1, Owner: "test", Peer: "peer-a", Generation: 1, Pool: NewPool(8), Allow: allowB.Load, LoopbackOnly: true, Candidate: func(c *webrtc.ICECandidateInit) { bc <- c }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { b.Close(); b.Wait() })
+	offer, err := a.Description(true, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = b.Remote(offer, true); err != nil {
+		t.Fatal(err)
+	}
+	answer, err := b.Description(false, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = a.Remote(answer, false); err != nil {
+		t.Fatal(err)
+	}
+	for _, pair := range []struct {
+		source chan *webrtc.ICECandidateInit
+		target *Path
+	}{{ac, b}, {bc, a}} {
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case c := <-pair.source:
+					if c == nil {
+						return
+					}
+					_ = pair.target.AddCandidate(*c)
+				}
+			}
+		}()
+	}
+	return a, b, ctx
+}
+
+func TestProbeEchoesBeforeConfirmWhileBusinessTrafficStaysGated(t *testing.T) {
+	var allowB atomic.Bool
+	allowB.Store(true)
+	a, b, ctx := unconfirmedLocalPair(t, &allowB)
+
+	// Wait for probe channel on a to open (ICE + DTLS + SCTP complete) without calling b.Confirm().
+	probeOpen := make(chan struct{})
+	a.probe.OnOpen(func() { close(probeOpen) })
+	if a.probe.ReadyState() != webrtc.DataChannelStateOpen {
+		select {
+		case <-probeOpen:
+		case <-ctx.Done():
+			t.Fatal("probe channel did not open")
+		}
+	}
+
+	// Capture probe echoes returning to a.
+	echoed := make(chan []byte, 4)
+	a.probe.OnMessage(func(m webrtc.DataChannelMessage) {
+		if !m.IsString && len(m.Data) == 17 && m.Data[0] == 1 {
+			echoed <- append([]byte(nil), m.Data...)
+		}
+	})
+
+	// Send a 17-byte liveness probe before b.Confirm(): b must echo it immediately.
+	req := make([]byte, 17)
+	req[0] = 0
+	for i := 1; i < len(req); i++ {
+		req[i] = byte(i + 0x20)
+	}
+	if err := a.probe.Send(req); err != nil {
+		t.Fatalf("send probe: %v", err)
+	}
+	select {
+	case got := <-echoed:
+		if !bytes.Equal(got[1:], req[1:]) {
+			t.Fatalf("echo nonce mismatch: got %x want %x", got[1:], req[1:])
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("pre-confirm liveness probe was not echoed")
+	}
+
+	// Business writes on unconfirmed b must still be rejected.
+	if err := b.Write(ctx, []byte("secret")); err != ErrClosed {
+		t.Fatalf("unconfirmed Write err = %v, want ErrClosed", err)
+	}
+	if b.diag.unready.Load() != 0 || b.diag.echoed.Load() != 1 {
+		t.Fatalf("probe diag = echoed:%d unready:%d, want 1/0", b.diag.echoed.Load(), b.diag.unready.Load())
+	}
+}

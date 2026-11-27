@@ -180,11 +180,15 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 			p.probe = dc
 			dc.OnMessage(func(m webrtc.DataChannelMessage) {
 				// Probe channel accepts only fixed-size opaque echoes, never fragments or
-				// commands. Its response cannot amplify a request.
+				// commands. Its response cannot amplify a request. Allow echoing once DTLS
+				// and the probe channel are open and the path's admission gate is valid,
+				// without waiting for the out-of-band Confirm frame: otherwise the peer's
+				// first liveness probe frequently races ahead of Confirm and is lost.
+				// Business traffic on dc0 still requires businessReady() (post-Confirm).
 				if m.IsString || len(m.Data) != 17 || m.Data[0] != 0 {
 					return
 				}
-				if !p.businessReady() {
+				if !p.valid() {
 					p.diag.probe(false)
 					return
 				}
