@@ -6,6 +6,7 @@ import (
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/world"
+	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/gen/timestamppb"
@@ -85,7 +86,7 @@ func TestBuildTimelineResolvesCompletedToolOnTailSlice(t *testing.T) {
 		TailRequested: true,
 		EventRev:      1,
 		Events:        events,
-		Projection: &corev1.ProjectionState{
+		Projection: &projection.State{
 			CompletedAt: map[uint64]uint64{501: 503},
 		},
 	}
@@ -285,7 +286,7 @@ func TestCompactedNotePercentArgsAreBareNumbers(t *testing.T) {
 	note := buildSettingsChangedNote(
 		&v1.Event{},
 		&v1.SettingsChanged{Compacted: true},
-		&corev1.ContextCompaction{BeforePercent: &before, AfterPercent: &after},
+		&projection.ContextCompaction{BeforePercent: &before, AfterPercent: &after},
 		NewState(nil), nil, "", "",
 	)
 	if note == nil || note.Text == nil || note.Text.Key != text.KeySessionAndroidCompactedUsage {

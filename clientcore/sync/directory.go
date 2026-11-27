@@ -1044,7 +1044,7 @@ func (e *Engine) refreshSessionPending(s *SessionEntry) {
 	if s.Info != nil {
 		agent = s.Info.Agent
 	}
-	var ps *corev1.ProjectionState
+	var ps *projection.State
 	if buf := e.buffers[s.ID]; buf != nil && len(buf.prefix) > 0 {
 		if buf.reducer == nil {
 			buf.rebuildReducer(agent)
@@ -1063,7 +1063,7 @@ func (e *Engine) refreshSessionPending(s *SessionEntry) {
 	s.Pending = pendingFromProjection(ps, s.Info)
 }
 
-func pendingFromProjection(ps *corev1.ProjectionState, meta *v1.Session) lists.PendingAction {
+func pendingFromProjection(ps *projection.State, meta *v1.Session) lists.PendingAction {
 	var p lists.PendingAction
 	if meta != nil && meta.Status == v1.SessionStatus_SESSION_STATUS_BLOCKED {
 		p.HasPopup = true

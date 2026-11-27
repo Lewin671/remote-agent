@@ -115,13 +115,6 @@ var allowedCoreLiteEntries = map[string]bool{
 	"strict:remoteagent.core.v1.PersistedOutboxRecord": true,
 }
 
-// Shrink-only allowlist for legacy internal core roots still exported in entries.txt
-// until corebind/projection.go (Android TestServer / EventProjectionTest) is retired.
-var legacyCoreLiteEntriesAllowlist = map[string]string{
-	"in:remoteagent.core.v1.EventBatch":       "legacy-corebind-projection",
-	"out:remoteagent.core.v1.ProjectionState": "legacy-corebind-projection",
-}
-
 func shortWireName(d protoreflect.Descriptor) string {
 	return "v1." + strings.TrimPrefix(string(d.FullName()), string(wireProtoPkg)+".")
 }
@@ -262,19 +255,10 @@ func TestCoreContractWireBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read entries.txt: %v", err)
 	}
-	foundLegacyEntries := map[string]string{}
 	for entry := range coreEntries {
-		if allowedCoreLiteEntries[entry] {
-			continue
+		if !allowedCoreLiteEntries[entry] {
+			t.Errorf("forbidden remoteagent.core.v1 root in entries.txt: %q", entry)
 		}
-		foundLegacyEntries[entry] = entriesPath
-	}
-	unexpectedEntries, staleEntries := diffWireViolations(foundLegacyEntries, legacyCoreLiteEntriesAllowlist)
-	for _, entry := range unexpectedEntries {
-		t.Errorf("forbidden remoteagent.core.v1 root in entries.txt: %q", entry)
-	}
-	for _, entry := range staleEntries {
-		t.Errorf("stale legacyCoreLiteEntriesAllowlist entry %q: remove it", entry)
 	}
 }
 

@@ -5,6 +5,7 @@ package world
 
 import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 )
@@ -91,7 +92,7 @@ type SessionSnapshot struct {
 	UnavailableCount     uint32
 	LastSeq              uint64
 	EventRev             uint64
-	Projection           *corev1.ProjectionState
+	Projection           *projection.State
 	Events               []*v1.Event
 }
 

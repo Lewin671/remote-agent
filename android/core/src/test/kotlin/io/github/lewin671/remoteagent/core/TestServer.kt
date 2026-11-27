@@ -399,24 +399,35 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                             if (cmd.hasGetLiveSnapshot()) {
                                 val sid = cmd.getLiveSnapshot.sessionId
                                 val current = history[sid]?.toList() ?: emptyList()
-                                val ps = ProjectionState.parseFrom(
-                                    io.github.lewin671.remoteagent.corebind.Corebind.reduce(
-                                        DEFAULT_AGENT.number,
-                                        EventBatch.newBuilder().addAllEvents(current).build().toByteArray(),
-                                    ),
-                                )
-                                val pendingApprovals = ps.approvalsList.mapTo(HashSet()) { it.approvalId }
-                                val pendingQuestions = ps.questionsList.mapTo(HashSet()) { it.questionId }
-                                val pendingInputs =
-                                    ps.inputsList
-                                        .filter {
-                                            it.status in
-                                                setOf(
-                                                    InputStatus.INPUT_STATUS_QUEUED,
-                                                    InputStatus.INPUT_STATUS_HELD_BY_CLI,
-                                                )
+                                var isRunning = false
+                                val pendingApprovals = LinkedHashSet<String>()
+                                val pendingQuestions = LinkedHashSet<String>()
+                                val inputStatuses = LinkedHashMap<String, InputStatus>()
+                                for (ev in current) {
+                                    when {
+                                        ev.hasTurnStarted() -> isRunning = true
+                                        ev.hasTurnEnded() -> isRunning = false
+                                        ev.hasSessionState() -> {
+                                            isRunning = ev.sessionState.status == SessionStatus.SESSION_STATUS_RUNNING
+                                            if (ev.sessionState.status == SessionStatus.SESSION_STATUS_EXITED) {
+                                                pendingApprovals.clear()
+                                                pendingQuestions.clear()
+                                            }
                                         }
-                                        .mapTo(HashSet()) { it.requestId }
+                                        ev.hasApprovalRequested() -> pendingApprovals += ev.approvalRequested.approvalId
+                                        ev.hasApprovalResolved() -> pendingApprovals -= ev.approvalResolved.approvalId
+                                        ev.hasQuestionAsked() -> pendingQuestions += ev.questionAsked.questionId
+                                        ev.hasQuestionAnswered() -> pendingQuestions -= ev.questionAnswered.questionId
+                                        ev.hasInputState() -> inputStatuses[ev.inputState.requestId] = ev.inputState.status
+                                    }
+                                }
+                                val pendingInputs =
+                                    inputStatuses.entries
+                                        .filter {
+                                            it.value == InputStatus.INPUT_STATUS_QUEUED ||
+                                                it.value == InputStatus.INPUT_STATUS_HELD_BY_CLI
+                                        }
+                                        .mapTo(HashSet()) { it.key }
                                 val actions =
                                     current.filter {
                                         it.hasApprovalRequested() &&
@@ -429,7 +440,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                                 CommandResult.newBuilder()
                                     .setLiveSnapshot(
                                         liveSnapshot?.invoke(sid) ?: LiveSnapshot.newBuilder()
-                                            .setRunning(ps.running)
+                                            .setRunning(isRunning)
                                             .setSession(
                                                 info[sid] ?: Session.newBuilder().setId(sid).build()
                                             )

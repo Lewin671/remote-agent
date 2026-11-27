@@ -53,7 +53,7 @@ type EventBuffer struct {
 
 	reducer    *projection.Reducer
 	rev        uint64
-	cachedSnap *corev1.ProjectionState
+	cachedSnap *projection.State
 }
 
 func newEventBuffer(sid string, agent v1.Agent, monoMs int64) *EventBuffer {

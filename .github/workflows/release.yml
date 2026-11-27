@@ -92,6 +92,11 @@ jobs:
           python3 scripts/i18n.py lint
       - name: Release policy tests
         run: python3 -m unittest discover -s scripts -p '*_test.py'
+      - name: Lite protobuf generation drift check
+        run: |
+          go install github.com/bufbuild/buf/cmd/buf@v1.73.0
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          python3 scripts/core/check_lite_gen.py
       - name: Go tests
         # The restored build cache also holds test results; a release runs them.
         run: |

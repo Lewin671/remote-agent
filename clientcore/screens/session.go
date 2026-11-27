@@ -1936,9 +1936,9 @@ func buildSessionPendingTray(p trayBuildParams) *corev1.SessionPendingTrayView {
 	buckets := make(map[corev1.SessionTrayGroupKind][]*corev1.SessionTrayItemView, len(trayGroupOrder))
 	seen := make(map[string]bool)
 
-	var projByID map[string]*corev1.InputProjection
+	var projByID map[string]*projection.InputProjection
 	if p.in.Projection != nil && len(p.in.Projection.Inputs) > 0 {
-		projByID = make(map[string]*corev1.InputProjection, len(p.in.Projection.Inputs))
+		projByID = make(map[string]*projection.InputProjection, len(p.in.Projection.Inputs))
 		for _, ip := range p.in.Projection.Inputs {
 			if ip != nil && ip.RequestId != "" {
 				projByID[ip.RequestId] = ip
@@ -2054,7 +2054,7 @@ func buildSessionPendingTray(p trayBuildParams) *corev1.SessionPendingTrayView {
 	return tray
 }
 
-func buildPendingInputTrayItem(p trayBuildParams, pi *corev1.PendingInput, ip *corev1.InputProjection) (*corev1.SessionTrayItemView, bool) {
+func buildPendingInputTrayItem(p trayBuildParams, pi *projection.PendingInput, ip *projection.InputProjection) (*corev1.SessionTrayItemView, bool) {
 	cancelSlot := "cancel_input:" + p.sid + ":" + pi.RequestId
 	resumeSlot := "resume_input:" + p.sid + ":" + pi.RequestId
 	cancelState := commandSlotState(p.ui, cancelSlot, nil, nil)
@@ -2138,7 +2138,7 @@ func buildPendingInputTrayItem(p trayBuildParams, pi *corev1.PendingInput, ip *c
 	}, true
 }
 
-func buildTerminalInputTrayItem(p trayBuildParams, ip *corev1.InputProjection, og *SessionOutgoingRecord) (*corev1.SessionTrayItemView, bool) {
+func buildTerminalInputTrayItem(p trayBuildParams, ip *projection.InputProjection, og *SessionOutgoingRecord) (*corev1.SessionTrayItemView, bool) {
 	var group corev1.SessionTrayGroupKind
 	switch ip.Status {
 	case v1.InputStatus_INPUT_STATUS_FAILED:
@@ -2438,7 +2438,7 @@ func trayGroupTitle(kind corev1.SessionTrayGroupKind, agentName string) *corev1.
 	}
 }
 
-func trayAttachments(local *LocalSentContent, ip *corev1.InputProjection, piFiles []*v1.SentFile) (imgIDs, fileIDs []string, imgCount, fileCount int32) {
+func trayAttachments(local *LocalSentContent, ip *projection.InputProjection, piFiles []*v1.SentFile) (imgIDs, fileIDs []string, imgCount, fileCount int32) {
 	if local != nil {
 		imgIDs = append([]string(nil), local.ImageIDs...)
 		fileIDs = append([]string(nil), local.FileIDs...)
@@ -2510,7 +2510,7 @@ func trayUnsureReasonText(og *SessionOutgoingRecord) *corev1.Text {
 	return text.Msg(text.KeyQueueUnconfirmedReason)
 }
 
-func collectRetainedAttachmentIDs(p *corev1.ProjectionState, ui *SessionUIState) []string {
+func collectRetainedAttachmentIDs(p *projection.State, ui *SessionUIState) []string {
 	set := make(map[string]bool)
 	if ui != nil {
 		for reqID, lc := range ui.LocalContents {

@@ -70,7 +70,7 @@ func mixString(h uint64, s string) uint64 {
 func computeTimelineCacheKey(
 	in world.SessionSnapshot,
 	events []*v1.Event,
-	p *corev1.ProjectionState,
+	p *projection.State,
 	caps lists.AgentCapabilities,
 	cwd, home, machineName string,
 	supportsSharedFiles, sharedFileOnline, sessionExited bool,
@@ -148,13 +148,13 @@ func computeTimelineCacheKey(
 }
 
 // FindStartPromptInput locates the InputProjection belonging to ui.PendingStartPrompt.
-func FindStartPromptInput(p *corev1.ProjectionState, ui *SessionUIState) *corev1.InputProjection {
+func FindStartPromptInput(p *projection.State, ui *SessionUIState) *projection.InputProjection {
 	if p == nil || ui == nil || ui.PendingStartPrompt == nil || len(p.Inputs) == 0 {
 		return nil
 	}
 	if ui.PendingStartPrompt.RequestID != "" {
 		for _, ip := range p.Inputs {
-			if ip != nil && ip.GetAccepted().GetOrigin().GetRequestId() == ui.PendingStartPrompt.RequestID {
+			if ip != nil && ip.Accepted != nil && ip.Accepted.Origin != nil && ip.Accepted.Origin.RequestId == ui.PendingStartPrompt.RequestID {
 				return ip
 			}
 		}
@@ -169,7 +169,7 @@ func FindStartPromptInput(p *corev1.ProjectionState, ui *SessionUIState) *corev1
 		if ip == nil || ip.RequestId == "" || localIDs[ip.RequestId] {
 			continue
 		}
-		if origReq := ip.GetAccepted().GetOrigin().GetRequestId(); origReq != "" && ui.PendingStartPrompt.RequestID != "" {
+		if ip.Accepted != nil && ip.Accepted.Origin != nil && ip.Accepted.Origin.RequestId != "" && ui.PendingStartPrompt.RequestID != "" {
 			continue
 		}
 		return ip
@@ -191,7 +191,7 @@ func findEventBySeq(events []*v1.Event, seq uint64) *v1.Event {
 	return nil
 }
 
-func runningToolFromStarted(e *v1.Event) *corev1.RunningTool {
+func runningToolFromStarted(e *v1.Event) *projection.RunningTool {
 	if e == nil {
 		return nil
 	}
@@ -199,7 +199,7 @@ func runningToolFromStarted(e *v1.Event) *corev1.RunningTool {
 	if ts == nil {
 		return nil
 	}
-	return &corev1.RunningTool{
+	return &projection.RunningTool{
 		Title:       ts.Title,
 		CallId:      ts.CallId,
 		SinceMs:     projection.EventTimeMs(e),
@@ -214,8 +214,8 @@ func runningToolFromStarted(e *v1.Event) *corev1.RunningTool {
 type timelineToolCtx struct {
 	in                  world.SessionSnapshot
 	st                  *State
-	p                   *corev1.ProjectionState
-	bgBySeq             map[uint64]*corev1.BackgroundTool
+	p                   *projection.State
+	bgBySeq             map[uint64]*projection.BackgroundTool
 	noResultSet         map[uint64]bool
 	supportsSharedFiles bool
 	sharedFileOnline    bool
@@ -373,7 +373,7 @@ func buildSessionTimeline(
 	events := in.Events
 	p := in.Projection
 	if p == nil {
-		p = &corev1.ProjectionState{}
+		p = &projection.State{}
 	}
 
 	var cwd, home string
@@ -420,7 +420,7 @@ func buildSessionTimeline(
 	}
 
 	// Build lookup tables matching Android Chat.kt & iOS Timeline.swift.
-	runningBySeq := make(map[uint64]*corev1.RunningTool, len(p.Tools))
+	runningBySeq := make(map[uint64]*projection.RunningTool, len(p.Tools))
 	for _, t := range p.Tools {
 		if t != nil {
 			runningBySeq[t.Seq] = t
@@ -462,7 +462,7 @@ func buildSessionTimeline(
 		mergedApprovals[aid] = true
 	}
 
-	bgBySeq := make(map[uint64]*corev1.BackgroundTool, len(p.Background))
+	bgBySeq := make(map[uint64]*projection.BackgroundTool, len(p.Background))
 	for _, bg := range p.Background {
 		if bg != nil && bg.Tool != nil {
 			bgBySeq[bg.Tool.Seq] = bg
@@ -471,7 +471,7 @@ func buildSessionTimeline(
 
 	// Exited-only InputProjection notices (non-exited unsent/failed/unconfirmed items live in
 	// composer.pending_tray, and non-exited cancellations never render in timeline).
-	inputNoticeAt := make(map[uint64][]*corev1.InputProjection)
+	inputNoticeAt := make(map[uint64][]*projection.InputProjection)
 	if sessionExited {
 		for _, ip := range p.Inputs {
 			if ip == nil || unsentIDs[ip.RequestId] {
@@ -1047,7 +1047,7 @@ func CollectSessionViewerAnchors(in world.SessionSnapshot) []ViewerImageAnchor {
 	}
 	p := in.Projection
 	if p == nil {
-		p = &corev1.ProjectionState{}
+		p = &projection.State{}
 	}
 	callAt := make(map[uint64]*v1.Event, len(p.CompletedAt))
 	placed := make(map[uint64]bool, len(p.CompletedAt))
@@ -1176,7 +1176,7 @@ func buildToolCallView(
 	tc *v1.ToolCall,
 	cwd, home string,
 	noResult, wentBg bool,
-	bg *corev1.BackgroundTool,
+	bg *projection.BackgroundTool,
 ) *corev1.SessionToolCallItem {
 	status := corev1.SessionToolStatus_SESSION_TOOL_STATUS_OK
 	if !toolOk(tc) {
@@ -1230,7 +1230,7 @@ func buildToolCallView(
 	}
 }
 
-func buildRunningToolView(e *v1.Event, rt *corev1.RunningTool, cwd, home string, unfinished bool, endedAtMs int64) *corev1.SessionToolCallItem {
+func buildRunningToolView(e *v1.Event, rt *projection.RunningTool, cwd, home string, unfinished bool, endedAtMs int64) *corev1.SessionToolCallItem {
 	var title, callID, itemType, input string
 	var kind v1.ToolKind
 	var sinceMs int64
@@ -1442,7 +1442,7 @@ func turnDurationText(ms, turnTokens int64) *corev1.Text {
 func buildSettingsChangedNote(
 	e *v1.Event,
 	c *v1.SettingsChanged,
-	comp *corev1.ContextCompaction,
+	comp *projection.ContextCompaction,
 	st *State,
 	devices map[string]string,
 	thisDeviceID, machineName string,
@@ -1502,20 +1502,20 @@ func buildSettingsChangedNote(
 	return nil
 }
 
-func terminalChangesText(changes []*corev1.TerminalChange, agentName string) *corev1.Text {
+func terminalChangesText(changes []*projection.TerminalChange, agentName string) *corev1.Text {
 	var parts []*corev1.Text
 	for _, ch := range changes {
 		if ch == nil {
 			continue
 		}
 		switch k := ch.Kind.(type) {
-		case *corev1.TerminalChange_Mode:
+		case *projection.TerminalChangeMode:
 			if k.Mode != nil {
 				m := k.Mode.Mode
 				label := sessionApprovalModeText(m, k.Mode.RawMode, agentName)
 				parts = append(parts, text.Msg(text.KeySessionTerminalModeChange, text.ArgText("value", label)))
 			}
-		case *corev1.TerminalChange_Model:
+		case *projection.TerminalChangeModel:
 			if k.Model != nil {
 				val := k.Model.Model
 				if k.Model.Effort != "" {
@@ -1557,7 +1557,7 @@ func forkSourceTitle(sourceID, fallbackTitle string, st *State, caps lists.Agent
 	return text.Msg(text.KeySessionOtherSession)
 }
 
-func findPromptText(reqID string, p *corev1.ProjectionState, ui *SessionUIState) string {
+func findPromptText(reqID string, p *projection.State, ui *SessionUIState) string {
 	if p != nil {
 		for _, ip := range p.Inputs {
 			if ip != nil && ip.RequestId == reqID {
@@ -1580,7 +1580,7 @@ func findPromptText(reqID string, p *corev1.ProjectionState, ui *SessionUIState)
 	return ""
 }
 
-func buildInputStateTimelineItem(ip *corev1.InputProjection, seq uint64, ts int64, agent v1.Agent) *corev1.SessionTimelineItem {
+func buildInputStateTimelineItem(ip *projection.InputProjection, seq uint64, ts int64, agent v1.Agent) *corev1.SessionTimelineItem {
 	kind := corev1.SessionInputNoticeKind_SESSION_INPUT_NOTICE_KIND_FAILED
 	var statusTxt, reasonTxt *corev1.Text
 	if ip.Detail != nil && ip.Detail.Reason != "" {
@@ -1731,7 +1731,7 @@ type quietSpan struct {
 	timeMs  int64
 }
 
-func findQuietSpans(events []*v1.Event, p *corev1.ProjectionState) []quietSpan {
+func findQuietSpans(events []*v1.Event, p *projection.State) []quietSpan {
 	var starts []int
 	for i, e := range events {
 		if e != nil && e.GetUserMessage() != nil {

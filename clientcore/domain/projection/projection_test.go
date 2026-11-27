@@ -54,7 +54,7 @@ func stdLiveToLite(t testing.TB, raw json.RawMessage) *v1.LiveSnapshot {
 	return &lite
 }
 
-func normalizeForVectors(s *corev1.ProjectionState) map[string]any {
+func normalizeForVectors(s *State) map[string]any {
 	seqs := func(xs []uint64) []string {
 		cp := slices.Clone(xs)
 		slices.Sort(cp)
@@ -348,7 +348,7 @@ func TestSharedLiveInputVectors(t *testing.T) {
 
 			r := NewReducer(DefaultAgent)
 			r.Append(events)
-			states := []*corev1.ProjectionState{
+			states := []*State{
 				CurrentActions(Derive(events, DefaultAgent), live, events),
 				r.CurrentActions(live),
 			}
@@ -744,40 +744,6 @@ func TestLiteWireCompatibility(t *testing.T) {
 		want     proto.Message
 		freshStd func() proto.Message
 	}{
-		{
-			name: "maps-uint64-and-message-values-and-packed-uint64",
-			lite: &corev1.ProjectionState{
-				Resolved: map[string]*corev1.ResolvedApproval{
-					"a1": {
-						Decision: v1.ApprovalDecision(1),
-						Message:  "ok",
-						Origin:   &v1.Origin{Kind: v1.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "d1", RequestId: "r1"},
-					},
-					"a2": {Decision: v1.ApprovalDecision(2), Message: ""},
-				},
-				CompletedAt:      map[uint64]uint64{3: 7, 0: 1},
-				ApprovalCallIds:  map[uint64]string{5: "call-5"},
-				UnfinishedSeqs:   []uint64{10, 200, 300000},
-				NoResultSeqs:     []uint64{11},
-				TypedLocallySeqs: []uint64{12, 13},
-			},
-			want: &stdcorev1.ProjectionState{
-				Resolved: map[string]*stdcorev1.ResolvedApproval{
-					"a1": {
-						Decision: stdv1.ApprovalDecision(1),
-						Message:  "ok",
-						Origin:   &stdv1.Origin{Kind: stdv1.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "d1", RequestId: "r1"},
-					},
-					"a2": {Decision: stdv1.ApprovalDecision(2), Message: ""},
-				},
-				CompletedAt:      map[uint64]uint64{3: 7, 0: 1},
-				ApprovalCallIds:  map[uint64]string{5: "call-5"},
-				UnfinishedSeqs:   []uint64{10, 200, 300000},
-				NoResultSeqs:     []uint64{11},
-				TypedLocallySeqs: []uint64{12, 13},
-			},
-			freshStd: func() proto.Message { return &stdcorev1.ProjectionState{} },
-		},
 		{
 			name: "deep-nested-viewmodel-home",
 			lite: &corev1.ViewModel{

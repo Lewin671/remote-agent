@@ -11,14 +11,10 @@ managed:
   override:
     - file_option: java_package
       value: io.github.lewin671.remoteagent.proto
-    # Every client-core message lives in core.proto, so a new *_view.proto
-    # needs no entry here; projection.proto stays with the wire types.
+    # Every client-core message lives under remoteagent/core/v1.
     - file_option: java_package
       path: remoteagent/core/v1
       value: io.github.lewin671.remoteagent.core.proto
-    - file_option: java_package
-      path: remoteagent/core/v1/projection.proto
-      value: io.github.lewin671.remoteagent.proto
     - file_option: java_multiple_files
       value: true
 plugins:

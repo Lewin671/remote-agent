@@ -4,7 +4,6 @@ import (
 	"slices"
 	"strings"
 
-	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 )
 
@@ -42,17 +41,17 @@ type Reducer struct {
 	reconcilesUnclaimed bool
 
 	approvals orderedMap[string, *v1.ApprovalRequested]
-	resolved  map[string]*corev1.ResolvedApproval
+	resolved  map[string]*ResolvedApproval
 
 	questions     orderedMap[string, *v1.QuestionAsked]
 	questionSeqs  map[string]uint64
 	questionTimes map[string]int64
-	answered      map[string]*corev1.AnsweredQuestion
+	answered      map[string]*AnsweredQuestion
 
 	inputs       orderedMap[string, v1.InputStatus]
 	inputSeqs    map[string]uint64
 	inputDetails map[string]*v1.InputState
-	accepted     map[string]*corev1.AcceptedInput
+	accepted     map[string]*AcceptedInput
 	failures     map[string]string
 	unsent       orderedMap[string, uint64]
 
@@ -66,13 +65,13 @@ type Reducer struct {
 	plan        *v1.PlanProposed
 	plansBySeq  map[uint64]string
 
-	tools           []*corev1.RunningTool
-	background      []*corev1.BackgroundTool
+	tools           []*RunningTool
+	background      []*BackgroundTool
 	completedAt     map[uint64]uint64
 	unfinished      map[uint64]struct{}
 	noResult        map[uint64]struct{}
 	typedLocally    map[uint64]struct{}
-	terminalChanges map[uint64][]*corev1.TerminalChange
+	terminalChanges map[uint64][]*TerminalChange
 
 	// Continuation state across batches.
 	mode           modeValue
@@ -87,7 +86,7 @@ type Reducer struct {
 	hasCompacting  bool
 	compactingSeq  uint64
 	planned        bool
-	unfinishedByID map[string]*corev1.RunningTool
+	unfinishedByID map[string]*RunningTool
 
 	// Historical disambiguation index for approval-to-call matching.
 	approvalReqsByDigest map[digestKey][]approvalReqRecord
@@ -110,15 +109,15 @@ func (r *Reducer) Reset(agent v1.Agent) {
 	r.reconcilesUnclaimed = ReconcilesUnclaimedInput(agent)
 
 	r.approvals.clear()
-	r.resolved = make(map[string]*corev1.ResolvedApproval)
+	r.resolved = make(map[string]*ResolvedApproval)
 	r.questions.clear()
 	r.questionSeqs = make(map[string]uint64)
 	r.questionTimes = make(map[string]int64)
-	r.answered = make(map[string]*corev1.AnsweredQuestion)
+	r.answered = make(map[string]*AnsweredQuestion)
 	r.inputs.clear()
 	r.inputSeqs = make(map[string]uint64)
 	r.inputDetails = make(map[string]*v1.InputState)
-	r.accepted = make(map[string]*corev1.AcceptedInput)
+	r.accepted = make(map[string]*AcceptedInput)
 	r.failures = make(map[string]string)
 	r.unsent.clear()
 
@@ -138,7 +137,7 @@ func (r *Reducer) Reset(agent v1.Agent) {
 	r.unfinished = make(map[uint64]struct{})
 	r.noResult = make(map[uint64]struct{})
 	r.typedLocally = make(map[uint64]struct{})
-	r.terminalChanges = make(map[uint64][]*corev1.TerminalChange)
+	r.terminalChanges = make(map[uint64][]*TerminalChange)
 
 	r.mode = modeValue{}
 	r.model = ""
@@ -152,7 +151,7 @@ func (r *Reducer) Reset(agent v1.Agent) {
 	r.hasCompacting = false
 	r.compactingSeq = 0
 	r.planned = false
-	r.unfinishedByID = make(map[string]*corev1.RunningTool)
+	r.unfinishedByID = make(map[string]*RunningTool)
 	r.approvalReqsByDigest = make(map[digestKey][]approvalReqRecord)
 	r.toolCallsByDigest = make(map[digestKey][]uint64)
 }
@@ -182,7 +181,7 @@ func (r *Reducer) reduceOne(e *v1.Event) {
 	case *v1.Event_ApprovalResolved:
 		ar := k.ApprovalResolved
 		r.approvals.delete(ar.ApprovalId)
-		r.resolved[ar.ApprovalId] = &corev1.ResolvedApproval{
+		r.resolved[ar.ApprovalId] = &ResolvedApproval{
 			Decision: ar.Decision,
 			Message:  ar.Message,
 			Origin:   e.Origin,
@@ -205,7 +204,7 @@ func (r *Reducer) reduceOne(e *v1.Event) {
 		for _, ans := range qa.Answers {
 			flat = append(flat, ans.Answers...)
 		}
-		r.answered[qa.QuestionId] = &corev1.AnsweredQuestion{
+		r.answered[qa.QuestionId] = &AnsweredQuestion{
 			Answers: flat,
 			Origin:  e.Origin,
 		}
@@ -224,7 +223,7 @@ func (r *Reducer) reduceOne(e *v1.Event) {
 		aborted := k.TurnEnded.Outcome == v1.TurnOutcome_TURN_OUTCOME_ABORTED
 		for _, t := range r.tools {
 			if aborted {
-				r.background = append(r.background, &corev1.BackgroundTool{
+				r.background = append(r.background, &BackgroundTool{
 					Tool:     t,
 					Returned: false,
 				})
@@ -249,7 +248,7 @@ func (r *Reducer) reduceOne(e *v1.Event) {
 		prevAcc := r.accepted[st.RequestId]
 		carriesInput := st.Text != "" || len(st.ImageIds) > 0 || len(st.Files) > 0
 		if (st.Status == v1.InputStatus_INPUT_STATUS_QUEUED || st.Status == v1.InputStatus_INPUT_STATUS_HELD_BY_CLI) && carriesInput {
-			obs := &corev1.AcceptedInput{
+			obs := &AcceptedInput{
 				Text:     st.Text,
 				ImageIds: slices.Clone(st.ImageIds),
 				Origin:   e.Origin,
@@ -311,7 +310,7 @@ func (r *Reducer) reduceOne(e *v1.Event) {
 
 	case *v1.Event_ToolStarted:
 		ts := k.ToolStarted
-		r.tools = append(r.tools, &corev1.RunningTool{
+		r.tools = append(r.tools, &RunningTool{
 			Title:       ts.Title,
 			CallId:      ts.CallId,
 			SinceMs:     EventTimeMs(e),
@@ -331,13 +330,13 @@ func (r *Reducer) reduceOne(e *v1.Event) {
 		id := c.CallId
 		matched := false
 		if id != "" {
-			if j := slices.IndexFunc(r.tools, func(t *corev1.RunningTool) bool { return t.CallId == id }); j >= 0 {
+			if j := slices.IndexFunc(r.tools, func(t *RunningTool) bool { return t.CallId == id }); j >= 0 {
 				matched = true
 				t := r.tools[j]
 				r.tools = slices.Delete(r.tools, j, j+1)
 				r.completedAt[t.Seq] = e.Seq
 				if WentToBackground(c) {
-					r.background = append(r.background, &corev1.BackgroundTool{
+					r.background = append(r.background, &BackgroundTool{
 						Tool:         t,
 						Returned:     true,
 						Background:   c.Background,
@@ -350,11 +349,11 @@ func (r *Reducer) reduceOne(e *v1.Event) {
 					r.completedAt[t.Seq] = e.Seq
 					delete(r.unfinished, t.Seq)
 					delete(r.noResult, t.Seq)
-					r.background = slices.DeleteFunc(r.background, func(b *corev1.BackgroundTool) bool {
+					r.background = slices.DeleteFunc(r.background, func(b *BackgroundTool) bool {
 						return b.Tool != nil && b.Tool.Seq == t.Seq
 					})
 					if WentToBackground(c) {
-						r.background = append(r.background, &corev1.BackgroundTool{
+						r.background = append(r.background, &BackgroundTool{
 							Tool:         t,
 							Returned:     true,
 							Background:   c.Background,
@@ -365,7 +364,7 @@ func (r *Reducer) reduceOne(e *v1.Event) {
 			}
 		}
 		if !matched && WentToBackground(c) {
-			t := &corev1.RunningTool{
+			t := &RunningTool{
 				Title:       c.Title,
 				CallId:      id,
 				SinceMs:     EventTimeMs(e),
@@ -375,7 +374,7 @@ func (r *Reducer) reduceOne(e *v1.Event) {
 				Input:       c.Input,
 				InputDigest: c.InputDigest,
 			}
-			r.background = append(r.background, &corev1.BackgroundTool{
+			r.background = append(r.background, &BackgroundTool{
 				Tool:         t,
 				Returned:     true,
 				Background:   c.Background,
@@ -429,11 +428,11 @@ func (r *Reducer) reduceOne(e *v1.Event) {
 		}
 		planning := c.CollaborationMode == "plan" || c.PermissionMode == "plan"
 		mm := c.Model + " " + c.Effort
-		var changes []*corev1.TerminalChange
+		var changes []*TerminalChange
 		if !r.mode.empty() && !m.empty() && m != r.mode && !(r.mode.known == v1.ApprovalMode_APPROVAL_MODE_PLAN && r.planned) {
-			changes = append(changes, &corev1.TerminalChange{
-				Kind: &corev1.TerminalChange_Mode{
-					Mode: &corev1.TerminalModeChange{
+			changes = append(changes, &TerminalChange{
+				Kind: &TerminalChangeMode{
+					Mode: &TerminalModeChange{
 						Mode:    m.known,
 						RawMode: m.raw,
 					},
@@ -451,9 +450,9 @@ func (r *Reducer) reduceOne(e *v1.Event) {
 			changed = mm != r.model
 		}
 		if (r.model != "" || r.hasExpected) && c.Model != "" && changed && !planning {
-			changes = append(changes, &corev1.TerminalChange{
-				Kind: &corev1.TerminalChange_Model{
-					Model: &corev1.TerminalModelChange{
+			changes = append(changes, &TerminalChange{
+				Kind: &TerminalChangeModel{
+					Model: &TerminalModelChange{
 						Model:  c.Model,
 						Effort: c.Effort,
 					},
@@ -511,8 +510,8 @@ func (r *Reducer) endOpenState(seq uint64) {
 }
 
 // Snapshot returns an immutable ProjectionState representing the reducer's current state.
-func (r *Reducer) Snapshot() *corev1.ProjectionState {
-	out := &corev1.ProjectionState{
+func (r *Reducer) Snapshot() *State {
+	out := &State{
 		Running:          r.running,
 		RunningSeq:       r.runningSeq,
 		ScheduledClosed:  r.scheduledClosed,
@@ -525,9 +524,9 @@ func (r *Reducer) Snapshot() *corev1.ProjectionState {
 	}
 
 	if len(r.approvals.keys) > 0 {
-		out.Approvals = make([]*corev1.PendingApproval, len(r.approvals.keys))
+		out.Approvals = make([]*PendingApproval, len(r.approvals.keys))
 		for i, id := range r.approvals.keys {
-			out.Approvals[i] = &corev1.PendingApproval{
+			out.Approvals[i] = &PendingApproval{
 				ApprovalId: id,
 				Request:    r.approvals.vals[i],
 			}
@@ -535,7 +534,7 @@ func (r *Reducer) Snapshot() *corev1.ProjectionState {
 	}
 
 	if len(r.resolved) > 0 {
-		out.Resolved = make(map[string]*corev1.ResolvedApproval, len(r.resolved))
+		out.Resolved = make(map[string]*ResolvedApproval, len(r.resolved))
 		for k, v := range r.resolved {
 			cp := *v
 			out.Resolved[k] = &cp
@@ -543,9 +542,9 @@ func (r *Reducer) Snapshot() *corev1.ProjectionState {
 	}
 
 	if len(r.questions.keys) > 0 {
-		out.Questions = make([]*corev1.PendingQuestion, len(r.questions.keys))
+		out.Questions = make([]*PendingQuestion, len(r.questions.keys))
 		for i, id := range r.questions.keys {
-			out.Questions[i] = &corev1.PendingQuestion{
+			out.Questions[i] = &PendingQuestion{
 				QuestionId: id,
 				Request:    r.questions.vals[i],
 				Seq:        r.questionSeqs[id],
@@ -555,9 +554,9 @@ func (r *Reducer) Snapshot() *corev1.ProjectionState {
 	}
 
 	if len(r.answered) > 0 {
-		out.Answered = make(map[string]*corev1.AnsweredQuestion, len(r.answered))
+		out.Answered = make(map[string]*AnsweredQuestion, len(r.answered))
 		for k, v := range r.answered {
-			out.Answered[k] = &corev1.AnsweredQuestion{
+			out.Answered[k] = &AnsweredQuestion{
 				Answers: slices.Clone(v.Answers),
 				Origin:  v.Origin,
 			}
@@ -565,9 +564,9 @@ func (r *Reducer) Snapshot() *corev1.ProjectionState {
 	}
 
 	if len(r.inputs.keys) > 0 {
-		out.Inputs = make([]*corev1.InputProjection, len(r.inputs.keys))
+		out.Inputs = make([]*InputProjection, len(r.inputs.keys))
 		for i, id := range r.inputs.keys {
-			ip := &corev1.InputProjection{
+			ip := &InputProjection{
 				RequestId: id,
 				Status:    r.inputs.vals[i],
 				LastSeq:   r.inputSeqs[id],
@@ -584,9 +583,9 @@ func (r *Reducer) Snapshot() *corev1.ProjectionState {
 	}
 
 	if len(r.unsent.keys) > 0 {
-		out.Unsent = make([]*corev1.UnsentInput, len(r.unsent.keys))
+		out.Unsent = make([]*UnsentInput, len(r.unsent.keys))
 		for i, id := range r.unsent.keys {
-			out.Unsent[i] = &corev1.UnsentInput{
+			out.Unsent[i] = &UnsentInput{
 				RequestId: id,
 				Seq:       r.unsent.vals[i],
 			}
@@ -594,9 +593,9 @@ func (r *Reducer) Snapshot() *corev1.ProjectionState {
 	}
 
 	if len(r.compactions) > 0 {
-		out.Compactions = make(map[uint64]*corev1.ContextCompaction, len(r.compactions))
+		out.Compactions = make(map[uint64]*ContextCompaction, len(r.compactions))
 		for seq, c := range r.compactions {
-			cc := &corev1.ContextCompaction{}
+			cc := &ContextCompaction{}
 			if c.before != nil {
 				v := *c.before
 				cc.BeforePercent = &v
@@ -610,7 +609,7 @@ func (r *Reducer) Snapshot() *corev1.ProjectionState {
 	}
 
 	if len(r.tools) > 0 {
-		out.Tools = make([]*corev1.RunningTool, len(r.tools))
+		out.Tools = make([]*RunningTool, len(r.tools))
 		for i, t := range r.tools {
 			cp := cloneRunningTool(t)
 			cp.AwaitingApproval = AwaitingApproval(cp, out.Approvals)
@@ -619,9 +618,9 @@ func (r *Reducer) Snapshot() *corev1.ProjectionState {
 	}
 
 	if len(r.background) > 0 {
-		out.Background = make([]*corev1.BackgroundTool, len(r.background))
+		out.Background = make([]*BackgroundTool, len(r.background))
 		for i, b := range r.background {
-			out.Background[i] = &corev1.BackgroundTool{
+			out.Background[i] = &BackgroundTool{
 				Tool:         cloneRunningTool(b.Tool),
 				Returned:     b.Returned,
 				Background:   b.Background,
@@ -638,9 +637,9 @@ func (r *Reducer) Snapshot() *corev1.ProjectionState {
 	}
 
 	if len(r.terminalChanges) > 0 {
-		out.TerminalChanges = make(map[uint64]*corev1.TerminalChangeList, len(r.terminalChanges))
+		out.TerminalChanges = make(map[uint64]*TerminalChangeList, len(r.terminalChanges))
 		for seq, changes := range r.terminalChanges {
-			out.TerminalChanges[seq] = &corev1.TerminalChangeList{
+			out.TerminalChanges[seq] = &TerminalChangeList{
 				Changes: slices.Clone(changes),
 			}
 		}
@@ -668,7 +667,7 @@ func (r *Reducer) Snapshot() *corev1.ProjectionState {
 }
 
 // CurrentActions overlays a fresh owner LiveSnapshot onto the reducer's historical snapshot.
-func (r *Reducer) CurrentActions(live *v1.LiveSnapshot) *corev1.ProjectionState {
+func (r *Reducer) CurrentActions(live *v1.LiveSnapshot) *State {
 	return applyLiveSnapshot(r.Snapshot(), live, func(seq uint64) (string, bool) {
 		txt, ok := r.plansBySeq[seq]
 		return txt, ok
@@ -676,14 +675,14 @@ func (r *Reducer) CurrentActions(live *v1.LiveSnapshot) *corev1.ProjectionState 
 }
 
 // Derive runs a full replay over events for agent and returns the resulting ProjectionState.
-func Derive(events []*v1.Event, agent v1.Agent) *corev1.ProjectionState {
+func Derive(events []*v1.Event, agent v1.Agent) *State {
 	r := NewReducer(agent)
 	r.Append(events)
 	return r.Snapshot()
 }
 
 // CurrentActions overlays live onto a historical ProjectionState, looking up plan text from events.
-func CurrentActions(history *corev1.ProjectionState, live *v1.LiveSnapshot, events []*v1.Event) *corev1.ProjectionState {
+func CurrentActions(history *State, live *v1.LiveSnapshot, events []*v1.Event) *State {
 	return applyLiveSnapshot(cloneStateShallowForActions(history), live, func(seq uint64) (string, bool) {
 		if seq > 0 && int(seq-1) < len(events) {
 			if e := events[seq-1]; e != nil && e.Seq == seq {
@@ -705,11 +704,11 @@ func CurrentActions(history *corev1.ProjectionState, live *v1.LiveSnapshot, even
 	})
 }
 
-func cloneStateShallowForActions(s *corev1.ProjectionState) *corev1.ProjectionState {
+func cloneStateShallowForActions(s *State) *State {
 	if s == nil {
-		return &corev1.ProjectionState{}
+		return &State{}
 	}
-	out := &corev1.ProjectionState{
+	out := &State{
 		Resolved:         s.Resolved,
 		Answered:         s.Answered,
 		Unsent:           s.Unsent,
@@ -728,7 +727,7 @@ func cloneStateShallowForActions(s *corev1.ProjectionState) *corev1.ProjectionSt
 		ApprovalCallIds:  s.ApprovalCallIds,
 	}
 	if len(s.Inputs) > 0 {
-		out.Inputs = make([]*corev1.InputProjection, len(s.Inputs))
+		out.Inputs = make([]*InputProjection, len(s.Inputs))
 		for i, in := range s.Inputs {
 			cp := *in
 			cp.Accepted = cloneAccepted(in.Accepted)
@@ -737,7 +736,7 @@ func cloneStateShallowForActions(s *corev1.ProjectionState) *corev1.ProjectionSt
 		out.PendingInputs = PendingInputs(out.Inputs)
 	}
 	if len(s.Tools) > 0 {
-		out.Tools = make([]*corev1.RunningTool, len(s.Tools))
+		out.Tools = make([]*RunningTool, len(s.Tools))
 		for i, t := range s.Tools {
 			out.Tools[i] = cloneRunningTool(t)
 		}
@@ -745,7 +744,7 @@ func cloneStateShallowForActions(s *corev1.ProjectionState) *corev1.ProjectionSt
 	return out
 }
 
-func applyLiveSnapshot(out *corev1.ProjectionState, live *v1.LiveSnapshot, planText func(seq uint64) (string, bool)) *corev1.ProjectionState {
+func applyLiveSnapshot(out *State, live *v1.LiveSnapshot, planText func(seq uint64) (string, bool)) *State {
 	out.Approvals = nil
 	out.Questions = nil
 	out.Plan = nil
@@ -762,7 +761,7 @@ func applyLiveSnapshot(out *corev1.ProjectionState, live *v1.LiveSnapshot, planT
 		snapshotSeq = live.Session.LastSeq
 	}
 
-	var inputs orderedMap[string, *corev1.InputProjection]
+	var inputs orderedMap[string, *InputProjection]
 	for _, in := range out.Inputs {
 		inputs.set(in.RequestId, in)
 	}
@@ -772,7 +771,7 @@ func applyLiveSnapshot(out *corev1.ProjectionState, live *v1.LiveSnapshot, planT
 	}
 
 	observed := Derive(live.Actions, v1.Agent_AGENT_UNSPECIFIED)
-	obsInputs := make(map[string]*corev1.InputProjection, len(observed.Inputs))
+	obsInputs := make(map[string]*InputProjection, len(observed.Inputs))
 	for _, obsIn := range observed.Inputs {
 		obsInputs[obsIn.RequestId] = obsIn
 	}
@@ -792,7 +791,7 @@ func applyLiveSnapshot(out *corev1.ProjectionState, live *v1.LiveSnapshot, planT
 		}
 		cur, exists := inputs.get(id)
 		if !exists {
-			cur = &corev1.InputProjection{
+			cur = &InputProjection{
 				RequestId: id,
 			}
 			inputs.set(id, cur)
@@ -845,18 +844,18 @@ func applyLiveSnapshot(out *corev1.ProjectionState, live *v1.LiveSnapshot, planT
 		}
 	}
 	if len(approvals.keys) > 0 {
-		out.Approvals = make([]*corev1.PendingApproval, len(approvals.keys))
+		out.Approvals = make([]*PendingApproval, len(approvals.keys))
 		for i, id := range approvals.keys {
-			out.Approvals[i] = &corev1.PendingApproval{
+			out.Approvals[i] = &PendingApproval{
 				ApprovalId: id,
 				Request:    approvals.vals[i],
 			}
 		}
 	}
 	if len(questions.keys) > 0 {
-		out.Questions = make([]*corev1.PendingQuestion, len(questions.keys))
+		out.Questions = make([]*PendingQuestion, len(questions.keys))
 		for i, id := range questions.keys {
-			out.Questions[i] = &corev1.PendingQuestion{
+			out.Questions[i] = &PendingQuestion{
 				QuestionId: id,
 				Request:    questions.vals[i],
 				Seq:        questionSeqs[id],
@@ -885,19 +884,19 @@ type Projection struct {
 	agent    v1.Agent
 	hasAgent bool
 	reducer  *Reducer
-	result   *corev1.ProjectionState
+	result   *State
 }
 
 // NewProjection creates an empty Projection.
 func NewProjection() *Projection {
 	return &Projection{
 		reducer: NewReducer(DefaultAgent),
-		result:  &corev1.ProjectionState{},
+		result:  &State{},
 	}
 }
 
 // Update advances the projection for events and agent, reusing incremental state when events extend previous.
-func (p *Projection) Update(events []*v1.Event, agent v1.Agent) *corev1.ProjectionState {
+func (p *Projection) Update(events []*v1.Event, agent v1.Agent) *State {
 	if agent == v1.Agent_AGENT_UNSPECIFIED {
 		agent = DefaultAgent
 	}

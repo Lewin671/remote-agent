@@ -6,7 +6,6 @@ import (
 	"unicode"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
-	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 )
 
@@ -219,15 +218,15 @@ func ReconcilesUnclaimedInput(agent v1.Agent) bool {
 }
 
 // AwaitingApproval reports whether a running tool matches any pending approval request.
-func AwaitingApproval(t *corev1.RunningTool, approvals []*corev1.PendingApproval) bool {
+func AwaitingApproval(t *RunningTool, approvals []*PendingApproval) bool {
 	if t == nil {
 		return false
 	}
 	for _, pa := range approvals {
-		a := pa.GetRequest()
-		if a == nil {
+		if pa == nil || pa.Request == nil {
 			continue
 		}
+		a := pa.Request
 		if t.InputDigest != "" {
 			if a.InputDigest != "" && a.InputDigest == t.InputDigest {
 				return true
@@ -240,20 +239,20 @@ func AwaitingApproval(t *corev1.RunningTool, approvals []*corev1.PendingApproval
 }
 
 // PendingInputs extracts inputs the model has not received yet, in acceptance order.
-func PendingInputs(inputs []*corev1.InputProjection) []*corev1.PendingInput {
-	var out []*corev1.PendingInput
+func PendingInputs(inputs []*InputProjection) []*PendingInput {
+	var out []*PendingInput
 	for _, in := range inputs {
-		st := in.GetDetail()
-		if st == nil {
+		if in == nil || in.Detail == nil {
 			continue
 		}
+		st := in.Detail
 		if st.Status != v1.InputStatus_INPUT_STATUS_QUEUED && st.Status != v1.InputStatus_INPUT_STATUS_HELD_BY_CLI {
 			continue
 		}
 		text := st.Text
 		var origin *v1.Origin
 		var files []*v1.SentFile
-		if acc := in.GetAccepted(); acc != nil {
+		if acc := in.Accepted; acc != nil {
 			text = acc.Text
 			origin = acc.Origin
 			files = acc.Files
@@ -265,7 +264,7 @@ func PendingInputs(inputs []*corev1.InputProjection) []*corev1.PendingInput {
 		if mode == v1.SendMode_SEND_MODE_UNSPECIFIED {
 			mode = v1.SendMode_SEND_MODE_STEER
 		}
-		out = append(out, &corev1.PendingInput{
+		out = append(out, &PendingInput{
 			RequestId: st.RequestId,
 			Text:      text,
 			Mode:      mode,
@@ -310,7 +309,7 @@ func LivePlanText(live *v1.LiveSnapshot, events []*v1.Event) string {
 }
 
 // ApprovalCallIDs returns unambiguous daemon-digest associations from ToolCall event seq to ApprovalRequested ID.
-func ApprovalCallIDs(events []*v1.Event, resolved map[string]*corev1.ResolvedApproval) map[uint64]string {
+func ApprovalCallIDs(events []*v1.Event, resolved map[string]*ResolvedApproval) map[uint64]string {
 	type key struct {
 		name   string
 		digest string
@@ -371,8 +370,8 @@ func retainInputDetails(st, before *v1.InputState) *v1.InputState {
 	return res
 }
 
-func retainAccepted(prior, observed *corev1.AcceptedInput) *corev1.AcceptedInput {
-	out := &corev1.AcceptedInput{
+func retainAccepted(prior, observed *AcceptedInput) *AcceptedInput {
+	out := &AcceptedInput{
 		Text:     prior.Text,
 		ImageIds: prior.ImageIds,
 		Origin:   prior.Origin,
@@ -395,11 +394,11 @@ func retainAccepted(prior, observed *corev1.AcceptedInput) *corev1.AcceptedInput
 	return out
 }
 
-func cloneAccepted(a *corev1.AcceptedInput) *corev1.AcceptedInput {
+func cloneAccepted(a *AcceptedInput) *AcceptedInput {
 	if a == nil {
 		return nil
 	}
-	return &corev1.AcceptedInput{
+	return &AcceptedInput{
 		Text:     a.Text,
 		ImageIds: slices.Clone(a.ImageIds),
 		Origin:   a.Origin,
@@ -409,7 +408,7 @@ func cloneAccepted(a *corev1.AcceptedInput) *corev1.AcceptedInput {
 	}
 }
 
-func cloneRunningTool(t *corev1.RunningTool) *corev1.RunningTool {
+func cloneRunningTool(t *RunningTool) *RunningTool {
 	if t == nil {
 		return nil
 	}

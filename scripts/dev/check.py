@@ -29,6 +29,7 @@ def commands(platform, tier):
             (ROOT / "clientcore", ["go", "test", "-count=1", "-parallel=8", "-timeout=5m", "./..."]),
         ]
         if tier == "full":
+            cmds.append((ROOT, ["python3", "scripts/core/check_lite_gen.py"]))
             cmds.append((ROOT, ["python3", "scripts/release.py", "check-relay-impact"]))
         return cmds
     if platform == "web":

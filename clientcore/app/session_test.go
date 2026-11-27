@@ -6,6 +6,7 @@ import (
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/world"
+	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/screens"
@@ -1464,8 +1465,8 @@ func TestPendingTrayGroupingNumberingAndOrigin(t *testing.T) {
 		Session:      ls,
 		ThisDeviceID: "dev-self",
 		DeviceNames:  map[string]string{"dev-other": "MyPhone"},
-		Projection: &corev1.ProjectionState{
-			PendingInputs: []*corev1.PendingInput{
+		Projection: &projection.State{
+			PendingInputs: []*projection.PendingInput{
 				{
 					RequestId: "r1",
 					Text:      "first",
@@ -1715,9 +1716,9 @@ func TestCreateSessionSeedsSessionBeforeStreamUpdatedAndLoadingHidesMissingText(
 			ProtocolVersion: 17,
 			Session:         agySess,
 			Machine:         agySt.World.Machines[0],
-			Projection: &corev1.ProjectionState{
+			Projection: &projection.State{
 				Running: true,
-				PendingInputs: []*corev1.PendingInput{
+				PendingInputs: []*projection.PendingInput{
 					{RequestId: "req-1", Text: "big\n…（remote-agent：内容过大，请在终端查看/回答）", Mode: v1.SendMode_SEND_MODE_QUEUE},
 				},
 			},

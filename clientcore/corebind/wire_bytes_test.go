@@ -207,42 +207,6 @@ func TestLiteWireBytesScreens(t *testing.T) {
 	}
 }
 
-func TestLiteWireBytesProjection(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("..", "..", "testdata", "projection", "vectors.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var corpus struct {
-		Vectors []struct {
-			Name   string            `json:"name"`
-			Agent  int32             `json:"agent"`
-			Events []json.RawMessage `json:"events"`
-		} `json:"vectors"`
-	}
-	if err := json.Unmarshal(raw, &corpus); err != nil {
-		t.Fatal(err)
-	}
-	for _, v := range corpus.Vectors {
-		batch := &stdcorev1.EventBatch{}
-		for _, e := range v.Events {
-			ev := &stdv1.Event{}
-			if err := protojson.Unmarshal(e, ev); err != nil {
-				t.Fatalf("%s: %v", v.Name, err)
-			}
-			batch.Events = append(batch.Events, ev)
-			wire, err := proto.Marshal(batch)
-			if err != nil {
-				t.Fatal(err)
-			}
-			out, err := Reduce(v.Agent, wire)
-			if err != nil {
-				t.Fatalf("%s: %v", v.Name, err)
-			}
-			requireCanonical(t, v.Name, out, &stdcorev1.ProjectionState{})
-		}
-	}
-}
-
 // Wire messages the core both decodes and re-encodes, filled at random: decoding protobuf-go
 // bytes and encoding them again must give the same bytes.
 func TestLiteWireBytesRoundTrip(t *testing.T) {

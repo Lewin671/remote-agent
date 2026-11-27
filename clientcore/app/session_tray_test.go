@@ -5,6 +5,7 @@ import (
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/world"
+	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/screens"
@@ -225,26 +226,26 @@ func TestPendingTrayAllSevenGroupsOrderingHeadersAndNumbering(t *testing.T) {
 				ProtocolVersion: sync.PeerVersion,
 			},
 		},
-		Projection: &corev1.ProjectionState{
+		Projection: &projection.State{
 			Running: true,
-			PendingInputs: []*corev1.PendingInput{
+			PendingInputs: []*projection.PendingInput{
 				{RequestId: "p1", Text: "paused one", Mode: v1.SendMode_SEND_MODE_QUEUE, Paused: true},
 				{RequestId: "p2", Text: "paused two", Mode: v1.SendMode_SEND_MODE_QUEUE, Paused: true},
 				{RequestId: "q1", Text: "queued one", Mode: v1.SendMode_SEND_MODE_QUEUE},
 				{RequestId: "q2", Text: "queued two", Mode: v1.SendMode_SEND_MODE_QUEUE},
 				{RequestId: "s1", Text: "steer one", Mode: v1.SendMode_SEND_MODE_STEER},
 			},
-			Inputs: []*corev1.InputProjection{
+			Inputs: []*projection.InputProjection{
 				{
 					RequestId: "f1",
 					Status:    v1.InputStatus_INPUT_STATUS_FAILED,
-					Accepted:  &corev1.AcceptedInput{Origin: otherOrigin},
+					Accepted:  &projection.AcceptedInput{Origin: otherOrigin},
 					Detail:    &v1.InputState{RequestId: "f1", Status: v1.InputStatus_INPUT_STATUS_FAILED, Reason: "image_not_recognized", Text: "bad img"},
 				},
 				{
 					RequestId: "u1",
 					Status:    v1.InputStatus_INPUT_STATUS_UNCONFIRMED,
-					Accepted:  &corev1.AcceptedInput{Origin: otherOrigin},
+					Accepted:  &projection.AcceptedInput{Origin: otherOrigin},
 					Detail:    &v1.InputState{RequestId: "u1", Status: v1.InputStatus_INPUT_STATUS_UNCONFIRMED, Text: "maybe sent"},
 				},
 			},
@@ -307,7 +308,7 @@ func TestPendingTrayAllSevenGroupsOrderingHeadersAndNumbering(t *testing.T) {
 
 	// WAIT_ANSWER + composer placeholder check when approval is active.
 	ui.PendingStartPrompt = nil
-	in.Projection.Approvals = []*corev1.PendingApproval{{ApprovalId: "ap-1", Request: &v1.ApprovalRequested{ApprovalId: "ap-1", ToolName: "Bash", Command: "rm -rf"}}}
+	in.Projection.Approvals = []*projection.PendingApproval{{ApprovalId: "ap-1", Request: &v1.ApprovalRequested{ApprovalId: "ap-1", ToolName: "Bash", Command: "rm -rf"}}}
 	vmAsk := screens.BuildSessionView(in, st, &corev1.SessionScreenRequest{SessionId: "s1"}, ui)
 	if vmAsk.GetComposer().GetPlaceholder().GetKey() != text.KeyComposerAnswerFirstPlaceholder {
 		t.Fatalf("expected answer_first_placeholder, got %+v", vmAsk.GetComposer().GetPlaceholder())
@@ -659,9 +660,9 @@ func TestForeignScheduledOfflineAndAntigravityConstraints(t *testing.T) {
 		ThisDeviceID: "dev-self",
 		Conn:         lists.ConnOffline, // offline!
 		Machine:      &lists.Machine{ID: "m1", Online: false, Meta: &v1.MachineMeta{Hostname: "Mac"}},
-		Projection: &corev1.ProjectionState{
+		Projection: &projection.State{
 			Running: true,
-			PendingInputs: []*corev1.PendingInput{
+			PendingInputs: []*projection.PendingInput{
 				{
 					RequestId: "foreign-redacted",
 					Text:      "",
@@ -682,11 +683,11 @@ func TestForeignScheduledOfflineAndAntigravityConstraints(t *testing.T) {
 					Origin:    &v1.Origin{Kind: v1.OriginKind_ORIGIN_KIND_SYSTEM, ScheduledTaskId: "task-1"},
 				},
 			},
-			Inputs: []*corev1.InputProjection{
+			Inputs: []*projection.InputProjection{
 				{
 					RequestId: "sched-1",
 					Status:    v1.InputStatus_INPUT_STATUS_QUEUED,
-					Accepted:  &corev1.AcceptedInput{Text: "nightly check", TimeMs: 1_791_078_060_000, Origin: &v1.Origin{Kind: v1.OriginKind_ORIGIN_KIND_SYSTEM, ScheduledTaskId: "task-1"}},
+					Accepted:  &projection.AcceptedInput{Text: "nightly check", TimeMs: 1_791_078_060_000, Origin: &v1.Origin{Kind: v1.OriginKind_ORIGIN_KIND_SYSTEM, ScheduledTaskId: "task-1"}},
 				},
 			},
 		},
