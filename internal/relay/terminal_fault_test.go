@@ -1244,3 +1244,89 @@ func TestReview3Repro_D_PaginatedReplayAbove128FramesSucceeds(t *testing.T) {
 	default:
 	}
 }
+
+// TestPhase3AttachPathConcurrentWithSendOutput deterministically reproduces the
+// race where ControlAttachPath runs while sendOutput has sealed seq=2 but has
+// not yet called RecordOutputReplay. AttachPath must not observe an unrecorded
+// outSeq (which caused false ErrTermReplayWindow -> abortReplayOverflow) and
+// sendOutput must deliver seq=2 onto the newly attached relay path rather than
+// the stale pre-attach path.
+func TestPhase3AttachPathConcurrentWithSendOutput(t *testing.T) {
+	h := startPhase3PionHarness(t)
+	h.advertisePhase3ClientCapabilities()
+	streamID := "e7000000000000000000000000000002"
+	termWS := h.openTerminal(streamID)
+	defer termWS.CloseNow()
+
+	// Drain initial snapshot (seq=1).
+	if _, _, err := termWS.Read(h.ctx); err != nil {
+		t.Fatal(err)
+	}
+	if !h.link.SendControl(linkcore.ControlAttachPath, linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
+		Stream:         streamID,
+		Session:        h.session,
+		Sender:         h.e.authority.Member.ID,
+		LegID:          "d:00000000000008",
+		PathGeneration: 1,
+	})) {
+		t.Fatal("direct AttachPath failed")
+	}
+	h.waitCond("direct leg attached", func() bool {
+		return relay.TerminalHasDirectLegForTest(h.running, streamID)
+	})
+
+	inWindow := make(chan struct{})
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	unlock := func() { releaseOnce.Do(func() { close(release) }) }
+	defer unlock()
+
+	relay.SetTerminalBeforeRecordOutputForTest(h.running, func(sid string, seq uint64) {
+		if sid == streamID && seq == 2 {
+			close(inWindow)
+			<-release
+		}
+	})
+	defer relay.SetTerminalBeforeRecordOutputForTest(h.running, nil)
+
+	// Start sending seq=2 output and pause right before RecordOutputReplay.
+	h.backend.term.outCh <- []byte("gen3-alive")
+	select {
+	case <-inWindow:
+	case <-h.ctx.Done():
+		t.Fatal("timed out waiting for sendOutput to pause before RecordOutputReplay")
+	}
+
+	// Concurrently attach a new relay leg (gen=3) while seq=2 is mid-seal.
+	leg3Raw := bytes.Repeat([]byte{0x34}, 16)
+	ws3 := h.dialTermWS(fmt.Sprintf("%x", leg3Raw))
+	defer ws3.CloseNow()
+	if !h.link.SendControl(linkcore.ControlAttachPath, linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
+		Stream:         streamID,
+		Session:        h.session,
+		Sender:         h.e.authority.Member.ID,
+		LegID:          string(leg3Raw),
+		PathGeneration: 3,
+	})) {
+		t.Fatal("AttachPath gen=3 failed")
+	}
+	h.waitCond("relay gen=3 installed", func() bool {
+		return relay.TerminalRelayGenForTest(h.running, streamID) == 3
+	})
+
+	// Resume sendOutput; ws3 must stay open and receive gen3-alive.
+	unlock()
+	for {
+		_, raw, err := ws3.Read(h.ctx)
+		if err != nil {
+			t.Fatalf("ws3 (gen=3) did not stay active: %v", err)
+		}
+		_, tf := h.openTermOutput(raw, streamID)
+		if tf.GetClosed() != "" {
+			t.Fatalf("ws3 received unexpected Closed frame: %q", tf.GetClosed())
+		}
+		if bytes.Contains(tf.GetOutput(), []byte("gen3-alive")) {
+			break
+		}
+	}
+}

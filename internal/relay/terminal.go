@@ -75,15 +75,16 @@ type pendingDirectAttach struct {
 }
 
 type terminalHub struct {
-	mu            sync.Mutex
-	registry      *linkcore.TerminalRegistry
-	dedup         *linkcore.CipherDedup
-	live          map[string]*liveTerminal
-	pendingDirect map[string]pendingDirectAttach
-	snapshots     map[string]frozenStatusCache
-	instance      string
-	nowFn         func() time.Time
-	zeroLegTTL    time.Duration
+	mu                       sync.Mutex
+	registry                 *linkcore.TerminalRegistry
+	dedup                    *linkcore.CipherDedup
+	live                     map[string]*liveTerminal
+	pendingDirect            map[string]pendingDirectAttach
+	snapshots                map[string]frozenStatusCache
+	instance                 string
+	nowFn                    func() time.Time
+	zeroLegTTL               time.Duration
+	beforeRecordOutputReplay atomic.Pointer[func(streamID string, seq uint64)]
 }
 
 func (h *terminalHub) now() time.Time {
@@ -249,7 +250,8 @@ type liveTerminal struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	mu                sync.Mutex
+	outMu sync.Mutex // serializes sendOutput from seq assignment through RecordOutputReplay
+	mu    sync.Mutex
 	relayPath         transport.Path
 	relayLegID        string
 	relayGen          uint64
@@ -534,10 +536,9 @@ func (lt *liveTerminal) sendOutput(f *pb.TerminalFrame) error {
 	nowTime := lt.hub.now()
 	nowMs := uint64(nowTime.UnixMilli())
 
+	lt.outMu.Lock()
 	lt.mu.Lock()
-	lt.outSeq++
-	seq := lt.outSeq
-	rp := lt.relayPath
+	seq := lt.outSeq + 1
 	lt.mu.Unlock()
 
 	env, err := lt.ep.security.sealMessage(&pb.Header{
@@ -549,13 +550,19 @@ func (lt *liveTerminal) sendOutput(f *pb.TerminalFrame) error {
 		Sender:    lt.ep.acct.DeviceID,
 	}, devicesec.TerminalOutput, lt.key, f)
 	if err != nil {
+		lt.outMu.Unlock()
 		return err
 	}
 	raw, err := proto.Marshal(env)
 	if err != nil {
+		lt.outMu.Unlock()
 		return err
 	}
 	sum := sha256.Sum256(raw)
+
+	if fn := lt.hub.beforeRecordOutputReplay.Load(); fn != nil && *fn != nil {
+		(*fn)(lt.streamID, seq)
+	}
 
 	lt.mu.Lock()
 	lt.stream.RecordOutputReplay(nowMs, linkcore.TermFrame{
@@ -564,9 +571,12 @@ func (lt *liveTerminal) sendOutput(f *pb.TerminalFrame) error {
 		RawBytes:    len(raw),
 		RawEnvelope: raw,
 	})
+	lt.outSeq = seq
+	rp := lt.relayPath
 	hasDirectLeg := lt.stream.HasLeg("direct")
 	mirror := lt.stream.ShouldMirrorOutput(int64(nowMs), len(raw))
 	lt.mu.Unlock()
+	lt.outMu.Unlock()
 
 	var dp *directPeer
 	if dm := lt.ep.direct.Load(); dm != nil && hasDirectLeg {

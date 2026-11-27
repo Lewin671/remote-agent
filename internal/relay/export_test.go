@@ -198,3 +198,27 @@ func PeerTerminalDirectForTest(r *Relay, peerID string) bool {
 	dp, ok := dm.activePeerFor(peerID)
 	return ok && dp.peerTerminalDirect.Load()
 }
+func TerminalRelayGenForTest(r *Relay, streamID string) uint64 {
+	h := r.termHubRef.Load()
+	if h == nil {
+		return 0
+	}
+	lt := h.getLive(streamID)
+	if lt == nil {
+		return 0
+	}
+	lt.mu.Lock()
+	defer lt.mu.Unlock()
+	return lt.relayGen
+}
+func SetTerminalBeforeRecordOutputForTest(r *Relay, fn func(streamID string, seq uint64)) {
+	h := r.termHubRef.Load()
+	if h == nil {
+		return
+	}
+	if fn == nil {
+		h.beforeRecordOutputReplay.Store(nil)
+		return
+	}
+	h.beforeRecordOutputReplay.Store(&fn)
+}
