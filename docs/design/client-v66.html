@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v65 · 2026-11-19</title>
+<title>remote-agent 客户端设计稿 v66 · 2026-11-27</title>
 <style>
 
   /* 颜色各有一个意思：墨色 = 这屏最该做的事；蓝色 = 能点的文字；橙色 = 等你；绿色 = 在线；黄色 = 只作内存压力条中段；红色 = 危险。
@@ -620,14 +620,14 @@
 
 <div class="wrap">
 <div class="head">
-  <div><h1>remote-agent 客户端</h1><p>网页 / Android / iOS 设计稿 · v65 · 2026-11-19 · 上一版 v64 在 git 历史里</p></div>
+  <div><h1>remote-agent 客户端</h1><p>网页 / Android / iOS 设计稿 · v66 · 2026-11-27 · 上一版 v65 在 git 历史里</p></div>
   <span class="sp"></span>
   <div class="seg" id="themeseg"><button data-t="auto" class="on">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。</div>
-<div class="note" id="v65-changelog">
-  <h4>相对 v64 的改动</h4><ul>
-  <li><b><a href="#schedule-run">对话里的通知回执</a></b>：定时任务推送后对话里的「通知你：…」工具行改成一行灰字回执（14 的 <code>bell</code>、13 号 <code>ink2</code>，不上色）：电脑代发的只写「已通知你 · 时间」并排回「本轮用时」之前，agent 写的写「已通知你 · 第一行」，有换行或超过 40 个半角宽时点开就地看全文。</li>
+<div class="note" id="v66-changelog">
+  <h4>相对 v65 的改动</h4><ul>
+  <li><b><a href="#conncheck">连接检测 · 耗时拆分</a></b>：行尾保留总耗时（加千位分隔），每台在线电脑下常显「网络往返」和「电脑处理」两行明细（直连未及时回应改走中继时摘要行如实改写并多一行「等直连回应」）；按各段界线分别判慢，过线段名称后写「较慢」并提到墨色加粗，电脑处理较慢时下方补一行 12 号归因小字；旧版电脑无圆点写「版本较旧」并提示更新；底部说明收为三端通用的两句话；补充三端整屏（含宽屏居中对话框）、状态格、界线表、状态表与文案表，并同步更新<a href="#direct-conncheck">电脑 › 连接</a>里的连接检测多电脑样例。</li>
   </ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节"><a href="#account-management">账户管理</a><a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#input">输入区</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#direct">电脑 › 连接</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#tools">工具执行</a><a href="#files">文件</a><a href="#shared-files">Agent 发来的文件</a><a href="#images">图片</a><a href="#cli">多 CLI</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型与上下文</a><a href="#quota">额度</a><a href="#projects">项目</a><a href="#devices">设备</a><a href="#device-security">账户安全</a><a href="#settings">设置与配对</a><a href="#machine-status">电脑状态与磁盘</a><a href="#usage">用量与速度</a><a href="#cli-switches">启用 CLI</a><a href="#wide">宽屏</a><a href="#schedules">定时任务</a><a href="#terminal-history">终端回看</a></nav>
@@ -1588,29 +1588,487 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
 .sx-conncheck .sheet .hd b { flex: 1; text-align: center; }
 .sx-conncheck .sheet .hd .ta { min-width: 44px; justify-content: flex-end; }
 .sx-conncheck .hsp { width: 44px; flex: none; }
-.sx-conncheck .sheet .mi .v { max-width: 60%; }
-.sx-conncheck .sheet .mi .n small { white-space: normal; }
-.sx-conncheck .sheet .mi .v .dotk, .sx-conncheck .sheet .mi .v .spin { margin: 0 4px 0 0; }
-.sx-conncheck .sheet .mi .v .spin { width: 12px; height: 12px; border-width: 1.5px; }
-.sx-conncheck .sheet .mi .v.red { color: var(--red); }
-.sx-conncheck .sheet .banner { margin: 0 16px 12px; background: var(--paper); }
-.sx-conncheck .sheet .banner .spin { width: 12px; height: 12px; border-width: 1.5px; }
-.sx-conncheck .sheet .bs { display: flex; gap: 8px; margin: 4px 16px 0; }
+.sx-conncheck .mi .n small { white-space: normal; }
+.sx-conncheck .mi .v .dotk, .sx-conncheck .mi .v .spin { margin: 0 4px 0 0; }
+.sx-conncheck .mi .v .spin { width: 12px; height: 12px; border-width: 1.5px; }
+.sx-conncheck .mi .v.red { color: var(--red); }
+.sx-conncheck .banner { margin: 0 16px 12px; background: var(--paper); }
+.sx-conncheck .banner .spin { width: 12px; height: 12px; border-width: 1.5px; }
+.sx-conncheck .bs { display: flex; gap: 8px; margin: 4px 16px 0; }
+.sx-conncheck .note { overflow-wrap: anywhere; }
+.sx-conncheck .note b, .sx-conncheck .wcap b { color: var(--ink); font-weight: 600; }
+
+/* 电脑一格（.cc 作用域由连接检测和 #direct-conncheck 共用）：首行名字与总耗时，下面直连摘要与两列明细 */
+.cc .mi.pc { flex-direction: column; align-items: stretch; gap: 0; min-height: 0; padding: 13px 16px 13px 18px; }
+.cc .mi.pc .top { display: flex; align-items: flex-start; gap: 8px; }
+.cc .mi.pc .top .n { overflow-wrap: anywhere; }
+.cc .mi.pc .top .v { flex: none; max-width: none; }
+.cc .mi.pc .top .v.red { white-space: normal; text-align: right; max-width: 50%; }
+.cc .lg { margin: 8px 0 0; padding: 0; font-size: 13px; line-height: 20px; color: var(--ink2);
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.cc .lg > div { display: contents; }
+.cc .lg dt { grid-column: 1; margin: 0; min-width: 0; }
+.cc .lg dd { grid-column: 2; margin: 0; padding-left: 12px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cc .lg .tg::before { content: "·"; margin: 0 .3em; }
+.cc .lg .slow dt, .cc .lg .slow dd { color: var(--ink); font-weight: 600; }
+.cc .lg dd.why, .cc .lg .slow dd.why { grid-column: 1 / -1; padding: 0 0 3px; text-align: left; white-space: normal;
+  font-size: 12px; line-height: 17px; font-weight: 400; color: var(--ink2); }
+.cc .mi.pc .nt { margin: 8px 0 0; font-size: 13px; line-height: 1.45; color: var(--ink2); }
+.cc .mi.pc .lg + .nt { margin-top: 4px; }
+
+/* 宽屏居中对话框与窄屏横向滚动容器 */
+.sx-conncheck .winwrap { overflow-x: auto; padding: 0 0 40px; margin: 0 0 -40px; }
+.sx-conncheck .winwrap > .win { min-width: 1040px; }
+.sx-conncheck .win .pane .gl { padding-left: 28px; }
+.sx-conncheck .win .pg { flex: 1; overflow-y: auto; padding: 36px 0 40px; scrollbar-width: none; }
+.sx-conncheck .win .wdim { position: absolute; inset: 0; background: rgba(0,0,0,.24); z-index: 6; }
+:is([data-theme="dark"], [data-theme="dark"] *) .sx-conncheck .win .wdim { background: rgba(0,0,0,.48); }
+.sx-conncheck .win .wdlg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 7; width: 460px; border-radius: 18px; padding: 16px; background: var(--s3); box-shadow: var(--elev); }
+.sx-conncheck .win .wdlg .whd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 0 2px; }
+.sx-conncheck .win .wdlg .whd b { font-size: 15px; font-weight: 600; color: var(--ink); }
+.sx-conncheck .win .wdlg .whd .ta { min-height: 28px; font-size: 13px; }
+.sx-conncheck .win .wdlg .grp { margin: 0; background: var(--s2); border-radius: 14px; }
+.sx-conncheck .win .wdlg .wacts { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 14px; }
+.sx-conncheck .win .wdlg .wacts .cb { flex: none; height: 34px; padding: 0 16px; border-radius: 8px; font-size: 13px; }
+.sx-conncheck .win .wdlg .why-gf { padding: 10px 2px 0; font-size: 12px; color: var(--ink2); line-height: 1.45; }
+
+/* 状态格与说明表 */
+.sx-conncheck .stg { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+.sx-conncheck .stg > .st { width: 375px; max-width: 100%; background: var(--paper); color: var(--ink); border-radius: 24px; padding: 16px; min-width: 0; overflow: hidden; box-shadow: inset 0 0 0 .5px var(--sep); }
+.sx-conncheck .st-h { font-size: 13px; font-weight: 600; color: var(--ink2); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.sx-conncheck .st-c { font-size: 13px; line-height: 1.55; color: var(--ink2); margin-top: 12px; }
+.sx-conncheck .stg > .st .grp { margin: 0; background: var(--gbg); }
+.sx-conncheck .stg > .st .gf { padding: 8px 12px 0; margin: 0; }
+.sx-conncheck table.t { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.5; margin-top: 6px; }
+.sx-conncheck table.t th, .sx-conncheck table.t td { text-align: left; vertical-align: top; padding: 7px 12px 7px 0; border-bottom: .5px solid var(--sep); }
+.sx-conncheck table.t th { font-weight: 600; color: var(--ink); white-space: nowrap; }
+.sx-conncheck table.t td:first-child { color: var(--ink); white-space: nowrap; }
+.sx-conncheck table.t tr:last-child td { border-bottom: 0; }
+.sx-conncheck .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 0 28px; }
+@media (max-width: 460px) {
+  .sx-conncheck .stg { justify-content: center; }
+  .sx-conncheck table.t th, .sx-conncheck table.t td:first-child { white-space: normal; }
+  .sx-conncheck .cap, .sx-conncheck .st-c { overflow-wrap: anywhere; }
+}
+@media (max-width: 400px) {
+  .sx-conncheck .screens .phone { zoom: .95; }
+  .sx-conncheck .cap { width: auto; max-width: 373px; }
+}
 </style>
-<section id="conncheck" class="sx-conncheck">
+<section id="conncheck" class="sx-conncheck cc">
 <h2>连接检测</h2>
-<p class="hint">连着但觉得慢、或者时断时续时，用它看是哪一段的问题。入口有两个：设置 › 账户与设备 里的「服务器与连接」（合并原服务器与连接检测两行，行尾写 <code>● &lt;serverHost&gt; ›</code>），和宽屏侧栏底部的连接状态。打开就测一次，「再测一次」重测，平时不在后台测。网页和 Android 第一行是实时推送的主连接状态：进行中写当前步骤和已用秒数，失败后才写原因；主连接不在线时多一个「立即重连」。iOS 不列实时推送。下面按离本机由近到远列出本机网络、服务器、每台电脑；延时是一次往返的时间，服务器一行取三次里居中的一次。服务器 500 ms 以上、电脑 1500 ms 以上用浅灰点，延时后面写「较慢」；橙色只留给等你处理的事。</p>
+<p class="hint">连着但觉得慢、或者时断时续时，用它看是哪一段的问题。入口有两个：设置 › 账户与设备 里的「服务器与连接」（行尾写 <code>● &lt;serverHost&gt; ›</code>），和宽屏侧栏底部的连接状态。打开就测一次，「再测一次」重测，平时不在后台测。网页和 Android 第一行是实时推送的主连接状态（重连中或等待重试时在顶部横幅写当前步骤、已用秒数或失败原因，并多一个「立即重连」按钮）；iOS 是从设置推入的一页，不列实时推送，在线的电脑排在前面；Android 是底部弹层，标题「连接检测」；网页是弹层，标题「服务器与连接」，宽屏为宽 460 的居中对话框。电脑一行行尾保留总耗时（加千位分隔），每台在线电脑下面常显「网络往返」和「电脑处理」两行明细（改走中继重发时多一行「等直连回应」），按各段界线分别判慢并加粗标出，橙色仍只留给等你处理的事。</p>
+
+<h3 class="sub">三端</h3>
+<p class="hint">三端共用同一套行的画法，差别只有容器和行的多少：Android 和 iOS 用同一个手机框，用平台标签区分。</p>
+
 <div class="screens">
-  <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><span class="sp"></span></div><div class="scroll" style="padding-bottom:40px"><div class="hl">设置</div><div class="gl">账户</div><div class="grp"><div class="mi"><span class="n">服务器</span><span class="v">relay.example.com</span></div><div class="mi"><span class="n">连接检测</span><span class="v"><i class="dotk g" style="margin:0"></i>已连接</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">版本</span><span class="v">0.29.0</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="hd"><span class="hsp"></span><b>连接检测</b><span class="ta">完成</span></div><div class="grp"><div class="mi"><span class="n">实时推送</span><span class="v"><i class="dotk g"></i>已连接</span></div><div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div><div class="mi"><span class="n">服务器<small>relay.example.com</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div><div class="mi"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>132 ms</span></div><div class="mi"><span class="n">VPS-dev<small>正在用中继 · 两边的网络隔开了，不能直接连通</small></span><span class="v"><i class="dotk off"></i>2140 ms · 较慢</span></div><div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div></div><div class="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="bs"><button class="cb">再测一次</button></div></div><div class="homebar"></div></div>
-  <p class="cap"><b>测完</b>：从近到远每一段一行，行尾是状态图形和结果。延时正常是绿点；服务器 500 ms 以上、电脑 1500 ms 以上是浅灰点，延时后面写「较慢」。不在线的电脑不测，写「不在线」，也不写直连摘要。电脑名下一行是直连摘要，写法见<a href="#direct-conncheck">电脑 › 连接</a>。</p></div>
-  <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><span class="sp"></span></div><div class="scroll" style="padding-bottom:40px"><div class="hl">设置</div><div class="gl">账户</div><div class="grp"><div class="mi"><span class="n">服务器</span><span class="v">relay.example.com</span></div><div class="mi"><span class="n">连接检测</span><span class="v"><i class="dotk g" style="margin:0"></i>已连接</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">版本</span><span class="v">0.29.0</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="hd"><span class="hsp"></span><b>连接检测</b><span class="ta">完成</span></div><div class="grp"><div class="mi"><span class="n">实时推送</span><span class="v"><i class="dotk g"></i>已连接</span></div><div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div><div class="mi"><span class="n">服务器<small>relay.example.com</small></span><span class="v"><i class="spin"></i>检测中…</span></div><div class="mi"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="spin"></i>检测中…</span></div><div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div></div><div class="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="bs"><button class="cb dis">再测一次</button></div></div><div class="homebar"></div></div>
-  <p class="cap"><b>检测中</b>：打开时和点「再测一次」后，先测服务器，再同时测各台在线的电脑；测的时候按钮置灰。</p></div>
-  <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><span class="sp"></span></div><div class="scroll" style="padding-bottom:40px"><div class="hl">设置</div><div class="gl">账户</div><div class="grp"><div class="mi"><span class="n">服务器</span><span class="v">relay.example.com</span></div><div class="mi"><span class="n">连接检测</span><span class="v"><i class="dotk g" style="margin:0"></i>已连接</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">版本</span><span class="v">0.29.0</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="hd"><span class="hsp"></span><b>连接检测</b><span class="ta">完成</span></div><div class="grp"><div class="mi"><span class="n">实时推送</span><span class="v"><i class="dotk g"></i>已连接</span></div><div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div><div class="mi"><span class="n">服务器<small>relay.example.com</small></span><span class="v red">服务器没有回应</span></div><div class="mi"><span class="n">MacBook<small>正在用直连</small></span><span class="v">未检测</span></div><div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div></div><div class="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="bs"><button class="cb">再测一次</button></div></div><div class="homebar"></div></div>
-  <p class="cap"><b>服务器没有回应</b>：原因用红字写在这一行，后面的电脑不测，写「未检测」。</p></div>
-  <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><span class="sp"></span></div><div class="scroll" style="padding-bottom:40px"><div class="hl">设置</div><div class="gl">账户</div><div class="grp"><div class="mi"><span class="n">服务器</span><span class="v">relay.example.com</span></div><div class="mi"><span class="n">连接检测</span><span class="v"><i class="dotk g" style="margin:0"></i>已连接</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">版本</span><span class="v">0.29.0</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="hd"><span class="hsp"></span><b>连接检测</b><span class="ta">完成</span></div><div class="banner"><i class="spin"></i><span>正在重连：同步设备状态，已 3 秒。</span></div><div class="grp"><div class="mi"><span class="n">实时推送</span><span class="v"><i class="spin"></i>重连中</span></div><div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div><div class="mi"><span class="n">服务器<small>relay.example.com</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div><div class="mi"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>132 ms</span></div><div class="mi"><span class="n">VPS-dev<small>正在用中继 · 两边的网络隔开了，不能直接连通</small></span><span class="v"><i class="dotk off"></i>2140 ms · 较慢</span></div><div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div></div><div class="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="bs"><button class="cb">立即重连</button><button class="cb sec">再测一次</button></div></div><div class="homebar"></div></div>
-  <p class="cap"><b>正在重连</b>：上面一条写当前步骤和已用秒数，持续更新。延时测通不代表实时推送已连接。「立即重连」重新建立主连接，「再测一次」只重测延时。Android 按实际流程显示读取本机状态、登录或建立推送连接。</p></div>
-  <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><span class="sp"></span></div><div class="scroll" style="padding-bottom:40px"><div class="hl">设置</div><div class="gl">账户</div><div class="grp"><div class="mi"><span class="n">服务器</span><span class="v">relay.example.com</span></div><div class="mi"><span class="n">连接检测</span><span class="v"><i class="dotk g" style="margin:0"></i>已连接</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">版本</span><span class="v">0.29.0</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="hd"><span class="hsp"></span><b>连接检测</b><span class="ta">完成</span></div><div class="banner"><span>实时推送未连接，会话变化可能延迟。最近一次失败：连接超时</span></div><div class="grp"><div class="mi"><span class="n">实时推送</span><span class="v"><i class="spin"></i>重连中</span></div><div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div><div class="mi"><span class="n">服务器<small>relay.example.com</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div><div class="mi"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>132 ms</span></div><div class="mi"><span class="n">VPS-dev<small>正在用中继 · 两边的网络隔开了，不能直接连通</small></span><span class="v"><i class="dotk off"></i>2140 ms · 较慢</span></div><div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div></div><div class="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="bs"><button class="cb">立即重连</button><button class="cb sec">再测一次</button></div></div><div class="homebar"></div></div>
-  <p class="cap"><b>等待重试</b>：两次重连之间写失败原因；按钮和正在重连时一样。</p></div>
+  <div>
+    <div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><span class="sp"></span></div>
+      <div class="scroll" style="padding-bottom:40px">
+        <div class="hl">连接检测</div>
+        <div class="grp" style="margin-top:22px">
+          <div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div>
+          <div class="mi"><span class="n">服务器<small>relay.example.com</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div>
+          <div class="mi pc">
+            <div class="top"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>38 ms</span></div>
+            <dl class="lg"><div><dt>网络往返</dt><dd>6 ms</dd></div><div><dt>电脑处理</dt><dd>21 ms</dd></div></dl>
+          </div>
+          <div class="mi pc">
+            <div class="top"><span class="n">VPS-dev<small>正在用中继 · 两边的网络隔开了，不能直接连通</small></span><span class="v"><i class="dotk off"></i>2,140 ms · 较慢</span></div>
+            <dl class="lg"><div><dt>网络往返</dt><dd>296 ms</dd></div><div class="slow"><dt>电脑处理<span class="tg">较慢</span></dt><dd>1,790 ms</dd><dd class="why">主要在执行（1,770 ms）</dd></div></dl>
+          </div>
+          <div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div>
+        </div>
+        <div class="gf">延时是一次往返的总耗时。电脑一行下面分成网络和电脑处理两段，慢的那段会标出来。</div>
+        <div class="bs"><button class="cb">再测一次</button></div>
+      </div>
+      <div class="homebar"></div>
+    </div>
+    <p class="cap"><span class="plat" style="margin-left:0">iOS</span> <b>推入的一页，分组列表</b>：不列实时推送，从本机网络开始。直连的电脑一切正常。经中继的那台电脑处理过了 500 ms 的界线，这一行标「较慢」，下面一行小字说时间主要花在执行上；行尾跟着标较慢。网络 296 ms 没过经中继的 800 ms，不标。</p>
+  </div>
+
+  <div>
+    <div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><span class="sp"></span></div>
+      <div class="scroll" style="padding-bottom:40px"><div class="hl">设置</div><div class="gl">账户与设备</div><div class="grp"><div class="mi"><span class="n">客户端</span><span class="v">本机等 3 台</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">账户安全</span><span class="v">本机是管理端</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">服务器与连接</span><span class="v"><i class="dotk g" style="margin:0"></i>relay.example.com</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div></div>
+      <div class="dim"></div>
+      <div class="sheet"><div class="grab"></div><div class="hd"><span class="hsp"></span><b>连接检测</b><span class="ta">完成</span></div>
+        <div class="grp">
+          <div class="mi"><span class="n">实时推送</span><span class="v"><i class="dotk g"></i>已连接</span></div>
+          <div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div>
+          <div class="mi"><span class="n">服务器<small>relay.example.com</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div>
+          <div class="mi pc">
+            <div class="top"><span class="n">MacBook<small>直连没有及时回应，这一次改走了中继</small></span><span class="v"><i class="dotk off"></i>3,420 ms · 较慢</span></div>
+            <dl class="lg"><div><dt>网络往返</dt><dd>310 ms</dd></div><div><dt>电脑处理</dt><dd>64 ms</dd></div><div class="slow"><dt>等直连回应<span class="tg">较慢</span></dt><dd>3,046 ms</dd></div></dl>
+          </div>
+          <div class="mi pc">
+            <div class="top"><span class="n">Studio<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>41 ms</span></div>
+            <dl class="lg"><div><dt>网络往返</dt><dd>7 ms</dd></div><div><dt>电脑处理</dt><dd>22 ms</dd></div></dl>
+          </div>
+        </div>
+        <div class="gf">延时是一次往返的总耗时。电脑一行下面分成网络和电脑处理两段，慢的那段会标出来。</div>
+        <div class="bs"><button class="cb">再测一次</button></div>
+      </div>
+      <div class="homebar"></div>
+    </div>
+    <p class="cap"><span class="plat" style="margin-left:0">Android</span> <b>底部弹层，多一行实时推送</b>：MacBook 这一次直连没有及时回应，指令改走中继重发。摘要行如实写，不再写「正在用直连」；明细多出第三行「等直连回应」，它过了 500 ms 的界线，这一行标「较慢」并加粗：3,420 ms 里有 3,046 ms 花在等直连上。网络和电脑处理都没过线，不标。</p>
+  </div>
+
+  <div>
+    <div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><span class="sp"></span></div>
+      <div class="scroll" style="padding-bottom:40px"><div class="hl">设置</div><div class="gl">账户与设备</div><div class="grp"><div class="mi"><span class="n">客户端</span><span class="v">本机等 3 台</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">账户安全</span><span class="v">本机是管理端</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">服务器与连接</span><span class="v"><i class="dotk g" style="margin:0"></i>relay.example.com</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div></div>
+      <div class="dim"></div>
+      <div class="sheet"><div class="grab"></div><div class="hd"><span class="hsp"></span><b>服务器与连接</b><span class="ta">完成</span></div>
+        <div class="grp">
+          <div class="mi"><span class="n">实时推送</span><span class="v"><i class="dotk g"></i>已连接</span></div>
+          <div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div>
+          <div class="mi"><span class="n">服务器<small>relay.example.com</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div>
+          <div class="mi pc">
+            <div class="top"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="spin"></i>检测中…</span></div>
+            <dl class="lg"><div><dt>网络往返</dt><dd>6 ms</dd></div><div><dt>电脑处理</dt><dd>—</dd></div></dl>
+          </div>
+          <div class="mi pc">
+            <div class="top"><span class="n">VPS-dev<small>正在用中继 · 两边的网络隔开了，不能直接连通</small></span><span class="v"><i class="spin"></i>检测中…</span></div>
+            <dl class="lg"><div><dt>网络往返</dt><dd>—</dd></div><div><dt>电脑处理</dt><dd>—</dd></div></dl>
+          </div>
+          <div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div>
+        </div>
+        <div class="gf">延时是一次往返的总耗时。电脑一行下面分成网络和电脑处理两段，慢的那段会标出来。</div>
+        <div class="bs"><button class="cb dis">再测一次</button></div>
+      </div>
+      <div class="homebar"></div>
+    </div>
+    <p class="cap"><span class="plat" style="margin-left:0">网页 · 手机</span> <b>测量中</b>：每台电脑只有行尾一个转圈。两行明细从一开始就占位，测出一个填一个，行高不跳。直连的网络往返几乎立刻就有（保活探测一直在跑），经中继的要等 3 次回声探测。</p>
+  </div>
+</div>
+
+<h3 class="sub">网页 · 宽屏</h3>
+<div class="winwrap"><div class="win" style="height:760px">
+  <div class="side">
+    <div class="side-top"><span class="scp"><span class="av">f</span><span>foo</span><svg class="ic" width="14" height="14"><use href="#lu-chevron-down"/></svg></span><span class="sp"></span><span class="mini"><svg class="ic" width="15" height="15"><use href="#lu-square-pen"/></svg>新任务</span></div>
+    <div class="whl"><em>1</em> 件事等你</div>
+    <div class="wsub">1 个会话在运行，1 个空闲</div>
+    <div class="find"><svg class="ic" width="14" height="14"><use href="#lu-search"/></svg>按标题筛选<kbd>⌘K</kbd></div>
+    <div class="slist">
+      <div class="srow"><span class="gut"><i class="dotk o"></i></span><div class="rb"><div class="r1"><b>重构 API 层</b><time>剩 8 分钟</time></div><div class="r2">等待审批 · 请求执行 go test ./... -count=1</div><div class="r3">Codex · VPS-dev</div></div></div>
+      <div class="slabel">进行中</div>
+      <div class="srow"><span class="gut"><i class="spin"></i></span><div class="rb"><div class="r1"><b>修复登录超时</b><time>刚刚</time></div><div class="r2">运行中 · 正在执行 go test ./auth/...</div><div class="r3">Codex · MacBook</div></div></div>
+    </div>
+    <div class="conn"><i class="dotk g"></i>已连接</div>
+    <div class="sfoot"><div class="seg"><span><svg class="ic" width="14" height="14"><use href="#lu-message-circle"/></svg>会话</span><span><svg class="ic" width="14" height="14"><use href="#lu-clock"/></svg>定时</span></div><span class="ib on"><svg class="ic" width="17" height="17"><use href="#lu-settings"/></svg></span></div>
+  </div>
+  <div class="main">
+    <div class="pg"><div class="pane">
+      <div class="hl">设置</div>
+      <div class="gl">账户与设备</div>
+      <div class="grp"><div class="mi"><span class="n">客户端</span><span class="v">本机等 3 台</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">账户安全</span><span class="v">本机是管理端</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">服务器与连接</span><span class="v"><i class="dotk g" style="margin:0"></i>relay.example.com</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div>
+    </div></div>
+    <div class="wdim"></div>
+    <div class="wdlg" role="dialog" aria-modal="true" aria-label="服务器与连接">
+      <div class="whd"><b>服务器与连接</b><span class="ta">完成</span></div>
+      <div class="grp">
+        <div class="mi"><span class="n">实时推送</span><span class="v"><i class="dotk g"></i>已连接</span></div>
+        <div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div>
+        <div class="mi"><span class="n">服务器<small>relay.example.com</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div>
+        <div class="mi pc">
+          <div class="top"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>38 ms</span></div>
+          <dl class="lg"><div><dt>网络往返</dt><dd>6 ms</dd></div><div><dt>电脑处理</dt><dd>21 ms</dd></div></dl>
+        </div>
+        <div class="mi pc">
+          <div class="top"><span class="n">prod-gpu-workstation-us-west-04<small>正在用中继 · 两边的网络隔开了，不能直接连通</small></span><span class="v"><i class="dotk off"></i>12,480 ms · 较慢</span></div>
+          <dl class="lg"><div><dt>网络往返</dt><dd>296 ms</dd></div><div class="slow"><dt>电脑处理<span class="tg">较慢</span></dt><dd>12,160 ms</dd><dd class="why">主要在排队（12,090 ms），电脑正忙于别的任务</dd></div></dl>
+        </div>
+        <div class="mi pc">
+          <div class="top"><span class="n">Lab<small>电脑策略已关闭直连</small></span><span class="v">版本较旧</span></div>
+          <p class="nt">更新电脑上的 remote-agent 后，可显示网络往返和电脑处理的耗时</p>
+        </div>
+        <div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div>
+      </div>
+      <div class="why-gf">延时是一次往返的总耗时。电脑一行下面分成网络和电脑处理两段，慢的那段会标出来。</div>
+      <div class="wacts"><button class="cb">再测一次</button></div>
+    </div>
+  </div>
+</div></div>
+<p class="wcap"><b>宽屏 · 宽 460 的居中对话框。</b>行用宽屏的 15 号，摘要 12 号，明细 13 号，较慢那行下面的小字 12 号。四台电脑里一台直连正常，一台长名字且排队了 12 秒，一台版本较旧，一台不在线，长名字自然折行，行尾的总耗时不被挤掉。</p>
+
+<h3 class="sub">状态</h3>
+<p class="hint">每格只画电脑那一组行，其余行（实时推送、本机网络）不变所以省略；需要对照服务器时才把服务器一行带上。三端画法相同。</p>
+
+<div class="stg">
+
+  <div class="st">
+    <div class="st-h">测量中</div>
+    <div class="grp">
+      <div class="mi pc">
+        <div class="top"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="spin"></i>检测中…</span></div>
+        <dl class="lg"><div><dt>网络往返</dt><dd>6 ms</dd></div><div><dt>电脑处理</dt><dd>—</dd></div></dl>
+      </div>
+      <div class="mi pc">
+        <div class="top"><span class="n">VPS-dev<small>正在用中继 · 两边的网络隔开了，不能直接连通</small></span><span class="v"><i class="spin"></i>检测中…</span></div>
+        <dl class="lg"><div><dt>网络往返</dt><dd>—</dd></div><div><dt>电脑处理</dt><dd>—</dd></div></dl>
+      </div>
+    </div>
+    <div class="st-c">上面一台网络已经测出、在等电脑处理；下面一台刚开始。没测出的位置写「—」，整格高度从头到尾不变。</div>
+  </div>
+
+  <div class="st">
+    <div class="st-h">直连 · 正常</div>
+    <div class="grp">
+      <div class="mi pc">
+        <div class="top"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>38 ms</span></div>
+        <dl class="lg"><div><dt>网络往返</dt><dd>6 ms</dd></div><div><dt>电脑处理</dt><dd>21 ms</dd></div></dl>
+      </div>
+    </div>
+    <div class="st-c">三个数都有，两段都远低于界线。两行明细加起来不等于总耗时，差的 11 ms 是本机加解密和调度，不单独列。</div>
+  </div>
+
+  <div class="st">
+    <div class="st-h">经中继 · 正常</div>
+    <div class="grp">
+      <div class="mi"><span class="n">服务器<small>relay.example.com</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div>
+      <div class="mi pc">
+        <div class="top"><span class="n">VPS-dev<small>正在用中继 · 当前网络下中继同样顺畅，已自动选用</small></span><span class="v"><i class="dotk g"></i>412 ms</span></div>
+        <dl class="lg"><div><dt>网络往返</dt><dd>302 ms</dd></div><div><dt>电脑处理</dt><dd>64 ms</dd></div></dl>
+      </div>
+    </div>
+    <div class="st-c">网络往返是经服务器到电脑再回来，所以比服务器一行大，界线也放宽到 800 ms；两者的差大致是服务器到电脑那一段。</div>
+  </div>
+
+  <div class="st">
+    <div class="st-h">较慢 · 慢在网络</div>
+    <div class="grp">
+      <div class="mi"><span class="n">服务器<small>relay.example.com</small></span><span class="v"><i class="dotk off"></i>640 ms · 较慢</span></div>
+      <div class="mi pc">
+        <div class="top"><span class="n">VPS-dev<small>正在用中继 · 两边的网络隔开了，不能直接连通</small></span><span class="v"><i class="dotk off"></i>1,860 ms · 较慢</span></div>
+        <dl class="lg"><div class="slow"><dt>网络往返<span class="tg">较慢</span></dt><dd>1,742 ms</dd></div><div><dt>电脑处理</dt><dd>58 ms</dd></div></dl>
+      </div>
+      <div class="mi pc">
+        <div class="top"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk off"></i>668 ms · 较慢</span></div>
+        <dl class="lg"><div class="slow"><dt>网络往返<span class="tg">较慢</span></dt><dd>620 ms</dd></div><div><dt>电脑处理</dt><dd>24 ms</dd></div></dl>
+      </div>
+    </div>
+    <div class="st-c">上面一台经中继，网络往返过了 800 ms；下面一台直连，网络往返过了 500 ms。两台的「较慢」都写在网络那一行，电脑处理只有几十毫秒，一看就知道不是电脑的事。下面一台总耗时只有 668 ms，因为网络这一段过线，行尾也跟着标较慢。</div>
+  </div>
+
+  <div class="st">
+    <div class="st-h">较慢 · 慢在电脑（排队）</div>
+    <div class="grp">
+      <div class="mi pc">
+        <div class="top"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk off"></i>1,250 ms · 较慢</span></div>
+        <dl class="lg"><div><dt>网络往返</dt><dd>8 ms</dd></div><div class="slow"><dt>电脑处理<span class="tg">较慢</span></dt><dd>1,190 ms</dd><dd class="why">主要在排队（1,150 ms），电脑正忙于别的任务</dd></div></dl>
+      </div>
+      <div class="mi pc">
+        <div class="top"><span class="n">Studio<small>正在用直连</small></span><span class="v"><i class="dotk off"></i>612 ms · 较慢</span></div>
+        <dl class="lg"><div><dt>网络往返</dt><dd>9 ms</dd></div><div class="slow"><dt>电脑处理<span class="tg">较慢</span></dt><dd>571 ms</dd><dd class="why">主要在排队（520 ms），电脑正忙于别的任务</dd></div></dl>
+      </div>
+    </div>
+    <div class="st-c">直连、网络仅 8–9 ms，但电脑处理过了 500 ms 的界线：电脑处理一行标「较慢」并加粗，下面一行小字写主要在排队，行尾换为浅灰点加「较慢」，不会再被读成网络慢。</div>
+  </div>
+
+  <div class="st">
+    <div class="st-h">较慢 · 慢在电脑（执行）</div>
+    <div class="grp">
+      <div class="mi pc">
+        <div class="top"><span class="n">VPS-dev<small>正在用中继 · 两边的网络隔开了，不能直接连通</small></span><span class="v"><i class="dotk off"></i>2,140 ms · 较慢</span></div>
+        <dl class="lg"><div><dt>网络往返</dt><dd>296 ms</dd></div><div class="slow"><dt>电脑处理<span class="tg">较慢</span></dt><dd>1,790 ms</dd><dd class="why">主要在执行（1,770 ms）</dd></div></dl>
+      </div>
+    </div>
+    <div class="st-c">没怎么排队，慢在执行本身，常见于电脑磁盘忙或图片存储目录很大。小字只说「主要在执行」，不猜原因。</div>
+  </div>
+
+  <div class="st">
+    <div class="st-h">直连没及时回应 · 改走中继重发</div>
+    <div class="grp">
+      <div class="mi pc">
+        <div class="top"><span class="n">MacBook<small>直连没有及时回应，这一次改走了中继</small></span><span class="v"><i class="dotk off"></i>3,420 ms · 较慢</span></div>
+        <dl class="lg"><div><dt>网络往返</dt><dd>310 ms</dd></div><div><dt>电脑处理</dt><dd>64 ms</dd></div><div class="slow"><dt>等直连回应<span class="tg">较慢</span></dt><dd>3,046 ms</dd></div></dl>
+      </div>
+    </div>
+    <div class="st-c">处理探测先走直连、3 秒内没有回复而改走中继重发时，摘要行换为实际发生的事；明细多出第三行「等直连回应」，过了 500 ms 同样标「较慢」并加粗，直接说明这 3 秒多花在哪。网络往返此时按经中继的 800 ms 判慢；下一次检测若直连恢复，摘要行回到「正在用直连」。</div>
+  </div>
+
+  <div class="st">
+    <div class="st-h">电脑版本较旧</div>
+    <div class="grp">
+      <div class="mi pc">
+        <div class="top"><span class="n">MacBook<small>正在用直连</small></span><span class="v">版本较旧</span></div>
+        <dl class="lg"><div><dt>网络往返</dt><dd>6 ms</dd></div></dl>
+        <p class="nt">更新电脑上的 remote-agent 后，可显示电脑处理的耗时</p>
+      </div>
+      <div class="mi pc">
+        <div class="top"><span class="n">VPS-dev<small>正在用中继 · 两边的网络隔开了，不能直接连通</small></span><span class="v">版本较旧</span></div>
+        <p class="nt">更新电脑上的 remote-agent 后，可显示网络往返和电脑处理的耗时</p>
+      </div>
+    </div>
+    <div class="st-c">不显示总耗时。行尾没有圆点：电脑在线，只是测不了，和「未检测」同一种画法。直连的电脑仍有网络往返，因为保活探测不需要电脑升级；每次打开面板重新试一次，电脑升级后自动恢复。</div>
+  </div>
+
+  <div class="st">
+    <div class="st-h">失败与超时</div>
+    <div class="grp">
+      <div class="mi"><span class="n">服务器<small>relay.example.com</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div>
+      <div class="mi pc">
+        <div class="top"><span class="n">VPS-dev<small>正在用中继 · 两边的网络隔开了，不能直接连通</small></span><span class="v red">电脑没有及时回应</span></div>
+        <dl class="lg"><div><dt>网络往返</dt><dd>302 ms</dd></div><div class="slow"><dt>电脑处理</dt><dd>超过 15 秒</dd></div></dl>
+      </div>
+      <div class="mi pc">
+        <div class="top"><span class="n">Studio<small>正在用中继 · 同时直连的电脑已达上限</small></span><span class="v red">没有回应</span></div>
+        <dl class="lg"><div class="slow"><dt>网络往返</dt><dd>超过 5 秒</dd></div><div><dt>电脑处理</dt><dd>未检测</dd></div></dl>
+      </div>
+    </div>
+    <div class="st-c">上面一台网络已测出（302 ms），电脑 15 秒没处理完，问题在电脑；下面一台连回声探测 5 秒都没回来，卡在网络这一段，电脑处理不再测。卡住的那一行同样提到墨色加粗，写「超过 N 秒」而不是「较慢」。原因仍用红字写在行尾。</div>
+  </div>
+
+  <div class="st">
+    <div class="st-h">不在线与未检测</div>
+    <div class="grp">
+      <div class="mi"><span class="n">服务器<small>relay.example.com</small></span><span class="v red">服务器没有回应</span></div>
+      <div class="mi pc">
+        <div class="top"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>38 ms</span></div>
+        <dl class="lg"><div><dt>网络往返</dt><dd>6 ms</dd></div><div><dt>电脑处理</dt><dd>21 ms</dd></div></dl>
+      </div>
+      <div class="mi"><span class="n">VPS-dev<small>正在用中继 · 两边的网络隔开了，不能直接连通</small></span><span class="v">未检测</span></div>
+      <div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div>
+    </div>
+    <div class="st-c">服务器没有回应时，走直连的电脑照测，走中继的写「未检测」；不在线的电脑只有一行，不写摘要也不写明细。</div>
+  </div>
+
+  <div class="st">
+    <div class="st-h">多台混合</div>
+    <div class="grp">
+      <div class="mi pc">
+        <div class="top"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>38 ms</span></div>
+        <dl class="lg"><div><dt>网络往返</dt><dd>6 ms</dd></div><div><dt>电脑处理</dt><dd>21 ms</dd></div></dl>
+      </div>
+      <div class="mi pc">
+        <div class="top"><span class="n">Studio<small>正在用中继 · 当前网络下中继同样顺畅，已自动选用</small></span><span class="v"><i class="dotk g"></i>96 ms</span></div>
+        <dl class="lg"><div><dt>网络往返</dt><dd>58 ms</dd></div><div><dt>电脑处理</dt><dd>24 ms</dd></div></dl>
+      </div>
+      <div class="mi pc">
+        <div class="top"><span class="n">VPS-dev<small>正在用中继 · 两边的网络隔开了，不能直接连通</small></span><span class="v"><i class="dotk off"></i>2,140 ms · 较慢</span></div>
+        <dl class="lg"><div><dt>网络往返</dt><dd>296 ms</dd></div><div class="slow"><dt>电脑处理<span class="tg">较慢</span></dt><dd>1,790 ms</dd><dd class="why">主要在执行（1,770 ms）</dd></div></dl>
+      </div>
+      <div class="mi pc">
+        <div class="top"><span class="n">Lab<small>电脑策略已关闭直连</small></span><span class="v">版本较旧</span></div>
+        <p class="nt">更新电脑上的 remote-agent 后，可显示网络往返和电脑处理的耗时</p>
+      </div>
+      <div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div>
+    </div>
+    <div class="gf">延时是一次往返的总耗时。电脑一行下面分成网络和电脑处理两段，慢的那段会标出来。</div>
+    <div class="st-c">五台各自独立。扫一眼右边：行尾 17 号的是总耗时，下面 13 号的是两段明细，整屏只有一处是墨色加粗并写着「较慢」。底部说明就是这两句，三端和各种路线都用它；浏览器或应用版本不支持直连时在后面补一句。</div>
+  </div>
+
+  <div class="st">
+    <div class="st-h">拥挤边界 · 长名字和大数字</div>
+    <div class="grp">
+      <div class="mi pc">
+        <div class="top"><span class="n">prod-gpu-workstation-us-west-04<small>正在用中继 · 两边的网络隔开了，不能直接连通</small></span><span class="v"><i class="dotk off"></i>12,480 ms · 较慢</span></div>
+        <dl class="lg"><div><dt>网络往返</dt><dd>296 ms</dd></div><div class="slow"><dt>电脑处理<span class="tg">较慢</span></dt><dd>12,160 ms</dd><dd class="why">主要在排队（12,090 ms），电脑正忙于别的任务</dd></div></dl>
+      </div>
+      <div class="mi pc">
+        <div class="top"><span class="n">build-runner-arm64-09<small>直连没有及时回应，这一次改走了中继</small></span><span class="v"><i class="dotk off"></i>14,905 ms · 较慢</span></div>
+        <dl class="lg"><div class="slow"><dt>网络往返<span class="tg">较慢</span></dt><dd>1,204 ms</dd></div><div class="slow"><dt>电脑处理<span class="tg">较慢</span></dt><dd>10,655 ms</dd><dd class="why">主要在执行（10,480 ms）</dd></div><div class="slow"><dt>等直连回应<span class="tg">较慢</span></dt><dd>3,046 ms</dd></div></dl>
+      </div>
+      <div class="mi pc">
+        <div class="top"><span class="n">实验室里那台跑评测的旧 Mac Pro（二楼）<small>正在用中继 · 同时直连的电脑已达上限</small></span><span class="v red">电脑没有及时回应</span></div>
+        <dl class="lg"><div class="slow"><dt>网络往返<span class="tg">较慢</span></dt><dd>4,870 ms</dd></div><div class="slow"><dt>电脑处理</dt><dd>超过 15 秒</dd></div></dl>
+      </div>
+    </div>
+    <div class="st-c">行尾不换行、不截断；名字和摘要让出宽度，自然折行。处理探测 15 秒超时，所以总耗时最多五位数。「较慢」写在左边名称后面，右边一列只有数，所有电脑的数值都贴右对齐成一列。第二台三段都过线，三行都标；小字较长时自己折行，不影响上面的数字列。</div>
+  </div>
+
+  <div class="st">
+    <div class="st-h">英文</div>
+    <div class="grp">
+      <div class="mi pc">
+        <div class="top"><span class="n">MacBook<small>Using direct</small></span><span class="v"><i class="dotk off"></i>1,250 ms · Slow</span></div>
+        <dl class="lg"><div><dt>Network</dt><dd>8 ms</dd></div><div class="slow"><dt>Computer<span class="tg">Slow</span></dt><dd>1,190 ms</dd><dd class="why">Mostly queued (1,150 ms); the computer is busy with other work</dd></div></dl>
+      </div>
+      <div class="mi pc">
+        <div class="top"><span class="n">VPS-dev<small>Using relay · The two networks are isolated and cannot connect directly</small></span><span class="v"><i class="dotk off"></i>2,140 ms · Slow</span></div>
+        <dl class="lg"><div><dt>Network</dt><dd>296 ms</dd></div><div class="slow"><dt>Computer<span class="tg">Slow</span></dt><dd>1,790 ms</dd><dd class="why">Mostly running (1,770 ms)</dd></div></dl>
+      </div>
+      <div class="mi pc">
+        <div class="top"><span class="n">Lab<small>Using relay</small></span><span class="v">Outdated</span></div>
+        <p class="nt">Update remote-agent on this computer to see network and processing time</p>
+      </div>
+    </div>
+    <div class="gf">Latency is the total round-trip time. Each computer shows network and computer time below, and marks the slow part.</div>
+    <div class="st-c">英文标签用短的「Network」「Computer」，「Slow」同样跟在名称后面，右边只有一个数；小字是整句，放不下就折行。</div>
+  </div>
+
+</div>
+
+<h3 class="sub">规则与文案</h3>
+<div class="note">
+  <h4>判慢的界线（均为初值，上线后按实际延时再定，见 <a href="../plan.md">plan.md</a>）</h4>
+  <table class="t">
+    <tr><th>哪个数</th><th>界线</th><th>过线后怎么画</th></tr>
+    <tr><td>网络往返 · 直连</td><td>≥ 500 ms</td><td rowspan="4">这一行提到墨色加粗，名称后面写「较慢」；行尾总耗时同时换成浅灰点 + 「较慢」</td></tr>
+    <tr><td>网络往返 · 经中继</td><td>≥ 800 ms（含本机到服务器、服务器到电脑两段）</td></tr>
+    <tr><td>电脑处理</td><td>≥ 500 ms</td></tr>
+    <tr><td>等直连回应</td><td>≥ 500 ms（只在改走中继时有这一段）</td></tr>
+    <tr><td>总耗时</td><td>≥ 1500 ms（现有界线，不变）</td><td>兜底：没有任何一段过线时，只有行尾标「较慢」，明细不标</td></tr>
+  </table>
+  <p style="margin:10px 0 0">服务器一行沿用 ≥ 500 ms 较慢。判慢与归因小字由共享核心输出，三端壳只读视图模型渲染。</p>
+</div>
+
+<div class="note">
+  <h4>每个状态什么时候出现</h4>
+  <table class="t">
+    <tr><th>状态</th><th>触发条件</th><th>行尾</th><th>明细</th></tr>
+    <tr><td>测量中</td><td>打开面板或点「再测一次」，这台电脑的探测还没全部结束</td><td>转圈 + 检测中…</td><td>已测出的写数值，没测出的写 —</td></tr>
+    <tr><td>正常</td><td>各段都没过各自的界线，且总耗时 &lt; 1500 ms。直连和经中继画法相同，只是摘要行不同</td><td>绿点 + 总耗时</td><td>网络往返、电脑处理，都不标</td></tr>
+    <tr><td>慢在网络</td><td>网络往返 ≥ 500 ms（直连）或 ≥ 800 ms（经中继）</td><td>浅灰点 + 总耗时 · 较慢</td><td>网络往返一行标较慢</td></tr>
+    <tr><td>慢在电脑</td><td>电脑处理 ≥ 500 ms</td><td>同上</td><td>电脑处理一行标较慢；下面一行小字写排队和执行里大的那个</td></tr>
+    <tr><td>多段都慢</td><td>不止一段过线</td><td>同上</td><td>过线的每一行都标</td></tr>
+    <tr><td>改走中继</td><td>处理探测先走直连，3 秒内没有电脑的回复，核心改走中继重发</td><td>按上面的规则</td><td>多一行「等直连回应」，≥ 500 ms 时标较慢；摘要行改写</td></tr>
+    <tr><td>只有总数慢（兜底）</td><td>总耗时 ≥ 1500 ms，各段都没过线</td><td>浅灰点 + 总耗时 · 较慢</td><td>不标</td></tr>
+    <tr><td>版本较旧</td><td>新指令被电脑以认证过的 <code>rejected / invalid_body</code> 拒绝</td><td>版本较旧（无点）</td><td>直连时只有网络往返；中继时没有</td></tr>
+    <tr><td>电脑没及时回应</td><td>网络已测出，处理探测 15 秒没有结果</td><td>红字原因</td><td>网络往返有数（照常判慢），电脑处理写「超过 15 秒」并加粗</td></tr>
+    <tr><td>没有回应</td><td>经中继的回声探测 5 秒没有结果</td><td>红字原因</td><td>网络往返写「超过 5 秒」并加粗，电脑处理写「未检测」</td></tr>
+    <tr><td>未检测</td><td>服务器没有回应，且这台电脑走中继</td><td>未检测（无点）</td><td>无</td></tr>
+    <tr><td>不在线</td><td>服务器看不到这台电脑</td><td>浅灰点 + 不在线</td><td>无，也不写直连摘要</td></tr>
+  </table>
+</div>
+
+<div class="note">
+  <h4>底部说明（三端与各路线通用，不再三选一）</h4>
+  <table class="t">
+    <tr><th>语言</th><th>文案</th></tr>
+    <tr><td>中文</td><td>延时是一次往返的总耗时。电脑一行下面分成网络和电脑处理两段，慢的那段会标出来。</td></tr>
+    <tr><td>English</td><td>Latency is the total round-trip time. Each computer shows network and computer time below, and marks the slow part.</td></tr>
+  </table>
+  <p style="margin:10px 0 0">每台电脑自己的摘要行已经写了「正在用直连」或「正在用中继」，底部收成通用一句。浏览器或应用版本不支持直连时，后面补的那一句不变。</p>
+</div>
+
+<div class="note">
+  <h4>新增文案 key（<code>i18n/messages/connection.json</code>）</h4>
+  <div class="cols">
+  <table class="t">
+    <tr><th>key</th><th>中文</th><th>English</th></tr>
+    <tr><td><code>latency_network</code></td><td>网络往返</td><td>Network</td></tr>
+    <tr><td><code>latency_computer</code></td><td>电脑处理</td><td>Computer</td></tr>
+    <tr><td><code>latency_wait_direct</code></td><td>等直连回应</td><td>Waiting for direct</td></tr>
+    <tr><td><code>latency_ms</code></td><td>{ms} ms</td><td>{ms} ms</td></tr>
+    <tr><td><code>latency_ms_slow</code>（行尾）</td><td>{ms} ms · 较慢</td><td>{ms} ms · Slow</td></tr>
+    <tr><td><code>latency_slow</code>（明细）</td><td>较慢</td><td>Slow</td></tr>
+    <tr><td><code>latency_mostly_queued</code></td><td>主要在排队（{ms} ms），电脑正忙于别的任务</td><td>Mostly queued ({ms} ms); the computer is busy with other work</td></tr>
+    <tr><td><code>latency_mostly_running</code></td><td>主要在执行（{ms} ms）</td><td>Mostly running ({ms} ms)</td></tr>
+  </table>
+  <table class="t">
+    <tr><th>key</th><th>中文</th><th>English</th></tr>
+    <tr><td><code>latency_pending</code></td><td>—</td><td>—</td></tr>
+    <tr><td><code>latency_over_seconds</code></td><td>超过 {seconds} 秒</td><td>Over {seconds} s</td></tr>
+    <tr><td><code>latency_rerouted</code></td><td>直连没有及时回应，这一次改走了中继</td><td>Direct did not answer in time; this check went through the relay</td></tr>
+    <tr><td><code>latency_computer_no_reply</code></td><td>电脑没有及时回应</td><td>The computer did not answer in time</td></tr>
+    <tr><td><code>latency_no_reply</code></td><td>没有回应</td><td>No response</td></tr>
+    <tr><td><code>latency_outdated</code></td><td>版本较旧</td><td>Outdated</td></tr>
+    <tr><td><code>latency_outdated_computer</code></td><td>更新电脑上的 remote-agent 后，可显示电脑处理的耗时</td><td>Update remote-agent on this computer to see its processing time</td></tr>
+    <tr><td><code>latency_outdated_all</code></td><td>更新电脑上的 remote-agent 后，可显示网络往返和电脑处理的耗时</td><td>Update remote-agent on this computer to see network and processing time</td></tr>
+  </table>
+  </div>
+  <p style="margin:10px 0 0">key 前缀都是 <code>connection.</code>。每句一个 key，数字是参数，由核心给出，壳不拼句子；明细左边的名称、名称后面的「较慢」、右边的数值各是一个 key。读屏整行合并朗读，较慢要读出来，例如「MacBook，总耗时 1,250 毫秒，较慢。网络往返 8 毫秒。电脑处理 1,190 毫秒，较慢，主要在排队。正在用直连」，另备 <code>latency_a11y</code>。</p>
 </div>
 </section>
 <!-- ===== update ===== -->
@@ -2984,16 +3442,34 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
     <div class="grp">
       <div class="mi"><span class="n">实时推送</span><span class="v"><i class="dotk g"></i>已连接</span></div>
       <div class="mi"><span class="n">服务器<small>ra.example.com</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div>
-      <div class="mi"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>132 ms</span></div>
-      <div class="mi"><span class="n">prod-gpu-workstation-us-west-04<small>正在用直连 · 用于加载</small></span><span class="v"><i class="dotk g"></i>118 ms</span></div>
-      <div class="mi"><span class="n">Studio<small>正在用中继 · 当前网络下中继同样顺畅，已自动选用</small></span><span class="v"><i class="dotk g"></i>96 ms</span></div>
-      <div class="mi"><span class="n">VPS-dev<small>正在用中继 · 两边的网络隔开了，不能直接连通</small></span><span class="v"><i class="dotk off"></i>2140 ms · 较慢</span></div>
-      <div class="mi"><span class="n">build-runner-arm64-09<small>正在用中继 · 同时直连的电脑已达上限</small></span><span class="v"><i class="dotk g"></i>104 ms</span></div>
-      <div class="mi"><span class="n">Lab<small>电脑策略已关闭直连</small></span><span class="v"><i class="dotk g"></i>101 ms</span></div>
+      <div class="mi pc">
+        <div class="top"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>38 ms</span></div>
+        <dl class="lg"><div><dt>网络往返</dt><dd>6 ms</dd></div><div><dt>电脑处理</dt><dd>21 ms</dd></div></dl>
+      </div>
+      <div class="mi pc">
+        <div class="top"><span class="n">prod-gpu-workstation-us-west-04<small>正在用直连 · 用于加载</small></span><span class="v"><i class="dotk g"></i>54 ms</span></div>
+        <dl class="lg"><div><dt>网络往返</dt><dd>11 ms</dd></div><div><dt>电脑处理</dt><dd>31 ms</dd></div></dl>
+      </div>
+      <div class="mi pc">
+        <div class="top"><span class="n">Studio<small>正在用中继 · 当前网络下中继同样顺畅，已自动选用</small></span><span class="v"><i class="dotk g"></i>96 ms</span></div>
+        <dl class="lg"><div><dt>网络往返</dt><dd>58 ms</dd></div><div><dt>电脑处理</dt><dd>24 ms</dd></div></dl>
+      </div>
+      <div class="mi pc">
+        <div class="top"><span class="n">VPS-dev<small>正在用中继 · 两边的网络隔开了，不能直接连通</small></span><span class="v"><i class="dotk off"></i>2,140 ms · 较慢</span></div>
+        <dl class="lg"><div><dt>网络往返</dt><dd>296 ms</dd></div><div class="slow"><dt>电脑处理<span class="tg">较慢</span></dt><dd>1,790 ms</dd><dd class="why">主要在执行（1,770 ms）</dd></div></dl>
+      </div>
+      <div class="mi pc">
+        <div class="top"><span class="n">build-runner-arm64-09<small>正在用中继 · 同时直连的电脑已达上限</small></span><span class="v"><i class="dotk g"></i>104 ms</span></div>
+        <dl class="lg"><div><dt>网络往返</dt><dd>62 ms</dd></div><div><dt>电脑处理</dt><dd>29 ms</dd></div></dl>
+      </div>
+      <div class="mi pc">
+        <div class="top"><span class="n">Lab<small>电脑策略已关闭直连</small></span><span class="v"><i class="dotk g"></i>101 ms</span></div>
+        <dl class="lg"><div><dt>网络往返</dt><dd>61 ms</dd></div><div><dt>电脑处理</dt><dd>28 ms</dd></div></dl>
+      </div>
       <div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div>
     </div>
-    <div class="gf">延时是一次往返的时间。若当前浏览器或应用版本暂不支持直连，不在每台电脑下重复报错，只在此处末尾补一句「当前应用版本暂不支持直连，已全部经中继连接。」</div>
-    <div class="st-c">多台电脑各自独立展示状态词（长机器名自然折行），本机超过 4 台并发直连上限时其余在线电脑显示「同时直连的电脑已达上限」，离线电脑不写直连摘要。</div>
+    <div class="gf">延时是一次往返的总耗时。电脑一行下面分成网络和电脑处理两段，慢的那段会标出来。若当前浏览器或应用版本暂不支持直连，不在每台电脑下重复报错，只在此处末尾补一句「当前应用版本暂不支持直连，已全部经中继连接。」</div>
+    <div class="st-c">多台电脑各自独立展示状态词（长机器名自然折行），每台在线电脑下常显网络往返与电脑处理两行明细，本机超过 4 台并发直连上限时其余在线电脑显示「同时直连的电脑已达上限」，离线电脑不写直连摘要与明细。完整状态与判慢界线见<a href="#conncheck">连接检测</a>。</div>
   </div>
 </div>
 

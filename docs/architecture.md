@@ -463,7 +463,7 @@ Android 和 iOS 解锁后私钥字节在内存里，可以交给核心直接用�
 
 项目在范围菜单、新建时的选项目和项目管理三处是同一个列表：同样的分组和排序、同样的两行（名字；路径加进行中的数量，没有进行中而它的电脑都不在线时写「电脑不在线」）、同样的「新项目…」，只有行尾不同。两端各由一个共用的组件画，免得三处各自演变。
 
-主页和范围菜单见 [client-v65 · 主页](design/client-v65.html#home)，项目管理的布局与具体交互见 [client-v65 · 项目管理](design/client-v65.html#projects)。目标机器离线时由用户选这次用的机器，不改项目设置，也不在输入中途自动更换机器或 CLI。在新建输入框旁切换 CLI 保留草稿，改用项目设置里这个 CLI 的那一套。
+主页和范围菜单见 [client-v66 · 主页](design/client-v66.html#home)，项目管理的布局与具体交互见 [client-v66 · 项目管理](design/client-v66.html#projects)。目标机器离线时由用户选这次用的机器，不改项目设置，也不在输入中途自动更换机器或 CLI。在新建输入框旁切换 CLI 保留草稿，改用项目设置里这个 CLI 的那一套。
 
 ## 9. 账户、设备和密钥
 
@@ -574,7 +574,7 @@ open 模式下带对 setup token 的照样建 owner 账户。工作量证明挡�
 
 ### 断线时显示什么
 
-服务通信按三段定位：本机网络、服务器、电脑；设备间路径与逻辑可用性另见 [transport.md](transport.md#7-界面规则)。客户端只报离自己最近的那一段故障，并且只在连接提示条一处说；更远的一段此刻无从得知，不沿用断线前的说法。表里的“未连接”描述服务同步；仍可用的 Link 不因此变成电脑离线。界面见 [client-v65 · 断线](design/client-v65.html#link)。
+服务通信按三段定位：本机网络、服务器、电脑；设备间路径与逻辑可用性另见 [transport.md](transport.md#7-界面规则)。客户端只报离自己最近的那一段故障，并且只在连接提示条一处说；更远的一段此刻无从得知，不沿用断线前的说法。表里的“未连接”描述服务同步；仍可用的 Link 不因此变成电脑离线。界面见 [client-v66 · 断线](design/client-v66.html#link)。
 
 | 判断 | 结论 | 没结束的会话 |
 |---|---|---|
@@ -812,7 +812,7 @@ Claude Code 和 Codex 走同一条路：原生 TUI 跑在 tmux 的 PTY 代理下
 
 ### 账户额度
 
-电脑页「额度与用量」组按这台机器上已启用的 CLI 摘要账户额度，点开进入「账户额度」二级页显示登录账户的完整用量；它与会话上下文占用、累计 token、remote-agent 的附件存储配额分别展示。不同 CLI 不相加，不按模型或会话切分账户额度；不同机器也不凭套餐名推断为同一个账户。界面见 [client-v65 · 账户额度](design/client-v65.html#quota)。
+电脑页「额度与用量」组按这台机器上已启用的 CLI 摘要账户额度，点开进入「账户额度」二级页显示登录账户的完整用量；它与会话上下文占用、累计 token、remote-agent 的附件存储配额分别展示。不同 CLI 不相加，不按模型或会话切分账户额度；不同机器也不凭套餐名推断为同一个账户。界面见 [client-v66 · 账户额度](design/client-v66.html#quota)。
 
 Codex 读这台电脑上所有运行的 rollout 额度字段，不限于 remote-agent 管理的会话：其他终端直接开的会话、其他 Agent 调用的 `codex exec` 用的是同一个登录，也写同样的 rollout。daemon 每分钟扫一次 `$CODEX_HOME/sessions` 下自上次以来修改过的 rollout（启动时回看 8 天，单次最多读 16 个文件，每个只读末尾 1 MiB），取上报时间最新的一条，只读本地文件，不向任何服务查询；只含额度、没有 token 统计的 `token_count` 也采集，沿用之前的 token 计数且保留来源时间。Codex 用 rollout 的额度字段（[codex-notes §1](codex-notes.md#1-数据从哪读)）。Claude Code 的 transcript 没有账户额度，额度只在状态栏命令的输入里（[claude-code-notes §2](claude-code-notes.md#2-transcript)）。
 
@@ -904,7 +904,7 @@ MCP 每次操作先确认 daemon 支持受限委托；不支持时拒绝工具�
 
 `MachineCapabilities.scheduled_tasks` 表示可管理任务。`MachineMeta.schedule_revision` 只携带单调修订号，不携带任务列表；任务、运行记录、通知或下次时间等客户端可见状态变化时递增；事件游标和恢复记账不递增。修订号跨重启保留，以两秒窗口合并元数据更新。三端均按能力筛选机器，在修订号变化、电脑上线或中继重连后用既有加密 Schedule 机器指令重新取列表，不另加任务轮询。各端只缓存经过验证的签名密文响应，离线时重新验证并显示上次任务状态，禁止修改；任务内容在内存中解密。
 
-三端通过独立「定时」入口聚合各电脑任务，提供新建/编辑、改名、暂停/恢复、立即额外运行和删除确认，以及按天查看运行历史。删除沿用 cancel 语义，停止未来调度，保留已开的对话。会话菜单可创建当前对话任务，对话定时条提供管理入口；运行记录按 ID 打开任务会话，并定位对应轮次。连续静默轮只有在同天、明确完成且没有通知、待处理或后续回复时才折叠；定位的轮次展开。任务会话接手沿用既有恢复/回复流程，不因打开运行记录就解除归属。界面与共同文案见 [client-v65 · 定时任务](design/client-v65.html#schedules)；iOS 的原生控件与无 APNs 边界见 [ios-client.md](ios-client.md)。
+三端通过独立「定时」入口聚合各电脑任务，提供新建/编辑、改名、暂停/恢复、立即额外运行和删除确认，以及按天查看运行历史。删除沿用 cancel 语义，停止未来调度，保留已开的对话。会话菜单可创建当前对话任务，对话定时条提供管理入口；运行记录按 ID 打开任务会话，并定位对应轮次。连续静默轮只有在同天、明确完成且没有通知、待处理或后续回复时才折叠；定位的轮次展开。任务会话接手沿用既有恢复/回复流程，不因打开运行记录就解除归属。界面与共同文案见 [client-v66 · 定时任务](design/client-v66.html#schedules)；iOS 的原生控件与无 APNs 边界见 [ios-client.md](ios-client.md)。
 
 ### 协议版本与升级
 
@@ -945,7 +945,7 @@ dispatching 状态在新建/恢复会话和注入消息之前持锁保存；会�
 
 ## 19. 接入 Antigravity
 
-Antigravity CLI（`agy`）走和 Codex、Claude Code 同一条路：原生 TUI 跑在 tmux 的 PTY 代理下，输出读 transcript，审批和轮次边界靠 hook 和屏幕状态，屏幕只用来判断状态和按键作答。实测依据见 [antigravity-notes.md](antigravity-notes.md)（下文「notes §n」），界面见 [client-v65 · 多 CLI](design/client-v65.html#cli)。
+Antigravity CLI（`agy`）走和 Codex、Claude Code 同一条路：原生 TUI 跑在 tmux 的 PTY 代理下，输出读 transcript，审批和轮次边界靠 hook 和屏幕状态，屏幕只用来判断状态和按键作答。实测依据见 [antigravity-notes.md](antigravity-notes.md)（下文「notes §n」），界面见 [client-v66 · 多 CLI](design/client-v66.html#cli)。
 
 ### 多个 CLI 的通用做法
 
@@ -1016,7 +1016,7 @@ Antigravity 接入将协议从 12 提升为 13：`Agent` 枚举加 `AGENT_ANTIGR
 
 ## 21. 电脑状态与磁盘保护
 
-电脑状态是账户 Client 设备按需读取的机器能力，回答电脑忙不忙、哪里快满了、是谁占的，不是后台监控或远程进程管理。`GetMachineStatus` 属于集中的只读指令，不写受理记录和历史文件；状态内容端到端加密，不写入日志，中继只见密文。机器级指令不能带会话范围。字段以 [local.proto](../proto/remoteagent/v1/local.proto)、[remote.proto](../proto/remoteagent/v1/remote.proto) 为准，采集口径和测试在 `internal/machinestatus`。画面见 [client-v65 · 电脑状态](design/client-v65.html#machine-status)，视觉取值见 [design-system](design-system.md#文件交付与电脑状态)，平台做法见 [Android](android-client.md#电脑状态与磁盘保护)、[iOS](ios-client.md#电脑状态与磁盘保护)。
+电脑状态是账户 Client 设备按需读取的机器能力，回答电脑忙不忙、哪里快满了、是谁占的，不是后台监控或远程进程管理。`GetMachineStatus` 属于集中的只读指令，不写受理记录和历史文件；状态内容端到端加密，不写入日志，中继只见密文。机器级指令不能带会话范围。字段以 [local.proto](../proto/remoteagent/v1/local.proto)、[remote.proto](../proto/remoteagent/v1/remote.proto) 为准，采集口径和测试在 `internal/machinestatus`。画面见 [client-v66 · 电脑状态](design/client-v66.html#machine-status)，视觉取值见 [design-system](design-system.md#文件交付与电脑状态)，平台做法见 [Android](android-client.md#电脑状态与磁盘保护)、[iOS](ios-client.md#电脑状态与磁盘保护)。
 
 ### 按需采样与口径
 
@@ -1097,7 +1097,7 @@ Antigravity 接入将协议从 12 提升为 13：`Agent` 枚举加 `AGENT_ANTIGR
 
 ## 22. 模型用量与输出速度
 
-> **状态（协议 17）：** daemon 本地采集存储（`internal/usagestats`）、`GetUsageStats` 加密只读查询、共享核心 `clientcore` 及 Web / Android / iOS 三端界面均已接入，并可在电脑页「额度与用量 › 用量与速度」一级直达。界面见 [client-v65 · 用量与速度](design/client-v65.html#usage)，组件规则见 [design-system](design-system.md#用量与速度)。
+> **状态（协议 17）：** daemon 本地采集存储（`internal/usagestats`）、`GetUsageStats` 加密只读查询、共享核心 `clientcore` 及 Web / Android / iOS 三端界面均已接入，并可在电脑页「额度与用量 › 用量与速度」一级直达。界面见 [client-v66 · 用量与速度](design/client-v66.html#usage)，组件规则见 [design-system](design-system.md#用量与速度)。
 
 统计单位严格是 **`(agent, model)` 这一对**：不同 CLI 使用同名或同族模型（如 Claude Code 的 `Opus 5.5` 与其他 CLI 的同名模型）记作独立序列，不跨 CLI 合并，也不对各 CLI 原生报出的模型名做跨端归一。daemon **只做被动采集**：只从 CLI 自己落盘的本地记录提取每次模型请求的 token 消耗量、缓存命中率、输出速度（`tok/s`）与首字延迟（TTFT），绝不主动发请求，也不为统计启动或唤醒 CLI。**不折算金额**：订阅制、团队配额与按量接口混用，按公开 API 单价换算的金额会误导用户，全端只展示 token 数量与比率。
 
