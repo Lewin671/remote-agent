@@ -33,7 +33,7 @@ extension Remote {
         ev.requestID = effect.requestID
         ev.attemptID = effect.attemptID
 
-        guard effect.hasSealedEnvelope else {
+        guard !effect.rawSealedEnvelope.isEmpty else {
             ev.source = .local
             ev.notForwarded = true
             ev.transportCode = "failed_precondition"
@@ -62,11 +62,10 @@ extension Remote {
 
         do {
             try Task.checkCancellation()
-            let rawEnv = try effect.sealedEnvelope.serializedData()
             let directEnv = try await directExecutor.sendRpc(
                 pcId: effect.directPcID,
                 requestId: effect.requestID,
-                sealedBytes: rawEnv,
+                sealedBytes: effect.rawSealedEnvelope,
                 timeoutMs: effect.directTimeoutMs,
                 handoff: handoff
             )
@@ -75,7 +74,7 @@ extension Remote {
             ev.source = .daemon
             ev.notForwarded = false
             ev.attemptBound = true
-            ev.sealedResult = directEnv
+            ev.rawSealedResult = try directEnv.serializedData()
             return ev
         } catch let error as CommandError {
             ev.elapsedMs = elapsed()

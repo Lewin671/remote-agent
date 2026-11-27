@@ -524,17 +524,28 @@ it("disposes its CoreHost on dispose() and drops an earlier-started snapshot tha
   await r.syncSecurityNow();
 
   const { getCoreHost } = await import("./core/host");
-  const { DevicesFetchedEventSchema, EventSchema: CoreEventSchema, PlainDeviceSchema } = await import("./gen/remoteagent/core/v1/app_pb");
-  const { DeviceKind } = await import("./gen/remoteagent/v1/relay_pb");
+  const { EventSchema: CoreEventSchema } = await import("./gen/remoteagent/core/v1/app_pb");
+  const { StreamRawFrameEventSchema } = await import("./gen/remoteagent/core/v1/relay_pipe_pb");
+  const { DeviceKind, DeviceSchema, DeviceUpdatedSchema, ServerFrameSchema } = await import("./gen/remoteagent/v1/relay_pb");
+  const { toBinary } = await import("@bufbuild/protobuf");
   const host = getCoreHost(r);
   host.dispatch(
     create(CoreEventSchema, {
       event: {
-        case: "devicesFetched",
-        value: create(DevicesFetchedEventSchema, {
-          opId: 0n,
-          pushSeq: 1n,
-          devices: [create(PlainDeviceSchema, { deviceId: r.machine, kind: DeviceKind.MACHINE })],
+        case: "streamRawFrame",
+        value: create(StreamRawFrameEventSchema, {
+          legId: 0n,
+          rawServerFrame: toBinary(
+            ServerFrameSchema,
+            create(ServerFrameSchema, {
+              kind: {
+                case: "deviceUpdated",
+                value: create(DeviceUpdatedSchema, {
+                  device: create(DeviceSchema, { id: r.machine, kind: DeviceKind.MACHINE }),
+                }),
+              },
+            }),
+          ),
         }),
       },
     }),

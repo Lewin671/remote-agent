@@ -13,7 +13,8 @@ import {
 import { Agent, ApprovalMode } from "./gen/remoteagent/v1/event_pb";
 import { SessionSchema } from "./gen/remoteagent/v1/local_pb";
 import { MachineMetaSchema } from "./gen/remoteagent/v1/remote_pb";
-import type { Event } from "./gen/remoteagent/core/v1/app_pb";
+import { EventSchema as CoreEventSchema, type Event } from "./gen/remoteagent/core/v1/app_pb";
+import { DemoSecuritySchema, SeedDemoWorldEventSchema } from "./gen/remoteagent/core/v1/security_pb";
 import { SharedFileCardStatus } from "./gen/remoteagent/core/v1/session_view_pb";
 import {
   SharedFileDeleteLocalEffectSchema,
@@ -635,6 +636,46 @@ describe("CoreHost real Core WASM shared-file smoke test", () => {
     });
     host.sharedFiles.setAutoOpenHandler((eff, blob) => opened.push({ sid: eff.sessionId, fileId: eff.fileId, size: blob.size }));
     try {
+      const demoInternals = demo as unknown as {
+        demoMachines: Map<string, import("./test/remote-fixture").TestMachineView>;
+        demoSessions: Map<string, import("./test/remote-fixture").TestSessionView>;
+        evs: Map<string, import("./gen/remoteagent/v1/event_pb").Event[]>;
+        demoSessionProto: (s: import("./test/remote-fixture").TestSessionView) => import("./gen/remoteagent/core/v1/security_pb").DemoSession;
+        demoSessionEventsProto: (sid: string, list: import("./gen/remoteagent/v1/event_pb").Event[], replace?: boolean) => import("./gen/remoteagent/core/v1/security_pb").DemoSessionEvents;
+      };
+      const { DemoMachineSchema } = await import("./gen/remoteagent/core/v1/security_pb");
+      const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
+      const { toBinary } = await import("@bufbuild/protobuf");
+      host.dispatch(
+        create(CoreEventSchema, {
+          event: {
+            case: "seedDemoWorld",
+            value: create(SeedDemoWorldEventSchema, {
+              clearDirectReports: true,
+              machines: [...demoInternals.demoMachines.values()].map((m) =>
+                create(DemoMachineSchema, {
+                  machineId: m.id,
+                  online: m.online,
+                  lastSeenMs: m.lastSeenMs,
+                  rawMeta: m.meta ? toBinary(MachineMetaSchema, m.meta) : new Uint8Array(),
+                }),
+              ),
+              sessions: [...demoInternals.demoSessions.values()].map((s) => demoInternals.demoSessionProto(s)),
+              sessionEvents: [...demoInternals.evs.entries()].map(([sid, list]) =>
+                demoInternals.demoSessionEventsProto(sid, list, true),
+              ),
+              security: create(DemoSecuritySchema, {
+                isMember: true,
+                selfDeviceId: "me",
+                authorityDeviceId: "me",
+                trustedMachineIds: ["mac"],
+                trustedClientIds: ["me"],
+                headEpoch: 1n,
+              }),
+            }),
+          },
+        }),
+      );
       host.start();
       host.watchSession("s-smoke");
       host.sessionOpen("s-smoke", false, false);

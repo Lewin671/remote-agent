@@ -22,14 +22,11 @@ public  final class Effect extends
     RENDER(1),
     OPEN_STREAM(2),
     CLOSE_STREAM(3),
-    ENSURE_TOKEN(4),
-    DISCARD_TOKEN(5),
     SCHEDULE_TIMER(7),
     CANCEL_TIMER(8),
     CACHE_READ(9),
     CACHE_WRITE(10),
     CACHE_DELETE(11),
-    RPC(12),
     DISPATCH_COMMAND(13),
     SAVE_HOME_SCOPE(14),
     NAVIGATE(15),
@@ -104,7 +101,6 @@ public  final class Effect extends
     SECURITY_KEY_ENCAPSULATE(138),
     SECURITY_KEY_DISCARD(139),
     SECURITY_STORAGE(140),
-    SECURITY_RPC(141),
     SECURITY_WORKFLOW_RESULT(142),
     SECURITY_STATUS_CHANGED(143),
     SECURITY_NOTIFY_OPENED(144),
@@ -133,14 +129,11 @@ public  final class Effect extends
         case 1: return RENDER;
         case 2: return OPEN_STREAM;
         case 3: return CLOSE_STREAM;
-        case 4: return ENSURE_TOKEN;
-        case 5: return DISCARD_TOKEN;
         case 7: return SCHEDULE_TIMER;
         case 8: return CANCEL_TIMER;
         case 9: return CACHE_READ;
         case 10: return CACHE_WRITE;
         case 11: return CACHE_DELETE;
-        case 12: return RPC;
         case 13: return DISPATCH_COMMAND;
         case 14: return SAVE_HOME_SCOPE;
         case 15: return NAVIGATE;
@@ -215,7 +208,6 @@ public  final class Effect extends
         case 138: return SECURITY_KEY_ENCAPSULATE;
         case 139: return SECURITY_KEY_DISCARD;
         case 140: return SECURITY_STORAGE;
-        case 141: return SECURITY_RPC;
         case 142: return SECURITY_WORKFLOW_RESULT;
         case 143: return SECURITY_STATUS_CHANGED;
         case 144: return SECURITY_NOTIFY_OPENED;
@@ -398,110 +390,6 @@ public  final class Effect extends
    */
   private void clearCloseStream() {
     if (effectCase_ == 3) {
-      effectCase_ = 0;
-      effect_ = null;
-    }
-  }
-
-  public static final int ENSURE_TOKEN_FIELD_NUMBER = 4;
-  /**
-   * <code>.remoteagent.core.v1.EnsureTokenEffect ensure_token = 4 [json_name = "ensureToken"];</code>
-   */
-  @java.lang.Override
-  public boolean hasEnsureToken() {
-    return effectCase_ == 4;
-  }
-  /**
-   * <code>.remoteagent.core.v1.EnsureTokenEffect ensure_token = 4 [json_name = "ensureToken"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.EnsureTokenEffect getEnsureToken() {
-    if (effectCase_ == 4) {
-       return (io.github.lewin671.remoteagent.core.proto.EnsureTokenEffect) effect_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.EnsureTokenEffect.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.EnsureTokenEffect ensure_token = 4 [json_name = "ensureToken"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setEnsureToken(io.github.lewin671.remoteagent.core.proto.EnsureTokenEffect value) {
-    value.getClass();  // minimal bytecode null check
-    effect_ = value;
-    effectCase_ = 4;
-  }
-  /**
-   * <code>.remoteagent.core.v1.EnsureTokenEffect ensure_token = 4 [json_name = "ensureToken"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeEnsureToken(io.github.lewin671.remoteagent.core.proto.EnsureTokenEffect value) {
-    value.getClass();  // minimal bytecode null check
-    if (effectCase_ == 4 &&
-        effect_ != io.github.lewin671.remoteagent.core.proto.EnsureTokenEffect.getDefaultInstance()) {
-      effect_ = io.github.lewin671.remoteagent.core.proto.EnsureTokenEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.EnsureTokenEffect) effect_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      effect_ = value;
-    }
-    effectCase_ = 4;
-  }
-  /**
-   * <code>.remoteagent.core.v1.EnsureTokenEffect ensure_token = 4 [json_name = "ensureToken"];</code>
-   */
-  private void clearEnsureToken() {
-    if (effectCase_ == 4) {
-      effectCase_ = 0;
-      effect_ = null;
-    }
-  }
-
-  public static final int DISCARD_TOKEN_FIELD_NUMBER = 5;
-  /**
-   * <code>.remoteagent.core.v1.DiscardTokenEffect discard_token = 5 [json_name = "discardToken"];</code>
-   */
-  @java.lang.Override
-  public boolean hasDiscardToken() {
-    return effectCase_ == 5;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DiscardTokenEffect discard_token = 5 [json_name = "discardToken"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.DiscardTokenEffect getDiscardToken() {
-    if (effectCase_ == 5) {
-       return (io.github.lewin671.remoteagent.core.proto.DiscardTokenEffect) effect_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.DiscardTokenEffect.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.DiscardTokenEffect discard_token = 5 [json_name = "discardToken"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setDiscardToken(io.github.lewin671.remoteagent.core.proto.DiscardTokenEffect value) {
-    value.getClass();  // minimal bytecode null check
-    effect_ = value;
-    effectCase_ = 5;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DiscardTokenEffect discard_token = 5 [json_name = "discardToken"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeDiscardToken(io.github.lewin671.remoteagent.core.proto.DiscardTokenEffect value) {
-    value.getClass();  // minimal bytecode null check
-    if (effectCase_ == 5 &&
-        effect_ != io.github.lewin671.remoteagent.core.proto.DiscardTokenEffect.getDefaultInstance()) {
-      effect_ = io.github.lewin671.remoteagent.core.proto.DiscardTokenEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DiscardTokenEffect) effect_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      effect_ = value;
-    }
-    effectCase_ = 5;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DiscardTokenEffect discard_token = 5 [json_name = "discardToken"];</code>
-   */
-  private void clearDiscardToken() {
-    if (effectCase_ == 5) {
       effectCase_ = 0;
       effect_ = null;
     }
@@ -762,58 +650,6 @@ public  final class Effect extends
    */
   private void clearCacheDelete() {
     if (effectCase_ == 11) {
-      effectCase_ = 0;
-      effect_ = null;
-    }
-  }
-
-  public static final int RPC_FIELD_NUMBER = 12;
-  /**
-   * <code>.remoteagent.core.v1.RpcEffect rpc = 12 [json_name = "rpc"];</code>
-   */
-  @java.lang.Override
-  public boolean hasRpc() {
-    return effectCase_ == 12;
-  }
-  /**
-   * <code>.remoteagent.core.v1.RpcEffect rpc = 12 [json_name = "rpc"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.RpcEffect getRpc() {
-    if (effectCase_ == 12) {
-       return (io.github.lewin671.remoteagent.core.proto.RpcEffect) effect_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.RpcEffect.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.RpcEffect rpc = 12 [json_name = "rpc"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setRpc(io.github.lewin671.remoteagent.core.proto.RpcEffect value) {
-    value.getClass();  // minimal bytecode null check
-    effect_ = value;
-    effectCase_ = 12;
-  }
-  /**
-   * <code>.remoteagent.core.v1.RpcEffect rpc = 12 [json_name = "rpc"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeRpc(io.github.lewin671.remoteagent.core.proto.RpcEffect value) {
-    value.getClass();  // minimal bytecode null check
-    if (effectCase_ == 12 &&
-        effect_ != io.github.lewin671.remoteagent.core.proto.RpcEffect.getDefaultInstance()) {
-      effect_ = io.github.lewin671.remoteagent.core.proto.RpcEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.RpcEffect) effect_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      effect_ = value;
-    }
-    effectCase_ = 12;
-  }
-  /**
-   * <code>.remoteagent.core.v1.RpcEffect rpc = 12 [json_name = "rpc"];</code>
-   */
-  private void clearRpc() {
-    if (effectCase_ == 12) {
       effectCase_ = 0;
       effect_ = null;
     }
@@ -4727,58 +4563,6 @@ public  final class Effect extends
     }
   }
 
-  public static final int SECURITY_RPC_FIELD_NUMBER = 141;
-  /**
-   * <code>.remoteagent.core.v1.SecurityRpcEffect security_rpc = 141 [json_name = "securityRpc"];</code>
-   */
-  @java.lang.Override
-  public boolean hasSecurityRpc() {
-    return effectCase_ == 141;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityRpcEffect security_rpc = 141 [json_name = "securityRpc"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecurityRpcEffect getSecurityRpc() {
-    if (effectCase_ == 141) {
-       return (io.github.lewin671.remoteagent.core.proto.SecurityRpcEffect) effect_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SecurityRpcEffect.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityRpcEffect security_rpc = 141 [json_name = "securityRpc"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSecurityRpc(io.github.lewin671.remoteagent.core.proto.SecurityRpcEffect value) {
-    value.getClass();  // minimal bytecode null check
-    effect_ = value;
-    effectCase_ = 141;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityRpcEffect security_rpc = 141 [json_name = "securityRpc"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeSecurityRpc(io.github.lewin671.remoteagent.core.proto.SecurityRpcEffect value) {
-    value.getClass();  // minimal bytecode null check
-    if (effectCase_ == 141 &&
-        effect_ != io.github.lewin671.remoteagent.core.proto.SecurityRpcEffect.getDefaultInstance()) {
-      effect_ = io.github.lewin671.remoteagent.core.proto.SecurityRpcEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SecurityRpcEffect) effect_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      effect_ = value;
-    }
-    effectCase_ = 141;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityRpcEffect security_rpc = 141 [json_name = "securityRpc"];</code>
-   */
-  private void clearSecurityRpc() {
-    if (effectCase_ == 141) {
-      effectCase_ = 0;
-      effect_ = null;
-    }
-  }
-
   public static final int SECURITY_WORKFLOW_RESULT_FIELD_NUMBER = 142;
   /**
    * <code>.remoteagent.core.v1.SecurityWorkflowResultEffect security_workflow_result = 142 [json_name = "securityWorkflowResult"];</code>
@@ -5553,102 +5337,6 @@ public  final class Effect extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.EnsureTokenEffect ensure_token = 4 [json_name = "ensureToken"];</code>
-     */
-    @java.lang.Override
-    public boolean hasEnsureToken() {
-      return instance.hasEnsureToken();
-    }
-    /**
-     * <code>.remoteagent.core.v1.EnsureTokenEffect ensure_token = 4 [json_name = "ensureToken"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.EnsureTokenEffect getEnsureToken() {
-      return instance.getEnsureToken();
-    }
-    /**
-     * <code>.remoteagent.core.v1.EnsureTokenEffect ensure_token = 4 [json_name = "ensureToken"];</code>
-     */
-    public Builder setEnsureToken(io.github.lewin671.remoteagent.core.proto.EnsureTokenEffect value) {
-      copyOnWrite();
-      instance.setEnsureToken(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.EnsureTokenEffect ensure_token = 4 [json_name = "ensureToken"];</code>
-     */
-    public Builder setEnsureToken(
-        io.github.lewin671.remoteagent.core.proto.EnsureTokenEffect.Builder builderForValue) {
-      copyOnWrite();
-      instance.setEnsureToken(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.EnsureTokenEffect ensure_token = 4 [json_name = "ensureToken"];</code>
-     */
-    public Builder mergeEnsureToken(io.github.lewin671.remoteagent.core.proto.EnsureTokenEffect value) {
-      copyOnWrite();
-      instance.mergeEnsureToken(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.EnsureTokenEffect ensure_token = 4 [json_name = "ensureToken"];</code>
-     */
-    public Builder clearEnsureToken() {
-      copyOnWrite();
-      instance.clearEnsureToken();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.DiscardTokenEffect discard_token = 5 [json_name = "discardToken"];</code>
-     */
-    @java.lang.Override
-    public boolean hasDiscardToken() {
-      return instance.hasDiscardToken();
-    }
-    /**
-     * <code>.remoteagent.core.v1.DiscardTokenEffect discard_token = 5 [json_name = "discardToken"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.DiscardTokenEffect getDiscardToken() {
-      return instance.getDiscardToken();
-    }
-    /**
-     * <code>.remoteagent.core.v1.DiscardTokenEffect discard_token = 5 [json_name = "discardToken"];</code>
-     */
-    public Builder setDiscardToken(io.github.lewin671.remoteagent.core.proto.DiscardTokenEffect value) {
-      copyOnWrite();
-      instance.setDiscardToken(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DiscardTokenEffect discard_token = 5 [json_name = "discardToken"];</code>
-     */
-    public Builder setDiscardToken(
-        io.github.lewin671.remoteagent.core.proto.DiscardTokenEffect.Builder builderForValue) {
-      copyOnWrite();
-      instance.setDiscardToken(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DiscardTokenEffect discard_token = 5 [json_name = "discardToken"];</code>
-     */
-    public Builder mergeDiscardToken(io.github.lewin671.remoteagent.core.proto.DiscardTokenEffect value) {
-      copyOnWrite();
-      instance.mergeDiscardToken(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DiscardTokenEffect discard_token = 5 [json_name = "discardToken"];</code>
-     */
-    public Builder clearDiscardToken() {
-      copyOnWrite();
-      instance.clearDiscardToken();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.ScheduleTimerEffect schedule_timer = 7 [json_name = "scheduleTimer"];</code>
      */
     @java.lang.Override
@@ -5885,54 +5573,6 @@ public  final class Effect extends
     public Builder clearCacheDelete() {
       copyOnWrite();
       instance.clearCacheDelete();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.RpcEffect rpc = 12 [json_name = "rpc"];</code>
-     */
-    @java.lang.Override
-    public boolean hasRpc() {
-      return instance.hasRpc();
-    }
-    /**
-     * <code>.remoteagent.core.v1.RpcEffect rpc = 12 [json_name = "rpc"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.RpcEffect getRpc() {
-      return instance.getRpc();
-    }
-    /**
-     * <code>.remoteagent.core.v1.RpcEffect rpc = 12 [json_name = "rpc"];</code>
-     */
-    public Builder setRpc(io.github.lewin671.remoteagent.core.proto.RpcEffect value) {
-      copyOnWrite();
-      instance.setRpc(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.RpcEffect rpc = 12 [json_name = "rpc"];</code>
-     */
-    public Builder setRpc(
-        io.github.lewin671.remoteagent.core.proto.RpcEffect.Builder builderForValue) {
-      copyOnWrite();
-      instance.setRpc(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.RpcEffect rpc = 12 [json_name = "rpc"];</code>
-     */
-    public Builder mergeRpc(io.github.lewin671.remoteagent.core.proto.RpcEffect value) {
-      copyOnWrite();
-      instance.mergeRpc(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.RpcEffect rpc = 12 [json_name = "rpc"];</code>
-     */
-    public Builder clearRpc() {
-      copyOnWrite();
-      instance.clearRpc();
       return this;
     }
 
@@ -9561,54 +9201,6 @@ public  final class Effect extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.SecurityRpcEffect security_rpc = 141 [json_name = "securityRpc"];</code>
-     */
-    @java.lang.Override
-    public boolean hasSecurityRpc() {
-      return instance.hasSecurityRpc();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityRpcEffect security_rpc = 141 [json_name = "securityRpc"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecurityRpcEffect getSecurityRpc() {
-      return instance.getSecurityRpc();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityRpcEffect security_rpc = 141 [json_name = "securityRpc"];</code>
-     */
-    public Builder setSecurityRpc(io.github.lewin671.remoteagent.core.proto.SecurityRpcEffect value) {
-      copyOnWrite();
-      instance.setSecurityRpc(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityRpcEffect security_rpc = 141 [json_name = "securityRpc"];</code>
-     */
-    public Builder setSecurityRpc(
-        io.github.lewin671.remoteagent.core.proto.SecurityRpcEffect.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSecurityRpc(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityRpcEffect security_rpc = 141 [json_name = "securityRpc"];</code>
-     */
-    public Builder mergeSecurityRpc(io.github.lewin671.remoteagent.core.proto.SecurityRpcEffect value) {
-      copyOnWrite();
-      instance.mergeSecurityRpc(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityRpcEffect security_rpc = 141 [json_name = "securityRpc"];</code>
-     */
-    public Builder clearSecurityRpc() {
-      copyOnWrite();
-      instance.clearSecurityRpc();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.SecurityWorkflowResultEffect security_workflow_result = 142 [json_name = "securityWorkflowResult"];</code>
      */
     @java.lang.Override
@@ -10109,14 +9701,11 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.RenderEffect.class,
             io.github.lewin671.remoteagent.core.proto.OpenStreamEffect.class,
             io.github.lewin671.remoteagent.core.proto.CloseStreamEffect.class,
-            io.github.lewin671.remoteagent.core.proto.EnsureTokenEffect.class,
-            io.github.lewin671.remoteagent.core.proto.DiscardTokenEffect.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleTimerEffect.class,
             io.github.lewin671.remoteagent.core.proto.CancelTimerEffect.class,
             io.github.lewin671.remoteagent.core.proto.CacheReadEffect.class,
             io.github.lewin671.remoteagent.core.proto.CacheWriteEffect.class,
             io.github.lewin671.remoteagent.core.proto.CacheDeleteEffect.class,
-            io.github.lewin671.remoteagent.core.proto.RpcEffect.class,
             io.github.lewin671.remoteagent.core.proto.DispatchCommandEffect.class,
             io.github.lewin671.remoteagent.core.proto.SaveHomeScopeEffect.class,
             io.github.lewin671.remoteagent.core.proto.NavigateEffect.class,
@@ -10191,7 +9780,6 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulateEffect.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeyDiscardEffect.class,
             io.github.lewin671.remoteagent.core.proto.SecurityStorageEffect.class,
-            io.github.lewin671.remoteagent.core.proto.SecurityRpcEffect.class,
             io.github.lewin671.remoteagent.core.proto.SecurityWorkflowResultEffect.class,
             io.github.lewin671.remoteagent.core.proto.SecurityStatusChangedEffect.class,
             io.github.lewin671.remoteagent.core.proto.SecurityNotifyOpenedEffect.class,
@@ -10204,19 +9792,18 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.PersistLastServerEffect.class,
           };
           java.lang.String info =
-              "\u0000`\u0001\u0000\u0001\u0097`\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
-              "<\u0000\u0004<\u0000\u0005<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<\u0000\u000b<" +
-              "\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0011<\u0000\u0012<\u0000\u0013" +
-              "<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000\u0018<\u0000\u0019<\u0000" +
-              "\u001a<\u0000\u001b<\u0000(<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/<\u0000" +
-              "0<\u00001<\u00002<\u0000<<\u0000=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000" +
-              "G<\u0000H<\u0000I<\u0000J<\u0000K<\u0000L<\u0000M<\u0000N<\u0000O<\u0000P<\u0000" +
-              "Q<\u0000R<\u0000S<\u0000T<\u0000U<\u0000V<\u0000W<\u0000X<\u0000Y<\u0000Z<\u0000" +
-              "f<\u0000g<\u0000h<\u0000i<\u0000j<\u0000k<\u0000l<\u0000m<\u0000o<\u0000p<\u0000" +
-              "q<\u0000r<\u0000s<\u0000t<\u0000u<\u0000\u0082<\u0000\u0083<\u0000\u0087<\u0000\u0088" +
-              "<\u0000\u0089<\u0000\u008a<\u0000\u008b<\u0000\u008c<\u0000\u008d<\u0000\u008e<\u0000" +
-              "\u008f<\u0000\u0090<\u0000\u0091<\u0000\u0092<\u0000\u0093<\u0000\u0094<\u0000\u0095" +
-              "<\u0000\u0096<\u0000\u0097<\u0000";
+              "\u0000\\\u0001\u0000\u0001\u0097\\\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<\u0000\u000b<\u0000\r<\u0000\u000e<\u0000" +
+              "\u000f<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016" +
+              "<\u0000\u0017<\u0000\u0018<\u0000\u0019<\u0000\u001a<\u0000\u001b<\u0000(<\u0000" +
+              "*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/<\u00000<\u00001<\u00002<\u0000<<\u0000" +
+              "=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000G<\u0000H<\u0000I<\u0000J<\u0000" +
+              "K<\u0000L<\u0000M<\u0000N<\u0000O<\u0000P<\u0000Q<\u0000R<\u0000S<\u0000T<\u0000" +
+              "U<\u0000V<\u0000W<\u0000X<\u0000Y<\u0000Z<\u0000f<\u0000g<\u0000h<\u0000i<\u0000" +
+              "j<\u0000k<\u0000l<\u0000m<\u0000o<\u0000p<\u0000q<\u0000r<\u0000s<\u0000t<\u0000" +
+              "u<\u0000\u0082<\u0000\u0083<\u0000\u0087<\u0000\u0088<\u0000\u0089<\u0000\u008a<" +
+              "\u0000\u008b<\u0000\u008c<\u0000\u008e<\u0000\u008f<\u0000\u0090<\u0000\u0091<\u0000" +
+              "\u0092<\u0000\u0093<\u0000\u0094<\u0000\u0095<\u0000\u0096<\u0000\u0097<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

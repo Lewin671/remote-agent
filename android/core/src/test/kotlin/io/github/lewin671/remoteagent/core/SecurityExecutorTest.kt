@@ -164,20 +164,20 @@ class SecurityExecutorTest {
         val unpadded = Base64.getEncoder().withoutPadding().encodeToString(rawBytes)
         val body = """{"code":"failed_precondition","message":"relay version mismatch","details":[{"type":"remoteagent.v1.RelayErrorDetail","value":"$unpadded"},{"type":"ignored.bad","value":"!!!"}]}"""
 
-        val ev = parseSecurityRpcError(opId = 42L, httpCode = 412, bodyBytes = body.toByteArray())
+        val ev = parseRelayRpcError(opId = 42L, httpCode = 412, bodyBytes = body.toByteArray())
         assertEquals(42L, ev.opId)
         assertEquals(9, ev.connectCode)
-        assertEquals("relay version mismatch", ev.error)
+        assertEquals("relay version mismatch", ev.diagnosticMessage)
         assertEquals(1, ev.errorDetailsCount)
         assertEquals("remoteagent.v1.RelayErrorDetail", ev.getErrorDetails(0).typeName)
         assertArrayEquals(rawBytes, ev.getErrorDetails(0).value.toByteArray())
 
         // Non-primitive JSON fields (objects/arrays/numbers) must not throw and valid entries still pass through.
         val malformed = """{"code":{"nested":1},"message":["bad"],"details":["not-an-object",{"type":{},"value":[]},{"type":123,"value":true},{"type":"remoteagent.v1.RelayErrorDetail","value":"$unpadded"}]}"""
-        val evMalformed = parseSecurityRpcError(opId = 43L, httpCode = 412, bodyBytes = malformed.toByteArray())
+        val evMalformed = parseRelayRpcError(opId = 43L, httpCode = 412, bodyBytes = malformed.toByteArray())
         assertEquals(43L, evMalformed.opId)
         assertEquals(9, evMalformed.connectCode)
-        assertEquals("HTTP 412", evMalformed.error)
+        assertEquals("HTTP 412", evMalformed.diagnosticMessage)
         assertEquals(1, evMalformed.errorDetailsCount)
         assertEquals("remoteagent.v1.RelayErrorDetail", evMalformed.getErrorDetails(0).typeName)
         assertArrayEquals(rawBytes, evMalformed.getErrorDetails(0).value.toByteArray())

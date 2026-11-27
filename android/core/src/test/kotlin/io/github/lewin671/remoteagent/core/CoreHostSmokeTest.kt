@@ -1,8 +1,7 @@
 package io.github.lewin671.remoteagent.core
 
+import com.google.protobuf.ByteString
 import com.google.protobuf.Timestamp
-import io.github.lewin671.remoteagent.core.proto.AccountPrefsFetchedEvent
-import io.github.lewin671.remoteagent.core.proto.AccountPrefsPutResultEvent
 import io.github.lewin671.remoteagent.core.proto.AttachmentConfigEvent
 import io.github.lewin671.remoteagent.core.proto.CacheBootstrapLoadedEvent
 import io.github.lewin671.remoteagent.core.proto.CacheEventsLoadedEvent
@@ -12,22 +11,18 @@ import io.github.lewin671.remoteagent.core.proto.ConnState as CoreConnState
 import io.github.lewin671.remoteagent.core.proto.DispatchCommandEffect
 import io.github.lewin671.remoteagent.core.proto.DraftOpenAction
 import io.github.lewin671.remoteagent.core.proto.DraftSetTextAction
-import io.github.lewin671.remoteagent.core.proto.EnsureTokenEffect
+import io.github.lewin671.remoteagent.core.proto.Effect
 import io.github.lewin671.remoteagent.core.proto.Event as CoreEvent
-import io.github.lewin671.remoteagent.core.proto.EventsPageFetchedEvent
-import io.github.lewin671.remoteagent.core.proto.ListsFetchedEvent
 import io.github.lewin671.remoteagent.core.proto.NavigateEffect
 import io.github.lewin671.remoteagent.core.proto.NavigateRoute
 import io.github.lewin671.remoteagent.core.proto.NewSessionOpenAction
 import io.github.lewin671.remoteagent.core.proto.NewSessionSubmitAction
 import io.github.lewin671.remoteagent.core.proto.OpenStreamEffect
 import io.github.lewin671.remoteagent.core.proto.OutcomeSource
-import io.github.lewin671.remoteagent.core.proto.PlainAccountPrefs
-import io.github.lewin671.remoteagent.core.proto.PlainEvent
-import io.github.lewin671.remoteagent.core.proto.PlainMachine
-import io.github.lewin671.remoteagent.core.proto.PlainSession
 import io.github.lewin671.remoteagent.core.proto.ProjectKeyAction
-import io.github.lewin671.remoteagent.core.proto.RpcEffect
+import io.github.lewin671.remoteagent.core.proto.RelayRpcEffect
+import io.github.lewin671.remoteagent.core.proto.RelayRpcMethod
+import io.github.lewin671.remoteagent.core.proto.RelayRpcResultEvent
 import io.github.lewin671.remoteagent.core.proto.DemoSecurity
 import io.github.lewin671.remoteagent.core.proto.ScreenTarget
 import io.github.lewin671.remoteagent.core.proto.SeedDemoWorldEvent
@@ -36,7 +31,7 @@ import io.github.lewin671.remoteagent.core.proto.StreamClosedEvent
 import io.github.lewin671.remoteagent.core.proto.StreamReadyEvent
 import io.github.lewin671.remoteagent.core.proto.SyncLifecycleAction
 import io.github.lewin671.remoteagent.core.proto.SyncLifecycleKind
-import io.github.lewin671.remoteagent.core.proto.TokenResultEvent
+import io.github.lewin671.remoteagent.proto.AccountPrefsObject
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.AgentInfo
 import io.github.lewin671.remoteagent.proto.AgentMessage
@@ -45,14 +40,24 @@ import io.github.lewin671.remoteagent.proto.CommandResult
 import io.github.lewin671.remoteagent.proto.CreateSessionResponse
 import io.github.lewin671.remoteagent.proto.DaemonSettings
 import io.github.lewin671.remoteagent.proto.Event as WireEvent
+import io.github.lewin671.remoteagent.proto.GetAccountPrefsResponse
+import io.github.lewin671.remoteagent.proto.GetEventsResponse
 import io.github.lewin671.remoteagent.proto.GetSettingsResponse
+import io.github.lewin671.remoteagent.proto.ListDevicesResponse
+import io.github.lewin671.remoteagent.proto.ListMachinesResponse
 import io.github.lewin671.remoteagent.proto.ListModelsResponse
+import io.github.lewin671.remoteagent.proto.ListRemoteSessionsResponse
+import io.github.lewin671.remoteagent.proto.Machine
 import io.github.lewin671.remoteagent.proto.MachineCapabilities
 import io.github.lewin671.remoteagent.proto.MachineMeta
 import io.github.lewin671.remoteagent.proto.ProjectPrefs
 import io.github.lewin671.remoteagent.proto.ProjectSummary
+import io.github.lewin671.remoteagent.proto.PutAccountPrefsRequest
+import io.github.lewin671.remoteagent.proto.PutAccountPrefsResponse
+import io.github.lewin671.remoteagent.proto.RemoteSession
 import io.github.lewin671.remoteagent.proto.Session
 import io.github.lewin671.remoteagent.proto.SessionStatus
+import io.github.lewin671.remoteagent.proto.StoredEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
@@ -94,58 +99,38 @@ class CoreHostSmokeTest {
 
         var savedScope: String? = null
         val cacheReads = ArrayList<CacheReadEffect>()
-        val tokens = ArrayList<EnsureTokenEffect>()
         val streams = ArrayList<OpenStreamEffect>()
-        val rpcs = ArrayList<RpcEffect>()
         val cmds = ArrayList<DispatchCommandEffect>()
         val navigated = ArrayList<NavigateEffect>()
 
         h.onSaveHomeScope = { savedScope = it.scopeKey }
         h.onCacheRead = { cacheReads += it }
-        h.onEnsureToken = { tokens += it }
         h.onOpenStream = { streams += it }
-        h.onRpc = { rpcs += it }
         h.onDispatchCommand = { cmds += it }
         h.onNavigate = { navigated += it }
 
-        val machine = PlainMachine.newBuilder()
-            .setMachineId("m1")
-            .setOnline(true)
-            .setLastSeenMs(now)
-            .setMetaRev(1)
-            .setMeta(
-                MachineMeta.newBuilder()
-                    .setHostname("Laptop")
-                    .setProtocolVersion(PEER_PROTOCOL_VERSION)
-                    .setCapabilities(MachineCapabilities.newBuilder().setFileUpload(true))
-                    .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX))
-                    .addProjects(ProjectSummary.newBuilder().setPath("/work/app")),
-            )
+        val machineMeta = MachineMeta.newBuilder()
+            .setHostname("Laptop")
+            .setProtocolVersion(PEER_PROTOCOL_VERSION)
+            .setCapabilities(MachineCapabilities.newBuilder().setFileUpload(true))
+            .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX))
+            .addProjects(ProjectSummary.newBuilder().setPath("/work/app"))
             .build()
-        val session = PlainSession.newBuilder()
-            .setSessionId("s1")
-            .setMachineId("m1")
-            .setLastSeq(1L)
-            .setUpdatedMs(now - 10_000L)
-            .setMetaRev(1)
-            .setMeta(
-                Session.newBuilder()
-                    .setId("s1")
-                    .setCwd("/work/app")
-                    .setTitle("Fix tests")
-                    .setAgent(Agent.AGENT_CODEX)
-                    .setStatus(SessionStatus.SESSION_STATUS_RUNNING)
-                    .setCreatedAt(Timestamp.newBuilder().setSeconds(now / 1000 - 60)),
-            )
+        val sessionMeta = Session.newBuilder()
+            .setId("s1")
+            .setCwd("/work/app")
+            .setTitle("Fix tests")
+            .setAgent(Agent.AGENT_CODEX)
+            .setStatus(SessionStatus.SESSION_STATUS_RUNNING)
+            .setCreatedAt(Timestamp.newBuilder().setSeconds(now / 1000 - 60))
             .build()
-        var currentPrefs = ProjectPrefs.newBuilder().setSchema(1).build()
-        var prefsRev = 0L
+        val sessionEvent1 = WireEvent.newBuilder()
+            .setSeq(1L)
+            .setAgentMessage(AgentMessage.newBuilder().setText("catchup reply"))
+            .build()
 
         fun drainFakeTransport() {
-            while (
-                cacheReads.isNotEmpty() || tokens.isNotEmpty() ||
-                streams.isNotEmpty() || rpcs.isNotEmpty()
-            ) {
+            while (cacheReads.isNotEmpty() || streams.isNotEmpty()) {
                 while (cacheReads.isNotEmpty()) {
                     val cr = cacheReads.removeAt(0)
                     when (cr.kindCase) {
@@ -166,19 +151,6 @@ class CoreHostSmokeTest {
                         else -> {}
                     }
                 }
-                while (tokens.isNotEmpty()) {
-                    val t = tokens.removeAt(0)
-                    h.dispatchOnWorker(
-                        CoreEvent.newBuilder()
-                            .setTokenResult(
-                                TokenResultEvent.newBuilder()
-                                    .setOpId(t.opId)
-                                    .setToken("tok-1")
-                                    .setExpiresMs(now + 86_400_000L),
-                            )
-                            .build(),
-                    )
-                }
                 while (streams.isNotEmpty()) {
                     val st = streams.removeAt(0)
                     h.dispatchOnWorker(
@@ -191,72 +163,6 @@ class CoreHostSmokeTest {
                             .build(),
                     )
                 }
-                while (rpcs.isNotEmpty()) {
-                    val rpc = rpcs.removeAt(0)
-                    when (rpc.kindCase) {
-                        RpcEffect.KindCase.FETCH_LISTS -> h.dispatchOnWorker(
-                            CoreEvent.newBuilder()
-                                .setListsFetched(
-                                    ListsFetchedEvent.newBuilder()
-                                        .setOpId(rpc.opId)
-                                        .addMachines(machine)
-                                        .addSessions(session),
-                                )
-                                .build(),
-                        )
-                        RpcEffect.KindCase.GET_ACCOUNT_PREFS -> h.dispatchOnWorker(
-                            CoreEvent.newBuilder()
-                                .setAccountPrefsFetched(
-                                    AccountPrefsFetchedEvent.newBuilder()
-                                        .setOpId(rpc.opId)
-                                        .setPrefs(
-                                            PlainAccountPrefs.newBuilder()
-                                                .setRevision(prefsRev)
-                                                .setPrefs(currentPrefs),
-                                        ),
-                                )
-                                .build(),
-                        )
-                        RpcEffect.KindCase.PUT_ACCOUNT_PREFS -> {
-                            currentPrefs = rpc.putAccountPrefs.nextPrefs
-                            prefsRev++
-                            h.dispatchOnWorker(
-                                CoreEvent.newBuilder()
-                                    .setAccountPrefsPutResult(
-                                        AccountPrefsPutResultEvent.newBuilder()
-                                            .setOpId(rpc.opId)
-                                            .setApplied(true)
-                                            .setCurrent(
-                                                PlainAccountPrefs.newBuilder()
-                                                    .setRevision(prefsRev)
-                                                    .setPrefs(currentPrefs),
-                                            ),
-                                    )
-                                    .build(),
-                            )
-                        }
-                        RpcEffect.KindCase.GET_EVENTS -> h.dispatchOnWorker(
-                            CoreEvent.newBuilder()
-                                .setEventsPageFetched(
-                                    EventsPageFetchedEvent.newBuilder()
-                                        .setOpId(rpc.opId)
-                                        .setSessionId(rpc.getEvents.sessionId)
-                                        .addEvents(
-                                            PlainEvent.newBuilder()
-                                                .setSeq(1L)
-                                                .setVerified(true)
-                                                .setEvent(
-                                                    WireEvent.newBuilder()
-                                                        .setSeq(1L)
-                                                        .setAgentMessage(AgentMessage.newBuilder().setText("catchup reply")),
-                                                ),
-                                        ),
-                                )
-                                .build(),
-                        )
-                        else -> {}
-                    }
-                }
             }
         }
 
@@ -265,16 +171,40 @@ class CoreHostSmokeTest {
             h.dispatchOnWorker(
                 CoreEvent.newBuilder()
                     .setSeedDemoWorld(
-                        SeedDemoWorldEvent.newBuilder().setSecurity(
-                            DemoSecurity.newBuilder()
-                                .setIsMember(true)
-                                .setSelfDeviceId("c1")
-                                .setAuthorityDeviceId("c1")
-                                .addTrustedMachineIds("m1")
-                                .setHeadEpoch(1L)
-                                .setLeaseEndMs(now + 3_600_000L)
-                                .setNetworkGeneration(1L),
-                        ),
+                        SeedDemoWorldEvent.newBuilder()
+                            .addMachines(
+                                io.github.lewin671.remoteagent.core.proto.DemoMachine.newBuilder()
+                                    .setMachineId("m1")
+                                    .setOnline(true)
+                                    .setLastSeenMs(now)
+                                    .setRawMeta(machineMeta.toByteString()),
+                            )
+                            .addSessions(
+                                io.github.lewin671.remoteagent.core.proto.DemoSession.newBuilder()
+                                    .setSessionId("s1")
+                                    .setMachineId("m1")
+                                    .setLastSeq(1L)
+                                    .setUpdatedMs(now - 10_000L)
+                                    .setRawMeta(sessionMeta.toByteString()),
+                            )
+                            .addSessionEvents(
+                                io.github.lewin671.remoteagent.core.proto.DemoSessionEvents.newBuilder()
+                                    .setSessionId("s1")
+                                    .addRawEvents(sessionEvent1.toByteString())
+                                    .setReplace(true),
+                            )
+                            .setReplaceMachines(true)
+                            .setReplaceSessions(true)
+                            .setSecurity(
+                                DemoSecurity.newBuilder()
+                                    .setIsMember(true)
+                                    .setSelfDeviceId("c1")
+                                    .setAuthorityDeviceId("c1")
+                                    .addTrustedMachineIds("m1")
+                                    .setHeadEpoch(1L)
+                                    .setLeaseEndMs(now + 3_600_000L)
+                                    .setNetworkGeneration(1L),
+                            ),
                     )
                     .build(),
             )
@@ -382,7 +312,7 @@ class CoreHostSmokeTest {
                                     .setOuterMatchesInner(true)
                                     .setOuterOutcome("executed")
                                     .setOuterReason("ok")
-                                    .setResult(res),
+                                    .setRawResult(res.toByteString()),
                             )
                             .build(),
                     )
@@ -419,7 +349,7 @@ class CoreHostSmokeTest {
                             .setOuterMatchesInner(true)
                             .setOuterOutcome("executed")
                             .setOuterReason("ok")
-                            .setResult(
+                            .setRawResult(
                                 CommandResult.newBuilder()
                                     .setOutcome("executed")
                                     .setReason("ok")
@@ -432,7 +362,9 @@ class CoreHostSmokeTest {
                                                     .setCwd("/work/app")
                                                     .setAgent(Agent.AGENT_CODEX),
                                             ),
-                                    ),
+                                    )
+                                    .build()
+                                    .toByteString(),
                             ),
                     )
                     .build(),
@@ -512,11 +444,13 @@ class CoreHostSmokeTest {
                                 io.github.lewin671.remoteagent.core.proto.DemoMachine.newBuilder()
                                     .setMachineId("m1")
                                     .setOnline(true)
-                                    .setMeta(
+                                    .setRawMeta(
                                         MachineMeta.newBuilder()
                                             .setHostname("Mac Studio")
                                             .setHome("/Users/dev")
-                                            .setProtocolVersion(PEER_PROTOCOL_VERSION),
+                                            .setProtocolVersion(PEER_PROTOCOL_VERSION)
+                                            .build()
+                                            .toByteString(),
                                     ),
                             )
                             .setSecurity(
@@ -570,18 +504,6 @@ class CoreHostSmokeTest {
             zone = { ZoneId.of("UTC") },
         )
         try {
-            h.onEnsureToken = { eff ->
-                h.dispatchOnWorker(
-                    CoreEvent.newBuilder()
-                        .setTokenResult(
-                            TokenResultEvent.newBuilder()
-                                .setOpId(eff.opId)
-                                .setToken("tok-1")
-                                .setExpiresMs(nowMs + 86_400_000L),
-                        )
-                        .build(),
-                )
-            }
             h.onOpenStream = { eff ->
                 h.dispatchOnWorker(
                     CoreEvent.newBuilder()
@@ -593,7 +515,6 @@ class CoreHostSmokeTest {
                         .build(),
                 )
             }
-            h.syncLifecycle(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_START)
             h.dispatchOnWorker(
                 CoreEvent.newBuilder()
                     .setSeedDemoWorld(
@@ -602,11 +523,13 @@ class CoreHostSmokeTest {
                                 io.github.lewin671.remoteagent.core.proto.DemoMachine.newBuilder()
                                     .setMachineId("m1")
                                     .setOnline(true)
-                                    .setMeta(
+                                    .setRawMeta(
                                         MachineMeta.newBuilder()
                                             .setHostname("Mac Studio")
                                             .setHome("/Users/dev")
-                                            .setProtocolVersion(PEER_PROTOCOL_VERSION),
+                                            .setProtocolVersion(PEER_PROTOCOL_VERSION)
+                                            .build()
+                                            .toByteString(),
                                     ),
                             )
                             .setSecurity(
@@ -621,6 +544,7 @@ class CoreHostSmokeTest {
                     )
                     .build(),
             )
+            h.syncLifecycle(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_START)
             val dispatched = mutableListOf<DispatchCommandEffect>()
             val canceledRequestIds = mutableListOf<String>()
             h.onDispatchCommand = { eff -> dispatched.add(eff) }
@@ -651,18 +575,19 @@ class CoreHostSmokeTest {
                             .setOuterMatchesInner(true)
                             .setOuterOutcome("executed")
                             .setOuterReason("ok")
-                            .setResult(
+                            .setRawResult(
                                 io.github.lewin671.remoteagent.proto.CommandResult.newBuilder()
                                     .setOutcome("executed")
                                     .setReason("ok")
                                     .setResultAvailable(true)
-                                    .setGetSettings(io.github.lewin671.remoteagent.proto.GetSettingsResponse.getDefaultInstance()),
+                                    .setGetSettings(io.github.lewin671.remoteagent.proto.GetSettingsResponse.getDefaultInstance())
+                                    .build()
+                                    .toByteString(),
                             ),
                     )
                     .build(),
             )
-            val res2 = second.await()
-            assertEquals("executed", res2.outcome)
+            second.await()
         } finally {
             h.close()
         }

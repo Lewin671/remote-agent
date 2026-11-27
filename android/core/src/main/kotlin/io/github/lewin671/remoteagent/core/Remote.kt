@@ -137,7 +137,7 @@ class Remote(
         class SessionWrite(val s: RemoteSession) : CacheWritePayload
         class KeepOwnerWrite(val s: RemoteSession) : CacheWritePayload
         class EventsWrite(val sessionId: String, val events: List<StoredEvent>) : CacheWritePayload
-        class PrefsWrite(val p: AccountPrefsObject) : CacheWritePayload
+        class PrefsWrite(val raw: ByteArray) : CacheWritePayload
         class SessionOpenWrite(val sessionId: String, val open: Boolean) : CacheWritePayload
     }
 
@@ -385,7 +385,6 @@ class Remote(
             coreHost.onDismissUpgradeNotice = { securityStore.dismissUpgradeNotice() }
             coreHost.onSecurityEffect = exec::handleEffect
         }
-        coreHost.sendRelayPipeConfig(true)
         coreHost.onSecurityTokenUpdated = ::handleSecurityTokenUpdated
         coreHost.onSecurityStatusChanged = { eff ->
             if (eff.hasStatus()) {
@@ -768,7 +767,7 @@ class Remote(
                         .setMachineId(machineId)
                         .setPcId(pcId)
                         .setSender(machineId)
-                        .addWireEnvelopes(env),
+                        .addRawEnvelopes(env.toByteString()),
                 )
                 .build(),
         )
@@ -782,9 +781,9 @@ class Remote(
                 val b = CacheBootstrapLoadedEvent.newBuilder().setOpId(eff.bootstrap.opId)
                 try {
                     ensureSecurityBootstrapped()
-                    b.addAllWireMachines(cache?.machines().orEmpty())
-                        .addAllWireSessions(cache?.sessions().orEmpty())
-                    cache?.blob(PROJECT_PREFS)?.let { b.setWirePrefs(AccountPrefsObject.parseFrom(it)) }
+                    b.addAllRawMachines(cache?.machines().orEmpty().map { it.toByteString() })
+                        .addAllRawSessions(cache?.sessions().orEmpty().map { it.toByteString() })
+                    cache?.blob(PROJECT_PREFS)?.let { b.setRawPrefs(ByteString.copyFrom(it)) }
                     homeScopeStore?.readToken()?.takeIf { it.isNotEmpty() }?.let { b.setHomeScopeToken(it) }
                     deriveScopeKey(account.localKey, "home-scope").takeIf { it.isNotEmpty() }?.let { b.setScopeHmacKey(ByteString.copyFrom(it)) }
                 } catch (e: Exception) {
@@ -805,7 +804,7 @@ class Remote(
                 try {
                     val raw = if (req.newest) cache?.newestEvents(sid).orEmpty() else cache?.eventPage(sid, req.afterSeq).orEmpty()
                     val limited = if (req.limit > 0 && raw.size > req.limit) raw.take(req.limit) else raw
-                    b.addAllWireEvents(limited)
+                    b.addAllRawEvents(limited.map { it.toByteString() })
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
                     report(e)
@@ -820,14 +819,21 @@ class Remote(
     private fun extractCacheWrite(eff: CacheWriteEffect): CacheWritePayload? {
         if (cache == null) return null
         return when {
-            eff.hasWriteMachine() -> CacheWritePayload.MachineWrite(eff.writeMachine)
-            eff.hasWriteSession() -> CacheWritePayload.SessionWrite(eff.writeSession)
-            eff.hasKeepSessionOwner() -> CacheWritePayload.KeepOwnerWrite(eff.keepSessionOwner)
+            eff.hasRawWriteMachine() && !eff.rawWriteMachine.isEmpty ->
+                CacheWritePayload.MachineWrite(Machine.parseFrom(eff.rawWriteMachine))
+            eff.hasRawWriteSession() && !eff.rawWriteSession.isEmpty ->
+                CacheWritePayload.SessionWrite(RemoteSession.parseFrom(eff.rawWriteSession))
+            eff.hasRawKeepSessionOwner() && !eff.rawKeepSessionOwner.isEmpty ->
+                CacheWritePayload.KeepOwnerWrite(RemoteSession.parseFrom(eff.rawKeepSessionOwner))
             eff.hasWriteStoredEvents() -> {
                 val we = eff.writeStoredEvents
-                if (we.eventsList.isNotEmpty()) CacheWritePayload.EventsWrite(we.sessionId, we.eventsList) else null
+                val parsed = we.rawEventsList.mapNotNull { raw ->
+                    if (raw.isEmpty) null else StoredEvent.parseFrom(raw)
+                }
+                if (parsed.isNotEmpty()) CacheWritePayload.EventsWrite(we.sessionId, parsed) else null
             }
-            eff.hasWritePrefs() -> CacheWritePayload.PrefsWrite(eff.writePrefs)
+            eff.hasRawWritePrefs() && !eff.rawWritePrefs.isEmpty ->
+                CacheWritePayload.PrefsWrite(eff.rawWritePrefs.toByteArray())
             eff.hasSetSessionOpen() -> CacheWritePayload.SessionOpenWrite(eff.setSessionOpen.sessionId, eff.setSessionOpen.open)
             else -> null
         }
@@ -839,7 +845,7 @@ class Remote(
             is CacheWritePayload.SessionWrite -> cache?.putSession(payload.s)
             is CacheWritePayload.KeepOwnerWrite -> cache?.keepOwner(payload.s)
             is CacheWritePayload.EventsWrite -> cache?.putEvents(payload.sessionId, payload.events)
-            is CacheWritePayload.PrefsWrite -> cache?.putBlob(PROJECT_PREFS, payload.p.toByteArray())
+            is CacheWritePayload.PrefsWrite -> cache?.putBlob(PROJECT_PREFS, payload.raw)
             is CacheWritePayload.SessionOpenWrite -> cache?.setSessionOpen(payload.sessionId, payload.open)
         }
     }
@@ -908,7 +914,7 @@ class Remote(
                 .build()
 
         if (coreHost.securityClient.currentStatus?.clockSkewed == true) return localFailure("failed_precondition", "clock skew")
-        if (!eff.hasSealedEnvelope()) return localFailure("failed_precondition", "missing sealed command")
+        if (eff.rawSealedEnvelope.isEmpty) return localFailure("failed_precondition", "missing sealed command")
 
         val useDirect = eff.routeLeg == CommandRouteLeg.COMMAND_ROUTE_LEG_DIRECT && eff.directPcId > 0L
         if (!useDirect) return localFailure("failed_precondition", "relay leg handled by core")
@@ -925,10 +931,10 @@ class Remote(
                 .setRouteWasDirect(true)
 
         return try {
-            val env = directExecutor.sendRpc(eff.directPcId, eff.requestId, eff.sealedEnvelope.toByteArray(), eff.directTimeoutMs, handoff)
+            val env = directExecutor.sendRpc(eff.directPcId, eff.requestId, eff.rawSealedEnvelope.toByteArray(), eff.directTimeoutMs, handoff)
             baseOutcome(OutcomeSource.OUTCOME_SOURCE_DAEMON)
                 .setAttemptBound(true)
-                .setSealedResult(env)
+                .setRawSealedResult(env.toByteString())
                 .setHandedOff(handedOff)
                 .setElapsedMs(elapsedMs())
                 .build()
@@ -1158,16 +1164,6 @@ class Remote(
 
     suspend fun renewLeaseBlocking(force: Boolean = true): SecurityWorkflowStatus =
         withSecurity { renewLease(force) }.also { applySecurityStatusSnapshotAndPrune(it) }
-
-    suspend fun prepareHandoffCode(storagePersisted: Boolean = true): String =
-        withSecurity { prepareHandoffCode(storagePersisted) }
-
-    suspend fun publishHandoffOffer() {
-        withSecurity { publishHandoffOffer() }
-        if (!closed) refreshDevices()
-    }
-
-    suspend fun handoffAuthority(incoming: String) { withSecurity { handoffAuthority(incoming) } }
 
     suspend fun renameDevice(id: String, name: String) {
         if (id != account.deviceId) throw MessageArgumentException(UiMessages.errorsNamesCanOnlyBeChangedOnThatDevice().messageText())

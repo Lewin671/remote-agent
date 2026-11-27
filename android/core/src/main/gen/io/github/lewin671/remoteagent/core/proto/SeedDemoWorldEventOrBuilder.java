@@ -53,17 +53,6 @@ public interface SeedDemoWorldEventOrBuilder extends
   int getDevicesCount();
 
   /**
-   * <code>.remoteagent.v1.ProjectPrefs prefs = 4 [json_name = "prefs"];</code>
-   * @return Whether the prefs field is set.
-   */
-  boolean hasPrefs();
-  /**
-   * <code>.remoteagent.v1.ProjectPrefs prefs = 4 [json_name = "prefs"];</code>
-   * @return The prefs.
-   */
-  io.github.lewin671.remoteagent.proto.ProjectPrefs getPrefs();
-
-  /**
    * <code>repeated .remoteagent.core.v1.DemoSessionEvents session_events = 5 [json_name = "sessionEvents"];</code>
    */
   java.util.List<io.github.lewin671.remoteagent.core.proto.DemoSessionEvents> 
@@ -107,4 +96,126 @@ public interface SeedDemoWorldEventOrBuilder extends
    * @return The clearDirectReports.
    */
   boolean getClearDirectReports();
+
+  /**
+   * <code>bytes raw_prefs = 9 [json_name = "rawPrefs"];</code>
+   * @return The rawPrefs.
+   */
+  com.google.protobuf.ByteString getRawPrefs();
+
+  /**
+   * <code>repeated string removed_machine_ids = 10 [json_name = "removedMachineIds"];</code>
+   * @return A list containing the removedMachineIds.
+   */
+  java.util.List<java.lang.String>
+      getRemovedMachineIdsList();
+  /**
+   * <code>repeated string removed_machine_ids = 10 [json_name = "removedMachineIds"];</code>
+   * @return The count of removedMachineIds.
+   */
+  int getRemovedMachineIdsCount();
+  /**
+   * <code>repeated string removed_machine_ids = 10 [json_name = "removedMachineIds"];</code>
+   * @param index The index of the element to return.
+   * @return The removedMachineIds at the given index.
+   */
+  java.lang.String getRemovedMachineIds(int index);
+  /**
+   * <code>repeated string removed_machine_ids = 10 [json_name = "removedMachineIds"];</code>
+   * @param index The index of the element to return.
+   * @return The removedMachineIds at the given index.
+   */
+  com.google.protobuf.ByteString
+      getRemovedMachineIdsBytes(int index);
+
+  /**
+   * <code>repeated string removed_session_ids = 11 [json_name = "removedSessionIds"];</code>
+   * @return A list containing the removedSessionIds.
+   */
+  java.util.List<java.lang.String>
+      getRemovedSessionIdsList();
+  /**
+   * <code>repeated string removed_session_ids = 11 [json_name = "removedSessionIds"];</code>
+   * @return The count of removedSessionIds.
+   */
+  int getRemovedSessionIdsCount();
+  /**
+   * <code>repeated string removed_session_ids = 11 [json_name = "removedSessionIds"];</code>
+   * @param index The index of the element to return.
+   * @return The removedSessionIds at the given index.
+   */
+  java.lang.String getRemovedSessionIds(int index);
+  /**
+   * <code>repeated string removed_session_ids = 11 [json_name = "removedSessionIds"];</code>
+   * @param index The index of the element to return.
+   * @return The removedSessionIds at the given index.
+   */
+  com.google.protobuf.ByteString
+      getRemovedSessionIdsBytes(int index);
+
+  /**
+   * <code>bool has_more_sessions = 12 [json_name = "hasMoreSessions"];</code>
+   * @return The hasMoreSessions.
+   */
+  boolean getHasMoreSessions();
+
+  /**
+   * <code>string list_error = 13 [json_name = "listError"];</code>
+   * @return The listError.
+   */
+  java.lang.String getListError();
+  /**
+   * <code>string list_error = 13 [json_name = "listError"];</code>
+   * @return The bytes for listError.
+   */
+  com.google.protobuf.ByteString
+      getListErrorBytes();
+
+  /**
+   * <code>bool clear_list_error = 14 [json_name = "clearListError"];</code>
+   * @return The clearListError.
+   */
+  boolean getClearListError();
+
+  /**
+   * <code>string prefs_error = 15 [json_name = "prefsError"];</code>
+   * @return The prefsError.
+   */
+  java.lang.String getPrefsError();
+  /**
+   * <code>string prefs_error = 15 [json_name = "prefsError"];</code>
+   * @return The bytes for prefsError.
+   */
+  com.google.protobuf.ByteString
+      getPrefsErrorBytes();
+
+  /**
+   * <code>bool clear_prefs_error = 16 [json_name = "clearPrefsError"];</code>
+   * @return The clearPrefsError.
+   */
+  boolean getClearPrefsError();
+
+  /**
+   * <code>uint64 prefs_revision = 17 [json_name = "prefsRevision"];</code>
+   * @return The prefsRevision.
+   */
+  long getPrefsRevision();
+
+  /**
+   * <code>bool replace_machines = 18 [json_name = "replaceMachines"];</code>
+   * @return The replaceMachines.
+   */
+  boolean getReplaceMachines();
+
+  /**
+   * <code>bool replace_sessions = 19 [json_name = "replaceSessions"];</code>
+   * @return The replaceSessions.
+   */
+  boolean getReplaceSessions();
+
+  /**
+   * <code>bool replace_devices = 20 [json_name = "replaceDevices"];</code>
+   * @return The replaceDevices.
+   */
+  boolean getReplaceDevices();
 }

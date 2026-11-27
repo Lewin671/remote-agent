@@ -21,8 +21,9 @@ public  final class CommandOutcomeEvent extends
     outerReason_ = "";
     transportCode_ = "";
     transportDetail_ = "";
+    rawResult_ = com.google.protobuf.ByteString.EMPTY;
+    rawSealedResult_ = com.google.protobuf.ByteString.EMPTY;
   }
-  private int bitField0_;
   public static final int REQUEST_ID_FIELD_NUMBER = 1;
   private java.lang.String requestId_;
   /**
@@ -387,54 +388,6 @@ public  final class CommandOutcomeEvent extends
 
   }
 
-  public static final int RESULT_FIELD_NUMBER = 11;
-  private io.github.lewin671.remoteagent.proto.CommandResult result_;
-  /**
-   * <code>.remoteagent.v1.CommandResult result = 11 [json_name = "result"];</code>
-   */
-  @java.lang.Override
-  public boolean hasResult() {
-    return ((bitField0_ & 0x00000001) != 0);
-  }
-  /**
-   * <code>.remoteagent.v1.CommandResult result = 11 [json_name = "result"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.CommandResult getResult() {
-    return result_ == null ? io.github.lewin671.remoteagent.proto.CommandResult.getDefaultInstance() : result_;
-  }
-  /**
-   * <code>.remoteagent.v1.CommandResult result = 11 [json_name = "result"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setResult(io.github.lewin671.remoteagent.proto.CommandResult value) {
-    value.getClass();  // minimal bytecode null check
-    result_ = value;
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.v1.CommandResult result = 11 [json_name = "result"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeResult(io.github.lewin671.remoteagent.proto.CommandResult value) {
-    value.getClass();  // minimal bytecode null check
-    if (result_ != null &&
-        result_ != io.github.lewin671.remoteagent.proto.CommandResult.getDefaultInstance()) {
-      result_ =
-        io.github.lewin671.remoteagent.proto.CommandResult.newBuilder(result_).mergeFrom(value).buildPartial();
-    } else {
-      result_ = value;
-    }
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.v1.CommandResult result = 11 [json_name = "result"];</code>
-   */
-  private void clearResult() {
-    result_ = null;
-    bitField0_ = (bitField0_ & ~0x00000001);
-  }
-
   public static final int TRANSPORT_CODE_FIELD_NUMBER = 12;
   private java.lang.String transportCode_;
   /**
@@ -661,52 +614,58 @@ public  final class CommandOutcomeEvent extends
     directTicketId_ = 0L;
   }
 
-  public static final int SEALED_RESULT_FIELD_NUMBER = 20;
-  private io.github.lewin671.remoteagent.proto.Envelope sealedResult_;
+  public static final int RAW_RESULT_FIELD_NUMBER = 21;
+  private com.google.protobuf.ByteString rawResult_;
   /**
-   * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
+   * <code>bytes raw_result = 21 [json_name = "rawResult"];</code>
+   * @return The rawResult.
    */
   @java.lang.Override
-  public boolean hasSealedResult() {
-    return ((bitField0_ & 0x00000002) != 0);
+  public com.google.protobuf.ByteString getRawResult() {
+    return rawResult_;
   }
   /**
-   * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
+   * <code>bytes raw_result = 21 [json_name = "rawResult"];</code>
+   * @param value The rawResult to set.
+   */
+  private void setRawResult(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    rawResult_ = value;
+  }
+  /**
+   * <code>bytes raw_result = 21 [json_name = "rawResult"];</code>
+   */
+  private void clearRawResult() {
+
+    rawResult_ = getDefaultInstance().getRawResult();
+  }
+
+  public static final int RAW_SEALED_RESULT_FIELD_NUMBER = 22;
+  private com.google.protobuf.ByteString rawSealedResult_;
+  /**
+   * <code>bytes raw_sealed_result = 22 [json_name = "rawSealedResult"];</code>
+   * @return The rawSealedResult.
    */
   @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.Envelope getSealedResult() {
-    return sealedResult_ == null ? io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance() : sealedResult_;
+  public com.google.protobuf.ByteString getRawSealedResult() {
+    return rawSealedResult_;
   }
   /**
-   * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
+   * <code>bytes raw_sealed_result = 22 [json_name = "rawSealedResult"];</code>
+   * @param value The rawSealedResult to set.
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSealedResult(io.github.lewin671.remoteagent.proto.Envelope value) {
-    value.getClass();  // minimal bytecode null check
-    sealedResult_ = value;
-    bitField0_ |= 0x00000002;
+  private void setRawSealedResult(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    rawSealedResult_ = value;
   }
   /**
-   * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
+   * <code>bytes raw_sealed_result = 22 [json_name = "rawSealedResult"];</code>
    */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeSealedResult(io.github.lewin671.remoteagent.proto.Envelope value) {
-    value.getClass();  // minimal bytecode null check
-    if (sealedResult_ != null &&
-        sealedResult_ != io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance()) {
-      sealedResult_ =
-        io.github.lewin671.remoteagent.proto.Envelope.newBuilder(sealedResult_).mergeFrom(value).buildPartial();
-    } else {
-      sealedResult_ = value;
-    }
-    bitField0_ |= 0x00000002;
-  }
-  /**
-   * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
-   */
-  private void clearSealedResult() {
-    sealedResult_ = null;
-    bitField0_ = (bitField0_ & ~0x00000002);
+  private void clearRawSealedResult() {
+
+    rawSealedResult_ = getDefaultInstance().getRawSealedResult();
   }
 
   public static io.github.lewin671.remoteagent.core.proto.CommandOutcomeEvent parseFrom(
@@ -1189,53 +1148,6 @@ public  final class CommandOutcomeEvent extends
     }
 
     /**
-     * <code>.remoteagent.v1.CommandResult result = 11 [json_name = "result"];</code>
-     */
-    @java.lang.Override
-    public boolean hasResult() {
-      return instance.hasResult();
-    }
-    /**
-     * <code>.remoteagent.v1.CommandResult result = 11 [json_name = "result"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.CommandResult getResult() {
-      return instance.getResult();
-    }
-    /**
-     * <code>.remoteagent.v1.CommandResult result = 11 [json_name = "result"];</code>
-     */
-    public Builder setResult(io.github.lewin671.remoteagent.proto.CommandResult value) {
-      copyOnWrite();
-      instance.setResult(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.v1.CommandResult result = 11 [json_name = "result"];</code>
-     */
-    public Builder setResult(
-        io.github.lewin671.remoteagent.proto.CommandResult.Builder builderForValue) {
-      copyOnWrite();
-      instance.setResult(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.CommandResult result = 11 [json_name = "result"];</code>
-     */
-    public Builder mergeResult(io.github.lewin671.remoteagent.proto.CommandResult value) {
-      copyOnWrite();
-      instance.mergeResult(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.CommandResult result = 11 [json_name = "result"];</code>
-     */
-    public Builder clearResult() {  copyOnWrite();
-      instance.clearResult();
-      return this;
-    }
-
-    /**
      * <code>string transport_code = 12 [json_name = "transportCode"];</code>
      * @return The transportCode.
      */
@@ -1474,49 +1386,58 @@ public  final class CommandOutcomeEvent extends
     }
 
     /**
-     * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
+     * <code>bytes raw_result = 21 [json_name = "rawResult"];</code>
+     * @return The rawResult.
      */
     @java.lang.Override
-    public boolean hasSealedResult() {
-      return instance.hasSealedResult();
+    public com.google.protobuf.ByteString getRawResult() {
+      return instance.getRawResult();
     }
     /**
-     * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
+     * <code>bytes raw_result = 21 [json_name = "rawResult"];</code>
+     * @param value The rawResult to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRawResult(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setRawResult(value);
+      return this;
+    }
+    /**
+     * <code>bytes raw_result = 21 [json_name = "rawResult"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRawResult() {
+      copyOnWrite();
+      instance.clearRawResult();
+      return this;
+    }
+
+    /**
+     * <code>bytes raw_sealed_result = 22 [json_name = "rawSealedResult"];</code>
+     * @return The rawSealedResult.
      */
     @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.Envelope getSealedResult() {
-      return instance.getSealedResult();
+    public com.google.protobuf.ByteString getRawSealedResult() {
+      return instance.getRawSealedResult();
     }
     /**
-     * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
+     * <code>bytes raw_sealed_result = 22 [json_name = "rawSealedResult"];</code>
+     * @param value The rawSealedResult to set.
+     * @return This builder for chaining.
      */
-    public Builder setSealedResult(io.github.lewin671.remoteagent.proto.Envelope value) {
+    public Builder setRawSealedResult(com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.setSealedResult(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
-     */
-    public Builder setSealedResult(
-        io.github.lewin671.remoteagent.proto.Envelope.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSealedResult(builderForValue.build());
+      instance.setRawSealedResult(value);
       return this;
     }
     /**
-     * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
+     * <code>bytes raw_sealed_result = 22 [json_name = "rawSealedResult"];</code>
+     * @return This builder for chaining.
      */
-    public Builder mergeSealedResult(io.github.lewin671.remoteagent.proto.Envelope value) {
+    public Builder clearRawSealedResult() {
       copyOnWrite();
-      instance.mergeSealedResult(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
-     */
-    public Builder clearSealedResult() {  copyOnWrite();
-      instance.clearSealedResult();
+      instance.clearRawSealedResult();
       return this;
     }
 
@@ -1536,7 +1457,6 @@ public  final class CommandOutcomeEvent extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
-            "bitField0_",
             "requestId_",
             "attemptId_",
             "source_",
@@ -1547,7 +1467,6 @@ public  final class CommandOutcomeEvent extends
             "outerMatchesInner_",
             "outerOutcome_",
             "outerReason_",
-            "result_",
             "transportCode_",
             "transportDetail_",
             "routeWasDirect_",
@@ -1555,13 +1474,14 @@ public  final class CommandOutcomeEvent extends
             "observedBytes_",
             "handedOff_",
             "directTicketId_",
-            "sealedResult_",
+            "rawResult_",
+            "rawSealedResult_",
           };
           java.lang.String info =
-              "\u0000\u0013\u0000\u0001\u0001\u0014\u0013\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u0013\u0000\u0000\u0001\u0016\u0013\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\f\u0004\u0007\u0005\u0007\u0006\u0007\u0007\u0007\b\u0007\t\u0208\n\u0208" +
-              "\u000b\u1009\u0000\f\u0208\r\u0208\u000e\u0007\u000f\u0000\u0010\u0002\u0011\u0007" +
-              "\u0012\u0003\u0014\u1009\u0001";
+              "\f\u0208\r\u0208\u000e\u0007\u000f\u0000\u0010\u0002\u0011\u0007\u0012\u0003\u0015" +
+              "\n\u0016\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

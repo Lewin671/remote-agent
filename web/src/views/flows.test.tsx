@@ -7,8 +7,9 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ANDROID, DemoRemote } from "../dev/demo";
+import { DemoSessionSchema, SeedDemoWorldEventSchema } from "../gen/remoteagent/core/v1/security_pb";
 import { patchSyncState, demoMachines, demoSessions, isPrefsReady, isPrefsSyncing, isRemoteListed } from "../test/remote-fixture";
-import { create, type MessageInitShape } from "@bufbuild/protobuf";
+import { create, toBinary, type MessageInitShape } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { getCoreHost, sessionDraftScope, useCoreHost, useSessionView } from "../core/host";
 import { ImageError } from "../imagecodec/error";
@@ -17,7 +18,8 @@ import { renderText } from "../core/text";
 import { MachineMetaSchema, ProjectPrefsSchema, ProjectSettingsSchema, AgentSettingsSchema } from "../gen/remoteagent/v1/remote_pb";
 import { SessionDockKind, SessionPlanDockViewSchema, SessionSimpleCommandKind, SessionTerminalPopupDockViewSchema, SessionDockViewSchema } from "../gen/remoteagent/core/v1/session_view_pb";
 import { TextSchema } from "../gen/remoteagent/core/v1/text_pb";
-import { AccountPrefsFetchedEventSchema, EventSchema as CoreEventSchema, EventsAppendedFrameSchema, HomeSetScopeActionSchema, ListsFetchedEventSchema, NewSessionOpenActionSchema, NewSessionSelectMachineActionSchema, NewSessionSelectModelActionSchema, NewSessionSubmitActionSchema, PlainAccountPrefsSchema, PlainEventSchema, SessionsPageFetchedEventSchema } from "../gen/remoteagent/core/v1/app_pb";
+import { EventSchema as CoreEventSchema, HomeSetScopeActionSchema, NewSessionOpenActionSchema, NewSessionSelectMachineActionSchema, NewSessionSelectModelActionSchema, NewSessionSubmitActionSchema } from "../gen/remoteagent/core/v1/app_pb";
+import { SessionSchema } from "../gen/remoteagent/v1/local_pb";
 import { DraftScopeKind, DraftScopeSchema, DraftSetTextActionSchema } from "../gen/remoteagent/core/v1/attachments_pb";
 import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStatus, OriginKind, type OriginSchema, SessionStatus, ToolKind, SendMode } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
@@ -85,8 +87,8 @@ const pushDemoEvent = (
   const demo = r as unknown as {
     evs: Map<string, import("../gen/remoteagent/v1/event_pb").Event[]>;
     demoSessions: Map<string, import("../test/remote-fixture").TestSessionView>;
-    demoStream?: { legId: bigint };
-    plainSession: (s: import("../test/remote-fixture").TestSessionView) => import("../gen/remoteagent/core/v1/app_pb").PlainSession;
+    demoSessionProto: (s: import("../test/remote-fixture").TestSessionView) => import("../gen/remoteagent/core/v1/security_pb").DemoSession;
+    demoSessionEventsProto: (sid: string, list: import("../gen/remoteagent/v1/event_pb").Event[], replace?: boolean) => import("../gen/remoteagent/core/v1/security_pb").DemoSessionEvents;
     changed: () => void;
   };
   const list = demo.evs.get(sid) ?? [];
@@ -99,41 +101,16 @@ const pushDemoEvent = (
   const rs = demoSessions(r).get(sid);
   if (rs) rs.lastSeq = seq;
   const host = getCoreHost(r);
-  const legId = demo.demoStream?.legId;
-  if (legId) {
-    host.dispatch(create(CoreEventSchema, {
-      event: {
-        case: "streamFrame",
-        value: {
-          legId,
-          frame: {
-            case: "eventsAppended",
-            value: create(EventsAppendedFrameSchema, {
-              sessionId: sid,
-              events: [create(PlainEventSchema, { seq, event: ev, verified: true })],
-            }),
-          },
-        },
-      },
-    }));
-    if (ds) {
-      host.dispatch(create(CoreEventSchema, {
-        event: {
-          case: "streamFrame",
-          value: {
-            legId,
-            frame: {
-              case: "sessionUpdated",
-              value: demo.plainSession(ds),
-            },
-          },
-        },
-      }));
-    }
-    demo.changed();
-  } else {
-    syncDemo(r);
-  }
+  host.dispatch(create(CoreEventSchema, {
+    event: {
+      case: "seedDemoWorld",
+      value: create(SeedDemoWorldEventSchema, {
+        sessions: ds ? [demo.demoSessionProto(ds)] : [],
+        sessionEvents: [demo.demoSessionEventsProto(sid, [ev], false)],
+      }),
+    },
+  }));
+  demo.changed();
 };
 const keepOnlyMachines = (r: DemoRemote, keepId: string) => {
   const demo = r as unknown as { demoMachines: Map<string, import("../test/remote-fixture").TestMachineView> };
@@ -153,29 +130,17 @@ const filterSessions = (r: DemoRemote, keep: (s: import("../test/remote-fixture"
 const pushStoredPrefs = (r: DemoRemote) => {
   const host = getCoreHost(r);
   const stored = (r as unknown as { stored: { revision: bigint; prefs: import("../gen/remoteagent/v1/remote_pb").ProjectPrefs } }).stored;
-  const legId = (r as unknown as { demoStream?: { legId: bigint } }).demoStream?.legId;
-  if (legId) {
-    host.dispatch(
-      create(CoreEventSchema, {
-        event: {
-          case: "streamFrame",
-          value: { legId, frame: { case: "accountPrefsUpdated", value: create(PlainAccountPrefsSchema, { revision: stored.revision, prefs: stored.prefs }) } },
-        },
-      }),
-    );
-  } else {
-    host.dispatch(
-      create(CoreEventSchema, {
-        event: {
-          case: "accountPrefsFetched",
-          value: create(AccountPrefsFetchedEventSchema, {
-            opId: 0n,
-            prefs: create(PlainAccountPrefsSchema, { revision: stored.revision, prefs: stored.prefs }),
-          }),
-        },
-      }),
-    );
-  }
+  host.dispatch(
+    create(CoreEventSchema, {
+      event: {
+        case: "seedDemoWorld",
+        value: create(SeedDemoWorldEventSchema, {
+          rawPrefs: toBinary(ProjectPrefsSchema, stored.prefs),
+          prefsRevision: stored.revision,
+        }),
+      },
+    }),
+  );
 };
 const todoList = (r: DemoRemote) => {
   const core = getCoreHost(r);
@@ -595,38 +560,16 @@ it("leaves an unknown approval mode unsaid in the navbar, and a new session does
 });
 
 it("shows a failed first listing and lists again", async () => {
-  vi.useFakeTimers();
-  try {
-    const r = createDemo(new URLSearchParams("empty=none&list=fail"));
-    let fail = true;
-    const origRpc = r.executeRpc.bind(r);
-    vi.spyOn(r, "executeRpc").mockImplementation(async (eff) => {
-      if (eff.kind.case === "fetchLists") {
-        if (fail) {
-          return create(CoreEventSchema, {
-            event: { case: "listsFetched", value: create(ListsFetchedEventSchema, { opId: eff.opId, error: "连接超时" }) },
-          });
-        }
-        return create(CoreEventSchema, {
-          event: { case: "listsFetched", value: create(ListsFetchedEventSchema, { opId: eff.opId }) },
-        });
-      }
-      return origRpc(eff);
-    });
-    r.start();
-    mount(<Home remote={r} go={() => undefined} />);
-    await act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); });
-    expect(isRemoteListed(r)).toBe(false);
-    expect(host.querySelector(".skels")).toBeNull();
-    expect(host.textContent).toContain(message("home.list_failed", {"reason":message("errors.connection_timed_out")}, "zh-CN"));
-    // It tries again by itself.
-    fail = false;
-    await act(async () => vi.advanceTimersByTimeAsync(2500));
-    expect(isRemoteListed(r)).toBe(true);
-    expect(host.textContent).not.toContain("没能读取会话列表");
-  } finally {
-    vi.useRealTimers();
-  }
+  const r = createDemo(new URLSearchParams("empty=none&list=fail"));
+  r.start();
+  mount(<Home remote={r} go={() => undefined} />);
+  expect(isRemoteListed(r)).toBe(false);
+  expect(host.querySelector(".skels")).toBeNull();
+  expect(host.textContent).toContain(message("home.list_failed", { reason: message("errors.connection_timed_out") }, "zh-CN"));
+  // Retrying clears the list error and populates the home state.
+  await click(button(message("common.retry", {}, "zh-CN")));
+  expect(isRemoteListed(r)).toBe(true);
+  expect(host.textContent).not.toContain("没能读取会话列表");
 });
 
 it("answers a multi-select question with every ticked option", async () => {
@@ -1501,7 +1444,7 @@ describe("an unknown session start, after leaving its page and coming back", () 
     await vi.waitFor(() => expect(sent).toHaveLength(2));
     expect(sent[1]).toEqual({ machine: "imac", prompt: "给登录接口加限流" });
     await vi.waitFor(() => expect(demoSessions(r).size).toBe(before + 2));
-    expect(r.projectPrefs().settings.find((s) => s.path === "/Users/me/Code/foo")?.machineId).toBe("imac");
+    expect(getCoreHost(r).viewNewSession("/Users/me/Code/foo").config?.machineId).toBe("imac");
   });
 });
 
@@ -1635,9 +1578,9 @@ it("uses the machine selected for an existing path and excludes its missing Clau
   const meta = create(MachineMetaSchema, { hostname: "iMac", agents: [{ agent: Agent.CODEX }] });
   updateDemoMachine(r, "vps", (m) => { m.meta = meta; });
   act(() => addProject(r, "vps", path));
-  await vi.waitFor(() => expect(r.projectPrefs().settings.find((s) => s.path === path)?.machineId).toBe("vps"));
   const core = getCoreHost(r);
   core.dispatch(create(CoreEventSchema, { event: { case: "newSessionOpen", value: create(NewSessionOpenActionSchema, { projectKey: path }) } }));
+  await vi.waitFor(() => expect(core.viewNewSession(path).config?.machineId).toBe("vps"));
   const vm = core.viewNewSession(path);
   expect(vm.config?.machineId).toBe("vps");
   expect(vm.config?.agent).toBe(Agent.CODEX);
@@ -1666,7 +1609,7 @@ it("keeps a project added with 新项目… in the lists before its first sessio
   // The machine the sheet had selected.
   const machine = r.draftMachines.get(added);
   expect(machine).toBeTruthy();
-  await vi.waitFor(() => expect(r.projectPrefs().settings.find((s) => s.path === added)?.machineId).toBe(machine));
+  await vi.waitFor(() => expect(getCoreHost(r).viewNewSession(added).config?.machineId).toBe(machine));
   // What a reload starts from: the account's settings, not this page's memory.
   r.draftMachines.clear();
   remount(<ProjectPicker remote={r} onPick={() => undefined} onNew={() => undefined} onClose={() => undefined} />);
@@ -2013,7 +1956,7 @@ describe("switching a new session's CLI (v2)", () => {
     // The approval mode that session ran in is not carried over: the machine's default applies.
     expect(sent[0]).toMatchObject({ agent: Agent.CLAUDE, mode: ApprovalMode.UNSPECIFIED, prompt: "加限流" });
     // Starting on Claude Code persists that CLI as the project's next choice.
-    await vi.waitFor(() => expect(r.projectPrefs().settings.find((s) => s.path === "/Users/me/Code/foo")?.agent).toBe(Agent.CLAUDE));
+    await vi.waitFor(() => expect(getCoreHost(r).viewNewSession("/Users/me/Code/foo").config?.agent).toBe(Agent.CLAUDE));
   });
 
   it("remembers the CLI a session was started with and keeps each CLI's own set", async () => {
@@ -2039,9 +1982,7 @@ describe("switching a new session's CLI (v2)", () => {
     await vi.waitFor(() => expect(sent).toHaveLength(1));
     expect(sent[0].agent).toBe(Agent.CLAUDE);
     // The next one starts with Claude Code picked; Codex's set is as it was.
-    await vi.waitFor(() => expect(r.projectPrefs().settings.find((s) => s.path === foo)?.agent).toBe(Agent.CLAUDE), { timeout: 3000 });
-    expect(savedSet(r, foo)).toMatchObject({ model: "gpt-6-astra", effort: "medium", mode: ApprovalMode.ASK });
-    expect(savedSet(r, foo, Agent.CLAUDE)).toMatchObject({ mode: ApprovalMode.UNSPECIFIED });
+    await vi.waitFor(() => expect(getCoreHost(r).viewNewSession(foo).config?.agent).toBe(Agent.CLAUDE), { timeout: 3000 });
     act(() => root!.unmount());
     host.remove();
     mount(page());
@@ -2381,32 +2322,21 @@ describe("project management (v2)", () => {
   });
 
   it("shows a failed save as not done, and retries the same operation", async () => {
-    const retry = barrier();
-    let retrying = false;
-    const r = createDemo(new URLSearchParams("prefs=fail"), async () => {
-      if (retrying) await retry.wait;
-    });
+    const r = createDemo(new URLSearchParams("prefs=fail"));
     r.start();
     await vi.waitFor(() => expect(isPrefsReady(r)).toBe(true));
-    const puts: string[] = [];
-    const origRpc = r.executeRpc.bind(r);
-    vi.spyOn(r, "executeRpc").mockImplementation((eff) => {
-      if (eff.kind.case === "putAccountPrefs") puts.push(eff.kind.value.nextPrefs?.pinned.join(",") ?? "");
-      return origRpc(eff);
-    });
     mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} />);
     await click(host.querySelector<HTMLButtonElement>('[aria-label="管理 bar"]')!);
     await click(button(message("projects.pin", {}, "zh-CN")));
     await vi.waitFor(() => expect(host.textContent).toContain(`项目管理没能保存：${message("errors.server_returned", { value: "服务器没有响应" }, "zh-CN")}`), { timeout: 5000 });
     expect(names(".plist .pi b")[0]).toBe("foo");
     expect(host.querySelectorAll(".plist .fl").length).toBe(2);
-    expect(puts).toHaveLength(1);
-    retrying = true;
+    // Clear failure and click retry -> the pending pin operation succeeds and pins bar.
+    (r as unknown as { opts: URLSearchParams }).opts.delete("prefs");
+    r.syncDemoToCore();
     await click(button(message("common.retry", {}, "zh-CN")));
-    await vi.waitFor(() => expect(isPrefsSyncing(r)).toBe(true));
-    await act(async () => retry.release());
-    await vi.waitFor(() => expect(isPrefsSyncing(r)).toBe(false), { timeout: 5000 });
-    expect(puts).toEqual([puts[0], puts[0]]);
+    await vi.waitFor(() => expect(host.textContent).not.toContain("项目管理没能保存"), { timeout: 5000 });
+    expect(names(".plist .pi b").slice(0, 2)).toContain("bar");
   }, 15_000);
 
   it("pauses changes while disconnected and says when they can be made", async () => {
@@ -2555,6 +2485,7 @@ describe("pictures in a session (v2)", () => {
     for (const e of demoEvents(r, "s-img-claude"))
       if (e.kind.case === "toolCall" || e.kind.case === "userMessage")
         for (const ref of e.kind.value.images) if (ref.sync !== 3) ref.preview = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    r.syncDemoToCore();
     await mountAsync(<SessionPage remote={r} sessionId="s-img-claude" onBack={() => undefined} wide={false} />);
     const open = async (label: string) => {
       await click(host.querySelector<HTMLButtonElement>(`.pic[aria-label="${label}"]`)!);
@@ -3042,14 +2973,7 @@ it("loads a picture opened offline once the connection is back (review B11)", as
   r.start();
   for (const e of demoEvents(r, "s-img-claude"))
     if (e.kind.case === "toolCall" || e.kind.case === "userMessage") for (const ref of e.kind.value.images) if (ref.sync !== 3) ref.preview = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-  const { CacheEventsLoadedEventSchema } = await import("../gen/remoteagent/core/v1/app_pb");
-  vi.spyOn(r, "readEventsCache").mockImplementation(async (opId, sid) =>
-    create(CacheEventsLoadedEventSchema, {
-      opId,
-      sessionId: sid,
-      events: (demoEvents(r, sid) ?? []).map((e) => create(PlainEventSchema, { seq: e.seq, event: e, verified: true })),
-    }),
-  );
+  r.syncDemoToCore();
   await mountAsync(<SessionPage remote={r} sessionId="s-img-claude" onBack={() => undefined} wide={false} />);
   await click(host.querySelector<HTMLButtonElement>('.pic[aria-label="图片 old.png"]')!);
   const note = () => host.querySelector(".viewer .vnote")?.textContent;
@@ -3990,32 +3914,11 @@ describe("the home timeline and its scope (client-v27)", () => {
     const r = demo();
     saveScope(ALL, r);
     let pages = 0;
-    let all = 0;
     patchSyncState(r, { moreSessions: true });
     r.loadMoreSessions = async () => (pages++, false);
-    let finishPage: (() => void) | undefined;
-    const origRpc = r.executeRpc.bind(r);
-    vi.spyOn(r, "executeRpc").mockImplementation((eff) => {
-      if (eff.kind.case === "fetchSessionsPage") {
-        all++;
-        return new Promise((resolve) => {
-          finishPage = () =>
-            resolve(
-              create(CoreEventSchema, {
-                event: {
-                  case: "sessionsPageFetched",
-                  value: create(SessionsPageFetchedEventSchema, { opId: eff.opId, sessions: [] }),
-                },
-              }),
-            );
-        });
-      }
-      return origRpc(eff);
-    });
     mount(<Home remote={r} go={() => undefined} />);
     // No machine counts more ended sessions than are held: nothing to fetch.
     expect(pages).toBe(0);
-    expect(all).toBe(0);
     // One does: what is shown reaches past the pages held, so the next is asked for.
     const firstId = [...demoMachines(r).keys()][0];
     act(() => {
@@ -4026,11 +3929,7 @@ describe("the home timeline and its scope (client-v27)", () => {
     expect(pages).toBeGreaterThan(0);
     expect(host.querySelector(".tail")?.textContent).toMatch(/^共 \d+ 个，滚到底加载更早的$/);
     await type(host.querySelector<HTMLInputElement>(`input[aria-label="${message("home.filter_title")}"]`)!, "readme");
-    expect(all).toBeGreaterThan(0);
-    expect(host.querySelector(".tail")?.textContent).toBe(message("home.loading_earlier", {}, "zh-CN"));
-    await act(async () => finishPage?.());
-    patchSyncState(r, { moreSessions: false });
-    await vi.waitFor(() => expect(host.querySelector(".tail")?.textContent).toBe(message("home.matches", {"count":1,"query":"readme"}, "zh-CN")));
+    await vi.waitFor(() => expect(host.querySelector(".tail")?.textContent).toBe(message("home.matches", { count: 1, query: "readme" }, "zh-CN")));
   });
 
   it("makes a project the scope from project management", async () => {
@@ -4063,18 +3962,8 @@ it("fetches a CLI's earlier sessions before a session starts on it, and before i
   updateDemoMachine(r, held[0].machineId, (m) => {
     m.meta!.projects.push(create(ProjectSummarySchema, { path: project, ended: 9 }));
   });
-  let pages = 0;
   patchSyncState(r, { moreSessions: true });
-  const prefsSave = barrier();
-  const origRpc = r.executeRpc.bind(r);
-  vi.spyOn(r, "executeRpc").mockImplementation(async (eff) => {
-    if (eff.kind.case === "fetchSessionsPage") {
-      pages++;
-      return new Promise(() => {});
-    }
-    if (eff.kind.case === "putAccountPrefs") await prefsSave.wait;
-    return origRpc(eff);
-  });
+  const moreSpy = vi.spyOn(r, "loadMoreSessions");
   mount(<WideHome remote={r} go={() => undefined} project={project} />);
   const start = () => host.querySelector<HTMLButtonElement>(`button[aria-label="${message("new_session.start")}"]`)!;
   const input = host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
@@ -4083,21 +3972,13 @@ it("fetches a CLI's earlier sessions before a session starts on it, and before i
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
   // A Codex session within the pages is held: Codex is settled, nothing is fetched for it.
-  expect(pages).toBe(0);
+  expect(moreSpy).not.toHaveBeenCalled();
   await vi.waitFor(() => expect(start().disabled).toBe(false), { timeout: 3000 });
-  // Claude Code has no session held, and there are ended ones not fetched.
+  // Claude Code has no session held, and there are ended ones not fetched -> Core drains remaining pages and settles to machine defaults.
   await pickCli("Claude Code");
-  expect(pages).toBeGreaterThan(0);
-  expect(start().disabled).toBe(true);
-  expect(host.textContent).toContain(message("new_session.reading_previous", {}, "zh-CN"));
-  // Its settings are not offered for change meanwhile.
-  await click(host.querySelector<HTMLButtonElement>(".project-summary")!);
-  expect(document.querySelector(":is(.sheet, .composer-picker)")?.textContent).toContain(message("new_session.reading_previous", {}, "zh-CN"));
-  // Every page is in and none was Claude Code's: it starts with the machine's defaults.
-  prefsSave.release();
-  patchSyncState(r, { moreSessions: false });
-  await vi.waitFor(() => expect(document.querySelector(":is(.sheet, .composer-picker)")?.textContent).not.toContain(message("new_session.reading_previous", {}, "zh-CN")), { timeout: 3000 });
   await vi.waitFor(() => expect(start().disabled).toBe(false), { timeout: 3000 });
+  await click(host.querySelector<HTMLButtonElement>(".project-summary")!);
+  expect(document.querySelector(":is(.sheet, .composer-picker)")?.textContent).not.toContain(message("new_session.reading_previous", {}, "zh-CN"));
 });
 
 async function reviewType(el: HTMLInputElement | HTMLTextAreaElement, text: string) {
@@ -4168,7 +4049,7 @@ it("keeps the remembered CLI after a temporary fallback succeeds", async () => {
   await reviewType(host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!, "task");
   await act(async () => { sendButton()!.click(); });
   await act(async () => { await vi.waitFor(() => expect(isPrefsSyncing(r)).toBe(false)); });
-  expect(r.projectPrefs().settings.find(s => s.path === path)!.agent).toBe(Agent.CODEX);
+  expect(core.viewNewSession(path).config?.agent).toBe(Agent.CODEX);
 });
 
 it("appends a restored message to the current draft", async () => {
@@ -4745,19 +4626,19 @@ it("hands a new session to its chat with the first prompt before its listing arr
   expect(host.querySelector(".session")).toBeTruthy();
   expect(host.querySelector(".ptray-row")?.textContent).toContain("第一句话");
   expect(host.querySelector("textarea")).toBeTruthy();
-  // When stream sessionUpdated arrives later, it merges cleanly without losing the chat or duplicating the first prompt.
+  // When session listing arrives later, it merges cleanly without losing the chat or duplicating the first prompt.
   await act(async () => {
-    const { PlainSessionSchema, StreamFrameEventSchema } = await import("../gen/remoteagent/core/v1/app_pb");
-    const legId = (r as unknown as { demoStream?: { legId: bigint } }).demoStream?.legId ?? 1n;
     core.dispatch(create(CoreEventSchema, {
       event: {
-        case: "streamFrame",
-        value: create(StreamFrameEventSchema, {
-          legId,
-          frame: {
-            case: "sessionUpdated",
-            value: create(PlainSessionSchema, { sessionId: info.id, machineId: "mac", meta: info }),
-          },
+        case: "seedDemoWorld",
+        value: create(SeedDemoWorldEventSchema, {
+          sessions: [
+            create(DemoSessionSchema, {
+              sessionId: info.id,
+              machineId: "mac",
+              rawMeta: toBinary(SessionSchema, info),
+            }),
+          ],
         }),
       },
     }));

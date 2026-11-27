@@ -90,15 +90,14 @@ import { dispatchSecurityEffect, WebSecurityExecutor } from "./core/security-exe
 import {
   ListMachinesResponseSchema,
   ListRemoteSessionsResponseSchema,
+  MachineSchema,
   NotifyKind,
   RelayErrorDetailSchema,
   RelayErrorReason,
+  RemoteSessionSchema,
   StoredEventSchema,
-  AccountPrefsObjectSchema,
-  type AccountPrefsObject,
   type Machine as RemoteMachine,
   type RemoteSession,
-  type StoredEvent,
 } from "./gen/remoteagent/v1/relay_pb";
 import {
   create,
@@ -147,7 +146,7 @@ const SCOPE_HMAC_KEY_VALUE = "scope-hmac-key";
 
 export type ImageResult = { kind: "ok"; blob: Blob; width: number; height: number; format: ImageFormat } | { kind: "expired" } | { kind: "missing" } | { kind: "bad"; why?: string };
 
-type CacheWritePayload = { kind: "machine"; raw: RemoteMachine } | { kind: "session"; raw: RemoteSession } | { kind: "events"; sessionId: string; raw: CachedEvent[] } | { kind: "prefs"; raw: AccountPrefsObject };
+type CacheWritePayload = { kind: "machine"; raw: RemoteMachine } | { kind: "session"; raw: RemoteSession } | { kind: "events"; sessionId: string; raw: CachedEvent[] } | { kind: "prefs"; raw: Uint8Array };
 
 function readStoredScopeToken(): string {
   try {
@@ -236,6 +235,10 @@ export class Remote implements CoreExecutor {
       getCoreHost(this);
     }
     return this.hostBridge!;
+  }
+
+  protected dispatchToHost(ev: import("./gen/remoteagent/core/v1/app_pb").Event) {
+    this.ensureHost().dispatchEvent(ev);
   }
 
   // --- Host bridge delegation for remaining Step 3-6 callers ---
@@ -388,7 +391,7 @@ export class Remote implements CoreExecutor {
             machineId,
             pcId,
             sender: machineId,
-            wireEnvelopes: [env],
+            rawEnvelopes: [toBinary(EnvelopeSchema, env)],
           }),
         },
       }),
@@ -417,8 +420,6 @@ export class Remote implements CoreExecutor {
   demoFlag(_name: string): boolean { return false; }
 
   // --- CoreExecutor: Stream / Auth / Security / Cache / Relay Pipe ---
-
-  useRelayPipe(): boolean { return true; }
 
   relayRpc(eff: RelayRpcEffect) {
     void this.secExec.relayRpc(eff);
@@ -510,8 +511,8 @@ export class Remote implements CoreExecutor {
   async readBootstrapCache(opId: bigint): Promise<CacheBootstrapLoadedEvent> {
     const homeScopeToken = readStoredScopeToken();
     let scopeHmacKey = new Uint8Array(32);
-    const wireMachines: RemoteMachine[] = [], wireSessions: RemoteSession[] = [];
-    let wirePrefs: AccountPrefsObject | undefined;
+    const rawMachines: Uint8Array[] = [], rawSessions: Uint8Array[] = [];
+    let rawPrefs = new Uint8Array();
     if (!this.cache) { crypto.getRandomValues(scopeHmacKey); return create(CacheBootstrapLoadedEventSchema, { opId, homeScopeToken, scopeHmacKey }); }
     try {
       const existingKey = await this.cache.get(SCOPE_HMAC_KEY_VALUE);
@@ -527,21 +528,21 @@ export class Remote implements CoreExecutor {
       if (valid(keptMachines) && keptMachines.bytes instanceof Uint8Array) {
         for (const m of fromBinary(ListMachinesResponseSchema, keptMachines.bytes).machines) {
           this.persistedMachines.set(m.id, m);
-          wireMachines.push(m);
+          rawMachines.push(toBinary(MachineSchema, m));
         }
       }
       if (valid(keptSessions) && keptSessions.bytes instanceof Uint8Array) {
         for (const rs of fromBinary(ListRemoteSessionsResponseSchema, keptSessions.bytes).sessions) {
           this.persistedSessions.set(rs.sessionId, rs);
-          wireSessions.push(rs);
+          rawSessions.push(toBinary(RemoteSessionSchema, rs));
         }
       }
       if (valid(keptPrefs) && keptPrefs.bytes instanceof Uint8Array) {
-        wirePrefs = fromBinary(AccountPrefsObjectSchema, keptPrefs.bytes);
+        rawPrefs = new Uint8Array(keptPrefs.bytes);
       }
-      return create(CacheBootstrapLoadedEventSchema, { opId, wireMachines, wireSessions, wirePrefs, homeScopeToken, scopeHmacKey });
+      return create(CacheBootstrapLoadedEventSchema, { opId, rawMachines, rawSessions, rawPrefs, homeScopeToken, scopeHmacKey });
     } catch (e) {
-      return create(CacheBootstrapLoadedEventSchema, { opId, wireMachines, wireSessions, wirePrefs, homeScopeToken, scopeHmacKey, error: errorText(e) });
+      return create(CacheBootstrapLoadedEventSchema, { opId, rawMachines, rawSessions, rawPrefs, homeScopeToken, scopeHmacKey, error: errorText(e) });
     }
   }
 
@@ -550,10 +551,10 @@ export class Remote implements CoreExecutor {
     try {
       const cap = limit > 0 ? limit : CACHE_PAGE_SIZE;
       const rows = newest && this.cache.readNewest ? await this.cache.readNewest(sessionId, cap) : await this.cache.read(sessionId, afterSeq, cap);
-      const wireEvents: StoredEvent[] = rows.map((row) =>
-        create(StoredEventSchema, { seq: row.seq, ...(row.envelope ? { envelope: row.envelope } : {}) }),
+      const rawEvents = rows.map((row) =>
+        toBinary(StoredEventSchema, create(StoredEventSchema, { seq: row.seq, ...(row.envelope ? { envelope: row.envelope } : {}) })),
       );
-      return create(CacheEventsLoadedEventSchema, { opId, sessionId, wireEvents });
+      return create(CacheEventsLoadedEventSchema, { opId, sessionId, rawEvents });
     } catch (e) {
       return create(CacheEventsLoadedEventSchema, { opId, sessionId, error: errorText(e) });
     }
@@ -561,17 +562,19 @@ export class Remote implements CoreExecutor {
 
   private extractCacheWrite(eff: CacheWriteEffect): CacheWritePayload | undefined {
     switch (eff.kind.case) {
-      case "writeMachine": return { kind: "machine", raw: eff.kind.value };
-      case "writeSession":
-      case "keepSessionOwner": return { kind: "session", raw: eff.kind.value };
+      case "rawWriteMachine": return eff.kind.value.length > 0 ? { kind: "machine", raw: fromBinary(MachineSchema, eff.kind.value) } : undefined;
+      case "rawWriteSession":
+      case "rawKeepSessionOwner": return eff.kind.value.length > 0 ? { kind: "session", raw: fromBinary(RemoteSessionSchema, eff.kind.value) } : undefined;
       case "writeStoredEvents": {
         if (!this.cache) return undefined;
-        const raw: CachedEvent[] = eff.kind.value.events.flatMap((se) =>
-          se.envelope ? [{ seq: se.seq, envelope: se.envelope }] : [],
-        );
+        const raw: CachedEvent[] = eff.kind.value.rawEvents.flatMap((b) => {
+          if (b.length === 0) return [];
+          const se = fromBinary(StoredEventSchema, b);
+          return se.envelope ? [{ seq: se.seq, envelope: se.envelope }] : [];
+        });
         return raw.length > 0 ? { kind: "events", sessionId: eff.kind.value.sessionId, raw } : undefined;
       }
-      case "writePrefs": return { kind: "prefs", raw: eff.kind.value };
+      case "rawWritePrefs": return eff.kind.value.length > 0 ? { kind: "prefs", raw: eff.kind.value } : undefined;
       default: return undefined;
     }
   }
@@ -591,7 +594,7 @@ export class Remote implements CoreExecutor {
       case "machine": this.persistedMachines.set(payload.raw.id, payload.raw); await this.persistMachinesList(); break;
       case "session": this.persistedSessions.set(payload.raw.sessionId, payload.raw); await this.persistSessionsList(); break;
       case "events": await this.cache?.append(payload.sessionId, payload.raw); break;
-      case "prefs": await this.keepValue("prefs", { bytes: toBinary(AccountPrefsObjectSchema, payload.raw) }); break;
+      case "prefs": await this.keepValue("prefs", { bytes: payload.raw }); break;
     }
   }
 
@@ -654,12 +657,12 @@ export class Remote implements CoreExecutor {
     if (this.closed) {
       return mk({ source: OutcomeSource.LOCAL, notForwarded: true, transportCode: "canceled", routeWasDirect: isDirect });
     }
-    if (!isDirect || !eff.sealedEnvelope) {
+    if (!isDirect || eff.rawSealedEnvelope.length === 0) {
       return mk({
         source: OutcomeSource.LOCAL,
         notForwarded: !eff.retryOfUnknown,
         transportCode: eff.retryOfUnknown ? "unknown" : "failed_precondition",
-        transportDetail: !eff.sealedEnvelope ? "missing sealed command" : "relay leg handled by core",
+        transportDetail: eff.rawSealedEnvelope.length === 0 ? "missing sealed command" : "relay leg handled by core",
         routeWasDirect: isDirect,
       });
     }
@@ -671,7 +674,7 @@ export class Remote implements CoreExecutor {
       const env = await this.directExec.sendRpc(
         eff.directPcId,
         eff.requestId,
-        toBinary(EnvelopeSchema, eff.sealedEnvelope) as Uint8Array<ArrayBuffer>,
+        eff.rawSealedEnvelope as Uint8Array<ArrayBuffer>,
         eff.directTimeoutMs,
         handoff,
         signal,
@@ -679,7 +682,7 @@ export class Remote implements CoreExecutor {
       return mk({
         source: OutcomeSource.DAEMON,
         attemptBound: true,
-        sealedResult: env,
+        rawSealedResult: toBinary(EnvelopeSchema, env),
         handedOff,
         routeWasDirect: true,
         elapsedMs: performance.now() - routeStarted,

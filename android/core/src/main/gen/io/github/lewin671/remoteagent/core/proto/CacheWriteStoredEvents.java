@@ -16,7 +16,7 @@ public  final class CacheWriteStoredEvents extends
     CacheWriteStoredEventsOrBuilder {
   private CacheWriteStoredEvents() {
     sessionId_ = "";
-    events_ = emptyProtobufList();
+    rawEvents_ = emptyProtobufList();
   }
   public static final int SESSION_ID_FIELD_NUMBER = 1;
   private java.lang.String sessionId_;
@@ -66,101 +66,76 @@ public  final class CacheWriteStoredEvents extends
 
   }
 
-  public static final int EVENTS_FIELD_NUMBER = 2;
-  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.StoredEvent> events_;
+  public static final int RAW_EVENTS_FIELD_NUMBER = 3;
+  private com.google.protobuf.Internal.ProtobufList<com.google.protobuf.ByteString> rawEvents_;
   /**
-   * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
+   * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+   * @return A list containing the rawEvents.
    */
   @java.lang.Override
-  public java.util.List<io.github.lewin671.remoteagent.proto.StoredEvent> getEventsList() {
-    return events_;
+  public java.util.List<com.google.protobuf.ByteString>
+      getRawEventsList() {
+    return rawEvents_;
   }
   /**
-   * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
-   */
-  public java.util.List<? extends io.github.lewin671.remoteagent.proto.StoredEventOrBuilder> 
-      getEventsOrBuilderList() {
-    return events_;
-  }
-  /**
-   * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
+   * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+   * @return The count of rawEvents.
    */
   @java.lang.Override
-  public int getEventsCount() {
-    return events_.size();
+  public int getRawEventsCount() {
+    return rawEvents_.size();
   }
   /**
-   * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
+   * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+   * @param index The index of the element to return.
+   * @return The rawEvents at the given index.
    */
   @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.StoredEvent getEvents(int index) {
-    return events_.get(index);
+  public com.google.protobuf.ByteString getRawEvents(int index) {
+    return rawEvents_.get(index);
   }
-  /**
-   * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
-   */
-  public io.github.lewin671.remoteagent.proto.StoredEventOrBuilder getEventsOrBuilder(
-      int index) {
-    return events_.get(index);
-  }
-  private void ensureEventsIsMutable() {
-    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.StoredEvent> tmp = events_;
+  private void ensureRawEventsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<com.google.protobuf.ByteString> tmp = rawEvents_;
     if (!tmp.isModifiable()) {
-      events_ =
+      rawEvents_ =
           com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
      }
   }
-
   /**
-   * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
+   * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+   * @param index The index to set the value at.
+   * @param value The rawEvents to set.
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setEvents(
-      int index, io.github.lewin671.remoteagent.proto.StoredEvent value) {
-    value.getClass();  // minimal bytecode null check
-    ensureEventsIsMutable();
-    events_.set(index, value);
+  private void setRawEvents(
+      int index, com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  ensureRawEventsIsMutable();
+    rawEvents_.set(index, value);
   }
   /**
-   * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
+   * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+   * @param value The rawEvents to add.
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addEvents(io.github.lewin671.remoteagent.proto.StoredEvent value) {
-    value.getClass();  // minimal bytecode null check
-    ensureEventsIsMutable();
-    events_.add(value);
+  private void addRawEvents(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  ensureRawEventsIsMutable();
+    rawEvents_.add(value);
   }
   /**
-   * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
+   * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+   * @param values The rawEvents to add.
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addEvents(
-      int index, io.github.lewin671.remoteagent.proto.StoredEvent value) {
-    value.getClass();  // minimal bytecode null check
-    ensureEventsIsMutable();
-    events_.add(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
-   */
-  private void addAllEvents(
-      java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.StoredEvent> values) {
-    ensureEventsIsMutable();
+  private void addAllRawEvents(
+      java.lang.Iterable<? extends com.google.protobuf.ByteString> values) {
+    ensureRawEventsIsMutable();
     com.google.protobuf.AbstractMessageLite.addAll(
-        values, events_);
+        values, rawEvents_);
   }
   /**
-   * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
+   * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
    */
-  private void clearEvents() {
-    events_ = emptyProtobufList();
-  }
-  /**
-   * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
-   */
-  private void removeEvents(int index) {
-    ensureEventsIsMutable();
-    events_.remove(index);
+  private void clearRawEvents() {
+    rawEvents_ = emptyProtobufList();
   }
 
   public static io.github.lewin671.remoteagent.core.proto.CacheWriteStoredEvents parseFrom(
@@ -310,104 +285,71 @@ public  final class CacheWriteStoredEvents extends
     }
 
     /**
-     * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
+     * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+     * @return A list containing the rawEvents.
      */
     @java.lang.Override
-    public java.util.List<io.github.lewin671.remoteagent.proto.StoredEvent> getEventsList() {
+    public java.util.List<com.google.protobuf.ByteString>
+        getRawEventsList() {
       return java.util.Collections.unmodifiableList(
-          instance.getEventsList());
+          instance.getRawEventsList());
     }
     /**
-     * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
+     * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+     * @return The count of rawEvents.
      */
     @java.lang.Override
-    public int getEventsCount() {
-      return instance.getEventsCount();
-    }/**
-     * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
+    public int getRawEventsCount() {
+      return instance.getRawEventsCount();
+    }
+    /**
+     * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+     * @param index The index of the element to return.
+     * @return The rawEvents at the given index.
      */
     @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.StoredEvent getEvents(int index) {
-      return instance.getEvents(index);
+    public com.google.protobuf.ByteString getRawEvents(int index) {
+      return instance.getRawEvents(index);
     }
     /**
-     * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
+     * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+     * @param value The rawEvents to set.
+     * @return This builder for chaining.
      */
-    public Builder setEvents(
-        int index, io.github.lewin671.remoteagent.proto.StoredEvent value) {
+    public Builder setRawEvents(
+        int index, com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.setEvents(index, value);
+      instance.setRawEvents(index, value);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
+     * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+     * @param value The rawEvents to add.
+     * @return This builder for chaining.
      */
-    public Builder setEvents(
-        int index, io.github.lewin671.remoteagent.proto.StoredEvent.Builder builderForValue) {
+    public Builder addRawEvents(com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.setEvents(index,
-          builderForValue.build());
+      instance.addRawEvents(value);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
+     * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+     * @param values The rawEvents to add.
+     * @return This builder for chaining.
      */
-    public Builder addEvents(io.github.lewin671.remoteagent.proto.StoredEvent value) {
+    public Builder addAllRawEvents(
+        java.lang.Iterable<? extends com.google.protobuf.ByteString> values) {
       copyOnWrite();
-      instance.addEvents(value);
+      instance.addAllRawEvents(values);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
+     * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+     * @return This builder for chaining.
      */
-    public Builder addEvents(
-        int index, io.github.lewin671.remoteagent.proto.StoredEvent value) {
+    public Builder clearRawEvents() {
       copyOnWrite();
-      instance.addEvents(index, value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
-     */
-    public Builder addEvents(
-        io.github.lewin671.remoteagent.proto.StoredEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.addEvents(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
-     */
-    public Builder addEvents(
-        int index, io.github.lewin671.remoteagent.proto.StoredEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.addEvents(index,
-          builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
-     */
-    public Builder addAllEvents(
-        java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.StoredEvent> values) {
-      copyOnWrite();
-      instance.addAllEvents(values);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
-     */
-    public Builder clearEvents() {
-      copyOnWrite();
-      instance.clearEvents();
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
-     */
-    public Builder removeEvents(int index) {
-      copyOnWrite();
-      instance.removeEvents(index);
+      instance.clearRawEvents();
       return this;
     }
 
@@ -428,11 +370,10 @@ public  final class CacheWriteStoredEvents extends
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
             "sessionId_",
-            "events_",
-            io.github.lewin671.remoteagent.proto.StoredEvent.class,
+            "rawEvents_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0001\u0000\u0001\u0208\u0002\u001b" +
+              "\u0000\u0002\u0000\u0000\u0001\u0003\u0002\u0000\u0001\u0000\u0001\u0208\u0003\u001c" +
               "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }

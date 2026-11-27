@@ -18,8 +18,6 @@ import {
   SecurityKeyKind,
   SecurityKeyEncapsulatedEventSchema,
   SecurityKeySignedEventSchema,
-  SecurityRpcMethod,
-  SecurityRpcResultEventSchema,
   SecurityStorageOp,
   SecurityStorageResultEventSchema,
   type RpcErrorDetailBytes,
@@ -30,7 +28,6 @@ import {
   type SecurityKeyEncapsulateEffect,
   type SecurityKeyGenerateEffect,
   type SecurityKeySignEffect,
-  type SecurityRpcEffect,
   type SecurityStorageEffect,
 } from "../gen/remoteagent/core/v1/security_pb";
 import { relayFetch } from "../transport";
@@ -246,7 +243,6 @@ export interface SecurityEffectHandler {
   securityKeyEncapsulate?(eff: SecurityKeyEncapsulateEffect): void;
   securityKeyDiscard?(eff: SecurityKeyDiscardEffect): void;
   securityStorage?(eff: SecurityStorageEffect): void;
-  securityRpc?(eff: SecurityRpcEffect): void;
   securityCryptoBatch?(eff: SecurityCryptoBatchEffect): void;
 }
 
@@ -261,7 +257,6 @@ export function dispatchSecurityEffect(exec: SecurityEffectHandler | WebSecurity
       securityKeyEncapsulate: (v) => void exec.keyEncapsulate(v),
       securityKeyDiscard: (v) => void exec.keyDiscard(v),
       securityStorage: (v) => void exec.storage(v),
-      securityRpc: (v) => void exec.rpc(v),
       securityCryptoBatch: (v) => void exec.cryptoBatch(v),
       relayRpc: (v) => void exec.relayRpc(v),
       relayRpcCancel: (v) => exec.relayRpcCancel(v),
@@ -278,7 +273,6 @@ export function dispatchSecurityEffect(exec: SecurityEffectHandler | WebSecurity
     case "securityKeyEncapsulate": exec.securityKeyEncapsulate?.(eff.value); return true;
     case "securityKeyDiscard": exec.securityKeyDiscard?.(eff.value); return true;
     case "securityStorage": exec.securityStorage?.(eff.value); return true;
-    case "securityRpc": exec.securityRpc?.(eff.value); return true;
     case "securityCryptoBatch": exec.securityCryptoBatch?.(eff.value); return true;
     default: return false;
   }
@@ -469,28 +463,6 @@ export class WebSecurityExecutor {
       trackCancel: true,
     });
     this.emit({ case: "relayRpcResult", value: res });
-  }
-
-  async rpc(eff: SecurityRpcEffect): Promise<void> {
-    const res = await this.executeUnary({
-      opId: eff.opId,
-      method: eff.method as unknown as RelayRpcMethod,
-      server: eff.server,
-      authToken: eff.authToken,
-      timeoutMs: eff.method === SecurityRpcMethod.GET_SECURITY_STATES ? 5000 : 15000,
-      requestBytes: eff.requestBytes,
-    });
-    this.emit({
-      case: "securityRpcResult",
-      value: create(SecurityRpcResultEventSchema, {
-        opId: eff.opId,
-        responseBytes: res.responseBytes,
-        connectCode: res.connectCode,
-        error: res.diagnosticMessage,
-        networkError: res.networkError,
-        errorDetails: res.errorDetails,
-      }),
-    });
   }
 
   cryptoBatch(eff: SecurityCryptoBatchEffect): Promise<void> {

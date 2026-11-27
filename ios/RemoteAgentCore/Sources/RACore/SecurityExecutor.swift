@@ -6,13 +6,11 @@ import SwiftProtobuf
 /// Executes host-side key generation/agreement/signing, v4 storage transactions, and universal
 /// unary Connect/HTTP byte-pipe RPC calls requested by Go `clientcore`.
 public final class SecurityExecutor: @unchecked Sendable {
-    public typealias RpcOverride = @Sendable (PBSecurityRpcEffect) async -> PBSecurityRpcResultEvent
     public typealias RelayRpcOverride = @Sendable (PBRelayRpcEffect) async -> PBRelayRpcResultEvent?
 
     public let store: any SecurityStoreV4
     private let http: HTTP?
     private let emit: @Sendable (PBCoreEvent) async -> Void
-    private let rpcOverride: RpcOverride?
     private let relayRpcOverride: RelayRpcOverride?
     private let allowPlainHttp: Bool
     private let lock = NSLock()
@@ -28,7 +26,6 @@ public final class SecurityExecutor: @unchecked Sendable {
         allowPlainHttp: Bool = false,
         defaultServer: String = "",
         defaultDeviceId: String = "",
-        rpcOverride: RpcOverride? = nil,
         relayRpcOverride: RelayRpcOverride? = nil,
         emit: @escaping @Sendable (PBCoreEvent) async -> Void
     ) {
@@ -37,7 +34,6 @@ public final class SecurityExecutor: @unchecked Sendable {
         self.allowPlainHttp = allowPlainHttp
         self.defaultServer = defaultServer
         self.defaultDeviceId = defaultDeviceId
-        self.rpcOverride = rpcOverride
         self.relayRpcOverride = relayRpcOverride
         self.emit = emit
     }
@@ -69,7 +65,6 @@ public final class SecurityExecutor: @unchecked Sendable {
         case .securityKeyEncapsulate(let e): keyEncapsulate(e)
         case .securityKeyDiscard(let d): keyDiscard(d)
         case .securityStorage(let s): storage(s)
-        case .securityRpc(let r): rpc(r)
         case .relayRpc(let r): relayRpc(r)
         case .relayRpcCancel(let c): cancelRelayRpc(c)
         default: return false
@@ -141,18 +136,6 @@ public final class SecurityExecutor: @unchecked Sendable {
         }
     }
 
-    public func rpc(_ eff: PBSecurityRpcEffect) {
-        spawnAsync { [self] in
-            let res: PBSecurityRpcResultEvent
-            if let rpcOverride {
-                res = await rpcOverride(eff)
-            } else {
-                res = await executeUnaryRpc(eff)
-            }
-            await sendEvent(PBCoreEvent.with { $0.securityRpcResult = res })
-        }
-    }
-
     public func relayRpc(_ eff: PBRelayRpcEffect) {
         let opID = eff.opID
         let token = UUID()
@@ -181,43 +164,6 @@ public final class SecurityExecutor: @unchecked Sendable {
     public func cancelRelayRpc(_ eff: PBRelayRpcCancelEffect) {
         let task = lock.withLock { activeRelayTasks.removeValue(forKey: eff.opID)?.task }
         task?.cancel()
-    }
-
-    private func executeUnaryRpc(_ eff: PBSecurityRpcEffect) async -> PBSecurityRpcResultEvent {
-        guard let method = PBRelayRpcMethod(rawValue: eff.method.rawValue), method != .unspecified else {
-            return PBSecurityRpcResultEvent.with {
-                $0.opID = eff.opID
-                $0.connectCode = Int32(Code.unimplemented.rawValue)
-                $0.error = "unknown rpc method: \(eff.method.rawValue)"
-            }
-        }
-        let relayEff = PBRelayRpcEffect.with {
-            $0.opID = eff.opID
-            $0.method = method
-            $0.server = eff.server
-            $0.authToken = eff.authToken
-            $0.requestBytes = eff.requestBytes
-        }
-        guard let res = await executeRelayUnary(relayEff) else {
-            return PBSecurityRpcResultEvent.with {
-                $0.opID = eff.opID
-                $0.connectCode = Int32(Code.canceled.rawValue)
-                $0.error = "canceled"
-            }
-        }
-        if res.connectCode == 0 && !res.networkError && !res.unresolvedHost && res.diagnosticMessage.isEmpty {
-            return PBSecurityRpcResultEvent.with {
-                $0.opID = eff.opID
-                $0.responseBytes = res.responseBytes
-            }
-        }
-        return PBSecurityRpcResultEvent.with {
-            $0.opID = eff.opID
-            $0.connectCode = res.connectCode
-            $0.error = res.diagnosticMessage
-            $0.networkError = res.networkError
-            $0.errorDetails = res.errorDetails
-        }
     }
 
     private func executeRelayUnary(_ eff: PBRelayRpcEffect) async -> PBRelayRpcResultEvent? {

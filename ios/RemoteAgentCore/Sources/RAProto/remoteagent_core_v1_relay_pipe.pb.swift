@@ -282,22 +282,6 @@ public enum PBTerminalLifecycleState: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
-/// Opts the Core instance into the unified byte-pipe mode (RelayRpcEffect,
-/// StreamRawFrameEvent, Core-managed login/token refresh, opaque caches, image
-/// fetch, and Core-owned terminal crypto/lifecycle). Shells that do not send
-/// this event (iOS before P3-2) continue using transitional effects.
-public struct PBRelayPipeConfigEvent: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var enabled: Bool = false
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
 /// Universal unary HTTP/Connect byte-pipe effect. The shell sends request_bytes
 /// verbatim to the path for method (or GET /healthz for RELAY_RPC_METHOD_HEALTHZ)
 /// and returns raw response bytes + Connect error metadata without parsing any
@@ -915,36 +899,6 @@ extension PBSessionImageLoadStatus: SwiftProtobuf._ProtoNameProviding {
 
 extension PBTerminalLifecycleState: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0TERMINAL_LIFECYCLE_STATE_UNSPECIFIED\0\u{2}\u{4}TERMINAL_LIFECYCLE_STATE_CONFIRM_INPUT\0\u{1}TERMINAL_LIFECYCLE_STATE_CONFIRM_RESTART\0\u{1}TERMINAL_LIFECYCLE_STATE_REBUILD\0\u{1}TERMINAL_LIFECYCLE_STATE_CLOSED\0")
-}
-
-extension PBRelayPipeConfigEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".RelayPipeConfigEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}enabled\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularBoolField(value: &self.enabled) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.enabled != false {
-      try visitor.visitSingularBoolField(value: self.enabled, fieldNumber: 1)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: PBRelayPipeConfigEvent, rhs: PBRelayPipeConfigEvent) -> Bool {
-    if lhs.enabled != rhs.enabled {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
 }
 
 extension PBRelayRpcEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {

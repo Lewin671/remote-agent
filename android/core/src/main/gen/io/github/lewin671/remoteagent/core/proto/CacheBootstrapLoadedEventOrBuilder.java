@@ -17,45 +17,6 @@ public interface CacheBootstrapLoadedEventOrBuilder extends
   long getOpId();
 
   /**
-   * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-   */
-  java.util.List<io.github.lewin671.remoteagent.core.proto.PlainMachine> 
-      getMachinesList();
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-   */
-  io.github.lewin671.remoteagent.core.proto.PlainMachine getMachines(int index);
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-   */
-  int getMachinesCount();
-
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-   */
-  java.util.List<io.github.lewin671.remoteagent.core.proto.PlainSession> 
-      getSessionsList();
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-   */
-  io.github.lewin671.remoteagent.core.proto.PlainSession getSessions(int index);
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-   */
-  int getSessionsCount();
-
-  /**
-   * <code>.remoteagent.core.v1.PlainAccountPrefs prefs = 4 [json_name = "prefs"];</code>
-   * @return Whether the prefs field is set.
-   */
-  boolean hasPrefs();
-  /**
-   * <code>.remoteagent.core.v1.PlainAccountPrefs prefs = 4 [json_name = "prefs"];</code>
-   * @return The prefs.
-   */
-  io.github.lewin671.remoteagent.core.proto.PlainAccountPrefs getPrefs();
-
-  /**
    * <code>string home_scope_token = 5 [json_name = "homeScopeToken"];</code>
    * @return The homeScopeToken.
    */
@@ -86,41 +47,42 @@ public interface CacheBootstrapLoadedEventOrBuilder extends
       getErrorBytes();
 
   /**
-   * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+   * <code>repeated bytes raw_machines = 13 [json_name = "rawMachines"];</code>
+   * @return A list containing the rawMachines.
    */
-  java.util.List<io.github.lewin671.remoteagent.proto.Machine> 
-      getWireMachinesList();
+  java.util.List<com.google.protobuf.ByteString> getRawMachinesList();
   /**
-   * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+   * <code>repeated bytes raw_machines = 13 [json_name = "rawMachines"];</code>
+   * @return The count of rawMachines.
    */
-  io.github.lewin671.remoteagent.proto.Machine getWireMachines(int index);
+  int getRawMachinesCount();
   /**
-   * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+   * <code>repeated bytes raw_machines = 13 [json_name = "rawMachines"];</code>
+   * @param index The index of the element to return.
+   * @return The rawMachines at the given index.
    */
-  int getWireMachinesCount();
+  com.google.protobuf.ByteString getRawMachines(int index);
 
   /**
-   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+   * <code>repeated bytes raw_sessions = 14 [json_name = "rawSessions"];</code>
+   * @return A list containing the rawSessions.
    */
-  java.util.List<io.github.lewin671.remoteagent.proto.RemoteSession> 
-      getWireSessionsList();
+  java.util.List<com.google.protobuf.ByteString> getRawSessionsList();
   /**
-   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+   * <code>repeated bytes raw_sessions = 14 [json_name = "rawSessions"];</code>
+   * @return The count of rawSessions.
    */
-  io.github.lewin671.remoteagent.proto.RemoteSession getWireSessions(int index);
+  int getRawSessionsCount();
   /**
-   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+   * <code>repeated bytes raw_sessions = 14 [json_name = "rawSessions"];</code>
+   * @param index The index of the element to return.
+   * @return The rawSessions at the given index.
    */
-  int getWireSessionsCount();
+  com.google.protobuf.ByteString getRawSessions(int index);
 
   /**
-   * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 12 [json_name = "wirePrefs"];</code>
-   * @return Whether the wirePrefs field is set.
+   * <code>bytes raw_prefs = 15 [json_name = "rawPrefs"];</code>
+   * @return The rawPrefs.
    */
-  boolean hasWirePrefs();
-  /**
-   * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 12 [json_name = "wirePrefs"];</code>
-   * @return The wirePrefs.
-   */
-  io.github.lewin671.remoteagent.proto.AccountPrefsObject getWirePrefs();
+  com.google.protobuf.ByteString getRawPrefs();
 }

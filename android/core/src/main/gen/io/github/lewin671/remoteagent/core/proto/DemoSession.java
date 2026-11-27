@@ -17,8 +17,9 @@ public  final class DemoSession extends
   private DemoSession() {
     sessionId_ = "";
     machineId_ = "";
+    rawMeta_ = com.google.protobuf.ByteString.EMPTY;
+    rawCheckpoint_ = com.google.protobuf.ByteString.EMPTY;
   }
-  private int bitField0_;
   public static final int SESSION_ID_FIELD_NUMBER = 1;
   private java.lang.String sessionId_;
   /**
@@ -193,100 +194,58 @@ public  final class DemoSession extends
     listedEndedMs_ = 0L;
   }
 
-  public static final int META_FIELD_NUMBER = 6;
-  private io.github.lewin671.remoteagent.proto.Session meta_;
+  public static final int RAW_META_FIELD_NUMBER = 8;
+  private com.google.protobuf.ByteString rawMeta_;
   /**
-   * <code>.remoteagent.v1.Session meta = 6 [json_name = "meta"];</code>
+   * <code>bytes raw_meta = 8 [json_name = "rawMeta"];</code>
+   * @return The rawMeta.
    */
   @java.lang.Override
-  public boolean hasMeta() {
-    return ((bitField0_ & 0x00000001) != 0);
+  public com.google.protobuf.ByteString getRawMeta() {
+    return rawMeta_;
   }
   /**
-   * <code>.remoteagent.v1.Session meta = 6 [json_name = "meta"];</code>
+   * <code>bytes raw_meta = 8 [json_name = "rawMeta"];</code>
+   * @param value The rawMeta to set.
    */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.Session getMeta() {
-    return meta_ == null ? io.github.lewin671.remoteagent.proto.Session.getDefaultInstance() : meta_;
+  private void setRawMeta(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    rawMeta_ = value;
   }
   /**
-   * <code>.remoteagent.v1.Session meta = 6 [json_name = "meta"];</code>
+   * <code>bytes raw_meta = 8 [json_name = "rawMeta"];</code>
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setMeta(io.github.lewin671.remoteagent.proto.Session value) {
-    value.getClass();  // minimal bytecode null check
-    meta_ = value;
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.v1.Session meta = 6 [json_name = "meta"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeMeta(io.github.lewin671.remoteagent.proto.Session value) {
-    value.getClass();  // minimal bytecode null check
-    if (meta_ != null &&
-        meta_ != io.github.lewin671.remoteagent.proto.Session.getDefaultInstance()) {
-      meta_ =
-        io.github.lewin671.remoteagent.proto.Session.newBuilder(meta_).mergeFrom(value).buildPartial();
-    } else {
-      meta_ = value;
-    }
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.v1.Session meta = 6 [json_name = "meta"];</code>
-   */
-  private void clearMeta() {
-    meta_ = null;
-    bitField0_ = (bitField0_ & ~0x00000001);
+  private void clearRawMeta() {
+
+    rawMeta_ = getDefaultInstance().getRawMeta();
   }
 
-  public static final int CHECKPOINT_FIELD_NUMBER = 7;
-  private io.github.lewin671.remoteagent.proto.LiveSnapshot checkpoint_;
+  public static final int RAW_CHECKPOINT_FIELD_NUMBER = 9;
+  private com.google.protobuf.ByteString rawCheckpoint_;
   /**
-   * <code>.remoteagent.v1.LiveSnapshot checkpoint = 7 [json_name = "checkpoint"];</code>
+   * <code>bytes raw_checkpoint = 9 [json_name = "rawCheckpoint"];</code>
+   * @return The rawCheckpoint.
    */
   @java.lang.Override
-  public boolean hasCheckpoint() {
-    return ((bitField0_ & 0x00000002) != 0);
+  public com.google.protobuf.ByteString getRawCheckpoint() {
+    return rawCheckpoint_;
   }
   /**
-   * <code>.remoteagent.v1.LiveSnapshot checkpoint = 7 [json_name = "checkpoint"];</code>
+   * <code>bytes raw_checkpoint = 9 [json_name = "rawCheckpoint"];</code>
+   * @param value The rawCheckpoint to set.
    */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.LiveSnapshot getCheckpoint() {
-    return checkpoint_ == null ? io.github.lewin671.remoteagent.proto.LiveSnapshot.getDefaultInstance() : checkpoint_;
+  private void setRawCheckpoint(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    rawCheckpoint_ = value;
   }
   /**
-   * <code>.remoteagent.v1.LiveSnapshot checkpoint = 7 [json_name = "checkpoint"];</code>
+   * <code>bytes raw_checkpoint = 9 [json_name = "rawCheckpoint"];</code>
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setCheckpoint(io.github.lewin671.remoteagent.proto.LiveSnapshot value) {
-    value.getClass();  // minimal bytecode null check
-    checkpoint_ = value;
-    bitField0_ |= 0x00000002;
-  }
-  /**
-   * <code>.remoteagent.v1.LiveSnapshot checkpoint = 7 [json_name = "checkpoint"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeCheckpoint(io.github.lewin671.remoteagent.proto.LiveSnapshot value) {
-    value.getClass();  // minimal bytecode null check
-    if (checkpoint_ != null &&
-        checkpoint_ != io.github.lewin671.remoteagent.proto.LiveSnapshot.getDefaultInstance()) {
-      checkpoint_ =
-        io.github.lewin671.remoteagent.proto.LiveSnapshot.newBuilder(checkpoint_).mergeFrom(value).buildPartial();
-    } else {
-      checkpoint_ = value;
-    }
-    bitField0_ |= 0x00000002;
-  }
-  /**
-   * <code>.remoteagent.v1.LiveSnapshot checkpoint = 7 [json_name = "checkpoint"];</code>
-   */
-  private void clearCheckpoint() {
-    checkpoint_ = null;
-    bitField0_ = (bitField0_ & ~0x00000002);
+  private void clearRawCheckpoint() {
+
+    rawCheckpoint_ = getDefaultInstance().getRawCheckpoint();
   }
 
   public static io.github.lewin671.remoteagent.core.proto.DemoSession parseFrom(
@@ -569,96 +528,58 @@ public  final class DemoSession extends
     }
 
     /**
-     * <code>.remoteagent.v1.Session meta = 6 [json_name = "meta"];</code>
+     * <code>bytes raw_meta = 8 [json_name = "rawMeta"];</code>
+     * @return The rawMeta.
      */
     @java.lang.Override
-    public boolean hasMeta() {
-      return instance.hasMeta();
+    public com.google.protobuf.ByteString getRawMeta() {
+      return instance.getRawMeta();
     }
     /**
-     * <code>.remoteagent.v1.Session meta = 6 [json_name = "meta"];</code>
+     * <code>bytes raw_meta = 8 [json_name = "rawMeta"];</code>
+     * @param value The rawMeta to set.
+     * @return This builder for chaining.
      */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.Session getMeta() {
-      return instance.getMeta();
-    }
-    /**
-     * <code>.remoteagent.v1.Session meta = 6 [json_name = "meta"];</code>
-     */
-    public Builder setMeta(io.github.lewin671.remoteagent.proto.Session value) {
+    public Builder setRawMeta(com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.setMeta(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.v1.Session meta = 6 [json_name = "meta"];</code>
-     */
-    public Builder setMeta(
-        io.github.lewin671.remoteagent.proto.Session.Builder builderForValue) {
-      copyOnWrite();
-      instance.setMeta(builderForValue.build());
+      instance.setRawMeta(value);
       return this;
     }
     /**
-     * <code>.remoteagent.v1.Session meta = 6 [json_name = "meta"];</code>
+     * <code>bytes raw_meta = 8 [json_name = "rawMeta"];</code>
+     * @return This builder for chaining.
      */
-    public Builder mergeMeta(io.github.lewin671.remoteagent.proto.Session value) {
+    public Builder clearRawMeta() {
       copyOnWrite();
-      instance.mergeMeta(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.Session meta = 6 [json_name = "meta"];</code>
-     */
-    public Builder clearMeta() {  copyOnWrite();
-      instance.clearMeta();
+      instance.clearRawMeta();
       return this;
     }
 
     /**
-     * <code>.remoteagent.v1.LiveSnapshot checkpoint = 7 [json_name = "checkpoint"];</code>
+     * <code>bytes raw_checkpoint = 9 [json_name = "rawCheckpoint"];</code>
+     * @return The rawCheckpoint.
      */
     @java.lang.Override
-    public boolean hasCheckpoint() {
-      return instance.hasCheckpoint();
+    public com.google.protobuf.ByteString getRawCheckpoint() {
+      return instance.getRawCheckpoint();
     }
     /**
-     * <code>.remoteagent.v1.LiveSnapshot checkpoint = 7 [json_name = "checkpoint"];</code>
+     * <code>bytes raw_checkpoint = 9 [json_name = "rawCheckpoint"];</code>
+     * @param value The rawCheckpoint to set.
+     * @return This builder for chaining.
      */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.LiveSnapshot getCheckpoint() {
-      return instance.getCheckpoint();
-    }
-    /**
-     * <code>.remoteagent.v1.LiveSnapshot checkpoint = 7 [json_name = "checkpoint"];</code>
-     */
-    public Builder setCheckpoint(io.github.lewin671.remoteagent.proto.LiveSnapshot value) {
+    public Builder setRawCheckpoint(com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.setCheckpoint(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.v1.LiveSnapshot checkpoint = 7 [json_name = "checkpoint"];</code>
-     */
-    public Builder setCheckpoint(
-        io.github.lewin671.remoteagent.proto.LiveSnapshot.Builder builderForValue) {
-      copyOnWrite();
-      instance.setCheckpoint(builderForValue.build());
+      instance.setRawCheckpoint(value);
       return this;
     }
     /**
-     * <code>.remoteagent.v1.LiveSnapshot checkpoint = 7 [json_name = "checkpoint"];</code>
+     * <code>bytes raw_checkpoint = 9 [json_name = "rawCheckpoint"];</code>
+     * @return This builder for chaining.
      */
-    public Builder mergeCheckpoint(io.github.lewin671.remoteagent.proto.LiveSnapshot value) {
+    public Builder clearRawCheckpoint() {
       copyOnWrite();
-      instance.mergeCheckpoint(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.LiveSnapshot checkpoint = 7 [json_name = "checkpoint"];</code>
-     */
-    public Builder clearCheckpoint() {  copyOnWrite();
-      instance.clearCheckpoint();
+      instance.clearRawCheckpoint();
       return this;
     }
 
@@ -678,18 +599,17 @@ public  final class DemoSession extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
-            "bitField0_",
             "sessionId_",
             "machineId_",
             "lastSeq_",
             "updatedMs_",
             "listedEndedMs_",
-            "meta_",
-            "checkpoint_",
+            "rawMeta_",
+            "rawCheckpoint_",
           };
           java.lang.String info =
-              "\u0000\u0007\u0000\u0001\u0001\u0007\u0007\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0003\u0004\u0002\u0005\u0002\u0006\u1009\u0000\u0007\u1009\u0001";
+              "\u0000\u0007\u0000\u0000\u0001\t\u0007\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0003\u0004\u0002\u0005\u0002\b\n\t\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

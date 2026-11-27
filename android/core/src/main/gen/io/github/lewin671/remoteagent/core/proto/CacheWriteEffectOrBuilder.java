@@ -22,39 +22,6 @@ public interface CacheWriteEffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.CacheSessionOpen getSetSessionOpen();
 
   /**
-   * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
-   * @return Whether the writeMachine field is set.
-   */
-  boolean hasWriteMachine();
-  /**
-   * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
-   * @return The writeMachine.
-   */
-  io.github.lewin671.remoteagent.proto.Machine getWriteMachine();
-
-  /**
-   * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
-   * @return Whether the writeSession field is set.
-   */
-  boolean hasWriteSession();
-  /**
-   * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
-   * @return The writeSession.
-   */
-  io.github.lewin671.remoteagent.proto.RemoteSession getWriteSession();
-
-  /**
-   * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
-   * @return Whether the keepSessionOwner field is set.
-   */
-  boolean hasKeepSessionOwner();
-  /**
-   * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
-   * @return The keepSessionOwner.
-   */
-  io.github.lewin671.remoteagent.proto.RemoteSession getKeepSessionOwner();
-
-  /**
    * <code>.remoteagent.core.v1.CacheWriteStoredEvents write_stored_events = 10 [json_name = "writeStoredEvents"];</code>
    * @return Whether the writeStoredEvents field is set.
    */
@@ -66,15 +33,48 @@ public interface CacheWriteEffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.CacheWriteStoredEvents getWriteStoredEvents();
 
   /**
-   * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
-   * @return Whether the writePrefs field is set.
+   * <code>bytes raw_write_machine = 12 [json_name = "rawWriteMachine"];</code>
+   * @return Whether the rawWriteMachine field is set.
    */
-  boolean hasWritePrefs();
+  boolean hasRawWriteMachine();
   /**
-   * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
-   * @return The writePrefs.
+   * <code>bytes raw_write_machine = 12 [json_name = "rawWriteMachine"];</code>
+   * @return The rawWriteMachine.
    */
-  io.github.lewin671.remoteagent.proto.AccountPrefsObject getWritePrefs();
+  com.google.protobuf.ByteString getRawWriteMachine();
+
+  /**
+   * <code>bytes raw_write_session = 13 [json_name = "rawWriteSession"];</code>
+   * @return Whether the rawWriteSession field is set.
+   */
+  boolean hasRawWriteSession();
+  /**
+   * <code>bytes raw_write_session = 13 [json_name = "rawWriteSession"];</code>
+   * @return The rawWriteSession.
+   */
+  com.google.protobuf.ByteString getRawWriteSession();
+
+  /**
+   * <code>bytes raw_keep_session_owner = 14 [json_name = "rawKeepSessionOwner"];</code>
+   * @return Whether the rawKeepSessionOwner field is set.
+   */
+  boolean hasRawKeepSessionOwner();
+  /**
+   * <code>bytes raw_keep_session_owner = 14 [json_name = "rawKeepSessionOwner"];</code>
+   * @return The rawKeepSessionOwner.
+   */
+  com.google.protobuf.ByteString getRawKeepSessionOwner();
+
+  /**
+   * <code>bytes raw_write_prefs = 15 [json_name = "rawWritePrefs"];</code>
+   * @return Whether the rawWritePrefs field is set.
+   */
+  boolean hasRawWritePrefs();
+  /**
+   * <code>bytes raw_write_prefs = 15 [json_name = "rawWritePrefs"];</code>
+   * @return The rawWritePrefs.
+   */
+  com.google.protobuf.ByteString getRawWritePrefs();
 
   public io.github.lewin671.remoteagent.core.proto.CacheWriteEffect.KindCase getKindCase();
 }

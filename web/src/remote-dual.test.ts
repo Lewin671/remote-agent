@@ -89,7 +89,7 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
         sessionId: "",
         deadlineMs,
         commandBytes: cmdBytes,
-        sealedEnvelope,
+        rawSealedEnvelope: toBinary(EnvelopeSchema, sealedEnvelope),
         routeLeg: CommandRouteLeg.DIRECT,
         directPcId: 7n,
         directTimeoutMs: 5_000n,
@@ -103,7 +103,7 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
       expect(outcome.directTicketId).toBe(99n);
       expect(outcome.attemptBound).toBe(true);
       expect(outcome.handedOff).toBe(true);
-      expect(outcome.sealedResult).toEqual(expectedResult);
+      expect(fromBinary(EnvelopeSchema, outcome.rawSealedResult)).toEqual(expectedResult);
     } finally {
       await r.dispose();
     }
@@ -135,7 +135,7 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
         machineId: r.machine,
         deadlineMs,
         commandBytes: cmdBytes,
-        sealedEnvelope: preEnv,
+        rawSealedEnvelope: toBinary(EnvelopeSchema, preEnv),
         routeLeg: CommandRouteLeg.DIRECT,
         directPcId: 7n,
         directTimeoutMs: 5_000n,
@@ -159,7 +159,7 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
         machineId: r.machine,
         deadlineMs,
         commandBytes: cmdBytes,
-        sealedEnvelope: postEnv,
+        rawSealedEnvelope: toBinary(EnvelopeSchema, postEnv),
         routeLeg: CommandRouteLeg.DIRECT,
         directPcId: 7n,
         directTimeoutMs: 5_000n,
@@ -188,7 +188,7 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
         machineId: r.machine,
         deadlineMs,
         commandBytes: cmdBytes,
-        sealedEnvelope: env,
+        rawSealedEnvelope: toBinary(EnvelopeSchema, env),
         routeLeg: CommandRouteLeg.RELAY,
       }));
       expect(shellRelay.source).toBe(OutcomeSource.LOCAL);

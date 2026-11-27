@@ -398,7 +398,8 @@ extension SyncServerTests {
                     _ = try await r.pingMachine(id)
                     Issue.record("the fake daemon answers settings with an error")
                 } catch let e as CommandError {
-                    #expect(e.fromDaemon)
+                    #expect(e.code == "unimplemented")
+                    #expect(e.message == "fake daemon")
                 }
                 w.server.stop()
                 await #expect(throws: (any Error).self) { try await r.pingServer(timeoutMs: 2_000) }

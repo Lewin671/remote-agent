@@ -198,7 +198,6 @@ class RaApp : Application() {
         synchronized(coreHostLock) {
             if (!clientInitDispatched) {
                 clientInitDispatched = true
-                host.sendRelayPipeConfig(true)
                 host.clientInit(
                     platform = "android", deviceDescription = androidDeviceDescription(this),
                     inlineCrypto = true, foreground = foreground, networkAvailable = online,

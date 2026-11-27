@@ -8,7 +8,7 @@ import {
 import { Code, ConnectError } from "@connectrpc/connect";
 import { parseTestHeader, testRequestIdentity, unpackTestBody } from "./stored-security-fixture";
 import { SecurityOpenEnvelopeOpSchema } from "../gen/remoteagent/core/v1/security_pb";
-import { type Envelope, type Header } from "../gen/remoteagent/v1/envelope_pb";
+import { EnvelopeSchema, type Envelope, type Header } from "../gen/remoteagent/v1/envelope_pb";
 import { getCoreHost } from "../core/host";
 import { Remote } from "../remote";
 import { Purpose } from "./stored-security-fixture";
@@ -50,7 +50,6 @@ import {
   SyncLifecycleActionSchema,
   SyncLifecycleKind,
   TimerKind,
-  TokenResultEventSchema,
 } from "../gen/remoteagent/core/v1/app_pb";
 import { ConnState as CoreConnState, HomeEmptyKind } from "../gen/remoteagent/core/v1/home_view_pb";
 import type { DeviceInfo } from "../devices";
@@ -171,7 +170,6 @@ export function patchSyncState(r: Remote, patch: SyncStatePatch): void {
   const host = getCoreHost(r);
   if (patch.conn === "online") {
     host.dispatch(create(CoreEventSchema, { event: { case: "syncLifecycle", value: create(SyncLifecycleActionSchema, { kind: SyncLifecycleKind.START }) } }));
-    host.dispatch(create(CoreEventSchema, { event: { case: "tokenResult", value: create(TokenResultEventSchema, { opId: 1n, token: "test-token", expiresMs: BigInt(Date.now() + 3600_000) }) } }));
     host.dispatch(create(CoreEventSchema, { event: { case: "streamReady", value: create(StreamReadyEventSchema, { legId: 1n, serverTimeMs: BigInt(Date.now()) }) } }));
   } else if (patch.conn === "offline") {
     host.dispatch(create(CoreEventSchema, { event: { case: "streamClosed", value: create(StreamClosedEventSchema, { legId: 1n, errorCode: "unavailable", error: patch.connError ?? "offline" }) } }));

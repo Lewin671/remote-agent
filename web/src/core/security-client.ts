@@ -7,7 +7,6 @@ import {
 } from "../gen/remoteagent/core/v1/app_pb";
 import {
   SecurityActionEmptySchema,
-  SecurityBoolActionSchema,
   SecurityErrorCode,
   SecurityRemoveDeviceActionSchema,
   SecurityStringActionSchema,
@@ -64,7 +63,6 @@ export interface SecurityWorkflowDispatcher {
 
 type Action = SecurityWorkflowActionEvent["action"];
 type EmptyCase = Extract<Action, { value: { $typeName: "remoteagent.core.v1.SecurityActionEmpty" } }>["case"];
-type BoolCase = Extract<Action, { value: { $typeName: "remoteagent.core.v1.SecurityBoolAction" } }>["case"];
 type StringCase = Extract<Action, { value: { $typeName: "remoteagent.core.v1.SecurityStringAction" } }>["case"];
 
 export class SecurityClient {
@@ -140,9 +138,6 @@ export class SecurityClient {
   private empty(c: EmptyCase) {
     return this.run({ case: c, value: create(SecurityActionEmptySchema, {}) } as Action);
   }
-  private bool(c: BoolCase, flag: boolean) {
-    return this.run({ case: c, value: create(SecurityBoolActionSchema, { flag }) } as Action);
-  }
   private str(c: StringCase, value: string) {
     return this.run({ case: c, value: create(SecurityStringActionSchema, { value }) } as Action);
   }
@@ -152,7 +147,6 @@ export class SecurityClient {
   async syncNow(touch = false, authToken = ""): Promise<SecurityWorkflowStatus> {
     return (await this.run({ case: "syncNow", value: create(SecuritySyncNowActionSchema, { touch, authToken }) })).status!;
   }
-  renewLease = async (force = true): Promise<SecurityWorkflowStatus> => (await this.bool("renewLease", force)).status!;
   async removeDevice(deviceId: string): Promise<void> {
     await this.run({ case: "removeDevice", value: create(SecurityRemoveDeviceActionSchema, { deviceId }) });
   }

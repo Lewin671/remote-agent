@@ -152,7 +152,7 @@ import Testing
         let terminal = RemoteTerminal()
         let historyDriver = CoreHistoryDriver()
         streams.setHistoryDeliverer { page in
-            historyDriver.send(terminalID: terminal.terminalId, kind: .pageReceived, page: page)
+            historyDriver.send(terminalID: terminal.terminalId, kind: .pageReceived, rawPage: (try? page.serializedData()) ?? Data())
         }
         terminal.host.frame = CGRect(x: 0, y: 0, width: 400, height: 500)
         terminal.host.layoutIfNeeded()

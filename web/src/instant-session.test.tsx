@@ -1,11 +1,12 @@
 import { t as message } from "./i18n";
 // @vitest-environment happy-dom
+import { Code, ConnectError } from "@connectrpc/connect";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { getCoreHost, sessionDraftScope } from "./core/host";
 import { DemoRemote } from "./dev/demo";
-import { patchSyncState, demoMachines, demoSessions } from "./test/remote-fixture";
+import { SyntheticRemote, patchSyncState, demoSessions } from "./test/remote-fixture";
 import Workspace from "./Workspace";
 import { SessionPage } from "./views/Session";
 import { setView } from "./view";
@@ -23,14 +24,23 @@ afterEach(() => {
 
 it("keeps the same input, draft and focus across Core session updates", async () => {
   setView("term");
-  const remote = DemoRemote.create(new URLSearchParams(), async () => undefined);
-  remote.start();
-  const known = [...demoSessions(remote).values()].find((s) => s.info && !s.endedMs && demoMachines(remote).get(s.machineId)?.online)!;
+  const remote = await SyntheticRemote.create();
   const openingId = "opening-route-session";
-  const origRpc = remote.executeRpc.bind(remote);
-  vi.spyOn(remote, "executeRpc").mockImplementation((eff) =>
-    eff.kind.case === "fetchSessionById" ? new Promise<never>(() => undefined) : origRpc(eff),
-  );
+  const pendingTitle = "Resolved session title";
+  const resolvedRow = await remote.sessionRow(openingId, pendingTitle);
+  let releaseLookup!: () => void;
+  (remote as unknown as { api: Record<string, unknown> }).api = {
+    listRemoteSessions: async (req: { sessionIds?: string[] }) => {
+      if (req.sessionIds?.length) {
+        await new Promise<void>((res) => {
+          releaseLookup = res;
+        });
+        return { sessions: [resolvedRow] };
+      }
+      return { sessions: [] };
+    },
+  };
+  patchSyncState(remote, { conn: "online" });
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -44,27 +54,21 @@ it("keeps the same input, draft and focus across Core session updates", async ()
   input.focus();
   expect(host.querySelector<HTMLButtonElement>(".snd")!.disabled).toBe(true);
   await act(async () => {
-    const nextSessions = new Map(demoSessions(remote));
-    nextSessions.set(openingId, {
-      ...known,
-      id: openingId,
-      info: { ...known.info!, id: openingId },
-    });
-    patchSyncState(remote, { sessions: nextSessions });
+    releaseLookup();
   });
+  await vi.waitFor(() => expect(host.querySelector(".navbar")?.textContent).toContain(pendingTitle));
   expect(host.querySelector(".draft")).toBe(input);
   expect(input.value).toBe("typed during lookup");
   expect(document.activeElement).toBe(input);
-  expect(host.querySelector(".navbar")?.textContent).toContain(known.info!.title);
 });
 
 it("draws an unresolved link as a chat page before lookup returns", async () => {
-  const remote = DemoRemote.create(new URLSearchParams(), async () => undefined);
-  remote.start();
-  const origRpc = remote.executeRpc.bind(remote);
-  vi.spyOn(remote, "executeRpc").mockImplementation((eff) =>
-    eff.kind.case === "fetchSessionById" ? new Promise<never>(() => undefined) : origRpc(eff),
-  );
+  const remote = await SyntheticRemote.create();
+  (remote as unknown as { api: Record<string, unknown> }).api = {
+    listRemoteSessions: async (req: { sessionIds?: string[] }) =>
+      req.sessionIds?.length ? new Promise<never>(() => undefined) : { sessions: [] },
+  };
+  patchSyncState(remote, { conn: "online" });
   const core = getCoreHost(remote);
   const openSpy = vi.spyOn(core, "sessionOpen");
   history.replaceState(null, "", "/#/s/linked-session");
@@ -79,36 +83,28 @@ it("draws an unresolved link as a chat page before lookup returns", async () => 
 });
 
 it("distinguishes lookup failure (with retry) from missing session", async () => {
-  const remote = DemoRemote.create(new URLSearchParams(), async () => undefined);
-  remote.start();
-  const origRpc = remote.executeRpc.bind(remote);
+  const remote = await SyntheticRemote.create();
   let failLookup = true;
-  const { create } = await import("@bufbuild/protobuf");
-  const { EventSchema, SessionByIdFetchedEventSchema } = await import("./gen/remoteagent/core/v1/app_pb");
-  vi.spyOn(remote, "executeRpc").mockImplementation(async (eff) => {
-    if (eff.kind.case === "fetchSessionById") {
-      return create(EventSchema, {
-        event: {
-          case: "sessionByIdFetched",
-          value: create(SessionByIdFetchedEventSchema, {
-            opId: eff.opId,
-            error: failLookup ? "rpc timeout" : "",
-          }),
-        },
-      });
-    }
-    return origRpc(eff);
-  });
+  (remote as unknown as { api: Record<string, unknown> }).api = {
+    listRemoteSessions: async (req: { sessionIds?: string[] }) => {
+      if (req.sessionIds?.length) {
+        if (failLookup) throw new ConnectError("rpc timeout", Code.Unavailable);
+        return { sessions: [] };
+      }
+      return { sessions: [] };
+    },
+  };
+  patchSyncState(remote, { conn: "online" });
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
   await act(async () => root!.render(<SessionPage remote={remote} sessionId="missing-one" wide={false} onBack={() => undefined} />));
-  expect(host.textContent).toContain("rpc timeout");
+  await vi.waitFor(() => expect(host.textContent).toContain("rpc timeout"));
   const retry = [...host.querySelectorAll("button")].find((b) => b.textContent === message("common.retry"))!;
   expect(retry).toBeTruthy();
   failLookup = false;
   await act(async () => retry.click());
-  expect(host.textContent).toContain(message("session.ios_missing"));
+  await vi.waitFor(() => expect(host.textContent).toContain(message("session.ios_missing")));
 });
 
 it("shows a verified session in Workspace", async () => {

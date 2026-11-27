@@ -102,7 +102,9 @@ extension Remote {
             $0.sessionID = sid
             $0.pcID = pcId
             $0.sender = machineId
-            $0.wireEnvelopes = [envelope]
+            if let raw = try? envelope.serializedData() {
+                $0.rawEnvelopes = [raw]
+            }
         }
         await emitCoreEvent(event)
     }

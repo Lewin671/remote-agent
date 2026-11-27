@@ -126,39 +126,24 @@ export class CommandError extends Error {
 }
 import { getCoreHost, sessionDraftScope } from "../core/host";
 import {
-  AccountPrefsFetchedEventSchema,
-  AccountPrefsPutResultEventSchema,
   CacheBootstrapLoadedEventSchema,
   CacheEventsLoadedEventSchema,
   CommandOutcomeEventSchema,
-  DevicesFetchedEventSchema,
   EventSchema as CoreEventSchema,
-  EventsAppendedFrameSchema,
-  EventsPageFetchedEventSchema,
-  ListsFetchedEventSchema,
   OutcomeSource,
-  PlainAccountPrefsSchema,
-  PlainDeviceSchema,
-  PlainEventSchema,
-  PlainMachineSchema,
-  PlainSessionSchema,
-  SessionByIdFetchedEventSchema,
   TimerKind,
-  TokenResultEventSchema,
   type CacheBootstrapLoadedEvent,
   type CacheDeleteEffect,
   type CacheEventsLoadedEvent,
   type CacheWriteEffect,
   type CommandOutcomeEvent,
   type DispatchCommandEffect,
-  type Event as CoreEvent,
-  type RpcEffect,
-  type TokenResultEvent,
 } from "../gen/remoteagent/core/v1/app_pb";
 import {
   DemoDeviceSchema,
   DemoMachineSchema,
   DemoSecuritySchema,
+  DemoSessionEventsSchema,
   DemoSessionSchema,
   SeedDemoWorldEventSchema,
   SecurityBootstrapKind,
@@ -166,7 +151,7 @@ import {
   SecurityWorkflowStatusSchema,
   type SecurityWorkflowStatus,
 } from "../gen/remoteagent/core/v1/security_pb";
-import { DeviceKind, SessionCursorSchema } from "../gen/remoteagent/v1/relay_pb";
+import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 import {
   AgentSettingsSchema,
   DefaultModeSource,
@@ -1598,23 +1583,16 @@ export class DemoRemote extends Remote {
   private demoDevices = new Map<string, import("../devices").DeviceInfo>();
   private demoStream?: { legId: bigint; callbacks: StreamLegCallbacks; ready: boolean };
   private demoSeedSynced = false;
-  private demoSyncing = false;
   private demoHasMoreSessions = false;
-  private demoBootConsumed = false;
   private demoListRetried = false;
-  private syncBootOpId = 0n;
-  private syncTokenOpId = 0n;
-  private syncRpcQueue: RpcEffect[] = [];
   private evs = new Map<string, Event[]>();
   private attempts = new Map<string, number>();
   private pause = sleep;
 
-  private plainMachine = (m: MachineView) =>
-    create(PlainMachineSchema, { machineId: m.id, online: m.online, lastSeenMs: m.lastSeenMs, meta: m.meta, metaRev: m.metaRev });
   private demoCheckpoint(s: SessionView) {
     if (s.checkpoint) return s.checkpoint;
-    const evs = this.evs.get(s.id);
-    if (!evs?.length) return undefined;
+    if (!s.info) return undefined;
+    const evs = this.evs.get(s.id) ?? [];
     const resolved = new Set<string>();
     const answered = new Set<string>();
     let planEv: Event | undefined;
@@ -1627,41 +1605,73 @@ export class DemoRemote extends Remote {
     const actions = evs.filter(
       (e) =>
         (e.kind.case === "approvalRequested" && !resolved.has(e.kind.value.approvalId)) ||
-        (e.kind.case === "questionAsked" && !e.kind.value.async && !answered.has(e.kind.value.questionId)),
+        (e.kind.case === "questionAsked" && !e.kind.value.async && !answered.has(e.kind.value.questionId)) ||
+        e.kind.case === "inputState",
     );
     const planText = planEv?.kind.case === "planProposed" ? planEv.kind.value.text : "";
-    if (!actions.length && !s.info?.planOpen) return undefined;
     return create(LiveSnapshotSchema, {
-      session: s.info,
-      running: s.info?.status === SessionStatus.RUNNING || s.info?.status === SessionStatus.STARTING,
-      actions,
+      session: create(SessionSchema, { ...s.info, id: s.id, lastSeq: s.lastSeq }),
+      running: s.info.status === SessionStatus.RUNNING || s.info.status === SessionStatus.STARTING,
+      actions: actions.map((e) => (e.sessionId ? e : create(EventSchema, { ...e, sessionId: s.id }))),
       planEventSeq: planEv?.seq ?? 0n,
-      planScreen: s.info?.planOpen ? planText : "",
-      planScreenHash: s.info?.planOpen ? new Uint8Array(32).fill(1) : new Uint8Array(0),
+      planScreen: s.info.planOpen ? planText : "",
+      planScreenHash: s.info.planOpen ? new Uint8Array(32).fill(1) : new Uint8Array(0),
     });
   }
-  private plainSession = (s: SessionView) => {
-    const checkpoint = this.demoCheckpoint(s);
-    return create(PlainSessionSchema, { sessionId: s.id, machineId: s.machineId, lastSeq: s.lastSeq, updatedMs: s.updatedMs, listedEndedMs: s.endedMs, meta: s.info, metaRev: s.metaRev, checkpoint, checkpointInvalid: !checkpoint });
-  };
-  private plainDevice = (d: import("../devices").DeviceInfo) =>
-    create(PlainDeviceSchema, { deviceId: d.id, kind: d.kind, createdMs: d.createdMs, lastSeenMs: d.lastSeenMs, meta: d.meta, metaRev: d.metaRev });
-  private demoPrefs = () => create(PlainAccountPrefsSchema, { revision: this.stored.revision, prefs: this.stored.prefs });
-  private demoScope = () => { try { return localStorage.getItem("ra-scope") || "all"; } catch { return "all"; } };
-  private demoToken(opId: bigint) {
-    const conn = this.opts.get("conn");
-    const removed = conn === "removed";
-    return create(TokenResultEventSchema, { opId, token: conn === "fail" || removed ? "" : "demo-token", expiresMs: BigInt(Date.now() + 30 * 86_400_000), removed, errorCode: conn === "fail" ? "invalid_argument" : "", error: conn === "fail" ? "证书无效" : "" });
+  private demoMachineProto(m: MachineView) {
+    return create(DemoMachineSchema, {
+      machineId: m.id,
+      online: m.online,
+      lastSeenMs: m.lastSeenMs,
+      rawMeta: m.meta ? toBinary(MachineMetaSchema, m.meta) : new Uint8Array(),
+    });
+  }
+  demoSessionProto(s: SessionView) {
+    const cp = this.demoCheckpoint(s);
+    return create(DemoSessionSchema, {
+      sessionId: s.id,
+      machineId: s.machineId,
+      lastSeq: s.lastSeq,
+      updatedMs: s.updatedMs,
+      listedEndedMs: s.endedMs,
+      rawMeta: s.info ? toBinary(SessionSchema, create(SessionSchema, { ...s.info, id: s.id, lastSeq: s.lastSeq })) : new Uint8Array(),
+      rawCheckpoint: cp ? toBinary(LiveSnapshotSchema, cp) : new Uint8Array(),
+    });
+  }
+  private demoDeviceProto(d: import("../devices").DeviceInfo) {
+    return create(DemoDeviceSchema, {
+      deviceId: d.id,
+      kind: d.kind,
+      createdMs: d.createdMs,
+      lastSeenMs: d.lastSeenMs,
+      rawMeta: d.meta ? toBinary(DeviceMetaSchema, d.meta) : new Uint8Array(),
+    });
+  }
+  demoSessionEventsProto(sid: string, list: Event[], replace = false) {
+    if (sid === "s-ended") {
+      return create(DemoSessionEventsSchema, { sessionId: sid, retired: true, replace });
+    }
+    if (sid === "s-hist") {
+      return create(DemoSessionEventsSchema, { sessionId: sid, loadError: "连接超时", replace });
+    }
+    return create(DemoSessionEventsSchema, {
+      sessionId: sid,
+      replace,
+      rawEvents: list.map((e) => toBinary(EventSchema, e.sessionId ? e : create(EventSchema, { ...e, sessionId: sid }))),
+    });
   }
   private demoSecurity() {
     const removed = this.opts.get("conn") === "removed";
+    const incompleteClients = [...this.demoDevices.values()]
+      .filter((d) => d.kind === DeviceKind.CLIENT && d.pairingIncomplete)
+      .map((d) => d.id);
     return create(DemoSecuritySchema, {
       isMember: !removed,
       removed,
       selfDeviceId: ME,
       authorityDeviceId: this.authorityDeviceId || ANDROID,
       trustedMachineIds: [...this.demoMachines.keys()].filter((id) => !this.archivedDemoMachines.has(id)),
-      trustedClientIds: [ME, ANDROID, BROWSER].filter((id) => !this.removedDemoDevices.has(id)),
+      trustedClientIds: [...new Set([ME, ANDROID, BROWSER, ...incompleteClients])].filter((id) => !this.removedDemoDevices.has(id)),
       archiveMachineIds: [...this.demoMachines.keys()],
       headEpoch: 1n,
       leaseEndMs: this.opts.get("cliswitches") === "lease" ? BigInt(Date.now() - 60_000) : this.demoLeaseEndMs,
@@ -1669,47 +1679,41 @@ export class DemoRemote extends Remote {
       recoveryReadyMs: this.demoRecoveryReadyMs,
     });
   }
-  private demoBoot(opId: bigint, includeCached = false) {
-    return create(CacheBootstrapLoadedEventSchema, {
-      opId,
-      homeScopeToken: this.demoScope(),
-      scopeHmacKey: new Uint8Array(32),
-      ...(includeCached
-        ? {
-            machines: [...this.demoMachines.values()].map(this.plainMachine),
-            sessions: [...this.demoSessions.values()].map(this.plainSession),
-          }
-        : {}),
-    });
-  }
-  private demoWorld(includeWorld: boolean) {
+  private demoWorld(includeWorld: boolean, includePrefs = false) {
+    const listFail = this.opts.get("list") === "fail" && !this.demoListRetried;
+    const prefsFail = this.opts.get("prefs") === "fail";
+    const prefsError = prefsFail ? "服务器没有响应" : "";
     if (!includeWorld) {
-      return create(SeedDemoWorldEventSchema, { security: this.demoSecurity() });
+      return create(SeedDemoWorldEventSchema, {
+        clearDirectReports: true,
+        security: this.demoSecurity(),
+        listError: listFail ? "连接超时" : "",
+        clearListError: !listFail && this.demoListRetried,
+        prefsError,
+        clearPrefsError: !prefsFail,
+      });
     }
-    return create(SeedDemoWorldEventSchema, {
-      machines: [...this.demoMachines.values()].map((m) =>
-        create(DemoMachineSchema, { machineId: m.id, online: m.online, lastSeenMs: m.lastSeenMs, meta: m.meta }),
-      ),
-      sessions: [...this.demoSessions.values()].map((s) =>
-        create(DemoSessionSchema, {
-          sessionId: s.id,
-          machineId: s.machineId,
-          lastSeq: s.lastSeq,
-          updatedMs: s.updatedMs,
-          listedEndedMs: s.endedMs,
-          meta: s.info,
-          checkpoint: this.demoCheckpoint(s),
-        }),
-      ),
-      devices: [...this.demoDevices.values()].map((d) =>
-        create(DemoDeviceSchema, { deviceId: d.id, kind: d.kind, createdMs: d.createdMs, lastSeenMs: d.lastSeenMs, meta: d.meta }),
-      ),
-      prefs: this.stored.prefs,
-      security: this.demoSecurity(),
+    const eventSids = new Set<string>([...this.demoSessions.keys(), ...this.evs.keys()]);
+    const sessionEvents = [...eventSids].map((sid) => {
+      const b = this.backfill.get(sid);
+      const list = b ? b.shown : (this.evs.get(sid) ?? []);
+      return this.demoSessionEventsProto(sid, list, true);
     });
-  }
-  private pushFrame(legId: bigint, frame: NonNullable<import("../gen/remoteagent/core/v1/app_pb").StreamFrameEvent["frame"]>) {
-    getCoreHost(this).dispatch(create(CoreEventSchema, { event: { case: "streamFrame", value: { legId, frame } } }));
+    return create(SeedDemoWorldEventSchema, {
+      replaceMachines: true,
+      machines: [...this.demoMachines.values()].map((m) => this.demoMachineProto(m)),
+      replaceSessions: true,
+      sessions: [...this.demoSessions.values()].map((s) => this.demoSessionProto(s)),
+      replaceDevices: true,
+      devices: [...this.demoDevices.values()].filter((d) => !d.pairingIncomplete).map((d) => this.demoDeviceProto(d)),
+      hasMoreSessions: this.demoHasMoreSessions,
+      ...(includePrefs ? { rawPrefs: toBinary(ProjectPrefsSchema, this.stored.prefs), prefsRevision: this.stored.revision } : {}),
+      sessionEvents,
+      security: this.demoSecurity(),
+      clearListError: !listFail,
+      prefsError,
+      clearPrefsError: !prefsFail,
+    });
   }
 
   projectPrefs() { return this.stored.prefs; }
@@ -1722,12 +1726,7 @@ export class DemoRemote extends Remote {
       this.network = true;
       if (this.demoStream) {
         this.demoStream.ready = true;
-        this.syncRpcQueue = [];
-        this.demoSyncing = true;
-        try {
-          this.demoStream.callbacks.onReady(this.demoStream.legId, BigInt(Date.now()));
-          while (this.syncRpcQueue.length > 0) host.dispatch(this.resolveSyncRpc(this.syncRpcQueue.shift()!));
-        } finally { this.demoSyncing = false; this.syncRpcQueue = []; }
+        this.demoStream.callbacks.onReady(this.demoStream.legId, BigInt(Date.now()));
       }
     } else if (conn === "offline") {
       this.opts.set("conn", "noserver");
@@ -1747,83 +1746,50 @@ export class DemoRemote extends Remote {
     this.changed();
   }
 
-  private syncedMachineIds = new Set<string>();
-  private syncedSessionIds = new Set<string>();
-
   /** Syncs the current demo fixtures into Core so Home/Project/NewSession/Connection update. */
-  syncDemoToCore(forceRefresh = false) {
+  syncDemoToCore(_forceRefresh = false) {
     if (!globalThis.__remoteAgentCore) return;
     const host = getCoreHost(this);
     const conn = this.opts.get("conn");
     const removed = conn === "removed";
     this.network = conn !== "nonetwork";
-    const drainRpc = () => { while (this.syncRpcQueue.length > 0) host.dispatch(this.resolveSyncRpc(this.syncRpcQueue.shift()!)); };
+    const listFail = this.opts.get("list") === "fail" && !this.demoListRetried;
     if (!this.demoSeedSynced) {
       this.demoSeedSynced = true;
-      this.syncBootOpId = this.syncTokenOpId = 0n;
-      this.syncRpcQueue = [];
-      this.demoSyncing = true;
-      try {
+      if (conn === "connecting") {
+        // Enter demoMode before Start (so Start emits no relay/cache RPCs), then populate cached
+        // machines/sessions while Connection == ConnConnecting so MachinesListed remains false.
+        host.dispatch(create(CoreEventSchema, { event: { case: "seedDemoWorld", value: this.demoWorld(false, false) } }));
         host.start();
-        this.demoBootConsumed = true;
-        host.dispatch(create(CoreEventSchema, { event: { case: "cacheBootstrapLoaded", value: this.demoBoot(this.syncBootOpId, conn === "connecting") } }));
-        host.dispatch(create(CoreEventSchema, { event: { case: "seedDemoWorld", value: this.demoWorld(this.opts.get("list") !== "fail" && conn !== "connecting") } }));
-        host.dispatch(create(CoreEventSchema, { event: { case: "tokenResult", value: this.demoToken(this.syncTokenOpId) } }));
-        drainRpc();
+        host.dispatch(create(CoreEventSchema, { event: { case: "seedDemoWorld", value: this.demoWorld(true, true) } }));
+      } else {
+        host.dispatch(create(CoreEventSchema, { event: { case: "seedDemoWorld", value: this.demoWorld(!listFail, true) } }));
+        host.start();
         if (conn === "noserver" && this.demoStream) {
           this.demoStream.callbacks.onClosed(this.demoStream.legId, { policyViolation: false, errorCode: "unavailable", error: "连接超时", unresolvedHost: false });
           host.fireActiveTimer(TimerKind.LINK_GRACE, "display");
           host.fireActiveTimer(TimerKind.LINK_GRACE);
         }
-      } finally { this.demoSyncing = false; this.syncRpcQueue = []; }
-      this.syncedMachineIds = new Set(this.demoMachines.keys());
-      this.syncedSessionIds = new Set(this.demoSessions.keys());
+      }
       this.changed();
       return;
     }
-    if (this.demoStream?.ready && !removed && conn !== "fail") {
-      const legId = this.demoStream.legId;
-      const wantedIds = new Set(this.demoMachines.keys());
-      const machinesChanged =
-        wantedIds.size !== this.syncedMachineIds.size ||
-        [...wantedIds].some((id) => !this.syncedMachineIds.has(id));
-      if (machinesChanged) {
-        host.dispatch(create(CoreEventSchema, { event: { case: "seedDemoWorld", value: this.demoWorld(false) } }));
-      }
-      for (const prevId of this.syncedMachineIds) if (!wantedIds.has(prevId)) this.pushFrame(legId, { case: "machineRemovedId", value: prevId });
-      for (const m of this.demoMachines.values()) this.pushFrame(legId, { case: "machineUpdated", value: this.plainMachine(m) });
-      const wantedSessions = [...this.demoSessions.values()];
-      const wantedSids = new Set(wantedSessions.map((s) => s.id));
-      const removedAnySession = [...this.syncedSessionIds].some((prevId) => !wantedSids.has(prevId));
-      if (forceRefresh || removedAnySession) {
-        this.syncRpcQueue = [];
-        this.demoSyncing = true;
-        try {
-          host.dispatch(create(CoreEventSchema, { event: { case: "streamReady", value: { legId, serverTimeMs: BigInt(Date.now()) } } }));
-          drainRpc();
-        } finally { this.demoSyncing = false; this.syncRpcQueue = []; }
-      } else {
-        for (const s of wantedSessions) this.pushFrame(legId, { case: "sessionUpdated", value: this.plainSession(s) });
-      }
-      for (const d of this.demoDevices.values()) this.pushFrame(legId, { case: "deviceUpdated", value: this.plainDevice(d) });
-      this.pushFrame(legId, { case: "accountPrefsUpdated", value: this.demoPrefs() });
-      this.syncedMachineIds = wantedIds;
-      this.syncedSessionIds = wantedSids;
+    if (!removed && conn !== "fail") {
+      host.dispatch(create(CoreEventSchema, { event: { case: "seedDemoWorld", value: this.demoWorld(!listFail, false) } }));
     }
     this.changed();
   }
 
-  override useRelayPipe() { return false; }
-  ensureToken(opId: bigint): Promise<TokenResultEvent> {
-    if (this.demoSyncing) { this.syncTokenOpId = opId; return new Promise(() => {}); }
-    return Promise.resolve(this.demoToken(opId));
-  }
   override securityConfig() { return undefined; }
   override openStreamLeg(legId: bigint, _token: string, callbacks: StreamLegCallbacks) {
     this.demoStream = { legId, callbacks, ready: false };
     const conn = this.opts.get("conn");
     if (conn === "connecting") return;
-    if ((conn === "noserver" && !this.demoSyncing) || ["reconnecting", "nonetwork", "fail", "removed"].includes(conn ?? "")) {
+    if (conn === "fail") {
+      callbacks.onClosed(legId, { policyViolation: false, errorCode: "invalid_argument", error: "证书无效", unresolvedHost: false });
+      return;
+    }
+    if (["reconnecting", "nonetwork", "removed"].includes(conn ?? "")) {
       callbacks.onClosed(legId, { policyViolation: false, errorCode: "unavailable", error: "连接超时", unresolvedHost: false });
       return;
     }
@@ -1837,25 +1803,11 @@ export class DemoRemote extends Remote {
     const host = getCoreHost(this);
     if (online) {
       this.opts.delete("conn");
-      this.syncTokenOpId = 0n;
-      this.syncRpcQueue = [];
-      this.demoSyncing = true;
-      try {
-        if (stream && !stream.ready) {
-          stream.ready = true;
-          stream.callbacks.onReady(stream.legId, BigInt(Date.now()));
-        } else {
-          host.reconnectNow();
-          if (this.syncTokenOpId > 0n) {
-            host.dispatch(create(CoreEventSchema, { event: { case: "tokenResult", value: this.demoToken(this.syncTokenOpId) } }));
-          }
-        }
-        while (this.syncRpcQueue.length > 0) {
-          host.dispatch(this.resolveSyncRpc(this.syncRpcQueue.shift()!));
-        }
-      } finally {
-        this.demoSyncing = false;
-        this.syncRpcQueue = [];
+      if (stream && !stream.ready) {
+        stream.ready = true;
+        stream.callbacks.onReady(stream.legId, BigInt(Date.now()));
+      } else {
+        host.reconnectNow();
       }
       return;
     }
@@ -1867,8 +1819,7 @@ export class DemoRemote extends Remote {
     }
   }
   override readBootstrapCache(opId: bigint): Promise<CacheBootstrapLoadedEvent> {
-    if (this.demoSyncing || this.demoBootConsumed) { this.syncBootOpId = opId; this.demoBootConsumed = false; return new Promise(() => {}); }
-    return Promise.resolve(this.demoBoot(opId));
+    return Promise.resolve(create(CacheBootstrapLoadedEventSchema, { opId }));
   }
   override readEventsCache(opId: bigint, sessionId: string): Promise<CacheEventsLoadedEvent> {
     return Promise.resolve(create(CacheEventsLoadedEventSchema, { opId, sessionId }));
@@ -1880,71 +1831,6 @@ export class DemoRemote extends Remote {
   }
   override async deleteScheduleCache(_machineId: string) {}
   private readonly demoSchedules = new Map<string, DemoScheduleTask[]>();
-
-  private resolveSyncRpc(eff: RpcEffect): CoreEvent {
-    const opId = eff.opId;
-    if (eff.kind.case === "fetchLists") {
-      const fail = this.opts.get("list") === "fail" && !this.demoListRetried;
-      return create(CoreEventSchema, {
-        event: {
-          case: "listsFetched",
-          value: create(ListsFetchedEventSchema, fail ? { opId, error: "连接超时" } : {
-            opId,
-            machines: [...this.demoMachines.values()].map(this.plainMachine),
-            sessions: [...this.demoSessions.values()].map(this.plainSession),
-            devices: [...this.demoDevices.values()].map(this.plainDevice),
-            next: this.demoHasMoreSessions ? create(SessionCursorSchema, { endedMs: 1n, sessionId: "z" }) : undefined,
-          }),
-        },
-      });
-    }
-    if (eff.kind.case === "getAccountPrefs") {
-      return create(CoreEventSchema, { event: { case: "accountPrefsFetched", value: create(AccountPrefsFetchedEventSchema, { opId, prefs: this.demoPrefs() }) } });
-    }
-    return create(CoreEventSchema, {});
-  }
-
-  async executeRpc(eff: RpcEffect): Promise<CoreEvent> {
-    if (this.demoSyncing) { this.syncRpcQueue.push(eff); return new Promise(() => {}); }
-    const opId = eff.opId;
-    switch (eff.kind.case) {
-      case "fetchLists":
-      case "getAccountPrefs":
-        return this.resolveSyncRpc(eff);
-      case "fetchSessionById": {
-        const s = this.demoSessions.get(eff.kind.value.sessionId);
-        return create(CoreEventSchema, { event: { case: "sessionByIdFetched", value: create(SessionByIdFetchedEventSchema, { opId, session: s ? this.plainSession(s) : undefined, error: "" }) } });
-      }
-      case "getEvents": {
-        const { sessionId, afterSeq, limit } = eff.kind.value;
-        if (sessionId === "s-hist") return create(CoreEventSchema, { event: { case: "eventsPageFetched", value: create(EventsPageFetchedEventSchema, { opId, sessionId, error: "连接超时" }) } });
-        const all = this.evs.get(sessionId) ?? [];
-        const slice = all.filter((e) => e.seq > afterSeq).slice(0, limit || 500);
-        const more = slice.length > 0 && slice.at(-1)!.seq < (all.at(-1)?.seq ?? 0n);
-        return create(CoreEventSchema, {
-          event: {
-            case: "eventsPageFetched",
-            value: create(EventsPageFetchedEventSchema, {
-              opId, sessionId, more,
-              events: slice.map((e) => create(PlainEventSchema, { seq: e.seq, event: e, verified: true, retired: sessionId === "s-ended", broken: sessionId === "s-ended" })),
-            }),
-          },
-        });
-      }
-      case "putAccountPrefs": {
-        const { expectedRevision, nextPrefs } = eff.kind.value;
-        await this.pause(200);
-        if (this.opts.get("prefs") === "fail") return create(CoreEventSchema, { event: { case: "accountPrefsPutResult", value: create(AccountPrefsPutResultEventSchema, { opId, error: "服务器没有响应" }) } });
-        if (expectedRevision !== this.stored.revision) return create(CoreEventSchema, { event: { case: "accountPrefsPutResult", value: create(AccountPrefsPutResultEventSchema, { opId, applied: false, current: this.demoPrefs() }) } });
-        this.stored = { revision: expectedRevision + 1n, prefs: nextPrefs ?? this.stored.prefs };
-        return create(CoreEventSchema, { event: { case: "accountPrefsPutResult", value: create(AccountPrefsPutResultEventSchema, { opId, applied: true, current: this.demoPrefs() }) } });
-      }
-      case "fetchDevices":
-        return create(CoreEventSchema, { event: { case: "devicesFetched", value: create(DevicesFetchedEventSchema, { opId, devices: [...this.demoDevices.values()].map(this.plainDevice) }) } });
-      default:
-        return create(CoreEventSchema, { event: { case: "devicesFetched", value: create(DevicesFetchedEventSchema, { opId }) } });
-    }
-  }
 
   override async executeCommandAttempt(eff: DispatchCommandEffect): Promise<CommandOutcomeEvent> {
     try {
@@ -1973,7 +1859,7 @@ export class DemoRemote extends Remote {
         outcome, reason, conflictKind: result.conflictKind, errorCode: result.errorCode, errorMessage: result.errorMessage, kind: result.kind,
         resultAvailable: result.resultAvailable || outcome === "executed" || (outcome === "conflict" && result.conflictKind === "business"),
       });
-      return create(CommandOutcomeEventSchema, { requestId: eff.requestId, attemptId: eff.attemptId, source: OutcomeSource.DAEMON, signed: true, hashesMatch: true, attemptBound: true, outerMatchesInner: true, outerOutcome: outcome, outerReason: reason, result: norm });
+      return create(CommandOutcomeEventSchema, { requestId: eff.requestId, attemptId: eff.attemptId, source: OutcomeSource.DAEMON, signed: true, hashesMatch: true, attemptBound: true, outerMatchesInner: true, outerOutcome: outcome, outerReason: reason, rawResult: toBinary(CommandResultSchema, norm) });
     } catch (e) {
       if (e instanceof CommandError) {
         if (e.code === "path_changed") return create(CommandOutcomeEventSchema, { requestId: eff.requestId, attemptId: eff.attemptId, source: OutcomeSource.TRANSPORT, notForwarded: false, attemptBound: true, transportCode: "path_changed", transportDetail: e.message });
@@ -1981,7 +1867,7 @@ export class DemoRemote extends Remote {
           const resultAvailable = e.conflictKind === "identity" ? false : e.resultAvailable;
           return create(CommandOutcomeEventSchema, {
             requestId: eff.requestId, attemptId: eff.attemptId, source: OutcomeSource.DAEMON, signed: true, hashesMatch: true, attemptBound: true, outerMatchesInner: true, outerOutcome: e.outcome, outerReason: e.code,
-            result: create(CommandResultSchema, { outcome: e.outcome, reason: e.code || "error", conflictKind: e.conflictKind, resultAvailable, errorCode: e.code, errorMessage: e.message }),
+            rawResult: toBinary(CommandResultSchema, create(CommandResultSchema, { outcome: e.outcome, reason: e.code || "error", conflictKind: e.conflictKind, resultAvailable, errorCode: e.code, errorMessage: e.message })),
           });
         }
         return create(CommandOutcomeEventSchema, { requestId: eff.requestId, attemptId: eff.attemptId, source: OutcomeSource.SERVER, notForwarded: e.outcome === "not_sent", attemptBound: true, transportCode: e.code, transportDetail: e.message });
@@ -3135,20 +3021,18 @@ export class DemoRemote extends Remote {
       s.lastSeq = BigInt(list.length);
       s.updatedMs = BigInt(Date.now());
     }
-    if (this.demoStream) {
-      this.demoStream.callbacks.onFrame(this.demoStream.legId, {
-        case: "eventsAppended",
-        value: create(EventsAppendedFrameSchema, {
-          sessionId: sid,
-          events: [create(PlainEventSchema, { seq: ev.seq, event: ev, verified: true })],
+    if (globalThis.__remoteAgentCore) {
+      getCoreHost(this).dispatch(
+        create(CoreEventSchema, {
+          event: {
+            case: "seedDemoWorld",
+            value: create(SeedDemoWorldEventSchema, {
+              sessions: s ? [this.demoSessionProto(s)] : [],
+              sessionEvents: [this.demoSessionEventsProto(sid, [ev], false)],
+            }),
+          },
         }),
-      });
-      if (s) {
-        this.demoStream.callbacks.onFrame(this.demoStream.legId, {
-          case: "sessionUpdated",
-          value: this.plainSession(s),
-        });
-      }
+      );
     }
     this.changed();
   }
@@ -3158,11 +3042,17 @@ export class DemoRemote extends Remote {
     if (s?.info) {
       s.info = { ...s.info, ...p };
       s.metaRev++;
-      if (this.demoStream) {
-        this.demoStream.callbacks.onFrame(this.demoStream.legId, {
-          case: "sessionUpdated",
-          value: this.plainSession(s),
-        });
+      if (globalThis.__remoteAgentCore) {
+        getCoreHost(this).dispatch(
+          create(CoreEventSchema, {
+            event: {
+              case: "seedDemoWorld",
+              value: create(SeedDemoWorldEventSchema, {
+                sessions: [this.demoSessionProto(s)],
+              }),
+            },
+          }),
+        );
       }
     }
     this.changed();
@@ -3411,6 +3301,7 @@ export class DemoRemote extends Remote {
             case: "sessionForked",
             value: { sourceSessionId: sid, sourceTitle: src.info?.title ?? "" },
           });
+          this.syncDemoToCore();
         }, 300);
         setTimeout(() => this.patch(id, { status: SessionStatus.IDLE }), 2500);
         return create(CommandResultSchema, {
@@ -3973,7 +3864,9 @@ export class DemoRemote extends Remote {
   ]);
 
   override async loadDevices() {
+    const preservedIncomplete = [...this.demoDevices.values()].filter((d) => d.pairingIncomplete);
     this.demoDevices.clear();
+    for (const d of preservedIncomplete) this.demoDevices.set(d.id, d);
     for (const m of this.demoMachines.values())
       this.demoDevices.set(m.id, {
         id: m.id,

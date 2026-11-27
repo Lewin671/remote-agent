@@ -88,17 +88,6 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.CacheEventsLoadedEvent getCacheEventsLoaded();
 
   /**
-   * <code>.remoteagent.core.v1.TokenResultEvent token_result = 8 [json_name = "tokenResult"];</code>
-   * @return Whether the tokenResult field is set.
-   */
-  boolean hasTokenResult();
-  /**
-   * <code>.remoteagent.core.v1.TokenResultEvent token_result = 8 [json_name = "tokenResult"];</code>
-   * @return The tokenResult.
-   */
-  io.github.lewin671.remoteagent.core.proto.TokenResultEvent getTokenResult();
-
-  /**
    * <code>.remoteagent.core.v1.LocaleChangedEvent locale_changed = 9 [json_name = "localeChanged"];</code>
    * @return Whether the localeChanged field is set.
    */
@@ -130,94 +119,6 @@ public interface EventOrBuilder extends
    * @return The streamClosed.
    */
   io.github.lewin671.remoteagent.core.proto.StreamClosedEvent getStreamClosed();
-
-  /**
-   * <code>.remoteagent.core.v1.StreamFrameEvent stream_frame = 12 [json_name = "streamFrame"];</code>
-   * @return Whether the streamFrame field is set.
-   */
-  boolean hasStreamFrame();
-  /**
-   * <code>.remoteagent.core.v1.StreamFrameEvent stream_frame = 12 [json_name = "streamFrame"];</code>
-   * @return The streamFrame.
-   */
-  io.github.lewin671.remoteagent.core.proto.StreamFrameEvent getStreamFrame();
-
-  /**
-   * <code>.remoteagent.core.v1.ListsFetchedEvent lists_fetched = 13 [json_name = "listsFetched"];</code>
-   * @return Whether the listsFetched field is set.
-   */
-  boolean hasListsFetched();
-  /**
-   * <code>.remoteagent.core.v1.ListsFetchedEvent lists_fetched = 13 [json_name = "listsFetched"];</code>
-   * @return The listsFetched.
-   */
-  io.github.lewin671.remoteagent.core.proto.ListsFetchedEvent getListsFetched();
-
-  /**
-   * <code>.remoteagent.core.v1.SessionsPageFetchedEvent sessions_page_fetched = 14 [json_name = "sessionsPageFetched"];</code>
-   * @return Whether the sessionsPageFetched field is set.
-   */
-  boolean hasSessionsPageFetched();
-  /**
-   * <code>.remoteagent.core.v1.SessionsPageFetchedEvent sessions_page_fetched = 14 [json_name = "sessionsPageFetched"];</code>
-   * @return The sessionsPageFetched.
-   */
-  io.github.lewin671.remoteagent.core.proto.SessionsPageFetchedEvent getSessionsPageFetched();
-
-  /**
-   * <code>.remoteagent.core.v1.SessionByIdFetchedEvent session_by_id_fetched = 15 [json_name = "sessionByIdFetched"];</code>
-   * @return Whether the sessionByIdFetched field is set.
-   */
-  boolean hasSessionByIdFetched();
-  /**
-   * <code>.remoteagent.core.v1.SessionByIdFetchedEvent session_by_id_fetched = 15 [json_name = "sessionByIdFetched"];</code>
-   * @return The sessionByIdFetched.
-   */
-  io.github.lewin671.remoteagent.core.proto.SessionByIdFetchedEvent getSessionByIdFetched();
-
-  /**
-   * <code>.remoteagent.core.v1.EventsPageFetchedEvent events_page_fetched = 16 [json_name = "eventsPageFetched"];</code>
-   * @return Whether the eventsPageFetched field is set.
-   */
-  boolean hasEventsPageFetched();
-  /**
-   * <code>.remoteagent.core.v1.EventsPageFetchedEvent events_page_fetched = 16 [json_name = "eventsPageFetched"];</code>
-   * @return The eventsPageFetched.
-   */
-  io.github.lewin671.remoteagent.core.proto.EventsPageFetchedEvent getEventsPageFetched();
-
-  /**
-   * <code>.remoteagent.core.v1.AccountPrefsFetchedEvent account_prefs_fetched = 17 [json_name = "accountPrefsFetched"];</code>
-   * @return Whether the accountPrefsFetched field is set.
-   */
-  boolean hasAccountPrefsFetched();
-  /**
-   * <code>.remoteagent.core.v1.AccountPrefsFetchedEvent account_prefs_fetched = 17 [json_name = "accountPrefsFetched"];</code>
-   * @return The accountPrefsFetched.
-   */
-  io.github.lewin671.remoteagent.core.proto.AccountPrefsFetchedEvent getAccountPrefsFetched();
-
-  /**
-   * <code>.remoteagent.core.v1.AccountPrefsPutResultEvent account_prefs_put_result = 18 [json_name = "accountPrefsPutResult"];</code>
-   * @return Whether the accountPrefsPutResult field is set.
-   */
-  boolean hasAccountPrefsPutResult();
-  /**
-   * <code>.remoteagent.core.v1.AccountPrefsPutResultEvent account_prefs_put_result = 18 [json_name = "accountPrefsPutResult"];</code>
-   * @return The accountPrefsPutResult.
-   */
-  io.github.lewin671.remoteagent.core.proto.AccountPrefsPutResultEvent getAccountPrefsPutResult();
-
-  /**
-   * <code>.remoteagent.core.v1.DevicesFetchedEvent devices_fetched = 19 [json_name = "devicesFetched"];</code>
-   * @return Whether the devicesFetched field is set.
-   */
-  boolean hasDevicesFetched();
-  /**
-   * <code>.remoteagent.core.v1.DevicesFetchedEvent devices_fetched = 19 [json_name = "devicesFetched"];</code>
-   * @return The devicesFetched.
-   */
-  io.github.lewin671.remoteagent.core.proto.DevicesFetchedEvent getDevicesFetched();
 
   /**
    * <code>.remoteagent.core.v1.CommandOutcomeEvent command_outcome = 20 [json_name = "commandOutcome"];</code>
@@ -2319,29 +2220,18 @@ public interface EventOrBuilder extends
 
   /**
    * <pre>
-   * Unified relay byte-pipe events (430-449 reserved for P2-5).
+   * Unified relay byte-pipe events (431-449 reserved for P2-5).
    * </pre>
    *
-   * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
-   * @return Whether the relayPipeConfig field is set.
-   */
-  boolean hasRelayPipeConfig();
-  /**
-   * <pre>
-   * Unified relay byte-pipe events (430-449 reserved for P2-5).
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
-   * @return The relayPipeConfig.
-   */
-  io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent getRelayPipeConfig();
-
-  /**
    * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
    * @return Whether the relayRpcResult field is set.
    */
   boolean hasRelayRpcResult();
   /**
+   * <pre>
+   * Unified relay byte-pipe events (431-449 reserved for P2-5).
+   * </pre>
+   *
    * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
    * @return The relayRpcResult.
    */
@@ -2563,17 +2453,6 @@ public interface EventOrBuilder extends
    * @return The securityStorageResult.
    */
   io.github.lewin671.remoteagent.core.proto.SecurityStorageResultEvent getSecurityStorageResult();
-
-  /**
-   * <code>.remoteagent.core.v1.SecurityRpcResultEvent security_rpc_result = 462 [json_name = "securityRpcResult"];</code>
-   * @return Whether the securityRpcResult field is set.
-   */
-  boolean hasSecurityRpcResult();
-  /**
-   * <code>.remoteagent.core.v1.SecurityRpcResultEvent security_rpc_result = 462 [json_name = "securityRpcResult"];</code>
-   * @return The securityRpcResult.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecurityRpcResultEvent getSecurityRpcResult();
 
   /**
    * <code>.remoteagent.core.v1.SecurityForegroundEvent security_foreground = 463 [json_name = "securityForeground"];</code>

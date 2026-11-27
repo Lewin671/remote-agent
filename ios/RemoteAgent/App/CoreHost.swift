@@ -10,12 +10,50 @@ import RAProto
 import Security
 import os
 
-/// In-memory Core proto snapshot for `-demo` / preview launches (no `RemoteState` reverse-conversion).
+struct DemoMachine: Equatable, Sendable {
+    var machineID = ""
+    var online = false
+    var lastSeenMs: Int64 = 0
+    var meta = PBMachineMeta()
+    var metaRev: UInt64 = 0
+    static func with(_ build: (inout Self) -> Void) -> Self { var s = Self(); build(&s); return s }
+}
+
+struct DemoSession: Equatable, Sendable {
+    var sessionID = ""
+    var machineID = ""
+    var lastSeq: UInt64 = 0
+    var updatedMs: Int64 = 0
+    var listedEndedMs: Int64 = 0
+    var meta = PBSession()
+    var metaRev: UInt64 = 0
+    var hasMeta: Bool { !meta.id.isEmpty || !meta.title.isEmpty || !meta.cwd.isEmpty }
+    static func with(_ build: (inout Self) -> Void) -> Self { var s = Self(); build(&s); return s }
+}
+
+struct DemoDevice: Equatable, Sendable {
+    var deviceID = ""
+    var kind: PBDeviceKind = .unspecified
+    var createdMs: Int64 = 0
+    var lastSeenMs: Int64 = 0
+    var meta = PBDeviceMeta()
+    var metaRev: UInt64 = 0
+    static func with(_ build: (inout Self) -> Void) -> Self { var s = Self(); build(&s); return s }
+}
+
+struct DemoAccountPrefs: Equatable, Sendable {
+    var revision: UInt64 = 0
+    var prefs = PBProjectPrefs()
+    var hasPrefs: Bool { revision > 0 || prefs.schema > 0 }
+    static func with(_ build: (inout Self) -> Void) -> Self { var s = Self(); build(&s); return s }
+}
+
+/// In-memory demo snapshot for `-demo` / preview launches (encoded to unsigned wire envelopes for Core).
 struct DemoWorld: Equatable, Sendable {
-    var machines: [String: PBCorePlainMachine] = [:]
-    var sessions: [String: PBCorePlainSession] = [:]
-    var devices: [String: PBCorePlainDevice] = [:]
-    var prefs: PBCorePlainAccountPrefs = .with { $0.prefs.schema = 1 }
+    var machines: [String: DemoMachine] = [:]
+    var sessions: [String: DemoSession] = [:]
+    var devices: [String: DemoDevice] = [:]
+    var prefs: DemoAccountPrefs = .with { $0.prefs.schema = 1 }
     var connection: PBCoreConnState = .connected
     var error = ""
     var removed = false
@@ -611,7 +649,6 @@ actor CoreHost: SyncEngine {
         demoMode: Bool = false,
         clock: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
         sleep: @escaping Sleeper = realSleep,
-        rpcOverride: SecurityExecutor.RpcOverride? = nil,
         relayRpcOverride: SecurityExecutor.RelayRpcOverride? = nil,
         callbacks: SecurityHostCallbacks = SecurityHostCallbacks(),
         onNavigate: @escaping @MainActor @Sendable (PBCoreNavigateEffect) -> Void = { _ in },
@@ -624,7 +661,6 @@ actor CoreHost: SyncEngine {
             store: store,
             http: http,
             allowPlainHttp: allowPlainHttp,
-            rpcOverride: rpcOverride,
             relayRpcOverride: relayRpcOverride,
             emit: { ev in
                 await holder.host?.dispatch(ev)
@@ -919,9 +955,6 @@ actor CoreHost: SyncEngine {
                     }
                 }
             }
-            await dispatch {
-                $0.relayPipeConfig = .with { $0.enabled = true }
-            }
         }
         let savedScope = defaults.homeScopeToken()
         await dispatch { [scopeHmacKey] ev in
@@ -972,9 +1005,6 @@ actor CoreHost: SyncEngine {
                 $0.unitFloats = initFloats
                 $0.randomBytes = Self.randomBytes(4096)
             }
-        }
-        await dispatch {
-            $0.relayPipeConfig = .with { $0.enabled = true }
         }
         await dispatchClockUpdated()
         let locale = MessageLocale.current
@@ -2906,12 +2936,7 @@ actor CoreHost: SyncEngine {
                 guard !demoMode, let executor else { continue }
                 await executor.closeStream(legId: s.legID)
 
-            case .ensureToken, .discardToken:
-                // Legacy token effects are unused in production (relayPipeConfig enables Core-managed auth);
-                // demo mode handles bootstrap synchronously.
-                continue
-
-            case .securityNotifyOpened:
+            case .securityNotifyOpened, .securityOpResult:
                 break
 
             case .scheduleTimer(let t):
@@ -2923,11 +2948,7 @@ actor CoreHost: SyncEngine {
                 cancelTimer(timerId: t.timerID, kind: t.kind, key: t.key)
 
             case .cacheRead(let r):
-                if demoMode {
-                    if let ev = demoCacheReadReply(r) { demoReplies.append(ev) }
-                    continue
-                }
-                guard let exec = executor else { continue }
+                guard !demoMode, let exec = executor else { continue }
                 spawnIO { host in
                     let event = await exec.executeCacheRead(r)
                     await host.dispatch(event)
@@ -2945,10 +2966,6 @@ actor CoreHost: SyncEngine {
                 enqueueCacheOp { executor in
                     await executor.executeCacheDelete(d, onSessionRemoved: callback)
                 }
-
-            case .rpc(let r):
-                guard demoMode else { continue }
-                if let ev = demoRpcReply(r) { demoReplies.append(ev) }
 
             case .dispatchCommand(let c):
                 await handleDispatchCommand(c)
@@ -3128,9 +3145,13 @@ actor CoreHost: SyncEngine {
             case .sessionImageLoaded(let eff):
                 executor?.handleSessionImageLoaded(eff)
 
+            case .relayRpc:
+                guard !demoMode else { continue }
+                _ = sharedSecurityExecutor?.handleEffect(eff)
+
             case .securityKeyGenerate, .securityKeySign, .securityKeyAgree,
                  .securityKeyEncapsulate, .securityKeyDiscard, .securityStorage,
-                 .securityRpc, .relayRpc, .relayRpcCancel:
+                 .relayRpcCancel:
                 guard !demoMode else { continue }
                 _ = sharedSecurityExecutor?.handleEffect(eff)
 
@@ -3797,7 +3818,7 @@ actor CoreHost: SyncEngine {
         let opID = nextPingOpID
         nextPingOpID &+= 1
         try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { continuation in
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 if closed {
                     continuation.resume(throwing: CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()))
                     return
@@ -4434,99 +4455,97 @@ actor CoreHost: SyncEngine {
         }
     }
 
-    private func adjustedDemoSession(_ s: PBCorePlainSession) -> PBCorePlainSession {
+    private func adjustedDemoSession(_ s: DemoSession) -> DemoSession {
         var copy = s
         copy.lastSeq = max(s.lastSeq, demoEvents[s.sessionID]?.last?.seq ?? 0)
         return copy
     }
 
-    private static func plainEvents(_ list: [PBEvent]) -> [PBCorePlainEvent] {
-        list.map { ev in
-            PBCorePlainEvent.with { $0.seq = ev.seq; $0.event = ev; $0.verified = true; $0.approxBytes = 512 }
+    private static func demoMachineProto(_ m: DemoMachine) -> PBDemoMachine {
+        PBDemoMachine.with {
+            $0.machineID = m.machineID
+            $0.online = m.online
+            $0.lastSeenMs = m.lastSeenMs
+            if let data = try? m.meta.serializedData(), !data.isEmpty {
+                $0.rawMeta = data
+            }
         }
     }
 
-    private func demoCacheReadReply(_ r: PBCoreCacheReadEffect) -> PBCoreEvent? {
-        switch r.kind {
-        case .bootstrap(let b):
-            return .with {
-                $0.cacheBootstrapLoaded = .with {
-                    $0.opID = b.opID
-                    $0.machines = Array(demoWorld.machines.values)
-                    $0.sessions = demoWorld.sessions.values.map(adjustedDemoSession)
-                    $0.prefs = demoWorld.prefs
+    private func demoSessionProto(_ raw: DemoSession) -> PBDemoSession {
+        let s = adjustedDemoSession(raw)
+        var meta = s.meta
+        meta.id = s.sessionID
+        meta.lastSeq = s.lastSeq
+        var rawCheckpoint = Data()
+        let evs = demoEvents[s.sessionID] ?? []
+        if !evs.isEmpty || meta.planOpen {
+            var resolved = Set<String>()
+            var answered = Set<String>()
+            var planEv: PBEvent?
+            for e in evs {
+                switch e.kind {
+                case .approvalResolved(let a): resolved.insert(a.approvalID)
+                case .questionAnswered(let q): answered.insert(q.questionID)
+                case .planProposed: planEv = e
+                case .planAnswered: planEv = nil
+                default: break
                 }
             }
-        case .events(let e):
-            return .with {
-                $0.cacheEventsLoaded = .with {
-                    $0.opID = e.opID
-                    $0.sessionID = e.sessionID
-                    $0.events = []
+            let actions: [PBEvent] = evs.compactMap { e in
+                var copy = e
+                if copy.sessionID.isEmpty { copy.sessionID = s.sessionID }
+                switch copy.kind {
+                case .approvalRequested(let a) where !resolved.contains(a.approvalID): return copy
+                case .questionAsked(let q) where !q.async && !answered.contains(q.questionID): return copy
+                case .inputState: return copy
+                default: return nil
                 }
             }
-        case nil:
-            return nil
+            let planText: String
+            if case .planProposed(let p)? = planEv?.kind { planText = p.text } else { planText = "" }
+            let cp = PBLiveSnapshot.with {
+                $0.session = meta
+                $0.running = meta.status == .running || meta.status == .starting
+                $0.actions = actions
+                $0.planEventSeq = planEv?.seq ?? 0
+                $0.planScreen = meta.planOpen ? planText : ""
+                $0.planScreenHash = meta.planOpen ? Data(repeating: 1, count: 32) : Data()
+            }
+            rawCheckpoint = (try? cp.serializedData()) ?? Data()
+        }
+        return PBDemoSession.with {
+            $0.sessionID = s.sessionID
+            $0.machineID = s.machineID
+            $0.lastSeq = s.lastSeq
+            $0.updatedMs = s.updatedMs
+            $0.listedEndedMs = s.listedEndedMs
+            $0.rawMeta = (try? meta.serializedData()) ?? Data()
+            $0.rawCheckpoint = rawCheckpoint
         }
     }
 
-    private func demoRpcReply(_ r: PBCoreRpcEffect) -> PBCoreEvent? {
-        switch r.kind {
-        case .fetchLists:
-            return .with {
-                $0.listsFetched = .with {
-                    $0.opID = r.opID
-                    $0.machines = Array(demoWorld.machines.values)
-                    $0.sessions = demoWorld.sessions.values.map(adjustedDemoSession)
-                    $0.devices = Array(demoWorld.devices.values)
-                }
+    private static func demoDeviceProto(_ d: DemoDevice) -> PBDemoDevice {
+        PBDemoDevice.with {
+            $0.deviceID = d.deviceID
+            $0.kind = d.kind
+            $0.createdMs = d.createdMs
+            $0.lastSeenMs = d.lastSeenMs
+            if let data = try? d.meta.serializedData(), !data.isEmpty {
+                $0.rawMeta = data
             }
-        case .getAccountPrefs:
-            return .with {
-                $0.accountPrefsFetched = .with {
-                    $0.opID = r.opID
-                    $0.prefs = demoWorld.prefs
-                }
+        }
+    }
+
+    private static func demoSessionEventsProto(_ sessionID: String, _ list: [PBEvent], replace: Bool) -> PBDemoSessionEvents {
+        PBDemoSessionEvents.with {
+            $0.sessionID = sessionID
+            $0.replace = replace
+            $0.rawEvents = list.compactMap { ev in
+                var copy = ev
+                if copy.sessionID.isEmpty { copy.sessionID = sessionID }
+                return try? copy.serializedData()
             }
-        case .fetchSessionByID(let s):
-            return .with {
-                $0.sessionByIDFetched = .with {
-                    $0.opID = r.opID
-                    if let sess = demoWorld.sessions[s.sessionID] {
-                        $0.session = adjustedDemoSession(sess)
-                    } else {
-                        $0.error = "not_found"
-                    }
-                }
-            }
-        case .getEvents(let g):
-            let all = demoEvents[g.sessionID] ?? []
-            let remaining = all.filter { $0.seq > g.afterSeq }
-            let limit = g.limit > 0 ? Int(g.limit) : remaining.count
-            let page = Array(remaining.prefix(limit))
-            return .with {
-                $0.eventsPageFetched = .with {
-                    $0.opID = r.opID
-                    $0.sessionID = g.sessionID
-                    $0.events = Self.plainEvents(page)
-                    $0.more = remaining.count > page.count
-                }
-            }
-        case .fetchDevices:
-            return .with {
-                $0.devicesFetched = .with {
-                    $0.opID = r.opID
-                    $0.devices = Array(demoWorld.devices.values)
-                }
-            }
-        case .fetchSessionsPage:
-            return .with {
-                $0.sessionsPageFetched = .with {
-                    $0.opID = r.opID
-                }
-            }
-        case .putAccountPrefs, nil:
-            return nil
         }
     }
 
@@ -4542,7 +4561,7 @@ actor CoreHost: SyncEngine {
             $0.source = .daemon; $0.attemptBound = true
             $0.hashesMatch = true; $0.outerMatchesInner = true; $0.signed = true
             $0.outerOutcome = "executed"; $0.outerReason = "ok"
-            $0.result = result
+            $0.rawResult = (try? result.serializedData()) ?? Data()
         }
     }
 
@@ -4616,10 +4635,10 @@ actor CoreHost: SyncEngine {
         for (sid, list) in events { demoEvents[sid] = list }
         for (mid, data) in schedules { demoSchedules[mid] = data }
         for (mid, tokens) in scheduleSeen { demoScheduleSeen[mid] = tokens }
-        var tokenOpID: UInt64 = 0
+        var legID: UInt64 = 0
         func scanPre(_ effects: [PBCoreEffect]) {
             for eff in effects {
-                if case .ensureToken(let t)? = eff.effect { tokenOpID = t.opID }
+                if case .openStream(let s)? = eff.effect { legID = s.legID }
             }
         }
         scanPre(await stepDemo {
@@ -4635,6 +4654,46 @@ actor CoreHost: SyncEngine {
                 $0.account = account.accountId
                 $0.protocolVersion = UInt32(peerProtocolVersion)
                 $0.platformAgent = "ios"
+            }
+        })
+        let secSeed = demoSecuritySeed()
+        let directReports: [PBDemoDirectReport] = demoWorld.directMachineIds.sorted().map { id in
+            .with {
+                $0.machineID = id
+                $0.enabled = true
+                $0.report = .with {
+                    $0.enabled = true
+                    $0.capable = true
+                    $0.state = .connected
+                    $0.readRoute = .direct
+                    $0.fileRoute = .direct
+                    $0.hasActiveRttMs_p = true
+                    $0.activeRttMs = 12
+                }
+            }
+        }
+        let demoMachines = demoWorld.machines.values.map(Self.demoMachineProto)
+        let demoSessions = demoWorld.sessions.values.map(demoSessionProto)
+        let demoDevices = demoWorld.devices.values.map(Self.demoDeviceProto)
+        let demoPrefsData = (demoWorld.prefs.revision > 0 || demoWorld.prefs.hasPrefs)
+            ? ((try? demoWorld.prefs.prefs.serializedData()) ?? Data())
+            : Data()
+        let demoPrefsRev = demoWorld.prefs.revision
+        let demoSessionEvents = demoEvents.map { Self.demoSessionEventsProto($0.key, $0.value, replace: true) }
+        scanPre(await stepDemo {
+            $0.seedDemoWorld = .with {
+                $0.security = secSeed
+                $0.clearDirectReports_p = true
+                $0.directReports = directReports
+                $0.replaceMachines = true
+                $0.machines = demoMachines
+                $0.replaceSessions = true
+                $0.sessions = demoSessions
+                $0.replaceDevices = true
+                $0.devices = demoDevices
+                $0.rawPrefs = demoPrefsData
+                $0.prefsRevision = demoPrefsRev
+                $0.sessionEvents = demoSessionEvents
             }
         })
         scanPre(await stepDemo { $0.syncLifecycle = .with { $0.kind = .start; $0.scopeHmacKey = self.scopeHmacKey } })
@@ -4661,39 +4720,8 @@ actor CoreHost: SyncEngine {
         scanPre(await stepDemo { $0.scheduleLocalContext = Self.makeScheduleLocalContext(nowMs: clock()) })
         scanPre(await stepDemo { $0.localeChanged = .with { $0.uiLocale = MessageLocale.current } })
         scanPre(await stepDemo { $0.networkChanged = .with { $0.signature = "demo-wifi"; $0.available = true } })
-        let secSeed = demoSecuritySeed()
-        let directReports: [PBDemoDirectReport] = demoWorld.directMachineIds.sorted().map { id in
-            .with {
-                $0.machineID = id
-                $0.enabled = true
-                $0.report = .with {
-                    $0.enabled = true
-                    $0.capable = true
-                    $0.state = .connected
-                    $0.readRoute = .direct
-                    $0.fileRoute = .direct
-                    $0.hasActiveRttMs_p = true
-                    $0.activeRttMs = 12
-                }
-            }
-        }
-        _ = await stepDemo {
-            $0.seedDemoWorld = .with {
-                $0.security = secSeed
-                $0.clearDirectReports_p = true
-                $0.directReports = directReports
-            }
-        }
-        var legID: UInt64 = 0
-        if tokenOpID > 0 {
-            let effs = await stepDemo {
-                $0.tokenResult = .with { $0.opID = tokenOpID; $0.token = "demo-token"; $0.expiresMs = clock() + 3_600_000 }
-            }
-            legID = effs.compactMap { if case .openStream(let s)? = $0.effect { return s.legID }; return nil }.last ?? 0
-        }
         demoLegID = legID
         if legID > 0 {
-            // `streamReady` triggers `fetchLists` & `getAccountPrefs` RPCs, answered by `demoRpcReply`.
             _ = await stepDemo { $0.streamReady = .with { $0.legID = legID; $0.serverTimeMs = self.clock() } }
         }
         switch demoWorld.connection {
@@ -4772,58 +4800,30 @@ actor CoreHost: SyncEngine {
                 }
             }
         }
+        let addedMachines = shown.machines.values.map(Self.demoMachineProto)
+        let addedSessions = shown.sessions.values.map(demoSessionProto)
+        let addedDevices = shown.devices.values.map(Self.demoDeviceProto)
+        let addedPrefsData = shown.prefs.revision > 0 ? ((try? shown.prefs.prefs.serializedData()) ?? Data()) : Data()
+        let addedPrefsRev = shown.prefs.revision
+        var addedSessionEvents: [PBDemoSessionEvents] = []
+        for (sid, list) in events where !list.isEmpty {
+            let prevMax = previousEvents[sid]?.last?.seq ?? 0
+            let added = list.filter { $0.seq > prevMax }
+            if !added.isEmpty {
+                addedSessionEvents.append(Self.demoSessionEventsProto(sid, added, replace: false))
+            }
+        }
         _ = await stepDemo {
             $0.seedDemoWorld = .with {
                 $0.security = secSeed
                 $0.clearDirectReports_p = true
                 $0.directReports = directReports
-            }
-        }
-        for m in shown.machines.values {
-            _ = await stepDemo {
-                $0.streamFrame = .with {
-                    $0.legID = self.demoLegID
-                    $0.machineUpdated = m
-                }
-            }
-        }
-        for s in shown.sessions.values.map(adjustedDemoSession) {
-            _ = await stepDemo {
-                $0.streamFrame = .with {
-                    $0.legID = self.demoLegID
-                    $0.sessionUpdated = s
-                }
-            }
-        }
-        for d in shown.devices.values {
-            _ = await stepDemo {
-                $0.streamFrame = .with {
-                    $0.legID = self.demoLegID
-                    $0.deviceUpdated = d
-                }
-            }
-        }
-        if shown.prefs.revision > 0 {
-            _ = await stepDemo {
-                $0.streamFrame = .with {
-                    $0.legID = self.demoLegID
-                    $0.accountPrefsUpdated = shown.prefs
-                }
-            }
-        }
-        for (sid, list) in events where !list.isEmpty {
-            let prevMax = previousEvents[sid]?.last?.seq ?? 0
-            let added = list.filter { $0.seq > prevMax }
-            if !added.isEmpty {
-                _ = await stepDemo {
-                    $0.streamFrame = .with {
-                        $0.legID = self.demoLegID
-                        $0.eventsAppended = .with {
-                            $0.sessionID = sid
-                            $0.events = Self.plainEvents(added)
-                        }
-                    }
-                }
+                $0.machines = addedMachines
+                $0.sessions = addedSessions
+                $0.devices = addedDevices
+                $0.rawPrefs = addedPrefsData
+                $0.prefsRevision = addedPrefsRev
+                $0.sessionEvents = addedSessionEvents
             }
         }
         await renderTargets([.connection, .home, .project, .newSession, .session, .schedules, .settings, .devices, .machineSettings, .quota, .clientDetail])

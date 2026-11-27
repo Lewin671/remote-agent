@@ -28,18 +28,9 @@ public  final class Event extends
     TIMER_FIRED(5),
     CACHE_BOOTSTRAP_LOADED(6),
     CACHE_EVENTS_LOADED(7),
-    TOKEN_RESULT(8),
     LOCALE_CHANGED(9),
     STREAM_READY(10),
     STREAM_CLOSED(11),
-    STREAM_FRAME(12),
-    LISTS_FETCHED(13),
-    SESSIONS_PAGE_FETCHED(14),
-    SESSION_BY_ID_FETCHED(15),
-    EVENTS_PAGE_FETCHED(16),
-    ACCOUNT_PREFS_FETCHED(17),
-    ACCOUNT_PREFS_PUT_RESULT(18),
-    DEVICES_FETCHED(19),
     COMMAND_OUTCOME(20),
     SESSION_WATCH(21),
     SESSION_PIN(22),
@@ -230,7 +221,6 @@ public  final class Event extends
     DIRECT_PREFERENCES_LOADED(421),
     TERMINAL_HISTORY(422),
     DIRECT_PC_PROBE_RECEIVED(423),
-    RELAY_PIPE_CONFIG(430),
     RELAY_RPC_RESULT(431),
     STREAM_RAW_FRAME(432),
     REFRESH_DEVICES(433),
@@ -251,7 +241,6 @@ public  final class Event extends
     SECURITY_KEY_GENERATED(459),
     SECURITY_KEY_ENCAPSULATED(460),
     SECURITY_STORAGE_RESULT(461),
-    SECURITY_RPC_RESULT(462),
     SECURITY_FOREGROUND(463),
     SECURITY_ACTION(464),
     SECURITY_OPEN_NOTIFY(465),
@@ -304,18 +293,9 @@ public  final class Event extends
         case 5: return TIMER_FIRED;
         case 6: return CACHE_BOOTSTRAP_LOADED;
         case 7: return CACHE_EVENTS_LOADED;
-        case 8: return TOKEN_RESULT;
         case 9: return LOCALE_CHANGED;
         case 10: return STREAM_READY;
         case 11: return STREAM_CLOSED;
-        case 12: return STREAM_FRAME;
-        case 13: return LISTS_FETCHED;
-        case 14: return SESSIONS_PAGE_FETCHED;
-        case 15: return SESSION_BY_ID_FETCHED;
-        case 16: return EVENTS_PAGE_FETCHED;
-        case 17: return ACCOUNT_PREFS_FETCHED;
-        case 18: return ACCOUNT_PREFS_PUT_RESULT;
-        case 19: return DEVICES_FETCHED;
         case 20: return COMMAND_OUTCOME;
         case 21: return SESSION_WATCH;
         case 22: return SESSION_PIN;
@@ -506,7 +486,6 @@ public  final class Event extends
         case 421: return DIRECT_PREFERENCES_LOADED;
         case 422: return TERMINAL_HISTORY;
         case 423: return DIRECT_PC_PROBE_RECEIVED;
-        case 430: return RELAY_PIPE_CONFIG;
         case 431: return RELAY_RPC_RESULT;
         case 432: return STREAM_RAW_FRAME;
         case 433: return REFRESH_DEVICES;
@@ -527,7 +506,6 @@ public  final class Event extends
         case 459: return SECURITY_KEY_GENERATED;
         case 460: return SECURITY_KEY_ENCAPSULATED;
         case 461: return SECURITY_STORAGE_RESULT;
-        case 462: return SECURITY_RPC_RESULT;
         case 463: return SECURITY_FOREGROUND;
         case 464: return SECURITY_ACTION;
         case 465: return SECURITY_OPEN_NOTIFY;
@@ -943,58 +921,6 @@ public  final class Event extends
     }
   }
 
-  public static final int TOKEN_RESULT_FIELD_NUMBER = 8;
-  /**
-   * <code>.remoteagent.core.v1.TokenResultEvent token_result = 8 [json_name = "tokenResult"];</code>
-   */
-  @java.lang.Override
-  public boolean hasTokenResult() {
-    return eventCase_ == 8;
-  }
-  /**
-   * <code>.remoteagent.core.v1.TokenResultEvent token_result = 8 [json_name = "tokenResult"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.TokenResultEvent getTokenResult() {
-    if (eventCase_ == 8) {
-       return (io.github.lewin671.remoteagent.core.proto.TokenResultEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.TokenResultEvent.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.TokenResultEvent token_result = 8 [json_name = "tokenResult"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setTokenResult(io.github.lewin671.remoteagent.core.proto.TokenResultEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 8;
-  }
-  /**
-   * <code>.remoteagent.core.v1.TokenResultEvent token_result = 8 [json_name = "tokenResult"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeTokenResult(io.github.lewin671.remoteagent.core.proto.TokenResultEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 8 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.TokenResultEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.TokenResultEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.TokenResultEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 8;
-  }
-  /**
-   * <code>.remoteagent.core.v1.TokenResultEvent token_result = 8 [json_name = "tokenResult"];</code>
-   */
-  private void clearTokenResult() {
-    if (eventCase_ == 8) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
   public static final int LOCALE_CHANGED_FIELD_NUMBER = 9;
   /**
    * <code>.remoteagent.core.v1.LocaleChangedEvent locale_changed = 9 [json_name = "localeChanged"];</code>
@@ -1146,422 +1072,6 @@ public  final class Event extends
    */
   private void clearStreamClosed() {
     if (eventCase_ == 11) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
-  public static final int STREAM_FRAME_FIELD_NUMBER = 12;
-  /**
-   * <code>.remoteagent.core.v1.StreamFrameEvent stream_frame = 12 [json_name = "streamFrame"];</code>
-   */
-  @java.lang.Override
-  public boolean hasStreamFrame() {
-    return eventCase_ == 12;
-  }
-  /**
-   * <code>.remoteagent.core.v1.StreamFrameEvent stream_frame = 12 [json_name = "streamFrame"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.StreamFrameEvent getStreamFrame() {
-    if (eventCase_ == 12) {
-       return (io.github.lewin671.remoteagent.core.proto.StreamFrameEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.StreamFrameEvent stream_frame = 12 [json_name = "streamFrame"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setStreamFrame(io.github.lewin671.remoteagent.core.proto.StreamFrameEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 12;
-  }
-  /**
-   * <code>.remoteagent.core.v1.StreamFrameEvent stream_frame = 12 [json_name = "streamFrame"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeStreamFrame(io.github.lewin671.remoteagent.core.proto.StreamFrameEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 12 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.StreamFrameEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 12;
-  }
-  /**
-   * <code>.remoteagent.core.v1.StreamFrameEvent stream_frame = 12 [json_name = "streamFrame"];</code>
-   */
-  private void clearStreamFrame() {
-    if (eventCase_ == 12) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
-  public static final int LISTS_FETCHED_FIELD_NUMBER = 13;
-  /**
-   * <code>.remoteagent.core.v1.ListsFetchedEvent lists_fetched = 13 [json_name = "listsFetched"];</code>
-   */
-  @java.lang.Override
-  public boolean hasListsFetched() {
-    return eventCase_ == 13;
-  }
-  /**
-   * <code>.remoteagent.core.v1.ListsFetchedEvent lists_fetched = 13 [json_name = "listsFetched"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.ListsFetchedEvent getListsFetched() {
-    if (eventCase_ == 13) {
-       return (io.github.lewin671.remoteagent.core.proto.ListsFetchedEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.ListsFetchedEvent.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.ListsFetchedEvent lists_fetched = 13 [json_name = "listsFetched"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setListsFetched(io.github.lewin671.remoteagent.core.proto.ListsFetchedEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 13;
-  }
-  /**
-   * <code>.remoteagent.core.v1.ListsFetchedEvent lists_fetched = 13 [json_name = "listsFetched"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeListsFetched(io.github.lewin671.remoteagent.core.proto.ListsFetchedEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 13 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.ListsFetchedEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.ListsFetchedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.ListsFetchedEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 13;
-  }
-  /**
-   * <code>.remoteagent.core.v1.ListsFetchedEvent lists_fetched = 13 [json_name = "listsFetched"];</code>
-   */
-  private void clearListsFetched() {
-    if (eventCase_ == 13) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
-  public static final int SESSIONS_PAGE_FETCHED_FIELD_NUMBER = 14;
-  /**
-   * <code>.remoteagent.core.v1.SessionsPageFetchedEvent sessions_page_fetched = 14 [json_name = "sessionsPageFetched"];</code>
-   */
-  @java.lang.Override
-  public boolean hasSessionsPageFetched() {
-    return eventCase_ == 14;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SessionsPageFetchedEvent sessions_page_fetched = 14 [json_name = "sessionsPageFetched"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SessionsPageFetchedEvent getSessionsPageFetched() {
-    if (eventCase_ == 14) {
-       return (io.github.lewin671.remoteagent.core.proto.SessionsPageFetchedEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SessionsPageFetchedEvent.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SessionsPageFetchedEvent sessions_page_fetched = 14 [json_name = "sessionsPageFetched"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSessionsPageFetched(io.github.lewin671.remoteagent.core.proto.SessionsPageFetchedEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 14;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SessionsPageFetchedEvent sessions_page_fetched = 14 [json_name = "sessionsPageFetched"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeSessionsPageFetched(io.github.lewin671.remoteagent.core.proto.SessionsPageFetchedEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 14 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.SessionsPageFetchedEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.SessionsPageFetchedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionsPageFetchedEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 14;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SessionsPageFetchedEvent sessions_page_fetched = 14 [json_name = "sessionsPageFetched"];</code>
-   */
-  private void clearSessionsPageFetched() {
-    if (eventCase_ == 14) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
-  public static final int SESSION_BY_ID_FETCHED_FIELD_NUMBER = 15;
-  /**
-   * <code>.remoteagent.core.v1.SessionByIdFetchedEvent session_by_id_fetched = 15 [json_name = "sessionByIdFetched"];</code>
-   */
-  @java.lang.Override
-  public boolean hasSessionByIdFetched() {
-    return eventCase_ == 15;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SessionByIdFetchedEvent session_by_id_fetched = 15 [json_name = "sessionByIdFetched"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SessionByIdFetchedEvent getSessionByIdFetched() {
-    if (eventCase_ == 15) {
-       return (io.github.lewin671.remoteagent.core.proto.SessionByIdFetchedEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SessionByIdFetchedEvent.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SessionByIdFetchedEvent session_by_id_fetched = 15 [json_name = "sessionByIdFetched"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSessionByIdFetched(io.github.lewin671.remoteagent.core.proto.SessionByIdFetchedEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 15;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SessionByIdFetchedEvent session_by_id_fetched = 15 [json_name = "sessionByIdFetched"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeSessionByIdFetched(io.github.lewin671.remoteagent.core.proto.SessionByIdFetchedEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 15 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.SessionByIdFetchedEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.SessionByIdFetchedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionByIdFetchedEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 15;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SessionByIdFetchedEvent session_by_id_fetched = 15 [json_name = "sessionByIdFetched"];</code>
-   */
-  private void clearSessionByIdFetched() {
-    if (eventCase_ == 15) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
-  public static final int EVENTS_PAGE_FETCHED_FIELD_NUMBER = 16;
-  /**
-   * <code>.remoteagent.core.v1.EventsPageFetchedEvent events_page_fetched = 16 [json_name = "eventsPageFetched"];</code>
-   */
-  @java.lang.Override
-  public boolean hasEventsPageFetched() {
-    return eventCase_ == 16;
-  }
-  /**
-   * <code>.remoteagent.core.v1.EventsPageFetchedEvent events_page_fetched = 16 [json_name = "eventsPageFetched"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.EventsPageFetchedEvent getEventsPageFetched() {
-    if (eventCase_ == 16) {
-       return (io.github.lewin671.remoteagent.core.proto.EventsPageFetchedEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.EventsPageFetchedEvent.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.EventsPageFetchedEvent events_page_fetched = 16 [json_name = "eventsPageFetched"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setEventsPageFetched(io.github.lewin671.remoteagent.core.proto.EventsPageFetchedEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 16;
-  }
-  /**
-   * <code>.remoteagent.core.v1.EventsPageFetchedEvent events_page_fetched = 16 [json_name = "eventsPageFetched"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeEventsPageFetched(io.github.lewin671.remoteagent.core.proto.EventsPageFetchedEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 16 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.EventsPageFetchedEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.EventsPageFetchedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.EventsPageFetchedEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 16;
-  }
-  /**
-   * <code>.remoteagent.core.v1.EventsPageFetchedEvent events_page_fetched = 16 [json_name = "eventsPageFetched"];</code>
-   */
-  private void clearEventsPageFetched() {
-    if (eventCase_ == 16) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
-  public static final int ACCOUNT_PREFS_FETCHED_FIELD_NUMBER = 17;
-  /**
-   * <code>.remoteagent.core.v1.AccountPrefsFetchedEvent account_prefs_fetched = 17 [json_name = "accountPrefsFetched"];</code>
-   */
-  @java.lang.Override
-  public boolean hasAccountPrefsFetched() {
-    return eventCase_ == 17;
-  }
-  /**
-   * <code>.remoteagent.core.v1.AccountPrefsFetchedEvent account_prefs_fetched = 17 [json_name = "accountPrefsFetched"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.AccountPrefsFetchedEvent getAccountPrefsFetched() {
-    if (eventCase_ == 17) {
-       return (io.github.lewin671.remoteagent.core.proto.AccountPrefsFetchedEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.AccountPrefsFetchedEvent.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.AccountPrefsFetchedEvent account_prefs_fetched = 17 [json_name = "accountPrefsFetched"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setAccountPrefsFetched(io.github.lewin671.remoteagent.core.proto.AccountPrefsFetchedEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 17;
-  }
-  /**
-   * <code>.remoteagent.core.v1.AccountPrefsFetchedEvent account_prefs_fetched = 17 [json_name = "accountPrefsFetched"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeAccountPrefsFetched(io.github.lewin671.remoteagent.core.proto.AccountPrefsFetchedEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 17 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.AccountPrefsFetchedEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.AccountPrefsFetchedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.AccountPrefsFetchedEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 17;
-  }
-  /**
-   * <code>.remoteagent.core.v1.AccountPrefsFetchedEvent account_prefs_fetched = 17 [json_name = "accountPrefsFetched"];</code>
-   */
-  private void clearAccountPrefsFetched() {
-    if (eventCase_ == 17) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
-  public static final int ACCOUNT_PREFS_PUT_RESULT_FIELD_NUMBER = 18;
-  /**
-   * <code>.remoteagent.core.v1.AccountPrefsPutResultEvent account_prefs_put_result = 18 [json_name = "accountPrefsPutResult"];</code>
-   */
-  @java.lang.Override
-  public boolean hasAccountPrefsPutResult() {
-    return eventCase_ == 18;
-  }
-  /**
-   * <code>.remoteagent.core.v1.AccountPrefsPutResultEvent account_prefs_put_result = 18 [json_name = "accountPrefsPutResult"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.AccountPrefsPutResultEvent getAccountPrefsPutResult() {
-    if (eventCase_ == 18) {
-       return (io.github.lewin671.remoteagent.core.proto.AccountPrefsPutResultEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.AccountPrefsPutResultEvent.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.AccountPrefsPutResultEvent account_prefs_put_result = 18 [json_name = "accountPrefsPutResult"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setAccountPrefsPutResult(io.github.lewin671.remoteagent.core.proto.AccountPrefsPutResultEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 18;
-  }
-  /**
-   * <code>.remoteagent.core.v1.AccountPrefsPutResultEvent account_prefs_put_result = 18 [json_name = "accountPrefsPutResult"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeAccountPrefsPutResult(io.github.lewin671.remoteagent.core.proto.AccountPrefsPutResultEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 18 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.AccountPrefsPutResultEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.AccountPrefsPutResultEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.AccountPrefsPutResultEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 18;
-  }
-  /**
-   * <code>.remoteagent.core.v1.AccountPrefsPutResultEvent account_prefs_put_result = 18 [json_name = "accountPrefsPutResult"];</code>
-   */
-  private void clearAccountPrefsPutResult() {
-    if (eventCase_ == 18) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
-  public static final int DEVICES_FETCHED_FIELD_NUMBER = 19;
-  /**
-   * <code>.remoteagent.core.v1.DevicesFetchedEvent devices_fetched = 19 [json_name = "devicesFetched"];</code>
-   */
-  @java.lang.Override
-  public boolean hasDevicesFetched() {
-    return eventCase_ == 19;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DevicesFetchedEvent devices_fetched = 19 [json_name = "devicesFetched"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.DevicesFetchedEvent getDevicesFetched() {
-    if (eventCase_ == 19) {
-       return (io.github.lewin671.remoteagent.core.proto.DevicesFetchedEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.DevicesFetchedEvent.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.DevicesFetchedEvent devices_fetched = 19 [json_name = "devicesFetched"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setDevicesFetched(io.github.lewin671.remoteagent.core.proto.DevicesFetchedEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 19;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DevicesFetchedEvent devices_fetched = 19 [json_name = "devicesFetched"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeDevicesFetched(io.github.lewin671.remoteagent.core.proto.DevicesFetchedEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 19 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.DevicesFetchedEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.DevicesFetchedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DevicesFetchedEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 19;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DevicesFetchedEvent devices_fetched = 19 [json_name = "devicesFetched"];</code>
-   */
-  private void clearDevicesFetched() {
-    if (eventCase_ == 19) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -11467,80 +10977,12 @@ public  final class Event extends
     }
   }
 
-  public static final int RELAY_PIPE_CONFIG_FIELD_NUMBER = 430;
-  /**
-   * <pre>
-   * Unified relay byte-pipe events (430-449 reserved for P2-5).
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
-   */
-  @java.lang.Override
-  public boolean hasRelayPipeConfig() {
-    return eventCase_ == 430;
-  }
-  /**
-   * <pre>
-   * Unified relay byte-pipe events (430-449 reserved for P2-5).
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent getRelayPipeConfig() {
-    if (eventCase_ == 430) {
-       return (io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent.getDefaultInstance();
-  }
-  /**
-   * <pre>
-   * Unified relay byte-pipe events (430-449 reserved for P2-5).
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setRelayPipeConfig(io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 430;
-  }
-  /**
-   * <pre>
-   * Unified relay byte-pipe events (430-449 reserved for P2-5).
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeRelayPipeConfig(io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 430 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 430;
-  }
-  /**
-   * <pre>
-   * Unified relay byte-pipe events (430-449 reserved for P2-5).
-   * </pre>
-   *
-   * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
-   */
-  private void clearRelayPipeConfig() {
-    if (eventCase_ == 430) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
   public static final int RELAY_RPC_RESULT_FIELD_NUMBER = 431;
   /**
+   * <pre>
+   * Unified relay byte-pipe events (431-449 reserved for P2-5).
+   * </pre>
+   *
    * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
    */
   @java.lang.Override
@@ -11548,6 +10990,10 @@ public  final class Event extends
     return eventCase_ == 431;
   }
   /**
+   * <pre>
+   * Unified relay byte-pipe events (431-449 reserved for P2-5).
+   * </pre>
+   *
    * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
    */
   @java.lang.Override
@@ -11558,6 +11004,10 @@ public  final class Event extends
     return io.github.lewin671.remoteagent.core.proto.RelayRpcResultEvent.getDefaultInstance();
   }
   /**
+   * <pre>
+   * Unified relay byte-pipe events (431-449 reserved for P2-5).
+   * </pre>
+   *
    * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
@@ -11567,6 +11017,10 @@ public  final class Event extends
     eventCase_ = 431;
   }
   /**
+   * <pre>
+   * Unified relay byte-pipe events (431-449 reserved for P2-5).
+   * </pre>
+   *
    * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
@@ -11582,6 +11036,10 @@ public  final class Event extends
     eventCase_ = 431;
   }
   /**
+   * <pre>
+   * Unified relay byte-pipe events (431-449 reserved for P2-5).
+   * </pre>
+   *
    * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
    */
   private void clearRelayRpcResult() {
@@ -12594,58 +12052,6 @@ public  final class Event extends
    */
   private void clearSecurityStorageResult() {
     if (eventCase_ == 461) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
-  public static final int SECURITY_RPC_RESULT_FIELD_NUMBER = 462;
-  /**
-   * <code>.remoteagent.core.v1.SecurityRpcResultEvent security_rpc_result = 462 [json_name = "securityRpcResult"];</code>
-   */
-  @java.lang.Override
-  public boolean hasSecurityRpcResult() {
-    return eventCase_ == 462;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityRpcResultEvent security_rpc_result = 462 [json_name = "securityRpcResult"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecurityRpcResultEvent getSecurityRpcResult() {
-    if (eventCase_ == 462) {
-       return (io.github.lewin671.remoteagent.core.proto.SecurityRpcResultEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SecurityRpcResultEvent.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityRpcResultEvent security_rpc_result = 462 [json_name = "securityRpcResult"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSecurityRpcResult(io.github.lewin671.remoteagent.core.proto.SecurityRpcResultEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 462;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityRpcResultEvent security_rpc_result = 462 [json_name = "securityRpcResult"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeSecurityRpcResult(io.github.lewin671.remoteagent.core.proto.SecurityRpcResultEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 462 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.SecurityRpcResultEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.SecurityRpcResultEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.SecurityRpcResultEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 462;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityRpcResultEvent security_rpc_result = 462 [json_name = "securityRpcResult"];</code>
-   */
-  private void clearSecurityRpcResult() {
-    if (eventCase_ == 462) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -14895,54 +14301,6 @@ public  final class Event extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.TokenResultEvent token_result = 8 [json_name = "tokenResult"];</code>
-     */
-    @java.lang.Override
-    public boolean hasTokenResult() {
-      return instance.hasTokenResult();
-    }
-    /**
-     * <code>.remoteagent.core.v1.TokenResultEvent token_result = 8 [json_name = "tokenResult"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.TokenResultEvent getTokenResult() {
-      return instance.getTokenResult();
-    }
-    /**
-     * <code>.remoteagent.core.v1.TokenResultEvent token_result = 8 [json_name = "tokenResult"];</code>
-     */
-    public Builder setTokenResult(io.github.lewin671.remoteagent.core.proto.TokenResultEvent value) {
-      copyOnWrite();
-      instance.setTokenResult(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.TokenResultEvent token_result = 8 [json_name = "tokenResult"];</code>
-     */
-    public Builder setTokenResult(
-        io.github.lewin671.remoteagent.core.proto.TokenResultEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setTokenResult(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.TokenResultEvent token_result = 8 [json_name = "tokenResult"];</code>
-     */
-    public Builder mergeTokenResult(io.github.lewin671.remoteagent.core.proto.TokenResultEvent value) {
-      copyOnWrite();
-      instance.mergeTokenResult(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.TokenResultEvent token_result = 8 [json_name = "tokenResult"];</code>
-     */
-    public Builder clearTokenResult() {
-      copyOnWrite();
-      instance.clearTokenResult();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.LocaleChangedEvent locale_changed = 9 [json_name = "localeChanged"];</code>
      */
     @java.lang.Override
@@ -15083,390 +14441,6 @@ public  final class Event extends
     public Builder clearStreamClosed() {
       copyOnWrite();
       instance.clearStreamClosed();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.StreamFrameEvent stream_frame = 12 [json_name = "streamFrame"];</code>
-     */
-    @java.lang.Override
-    public boolean hasStreamFrame() {
-      return instance.hasStreamFrame();
-    }
-    /**
-     * <code>.remoteagent.core.v1.StreamFrameEvent stream_frame = 12 [json_name = "streamFrame"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.StreamFrameEvent getStreamFrame() {
-      return instance.getStreamFrame();
-    }
-    /**
-     * <code>.remoteagent.core.v1.StreamFrameEvent stream_frame = 12 [json_name = "streamFrame"];</code>
-     */
-    public Builder setStreamFrame(io.github.lewin671.remoteagent.core.proto.StreamFrameEvent value) {
-      copyOnWrite();
-      instance.setStreamFrame(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.StreamFrameEvent stream_frame = 12 [json_name = "streamFrame"];</code>
-     */
-    public Builder setStreamFrame(
-        io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setStreamFrame(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.StreamFrameEvent stream_frame = 12 [json_name = "streamFrame"];</code>
-     */
-    public Builder mergeStreamFrame(io.github.lewin671.remoteagent.core.proto.StreamFrameEvent value) {
-      copyOnWrite();
-      instance.mergeStreamFrame(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.StreamFrameEvent stream_frame = 12 [json_name = "streamFrame"];</code>
-     */
-    public Builder clearStreamFrame() {
-      copyOnWrite();
-      instance.clearStreamFrame();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.ListsFetchedEvent lists_fetched = 13 [json_name = "listsFetched"];</code>
-     */
-    @java.lang.Override
-    public boolean hasListsFetched() {
-      return instance.hasListsFetched();
-    }
-    /**
-     * <code>.remoteagent.core.v1.ListsFetchedEvent lists_fetched = 13 [json_name = "listsFetched"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.ListsFetchedEvent getListsFetched() {
-      return instance.getListsFetched();
-    }
-    /**
-     * <code>.remoteagent.core.v1.ListsFetchedEvent lists_fetched = 13 [json_name = "listsFetched"];</code>
-     */
-    public Builder setListsFetched(io.github.lewin671.remoteagent.core.proto.ListsFetchedEvent value) {
-      copyOnWrite();
-      instance.setListsFetched(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.ListsFetchedEvent lists_fetched = 13 [json_name = "listsFetched"];</code>
-     */
-    public Builder setListsFetched(
-        io.github.lewin671.remoteagent.core.proto.ListsFetchedEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setListsFetched(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.ListsFetchedEvent lists_fetched = 13 [json_name = "listsFetched"];</code>
-     */
-    public Builder mergeListsFetched(io.github.lewin671.remoteagent.core.proto.ListsFetchedEvent value) {
-      copyOnWrite();
-      instance.mergeListsFetched(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.ListsFetchedEvent lists_fetched = 13 [json_name = "listsFetched"];</code>
-     */
-    public Builder clearListsFetched() {
-      copyOnWrite();
-      instance.clearListsFetched();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.SessionsPageFetchedEvent sessions_page_fetched = 14 [json_name = "sessionsPageFetched"];</code>
-     */
-    @java.lang.Override
-    public boolean hasSessionsPageFetched() {
-      return instance.hasSessionsPageFetched();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SessionsPageFetchedEvent sessions_page_fetched = 14 [json_name = "sessionsPageFetched"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SessionsPageFetchedEvent getSessionsPageFetched() {
-      return instance.getSessionsPageFetched();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SessionsPageFetchedEvent sessions_page_fetched = 14 [json_name = "sessionsPageFetched"];</code>
-     */
-    public Builder setSessionsPageFetched(io.github.lewin671.remoteagent.core.proto.SessionsPageFetchedEvent value) {
-      copyOnWrite();
-      instance.setSessionsPageFetched(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SessionsPageFetchedEvent sessions_page_fetched = 14 [json_name = "sessionsPageFetched"];</code>
-     */
-    public Builder setSessionsPageFetched(
-        io.github.lewin671.remoteagent.core.proto.SessionsPageFetchedEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSessionsPageFetched(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SessionsPageFetchedEvent sessions_page_fetched = 14 [json_name = "sessionsPageFetched"];</code>
-     */
-    public Builder mergeSessionsPageFetched(io.github.lewin671.remoteagent.core.proto.SessionsPageFetchedEvent value) {
-      copyOnWrite();
-      instance.mergeSessionsPageFetched(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SessionsPageFetchedEvent sessions_page_fetched = 14 [json_name = "sessionsPageFetched"];</code>
-     */
-    public Builder clearSessionsPageFetched() {
-      copyOnWrite();
-      instance.clearSessionsPageFetched();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.SessionByIdFetchedEvent session_by_id_fetched = 15 [json_name = "sessionByIdFetched"];</code>
-     */
-    @java.lang.Override
-    public boolean hasSessionByIdFetched() {
-      return instance.hasSessionByIdFetched();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SessionByIdFetchedEvent session_by_id_fetched = 15 [json_name = "sessionByIdFetched"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SessionByIdFetchedEvent getSessionByIdFetched() {
-      return instance.getSessionByIdFetched();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SessionByIdFetchedEvent session_by_id_fetched = 15 [json_name = "sessionByIdFetched"];</code>
-     */
-    public Builder setSessionByIdFetched(io.github.lewin671.remoteagent.core.proto.SessionByIdFetchedEvent value) {
-      copyOnWrite();
-      instance.setSessionByIdFetched(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SessionByIdFetchedEvent session_by_id_fetched = 15 [json_name = "sessionByIdFetched"];</code>
-     */
-    public Builder setSessionByIdFetched(
-        io.github.lewin671.remoteagent.core.proto.SessionByIdFetchedEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSessionByIdFetched(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SessionByIdFetchedEvent session_by_id_fetched = 15 [json_name = "sessionByIdFetched"];</code>
-     */
-    public Builder mergeSessionByIdFetched(io.github.lewin671.remoteagent.core.proto.SessionByIdFetchedEvent value) {
-      copyOnWrite();
-      instance.mergeSessionByIdFetched(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SessionByIdFetchedEvent session_by_id_fetched = 15 [json_name = "sessionByIdFetched"];</code>
-     */
-    public Builder clearSessionByIdFetched() {
-      copyOnWrite();
-      instance.clearSessionByIdFetched();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.EventsPageFetchedEvent events_page_fetched = 16 [json_name = "eventsPageFetched"];</code>
-     */
-    @java.lang.Override
-    public boolean hasEventsPageFetched() {
-      return instance.hasEventsPageFetched();
-    }
-    /**
-     * <code>.remoteagent.core.v1.EventsPageFetchedEvent events_page_fetched = 16 [json_name = "eventsPageFetched"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.EventsPageFetchedEvent getEventsPageFetched() {
-      return instance.getEventsPageFetched();
-    }
-    /**
-     * <code>.remoteagent.core.v1.EventsPageFetchedEvent events_page_fetched = 16 [json_name = "eventsPageFetched"];</code>
-     */
-    public Builder setEventsPageFetched(io.github.lewin671.remoteagent.core.proto.EventsPageFetchedEvent value) {
-      copyOnWrite();
-      instance.setEventsPageFetched(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.EventsPageFetchedEvent events_page_fetched = 16 [json_name = "eventsPageFetched"];</code>
-     */
-    public Builder setEventsPageFetched(
-        io.github.lewin671.remoteagent.core.proto.EventsPageFetchedEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setEventsPageFetched(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.EventsPageFetchedEvent events_page_fetched = 16 [json_name = "eventsPageFetched"];</code>
-     */
-    public Builder mergeEventsPageFetched(io.github.lewin671.remoteagent.core.proto.EventsPageFetchedEvent value) {
-      copyOnWrite();
-      instance.mergeEventsPageFetched(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.EventsPageFetchedEvent events_page_fetched = 16 [json_name = "eventsPageFetched"];</code>
-     */
-    public Builder clearEventsPageFetched() {
-      copyOnWrite();
-      instance.clearEventsPageFetched();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.AccountPrefsFetchedEvent account_prefs_fetched = 17 [json_name = "accountPrefsFetched"];</code>
-     */
-    @java.lang.Override
-    public boolean hasAccountPrefsFetched() {
-      return instance.hasAccountPrefsFetched();
-    }
-    /**
-     * <code>.remoteagent.core.v1.AccountPrefsFetchedEvent account_prefs_fetched = 17 [json_name = "accountPrefsFetched"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.AccountPrefsFetchedEvent getAccountPrefsFetched() {
-      return instance.getAccountPrefsFetched();
-    }
-    /**
-     * <code>.remoteagent.core.v1.AccountPrefsFetchedEvent account_prefs_fetched = 17 [json_name = "accountPrefsFetched"];</code>
-     */
-    public Builder setAccountPrefsFetched(io.github.lewin671.remoteagent.core.proto.AccountPrefsFetchedEvent value) {
-      copyOnWrite();
-      instance.setAccountPrefsFetched(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.AccountPrefsFetchedEvent account_prefs_fetched = 17 [json_name = "accountPrefsFetched"];</code>
-     */
-    public Builder setAccountPrefsFetched(
-        io.github.lewin671.remoteagent.core.proto.AccountPrefsFetchedEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setAccountPrefsFetched(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.AccountPrefsFetchedEvent account_prefs_fetched = 17 [json_name = "accountPrefsFetched"];</code>
-     */
-    public Builder mergeAccountPrefsFetched(io.github.lewin671.remoteagent.core.proto.AccountPrefsFetchedEvent value) {
-      copyOnWrite();
-      instance.mergeAccountPrefsFetched(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.AccountPrefsFetchedEvent account_prefs_fetched = 17 [json_name = "accountPrefsFetched"];</code>
-     */
-    public Builder clearAccountPrefsFetched() {
-      copyOnWrite();
-      instance.clearAccountPrefsFetched();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.AccountPrefsPutResultEvent account_prefs_put_result = 18 [json_name = "accountPrefsPutResult"];</code>
-     */
-    @java.lang.Override
-    public boolean hasAccountPrefsPutResult() {
-      return instance.hasAccountPrefsPutResult();
-    }
-    /**
-     * <code>.remoteagent.core.v1.AccountPrefsPutResultEvent account_prefs_put_result = 18 [json_name = "accountPrefsPutResult"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.AccountPrefsPutResultEvent getAccountPrefsPutResult() {
-      return instance.getAccountPrefsPutResult();
-    }
-    /**
-     * <code>.remoteagent.core.v1.AccountPrefsPutResultEvent account_prefs_put_result = 18 [json_name = "accountPrefsPutResult"];</code>
-     */
-    public Builder setAccountPrefsPutResult(io.github.lewin671.remoteagent.core.proto.AccountPrefsPutResultEvent value) {
-      copyOnWrite();
-      instance.setAccountPrefsPutResult(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.AccountPrefsPutResultEvent account_prefs_put_result = 18 [json_name = "accountPrefsPutResult"];</code>
-     */
-    public Builder setAccountPrefsPutResult(
-        io.github.lewin671.remoteagent.core.proto.AccountPrefsPutResultEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setAccountPrefsPutResult(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.AccountPrefsPutResultEvent account_prefs_put_result = 18 [json_name = "accountPrefsPutResult"];</code>
-     */
-    public Builder mergeAccountPrefsPutResult(io.github.lewin671.remoteagent.core.proto.AccountPrefsPutResultEvent value) {
-      copyOnWrite();
-      instance.mergeAccountPrefsPutResult(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.AccountPrefsPutResultEvent account_prefs_put_result = 18 [json_name = "accountPrefsPutResult"];</code>
-     */
-    public Builder clearAccountPrefsPutResult() {
-      copyOnWrite();
-      instance.clearAccountPrefsPutResult();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.DevicesFetchedEvent devices_fetched = 19 [json_name = "devicesFetched"];</code>
-     */
-    @java.lang.Override
-    public boolean hasDevicesFetched() {
-      return instance.hasDevicesFetched();
-    }
-    /**
-     * <code>.remoteagent.core.v1.DevicesFetchedEvent devices_fetched = 19 [json_name = "devicesFetched"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.DevicesFetchedEvent getDevicesFetched() {
-      return instance.getDevicesFetched();
-    }
-    /**
-     * <code>.remoteagent.core.v1.DevicesFetchedEvent devices_fetched = 19 [json_name = "devicesFetched"];</code>
-     */
-    public Builder setDevicesFetched(io.github.lewin671.remoteagent.core.proto.DevicesFetchedEvent value) {
-      copyOnWrite();
-      instance.setDevicesFetched(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DevicesFetchedEvent devices_fetched = 19 [json_name = "devicesFetched"];</code>
-     */
-    public Builder setDevicesFetched(
-        io.github.lewin671.remoteagent.core.proto.DevicesFetchedEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setDevicesFetched(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DevicesFetchedEvent devices_fetched = 19 [json_name = "devicesFetched"];</code>
-     */
-    public Builder mergeDevicesFetched(io.github.lewin671.remoteagent.core.proto.DevicesFetchedEvent value) {
-      copyOnWrite();
-      instance.mergeDevicesFetched(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DevicesFetchedEvent devices_fetched = 19 [json_name = "devicesFetched"];</code>
-     */
-    public Builder clearDevicesFetched() {
-      copyOnWrite();
-      instance.clearDevicesFetched();
       return this;
     }
 
@@ -24616,77 +23590,9 @@ public  final class Event extends
 
     /**
      * <pre>
-     * Unified relay byte-pipe events (430-449 reserved for P2-5).
+     * Unified relay byte-pipe events (431-449 reserved for P2-5).
      * </pre>
      *
-     * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
-     */
-    @java.lang.Override
-    public boolean hasRelayPipeConfig() {
-      return instance.hasRelayPipeConfig();
-    }
-    /**
-     * <pre>
-     * Unified relay byte-pipe events (430-449 reserved for P2-5).
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent getRelayPipeConfig() {
-      return instance.getRelayPipeConfig();
-    }
-    /**
-     * <pre>
-     * Unified relay byte-pipe events (430-449 reserved for P2-5).
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
-     */
-    public Builder setRelayPipeConfig(io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent value) {
-      copyOnWrite();
-      instance.setRelayPipeConfig(value);
-      return this;
-    }
-    /**
-     * <pre>
-     * Unified relay byte-pipe events (430-449 reserved for P2-5).
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
-     */
-    public Builder setRelayPipeConfig(
-        io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setRelayPipeConfig(builderForValue.build());
-      return this;
-    }
-    /**
-     * <pre>
-     * Unified relay byte-pipe events (430-449 reserved for P2-5).
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
-     */
-    public Builder mergeRelayPipeConfig(io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent value) {
-      copyOnWrite();
-      instance.mergeRelayPipeConfig(value);
-      return this;
-    }
-    /**
-     * <pre>
-     * Unified relay byte-pipe events (430-449 reserved for P2-5).
-     * </pre>
-     *
-     * <code>.remoteagent.core.v1.RelayPipeConfigEvent relay_pipe_config = 430 [json_name = "relayPipeConfig"];</code>
-     */
-    public Builder clearRelayPipeConfig() {
-      copyOnWrite();
-      instance.clearRelayPipeConfig();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
      */
     @java.lang.Override
@@ -24694,6 +23600,10 @@ public  final class Event extends
       return instance.hasRelayRpcResult();
     }
     /**
+     * <pre>
+     * Unified relay byte-pipe events (431-449 reserved for P2-5).
+     * </pre>
+     *
      * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
      */
     @java.lang.Override
@@ -24701,6 +23611,10 @@ public  final class Event extends
       return instance.getRelayRpcResult();
     }
     /**
+     * <pre>
+     * Unified relay byte-pipe events (431-449 reserved for P2-5).
+     * </pre>
+     *
      * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
      */
     public Builder setRelayRpcResult(io.github.lewin671.remoteagent.core.proto.RelayRpcResultEvent value) {
@@ -24709,6 +23623,10 @@ public  final class Event extends
       return this;
     }
     /**
+     * <pre>
+     * Unified relay byte-pipe events (431-449 reserved for P2-5).
+     * </pre>
+     *
      * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
      */
     public Builder setRelayRpcResult(
@@ -24718,6 +23636,10 @@ public  final class Event extends
       return this;
     }
     /**
+     * <pre>
+     * Unified relay byte-pipe events (431-449 reserved for P2-5).
+     * </pre>
+     *
      * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
      */
     public Builder mergeRelayRpcResult(io.github.lewin671.remoteagent.core.proto.RelayRpcResultEvent value) {
@@ -24726,6 +23648,10 @@ public  final class Event extends
       return this;
     }
     /**
+     * <pre>
+     * Unified relay byte-pipe events (431-449 reserved for P2-5).
+     * </pre>
+     *
      * <code>.remoteagent.core.v1.RelayRpcResultEvent relay_rpc_result = 431 [json_name = "relayRpcResult"];</code>
      */
     public Builder clearRelayRpcResult() {
@@ -25667,54 +24593,6 @@ public  final class Event extends
     public Builder clearSecurityStorageResult() {
       copyOnWrite();
       instance.clearSecurityStorageResult();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.SecurityRpcResultEvent security_rpc_result = 462 [json_name = "securityRpcResult"];</code>
-     */
-    @java.lang.Override
-    public boolean hasSecurityRpcResult() {
-      return instance.hasSecurityRpcResult();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityRpcResultEvent security_rpc_result = 462 [json_name = "securityRpcResult"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecurityRpcResultEvent getSecurityRpcResult() {
-      return instance.getSecurityRpcResult();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityRpcResultEvent security_rpc_result = 462 [json_name = "securityRpcResult"];</code>
-     */
-    public Builder setSecurityRpcResult(io.github.lewin671.remoteagent.core.proto.SecurityRpcResultEvent value) {
-      copyOnWrite();
-      instance.setSecurityRpcResult(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityRpcResultEvent security_rpc_result = 462 [json_name = "securityRpcResult"];</code>
-     */
-    public Builder setSecurityRpcResult(
-        io.github.lewin671.remoteagent.core.proto.SecurityRpcResultEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSecurityRpcResult(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityRpcResultEvent security_rpc_result = 462 [json_name = "securityRpcResult"];</code>
-     */
-    public Builder mergeSecurityRpcResult(io.github.lewin671.remoteagent.core.proto.SecurityRpcResultEvent value) {
-      copyOnWrite();
-      instance.mergeSecurityRpcResult(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityRpcResultEvent security_rpc_result = 462 [json_name = "securityRpcResult"];</code>
-     */
-    public Builder clearSecurityRpcResult() {
-      copyOnWrite();
-      instance.clearSecurityRpcResult();
       return this;
     }
 
@@ -27424,18 +26302,9 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.TimerFiredEvent.class,
             io.github.lewin671.remoteagent.core.proto.CacheBootstrapLoadedEvent.class,
             io.github.lewin671.remoteagent.core.proto.CacheEventsLoadedEvent.class,
-            io.github.lewin671.remoteagent.core.proto.TokenResultEvent.class,
             io.github.lewin671.remoteagent.core.proto.LocaleChangedEvent.class,
             io.github.lewin671.remoteagent.core.proto.StreamReadyEvent.class,
             io.github.lewin671.remoteagent.core.proto.StreamClosedEvent.class,
-            io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.class,
-            io.github.lewin671.remoteagent.core.proto.ListsFetchedEvent.class,
-            io.github.lewin671.remoteagent.core.proto.SessionsPageFetchedEvent.class,
-            io.github.lewin671.remoteagent.core.proto.SessionByIdFetchedEvent.class,
-            io.github.lewin671.remoteagent.core.proto.EventsPageFetchedEvent.class,
-            io.github.lewin671.remoteagent.core.proto.AccountPrefsFetchedEvent.class,
-            io.github.lewin671.remoteagent.core.proto.AccountPrefsPutResultEvent.class,
-            io.github.lewin671.remoteagent.core.proto.DevicesFetchedEvent.class,
             io.github.lewin671.remoteagent.core.proto.CommandOutcomeEvent.class,
             io.github.lewin671.remoteagent.core.proto.SessionWatchEvent.class,
             io.github.lewin671.remoteagent.core.proto.SessionPinEvent.class,
@@ -27630,7 +26499,6 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent.class,
             io.github.lewin671.remoteagent.core.proto.TerminalHistoryEvent.class,
             io.github.lewin671.remoteagent.core.proto.DirectPcProbeReceivedEvent.class,
-            io.github.lewin671.remoteagent.core.proto.RelayPipeConfigEvent.class,
             io.github.lewin671.remoteagent.core.proto.RelayRpcResultEvent.class,
             io.github.lewin671.remoteagent.core.proto.StreamRawFrameEvent.class,
             io.github.lewin671.remoteagent.core.proto.RefreshDevicesAction.class,
@@ -27651,7 +26519,6 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.SecurityKeyGeneratedEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulatedEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityStorageResultEvent.class,
-            io.github.lewin671.remoteagent.core.proto.SecurityRpcResultEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityForegroundEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityWorkflowActionEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityOpenNotifyEvent.class,
@@ -27684,46 +26551,45 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.ExitConfirmAction.class,
           };
           java.lang.String info =
-              "\u0000\u0109\u0001\u0000\u0001\u01f3\u0109\u0000\u0002\u0000\u0001<\u0000\u0002<" +
-              "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000" +
-              "\t<\u0000\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010" +
-              "<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000" +
-              "\u0017<\u0000\u0018<\u0000\u001a<\u0000\u001b<\u0000\u001e<\u0000\u001f<\u0000 <" +
-              "\u0000!<\u0000\"<\u0000#<\u0000$<\u0000%<\u0000&<\u0000\'<\u0000(<\u0000)<\u0000" +
-              "*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/<\u00002<\u00003<\u00004<\u00005<\u0000" +
-              "6<\u00008<\u00009<\u0000:<\u0000;<\u0000b\u0002c\u0002d\u021ae#\u00c9<\u0000\u00ca" +
-              "<\u0000\u00cb<\u0000\u00cc<\u0000\u00cd<\u0000\u00ce<\u0000\u00cf<\u0000\u00d0<\u0000" +
-              "\u00d1<\u0000\u00d2<\u0000\u00d3<\u0000\u00d4<\u0000\u00d5<\u0000\u00d6<\u0000\u00d7" +
-              "<\u0000\u00d9<\u0000\u00da<\u0000\u00db<\u0000\u00dc<\u0000\u00dd<\u0000\u00de<\u0000" +
-              "\u00df<\u0000\u00e0<\u0000\u00e1<\u0000\u00e2<\u0000\u00e3<\u0000\u00e4<\u0000\u00e5" +
-              "<\u0000\u00e6<\u0000\u00e7<\u0000\u00e8<\u0000\u00e9<\u0000\u00f0<\u0000\u00f1<\u0000" +
-              "\u00f2<\u0000\u00f3<\u0000\u00f4<\u0000\u00f5<\u0000\u00f6<\u0000\u00f7<\u0000\u00f8" +
-              "<\u0000\u00f9<\u0000\u00fa<\u0000\u00fb<\u0000\u00fc<\u0000\u00fd<\u0000\u00fe<\u0000" +
-              "\u00ff<\u0000\u0100<\u0000\u0101<\u0000\u0102<\u0000\u0103<\u0000\u0104<\u0000\u0105" +
-              "<\u0000\u0106<\u0000\u0107<\u0000\u0108<\u0000\u0109<\u0000\u010a<\u0000\u010b<\u0000" +
-              "\u010e<\u0000\u010f<\u0000\u0110<\u0000\u0111<\u0000\u0112<\u0000\u0113<\u0000\u0114" +
-              "<\u0000\u0115<\u0000\u0116<\u0000\u0117<\u0000\u012c<\u0000\u012d<\u0000\u012e<\u0000" +
-              "\u012f<\u0000\u0130<\u0000\u0136<\u0000\u0137<\u0000\u0138<\u0000\u0139<\u0000\u013a" +
-              "<\u0000\u0140<\u0000\u0141<\u0000\u0142<\u0000\u0143<\u0000\u0144<\u0000\u0145<\u0000" +
-              "\u0146<\u0000\u014a<\u0000\u014b<\u0000\u014c<\u0000\u014d<\u0000\u014e<\u0000\u014f" +
-              "<\u0000\u0152<\u0000\u0153<\u0000\u0154<\u0000\u0155<\u0000\u0156<\u0000\u0157<\u0000" +
-              "\u0158<\u0000\u0159<\u0000\u015a<\u0000\u015b<\u0000\u015c<\u0000\u015d<\u0000\u015e" +
-              "<\u0000\u015f<\u0000\u0160<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000" +
-              "\u0169<\u0000\u016a<\u0000\u016b<\u0000\u016c<\u0000\u016e<\u0000\u0172<\u0000\u0177" +
-              "<\u0000\u0178<\u0000\u0179<\u0000\u017a<\u0000\u017b<\u0000\u017c<\u0000\u017d<\u0000" +
-              "\u017e<\u0000\u017f<\u0000\u0180<\u0000\u0181<\u0000\u0186<\u0000\u0187<\u0000\u0188" +
-              "<\u0000\u0189<\u0000\u018a<\u0000\u018b<\u0000\u0190<\u0000\u0192<\u0000\u0193<\u0000" +
-              "\u0196<\u0000\u0197<\u0000\u0198<\u0000\u0199<\u0000\u019a<\u0000\u019b<\u0000\u019c" +
-              "<\u0000\u019d<\u0000\u019e<\u0000\u019f<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2<\u0000" +
-              "\u01a3<\u0000\u01a4<\u0000\u01a5<\u0000\u01a6<\u0000\u01a7<\u0000\u01ae<\u0000\u01af" +
-              "<\u0000\u01b0<\u0000\u01b1<\u0000\u01b2<\u0000\u01b3<\u0000\u01b4<\u0000\u01b5<\u0000" +
-              "\u01b6<\u0000\u01b7<\u0000\u01b8<\u0000\u01b9<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5" +
-              "<\u0000\u01c8<\u0000\u01c9<\u0000\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000" +
-              "\u01ce<\u0000\u01cf<\u0000\u01d0<\u0000\u01d1<\u0000\u01d6<\u0000\u01d7<\u0000\u01d8" +
-              "<\u0000\u01d9<\u0000\u01da<\u0000\u01db<\u0000\u01dc<\u0000\u01dd<\u0000\u01de<\u0000" +
-              "\u01df<\u0000\u01e0<\u0000\u01e1<\u0000\u01e2<\u0000\u01e3<\u0000\u01e4<\u0000\u01e5" +
-              "<\u0000\u01e6<\u0000\u01e9<\u0000\u01ea<\u0000\u01eb<\u0000\u01ed<\u0000\u01ee<\u0000" +
-              "\u01ef<\u0000\u01f0<\u0000\u01f1<\u0000\u01f2<\u0000\u01f3<\u0000";
+              "\u0000\u00fe\u0001\u0000\u0001\u01f3\u00fe\u0000\u0002\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\t<\u0000" +
+              "\n<\u0000\u000b<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000\u0018" +
+              "<\u0000\u001a<\u0000\u001b<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000" +
+              "#<\u0000$<\u0000%<\u0000&<\u0000\'<\u0000(<\u0000)<\u0000*<\u0000+<\u0000,<\u0000" +
+              "-<\u0000.<\u0000/<\u00002<\u00003<\u00004<\u00005<\u00006<\u00008<\u00009<\u0000" +
+              ":<\u0000;<\u0000b\u0002c\u0002d\u021ae#\u00c9<\u0000\u00ca<\u0000\u00cb<\u0000\u00cc" +
+              "<\u0000\u00cd<\u0000\u00ce<\u0000\u00cf<\u0000\u00d0<\u0000\u00d1<\u0000\u00d2<\u0000" +
+              "\u00d3<\u0000\u00d4<\u0000\u00d5<\u0000\u00d6<\u0000\u00d7<\u0000\u00d9<\u0000\u00da" +
+              "<\u0000\u00db<\u0000\u00dc<\u0000\u00dd<\u0000\u00de<\u0000\u00df<\u0000\u00e0<\u0000" +
+              "\u00e1<\u0000\u00e2<\u0000\u00e3<\u0000\u00e4<\u0000\u00e5<\u0000\u00e6<\u0000\u00e7" +
+              "<\u0000\u00e8<\u0000\u00e9<\u0000\u00f0<\u0000\u00f1<\u0000\u00f2<\u0000\u00f3<\u0000" +
+              "\u00f4<\u0000\u00f5<\u0000\u00f6<\u0000\u00f7<\u0000\u00f8<\u0000\u00f9<\u0000\u00fa" +
+              "<\u0000\u00fb<\u0000\u00fc<\u0000\u00fd<\u0000\u00fe<\u0000\u00ff<\u0000\u0100<\u0000" +
+              "\u0101<\u0000\u0102<\u0000\u0103<\u0000\u0104<\u0000\u0105<\u0000\u0106<\u0000\u0107" +
+              "<\u0000\u0108<\u0000\u0109<\u0000\u010a<\u0000\u010b<\u0000\u010e<\u0000\u010f<\u0000" +
+              "\u0110<\u0000\u0111<\u0000\u0112<\u0000\u0113<\u0000\u0114<\u0000\u0115<\u0000\u0116" +
+              "<\u0000\u0117<\u0000\u012c<\u0000\u012d<\u0000\u012e<\u0000\u012f<\u0000\u0130<\u0000" +
+              "\u0136<\u0000\u0137<\u0000\u0138<\u0000\u0139<\u0000\u013a<\u0000\u0140<\u0000\u0141" +
+              "<\u0000\u0142<\u0000\u0143<\u0000\u0144<\u0000\u0145<\u0000\u0146<\u0000\u014a<\u0000" +
+              "\u014b<\u0000\u014c<\u0000\u014d<\u0000\u014e<\u0000\u014f<\u0000\u0152<\u0000\u0153" +
+              "<\u0000\u0154<\u0000\u0155<\u0000\u0156<\u0000\u0157<\u0000\u0158<\u0000\u0159<\u0000" +
+              "\u015a<\u0000\u015b<\u0000\u015c<\u0000\u015d<\u0000\u015e<\u0000\u015f<\u0000\u0160" +
+              "<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000\u0169<\u0000\u016a<\u0000" +
+              "\u016b<\u0000\u016c<\u0000\u016e<\u0000\u0172<\u0000\u0177<\u0000\u0178<\u0000\u0179" +
+              "<\u0000\u017a<\u0000\u017b<\u0000\u017c<\u0000\u017d<\u0000\u017e<\u0000\u017f<\u0000" +
+              "\u0180<\u0000\u0181<\u0000\u0186<\u0000\u0187<\u0000\u0188<\u0000\u0189<\u0000\u018a" +
+              "<\u0000\u018b<\u0000\u0190<\u0000\u0192<\u0000\u0193<\u0000\u0196<\u0000\u0197<\u0000" +
+              "\u0198<\u0000\u0199<\u0000\u019a<\u0000\u019b<\u0000\u019c<\u0000\u019d<\u0000\u019e" +
+              "<\u0000\u019f<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000\u01a4<\u0000" +
+              "\u01a5<\u0000\u01a6<\u0000\u01a7<\u0000\u01af<\u0000\u01b0<\u0000\u01b1<\u0000\u01b2" +
+              "<\u0000\u01b3<\u0000\u01b4<\u0000\u01b5<\u0000\u01b6<\u0000\u01b7<\u0000\u01b8<\u0000" +
+              "\u01b9<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000\u01c9<\u0000\u01ca" +
+              "<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01cf<\u0000\u01d0<\u0000\u01d1<\u0000" +
+              "\u01d6<\u0000\u01d7<\u0000\u01d8<\u0000\u01d9<\u0000\u01da<\u0000\u01db<\u0000\u01dc" +
+              "<\u0000\u01dd<\u0000\u01de<\u0000\u01df<\u0000\u01e0<\u0000\u01e1<\u0000\u01e2<\u0000" +
+              "\u01e3<\u0000\u01e4<\u0000\u01e5<\u0000\u01e6<\u0000\u01e9<\u0000\u01ea<\u0000\u01eb" +
+              "<\u0000\u01ed<\u0000\u01ee<\u0000\u01ef<\u0000\u01f0<\u0000\u01f1<\u0000\u01f2<\u0000" +
+              "\u01f3<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -497,9 +497,7 @@ final class TestCoreDriver: @unchecked Sendable {
         enqueueEvent(PBCoreEvent.with {
             $0.entropyProvided = Self.buildEntropy(minIds: 16, minFloats: 16, minRandomBytes: 4096)
         })
-        if relayPipe {
-            enqueueEvent(PBCoreEvent.with { $0.relayPipeConfig = .with { $0.enabled = true } })
-        }
+        _ = relayPipe
         if let initialConfig {
             enqueueEvent(PBCoreEvent.with { $0.securityConfig = initialConfig })
         }
@@ -678,7 +676,7 @@ final class TestCoreDriver: @unchecked Sendable {
             task?.cancel()
         case .securityKeyGenerate, .securityKeySign, .securityKeyAgree,
              .securityKeyEncapsulate, .securityKeyDiscard, .securityStorage,
-             .securityRpc, .relayRpc, .relayRpcCancel:
+             .relayRpc, .relayRpcCancel:
             _ = executor.handleEffect(eff)
         case .securityWorkflowResult(let r):
             client.handleWorkflowResult(r)
@@ -876,7 +874,7 @@ func attachTestCoreDriver(
 
 private enum TestCoreDriverRegistry {
     private static let lock = NSLock()
-    private static var drivers: [ObjectIdentifier: TestCoreDriver] = [:]
+    private nonisolated(unsafe) static var drivers: [ObjectIdentifier: TestCoreDriver] = [:]
 
     static func register(remote: Remote, driver: TestCoreDriver) {
         lock.withLock { drivers[ObjectIdentifier(remote)] = driver }
@@ -958,14 +956,14 @@ final class TestSecurityNode: @unchecked Sendable {
         allowPlainHttp: Bool = false,
         clock: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
         sleep: @escaping Sleeper = realSleep,
-        rpcOverride: SecurityExecutor.RpcOverride? = nil
+        relayRpcOverride: SecurityExecutor.RelayRpcOverride? = nil
     ) throws {
         let box = self.box
         let executor = SecurityExecutor(
             store: store,
             http: http,
             allowPlainHttp: allowPlainHttp,
-            rpcOverride: rpcOverride,
+            relayRpcOverride: relayRpcOverride,
             emit: { ev in
                 let drv = box.lock.withLock { box.closed ? nil : box.driver }
                 drv?.enqueueEvent(ev)

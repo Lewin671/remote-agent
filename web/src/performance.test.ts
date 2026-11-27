@@ -37,8 +37,8 @@ afterEach(async () => {
   vi.restoreAllMocks();
   Socket.all = [];
 });
-async function probe() {
-  const r = await SyntheticRemote.create();
+async function probe(opts?: { seedDefaultSession?: boolean }) {
+  const r = await SyntheticRemote.create(opts);
   fixtureRemotes.push(r);
   return r;
 }
@@ -407,7 +407,7 @@ it("starts from what the browser kept: the token, and the last listing", async (
   // Token reuse is independent of recovery jitter, which has its own tests.
   vi.spyOn(Math, "random").mockReturnValue(0.1);
   vi.stubGlobal("WebSocket", Socket);
-  const r = await probe();
+  const r = await probe({ seedDefaultSession: false });
   patchSyncState(r, { sessions: new Map() });
   const { ListMachinesResponseSchema, ListRemoteSessionsResponseSchema } =
     await import("./gen/remoteagent/v1/relay_pb");

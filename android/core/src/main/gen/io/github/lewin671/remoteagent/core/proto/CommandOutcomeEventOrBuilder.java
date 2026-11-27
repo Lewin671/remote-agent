@@ -100,17 +100,6 @@ public interface CommandOutcomeEventOrBuilder extends
       getOuterReasonBytes();
 
   /**
-   * <code>.remoteagent.v1.CommandResult result = 11 [json_name = "result"];</code>
-   * @return Whether the result field is set.
-   */
-  boolean hasResult();
-  /**
-   * <code>.remoteagent.v1.CommandResult result = 11 [json_name = "result"];</code>
-   * @return The result.
-   */
-  io.github.lewin671.remoteagent.proto.CommandResult getResult();
-
-  /**
    * <code>string transport_code = 12 [json_name = "transportCode"];</code>
    * @return The transportCode.
    */
@@ -165,13 +154,14 @@ public interface CommandOutcomeEventOrBuilder extends
   long getDirectTicketId();
 
   /**
-   * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
-   * @return Whether the sealedResult field is set.
+   * <code>bytes raw_result = 21 [json_name = "rawResult"];</code>
+   * @return The rawResult.
    */
-  boolean hasSealedResult();
+  com.google.protobuf.ByteString getRawResult();
+
   /**
-   * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
-   * @return The sealedResult.
+   * <code>bytes raw_sealed_result = 22 [json_name = "rawSealedResult"];</code>
+   * @return The rawSealedResult.
    */
-  io.github.lewin671.remoteagent.proto.Envelope getSealedResult();
+  com.google.protobuf.ByteString getRawSealedResult();
 }

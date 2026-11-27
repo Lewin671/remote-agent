@@ -146,8 +146,8 @@ enum Demo {
 
     private static func machine(
         _ id: String, _ name: String, now: Int64, online: Bool = true, agents: [PBAgent] = [.codex], quotas: [PBAgentQuota] = []
-    ) -> PBCorePlainMachine {
-        PBCorePlainMachine.with {
+    ) -> DemoMachine {
+        DemoMachine.with {
             $0.machineID = id
             $0.online = online
             $0.lastSeenMs = online ? now : now - 2 * 3_600_000
@@ -179,7 +179,7 @@ enum Demo {
         updated: Int64? = nil, created: Int64? = nil, mode: PBApprovalMode = .ask, detail: String = "", context: Int64 = 0,
         queued: Int32 = 0, model: String? = nil, effort: String? = nil, contextWindow: Int64? = nil,
         modeLocked: Bool = false, fullAccessUnavailable: Bool = false
-    ) -> PBCorePlainSession {
+    ) -> DemoSession {
         let updated = updated ?? now
         let defaultModel = agent == .claude ? "claude-sonnet-5-5" : (agent == .antigravity ? "gemini-3.1-pro" : "gpt-6-astra")
         let defaultEffort = (agent == .claude || agent == .antigravity) ? "high" : "medium"
@@ -207,7 +207,7 @@ enum Demo {
             if approvals > 0 || questions > 0 || plan || status == .blocked { $0.attentionSince = ts(updated) }
             if status == .exited { $0.endedAt = ts(updated) }
         }
-        return PBCorePlainSession.with {
+        return DemoSession.with {
             $0.sessionID = id
             $0.machineID = machine
             $0.meta = info
@@ -217,7 +217,7 @@ enum Demo {
         }
     }
 
-    private static func prefs(pinned: [String], hidden: [String] = []) -> PBCorePlainAccountPrefs {
+    private static func prefs(pinned: [String], hidden: [String] = []) -> DemoAccountPrefs {
         .with {
             $0.revision = 1
             $0.prefs = .with { p in
@@ -228,7 +228,7 @@ enum Demo {
         }
     }
 
-    private static func client(_ id: String, now: Int64, name: String = "", platform: String = "", description: String = "", ageMs: Int64, seenMs: Int64 = 0) -> PBCorePlainDevice {
+    private static func client(_ id: String, now: Int64, name: String = "", platform: String = "", description: String = "", ageMs: Int64, seenMs: Int64 = 0) -> DemoDevice {
         .with {
             $0.deviceID = id
             $0.kind = .client
@@ -332,7 +332,7 @@ enum Demo {
 
     // MARK: Everyday
 
-    private static func quotaMac(_ now: Int64) -> PBCorePlainMachine {
+    private static func quotaMac(_ now: Int64) -> DemoMachine {
         machine("mac", "MacBook", now: now, agents: [.codex, .claude, .antigravity], quotas: [
             .with {
                 $0.agent = .codex
@@ -546,7 +546,7 @@ enum Demo {
             home + "/Code/design-system", home + "/tmp/scratch",
         ]
         let hosts = ["mac", "vps", "imac", "studio", "ci", "nas"]
-        var list: [PBCorePlainSession] = [
+        var list: [DemoSession] = [
             // Everything that can wait, at once, on one session.
             session("all", "mac", foo, longTitle, now: now, status: .running, agent: .claude, approvals: 3, questions: 2, plan: true, preview: "请求执行 kubectl --context prod-cn-east-2 -n settlement rollout restart deployment/reconciliation-worker", updated: now - 40 * 60_000, mode: .fullAccess, context: 752_000, queued: 4),
             session("ask2", "vps", projects[5], "Fix flaky test TestReconcile_ReplayAfterPartialFailure_WithOutOfOrderEventsAndClockSkew", now: now, approvals: 12, preview: "rm -rf ./build && make -j16 all test integration-test e2e-test", updated: now - 3 * 60_000),

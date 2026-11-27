@@ -169,12 +169,9 @@ class CoreHost(
 
     var onOpenStream: (OpenStreamEffect) -> Unit = {}
     var onCloseStream: (CloseStreamEffect) -> Unit = {}
-    var onEnsureToken: (EnsureTokenEffect) -> Unit = {}
-    var onDiscardToken: (DiscardTokenEffect) -> Unit = {}
     var onCacheRead: (CacheReadEffect) -> Unit = {}
     var onCacheWrite: (CacheWriteEffect) -> Unit = {}
     var onCacheDelete: (CacheDeleteEffect) -> Unit = {}
-    var onRpc: (RpcEffect) -> Unit = {}
     var onDispatchCommand: (DispatchCommandEffect) -> Unit = {}
     var onCancelDispatch: (CancelDispatchEffect) -> Unit = {}
     var onSaveHomeScope: (SaveHomeScopeEffect) -> Unit = {}
@@ -630,14 +627,11 @@ class CoreHost(
             }
             Effect.EffectCase.OPEN_STREAM -> onOpenStream(effect.openStream)
             Effect.EffectCase.CLOSE_STREAM -> onCloseStream(effect.closeStream)
-            Effect.EffectCase.ENSURE_TOKEN -> onEnsureToken(effect.ensureToken)
-            Effect.EffectCase.DISCARD_TOKEN -> onDiscardToken(effect.discardToken)
             Effect.EffectCase.SCHEDULE_TIMER -> scheduleTimer(effect.scheduleTimer)
             Effect.EffectCase.CANCEL_TIMER -> cancelTimer(effect.cancelTimer)
             Effect.EffectCase.CACHE_READ -> onCacheRead(effect.cacheRead)
             Effect.EffectCase.CACHE_WRITE -> onCacheWrite(effect.cacheWrite)
             Effect.EffectCase.CACHE_DELETE -> onCacheDelete(effect.cacheDelete)
-            Effect.EffectCase.RPC -> onRpc(effect.rpc)
             Effect.EffectCase.DISPATCH_COMMAND -> onDispatchCommand(effect.dispatchCommand)
             Effect.EffectCase.CANCEL_DISPATCH -> onCancelDispatch(effect.cancelDispatch)
             Effect.EffectCase.SAVE_HOME_SCOPE -> onSaveHomeScope(effect.saveHomeScope)
@@ -699,7 +693,6 @@ class CoreHost(
             Effect.EffectCase.SECURITY_KEY_ENCAPSULATE,
             Effect.EffectCase.SECURITY_KEY_DISCARD,
             Effect.EffectCase.SECURITY_STORAGE,
-            Effect.EffectCase.SECURITY_RPC,
             Effect.EffectCase.RELAY_RPC,
             Effect.EffectCase.RELAY_RPC_CANCEL -> {
                 onSecurityEffect(effect)
@@ -1381,9 +1374,6 @@ class CoreHost(
 
     fun retrySessionLoad(sessionId: String) =
         send { setSessionRetryLoad(SessionRetryLoadAction.newBuilder().setSessionId(sessionId)) }
-
-    fun sendRelayPipeConfig(enabled: Boolean) =
-        send { setRelayPipeConfig(RelayPipeConfigEvent.newBuilder().setEnabled(enabled)) }
 
     fun dispatchStreamRawFrame(legId: Long, raw: ByteArray) = send {
         setStreamRawFrame(
@@ -2313,12 +2303,9 @@ class CoreHost(
     fun clearRemoteCallbacks() {
         onOpenStream = {}
         onCloseStream = {}
-        onEnsureToken = {}
-        onDiscardToken = {}
         onCacheRead = {}
         onCacheWrite = {}
         onCacheDelete = {}
-        onRpc = {}
         onDispatchCommand = {}
         onCancelDispatch = {}
         onSaveHomeScope = {}

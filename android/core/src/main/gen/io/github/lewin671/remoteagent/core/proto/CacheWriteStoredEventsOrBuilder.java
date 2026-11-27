@@ -23,16 +23,19 @@ public interface CacheWriteStoredEventsOrBuilder extends
       getSessionIdBytes();
 
   /**
-   * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
+   * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+   * @return A list containing the rawEvents.
    */
-  java.util.List<io.github.lewin671.remoteagent.proto.StoredEvent> 
-      getEventsList();
+  java.util.List<com.google.protobuf.ByteString> getRawEventsList();
   /**
-   * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
+   * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+   * @return The count of rawEvents.
    */
-  io.github.lewin671.remoteagent.proto.StoredEvent getEvents(int index);
+  int getRawEventsCount();
   /**
-   * <code>repeated .remoteagent.v1.StoredEvent events = 2 [json_name = "events"];</code>
+   * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+   * @param index The index of the element to return.
+   * @return The rawEvents at the given index.
    */
-  int getEventsCount();
+  com.google.protobuf.ByteString getRawEvents(int index);
 }

@@ -17,9 +17,8 @@ public  final class DirectEventsReceivedEvent extends
   private DirectEventsReceivedEvent() {
     machineId_ = "";
     sessionId_ = "";
-    events_ = emptyProtobufList();
     sender_ = "";
-    wireEnvelopes_ = emptyProtobufList();
+    rawEnvelopes_ = emptyProtobufList();
   }
   public static final int MACHINE_ID_FIELD_NUMBER = 1;
   private java.lang.String machineId_;
@@ -117,103 +116,6 @@ public  final class DirectEventsReceivedEvent extends
 
   }
 
-  public static final int EVENTS_FIELD_NUMBER = 3;
-  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.PlainEvent> events_;
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-   */
-  @java.lang.Override
-  public java.util.List<io.github.lewin671.remoteagent.core.proto.PlainEvent> getEventsList() {
-    return events_;
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-   */
-  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.PlainEventOrBuilder> 
-      getEventsOrBuilderList() {
-    return events_;
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-   */
-  @java.lang.Override
-  public int getEventsCount() {
-    return events_.size();
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.PlainEvent getEvents(int index) {
-    return events_.get(index);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-   */
-  public io.github.lewin671.remoteagent.core.proto.PlainEventOrBuilder getEventsOrBuilder(
-      int index) {
-    return events_.get(index);
-  }
-  private void ensureEventsIsMutable() {
-    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.PlainEvent> tmp = events_;
-    if (!tmp.isModifiable()) {
-      events_ =
-          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
-     }
-  }
-
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setEvents(
-      int index, io.github.lewin671.remoteagent.core.proto.PlainEvent value) {
-    value.getClass();  // minimal bytecode null check
-    ensureEventsIsMutable();
-    events_.set(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addEvents(io.github.lewin671.remoteagent.core.proto.PlainEvent value) {
-    value.getClass();  // minimal bytecode null check
-    ensureEventsIsMutable();
-    events_.add(value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addEvents(
-      int index, io.github.lewin671.remoteagent.core.proto.PlainEvent value) {
-    value.getClass();  // minimal bytecode null check
-    ensureEventsIsMutable();
-    events_.add(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-   */
-  private void addAllEvents(
-      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.PlainEvent> values) {
-    ensureEventsIsMutable();
-    com.google.protobuf.AbstractMessageLite.addAll(
-        values, events_);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-   */
-  private void clearEvents() {
-    events_ = emptyProtobufList();
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-   */
-  private void removeEvents(int index) {
-    ensureEventsIsMutable();
-    events_.remove(index);
-  }
-
   public static final int PC_ID_FIELD_NUMBER = 4;
   private long pcId_;
   /**
@@ -288,101 +190,76 @@ public  final class DirectEventsReceivedEvent extends
 
   }
 
-  public static final int WIRE_ENVELOPES_FIELD_NUMBER = 10;
-  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.Envelope> wireEnvelopes_;
+  public static final int RAW_ENVELOPES_FIELD_NUMBER = 11;
+  private com.google.protobuf.Internal.ProtobufList<com.google.protobuf.ByteString> rawEnvelopes_;
   /**
-   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   * <code>repeated bytes raw_envelopes = 11 [json_name = "rawEnvelopes"];</code>
+   * @return A list containing the rawEnvelopes.
    */
   @java.lang.Override
-  public java.util.List<io.github.lewin671.remoteagent.proto.Envelope> getWireEnvelopesList() {
-    return wireEnvelopes_;
+  public java.util.List<com.google.protobuf.ByteString>
+      getRawEnvelopesList() {
+    return rawEnvelopes_;
   }
   /**
-   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
-   */
-  public java.util.List<? extends io.github.lewin671.remoteagent.proto.EnvelopeOrBuilder> 
-      getWireEnvelopesOrBuilderList() {
-    return wireEnvelopes_;
-  }
-  /**
-   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   * <code>repeated bytes raw_envelopes = 11 [json_name = "rawEnvelopes"];</code>
+   * @return The count of rawEnvelopes.
    */
   @java.lang.Override
-  public int getWireEnvelopesCount() {
-    return wireEnvelopes_.size();
+  public int getRawEnvelopesCount() {
+    return rawEnvelopes_.size();
   }
   /**
-   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   * <code>repeated bytes raw_envelopes = 11 [json_name = "rawEnvelopes"];</code>
+   * @param index The index of the element to return.
+   * @return The rawEnvelopes at the given index.
    */
   @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.Envelope getWireEnvelopes(int index) {
-    return wireEnvelopes_.get(index);
+  public com.google.protobuf.ByteString getRawEnvelopes(int index) {
+    return rawEnvelopes_.get(index);
   }
-  /**
-   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
-   */
-  public io.github.lewin671.remoteagent.proto.EnvelopeOrBuilder getWireEnvelopesOrBuilder(
-      int index) {
-    return wireEnvelopes_.get(index);
-  }
-  private void ensureWireEnvelopesIsMutable() {
-    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.Envelope> tmp = wireEnvelopes_;
+  private void ensureRawEnvelopesIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<com.google.protobuf.ByteString> tmp = rawEnvelopes_;
     if (!tmp.isModifiable()) {
-      wireEnvelopes_ =
+      rawEnvelopes_ =
           com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
      }
   }
-
   /**
-   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   * <code>repeated bytes raw_envelopes = 11 [json_name = "rawEnvelopes"];</code>
+   * @param index The index to set the value at.
+   * @param value The rawEnvelopes to set.
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setWireEnvelopes(
-      int index, io.github.lewin671.remoteagent.proto.Envelope value) {
-    value.getClass();  // minimal bytecode null check
-    ensureWireEnvelopesIsMutable();
-    wireEnvelopes_.set(index, value);
+  private void setRawEnvelopes(
+      int index, com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  ensureRawEnvelopesIsMutable();
+    rawEnvelopes_.set(index, value);
   }
   /**
-   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   * <code>repeated bytes raw_envelopes = 11 [json_name = "rawEnvelopes"];</code>
+   * @param value The rawEnvelopes to add.
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addWireEnvelopes(io.github.lewin671.remoteagent.proto.Envelope value) {
-    value.getClass();  // minimal bytecode null check
-    ensureWireEnvelopesIsMutable();
-    wireEnvelopes_.add(value);
+  private void addRawEnvelopes(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  ensureRawEnvelopesIsMutable();
+    rawEnvelopes_.add(value);
   }
   /**
-   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   * <code>repeated bytes raw_envelopes = 11 [json_name = "rawEnvelopes"];</code>
+   * @param values The rawEnvelopes to add.
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addWireEnvelopes(
-      int index, io.github.lewin671.remoteagent.proto.Envelope value) {
-    value.getClass();  // minimal bytecode null check
-    ensureWireEnvelopesIsMutable();
-    wireEnvelopes_.add(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
-   */
-  private void addAllWireEnvelopes(
-      java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.Envelope> values) {
-    ensureWireEnvelopesIsMutable();
+  private void addAllRawEnvelopes(
+      java.lang.Iterable<? extends com.google.protobuf.ByteString> values) {
+    ensureRawEnvelopesIsMutable();
     com.google.protobuf.AbstractMessageLite.addAll(
-        values, wireEnvelopes_);
+        values, rawEnvelopes_);
   }
   /**
-   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   * <code>repeated bytes raw_envelopes = 11 [json_name = "rawEnvelopes"];</code>
    */
-  private void clearWireEnvelopes() {
-    wireEnvelopes_ = emptyProtobufList();
-  }
-  /**
-   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
-   */
-  private void removeWireEnvelopes(int index) {
-    ensureWireEnvelopesIsMutable();
-    wireEnvelopes_.remove(index);
+  private void clearRawEnvelopes() {
+    rawEnvelopes_ = emptyProtobufList();
   }
 
   public static io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent parseFrom(
@@ -581,108 +458,6 @@ public  final class DirectEventsReceivedEvent extends
     }
 
     /**
-     * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-     */
-    @java.lang.Override
-    public java.util.List<io.github.lewin671.remoteagent.core.proto.PlainEvent> getEventsList() {
-      return java.util.Collections.unmodifiableList(
-          instance.getEventsList());
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-     */
-    @java.lang.Override
-    public int getEventsCount() {
-      return instance.getEventsCount();
-    }/**
-     * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.PlainEvent getEvents(int index) {
-      return instance.getEvents(index);
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-     */
-    public Builder setEvents(
-        int index, io.github.lewin671.remoteagent.core.proto.PlainEvent value) {
-      copyOnWrite();
-      instance.setEvents(index, value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-     */
-    public Builder setEvents(
-        int index, io.github.lewin671.remoteagent.core.proto.PlainEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setEvents(index,
-          builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-     */
-    public Builder addEvents(io.github.lewin671.remoteagent.core.proto.PlainEvent value) {
-      copyOnWrite();
-      instance.addEvents(value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-     */
-    public Builder addEvents(
-        int index, io.github.lewin671.remoteagent.core.proto.PlainEvent value) {
-      copyOnWrite();
-      instance.addEvents(index, value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-     */
-    public Builder addEvents(
-        io.github.lewin671.remoteagent.core.proto.PlainEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.addEvents(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-     */
-    public Builder addEvents(
-        int index, io.github.lewin671.remoteagent.core.proto.PlainEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.addEvents(index,
-          builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-     */
-    public Builder addAllEvents(
-        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.PlainEvent> values) {
-      copyOnWrite();
-      instance.addAllEvents(values);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-     */
-    public Builder clearEvents() {
-      copyOnWrite();
-      instance.clearEvents();
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-     */
-    public Builder removeEvents(int index) {
-      copyOnWrite();
-      instance.removeEvents(index);
-      return this;
-    }
-
-    /**
      * <code>uint64 pc_id = 4 [json_name = "pcId"];</code>
      * @return The pcId.
      */
@@ -760,104 +535,71 @@ public  final class DirectEventsReceivedEvent extends
     }
 
     /**
-     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+     * <code>repeated bytes raw_envelopes = 11 [json_name = "rawEnvelopes"];</code>
+     * @return A list containing the rawEnvelopes.
      */
     @java.lang.Override
-    public java.util.List<io.github.lewin671.remoteagent.proto.Envelope> getWireEnvelopesList() {
+    public java.util.List<com.google.protobuf.ByteString>
+        getRawEnvelopesList() {
       return java.util.Collections.unmodifiableList(
-          instance.getWireEnvelopesList());
+          instance.getRawEnvelopesList());
     }
     /**
-     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+     * <code>repeated bytes raw_envelopes = 11 [json_name = "rawEnvelopes"];</code>
+     * @return The count of rawEnvelopes.
      */
     @java.lang.Override
-    public int getWireEnvelopesCount() {
-      return instance.getWireEnvelopesCount();
-    }/**
-     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+    public int getRawEnvelopesCount() {
+      return instance.getRawEnvelopesCount();
+    }
+    /**
+     * <code>repeated bytes raw_envelopes = 11 [json_name = "rawEnvelopes"];</code>
+     * @param index The index of the element to return.
+     * @return The rawEnvelopes at the given index.
      */
     @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.Envelope getWireEnvelopes(int index) {
-      return instance.getWireEnvelopes(index);
+    public com.google.protobuf.ByteString getRawEnvelopes(int index) {
+      return instance.getRawEnvelopes(index);
     }
     /**
-     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+     * <code>repeated bytes raw_envelopes = 11 [json_name = "rawEnvelopes"];</code>
+     * @param value The rawEnvelopes to set.
+     * @return This builder for chaining.
      */
-    public Builder setWireEnvelopes(
-        int index, io.github.lewin671.remoteagent.proto.Envelope value) {
+    public Builder setRawEnvelopes(
+        int index, com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.setWireEnvelopes(index, value);
+      instance.setRawEnvelopes(index, value);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+     * <code>repeated bytes raw_envelopes = 11 [json_name = "rawEnvelopes"];</code>
+     * @param value The rawEnvelopes to add.
+     * @return This builder for chaining.
      */
-    public Builder setWireEnvelopes(
-        int index, io.github.lewin671.remoteagent.proto.Envelope.Builder builderForValue) {
+    public Builder addRawEnvelopes(com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.setWireEnvelopes(index,
-          builderForValue.build());
+      instance.addRawEnvelopes(value);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+     * <code>repeated bytes raw_envelopes = 11 [json_name = "rawEnvelopes"];</code>
+     * @param values The rawEnvelopes to add.
+     * @return This builder for chaining.
      */
-    public Builder addWireEnvelopes(io.github.lewin671.remoteagent.proto.Envelope value) {
+    public Builder addAllRawEnvelopes(
+        java.lang.Iterable<? extends com.google.protobuf.ByteString> values) {
       copyOnWrite();
-      instance.addWireEnvelopes(value);
+      instance.addAllRawEnvelopes(values);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+     * <code>repeated bytes raw_envelopes = 11 [json_name = "rawEnvelopes"];</code>
+     * @return This builder for chaining.
      */
-    public Builder addWireEnvelopes(
-        int index, io.github.lewin671.remoteagent.proto.Envelope value) {
+    public Builder clearRawEnvelopes() {
       copyOnWrite();
-      instance.addWireEnvelopes(index, value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
-     */
-    public Builder addWireEnvelopes(
-        io.github.lewin671.remoteagent.proto.Envelope.Builder builderForValue) {
-      copyOnWrite();
-      instance.addWireEnvelopes(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
-     */
-    public Builder addWireEnvelopes(
-        int index, io.github.lewin671.remoteagent.proto.Envelope.Builder builderForValue) {
-      copyOnWrite();
-      instance.addWireEnvelopes(index,
-          builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
-     */
-    public Builder addAllWireEnvelopes(
-        java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.Envelope> values) {
-      copyOnWrite();
-      instance.addAllWireEnvelopes(values);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
-     */
-    public Builder clearWireEnvelopes() {
-      copyOnWrite();
-      instance.clearWireEnvelopes();
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
-     */
-    public Builder removeWireEnvelopes(int index) {
-      copyOnWrite();
-      instance.removeWireEnvelopes(index);
+      instance.clearRawEnvelopes();
       return this;
     }
 
@@ -879,16 +621,13 @@ public  final class DirectEventsReceivedEvent extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "machineId_",
             "sessionId_",
-            "events_",
-            io.github.lewin671.remoteagent.core.proto.PlainEvent.class,
             "pcId_",
             "sender_",
-            "wireEnvelopes_",
-            io.github.lewin671.remoteagent.proto.Envelope.class,
+            "rawEnvelopes_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0000\u0001\n\u0006\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u001b\u0004\u0003\u0005\u0208\n\u001b";
+              "\u0000\u0005\u0000\u0000\u0001\u000b\u0005\u0000\u0001\u0000\u0001\u0208\u0002\u0208" +
+              "\u0004\u0003\u0005\u0208\u000b\u001c";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

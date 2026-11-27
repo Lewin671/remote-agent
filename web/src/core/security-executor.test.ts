@@ -11,8 +11,11 @@ import {
   EventSchema as CoreEventSchema,
   type Event as CoreEvent,
   OutcomeSource,
-  TokenResultEventSchema,
 } from "../gen/remoteagent/core/v1/app_pb";
+import {
+  RelayRpcEffectSchema,
+  RelayRpcMethod,
+} from "../gen/remoteagent/core/v1/relay_pipe_pb";
 import {
   CryptoBatchAeadOpenItemSchema,
   CryptoBatchAeadSealItemSchema,
@@ -23,8 +26,6 @@ import {
   SecurityKeyAgreeEffectSchema,
   SecurityKeyKind,
   SecurityKeySignEffectSchema,
-  SecurityRpcEffectSchema,
-  SecurityRpcMethod,
   SecurityStorageResultEventSchema,
 } from "../gen/remoteagent/core/v1/security_pb";
 import { RelayErrorDetailSchema, RelayErrorReason } from "../gen/remoteagent/v1/relay_pb";
@@ -210,7 +211,7 @@ describe("WebSecurityExecutor", () => {
     expect(batch2.event.value.results[1].ok).toBe(false);
   });
 
-  it("forwards Connect JSON error details (unpadded base64) in securityRpcResult", async () => {
+  it("forwards Connect JSON error details (unpadded base64) in relayRpcResult", async () => {
     const detailBytes = toBinary(
       RelayErrorDetailSchema,
       create(RelayErrorDetailSchema, { reason: RelayErrorReason.PROTOCOL_MISMATCH, serverRelayVersion: 17 }),
@@ -238,18 +239,18 @@ describe("WebSecurityExecutor", () => {
         ),
     });
 
-    await exec.rpc(
-      create(SecurityRpcEffectSchema, {
+    await exec.relayRpc(
+      create(RelayRpcEffectSchema, {
         opId: 99n,
-        method: SecurityRpcMethod.LOGIN,
+        method: RelayRpcMethod.LOGIN,
         server: "https://example.com",
       }),
     );
 
-    const resEv = await waitForEvent(emitted, (e) => e.event.case === "securityRpcResult" && e.event.value.opId === 99n);
-    if (resEv.event.case !== "securityRpcResult") throw new Error("unexpected event");
+    const resEv = await waitForEvent(emitted, (e) => e.event.case === "relayRpcResult" && e.event.value.opId === 99n);
+    if (resEv.event.case !== "relayRpcResult") throw new Error("unexpected event");
     expect(resEv.event.value.connectCode).toBe(9);
-    expect(resEv.event.value.error).toBe("relay protocol mismatch");
+    expect(resEv.event.value.diagnosticMessage).toBe("relay protocol mismatch");
     expect(resEv.event.value.errorDetails).toHaveLength(1);
     expect(resEv.event.value.errorDetails[0].typeName).toBe("remoteagent.v1.RelayErrorDetail");
     expect(new Uint8Array(resEv.event.value.errorDetails[0].value)).toEqual(detailBytes);
@@ -279,9 +280,6 @@ describe("CoreHost cold-boot security ordering", () => {
     const exec: CoreExecutor = {
       openStreamLeg() {},
       closeStreamLeg() {},
-      async ensureToken(opId) {
-        return create(TokenResultEventSchema, { opId, token: "t", expiresMs: BigInt(Date.now() + 60_000) });
-      },
       securityConfig() {
         return { account: vectors.account, deviceId: "dev-client" };
       },
@@ -309,9 +307,6 @@ describe("CoreHost cold-boot security ordering", () => {
       },
       async writeCache() {},
       async deleteCache() {},
-      async executeRpc() {
-        return create(CoreEventSchema, {});
-      },
       async executeCommandAttempt(eff) {
         return create(CommandOutcomeEventSchema, { requestId: eff.requestId, attemptId: eff.attemptId, source: OutcomeSource.DAEMON });
       },

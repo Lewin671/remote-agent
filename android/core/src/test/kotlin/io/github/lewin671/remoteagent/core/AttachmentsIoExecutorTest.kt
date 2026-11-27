@@ -18,14 +18,20 @@ import io.github.lewin671.remoteagent.core.proto.DraftStorageReadEffect
 import io.github.lewin671.remoteagent.core.proto.DraftStorageWriteEffect
 import io.github.lewin671.remoteagent.core.proto.CacheBootstrapLoadedEvent
 import io.github.lewin671.remoteagent.core.proto.CacheReadEffect
+import io.github.lewin671.remoteagent.core.proto.DemoSecurity
+import io.github.lewin671.remoteagent.core.proto.Effect
 import io.github.lewin671.remoteagent.core.proto.Event as CoreEvent
-import io.github.lewin671.remoteagent.core.proto.ListsFetchedEvent
-import io.github.lewin671.remoteagent.core.proto.PlainMachine
-import io.github.lewin671.remoteagent.core.proto.RpcEffect
+import io.github.lewin671.remoteagent.core.proto.RelayRpcMethod
+import io.github.lewin671.remoteagent.core.proto.RelayRpcResultEvent
+import io.github.lewin671.remoteagent.core.proto.SeedDemoWorldEvent
 import io.github.lewin671.remoteagent.core.proto.StreamReadyEvent
 import io.github.lewin671.remoteagent.core.proto.SyncLifecycleKind
-import io.github.lewin671.remoteagent.core.proto.TokenResultEvent
+import io.github.lewin671.remoteagent.proto.GetAccountPrefsResponse
 import io.github.lewin671.remoteagent.proto.ImageFormat
+import io.github.lewin671.remoteagent.proto.ListDevicesResponse
+import io.github.lewin671.remoteagent.proto.ListMachinesResponse
+import io.github.lewin671.remoteagent.proto.ListRemoteSessionsResponse
+import io.github.lewin671.remoteagent.proto.Machine
 import io.github.lewin671.remoteagent.proto.MachineCapabilities
 import io.github.lewin671.remoteagent.proto.MachineMeta
 import java.io.File
@@ -394,40 +400,23 @@ class AttachmentsIoExecutorTest {
         val host1 = CoreHost()
         val scope = sessionDraftScope("s-smoke")
         try {
-            val machine = PlainMachine.newBuilder()
-                .setMachineId("m1")
-                .setOnline(true)
-                .setMeta(
-                    MachineMeta.newBuilder()
-                        .setHostname("dev-mac")
-                        .setProtocolVersion(PEER_PROTOCOL_VERSION)
-                        .setCapabilities(
-                            MachineCapabilities.newBuilder()
-                                .setImageUpload(true)
-                                .setFileUpload(true),
-                        ),
+            val machineMeta = MachineMeta.newBuilder()
+                .setHostname("dev-mac")
+                .setProtocolVersion(PEER_PROTOCOL_VERSION)
+                .setCapabilities(
+                    MachineCapabilities.newBuilder()
+                        .setImageUpload(true)
+                        .setFileUpload(true),
                 )
                 .build()
             host1.onCacheRead = { cr ->
                 if (cr.kindCase == CacheReadEffect.KindCase.BOOTSTRAP) {
                     host1.dispatch(
                         CoreEvent.newBuilder()
-                            .setCacheBootstrapLoaded(CacheBootstrapLoadedEvent.newBuilder().setOpId(cr.bootstrap.opId).addMachines(machine))
+                            .setCacheBootstrapLoaded(CacheBootstrapLoadedEvent.newBuilder().setOpId(cr.bootstrap.opId))
                             .build(),
                     )
                 }
-            }
-            host1.onEnsureToken = { tok ->
-                host1.dispatch(
-                    CoreEvent.newBuilder()
-                        .setTokenResult(
-                            TokenResultEvent.newBuilder()
-                                .setOpId(tok.opId)
-                                .setToken("tok-1")
-                                .setExpiresMs(System.currentTimeMillis() + 86_400_000L),
-                        )
-                        .build(),
-                )
             }
             host1.onOpenStream = { st ->
                 host1.dispatch(
@@ -440,19 +429,6 @@ class AttachmentsIoExecutorTest {
                         .build(),
                 )
             }
-            host1.onRpc = { rpc ->
-                if (rpc.kindCase == RpcEffect.KindCase.FETCH_LISTS) {
-                    host1.dispatch(
-                        CoreEvent.newBuilder()
-                            .setListsFetched(
-                                ListsFetchedEvent.newBuilder()
-                                    .setOpId(rpc.opId)
-                                    .addMachines(machine),
-                            )
-                            .build(),
-                    )
-                }
-            }
             exec1.attach(host1)
             runBlocking {
                 // Config MUST precede any Draft* event.
@@ -462,6 +438,29 @@ class AttachmentsIoExecutorTest {
                     scanStorage = true,
                     maxChunkBytes = 0,
                     hasPersistedPreparedImages = true,
+                )
+                host1.dispatchAndWait(
+                    CoreEvent.newBuilder()
+                        .setSeedDemoWorld(
+                            SeedDemoWorldEvent.newBuilder()
+                                .addMachines(
+                                    io.github.lewin671.remoteagent.core.proto.DemoMachine.newBuilder()
+                                        .setMachineId("m1")
+                                        .setOnline(true)
+                                        .setRawMeta(machineMeta.toByteString()),
+                                )
+                                .setReplaceMachines(true)
+                                .setClearDirectReports(true)
+                                .setSecurity(
+                                    DemoSecurity.newBuilder()
+                                        .setIsMember(true)
+                                        .setSelfDeviceId("c1")
+                                        .setAuthorityDeviceId("c1")
+                                        .addTrustedMachineIds("m1")
+                                        .setHeadEpoch(1L),
+                                ),
+                        )
+                        .build(),
                 )
                 host1.syncLifecycle(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_START)
                 // Wait for machine m1 to be online and connected.

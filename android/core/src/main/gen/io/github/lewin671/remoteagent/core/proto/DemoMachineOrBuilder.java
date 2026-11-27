@@ -35,13 +35,8 @@ public interface DemoMachineOrBuilder extends
   long getLastSeenMs();
 
   /**
-   * <code>.remoteagent.v1.MachineMeta meta = 4 [json_name = "meta"];</code>
-   * @return Whether the meta field is set.
+   * <code>bytes raw_meta = 5 [json_name = "rawMeta"];</code>
+   * @return The rawMeta.
    */
-  boolean hasMeta();
-  /**
-   * <code>.remoteagent.v1.MachineMeta meta = 4 [json_name = "meta"];</code>
-   * @return The meta.
-   */
-  io.github.lewin671.remoteagent.proto.MachineMeta getMeta();
+  com.google.protobuf.ByteString getRawMeta();
 }

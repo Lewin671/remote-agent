@@ -20,11 +20,11 @@ public  final class CacheWriteEffect extends
   private java.lang.Object kind_;
   public enum KindCase {
     SET_SESSION_OPEN(6),
-    WRITE_MACHINE(7),
-    WRITE_SESSION(8),
-    KEEP_SESSION_OWNER(9),
     WRITE_STORED_EVENTS(10),
-    WRITE_PREFS(11),
+    RAW_WRITE_MACHINE(12),
+    RAW_WRITE_SESSION(13),
+    RAW_KEEP_SESSION_OWNER(14),
+    RAW_WRITE_PREFS(15),
     KIND_NOT_SET(0);
     private final int value;
     private KindCase(int value) {
@@ -41,11 +41,11 @@ public  final class CacheWriteEffect extends
     public static KindCase forNumber(int value) {
       switch (value) {
         case 6: return SET_SESSION_OPEN;
-        case 7: return WRITE_MACHINE;
-        case 8: return WRITE_SESSION;
-        case 9: return KEEP_SESSION_OWNER;
         case 10: return WRITE_STORED_EVENTS;
-        case 11: return WRITE_PREFS;
+        case 12: return RAW_WRITE_MACHINE;
+        case 13: return RAW_WRITE_SESSION;
+        case 14: return RAW_KEEP_SESSION_OWNER;
+        case 15: return RAW_WRITE_PREFS;
         case 0: return KIND_NOT_SET;
         default: return null;
       }
@@ -119,162 +119,6 @@ public  final class CacheWriteEffect extends
     }
   }
 
-  public static final int WRITE_MACHINE_FIELD_NUMBER = 7;
-  /**
-   * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
-   */
-  @java.lang.Override
-  public boolean hasWriteMachine() {
-    return kindCase_ == 7;
-  }
-  /**
-   * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.Machine getWriteMachine() {
-    if (kindCase_ == 7) {
-       return (io.github.lewin671.remoteagent.proto.Machine) kind_;
-    }
-    return io.github.lewin671.remoteagent.proto.Machine.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setWriteMachine(io.github.lewin671.remoteagent.proto.Machine value) {
-    value.getClass();  // minimal bytecode null check
-    kind_ = value;
-    kindCase_ = 7;
-  }
-  /**
-   * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeWriteMachine(io.github.lewin671.remoteagent.proto.Machine value) {
-    value.getClass();  // minimal bytecode null check
-    if (kindCase_ == 7 &&
-        kind_ != io.github.lewin671.remoteagent.proto.Machine.getDefaultInstance()) {
-      kind_ = io.github.lewin671.remoteagent.proto.Machine.newBuilder((io.github.lewin671.remoteagent.proto.Machine) kind_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      kind_ = value;
-    }
-    kindCase_ = 7;
-  }
-  /**
-   * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
-   */
-  private void clearWriteMachine() {
-    if (kindCase_ == 7) {
-      kindCase_ = 0;
-      kind_ = null;
-    }
-  }
-
-  public static final int WRITE_SESSION_FIELD_NUMBER = 8;
-  /**
-   * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
-   */
-  @java.lang.Override
-  public boolean hasWriteSession() {
-    return kindCase_ == 8;
-  }
-  /**
-   * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.RemoteSession getWriteSession() {
-    if (kindCase_ == 8) {
-       return (io.github.lewin671.remoteagent.proto.RemoteSession) kind_;
-    }
-    return io.github.lewin671.remoteagent.proto.RemoteSession.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setWriteSession(io.github.lewin671.remoteagent.proto.RemoteSession value) {
-    value.getClass();  // minimal bytecode null check
-    kind_ = value;
-    kindCase_ = 8;
-  }
-  /**
-   * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeWriteSession(io.github.lewin671.remoteagent.proto.RemoteSession value) {
-    value.getClass();  // minimal bytecode null check
-    if (kindCase_ == 8 &&
-        kind_ != io.github.lewin671.remoteagent.proto.RemoteSession.getDefaultInstance()) {
-      kind_ = io.github.lewin671.remoteagent.proto.RemoteSession.newBuilder((io.github.lewin671.remoteagent.proto.RemoteSession) kind_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      kind_ = value;
-    }
-    kindCase_ = 8;
-  }
-  /**
-   * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
-   */
-  private void clearWriteSession() {
-    if (kindCase_ == 8) {
-      kindCase_ = 0;
-      kind_ = null;
-    }
-  }
-
-  public static final int KEEP_SESSION_OWNER_FIELD_NUMBER = 9;
-  /**
-   * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
-   */
-  @java.lang.Override
-  public boolean hasKeepSessionOwner() {
-    return kindCase_ == 9;
-  }
-  /**
-   * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.RemoteSession getKeepSessionOwner() {
-    if (kindCase_ == 9) {
-       return (io.github.lewin671.remoteagent.proto.RemoteSession) kind_;
-    }
-    return io.github.lewin671.remoteagent.proto.RemoteSession.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setKeepSessionOwner(io.github.lewin671.remoteagent.proto.RemoteSession value) {
-    value.getClass();  // minimal bytecode null check
-    kind_ = value;
-    kindCase_ = 9;
-  }
-  /**
-   * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeKeepSessionOwner(io.github.lewin671.remoteagent.proto.RemoteSession value) {
-    value.getClass();  // minimal bytecode null check
-    if (kindCase_ == 9 &&
-        kind_ != io.github.lewin671.remoteagent.proto.RemoteSession.getDefaultInstance()) {
-      kind_ = io.github.lewin671.remoteagent.proto.RemoteSession.newBuilder((io.github.lewin671.remoteagent.proto.RemoteSession) kind_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      kind_ = value;
-    }
-    kindCase_ = 9;
-  }
-  /**
-   * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
-   */
-  private void clearKeepSessionOwner() {
-    if (kindCase_ == 9) {
-      kindCase_ = 0;
-      kind_ = null;
-    }
-  }
-
   public static final int WRITE_STORED_EVENTS_FIELD_NUMBER = 10;
   /**
    * <code>.remoteagent.core.v1.CacheWriteStoredEvents write_stored_events = 10 [json_name = "writeStoredEvents"];</code>
@@ -327,53 +171,157 @@ public  final class CacheWriteEffect extends
     }
   }
 
-  public static final int WRITE_PREFS_FIELD_NUMBER = 11;
+  public static final int RAW_WRITE_MACHINE_FIELD_NUMBER = 12;
   /**
-   * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+   * <code>bytes raw_write_machine = 12 [json_name = "rawWriteMachine"];</code>
+   * @return Whether the rawWriteMachine field is set.
    */
   @java.lang.Override
-  public boolean hasWritePrefs() {
-    return kindCase_ == 11;
+  public boolean hasRawWriteMachine() {
+    return kindCase_ == 12;
   }
   /**
-   * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+   * <code>bytes raw_write_machine = 12 [json_name = "rawWriteMachine"];</code>
+   * @return The rawWriteMachine.
    */
   @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.AccountPrefsObject getWritePrefs() {
-    if (kindCase_ == 11) {
-       return (io.github.lewin671.remoteagent.proto.AccountPrefsObject) kind_;
+  public com.google.protobuf.ByteString getRawWriteMachine() {
+    if (kindCase_ == 12) {
+      return (com.google.protobuf.ByteString) kind_;
     }
-    return io.github.lewin671.remoteagent.proto.AccountPrefsObject.getDefaultInstance();
+    return com.google.protobuf.ByteString.EMPTY;
   }
   /**
-   * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+   * <code>bytes raw_write_machine = 12 [json_name = "rawWriteMachine"];</code>
+   * @param value The rawWriteMachine to set.
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setWritePrefs(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
-    value.getClass();  // minimal bytecode null check
+  private void setRawWriteMachine(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  kindCase_ = 12;
     kind_ = value;
-    kindCase_ = 11;
   }
   /**
-   * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+   * <code>bytes raw_write_machine = 12 [json_name = "rawWriteMachine"];</code>
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeWritePrefs(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
-    value.getClass();  // minimal bytecode null check
-    if (kindCase_ == 11 &&
-        kind_ != io.github.lewin671.remoteagent.proto.AccountPrefsObject.getDefaultInstance()) {
-      kind_ = io.github.lewin671.remoteagent.proto.AccountPrefsObject.newBuilder((io.github.lewin671.remoteagent.proto.AccountPrefsObject) kind_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      kind_ = value;
+  private void clearRawWriteMachine() {
+    if (kindCase_ == 12) {
+      kindCase_ = 0;
+      kind_ = null;
     }
-    kindCase_ = 11;
+  }
+
+  public static final int RAW_WRITE_SESSION_FIELD_NUMBER = 13;
+  /**
+   * <code>bytes raw_write_session = 13 [json_name = "rawWriteSession"];</code>
+   * @return Whether the rawWriteSession field is set.
+   */
+  @java.lang.Override
+  public boolean hasRawWriteSession() {
+    return kindCase_ == 13;
   }
   /**
-   * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+   * <code>bytes raw_write_session = 13 [json_name = "rawWriteSession"];</code>
+   * @return The rawWriteSession.
    */
-  private void clearWritePrefs() {
-    if (kindCase_ == 11) {
+  @java.lang.Override
+  public com.google.protobuf.ByteString getRawWriteSession() {
+    if (kindCase_ == 13) {
+      return (com.google.protobuf.ByteString) kind_;
+    }
+    return com.google.protobuf.ByteString.EMPTY;
+  }
+  /**
+   * <code>bytes raw_write_session = 13 [json_name = "rawWriteSession"];</code>
+   * @param value The rawWriteSession to set.
+   */
+  private void setRawWriteSession(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  kindCase_ = 13;
+    kind_ = value;
+  }
+  /**
+   * <code>bytes raw_write_session = 13 [json_name = "rawWriteSession"];</code>
+   */
+  private void clearRawWriteSession() {
+    if (kindCase_ == 13) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int RAW_KEEP_SESSION_OWNER_FIELD_NUMBER = 14;
+  /**
+   * <code>bytes raw_keep_session_owner = 14 [json_name = "rawKeepSessionOwner"];</code>
+   * @return Whether the rawKeepSessionOwner field is set.
+   */
+  @java.lang.Override
+  public boolean hasRawKeepSessionOwner() {
+    return kindCase_ == 14;
+  }
+  /**
+   * <code>bytes raw_keep_session_owner = 14 [json_name = "rawKeepSessionOwner"];</code>
+   * @return The rawKeepSessionOwner.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getRawKeepSessionOwner() {
+    if (kindCase_ == 14) {
+      return (com.google.protobuf.ByteString) kind_;
+    }
+    return com.google.protobuf.ByteString.EMPTY;
+  }
+  /**
+   * <code>bytes raw_keep_session_owner = 14 [json_name = "rawKeepSessionOwner"];</code>
+   * @param value The rawKeepSessionOwner to set.
+   */
+  private void setRawKeepSessionOwner(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  kindCase_ = 14;
+    kind_ = value;
+  }
+  /**
+   * <code>bytes raw_keep_session_owner = 14 [json_name = "rawKeepSessionOwner"];</code>
+   */
+  private void clearRawKeepSessionOwner() {
+    if (kindCase_ == 14) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int RAW_WRITE_PREFS_FIELD_NUMBER = 15;
+  /**
+   * <code>bytes raw_write_prefs = 15 [json_name = "rawWritePrefs"];</code>
+   * @return Whether the rawWritePrefs field is set.
+   */
+  @java.lang.Override
+  public boolean hasRawWritePrefs() {
+    return kindCase_ == 15;
+  }
+  /**
+   * <code>bytes raw_write_prefs = 15 [json_name = "rawWritePrefs"];</code>
+   * @return The rawWritePrefs.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getRawWritePrefs() {
+    if (kindCase_ == 15) {
+      return (com.google.protobuf.ByteString) kind_;
+    }
+    return com.google.protobuf.ByteString.EMPTY;
+  }
+  /**
+   * <code>bytes raw_write_prefs = 15 [json_name = "rawWritePrefs"];</code>
+   * @param value The rawWritePrefs to set.
+   */
+  private void setRawWritePrefs(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  kindCase_ = 15;
+    kind_ = value;
+  }
+  /**
+   * <code>bytes raw_write_prefs = 15 [json_name = "rawWritePrefs"];</code>
+   */
+  private void clearRawWritePrefs() {
+    if (kindCase_ == 15) {
       kindCase_ = 0;
       kind_ = null;
     }
@@ -537,150 +485,6 @@ public  final class CacheWriteEffect extends
     }
 
     /**
-     * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
-     */
-    @java.lang.Override
-    public boolean hasWriteMachine() {
-      return instance.hasWriteMachine();
-    }
-    /**
-     * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.Machine getWriteMachine() {
-      return instance.getWriteMachine();
-    }
-    /**
-     * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
-     */
-    public Builder setWriteMachine(io.github.lewin671.remoteagent.proto.Machine value) {
-      copyOnWrite();
-      instance.setWriteMachine(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
-     */
-    public Builder setWriteMachine(
-        io.github.lewin671.remoteagent.proto.Machine.Builder builderForValue) {
-      copyOnWrite();
-      instance.setWriteMachine(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
-     */
-    public Builder mergeWriteMachine(io.github.lewin671.remoteagent.proto.Machine value) {
-      copyOnWrite();
-      instance.mergeWriteMachine(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
-     */
-    public Builder clearWriteMachine() {
-      copyOnWrite();
-      instance.clearWriteMachine();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
-     */
-    @java.lang.Override
-    public boolean hasWriteSession() {
-      return instance.hasWriteSession();
-    }
-    /**
-     * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.RemoteSession getWriteSession() {
-      return instance.getWriteSession();
-    }
-    /**
-     * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
-     */
-    public Builder setWriteSession(io.github.lewin671.remoteagent.proto.RemoteSession value) {
-      copyOnWrite();
-      instance.setWriteSession(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
-     */
-    public Builder setWriteSession(
-        io.github.lewin671.remoteagent.proto.RemoteSession.Builder builderForValue) {
-      copyOnWrite();
-      instance.setWriteSession(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
-     */
-    public Builder mergeWriteSession(io.github.lewin671.remoteagent.proto.RemoteSession value) {
-      copyOnWrite();
-      instance.mergeWriteSession(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
-     */
-    public Builder clearWriteSession() {
-      copyOnWrite();
-      instance.clearWriteSession();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
-     */
-    @java.lang.Override
-    public boolean hasKeepSessionOwner() {
-      return instance.hasKeepSessionOwner();
-    }
-    /**
-     * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.RemoteSession getKeepSessionOwner() {
-      return instance.getKeepSessionOwner();
-    }
-    /**
-     * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
-     */
-    public Builder setKeepSessionOwner(io.github.lewin671.remoteagent.proto.RemoteSession value) {
-      copyOnWrite();
-      instance.setKeepSessionOwner(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
-     */
-    public Builder setKeepSessionOwner(
-        io.github.lewin671.remoteagent.proto.RemoteSession.Builder builderForValue) {
-      copyOnWrite();
-      instance.setKeepSessionOwner(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
-     */
-    public Builder mergeKeepSessionOwner(io.github.lewin671.remoteagent.proto.RemoteSession value) {
-      copyOnWrite();
-      instance.mergeKeepSessionOwner(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
-     */
-    public Builder clearKeepSessionOwner() {
-      copyOnWrite();
-      instance.clearKeepSessionOwner();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.CacheWriteStoredEvents write_stored_events = 10 [json_name = "writeStoredEvents"];</code>
      */
     @java.lang.Override
@@ -729,50 +533,146 @@ public  final class CacheWriteEffect extends
     }
 
     /**
-     * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+     * <code>bytes raw_write_machine = 12 [json_name = "rawWriteMachine"];</code>
+     * @return Whether the rawWriteMachine field is set.
      */
     @java.lang.Override
-    public boolean hasWritePrefs() {
-      return instance.hasWritePrefs();
+    public boolean hasRawWriteMachine() {
+      return instance.hasRawWriteMachine();
     }
     /**
-     * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+     * <code>bytes raw_write_machine = 12 [json_name = "rawWriteMachine"];</code>
+     * @return The rawWriteMachine.
      */
     @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.AccountPrefsObject getWritePrefs() {
-      return instance.getWritePrefs();
+    public com.google.protobuf.ByteString getRawWriteMachine() {
+      return instance.getRawWriteMachine();
     }
     /**
-     * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+     * <code>bytes raw_write_machine = 12 [json_name = "rawWriteMachine"];</code>
+     * @param value The rawWriteMachine to set.
+     * @return This builder for chaining.
      */
-    public Builder setWritePrefs(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
+    public Builder setRawWriteMachine(com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.setWritePrefs(value);
+      instance.setRawWriteMachine(value);
       return this;
     }
     /**
-     * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+     * <code>bytes raw_write_machine = 12 [json_name = "rawWriteMachine"];</code>
+     * @return This builder for chaining.
      */
-    public Builder setWritePrefs(
-        io.github.lewin671.remoteagent.proto.AccountPrefsObject.Builder builderForValue) {
+    public Builder clearRawWriteMachine() {
       copyOnWrite();
-      instance.setWritePrefs(builderForValue.build());
+      instance.clearRawWriteMachine();
+      return this;
+    }
+
+    /**
+     * <code>bytes raw_write_session = 13 [json_name = "rawWriteSession"];</code>
+     * @return Whether the rawWriteSession field is set.
+     */
+    @java.lang.Override
+    public boolean hasRawWriteSession() {
+      return instance.hasRawWriteSession();
+    }
+    /**
+     * <code>bytes raw_write_session = 13 [json_name = "rawWriteSession"];</code>
+     * @return The rawWriteSession.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getRawWriteSession() {
+      return instance.getRawWriteSession();
+    }
+    /**
+     * <code>bytes raw_write_session = 13 [json_name = "rawWriteSession"];</code>
+     * @param value The rawWriteSession to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRawWriteSession(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setRawWriteSession(value);
       return this;
     }
     /**
-     * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+     * <code>bytes raw_write_session = 13 [json_name = "rawWriteSession"];</code>
+     * @return This builder for chaining.
      */
-    public Builder mergeWritePrefs(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
+    public Builder clearRawWriteSession() {
       copyOnWrite();
-      instance.mergeWritePrefs(value);
+      instance.clearRawWriteSession();
+      return this;
+    }
+
+    /**
+     * <code>bytes raw_keep_session_owner = 14 [json_name = "rawKeepSessionOwner"];</code>
+     * @return Whether the rawKeepSessionOwner field is set.
+     */
+    @java.lang.Override
+    public boolean hasRawKeepSessionOwner() {
+      return instance.hasRawKeepSessionOwner();
+    }
+    /**
+     * <code>bytes raw_keep_session_owner = 14 [json_name = "rawKeepSessionOwner"];</code>
+     * @return The rawKeepSessionOwner.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getRawKeepSessionOwner() {
+      return instance.getRawKeepSessionOwner();
+    }
+    /**
+     * <code>bytes raw_keep_session_owner = 14 [json_name = "rawKeepSessionOwner"];</code>
+     * @param value The rawKeepSessionOwner to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRawKeepSessionOwner(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setRawKeepSessionOwner(value);
       return this;
     }
     /**
-     * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+     * <code>bytes raw_keep_session_owner = 14 [json_name = "rawKeepSessionOwner"];</code>
+     * @return This builder for chaining.
      */
-    public Builder clearWritePrefs() {
+    public Builder clearRawKeepSessionOwner() {
       copyOnWrite();
-      instance.clearWritePrefs();
+      instance.clearRawKeepSessionOwner();
+      return this;
+    }
+
+    /**
+     * <code>bytes raw_write_prefs = 15 [json_name = "rawWritePrefs"];</code>
+     * @return Whether the rawWritePrefs field is set.
+     */
+    @java.lang.Override
+    public boolean hasRawWritePrefs() {
+      return instance.hasRawWritePrefs();
+    }
+    /**
+     * <code>bytes raw_write_prefs = 15 [json_name = "rawWritePrefs"];</code>
+     * @return The rawWritePrefs.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getRawWritePrefs() {
+      return instance.getRawWritePrefs();
+    }
+    /**
+     * <code>bytes raw_write_prefs = 15 [json_name = "rawWritePrefs"];</code>
+     * @param value The rawWritePrefs to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRawWritePrefs(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setRawWritePrefs(value);
+      return this;
+    }
+    /**
+     * <code>bytes raw_write_prefs = 15 [json_name = "rawWritePrefs"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRawWritePrefs() {
+      copyOnWrite();
+      instance.clearRawWritePrefs();
       return this;
     }
 
@@ -795,15 +695,11 @@ public  final class CacheWriteEffect extends
             "kind_",
             "kindCase_",
             io.github.lewin671.remoteagent.core.proto.CacheSessionOpen.class,
-            io.github.lewin671.remoteagent.proto.Machine.class,
-            io.github.lewin671.remoteagent.proto.RemoteSession.class,
-            io.github.lewin671.remoteagent.proto.RemoteSession.class,
             io.github.lewin671.remoteagent.core.proto.CacheWriteStoredEvents.class,
-            io.github.lewin671.remoteagent.proto.AccountPrefsObject.class,
           };
           java.lang.String info =
-              "\u0000\u0006\u0001\u0000\u0006\u000b\u0006\u0000\u0000\u0000\u0006<\u0000\u0007<" +
-              "\u0000\b<\u0000\t<\u0000\n<\u0000\u000b<\u0000";
+              "\u0000\u0006\u0001\u0000\u0006\u000f\u0006\u0000\u0000\u0000\u0006<\u0000\n<\u0000" +
+              "\f=\u0000\r=\u0000\u000e=\u0000\u000f=\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

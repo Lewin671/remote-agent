@@ -147,13 +147,8 @@ public interface DispatchCommandEffectOrBuilder extends
   long getDirectTicketId();
 
   /**
-   * <code>.remoteagent.v1.Envelope sealed_envelope = 20 [json_name = "sealedEnvelope"];</code>
-   * @return Whether the sealedEnvelope field is set.
+   * <code>bytes raw_sealed_envelope = 21 [json_name = "rawSealedEnvelope"];</code>
+   * @return The rawSealedEnvelope.
    */
-  boolean hasSealedEnvelope();
-  /**
-   * <code>.remoteagent.v1.Envelope sealed_envelope = 20 [json_name = "sealedEnvelope"];</code>
-   * @return The sealedEnvelope.
-   */
-  io.github.lewin671.remoteagent.proto.Envelope getSealedEnvelope();
+  com.google.protobuf.ByteString getRawSealedEnvelope();
 }

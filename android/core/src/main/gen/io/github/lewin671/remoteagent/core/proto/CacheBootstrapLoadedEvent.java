@@ -15,15 +15,13 @@ public  final class CacheBootstrapLoadedEvent extends
     // @@protoc_insertion_point(message_implements:remoteagent.core.v1.CacheBootstrapLoadedEvent)
     CacheBootstrapLoadedEventOrBuilder {
   private CacheBootstrapLoadedEvent() {
-    machines_ = emptyProtobufList();
-    sessions_ = emptyProtobufList();
     homeScopeToken_ = "";
     scopeHmacKey_ = com.google.protobuf.ByteString.EMPTY;
     error_ = "";
-    wireMachines_ = emptyProtobufList();
-    wireSessions_ = emptyProtobufList();
+    rawMachines_ = emptyProtobufList();
+    rawSessions_ = emptyProtobufList();
+    rawPrefs_ = com.google.protobuf.ByteString.EMPTY;
   }
-  private int bitField0_;
   public static final int OP_ID_FIELD_NUMBER = 1;
   private long opId_;
   /**
@@ -48,248 +46,6 @@ public  final class CacheBootstrapLoadedEvent extends
   private void clearOpId() {
 
     opId_ = 0L;
-  }
-
-  public static final int MACHINES_FIELD_NUMBER = 2;
-  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.PlainMachine> machines_;
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-   */
-  @java.lang.Override
-  public java.util.List<io.github.lewin671.remoteagent.core.proto.PlainMachine> getMachinesList() {
-    return machines_;
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-   */
-  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.PlainMachineOrBuilder> 
-      getMachinesOrBuilderList() {
-    return machines_;
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-   */
-  @java.lang.Override
-  public int getMachinesCount() {
-    return machines_.size();
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.PlainMachine getMachines(int index) {
-    return machines_.get(index);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-   */
-  public io.github.lewin671.remoteagent.core.proto.PlainMachineOrBuilder getMachinesOrBuilder(
-      int index) {
-    return machines_.get(index);
-  }
-  private void ensureMachinesIsMutable() {
-    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.PlainMachine> tmp = machines_;
-    if (!tmp.isModifiable()) {
-      machines_ =
-          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
-     }
-  }
-
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setMachines(
-      int index, io.github.lewin671.remoteagent.core.proto.PlainMachine value) {
-    value.getClass();  // minimal bytecode null check
-    ensureMachinesIsMutable();
-    machines_.set(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addMachines(io.github.lewin671.remoteagent.core.proto.PlainMachine value) {
-    value.getClass();  // minimal bytecode null check
-    ensureMachinesIsMutable();
-    machines_.add(value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addMachines(
-      int index, io.github.lewin671.remoteagent.core.proto.PlainMachine value) {
-    value.getClass();  // minimal bytecode null check
-    ensureMachinesIsMutable();
-    machines_.add(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-   */
-  private void addAllMachines(
-      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.PlainMachine> values) {
-    ensureMachinesIsMutable();
-    com.google.protobuf.AbstractMessageLite.addAll(
-        values, machines_);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-   */
-  private void clearMachines() {
-    machines_ = emptyProtobufList();
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-   */
-  private void removeMachines(int index) {
-    ensureMachinesIsMutable();
-    machines_.remove(index);
-  }
-
-  public static final int SESSIONS_FIELD_NUMBER = 3;
-  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.PlainSession> sessions_;
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-   */
-  @java.lang.Override
-  public java.util.List<io.github.lewin671.remoteagent.core.proto.PlainSession> getSessionsList() {
-    return sessions_;
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-   */
-  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.PlainSessionOrBuilder> 
-      getSessionsOrBuilderList() {
-    return sessions_;
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-   */
-  @java.lang.Override
-  public int getSessionsCount() {
-    return sessions_.size();
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.PlainSession getSessions(int index) {
-    return sessions_.get(index);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-   */
-  public io.github.lewin671.remoteagent.core.proto.PlainSessionOrBuilder getSessionsOrBuilder(
-      int index) {
-    return sessions_.get(index);
-  }
-  private void ensureSessionsIsMutable() {
-    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.PlainSession> tmp = sessions_;
-    if (!tmp.isModifiable()) {
-      sessions_ =
-          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
-     }
-  }
-
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSessions(
-      int index, io.github.lewin671.remoteagent.core.proto.PlainSession value) {
-    value.getClass();  // minimal bytecode null check
-    ensureSessionsIsMutable();
-    sessions_.set(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addSessions(io.github.lewin671.remoteagent.core.proto.PlainSession value) {
-    value.getClass();  // minimal bytecode null check
-    ensureSessionsIsMutable();
-    sessions_.add(value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addSessions(
-      int index, io.github.lewin671.remoteagent.core.proto.PlainSession value) {
-    value.getClass();  // minimal bytecode null check
-    ensureSessionsIsMutable();
-    sessions_.add(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-   */
-  private void addAllSessions(
-      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.PlainSession> values) {
-    ensureSessionsIsMutable();
-    com.google.protobuf.AbstractMessageLite.addAll(
-        values, sessions_);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-   */
-  private void clearSessions() {
-    sessions_ = emptyProtobufList();
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-   */
-  private void removeSessions(int index) {
-    ensureSessionsIsMutable();
-    sessions_.remove(index);
-  }
-
-  public static final int PREFS_FIELD_NUMBER = 4;
-  private io.github.lewin671.remoteagent.core.proto.PlainAccountPrefs prefs_;
-  /**
-   * <code>.remoteagent.core.v1.PlainAccountPrefs prefs = 4 [json_name = "prefs"];</code>
-   */
-  @java.lang.Override
-  public boolean hasPrefs() {
-    return ((bitField0_ & 0x00000001) != 0);
-  }
-  /**
-   * <code>.remoteagent.core.v1.PlainAccountPrefs prefs = 4 [json_name = "prefs"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.PlainAccountPrefs getPrefs() {
-    return prefs_ == null ? io.github.lewin671.remoteagent.core.proto.PlainAccountPrefs.getDefaultInstance() : prefs_;
-  }
-  /**
-   * <code>.remoteagent.core.v1.PlainAccountPrefs prefs = 4 [json_name = "prefs"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setPrefs(io.github.lewin671.remoteagent.core.proto.PlainAccountPrefs value) {
-    value.getClass();  // minimal bytecode null check
-    prefs_ = value;
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.core.v1.PlainAccountPrefs prefs = 4 [json_name = "prefs"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergePrefs(io.github.lewin671.remoteagent.core.proto.PlainAccountPrefs value) {
-    value.getClass();  // minimal bytecode null check
-    if (prefs_ != null &&
-        prefs_ != io.github.lewin671.remoteagent.core.proto.PlainAccountPrefs.getDefaultInstance()) {
-      prefs_ =
-        io.github.lewin671.remoteagent.core.proto.PlainAccountPrefs.newBuilder(prefs_).mergeFrom(value).buildPartial();
-    } else {
-      prefs_ = value;
-    }
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.core.v1.PlainAccountPrefs prefs = 4 [json_name = "prefs"];</code>
-   */
-  private void clearPrefs() {
-    prefs_ = null;
-    bitField0_ = (bitField0_ & ~0x00000001);
   }
 
   public static final int HOME_SCOPE_TOKEN_FIELD_NUMBER = 5;
@@ -415,246 +171,175 @@ public  final class CacheBootstrapLoadedEvent extends
 
   }
 
-  public static final int WIRE_MACHINES_FIELD_NUMBER = 10;
-  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.Machine> wireMachines_;
+  public static final int RAW_MACHINES_FIELD_NUMBER = 13;
+  private com.google.protobuf.Internal.ProtobufList<com.google.protobuf.ByteString> rawMachines_;
   /**
-   * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+   * <code>repeated bytes raw_machines = 13 [json_name = "rawMachines"];</code>
+   * @return A list containing the rawMachines.
    */
   @java.lang.Override
-  public java.util.List<io.github.lewin671.remoteagent.proto.Machine> getWireMachinesList() {
-    return wireMachines_;
+  public java.util.List<com.google.protobuf.ByteString>
+      getRawMachinesList() {
+    return rawMachines_;
   }
   /**
-   * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
-   */
-  public java.util.List<? extends io.github.lewin671.remoteagent.proto.MachineOrBuilder> 
-      getWireMachinesOrBuilderList() {
-    return wireMachines_;
-  }
-  /**
-   * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+   * <code>repeated bytes raw_machines = 13 [json_name = "rawMachines"];</code>
+   * @return The count of rawMachines.
    */
   @java.lang.Override
-  public int getWireMachinesCount() {
-    return wireMachines_.size();
+  public int getRawMachinesCount() {
+    return rawMachines_.size();
   }
   /**
-   * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+   * <code>repeated bytes raw_machines = 13 [json_name = "rawMachines"];</code>
+   * @param index The index of the element to return.
+   * @return The rawMachines at the given index.
    */
   @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.Machine getWireMachines(int index) {
-    return wireMachines_.get(index);
+  public com.google.protobuf.ByteString getRawMachines(int index) {
+    return rawMachines_.get(index);
   }
-  /**
-   * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
-   */
-  public io.github.lewin671.remoteagent.proto.MachineOrBuilder getWireMachinesOrBuilder(
-      int index) {
-    return wireMachines_.get(index);
-  }
-  private void ensureWireMachinesIsMutable() {
-    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.Machine> tmp = wireMachines_;
+  private void ensureRawMachinesIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<com.google.protobuf.ByteString> tmp = rawMachines_;
     if (!tmp.isModifiable()) {
-      wireMachines_ =
+      rawMachines_ =
           com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
      }
   }
-
   /**
-   * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+   * <code>repeated bytes raw_machines = 13 [json_name = "rawMachines"];</code>
+   * @param index The index to set the value at.
+   * @param value The rawMachines to set.
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setWireMachines(
-      int index, io.github.lewin671.remoteagent.proto.Machine value) {
-    value.getClass();  // minimal bytecode null check
-    ensureWireMachinesIsMutable();
-    wireMachines_.set(index, value);
+  private void setRawMachines(
+      int index, com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  ensureRawMachinesIsMutable();
+    rawMachines_.set(index, value);
   }
   /**
-   * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+   * <code>repeated bytes raw_machines = 13 [json_name = "rawMachines"];</code>
+   * @param value The rawMachines to add.
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addWireMachines(io.github.lewin671.remoteagent.proto.Machine value) {
-    value.getClass();  // minimal bytecode null check
-    ensureWireMachinesIsMutable();
-    wireMachines_.add(value);
+  private void addRawMachines(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  ensureRawMachinesIsMutable();
+    rawMachines_.add(value);
   }
   /**
-   * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+   * <code>repeated bytes raw_machines = 13 [json_name = "rawMachines"];</code>
+   * @param values The rawMachines to add.
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addWireMachines(
-      int index, io.github.lewin671.remoteagent.proto.Machine value) {
-    value.getClass();  // minimal bytecode null check
-    ensureWireMachinesIsMutable();
-    wireMachines_.add(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
-   */
-  private void addAllWireMachines(
-      java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.Machine> values) {
-    ensureWireMachinesIsMutable();
+  private void addAllRawMachines(
+      java.lang.Iterable<? extends com.google.protobuf.ByteString> values) {
+    ensureRawMachinesIsMutable();
     com.google.protobuf.AbstractMessageLite.addAll(
-        values, wireMachines_);
+        values, rawMachines_);
   }
   /**
-   * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+   * <code>repeated bytes raw_machines = 13 [json_name = "rawMachines"];</code>
    */
-  private void clearWireMachines() {
-    wireMachines_ = emptyProtobufList();
-  }
-  /**
-   * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
-   */
-  private void removeWireMachines(int index) {
-    ensureWireMachinesIsMutable();
-    wireMachines_.remove(index);
+  private void clearRawMachines() {
+    rawMachines_ = emptyProtobufList();
   }
 
-  public static final int WIRE_SESSIONS_FIELD_NUMBER = 11;
-  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.RemoteSession> wireSessions_;
+  public static final int RAW_SESSIONS_FIELD_NUMBER = 14;
+  private com.google.protobuf.Internal.ProtobufList<com.google.protobuf.ByteString> rawSessions_;
   /**
-   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+   * <code>repeated bytes raw_sessions = 14 [json_name = "rawSessions"];</code>
+   * @return A list containing the rawSessions.
    */
   @java.lang.Override
-  public java.util.List<io.github.lewin671.remoteagent.proto.RemoteSession> getWireSessionsList() {
-    return wireSessions_;
+  public java.util.List<com.google.protobuf.ByteString>
+      getRawSessionsList() {
+    return rawSessions_;
   }
   /**
-   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
-   */
-  public java.util.List<? extends io.github.lewin671.remoteagent.proto.RemoteSessionOrBuilder> 
-      getWireSessionsOrBuilderList() {
-    return wireSessions_;
-  }
-  /**
-   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+   * <code>repeated bytes raw_sessions = 14 [json_name = "rawSessions"];</code>
+   * @return The count of rawSessions.
    */
   @java.lang.Override
-  public int getWireSessionsCount() {
-    return wireSessions_.size();
+  public int getRawSessionsCount() {
+    return rawSessions_.size();
   }
   /**
-   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+   * <code>repeated bytes raw_sessions = 14 [json_name = "rawSessions"];</code>
+   * @param index The index of the element to return.
+   * @return The rawSessions at the given index.
    */
   @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.RemoteSession getWireSessions(int index) {
-    return wireSessions_.get(index);
+  public com.google.protobuf.ByteString getRawSessions(int index) {
+    return rawSessions_.get(index);
   }
-  /**
-   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
-   */
-  public io.github.lewin671.remoteagent.proto.RemoteSessionOrBuilder getWireSessionsOrBuilder(
-      int index) {
-    return wireSessions_.get(index);
-  }
-  private void ensureWireSessionsIsMutable() {
-    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.RemoteSession> tmp = wireSessions_;
+  private void ensureRawSessionsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<com.google.protobuf.ByteString> tmp = rawSessions_;
     if (!tmp.isModifiable()) {
-      wireSessions_ =
+      rawSessions_ =
           com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
      }
   }
-
   /**
-   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+   * <code>repeated bytes raw_sessions = 14 [json_name = "rawSessions"];</code>
+   * @param index The index to set the value at.
+   * @param value The rawSessions to set.
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setWireSessions(
-      int index, io.github.lewin671.remoteagent.proto.RemoteSession value) {
-    value.getClass();  // minimal bytecode null check
-    ensureWireSessionsIsMutable();
-    wireSessions_.set(index, value);
+  private void setRawSessions(
+      int index, com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  ensureRawSessionsIsMutable();
+    rawSessions_.set(index, value);
   }
   /**
-   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+   * <code>repeated bytes raw_sessions = 14 [json_name = "rawSessions"];</code>
+   * @param value The rawSessions to add.
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addWireSessions(io.github.lewin671.remoteagent.proto.RemoteSession value) {
-    value.getClass();  // minimal bytecode null check
-    ensureWireSessionsIsMutable();
-    wireSessions_.add(value);
+  private void addRawSessions(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  ensureRawSessionsIsMutable();
+    rawSessions_.add(value);
   }
   /**
-   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+   * <code>repeated bytes raw_sessions = 14 [json_name = "rawSessions"];</code>
+   * @param values The rawSessions to add.
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addWireSessions(
-      int index, io.github.lewin671.remoteagent.proto.RemoteSession value) {
-    value.getClass();  // minimal bytecode null check
-    ensureWireSessionsIsMutable();
-    wireSessions_.add(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
-   */
-  private void addAllWireSessions(
-      java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.RemoteSession> values) {
-    ensureWireSessionsIsMutable();
+  private void addAllRawSessions(
+      java.lang.Iterable<? extends com.google.protobuf.ByteString> values) {
+    ensureRawSessionsIsMutable();
     com.google.protobuf.AbstractMessageLite.addAll(
-        values, wireSessions_);
+        values, rawSessions_);
   }
   /**
-   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+   * <code>repeated bytes raw_sessions = 14 [json_name = "rawSessions"];</code>
    */
-  private void clearWireSessions() {
-    wireSessions_ = emptyProtobufList();
-  }
-  /**
-   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
-   */
-  private void removeWireSessions(int index) {
-    ensureWireSessionsIsMutable();
-    wireSessions_.remove(index);
+  private void clearRawSessions() {
+    rawSessions_ = emptyProtobufList();
   }
 
-  public static final int WIRE_PREFS_FIELD_NUMBER = 12;
-  private io.github.lewin671.remoteagent.proto.AccountPrefsObject wirePrefs_;
+  public static final int RAW_PREFS_FIELD_NUMBER = 15;
+  private com.google.protobuf.ByteString rawPrefs_;
   /**
-   * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 12 [json_name = "wirePrefs"];</code>
+   * <code>bytes raw_prefs = 15 [json_name = "rawPrefs"];</code>
+   * @return The rawPrefs.
    */
   @java.lang.Override
-  public boolean hasWirePrefs() {
-    return ((bitField0_ & 0x00000002) != 0);
+  public com.google.protobuf.ByteString getRawPrefs() {
+    return rawPrefs_;
   }
   /**
-   * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 12 [json_name = "wirePrefs"];</code>
+   * <code>bytes raw_prefs = 15 [json_name = "rawPrefs"];</code>
+   * @param value The rawPrefs to set.
    */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.AccountPrefsObject getWirePrefs() {
-    return wirePrefs_ == null ? io.github.lewin671.remoteagent.proto.AccountPrefsObject.getDefaultInstance() : wirePrefs_;
+  private void setRawPrefs(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    rawPrefs_ = value;
   }
   /**
-   * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 12 [json_name = "wirePrefs"];</code>
+   * <code>bytes raw_prefs = 15 [json_name = "rawPrefs"];</code>
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setWirePrefs(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
-    value.getClass();  // minimal bytecode null check
-    wirePrefs_ = value;
-    bitField0_ |= 0x00000002;
-  }
-  /**
-   * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 12 [json_name = "wirePrefs"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeWirePrefs(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
-    value.getClass();  // minimal bytecode null check
-    if (wirePrefs_ != null &&
-        wirePrefs_ != io.github.lewin671.remoteagent.proto.AccountPrefsObject.getDefaultInstance()) {
-      wirePrefs_ =
-        io.github.lewin671.remoteagent.proto.AccountPrefsObject.newBuilder(wirePrefs_).mergeFrom(value).buildPartial();
-    } else {
-      wirePrefs_ = value;
-    }
-    bitField0_ |= 0x00000002;
-  }
-  /**
-   * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 12 [json_name = "wirePrefs"];</code>
-   */
-  private void clearWirePrefs() {
-    wirePrefs_ = null;
-    bitField0_ = (bitField0_ & ~0x00000002);
+  private void clearRawPrefs() {
+
+    rawPrefs_ = getDefaultInstance().getRawPrefs();
   }
 
   public static io.github.lewin671.remoteagent.core.proto.CacheBootstrapLoadedEvent parseFrom(
@@ -779,257 +464,6 @@ public  final class CacheBootstrapLoadedEvent extends
     public Builder clearOpId() {
       copyOnWrite();
       instance.clearOpId();
-      return this;
-    }
-
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-     */
-    @java.lang.Override
-    public java.util.List<io.github.lewin671.remoteagent.core.proto.PlainMachine> getMachinesList() {
-      return java.util.Collections.unmodifiableList(
-          instance.getMachinesList());
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-     */
-    @java.lang.Override
-    public int getMachinesCount() {
-      return instance.getMachinesCount();
-    }/**
-     * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.PlainMachine getMachines(int index) {
-      return instance.getMachines(index);
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-     */
-    public Builder setMachines(
-        int index, io.github.lewin671.remoteagent.core.proto.PlainMachine value) {
-      copyOnWrite();
-      instance.setMachines(index, value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-     */
-    public Builder setMachines(
-        int index, io.github.lewin671.remoteagent.core.proto.PlainMachine.Builder builderForValue) {
-      copyOnWrite();
-      instance.setMachines(index,
-          builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-     */
-    public Builder addMachines(io.github.lewin671.remoteagent.core.proto.PlainMachine value) {
-      copyOnWrite();
-      instance.addMachines(value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-     */
-    public Builder addMachines(
-        int index, io.github.lewin671.remoteagent.core.proto.PlainMachine value) {
-      copyOnWrite();
-      instance.addMachines(index, value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-     */
-    public Builder addMachines(
-        io.github.lewin671.remoteagent.core.proto.PlainMachine.Builder builderForValue) {
-      copyOnWrite();
-      instance.addMachines(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-     */
-    public Builder addMachines(
-        int index, io.github.lewin671.remoteagent.core.proto.PlainMachine.Builder builderForValue) {
-      copyOnWrite();
-      instance.addMachines(index,
-          builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-     */
-    public Builder addAllMachines(
-        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.PlainMachine> values) {
-      copyOnWrite();
-      instance.addAllMachines(values);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-     */
-    public Builder clearMachines() {
-      copyOnWrite();
-      instance.clearMachines();
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainMachine machines = 2 [json_name = "machines"];</code>
-     */
-    public Builder removeMachines(int index) {
-      copyOnWrite();
-      instance.removeMachines(index);
-      return this;
-    }
-
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-     */
-    @java.lang.Override
-    public java.util.List<io.github.lewin671.remoteagent.core.proto.PlainSession> getSessionsList() {
-      return java.util.Collections.unmodifiableList(
-          instance.getSessionsList());
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-     */
-    @java.lang.Override
-    public int getSessionsCount() {
-      return instance.getSessionsCount();
-    }/**
-     * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.PlainSession getSessions(int index) {
-      return instance.getSessions(index);
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-     */
-    public Builder setSessions(
-        int index, io.github.lewin671.remoteagent.core.proto.PlainSession value) {
-      copyOnWrite();
-      instance.setSessions(index, value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-     */
-    public Builder setSessions(
-        int index, io.github.lewin671.remoteagent.core.proto.PlainSession.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSessions(index,
-          builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-     */
-    public Builder addSessions(io.github.lewin671.remoteagent.core.proto.PlainSession value) {
-      copyOnWrite();
-      instance.addSessions(value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-     */
-    public Builder addSessions(
-        int index, io.github.lewin671.remoteagent.core.proto.PlainSession value) {
-      copyOnWrite();
-      instance.addSessions(index, value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-     */
-    public Builder addSessions(
-        io.github.lewin671.remoteagent.core.proto.PlainSession.Builder builderForValue) {
-      copyOnWrite();
-      instance.addSessions(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-     */
-    public Builder addSessions(
-        int index, io.github.lewin671.remoteagent.core.proto.PlainSession.Builder builderForValue) {
-      copyOnWrite();
-      instance.addSessions(index,
-          builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-     */
-    public Builder addAllSessions(
-        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.PlainSession> values) {
-      copyOnWrite();
-      instance.addAllSessions(values);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-     */
-    public Builder clearSessions() {
-      copyOnWrite();
-      instance.clearSessions();
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.PlainSession sessions = 3 [json_name = "sessions"];</code>
-     */
-    public Builder removeSessions(int index) {
-      copyOnWrite();
-      instance.removeSessions(index);
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.PlainAccountPrefs prefs = 4 [json_name = "prefs"];</code>
-     */
-    @java.lang.Override
-    public boolean hasPrefs() {
-      return instance.hasPrefs();
-    }
-    /**
-     * <code>.remoteagent.core.v1.PlainAccountPrefs prefs = 4 [json_name = "prefs"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.PlainAccountPrefs getPrefs() {
-      return instance.getPrefs();
-    }
-    /**
-     * <code>.remoteagent.core.v1.PlainAccountPrefs prefs = 4 [json_name = "prefs"];</code>
-     */
-    public Builder setPrefs(io.github.lewin671.remoteagent.core.proto.PlainAccountPrefs value) {
-      copyOnWrite();
-      instance.setPrefs(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.core.v1.PlainAccountPrefs prefs = 4 [json_name = "prefs"];</code>
-     */
-    public Builder setPrefs(
-        io.github.lewin671.remoteagent.core.proto.PlainAccountPrefs.Builder builderForValue) {
-      copyOnWrite();
-      instance.setPrefs(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.PlainAccountPrefs prefs = 4 [json_name = "prefs"];</code>
-     */
-    public Builder mergePrefs(io.github.lewin671.remoteagent.core.proto.PlainAccountPrefs value) {
-      copyOnWrite();
-      instance.mergePrefs(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.PlainAccountPrefs prefs = 4 [json_name = "prefs"];</code>
-     */
-    public Builder clearPrefs() {  copyOnWrite();
-      instance.clearPrefs();
       return this;
     }
 
@@ -1160,253 +594,168 @@ public  final class CacheBootstrapLoadedEvent extends
     }
 
     /**
-     * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+     * <code>repeated bytes raw_machines = 13 [json_name = "rawMachines"];</code>
+     * @return A list containing the rawMachines.
      */
     @java.lang.Override
-    public java.util.List<io.github.lewin671.remoteagent.proto.Machine> getWireMachinesList() {
+    public java.util.List<com.google.protobuf.ByteString>
+        getRawMachinesList() {
       return java.util.Collections.unmodifiableList(
-          instance.getWireMachinesList());
+          instance.getRawMachinesList());
     }
     /**
-     * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+     * <code>repeated bytes raw_machines = 13 [json_name = "rawMachines"];</code>
+     * @return The count of rawMachines.
      */
     @java.lang.Override
-    public int getWireMachinesCount() {
-      return instance.getWireMachinesCount();
-    }/**
-     * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+    public int getRawMachinesCount() {
+      return instance.getRawMachinesCount();
+    }
+    /**
+     * <code>repeated bytes raw_machines = 13 [json_name = "rawMachines"];</code>
+     * @param index The index of the element to return.
+     * @return The rawMachines at the given index.
      */
     @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.Machine getWireMachines(int index) {
-      return instance.getWireMachines(index);
+    public com.google.protobuf.ByteString getRawMachines(int index) {
+      return instance.getRawMachines(index);
     }
     /**
-     * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+     * <code>repeated bytes raw_machines = 13 [json_name = "rawMachines"];</code>
+     * @param value The rawMachines to set.
+     * @return This builder for chaining.
      */
-    public Builder setWireMachines(
-        int index, io.github.lewin671.remoteagent.proto.Machine value) {
+    public Builder setRawMachines(
+        int index, com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.setWireMachines(index, value);
+      instance.setRawMachines(index, value);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+     * <code>repeated bytes raw_machines = 13 [json_name = "rawMachines"];</code>
+     * @param value The rawMachines to add.
+     * @return This builder for chaining.
      */
-    public Builder setWireMachines(
-        int index, io.github.lewin671.remoteagent.proto.Machine.Builder builderForValue) {
+    public Builder addRawMachines(com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.setWireMachines(index,
-          builderForValue.build());
+      instance.addRawMachines(value);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+     * <code>repeated bytes raw_machines = 13 [json_name = "rawMachines"];</code>
+     * @param values The rawMachines to add.
+     * @return This builder for chaining.
      */
-    public Builder addWireMachines(io.github.lewin671.remoteagent.proto.Machine value) {
+    public Builder addAllRawMachines(
+        java.lang.Iterable<? extends com.google.protobuf.ByteString> values) {
       copyOnWrite();
-      instance.addWireMachines(value);
+      instance.addAllRawMachines(values);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+     * <code>repeated bytes raw_machines = 13 [json_name = "rawMachines"];</code>
+     * @return This builder for chaining.
      */
-    public Builder addWireMachines(
-        int index, io.github.lewin671.remoteagent.proto.Machine value) {
+    public Builder clearRawMachines() {
       copyOnWrite();
-      instance.addWireMachines(index, value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
-     */
-    public Builder addWireMachines(
-        io.github.lewin671.remoteagent.proto.Machine.Builder builderForValue) {
-      copyOnWrite();
-      instance.addWireMachines(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
-     */
-    public Builder addWireMachines(
-        int index, io.github.lewin671.remoteagent.proto.Machine.Builder builderForValue) {
-      copyOnWrite();
-      instance.addWireMachines(index,
-          builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
-     */
-    public Builder addAllWireMachines(
-        java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.Machine> values) {
-      copyOnWrite();
-      instance.addAllWireMachines(values);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
-     */
-    public Builder clearWireMachines() {
-      copyOnWrite();
-      instance.clearWireMachines();
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
-     */
-    public Builder removeWireMachines(int index) {
-      copyOnWrite();
-      instance.removeWireMachines(index);
+      instance.clearRawMachines();
       return this;
     }
 
     /**
-     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+     * <code>repeated bytes raw_sessions = 14 [json_name = "rawSessions"];</code>
+     * @return A list containing the rawSessions.
      */
     @java.lang.Override
-    public java.util.List<io.github.lewin671.remoteagent.proto.RemoteSession> getWireSessionsList() {
+    public java.util.List<com.google.protobuf.ByteString>
+        getRawSessionsList() {
       return java.util.Collections.unmodifiableList(
-          instance.getWireSessionsList());
+          instance.getRawSessionsList());
     }
     /**
-     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+     * <code>repeated bytes raw_sessions = 14 [json_name = "rawSessions"];</code>
+     * @return The count of rawSessions.
      */
     @java.lang.Override
-    public int getWireSessionsCount() {
-      return instance.getWireSessionsCount();
-    }/**
-     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+    public int getRawSessionsCount() {
+      return instance.getRawSessionsCount();
+    }
+    /**
+     * <code>repeated bytes raw_sessions = 14 [json_name = "rawSessions"];</code>
+     * @param index The index of the element to return.
+     * @return The rawSessions at the given index.
      */
     @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.RemoteSession getWireSessions(int index) {
-      return instance.getWireSessions(index);
+    public com.google.protobuf.ByteString getRawSessions(int index) {
+      return instance.getRawSessions(index);
     }
     /**
-     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+     * <code>repeated bytes raw_sessions = 14 [json_name = "rawSessions"];</code>
+     * @param value The rawSessions to set.
+     * @return This builder for chaining.
      */
-    public Builder setWireSessions(
-        int index, io.github.lewin671.remoteagent.proto.RemoteSession value) {
+    public Builder setRawSessions(
+        int index, com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.setWireSessions(index, value);
+      instance.setRawSessions(index, value);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+     * <code>repeated bytes raw_sessions = 14 [json_name = "rawSessions"];</code>
+     * @param value The rawSessions to add.
+     * @return This builder for chaining.
      */
-    public Builder setWireSessions(
-        int index, io.github.lewin671.remoteagent.proto.RemoteSession.Builder builderForValue) {
+    public Builder addRawSessions(com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.setWireSessions(index,
-          builderForValue.build());
+      instance.addRawSessions(value);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+     * <code>repeated bytes raw_sessions = 14 [json_name = "rawSessions"];</code>
+     * @param values The rawSessions to add.
+     * @return This builder for chaining.
      */
-    public Builder addWireSessions(io.github.lewin671.remoteagent.proto.RemoteSession value) {
+    public Builder addAllRawSessions(
+        java.lang.Iterable<? extends com.google.protobuf.ByteString> values) {
       copyOnWrite();
-      instance.addWireSessions(value);
+      instance.addAllRawSessions(values);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+     * <code>repeated bytes raw_sessions = 14 [json_name = "rawSessions"];</code>
+     * @return This builder for chaining.
      */
-    public Builder addWireSessions(
-        int index, io.github.lewin671.remoteagent.proto.RemoteSession value) {
+    public Builder clearRawSessions() {
       copyOnWrite();
-      instance.addWireSessions(index, value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
-     */
-    public Builder addWireSessions(
-        io.github.lewin671.remoteagent.proto.RemoteSession.Builder builderForValue) {
-      copyOnWrite();
-      instance.addWireSessions(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
-     */
-    public Builder addWireSessions(
-        int index, io.github.lewin671.remoteagent.proto.RemoteSession.Builder builderForValue) {
-      copyOnWrite();
-      instance.addWireSessions(index,
-          builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
-     */
-    public Builder addAllWireSessions(
-        java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.RemoteSession> values) {
-      copyOnWrite();
-      instance.addAllWireSessions(values);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
-     */
-    public Builder clearWireSessions() {
-      copyOnWrite();
-      instance.clearWireSessions();
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
-     */
-    public Builder removeWireSessions(int index) {
-      copyOnWrite();
-      instance.removeWireSessions(index);
+      instance.clearRawSessions();
       return this;
     }
 
     /**
-     * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 12 [json_name = "wirePrefs"];</code>
+     * <code>bytes raw_prefs = 15 [json_name = "rawPrefs"];</code>
+     * @return The rawPrefs.
      */
     @java.lang.Override
-    public boolean hasWirePrefs() {
-      return instance.hasWirePrefs();
+    public com.google.protobuf.ByteString getRawPrefs() {
+      return instance.getRawPrefs();
     }
     /**
-     * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 12 [json_name = "wirePrefs"];</code>
+     * <code>bytes raw_prefs = 15 [json_name = "rawPrefs"];</code>
+     * @param value The rawPrefs to set.
+     * @return This builder for chaining.
      */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.AccountPrefsObject getWirePrefs() {
-      return instance.getWirePrefs();
-    }
-    /**
-     * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 12 [json_name = "wirePrefs"];</code>
-     */
-    public Builder setWirePrefs(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
+    public Builder setRawPrefs(com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.setWirePrefs(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 12 [json_name = "wirePrefs"];</code>
-     */
-    public Builder setWirePrefs(
-        io.github.lewin671.remoteagent.proto.AccountPrefsObject.Builder builderForValue) {
-      copyOnWrite();
-      instance.setWirePrefs(builderForValue.build());
+      instance.setRawPrefs(value);
       return this;
     }
     /**
-     * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 12 [json_name = "wirePrefs"];</code>
+     * <code>bytes raw_prefs = 15 [json_name = "rawPrefs"];</code>
+     * @return This builder for chaining.
      */
-    public Builder mergeWirePrefs(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
+    public Builder clearRawPrefs() {
       copyOnWrite();
-      instance.mergeWirePrefs(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 12 [json_name = "wirePrefs"];</code>
-     */
-    public Builder clearWirePrefs() {  copyOnWrite();
-      instance.clearWirePrefs();
+      instance.clearRawPrefs();
       return this;
     }
 
@@ -1426,26 +775,17 @@ public  final class CacheBootstrapLoadedEvent extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
-            "bitField0_",
             "opId_",
-            "machines_",
-            io.github.lewin671.remoteagent.core.proto.PlainMachine.class,
-            "sessions_",
-            io.github.lewin671.remoteagent.core.proto.PlainSession.class,
-            "prefs_",
             "homeScopeToken_",
             "scopeHmacKey_",
             "error_",
-            "wireMachines_",
-            io.github.lewin671.remoteagent.proto.Machine.class,
-            "wireSessions_",
-            io.github.lewin671.remoteagent.proto.RemoteSession.class,
-            "wirePrefs_",
+            "rawMachines_",
+            "rawSessions_",
+            "rawPrefs_",
           };
           java.lang.String info =
-              "\u0000\n\u0000\u0001\u0001\f\n\u0000\u0004\u0000\u0001\u0003\u0002\u001b\u0003\u001b" +
-              "\u0004\u1009\u0000\u0005\u0208\u0006\n\u0007\u0208\n\u001b\u000b\u001b\f\u1009\u0001" +
-              "";
+              "\u0000\u0007\u0000\u0000\u0001\u000f\u0007\u0000\u0002\u0000\u0001\u0003\u0005\u0208" +
+              "\u0006\n\u0007\u0208\r\u001c\u000e\u001c\u000f\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

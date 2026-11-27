@@ -191,10 +191,6 @@ public final class SecurityClient: @unchecked Sendable {
         try await runAction { set(&$0, PBSecurityActionEmpty()) }
     }
 
-    private func bool(_ flag: Bool, _ set: @Sendable (inout PBSecurityWorkflowActionEvent, PBSecurityBoolAction) -> Void) async throws -> PBSecurityWorkflowResultEffect {
-        try await runAction { set(&$0, .with { $0.flag = flag }) }
-    }
-
     private func str(_ value: String, _ set: @Sendable (inout PBSecurityWorkflowActionEvent, PBSecurityStringAction) -> Void) async throws -> PBSecurityWorkflowResultEffect {
         try await runAction { set(&$0, .with { $0.value = value }) }
     }

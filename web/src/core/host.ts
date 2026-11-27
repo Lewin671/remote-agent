@@ -100,13 +100,11 @@ import {
   ScreenTarget,
   SessionWatchEventSchema,
   StreamClosedEventSchema,
-  StreamFrameEventSchema,
   StreamReadyEventSchema,
   SyncLifecycleActionSchema,
   SyncLifecycleKind,
   TimerFiredEventSchema,
   TimerKind,
-  TokenResultEventSchema,
   ViewModelSchema,
   type CacheBootstrapLoadedEvent,
   type CacheDeleteEffect,
@@ -118,10 +116,7 @@ import {
   type Event,
   type LocalCalendar,
   type MonthStart,
-  type RpcEffect,
   type StreamClosedEvent,
-  type StreamFrameEvent,
-  type TokenResultEvent,
   type ViewModel,
 } from "../gen/remoteagent/core/v1/app_pb";
 import { AttachmentCandidateInputSchema } from "../gen/remoteagent/core/v1/attachments_view_pb";
@@ -155,7 +150,6 @@ import {
 import {
   PushRpcActionSchema,
   RefreshDevicesActionSchema,
-  RelayPipeConfigEventSchema,
   SessionFetchImageActionSchema,
   StreamRawFrameEventSchema,
   TerminalCloseActionSchema,
@@ -455,7 +449,6 @@ export interface DraftCandidateEntry {
 
 export interface StreamLegCallbacks {
   onReady(legId: bigint, serverTimeMs: bigint): void;
-  onFrame(legId: bigint, frame: StreamFrameEvent["frame"], onProcessed?: () => void): void;
   onRawFrame(legId: bigint, rawServerFrame: Uint8Array<ArrayBuffer>): void;
   onClosed(legId: bigint, info: Omit<StreamClosedEvent, "$typeName" | "legId">): void;
 }
@@ -502,10 +495,8 @@ export interface HostBridge {
 }
 
 export interface CoreExecutor {
-  useRelayPipe?(): boolean;
   openStreamLeg(legId: bigint, token: string, callbacks: StreamLegCallbacks, helloFrame?: Uint8Array<ArrayBuffer>): void;
   closeStreamLeg(legId: bigint): void;
-  ensureToken?(opId: bigint, forceLogin: boolean, timeoutMs: bigint): Promise<TokenResultEvent>;
   securityConfig?(): { account: string; deviceId: string; server?: string } | undefined;
   readBootstrapCache(opId: bigint): Promise<CacheBootstrapLoadedEvent>;
   readEventsCache(
@@ -519,7 +510,6 @@ export interface CoreExecutor {
   releaseEventRefs?(ev: Event): void;
   writeCache(eff: CacheWriteEffect): Promise<void>;
   deleteCache(eff: CacheDeleteEffect): Promise<void>;
-  executeRpc?(eff: RpcEffect): Promise<Event>;
   relayRpc?(eff: RelayRpcEffect): void;
   relayRpcCancel?(eff: RelayRpcCancelEffect): void;
   executeCommandAttempt(eff: DispatchCommandEffect, signal?: AbortSignal): Promise<CommandOutcomeEvent>;
@@ -1153,13 +1143,7 @@ export class CoreHost {
       case: "localeChanged",
       value: create(LocaleChangedEventSchema, { uiLocale: l10n.localeStore.snapshot() }),
     });
-    if (this.executor?.useRelayPipe?.()) {
-      this.ensureSecurityConfigured();
-      this.emit({
-        case: "relayPipeConfig",
-        value: create(RelayPipeConfigEventSchema, { enabled: true }),
-      });
-    }
+    this.ensureSecurityConfigured();
     this.unsubscribeLocale = l10n.localeStore.subscribe(() => {
       if (!this.closed) {
         this.emit({
@@ -1284,12 +1268,6 @@ export class CoreHost {
     }
     hosts.set(remote, this);
     this.bindRemoteBridge(remote);
-    if (remote.useRelayPipe()) {
-      this.emit({
-        case: "relayPipeConfig",
-        value: create(RelayPipeConfigEventSchema, { enabled: true }),
-      });
-    }
     if (this.viewAppRoot().stage === AppRootStage.READY || this.viewAppRoot().stage === AppRootStage.REMOVED) {
       this.securityConfigured = true;
       this.securityBootstrapped = true;
@@ -1399,12 +1377,6 @@ export class CoreHost {
     defaultServer?: string;
     requestStoragePersist?: boolean;
   }) {
-    if (!this.explicitExecutor || this.explicitExecutor.useRelayPipe?.()) {
-      this.emit({
-        case: "relayPipeConfig",
-        value: create(RelayPipeConfigEventSchema, { enabled: true }),
-      });
-    }
     this.emit({
       case: "clientInit",
       value: create(ClientInitEventSchema, {
@@ -3455,8 +3427,6 @@ export class CoreHost {
           val.value.token,
           {
             onReady: (id, serverTimeMs) => !this.closed && this.emit({ case: "streamReady", value: create(StreamReadyEventSchema, { legId: id, serverTimeMs }) }),
-            onFrame: (id, frame, onProcessed) =>
-              this.closed ? onProcessed?.() : this.emit({ case: "streamFrame", value: create(StreamFrameEventSchema, { legId: id, frame }) }, onProcessed),
             onRawFrame: (id, rawServerFrame) =>
               !this.closed && this.emit({ case: "streamRawFrame", value: create(StreamRawFrameEventSchema, { legId: id, rawServerFrame }) }),
             onClosed: (id, info) => !this.closed && this.emit({ case: "streamClosed", value: create(StreamClosedEventSchema, { legId: id, ...info }) }),
@@ -3468,17 +3438,6 @@ export class CoreHost {
       case "closeStream":
         this.executor?.closeStreamLeg(val.value.legId);
         break;
-
-      case "ensureToken": {
-        const { opId, forceLogin, timeoutMs } = val.value;
-        const ensure = this.executor?.ensureToken;
-        if (!ensure) break;
-        void ensure.call(this.executor, opId, forceLogin, timeoutMs).then(
-          (value) => !this.closed && this.emit({ case: "tokenResult", value }),
-          (err) => !this.closed && this.emit({ case: "tokenResult", value: create(TokenResultEventSchema, { opId, error: errorMessage(err) }) }),
-        );
-        break;
-      }
 
       case "cacheRead": {
         const kind = val.value.kind;
@@ -3526,10 +3485,6 @@ export class CoreHost {
         }
         break;
       }
-
-      case "rpc":
-        void this.executor?.executeRpc?.(val.value).then((ev) => !this.closed && this.dispatch(ev), () => undefined);
-        break;
 
       case "relayRpc":
         if (this.executor?.relayRpc) this.executor.relayRpc(val.value);
@@ -3601,7 +3556,7 @@ export class CoreHost {
                   outerMatchesInner: true,
                   outerOutcome: c.outcome || "executed",
                   outerReason: c.code || "",
-                  result: create(CommandResultSchema, { outcome: c.outcome || "executed", errorCode: c.code || "", errorMessage: c.message || "" }),
+                  rawResult: toBinary(CommandResultSchema, create(CommandResultSchema, { outcome: c.outcome || "executed", errorCode: c.code || "", errorMessage: c.message || "" })),
                 })
               : create(CommandOutcomeEventSchema, {
                   requestId: cmdEff.requestId,

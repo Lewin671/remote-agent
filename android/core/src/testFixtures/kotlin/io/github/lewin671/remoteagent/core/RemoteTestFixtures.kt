@@ -155,46 +155,56 @@ internal fun seedCoreForTest(
     modelLists: Map<Pair<String, Agent>, ListModelsResponse>,
 ) {
     val seedGen = testSeedSeq.incrementAndGet()
-    val plainMachines = state.machines.values.map { m ->
-        PlainMachine.newBuilder().setMachineId(m.id).setOnline(m.online).setLastSeenMs(m.lastSeenMs).setMetaRev(m.metaRev)
-            .apply { m.meta?.let { setMeta(it) } }.build()
+    val demoMachines = state.machines.values.map { m ->
+        io.github.lewin671.remoteagent.core.proto.DemoMachine.newBuilder()
+            .setMachineId(m.id)
+            .setOnline(m.online)
+            .setLastSeenMs(m.lastSeenMs)
+            .apply { m.meta?.let { setRawMeta(it.toByteString()) } }
+            .build()
     }
-    val plainSessions = state.sessions.values.map { s ->
-        PlainSession.newBuilder().setSessionId(s.id).setMachineId(s.machineId).setLastSeq(s.lastSeq)
-            .setUpdatedMs(s.updatedMs).setMetaRev(s.metaRev)
-            .apply { s.info?.let { setMeta(it) }; s.checkpoint?.let { setCheckpoint(it) } }.build()
+    val demoSessions = state.sessions.values.map { s ->
+        io.github.lewin671.remoteagent.core.proto.DemoSession.newBuilder()
+            .setSessionId(s.id)
+            .setMachineId(s.machineId)
+            .setLastSeq(s.lastSeq)
+            .setUpdatedMs(s.updatedMs)
+            .apply {
+                s.info?.let { info ->
+                    val b = info.toBuilder().setId(s.id).setLastSeq(s.lastSeq)
+                    setRawMeta(b.build().toByteString())
+                }
+                s.checkpoint?.let { cp ->
+                    val cpb = cp.toBuilder()
+                    if (cpb.hasSession()) {
+                        cpb.setSession(cpb.session.toBuilder().setId(s.id).setLastSeq(s.lastSeq))
+                    }
+                    setRawCheckpoint(cpb.build().toByteString())
+                }
+            }
+            .build()
     }
-    val plainPrefs = PlainAccountPrefs.newBuilder()
-        .setRevision(state.prefs?.revision ?: 0L)
-        .setPrefs(state.prefs?.prefs ?: ProjectPrefs.newBuilder().setSchema(1).build())
-        .build()
-    val plainDevices = state.devices.values.map { d ->
-        PlainDevice.newBuilder().setDeviceId(d.id).setKind(d.kind).setCreatedMs(d.createdMs)
-            .setLastSeenMs(d.lastSeenMs).setMetaRev(d.metaRev).apply { d.meta?.let { setMeta(it) } }.build()
+    val prefsRev = state.prefs?.revision ?: 0L
+    val rawPrefs = (state.prefs?.prefs ?: ProjectPrefs.newBuilder().setSchema(1).build()).toByteString()
+    val demoDevices = state.devices.values.map { d ->
+        io.github.lewin671.remoteagent.core.proto.DemoDevice.newBuilder()
+            .setDeviceId(d.id)
+            .setKind(d.kind)
+            .setCreatedMs(d.createdMs)
+            .setLastSeenMs(d.lastSeenMs)
+            .apply { d.meta?.let { setRawMeta(it.toByteString()) } }
+            .build()
     }
-    val pendingRpcs = ArrayList<RpcEffect>()
     var pendingStreamLeg = 0L
     fun send(block: CoreEvent.Builder.() -> Unit) {
         coreHost.dispatchOnWorker(CoreEvent.newBuilder().apply(block).build())
     }
     coreHost.onCacheRead = { eff ->
         if (eff.hasBootstrap()) send {
-            setCacheBootstrapLoaded(
-                CacheBootstrapLoadedEvent.newBuilder().setOpId(eff.bootstrap.opId)
-                    .addAllMachines(plainMachines).addAllSessions(plainSessions).setPrefs(plainPrefs),
-            )
+            setCacheBootstrapLoaded(CacheBootstrapLoadedEvent.newBuilder().setOpId(eff.bootstrap.opId))
         }
     }
-    coreHost.onEnsureToken = { eff ->
-        send {
-            val tb = TokenResultEvent.newBuilder().setOpId(eff.opId)
-            if (state.link != Link.NO_NETWORK) tb.setToken("test-token").setExpiresMs(Long.MAX_VALUE)
-            else tb.setError(state.error.resolve { it.key }.ifEmpty { UiMessages.commonOffline().key })
-            setTokenResult(tb)
-        }
-    }
-    coreHost.onOpenStream = { eff -> if (state.conn == ConnState.ONLINE) pendingStreamLeg = eff.legId }
-    coreHost.onRpc = { eff -> pendingRpcs.add(eff) }
+    coreHost.onOpenStream = { eff -> pendingStreamLeg = eff.legId }
     coreHost.onDispatchCommand = { eff ->
         val cmd = runCatching { Command.parseFrom(eff.commandBytes) }.getOrNull()
         val resultProto = when {
@@ -210,68 +220,59 @@ internal fun seedCoreForTest(
                 CommandOutcomeEvent.newBuilder().setRequestId(eff.requestId).setAttemptId(eff.attemptId)
                     .setSource(OutcomeSource.OUTCOME_SOURCE_DAEMON).setAttemptBound(true).setSigned(true)
                     .setHashesMatch(true).setOuterMatchesInner(true).setOuterOutcome("executed").setOuterReason("ok")
-                    .setResult(resultProto),
+                    .setRawResult(resultProto.toByteString()),
             )
         }
     }
-    send { setRelayPipeConfig(RelayPipeConfigEvent.newBuilder().setEnabled(false)) }
     send { setSyncLifecycle(SyncLifecycleAction.newBuilder().setKind(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_STOP)) }
     send {
         setSeedDemoWorld(
-            SeedDemoWorldEvent.newBuilder().setSecurity(
-                DemoSecurity.newBuilder()
-                    .setIsMember(!state.removed).setRemoved(state.removed).setSelfDeviceId(selfDeviceId)
-                    .setAuthorityDeviceId(state.authorityDeviceId.ifEmpty { if (state.isAuthority) selfDeviceId else "authority" })
-                    .addAllTrustedMachineIds(state.machines.keys - state.archivedMachines)
-                    .addAllArchiveMachineIds(state.archivedMachines)
-                    .addAllTrustedClientIds(
-                        state.devices.values
-                            .filter { it.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT }
-                            .map { it.id },
-                    )
-                    .setHeadEpoch(1L).setLeaseEndMs(state.leaseEndMs)
-                    .setClockSkewed(state.clockWarning).setRecoveryPending(state.recoveryPending)
-                    .setRecoveryReadyMs(state.recoveryReadyMs).setNetworkGeneration(seedGen.toLong()),
-            ),
+            SeedDemoWorldEvent.newBuilder()
+                .addAllMachines(demoMachines)
+                .addAllSessions(demoSessions)
+                .addAllDevices(demoDevices)
+                .setReplaceMachines(true)
+                .setReplaceSessions(true)
+                .setReplaceDevices(true)
+                .setRawPrefs(rawPrefs)
+                .setPrefsRevision(prefsRev)
+                .setSecurity(
+                    DemoSecurity.newBuilder()
+                        .setIsMember(!state.removed).setRemoved(state.removed).setSelfDeviceId(selfDeviceId)
+                        .setAuthorityDeviceId(state.authorityDeviceId.ifEmpty { if (state.isAuthority) selfDeviceId else "authority" })
+                        .addAllTrustedMachineIds(state.machines.keys - state.archivedMachines)
+                        .addAllArchiveMachineIds(state.archivedMachines)
+                        .addAllTrustedClientIds(
+                            state.devices.values
+                                .filter { it.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT }
+                                .map { it.id },
+                        )
+                        .setHeadEpoch(1L).setLeaseEndMs(state.leaseEndMs)
+                        .setClockSkewed(state.clockWarning).setRecoveryPending(state.recoveryPending)
+                        .setRecoveryReadyMs(state.recoveryReadyMs).setNetworkGeneration(seedGen.toLong()),
+                ),
         )
     }
-    if (state.link == Link.NO_NETWORK) send {
-        setNetworkChanged(NetworkChangedEvent.newBuilder().setAvailable(false).setSignature("none-$seedGen"))
-    } else send {
-        setNetworkChanged(NetworkChangedEvent.newBuilder().setAvailable(true).setSignature("test-$seedGen"))
-    }
+    send { setNetworkChanged(NetworkChangedEvent.newBuilder().setAvailable(true).setSignature("test-$seedGen")) }
     send { setSyncLifecycle(SyncLifecycleAction.newBuilder().setKind(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_START)) }
     if (pendingStreamLeg != 0L) {
         val leg = pendingStreamLeg
         pendingStreamLeg = 0L
         send { setStreamReady(StreamReadyEvent.newBuilder().setLegId(leg).setServerTimeMs(0L)) }
-    }
-    var sentDevices = false
-    while (pendingRpcs.isNotEmpty()) {
-        val rpc = pendingRpcs.removeAt(0)
-        when (rpc.kindCase) {
-            RpcEffect.KindCase.FETCH_LISTS -> send {
-                setListsFetched(
-                    ListsFetchedEvent.newBuilder().setOpId(rpc.opId).addAllMachines(plainMachines)
-                        .addAllSessions(plainSessions).addAllDevices(plainDevices),
-                )
+        when {
+            state.link == Link.NO_NETWORK -> send {
+                setNetworkChanged(NetworkChangedEvent.newBuilder().setAvailable(false).setSignature("none-$seedGen"))
             }
-            RpcEffect.KindCase.GET_ACCOUNT_PREFS -> send {
-                setAccountPrefsFetched(AccountPrefsFetchedEvent.newBuilder().setOpId(rpc.opId).setPrefs(plainPrefs))
+            state.conn == ConnState.OFFLINE -> send {
+                setSyncLifecycle(SyncLifecycleAction.newBuilder().setKind(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_STOP))
             }
-            RpcEffect.KindCase.FETCH_DEVICES -> {
-                sentDevices = true
-                send {
-                    setDevicesFetched(DevicesFetchedEvent.newBuilder().setOpId(rpc.opId).addAllDevices(plainDevices))
-                }
+            state.conn == ConnState.CONNECTING -> send {
+                setStreamClosed(StreamClosedEvent.newBuilder().setLegId(leg))
             }
-            else -> {}
         }
-    }
-    if (!sentDevices) {
-        send { setDevicesFetched(DevicesFetchedEvent.newBuilder().setPushSeq(seedGen.toLong()).addAllDevices(plainDevices)) }
-    }
-    if (state.conn == ConnState.OFFLINE) {
+    } else if (state.link == Link.NO_NETWORK) {
+        send { setNetworkChanged(NetworkChangedEvent.newBuilder().setAvailable(false).setSignature("none-$seedGen")) }
+    } else if (state.conn == ConnState.OFFLINE) {
         send { setSyncLifecycle(SyncLifecycleAction.newBuilder().setKind(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_STOP)) }
     }
     for (t in arrayOf(

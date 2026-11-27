@@ -131,7 +131,7 @@ private final class TimeoutRPCProtocol: URLProtocol, @unchecked Sendable {
             allowPlainHttp: true,
             emit: { _ in }
         )
-        stalledExec.rpc(.with {
+        stalledExec.relayRpc(.with {
             $0.opID = 77
             $0.method = .getSecurityStates
             $0.server = "https://\(stallHost)"
@@ -151,12 +151,12 @@ private final class TimeoutRPCProtocol: URLProtocol, @unchecked Sendable {
             emit: { mailbox.put($0) }
         )
         defer { exec.close() }
-        exec.rpc(.with {
+        exec.relayRpc(.with {
             $0.opID = 78
             $0.method = .getSecurityStates
             $0.server = "https://example.com"
         })
-        let rpcRes = try await mailbox.take().securityRpcResult
+        let rpcRes = try await mailbox.take().relayRpcResult
         #expect(rpcRes.opID == 78)
         #expect(rpcRes.connectCode == Int32(Code.deadlineExceeded.rawValue))
         #expect(rpcRes.networkError)
@@ -416,7 +416,7 @@ extension ServerTests {
                 )
                 #expect(wrongTag == nil)
 
-                var tampered = sealed.sealed.envelope
+                var tampered = try PBEnvelope(serializedBytes: sealed.sealed.rawEnvelope)
                 tampered.signature[0] ^= 0xff
                 #expect(throws: SecurityWorkflowError.self) {
                     _ = try receiveMachineDiskNotification(

@@ -20,6 +20,11 @@ public  final class SeedDemoWorldEvent extends
     devices_ = emptyProtobufList();
     sessionEvents_ = emptyProtobufList();
     directReports_ = emptyProtobufList();
+    rawPrefs_ = com.google.protobuf.ByteString.EMPTY;
+    removedMachineIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
+    removedSessionIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
+    listError_ = "";
+    prefsError_ = "";
   }
   private int bitField0_;
   public static final int MACHINES_FIELD_NUMBER = 1;
@@ -313,54 +318,6 @@ public  final class SeedDemoWorldEvent extends
     devices_.remove(index);
   }
 
-  public static final int PREFS_FIELD_NUMBER = 4;
-  private io.github.lewin671.remoteagent.proto.ProjectPrefs prefs_;
-  /**
-   * <code>.remoteagent.v1.ProjectPrefs prefs = 4 [json_name = "prefs"];</code>
-   */
-  @java.lang.Override
-  public boolean hasPrefs() {
-    return ((bitField0_ & 0x00000001) != 0);
-  }
-  /**
-   * <code>.remoteagent.v1.ProjectPrefs prefs = 4 [json_name = "prefs"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.ProjectPrefs getPrefs() {
-    return prefs_ == null ? io.github.lewin671.remoteagent.proto.ProjectPrefs.getDefaultInstance() : prefs_;
-  }
-  /**
-   * <code>.remoteagent.v1.ProjectPrefs prefs = 4 [json_name = "prefs"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setPrefs(io.github.lewin671.remoteagent.proto.ProjectPrefs value) {
-    value.getClass();  // minimal bytecode null check
-    prefs_ = value;
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.v1.ProjectPrefs prefs = 4 [json_name = "prefs"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergePrefs(io.github.lewin671.remoteagent.proto.ProjectPrefs value) {
-    value.getClass();  // minimal bytecode null check
-    if (prefs_ != null &&
-        prefs_ != io.github.lewin671.remoteagent.proto.ProjectPrefs.getDefaultInstance()) {
-      prefs_ =
-        io.github.lewin671.remoteagent.proto.ProjectPrefs.newBuilder(prefs_).mergeFrom(value).buildPartial();
-    } else {
-      prefs_ = value;
-    }
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.v1.ProjectPrefs prefs = 4 [json_name = "prefs"];</code>
-   */
-  private void clearPrefs() {
-    prefs_ = null;
-    bitField0_ = (bitField0_ & ~0x00000001);
-  }
-
   public static final int SESSION_EVENTS_FIELD_NUMBER = 5;
   private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.DemoSessionEvents> sessionEvents_;
   /**
@@ -465,7 +422,7 @@ public  final class SeedDemoWorldEvent extends
    */
   @java.lang.Override
   public boolean hasSecurity() {
-    return ((bitField0_ & 0x00000002) != 0);
+    return ((bitField0_ & 0x00000001) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.DemoSecurity security = 6 [json_name = "security"];</code>
@@ -481,7 +438,7 @@ public  final class SeedDemoWorldEvent extends
   private void setSecurity(io.github.lewin671.remoteagent.core.proto.DemoSecurity value) {
     value.getClass();  // minimal bytecode null check
     security_ = value;
-    bitField0_ |= 0x00000002;
+    bitField0_ |= 0x00000001;
   }
   /**
    * <code>.remoteagent.core.v1.DemoSecurity security = 6 [json_name = "security"];</code>
@@ -496,14 +453,14 @@ public  final class SeedDemoWorldEvent extends
     } else {
       security_ = value;
     }
-    bitField0_ |= 0x00000002;
+    bitField0_ |= 0x00000001;
   }
   /**
    * <code>.remoteagent.core.v1.DemoSecurity security = 6 [json_name = "security"];</code>
    */
   private void clearSecurity() {
     security_ = null;
-    bitField0_ = (bitField0_ & ~0x00000002);
+    bitField0_ = (bitField0_ & ~0x00000001);
   }
 
   public static final int DIRECT_REPORTS_FIELD_NUMBER = 7;
@@ -627,6 +584,501 @@ public  final class SeedDemoWorldEvent extends
   private void clearClearDirectReports() {
 
     clearDirectReports_ = false;
+  }
+
+  public static final int RAW_PREFS_FIELD_NUMBER = 9;
+  private com.google.protobuf.ByteString rawPrefs_;
+  /**
+   * <code>bytes raw_prefs = 9 [json_name = "rawPrefs"];</code>
+   * @return The rawPrefs.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getRawPrefs() {
+    return rawPrefs_;
+  }
+  /**
+   * <code>bytes raw_prefs = 9 [json_name = "rawPrefs"];</code>
+   * @param value The rawPrefs to set.
+   */
+  private void setRawPrefs(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    rawPrefs_ = value;
+  }
+  /**
+   * <code>bytes raw_prefs = 9 [json_name = "rawPrefs"];</code>
+   */
+  private void clearRawPrefs() {
+
+    rawPrefs_ = getDefaultInstance().getRawPrefs();
+  }
+
+  public static final int REMOVED_MACHINE_IDS_FIELD_NUMBER = 10;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> removedMachineIds_;
+  /**
+   * <code>repeated string removed_machine_ids = 10 [json_name = "removedMachineIds"];</code>
+   * @return A list containing the removedMachineIds.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getRemovedMachineIdsList() {
+    return removedMachineIds_;
+  }
+  /**
+   * <code>repeated string removed_machine_ids = 10 [json_name = "removedMachineIds"];</code>
+   * @return The count of removedMachineIds.
+   */
+  @java.lang.Override
+  public int getRemovedMachineIdsCount() {
+    return removedMachineIds_.size();
+  }
+  /**
+   * <code>repeated string removed_machine_ids = 10 [json_name = "removedMachineIds"];</code>
+   * @param index The index of the element to return.
+   * @return The removedMachineIds at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getRemovedMachineIds(int index) {
+    return removedMachineIds_.get(index);
+  }
+  /**
+   * <code>repeated string removed_machine_ids = 10 [json_name = "removedMachineIds"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the removedMachineIds at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getRemovedMachineIdsBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        removedMachineIds_.get(index));
+  }
+  private void ensureRemovedMachineIdsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        removedMachineIds_;  if (!tmp.isModifiable()) {
+      removedMachineIds_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <code>repeated string removed_machine_ids = 10 [json_name = "removedMachineIds"];</code>
+   * @param index The index to set the value at.
+   * @param value The removedMachineIds to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setRemovedMachineIds(
+      int index, java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensureRemovedMachineIdsIsMutable();
+    removedMachineIds_.set(index, value);
+  }
+  /**
+   * <code>repeated string removed_machine_ids = 10 [json_name = "removedMachineIds"];</code>
+   * @param value The removedMachineIds to add.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addRemovedMachineIds(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensureRemovedMachineIdsIsMutable();
+    removedMachineIds_.add(value);
+  }
+  /**
+   * <code>repeated string removed_machine_ids = 10 [json_name = "removedMachineIds"];</code>
+   * @param values The removedMachineIds to add.
+   */
+  private void addAllRemovedMachineIds(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureRemovedMachineIdsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, removedMachineIds_);
+  }
+  /**
+   * <code>repeated string removed_machine_ids = 10 [json_name = "removedMachineIds"];</code>
+   */
+  private void clearRemovedMachineIds() {
+    removedMachineIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
+  }
+  /**
+   * <code>repeated string removed_machine_ids = 10 [json_name = "removedMachineIds"];</code>
+   * @param value The bytes of the removedMachineIds to add.
+   */
+  private void addRemovedMachineIdsBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureRemovedMachineIdsIsMutable();
+    removedMachineIds_.add(value.toStringUtf8());
+  }
+
+  public static final int REMOVED_SESSION_IDS_FIELD_NUMBER = 11;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> removedSessionIds_;
+  /**
+   * <code>repeated string removed_session_ids = 11 [json_name = "removedSessionIds"];</code>
+   * @return A list containing the removedSessionIds.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getRemovedSessionIdsList() {
+    return removedSessionIds_;
+  }
+  /**
+   * <code>repeated string removed_session_ids = 11 [json_name = "removedSessionIds"];</code>
+   * @return The count of removedSessionIds.
+   */
+  @java.lang.Override
+  public int getRemovedSessionIdsCount() {
+    return removedSessionIds_.size();
+  }
+  /**
+   * <code>repeated string removed_session_ids = 11 [json_name = "removedSessionIds"];</code>
+   * @param index The index of the element to return.
+   * @return The removedSessionIds at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getRemovedSessionIds(int index) {
+    return removedSessionIds_.get(index);
+  }
+  /**
+   * <code>repeated string removed_session_ids = 11 [json_name = "removedSessionIds"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the removedSessionIds at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getRemovedSessionIdsBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        removedSessionIds_.get(index));
+  }
+  private void ensureRemovedSessionIdsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        removedSessionIds_;  if (!tmp.isModifiable()) {
+      removedSessionIds_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <code>repeated string removed_session_ids = 11 [json_name = "removedSessionIds"];</code>
+   * @param index The index to set the value at.
+   * @param value The removedSessionIds to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setRemovedSessionIds(
+      int index, java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensureRemovedSessionIdsIsMutable();
+    removedSessionIds_.set(index, value);
+  }
+  /**
+   * <code>repeated string removed_session_ids = 11 [json_name = "removedSessionIds"];</code>
+   * @param value The removedSessionIds to add.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addRemovedSessionIds(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensureRemovedSessionIdsIsMutable();
+    removedSessionIds_.add(value);
+  }
+  /**
+   * <code>repeated string removed_session_ids = 11 [json_name = "removedSessionIds"];</code>
+   * @param values The removedSessionIds to add.
+   */
+  private void addAllRemovedSessionIds(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureRemovedSessionIdsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, removedSessionIds_);
+  }
+  /**
+   * <code>repeated string removed_session_ids = 11 [json_name = "removedSessionIds"];</code>
+   */
+  private void clearRemovedSessionIds() {
+    removedSessionIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
+  }
+  /**
+   * <code>repeated string removed_session_ids = 11 [json_name = "removedSessionIds"];</code>
+   * @param value The bytes of the removedSessionIds to add.
+   */
+  private void addRemovedSessionIdsBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureRemovedSessionIdsIsMutable();
+    removedSessionIds_.add(value.toStringUtf8());
+  }
+
+  public static final int HAS_MORE_SESSIONS_FIELD_NUMBER = 12;
+  private boolean hasMoreSessions_;
+  /**
+   * <code>bool has_more_sessions = 12 [json_name = "hasMoreSessions"];</code>
+   * @return The hasMoreSessions.
+   */
+  @java.lang.Override
+  public boolean getHasMoreSessions() {
+    return hasMoreSessions_;
+  }
+  /**
+   * <code>bool has_more_sessions = 12 [json_name = "hasMoreSessions"];</code>
+   * @param value The hasMoreSessions to set.
+   */
+  private void setHasMoreSessions(boolean value) {
+    
+    hasMoreSessions_ = value;
+  }
+  /**
+   * <code>bool has_more_sessions = 12 [json_name = "hasMoreSessions"];</code>
+   */
+  private void clearHasMoreSessions() {
+
+    hasMoreSessions_ = false;
+  }
+
+  public static final int LIST_ERROR_FIELD_NUMBER = 13;
+  private java.lang.String listError_;
+  /**
+   * <code>string list_error = 13 [json_name = "listError"];</code>
+   * @return The listError.
+   */
+  @java.lang.Override
+  public java.lang.String getListError() {
+    return listError_;
+  }
+  /**
+   * <code>string list_error = 13 [json_name = "listError"];</code>
+   * @return The bytes for listError.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getListErrorBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(listError_);
+  }
+  /**
+   * <code>string list_error = 13 [json_name = "listError"];</code>
+   * @param value The listError to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setListError(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    listError_ = value;
+  }
+  /**
+   * <code>string list_error = 13 [json_name = "listError"];</code>
+   */
+  private void clearListError() {
+
+    listError_ = getDefaultInstance().getListError();
+  }
+  /**
+   * <code>string list_error = 13 [json_name = "listError"];</code>
+   * @param value The bytes for listError to set.
+   */
+  private void setListErrorBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    listError_ = value.toStringUtf8();
+
+  }
+
+  public static final int CLEAR_LIST_ERROR_FIELD_NUMBER = 14;
+  private boolean clearListError_;
+  /**
+   * <code>bool clear_list_error = 14 [json_name = "clearListError"];</code>
+   * @return The clearListError.
+   */
+  @java.lang.Override
+  public boolean getClearListError() {
+    return clearListError_;
+  }
+  /**
+   * <code>bool clear_list_error = 14 [json_name = "clearListError"];</code>
+   * @param value The clearListError to set.
+   */
+  private void setClearListError(boolean value) {
+    
+    clearListError_ = value;
+  }
+  /**
+   * <code>bool clear_list_error = 14 [json_name = "clearListError"];</code>
+   */
+  private void clearClearListError() {
+
+    clearListError_ = false;
+  }
+
+  public static final int PREFS_ERROR_FIELD_NUMBER = 15;
+  private java.lang.String prefsError_;
+  /**
+   * <code>string prefs_error = 15 [json_name = "prefsError"];</code>
+   * @return The prefsError.
+   */
+  @java.lang.Override
+  public java.lang.String getPrefsError() {
+    return prefsError_;
+  }
+  /**
+   * <code>string prefs_error = 15 [json_name = "prefsError"];</code>
+   * @return The bytes for prefsError.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getPrefsErrorBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(prefsError_);
+  }
+  /**
+   * <code>string prefs_error = 15 [json_name = "prefsError"];</code>
+   * @param value The prefsError to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPrefsError(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    prefsError_ = value;
+  }
+  /**
+   * <code>string prefs_error = 15 [json_name = "prefsError"];</code>
+   */
+  private void clearPrefsError() {
+
+    prefsError_ = getDefaultInstance().getPrefsError();
+  }
+  /**
+   * <code>string prefs_error = 15 [json_name = "prefsError"];</code>
+   * @param value The bytes for prefsError to set.
+   */
+  private void setPrefsErrorBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    prefsError_ = value.toStringUtf8();
+
+  }
+
+  public static final int CLEAR_PREFS_ERROR_FIELD_NUMBER = 16;
+  private boolean clearPrefsError_;
+  /**
+   * <code>bool clear_prefs_error = 16 [json_name = "clearPrefsError"];</code>
+   * @return The clearPrefsError.
+   */
+  @java.lang.Override
+  public boolean getClearPrefsError() {
+    return clearPrefsError_;
+  }
+  /**
+   * <code>bool clear_prefs_error = 16 [json_name = "clearPrefsError"];</code>
+   * @param value The clearPrefsError to set.
+   */
+  private void setClearPrefsError(boolean value) {
+    
+    clearPrefsError_ = value;
+  }
+  /**
+   * <code>bool clear_prefs_error = 16 [json_name = "clearPrefsError"];</code>
+   */
+  private void clearClearPrefsError() {
+
+    clearPrefsError_ = false;
+  }
+
+  public static final int PREFS_REVISION_FIELD_NUMBER = 17;
+  private long prefsRevision_;
+  /**
+   * <code>uint64 prefs_revision = 17 [json_name = "prefsRevision"];</code>
+   * @return The prefsRevision.
+   */
+  @java.lang.Override
+  public long getPrefsRevision() {
+    return prefsRevision_;
+  }
+  /**
+   * <code>uint64 prefs_revision = 17 [json_name = "prefsRevision"];</code>
+   * @param value The prefsRevision to set.
+   */
+  private void setPrefsRevision(long value) {
+    
+    prefsRevision_ = value;
+  }
+  /**
+   * <code>uint64 prefs_revision = 17 [json_name = "prefsRevision"];</code>
+   */
+  private void clearPrefsRevision() {
+
+    prefsRevision_ = 0L;
+  }
+
+  public static final int REPLACE_MACHINES_FIELD_NUMBER = 18;
+  private boolean replaceMachines_;
+  /**
+   * <code>bool replace_machines = 18 [json_name = "replaceMachines"];</code>
+   * @return The replaceMachines.
+   */
+  @java.lang.Override
+  public boolean getReplaceMachines() {
+    return replaceMachines_;
+  }
+  /**
+   * <code>bool replace_machines = 18 [json_name = "replaceMachines"];</code>
+   * @param value The replaceMachines to set.
+   */
+  private void setReplaceMachines(boolean value) {
+    
+    replaceMachines_ = value;
+  }
+  /**
+   * <code>bool replace_machines = 18 [json_name = "replaceMachines"];</code>
+   */
+  private void clearReplaceMachines() {
+
+    replaceMachines_ = false;
+  }
+
+  public static final int REPLACE_SESSIONS_FIELD_NUMBER = 19;
+  private boolean replaceSessions_;
+  /**
+   * <code>bool replace_sessions = 19 [json_name = "replaceSessions"];</code>
+   * @return The replaceSessions.
+   */
+  @java.lang.Override
+  public boolean getReplaceSessions() {
+    return replaceSessions_;
+  }
+  /**
+   * <code>bool replace_sessions = 19 [json_name = "replaceSessions"];</code>
+   * @param value The replaceSessions to set.
+   */
+  private void setReplaceSessions(boolean value) {
+    
+    replaceSessions_ = value;
+  }
+  /**
+   * <code>bool replace_sessions = 19 [json_name = "replaceSessions"];</code>
+   */
+  private void clearReplaceSessions() {
+
+    replaceSessions_ = false;
+  }
+
+  public static final int REPLACE_DEVICES_FIELD_NUMBER = 20;
+  private boolean replaceDevices_;
+  /**
+   * <code>bool replace_devices = 20 [json_name = "replaceDevices"];</code>
+   * @return The replaceDevices.
+   */
+  @java.lang.Override
+  public boolean getReplaceDevices() {
+    return replaceDevices_;
+  }
+  /**
+   * <code>bool replace_devices = 20 [json_name = "replaceDevices"];</code>
+   * @param value The replaceDevices to set.
+   */
+  private void setReplaceDevices(boolean value) {
+    
+    replaceDevices_ = value;
+  }
+  /**
+   * <code>bool replace_devices = 20 [json_name = "replaceDevices"];</code>
+   */
+  private void clearReplaceDevices() {
+
+    replaceDevices_ = false;
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SeedDemoWorldEvent parseFrom(
@@ -1033,53 +1485,6 @@ public  final class SeedDemoWorldEvent extends
     }
 
     /**
-     * <code>.remoteagent.v1.ProjectPrefs prefs = 4 [json_name = "prefs"];</code>
-     */
-    @java.lang.Override
-    public boolean hasPrefs() {
-      return instance.hasPrefs();
-    }
-    /**
-     * <code>.remoteagent.v1.ProjectPrefs prefs = 4 [json_name = "prefs"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.ProjectPrefs getPrefs() {
-      return instance.getPrefs();
-    }
-    /**
-     * <code>.remoteagent.v1.ProjectPrefs prefs = 4 [json_name = "prefs"];</code>
-     */
-    public Builder setPrefs(io.github.lewin671.remoteagent.proto.ProjectPrefs value) {
-      copyOnWrite();
-      instance.setPrefs(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.v1.ProjectPrefs prefs = 4 [json_name = "prefs"];</code>
-     */
-    public Builder setPrefs(
-        io.github.lewin671.remoteagent.proto.ProjectPrefs.Builder builderForValue) {
-      copyOnWrite();
-      instance.setPrefs(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.ProjectPrefs prefs = 4 [json_name = "prefs"];</code>
-     */
-    public Builder mergePrefs(io.github.lewin671.remoteagent.proto.ProjectPrefs value) {
-      copyOnWrite();
-      instance.mergePrefs(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.ProjectPrefs prefs = 4 [json_name = "prefs"];</code>
-     */
-    public Builder clearPrefs() {  copyOnWrite();
-      instance.clearPrefs();
-      return this;
-    }
-
-    /**
      * <code>repeated .remoteagent.core.v1.DemoSessionEvents session_events = 5 [json_name = "sessionEvents"];</code>
      */
     @java.lang.Override
@@ -1358,6 +1763,512 @@ public  final class SeedDemoWorldEvent extends
       return this;
     }
 
+    /**
+     * <code>bytes raw_prefs = 9 [json_name = "rawPrefs"];</code>
+     * @return The rawPrefs.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getRawPrefs() {
+      return instance.getRawPrefs();
+    }
+    /**
+     * <code>bytes raw_prefs = 9 [json_name = "rawPrefs"];</code>
+     * @param value The rawPrefs to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRawPrefs(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setRawPrefs(value);
+      return this;
+    }
+    /**
+     * <code>bytes raw_prefs = 9 [json_name = "rawPrefs"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRawPrefs() {
+      copyOnWrite();
+      instance.clearRawPrefs();
+      return this;
+    }
+
+    /**
+     * <code>repeated string removed_machine_ids = 10 [json_name = "removedMachineIds"];</code>
+     * @return A list containing the removedMachineIds.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getRemovedMachineIdsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getRemovedMachineIdsList());
+    }
+    /**
+     * <code>repeated string removed_machine_ids = 10 [json_name = "removedMachineIds"];</code>
+     * @return The count of removedMachineIds.
+     */
+    @java.lang.Override
+    public int getRemovedMachineIdsCount() {
+      return instance.getRemovedMachineIdsCount();
+    }
+    /**
+     * <code>repeated string removed_machine_ids = 10 [json_name = "removedMachineIds"];</code>
+     * @param index The index of the element to return.
+     * @return The removedMachineIds at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getRemovedMachineIds(int index) {
+      return instance.getRemovedMachineIds(index);
+    }
+    /**
+     * <code>repeated string removed_machine_ids = 10 [json_name = "removedMachineIds"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the removedMachineIds at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getRemovedMachineIdsBytes(int index) {
+      return instance.getRemovedMachineIdsBytes(index);
+    }
+    /**
+     * <code>repeated string removed_machine_ids = 10 [json_name = "removedMachineIds"];</code>
+     * @param index The index to set the value at.
+     * @param value The removedMachineIds to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRemovedMachineIds(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setRemovedMachineIds(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated string removed_machine_ids = 10 [json_name = "removedMachineIds"];</code>
+     * @param value The removedMachineIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addRemovedMachineIds(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addRemovedMachineIds(value);
+      return this;
+    }
+    /**
+     * <code>repeated string removed_machine_ids = 10 [json_name = "removedMachineIds"];</code>
+     * @param values The removedMachineIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllRemovedMachineIds(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllRemovedMachineIds(values);
+      return this;
+    }
+    /**
+     * <code>repeated string removed_machine_ids = 10 [json_name = "removedMachineIds"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRemovedMachineIds() {
+      copyOnWrite();
+      instance.clearRemovedMachineIds();
+      return this;
+    }
+    /**
+     * <code>repeated string removed_machine_ids = 10 [json_name = "removedMachineIds"];</code>
+     * @param value The bytes of the removedMachineIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addRemovedMachineIdsBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addRemovedMachineIdsBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>repeated string removed_session_ids = 11 [json_name = "removedSessionIds"];</code>
+     * @return A list containing the removedSessionIds.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getRemovedSessionIdsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getRemovedSessionIdsList());
+    }
+    /**
+     * <code>repeated string removed_session_ids = 11 [json_name = "removedSessionIds"];</code>
+     * @return The count of removedSessionIds.
+     */
+    @java.lang.Override
+    public int getRemovedSessionIdsCount() {
+      return instance.getRemovedSessionIdsCount();
+    }
+    /**
+     * <code>repeated string removed_session_ids = 11 [json_name = "removedSessionIds"];</code>
+     * @param index The index of the element to return.
+     * @return The removedSessionIds at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getRemovedSessionIds(int index) {
+      return instance.getRemovedSessionIds(index);
+    }
+    /**
+     * <code>repeated string removed_session_ids = 11 [json_name = "removedSessionIds"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the removedSessionIds at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getRemovedSessionIdsBytes(int index) {
+      return instance.getRemovedSessionIdsBytes(index);
+    }
+    /**
+     * <code>repeated string removed_session_ids = 11 [json_name = "removedSessionIds"];</code>
+     * @param index The index to set the value at.
+     * @param value The removedSessionIds to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRemovedSessionIds(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setRemovedSessionIds(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated string removed_session_ids = 11 [json_name = "removedSessionIds"];</code>
+     * @param value The removedSessionIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addRemovedSessionIds(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addRemovedSessionIds(value);
+      return this;
+    }
+    /**
+     * <code>repeated string removed_session_ids = 11 [json_name = "removedSessionIds"];</code>
+     * @param values The removedSessionIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllRemovedSessionIds(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllRemovedSessionIds(values);
+      return this;
+    }
+    /**
+     * <code>repeated string removed_session_ids = 11 [json_name = "removedSessionIds"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRemovedSessionIds() {
+      copyOnWrite();
+      instance.clearRemovedSessionIds();
+      return this;
+    }
+    /**
+     * <code>repeated string removed_session_ids = 11 [json_name = "removedSessionIds"];</code>
+     * @param value The bytes of the removedSessionIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addRemovedSessionIdsBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addRemovedSessionIdsBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>bool has_more_sessions = 12 [json_name = "hasMoreSessions"];</code>
+     * @return The hasMoreSessions.
+     */
+    @java.lang.Override
+    public boolean getHasMoreSessions() {
+      return instance.getHasMoreSessions();
+    }
+    /**
+     * <code>bool has_more_sessions = 12 [json_name = "hasMoreSessions"];</code>
+     * @param value The hasMoreSessions to set.
+     * @return This builder for chaining.
+     */
+    public Builder setHasMoreSessions(boolean value) {
+      copyOnWrite();
+      instance.setHasMoreSessions(value);
+      return this;
+    }
+    /**
+     * <code>bool has_more_sessions = 12 [json_name = "hasMoreSessions"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearHasMoreSessions() {
+      copyOnWrite();
+      instance.clearHasMoreSessions();
+      return this;
+    }
+
+    /**
+     * <code>string list_error = 13 [json_name = "listError"];</code>
+     * @return The listError.
+     */
+    @java.lang.Override
+    public java.lang.String getListError() {
+      return instance.getListError();
+    }
+    /**
+     * <code>string list_error = 13 [json_name = "listError"];</code>
+     * @return The bytes for listError.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getListErrorBytes() {
+      return instance.getListErrorBytes();
+    }
+    /**
+     * <code>string list_error = 13 [json_name = "listError"];</code>
+     * @param value The listError to set.
+     * @return This builder for chaining.
+     */
+    public Builder setListError(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setListError(value);
+      return this;
+    }
+    /**
+     * <code>string list_error = 13 [json_name = "listError"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearListError() {
+      copyOnWrite();
+      instance.clearListError();
+      return this;
+    }
+    /**
+     * <code>string list_error = 13 [json_name = "listError"];</code>
+     * @param value The bytes for listError to set.
+     * @return This builder for chaining.
+     */
+    public Builder setListErrorBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setListErrorBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>bool clear_list_error = 14 [json_name = "clearListError"];</code>
+     * @return The clearListError.
+     */
+    @java.lang.Override
+    public boolean getClearListError() {
+      return instance.getClearListError();
+    }
+    /**
+     * <code>bool clear_list_error = 14 [json_name = "clearListError"];</code>
+     * @param value The clearListError to set.
+     * @return This builder for chaining.
+     */
+    public Builder setClearListError(boolean value) {
+      copyOnWrite();
+      instance.setClearListError(value);
+      return this;
+    }
+    /**
+     * <code>bool clear_list_error = 14 [json_name = "clearListError"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearClearListError() {
+      copyOnWrite();
+      instance.clearClearListError();
+      return this;
+    }
+
+    /**
+     * <code>string prefs_error = 15 [json_name = "prefsError"];</code>
+     * @return The prefsError.
+     */
+    @java.lang.Override
+    public java.lang.String getPrefsError() {
+      return instance.getPrefsError();
+    }
+    /**
+     * <code>string prefs_error = 15 [json_name = "prefsError"];</code>
+     * @return The bytes for prefsError.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getPrefsErrorBytes() {
+      return instance.getPrefsErrorBytes();
+    }
+    /**
+     * <code>string prefs_error = 15 [json_name = "prefsError"];</code>
+     * @param value The prefsError to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPrefsError(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setPrefsError(value);
+      return this;
+    }
+    /**
+     * <code>string prefs_error = 15 [json_name = "prefsError"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPrefsError() {
+      copyOnWrite();
+      instance.clearPrefsError();
+      return this;
+    }
+    /**
+     * <code>string prefs_error = 15 [json_name = "prefsError"];</code>
+     * @param value The bytes for prefsError to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPrefsErrorBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setPrefsErrorBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>bool clear_prefs_error = 16 [json_name = "clearPrefsError"];</code>
+     * @return The clearPrefsError.
+     */
+    @java.lang.Override
+    public boolean getClearPrefsError() {
+      return instance.getClearPrefsError();
+    }
+    /**
+     * <code>bool clear_prefs_error = 16 [json_name = "clearPrefsError"];</code>
+     * @param value The clearPrefsError to set.
+     * @return This builder for chaining.
+     */
+    public Builder setClearPrefsError(boolean value) {
+      copyOnWrite();
+      instance.setClearPrefsError(value);
+      return this;
+    }
+    /**
+     * <code>bool clear_prefs_error = 16 [json_name = "clearPrefsError"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearClearPrefsError() {
+      copyOnWrite();
+      instance.clearClearPrefsError();
+      return this;
+    }
+
+    /**
+     * <code>uint64 prefs_revision = 17 [json_name = "prefsRevision"];</code>
+     * @return The prefsRevision.
+     */
+    @java.lang.Override
+    public long getPrefsRevision() {
+      return instance.getPrefsRevision();
+    }
+    /**
+     * <code>uint64 prefs_revision = 17 [json_name = "prefsRevision"];</code>
+     * @param value The prefsRevision to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPrefsRevision(long value) {
+      copyOnWrite();
+      instance.setPrefsRevision(value);
+      return this;
+    }
+    /**
+     * <code>uint64 prefs_revision = 17 [json_name = "prefsRevision"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPrefsRevision() {
+      copyOnWrite();
+      instance.clearPrefsRevision();
+      return this;
+    }
+
+    /**
+     * <code>bool replace_machines = 18 [json_name = "replaceMachines"];</code>
+     * @return The replaceMachines.
+     */
+    @java.lang.Override
+    public boolean getReplaceMachines() {
+      return instance.getReplaceMachines();
+    }
+    /**
+     * <code>bool replace_machines = 18 [json_name = "replaceMachines"];</code>
+     * @param value The replaceMachines to set.
+     * @return This builder for chaining.
+     */
+    public Builder setReplaceMachines(boolean value) {
+      copyOnWrite();
+      instance.setReplaceMachines(value);
+      return this;
+    }
+    /**
+     * <code>bool replace_machines = 18 [json_name = "replaceMachines"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearReplaceMachines() {
+      copyOnWrite();
+      instance.clearReplaceMachines();
+      return this;
+    }
+
+    /**
+     * <code>bool replace_sessions = 19 [json_name = "replaceSessions"];</code>
+     * @return The replaceSessions.
+     */
+    @java.lang.Override
+    public boolean getReplaceSessions() {
+      return instance.getReplaceSessions();
+    }
+    /**
+     * <code>bool replace_sessions = 19 [json_name = "replaceSessions"];</code>
+     * @param value The replaceSessions to set.
+     * @return This builder for chaining.
+     */
+    public Builder setReplaceSessions(boolean value) {
+      copyOnWrite();
+      instance.setReplaceSessions(value);
+      return this;
+    }
+    /**
+     * <code>bool replace_sessions = 19 [json_name = "replaceSessions"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearReplaceSessions() {
+      copyOnWrite();
+      instance.clearReplaceSessions();
+      return this;
+    }
+
+    /**
+     * <code>bool replace_devices = 20 [json_name = "replaceDevices"];</code>
+     * @return The replaceDevices.
+     */
+    @java.lang.Override
+    public boolean getReplaceDevices() {
+      return instance.getReplaceDevices();
+    }
+    /**
+     * <code>bool replace_devices = 20 [json_name = "replaceDevices"];</code>
+     * @param value The replaceDevices to set.
+     * @return This builder for chaining.
+     */
+    public Builder setReplaceDevices(boolean value) {
+      copyOnWrite();
+      instance.setReplaceDevices(value);
+      return this;
+    }
+    /**
+     * <code>bool replace_devices = 20 [json_name = "replaceDevices"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearReplaceDevices() {
+      copyOnWrite();
+      instance.clearReplaceDevices();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SeedDemoWorldEvent)
   }
   @java.lang.Override
@@ -1381,17 +2292,30 @@ public  final class SeedDemoWorldEvent extends
             io.github.lewin671.remoteagent.core.proto.DemoSession.class,
             "devices_",
             io.github.lewin671.remoteagent.core.proto.DemoDevice.class,
-            "prefs_",
             "sessionEvents_",
             io.github.lewin671.remoteagent.core.proto.DemoSessionEvents.class,
             "security_",
             "directReports_",
             io.github.lewin671.remoteagent.core.proto.DemoDirectReport.class,
             "clearDirectReports_",
+            "rawPrefs_",
+            "removedMachineIds_",
+            "removedSessionIds_",
+            "hasMoreSessions_",
+            "listError_",
+            "clearListError_",
+            "prefsError_",
+            "clearPrefsError_",
+            "prefsRevision_",
+            "replaceMachines_",
+            "replaceSessions_",
+            "replaceDevices_",
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0005\u0000\u0001\u001b\u0002\u001b\u0003\u001b" +
-              "\u0004\u1009\u0000\u0005\u001b\u0006\u1009\u0001\u0007\u001b\b\u0007";
+              "\u0000\u0013\u0000\u0001\u0001\u0014\u0013\u0000\u0007\u0000\u0001\u001b\u0002\u001b" +
+              "\u0003\u001b\u0005\u001b\u0006\u1009\u0000\u0007\u001b\b\u0007\t\n\n\u021a\u000b" +
+              "\u021a\f\u0007\r\u0208\u000e\u0007\u000f\u0208\u0010\u0007\u0011\u0003\u0012\u0007" +
+              "\u0013\u0007\u0014\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

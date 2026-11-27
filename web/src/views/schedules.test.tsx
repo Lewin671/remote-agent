@@ -6,10 +6,6 @@ import { afterEach, expect, it, vi } from "vitest";
 import { getCoreHost, type CoreHost } from "../core/host";
 import { DemoRemote } from "../dev/demo";
 import {
-  CacheEventsLoadedEventSchema,
-  PlainEventSchema,
-} from "../gen/remoteagent/core/v1/app_pb";
-import {
   ScheduleCacheLoadedEventSchema,
   ScheduleFormMode,
   ScheduleTimingEnd,
@@ -1056,27 +1052,14 @@ it("renders verified run history as full Markdown and quietly falls back while l
       kind: { case: "agentMessage", value: { text: full, phase: "final_answer" } },
     }),
   ];
-  (r as unknown as { evs: Map<string, typeof next> }).evs.set("s-idle", next);
-  (r as unknown as { demoSessions: Map<string, { lastSeq: bigint }> }).demoSessions.get("s-idle")!.lastSeq = baseSeq + 2n;
-  r.syncDemoToCore();
-  let releaseEvents!: () => void;
-  let getEventsSeen = false;
-  const heldEvents = new Promise<void>((res) => {
-    releaseEvents = res;
-  });
-  const origRpc = r.executeRpc.bind(r);
-  vi.spyOn(r, "executeRpc").mockImplementation(async (eff) => {
-    if (eff.kind.case === "getEvents" && eff.kind.value.sessionId === "s-idle") {
-      getEventsSeen = true;
-      await heldEvents;
-    }
-    return origRpc(eff);
-  });
+  // Before the session's new events arrive, ScheduleDetail renders the short summary.
   await mount(<ScheduleDetail remote={r} machineId="mac" id="task-1" go={() => {}} onBack={() => {}} />);
-  await vi.waitFor(() => expect(getEventsSeen).toBe(true));
   expect(host.querySelector(".schedule-result .ai")?.textContent).toBe("短摘要");
+  // Once the full events are synced into Core, ScheduleDetail renders the full markdown reply.
   await act(async () => {
-    releaseEvents();
+    (r as unknown as { evs: Map<string, typeof next> }).evs.set("s-idle", next);
+    (r as unknown as { demoSessions: Map<string, { lastSeq: bigint }> }).demoSessions.get("s-idle")!.lastSeq = baseSeq + 2n;
+    r.syncDemoToCore();
   });
   await vi.waitFor(() => expect(host.querySelector(".schedule-result table")?.textContent).toContain("检查通过"));
   expect(host.querySelectorAll(".schedule-result li")).toHaveLength(2);
@@ -1306,13 +1289,6 @@ it.each(["offline", "list-error"])("shows the latest cached result without readi
       kind: { case: "agentMessage", value: { phase: "final_answer", text: "缓存的完整回复" } },
     }),
   ];
-  vi.spyOn(r, "readEventsCache").mockImplementation(async (opId, sessionId) =>
-    create(CacheEventsLoadedEventSchema, {
-      opId,
-      sessionId,
-      events: evs.map((e) => create(PlainEventSchema, { seq: e.seq, event: e, verified: true })),
-    }),
-  );
   (r as unknown as { evs: Map<string, typeof evs> }).evs.set("s-idle", evs);
   (r as unknown as { demoSessions: Map<string, { lastSeq: bigint }> }).demoSessions.get("s-idle")!.lastSeq = baseSeq + 2n;
   r.syncDemoToCore();

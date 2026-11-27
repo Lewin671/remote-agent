@@ -44,28 +44,6 @@ public interface EffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.CloseStreamEffect getCloseStream();
 
   /**
-   * <code>.remoteagent.core.v1.EnsureTokenEffect ensure_token = 4 [json_name = "ensureToken"];</code>
-   * @return Whether the ensureToken field is set.
-   */
-  boolean hasEnsureToken();
-  /**
-   * <code>.remoteagent.core.v1.EnsureTokenEffect ensure_token = 4 [json_name = "ensureToken"];</code>
-   * @return The ensureToken.
-   */
-  io.github.lewin671.remoteagent.core.proto.EnsureTokenEffect getEnsureToken();
-
-  /**
-   * <code>.remoteagent.core.v1.DiscardTokenEffect discard_token = 5 [json_name = "discardToken"];</code>
-   * @return Whether the discardToken field is set.
-   */
-  boolean hasDiscardToken();
-  /**
-   * <code>.remoteagent.core.v1.DiscardTokenEffect discard_token = 5 [json_name = "discardToken"];</code>
-   * @return The discardToken.
-   */
-  io.github.lewin671.remoteagent.core.proto.DiscardTokenEffect getDiscardToken();
-
-  /**
    * <code>.remoteagent.core.v1.ScheduleTimerEffect schedule_timer = 7 [json_name = "scheduleTimer"];</code>
    * @return Whether the scheduleTimer field is set.
    */
@@ -119,17 +97,6 @@ public interface EffectOrBuilder extends
    * @return The cacheDelete.
    */
   io.github.lewin671.remoteagent.core.proto.CacheDeleteEffect getCacheDelete();
-
-  /**
-   * <code>.remoteagent.core.v1.RpcEffect rpc = 12 [json_name = "rpc"];</code>
-   * @return Whether the rpc field is set.
-   */
-  boolean hasRpc();
-  /**
-   * <code>.remoteagent.core.v1.RpcEffect rpc = 12 [json_name = "rpc"];</code>
-   * @return The rpc.
-   */
-  io.github.lewin671.remoteagent.core.proto.RpcEffect getRpc();
 
   /**
    * <code>.remoteagent.core.v1.DispatchCommandEffect dispatch_command = 13 [json_name = "dispatchCommand"];</code>
@@ -968,17 +935,6 @@ public interface EffectOrBuilder extends
    * @return The securityStorage.
    */
   io.github.lewin671.remoteagent.core.proto.SecurityStorageEffect getSecurityStorage();
-
-  /**
-   * <code>.remoteagent.core.v1.SecurityRpcEffect security_rpc = 141 [json_name = "securityRpc"];</code>
-   * @return Whether the securityRpc field is set.
-   */
-  boolean hasSecurityRpc();
-  /**
-   * <code>.remoteagent.core.v1.SecurityRpcEffect security_rpc = 141 [json_name = "securityRpc"];</code>
-   * @return The securityRpc.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecurityRpcEffect getSecurityRpc();
 
   /**
    * <code>.remoteagent.core.v1.SecurityWorkflowResultEffect security_workflow_result = 142 [json_name = "securityWorkflowResult"];</code>

@@ -1,33 +1,40 @@
 // @vitest-environment happy-dom
 
-import { create } from "@bufbuild/protobuf";
+import { create, toBinary } from "@bufbuild/protobuf";
 import { afterEach, expect, test, vi } from "vitest";
 import {
   CacheBootstrapLoadedEventSchema,
   CacheEventsLoadedEventSchema,
   CommandOutcomeEventSchema,
   EventSchema,
-  ListsFetchedEventSchema,
   OutcomeSource,
-  PlainDeviceSchema,
-  PlainMachineSchema,
-  PlainSessionSchema,
   ScreenTarget,
-  TokenResultEventSchema,
   type CacheWriteEffect,
   type DispatchCommandEffect,
   type Effect,
   type Event,
-  type RpcEffect,
 } from "../gen/remoteagent/core/v1/app_pb";
-import { DemoMachineSchema, DemoSecuritySchema, SeedDemoWorldEventSchema } from "../gen/remoteagent/core/v1/security_pb";
+import {
+  RelayRpcMethod,
+  RelayRpcResultEventSchema,
+  type RelayRpcEffect,
+} from "../gen/remoteagent/core/v1/relay_pipe_pb";
+import {
+  DemoDeviceSchema,
+  DemoMachineSchema,
+  DemoSecuritySchema,
+  DemoSessionSchema,
+  SeedDemoWorldEventSchema,
+} from "../gen/remoteagent/core/v1/security_pb";
 import { ConnState } from "../gen/remoteagent/core/v1/home_view_pb";
 import { Agent, SessionStatus } from "../gen/remoteagent/v1/event_pb";
-import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
-import { CommandResultSchema } from "../gen/remoteagent/v1/remote_pb";
+import { SessionSchema } from "../gen/remoteagent/v1/local_pb";
+import { DeviceKind, MachineSchema } from "../gen/remoteagent/v1/relay_pb";
+import { CommandResultSchema, MachineMetaSchema } from "../gen/remoteagent/v1/remote_pb";
 import { PEER_PROTOCOL_VERSION } from "../protocol";
 import { localeStore } from "../i18n";
-import { CoreHost, type CoreExecutor, type StreamLegCallbacks } from "./host";
+import { CoreHost, getCoreHost, type CoreExecutor, type StreamLegCallbacks } from "./host";
+import { SyntheticRemote } from "../test/remote-fixture";
 
 const hosts: CoreHost[] = [];
 
@@ -42,20 +49,23 @@ function flushPromises(): Promise<void> {
   return new Promise((r) => setTimeout(r, 0));
 }
 
-function makeExecutor(overrides: Partial<CoreExecutor> = {}): CoreExecutor & {
+function makeExecutor(
+  overrides: Partial<CoreExecutor> = {},
+  getHost?: () => CoreHost | undefined,
+): CoreExecutor & {
   streamLegs: Map<bigint, StreamLegCallbacks>;
-  tokenCalls: Array<{ opId: bigint; forceLogin: boolean }>;
+  rpcMethods: RelayRpcMethod[];
   writeOrder: string[];
   releasedEvents: Event[];
 } {
   const streamLegs = new Map<bigint, StreamLegCallbacks>();
-  const tokenCalls: Array<{ opId: bigint; forceLogin: boolean }> = [];
+  const rpcMethods: RelayRpcMethod[] = [];
   const writeOrder: string[] = [];
   const releasedEvents: Event[] = [];
 
   return {
     streamLegs,
-    tokenCalls,
+    rpcMethods,
     writeOrder,
     releasedEvents,
     openStreamLeg(legId, _token, callbacks) {
@@ -64,14 +74,6 @@ function makeExecutor(overrides: Partial<CoreExecutor> = {}): CoreExecutor & {
     },
     closeStreamLeg(legId) {
       streamLegs.delete(legId);
-    },
-    async ensureToken(opId, forceLogin) {
-      tokenCalls.push({ opId, forceLogin });
-      return create(TokenResultEventSchema, {
-        opId,
-        token: "tok-1",
-        expiresMs: BigInt(Date.now() + 600_000),
-      });
     },
     async readBootstrapCache(opId) {
       return create(CacheBootstrapLoadedEventSchema, {
@@ -95,50 +97,18 @@ function makeExecutor(overrides: Partial<CoreExecutor> = {}): CoreExecutor & {
       writeOrder.push(eff.kind.case ?? "unknown");
     },
     async deleteCache() {},
-    async executeRpc(eff: RpcEffect) {
-      if (eff.kind.case === "fetchLists") {
-        return create(EventSchema, {
-          event: {
-            case: "listsFetched",
-            value: create(ListsFetchedEventSchema, {
-              opId: eff.opId,
-              machines: [
-                create(PlainMachineSchema, {
-                  machineId: "m1",
-                  online: true,
-                  meta: { hostname: "MacBook" },
-                }),
-              ],
-              sessions: [
-                create(PlainSessionSchema, {
-                  sessionId: "s1",
-                  machineId: "m1",
-                  lastSeq: 2n,
-                  updatedMs: BigInt(Date.now()),
-                  meta: {
-                    id: "s1",
-                    cwd: "/Users/me/app",
-                    title: "Fix tests",
-                    status: SessionStatus.RUNNING,
-                    agent: Agent.CLAUDE,
-                  },
-                }),
-              ],
-              devices: [
-                create(PlainDeviceSchema, {
-                  deviceId: "dev-client",
-                  kind: DeviceKind.CLIENT,
-                }),
-                create(PlainDeviceSchema, {
-                  deviceId: "m1",
-                  kind: DeviceKind.MACHINE,
-                }),
-              ],
-            }),
-          },
-        });
-      }
-      return create(EventSchema, {});
+    relayRpc(eff: RelayRpcEffect) {
+      rpcMethods.push(eff.method);
+      queueMicrotask(() => {
+        getHost?.()?.dispatch(
+          create(EventSchema, {
+            event: {
+              case: "relayRpcResult",
+              value: create(RelayRpcResultEventSchema, { opId: eff.opId }),
+            },
+          }),
+        );
+      });
     },
     async executeCommandAttempt(eff: DispatchCommandEffect) {
       return create(CommandOutcomeEventSchema, {
@@ -153,8 +123,9 @@ function makeExecutor(overrides: Partial<CoreExecutor> = {}): CoreExecutor & {
 
 test("CoreHost boots real WASM core, hydrates HomeViewModel, and uses persistent HMAC key", async () => {
   const effects: Effect[] = [];
-  const exec = makeExecutor();
-  const host = new CoreHost(undefined, {
+  let host!: CoreHost;
+  const exec = makeExecutor({}, () => host);
+  host = new CoreHost(undefined, {
     executor: exec,
     onEffect: (e) => effects.push(e),
   });
@@ -163,12 +134,44 @@ test("CoreHost boots real WASM core, hydrates HomeViewModel, and uses persistent
   const onHome = vi.fn();
   const unsub = host.subscribe(ScreenTarget.HOME, onHome);
   try {
-    host.start();
     host.dispatch(
       create(EventSchema, {
         event: {
           case: "seedDemoWorld",
           value: create(SeedDemoWorldEventSchema, {
+            clearDirectReports: true,
+            machines: [
+              create(DemoMachineSchema, {
+                machineId: "m1",
+                online: true,
+                rawMeta: toBinary(
+                  MachineMetaSchema,
+                  create(MachineMetaSchema, { hostname: "MacBook", protocolVersion: PEER_PROTOCOL_VERSION }),
+                ),
+              }),
+            ],
+            sessions: [
+              create(DemoSessionSchema, {
+                sessionId: "s1",
+                machineId: "m1",
+                lastSeq: 1n,
+                updatedMs: 1_700_000_000_000n,
+                rawMeta: toBinary(
+                  SessionSchema,
+                  create(SessionSchema, {
+                    id: "s1",
+                    cwd: "/Users/me/app",
+                    title: "Fix tests",
+                    status: SessionStatus.RUNNING,
+                    agent: Agent.CLAUDE,
+                  }),
+                ),
+              }),
+            ],
+            devices: [
+              create(DemoDeviceSchema, { deviceId: "dev-client", kind: DeviceKind.CLIENT }),
+              create(DemoDeviceSchema, { deviceId: "m1", kind: DeviceKind.MACHINE }),
+            ],
             security: create(DemoSecuritySchema, {
               isMember: true,
               selfDeviceId: "dev-client",
@@ -181,12 +184,12 @@ test("CoreHost boots real WASM core, hydrates HomeViewModel, and uses persistent
         },
       }),
     );
+    host.start();
     await flushPromises();
     await flushPromises();
 
-    // Persistent HMAC key from CacheBootstrapLoaded must NOT be shadowed by an ephemeral Start key.
-    expect(effects.some((e) => e.effect.case === "requestEntropy" || e.effect.case === "cacheRead")).toBe(true);
-    expect(exec.tokenCalls.length).toBeGreaterThan(0);
+    // Demo mode does not emit RelayRpcEffect or CacheReadEffect.
+    expect(exec.rpcMethods).toEqual([]);
     expect(exec.streamLegs.size).toBe(1);
 
     const home = host.viewHome();
@@ -211,79 +214,43 @@ test("CoreHost serializes prepared cache writes in effect order and releases unu
   });
 
   let callCount = 0;
-  const exec = makeExecutor({
-    prepareCacheWrite(eff) {
-      const idx = ++callCount;
-      const label = `${idx}:${eff.kind.case}`;
-      return async () => {
-        order.push(`start:${label}`);
-        if (idx === 1) await firstGate;
-        order.push(`end:${label}`);
-      };
-    },
-    async executeRpc(eff) {
-      if (eff.kind.case === "fetchLists") {
-        return create(EventSchema, {
-          event: {
-            case: "listsFetched",
-            value: create(ListsFetchedEventSchema, {
-              opId: eff.opId,
-              machines: [
-                create(PlainMachineSchema, {
-                  machineId: "m1",
-                  online: true,
-                  meta: { hostname: "MacBook" },
-                }),
-              ],
-              sessions: [
-                create(PlainSessionSchema, {
-                  sessionId: "s1",
-                  machineId: "m1",
-                  openFailed: true,
-                }),
-                create(PlainSessionSchema, {
-                  sessionId: "s2",
-                  machineId: "m1",
-                  openFailed: true,
-                }),
-              ],
-            }),
-          },
-        });
-      }
-      return create(EventSchema, {});
-    },
-  });
-
-  const host = new CoreHost(undefined, { executor: exec });
-  hosts.push(host);
-  host.start();
-  host.dispatch(
-    create(EventSchema, {
-      event: {
-        case: "seedDemoWorld",
-        value: create(SeedDemoWorldEventSchema, {
-          security: create(DemoSecuritySchema, {
-            isMember: true,
-            selfDeviceId: "dev-client",
-            authorityDeviceId: "dev-client",
-            trustedMachineIds: ["m1"],
-            trustedClientIds: ["dev-client"],
-            headEpoch: 1n,
-          }),
-        }),
-      },
+  const remote = await SyntheticRemote.create();
+  const s1Row = await remote.sessionRow("s1", "First");
+  const s2Row = await remote.sessionRow("s2", "Second");
+  (remote as unknown as { api: Record<string, unknown> }).api = {
+    listMachines: async () => ({
+      machines: [
+        {
+          id: remote.machine,
+          online: true,
+          lastSeenMs: 0n,
+          meta: await remote.seal({ kind: 4, seq: 1n }, MachineMetaSchema, create(MachineMetaSchema, { hostname: "MacBook", protocolVersion: PEER_PROTOCOL_VERSION })),
+        },
+      ],
     }),
-  );
-  await flushPromises();
-  await flushPromises();
+    listRemoteSessions: async () => ({ sessions: [s1Row, s2Row] }),
+  };
+  vi.spyOn(remote, "prepareCacheWrite").mockImplementation((eff: CacheWriteEffect) => {
+    const idx = ++callCount;
+    const label = `${idx}:${eff.kind.case}`;
+    return async () => {
+      order.push(`start:${label}`);
+      if (idx === 1) await firstGate;
+      order.push(`end:${label}`);
+    };
+  });
+  vi.spyOn(remote, "openStreamLeg").mockImplementation((legId, _token, callbacks) => {
+    callbacks.onReady(legId, BigInt(Date.now()));
+  });
+  hosts.push(getCoreHost(remote));
+  remote.start();
+  await vi.waitFor(() => expect(order.length).toBeGreaterThanOrEqual(1));
 
   // At least two cache writes occurred (machine/session/prefs); verify strict FIFO serialization.
   expect(order[0]).toMatch(/^start:1:/);
   expect(order.filter((x) => x.startsWith("start:2:"))).toEqual([]);
   releaseFirst();
-  await flushPromises();
-  await flushPromises();
+  await vi.waitFor(() => expect(order.filter((x) => x.startsWith("end:")).length).toBeGreaterThanOrEqual(2));
 
   const startIndices = order
     .map((x, i) => ({ x, i }))
@@ -322,7 +289,7 @@ test("warmLocalCache hydrates bootstrap cache before start without re-reading In
       opId,
       homeScopeToken: "all",
       scopeHmacKey: new Uint8Array(32).fill(7),
-      machines: [{ machineId: "m-cached", online: true }],
+      rawMachines: [toBinary(MachineSchema, create(MachineSchema, { id: "m-cached", online: true }))],
     });
   };
   const host = new CoreHost(undefined, { executor: exec });
@@ -397,7 +364,7 @@ test("cancelPingMachine aborts only the matching request_id signal", async () =>
             create(DemoMachineSchema, {
               machineId: "m1",
               online: true,
-              meta: { hostname: "Box", protocolVersion: PEER_PROTOCOL_VERSION },
+              rawMeta: toBinary(MachineMetaSchema, create(MachineMetaSchema, { hostname: "Box", protocolVersion: PEER_PROTOCOL_VERSION })),
             }),
           ],
           security: create(DemoSecuritySchema, {
@@ -438,7 +405,7 @@ test("cancelPingMachine aborts only the matching request_id signal", async () =>
       outerMatchesInner: true,
       outerOutcome: "executed",
       outerReason: "ok",
-      result: create(CommandResultSchema, { outcome: "executed", reason: "ok", resultAvailable: true }),
+      rawResult: toBinary(CommandResultSchema, create(CommandResultSchema, { outcome: "executed", reason: "ok", resultAvailable: true })),
     }),
   );
   await expect(p2).resolves.toBeUndefined();
@@ -447,19 +414,69 @@ test("cancelPingMachine aborts only the matching request_id signal", async () =>
 test("cold-start networkChanged does not forge a signature or tear down the initial Ready stream on first real observation (audit #3)", async () => {
   const closedLegs: bigint[] = [];
   const openedLegs: bigint[] = [];
-  const exec = makeExecutor({
-    openStreamLeg(legId, _token, callbacks) {
-      openedLegs.push(legId);
-      exec.streamLegs.set(legId, callbacks);
-      callbacks.onReady(legId, BigInt(Date.now()));
+  let host!: CoreHost;
+  const exec = makeExecutor(
+    {
+      openStreamLeg(legId, _token, callbacks) {
+        openedLegs.push(legId);
+        exec.streamLegs.set(legId, callbacks);
+        callbacks.onReady(legId, BigInt(Date.now()));
+      },
+      closeStreamLeg(legId) {
+        closedLegs.push(legId);
+        exec.streamLegs.delete(legId);
+      },
     },
-    closeStreamLeg(legId) {
-      closedLegs.push(legId);
-      exec.streamLegs.delete(legId);
-    },
-  });
-  const host = new CoreHost(undefined, { executor: exec });
+    () => host,
+  );
+  host = new CoreHost(undefined, { executor: exec });
   hosts.push(host);
+  host.dispatch(
+    create(EventSchema, {
+      event: {
+        case: "seedDemoWorld",
+        value: create(SeedDemoWorldEventSchema, {
+          clearDirectReports: true,
+          machines: [
+            create(DemoMachineSchema, {
+              machineId: "m1",
+              online: true,
+              rawMeta: toBinary(
+                MachineMetaSchema,
+                create(MachineMetaSchema, { hostname: "MacBook", protocolVersion: PEER_PROTOCOL_VERSION }),
+              ),
+            }),
+          ],
+          sessions: [
+            create(DemoSessionSchema, {
+              sessionId: "s1",
+              machineId: "m1",
+              lastSeq: 1n,
+              updatedMs: 1_700_000_000_000n,
+              rawMeta: toBinary(
+                SessionSchema,
+                create(SessionSchema, {
+                  id: "s1",
+                  cwd: "/Users/me/app",
+                  title: "Fix tests",
+                  status: SessionStatus.RUNNING,
+                  agent: Agent.CLAUDE,
+                }),
+              ),
+            }),
+          ],
+          security: create(DemoSecuritySchema, {
+            isMember: true,
+            selfDeviceId: "dev-client",
+            authorityDeviceId: "dev-client",
+            trustedMachineIds: ["m1"],
+            trustedClientIds: ["dev-client"],
+            headEpoch: 1n,
+          }),
+        }),
+      },
+    }),
+  );
   host.start();
   await flushPromises();
 
@@ -485,10 +502,58 @@ test("cold-start networkChanged does not forge a signature or tear down the init
 });
 
 test("viewSession + viewSessionHeader computes core.view(SESSION) at most once per SESSION version bump", async () => {
-  const exec = makeExecutor();
-  const host = new CoreHost(undefined, { executor: exec });
+  let host!: CoreHost;
+  const exec = makeExecutor({}, () => host);
+  host = new CoreHost(undefined, { executor: exec });
   hosts.push(host);
+  host.dispatch(
+    create(EventSchema, {
+      event: {
+        case: "seedDemoWorld",
+        value: create(SeedDemoWorldEventSchema, {
+          clearDirectReports: true,
+          machines: [
+            create(DemoMachineSchema, {
+              machineId: "m1",
+              online: true,
+              rawMeta: toBinary(
+                MachineMetaSchema,
+                create(MachineMetaSchema, { hostname: "MacBook", protocolVersion: PEER_PROTOCOL_VERSION }),
+              ),
+            }),
+          ],
+          sessions: [
+            create(DemoSessionSchema, {
+              sessionId: "s1",
+              machineId: "m1",
+              lastSeq: 1n,
+              updatedMs: 1_700_000_000_000n,
+              rawMeta: toBinary(
+                SessionSchema,
+                create(SessionSchema, {
+                  id: "s1",
+                  cwd: "/Users/me/app",
+                  title: "Fix tests",
+                  status: SessionStatus.RUNNING,
+                  agent: Agent.CLAUDE,
+                }),
+              ),
+            }),
+          ],
+          security: create(DemoSecuritySchema, {
+            isMember: true,
+            selfDeviceId: "dev-client",
+            authorityDeviceId: "dev-client",
+            trustedMachineIds: ["m1"],
+            trustedClientIds: ["dev-client"],
+            headEpoch: 1n,
+          }),
+        }),
+      },
+    }),
+  );
   host.start();
+  await flushPromises();
   await flushPromises();
 
   const core = (host as unknown as { core: { view(req: Uint8Array): Uint8Array } }).core;

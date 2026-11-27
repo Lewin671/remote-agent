@@ -16,8 +16,8 @@ public  final class DemoDevice extends
     DemoDeviceOrBuilder {
   private DemoDevice() {
     deviceId_ = "";
+    rawMeta_ = com.google.protobuf.ByteString.EMPTY;
   }
-  private int bitField0_;
   public static final int DEVICE_ID_FIELD_NUMBER = 1;
   private java.lang.String deviceId_;
   /**
@@ -160,52 +160,31 @@ public  final class DemoDevice extends
     lastSeenMs_ = 0L;
   }
 
-  public static final int META_FIELD_NUMBER = 5;
-  private io.github.lewin671.remoteagent.proto.DeviceMeta meta_;
+  public static final int RAW_META_FIELD_NUMBER = 6;
+  private com.google.protobuf.ByteString rawMeta_;
   /**
-   * <code>.remoteagent.v1.DeviceMeta meta = 5 [json_name = "meta"];</code>
+   * <code>bytes raw_meta = 6 [json_name = "rawMeta"];</code>
+   * @return The rawMeta.
    */
   @java.lang.Override
-  public boolean hasMeta() {
-    return ((bitField0_ & 0x00000001) != 0);
+  public com.google.protobuf.ByteString getRawMeta() {
+    return rawMeta_;
   }
   /**
-   * <code>.remoteagent.v1.DeviceMeta meta = 5 [json_name = "meta"];</code>
+   * <code>bytes raw_meta = 6 [json_name = "rawMeta"];</code>
+   * @param value The rawMeta to set.
    */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.DeviceMeta getMeta() {
-    return meta_ == null ? io.github.lewin671.remoteagent.proto.DeviceMeta.getDefaultInstance() : meta_;
+  private void setRawMeta(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    rawMeta_ = value;
   }
   /**
-   * <code>.remoteagent.v1.DeviceMeta meta = 5 [json_name = "meta"];</code>
+   * <code>bytes raw_meta = 6 [json_name = "rawMeta"];</code>
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setMeta(io.github.lewin671.remoteagent.proto.DeviceMeta value) {
-    value.getClass();  // minimal bytecode null check
-    meta_ = value;
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.v1.DeviceMeta meta = 5 [json_name = "meta"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeMeta(io.github.lewin671.remoteagent.proto.DeviceMeta value) {
-    value.getClass();  // minimal bytecode null check
-    if (meta_ != null &&
-        meta_ != io.github.lewin671.remoteagent.proto.DeviceMeta.getDefaultInstance()) {
-      meta_ =
-        io.github.lewin671.remoteagent.proto.DeviceMeta.newBuilder(meta_).mergeFrom(value).buildPartial();
-    } else {
-      meta_ = value;
-    }
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.v1.DeviceMeta meta = 5 [json_name = "meta"];</code>
-   */
-  private void clearMeta() {
-    meta_ = null;
-    bitField0_ = (bitField0_ & ~0x00000001);
+  private void clearRawMeta() {
+
+    rawMeta_ = getDefaultInstance().getRawMeta();
   }
 
   public static io.github.lewin671.remoteagent.core.proto.DemoDevice parseFrom(
@@ -457,49 +436,30 @@ public  final class DemoDevice extends
     }
 
     /**
-     * <code>.remoteagent.v1.DeviceMeta meta = 5 [json_name = "meta"];</code>
+     * <code>bytes raw_meta = 6 [json_name = "rawMeta"];</code>
+     * @return The rawMeta.
      */
     @java.lang.Override
-    public boolean hasMeta() {
-      return instance.hasMeta();
+    public com.google.protobuf.ByteString getRawMeta() {
+      return instance.getRawMeta();
     }
     /**
-     * <code>.remoteagent.v1.DeviceMeta meta = 5 [json_name = "meta"];</code>
+     * <code>bytes raw_meta = 6 [json_name = "rawMeta"];</code>
+     * @param value The rawMeta to set.
+     * @return This builder for chaining.
      */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.DeviceMeta getMeta() {
-      return instance.getMeta();
-    }
-    /**
-     * <code>.remoteagent.v1.DeviceMeta meta = 5 [json_name = "meta"];</code>
-     */
-    public Builder setMeta(io.github.lewin671.remoteagent.proto.DeviceMeta value) {
+    public Builder setRawMeta(com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.setMeta(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.v1.DeviceMeta meta = 5 [json_name = "meta"];</code>
-     */
-    public Builder setMeta(
-        io.github.lewin671.remoteagent.proto.DeviceMeta.Builder builderForValue) {
-      copyOnWrite();
-      instance.setMeta(builderForValue.build());
+      instance.setRawMeta(value);
       return this;
     }
     /**
-     * <code>.remoteagent.v1.DeviceMeta meta = 5 [json_name = "meta"];</code>
+     * <code>bytes raw_meta = 6 [json_name = "rawMeta"];</code>
+     * @return This builder for chaining.
      */
-    public Builder mergeMeta(io.github.lewin671.remoteagent.proto.DeviceMeta value) {
+    public Builder clearRawMeta() {
       copyOnWrite();
-      instance.mergeMeta(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.DeviceMeta meta = 5 [json_name = "meta"];</code>
-     */
-    public Builder clearMeta() {  copyOnWrite();
-      instance.clearMeta();
+      instance.clearRawMeta();
       return this;
     }
 
@@ -519,16 +479,15 @@ public  final class DemoDevice extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
-            "bitField0_",
             "deviceId_",
             "kind_",
             "createdMs_",
             "lastSeenMs_",
-            "meta_",
+            "rawMeta_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0001\u0001\u0005\u0005\u0000\u0000\u0000\u0001\u0208\u0002\f" +
-              "\u0003\u0002\u0004\u0002\u0005\u1009\u0000";
+              "\u0000\u0005\u0000\u0000\u0001\u0006\u0005\u0000\u0000\u0000\u0001\u0208\u0002\f" +
+              "\u0003\u0002\u0004\u0002\u0006\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

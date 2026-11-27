@@ -35,7 +35,7 @@ import Testing
             $0.attemptID = newRequestId()
             $0.machineID = "mach-1"
             $0.deadlineMs = nowMs() + 60_000
-            $0.sealedEnvelope = PBEnvelope.with { $0.ciphertext = Data([1, 2, 3]) }
+            $0.rawSealedEnvelope = (try? PBEnvelope.with { $0.ciphertext = Data([1, 2, 3]) }.serializedData()) ?? Data()
             $0.routeLeg = .relay
         }
         let outcome = await remote.dispatchCommandAttempt(eff)

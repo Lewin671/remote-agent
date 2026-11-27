@@ -1,16 +1,10 @@
 package io.github.lewin671.remoteagent.core
 
-import com.google.protobuf.ByteString
 import io.github.lewin671.remoteagent.core.proto.Event as CoreEvent
 import io.github.lewin671.remoteagent.core.proto.SecurityActionEmpty
-import io.github.lewin671.remoteagent.core.proto.SecurityApprovePairingAction
 import io.github.lewin671.remoteagent.core.proto.SecurityBoolAction
 import io.github.lewin671.remoteagent.core.proto.SecurityErrorCode
-import io.github.lewin671.remoteagent.core.proto.SecurityPairingInfo
-import io.github.lewin671.remoteagent.core.proto.SecurityPrepareCreationAction
 import io.github.lewin671.remoteagent.core.proto.SecurityRemoveDeviceAction
-import io.github.lewin671.remoteagent.core.proto.SecurityStartJoinPairingAction
-import io.github.lewin671.remoteagent.core.proto.SecurityStartPairingAction
 import io.github.lewin671.remoteagent.core.proto.SecurityStringAction
 import io.github.lewin671.remoteagent.core.proto.SecuritySyncNowAction
 import io.github.lewin671.remoteagent.core.proto.SecurityUpdateDeviceMetaAction
@@ -123,7 +117,7 @@ class SecurityClient(
         }
     }
 
-    private suspend fun run(
+    internal suspend fun run(
         configure: SecurityWorkflowActionEvent.Builder.() -> Unit,
     ): SecurityWorkflowResultEffect {
         if (isClosedFn()) throw IllegalStateException("security client closed")
@@ -160,26 +154,16 @@ class SecurityClient(
     private suspend fun str(v: String, set: SecurityWorkflowActionEvent.Builder.(SecurityStringAction) -> Unit) =
         run { set(SecurityStringAction.newBuilder().setValue(v).build()) }
 
+    internal fun notifyDismissUpgradeNotice() { onDismissUpgradeNotice?.invoke() }
+
     suspend fun bootstrap(): SecurityWorkflowStatus = empty { setBootstrap(it) }.status
 
     suspend fun getStatus(): SecurityWorkflowStatus = empty { setGetStatus(it) }.status
-
-    suspend fun dismissUpgradeNotice(): SecurityWorkflowStatus =
-        empty { setDismissUpgradeNotice(it) }.status.also { onDismissUpgradeNotice?.invoke() }
 
     suspend fun syncNow(touch: Boolean = false, authToken: String = ""): SecurityWorkflowStatus =
         run { setSyncNow(SecuritySyncNowAction.newBuilder().setTouch(touch).setAuthToken(authToken).build()) }.status
 
     suspend fun renewLease(force: Boolean = true): SecurityWorkflowStatus = bool(force) { setRenewLease(it) }.status
-
-    suspend fun prepareCreation(server: String, storagePersisted: Boolean = true): String =
-        run {
-            setPrepareCreation(
-                SecurityPrepareCreationAction.newBuilder().setServer(server).setStoragePersisted(storagePersisted).build(),
-            )
-        }.recoveryCode
-
-    suspend fun confirmCreationCodeSaved() { empty { setConfirmCreationCodeSaved(it) } }
 
     suspend fun removeDevice(deviceId: String) {
         run {
@@ -190,58 +174,6 @@ class SecurityClient(
     }
 
     suspend fun deleteMachineRecords(machineId: String) { str(machineId) { setDeleteMachineRecords(it) } }
-
-    suspend fun prepareHandoffCode(storagePersisted: Boolean = true): String =
-        bool(storagePersisted) { setPrepareHandoffCode(it) }.recoveryCode
-
-    suspend fun publishHandoffOffer() { empty { setPublishHandoffOffer(it) } }
-
-    suspend fun handoffAuthority(targetDeviceId: String) { str(targetDeviceId) { setHandoffAuthority(it) } }
-
-    suspend fun startPairing(webOrigin: String, replacesDeviceId: String = ""): SecurityPairingInfo =
-        run { setStartPairing(SecurityStartPairingAction.newBuilder().setWebOrigin(webOrigin).setReplacesDeviceId(replacesDeviceId).build()) }.pairing
-
-    suspend fun pollPairing(pairingId: String): SecurityPairingInfo = str(pairingId) { setPollPairing(it) }.pairing
-
-    suspend fun approvePairing(
-        pairingId: String,
-        sasConfirmed: Boolean,
-        removeDeviceIds: List<String> = emptyList(),
-    ): SecurityPairingInfo =
-        run {
-            setApprovePairing(
-                SecurityApprovePairingAction.newBuilder()
-                    .setPairingId(pairingId)
-                    .setSasConfirmed(sasConfirmed)
-                    .addAllRemoveDeviceIds(removeDeviceIds)
-                    .build(),
-            )
-        }.pairing
-
-    suspend fun finishPairingDelivery(pairingId: String): SecurityPairingInfo =
-        str(pairingId) { setFinishPairingDelivery(it) }.pairing
-
-    suspend fun startJoinPairing(
-        server: String = "",
-        code: String = "",
-        commitHint: ByteArray? = null,
-        existingRepair: Boolean = false,
-        existingServer: String = "",
-        rawLink: String = "",
-        platform: String = "",
-        description: String = "",
-    ): SecurityPairingInfo =
-        run {
-            setStartJoinPairing(
-                SecurityStartJoinPairingAction.newBuilder()
-                    .setServer(server).setCode(code)
-                    .apply { if (commitHint != null && commitHint.isNotEmpty()) setCommitHint(ByteString.copyFrom(commitHint)) }
-                    .setExistingRepair(existingRepair).setExistingServer(existingServer).setRawLink(rawLink)
-                    .setPlatform(platform).setDescription(description).build(),
-            )
-        }.pairing
-
-    suspend fun confirmJoinSas(pairingId: String): SecurityWorkflowResultEffect = str(pairingId) { setConfirmJoinSas(it) }
 
     suspend fun updateDeviceMeta(
         deviceId: String = "",

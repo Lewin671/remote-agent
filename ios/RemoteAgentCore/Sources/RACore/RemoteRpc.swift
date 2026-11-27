@@ -14,12 +14,13 @@ extension Remote {
             if let cache {
                 for var m in await cache.machines() {
                     m.online = false
-                    loaded.wireMachines.append(m)
+                    if let raw = try? m.serializedData() {
+                        loaded.rawMachines.append(raw)
+                    }
                 }
-                loaded.wireSessions = await cache.sessions()
-                if let blob = await cache.blob(name: projectPrefsID),
-                   let obj = try? PBAccountPrefsObject(serializedBytes: blob) {
-                    loaded.wirePrefs = obj
+                loaded.rawSessions = await cache.sessions().compactMap { try? $0.serializedData() }
+                if let blob = await cache.blob(name: projectPrefsID) {
+                    loaded.rawPrefs = blob
                 }
             }
             event.cacheBootstrapLoaded = loaded
@@ -28,9 +29,10 @@ extension Remote {
             loaded.opID = req.opID
             loaded.sessionID = req.sessionID
             if let cache {
-                loaded.wireEvents = req.newest
+                let evs = req.newest
                     ? await cache.newestEvents(sessionId: req.sessionID)
                     : await cache.eventPage(sessionId: req.sessionID, afterSeq: req.afterSeq)
+                loaded.rawEvents = evs.compactMap { try? $0.serializedData() }
             }
             event.cacheEventsLoaded = loaded
         case nil:
@@ -42,18 +44,25 @@ extension Remote {
     public func executeCacheWrite(_ effect: PBCoreCacheWriteEffect) async {
         guard let cache else { return }
         switch effect.kind {
-        case .writeMachine(let m):
-            await cache.putMachine(m)
-        case .writeSession(let rs):
-            await cache.putSession(rs)
-        case .keepSessionOwner(let rs):
-            await cache.keepOwner(rs)
-        case .writeStoredEvents(let batch):
-            if !batch.events.isEmpty {
-                await cache.putEvents(sessionId: batch.sessionID, events: batch.events)
+        case .rawWriteMachine(let raw):
+            if let m = try? PBMachine(serializedBytes: raw) {
+                await cache.putMachine(m)
             }
-        case .writePrefs(let obj):
-            if let data = try? obj.serializedData() {
+        case .rawWriteSession(let raw):
+            if let rs = try? PBRemoteSession(serializedBytes: raw) {
+                await cache.putSession(rs)
+            }
+        case .rawKeepSessionOwner(let raw):
+            if let rs = try? PBRemoteSession(serializedBytes: raw) {
+                await cache.keepOwner(rs)
+            }
+        case .writeStoredEvents(let batch):
+            let parsed = batch.rawEvents.compactMap { try? PBStoredEvent(serializedBytes: $0) }
+            if !parsed.isEmpty {
+                await cache.putEvents(sessionId: batch.sessionID, events: parsed)
+            }
+        case .rawWritePrefs(let data):
+            if !data.isEmpty {
                 await cache.putBlob(name: projectPrefsID, data: data)
             }
         case .setSessionOpen, nil:

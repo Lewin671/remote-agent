@@ -29,20 +29,6 @@ public interface CacheEventsLoadedEventOrBuilder extends
       getSessionIdBytes();
 
   /**
-   * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-   */
-  java.util.List<io.github.lewin671.remoteagent.core.proto.PlainEvent> 
-      getEventsList();
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-   */
-  io.github.lewin671.remoteagent.core.proto.PlainEvent getEvents(int index);
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-   */
-  int getEventsCount();
-
-  /**
    * <code>bool broken = 4 [json_name = "broken"];</code>
    * @return The broken.
    */
@@ -67,16 +53,19 @@ public interface CacheEventsLoadedEventOrBuilder extends
       getErrorBytes();
 
   /**
-   * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+   * <code>repeated bytes raw_events = 11 [json_name = "rawEvents"];</code>
+   * @return A list containing the rawEvents.
    */
-  java.util.List<io.github.lewin671.remoteagent.proto.StoredEvent> 
-      getWireEventsList();
+  java.util.List<com.google.protobuf.ByteString> getRawEventsList();
   /**
-   * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+   * <code>repeated bytes raw_events = 11 [json_name = "rawEvents"];</code>
+   * @return The count of rawEvents.
    */
-  io.github.lewin671.remoteagent.proto.StoredEvent getWireEvents(int index);
+  int getRawEventsCount();
   /**
-   * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+   * <code>repeated bytes raw_events = 11 [json_name = "rawEvents"];</code>
+   * @param index The index of the element to return.
+   * @return The rawEvents at the given index.
    */
-  int getWireEventsCount();
+  com.google.protobuf.ByteString getRawEvents(int index);
 }

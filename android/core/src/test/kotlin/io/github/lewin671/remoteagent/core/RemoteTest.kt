@@ -502,6 +502,13 @@ class RemoteTest {
                 .setKind(io.github.lewin671.remoteagent.core.proto.DraftScopeKind.DRAFT_SCOPE_KIND_SESSION)
                 .setId("s1")
                 .build()
+            r.coreHost.sendAttachmentConfig(
+                persistDrafts = false,
+                persistOutbox = false,
+                scanStorage = false,
+                maxChunkBytes = 0,
+                hasPersistedPreparedImages = false,
+            )
             r.coreHost.openDraft(scope, daemon.id)
             r.coreHost.setDraftText(scope, "跑一下测试")
             r.sendDraftSession("s1", SendMode.SEND_MODE_STEER)
@@ -521,11 +528,11 @@ class RemoteTest {
 
             daemon.disconnect()
             r.awaitUntil("offline machine") { r.machineCard(daemon.id)?.online == false }
-            r.sessionSimpleCommand("s1", io.github.lewin671.remoteagent.core.proto.SessionSimpleCommandKind.SESSION_SIMPLE_COMMAND_KIND_INTERRUPT)
-            val interruptFailed = vmFlow.first {
-                it.actions.interrupt.status == io.github.lewin671.remoteagent.core.proto.SessionCommandStatus.SESSION_COMMAND_STATUS_FAILED
+            r.renameSession("s1", "离线改名")
+            val renameFailed = vmFlow.first {
+                it.actions.rename.status == io.github.lewin671.remoteagent.core.proto.SessionCommandStatus.SESSION_COMMAND_STATUS_FAILED
             }
-            assertEquals(CommandException.UNAVAILABLE, interruptFailed.actions.interrupt.errorCode)
+            assertEquals(CommandException.UNAVAILABLE, renameFailed.actions.rename.errorCode)
         }
 
     private suspend fun refused(protocol: Int): CommandException {
@@ -869,13 +876,12 @@ class RemoteTest {
         r.refreshDevices()
         assertTrue(r.clientRow(r.account.deviceId) != null)
 
-        // Dispatching op_id=0, push_seq=0 DevicesFetched must be ignored by core.
+        // Dispatching an untracked op_id=0 RelayRpcResultEvent must be ignored by core.
         r.coreHost.dispatchAndWait(
             io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
-                .setDevicesFetched(
-                    io.github.lewin671.remoteagent.core.proto.DevicesFetchedEvent.newBuilder()
-                        .setOpId(0L)
-                        .setPushSeq(0L),
+                .setRelayRpcResult(
+                    io.github.lewin671.remoteagent.core.proto.RelayRpcResultEvent.newBuilder()
+                        .setOpId(0L),
                 )
                 .build(),
         )

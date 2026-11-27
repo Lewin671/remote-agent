@@ -23,16 +23,49 @@ public interface DemoSessionEventsOrBuilder extends
       getSessionIdBytes();
 
   /**
-   * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+   * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+   * @return A list containing the rawEvents.
    */
-  java.util.List<io.github.lewin671.remoteagent.proto.Event> 
-      getEventsList();
+  java.util.List<com.google.protobuf.ByteString> getRawEventsList();
   /**
-   * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+   * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+   * @return The count of rawEvents.
    */
-  io.github.lewin671.remoteagent.proto.Event getEvents(int index);
+  int getRawEventsCount();
   /**
-   * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+   * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+   * @param index The index of the element to return.
+   * @return The rawEvents at the given index.
    */
-  int getEventsCount();
+  com.google.protobuf.ByteString getRawEvents(int index);
+
+  /**
+   * <code>bool retired = 4 [json_name = "retired"];</code>
+   * @return The retired.
+   */
+  boolean getRetired();
+
+  /**
+   * <code>bool unavailable = 5 [json_name = "unavailable"];</code>
+   * @return The unavailable.
+   */
+  boolean getUnavailable();
+
+  /**
+   * <code>string load_error = 6 [json_name = "loadError"];</code>
+   * @return The loadError.
+   */
+  java.lang.String getLoadError();
+  /**
+   * <code>string load_error = 6 [json_name = "loadError"];</code>
+   * @return The bytes for loadError.
+   */
+  com.google.protobuf.ByteString
+      getLoadErrorBytes();
+
+  /**
+   * <code>bool replace = 7 [json_name = "replace"];</code>
+   * @return The replace.
+   */
+  boolean getReplace();
 }

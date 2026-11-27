@@ -311,7 +311,7 @@ extension SharedFileDebug {
                     $0.signed = true
                     $0.outerOutcome = "executed"
                     $0.outerReason = "ok"
-                    $0.result = result
+                    $0.rawResult = (try? result.serializedData()) ?? Data()
                 }
             }
             var block = Data(count: blockBytes)

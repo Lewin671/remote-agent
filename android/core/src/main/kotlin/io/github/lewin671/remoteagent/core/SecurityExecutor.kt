@@ -29,8 +29,6 @@ import io.github.lewin671.remoteagent.core.proto.SecurityKeySignEffect
 import io.github.lewin671.remoteagent.core.proto.SecurityKeySignedEvent
 import io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay
 import io.github.lewin671.remoteagent.core.proto.SecurityOpenNotifyEvent
-import io.github.lewin671.remoteagent.core.proto.SecurityRpcEffect
-import io.github.lewin671.remoteagent.core.proto.SecurityRpcResultEvent
 import io.github.lewin671.remoteagent.core.proto.SecurityStorageEffect
 import io.github.lewin671.remoteagent.core.proto.SecurityStorageResultEvent
 import io.github.lewin671.remoteagent.corebind.Corebind
@@ -182,19 +180,19 @@ private fun parseConnectErrorBody(
     return ParsedRpcError(code, msg, details)
 }
 
-internal fun parseSecurityRpcError(
+internal fun parseRelayRpcError(
     opId: Long,
     httpCode: Int,
     bodyBytes: ByteArray,
     causeCode: Int? = null,
     causeMsg: String? = null,
     fallbackDetails: List<RpcErrorDetailBytes> = emptyList(),
-): SecurityRpcResultEvent {
+): RelayRpcResultEvent {
     val parsed = parseConnectErrorBody(httpCode, bodyBytes, causeCode, causeMsg, fallbackDetails)
-    return SecurityRpcResultEvent.newBuilder()
+    return RelayRpcResultEvent.newBuilder()
         .setOpId(opId)
         .setConnectCode(parsed.code)
-        .setError(parsed.message)
+        .setDiagnosticMessage(parsed.message)
         .apply { if (parsed.details.isNotEmpty()) addAllErrorDetails(parsed.details) }
         .build()
 }
@@ -323,10 +321,6 @@ class SecurityExecutor(
                     res
                 }
             }
-            Effect.EffectCase.SECURITY_RPC -> launchOp(
-                { rpcErr(eff.securityRpc.opId, 2, it) },
-                { setSecurityRpcResult(it) },
-            ) { executeRpcUnary(eff.securityRpc) }
             Effect.EffectCase.RELAY_RPC -> handleRelayRpc(eff.relayRpc)
             Effect.EffectCase.RELAY_RPC_CANCEL -> handleRelayRpcCancel(eff.relayRpcCancel)
             else -> return false
@@ -362,23 +356,6 @@ class SecurityExecutor(
         activeRelayJobs.remove(eff.opId)?.cancel()
     }
 
-    private fun rpcErr(
-        opId: Long,
-        code: Int,
-        msg: String,
-        networkError: Boolean = false,
-        errorDetails: List<RpcErrorDetailBytes> = emptyList(),
-    ): SecurityRpcResultEvent =
-        SecurityRpcResultEvent.newBuilder()
-            .setOpId(opId)
-            .setConnectCode(code)
-            .setError(msg)
-            .apply {
-                if (networkError) setNetworkError(true)
-                if (errorDetails.isNotEmpty()) addAllErrorDetails(errorDetails)
-            }
-            .build()
-
     private fun relayOk(opId: Long, bodyBytes: ByteArray, relayEpoch: String): RelayRpcResultEvent =
         relayRpcOk(opId, bodyBytes, relayEpoch)
 
@@ -413,23 +390,6 @@ class SecurityExecutor(
         opId = opId,
         preconfiguredHttp = true,
     )
-
-    private suspend fun executeRpcUnary(eff: SecurityRpcEffect): SecurityRpcResultEvent {
-        val method = RelayRpcMethod.forNumber(eff.method.number)
-            ?: return rpcErr(eff.opId, 12, "unknown rpc method: ${eff.method.number}")
-        val res = executeRelayUnary(
-            opId = eff.opId,
-            method = method,
-            server = eff.server,
-            authToken = eff.authToken,
-            requestBytes = eff.requestBytes.toByteArray(),
-        )
-        return if (res.connectCode == 0 && !res.networkError && !res.unresolvedHost && res.diagnosticMessage.isEmpty()) {
-            SecurityRpcResultEvent.newBuilder().setOpId(eff.opId).setResponseBytes(res.responseBytes).build()
-        } else {
-            rpcErr(eff.opId, res.connectCode, res.diagnosticMessage, res.networkError, res.errorDetailsList)
-        }
-    }
 }
 
 private fun relayRpcOk(opId: Long, bodyBytes: ByteArray, relayEpoch: String): RelayRpcResultEvent =

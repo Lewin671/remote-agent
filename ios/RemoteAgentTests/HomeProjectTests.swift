@@ -56,7 +56,7 @@ private final class TestCoreNode: @unchecked Sendable {
     init(
         store: any SecurityStoreV4,
         clock: @escaping @Sendable () -> Int64,
-        rpcOverride: SecurityExecutor.RpcOverride? = nil
+        relayRpcOverride: SecurityExecutor.RelayRpcOverride? = nil
     ) throws {
         self.core = try CoreClient()
         self.clock = clock
@@ -64,7 +64,7 @@ private final class TestCoreNode: @unchecked Sendable {
         self.executor = SecurityExecutor(
             store: store,
             allowPlainHttp: true,
-            rpcOverride: rpcOverride,
+            relayRpcOverride: relayRpcOverride,
             emit: { ev in emitBox.send?(ev) }
         )
         emitBox.send = { [weak self] ev in self?.enqueue(ev) }
@@ -206,7 +206,7 @@ private final class TestCoreNode: @unchecked Sendable {
             }
             task?.cancel()
         case .securityKeyGenerate, .securityKeySign, .securityKeyAgree,
-             .securityKeyEncapsulate, .securityKeyDiscard, .securityStorage, .securityRpc:
+             .securityKeyEncapsulate, .securityKeyDiscard, .securityStorage, .relayRpc, .relayRpcCancel:
             _ = executor.handleEffect(eff)
         case .securityWorkflowResult(let res):
             let waiter = lock.withLock { workflowWaiters.removeValue(forKey: res.actionID) }
@@ -640,51 +640,6 @@ private actor FakeCoreExecutor: CoreHostExecutor {
         hooksBox.lock.withLock { hooksBox.hooks = hooks }
     }
 
-    func handleSecurityRpc(_ eff: PBSecurityRpcEffect) async -> PBSecurityRpcResultEvent {
-        var res = PBSecurityRpcResultEvent()
-        res.opID = eff.opID
-        do {
-            switch eff.method {
-            case .getSecurityStates:
-                let req = try PBGetSecurityStatesRequest(serializedBytes: eff.requestBytes)
-                let headEpoch = UInt64(authority.securityStates.count)
-                let start = Int(req.afterEpoch)
-                let slice = start < authority.securityStates.count ? Array(authority.securityStates[start...]) : []
-                res.responseBytes = try PBGetSecurityStatesResponse.with {
-                    $0.states = slice
-                    $0.headEpoch = headEpoch
-                    $0.lease = authority.lease
-                }.serializedData()
-            case .getChallenge:
-                res.responseBytes = try PBGetChallengeResponse.with {
-                    $0.challenge = Data(repeating: 0x42, count: 32)
-                }.serializedData()
-            case .login:
-                let req = try PBLoginRequest(serializedBytes: eff.requestBytes)
-                res.responseBytes = try PBLoginResponse.with {
-                    $0.token = "tok-\(req.deviceID)"
-                    $0.expiresMs = nowMs + 86_400_000
-                    $0.devicePublicKey = authority.clientPubKey
-                }.serializedData()
-            case .putSecurityState:
-                let headEpoch = UInt64(authority.securityStates.count)
-                res.responseBytes = try PBPutSecurityStateResponse.with {
-                    $0.headEpoch = headEpoch
-                    $0.head = authority.securityStates.last?.state ?? Data()
-                }.serializedData()
-            case .putDeviceMeta:
-                res.responseBytes = try PBPutDeviceMetaResponse.with { $0.applied = true }.serializedData()
-            default:
-                res.connectCode = 12
-                res.error = "unhandled security rpc: \(eff.method)"
-            }
-        } catch {
-            res.connectCode = 13
-            res.error = error.localizedDescription
-        }
-        return res
-    }
-
     func executeRelayRpc(_ eff: PBRelayRpcEffect) async -> PBRelayRpcResultEvent? {
         var res = PBRelayRpcResultEvent()
         res.opID = eff.opID
@@ -774,6 +729,13 @@ private actor FakeCoreExecutor: CoreHostExecutor {
                     $0.token = "tok-\(req.deviceID)"
                     $0.expiresMs = nowMs + 86_400_000
                     $0.devicePublicKey = authority.clientPubKey
+                }.serializedData()
+
+            case .putSecurityState:
+                let headEpoch = UInt64(authority.securityStates.count)
+                res.responseBytes = try PBPutSecurityStateResponse.with {
+                    $0.headEpoch = headEpoch
+                    $0.head = authority.securityStates.last?.state ?? Data()
                 }.serializedData()
 
             case .putDeviceMeta:
@@ -945,21 +907,14 @@ private final class PipeTraceRecorder: @unchecked Sendable {
     private var entries: [String] = []
 
     func recordEvent(_ ev: PBCoreEvent) {
-        if case .relayPipeConfig(let cfg) = ev.event {
-            lock.withLock { entries.append("ev:relayPipeConfig(\(cfg.enabled))") }
-        }
+        _ = ev
     }
 
     func recordEffects(_ effects: [PBCoreEffect]) {
         lock.withLock {
             for eff in effects {
-                switch eff.effect {
-                case .relayRpc(let r): entries.append("eff:relayRpc(\(r.method))")
-                case .securityRpc(let r): entries.append("eff:securityRpc(\(r.method))")
-                case .rpc: entries.append("eff:legacyRpc")
-                case .ensureToken: entries.append("eff:legacyEnsureToken")
-                case .discardToken: entries.append("eff:legacyDiscardToken")
-                default: break
+                if case .relayRpc(let r) = eff.effect {
+                    entries.append("eff:relayRpc(\(r.method))")
                 }
             }
         }
@@ -987,7 +942,6 @@ private final class PipeTraceRecorder: @unchecked Sendable {
             draftStorageQueue: draftStorageQueue,
             clock: { FakeRelayAuthority.nowMs },
             sleep: { _ in try? await Task.sleep(for: .milliseconds(5)) },
-            rpcOverride: { await executor.handleSecurityRpc($0) },
             relayRpcOverride: { await executor.executeRelayRpc($0) },
             onNavigate: onNavigate
         )
@@ -1035,14 +989,9 @@ private final class PipeTraceRecorder: @unchecked Sendable {
 
         await waitUntil { screens.home.canStart && screens.home.running.count == 1 && screens.home.scopeMenu.count >= 2 }
 
-        // Production pipe ordering: relayPipeConfig(true) precedes the first RPC-like effect,
-        // and no legacy RpcEffect / EnsureTokenEffect / DiscardTokenEffect is ever emitted.
+        // Production pipe is unconditional: all unary relay traffic flows over RelayRpcEffect.
         let eventsAndEffects = trace.snapshot()
-        let cfgIndex = try #require(eventsAndEffects.firstIndex(of: "ev:relayPipeConfig(true)"))
-        let firstRpcIndex = try #require(eventsAndEffects.firstIndex(where: { $0.hasPrefix("eff:") }))
-        #expect(cfgIndex < firstRpcIndex)
         #expect(eventsAndEffects.contains(where: { $0.hasPrefix("eff:relayRpc(") }))
-        #expect(!eventsAndEffects.contains("eff:legacyRpc"))
         #expect(!eventsAndEffects.contains("eff:legacyEnsureToken"))
         #expect(!eventsAndEffects.contains("eff:legacyDiscardToken"))
 

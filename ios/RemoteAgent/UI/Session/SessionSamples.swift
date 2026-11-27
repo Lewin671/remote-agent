@@ -214,8 +214,8 @@ enum SessionSamples {
 
     nonisolated private static func ts(_ ms: Int64) -> Google_Protobuf_Timestamp { .with { $0.seconds = ms / 1000 } }
 
-    private static func machines(_ now: Int64) -> [PBCorePlainMachine] {
-        func make(_ id: String, _ name: String, version: UInt32, shares: Bool = false) -> PBCorePlainMachine {
+    private static func machines(_ now: Int64) -> [DemoMachine] {
+        func make(_ id: String, _ name: String, version: UInt32, shares: Bool = false) -> DemoMachine {
             .with {
                 $0.machineID = id
                 $0.online = true
@@ -248,7 +248,7 @@ enum SessionSamples {
         _ id: String, _ title: String, now: Int64, machine: String = machine, status: PBSessionStatus = .idle,
         agent: PBAgent = .codex, mode: PBApprovalMode = .ask, approvals: Int32 = 0, context: Int64 = 0,
         edit: (inout PBSession) -> Void = { _ in }
-    ) -> PBCorePlainSession {
+    ) -> DemoSession {
         var info = PBSession.with {
             $0.id = id
             $0.cwd = cwd
@@ -273,7 +273,7 @@ enum SessionSamples {
         }
     }
 
-    private static func sessions(_ now: Int64) -> [PBCorePlainSession] {
+    private static func sessions(_ now: Int64) -> [DemoSession] {
         [
             session("sample-rows", "每一种行", now: now, context: 348_000),
             session("sample-queue", "排队和暂停的消息", now: now, status: .running, context: 120_000),

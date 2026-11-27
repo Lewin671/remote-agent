@@ -94,7 +94,7 @@ enum HomeLaunch {
         w.prefs.revision += 1
     }
 
-    private static func machine(online: Bool) -> PBCorePlainMachine {
+    private static func machine(online: Bool) -> DemoMachine {
         .with {
             $0.machineID = "mac"
             $0.online = online

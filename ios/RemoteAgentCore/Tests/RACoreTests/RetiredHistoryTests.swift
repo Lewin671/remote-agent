@@ -93,10 +93,11 @@ extension ServerTests {
             let events = await r.executeCacheRead(PBCoreCacheReadEffect.with {
                 $0.events = .with { $0.opID = 1; $0.sessionID = "s1"; $0.limit = 50 }
             }).cacheEventsLoaded
-            #expect(events.wireEvents.count == 1)
+            #expect(events.rawEvents.count == 1)
+            let decodedEvent = try PBStoredEvent(serializedBytes: events.rawEvents[0])
             await #expect(throws: UnsupportedHistoryError.self) {
                 _ = try await r.openEnvelopeOp(
-                    envelope: events.wireEvents[0].envelope,
+                    envelope: decodedEvent.envelope,
                     expectedPurpose: .event,
                     machineId: w.daemon.account.deviceId,
                     sessionId: "s1",

@@ -35,20 +35,6 @@ public interface DirectEventsReceivedEventOrBuilder extends
       getSessionIdBytes();
 
   /**
-   * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-   */
-  java.util.List<io.github.lewin671.remoteagent.core.proto.PlainEvent> 
-      getEventsList();
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-   */
-  io.github.lewin671.remoteagent.core.proto.PlainEvent getEvents(int index);
-  /**
-   * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
-   */
-  int getEventsCount();
-
-  /**
    * <code>uint64 pc_id = 4 [json_name = "pcId"];</code>
    * @return The pcId.
    */
@@ -67,16 +53,19 @@ public interface DirectEventsReceivedEventOrBuilder extends
       getSenderBytes();
 
   /**
-   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   * <code>repeated bytes raw_envelopes = 11 [json_name = "rawEnvelopes"];</code>
+   * @return A list containing the rawEnvelopes.
    */
-  java.util.List<io.github.lewin671.remoteagent.proto.Envelope> 
-      getWireEnvelopesList();
+  java.util.List<com.google.protobuf.ByteString> getRawEnvelopesList();
   /**
-   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   * <code>repeated bytes raw_envelopes = 11 [json_name = "rawEnvelopes"];</code>
+   * @return The count of rawEnvelopes.
    */
-  io.github.lewin671.remoteagent.proto.Envelope getWireEnvelopes(int index);
+  int getRawEnvelopesCount();
   /**
-   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   * <code>repeated bytes raw_envelopes = 11 [json_name = "rawEnvelopes"];</code>
+   * @param index The index of the element to return.
+   * @return The rawEnvelopes at the given index.
    */
-  int getWireEnvelopesCount();
+  com.google.protobuf.ByteString getRawEnvelopes(int index);
 }

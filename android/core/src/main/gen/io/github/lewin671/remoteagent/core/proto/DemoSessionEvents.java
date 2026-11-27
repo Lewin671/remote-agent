@@ -16,7 +16,8 @@ public  final class DemoSessionEvents extends
     DemoSessionEventsOrBuilder {
   private DemoSessionEvents() {
     sessionId_ = "";
-    events_ = emptyProtobufList();
+    rawEvents_ = emptyProtobufList();
+    loadError_ = "";
   }
   public static final int SESSION_ID_FIELD_NUMBER = 1;
   private java.lang.String sessionId_;
@@ -66,101 +67,202 @@ public  final class DemoSessionEvents extends
 
   }
 
-  public static final int EVENTS_FIELD_NUMBER = 2;
-  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.Event> events_;
+  public static final int RAW_EVENTS_FIELD_NUMBER = 3;
+  private com.google.protobuf.Internal.ProtobufList<com.google.protobuf.ByteString> rawEvents_;
   /**
-   * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+   * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+   * @return A list containing the rawEvents.
    */
   @java.lang.Override
-  public java.util.List<io.github.lewin671.remoteagent.proto.Event> getEventsList() {
-    return events_;
+  public java.util.List<com.google.protobuf.ByteString>
+      getRawEventsList() {
+    return rawEvents_;
   }
   /**
-   * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
-   */
-  public java.util.List<? extends io.github.lewin671.remoteagent.proto.EventOrBuilder> 
-      getEventsOrBuilderList() {
-    return events_;
-  }
-  /**
-   * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+   * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+   * @return The count of rawEvents.
    */
   @java.lang.Override
-  public int getEventsCount() {
-    return events_.size();
+  public int getRawEventsCount() {
+    return rawEvents_.size();
   }
   /**
-   * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+   * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+   * @param index The index of the element to return.
+   * @return The rawEvents at the given index.
    */
   @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.Event getEvents(int index) {
-    return events_.get(index);
+  public com.google.protobuf.ByteString getRawEvents(int index) {
+    return rawEvents_.get(index);
   }
-  /**
-   * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
-   */
-  public io.github.lewin671.remoteagent.proto.EventOrBuilder getEventsOrBuilder(
-      int index) {
-    return events_.get(index);
-  }
-  private void ensureEventsIsMutable() {
-    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.Event> tmp = events_;
+  private void ensureRawEventsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<com.google.protobuf.ByteString> tmp = rawEvents_;
     if (!tmp.isModifiable()) {
-      events_ =
+      rawEvents_ =
           com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
      }
   }
-
   /**
-   * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+   * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+   * @param index The index to set the value at.
+   * @param value The rawEvents to set.
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setEvents(
-      int index, io.github.lewin671.remoteagent.proto.Event value) {
-    value.getClass();  // minimal bytecode null check
-    ensureEventsIsMutable();
-    events_.set(index, value);
+  private void setRawEvents(
+      int index, com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  ensureRawEventsIsMutable();
+    rawEvents_.set(index, value);
   }
   /**
-   * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+   * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+   * @param value The rawEvents to add.
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addEvents(io.github.lewin671.remoteagent.proto.Event value) {
-    value.getClass();  // minimal bytecode null check
-    ensureEventsIsMutable();
-    events_.add(value);
+  private void addRawEvents(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  ensureRawEventsIsMutable();
+    rawEvents_.add(value);
   }
   /**
-   * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+   * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+   * @param values The rawEvents to add.
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addEvents(
-      int index, io.github.lewin671.remoteagent.proto.Event value) {
-    value.getClass();  // minimal bytecode null check
-    ensureEventsIsMutable();
-    events_.add(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
-   */
-  private void addAllEvents(
-      java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.Event> values) {
-    ensureEventsIsMutable();
+  private void addAllRawEvents(
+      java.lang.Iterable<? extends com.google.protobuf.ByteString> values) {
+    ensureRawEventsIsMutable();
     com.google.protobuf.AbstractMessageLite.addAll(
-        values, events_);
+        values, rawEvents_);
   }
   /**
-   * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+   * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
    */
-  private void clearEvents() {
-    events_ = emptyProtobufList();
+  private void clearRawEvents() {
+    rawEvents_ = emptyProtobufList();
+  }
+
+  public static final int RETIRED_FIELD_NUMBER = 4;
+  private boolean retired_;
+  /**
+   * <code>bool retired = 4 [json_name = "retired"];</code>
+   * @return The retired.
+   */
+  @java.lang.Override
+  public boolean getRetired() {
+    return retired_;
   }
   /**
-   * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+   * <code>bool retired = 4 [json_name = "retired"];</code>
+   * @param value The retired to set.
    */
-  private void removeEvents(int index) {
-    ensureEventsIsMutable();
-    events_.remove(index);
+  private void setRetired(boolean value) {
+    
+    retired_ = value;
+  }
+  /**
+   * <code>bool retired = 4 [json_name = "retired"];</code>
+   */
+  private void clearRetired() {
+
+    retired_ = false;
+  }
+
+  public static final int UNAVAILABLE_FIELD_NUMBER = 5;
+  private boolean unavailable_;
+  /**
+   * <code>bool unavailable = 5 [json_name = "unavailable"];</code>
+   * @return The unavailable.
+   */
+  @java.lang.Override
+  public boolean getUnavailable() {
+    return unavailable_;
+  }
+  /**
+   * <code>bool unavailable = 5 [json_name = "unavailable"];</code>
+   * @param value The unavailable to set.
+   */
+  private void setUnavailable(boolean value) {
+    
+    unavailable_ = value;
+  }
+  /**
+   * <code>bool unavailable = 5 [json_name = "unavailable"];</code>
+   */
+  private void clearUnavailable() {
+
+    unavailable_ = false;
+  }
+
+  public static final int LOAD_ERROR_FIELD_NUMBER = 6;
+  private java.lang.String loadError_;
+  /**
+   * <code>string load_error = 6 [json_name = "loadError"];</code>
+   * @return The loadError.
+   */
+  @java.lang.Override
+  public java.lang.String getLoadError() {
+    return loadError_;
+  }
+  /**
+   * <code>string load_error = 6 [json_name = "loadError"];</code>
+   * @return The bytes for loadError.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getLoadErrorBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(loadError_);
+  }
+  /**
+   * <code>string load_error = 6 [json_name = "loadError"];</code>
+   * @param value The loadError to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setLoadError(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    loadError_ = value;
+  }
+  /**
+   * <code>string load_error = 6 [json_name = "loadError"];</code>
+   */
+  private void clearLoadError() {
+
+    loadError_ = getDefaultInstance().getLoadError();
+  }
+  /**
+   * <code>string load_error = 6 [json_name = "loadError"];</code>
+   * @param value The bytes for loadError to set.
+   */
+  private void setLoadErrorBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    loadError_ = value.toStringUtf8();
+
+  }
+
+  public static final int REPLACE_FIELD_NUMBER = 7;
+  private boolean replace_;
+  /**
+   * <code>bool replace = 7 [json_name = "replace"];</code>
+   * @return The replace.
+   */
+  @java.lang.Override
+  public boolean getReplace() {
+    return replace_;
+  }
+  /**
+   * <code>bool replace = 7 [json_name = "replace"];</code>
+   * @param value The replace to set.
+   */
+  private void setReplace(boolean value) {
+    
+    replace_ = value;
+  }
+  /**
+   * <code>bool replace = 7 [json_name = "replace"];</code>
+   */
+  private void clearReplace() {
+
+    replace_ = false;
   }
 
   public static io.github.lewin671.remoteagent.core.proto.DemoSessionEvents parseFrom(
@@ -310,104 +412,204 @@ public  final class DemoSessionEvents extends
     }
 
     /**
-     * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+     * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+     * @return A list containing the rawEvents.
      */
     @java.lang.Override
-    public java.util.List<io.github.lewin671.remoteagent.proto.Event> getEventsList() {
+    public java.util.List<com.google.protobuf.ByteString>
+        getRawEventsList() {
       return java.util.Collections.unmodifiableList(
-          instance.getEventsList());
+          instance.getRawEventsList());
     }
     /**
-     * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+     * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+     * @return The count of rawEvents.
      */
     @java.lang.Override
-    public int getEventsCount() {
-      return instance.getEventsCount();
-    }/**
-     * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+    public int getRawEventsCount() {
+      return instance.getRawEventsCount();
+    }
+    /**
+     * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+     * @param index The index of the element to return.
+     * @return The rawEvents at the given index.
      */
     @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.Event getEvents(int index) {
-      return instance.getEvents(index);
+    public com.google.protobuf.ByteString getRawEvents(int index) {
+      return instance.getRawEvents(index);
     }
     /**
-     * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+     * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+     * @param value The rawEvents to set.
+     * @return This builder for chaining.
      */
-    public Builder setEvents(
-        int index, io.github.lewin671.remoteagent.proto.Event value) {
+    public Builder setRawEvents(
+        int index, com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.setEvents(index, value);
+      instance.setRawEvents(index, value);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+     * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+     * @param value The rawEvents to add.
+     * @return This builder for chaining.
      */
-    public Builder setEvents(
-        int index, io.github.lewin671.remoteagent.proto.Event.Builder builderForValue) {
+    public Builder addRawEvents(com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.setEvents(index,
-          builderForValue.build());
+      instance.addRawEvents(value);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+     * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+     * @param values The rawEvents to add.
+     * @return This builder for chaining.
      */
-    public Builder addEvents(io.github.lewin671.remoteagent.proto.Event value) {
+    public Builder addAllRawEvents(
+        java.lang.Iterable<? extends com.google.protobuf.ByteString> values) {
       copyOnWrite();
-      instance.addEvents(value);
+      instance.addAllRawEvents(values);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+     * <code>repeated bytes raw_events = 3 [json_name = "rawEvents"];</code>
+     * @return This builder for chaining.
      */
-    public Builder addEvents(
-        int index, io.github.lewin671.remoteagent.proto.Event value) {
+    public Builder clearRawEvents() {
       copyOnWrite();
-      instance.addEvents(index, value);
+      instance.clearRawEvents();
+      return this;
+    }
+
+    /**
+     * <code>bool retired = 4 [json_name = "retired"];</code>
+     * @return The retired.
+     */
+    @java.lang.Override
+    public boolean getRetired() {
+      return instance.getRetired();
+    }
+    /**
+     * <code>bool retired = 4 [json_name = "retired"];</code>
+     * @param value The retired to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRetired(boolean value) {
+      copyOnWrite();
+      instance.setRetired(value);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+     * <code>bool retired = 4 [json_name = "retired"];</code>
+     * @return This builder for chaining.
      */
-    public Builder addEvents(
-        io.github.lewin671.remoteagent.proto.Event.Builder builderForValue) {
+    public Builder clearRetired() {
       copyOnWrite();
-      instance.addEvents(builderForValue.build());
+      instance.clearRetired();
+      return this;
+    }
+
+    /**
+     * <code>bool unavailable = 5 [json_name = "unavailable"];</code>
+     * @return The unavailable.
+     */
+    @java.lang.Override
+    public boolean getUnavailable() {
+      return instance.getUnavailable();
+    }
+    /**
+     * <code>bool unavailable = 5 [json_name = "unavailable"];</code>
+     * @param value The unavailable to set.
+     * @return This builder for chaining.
+     */
+    public Builder setUnavailable(boolean value) {
+      copyOnWrite();
+      instance.setUnavailable(value);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+     * <code>bool unavailable = 5 [json_name = "unavailable"];</code>
+     * @return This builder for chaining.
      */
-    public Builder addEvents(
-        int index, io.github.lewin671.remoteagent.proto.Event.Builder builderForValue) {
+    public Builder clearUnavailable() {
       copyOnWrite();
-      instance.addEvents(index,
-          builderForValue.build());
+      instance.clearUnavailable();
+      return this;
+    }
+
+    /**
+     * <code>string load_error = 6 [json_name = "loadError"];</code>
+     * @return The loadError.
+     */
+    @java.lang.Override
+    public java.lang.String getLoadError() {
+      return instance.getLoadError();
+    }
+    /**
+     * <code>string load_error = 6 [json_name = "loadError"];</code>
+     * @return The bytes for loadError.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getLoadErrorBytes() {
+      return instance.getLoadErrorBytes();
+    }
+    /**
+     * <code>string load_error = 6 [json_name = "loadError"];</code>
+     * @param value The loadError to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLoadError(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setLoadError(value);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+     * <code>string load_error = 6 [json_name = "loadError"];</code>
+     * @return This builder for chaining.
      */
-    public Builder addAllEvents(
-        java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.Event> values) {
+    public Builder clearLoadError() {
       copyOnWrite();
-      instance.addAllEvents(values);
+      instance.clearLoadError();
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+     * <code>string load_error = 6 [json_name = "loadError"];</code>
+     * @param value The bytes for loadError to set.
+     * @return This builder for chaining.
      */
-    public Builder clearEvents() {
+    public Builder setLoadErrorBytes(
+        com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.clearEvents();
+      instance.setLoadErrorBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>bool replace = 7 [json_name = "replace"];</code>
+     * @return The replace.
+     */
+    @java.lang.Override
+    public boolean getReplace() {
+      return instance.getReplace();
+    }
+    /**
+     * <code>bool replace = 7 [json_name = "replace"];</code>
+     * @param value The replace to set.
+     * @return This builder for chaining.
+     */
+    public Builder setReplace(boolean value) {
+      copyOnWrite();
+      instance.setReplace(value);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.Event events = 2 [json_name = "events"];</code>
+     * <code>bool replace = 7 [json_name = "replace"];</code>
+     * @return This builder for chaining.
      */
-    public Builder removeEvents(int index) {
+    public Builder clearReplace() {
       copyOnWrite();
-      instance.removeEvents(index);
+      instance.clearReplace();
       return this;
     }
 
@@ -428,12 +630,15 @@ public  final class DemoSessionEvents extends
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
             "sessionId_",
-            "events_",
-            io.github.lewin671.remoteagent.proto.Event.class,
+            "rawEvents_",
+            "retired_",
+            "unavailable_",
+            "loadError_",
+            "replace_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0001\u0000\u0001\u0208\u0002\u001b" +
-              "";
+              "\u0000\u0006\u0000\u0000\u0001\u0007\u0006\u0000\u0001\u0000\u0001\u0208\u0003\u001c" +
+              "\u0004\u0007\u0005\u0007\u0006\u0208\u0007\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

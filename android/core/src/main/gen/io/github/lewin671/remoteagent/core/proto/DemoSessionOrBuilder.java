@@ -53,24 +53,14 @@ public interface DemoSessionOrBuilder extends
   long getListedEndedMs();
 
   /**
-   * <code>.remoteagent.v1.Session meta = 6 [json_name = "meta"];</code>
-   * @return Whether the meta field is set.
+   * <code>bytes raw_meta = 8 [json_name = "rawMeta"];</code>
+   * @return The rawMeta.
    */
-  boolean hasMeta();
-  /**
-   * <code>.remoteagent.v1.Session meta = 6 [json_name = "meta"];</code>
-   * @return The meta.
-   */
-  io.github.lewin671.remoteagent.proto.Session getMeta();
+  com.google.protobuf.ByteString getRawMeta();
 
   /**
-   * <code>.remoteagent.v1.LiveSnapshot checkpoint = 7 [json_name = "checkpoint"];</code>
-   * @return Whether the checkpoint field is set.
+   * <code>bytes raw_checkpoint = 9 [json_name = "rawCheckpoint"];</code>
+   * @return The rawCheckpoint.
    */
-  boolean hasCheckpoint();
-  /**
-   * <code>.remoteagent.v1.LiveSnapshot checkpoint = 7 [json_name = "checkpoint"];</code>
-   * @return The checkpoint.
-   */
-  io.github.lewin671.remoteagent.proto.LiveSnapshot getCheckpoint();
+  com.google.protobuf.ByteString getRawCheckpoint();
 }
