@@ -96,5 +96,45 @@ with open(os.environ["RA_MODE_PROBE"], "a") as output:
                         self.assertIn("-resultBundlePath", native["args"])
 
 
+    @unittest.skipUnless(sys.platform == "darwin", "ios/scripts/check.sh runs on macOS only")
+    def test_ios_check_shuts_down_only_the_simulator_it_booted(self):
+        # A simulator left booted for days stacks PosterBoard crash dialogs on the desktop.
+        udid = "0A1B2C3D-0000-4000-8000-000000000001"
+        with tempfile.TemporaryDirectory(prefix="ra-ios-sim-", dir="/tmp") as temporary:
+            root = Path(temporary)
+            booted, shutdowns = root / "booted", root / "shutdowns"
+            recorder = f"#!{sys.executable}\n"
+            simulator = recorder + f'''import os, sys
+from pathlib import Path
+booted = Path({str(booted)!r})
+if sys.argv[1:3] == ["simctl", "list"]:
+    print("    iPhone 18 Pro ({udid}) (" + ("Booted" if booted.exists() else "Shutdown") + ")")
+elif sys.argv[1:3] == ["simctl", "shutdown"]:
+    with open({str(shutdowns)!r}, "a") as output: output.write(sys.argv[3] + "\\n")
+    booted.unlink(missing_ok=True)
+'''
+            xcodebuild = recorder + f'''import os, sys
+from pathlib import Path
+Path({str(booted)!r}).touch()
+sys.exit(int(os.environ["RA_XCODEBUILD_EXIT"]))
+'''
+            for tool, body in (("xcrun", simulator), ("xcodebuild", xcodebuild), ("python3", recorder), ("core-build", recorder)):
+                path = root / tool
+                path.write_text(body)
+                path.chmod(0o700)
+            env = dict(os.environ, PATH=str(root) + os.pathsep + os.environ.get("PATH", ""),
+                       IOS_DESTINATION="platform=iOS Simulator,name=iPhone 18 Pro",
+                       IOS_DERIVED_DATA_PATH=str(root / "derived"), RA_CORE_BUILD=str(root / "core-build"))
+            for already_booted, exit_code, expected in ((False, 0, [udid]), (False, 65, [udid]), (True, 0, [])):
+                with self.subTest(already_booted=already_booted, exit_code=exit_code):
+                    shutdowns.unlink(missing_ok=True)
+                    if already_booted: booted.touch()
+                    else: booted.unlink(missing_ok=True)
+                    result = subprocess.run(["/bin/sh", str(ROOT / "ios/scripts/check.sh"), "app"],
+                                            env=dict(env, RA_XCODEBUILD_EXIT=str(exit_code)), capture_output=True, text=True, timeout=15)
+                    self.assertEqual(result.returncode, 1 if exit_code else 0, result.stdout + result.stderr)
+                    self.assertEqual(shutdowns.read_text().split() if shutdowns.exists() else [], expected)
+                    self.assertEqual(booted.exists(), already_booted)
+
 if __name__ == "__main__":
     unittest.main()

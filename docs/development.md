@@ -79,7 +79,7 @@ cd web && pnpm install && pnpm run deploy                   # 部署网页到 Cl
 
 quick 的整个命令预算为 60 秒，full 为 30 分钟；预算耗尽返回 124，不能记为通过。60 秒目标以依赖和编译缓存已预热为前提，冷编译或共享机器繁忙时可能超时。quick 的通过不能代替 full。Release 工作流仍运行原有全套检查，不因迭代档缩减覆盖；真实 CLI 的隔离端到端验收另按 AGENTS.md 执行。
 
-`ios/scripts/check.sh` 还可以带一个参数：`core` 只跑 SwiftPM 测试，`app` 只构建 App 并跑单元测试，`ui` 只跑界面自动化，`full` 是全部步骤加界面自动化。不带参数是交付检查：除界面自动化以外的全部步骤。界面自动化在模拟器里真实触摸，要几分钟，机器忙时会慢到超时，所以只在改了 `ios/RemoteAgent/UI` 下的视图或 `ios/RemoteAgentUITests` 时跑，以及提交 App Store 之前跑一次，并且同一台机器同一时间只让一个任务跑。每个用例有 180 秒的执行上限，超时算失败而不是一直等。没有按 Git 改动路径自动跳过步骤，避免漏掉共享资源、构建配置和目标之间的间接依赖。模拟器可通过 `IOS_DESTINATION` 指定，构建并行度默认 4。`IOS_SWIFT_BUILD_PATH` 和 `IOS_DERIVED_DATA_PATH` 可把 SwiftPM / Xcode 中间产物放到任务自己的临时目录。
+`ios/scripts/check.sh` 还可以带一个参数：`core` 只跑 SwiftPM 测试，`app` 只构建 App 并跑单元测试，`ui` 只跑界面自动化，`full` 是全部步骤加界面自动化。不带参数是交付检查：除界面自动化以外的全部步骤。界面自动化在模拟器里真实触摸，要几分钟，机器忙时会慢到超时，所以只在改了 `ios/RemoteAgent/UI` 下的视图或 `ios/RemoteAgentUITests` 时跑，以及提交 App Store 之前跑一次，并且同一台机器同一时间只让一个任务跑。每个用例有 180 秒的执行上限，超时算失败而不是一直等。没有按 Git 改动路径自动跳过步骤，避免漏掉共享资源、构建配置和目标之间的间接依赖。模拟器可通过 `IOS_DESTINATION` 指定，构建并行度默认 4；目标模拟器若是这次检查启动的，结束时（含失败和中断）会被关掉，原本就开着的保持不动。`IOS_SWIFT_BUILD_PATH` 和 `IOS_DERIVED_DATA_PATH` 可把 SwiftPM / Xcode 中间产物放到任务自己的临时目录。
 
 ## 任务开发工具
 

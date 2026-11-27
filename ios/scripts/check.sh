@@ -26,7 +26,26 @@ case "$mode" in std|full|core|app|ui|perf) ;; *) echo "usage: check.sh [core|app
 ios=$(cd "$(dirname "$0")/.." && pwd)
 out=$(mktemp -t ra-ios-check)
 result_dir=$(mktemp -d -t ra-ios-xcresult)
-trap 'rm -rf "$out" "$result_dir"' EXIT
+sim_name= sim_id= udid=
+trap 'shutdown_started_simulator; rm -rf "$out" "$result_dir"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' HUP TERM
+
+# Prints the UDID of the first booted simulator whose name and UDID match the
+# given sed patterns.
+booted_simulator() {
+    xcrun simctl list devices 2>/dev/null | sed -n "s/^ *$1 (\($2\)) (Booted).*/\1/p" | head -n 1
+}
+
+# xcodebuild boots the destination simulator and leaves it running. A booted
+# simulator left alone for days keeps crashing system processes (PosterBoard)
+# and macOS stacks a crash dialog on the desktop for each one, so shut it down
+# again when this run was the one that started it.
+shutdown_started_simulator() {
+    [ -n "$sim_name" ] && [ -z "$udid" ] || return 0
+    started=$(booted_simulator "$sim_name" "$sim_id")
+    [ -z "$started" ] || xcrun simctl shutdown "$started" >/dev/null 2>&1 || true
+}
 
 fail() {
     echo "check.sh: $1" >&2
@@ -93,13 +112,13 @@ esac
 # A run that was killed leaves its test host running inside the simulator, and
 # the next xcodebuild on that simulator then waits for it indefinitely with no
 # output. Stop any app of ours left on the target before testing.
+# udid stays empty when the target is not running yet; then the EXIT trap
+# shuts down whatever xcodebuild boots for it.
 case "$destination" in
-    *id=*) udid=${destination##*id=}; udid=${udid%%,*} ;;
-    *name=*)
-        name=${destination##*name=}; name=${name%%,*}
-        udid=$(xcrun simctl list devices available 2>/dev/null | sed -n "s/^ *$name (\([0-9A-F-]\{36\}\)) (Booted).*/\1/p" | head -n 1) ;;
-    *) udid= ;;
+    *id=*) sim_name='.*'; sim_id=${destination##*id=}; sim_id=${sim_id%%,*} ;;
+    *name=*) sim_name=${destination##*name=}; sim_name=${sim_name%%,*}; sim_id='[0-9A-F-]\{36\}' ;;
 esac
+[ -z "$sim_name" ] || udid=$(booted_simulator "$sim_name" "$sim_id")
 if [ -n "$udid" ]; then
     for bundle in io.github.lewin671.remoteagent io.github.lewin671.remoteagent.dev io.github.lewin671.remoteagent.uitests.xctrunner io.github.lewin671.remoteagent.perftests.xctrunner; do
         xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
