@@ -204,6 +204,8 @@ struct NewTaskModel: View {
                     Text(summary.effort)
                         .font(.caption2)
                         .ink(active ? DS.blue : DS.ink2)
+                        .lineLimit(1)
+                        .fixedSize()
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(DS.popover, in: Capsule())
@@ -233,9 +235,10 @@ struct NewTaskToolsLayout: Layout {
     }
 
     private func widths(_ proposal: ProposedViewSize, _ views: Subviews) -> (cli: CGFloat, model: CGFloat) {
-        let cli = views.count == 2 ? views[0].sizeThatFits(.unspecified).width : 0
-        let compact = views.count == 2 ? views[0].sizeThatFits(.init(width: 0, height: nil)).width : 0
-        let model = views[views.count - 1].sizeThatFits(.unspecified).width
+        // Rounded up: proposing a fractional ideal width back can lose a pixel and wrap or truncate the text.
+        let cli = views.count == 2 ? views[0].sizeThatFits(.unspecified).width.rounded(.up) : 0
+        let compact = views.count == 2 ? views[0].sizeThatFits(.init(width: 0, height: nil)).width.rounded(.up) : 0
+        let model = views[views.count - 1].sizeThatFits(.unspecified).width.rounded(.up)
         return Self.widths(available: proposal.width ?? cli + model + 2, cli: cli, compactCLI: compact, model: model)
     }
 
