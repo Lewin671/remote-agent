@@ -48,6 +48,8 @@ type runOptions struct {
 	// env, when non-nil, is the command's whole environment instead of
 	// this process's.
 	env []string
+	// after overrides grace-period timers in tests; nil uses time.NewTimer.
+	after func(time.Duration) <-chan time.Time
 }
 
 // Request is one control message, sent as a JSON line.
@@ -197,23 +199,29 @@ func waitForChild(cmd *exec.Cmd, sigs <-chan os.Signal, options runOptions) erro
 		exited = true
 	case sig := <-sigs:
 		_ = cmd.Process.Signal(sig)
-		err, exited = waitForExit(wait, sigs, cmd, options.childSignalGrace)
+		err, exited = waitForExit(wait, sigs, cmd, options.childSignalGrace, options.after)
 	}
-	return finishProcessGroup(cmd, wait, sigs, options.groupTermGrace, err, exited)
+	return finishProcessGroup(cmd, wait, sigs, options.groupTermGrace, options.after, err, exited)
 }
 
 // The leader's Wait result says nothing about its helpers. Give the group
 // its own TERM grace period, then KILL any survivors regardless of when the
 // leader exits. Only the process group of this particular launch is signaled.
-func finishProcessGroup(cmd *exec.Cmd, wait <-chan error, sigs <-chan os.Signal, grace time.Duration, result error, exited bool) error {
+func finishProcessGroup(cmd *exec.Cmd, wait <-chan error, sigs <-chan os.Signal, grace time.Duration, after func(time.Duration) <-chan time.Time, result error, exited bool) error {
 	if err := signalProcessGroup(cmd, syscall.SIGTERM); err != nil && !exited {
 		_ = cmd.Process.Signal(syscall.SIGTERM)
 	}
 	if exited {
 		wait = nil
 	}
-	timer := time.NewTimer(grace)
-	defer timer.Stop()
+	var timeout <-chan time.Time
+	if after != nil {
+		timeout = after(grace)
+	} else {
+		timer := time.NewTimer(grace)
+		defer timer.Stop()
+		timeout = timer.C
+	}
 	tick := time.NewTicker(10 * time.Millisecond)
 	defer tick.Stop()
 cleanup:
@@ -226,7 +234,7 @@ cleanup:
 				_ = cmd.Process.Signal(sig)
 			}
 		case <-tick.C:
-		case <-timer.C:
+		case <-timeout:
 			break cleanup
 		}
 	}
@@ -239,7 +247,7 @@ cleanup:
 	return result
 }
 
-func waitForExit(wait <-chan error, sigs <-chan os.Signal, cmd *exec.Cmd, d time.Duration) (error, bool) {
+func waitForExit(wait <-chan error, sigs <-chan os.Signal, cmd *exec.Cmd, d time.Duration, after func(time.Duration) <-chan time.Time) (error, bool) {
 	if d <= 0 {
 		select {
 		case err := <-wait:
@@ -248,15 +256,21 @@ func waitForExit(wait <-chan error, sigs <-chan os.Signal, cmd *exec.Cmd, d time
 			return nil, false
 		}
 	}
-	timer := time.NewTimer(d)
-	defer timer.Stop()
+	var timeout <-chan time.Time
+	if after != nil {
+		timeout = after(d)
+	} else {
+		timer := time.NewTimer(d)
+		defer timer.Stop()
+		timeout = timer.C
+	}
 	for {
 		select {
 		case err := <-wait:
 			return err, true
 		case sig := <-sigs:
 			_ = cmd.Process.Signal(sig)
-		case <-timer.C:
+		case <-timeout:
 			return nil, false
 		}
 	}

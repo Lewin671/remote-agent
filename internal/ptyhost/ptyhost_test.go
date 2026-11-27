@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -810,6 +811,84 @@ func TestBlockedPTYWriteExpiresAndRestoresLocalInput(t *testing.T) {
 	}
 }
 
+func writeFileAtomic(path, content string) error {
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, []byte(content), 0o600); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
+}
+
+// TestPtyhostGroupLeaderHelper runs a Go leader/grandchild pair for
+// TestExitedLeaderStillCleansProcessGroup. Using Go's signal.Notify overrides
+// an inherited SIGHUP=SIG_IGN (which POSIX /bin/sh refuses to trap) and avoids
+// shell fork/sleep polling churn.
+func TestPtyhostGroupLeaderHelper(t *testing.T) {
+	mode := os.Getenv("PTYHOST_GROUP_MODE")
+	if mode == "" {
+		return
+	}
+	pidfile := os.Getenv("PTYHOST_GROUP_PIDFILE")
+	readyfile := os.Getenv("PTYHOST_GROUP_READY")
+	termMarker := os.Getenv("PTYHOST_GROUP_TERM_MARKER")
+	if mode == "grandchild" {
+		signal.Ignore(syscall.SIGHUP, syscall.SIGTERM)
+		// Guard against orphan leaks if go test panics on timeout before defers run.
+		time.AfterFunc(60*time.Second, func() { syscall.Exit(0) })
+		// Keep the runtime signal goroutine active (avoiding Go's all-goroutines-asleep
+		// deadlock panic) while ignoring HUP and TERM until SIGKILL arrives.
+		block := make(chan os.Signal, 1)
+		signal.Notify(block, syscall.SIGUSR1)
+		if err := writeFileAtomic(readyfile, strconv.Itoa(os.Getpid())); err != nil {
+			syscall.Exit(2)
+		}
+		<-block
+		syscall.Exit(0)
+	}
+
+	var sigCh chan os.Signal
+	switch mode {
+	case "hangup":
+		sigCh = make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGHUP)
+	case "termination":
+		signal.Ignore(syscall.SIGHUP)
+		sigCh = make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGTERM)
+	case "natural":
+	default:
+		syscall.Exit(3)
+	}
+
+	gc := exec.Command(os.Args[0], "-test.run=^TestPtyhostGroupLeaderHelper$")
+	gc.Env = append(os.Environ(),
+		"PTYHOST_GROUP_MODE=grandchild",
+		"PTYHOST_GROUP_READY="+readyfile,
+	)
+	if err := gc.Start(); err != nil {
+		syscall.Exit(4)
+	}
+	if err := waitForFile(readyfile, 10*time.Second); err != nil {
+		_ = gc.Process.Kill()
+		syscall.Exit(5)
+	}
+	if err := writeFileAtomic(pidfile, strconv.Itoa(gc.Process.Pid)); err != nil {
+		_ = gc.Process.Kill()
+		syscall.Exit(6)
+	}
+	if mode == "natural" {
+		syscall.Exit(0)
+	}
+	// Same leak guard as the grandchild: a leader that never sees its stop
+	// signal must not outlive a go test timeout panic.
+	time.AfterFunc(60*time.Second, func() { syscall.Exit(0) })
+	<-sigCh
+	if termMarker != "" {
+		_ = writeFileAtomic(termMarker, "1")
+	}
+	syscall.Exit(0)
+}
+
 // Cleanup follows the process group lifetime, even when its leader exits
 // promptly on HUP, during TERM escalation, or before a stop signal arrives.
 func TestExitedLeaderStillCleansProcessGroup(t *testing.T) {
@@ -818,22 +897,22 @@ func TestExitedLeaderStillCleansProcessGroup(t *testing.T) {
 		t.Run(mode, func(t *testing.T) {
 			dir := shortTempDir(t)
 			pidfile := filepath.Join(dir, "grandchild")
-			child := "trap '' HUP TERM; printf '%s' \"$$\" > " + shellQuote(pidfile) + "; while :; do sleep 1; done"
-			script := "trap 'exit 0' HUP; sh -c " + shellQuote(child) + " & wait"
-			if mode == "termination" {
-				script = "trap '' HUP; trap 'exit 0' TERM; sh -c " + shellQuote(child) + " & wait"
-			}
-			if mode == "natural" {
-				script = "sh -c " + shellQuote(child) + " & while [ ! -s " + shellQuote(pidfile) + " ]; do sleep 0.01; done; exit 0"
-			}
-			cmd := exec.Command("/bin/sh", "-c", script)
+			readyfile := filepath.Join(dir, "grandchild.ready")
+			termMarker := filepath.Join(dir, "leader.term")
+			cmd := exec.Command(os.Args[0], "-test.run=^TestPtyhostGroupLeaderHelper$")
+			cmd.Env = append(os.Environ(),
+				"PTYHOST_GROUP_MODE="+mode,
+				"PTYHOST_GROUP_PIDFILE="+pidfile,
+				"PTYHOST_GROUP_READY="+readyfile,
+				"PTYHOST_GROUP_TERM_MARKER="+termMarker,
+			)
 			master, err := pty.Start(cmd)
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer master.Close()
 			defer syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-			if err := waitForFile(pidfile, 5*time.Second); err != nil {
+			if err := waitForFile(pidfile, 10*time.Second); err != nil {
 				t.Fatal(err)
 			}
 			b, err := os.ReadFile(pidfile)
@@ -844,19 +923,67 @@ func TestExitedLeaderStillCleansProcessGroup(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			if !processRunning(pid) {
+				t.Fatalf("grandchild %d exited before waitForChild", pid)
+			}
 			sigs := make(chan os.Signal, 1)
 			if mode != "natural" {
 				sigs <- syscall.SIGHUP
 			}
-			started := time.Now()
-			if err := waitForChild(cmd, sigs, runOptions{childSignalGrace: 100 * time.Millisecond, groupTermGrace: 150 * time.Millisecond}); err != nil {
+			fired := func() <-chan time.Time {
+				ch := make(chan time.Time, 1)
+				ch <- time.Now()
+				return ch
+			}
+			var timerCall int
+			done := make(chan struct{})
+			defer close(done)
+			opts := runOptions{
+				childSignalGrace: 100 * time.Millisecond,
+				groupTermGrace:   150 * time.Millisecond,
+				after: func(time.Duration) <-chan time.Time {
+					timerCall++
+					switch mode {
+					case "hangup":
+						if timerCall == 1 {
+							// Never expire childSignalGrace so the leader deterministically
+							// exits on SIGHUP before finishProcessGroup runs.
+							return make(chan time.Time)
+						}
+						// Leader has already exited; escalate past TERM to SIGKILL the grandchild.
+						return fired()
+					case "termination":
+						if timerCall == 1 {
+							// Expire childSignalGrace immediately to enter TERM escalation.
+							return fired()
+						}
+						// Fire groupTermGrace only after the leader handles SIGTERM and
+						// cmd.Wait() reaps it, then escalate to SIGKILL the grandchild.
+						ch := make(chan time.Time, 1)
+						go func() {
+							for {
+								if st, err := os.Stat(termMarker); err == nil && st.Size() > 0 && !processRunning(cmd.Process.Pid) {
+									ch <- time.Now()
+									return
+								}
+								select {
+								case <-done:
+									return
+								case <-time.After(5 * time.Millisecond):
+								}
+							}
+						}()
+						return ch
+					default: // natural
+						return fired()
+					}
+				},
+			}
+			if err := waitForChild(cmd, sigs, opts); err != nil {
 				t.Fatal(err)
 			}
 			master.Close()
-			if elapsed := time.Since(started); elapsed > time.Second {
-				t.Fatalf("cleanup took %s, want bounded shutdown", elapsed)
-			}
-			if err := waitForProcessExit(pid, time.Second); err != nil {
+			if err := waitForProcessExit(pid, 5*time.Second); err != nil {
 				t.Fatal(err)
 			}
 		})
