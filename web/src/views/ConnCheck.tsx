@@ -258,9 +258,11 @@ export function ConnCheckScreenView({
     const ctrl = new AbortController();
     activeAbort.current = ctrl;
     const mine = ++run.current;
+    // Without a server probe there is no verdict to report, and relay rows
+    // would wait for one forever, so only start a round we can finish.
+    if (!pingServer) return;
     onReportProbeRef.current?.(ConnProbeState.CHECKING);
     onStartCheckRef.current?.();
-    if (!pingServer) return;
     setServerBusy(true);
     setServer({ state: "wait" });
     try {

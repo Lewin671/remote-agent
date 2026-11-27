@@ -123,9 +123,8 @@ func (c *Core) onConnCheckStart(ctx *sync.StepContext) {
 	}
 	// Reset this round's server probe state so relay machines always wait for
 	// the shell's fresh ConnCheckStatus verdict for the current round.
-	// Shell contract: send ConnCheckStart first, then this round's
-	// ConnCheckStatus (CHECKING, then WORKING/SLOW/UNAVAILABLE after /healthz);
-	// a verdict sent before Start belongs to the previous round and is reset.
+	// Shell contract: any status reported before Start does not count for this
+	// round; this round's /healthz verdict must arrive after Start.
 	extra.ConnCheck.ServerState = corev1.ConnProbeState_CONN_PROBE_STATE_CHECKING
 	extra.ConnCheck.LatencyMs = 0
 	extra.ConnCheck.LastFailure = ""
