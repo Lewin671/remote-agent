@@ -134,7 +134,7 @@ Release 不自动部署 VPS/Cloudflare：我们自己的部署在 Release 工作
 
 ## 3. 通信方式
 
-**所有通信都通过 IDL 定义，不手写请求。** IDL 用 Protobuf，工具链用 `buf`；Go 端用 protoc-gen-go 和 connect-go，TS 端用 protobuf-es 和 connect-es。账户/历史服务与设备间传输分开：
+**所有通信都通过 IDL 定义，不手写请求。** IDL 用 Protobuf，工具链用 `buf`；server 与 daemon 的 Go 端用 protoc-gen-go 和 connect-go，客户端共享核心 `clientcore` 统一负责中继 RPC 编解码与错误解析，网页 / Android / iOS 三端壳通过原生 HTTP 客户端（`fetch` / OkHttp / `URLSession`）按 Connect 协议的二进制 Protobuf 路径和请求头收发字节，不再依赖各自的 Connect 客户端库。账户/历史服务与设备间传输分开：
 
 ```text
 客户端 ── HTTPS RPC / 主 WebSocket ── server ── 主 WebSocket ── daemon

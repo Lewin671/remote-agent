@@ -8,21 +8,21 @@ Android 原生 App 要把手机上的体验做到原生水平。本文写 App �
 |---|---|---|
 | 工程结构 | 纯 Android 工程，分成 `:core` 和 `:app` 两个模块，代码放在 `android/` | 见下文「模块」 |
 | UI | Jetpack Compose + Material 3；状态用 Coroutines + StateFlow，事件在一个串行队列里归约 | 返回手势、键盘 insets、动态取色这些原生交互都能直接控制；前台界面和后台通知走同一套逻辑 |
-| RPC | connect-kotlin + OkHttp，Connect 协议，二进制 Protobuf | ConnectRPC 官方的 Android 用法 |
-| Protobuf | 用 `buf` 从 `proto/` 生成 javalite 和 connect-kotlin 代码 | `proto/` 仍是唯一的协议定义 |
+| RPC | OkHttp + 共享 Go 核心字节管道，Connect 协议（二进制 Protobuf，不依赖 connect-kotlin） | 中继 RPC 的编解码、重试与错误语义收口在 `clientcore`，壳只负责单次 HTTP/Protobuf 字节收发 |
+| Protobuf | 用 `buf` 从 `proto/` 生成 javalite 代码 | `proto/` 仍是唯一的协议定义 |
 | WebSocket | OkHttp，`/v1/stream` 和 `/v1/term` 各一条 | 和网页相同的两条连接 |
 | 加密 | AES-256-GCM 用平台 JCA；X25519、Ed25519、HKDF 用 Bouncy Castle 的 lightweight API | 先保证和 Go、TS 逐字节一致，见下文「加密和密钥」 |
 | 本地存储 | Room 存密文信封和同步游标，DataStore 存偏好 | 本地不保存明文 |
 | 推送 | FCM data message（自己的手机有 GMS） | 见下文「推送和通知里审批」 |
 | 终端 | Termux 的 `terminal-emulator` 和 `terminal-view`，源码放在 `android/terminal`，用 `AndroidView` 嵌进 Compose | 原生渲染和输入法都比 WebView 里的 xterm.js 好；为什么放源码见下文「终端」 |
 | 扫码 | CameraX + ZXing core | 本地解码，只扫配对二维码这一种 |
-| 构建和分发 | Gradle version catalog 锁定依赖版本；minSdk 26，targetSdk 35，compileSdk 36（connect-kotlin 0.9 依赖的 OkHttp 5.4 要求）；release 构建开 R8，另有一个 `minified` 构建类型，和 release 相同但允许明文 HTTP，用来在本机 server 上测 R8 的包；自己签名，侧载安装；Firebase 的 `google-services.json` 和签名配置放在仓库外的 `~/.config/remote-agent/`，没有时照常构建、推送关闭 | 不上架应用商店；`setAuthenticationRequired` 等 API 31 起的能力按版本判断 |
+| 构建和分发 | Gradle version catalog 锁定依赖版本；minSdk 26，targetSdk 35，compileSdk 36（OkHttp 5.4 要求）；release 构建开 R8，另有一个 `minified` 构建类型，和 release 相同但允许明文 HTTP，用来在本机 server 上测 R8 的包；自己签名，侧载安装；Firebase 的 `google-services.json` 和签名配置放在仓库外的 `~/.config/remote-agent/`，没有时照常构建、推送关闭 | 不上架应用商店；`setAuthenticationRequired` 等 API 31 起的能力按版本判断 |
 
 ## 为什么是 Kotlin 加共享 Go 核心
 
 | 方案 | 结论 | 理由 |
 |---|---|---|
-| KMP 共享核心 | 暂不采用 | 价值在于和 iOS 共享，iOS 还没定；connect-kotlin 只发布 JVM 版（2026-09-29 核实），放不进 `commonMain`，只能自己实现 Connect 协议。iOS 最后也没有走这条路，写成了 Swift（[ios-client.md](ios-client.md#为什么是-swift-加共享-go-核心)） |
+| KMP 共享核心 | 暂不采用 | 价值在于和 iOS 共享；早期选型时 Android 已绑定 JVM 生态（javalite、OkHttp、Bouncy Castle），且 iOS 最后写成了 Swift（[ios-client.md](ios-client.md#为什么是-swift-加共享-go-核心)），现已改用 gomobile 共享 Go 核心 |
 | gomobile 复用 Go | 采用，只放纯逻辑 | 最初只有 TS 一份归约、Go 只有 `internal/e2e` 可复用，所以没用；三端各写一份后改为把纯逻辑收进 `clientcore/`（[architecture.md](architecture.md#客户端共享核心)）。网络仍由 Kotlin 负责，所以 Go 的 TLS、系统代理、网络切换和协程取消的问题不出现；NDK、R8 keep 规则和 16 KB 页面由构建脚本处理 |
 | 只把加密交给 Go | 不采用 | 绑定层的固定成本一样不少，复用最少 |
 | Flutter、React Native | 不采用 | 终端和系统交互仍要写原生模块；Flutter 多出一套 Dart；RN 也搬不动现有网页，它依赖 WebCrypto、IndexedDB、xterm.js 和 DOM |

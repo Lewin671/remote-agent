@@ -1,18 +1,17 @@
 # Android 实测记录
 
-本文记录 Android 客户端依赖的库和系统在实际使用中的表现：connect-kotlin、Termux 终端组件、加密实现、FCM、模拟器和 v2 客户端用到的系统能力（选图、图片方向、保存分享）。只写观察到的现象和踩过的坑；App 据此怎么设计见 [android-client.md](android-client.md)，还没测的见 [plan.md](plan.md) 的「待确认」。
+本文记录 Android 客户端依赖的库和系统在实际使用中的表现：中继 HTTP/Protobuf 通信（含早期 connect-kotlin 实测）、Termux 终端组件、加密实现、FCM、模拟器和 v2 客户端用到的系统能力（选图、图片方向、保存分享）。只写观察到的现象和踩过的坑；App 据此怎么设计见 [android-client.md](android-client.md)，还没测的见 [plan.md](plan.md) 的「待确认」。
 
 没有特别标注的条目都是实测结果，推断或没测过的会在句中标「推测」「未验证」。
 
-验证环境：connect-kotlin 0.9.0、OkHttp 5.4.0、protobuf-javalite 4.35.1（生成代码 31.1）、Bouncy Castle 1.81、Termux terminal-emulator / terminal-view v0.118.3，JDK 17，Android 模拟器 API 36（google_apis_playstore，arm64），2026-09-29。还没有在真手机上验证。
+验证环境：OkHttp 5.4.0、protobuf-javalite 4.35.1（生成代码 31.1）、Bouncy Castle 1.81、Termux terminal-emulator / terminal-view v0.118.3，JDK 17，Android 模拟器 API 36（google_apis_playstore，arm64）；最初联调于 2026-09-29（当时使用 connect-kotlin 0.9.0，现已移除 connect-kotlin，改由共享 Go 核心经 OkHttp 直接收发 Connect 协议的二进制 Protobuf）。
 
-## 1. connect-kotlin 和现有 server
+## 1. 中继 HTTP/Protobuf 通信与现有 server
 
-- **能直接互通**：Connect 协议加二进制 Protobuf，用 `GoogleJavaLiteProtobufStrategy`，对 connect-go 写的 server 不用任何适配。`:core` 的测试在 JVM 上起真实的 Go server 和一个假 daemon，登记、登录、拉列表、`GetEvents`、`Forward`、配对全部跑通；模拟器上的 App 同样
-- **错误码**：server 返回的 Connect 错误（如机器离线的 `unavailable`）变成 `ConnectException`，`exception` 为空。网络层的失败也是 `ConnectException`：`SocketTimeoutException` 是 `DEADLINE_EXCEEDED`，其他 `IOException` 是 `UNKNOWN`，原始异常在 `exception` 里。所以「电脑不在线」要看 `exception` 为空，连不上服务器（`UnknownHostException`、`ConnectException`）说明请求没有发出
-- **版本约束**：connect-kotlin 0.9.0 依赖 OkHttp 5.4.0，它的 `okhttp-android` 要求 compileSdk 36 以上（`checkAarMetadata` 报错）。0.7.4 还用 OkHttp 4.12，没有这个要求
-- **生成代码**：用 buf 的远程插件 `buf.build/protocolbuffers/java`（`lite`）和 `buf.build/connectrpc/kotlin`，java_package 用 managed mode 覆盖。生成代码的版本不能高于运行时的 protobuf-javalite（本机 protoc 36.2 生成的代码要求运行时 4.36 以上），所以固定用远程插件的版本
-- **R8**：release 包开 R8 后同步、指令、配对都正常，只需要保留 `GeneratedMessageLite` 的子类（`app/proguard-rules.pro`）。release 包 5.3 MB
+- **现行路径**：中继 RPC 的请求编码、响应解码与错误分类收口在 `clientcore`，Android 仅通过 OkHttp 发送 `Content-Type: application/proto` + `Connect-Protocol-Version: 1` 的单次 HTTP 请求并回传原始字节，不再依赖 `connect-kotlin` 或生成 RPC 客户端存根。`:core` 与 `:app` 测试在 JVM / 设备上对着真实 Go server 跑通登记、登录、拉列表、`GetEvents`、`Forward` 与配对
+- **版本约束**：OkHttp 5.4.0 的 `okhttp-android` 要求 compileSdk 36 以上（`checkAarMetadata` 报错）
+- **生成代码**：用 buf 的远程插件 `buf.build/protocolbuffers/java`（`lite`），java_package 用 managed mode 覆盖。生成代码的版本不能高于运行时的 protobuf-javalite（本机 protoc 36.2 生成的代码要求运行时 4.36 以上），所以固定用远程插件的版本
+- **R8**：release 包开 R8 后同步、指令、配对都正常，只需要保留 `GeneratedMessageLite` 的子类（`app/proguard-rules.pro`）。早期基线 release 包 5.3 MB
 
 ## 2. Termux 终端组件
 

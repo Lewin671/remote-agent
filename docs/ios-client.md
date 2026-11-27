@@ -9,8 +9,8 @@ iOS 原生 App 要把 iPhone 和 iPad 上的体验做到原生水平。本文写
 | 工程结构 | Swift Package `ios/RemoteAgentCore` 加一个 Xcode 工程 `ios/RemoteAgent.xcodeproj` | 见下文「模块」 |
 | 工程文件 | 手写并提交的 `project.pbxproj`，用文件系统同步分组：加一个 Swift 文件不用改工程 | 不必装 XcodeGen，也没有「生成出来的工程和提交的不一样」这回事；工程文件因此很小，可以直接读 |
 | UI | SwiftUI；状态用 `@Observable` 的主线程 store，同步引擎是一个 actor，向界面发布值快照。界面层用系统组件：`NavigationStack` 和 iPad 上的 `NavigationSplitView`、系统弹层与菜单、系统字体样式、SF Symbols；玻璃在 iOS 26 及以上用系统的 Liquid Glass，更早的系统用系统材质加细边。颜色取设计规范的 token（`UI/Design/DS.swift`） | 导航、sheet、键盘和安全区都用系统的；前台界面只读快照，不和同步抢锁。改用系统组件后，材质、动效和降低透明度、粗体文本这类辅助设置跟着系统走，不用逐个照稿重画（[design-system §4、§5](design-system.md)） |
-| RPC | connect-swift + URLSession，Connect 协议，二进制 Protobuf | 接口由 proto 生成，不手写请求（[architecture §3](architecture.md#3-通信方式)） |
-| Protobuf | 用 `buf` 的远程插件从 `proto/` 生成 swift-protobuf 和 connect-swift 代码，生成物提交进仓库 | `proto/` 仍是唯一的协议定义；本机不用装 `protoc-gen-swift` |
+| RPC | `URLSession` + 共享 Go 核心字节管道，Connect 协议（二进制 Protobuf，不依赖 connect-swift） | 中继 RPC 的编解码、重试与错误语义收口在 `clientcore`，壳只负责原生 `URLSession` 字节收发（[architecture §3](architecture.md#3-通信方式)） |
+| Protobuf | 用 `buf` 的远程插件从 `proto/` 生成 swift-protobuf 代码，生成物提交进仓库 | `proto/` 仍是唯一的协议定义；本机不用装 `protoc-gen-swift` |
 | WebSocket | `URLSessionWebSocketTask`，`/v1/stream` 和 `/v1/term` 各一条 | 和其他端相同的两条连接 |
 | 加密 | CryptoKit：AES-256-GCM、X25519、Ed25519、HKDF-SHA256；压缩用系统 zlib 的 raw DEFLATE | 四种原语系统都有，不引第三方密码库；见下文「加密和密钥」 |
 | 本地存储 | GRDB（SQLite）存密文信封和同步游标，`UserDefaults` 存不含内容的本机偏好 | 本地不保存明文 |
@@ -25,7 +25,7 @@ iOS 原生 App 要把 iPhone 和 iPad 上的体验做到原生水平。本文写
 
 | 方案 | 结论 | 理由 |
 |---|---|---|
-| 把 `android/core` 迁到 KMP | 不采用 | `:core` 不依赖 `android.*`，但依赖 JVM：javalite、connect-kotlin 和 OkHttp、Bouncy Castle、JCA、`java.util.zip`，这些都上不了 Kotlin/Native。迁过去等于同时重做 Android 已经在用的传输、生成代码和加密 |
+| 把 `android/core` 迁到 KMP | 不采用 | `:core` 不依赖 `android.*`，但依赖 JVM：javalite、OkHttp、Bouncy Castle、JCA、`java.util.zip`，这些都上不了 Kotlin/Native。迁过去等于同时重做 Android 已经在用的传输、生成代码和加密 |
 | gomobile 复用 Go | 采用，只放纯逻辑 | 原先因为同步和归约要用 Go 重写而没用；三端各写一份后改为把纯逻辑收进 `clientcore/`（[architecture.md](architecture.md#客户端共享核心)），App 通过 `Corebind.xcframework` 调用 |
 | 其余用 Swift | 采用 | 网络、存储、钥匙串、界面仍是原生；尚未迁进核心的逻辑靠协议定义和行为约定对齐：见下一节 |
 
