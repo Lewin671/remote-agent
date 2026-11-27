@@ -123,6 +123,9 @@ func (c *Core) onConnCheckStart(ctx *sync.StepContext) {
 	}
 	// Reset this round's server probe state so relay machines always wait for
 	// the shell's fresh ConnCheckStatus verdict for the current round.
+	// Shell contract: send ConnCheckStart first, then this round's
+	// ConnCheckStatus (CHECKING, then WORKING/SLOW/UNAVAILABLE after /healthz);
+	// a verdict sent before Start belongs to the previous round and is reset.
 	extra.ConnCheck.ServerState = corev1.ConnProbeState_CONN_PROBE_STATE_CHECKING
 	extra.ConnCheck.LatencyMs = 0
 	extra.ConnCheck.LastFailure = ""
@@ -481,9 +484,10 @@ func (c *Core) onConnCheckCommandSettled(sc sync.SettledCommand, meta cmdMeta) [
 			snap.NetworkIsDirect = true
 		}
 
-		// The direct figure is a keepalive median from the last few seconds,
-		// not this command, so it can exceed what this round trip left for
-		// the network; never show a part larger than the whole.
+		// The network figure is measured separately from this command (a
+		// direct keepalive median, or the relay echoes), so it can exceed what
+		// this round trip left for the network; never show a part larger than
+		// the whole, on either path.
 		if snap.HasNetwork {
 			snap.NetworkMs = latency.ClampNetworkMs(snap.NetworkMs, totalMs, snap.ComputerMs)
 		}

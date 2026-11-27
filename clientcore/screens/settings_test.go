@@ -1102,11 +1102,19 @@ func TestMachineCardPlanBStatesAndConnCheckFooter(t *testing.T) {
 			t.Fatalf("nil extra footer=%+v want single sentence key %q", got, text.KeyConnectionLatencyIsOneRoundTripTheServerRowMeasures)
 		}
 
-		// At least one online member machine in MEASURING/DONE/FAILED/UNSUPPORTED -> joins second sentence.
+		// An outdated computer over the relay shows no breakdown rows, so the
+		// second sentence would describe nothing -> only first sentence.
+		extraOutdated := NewSettingsExtra()
+		extraOutdated.MachineLatency["m1"] = &MachineLatencySnapshot{State: corev1.MachineLatencyState_MACHINE_LATENCY_STATE_UNSUPPORTED}
+		vmOutdated := BuildSettings(mkState(), &world.SyncState{}, extraOutdated)
+		if got := vmOutdated.GetConnCheck().GetFooterText(); got.GetKey() != text.KeyConnectionLatencyIsOneRoundTripTheServerRowMeasures {
+			t.Fatalf("outdated-only footer=%+v want single sentence key %q", got, text.KeyConnectionLatencyIsOneRoundTripTheServerRowMeasures)
+		}
+
+		// At least one online member machine showing breakdown rows -> joins second sentence.
 		for _, activeState := range []corev1.MachineLatencyState{
 			corev1.MachineLatencyState_MACHINE_LATENCY_STATE_MEASURING,
 			corev1.MachineLatencyState_MACHINE_LATENCY_STATE_DONE,
-			corev1.MachineLatencyState_MACHINE_LATENCY_STATE_UNSUPPORTED,
 			corev1.MachineLatencyState_MACHINE_LATENCY_STATE_FAILED,
 		} {
 			extraActive := NewSettingsExtra()

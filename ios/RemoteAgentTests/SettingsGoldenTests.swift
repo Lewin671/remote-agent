@@ -33,7 +33,7 @@ import UIKit
         let settingsVMs = ScreenGoldens.settingsAll("settings_overview")
         let devicesVMs = ScreenGoldens.devicesAll("settings_overview")
         let clientVMs = ScreenGoldens.clientDetails("settings_overview")
-        #expect(settingsVMs.count == 3)
+        #expect(settingsVMs.count == 4)  // includes the connCheckBreakdown snapshot
         #expect(settingsVMs[2].connCheck.lastFailureText.key.isEmpty)
         #expect(settingsVMs[2].connCheck.lastFailureText.literal == "dial tcp: timeout")
         #expect(devicesVMs.count == 1)

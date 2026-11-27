@@ -556,8 +556,10 @@ func buildConnCheckSummary(st *State, syncView *world.SyncState, cc ConnCheckSta
 				hasUnsupportedDirect = true
 			}
 			if m.Latency != nil {
-				if m.Latency.State != corev1.MachineLatencyState_MACHINE_LATENCY_STATE_UNSPECIFIED &&
-					m.Latency.State != corev1.MachineLatencyState_MACHINE_LATENCY_STATE_NOT_CHECKED {
+				// The second footer sentence describes the breakdown rows, so it
+				// appears only when some computer actually shows them (an
+				// outdated or failed row may have none).
+				if len(m.Latency.Segments) > 0 {
 					hasActiveLatency = true
 				}
 				if m.Latency.State == corev1.MachineLatencyState_MACHINE_LATENCY_STATE_MEASURING {
