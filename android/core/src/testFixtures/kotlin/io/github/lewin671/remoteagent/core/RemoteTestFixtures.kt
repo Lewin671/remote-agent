@@ -144,9 +144,18 @@ fun Remote.showForTest(
     modelLists: Map<Pair<String, Agent>, ListModelsResponse> = emptyMap(),
     sessions: Map<String, SessionViewModel> = emptyMap(),
 ) {
-    prepareForTest(sessions)
-    seedCoreForTest(coreHost, account.deviceId, state, modelLists)
+    coreHost.runOnWorkerBlocking {
+        prepareForTest(sessions)
+        seedCoreForTest(coreHost, account.deviceId, state, modelLists)
+    }
 }
+
+/**
+ * Test-only barrier that blocks until all previously enqueued [CoreHost] mailbox events
+ * and pending renders have completed. Do not use with a paused `StandardTestDispatcher`
+ * worker or from coroutines running on the worker dispatcher.
+ */
+fun CoreHost.flushMailboxForTest() = flushMailboxBlocking()
 
 internal fun seedCoreForTest(
     coreHost: CoreHost,

@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.flushMailboxForTest
 import io.github.lewin671.remoteagent.core.showForTest
 
 import android.app.Application
@@ -729,6 +730,7 @@ class UsageAndCliSwitchesTest {
                 .build()
 
             remote.coreHost.deliverUsageCacheLoadedRaw("m1", snap.preset, snap.toByteArray())
+            remote.coreHost.flushMailboxForTest()
             val view = remote.coreHost.snapshotUsageView(
                 machineId = "m1",
                 preset = UsageRangePreset.USAGE_RANGE_PRESET_SEVEN_DAYS,

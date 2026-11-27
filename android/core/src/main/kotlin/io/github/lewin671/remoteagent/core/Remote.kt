@@ -1089,31 +1089,33 @@ class Remote(
     internal fun prepareForTest(sessions: Map<String, SessionViewModel> = emptyMap()) {
         check(!running) { "showForTest on a started Remote" }
         _bootstrapped.value = true
-        coreHost.dispatchOnWorker(
-            CoreEvent.newBuilder()
-                .setTransportConfig(
-                    TransportConfigEvent.newBuilder()
-                        .setSupported(rtcFactory != null)
-                        .setAccount(account.accountId)
-                        .setProtocolVersion(PEER_PROTOCOL_VERSION)
-                        .setServerHost(directServerHost)
-                        .setConfiguredStun(directConfiguredStun)
-                        .setPlatformAgent("android"),
-                )
-                .build(),
-        )
-        coreHost.dispatchOnWorker(
-            CoreEvent.newBuilder()
-                .setDirectPreferencesLoaded(
-                    DirectPreferencesLoadedEvent.newBuilder().apply {
-                        for ((id, en) in runCatching { directPrefs.allEnabled(account.server, account.deviceId) }.getOrDefault(emptyMap())) {
-                            addEntries(DirectPreferenceEntry.newBuilder().setMachineId(id).setEnabled(en))
-                        }
-                    },
-                )
-                .build(),
-        )
-        coreHost.showViewsForTest(sessions = sessions)
+        coreHost.runOnWorkerBlocking {
+            coreHost.dispatchOnWorker(
+                CoreEvent.newBuilder()
+                    .setTransportConfig(
+                        TransportConfigEvent.newBuilder()
+                            .setSupported(rtcFactory != null)
+                            .setAccount(account.accountId)
+                            .setProtocolVersion(PEER_PROTOCOL_VERSION)
+                            .setServerHost(directServerHost)
+                            .setConfiguredStun(directConfiguredStun)
+                            .setPlatformAgent("android"),
+                    )
+                    .build(),
+            )
+            coreHost.dispatchOnWorker(
+                CoreEvent.newBuilder()
+                    .setDirectPreferencesLoaded(
+                        DirectPreferencesLoadedEvent.newBuilder().apply {
+                            for ((id, en) in runCatching { directPrefs.allEnabled(account.server, account.deviceId) }.getOrDefault(emptyMap())) {
+                                addEntries(DirectPreferenceEntry.newBuilder().setMachineId(id).setEnabled(en))
+                            }
+                        },
+                    )
+                    .build(),
+            )
+            coreHost.showViewsForTest(sessions = sessions)
+        }
     }
 
     // --- S6 Security Management & Recovery (delegated to Core SecurityClient) ---

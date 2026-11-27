@@ -19,7 +19,11 @@ import kotlinx.coroutines.flow.*
 import java.security.SecureRandom
 import java.time.Instant
 import java.time.ZoneId
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
@@ -30,6 +34,7 @@ private val DEFAULT_SESSION_WINDOW: SessionWindowRequest =
 private const val CALENDAR_MONTH_HISTORY = 35
 private const val INITIAL_ENTROPY_IDS = 32
 private const val BOOTSTRAP_RETRY_TIMEOUT_MS = 30_000L
+private const val WORKER_BARRIER_TIMEOUT_SECONDS = 60L
 private const val INITIAL_ENTROPY_FLOATS = 32
 private const val INITIAL_ENTROPY_RANDOM_BYTES = 4096
 private val LAZY_SUBSCREENS = setOf(
@@ -126,6 +131,9 @@ class CoreHost(
     private val mailbox = Channel<() -> Unit>(Channel.UNLIMITED)
     private val pendingRenders = LinkedHashSet<ScreenTarget>()
     private var coalescingRenders = false
+    @Volatile private var workerThread: Thread? = null
+    private var mailboxExited = false
+    private val workerBarriers = mutableListOf<CompletableFuture<*>>()
 
     private val timers = HashMap<Long, Job>()
     private val machinePollTimers = HashMap<String, Job>()
@@ -504,23 +512,38 @@ class CoreHost(
                 }
             }
             scope.launch(dispatcher) {
-                for (item in mailbox) {
-                    if (closed.get()) break
-                    coalescingRenders = true
-                    try {
-                        item()
-                        while (!closed.get()) {
-                            val next = mailbox.tryReceive().getOrNull() ?: break
-                            next()
+                var failure: Throwable? = null
+                try {
+                    for (item in mailbox) {
+                        if (closed.get()) break
+                        workerThread = Thread.currentThread()
+                        coalescingRenders = true
+                        try {
+                            item()
+                            while (!closed.get()) {
+                                val next = mailbox.tryReceive().getOrNull() ?: break
+                                next()
+                            }
+                        } finally {
+                            flushPendingRenders()
+                            val settled = processedOnboardingEditSeq.get()
+                            if (_settledOnboardingEditSeq.value != settled) {
+                                _settledOnboardingEditSeq.value = settled
+                            }
+                            coalescingRenders = false
+                            workerThread = null
                         }
-                    } finally {
-                        flushPendingRenders()
-                        val settled = processedOnboardingEditSeq.get()
-                        if (_settledOnboardingEditSeq.value != settled) {
-                            _settledOnboardingEditSeq.value = settled
-                        }
-                        coalescingRenders = false
                     }
+                } catch (t: Throwable) {
+                    failure = t
+                    throw t
+                } finally {
+                    val err = failure ?: IllegalStateException("CoreHost mailbox loop stopped")
+                    val pending = synchronized(workerBarriers) {
+                        mailboxExited = true
+                        workerBarriers.toList().also { workerBarriers.clear() }
+                    }
+                    pending.forEach { it.completeExceptionally(err) }
                 }
             }
             val lazySubCounts = LAZY_SUBSCREENS.mapNotNull { target ->
@@ -573,6 +596,83 @@ class CoreHost(
         }
         if (result.isFailure) return EffectBatch.getDefaultInstance()
         return deferred.await()
+    }
+
+    internal fun pendingWorkerBarriersForTest(): Int = synchronized(workerBarriers) { workerBarriers.size }
+
+    /**
+     * Test-only synchronous barrier that runs [block] serially on the CoreHost mailbox worker
+     * after all previously enqueued items (including [init]) have completed, flushes pending
+     * renders, and blocks the caller up to [WORKER_BARRIER_TIMEOUT_SECONDS] seconds.
+     *
+     * Re-entrant if called synchronously from an active mailbox item on the worker thread.
+     * Constraints:
+     * - Production code must not call this method.
+     * - Does not support a paused `StandardTestDispatcher` as `workerDispatcher` (will time out).
+     * - Must not be called from a coroutine executing on [scope] / the worker dispatcher outside
+     *   an active mailbox item.
+     */
+    internal fun <T> runOnWorkerBlocking(block: () -> T): T {
+        if (Thread.currentThread() === workerThread) {
+            return block()
+        }
+        val future = CompletableFuture<T>()
+        synchronized(workerBarriers) {
+            if (closed.get() || mailboxExited) throw IllegalStateException("CoreHost closed")
+            workerBarriers.add(future)
+        }
+        val sent = mailbox.trySend {
+            val removed = synchronized(workerBarriers) { workerBarriers.remove(future) }
+            if (future.isDone || !removed) return@trySend
+            if (closed.get()) {
+                future.completeExceptionally(IllegalStateException("CoreHost closed"))
+                return@trySend
+            }
+            try {
+                val value = block()
+                flushPendingRenders()
+                future.complete(value)
+            } catch (t: Throwable) {
+                future.completeExceptionally(t)
+            }
+        }
+        if (sent.isFailure) {
+            synchronized(workerBarriers) { workerBarriers.remove(future) }
+            throw IllegalStateException("CoreHost mailbox closed")
+        }
+        return try {
+            future.get(WORKER_BARRIER_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        } catch (e: TimeoutException) {
+            future.cancel(false)
+            synchronized(workerBarriers) { workerBarriers.remove(future) }
+            throw IllegalStateException(
+                "CoreHost.runOnWorkerBlocking timed out after ${WORKER_BARRIER_TIMEOUT_SECONDS}s " +
+                    "(worker dispatcher may be paused or deadlocked)",
+                e,
+            )
+        } catch (e: InterruptedException) {
+            future.cancel(false)
+            synchronized(workerBarriers) { workerBarriers.remove(future) }
+            Thread.currentThread().interrupt()
+            throw IllegalStateException("CoreHost.runOnWorkerBlocking interrupted", e)
+        } catch (e: ExecutionException) {
+            throw e.cause ?: e
+        }
+    }
+
+    /**
+     * Test-only barrier that blocks until all previously enqueued mailbox events and their
+     * pending renders complete. Production code must not call this method; see
+     * [runOnWorkerBlocking] for dispatcher constraints.
+     */
+    internal fun flushMailboxBlocking() {
+        if (closed.get()) return
+        try {
+            runOnWorkerBlocking { Unit }
+        } catch (e: IllegalStateException) {
+            if (closed.get()) return
+            throw e
+        }
     }
 
     fun dispatchOnWorker(event: CoreEvent): EffectBatch {
@@ -2896,40 +2996,43 @@ class CoreHost(
         handoff: HandoffViewModel? = null,
         exitConfirm: ExitConfirmView? = null,
     ) {
-        if (home != null || project != null || newSession != null || connection != null) {
-            testOverrideViews = true
-        }
-        overrideSlot(ScreenTarget.SCREEN_TARGET_SCHEDULES, schedulesSlot, schedules)
-        overrideSlot(ScreenTarget.SCREEN_TARGET_SCHEDULE_DETAIL, scheduleDetailSlot, scheduleDetail)
-        overrideSlot(ScreenTarget.SCREEN_TARGET_SCHEDULE_FORM, scheduleFormSlot, scheduleForm)
-        overrideSlot(ScreenTarget.SCREEN_TARGET_DIRECT_DIAGNOSTICS, directDiagnosticsSlot, directDiagnostics)
-        overrideSlot(ScreenTarget.SCREEN_TARGET_APP_ROOT, appRootSlot, appRoot)
-        overrideSlot(ScreenTarget.SCREEN_TARGET_ONBOARDING, onboardingSlot, onboarding)
-        overrideSlot(ScreenTarget.SCREEN_TARGET_ADD_DEVICE, addDeviceSlot, addDevice)
-        overrideSlot(ScreenTarget.SCREEN_TARGET_ACCOUNT_SECURITY, accountSecuritySlot, accountSecurity)
-        overrideSlot(ScreenTarget.SCREEN_TARGET_HANDOFF, handoffSlot, handoff)
-        overrideSlot(ScreenTarget.SCREEN_TARGET_EXIT_CONFIRM, exitConfirmSlot, exitConfirm)
-        home?.let { homeSlot.flow.value = it }
-        project?.let { projectSlot.flow.value = it }
-        newSession?.let { newSessionSlot.flow.value = it }
-        connection?.let { connectionSlot.flow.value = it }
-        settings?.let { settingsSlot.flow.value = it }
-        machineStatus?.let { machineStatusSlot.flow.value = it }
-        machineSettings?.let { machineSettingsSlot.flow.value = it }
-        overrideSlot(ScreenTarget.SCREEN_TARGET_QUOTA, quotaSlot, quota)
-        overrideSlot(ScreenTarget.SCREEN_TARGET_DEVICES, devicesSlot, devices)
-        clientDetail?.let { clientDetailSlot.flow.value = it }
-        usage?.let { overrideSlot(ScreenTarget.SCREEN_TARGET_USAGE, usageSlot, it) }
-        if (scheduleStrips.isNotEmpty()) {
-            synchronized(scheduleStripWatchers) {
-                testScheduleStripViews.putAll(scheduleStrips)
-                for ((sid, vm) in scheduleStrips) scheduleStripWatchers[sid]?.flow?.value = vm
+        if (closed.get()) return
+        runOnWorkerBlocking {
+            if (home != null || project != null || newSession != null || connection != null) {
+                testOverrideViews = true
             }
-        }
-        if (sessions.isNotEmpty()) {
-            synchronized(sessionWatchers) {
-                testSessionViews.putAll(sessions)
-                for ((sid, vm) in sessions) sessionWatchers[sid]?.flow?.value = vm
+            overrideSlot(ScreenTarget.SCREEN_TARGET_SCHEDULES, schedulesSlot, schedules)
+            overrideSlot(ScreenTarget.SCREEN_TARGET_SCHEDULE_DETAIL, scheduleDetailSlot, scheduleDetail)
+            overrideSlot(ScreenTarget.SCREEN_TARGET_SCHEDULE_FORM, scheduleFormSlot, scheduleForm)
+            overrideSlot(ScreenTarget.SCREEN_TARGET_DIRECT_DIAGNOSTICS, directDiagnosticsSlot, directDiagnostics)
+            overrideSlot(ScreenTarget.SCREEN_TARGET_APP_ROOT, appRootSlot, appRoot)
+            overrideSlot(ScreenTarget.SCREEN_TARGET_ONBOARDING, onboardingSlot, onboarding)
+            overrideSlot(ScreenTarget.SCREEN_TARGET_ADD_DEVICE, addDeviceSlot, addDevice)
+            overrideSlot(ScreenTarget.SCREEN_TARGET_ACCOUNT_SECURITY, accountSecuritySlot, accountSecurity)
+            overrideSlot(ScreenTarget.SCREEN_TARGET_HANDOFF, handoffSlot, handoff)
+            overrideSlot(ScreenTarget.SCREEN_TARGET_EXIT_CONFIRM, exitConfirmSlot, exitConfirm)
+            home?.let { homeSlot.flow.value = it }
+            project?.let { projectSlot.flow.value = it }
+            newSession?.let { newSessionSlot.flow.value = it }
+            connection?.let { connectionSlot.flow.value = it }
+            settings?.let { settingsSlot.flow.value = it }
+            machineStatus?.let { machineStatusSlot.flow.value = it }
+            machineSettings?.let { machineSettingsSlot.flow.value = it }
+            overrideSlot(ScreenTarget.SCREEN_TARGET_QUOTA, quotaSlot, quota)
+            overrideSlot(ScreenTarget.SCREEN_TARGET_DEVICES, devicesSlot, devices)
+            clientDetail?.let { clientDetailSlot.flow.value = it }
+            usage?.let { overrideSlot(ScreenTarget.SCREEN_TARGET_USAGE, usageSlot, it) }
+            if (scheduleStrips.isNotEmpty()) {
+                synchronized(scheduleStripWatchers) {
+                    testScheduleStripViews.putAll(scheduleStrips)
+                    for ((sid, vm) in scheduleStrips) scheduleStripWatchers[sid]?.flow?.value = vm
+                }
+            }
+            if (sessions.isNotEmpty()) {
+                synchronized(sessionWatchers) {
+                    testSessionViews.putAll(sessions)
+                    for ((sid, vm) in sessions) sessionWatchers[sid]?.flow?.value = vm
+                }
             }
         }
     }
@@ -2973,6 +3076,10 @@ class CoreHost(
             synchronized(retryNowWaiters) {
                 for (list in retryNowWaiters.values) list.forEach { it.complete(false) }
                 retryNowWaiters.clear()
+            }
+            synchronized(workerBarriers) {
+                workerBarriers.forEach { it.completeExceptionally(IllegalStateException("CoreHost closed")) }
+                workerBarriers.clear()
             }
             terminalReopenListeners.clear()
             terminalHistoryRequestListeners.clear()

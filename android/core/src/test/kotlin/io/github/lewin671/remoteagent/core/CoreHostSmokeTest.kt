@@ -627,4 +627,74 @@ class CoreHostSmokeTest {
             h.close()
         }
     }
+
+    @Test
+    fun runOnWorkerBlockingSerializesAfterInitAndIsReentrant() {
+        val h = CoreHost(clock = { nowMs }, monotonic = { 10_000L }, initialLocale = "en")
+        try {
+            // Executes on the background mailbox worker strictly after CoreHost.init completes,
+            // and supports nested re-entrant calls without deadlocking.
+            val result = h.runOnWorkerBlocking {
+                val inner = h.runOnWorkerBlocking { "nested-ok" }
+                // Init dispatched locale + initial screen refreshes before this block ran.
+                assertTrue(h.connectionView.value.hasServerDetails())
+                inner
+            }
+            assertEquals("nested-ok", result)
+            h.flushMailboxBlocking()
+        } finally {
+            h.close()
+        }
+    }
+
+    @Test
+    fun runOnWorkerBlockingUnblocksOnCloseAndFailsAfterClose() {
+        val h = CoreHost(clock = { nowMs }, monotonic = { 10_000L })
+        val workerEntered = java.util.concurrent.CountDownLatch(1)
+        val releaseWorker = java.util.concurrent.CountDownLatch(1)
+        val barrierError = java.util.concurrent.atomic.AtomicReference<Throwable?>()
+        val callerDone = java.util.concurrent.CountDownLatch(1)
+        try {
+            // Occupy the single mailbox worker so a queued barrier blocks waiting for it.
+            // Anti-hang protection comes from the class-level hangGuard rule; no short wall-clock
+            // timeouts are used here so slow machines cannot release early or fail spuriously.
+            h.onCheckUpdates = {
+                workerEntered.countDown()
+                releaseWorker.await()
+            }
+            h.checkForUpdates()
+            workerEntered.await()
+
+            val caller = Thread {
+                try {
+                    h.runOnWorkerBlocking { "unreachable" }
+                } catch (t: Throwable) {
+                    barrierError.set(t)
+                } finally {
+                    callerDone.countDown()
+                }
+            }
+            caller.start()
+
+            // Wait on explicit barrier registration rather than thread state or wall clock.
+            while (h.pendingWorkerBarriersForTest() < 1) {
+                Thread.yield()
+            }
+
+            // Closing the host must immediately fail the waiting barrier rather than hanging.
+            h.close()
+            callerDone.await()
+            assertTrue(
+                "expected IllegalStateException on close, got ${barrierError.get()}",
+                barrierError.get() is IllegalStateException,
+            )
+
+            // Subsequent barrier calls after close fail/return immediately.
+            assertTrue(runCatching { h.runOnWorkerBlocking { Unit } }.exceptionOrNull() is IllegalStateException)
+            h.flushMailboxBlocking()
+        } finally {
+            releaseWorker.countDown()
+            h.close()
+        }
+    }
 }
