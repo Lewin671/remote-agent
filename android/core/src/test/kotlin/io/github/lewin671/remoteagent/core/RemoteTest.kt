@@ -402,9 +402,15 @@ class RemoteTest {
                 daemon.upload(sid, *batch)
             }
             val memory = MemoryCache()
+            val allReadQueued = CompletableDeferred<Unit>()
             val putGate = CompletableDeferred<Unit>()
             val allCached = CompletableDeferred<Unit>()
             val cache = object : CipherCache by memory {
+                override suspend fun newestEvents(sessionId: String): List<StoredEvent> {
+                    if (sessionId in sids) allReadQueued.await()
+                    return memory.newestEvents(sessionId)
+                }
+
                 override suspend fun putEvents(sessionId: String, events: List<StoredEvent>) {
                     putGate.await()
                     memory.putEvents(sessionId, events)
@@ -418,12 +424,17 @@ class RemoteTest {
             r.coreHost.connectionView.first { it.isOnline && it.liveLoaded }
             // Watch all 10 sessions concurrently while cache disk writes are gated,
             // so >4096 event objects pass through Core before cache writes drain.
+            // Ensure every session's initial CacheRead is queued on Remote's serial
+            // pendingCacheOps FIFO ahead of any gated EventsWrite so a fast first
+            // session cannot block later sessions' CacheRead behind putGate.
             val win = SessionWindowRequest.newBuilder().setLimit(eventsPerSession).build()
             val jobs = sids.map { sid ->
-                async {
+                async(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
                     r.watchSession(sid, win).first { it.timeline.itemsCount == eventsPerSession }
                 }
             }
+            r.coreHost.flushMailboxForTest()
+            allReadQueued.complete(Unit)
             jobs.forEach { it.await() }
             putGate.complete(Unit)
             if (sids.any { memory.events(it).size < eventsPerSession }) {
