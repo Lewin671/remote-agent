@@ -834,15 +834,28 @@ h1, h2, h3 { font-weight: var(--w7); }
 /* In a sheet or a menu the rounded lists run to the sheet's own padding. */
 :is(.sheet, .pop) .grp { margin-left: 0; margin-right: 0; }
 :is(.sheet, .pop) .find { margin: 0 0 12px; }
-.conn-check .mt small { display: block; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.conn-check .mt small.direct-line { white-space: normal; }
-.conn-check .mi.conn-direct { padding-left: 28px; min-height: 36px; }
-.conn-check .mi.conn-direct .mt { font-size: 13px; color: var(--ink2); white-space: normal; overflow-wrap: anywhere; }
-.conn-check .mi.conn-direct .mv { font-size: 13px; color: var(--ink2); }
-.conn-check .mv { flex: none; font-size: 15px; font-variant-numeric: tabular-nums; }
-.conn-check .mv em { font-style: normal; overflow: hidden; text-overflow: ellipsis; }
-.conn-check .mv > .ic { width: 12px; height: 12px; }
-.conn-check .mv.red { color: var(--red); white-space: normal; text-align: right; flex: 0 1 auto; }
+.list.conn-check .mi .mt { overflow-wrap: anywhere; }
+.list.conn-check .mi .mt small { display: block; margin: 1px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list.conn-check .mi .mt small.direct-line { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.list.conn-check .mi .mv { flex: none; max-width: none; overflow: visible; font-size: 17px; font-variant-numeric: tabular-nums; gap: 4px; }
+.list.conn-check .mi .mv em { font-style: normal; }
+.list.conn-check .mi .mv > .ic { width: 12px; height: 12px; }
+.list.conn-check .mi .mv > .mark { width: 8px; height: 8px; }
+.list.conn-check .mi .mv.red { color: var(--red); white-space: normal; text-align: right; flex: 0 1 auto; max-width: 50%; }
+.list.conn-check .mi.pc { flex-direction: column; align-items: stretch; gap: 0; min-height: 0; padding: 13px 16px 13px 18px; }
+.list.conn-check .mi.pc .conn-top { display: flex; align-items: flex-start; gap: 8px; }
+.list.conn-check .mi.pc .conn-top .mt { padding: 0; }
+.list.conn-check .conn-lg { margin: 8px 0 0; padding: 0; font-size: 13px; line-height: 20px; color: var(--ink2);
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.list.conn-check .conn-lg > div { display: contents; }
+.list.conn-check .conn-lg dt { grid-column: 1; margin: 0; min-width: 0; }
+.list.conn-check .conn-lg dd { grid-column: 2; margin: 0; padding-left: 12px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.list.conn-check .conn-lg .tg::before { content: "·"; margin: 0 .3em; }
+.list.conn-check .conn-lg .slow dt, .list.conn-check .conn-lg .slow dd { color: var(--ink); font-weight: var(--w6); }
+.list.conn-check .conn-lg dd.why, .list.conn-check .conn-lg .slow dd.why { grid-column: 1 / -1; padding: 0 0 3px; text-align: left; white-space: normal;
+  font-size: 12px; line-height: 17px; font-weight: 400; color: var(--ink2); overflow-wrap: anywhere; }
+.list.conn-check .mi.pc .conn-nt { margin: 8px 0 0; font-size: 13px; line-height: 1.45; color: var(--ink2); overflow-wrap: anywhere; }
+.list.conn-check .mi.pc .conn-lg + .conn-nt { margin-top: 4px; }
 .sheet > .set-banners { margin: 0 0 12px; }
 .sheet > .gf { padding: 0 12px; margin: 8px 0 0; }
 .banner > span > .ic { width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; }
@@ -2007,6 +2020,12 @@ html .mo-leave.mo-ghost.composer-picker { transform-origin: bottom center; anima
 .desk .list .mi .mv { font-size: 15px; }
 .desk .list .mi .md, .desk .list .mi small { font-size: 12px; }
 .desk .list .mi + .mi::before { left: 16px; }
+.desk .list.conn-check .mi { padding: 0 16px; }
+.desk .list.conn-check .mi:hover, .desk .list.conn-check .mi:active { background: transparent; }
+.desk .list.conn-check .mi.pc { min-height: 0; padding: 11px 16px; }
+.desk .list.conn-check .mi .mv { font-size: 15px; }
+.desk .conn-again { justify-content: flex-end; gap: 12px; margin-top: 14px; }
+.desk .conn-again .btn { flex: none; min-height: 34px; padding: 0 16px; border-radius: 8px; font-size: 13px; }
 .desk .plist .pi { min-height: 48px; padding: 6px 12px; font-size: 15px; }
 .desk .plist .pi + .pi::before { left: 52px; }
 .desk .plist .pi b { font-size: 15px; }
@@ -2914,6 +2933,8 @@ html .mo-leave.mo-ghost.composer-picker { transform-origin: bottom center; anima
 .desk .set .row .v { font-size: 14px; }
 .desk .body.set .label, .desk .page.set > .body .label { padding: 20px 32px 6px; font-size: 13px; }
 .desk .body.set .gf, .desk .page.set > .body .gf { padding-inline: 32px; }
+.overlay > .sheet.conn-sheet > p.gf { padding: 0 12px; margin: 8px 0 0; font-size: 13px; }
+.desk .overlay > .sheet.conn-sheet > p.gf { padding: 10px 2px 0; margin: 0; font-size: 12px; }
 
 .warn-txt { color: var(--orange-ink) !important; font-weight: var(--w6); }
 .red-txt { color: var(--red) !important; font-weight: var(--w5); }

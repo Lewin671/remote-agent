@@ -1833,6 +1833,8 @@ export class DemoRemote extends Remote {
   private readonly demoSchedules = new Map<string, DemoScheduleTask[]>();
 
   override async executeCommandAttempt(eff: DispatchCommandEffect): Promise<CommandOutcomeEvent> {
+    const started = performance.now();
+    const directAttempt = !eff.forceRelay && eff.routeLeg === 1;
     try {
       const cmd = fromBinary(CommandSchema, eff.commandBytes).kind;
       const slot = eff.requestId ? new RequestSlot(eff.requestId, Date.now() + 30_000) : undefined;
@@ -1859,7 +1861,20 @@ export class DemoRemote extends Remote {
         outcome, reason, conflictKind: result.conflictKind, errorCode: result.errorCode, errorMessage: result.errorMessage, kind: result.kind,
         resultAvailable: result.resultAvailable || outcome === "executed" || (outcome === "conflict" && result.conflictKind === "business"),
       });
-      return create(CommandOutcomeEventSchema, { requestId: eff.requestId, attemptId: eff.attemptId, source: OutcomeSource.DAEMON, signed: true, hashesMatch: true, attemptBound: true, outerMatchesInner: true, outerOutcome: outcome, outerReason: reason, rawResult: toBinary(CommandResultSchema, norm) });
+      return create(CommandOutcomeEventSchema, {
+        requestId: eff.requestId,
+        attemptId: eff.attemptId,
+        source: OutcomeSource.DAEMON,
+        signed: true,
+        hashesMatch: true,
+        attemptBound: true,
+        outerMatchesInner: true,
+        outerOutcome: outcome,
+        outerReason: reason,
+        routeWasDirect: directAttempt,
+        elapsedMs: Math.max(1, performance.now() - started),
+        rawResult: toBinary(CommandResultSchema, norm),
+      });
     } catch (e) {
       if (e instanceof CommandError) {
         if (e.code === "path_changed") return create(CommandOutcomeEventSchema, { requestId: eff.requestId, attemptId: eff.attemptId, source: OutcomeSource.TRANSPORT, notForwarded: false, attemptBound: true, transportCode: "path_changed", transportDetail: e.message });
@@ -3366,9 +3381,27 @@ export class DemoRemote extends Remote {
     kind: CommandKind,
     _slot?: RequestSlot,
   ): Promise<CommandResult> {
-    await this.pause(500);
     const cmd = create(CommandSchema, { kind }).kind;
     const m = this.demoMachines.get(machineId);
+    if (cmd.case === "probeLatency") {
+      if (!m?.online) throw new CommandError("unavailable", "电脑不在线，指令没有发出");
+      if (!cmd.value.work) {
+        await this.pause(20);
+        return create(CommandResultSchema, {
+          kind: { case: "probeLatency", value: { processUs: 1_000n, queueUs: 0n, executeUs: 0n } },
+        });
+      }
+      await this.pause(machineId === "vps" ? 80 : 25);
+      return create(CommandResultSchema, {
+        kind: {
+          case: "probeLatency",
+          value: machineId === "vps"
+            ? { processUs: 1_790_000n, queueUs: 20_000n, executeUs: 1_770_000n }
+            : { processUs: 21_000n, queueUs: 2_000n, executeUs: 19_000n },
+        },
+      });
+    }
+    await this.pause(500);
     if (!m?.online)
       throw new CommandError("unavailable", "电脑不在线，指令没有发出");
     if (cmd.case === "schedule") {

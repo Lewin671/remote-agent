@@ -4,9 +4,12 @@ import { create, type MessageInitShape } from "@bufbuild/protobuf";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
+import { ConnProbeState } from "./core/host";
 import { ConnState } from "./gen/remoteagent/core/v1/home_view_pb";
 import {
   ConnCheckSummaryViewSchema,
+  MachineLatencyState,
+  MachineLatencyViewSchema,
   MachineListCardViewSchema,
   type ConnCheckSummaryView,
   type MachineListCardView,
@@ -23,8 +26,26 @@ function plain(literal: string) {
 
 function makeMachines(): MachineListCardView[] {
   return [
-    create(MachineListCardViewSchema, { machineId: "mac", name: "MacBook", online: true, member: true }),
-    create(MachineListCardViewSchema, { machineId: "vps", name: "VPS-dev", online: true, member: true }),
+    create(MachineListCardViewSchema, {
+      machineId: "mac",
+      name: "MacBook",
+      online: true,
+      member: true,
+      latency: create(MachineLatencyViewSchema, {
+        state: MachineLatencyState.DONE,
+        valueText: plain("34 ms"),
+      }),
+    }),
+    create(MachineListCardViewSchema, {
+      machineId: "vps",
+      name: "VPS-dev",
+      online: true,
+      member: true,
+      latency: create(MachineLatencyViewSchema, {
+        state: MachineLatencyState.DONE,
+        valueText: plain("120 ms"),
+      }),
+    }),
     create(MachineListCardViewSchema, { machineId: "mini", name: "Mac mini", online: false, member: true }),
   ];
 }
@@ -49,7 +70,9 @@ it("shows a disconnected push stream even when server and computer round trips s
     lastFailureText: plain("同步设备状态超时，正在重连"),
   });
   const server = vi.fn().mockResolvedValue(12);
-  const machine = vi.fn().mockResolvedValue(34);
+  const startCheck = vi.fn();
+  const stopCheck = vi.fn();
+  const reportProbe = vi.fn();
   const reconnect = vi.fn();
   const host = document.createElement("div"); document.body.append(host);
   const root = createRoot(host);
@@ -60,25 +83,30 @@ it("shows a disconnected push stream even when server and computer round trips s
       machines={machines}
       serverHost="example.com"
       pingServer={server}
-      pingMachine={machine}
+      onReportProbe={reportProbe}
+      onStartCheck={startCheck}
+      onStopCheck={stopCheck}
       onReconnect={reconnect}
       onClose={() => {}}
     />
   );
   try {
     await act(async () => root.render(render(initial)));
-    expect(server).toHaveBeenCalledTimes(3); expect(machine).toHaveBeenCalled();
+    expect(server).toHaveBeenCalledTimes(3);
+    expect(startCheck).toHaveBeenCalledTimes(1);
+    expect(reportProbe).toHaveBeenNthCalledWith(1, ConnProbeState.CHECKING);
+    expect(reportProbe).toHaveBeenNthCalledWith(2, ConnProbeState.WORKING, 12);
     expect(host.textContent).toContain("12 ms"); expect(host.textContent).toContain("34 ms");
     // Diagnostics never suppress the waiting row with the cached-content delay.
     expect(connWord(initial).text).toBe("");
     expect(push()?.textContent).toBe("实时推送重连中");
     expect(host.textContent).toContain("实时推送未连接，会话变化可能延迟");
     expect(host.textContent).toContain("同步设备状态超时，正在重连");
-    const probes = machine.mock.calls.length;
     const retry = [...host.querySelectorAll("button")].find(b => b.textContent === message("connection.reconnect_now"))!;
     await act(async () => retry.click());
     expect(reconnect).toHaveBeenCalledTimes(1);
-    expect(server).toHaveBeenCalledTimes(3); expect(machine).toHaveBeenCalledTimes(probes);
+    expect(server).toHaveBeenCalledTimes(3);
+    expect(startCheck).toHaveBeenCalledTimes(1);
     await act(async () => root.render(render(makeSummary({ connState: ConnState.CONNECTED, everOnline: true }))));
     expect(push()?.textContent).toBe("实时推送已连接");
     expect(host.textContent).not.toContain("实时推送未连接");
@@ -87,19 +115,42 @@ it("shows a disconnected push stream even when server and computer round trips s
     const measure = [...host.querySelectorAll("button")].find(b => b.textContent === message("connection.test_again"))!;
     await act(async () => measure.click());
     expect(server).toHaveBeenCalledTimes(6);
+    expect(startCheck).toHaveBeenCalledTimes(2);
     expect(reconnect).toHaveBeenCalledTimes(1);
   } finally {
     act(() => root.unmount()); host.remove();
   }
+  expect(stopCheck).toHaveBeenCalledTimes(1);
 });
 
-it("probes directReady machines even when server ping fails", async () => {
+it("reports UNAVAILABLE to core when server ping fails and renders core machine states", async () => {
   const machines = [
-    create(MachineListCardViewSchema, { machineId: "mac", name: "MacBook", online: true, member: true, directReady: true }),
-    create(MachineListCardViewSchema, { machineId: "vps", name: "VPS-dev", online: true, member: true, directReady: false }),
+    create(MachineListCardViewSchema, {
+      machineId: "mac",
+      name: "MacBook",
+      online: true,
+      member: true,
+      directReady: true,
+      latency: create(MachineLatencyViewSchema, {
+        state: MachineLatencyState.DONE,
+        valueText: plain("22 ms"),
+      }),
+    }),
+    create(MachineListCardViewSchema, {
+      machineId: "vps",
+      name: "VPS-dev",
+      online: true,
+      member: true,
+      directReady: false,
+      latency: create(MachineLatencyViewSchema, {
+        state: MachineLatencyState.NOT_CHECKED,
+        valueText: create(TextSchema, { key: "connection.not_checked" }),
+      }),
+    }),
   ];
   const server = vi.fn().mockRejectedValue(new Error("服务器没有回应"));
-  const machine = vi.fn().mockResolvedValue(22);
+  const reportProbe = vi.fn();
+  const startCheck = vi.fn();
   const host = document.createElement("div"); document.body.append(host);
   const root = createRoot(host);
   try {
@@ -109,12 +160,14 @@ it("probes directReady machines even when server ping fails", async () => {
         machines={machines}
         serverHost="example.com"
         pingServer={server}
-        pingMachine={machine}
+        onReportProbe={reportProbe}
+        onStartCheck={startCheck}
         onReconnect={() => {}}
         onClose={() => {}}
       />,
     ));
-    expect(machine).toHaveBeenCalledExactlyOnceWith("mac", expect.any(AbortSignal));
+    expect(startCheck).toHaveBeenCalledTimes(1);
+    expect(reportProbe).toHaveBeenLastCalledWith(ConnProbeState.UNAVAILABLE, 0, "服务器没有回应");
     expect(host.textContent).toContain("22 ms");
     expect(host.textContent).toContain(message("connection.not_checked"));
   } finally {
@@ -126,7 +179,6 @@ it("shows the current attempt's step and ticking seconds without a failure warni
   vi.useFakeTimers(); vi.setSystemTime(10_000);
   const machines = makeMachines();
   const server = vi.fn().mockResolvedValue(12);
-  const machine = vi.fn().mockResolvedValue(34);
   const host = document.createElement("div"); document.body.append(host);
   const root = createRoot(host);
   const render = (cc: ConnCheckSummaryView) => (
@@ -135,7 +187,6 @@ it("shows the current attempt's step and ticking seconds without a failure warni
       machines={machines}
       serverHost="example.com"
       pingServer={server}
-      pingMachine={machine}
       onReconnect={() => {}}
       onClose={() => {}}
     />

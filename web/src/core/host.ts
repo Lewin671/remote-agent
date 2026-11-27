@@ -340,7 +340,9 @@ import {
   CheckForUpdatesEventSchema,
   ClientDetailScreenRequestSchema,
   ClientUpdateStateEventSchema,
+  ConnCheckStartEventSchema,
   ConnCheckStatusEventSchema,
+  ConnCheckStopEventSchema,
   ConnProbeState,
   DirectDiagnosticsScreenRequestSchema,
   MachineSettingsOpenEventSchema,
@@ -2925,6 +2927,14 @@ export class CoreHost {
 
   reportConnCheckStatus(serverState: ConnProbeState, latencyMs = 0, lastFailure = "") {
     if (!this.closed) this.emit({ case: "connCheckStatus", value: create(ConnCheckStatusEventSchema, { serverState, latencyMs, lastFailure }) });
+  }
+
+  startConnCheck() {
+    if (!this.closed) this.emit({ case: "connCheckStart", value: create(ConnCheckStartEventSchema) });
+  }
+
+  stopConnCheck() {
+    if (!this.closed) this.emit({ case: "connCheckStop", value: create(ConnCheckStopEventSchema) });
   }
 
   reportClientUpdateState(ev: Omit<Partial<ClientUpdateStateEvent>, "$typeName">) {

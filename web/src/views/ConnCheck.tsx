@@ -1,32 +1,41 @@
 import * as l10n from "../i18n";
-// 连接检测 (client-v34): how long a round trip takes now on each stretch of
-// the way, the nearest first: this device's network, the server, then
-// each computer through the server. Opened by hand when things feel slow
-// or stuck; nothing is measured in the background.
+// 连接检测 (client-v66): measures the nearest stretch first — this device's
+// network, the server (/healthz median of 3), and each online computer via
+// clientcore's probe_latency breakdown (network round-trip, computer
+// processing, and waiting-for-direct when rerouted). Opened on demand;
+// nothing is measured in the background.
 
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ConnProbeState, useCoreHost, useSettingsView } from "../core/host";
-import { renderText } from "../core/text";
+import { renderText as fmt } from "../core/text";
 import { ConnState } from "../gen/remoteagent/core/v1/home_view_pb";
 import {
+  MachineLatencyState,
   type ConnCheckSummaryView,
+  type MachineLatencyView,
   type MachineListCardView,
 } from "../gen/remoteagent/core/v1/settings_view_pb";
 import { errorText, type Remote } from "../remote";
 import { Banner, StateMark, Sheet, type Mark } from "../ui";
 import { LoaderCircle } from "../icons";
 
-type Ping = { state: "wait" } | { state: "ok"; ms: number } | { state: "fail"; error: string } | { state: "skip" };
+type ServerPing =
+  | { state: "wait" }
+  | { state: "ok"; ms: number; slow?: boolean }
+  | { state: "fail"; error: string }
+  | { state: "skip" };
 
-/** A round trip this long is called slow. A computer's goes through the
- * server twice and is sealed and opened on the way. */
+/** A server /healthz round trip this long is marked slow. */
 export const SLOW_SERVER_MS = 500;
-export const SLOW_MACHINE_MS = 1500;
 
 /** The middle one of the samples: one slow packet does not make the line slow. */
 export function median(samples: number[]): number {
   const s = [...samples].sort((a, b) => a - b);
   return s[Math.floor(s.length / 2)];
+}
+
+function formatMs(ms: number): string {
+  return Math.max(0, Math.round(ms)).toLocaleString("en-US");
 }
 
 /** The link to the server in a word, with its dot: what the sidebar's foot
@@ -45,15 +54,153 @@ export function connWord(
   };
 }
 
-function Result({ p, slow }: { p?: Ping; slow: number }) {
-  if (!p || p.state === "wait") return <span className="mv"><LoaderCircle /><em>{l10n.t("connection.checking")}</em></span>;
+function a11yGroupProps(value: string) {
+  return value ? ({ role: "group" as const, "aria-label": value }) : undefined;
+}
+
+function serverPingFromView(cc?: ConnCheckSummaryView): ServerPing {
+  switch (cc?.serverState) {
+    case ConnProbeState.WORKING:
+      return { state: "ok", ms: cc.latencyMs, slow: false };
+    case ConnProbeState.SLOW:
+      return { state: "ok", ms: cc.latencyMs, slow: true };
+    case ConnProbeState.UNAVAILABLE:
+      return { state: "fail", error: fmt(cc.lastFailureText) || l10n.t("connection.no_response") };
+    case ConnProbeState.NOT_CHECKED:
+      return { state: "skip" };
+    default:
+      return { state: "wait" };
+  }
+}
+
+function ServerResult({ p }: { p: ServerPing }) {
+  if (p.state === "wait") return <span className="mv"><LoaderCircle /><em>{l10n.t("connection.checking")}</em></span>;
   if (p.state === "skip") return <span className="mv">{l10n.t("connection.not_checked")}</span>;
   if (p.state === "fail") return <span className="mv red">{p.error}</span>;
+  const slow = p.slow ?? p.ms >= SLOW_SERVER_MS;
+  const ms = formatMs(p.ms);
+  const label = slow
+    ? l10n.t("connection.latency_ms_slow", { ms })
+    : l10n.t("connection.latency_ms", { ms });
   return (
     <span className="mv">
-      <StateMark kind={p.ms >= slow ? "off" : "online"} />
-      <em>{p.ms} ms{p.ms >= slow && l10n.t("connection.slow")}</em>
+      <StateMark kind={slow ? "off" : "online"} />
+      <em>{label}</em>
     </span>
+  );
+}
+
+function MachineLatencyValue({ lat }: { lat: MachineLatencyView }) {
+  const valueText = fmt(lat.valueText);
+  if (lat.state === MachineLatencyState.MEASURING) {
+    return (
+      <span className="mv">
+        <LoaderCircle />
+        <em>{valueText || l10n.t("connection.checking")}</em>
+      </span>
+    );
+  }
+  if (lat.state === MachineLatencyState.DONE) {
+    return (
+      <span className="mv">
+        <StateMark kind={lat.slow ? "off" : "online"} />
+        <em>{valueText}</em>
+      </span>
+    );
+  }
+  if (lat.state === MachineLatencyState.FAILED) {
+    return <span className="mv red">{valueText}</span>;
+  }
+  return <span className="mv"><em>{valueText || l10n.t("connection.not_checked")}</em></span>;
+}
+
+function MachineRow({ m }: { m: MachineListCardView }) {
+  const nameNode = (
+    <>
+      {m.name}
+      {m.disambiguator && (
+        <span className="mc-tag mc-tag-inline" aria-label={fmt(m.disambiguatorA11y) || undefined}>
+          {m.disambiguator}
+        </span>
+      )}
+    </>
+  );
+
+  if (!m.online) {
+    return (
+      <div className="mi" data-machine-id={m.machineId}>
+        <span className="mt">{nameNode}</span>
+        <span className="mv"><StateMark kind="off" /><em>{l10n.t("common.ios_offline")}</em></span>
+      </div>
+    );
+  }
+
+  const lat = m.latency;
+  if (!lat) {
+    return (
+      <div className="mi" data-machine-id={m.machineId}>
+        <span className="mt">{nameNode}</span>
+        <span className="mv">
+          <StateMark kind="off" />
+          <em>{fmt(m.statusText) || l10n.t("connection.not_checked")}</em>
+        </span>
+      </div>
+    );
+  }
+
+  const overrideSummary = fmt(lat.summaryOverrideText);
+  const directRow = m.directRow;
+  const directSummary = directRow?.visible
+    ? [fmt(directRow.statusText), fmt(directRow.detailText)].filter(Boolean).join(" · ")
+    : "";
+  const summary = overrideSummary || directSummary;
+  const segments = lat.segments;
+  const note = fmt(lat.noteText);
+  const a11yProps = a11yGroupProps(fmt(lat.a11yText));
+  const hasBody = segments.length > 0 || !!note;
+
+  if (!hasBody) {
+    return (
+      <div className="mi" data-machine-id={m.machineId} {...a11yProps}>
+        <span className="mt">
+          {nameNode}
+          {summary && <small className="direct-line">{summary}</small>}
+        </span>
+        <MachineLatencyValue lat={lat} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="mi pc" data-machine-id={m.machineId} {...a11yProps}>
+      <div className="conn-top">
+        <span className="mt">
+          {nameNode}
+          {summary && <small className="direct-line">{summary}</small>}
+        </span>
+        <MachineLatencyValue lat={lat} />
+      </div>
+      {segments.length > 0 && (
+        <dl className="conn-lg">
+          {segments.map((seg, idx) => {
+            const emphasized = seg.slow || seg.stuck;
+            const slowTag = seg.slow ? fmt(seg.slowLabelText) : "";
+            const detail = fmt(seg.detailText);
+            return (
+              <div key={idx} className={emphasized ? "slow" : undefined}>
+                <dt>
+                  {fmt(seg.labelText)}
+                  {slowTag && <span className="tg">{slowTag}</span>}
+                </dt>
+                <dd>{fmt(seg.valueText)}</dd>
+                {detail && <dd className="why">{detail}</dd>}
+              </div>
+            );
+          })}
+        </dl>
+      )}
+      {note && <p className="conn-nt">{note}</p>}
+    </div>
   );
 }
 
@@ -62,27 +209,28 @@ export function ConnCheckScreenView({
   machines: machineCards,
   serverHost,
   pingServer,
-  pingMachine,
   onReportProbe,
+  onStartCheck,
+  onStopCheck,
   onReconnect,
   onClose,
 }: {
   cc?: ConnCheckSummaryView;
   machines: MachineListCardView[];
   serverHost: string;
-  pingServer: (signal?: AbortSignal) => Promise<number>;
-  pingMachine: (id: string, signal?: AbortSignal) => Promise<number>;
+  pingServer?: (signal?: AbortSignal) => Promise<number>;
   onReportProbe?: (state: ConnProbeState, latencyMs?: number, lastFailure?: string) => void;
+  onStartCheck?: () => void;
+  onStopCheck?: () => void;
   onReconnect: () => void;
   onClose: () => void;
 }) {
-  const [server, setServer] = useState<Ping>();
-  const [machines, setMachines] = useState(new Map<string, Ping>());
-  const [busy, setBusy] = useState(false);
+  const [server, setServer] = useState<ServerPing>();
+  const [serverBusy, setServerBusy] = useState(false);
   const [now, setNow] = useState(Date.now);
   const down = cc?.connState !== ConnState.CONNECTED;
-  const connStep = renderText(cc?.connStep);
-  const connError = renderText(cc?.lastFailureText);
+  const connStep = fmt(cc?.connStep);
+  const connError = fmt(cc?.lastFailureText);
   const startedAt = cc && cc.connStartedAtMs > 0n ? Number(cc.connStartedAtMs) : undefined;
   const connecting = down && !!connStep && startedAt !== undefined;
   const network = cc?.networkAvailable ?? true;
@@ -96,58 +244,59 @@ export function ConnCheckScreenView({
   const stream = connWord(cc, true);
   const run = useRef(0);
   const activeAbort = useRef<AbortController | null>(null);
-  const cardsRef = useRef(machineCards);
-  cardsRef.current = machineCards;
+  const onReportProbeRef = useRef(onReportProbe);
+  onReportProbeRef.current = onReportProbe;
+  const onStartCheckRef = useRef(onStartCheck);
+  onStartCheckRef.current = onStartCheck;
+  const onStopCheckRef = useRef(onStopCheck);
+  onStopCheckRef.current = onStopCheck;
+
   const list = [...machineCards].sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name));
+
   const check = useCallback(async () => {
     activeAbort.current?.abort();
     const ctrl = new AbortController();
     activeAbort.current = ctrl;
     const mine = ++run.current;
-    const onlineCards = cardsRef.current.filter((m) => m.online);
-    const online = onlineCards.map((m) => m.machineId);
-    const directReadyById = new Map(onlineCards.map((m) => [m.machineId, m.directReady]));
-    setBusy(true);
+    onReportProbeRef.current?.(ConnProbeState.CHECKING);
+    onStartCheckRef.current?.();
+    if (!pingServer) return;
+    setServerBusy(true);
     setServer({ state: "wait" });
-    setMachines(new Map(online.map((id) => [id, { state: "wait" }])));
-    onReportProbe?.(ConnProbeState.CHECKING);
-    let reached = true;
     try {
       const samples: number[] = [];
       for (let i = 0; i < 3; i++) samples.push(await pingServer(ctrl.signal));
       if (mine !== run.current) return;
       const ms = median(samples);
       setServer({ state: "ok", ms });
-      onReportProbe?.(ms >= SLOW_SERVER_MS ? ConnProbeState.SLOW : ConnProbeState.WORKING, ms);
+      onReportProbeRef.current?.(ms >= SLOW_SERVER_MS ? ConnProbeState.SLOW : ConnProbeState.WORKING, ms);
     } catch (e) {
       if (mine !== run.current) return;
-      reached = false;
       const msg = errorText(e) || l10n.t("connection.no_response");
       setServer({ state: "fail", error: msg });
-      onReportProbe?.(ConnProbeState.UNAVAILABLE, 0, msg);
-      setMachines(new Map(online.map((id) => [id, { state: directReadyById.get(id) ? "wait" : "skip" }])));
+      onReportProbeRef.current?.(ConnProbeState.UNAVAILABLE, 0, msg);
+    } finally {
+      if (mine === run.current) setServerBusy(false);
     }
-    await Promise.all(
-      online.filter((id) => reached || directReadyById.get(id)).map(async (id) => {
-        const p: Ping = await pingMachine(id, ctrl.signal).then(
-          (ms) => ({ state: "ok", ms }),
-          (e) => ({ state: "fail", error: errorText(e) || l10n.t("connection.no_response") }),
-        );
-        if (mine === run.current) setMachines((m) => new Map(m).set(id, p));
-      }),
-    );
-    if (mine === run.current) setBusy(false);
-  }, [pingServer, pingMachine, onReportProbe]);
+  }, [pingServer]);
+
   useEffect(() => {
-    void check();
+    if (pingServer || onStartCheckRef.current) {
+      void check();
+    }
     return () => {
       run.current++;
       activeAbort.current?.abort();
       activeAbort.current = null;
+      onStopCheckRef.current?.();
     };
-  }, [check]);
+  }, [check, pingServer]);
+
+  const effectiveServer = server ?? serverPingFromView(cc);
+  const busy = serverBusy || !!cc?.machinesBusy;
+
   return (
-    <Sheet onClose={onClose} title={l10n.t("settings.server_and_connection")} action={{ label: l10n.t("common.done"), onClick: onClose }}>
+    <Sheet className="conn-sheet" onClose={onClose} title={l10n.t("settings.server_and_connection")} action={{ label: l10n.t("common.done"), onClick: onClose }}>
       {down && (
         <div className="set-banners">
           <Banner>
@@ -176,36 +325,11 @@ export function ConnCheckScreenView({
           <span className="mt">
             {l10n.t("security.server")}<small>{serverHost}</small>
           </span>
-          <Result p={server} slow={SLOW_SERVER_MS} />
+          <ServerResult p={effectiveServer} />
         </div>
-        {list.map((m) => {
-          const directRow = m.online ? m.directRow : undefined;
-          const status = directRow ? renderText(directRow.statusText) : "";
-          const detail = directRow ? renderText(directRow.detailText) : "";
-          const summary = [status, detail].filter(Boolean).join(" · ");
-          return (
-            <Fragment key={m.machineId}>
-              <div className="mi">
-                <span className="mt">
-                  {m.name}
-                  {m.disambiguator && (
-                    <span className="mc-tag mc-tag-inline" aria-label={renderText(m.disambiguatorA11y) || undefined}>
-                      {m.disambiguator}
-                    </span>
-                  )}
-                </span>
-                {m.online ? <Result p={machines.get(m.machineId)} slow={SLOW_MACHINE_MS} /> : <span className="mv"><StateMark kind="off" /><em>{l10n.t("common.ios_offline")}</em></span>}
-              </div>
-              {directRow?.visible && summary && (
-                <div className="mi conn-direct" data-machine-id={m.machineId}>
-                  <span className="mt">{summary}</span>
-                </div>
-              )}
-            </Fragment>
-          );
-        })}
+        {list.map((m) => <MachineRow key={m.machineId} m={m} />)}
       </div>
-      <p className="gf">{renderText(cc?.footerText) || l10n.t("connection.latency_is_one_round_trip_the_server_row_measures")}</p>
+      <p className="gf">{fmt(cc?.footerText) || l10n.t("connection.latency_is_one_round_trip_the_server_row_measures")}</p>
       <div className="btns conn-again">
         {down && <button className="btn pri" onClick={onReconnect}>{l10n.t("connection.reconnect_now")}</button>}
         <button className={down ? "btn" : "btn pri"} disabled={busy} onClick={() => void check()}>
@@ -219,12 +343,13 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
   const host = useCoreHost(remote);
   const settingsVm = useSettingsView(host);
   const pingServer = useCallback((signal?: AbortSignal) => remote.pingServer(undefined, signal), [remote]);
-  const pingMachine = useCallback((id: string, signal?: AbortSignal) => remote.pingMachine(id, undefined, signal), [remote]);
   const onReportProbe = useCallback(
     (state: ConnProbeState, latencyMs?: number, lastFailure?: string) =>
       host.reportConnCheckStatus(state, latencyMs, lastFailure),
     [host],
   );
+  const onStartCheck = useCallback(() => { host.startConnCheck(); }, [host]);
+  const onStopCheck = useCallback(() => { host.stopConnCheck(); }, [host]);
   const onReconnect = useCallback(() => { host.reconnectNow(); }, [host]);
   return (
     <ConnCheckScreenView
@@ -232,8 +357,9 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
       machines={settingsVm.machines}
       serverHost={new URL(remote.account.server).host}
       pingServer={pingServer}
-      pingMachine={pingMachine}
       onReportProbe={onReportProbe}
+      onStartCheck={onStartCheck}
+      onStopCheck={onStopCheck}
       onReconnect={onReconnect}
       onClose={onClose}
     />
