@@ -243,6 +243,43 @@ class UnauthenticatedScreensTest {
     }
 
     @Test
+    fun accountSecurityShowsNeedsRotationBannerAndOpensRecovery() {
+        var openedRecovery = false
+        val vm = AccountSecurityViewModel.newBuilder()
+            .setIsManager(true)
+            .setCanOpenRecovery(true)
+            .setNeedsRotationBanner(true)
+            .build()
+        show {
+            androidx.compose.runtime.CompositionLocalProvider(
+                LocalNav provides Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {}),
+            ) {
+                AccountSecurityContent(vm = vm, onRecovery = { openedRecovery = true })
+            }
+        }
+        ui.onNodeWithText("新恢复码尚未确认备份，请立即换码并离线保存。").assertExists()
+        ui.onNodeWithText("恢复码").assertExists().performClick()
+        assertTrue(openedRecovery)
+    }
+
+    @Test
+    fun accountSecurityHidesNeedsRotationBannerWhenFalse() {
+        val vm = AccountSecurityViewModel.newBuilder()
+            .setIsManager(true)
+            .setCanOpenRecovery(true)
+            .setNeedsRotationBanner(false)
+            .build()
+        show {
+            androidx.compose.runtime.CompositionLocalProvider(
+                LocalNav provides Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {}),
+            ) {
+                AccountSecurityContent(vm = vm)
+            }
+        }
+        ui.onNodeWithText("新恢复码尚未确认备份，请立即换码并离线保存。").assertDoesNotExist()
+    }
+
+    @Test
     fun pendingSecurityOperationPageRendersDiscardFromViewModel() {
         var discardedWith: Boolean? = null
         val vm = AccountSecurityViewModel.newBuilder()

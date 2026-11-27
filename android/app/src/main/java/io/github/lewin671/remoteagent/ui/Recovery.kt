@@ -210,6 +210,15 @@ internal fun AccountSecurityContent(
                     )
                 }
             }
+            if (vm.needsRotationBanner) {
+                Notice(
+                    copy(UiMessages.securityTheNewRecoveryCodeBackupIsUnconfirmedReplaceThe()),
+                    Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                    NoticeTone.WARN,
+                    action = copy(UiMessages.securityRecoveryCode()),
+                    onAction = onRecovery,
+                )
+            }
             if (pendingRemove.isNotEmpty()) {
                 Notice(
                     pendingRemove,
