@@ -28,9 +28,19 @@ import Testing
 
     private final class Recorder<T>: @unchecked Sendable {
         private let lock = NSLock()
+        private let signal = AsyncSignal()
         private var list: [T] = []
-        func append(_ item: T) { lock.withLock { list.append(item) } }
+        func append(_ item: T) {
+            lock.withLock { list.append(item) }
+            signal.signal()
+        }
         var items: [T] { lock.withLock { list } }
+        func wait(until predicate: @Sendable ([T]) -> Bool) async throws {
+            while !predicate(items) {
+                try Task.checkCancellation()
+                await signal.wait(ms: 1_000)
+            }
+        }
     }
 
     @Test(.timeLimit(.minutes(1))) func signalFraming() throws {
@@ -104,13 +114,24 @@ import Testing
         exec.pcConfirm(.with { $0.pcID = 101; $0.machineID = "m1"; $0.use = 0 })
         exec.pcConfirm(.with { $0.pcID = 102; $0.machineID = "m1"; $0.use = 1 })
 
-        while emitted.items.filter({ if case .directDcState(let s)? = $0.event { return s.open }; return false }).count < 2 {
-            try await Task.sleep(nanoseconds: 10_000_000)
+        try await emitted.wait { items in
+            items.filter({ if case .directDcState(let s)? = $0.event { return s.open }; return false }).count >= 2
         }
 
         let pc102 = try #require(net.all.last)
         let reqID = "req-1"
-        async let rpcReply = exec.sendRpc(pcId: 101, requestId: reqID, sealedBytes: Data("req".utf8), timeoutMs: 2_000) {}
+        let rpcSent = AsyncSignal()
+        let rpcSentFlag = Recorder<Bool>()
+        // Anti-hang upper bound only (DirectExecutor caps at 30 s); reply is injected
+        // deterministically as soon as sendRpc invokes handoff after installing pendingRpc.
+        async let rpcReply = exec.sendRpc(pcId: 101, requestId: reqID, sealedBytes: Data("req".utf8), timeoutMs: 30_000) {
+            rpcSentFlag.append(true)
+            rpcSent.signal()
+        }
+        while rpcSentFlag.items.isEmpty {
+            try Task.checkCancellation()
+            await rpcSent.wait(ms: 1_000)
+        }
 
         let replyEnv = try PBEnvelope.with { env in
             env.header = try PBHeader.with {
@@ -141,8 +162,8 @@ import Testing
 
         // Closing 101 by Core must NOT emit directPcClosed for 101 (while peer 102 disconnecting does emit 102).
         exec.pcClose(.with { $0.pcID = 101; $0.reason = "done" })
-        while !emitted.items.contains(where: { if case .directPcClosed(let c)? = $0.event { return c.pcID == 102 }; return false }) {
-            try await Task.sleep(nanoseconds: 10_000_000)
+        try await emitted.wait { items in
+            items.contains(where: { if case .directPcClosed(let c)? = $0.event { return c.pcID == 102 }; return false })
         }
         let closedFor101 = emitted.items.filter { if case .directPcClosed(let c)? = $0.event { return c.pcID == 101 }; return false }.count
         let closedFor102 = emitted.items.filter { if case .directPcClosed(let c)? = $0.event { return c.pcID == 102 }; return false }.count
@@ -152,12 +173,16 @@ import Testing
 
     @Test(.timeLimit(.minutes(1))) func blockingPcCloseDoesNotBlockExecutor() async throws {
         let net = FakeRtcNet()
+        let netSignal = AsyncSignal()
+        net.onEvent = { netSignal.signal() }
         let factory = FakeRtcFactory(net: net)
         let emitted = Recorder<PBCoreEvent>()
+        let scheduledCloses = Recorder<@Sendable () -> Void>()
         let exec = DirectExecutor(
             emit: { ev in emitted.append(ev) },
             onPushedEvent: { _, _, _, _, _ in },
-            factory: factory
+            factory: factory,
+            closeDispatch: { block in scheduledCloses.append(block) }
         )
         defer { net.releaseClose(); exec.close() }
 
@@ -166,18 +191,34 @@ import Testing
         })
         net.holdClose()
         exec.pcClose(.with { $0.pcID = 201; $0.reason = "done" })
-        // pcClose must return immediately without waiting on pc.close().
+
+        // pcClose must return synchronously by handing pc.close() to closeDispatch without running it inline.
+        #expect(scheduledCloses.items.count == 1)
+        #expect(net.closeEntered == 0)
         #expect(net.closeFinished == 0)
 
-        // The close runs on a utility queue; wait for it to start rather than
-        // for a wall-clock deadline, which a loaded CI runner can miss.
+        // Drive the recorded close block on a dedicated test queue so it blocks on net.holdClose()
+        // without depending on global GCD pool scheduling.
+        let closeBlock = try #require(scheduledCloses.items.first)
+        let closeQueue = DispatchQueue(label: "test.blocking-pc-close")
+        closeQueue.async(execute: closeBlock)
+
         while net.closeEntered == 0 {
-            try await Task.sleep(nanoseconds: 10_000_000)
+            try Task.checkCancellation()
+            await netSignal.wait(ms: 1_000)
         }
         #expect(net.closeFinished == 0)
+
+        // While pc 201's close is blocked inside libwebrtc, DirectExecutor remains unblocked for new work.
+        exec.pcCreate(.with {
+            $0.roundID = 21; $0.machineID = "m1"; $0.pcID = 202; $0.use = 0; $0.generation = 2; $0.stunServers = ["stun:127.0.0.1:3478"]
+        })
+        #expect(emitted.items.contains { if case .directPcCreated(let c)? = $0.event { return c.pcID == 202 && c.ok }; return false })
+
         net.releaseClose()
         while net.closeFinished == 0 {
-            try await Task.sleep(nanoseconds: 10_000_000)
+            try Task.checkCancellation()
+            await netSignal.wait(ms: 1_000)
         }
     }
 
@@ -209,7 +250,7 @@ import Testing
         pc1.listener.onIceCandidate(RtcIceCandidate(candidate: "candidate:9 1 udp 1 192.0.2.9 9999 typ host", sdpMid: "0", sdpMLineIndex: 0, isSrflx: false))
         pc1.listener.onConnectionStateChange(.failed)
         pc1.channels[0]?.set(.closed)
-        try await Task.sleep(nanoseconds: 50_000_000)
+        await Task.yield()
 
         let lateEvents = Array(emitted.items.dropFirst(beforeLate))
         #expect(lateEvents.isEmpty)

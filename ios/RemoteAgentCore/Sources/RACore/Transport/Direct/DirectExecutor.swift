@@ -63,6 +63,7 @@ final class DirectExecutor: @unchecked Sendable {
     private let factory: (any RtcFactory)?
     private let clock: @Sendable () -> UInt64
     private let monotonic: @Sendable () -> Double
+    private let closeDispatch: @Sendable (@escaping @Sendable () -> Void) -> Void
 
     let budget = DirectBudget()
     private let lock = NSLock()
@@ -77,7 +78,10 @@ final class DirectExecutor: @unchecked Sendable {
         onTerminalOutput: (@Sendable (_ machineId: String, _ pcId: UInt64, _ env: PBEnvelope, _ header: PBHeader, _ raw: Data) -> Void)? = nil,
         factory: (any RtcFactory)? = nil,
         clock: @escaping @Sendable () -> UInt64 = { UInt64(Date().timeIntervalSince1970 * 1000) },
-        monotonic: @escaping @Sendable () -> Double = { Double(DispatchTime.now().uptimeNanoseconds) / 1e6 }
+        monotonic: @escaping @Sendable () -> Double = { Double(DispatchTime.now().uptimeNanoseconds) / 1e6 },
+        closeDispatch: @escaping @Sendable (@escaping @Sendable () -> Void) -> Void = { block in
+            DispatchQueue.global(qos: .default).async(execute: block)
+        }
     ) {
         self.emit = emit
         self.onPushedEvent = onPushedEvent
@@ -85,6 +89,7 @@ final class DirectExecutor: @unchecked Sendable {
         self.factory = factory
         self.clock = clock
         self.monotonic = monotonic
+        self.closeDispatch = closeDispatch
     }
 
     private func emitEvent(_ build: (inout PBCoreEvent) -> Void) {
@@ -226,7 +231,8 @@ final class DirectExecutor: @unchecked Sendable {
                     }
                 },
                 clock: clock,
-                monotonic: monotonic
+                monotonic: monotonic,
+                closeDispatch: closeDispatch
             ))
             let stillActive = lock.withLock { () -> Bool in
                 guard !closed, pcs[eff.pcID] === entry else { return false }

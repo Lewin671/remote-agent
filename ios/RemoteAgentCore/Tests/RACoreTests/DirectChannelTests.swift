@@ -27,8 +27,12 @@ import Testing
         let budgetA = DirectBudget()
         let budgetB = DirectBudget()
         let deliveredB = Box<[Data]>([])
+        let deliveredSignal = AsyncSignal()
         let closedA = Box(false)
         let closedB = Box(false)
+        let closedBSignal = AsyncSignal()
+        let virtualNow = Box<Double>(1_000)
+        let pendingCloses = Box<[@Sendable () -> Void]>([])
 
         let chA = try DirectChannel(DirectChannelOptions(
             peer: "m1",
@@ -42,7 +46,10 @@ import Testing
             candidate: { _ in },
             state: { _, _ in },
             frame: { _ in },
-            closed: { closedA.withValue { $0 = true } }
+            closed: { closedA.withValue { $0 = true } },
+            monotonic: { virtualNow.get() },
+            autoTick: false,
+            closeDispatch: { block in pendingCloses.withValue { $0.append(block) } }
         ))
         let chB = try DirectChannel(DirectChannelOptions(
             peer: "m1",
@@ -55,9 +62,27 @@ import Testing
             factory: factory,
             candidate: { _ in },
             state: { _, _ in },
-            frame: { data in deliveredB.withValue { $0.append(data) } },
-            closed: { closedB.withValue { $0 = true } }
+            frame: { data in
+                deliveredB.withValue { $0.append(data) }
+                deliveredSignal.signal()
+            },
+            closed: {
+                closedB.withValue { $0 = true }
+                closedBSignal.signal()
+            },
+            monotonic: { virtualNow.get() },
+            autoTick: false,
+            closeDispatch: { block in pendingCloses.withValue { $0.append(block) } }
         ))
+        defer {
+            chA.close()
+            chB.close()
+            let blocks = pendingCloses.withValue { list -> [@Sendable () -> Void] in
+                defer { list.removeAll() }
+                return list
+            }
+            for block in blocks { block() }
+        }
 
         let offer = try await chA.description(offer: true)
         try await chB.remote(offer, offer: true)
@@ -66,9 +91,6 @@ import Testing
         chA.confirm()
         chB.confirm()
 
-        while (!chA.ready || !chB.ready) {
-            try await Task.sleep(nanoseconds: 10_000_000)
-        }
         #expect(chA.ready && chB.ready)
 
         // Multi-fragment write (40 KiB > 16 KiB frame limit).
@@ -78,7 +100,8 @@ import Testing
         #expect(handoffCount.get() == 1)
 
         while deliveredB.get().isEmpty {
-            try await Task.sleep(nanoseconds: 10_000_000)
+            try Task.checkCancellation()
+            await deliveredSignal.wait(ms: 1_000)
         }
         #expect(deliveredB.get() == [payload])
 
@@ -89,7 +112,8 @@ import Testing
         _ = try #require(pcA.channels[0]).send(bogus)
 
         while !closedB.get() {
-            try await Task.sleep(nanoseconds: 10_000_000)
+            try Task.checkCancellation()
+            await closedBSignal.wait(ms: 1_000)
         }
         #expect(closedB.get())
 
@@ -105,6 +129,7 @@ import Testing
         let budgetA = DirectBudget()
         let budgetB = DirectBudget()
         let closedA = Box(false)
+        let virtualNow = Box<Double>(1_000)
 
         let chA = try DirectChannel(DirectChannelOptions(
             peer: "m1",
@@ -118,7 +143,9 @@ import Testing
             candidate: { _ in },
             state: { _, _ in },
             frame: { _ in },
-            closed: { closedA.withValue { $0 = true } }
+            closed: { closedA.withValue { $0 = true } },
+            monotonic: { virtualNow.get() },
+            autoTick: false
         ))
         let chB = try DirectChannel(DirectChannelOptions(
             peer: "m1",
@@ -132,7 +159,9 @@ import Testing
             candidate: { _ in },
             state: { _, _ in },
             frame: { _ in },
-            closed: {}
+            closed: {},
+            monotonic: { virtualNow.get() },
+            autoTick: false
         ))
         defer { chA.close(); chB.close() }
 
@@ -143,19 +172,15 @@ import Testing
         chA.confirm()
         chB.confirm()
 
-        // Wait for the condition itself, not a wall-clock deadline: a loaded
-        // CI runner can starve the channel's tasks for seconds.
-        while !chA.ready || !chB.ready {
-            try await Task.sleep(nanoseconds: 10_000_000)
-        }
+        #expect(chA.ready && chB.ready)
 
         // SDK transitions DataChannel state to .closed without emitting onStateChange().
         let pcA = try #require(net.all.first)
         try #require(pcA.channels[0]).setSilent(.closed)
+        #expect(!closedA.get())
 
-        while !closedA.get() {
-            try await Task.sleep(nanoseconds: 20_000_000)
-        }
+        chA.tickOnce()
+        #expect(closedA.get())
     }
 }
 

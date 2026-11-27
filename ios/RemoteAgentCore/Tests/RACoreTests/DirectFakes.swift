@@ -7,6 +7,7 @@ import RAProto
 /// everything (UDP lost), and gathers a server-reflexive candidate only when STUN "works".
 final class FakeRtcNet: @unchecked Sendable {
     private let lock = NSLock()
+    let deliveryQueue = DispatchQueue(label: "fake-rtc-net.delivery")
     private var byUfrag: [String: FakePC] = [:]
     private(set) var created: [FakePC] = []
     var stunWorks = true { didSet {} }
@@ -69,7 +70,7 @@ final class FakeRtcChannel: RtcDataChannel, @unchecked Sendable {
     func send(_ data: Data) -> Bool {
         guard state == .open, let owner, let peer = owner.peer, !owner.net.blackhole else { return state == .open }
         let target = peer.channels[id]
-        Task.detached { target?.listener.onMessage(data) }
+        owner.net.deliveryQueue.async { target?.listener.onMessage(data) }
         return true
     }
     func close() { set(.closed) }
@@ -103,7 +104,7 @@ final class FakePC: RtcPeerConnection, @unchecked Sendable {
     func setLocalDescription(offer: Bool, sdp: String) async throws {
         lock.withLock { local = true }
         let works = net.stunWorks
-        Task.detached { [self] in
+        net.deliveryQueue.async { [self] in
             if works { listener.onIceCandidate(RtcIceCandidate(candidate: "candidate:1 1 udp 1686052607 203.0.113.9 50000 typ srflx raddr 0.0.0.0 rport 0", sdpMid: "0", sdpMLineIndex: 0, isSrflx: true)) }
             listener.onIceGatheringComplete()
         }

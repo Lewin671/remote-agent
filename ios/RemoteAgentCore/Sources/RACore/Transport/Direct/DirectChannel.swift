@@ -172,6 +172,10 @@ struct DirectChannelOptions: Sendable {
     var probeReply: (@Sendable (Data) -> Void)? = nil
     var clock: @Sendable () -> UInt64 = { UInt64(Date().timeIntervalSince1970 * 1000) }
     var monotonic: @Sendable () -> Double = { Double(DispatchTime.now().uptimeNanoseconds) / 1e6 }
+    var autoTick: Bool = true
+    var closeDispatch: @Sendable (@escaping @Sendable () -> Void) -> Void = { block in
+        DispatchQueue.global(qos: .default).async(execute: block)
+    }
 }
 
 /// Framed WebRTC DataChannel pair (id 0 reliable data, id 1 unreliable probe); signaling, state machine,
@@ -218,18 +222,20 @@ final class DirectChannel: @unchecked Sendable {
             options.budget.release(options.peer, options.use)
             throw PathChanged()
         }
-        // Reassembly and SHA-256 verification stay off caller actors.
-        Task.detached(priority: .utility) { [weak self] in
+        // Reassembly and SHA-256 verification stay off caller actors without utility-QoS starvation.
+        Task.detached { [weak self] in
             for await raw in stream {
                 guard let self, self.valid() else { break }
                 do { try self.receive(raw) } catch { self.close(); break }
             }
         }
-        tick = Task.detached { [weak self] in
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 100_000_000)
-                guard let self, !self.isEnded else { return }
-                self.tickOnce()
+        if options.autoTick {
+            tick = Task.detached { [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: 100_000_000)
+                    guard let self, !self.isEnded else { return }
+                    self.tickOnce()
+                }
             }
         }
     }
@@ -308,7 +314,7 @@ final class DirectChannel: @unchecked Sendable {
         return true
     }
 
-    private func tickOnce() {
+    func tickOnce() {
         guard valid() else { close(); return }
         if lock.withLock({ confirmed }) && (data.state == .closed || probe.state == .closed) {
             close()
@@ -498,7 +504,7 @@ final class DirectChannel: @unchecked Sendable {
         cleanup({ [options] in options.closed() }, { [self] in releaseReservation() })
         let peerConn = pc
         // PeerConnection.close() can block inside libwebrtc locks; never stall callers or Swift's cooperative pool.
-        DispatchQueue.global(qos: .utility).async { peerConn?.close() }
+        options.closeDispatch { peerConn?.close() }
     }
 
     private func releaseReservation() {
