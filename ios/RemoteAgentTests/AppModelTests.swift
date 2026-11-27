@@ -99,6 +99,32 @@ private func awaitObservation(_ condition: @MainActor () -> Bool) async throws {
     }
 }
 
+/// Tracks the current phase of an async test so Swift Testing `.timeLimit`
+/// cancellation immediately reports where the test stalled.
+private final class PhaseTracker: Sendable {
+    private let current = OSAllocatedUnfairLock<String>(initialState: "init")
+
+    func enter(_ phase: String) {
+        current.withLock { $0 = phase }
+    }
+
+    var phase: String {
+        current.withLock { $0 }
+    }
+}
+
+@MainActor
+private func withPhaseDiagnostics(
+    _ body: @MainActor (PhaseTracker) async throws -> Void
+) async throws {
+    let tracker = PhaseTracker()
+    try await withTaskCancellationHandler {
+        try await body(tracker)
+    } onCancel: {
+        Issue.record("timed out in phase: \(tracker.phase)")
+    }
+}
+
 /// A network watcher that says only what the test tells it.
 final class FakeNetwork: NetworkWatching, @unchecked Sendable {
     func start(_ onChange: @escaping @Sendable (NetworkPath) -> Void) {}
@@ -474,58 +500,82 @@ final class Harness {
     }
 
     @Test func corruptRegistrationIntentSurfacesBootstrapErrorAndSetupResetRecoversInPlace() async throws {
-        let h = Harness(); defer { h.cleanUp() }
-        let seed = h.vault.executeStorage(.with {
-            $0.op = .writeCas
-            $0.bucket = .registrationIntent
-            $0.key = "intent"
-            $0.createOnly = true
-            $0.nextRevision = "r1"
-            $0.data = Data("synthetic-invalid-receipt".utf8)
-        })
-        #expect(seed.error.isEmpty && !seed.conflict)
-        h.model.setForeground(true)
-        try await h.awaitLoaded()
-        #expect(h.model.screens.appRoot.stage == .bootstrapError)
-        #expect(h.model.screens.appRoot.bootstrapError.canReset)
-        #expect(h.vault.hasPersistedState())
+        try await withPhaseDiagnostics { phase in
+            let h = Harness(); defer { h.cleanUp() }
+            phase.enter("seedCorruptIntent")
+            let seed = h.vault.executeStorage(.with {
+                $0.op = .writeCas
+                $0.bucket = .registrationIntent
+                $0.key = "intent"
+                $0.createOnly = true
+                $0.nextRevision = "r1"
+                $0.data = Data("synthetic-invalid-receipt".utf8)
+            })
+            #expect(seed.error.isEmpty && !seed.conflict)
+            phase.enter("awaitBootstrapError")
+            h.model.setForeground(true)
+            try await h.awaitLoaded()
+            #expect(h.model.screens.appRoot.stage == .bootstrapError)
+            #expect(h.model.screens.appRoot.bootstrapError.canReset)
+            #expect(h.vault.hasPersistedState())
 
-        await h.model.coreHost.exitRequest(intent: .setupReset)
-        try await awaitObservation { h.model.screens.exitConfirm.step == .awaitingConfirm }
-        await h.model.coreHost.exitConfirm(true)
-        try await h.unregisteredPushSignal.wait(atLeast: 1)
-        try await h.clearedSignal.wait(atLeast: 1)
-        try await awaitObservation { h.model.screens.appRoot.stage == .onboarding }
+            phase.enter("exitRequest")
+            await h.model.coreHost.exitRequest(intent: .setupReset)
+            phase.enter("awaitAwaitingConfirm")
+            try await awaitObservation { h.model.screens.exitConfirm.step == .awaitingConfirm }
+            phase.enter("exitConfirm")
+            await h.model.coreHost.exitConfirm(true)
+            phase.enter("waitUnregisteredPush")
+            try await h.unregisteredPushSignal.wait(atLeast: 1)
+            phase.enter("waitCleared")
+            try await h.clearedSignal.wait(atLeast: 1)
+            phase.enter("awaitOnboarding")
+            try await awaitObservation { h.model.screens.appRoot.stage == .onboarding }
 
-        #expect(!h.vault.hasPersistedState())
-        #expect(h.unregisteredPush == 1)
-        #expect(h.cleared == 1)
+            phase.enter("verifyCleared")
+            #expect(!h.vault.hasPersistedState())
+            #expect(h.unregisteredPush == 1)
+            #expect(h.cleared == 1)
+            phase.enter("done")
+        }
     }
 
     @Test func corruptRecordSurfacesBootstrapErrorAndSetupResetClearsState() async throws {
-        let h = Harness(); defer { h.cleanUp() }
-        let seed = h.vault.executeStorage(.with {
-            $0.op = .writeCas
-            $0.bucket = .record
-            $0.key = "record"
-            $0.createOnly = true
-            $0.nextRevision = "r1"
-            $0.data = Data([1, 2, 3, 4])
-        })
-        #expect(seed.error.isEmpty && !seed.conflict)
-        h.model.setForeground(true)
-        try await h.awaitLoaded()
-        #expect(h.model.screens.appRoot.stage == .bootstrapError)
-        #expect(h.model.screens.appRoot.bootstrapError.canReset)
+        try await withPhaseDiagnostics { phase in
+            let h = Harness(); defer { h.cleanUp() }
+            phase.enter("seedCorruptRecord")
+            let seed = h.vault.executeStorage(.with {
+                $0.op = .writeCas
+                $0.bucket = .record
+                $0.key = "record"
+                $0.createOnly = true
+                $0.nextRevision = "r1"
+                $0.data = Data([1, 2, 3, 4])
+            })
+            #expect(seed.error.isEmpty && !seed.conflict)
+            phase.enter("awaitBootstrapError")
+            h.model.setForeground(true)
+            try await h.awaitLoaded()
+            #expect(h.model.screens.appRoot.stage == .bootstrapError)
+            #expect(h.model.screens.appRoot.bootstrapError.canReset)
 
-        await h.model.coreHost.exitRequest(intent: .setupReset)
-        try await awaitObservation { h.model.screens.exitConfirm.step == .awaitingConfirm }
-        await h.model.coreHost.exitConfirm(true)
-        try await h.unregisteredPushSignal.wait(atLeast: 1)
-        try await h.clearedSignal.wait(atLeast: 1)
-        try await awaitObservation { h.model.screens.appRoot.stage == .onboarding }
-        #expect(h.unregisteredPush == 1)
-        #expect(!h.vault.hasPersistedState())
+            phase.enter("exitRequest")
+            await h.model.coreHost.exitRequest(intent: .setupReset)
+            phase.enter("awaitAwaitingConfirm")
+            try await awaitObservation { h.model.screens.exitConfirm.step == .awaitingConfirm }
+            phase.enter("exitConfirm")
+            await h.model.coreHost.exitConfirm(true)
+            phase.enter("waitUnregisteredPush")
+            try await h.unregisteredPushSignal.wait(atLeast: 1)
+            phase.enter("waitCleared")
+            try await h.clearedSignal.wait(atLeast: 1)
+            phase.enter("awaitOnboarding")
+            try await awaitObservation { h.model.screens.appRoot.stage == .onboarding }
+            phase.enter("verifyCleared")
+            #expect(h.unregisteredPush == 1)
+            #expect(!h.vault.hasPersistedState())
+            phase.enter("done")
+        }
     }
 
     @Test func lockedKeychainDisablesResetAndAutoRetriesOnForegroundResume() async throws {
@@ -605,80 +655,103 @@ final class Harness {
     }
 
     @Test func clearAccountCachesWipesStorageAndResetsContext() async throws {
-        let h = Harness(); defer { h.cleanUp() }
-        try await h.activateSyntheticAccount()
-        try h.vault.writeRawKeychainItemForTest(account: "security-v4-notify", data: Data(repeating: 3, count: 32), afterFirstUnlock: true)
-        #expect(h.pending.write(opID: 1, bucket: .draft, key: "draft:session:s", data: Data([1, 2, 3])).ok)
-        h.settings.update { $0.theme = .dark }
-        h.defaults.set("x", forKey: AccountDefaults.key("home-scope"))
-        h.defaults.set("kept", forKey: "other")
-        let oldContext = try #require(h.model.context)
-        let oldExecutor = h.executor
-        let cache = h.root.appending(path: "cache")
-        #expect(FileManager.default.fileExists(atPath: cache.path))
+        try await withPhaseDiagnostics { phase in
+            let h = Harness(); defer { h.cleanUp() }
+            phase.enter("activateSyntheticAccount")
+            try await h.activateSyntheticAccount()
+            phase.enter("seedLocalState")
+            try h.vault.writeRawKeychainItemForTest(account: "security-v4-notify", data: Data(repeating: 3, count: 32), afterFirstUnlock: true)
+            #expect(h.pending.write(opID: 1, bucket: .draft, key: "draft:session:s", data: Data([1, 2, 3])).ok)
+            h.settings.update { $0.theme = .dark }
+            h.defaults.set("x", forKey: AccountDefaults.key("home-scope"))
+            h.defaults.set("kept", forKey: "other")
+            let oldContext = try #require(h.model.context)
+            let oldExecutor = h.executor
+            let cache = h.root.appending(path: "cache")
+            #expect(FileManager.default.fileExists(atPath: cache.path))
 
-        await h.model.resetLocalAccountAndLogout()
+            phase.enter("resetLocalAccountAndLogout")
+            await h.model.resetLocalAccountAndLogout()
 
-        #expect(h.model.context == nil)
-        #expect(h.model.account == nil)
-        #expect(h.model.lastServer == h.account.server)
-        #expect(oldExecutor.calls.contains("close"))
-        #expect(!h.vault.hasPersistedState())
-        #expect(h.vault.readNotifyBlob() == nil)
-        #expect(try h.vault.read(.pendingKey) == nil)
-        #expect(!FileManager.default.fileExists(atPath: cache.path))
-        #expect(!FileManager.default.fileExists(atPath: h.root.appending(path: "pending").path))
-        #expect(h.settings.settings == LocalSettings())
-        #expect(h.defaults.object(forKey: AccountDefaults.key("home-scope")) == nil)
-        #expect(h.defaults.string(forKey: "other") == "kept")
-        #expect(h.unregisteredPush == 1)
-        #expect(h.cleared == 1)
+            phase.enter("verifyWiped")
+            #expect(h.model.context == nil)
+            #expect(h.model.account == nil)
+            #expect(h.model.lastServer == h.account.server)
+            #expect(oldExecutor.calls.contains("close"))
+            #expect(!h.vault.hasPersistedState())
+            #expect(h.vault.readNotifyBlob() == nil)
+            #expect(try h.vault.read(.pendingKey) == nil)
+            #expect(!FileManager.default.fileExists(atPath: cache.path))
+            #expect(!FileManager.default.fileExists(atPath: h.root.appending(path: "pending").path))
+            #expect(h.settings.settings == LocalSettings())
+            #expect(h.defaults.object(forKey: AccountDefaults.key("home-scope")) == nil)
+            #expect(h.defaults.string(forKey: "other") == "kept")
+            #expect(h.unregisteredPush == 1)
+            #expect(h.cleared == 1)
 
-        // Re-attaching an account yields a fresh AccountContext with clean memory on the same CoreHost.
-        let host = h.model.coreHost
-        await host.processEffectBatchForTesting([
-            PBCoreEffect.with {
-                $0.accountRuntimeChanged = .with {
-                    $0.active = true
-                    $0.server = h.account.server
-                    $0.deviceID = h.account.deviceId
-                    $0.accountID = h.account.accountId
+            // Re-attaching an account yields a fresh AccountContext with clean memory on the same CoreHost.
+            phase.enter("reattachProcessEffectBatch")
+            let host = h.model.coreHost
+            await host.processEffectBatchForTesting([
+                PBCoreEffect.with {
+                    $0.accountRuntimeChanged = .with {
+                        $0.active = true
+                        $0.server = h.account.server
+                        $0.deviceID = h.account.deviceId
+                        $0.accountID = h.account.accountId
+                    }
                 }
-            }
-        ])
-        try await awaitObservation { h.model.context != nil }
-        let next = try #require(h.model.context)
-        #expect(next !== oldContext)
-        #expect(next.coreHost === host)
+            ])
+            phase.enter("awaitReattachContext")
+            try await awaitObservation { h.model.context != nil }
+            let next = try #require(h.model.context)
+            #expect(next !== oldContext)
+            #expect(next.coreHost === host)
+            phase.enter("done")
+        }
     }
 
     @Test func pendingCreateResumesInOnboardingAndSetupResetClearsIt() async throws {
-        let h = Harness(); defer { h.cleanUp() }
-        h.model.setForeground(true)
-        try await h.awaitLoaded()
-        #expect(h.model.screens.appRoot.stage == .onboarding)
+        try await withPhaseDiagnostics { phase in
+            let h = Harness(); defer { h.cleanUp() }
+            phase.enter("awaitInitialOnboarding")
+            h.model.setForeground(true)
+            try await h.awaitLoaded()
+            #expect(h.model.screens.appRoot.stage == .onboarding)
 
-        await h.model.coreHost.onboardingSetMode(.create)
-        await h.model.coreHost.onboardingCreateSubmit(serverInput: "https://relay.example.com")
-        try await awaitObservation { !h.model.screens.onboarding.create.recoveryCode.isEmpty }
-        #expect(h.vault.hasPersistedState())
+            phase.enter("onboardingCreateSubmit")
+            await h.model.coreHost.onboardingSetMode(.create)
+            await h.model.coreHost.onboardingCreateSubmit(serverInput: "https://relay.example.com")
+            phase.enter("awaitRecoveryCode")
+            try await awaitObservation { !h.model.screens.onboarding.create.recoveryCode.isEmpty }
+            #expect(h.vault.hasPersistedState())
 
-        // Cold restart resumes directly in onboarding create mode with pending create.
-        let second = h.makeModel(); defer { second.closeSyncForTest() }
-        second.setForeground(true)
-        try await h.awaitLoaded(second)
-        #expect(second.screens.appRoot.stage == .onboarding)
-        #expect(second.screens.onboarding.mode == .create)
+            // Cold restart resumes directly in onboarding create mode with pending create.
+            phase.enter("coldRestartAwaitLoaded")
+            let second = h.makeModel(); defer { second.closeSyncForTest() }
+            second.setForeground(true)
+            try await h.awaitLoaded(second)
+            #expect(second.screens.appRoot.stage == .onboarding)
+            #expect(second.screens.onboarding.mode == .create)
 
-        await second.coreHost.exitRequest(intent: .setupReset)
-        try await awaitObservation { second.screens.exitConfirm.step == .awaitingConfirm }
-        await second.coreHost.exitConfirm(true)
-        try await h.unregisteredPushSignal.wait(atLeast: 1)
-        try await h.clearedSignal.wait(atLeast: 1)
-        try await awaitObservation {
-            second.screens.appRoot.stage == .onboarding && second.screens.onboarding.mode == .entry
+            phase.enter("exitRequest")
+            await second.coreHost.exitRequest(intent: .setupReset)
+            phase.enter("awaitAwaitingConfirm")
+            try await awaitObservation { second.screens.exitConfirm.step == .awaitingConfirm }
+            phase.enter("exitConfirm")
+            await second.coreHost.exitConfirm(true)
+            phase.enter("waitUnregisteredPush")
+            try await h.unregisteredPushSignal.wait(atLeast: 1)
+            phase.enter("waitCleared")
+            try await h.clearedSignal.wait(atLeast: 1)
+            phase.enter("awaitOnboardingEntry")
+            try await awaitObservation {
+                second.screens.appRoot.stage == .onboarding && second.screens.onboarding.mode == .entry
+            }
+            phase.enter("verifyCleared")
+            #expect(!h.vault.hasPersistedState())
+            phase.enter("done")
         }
-        #expect(!h.vault.hasPersistedState())
     }
 
     @Test func networkChangesAreJudgedByWhatChanged() {
@@ -774,5 +847,86 @@ final class Harness {
         #expect(h.model.context == nil)
         _ = ImageCenter.of(ctx)
         _ = SharedFileCenter.of(ctx)
+    }
+}
+
+@Suite(.timeLimit(.minutes(1))) struct StorageQueuePriorityTests {
+    private func verifyDrainEscalation(
+        enqueue: @escaping @Sendable (@escaping @Sendable () async -> Void) -> Void,
+        drain: @escaping @Sendable () async -> Void,
+        setOnDrainWait: @escaping @Sendable ((@Sendable () -> Void)?) -> Void
+    ) async throws {
+        let recorded = OSAllocatedUnfairLock<[(name: String, priority: TaskPriority)]>(initialState: [])
+
+        // 1. Without a drainer, operations run at .utility.
+        let op0Done = SignalCounter()
+        enqueue {
+            recorded.withLock { $0.append(("op0", Task.currentPriority)) }
+            op0Done.signal()
+        }
+        try await op0Done.wait(atLeast: 1)
+        // Wait for op0's post-op bookkeeping to mark the queue idle before starting the next phase.
+        await Task.detached(priority: .utility) { await drain() }.value
+
+        // 2. While a .high caller waits in drain(), remaining queued operations and follow-up
+        //    operations enqueued during completion run at the escalated priority in strict FIFO order.
+        let op1Started = SignalCounter()
+        let releaseOp1 = SignalCounter()
+        enqueue {
+            recorded.withLock { $0.append(("op1", Task.currentPriority)) }
+            op1Started.signal()
+            try? await releaseOp1.wait(atLeast: 1)
+        }
+        try await op1Started.wait(atLeast: 1)
+
+        enqueue {
+            recorded.withLock { $0.append(("op2", Task.currentPriority)) }
+            enqueue {
+                recorded.withLock { $0.append(("op3", Task.currentPriority)) }
+            }
+        }
+
+        setOnDrainWait { releaseOp1.signal() }
+        defer { setOnDrainWait(nil) }
+        let drainTask = Task.detached(priority: .high) {
+            await drain()
+        }
+        await drainTask.value
+        setOnDrainWait(nil)
+
+        // 3. Once idle and drain() has returned, subsequent work restores .utility priority.
+        let op4Done = SignalCounter()
+        enqueue {
+            recorded.withLock { $0.append(("op4", Task.currentPriority)) }
+            op4Done.signal()
+        }
+        try await op4Done.wait(atLeast: 1)
+        await Task.detached(priority: .utility) { await drain() }.value
+
+        let entries = recorded.withLock { $0 }
+        #expect(entries.map(\.name) == ["op0", "op1", "op2", "op3", "op4"])
+        #expect(entries[0].priority == .utility)
+        #expect(entries[1].priority == .utility)
+        #expect(entries[2].priority >= .high)
+        #expect(entries[3].priority >= .high)
+        #expect(entries[4].priority == .utility)
+    }
+
+    @Test func draftStorageQueueEscalatesRemainingWorkWhileDrainWaitsAndRestoresUtilityWhenIdle() async throws {
+        let queue = DraftStorageQueue()
+        try await verifyDrainEscalation(
+            enqueue: { queue.enqueue($0) },
+            drain: { await queue.drain() },
+            setOnDrainWait: { queue.setOnDrainWaitForTesting($0) }
+        )
+    }
+
+    @Test func sharedFileStorageQueueEscalatesRemainingWorkWhileDrainWaitsAndRestoresUtilityWhenIdle() async throws {
+        let queue = SharedFileStorageQueue()
+        try await verifyDrainEscalation(
+            enqueue: { queue.enqueue($0) },
+            drain: { await queue.drain() },
+            setOnDrainWait: { queue.setOnDrainWaitForTesting($0) }
+        )
     }
 }

@@ -336,53 +336,120 @@ struct ScopeDefaults: @unchecked Sendable {
     }
 }
 
-private final class AsyncSerialQueueState: @unchecked Sendable {
+/// Single-consumer FIFO async queue whose baseline priority is `.utility` when nobody is
+/// waiting, and dynamically escalates to the highest active `drain()` caller's priority
+/// (restoring `.utility` once idle and all drainers return).
+///
+/// Why this eliminates priority inversion without changing idle production behavior:
+/// - When nobody calls `drain()`, each queued operation runs in `Task.detached(priority: .utility)`,
+///   preserving low CPU/IO impact for routine background draft and shared-file disk writes.
+/// - When a higher-priority caller (e.g. `@MainActor` during logout/reset/cache-wipe) calls
+///   `drain()`, it records its `Task.currentPriority` and directly `await`s the currently
+///   executing operation's `Task.value` in a loop until the queue is idle:
+///     1. `await task.value` triggers Swift Concurrency's native priority escalation
+///        (`swift_task_escalate`, iOS 15+) on the in-flight operation.
+///     2. Every subsequent queued operation — and any follow-up operation synchronously enqueued
+///        during an operation's completion callback — is launched at
+///        `max(.utility, maxActiveDrainerPriority)` instead of `.utility`, escaping both
+///        utility-QoS CPU starvation and kernel `throttle_lowpri_io` (IO tier 1).
+///     3. Once the queue drains to idle and waiters exit, subsequent work returns to `.utility`.
+private final class PriorityEscalatingSerialQueue: @unchecked Sendable {
     private let lock = NSLock()
+    private var queue: [(@Sendable () async -> Void)?] = []
+    private var head = 0
     private var pending = 0
-    private var closed = false
-    private var waiters: [CheckedContinuation<Void, Never>] = []
+    private var runningTask: Task<Void, Never>?
+    private var waiters: [UUID: TaskPriority] = [:]
+    #if DEBUG
+    private var onDrainWaitForTesting: (@Sendable () -> Void)?
+    #endif
 
     var hasPending: Bool {
         lock.withLock { pending > 0 }
     }
 
-    func willEnqueue() {
-        lock.withLock { pending += 1 }
-    }
-
-    func didFinishOne() {
-        let toResume: [CheckedContinuation<Void, Never>] = lock.withLock {
-            pending -= 1
-            guard pending <= 0 else { return [] }
-            pending = 0
-            let list = waiters
-            waiters.removeAll()
-            return list
+    private func effectivePriorityLocked() -> TaskPriority {
+        var effective: TaskPriority = .utility
+        for priority in waiters.values where priority > effective {
+            effective = priority
         }
-        for c in toResume { c.resume() }
+        return effective
     }
 
-    func finish() {
-        let toResume: [CheckedContinuation<Void, Never>] = lock.withLock {
-            closed = true
-            pending = 0
-            let list = waiters
-            waiters.removeAll()
-            return list
-        }
-        for c in toResume { c.resume() }
-    }
-
-    func waitUntilIdle() async {
-        await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
-            let immediate: Bool = lock.withLock {
-                if closed || pending == 0 { return true }
-                waiters.append(c)
-                return false
+    func enqueue(_ op: @escaping @Sendable () async -> Void) {
+        lock.withLock {
+            pending += 1
+            if runningTask == nil {
+                let prio = effectivePriorityLocked()
+                runningTask = Task.detached(priority: prio) { [self] in
+                    await self.runOne(op)
+                }
+            } else {
+                queue.append(op)
             }
-            if immediate { c.resume() }
         }
     }
+
+    private func runOne(_ op: @escaping @Sendable () async -> Void) async {
+        await op()
+        lock.withLock {
+            pending -= 1
+            if head >= queue.count {
+                queue.removeAll(keepingCapacity: true)
+                head = 0
+                pending = 0
+                runningTask = nil
+                return
+            }
+            let next = queue[head]!
+            queue[head] = nil
+            head += 1
+            if head == queue.count {
+                queue.removeAll(keepingCapacity: true)
+                head = 0
+            } else if head >= 32 && head * 2 >= queue.count {
+                queue.removeFirst(head)
+                head = 0
+            }
+            let prio = effectivePriorityLocked()
+            runningTask = Task.detached(priority: prio) { [self] in
+                await self.runOne(next)
+            }
+        }
+    }
+
+    func drain() async {
+        let waiterID = UUID()
+        let callerPriority = Task.currentPriority
+        #if DEBUG
+        let (initialTask, hook): (Task<Void, Never>?, (@Sendable () -> Void)?) = lock.withLock {
+            waiters[waiterID] = callerPriority
+            return (runningTask, onDrainWaitForTesting)
+        }
+        #else
+        let initialTask: Task<Void, Never>? = lock.withLock {
+            waiters[waiterID] = callerPriority
+            return runningTask
+        }
+        #endif
+        defer {
+            lock.withLock { _ = waiters.removeValue(forKey: waiterID) }
+        }
+        #if DEBUG
+        hook?()
+        #endif
+        var current = initialTask
+        while let task = current {
+            await task.value
+            current = lock.withLock { runningTask }
+        }
+    }
+
+    #if DEBUG
+    func setOnDrainWaitForTesting(_ hook: (@Sendable () -> Void)?) {
+        lock.withLock { onDrainWaitForTesting = hook }
+    }
+    #endif
 }
 
 /// Process-wide single FIFO queue serializing all shared-file disk operations across
@@ -390,43 +457,25 @@ private final class AsyncSerialQueueState: @unchecked Sendable {
 final class SharedFileStorageQueue: Sendable {
     static let shared = SharedFileStorageQueue()
 
-    private let continuation: AsyncStream<@Sendable () async -> Void>.Continuation
-    private let state = AsyncSerialQueueState()
+    private let queue = PriorityEscalatingSerialQueue()
 
-    var hasPending: Bool { state.hasPending }
-
-    init() {
-        let (stream, continuation) = AsyncStream.makeStream(
-            of: (@Sendable () async -> Void).self,
-            bufferingPolicy: .unbounded
-        )
-        self.continuation = continuation
-        let state = self.state
-        Task.detached(priority: .utility) {
-            for await op in stream {
-                await op()
-                state.didFinishOne()
-            }
-            state.finish()
-        }
-    }
-
-    deinit {
-        continuation.finish()
-    }
+    var hasPending: Bool { queue.hasPending }
 
     func enqueue(_ op: @escaping @Sendable () async -> Void) {
-        state.willEnqueue()
-        if case .terminated = continuation.yield(op) {
-            state.didFinishOne()
-        }
+        queue.enqueue(op)
     }
 
     /// Waits until all queued operations and any follow-up operations synchronously
     /// enqueued during their completion callbacks have finished.
     func drain() async {
-        await state.waitUntilIdle()
+        await queue.drain()
     }
+
+    #if DEBUG
+    func setOnDrainWaitForTesting(_ hook: (@Sendable () -> Void)?) {
+        queue.setOnDrainWaitForTesting(hook)
+    }
+    #endif
 }
 
 /// Process-wide single FIFO queue serializing all draft/outbox storage and local-ref
@@ -435,44 +484,26 @@ final class SharedFileStorageQueue: Sendable {
 final class DraftStorageQueue: Sendable {
     static let shared = DraftStorageQueue()
 
-    private let continuation: AsyncStream<@Sendable () async -> Void>.Continuation
-    private let state = AsyncSerialQueueState()
+    private let queue = PriorityEscalatingSerialQueue()
 
-    var hasPending: Bool { state.hasPending }
-
-    init() {
-        let (stream, continuation) = AsyncStream.makeStream(
-            of: (@Sendable () async -> Void).self,
-            bufferingPolicy: .unbounded
-        )
-        self.continuation = continuation
-        let state = self.state
-        Task.detached(priority: .utility) {
-            for await op in stream {
-                await op()
-                state.didFinishOne()
-            }
-            state.finish()
-        }
-    }
-
-    deinit {
-        continuation.finish()
-    }
+    var hasPending: Bool { queue.hasPending }
 
     func enqueue(_ op: @escaping @Sendable () async -> Void) {
-        state.willEnqueue()
-        if case .terminated = continuation.yield(op) {
-            state.didFinishOne()
-        }
+        queue.enqueue(op)
     }
 
     /// Waits until all queued operations and any follow-up operations synchronously
     /// enqueued during their completion callbacks (such as coalesced `dirtyWrite`
     /// flushes or post-write deletes/releases) have finished.
     func drain() async {
-        await state.waitUntilIdle()
+        await queue.drain()
     }
+
+    #if DEBUG
+    func setOnDrainWaitForTesting(_ hook: (@Sendable () -> Void)?) {
+        queue.setOnDrainWaitForTesting(hook)
+    }
+    #endif
 }
 
 /// Owns `CoreClient`, feeds system/UI/transport events into Core, and executes every
