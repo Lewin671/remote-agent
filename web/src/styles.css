@@ -2363,6 +2363,7 @@ html .mo-leave.mo-ghost.composer-picker { transform-origin: bottom center; anima
 .diag-hero h5 { margin: 0; font-size: 19px; font-weight: var(--w7); line-height: 1.3; color: var(--ink); text-wrap: balance; }
 .desk .diag-hero h5 { font-size: 17px; font-weight: var(--w6); }
 .diag-hero p { margin: 6px 0 0; font-size: 14px; line-height: 1.45; color: var(--ink2); }
+.diag-body { margin: 0 4px 10px; font-size: 13px; line-height: 1.45; color: var(--ink2); }
 .diag-checks { background: var(--lift); border-radius: 18px; overflow: hidden; }
 .desk .diag-checks { background: var(--s2); border-radius: 14px; }
 .diag-check { display: flex; align-items: flex-start; gap: 10px; padding: 13px 16px; position: relative; }

@@ -119,7 +119,7 @@ export interface ChannelOptions {
   dcState?: (open: boolean) => void;
   stunError?: (code: number, address: string) => void;
   frame: (raw: Uint8Array<ArrayBuffer>) => void;
-  closed: () => void;
+  closed: (reason?: string) => void;
   open?: () => void;
   probeReply?: (raw: Uint8Array<ArrayBuffer>) => void;
   factory?: (config: RTCConfiguration) => RTCPeerConnection;
@@ -185,6 +185,7 @@ export class DirectChannel {
   private readonly lifetime = new AbortController();
   private confirmed = false;
   private ended = false;
+  private closeReason = "";
   private chain = Promise.resolve();
   private receiveChain = Promise.resolve();
   private verifying: { bytes: number; frames: number } | null = null;
@@ -231,11 +232,12 @@ export class DirectChannel {
     this.data.onclose = () => {
       if (this.ended) return;
       options.dcState?.(false);
-      this.close();
+      this.close("dc0_closed");
     };
-    this.probe.onclose = () => this.close();
-    this.data.onerror = this.probe.onerror = () => this.close();
-    this.pc.ondatachannel = (event) => { event.channel.close(); this.close(); };
+    this.probe.onclose = () => this.close("dc1_closed");
+    this.data.onerror = () => this.close("dc0_closed");
+    this.probe.onerror = () => this.close("dc1_closed");
+    this.pc.ondatachannel = (event) => { event.channel.close(); this.close("unexpected_dc"); };
     this.pc.onicecandidate = (event) => {
       if (!this.valid()) return;
       const init = event.candidate?.toJSON() ?? null;
@@ -252,7 +254,7 @@ export class DirectChannel {
       options.state(DirectStateKind.CONN, this.pc.connectionState);
       if (this.pc.sctp?.state) options.state(DirectStateKind.SCTP, this.pc.sctp.state);
       if (this.pc.sctp?.transport?.state) options.state(DirectStateKind.DTLS, this.pc.sctp.transport.state);
-      if (this.pc.connectionState === "closed") this.close();
+      if (this.pc.connectionState === "closed") this.close("pc_closed");
     };
     this.pc.onicegatheringstatechange = () => {
       if (!this.ended) options.state(DirectStateKind.GATHER, this.pc.iceGatheringState);
@@ -269,13 +271,13 @@ export class DirectChannel {
     this.data.onmessage = (event) => {
       if (!this.valid()) return;
       if (!(event.data instanceof ArrayBuffer) || event.data.byteLength > FRAME_BYTES) {
-        this.close();
+        this.close("frame_oversize");
         return;
       }
       const raw = new Uint8Array(event.data);
       this.receiveChain = this.receiveChain
         .then(() => this.receive(raw))
-        .catch(() => this.close());
+        .catch(() => this.close("receive_error"));
     };
     this.probe.onmessage = (event) => {
       if (!this.ready || !(event.data instanceof ArrayBuffer) || event.data.byteLength !== 17) return;
@@ -315,11 +317,11 @@ export class DirectChannel {
 
   private tickOnce() {
     if (!this.valid()) {
-      this.close();
+      this.close("core_close");
       return;
     }
     if (this.confirmed && (this.data.readyState === "closed" || this.probe.readyState === "closed")) {
-      this.close();
+      this.close(this.data.readyState === "closed" ? "dc0_closed" : "dc1_closed");
       return;
     }
     if (this.listeners.size > 0 && (!this.ready || this.data.bufferedAmount <= 64 << 10)) {
@@ -349,7 +351,7 @@ export class DirectChannel {
       this.probe.send(raw);
       return true;
     } catch {
-      this.close();
+      this.close("probe_send_failed");
       return false;
     }
   }
@@ -509,7 +511,7 @@ export class DirectChannel {
       try {
         this.data.send(frame as Uint8Array<ArrayBuffer>);
       } catch {
-        this.close();
+        this.close("dc_send_failed");
         throw new PathChanged();
       }
     }
@@ -547,7 +549,7 @@ export class DirectChannel {
     if (part.count !== frame.count || part.length !== frame.ciphertextLength || !equalBytes(part.hash, frame.ciphertextSha256)) return;
     const old = part.parts.get(frame.index);
     if (old) {
-      if (!equalBytes(old, frame.fragment)) this.close();
+      if (!equalBytes(old, frame.fragment)) this.close("frame_conflict");
       return;
     }
     if (part.bytes + frame.fragment.byteLength > part.length || !this.options.budget.reserve(this.options.peer, 1, frame.fragment.byteLength, 1)) return;
@@ -610,9 +612,11 @@ export class DirectChannel {
     this.options.budget.free(this.options.peer, 1, part.bytes, part.parts.size);
   }
 
-  close() {
+  close(reason = "core_close") {
     if (this.ended) return;
     this.ended = true;
+    const closeReason = this.closeReason || reason;
+    this.closeReason = closeReason;
     this.lifetime.abort(new PathChanged());
     clearTimeout(this.tickTimer);
     this.tickTimer = undefined;
@@ -633,7 +637,7 @@ export class DirectChannel {
     for (const [key, part] of this.partial) this.drop(key, part);
     if (this.verifying) this.releaseVerifying(this.verifying);
     for (const raw of this.waiting.splice(0)) this.options.budget.free(this.options.peer, 1, raw.byteLength, 1);
-    cleanup(() => this.pc.close(), () => this.options.closed(), () => this.releaseReservation());
+    cleanup(() => this.pc.close(), () => this.options.closed(closeReason), () => this.releaseReservation());
   }
 
   private releaseReservation() {

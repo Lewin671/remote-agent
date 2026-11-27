@@ -195,12 +195,15 @@ export class DirectExecutor {
           this.emit({ case: "directPcProbeReceived", value: create(DirectPcProbeReceivedEventSchema, { pcId: eff.pcId, raw }) });
         },
         frame: (raw) => this.handleDcFrame(eff.pcId, entry, raw),
-        closed: () => {
+        closed: (reason) => {
           const cur = this.pcs.get(eff.pcId);
           if (cur === entry) this.pcs.delete(eff.pcId);
           this.rejectPendingForPc(eff.pcId);
           if (!entry.closedByCore) {
-            this.emit({ case: "directPcClosed", value: create(DirectPcClosedEventSchema, { pcId: eff.pcId }) });
+            this.emit({
+              case: "directPcClosed",
+              value: create(DirectPcClosedEventSchema, { pcId: eff.pcId, reason: reason ?? "" }),
+            });
           }
         },
       });
@@ -334,7 +337,7 @@ export class DirectExecutor {
       done = true;
       clearTimeout(timer);
       entry.channel.signal.removeEventListener("abort", onAbort);
-      if (!this.closed && this.pcs.get(pcId) === entry) entry.channel.close();
+      if (!this.closed && this.pcs.get(pcId) === entry) entry.channel.close("pc_failed");
     };
     entry.channel.signal.addEventListener("abort", onAbort, { once: true });
     timer = setTimeout(settle, FAILED_STATS_TIMEOUT_MS);

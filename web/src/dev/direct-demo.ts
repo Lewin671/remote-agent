@@ -38,6 +38,7 @@ export type DemoPreset =
   | "no_response"
   | "no_traversal"
   | "failed"
+  | "lost"
   | "off"
   | "unsupported";
 
@@ -274,7 +275,9 @@ function buildConnectionGroup(spec: DemoDirectSpec): ConnectionGroupView {
             ? "transport.reason_no_response"
             : preset === "no_traversal"
               ? "transport.reason_no_traversal"
-              : "transport.reason_failed";
+              : preset === "lost"
+                ? "transport.reason_lost_retry"
+                : "transport.reason_failed";
       return create(ConnectionGroupViewSchema, {
         toggleVisible: true,
         toggleEnabled: true,
@@ -354,6 +357,9 @@ function buildDemoDirectReport(machineId: string, spec: DemoDirectSpec) {
     case "no_traversal":
       reason = DirectRouteReason.NO_TRAVERSAL;
       break;
+    case "lost":
+      reason = DirectRouteReason.LOST;
+      break;
     default:
       reason = DirectRouteReason.FAILED;
       break;
@@ -371,29 +377,54 @@ function buildDemoDirectReport(machineId: string, spec: DemoDirectSpec) {
       readSlow,
       hasActiveRttMs: rtt > 0,
       activeRttMs: rtt,
+      retryScheduled: preset === "lost" || preset === "failed",
     }),
   });
 }
 
 function buildDiagnostics(machineId: string, spec: DemoDirectSpec): DirectDiagnosticsViewModel {
   const { preset, diag: diagParam = "" } = spec;
-  const verdict = DIAG_VERDICT_KEYS[diagParam] ? diagParam : preset === "direct" ? "connected" : preset === "no_response" ? "no_reply" : preset === "peer_unsupported" ? "peer_refused" : "all_failed";
+  const verdict = DIAG_VERDICT_KEYS[diagParam]
+    ? diagParam
+    : preset === "direct"
+      ? "connected"
+      : preset === "lost"
+        ? "lost"
+        : preset === "no_response"
+          ? "no_reply"
+          : preset === "peer_unsupported"
+            ? "peer_refused"
+            : "all_failed";
   const supported = preset !== "unsupported";
   const enabled = preset !== "off" && supported;
   const connected = preset === "direct" || preset === "file" || preset === "read" || preset === "file-fallback";
   const trying = preset === "trying" || preset === "none";
   const peerOutdated = verdict === "peer_refused";
+  const lost = !connected && verdict === "lost";
   const blocked = verdict === "no_stun" || verdict === "all_failed" || verdict === "no_traversal";
+
+  const dropSummary = lost
+    ? tk("transport.diag_lived_dropped_cause", {
+        seconds: "4.2",
+        cause: tk("transport.diag_close_probe_timeout", { count: 3 }),
+      })
+    : undefined;
 
   const titleText = connected
     ? tk("transport.diag_connected_title")
     : peerOutdated
       ? tk("transport.diag_status_peer_old")
-      : blocked
-        ? tk("transport.diag_title_probe_blocked")
-        : verdict === "no_reply"
-          ? tk("transport.diag_title_no_reply")
-          : tk("transport.diag_title_generic");
+      : lost
+        ? tk("transport.diag_title_lost")
+        : blocked
+          ? tk("transport.diag_title_probe_blocked")
+          : verdict === "no_reply"
+            ? tk("transport.diag_title_no_reply")
+            : tk("transport.diag_title_generic");
+
+  const bodyText = lost && dropSummary
+    ? tk("transport.diag_explain_lost_detail", { summary: dropSummary })
+    : undefined;
 
   const checks = [
     create(PlainDiagCheckViewSchema, {
@@ -405,8 +436,14 @@ function buildDiagnostics(machineId: string, spec: DemoDirectSpec): DirectDiagno
     create(PlainDiagCheckViewSchema, {
       mark: connected ? DiagCheckMark.ONLINE : trying ? DiagCheckMark.RUN : DiagCheckMark.OFF,
       labelText: tk("transport.diag_check_path"),
-      detailText: blocked ? tk("transport.diag_path_udp_blocked") : !connected ? tk("transport.diag_path_failed") : undefined,
-      statusText: connected ? tk("transport.diag_status_connected") : trying ? tk("transport.diag_status_checking") : tk("transport.diag_status_blocked"),
+      detailText: lost ? dropSummary : blocked ? tk("transport.diag_path_udp_blocked") : !connected ? tk("transport.diag_path_failed") : undefined,
+      statusText: connected
+        ? tk("transport.diag_status_connected")
+        : trying
+          ? tk("transport.diag_status_checking")
+          : lost
+            ? tk("transport.diag_status_dropped")
+            : tk("transport.diag_status_blocked"),
     }),
     create(PlainDiagCheckViewSchema, {
       mark: DiagCheckMark.ONLINE,
@@ -426,12 +463,13 @@ function buildDiagnostics(machineId: string, spec: DemoDirectSpec): DirectDiagno
     trying,
     canRetry: !connected && !trying && !peerOutdated && supported && enabled,
     titleText,
+    bodyText,
     verdictText: tk(vKey),
     checks,
     reportLines: [
       tk("transport.diag_report_title"),
       tk("transport.diag_report_verdict", { verdict: tk(vKey) }),
-      tk("transport.diag_report_round", { n: 1, age: tk("machine_status.seconds_ago", { count: 4 }) }),
+      ...(dropSummary ? [dropSummary] : [tk("transport.diag_report_round", { n: 1, age: tk("machine_status.seconds_ago", { count: 4 }) })]),
     ],
   });
 }

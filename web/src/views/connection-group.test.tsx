@@ -158,6 +158,26 @@ describe("summary row + unified sheet status row", () => {
     expect(writeText.mock.calls[0]?.[0]).toContain(message("transport.diag_verdict_all_failed"));
   });
 
+  it("renders connected-then-dropped status line, body summary, dropped check, and copied report", async () => {
+    openSheet("mac", "direct=lost");
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
+
+    expect(statusRow()!.querySelector(".dx-text > .mo-swap")!.textContent).toBe("正在用中继");
+    expect(statusRow()!.querySelector("small")!.textContent).toBe("直连断了，稍后会自动再试");
+    expect(sheet()!.querySelector(".diag-body")!.textContent).toContain("连上 4.2 秒后断开 · 探测连续 3 次无回应");
+    expect(sheet()!.textContent).toContain("已断开");
+    expect(sheet()!.textContent).not.toContain("已恢复直连");
+
+    await act(async () => {
+      sheet()!.querySelector<HTMLButtonElement>(".diag-copy")!.click();
+    });
+    expect(writeText).toHaveBeenCalledTimes(1);
+    const copied = writeText.mock.calls[0]?.[0] as string;
+    expect(copied).toContain("结论：直连连上后又断开了");
+    expect(copied).toContain("连上 4.2 秒后断开 · 探测连续 3 次无回应");
+  });
+
   it("is not drawn as connected for offline machine while keeping switch", () => {
     const r = openSheet("mini");
     expect(getCoreHost(r).viewSettings().machines.find((m) => m.machineId === "mini")?.online).toBe(false);

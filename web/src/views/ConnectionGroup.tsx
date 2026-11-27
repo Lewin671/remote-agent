@@ -94,6 +94,7 @@ export function DirectSettingsSheet({
   const cg = passed ?? vm.connection;
   const running = diagVm.trying || cg?.stage === ConnectionGroupStage.CONNECTING;
   const diagTitle = renderCoreMsg(diagVm.titleText);
+  const diagBody = renderCoreMsg(diagVm.bodyText);
 
   useEffect(() => {
     if (prevRunning.current && !running && !diagVm.connected) {
@@ -224,6 +225,7 @@ export function DirectSettingsSheet({
       {showDiag ? (
         <>
           <div className="fl">{t("transport.diag_section_auto")}</div>
+          {diagBody && <p className="diag-body" aria-live="polite">{diagBody}</p>}
           <div className="diag-checks">
             {diagVm.checks.map((c, i) => (
               <DiagCheckItem
