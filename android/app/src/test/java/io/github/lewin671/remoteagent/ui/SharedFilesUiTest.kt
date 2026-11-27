@@ -54,6 +54,7 @@ import io.github.lewin671.remoteagent.core.Account
 import io.github.lewin671.remoteagent.core.Api
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.UiMessages
+import io.github.lewin671.remoteagent.core.flushMailboxForTest
 import io.github.lewin671.remoteagent.core.proto.SessionAgentMessageItem
 import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
 import io.github.lewin671.remoteagent.core.proto.SessionSharedFilesItem
@@ -76,6 +77,7 @@ import io.github.lewin671.remoteagent.proto.ToolKind
 import io.github.lewin671.remoteagent.push.Notifier
 import java.io.File
 import java.nio.file.Files
+import kotlinx.coroutines.Dispatchers
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -255,11 +257,7 @@ class SharedFilesUiTest {
                 .setDeliverOnly(false)
                 .build(),
         )
-        ui.waitUntil(5_000) {
-            ui.mainClock.advanceTimeByFrame()
-            ui.waitForIdle()
-            host.imagePreview != null
-        }
+        ui.waitForIdle()
         assertEquals("cover.png", host.imagePreview?.item?.displayName)
     }
 
@@ -268,7 +266,7 @@ class SharedFilesUiTest {
         (androidx.core.content.FileProvider::class.java.getDeclaredField("sCache").apply { isAccessible = true }
             .get(null) as MutableMap<*, *>).clear()
         tempDir = Files.createTempDirectory("sf-ui-test").toFile()
-        manager = SharedFileManager(context) { remote }
+        manager = SharedFileManager(context, remoteProvider = { remote }, ioDispatcher = Dispatchers.Unconfined)
         manager.attachRemote(remote)
     }
 
@@ -417,11 +415,9 @@ class SharedFilesUiTest {
         ui.onNodeWithText("删除本机副本").assertExists()
 
         ui.onNodeWithText("删除本机副本").performClick()
-        ui.waitUntil(5_000) {
-            ui.mainClock.advanceTimeByFrame()
-            ui.waitForIdle()
-            manager.localFileIfDownloaded("s1", "v1", "daocheng-final.mp4") == null
-        }
+        remote.coreHost.flushMailboxForTest()
+        kotlinx.coroutines.runBlocking { manager.executor.awaitIdle() }
+        ui.waitForIdle()
         assertNull(manager.localFileIfDownloaded("s1", "v1", "daocheng-final.mp4"))
 
         render {

@@ -131,6 +131,7 @@ import io.github.lewin671.remoteagent.data.readSharedTextFile
 import java.io.File
 import java.util.Locale
 import kotlin.math.roundToInt
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -345,7 +346,7 @@ internal fun SharedFileHost(
             Motion.tap(view)
             view.announceForAccessibility(copy(UiMessages.sharedFileA11YDownloadedAnnounce(name = comp.displayName)))
             if (comp.autoOpen) {
-                val localFile = withContext(Dispatchers.IO) {
+                val localFile = withContext(manager.ioDispatcher) {
                     manager.localFileIfDownloaded(comp.sessionId, comp.fileId, comp.displayName)
                 }
                 if (localFile != null) {
@@ -404,7 +405,7 @@ internal fun SharedFileHost(
 
     LaunchedEffect(liveHost.pendingTextPreview) {
         val pending = liveHost.pendingTextPreview ?: return@LaunchedEffect
-        val text = withContext(Dispatchers.IO) { readSharedTextFile(pending.localFile) }
+        val text = withContext(manager.ioDispatcher) { readSharedTextFile(pending.localFile) }
         val name = pending.item.displayName
         if (text != null) {
             liveHost.textPreview = SharedFileTextPreview(pending.item, pending.localFile, text)
@@ -455,6 +456,7 @@ internal fun SharedFileHost(
         SharedFileImageViewerDialog(
             item = preview.item,
             localFile = preview.localFile,
+            ioDispatcher = manager.ioDispatcher,
             onDismiss = { liveHost.imagePreview = null },
             onSave = {
                 runWithStoragePermission(context, liveHost) {
@@ -635,7 +637,7 @@ internal fun SharedFilesBlock(
         for (item in files) {
             val localFile by produceState<File?>(null, sessionId, item.fileId, item.displayName, item.status) {
                 value = if (item.status == SharedFileCardStatus.SHARED_FILE_CARD_STATUS_DOWNLOADED) {
-                    withContext(Dispatchers.IO) {
+                    withContext(manager.ioDispatcher) {
                         manager.localFileIfDownloaded(sessionId, item.fileId, item.displayName)
                     }.also { found ->
                         if (found == null) manager.reportLocalMissing(sessionId, item.fileId)
@@ -1443,6 +1445,7 @@ internal fun SharedFileContextMenuCard(
 private fun SharedFileImageViewerDialog(
     item: SessionSharedFileItem,
     localFile: File,
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     onDismiss: () -> Unit,
     onSave: () -> Unit,
     onShare: () -> Unit,
@@ -1451,7 +1454,7 @@ private fun SharedFileImageViewerDialog(
     val name = item.displayName
     val sizeLabel = if (item.hasSizeText()) uiText(item.sizeText) else ""
     val bitmap by produceState<ImageBitmap?>(null, localFile.absolutePath) {
-        value = withContext(Dispatchers.IO) {
+        value = withContext(ioDispatcher) {
             runCatching {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     ImageDecoder.decodeBitmap(ImageDecoder.createSource(localFile)).asImageBitmap()

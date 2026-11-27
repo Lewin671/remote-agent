@@ -21,6 +21,7 @@ import io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView
 import io.github.lewin671.remoteagent.core.proto.Text as CoreText
 import io.github.lewin671.remoteagent.data.SharedFileManager
 import io.github.lewin671.remoteagent.data.SharedTextMaxBytes
+import kotlinx.coroutines.Dispatchers
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -44,7 +45,7 @@ class SharedTextViewerUiTest {
     @Before fun setup() {
         (androidx.core.content.FileProvider::class.java.getDeclaredField("sCache").apply { isAccessible = true }
             .get(null) as MutableMap<*, *>).clear()
-        manager = SharedFileManager(context) { null }
+        manager = SharedFileManager(context, ioDispatcher = Dispatchers.Unconfined) { null }
     }
 
     @After fun teardown() {
@@ -70,12 +71,8 @@ class SharedTextViewerUiTest {
             .build()
         val local = manager.seedCommittedFileForTest("text", file.fileId, file.displayName, bytes)
         ui.runOnIdle { openSharedFile(context, file, local, host) }
-        ui.waitUntil(5_000) {
-            ui.mainClock.advanceTimeByFrame()
-            ui.waitForIdle()
-            host.pendingTextPreview == null
-        }
         ui.waitForIdle()
+        assertNull(host.pendingTextPreview)
     }
 
     @Test fun validMarkdownOpensOnlyInApp() {

@@ -30,6 +30,7 @@ import io.github.lewin671.remoteagent.core.proto.SharedFileKind
 import java.io.File
 import java.io.IOException
 import java.util.Locale
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -45,6 +46,7 @@ import kotlinx.coroutines.withContext
  */
 class SharedFileManager(
     private val context: Context,
+    val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val remoteProvider: () -> Remote?,
 ) {
     val rootDir = File(context.cacheDir, "shared-files")
@@ -199,7 +201,7 @@ class SharedFileManager(
         if (kind != SharedFileKind.SHARED_FILE_KIND_IMAGE && kind != SharedFileKind.SHARED_FILE_KIND_VIDEO) return null
         val key = "${file.absolutePath}:${file.lastModified()}:$targetPx"
         thumbCache.get(key)?.let { return it }
-        val decoded = withContext(Dispatchers.IO) {
+        val decoded = withContext(ioDispatcher) {
             decodeThumbnail(file, kind, targetPx)
         } ?: return null
         thumbCache.put(key, decoded)
@@ -344,7 +346,7 @@ class SharedFileManager(
     }
 
     suspend fun saveToAlbum(file: File, kind: SharedFileKind, displayName: String): Result<Unit> =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             runCatching {
                 val safe = safeName(displayName)
                 val mime = mimeTypeFor(safe)
@@ -361,7 +363,7 @@ class SharedFileManager(
         }
 
     suspend fun saveToDownloads(file: File, displayName: String): Result<Unit> =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             runCatching {
                 val safe = safeName(displayName)
                 val mime = mimeTypeFor(safe)
