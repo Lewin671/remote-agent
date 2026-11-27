@@ -9,6 +9,11 @@ okhttp = "5.4.0"
 serialization = "1.9.0"
 junit = "4.13.2"
 robolectric = "4.16.1"
+# Pinned android-all-instrumented versions matching the SDKs targeted by Robolectric
+# unit tests (@Config(sdk = [30]) and @Config(sdk = [35])), resolved by Gradle so
+# tests run offline without touching Maven Central at runtime. Update with robolectric.
+robolectric-android-all-sdk30 = "11-robolectric-6757853-i7"
+robolectric-android-all-sdk35 = "15-robolectric-13954326-i7"
 android-test-runner = "1.6.2"
 compose-bom = "2025.06.01"
 core-ktx = "1.16.0"
@@ -36,6 +41,8 @@ okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 junit = { module = "junit:junit", version.ref = "junit" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+robolectric-android-all-sdk30 = { module = "org.robolectric:android-all-instrumented", version.ref = "robolectric-android-all-sdk30" }
+robolectric-android-all-sdk35 = { module = "org.robolectric:android-all-instrumented", version.ref = "robolectric-android-all-sdk35" }
 annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
 
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }

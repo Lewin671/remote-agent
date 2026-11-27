@@ -123,6 +123,55 @@ kotlin {
     jvmToolchain(17)
 }
 
+// Resolve Robolectric's android-all-instrumented SDK jars through Gradle so unit
+// tests never download from Maven Central at runtime and CI caches them in
+// ~/.gradle/caches. Separate configurations prevent Gradle from conflict-resolving
+// different versions of the same group:artifact.
+val robolectricSdkConfigs = listOf(
+    "30" to libs.robolectric.android.all.sdk30,
+    "35" to libs.robolectric.android.all.sdk35,
+).map { (api, dep) ->
+    configurations.create("robolectricSdk$api") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+        isTransitive = false
+    }.also { cfg ->
+        dependencies.add(cfg.name, dep)
+    }
+}
+
+abstract class WriteRobolectricDepsTask : DefaultTask() {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.ABSOLUTE)
+    abstract val sdkJars: ConfigurableFileCollection
+
+    @get:OutputFile
+    abstract val outputFile: RegularFileProperty
+
+    @TaskAction
+    fun generate() {
+        val props = Properties()
+        for (jar in sdkJars.files.sortedBy { it.name }) {
+            val prefix = "android-all-instrumented-"
+            val suffix = ".jar"
+            require(jar.name.startsWith(prefix) && jar.name.endsWith(suffix)) {
+                "Unexpected Robolectric SDK jar name: ${jar.name}"
+            }
+            val version = jar.name.removePrefix(prefix).removeSuffix(suffix)
+            props.setProperty("org.robolectric:android-all-instrumented:$version", jar.absolutePath)
+        }
+        val target = outputFile.get().asFile
+        target.parentFile.mkdirs()
+        target.outputStream().use { props.store(it, "Gradle-resolved Robolectric SDK jars") }
+    }
+}
+
+val robolectricDepsFile = layout.buildDirectory.file("robolectric/robolectric-deps.properties")
+val writeRobolectricDeps by tasks.registering(WriteRobolectricDepsTask::class) {
+    robolectricSdkConfigs.forEach { sdkJars.from(it) }
+    outputFile.set(robolectricDepsFile)
+}
+
 // The Markdown and terminal history cases the clients read by live outside this build.
 val corebindHostDir = rootProject.file("../build/core/android-host")
 val corebindHostLib = corebindHostDir.resolve(if (System.getProperty("os.name").lowercase().contains("mac")) "libgojni.dylib" else "libgojni.so")
@@ -131,10 +180,13 @@ tasks.withType<Test>().configureEach {
     // Robolectric classes remain ordered within each JVM. Independent forks
     // isolate Android statics while overlapping class startup and UI fixtures.
     maxParallelForks = minOf(2, Runtime.getRuntime().availableProcessors())
-    dependsOn(":core:buildCorebindHost")
+    dependsOn(":core:buildCorebindHost", writeRobolectricDeps)
     inputs.file(corebindHostLib).withPathSensitivity(PathSensitivity.RELATIVE)
+    robolectricSdkConfigs.forEach { inputs.files(it).withPathSensitivity(PathSensitivity.NONE) }
     systemProperty("java.library.path", corebindHostDir.absolutePath)
     systemProperty("org.robolectric.packagesToNotAcquire", "go.,io.github.lewin671.remoteagent.corebind.")
+    systemProperty("robolectric.offline", "true")
+    systemProperty("robolectric-deps.properties", robolectricDepsFile.get().asFile.absolutePath)
     inputs.file(rootProject.file("../i18n/locale-vectors.json")).withPathSensitivity(PathSensitivity.NONE)
     inputs.dir(file("schemas")).withPathSensitivity(PathSensitivity.RELATIVE)
     systemProperty("cacheSchemas", file("schemas").absolutePath)
