@@ -78,11 +78,12 @@ class TerminalTeardownTest {
             ensureSubMethod.invoke(terminal)
             connField.set(terminal, connection)
             applyMethod.invoke(terminal, TerminalFrame.newBuilder().setClosed("late loss").build())
-            val deadline = System.currentTimeMillis() + 3_000L
-            while (closes < 1 && System.currentTimeMillis() < deadline) {
-                org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
-                if (closes < 1) Thread.sleep(10)
-            }
+            // 1. Run main.post { reportClosed(true) } which dispatches TERMINAL_STREAM_EVENT_KIND_CLOSED.
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            // 2. Wait deterministically for CoreHost to emit TerminalReopenEffect and post openAttempt().
+            remote.coreHost.flushMailboxForTest()
+            // 3. Run main.post { if (active) openAttempt() } which closes the old leg and starts a new one.
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
             assertEquals("late terminal failure did not reopen", 1, closes)
             assertEquals(RemoteTerminal.State.Connecting, terminal.state.value)
             assertEquals(0, typed)
