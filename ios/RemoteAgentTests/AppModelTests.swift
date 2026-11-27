@@ -230,11 +230,12 @@ final class Harness {
     var executor: RecordingExecutor { executors.last! }
 
     /// Activates an account on the single CoreHost by emitting `AccountRuntimeChangedEffect`
-    /// and waits until `handleAccountRuntimeChanged` completes `host.startAsync()`.
+    /// and waits until `handleAccountRuntimeChanged` completes `host.startAsync()` on the FIFO chain.
     func activateSyntheticAccount() async throws {
         model.setForeground(true)
-        try await model.waitForLoadForTest()
+        try await awaitLoaded()
         let host = model.coreHost
+        await host.lifecycleIdleForTesting()
         let started = OSAllocatedUnfairLock(initialState: false)
         await host.setDebugEventObserver { ev in
             if case .syncLifecycle(let lc)? = ev.event, lc.kind == .start {
@@ -252,9 +253,9 @@ final class Harness {
                 }
             }
         ])
-        await eventually("context attached and started") {
-            self.model.context != nil && started.withLock { $0 }
-        }
+        try await awaitObservation { self.model.context != nil }
+        await host.lifecycleIdleForTesting()
+        #expect(started.withLock { $0 })
         await host.setDebugEventObserver(nil)
     }
 
@@ -333,27 +334,26 @@ final class Harness {
         let h = Harness(); defer { h.cleanUp() }
         try await h.activateSyntheticAccount()
         let host = h.model.coreHost
+        await host.lifecycleIdleForTesting()
         let events = OSAllocatedUnfairLock<[PBCoreEvent]>(initialState: [])
         await host.setDebugEventObserver { ev in events.withLock { $0.append(ev) } }
         defer { Task { await host.setDebugEventObserver(nil) } }
 
         h.model.scenePhase(.background)
         #expect(!h.model.foreground)
-        await eventually("syncLifecycle stop") {
-            events.withLock { list in
-                list.contains { if case .syncLifecycle(let lc)? = $0.event { return lc.kind == .stop } else { return false } }
-            }
-        }
+        await host.lifecycleIdleForTesting()
+        #expect(events.withLock { list in
+            list.contains { if case .syncLifecycle(let lc)? = $0.event { return lc.kind == .stop } else { return false } }
+        })
         // Inactive stays in the foreground: the app switcher does not drop the stream.
         events.withLock { $0.removeAll() }
         h.model.scenePhase(.inactive)
         h.model.scenePhase(.active)
         #expect(h.model.foreground)
-        await eventually("syncLifecycle start") {
-            events.withLock { list in
-                list.contains { if case .syncLifecycle(let lc)? = $0.event { return lc.kind == .start } else { return false } }
-            }
-        }
+        await host.lifecycleIdleForTesting()
+        #expect(events.withLock { list in
+            list.contains { if case .syncLifecycle(let lc)? = $0.event { return lc.kind == .start } else { return false } }
+        })
         #expect(h.executors.count == 1)
     }
 
@@ -361,6 +361,7 @@ final class Harness {
         let h = Harness(); defer { h.cleanUp() }
         try await h.activateSyntheticAccount()
         let host = h.model.coreHost
+        await host.lifecycleIdleForTesting()
         let netEvents = OSAllocatedUnfairLock<[(Bool, String)]>(initialState: [])
         await host.setDebugEventObserver { ev in
             if case .networkChanged(let n)? = ev.event {
@@ -377,9 +378,7 @@ final class Harness {
         h.model.networkChanged(none)
         h.model.networkChanged(cell)
         h.model.networkChanged(wifi)
-        await eventually("four distinct network changes forwarded") {
-            netEvents.withLock { $0.count == 4 }
-        }
+        await host.lifecycleIdleForTesting()
         let recorded = netEvents.withLock { $0 }
         #expect(recorded.map(\.0) == [true, false, true, true])
         #expect(recorded.map(\.1) == [wifi.signature, none.signature, cell.signature, wifi.signature])
@@ -391,12 +390,18 @@ final class Harness {
         let cell = NetworkPath(available: true, interface: "pdp_ip0")
         h.model.networkChanged(wifi)
         h.model.setForeground(true)
-        try await h.model.waitForLoadForTest()
+        try await h.awaitLoaded()
         let host = h.model.coreHost
-        let netEvents = OSAllocatedUnfairLock<[(Bool, String)]>(initialState: [])
+        await host.lifecycleIdleForTesting()
+        let trace = OSAllocatedUnfairLock<[String]>(initialState: [])
         await host.setDebugEventObserver { ev in
-            if case .networkChanged(let n)? = ev.event {
-                netEvents.withLock { $0.append((n.available, n.signature)) }
+            switch ev.event {
+            case .networkChanged(let n)?:
+                trace.withLock { $0.append("net:\(n.available):\(n.signature)") }
+            case .syncLifecycle(let lc)? where lc.kind == .start:
+                trace.withLock { $0.append("start") }
+            default:
+                break
             }
         }
         defer { Task { await host.setDebugEventObserver(nil) } }
@@ -411,19 +416,24 @@ final class Harness {
                 }
             }
         ])
-        await eventually("pre-load wifi signature forwarded on attach") {
-            netEvents.withLock { list in list.contains { $0.0 && $0.1 == wifi.signature } }
-        }
+        try await awaitObservation { h.model.context != nil }
+        await host.lifecycleIdleForTesting()
+        // Pre-load wifi must arrive strictly before syncLifecycle(.start).
+        let afterAttach = trace.withLock { $0 }
+        let wifiIdx = try #require(afterAttach.firstIndex(of: "net:true:\(wifi.signature)"))
+        let startIdx = try #require(afterAttach.firstIndex(of: "start"))
+        #expect(wifiIdx < startIdx)
+
         h.model.networkChanged(cell)
-        await eventually("post-load cell change forwarded") {
-            netEvents.withLock { list in list.contains { $0.0 && $0.1 == cell.signature } }
-        }
+        await host.lifecycleIdleForTesting()
+        #expect(trace.withLock { $0 }.contains("net:true:\(cell.signature)"))
     }
 
     @Test func firstObservationAfterEngineAttachmentIsForwardedAsItsBaseline() async throws {
         let h = Harness(); defer { h.cleanUp() }
         try await h.activateSyntheticAccount()
         let host = h.model.coreHost
+        await host.lifecycleIdleForTesting()
         let netEvents = OSAllocatedUnfairLock<[(Bool, String)]>(initialState: [])
         await host.setDebugEventObserver { ev in
             if case .networkChanged(let n)? = ev.event {
@@ -435,19 +445,18 @@ final class Harness {
         let wifi = NetworkPath(available: true, interface: "en0")
         let cell = NetworkPath(available: true, interface: "pdp_ip0")
         h.model.networkChanged(wifi)
-        await eventually("first observation forwarded as baseline") {
-            netEvents.withLock { $0.count == 1 && $0[0] == (true, wifi.signature) }
-        }
+        await host.lifecycleIdleForTesting()
+        #expect(netEvents.withLock { $0.count == 1 && $0[0] == (true, wifi.signature) })
         h.model.networkChanged(cell)
-        await eventually("second observation forwarded") {
-            netEvents.withLock { $0.count == 2 && $0[1] == (true, cell.signature) }
-        }
+        await host.lifecycleIdleForTesting()
+        #expect(netEvents.withLock { $0.count == 2 && $0[1] == (true, cell.signature) })
     }
 
     @Test func aDeviceTheServerTurnedAwayKeepsLocalKeysAndCanRetryLogin() async throws {
         let h = Harness(); defer { h.cleanUp() }
         try await h.activateSyntheticAccount()
         let host = h.model.coreHost
+        await host.lifecycleIdleForTesting()
         let events = OSAllocatedUnfairLock<[PBCoreEvent]>(initialState: [])
         await host.setDebugEventObserver { ev in events.withLock { $0.append(ev) } }
         defer { Task { await host.setDebugEventObserver(nil) } }
@@ -458,11 +467,10 @@ final class Harness {
         }
         #expect(h.model.screens.appRoot.stage == .removed)
         h.model.retryLogin()
-        await eventually("retryLogin forwarded to Core") {
-            events.withLock { list in
-                list.contains { if case .syncLifecycle(let lc)? = $0.event { return lc.kind == .retryLogin } else { return false } }
-            }
-        }
+        await host.lifecycleIdleForTesting()
+        #expect(events.withLock { list in
+            list.contains { if case .syncLifecycle(let lc)? = $0.event { return lc.kind == .retryLogin } else { return false } }
+        })
     }
 
     @Test func corruptRegistrationIntentSurfacesBootstrapErrorAndSetupResetRecoversInPlace() async throws {
@@ -692,6 +700,64 @@ final class Harness {
         next = old; next.constrained = true
         #expect(NetworkChange.from(old, to: next) == .gained)
         #expect(NetworkChange.from(next, to: next) == .none)
+    }
+
+    @Test func rapidNetworkChangesPreserveExactFifoOrder() async throws {
+        let h = Harness(); defer { h.cleanUp() }
+        try await h.activateSyntheticAccount()
+        let host = h.model.coreHost
+        await host.lifecycleIdleForTesting()
+        let netEvents = OSAllocatedUnfairLock<[(Bool, String)]>(initialState: [])
+        await host.setDebugEventObserver { ev in
+            if case .networkChanged(let n)? = ev.event {
+                netEvents.withLock { $0.append((n.available, n.signature)) }
+            }
+        }
+        defer { Task { await host.setDebugEventObserver(nil) } }
+
+        let sequence = [
+            NetworkPath(available: true, interface: "en0"),
+            NetworkPath(available: false, interface: ""),
+            NetworkPath(available: true, interface: "pdp_ip0"),
+            NetworkPath(available: true, interface: "en0"),
+        ]
+        var expected: [(Bool, String)] = []
+        for round in 0..<5 {
+            for item in sequence {
+                var p = item
+                if round % 2 == 1 { p.ipv6 = true }
+                h.model.networkChanged(p)
+                expected.append((p.available, p.signature))
+            }
+        }
+        await host.lifecycleIdleForTesting()
+        let recorded = netEvents.withLock { $0 }
+        #expect(recorded.map(\.0) == expected.map(\.0))
+        #expect(recorded.map(\.1) == expected.map(\.1))
+    }
+
+    @Test func coldStartAndForegroundTogglesPreserveLifecycleOrder() async throws {
+        let h = Harness(); defer { h.cleanUp() }
+        let host = h.model.ensureCoreHost()
+        await host.lifecycleIdleForTesting()
+        let log = OSAllocatedUnfairLock<[String]>(initialState: [])
+        await host.setDebugEventObserver { ev in
+            switch ev.event {
+            case .clientInit?:
+                log.withLock { $0.append("clientInit") }
+            case .securityForeground(let fg)?:
+                log.withLock { $0.append("fg:\(fg.foreground)") }
+            default:
+                break
+            }
+        }
+        defer { Task { await host.setDebugEventObserver(nil) } }
+
+        h.model.setForeground(true)
+        h.model.setForeground(false)
+        h.model.setForeground(true)
+        await host.lifecycleIdleForTesting()
+        #expect(log.withLock { $0 } == ["clientInit", "fg:true", "fg:false", "fg:true"])
     }
 
     @Test func demoLogoutUnloadsContextAndAllowsInertMediaCenterLookup() async throws {

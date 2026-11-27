@@ -310,13 +310,14 @@ final class AppModel {
         let host = ensureCoreHost()
         if !clientInitDispatched {
             clientInitDispatched = true
-            let desc = parts.deviceDescription()
+            let descProvider = parts.deviceDescription
+            let desc = descProvider()
             let fg = foreground
             let netAvail = path.available
             let netSig = hasObservedPath ? path.signature : ""
             let defServer = lastServer
-            Task {
-                await host.setDeviceDescription(parts.deviceDescription)
+            host.enqueueLifecycle { host in
+                await host.setDeviceDescription(descProvider)
                 await host.clientInit(
                     platform: "ios",
                     deviceDescription: desc,
@@ -329,7 +330,7 @@ final class AppModel {
                 )
             }
         } else if foreground && screens.appRoot.stage == .bootstrapError && !screens.appRoot.bootstrapError.canReset {
-            Task { await host.appRootRetryBootstrap() }
+            host.enqueueLifecycle { await $0.appRootRetryBootstrap() }
         }
         return host
     }
@@ -442,14 +443,14 @@ final class AppModel {
         }
         if front {
             let host = ensureForegroundCoreHost()
-            Task { await host.setForeground(true) }
+            host.enqueueLifecycle { await $0.setForeground(true) }
             if context != nil {
                 host.start()
             }
         } else {
             closeTerminals()
             if let host = _coreHost {
-                Task { await host.setForeground(false) }
+                host.enqueueLifecycle { await $0.setForeground(false) }
                 if context != nil {
                     host.stop()
                 }
@@ -476,14 +477,14 @@ final class AppModel {
     func dismissUpgradeNotice() {
         guard !isDemo else { return }
         let host = ensureCoreHost()
-        Task { await host.appRootDismissUpgradeNotice() }
+        host.enqueueLifecycle { await $0.appRootDismissUpgradeNotice() }
     }
 
     func loadAccount() {
         guard !isDemo, foreground else { return }
         let host = ensureForegroundCoreHost()
         if screens.appRoot.stage == .bootstrapError {
-            Task { await host.appRootRetryBootstrap() }
+            host.enqueueLifecycle { await $0.appRootRetryBootstrap() }
         }
     }
 
@@ -660,7 +661,14 @@ final class AppModel {
             host.setNetwork(path.available)
         }
         if foreground {
-            await host.startAsync()
+            let startTask = host.enqueueLifecycle { [weak self] host in
+                let stillForeground = await MainActor.run {
+                    self?.foreground == true && self?.generation == gen
+                }
+                guard stillForeground else { return }
+                await host.startAsync()
+            }
+            await startTask.value
         }
     }
 

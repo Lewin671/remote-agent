@@ -515,6 +515,46 @@ actor CoreHost: SyncEngine {
         weak var host: CoreHost?
     }
 
+    /// Serializes fire-and-forget nonisolated lifecycle & network commands in FIFO order
+    /// so rapid transitions (e.g. wifi -> offline -> cell -> wifi, clientInit -> setForeground,
+    /// or attach network -> start -> background stop) cannot reorder while racing to acquire
+    /// the `CoreHost` actor.
+    ///
+    /// Trade-off: foreground/background transitions wait behind the previous queued command's
+    /// full `dispatch` (including its render publish) rather than preempting it, ensuring
+    /// strict FIFO state ordering at the cost of waiting for the in-flight command's step.
+    private final class CommandChain: @unchecked Sendable {
+        private let lock = NSLock()
+        private var tail: Task<Void, Never>?
+
+        @discardableResult
+        func enqueue(_ work: @escaping @Sendable () async -> Void) -> Task<Void, Never> {
+            lock.withLock {
+                let previous = tail
+                let next = Task {
+                    await previous?.value
+                    await work()
+                }
+                tail = next
+                return next
+            }
+        }
+
+        func drain() async {
+            let last = lock.withLock { tail }
+            await last?.value
+        }
+
+        func cancelAndClear() {
+            let last = lock.withLock { () -> Task<Void, Never>? in
+                let prev = tail
+                tail = nil
+                return prev
+            }
+            last?.cancel()
+        }
+    }
+
     private let client: CoreClient
     private var executor: (any CoreHostExecutor)?
     private let accountBox: OSAllocatedUnfairLock<Account>
@@ -522,6 +562,7 @@ actor CoreHost: SyncEngine {
     nonisolated let sharedSecurityClient: SecurityClient?
     private var securityCallbacks = SecurityHostCallbacks()
     private let closedFlag: OSAllocatedUnfairLock<Bool>
+    private let lifecycleChain = CommandChain()
     private let onboardingEditSeqLock = OSAllocatedUnfairLock<UInt64>(initialState: 0)
     private let screens: CoreScreens
     private var defaults: ScopeDefaults
@@ -853,31 +894,49 @@ actor CoreHost: SyncEngine {
 
     // MARK: - SyncEngine Conformance
 
+    @discardableResult
+    nonisolated func enqueueLifecycle(_ op: @escaping @Sendable (CoreHost) async -> Void) -> Task<Void, Never> {
+        guard !closedFlag.withLock({ $0 }) else { return Task {} }
+        return lifecycleChain.enqueue { [weak self] in
+            guard let self, !self.closedFlag.withLock({ $0 }) else { return }
+            await op(self)
+        }
+    }
+
+    #if DEBUG
+    nonisolated func lifecycleIdleForTesting() async {
+        await lifecycleChain.drain()
+    }
+    #endif
+
     nonisolated func start() {
-        Task { await self.startAsync() }
+        enqueueLifecycle { await $0.startAsync() }
     }
 
     nonisolated func stop() {
-        Task { await self.stopAsync() }
+        enqueueLifecycle { await $0.stopAsync() }
     }
 
     nonisolated func setNetwork(_ available: Bool) {
-        Task { await self.handleNetworkChange(signature: lastNetworkSignatureFor(available), available: available) }
+        let sig = lastNetworkSignatureFor(available)
+        enqueueLifecycle { await $0.handleNetworkChange(signature: sig, available: available) }
     }
 
     nonisolated func networkChanged(_ signature: String, available: Bool) {
-        Task { await self.handleNetworkChange(signature: signature, available: available) }
+        enqueueLifecycle { await $0.handleNetworkChange(signature: signature, available: available) }
     }
 
     nonisolated func reconnectNow() {
-        Task { await self.reconnectNowAsync() }
+        enqueueLifecycle { await $0.reconnectNowAsync() }
     }
 
     nonisolated func retryLogin() {
-        Task { await self.retryLoginAsync() }
+        enqueueLifecycle { await $0.retryLoginAsync() }
     }
 
     nonisolated func close() {
+        closedFlag.withLock { $0 = true }
+        lifecycleChain.cancelAndClear()
         Task { await self.closeAsync() }
     }
 
