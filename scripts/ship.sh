@@ -19,12 +19,10 @@
 # running the release is skipped, so after a failure run it again.
 # The App is not shipped: it updates itself from the public release.
 #
-# Relays: every relay we run is upgraded in step 2, each as "<ssh host> <url>"
-# per line. The list comes from RA_RELAYS (same format, newline separated) or
-# ~/.config/remote-agent/relays, which is not in this public repository
-# because it may name relays we do not advertise; without either, only the
-# public relay root@relay.remote-agent.top is shipped. RA_WEB_URL is the web
-# client as users reach it.
+# Relays: step 2 upgrades each relay listed as "<ssh host> <url>" per line, from
+# RA_RELAYS (newline separated) or the local deployment file
+# ~/.config/remote-agent/relays; without either it ships
+# root@relay.remote-agent.top. RA_WEB_URL is the web client as users reach it.
 set -eu
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
