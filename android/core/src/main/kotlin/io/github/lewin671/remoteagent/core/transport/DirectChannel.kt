@@ -154,7 +154,7 @@ internal class DirectChannelOptions(
     val dcState: ((Boolean) -> Unit)? = null,
     val stunError: ((Int, String) -> Unit)? = null,
     val frame: (ByteArray) -> Unit,
-    val closed: () -> Unit,
+    val closed: (String) -> Unit,
     val open: (() -> Unit)? = null,
     val probeReply: ((ByteArray) -> Unit)? = null,
     val clock: () -> Long = System::currentTimeMillis,
@@ -225,8 +225,11 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                     override fun onConnectionStateChange(state: RtcPeerState) {
                         if (!valid()) return
                         options.state(DirectStateKind.DIRECT_STATE_KIND_CONN, state.name.lowercase())
-                        if (state == RtcPeerState.FAILED || state == RtcPeerState.CLOSED || state == RtcPeerState.DISCONNECTED) {
-                            close()
+                        when (state) {
+                            RtcPeerState.FAILED -> close("pc_failed")
+                            RtcPeerState.DISCONNECTED -> close("pc_disconnected")
+                            RtcPeerState.CLOSED -> close("pc_closed")
+                            else -> Unit
                         }
                     }
 
@@ -243,7 +246,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                     }
 
                     override fun onUnexpectedDataChannel() {
-                        if (valid()) close()
+                        if (valid()) close("unexpected_dc")
                     }
                 },
             )
@@ -265,11 +268,11 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                 override fun onMessage(data: ByteArray) {
                     if (!valid()) return
                     if (data.size > FRAME_BYTES) {
-                        close()
+                        close("frame_oversize")
                         return
                     }
                     if (!incoming.trySend(data).isSuccess && !ended) {
-                        close()
+                        close("frame_overflow")
                     }
                 }
             }
@@ -280,7 +283,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                         pendingProbeState.set(true)
                         return
                     }
-                    if (valid() && ch.state() == RtcChannelState.CLOSED) close()
+                    if (valid() && ch.state() == RtcChannelState.CLOSED) close("dc1_closed")
                 }
 
                 override fun onBufferedAmountChange(previousAmount: Long) {}
@@ -312,7 +315,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
             handleDataState(data.state())
         }
         if (pendingProbeState.compareAndSet(true, false) && valid() && probe.state() == RtcChannelState.CLOSED) {
-            close()
+            close("dc1_closed")
         }
 
         scope.launch(options.receiveDispatcher) {
@@ -321,7 +324,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                 try {
                     receive(msg)
                 } catch (_: Exception) {
-                    close()
+                    close("receive_error")
                     break
                 }
             }
@@ -338,7 +341,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
         } else if (state == RtcChannelState.CLOSED) {
             options.state(DirectStateKind.DIRECT_STATE_KIND_DC, "closed")
             options.dcState?.invoke(false)
-            close()
+            close("dc0_closed")
         }
     }
 
@@ -385,12 +388,12 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
 
     fun sendProbe(raw: ByteArray): Boolean {
         if (confirmed && valid() && (data.state() == RtcChannelState.CLOSED || probe.state() == RtcChannelState.CLOSED)) {
-            close()
+            close(if (data.state() == RtcChannelState.CLOSED) "dc0_closed" else "dc1_closed")
             return false
         }
         if (!ready || probe.state() != RtcChannelState.OPEN || raw.size != 17) return false
         if (!probe.send(raw, true)) {
-            close()
+            close("probe_send_failed")
             return false
         }
         return true
@@ -495,7 +498,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
             }
             if (index == 0) handoff()
             if (!data.send(frame, true)) {
-                close()
+                close("dc_send_failed")
                 throw PathChanged()
             }
         }
@@ -605,7 +608,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
         }
 
         if (mismatch) {
-            close()
+            close("frame_conflict")
             return
         }
         val full = completed ?: return
@@ -638,7 +641,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
         if (valid() && confirmed) options.frame(raw)
     }
 
-    fun close() {
+    fun close(reason: String = "core_close") {
         val toFreeParts: List<PartialMessage>
         val toFreeWaiting: List<ByteArray>
         val jobToCancel: Job?
@@ -659,7 +662,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
         jobToCancel?.cancel()
         lifetimeJob.cancel()
         cleanup(
-            { options.closed() },
+            { options.closed(reason) },
             { releaseReservation() },
         )
         // WebRTC PeerConnection.close() can block inside native locks; run on a shared supervised scope

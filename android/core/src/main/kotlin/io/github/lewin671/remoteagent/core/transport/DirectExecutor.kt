@@ -68,10 +68,12 @@ internal class DirectExecutor(
     private val monotonic: () -> Long = { System.nanoTime() / 1_000_000L },
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val bulkReceiveDispatcher: CoroutineDispatcher = CpuLanes.bulk,
+    private val directLog: (String) -> Unit = {},
 ) {
     private class PcEntry(
         val machineId: String,
         val use: Int,
+        val createdAtMs: Long,
         @Volatile var confirmed: Boolean = false,
         @Volatile var closedByCore: Boolean = false,
     ) {
@@ -134,6 +136,28 @@ internal class DirectExecutor(
         if (!closed.get()) emit(CoreEvent.newBuilder().apply(block).build())
     }
 
+    private fun useName(use: Int): String = when (use) {
+        1 -> "read"
+        2 -> "file"
+        else -> "use$use"
+    }
+
+    private fun stateKindName(kind: DirectStateKind): String = when (kind) {
+        DirectStateKind.DIRECT_STATE_KIND_GATHER -> "gather"
+        DirectStateKind.DIRECT_STATE_KIND_ICE -> "ice"
+        DirectStateKind.DIRECT_STATE_KIND_CONN -> "conn"
+        DirectStateKind.DIRECT_STATE_KIND_DTLS -> "dtls"
+        DirectStateKind.DIRECT_STATE_KIND_SCTP -> "sctp"
+        DirectStateKind.DIRECT_STATE_KIND_DC -> "dc"
+        else -> "other"
+    }
+
+    private fun elapsedMs(entry: PcEntry): Long = (monotonic() - entry.createdAtMs).coerceAtLeast(0L)
+
+    private fun logEvent(msg: String) {
+        runCatching { directLog(msg) }
+    }
+
     fun attachLeg(stream: FrameStream) {
         leg = stream
     }
@@ -173,13 +197,15 @@ internal class DirectExecutor(
         }
         pcs.remove(eff.pcId)?.let { prev ->
             prev.closedByCore = true
+            logEvent("pc=${eff.pcId} use=${useName(prev.use)} close=core reason=replaced at_ms=${elapsedMs(prev)}")
             prev.cancelInFlightJobs()
             rejectPendingForPc(eff.pcId)
-            runCatching { prev.channel.close() }
+            runCatching { prev.channel.close("replaced") }
         }
         val entry = PcEntry(
             machineId = eff.machineId,
             use = eff.use,
+            createdAtMs = monotonic(),
         )
         // Register before constructing DirectChannel so synchronous SDK callbacks never miss the entry.
         pcs[eff.pcId] = entry
@@ -203,6 +229,9 @@ internal class DirectExecutor(
                     },
                     state = { kind: DirectStateKind, value: String ->
                         if (!closed.get() && pcs[eff.pcId] === entry) {
+                            if (kind == DirectStateKind.DIRECT_STATE_KIND_ICE || kind == DirectStateKind.DIRECT_STATE_KIND_CONN) {
+                                logEvent("pc=${eff.pcId} use=${useName(eff.use)} state=${stateKindName(kind)}:$value at_ms=${elapsedMs(entry)}")
+                            }
                             emitEvent {
                                 setDirectPcState(
                                     DirectPcStateEvent.newBuilder()
@@ -215,6 +244,9 @@ internal class DirectExecutor(
                     },
                     dcState = { open ->
                         if (!closed.get() && pcs[eff.pcId] === entry) {
+                            if (!open) {
+                                logEvent("pc=${eff.pcId} use=${useName(eff.use)} dc=closed at_ms=${elapsedMs(entry)}")
+                            }
                             emitEvent {
                                 setDirectDcState(DirectDcStateEvent.newBuilder().setPcId(eff.pcId).setOpen(open))
                             }
@@ -244,13 +276,18 @@ internal class DirectExecutor(
                         }
                     },
                     frame = { raw -> handleDcFrame(eff.pcId, entry, raw) },
-                    closed = {
+                    closed = { reason ->
                         pcs.remove(eff.pcId, entry)
                         entry.cancelInFlightJobs()
                         rejectPendingForPc(eff.pcId)
                         if (!entry.closedByCore) {
+                            logEvent("pc=${eff.pcId} use=${useName(eff.use)} close=native reason=$reason at_ms=${elapsedMs(entry)}")
                             emitEvent {
-                                setDirectPcClosed(DirectPcClosedEvent.newBuilder().setPcId(eff.pcId))
+                                setDirectPcClosed(
+                                    DirectPcClosedEvent.newBuilder()
+                                        .setPcId(eff.pcId)
+                                        .setReason(reason),
+                                )
                             }
                         }
                     },
@@ -376,9 +413,11 @@ internal class DirectExecutor(
     fun pcClose(eff: DirectPcCloseEffect) {
         val entry = pcs.remove(eff.pcId) ?: return
         entry.closedByCore = true
+        val reason = eff.reason.ifEmpty { "core_close" }
+        logEvent("pc=${eff.pcId} use=${useName(entry.use)} close=core reason=$reason at_ms=${elapsedMs(entry)}")
         entry.cancelInFlightJobs()
         rejectPendingForPc(eff.pcId)
-        entry.channel.close()
+        entry.channel.close(reason)
     }
 
     fun pcSendProbe(eff: DirectPcSendProbeEffect) {
@@ -493,10 +532,11 @@ internal class DirectExecutor(
         leg = null
         val snapshot = pcs.entries.toList()
         pcs.clear()
-        for ((_, entry) in snapshot) {
+        for ((pcId, entry) in snapshot) {
             entry.closedByCore = true
+            logEvent("pc=$pcId use=${useName(entry.use)} close=core reason=executor_close at_ms=${elapsedMs(entry)}")
             entry.cancelInFlightJobs()
-            runCatching { entry.channel.close() }
+            runCatching { entry.channel.close("executor_close") }
         }
         val pendSnapshot = pendingRpc.entries.toList()
         pendingRpc.clear()

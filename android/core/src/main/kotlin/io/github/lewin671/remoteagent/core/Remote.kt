@@ -88,6 +88,7 @@ class Remote(
     private val devicePlatform: String = "",
     private val deviceDescription: String = "",
     sharedCoreHost: CoreHost? = null,
+    private val directLog: (String) -> Unit = {},
 ) {
     private val dispatcher = dispatcher ?: Dispatchers.IO.limitedParallelism(1)
     private val bulkCpuDispatcher =
@@ -228,6 +229,7 @@ class Remote(
         monotonic = monotonic,
         dispatcher = directDispatcher,
         bulkReceiveDispatcher = bulkCpuDispatcher,
+        directLog = directLog,
     )
 
     internal var deviceLink = DeviceLink(RelayPath(sockets = { socketFactory ?: streamHttp }))

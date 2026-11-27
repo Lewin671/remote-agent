@@ -485,6 +485,71 @@ class DirectTransportUiTest {
     }
 
     @Test
+    fun unifiedDirectSheetShowsConnectedThenDroppedReasonAndDiagnostics() {
+        fun lit(s: String) = CoreText.newBuilder().setLiteral(s).build()
+        val dropSummary = "连上 4.2 秒后断开 · 探测连续 3 次无回应"
+        val view = ConnectionGroupView.newBuilder()
+            .setToggleVisible(true)
+            .setToggleEnabled(true)
+            .setToggleChecked(true)
+            .setStage(ConnectionGroupStage.CONNECTION_GROUP_STAGE_RELAY_FAILED)
+            .setTone(ConnectionGroupTone.CONNECTION_GROUP_TONE_MUTED)
+            .setStatusText(lit("正在用中继"))
+            .setDetailText(lit("直连断了，稍后会自动再试"))
+            .setShowDiagnosticsEntry(true)
+            .build()
+        val diagVm = DirectDiagnosticsViewModel.newBuilder()
+            .setMachineId("m1")
+            .setSupported(true)
+            .setEnabled(true)
+            .setConnected(false)
+            .setCanRetry(true)
+            .setTitleText(lit("直连连上后又断开了"))
+            .setBodyText(lit("$dropSummary。当前所有操作都已自动走中继，不影响正常使用。"))
+            .addChecks(
+                PlainDiagCheckView.newBuilder()
+                    .setMark(DiagCheckMark.DIAG_CHECK_MARK_ONLINE)
+                    .setLabelText(lit("电脑在线并响应"))
+                    .setStatusText(lit("正常")),
+            )
+            .addChecks(
+                PlainDiagCheckView.newBuilder()
+                    .setMark(DiagCheckMark.DIAG_CHECK_MARK_OFF)
+                    .setLabelText(lit("局域网或公网直通"))
+                    .setDetailText(lit(dropSummary))
+                    .setStatusText(lit("已断开")),
+            )
+            .addChecks(
+                PlainDiagCheckView.newBuilder()
+                    .setMark(DiagCheckMark.DIAG_CHECK_MARK_ONLINE)
+                    .setLabelText(lit("后台自动重试"))
+                    .setDetailText(lit("网络变化或重连时会自动再试"))
+                    .setStatusText(lit("已开启")),
+            )
+            .build()
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                DirectConnectionSheet(
+                    machineId = "m1",
+                    computerName = "m1",
+                    view = view,
+                    diagVm = diagVm,
+                    onToggle = {},
+                    onRetry = {},
+                    onClose = {},
+                )
+            }
+        }
+        ui.waitForIdle()
+        ui.onNodeWithText("正在用中继").assertIsDisplayed()
+        ui.onNodeWithText("直连断了，稍后会自动再试").assertIsDisplayed()
+        ui.onNodeWithText("$dropSummary。当前所有操作都已自动走中继，不影响正常使用。").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("已断开").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText(dropSummary).performScrollTo().assertIsDisplayed()
+        ui.onAllNodesWithText("已恢复直连").assertCountEquals(0)
+    }
+
+    @Test
     fun machineStatusDoesNotDisplayTransportPaths() {
         val vm = ScreenGoldenLoader.machineStatusView("machine_status_lifecycle", "liveCriticalDisk")
         ui.setContent {

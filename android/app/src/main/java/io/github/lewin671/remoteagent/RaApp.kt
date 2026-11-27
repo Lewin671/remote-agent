@@ -512,6 +512,7 @@ class RaApp : Application() {
                 monotonic = android.os.SystemClock::elapsedRealtime,
                 devicePlatform = "android",
                 deviceDescription = androidDeviceDescription(this),
+                directLog = { msg -> Log.i("RemoteAgentDirect", msg) },
                 securityStore = foregroundGatedSecurityStore,
                 scheduleSeenStore = object : io.github.lewin671.remoteagent.core.ScheduleSeenStore {
                     private fun keyFor(machineId: String): String =

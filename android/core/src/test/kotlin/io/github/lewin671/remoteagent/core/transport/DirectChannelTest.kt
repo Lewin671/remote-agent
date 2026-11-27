@@ -831,4 +831,43 @@ class DirectChannelTest {
             closeScope.cancel()
         }
     }
+
+    @Test
+    fun closeReportsFixedReasonWordForNativeFailures() = runTest {
+        val (dispatcher, closeScope) = testRuntime()
+        val reasons = CopyOnWriteArrayList<String>()
+        var listenerRef: RtcPeerListener? = null
+        val channel = DirectChannel(
+            DirectChannelOptions(
+                peer = "m-1",
+                roundId = 71L,
+                use = 1,
+                generation = 1L,
+                budget = DirectBudget(),
+                valid = { true },
+                stun = emptyList(),
+                factory = RtcFactory { _, l ->
+                    listenerRef = l
+                    FakePeerConnection(l)
+                },
+                candidate = {},
+                state = { _, _ -> },
+                frame = {},
+                closed = { reason -> reasons.add(reason) },
+                monotonic = { testScheduler.currentTime },
+                dispatcher = dispatcher,
+                receiveDispatcher = dispatcher,
+                closeScope = closeScope,
+            ),
+        )
+        try {
+            listenerRef!!.onConnectionStateChange(RtcPeerState.FAILED)
+            runCurrent()
+            assertEquals(listOf("pc_failed"), reasons.toList())
+        } finally {
+            channel.close()
+            runCurrent()
+            closeScope.cancel()
+        }
+    }
 }

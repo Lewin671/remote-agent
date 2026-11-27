@@ -535,4 +535,57 @@ class DirectExecutorTest {
             remoteExec.shutdownNow()
         }
     }
+
+    @Test
+    fun directExecutorLogsStateAndCloseReasonsWithoutAddressesAndForwardsReasonToCore() = runBlocking {
+        val events = CopyOnWriteArrayList<CoreEvent>()
+        val logs = CopyOnWriteArrayList<String>()
+        var nowMs = 1_000L
+        val listeners = ArrayList<Pair<StubPeerConnection, RtcPeerListener>>()
+        val executor = DirectExecutor(
+            emit = { events.add(it) },
+            onPushedEvent = { _, _, _, _, _ -> },
+            factory = RtcFactory { _, l ->
+                StubPeerConnection(l, DirectStatsReport.getDefaultInstance()).also { listeners.add(it to l) }
+            },
+            monotonic = { nowMs },
+            directLog = { msg -> logs.add(msg) },
+        )
+        try {
+            executor.pcCreate(
+                DirectPcCreateEffect.newBuilder().setPcId(21L).setMachineId("m-1").setRoundId(10L).setUse(1).setGeneration(1L).build(),
+            )
+            val (_, l1) = listeners[0]
+            nowMs = 1_450L
+            l1.onIceConnectionStateChange("checking")
+            nowMs = 1_900L
+            l1.onConnectionStateChange(RtcPeerState.CONNECTED)
+            nowMs = 5_100L
+            l1.onConnectionStateChange(RtcPeerState.FAILED)
+
+            val closedEv = events.last { it.hasDirectPcClosed() }.directPcClosed
+            assertEquals(21L, closedEv.pcId)
+            assertEquals("pc_failed", closedEv.reason)
+
+            assertTrue(logs.any { it == "pc=21 use=read state=ice:checking at_ms=450" })
+            assertTrue(logs.any { it == "pc=21 use=read state=conn:connected at_ms=900" })
+            assertTrue(logs.any { it == "pc=21 use=read close=native reason=pc_failed at_ms=4100" })
+
+            // Core-initiated close logs close=core with Core's reason word.
+            nowMs = 6_000L
+            executor.pcCreate(
+                DirectPcCreateEffect.newBuilder().setPcId(22L).setMachineId("m-1").setRoundId(11L).setUse(2).setGeneration(1L).build(),
+            )
+            nowMs = 9_200L
+            executor.pcClose(DirectPcCloseEffect.newBuilder().setPcId(22L).setReason("probe_timeout").build())
+            assertTrue(logs.any { it == "pc=22 use=file close=core reason=probe_timeout at_ms=3200" })
+
+            // Privacy guard: logs must never contain IPs, ports, or SDP tokens.
+            for (line in logs) {
+                assertFalse("log leaked address/sdp: $line", line.contains("192.") || line.contains("candidate:") || line.contains("v=0"))
+            }
+        } finally {
+            executor.close()
+        }
+    }
 }
