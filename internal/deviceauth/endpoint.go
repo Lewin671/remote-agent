@@ -773,6 +773,16 @@ func (e *Endpoint) Removed() bool     { e.mu.Lock(); defer e.mu.Unlock(); return
 // states[i] is a recovery transition. The new head, states and keys are
 // persisted in one transaction before use.
 func (e *Endpoint) Install(states []devicesec.State, proofs []*devicesec.RecoveryStatement) error {
+	return e.InstallWithLease(states, proofs, nil, 0)
+}
+
+// InstallWithLease appends a contiguous chain segment and, when lease is
+// non-nil, verifies and commits the matching lease certificate in the same
+// SQLite transaction and mutex acquisition so concurrent callers never observe
+// a newer head epoch paired with a stale lease. If the states are valid but
+// the lease itself is rejected, the verified states are still persisted and
+// the lease error is returned.
+func (e *Endpoint) InstallWithLease(states []devicesec.State, proofs []*devicesec.RecoveryStatement, lease *devicesec.LeaseCertificate, now uint64) error {
 	if len(states) == 0 || len(proofs) != len(states) {
 		return devicesec.ErrInvalid
 	}
@@ -851,6 +861,38 @@ func (e *Endpoint) Install(states []devicesec.State, proofs []*devicesec.Recover
 	// recovery boundary cannot make pre-recovery history unreadable on a
 	// device that already had it.
 	cacheDerivableKeys(&next)
+	if lease != nil {
+		leaseCopy := *lease
+		leaseCopy.Signature = bytes.Clone(lease.Signature)
+		leaseErr := leaseCopy.Verify(chainHead(next))
+		if leaseErr == nil {
+			var rawLease []byte
+			rawLease, leaseErr = leaseCopy.MarshalBinary()
+			if leaseErr == nil {
+				committedLease, floor, err := e.persistInstallWithLease(d, next, leaseCopy, rawLease, now)
+				if err == nil {
+					if committedLease {
+						next.Lease = &leaseCopy
+						next.Floor = floor
+						next.FloorSaved = floor
+					} else if now > next.Floor {
+						next.Floor = now
+					}
+					e.data = next
+					return nil
+				}
+				leaseErr = err
+			}
+		}
+		// Verified states (including removals) must still be persisted even if
+		// the accompanying lease fails validation, rollback, clock, or lease-table
+		// storage checks.
+		if err := e.persistInstall(d, next); err != nil {
+			return err
+		}
+		e.data = next
+		return leaseErr
+	}
 	if err := e.persistInstall(d, next); err != nil {
 		return err
 	}
@@ -886,6 +928,39 @@ func (e *Endpoint) persistInstall(old, next record) error {
 		return ErrStorage
 	}
 	defer tx.Rollback()
+	if err := writeInstallTx(tx, old, next); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (e *Endpoint) persistInstallWithLease(old, next record, l devicesec.LeaseCertificate, rawLease []byte, now uint64) (bool, uint64, error) {
+	unchangedLease := old.HeadEpoch == next.HeadEpoch &&
+		old.Lease != nil && old.Lease.Head == l.Head &&
+		old.Lease.IssuedAt == l.IssuedAt && old.Lease.NotAfter == l.NotAfter &&
+		bytes.Equal(old.Lease.Signature, l.Signature)
+	if unchangedLease {
+		return false, max(now, old.Floor), nil
+	}
+	tx, err := e.db.Begin()
+	if err != nil {
+		return false, 0, ErrStorage
+	}
+	defer tx.Rollback()
+	if err := writeInstallTx(tx, old, next); err != nil {
+		return false, 0, err
+	}
+	floor, err := writeLeaseTx(tx, old.Floor, l, rawLease, now)
+	if err != nil {
+		return false, 0, err
+	}
+	if err := tx.Commit(); err != nil {
+		return false, 0, ErrStorage
+	}
+	return true, floor, nil
+}
+
+func writeInstallTx(tx *sql.Tx, old, next record) error {
 	if err := checkPersistedHead(tx, old); err != nil {
 		return err
 	}
@@ -927,7 +1002,7 @@ func (e *Endpoint) persistInstall(old, next record) error {
 			return ErrStorage
 		}
 	}
-	return tx.Commit()
+	return nil
 }
 
 // cacheDerivableKeys opens the grant of every state that still names this

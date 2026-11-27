@@ -438,10 +438,19 @@ func (s *securitySession) pull(ctx context.Context) (uint64, error) {
 			proofs = append(proofs, proof)
 		}
 		if len(states) > 0 {
-			installErr := s.endpoint.Install(states, proofs)
+			var lease *devicesec.LeaseCertificate
+			if len(res.Msg.Lease) > 0 && states[len(states)-1].Core.Epoch >= res.Msg.HeadEpoch {
+				if l, err := devicesec.ParseLease(res.Msg.Lease); err == nil {
+					lease = &l
+				}
+			}
+			installErr := s.endpoint.InstallWithLease(states, proofs, lease, now)
 			s.revalidateStreams()
 			if installErr != nil {
 				return 0, installErr
+			}
+			if lease != nil {
+				return s.endpoint.HeadEpoch(), nil
 			}
 		}
 		head := s.endpoint.HeadEpoch()

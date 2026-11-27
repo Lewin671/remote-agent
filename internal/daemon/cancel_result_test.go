@@ -104,7 +104,8 @@ func startCancellationTestRelayWithOptions(t *testing.T, backend relay.Backend, 
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Save after enrolling the client so the daemon starts on the current head.
+	// Enroll the client (epoch 3) while machine.Endpoint still holds epoch 2,
+	// then save machine.Endpoint so the daemon catches up on startup.
 	_, phoneEd, _ := ed25519.GenerateKey(nil)
 	phoneX, _, _ := deviceauth.NewXKey()
 	phone, err := authority.Enroll(ctx, phoneEd, phoneX, devicesec.Client)

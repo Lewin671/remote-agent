@@ -243,3 +243,91 @@ func TestInstallLeaseSkipsSQLiteWriteWhenUnchanged(t *testing.T) {
 		t.Fatalf("updated lease triggered %d SQLite writes, want 1", writes)
 	}
 }
+
+func TestInstallWithLeaseAtomicAndFallback(t *testing.T) {
+	g, pin, ed, x, _ := testGenesis(t)
+	secret := bytes.Repeat([]byte{0x33}, 32)
+	now := g.Core.IssuedAt
+	l1, err := BuildLease(g, ed, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "security.db")
+	ep, err := InitEndpoint(path, pin, []devicesec.State{g}, []*devicesec.RecoveryStatement{nil}, g.Core.AuthorityID, ed.Seed(), x, l1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ep.Close()
+
+	// Advance state + lease atomically and ensure CheckLease succeeds immediately
+	// and persists across reopen.
+	s2, err := rotateForTest(g, secret, ed, now+1000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l2, err := BuildLease(s2, ed, now+1000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ep.InstallWithLease([]devicesec.State{s2}, []*devicesec.RecoveryStatement{nil}, &l2, now+1000); err != nil {
+		t.Fatalf("InstallWithLease: %v", err)
+	}
+	if err := ep.CheckLease(now + 1000); err != nil {
+		t.Fatalf("CheckLease after atomic install: %v", err)
+	}
+	if ep.HeadEpoch() != s2.Core.Epoch {
+		t.Fatalf("head epoch = %d, want %d", ep.HeadEpoch(), s2.Core.Epoch)
+	}
+
+	reopened, err := OpenEndpoint(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := reopened.CheckLease(now + 1000); err != nil {
+		reopened.Close()
+		t.Fatalf("reopened CheckLease: %v", err)
+	}
+	reopened.Close()
+
+	// If a verified state transition is paired with a mismatched lease, the
+	// verified state must still be persisted while returning the lease error.
+	s3, err := rotateForTest(s2, secret, ed, now+2000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ep.InstallWithLease([]devicesec.State{s3}, []*devicesec.RecoveryStatement{nil}, &l2, now+2000); err == nil {
+		t.Fatalf("expected lease verification error for mismatched lease, got nil")
+	}
+	if ep.HeadEpoch() != s3.Core.Epoch {
+		t.Fatalf("verified state was not persisted on lease rejection: head=%d, want=%d", ep.HeadEpoch(), s3.Core.Epoch)
+	}
+
+	// If the lease write itself hits ErrStorage inside the combined transaction,
+	// InstallWithLease must still fall back to persisting the verified state so
+	// state advances/removals are never dropped, while returning ErrStorage.
+	if _, err := ep.db.Exec(`CREATE TRIGGER block_lease_write BEFORE INSERT ON lease BEGIN SELECT RAISE(ABORT, 'lease blocked'); END;`); err != nil {
+		t.Fatal(err)
+	}
+	s4, err := rotateForTest(s3, secret, ed, now+3000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l4, err := BuildLease(s4, ed, now+3000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ep.InstallWithLease([]devicesec.State{s4}, []*devicesec.RecoveryStatement{nil}, &l4, now+3000); !errors.Is(err, ErrStorage) {
+		t.Fatalf("expected ErrStorage when lease table write fails, got %v", err)
+	}
+	if ep.HeadEpoch() != s4.Core.Epoch {
+		t.Fatalf("verified state was not persisted after lease ErrStorage fallback: head=%d, want=%d", ep.HeadEpoch(), s4.Core.Epoch)
+	}
+	reopened2, err := OpenEndpoint(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reopened2.Close()
+	if reopened2.HeadEpoch() != s4.Core.Epoch {
+		t.Fatalf("reopened head epoch = %d after lease ErrStorage fallback, want %d", reopened2.HeadEpoch(), s4.Core.Epoch)
+	}
+}
