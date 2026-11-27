@@ -145,7 +145,14 @@ func TestPhase2CrossPathFaultInjection10000(t *testing.T) {
 		counts:   map[string]int{},
 		sessions: []string{"s-phase2", "s-phase2-0", "s-phase2-1", "s-phase2-2"},
 	}
-	ep := testEndpoint(t, New(backend))
+	r := New(backend)
+	// Decouple this 10,000-iteration cross-path dedup/conflict stress test from
+	// the scheduler's 75ms real-time ControlQueueWait timer so disk/CPU stalls
+	// during SQLite commits cannot spuriously expire queued Control commands.
+	fixedNow := time.Now()
+	r.SchedulerNow = func() time.Time { return fixedNow }
+	r.SchedulerAfter = func(time.Duration, func()) func() bool { return func() bool { return true } }
+	ep := testEndpoint(t, r)
 	client := endpointClient(t, ep)
 	defer func() {
 		ep.link.DrainCalls()
