@@ -834,6 +834,13 @@ func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionReque
 	return s, acceptedErr
 }
 
+// ProbeWork reads the settings as GetSettings does, without its image
+// storage walk, whose cost grows with the number of stored sessions.
+func (d *Daemon) ProbeWork(ctx context.Context) error {
+	_, err := d.settingsContext(ctx)
+	return err
+}
+
 // MachineMeta describes this machine for clients.
 func (d *Daemon) MachineMeta() *pb.MachineMeta {
 	host, _ := os.Hostname()

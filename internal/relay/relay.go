@@ -36,6 +36,11 @@ type Backend interface {
 	SessionDir(id string) string
 	// Local serves the commands.
 	Local() remoteagentv1connect.LocalServiceHandler
+	// ProbeWork is the connection check's work: the smallest real read an
+	// ordinary command does (the settings, under the daemon's lock), so the
+	// time it reports reflects queueing and a stuck or starved daemon rather
+	// than how much the machine has stored.
+	ProbeWork(ctx context.Context) error
 	// MachineMeta describes the machine.
 	MachineMeta() *pb.MachineMeta
 	// OpenTerminal starts streaming a session's terminal.

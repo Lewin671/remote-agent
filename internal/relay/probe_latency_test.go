@@ -20,7 +20,15 @@ import (
 
 type probeLatencyBackend struct {
 	*fakeBackend
-	onGetSettings func(context.Context) error
+	onProbeWork      func(context.Context) error
+	getSettingsCalls atomic.Int32
+}
+
+func (b *probeLatencyBackend) ProbeWork(ctx context.Context) error {
+	if b.onProbeWork != nil {
+		return b.onProbeWork(ctx)
+	}
+	return nil
 }
 
 type probeLatencyLocal struct {
@@ -33,11 +41,7 @@ func (b *probeLatencyBackend) Local() remoteagentv1connect.LocalServiceHandler {
 }
 
 func (l probeLatencyLocal) GetSettings(ctx context.Context, _ *connect.Request[pb.GetSettingsRequest]) (*connect.Response[pb.GetSettingsResponse], error) {
-	if l.b.onGetSettings != nil {
-		if err := l.b.onGetSettings(ctx); err != nil {
-			return nil, err
-		}
-	}
+	l.b.getSettingsCalls.Add(1)
 	return connect.NewResponse(&pb.GetSettingsResponse{
 		Settings: &pb.DaemonSettings{ApprovalTimeoutSeconds: 600},
 	}), nil
@@ -55,7 +59,8 @@ func (l probeLatencyLocal) UpdateSettings(_ context.Context, req *connect.Reques
 //     the injected clock.
 //  2. Work mode (work=true) queues behind the saturated Ordinary pool (confirmed
 //     via scheduler queue depth, without wall-clock sleeps), executes the
-//     GetSettings read path, and self-reports deterministic queue_us, execute_us,
+//     backend's ProbeWork (not GetSettings, whose image storage walk grows
+//     with stored sessions), and self-reports deterministic queue_us, execute_us,
 //     and process_us.
 //  3. Non-empty session_id is rejected as invalid_argument, and existing GetSettings
 //     responses remain unaffected.
@@ -73,12 +78,12 @@ func TestProbeLatencyEchoBypassesFullOrdinaryPoolAndReportsTiming(t *testing.T) 
 		return base.Add(time.Duration(offsetUs.Load()) * time.Microsecond)
 	}
 
-	var settingsCalls atomic.Int32
+	var probeCalls atomic.Int32
 	pbBackend := &probeLatencyBackend{
 		fakeBackend: e.backend,
-		onGetSettings: func(context.Context) error {
-			settingsCalls.Add(1)
-			offsetUs.Add(35_000) // simulate 35ms backend GetSettings read
+		onProbeWork: func(context.Context) error {
+			probeCalls.Add(1)
+			offsetUs.Add(35_000) // simulate a 35ms settings read
 			return nil
 		},
 	}
@@ -156,8 +161,8 @@ func TestProbeLatencyEchoBypassesFullOrdinaryPoolAndReportsTiming(t *testing.T) 
 	if echoPayload.QueueUs != 2_000 || echoPayload.ExecuteUs != 0 || echoPayload.ProcessUs != 8_000 {
 		t.Fatalf("expected deterministic echo timing (queue=2000, execute=0, process=8000), got %+v", echoPayload)
 	}
-	if got := settingsCalls.Load(); got != 0 {
-		t.Fatalf("echo probe must not invoke GetSettings, got %d calls", got)
+	if got := probeCalls.Load(); got != 0 {
+		t.Fatalf("echo probe must not do the probe work, got %d calls", got)
 	}
 
 	// 2. Work probe must queue behind the saturated Ordinary pool, then report queue + execute timing.
@@ -223,8 +228,11 @@ func TestProbeLatencyEchoBypassesFullOrdinaryPoolAndReportsTiming(t *testing.T) 
 	if wp.ProcessUs != 155_000 {
 		t.Fatalf("expected work process_us == 155000, got %d", wp.ProcessUs)
 	}
-	if got := settingsCalls.Load(); got != 1 {
-		t.Fatalf("expected work probe to invoke GetSettings once, got %d", got)
+	if got := probeCalls.Load(); got != 1 {
+		t.Fatalf("expected work probe to do the probe work once, got %d", got)
+	}
+	if got := pbBackend.getSettingsCalls.Load(); got != 0 {
+		t.Fatalf("probes must not run GetSettings, got %d calls", got)
 	}
 
 	// 3. Machine-scoped probe_latency with a session ID is rejected cleanly as invalid_argument.

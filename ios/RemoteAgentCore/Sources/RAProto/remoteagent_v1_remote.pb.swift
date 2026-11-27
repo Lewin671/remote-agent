@@ -1098,7 +1098,8 @@ public struct PBProbeLatencyRequest: Sendable {
   // methods supported on all messages.
 
   /// false: echo, replied immediately after authentication without entering the scheduler.
-  /// true: work, queued as an ordinary read-only command performing the same reads as GetSettings.
+  /// true: work, queued as an ordinary read-only command that reads the settings under the daemon's lock
+  /// (GetSettings without its image storage walk).
   public var work: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()

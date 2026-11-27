@@ -301,7 +301,7 @@ func (c *endpoint) executeEvidence(ctx context.Context, sessionID string, cmd *p
 				return nil
 			}
 			execStart := c.admissionNow()
-			if err := call(ctx, l.GetSettings, &pb.GetSettingsRequest{}, func(*pb.GetSettingsResponse) {}); err != nil {
+			if err := r.backend.ProbeWork(ctx); err != nil {
 				return err
 			}
 			execUs := max(int64(0), c.admissionNow().Sub(execStart).Microseconds())

@@ -127,6 +127,8 @@ func (b *fakeBackend) EachEvents(id string, after uint64, fn func(*pb.Event) err
 
 func (b *fakeBackend) SessionDir(id string) string { return filepath.Join(b.dir, id) }
 
+func (b *fakeBackend) ProbeWork(context.Context) error { return nil }
+
 func (b *fakeBackend) OpenTerminal(id string) (relay.Terminal, error) {
 	if _, err := b.log(id); err != nil {
 		return nil, err
