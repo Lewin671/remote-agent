@@ -328,9 +328,33 @@ actor FakeDaemon {
     private var garbleResults = false
     func setGarbleResults(_ on: Bool) { garbleResults = on }
 
-    /// Send the last terminal frame a second time under the same number, as a replaying relay would.
+    /// Send a duplicate and then a conflicting frame at seq=2. When `gated` is true,
+    /// snap and initial output are sent immediately while the duplicate and conflicting
+    /// frames wait for `releaseTerminalReplay()`.
     private var replayTerminal = false
-    func setReplayTerminal(_ on: Bool) { replayTerminal = on }
+    private var replayGated = false
+    private var replayReleased = true
+    private var replayWaiters: [CheckedContinuation<Void, Never>] = []
+    func setReplayTerminal(_ on: Bool, gated: Bool = false) {
+        replayTerminal = on
+        replayGated = gated
+        replayReleased = !gated
+        if replayReleased {
+            let waiters = replayWaiters
+            replayWaiters.removeAll()
+            for w in waiters { w.resume() }
+        }
+    }
+    func releaseTerminalReplay() {
+        replayReleased = true
+        let waiters = replayWaiters
+        replayWaiters.removeAll()
+        for w in waiters { w.resume() }
+    }
+    private func waitForReplayRelease() async {
+        if !replayGated || replayReleased { return }
+        await withCheckedContinuation { replayWaiters.append($0) }
+    }
 
     /// What to answer; the default is an empty success of the right kind.
     private var answer: @Sendable (PBHeader, PBCommand) async -> PBCommandResult = { _, c in
@@ -527,6 +551,7 @@ actor FakeDaemon {
 
     func disconnect() {
         failReady(TestFailure("synthetic authority stream disconnected"))
+        releaseTerminalReplay()
         ready = false
         ws?.close()
         ws = nil
@@ -545,6 +570,7 @@ actor FakeDaemon {
         let out = header(.terminalOutput)
         let input = termInput
         let replay = replayTerminal
+        let gated = replayGated
         Task {
             guard await socket.opened() else { return }
             var snap = PBTerminalFrame()
@@ -555,18 +581,23 @@ actor FakeDaemon {
             more.output = Data(" world".utf8)
             var conflict = PBTerminalFrame()
             conflict.output = Data(" tampered".utf8)
-            var seq: UInt64 = 0
-            // Phase 3: identical duplicate seq=2 is ignored without closing; a conflicting payload
-            // at the same seq=2 still terminates the stream with errorsTerminalFramesAreOutOfOrder.
-            for (i, f) in ([snap, more] + (replay ? [more, conflict] : [])).enumerated() {
-                seq = UInt64(min(i + 1, 2))
+            func sendFrame(_ frame: PBTerminalFrame, seq: UInt64) {
                 var h = out
                 h.sessionID = sid
                 h.requestID = stream
                 h.seq = seq
-                if let bytes: Data = try? security.seal(account, h, f, seed: key).serializedData() {
+                if let bytes: Data = try? security.seal(account, h, frame, seed: key).serializedData() {
                     socket.send(bytes)
                 }
+            }
+            sendFrame(snap, seq: 1)
+            sendFrame(more, seq: 2)
+            if replay {
+                if gated { await waitForReplayRelease() }
+                // Phase 3: identical duplicate seq=2 is ignored without closing; a conflicting payload
+                // at the same seq=2 still terminates the stream with errorsTerminalFramesAreOutOfOrder.
+                sendFrame(more, seq: 2)
+                sendFrame(conflict, seq: 2)
             }
             while let bytes = try? await socket.receive() {
                 guard let env = try? PBEnvelope(serializedBytes: bytes),

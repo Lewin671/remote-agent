@@ -201,12 +201,39 @@ extension SyncServerTests {
             try await world { w in
                 let r = try await w.client()
                 try await r.hydrateExecutorState()
-                await w.daemon.setReplayTerminal(true)
+                await w.daemon.setReplayTerminal(true, gated: true)
                 let heard = Frames()
                 _ = try await r.openTerminal("s1", listener: heard)
                 #expect(try await heard.frames.take().snapshot.cols == 120)
                 #expect(try await heard.frames.take().output == Data(" world".utf8))
+                await w.daemon.releaseTerminalReplay()
                 #expect(try await heard.closes.take() == L10n.errorsTerminalFramesAreOutOfOrder())
+            }
+        }
+
+        @Test func aTerminalConflictBeforeOpenConfirmationFailsOpenTerminal() async throws {
+            try await world { w in
+                let r = try await w.client()
+                try await r.hydrateExecutorState()
+                // Hold the openTerminal command reply so the duplicate+conflicting seq=2 frames
+                // arrive before Core sets openConfirmed; openTerminal itself must fail with the
+                // out-of-order error instead of delivering via heard.closes.
+                let answerHold = AsyncSignal()
+                await w.daemon.setReplayTerminal(true, gated: false)
+                await w.daemon.setAnswer { _, cmd in
+                    if case .openTerminal? = cmd.kind {
+                        await answerHold.wait(ms: 30_000)
+                    }
+                    return FakeDaemon.defaultResult(cmd)
+                }
+                defer { answerHold.signal() }
+                let heard = Frames()
+                do {
+                    _ = try await r.openTerminal("s1", listener: heard)
+                    Issue.record("expected openTerminal to fail when a conflicting frame arrives before confirmation")
+                } catch {
+                    #expect(errorText(error) == L10n.errorsTerminalFramesAreOutOfOrder())
+                }
             }
         }
 
