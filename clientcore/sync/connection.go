@@ -64,16 +64,20 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 			e.startColdStartGrace(ctx)
 		}
 		if !e.bootstrapped {
-			e.activeCacheBootID = e.allocOpID()
-			ctx.emit(&corev1.Effect{
-				Effect: &corev1.Effect_CacheRead{
-					CacheRead: &corev1.CacheReadEffect{
-						Kind: &corev1.CacheReadEffect_Bootstrap{
-							Bootstrap: &corev1.CacheReadBootstrap{OpId: e.activeCacheBootID},
+			if e.demoMode {
+				e.bootstrapped = true
+			} else {
+				e.activeCacheBootID = e.allocOpID()
+				ctx.emit(&corev1.Effect{
+					Effect: &corev1.Effect_CacheRead{
+						CacheRead: &corev1.CacheReadEffect{
+							Kind: &corev1.CacheReadEffect_Bootstrap{
+								Bootstrap: &corev1.CacheReadBootstrap{OpId: e.activeCacheBootID},
+							},
 						},
 					},
-				},
-			})
+				})
+			}
 		}
 		if len(e.buffers) > 0 {
 			e.scheduleTimer(ctx, corev1.TimerKind_TIMER_KIND_HISTORY_SWEEP, "", HistorySweepIntervalMs)
@@ -131,7 +135,7 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		e.cancelAllTimers(ctx)
 		e.cancelAllSyncRelayRpcs(ctx, false)
 		e.closeAllActiveTerminals(ctx)
-		if e.relayPipe && e.secEngine != nil {
+		if e.secEngine != nil {
 			e.emitSecurityEffects(ctx, e.secEngine.CancelAuthToken())
 		}
 		c := e.ensureTransportCoord()
@@ -222,20 +226,7 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		e.clearColdStartGrace(ctx)
 		e.forceLogin = true
 		if e.cachedToken != "" {
-			if e.relayPipe && e.secEngine != nil {
-				e.clearAuthTokenViaPipe(ctx)
-			} else {
-				ctx.emit(&corev1.Effect{
-					Effect: &corev1.Effect_DiscardToken{
-						DiscardToken: &corev1.DiscardTokenEffect{Token: e.cachedToken},
-					},
-				})
-				e.cachedToken = ""
-				e.tokenExpiresMs = 0
-				if e.secEngine != nil {
-					e.secEngine.SetAuthToken("", 0)
-				}
-			}
+			e.clearAuthTokenViaPipe(ctx)
 		}
 		e.recovery.Ready()
 		if e.networkAvailable {
@@ -355,18 +346,22 @@ func (e *Engine) beginConnect(ctx *StepContext) {
 		e.forceLogin = true
 	}
 	e.activeTokenOpID = e.allocOpID()
-	if e.relayPipe && e.secEngine != nil {
+	if e.demoMode {
+		if e.removed {
+			e.handleTokenResult(ctx, tokenResult{OpID: e.activeTokenOpID, Removed: true})
+		} else {
+			tok := e.cachedToken
+			if tok == "" {
+				tok = "demo-token"
+			}
+			exp := e.tokenExpiresMs
+			if exp == 0 {
+				exp = e.nowMs + 86_400_000
+			}
+			e.handleTokenResult(ctx, tokenResult{OpID: e.activeTokenOpID, Token: tok, ExpiresMs: exp})
+		}
+	} else if e.secEngine != nil {
 		e.startConnectAuthToken(ctx, e.activeTokenOpID, e.forceLogin, timeout)
-	} else {
-		ctx.emit(&corev1.Effect{
-			Effect: &corev1.Effect_EnsureToken{
-				EnsureToken: &corev1.EnsureTokenEffect{
-					OpId:       e.activeTokenOpID,
-					ForceLogin: e.forceLogin,
-					TimeoutMs:  timeout,
-				},
-			},
-		})
 	}
 	if e.secEngine != nil && e.secEngine.HasWorkflowBootstrapped() && e.cachedToken != "" &&
 		(!e.security.Loaded || e.security.VerifiedNetGen != e.networkGen) {
@@ -398,8 +393,8 @@ func (e *Engine) requestSyncSecurity(ctx *StepContext, touch bool) {
 	e.maybeRequestEntropy(ctx)
 }
 
-func (e *Engine) handleTokenResult(ctx *StepContext, ev *corev1.TokenResultEvent) {
-	if ev == nil || ev.OpId != e.activeTokenOpID || !e.running || e.exitingAccount {
+func (e *Engine) handleTokenResult(ctx *StepContext, ev tokenResult) {
+	if ev.OpID != e.activeTokenOpID || !e.running || e.exitingAccount {
 		return
 	}
 	e.activeTokenOpID = 0
@@ -447,14 +442,11 @@ func (e *Engine) handleTokenResult(ctx *StepContext, ev *corev1.TokenResultEvent
 	e.connStep = world.ConnectStepEstablishingPush
 	legID := e.allocLegID()
 	e.legID = legID
-	var helloFrame []byte
-	if e.relayPipe {
-		helloFrame = (&v1.PeerFrame{
-			Kind: &v1.PeerFrame_Hello{
-				Hello: &v1.StreamHello{Token: ev.Token},
-			},
-		}).AppendMarshal(nil)
-	}
+	helloFrame := (&v1.PeerFrame{
+		Kind: &v1.PeerFrame_Hello{
+			Hello: &v1.StreamHello{Token: ev.Token},
+		},
+	}).AppendMarshal(nil)
 	ctx.emit(&corev1.Effect{
 		Effect: &corev1.Effect_OpenStream{
 			OpenStream: &corev1.OpenStreamEffect{
@@ -544,20 +536,7 @@ func (e *Engine) onLegDropped(ctx *StepContext, legID uint64, policyViolation, u
 	if policyViolation {
 		e.forceLogin = true
 		if e.cachedToken != "" {
-			if e.relayPipe && e.secEngine != nil {
-				e.clearAuthTokenViaPipe(ctx)
-			} else {
-				ctx.emit(&corev1.Effect{
-					Effect: &corev1.Effect_DiscardToken{
-						DiscardToken: &corev1.DiscardTokenEffect{Token: e.cachedToken},
-					},
-				})
-				e.cachedToken = ""
-				e.tokenExpiresMs = 0
-				if e.secEngine != nil {
-					e.secEngine.SetAuthToken("", 0)
-				}
-			}
+			e.clearAuthTokenViaPipe(ctx)
 		}
 	}
 

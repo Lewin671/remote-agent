@@ -91,11 +91,11 @@ func TestManagedInitiatorJoinAndMetaPollCap(t *testing.T) {
 	revealedBytes, _ := proto.Marshal(&pb.GetPairingResponse{State: pb.PairingState_PAIRING_STATE_REVEALED})
 	for i := 1; i <= pairInitMetaMaxPolls; i++ {
 		tickEffs := e.HandleSecurityPollTick(int64(10_000 + i*1_000))
-		rpcEff := findRPCEffect(tickEffs, corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_PAIRING)
+		rpcEff := findRPCEffect(tickEffs, corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_PAIRING)
 		if rpcEff == nil {
 			t.Fatalf("poll %d: expected GET_PAIRING RPC", i)
 		}
-		resEffs := e.HandleRpcResult(int64(10_000+i*1_000), &corev1.SecurityRpcResultEvent{
+		resEffs := e.HandleRelayRpcResult(int64(10_000+i*1_000), &corev1.RelayRpcResultEvent{
 			OpId:          rpcEff.OpId,
 			ResponseBytes: revealedBytes,
 		})
@@ -158,12 +158,12 @@ func TestManagedRecoveryWindowPollAdaptiveIntervalsAndForeground(t *testing.T) {
 
 	// Near ready (<=10s): foreground triggers immediate tick, and response schedules 2s interval.
 	fgEffs := e.HandleForeground(92_000, true)
-	chalRPC := findRPCEffect(fgEffs, corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_RECOVERY_CHALLENGE)
+	chalRPC := findRPCEffect(fgEffs, corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_RECOVERY_CHALLENGE)
 	if chalRPC == nil {
 		t.Fatal("foreground resume must fire immediate recovery poll")
 	}
 	chalBytes, _ := proto.Marshal(&pb.GetRecoveryChallengeResponse{Challenge: []byte("0123456789abcdef0123456789abcdef")})
-	signEffs := e.HandleRpcResult(92_000, &corev1.SecurityRpcResultEvent{OpId: chalRPC.OpId, ResponseBytes: chalBytes})
+	signEffs := e.HandleRelayRpcResult(92_000, &corev1.RelayRpcResultEvent{OpId: chalRPC.OpId, ResponseBytes: chalBytes})
 	var signOpID uint64
 	for _, eff := range signEffs {
 		if s := eff.GetSecurityKeySign(); s != nil {
@@ -174,7 +174,7 @@ func TestManagedRecoveryWindowPollAdaptiveIntervalsAndForeground(t *testing.T) {
 		t.Fatal("expected SecurityKeySignEffect")
 	}
 	ctxEffs := e.HandleKeySigned(92_000, &corev1.SecurityKeySignedEvent{OpId: signOpID, Signature: make([]byte, 64)})
-	ctxRPC := findRPCEffect(ctxEffs, corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_RECOVERY_CONTEXT)
+	ctxRPC := findRPCEffect(ctxEffs, corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_RECOVERY_CONTEXT)
 	if ctxRPC == nil {
 		t.Fatal("expected GET_RECOVERY_CONTEXT RPC")
 	}
@@ -183,15 +183,15 @@ func TestManagedRecoveryWindowPollAdaptiveIntervalsAndForeground(t *testing.T) {
 		Phase:      pb.GetRecoveryContextResponse_PHASE_PENDING,
 		ReadyMs:    100_000,
 	})
-	nextEffs := e.HandleRpcResult(92_000, &corev1.SecurityRpcResultEvent{OpId: ctxRPC.OpId, ResponseBytes: pendingBytes})
+	nextEffs := e.HandleRelayRpcResult(92_000, &corev1.RelayRpcResultEvent{OpId: ctxRPC.OpId, ResponseBytes: pendingBytes})
 	if delay, ok := findPollTimerDelay(nextEffs); !ok || delay != recoveryPollFastIntervalMs {
 		t.Fatalf("near-ready recovery delay = (%d, %v), want (%d, true)", delay, ok, recoveryPollFastIntervalMs)
 	}
 
 	// Next tick returns READY -> stops polling and notifies observer.
 	tickEffs := e.HandleSecurityPollTick(100_000)
-	chalRPC2 := findRPCEffect(tickEffs, corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_RECOVERY_CHALLENGE)
-	signEffs2 := e.HandleRpcResult(100_000, &corev1.SecurityRpcResultEvent{OpId: chalRPC2.OpId, ResponseBytes: chalBytes})
+	chalRPC2 := findRPCEffect(tickEffs, corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_RECOVERY_CHALLENGE)
+	signEffs2 := e.HandleRelayRpcResult(100_000, &corev1.RelayRpcResultEvent{OpId: chalRPC2.OpId, ResponseBytes: chalBytes})
 	signOpID = 0
 	for _, eff := range signEffs2 {
 		if s := eff.GetSecurityKeySign(); s != nil {
@@ -199,13 +199,13 @@ func TestManagedRecoveryWindowPollAdaptiveIntervalsAndForeground(t *testing.T) {
 		}
 	}
 	ctxEffs2 := e.HandleKeySigned(100_000, &corev1.SecurityKeySignedEvent{OpId: signOpID, Signature: make([]byte, 64)})
-	ctxRPC2 := findRPCEffect(ctxEffs2, corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_RECOVERY_CONTEXT)
+	ctxRPC2 := findRPCEffect(ctxEffs2, corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_RECOVERY_CONTEXT)
 	readyBytes, _ := proto.Marshal(&pb.GetRecoveryContextResponse{
 		RecoveryId: "rec-1",
 		Phase:      pb.GetRecoveryContextResponse_PHASE_READY,
 		ReadyMs:    100_000,
 	})
-	doneEffs := e.HandleRpcResult(100_000, &corev1.SecurityRpcResultEvent{OpId: ctxRPC2.OpId, ResponseBytes: readyBytes})
+	doneEffs := e.HandleRelayRpcResult(100_000, &corev1.RelayRpcResultEvent{OpId: ctxRPC2.OpId, ResponseBytes: readyBytes})
 	if !hasPollTimerCancel(doneEffs) {
 		t.Fatal("READY phase must cancel poll timer")
 	}

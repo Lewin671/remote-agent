@@ -2,27 +2,35 @@
   "steps": [
     {
       "event": {
-        "nowMs": "1791078060000",
         "clockUpdated": {
-          "nowMs": "1791078060000",
-          "todayStartMs": "1791043200000",
-          "yesterdayStartMs": "1790956800000",
-          "weekStartMs": "1790524800000",
-          "nowYear": 2026,
           "months": [
             {
-              "year": 2026,
               "month": 10,
-              "startMs": "1790812800000"
+              "startMs": "1790812800000",
+              "year": 2026
             }
-          ]
-        }
+          ],
+          "nowMs": "1791078060000",
+          "nowYear": 2026,
+          "todayStartMs": "1791043200000",
+          "weekStartMs": "1790524800000",
+          "yesterdayStartMs": "1790956800000"
+        },
+        "nowMs": "1791078060000"
       }
     },
     {
       "event": {
         "nowMs": "1791078060000",
+        "seedDemoWorld": {
+          "clearDirectReports": true
+        }
+      }
+    },
+    {
+      "event": {
         "monoMs": "1000",
+        "nowMs": "1791078060000",
         "randomIds": [
           "pref-op-1",
           "dir-req-1",
@@ -33,15 +41,15 @@
           "r7",
           "r8"
         ],
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START"
+        },
         "unitFloats": [
           0.5,
           0.5,
           0.5,
           0.5
-        ],
-        "syncLifecycle": {
-          "kind": "SYNC_LIFECYCLE_KIND_START"
-        }
+        ]
       }
     },
     {
@@ -49,23 +57,14 @@
         "nowMs": "1791078060010",
         "seedDemoWorld": {
           "security": {
-            "isMember": true,
-            "selfDeviceId": "dev-1",
             "authorityDeviceId": "dev-1",
+            "isMember": true,
             "leaseEndMs": "1791164460000",
+            "selfDeviceId": "dev-1",
             "trustedMachineIds": [
               "m1"
             ]
           }
-        }
-      }
-    },
-    {
-      "event": {
-        "nowMs": "1791078060020",
-        "tokenResult": {
-          "opId": "2",
-          "token": "tok-1"
         }
       }
     },
@@ -81,48 +80,25 @@
     {
       "event": {
         "nowMs": "1791078060040",
-        "listsFetched": {
-          "opId": "3",
+        "seedDemoWorld": {
+          "clearListError": true,
           "machines": [
             {
               "machineId": "m1",
               "online": true,
-              "meta": {
-                "hostname": "MacBook",
-                "protocolVersion": 17,
-                "agents": [
-                  {
-                    "agent": "AGENT_CODEX",
-                    "defaultMode": "APPROVAL_MODE_ASK"
-                  }
-                ],
-                "projects": [
-                  {
-                    "path": "/Users/me/Code/alpha",
-                    "ended": 1
-                  },
-                  {
-                    "path": "/Users/me/Code/beta",
-                    "ended": 0
-                  }
-                ]
-              }
+              "rawMeta": "CgdNYWNCb29rSgQIASABYBFqGAoUL1VzZXJzL21lL0NvZGUvYWxwaGEQAWoVChMvVXNlcnMvbWUvQ29kZS9iZXRh"
             }
           ],
+          "replaceDevices": true,
+          "replaceMachines": true,
+          "replaceSessions": true,
           "sessions": [
             {
-              "sessionId": "s-1",
-              "machineId": "m1",
-              "updatedMs": "1791060000000",
               "listedEndedMs": "1791060000000",
-              "meta": {
-                "id": "s-1",
-                "cwd": "/Users/me/Code/alpha",
-                "agent": "AGENT_CODEX",
-                "status": "SESSION_STATUS_EXITED",
-                "title": "Alpha task",
-                "endedAt": "2026-10-03T20:40:00Z"
-              }
+              "machineId": "m1",
+              "rawMeta": "CgNzLTESFC9Vc2Vycy9tZS9Db2RlL2FscGhhIAV6CkFscGhhIHRhc2vIAQHyAQYIoNCF1gY=",
+              "sessionId": "s-1",
+              "updatedMs": "1791060000000"
             }
           ]
         }
@@ -131,20 +107,9 @@
     {
       "event": {
         "nowMs": "1791078060050",
-        "accountPrefsFetched": {
-          "opId": "4",
-          "prefs": {
-            "revision": "1",
-            "prefs": {
-              "schema": 1,
-              "pinned": [
-                {
-                  "path": "/Users/me/Code/alpha",
-                  "sinceMs": "1791000000000"
-                }
-              ]
-            }
-          }
+        "seedDemoWorld": {
+          "prefsRevision": "1",
+          "rawPrefs": "CAESHQoUL1VzZXJzL21lL0NvZGUvYWxwaGEQgOys/480"
         }
       },
       "views": [
@@ -152,9 +117,9 @@
           "name": "detailInitial",
           "screen": {
             "project": {
-              "projectKey": "/Users/me/Code/alpha",
+              "endedLimit": 50,
               "manage": false,
-              "endedLimit": 50
+              "projectKey": "/Users/me/Code/alpha"
             }
           }
         }
@@ -171,48 +136,18 @@
     {
       "event": {
         "nowMs": "1791078060070",
-        "accountPrefsFetched": {
-          "opId": "5",
-          "prefs": {
-            "revision": "1",
-            "prefs": {
-              "schema": 1,
-              "pinned": [
-                {
-                  "path": "/Users/me/Code/alpha",
-                  "sinceMs": "1791000000000"
-                }
-              ]
-            }
-          }
+        "seedDemoWorld": {
+          "prefsRevision": "1",
+          "rawPrefs": "CAESHQoUL1VzZXJzL21lL0NvZGUvYWxwaGEQgOys/480"
         }
       }
     },
     {
       "event": {
         "nowMs": "1791078060080",
-        "accountPrefsPutResult": {
-          "opId": "6",
-          "applied": true,
-          "current": {
-            "revision": "2",
-            "prefs": {
-              "schema": 1,
-              "pinned": [
-                {
-                  "path": "/Users/me/Code/alpha",
-                  "sinceMs": "1791000000000"
-                },
-                {
-                  "path": "/Users/me/Code/beta",
-                  "sinceMs": "1791078060060"
-                }
-              ],
-              "recentOps": [
-                "pref-op-1"
-              ]
-            }
-          }
+        "seedDemoWorld": {
+          "prefsRevision": "2",
+          "rawPrefs": "CAESHQoUL1VzZXJzL21lL0NvZGUvYWxwaGEQgOys/480EhwKEy9Vc2Vycy9tZS9Db2RlL2JldGEQnKDJpJA0IglwcmVmLW9wLTE="
         }
       },
       "views": [
@@ -220,9 +155,9 @@
           "name": "managePinning",
           "screen": {
             "project": {
-              "projectKey": "",
+              "endedLimit": 50,
               "manage": true,
-              "endedLimit": 50
+              "projectKey": ""
             }
           }
         }
@@ -232,49 +167,37 @@
       "event": {
         "nowMs": "1791078060090",
         "projectOpenDirPicker": {
-          "pickerKey": "manage",
           "machineId": "m1",
-          "path": "/Users/me/Code"
+          "path": "/Users/me/Code",
+          "pickerKey": "manage"
         }
       }
     },
     {
       "event": {
-        "nowMs": "1791078060100",
         "commandOutcome": {
-          "requestId": "dir-req-1",
-          "attemptId": "dir-att-1",
-          "source": "OUTCOME_SOURCE_DAEMON",
-          "signed": true,
-          "hashesMatch": true,
           "attemptBound": true,
+          "attemptId": "dir-att-1",
+          "hashesMatch": true,
           "outerMatchesInner": true,
           "outerOutcome": "executed",
           "outerReason": "ok",
-          "result": {
-            "outcome": "executed",
-            "reason": "ok",
-            "resultAvailable": true,
-            "listDirectories": {
-              "path": "/Users/me/Code",
-              "parent": "/Users/me",
-              "dirs": [
-                "alpha",
-                "delta"
-              ]
-            }
-          }
-        }
+          "rawResult": "GghleGVjdXRlZCICb2tAAYICKQoOL1VzZXJzL21lL0NvZGUSCS9Vc2Vycy9tZSIFYWxwaGEiBWRlbHRh",
+          "requestId": "dir-req-1",
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "nowMs": "1791078060100"
       },
       "views": [
         {
           "name": "manageDirPicker",
           "screen": {
             "project": {
-              "projectKey": "",
-              "manage": true,
               "endedLimit": 50,
-              "pickerKey": "manage"
+              "manage": true,
+              "pickerKey": "manage",
+              "projectKey": ""
             }
           }
         }
@@ -292,58 +215,18 @@
     {
       "event": {
         "nowMs": "1791078060120",
-        "accountPrefsFetched": {
-          "opId": "7",
-          "prefs": {
-            "revision": "2",
-            "prefs": {
-              "schema": 1,
-              "pinned": [
-                {
-                  "path": "/Users/me/Code/alpha",
-                  "sinceMs": "1791000000000"
-                },
-                {
-                  "path": "/Users/me/Code/beta",
-                  "sinceMs": "1791078060060"
-                }
-              ]
-            }
-          }
+        "seedDemoWorld": {
+          "prefsRevision": "2",
+          "rawPrefs": "CAESHQoUL1VzZXJzL21lL0NvZGUvYWxwaGEQgOys/480EhwKEy9Vc2Vycy9tZS9Db2RlL2JldGEQnKDJpJA0"
         }
       }
     },
     {
       "event": {
         "nowMs": "1791078060130",
-        "accountPrefsPutResult": {
-          "opId": "8",
-          "applied": true,
-          "current": {
-            "revision": "3",
-            "prefs": {
-              "schema": 1,
-              "pinned": [
-                {
-                  "path": "/Users/me/Code/alpha",
-                  "sinceMs": "1791000000000"
-                },
-                {
-                  "path": "/Users/me/Code/beta",
-                  "sinceMs": "1791078060060"
-                }
-              ],
-              "settings": [
-                {
-                  "path": "/Users/me/Code/delta",
-                  "machineId": "m1"
-                }
-              ],
-              "recentOps": [
-                "pref-op-2"
-              ]
-            }
-          }
+        "seedDemoWorld": {
+          "prefsRevision": "3",
+          "rawPrefs": "CAESHQoUL1VzZXJzL21lL0NvZGUvYWxwaGEQgOys/480EhwKEy9Vc2Vycy9tZS9Db2RlL2JldGEQnKDJpJA0IglwcmVmLW9wLTIqGgoUL1VzZXJzL21lL0NvZGUvZGVsdGEaAm0x"
         }
       },
       "views": [
@@ -351,9 +234,9 @@
           "name": "detailAfterAdd",
           "screen": {
             "project": {
-              "projectKey": "/Users/me/Code/delta",
+              "endedLimit": 50,
               "manage": false,
-              "endedLimit": 50
+              "projectKey": "/Users/me/Code/delta"
             }
           }
         }
@@ -363,49 +246,37 @@
       "event": {
         "nowMs": "1791078060140",
         "projectOpenDirPicker": {
-          "pickerKey": "manage",
           "machineId": "m1",
-          "path": "/"
+          "path": "/",
+          "pickerKey": "manage"
         }
       }
     },
     {
       "event": {
-        "nowMs": "1791078060150",
         "commandOutcome": {
-          "requestId": "r5",
-          "attemptId": "r6",
-          "source": "OUTCOME_SOURCE_DAEMON",
-          "signed": true,
-          "hashesMatch": true,
           "attemptBound": true,
+          "attemptId": "r6",
+          "hashesMatch": true,
           "outerMatchesInner": true,
           "outerOutcome": "executed",
           "outerReason": "ok",
-          "result": {
-            "outcome": "executed",
-            "reason": "ok",
-            "resultAvailable": true,
-            "listDirectories": {
-              "path": "/",
-              "parent": "",
-              "dirs": [
-                "Users",
-                "tmp"
-              ]
-            }
-          }
-        }
+          "rawResult": "GghleGVjdXRlZCICb2tAAYICDwoBLyIFVXNlcnMiA3RtcA==",
+          "requestId": "r5",
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "nowMs": "1791078060150"
       },
       "views": [
         {
           "name": "manageDirPickerRoot",
           "screen": {
             "project": {
-              "projectKey": "",
-              "manage": true,
               "endedLimit": 50,
-              "pickerKey": "manage"
+              "manage": true,
+              "pickerKey": "manage",
+              "projectKey": ""
             }
           }
         }

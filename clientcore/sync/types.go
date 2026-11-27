@@ -499,7 +499,11 @@ type Engine struct {
 	connSnap                   connStateSnap
 	connSnapInit               bool
 
-	relayPipe               bool
+	demoMode                bool
+	demoListError           string
+	demoPrefsError          string
+	demoSessionRetired      map[string]bool
+	demoSessionLoadError    map[string]string
 	exitingAccount          bool
 	relayEpoch              string
 	nextRelayOpSeq          uint64
@@ -644,17 +648,6 @@ func (e *Engine) SetNextLegSeq(v uint64) {
 	}
 }
 
-// SetRelayPipeEnabled enables or disables the P2-5 relay byte pipe on sync and security engines.
-func (e *Engine) SetRelayPipeEnabled(enabled bool) {
-	if e == nil {
-		return
-	}
-	e.relayPipe = enabled
-	if e.secEngine != nil {
-		e.secEngine.SetRelayPipe(enabled)
-	}
-}
-
 // Foreground reports the engine's current foreground visibility state.
 func (e *Engine) Foreground() bool {
 	if e == nil {
@@ -783,28 +776,10 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 		e.handleCacheBootstrapLoaded(ctx, k.CacheBootstrapLoaded)
 	case *corev1.Event_CacheEventsLoaded:
 		e.handleCacheEventsLoaded(ctx, k.CacheEventsLoaded)
-	case *corev1.Event_TokenResult:
-		e.handleTokenResult(ctx, k.TokenResult)
 	case *corev1.Event_StreamReady:
 		e.handleStreamReady(ctx, k.StreamReady)
 	case *corev1.Event_StreamClosed:
 		e.handleStreamClosed(ctx, k.StreamClosed)
-	case *corev1.Event_StreamFrame:
-		e.handleStreamFrame(ctx, k.StreamFrame)
-	case *corev1.Event_ListsFetched:
-		e.handleListsFetched(ctx, k.ListsFetched)
-	case *corev1.Event_SessionsPageFetched:
-		e.handleSessionsPageFetched(ctx, k.SessionsPageFetched)
-	case *corev1.Event_SessionByIdFetched:
-		e.handleSessionByIDFetched(ctx, k.SessionByIdFetched)
-	case *corev1.Event_EventsPageFetched:
-		e.handleEventsPageFetched(ctx, k.EventsPageFetched)
-	case *corev1.Event_AccountPrefsFetched:
-		e.handleAccountPrefsFetched(ctx, k.AccountPrefsFetched)
-	case *corev1.Event_AccountPrefsPutResult:
-		e.handleAccountPrefsPutResult(ctx, k.AccountPrefsPutResult)
-	case *corev1.Event_DevicesFetched:
-		e.handleDevicesFetched(ctx, k.DevicesFetched)
 	case *corev1.Event_CommandOutcome:
 		e.handleCommandOutcome(ctx, k.CommandOutcome)
 	case *corev1.Event_SessionWatch:
@@ -879,8 +854,6 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 		e.handleSecurityKeyEncapsulated(ctx, k.SecurityKeyEncapsulated)
 	case *corev1.Event_SecurityStorageResult:
 		e.handleSecurityStorageResult(ctx, k.SecurityStorageResult)
-	case *corev1.Event_SecurityRpcResult:
-		e.handleSecurityRpcResult(ctx, k.SecurityRpcResult)
 	case *corev1.Event_SecurityForeground:
 		e.handleSecurityForeground(ctx, k.SecurityForeground)
 	case *corev1.Event_SecurityAction:
@@ -889,8 +862,6 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 		e.handleSecurityOpenNotify(ctx, k.SecurityOpenNotify)
 	case *corev1.Event_SeedDemoWorld:
 		e.handleSeedDemoWorld(ctx, k.SeedDemoWorld)
-	case *corev1.Event_RelayPipeConfig:
-		e.handleRelayPipeConfig(k.RelayPipeConfig)
 	case *corev1.Event_RelayRpcResult:
 		e.handleRelayRpcResult(ctx, k.RelayRpcResult)
 	case *corev1.Event_StreamRawFrame:

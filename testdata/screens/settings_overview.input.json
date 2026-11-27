@@ -2,27 +2,35 @@
   "steps": [
     {
       "event": {
-        "nowMs": "1791078060000",
         "clockUpdated": {
-          "nowMs": "1791078060000",
-          "todayStartMs": "1791043200000",
-          "yesterdayStartMs": "1790956800000",
-          "weekStartMs": "1790524800000",
-          "nowYear": 2026,
           "months": [
             {
-              "year": 2026,
               "month": 10,
-              "startMs": "1790812800000"
+              "startMs": "1790812800000",
+              "year": 2026
             }
-          ]
-        }
+          ],
+          "nowMs": "1791078060000",
+          "nowYear": 2026,
+          "todayStartMs": "1791043200000",
+          "weekStartMs": "1790524800000",
+          "yesterdayStartMs": "1790956800000"
+        },
+        "nowMs": "1791078060000"
       }
     },
     {
       "event": {
         "nowMs": "1791078060000",
+        "seedDemoWorld": {
+          "clearDirectReports": true
+        }
+      }
+    },
+    {
+      "event": {
         "monoMs": "1000",
+        "nowMs": "1791078060000",
         "syncLifecycle": {
           "kind": "SYNC_LIFECYCLE_KIND_START"
         }
@@ -33,33 +41,24 @@
         "nowMs": "1791078060010",
         "seedDemoWorld": {
           "security": {
-            "isMember": true,
-            "selfDeviceId": "dev-self",
             "authorityDeviceId": "dev-auth",
+            "isMember": true,
             "leaseEndMs": "1791164460000",
             "recoveryPending": true,
             "recoveryReadyMs": "1791250860000",
-            "trustedMachineIds": [
-              "m1",
-              "m2"
-            ],
+            "selfDeviceId": "dev-self",
             "trustedClientIds": [
               "dev-self",
               "dev-auth",
               "dev-2",
               "dev-3",
               "dev-4"
+            ],
+            "trustedMachineIds": [
+              "m1",
+              "m2"
             ]
           }
-        }
-      }
-    },
-    {
-      "event": {
-        "nowMs": "1791078060020",
-        "tokenResult": {
-          "opId": "2",
-          "token": "tok-1"
         }
       }
     },
@@ -75,107 +74,68 @@
     {
       "event": {
         "nowMs": "1791078060040",
-        "listsFetched": {
-          "opId": "3",
-          "machines": [
-            {
-              "machineId": "m1",
-              "online": true,
-              "lastSeenMs": "1791078060000",
-              "meta": {
-                "hostname": "BuildBox",
-                "protocolVersion": 17,
-                "capabilities": {
-                  "machineStatus": true
-                },
-                "diskStatus": {
-                  "totalBytes": "500000000000",
-                  "availableBytes": "1500000000",
-                  "pressure": "RESOURCE_PRESSURE_CRITICAL"
-                },
-                "quotas": [
-                  {
-                    "agent": "AGENT_CODEX",
-                    "state": "QUOTA_STATE_OK",
-                    "observedMs": "1791077900000",
-                    "windows": [
-                      {
-                        "name": "primary",
-                        "usedPercent": 90.0,
-                        "resetsAtMs": "1791081660000"
-                      }
-                    ]
-                  }
-                ]
-              }
-            },
-            {
-              "machineId": "m2",
-              "online": false,
-              "lastSeenMs": "1791000000000",
-              "meta": {
-                "hostname": "BackupMac",
-                "protocolVersion": 15
-              }
-            }
-          ],
+        "seedDemoWorld": {
+          "clearListError": true,
           "devices": [
             {
+              "createdMs": "1790000000000",
               "deviceId": "dev-self",
               "kind": "DEVICE_KIND_CLIENT",
-              "createdMs": "1790000000000",
               "lastSeenMs": "1791078000000",
-              "meta": {
-                "name": "My Phone",
-                "description": "Pixel 9"
-              }
+              "rawMeta": "CghNeSBQaG9uZRoHUGl4ZWwgOQ=="
             },
             {
+              "createdMs": "1789000000000",
               "deviceId": "dev-auth",
               "kind": "DEVICE_KIND_CLIENT",
-              "createdMs": "1789000000000",
               "lastSeenMs": "1791077000000",
-              "meta": {
-                "description": "iPad Pro"
-              }
+              "rawMeta": "GghpUGFkIFBybw=="
             },
             {
+              "createdMs": "1789500000000",
               "deviceId": "dev-2",
               "kind": "DEVICE_KIND_CLIENT",
-              "createdMs": "1789500000000",
               "lastSeenMs": "1791076000000",
-              "meta": {
-                "description": "Chrome on macOS"
-              }
+              "rawMeta": "Gg9DaHJvbWUgb24gbWFjT1M="
             },
             {
+              "createdMs": "1789600000000",
               "deviceId": "dev-3",
               "kind": "DEVICE_KIND_CLIENT",
-              "createdMs": "1789600000000",
               "lastSeenMs": "1791075000000",
-              "meta": {
-                "description": "Firefox"
-              }
+              "rawMeta": "GgdGaXJlZm94"
             },
             {
+              "createdMs": "1789700000000",
               "deviceId": "dev-4",
               "kind": "DEVICE_KIND_CLIENT",
-              "createdMs": "1789700000000",
               "lastSeenMs": "1791074000000",
-              "meta": {
-                "description": "Safari"
-              }
+              "rawMeta": "GgZTYWZhcmk="
             },
             {
+              "createdMs": "1791070000000",
               "deviceId": "dev-untrusted",
               "kind": "DEVICE_KIND_CLIENT",
-              "createdMs": "1791070000000",
               "lastSeenMs": "1791070000000",
-              "meta": {
-                "description": "New Tablet"
-              }
+              "rawMeta": "GgpOZXcgVGFibGV0"
             }
-          ]
+          ],
+          "machines": [
+            {
+              "lastSeenMs": "1791078060000",
+              "machineId": "m1",
+              "online": true,
+              "rawMeta": "CghCdWlsZEJveFIDmAEBWiYIARACGhkKB3ByaW1hcnkRAAAAAACAVkAY4PykppA0MOC9v6SQNGAReg8QgJDK0sYOGIDeoMsFIAM="
+            },
+            {
+              "lastSeenMs": "1791000000000",
+              "machineId": "m2",
+              "rawMeta": "CglCYWNrdXBNYWNgDw=="
+            }
+          ],
+          "replaceDevices": true,
+          "replaceMachines": true,
+          "replaceSessions": true
         }
       }
     },
@@ -183,13 +143,13 @@
       "event": {
         "nowMs": "1791078060050",
         "setNotificationPref": {
-          "supported": true,
+          "notifyAttention": true,
+          "notifyScheduled": true,
+          "notifyTurnEnded": false,
           "permission": "NOTIFICATION_PERMISSION_STATE_GRANTED",
           "pushState": "PUSH_REGISTRATION_STATE_ACTIVE",
-          "notifyAttention": true,
-          "notifyTurnEnded": false,
-          "notifyScheduled": true,
-          "showContent": false
+          "showContent": false,
+          "supported": true
         }
       }
     },
@@ -203,31 +163,31 @@
     },
     {
       "event": {
-        "nowMs": "1791078060070",
         "connCheckStatus": {
-          "serverState": "CONN_PROBE_STATE_WORKING",
-          "latencyMs": 38
-        }
+          "latencyMs": 38,
+          "serverState": "CONN_PROBE_STATE_WORKING"
+        },
+        "nowMs": "1791078060070"
       }
     },
     {
       "event": {
-        "nowMs": "1791078060080",
         "clientUpdateState": {
+          "channel": "stable",
           "currentVersion": "0.32.0",
           "protocolVersion": 17,
-          "channel": "stable",
           "releases": [
             {
-              "version": "v0.33.0-rc1",
-              "prerelease": true
+              "prerelease": true,
+              "version": "v0.33.0-rc1"
             },
             {
-              "version": "v0.32.4",
-              "protocolChanged": false
+              "protocolChanged": false,
+              "version": "v0.32.4"
             }
           ]
-        }
+        },
+        "nowMs": "1791078060080"
       },
       "views": [
         {
@@ -271,8 +231,8 @@
     },
     {
       "event": {
-        "nowMs": "1791078060100",
-        "checkForUpdates": {}
+        "checkForUpdates": {},
+        "nowMs": "1791078060100"
       },
       "views": [
         {
@@ -285,11 +245,11 @@
     },
     {
       "event": {
-        "nowMs": "1791078060110",
         "connCheckStatus": {
-          "serverState": "CONN_PROBE_STATE_UNAVAILABLE",
-          "lastFailure": "dial tcp: timeout"
-        }
+          "lastFailure": "dial tcp: timeout",
+          "serverState": "CONN_PROBE_STATE_UNAVAILABLE"
+        },
+        "nowMs": "1791078060110"
       },
       "views": [
         {

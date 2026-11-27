@@ -203,7 +203,6 @@ type Engine struct {
 
 	wf           *workflowState
 	relayVersion uint32
-	useRelayPipe bool
 
 	out            []*corev1.Effect
 	workflowMeta   map[uint64]WorkflowMeta
@@ -238,13 +237,6 @@ func (e *Engine) CurrentHeadHash() ([32]byte, bool) {
 // Locked reports whether real security initialization has locked out demo seeding.
 func (e *Engine) Locked() bool {
 	return e != nil && e.securityLocked
-}
-
-// SetRelayPipe opts security RPC emissions into the unified RelayRpcEffect byte pipe.
-func (e *Engine) SetRelayPipe(enabled bool) {
-	if e != nil {
-		e.useRelayPipe = enabled
-	}
 }
 
 // Server returns the configured or persisted relay server URL.

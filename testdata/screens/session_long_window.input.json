@@ -2,27 +2,35 @@
   "steps": [
     {
       "event": {
-        "nowMs": "1791078060000",
         "clockUpdated": {
-          "nowMs": "1791078060000",
-          "todayStartMs": "1791043200000",
-          "yesterdayStartMs": "1790956800000",
-          "weekStartMs": "1790524800000",
-          "nowYear": 2026,
           "months": [
             {
-              "year": 2026,
               "month": 10,
-              "startMs": "1790812800000"
+              "startMs": "1790812800000",
+              "year": 2026
             }
-          ]
-        }
+          ],
+          "nowMs": "1791078060000",
+          "nowYear": 2026,
+          "todayStartMs": "1791043200000",
+          "weekStartMs": "1790524800000",
+          "yesterdayStartMs": "1790956800000"
+        },
+        "nowMs": "1791078060000"
       }
     },
     {
       "event": {
         "nowMs": "1791078060000",
+        "seedDemoWorld": {
+          "clearDirectReports": true
+        }
+      }
+    },
+    {
+      "event": {
         "monoMs": "1000",
+        "nowMs": "1791078060000",
         "randomIds": [
           "r-1",
           "r-2",
@@ -54,6 +62,9 @@
           "r-28",
           "r-29"
         ],
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START"
+        },
         "unitFloats": [
           0.5,
           0.5,
@@ -67,10 +78,7 @@
           0.5,
           0.5,
           0.5
-        ],
-        "syncLifecycle": {
-          "kind": "SYNC_LIFECYCLE_KIND_START"
-        }
+        ]
       }
     },
     {
@@ -78,26 +86,17 @@
         "nowMs": "1791078060010",
         "seedDemoWorld": {
           "security": {
-            "isMember": true,
-            "selfDeviceId": "dev-1",
             "authorityDeviceId": "dev-1",
+            "isMember": true,
             "leaseEndMs": "1791164460000",
-            "trustedMachineIds": [
-              "m1"
-            ],
+            "selfDeviceId": "dev-1",
             "trustedClientIds": [
               "dev-1"
+            ],
+            "trustedMachineIds": [
+              "m1"
             ]
           }
-        }
-      }
-    },
-    {
-      "event": {
-        "nowMs": "1791078060020",
-        "tokenResult": {
-          "opId": "2",
-          "token": "tok-1"
         }
       }
     },
@@ -113,65 +112,34 @@
     {
       "event": {
         "nowMs": "1791078060040",
-        "listsFetched": {
-          "opId": "3",
-          "machines": [
-            {
-              "machineId": "m1",
-              "online": true,
-              "lastSeenMs": "1791078060000",
-              "meta": {
-                "hostname": "MacStudio",
-                "home": "/Users/me",
-                "protocolVersion": 17,
-                "capabilities": {
-                  "imageUpload": true,
-                  "maxImagesPerMessage": 6,
-                  "approvalAlways": true,
-                  "scheduledTasks": true,
-                  "fileUpload": true,
-                  "sharedFiles": true
-                },
-                "agents": [
-                  {
-                    "agent": "AGENT_CODEX",
-                    "defaultMode": "APPROVAL_MODE_ASK"
-                  },
-                  {
-                    "agent": "AGENT_CLAUDE",
-                    "defaultMode": "APPROVAL_MODE_ASK"
-                  }
-                ]
-              }
-            }
-          ],
-          "sessions": [
-            {
-              "sessionId": "s-long",
-              "machineId": "m1",
-              "lastSeq": "120",
-              "updatedMs": "1791078060000",
-              "meta": {
-                "id": "s-long",
-                "cwd": "/Users/me/Code/app",
-                "agent": "AGENT_CODEX",
-                "status": "SESSION_STATUS_IDLE",
-                "title": "Long session",
-                "model": "gpt-5.3-codex",
-                "mode": "APPROVAL_MODE_ASK",
-                "createdAt": "2026-10-04T01:00:00Z"
-              }
-            }
-          ],
+        "seedDemoWorld": {
+          "clearListError": true,
           "devices": [
             {
+              "createdMs": "1791000000000",
               "deviceId": "dev-1",
               "kind": "DEVICE_KIND_CLIENT",
-              "createdMs": "1791000000000",
-              "meta": {
-                "name": "Phone",
-                "platform": "iOS"
-              }
+              "rawMeta": "CgVQaG9uZRIDaU9T"
+            }
+          ],
+          "machines": [
+            {
+              "lastSeenMs": "1791078060000",
+              "machineId": "m1",
+              "online": true,
+              "rawMeta": "CglNYWNTdHVkaW8yCS9Vc2Vycy9tZUoECAEgAUoECAIgAVINEAEYBlABYAFoAYABAWAR"
+            }
+          ],
+          "replaceDevices": true,
+          "replaceMachines": true,
+          "replaceSessions": true,
+          "sessions": [
+            {
+              "lastSeq": "120",
+              "machineId": "m1",
+              "rawMeta": "CgZzLWxvbmcSEi9Vc2Vycy9tZS9Db2RlL2FwcCACQgYIkMqG1gZSDWdwdC01LjMtY29kZXh6DExvbmcgc2Vzc2lvbsgBAdABAQ==",
+              "sessionId": "s-long",
+              "updatedMs": "1791078060000"
             }
           ]
         }
@@ -180,21 +148,16 @@
     {
       "event": {
         "nowMs": "1791078060050",
-        "accountPrefsFetched": {
-          "opId": "4",
-          "prefs": {
-            "revision": "1",
-            "prefs": {
-              "schema": 1
-            }
-          }
+        "seedDemoWorld": {
+          "prefsRevision": "1",
+          "rawPrefs": "CAE="
         }
       }
     },
     {
       "event": {
-        "nowMs": "1791078060060",
         "monoMs": "1100",
+        "nowMs": "1791078060060",
         "sessionOpen": {
           "sessionId": "s-long"
         }
@@ -202,8 +165,8 @@
     },
     {
       "event": {
-        "nowMs": "1791078060070",
         "monoMs": "1150",
+        "nowMs": "1791078060070",
         "sessionWatch": {
           "sessionId": "s-long",
           "watched": true
@@ -212,1631 +175,134 @@
     },
     {
       "event": {
-        "nowMs": "1791078060080",
         "monoMs": "1200",
-        "cacheEventsLoaded": {
-          "opId": "5",
-          "sessionId": "s-long",
-          "events": [
-            {
-              "seq": "1",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "1",
-                "time": "2026-10-04T01:10:01Z",
-                "userMessage": {
-                  "text": "Turn 1"
-                }
-              }
-            },
-            {
-              "seq": "2",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "2",
-                "time": "2026-10-04T01:10:02Z",
-                "toolCall": {
-                  "callId": "c1a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 1a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "3",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "3",
-                "time": "2026-10-04T01:10:03Z",
-                "toolCall": {
-                  "callId": "c1b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 1b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "4",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "4",
-                "time": "2026-10-04T01:10:04Z",
-                "agentMessage": {
-                  "text": "Answer 1"
-                }
-              }
-            },
-            {
-              "seq": "5",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "5",
-                "time": "2026-10-04T01:10:05Z",
-                "userMessage": {
-                  "text": "Turn 2"
-                }
-              }
-            },
-            {
-              "seq": "6",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "6",
-                "time": "2026-10-04T01:10:06Z",
-                "toolCall": {
-                  "callId": "c2a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 2a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "7",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "7",
-                "time": "2026-10-04T01:10:07Z",
-                "toolCall": {
-                  "callId": "c2b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 2b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "8",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "8",
-                "time": "2026-10-04T01:10:08Z",
-                "agentMessage": {
-                  "text": "Answer 2"
-                }
-              }
-            },
-            {
-              "seq": "9",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "9",
-                "time": "2026-10-04T01:10:09Z",
-                "userMessage": {
-                  "text": "Turn 3"
-                }
-              }
-            },
-            {
-              "seq": "10",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "10",
-                "time": "2026-10-04T01:10:10Z",
-                "toolCall": {
-                  "callId": "c3a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 3a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "11",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "11",
-                "time": "2026-10-04T01:10:11Z",
-                "toolCall": {
-                  "callId": "c3b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 3b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "12",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "12",
-                "time": "2026-10-04T01:10:12Z",
-                "agentMessage": {
-                  "text": "Answer 3"
-                }
-              }
-            },
-            {
-              "seq": "13",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "13",
-                "time": "2026-10-04T01:10:13Z",
-                "userMessage": {
-                  "text": "Turn 4"
-                }
-              }
-            },
-            {
-              "seq": "14",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "14",
-                "time": "2026-10-04T01:10:14Z",
-                "toolCall": {
-                  "callId": "c4a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 4a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "15",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "15",
-                "time": "2026-10-04T01:10:15Z",
-                "toolCall": {
-                  "callId": "c4b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 4b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "16",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "16",
-                "time": "2026-10-04T01:10:16Z",
-                "agentMessage": {
-                  "text": "Answer 4"
-                }
-              }
-            },
-            {
-              "seq": "17",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "17",
-                "time": "2026-10-04T01:10:17Z",
-                "userMessage": {
-                  "text": "Turn 5"
-                }
-              }
-            },
-            {
-              "seq": "18",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "18",
-                "time": "2026-10-04T01:10:18Z",
-                "toolCall": {
-                  "callId": "c5a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 5a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "19",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "19",
-                "time": "2026-10-04T01:10:19Z",
-                "toolCall": {
-                  "callId": "c5b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 5b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "20",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "20",
-                "time": "2026-10-04T01:10:20Z",
-                "agentMessage": {
-                  "text": "Answer 5"
-                }
-              }
-            },
-            {
-              "seq": "21",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "21",
-                "time": "2026-10-04T01:10:21Z",
-                "userMessage": {
-                  "text": "Turn 6"
-                }
-              }
-            },
-            {
-              "seq": "22",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "22",
-                "time": "2026-10-04T01:10:22Z",
-                "toolCall": {
-                  "callId": "c6a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 6a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "23",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "23",
-                "time": "2026-10-04T01:10:23Z",
-                "toolCall": {
-                  "callId": "c6b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 6b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "24",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "24",
-                "time": "2026-10-04T01:10:24Z",
-                "agentMessage": {
-                  "text": "Answer 6"
-                }
-              }
-            },
-            {
-              "seq": "25",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "25",
-                "time": "2026-10-04T01:10:25Z",
-                "userMessage": {
-                  "text": "Turn 7"
-                }
-              }
-            },
-            {
-              "seq": "26",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "26",
-                "time": "2026-10-04T01:10:26Z",
-                "toolCall": {
-                  "callId": "c7a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 7a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "27",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "27",
-                "time": "2026-10-04T01:10:27Z",
-                "toolCall": {
-                  "callId": "c7b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 7b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "28",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "28",
-                "time": "2026-10-04T01:10:28Z",
-                "agentMessage": {
-                  "text": "Answer 7"
-                }
-              }
-            },
-            {
-              "seq": "29",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "29",
-                "time": "2026-10-04T01:10:29Z",
-                "userMessage": {
-                  "text": "Turn 8"
-                }
-              }
-            },
-            {
-              "seq": "30",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "30",
-                "time": "2026-10-04T01:10:30Z",
-                "toolCall": {
-                  "callId": "c8a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 8a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "31",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "31",
-                "time": "2026-10-04T01:10:31Z",
-                "toolCall": {
-                  "callId": "c8b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 8b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "32",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "32",
-                "time": "2026-10-04T01:10:32Z",
-                "agentMessage": {
-                  "text": "Answer 8"
-                }
-              }
-            },
-            {
-              "seq": "33",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "33",
-                "time": "2026-10-04T01:10:33Z",
-                "userMessage": {
-                  "text": "Turn 9"
-                }
-              }
-            },
-            {
-              "seq": "34",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "34",
-                "time": "2026-10-04T01:10:34Z",
-                "toolCall": {
-                  "callId": "c9a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 9a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "35",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "35",
-                "time": "2026-10-04T01:10:35Z",
-                "toolCall": {
-                  "callId": "c9b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 9b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "36",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "36",
-                "time": "2026-10-04T01:10:36Z",
-                "agentMessage": {
-                  "text": "Answer 9"
-                }
-              }
-            },
-            {
-              "seq": "37",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "37",
-                "time": "2026-10-04T01:10:37Z",
-                "userMessage": {
-                  "text": "Turn 10"
-                }
-              }
-            },
-            {
-              "seq": "38",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "38",
-                "time": "2026-10-04T01:10:38Z",
-                "toolCall": {
-                  "callId": "c10a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 10a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "39",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "39",
-                "time": "2026-10-04T01:10:39Z",
-                "toolCall": {
-                  "callId": "c10b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 10b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "40",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "40",
-                "time": "2026-10-04T01:10:40Z",
-                "agentMessage": {
-                  "text": "Answer 10"
-                }
-              }
-            },
-            {
-              "seq": "41",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "41",
-                "time": "2026-10-04T01:10:41Z",
-                "userMessage": {
-                  "text": "Turn 11"
-                }
-              }
-            },
-            {
-              "seq": "42",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "42",
-                "time": "2026-10-04T01:10:42Z",
-                "toolCall": {
-                  "callId": "c11a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 11a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "43",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "43",
-                "time": "2026-10-04T01:10:43Z",
-                "toolCall": {
-                  "callId": "c11b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 11b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "44",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "44",
-                "time": "2026-10-04T01:10:44Z",
-                "agentMessage": {
-                  "text": "Answer 11"
-                }
-              }
-            },
-            {
-              "seq": "45",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "45",
-                "time": "2026-10-04T01:10:45Z",
-                "userMessage": {
-                  "text": "Turn 12"
-                }
-              }
-            },
-            {
-              "seq": "46",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "46",
-                "time": "2026-10-04T01:10:46Z",
-                "toolCall": {
-                  "callId": "c12a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 12a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "47",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "47",
-                "time": "2026-10-04T01:10:47Z",
-                "toolCall": {
-                  "callId": "c12b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 12b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "48",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "48",
-                "time": "2026-10-04T01:10:48Z",
-                "agentMessage": {
-                  "text": "Answer 12"
-                }
-              }
-            },
-            {
-              "seq": "49",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "49",
-                "time": "2026-10-04T01:10:49Z",
-                "userMessage": {
-                  "text": "Turn 13"
-                }
-              }
-            },
-            {
-              "seq": "50",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "50",
-                "time": "2026-10-04T01:10:50Z",
-                "toolCall": {
-                  "callId": "c13a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 13a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "51",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "51",
-                "time": "2026-10-04T01:10:51Z",
-                "toolCall": {
-                  "callId": "c13b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 13b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "52",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "52",
-                "time": "2026-10-04T01:10:52Z",
-                "agentMessage": {
-                  "text": "Answer 13"
-                }
-              }
-            },
-            {
-              "seq": "53",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "53",
-                "time": "2026-10-04T01:10:53Z",
-                "userMessage": {
-                  "text": "Turn 14"
-                }
-              }
-            },
-            {
-              "seq": "54",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "54",
-                "time": "2026-10-04T01:10:54Z",
-                "toolCall": {
-                  "callId": "c14a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 14a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "55",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "55",
-                "time": "2026-10-04T01:10:55Z",
-                "toolCall": {
-                  "callId": "c14b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 14b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "56",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "56",
-                "time": "2026-10-04T01:10:56Z",
-                "agentMessage": {
-                  "text": "Answer 14"
-                }
-              }
-            },
-            {
-              "seq": "57",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "57",
-                "time": "2026-10-04T01:10:57Z",
-                "userMessage": {
-                  "text": "Turn 15"
-                }
-              }
-            },
-            {
-              "seq": "58",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "58",
-                "time": "2026-10-04T01:10:58Z",
-                "toolCall": {
-                  "callId": "c15a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 15a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "59",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "59",
-                "time": "2026-10-04T01:10:59Z",
-                "toolCall": {
-                  "callId": "c15b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 15b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "60",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "60",
-                "time": "2026-10-04T01:10:00Z",
-                "agentMessage": {
-                  "text": "Answer 15"
-                }
-              }
-            },
-            {
-              "seq": "61",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "61",
-                "time": "2026-10-04T01:10:01Z",
-                "userMessage": {
-                  "text": "Turn 16"
-                }
-              }
-            },
-            {
-              "seq": "62",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "62",
-                "time": "2026-10-04T01:10:02Z",
-                "toolCall": {
-                  "callId": "c16a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 16a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "63",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "63",
-                "time": "2026-10-04T01:10:03Z",
-                "toolCall": {
-                  "callId": "c16b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 16b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "64",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "64",
-                "time": "2026-10-04T01:10:04Z",
-                "agentMessage": {
-                  "text": "Answer 16"
-                }
-              }
-            },
-            {
-              "seq": "65",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "65",
-                "time": "2026-10-04T01:10:05Z",
-                "userMessage": {
-                  "text": "Turn 17"
-                }
-              }
-            },
-            {
-              "seq": "66",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "66",
-                "time": "2026-10-04T01:10:06Z",
-                "toolCall": {
-                  "callId": "c17a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 17a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "67",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "67",
-                "time": "2026-10-04T01:10:07Z",
-                "toolCall": {
-                  "callId": "c17b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 17b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "68",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "68",
-                "time": "2026-10-04T01:10:08Z",
-                "agentMessage": {
-                  "text": "Answer 17"
-                }
-              }
-            },
-            {
-              "seq": "69",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "69",
-                "time": "2026-10-04T01:10:09Z",
-                "userMessage": {
-                  "text": "Turn 18"
-                }
-              }
-            },
-            {
-              "seq": "70",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "70",
-                "time": "2026-10-04T01:10:10Z",
-                "toolCall": {
-                  "callId": "c18a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 18a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "71",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "71",
-                "time": "2026-10-04T01:10:11Z",
-                "toolCall": {
-                  "callId": "c18b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 18b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "72",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "72",
-                "time": "2026-10-04T01:10:12Z",
-                "agentMessage": {
-                  "text": "Answer 18"
-                }
-              }
-            },
-            {
-              "seq": "73",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "73",
-                "time": "2026-10-04T01:10:13Z",
-                "userMessage": {
-                  "text": "Turn 19"
-                }
-              }
-            },
-            {
-              "seq": "74",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "74",
-                "time": "2026-10-04T01:10:14Z",
-                "toolCall": {
-                  "callId": "c19a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 19a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "75",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "75",
-                "time": "2026-10-04T01:10:15Z",
-                "toolCall": {
-                  "callId": "c19b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 19b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "76",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "76",
-                "time": "2026-10-04T01:10:16Z",
-                "agentMessage": {
-                  "text": "Answer 19"
-                }
-              }
-            },
-            {
-              "seq": "77",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "77",
-                "time": "2026-10-04T01:10:17Z",
-                "userMessage": {
-                  "text": "Turn 20"
-                }
-              }
-            },
-            {
-              "seq": "78",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "78",
-                "time": "2026-10-04T01:10:18Z",
-                "toolCall": {
-                  "callId": "c20a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 20a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "79",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "79",
-                "time": "2026-10-04T01:10:19Z",
-                "toolCall": {
-                  "callId": "c20b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 20b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "80",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "80",
-                "time": "2026-10-04T01:10:20Z",
-                "agentMessage": {
-                  "text": "Answer 20"
-                }
-              }
-            },
-            {
-              "seq": "81",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "81",
-                "time": "2026-10-04T01:10:21Z",
-                "userMessage": {
-                  "text": "Turn 21"
-                }
-              }
-            },
-            {
-              "seq": "82",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "82",
-                "time": "2026-10-04T01:10:22Z",
-                "toolCall": {
-                  "callId": "c21a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 21a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "83",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "83",
-                "time": "2026-10-04T01:10:23Z",
-                "toolCall": {
-                  "callId": "c21b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 21b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "84",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "84",
-                "time": "2026-10-04T01:10:24Z",
-                "agentMessage": {
-                  "text": "Answer 21"
-                }
-              }
-            },
-            {
-              "seq": "85",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "85",
-                "time": "2026-10-04T01:10:25Z",
-                "userMessage": {
-                  "text": "Turn 22"
-                }
-              }
-            },
-            {
-              "seq": "86",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "86",
-                "time": "2026-10-04T01:10:26Z",
-                "toolCall": {
-                  "callId": "c22a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 22a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "87",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "87",
-                "time": "2026-10-04T01:10:27Z",
-                "toolCall": {
-                  "callId": "c22b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 22b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "88",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "88",
-                "time": "2026-10-04T01:10:28Z",
-                "agentMessage": {
-                  "text": "Answer 22"
-                }
-              }
-            },
-            {
-              "seq": "89",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "89",
-                "time": "2026-10-04T01:10:29Z",
-                "userMessage": {
-                  "text": "Turn 23"
-                }
-              }
-            },
-            {
-              "seq": "90",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "90",
-                "time": "2026-10-04T01:10:30Z",
-                "toolCall": {
-                  "callId": "c23a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 23a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "91",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "91",
-                "time": "2026-10-04T01:10:31Z",
-                "toolCall": {
-                  "callId": "c23b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 23b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "92",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "92",
-                "time": "2026-10-04T01:10:32Z",
-                "agentMessage": {
-                  "text": "Answer 23"
-                }
-              }
-            },
-            {
-              "seq": "93",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "93",
-                "time": "2026-10-04T01:10:33Z",
-                "userMessage": {
-                  "text": "Turn 24"
-                }
-              }
-            },
-            {
-              "seq": "94",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "94",
-                "time": "2026-10-04T01:10:34Z",
-                "toolCall": {
-                  "callId": "c24a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 24a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "95",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "95",
-                "time": "2026-10-04T01:10:35Z",
-                "toolCall": {
-                  "callId": "c24b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 24b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "96",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "96",
-                "time": "2026-10-04T01:10:36Z",
-                "agentMessage": {
-                  "text": "Answer 24"
-                }
-              }
-            },
-            {
-              "seq": "97",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "97",
-                "time": "2026-10-04T01:10:37Z",
-                "userMessage": {
-                  "text": "Turn 25"
-                }
-              }
-            },
-            {
-              "seq": "98",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "98",
-                "time": "2026-10-04T01:10:38Z",
-                "toolCall": {
-                  "callId": "c25a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 25a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "99",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "99",
-                "time": "2026-10-04T01:10:39Z",
-                "toolCall": {
-                  "callId": "c25b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 25b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "100",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "100",
-                "time": "2026-10-04T01:10:40Z",
-                "agentMessage": {
-                  "text": "Answer 25"
-                }
-              }
-            },
-            {
-              "seq": "101",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "101",
-                "time": "2026-10-04T01:10:41Z",
-                "userMessage": {
-                  "text": "Turn 26"
-                }
-              }
-            },
-            {
-              "seq": "102",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "102",
-                "time": "2026-10-04T01:10:42Z",
-                "toolCall": {
-                  "callId": "c26a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 26a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "103",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "103",
-                "time": "2026-10-04T01:10:43Z",
-                "toolCall": {
-                  "callId": "c26b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 26b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "104",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "104",
-                "time": "2026-10-04T01:10:44Z",
-                "agentMessage": {
-                  "text": "Answer 26"
-                }
-              }
-            },
-            {
-              "seq": "105",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "105",
-                "time": "2026-10-04T01:10:45Z",
-                "userMessage": {
-                  "text": "Turn 27"
-                }
-              }
-            },
-            {
-              "seq": "106",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "106",
-                "time": "2026-10-04T01:10:46Z",
-                "toolCall": {
-                  "callId": "c27a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 27a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "107",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "107",
-                "time": "2026-10-04T01:10:47Z",
-                "toolCall": {
-                  "callId": "c27b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 27b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "108",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "108",
-                "time": "2026-10-04T01:10:48Z",
-                "agentMessage": {
-                  "text": "Answer 27"
-                }
-              }
-            },
-            {
-              "seq": "109",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "109",
-                "time": "2026-10-04T01:10:49Z",
-                "userMessage": {
-                  "text": "Turn 28"
-                }
-              }
-            },
-            {
-              "seq": "110",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "110",
-                "time": "2026-10-04T01:10:50Z",
-                "toolCall": {
-                  "callId": "c28a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 28a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "111",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "111",
-                "time": "2026-10-04T01:10:51Z",
-                "toolCall": {
-                  "callId": "c28b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 28b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "112",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "112",
-                "time": "2026-10-04T01:10:52Z",
-                "agentMessage": {
-                  "text": "Answer 28"
-                }
-              }
-            },
-            {
-              "seq": "113",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "113",
-                "time": "2026-10-04T01:10:53Z",
-                "userMessage": {
-                  "text": "Turn 29"
-                }
-              }
-            },
-            {
-              "seq": "114",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "114",
-                "time": "2026-10-04T01:10:54Z",
-                "toolCall": {
-                  "callId": "c29a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 29a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "115",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "115",
-                "time": "2026-10-04T01:10:55Z",
-                "toolCall": {
-                  "callId": "c29b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 29b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "116",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "116",
-                "time": "2026-10-04T01:10:56Z",
-                "agentMessage": {
-                  "text": "Answer 29"
-                }
-              }
-            },
-            {
-              "seq": "117",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "117",
-                "time": "2026-10-04T01:10:57Z",
-                "userMessage": {
-                  "text": "Turn 30"
-                }
-              }
-            },
-            {
-              "seq": "118",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "118",
-                "time": "2026-10-04T01:10:58Z",
-                "toolCall": {
-                  "callId": "c30a",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 30a",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "119",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "119",
-                "time": "2026-10-04T01:10:59Z",
-                "toolCall": {
-                  "callId": "c30b",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "cmd 30b",
-                  "status": "completed"
-                }
-              }
-            },
-            {
-              "seq": "120",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "120",
-                "time": "2026-10-04T01:10:00Z",
-                "agentMessage": {
-                  "text": "Answer 30"
-                }
-              }
+        "nowMs": "1791078060080",
+        "seedDemoWorld": {
+          "sessionEvents": [
+            {
+              "rawEvents": [
+                "CAESBnMtbG9uZxoGCOnOhtYGUggKBlR1cm4gMQ==",
+                "CAISBnMtbG9uZxoGCOrOhtYGahoKA2MxYRABGgZjbWQgMWE6CWNvbXBsZXRlZA==",
+                "CAMSBnMtbG9uZxoGCOvOhtYGahoKA2MxYhABGgZjbWQgMWI6CWNvbXBsZXRlZA==",
+                "CAQSBnMtbG9uZxoGCOzOhtYGWgoKCEFuc3dlciAx",
+                "CAUSBnMtbG9uZxoGCO3OhtYGUggKBlR1cm4gMg==",
+                "CAYSBnMtbG9uZxoGCO7OhtYGahoKA2MyYRABGgZjbWQgMmE6CWNvbXBsZXRlZA==",
+                "CAcSBnMtbG9uZxoGCO/OhtYGahoKA2MyYhABGgZjbWQgMmI6CWNvbXBsZXRlZA==",
+                "CAgSBnMtbG9uZxoGCPDOhtYGWgoKCEFuc3dlciAy",
+                "CAkSBnMtbG9uZxoGCPHOhtYGUggKBlR1cm4gMw==",
+                "CAoSBnMtbG9uZxoGCPLOhtYGahoKA2MzYRABGgZjbWQgM2E6CWNvbXBsZXRlZA==",
+                "CAsSBnMtbG9uZxoGCPPOhtYGahoKA2MzYhABGgZjbWQgM2I6CWNvbXBsZXRlZA==",
+                "CAwSBnMtbG9uZxoGCPTOhtYGWgoKCEFuc3dlciAz",
+                "CA0SBnMtbG9uZxoGCPXOhtYGUggKBlR1cm4gNA==",
+                "CA4SBnMtbG9uZxoGCPbOhtYGahoKA2M0YRABGgZjbWQgNGE6CWNvbXBsZXRlZA==",
+                "CA8SBnMtbG9uZxoGCPfOhtYGahoKA2M0YhABGgZjbWQgNGI6CWNvbXBsZXRlZA==",
+                "CBASBnMtbG9uZxoGCPjOhtYGWgoKCEFuc3dlciA0",
+                "CBESBnMtbG9uZxoGCPnOhtYGUggKBlR1cm4gNQ==",
+                "CBISBnMtbG9uZxoGCPrOhtYGahoKA2M1YRABGgZjbWQgNWE6CWNvbXBsZXRlZA==",
+                "CBMSBnMtbG9uZxoGCPvOhtYGahoKA2M1YhABGgZjbWQgNWI6CWNvbXBsZXRlZA==",
+                "CBQSBnMtbG9uZxoGCPzOhtYGWgoKCEFuc3dlciA1",
+                "CBUSBnMtbG9uZxoGCP3OhtYGUggKBlR1cm4gNg==",
+                "CBYSBnMtbG9uZxoGCP7OhtYGahoKA2M2YRABGgZjbWQgNmE6CWNvbXBsZXRlZA==",
+                "CBcSBnMtbG9uZxoGCP/OhtYGahoKA2M2YhABGgZjbWQgNmI6CWNvbXBsZXRlZA==",
+                "CBgSBnMtbG9uZxoGCIDPhtYGWgoKCEFuc3dlciA2",
+                "CBkSBnMtbG9uZxoGCIHPhtYGUggKBlR1cm4gNw==",
+                "CBoSBnMtbG9uZxoGCILPhtYGahoKA2M3YRABGgZjbWQgN2E6CWNvbXBsZXRlZA==",
+                "CBsSBnMtbG9uZxoGCIPPhtYGahoKA2M3YhABGgZjbWQgN2I6CWNvbXBsZXRlZA==",
+                "CBwSBnMtbG9uZxoGCITPhtYGWgoKCEFuc3dlciA3",
+                "CB0SBnMtbG9uZxoGCIXPhtYGUggKBlR1cm4gOA==",
+                "CB4SBnMtbG9uZxoGCIbPhtYGahoKA2M4YRABGgZjbWQgOGE6CWNvbXBsZXRlZA==",
+                "CB8SBnMtbG9uZxoGCIfPhtYGahoKA2M4YhABGgZjbWQgOGI6CWNvbXBsZXRlZA==",
+                "CCASBnMtbG9uZxoGCIjPhtYGWgoKCEFuc3dlciA4",
+                "CCESBnMtbG9uZxoGCInPhtYGUggKBlR1cm4gOQ==",
+                "CCISBnMtbG9uZxoGCIrPhtYGahoKA2M5YRABGgZjbWQgOWE6CWNvbXBsZXRlZA==",
+                "CCMSBnMtbG9uZxoGCIvPhtYGahoKA2M5YhABGgZjbWQgOWI6CWNvbXBsZXRlZA==",
+                "CCQSBnMtbG9uZxoGCIzPhtYGWgoKCEFuc3dlciA5",
+                "CCUSBnMtbG9uZxoGCI3PhtYGUgkKB1R1cm4gMTA=",
+                "CCYSBnMtbG9uZxoGCI7PhtYGahwKBGMxMGEQARoHY21kIDEwYToJY29tcGxldGVk",
+                "CCcSBnMtbG9uZxoGCI/PhtYGahwKBGMxMGIQARoHY21kIDEwYjoJY29tcGxldGVk",
+                "CCgSBnMtbG9uZxoGCJDPhtYGWgsKCUFuc3dlciAxMA==",
+                "CCkSBnMtbG9uZxoGCJHPhtYGUgkKB1R1cm4gMTE=",
+                "CCoSBnMtbG9uZxoGCJLPhtYGahwKBGMxMWEQARoHY21kIDExYToJY29tcGxldGVk",
+                "CCsSBnMtbG9uZxoGCJPPhtYGahwKBGMxMWIQARoHY21kIDExYjoJY29tcGxldGVk",
+                "CCwSBnMtbG9uZxoGCJTPhtYGWgsKCUFuc3dlciAxMQ==",
+                "CC0SBnMtbG9uZxoGCJXPhtYGUgkKB1R1cm4gMTI=",
+                "CC4SBnMtbG9uZxoGCJbPhtYGahwKBGMxMmEQARoHY21kIDEyYToJY29tcGxldGVk",
+                "CC8SBnMtbG9uZxoGCJfPhtYGahwKBGMxMmIQARoHY21kIDEyYjoJY29tcGxldGVk",
+                "CDASBnMtbG9uZxoGCJjPhtYGWgsKCUFuc3dlciAxMg==",
+                "CDESBnMtbG9uZxoGCJnPhtYGUgkKB1R1cm4gMTM=",
+                "CDISBnMtbG9uZxoGCJrPhtYGahwKBGMxM2EQARoHY21kIDEzYToJY29tcGxldGVk",
+                "CDMSBnMtbG9uZxoGCJvPhtYGahwKBGMxM2IQARoHY21kIDEzYjoJY29tcGxldGVk",
+                "CDQSBnMtbG9uZxoGCJzPhtYGWgsKCUFuc3dlciAxMw==",
+                "CDUSBnMtbG9uZxoGCJ3PhtYGUgkKB1R1cm4gMTQ=",
+                "CDYSBnMtbG9uZxoGCJ7PhtYGahwKBGMxNGEQARoHY21kIDE0YToJY29tcGxldGVk",
+                "CDcSBnMtbG9uZxoGCJ/PhtYGahwKBGMxNGIQARoHY21kIDE0YjoJY29tcGxldGVk",
+                "CDgSBnMtbG9uZxoGCKDPhtYGWgsKCUFuc3dlciAxNA==",
+                "CDkSBnMtbG9uZxoGCKHPhtYGUgkKB1R1cm4gMTU=",
+                "CDoSBnMtbG9uZxoGCKLPhtYGahwKBGMxNWEQARoHY21kIDE1YToJY29tcGxldGVk",
+                "CDsSBnMtbG9uZxoGCKPPhtYGahwKBGMxNWIQARoHY21kIDE1YjoJY29tcGxldGVk",
+                "CDwSBnMtbG9uZxoGCOjOhtYGWgsKCUFuc3dlciAxNQ==",
+                "CD0SBnMtbG9uZxoGCOnOhtYGUgkKB1R1cm4gMTY=",
+                "CD4SBnMtbG9uZxoGCOrOhtYGahwKBGMxNmEQARoHY21kIDE2YToJY29tcGxldGVk",
+                "CD8SBnMtbG9uZxoGCOvOhtYGahwKBGMxNmIQARoHY21kIDE2YjoJY29tcGxldGVk",
+                "CEASBnMtbG9uZxoGCOzOhtYGWgsKCUFuc3dlciAxNg==",
+                "CEESBnMtbG9uZxoGCO3OhtYGUgkKB1R1cm4gMTc=",
+                "CEISBnMtbG9uZxoGCO7OhtYGahwKBGMxN2EQARoHY21kIDE3YToJY29tcGxldGVk",
+                "CEMSBnMtbG9uZxoGCO/OhtYGahwKBGMxN2IQARoHY21kIDE3YjoJY29tcGxldGVk",
+                "CEQSBnMtbG9uZxoGCPDOhtYGWgsKCUFuc3dlciAxNw==",
+                "CEUSBnMtbG9uZxoGCPHOhtYGUgkKB1R1cm4gMTg=",
+                "CEYSBnMtbG9uZxoGCPLOhtYGahwKBGMxOGEQARoHY21kIDE4YToJY29tcGxldGVk",
+                "CEcSBnMtbG9uZxoGCPPOhtYGahwKBGMxOGIQARoHY21kIDE4YjoJY29tcGxldGVk",
+                "CEgSBnMtbG9uZxoGCPTOhtYGWgsKCUFuc3dlciAxOA==",
+                "CEkSBnMtbG9uZxoGCPXOhtYGUgkKB1R1cm4gMTk=",
+                "CEoSBnMtbG9uZxoGCPbOhtYGahwKBGMxOWEQARoHY21kIDE5YToJY29tcGxldGVk",
+                "CEsSBnMtbG9uZxoGCPfOhtYGahwKBGMxOWIQARoHY21kIDE5YjoJY29tcGxldGVk",
+                "CEwSBnMtbG9uZxoGCPjOhtYGWgsKCUFuc3dlciAxOQ==",
+                "CE0SBnMtbG9uZxoGCPnOhtYGUgkKB1R1cm4gMjA=",
+                "CE4SBnMtbG9uZxoGCPrOhtYGahwKBGMyMGEQARoHY21kIDIwYToJY29tcGxldGVk",
+                "CE8SBnMtbG9uZxoGCPvOhtYGahwKBGMyMGIQARoHY21kIDIwYjoJY29tcGxldGVk",
+                "CFASBnMtbG9uZxoGCPzOhtYGWgsKCUFuc3dlciAyMA==",
+                "CFESBnMtbG9uZxoGCP3OhtYGUgkKB1R1cm4gMjE=",
+                "CFISBnMtbG9uZxoGCP7OhtYGahwKBGMyMWEQARoHY21kIDIxYToJY29tcGxldGVk",
+                "CFMSBnMtbG9uZxoGCP/OhtYGahwKBGMyMWIQARoHY21kIDIxYjoJY29tcGxldGVk",
+                "CFQSBnMtbG9uZxoGCIDPhtYGWgsKCUFuc3dlciAyMQ==",
+                "CFUSBnMtbG9uZxoGCIHPhtYGUgkKB1R1cm4gMjI=",
+                "CFYSBnMtbG9uZxoGCILPhtYGahwKBGMyMmEQARoHY21kIDIyYToJY29tcGxldGVk",
+                "CFcSBnMtbG9uZxoGCIPPhtYGahwKBGMyMmIQARoHY21kIDIyYjoJY29tcGxldGVk",
+                "CFgSBnMtbG9uZxoGCITPhtYGWgsKCUFuc3dlciAyMg==",
+                "CFkSBnMtbG9uZxoGCIXPhtYGUgkKB1R1cm4gMjM=",
+                "CFoSBnMtbG9uZxoGCIbPhtYGahwKBGMyM2EQARoHY21kIDIzYToJY29tcGxldGVk",
+                "CFsSBnMtbG9uZxoGCIfPhtYGahwKBGMyM2IQARoHY21kIDIzYjoJY29tcGxldGVk",
+                "CFwSBnMtbG9uZxoGCIjPhtYGWgsKCUFuc3dlciAyMw==",
+                "CF0SBnMtbG9uZxoGCInPhtYGUgkKB1R1cm4gMjQ=",
+                "CF4SBnMtbG9uZxoGCIrPhtYGahwKBGMyNGEQARoHY21kIDI0YToJY29tcGxldGVk",
+                "CF8SBnMtbG9uZxoGCIvPhtYGahwKBGMyNGIQARoHY21kIDI0YjoJY29tcGxldGVk",
+                "CGASBnMtbG9uZxoGCIzPhtYGWgsKCUFuc3dlciAyNA==",
+                "CGESBnMtbG9uZxoGCI3PhtYGUgkKB1R1cm4gMjU=",
+                "CGISBnMtbG9uZxoGCI7PhtYGahwKBGMyNWEQARoHY21kIDI1YToJY29tcGxldGVk",
+                "CGMSBnMtbG9uZxoGCI/PhtYGahwKBGMyNWIQARoHY21kIDI1YjoJY29tcGxldGVk",
+                "CGQSBnMtbG9uZxoGCJDPhtYGWgsKCUFuc3dlciAyNQ==",
+                "CGUSBnMtbG9uZxoGCJHPhtYGUgkKB1R1cm4gMjY=",
+                "CGYSBnMtbG9uZxoGCJLPhtYGahwKBGMyNmEQARoHY21kIDI2YToJY29tcGxldGVk",
+                "CGcSBnMtbG9uZxoGCJPPhtYGahwKBGMyNmIQARoHY21kIDI2YjoJY29tcGxldGVk",
+                "CGgSBnMtbG9uZxoGCJTPhtYGWgsKCUFuc3dlciAyNg==",
+                "CGkSBnMtbG9uZxoGCJXPhtYGUgkKB1R1cm4gMjc=",
+                "CGoSBnMtbG9uZxoGCJbPhtYGahwKBGMyN2EQARoHY21kIDI3YToJY29tcGxldGVk",
+                "CGsSBnMtbG9uZxoGCJfPhtYGahwKBGMyN2IQARoHY21kIDI3YjoJY29tcGxldGVk",
+                "CGwSBnMtbG9uZxoGCJjPhtYGWgsKCUFuc3dlciAyNw==",
+                "CG0SBnMtbG9uZxoGCJnPhtYGUgkKB1R1cm4gMjg=",
+                "CG4SBnMtbG9uZxoGCJrPhtYGahwKBGMyOGEQARoHY21kIDI4YToJY29tcGxldGVk",
+                "CG8SBnMtbG9uZxoGCJvPhtYGahwKBGMyOGIQARoHY21kIDI4YjoJY29tcGxldGVk",
+                "CHASBnMtbG9uZxoGCJzPhtYGWgsKCUFuc3dlciAyOA==",
+                "CHESBnMtbG9uZxoGCJ3PhtYGUgkKB1R1cm4gMjk=",
+                "CHISBnMtbG9uZxoGCJ7PhtYGahwKBGMyOWEQARoHY21kIDI5YToJY29tcGxldGVk",
+                "CHMSBnMtbG9uZxoGCJ/PhtYGahwKBGMyOWIQARoHY21kIDI5YjoJY29tcGxldGVk",
+                "CHQSBnMtbG9uZxoGCKDPhtYGWgsKCUFuc3dlciAyOQ==",
+                "CHUSBnMtbG9uZxoGCKHPhtYGUgkKB1R1cm4gMzA=",
+                "CHYSBnMtbG9uZxoGCKLPhtYGahwKBGMzMGEQARoHY21kIDMwYToJY29tcGxldGVk",
+                "CHcSBnMtbG9uZxoGCKPPhtYGahwKBGMzMGIQARoHY21kIDMwYjoJY29tcGxldGVk",
+                "CHgSBnMtbG9uZxoGCOjOhtYGWgsKCUFuc3dlciAzMA=="
+              ],
+              "sessionId": "s-long"
             }
           ]
         }
@@ -1859,8 +325,8 @@
             "session": {
               "sessionId": "s-long",
               "window": {
-                "limit": 10,
-                "beforeSeq": "109"
+                "beforeSeq": "109",
+                "limit": 10
               }
             }
           }

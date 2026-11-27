@@ -1,8 +1,6 @@
 package sync
 
 import (
-	"slices"
-
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
@@ -43,30 +41,23 @@ func (e *Engine) startLoadPrefs(ctx *StepContext) {
 	if !e.running {
 		return
 	}
-	e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_PREFS_RETRY, "")
-	e.prefsLoadOpID = e.allocOpID()
-	if e.relayPipe {
-		e.emitRelayRpc(
-			ctx,
-			corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_ACCOUNT_PREFS,
-			e.cachedToken,
-			relayRpcDefaultTimeoutMs,
-			"",
-			(&v1.GetAccountPrefsRequest{ObjectId: ProjectPrefsObjectID}).AppendMarshal(nil),
-			&pendingRelayRpc{kind: relayRpcPrefsGet, opID: e.prefsLoadOpID},
-		)
+	if e.demoMode {
+		e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_PREFS_RETRY, "")
+		e.prefs.LoadFailed = false
+		ctx.Dirty.Add(true, true, false)
 		return
 	}
-	ctx.emit(&corev1.Effect{
-		Effect: &corev1.Effect_Rpc{
-			Rpc: &corev1.RpcEffect{
-				OpId: e.prefsLoadOpID,
-				Kind: &corev1.RpcEffect_GetAccountPrefs{
-					GetAccountPrefs: &corev1.GetAccountPrefsRpc{ObjectId: ProjectPrefsObjectID},
-				},
-			},
-		},
-	})
+	e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_PREFS_RETRY, "")
+	e.prefsLoadOpID = e.allocOpID()
+	e.emitRelayRpc(
+		ctx,
+		corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_ACCOUNT_PREFS,
+		e.cachedToken,
+		relayRpcDefaultTimeoutMs,
+		"",
+		(&v1.GetAccountPrefsRequest{ObjectId: ProjectPrefsObjectID}).AppendMarshal(nil),
+		&pendingRelayRpc{kind: relayRpcPrefsGet, opID: e.prefsLoadOpID},
+	)
 }
 
 // EnqueuePrefsOp enqueues an idempotent ProjectPrefs CAS mutation.
@@ -141,44 +132,46 @@ func (e *Engine) startNextPrefsOp(ctx *StepContext) {
 		return
 	}
 	head := &e.prefsQueue[0]
+	if e.demoMode {
+		if e.demoPrefsError != "" {
+			e.finishPrefsOp(ctx, world.Reason{Kind: world.ReasonServerReturned, Param: e.demoPrefsError})
+			return
+		}
+		nextPrefs := lists.ApplyPrefsOp(e.prefs.Prefs, head.Op, head.OpID, e.nowMs)
+		if nextPrefs == nil {
+			nextPrefs = &v1.ProjectPrefs{Schema: 1}
+		} else {
+			nextPrefs.Schema = 1
+		}
+		e.applyAccountPrefsDecoded(&decodedPrefs{
+			Revision: e.prefs.Revision + 1,
+			Prefs:    nextPrefs,
+		}, true)
+		e.finishPrefsOp(ctx, world.Reason{})
+		return
+	}
 	head.Phase = prefsPhaseGet
 	head.ActiveOpID = e.allocOpID()
 	if head.Attempt == 0 {
 		head.InitialBase = e.prefs.Revision
 	}
-	if e.relayPipe {
-		e.emitRelayRpc(
-			ctx,
-			corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_ACCOUNT_PREFS,
-			e.cachedToken,
-			relayRpcDefaultTimeoutMs,
-			"",
-			(&v1.GetAccountPrefsRequest{ObjectId: ProjectPrefsObjectID}).AppendMarshal(nil),
-			&pendingRelayRpc{kind: relayRpcPrefsGet, opID: head.ActiveOpID},
-		)
-		return
-	}
-	ctx.emit(&corev1.Effect{
-		Effect: &corev1.Effect_Rpc{
-			Rpc: &corev1.RpcEffect{
-				OpId: head.ActiveOpID,
-				Kind: &corev1.RpcEffect_GetAccountPrefs{
-					GetAccountPrefs: &corev1.GetAccountPrefsRpc{ObjectId: ProjectPrefsObjectID},
-				},
-			},
-		},
-	})
+	e.emitRelayRpc(
+		ctx,
+		corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_ACCOUNT_PREFS,
+		e.cachedToken,
+		relayRpcDefaultTimeoutMs,
+		"",
+		(&v1.GetAccountPrefsRequest{ObjectId: ProjectPrefsObjectID}).AppendMarshal(nil),
+		&pendingRelayRpc{kind: relayRpcPrefsGet, opID: head.ActiveOpID},
+	)
 }
 
-func (e *Engine) handleAccountPrefsFetched(ctx *StepContext, ev *corev1.AccountPrefsFetchedEvent) {
-	if ev == nil {
-		return
-	}
-	if len(e.prefsQueue) > 0 && e.prefsQueue[0].Phase == prefsPhaseGet && ev.OpId == e.prefsQueue[0].ActiveOpID {
+func (e *Engine) handleAccountPrefsFetched(ctx *StepContext, ev accountPrefsResult) {
+	if len(e.prefsQueue) > 0 && e.prefsQueue[0].Phase == prefsPhaseGet && ev.OpID == e.prefsQueue[0].ActiveOpID {
 		e.handlePrefsCASGetResult(ctx, ev)
 		return
 	}
-	if ev.OpId != e.prefsLoadOpID && ev.OpId != 0 {
+	if ev.OpID != e.prefsLoadOpID && ev.OpID != 0 {
 		return
 	}
 	e.prefsLoadOpID = 0
@@ -197,82 +190,35 @@ func (e *Engine) handleAccountPrefsFetched(ctx *StepContext, ev *corev1.AccountP
 	}
 	e.prefsBackoffMs = PrefsRetryInitialMs
 	e.prefs.LoadFailed = false
-	if ev.WirePrefs != nil || (e.secEngine != nil && e.secEngine.Locked() && ev.Prefs == nil) {
-		var slice []*v1.AccountPrefsObject
-		if ev.WirePrefs != nil {
-			slice = []*v1.AccountPrefsObject{ev.WirePrefs}
-		}
-		e.openWireDirectoryBatchTag(ctx, nil, nil, nil, slice, dirBatchMeta{kind: dirKindPrefsLoad})
-		return
+	var slice []*v1.AccountPrefsObject
+	if ev.WirePrefs != nil {
+		slice = []*v1.AccountPrefsObject{ev.WirePrefs}
 	}
-	e.applyAccountPrefs(ev.Prefs, true)
-	ctx.Dirty.MarkAll()
+	e.openWireDirectoryBatchTag(ctx, nil, nil, nil, slice, dirBatchMeta{kind: dirKindPrefsLoad})
 }
 
-func (e *Engine) handlePrefsCASGetResult(ctx *StepContext, ev *corev1.AccountPrefsFetchedEvent) {
+func (e *Engine) handlePrefsCASGetResult(ctx *StepContext, ev accountPrefsResult) {
 	head := &e.prefsQueue[0]
 	head.ActiveOpID = 0
 	if ev.Error != "" {
 		e.finishPrefsOp(ctx, world.Reason{Kind: world.ReasonServerReturned, Param: ev.Error})
 		return
 	}
-	if ev.WirePrefs != nil || (e.secEngine != nil && e.secEngine.Locked() && ev.Prefs == nil) {
-		var slice []*v1.AccountPrefsObject
-		if ev.WirePrefs != nil {
-			slice = []*v1.AccountPrefsObject{ev.WirePrefs}
-		}
-		e.openWireDirectoryBatchTag(ctx, nil, nil, nil, slice, dirBatchMeta{
-			kind: dirKindPrefsCASGet, headOpID: head.OpID,
-		})
-		return
+	var slice []*v1.AccountPrefsObject
+	if ev.WirePrefs != nil {
+		slice = []*v1.AccountPrefsObject{ev.WirePrefs}
 	}
-	var baseRev uint64
-	var basePrefs *v1.ProjectPrefs
-	if ev.Prefs != nil {
-		baseRev = ev.Prefs.Revision
-		basePrefs = ev.Prefs.Prefs
-	}
-	if head.Attempt == 0 {
-		head.InitialBase = baseRev
-	} else if baseRev > head.InitialBase {
-		e.w.ProjectChangedElsewhere = true
-	}
-
-	if basePrefs != nil && slices.Contains(basePrefs.RecentOps, head.OpID) {
-		e.applyAccountPrefs(ev.Prefs, true)
-		e.finishPrefsOp(ctx, world.Reason{})
-		return
-	}
-
-	nextPrefs := lists.ApplyPrefsOp(basePrefs, head.Op, head.OpID, e.nowMs)
-	if e.secEngine != nil && e.secEngine.Locked() {
-		e.sealAndEmitPrefsPut(ctx, head, baseRev, nextPrefs)
-		return
-	}
-	head.Phase = prefsPhasePut
-	head.ActiveOpID = e.allocOpID()
-	ctx.emit(&corev1.Effect{
-		Effect: &corev1.Effect_Rpc{
-			Rpc: &corev1.RpcEffect{
-				OpId: head.ActiveOpID,
-				Kind: &corev1.RpcEffect_PutAccountPrefs{
-					PutAccountPrefs: &corev1.PutAccountPrefsRpc{
-						ObjectId:         ProjectPrefsObjectID,
-						ExpectedRevision: baseRev,
-						NextPrefs:        nextPrefs,
-					},
-				},
-			},
-		},
+	e.openWireDirectoryBatchTag(ctx, nil, nil, nil, slice, dirBatchMeta{
+		kind: dirKindPrefsCASGet, headOpID: head.OpID,
 	})
 }
 
-func (e *Engine) handleAccountPrefsPutResult(ctx *StepContext, ev *corev1.AccountPrefsPutResultEvent) {
-	if ev == nil || len(e.prefsQueue) == 0 {
+func (e *Engine) handleAccountPrefsPutResult(ctx *StepContext, ev accountPrefsPutResult) {
+	if len(e.prefsQueue) == 0 {
 		return
 	}
 	head := &e.prefsQueue[0]
-	if head.Phase != prefsPhasePut || ev.OpId != head.ActiveOpID {
+	if head.Phase != prefsPhasePut || ev.OpID != head.ActiveOpID {
 		return
 	}
 	head.ActiveOpID = 0
@@ -295,9 +241,6 @@ func (e *Engine) handleAccountPrefsPutResult(ctx *StepContext, ev *corev1.Accoun
 			kind: dirKindPrefsCASPut,
 		})
 		return
-	}
-	if ev.Current != nil {
-		e.applyAccountPrefs(ev.Current, true)
 	}
 	e.finishPrefsOp(ctx, world.Reason{})
 }
@@ -331,18 +274,6 @@ func (e *Engine) finishPrefsOp(ctx *StepContext, errReason world.Reason) {
 		e.startNextPrefsOp(ctx)
 	}
 	ctx.Dirty.MarkAll()
-}
-
-func (e *Engine) applyAccountPrefs(in *corev1.PlainAccountPrefs, forceAccept bool) {
-	if in == nil {
-		e.applyAccountPrefsDecoded(nil, forceAccept)
-		return
-	}
-	e.applyAccountPrefsDecoded(&decodedPrefs{
-		Revision: in.Revision,
-		Prefs:    in.Prefs,
-		Broken:   in.Broken,
-	}, forceAccept)
 }
 
 func (e *Engine) applyAccountPrefsDecoded(in *decodedPrefs, forceAccept bool) {

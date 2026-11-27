@@ -29,6 +29,36 @@ func TestCoreRoundTrip(t *testing.T) {
 	c := New()
 	defer c.Close()
 
+	metaBytes, err := proto.Marshal(&stdv1.MachineMeta{
+		Hostname:        "DevBook.local",
+		ProtocolVersion: 17,
+		Agents: []*stdv1.AgentInfo{
+			{Agent: stdv1.Agent_AGENT_CODEX, DefaultMode: stdv1.ApprovalMode_APPROVAL_MODE_ASK, DefaultModeSource: stdv1.DefaultModeSource_DEFAULT_MODE_SOURCE_CLI_CONFIG},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Seed demo world directly; Core handles demo mode natively without emitting RelayRpcEffect.
+	dispatchEvent(t, c, &stdcorev1.Event{
+		NowMs: 1_700_000_000_000,
+		Event: &stdcorev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &stdcorev1.SeedDemoWorldEvent{
+				Security: &stdcorev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      "dev-1",
+					AuthorityDeviceId: "dev-1",
+					TrustedMachineIds: []string{"m1"},
+				},
+				Machines: []*stdcorev1.DemoMachine{{
+					MachineId: "m1",
+					Online:    true,
+					RawMeta:   metaBytes,
+				}},
+			},
+		},
+	})
+
 	startBatch := dispatchEvent(t, c, &stdcorev1.Event{
 		NowMs:  1_700_000_000_000,
 		MonoMs: 1_000,
@@ -38,37 +68,21 @@ func TestCoreRoundTrip(t *testing.T) {
 			},
 		},
 	})
-	var tokenOpID uint64
+	var legID uint64
 	var hasRender bool
 	for _, e := range startBatch.Effects {
-		if et := e.GetEnsureToken(); et != nil {
-			tokenOpID = et.OpId
+		if os := e.GetOpenStream(); os != nil {
+			legID = os.LegId
 		}
 		if e.GetRender() != nil {
 			hasRender = true
 		}
-	}
-	if !hasRender || tokenOpID == 0 {
-		t.Fatalf("expected render and ensure_token effects, got %+v", startBatch.Effects)
-	}
-
-	tokBatch := dispatchEvent(t, c, &stdcorev1.Event{
-		NowMs: 1_700_000_000_100,
-		Event: &stdcorev1.Event_TokenResult{
-			TokenResult: &stdcorev1.TokenResultEvent{
-				OpId:  tokenOpID,
-				Token: "tok-1",
-			},
-		},
-	})
-	var legID uint64
-	for _, e := range tokBatch.Effects {
-		if os := e.GetOpenStream(); os != nil {
-			legID = os.LegId
+		if e.GetRelayRpc() != nil || e.GetCacheRead() != nil {
+			t.Fatalf("demo mode must not emit relay/cache effects on start, got %+v", e)
 		}
 	}
-	if legID == 0 {
-		t.Fatalf("expected open_stream effect, got %+v", tokBatch.Effects)
+	if !hasRender || legID == 0 {
+		t.Fatalf("expected render and open_stream effects, got %+v", startBatch.Effects)
 	}
 
 	readyBatch := dispatchEvent(t, c, &stdcorev1.Event{
@@ -80,37 +94,11 @@ func TestCoreRoundTrip(t *testing.T) {
 			},
 		},
 	})
-	var fetchOpID uint64
 	for _, e := range readyBatch.Effects {
-		if rpc := e.GetRpc(); rpc != nil && rpc.GetFetchLists() != nil {
-			fetchOpID = rpc.OpId
+		if e.GetRelayRpc() != nil {
+			t.Fatalf("demo mode must not emit RelayRpcEffect on stream ready, got %+v", e)
 		}
 	}
-	if fetchOpID == 0 {
-		t.Fatalf("expected fetch_lists rpc effect, got %+v", readyBatch.Effects)
-	}
-
-	dispatchEvent(t, c, &stdcorev1.Event{
-		NowMs: 1_700_000_000_300,
-		Event: &stdcorev1.Event_ListsFetched{
-			ListsFetched: &stdcorev1.ListsFetchedEvent{
-				OpId: fetchOpID,
-				Machines: []*stdcorev1.PlainMachine{
-					{
-						MachineId: "m1",
-						Online:    true,
-						Meta: &stdv1.MachineMeta{
-							Hostname:        "DevBook.local",
-							ProtocolVersion: 17,
-							Agents: []*stdv1.AgentInfo{
-								{Agent: stdv1.Agent_AGENT_CODEX, DefaultMode: stdv1.ApprovalMode_APPROVAL_MODE_ASK, DefaultModeSource: stdv1.DefaultModeSource_DEFAULT_MODE_SOURCE_CLI_CONFIG},
-							},
-						},
-					},
-				},
-			},
-		},
-	})
 
 	scBytes, err := proto.Marshal(&stdcorev1.Screen{Screen: &stdcorev1.Screen_Home{Home: &stdcorev1.HomeScreenRequest{}}})
 	if err != nil {

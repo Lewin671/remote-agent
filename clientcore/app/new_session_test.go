@@ -6,13 +6,14 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/internal/test/testrelay"
 )
 
 func TestNewSessionProjectAddAndLatePrefsReloadModels(t *testing.T) {
 	c := New()
 	defer c.Close()
 
-	seedOneMachine(c)
+	seedOneMachine(t, c)
 
 	// Adding a project via directory picker for New Task must resolve a concrete non-unspecified agent.
 	c.Dispatch(&corev1.Event{
@@ -50,27 +51,19 @@ func TestNewSessionProjectAddAndLatePrefsReloadModels(t *testing.T) {
 	})
 	effs := c.Dispatch(&corev1.Event{
 		NowMs: 1080,
-		Event: &corev1.Event_AccountPrefsFetched{
-			AccountPrefsFetched: &corev1.AccountPrefsFetchedEvent{
-				OpId: 4,
-				Prefs: &corev1.PlainAccountPrefs{
-					Revision: 2,
-					Prefs: &v1.ProjectPrefs{
-						Schema: 1,
-						Settings: []*v1.ProjectSettings{
-							{
-								Path:      "/Users/alice",
-								MachineId: "m-1",
-								Agent:     v1.Agent_AGENT_CLAUDE,
-								Agents: []*v1.AgentSettings{
-									{Agent: v1.Agent_AGENT_CLAUDE, Model: "claude-sonnet-5-5"},
-								},
-							},
-						},
+		Event: testrelay.DemoPrefsEvent(2, &v1.ProjectPrefs{
+			Schema: 1,
+			Settings: []*v1.ProjectSettings{
+				{
+					Path:      "/Users/alice",
+					MachineId: "m-1",
+					Agent:     v1.Agent_AGENT_CLAUDE,
+					Agents: []*v1.AgentSettings{
+						{Agent: v1.Agent_AGENT_CLAUDE, Model: "claude-sonnet-5-5"},
 					},
 				},
 			},
-		},
+		}),
 	})
 	var fetchedClaudeModels bool
 	for _, eff := range effs.GetEffects() {
@@ -104,8 +97,9 @@ func TestNewSessionProjectAddAndLatePrefsReloadModels(t *testing.T) {
 	}
 }
 
-func seedOneMachine(c *Core) {
-	// Seed entropy, lifecycle, security, stream, and one multi-agent machine.
+func seedOneMachine(t *testing.T, c *Core) uint64 {
+	t.Helper()
+	// Seed entropy, demo security, lifecycle, stream, and one multi-agent machine.
 	c.Dispatch(&corev1.Event{
 		NowMs: 1000,
 		Event: &corev1.Event_EntropyProvided{
@@ -117,12 +111,6 @@ func seedOneMachine(c *Core) {
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1000,
-		Event: &corev1.Event_SyncLifecycle{
-			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
-		},
-	})
-	c.Dispatch(&corev1.Event{
-		NowMs: 1010,
 		Event: &corev1.Event_SeedDemoWorld{
 			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
 				Security: &corev1.DemoSecurity{
@@ -132,53 +120,45 @@ func seedOneMachine(c *Core) {
 					LeaseEndMs:        99999999,
 					TrustedMachineIds: []string{"m-1"},
 				},
-			},
-		},
-	})
-	c.Dispatch(&corev1.Event{
-		NowMs: 1020,
-		Event: &corev1.Event_TokenResult{
-			TokenResult: &corev1.TokenResultEvent{OpId: 2, Token: "tok-1"},
-		},
-	})
-	c.Dispatch(&corev1.Event{
-		NowMs: 1030,
-		Event: &corev1.Event_StreamReady{
-			StreamReady: &corev1.StreamReadyEvent{LegId: 1, ServerTimeMs: 1030},
-		},
-	})
-	c.Dispatch(&corev1.Event{
-		NowMs: 1040,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: 3,
-				Machines: []*corev1.PlainMachine{
-					{
-						MachineId: "m-1",
-						Online:    true,
-						Meta: &v1.MachineMeta{
-							Hostname:        "Workstation",
-							ProtocolVersion: 17,
-							Agents: []*v1.AgentInfo{
-								{Agent: v1.Agent_AGENT_CODEX, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
-								{Agent: v1.Agent_AGENT_CLAUDE, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
-								{Agent: v1.Agent_AGENT_ANTIGRAVITY, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
-							},
+				Machines: []*corev1.DemoMachine{
+					testrelay.DemoMachine("m-1", true, 0, &v1.MachineMeta{
+						Hostname:        "Workstation",
+						ProtocolVersion: 17,
+						Agents: []*v1.AgentInfo{
+							{Agent: v1.Agent_AGENT_CODEX, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
+							{Agent: v1.Agent_AGENT_CLAUDE, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
+							{Agent: v1.Agent_AGENT_ANTIGRAVITY, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
 						},
-					},
+					}),
 				},
 			},
 		},
 	})
-
+	startBatch := c.Dispatch(&corev1.Event{
+		NowMs: 1000,
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
+		},
+	})
+	legID := testrelay.FindOpenStreamLeg(startBatch.Effects)
+	c.Dispatch(&corev1.Event{
+		NowMs: 1030,
+		Event: &corev1.Event_StreamReady{
+			StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: 1030},
+		},
+	})
+	return 0
 }
 
 func TestStandaloneNewTaskTakesCLIAndModelPicks(t *testing.T) {
 	c := New()
 	defer c.Close()
-	seedOneMachine(c)
+	seedOneMachine(t, c)
 	// A saved project lists it; nothing has opened a new task on it by key.
-	c.Dispatch(&corev1.Event{NowMs: 1050, Event: &corev1.Event_AccountPrefsFetched{AccountPrefsFetched: &corev1.AccountPrefsFetchedEvent{OpId: 4, Prefs: &corev1.PlainAccountPrefs{Revision: 1, Prefs: &v1.ProjectPrefs{Schema: 1, Settings: []*v1.ProjectSettings{{Path: "/Users/alice", MachineId: "m-1", Agent: v1.Agent_AGENT_CODEX}}}}}}})
+	c.Dispatch(&corev1.Event{NowMs: 1050, Event: &corev1.Event_SeedDemoWorld{SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+		RawPrefs:      testrelay.MustRaw(&v1.ProjectPrefs{Schema: 1, Settings: []*v1.ProjectSettings{{Path: "/Users/alice", MachineId: "m-1", Agent: v1.Agent_AGENT_CODEX}}}),
+		PrefsRevision: 1,
+	}}})
 	c.Dispatch(&corev1.Event{NowMs: 1060, Event: &corev1.Event_NewSessionOpen{NewSessionOpen: &corev1.NewSessionOpenAction{}}})
 	view := func() *corev1.NewSessionViewModel {
 		vm, err := c.View(&corev1.Screen{Screen: &corev1.Screen_NewSession{NewSession: &corev1.NewSessionScreenRequest{}}})
@@ -203,7 +183,7 @@ func TestStandaloneNewTaskTakesCLIAndModelPicks(t *testing.T) {
 func TestDirPickerKeyedIsolation(t *testing.T) {
 	c := New()
 	defer c.Close()
-	seedOneMachine(c)
+	seedOneMachine(t, c)
 
 	c.Dispatch(&corev1.Event{
 		NowMs: 1100,
@@ -290,7 +270,7 @@ func TestDirPickerKeyedIsolation(t *testing.T) {
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "ok",
-				Result: &v1.CommandResult{
+				RawResult: testrelay.MustRaw(&v1.CommandResult{
 					Outcome:         "executed",
 					Reason:          "ok",
 					ResultAvailable: true,
@@ -301,7 +281,7 @@ func TestDirPickerKeyedIsolation(t *testing.T) {
 							Dirs:   []string{"late-dir"},
 						},
 					},
-				},
+				}),
 			},
 		},
 	})
@@ -344,21 +324,18 @@ func TestDirPickerKeyedIsolation(t *testing.T) {
 func TestNewSessionCreateSessionDiskFullLifecycle(t *testing.T) {
 	c := New()
 	defer c.Close()
-	seedOneMachine(c)
+	seedOneMachine(t, c)
 
 	const projKey = "/Users/alice"
 	c.Dispatch(&corev1.Event{
 		NowMs: 1050,
-		Event: &corev1.Event_AccountPrefsFetched{
-			AccountPrefsFetched: &corev1.AccountPrefsFetchedEvent{
-				OpId: 4,
-				Prefs: &corev1.PlainAccountPrefs{
-					Revision: 1,
-					Prefs: &v1.ProjectPrefs{
-						Schema:   1,
-						Settings: []*v1.ProjectSettings{{Path: projKey, MachineId: "m-1", Agent: v1.Agent_AGENT_CODEX}},
-					},
-				},
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				RawPrefs: testrelay.MustRaw(&v1.ProjectPrefs{
+					Schema:   1,
+					Settings: []*v1.ProjectSettings{{Path: projKey, MachineId: "m-1", Agent: v1.Agent_AGENT_CODEX}},
+				}),
+				PrefsRevision: 1,
 			},
 		},
 	})
@@ -410,13 +387,13 @@ func TestNewSessionCreateSessionDiskFullLifecycle(t *testing.T) {
 					OuterMatchesInner: true,
 					OuterOutcome:      "executed",
 					OuterReason:       code,
-					Result: &v1.CommandResult{
+					RawResult: testrelay.MustRaw(&v1.CommandResult{
 						Outcome:         "executed",
 						Reason:          code,
 						ResultAvailable: true,
 						ErrorCode:       code,
 						ErrorMessage:    msg,
-					},
+					}),
 				},
 			},
 		})
@@ -490,21 +467,13 @@ func TestProjectAddUnhidesHiddenProjectWithoutPriorSettings(t *testing.T) {
 	c := New()
 	defer c.Close()
 
-	seedOneMachine(c)
+	seedOneMachine(t, c)
 	c.Dispatch(&corev1.Event{
 		NowMs: 1050,
-		Event: &corev1.Event_AccountPrefsFetched{
-			AccountPrefsFetched: &corev1.AccountPrefsFetchedEvent{
-				OpId: 4,
-				Prefs: &corev1.PlainAccountPrefs{
-					Revision: 1,
-					Prefs: &v1.ProjectPrefs{
-						Schema: 1,
-						Hidden: []*v1.ProjectPref{{Path: "/Users/alice/shop"}},
-					},
-				},
-			},
-		},
+		Event: testrelay.DemoPrefsEvent(1, &v1.ProjectPrefs{
+			Schema: 1,
+			Hidden: []*v1.ProjectPref{{Path: "/Users/alice/shop"}},
+		}),
 	})
 	if !lists.IsHidden(c.m.state.World.Prefs, "/Users/alice/shop") {
 		t.Fatalf("precondition: expected /Users/alice/shop hidden")
@@ -516,53 +485,14 @@ func TestProjectAddUnhidesHiddenProjectWithoutPriorSettings(t *testing.T) {
 			ProjectOpenDirPicker: &corev1.DirPickerOpenAction{PickerKey: "manage", MachineId: "m-1", Path: "/Users/alice/shop"},
 		},
 	})
-	batch := c.Dispatch(&corev1.Event{
+	c.Dispatch(&corev1.Event{
 		NowMs: 1070,
 		Event: &corev1.Event_ProjectAdd{
 			ProjectAdd: &corev1.ProjectAddAction{Path: "/Users/alice/shop", PickerKey: "manage"},
 		},
 	})
-	// Drive the enqueued prefs RPCs (unhide + set-settings) to completion.
-	curPrefs := &v1.ProjectPrefs{
-		Schema: 1,
-		Hidden: []*v1.ProjectPref{{Path: "/Users/alice/shop"}},
-	}
-	rev := uint64(1)
-	for step := 0; step < 6 && batch != nil; step++ {
-		var nextBatch *corev1.EffectBatch
-		for _, ef := range batch.GetEffects() {
-			rpc := ef.GetRpc()
-			if rpc == nil {
-				continue
-			}
-			switch rk := rpc.Kind.(type) {
-			case *corev1.RpcEffect_GetAccountPrefs:
-				nextBatch = c.Dispatch(&corev1.Event{
-					NowMs: int64(1080 + step*10),
-					Event: &corev1.Event_AccountPrefsFetched{
-						AccountPrefsFetched: &corev1.AccountPrefsFetchedEvent{
-							OpId:  rpc.OpId,
-							Prefs: &corev1.PlainAccountPrefs{Revision: rev, Prefs: curPrefs.Clone()},
-						},
-					},
-				})
-			case *corev1.RpcEffect_PutAccountPrefs:
-				curPrefs = rk.PutAccountPrefs.GetNextPrefs().Clone()
-				rev++
-				nextBatch = c.Dispatch(&corev1.Event{
-					NowMs: int64(1085 + step*10),
-					Event: &corev1.Event_AccountPrefsPutResult{
-						AccountPrefsPutResult: &corev1.AccountPrefsPutResultEvent{
-							OpId:    rpc.OpId,
-							Applied: true,
-							Current: &corev1.PlainAccountPrefs{Revision: rev, Prefs: curPrefs.Clone()},
-						},
-					},
-				})
-			}
-		}
-		batch = nextBatch
-	}
+	// In demo mode, ProjectAdd applies the enqueued prefs mutations (unhide + set-settings) in memory.
+	_ = c.m.state.World.Prefs
 	if lists.IsHidden(c.m.state.World.Prefs, "/Users/alice/shop") {
 		t.Fatalf("expected ProjectAdd to unhide hidden project even when no prior ProjectSettings existed")
 	}

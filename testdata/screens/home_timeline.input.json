@@ -2,32 +2,40 @@
   "steps": [
     {
       "event": {
-        "nowMs": "1791078060000",
         "clockUpdated": {
-          "nowMs": "1791078060000",
-          "todayStartMs": "1791043200000",
-          "yesterdayStartMs": "1790956800000",
-          "weekStartMs": "1790524800000",
-          "nowYear": 2026,
           "months": [
             {
-              "year": 2026,
               "month": 10,
-              "startMs": "1790812800000"
+              "startMs": "1790812800000",
+              "year": 2026
             },
             {
-              "year": 2026,
               "month": 9,
-              "startMs": "1788220800000"
+              "startMs": "1788220800000",
+              "year": 2026
             }
-          ]
-        }
+          ],
+          "nowMs": "1791078060000",
+          "nowYear": 2026,
+          "todayStartMs": "1791043200000",
+          "weekStartMs": "1790524800000",
+          "yesterdayStartMs": "1790956800000"
+        },
+        "nowMs": "1791078060000"
       }
     },
     {
       "event": {
         "nowMs": "1791078060000",
+        "seedDemoWorld": {
+          "clearDirectReports": true
+        }
+      }
+    },
+    {
+      "event": {
         "monoMs": "1000",
+        "nowMs": "1791078060000",
         "randomIds": [
           "r1",
           "r2",
@@ -38,16 +46,16 @@
           "r7",
           "r8"
         ],
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START",
+          "scopeHmacKey": "c2NvcGUtbWFjLWtleS10ZXN0"
+        },
         "unitFloats": [
           0.5,
           0.5,
           0.5,
           0.5
-        ],
-        "syncLifecycle": {
-          "kind": "SYNC_LIFECYCLE_KIND_START",
-          "scopeHmacKey": "c2NvcGUtbWFjLWtleS10ZXN0"
-        }
+        ]
       }
     },
     {
@@ -55,23 +63,14 @@
         "nowMs": "1791078060010",
         "seedDemoWorld": {
           "security": {
-            "isMember": true,
-            "selfDeviceId": "dev-1",
             "authorityDeviceId": "dev-1",
+            "isMember": true,
             "leaseEndMs": "1791164460000",
+            "selfDeviceId": "dev-1",
             "trustedMachineIds": [
               "m1"
             ]
           }
-        }
-      }
-    },
-    {
-      "event": {
-        "nowMs": "1791078060020",
-        "tokenResult": {
-          "opId": "2",
-          "token": "tok-1"
         }
       }
     },
@@ -87,144 +86,62 @@
     {
       "event": {
         "nowMs": "1791078060040",
-        "listsFetched": {
-          "opId": "3",
+        "seedDemoWorld": {
+          "clearListError": true,
           "machines": [
             {
               "machineId": "m1",
               "online": true,
-              "meta": {
-                "hostname": "MacBook",
-                "protocolVersion": 17,
-                "agents": [
-                  {
-                    "agent": "AGENT_CODEX",
-                    "defaultMode": "APPROVAL_MODE_ASK"
-                  }
-                ],
-                "projects": [
-                  {
-                    "path": "/Users/me/Code/alpha",
-                    "ended": 2
-                  },
-                  {
-                    "path": "/Users/me/Code/beta",
-                    "ended": 1
-                  }
-                ]
-              }
+              "rawMeta": "CgdNYWNCb29rSgQIASABYBFqGAoUL1VzZXJzL21lL0NvZGUvYWxwaGEQAmoXChMvVXNlcnMvbWUvQ29kZS9iZXRhEAE="
             }
           ],
+          "replaceDevices": true,
+          "replaceMachines": true,
+          "replaceSessions": true,
           "sessions": [
             {
-              "sessionId": "s-appr",
-              "machineId": "m1",
               "lastSeq": "5",
-              "updatedMs": "1791078000000",
-              "meta": {
-                "id": "s-appr",
-                "cwd": "/Users/me/Code/alpha",
-                "agent": "AGENT_CODEX",
-                "status": "SESSION_STATUS_RUNNING",
-                "title": "Run tests",
-                "preview": "Running go test ./..."
-              },
-              "checkpoint": {
-                "running": true,
-                "actions": [
-                  {
-                    "seq": "5",
-                    "approvalRequested": {
-                      "approvalId": "ap-1",
-                      "toolName": "Bash",
-                      "command": "go test ./...",
-                      "deadline": "2026-10-04T01:43:00Z"
-                    }
-                  }
-                ]
-              }
+              "machineId": "m1",
+              "rawCheckpoint": "EigIBZIBIwoEYXAtMRIEQmFzaCINZ28gdGVzdCAuLy4uLjIGCKTehtYGMAE=",
+              "rawMeta": "CgZzLWFwcHISFC9Vc2Vycy9tZS9Db2RlL2FscGhhIAN6CVJ1biB0ZXN0c4IBFVJ1bm5pbmcgZ28gdGVzdCAuLy4uLsgBAQ==",
+              "sessionId": "s-appr",
+              "updatedMs": "1791078000000"
             },
             {
-              "sessionId": "s-plan",
-              "machineId": "m1",
               "lastSeq": "3",
-              "updatedMs": "1791077900000",
-              "meta": {
-                "id": "s-plan",
-                "cwd": "/Users/me/Code/beta",
-                "agent": "AGENT_CLAUDE",
-                "status": "SESSION_STATUS_RUNNING",
-                "title": "Refactor cache",
-                "preview": "Drafting refactor plan"
-              },
-              "checkpoint": {
-                "running": true,
-                "planEventSeq": "3",
-                "actions": [
-                  {
-                    "seq": "3",
-                    "planProposed": {
-                      "text": "Refactor sync engine"
-                    }
-                  }
-                ]
-              }
+              "machineId": "m1",
+              "rawCheckpoint": "EhsIA8IBFgoUUmVmYWN0b3Igc3luYyBlbmdpbmUYAzAB",
+              "rawMeta": "CgZzLXBsYW4SEy9Vc2Vycy9tZS9Db2RlL2JldGEgA3oOUmVmYWN0b3IgY2FjaGWCARZEcmFmdGluZyByZWZhY3RvciBwbGFuyAEC",
+              "sessionId": "s-plan",
+              "updatedMs": "1791077900000"
             },
             {
-              "sessionId": "s-run",
-              "machineId": "m1",
               "lastSeq": "2",
-              "updatedMs": "1791077800000",
-              "meta": {
-                "id": "s-run",
-                "cwd": "/Users/me/Code/alpha",
-                "agent": "AGENT_CODEX",
-                "status": "SESSION_STATUS_RUNNING",
-                "title": "Check lint",
-                "preview": "Linting workspace"
-              }
+              "machineId": "m1",
+              "rawMeta": "CgVzLXJ1bhIUL1VzZXJzL21lL0NvZGUvYWxwaGEgA3oKQ2hlY2sgbGludIIBEUxpbnRpbmcgd29ya3NwYWNlyAEB",
+              "sessionId": "s-run",
+              "updatedMs": "1791077800000"
             },
             {
-              "sessionId": "s-today",
-              "machineId": "m1",
-              "updatedMs": "1791060000000",
               "listedEndedMs": "1791060000000",
-              "meta": {
-                "id": "s-today",
-                "cwd": "/Users/me/Code/alpha",
-                "agent": "AGENT_CODEX",
-                "status": "SESSION_STATUS_EXITED",
-                "title": "Fix test today",
-                "endedAt": "2026-10-03T20:40:00Z"
-              }
+              "machineId": "m1",
+              "rawMeta": "CgdzLXRvZGF5EhQvVXNlcnMvbWUvQ29kZS9hbHBoYSAFeg5GaXggdGVzdCB0b2RhecgBAfIBBgig0IXWBg==",
+              "sessionId": "s-today",
+              "updatedMs": "1791060000000"
             },
             {
-              "sessionId": "s-yest",
-              "machineId": "m1",
-              "updatedMs": "1790970000000",
               "listedEndedMs": "1790970000000",
-              "meta": {
-                "id": "s-yest",
-                "cwd": "/Users/me/Code/beta",
-                "agent": "AGENT_CLAUDE",
-                "status": "SESSION_STATUS_EXITED",
-                "title": "Yesterday cleanup",
-                "endedAt": "2026-10-02T19:40:00Z"
-              }
+              "machineId": "m1",
+              "rawMeta": "CgZzLXllc3QSEy9Vc2Vycy9tZS9Db2RlL2JldGEgBXoRWWVzdGVyZGF5IGNsZWFudXDIAQLyAQYIkJGA1gY=",
+              "sessionId": "s-yest",
+              "updatedMs": "1790970000000"
             },
             {
-              "sessionId": "s-sept",
-              "machineId": "m1",
-              "updatedMs": "1789000000000",
               "listedEndedMs": "1789000000000",
-              "meta": {
-                "id": "s-sept",
-                "cwd": "/Users/me/Code/alpha",
-                "agent": "AGENT_CODEX",
-                "status": "SESSION_STATUS_EXITED",
-                "title": "September test",
-                "endedAt": "2026-09-10T00:26:40Z"
-              }
+              "machineId": "m1",
+              "rawMeta": "CgZzLXNlcHQSFC9Vc2Vycy9tZS9Db2RlL2FscGhhIAV6DlNlcHRlbWJlciB0ZXN0yAEB8gEGCMDyh9UG",
+              "sessionId": "s-sept",
+              "updatedMs": "1789000000000"
             }
           ]
         }
@@ -233,20 +150,9 @@
     {
       "event": {
         "nowMs": "1791078060050",
-        "accountPrefsFetched": {
-          "opId": "4",
-          "prefs": {
-            "revision": "1",
-            "prefs": {
-              "schema": 1,
-              "pinned": [
-                {
-                  "path": "/Users/me/Code/alpha",
-                  "sinceMs": "1791000000000"
-                }
-              ]
-            }
-          }
+        "seedDemoWorld": {
+          "prefsRevision": "1",
+          "rawPrefs": "CAESHQoUL1VzZXJzL21lL0NvZGUvYWxwaGEQgOys/480"
         }
       },
       "views": [
@@ -262,10 +168,10 @@
     },
     {
       "event": {
-        "nowMs": "1791078060060",
         "homeSetScope": {
           "scopeKey": "/Users/me/Code/alpha"
-        }
+        },
+        "nowMs": "1791078060060"
       },
       "views": [
         {
@@ -280,10 +186,10 @@
     },
     {
       "event": {
-        "nowMs": "1791078060070",
         "homeSetFilter": {
           "query": "test"
-        }
+        },
+        "nowMs": "1791078060070"
       },
       "views": [
         {

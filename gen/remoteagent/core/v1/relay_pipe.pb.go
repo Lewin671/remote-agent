@@ -280,54 +280,6 @@ func (TerminalLifecycleState) EnumDescriptor() ([]byte, []int) {
 	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{2}
 }
 
-// Opts the Core instance into the unified byte-pipe mode (RelayRpcEffect,
-// StreamRawFrameEvent, Core-managed login/token refresh, opaque caches, image
-// fetch, and Core-owned terminal crypto/lifecycle). Shells that do not send
-// this event (iOS before P3-2) continue using transitional effects.
-type RelayPipeConfigEvent struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Enabled       bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RelayPipeConfigEvent) Reset() {
-	*x = RelayPipeConfigEvent{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RelayPipeConfigEvent) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RelayPipeConfigEvent) ProtoMessage() {}
-
-func (x *RelayPipeConfigEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RelayPipeConfigEvent.ProtoReflect.Descriptor instead.
-func (*RelayPipeConfigEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *RelayPipeConfigEvent) GetEnabled() bool {
-	if x != nil {
-		return x.Enabled
-	}
-	return false
-}
-
 // Universal unary HTTP/Connect byte-pipe effect. The shell sends request_bytes
 // verbatim to the path for method (or GET /healthz for RELAY_RPC_METHOD_HEALTHZ)
 // and returns raw response bytes + Connect error metadata without parsing any
@@ -347,7 +299,7 @@ type RelayRpcEffect struct {
 
 func (x *RelayRpcEffect) Reset() {
 	*x = RelayRpcEffect{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[1]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -359,7 +311,7 @@ func (x *RelayRpcEffect) String() string {
 func (*RelayRpcEffect) ProtoMessage() {}
 
 func (x *RelayRpcEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[1]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -372,7 +324,7 @@ func (x *RelayRpcEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RelayRpcEffect.ProtoReflect.Descriptor instead.
 func (*RelayRpcEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{1}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *RelayRpcEffect) GetOpId() uint64 {
@@ -434,7 +386,7 @@ type RelayRpcCancelEffect struct {
 
 func (x *RelayRpcCancelEffect) Reset() {
 	*x = RelayRpcCancelEffect{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[2]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -446,7 +398,7 @@ func (x *RelayRpcCancelEffect) String() string {
 func (*RelayRpcCancelEffect) ProtoMessage() {}
 
 func (x *RelayRpcCancelEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[2]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -459,7 +411,7 @@ func (x *RelayRpcCancelEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RelayRpcCancelEffect.ProtoReflect.Descriptor instead.
 func (*RelayRpcCancelEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{2}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *RelayRpcCancelEffect) GetOpId() uint64 {
@@ -486,7 +438,7 @@ type RelayRpcResultEvent struct {
 
 func (x *RelayRpcResultEvent) Reset() {
 	*x = RelayRpcResultEvent{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[3]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -498,7 +450,7 @@ func (x *RelayRpcResultEvent) String() string {
 func (*RelayRpcResultEvent) ProtoMessage() {}
 
 func (x *RelayRpcResultEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[3]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -511,7 +463,7 @@ func (x *RelayRpcResultEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RelayRpcResultEvent.ProtoReflect.Descriptor instead.
 func (*RelayRpcResultEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{3}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *RelayRpcResultEvent) GetOpId() uint64 {
@@ -582,7 +534,7 @@ type StreamRawFrameEvent struct {
 
 func (x *StreamRawFrameEvent) Reset() {
 	*x = StreamRawFrameEvent{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[4]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -594,7 +546,7 @@ func (x *StreamRawFrameEvent) String() string {
 func (*StreamRawFrameEvent) ProtoMessage() {}
 
 func (x *StreamRawFrameEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[4]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -607,7 +559,7 @@ func (x *StreamRawFrameEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamRawFrameEvent.ProtoReflect.Descriptor instead.
 func (*StreamRawFrameEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{4}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *StreamRawFrameEvent) GetLegId() uint64 {
@@ -633,7 +585,7 @@ type RefreshDevicesAction struct {
 
 func (x *RefreshDevicesAction) Reset() {
 	*x = RefreshDevicesAction{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[5]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -645,7 +597,7 @@ func (x *RefreshDevicesAction) String() string {
 func (*RefreshDevicesAction) ProtoMessage() {}
 
 func (x *RefreshDevicesAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[5]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -658,7 +610,7 @@ func (x *RefreshDevicesAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RefreshDevicesAction.ProtoReflect.Descriptor instead.
 func (*RefreshDevicesAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{5}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{4}
 }
 
 // One-shot push subscription/target RPC driven by Core over RelayRpcEffect.
@@ -678,7 +630,7 @@ type PushRpcAction struct {
 
 func (x *PushRpcAction) Reset() {
 	*x = PushRpcAction{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[6]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -690,7 +642,7 @@ func (x *PushRpcAction) String() string {
 func (*PushRpcAction) ProtoMessage() {}
 
 func (x *PushRpcAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[6]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -703,7 +655,7 @@ func (x *PushRpcAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PushRpcAction.ProtoReflect.Descriptor instead.
 func (*PushRpcAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{6}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *PushRpcAction) GetOpId() uint64 {
@@ -777,7 +729,7 @@ type PushRpcResultEffect struct {
 
 func (x *PushRpcResultEffect) Reset() {
 	*x = PushRpcResultEffect{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[7]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -789,7 +741,7 @@ func (x *PushRpcResultEffect) String() string {
 func (*PushRpcResultEffect) ProtoMessage() {}
 
 func (x *PushRpcResultEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[7]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -802,7 +754,7 @@ func (x *PushRpcResultEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PushRpcResultEffect.ProtoReflect.Descriptor instead.
 func (*PushRpcResultEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{7}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *PushRpcResultEffect) GetOpId() uint64 {
@@ -858,7 +810,7 @@ type ScheduleCacheBlob struct {
 
 func (x *ScheduleCacheBlob) Reset() {
 	*x = ScheduleCacheBlob{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[8]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -870,7 +822,7 @@ func (x *ScheduleCacheBlob) String() string {
 func (*ScheduleCacheBlob) ProtoMessage() {}
 
 func (x *ScheduleCacheBlob) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[8]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -883,7 +835,7 @@ func (x *ScheduleCacheBlob) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleCacheBlob.ProtoReflect.Descriptor instead.
 func (*ScheduleCacheBlob) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{8}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ScheduleCacheBlob) GetRequestId() string {
@@ -915,7 +867,7 @@ type SessionFetchImageAction struct {
 
 func (x *SessionFetchImageAction) Reset() {
 	*x = SessionFetchImageAction{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[9]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -927,7 +879,7 @@ func (x *SessionFetchImageAction) String() string {
 func (*SessionFetchImageAction) ProtoMessage() {}
 
 func (x *SessionFetchImageAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[9]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -940,7 +892,7 @@ func (x *SessionFetchImageAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionFetchImageAction.ProtoReflect.Descriptor instead.
 func (*SessionFetchImageAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{9}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *SessionFetchImageAction) GetOpId() uint64 {
@@ -1000,7 +952,7 @@ type SessionImageLoadedEffect struct {
 
 func (x *SessionImageLoadedEffect) Reset() {
 	*x = SessionImageLoadedEffect{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[10]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1012,7 +964,7 @@ func (x *SessionImageLoadedEffect) String() string {
 func (*SessionImageLoadedEffect) ProtoMessage() {}
 
 func (x *SessionImageLoadedEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[10]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1025,7 +977,7 @@ func (x *SessionImageLoadedEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionImageLoadedEffect.ProtoReflect.Descriptor instead.
 func (*SessionImageLoadedEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{10}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *SessionImageLoadedEffect) GetOpId() uint64 {
@@ -1134,7 +1086,7 @@ type TerminalOpenAction struct {
 
 func (x *TerminalOpenAction) Reset() {
 	*x = TerminalOpenAction{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[11]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1146,7 +1098,7 @@ func (x *TerminalOpenAction) String() string {
 func (*TerminalOpenAction) ProtoMessage() {}
 
 func (x *TerminalOpenAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[11]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1159,7 +1111,7 @@ func (x *TerminalOpenAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TerminalOpenAction.ProtoReflect.Descriptor instead.
 func (*TerminalOpenAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{11}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *TerminalOpenAction) GetOpId() uint64 {
@@ -1200,7 +1152,7 @@ type TerminalCloseAction struct {
 
 func (x *TerminalCloseAction) Reset() {
 	*x = TerminalCloseAction{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[12]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1212,7 +1164,7 @@ func (x *TerminalCloseAction) String() string {
 func (*TerminalCloseAction) ProtoMessage() {}
 
 func (x *TerminalCloseAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[12]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1225,7 +1177,7 @@ func (x *TerminalCloseAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TerminalCloseAction.ProtoReflect.Descriptor instead.
 func (*TerminalCloseAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{12}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *TerminalCloseAction) GetStreamId() string {
@@ -1256,7 +1208,7 @@ type TerminalSocketEvent struct {
 
 func (x *TerminalSocketEvent) Reset() {
 	*x = TerminalSocketEvent{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[13]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1268,7 +1220,7 @@ func (x *TerminalSocketEvent) String() string {
 func (*TerminalSocketEvent) ProtoMessage() {}
 
 func (x *TerminalSocketEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[13]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1281,7 +1233,7 @@ func (x *TerminalSocketEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TerminalSocketEvent.ProtoReflect.Descriptor instead.
 func (*TerminalSocketEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{13}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *TerminalSocketEvent) GetStreamId() string {
@@ -1338,7 +1290,7 @@ type TerminalInboundBytesEvent struct {
 
 func (x *TerminalInboundBytesEvent) Reset() {
 	*x = TerminalInboundBytesEvent{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[14]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1350,7 +1302,7 @@ func (x *TerminalInboundBytesEvent) String() string {
 func (*TerminalInboundBytesEvent) ProtoMessage() {}
 
 func (x *TerminalInboundBytesEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[14]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1363,7 +1315,7 @@ func (x *TerminalInboundBytesEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TerminalInboundBytesEvent.ProtoReflect.Descriptor instead.
 func (*TerminalInboundBytesEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{14}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *TerminalInboundBytesEvent) GetStreamId() string {
@@ -1405,7 +1357,7 @@ type TerminalResizeInput struct {
 
 func (x *TerminalResizeInput) Reset() {
 	*x = TerminalResizeInput{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[15]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1417,7 +1369,7 @@ func (x *TerminalResizeInput) String() string {
 func (*TerminalResizeInput) ProtoMessage() {}
 
 func (x *TerminalResizeInput) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[15]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1430,7 +1382,7 @@ func (x *TerminalResizeInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TerminalResizeInput.ProtoReflect.Descriptor instead.
 func (*TerminalResizeInput) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{15}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *TerminalResizeInput) GetCols() int32 {
@@ -1464,7 +1416,7 @@ type TerminalHistoryInput struct {
 
 func (x *TerminalHistoryInput) Reset() {
 	*x = TerminalHistoryInput{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[16]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1476,7 +1428,7 @@ func (x *TerminalHistoryInput) String() string {
 func (*TerminalHistoryInput) ProtoMessage() {}
 
 func (x *TerminalHistoryInput) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[16]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1489,7 +1441,7 @@ func (x *TerminalHistoryInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TerminalHistoryInput.ProtoReflect.Descriptor instead.
 func (*TerminalHistoryInput) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{16}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *TerminalHistoryInput) GetRequestId() string {
@@ -1521,7 +1473,7 @@ type TerminalInputAction struct {
 
 func (x *TerminalInputAction) Reset() {
 	*x = TerminalInputAction{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[17]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1533,7 +1485,7 @@ func (x *TerminalInputAction) String() string {
 func (*TerminalInputAction) ProtoMessage() {}
 
 func (x *TerminalInputAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[17]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1546,7 +1498,7 @@ func (x *TerminalInputAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TerminalInputAction.ProtoReflect.Descriptor instead.
 func (*TerminalInputAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{17}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *TerminalInputAction) GetStreamId() string {
@@ -1621,7 +1573,7 @@ type TerminalConfirmRebuildAction struct {
 
 func (x *TerminalConfirmRebuildAction) Reset() {
 	*x = TerminalConfirmRebuildAction{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[18]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1633,7 +1585,7 @@ func (x *TerminalConfirmRebuildAction) String() string {
 func (*TerminalConfirmRebuildAction) ProtoMessage() {}
 
 func (x *TerminalConfirmRebuildAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[18]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1646,7 +1598,7 @@ func (x *TerminalConfirmRebuildAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TerminalConfirmRebuildAction.ProtoReflect.Descriptor instead.
 func (*TerminalConfirmRebuildAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{18}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *TerminalConfirmRebuildAction) GetStreamId() string {
@@ -1669,7 +1621,7 @@ type TerminalOpenSocketEffect struct {
 
 func (x *TerminalOpenSocketEffect) Reset() {
 	*x = TerminalOpenSocketEffect{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[19]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1681,7 +1633,7 @@ func (x *TerminalOpenSocketEffect) String() string {
 func (*TerminalOpenSocketEffect) ProtoMessage() {}
 
 func (x *TerminalOpenSocketEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[19]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1694,7 +1646,7 @@ func (x *TerminalOpenSocketEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TerminalOpenSocketEffect.ProtoReflect.Descriptor instead.
 func (*TerminalOpenSocketEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{19}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *TerminalOpenSocketEffect) GetOpId() uint64 {
@@ -1743,7 +1695,7 @@ type TerminalCloseSocketEffect struct {
 
 func (x *TerminalCloseSocketEffect) Reset() {
 	*x = TerminalCloseSocketEffect{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[20]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1755,7 +1707,7 @@ func (x *TerminalCloseSocketEffect) String() string {
 func (*TerminalCloseSocketEffect) ProtoMessage() {}
 
 func (x *TerminalCloseSocketEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[20]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1768,7 +1720,7 @@ func (x *TerminalCloseSocketEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TerminalCloseSocketEffect.ProtoReflect.Descriptor instead.
 func (*TerminalCloseSocketEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{20}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *TerminalCloseSocketEffect) GetStreamId() string {
@@ -1796,7 +1748,7 @@ type TerminalSnapshotFrame struct {
 
 func (x *TerminalSnapshotFrame) Reset() {
 	*x = TerminalSnapshotFrame{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[21]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1808,7 +1760,7 @@ func (x *TerminalSnapshotFrame) String() string {
 func (*TerminalSnapshotFrame) ProtoMessage() {}
 
 func (x *TerminalSnapshotFrame) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[21]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1821,7 +1773,7 @@ func (x *TerminalSnapshotFrame) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TerminalSnapshotFrame.ProtoReflect.Descriptor instead.
 func (*TerminalSnapshotFrame) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{21}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *TerminalSnapshotFrame) GetCols() int32 {
@@ -1859,7 +1811,7 @@ type TerminalDeliveredFrame struct {
 
 func (x *TerminalDeliveredFrame) Reset() {
 	*x = TerminalDeliveredFrame{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[22]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1871,7 +1823,7 @@ func (x *TerminalDeliveredFrame) String() string {
 func (*TerminalDeliveredFrame) ProtoMessage() {}
 
 func (x *TerminalDeliveredFrame) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[22]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1884,7 +1836,7 @@ func (x *TerminalDeliveredFrame) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TerminalDeliveredFrame.ProtoReflect.Descriptor instead.
 func (*TerminalDeliveredFrame) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{22}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *TerminalDeliveredFrame) GetKind() isTerminalDeliveredFrame_Kind {
@@ -1960,7 +1912,7 @@ type TerminalDeliverOutputEffect struct {
 
 func (x *TerminalDeliverOutputEffect) Reset() {
 	*x = TerminalDeliverOutputEffect{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[23]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1972,7 +1924,7 @@ func (x *TerminalDeliverOutputEffect) String() string {
 func (*TerminalDeliverOutputEffect) ProtoMessage() {}
 
 func (x *TerminalDeliverOutputEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[23]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1985,7 +1937,7 @@ func (x *TerminalDeliverOutputEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TerminalDeliverOutputEffect.ProtoReflect.Descriptor instead.
 func (*TerminalDeliverOutputEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{23}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *TerminalDeliverOutputEffect) GetStreamId() string {
@@ -2032,7 +1984,7 @@ type TerminalStateChangedEffect struct {
 
 func (x *TerminalStateChangedEffect) Reset() {
 	*x = TerminalStateChangedEffect{}
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[24]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2044,7 +1996,7 @@ func (x *TerminalStateChangedEffect) String() string {
 func (*TerminalStateChangedEffect) ProtoMessage() {}
 
 func (x *TerminalStateChangedEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[24]
+	mi := &file_remoteagent_core_v1_relay_pipe_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2057,7 +2009,7 @@ func (x *TerminalStateChangedEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TerminalStateChangedEffect.ProtoReflect.Descriptor instead.
 func (*TerminalStateChangedEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{24}
+	return file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *TerminalStateChangedEffect) GetOpId() uint64 {
@@ -2120,9 +2072,7 @@ var File_remoteagent_core_v1_relay_pipe_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_relay_pipe_proto_rawDesc = "" +
 	"\n" +
-	"$remoteagent/core/v1/relay_pipe.proto\x12\x13remoteagent.core.v1\x1a\"remoteagent/core/v1/security.proto\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/relay.proto\"0\n" +
-	"\x14RelayPipeConfigEvent\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\"\x84\x02\n" +
+	"$remoteagent/core/v1/relay_pipe.proto\x12\x13remoteagent.core.v1\x1a\"remoteagent/core/v1/security.proto\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/relay.proto\"\x84\x02\n" +
 	"\x0eRelayRpcEffect\x12\x13\n" +
 	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12;\n" +
 	"\x06method\x18\x02 \x01(\x0e2#.remoteagent.core.v1.RelayRpcMethodR\x06method\x12\x16\n" +
@@ -2339,55 +2289,54 @@ func file_remoteagent_core_v1_relay_pipe_proto_rawDescGZIP() []byte {
 }
 
 var file_remoteagent_core_v1_relay_pipe_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_remoteagent_core_v1_relay_pipe_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_remoteagent_core_v1_relay_pipe_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_remoteagent_core_v1_relay_pipe_proto_goTypes = []any{
 	(RelayRpcMethod)(0),                  // 0: remoteagent.core.v1.RelayRpcMethod
 	(SessionImageLoadStatus)(0),          // 1: remoteagent.core.v1.SessionImageLoadStatus
 	(TerminalLifecycleState)(0),          // 2: remoteagent.core.v1.TerminalLifecycleState
-	(*RelayPipeConfigEvent)(nil),         // 3: remoteagent.core.v1.RelayPipeConfigEvent
-	(*RelayRpcEffect)(nil),               // 4: remoteagent.core.v1.RelayRpcEffect
-	(*RelayRpcCancelEffect)(nil),         // 5: remoteagent.core.v1.RelayRpcCancelEffect
-	(*RelayRpcResultEvent)(nil),          // 6: remoteagent.core.v1.RelayRpcResultEvent
-	(*StreamRawFrameEvent)(nil),          // 7: remoteagent.core.v1.StreamRawFrameEvent
-	(*RefreshDevicesAction)(nil),         // 8: remoteagent.core.v1.RefreshDevicesAction
-	(*PushRpcAction)(nil),                // 9: remoteagent.core.v1.PushRpcAction
-	(*PushRpcResultEffect)(nil),          // 10: remoteagent.core.v1.PushRpcResultEffect
-	(*ScheduleCacheBlob)(nil),            // 11: remoteagent.core.v1.ScheduleCacheBlob
-	(*SessionFetchImageAction)(nil),      // 12: remoteagent.core.v1.SessionFetchImageAction
-	(*SessionImageLoadedEffect)(nil),     // 13: remoteagent.core.v1.SessionImageLoadedEffect
-	(*TerminalOpenAction)(nil),           // 14: remoteagent.core.v1.TerminalOpenAction
-	(*TerminalCloseAction)(nil),          // 15: remoteagent.core.v1.TerminalCloseAction
-	(*TerminalSocketEvent)(nil),          // 16: remoteagent.core.v1.TerminalSocketEvent
-	(*TerminalInboundBytesEvent)(nil),    // 17: remoteagent.core.v1.TerminalInboundBytesEvent
-	(*TerminalResizeInput)(nil),          // 18: remoteagent.core.v1.TerminalResizeInput
-	(*TerminalHistoryInput)(nil),         // 19: remoteagent.core.v1.TerminalHistoryInput
-	(*TerminalInputAction)(nil),          // 20: remoteagent.core.v1.TerminalInputAction
-	(*TerminalConfirmRebuildAction)(nil), // 21: remoteagent.core.v1.TerminalConfirmRebuildAction
-	(*TerminalOpenSocketEffect)(nil),     // 22: remoteagent.core.v1.TerminalOpenSocketEffect
-	(*TerminalCloseSocketEffect)(nil),    // 23: remoteagent.core.v1.TerminalCloseSocketEffect
-	(*TerminalSnapshotFrame)(nil),        // 24: remoteagent.core.v1.TerminalSnapshotFrame
-	(*TerminalDeliveredFrame)(nil),       // 25: remoteagent.core.v1.TerminalDeliveredFrame
-	(*TerminalDeliverOutputEffect)(nil),  // 26: remoteagent.core.v1.TerminalDeliverOutputEffect
-	(*TerminalStateChangedEffect)(nil),   // 27: remoteagent.core.v1.TerminalStateChangedEffect
-	(*RpcErrorDetailBytes)(nil),          // 28: remoteagent.core.v1.RpcErrorDetailBytes
-	(v1.NotifyKind)(0),                   // 29: remoteagent.v1.NotifyKind
-	(v1.ImageFormat)(0),                  // 30: remoteagent.v1.ImageFormat
-	(*Text)(nil),                         // 31: remoteagent.core.v1.Text
+	(*RelayRpcEffect)(nil),               // 3: remoteagent.core.v1.RelayRpcEffect
+	(*RelayRpcCancelEffect)(nil),         // 4: remoteagent.core.v1.RelayRpcCancelEffect
+	(*RelayRpcResultEvent)(nil),          // 5: remoteagent.core.v1.RelayRpcResultEvent
+	(*StreamRawFrameEvent)(nil),          // 6: remoteagent.core.v1.StreamRawFrameEvent
+	(*RefreshDevicesAction)(nil),         // 7: remoteagent.core.v1.RefreshDevicesAction
+	(*PushRpcAction)(nil),                // 8: remoteagent.core.v1.PushRpcAction
+	(*PushRpcResultEffect)(nil),          // 9: remoteagent.core.v1.PushRpcResultEffect
+	(*ScheduleCacheBlob)(nil),            // 10: remoteagent.core.v1.ScheduleCacheBlob
+	(*SessionFetchImageAction)(nil),      // 11: remoteagent.core.v1.SessionFetchImageAction
+	(*SessionImageLoadedEffect)(nil),     // 12: remoteagent.core.v1.SessionImageLoadedEffect
+	(*TerminalOpenAction)(nil),           // 13: remoteagent.core.v1.TerminalOpenAction
+	(*TerminalCloseAction)(nil),          // 14: remoteagent.core.v1.TerminalCloseAction
+	(*TerminalSocketEvent)(nil),          // 15: remoteagent.core.v1.TerminalSocketEvent
+	(*TerminalInboundBytesEvent)(nil),    // 16: remoteagent.core.v1.TerminalInboundBytesEvent
+	(*TerminalResizeInput)(nil),          // 17: remoteagent.core.v1.TerminalResizeInput
+	(*TerminalHistoryInput)(nil),         // 18: remoteagent.core.v1.TerminalHistoryInput
+	(*TerminalInputAction)(nil),          // 19: remoteagent.core.v1.TerminalInputAction
+	(*TerminalConfirmRebuildAction)(nil), // 20: remoteagent.core.v1.TerminalConfirmRebuildAction
+	(*TerminalOpenSocketEffect)(nil),     // 21: remoteagent.core.v1.TerminalOpenSocketEffect
+	(*TerminalCloseSocketEffect)(nil),    // 22: remoteagent.core.v1.TerminalCloseSocketEffect
+	(*TerminalSnapshotFrame)(nil),        // 23: remoteagent.core.v1.TerminalSnapshotFrame
+	(*TerminalDeliveredFrame)(nil),       // 24: remoteagent.core.v1.TerminalDeliveredFrame
+	(*TerminalDeliverOutputEffect)(nil),  // 25: remoteagent.core.v1.TerminalDeliverOutputEffect
+	(*TerminalStateChangedEffect)(nil),   // 26: remoteagent.core.v1.TerminalStateChangedEffect
+	(*RpcErrorDetailBytes)(nil),          // 27: remoteagent.core.v1.RpcErrorDetailBytes
+	(v1.NotifyKind)(0),                   // 28: remoteagent.v1.NotifyKind
+	(v1.ImageFormat)(0),                  // 29: remoteagent.v1.ImageFormat
+	(*Text)(nil),                         // 30: remoteagent.core.v1.Text
 }
 var file_remoteagent_core_v1_relay_pipe_proto_depIdxs = []int32{
 	0,  // 0: remoteagent.core.v1.RelayRpcEffect.method:type_name -> remoteagent.core.v1.RelayRpcMethod
-	28, // 1: remoteagent.core.v1.RelayRpcResultEvent.error_details:type_name -> remoteagent.core.v1.RpcErrorDetailBytes
-	29, // 2: remoteagent.core.v1.PushRpcAction.kinds:type_name -> remoteagent.v1.NotifyKind
+	27, // 1: remoteagent.core.v1.RelayRpcResultEvent.error_details:type_name -> remoteagent.core.v1.RpcErrorDetailBytes
+	28, // 2: remoteagent.core.v1.PushRpcAction.kinds:type_name -> remoteagent.v1.NotifyKind
 	1,  // 3: remoteagent.core.v1.SessionImageLoadedEffect.status:type_name -> remoteagent.core.v1.SessionImageLoadStatus
-	30, // 4: remoteagent.core.v1.SessionImageLoadedEffect.format:type_name -> remoteagent.v1.ImageFormat
-	31, // 5: remoteagent.core.v1.SessionImageLoadedEffect.error_text:type_name -> remoteagent.core.v1.Text
-	18, // 6: remoteagent.core.v1.TerminalInputAction.resize:type_name -> remoteagent.core.v1.TerminalResizeInput
-	19, // 7: remoteagent.core.v1.TerminalInputAction.history:type_name -> remoteagent.core.v1.TerminalHistoryInput
-	24, // 8: remoteagent.core.v1.TerminalDeliveredFrame.snapshot:type_name -> remoteagent.core.v1.TerminalSnapshotFrame
-	25, // 9: remoteagent.core.v1.TerminalDeliverOutputEffect.frames:type_name -> remoteagent.core.v1.TerminalDeliveredFrame
+	29, // 4: remoteagent.core.v1.SessionImageLoadedEffect.format:type_name -> remoteagent.v1.ImageFormat
+	30, // 5: remoteagent.core.v1.SessionImageLoadedEffect.error_text:type_name -> remoteagent.core.v1.Text
+	17, // 6: remoteagent.core.v1.TerminalInputAction.resize:type_name -> remoteagent.core.v1.TerminalResizeInput
+	18, // 7: remoteagent.core.v1.TerminalInputAction.history:type_name -> remoteagent.core.v1.TerminalHistoryInput
+	23, // 8: remoteagent.core.v1.TerminalDeliveredFrame.snapshot:type_name -> remoteagent.core.v1.TerminalSnapshotFrame
+	24, // 9: remoteagent.core.v1.TerminalDeliverOutputEffect.frames:type_name -> remoteagent.core.v1.TerminalDeliveredFrame
 	2,  // 10: remoteagent.core.v1.TerminalStateChangedEffect.state:type_name -> remoteagent.core.v1.TerminalLifecycleState
-	31, // 11: remoteagent.core.v1.TerminalStateChangedEffect.reason_text:type_name -> remoteagent.core.v1.Text
-	31, // 12: remoteagent.core.v1.TerminalStateChangedEffect.open_error:type_name -> remoteagent.core.v1.Text
+	30, // 11: remoteagent.core.v1.TerminalStateChangedEffect.reason_text:type_name -> remoteagent.core.v1.Text
+	30, // 12: remoteagent.core.v1.TerminalStateChangedEffect.open_error:type_name -> remoteagent.core.v1.Text
 	13, // [13:13] is the sub-list for method output_type
 	13, // [13:13] is the sub-list for method input_type
 	13, // [13:13] is the sub-list for extension type_name
@@ -2402,12 +2351,12 @@ func file_remoteagent_core_v1_relay_pipe_proto_init() {
 	}
 	file_remoteagent_core_v1_security_proto_init()
 	file_remoteagent_core_v1_text_proto_init()
-	file_remoteagent_core_v1_relay_pipe_proto_msgTypes[17].OneofWrappers = []any{
+	file_remoteagent_core_v1_relay_pipe_proto_msgTypes[16].OneofWrappers = []any{
 		(*TerminalInputAction_Input)(nil),
 		(*TerminalInputAction_Resize)(nil),
 		(*TerminalInputAction_History)(nil),
 	}
-	file_remoteagent_core_v1_relay_pipe_proto_msgTypes[22].OneofWrappers = []any{
+	file_remoteagent_core_v1_relay_pipe_proto_msgTypes[21].OneofWrappers = []any{
 		(*TerminalDeliveredFrame_Output)(nil),
 		(*TerminalDeliveredFrame_Snapshot)(nil),
 		(*TerminalDeliveredFrame_Closed)(nil),
@@ -2418,7 +2367,7 @@ func file_remoteagent_core_v1_relay_pipe_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_core_v1_relay_pipe_proto_rawDesc), len(file_remoteagent_core_v1_relay_pipe_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   25,
+			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

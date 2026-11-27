@@ -19,15 +19,14 @@ import (
 
 // Core wraps the unified sync Engine and screen ViewModel builders behind a single Dispatch/View API.
 type Core struct {
-	m                *Model
-	clientCfg        *clientInitConfig
-	relayPipeEnabled bool
-	nextSyncOpSeq    uint64
-	nextRelayOpSeq   uint64
-	nextLegSeq       uint64
-	nextSecOpID      uint64
-	nextSecActionID  uint64
-	nextSecEffectOp  uint64
+	m               *Model
+	clientCfg       *clientInitConfig
+	nextSyncOpSeq   uint64
+	nextRelayOpSeq  uint64
+	nextLegSeq      uint64
+	nextSecOpID     uint64
+	nextSecActionID uint64
+	nextSecEffectOp uint64
 }
 
 // New constructs a Core instance with fresh sync state and screen caches.
@@ -50,9 +49,6 @@ func (c *Core) initModel() {
 	}
 	if c.nextSecOpID > 0 {
 		c.m.sync.SecurityEngine().SetNextOpID(c.nextSecOpID)
-	}
-	if c.relayPipeEnabled {
-		c.m.sync.SetRelayPipeEnabled(true)
 	}
 	c.m.state.DraftViewFn = func(scope *corev1.DraftScope) *corev1.AttachmentDraftView {
 		return c.buildAttachmentDraftView(scope, false)
@@ -169,9 +165,6 @@ func (c *Core) buildSyncState(opts sync.SyncStateOpts) *world.SyncState {
 func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 	if ev == nil {
 		return &corev1.EffectBatch{}
-	}
-	if cfg := ev.GetRelayPipeConfig(); cfg != nil {
-		c.relayPipeEnabled = cfg.Enabled
 	}
 
 	consumed, syncRes := c.m.sync.HandleEvent(ev)

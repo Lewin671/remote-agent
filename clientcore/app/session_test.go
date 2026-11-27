@@ -9,12 +9,15 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/internal/test/testrelay"
 	"github.com/Lewin671/remote-agent/clientcore/screens"
 	"github.com/Lewin671/remote-agent/clientcore/sync"
 	"github.com/Lewin671/remote-agent/clientcore/text"
+	stdv1 "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"google.golang.org/protobuf/proto"
 )
 
-func bootstrapReadyApp(t *testing.T, machines []*corev1.PlainMachine, sessions []*corev1.PlainSession) *Core {
+func bootstrapReadyApp(t *testing.T, machines []*corev1.DemoMachine, sessions []*corev1.DemoSession) *Core {
 	t.Helper()
 	c := New()
 	t.Cleanup(c.Close)
@@ -33,19 +36,7 @@ func bootstrapReadyApp(t *testing.T, machines []*corev1.PlainMachine, sessions [
 		},
 	})
 	c.Dispatch(&corev1.Event{
-		NowMs: 1_791_078_060_000,
-		Event: &corev1.Event_SyncLifecycle{
-			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
-		},
-	})
-	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_005,
-		Event: &corev1.Event_CacheBootstrapLoaded{
-			CacheBootstrapLoaded: &corev1.CacheBootstrapLoadedEvent{OpId: 1},
-		},
-	})
-	c.Dispatch(&corev1.Event{
-		NowMs: 1_791_078_060_010,
 		Event: &corev1.Event_SeedDemoWorld{
 			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
 				Security: &corev1.DemoSecurity{
@@ -56,44 +47,27 @@ func bootstrapReadyApp(t *testing.T, machines []*corev1.PlainMachine, sessions [
 					TrustedMachineIds: []string{"m-on", "m-off", "m-old", "m-new"},
 					TrustedClientIds:  []string{"dev-1"},
 				},
+				Machines: machines,
+				Sessions: sessions,
+				RawPrefs: testrelay.MustRaw(&v1.ProjectPrefs{
+					Schema: 1,
+					Pinned: []*v1.ProjectPref{{Path: "/Users/me/proj", SinceMs: 1_791_000_000_000}},
+				}),
+				PrefsRevision: 1,
 			},
 		},
 	})
-	c.Dispatch(&corev1.Event{
-		NowMs: 1_791_078_060_020,
-		Event: &corev1.Event_TokenResult{
-			TokenResult: &corev1.TokenResultEvent{OpId: 2, Token: "tok-1"},
+	startBatch := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_010,
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
 		},
 	})
+	legID := testrelay.FindOpenStreamLeg(startBatch.Effects)
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_030,
 		Event: &corev1.Event_StreamReady{
-			StreamReady: &corev1.StreamReadyEvent{LegId: 1, ServerTimeMs: 1_791_078_060_030},
-		},
-	})
-	c.Dispatch(&corev1.Event{
-		NowMs: 1_791_078_060_040,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId:     3,
-				Machines: machines,
-				Sessions: sessions,
-			},
-		},
-	})
-	c.Dispatch(&corev1.Event{
-		NowMs: 1_791_078_060_042,
-		Event: &corev1.Event_AccountPrefsFetched{
-			AccountPrefsFetched: &corev1.AccountPrefsFetchedEvent{
-				OpId: 4,
-				Prefs: &corev1.PlainAccountPrefs{
-					Revision: 1,
-					Prefs: &v1.ProjectPrefs{
-						Schema: 1,
-						Pinned: []*v1.ProjectPref{{Path: "/Users/me/proj", SinceMs: 1_791_000_000_000}},
-					},
-				},
-			},
+			StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: 1_791_078_060_030},
 		},
 	})
 	return c
@@ -112,24 +86,20 @@ func watchCacheReadOpID(batch *corev1.EffectBatch) uint64 {
 }
 
 func TestSessionStartPromptDeduplicationAndForkNavigation(t *testing.T) {
-	c := bootstrapReadyApp(t, []*corev1.PlainMachine{
-		{
-			MachineId: "m-on",
-			Online:    true,
-			Meta: &v1.MachineMeta{
-				Hostname:        "DevBox",
-				ProtocolVersion: sync.PeerVersion,
-				Capabilities: &v1.MachineCapabilities{
-					ImageUpload:    true,
-					FileUpload:     true,
-					SharedFiles:    true,
-					ScheduledTasks: true,
-				},
-				Agents: []*v1.AgentInfo{
-					{Agent: v1.Agent_AGENT_CODEX, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
-				},
+	c := bootstrapReadyApp(t, []*corev1.DemoMachine{
+		testrelay.DemoMachine("m-on", true, 0, &v1.MachineMeta{
+			Hostname:        "DevBox",
+			ProtocolVersion: sync.PeerVersion,
+			Capabilities: &v1.MachineCapabilities{
+				ImageUpload:    true,
+				FileUpload:     true,
+				SharedFiles:    true,
+				ScheduledTasks: true,
 			},
-		},
+			Agents: []*v1.AgentInfo{
+				{Agent: v1.Agent_AGENT_CODEX, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
+			},
+		}),
 	}, nil)
 
 	c.Dispatch(&corev1.Event{
@@ -199,7 +169,7 @@ func TestSessionStartPromptDeduplicationAndForkNavigation(t *testing.T) {
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "ok",
-				Result: &v1.CommandResult{
+				RawResult: testrelay.MustRaw(&v1.CommandResult{
 					Outcome:         "executed",
 					Reason:          "ok",
 					ResultAvailable: true,
@@ -213,7 +183,7 @@ func TestSessionStartPromptDeduplicationAndForkNavigation(t *testing.T) {
 							},
 						},
 					},
-				},
+				}),
 			},
 		},
 	})
@@ -221,23 +191,12 @@ func TestSessionStartPromptDeduplicationAndForkNavigation(t *testing.T) {
 	// Make session visible in list/stream so Buffer can load.
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_110,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_SessionUpdated{
-					SessionUpdated: &corev1.PlainSession{
-						SessionId: "s-created",
-						MachineId: "m-on",
-						Meta: &v1.Session{
-							Id:     "s-created",
-							Cwd:    "/Users/me/proj",
-							Agent:  v1.Agent_AGENT_CODEX,
-							Status: v1.SessionStatus_SESSION_STATUS_IDLE,
-						},
-					},
-				},
-			},
-		},
+		Event: testrelay.DemoSessionEvent(testrelay.DemoSession("s-created", "m-on", 1, 0, 0, &v1.Session{
+			Id:     "s-created",
+			Cwd:    "/Users/me/proj",
+			Agent:  v1.Agent_AGENT_CODEX,
+			Status: v1.SessionStatus_SESSION_STATUS_IDLE,
+		}, nil)),
 	})
 
 	vmBefore, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{
@@ -256,7 +215,7 @@ func TestSessionStartPromptDeduplicationAndForkNavigation(t *testing.T) {
 	}
 
 	// Once real UserMessage arrives in events, synthetic start-prompt deduplicates.
-	watchBatch := c.Dispatch(&corev1.Event{
+	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_120,
 		Event: &corev1.Event_SessionWatch{
 			SessionWatch: &corev1.SessionWatchEvent{SessionId: "s-created", Watched: true},
@@ -264,24 +223,12 @@ func TestSessionStartPromptDeduplicationAndForkNavigation(t *testing.T) {
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_130,
-		Event: &corev1.Event_CacheEventsLoaded{
-			CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{
-				OpId:      watchCacheReadOpID(watchBatch),
-				SessionId: "s-created",
-				Events: []*corev1.PlainEvent{
-					{
-						Seq:      1,
-						Verified: true,
-						Event: &v1.Event{
-							Seq: 1,
-							Kind: &v1.Event_UserMessage{
-								UserMessage: &v1.UserMessage{Text: "Build core session tests"},
-							},
-						},
-					},
-				},
+		Event: testrelay.DemoEventsEvent("s-created", &v1.Event{
+			Seq: 1,
+			Kind: &v1.Event_UserMessage{
+				UserMessage: &v1.UserMessage{Text: "Build core session tests"},
 			},
-		},
+		}),
 	})
 	vmAfter, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{
 		Session: &corev1.SessionScreenRequest{SessionId: "s-created"},
@@ -330,7 +277,7 @@ func TestSessionStartPromptDeduplicationAndForkNavigation(t *testing.T) {
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "ok",
-				Result: &v1.CommandResult{
+				RawResult: testrelay.MustRaw(&v1.CommandResult{
 					Outcome:         "executed",
 					Reason:          "ok",
 					ResultAvailable: true,
@@ -342,7 +289,7 @@ func TestSessionStartPromptDeduplicationAndForkNavigation(t *testing.T) {
 							},
 						},
 					},
-				},
+				}),
 			},
 		},
 	})
@@ -358,92 +305,81 @@ func TestSessionStartPromptDeduplicationAndForkNavigation(t *testing.T) {
 }
 
 func TestSessionMissingLookupMismatchOfflineAndRichTimeline(t *testing.T) {
-	c := bootstrapReadyApp(t, []*corev1.PlainMachine{
-		{
-			MachineId:  "m-off",
-			Online:     false,
-			LastSeenMs: 1_791_000_000_000,
-			Meta: &v1.MachineMeta{
-				Hostname:        "SleepyMac",
-				ProtocolVersion: sync.PeerVersion,
+	c := bootstrapReadyApp(t, []*corev1.DemoMachine{
+		testrelay.DemoMachine("m-off", false, 1_791_000_000_000, &v1.MachineMeta{
+			Hostname:        "SleepyMac",
+			ProtocolVersion: sync.PeerVersion,
+		}),
+		testrelay.DemoMachine("m-old", true, 0, &v1.MachineMeta{
+			Hostname:        "OldDaemon",
+			ProtocolVersion: sync.PeerVersion - 1,
+		}),
+		testrelay.DemoMachine("m-on", true, 0, &v1.MachineMeta{
+			Hostname:        "MainMac",
+			Home:            "/Users/me",
+			ProtocolVersion: sync.PeerVersion,
+			Capabilities: &v1.MachineCapabilities{
+				SharedFiles: true,
 			},
-		},
-		{
-			MachineId: "m-old",
-			Online:    true,
-			Meta: &v1.MachineMeta{
-				Hostname:        "OldDaemon",
-				ProtocolVersion: sync.PeerVersion - 1,
-			},
-		},
-		{
-			MachineId: "m-on",
-			Online:    true,
-			Meta: &v1.MachineMeta{
-				Hostname:        "MainMac",
-				Home:            "/Users/me",
-				ProtocolVersion: sync.PeerVersion,
-				Capabilities: &v1.MachineCapabilities{
-					SharedFiles: true,
-				},
-			},
-		},
-	}, []*corev1.PlainSession{
-		{
-			SessionId: "s-off",
-			MachineId: "m-off",
-			Meta: &v1.Session{
-				Id:     "s-off",
-				Cwd:    "/Users/me/proj",
-				Agent:  v1.Agent_AGENT_CODEX,
-				Status: v1.SessionStatus_SESSION_STATUS_IDLE,
-			},
-		},
-		{
-			SessionId: "s-mismatch",
-			MachineId: "m-old",
-			Meta: &v1.Session{
-				Id:     "s-mismatch",
-				Cwd:    "/Users/me/proj",
-				Agent:  v1.Agent_AGENT_CLAUDE,
-				Status: v1.SessionStatus_SESSION_STATUS_IDLE,
-			},
-		},
-		{
-			SessionId: "s-rich",
-			MachineId: "m-on",
-			LastSeq:   7,
-			Meta: &v1.Session{
+		}),
+	}, []*corev1.DemoSession{
+		testrelay.DemoSession("s-off", "m-off", 0, 0, 0, &v1.Session{
+			Id:     "s-off",
+			Cwd:    "/Users/me/proj",
+			Agent:  v1.Agent_AGENT_CODEX,
+			Status: v1.SessionStatus_SESSION_STATUS_IDLE,
+		}, nil),
+		testrelay.DemoSession("s-mismatch", "m-old", 0, 0, 0, &v1.Session{
+			Id:     "s-mismatch",
+			Cwd:    "/Users/me/proj",
+			Agent:  v1.Agent_AGENT_CLAUDE,
+			Status: v1.SessionStatus_SESSION_STATUS_IDLE,
+		}, nil),
+		testrelay.DemoSession("s-rich", "m-on", 7, 0, 0, &v1.Session{
+			Id:     "s-rich",
+			Cwd:    "/Users/me/proj",
+			Agent:  v1.Agent_AGENT_CODEX,
+			Status: v1.SessionStatus_SESSION_STATUS_BLOCKED,
+		}, &v1.LiveSnapshot{
+			Running: false,
+			Session: &v1.Session{
 				Id:     "s-rich",
-				Cwd:    "/Users/me/proj",
-				Agent:  v1.Agent_AGENT_CODEX,
 				Status: v1.SessionStatus_SESSION_STATUS_BLOCKED,
 			},
-			Checkpoint: &v1.LiveSnapshot{
-				Running: false,
-				Session: &v1.Session{
-					Id:     "s-rich",
-					Status: v1.SessionStatus_SESSION_STATUS_BLOCKED,
-				},
-			},
-		},
+		}),
 	})
 
-	// 1. Opening an unknown session emits FetchSessionByIdRpc and reports Missing once listed and not found.
-	openMissing := c.Dispatch(&corev1.Event{
-		NowMs: 1_791_078_060_050,
+	// 1. Opening an unknown session on a connected wire Core emits LIST_REMOTE_SESSIONS(session_id) and reports Found=false.
+	wireCore := New()
+	defer wireCore.Close()
+	wireNow := int64(1_791_078_060_000)
+	wireFx := testrelay.New(t, wireNow)
+	wireFx.Bootstrap(func(ev *corev1.Event) []*corev1.Effect { return wireCore.Dispatch(ev).GetEffects() }, wireNow)
+	wireCore.m.sync.SecurityEngine().SetAuthToken("tok-miss", wireNow+7*86_400_000)
+	ws := wireCore.Dispatch(&corev1.Event{
+		NowMs: wireNow + 10,
+		Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}},
+	})
+	wireLeg := testrelay.FindOpenStreamLeg(ws.Effects)
+	wireCore.Dispatch(&corev1.Event{
+		NowMs: wireNow + 20,
+		Event: &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{LegId: wireLeg, ServerTimeMs: wireNow + 20}},
+	})
+	openMissing := wireCore.Dispatch(&corev1.Event{
+		NowMs: wireNow + 50,
 		Event: &corev1.Event_SessionOpen{
 			SessionOpen: &corev1.SessionOpenAction{SessionId: "s-missing"},
 		},
 	})
 	var fetchedByID string
-	for _, eff := range openMissing.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetFetchSessionById() != nil {
-			fetchedByID = rpc.GetFetchSessionById().SessionId
+	if rpc := testrelay.FindRelayRpc(openMissing.Effects, corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS); rpc != nil {
+		var req stdv1.ListRemoteSessionsRequest
+		if proto.Unmarshal(rpc.RequestBytes, &req) == nil && len(req.SessionIds) > 0 {
+			fetchedByID = req.SessionIds[0]
 		}
 	}
 	if fetchedByID != "s-missing" {
-		t.Fatalf("expected FetchSessionByIdRpc for s-missing, got %q", fetchedByID)
+		t.Fatalf("expected LIST_REMOTE_SESSIONS for s-missing, got %q", fetchedByID)
 	}
 	vmLookup, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-missing"}}})
 	if err != nil {
@@ -473,7 +409,7 @@ func TestSessionMissingLookupMismatchOfflineAndRichTimeline(t *testing.T) {
 	}
 
 	// 4. Rich session with High Context, SharedFiles, GeneratedImages, AsyncQuestion, TerminalPopup, and TokenUsage.
-	richWatch := c.Dispatch(&corev1.Event{
+	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_060,
 		Event: &corev1.Event_SessionWatch{
 			SessionWatch: &corev1.SessionWatchEvent{SessionId: "s-rich", Watched: true},
@@ -481,58 +417,31 @@ func TestSessionMissingLookupMismatchOfflineAndRichTimeline(t *testing.T) {
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_070,
-		Event: &corev1.Event_CacheEventsLoaded{
-			CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{
-				OpId:      watchCacheReadOpID(richWatch),
-				SessionId: "s-rich",
-				Events: []*corev1.PlainEvent{
-					{
-						Seq: 1, Verified: true,
-						Event: &v1.Event{Seq: 1, Kind: &v1.Event_UserMessage{UserMessage: &v1.UserMessage{
-							Text:  "Look at main.go\n\nFile: /Users/me/proj/main.go",
-							Files: []*v1.SentFile{{FileId: "f1", Name: "main.go", Path: "/Users/me/proj/main.go", SizeBytes: 120}},
-						}}},
-					},
-					{
-						Seq: 2, Verified: true,
-						Event: &v1.Event{Seq: 2, Kind: &v1.Event_Reasoning{Reasoning: &v1.Reasoning{Text: "Checking symbols..."}}},
-					},
-					{
-						Seq: 3, Verified: true,
-						Event: &v1.Event{Seq: 3, Kind: &v1.Event_ToolCall{ToolCall: &v1.ToolCall{
-							CallId: "sf1", Kind: v1.ToolKind_TOOL_KIND_OTHER, Title: "Share", Status: "completed",
-							SharedFiles: []*v1.SharedFile{{FileId: "sh1", Name: "report.pdf", Path: "/Users/me/proj/report.pdf", SizeBytes: 4096}},
-						}}},
-					},
-					{
-						Seq: 4, Verified: true,
-						Event: &v1.Event{Seq: 4, Kind: &v1.Event_ImageGenerated{ImageGenerated: &v1.ImageGenerated{
-							RevisedPrompt: "Architecture diagram",
-							Images:        []*v1.ImageRef{{ImageId: "img-gen-1", Width: 512, Height: 512}},
-						}}},
-					},
-					{
-						Seq: 5, Verified: true,
-						Event: &v1.Event{Seq: 5, Kind: &v1.Event_QuestionAsked{QuestionAsked: &v1.QuestionAsked{
-							QuestionId: "aq-1", Async: true,
-							Questions: []*v1.Question{{Header: "Followup", Text: "Deploy now?"}},
-						}}},
-					},
-					{
-						Seq: 6, Verified: true,
-						Event: &v1.Event{Seq: 6, Kind: &v1.Event_TokenUsage{TokenUsage: &v1.TokenUsage{
-							InputTokens: 150_000, OutputTokens: 20_000, LastTotalTokens: 170_000, ContextWindow: 200_000,
-						}}},
-					},
-					{
-						Seq: 7, Verified: true,
-						Event: &v1.Event{Seq: 7, Kind: &v1.Event_InputState{InputState: &v1.InputState{
-							RequestId: "bad-in", Status: v1.InputStatus_INPUT_STATUS_FAILED, Text: "dropped", Reason: "pane_closed",
-						}}},
-					},
-				},
-			},
-		},
+		Event: testrelay.DemoEventsEvent("s-rich",
+			&v1.Event{Seq: 1, Kind: &v1.Event_UserMessage{UserMessage: &v1.UserMessage{
+				Text:  "Look at main.go\n\nFile: /Users/me/proj/main.go",
+				Files: []*v1.SentFile{{FileId: "f1", Name: "main.go", Path: "/Users/me/proj/main.go", SizeBytes: 120}},
+			}}},
+			&v1.Event{Seq: 2, Kind: &v1.Event_Reasoning{Reasoning: &v1.Reasoning{Text: "Checking symbols..."}}},
+			&v1.Event{Seq: 3, Kind: &v1.Event_ToolCall{ToolCall: &v1.ToolCall{
+				CallId: "sf1", Kind: v1.ToolKind_TOOL_KIND_OTHER, Title: "Share", Status: "completed",
+				SharedFiles: []*v1.SharedFile{{FileId: "sh1", Name: "report.pdf", Path: "/Users/me/proj/report.pdf", SizeBytes: 4096}},
+			}}},
+			&v1.Event{Seq: 4, Kind: &v1.Event_ImageGenerated{ImageGenerated: &v1.ImageGenerated{
+				RevisedPrompt: "Architecture diagram",
+				Images:        []*v1.ImageRef{{ImageId: "img-gen-1", Width: 512, Height: 512}},
+			}}},
+			&v1.Event{Seq: 5, Kind: &v1.Event_QuestionAsked{QuestionAsked: &v1.QuestionAsked{
+				QuestionId: "aq-1", Async: true,
+				Questions: []*v1.Question{{Header: "Followup", Text: "Deploy now?"}},
+			}}},
+			&v1.Event{Seq: 6, Kind: &v1.Event_TokenUsage{TokenUsage: &v1.TokenUsage{
+				InputTokens: 150_000, OutputTokens: 20_000, LastTotalTokens: 170_000, ContextWindow: 200_000,
+			}}},
+			&v1.Event{Seq: 7, Kind: &v1.Event_InputState{InputState: &v1.InputState{
+				RequestId: "bad-in", Status: v1.InputStatus_INPUT_STATUS_FAILED, Text: "dropped", Reason: "pane_closed",
+			}}},
+		),
 	})
 
 	vmRich, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-rich"}}})
@@ -564,29 +473,19 @@ func TestSessionMissingLookupMismatchOfflineAndRichTimeline(t *testing.T) {
 
 func setupPlanSessionForTest(t *testing.T, hashA []byte) *Core {
 	t.Helper()
-	machines := []*corev1.PlainMachine{
-		{
-			MachineId: "m-on",
-			Online:    true,
-			Meta: &v1.MachineMeta{
-				Hostname: "MacStudio",
-			},
-		},
+	machines := []*corev1.DemoMachine{
+		testrelay.DemoMachine("m-on", true, 0, &v1.MachineMeta{Hostname: "MacStudio"}),
 	}
-	sessions := []*corev1.PlainSession{
-		{
-			SessionId: "s-plan",
-			MachineId: "m-on",
-			Meta: &v1.Session{
+	sessions := []*corev1.DemoSession{
+		testrelay.DemoSession("s-plan", "m-on", 10, 1_791_078_060_000, 0,
+			&v1.Session{
 				Id:       "s-plan",
 				Cwd:      "/Users/me/proj",
 				Agent:    v1.Agent_AGENT_CLAUDE,
 				Status:   v1.SessionStatus_SESSION_STATUS_RUNNING,
 				PlanOpen: true,
 			},
-			UpdatedMs: 1_791_078_060_000,
-			LastSeq:   10,
-			Checkpoint: &v1.LiveSnapshot{
+			&v1.LiveSnapshot{
 				Running:        true,
 				PlanEventSeq:   10,
 				PlanScreenHash: append([]byte(nil), hashA...),
@@ -598,7 +497,7 @@ func setupPlanSessionForTest(t *testing.T, hashA []byte) *Core {
 					PlanOpen: true,
 				},
 			},
-		},
+		),
 	}
 	c := bootstrapReadyApp(t, machines, sessions)
 	c.Dispatch(&corev1.Event{
@@ -690,7 +589,7 @@ func TestAnswerPlanPreflightRejectsChangedSnapshot(t *testing.T) {
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "ok",
-				Result: &v1.CommandResult{
+				RawResult: testrelay.MustRaw(&v1.CommandResult{
 					Outcome:         "executed",
 					Reason:          "ok",
 					ResultAvailable: true,
@@ -707,7 +606,7 @@ func TestAnswerPlanPreflightRejectsChangedSnapshot(t *testing.T) {
 							},
 						},
 					},
-				},
+				}),
 			},
 		},
 	})
@@ -770,7 +669,7 @@ func TestAnswerPlanPreflightMatchesAndFrozenRetry(t *testing.T) {
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "ok",
-				Result: &v1.CommandResult{
+				RawResult: testrelay.MustRaw(&v1.CommandResult{
 					Outcome:         "executed",
 					Reason:          "ok",
 					ResultAvailable: true,
@@ -787,7 +686,7 @@ func TestAnswerPlanPreflightMatchesAndFrozenRetry(t *testing.T) {
 							},
 						},
 					},
-				},
+				}),
 			},
 		},
 	})
@@ -854,12 +753,12 @@ func TestAnswerPlanPreflightMatchesAndFrozenRetry(t *testing.T) {
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "ok",
-				Result: &v1.CommandResult{
+				RawResult: testrelay.MustRaw(&v1.CommandResult{
 					Outcome:         "executed",
 					Reason:          "ok",
 					ResultAvailable: true,
 					Kind:            &v1.CommandResult_AnswerPlan{AnswerPlan: &v1.AnswerPlanResponse{}},
-				},
+				}),
 			},
 		},
 	})
@@ -870,31 +769,51 @@ func TestAnswerPlanPreflightMatchesAndFrozenRetry(t *testing.T) {
 }
 
 func TestCoreClearsTimelineCacheOnTrimHistoryEviction(t *testing.T) {
-	c := bootstrapReadyApp(t, []*corev1.PlainMachine{
-		{
-			MachineId: "m-on",
-			Online:    true,
-			Meta: &v1.MachineMeta{
+	c := New()
+	defer c.Close()
+	nowMs := int64(1_791_078_060_000)
+	fx := testrelay.New(t, nowMs)
+	fx.Bootstrap(func(ev *corev1.Event) []*corev1.Effect { return c.Dispatch(ev).GetEffects() }, nowMs)
+	c.m.sync.SecurityEngine().SetAuthToken("tok-trim", nowMs+7*86_400_000)
+	startBatch := c.Dispatch(&corev1.Event{
+		NowMs: nowMs + 10,
+		Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}},
+	})
+	legID := testrelay.FindOpenStreamLeg(startBatch.Effects)
+	readyBatch := c.Dispatch(&corev1.Event{
+		NowMs: nowMs + 20,
+		Event: &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: nowMs + 20}},
+	})
+	ops := testrelay.MustFindRefreshOps(t, readyBatch.Effects)
+	c.Dispatch(&corev1.Event{
+		NowMs: nowMs + 30,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId: ops.Machines, ResponseBytes: testrelay.MarshalListMachinesResp([]*v1.Machine{fx.MachineWire(fx.M1, true, 0, &v1.MachineMeta{
 				Hostname: "MacBook",
 				Agents:   []*v1.AgentInfo{{Agent: v1.Agent_AGENT_CODEX}},
-			},
-		},
-	}, []*corev1.PlainSession{
-		{
-			SessionId: "s-trim",
-			MachineId: "m-on",
-			LastSeq:   1,
-			Meta: &v1.Session{
+			})}),
+		}},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: nowMs + 30,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId: ops.Sessions, ResponseBytes: testrelay.MarshalListSessionsResp([]*v1.RemoteSession{fx.SessionWire("s-trim", fx.M1, 1, 0, 0, &v1.Session{
 				Id:     "s-trim",
 				Agent:  v1.Agent_AGENT_CODEX,
 				Status: v1.SessionStatus_SESSION_STATUS_RUNNING,
 				Title:  "Trim cache",
-			},
-		},
+			}, nil)}, nil),
+		}},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: nowMs + 30,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId: ops.Devices, ResponseBytes: testrelay.MarshalListDevicesResp(nil),
+		}},
 	})
 
 	watchBatch := c.Dispatch(&corev1.Event{
-		NowMs: 1_791_078_060_100,
+		NowMs: nowMs + 100,
 		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s-trim", Watched: true}},
 	})
 	var sweepTimerID uint64
@@ -904,16 +823,14 @@ func TestCoreClearsTimelineCacheOnTrimHistoryEviction(t *testing.T) {
 		}
 	}
 	c.Dispatch(&corev1.Event{
-		NowMs: 1_791_078_060_120,
+		NowMs: nowMs + 120,
 		Event: &corev1.Event_CacheEventsLoaded{
 			CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{
 				OpId:      watchCacheReadOpID(watchBatch),
 				SessionId: "s-trim",
-				Events: []*corev1.PlainEvent{{
-					Seq:      1,
-					Verified: true,
-					Event:    &v1.Event{Seq: 1, SessionId: "s-trim", Kind: &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "hello"}}},
-				}},
+				RawEvents: testrelay.MustRawSlice([]*v1.StoredEvent{
+					fx.StoredEventWire("s-trim", 1, &v1.Event{Seq: 1, SessionId: "s-trim", Kind: &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "hello"}}}),
+				}),
 			},
 		},
 	})
@@ -1011,19 +928,16 @@ func TestSessionTerminalPopupDockLocalizationAndTrustHint(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			c := bootstrapReadyApp(t,
-				[]*corev1.PlainMachine{{MachineId: "m-1", Online: true, Meta: &v1.MachineMeta{Hostname: "dev"}}},
-				[]*corev1.PlainSession{{
-					SessionId: "s-popup",
-					MachineId: "m-1",
-					UpdatedMs: 1_791_078_050_000,
-					Meta: &v1.Session{
+				[]*corev1.DemoMachine{testrelay.DemoMachine("m-1", true, 0, &v1.MachineMeta{Hostname: "dev"})},
+				[]*corev1.DemoSession{testrelay.DemoSession("s-popup", "m-1", 0, 1_791_078_050_000, 0,
+					&v1.Session{
 						Id:           "s-popup",
 						Cwd:          "/work/app",
 						Agent:        tc.agent,
 						Status:       v1.SessionStatus_SESSION_STATUS_BLOCKED,
 						StatusDetail: tc.statusDetail,
 					},
-					Checkpoint: &v1.LiveSnapshot{
+					&v1.LiveSnapshot{
 						Session: &v1.Session{
 							Id:           "s-popup",
 							Cwd:          "/work/app",
@@ -1032,7 +946,7 @@ func TestSessionTerminalPopupDockLocalizationAndTrustHint(t *testing.T) {
 							StatusDetail: tc.statusDetail,
 						},
 					},
-				}},
+				)},
 			)
 			watchBatch := c.Dispatch(&corev1.Event{
 				NowMs: 1_791_078_060_060,
@@ -1100,18 +1014,14 @@ func TestSessionTerminalPopupDockLocalizationAndTrustHint(t *testing.T) {
 func startSessionForStartupPromptTest(t *testing.T, sid, prompt string) (*Core, string) {
 	t.Helper()
 	c := bootstrapReadyApp(t,
-		[]*corev1.PlainMachine{
-			{
-				MachineId: "m-on",
-				Online:    true,
-				Meta: &v1.MachineMeta{
-					Hostname:        "MacStudio",
-					ProtocolVersion: sync.PeerVersion,
-					Agents: []*v1.AgentInfo{
-						{Agent: v1.Agent_AGENT_ANTIGRAVITY, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
-					},
+		[]*corev1.DemoMachine{
+			testrelay.DemoMachine("m-on", true, 0, &v1.MachineMeta{
+				Hostname:        "MacStudio",
+				ProtocolVersion: sync.PeerVersion,
+				Agents: []*v1.AgentInfo{
+					{Agent: v1.Agent_AGENT_ANTIGRAVITY, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
 				},
-			},
+			}),
 		},
 		nil,
 	)
@@ -1187,7 +1097,7 @@ func startSessionForStartupPromptTest(t *testing.T, sid, prompt string) (*Core, 
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "ok",
-				Result: &v1.CommandResult{
+				RawResult: testrelay.MustRaw(&v1.CommandResult{
 					Outcome:         "executed",
 					Reason:          "ok",
 					ResultAvailable: true,
@@ -1201,29 +1111,18 @@ func startSessionForStartupPromptTest(t *testing.T, sid, prompt string) (*Core, 
 							},
 						},
 					},
-				},
+				}),
 			},
 		},
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_110,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_SessionUpdated{
-					SessionUpdated: &corev1.PlainSession{
-						SessionId: sid,
-						MachineId: "m-on",
-						Meta: &v1.Session{
-							Id:     sid,
-							Cwd:    "/Users/me/proj",
-							Agent:  v1.Agent_AGENT_ANTIGRAVITY,
-							Status: v1.SessionStatus_SESSION_STATUS_STARTING,
-						},
-					},
-				},
-			},
-		},
+		Event: testrelay.DemoSessionEvent(testrelay.DemoSession(sid, "m-on", 2, 0, 0, &v1.Session{
+			Id:     sid,
+			Cwd:    "/Users/me/proj",
+			Agent:  v1.Agent_AGENT_ANTIGRAVITY,
+			Status: v1.SessionStatus_SESSION_STATUS_STARTING,
+		}, nil)),
 	})
 	return c, createReqID
 }
@@ -1249,45 +1148,31 @@ func TestStartupPromptLifecycleDeduplicatesAndWaitsForCLI(t *testing.T) {
 	}
 
 	// 2. SessionState{STARTING} + InputState{QUEUED} arrives: PendingInputs takes over with "等 Antigravity 就绪", no duplicate start-prompt.
-	watchBatch := c.Dispatch(&corev1.Event{
+	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_120,
 		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s-start", Watched: true}},
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_130,
-		Event: &corev1.Event_CacheEventsLoaded{
-			CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{
-				OpId:      watchCacheReadOpID(watchBatch),
-				SessionId: "s-start",
-				Events: []*corev1.PlainEvent{
-					{
-						Seq:      1,
-						Verified: true,
-						Event: &v1.Event{
-							Seq:  1,
-							Kind: &v1.Event_SessionState{SessionState: &v1.SessionState{Status: v1.SessionStatus_SESSION_STATUS_STARTING}},
-						},
-					},
-					{
-						Seq:      2,
-						Verified: true,
-						Event: &v1.Event{
-							Seq:    2,
-							Origin: &v1.Origin{Kind: v1.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "dev-1", RequestId: createReqID},
-							Kind: &v1.Event_InputState{
-								InputState: &v1.InputState{
-									RequestId: "in-1",
-									Status:    v1.InputStatus_INPUT_STATUS_QUEUED,
-									Stage:     v1.InputStage_INPUT_STAGE_WAITING,
-									Text:      "hi",
-									Mode:      v1.SendMode_SEND_MODE_STEER,
-								},
-							},
-						},
+		Event: testrelay.DemoEventsEvent("s-start",
+			&v1.Event{
+				Seq:  1,
+				Kind: &v1.Event_SessionState{SessionState: &v1.SessionState{Status: v1.SessionStatus_SESSION_STATUS_STARTING}},
+			},
+			&v1.Event{
+				Seq:    2,
+				Origin: &v1.Origin{Kind: v1.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "dev-1", RequestId: createReqID},
+				Kind: &v1.Event_InputState{
+					InputState: &v1.InputState{
+						RequestId: "in-1",
+						Status:    v1.InputStatus_INPUT_STATUS_QUEUED,
+						Stage:     v1.InputStage_INPUT_STAGE_WAITING,
+						Text:      "hi",
+						Mode:      v1.SendMode_SEND_MODE_STEER,
 					},
 				},
 			},
-		},
+		),
 	})
 
 	vm1, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-start"}}})
@@ -1317,26 +1202,10 @@ func TestStartupPromptLifecycleDeduplicatesAndWaitsForCLI(t *testing.T) {
 	// 3. InputState{SUBMITTED} arrives before UserMessage: PendingTray empties (written to terminal).
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_200,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_EventsAppended{
-					EventsAppended: &corev1.EventsAppendedFrame{
-						SessionId: "s-start",
-						Events: []*corev1.PlainEvent{
-							{
-								Seq:      3,
-								Verified: true,
-								Event: &v1.Event{
-									Seq:  3,
-									Kind: &v1.Event_InputState{InputState: &v1.InputState{RequestId: "in-1", Status: v1.InputStatus_INPUT_STATUS_SUBMITTED}},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
+		Event: testrelay.DemoEventsEvent("s-start", &v1.Event{
+			Seq:  3,
+			Kind: &v1.Event_InputState{InputState: &v1.InputState{RequestId: "in-1", Status: v1.InputStatus_INPUT_STATUS_SUBMITTED}},
+		}),
 	})
 
 	vm2, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-start"}}})
@@ -1354,28 +1223,12 @@ func TestStartupPromptLifecycleDeduplicatesAndWaitsForCLI(t *testing.T) {
 	// 4. UserMessage arrives: replaces start-prompt with real timeline event e4 and clears PendingStartPrompt.
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_250,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_EventsAppended{
-					EventsAppended: &corev1.EventsAppendedFrame{
-						SessionId: "s-start",
-						Events: []*corev1.PlainEvent{
-							{
-								Seq:      4,
-								Verified: true,
-								Event: &v1.Event{
-									Seq: 4,
-									Kind: &v1.Event_UserMessage{
-										UserMessage: &v1.UserMessage{Text: "hi", RequestId: "in-1"},
-									},
-								},
-							},
-						},
-					},
-				},
+		Event: testrelay.DemoEventsEvent("s-start", &v1.Event{
+			Seq: 4,
+			Kind: &v1.Event_UserMessage{
+				UserMessage: &v1.UserMessage{Text: "hi", RequestId: "in-1"},
 			},
-		},
+		}),
 	})
 
 	vm3, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-start"}}})
@@ -1392,48 +1245,34 @@ func TestStartupPromptLifecycleDeduplicatesAndWaitsForCLI(t *testing.T) {
 
 func TestCanceledStartupPromptDoesNotResurrectGhostBubble(t *testing.T) {
 	c, createReqID := startSessionForStartupPromptTest(t, "s-cancel", "hi")
-	watchBatch := c.Dispatch(&corev1.Event{
+	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_120,
 		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s-cancel", Watched: true}},
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_130,
-		Event: &corev1.Event_CacheEventsLoaded{
-			CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{
-				OpId:      watchCacheReadOpID(watchBatch),
-				SessionId: "s-cancel",
-				Events: []*corev1.PlainEvent{
-					{
-						Seq:      1,
-						Verified: true,
-						Event: &v1.Event{
-							Seq:    1,
-							Origin: &v1.Origin{Kind: v1.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "dev-1", RequestId: createReqID},
-							Kind: &v1.Event_InputState{
-								InputState: &v1.InputState{
-									RequestId: "in-1",
-									Status:    v1.InputStatus_INPUT_STATUS_QUEUED,
-									Text:      "hi",
-								},
-							},
-						},
-					},
-					{
-						Seq:      2,
-						Verified: true,
-						Event: &v1.Event{
-							Seq: 2,
-							Kind: &v1.Event_InputState{
-								InputState: &v1.InputState{
-									RequestId: "in-1",
-									Status:    v1.InputStatus_INPUT_STATUS_CANCELED,
-								},
-							},
-						},
+		Event: testrelay.DemoEventsEvent("s-cancel",
+			&v1.Event{
+				Seq:    1,
+				Origin: &v1.Origin{Kind: v1.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "dev-1", RequestId: createReqID},
+				Kind: &v1.Event_InputState{
+					InputState: &v1.InputState{
+						RequestId: "in-1",
+						Status:    v1.InputStatus_INPUT_STATUS_QUEUED,
+						Text:      "hi",
 					},
 				},
 			},
-		},
+			&v1.Event{
+				Seq: 2,
+				Kind: &v1.Event_InputState{
+					InputState: &v1.InputState{
+						RequestId: "in-1",
+						Status:    v1.InputStatus_INPUT_STATUS_CANCELED,
+					},
+				},
+			},
+		),
 	})
 
 	vm, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-cancel"}}})
@@ -1513,18 +1352,14 @@ func TestPendingTrayGroupingNumberingAndOrigin(t *testing.T) {
 
 func TestCreateSessionSeedsSessionBeforeStreamUpdatedAndLoadingHidesMissingText(t *testing.T) {
 	c := bootstrapReadyApp(t,
-		[]*corev1.PlainMachine{
-			{
-				MachineId: "m-on",
-				Online:    true,
-				Meta: &v1.MachineMeta{
-					Hostname:        "MacStudio",
-					ProtocolVersion: sync.PeerVersion,
-					Agents: []*v1.AgentInfo{
-						{Agent: v1.Agent_AGENT_ANTIGRAVITY, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
-					},
+		[]*corev1.DemoMachine{
+			testrelay.DemoMachine("m-on", true, 0, &v1.MachineMeta{
+				Hostname:        "MacStudio",
+				ProtocolVersion: sync.PeerVersion,
+				Agents: []*v1.AgentInfo{
+					{Agent: v1.Agent_AGENT_ANTIGRAVITY, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
 				},
-			},
+			}),
 		},
 		nil,
 	)
@@ -1599,7 +1434,7 @@ func TestCreateSessionSeedsSessionBeforeStreamUpdatedAndLoadingHidesMissingText(
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "ok",
-				Result: &v1.CommandResult{
+				RawResult: testrelay.MustRaw(&v1.CommandResult{
 					Outcome:         "executed",
 					Reason:          "ok",
 					ResultAvailable: true,
@@ -1613,7 +1448,7 @@ func TestCreateSessionSeedsSessionBeforeStreamUpdatedAndLoadingHidesMissingText(
 							},
 						},
 					},
-				},
+				}),
 			},
 		},
 	})
@@ -1779,63 +1614,52 @@ func TestCreateSessionSeedsSessionBeforeStreamUpdatedAndLoadingHidesMissingText(
 func TestSessionRetryLoadAction(t *testing.T) {
 	c := New()
 	defer c.Close()
+	nowMs := int64(1_791_078_060_000)
+	fx := testrelay.New(t, nowMs)
+	fx.Bootstrap(func(ev *corev1.Event) []*corev1.Effect { return c.Dispatch(ev).GetEffects() }, nowMs)
+	c.m.sync.SecurityEngine().SetAuthToken("tok-retry", nowMs+7*86_400_000)
 
-	// Start sync and connect stream so FetchSessionById and GetEvents RPCs can be issued.
+	// Start sync and connect stream so LIST_REMOTE_SESSIONS(session_id) and GET_EVENTS RPCs can be issued.
 	effStart := c.Dispatch(&corev1.Event{
-		NowMs: 1000,
+		NowMs: nowMs + 10,
 		Event: &corev1.Event_SyncLifecycle{
 			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
 		},
 	})
-	var tokOp uint64
-	for _, ef := range effStart.GetEffects() {
-		if et := ef.GetEnsureToken(); et != nil {
-			tokOp = et.GetOpId()
-		}
-	}
-	effTok := c.Dispatch(&corev1.Event{
-		NowMs: 1010,
-		Event: &corev1.Event_TokenResult{
-			TokenResult: &corev1.TokenResultEvent{OpId: tokOp, Token: "tok", ExpiresMs: 60_000},
-		},
-	})
-	var legID uint64
-	for _, ef := range effTok.GetEffects() {
-		if os := ef.GetOpenStream(); os != nil {
-			legID = os.GetLegId()
-		}
-	}
+	legID := testrelay.FindOpenStreamLeg(effStart.Effects)
 	c.Dispatch(&corev1.Event{
-		NowMs: 1020,
+		NowMs: nowMs + 20,
 		Event: &corev1.Event_StreamReady{
-			StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: 1020},
+			StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: nowMs + 20},
 		},
 	})
 
-	// 1. Open an unknown session -> issues FetchSessionById RPC.
+	// 1. Open an unknown session -> issues LIST_REMOTE_SESSIONS(session_id) RPC.
 	eff1 := c.Dispatch(&corev1.Event{
-		NowMs: 1100,
+		NowMs: nowMs + 100,
 		Event: &corev1.Event_SessionOpen{
 			SessionOpen: &corev1.SessionOpenAction{SessionId: "s-retry"},
 		},
 	})
 	var op1 uint64
-	for _, ef := range eff1.GetEffects() {
-		if rpc := ef.GetRpc(); rpc != nil && rpc.GetFetchSessionById() != nil && rpc.GetFetchSessionById().GetSessionId() == "s-retry" {
-			op1 = rpc.GetOpId()
+	if rpc := testrelay.FindRelayRpc(eff1.Effects, corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS); rpc != nil {
+		var req stdv1.ListRemoteSessionsRequest
+		if proto.Unmarshal(rpc.RequestBytes, &req) == nil && len(req.SessionIds) == 1 && req.SessionIds[0] == "s-retry" {
+			op1 = rpc.OpId
 		}
 	}
 	if op1 == 0 {
-		t.Fatalf("expected FetchSessionById RPC on SessionOpen")
+		t.Fatalf("expected LIST_REMOTE_SESSIONS(s-retry) RPC on SessionOpen")
 	}
 
 	// 2. Fail the lookup -> header reports LookupFailed + LookupErrorText.
 	c.Dispatch(&corev1.Event{
-		NowMs: 1200,
-		Event: &corev1.Event_SessionByIdFetched{
-			SessionByIdFetched: &corev1.SessionByIdFetchedEvent{
-				OpId:  op1,
-				Error: "rpc unavailable",
+		NowMs: nowMs + 200,
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId:              op1,
+				ConnectCode:       14,
+				DiagnosticMessage: "rpc unavailable",
 			},
 		},
 	})
@@ -1848,9 +1672,9 @@ func TestSessionRetryLoadAction(t *testing.T) {
 		t.Fatalf("expected LookupFailed with rpc unavailable, got %+v", vmFail.GetHeader())
 	}
 
-	// 3. Dispatch unified SessionRetryLoadAction -> clears failure, re-issues FetchSessionById RPC, marks SESSION dirty.
+	// 3. Dispatch unified SessionRetryLoadAction -> clears failure, re-issues LIST_REMOTE_SESSIONS RPC, marks SESSION dirty.
 	effRetry := c.Dispatch(&corev1.Event{
-		NowMs: 1300,
+		NowMs: nowMs + 300,
 		Event: &corev1.Event_SessionRetryLoad{
 			SessionRetryLoad: &corev1.SessionRetryLoadAction{SessionId: "s-retry"},
 		},
@@ -1858,8 +1682,11 @@ func TestSessionRetryLoadAction(t *testing.T) {
 	var op2 uint64
 	var renderedSession bool
 	for _, ef := range effRetry.GetEffects() {
-		if rpc := ef.GetRpc(); rpc != nil && rpc.GetFetchSessionById() != nil && rpc.GetFetchSessionById().GetSessionId() == "s-retry" {
-			op2 = rpc.GetOpId()
+		if rpc := ef.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS {
+			var req stdv1.ListRemoteSessionsRequest
+			if proto.Unmarshal(rpc.RequestBytes, &req) == nil && len(req.SessionIds) == 1 && req.SessionIds[0] == "s-retry" {
+				op2 = rpc.OpId
+			}
 		}
 		if r := ef.GetRender(); r != nil {
 			for _, sc := range r.GetScreens() {
@@ -1870,7 +1697,7 @@ func TestSessionRetryLoadAction(t *testing.T) {
 		}
 	}
 	if op2 == 0 || op2 == op1 {
-		t.Fatalf("expected fresh FetchSessionById RPC on SessionRetryLoadAction, op1=%d op2=%d", op1, op2)
+		t.Fatalf("expected fresh LIST_REMOTE_SESSIONS RPC on SessionRetryLoadAction, op1=%d op2=%d", op1, op2)
 	}
 	if !renderedSession {
 		t.Fatalf("expected SCREEN_TARGET_SESSION render effect on SessionRetryLoadAction")
@@ -1886,21 +1713,18 @@ func TestSessionRetryLoadAction(t *testing.T) {
 
 	// 4. Succeed lookup with a session that has lastSeq=5, complete cache read, fail initial GetEvents, then retry via SessionRetryLoadAction.
 	c.Dispatch(&corev1.Event{
-		NowMs: 1400,
-		Event: &corev1.Event_SessionByIdFetched{
-			SessionByIdFetched: &corev1.SessionByIdFetchedEvent{
+		NowMs: nowMs + 400,
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
 				OpId: op2,
-				Session: &corev1.PlainSession{
-					SessionId: "s-retry",
-					MachineId: "m1",
-					LastSeq:   5,
-					Meta:      &v1.Session{Id: "s-retry", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING},
-				},
+				ResponseBytes: testrelay.MarshalListSessionsResp([]*v1.RemoteSession{
+					fx.SessionWire("s-retry", fx.M1, 5, 0, 0, &v1.Session{Id: "s-retry", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING}, nil),
+				}, nil),
 			},
 		},
 	})
 	effWatch := c.Dispatch(&corev1.Event{
-		NowMs: 1450,
+		NowMs: nowMs + 450,
 		Event: &corev1.Event_SessionWatch{
 			SessionWatch: &corev1.SessionWatchEvent{SessionId: "s-retry", Watched: true},
 		},
@@ -1912,39 +1736,28 @@ func TestSessionRetryLoadAction(t *testing.T) {
 		}
 	}
 	effCache := c.Dispatch(&corev1.Event{
-		NowMs: 1460,
+		NowMs: nowMs + 460,
 		Event: &corev1.Event_CacheEventsLoaded{
 			CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{OpId: cacheOp, SessionId: "s-retry"},
 		},
 	})
-	var fetchEvOp uint64
-	for _, ef := range effCache.GetEffects() {
-		if rpc := ef.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
-			fetchEvOp = rpc.GetOpId()
-		}
-	}
+	fetchEvOp, _ := testrelay.FindGetEventsOp(effCache.Effects, "s-retry")
 	if fetchEvOp > 0 {
 		c.Dispatch(&corev1.Event{
-			NowMs: 1470,
-			Event: &corev1.Event_EventsPageFetched{
-				EventsPageFetched: &corev1.EventsPageFetchedEvent{OpId: fetchEvOp, SessionId: "s-retry", Error: "timeout"},
+			NowMs: nowMs + 470,
+			Event: &corev1.Event_RelayRpcResult{
+				RelayRpcResult: &corev1.RelayRpcResultEvent{OpId: fetchEvOp, ConnectCode: 4, DiagnosticMessage: "timeout"},
 			},
 		})
 	}
 	effRetry2 := c.Dispatch(&corev1.Event{
-		NowMs: 1500,
+		NowMs: nowMs + 500,
 		Event: &corev1.Event_SessionRetryLoad{
 			SessionRetryLoad: &corev1.SessionRetryLoadAction{SessionId: "s-retry"},
 		},
 	})
-	var gotEventsRPC bool
-	for _, ef := range effRetry2.GetEffects() {
-		if rpc := ef.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil && rpc.GetGetEvents().GetSessionId() == "s-retry" {
-			gotEventsRPC = true
-		}
-	}
-	if !gotEventsRPC {
-		t.Fatalf("expected GetEvents RPC when retrying an already-loaded session with failed event load")
+	if op, _ := testrelay.FindGetEventsOp(effRetry2.Effects, "s-retry"); op == 0 {
+		t.Fatalf("expected GET_EVENTS RPC when retrying an already-loaded session with failed event load")
 	}
 }
 
@@ -1967,44 +1780,10 @@ func TestSharedFileDisplayAndLocalLifecycle(t *testing.T) {
 			},
 		},
 	})
-	effStart := c.Dispatch(&corev1.Event{
-		NowMs:  900,
-		MonoMs: 900,
-		Event: &corev1.Event_SyncLifecycle{
-			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
-		},
-	})
-	var tokOp uint64
-	for _, ef := range effStart.GetEffects() {
-		if et := ef.GetEnsureToken(); et != nil {
-			tokOp = et.GetOpId()
-		}
-	}
-	effTok := c.Dispatch(&corev1.Event{
-		NowMs:  910,
-		MonoMs: 910,
-		Event: &corev1.Event_TokenResult{
-			TokenResult: &corev1.TokenResultEvent{OpId: tokOp, Token: "tok", ExpiresMs: 60_000},
-		},
-	})
-	var legID uint64
-	for _, ef := range effTok.GetEffects() {
-		if os := ef.GetOpenStream(); os != nil {
-			legID = os.GetLegId()
-		}
-	}
-	c.Dispatch(&corev1.Event{
-		NowMs:  920,
-		MonoMs: 920,
-		Event: &corev1.Event_StreamReady{
-			StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: 920},
-		},
-	})
-
 	hash := sfTestHash(0x01)
 	c.Dispatch(&corev1.Event{
-		NowMs:  1000,
-		MonoMs: 1000,
+		NowMs:  895,
+		MonoMs: 895,
 		Event: &corev1.Event_SeedDemoWorld{
 			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
 				Security: &corev1.DemoSecurity{
@@ -2018,7 +1797,7 @@ func TestSharedFileDisplayAndLocalLifecycle(t *testing.T) {
 					{
 						MachineId: "m1",
 						Online:    true,
-						Meta: &v1.MachineMeta{
+						RawMeta: testrelay.MustRaw(&v1.MachineMeta{
 							Hostname:        "Studio",
 							Home:            "/Users/me",
 							ProtocolVersion: 17,
@@ -2026,7 +1805,7 @@ func TestSharedFileDisplayAndLocalLifecycle(t *testing.T) {
 								SharedFiles:          true,
 								SharedFileChunkBytes: chunkBytes,
 							},
-						},
+						}),
 					},
 				},
 				Sessions: []*corev1.DemoSession{
@@ -2034,13 +1813,13 @@ func TestSharedFileDisplayAndLocalLifecycle(t *testing.T) {
 						SessionId: "s-sf",
 						MachineId: "m1",
 						LastSeq:   1,
-						Meta:      &v1.Session{Id: "s-sf", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING},
+						RawMeta:   testrelay.MustRaw(&v1.Session{Id: "s-sf", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING}),
 					},
 				},
 				SessionEvents: []*corev1.DemoSessionEvents{
 					{
 						SessionId: "s-sf",
-						Events: []*v1.Event{
+						RawEvents: testrelay.MustRawSlice([]*v1.Event{
 							{
 								Seq: 1,
 								Kind: &v1.Event_ToolCall{
@@ -2059,10 +1838,25 @@ func TestSharedFileDisplayAndLocalLifecycle(t *testing.T) {
 									},
 								},
 							},
-						},
+						}),
 					},
 				},
 			},
+		},
+	})
+	effStart := c.Dispatch(&corev1.Event{
+		NowMs:  900,
+		MonoMs: 900,
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
+		},
+	})
+	legID := testrelay.FindOpenStreamLeg(effStart.Effects)
+	c.Dispatch(&corev1.Event{
+		NowMs:  920,
+		MonoMs: 920,
+		Event: &corev1.Event_StreamReady{
+			StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: 920},
 		},
 	})
 
@@ -2167,7 +1961,7 @@ func TestSharedFileDisplayAndLocalLifecycle(t *testing.T) {
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "executed",
-				Result: &v1.CommandResult{
+				RawResult: testrelay.MustRaw(&v1.CommandResult{
 					Outcome:         "executed",
 					Reason:          "executed",
 					ResultAvailable: true,
@@ -2177,7 +1971,7 @@ func TestSharedFileDisplayAndLocalLifecycle(t *testing.T) {
 							TotalBytes: sfUint64(uint64(fileSize)),
 						},
 					},
-				},
+				}),
 			},
 		},
 	})
@@ -2364,15 +2158,15 @@ func TestSessionImageViewerLifecycleAndPlaceholders(t *testing.T) {
 		Event: &corev1.Event_SeedDemoWorld{
 			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
 				Machines: []*corev1.DemoMachine{
-					{MachineId: "m1", Online: true, Meta: &v1.MachineMeta{Hostname: "Mac", Home: "/Users/me", ProtocolVersion: 17}},
+					{MachineId: "m1", Online: true, RawMeta: testrelay.MustRaw(&v1.MachineMeta{Hostname: "Mac", Home: "/Users/me", ProtocolVersion: 17})},
 				},
 				Sessions: []*corev1.DemoSession{
-					{SessionId: "s-img", MachineId: "m1", LastSeq: 3, Meta: &v1.Session{Id: "s-img", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING}},
+					{SessionId: "s-img", MachineId: "m1", LastSeq: 3, RawMeta: testrelay.MustRaw(&v1.Session{Id: "s-img", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING})},
 				},
 				SessionEvents: []*corev1.DemoSessionEvents{
 					{
 						SessionId: "s-img",
-						Events: []*v1.Event{
+						RawEvents: testrelay.MustRawSlice([]*v1.Event{
 							{
 								Seq: 1,
 								Kind: &v1.Event_UserMessage{
@@ -2396,7 +2190,7 @@ func TestSessionImageViewerLifecycleAndPlaceholders(t *testing.T) {
 									},
 								},
 							},
-						},
+						}),
 					},
 				},
 			},
@@ -2490,15 +2284,15 @@ func TestSessionImageViewerOutOfWindowAnchorAndNavigation(t *testing.T) {
 		Event: &corev1.Event_SeedDemoWorld{
 			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
 				Machines: []*corev1.DemoMachine{
-					{MachineId: "m1", Online: true, Meta: &v1.MachineMeta{Hostname: "Mac", Home: "/Users/me", ProtocolVersion: 17}},
+					{MachineId: "m1", Online: true, RawMeta: testrelay.MustRaw(&v1.MachineMeta{Hostname: "Mac", Home: "/Users/me", ProtocolVersion: 17})},
 				},
 				Sessions: []*corev1.DemoSession{
-					{SessionId: "s-win", MachineId: "m1", LastSeq: 6, Meta: &v1.Session{Id: "s-win", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING}},
+					{SessionId: "s-win", MachineId: "m1", LastSeq: 6, RawMeta: testrelay.MustRaw(&v1.Session{Id: "s-win", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING})},
 				},
 				SessionEvents: []*corev1.DemoSessionEvents{
 					{
 						SessionId: "s-win",
-						Events: []*v1.Event{
+						RawEvents: testrelay.MustRawSlice([]*v1.Event{
 							{
 								Seq:       1,
 								SessionId: "s-win",
@@ -2538,7 +2332,7 @@ func TestSessionImageViewerOutOfWindowAnchorAndNavigation(t *testing.T) {
 									},
 								},
 							},
-						},
+						}),
 					},
 				},
 			},
@@ -2616,32 +2410,8 @@ func newAttachmentEvalCore(t *testing.T, online bool) *Core {
 	t.Helper()
 	c := New()
 
-	start := c.Dispatch(&corev1.Event{
-		NowMs: 900,
-		Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}},
-	})
-	var tokenOp uint64
-	for _, eff := range start.GetEffects() {
-		if req := eff.GetEnsureToken(); req != nil {
-			tokenOp = req.GetOpId()
-		}
-	}
-	res := c.Dispatch(&corev1.Event{
-		NowMs: 910,
-		Event: &corev1.Event_TokenResult{TokenResult: &corev1.TokenResultEvent{OpId: tokenOp, Token: "tok", ExpiresMs: 60_000}},
-	})
-	var legID uint64
-	for _, eff := range res.GetEffects() {
-		if open := eff.GetOpenStream(); open != nil {
-			legID = open.GetLegId()
-		}
-	}
 	c.Dispatch(&corev1.Event{
-		NowMs: 920,
-		Event: &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: 920}},
-	})
-	c.Dispatch(&corev1.Event{
-		NowMs: 1000,
+		NowMs: 890,
 		Event: &corev1.Event_SeedDemoWorld{
 			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
 				Security: &corev1.DemoSecurity{
@@ -2655,7 +2425,7 @@ func newAttachmentEvalCore(t *testing.T, online bool) *Core {
 					{
 						MachineId: "m-att",
 						Online:    online,
-						Meta: &v1.MachineMeta{
+						RawMeta: testrelay.MustRaw(&v1.MachineMeta{
 							Hostname: "MacBook",
 							Capabilities: &v1.MachineCapabilities{
 								ImageUpload:         true,
@@ -2664,18 +2434,27 @@ func newAttachmentEvalCore(t *testing.T, online bool) *Core {
 								MaxFilesPerMessage:  12,                // must be clamped to 6
 								MaxFileUploadBytes:  250 * 1024 * 1024, // must be clamped to 100 MiB
 							},
-						},
+						}),
 					},
 				},
 				Sessions: []*corev1.DemoSession{
 					{
 						SessionId: "s-att",
 						MachineId: "m-att",
-						Meta:      &v1.Session{Id: "s-att", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING},
+						RawMeta:   testrelay.MustRaw(&v1.Session{Id: "s-att", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING}),
 					},
 				},
 			},
 		},
+	})
+	start := c.Dispatch(&corev1.Event{
+		NowMs: 900,
+		Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}},
+	})
+	legID := testrelay.FindOpenStreamLeg(start.Effects)
+	c.Dispatch(&corev1.Event{
+		NowMs: 920,
+		Event: &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: 920}},
 	})
 
 	return c
@@ -2821,11 +2600,9 @@ func TestSessionModelChoiceMaxEffortHint(t *testing.T) {
 }
 
 func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
-	c := bootstrapReadyApp(t, []*corev1.PlainMachine{{
-		MachineId: "m-on",
-		Online:    true,
-		Meta:      &v1.MachineMeta{Hostname: "Box", ProtocolVersion: sync.PeerVersion},
-	}}, nil)
+	c := bootstrapReadyApp(t, []*corev1.DemoMachine{
+		testrelay.DemoMachine("m-on", true, 0, &v1.MachineMeta{Hostname: "Box", ProtocolVersion: sync.PeerVersion}),
+	}, nil)
 	now := int64(1_791_078_061_000)
 
 	// 1. Invalid argument (missing machine_id) settles immediately with ok=false.
@@ -2878,12 +2655,12 @@ func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "failed",
-				Result: &v1.CommandResult{
+				RawResult: testrelay.MustRaw(&v1.CommandResult{
 					Outcome:         "executed",
 					Reason:          "failed",
 					ResultAvailable: true,
 					ErrorCode:       "failed",
-				},
+				}),
 			},
 		},
 	})
@@ -2930,12 +2707,12 @@ func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "ok",
-				Result: &v1.CommandResult{
+				RawResult: testrelay.MustRaw(&v1.CommandResult{
 					Outcome:         "executed",
 					Reason:          "ok",
 					ResultAvailable: true,
 					Kind:            &v1.CommandResult_GetSettings{GetSettings: &v1.GetSettingsResponse{}},
-				},
+				}),
 			},
 		},
 	})
@@ -2998,7 +2775,7 @@ func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "ok",
-				Result:            &v1.CommandResult{Outcome: "executed", Reason: "ok", ResultAvailable: true},
+				RawResult:         testrelay.MustRaw(&v1.CommandResult{Outcome: "executed", Reason: "ok", ResultAvailable: true}),
 			},
 		},
 	})
@@ -3071,7 +2848,7 @@ func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "ok",
-				Result:            &v1.CommandResult{Outcome: "executed", Reason: "ok", ResultAvailable: true},
+				RawResult:         testrelay.MustRaw(&v1.CommandResult{Outcome: "executed", Reason: "ok", ResultAvailable: true}),
 			},
 		},
 	})
@@ -3087,11 +2864,9 @@ func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
 }
 
 func TestRunMachineCommandSkipConnectivityPreflight(t *testing.T) {
-	c := bootstrapReadyApp(t, []*corev1.PlainMachine{{
-		MachineId: "m-off",
-		Online:    false,
-		Meta:      &v1.MachineMeta{Hostname: "Box", ProtocolVersion: sync.PeerVersion},
-	}}, nil)
+	c := bootstrapReadyApp(t, []*corev1.DemoMachine{
+		testrelay.DemoMachine("m-off", false, 0, &v1.MachineMeta{Hostname: "Box", ProtocolVersion: sync.PeerVersion}),
+	}, nil)
 	now := int64(1_791_078_061_000)
 
 	// Drop the stream so Connection transitions away from ConnConnected (reconnecting).
@@ -3172,7 +2947,7 @@ func TestRunMachineCommandSkipConnectivityPreflight(t *testing.T) {
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "ok",
-				Result:            &v1.CommandResult{Outcome: "executed", Reason: "ok", ResultAvailable: true},
+				RawResult:         testrelay.MustRaw(&v1.CommandResult{Outcome: "executed", Reason: "ok", ResultAvailable: true}),
 			},
 		},
 	})
@@ -3225,7 +3000,7 @@ func TestRunMachineCommandSkipConnectivityPreflight(t *testing.T) {
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "ok",
-				Result:            &v1.CommandResult{Outcome: "executed", Reason: "ok", ResultAvailable: true},
+				RawResult:         testrelay.MustRaw(&v1.CommandResult{Outcome: "executed", Reason: "ok", ResultAvailable: true}),
 			},
 		},
 	})

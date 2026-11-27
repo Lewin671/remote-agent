@@ -17,6 +17,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/gen/litewire"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/internal/test/testrelay"
 	"github.com/Lewin671/remote-agent/clientcore/security"
 	"github.com/Lewin671/remote-agent/clientcore/transport"
 	stdv1 "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -359,47 +360,71 @@ func TestSyncSeedDemoLockOutAndWireEndToEndFlow(t *testing.T) {
 	}
 
 	// Bring sync online via standard lifecycle/token/stream handshake.
-	e.HandleEvent(&corev1.Event{NowMs: nowMs + 60, Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}}})
-	_, tokRes := e.HandleEvent(&corev1.Event{NowMs: nowMs + 60, Event: &corev1.Event_TokenResult{TokenResult: &corev1.TokenResultEvent{OpId: e.activeTokenOpID, Token: "tok"}}})
+	e.secEngine.SetAuthToken("tok", nowMs+3*24*3600_000)
+	e.relayEpoch = "epoch-wire-1"
+	_, startRes := e.HandleEvent(&corev1.Event{NowMs: nowMs + 60, Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}}})
 	var legID uint64
-	for _, ef := range tokRes.Effects {
+	for _, ef := range startRes.Effects {
 		if os := ef.GetOpenStream(); os != nil {
 			legID = os.LegId
 		}
 	}
-	e.HandleEvent(&corev1.Event{NowMs: nowMs + 70, Event: &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{LegId: legID}}})
+	_, readyRes := e.HandleEvent(&corev1.Event{NowMs: nowMs + 70, Event: &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{LegId: legID}}})
+	var machinesOp, sessionsOp, devicesOp uint64
+	for _, ef := range readyRes.Effects {
+		if r := ef.GetRelayRpc(); r != nil {
+			switch r.Method {
+			case corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_MACHINES:
+				machinesOp = r.OpId
+			case corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS:
+				sessionsOp = r.OpId
+			case corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_DEVICES:
+				devicesOp = r.OpId
+			}
+		}
+	}
 
-	// Feed Wire ListsFetched with encrypted MachineMeta, SessionKey, SessionMeta (+ Checkpoint), DeviceMeta.
+	// Feed wire list responses with encrypted MachineMeta, SessionKey, SessionMeta (+ Checkpoint), DeviceMeta.
 	mmRaw, _ := (&v1.MachineMeta{Hostname: "host-a", ProtocolVersion: PeerVersion}).Marshal()
 	sessSeed := bytes.Repeat([]byte{0x5a}, 32)
 	cpRaw, _ := (&v1.LiveSnapshot{Session: &v1.Session{Id: "s1", LastSeq: 10}, Running: true}).Marshal()
 	smRaw, _ := (&v1.Session{Id: "s1", Title: "wire session", LastSeq: 10, CurrentCheckpoint: cpRaw, Agent: v1.Agent_AGENT_CODEX}).Marshal()
 	dmRaw, _ := (&v1.DeviceMeta{Name: "my phone"}).Marshal()
 
+	e.HandleEvent(&corev1.Event{
+		NowMs: nowMs + 80,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId: machinesOp,
+			ResponseBytes: testrelay.MarshalListMachinesResp([]*v1.Machine{{
+				Id:     machine.id,
+				Online: true,
+				Meta:   sealWireObj(t, machine, dom, s1, sec, nil, mmRaw, devicesec.MachineMeta, machine.id, "", "", 1),
+			}}),
+		}},
+	})
+	e.HandleEvent(&corev1.Event{
+		NowMs: nowMs + 80,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId: sessionsOp,
+			ResponseBytes: testrelay.MarshalListSessionsResp([]*v1.RemoteSession{{
+				MachineId: machine.id,
+				SessionId: "s1",
+				LastSeq:   10,
+				Key:       sealWireObj(t, machine, dom, s1, sec, nil, sessSeed, devicesec.SessionKey, machine.id, "s1", "", 1),
+				Meta:      sealWireObj(t, machine, dom, s1, sec, nil, smRaw, devicesec.SessionMeta, machine.id, "s1", "", 1),
+			}}, nil),
+		}},
+	})
 	_, listsRes := e.HandleEvent(&corev1.Event{
 		NowMs: nowMs + 80,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: e.refreshOpID,
-				WireMachines: []*v1.Machine{{
-					Id:     machine.id,
-					Online: true,
-					Meta:   sealWireObj(t, machine, dom, s1, sec, nil, mmRaw, devicesec.MachineMeta, machine.id, "", "", 1),
-				}},
-				WireSessions: []*v1.RemoteSession{{
-					MachineId: machine.id,
-					SessionId: "s1",
-					LastSeq:   10,
-					Key:       sealWireObj(t, machine, dom, s1, sec, nil, sessSeed, devicesec.SessionKey, machine.id, "s1", "", 1),
-					Meta:      sealWireObj(t, machine, dom, s1, sec, nil, smRaw, devicesec.SessionMeta, machine.id, "s1", "", 1),
-				}},
-				WireDevices: []*v1.Device{{
-					Id:   phone.id,
-					Kind: v1.DeviceKind_DEVICE_KIND_CLIENT,
-					Meta: sealWireObj(t, phone, dom, s1, sec, nil, dmRaw, devicesec.DeviceMeta, "", "", phone.id, 1),
-				}},
-			},
-		},
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId: devicesOp,
+			ResponseBytes: testrelay.MarshalListDevicesResp([]*v1.Device{{
+				Id:   phone.id,
+				Kind: v1.DeviceKind_DEVICE_KIND_CLIENT,
+				Meta: sealWireObj(t, phone, dom, s1, sec, nil, dmRaw, devicesec.DeviceMeta, "", "", phone.id, 1),
+			}}),
+		}},
 	})
 	pumpSecurityEffects(t, e, phone, nowMs+80, listsRes)
 	if m := e.MachineEntry(machine.id); m == nil || m.Meta.GetHostname() != "host-a" {
@@ -409,10 +434,40 @@ func TestSyncSeedDemoLockOutAndWireEndToEndFlow(t *testing.T) {
 		t.Fatalf("expected decrypted session + checkpoint, got %+v", s)
 	}
 
-	// Watch session and feed 9 WireEvents in EventsPageFetched -> must trigger ONE CryptoBatch Verify (>8) and WriteStoredEvents.
+	// Unsigned demo envelopes MUST be rejected once SecurityConfigEvent has locked the engine.
+	unsignedFrame := testrelay.MarshalServerFrame(&v1.ServerFrame{
+		Kind: &v1.ServerFrame_MachineUpdated{
+			MachineUpdated: &v1.MachineUpdated{
+				Machine: &v1.Machine{
+					Id:     "unsigned-fake-m",
+					Online: true,
+					Meta:   &v1.Envelope{Ciphertext: (&v1.MachineMeta{Hostname: "evil", ProtocolVersion: PeerVersion}).AppendMarshal(nil)},
+				},
+			},
+		},
+	})
+	_, unsignedRes := e.HandleEvent(&corev1.Event{
+		NowMs: nowMs + 85,
+		Event: &corev1.Event_StreamRawFrame{StreamRawFrame: &corev1.StreamRawFrameEvent{LegId: legID, RawServerFrame: unsignedFrame}},
+	})
+	pumpSecurityEffects(t, e, phone, nowMs+85, unsignedRes)
+	if m := e.MachineEntry("unsigned-fake-m"); m != nil && (m.Meta != nil || !m.MetaBroken) {
+		t.Fatalf("expected unsigned envelope to be rejected after SecurityConfig, got %+v", m)
+	}
+
+	// Watch session and feed 10 WireEvents in GET_EVENTS RelayRpcResult -> must trigger ONE CryptoBatch Verify (>8) and WriteStoredEvents.
 	e.HandleEvent(&corev1.Event{NowMs: nowMs + 90, Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s1", Watched: true}}})
 	b := e.Buffer("s1")
-	e.HandleEvent(&corev1.Event{NowMs: nowMs + 90, Event: &corev1.Event_CacheEventsLoaded{CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{OpId: b.activeCacheOpID, SessionId: "s1"}}})
+	_, cacheDone := e.HandleEvent(&corev1.Event{NowMs: nowMs + 90, Event: &corev1.Event_CacheEventsLoaded{CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{OpId: b.activeCacheOpID, SessionId: "s1"}}})
+	var getEventsOp uint64
+	for _, ef := range cacheDone.Effects {
+		if r := ef.GetRelayRpc(); r != nil && r.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_EVENTS {
+			getEventsOp = r.OpId
+		}
+	}
+	if getEventsOp == 0 {
+		t.Fatalf("expected GET_EVENTS RelayRpc after cache load")
+	}
 	stored := make([]*v1.StoredEvent, 10)
 	for i := range stored {
 		seq := uint64(i + 1)
@@ -424,11 +479,10 @@ func TestSyncSeedDemoLockOutAndWireEndToEndFlow(t *testing.T) {
 	}
 	_, pageRes := e.HandleEvent(&corev1.Event{
 		NowMs: nowMs + 100,
-		Event: &corev1.Event_EventsPageFetched{
-			EventsPageFetched: &corev1.EventsPageFetchedEvent{
-				OpId:       b.activeFetchOpID,
-				SessionId:  "s1",
-				WireEvents: stored,
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId:          getEventsOp,
+				ResponseBytes: testrelay.MarshalGetEventsResp(stored, false),
 			},
 		},
 	})
@@ -438,7 +492,7 @@ func TestSyncSeedDemoLockOutAndWireEndToEndFlow(t *testing.T) {
 		if cb := ef.GetSecurityCryptoBatch(); cb != nil && len(cb.Items) == 10 {
 			sawBatchVerify = true
 		}
-		if cw := ef.GetCacheWrite(); cw != nil && cw.GetWriteStoredEvents() != nil && len(cw.GetWriteStoredEvents().Events) == 10 {
+		if cw := ef.GetCacheWrite(); cw != nil && cw.GetWriteStoredEvents() != nil && len(cw.GetWriteStoredEvents().RawEvents) == 10 {
 			sawWriteStored = true
 		}
 	}
@@ -446,7 +500,7 @@ func TestSyncSeedDemoLockOutAndWireEndToEndFlow(t *testing.T) {
 		t.Fatalf("expected batchVerify=%v writeStored=%v shown=%d", sawBatchVerify, sawWriteStored, len(e.Buffer("s1").ShownEvents()))
 	}
 
-	// Outbound command sealing + SealedResult validation.
+	// Outbound command sealing + SealedResult validation over RelayRpc FORWARD.
 	var reqID string
 	cmdStep := e.Run(func(ctx *StepContext) {
 		reqID, _ = e.SubmitCommand(ctx, SubmitCommandParams{
@@ -456,14 +510,18 @@ func TestSyncSeedDemoLockOutAndWireEndToEndFlow(t *testing.T) {
 		})
 	})
 	cmdEffs, _ := pumpSecurityEffects(t, e, phone, nowMs+110, cmdStep)
-	var dc *corev1.DispatchCommandEffect
+	var fwdRpc *corev1.RelayRpcEffect
 	for _, ef := range cmdEffs {
-		if got := ef.GetDispatchCommand(); got != nil && got.RequestId == reqID {
-			dc = got
+		if r := ef.GetRelayRpc(); r != nil && r.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_FORWARD {
+			fwdRpc = r
 		}
 	}
-	if dc == nil || dc.SealedEnvelope == nil {
-		t.Fatalf("expected DispatchCommandEffect with SealedEnvelope for %s (effs=%v)", reqID, cmdEffs)
+	if fwdRpc == nil {
+		t.Fatalf("expected FORWARD RelayRpcEffect for %s (effs=%v)", reqID, cmdEffs)
+	}
+	var fwdReq stdv1.ForwardRequest
+	if err := proto.Unmarshal(fwdRpc.RequestBytes, &fwdReq); err != nil || fwdReq.Command == nil {
+		t.Fatalf("expected ForwardRequest with sealed Command, err=%v", err)
 	}
 	prep := e.inFlightCmds[reqID]
 	var resRaw []byte
@@ -475,15 +533,10 @@ func TestSyncSeedDemoLockOutAndWireEndToEndFlow(t *testing.T) {
 	sealedRes := sealWireObj(t, machine, dom, s1, sec, nil, resRaw, devicesec.Result, machine.id, "s1", reqID, 0)
 	_, outRes := e.HandleEvent(&corev1.Event{
 		NowMs: nowMs + 120,
-		Event: &corev1.Event_CommandOutcome{
-			CommandOutcome: &corev1.CommandOutcomeEvent{
-				RequestId:    reqID,
-				AttemptId:    dc.AttemptId,
-				Source:       corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
-				AttemptBound: true,
-				OuterOutcome: "executed",
-				OuterReason:  "ok",
-				SealedResult: sealedRes,
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId:          fwdRpc.OpId,
+				ResponseBytes: testrelay.MarshalForwardResp(fwdReq.AttemptId, "executed", "ok", sealedRes),
 			},
 		},
 	})
@@ -502,14 +555,18 @@ func TestSyncSeedDemoLockOutAndWireEndToEndFlow(t *testing.T) {
 		})
 	})
 	badEffs, _ := pumpSecurityEffects(t, e, phone, nowMs+121, badStep)
-	var badDC *corev1.DispatchCommandEffect
+	var badFwd *corev1.RelayRpcEffect
 	for _, ef := range badEffs {
-		if got := ef.GetDispatchCommand(); got != nil && got.RequestId == badReqID {
-			badDC = got
+		if r := ef.GetRelayRpc(); r != nil && r.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_FORWARD {
+			badFwd = r
 		}
 	}
-	if badDC == nil {
-		t.Fatalf("expected DispatchCommandEffect for %s", badReqID)
+	if badFwd == nil {
+		t.Fatalf("expected FORWARD RelayRpcEffect for %s", badReqID)
+	}
+	var badFwdReq stdv1.ForwardRequest
+	if err := proto.Unmarshal(badFwd.RequestBytes, &badFwdReq); err != nil {
+		t.Fatal(err)
 	}
 	badPrep := e.inFlightCmds[badReqID]
 	var badResRaw []byte
@@ -521,15 +578,10 @@ func TestSyncSeedDemoLockOutAndWireEndToEndFlow(t *testing.T) {
 	badSealed := sealWireObj(t, machine, dom, s1, sec, nil, badResRaw, devicesec.Result, machine.id, "s1", badReqID, 0)
 	_, badOutRes := e.HandleEvent(&corev1.Event{
 		NowMs: nowMs + 125,
-		Event: &corev1.Event_CommandOutcome{
-			CommandOutcome: &corev1.CommandOutcomeEvent{
-				RequestId:    badReqID,
-				AttemptId:    badDC.AttemptId,
-				Source:       corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
-				AttemptBound: true,
-				OuterOutcome: "executed",
-				OuterReason:  "ok",
-				SealedResult: badSealed,
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId:          badFwd.OpId,
+				ResponseBytes: testrelay.MarshalForwardResp(badFwdReq.AttemptId, "executed", "ok", badSealed),
 			},
 		},
 	})
@@ -544,28 +596,29 @@ func TestSyncSeedDemoLockOutAndWireEndToEndFlow(t *testing.T) {
 	})
 	var getPrefsOp uint64
 	for _, ef := range prefsStep.Effects {
-		if rpc := ef.GetRpc(); rpc != nil && rpc.GetGetAccountPrefs() != nil {
+		if rpc := ef.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_ACCOUNT_PREFS {
 			getPrefsOp = rpc.OpId
 		}
 	}
 	_, casGetRes := e.HandleEvent(&corev1.Event{
 		NowMs: nowMs + 130,
-		Event: &corev1.Event_AccountPrefsFetched{
-			AccountPrefsFetched: &corev1.AccountPrefsFetchedEvent{
-				OpId:      getPrefsOp,
-				WirePrefs: &v1.AccountPrefsObject{ObjectId: ProjectPrefsObjectID, Revision: 0},
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId:          getPrefsOp,
+				ResponseBytes: testrelay.MarshalGetPrefsResp(&v1.AccountPrefsObject{ObjectId: ProjectPrefsObjectID, Revision: 0}),
 			},
 		},
 	})
 	casEffs, _ := pumpSecurityEffects(t, e, phone, nowMs+130, casGetRes)
-	var putRpc *corev1.PutAccountPrefsRpc
+	var putReqBytes []byte
 	for _, ef := range casEffs {
-		if rpc := ef.GetRpc(); rpc != nil && rpc.GetPutAccountPrefs() != nil {
-			putRpc = rpc.GetPutAccountPrefs()
+		if rpc := ef.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_PUT_ACCOUNT_PREFS {
+			putReqBytes = rpc.RequestBytes
 		}
 	}
-	if putRpc == nil || putRpc.SealedEnvelope == nil {
-		t.Fatalf("expected PutAccountPrefsRpc with SealedEnvelope")
+	var putReq stdv1.PutAccountPrefsRequest
+	if len(putReqBytes) == 0 || proto.Unmarshal(putReqBytes, &putReq) != nil || putReq.Envelope == nil {
+		t.Fatalf("expected PUT_ACCOUNT_PREFS RelayRpc with sealed Envelope")
 	}
 }
 
@@ -647,20 +700,12 @@ func TestSyncWireDirectEventsSenderVerification(t *testing.T) {
 	}
 	h.step(&corev1.Event{Event: &corev1.Event_EntropyProvided{EntropyProvided: &corev1.EntropyProvided{RandomBytes: detEntropy}}})
 
+	h.eng.secEngine.SetAuthToken("tok-1", h.now+3*24*3600_000)
 	startRes := h.step(&corev1.Event{
 		Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}},
 	})
-	var tokenOp uint64
-	for _, ef := range startRes.Effects {
-		if et := ef.GetEnsureToken(); et != nil {
-			tokenOp = et.OpId
-		}
-	}
-	tokRes := h.step(&corev1.Event{
-		Event: &corev1.Event_TokenResult{TokenResult: &corev1.TokenResultEvent{OpId: tokenOp, Token: "tok-1", ExpiresMs: h.now + 3_600_000}},
-	})
 	var legID uint64
-	for _, ef := range tokRes.Effects {
+	for _, ef := range startRes.Effects {
 		if os := ef.GetOpenStream(); os != nil {
 			legID = os.LegId
 		}
@@ -925,28 +970,52 @@ func TestSyncWireDirectEventsSenderVerification(t *testing.T) {
 	mmRaw, _ := (&v1.MachineMeta{Hostname: "ws-direct", ProtocolVersion: PeerVersion}).Marshal()
 	sessSeed := bytes.Repeat([]byte{0x42}, 32)
 	smRaw, _ := (&v1.Session{Id: sid, Cwd: "/tmp/proj", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING, LastSeq: 1}).Marshal()
-	h.eng.Run(func(ctx *StepContext) {
+	refreshStep := h.eng.Run(func(ctx *StepContext) {
 		h.eng.startRefresh(ctx)
+	})
+	var mOp, sOp, dOp uint64
+	for _, ef := range refreshStep.Effects {
+		if r := ef.GetRelayRpc(); r != nil {
+			switch r.Method {
+			case corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_MACHINES:
+				mOp = r.OpId
+			case corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS:
+				sOp = r.OpId
+			case corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_DEVICES:
+				dOp = r.OpId
+			}
+		}
+	}
+	h.eng.HandleEvent(&corev1.Event{
+		NowMs: h.now,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId: mOp,
+			ResponseBytes: testrelay.MarshalListMachinesResp([]*v1.Machine{{
+				Id:     machine.id,
+				Online: true,
+				Meta:   sealWireObj(t, machine, h.domain, s2, sec, nil, mmRaw, devicesec.MachineMeta, machine.id, "", "", 1),
+			}}),
+		}},
+	})
+	h.eng.HandleEvent(&corev1.Event{
+		NowMs: h.now,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId: sOp,
+			ResponseBytes: testrelay.MarshalListSessionsResp([]*v1.RemoteSession{{
+				MachineId: machine.id,
+				SessionId: sid,
+				LastSeq:   1,
+				Key:       sealWireObj(t, machine, h.domain, s2, sec, nil, sessSeed, devicesec.SessionKey, machine.id, sid, "", 1),
+				Meta:      sealWireObj(t, machine, h.domain, s2, sec, nil, smRaw, devicesec.SessionMeta, machine.id, sid, "", 1),
+			}}, nil),
+		}},
 	})
 	_, listsRes := h.eng.HandleEvent(&corev1.Event{
 		NowMs: h.now,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: h.eng.refreshOpID,
-				WireMachines: []*v1.Machine{{
-					Id:     machine.id,
-					Online: true,
-					Meta:   sealWireObj(t, machine, h.domain, s2, sec, nil, mmRaw, devicesec.MachineMeta, machine.id, "", "", 1),
-				}},
-				WireSessions: []*v1.RemoteSession{{
-					MachineId: machine.id,
-					SessionId: sid,
-					LastSeq:   1,
-					Key:       sealWireObj(t, machine, h.domain, s2, sec, nil, sessSeed, devicesec.SessionKey, machine.id, sid, "", 1),
-					Meta:      sealWireObj(t, machine, h.domain, s2, sec, nil, smRaw, devicesec.SessionMeta, machine.id, sid, "", 1),
-				}},
-			},
-		},
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId:          dOp,
+			ResponseBytes: testrelay.MarshalListDevicesResp(nil),
+		}},
 	})
 	pumpSecurityEffects(t, h.eng, phone, h.now, listsRes)
 	h.step(&corev1.Event{Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: sid, Watched: true}}})
@@ -958,10 +1027,10 @@ func TestSyncWireDirectEventsSenderVerification(t *testing.T) {
 	badRes := h.step(&corev1.Event{
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId:     machine.id,
-				SessionId:     sid,
-				PcId:          h.readPCID,
-				WireEnvelopes: []*v1.Envelope{badEnv},
+				MachineId:    machine.id,
+				SessionId:    sid,
+				PcId:         h.readPCID,
+				RawEnvelopes: testrelay.MustRawSlice([]*v1.Envelope{badEnv}),
 			},
 		},
 	})
@@ -974,10 +1043,10 @@ func TestSyncWireDirectEventsSenderVerification(t *testing.T) {
 	goodRes := h.step(&corev1.Event{
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId:     machine.id,
-				SessionId:     sid,
-				PcId:          h.readPCID,
-				WireEnvelopes: []*v1.Envelope{goodEnv},
+				MachineId:    machine.id,
+				SessionId:    sid,
+				PcId:         h.readPCID,
+				RawEnvelopes: testrelay.MustRawSlice([]*v1.Envelope{goodEnv}),
 			},
 		},
 	})
@@ -1001,37 +1070,37 @@ func TestSyncWireDirectEventsSenderVerification(t *testing.T) {
 	}).Effects
 	var rpcOp uint64
 	for _, eff := range authEffs {
-		if sr := eff.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+		if sr := eff.GetRelayRpc(); sr != nil && sr.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SECURITY_STATES {
 			rpcOp = sr.OpId
 		}
 	}
 	if rpcOp == 0 || h.eng.activeSecOpID == 0 {
-		t.Fatalf("expected CoordAuthorize with bootstrapped secEngine to emit SecurityRpc GET_SECURITY_STATES, got rpcOp=%d activeSecOpID=%d", rpcOp, h.eng.activeSecOpID)
+		t.Fatalf("expected CoordAuthorize with bootstrapped secEngine to emit RelayRpc GET_SECURITY_STATES, got rpcOp=%d activeSecOpID=%d", rpcOp, h.eng.activeSecOpID)
 	}
-	// Stale SecurityRpcResultEvent must not clear activeSecOpID.
+	// Stale RelayRpcResultEvent must not clear activeSecOpID.
 	h.step(&corev1.Event{
-		Event: &corev1.Event_SecurityRpcResult{
-			SecurityRpcResult: &corev1.SecurityRpcResultEvent{
-				OpId:        999999,
-				Error:       "stale",
-				ConnectCode: 14,
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId:              999999,
+				DiagnosticMessage: "stale",
+				ConnectCode:       14,
 			},
 		},
 	})
 	if h.eng.activeSecOpID == 0 {
-		t.Fatalf("expected stale SecurityRpcResultEvent to be ignored cleanly")
+		t.Fatalf("expected stale RelayRpcResultEvent to be ignored cleanly")
 	}
 	h.step(&corev1.Event{
-		Event: &corev1.Event_SecurityRpcResult{
-			SecurityRpcResult: &corev1.SecurityRpcResultEvent{
-				OpId:        rpcOp,
-				Error:       "sync failed",
-				ConnectCode: 14,
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId:              rpcOp,
+				DiagnosticMessage: "sync failed",
+				ConnectCode:       14,
 			},
 		},
 	})
 	if h.eng.activeSecOpID != 0 {
-		t.Fatalf("expected failed SecurityRpcResultEvent to clear activeSecOpID, got %d", h.eng.activeSecOpID)
+		t.Fatalf("expected failed RelayRpcResultEvent to clear activeSecOpID, got %d", h.eng.activeSecOpID)
 	}
 }
 
@@ -1097,17 +1166,17 @@ func TestInitializedSyncFailureClosesAuthorizingGate(t *testing.T) {
 			},
 		},
 	})
+	e.secEngine.SetAuthToken("tok-auth-gate", nowMs+3*24*3600_000)
 	_, startRes := e.HandleEvent(&corev1.Event{NowMs: nowMs + 10, Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}}})
 	_, fgRes := e.HandleEvent(&corev1.Event{NowMs: nowMs + 10, Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_FOREGROUND}}})
-	_, tokRes := e.HandleEvent(&corev1.Event{NowMs: nowMs + 10, Event: &corev1.Event_TokenResult{TokenResult: &corev1.TokenResultEvent{OpId: e.activeTokenOpID, Token: "tok-auth-gate"}}})
 	var legID uint64
 	var initSyncOp uint64
-	for _, effs := range [][]*corev1.Effect{startRes.Effects, fgRes.Effects, tokRes.Effects} {
+	for _, effs := range [][]*corev1.Effect{startRes.Effects, fgRes.Effects} {
 		for _, ef := range effs {
 			if os := ef.GetOpenStream(); os != nil {
 				legID = os.LegId
 			}
-			if sr := ef.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+			if sr := ef.GetRelayRpc(); sr != nil && sr.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SECURITY_STATES {
 				initSyncOp = sr.OpId
 			}
 		}
@@ -1117,8 +1186,8 @@ func TestInitializedSyncFailureClosesAuthorizingGate(t *testing.T) {
 		_, initSyncRes := e.HandleEvent(&corev1.Event{
 			NowMs:  nowMs + 15,
 			MonoMs: 15,
-			Event: &corev1.Event_SecurityRpcResult{
-				SecurityRpcResult: &corev1.SecurityRpcResultEvent{
+			Event: &corev1.Event_RelayRpcResult{
+				RelayRpcResult: &corev1.RelayRpcResultEvent{
 					OpId:          initSyncOp,
 					ResponseBytes: respBytes,
 				},
@@ -1142,24 +1211,24 @@ func TestInitializedSyncFailureClosesAuthorizingGate(t *testing.T) {
 	})
 	var rpcOp1 uint64
 	for _, ef := range tick1.Effects {
-		if sr := ef.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+		if sr := ef.GetRelayRpc(); sr != nil && sr.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SECURITY_STATES {
 			rpcOp1 = sr.OpId
 		}
 	}
 	if rpcOp1 == 0 {
-		t.Fatal("expected DIRECT_ENGINE tick via CoordAuthorize to emit GET_SECURITY_STATES SecurityRpc")
+		t.Fatal("expected DIRECT_ENGINE tick via CoordAuthorize to emit GET_SECURITY_STATES RelayRpc")
 	}
 
 	// Simulate transient SyncStates failure on already-initialized client.
 	_, errRes := e.HandleEvent(&corev1.Event{
 		NowMs:  nowMs + 25_100,
 		MonoMs: 25_100,
-		Event: &corev1.Event_SecurityRpcResult{
-			SecurityRpcResult: &corev1.SecurityRpcResultEvent{
-				OpId:         rpcOp1,
-				ConnectCode:  14,
-				Error:        "transient sync failure",
-				NetworkError: true,
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId:              rpcOp1,
+				ConnectCode:       14,
+				DiagnosticMessage: "transient sync failure",
+				NetworkError:      true,
 			},
 		},
 	})
@@ -1178,7 +1247,7 @@ func TestInitializedSyncFailureClosesAuthorizingGate(t *testing.T) {
 	})
 	var rpcOp2 uint64
 	for _, ef := range tick2.Effects {
-		if sr := ef.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+		if sr := ef.GetRelayRpc(); sr != nil && sr.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SECURITY_STATES {
 			rpcOp2 = sr.OpId
 		}
 	}
@@ -1236,29 +1305,55 @@ func TestCommandRetryResealsEnvelopeAfterContentEpochRotation(t *testing.T) {
 		FloorMs:  nowMs,
 	}, "tok-cmd-reseal")
 
-	e.HandleEvent(&corev1.Event{NowMs: nowMs + 10, Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}}})
+	e.secEngine.SetAuthToken("tok-cmd-reseal", nowMs+3*24*3600_000)
+	e.relayEpoch = "epoch-reseal-1"
+	_, startRes := e.HandleEvent(&corev1.Event{NowMs: nowMs + 10, Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}}})
 	e.HandleEvent(&corev1.Event{NowMs: nowMs + 10, Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_FOREGROUND}}})
-	_, tokRes := e.HandleEvent(&corev1.Event{NowMs: nowMs + 10, Event: &corev1.Event_TokenResult{TokenResult: &corev1.TokenResultEvent{OpId: e.activeTokenOpID, Token: "tok-cmd-reseal"}}})
 	var legID uint64
-	for _, ef := range tokRes.Effects {
+	for _, ef := range startRes.Effects {
 		if os := ef.GetOpenStream(); os != nil {
 			legID = os.LegId
 		}
 	}
-	e.HandleEvent(&corev1.Event{NowMs: nowMs + 20, Event: &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{LegId: legID}}})
+	_, readyRes := e.HandleEvent(&corev1.Event{NowMs: nowMs + 20, Event: &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{LegId: legID}}})
+	var mOp, sOp, dOp uint64
+	for _, ef := range readyRes.Effects {
+		if r := ef.GetRelayRpc(); r != nil {
+			switch r.Method {
+			case corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_MACHINES:
+				mOp = r.OpId
+			case corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS:
+				sOp = r.OpId
+			case corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_DEVICES:
+				dOp = r.OpId
+			}
+		}
+	}
 	mmRaw, _ := (&v1.MachineMeta{Hostname: "host-reseal", ProtocolVersion: PeerVersion}).Marshal()
+	e.HandleEvent(&corev1.Event{
+		NowMs: nowMs + 25,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId: mOp,
+			ResponseBytes: testrelay.MarshalListMachinesResp([]*v1.Machine{{
+				Id:     machine.id,
+				Online: true,
+				Meta:   sealWireObj(t, machine, dom, s1, sec1, nil, mmRaw, devicesec.MachineMeta, machine.id, "", "", 1),
+			}}),
+		}},
+	})
+	e.HandleEvent(&corev1.Event{
+		NowMs: nowMs + 25,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId:          sOp,
+			ResponseBytes: testrelay.MarshalListSessionsResp(nil, nil),
+		}},
+	})
 	_, listsRes := e.HandleEvent(&corev1.Event{
 		NowMs: nowMs + 25,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: e.refreshOpID,
-				WireMachines: []*v1.Machine{{
-					Id:     machine.id,
-					Online: true,
-					Meta:   sealWireObj(t, machine, dom, s1, sec1, nil, mmRaw, devicesec.MachineMeta, machine.id, "", "", 1),
-				}},
-			},
-		},
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId:          dOp,
+			ResponseBytes: testrelay.MarshalListDevicesResp(nil),
+		}},
 	})
 	pumpSecurityEffects(t, e, phone, nowMs+25, listsRes)
 
@@ -1272,16 +1367,20 @@ func TestCommandRetryResealsEnvelopeAfterContentEpochRotation(t *testing.T) {
 		})
 	})
 	eff1, _ := pumpSecurityEffects(t, e, phone, nowMs+30, subRes)
-	var dc1 *corev1.DispatchCommandEffect
+	var fwd1 *corev1.RelayRpcEffect
 	for _, ef := range eff1 {
-		if got := ef.GetDispatchCommand(); got != nil && got.RequestId == reqID {
-			dc1 = got
+		if r := ef.GetRelayRpc(); r != nil && r.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_FORWARD {
+			fwd1 = r
 		}
 	}
-	if dc1 == nil || dc1.SealedEnvelope == nil {
-		t.Fatalf("expected initial DispatchCommandEffect with SealedEnvelope (effs=%v)", eff1)
+	if fwd1 == nil {
+		t.Fatalf("expected initial FORWARD RelayRpcEffect (effs=%v)", eff1)
 	}
-	ct1, err := security.FromProtoEnvelope(dc1.SealedEnvelope)
+	var fwdReq1 stdv1.ForwardRequest
+	if err := proto.Unmarshal(fwd1.RequestBytes, &fwdReq1); err != nil || fwdReq1.Command == nil {
+		t.Fatalf("unmarshal initial ForwardRequest: %v", err)
+	}
+	ct1, err := security.FromProtoEnvelope(testrelay.FromStdEnv(fwdReq1.Command))
 	if err != nil {
 		t.Fatalf("parse initial envelope: %v", err)
 	}
@@ -1300,7 +1399,7 @@ func TestCommandRetryResealsEnvelopeAfterContentEpochRotation(t *testing.T) {
 		Event: &corev1.Event_CommandOutcome{
 			CommandOutcome: &corev1.CommandOutcomeEvent{
 				RequestId:     reqID,
-				AttemptId:     dc1.AttemptId,
+				AttemptId:     fwdReq1.AttemptId,
 				Source:        corev1.OutcomeSource_OUTCOME_SOURCE_TRANSPORT,
 				TransportCode: errCodeUnavailable,
 				NotForwarded:  true,
@@ -1354,19 +1453,20 @@ func TestCommandRetryResealsEnvelopeAfterContentEpochRotation(t *testing.T) {
 		Event:  &corev1.Event_TimerFired{TimerFired: &corev1.TimerFiredEvent{TimerId: retryTimerID, Kind: corev1.TimerKind_TIMER_KIND_COMMAND_RETRY, Key: reqID}},
 	})
 	eff2, _ := pumpSecurityEffects(t, e, phone, nowMs+40+retryDelay, retryStep)
-	var dc2 *corev1.DispatchCommandEffect
+	var fwd2 *corev1.RelayRpcEffect
 	for _, ef := range eff2 {
-		if got := ef.GetDispatchCommand(); got != nil && got.RequestId == reqID {
-			dc2 = got
+		if r := ef.GetRelayRpc(); r != nil && r.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_FORWARD {
+			fwd2 = r
 		}
 	}
-	if dc2 == nil || dc2.SealedEnvelope == nil {
-		t.Fatalf("expected retried DispatchCommandEffect with SealedEnvelope")
+	if fwd2 == nil {
+		t.Fatalf("expected retried FORWARD RelayRpcEffect")
 	}
-	if dc2.RequestId != dc1.RequestId || dc2.DeadlineMs != dc1.DeadlineMs || !bytes.Equal(dc2.CommandBytes, dc1.CommandBytes) {
-		t.Fatalf("retry must preserve RequestId/DeadlineMs/CommandBytes, got dc2=%+v vs dc1=%+v", dc2, dc1)
+	var fwdReq2 stdv1.ForwardRequest
+	if err := proto.Unmarshal(fwd2.RequestBytes, &fwdReq2); err != nil || fwdReq2.Command == nil {
+		t.Fatalf("unmarshal retried ForwardRequest: %v", err)
 	}
-	ct2, err := security.FromProtoEnvelope(dc2.SealedEnvelope)
+	ct2, err := security.FromProtoEnvelope(testrelay.FromStdEnv(fwdReq2.Command))
 	if err != nil {
 		t.Fatalf("parse retried envelope: %v", err)
 	}
@@ -1438,19 +1538,22 @@ func TestSessionByIDDecryptFailureIsRetryableNotMissing(t *testing.T) {
 			Event: &corev1.Event_FetchSession{FetchSession: &corev1.FetchSessionAction{SessionId: sid}},
 		})
 		for _, ef := range res.Effects {
-			if rpc := ef.GetRpc(); rpc != nil && rpc.GetFetchSessionById() != nil && rpc.GetFetchSessionById().SessionId == sid {
+			if rpc := ef.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS {
 				return rpc.OpId
 			}
 		}
-		t.Fatalf("expected FetchSessionById RPC for %s", sid)
+		t.Fatalf("expected LIST_REMOTE_SESSIONS RelayRpc for %s", sid)
 		return 0
 	}
 
-	// 1. Server returns empty WireSession with no error -> missing (LookupFailed=true, LookupErrorText=nil).
+	// 1. Server returns empty list with no error -> missing (LookupFailed=true, LookupErrorText=nil).
 	opEmpty := fetchOp("s-missing")
 	e.HandleEvent(&corev1.Event{
 		NowMs: nowMs + 50,
-		Event: &corev1.Event_SessionByIdFetched{SessionByIdFetched: &corev1.SessionByIdFetchedEvent{OpId: opEmpty}},
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId:          opEmpty,
+			ResponseBytes: testrelay.MarshalListSessionsResp(nil, nil),
+		}},
 	})
 	snapMissing := e.SessionSnapshot("s-missing")
 	if !snapMissing.LookupFailed || !snapMissing.LookupError.IsZero() || snapMissing.Found {
@@ -1465,14 +1568,14 @@ func TestSessionByIDDecryptFailureIsRetryableNotMissing(t *testing.T) {
 	opBad := fetchOp("s-bad")
 	_, stepBad := e.HandleEvent(&corev1.Event{
 		NowMs: nowMs + 60,
-		Event: &corev1.Event_SessionByIdFetched{
-			SessionByIdFetched: &corev1.SessionByIdFetchedEvent{
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
 				OpId: opBad,
-				WireSession: &v1.RemoteSession{
+				ResponseBytes: testrelay.MarshalListSessionsResp([]*v1.RemoteSession{{
 					SessionId: "s-bad",
 					MachineId: machine.id,
 					Meta:      badEnv,
-				},
+				}}, nil),
 			},
 		},
 	})
@@ -1564,10 +1667,10 @@ func TestProjectPrefsRecoveryHistoryUnavailableAllowsRebuild(t *testing.T) {
 		Lease:             leaseRaw,
 	})
 	pumpSecurityEffects(t, e, newPhone, nowMs, initRes)
-	e.HandleEvent(&corev1.Event{NowMs: nowMs, Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}}})
-	_, tokRes := e.HandleEvent(&corev1.Event{NowMs: nowMs, Event: &corev1.Event_TokenResult{TokenResult: &corev1.TokenResultEvent{OpId: e.activeTokenOpID, Token: "tok"}}})
+	e.secEngine.SetAuthToken("tok", nowMs+3*24*3600_000)
+	_, startRes := e.HandleEvent(&corev1.Event{NowMs: nowMs, Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}}})
 	var legID uint64
-	for _, ef := range tokRes.Effects {
+	for _, ef := range startRes.Effects {
 		if os := ef.GetOpenStream(); os != nil {
 			legID = os.LegId
 		}
@@ -1598,31 +1701,32 @@ func TestProjectPrefsRecoveryHistoryUnavailableAllowsRebuild(t *testing.T) {
 	})
 	var getOp uint64
 	for _, ef := range casStep.Effects {
-		if rpc := ef.GetRpc(); rpc != nil && rpc.GetGetAccountPrefs() != nil {
+		if rpc := ef.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_ACCOUNT_PREFS {
 			getOp = rpc.OpId
 		}
 	}
 	if getOp == 0 {
-		t.Fatal("expected GetAccountPrefs RPC for prefs CAS")
+		t.Fatal("expected GET_ACCOUNT_PREFS RelayRpc for prefs CAS")
 	}
 	_, getRes := e.HandleEvent(&corev1.Event{
 		NowMs: nowMs + 20,
-		Event: &corev1.Event_AccountPrefsFetched{
-			AccountPrefsFetched: &corev1.AccountPrefsFetchedEvent{
-				OpId:      getOp,
-				WirePrefs: &v1.AccountPrefsObject{ObjectId: ProjectPrefsObjectID, Revision: 3, Envelope: preRecEnv},
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId:          getOp,
+				ResponseBytes: testrelay.MarshalGetPrefsResp(&v1.AccountPrefsObject{ObjectId: ProjectPrefsObjectID, Revision: 3, Envelope: preRecEnv}),
 			},
 		},
 	})
 	casEffs, _ := pumpSecurityEffects(t, e, newPhone, nowMs+20, getRes)
-	var putRpc *corev1.PutAccountPrefsRpc
+	var putReqBytes []byte
 	for _, ef := range casEffs {
-		if rpc := ef.GetRpc(); rpc != nil && rpc.GetPutAccountPrefs() != nil {
-			putRpc = rpc.GetPutAccountPrefs()
+		if rpc := ef.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_PUT_ACCOUNT_PREFS {
+			putReqBytes = rpc.RequestBytes
 		}
 	}
-	if putRpc == nil || putRpc.ExpectedRevision != 3 || putRpc.SealedEnvelope == nil {
-		t.Fatalf("expected rebuilt PutAccountPrefsRpc at ExpectedRevision=3, got %+v", putRpc)
+	var putReq stdv1.PutAccountPrefsRequest
+	if len(putReqBytes) == 0 || proto.Unmarshal(putReqBytes, &putReq) != nil || putReq.ExpectedRevision != 3 || putReq.Envelope == nil {
+		t.Fatalf("expected rebuilt PUT_ACCOUNT_PREFS RelayRpc at ExpectedRevision=3, got %+v", &putReq)
 	}
 
 	// 3. A genuinely corrupted ciphertext in the current epoch must still be rejected as Broken.
@@ -1634,22 +1738,22 @@ func TestProjectPrefsRecoveryHistoryUnavailableAllowsRebuild(t *testing.T) {
 	})
 	var badGetOp uint64
 	for _, ef := range badStep.Effects {
-		if rpc := ef.GetRpc(); rpc != nil && rpc.GetGetAccountPrefs() != nil {
+		if rpc := ef.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_ACCOUNT_PREFS {
 			badGetOp = rpc.OpId
 		}
 	}
 	_, badGetRes := e.HandleEvent(&corev1.Event{
 		NowMs: nowMs + 30,
-		Event: &corev1.Event_AccountPrefsFetched{
-			AccountPrefsFetched: &corev1.AccountPrefsFetchedEvent{
-				OpId:      badGetOp,
-				WirePrefs: &v1.AccountPrefsObject{ObjectId: ProjectPrefsObjectID, Revision: 4, Envelope: badEnv},
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId:          badGetOp,
+				ResponseBytes: testrelay.MarshalGetPrefsResp(&v1.AccountPrefsObject{ObjectId: ProjectPrefsObjectID, Revision: 4, Envelope: badEnv}),
 			},
 		},
 	})
 	badEffs, _ := pumpSecurityEffects(t, e, newPhone, nowMs+30, badGetRes)
 	for _, ef := range badEffs {
-		if rpc := ef.GetRpc(); rpc != nil && rpc.GetPutAccountPrefs() != nil {
+		if rpc := ef.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_PUT_ACCOUNT_PREFS {
 			t.Fatal("tampered ProjectPrefs must not be overwritten by CAS")
 		}
 	}
@@ -1695,5 +1799,97 @@ func TestBuildAuthoritativeDevicesSeparatesTrustedAndRegistered(t *testing.T) {
 		if d == nil || !d.Trusted || d.Registered {
 			t.Fatalf("expected unregistered candidate %s to have Trusted=true, Registered=false, got %+v", id, d)
 		}
+	}
+}
+
+// TestDemoSeedThenSecurityConfigThenClearRejectsUnsignedEnvelope verifies review Must-Fix #2:
+// seeding a demo world, configuring real security, and clearing local security (which resets
+// secEngine.securityLocked) MUST NEVER reopen an unsigned-envelope bypass.
+func TestDemoSeedThenSecurityConfigThenClearRejectsUnsignedEnvelope(t *testing.T) {
+	nowMs := int64(1_791_078_000_000)
+	phone := newSyncTestActor(t, 31)
+	e := NewEngine()
+
+	// 1. Seed a demo world before any security config.
+	e.HandleEvent(&corev1.Event{
+		NowMs: nowMs,
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Machines: []*corev1.DemoMachine{{
+					MachineId: "demo-m1",
+					Online:    true,
+					RawMeta:   (&v1.MachineMeta{Hostname: "DemoMac", ProtocolVersion: PeerVersion}).AppendMarshal(nil),
+				}},
+			},
+		},
+	})
+	if !e.demoMode {
+		t.Fatalf("expected demoMode=true after SeedDemoWorld")
+	}
+
+	// 2. Configure real security (must clear demoMode immediately).
+	e.HandleEvent(&corev1.Event{
+		NowMs: nowMs + 10,
+		Event: &corev1.Event_SecurityConfig{
+			SecurityConfig: &corev1.SecurityConfigEvent{
+				Account:      phone.id,
+				DeviceId:     phone.id,
+				Server:       "https://relay.example.com",
+				InlineCrypto: true,
+				Foreground:   true,
+			},
+		},
+	})
+	if e.demoMode {
+		t.Fatalf("expected SecurityConfigEvent to clear demoMode")
+	}
+
+	// 3. Clear local security (resets secEngine.securityLocked back to false).
+	_, clearRes := e.HandleEvent(&corev1.Event{
+		NowMs: nowMs + 20,
+		Event: &corev1.Event_SecurityAction{
+			SecurityAction: &corev1.SecurityWorkflowActionEvent{
+				ActionId: 99,
+				Action:   &corev1.SecurityWorkflowActionEvent_ClearSecurity{ClearSecurity: &corev1.SecurityActionEmpty{}},
+			},
+		},
+	})
+	for _, eff := range clearRes.Effects {
+		if st := eff.GetSecurityStorage(); st != nil {
+			e.HandleEvent(&corev1.Event{
+				NowMs: nowMs + 25,
+				Event: &corev1.Event_SecurityStorageResult{
+					SecurityStorageResult: &corev1.SecurityStorageResultEvent{OpId: st.OpId},
+				},
+			})
+		}
+	}
+	if e.demoMode {
+		t.Fatalf("expected demoMode to stay false after ClearSecurity")
+	}
+
+	// 4. Feed an unsigned envelope through StreamRawFrame; it must NEVER be accepted as valid.
+	e.running = true
+	e.legID = 1
+	unsignedFrame := testrelay.MarshalServerFrame(&v1.ServerFrame{
+		Kind: &v1.ServerFrame_MachineUpdated{
+			MachineUpdated: &v1.MachineUpdated{
+				Machine: &v1.Machine{
+					Id:     "evil-unsigned-m",
+					Online: true,
+					Meta:   &v1.Envelope{Ciphertext: (&v1.MachineMeta{Hostname: "EvilHost", ProtocolVersion: PeerVersion}).AppendMarshal(nil)},
+				},
+			},
+		},
+	})
+	_, res := e.HandleEvent(&corev1.Event{
+		NowMs: nowMs + 30,
+		Event: &corev1.Event_StreamRawFrame{
+			StreamRawFrame: &corev1.StreamRawFrameEvent{LegId: 1, RawServerFrame: unsignedFrame},
+		},
+	})
+	pumpSecurityEffects(t, e, phone, nowMs+30, res)
+	if m := e.MachineEntry("evil-unsigned-m"); m != nil && (m.Meta != nil || !m.MetaBroken) {
+		t.Fatalf("unsigned envelope MUST be rejected after SeedDemoWorld -> SecurityConfig -> ClearSecurity, got %+v", m)
 	}
 }

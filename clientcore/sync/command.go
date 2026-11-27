@@ -38,6 +38,26 @@ func (d *DispatchState) HasPrior() bool {
 	return d.PriorUnknown || d.Possible > 0
 }
 
+// cmdOutcome wraps a corev1.CommandOutcomeEvent with its decoded wire CommandResult
+// and Envelope so internal relay/security paths avoid redundant re-serialization.
+type cmdOutcome struct {
+	*corev1.CommandOutcomeEvent
+	Result       *v1.CommandResult
+	SealedResult *v1.Envelope
+}
+
+func cloneCmdOutcome(ev *cmdOutcome) cmdOutcome {
+	var inner corev1.CommandOutcomeEvent
+	if ev.CommandOutcomeEvent != nil {
+		inner = *ev.CommandOutcomeEvent
+	}
+	return cmdOutcome{
+		CommandOutcomeEvent: &inner,
+		Result:              ev.Result,
+		SealedResult:        ev.SealedResult,
+	}
+}
+
 // CommandLeg tracks one in-flight transport attempt leg (direct vs relay) of a PreparedCommand.
 type CommandLeg struct {
 	AttemptID string
@@ -45,7 +65,7 @@ type CommandLeg struct {
 	TicketID  uint64
 	HandedOff bool
 	Done      bool
-	Outcome   *corev1.CommandOutcomeEvent
+	Outcome   *cmdOutcome
 }
 
 // PreparedCommand preserves a fixed RequestID, DeadlineMs, and serialized command payload across retries.
@@ -209,9 +229,7 @@ func (e *Engine) CancelCommand(ctx *StepContext, requestID string) {
 	e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_COMMAND_RETRY, requestID)
 	for aid := range prep.PendingAttempts {
 		delete(e.reqIDByAttempt, aid)
-		if e.relayPipe {
-			e.cancelRelayForwardAttempt(ctx, aid)
-		}
+		e.cancelRelayForwardAttempt(ctx, aid)
 	}
 	e.releaseOrDeferLegs(prep, "")
 	clear(prep.PendingAttempts)
@@ -331,30 +349,34 @@ func (e *Engine) emitCommandLeg(
 		Direct:    isDirect,
 		TicketID:  dec.ticketID,
 	}
-	if e.relayPipe && !isDirect {
+	if !isDirect && !e.demoMode && prep.SealedEnvelope != nil {
 		e.emitCommandRelayLegViaPipe(ctx, prep, attemptID)
 		return
+	}
+	var rawSealed []byte
+	if prep.SealedEnvelope != nil {
+		rawSealed, _ = prep.SealedEnvelope.Marshal()
 	}
 	ctx.emit(&corev1.Effect{
 		Effect: &corev1.Effect_DispatchCommand{
 			DispatchCommand: &corev1.DispatchCommandEffect{
-				RequestId:       prep.RequestID,
-				AttemptId:       attemptID,
-				MachineId:       prep.MachineID,
-				SessionId:       prep.SessionID,
-				DeadlineMs:      prep.DeadlineMs,
-				CommandBytes:    prep.CommandBytes,
-				RouteHint:       prep.RouteHint,
-				RetryOfUnknown:  retryOfUnknown,
-				ForceRelay:      prep.ForceRelay,
-				BulkFileKey:     prep.BulkFileKey,
-				BulkBytes:       prep.BulkBytes,
-				BulkUpload:      prep.BulkUpload,
-				RouteLeg:        leg,
-				DirectPcId:      dec.pcID,
-				DirectTimeoutMs: dec.timeoutMs,
-				DirectTicketId:  dec.ticketID,
-				SealedEnvelope:  prep.SealedEnvelope,
+				RequestId:         prep.RequestID,
+				AttemptId:         attemptID,
+				MachineId:         prep.MachineID,
+				SessionId:         prep.SessionID,
+				DeadlineMs:        prep.DeadlineMs,
+				CommandBytes:      prep.CommandBytes,
+				RouteHint:         prep.RouteHint,
+				RetryOfUnknown:    retryOfUnknown,
+				ForceRelay:        prep.ForceRelay,
+				BulkFileKey:       prep.BulkFileKey,
+				BulkBytes:         prep.BulkBytes,
+				BulkUpload:        prep.BulkUpload,
+				RouteLeg:          leg,
+				DirectPcId:        dec.pcID,
+				DirectTimeoutMs:   dec.timeoutMs,
+				DirectTicketId:    dec.ticketID,
+				RawSealedEnvelope: rawSealed,
 			},
 		},
 	})
@@ -443,6 +465,26 @@ func (e *Engine) handleCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 	if ev == nil || ev.RequestId == "" {
 		return
 	}
+	oc := &cmdOutcome{CommandOutcomeEvent: ev}
+	if len(ev.RawResult) > 0 {
+		var res v1.CommandResult
+		if err := res.Unmarshal(ev.RawResult); err == nil {
+			oc.Result = &res
+		}
+	}
+	if len(ev.RawSealedResult) > 0 {
+		var env v1.Envelope
+		if err := env.Unmarshal(ev.RawSealedResult); err == nil {
+			oc.SealedResult = &env
+		}
+	}
+	e.handleCommandOutcomeInternal(ctx, oc)
+}
+
+func (e *Engine) handleCommandOutcomeInternal(ctx *StepContext, ev *cmdOutcome) {
+	if ev == nil || ev.CommandOutcomeEvent == nil || ev.RequestId == "" {
+		return
+	}
 	if ev.Source == corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON && ev.SealedResult != nil && e.secEngine != nil {
 		if prep := e.inFlightCmds[ev.RequestId]; prep != nil && (ev.AttemptId == "" || prep.PendingAttempts[ev.AttemptId]) {
 			e.openSealedCommandOutcome(ctx, prep, ev)
@@ -452,7 +494,7 @@ func (e *Engine) handleCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 	e.finishCommandOutcome(ctx, ev)
 }
 
-func (e *Engine) finishCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcomeEvent) {
+func (e *Engine) finishCommandOutcome(ctx *StepContext, ev *cmdOutcome) {
 	if ev.AttemptId != "" {
 		delete(e.reqIDByAttempt, ev.AttemptId)
 		if lateTicketID, isLate := e.lateDirectTickets[ev.AttemptId]; isLate {
@@ -525,7 +567,7 @@ func (e *Engine) finishCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 
 		if prep.DualMode && leg != nil {
 			if daemonOK {
-				if e.relayPipe && prep.RelayLegID != "" && leg.AttemptID != prep.RelayLegID {
+				if prep.RelayLegID != "" && leg.AttemptID != prep.RelayLegID {
 					e.cancelRelayForwardAttempt(ctx, prep.RelayLegID)
 				}
 				e.releaseOrDeferLegs(prep, leg.AttemptID)
@@ -533,7 +575,7 @@ func (e *Engine) finishCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 				clear(prep.ActiveLegs)
 			} else {
 				leg.Done = true
-				evCopy := *ev
+				evCopy := cloneCmdOutcome(ev)
 				leg.Outcome = &evCopy
 				leg.HandedOff = ev.HandedOff || !ev.NotForwarded
 				if ev.RouteWasDirect {
@@ -555,9 +597,9 @@ func (e *Engine) finishCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 				// Both legs finished without a verified daemon result.
 				directLeg := prep.ActiveLegs[prep.DirectLegID]
 				relayLeg := prep.ActiveLegs[prep.RelayLegID]
-				chosen := evCopy
+				chosen := cloneCmdOutcome(&evCopy)
 				if relayLeg != nil && relayLeg.Outcome != nil {
-					chosen = *relayLeg.Outcome
+					chosen = cloneCmdOutcome(relayLeg.Outcome)
 				}
 				serverNotForwarded := chosen.Source == corev1.OutcomeSource_OUTCOME_SOURCE_SERVER && chosen.NotForwarded && chosen.AttemptBound
 				relayPossiblyForwarded := relayLeg != nil && relayLeg.HandedOff && !serverNotForwarded
@@ -707,7 +749,7 @@ func (e *Engine) finishCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 	}
 }
 
-func (e *Engine) handleRetryableTransportOutcome(ctx *StepContext, prep *PreparedCommand, ev *corev1.CommandOutcomeEvent) {
+func (e *Engine) handleRetryableTransportOutcome(ctx *StepContext, prep *PreparedCommand, ev *cmdOutcome) {
 	if !e.running {
 		e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, world.Reason{Kind: world.ReasonRelayNoVerifiableResult}, false)
 		return
@@ -782,9 +824,7 @@ func (e *Engine) settleCommand(
 	e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_COMMAND_RETRY, prep.RequestID)
 	for aid := range prep.PendingAttempts {
 		delete(e.reqIDByAttempt, aid)
-		if e.relayPipe {
-			e.cancelRelayForwardAttempt(ctx, aid)
-		}
+		e.cancelRelayForwardAttempt(ctx, aid)
 	}
 	e.releaseOrDeferLegs(prep, "")
 	clear(prep.PendingAttempts)
@@ -842,7 +882,7 @@ func (e *Engine) settleCommand(
 	ctx.Dirty.Add(true, true, true)
 }
 
-func classifyDaemonOutcome(ev *corev1.CommandOutcomeEvent, prior bool) outcome.Category {
+func classifyDaemonOutcome(ev *cmdOutcome, prior bool) outcome.Category {
 	res := ev.Result
 	if !ev.Signed || !ev.HashesMatch || !ev.AttemptBound || res == nil {
 		return outcome.Unknown
@@ -1029,7 +1069,7 @@ func checkProtocolMismatch(m *MachineEntry, prior bool) world.Reason {
 	return world.Reason{Kind: world.ReasonClientOutOfDate}
 }
 
-func classifyServerRefusal(ev *corev1.CommandOutcomeEvent) world.Reason {
+func classifyServerRefusal(ev *cmdOutcome) world.Reason {
 	if ev.OuterReason == "machine_offline" {
 		return world.Reason{Kind: world.ReasonComputerOffline}
 	}
@@ -1042,7 +1082,7 @@ func classifyServerRefusal(ev *corev1.CommandOutcomeEvent) world.Reason {
 	return world.Reason{Kind: world.ReasonDisconnectedFromServer}
 }
 
-func classifyTransportError(ev *corev1.CommandOutcomeEvent) world.Reason {
+func classifyTransportError(ev *cmdOutcome) world.Reason {
 	switch ev.TransportCode {
 	case errCodeUnresolvedHost:
 		return world.Reason{Kind: world.ReasonNoServer}

@@ -8,6 +8,7 @@ import (
 
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/internal/test/testrelay"
 	"github.com/Lewin671/remote-agent/clientcore/screens"
 	"github.com/Lewin671/remote-agent/clientcore/security"
 	"github.com/Lewin671/remote-agent/clientcore/text"
@@ -130,12 +131,12 @@ func findRuntimeChangedEffect(batch *corev1.EffectBatch) *corev1.AccountRuntimeC
 	return nil
 }
 
-func findSecurityRPCEffect(batch *corev1.EffectBatch, method corev1.SecurityRpcMethod) *corev1.SecurityRpcEffect {
+func findSecurityRPCEffect(batch *corev1.EffectBatch, method corev1.RelayRpcMethod) *corev1.RelayRpcEffect {
 	if batch == nil {
 		return nil
 	}
 	for _, eff := range batch.Effects {
-		if r := eff.GetSecurityRpc(); r != nil && r.Method == method {
+		if r := eff.GetRelayRpc(); r != nil && r.Method == method {
 			return r
 		}
 	}
@@ -326,9 +327,9 @@ func TestClientInitBootstrapStages(t *testing.T) {
 			})
 		}
 		// Should have issued PEEK_PAIRING RPC.
-		peek := findSecurityRPCEffect(resBatch, corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PEEK_PAIRING)
+		peek := findSecurityRPCEffect(resBatch, corev1.RelayRpcMethod_RELAY_RPC_METHOD_PEEK_PAIRING)
 		if peek == nil {
-			peek = findSecurityRPCEffect(curBatch, corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PEEK_PAIRING)
+			peek = findSecurityRPCEffect(curBatch, corev1.RelayRpcMethod_RELAY_RPC_METHOD_PEEK_PAIRING)
 		}
 		if peek == nil {
 			t.Fatal("expected PEEK_PAIRING RPC on auto-submit")
@@ -336,12 +337,12 @@ func TestClientInitBootstrapStages(t *testing.T) {
 		// Simulate structured PAIRING_INVALID_OR_EXPIRED error -> structured REFILL banner.
 		c.Dispatch(&corev1.Event{
 			NowMs: 1100,
-			Event: &corev1.Event_SecurityRpcResult{
-				SecurityRpcResult: &corev1.SecurityRpcResultEvent{
-					OpId:         peek.OpId,
-					ConnectCode:  5,
-					Error:        "opaque",
-					ErrorDetails: makeRelayDetailBytes(pb.RelayErrorReason_RELAY_ERROR_REASON_PAIRING_INVALID_OR_EXPIRED),
+			Event: &corev1.Event_RelayRpcResult{
+				RelayRpcResult: &corev1.RelayRpcResultEvent{
+					OpId:              peek.OpId,
+					ConnectCode:       5,
+					DiagnosticMessage: "opaque",
+					ErrorDetails:      makeRelayDetailBytes(pb.RelayErrorReason_RELAY_ERROR_REASON_PAIRING_INVALID_OR_EXPIRED),
 				},
 			},
 		})
@@ -785,7 +786,7 @@ func TestTwoPhaseExitRiskReCheckAndFullIsolationReset(t *testing.T) {
 	c := New()
 	// 1. Reach READY through real ClientInit + signed v4 PersistedRecord + X25519 unlock (never mutating sc.ui.Stage).
 	recBytes, devEdPub, devXPub, _, deviceID := bootstrapCoreToReady(t, c, "https://acct-a.example.com", "en", 10_000)
-	c.m.sync.SecurityEngine().SetAuthToken("secret-token-acct-a", 999_999)
+	c.m.sync.SecurityEngine().SetAuthToken("secret-token-acct-a", 10_000+7*86_400_000)
 	if _, ok := c.m.sync.SecurityEngine().CurrentHeadHash(); !ok {
 		t.Fatal("expected verified head hash after real bootstrap")
 	}
@@ -1023,14 +1024,12 @@ func TestExternalLogoutResetsCoreInPlaceAndIsolatesNewAccount(t *testing.T) {
 	c := New()
 	bootstrapCoreToReady(t, c, "https://acct-a.example.com", "zh-CN", 20_000)
 	c.m.sync.SecurityEngine().SetAuthToken("tok-a", 999_999)
-	// Also seed a machine and session into Account A's world.
+	// Also seed a machine into Account A's world via bootstrap cache.
 	c.Dispatch(&corev1.Event{
 		NowMs: 20_100,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{MachineId: "mach-a", Online: true, Meta: &v1.MachineMeta{Hostname: "Mac-A"}},
-				},
+		Event: &corev1.Event_CacheBootstrapLoaded{
+			CacheBootstrapLoaded: &corev1.CacheBootstrapLoadedEvent{
+				RawMachines: testrelay.MustRawSlice([]*v1.Machine{{Id: "mach-a", Online: true}}),
 			},
 		},
 	})
@@ -1071,7 +1070,7 @@ func TestExternalLogoutResetsCoreInPlaceAndIsolatesNewAccount(t *testing.T) {
 					TrustedMachineIds: []string{"mach-b"},
 					TrustedClientIds:  []string{"dev-b"},
 				},
-				Machines: []*corev1.DemoMachine{{MachineId: "mach-b", Online: true, Meta: &v1.MachineMeta{Hostname: "Mac-B"}}},
+				Machines: []*corev1.DemoMachine{{MachineId: "mach-b", Online: true, RawMeta: testrelay.MustRaw(&v1.MachineMeta{Hostname: "Mac-B"})}},
 			},
 		},
 	})
@@ -1257,10 +1256,40 @@ func TestPendingOpDiscardMatrixAndWorkflowConsistency(t *testing.T) {
 }
 
 func TestSessionStreamingDoesNotRenderSecurityScreens(t *testing.T) {
-	c := bootstrapReadyApp(t,
-		[]*corev1.PlainMachine{{MachineId: "m-1", Online: true, Meta: &v1.MachineMeta{Hostname: "Mac"}}},
-		[]*corev1.PlainSession{{SessionId: "s-1", MachineId: "m-1", Meta: &v1.Session{Id: "s-1", Cwd: "/tmp/proj", Agent: v1.Agent_AGENT_CLAUDE, Status: v1.SessionStatus_SESSION_STATUS_RUNNING}}},
-	)
+	c := New()
+	defer c.Close()
+	nowMs := int64(1_791_078_060_000)
+	fx := testrelay.New(t, nowMs)
+	fx.Bootstrap(func(ev *corev1.Event) []*corev1.Effect { return c.Dispatch(ev).GetEffects() }, nowMs)
+	c.m.sync.SecurityEngine().SetAuthToken("tok-stream", nowMs+7*86_400_000)
+	startBatch := c.Dispatch(&corev1.Event{
+		NowMs: nowMs + 10,
+		Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}},
+	})
+	legID := testrelay.FindOpenStreamLeg(startBatch.Effects)
+	readyBatch := c.Dispatch(&corev1.Event{
+		NowMs: nowMs + 20,
+		Event: &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: nowMs + 20}},
+	})
+	ops := testrelay.MustFindRefreshOps(t, readyBatch.Effects)
+	c.Dispatch(&corev1.Event{
+		NowMs: nowMs + 30,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId: ops.Machines, ResponseBytes: testrelay.MarshalListMachinesResp([]*v1.Machine{fx.MachineWire(fx.M1, true, 0, &v1.MachineMeta{Hostname: "Mac"})}),
+		}},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: nowMs + 30,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId: ops.Sessions, ResponseBytes: testrelay.MarshalListSessionsResp([]*v1.RemoteSession{fx.SessionWire("s-1", fx.M1, 0, 0, 0, &v1.Session{Id: "s-1", Cwd: "/tmp/proj", Agent: v1.Agent_AGENT_CLAUDE, Status: v1.SessionStatus_SESSION_STATUS_RUNNING}, nil)}, nil),
+		}},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: nowMs + 30,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId: ops.Devices, ResponseBytes: testrelay.MarshalListDevicesResp(nil),
+		}},
+	})
 	sc := c.m.ensureSec()
 	sc.ui.Initialized = true
 	sc.ui.Stage = corev1.AppRootStage_APP_ROOT_STAGE_READY
@@ -1268,22 +1297,16 @@ func TestSessionStreamingDoesNotRenderSecurityScreens(t *testing.T) {
 	sc.dirty = securityDirtyFlags{}
 
 	c.Dispatch(&corev1.Event{
-		NowMs: 1_791_078_060_100,
+		NowMs: nowMs + 100,
 		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s-1", Watched: true}},
 	})
 	// Deliver real streaming EventsAppended frames (UserMessage + AgentMessage) and verify Session renders while security screens do NOT.
 	batch := c.Dispatch(&corev1.Event{
-		NowMs: 1_791_078_060_200,
-		Event: &corev1.Event_StreamFrame{StreamFrame: &corev1.StreamFrameEvent{
-			LegId: 1,
-			Frame: &corev1.StreamFrameEvent_EventsAppended{EventsAppended: &corev1.EventsAppendedFrame{
-				SessionId: "s-1",
-				Events: []*corev1.PlainEvent{
-					{Seq: 1, Verified: true, Event: &v1.Event{Seq: 1, Kind: &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "hello"}}}},
-					{Seq: 2, Verified: true, Event: &v1.Event{Seq: 2, Kind: &v1.Event_AgentMessage{AgentMessage: &v1.AgentMessage{Text: "hi"}}}},
-				},
-			}},
-		}},
+		NowMs: nowMs + 200,
+		Event: testrelay.EventsAppendedFrame(legID, "s-1",
+			fx.StoredEventWire("s-1", 1, &v1.Event{Seq: 1, Kind: &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "hello"}}}),
+			fx.StoredEventWire("s-1", 2, &v1.Event{Seq: 2, Kind: &v1.Event_AgentMessage{AgentMessage: &v1.AgentMessage{Text: "hi"}}}),
+		),
 	})
 	sawSessionRender := false
 	for _, eff := range batch.Effects {
@@ -1341,15 +1364,28 @@ func TestExitPushUnregisterTimeoutLateSyncNowDiscarded(t *testing.T) {
 		}},
 	})
 
-	// Capture the 3s timer and the in-flight GET_CHALLENGE RPC from SyncNow.
+	// Capture the 3s timer and the in-flight GET_CHALLENGE RPC from SyncNow (after warmTokenTask checks storage).
 	var timerEff *corev1.ScheduleTimerEffect
 	var chalOpID uint64
 	for _, eff := range execBatch.Effects {
 		if te := eff.GetScheduleTimer(); te != nil && te.Key == exitPushUnregisterTimerKey {
 			timerEff = te
 		}
-		if rpc := eff.GetSecurityRpc(); rpc != nil && rpc.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_CHALLENGE {
+		if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_CHALLENGE {
 			chalOpID = rpc.OpId
+		}
+	}
+	if chalOpID == 0 {
+		if warm := findStorageEffect(execBatch, corev1.SecurityStorageOp_SECURITY_STORAGE_OP_READ_BOOTSTRAP); warm != nil {
+			bWarm := c.Dispatch(&corev1.Event{
+				NowMs: 40_220,
+				Event: &corev1.Event_SecurityStorageResult{SecurityStorageResult: &corev1.SecurityStorageResultEvent{OpId: warm.OpId}},
+			})
+			for _, eff := range bWarm.Effects {
+				if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_CHALLENGE {
+					chalOpID = rpc.OpId
+				}
+			}
 		}
 	}
 	if timerEff == nil || chalOpID == 0 {
@@ -1360,7 +1396,7 @@ func TestExitPushUnregisterTimeoutLateSyncNowDiscarded(t *testing.T) {
 	chalBytes, _ := proto.Marshal(&pb.GetChallengeResponse{Challenge: []byte("late-challenge-1234567890")})
 	signBatch := c.Dispatch(&corev1.Event{
 		NowMs: 40_250,
-		Event: &corev1.Event_SecurityRpcResult{SecurityRpcResult: &corev1.SecurityRpcResultEvent{
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
 			OpId: chalOpID, ResponseBytes: chalBytes,
 		}},
 	})
@@ -1381,12 +1417,12 @@ func TestExitPushUnregisterTimeoutLateSyncNowDiscarded(t *testing.T) {
 	})
 	var loginOpID uint64
 	for _, eff := range loginReqBatch.Effects {
-		if rpc := eff.GetSecurityRpc(); rpc != nil && rpc.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LOGIN {
+		if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_LOGIN {
 			loginOpID = rpc.OpId
 		}
 	}
 	if loginOpID == 0 {
-		t.Fatalf("expected in-flight SECURITY_RPC_METHOD_LOGIN before timeout")
+		t.Fatalf("expected in-flight RELAY_RPC_METHOD_LOGIN before timeout")
 	}
 
 	// Advance past 3s timeout BEFORE LOGIN returns -> Core invalidates account auth and runs ClearSecurity.
@@ -1411,7 +1447,7 @@ func TestExitPushUnregisterTimeoutLateSyncNowDiscarded(t *testing.T) {
 	loginRespBytes, _ := proto.Marshal(&pb.LoginResponse{Token: "stale-old-account-token", ExpiresMs: 99_999_999})
 	lateBatch := c.Dispatch(&corev1.Event{
 		NowMs: 43_250,
-		Event: &corev1.Event_SecurityRpcResult{SecurityRpcResult: &corev1.SecurityRpcResultEvent{
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
 			OpId: loginOpID, ResponseBytes: loginRespBytes,
 		}},
 	})
@@ -1708,13 +1744,6 @@ func TestAccountSecurityAndHandoffAndAddDeviceViewModels(t *testing.T) {
 func TestExitInvalidatesRelayPipeAuthAndDropsLateLogin(t *testing.T) {
 	t.Run("SharedCanceledAndNonSharedBlockedByAccountGen", func(t *testing.T) {
 		c := New()
-		c.Dispatch(&corev1.Event{
-			NowMs: 49_900,
-			Event: &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true}},
-		})
-		if !c.m.sync.RelayPipeEnabled() {
-			t.Fatal("expected RelayPipeEnabled() == true after RelayPipeConfigEvent")
-		}
 		recBytes, devEdPub, devXPub, _, _ := bootstrapCoreToReady(t, c, "https://acct-pipe.example.com", "en", 50_000)
 		randBytes := make([]byte, 256)
 		_, _ = rand.Read(randBytes)
@@ -1962,10 +1991,6 @@ func TestExitInvalidatesRelayPipeAuthAndDropsLateLogin(t *testing.T) {
 
 	t.Run("WarmTokenBlockedByAccountGen", func(t *testing.T) {
 		c := New()
-		c.Dispatch(&corev1.Event{
-			NowMs: 54_900,
-			Event: &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true}},
-		})
 		recBytes, devEdPub, devXPub, _, _ := bootstrapCoreToReady(t, c, "https://acct-warm.example.com", "en", 55_000)
 
 		// Start sync -> EnsureAuthTokenTag issues READ_BOOTSTRAP via warmTokenTask (remains registered in e.tasks).
@@ -2045,10 +2070,6 @@ func TestExitInvalidatesRelayPipeAuthAndDropsLateLogin(t *testing.T) {
 
 func TestExitClearSecurityFailureResumesAccountAuth(t *testing.T) {
 	c := New()
-	c.Dispatch(&corev1.Event{
-		NowMs: 58_900,
-		Event: &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true}},
-	})
 	recBytes, devEdPub, devXPub, devXPriv, _, machineID := bootstrapCoreToReadyWithMachine(t, c, "https://acct-resume.example.com", "en", 59_000)
 	randBytes := make([]byte, 512)
 	_, _ = rand.Read(randBytes)
@@ -2317,17 +2338,7 @@ func TestExitClearSecurityFailureResumesAccountAuth(t *testing.T) {
 }
 
 func TestExitInPlaceResetClearsRelayPipeStateAndPreservesCounters(t *testing.T) {
-	// Verify iOS legacy path (without RelayPipeConfigEvent) stays disabled.
-	iosCore := New()
-	if iosCore.m.sync.RelayPipeEnabled() {
-		t.Fatal("fresh Core without RelayPipeConfigEvent must keep RelayPipeEnabled() == false for iOS")
-	}
-
 	c := New()
-	c.Dispatch(&corev1.Event{
-		NowMs: 59_900,
-		Event: &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true}},
-	})
 	_, _, _, _, _, machineID := bootstrapCoreToReadyWithMachine(t, c, "https://acct-reset.example.com", "en", 60_000)
 	randBytes := make([]byte, 512)
 	_, _ = rand.Read(randBytes)
@@ -2627,10 +2638,7 @@ func TestExitInPlaceResetClearsRelayPipeStateAndPreservesCounters(t *testing.T) 
 			sawImgCancel, sawPushCancel, sawFwdCancel, sawPrefsPutCancel, sawFwdSettled, sawImgSettled, sawImg401Settled, sawPushSettled, sawPushAuthSettled, sawTermClose, sawTermClosed, sawRuntimeInactive)
 	}
 
-	// Post-reset invariants: relay pipe config preserved, token cache cleared, all op_id counters monotonic.
-	if !c.m.sync.RelayPipeEnabled() {
-		t.Fatal("RelayPipeEnabled() must be preserved across executeInPlaceExitReset")
-	}
+	// Post-reset invariants: token cache cleared, all op_id counters monotonic.
 	if tok := c.m.sync.SecurityEngine().CachedAuthToken(); tok != "" {
 		t.Fatalf("cached auth token must be empty after reset, got %q", tok)
 	}
@@ -2646,10 +2654,6 @@ func TestExitInPlaceResetClearsRelayPipeStateAndPreservesCounters(t *testing.T) 
 
 	// Also cover the forLogout branch for in-flight HEALTHZ with a waiting Forward command (when relayEpoch is not yet populated).
 	cHz := New()
-	cHz.Dispatch(&corev1.Event{
-		NowMs: 69_900,
-		Event: &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true}},
-	})
 	_, _, _, _, _, hzMachineID := bootstrapCoreToReadyWithMachine(t, cHz, "https://acct-hz.example.com", "en", 70_000)
 	cHz.Dispatch(&corev1.Event{
 		NowMs: 70_010,

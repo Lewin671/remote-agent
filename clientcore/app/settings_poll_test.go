@@ -5,6 +5,7 @@ import (
 
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/internal/test/testrelay"
 )
 
 func TestMachineStatusWatchStartsPollOnceMachineBecomesOnline(t *testing.T) {
@@ -22,12 +23,27 @@ func TestMachineStatusWatchStartsPollOnceMachineBecomesOnline(t *testing.T) {
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1000,
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      "dev-1",
+					AuthorityDeviceId: "dev-1",
+					LeaseEndMs:        99999999,
+					TrustedMachineIds: []string{"m-1"},
+				},
+			},
+		},
+	})
+	startBatch := c.Dispatch(&corev1.Event{
+		NowMs: 1000,
 		Event: &corev1.Event_SyncLifecycle{
 			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
 		},
 	})
+	legID := testrelay.FindOpenStreamLeg(startBatch.Effects)
 
-	// Register an active watch before SecuritySnapshot / ListsFetched populates the machine.
+	// Register an active watch before StreamReady / lists populate the machine.
 	initial := c.Dispatch(&corev1.Event{
 		NowMs: 1005,
 		Event: &corev1.Event_MachineStatusWatch{
@@ -45,50 +61,21 @@ func TestMachineStatusWatchStartsPollOnceMachineBecomesOnline(t *testing.T) {
 	}
 
 	c.Dispatch(&corev1.Event{
-		NowMs: 1010,
-		Event: &corev1.Event_SeedDemoWorld{
-			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
-				Security: &corev1.DemoSecurity{
-					IsMember:          true,
-					SelfDeviceId:      "dev-1",
-					AuthorityDeviceId: "dev-1",
-					LeaseEndMs:        99999999,
-					TrustedMachineIds: []string{"m-1"},
-				},
-			},
-		},
-	})
-	c.Dispatch(&corev1.Event{
-		NowMs: 1020,
-		Event: &corev1.Event_TokenResult{
-			TokenResult: &corev1.TokenResultEvent{OpId: 2, Token: "tok-1"},
-		},
-	})
-	c.Dispatch(&corev1.Event{
 		NowMs: 1030,
 		Event: &corev1.Event_StreamReady{
-			StreamReady: &corev1.StreamReadyEvent{LegId: 1, ServerTimeMs: 1030},
+			StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: 1030},
 		},
 	})
 
 	batch := c.Dispatch(&corev1.Event{
 		NowMs: 1040,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: 3,
-				Machines: []*corev1.PlainMachine{
-					{
-						MachineId: "m-1",
-						Online:    true,
-						Meta: &v1.MachineMeta{
-							Hostname:        "MacBook",
-							ProtocolVersion: 17,
-							Capabilities:    &v1.MachineCapabilities{MachineStatus: true},
-						},
-					},
-				},
-			},
-		},
+		Event: testrelay.DemoMachineEvent(
+			testrelay.DemoMachine("m-1", true, 0, &v1.MachineMeta{
+				Hostname:        "MacBook",
+				ProtocolVersion: 17,
+				Capabilities:    &v1.MachineCapabilities{MachineStatus: true},
+			}),
+		),
 	})
 
 	var dispatched bool
@@ -118,48 +105,47 @@ func TestMachineStatusWatchBeforeConnectedStartsPollOnStreamReady(t *testing.T) 
 			},
 		},
 	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1000,
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      "dev-1",
+					AuthorityDeviceId: "dev-1",
+					LeaseEndMs:        99999999,
+					TrustedMachineIds: []string{"m-1"},
+				},
+				Machines: []*corev1.DemoMachine{
+					{
+						MachineId: "m-1",
+						Online:    true,
+						RawMeta: testrelay.MustRaw(&v1.MachineMeta{
+							Hostname:        "MacBook",
+							ProtocolVersion: 17,
+							Capabilities:    &v1.MachineCapabilities{MachineStatus: true},
+						}),
+					},
+				},
+			},
+		},
+	})
 	startBatch := c.Dispatch(&corev1.Event{
 		NowMs: 1000,
 		Event: &corev1.Event_SyncLifecycle{
 			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
 		},
 	})
-	var bootOpID, tokOpID uint64
-	for _, eff := range startBatch.Effects {
-		if cr := eff.GetCacheRead(); cr != nil && cr.GetBootstrap() != nil {
-			bootOpID = cr.GetBootstrap().OpId
-		}
-		if et := eff.GetEnsureToken(); et != nil {
-			tokOpID = et.OpId
-		}
-	}
+	legID := testrelay.FindOpenStreamLeg(startBatch.Effects)
 
-	c.Dispatch(&corev1.Event{
+	netBatch := c.Dispatch(&corev1.Event{
 		NowMs: 1001,
 		Event: &corev1.Event_NetworkChanged{
 			NetworkChanged: &corev1.NetworkChangedEvent{Signature: "wifi", Available: true},
 		},
 	})
-	if bootOpID > 0 {
-		c.Dispatch(&corev1.Event{
-			NowMs: 1002,
-			Event: &corev1.Event_CacheBootstrapLoaded{
-				CacheBootstrapLoaded: &corev1.CacheBootstrapLoadedEvent{
-					OpId: bootOpID,
-					Machines: []*corev1.PlainMachine{
-						{
-							MachineId: "m-1",
-							Online:    true,
-							Meta: &v1.MachineMeta{
-								Hostname:        "MacBook",
-								ProtocolVersion: 17,
-								Capabilities:    &v1.MachineCapabilities{MachineStatus: true},
-							},
-						},
-					},
-				},
-			},
-		})
+	if nextLeg := testrelay.FindOpenStreamLeg(netBatch.Effects); nextLeg != 0 {
+		legID = nextLeg
 	}
 
 	// Register active watch while cached machine looks online, before StreamReady connects.
@@ -179,32 +165,6 @@ func TestMachineStatusWatchBeforeConnectedStartsPollOnStreamReady(t *testing.T) 
 		}
 	}
 
-	c.Dispatch(&corev1.Event{
-		NowMs: 1010,
-		Event: &corev1.Event_SeedDemoWorld{
-			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
-				Security: &corev1.DemoSecurity{
-					IsMember:          true,
-					SelfDeviceId:      "dev-1",
-					AuthorityDeviceId: "dev-1",
-					LeaseEndMs:        99999999,
-					TrustedMachineIds: []string{"m-1"},
-				},
-			},
-		},
-	})
-	tokBatch := c.Dispatch(&corev1.Event{
-		NowMs: 1020,
-		Event: &corev1.Event_TokenResult{
-			TokenResult: &corev1.TokenResultEvent{OpId: tokOpID, Token: "tok-1"},
-		},
-	})
-	var legID uint64
-	for _, eff := range tokBatch.Effects {
-		if os := eff.GetOpenStream(); os != nil {
-			legID = os.LegId
-		}
-	}
 	readyBatch := c.Dispatch(&corev1.Event{
 		NowMs: 1030,
 		Event: &corev1.Event_StreamReady{

@@ -3,12 +3,75 @@ package sync
 import (
 	"strings"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	"github.com/Lewin671/remote-agent/clientcore/gen/litewire"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/security"
 )
+
+type tokenResult struct {
+	OpID           uint64
+	Token          string
+	ExpiresMs      int64
+	Removed        bool
+	UnresolvedHost bool
+	ErrorCode      string
+	Error          string
+}
+
+type listsFetchedResult struct {
+	OpID           uint64
+	WireMachines   []*v1.Machine
+	WireSessions   []*v1.RemoteSession
+	Next           *v1.SessionCursor
+	WireDevices    []*v1.Device
+	Error          string
+	UnresolvedHost bool
+}
+
+type sessionsPageResult struct {
+	OpID         uint64
+	WireSessions []*v1.RemoteSession
+	Next         *v1.SessionCursor
+	Error        string
+}
+
+type sessionByIDResult struct {
+	OpID        uint64
+	WireSession *v1.RemoteSession
+	Error       string
+}
+
+type devicesFetchedResult struct {
+	OpID        uint64
+	WireDevices []*v1.Device
+	Error       string
+}
+
+type eventsPageResult struct {
+	OpID       uint64
+	SessionID  string
+	WireEvents []*v1.StoredEvent
+	More       bool
+	Error      string
+}
+
+type accountPrefsResult struct {
+	OpID      uint64
+	WirePrefs *v1.AccountPrefsObject
+	Error     string
+}
+
+type accountPrefsPutResult struct {
+	OpID         uint64
+	Applied      bool
+	WireCurrent  *v1.AccountPrefsObject
+	Error        string
+	SealConflict bool
+}
 
 const (
 	// syncRelayOpBase separates sync-owned RelayRpcEffect op_ids from security.Engine op_ids
@@ -254,8 +317,6 @@ func (e *Engine) cancelAllSyncRelayRpcs(ctx *StepContext, forLogout bool) {
 	}
 }
 
-func (e *Engine) RelayPipeEnabled() bool { return e.relayPipe }
-
 func (e *Engine) cancelRefreshBundle(ctx *StepContext, b *pendingRefreshBundle) {
 	if b == nil {
 		return
@@ -268,16 +329,6 @@ func (e *Engine) cancelRefreshBundle(ctx *StepContext, b *pendingRefreshBundle) 
 	}
 	if !b.gotDevices {
 		e.cancelRelayRpc(ctx, b.devicesOpID)
-	}
-}
-
-func (e *Engine) handleRelayPipeConfig(ev *corev1.RelayPipeConfigEvent) {
-	if ev == nil {
-		return
-	}
-	e.relayPipe = ev.Enabled
-	if e.secEngine != nil {
-		e.secEngine.SetRelayPipe(ev.Enabled)
 	}
 }
 
@@ -504,6 +555,14 @@ func (e *Engine) finishPushAuth(ctx *StepContext, p *pendingPushRpc, res securit
 }
 
 func (e *Engine) startPushRpcWithToken(ctx *StepContext, p *pendingPushRpc, token string) {
+	if e.demoMode {
+		e.emitPushRpcResult(ctx, &corev1.PushRpcResultEffect{
+			OpId:      p.opID,
+			PublicKey: "AAAA",
+			Enabled:   true,
+		})
+		return
+	}
 	if p.getKey {
 		e.emitRelayRpc(
 			ctx,
@@ -831,8 +890,8 @@ func (e *Engine) finishAuthRetry(ctx *StepContext, res security.AuthTokenResult)
 	if e.exitingAccount || res.Error != "" || res.Token == "" || res.Removed {
 		if !e.exitingAccount && res.Removed {
 			e.activeTokenOpID = e.allocOpID()
-			e.handleTokenResult(ctx, &corev1.TokenResultEvent{
-				OpId:      e.activeTokenOpID,
+			e.handleTokenResult(ctx, tokenResult{
+				OpID:      e.activeTokenOpID,
 				Removed:   true,
 				ErrorCode: res.ErrorCode,
 				Error:     res.Error,
@@ -860,20 +919,7 @@ func (e *Engine) invalidateCachedToken(ctx *StepContext, staleToken string) {
 	if staleToken == "" || e.cachedToken != staleToken {
 		return
 	}
-	if e.relayPipe && e.secEngine != nil {
-		e.clearAuthTokenViaPipe(ctx)
-		return
-	}
-	e.cachedToken = ""
-	e.tokenExpiresMs = 0
-	if e.secEngine != nil {
-		e.secEngine.SetAuthToken("", 0)
-	}
-	ctx.emit(&corev1.Effect{
-		Effect: &corev1.Effect_DiscardToken{
-			DiscardToken: &corev1.DiscardTokenEffect{Token: staleToken},
-		},
-	})
+	e.clearAuthTokenViaPipe(ctx)
 }
 
 func (e *Engine) handleRefreshBundlePart(ctx *StepContext, op *pendingRelayRpc, ev *corev1.RelayRpcResultEvent) {
@@ -884,8 +930,8 @@ func (e *Engine) handleRefreshBundlePart(ctx *StepContext, op *pendingRelayRpc, 
 	if isRelayRpcError(ev) {
 		e.cancelRefreshBundle(ctx, b)
 		e.refreshBundle = nil
-		e.handleListsFetched(ctx, &corev1.ListsFetchedEvent{
-			OpId:           b.refreshOpID,
+		e.handleListsFetched(ctx, listsFetchedResult{
+			OpID:           b.refreshOpID,
 			Error:          relayRpcErrorText(ev),
 			UnresolvedHost: ev.UnresolvedHost,
 		})
@@ -897,7 +943,7 @@ func (e *Engine) handleRefreshBundlePart(ctx *StepContext, op *pendingRelayRpc, 
 		if err := resp.Unmarshal(ev.ResponseBytes); err != nil {
 			e.cancelRefreshBundle(ctx, b)
 			e.refreshBundle = nil
-			e.handleListsFetched(ctx, &corev1.ListsFetchedEvent{OpId: b.refreshOpID, Error: err.Error()})
+			e.handleListsFetched(ctx, listsFetchedResult{OpID: b.refreshOpID, Error: err.Error()})
 			return
 		}
 		b.machines = resp.Machines
@@ -907,7 +953,7 @@ func (e *Engine) handleRefreshBundlePart(ctx *StepContext, op *pendingRelayRpc, 
 		if err := resp.Unmarshal(ev.ResponseBytes); err != nil {
 			e.cancelRefreshBundle(ctx, b)
 			e.refreshBundle = nil
-			e.handleListsFetched(ctx, &corev1.ListsFetchedEvent{OpId: b.refreshOpID, Error: err.Error()})
+			e.handleListsFetched(ctx, listsFetchedResult{OpID: b.refreshOpID, Error: err.Error()})
 			return
 		}
 		b.sessions = resp.Sessions
@@ -918,7 +964,7 @@ func (e *Engine) handleRefreshBundlePart(ctx *StepContext, op *pendingRelayRpc, 
 		if err := resp.Unmarshal(ev.ResponseBytes); err != nil {
 			e.cancelRefreshBundle(ctx, b)
 			e.refreshBundle = nil
-			e.handleListsFetched(ctx, &corev1.ListsFetchedEvent{OpId: b.refreshOpID, Error: err.Error()})
+			e.handleListsFetched(ctx, listsFetchedResult{OpID: b.refreshOpID, Error: err.Error()})
 			return
 		}
 		b.devices = resp.Devices
@@ -926,8 +972,8 @@ func (e *Engine) handleRefreshBundlePart(ctx *StepContext, op *pendingRelayRpc, 
 	}
 	if b.gotMachines && b.gotSessions && b.gotDevices {
 		e.refreshBundle = nil
-		e.handleListsFetched(ctx, &corev1.ListsFetchedEvent{
-			OpId:         b.refreshOpID,
+		e.handleListsFetched(ctx, listsFetchedResult{
+			OpID:         b.refreshOpID,
 			WireMachines: b.machines,
 			WireSessions: b.sessions,
 			Next:         b.next,
@@ -938,19 +984,19 @@ func (e *Engine) handleRefreshBundlePart(ctx *StepContext, op *pendingRelayRpc, 
 
 func (e *Engine) handleSessionsPageRelayResult(ctx *StepContext, op *pendingRelayRpc, ev *corev1.RelayRpcResultEvent) {
 	if isRelayRpcError(ev) {
-		e.handleSessionsPageFetched(ctx, &corev1.SessionsPageFetchedEvent{
-			OpId:  op.opID,
+		e.handleSessionsPageFetched(ctx, sessionsPageResult{
+			OpID:  op.opID,
 			Error: relayRpcErrorText(ev),
 		})
 		return
 	}
 	var resp v1.ListRemoteSessionsResponse
 	if err := resp.Unmarshal(ev.ResponseBytes); err != nil {
-		e.handleSessionsPageFetched(ctx, &corev1.SessionsPageFetchedEvent{OpId: op.opID, Error: err.Error()})
+		e.handleSessionsPageFetched(ctx, sessionsPageResult{OpID: op.opID, Error: err.Error()})
 		return
 	}
-	e.handleSessionsPageFetched(ctx, &corev1.SessionsPageFetchedEvent{
-		OpId:         op.opID,
+	e.handleSessionsPageFetched(ctx, sessionsPageResult{
+		OpID:         op.opID,
 		WireSessions: resp.Sessions,
 		Next:         resp.Next,
 	})
@@ -958,15 +1004,15 @@ func (e *Engine) handleSessionsPageRelayResult(ctx *StepContext, op *pendingRela
 
 func (e *Engine) handleSessionByIDRelayResult(ctx *StepContext, op *pendingRelayRpc, ev *corev1.RelayRpcResultEvent) {
 	if isRelayRpcError(ev) {
-		e.handleSessionByIDFetched(ctx, &corev1.SessionByIdFetchedEvent{
-			OpId:  op.opID,
+		e.handleSessionByIDFetched(ctx, sessionByIDResult{
+			OpID:  op.opID,
 			Error: relayRpcErrorText(ev),
 		})
 		return
 	}
 	var resp v1.ListRemoteSessionsResponse
 	if err := resp.Unmarshal(ev.ResponseBytes); err != nil {
-		e.handleSessionByIDFetched(ctx, &corev1.SessionByIdFetchedEvent{OpId: op.opID, Error: err.Error()})
+		e.handleSessionByIDFetched(ctx, sessionByIDResult{OpID: op.opID, Error: err.Error()})
 		return
 	}
 	var found *v1.RemoteSession
@@ -976,52 +1022,52 @@ func (e *Engine) handleSessionByIDRelayResult(ctx *StepContext, op *pendingRelay
 			break
 		}
 	}
-	e.handleSessionByIDFetched(ctx, &corev1.SessionByIdFetchedEvent{
-		OpId:        op.opID,
+	e.handleSessionByIDFetched(ctx, sessionByIDResult{
+		OpID:        op.opID,
 		WireSession: found,
 	})
 }
 
 func (e *Engine) handleDevicesRelayResult(ctx *StepContext, op *pendingRelayRpc, ev *corev1.RelayRpcResultEvent) {
 	if isRelayRpcError(ev) {
-		e.handleDevicesFetched(ctx, &corev1.DevicesFetchedEvent{
-			OpId:  op.opID,
+		e.handleDevicesFetched(ctx, devicesFetchedResult{
+			OpID:  op.opID,
 			Error: relayRpcErrorText(ev),
 		})
 		return
 	}
 	var resp v1.ListDevicesResponse
 	if err := resp.Unmarshal(ev.ResponseBytes); err != nil {
-		e.handleDevicesFetched(ctx, &corev1.DevicesFetchedEvent{OpId: op.opID, Error: err.Error()})
+		e.handleDevicesFetched(ctx, devicesFetchedResult{OpID: op.opID, Error: err.Error()})
 		return
 	}
-	e.handleDevicesFetched(ctx, &corev1.DevicesFetchedEvent{
-		OpId:        op.opID,
+	e.handleDevicesFetched(ctx, devicesFetchedResult{
+		OpID:        op.opID,
 		WireDevices: resp.Devices,
 	})
 }
 
 func (e *Engine) handleEventsRelayResult(ctx *StepContext, op *pendingRelayRpc, ev *corev1.RelayRpcResultEvent) {
 	if isRelayRpcError(ev) {
-		e.handleEventsPageFetched(ctx, &corev1.EventsPageFetchedEvent{
-			OpId:      op.opID,
-			SessionId: op.sid,
+		e.handleEventsPageFetched(ctx, eventsPageResult{
+			OpID:      op.opID,
+			SessionID: op.sid,
 			Error:     relayRpcErrorText(ev),
 		})
 		return
 	}
 	var resp v1.GetEventsResponse
 	if err := resp.Unmarshal(ev.ResponseBytes); err != nil {
-		e.handleEventsPageFetched(ctx, &corev1.EventsPageFetchedEvent{
-			OpId:      op.opID,
-			SessionId: op.sid,
+		e.handleEventsPageFetched(ctx, eventsPageResult{
+			OpID:      op.opID,
+			SessionID: op.sid,
 			Error:     err.Error(),
 		})
 		return
 	}
-	e.handleEventsPageFetched(ctx, &corev1.EventsPageFetchedEvent{
-		OpId:       op.opID,
-		SessionId:  op.sid,
+	e.handleEventsPageFetched(ctx, eventsPageResult{
+		OpID:       op.opID,
+		SessionID:  op.sid,
 		WireEvents: resp.Events,
 		More:       resp.More,
 	})
@@ -1029,38 +1075,38 @@ func (e *Engine) handleEventsRelayResult(ctx *StepContext, op *pendingRelayRpc, 
 
 func (e *Engine) handlePrefsGetRelayResult(ctx *StepContext, op *pendingRelayRpc, ev *corev1.RelayRpcResultEvent) {
 	if isRelayRpcError(ev) {
-		e.handleAccountPrefsFetched(ctx, &corev1.AccountPrefsFetchedEvent{
-			OpId:  op.opID,
+		e.handleAccountPrefsFetched(ctx, accountPrefsResult{
+			OpID:  op.opID,
 			Error: relayRpcErrorText(ev),
 		})
 		return
 	}
 	var resp v1.GetAccountPrefsResponse
 	if err := resp.Unmarshal(ev.ResponseBytes); err != nil {
-		e.handleAccountPrefsFetched(ctx, &corev1.AccountPrefsFetchedEvent{OpId: op.opID, Error: err.Error()})
+		e.handleAccountPrefsFetched(ctx, accountPrefsResult{OpID: op.opID, Error: err.Error()})
 		return
 	}
-	e.handleAccountPrefsFetched(ctx, &corev1.AccountPrefsFetchedEvent{
-		OpId:      op.opID,
+	e.handleAccountPrefsFetched(ctx, accountPrefsResult{
+		OpID:      op.opID,
 		WirePrefs: resp.Object,
 	})
 }
 
 func (e *Engine) handlePrefsPutRelayResult(ctx *StepContext, op *pendingRelayRpc, ev *corev1.RelayRpcResultEvent) {
 	if isRelayRpcError(ev) {
-		e.handleAccountPrefsPutResult(ctx, &corev1.AccountPrefsPutResultEvent{
-			OpId:  op.opID,
+		e.handleAccountPrefsPutResult(ctx, accountPrefsPutResult{
+			OpID:  op.opID,
 			Error: relayRpcErrorText(ev),
 		})
 		return
 	}
 	var resp v1.PutAccountPrefsResponse
 	if err := resp.Unmarshal(ev.ResponseBytes); err != nil {
-		e.handleAccountPrefsPutResult(ctx, &corev1.AccountPrefsPutResultEvent{OpId: op.opID, Error: err.Error()})
+		e.handleAccountPrefsPutResult(ctx, accountPrefsPutResult{OpID: op.opID, Error: err.Error()})
 		return
 	}
-	e.handleAccountPrefsPutResult(ctx, &corev1.AccountPrefsPutResultEvent{
-		OpId:        op.opID,
+	e.handleAccountPrefsPutResult(ctx, accountPrefsPutResult{
+		OpID:        op.opID,
 		Applied:     resp.Applied,
 		WireCurrent: resp.Object,
 	})
@@ -1163,16 +1209,18 @@ func (e *Engine) handleForwardRelayResult(ctx *StepContext, op *pendingRelayRpc,
 		return
 	}
 
-	e.handleCommandOutcome(ctx, &corev1.CommandOutcomeEvent{
-		RequestId:    op.requestID,
-		AttemptId:    op.attemptID,
-		Source:       corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
-		AttemptBound: resp.AttemptId == op.attemptID,
-		OuterOutcome: resp.Outcome,
-		OuterReason:  resp.Reason,
+	e.handleCommandOutcomeInternal(ctx, &cmdOutcome{
+		CommandOutcomeEvent: &corev1.CommandOutcomeEvent{
+			RequestId:    op.requestID,
+			AttemptId:    op.attemptID,
+			Source:       corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+			AttemptBound: resp.AttemptId == op.attemptID,
+			OuterOutcome: resp.Outcome,
+			OuterReason:  resp.Reason,
+			HandedOff:    true,
+			ElapsedMs:    elapsedMs,
+		},
 		SealedResult: resp.Result,
-		HandedOff:    true,
-		ElapsedMs:    elapsedMs,
 	})
 }
 
@@ -1287,75 +1335,92 @@ func (e *Engine) handleStreamRawFrame(ctx *StepContext, ev *corev1.StreamRawFram
 	if sf.Unmarshal(ev.RawServerFrame) != nil {
 		return
 	}
-	switch k := sf.Kind.(type) {
-	case *v1.ServerFrame_Ready:
+	if ready, ok := sf.Kind.(*v1.ServerFrame_Ready); ok {
 		var serverTimeMs int64
-		if k.Ready != nil {
-			serverTimeMs = k.Ready.ServerTimeMs
+		if ready.Ready != nil {
+			serverTimeMs = ready.Ready.ServerTimeMs
 		}
 		e.handleStreamReady(ctx, &corev1.StreamReadyEvent{
 			LegId:        ev.LegId,
 			ServerTimeMs: serverTimeMs,
 		})
+		return
+	}
+	_, isHeartbeat := sf.Kind.(*v1.ServerFrame_Heartbeat)
+	if e.liveness != nil {
+		e.liveness.OnFrame(e.monoMs, isHeartbeat)
+	}
+	if e.w.World.Connection == lists.ConnConnecting {
+		e.w.World.Connection = lists.ConnConnected
+		e.w.DisconnectedAtMs = 0
+		e.connStep = world.ConnectStepNone
+		e.w.ConnectionReason = world.Reason{}
+		ctx.Dirty.MarkAll()
+	}
+	switch k := sf.Kind.(type) {
 	case *v1.ServerFrame_Heartbeat:
-		e.handleStreamFrame(ctx, &corev1.StreamFrameEvent{
-			LegId: ev.LegId,
-			Frame: &corev1.StreamFrameEvent_Heartbeat{Heartbeat: true},
-		})
+		return
 	case *v1.ServerFrame_MachineUpdated:
-		if k.MachineUpdated != nil && k.MachineUpdated.Machine != nil {
-			e.handleStreamFrame(ctx, &corev1.StreamFrameEvent{
-				LegId: ev.LegId,
-				Frame: &corev1.StreamFrameEvent_WireMachineUpdated{WireMachineUpdated: k.MachineUpdated.Machine},
+		if k.MachineUpdated != nil && k.MachineUpdated.Machine != nil && k.MachineUpdated.Machine.Id != "" {
+			wm := k.MachineUpdated.Machine
+			e.nextPushSeq++
+			e.machinePushes[wm.Id] = e.nextPushSeq
+			e.openWireDirectoryBatchTag(ctx, []*v1.Machine{wm}, nil, nil, nil, dirBatchMeta{
+				kind: dirKindStreamMachine, legID: ev.LegId, wm: wm,
 			})
 		}
 	case *v1.ServerFrame_MachineRemoved:
 		if k.MachineRemoved != nil && k.MachineRemoved.MachineId != "" {
-			e.handleStreamFrame(ctx, &corev1.StreamFrameEvent{
-				LegId: ev.LegId,
-				Frame: &corev1.StreamFrameEvent_MachineRemovedId{MachineRemovedId: k.MachineRemoved.MachineId},
-			})
+			mid := k.MachineRemoved.MachineId
+			e.nextPushSeq++
+			e.removedPushes[mid] = e.nextPushSeq
+			e.dropMachine(ctx, mid)
+			e.requestSyncSecurity(ctx, true)
+			e.updateLivePollers(ctx)
+			ctx.Dirty.MarkAll()
 		}
 	case *v1.ServerFrame_SessionUpdated:
-		if k.SessionUpdated != nil && k.SessionUpdated.Session != nil {
-			e.handleStreamFrame(ctx, &corev1.StreamFrameEvent{
-				LegId: ev.LegId,
-				Frame: &corev1.StreamFrameEvent_WireSessionUpdated{WireSessionUpdated: k.SessionUpdated.Session},
+		if k.SessionUpdated != nil && k.SessionUpdated.Session != nil && k.SessionUpdated.Session.SessionId != "" {
+			ws := k.SessionUpdated.Session
+			sid := ws.SessionId
+			e.nextPushSeq++
+			e.sessionPushes[sid] = e.nextPushSeq
+			e.openWireDirectoryBatchTag(ctx, nil, []*v1.RemoteSession{ws}, nil, nil, dirBatchMeta{
+				kind: dirKindStreamSession, legID: ev.LegId, sid: sid, ws: ws,
 			})
 		}
 	case *v1.ServerFrame_EventsAppended:
 		if k.EventsAppended != nil && k.EventsAppended.SessionId != "" {
-			e.handleStreamFrame(ctx, &corev1.StreamFrameEvent{
-				LegId: ev.LegId,
-				Frame: &corev1.StreamFrameEvent_EventsAppended{
-					EventsAppended: &corev1.EventsAppendedFrame{
-						SessionId:  k.EventsAppended.SessionId,
-						WireEvents: k.EventsAppended.Events,
-					},
-				},
-			})
+			e.handleEventsAppended(ctx, k.EventsAppended.SessionId, k.EventsAppended.Events)
 		}
 	case *v1.ServerFrame_AccountPrefsUpdated:
 		if k.AccountPrefsUpdated != nil && k.AccountPrefsUpdated.Object != nil &&
 			k.AccountPrefsUpdated.Object.ObjectId == ProjectPrefsObjectID {
-			e.handleStreamFrame(ctx, &corev1.StreamFrameEvent{
-				LegId: ev.LegId,
-				Frame: &corev1.StreamFrameEvent_WireAccountPrefsUpdated{WireAccountPrefsUpdated: k.AccountPrefsUpdated.Object},
+			e.openWireDirectoryBatchTag(ctx, nil, nil, nil, []*v1.AccountPrefsObject{k.AccountPrefsUpdated.Object}, dirBatchMeta{
+				kind: dirKindStreamPrefs, legID: ev.LegId,
 			})
 		}
 	case *v1.ServerFrame_DeviceUpdated:
-		if k.DeviceUpdated != nil && k.DeviceUpdated.Device != nil {
-			e.handleStreamFrame(ctx, &corev1.StreamFrameEvent{
-				LegId: ev.LegId,
-				Frame: &corev1.StreamFrameEvent_WireDeviceUpdated{WireDeviceUpdated: k.DeviceUpdated.Device},
+		if k.DeviceUpdated != nil && k.DeviceUpdated.Device != nil && k.DeviceUpdated.Device.Id != "" {
+			wd := k.DeviceUpdated.Device
+			e.nextPushSeq++
+			e.devicePushes[wd.Id] = e.nextPushSeq
+			e.openWireDirectoryBatchTag(ctx, nil, nil, []*v1.Device{wd}, nil, dirBatchMeta{
+				kind: dirKindStreamDevice, legID: ev.LegId, wd: wd,
 			})
 		}
 	case *v1.ServerFrame_DeviceRemoved:
 		if k.DeviceRemoved != nil && k.DeviceRemoved.DeviceId != "" {
-			e.handleStreamFrame(ctx, &corev1.StreamFrameEvent{
-				LegId: ev.LegId,
-				Frame: &corev1.StreamFrameEvent_DeviceRemovedId{DeviceRemovedId: k.DeviceRemoved.DeviceId},
-			})
+			did := k.DeviceRemoved.DeviceId
+			e.nextPushSeq++
+			e.removedPushes[did] = e.nextPushSeq
+			delete(e.devices, did)
+			if e.secEngine != nil {
+				e.secEngine.SetDeviceDirectory(e.securityDeviceOffers())
+			}
+			e.requestSyncSecurity(ctx, true)
+			ctx.Dirty.Add(true, false, false)
+			ctx.Dirty.MarkSecurity()
 		}
 	}
 }

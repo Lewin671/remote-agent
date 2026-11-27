@@ -2,27 +2,35 @@
   "steps": [
     {
       "event": {
-        "nowMs": "1791078060000",
         "clockUpdated": {
-          "nowMs": "1791078060000",
-          "todayStartMs": "1791043200000",
-          "yesterdayStartMs": "1790956800000",
-          "weekStartMs": "1790524800000",
-          "nowYear": 2026,
           "months": [
             {
-              "year": 2026,
               "month": 10,
-              "startMs": "1790812800000"
+              "startMs": "1790812800000",
+              "year": 2026
             }
-          ]
-        }
+          ],
+          "nowMs": "1791078060000",
+          "nowYear": 2026,
+          "todayStartMs": "1791043200000",
+          "weekStartMs": "1790524800000",
+          "yesterdayStartMs": "1790956800000"
+        },
+        "nowMs": "1791078060000"
       }
     },
     {
       "event": {
         "nowMs": "1791078060000",
+        "seedDemoWorld": {
+          "clearDirectReports": true
+        }
+      }
+    },
+    {
+      "event": {
         "monoMs": "1000",
+        "nowMs": "1791078060000",
         "randomIds": [
           "r-1",
           "r-2",
@@ -54,6 +62,9 @@
           "r-28",
           "r-29"
         ],
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START"
+        },
         "unitFloats": [
           0.5,
           0.5,
@@ -67,10 +78,7 @@
           0.5,
           0.5,
           0.5
-        ],
-        "syncLifecycle": {
-          "kind": "SYNC_LIFECYCLE_KIND_START"
-        }
+        ]
       }
     },
     {
@@ -78,26 +86,17 @@
         "nowMs": "1791078060010",
         "seedDemoWorld": {
           "security": {
-            "isMember": true,
-            "selfDeviceId": "dev-1",
             "authorityDeviceId": "dev-1",
+            "isMember": true,
             "leaseEndMs": "1791164460000",
-            "trustedMachineIds": [
-              "m1"
-            ],
+            "selfDeviceId": "dev-1",
             "trustedClientIds": [
               "dev-1"
+            ],
+            "trustedMachineIds": [
+              "m1"
             ]
           }
-        }
-      }
-    },
-    {
-      "event": {
-        "nowMs": "1791078060020",
-        "tokenResult": {
-          "opId": "2",
-          "token": "tok-1"
         }
       }
     },
@@ -113,102 +112,35 @@
     {
       "event": {
         "nowMs": "1791078060040",
-        "listsFetched": {
-          "opId": "3",
-          "machines": [
-            {
-              "machineId": "m1",
-              "online": true,
-              "lastSeenMs": "1791078060000",
-              "meta": {
-                "hostname": "MacStudio",
-                "home": "/Users/me",
-                "protocolVersion": 17,
-                "capabilities": {
-                  "imageUpload": true,
-                  "maxImagesPerMessage": 6,
-                  "approvalAlways": true,
-                  "scheduledTasks": true,
-                  "fileUpload": true,
-                  "sharedFiles": true
-                },
-                "agents": [
-                  {
-                    "agent": "AGENT_CODEX",
-                    "defaultMode": "APPROVAL_MODE_ASK"
-                  },
-                  {
-                    "agent": "AGENT_CLAUDE",
-                    "defaultMode": "APPROVAL_MODE_ASK"
-                  }
-                ]
-              }
-            }
-          ],
-          "sessions": [
-            {
-              "sessionId": "s-qp",
-              "machineId": "m1",
-              "lastSeq": "3",
-              "updatedMs": "1791078060000",
-              "meta": {
-                "id": "s-qp",
-                "cwd": "/Users/me/Code/app",
-                "agent": "AGENT_CODEX",
-                "status": "SESSION_STATUS_RUNNING",
-                "title": "Question & Plan",
-                "createdAt": "2026-10-04T01:00:00Z"
-              },
-              "checkpoint": {
-                "running": true,
-                "actions": [
-                  {
-                    "seq": "2",
-                    "questionAsked": {
-                      "questionId": "q-1",
-                      "questions": [
-                        {
-                          "header": "Scope",
-                          "text": "Which package?",
-                          "options": [
-                            {
-                              "label": "Core (Recommended)",
-                              "description": "Shared core"
-                            },
-                            {
-                              "label": "UI"
-                            }
-                          ]
-                        },
-                        {
-                          "header": "Checks",
-                          "text": "Select checks",
-                          "multiSelect": true,
-                          "options": [
-                            {
-                              "label": "Unit"
-                            },
-                            {
-                              "label": "Golden"
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  }
-                ]
-              }
-            }
-          ],
+        "seedDemoWorld": {
+          "clearListError": true,
           "devices": [
             {
+              "createdMs": "1791000000000",
               "deviceId": "dev-1",
               "kind": "DEVICE_KIND_CLIENT",
-              "createdMs": "1791000000000",
-              "meta": {
-                "name": "Phone",
-                "platform": "iOS"
-              }
+              "rawMeta": "CgVQaG9uZRIDaU9T"
+            }
+          ],
+          "machines": [
+            {
+              "lastSeenMs": "1791078060000",
+              "machineId": "m1",
+              "online": true,
+              "rawMeta": "CglNYWNTdHVkaW8yCS9Vc2Vycy9tZUoECAEgAUoECAIgAVINEAEYBlABYAFoAYABAWAR"
+            }
+          ],
+          "replaceDevices": true,
+          "replaceMachines": true,
+          "replaceSessions": true,
+          "sessions": [
+            {
+              "lastSeq": "3",
+              "machineId": "m1",
+              "rawCheckpoint": "EnkIAqIBdAoDcS0xEkASBVNjb3BlGg5XaGljaCBwYWNrYWdlPyIhChJDb3JlIChSZWNvbW1lbmRlZCkSC1NoYXJlZCBjb3JlIgQKAlVJEisSBkNoZWNrcxoNU2VsZWN0IGNoZWNrcyIGCgRVbml0IggKBkdvbGRlbigBMAE=",
+              "rawMeta": "CgRzLXFwEhIvVXNlcnMvbWUvQ29kZS9hcHAgA0IGCJDKhtYGeg9RdWVzdGlvbiAmIFBsYW7IAQE=",
+              "sessionId": "s-qp",
+              "updatedMs": "1791078060000"
             }
           ]
         }
@@ -217,21 +149,16 @@
     {
       "event": {
         "nowMs": "1791078060050",
-        "accountPrefsFetched": {
-          "opId": "4",
-          "prefs": {
-            "revision": "1",
-            "prefs": {
-              "schema": 1
-            }
-          }
+        "seedDemoWorld": {
+          "prefsRevision": "1",
+          "rawPrefs": "CAE="
         }
       }
     },
     {
       "event": {
-        "nowMs": "1791078060060",
         "monoMs": "1100",
+        "nowMs": "1791078060060",
         "sessionOpen": {
           "sessionId": "s-qp"
         }
@@ -239,8 +166,8 @@
     },
     {
       "event": {
-        "nowMs": "1791078060070",
         "monoMs": "1150",
+        "nowMs": "1791078060070",
         "sessionWatch": {
           "sessionId": "s-qp",
           "watched": true
@@ -259,36 +186,31 @@
     },
     {
       "event": {
-        "nowMs": "1791078060080",
         "monoMs": "1200",
+        "nowMs": "1791078060080",
         "sessionAnswerQuestion": {
-          "sessionId": "s-qp",
+          "optionNum": 1,
           "questionId": "q-1",
-          "optionNum": 1
+          "sessionId": "s-qp"
         }
       }
     },
     {
       "event": {
-        "nowMs": "1791078060090",
-        "monoMs": "1250",
         "commandOutcome": {
-          "requestId": "r-7",
-          "attemptId": "r-8",
-          "source": "OUTCOME_SOURCE_DAEMON",
-          "signed": true,
-          "hashesMatch": true,
           "attemptBound": true,
+          "attemptId": "r-8",
+          "hashesMatch": true,
           "outerMatchesInner": true,
           "outerOutcome": "executed",
           "outerReason": "ok",
-          "result": {
-            "outcome": "executed",
-            "reason": "ok",
-            "resultAvailable": true,
-            "answerQuestion": {}
-          }
-        }
+          "rawResult": "GghleGVjdXRlZCICb2tAAWoA",
+          "requestId": "r-7",
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "monoMs": "1250",
+        "nowMs": "1791078060090"
       },
       "views": [
         {
@@ -303,53 +225,17 @@
     },
     {
       "event": {
-        "nowMs": "1791078060100",
         "monoMs": "1300",
-        "cacheEventsLoaded": {
-          "opId": "5",
-          "sessionId": "s-qp",
-          "events": [
+        "nowMs": "1791078060100",
+        "seedDemoWorld": {
+          "sessionEvents": [
             {
-              "seq": "1",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "1",
-                "time": "2026-10-04T01:10:01Z",
-                "userMessage": {
-                  "text": "plan migration"
-                }
-              }
-            },
-            {
-              "seq": "2",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "2",
-                "time": "2026-10-04T01:10:02Z",
-                "questionAsked": {
-                  "questionId": "q-1",
-                  "questions": [
-                    {
-                      "header": "Scope",
-                      "text": "Which package?"
-                    }
-                  ]
-                }
-              }
-            },
-            {
-              "seq": "3",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "3",
-                "time": "2026-10-04T01:10:03Z",
-                "planProposed": {
-                  "text": "## Plan\n1. Step A\n2. Step B"
-                }
-              }
+              "rawEvents": [
+                "CAESBHMtcXAaBgjpzobWBlIQCg5wbGFuIG1pZ3JhdGlvbg==",
+                "CAISBHMtcXAaBgjqzobWBqIBHgoDcS0xEhcSBVNjb3BlGg5XaGljaCBwYWNrYWdlPw==",
+                "CAMSBHMtcXAaBgjrzobWBsIBHQobIyMgUGxhbgoxLiBTdGVwIEEKMi4gU3RlcCBC"
+              ],
+              "sessionId": "s-qp"
             }
           ]
         }
@@ -357,43 +243,19 @@
     },
     {
       "event": {
-        "nowMs": "1791078060110",
         "monoMs": "1350",
-        "streamFrame": {
-          "legId": "1",
-          "sessionUpdated": {
-            "sessionId": "s-qp",
-            "machineId": "m1",
-            "lastSeq": "3",
-            "updatedMs": "1791078060110",
-            "meta": {
-              "id": "s-qp",
-              "cwd": "/Users/me/Code/app",
-              "agent": "AGENT_CODEX",
-              "status": "SESSION_STATUS_RUNNING",
-              "title": "Question & Plan",
-              "planOpen": true
-            },
-            "checkpoint": {
-              "running": true,
-              "planEventSeq": "3",
-              "planScreenHash": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
-              "planScreen": "## Plan",
-              "actions": [
-                {
-                  "seq": "3",
-                  "planProposed": {
-                    "text": "## Plan\n1. Step A\n2. Step B"
-                  }
-                }
-              ],
-              "session": {
-                "id": "s-qp",
-                "status": "SESSION_STATUS_RUNNING",
-                "planOpen": true
-              }
+        "nowMs": "1791078060110",
+        "seedDemoWorld": {
+          "sessions": [
+            {
+              "lastSeq": "3",
+              "machineId": "m1",
+              "rawCheckpoint": "CgsKBHMtcXAgA7gBARIiCAPCAR0KGyMjIFBsYW4KMS4gU3RlcCBBCjIuIFN0ZXAgQhgDIiAAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyoHIyMgUGxhbjAB",
+              "rawMeta": "CgRzLXFwEhIvVXNlcnMvbWUvQ29kZS9hcHAgA3oPUXVlc3Rpb24gJiBQbGFuuAEByAEB",
+              "sessionId": "s-qp",
+              "updatedMs": "1791078060110"
             }
-          }
+          ]
         }
       },
       "views": [
@@ -409,26 +271,26 @@
     },
     {
       "event": {
-        "nowMs": "1791078060120",
         "monoMs": "1400",
+        "nowMs": "1791078060120",
         "sessionAnswerPlan": {
-          "sessionId": "s-qp",
-          "choice": "PLAN_CHOICE_CLEAR_AND_IMPLEMENT"
+          "choice": "PLAN_CHOICE_CLEAR_AND_IMPLEMENT",
+          "sessionId": "s-qp"
         }
       }
     },
     {
       "event": {
-        "nowMs": "1791078060130",
-        "monoMs": "1450",
         "commandOutcome": {
-          "requestId": "r-9",
+          "attemptBound": true,
           "attemptId": "r-10",
-          "source": "OUTCOME_SOURCE_DAEMON",
-          "signed": false,
           "hashesMatch": true,
-          "attemptBound": true
-        }
+          "requestId": "r-9",
+          "signed": false,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "monoMs": "1450",
+        "nowMs": "1791078060130"
       },
       "views": [
         {
@@ -443,8 +305,8 @@
     },
     {
       "event": {
-        "nowMs": "1791078060140",
         "monoMs": "1500",
+        "nowMs": "1791078060140",
         "sessionAbandonCommand": {
           "sessionId": "s-qp",
           "slotKey": "plan:s-qp"

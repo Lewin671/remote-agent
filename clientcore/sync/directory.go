@@ -36,48 +36,53 @@ func (e *Engine) handleCacheBootstrapLoaded(ctx *StepContext, ev *corev1.CacheBo
 		e.scopeHMACKey = append([]byte(nil), ev.ScopeHmacKey...)
 	}
 
-	if len(ev.WireMachines) > 0 || len(ev.WireSessions) > 0 || ev.WirePrefs != nil ||
-		(e.secEngine != nil && e.secEngine.Locked() && len(ev.Machines) == 0 && len(ev.Sessions) == 0 && ev.Prefs == nil) {
-		var prefsSlice []*v1.AccountPrefsObject
-		if ev.WirePrefs != nil {
-			prefsSlice = []*v1.AccountPrefsObject{ev.WirePrefs}
+	var wireMachines []*v1.Machine
+	for _, raw := range ev.RawMachines {
+		if len(raw) == 0 {
+			continue
 		}
-		e.openWireDirectoryBatchTag(ctx, ev.WireMachines, ev.WireSessions, nil, prefsSlice, dirBatchMeta{kind: dirKindBootstrap})
-		return
-	}
-
-	if !e.w.World.MachinesListed {
-		for _, m := range ev.Machines {
-			if m == nil || m.MachineId == "" {
-				continue
-			}
-			if _, exists := e.machines[m.MachineId]; !exists {
-				e.storeMachine(plainToMachineEntry(m))
-			}
+		var m v1.Machine
+		if err := m.Unmarshal(raw); err == nil {
+			wireMachines = append(wireMachines, &m)
 		}
 	}
-	if !e.w.World.SessionsListed {
-		for _, s := range ev.Sessions {
-			if s == nil || s.SessionId == "" {
-				continue
-			}
-			if _, exists := e.sessions[s.SessionId]; !exists {
-				entry := plainToSessionEntry(s, nil)
-				e.storeSession(entry)
-				e.listed[s.SessionId] = true
-			}
+	var wireSessions []*v1.RemoteSession
+	for _, raw := range ev.RawSessions {
+		if len(raw) == 0 {
+			continue
+		}
+		var s v1.RemoteSession
+		if err := s.Unmarshal(raw); err == nil {
+			wireSessions = append(wireSessions, &s)
 		}
 	}
-	if !e.prefs.Loaded && ev.Prefs != nil {
-		e.applyAccountPrefs(ev.Prefs, false)
+	var prefsSlice []*v1.AccountPrefsObject
+	if len(ev.RawPrefs) > 0 {
+		var p v1.AccountPrefsObject
+		if err := p.Unmarshal(ev.RawPrefs); err == nil {
+			prefsSlice = []*v1.AccountPrefsObject{&p}
+		}
 	}
-	e.emitWatchedSessionsIfChanged(ctx)
-	e.updateLivePollers(ctx)
-	ctx.Dirty.MarkAll()
+	e.openWireDirectoryBatchTag(ctx, wireMachines, wireSessions, nil, prefsSlice, dirBatchMeta{kind: dirKindBootstrap})
 }
 
 func (e *Engine) startRefresh(ctx *StepContext) {
 	if !e.running {
+		return
+	}
+	if e.demoMode {
+		e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_LIST_RETRY, "")
+		if e.demoListError != "" {
+			e.w.SessionListError = world.PlainReason(e.demoListError)
+			e.w.World.SessionListError = e.demoListError
+		} else {
+			e.w.World.MachinesListed = true
+			e.w.World.SessionsListed = true
+			e.w.World.LiveLoaded = true
+			e.w.SessionListError = world.Reason{}
+			e.w.World.SessionListError = ""
+		}
+		ctx.Dirty.Add(true, true, false)
 		return
 	}
 	e.refreshRun++
@@ -88,57 +93,34 @@ func (e *Engine) startRefresh(ctx *StepContext) {
 	e.refreshSnapshotR = maps.Clone(e.removedPushes)
 	e.refreshSnapshotD = maps.Clone(e.devicePushes)
 
-	if e.relayPipe {
-		e.startRefreshViaRelayPipe(ctx)
-		return
-	}
-	ctx.emit(&corev1.Effect{
-		Effect: &corev1.Effect_Rpc{
-			Rpc: &corev1.RpcEffect{
-				OpId: e.refreshOpID,
-				Kind: &corev1.RpcEffect_FetchLists{
-					FetchLists: &corev1.FetchListsRpc{Limit: SessionPageLimit},
-				},
-			},
-		},
-	})
+	e.startRefreshViaRelayPipe(ctx)
 }
 
 func (e *Engine) startRefreshDevices(ctx *StepContext, force bool) {
-	if !force && !e.running {
+	if (!force && !e.running) || e.demoMode {
 		return
 	}
 	e.devicesOpID = e.allocOpID()
 	e.devicesSnapshotR = maps.Clone(e.removedPushes)
 	e.devicesSnapshotD = maps.Clone(e.devicePushes)
-	if e.relayPipe {
-		e.emitRelayRpc(
-			ctx,
-			corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_DEVICES,
-			e.cachedToken,
-			relayRpcDefaultTimeoutMs,
-			"",
-			(&v1.ListDevicesRequest{}).AppendMarshal(nil),
-			&pendingRelayRpc{kind: relayRpcDevices, opID: e.devicesOpID},
-		)
-		return
-	}
-	ctx.emit(&corev1.Effect{
-		Effect: &corev1.Effect_Rpc{
-			Rpc: &corev1.RpcEffect{
-				OpId: e.devicesOpID,
-				Kind: &corev1.RpcEffect_FetchDevices{
-					FetchDevices: &corev1.FetchDevicesRpc{Force: force},
-				},
-			},
-		},
-	})
+	e.emitRelayRpc(
+		ctx,
+		corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_DEVICES,
+		e.cachedToken,
+		relayRpcDefaultTimeoutMs,
+		"",
+		(&v1.ListDevicesRequest{}).AppendMarshal(nil),
+		&pendingRelayRpc{kind: relayRpcDevices, opID: e.devicesOpID},
+	)
 }
 
 // RequestMoreSessions asks for the next page of ended sessions (if connected and more remain).
 func (e *Engine) RequestMoreSessions(ctx *StepContext) {
 	if !e.w.World.SessionsListed {
 		if e.running && e.w.LivePushConnected && e.refreshOpID == 0 {
+			if e.demoMode {
+				e.demoListError = ""
+			}
 			e.startRefresh(ctx)
 		}
 		return
@@ -150,6 +132,13 @@ func (e *Engine) RequestMoreSessions(ctx *StepContext) {
 		}
 		return
 	}
+	if e.demoMode {
+		e.w.World.SessionsNext = nil
+		e.w.World.HasMoreSessions = false
+		e.w.World.LoadingMoreSessions = false
+		ctx.Dirty.Add(true, true, false)
+		return
+	}
 	e.w.World.LoadingMoreSessions = true
 	e.w.SessionListError = world.Reason{}
 	e.w.World.SessionListError = ""
@@ -159,31 +148,15 @@ func (e *Engine) RequestMoreSessions(ctx *StepContext) {
 		EndedMs:   e.w.World.SessionsNext.EndedMs,
 		SessionId: e.w.World.SessionsNext.SessionID,
 	}
-	if e.relayPipe {
-		e.emitRelayRpc(
-			ctx,
-			corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS,
-			e.cachedToken,
-			relayRpcDefaultTimeoutMs,
-			"",
-			(&v1.ListRemoteSessionsRequest{After: after, Limit: SessionPageLimit}).AppendMarshal(nil),
-			&pendingRelayRpc{kind: relayRpcSessionsPage, opID: e.pageOpID},
-		)
-	} else {
-		ctx.emit(&corev1.Effect{
-			Effect: &corev1.Effect_Rpc{
-				Rpc: &corev1.RpcEffect{
-					OpId: e.pageOpID,
-					Kind: &corev1.RpcEffect_FetchSessionsPage{
-						FetchSessionsPage: &corev1.FetchSessionsPageRpc{
-							After: after,
-							Limit: SessionPageLimit,
-						},
-					},
-				},
-			},
-		})
-	}
+	e.emitRelayRpc(
+		ctx,
+		corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS,
+		e.cachedToken,
+		relayRpcDefaultTimeoutMs,
+		"",
+		(&v1.ListRemoteSessionsRequest{After: after, Limit: SessionPageLimit}).AppendMarshal(nil),
+		&pendingRelayRpc{kind: relayRpcSessionsPage, opID: e.pageOpID},
+	)
 	ctx.Dirty.Add(true, true, false)
 }
 
@@ -201,39 +174,26 @@ func (e *Engine) ClearWantAllSessions() {
 }
 
 func (e *Engine) fetchSessionByID(ctx *StepContext, sessionID string) {
-	if sessionID == "" || !e.running {
+	if sessionID == "" || !e.running || e.demoMode {
 		return
 	}
 	delete(e.sessionByIDFailed, sessionID)
 	delete(e.sessionByIDErrors, sessionID)
 	opID := e.allocOpID()
 	e.sessionByIDOps[opID] = sessionID
-	if e.relayPipe {
-		e.emitRelayRpc(
-			ctx,
-			corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS,
-			e.cachedToken,
-			relayRpcDefaultTimeoutMs,
-			"",
-			(&v1.ListRemoteSessionsRequest{SessionIds: []string{sessionID}, Limit: 1}).AppendMarshal(nil),
-			&pendingRelayRpc{kind: relayRpcSessionByID, opID: opID, sid: sessionID},
-		)
-		return
-	}
-	ctx.emit(&corev1.Effect{
-		Effect: &corev1.Effect_Rpc{
-			Rpc: &corev1.RpcEffect{
-				OpId: opID,
-				Kind: &corev1.RpcEffect_FetchSessionById{
-					FetchSessionById: &corev1.FetchSessionByIdRpc{SessionId: sessionID},
-				},
-			},
-		},
-	})
+	e.emitRelayRpc(
+		ctx,
+		corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS,
+		e.cachedToken,
+		relayRpcDefaultTimeoutMs,
+		"",
+		(&v1.ListRemoteSessionsRequest{SessionIds: []string{sessionID}, Limit: 1}).AppendMarshal(nil),
+		&pendingRelayRpc{kind: relayRpcSessionByID, opID: opID, sid: sessionID},
+	)
 }
 
-func (e *Engine) handleListsFetched(ctx *StepContext, ev *corev1.ListsFetchedEvent) {
-	if ev == nil || ev.OpId != e.refreshOpID || !e.running {
+func (e *Engine) handleListsFetched(ctx *StepContext, ev listsFetchedResult) {
+	if ev.OpID != e.refreshOpID || !e.running {
 		return
 	}
 	e.refreshOpID = 0
@@ -256,150 +216,14 @@ func (e *Engine) handleListsFetched(ctx *StepContext, ev *corev1.ListsFetchedEve
 		return
 	}
 
-	if len(ev.WireMachines) > 0 || len(ev.WireSessions) > 0 || len(ev.WireDevices) > 0 ||
-		(e.secEngine != nil && e.secEngine.Locked() && len(ev.Machines) == 0 && len(ev.Sessions) == 0 && len(ev.Devices) == 0) {
-		mp, sp, rp, dp := e.cloneRefreshSnapshots()
-		e.openWireDirectoryBatchTag(ctx, ev.WireMachines, ev.WireSessions, ev.WireDevices, nil, dirBatchMeta{
-			kind: dirKindListsFetched, refreshRun: e.refreshRun, evNext: ev.Next, mp: mp, sp: sp, rp: rp, dp: dp,
-		})
-		return
-	}
-
-	e.listBackoffMs = ListRetryInitialMs
-	e.listingGen++
-	e.pageOpID = 0
-	e.w.World.LoadingMoreSessions = false
-	e.w.World.MachinesListed = true
-	e.w.World.SessionsListed = true
-	e.w.World.LiveLoaded = true
-	e.coldStartGraceExpired = true
-	e.clearColdStartGrace(ctx)
-	e.w.SessionListError = world.Reason{}
-	e.w.World.SessionListError = ""
-
-	mp := e.refreshSnapshotM
-	sp := e.refreshSnapshotS
-	rp := e.refreshSnapshotR
-	dp := e.refreshSnapshotD
-
-	mids := make(map[string]bool, len(ev.Machines))
-	for _, m := range ev.Machines {
-		if m != nil && m.MachineId != "" {
-			mids[m.MachineId] = true
-		}
-	}
-	sids := make([]string, 0, len(ev.Sessions))
-	sidSet := make(map[string]bool, len(ev.Sessions))
-	for _, s := range ev.Sessions {
-		if s != nil && s.SessionId != "" {
-			sids = append(sids, s.SessionId)
-			sidSet[s.SessionId] = true
-		}
-	}
-
-	var pageNext *lists.SessionPlace
-	if ev.Next != nil && (ev.Next.EndedMs != 0 || ev.Next.SessionId != "") {
-		pageNext = &lists.SessionPlace{
-			EndedMs:   ev.Next.EndedMs,
-			SessionID: ev.Next.SessionId,
-		}
-	}
-
-	for id := range e.machines {
-		if !mids[id] && !pushedSince(e.machinePushes, mp, id) {
-			e.dropMachine(ctx, id)
-		}
-	}
-
-	knownMachines := make([]string, 0, len(mids)+len(e.machines))
-	seenMachines := make(map[string]bool, len(mids)+len(e.machines))
-	for id := range mids {
-		seenMachines[id] = true
-		knownMachines = append(knownMachines, id)
-	}
-	for id := range e.machines {
-		if !seenMachines[id] {
-			seenMachines[id] = true
-			knownMachines = append(knownMachines, id)
-		}
-	}
-
-	var reconcile []lists.ReconcileSessionEntry
-	var pushedIDs []string
-	for id, cur := range e.sessions {
-		if cur == nil || sidSet[id] {
-			continue
-		}
-		if pushedSince(e.sessionPushes, sp, id) {
-			pushedIDs = append(pushedIDs, id)
-			continue
-		}
-		reconcile = append(reconcile, lists.ReconcileSessionEntry{
-			ID:            id,
-			MachineID:     cur.MachineID,
-			ListedEndedMs: cur.ListedEndedMs,
-		})
-	}
-	removeIDs, unlistIDs := lists.ReconcileEndedSessions(nil, reconcile, sids, pushedIDs, knownMachines, pageNext)
-
-	for _, id := range removeIDs {
-		e.removeSession(ctx, id, true)
-	}
-	for _, id := range unlistIDs {
-		delete(e.listed, id)
-		ctx.emit(&corev1.Effect{
-			Effect: &corev1.Effect_CacheDelete{
-				CacheDelete: &corev1.CacheDeleteEffect{
-					Kind: &corev1.CacheDeleteEffect_UnlistSessionId{UnlistSessionId: id},
-				},
-			},
-		})
-	}
-	for id := range e.listed {
-		if !sidSet[id] && !pushedSince(e.sessionPushes, sp, id) {
-			delete(e.listed, id)
-			ctx.emit(&corev1.Effect{
-				Effect: &corev1.Effect_CacheDelete{
-					CacheDelete: &corev1.CacheDeleteEffect{
-						Kind: &corev1.CacheDeleteEffect_UnlistSessionId{UnlistSessionId: id},
-					},
-				},
-			})
-		}
-	}
-
-	for _, m := range ev.Machines {
-		if m == nil || m.MachineId == "" || pushedSince(e.removedPushes, rp, m.MachineId) {
-			continue
-		}
-		e.putMachine(ctx, m, pushedSince(e.machinePushes, mp, m.MachineId), true)
-	}
-
-	for _, s := range ev.Sessions {
-		if s == nil || s.SessionId == "" {
-			continue
-		}
-		if e.listed[s.SessionId] == false {
-			e.listed[s.SessionId] = true
-		}
-		e.putSession(ctx, s, true)
-	}
-
-	e.reconcileDevices(ev.Devices, rp, dp, false)
-	e.w.World.SessionsNext = pageNext
-	e.w.World.HasMoreSessions = pageNext != nil
-
-	e.updateLivePollers(ctx)
-	e.syncDirectWatched(ctx)
-	if e.wantAllSessions && e.w.World.SessionsNext != nil {
-		e.RequestMoreSessions(ctx)
-	}
-	ctx.Dirty.MarkAll()
-	ctx.Dirty.MarkSecurity()
+	mp, sp, rp, dp := e.cloneRefreshSnapshots()
+	e.openWireDirectoryBatchTag(ctx, ev.WireMachines, ev.WireSessions, ev.WireDevices, nil, dirBatchMeta{
+		kind: dirKindListsFetched, refreshRun: e.refreshRun, evNext: ev.Next, mp: mp, sp: sp, rp: rp, dp: dp,
+	})
 }
 
-func (e *Engine) handleSessionsPageFetched(ctx *StepContext, ev *corev1.SessionsPageFetchedEvent) {
-	if ev == nil || ev.OpId != e.pageOpID || !e.running {
+func (e *Engine) handleSessionsPageFetched(ctx *StepContext, ev sessionsPageResult) {
+	if ev.OpID != e.pageOpID || !e.running {
 		return
 	}
 	e.pageOpID = 0
@@ -413,66 +237,18 @@ func (e *Engine) handleSessionsPageFetched(ctx *StepContext, ev *corev1.Sessions
 		ctx.Dirty.Add(true, true, false)
 		return
 	}
-	if len(ev.WireSessions) > 0 || (e.secEngine != nil && e.secEngine.Locked() && len(ev.Sessions) == 0) {
-		e.openWireDirectoryBatchTag(ctx, nil, ev.WireSessions, nil, nil, dirBatchMeta{
-			kind: dirKindSessionsPage, listingGen: e.listingGen, evNext: ev.Next,
-		})
-		return
-	}
-	e.w.SessionListError = world.Reason{}
-	e.w.World.SessionListError = ""
-	for _, s := range ev.Sessions {
-		if s != nil && s.SessionId != "" {
-			e.putSession(ctx, s, false)
-		}
-	}
-	if ev.Next != nil && (ev.Next.EndedMs != 0 || ev.Next.SessionId != "") {
-		e.w.World.SessionsNext = &lists.SessionPlace{
-			EndedMs:   ev.Next.EndedMs,
-			SessionID: ev.Next.SessionId,
-		}
-		e.w.World.HasMoreSessions = true
-	} else {
-		e.w.World.SessionsNext = nil
-		e.w.World.HasMoreSessions = false
-	}
-	e.updateLivePollers(ctx)
-	e.syncDirectWatched(ctx)
-	if e.wantAllSessions && e.w.World.SessionsNext != nil {
-		e.RequestMoreSessions(ctx)
-	}
-	ctx.Dirty.Add(true, true, false)
+	e.openWireDirectoryBatchTag(ctx, nil, ev.WireSessions, nil, nil, dirBatchMeta{
+		kind: dirKindSessionsPage, listingGen: e.listingGen, evNext: ev.Next,
+	})
 }
 
-func (e *Engine) handleSessionByIDFetched(ctx *StepContext, ev *corev1.SessionByIdFetchedEvent) {
-	if ev == nil {
-		return
-	}
-	sid, ok := e.sessionByIDOps[ev.OpId]
+func (e *Engine) handleSessionByIDFetched(ctx *StepContext, ev sessionByIDResult) {
+	sid, ok := e.sessionByIDOps[ev.OpID]
 	if !ok {
 		return
 	}
-	delete(e.sessionByIDOps, ev.OpId)
-	if ev.WireSession != nil || (e.secEngine != nil && e.secEngine.Locked() && ev.Session == nil) {
-		if ev.Error != "" || ev.WireSession == nil || ev.WireSession.SessionId == "" {
-			if sid != "" {
-				e.sessionByIDFailed[sid] = true
-				if ev.Error != "" {
-					e.sessionByIDErrors[sid] = world.PlainReason(ev.Error)
-				} else {
-					delete(e.sessionByIDErrors, sid)
-				}
-			}
-			ctx.Dirty.Add(false, true, false)
-			ctx.Dirty.MarkSessionData()
-			return
-		}
-		e.openWireDirectoryBatchTag(ctx, nil, []*v1.RemoteSession{ev.WireSession}, nil, nil, dirBatchMeta{
-			kind: dirKindSessionByID, sid: sid,
-		})
-		return
-	}
-	if ev.Error != "" || ev.Session == nil || ev.Session.SessionId == "" {
+	delete(e.sessionByIDOps, ev.OpID)
+	if ev.Error != "" || ev.WireSession == nil || ev.WireSession.SessionId == "" {
 		if sid != "" {
 			e.sessionByIDFailed[sid] = true
 			if ev.Error != "" {
@@ -485,189 +261,28 @@ func (e *Engine) handleSessionByIDFetched(ctx *StepContext, ev *corev1.SessionBy
 		ctx.Dirty.MarkSessionData()
 		return
 	}
-	delete(e.sessionByIDFailed, sid)
-	delete(e.sessionByIDErrors, sid)
-	e.putSession(ctx, ev.Session, false)
-	e.emitWatchedSessionsIfChanged(ctx)
-	e.updateLivePollers(ctx)
-	ctx.Dirty.MarkAll()
+	e.openWireDirectoryBatchTag(ctx, nil, []*v1.RemoteSession{ev.WireSession}, nil, nil, dirBatchMeta{
+		kind: dirKindSessionByID, sid: sid,
+	})
 }
 
-func (e *Engine) handleDevicesFetched(ctx *StepContext, ev *corev1.DevicesFetchedEvent) {
-	if ev == nil {
+func (e *Engine) handleDevicesFetched(ctx *StepContext, ev devicesFetchedResult) {
+	if ev.OpID == 0 || ev.OpID != e.devicesOpID {
 		return
 	}
-	var removedSnapshot, deviceSnapshot map[string]uint64
-	switch {
-	case ev.OpId != 0:
-		if ev.OpId != e.devicesOpID {
-			return
-		}
-		e.devicesOpID = 0
-		removedSnapshot = e.devicesSnapshotR
-		deviceSnapshot = e.devicesSnapshotD
-	case ev.PushSeq != 0:
-		if ev.PushSeq <= e.lastDevicesPushSeq {
-			return
-		}
-		e.lastDevicesPushSeq = ev.PushSeq
-		removedSnapshot = nil
-		deviceSnapshot = nil
-	default:
-		return
-	}
+	e.devicesOpID = 0
+	removedSnapshot := e.devicesSnapshotR
+	deviceSnapshot := e.devicesSnapshotD
 	if ev.Error != "" {
 		e.devicesLoadFailed = true
 		e.devicesError = world.PlainReason(ev.Error)
 		ctx.Dirty.MarkSyncState()
 		return
 	}
-	if len(ev.WireDevices) > 0 || (e.secEngine != nil && e.secEngine.Locked() && len(ev.Devices) == 0) {
-		e.devicesApplyGen++
-		e.openWireDirectoryBatchTag(ctx, nil, nil, ev.WireDevices, nil, dirBatchMeta{
-			kind: dirKindDevices, devGen: e.devicesApplyGen, mp: removedSnapshot, sp: deviceSnapshot,
-		})
-		return
-	}
-	e.devicesLoadFailed = false
-	e.devicesError = world.Reason{}
-	e.reconcileDevices(ev.Devices, removedSnapshot, deviceSnapshot, true)
-	e.pruneUntrustedCaches(ctx)
-	e.maybeDescribeSelf(ctx)
-	ctx.Dirty.MarkAll()
-	ctx.Dirty.MarkSecurity()
-}
-
-func (e *Engine) handleStreamFrame(ctx *StepContext, ev *corev1.StreamFrameEvent) {
-	if ev == nil || ev.LegId != e.legID || !e.running {
-		return
-	}
-	_, isHeartbeat := ev.Frame.(*corev1.StreamFrameEvent_Heartbeat)
-	if e.liveness != nil {
-		e.liveness.OnFrame(e.monoMs, isHeartbeat)
-	}
-	if e.w.World.Connection == lists.ConnConnecting {
-		e.w.World.Connection = lists.ConnConnected
-		e.w.DisconnectedAtMs = 0
-		e.connStep = world.ConnectStepNone
-		e.w.ConnectionReason = world.Reason{}
-		ctx.Dirty.MarkAll()
-	}
-
-	switch f := ev.Frame.(type) {
-	case *corev1.StreamFrameEvent_Heartbeat:
-		return
-	case *corev1.StreamFrameEvent_MachineUpdated:
-		if f.MachineUpdated != nil && f.MachineUpdated.MachineId != "" {
-			e.nextPushSeq++
-			e.machinePushes[f.MachineUpdated.MachineId] = e.nextPushSeq
-			e.putMachine(ctx, f.MachineUpdated, false, true)
-			if f.MachineUpdated.Online && e.security.Loaded && !e.isTrustedMachine(f.MachineUpdated.MachineId) {
-				e.requestSyncSecurity(ctx, true)
-			}
-			e.updateLivePollers(ctx)
-			ctx.Dirty.MarkAll()
-		}
-	case *corev1.StreamFrameEvent_MachineRemovedId:
-		if f.MachineRemovedId != "" {
-			e.nextPushSeq++
-			e.removedPushes[f.MachineRemovedId] = e.nextPushSeq
-			e.dropMachine(ctx, f.MachineRemovedId)
-			e.requestSyncSecurity(ctx, true)
-			e.updateLivePollers(ctx)
-			ctx.Dirty.MarkAll()
-		}
-	case *corev1.StreamFrameEvent_SessionUpdated:
-		if f.SessionUpdated != nil && f.SessionUpdated.SessionId != "" {
-			sid := f.SessionUpdated.SessionId
-			e.nextPushSeq++
-			e.sessionPushes[sid] = e.nextPushSeq
-			prev := e.sessions[sid]
-			var prevServerSeq uint64
-			if prev != nil {
-				prevServerSeq = prev.ServerLastSeq
-			}
-			e.putSession(ctx, f.SessionUpdated, true)
-			e.emitWatchedSessionsIfChanged(ctx)
-			updated := e.sessions[sid]
-			b := e.buffers[sid]
-			needGapFill := b != nil && len(b.pending) > 0 && updated != nil && updated.ServerLastSeq > uint64(len(b.prefix))
-			if f.SessionUpdated.LastSeq > prevServerSeq || needGapFill {
-				if e.watchedSessions[sid] || b != nil {
-					e.startFetchEvents(ctx, sid)
-				}
-			}
-			e.updateLivePollers(ctx)
-			ctx.Dirty.MarkAll()
-		}
-	case *corev1.StreamFrameEvent_EventsAppended:
-		if f.EventsAppended != nil && f.EventsAppended.SessionId != "" {
-			e.handleEventsAppended(ctx, f.EventsAppended)
-		}
-	case *corev1.StreamFrameEvent_AccountPrefsUpdated:
-		if f.AccountPrefsUpdated != nil {
-			e.applyAccountPrefs(f.AccountPrefsUpdated, true)
-			ctx.Dirty.MarkAll()
-		}
-	case *corev1.StreamFrameEvent_DeviceUpdated:
-		if f.DeviceUpdated != nil && f.DeviceUpdated.DeviceId != "" {
-			e.nextPushSeq++
-			e.devicePushes[f.DeviceUpdated.DeviceId] = e.nextPushSeq
-			e.devices[f.DeviceUpdated.DeviceId] = plainToDeviceEntry(f.DeviceUpdated)
-			e.secEngine.SetDeviceDirectory(e.securityDeviceOffers())
-			if e.deviceNeedsSecuritySync(f.DeviceUpdated) {
-				e.requestSyncSecurity(ctx, true)
-			}
-			e.pruneUntrustedCaches(ctx)
-			e.maybeDescribeSelf(ctx)
-			ctx.Dirty.Add(true, false, false)
-			ctx.Dirty.MarkSecurity()
-		}
-	case *corev1.StreamFrameEvent_DeviceRemovedId:
-		if f.DeviceRemovedId != "" {
-			e.nextPushSeq++
-			e.removedPushes[f.DeviceRemovedId] = e.nextPushSeq
-			delete(e.devices, f.DeviceRemovedId)
-			e.secEngine.SetDeviceDirectory(e.securityDeviceOffers())
-			e.requestSyncSecurity(ctx, true)
-			ctx.Dirty.Add(true, false, false)
-			ctx.Dirty.MarkSecurity()
-		}
-	case *corev1.StreamFrameEvent_WireMachineUpdated:
-		if f.WireMachineUpdated != nil && f.WireMachineUpdated.Id != "" {
-			e.nextPushSeq++
-			e.machinePushes[f.WireMachineUpdated.Id] = e.nextPushSeq
-			wm := f.WireMachineUpdated
-			e.openWireDirectoryBatchTag(ctx, []*v1.Machine{wm}, nil, nil, nil, dirBatchMeta{
-				kind: dirKindStreamMachine, legID: ev.LegId, wm: wm,
-			})
-		}
-	case *corev1.StreamFrameEvent_WireSessionUpdated:
-		if f.WireSessionUpdated != nil && f.WireSessionUpdated.SessionId != "" {
-			sid := f.WireSessionUpdated.SessionId
-			e.nextPushSeq++
-			e.sessionPushes[sid] = e.nextPushSeq
-			ws := f.WireSessionUpdated
-			e.openWireDirectoryBatchTag(ctx, nil, []*v1.RemoteSession{ws}, nil, nil, dirBatchMeta{
-				kind: dirKindStreamSession, legID: ev.LegId, sid: sid, ws: ws,
-			})
-		}
-	case *corev1.StreamFrameEvent_WireAccountPrefsUpdated:
-		if f.WireAccountPrefsUpdated != nil {
-			e.openWireDirectoryBatchTag(ctx, nil, nil, nil, []*v1.AccountPrefsObject{f.WireAccountPrefsUpdated}, dirBatchMeta{
-				kind: dirKindStreamPrefs, legID: ev.LegId,
-			})
-		}
-	case *corev1.StreamFrameEvent_WireDeviceUpdated:
-		if f.WireDeviceUpdated != nil && f.WireDeviceUpdated.Id != "" {
-			e.nextPushSeq++
-			e.devicePushes[f.WireDeviceUpdated.Id] = e.nextPushSeq
-			wd := f.WireDeviceUpdated
-			e.openWireDirectoryBatchTag(ctx, nil, nil, []*v1.Device{wd}, nil, dirBatchMeta{
-				kind: dirKindStreamDevice, legID: ev.LegId, wd: wd,
-			})
-		}
-	}
+	e.devicesApplyGen++
+	e.openWireDirectoryBatchTag(ctx, nil, nil, ev.WireDevices, nil, dirBatchMeta{
+		kind: dirKindDevices, devGen: e.devicesApplyGen, mp: removedSnapshot, sp: deviceSnapshot,
+	})
 }
 
 func (e *Engine) handleScheduleHints(ctx *StepContext, ev *corev1.SessionScheduleHintsEvent) {
@@ -684,20 +299,6 @@ func (e *Engine) handleScheduleHints(ctx *StepContext, ev *corev1.SessionSchedul
 		}
 	}
 	ctx.Dirty.Add(true, true, false)
-}
-
-func (e *Engine) putMachine(ctx *StepContext, pm *corev1.PlainMachine, staleOnline bool, writeCache bool) {
-	if pm == nil || pm.MachineId == "" {
-		return
-	}
-	e.putMachineDecoded(ctx, decodedMachine{
-		MachineID:  pm.MachineId,
-		Online:     pm.Online,
-		LastSeenMs: pm.LastSeenMs,
-		Meta:       pm.Meta,
-		MetaRev:    pm.MetaRev,
-		MetaBroken: pm.MetaBroken,
-	}, staleOnline, writeCache)
 }
 
 func (e *Engine) putMachineDecoded(ctx *StepContext, dm decodedMachine, staleOnline bool, writeCache bool) {
@@ -722,13 +323,15 @@ func (e *Engine) putMachineDecoded(ctx *StepContext, dm decodedMachine, staleOnl
 	}
 	e.storeMachine(entry)
 	if writeCache && dm.Wire != nil {
-		ctx.emit(&corev1.Effect{
-			Effect: &corev1.Effect_CacheWrite{
-				CacheWrite: &corev1.CacheWriteEffect{
-					Kind: &corev1.CacheWriteEffect_WriteMachine{WriteMachine: dm.Wire},
+		if raw, err := dm.Wire.Marshal(); err == nil && len(raw) > 0 {
+			ctx.emit(&corev1.Effect{
+				Effect: &corev1.Effect_CacheWrite{
+					CacheWrite: &corev1.CacheWriteEffect{
+						Kind: &corev1.CacheWriteEffect_RawWriteMachine{RawWriteMachine: raw},
+					},
 				},
-			},
-		})
+			})
+		}
 	}
 }
 
@@ -752,25 +355,6 @@ func (e *Engine) dropMachine(ctx *StepContext, machineID string) {
 	}
 }
 
-func (e *Engine) putSession(ctx *StepContext, ps *corev1.PlainSession, writeCache bool) {
-	if ps == nil || ps.SessionId == "" {
-		return
-	}
-	e.putSessionDecoded(ctx, decodedSession{
-		SessionID:         ps.SessionId,
-		MachineID:         ps.MachineId,
-		LastSeq:           ps.LastSeq,
-		UpdatedMs:         ps.UpdatedMs,
-		ListedEndedMs:     ps.ListedEndedMs,
-		Meta:              ps.Meta,
-		MetaRev:           ps.MetaRev,
-		Checkpoint:        ps.Checkpoint,
-		CheckpointInvalid: ps.CheckpointInvalid,
-		RetiredHistory:    ps.RetiredHistory,
-		OpenFailed:        ps.OpenFailed,
-	}, writeCache)
-}
-
 func (e *Engine) putSessionDecoded(ctx *StepContext, ds decodedSession, writeCache bool) {
 	if ds.SessionID == "" {
 		return
@@ -784,22 +368,26 @@ func (e *Engine) putSessionDecoded(ctx *StepContext, ds decodedSession, writeCac
 
 	if ds.OpenFailed && ds.MachineID != "" && e.isTrustedMachine(ds.MachineID) {
 		if ds.Wire != nil {
+			if raw, err := ds.Wire.Marshal(); err == nil && len(raw) > 0 {
+				ctx.emit(&corev1.Effect{
+					Effect: &corev1.Effect_CacheWrite{
+						CacheWrite: &corev1.CacheWriteEffect{
+							Kind: &corev1.CacheWriteEffect_RawKeepSessionOwner{RawKeepSessionOwner: raw},
+						},
+					},
+				})
+			}
+		}
+	} else if writeCache && ds.Wire != nil {
+		if raw, err := ds.Wire.Marshal(); err == nil && len(raw) > 0 {
 			ctx.emit(&corev1.Effect{
 				Effect: &corev1.Effect_CacheWrite{
 					CacheWrite: &corev1.CacheWriteEffect{
-						Kind: &corev1.CacheWriteEffect_KeepSessionOwner{KeepSessionOwner: ds.Wire},
+						Kind: &corev1.CacheWriteEffect_RawWriteSession{RawWriteSession: raw},
 					},
 				},
 			})
 		}
-	} else if writeCache && ds.Wire != nil {
-		ctx.emit(&corev1.Effect{
-			Effect: &corev1.Effect_CacheWrite{
-				CacheWrite: &corev1.CacheWriteEffect{
-					Kind: &corev1.CacheWriteEffect_WriteSession{WriteSession: ds.Wire},
-				},
-			},
-		})
 	}
 	if ds.RetiredHistory {
 		e.markSessionRetired(ds.SessionID)
@@ -838,9 +426,9 @@ func (e *Engine) SeedSession(ctx *StepContext, machineID string, meta *v1.Sessio
 	}
 	e.nextPushSeq++
 	e.sessionPushes[meta.Id] = e.nextPushSeq
-	e.putSession(ctx, &corev1.PlainSession{
-		SessionId: meta.Id,
-		MachineId: machineID,
+	e.putSessionDecoded(ctx, decodedSession{
+		SessionID: meta.Id,
+		MachineID: machineID,
 		UpdatedMs: updated,
 		Meta:      meta.Clone(),
 	}, false)
@@ -869,26 +457,6 @@ func (e *Engine) removeSession(ctx *StepContext, sid string, dropFromCache bool)
 	}
 }
 
-func (e *Engine) reconcileDevices(items []*corev1.PlainDevice, removedSnapshot, deviceSnapshot map[string]uint64, allowEmpty bool) {
-	decoded := make([]decodedDevice, 0, len(items))
-	for _, d := range items {
-		if d == nil || d.DeviceId == "" {
-			continue
-		}
-		decoded = append(decoded, decodedDevice{
-			DeviceID:   d.DeviceId,
-			Kind:       d.Kind,
-			CreatedMs:  d.CreatedMs,
-			LastSeenMs: d.LastSeenMs,
-			Meta:       d.Meta,
-			MetaRev:    d.MetaRev,
-			MetaBroken: d.MetaBroken,
-			Registered: true,
-		})
-	}
-	e.reconcileDecodedDevices(decoded, removedSnapshot, deviceSnapshot, allowEmpty)
-}
-
 func (e *Engine) reconcileDecodedDevices(items []decodedDevice, removedSnapshot, deviceSnapshot map[string]uint64, allowEmpty bool) {
 	if len(items) == 0 && !allowEmpty {
 		return
@@ -911,17 +479,6 @@ func (e *Engine) reconcileDecodedDevices(items []decodedDevice, removedSnapshot,
 	}
 }
 
-func plainToMachineEntry(pm *corev1.PlainMachine) *MachineEntry {
-	return decodedToMachineEntry(decodedMachine{
-		MachineID:  pm.MachineId,
-		Online:     pm.Online,
-		LastSeenMs: pm.LastSeenMs,
-		Meta:       pm.Meta,
-		MetaRev:    pm.MetaRev,
-		MetaBroken: pm.MetaBroken,
-	})
-}
-
 func decodedToMachineEntry(dm decodedMachine) *MachineEntry {
 	var meta *v1.MachineMeta
 	if dm.Meta != nil {
@@ -937,22 +494,6 @@ func decodedToMachineEntry(dm decodedMachine) *MachineEntry {
 		MetaRev:    dm.MetaRev,
 		MetaBroken: dm.MetaBroken,
 	}
-}
-
-func plainToSessionEntry(ps *corev1.PlainSession, prev *SessionEntry) *SessionEntry {
-	return decodedToSessionEntry(decodedSession{
-		SessionID:         ps.SessionId,
-		MachineID:         ps.MachineId,
-		LastSeq:           ps.LastSeq,
-		UpdatedMs:         ps.UpdatedMs,
-		ListedEndedMs:     ps.ListedEndedMs,
-		Meta:              ps.Meta,
-		MetaRev:           ps.MetaRev,
-		Checkpoint:        ps.Checkpoint,
-		CheckpointInvalid: ps.CheckpointInvalid,
-		RetiredHistory:    ps.RetiredHistory,
-		OpenFailed:        ps.OpenFailed,
-	}, prev)
 }
 
 func decodedToSessionEntry(ds decodedSession, prev *SessionEntry) *SessionEntry {
@@ -1004,19 +545,6 @@ func decodedToSessionEntry(ds decodedSession, prev *SessionEntry) *SessionEntry 
 		entry.RetiredHistory = entry.RetiredHistory || prev.RetiredHistory
 	}
 	return entry
-}
-
-func plainToDeviceEntry(pd *corev1.PlainDevice) *DeviceEntry {
-	return decodedToDeviceEntry(decodedDevice{
-		DeviceID:   pd.DeviceId,
-		Kind:       pd.Kind,
-		CreatedMs:  pd.CreatedMs,
-		LastSeenMs: pd.LastSeenMs,
-		Meta:       pd.Meta,
-		MetaRev:    pd.MetaRev,
-		MetaBroken: pd.MetaBroken,
-		Registered: true,
-	})
 }
 
 func decodedToDeviceEntry(dd decodedDevice) *DeviceEntry {
@@ -1138,13 +666,6 @@ func (e *Engine) isTrustedMachine(machineID string) bool {
 		return true
 	}
 	return e.security.TrustedMachines[machineID] || e.security.ArchiveMachines[machineID]
-}
-
-func (e *Engine) deviceNeedsSecuritySync(d *corev1.PlainDevice) bool {
-	if d == nil {
-		return false
-	}
-	return e.deviceKindNeedsSecuritySync(d.DeviceId, d.Kind)
 }
 
 func (e *Engine) deviceKindNeedsSecuritySync(deviceID string, kind v1.DeviceKind) bool {

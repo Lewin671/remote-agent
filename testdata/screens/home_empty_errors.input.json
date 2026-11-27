@@ -3,7 +3,15 @@
     {
       "event": {
         "nowMs": "1791078060000",
+        "seedDemoWorld": {
+          "clearDirectReports": true
+        }
+      }
+    },
+    {
+      "event": {
         "monoMs": "1000",
+        "nowMs": "1791078060000",
         "randomIds": [
           "r1",
           "r2",
@@ -14,6 +22,9 @@
           "r7",
           "r8"
         ],
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START"
+        },
         "unitFloats": [
           0.5,
           0.5,
@@ -21,10 +32,7 @@
           0.5,
           0.5,
           0.5
-        ],
-        "syncLifecycle": {
-          "kind": "SYNC_LIFECYCLE_KIND_START"
-        }
+        ]
       }
     },
     {
@@ -32,20 +40,11 @@
         "nowMs": "1791078060010",
         "seedDemoWorld": {
           "security": {
-            "isMember": true,
-            "selfDeviceId": "dev-mgr",
             "authorityDeviceId": "dev-mgr",
-            "leaseEndMs": "1791164460000"
+            "isMember": true,
+            "leaseEndMs": "1791164460000",
+            "selfDeviceId": "dev-mgr"
           }
-        }
-      }
-    },
-    {
-      "event": {
-        "nowMs": "1791078060020",
-        "tokenResult": {
-          "opId": "2",
-          "token": "tok-1"
         }
       }
     },
@@ -61,26 +60,23 @@
     {
       "event": {
         "nowMs": "1791078060040",
-        "listsFetched": {
-          "opId": "3",
+        "seedDemoWorld": {
+          "clearListError": true,
           "devices": [
             {
               "deviceId": "dev-mgr",
               "kind": "DEVICE_KIND_CLIENT",
-              "meta": {
-                "name": "Studio",
-                "platform": "macOS"
-              }
+              "rawMeta": "CgZTdHVkaW8SBW1hY09T"
             },
             {
               "deviceId": "dev-mem",
               "kind": "DEVICE_KIND_CLIENT",
-              "meta": {
-                "name": "Phone",
-                "platform": "Android"
-              }
+              "rawMeta": "CgVQaG9uZRIHQW5kcm9pZA=="
             }
-          ]
+          ],
+          "replaceDevices": true,
+          "replaceMachines": true,
+          "replaceSessions": true
         }
       },
       "views": [
@@ -99,10 +95,10 @@
         "nowMs": "1791078060050",
         "seedDemoWorld": {
           "security": {
-            "isMember": true,
-            "selfDeviceId": "dev-mem",
             "authorityDeviceId": "dev-mgr",
-            "leaseEndMs": "1791164460000"
+            "isMember": true,
+            "leaseEndMs": "1791164460000",
+            "selfDeviceId": "dev-mem"
           }
         }
       },
@@ -120,16 +116,13 @@
     {
       "event": {
         "nowMs": "1791078060060",
-        "streamFrame": {
-          "legId": "1",
-          "machineUpdated": {
-            "machineId": "m-off",
-            "online": false,
-            "meta": {
-              "hostname": "OldMac",
-              "protocolVersion": 17
+        "seedDemoWorld": {
+          "machines": [
+            {
+              "machineId": "m-off",
+              "rawMeta": "CgZPbGRNYWNgEQ=="
             }
-          }
+          ]
         }
       },
       "views": [
@@ -147,9 +140,9 @@
       "event": {
         "nowMs": "1791078060070",
         "streamClosed": {
-          "legId": "1",
+          "error": "server unavailable",
           "errorCode": "unavailable",
-          "error": "server unavailable"
+          "legId": "1"
         }
       },
       "views": [

@@ -343,7 +343,7 @@ func (t *syncStatesTask) fetchAfterTouch(e *Engine, rec *PersistedRecord) {
 	reqBytes := (&v1.GetSecurityStatesRequest{
 		AfterEpoch: head.Core.Epoch, Limit: 8,
 	}).AppendMarshal(nil)
-	e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES, t.server, t.authToken, false, 0, reqBytes, parentTarget(t, 0))
+	e.callAuthedRpc(corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SECURITY_STATES, t.server, t.authToken, false, 0, reqBytes, parentTarget(t, 0))
 }
 
 func (t *syncStatesTask) step(e *Engine, ev *secEvent) error {
@@ -505,7 +505,7 @@ func (t *republishObjsTask) tryAttempt(e *Engine) {
 		return
 	}
 	t.stage = repubStageGet
-	e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_ACCOUNT_PREFS, t.server, 0, &v1.GetAccountPrefsRequest{ObjectId: "project-prefs"}, parentTarget(t, 0))
+	e.callAuthedProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_ACCOUNT_PREFS, t.server, 0, &v1.GetAccountPrefsRequest{ObjectId: "project-prefs"}, parentTarget(t, 0))
 }
 
 func (t *republishObjsTask) step(e *Engine, ev *secEvent) error {
@@ -555,7 +555,7 @@ func (t *republishObjsTask) step(e *Engine, ev *secEvent) error {
 		e.startSealEnvelopeInternal(e.lastNowMs, devicesec.Prefs, "", "", prefsObj, t.objRev+1, 0, t.rawPlain, false, nil, parentTarget(t, 0))
 	case repubStageSeal:
 		t.stage = repubStagePut
-		e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_ACCOUNT_PREFS, t.server, 0, &v1.PutAccountPrefsRequest{
+		e.callAuthedProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_PUT_ACCOUNT_PREFS, t.server, 0, &v1.PutAccountPrefsRequest{
 			ObjectId: prefsObj, ExpectedRevision: t.objRev, Envelope: ev.seal.Envelope,
 		}, parentTarget(t, 0))
 	case repubStagePut:

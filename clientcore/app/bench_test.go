@@ -7,16 +7,18 @@ import (
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/gen/timestamppb"
+	"github.com/Lewin671/remote-agent/clientcore/internal/test/testrelay"
 	"github.com/Lewin671/remote-agent/clientcore/sync"
 	stdcorev1 "github.com/Lewin671/remote-agent/gen/remoteagent/core/v1"
 	stdv1 "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"google.golang.org/protobuf/proto"
 )
 
-func seedBenchmarkCore(tb testing.TB, numMachines, numProjects, numSessions int) (*Core, uint64) {
+func seedBenchmarkCore(tb testing.TB, numMachines, numProjects, numSessions int) (*Core, *testrelay.Fixture, uint64) {
 	tb.Helper()
 	c := New()
 	nowMs := int64(1_776_100_000_000)
+	fx := testrelay.New(tb, nowMs)
 
 	c.Dispatch(&corev1.Event{
 		NowMs: nowMs,
@@ -34,6 +36,9 @@ func seedBenchmarkCore(tb testing.TB, numMachines, numProjects, numSessions int)
 		},
 	})
 
+	fx.Bootstrap(func(ev *corev1.Event) []*corev1.Effect { return c.Dispatch(ev).GetEffects() }, nowMs)
+	c.m.sync.SecurityEngine().SetAuthToken("tok-bench", nowMs+7*86_400_000)
+
 	startBatch := c.Dispatch(&corev1.Event{
 		NowMs:  nowMs,
 		MonoMs: 1_000,
@@ -43,38 +48,19 @@ func seedBenchmarkCore(tb testing.TB, numMachines, numProjects, numSessions int)
 			},
 		},
 	})
-	var tokOp uint64
-	for _, e := range startBatch.Effects {
-		if et := e.GetEnsureToken(); et != nil {
-			tokOp = et.OpId
-		}
-	}
-	tokBatch := c.Dispatch(&corev1.Event{
-		NowMs: nowMs + 10,
-		Event: &corev1.Event_TokenResult{
-			TokenResult: &corev1.TokenResultEvent{OpId: tokOp, Token: "bench-tok"},
-		},
-	})
-	var legID uint64
-	for _, e := range tokBatch.Effects {
-		if os := e.GetOpenStream(); os != nil {
-			legID = os.LegId
-		}
-	}
+	legID := testrelay.FindOpenStreamLeg(startBatch.Effects)
 	readyBatch := c.Dispatch(&corev1.Event{
 		NowMs: nowMs + 20,
 		Event: &corev1.Event_StreamReady{
 			StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: nowMs + 20},
 		},
 	})
-	var listsOp uint64
-	for _, e := range readyBatch.Effects {
-		if rpc := e.GetRpc(); rpc != nil && rpc.GetFetchLists() != nil {
-			listsOp = rpc.OpId
-		}
-	}
+	ops := testrelay.MustFindRefreshOps(tb, readyBatch.Effects)
 
-	machines := make([]*corev1.PlainMachine, 0, numMachines)
+	if numMachines > len(fx.Machines) {
+		numMachines = len(fx.Machines)
+	}
+	machines := make([]*v1.Machine, 0, numMachines)
 	for i := 0; i < numMachines; i++ {
 		summaries := make([]*v1.ProjectSummary, 0, max(1, numProjects/numMachines))
 		for p := i; p < numProjects; p += numMachines {
@@ -83,10 +69,11 @@ func seedBenchmarkCore(tb testing.TB, numMachines, numProjects, numSessions int)
 				Ended: uint32(numSessions / max(1, numProjects)),
 			})
 		}
-		machines = append(machines, &corev1.PlainMachine{
-			MachineId: fmt.Sprintf("m-%d", i),
-			Online:    i%2 == 0,
-			Meta: &v1.MachineMeta{
+		machines = append(machines, fx.MachineWire(
+			fx.Machines[i].ID,
+			i%2 == 0,
+			0,
+			&v1.MachineMeta{
 				Hostname:        fmt.Sprintf("host-%d.local", i),
 				ProtocolVersion: sync.PeerVersion,
 				Agents: []*v1.AgentInfo{
@@ -94,12 +81,12 @@ func seedBenchmarkCore(tb testing.TB, numMachines, numProjects, numSessions int)
 				},
 				Projects: summaries,
 			},
-		})
+		))
 	}
 
-	sessions := make([]*corev1.PlainSession, 0, numSessions)
+	sessions := make([]*v1.RemoteSession, 0, numSessions)
 	for i := 0; i < numSessions; i++ {
-		mid := fmt.Sprintf("m-%d", i%numMachines)
+		mid := fx.Machines[i%numMachines].ID
 		proj := fmt.Sprintf("/Users/dev/work/proj-%02d", i%numProjects)
 		updated := nowMs - int64(i)*60_000
 		status := v1.SessionStatus_SESSION_STATUS_EXITED
@@ -112,13 +99,13 @@ func seedBenchmarkCore(tb testing.TB, numMachines, numProjects, numSessions int)
 		if status == v1.SessionStatus_SESSION_STATUS_EXITED {
 			endedAt = &timestamppb.Timestamp{Seconds: updated / 1000}
 		}
-		sessions = append(sessions, &corev1.PlainSession{
-			SessionId:     fmt.Sprintf("s-%04d", i),
-			MachineId:     mid,
-			LastSeq:       uint64(20 + i),
-			UpdatedMs:     updated,
-			ListedEndedMs: updated,
-			Meta: &v1.Session{
+		sessions = append(sessions, fx.SessionWire(
+			fmt.Sprintf("s-%04d", i),
+			mid,
+			uint64(20+i),
+			updated,
+			updated,
+			&v1.Session{
 				Id:        fmt.Sprintf("s-%04d", i),
 				Cwd:       proj,
 				Agent:     v1.Agent_AGENT_CODEX,
@@ -128,25 +115,34 @@ func seedBenchmarkCore(tb testing.TB, numMachines, numProjects, numSessions int)
 				CreatedAt: &timestamppb.Timestamp{Seconds: (updated - 300_000) / 1000},
 				EndedAt:   endedAt,
 			},
-		})
+			nil,
+		))
 	}
 
 	c.Dispatch(&corev1.Event{
 		NowMs: nowMs + 30,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId:     listsOp,
-				Machines: machines,
-				Sessions: sessions,
-			},
-		},
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId: ops.Machines, ResponseBytes: testrelay.MarshalListMachinesResp(machines),
+		}},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: nowMs + 30,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId: ops.Sessions, ResponseBytes: testrelay.MarshalListSessionsResp(sessions, nil),
+		}},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: nowMs + 30,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId: ops.Devices, ResponseBytes: testrelay.MarshalListDevicesResp(nil),
+		}},
 	})
 
-	return c, legID
+	return c, fx, legID
 }
 
 func BenchmarkViewHome1000Sessions(b *testing.B) {
-	c, _ := seedBenchmarkCore(b, 4, 20, 1000)
+	c, _, _ := seedBenchmarkCore(b, 4, 20, 1000)
 	defer c.Close()
 
 	req := &corev1.Screen{
@@ -168,40 +164,25 @@ func BenchmarkViewHome1000Sessions(b *testing.B) {
 }
 
 func BenchmarkDispatchSessionPush1000Sessions(b *testing.B) {
-	c, legID := seedBenchmarkCore(b, 4, 20, 1000)
+	c, fx, legID := seedBenchmarkCore(b, 4, 20, 1000)
 	defer c.Close()
 
 	baseNow := int64(1_776_100_000_000)
-	ev := &corev1.Event{
-		NowMs: baseNow + 100,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: legID,
-				Frame: &corev1.StreamFrameEvent_SessionUpdated{
-					SessionUpdated: &corev1.PlainSession{
-						SessionId: "s-0001",
-						MachineId: "m-1",
-						LastSeq:   500,
-						UpdatedMs: baseNow + 100,
-						Meta: &v1.Session{
-							Id:      "s-0001",
-							Cwd:     "/Users/dev/work/proj-01",
-							Agent:   v1.Agent_AGENT_CODEX,
-							Status:  v1.SessionStatus_SESSION_STATUS_RUNNING,
-							Title:   "Session 1",
-							Preview: "Applying patch",
-						},
-					},
-				},
-			},
-		},
+	sessMeta := &v1.Session{
+		Id:      "s-0001",
+		Cwd:     "/Users/dev/work/proj-01",
+		Agent:   v1.Agent_AGENT_CODEX,
+		Status:  v1.SessionStatus_SESSION_STATUS_RUNNING,
+		Title:   "Session 1",
+		Preview: "Applying patch",
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ev.NowMs = baseNow + int64(i)
-		ev.GetStreamFrame().GetSessionUpdated().UpdatedMs = baseNow + int64(i)
-		ev.GetStreamFrame().GetSessionUpdated().LastSeq = uint64(500 + i)
+		ev := &corev1.Event{
+			NowMs: baseNow + int64(i),
+			Event: testrelay.SessionUpdatedFrame(legID, fx.SessionWire("s-0001", fx.M2, uint64(500+i), baseNow+int64(i), 0, sessMeta, nil)),
+		}
 		batch := c.Dispatch(ev)
 		if len(batch.Effects) == 0 {
 			b.Fatal("expected render effect")
@@ -210,7 +191,7 @@ func BenchmarkDispatchSessionPush1000Sessions(b *testing.B) {
 }
 
 func BenchmarkMarshalViewHome1000Sessions(b *testing.B) {
-	c, _ := seedBenchmarkCore(b, 4, 20, 1000)
+	c, _, _ := seedBenchmarkCore(b, 4, 20, 1000)
 	defer c.Close()
 
 	vm, err := c.View(&corev1.Screen{
@@ -235,40 +216,37 @@ func BenchmarkMarshalViewHome1000Sessions(b *testing.B) {
 }
 
 func BenchmarkMarshalDispatchSessionPush1000Sessions(b *testing.B) {
-	c, legID := seedBenchmarkCore(b, 4, 20, 1000)
+	c, fx, legID := seedBenchmarkCore(b, 4, 20, 1000)
 	defer c.Close()
 
 	baseNow := int64(1_776_100_000_000)
-	ev := &stdcorev1.Event{
-		NowMs: baseNow + 100,
-		Event: &stdcorev1.Event_StreamFrame{
-			StreamFrame: &stdcorev1.StreamFrameEvent{
-				LegId: legID,
-				Frame: &stdcorev1.StreamFrameEvent_SessionUpdated{
-					SessionUpdated: &stdcorev1.PlainSession{
-						SessionId: "s-0001",
-						MachineId: "m-1",
-						LastSeq:   500,
-						UpdatedMs: baseNow + 100,
-						Meta: &stdv1.Session{
-							Id:      "s-0001",
-							Cwd:     "/Users/dev/work/proj-01",
-							Agent:   stdv1.Agent_AGENT_CODEX,
-							Status:  stdv1.SessionStatus_SESSION_STATUS_RUNNING,
-							Title:   "Session 1",
-							Preview: "Applying patch",
-						},
-					},
-				},
-			},
-		},
+	sessMeta := &v1.Session{
+		Id:      "s-0001",
+		Cwd:     "/Users/dev/work/proj-01",
+		Agent:   v1.Agent_AGENT_CODEX,
+		Status:  v1.SessionStatus_SESSION_STATUS_RUNNING,
+		Title:   "Session 1",
+		Preview: "Applying patch",
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ev.NowMs = baseNow + int64(i)
-		ev.GetStreamFrame().GetSessionUpdated().UpdatedMs = baseNow + int64(i)
-		ev.GetStreamFrame().GetSessionUpdated().LastSeq = uint64(500 + i)
+		sfBytes := testrelay.MarshalStd(&stdv1.ServerFrame{
+			Kind: &stdv1.ServerFrame_SessionUpdated{
+				SessionUpdated: &stdv1.SessionUpdated{
+					Session: testrelay.ToStdSession(fx.SessionWire("s-0001", fx.M2, uint64(500+i), baseNow+int64(i), 0, sessMeta, nil)),
+				},
+			},
+		})
+		ev := &stdcorev1.Event{
+			NowMs: baseNow + int64(i),
+			Event: &stdcorev1.Event_StreamRawFrame{
+				StreamRawFrame: &stdcorev1.StreamRawFrameEvent{
+					LegId:          legID,
+					RawServerFrame: sfBytes,
+				},
+			},
+		}
 		evBytes, err := proto.Marshal(ev)
 		if err != nil {
 			b.Fatal(err)
@@ -289,7 +267,7 @@ func BenchmarkMarshalDispatchSessionPush1000Sessions(b *testing.B) {
 }
 
 func TestSessionStreamingDoesNotTriggerHomeAggregation(t *testing.T) {
-	c, legID := seedBenchmarkCore(t, 4, 10, 200)
+	c, fx, legID := seedBenchmarkCore(t, 4, 10, 200)
 	defer c.Close()
 
 	baseNow := int64(1_776_100_000_000)
@@ -306,52 +284,23 @@ func TestSessionStreamingDoesNotTriggerHomeAggregation(t *testing.T) {
 		seq := uint64(100 + i)
 		c.Dispatch(&corev1.Event{
 			NowMs: baseNow + 200 + int64(i),
-			Event: &corev1.Event_StreamFrame{
-				StreamFrame: &corev1.StreamFrameEvent{
-					LegId: legID,
-					Frame: &corev1.StreamFrameEvent_EventsAppended{
-						EventsAppended: &corev1.EventsAppendedFrame{
-							SessionId: "s-0001",
-							Events: []*corev1.PlainEvent{
-								{
-									Seq:      seq,
-									Verified: true,
-									Event: &v1.Event{
-										Seq: seq,
-										Kind: &v1.Event_AgentMessage{
-											AgentMessage: &v1.AgentMessage{Text: "chunk "},
-										},
-									},
-								},
-							},
-						},
-					},
+			Event: testrelay.EventsAppendedFrame(legID, "s-0001", fx.StoredEventWire("s-0001", seq, &v1.Event{
+				Seq: seq,
+				Kind: &v1.Event_AgentMessage{
+					AgentMessage: &v1.AgentMessage{Text: "chunk "},
 				},
-			},
+			})),
 		})
 		c.Dispatch(&corev1.Event{
 			NowMs: baseNow + 300 + int64(i),
-			Event: &corev1.Event_StreamFrame{
-				StreamFrame: &corev1.StreamFrameEvent{
-					LegId: legID,
-					Frame: &corev1.StreamFrameEvent_SessionUpdated{
-						SessionUpdated: &corev1.PlainSession{
-							SessionId: "s-0001",
-							MachineId: "m-1",
-							LastSeq:   seq,
-							UpdatedMs: baseNow + 300 + int64(i),
-							Meta: &v1.Session{
-								Id:      "s-0001",
-								Cwd:     "/Users/dev/work/proj-01",
-								Agent:   v1.Agent_AGENT_CODEX,
-								Status:  v1.SessionStatus_SESSION_STATUS_RUNNING,
-								Title:   "Session 1",
-								Preview: "Streaming output",
-							},
-						},
-					},
-				},
-			},
+			Event: testrelay.SessionUpdatedFrame(legID, fx.SessionWire("s-0001", fx.M2, seq, baseNow+300+int64(i), 0, &v1.Session{
+				Id:      "s-0001",
+				Cwd:     "/Users/dev/work/proj-01",
+				Agent:   v1.Agent_AGENT_CODEX,
+				Status:  v1.SessionStatus_SESSION_STATUS_RUNNING,
+				Title:   "Session 1",
+				Preview: "Streaming output",
+			}, nil)),
 		})
 	}
 	if c.m.homeFocusReconcileCount != beforeCount {
@@ -362,36 +311,22 @@ func TestSessionStreamingDoesNotTriggerHomeAggregation(t *testing.T) {
 	// Now introduce an approval on s-0002 -> MUST trigger Home aggregation once!
 	c.Dispatch(&corev1.Event{
 		NowMs: baseNow + 1000,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: legID,
-				Frame: &corev1.StreamFrameEvent_SessionUpdated{
-					SessionUpdated: &corev1.PlainSession{
-						SessionId: "s-0002",
-						MachineId: "m-0",
-						LastSeq:   200,
-						UpdatedMs: baseNow + 1000,
-						Meta: &v1.Session{
-							Id:     "s-0002",
-							Cwd:    "/Users/dev/work/proj-02",
-							Agent:  v1.Agent_AGENT_CODEX,
-							Status: v1.SessionStatus_SESSION_STATUS_RUNNING,
-							Title:  "Session 2",
-						},
-						Checkpoint: &v1.LiveSnapshot{
-							Actions: []*v1.Event{
-								{
-									Seq: 200,
-									Kind: &v1.Event_ApprovalRequested{
-										ApprovalRequested: &v1.ApprovalRequested{ApprovalId: "ap-bg", Command: "ls"},
-									},
-								},
-							},
-						},
+		Event: testrelay.SessionUpdatedFrame(legID, fx.SessionWire("s-0002", fx.M3, 200, baseNow+1000, 0, &v1.Session{
+			Id:     "s-0002",
+			Cwd:    "/Users/dev/work/proj-02",
+			Agent:  v1.Agent_AGENT_CODEX,
+			Status: v1.SessionStatus_SESSION_STATUS_RUNNING,
+			Title:  "Session 2",
+		}, &v1.LiveSnapshot{
+			Actions: []*v1.Event{
+				{
+					Seq: 200,
+					Kind: &v1.Event_ApprovalRequested{
+						ApprovalRequested: &v1.ApprovalRequested{ApprovalId: "ap-bg", Command: "ls"},
 					},
 				},
 			},
-		},
+		})),
 	})
 	if c.m.homeFocusReconcileCount != beforeCount+1 || c.m.state.HomeLastTopItemID != "ap-bg" {
 		t.Fatalf("expected 1 Home aggregation on new approval (count=%d->%d, top=%q)",
@@ -404,27 +339,14 @@ func TestSessionStreamingDoesNotTriggerHomeAggregation(t *testing.T) {
 		seq := uint64(300 + i)
 		c.Dispatch(&corev1.Event{
 			NowMs: baseNow + 2000 + int64(i),
-			Event: &corev1.Event_StreamFrame{
-				StreamFrame: &corev1.StreamFrameEvent{
-					LegId: legID,
-					Frame: &corev1.StreamFrameEvent_SessionUpdated{
-						SessionUpdated: &corev1.PlainSession{
-							SessionId: "s-0001",
-							MachineId: "m-1",
-							LastSeq:   seq,
-							UpdatedMs: baseNow + 2000 + int64(i),
-							Meta: &v1.Session{
-								Id:      "s-0001",
-								Cwd:     "/Users/dev/work/proj-01",
-								Agent:   v1.Agent_AGENT_CODEX,
-								Status:  v1.SessionStatus_SESSION_STATUS_RUNNING,
-								Title:   "Session 1",
-								Preview: "More streaming output",
-							},
-						},
-					},
-				},
-			},
+			Event: testrelay.SessionUpdatedFrame(legID, fx.SessionWire("s-0001", fx.M2, seq, baseNow+2000+int64(i), 0, &v1.Session{
+				Id:      "s-0001",
+				Cwd:     "/Users/dev/work/proj-01",
+				Agent:   v1.Agent_AGENT_CODEX,
+				Status:  v1.SessionStatus_SESSION_STATUS_RUNNING,
+				Title:   "Session 1",
+				Preview: "More streaming output",
+			}, nil)),
 		})
 	}
 	if c.m.homeFocusReconcileCount != afterApCount {
@@ -434,7 +356,7 @@ func TestSessionStreamingDoesNotTriggerHomeAggregation(t *testing.T) {
 }
 
 func BenchmarkDispatchSessionStreaming1000Sessions(b *testing.B) {
-	c, legID := seedBenchmarkCore(b, 4, 20, 1000)
+	c, fx, legID := seedBenchmarkCore(b, 4, 20, 1000)
 	defer c.Close()
 
 	baseNow := int64(1_776_100_000_000)
@@ -444,37 +366,16 @@ func BenchmarkDispatchSessionStreaming1000Sessions(b *testing.B) {
 			SessionWatch: &corev1.SessionWatchEvent{SessionId: "s-0001", Watched: true},
 		},
 	})
-	ev := &corev1.Event{
-		NowMs: baseNow + 100,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: legID,
-				Frame: &corev1.StreamFrameEvent_EventsAppended{
-					EventsAppended: &corev1.EventsAppendedFrame{
-						SessionId: "s-0001",
-						Events: []*corev1.PlainEvent{
-							{
-								Seq:      500,
-								Verified: true,
-								Event: &v1.Event{
-									Seq:  500,
-									Kind: &v1.Event_AgentMessage{AgentMessage: &v1.AgentMessage{Text: "token "}},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		seq := uint64(500 + i)
-		ev.NowMs = baseNow + 100 + int64(i)
-		pe := ev.GetStreamFrame().GetEventsAppended().Events[0]
-		pe.Seq = seq
-		pe.Event.Seq = seq
-		c.Dispatch(ev)
+		c.Dispatch(&corev1.Event{
+			NowMs: baseNow + 100 + int64(i),
+			Event: testrelay.EventsAppendedFrame(legID, "s-0001", fx.StoredEventWire("s-0001", seq, &v1.Event{
+				Seq:  seq,
+				Kind: &v1.Event_AgentMessage{AgentMessage: &v1.AgentMessage{Text: "token "}},
+			})),
+		})
 	}
 }

@@ -7,6 +7,7 @@ import (
 
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/internal/test/testrelay"
 	"github.com/Lewin671/remote-agent/clientcore/screens"
 	"github.com/Lewin671/remote-agent/clientcore/sync"
 	"github.com/Lewin671/remote-agent/clientcore/text"
@@ -71,7 +72,7 @@ func settleCommandOK(c *Core, nowMs int64, dc *corev1.DispatchCommandEffect, res
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "ok",
-				Result:            res,
+				RawResult:         testrelay.MustRaw(res),
 			},
 		},
 	})
@@ -108,25 +109,21 @@ func settleCommandUnknown(c *Core, nowMs int64, dc *corev1.DispatchCommandEffect
 	})
 }
 
-func makeSemanticTestCore(t *testing.T, sess *corev1.PlainSession, models []*v1.ModelInfo) *Core {
+func makeSemanticTestCore(t *testing.T, sess *corev1.DemoSession, models []*v1.ModelInfo) *Core {
 	t.Helper()
-	c := bootstrapReadyApp(t, []*corev1.PlainMachine{
-		{
-			MachineId: "m-on",
-			Online:    true,
-			Meta: &v1.MachineMeta{
-				Hostname:        "DevBox",
-				ProtocolVersion: sync.PeerVersion,
-				Capabilities: &v1.MachineCapabilities{
-					ApprovalAlways: true,
-					ScheduledTasks: true,
-				},
-				Agents: []*v1.AgentInfo{
-					{Agent: v1.Agent_AGENT_CLAUDE, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
-				},
+	c := bootstrapReadyApp(t, []*corev1.DemoMachine{
+		testrelay.DemoMachine("m-on", true, 0, &v1.MachineMeta{
+			Hostname:        "DevBox",
+			ProtocolVersion: sync.PeerVersion,
+			Capabilities: &v1.MachineCapabilities{
+				ApprovalAlways: true,
+				ScheduledTasks: true,
 			},
-		},
-	}, []*corev1.PlainSession{sess})
+			Agents: []*v1.AgentInfo{
+				{Agent: v1.Agent_AGENT_CLAUDE, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
+			},
+		}),
+	}, []*corev1.DemoSession{sess})
 
 	if len(models) > 0 {
 		openBatch := c.Dispatch(&corev1.Event{
@@ -154,17 +151,12 @@ func makeSemanticTestCore(t *testing.T, sess *corev1.PlainSession, models []*v1.
 }
 
 func TestSessionSemanticSimpleAndModeCommands(t *testing.T) {
-	sess := &corev1.PlainSession{
-		SessionId: "s-1",
-		MachineId: "m-on",
-		UpdatedMs: 1_791_078_060_000,
-		Meta: &v1.Session{
-			Id:     "s-1",
-			Cwd:    "/Users/me/proj",
-			Agent:  v1.Agent_AGENT_CLAUDE,
-			Mode:   v1.ApprovalMode_APPROVAL_MODE_ASK,
-			Status: v1.SessionStatus_SESSION_STATUS_RUNNING,
-		},
+	sessMeta := &v1.Session{
+		Id:     "s-1",
+		Cwd:    "/Users/me/proj",
+		Agent:  v1.Agent_AGENT_CLAUDE,
+		Mode:   v1.ApprovalMode_APPROVAL_MODE_ASK,
+		Status: v1.SessionStatus_SESSION_STATUS_RUNNING,
 	}
 
 	cases := []struct {
@@ -287,9 +279,8 @@ func TestSessionSemanticSimpleAndModeCommands(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s := *sess
-			s.Checkpoint = &v1.LiveSnapshot{Running: tc.running}
-			c := makeSemanticTestCore(t, &s, nil)
+			s := testrelay.DemoSession("s-1", "m-on", 0, 1_791_078_060_000, 0, sessMeta, &v1.LiveSnapshot{Running: tc.running})
+			c := makeSemanticTestCore(t, s, nil)
 			batch := c.Dispatch(tc.event)
 			effs, cmds := decodeDispatchedCommands(t, batch)
 			if len(cmds) != 1 {
@@ -322,17 +313,12 @@ func TestSessionSemanticSimpleAndModeCommands(t *testing.T) {
 }
 
 func TestSessionRenameSanitizationAndNoOpShortCircuit(t *testing.T) {
-	sess := &corev1.PlainSession{
-		SessionId: "s-ren",
-		MachineId: "m-on",
-		UpdatedMs: 1_791_078_060_000,
-		Meta: &v1.Session{
-			Id:    "s-ren",
-			Cwd:   "/Users/me/proj",
-			Title: "Existing Title",
-			Agent: v1.Agent_AGENT_CLAUDE,
-		},
-	}
+	sess := testrelay.DemoSession("s-ren", "m-on", 0, 1_791_078_060_000, 0, &v1.Session{
+		Id:    "s-ren",
+		Cwd:   "/Users/me/proj",
+		Title: "Existing Title",
+		Agent: v1.Agent_AGENT_CLAUDE,
+	}, nil)
 	c := makeSemanticTestCore(t, sess, nil)
 
 	// 1. Same title after trim/newline normalization short-circuits without network command and increments succeeded_seq.
@@ -385,18 +371,13 @@ func TestSessionSetModelEffortFallbackAndFolding(t *testing.T) {
 		{Slug: "m5", DisplayName: "Model 5", Efforts: []string{"low", "high"}, DefaultEffort: "high"},
 		{Slug: "m6", DisplayName: "Model 6", Efforts: []string{"low", "high"}, DefaultEffort: "high"},
 	}
-	sess := &corev1.PlainSession{
-		SessionId: "s-mod",
-		MachineId: "m-on",
-		UpdatedMs: 1_791_078_060_000,
-		Meta: &v1.Session{
-			Id:     "s-mod",
-			Cwd:    "/Users/me/proj",
-			Agent:  v1.Agent_AGENT_CLAUDE,
-			Model:  "m6",
-			Effort: "high",
-		},
-	}
+	sess := testrelay.DemoSession("s-mod", "m-on", 0, 1_791_078_060_000, 0, &v1.Session{
+		Id:     "s-mod",
+		Cwd:    "/Users/me/proj",
+		Agent:  v1.Agent_AGENT_CLAUDE,
+		Model:  "m6",
+		Effort: "high",
+	}, nil)
 	c := makeSemanticTestCore(t, sess, models)
 
 	// Verify folded model list (>5 -> first 3 + selected m6).
@@ -454,16 +435,13 @@ func TestSessionSetModelEffortFallbackAndFolding(t *testing.T) {
 }
 
 func TestSessionMultiStepQuestionAndRetrySemantics(t *testing.T) {
-	sess := &corev1.PlainSession{
-		SessionId: "s-q",
-		MachineId: "m-on",
-		UpdatedMs: 1_791_078_060_000,
-		Meta: &v1.Session{
+	sess := testrelay.DemoSession("s-q", "m-on", 0, 1_791_078_060_000, 0,
+		&v1.Session{
 			Id:    "s-q",
 			Cwd:   "/Users/me/proj",
 			Agent: v1.Agent_AGENT_CLAUDE,
 		},
-		Checkpoint: &v1.LiveSnapshot{
+		&v1.LiveSnapshot{
 			Actions: []*v1.Event{
 				{
 					Seq: 42,
@@ -495,7 +473,7 @@ func TestSessionMultiStepQuestionAndRetrySemantics(t *testing.T) {
 				},
 			},
 		},
-	}
+	)
 	c := makeSemanticTestCore(t, sess, nil)
 
 	// Toggle options 3 and 1 -> sorted [1, 3].
@@ -628,11 +606,11 @@ func TestSessionMultiStepQuestionAndRetrySemantics(t *testing.T) {
 
 func TestSessionApprovalExternalResolutionByOrigin(t *testing.T) {
 	cases := []struct {
-		name           string
-		origin         *v1.Origin
-		wantOutcome    corev1.ResolutionOutcome
-		wantTextKey    string
-		wantNotice     bool
+		name        string
+		origin      *v1.Origin
+		wantOutcome corev1.ResolutionOutcome
+		wantTextKey string
+		wantNotice  bool
 	}{
 		{
 			name:        "other_client",
@@ -671,47 +649,28 @@ func TestSessionApprovalExternalResolutionByOrigin(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			sess := &corev1.PlainSession{
-				SessionId: "s-ap",
-				MachineId: "m-on",
-				UpdatedMs: 1_791_078_060_000,
-				LastSeq:   1,
-				Meta: &v1.Session{
-					Id:    "s-ap",
-					Cwd:   "/Users/me/proj",
-					Agent: v1.Agent_AGENT_CLAUDE,
-				},
-			}
+			sess := testrelay.DemoSession("s-ap", "m-on", 1, 1_791_078_060_000, 0, &v1.Session{
+				Id:    "s-ap",
+				Cwd:   "/Users/me/proj",
+				Agent: v1.Agent_AGENT_CLAUDE,
+			}, nil)
 			c := makeSemanticTestCore(t, sess, nil)
 			// Watch session and load initial event with pending approval.
-			watchBatch := c.Dispatch(&corev1.Event{
+			c.Dispatch(&corev1.Event{
 				NowMs: 1_791_078_060_100,
 				Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s-ap", Watched: true}},
 			})
-			cacheOp := watchCacheReadOpID(watchBatch)
 			c.Dispatch(&corev1.Event{
 				NowMs: 1_791_078_060_110,
-				Event: &corev1.Event_CacheEventsLoaded{
-					CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{
-						OpId:      cacheOp,
-						SessionId: "s-ap",
-						Events: []*corev1.PlainEvent{
-							{
-								Seq:      1,
-								Verified: true,
-								Event: &v1.Event{
-									Seq: 1,
-									Kind: &v1.Event_ApprovalRequested{
-										ApprovalRequested: &v1.ApprovalRequested{
-											ApprovalId: "ap-1",
-											Command:    "rm -rf build",
-										},
-									},
-								},
-							},
+				Event: testrelay.DemoEventsEvent("s-ap", &v1.Event{
+					Seq: 1,
+					Kind: &v1.Event_ApprovalRequested{
+						ApprovalRequested: &v1.ApprovalRequested{
+							ApprovalId: "ap-1",
+							Command:    "rm -rf build",
 						},
 					},
-				},
+				}),
 			})
 
 			// User opens deny form (no wall clock needed!).
@@ -729,32 +688,16 @@ func TestSessionApprovalExternalResolutionByOrigin(t *testing.T) {
 			// Event arrives resolving approval with tc.origin.
 			evBatch := c.Dispatch(&corev1.Event{
 				NowMs: 1_791_078_060_300,
-				Event: &corev1.Event_StreamFrame{
-					StreamFrame: &corev1.StreamFrameEvent{
-						LegId: 1,
-						Frame: &corev1.StreamFrameEvent_EventsAppended{
-							EventsAppended: &corev1.EventsAppendedFrame{
-								SessionId: "s-ap",
-								Events: []*corev1.PlainEvent{
-									{
-										Seq:      2,
-										Verified: true,
-										Event: &v1.Event{
-											Seq:    2,
-											Origin: tc.origin,
-											Kind: &v1.Event_ApprovalResolved{
-												ApprovalResolved: &v1.ApprovalResolved{
-													ApprovalId: "ap-1",
-													Decision:   v1.ApprovalDecision_APPROVAL_DECISION_ALLOW,
-												},
-											},
-										},
-									},
-								},
-							},
+				Event: testrelay.DemoEventsEvent("s-ap", &v1.Event{
+					Seq:    2,
+					Origin: tc.origin,
+					Kind: &v1.Event_ApprovalResolved{
+						ApprovalResolved: &v1.ApprovalResolved{
+							ApprovalId: "ap-1",
+							Decision:   v1.ApprovalDecision_APPROVAL_DECISION_ALLOW,
 						},
 					},
-				},
+				}),
 			})
 
 			vm, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-ap"}}})
@@ -793,30 +736,25 @@ func TestSessionApprovalExternalResolutionByOrigin(t *testing.T) {
 }
 
 func TestHomeQuestionFocusLifecycleAndRetry(t *testing.T) {
-	sess := &corev1.PlainSession{
-		SessionId: "s-hq",
-		MachineId: "m-on",
-		UpdatedMs: 1_791_078_060_000,
-		Meta: &v1.Session{
-			Id:    "s-hq",
-			Cwd:   "/Users/me/proj",
-			Agent: v1.Agent_AGENT_CLAUDE,
-		},
-		Checkpoint: &v1.LiveSnapshot{
-			Actions: []*v1.Event{
-				{
-					Seq: 77,
-					Kind: &v1.Event_QuestionAsked{
-						QuestionAsked: &v1.QuestionAsked{
-							QuestionId: "hq-1",
-							Questions: []*v1.Question{
-								{
-									Header: "Deploy",
-									Text:   "Ship now?",
-									Options: []*v1.QuestionOption{
-										{Label: "Yes (Recommended)"},
-										{Label: "Later"},
-									},
+	sessMeta := &v1.Session{
+		Id:    "s-hq",
+		Cwd:   "/Users/me/proj",
+		Agent: v1.Agent_AGENT_CLAUDE,
+	}
+	sess := testrelay.DemoSession("s-hq", "m-on", 0, 1_791_078_060_000, 0, sessMeta, &v1.LiveSnapshot{
+		Actions: []*v1.Event{
+			{
+				Seq: 77,
+				Kind: &v1.Event_QuestionAsked{
+					QuestionAsked: &v1.QuestionAsked{
+						QuestionId: "hq-1",
+						Questions: []*v1.Question{
+							{
+								Header: "Deploy",
+								Text:   "Ship now?",
+								Options: []*v1.QuestionOption{
+									{Label: "Yes (Recommended)"},
+									{Label: "Later"},
 								},
 							},
 						},
@@ -824,7 +762,7 @@ func TestHomeQuestionFocusLifecycleAndRetry(t *testing.T) {
 				},
 			},
 		},
-	}
+	})
 	c := makeSemanticTestCore(t, sess, nil)
 
 	// Home renders inline question card in IDLE phase without watchSession.
@@ -882,20 +820,7 @@ func TestHomeQuestionFocusLifecycleAndRetry(t *testing.T) {
 	// Even if session updates to remove pending question, Home holds RESOLVED_THIS_CLIENT card for 900ms.
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_061_350,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_SessionUpdated{
-					SessionUpdated: &corev1.PlainSession{
-						SessionId:  "s-hq",
-						MachineId:  "m-on",
-						UpdatedMs:  1_791_078_061_350,
-						Meta:       sess.Meta,
-						Checkpoint: &v1.LiveSnapshot{},
-					},
-				},
-			},
-		},
+		Event: testrelay.DemoSessionEvent(testrelay.DemoSession("s-hq", "m-on", 78, 1_791_078_061_350, 0, sessMeta, &v1.LiveSnapshot{})),
 	})
 	hHeld, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_Home{Home: &corev1.HomeScreenRequest{}}})
 	qHeld := hHeld.GetHome().GetTopAttentionQuestion()
@@ -922,12 +847,9 @@ func TestHomeQuestionFocusLifecycleAndRetry(t *testing.T) {
 }
 
 func TestSessionFrozenDenyReasonChangeAutoAbandons(t *testing.T) {
-	sess := &corev1.PlainSession{
-		SessionId: "s-deny",
-		MachineId: "m-on",
-		UpdatedMs: 1_791_078_060_000,
-		Meta:      &v1.Session{Id: "s-deny", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_CLAUDE},
-		Checkpoint: &v1.LiveSnapshot{
+	sess := testrelay.DemoSession("s-deny", "m-on", 0, 1_791_078_060_000, 0,
+		&v1.Session{Id: "s-deny", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_CLAUDE},
+		&v1.LiveSnapshot{
 			Actions: []*v1.Event{
 				{
 					Seq: 5,
@@ -937,7 +859,7 @@ func TestSessionFrozenDenyReasonChangeAutoAbandons(t *testing.T) {
 				},
 			},
 		},
-	}
+	)
 	c := makeSemanticTestCore(t, sess, nil)
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_061_000,
@@ -987,20 +909,17 @@ func TestSessionFrozenDenyReasonChangeAutoAbandons(t *testing.T) {
 }
 
 func TestSessionFrozenSlotPayloadChangesAndExpiry(t *testing.T) {
-	sess := &corev1.PlainSession{
-		SessionId: "s-frz",
-		MachineId: "m-on",
-		UpdatedMs: 1_791_078_060_000,
-		Meta: &v1.Session{
-			Id:           "s-frz",
-			Cwd:          "/Users/me/proj",
-			Agent:        v1.Agent_AGENT_CLAUDE,
-			Title:        "Original",
+	sess := testrelay.DemoSession("s-frz", "m-on", 0, 1_791_078_060_000, 0,
+		&v1.Session{
+			Id:    "s-frz",
+			Cwd:   "/Users/me/proj",
+			Agent: v1.Agent_AGENT_CLAUDE,
+			Title: "Original",
 			Model: "claude-haiku-4-5",
 			Mode:  v1.ApprovalMode_APPROVAL_MODE_ASK,
 		},
-		Checkpoint: &v1.LiveSnapshot{},
-	}
+		&v1.LiveSnapshot{},
+	)
 	models := []*v1.ModelInfo{
 		{Slug: "claude-haiku-4-5", DisplayName: "Haiku 4.5"},
 		{Slug: "claude-opus-4-6", DisplayName: "Opus 4.6", Efforts: []string{"medium", "high"}, DefaultEffort: "medium"},
@@ -1157,28 +1076,20 @@ func TestHomeFocusStateMachineEdgeCases(t *testing.T) {
 	// ResolutionText must be KeyApprovalDenied (not KeyApprovalAllowed), AND a late failed settlement
 	// must NOT overwrite RESOLVED_THIS_CLIENT back to FAILED.
 	// Case C: Stale 900ms timer from item 1 must NOT clear item 2's SUBMITTING focus.
-	sess1 := &corev1.PlainSession{
-		SessionId: "s-hf1",
-		MachineId: "m-on",
-		UpdatedMs: 1_791_078_059_000,
-		Meta:      &v1.Session{Id: "s-hf1", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_CLAUDE},
-		Checkpoint: &v1.LiveSnapshot{
-			Actions: []*v1.Event{
-				{
-					Seq: 1,
-					Kind: &v1.Event_ApprovalRequested{
-						ApprovalRequested: &v1.ApprovalRequested{ApprovalId: "ap-1", Command: "rm -rf /tmp/x"},
-					},
+	sess1Meta := &v1.Session{Id: "s-hf1", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_CLAUDE}
+	sess1 := testrelay.DemoSession("s-hf1", "m-on", 0, 1_791_078_059_000, 0, sess1Meta, &v1.LiveSnapshot{
+		Actions: []*v1.Event{
+			{
+				Seq: 1,
+				Kind: &v1.Event_ApprovalRequested{
+					ApprovalRequested: &v1.ApprovalRequested{ApprovalId: "ap-1", Command: "rm -rf /tmp/x"},
 				},
 			},
 		},
-	}
-	sess2 := &corev1.PlainSession{
-		SessionId: "s-hf2",
-		MachineId: "m-on",
-		UpdatedMs: 1_791_078_060_000,
-		Meta:      &v1.Session{Id: "s-hf2", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_CLAUDE},
-		Checkpoint: &v1.LiveSnapshot{
+	})
+	sess2 := testrelay.DemoSession("s-hf2", "m-on", 0, 1_791_078_060_000, 0,
+		&v1.Session{Id: "s-hf2", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_CLAUDE},
+		&v1.LiveSnapshot{
 			Actions: []*v1.Event{
 				{
 					Seq: 1,
@@ -1188,18 +1099,14 @@ func TestHomeFocusStateMachineEdgeCases(t *testing.T) {
 				},
 			},
 		},
-	}
-	c := bootstrapReadyApp(t, []*corev1.PlainMachine{
-		{
-			MachineId: "m-on",
-			Online:    true,
-			Meta: &v1.MachineMeta{
-				Hostname:        "DevBox",
-				ProtocolVersion: sync.PeerVersion,
-				Capabilities:    &v1.MachineCapabilities{ApprovalAlways: true},
-			},
-		},
-	}, []*corev1.PlainSession{sess1, sess2})
+	)
+	c := bootstrapReadyApp(t, []*corev1.DemoMachine{
+		testrelay.DemoMachine("m-on", true, 0, &v1.MachineMeta{
+			Hostname:        "DevBox",
+			ProtocolVersion: sync.PeerVersion,
+			Capabilities:    &v1.MachineCapabilities{ApprovalAlways: true},
+		}),
+	}, []*corev1.DemoSession{sess1, sess2})
 
 	// Deny ap-1 from Home.
 	bDeny := c.Dispatch(&corev1.Event{
@@ -1221,20 +1128,7 @@ func TestHomeFocusStateMachineEdgeCases(t *testing.T) {
 	// Projection resolves ap-1 (checkpoint clears pending approval) BEFORE CommandOutcome arrives.
 	bRes := c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_061_050,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_SessionUpdated{
-					SessionUpdated: &corev1.PlainSession{
-						SessionId:  "s-hf1",
-						MachineId:  "m-on",
-						UpdatedMs:  1_791_078_061_050,
-						Meta:       sess1.Meta,
-						Checkpoint: &v1.LiveSnapshot{},
-					},
-				},
-			},
-		},
+		Event: testrelay.DemoSessionEvent(testrelay.DemoSession("s-hf1", "m-on", 2, 1_791_078_061_050, 0, sess1Meta, &v1.LiveSnapshot{})),
 	})
 	tmr1 := findUITransientTimer(bRes, homeFocusHoldKey(screens.HomeFocusApproval, "s-hf1", "ap-1"))
 	if tmr1 == nil {
@@ -1318,17 +1212,13 @@ func TestHomeFocusStateMachineEdgeCases(t *testing.T) {
 }
 
 func TestSessionTrackingMapsStayBounded(t *testing.T) {
-	sess := &corev1.PlainSession{
-		SessionId: "s-bnd",
-		MachineId: "m-on",
-		UpdatedMs: 1_791_078_060_000,
-		Meta: &v1.Session{
-			Id:    "s-bnd",
-			Cwd:   "/Users/me/proj",
-			Agent: v1.Agent_AGENT_CLAUDE,
-			Title: "Initial",
-		},
+	sessMeta := &v1.Session{
+		Id:    "s-bnd",
+		Cwd:   "/Users/me/proj",
+		Agent: v1.Agent_AGENT_CLAUDE,
+		Title: "Initial",
 	}
+	sess := testrelay.DemoSession("s-bnd", "m-on", 0, 1_791_078_060_000, 0, sessMeta, nil)
 	c := makeSemanticTestCore(t, sess, nil)
 	// Provide plenty of entropy IDs for 30 messages + 30 approvals + 1 rename.
 	extraIDs := make([]string, 0, 200)
@@ -1397,35 +1287,11 @@ func TestSessionTrackingMapsStayBounded(t *testing.T) {
 		now += 10
 		c.Dispatch(&corev1.Event{
 			NowMs: now,
-			Event: &corev1.Event_StreamFrame{
-				StreamFrame: &corev1.StreamFrameEvent{
-					LegId: 1,
-					Frame: &corev1.StreamFrameEvent_SessionUpdated{
-						SessionUpdated: &corev1.PlainSession{
-							SessionId:  "s-bnd",
-							MachineId:  "m-on",
-							LastSeq:    seq,
-							UpdatedMs:  now,
-							Meta:       sess.Meta,
-							Checkpoint: &v1.LiveSnapshot{Actions: []*v1.Event{apEv}},
-						},
-					},
-				},
-			},
+			Event: testrelay.DemoSessionEvent(testrelay.DemoSession("s-bnd", "m-on", seq, now, 0, sessMeta, &v1.LiveSnapshot{Actions: []*v1.Event{apEv}})),
 		})
 		c.Dispatch(&corev1.Event{
 			NowMs: now,
-			Event: &corev1.Event_StreamFrame{
-				StreamFrame: &corev1.StreamFrameEvent{
-					LegId: 1,
-					Frame: &corev1.StreamFrameEvent_EventsAppended{
-						EventsAppended: &corev1.EventsAppendedFrame{
-							SessionId: "s-bnd",
-							Events:    []*corev1.PlainEvent{{Seq: seq, Verified: true, Event: apEv}},
-						},
-					},
-				},
-			},
+			Event: testrelay.DemoEventsEvent("s-bnd", apEv),
 		})
 		seq++
 
@@ -1450,50 +1316,20 @@ func TestSessionTrackingMapsStayBounded(t *testing.T) {
 		now += 10
 		c.Dispatch(&corev1.Event{
 			NowMs: now,
-			Event: &corev1.Event_StreamFrame{
-				StreamFrame: &corev1.StreamFrameEvent{
-					LegId: 1,
-					Frame: &corev1.StreamFrameEvent_SessionUpdated{
-						SessionUpdated: &corev1.PlainSession{
-							SessionId:  "s-bnd",
-							MachineId:  "m-on",
-							LastSeq:    seq,
-							UpdatedMs:  now,
-							Meta:       sess.Meta,
-							Checkpoint: &v1.LiveSnapshot{},
-						},
-					},
-				},
-			},
+			Event: testrelay.DemoSessionEvent(testrelay.DemoSession("s-bnd", "m-on", seq, now, 0, sessMeta, &v1.LiveSnapshot{})),
 		})
 		c.Dispatch(&corev1.Event{
 			NowMs: now,
-			Event: &corev1.Event_StreamFrame{
-				StreamFrame: &corev1.StreamFrameEvent{
-					LegId: 1,
-					Frame: &corev1.StreamFrameEvent_EventsAppended{
-						EventsAppended: &corev1.EventsAppendedFrame{
-							SessionId: "s-bnd",
-							Events: []*corev1.PlainEvent{
-								{
-									Seq:      seq,
-									Verified: true,
-									Event: &v1.Event{
-										Seq:    seq,
-										Origin: &v1.Origin{Kind: v1.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "dev-1"},
-										Kind: &v1.Event_ApprovalResolved{
-											ApprovalResolved: &v1.ApprovalResolved{
-												ApprovalId: aid,
-												Decision:   v1.ApprovalDecision_APPROVAL_DECISION_ALLOW,
-											},
-										},
-									},
-								},
-							},
-						},
+			Event: testrelay.DemoEventsEvent("s-bnd", &v1.Event{
+				Seq:    seq,
+				Origin: &v1.Origin{Kind: v1.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "dev-1"},
+				Kind: &v1.Event_ApprovalResolved{
+					ApprovalResolved: &v1.ApprovalResolved{
+						ApprovalId: aid,
+						Decision:   v1.ApprovalDecision_APPROVAL_DECISION_ALLOW,
 					},
 				},
-			},
+			}),
 		})
 		seq++
 	}
@@ -1530,12 +1366,9 @@ func TestSessionTrackingMapsStayBounded(t *testing.T) {
 }
 
 func TestSessionQuestionSelectedOptionNums(t *testing.T) {
-	sess := &corev1.PlainSession{
-		SessionId: "s-sel",
-		MachineId: "m-on",
-		UpdatedMs: 1_791_078_060_000,
-		Meta:      &v1.Session{Id: "s-sel", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_CLAUDE},
-		Checkpoint: &v1.LiveSnapshot{
+	sess := testrelay.DemoSession("s-sel", "m-on", 0, 1_791_078_060_000, 0,
+		&v1.Session{Id: "s-sel", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_CLAUDE},
+		&v1.LiveSnapshot{
 			Actions: []*v1.Event{
 				{
 					Seq: 10,
@@ -1563,7 +1396,7 @@ func TestSessionQuestionSelectedOptionNums(t *testing.T) {
 				},
 			},
 		},
-	}
+	)
 	c := makeSemanticTestCore(t, sess, nil)
 	getSelected := func() []int32 {
 		vm, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-sel"}}})
@@ -1630,11 +1463,8 @@ func TestSessionQuestionSelectedOptionNums(t *testing.T) {
 
 func TestSessionSimpleCommandGuardsAndRenameAutoTitleNoop(t *testing.T) {
 	// 1) Idle session: INTERRUPT must be rejected (!CanInterrupt), COMPACT allowed.
-	idleSess := &corev1.PlainSession{
-		SessionId: "s-guard",
-		MachineId: "m-on",
-		UpdatedMs: 1_791_078_060_000,
-		Meta: &v1.Session{
+	idleSess := testrelay.DemoSession("s-guard", "m-on", 0, 1_791_078_060_000, 0,
+		&v1.Session{
 			Id:     "s-guard",
 			Cwd:    "/Users/me/proj",
 			Agent:  v1.Agent_AGENT_CLAUDE,
@@ -1642,8 +1472,8 @@ func TestSessionSimpleCommandGuardsAndRenameAutoTitleNoop(t *testing.T) {
 			// Title longer than 60 codepoints (TitleInput truncates to 60 codepoints).
 			Title: strings.Repeat("a", 80),
 		},
-		Checkpoint: &v1.LiveSnapshot{Running: false},
-	}
+		&v1.LiveSnapshot{Running: false},
+	)
 	c := makeSemanticTestCore(t, idleSess, nil)
 	bIntIdle := c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_061_000,
@@ -1673,18 +1503,15 @@ func TestSessionSimpleCommandGuardsAndRenameAutoTitleNoop(t *testing.T) {
 	}
 
 	// 2) Running session: COMPACT rejected (!CanCompact), INTERRUPT allowed.
-	runSess := &corev1.PlainSession{
-		SessionId: "s-run-g",
-		MachineId: "m-on",
-		UpdatedMs: 1_791_078_060_000,
-		Meta: &v1.Session{
+	runSess := testrelay.DemoSession("s-run-g", "m-on", 0, 1_791_078_060_000, 0,
+		&v1.Session{
 			Id:     "s-run-g",
 			Cwd:    "/Users/me/proj",
 			Agent:  v1.Agent_AGENT_CLAUDE,
 			Status: v1.SessionStatus_SESSION_STATUS_RUNNING,
 		},
-		Checkpoint: &v1.LiveSnapshot{Running: true},
-	}
+		&v1.LiveSnapshot{Running: true},
+	)
 	cRun := makeSemanticTestCore(t, runSess, nil)
 	bCmpRun := cRun.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_061_000,
@@ -1700,17 +1527,15 @@ func TestSessionSimpleCommandGuardsAndRenameAutoTitleNoop(t *testing.T) {
 	}
 
 	// 3) Exited session: STOP rejected (!CanEnd).
-	exitedSess := &corev1.PlainSession{
-		SessionId: "s-exit-g",
-		MachineId: "m-on",
-		UpdatedMs: 1_791_078_060_000,
-		Meta: &v1.Session{
+	exitedSess := testrelay.DemoSession("s-exit-g", "m-on", 0, 1_791_078_060_000, 0,
+		&v1.Session{
 			Id:     "s-exit-g",
 			Cwd:    "/Users/me/proj",
 			Agent:  v1.Agent_AGENT_CLAUDE,
 			Status: v1.SessionStatus_SESSION_STATUS_EXITED,
 		},
-	}
+		nil,
+	)
 	cExit := makeSemanticTestCore(t, exitedSess, nil)
 	bStopExit := cExit.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_061_000,
@@ -1727,12 +1552,9 @@ func TestSessionSimpleCommandGuardsAndRenameAutoTitleNoop(t *testing.T) {
 }
 
 func TestQuestionOptionSummaryTextUsesI18nSeparatorAndFallback(t *testing.T) {
-	sess := &corev1.PlainSession{
-		SessionId: "s-qi18n",
-		MachineId: "m-on",
-		UpdatedMs: 1_791_078_060_000,
-		Meta:      &v1.Session{Id: "s-qi18n", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_CLAUDE},
-		Checkpoint: &v1.LiveSnapshot{
+	sess := testrelay.DemoSession("s-qi18n", "m-on", 0, 1_791_078_060_000, 0,
+		&v1.Session{Id: "s-qi18n", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_CLAUDE},
+		&v1.LiveSnapshot{
 			Actions: []*v1.Event{
 				{
 					Seq: 3,
@@ -1752,7 +1574,7 @@ func TestQuestionOptionSummaryTextUsesI18nSeparatorAndFallback(t *testing.T) {
 				},
 			},
 		},
-	}
+	)
 	c := makeSemanticTestCore(t, sess, nil)
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_061_000,
@@ -1776,12 +1598,9 @@ func TestQuestionOptionSummaryTextUsesI18nSeparatorAndFallback(t *testing.T) {
 }
 
 func TestSessionResolveApprovalPreservesExplicitObservedEventSeq(t *testing.T) {
-	sess := &corev1.PlainSession{
-		SessionId: "s-notif",
-		MachineId: "m-on",
-		UpdatedMs: 1_791_078_060_000,
-		Meta:      &v1.Session{Id: "s-notif", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_CODEX},
-		Checkpoint: &v1.LiveSnapshot{
+	sess := testrelay.DemoSession("s-notif", "m-on", 0, 1_791_078_060_000, 0,
+		&v1.Session{Id: "s-notif", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_CODEX},
+		&v1.LiveSnapshot{
 			Actions: []*v1.Event{
 				{
 					Seq: 42,
@@ -1791,7 +1610,7 @@ func TestSessionResolveApprovalPreservesExplicitObservedEventSeq(t *testing.T) {
 				},
 			},
 		},
-	}
+	)
 	c := makeSemanticTestCore(t, sess, nil)
 
 	// Stale explicit observed_event_seq (from an older push notification) must not be

@@ -69,29 +69,6 @@ const (
 	TerminalLifecycleState_TERMINAL_LIFECYCLE_STATE_CLOSED          TerminalLifecycleState = 7
 )
 
-type RelayPipeConfigEvent struct {
-	_       [0]func()
-	Enabled bool
-}
-
-func (m *RelayPipeConfigEvent) GetEnabled() bool {
-	if m != nil {
-		return m.Enabled
-	}
-	return false
-}
-
-var LitewireDesc_RelayPipeConfigEvent = litewire.MessageDesc{
-	New: func() unsafe.Pointer { return unsafe.Pointer(&RelayPipeConfigEvent{}) },
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(RelayPipeConfigEvent{}.Enabled), Kind: litewire.KindBool},
-	},
-}
-
-func (m *RelayPipeConfigEvent) Unmarshal(b []byte) error {
-	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_RelayPipeConfigEvent)
-}
-
 type RelayRpcEffect struct {
 	_             [0]func()
 	OpId          uint64

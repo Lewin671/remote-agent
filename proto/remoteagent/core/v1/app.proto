@@ -185,91 +185,27 @@ message TimerFiredEvent {
   string key = 3;
 }
 
-// Plaintext machine decrypted and verified by the shell's security gate.
-message PlainMachine {
-  string machine_id = 1;
-  bool online = 2;
-  int64 last_seen_ms = 3;
-  remoteagent.v1.MachineMeta meta = 4;
-  uint64 meta_rev = 5;
-  bool meta_broken = 6;
-}
-
-// Plaintext session decrypted and verified by the shell's security gate.
-message PlainSession {
-  string session_id = 1;
-  string machine_id = 2;
-  uint64 last_seq = 3;
-  int64 updated_ms = 4;
-  int64 listed_ended_ms = 5;
-  remoteagent.v1.Session meta = 6;
-  uint64 meta_rev = 7;
-  remoteagent.v1.LiveSnapshot checkpoint = 8;
-  bool checkpoint_invalid = 9;
-  bool retired_history = 10;
-  bool open_failed = 11;
-}
-
-// Plaintext event decrypted and verified by the shell's security gate.
-message PlainEvent {
-  uint64 seq = 1;
-  remoteagent.v1.Event event = 2;
-  bool verified = 3;
-  bool unavailable = 4;
-  bool broken = 5;
-  bool retired = 6;
-  int64 approx_bytes = 7;
-}
-
-// Plaintext device decrypted and verified by the shell's security gate.
-message PlainDevice {
-  string device_id = 1;
-  remoteagent.v1.DeviceKind kind = 2;
-  int64 created_ms = 3;
-  int64 last_seen_ms = 4;
-  remoteagent.v1.DeviceMeta meta = 5;
-  uint64 meta_rev = 6;
-  bool meta_broken = 7;
-}
-
-// Plaintext account preferences decrypted and verified by the shell's security gate.
-message PlainAccountPrefs {
-  uint64 revision = 1;
-  remoteagent.v1.ProjectPrefs prefs = 2;
-  bool broken = 3;
-}
-
 message CacheBootstrapLoadedEvent {
+  reserved 2, 3, 4, 10, 11, 12;
+  reserved "machines", "sessions", "prefs", "wire_machines", "wire_sessions", "wire_prefs";
   uint64 op_id = 1;
-  repeated PlainMachine machines = 2;
-  repeated PlainSession sessions = 3;
-  PlainAccountPrefs prefs = 4;
   string home_scope_token = 5;
   bytes scope_hmac_key = 6;
   string error = 7;
-  repeated remoteagent.v1.Machine wire_machines = 10;
-  repeated remoteagent.v1.RemoteSession wire_sessions = 11;
-  remoteagent.v1.AccountPrefsObject wire_prefs = 12;
+  repeated bytes raw_machines = 13;
+  repeated bytes raw_sessions = 14;
+  bytes raw_prefs = 15;
 }
 
 message CacheEventsLoadedEvent {
+  reserved 3, 10;
+  reserved "events", "wire_events";
   uint64 op_id = 1;
   string session_id = 2;
-  repeated PlainEvent events = 3;
   bool broken = 4;
   bool retired = 5;
   string error = 6;
-  repeated remoteagent.v1.StoredEvent wire_events = 10;
-}
-
-message TokenResultEvent {
-  uint64 op_id = 1;
-  string token = 2;
-  int64 expires_ms = 3;
-  bool removed = 4;
-  string error_code = 5;
-  string error = 6;
-  bool unresolved_host = 7;
+  repeated bytes raw_events = 11;
 }
 
 message StreamReadyEvent {
@@ -285,91 +221,6 @@ message StreamClosedEvent {
   bool unresolved_host = 5;
 }
 
-message EventsAppendedFrame {
-  string session_id = 1;
-  repeated PlainEvent events = 2;
-  repeated remoteagent.v1.StoredEvent wire_events = 10;
-}
-
-message StreamFrameEvent {
-  uint64 leg_id = 1;
-  oneof frame {
-    bool heartbeat = 2;
-    PlainMachine machine_updated = 3;
-    string machine_removed_id = 4;
-    PlainSession session_updated = 5;
-    EventsAppendedFrame events_appended = 6;
-    PlainAccountPrefs account_prefs_updated = 7;
-    PlainDevice device_updated = 8;
-    string device_removed_id = 9;
-    remoteagent.v1.Machine wire_machine_updated = 10;
-    remoteagent.v1.RemoteSession wire_session_updated = 11;
-    remoteagent.v1.AccountPrefsObject wire_account_prefs_updated = 12;
-    remoteagent.v1.Device wire_device_updated = 13;
-  }
-}
-
-message ListsFetchedEvent {
-  uint64 op_id = 1;
-  repeated PlainMachine machines = 2;
-  repeated PlainSession sessions = 3;
-  remoteagent.v1.SessionCursor next = 4;
-  repeated PlainDevice devices = 5;
-  string error = 6;
-  bool unresolved_host = 7;
-  repeated remoteagent.v1.Machine wire_machines = 10;
-  repeated remoteagent.v1.RemoteSession wire_sessions = 11;
-  repeated remoteagent.v1.Device wire_devices = 12;
-}
-
-message SessionsPageFetchedEvent {
-  uint64 op_id = 1;
-  repeated PlainSession sessions = 2;
-  remoteagent.v1.SessionCursor next = 3;
-  string error = 4;
-  repeated remoteagent.v1.RemoteSession wire_sessions = 10;
-}
-
-message SessionByIdFetchedEvent {
-  uint64 op_id = 1;
-  PlainSession session = 2;
-  string error = 3;
-  remoteagent.v1.RemoteSession wire_session = 10;
-}
-
-message EventsPageFetchedEvent {
-  uint64 op_id = 1;
-  string session_id = 2;
-  repeated PlainEvent events = 3;
-  bool more = 4;
-  string error = 5;
-  repeated remoteagent.v1.StoredEvent wire_events = 10;
-}
-
-message AccountPrefsFetchedEvent {
-  uint64 op_id = 1;
-  PlainAccountPrefs prefs = 2;
-  string error = 3;
-  remoteagent.v1.AccountPrefsObject wire_prefs = 10;
-}
-
-message AccountPrefsPutResultEvent {
-  uint64 op_id = 1;
-  bool applied = 2;
-  PlainAccountPrefs current = 3;
-  bool seal_conflict = 4;
-  string error = 5;
-  remoteagent.v1.AccountPrefsObject wire_current = 10;
-}
-
-message DevicesFetchedEvent {
-  uint64 op_id = 1;
-  repeated PlainDevice devices = 2;
-  string error = 3;
-  uint64 push_seq = 4;
-  repeated remoteagent.v1.Device wire_devices = 10;
-}
-
 enum OutcomeSource {
   OUTCOME_SOURCE_UNSPECIFIED = 0;
   OUTCOME_SOURCE_LOCAL = 1;
@@ -379,6 +230,8 @@ enum OutcomeSource {
 }
 
 message CommandOutcomeEvent {
+  reserved 11, 20;
+  reserved "result", "sealed_result";
   string request_id = 1;
   string attempt_id = 2;
   OutcomeSource source = 3;
@@ -389,7 +242,6 @@ message CommandOutcomeEvent {
   bool outer_matches_inner = 8;
   string outer_outcome = 9;
   string outer_reason = 10;
-  remoteagent.v1.CommandResult result = 11;
   string transport_code = 12;
   string transport_detail = 13;
   bool route_was_direct = 14;
@@ -397,7 +249,8 @@ message CommandOutcomeEvent {
   int64 observed_bytes = 16;
   bool handed_off = 17;
   uint64 direct_ticket_id = 18;
-  remoteagent.v1.Envelope sealed_result = 20;
+  bytes raw_result = 21;
+  bytes raw_sealed_result = 22;
 }
 
 message SessionWatchEvent {
@@ -419,12 +272,13 @@ message FetchSessionAction {
 }
 
 message DirectEventsReceivedEvent {
+  reserved 3, 10;
+  reserved "events", "wire_envelopes";
   string machine_id = 1;
   string session_id = 2;
-  repeated PlainEvent events = 3;
   uint64 pc_id = 4;
   string sender = 5;
-  repeated remoteagent.v1.Envelope wire_envelopes = 10;
+  repeated bytes raw_envelopes = 11;
 }
 
 message SessionScheduleHint {
@@ -524,8 +378,8 @@ message NewSessionSubmitAction {
 }
 
 message Event {
-  reserved 55;
-  reserved "new_session_set_prompt";
+  reserved 8, 12 to 19, 55, 200, 216, 424 to 430, 462;
+  reserved "token_result", "stream_frame", "lists_fetched", "sessions_page_fetched", "session_by_id_fetched", "events_page_fetched", "account_prefs_fetched", "account_prefs_put_result", "devices_fetched", "new_session_set_prompt", "session_submit_command", "shared_file_local_state", "terminal_direct_open", "terminal_direct_close", "terminal_direct_leg", "terminal_direct_input", "terminal_direct_output", "terminal_direct_confirm_rebuild", "relay_pipe_config", "security_rpc_result";
   oneof event {
     LocalCalendar clock_updated = 1;
     EntropyProvided entropy_provided = 2;
@@ -534,18 +388,9 @@ message Event {
     TimerFiredEvent timer_fired = 5;
     CacheBootstrapLoadedEvent cache_bootstrap_loaded = 6;
     CacheEventsLoadedEvent cache_events_loaded = 7;
-    TokenResultEvent token_result = 8;
     LocaleChangedEvent locale_changed = 9;
     StreamReadyEvent stream_ready = 10;
     StreamClosedEvent stream_closed = 11;
-    StreamFrameEvent stream_frame = 12;
-    ListsFetchedEvent lists_fetched = 13;
-    SessionsPageFetchedEvent sessions_page_fetched = 14;
-    SessionByIdFetchedEvent session_by_id_fetched = 15;
-    EventsPageFetchedEvent events_page_fetched = 16;
-    AccountPrefsFetchedEvent account_prefs_fetched = 17;
-    AccountPrefsPutResultEvent account_prefs_put_result = 18;
-    DevicesFetchedEvent devices_fetched = 19;
     CommandOutcomeEvent command_outcome = 20;
     SessionWatchEvent session_watch = 21;
     SessionPinEvent session_pin = 22;
@@ -738,8 +583,7 @@ message Event {
     TerminalHistoryEvent terminal_history = 422;
     DirectPcProbeReceivedEvent direct_pc_probe_received = 423;
 
-    // Unified relay byte-pipe events (430-449 reserved for P2-5).
-    RelayPipeConfigEvent relay_pipe_config = 430;
+    // Unified relay byte-pipe events (431-449 reserved for P2-5).
     RelayRpcResultEvent relay_rpc_result = 431;
     StreamRawFrameEvent stream_raw_frame = 432;
     RefreshDevicesAction refresh_devices = 433;
@@ -762,7 +606,6 @@ message Event {
     SecurityKeyGeneratedEvent security_key_generated = 459;
     SecurityKeyEncapsulatedEvent security_key_encapsulated = 460;
     SecurityStorageResultEvent security_storage_result = 461;
-    SecurityRpcResultEvent security_rpc_result = 462;
     SecurityForegroundEvent security_foreground = 463;
     SecurityWorkflowActionEvent security_action = 464;
     SecurityOpenNotifyEvent security_open_notify = 465;
@@ -796,8 +639,6 @@ message Event {
     ExitRequestAction exit_request = 498;
     ExitConfirmAction exit_confirm = 499;
   }
-  reserved 200, 216, 424 to 429;
-  reserved "session_submit_command", "shared_file_local_state", "terminal_direct_open", "terminal_direct_close", "terminal_direct_leg", "terminal_direct_input", "terminal_direct_output", "terminal_direct_confirm_rebuild";
   int64 now_ms = 98;
   int64 mono_ms = 99;
   repeated string random_ids = 100;
@@ -849,16 +690,6 @@ message CloseStreamEffect {
   uint64 leg_id = 1;
 }
 
-message EnsureTokenEffect {
-  uint64 op_id = 1;
-  bool force_login = 2;
-  int64 timeout_ms = 3;
-}
-
-message DiscardTokenEffect {
-  string token = 1;
-}
-
 message ScheduleTimerEffect {
   uint64 timer_id = 1;
   TimerKind kind = 2;
@@ -897,13 +728,15 @@ message CacheSessionOpen {
 }
 
 message CacheWriteEffect {
+  reserved 7, 8, 9, 11;
+  reserved "write_machine", "write_session", "keep_session_owner", "write_prefs";
   oneof kind {
     CacheSessionOpen set_session_open = 6;
-    remoteagent.v1.Machine write_machine = 7;
-    remoteagent.v1.RemoteSession write_session = 8;
-    remoteagent.v1.RemoteSession keep_session_owner = 9;
     CacheWriteStoredEvents write_stored_events = 10;
-    remoteagent.v1.AccountPrefsObject write_prefs = 11;
+    bytes raw_write_machine = 12;
+    bytes raw_write_session = 13;
+    bytes raw_keep_session_owner = 14;
+    bytes raw_write_prefs = 15;
   }
 }
 
@@ -916,53 +749,6 @@ message CacheDeleteEffect {
   }
 }
 
-message FetchListsRpc {
-  uint32 limit = 1;
-}
-
-message FetchSessionsPageRpc {
-  remoteagent.v1.SessionCursor after = 1;
-  uint32 limit = 2;
-}
-
-message FetchSessionByIdRpc {
-  string session_id = 1;
-}
-
-message GetEventsRpc {
-  string session_id = 1;
-  uint64 after_seq = 2;
-  uint32 limit = 3;
-}
-
-message GetAccountPrefsRpc {
-  string object_id = 1;
-}
-
-message PutAccountPrefsRpc {
-  string object_id = 1;
-  uint64 expected_revision = 2;
-  remoteagent.v1.ProjectPrefs next_prefs = 3;
-  remoteagent.v1.Envelope sealed_envelope = 10;
-}
-
-message FetchDevicesRpc {
-  bool force = 1;
-}
-
-message RpcEffect {
-  uint64 op_id = 1;
-  oneof kind {
-    FetchListsRpc fetch_lists = 2;
-    FetchSessionsPageRpc fetch_sessions_page = 3;
-    FetchSessionByIdRpc fetch_session_by_id = 4;
-    GetEventsRpc get_events = 5;
-    GetAccountPrefsRpc get_account_prefs = 6;
-    PutAccountPrefsRpc put_account_prefs = 7;
-    FetchDevicesRpc fetch_devices = 8;
-  }
-}
-
 enum CommandRouteHint {
   COMMAND_ROUTE_HINT_UNSPECIFIED = 0;
   COMMAND_ROUTE_HINT_NORMAL = 1;
@@ -971,6 +757,8 @@ enum CommandRouteHint {
 }
 
 message DispatchCommandEffect {
+  reserved 20;
+  reserved "sealed_envelope";
   string request_id = 1;
   string attempt_id = 2;
   string machine_id = 3;
@@ -987,7 +775,7 @@ message DispatchCommandEffect {
   uint64 direct_pc_id = 14;
   int64 direct_timeout_ms = 15;
   uint64 direct_ticket_id = 16;
-  remoteagent.v1.Envelope sealed_envelope = 20;
+  bytes raw_sealed_envelope = 21;
 }
 
 message CancelDispatchEffect {
@@ -1058,20 +846,17 @@ message PingMachineResultEffect {
 }
 
 message Effect {
-  reserved 16, 41;
-  reserved "attachments_settled", "session_resend_attachments";
+  reserved 4, 5, 12, 16, 41, 118, 119, 120, 141;
+  reserved "ensure_token", "discard_token", "rpc", "attachments_settled", "session_resend_attachments", "terminal_direct_deliver", "terminal_direct_attach_relay", "terminal_direct_state", "security_rpc";
   oneof effect {
     RenderEffect render = 1;
     OpenStreamEffect open_stream = 2;
     CloseStreamEffect close_stream = 3;
-    EnsureTokenEffect ensure_token = 4;
-    DiscardTokenEffect discard_token = 5;
     ScheduleTimerEffect schedule_timer = 7;
     CancelTimerEffect cancel_timer = 8;
     CacheReadEffect cache_read = 9;
     CacheWriteEffect cache_write = 10;
     CacheDeleteEffect cache_delete = 11;
-    RpcEffect rpc = 12;
     DispatchCommandEffect dispatch_command = 13;
     SaveHomeScopeEffect save_home_scope = 14;
     NavigateEffect navigate = 15;
@@ -1150,7 +935,6 @@ message Effect {
     SecurityKeyEncapsulateEffect security_key_encapsulate = 138;
     SecurityKeyDiscardEffect security_key_discard = 139;
     SecurityStorageEffect security_storage = 140;
-    SecurityRpcEffect security_rpc = 141;
     SecurityWorkflowResultEffect security_workflow_result = 142;
     SecurityStatusChangedEffect security_status_changed = 143;
     SecurityNotifyOpenedEffect security_notify_opened = 144;
@@ -1162,8 +946,6 @@ message Effect {
     DismissUpgradeNoticeEffect dismiss_upgrade_notice = 150;
     PersistLastServerEffect persist_last_server = 151;
   }
-  reserved 118, 119, 120;
-  reserved "terminal_direct_deliver", "terminal_direct_attach_relay", "terminal_direct_state";
 }
 
 message EffectBatch {

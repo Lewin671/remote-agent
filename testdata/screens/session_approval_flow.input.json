@@ -2,27 +2,35 @@
   "steps": [
     {
       "event": {
-        "nowMs": "1791078060000",
         "clockUpdated": {
-          "nowMs": "1791078060000",
-          "todayStartMs": "1791043200000",
-          "yesterdayStartMs": "1790956800000",
-          "weekStartMs": "1790524800000",
-          "nowYear": 2026,
           "months": [
             {
-              "year": 2026,
               "month": 10,
-              "startMs": "1790812800000"
+              "startMs": "1790812800000",
+              "year": 2026
             }
-          ]
-        }
+          ],
+          "nowMs": "1791078060000",
+          "nowYear": 2026,
+          "todayStartMs": "1791043200000",
+          "weekStartMs": "1790524800000",
+          "yesterdayStartMs": "1790956800000"
+        },
+        "nowMs": "1791078060000"
       }
     },
     {
       "event": {
         "nowMs": "1791078060000",
+        "seedDemoWorld": {
+          "clearDirectReports": true
+        }
+      }
+    },
+    {
+      "event": {
         "monoMs": "1000",
+        "nowMs": "1791078060000",
         "randomIds": [
           "r-1",
           "r-2",
@@ -54,6 +62,9 @@
           "r-28",
           "r-29"
         ],
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START"
+        },
         "unitFloats": [
           0.5,
           0.5,
@@ -67,10 +78,7 @@
           0.5,
           0.5,
           0.5
-        ],
-        "syncLifecycle": {
-          "kind": "SYNC_LIFECYCLE_KIND_START"
-        }
+        ]
       }
     },
     {
@@ -78,26 +86,17 @@
         "nowMs": "1791078060010",
         "seedDemoWorld": {
           "security": {
-            "isMember": true,
-            "selfDeviceId": "dev-1",
             "authorityDeviceId": "dev-1",
+            "isMember": true,
             "leaseEndMs": "1791164460000",
-            "trustedMachineIds": [
-              "m1"
-            ],
+            "selfDeviceId": "dev-1",
             "trustedClientIds": [
               "dev-1"
+            ],
+            "trustedMachineIds": [
+              "m1"
             ]
           }
-        }
-      }
-    },
-    {
-      "event": {
-        "nowMs": "1791078060020",
-        "tokenResult": {
-          "opId": "2",
-          "token": "tok-1"
         }
       }
     },
@@ -113,79 +112,35 @@
     {
       "event": {
         "nowMs": "1791078060040",
-        "listsFetched": {
-          "opId": "3",
-          "machines": [
-            {
-              "machineId": "m1",
-              "online": true,
-              "lastSeenMs": "1791078060000",
-              "meta": {
-                "hostname": "MacStudio",
-                "home": "/Users/me",
-                "protocolVersion": 17,
-                "capabilities": {
-                  "imageUpload": true,
-                  "maxImagesPerMessage": 6,
-                  "approvalAlways": true,
-                  "scheduledTasks": true,
-                  "fileUpload": true,
-                  "sharedFiles": true
-                },
-                "agents": [
-                  {
-                    "agent": "AGENT_CODEX",
-                    "defaultMode": "APPROVAL_MODE_ASK"
-                  },
-                  {
-                    "agent": "AGENT_CLAUDE",
-                    "defaultMode": "APPROVAL_MODE_ASK"
-                  }
-                ]
-              }
-            }
-          ],
-          "sessions": [
-            {
-              "sessionId": "s-ap",
-              "machineId": "m1",
-              "lastSeq": "2",
-              "updatedMs": "1791078060000",
-              "meta": {
-                "id": "s-ap",
-                "cwd": "/Users/me/Code/app",
-                "agent": "AGENT_CLAUDE",
-                "status": "SESSION_STATUS_RUNNING",
-                "title": "Approval test",
-                "model": "claude-sonnet-4-6",
-                "createdAt": "2026-10-04T01:00:00Z"
-              },
-              "checkpoint": {
-                "running": true,
-                "actions": [
-                  {
-                    "seq": "2",
-                    "approvalRequested": {
-                      "approvalId": "ap-1",
-                      "toolName": "Bash",
-                      "command": "git status && ls /Users/me/Code/app/src",
-                      "description": "Inspect git workspace",
-                      "inputDigest": "digest-1"
-                    }
-                  }
-                ]
-              }
-            }
-          ],
+        "seedDemoWorld": {
+          "clearListError": true,
           "devices": [
             {
+              "createdMs": "1791000000000",
               "deviceId": "dev-1",
               "kind": "DEVICE_KIND_CLIENT",
-              "createdMs": "1791000000000",
-              "meta": {
-                "name": "Phone",
-                "platform": "iOS"
-              }
+              "rawMeta": "CgVQaG9uZRIDaU9T"
+            }
+          ],
+          "machines": [
+            {
+              "lastSeenMs": "1791078060000",
+              "machineId": "m1",
+              "online": true,
+              "rawMeta": "CglNYWNTdHVkaW8yCS9Vc2Vycy9tZUoECAEgAUoECAIgAVINEAEYBlABYAFoAYABAWAR"
+            }
+          ],
+          "replaceDevices": true,
+          "replaceMachines": true,
+          "replaceSessions": true,
+          "sessions": [
+            {
+              "lastSeq": "2",
+              "machineId": "m1",
+              "rawCheckpoint": "ElsIApIBVgoEYXAtMRIEQmFzaBoVSW5zcGVjdCBnaXQgd29ya3NwYWNlIidnaXQgc3RhdHVzICYmIGxzIC9Vc2Vycy9tZS9Db2RlL2FwcC9zcmM6CGRpZ2VzdC0xMAE=",
+              "rawMeta": "CgRzLWFwEhIvVXNlcnMvbWUvQ29kZS9hcHAgA0IGCJDKhtYGUhFjbGF1ZGUtc29ubmV0LTQtNnoNQXBwcm92YWwgdGVzdMgBAg==",
+              "sessionId": "s-ap",
+              "updatedMs": "1791078060000"
             }
           ]
         }
@@ -194,21 +149,16 @@
     {
       "event": {
         "nowMs": "1791078060050",
-        "accountPrefsFetched": {
-          "opId": "4",
-          "prefs": {
-            "revision": "1",
-            "prefs": {
-              "schema": 1
-            }
-          }
+        "seedDemoWorld": {
+          "prefsRevision": "1",
+          "rawPrefs": "CAE="
         }
       }
     },
     {
       "event": {
-        "nowMs": "1791078060060",
         "monoMs": "1100",
+        "nowMs": "1791078060060",
         "sessionOpen": {
           "sessionId": "s-ap"
         }
@@ -216,8 +166,8 @@
     },
     {
       "event": {
-        "nowMs": "1791078060070",
         "monoMs": "1150",
+        "nowMs": "1791078060070",
         "sessionWatch": {
           "sessionId": "s-ap",
           "watched": true
@@ -226,38 +176,16 @@
     },
     {
       "event": {
-        "nowMs": "1791078060080",
         "monoMs": "1200",
-        "cacheEventsLoaded": {
-          "opId": "5",
-          "sessionId": "s-ap",
-          "events": [
+        "nowMs": "1791078060080",
+        "seedDemoWorld": {
+          "sessionEvents": [
             {
-              "seq": "1",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "1",
-                "time": "2026-10-04T01:10:01Z",
-                "userMessage": {
-                  "text": "check status"
-                }
-              }
-            },
-            {
-              "seq": "2",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "2",
-                "time": "2026-10-04T01:10:02Z",
-                "approvalRequested": {
-                  "approvalId": "ap-1",
-                  "toolName": "Bash",
-                  "command": "git status && ls /Users/me/Code/app/src",
-                  "inputDigest": "digest-1"
-                }
-              }
+              "rawEvents": [
+                "CAESBHMtYXAaBgjpzobWBlIOCgxjaGVjayBzdGF0dXM=",
+                "CAISBHMtYXAaBgjqzobWBpIBPwoEYXAtMRIEQmFzaCInZ2l0IHN0YXR1cyAmJiBscyAvVXNlcnMvbWUvQ29kZS9hcHAvc3JjOghkaWdlc3QtMQ=="
+              ],
+              "sessionId": "s-ap"
             }
           ]
         }
@@ -275,13 +203,13 @@
     },
     {
       "event": {
-        "nowMs": "1791078060090",
         "monoMs": "1250",
+        "nowMs": "1791078060090",
         "sessionResolveApproval": {
-          "sessionId": "s-ap",
-          "approvalId": "ap-1",
           "allow": true,
-          "always": true
+          "always": true,
+          "approvalId": "ap-1",
+          "sessionId": "s-ap"
         }
       },
       "views": [
@@ -297,65 +225,34 @@
     },
     {
       "event": {
-        "nowMs": "1791078060100",
-        "monoMs": "1300",
         "commandOutcome": {
-          "requestId": "r-7",
-          "attemptId": "r-8",
-          "source": "OUTCOME_SOURCE_DAEMON",
-          "signed": true,
-          "hashesMatch": true,
           "attemptBound": true,
+          "attemptId": "r-8",
+          "hashesMatch": true,
           "outerMatchesInner": true,
           "outerOutcome": "executed",
           "outerReason": "ok",
-          "result": {
-            "outcome": "executed",
-            "reason": "ok",
-            "resultAvailable": true,
-            "resolveApproval": {}
-          }
-        }
+          "rawResult": "GghleGVjdXRlZCICb2tAAWIA",
+          "requestId": "r-7",
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "monoMs": "1300",
+        "nowMs": "1791078060100"
       }
     },
     {
       "event": {
-        "nowMs": "1791078060110",
         "monoMs": "1350",
-        "eventsPageFetched": {
-          "opId": "6",
-          "sessionId": "s-ap",
-          "events": [
+        "nowMs": "1791078060110",
+        "seedDemoWorld": {
+          "sessionEvents": [
             {
-              "seq": "3",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "3",
-                "time": "2026-10-04T01:10:03Z",
-                "approvalResolved": {
-                  "approvalId": "ap-1",
-                  "decision": "APPROVAL_DECISION_ALLOW_ALWAYS",
-                  "message": "git status"
-                }
-              }
-            },
-            {
-              "seq": "4",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "4",
-                "time": "2026-10-04T01:10:04Z",
-                "toolCall": {
-                  "callId": "tc-1",
-                  "itemType": "Bash",
-                  "kind": "TOOL_KIND_COMMAND",
-                  "title": "git status",
-                  "inputDigest": "digest-1",
-                  "status": "completed"
-                }
-              }
+              "rawEvents": [
+                "CAMSBHMtYXAaBgjrzobWBpoBFAoEYXAtMRAGGgpnaXQgc3RhdHVz",
+                "CAQSBHMtYXAaBgjszobWBmovCgR0Yy0xEAEaCmdpdCBzdGF0dXM6CWNvbXBsZXRlZFIEQmFzaFoIZGlnZXN0LTE="
+              ],
+              "sessionId": "s-ap"
             }
           ]
         }
@@ -363,31 +260,19 @@
     },
     {
       "event": {
-        "nowMs": "1791078060120",
         "monoMs": "1400",
-        "streamFrame": {
-          "legId": "1",
-          "sessionUpdated": {
-            "sessionId": "s-ap",
-            "machineId": "m1",
-            "lastSeq": "4",
-            "updatedMs": "1791078060120",
-            "meta": {
-              "id": "s-ap",
-              "cwd": "/Users/me/Code/app",
-              "agent": "AGENT_CLAUDE",
-              "status": "SESSION_STATUS_IDLE",
-              "title": "Approval test",
-              "model": "claude-sonnet-4-6"
-            },
-            "checkpoint": {
-              "running": false,
-              "session": {
-                "id": "s-ap",
-                "status": "SESSION_STATUS_IDLE"
-              }
+        "nowMs": "1791078060120",
+        "seedDemoWorld": {
+          "sessions": [
+            {
+              "lastSeq": "4",
+              "machineId": "m1",
+              "rawCheckpoint": "CggKBHMtYXAgAg==",
+              "rawMeta": "CgRzLWFwEhIvVXNlcnMvbWUvQ29kZS9hcHAgAlIRY2xhdWRlLXNvbm5ldC00LTZ6DUFwcHJvdmFsIHRlc3TIAQI=",
+              "sessionId": "s-ap",
+              "updatedMs": "1791078060120"
             }
-          }
+          ]
         }
       },
       "views": [

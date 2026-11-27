@@ -109,17 +109,17 @@ func TestRpcErrorRelayReasonPrecedenceAndFallback(t *testing.T) {
 	e := NewEngine(nil, 17)
 	var captured *rpcError
 	capture := &captureRPCTask{onStep: func(ev *secEvent) { captured = ev.rpcErr }}
-	e.waitRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_REGISTER_DEVICE, "https://example.com", "", nil, capture, 0)
+	e.waitRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_REGISTER_DEVICE, "https://example.com", "", nil, capture, 0)
 	effs := e.DrainEffects()
-	if len(effs) != 1 || effs[0].GetSecurityRpc() == nil {
-		t.Fatalf("expected 1 SecurityRpcEffect, got %d", len(effs))
+	if len(effs) != 1 || effs[0].GetRelayRpc() == nil {
+		t.Fatalf("expected 1 RelayRpcEffect, got %d", len(effs))
 	}
-	opID := effs[0].GetSecurityRpc().OpId
-	e.HandleRpcResult(1000, &corev1.SecurityRpcResultEvent{
-		OpId:         opID,
-		ConnectCode:  connectCodeFailedPrecondition,
-		Error:        "relay protocol version mismatch",
-		ErrorDetails: detailOf(pb.RelayErrorReason_RELAY_ERROR_REASON_PROTOCOL_MISMATCH),
+	opID := effs[0].GetRelayRpc().OpId
+	e.HandleRelayRpcResult(1000, &corev1.RelayRpcResultEvent{
+		OpId:              opID,
+		ConnectCode:       connectCodeFailedPrecondition,
+		DiagnosticMessage: "relay protocol version mismatch",
+		ErrorDetails:      detailOf(pb.RelayErrorReason_RELAY_ERROR_REASON_PROTOCOL_MISMATCH),
 	})
 	if captured == nil || captured.relayReason() != v1.RelayErrorReason_RELAY_ERROR_REASON_PROTOCOL_MISMATCH {
 		t.Fatalf("captured rpcErr = %+v, want PROTOCOL_MISMATCH", captured)
@@ -239,9 +239,9 @@ func TestUnknownRelayErrorReasonFallsBackToConnectCode(t *testing.T) {
 	}
 }
 
-func findRPCEffect(effs []*corev1.Effect, method corev1.SecurityRpcMethod) *corev1.SecurityRpcEffect {
+func findRPCEffect(effs []*corev1.Effect, method corev1.RelayRpcMethod) *corev1.RelayRpcEffect {
 	for _, eff := range effs {
-		if r := eff.GetSecurityRpc(); r != nil && r.Method == method {
+		if r := eff.GetRelayRpc(); r != nil && r.Method == method {
 			return r
 		}
 	}
@@ -280,7 +280,7 @@ func TestRelayErrorWorkflowDecisions(t *testing.T) {
 	// and fail the LOGIN RPC with the specified connect code and RelayErrorReason.
 	failLoginRPC := func(t *testing.T, e *Engine, effs []*corev1.Effect, code int32, reason pb.RelayErrorReason) []*corev1.Effect {
 		t.Helper()
-		chalEff := findRPCEffect(effs, corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_CHALLENGE)
+		chalEff := findRPCEffect(effs, corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_CHALLENGE)
 		if chalEff == nil {
 			t.Fatalf("expected GET_CHALLENGE effect, got %d effects", len(effs))
 		}
@@ -288,7 +288,7 @@ func TestRelayErrorWorkflowDecisions(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		effs = e.HandleRpcResult(1000, &corev1.SecurityRpcResultEvent{OpId: chalEff.OpId, ResponseBytes: chalBytes})
+		effs = e.HandleRelayRpcResult(1000, &corev1.RelayRpcResultEvent{OpId: chalEff.OpId, ResponseBytes: chalBytes})
 		var signEff *corev1.SecurityKeySignEffect
 		for _, eff := range effs {
 			if s := eff.GetSecurityKeySign(); s != nil {
@@ -300,14 +300,14 @@ func TestRelayErrorWorkflowDecisions(t *testing.T) {
 			t.Fatalf("expected SecurityKeySignEffect after GET_CHALLENGE")
 		}
 		effs = e.HandleKeySigned(1000, &corev1.SecurityKeySignedEvent{OpId: signEff.OpId, Signature: make([]byte, 64)})
-		loginEff := findRPCEffect(effs, corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LOGIN)
+		loginEff := findRPCEffect(effs, corev1.RelayRpcMethod_RELAY_RPC_METHOD_LOGIN)
 		if loginEff == nil {
 			t.Fatalf("expected LOGIN effect after signing challenge")
 		}
-		return e.HandleRpcResult(1000, &corev1.SecurityRpcResultEvent{
+		return e.HandleRelayRpcResult(1000, &corev1.RelayRpcResultEvent{
 			OpId:         loginEff.OpId,
 			ConnectCode:  code,
-			Error:        "login error",
+			DiagnosticMessage: "login error",
 			ErrorDetails: makeDetails(reason),
 		})
 	}
@@ -333,18 +333,18 @@ func TestRelayErrorWorkflowDecisions(t *testing.T) {
 					taskBase: taskBase{fgGen: e.ensureWF().fgGen, target: actionTarget(actionID, targetAction), stage: contCreateRegRPC},
 					op:       op,
 				}
-				e.waitRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_REGISTER_DEVICE, op.Server, "", nil, task, 0)
-				regEff := findRPCEffect(e.DrainEffects(), corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_REGISTER_DEVICE)
+				e.waitRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_REGISTER_DEVICE, op.Server, "", nil, task, 0)
+				regEff := findRPCEffect(e.DrainEffects(), corev1.RelayRpcMethod_RELAY_RPC_METHOD_REGISTER_DEVICE)
 				if regEff == nil {
 					t.Fatal("missing REGISTER_DEVICE effect")
 				}
-				out := e.HandleRpcResult(1000, &corev1.SecurityRpcResultEvent{
+				out := e.HandleRelayRpcResult(1000, &corev1.RelayRpcResultEvent{
 					OpId:         regEff.OpId,
 					ConnectCode:  connectCodeFailedPrecondition,
-					Error:        "failed precondition",
+					DiagnosticMessage: "failed precondition",
 					ErrorDetails: makeDetails(tc.reason),
 				})
-				gotPow := findRPCEffect(out, corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SIGNUP_CHALLENGE) != nil
+				gotPow := findRPCEffect(out, corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SIGNUP_CHALLENGE) != nil
 				if gotPow != tc.wantPowCall {
 					t.Fatalf("GET_SIGNUP_CHALLENGE emitted = %v, want %v", gotPow, tc.wantPowCall)
 				}
@@ -424,18 +424,18 @@ func TestRelayErrorWorkflowDecisions(t *testing.T) {
 				wf.cachedToken = "cached-tok"
 				wf.tokenExpiresMs = 1_000_000_000_000
 				const actionID uint64 = 103
-				e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES, "https://example.com", "", false, 0, nil, actionTarget(actionID, targetAction))
-				listEff := findRPCEffect(e.DrainEffects(), corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES)
+				e.callAuthedRpc(corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_DEVICES, "https://example.com", "", false, 0, nil, actionTarget(actionID, targetAction))
+				listEff := findRPCEffect(e.DrainEffects(), corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_DEVICES)
 				if listEff == nil {
 					t.Fatal("missing LIST_DEVICES effect")
 				}
-				out := e.HandleRpcResult(1000, &corev1.SecurityRpcResultEvent{
+				out := e.HandleRelayRpcResult(1000, &corev1.RelayRpcResultEvent{
 					OpId:         listEff.OpId,
 					ConnectCode:  connectCodeUnauthenticated,
-					Error:        "unauthenticated",
+					DiagnosticMessage: "unauthenticated",
 					ErrorDetails: makeDetails(tc.reason),
 				})
-				gotRefresh := findRPCEffect(out, corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_CHALLENGE) != nil
+				gotRefresh := findRPCEffect(out, corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_CHALLENGE) != nil
 				if gotRefresh != tc.wantRefresh {
 					t.Fatalf("token refresh GET_CHALLENGE = %v, want %v", gotRefresh, tc.wantRefresh)
 				}
@@ -502,14 +502,14 @@ func TestRelayErrorWorkflowDecisions(t *testing.T) {
 				const actionID uint64 = 105
 				e.startPollPairingInitiator(wf.fgGen, "p1", actionTarget(actionID, targetAction))
 				effs := e.DrainEffects()
-				getEff := findRPCEffect(effs, corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_PAIRING)
+				getEff := findRPCEffect(effs, corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_PAIRING)
 				if getEff == nil {
 					t.Fatal("missing GET_PAIRING effect")
 				}
-				out := e.HandleRpcResult(1000, &corev1.SecurityRpcResultEvent{
+				out := e.HandleRelayRpcResult(1000, &corev1.RelayRpcResultEvent{
 					OpId:         getEff.OpId,
 					ConnectCode:  connectCodeNotFound,
-					Error:        "not found",
+					DiagnosticMessage: "not found",
 					ErrorDetails: makeDetails(tc.reason),
 				})
 				_, stillPresent := wf.initPairings["p1"]
@@ -554,15 +554,15 @@ func TestRelayErrorWorkflowDecisions(t *testing.T) {
 					sess:      sess,
 					want:      v1.PairingState_PAIRING_STATE_REVEALED,
 				}
-				e.waitRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_PAIRING, sess.server, "", nil, task, 0)
-				getEff := findRPCEffect(e.DrainEffects(), corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_PAIRING)
+				e.waitRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_PAIRING, sess.server, "", nil, task, 0)
+				getEff := findRPCEffect(e.DrainEffects(), corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_PAIRING)
 				if getEff == nil {
 					t.Fatal("missing GET_PAIRING effect")
 				}
-				out := e.HandleRpcResult(1000, &corev1.SecurityRpcResultEvent{
+				out := e.HandleRelayRpcResult(1000, &corev1.RelayRpcResultEvent{
 					OpId:         getEff.OpId,
 					ConnectCode:  tc.code,
-					Error:        "rpc error",
+					DiagnosticMessage: "rpc error",
 					ErrorDetails: makeDetails(tc.reason),
 				})
 				gotTimer := hasSecurityPollTimer(out)
@@ -600,17 +600,17 @@ func TestRelayErrorWorkflowDecisions(t *testing.T) {
 					Record:   &PersistedRecord{},
 				}
 				e.startResumeRegistration(0, actionTarget(actionID, targetAction))
-				regEff := findRPCEffect(e.DrainEffects(), corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_REGISTER_DEVICE)
+				regEff := findRPCEffect(e.DrainEffects(), corev1.RelayRpcMethod_RELAY_RPC_METHOD_REGISTER_DEVICE)
 				if regEff == nil {
 					t.Fatal("missing REGISTER_DEVICE effect")
 				}
-				out := e.HandleRpcResult(1000, &corev1.SecurityRpcResultEvent{
+				out := e.HandleRelayRpcResult(1000, &corev1.RelayRpcResultEvent{
 					OpId:         regEff.OpId,
 					ConnectCode:  connectCodePermissionDenied,
-					Error:        "permission denied",
+					DiagnosticMessage: "permission denied",
 					ErrorDetails: makeDetails(tc.reason),
 				})
-				gotProbe := findRPCEffect(out, corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_CHALLENGE) != nil
+				gotProbe := findRPCEffect(out, corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_CHALLENGE) != nil
 				if gotProbe != tc.wantFallbackLogin {
 					t.Fatalf("fallback login GET_CHALLENGE = %v, want %v", gotProbe, tc.wantFallbackLogin)
 				}
@@ -646,18 +646,18 @@ func TestRelayErrorWorkflowDecisions(t *testing.T) {
 					taskBase: taskBase{fgGen: wf.fgGen, target: actionTarget(actionID, targetAction), stage: contStateApprovePair},
 					op:       op,
 				}
-				e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_APPROVE_PAIRING, op.Server, "", true, wf.fgGen, nil, parentTarget(task, 0))
-				approveEff := findRPCEffect(e.DrainEffects(), corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_APPROVE_PAIRING)
+				e.callAuthedRpc(corev1.RelayRpcMethod_RELAY_RPC_METHOD_APPROVE_PAIRING, op.Server, "", true, wf.fgGen, nil, parentTarget(task, 0))
+				approveEff := findRPCEffect(e.DrainEffects(), corev1.RelayRpcMethod_RELAY_RPC_METHOD_APPROVE_PAIRING)
 				if approveEff == nil {
 					t.Fatal("missing APPROVE_PAIRING effect")
 				}
-				out := e.HandleRpcResult(1000, &corev1.SecurityRpcResultEvent{
+				out := e.HandleRelayRpcResult(1000, &corev1.RelayRpcResultEvent{
 					OpId:         approveEff.OpId,
 					ConnectCode:  tc.code,
-					Error:        "approve error",
+					DiagnosticMessage: "approve error",
 					ErrorDetails: makeDetails(tc.reason),
 				})
-				gotList := findRPCEffect(out, corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES) != nil
+				gotList := findRPCEffect(out, corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_DEVICES) != nil
 				if gotList != tc.wantListFallback {
 					t.Fatalf("fallback LIST_DEVICES = %v, want %v", gotList, tc.wantListFallback)
 				}

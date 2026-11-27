@@ -7,6 +7,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/attachments"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/internal/test/testrelay"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
@@ -56,33 +57,6 @@ func newAttHarness(t *testing.T, persistDrafts, persistOutbox bool) *attHarness 
 			},
 		},
 	})
-	effStart := h.dispatch(&corev1.Event{
-		Event: &corev1.Event_SyncLifecycle{
-			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
-		},
-	})
-	var tokOp uint64
-	for _, ef := range effStart.GetEffects() {
-		if et := ef.GetEnsureToken(); et != nil {
-			tokOp = et.GetOpId()
-		}
-	}
-	effTok := h.dispatch(&corev1.Event{
-		Event: &corev1.Event_TokenResult{
-			TokenResult: &corev1.TokenResultEvent{OpId: tokOp, Token: "tok-att", ExpiresMs: h.nowMs + 3_600_000},
-		},
-	})
-	var legID uint64
-	for _, ef := range effTok.GetEffects() {
-		if os := ef.GetOpenStream(); os != nil {
-			legID = os.GetLegId()
-		}
-	}
-	h.dispatch(&corev1.Event{
-		Event: &corev1.Event_StreamReady{
-			StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: h.nowMs},
-		},
-	})
 	h.dispatch(&corev1.Event{
 		Event: &corev1.Event_SeedDemoWorld{
 			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
@@ -98,7 +72,7 @@ func newAttHarness(t *testing.T, persistDrafts, persistOutbox bool) *attHarness 
 					{
 						MachineId: h.machineA,
 						Online:    true,
-						Meta: &v1.MachineMeta{
+						RawMeta: testrelay.MustRaw(&v1.MachineMeta{
 							Hostname:        "Alpha",
 							Home:            "/Users/me",
 							ProtocolVersion: 17,
@@ -108,12 +82,12 @@ func newAttHarness(t *testing.T, persistDrafts, persistOutbox bool) *attHarness 
 								SharedFiles:          true,
 								SharedFileChunkBytes: 512 * 1024,
 							},
-						},
+						}),
 					},
 					{
 						MachineId: h.machineB,
 						Online:    true,
-						Meta: &v1.MachineMeta{
+						RawMeta: testrelay.MustRaw(&v1.MachineMeta{
 							Hostname:        "Beta",
 							Home:            "/Users/me",
 							ProtocolVersion: 17,
@@ -121,7 +95,7 @@ func newAttHarness(t *testing.T, persistDrafts, persistOutbox bool) *attHarness 
 								ImageUpload: true,
 								FileUpload:  false, // Beta does NOT support files
 							},
-						},
+						}),
 					},
 				},
 				Sessions: []*corev1.DemoSession{
@@ -129,27 +103,38 @@ func newAttHarness(t *testing.T, persistDrafts, persistOutbox bool) *attHarness 
 						SessionId: h.sessionID,
 						MachineId: h.machineA,
 						LastSeq:   1,
-						Meta: &v1.Session{
+						RawMeta: testrelay.MustRaw(&v1.Session{
 							Id:     h.sessionID,
 							Cwd:    h.project,
 							Agent:  v1.Agent_AGENT_CODEX,
 							Status: v1.SessionStatus_SESSION_STATUS_RUNNING,
-						},
+						}),
 					},
 				},
 				SessionEvents: []*corev1.DemoSessionEvents{
 					{
 						SessionId: h.sessionID,
-						Events: []*v1.Event{
+						RawEvents: testrelay.MustRawSlice([]*v1.Event{
 							{
 								Seq:       1,
 								SessionId: h.sessionID,
 								Kind:      &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "init"}},
 							},
-						},
+						}),
 					},
 				},
 			},
+		},
+	})
+	effStart := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
+		},
+	})
+	legID := testrelay.FindOpenStreamLeg(effStart.Effects)
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_StreamReady{
+			StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: h.nowMs},
 		},
 	})
 	h.dispatch(&corev1.Event{
@@ -161,6 +146,16 @@ func newAttHarness(t *testing.T, persistDrafts, persistOutbox bool) *attHarness 
 		},
 	})
 	return h
+}
+
+func (h *attHarness) pushMachineA(online bool, rev uint64) *corev1.EffectBatch {
+	_ = rev
+	return h.dispatch(&corev1.Event{
+		Event: testrelay.DemoMachineEvent(testrelay.DemoMachine(h.machineA, online, 0, &v1.MachineMeta{
+			Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 17,
+			Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true},
+		})),
+	})
 }
 
 func (h *attHarness) advance(deltaMs int64) {
@@ -351,7 +346,7 @@ func (h *attHarness) settleCmdOK(dc *corev1.DispatchCommandEffect, res *v1.Comma
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "executed",
-				Result:            res,
+				RawResult:         testrelay.MustRaw(res),
 			},
 		},
 	})
@@ -370,12 +365,12 @@ func (h *attHarness) settleCmdDaemonErr(dc *corev1.DispatchCommandEffect, code s
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "executed",
-				Result: &v1.CommandResult{
+				RawResult: testrelay.MustRaw(&v1.CommandResult{
 					Outcome:      "executed",
 					Reason:       "executed",
 					ErrorCode:    code,
 					ErrorMessage: code,
-				},
+				}),
 			},
 		},
 	})
@@ -924,24 +919,7 @@ func TestAttachments_PauseDisconnectAnd30sReconnectResume(t *testing.T) {
 	p2 := findDispatchedCmds(eff)[0]
 
 	// Machine goes offline + transient disconnect during chunk 2 -> enters WAITING_RECONNECT with 30s timer!
-	h.dispatch(&corev1.Event{
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{
-						MachineId: h.machineA,
-						Online:    false,
-						MetaRev:   2,
-						Meta: &v1.MachineMeta{
-							Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 17,
-							Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true},
-						},
-					},
-				},
-			},
-		},
-	})
+	h.pushMachineA(false, 2)
 	eff = h.settleCmdTransportDrop(p2.dc, "machine_offline")
 	dv = h.draftView(scope)
 	if dv.Files[0].State != corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_WAITING_RECONNECT {
@@ -954,24 +932,7 @@ func TestAttachments_PauseDisconnectAnd30sReconnectResume(t *testing.T) {
 
 	// Machine comes back online -> reconcileAttachments immediately resumes via GetImageUploadStatus on SAME transfer_id!
 	h.advance(1000)
-	eff = h.dispatch(&corev1.Event{
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{
-						MachineId: h.machineA,
-						Online:    true,
-						MetaRev:   3,
-						Meta: &v1.MachineMeta{
-							Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 17,
-							Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true},
-						},
-					},
-				},
-			},
-		},
-	})
+	eff = h.pushMachineA(true, 3)
 	probeCmd := findDispatchedCmds(eff)[0]
 	if probeCmd.cmd.GetGetImageUploadStatus() == nil || probeCmd.cmd.GetGetImageUploadStatus().TransferId != origTID {
 		t.Fatalf("expected reconnect GetImageUploadStatus with same transfer_id %s", origTID)
@@ -1530,32 +1491,16 @@ func TestAttachments_CrashRecovery_CoreResend_AndAutoPrune(t *testing.T) {
 	// Mark resend Executed + deliver UserMessage event -> auto-prunes outbox & releases unreferenced local refs!
 	h.settleCmdOK(resendSend.dc, &v1.CommandResult{})
 	evEff := h.dispatch(&corev1.Event{
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_EventsAppended{
-					EventsAppended: &corev1.EventsAppendedFrame{
-						SessionId: h.sessionID,
-						Events: []*corev1.PlainEvent{
-							{
-								Seq:      2,
-								Verified: true,
-								Event: &v1.Event{
-									Seq:       2,
-									SessionId: h.sessionID,
-									Kind: &v1.Event_UserMessage{
-										UserMessage: &v1.UserMessage{
-											RequestId: newReqID,
-											Text:      "crashed msg",
-										},
-									},
-								},
-							},
-						},
-					},
+		Event: testrelay.DemoEventsEvent(h.sessionID, &v1.Event{
+			Seq:       2,
+			SessionId: h.sessionID,
+			Kind: &v1.Event_UserMessage{
+				UserMessage: &v1.UserMessage{
+					RequestId: newReqID,
+					Text:      "crashed msg",
 				},
 			},
-		},
+		}),
 	})
 	var prunedOutbox, releasedLocal bool
 	for _, d := range findDraftDeleteEffects(evEff) {
@@ -2079,26 +2024,7 @@ func TestAttachments_StopStartAndForeground_ResumesResendAndReschedulesExpiry(t 
 	startEff := h.dispatch(&corev1.Event{
 		Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}},
 	})
-	var tokOp uint64
-	for _, ef := range startEff.GetEffects() {
-		if et := ef.GetEnsureToken(); et != nil {
-			tokOp = et.OpId
-		}
-	}
-	var legID uint64
-	if tokOp != 0 {
-		tEff := h.dispatch(&corev1.Event{Event: &corev1.Event_TokenResult{TokenResult: &corev1.TokenResultEvent{OpId: tokOp, Token: "tok-2", ExpiresMs: h.nowMs + 3_600_000}}})
-		for _, ef := range tEff.GetEffects() {
-			if os := ef.GetOpenStream(); os != nil {
-				legID = os.LegId
-			}
-		}
-	}
-	for _, ef := range startEff.GetEffects() {
-		if os := ef.GetOpenStream(); os != nil {
-			legID = os.LegId
-		}
-	}
+	legID := testrelay.FindOpenStreamLeg(startEff.Effects)
 	readyEff := h.dispatch(&corev1.Event{Event: &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: h.nowMs}}})
 	var resumedResend bool
 	for _, sc := range findDispatchedCmds(readyEff) {
@@ -2125,19 +2051,7 @@ func TestAttachments_StopStartAndForeground_ResumesResendAndReschedulesExpiry(t 
 func TestAttachments_ColdStartOffline_LazyUnopened_7DayExpiry_AndOrphanGC(t *testing.T) {
 	h := newAttHarness(t, true, true)
 	// Take machineA offline before startup scan.
-	h.dispatch(&corev1.Event{
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{
-						MachineId: h.machineA, Online: false, MetaRev: 2,
-						Meta: &v1.MachineMeta{Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 17, Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true}},
-					},
-				},
-			},
-		},
-	})
+	h.pushMachineA(false, 2)
 
 	freshDraft := &corev1.PersistedDraftRecord{
 		SchemaVersion: attachments.PersistedSchemaVersion,
@@ -2230,19 +2144,7 @@ func TestAttachments_ColdStartOffline_LazyUnopened_7DayExpiry_AndOrphanGC(t *tes
 	}
 
 	// 5. Machine comes online -> item immediately begins uploading!
-	onlineEff := h.dispatch(&corev1.Event{
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{
-						MachineId: h.machineA, Online: true, MetaRev: 3,
-						Meta: &v1.MachineMeta{Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 17, Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true}},
-					},
-				},
-			},
-		},
-	})
+	onlineEff := h.pushMachineA(true, 3)
 	var sawBegin bool
 	for _, sc := range findDispatchedCmds(onlineEff) {
 		if sc.cmd.GetBeginImageUpload() != nil {
@@ -2319,33 +2221,18 @@ func TestAttachments_ServerCanceledPutBackPreCheckFails_PreservesTextAndOutbox(t
 
 	// Deliver server-backed PendingInputs projection for reqID.
 	h.dispatch(&corev1.Event{
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_EventsAppended{
-					EventsAppended: &corev1.EventsAppendedFrame{
-						SessionId: h.sessionID,
-						Events: []*corev1.PlainEvent{
-							{
-								Seq: 2, Verified: true,
-								Event: &v1.Event{
-									Seq: 2, SessionId: h.sessionID,
-									Kind: &v1.Event_InputState{
-										InputState: &v1.InputState{
-											RequestId: reqID,
-											Status:    v1.InputStatus_INPUT_STATUS_QUEUED,
-											Mode:      v1.SendMode_SEND_MODE_QUEUE,
-											Text:      "important text",
-											ImageIds:  []string{"img-keep-8"},
-										},
-									},
-								},
-							},
-						},
-					},
+		Event: testrelay.DemoEventsEvent(h.sessionID, &v1.Event{
+			Seq: 2, SessionId: h.sessionID,
+			Kind: &v1.Event_InputState{
+				InputState: &v1.InputState{
+					RequestId: reqID,
+					Status:    v1.InputStatus_INPUT_STATUS_QUEUED,
+					Mode:      v1.SendMode_SEND_MODE_QUEUE,
+					Text:      "important text",
+					ImageIds:  []string{"img-keep-8"},
 				},
 			},
-		},
+		}),
 	})
 
 	// 2. Request put-back while draft is empty -> submits CancelInput to daemon!
@@ -3300,11 +3187,11 @@ func TestAttachments_StorageLockedByOther_AndConfigUpdate_AndBadgeText(t *testin
 		NowMs: 1_791_078_060_000, MonoMs: 10_000,
 		Event: &corev1.Event_AttachmentConfig{
 			AttachmentConfig: &corev1.AttachmentConfigEvent{
-				PersistDrafts:             true,
-				PersistOutbox:             true,
-				ScanStorage:               true,
+				PersistDrafts:              true,
+				PersistOutbox:              true,
+				ScanStorage:                true,
 				HasPersistedPreparedImages: true,
-				StorageLockedByOther:      true,
+				StorageLockedByOther:       true,
 			},
 		},
 	})
@@ -3334,9 +3221,9 @@ func TestAttachments_StorageLockedByOther_AndConfigUpdate_AndBadgeText(t *testin
 	reCfg := h.dispatch(&corev1.Event{
 		Event: &corev1.Event_AttachmentConfig{
 			AttachmentConfig: &corev1.AttachmentConfigEvent{
-				PersistDrafts:             true,
-				PersistOutbox:             true,
-				ScanStorage:               false,
+				PersistDrafts:              true,
+				PersistOutbox:              true,
+				ScanStorage:                false,
 				HasPersistedPreparedImages: false,
 			},
 		},
@@ -3740,24 +3627,7 @@ func TestAttachments_CompleteUnknownOnDisconnect_RetriesSameRequestIDAfterReconn
 	origReqID := comp1.dc.GetRequestId()
 
 	// Machine disconnects mid-CompleteImageUpload (server broadcasts offline + returns errUnknown deadline_exceeded).
-	h.dispatch(&corev1.Event{
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{
-						MachineId: h.machineA,
-						Online:    false,
-						MetaRev:   2,
-						Meta: &v1.MachineMeta{
-							Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 17,
-							Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true},
-						},
-					},
-				},
-			},
-		},
-	})
+	h.pushMachineA(false, 2)
 	eff = h.dispatch(&corev1.Event{
 		Event: &corev1.Event_CommandOutcome{
 			CommandOutcome: &corev1.CommandOutcomeEvent{
@@ -3816,24 +3686,7 @@ func TestAttachments_CompleteUnknownOnDisconnect_RetriesSameRequestIDAfterReconn
 
 	// 5 seconds later the daemon reconnects -> Core must automatically retry CompleteImageUpload with the EXACT SAME RequestID!
 	h.advance(5_000)
-	eff = h.dispatch(&corev1.Event{
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{
-						MachineId: h.machineA,
-						Online:    true,
-						MetaRev:   3,
-						Meta: &v1.MachineMeta{
-							Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 17,
-							Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true},
-						},
-					},
-				},
-			},
-		},
-	})
+	eff = h.pushMachineA(true, 3)
 	resumed := findDispatchedCmds(eff)
 	if len(resumed) != 1 || resumed[0].cmd.GetCompleteImageUpload() == nil {
 		t.Fatalf("expected automatic CompleteImageUpload replay after reconnect, got %+v", resumed)
@@ -3890,22 +3743,7 @@ func TestAttachments_CompleteUnknownBoundedFailure_ShowsUploadFailed(t *testing.
 	comp1 := findDispatchedCmds(eff)[0]
 
 	// Machine goes offline and never comes back within the 30s reconnect window.
-	h.dispatch(&corev1.Event{
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{
-						MachineId: h.machineA, Online: false, MetaRev: 2,
-						Meta: &v1.MachineMeta{
-							Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 17,
-							Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true},
-						},
-					},
-				},
-			},
-		},
-	})
+	h.pushMachineA(false, 2)
 	eff = h.settleCmdTransportDrop(comp1.dc, "timeout")
 	recTimers := findTimers(eff, corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT)
 	if len(recTimers) != 1 || recTimers[0].DelayMs != attachments.UploadReconnectWindowMs {
@@ -3963,22 +3801,7 @@ func TestAttachments_CompleteItemUploadClearsFrozenCompleteTracker(t *testing.T)
 	comp1 := findDispatchedCmds(eff)[0]
 
 	// Freeze the CompleteImageUpload slot via an unknown transport drop while machine goes offline.
-	h.dispatch(&corev1.Event{
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{
-						MachineId: h.machineA, Online: false, MetaRev: 2,
-						Meta: &v1.MachineMeta{
-							Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 17,
-							Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true},
-						},
-					},
-				},
-			},
-		},
-	})
+	h.pushMachineA(false, 2)
 	h.settleCmdTransportDrop(comp1.dc, "timeout")
 	slotKey := uploadCompleteSlotKey(h.machineA, tid)
 	if !h.core.m.sync.HasFrozenAttempt(slotKey) {

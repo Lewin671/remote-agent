@@ -353,42 +353,34 @@ func (e *Engine) waitStorage(eff *corev1.SecurityStorageEffect, task secTask, ta
 func (e *Engine) fireStorage(eff *corev1.SecurityStorageEffect) { e.waitStorage(eff, nil, 0) }
 
 //go:noinline
-func (e *Engine) waitRPC(method corev1.SecurityRpcMethod, server, token string, reqBytes []byte, task secTask, tag uint8) {
+func (e *Engine) waitRPC(method corev1.RelayRpcMethod, server, token string, reqBytes []byte, task secTask, tag uint8) {
 	e.waitRPCTimeout(method, server, token, reqBytes, 0, task, tag)
 }
 
 //go:noinline
-func (e *Engine) waitRPCTimeout(method corev1.SecurityRpcMethod, server, token string, reqBytes []byte, timeoutMs int64, task secTask, tag uint8) uint64 {
+func (e *Engine) waitRPCTimeout(method corev1.RelayRpcMethod, server, token string, reqBytes []byte, timeoutMs int64, task secTask, tag uint8) uint64 {
 	var opID uint64
 	if task != nil {
 		opID = e.regTask(taskWait{task: task, tag: tag})
 	} else {
 		opID = e.allocOp()
 	}
-	if e.useRelayPipe {
-		if timeoutMs <= 0 {
-			timeoutMs = 15_000
-			if method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
-				timeoutMs = 5_000
-			}
+	if timeoutMs <= 0 {
+		timeoutMs = 15_000
+		if method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SECURITY_STATES {
+			timeoutMs = 5_000
 		}
-		e.out = append(e.out, &corev1.Effect{
-			Effect: &corev1.Effect_RelayRpc{
-				RelayRpc: &corev1.RelayRpcEffect{
-					OpId:         opID,
-					Method:       corev1.RelayRpcMethod(method),
-					Server:       server,
-					AuthToken:    token,
-					TimeoutMs:    timeoutMs,
-					RequestBytes: reqBytes,
-				},
-			},
-		})
-		return opID
 	}
 	e.out = append(e.out, &corev1.Effect{
-		Effect: &corev1.Effect_SecurityRpc{
-			SecurityRpc: &corev1.SecurityRpcEffect{OpId: opID, Method: method, Server: server, AuthToken: token, RequestBytes: reqBytes},
+		Effect: &corev1.Effect_RelayRpc{
+			RelayRpc: &corev1.RelayRpcEffect{
+				OpId:         opID,
+				Method:       method,
+				Server:       server,
+				AuthToken:    token,
+				TimeoutMs:    timeoutMs,
+				RequestBytes: reqBytes,
+			},
 		},
 	})
 	return opID
@@ -400,38 +392,36 @@ func (e *Engine) cancelRPC(opID uint64) {
 		return
 	}
 	delete(e.tasks, opID)
-	if e.useRelayPipe {
-		e.out = append(e.out, &corev1.Effect{
-			Effect: &corev1.Effect_RelayRpcCancel{
-				RelayRpcCancel: &corev1.RelayRpcCancelEffect{OpId: opID},
-			},
-		})
-	}
+	e.out = append(e.out, &corev1.Effect{
+		Effect: &corev1.Effect_RelayRpcCancel{
+			RelayRpcCancel: &corev1.RelayRpcCancelEffect{OpId: opID},
+		},
+	})
 }
 
-func (e *Engine) fireRPC(method corev1.SecurityRpcMethod, server, token string, reqBytes []byte) {
+func (e *Engine) fireRPC(method corev1.RelayRpcMethod, server, token string, reqBytes []byte) {
 	e.waitRPC(method, server, token, reqBytes, nil, 0)
 }
 
 type wireMarshaler interface{ AppendMarshal([]byte) []byte }
 
 //go:noinline
-func (e *Engine) waitProtoRPC(method corev1.SecurityRpcMethod, server, token string, msg wireMarshaler, task secTask) {
+func (e *Engine) waitProtoRPC(method corev1.RelayRpcMethod, server, token string, msg wireMarshaler, task secTask) {
 	e.waitRPC(method, server, token, msg.AppendMarshal(nil), task, 0)
 }
 
 //go:noinline
-func (e *Engine) waitProtoRPCTimeout(method corev1.SecurityRpcMethod, server, token string, msg wireMarshaler, timeoutMs int64, task secTask) uint64 {
+func (e *Engine) waitProtoRPCTimeout(method corev1.RelayRpcMethod, server, token string, msg wireMarshaler, timeoutMs int64, task secTask) uint64 {
 	return e.waitRPCTimeout(method, server, token, msg.AppendMarshal(nil), timeoutMs, task, 0)
 }
 
 //go:noinline
-func (e *Engine) fireProtoRPC(method corev1.SecurityRpcMethod, server, token string, msg wireMarshaler) {
+func (e *Engine) fireProtoRPC(method corev1.RelayRpcMethod, server, token string, msg wireMarshaler) {
 	e.fireRPC(method, server, token, msg.AppendMarshal(nil))
 }
 
 //go:noinline
-func (e *Engine) callAuthedProtoRPC(method corev1.SecurityRpcMethod, server string, fgGen uint64, msg wireMarshaler, target taskTarget) {
+func (e *Engine) callAuthedProtoRPC(method corev1.RelayRpcMethod, server string, fgGen uint64, msg wireMarshaler, target taskTarget) {
 	e.callAuthedRpc(method, server, "", fgGen != 0, fgGen, msg.AppendMarshal(nil), target)
 }
 

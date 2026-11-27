@@ -13,6 +13,7 @@ import (
 
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/internal/test/testrelay"
 	"github.com/Lewin671/remote-agent/clientcore/security"
 	"github.com/Lewin671/remote-agent/clientcore/sync"
 	stdv1 "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -22,21 +23,55 @@ import (
 
 type connectedCoreFixture struct {
 	core        *Core
+	relay       *testrelay.Fixture
 	legID       uint64
 	streamBatch *corev1.EffectBatch
 	listsBatch  *corev1.EffectBatch
 }
 
+func deliverAppRefresh(
+	c *Core,
+	nowMs int64,
+	ops testrelay.RefreshOps,
+	machines []*v1.Machine,
+	sessions []*v1.RemoteSession,
+	devices []*v1.Device,
+	next *v1.SessionCursor,
+) *corev1.EffectBatch {
+	c.Dispatch(&corev1.Event{
+		NowMs: nowMs,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId:          ops.Machines,
+			ResponseBytes: testrelay.MarshalListMachinesResp(machines),
+		}},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: nowMs,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId:          ops.Sessions,
+			ResponseBytes: testrelay.MarshalListSessionsResp(sessions, next),
+		}},
+	})
+	return c.Dispatch(&corev1.Event{
+		NowMs: nowMs,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId:          ops.Devices,
+			ResponseBytes: testrelay.MarshalListDevicesResp(devices),
+		}},
+	})
+}
+
 func bootConnectedCore(
 	t *testing.T,
 	baseMs int64,
-	machines []*corev1.PlainMachine,
-	sessions []*corev1.PlainSession,
-	next *v1.SessionCursor,
+	build func(*testrelay.Fixture) ([]*v1.Machine, []*v1.RemoteSession, *v1.SessionCursor),
 ) connectedCoreFixture {
 	t.Helper()
 	c := New()
 	t.Cleanup(c.Close)
+	fx := testrelay.New(t, baseMs)
+	fx.Bootstrap(func(ev *corev1.Event) []*corev1.Effect { return c.Dispatch(ev).GetEffects() }, baseMs)
+	c.m.sync.SecurityEngine().SetAuthToken("tok-p24", baseMs+7*86_400_000)
 
 	b := c.Dispatch(&corev1.Event{
 		NowMs:  baseMs,
@@ -45,51 +80,23 @@ func bootConnectedCore(
 			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
 		},
 	})
-	var tokenOp uint64
-	for _, eff := range b.Effects {
-		if et := eff.GetEnsureToken(); et != nil {
-			tokenOp = et.OpId
-		}
-	}
-	b = c.Dispatch(&corev1.Event{
-		NowMs:  baseMs + 10,
-		MonoMs: baseMs + 10,
-		Event:  &corev1.Event_TokenResult{TokenResult: &corev1.TokenResultEvent{OpId: tokenOp, Token: "tok-1"}},
-	})
-	var legID uint64
-	for _, eff := range b.Effects {
-		if os := eff.GetOpenStream(); os != nil {
-			legID = os.LegId
-		}
-	}
+	legID := testrelay.FindOpenStreamLeg(b.Effects)
 	streamBatch := c.Dispatch(&corev1.Event{
 		NowMs:  baseMs + 20,
 		MonoMs: baseMs + 20,
 		Event:  &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: baseMs + 20}},
 	})
-	var listOp uint64
-	for _, eff := range streamBatch.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetFetchLists() != nil {
-			listOp = rpc.OpId
-		}
-	}
+	ops := testrelay.FindRefreshOps(streamBatch.Effects)
 	var listsBatch *corev1.EffectBatch
-	if machines != nil || sessions != nil || next != nil {
-		listsBatch = c.Dispatch(&corev1.Event{
-			NowMs:  baseMs + 30,
-			MonoMs: baseMs + 30,
-			Event: &corev1.Event_ListsFetched{
-				ListsFetched: &corev1.ListsFetchedEvent{
-					OpId:     listOp,
-					Machines: machines,
-					Sessions: sessions,
-					Next:     next,
-				},
-			},
-		})
+	if build != nil {
+		machines, sessions, next := build(fx)
+		if machines != nil || sessions != nil || next != nil {
+			listsBatch = deliverAppRefresh(c, baseMs+30, ops, machines, sessions, nil, next)
+		}
 	}
 	return connectedCoreFixture{
 		core:        c,
+		relay:       fx,
 		legID:       legID,
 		streamBatch: streamBatch,
 		listsBatch:  listsBatch,
@@ -114,20 +121,18 @@ func countRenderTargets(b *corev1.EffectBatch, target corev1.ScreenTarget) int {
 }
 
 func TestWatchedSessionsEffectAndUsageHydration(t *testing.T) {
-	fx := bootConnectedCore(t, 1_000, nil, nil, nil)
+	fx := bootConnectedCore(t, 1_000, nil)
 	c := fx.core
+	r := fx.relay
 
 	// Connecting emits SyncPushSubscriptionEffect once.
 	sawPush := false
-	var listOp uint64
 	for _, eff := range fx.streamBatch.Effects {
 		if eff.GetSyncPushSubscription() != nil {
 			sawPush = true
 		}
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetFetchLists() != nil {
-			listOp = rpc.OpId
-		}
 	}
+	ops := testrelay.MustFindRefreshOps(t, fx.streamBatch.Effects)
 	if !sawPush {
 		t.Fatal("expected SyncPushSubscriptionEffect on StreamReady")
 	}
@@ -150,39 +155,30 @@ func TestWatchedSessionsEffectAndUsageHydration(t *testing.T) {
 		t.Fatalf("expected watched route (s1, \"\"), got %+v", watched)
 	}
 
-	// Session arrives via ListsFetched -> WatchedSessionsEffect updates with machine_id.
-	b = c.Dispatch(&corev1.Event{
-		NowMs:  1_040,
-		MonoMs: 1_040,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: listOp,
-				Machines: []*corev1.PlainMachine{
-					{
-						MachineId: "m1",
-						Online:    true,
-						Meta: &v1.MachineMeta{
-							Hostname: "Mac",
-							Projects: []*v1.ProjectSummary{
-								{Path: "/repo/new", Ended: 2},
-							},
-						},
-					},
+	// Session arrives via refresh -> WatchedSessionsEffect updates with machine_id.
+	b = deliverAppRefresh(c, 1_040, ops,
+		[]*v1.Machine{
+			r.MachineWire(r.M1, true, 0, &v1.MachineMeta{
+				Hostname: "Mac",
+				Projects: []*v1.ProjectSummary{
+					{Path: "/repo/new", Ended: 2},
 				},
-				Sessions: []*corev1.PlainSession{
-					{SessionId: "s1", MachineId: "m1", LastSeq: 5, Meta: &v1.Session{Id: "s1", Cwd: "/repo"}},
-				},
-			},
+			}),
 		},
-	})
+		[]*v1.RemoteSession{
+			r.SessionWire("s1", r.M1, 5, 0, 0, &v1.Session{Id: "s1", Cwd: "/repo"}, nil),
+		},
+		nil,
+		nil,
+	)
 	watched = nil
 	for _, eff := range b.Effects {
 		if ws := eff.GetWatchedSessions(); ws != nil {
 			watched = ws
 		}
 	}
-	if watched == nil || len(watched.Sessions) != 1 || watched.Sessions[0].MachineId != "m1" {
-		t.Fatalf("expected updated watched route (s1, m1), got %+v", watched)
+	if watched == nil || len(watched.Sessions) != 1 || watched.Sessions[0].MachineId != r.M1 {
+		t.Fatalf("expected updated watched route (s1, %s), got %+v", r.M1, watched)
 	}
 
 	// SessionOpen hydrates usage cache for m1 once.
@@ -193,12 +189,12 @@ func TestWatchedSessionsEffectAndUsageHydration(t *testing.T) {
 	})
 	hydrateCount := 0
 	for _, eff := range b.Effects {
-		if u := eff.GetUsageCacheRequest(); u != nil && !u.DeleteCache && u.MachineId == "m1" {
+		if u := eff.GetUsageCacheRequest(); u != nil && !u.DeleteCache && u.MachineId == r.M1 {
 			hydrateCount++
 		}
 	}
 	if hydrateCount != 1 {
-		t.Fatalf("expected 1 UsageCacheRequestEffect(read) for m1, got %d", hydrateCount)
+		t.Fatalf("expected 1 UsageCacheRequestEffect(read) for %s, got %d", r.M1, hydrateCount)
 	}
 
 	// Opening again does not duplicate read request.
@@ -225,26 +221,19 @@ func TestWatchedSessionsEffectAndUsageHydration(t *testing.T) {
 }
 
 func TestNewSessionAutoPaginatesWhenUnsettled(t *testing.T) {
-	fx := bootConnectedCore(
-		t,
-		2_000,
-		[]*corev1.PlainMachine{
-			{
-				MachineId: "m1",
-				Online:    true,
-				Meta: &v1.MachineMeta{
-					Hostname: "Mac",
-					Projects: []*v1.ProjectSummary{
-						{Path: "/repo/a", Ended: 2},
-						{Path: "/repo/b", Ended: 2},
-					},
+	fx := bootConnectedCore(t, 2_000, func(r *testrelay.Fixture) ([]*v1.Machine, []*v1.RemoteSession, *v1.SessionCursor) {
+		return []*v1.Machine{
+			r.MachineWire(r.M1, true, 0, &v1.MachineMeta{
+				Hostname: "Mac",
+				Projects: []*v1.ProjectSummary{
+					{Path: "/repo/a", Ended: 2},
+					{Path: "/repo/b", Ended: 2},
 				},
-			},
-		},
-		nil,
-		&v1.SessionCursor{EndedMs: 100, SessionId: "s-prev"},
-	)
+			}),
+		}, nil, &v1.SessionCursor{EndedMs: 100, SessionId: "s-prev"}
+	})
 	c := fx.core
+	r := fx.relay
 
 	// Open A -> requests page 1.
 	b := c.Dispatch(&corev1.Event{
@@ -253,10 +242,8 @@ func TestNewSessionAutoPaginatesWhenUnsettled(t *testing.T) {
 		Event:  &corev1.Event_NewSessionOpen{NewSessionOpen: &corev1.NewSessionOpenAction{ProjectKey: "/repo/a"}},
 	})
 	var pageOp1 uint64
-	for _, eff := range b.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetFetchSessionsPage() != nil {
-			pageOp1 = rpc.OpId
-		}
+	if rpc := testrelay.FindRelayRpc(b.Effects, corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS); rpc != nil {
+		pageOp1 = rpc.OpId
 	}
 	if pageOp1 == 0 {
 		t.Fatal("expected NewSessionOpen(/repo/a) to request next sessions page when unsettled")
@@ -278,21 +265,19 @@ func TestNewSessionAutoPaginatesWhenUnsettled(t *testing.T) {
 	b = c.Dispatch(&corev1.Event{
 		NowMs:  2_050,
 		MonoMs: 2_050,
-		Event: &corev1.Event_SessionsPageFetched{
-			SessionsPageFetched: &corev1.SessionsPageFetchedEvent{
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
 				OpId: pageOp1,
-				Sessions: []*corev1.PlainSession{
-					{SessionId: "s-other", MachineId: "m1", Meta: &v1.Session{Id: "s-other", Cwd: "/repo/other"}},
-				},
-				Next: &v1.SessionCursor{EndedMs: 50, SessionId: "s-other"},
+				ResponseBytes: testrelay.MarshalListSessionsResp(
+					[]*v1.RemoteSession{r.SessionWire("s-other", r.M1, 0, 0, 0, &v1.Session{Id: "s-other", Cwd: "/repo/other"}, nil)},
+					&v1.SessionCursor{EndedMs: 50, SessionId: "s-other"},
+				),
 			},
 		},
 	})
 	var pageOp2 uint64
-	for _, eff := range b.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetFetchSessionsPage() != nil {
-			pageOp2 = rpc.OpId
-		}
+	if rpc := testrelay.FindRelayRpc(b.Effects, corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS); rpc != nil {
+		pageOp2 = rpc.OpId
 	}
 	if pageOp2 == 0 {
 		t.Fatal("expected continuous paging for /repo/b after stale close of /repo/a")
@@ -307,62 +292,37 @@ func TestNewSessionAutoPaginatesWhenUnsettled(t *testing.T) {
 	b = c.Dispatch(&corev1.Event{
 		NowMs:  2_070,
 		MonoMs: 2_070,
-		Event: &corev1.Event_SessionsPageFetched{
-			SessionsPageFetched: &corev1.SessionsPageFetchedEvent{
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
 				OpId: pageOp2,
-				Sessions: []*corev1.PlainSession{
-					{SessionId: "s-other-2", MachineId: "m1", Meta: &v1.Session{Id: "s-other-2", Cwd: "/repo/other"}},
-				},
-				Next: &v1.SessionCursor{EndedMs: 20, SessionId: "s-other-2"},
+				ResponseBytes: testrelay.MarshalListSessionsResp(
+					[]*v1.RemoteSession{r.SessionWire("s-other-2", r.M1, 0, 0, 0, &v1.Session{Id: "s-other-2", Cwd: "/repo/other"}, nil)},
+					&v1.SessionCursor{EndedMs: 20, SessionId: "s-other-2"},
+				),
 			},
 		},
 	})
-	for _, eff := range b.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetFetchSessionsPage() != nil {
-			t.Fatalf("expected no FetchSessionsPage after matching NewSessionClose(/repo/b), got op %d", rpc.OpId)
-		}
+	if rpc := testrelay.FindRelayRpc(b.Effects, corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS); rpc != nil {
+		t.Fatalf("expected no LIST_REMOTE_SESSIONS after matching NewSessionClose(/repo/b), got op %d", rpc.OpId)
 	}
 }
 
 func TestResolveNotificationTapRoutesAndTimeout(t *testing.T) {
-	fx := bootConnectedCore(
-		t,
-		3_000,
-		[]*corev1.PlainMachine{
-			{
-				MachineId: "m1",
-				Online:    true,
-				Meta: &v1.MachineMeta{
+	fx := bootConnectedCore(t, 3_000, func(r *testrelay.Fixture) ([]*v1.Machine, []*v1.RemoteSession, *v1.SessionCursor) {
+		return []*v1.Machine{
+				r.MachineWire(r.M1, true, 0, &v1.MachineMeta{
 					Hostname:        "Mac",
 					ProtocolVersion: sync.PeerVersion,
 					Capabilities:    &v1.MachineCapabilities{ScheduledTasks: true},
-				},
+				}),
 			},
-		},
-		[]*corev1.PlainSession{
-			{
-				SessionId: "s-task",
-				MachineId: "m1",
-				Meta:      &v1.Session{Id: "s-task", TaskOwned: true, ScheduledTaskId: "task-1"},
-			},
-			{
-				SessionId: "s-chat",
-				MachineId: "m1",
-				Meta:      &v1.Session{Id: "s-chat", TaskOwned: false},
-			},
-		},
-		nil,
-	)
-	c := fx.core
-	c.Dispatch(&corev1.Event{
-		NowMs: 3_035,
-		Event: &corev1.Event_EntropyProvided{
-			EntropyProvided: &corev1.EntropyProvided{
-				RandomIds:  []string{"id-1", "id-2", "id-3", "id-4", "id-5", "id-6"},
-				UnitFloats: []float64{0.5, 0.5, 0.5},
-			},
-		},
+			[]*v1.RemoteSession{
+				r.SessionWire("s-task", r.M1, 0, 0, 0, &v1.Session{Id: "s-task", TaskOwned: true, ScheduledTaskId: "task-1"}, nil),
+				r.SessionWire("s-chat", r.M1, 0, 0, 0, &v1.Session{Id: "s-chat", TaskOwned: false}, nil),
+			}, nil
 	})
+	c := fx.core
+	r := fx.relay
 
 	// 1. Non-task-owned session resolved BEFORE schedActive=true -> navigates to SESSION
 	//    AND still triggers schedule.list refresh for m1.
@@ -373,16 +333,20 @@ func TestResolveNotificationTapRoutesAndTimeout(t *testing.T) {
 			ResolveNotificationTap: &corev1.ResolveNotificationTapAction{SessionId: "s-chat", ScheduleSeq: 42},
 		},
 	})
+	pumped := r.Pump(func(ev *corev1.Event) []*corev1.Effect { return c.Dispatch(ev).GetEffects() }, 3_042, b.Effects)
 	var nav *corev1.ScheduleNavigateEffect
 	sawRefreshCmd := false
-	for _, eff := range b.Effects {
+	for _, eff := range pumped {
 		if sn := eff.GetScheduleNavigate(); sn != nil {
 			nav = sn
 		}
-		if dc := eff.GetDispatchCommand(); dc != nil && dc.MachineId == "m1" {
-			var cmd v1.Command
-			if cmd.Unmarshal(dc.CommandBytes) == nil && cmd.GetSchedule().GetOperation() == "list" {
-				sawRefreshCmd = true
+		if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_FORWARD {
+			var fwd stdv1.ForwardRequest
+			if proto.Unmarshal(rpc.RequestBytes, &fwd) == nil && fwd.MachineId == r.M1 {
+				var cmd v1.Command
+				if cmd.Unmarshal(r.OpenEnvelope(fwd.Command)) == nil && cmd.GetSchedule().GetOperation() == "list" {
+					sawRefreshCmd = true
+				}
 			}
 		}
 	}
@@ -407,12 +371,12 @@ func TestResolveNotificationTapRoutesAndTimeout(t *testing.T) {
 			nav = sn
 		}
 	}
-	if nav == nil || nav.Route != corev1.ScheduleNavigateRoute_SCHEDULE_NAVIGATE_ROUTE_DETAIL || nav.MachineId != "m1" || nav.TaskId != "task-1" {
-		t.Fatalf("expected DETAIL(m1, task-1), got %+v", nav)
+	if nav == nil || nav.Route != corev1.ScheduleNavigateRoute_SCHEDULE_NAVIGATE_ROUTE_DETAIL || nav.MachineId != r.M1 || nav.TaskId != "task-1" {
+		t.Fatalf("expected DETAIL(%s, task-1), got %+v", r.M1, nav)
 	}
 
 	// 3. Cold miss -> immediately followed by ScheduleListOpen(true) (Android cold-start LaunchedEffect(route))
-	//    -> SessionByIdFetched arrives -> MUST still resolve and navigate to DETAIL!
+	//    -> LIST_REMOTE_SESSIONS(session_id) arrives -> MUST still resolve and navigate to DETAIL!
 	b = c.Dispatch(&corev1.Event{
 		NowMs:  3_055,
 		MonoMs: 3_055,
@@ -421,13 +385,14 @@ func TestResolveNotificationTapRoutesAndTimeout(t *testing.T) {
 		},
 	})
 	var lookupOp uint64
-	for _, eff := range b.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetFetchSessionById() != nil && rpc.GetFetchSessionById().SessionId == "s-lookup" {
+	if rpc := testrelay.FindRelayRpc(b.Effects, corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS); rpc != nil {
+		var req stdv1.ListRemoteSessionsRequest
+		if proto.Unmarshal(rpc.RequestBytes, &req) == nil && len(req.SessionIds) == 1 && req.SessionIds[0] == "s-lookup" {
 			lookupOp = rpc.OpId
 		}
 	}
 	if lookupOp == 0 {
-		t.Fatal("expected FetchSessionById RPC for s-lookup")
+		t.Fatal("expected LIST_REMOTE_SESSIONS(s-lookup) RPC for s-lookup")
 	}
 	openTrue := true
 	c.Dispatch(&corev1.Event{
@@ -438,14 +403,13 @@ func TestResolveNotificationTapRoutesAndTimeout(t *testing.T) {
 	b = c.Dispatch(&corev1.Event{
 		NowMs:  3_058,
 		MonoMs: 3_058,
-		Event: &corev1.Event_SessionByIdFetched{
-			SessionByIdFetched: &corev1.SessionByIdFetchedEvent{
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
 				OpId: lookupOp,
-				Session: &corev1.PlainSession{
-					SessionId: "s-lookup",
-					MachineId: "m1",
-					Meta:      &v1.Session{Id: "s-lookup", TaskOwned: true, ScheduledTaskId: "task-9"},
-				},
+				ResponseBytes: testrelay.MarshalListSessionsResp(
+					[]*v1.RemoteSession{r.SessionWire("s-lookup", r.M1, 0, 0, 0, &v1.Session{Id: "s-lookup", TaskOwned: true, ScheduledTaskId: "task-9"}, nil)},
+					nil,
+				),
 			},
 		},
 	})
@@ -455,8 +419,8 @@ func TestResolveNotificationTapRoutesAndTimeout(t *testing.T) {
 			nav = sn
 		}
 	}
-	if nav == nil || nav.Route != corev1.ScheduleNavigateRoute_SCHEDULE_NAVIGATE_ROUTE_DETAIL || nav.MachineId != "m1" || nav.TaskId != "task-9" {
-		t.Fatalf("expected lookup resolution to DETAIL(m1, task-9) despite ScheduleListOpen, got %+v", nav)
+	if nav == nil || nav.Route != corev1.ScheduleNavigateRoute_SCHEDULE_NAVIGATE_ROUTE_DETAIL || nav.MachineId != r.M1 || nav.TaskId != "task-9" {
+		t.Fatalf("expected lookup resolution to DETAIL(%s, task-9) despite ScheduleListOpen, got %+v", r.M1, nav)
 	}
 
 	// 4. Cold miss -> followed by ScheduleListOpen(true) & SessionWatch(other) -> timeout STILL falls back to LIST.
@@ -473,8 +437,11 @@ func TestResolveNotificationTapRoutesAndTimeout(t *testing.T) {
 		if st := eff.GetScheduleTimer(); st != nil && st.Kind == corev1.TimerKind_TIMER_KIND_UI_TRANSIENT && st.Key == notifTapTimerKey {
 			timerID = st.TimerId
 		}
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetFetchSessionById() != nil && rpc.GetFetchSessionById().SessionId == "s-missing" {
-			sawLookup = true
+		if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS {
+			var req stdv1.ListRemoteSessionsRequest
+			if proto.Unmarshal(rpc.RequestBytes, &req) == nil && len(req.SessionIds) == 1 && req.SessionIds[0] == "s-missing" {
+				sawLookup = true
+			}
 		}
 	}
 	if !sawLookup || timerID == 0 {
@@ -565,9 +532,9 @@ func TestCacheEventsNewestExceedingKnownLastSeqDropsCache(t *testing.T) {
 		Event: &corev1.Event_CacheBootstrapLoaded{
 			CacheBootstrapLoaded: &corev1.CacheBootstrapLoadedEvent{
 				OpId: bootOp,
-				Sessions: []*corev1.PlainSession{
-					{SessionId: "s1", MachineId: "m1", LastSeq: 2, Meta: &v1.Session{Id: "s1"}},
-				},
+				RawSessions: testrelay.MustRawSlice([]*v1.RemoteSession{
+					{SessionId: "s1", MachineId: "m1", LastSeq: 2},
+				}),
 			},
 		},
 	})
@@ -592,9 +559,9 @@ func TestCacheEventsNewestExceedingKnownLastSeqDropsCache(t *testing.T) {
 			CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{
 				OpId:      evOp,
 				SessionId: "s1",
-				WireEvents: []*v1.StoredEvent{
+				RawEvents: testrelay.MustRawSlice([]*v1.StoredEvent{
 					{Seq: 5},
-				},
+				}),
 			},
 		},
 	})
@@ -632,9 +599,9 @@ func TestCacheEventsNewestExceedingZeroLastSeqDropsCache(t *testing.T) {
 		Event: &corev1.Event_CacheBootstrapLoaded{
 			CacheBootstrapLoaded: &corev1.CacheBootstrapLoadedEvent{
 				OpId: bootOp,
-				Sessions: []*corev1.PlainSession{
-					{SessionId: "s0", MachineId: "m1", LastSeq: 0, Meta: &v1.Session{Id: "s0"}},
-				},
+				RawSessions: testrelay.MustRawSlice([]*v1.RemoteSession{
+					{SessionId: "s0", MachineId: "m1", LastSeq: 0},
+				}),
 			},
 		},
 	})
@@ -656,9 +623,9 @@ func TestCacheEventsNewestExceedingZeroLastSeqDropsCache(t *testing.T) {
 			CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{
 				OpId:      evOp,
 				SessionId: "s0",
-				WireEvents: []*v1.StoredEvent{
+				RawEvents: testrelay.MustRawSlice([]*v1.StoredEvent{
 					{Seq: 1},
-				},
+				}),
 			},
 		},
 	})
@@ -674,35 +641,17 @@ func TestCacheEventsNewestExceedingZeroLastSeqDropsCache(t *testing.T) {
 }
 
 func TestSessionRenderTargetOnConnectionChangeVsSingleSessionEvent(t *testing.T) {
-	fx := bootConnectedCore(
-		t,
-		5_000,
-		[]*corev1.PlainMachine{
-			{MachineId: "m1", Online: true, Meta: &v1.MachineMeta{Hostname: "Mac"}},
-		},
-		[]*corev1.PlainSession{
-			{SessionId: "s1", MachineId: "m1", LastSeq: 1, Meta: &v1.Session{Id: "s1", Cwd: "/repo"}},
-		},
-		nil,
-	)
-	c := fx.core
-
-	// Seed security lease expiring at 6_000ms so a pure ClockTick can flip AccountControlLost
-	// without triggering MarkAll or Dirty.Home.
-	c.Dispatch(&corev1.Event{
-		NowMs:  5_035,
-		MonoMs: 5_035,
-		Event: &corev1.Event_SeedDemoWorld{
-			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
-				Security: &corev1.DemoSecurity{
-					SelfDeviceId:      "self-1",
-					IsMember:          true,
-					TrustedMachineIds: []string{"m1"},
-					LeaseEndMs:        6_000,
-				},
+	fx := bootConnectedCore(t, 5_000, func(r *testrelay.Fixture) ([]*v1.Machine, []*v1.RemoteSession, *v1.SessionCursor) {
+		return []*v1.Machine{
+				r.MachineWire(r.M1, true, 0, &v1.MachineMeta{Hostname: "Mac"}),
 			},
-		},
+			[]*v1.RemoteSession{
+				r.SessionWire("s1", r.M1, 1, 0, 0, &v1.Session{Id: "s1", Cwd: "/repo"}, nil),
+			}, nil
 	})
+	c := fx.core
+	r := fx.relay
+
 	c.Dispatch(&corev1.Event{
 		NowMs:  5_040,
 		MonoMs: 5_040,
@@ -718,19 +667,9 @@ func TestSessionRenderTargetOnConnectionChangeVsSingleSessionEvent(t *testing.T)
 	b := c.Dispatch(&corev1.Event{
 		NowMs:  5_050,
 		MonoMs: 5_050,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: fx.legID,
-				Frame: &corev1.StreamFrameEvent_EventsAppended{
-					EventsAppended: &corev1.EventsAppendedFrame{
-						SessionId: "s1",
-						Events: []*corev1.PlainEvent{
-							{Seq: 1, Event: &v1.Event{Seq: 1, Kind: &v1.Event_AgentMessage{AgentMessage: &v1.AgentMessage{Text: "hi"}}}},
-						},
-					},
-				},
-			},
-		},
+		Event: testrelay.EventsAppendedFrame(fx.legID, "s1",
+			r.StoredEventWire("s1", 1, &v1.Event{Seq: 1, Kind: &v1.Event_AgentMessage{AgentMessage: &v1.AgentMessage{Text: "hi"}}}),
+		),
 	})
 	if got := countRenderTargets(b, corev1.ScreenTarget_SCREEN_TARGET_SESSION); got != 1 {
 		t.Fatalf("expected SCREEN_TARGET_SESSION once on single session event, got %d", got)
@@ -751,8 +690,9 @@ func TestSessionRenderTargetOnConnectionChangeVsSingleSessionEvent(t *testing.T)
 	if livenessTimer == 0 {
 		t.Fatal("expected liveness timer from StreamReady")
 	}
+	expiredNow := int64(5_010) + int64(devicesec.Lease) + 100
 	b = c.Dispatch(&corev1.Event{
-		NowMs:  6_100,
+		NowMs:  expiredNow,
 		MonoMs: 5_500,
 		Event: &corev1.Event_TimerFired{
 			TimerFired: &corev1.TimerFiredEvent{TimerId: livenessTimer, Kind: corev1.TimerKind_TIMER_KIND_LIVENESS},
@@ -1120,6 +1060,7 @@ func TestScheduleCacheGateAndRevocationDuringWrite(t *testing.T) {
 	pumpCoreSecurityEffects(t, c, phone, secStore, nowMs+50, storBatch)
 
 	// Connect sync engine and feed wire machine list with trusted + untrusted machines.
+	c.m.sync.SecurityEngine().SetAuthToken("tok-1", nowMs+7*86_400_000)
 	bStart := c.Dispatch(&corev1.Event{
 		NowMs:  nowMs + 60,
 		MonoMs: nowMs + 60,
@@ -1127,29 +1068,18 @@ func TestScheduleCacheGateAndRevocationDuringWrite(t *testing.T) {
 			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
 		},
 	})
-	var tokenOp uint64
-	for _, eff := range bStart.Effects {
-		if et := eff.GetEnsureToken(); et != nil {
-			tokenOp = et.OpId
-		}
-	}
-	bTok := c.Dispatch(&corev1.Event{
-		NowMs:  nowMs + 65,
-		MonoMs: nowMs + 65,
-		Event:  &corev1.Event_TokenResult{TokenResult: &corev1.TokenResultEvent{OpId: tokenOp, Token: "tok-1"}},
-	})
-	tokEffs := pumpCoreSecurityEffects(t, c, phone, secStore, nowMs+65, bTok)
+	startEffs := pumpCoreSecurityEffects(t, c, phone, secStore, nowMs+65, bStart)
 	var legID uint64
-	for _, eff := range tokEffs {
+	for _, eff := range startEffs {
 		if os := eff.GetOpenStream(); os != nil {
 			legID = os.LegId
 		}
-		if rpc := eff.GetSecurityRpc(); rpc != nil && rpc.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+		if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SECURITY_STATES {
 			emptyResp, _ := proto.Marshal(&stdv1.GetSecurityStatesResponse{HeadEpoch: 1})
 			pumpCoreSecurityEffects(t, c, phone, secStore, nowMs+66, c.Dispatch(&corev1.Event{
 				NowMs: nowMs + 66,
-				Event: &corev1.Event_SecurityRpcResult{
-					SecurityRpcResult: &corev1.SecurityRpcResultEvent{OpId: rpc.OpId, ResponseBytes: emptyResp},
+				Event: &corev1.Event_RelayRpcResult{
+					RelayRpcResult: &corev1.RelayRpcResultEvent{OpId: rpc.OpId, ResponseBytes: emptyResp},
 				},
 			}))
 		}
@@ -1159,12 +1089,7 @@ func TestScheduleCacheGateAndRevocationDuringWrite(t *testing.T) {
 		MonoMs: nowMs + 70,
 		Event:  &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: nowMs + 70}},
 	})
-	var listOp uint64
-	for _, eff := range bReady.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetFetchLists() != nil {
-			listOp = rpc.OpId
-		}
-	}
+	ops := testrelay.MustFindRefreshOps(t, bReady.Effects)
 	mmRaw, _ := (&v1.MachineMeta{
 		Hostname:        "TrustedMac",
 		ProtocolVersion: sync.PeerVersion,
@@ -1172,22 +1097,23 @@ func TestScheduleCacheGateAndRevocationDuringWrite(t *testing.T) {
 	}).Marshal()
 	trustedMetaEnv := sealAppWireObj(t, trusted, dom, s1, sec, mmRaw, devicesec.MachineMeta, trusted.id, "", "", 1)
 	untrustedMetaEnv := sealAppWireObj(t, untrusted, dom, s1, sec, mmRaw, devicesec.MachineMeta, untrusted.id, "", "", 1)
-	bLists := c.Dispatch(&corev1.Event{
-		NowMs:  nowMs + 80,
-		MonoMs: nowMs + 80,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: listOp,
-				WireMachines: []*v1.Machine{
-					{Id: trusted.id, Online: true, Meta: trustedMetaEnv},
-					{Id: untrusted.id, Online: true, Meta: untrustedMetaEnv},
-				},
-			},
+	bLists := deliverAppRefresh(c, nowMs+80, ops,
+		[]*v1.Machine{
+			{Id: trusted.id, Online: true, Meta: trustedMetaEnv},
+			{Id: untrusted.id, Online: true, Meta: untrustedMetaEnv},
 		},
-	})
+		nil, nil, nil,
+	)
 	pumpCoreSecurityEffects(t, c, phone, secStore, nowMs+80, bLists)
 
-	// Opening schedule list reads cache ONLY for trusted, NEVER for untrusted, and seals schedule.list command.
+	// Opening schedule list reads cache ONLY for trusted, NEVER for untrusted, and seals schedule.list command via RelayPipe.
+	listCmdBytes, err := (&v1.Command{
+		ProtocolVersion: sync.PeerVersion,
+		Kind:            &v1.Command_Schedule{Schedule: &v1.ScheduleRequest{Operation: "list"}},
+	}).Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
 	openTrue := true
 	bOpen := c.Dispatch(&corev1.Event{
 		NowMs:  nowMs + 90,
@@ -1196,33 +1122,45 @@ func TestScheduleCacheGateAndRevocationDuringWrite(t *testing.T) {
 	})
 	openEffs := pumpCoreSecurityEffects(t, c, phone, secStore, nowMs+90, bOpen)
 	var readMachines []string
-	var dc *corev1.DispatchCommandEffect
+	var hzOpID uint64
 	for _, eff := range openEffs {
 		if rc := eff.GetScheduleReadCache(); rc != nil {
 			readMachines = append(readMachines, rc.MachineId)
 		}
-		if got := eff.GetDispatchCommand(); got != nil && got.MachineId == trusted.id {
-			dc = got
+		if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_HEALTHZ {
+			hzOpID = rpc.OpId
 		}
 	}
 	if len(readMachines) != 1 || readMachines[0] != trusted.id {
 		t.Fatalf("expected ScheduleReadCache only for trusted (%s), got %v", trusted.id, readMachines)
 	}
-	if dc == nil || dc.SealedEnvelope == nil {
-		t.Fatal("expected sealed schedule.list DispatchCommand for trusted machine")
+	if hzOpID == 0 {
+		t.Fatal("expected HEALTHZ RelayRpcEffect before sealed schedule.list FORWARD")
 	}
-
-	// Build real signed & bound CommandResult envelope (NO plaintext Result shortcut).
-	openedCmd, err := security.FromProtoEnvelope(dc.SealedEnvelope)
-	if err != nil {
+	bFwd1 := c.Dispatch(&corev1.Event{
+		NowMs:  nowMs + 91,
+		MonoMs: nowMs + 91,
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{OpId: hzOpID, RelayEpoch: "ep-1"},
+		},
+	})
+	fwd1 := testrelay.FindRelayRpc(bFwd1.Effects, corev1.RelayRpcMethod_RELAY_RPC_METHOD_FORWARD)
+	if fwd1 == nil {
+		t.Fatal("expected sealed schedule.list FORWARD RelayRpcEffect for trusted machine")
+	}
+	var fwdReq1 stdv1.ForwardRequest
+	if err := proto.Unmarshal(fwd1.RequestBytes, &fwdReq1); err != nil {
 		t.Fatal(err)
 	}
-	hdr, err := devicesec.ParseHeader(openedCmd.Header)
+	if fwdReq1.MachineId != trusted.id || fwdReq1.Command == nil {
+		t.Fatalf("unexpected ForwardRequest: machine=%q cmd=%v", fwdReq1.MachineId, fwdReq1.Command != nil)
+	}
+	hdr, err := devicesec.ParseHeader(fwdReq1.Command.SecurityHeader)
 	if err != nil {
 		t.Fatal(err)
 	}
 	keyHash := devicesec.RequestIdentity(hdr)
-	payloadHash, err := devicesec.AuthorizedPayloadHash(hdr, dc.CommandBytes)
+	payloadHash, err := devicesec.AuthorizedPayloadHash(hdr, listCmdBytes)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1239,7 +1177,7 @@ func TestScheduleCacheGateAndRevocationDuringWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sealedRes := sealAppWireObj(t, trusted, dom, s1, sec, resRaw, devicesec.Result, trusted.id, "", dc.RequestId, 0)
+	sealedRes := sealAppWireObj(t, trusted, dom, s1, sec, resRaw, devicesec.Result, trusted.id, "", hdr.Request, 0)
 
 	// Negative check: a tampered SealedResult MUST NOT be accepted or trigger ScheduleWriteCacheEffect.
 	tamperedRes := &v1.Envelope{
@@ -1251,15 +1189,15 @@ func TestScheduleCacheGateAndRevocationDuringWrite(t *testing.T) {
 	bTampered := c.Dispatch(&corev1.Event{
 		NowMs:  nowMs + 95,
 		MonoMs: nowMs + 95,
-		Event: &corev1.Event_CommandOutcome{
-			CommandOutcome: &corev1.CommandOutcomeEvent{
-				RequestId:    dc.RequestId,
-				AttemptId:    dc.AttemptId,
-				Source:       corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
-				AttemptBound: true,
-				OuterOutcome: "executed",
-				OuterReason:  "ok",
-				SealedResult: tamperedRes,
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId: fwd1.OpId,
+				ResponseBytes: testrelay.MarshalStd(&stdv1.ForwardResponse{
+					AttemptId: fwdReq1.AttemptId,
+					Outcome:   "executed",
+					Reason:    "ok",
+					Result:    testrelay.ToStdEnv(tamperedRes),
+				}),
 			},
 		},
 	})
@@ -1278,25 +1216,25 @@ func TestScheduleCacheGateAndRevocationDuringWrite(t *testing.T) {
 		Event:  &corev1.Event_ScheduleRefresh{ScheduleRefresh: &corev1.ScheduleStringAction{Value: trusted.id}},
 	})
 	refreshEffs := pumpCoreSecurityEffects(t, c, phone, secStore, nowMs+98, bRefresh)
-	var dc2 *corev1.DispatchCommandEffect
+	var fwd2 *corev1.RelayRpcEffect
 	for _, eff := range refreshEffs {
-		if got := eff.GetDispatchCommand(); got != nil && got.MachineId == trusted.id {
-			dc2 = got
+		if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_FORWARD {
+			fwd2 = rpc
 		}
 	}
-	if dc2 == nil || dc2.SealedEnvelope == nil {
-		t.Fatal("expected second sealed schedule.list DispatchCommand after refresh")
+	if fwd2 == nil {
+		t.Fatal("expected second sealed schedule.list FORWARD RelayRpcEffect after refresh")
 	}
-	openedCmd2, err := security.FromProtoEnvelope(dc2.SealedEnvelope)
-	if err != nil {
+	var fwdReq2 stdv1.ForwardRequest
+	if err := proto.Unmarshal(fwd2.RequestBytes, &fwdReq2); err != nil {
 		t.Fatal(err)
 	}
-	hdr2, err := devicesec.ParseHeader(openedCmd2.Header)
+	hdr2, err := devicesec.ParseHeader(fwdReq2.Command.SecurityHeader)
 	if err != nil {
 		t.Fatal(err)
 	}
 	keyHash2 := devicesec.RequestIdentity(hdr2)
-	payloadHash2, err := devicesec.AuthorizedPayloadHash(hdr2, dc2.CommandBytes)
+	payloadHash2, err := devicesec.AuthorizedPayloadHash(hdr2, listCmdBytes)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1313,20 +1251,20 @@ func TestScheduleCacheGateAndRevocationDuringWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sealedRes2 := sealAppWireObj(t, trusted, dom, s1, sec, resRaw2, devicesec.Result, trusted.id, "", dc2.RequestId, 0)
+	sealedRes2 := sealAppWireObj(t, trusted, dom, s1, sec, resRaw2, devicesec.Result, trusted.id, "", hdr2.Request, 0)
 
 	bOut := c.Dispatch(&corev1.Event{
 		NowMs:  nowMs + 100,
 		MonoMs: nowMs + 100,
-		Event: &corev1.Event_CommandOutcome{
-			CommandOutcome: &corev1.CommandOutcomeEvent{
-				RequestId:    dc2.RequestId,
-				AttemptId:    dc2.AttemptId,
-				Source:       corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
-				AttemptBound: true,
-				OuterOutcome: "executed",
-				OuterReason:  "ok",
-				SealedResult: sealedRes2,
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId: fwd2.OpId,
+				ResponseBytes: testrelay.MarshalStd(&stdv1.ForwardResponse{
+					AttemptId: fwdReq2.AttemptId,
+					Outcome:   "executed",
+					Reason:    "ok",
+					Result:    testrelay.ToStdEnv(sealedRes2),
+				}),
 			},
 		},
 	})
@@ -1355,7 +1293,7 @@ func TestScheduleCacheGateAndRevocationDuringWrite(t *testing.T) {
 	syncEffs := pumpCoreSecurityEffects(t, c, phone, secStore, nowMs+110, bSync)
 	var rpcOp uint64
 	for _, eff := range syncEffs {
-		if rpc := eff.GetSecurityRpc(); rpc != nil && rpc.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+		if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SECURITY_STATES {
 			rpcOp = rpc.OpId
 		}
 	}
@@ -1373,8 +1311,8 @@ func TestScheduleCacheGateAndRevocationDuringWrite(t *testing.T) {
 	bRevoke := c.Dispatch(&corev1.Event{
 		NowMs:  nowMs + 120,
 		MonoMs: nowMs + 120,
-		Event: &corev1.Event_SecurityRpcResult{
-			SecurityRpcResult: &corev1.SecurityRpcResultEvent{
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
 				OpId:          rpcOp,
 				ResponseBytes: respBytes,
 			},
@@ -1413,8 +1351,8 @@ func TestScheduleCacheGateAndRevocationDuringWrite(t *testing.T) {
 }
 
 func TestUsageCacheRevocationDuringWrite(t *testing.T) {
-	fx := bootConnectedCore(t, 8_000, nil, nil, nil)
-	c := fx.core
+	c := New()
+	t.Cleanup(c.Close)
 	c.Dispatch(&corev1.Event{
 		NowMs: 8_035,
 		Event: &corev1.Event_EntropyProvided{
@@ -1438,15 +1376,28 @@ func TestUsageCacheRevocationDuringWrite(t *testing.T) {
 					{
 						MachineId: "m-usage",
 						Online:    true,
-						Meta: &v1.MachineMeta{
+						RawMeta: testrelay.MustRaw(&v1.MachineMeta{
 							Hostname:        "UsageMac",
 							ProtocolVersion: sync.PeerVersion,
 							Capabilities:    &v1.MachineCapabilities{UsageStats: true},
-						},
+						}),
 					},
 				},
 			},
 		},
+	})
+	startB := c.Dispatch(&corev1.Event{
+		NowMs:  8_042,
+		MonoMs: 8_042,
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
+		},
+	})
+	legID := testrelay.FindOpenStreamLeg(startB.Effects)
+	c.Dispatch(&corev1.Event{
+		NowMs:  8_045,
+		MonoMs: 8_045,
+		Event:  &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: 8_045}},
 	})
 
 	b := c.Dispatch(&corev1.Event{
@@ -1483,7 +1434,7 @@ func TestUsageCacheRevocationDuringWrite(t *testing.T) {
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "ok",
-				Result: &v1.CommandResult{
+				RawResult: testrelay.MustRaw(&v1.CommandResult{
 					Outcome:         "executed",
 					Reason:          "ok",
 					ResultAvailable: true,
@@ -1493,7 +1444,7 @@ func TestUsageCacheRevocationDuringWrite(t *testing.T) {
 							GeneratedAtMs: 8_060,
 						},
 					},
-				},
+				}),
 			},
 		},
 	})
@@ -1558,41 +1509,30 @@ func TestPreSecurityScheduleCacheEvictedWhenMachineUntrusted(t *testing.T) {
 	defer c.Close()
 
 	// Cold start before security loads: cached machine + cached schedules load offline.
-	b := c.Dispatch(&corev1.Event{
+	c.Dispatch(&corev1.Event{
+		NowMs:  8_990,
+		MonoMs: 8_990,
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Machines: []*corev1.DemoMachine{
+					testrelay.DemoMachine("m-cold", false, 0, &v1.MachineMeta{
+						Hostname:        "ColdMac",
+						ProtocolVersion: sync.PeerVersion,
+						Capabilities:    &v1.MachineCapabilities{ScheduledTasks: true},
+					}),
+				},
+			},
+		},
+	})
+	c.Dispatch(&corev1.Event{
 		NowMs:  9_000,
 		MonoMs: 9_000,
 		Event: &corev1.Event_SyncLifecycle{
 			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
 		},
 	})
-	var bootOp uint64
-	for _, eff := range b.Effects {
-		if cr := eff.GetCacheRead(); cr != nil && cr.GetBootstrap() != nil {
-			bootOp = cr.GetBootstrap().OpId
-		}
-	}
-	c.Dispatch(&corev1.Event{
-		NowMs:  9_010,
-		MonoMs: 9_010,
-		Event: &corev1.Event_CacheBootstrapLoaded{
-			CacheBootstrapLoaded: &corev1.CacheBootstrapLoadedEvent{
-				OpId: bootOp,
-				Machines: []*corev1.PlainMachine{
-					{
-						MachineId: "m-cold",
-						Online:    false,
-						Meta: &v1.MachineMeta{
-							Hostname:        "ColdMac",
-							ProtocolVersion: sync.PeerVersion,
-							Capabilities:    &v1.MachineCapabilities{ScheduledTasks: true},
-						},
-					},
-				},
-			},
-		},
-	})
 	openTrue := true
-	b = c.Dispatch(&corev1.Event{
+	b := c.Dispatch(&corev1.Event{
 		NowMs:  9_020,
 		MonoMs: 9_020,
 		Event:  &corev1.Event_ScheduleListOpen{ScheduleListOpen: &corev1.ScheduleBoolAction{Value: &openTrue}},

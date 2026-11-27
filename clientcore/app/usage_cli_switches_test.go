@@ -5,6 +5,7 @@ import (
 
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/internal/test/testrelay"
 )
 
 func seedDualCLIMachine(t *testing.T, c *Core) {
@@ -20,12 +21,6 @@ func seedDualCLIMachine(t *testing.T, c *Core) {
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_633_600_000,
-		Event: &corev1.Event_SyncLifecycle{
-			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
-		},
-	})
-	c.Dispatch(&corev1.Event{
-		NowMs: 1_791_633_600_010,
 		Event: &corev1.Event_SeedDemoWorld{
 			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
 				Security: &corev1.DemoSecurity{
@@ -35,60 +30,50 @@ func seedDualCLIMachine(t *testing.T, c *Core) {
 					LeaseEndMs:        1_891_633_600_000,
 					TrustedMachineIds: []string{"m-1"},
 				},
+				Machines: []*corev1.DemoMachine{
+					testrelay.DemoMachine("m-1", true, 0, &v1.MachineMeta{
+						Hostname:        "MacStudio",
+						ProtocolVersion: 17,
+						Capabilities: &v1.MachineCapabilities{
+							MachineStatus:  true,
+							ScheduledTasks: true,
+							CliSwitches:    true,
+							UsageStats:     true,
+						},
+						Agents: []*v1.AgentInfo{
+							{Agent: v1.Agent_AGENT_CODEX, Version: "0.90.0", Verified: true},
+							{Agent: v1.Agent_AGENT_CLAUDE, Version: "2.1.0", Verified: true},
+							{Agent: v1.Agent_AGENT_ANTIGRAVITY, Version: "1.4.0", Verified: true},
+						},
+						Quotas: []*v1.AgentQuota{
+							{Agent: v1.Agent_AGENT_CODEX, State: v1.QuotaState_QUOTA_STATE_OK},
+							{Agent: v1.Agent_AGENT_CLAUDE, State: v1.QuotaState_QUOTA_STATE_OK},
+						},
+					}),
+				},
+				Sessions: []*corev1.DemoSession{
+					testrelay.DemoSession("s-1", "m-1", 0, 1_791_633_500_000, 0,
+						&v1.Session{Id: "s-1", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_CLAUDE, Model: "claude-sonnet-4-6"},
+						nil,
+					),
+				},
 			},
 		},
 	})
-	c.Dispatch(&corev1.Event{
-		NowMs: 1_791_633_600_020,
-		Event: &corev1.Event_TokenResult{
-			TokenResult: &corev1.TokenResultEvent{OpId: 2, Token: "tok-1"},
+	startBatch := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_633_600_010,
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
 		},
 	})
+	legID := testrelay.FindOpenStreamLeg(startBatch.Effects)
+	if legID == 0 {
+		t.Fatalf("expected OpenStreamEffect on demo start")
+	}
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_633_600_030,
 		Event: &corev1.Event_StreamReady{
-			StreamReady: &corev1.StreamReadyEvent{LegId: 1, ServerTimeMs: 1_791_633_600_030},
-		},
-	})
-	c.Dispatch(&corev1.Event{
-		NowMs: 1_791_633_600_040,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: 3,
-				Machines: []*corev1.PlainMachine{
-					{
-						MachineId: "m-1",
-						Online:    true,
-						Meta: &v1.MachineMeta{
-							Hostname:        "MacStudio",
-							ProtocolVersion: 17,
-							Capabilities: &v1.MachineCapabilities{
-								MachineStatus:  true,
-								ScheduledTasks: true,
-								CliSwitches:    true,
-								UsageStats:     true,
-							},
-							Agents: []*v1.AgentInfo{
-								{Agent: v1.Agent_AGENT_CODEX, Version: "0.90.0", Verified: true},
-								{Agent: v1.Agent_AGENT_CLAUDE, Version: "2.1.0", Verified: true},
-								{Agent: v1.Agent_AGENT_ANTIGRAVITY, Version: "1.4.0", Verified: true},
-							},
-							Quotas: []*v1.AgentQuota{
-								{Agent: v1.Agent_AGENT_CODEX, State: v1.QuotaState_QUOTA_STATE_OK},
-								{Agent: v1.Agent_AGENT_CLAUDE, State: v1.QuotaState_QUOTA_STATE_OK},
-							},
-						},
-					},
-				},
-				Sessions: []*corev1.PlainSession{
-					{
-						SessionId: "s-1",
-						MachineId: "m-1",
-						UpdatedMs: 1_791_633_500_000,
-						Meta:      &v1.Session{Id: "s-1", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_CLAUDE, Model: "claude-sonnet-4-6"},
-					},
-				},
-			},
+			StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: 1_791_633_600_030},
 		},
 	})
 }
@@ -119,7 +104,7 @@ func settleUpdateSettings(c *Core, dc *corev1.DispatchCommandEffect, nowMs int64
 				OuterMatchesInner: true,
 				OuterOutcome:      outerOutcome,
 				OuterReason:       outerReason,
-				Result:            res,
+				RawResult:         testrelay.MustRaw(res),
 			},
 		},
 	})
@@ -198,32 +183,21 @@ func TestCliSwitchesToggleConflictAndDraftFallback(t *testing.T) {
 		},
 	}, "")
 
-	// Stale MachineUpdated/ListsFetched snapshot with lower SettingsRevision must not revert disabled Claude.
+	// Stale MachineUpdated snapshot with lower SettingsRevision must not revert disabled Claude.
+	staleM := testrelay.DemoMachine("m-1", true, 0, &v1.MachineMeta{
+		Hostname:         "MacStudio",
+		ProtocolVersion:  17,
+		SettingsRevision: 1,
+		Capabilities:     &v1.MachineCapabilities{CliSwitches: true, UsageStats: true},
+		Agents: []*v1.AgentInfo{
+			{Agent: v1.Agent_AGENT_CODEX, Version: "0.90.0", Verified: true},
+			{Agent: v1.Agent_AGENT_CLAUDE, Version: "2.1.0", Verified: true},
+			{Agent: v1.Agent_AGENT_ANTIGRAVITY, Version: "1.4.0", Verified: true},
+		},
+	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_633_600_085,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: 3,
-				Machines: []*corev1.PlainMachine{
-					{
-						MachineId: "m-1",
-						Online:    true,
-						MetaRev:   10,
-						Meta: &v1.MachineMeta{
-							Hostname:         "MacStudio",
-							ProtocolVersion:  17,
-							SettingsRevision: 1,
-							Capabilities:     &v1.MachineCapabilities{CliSwitches: true, UsageStats: true},
-							Agents: []*v1.AgentInfo{
-								{Agent: v1.Agent_AGENT_CODEX, Version: "0.90.0", Verified: true},
-								{Agent: v1.Agent_AGENT_CLAUDE, Version: "2.1.0", Verified: true},
-								{Agent: v1.Agent_AGENT_ANTIGRAVITY, Version: "1.4.0", Verified: true},
-							},
-						},
-					},
-				},
-			},
-		},
+		Event: testrelay.DemoMachineEvent(staleM),
 	})
 
 	// Mid-draft NewSession preserves prompt text and surfaces NOTICE_KIND_AGENT_DISABLED_FALLBACK.
@@ -305,36 +279,26 @@ func TestCliSwitchesToggleConflictAndDraftFallback(t *testing.T) {
 
 	// Simulate daemon reporting only Codex left enabled (Claude + Antigravity disabled):
 	// Codex row must report LockedLastEnabled=true, and trying to toggle it OFF locally must be ignored.
+	onlyCodexM := testrelay.DemoMachine("m-1", true, 0, &v1.MachineMeta{
+		Hostname:         "MacStudio",
+		ProtocolVersion:  17,
+		SettingsRevision: 5,
+		DisabledAgents:   []v1.Agent{v1.Agent_AGENT_CLAUDE, v1.Agent_AGENT_ANTIGRAVITY},
+		Capabilities: &v1.MachineCapabilities{
+			MachineStatus:  true,
+			ScheduledTasks: true,
+			CliSwitches:    true,
+			UsageStats:     true,
+		},
+		Agents: []*v1.AgentInfo{
+			{Agent: v1.Agent_AGENT_CODEX, Version: "0.90.0", Verified: true},
+			{Agent: v1.Agent_AGENT_CLAUDE, Version: "2.1.0", Verified: true},
+			{Agent: v1.Agent_AGENT_ANTIGRAVITY, Version: "1.4.0", Verified: true},
+		},
+	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_633_600_110,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{
-						MachineId: "m-1",
-						Online:    true,
-						Meta: &v1.MachineMeta{
-							Hostname:         "MacStudio",
-							ProtocolVersion:  17,
-							SettingsRevision: 5,
-							DisabledAgents:   []v1.Agent{v1.Agent_AGENT_CLAUDE, v1.Agent_AGENT_ANTIGRAVITY},
-							Capabilities: &v1.MachineCapabilities{
-								MachineStatus:  true,
-								ScheduledTasks: true,
-								CliSwitches:    true,
-								UsageStats:     true,
-							},
-							Agents: []*v1.AgentInfo{
-								{Agent: v1.Agent_AGENT_CODEX, Version: "0.90.0", Verified: true},
-								{Agent: v1.Agent_AGENT_CLAUDE, Version: "2.1.0", Verified: true},
-								{Agent: v1.Agent_AGENT_ANTIGRAVITY, Version: "1.4.0", Verified: true},
-							},
-						},
-					},
-				},
-			},
-		},
+		Event: testrelay.DemoMachineEvent(onlyCodexM),
 	})
 	msVM3, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_MachineSettings{MachineSettings: &corev1.MachineSettingsScreenRequest{MachineId: "m-1"}}})
 	var codexLocked bool
@@ -479,30 +443,19 @@ func TestUsageOfflineCacheAndMachineStatus30dFallback(t *testing.T) {
 	// Mark machine offline and inject 7d empty + 30d non-empty cache via UsageCacheLoadedEvent.
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_633_600_050,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{
-						MachineId: "m-1",
-						Online:    false,
-						Meta: &v1.MachineMeta{
-							Hostname:        "MacStudio",
-							ProtocolVersion: 17,
-							Capabilities: &v1.MachineCapabilities{
-								MachineStatus: true,
-								CliSwitches:   true,
-								UsageStats:    true,
-							},
-							Agents: []*v1.AgentInfo{
-								{Agent: v1.Agent_AGENT_CODEX, Version: "0.90.0", Verified: true},
-								{Agent: v1.Agent_AGENT_CLAUDE, Version: "2.1.0", Verified: true},
-							},
-						},
-					},
-				},
+		Event: testrelay.DemoMachineEvent(testrelay.DemoMachine("m-1", false, 0, &v1.MachineMeta{
+			Hostname:        "MacStudio",
+			ProtocolVersion: 17,
+			Capabilities: &v1.MachineCapabilities{
+				MachineStatus: true,
+				CliSwitches:   true,
+				UsageStats:    true,
 			},
-		},
+			Agents: []*v1.AgentInfo{
+				{Agent: v1.Agent_AGENT_CODEX, Version: "0.90.0", Verified: true},
+				{Agent: v1.Agent_AGENT_CLAUDE, Version: "2.1.0", Verified: true},
+			},
+		})),
 	})
 
 	raw7d := (&v1.UsageStatsResponse{
@@ -574,19 +527,10 @@ func TestAntigravityUsageWithoutSpeedInUsageMachineAndSession(t *testing.T) {
 	// Switch session s-1 to Antigravity gemini-4-hydrogen (matching normalized transcript model).
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_633_600_045,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_SessionUpdated{
-					SessionUpdated: &corev1.PlainSession{
-						SessionId: "s-1",
-						MachineId: "m-1",
-						UpdatedMs: 1_791_633_500_100,
-						Meta:      &v1.Session{Id: "s-1", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_ANTIGRAVITY, Model: "gemini-4-hydrogen"},
-					},
-				},
-			},
-		},
+		Event: testrelay.DemoSessionEvent(testrelay.DemoSession("s-1", "m-1", 0, 1_791_633_500_100, 0,
+			&v1.Session{Id: "s-1", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_ANTIGRAVITY, Model: "gemini-4-hydrogen"},
+			nil,
+		)),
 	})
 
 	// Before any snapshot arrives, Usage view must not hardcode Antigravity as unavailable.

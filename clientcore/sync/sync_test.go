@@ -15,6 +15,7 @@ import (
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/gen/timestamppb"
+	"github.com/Lewin671/remote-agent/clientcore/internal/test/testrelay"
 	"github.com/Lewin671/remote-agent/clientcore/security"
 	stdv1 "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
@@ -32,9 +33,77 @@ func seedEntropy(n int) ([]string, []float64) {
 	return ids, fs
 }
 
-func startAndConnect(t *testing.T, e *Engine, nowMs int64) (legID uint64, listsOpID uint64) {
+func dispatchEngine(e *Engine) func(*corev1.Event) []*corev1.Effect {
+	return func(ev *corev1.Event) []*corev1.Effect {
+		_, res := e.HandleEvent(ev)
+		return res.Effects
+	}
+}
+
+func deliverRefreshRelay(
+	e *Engine,
+	nowMs int64,
+	ops testrelay.RefreshOps,
+	machines []*v1.Machine,
+	sessions []*v1.RemoteSession,
+	devices []*v1.Device,
+	next *v1.SessionCursor,
+) StepResult {
+	e.HandleEvent(&corev1.Event{
+		NowMs: nowMs,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId:          ops.Machines,
+			ResponseBytes: testrelay.MarshalListMachinesResp(machines),
+		}},
+	})
+	e.HandleEvent(&corev1.Event{
+		NowMs: nowMs,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId:          ops.Sessions,
+			ResponseBytes: testrelay.MarshalListSessionsResp(sessions, next),
+		}},
+	})
+	_, res := e.HandleEvent(&corev1.Event{
+		NowMs: nowMs,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId:          ops.Devices,
+			ResponseBytes: testrelay.MarshalListDevicesResp(devices),
+		}},
+	})
+	return res
+}
+
+func deliverEventsPageRelay(e *Engine, nowMs int64, opID uint64, events []*v1.StoredEvent, more bool) StepResult {
+	_, res := e.HandleEvent(&corev1.Event{
+		NowMs: nowMs,
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId:          opID,
+			ResponseBytes: testrelay.MarshalGetEventsResp(events, more),
+		}},
+	})
+	return res
+}
+
+func startAndConnectWithFixture(t *testing.T, e *Engine, fx *testrelay.Fixture, nowMs int64) (legID uint64, ops testrelay.RefreshOps) {
 	t.Helper()
 	ids, fs := seedEntropy(20)
+	if !e.secEngine.Locked() {
+		fx.Bootstrap(dispatchEngine(e), nowMs)
+	}
+	e.secEngine.SetAuthToken("tok-1", nowMs+7*86_400_000)
+	respondSyncRpc := func(effs []*corev1.Effect) {
+		for _, eff := range effs {
+			if sr := eff.GetRelayRpc(); sr != nil && sr.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SECURITY_STATES {
+				emptyStatesRaw, _ := proto.Marshal(&stdv1.GetSecurityStatesResponse{HeadEpoch: e.security.HeadEpoch})
+				e.HandleEvent(&corev1.Event{
+					NowMs: nowMs + 25,
+					Event: &corev1.Event_RelayRpcResult{
+						RelayRpcResult: &corev1.RelayRpcResultEvent{OpId: sr.OpId, ResponseBytes: emptyStatesRaw},
+					},
+				})
+			}
+		}
+	}
 	_, res := e.HandleEvent(&corev1.Event{
 		NowMs:      nowMs,
 		MonoMs:     1_000,
@@ -46,58 +115,14 @@ func startAndConnect(t *testing.T, e *Engine, nowMs int64) (legID uint64, listsO
 			},
 		},
 	})
-	respondSyncRpc := func(effs []*corev1.Effect) {
-		for _, eff := range effs {
-			if sr := eff.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
-				emptyStatesRaw, _ := proto.Marshal(&stdv1.GetSecurityStatesResponse{HeadEpoch: e.security.HeadEpoch})
-				e.HandleEvent(&corev1.Event{
-					NowMs: nowMs + 25,
-					Event: &corev1.Event_SecurityRpcResult{
-						SecurityRpcResult: &corev1.SecurityRpcResultEvent{OpId: sr.OpId, ResponseBytes: emptyStatesRaw},
-					},
-				})
-			}
-		}
-	}
-	var tokOp uint64
-	for _, eff := range res.Effects {
-		if et := eff.GetEnsureToken(); et != nil {
-			tokOp = et.OpId
-		}
-	}
 	respondSyncRpc(res.Effects)
-	if tokOp == 0 {
-		t.Fatalf("expected EnsureTokenEffect on Start")
-	}
-	e.HandleEvent(&corev1.Event{
-		NowMs: nowMs + 10,
-		Event: &corev1.Event_SeedDemoWorld{
-			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
-				Security: &corev1.DemoSecurity{
-					IsMember:          true,
-					SelfDeviceId:      "c1",
-					AuthorityDeviceId: "c1",
-					LeaseEndMs:        nowMs + 86_400_000,
-					TrustedMachineIds: []string{"m1", "m2"},
-					NetworkGeneration: e.networkGen,
-				},
-			},
-		},
-	})
-	_, tokRes := e.HandleEvent(&corev1.Event{
-		NowMs: nowMs + 20,
-		Event: &corev1.Event_TokenResult{
-			TokenResult: &corev1.TokenResultEvent{OpId: tokOp, Token: "tok-1", ExpiresMs: nowMs + 7*86_400_000},
-		},
-	})
-	respondSyncRpc(tokRes.Effects)
-	for _, eff := range tokRes.Effects {
+	for _, eff := range res.Effects {
 		if os := eff.GetOpenStream(); os != nil {
 			legID = os.LegId
 		}
 	}
 	if legID == 0 {
-		t.Fatalf("expected OpenStreamEffect on TokenResult")
+		t.Fatalf("expected OpenStreamEffect on Start")
 	}
 	_, readyRes := e.HandleEvent(&corev1.Event{
 		NowMs: nowMs + 30,
@@ -106,21 +131,33 @@ func startAndConnect(t *testing.T, e *Engine, nowMs int64) (legID uint64, listsO
 		},
 	})
 	respondSyncRpc(readyRes.Effects)
-	for _, eff := range readyRes.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetFetchLists() != nil {
-			listsOpID = rpc.OpId
-		}
+	ops = testrelay.MustFindRefreshOps(t, readyRes.Effects)
+	return legID, ops
+}
+
+func startAndConnect(t *testing.T, e *Engine, nowMs int64) (*testrelay.Fixture, uint64, testrelay.RefreshOps) {
+	t.Helper()
+	fx := testrelay.New(t, nowMs)
+	legID, ops := startAndConnectWithFixture(t, e, fx, nowMs)
+	return fx, legID, ops
+}
+
+func directActorFrom(t *testing.T, a testrelay.Actor) *directTestActor {
+	d := &directTestActor{
+		t:        t,
+		id:       a.ID,
+		signPriv: a.Ed,
+		xPriv:    a.X,
+		xPub:     a.XPub,
 	}
-	if listsOpID == 0 {
-		t.Fatalf("expected FetchListsRpc on StreamReady")
-	}
-	return legID, listsOpID
+	copy(d.signPub[:], a.EdPub)
+	return d
 }
 
 func TestConnectionLifecycleRecoveryAndLiveness(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
-	legID, _ := startAndConnect(t, e, now)
+	_, legID, _ := startAndConnect(t, e, now)
 
 	if e.Connection() != lists.ConnConnected {
 		t.Fatalf("expected ConnConnected, got %v", e.Connection())
@@ -139,25 +176,16 @@ func TestConnectionLifecycleRecoveryAndLiveness(t *testing.T) {
 
 	// Heartbeat calibrates LegLiveness: 1s cadence uses the 15s floor (tolerating
 	// transient high-RTT/lossy stalls without closing the client stream).
+	hbFrame := &v1.ServerFrame{Kind: &v1.ServerFrame_Heartbeat{Heartbeat: &v1.Heartbeat{}}}
 	e.HandleEvent(&corev1.Event{
 		NowMs:  now + 1000,
 		MonoMs: 2_000,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: legID,
-				Frame: &corev1.StreamFrameEvent_Heartbeat{Heartbeat: true},
-			},
-		},
+		Event:  testrelay.RawFrame(legID, hbFrame),
 	})
 	e.HandleEvent(&corev1.Event{
 		NowMs:  now + 2000,
 		MonoMs: 3_000,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: legID,
-				Frame: &corev1.StreamFrameEvent_Heartbeat{Heartbeat: true},
-			},
-		},
+		Event:  testrelay.RawFrame(legID, hbFrame),
 	})
 	if got := e.liveness.ThresholdMs(); got != 15_000 {
 		t.Fatalf("expected liveness threshold 15000ms, got %d", got)
@@ -220,6 +248,9 @@ func TestConnectionLifecycleRecoveryAndLiveness(t *testing.T) {
 
 	// Clock skew on Ready detection (> 300s).
 	e2 := NewEngine()
+	fx2 := testrelay.New(t, now+500_000)
+	fx2.Bootstrap(dispatchEngine(e2), now+500_000)
+	e2.secEngine.SetAuthToken("tok-2", now+7*86_400_000)
 	ids, fs := seedEntropy(10)
 	_, res := e2.HandleEvent(&corev1.Event{
 		NowMs:      now + 500_000,
@@ -230,18 +261,8 @@ func TestConnectionLifecycleRecoveryAndLiveness(t *testing.T) {
 			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
 		},
 	})
-	var tokOp uint64
-	for _, eff := range res.Effects {
-		if et := eff.GetEnsureToken(); et != nil {
-			tokOp = et.OpId
-		}
-	}
-	_, tokRes := e2.HandleEvent(&corev1.Event{
-		NowMs: now + 500_000,
-		Event: &corev1.Event_TokenResult{TokenResult: &corev1.TokenResultEvent{OpId: tokOp, Token: "tok"}},
-	})
 	var leg2 uint64
-	for _, eff := range tokRes.Effects {
+	for _, eff := range res.Effects {
 		if os := eff.GetOpenStream(); os != nil {
 			leg2 = os.LegId
 		}
@@ -258,6 +279,8 @@ func TestConnectionLifecycleRecoveryAndLiveness(t *testing.T) {
 
 	// Any non-Ready frame during ConnConnecting promotes to ConnConnected.
 	e3 := NewEngine()
+	fx3 := testrelay.New(t, now)
+	fx3.Bootstrap(dispatchEngine(e3), now)
 	e3.running = true
 	e3.legID = 7
 	e3.w.World.Connection = lists.ConnConnecting
@@ -266,53 +289,49 @@ func TestConnectionLifecycleRecoveryAndLiveness(t *testing.T) {
 	e3.HandleEvent(&corev1.Event{
 		NowMs:  now,
 		MonoMs: 1_500,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 7,
-				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{MachineId: "m1", Online: true},
-				},
+		Event: testrelay.RawFrame(7, &v1.ServerFrame{
+			Kind: &v1.ServerFrame_MachineUpdated{
+				MachineUpdated: &v1.MachineUpdated{Machine: fx3.MachineWire(fx3.M1, true, 0, nil)},
 			},
-		},
+		}),
 	})
 	if e3.Connection() != lists.ConnConnected {
-		t.Fatalf("expected non-Ready StreamFrame during ConnConnecting to promote to ConnConnected, got %v", e3.Connection())
+		t.Fatalf("expected non-Ready StreamRawFrame during ConnConnecting to promote to ConnConnected, got %v", e3.Connection())
 	}
 
-	// PolicyViolation close discards token.
-	_, closeRes := e3.HandleEvent(&corev1.Event{
-		NowMs: now + 100,
-		Event: &corev1.Event_StreamClosed{
-			StreamClosed: &corev1.StreamClosedEvent{LegId: 7, PolicyViolation: true},
-		},
-	})
-	e3.cachedToken = "stale"
-	// Set token before close: verify DiscardToken emitted when token existed.
-	_ = closeRes
+	// PolicyViolation close clears cached auth token via SecurityTokenUpdatedEffect{Cleared: true}.
 	e4 := NewEngine()
 	e4.running = true
 	e4.legID = 8
 	e4.cachedToken = "secret-tok"
+	e4.secEngine.SetAuthToken("secret-tok", now+3*86_400_000)
 	_, pRes := e4.HandleEvent(&corev1.Event{
 		NowMs: now + 100,
 		Event: &corev1.Event_StreamClosed{
 			StreamClosed: &corev1.StreamClosedEvent{LegId: 8, PolicyViolation: true},
 		},
 	})
-	var discarded bool
+	var cleared bool
 	for _, eff := range pRes.Effects {
-		if dt := eff.GetDiscardToken(); dt != nil && dt.Token == "secret-tok" {
-			discarded = true
+		if tu := eff.GetSecurityTokenUpdated(); tu != nil && tu.Cleared {
+			cleared = true
 		}
 	}
-	if !discarded {
-		t.Fatalf("expected DiscardTokenEffect on PolicyViolation stream close")
+	if !cleared || e4.cachedToken != "" {
+		t.Fatalf("expected SecurityTokenUpdatedEffect{Cleared:true} on PolicyViolation stream close, cleared=%v tok=%q", cleared, e4.cachedToken)
 	}
 }
 
 func TestForceLoginSemantics(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
+	actor := newSyncTestActor(t, 41)
+	e.HandleEvent(&corev1.Event{
+		NowMs: now,
+		Event: &corev1.Event_SecurityConfig{
+			SecurityConfig: &corev1.SecurityConfigEvent{Account: actor.id, DeviceId: actor.id, Server: "https://relay.example.com"},
+		},
+	})
 	ids, fs := seedEntropy(10)
 	_, startRes := e.HandleEvent(&corev1.Event{
 		NowMs:      now,
@@ -323,23 +342,25 @@ func TestForceLoginSemantics(t *testing.T) {
 			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
 		},
 	})
-	var tokOp uint64
-	var force bool
+	var bootOp uint64
 	for _, eff := range startRes.Effects {
-		if et := eff.GetEnsureToken(); et != nil {
-			tokOp = et.OpId
-			force = et.ForceLogin
+		if st := eff.GetSecurityStorage(); st != nil && st.Op == corev1.SecurityStorageOp_SECURITY_STORAGE_OP_READ_BOOTSTRAP {
+			bootOp = st.OpId
 		}
 	}
-	if tokOp == 0 || force {
-		t.Fatalf("expected cold START EnsureToken with ForceLogin=false, got op=%d force=%v", tokOp, force)
+	if bootOp == 0 {
+		t.Fatalf("expected cold START to read warm token via READ_BOOTSTRAP (forceLogin=false)")
 	}
 
 	_, tokRes := e.HandleEvent(&corev1.Event{
 		NowMs:  now + 10,
 		MonoMs: 1_010,
-		Event: &corev1.Event_TokenResult{
-			TokenResult: &corev1.TokenResultEvent{OpId: tokOp, Token: "tok-stale", ExpiresMs: now + 60_000},
+		Event: &corev1.Event_SecurityStorageResult{
+			SecurityStorageResult: &corev1.SecurityStorageResultEvent{
+				OpId:                bootOp,
+				LoginToken:          "tok-stale",
+				LoginTokenExpiresMs: now + 3*86_400_000,
+			},
 		},
 	})
 	var legID uint64
@@ -359,21 +380,19 @@ func TestForceLoginSemantics(t *testing.T) {
 			StreamClosed: &corev1.StreamClosedEvent{LegId: legID, PolicyViolation: true},
 		},
 	})
-	var pvTokOp uint64
-	var pvForce bool
+	var chalOp uint64
 	var reconnectTimer uint64
 	var reconnectDelay int64
 	for _, eff := range pvRes.Effects {
-		if et := eff.GetEnsureToken(); et != nil {
-			pvTokOp = et.OpId
-			pvForce = et.ForceLogin
+		if r := eff.GetRelayRpc(); r != nil && r.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_CHALLENGE {
+			chalOp = r.OpId
 		}
 		if st := eff.GetScheduleTimer(); st != nil && st.Kind == corev1.TimerKind_TIMER_KIND_RECONNECT {
 			reconnectTimer = st.TimerId
 			reconnectDelay = st.DelayMs
 		}
 	}
-	if pvTokOp == 0 && reconnectTimer != 0 {
+	if chalOp == 0 && reconnectTimer != 0 {
 		_, timerRes := e.HandleEvent(&corev1.Event{
 			NowMs:  now + 20 + reconnectDelay,
 			MonoMs: 1_020 + reconnectDelay,
@@ -385,21 +404,53 @@ func TestForceLoginSemantics(t *testing.T) {
 			},
 		})
 		for _, eff := range timerRes.Effects {
-			if et := eff.GetEnsureToken(); et != nil {
-				pvTokOp = et.OpId
-				pvForce = et.ForceLogin
+			if r := eff.GetRelayRpc(); r != nil && r.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_CHALLENGE {
+				chalOp = r.OpId
 			}
 		}
 	}
-	if pvTokOp == 0 || !pvForce {
-		t.Fatalf("expected PolicyViolation reconnect EnsureToken with ForceLogin=true, got op=%d force=%v", pvTokOp, pvForce)
+	if chalOp == 0 || !e.forceLogin {
+		t.Fatalf("expected PolicyViolation reconnect to force fresh login (GET_CHALLENGE), got chalOp=%d forceLogin=%v", chalOp, e.forceLogin)
 	}
 
-	_, retryTokRes := e.HandleEvent(&corev1.Event{
+	_, chalRes := e.HandleEvent(&corev1.Event{
 		NowMs:  now + 30,
 		MonoMs: 1_030,
-		Event: &corev1.Event_TokenResult{
-			TokenResult: &corev1.TokenResultEvent{OpId: pvTokOp, Token: "tok-fresh", ExpiresMs: now + 120_000},
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId:          chalOp,
+				ResponseBytes: testrelay.MarshalStd(&stdv1.GetChallengeResponse{Challenge: bytes.Repeat([]byte{0x21}, 32)}),
+			},
+		},
+	})
+	var signEff *corev1.SecurityKeySignEffect
+	for _, eff := range chalRes.Effects {
+		if ks := eff.GetSecurityKeySign(); ks != nil {
+			signEff = ks
+		}
+	}
+	if signEff == nil {
+		t.Fatalf("expected SecurityKeySignEffect after GET_CHALLENGE")
+	}
+	_, signRes := e.HandleEvent(&corev1.Event{
+		NowMs:  now + 31,
+		MonoMs: 1_031,
+		Event: &corev1.Event_SecurityKeySigned{
+			SecurityKeySigned: &corev1.SecurityKeySignedEvent{OpId: signEff.OpId, Signature: ed25519.Sign(actor.ed, signEff.Message)},
+		},
+	})
+	loginRpc := testrelay.FindRelayRpc(signRes.Effects, corev1.RelayRpcMethod_RELAY_RPC_METHOD_LOGIN)
+	if loginRpc == nil {
+		t.Fatalf("expected LOGIN RelayRpc after sign")
+	}
+	_, retryTokRes := e.HandleEvent(&corev1.Event{
+		NowMs:  now + 32,
+		MonoMs: 1_032,
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId:          loginRpc.OpId,
+				ResponseBytes: testrelay.MarshalStd(&stdv1.LoginResponse{Token: "tok-fresh", ExpiresMs: now + 7*86_400_000}),
+			},
 		},
 	})
 	var leg2 uint64
@@ -412,62 +463,46 @@ func TestForceLoginSemantics(t *testing.T) {
 		t.Fatalf("expected OpenStreamEffect after forced login")
 	}
 	if e.forceLogin {
-		t.Fatalf("expected forceLogin cleared after TokenResult succeeded")
+		t.Fatalf("expected forceLogin cleared after login succeeded")
 	}
 }
 
 func TestPaginationAndPushRemovalRaces(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
-	legID, listsOpID := startAndConnect(t, e, now)
+	fx, legID, listsOps := startAndConnect(t, e, now)
 
 	// Initial seed: m1, m2, plus s_live, s_page2, s_gone.
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 40,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: listsOpID,
-				Machines: []*corev1.PlainMachine{
-					{MachineId: "m1", Online: true},
-					{MachineId: "m2", Online: true},
-				},
-				Sessions: []*corev1.PlainSession{
-					{SessionId: "s_live", MachineId: "m1", UpdatedMs: now},
-					{SessionId: "s_page2", MachineId: "m1", ListedEndedMs: 500, UpdatedMs: 500},
-					{SessionId: "s_gone", MachineId: "m1", ListedEndedMs: 900, UpdatedMs: 900},
-				},
-				Devices: []*corev1.PlainDevice{
-					{DeviceId: "d_keep", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, MetaRev: 1, Meta: &v1.DeviceMeta{Name: "initial-name"}},
-					{DeviceId: "d_removed", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, MetaRev: 1},
-				},
-				Next: &v1.SessionCursor{EndedMs: 400, SessionId: "c"},
-			},
+	deliverRefreshRelay(e, now+40, listsOps,
+		[]*v1.Machine{
+			fx.MachineWire(fx.M1, true, 0, nil),
+			fx.MachineWire(fx.M2, true, 0, nil),
 		},
-	})
+		[]*v1.RemoteSession{
+			fx.SessionWire("s_live", fx.M1, 0, now, 0, nil, nil),
+			fx.SessionWire("s_page2", fx.M1, 0, 500, 500, nil, nil),
+			fx.SessionWire("s_gone", fx.M1, 0, 900, 900, nil, nil),
+		},
+		[]*v1.Device{
+			fx.DeviceWire(fx.Client.ID, v1.DeviceKind_DEVICE_KIND_CLIENT, 0, 0, 1, &v1.DeviceMeta{Name: "initial-name"}),
+			fx.DeviceWire("d_removed", v1.DeviceKind_DEVICE_KIND_CLIENT, 0, 0, 1, nil),
+		},
+		&v1.SessionCursor{EndedMs: 400, SessionId: "c"},
+	)
 
 	// Request page 2, then trigger a newer Refresh BEFORE page 2 responds.
 	pageRes := e.Run(func(ctx *StepContext) {
 		e.RequestMoreSessions(ctx)
 	})
-	var pageOp uint64
-	for _, eff := range pageRes.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetFetchSessionsPage() != nil {
-			pageOp = rpc.OpId
-		}
-	}
-	if pageOp == 0 {
-		t.Fatalf("expected FetchSessionsPageRpc")
+	pageRpc := testrelay.FindRelayRpc(pageRes.Effects, corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS)
+	if pageRpc == nil {
+		t.Fatalf("expected LIST_REMOTE_SESSIONS RelayRpc for page 2")
 	}
 
 	refreshRes := e.Run(func(ctx *StepContext) {
 		e.startRefresh(ctx)
 	})
-	var refreshOp uint64
-	for _, eff := range refreshRes.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetFetchLists() != nil {
-			refreshOp = rpc.OpId
-		}
-	}
+	refreshOps := testrelay.MustFindRefreshOps(t, refreshRes.Effects)
 
 	// While refresh is in flight:
 	// 1. m2 is pushed online=false, then restored online=true.
@@ -475,112 +510,76 @@ func TestPaginationAndPushRemovalRaces(t *testing.T) {
 	// 3. m3 is added and then immediately removed (removedPushes).
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 60,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: legID,
-				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{MachineId: "m2", Online: false},
-				},
-			},
-		},
+		Event: testrelay.RawFrame(legID, &v1.ServerFrame{
+			Kind: &v1.ServerFrame_MachineUpdated{MachineUpdated: &v1.MachineUpdated{Machine: fx.MachineWire(fx.M2, false, 0, nil)}},
+		}),
 	})
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 65,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: legID,
-				Frame: &corev1.StreamFrameEvent_SessionUpdated{
-					SessionUpdated: &corev1.PlainSession{SessionId: "s_pushed", MachineId: "m1", UpdatedMs: now + 65},
-				},
-			},
-		},
+		Event: testrelay.RawFrame(legID, &v1.ServerFrame{
+			Kind: &v1.ServerFrame_SessionUpdated{SessionUpdated: &v1.SessionUpdated{Session: fx.SessionWire("s_pushed", fx.M1, 0, now+65, 0, nil, nil)}},
+		}),
 	})
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 70,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: legID,
-				Frame: &corev1.StreamFrameEvent_MachineRemovedId{MachineRemovedId: "m3"},
-			},
-		},
+		Event: testrelay.RawFrame(legID, &v1.ServerFrame{
+			Kind: &v1.ServerFrame_MachineRemoved{MachineRemoved: &v1.MachineRemoved{MachineId: fx.M3}},
+		}),
 	})
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 72,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: legID,
-				Frame: &corev1.StreamFrameEvent_DeviceUpdated{
-					DeviceUpdated: &corev1.PlainDevice{DeviceId: "d_pushed", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE},
-				},
-			},
-		},
+		Event: testrelay.RawFrame(legID, &v1.ServerFrame{
+			Kind: &v1.ServerFrame_DeviceUpdated{DeviceUpdated: &v1.DeviceUpdated{Device: fx.DeviceWire("d_pushed", v1.DeviceKind_DEVICE_KIND_MACHINE, 0, 0, 1, nil)}},
+		}),
 	})
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 74,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: legID,
-				Frame: &corev1.StreamFrameEvent_DeviceUpdated{
-					DeviceUpdated: &corev1.PlainDevice{
-						DeviceId: "d_keep",
-						Kind:     v1.DeviceKind_DEVICE_KIND_CLIENT,
-						MetaRev:  2,
-						Meta:     &v1.DeviceMeta{Name: "live-name"},
-					},
-				},
-			},
-		},
+		Event: testrelay.RawFrame(legID, &v1.ServerFrame{
+			Kind: &v1.ServerFrame_DeviceUpdated{DeviceUpdated: &v1.DeviceUpdated{Device: fx.DeviceWire(fx.Client.ID, v1.DeviceKind_DEVICE_KIND_CLIENT, 0, 0, 2, &v1.DeviceMeta{Name: "live-name"})}},
+		}),
 	})
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 76,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: legID,
-				Frame: &corev1.StreamFrameEvent_DeviceRemovedId{DeviceRemovedId: "d_removed"},
-			},
-		},
+		Event: testrelay.RawFrame(legID, &v1.ServerFrame{
+			Kind: &v1.ServerFrame_DeviceRemoved{DeviceRemoved: &v1.DeviceRemoved{DeviceId: "d_removed"}},
+		}),
 	})
 
 	// Server's stale snapshot returns: contains m1, m3(stale!), omits m2, s_pushed, and d_pushed, next=EndedMs:700.
 	// So s_page2 (500 < 700) is past cursor (kept in memory, unlisted), s_gone (900 > 700) was deleted (unlisted/removed).
-	_, listsRes := e.HandleEvent(&corev1.Event{
-		NowMs: now + 80,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: refreshOp,
-				Machines: []*corev1.PlainMachine{
-					{MachineId: "m1", Online: true},
-					{MachineId: "m3", Online: true}, // pushed removed! must NOT resurrect
-				},
-				Sessions: []*corev1.PlainSession{
-					{SessionId: "s_live", MachineId: "m1", UpdatedMs: now},
-				},
-				Devices: []*corev1.PlainDevice{
-					{DeviceId: "d_keep", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, MetaRev: 1, Meta: &v1.DeviceMeta{Name: "stale-name"}},
-					{DeviceId: "d_removed", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, MetaRev: 1}, // pushed removed! must NOT resurrect
-					{DeviceId: "d_listed", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, MetaRev: 1},
-				},
-				Next: &v1.SessionCursor{EndedMs: 700, SessionId: "z"},
-			},
+	dListed := fx.Machines[3].ID
+	listsRes := deliverRefreshRelay(e, now+80, refreshOps,
+		[]*v1.Machine{
+			fx.MachineWire(fx.M1, true, 0, nil),
+			fx.MachineWire(fx.M3, true, 0, nil), // pushed removed! must NOT resurrect
 		},
-	})
+		[]*v1.RemoteSession{
+			fx.SessionWire("s_live", fx.M1, 0, now, 0, nil, nil),
+		},
+		[]*v1.Device{
+			fx.DeviceWire(fx.Client.ID, v1.DeviceKind_DEVICE_KIND_CLIENT, 0, 0, 1, &v1.DeviceMeta{Name: "stale-name"}),
+			fx.DeviceWire("d_removed", v1.DeviceKind_DEVICE_KIND_CLIENT, 0, 0, 1, nil), // pushed removed! must NOT resurrect
+			fx.DeviceWire(dListed, v1.DeviceKind_DEVICE_KIND_MACHINE, 0, 0, 1, nil),
+		},
+		&v1.SessionCursor{EndedMs: 700, SessionId: "z"},
+	)
 
-	if e.MachineEntry("m2") == nil {
+	if e.MachineEntry(fx.M2) == nil {
 		t.Fatalf("pushed machine m2 should survive ListsFetched omission")
 	}
-	if e.MachineEntry("m3") != nil {
+	if e.MachineEntry(fx.M3) != nil {
 		t.Fatalf("removed machine m3 must not be resurrected by stale ListsFetched")
 	}
 	if e.devices["d_pushed"] == nil {
 		t.Fatalf("pushed device d_pushed should survive ListsFetched omission")
 	}
-	if got := e.devices["d_keep"]; got == nil || got.MetaRev != 2 || got.Meta.GetName() != "live-name" {
+	if got := e.devices[fx.Client.ID]; got == nil || got.MetaRev != 2 || got.Meta.GetName() != "live-name" {
 		t.Fatalf("live-pushed device d_keep metadata should beat stale ListsFetched, got %+v", got)
 	}
 	if e.devices["d_removed"] != nil {
 		t.Fatalf("removed device d_removed must not be resurrected by stale ListsFetched")
 	}
-	if e.devices["d_listed"] == nil {
+	if e.devices[dListed] == nil {
 		t.Fatalf("expected d_listed from ListsFetched")
 	}
 	if e.SessionEntry("s_pushed") == nil {
@@ -603,62 +602,44 @@ func TestPaginationAndPushRemovalRaces(t *testing.T) {
 	devRes := e.Run(func(ctx *StepContext) {
 		e.startRefreshDevices(ctx, true)
 	})
-	var devicesOp uint64
-	for _, eff := range devRes.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetFetchDevices() != nil {
-			devicesOp = rpc.OpId
-		}
-	}
-	if devicesOp == 0 {
-		t.Fatalf("expected FetchDevicesRpc")
+	devRpc := testrelay.FindRelayRpc(devRes.Effects, corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_DEVICES)
+	if devRpc == nil {
+		t.Fatalf("expected LIST_DEVICES RelayRpc")
 	}
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 82,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: legID,
-				Frame: &corev1.StreamFrameEvent_DeviceUpdated{
-					DeviceUpdated: &corev1.PlainDevice{DeviceId: "d_dev_pushed", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE},
-				},
-			},
-		},
+		Event: testrelay.RawFrame(legID, &v1.ServerFrame{
+			Kind: &v1.ServerFrame_DeviceUpdated{DeviceUpdated: &v1.DeviceUpdated{Device: fx.DeviceWire("d_dev_pushed", v1.DeviceKind_DEVICE_KIND_MACHINE, 0, 0, 1, nil)}},
+		}),
 	})
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 84,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: legID,
-				Frame: &corev1.StreamFrameEvent_DeviceUpdated{
-					DeviceUpdated: &corev1.PlainDevice{DeviceId: "d_dev_bounce", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT},
-				},
-			},
-		},
+		Event: testrelay.RawFrame(legID, &v1.ServerFrame{
+			Kind: &v1.ServerFrame_DeviceUpdated{DeviceUpdated: &v1.DeviceUpdated{Device: fx.DeviceWire("d_dev_bounce", v1.DeviceKind_DEVICE_KIND_CLIENT, 0, 0, 1, nil)}},
+		}),
 	})
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 86,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: legID,
-				Frame: &corev1.StreamFrameEvent_DeviceRemovedId{DeviceRemovedId: "d_dev_bounce"},
-			},
-		},
+		Event: testrelay.RawFrame(legID, &v1.ServerFrame{
+			Kind: &v1.ServerFrame_DeviceRemoved{DeviceRemoved: &v1.DeviceRemoved{DeviceId: "d_dev_bounce"}},
+		}),
 	})
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 88,
-		Event: &corev1.Event_DevicesFetched{
-			DevicesFetched: &corev1.DevicesFetchedEvent{
-				OpId: devicesOp,
-				Devices: []*corev1.PlainDevice{
-					{DeviceId: "d_dev_listed", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT},
-					{DeviceId: "d_dev_bounce", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT},
-				},
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId: devRpc.OpId,
+				ResponseBytes: testrelay.MarshalListDevicesResp([]*v1.Device{
+					fx.DeviceWire(fx.M2, v1.DeviceKind_DEVICE_KIND_MACHINE, 0, 0, 1, nil),
+					fx.DeviceWire("d_dev_bounce", v1.DeviceKind_DEVICE_KIND_CLIENT, 0, 0, 1, nil),
+				}),
 			},
 		},
 	})
 	if e.devices["d_dev_pushed"] == nil {
 		t.Fatalf("pushed device d_dev_pushed should survive in-flight FetchDevices response")
 	}
-	if e.devices["d_dev_listed"] == nil {
+	if e.devices[fx.M2] == nil {
 		t.Fatalf("expected d_dev_listed from DevicesFetched")
 	}
 	if e.devices["d_dev_bounce"] != nil {
@@ -668,12 +649,12 @@ func TestPaginationAndPushRemovalRaces(t *testing.T) {
 	// Old page 2 arrives AFTER refresh bumped listingGen -> must be ignored.
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 90,
-		Event: &corev1.Event_SessionsPageFetched{
-			SessionsPageFetched: &corev1.SessionsPageFetchedEvent{
-				OpId: pageOp,
-				Sessions: []*corev1.PlainSession{
-					{SessionId: "s_stale_page2", MachineId: "m1", ListedEndedMs: 100},
-				},
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId: pageRpc.OpId,
+				ResponseBytes: testrelay.MarshalListSessionsResp([]*v1.RemoteSession{
+					fx.SessionWire("s_stale_page2", fx.M1, 0, 0, 100, nil, nil),
+				}, nil),
 			},
 		},
 	})
@@ -685,21 +666,14 @@ func TestPaginationAndPushRemovalRaces(t *testing.T) {
 func TestEventsTailFirstGapFillBrokenCacheAndLRU(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
-	legID, listsOp := startAndConnect(t, e, now)
+	fx, legID, listsOps := startAndConnect(t, e, now)
 
 	// Session with 1200 events (exceeds EventsPageLimit = 500).
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 40,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId:     listsOp,
-				Machines: []*corev1.PlainMachine{{MachineId: "m1", Online: true}},
-				Sessions: []*corev1.PlainSession{
-					{SessionId: "s1", MachineId: "m1", LastSeq: 1200, Meta: &v1.Session{Id: "s1", Status: v1.SessionStatus_SESSION_STATUS_RUNNING}},
-				},
-			},
-		},
-	})
+	deliverRefreshRelay(e, now+40, listsOps,
+		[]*v1.Machine{fx.MachineWire(fx.M1, true, 0, nil)},
+		[]*v1.RemoteSession{fx.SessionWire("s1", fx.M1, 1200, 0, 0, &v1.Session{Id: "s1", Status: v1.SessionStatus_SESSION_STATUS_RUNNING}, nil)},
+		nil, nil,
+	)
 
 	// Watch s1 -> triggers CacheReadEvents(newest=true).
 	_, wRes := e.HandleEvent(&corev1.Event{
@@ -728,17 +702,12 @@ func TestEventsTailFirstGapFillBrokenCacheAndLRU(t *testing.T) {
 		},
 	})
 	var dropped bool
-	var fetchOp uint64
-	var fetchAfter uint64
 	for _, eff := range cRes.Effects {
 		if cd := eff.GetCacheDelete(); cd != nil && cd.GetDropEventsSessionId() == "s1" {
 			dropped = true
 		}
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
-			fetchOp = rpc.OpId
-			fetchAfter = rpc.GetGetEvents().AfterSeq
-		}
 	}
+	fetchOp, fetchAfter := testrelay.FindGetEventsOp(cRes.Effects, "")
 	if !dropped {
 		t.Fatalf("expected DropEventsSessionId on broken cache")
 	}
@@ -747,78 +716,42 @@ func TestEventsTailFirstGapFillBrokenCacheAndLRU(t *testing.T) {
 	}
 
 	// Tail page arrives (701..1200). Must be buffered in pending and next RPC drains prefix from 0!
-	tailEvents := make([]*corev1.PlainEvent, 0, 500)
-	for seq := uint64(701); seq <= 1200; seq++ {
-		tailEvents = append(tailEvents, &corev1.PlainEvent{Seq: seq, Verified: true, ApproxBytes: 64})
+	tailEvents := make([]*v1.StoredEvent, 0, 500)
+	for seq := uint64(701); seq <= 1199; seq++ {
+		tailEvents = append(tailEvents, fx.StoredEventWire("s1", seq, nil))
 	}
-	tailEvents[499].Event = &v1.Event{
-		Seq: 1200,
+	tailEvents = append(tailEvents, fx.StoredEventWire("s1", 1200, &v1.Event{
+		Seq:       1200,
+		SessionId: "s1",
 		Kind: &v1.Event_ApprovalRequested{
 			ApprovalRequested: &v1.ApprovalRequested{ApprovalId: "ap-tail", ToolName: "bash"},
 		},
-	}
-	_, tailRes := e.HandleEvent(&corev1.Event{
-		NowMs: now + 70,
-		Event: &corev1.Event_EventsPageFetched{
-			EventsPageFetched: &corev1.EventsPageFetchedEvent{
-				OpId:      fetchOp,
-				SessionId: "s1",
-				Events:    tailEvents,
-				More:      false,
-			},
-		},
-	})
+	}))
+	tailRes := deliverEventsPageRelay(e, now+70, fetchOp, tailEvents, false)
 	buf := e.Buffer("s1")
 	if buf.PrefixLen() != 0 || buf.PendingCount() != 500 {
 		t.Fatalf("expected tail buffered in pending (prefix=0, pending=500), got prefix=%d pending=%d", buf.PrefixLen(), buf.PendingCount())
 	}
 
 	// Prefix page 1 (1..500) then 2 (501..700) drains gaps seamlessly into contiguous 1200!
-	var prefixOp uint64
-	for _, eff := range tailRes.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil && rpc.GetGetEvents().AfterSeq == 0 {
-			prefixOp = rpc.OpId
-		}
+	prefixOp, prefixAfter := testrelay.FindGetEventsOp(tailRes.Effects, "")
+	if prefixOp == 0 || prefixAfter != 0 {
+		t.Fatalf("expected prefix drain GetEvents(afterSeq=0), got op=%d after=%d", prefixOp, prefixAfter)
 	}
-	if prefixOp == 0 {
-		t.Fatalf("expected prefix drain GetEvents(afterSeq=0)")
-	}
-	p1 := make([]*corev1.PlainEvent, 0, 500)
+	p1 := make([]*v1.StoredEvent, 0, 500)
 	for seq := uint64(1); seq <= 500; seq++ {
-		p1 = append(p1, &corev1.PlainEvent{Seq: seq, Verified: true, ApproxBytes: 64})
+		p1 = append(p1, fx.StoredEventWire("s1", seq, nil))
 	}
-	_, p1Res := e.HandleEvent(&corev1.Event{
-		NowMs: now + 80,
-		Event: &corev1.Event_EventsPageFetched{
-			EventsPageFetched: &corev1.EventsPageFetchedEvent{
-				OpId:      prefixOp,
-				SessionId: "s1",
-				Events:    p1,
-				More:      true,
-			},
-		},
-	})
-	var p2Op uint64
-	for _, eff := range p1Res.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil && rpc.GetGetEvents().AfterSeq == 500 {
-			p2Op = rpc.OpId
-		}
+	p1Res := deliverEventsPageRelay(e, now+80, prefixOp, p1, true)
+	p2Op, p2After := testrelay.FindGetEventsOp(p1Res.Effects, "")
+	if p2Op == 0 || p2After != 500 {
+		t.Fatalf("expected second prefix drain GetEvents(afterSeq=500), got op=%d after=%d", p2Op, p2After)
 	}
-	p2 := make([]*corev1.PlainEvent, 0, 200)
+	p2 := make([]*v1.StoredEvent, 0, 200)
 	for seq := uint64(501); seq <= 700; seq++ {
-		p2 = append(p2, &corev1.PlainEvent{Seq: seq, Verified: true, ApproxBytes: 64})
+		p2 = append(p2, fx.StoredEventWire("s1", seq, nil))
 	}
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 90,
-		Event: &corev1.Event_EventsPageFetched{
-			EventsPageFetched: &corev1.EventsPageFetchedEvent{
-				OpId:      p2Op,
-				SessionId: "s1",
-				Events:    p2,
-				More:      false,
-			},
-		},
-	})
+	deliverEventsPageRelay(e, now+90, p2Op, p2, false)
 	if buf.PrefixLen() != 1200 || buf.PendingCount() != 0 || !buf.IsLoaded() {
 		t.Fatalf("expected contiguous 1200 loaded events, got prefix=%d pending=%d loaded=%v", buf.PrefixLen(), buf.PendingCount(), buf.IsLoaded())
 	}
@@ -864,23 +797,49 @@ func TestEventsTailFirstGapFillBrokenCacheAndLRU(t *testing.T) {
 	_ = legID
 }
 
+func startDemoConnected(e *Engine, nowMs, monoMs int64) {
+	_, res := e.HandleEvent(&corev1.Event{
+		NowMs:  nowMs,
+		MonoMs: monoMs,
+		Event:  &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}},
+	})
+	if legID := testrelay.FindOpenStreamLeg(res.Effects); legID != 0 {
+		e.HandleEvent(&corev1.Event{
+			NowMs:  nowMs + 5,
+			MonoMs: monoMs + 5,
+			Event:  &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: nowMs + 5}},
+		})
+	}
+}
+
 func TestLivePollingLifecycle(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
-	legID, listsOp := startAndConnect(t, e, now)
-
+	ids, fs := seedEntropy(20)
 	e.HandleEvent(&corev1.Event{
-		NowMs: now + 40,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId:     listsOp,
-				Machines: []*corev1.PlainMachine{{MachineId: "m1", Online: true}},
-				Sessions: []*corev1.PlainSession{
-					{SessionId: "s1", MachineId: "m1", Meta: &v1.Session{Id: "s1", Status: v1.SessionStatus_SESSION_STATUS_RUNNING}},
+		NowMs:      now,
+		MonoMs:     1_000,
+		RandomIds:  ids,
+		UnitFloats: fs,
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      "c1",
+					AuthorityDeviceId: "c1",
+					LeaseEndMs:        now + 86_400_000,
+					TrustedMachineIds: []string{"m1"},
 				},
+				Machines: []*corev1.DemoMachine{{MachineId: "m1", Online: true}},
+				Sessions: []*corev1.DemoSession{{
+					SessionId: "s1",
+					MachineId: "m1",
+					RawMeta:   testrelay.MustRaw(&v1.Session{Id: "s1", Status: v1.SessionStatus_SESSION_STATUS_RUNNING}),
+				}},
 			},
 		},
 	})
+	startDemoConnected(e, now+10, 1_010)
 
 	_, watchRes := e.HandleEvent(&corev1.Event{
 		NowMs:  now + 50,
@@ -916,7 +875,7 @@ func TestLivePollingLifecycle(t *testing.T) {
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "ok",
-				Result: &v1.CommandResult{
+				RawResult: testrelay.MustRaw(&v1.CommandResult{
 					Outcome:         "executed",
 					Reason:          "ok",
 					ResultAvailable: true,
@@ -928,7 +887,7 @@ func TestLivePollingLifecycle(t *testing.T) {
 							},
 						},
 					},
-				},
+				}),
 			},
 		},
 	})
@@ -948,12 +907,9 @@ func TestLivePollingLifecycle(t *testing.T) {
 	// Machine going offline cancels LIVE_POLL timer.
 	_, offRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 70,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: legID,
-				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{MachineId: "m1", Online: false},
-				},
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Machines: []*corev1.DemoMachine{{MachineId: "m1", Online: false}},
 			},
 		},
 	})
@@ -971,86 +927,72 @@ func TestLivePollingLifecycle(t *testing.T) {
 func TestPrefsCASLoopConflictIdempotencyAndMaxAttempts(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
-	_, listsOp := startAndConnect(t, e, now)
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 40,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{OpId: listsOp},
-		},
-	})
+	fx, _, listsOps := startAndConnect(t, e, now)
+	deliverRefreshRelay(e, now+40, listsOps, nil, nil, nil, nil)
 
-	// Enqueue Pin -> GetAccountPrefs.
+	// Enqueue Pin -> GET_ACCOUNT_PREFS.
 	res := e.Run(func(ctx *StepContext) {
 		e.EnqueuePrefsOp(ctx, &lists.FullPrefsOp{Kind: lists.PrefsOpPin, Path: "/work/a"}, false, "")
 	})
-	var getOp uint64
-	for _, eff := range res.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetAccountPrefs() != nil {
-			getOp = rpc.OpId
-		}
+	getRpc := testrelay.FindRelayRpc(res.Effects, corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_ACCOUNT_PREFS)
+	if getRpc == nil {
+		t.Fatalf("expected GET_ACCOUNT_PREFS RelayRpc")
 	}
-	if getOp == 0 {
-		t.Fatalf("expected GetAccountPrefsRpc")
-	}
+	getOp := getRpc.OpId
 
 	// Simulate CAS conflict 4 times, then idempotent recent_ops hit on 5th GET!
 	var recordedOpID string
 	for attempt := 0; attempt < 4; attempt++ {
 		_, getRes := e.HandleEvent(&corev1.Event{
 			NowMs: now + int64(50+attempt*10),
-			Event: &corev1.Event_AccountPrefsFetched{
-				AccountPrefsFetched: &corev1.AccountPrefsFetchedEvent{
-					OpId: getOp,
-					Prefs: &corev1.PlainAccountPrefs{
-						Revision: uint64(attempt + 1),
-						Prefs:    &v1.ProjectPrefs{Schema: 1},
-					},
+			Event: &corev1.Event_RelayRpcResult{
+				RelayRpcResult: &corev1.RelayRpcResultEvent{
+					OpId:          getOp,
+					ResponseBytes: testrelay.MarshalGetPrefsResp(fx.PrefsWire(uint64(attempt+1), &v1.ProjectPrefs{Schema: 1})),
 				},
 			},
 		})
-		var putOp uint64
-		for _, eff := range getRes.Effects {
-			if rpc := eff.GetRpc(); rpc != nil && rpc.GetPutAccountPrefs() != nil {
-				putOp = rpc.OpId
-				if ops := rpc.GetPutAccountPrefs().GetNextPrefs().GetRecentOps(); len(ops) > 0 {
-					recordedOpID = ops[len(ops)-1]
-				}
+		pumped := fx.Pump(dispatchEngine(e), now+int64(52+attempt*10), getRes.Effects)
+		putRpc := testrelay.FindRelayRpc(pumped, corev1.RelayRpcMethod_RELAY_RPC_METHOD_PUT_ACCOUNT_PREFS)
+		if putRpc == nil {
+			t.Fatalf("expected PUT_ACCOUNT_PREFS RelayRpc on attempt %d", attempt)
+		}
+		var putReq stdv1.PutAccountPrefsRequest
+		_ = proto.Unmarshal(putRpc.RequestBytes, &putReq)
+		if putReq.Envelope != nil {
+			var nextPrefs v1.ProjectPrefs
+			_ = nextPrefs.Unmarshal(fx.OpenEnvelope(putReq.Envelope))
+			if len(nextPrefs.RecentOps) > 0 {
+				recordedOpID = nextPrefs.RecentOps[len(nextPrefs.RecentOps)-1]
 			}
 		}
 		_, putRes := e.HandleEvent(&corev1.Event{
 			NowMs: now + int64(55+attempt*10),
-			Event: &corev1.Event_AccountPrefsPutResult{
-				AccountPrefsPutResult: &corev1.AccountPrefsPutResultEvent{
-					OpId:    putOp,
-					Applied: false,
+			Event: &corev1.Event_RelayRpcResult{
+				RelayRpcResult: &corev1.RelayRpcResultEvent{
+					OpId:          putRpc.OpId,
+					ResponseBytes: testrelay.MarshalPutPrefsResp(false, nil),
 				},
 			},
 		})
-		getOp = 0
-		for _, eff := range putRes.Effects {
-			if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetAccountPrefs() != nil {
-				getOp = rpc.OpId
-			}
+		nextGet := testrelay.FindRelayRpc(putRes.Effects, corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_ACCOUNT_PREFS)
+		if nextGet == nil {
+			t.Fatalf("expected CAS retry GET_ACCOUNT_PREFS on attempt %d", attempt)
 		}
-		if getOp == 0 {
-			t.Fatalf("expected CAS retry GetAccountPrefs on attempt %d", attempt)
-		}
+		getOp = nextGet.OpId
 	}
 
 	// 5th GET finds our opID already in RecentOps -> idempotent completion!
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 100,
-		Event: &corev1.Event_AccountPrefsFetched{
-			AccountPrefsFetched: &corev1.AccountPrefsFetchedEvent{
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
 				OpId: getOp,
-				Prefs: &corev1.PlainAccountPrefs{
-					Revision: 5,
-					Prefs: &v1.ProjectPrefs{
-						Schema:    1,
-						Pinned:    []*v1.ProjectPref{{Path: "/work/a"}},
-						RecentOps: []string{recordedOpID},
-					},
-				},
+				ResponseBytes: testrelay.MarshalGetPrefsResp(fx.PrefsWire(5, &v1.ProjectPrefs{
+					Schema:    1,
+					Pinned:    []*v1.ProjectPref{{Path: "/work/a"}},
+					RecentOps: []string{recordedOpID},
+				})),
 			},
 		},
 	})
@@ -1062,37 +1004,44 @@ func TestPrefsCASLoopConflictIdempotencyAndMaxAttempts(t *testing.T) {
 func TestCommandLifecycleFrozenRetryAndObservedActions(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
-	_, listsOp := startAndConnect(t, e, now)
+	ids, fs := seedEntropy(20)
 	e.HandleEvent(&corev1.Event{
-		NowMs: now + 40,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: listsOp,
-				Machines: []*corev1.PlainMachine{
-					{
-						MachineId: "m1",
-						Online:    true,
-						Meta: &v1.MachineMeta{
-							Hostname:        "Dev",
-							ProtocolVersion: PeerVersion,
-							Capabilities:    &v1.MachineCapabilities{FileUpload: true},
-						},
-					},
+		NowMs:      now,
+		MonoMs:     1_000,
+		RandomIds:  ids,
+		UnitFloats: fs,
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      "c1",
+					AuthorityDeviceId: "c1",
+					LeaseEndMs:        now + 86_400_000,
+					TrustedMachineIds: []string{"m1"},
 				},
-				Sessions: []*corev1.PlainSession{
-					{
-						SessionId: "s1",
-						MachineId: "m1",
-						Checkpoint: &v1.LiveSnapshot{
-							Actions: []*v1.Event{
-								{Seq: 10, Kind: &v1.Event_ApprovalRequested{ApprovalRequested: &v1.ApprovalRequested{ApprovalId: "ap-10"}}},
-							},
+				Machines: []*corev1.DemoMachine{{
+					MachineId: "m1",
+					Online:    true,
+					RawMeta: testrelay.MustRaw(&v1.MachineMeta{
+						Hostname:        "Dev",
+						ProtocolVersion: PeerVersion,
+						Capabilities:    &v1.MachineCapabilities{FileUpload: true},
+					}),
+				}},
+				Sessions: []*corev1.DemoSession{{
+					SessionId: "s1",
+					MachineId: "m1",
+					LastSeq:   10,
+					RawCheckpoint: testrelay.MustRaw(&v1.LiveSnapshot{
+						Actions: []*v1.Event{
+							{Seq: 10, SessionId: "s1", Kind: &v1.Event_ApprovalRequested{ApprovalRequested: &v1.ApprovalRequested{ApprovalId: "ap-10"}}},
 						},
-					},
-				},
+					}),
+				}},
 			},
 		},
 	})
+	startDemoConnected(e, now+10, 1_010)
 
 	// Stale observed action rejected preflight.
 	staleRes := e.Run(func(ctx *StepContext) {
@@ -1180,14 +1129,14 @@ func TestCommandLifecycleFrozenRetryAndObservedActions(t *testing.T) {
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "ok",
-				Result: &v1.CommandResult{
+				RawResult: testrelay.MustRaw(&v1.CommandResult{
 					Outcome:         "executed",
 					Reason:          "ok",
 					ResultAvailable: true,
 					Kind: &v1.CommandResult_CreateSession{
 						CreateSession: &v1.CreateSessionResponse{Session: &v1.Session{Id: "new-s1"}},
 					},
-				},
+				}),
 			},
 		},
 	})
@@ -1199,65 +1148,37 @@ func TestCommandLifecycleFrozenRetryAndObservedActions(t *testing.T) {
 func TestSyncStateAndSessionDataTransitionViews(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
-	_, listsOp := startAndConnect(t, e, now)
+	fx, preRecEvent := testrelay.NewWithRecovery(t, now)
+	_, listsOps := startAndConnectWithFixture(t, e, fx, now)
 
-	_, listsRes := e.HandleEvent(&corev1.Event{
-		NowMs: now + 40,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: listsOp,
-				Machines: []*corev1.PlainMachine{
-					{
-						MachineId:  "m1",
-						Online:     true,
-						LastSeenMs: now + 35,
-						Meta: &v1.MachineMeta{
-							Hostname:        "MacStudio",
-							ProtocolVersion: PeerVersion - 1,
-						},
-					},
-				},
-				Sessions: []*corev1.PlainSession{
-					{
-						SessionId:     "s1",
-						MachineId:     "m1",
-						LastSeq:       3,
-						UpdatedMs:     now + 30,
-						ListedEndedMs: 0,
-						Meta: &v1.Session{
-							Id:        "s1",
-							Cwd:       "/work/app",
-							Agent:     v1.Agent_AGENT_CODEX,
-							Status:    v1.SessionStatus_SESSION_STATUS_RUNNING,
-							Title:     "Transition check",
-							CreatedAt: &timestamppb.Timestamp{Seconds: now / 1000},
-						},
-						Checkpoint: &v1.LiveSnapshot{
-							Running: true,
-							Actions: []*v1.Event{
-								{Seq: 3, Kind: &v1.Event_QuestionAsked{QuestionAsked: &v1.QuestionAsked{QuestionId: "q-live"}}},
-							},
-						},
-					},
-				},
-				Next: &v1.SessionCursor{EndedMs: now - 10_000, SessionId: "s0"},
-				Devices: []*corev1.PlainDevice{
-					{
-						DeviceId:  "c1",
-						Kind:      v1.DeviceKind_DEVICE_KIND_CLIENT,
-						CreatedMs: now - 100_000,
-						Meta:      &v1.DeviceMeta{Name: "MainPhone", Platform: "Android"},
-					},
-					{
-						DeviceId:  "m1",
-						Kind:      v1.DeviceKind_DEVICE_KIND_MACHINE,
-						CreatedMs: now - 200_000,
-						Meta:      &v1.DeviceMeta{Name: "MacStudio"},
-					},
-				},
-			},
+	listsRes := deliverRefreshRelay(e, now+40, listsOps,
+		[]*v1.Machine{
+			fx.MachineWire(fx.M1, true, now+35, &v1.MachineMeta{
+				Hostname:        "MacStudio",
+				ProtocolVersion: PeerVersion - 1,
+			}),
 		},
-	})
+		[]*v1.RemoteSession{
+			fx.SessionWire("s1", fx.M1, 3, now+30, 0, &v1.Session{
+				Id:        "s1",
+				Cwd:       "/work/app",
+				Agent:     v1.Agent_AGENT_CODEX,
+				Status:    v1.SessionStatus_SESSION_STATUS_RUNNING,
+				Title:     "Transition check",
+				CreatedAt: &timestamppb.Timestamp{Seconds: now / 1000},
+			}, &v1.LiveSnapshot{
+				Running: true,
+				Actions: []*v1.Event{
+					{Seq: 3, SessionId: "s1", Kind: &v1.Event_QuestionAsked{QuestionAsked: &v1.QuestionAsked{QuestionId: "q-live"}}},
+				},
+			}),
+		},
+		[]*v1.Device{
+			fx.DeviceWire(fx.Client.ID, v1.DeviceKind_DEVICE_KIND_CLIENT, now-100_000, 0, 1, &v1.DeviceMeta{Name: "MainPhone", Platform: "Android"}),
+			fx.DeviceWire(fx.M1, v1.DeviceKind_DEVICE_KIND_MACHINE, now-200_000, 0, 1, &v1.DeviceMeta{Name: "MacStudio"}),
+		},
+		&v1.SessionCursor{EndedMs: now - 10_000, SessionId: "s0"},
+	)
 	targets := listsRes.Dirty.ScreenTargets()
 	if !slices.Contains(targets, corev1.ScreenTarget_SCREEN_TARGET_HOME) || !slices.Contains(targets, corev1.ScreenTarget_SCREEN_TARGET_CONNECTION) {
 		t.Fatalf("expected Home and Connection render targets on ListsFetched, got %v", targets)
@@ -1267,14 +1188,20 @@ func TestSyncStateAndSessionDataTransitionViews(t *testing.T) {
 	if sv.Connection != corev1.ConnState_CONN_STATE_CONNECTED || !sv.LivePushConnected || !sv.IsManager || !e.World().World.HasMoreSessions {
 		t.Fatalf("unexpected SyncState header: conn=%v live=%v mgr=%v more=%v", sv.Connection, sv.LivePushConnected, sv.IsManager, e.World().World.HasMoreSessions)
 	}
-	if len(e.World().World.Machines) != 1 || !e.machines["m1"].DaemonOutOfDate || !e.machines["m1"].reachable || e.World().World.Machines[0].Meta.GetHostname() != "MacStudio" {
+	if len(e.World().World.Machines) != 1 || !e.machines[fx.M1].DaemonOutOfDate || !e.machines[fx.M1].reachable || e.World().World.Machines[0].Meta.GetHostname() != "MacStudio" {
 		t.Fatalf("unexpected machines: %+v", e.World().World.Machines)
 	}
 	snap1 := e.SessionSnapshot("s1")
 	if !snap1.Found || !e.listed["s1"] || snap1.Session == nil || !snap1.Session.Pending.HasQuestion {
 		t.Fatalf("unexpected session snapshot: %+v", snap1)
 	}
-	if len(sv.Devices) != 2 || !sv.Devices[1].Trusted {
+	var foundM1Trusted bool
+	for _, d := range sv.Devices {
+		if d.DeviceID == fx.M1 && d.Trusted {
+			foundM1Trusted = true
+		}
+	}
+	if len(sv.Devices) < 2 || !foundM1Trusted {
 		t.Fatalf("unexpected SyncState devices: %+v", sv.Devices)
 	}
 
@@ -1310,27 +1237,12 @@ func TestSyncStateAndSessionDataTransitionViews(t *testing.T) {
 	if !loadingBuf.retryingCorruptCache || !loadingBuf.fetching {
 		t.Fatalf("expected retryingCorruptCache+fetching after broken cache drop, got retry=%v fetch=%v", loadingBuf.retryingCorruptCache, loadingBuf.fetching)
 	}
-	var getEventsOp uint64
-	for _, eff := range brokenRes.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
-			getEventsOp = rpc.OpId
-		}
-	}
-
-	_, evRes := e.HandleEvent(&corev1.Event{
-		NowMs: now + 70,
-		Event: &corev1.Event_EventsPageFetched{
-			EventsPageFetched: &corev1.EventsPageFetchedEvent{
-				OpId:      getEventsOp,
-				SessionId: "s1",
-				Events: []*corev1.PlainEvent{
-					{Seq: 1, Unavailable: true, ApproxBytes: 32},
-					{Seq: 2, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 2, Kind: &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "hi"}}}},
-					{Seq: 3, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 3, Kind: &v1.Event_AgentMessage{AgentMessage: &v1.AgentMessage{Text: "hello"}}}},
-				},
-			},
-		},
-	})
+	getEventsOp, _ := testrelay.FindGetEventsOp(brokenRes.Effects, "")
+	evRes := deliverEventsPageRelay(e, now+70, getEventsOp, []*v1.StoredEvent{
+		preRecEvent("s1", fx.M1, 1),
+		fx.StoredEventWire("s1", 2, &v1.Event{Seq: 2, SessionId: "s1", Kind: &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "hi"}}}),
+		fx.StoredEventWire("s1", 3, &v1.Event{Seq: 3, SessionId: "s1", Kind: &v1.Event_AgentMessage{AgentMessage: &v1.AgentMessage{Text: "hello"}}}),
+	}, false)
 	if !evRes.Dirty.SessionData {
 		t.Fatalf("expected Dirty.SessionData on EventsPageFetched")
 	}
@@ -1438,21 +1350,18 @@ func TestSecurityAndDevicesGenerationChecks(t *testing.T) {
 	e.legID = 42
 	_, mrRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 30,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 42,
-				Frame: &corev1.StreamFrameEvent_MachineRemovedId{MachineRemovedId: "m1"},
-			},
-		},
+		Event: testrelay.RawFrame(42, &v1.ServerFrame{
+			Kind: &v1.ServerFrame_MachineRemoved{MachineRemoved: &v1.MachineRemoved{MachineId: "m1"}},
+		}),
 	})
 	var secOp uint64
 	for _, eff := range mrRes.Effects {
-		if sr := eff.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+		if sr := eff.GetRelayRpc(); sr != nil && sr.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SECURITY_STATES {
 			secOp = sr.OpId
 		}
 	}
 	if secOp == 0 {
-		t.Fatalf("expected MachineRemovedId stream frame to emit GET_SECURITY_STATES SecurityRpcEffect with non-zero OpId")
+		t.Fatalf("expected MachineRemoved stream frame to emit GET_SECURITY_STATES RelayRpcEffect with non-zero OpId")
 	}
 	statesRespRaw, err := proto.Marshal(&stdv1.GetSecurityStatesResponse{
 		HeadEpoch: 3,
@@ -1463,20 +1372,20 @@ func TestSecurityAndDevicesGenerationChecks(t *testing.T) {
 	}
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 35,
-		Event: &corev1.Event_SecurityRpcResult{
-			SecurityRpcResult: &corev1.SecurityRpcResultEvent{
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
 				OpId:          secOp + 99,
 				ResponseBytes: statesRespRaw,
 			},
 		},
 	})
 	if e.security.HeadEpoch != 2 {
-		t.Fatalf("expected wrong opId SecurityRpcResult to be ignored, got epoch=%d", e.security.HeadEpoch)
+		t.Fatalf("expected wrong opId RelayRpcResult to be ignored, got epoch=%d", e.security.HeadEpoch)
 	}
 	_, rpcDone := e.HandleEvent(&corev1.Event{
 		NowMs: now + 40,
-		Event: &corev1.Event_SecurityRpcResult{
-			SecurityRpcResult: &corev1.SecurityRpcResultEvent{
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
 				OpId:          secOp,
 				ResponseBytes: statesRespRaw,
 			},
@@ -1521,12 +1430,12 @@ func TestSecurityAndDevicesGenerationChecks(t *testing.T) {
 				})
 				q = append(q, nextRes.Effects...)
 			}
-		} else if sr := eff.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+		} else if sr := eff.GetRelayRpc(); sr != nil && sr.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SECURITY_STATES {
 			emptyStates3Raw, _ := proto.Marshal(&stdv1.GetSecurityStatesResponse{HeadEpoch: 3})
 			_, nextRes := e.HandleEvent(&corev1.Event{
 				NowMs: now + 42,
-				Event: &corev1.Event_SecurityRpcResult{
-					SecurityRpcResult: &corev1.SecurityRpcResultEvent{OpId: sr.OpId, ResponseBytes: emptyStates3Raw},
+				Event: &corev1.Event_RelayRpcResult{
+					RelayRpcResult: &corev1.RelayRpcResultEvent{OpId: sr.OpId, ResponseBytes: emptyStates3Raw},
 				},
 			})
 			q = append(q, nextRes.Effects...)
@@ -1541,67 +1450,57 @@ func TestSecurityAndDevicesGenerationChecks(t *testing.T) {
 		}
 	}
 	if e.security.HeadEpoch != 3 {
-		t.Fatalf("expected matching opId SecurityRpcResult to apply epoch=3, got %d", e.security.HeadEpoch)
+		t.Fatalf("expected matching opId RelayRpcResult to apply epoch=3, got %d", e.security.HeadEpoch)
 	}
 
-	// 4. DevicesFetched: opId=0, pushSeq=0 is rejected; pushSeq=2 accepted; pushSeq=1 rejected.
+	// 4. Stale LIST_DEVICES RelayRpcResult (unmatched OpId) is rejected; matching OpId populates devices.
+	devStep := e.Run(func(ctx *StepContext) {
+		e.startRefreshDevices(ctx, true)
+	})
+	devRpc := testrelay.FindRelayRpc(devStep.Effects, corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_DEVICES)
+	if devRpc == nil {
+		t.Fatalf("expected LIST_DEVICES RelayRpc")
+	}
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 50,
-		Event: &corev1.Event_DevicesFetched{
-			DevicesFetched: &corev1.DevicesFetchedEvent{
-				Devices: []*corev1.PlainDevice{{DeviceId: "d-bad"}},
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId:          devRpc.OpId + 99,
+				ResponseBytes: testrelay.MarshalListDevicesResp([]*v1.Device{{Id: "d-bad"}}),
 			},
 		},
 	})
 	if _, ok := e.devices["d-bad"]; ok {
-		t.Fatalf("expected DevicesFetched with opId=0 and pushSeq=0 to be dropped")
+		t.Fatalf("expected unmatched LIST_DEVICES RelayRpcResult to be dropped")
 	}
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 55,
-		Event: &corev1.Event_DevicesFetched{
-			DevicesFetched: &corev1.DevicesFetchedEvent{
-				PushSeq: 2,
-				Devices: []*corev1.PlainDevice{{DeviceId: "d-2"}},
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId:          devRpc.OpId,
+				ResponseBytes: testrelay.MarshalListDevicesResp([]*v1.Device{{Id: m1.id, Kind: v1.DeviceKind_DEVICE_KIND_MACHINE}}),
 			},
 		},
 	})
-	if _, ok := e.devices["d-2"]; !ok {
-		t.Fatalf("expected DevicesFetched pushSeq=2 to populate d-2")
-	}
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 60,
-		Event: &corev1.Event_DevicesFetched{
-			DevicesFetched: &corev1.DevicesFetchedEvent{
-				PushSeq: 1,
-				Devices: []*corev1.PlainDevice{{DeviceId: "d-stale"}},
-			},
-		},
-	})
-	if _, ok := e.devices["d-2"]; !ok {
-		t.Fatalf("expected stale DevicesFetched pushSeq=1 to be ignored")
-	}
-	if _, ok := e.devices["d-stale"]; ok {
-		t.Fatalf("expected stale DevicesFetched pushSeq=1 not to add d-stale")
+	if _, ok := e.devices[m1.id]; !ok {
+		t.Fatalf("expected matching LIST_DEVICES RelayRpcResult to populate trusted device %s", m1.id)
 	}
 
-	// 5. DeviceRemovedId stream frame also emits SecurityRpc(GET_SECURITY_STATES) directly from core.
+	// 5. DeviceRemoved stream frame also emits RelayRpc(GET_SECURITY_STATES) directly from core.
 	_, drRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 70,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 42,
-				Frame: &corev1.StreamFrameEvent_DeviceRemovedId{DeviceRemovedId: "d-2"},
-			},
-		},
+		Event: testrelay.RawFrame(42, &v1.ServerFrame{
+			Kind: &v1.ServerFrame_DeviceRemoved{DeviceRemoved: &v1.DeviceRemoved{DeviceId: m1.id}},
+		}),
 	})
 	var gotSecSync bool
 	for _, eff := range drRes.Effects {
-		if sr := eff.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES && sr.OpId != 0 {
+		if sr := eff.GetRelayRpc(); sr != nil && sr.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SECURITY_STATES && sr.OpId != 0 {
 			gotSecSync = true
 		}
 	}
 	if !gotSecSync {
-		t.Fatalf("expected DeviceRemovedId stream frame to emit GET_SECURITY_STATES SecurityRpcEffect")
+		t.Fatalf("expected DeviceRemoved stream frame to emit GET_SECURITY_STATES RelayRpcEffect")
 	}
 }
 
@@ -1691,22 +1590,22 @@ func TestResumeAfterStopAndBackgroundEmitsSyncStatesRpc(t *testing.T) {
 	})
 	var startRpcOp uint64
 	for _, eff := range res.Effects {
-		if sr := eff.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+		if sr := eff.GetRelayRpc(); sr != nil && sr.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SECURITY_STATES {
 			startRpcOp = sr.OpId
 		}
 	}
 	if startRpcOp == 0 || e.networkGen == 0 {
-		t.Fatalf("expected START after STOP to emit GET_SECURITY_STATES SecurityRpcEffect and advance networkGen, got op=%d gen=%d", startRpcOp, e.networkGen)
+		t.Fatalf("expected START after STOP to emit GET_SECURITY_STATES RelayRpcEffect and advance networkGen, got op=%d gen=%d", startRpcOp, e.networkGen)
 	}
 	emptyStatesRaw, _ := proto.Marshal(&stdv1.GetSecurityStatesResponse{HeadEpoch: 1})
 	e.HandleEvent(&corev1.Event{
 		NowMs: 2_110 + now,
-		Event: &corev1.Event_SecurityRpcResult{
-			SecurityRpcResult: &corev1.SecurityRpcResultEvent{OpId: startRpcOp, ResponseBytes: emptyStatesRaw},
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{OpId: startRpcOp, ResponseBytes: emptyStatesRaw},
 		},
 	})
 
-	// 2. BACKGROUND -> FOREGROUND while running/stream open must also emit GET_SECURITY_STATES SecurityRpcEffect.
+	// 2. BACKGROUND -> FOREGROUND while running/stream open must also emit GET_SECURITY_STATES RelayRpcEffect.
 	prevGen := e.networkGen
 	e.w.LivePushConnected = true
 	e.HandleEvent(&corev1.Event{
@@ -1723,12 +1622,12 @@ func TestResumeAfterStopAndBackgroundEmitsSyncStatesRpc(t *testing.T) {
 	})
 	var fgRpcOp uint64
 	for _, eff := range fgRes.Effects {
-		if sr := eff.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+		if sr := eff.GetRelayRpc(); sr != nil && sr.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SECURITY_STATES {
 			fgRpcOp = sr.OpId
 		}
 	}
 	if fgRpcOp == 0 || e.networkGen <= prevGen {
-		t.Fatalf("expected FOREGROUND after BACKGROUND to emit GET_SECURITY_STATES SecurityRpcEffect with networkGen>%d, got op=%d gen=%d", prevGen, fgRpcOp, e.networkGen)
+		t.Fatalf("expected FOREGROUND after BACKGROUND to emit GET_SECURITY_STATES RelayRpcEffect with networkGen>%d, got op=%d gen=%d", prevGen, fgRpcOp, e.networkGen)
 	}
 }
 
@@ -1896,6 +1795,9 @@ func TestColdStartGraceHoldsUnknownReachabilityUntilListsOrExpiry(t *testing.T) 
 			name: "cold_start_connecting_keeps_reachability_unknown_until_lists_fetched",
 			run: func(t *testing.T) {
 				e := NewEngine()
+				fx := testrelay.New(t, 1_000)
+				fx.Bootstrap(dispatchEngine(e), 1_000)
+				e.secEngine.SetAuthToken("tok-1", 1_000+7*86_400_000)
 				ids, fs := seedEntropy(8)
 				_, startRes := e.HandleEvent(&corev1.Event{
 					NowMs:      1_000,
@@ -1917,15 +1819,13 @@ func TestColdStartGraceHoldsUnknownReachabilityUntilListsOrExpiry(t *testing.T) 
 
 				// Cached offline machine + running session retain ReachabilityUnknown during grace.
 				var bootOp uint64
+				var legID uint64
 				for _, eff := range startRes.Effects {
 					if cr := eff.GetCacheRead(); cr != nil && cr.GetBootstrap() != nil {
 						bootOp = cr.GetBootstrap().OpId
 					}
-				}
-				var tokOp uint64
-				for _, eff := range startRes.Effects {
-					if et := eff.GetEnsureToken(); et != nil {
-						tokOp = et.OpId
+					if osEff := eff.GetOpenStream(); osEff != nil {
+						legID = osEff.LegId
 					}
 				}
 				e.HandleEvent(&corev1.Event{
@@ -1933,13 +1833,9 @@ func TestColdStartGraceHoldsUnknownReachabilityUntilListsOrExpiry(t *testing.T) 
 					MonoMs: 1_020,
 					Event: &corev1.Event_CacheBootstrapLoaded{
 						CacheBootstrapLoaded: &corev1.CacheBootstrapLoadedEvent{
-							OpId: bootOp,
-							Machines: []*corev1.PlainMachine{
-								{MachineId: "m1", Online: false},
-							},
-							Sessions: []*corev1.PlainSession{
-								{SessionId: "s1", MachineId: "m1", Meta: &v1.Session{Id: "s1", Status: v1.SessionStatus_SESSION_STATUS_RUNNING}},
-							},
+							OpId:        bootOp,
+							RawMachines: testrelay.MustRawSlice([]*v1.Machine{fx.MachineWire(fx.M1, false, 0, nil)}),
+							RawSessions: testrelay.MustRawSlice([]*v1.RemoteSession{fx.SessionWire("s1", fx.M1, 0, 0, 0, &v1.Session{Id: "s1", Status: v1.SessionStatus_SESSION_STATUS_RUNNING}, nil)}),
 						},
 					},
 				})
@@ -1951,20 +1847,7 @@ func TestColdStartGraceHoldsUnknownReachabilityUntilListsOrExpiry(t *testing.T) 
 					t.Fatalf("expected SessionSnapshot to carry ReachabilityUnknown=true, got snap=%+v", snapBoot)
 				}
 
-				// TokenResult + StreamReady before ListsFetched: connection is CONNECTED, reachability still UNKNOWN.
-				_, tokRes := e.HandleEvent(&corev1.Event{
-					NowMs:  1_040,
-					MonoMs: 1_040,
-					Event: &corev1.Event_TokenResult{
-						TokenResult: &corev1.TokenResultEvent{OpId: tokOp, Token: "tok-1"},
-					},
-				})
-				var legID uint64
-				for _, eff := range tokRes.Effects {
-					if osEff := eff.GetOpenStream(); osEff != nil {
-						legID = osEff.LegId
-					}
-				}
+				// StreamReady before lists finish: connection is CONNECTED, reachability still UNKNOWN.
 				_, readyRes := e.HandleEvent(&corev1.Event{
 					NowMs:  1_100,
 					MonoMs: 1_100,
@@ -1972,30 +1855,19 @@ func TestColdStartGraceHoldsUnknownReachabilityUntilListsOrExpiry(t *testing.T) 
 						StreamReady: &corev1.StreamReadyEvent{LegId: legID},
 					},
 				})
-				var listsOp uint64
-				for _, eff := range readyRes.Effects {
-					if rpc := eff.GetRpc(); rpc != nil && rpc.GetFetchLists() != nil {
-						listsOp = rpc.OpId
-					}
-				}
+				listsOps := testrelay.MustFindRefreshOps(t, readyRes.Effects)
 				vStream := e.BuildSyncState(SyncStateOpts{})
 				if vStream.Connection != corev1.ConnState_CONN_STATE_CONNECTED || !vStream.ReachabilityUnknown {
 					t.Fatalf("expected CONNECTED + ReachabilityUnknown=true between StreamReady and ListsFetched, got conn=%v unknown=%v",
 						vStream.Connection, vStream.ReachabilityUnknown)
 				}
 
-				// ListsFetched arrives with authoritative machine status and clears cold-start grace.
-				e.HandleEvent(&corev1.Event{
-					NowMs:  1_150,
-					MonoMs: 1_150,
-					Event: &corev1.Event_ListsFetched{
-						ListsFetched: &corev1.ListsFetchedEvent{
-							OpId:     listsOp,
-							Machines: []*corev1.PlainMachine{{MachineId: "m1", Online: true}},
-							Sessions: []*corev1.PlainSession{{SessionId: "s1", MachineId: "m1", Meta: &v1.Session{Id: "s1", Status: v1.SessionStatus_SESSION_STATUS_RUNNING}}},
-						},
-					},
-				})
+				// Lists arrive with authoritative machine status and clear cold-start grace.
+				deliverRefreshRelay(e, 1_150, listsOps,
+					[]*v1.Machine{fx.MachineWire(fx.M1, true, 0, nil)},
+					[]*v1.RemoteSession{fx.SessionWire("s1", fx.M1, 0, 0, 0, &v1.Session{Id: "s1", Status: v1.SessionStatus_SESSION_STATUS_RUNNING}, nil)},
+					nil, nil,
+				)
 				vDone := e.BuildSyncState(SyncStateOpts{})
 				if vDone.ReachabilityUnknown || vDone.Unlinked {
 					t.Fatalf("expected ListsFetched to clear ReachabilityUnknown and Unlinked, got unknown=%v unlinked=%v",
@@ -2010,6 +1882,9 @@ func TestColdStartGraceHoldsUnknownReachabilityUntilListsOrExpiry(t *testing.T) 
 			name: "cold_start_grace_expires_on_timer_and_exposes_offline_machine",
 			run: func(t *testing.T) {
 				e := NewEngine()
+				fx := testrelay.New(t, 1_000)
+				fx.Bootstrap(dispatchEngine(e), 1_000)
+				e.secEngine.SetAuthToken("tok-1", 1_000+7*86_400_000)
 				ids, fs := seedEntropy(8)
 				_, startRes := e.HandleEvent(&corev1.Event{
 					NowMs:      1_000,
@@ -2032,8 +1907,8 @@ func TestColdStartGraceHoldsUnknownReachabilityUntilListsOrExpiry(t *testing.T) 
 					MonoMs: 1_020,
 					Event: &corev1.Event_CacheBootstrapLoaded{
 						CacheBootstrapLoaded: &corev1.CacheBootstrapLoadedEvent{
-							OpId:     bootOp,
-							Machines: []*corev1.PlainMachine{{MachineId: "m1", Online: false}},
+							OpId:        bootOp,
+							RawMachines: testrelay.MustRawSlice([]*v1.Machine{fx.MachineWire(fx.M1, false, 0, nil)}),
 						},
 					},
 				})
@@ -2075,6 +1950,13 @@ func TestColdStartGraceHoldsUnknownReachabilityUntilListsOrExpiry(t *testing.T) 
 			name: "account_removed_clears_cold_start_grace_immediately",
 			run: func(t *testing.T) {
 				e := NewEngine()
+				actor := newSyncTestActor(t, 47)
+				e.HandleEvent(&corev1.Event{
+					NowMs: 1_000,
+					Event: &corev1.Event_SecurityConfig{
+						SecurityConfig: &corev1.SecurityConfigEvent{Account: actor.id, DeviceId: actor.id, Server: "https://relay.example.com"},
+					},
+				})
 				ids, fs := seedEntropy(8)
 				_, startRes := e.HandleEvent(&corev1.Event{
 					NowMs:      1_000,
@@ -2085,22 +1967,49 @@ func TestColdStartGraceHoldsUnknownReachabilityUntilListsOrExpiry(t *testing.T) 
 						SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
 					},
 				})
-				var tokOp uint64
+				var bootOp uint64
 				for _, eff := range startRes.Effects {
-					if et := eff.GetEnsureToken(); et != nil {
-						tokOp = et.OpId
+					if st := eff.GetSecurityStorage(); st != nil && st.Op == corev1.SecurityStorageOp_SECURITY_STORAGE_OP_READ_BOOTSTRAP {
+						bootOp = st.OpId
 					}
 				}
 				if !e.BuildSyncState(SyncStateOpts{}).ReachabilityUnknown {
 					t.Fatalf("expected ReachabilityUnknown=true on start")
 				}
-				e.HandleEvent(&corev1.Event{
-					NowMs:  1_050,
-					MonoMs: 1_050,
-					Event: &corev1.Event_TokenResult{
-						TokenResult: &corev1.TokenResultEvent{OpId: tokOp, Removed: true},
-					},
+				// Drive two PermissionDenied logins so secEngine reports Removed=true.
+				_, stepRes := e.HandleEvent(&corev1.Event{
+					NowMs: 1_010,
+					Event: &corev1.Event_SecurityStorageResult{SecurityStorageResult: &corev1.SecurityStorageResultEvent{OpId: bootOp}},
 				})
+				for attempt := 0; attempt < 2; attempt++ {
+					chal := testrelay.FindRelayRpc(stepRes.Effects, corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_CHALLENGE)
+					_, cr := e.HandleEvent(&corev1.Event{
+						NowMs: 1_020 + int64(attempt*10),
+						Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+							OpId:          chal.OpId,
+							ResponseBytes: testrelay.MarshalStd(&stdv1.GetChallengeResponse{Challenge: bytes.Repeat([]byte{0x12}, 32)}),
+						}},
+					})
+					var ks *corev1.SecurityKeySignEffect
+					for _, eff := range cr.Effects {
+						if s := eff.GetSecurityKeySign(); s != nil {
+							ks = s
+						}
+					}
+					_, sr := e.HandleEvent(&corev1.Event{
+						NowMs: 1_025 + int64(attempt*10),
+						Event: &corev1.Event_SecurityKeySigned{SecurityKeySigned: &corev1.SecurityKeySignedEvent{OpId: ks.OpId, Signature: ed25519.Sign(actor.ed, ks.Message)}},
+					})
+					login := testrelay.FindRelayRpc(sr.Effects, corev1.RelayRpcMethod_RELAY_RPC_METHOD_LOGIN)
+					_, stepRes = e.HandleEvent(&corev1.Event{
+						NowMs: 1_028 + int64(attempt*10),
+						Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+							OpId:              login.OpId,
+							ConnectCode:       security.ConnectCodePermissionDenied,
+							DiagnosticMessage: "device removed",
+						}},
+					})
+				}
 				after := e.BuildSyncState(SyncStateOpts{})
 				if after.ReachabilityUnknown || !after.Removed {
 					t.Fatalf("expected Removed=true and ReachabilityUnknown=false on account removal, got unknown=%v removed=%v",
@@ -2118,41 +2027,16 @@ func TestColdStartGraceHoldsUnknownReachabilityUntilListsOrExpiry(t *testing.T) 
 func TestDirectEventsDedupAndCacheWriteOnRelay(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
-	legID, listsOp := startAndConnect(t, e, now)
-	client := newDirectTestActor(t, 11, 1)
-	m1Actor := newDirectTestActor(t, 12, 2)
-	m2Actor := newDirectTestActor(t, 13, 2)
-	m1, m2 := m1Actor.id, m2Actor.id
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 35,
-		Event: &corev1.Event_SeedDemoWorld{
-			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
-				Security: &corev1.DemoSecurity{
-					IsMember:          true,
-					SelfDeviceId:      client.id,
-					AuthorityDeviceId: client.id,
-					LeaseEndMs:        now + 86_400_000,
-					TrustedMachineIds: []string{m1, m2},
-				},
-			},
-		},
-	})
+	fx, legID, listsOps := startAndConnect(t, e, now)
+	client := directActorFrom(t, fx.Client)
+	m1Actor := directActorFrom(t, fx.Machines[0])
+	m1, m2 := fx.M1, fx.M2
 
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 40,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: listsOp,
-				Machines: []*corev1.PlainMachine{
-					{MachineId: m1, Online: true},
-					{MachineId: m2, Online: true},
-				},
-				Sessions: []*corev1.PlainSession{
-					{SessionId: "s1", MachineId: m1, LastSeq: 2, UpdatedMs: now},
-				},
-			},
-		},
-	})
+	deliverRefreshRelay(e, now+40, listsOps,
+		[]*v1.Machine{fx.MachineWire(m1, true, 0, nil), fx.MachineWire(m2, true, 0, nil)},
+		[]*v1.RemoteSession{fx.SessionWire("s1", m1, 2, now, 0, nil, nil)},
+		nil, nil,
+	)
 	_, watchRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 50,
 		Event: &corev1.Event_SessionWatch{
@@ -2174,42 +2058,25 @@ func TestDirectEventsDedupAndCacheWriteOnRelay(t *testing.T) {
 			CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{OpId: cacheOp, SessionId: "s1"},
 		},
 	})
-	var fetchOp uint64
-	for _, eff := range loadedRes.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
-			fetchOp = rpc.OpId
-		}
-	}
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 70,
-		Event: &corev1.Event_EventsPageFetched{
-			EventsPageFetched: &corev1.EventsPageFetchedEvent{
-				OpId:      fetchOp,
-				SessionId: "s1",
-				Events: []*corev1.PlainEvent{
-					{Seq: 1, Verified: true, Event: &v1.Event{Seq: 1, SessionId: "s1"}},
-					{Seq: 2, Verified: true, Event: &v1.Event{Seq: 2, SessionId: "s1"}},
-				},
-				More: false,
-			},
-		},
-	})
-	readPCID, hsNow := connectDirectForExistingEngine(t, e, now+75, client, m1Actor)
+	fetchOp, _ := testrelay.FindGetEventsOp(loadedRes.Effects, "")
+	deliverEventsPageRelay(e, now+70, fetchOp, []*v1.StoredEvent{
+		fx.StoredEventWire("s1", 1, nil),
+		fx.StoredEventWire("s1", 2, nil),
+	}, false)
+	readPCID, hsNow, sealer := connectDirectForExistingEngine(t, e, now+75, client, m1Actor)
 	now = hsNow
 
 	// 1. Direct event seq=3 arrives before relay: updates display prefix and LastSeq,
 	// does NOT advance ServerLastSeq, and emits NO CacheWriteEffect.
+	env3 := sealer.sealDirectEvent("s1", 3, m1Actor)
 	_, directRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 10,
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId: m1,
-				SessionId: "s1",
-				PcId:      readPCID,
-				Sender:    m1,
-				Events: []*corev1.PlainEvent{
-					{Seq: 3, Verified: true, Event: &v1.Event{Seq: 3, SessionId: "s1"}},
-				},
+				MachineId:    m1,
+				SessionId:    "s1",
+				PcId:         readPCID,
+				RawEnvelopes: testrelay.MustRawSlice([]*v1.Envelope{env3}),
 			},
 		},
 	})
@@ -2231,19 +2098,14 @@ func TestDirectEventsDedupAndCacheWriteOnRelay(t *testing.T) {
 	// 2. Relay EventsAppended arrives with seq=3 later: deduplicates and advances ServerLastSeq.
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 20,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: legID,
-				Frame: &corev1.StreamFrameEvent_EventsAppended{
-					EventsAppended: &corev1.EventsAppendedFrame{
-						SessionId: "s1",
-						Events: []*corev1.PlainEvent{
-							{Seq: 3, Verified: true, Event: &v1.Event{Seq: 3, SessionId: "s1"}},
-						},
-					},
+		Event: testrelay.RawFrame(legID, &v1.ServerFrame{
+			Kind: &v1.ServerFrame_EventsAppended{
+				EventsAppended: &v1.EventsAppended{
+					SessionId: "s1",
+					Events:    []*v1.StoredEvent{{Seq: 3, Envelope: env3}},
 				},
 			},
-		},
+		}),
 	})
 	if buf := e.Buffer("s1"); buf.PrefixLen() != 3 {
 		t.Fatalf("expected deduplicated prefix=3, got %d", buf.PrefixLen())
@@ -2252,31 +2114,31 @@ func TestDirectEventsDedupAndCacheWriteOnRelay(t *testing.T) {
 		t.Fatalf("expected ServerLastSeq=3 after relay EventsAppended, got %d", s.ServerLastSeq)
 	}
 
-	// 3. Cross-machine spoofing, untrusted machine, and defensive Broken/Retired items are ignored.
+	// 3. Cross-machine spoofing, untrusted machine, and corrupted direct items are ignored.
 	_, spoofRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 25,
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId: m2, // wrong owner for s1
-				SessionId: "s1",
-				PcId:      readPCID,
-				Sender:    m2,
-				Events:    []*corev1.PlainEvent{{Seq: 4, Verified: true, Event: &v1.Event{Seq: 4, SessionId: "s1"}}},
+				MachineId:    m2, // wrong owner for s1
+				SessionId:    "s1",
+				PcId:         readPCID,
+				RawEnvelopes: testrelay.MustRawSlice([]*v1.Envelope{sealer.sealDirectEvent("s1", 4, m1Actor)}),
 			},
 		},
 	})
 	if e.Buffer("s1").PrefixLen() != 3 || spoofRes.Dirty.SessionData {
 		t.Fatalf("cross-machine direct event must be rejected")
 	}
+	badEnv4 := sealer.sealDirectEvent("s1", 4, m1Actor)
+	badEnv4.Ciphertext[0] ^= 0xff
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 26,
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId: m1,
-				SessionId: "s1",
-				PcId:      readPCID,
-				Sender:    m1,
-				Events:    []*corev1.PlainEvent{{Seq: 4, Broken: true, Retired: true}},
+				MachineId:    m1,
+				SessionId:    "s1",
+				PcId:         readPCID,
+				RawEnvelopes: testrelay.MustRawSlice([]*v1.Envelope{badEnv4}),
 			},
 		},
 	})
@@ -2288,35 +2150,16 @@ func TestDirectEventsDedupAndCacheWriteOnRelay(t *testing.T) {
 func TestDirectAheadGapDoesNotFalseErrorAndTriggersServerGapFill(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
-	legID, listsOp := startAndConnect(t, e, now)
-	client := newDirectTestActor(t, 21, 1)
-	m1Actor := newDirectTestActor(t, 22, 2)
-	m1 := m1Actor.id
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 35,
-		Event: &corev1.Event_SeedDemoWorld{
-			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
-				Security: &corev1.DemoSecurity{
-					IsMember:          true,
-					SelfDeviceId:      client.id,
-					AuthorityDeviceId: client.id,
-					LeaseEndMs:        now + 86_400_000,
-					TrustedMachineIds: []string{m1},
-				},
-			},
-		},
-	})
+	fx, legID, listsOps := startAndConnect(t, e, now)
+	client := directActorFrom(t, fx.Client)
+	m1Actor := directActorFrom(t, fx.Machines[0])
+	m1 := fx.M1
 
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 40,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId:     listsOp,
-				Machines: []*corev1.PlainMachine{{MachineId: m1, Online: true}},
-				Sessions: []*corev1.PlainSession{{SessionId: "s1", MachineId: m1, LastSeq: 40, UpdatedMs: now}},
-			},
-		},
-	})
+	deliverRefreshRelay(e, now+40, listsOps,
+		[]*v1.Machine{fx.MachineWire(m1, true, 0, nil)},
+		[]*v1.RemoteSession{fx.SessionWire("s1", m1, 40, now, 0, nil, nil)},
+		nil, nil,
+	)
 	_, watchRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 50,
 		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s1", Watched: true}},
@@ -2331,24 +2174,13 @@ func TestDirectAheadGapDoesNotFalseErrorAndTriggersServerGapFill(t *testing.T) {
 		NowMs: now + 60,
 		Event: &corev1.Event_CacheEventsLoaded{CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{OpId: cacheOp, SessionId: "s1"}},
 	})
-	var fetchOp uint64
-	for _, eff := range loadedRes.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
-			fetchOp = rpc.OpId
-		}
-	}
-	initEvents := make([]*corev1.PlainEvent, 40)
+	fetchOp, _ := testrelay.FindGetEventsOp(loadedRes.Effects, "")
+	initEvents := make([]*v1.StoredEvent, 40)
 	for i := 0; i < 40; i++ {
-		seq := uint64(i + 1)
-		initEvents[i] = &corev1.PlainEvent{Seq: seq, Verified: true, Event: &v1.Event{Seq: seq, SessionId: "s1"}}
+		initEvents[i] = fx.StoredEventWire("s1", uint64(i+1), nil)
 	}
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 70,
-		Event: &corev1.Event_EventsPageFetched{
-			EventsPageFetched: &corev1.EventsPageFetchedEvent{OpId: fetchOp, SessionId: "s1", Events: initEvents, More: false},
-		},
-	})
-	readPCID, hsNow := connectDirectForExistingEngine(t, e, now+75, client, m1Actor)
+	deliverEventsPageRelay(e, now+70, fetchOp, initEvents, false)
+	readPCID, hsNow, sealer := connectDirectForExistingEngine(t, e, now+75, client, m1Actor)
 	now = hsNow
 
 	// Direct delivers seq=42 while seq=41 (>16KiB) is still uploading to server.
@@ -2358,18 +2190,15 @@ func TestDirectAheadGapDoesNotFalseErrorAndTriggersServerGapFill(t *testing.T) {
 		NowMs: now + 10,
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId: m1,
-				SessionId: "s1",
-				PcId:      readPCID,
-				Sender:    m1,
-				Events:    []*corev1.PlainEvent{{Seq: 42, Verified: true, Event: &v1.Event{Seq: 42, SessionId: "s1"}}},
+				MachineId:    m1,
+				SessionId:    "s1",
+				PcId:         readPCID,
+				RawEnvelopes: testrelay.MustRawSlice([]*v1.Envelope{sealer.sealDirectEvent("s1", 42, m1Actor)}),
 			},
 		},
 	})
-	for _, eff := range directRes.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
-			t.Fatalf("direct gap must not emit premature GetEvents")
-		}
+	if op, _ := testrelay.FindGetEventsOp(directRes.Effects, ""); op != 0 {
+		t.Fatalf("direct gap must not emit premature GetEvents")
 	}
 	if buf := e.Buffer("s1"); buf.PrefixLen() != 40 || buf.PendingCount() != 0 {
 		t.Fatalf("gapped direct seq=42 must be dropped (prefix=40 pending=0), got prefix=%d pending=%d", buf.PrefixLen(), buf.PendingCount())
@@ -2386,28 +2215,15 @@ func TestDirectAheadGapDoesNotFalseErrorAndTriggersServerGapFill(t *testing.T) {
 	}
 
 	// If a GetEvents cycle finishes while ServerLastSeq==40, it must not report false gap error.
-	var midOp uint64
 	_, reWatchRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 85,
 		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s1", Watched: true}},
 	})
-	for _, eff := range reWatchRes.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
-			midOp = rpc.OpId
-			if rpc.GetGetEvents().GetAfterSeq() != 40 {
-				t.Fatalf("expected GetEvents cursor=40 (ServerLastSeq), got %d", rpc.GetGetEvents().GetAfterSeq())
-			}
-		}
+	midOp, midAfter := testrelay.FindGetEventsOp(reWatchRes.Effects, "")
+	if midOp == 0 || midAfter != 40 {
+		t.Fatalf("expected SessionWatch to trigger GetEvents cursor=40 (ServerLastSeq), got op=%d after=%d", midOp, midAfter)
 	}
-	if midOp == 0 {
-		t.Fatalf("expected SessionWatch to trigger GetEvents")
-	}
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 90,
-		Event: &corev1.Event_EventsPageFetched{
-			EventsPageFetched: &corev1.EventsPageFetchedEvent{OpId: midOp, SessionId: "s1", More: false},
-		},
-	})
+	deliverEventsPageRelay(e, now+90, midOp, nil, false)
 	if buf := e.Buffer("s1"); !buf.fetchErrorReason.IsZero() || buf.hasServerGap(e.sessions["s1"].ServerLastSeq) || !buf.loaded {
 		t.Fatalf("finishFetchCycle with empty server gap must not set fetchErrorReason/hasServerGap: loaded=%v err=%+v", buf.loaded, buf.fetchErrorReason)
 	}
@@ -2415,41 +2231,20 @@ func TestDirectAheadGapDoesNotFalseErrorAndTriggersServerGapFill(t *testing.T) {
 	// Now server commits 41..42 and broadcasts SessionUpdated(LastSeq=42) (suppose EventsAppended was dropped).
 	_, updRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 100,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: legID,
-				Frame: &corev1.StreamFrameEvent_SessionUpdated{
-					SessionUpdated: &corev1.PlainSession{SessionId: "s1", MachineId: "m1", LastSeq: 42, UpdatedMs: now + 100},
-				},
+		Event: testrelay.RawFrame(legID, &v1.ServerFrame{
+			Kind: &v1.ServerFrame_SessionUpdated{
+				SessionUpdated: &v1.SessionUpdated{Session: sealer.sealSessionMeta("s1", 42, now+100)},
 			},
-		},
+		}),
 	})
-	var gapOp uint64
-	for _, eff := range updRes.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
-			gapOp = rpc.OpId
-			if rpc.GetGetEvents().GetAfterSeq() != 40 {
-				t.Fatalf("expected gap-fill GetEvents after 40, got %d", rpc.GetGetEvents().GetAfterSeq())
-			}
-		}
+	gapOp, gapAfter := testrelay.FindGetEventsOp(updRes.Effects, "")
+	if gapOp == 0 || gapAfter != 40 {
+		t.Fatalf("SessionUpdated(42) must trigger gap-fill GetEvents after 40, got op=%d after=%d", gapOp, gapAfter)
 	}
-	if gapOp == 0 {
-		t.Fatalf("SessionUpdated(42) must trigger GetEvents to fill missing 41")
-	}
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 110,
-		Event: &corev1.Event_EventsPageFetched{
-			EventsPageFetched: &corev1.EventsPageFetchedEvent{
-				OpId:      gapOp,
-				SessionId: "s1",
-				Events: []*corev1.PlainEvent{
-					{Seq: 41, Verified: true, Event: &v1.Event{Seq: 41, SessionId: "s1"}},
-					{Seq: 42, Verified: true, Event: &v1.Event{Seq: 42, SessionId: "s1"}},
-				},
-				More: false,
-			},
-		},
-	})
+	deliverEventsPageRelay(e, now+110, gapOp, []*v1.StoredEvent{
+		{Seq: 41, Envelope: sealer.sealDirectEvent("s1", 41, m1Actor)},
+		{Seq: 42, Envelope: sealer.sealDirectEvent("s1", 42, m1Actor)},
+	}, false)
 	if buf := e.Buffer("s1"); buf.PrefixLen() != 42 || buf.PendingCount() != 0 || !buf.IsLoaded() {
 		t.Fatalf("expected contiguous prefix=42 pending=0 loaded=true, got prefix=%d pending=%d loaded=%v", buf.PrefixLen(), buf.PendingCount(), buf.IsLoaded())
 	}
@@ -2458,35 +2253,16 @@ func TestDirectAheadGapDoesNotFalseErrorAndTriggersServerGapFill(t *testing.T) {
 func TestDirectEventsWhileRelayDisconnectedDoNotMarkRelayConnected(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
-	legID, listsOp := startAndConnect(t, e, now)
-	client := newDirectTestActor(t, 31, 1)
-	m1Actor := newDirectTestActor(t, 32, 2)
-	m1 := m1Actor.id
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 35,
-		Event: &corev1.Event_SeedDemoWorld{
-			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
-				Security: &corev1.DemoSecurity{
-					IsMember:          true,
-					SelfDeviceId:      client.id,
-					AuthorityDeviceId: client.id,
-					LeaseEndMs:        now + 86_400_000,
-					TrustedMachineIds: []string{m1},
-				},
-			},
-		},
-	})
+	fx, legID, listsOps := startAndConnect(t, e, now)
+	client := directActorFrom(t, fx.Client)
+	m1Actor := directActorFrom(t, fx.Machines[0])
+	m1 := fx.M1
 
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 40,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId:     listsOp,
-				Machines: []*corev1.PlainMachine{{MachineId: m1, Online: true}},
-				Sessions: []*corev1.PlainSession{{SessionId: "s1", MachineId: m1, LastSeq: 1, UpdatedMs: now}},
-			},
-		},
-	})
+	deliverRefreshRelay(e, now+40, listsOps,
+		[]*v1.Machine{fx.MachineWire(m1, true, 0, nil)},
+		[]*v1.RemoteSession{fx.SessionWire("s1", m1, 1, now, 0, nil, nil)},
+		nil, nil,
+	)
 	_, watchRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 50,
 		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s1", Watched: true}},
@@ -2501,23 +2277,9 @@ func TestDirectEventsWhileRelayDisconnectedDoNotMarkRelayConnected(t *testing.T)
 		NowMs: now + 60,
 		Event: &corev1.Event_CacheEventsLoaded{CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{OpId: cacheOp, SessionId: "s1"}},
 	})
-	var fetchOp uint64
-	for _, eff := range loadedRes.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
-			fetchOp = rpc.OpId
-		}
-	}
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 70,
-		Event: &corev1.Event_EventsPageFetched{
-			EventsPageFetched: &corev1.EventsPageFetchedEvent{
-				OpId:      fetchOp,
-				SessionId: "s1",
-				Events:    []*corev1.PlainEvent{{Seq: 1, Verified: true, Event: &v1.Event{Seq: 1, SessionId: "s1"}}},
-			},
-		},
-	})
-	readPCID, hsNow := connectDirectForExistingEngine(t, e, now+75, client, m1Actor)
+	fetchOp, _ := testrelay.FindGetEventsOp(loadedRes.Effects, "")
+	deliverEventsPageRelay(e, now+70, fetchOp, []*v1.StoredEvent{fx.StoredEventWire("s1", 1, nil)}, false)
+	readPCID, hsNow, sealer := connectDirectForExistingEngine(t, e, now+75, client, m1Actor)
 	now = hsNow
 
 	// Drop relay stream so e.w.World.Connection leaves ConnConnected.
@@ -2536,11 +2298,10 @@ func TestDirectEventsWhileRelayDisconnectedDoNotMarkRelayConnected(t *testing.T)
 		NowMs: now + 20,
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId: m1,
-				SessionId: "s1",
-				PcId:      readPCID,
-				Sender:    m1,
-				Events:    []*corev1.PlainEvent{{Seq: 2, Verified: true, Event: &v1.Event{Seq: 2, SessionId: "s1"}}},
+				MachineId:    m1,
+				SessionId:    "s1",
+				PcId:         readPCID,
+				RawEnvelopes: testrelay.MustRawSlice([]*v1.Envelope{sealer.sealDirectEvent("s1", 2, m1Actor)}),
 			},
 		},
 	})
@@ -2555,34 +2316,15 @@ func TestDirectEventsWhileRelayDisconnectedDoNotMarkRelayConnected(t *testing.T)
 func TestDirectAheadDuringTailFirstPreservesTailAndClearsTailRequested(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
-	_, listsOp := startAndConnect(t, e, now)
-	client := newDirectTestActor(t, 41, 1)
-	m1Actor := newDirectTestActor(t, 42, 2)
-	m1 := m1Actor.id
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 35,
-		Event: &corev1.Event_SeedDemoWorld{
-			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
-				Security: &corev1.DemoSecurity{
-					IsMember:          true,
-					SelfDeviceId:      client.id,
-					AuthorityDeviceId: client.id,
-					LeaseEndMs:        now + 86_400_000,
-					TrustedMachineIds: []string{m1},
-				},
-			},
-		},
-	})
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 40,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId:     listsOp,
-				Machines: []*corev1.PlainMachine{{MachineId: m1, Online: true}},
-				Sessions: []*corev1.PlainSession{{SessionId: "s1", MachineId: m1, LastSeq: 1200, UpdatedMs: now}},
-			},
-		},
-	})
+	fx, _, listsOps := startAndConnect(t, e, now)
+	client := directActorFrom(t, fx.Client)
+	m1Actor := directActorFrom(t, fx.Machines[0])
+	m1 := fx.M1
+	deliverRefreshRelay(e, now+40, listsOps,
+		[]*v1.Machine{fx.MachineWire(m1, true, 0, nil)},
+		[]*v1.RemoteSession{fx.SessionWire("s1", m1, 1200, now, 0, nil, nil)},
+		nil, nil,
+	)
 	_, watchRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 50,
 		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s1", Watched: true}},
@@ -2597,30 +2339,15 @@ func TestDirectAheadDuringTailFirstPreservesTailAndClearsTailRequested(t *testin
 		NowMs: now + 60,
 		Event: &corev1.Event_CacheEventsLoaded{CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{OpId: cacheOp, SessionId: "s1"}},
 	})
-	var tailOp uint64
-	for _, eff := range cacheRes.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
-			tailOp = rpc.OpId
-		}
-	}
+	tailOp, _ := testrelay.FindGetEventsOp(cacheRes.Effects, "")
 	// Receive tail 701..1200.
-	tail := make([]*corev1.PlainEvent, 0, 500)
+	tail := make([]*v1.StoredEvent, 0, 500)
 	for seq := uint64(701); seq <= 1200; seq++ {
-		tail = append(tail, &corev1.PlainEvent{Seq: seq, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: seq, SessionId: "s1"}})
+		tail = append(tail, fx.StoredEventWire("s1", seq, nil))
 	}
-	_, tailRes := e.HandleEvent(&corev1.Event{
-		NowMs: now + 70,
-		Event: &corev1.Event_EventsPageFetched{
-			EventsPageFetched: &corev1.EventsPageFetchedEvent{OpId: tailOp, SessionId: "s1", Events: tail},
-		},
-	})
-	var prefixOp1 uint64
-	for _, eff := range tailRes.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil && rpc.GetGetEvents().AfterSeq == 0 {
-			prefixOp1 = rpc.OpId
-		}
-	}
-	readPCID, hsNow := connectDirectForExistingEngine(t, e, now+72, client, m1Actor)
+	tailRes := deliverEventsPageRelay(e, now+70, tailOp, tail, false)
+	prefixOp1, _ := testrelay.FindGetEventsOp(tailRes.Effects, "")
+	readPCID, hsNow, sealer := connectDirectForExistingEngine(t, e, now+72, client, m1Actor)
 	now = hsNow
 
 	// Two ahead-of-tail direct events [1202, 1203] arrive while tailRequested is active:
@@ -2632,11 +2359,10 @@ func TestDirectAheadDuringTailFirstPreservesTailAndClearsTailRequested(t *testin
 				MachineId: m1,
 				SessionId: "s1",
 				PcId:      readPCID,
-				Sender:    m1,
-				Events: []*corev1.PlainEvent{
-					{Seq: 1202, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 1202, SessionId: "s1"}},
-					{Seq: 1203, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 1203, SessionId: "s1"}},
-				},
+				RawEnvelopes: testrelay.MustRawSlice([]*v1.Envelope{
+					sealer.sealDirectEvent("s1", 1202, m1Actor),
+					sealer.sealDirectEvent("s1", 1203, m1Actor),
+				}),
 			},
 		},
 	})
@@ -2648,32 +2374,17 @@ func TestDirectAheadDuringTailFirstPreservesTailAndClearsTailRequested(t *testin
 	}
 
 	// Backfill 1..700: drains 701..1200 into prefix and clears tailRequested cleanly.
-	p1 := make([]*corev1.PlainEvent, 0, 500)
+	p1 := make([]*v1.StoredEvent, 0, 500)
 	for seq := uint64(1); seq <= 500; seq++ {
-		p1 = append(p1, &corev1.PlainEvent{Seq: seq, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: seq, SessionId: "s1"}})
+		p1 = append(p1, &v1.StoredEvent{Seq: seq, Envelope: sealer.sealDirectEvent("s1", seq, m1Actor)})
 	}
-	_, p1Res := e.HandleEvent(&corev1.Event{
-		NowMs: now + 10,
-		Event: &corev1.Event_EventsPageFetched{
-			EventsPageFetched: &corev1.EventsPageFetchedEvent{OpId: prefixOp1, SessionId: "s1", Events: p1, More: true},
-		},
-	})
-	var prefixOp2 uint64
-	for _, eff := range p1Res.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
-			prefixOp2 = rpc.OpId
-		}
-	}
-	p2 := make([]*corev1.PlainEvent, 0, 200)
+	p1Res := deliverEventsPageRelay(e, now+10, prefixOp1, p1, true)
+	prefixOp2, _ := testrelay.FindGetEventsOp(p1Res.Effects, "")
+	p2 := make([]*v1.StoredEvent, 0, 200)
 	for seq := uint64(501); seq <= 700; seq++ {
-		p2 = append(p2, &corev1.PlainEvent{Seq: seq, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: seq, SessionId: "s1"}})
+		p2 = append(p2, &v1.StoredEvent{Seq: seq, Envelope: sealer.sealDirectEvent("s1", seq, m1Actor)})
 	}
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 20,
-		Event: &corev1.Event_EventsPageFetched{
-			EventsPageFetched: &corev1.EventsPageFetchedEvent{OpId: prefixOp2, SessionId: "s1", Events: p2, More: false},
-		},
-	})
+	deliverEventsPageRelay(e, now+20, prefixOp2, p2, false)
 	buf := e.Buffer("s1")
 	if buf.tailRequested || buf.PendingCount() != 0 {
 		t.Fatalf("expected tailRequested=false and pending=0, got tailRequested=%v pending=%d", buf.tailRequested, buf.PendingCount())
@@ -2686,11 +2397,10 @@ func TestDirectAheadDuringTailFirstPreservesTailAndClearsTailRequested(t *testin
 		NowMs: now + 25,
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId: m1,
-				SessionId: "s1",
-				PcId:      readPCID,
-				Sender:    m1,
-				Events:    []*corev1.PlainEvent{{Seq: 1201, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 1201, SessionId: "s1"}}},
+				MachineId:    m1,
+				SessionId:    "s1",
+				PcId:         readPCID,
+				RawEnvelopes: testrelay.MustRawSlice([]*v1.Envelope{sealer.sealDirectEvent("s1", 1201, m1Actor)}),
 			},
 		},
 	})
@@ -2702,34 +2412,15 @@ func TestDirectAheadDuringTailFirstPreservesTailAndClearsTailRequested(t *testin
 func TestDirectStrictNextAndServerGapErrorClear(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
-	legID, listsOp := startAndConnect(t, e, now)
-	client := newDirectTestActor(t, 51, 1)
-	m1Actor := newDirectTestActor(t, 52, 2)
-	m1 := m1Actor.id
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 35,
-		Event: &corev1.Event_SeedDemoWorld{
-			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
-				Security: &corev1.DemoSecurity{
-					IsMember:          true,
-					SelfDeviceId:      client.id,
-					AuthorityDeviceId: client.id,
-					LeaseEndMs:        now + 86_400_000,
-					TrustedMachineIds: []string{m1},
-				},
-			},
-		},
-	})
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 40,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId:     listsOp,
-				Machines: []*corev1.PlainMachine{{MachineId: m1, Online: true}},
-				Sessions: []*corev1.PlainSession{{SessionId: "s1", MachineId: m1, LastSeq: 1, UpdatedMs: now}},
-			},
-		},
-	})
+	fx, legID, listsOps := startAndConnect(t, e, now)
+	client := directActorFrom(t, fx.Client)
+	m1Actor := directActorFrom(t, fx.Machines[0])
+	m1 := fx.M1
+	deliverRefreshRelay(e, now+40, listsOps,
+		[]*v1.Machine{fx.MachineWire(m1, true, 0, nil)},
+		[]*v1.RemoteSession{fx.SessionWire("s1", m1, 1, now, 0, nil, nil)},
+		nil, nil,
+	)
 	_, watchRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 50,
 		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s1", Watched: true}},
@@ -2744,27 +2435,14 @@ func TestDirectStrictNextAndServerGapErrorClear(t *testing.T) {
 		NowMs: now + 60,
 		Event: &corev1.Event_CacheEventsLoaded{CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{OpId: cacheOp, SessionId: "s1"}},
 	})
-	var fetchOp uint64
-	for _, eff := range loadedRes.Effects {
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
-			fetchOp = rpc.OpId
-		}
-	}
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 70,
-		Event: &corev1.Event_EventsPageFetched{
-			EventsPageFetched: &corev1.EventsPageFetchedEvent{
-				OpId:      fetchOp,
-				SessionId: "s1",
-				Events:    []*corev1.PlainEvent{{Seq: 1, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 1, SessionId: "s1"}}},
-			},
-		},
-	})
-	readPCID, hsNow := connectDirectForExistingEngine(t, e, now+75, client, m1Actor)
+	fetchOp, _ := testrelay.FindGetEventsOp(loadedRes.Effects, "")
+	deliverEventsPageRelay(e, now+70, fetchOp, []*v1.StoredEvent{fx.StoredEventWire("s1", 1, nil)}, false)
+	readPCID, hsNow, sealer := connectDirectForExistingEngine(t, e, now+75, client, m1Actor)
 	now = hsNow
 
-	// Direct batch [2, 4] when prefix=1 accepts only contiguous 2 and drops gapped 4;
-	// direct [1] (already in prefix) is also ignored; direct [3] later succeeds.
+	// Direct batch [1, 2, 4] when prefix=1 accepts only contiguous 2 and drops gapped 4;
+	// direct [1] (already in prefix) is also ignored.
+	env2 := sealer.sealDirectEvent("s1", 2, m1Actor)
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 10,
 		Event: &corev1.Event_DirectEventsReceived{
@@ -2772,12 +2450,11 @@ func TestDirectStrictNextAndServerGapErrorClear(t *testing.T) {
 				MachineId: m1,
 				SessionId: "s1",
 				PcId:      readPCID,
-				Sender:    m1,
-				Events: []*corev1.PlainEvent{
-					{Seq: 1, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 1, SessionId: "s1"}},
-					{Seq: 2, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 2, SessionId: "s1"}},
-					{Seq: 4, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 4, SessionId: "s1"}},
-				},
+				RawEnvelopes: testrelay.MustRawSlice([]*v1.Envelope{
+					sealer.sealDirectEvent("s1", 1, m1Actor),
+					env2,
+					sealer.sealDirectEvent("s1", 4, m1Actor),
+				}),
 			},
 		},
 	})
@@ -2790,25 +2467,20 @@ func TestDirectStrictNextAndServerGapErrorClear(t *testing.T) {
 	buf.fetchErrorReason = world.PlainReason("fetch error")
 	_, appRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 90,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: legID,
-				Frame: &corev1.StreamFrameEvent_EventsAppended{
-					EventsAppended: &corev1.EventsAppendedFrame{
-						SessionId: "s1",
-						Events:    []*corev1.PlainEvent{{Seq: 2, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 2, SessionId: "s1"}}},
-					},
+		Event: testrelay.RawFrame(legID, &v1.ServerFrame{
+			Kind: &v1.ServerFrame_EventsAppended{
+				EventsAppended: &v1.EventsAppended{
+					SessionId: "s1",
+					Events:    []*v1.StoredEvent{{Seq: 2, Envelope: env2}},
 				},
 			},
-		},
+		}),
 	})
 	if !buf.fetchErrorReason.IsZero() {
 		t.Fatalf("expected fetchErrorReason cleared when !hasServerGap")
 	}
-	for _, eff := range appRes.Effects {
-		if eff.GetRpc().GetGetEvents() != nil {
-			t.Fatalf("must not fire premature GetEvents when ServerLastSeq=2")
-		}
+	if op, _ := testrelay.FindGetEventsOp(appRes.Effects, ""); op != 0 {
+		t.Fatalf("must not fire premature GetEvents when ServerLastSeq=2")
 	}
 }
 
@@ -2899,77 +2571,77 @@ func TestStreamFrameDeviceAndMachineSecuritySync(t *testing.T) {
 
 	cases := []struct {
 		name     string
-		frame    *corev1.StreamFrameEvent
+		frame    *v1.ServerFrame
 		wantSync bool
 	}{
 		{
 			name: "new_machine_device_updated",
-			frame: &corev1.StreamFrameEvent{
-				Frame: &corev1.StreamFrameEvent_DeviceUpdated{
-					DeviceUpdated: &corev1.PlainDevice{DeviceId: "m-new", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE},
+			frame: &v1.ServerFrame{
+				Kind: &v1.ServerFrame_DeviceUpdated{
+					DeviceUpdated: &v1.DeviceUpdated{Device: &v1.Device{Id: "m-new", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE}},
 				},
 			},
 			wantSync: true,
 		},
 		{
 			name: "trusted_machine_device_updated",
-			frame: &corev1.StreamFrameEvent{
-				Frame: &corev1.StreamFrameEvent_DeviceUpdated{
-					DeviceUpdated: &corev1.PlainDevice{DeviceId: mKnown.id, Kind: v1.DeviceKind_DEVICE_KIND_MACHINE},
+			frame: &v1.ServerFrame{
+				Kind: &v1.ServerFrame_DeviceUpdated{
+					DeviceUpdated: &v1.DeviceUpdated{Device: &v1.Device{Id: mKnown.id, Kind: v1.DeviceKind_DEVICE_KIND_MACHINE}},
 				},
 			},
 			wantSync: false,
 		},
 		{
 			name: "new_client_device_updated",
-			frame: &corev1.StreamFrameEvent{
-				Frame: &corev1.StreamFrameEvent_DeviceUpdated{
-					DeviceUpdated: &corev1.PlainDevice{DeviceId: "c-new", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT},
+			frame: &v1.ServerFrame{
+				Kind: &v1.ServerFrame_DeviceUpdated{
+					DeviceUpdated: &v1.DeviceUpdated{Device: &v1.Device{Id: "c-new", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT}},
 				},
 			},
 			wantSync: true,
 		},
 		{
 			name: "trusted_client_device_updated",
-			frame: &corev1.StreamFrameEvent{
-				Frame: &corev1.StreamFrameEvent_DeviceUpdated{
-					DeviceUpdated: &corev1.PlainDevice{DeviceId: cKnown.id, Kind: v1.DeviceKind_DEVICE_KIND_CLIENT},
+			frame: &v1.ServerFrame{
+				Kind: &v1.ServerFrame_DeviceUpdated{
+					DeviceUpdated: &v1.DeviceUpdated{Device: &v1.Device{Id: cKnown.id, Kind: v1.DeviceKind_DEVICE_KIND_CLIENT}},
 				},
 			},
 			wantSync: false,
 		},
 		{
 			name: "untrusted_online_machine_updated",
-			frame: &corev1.StreamFrameEvent{
-				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{MachineId: "m-new", Online: true},
+			frame: &v1.ServerFrame{
+				Kind: &v1.ServerFrame_MachineUpdated{
+					MachineUpdated: &v1.MachineUpdated{Machine: &v1.Machine{Id: "m-new", Online: true}},
 				},
 			},
 			wantSync: true,
 		},
 		{
 			name: "untrusted_offline_machine_updated",
-			frame: &corev1.StreamFrameEvent{
-				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{MachineId: "m-off", Online: false},
+			frame: &v1.ServerFrame{
+				Kind: &v1.ServerFrame_MachineUpdated{
+					MachineUpdated: &v1.MachineUpdated{Machine: &v1.Machine{Id: "m-off", Online: false}},
 				},
 			},
 			wantSync: false,
 		},
 		{
 			name: "trusted_online_machine_updated",
-			frame: &corev1.StreamFrameEvent{
-				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{MachineId: mKnown.id, Online: true},
+			frame: &v1.ServerFrame{
+				Kind: &v1.ServerFrame_MachineUpdated{
+					MachineUpdated: &v1.MachineUpdated{Machine: &v1.Machine{Id: mKnown.id, Online: true}},
 				},
 			},
 			wantSync: false,
 		},
 		{
 			name: "archive_online_machine_updated",
-			frame: &corev1.StreamFrameEvent{
-				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{MachineId: mArchive.id, Online: true},
+			frame: &v1.ServerFrame{
+				Kind: &v1.ServerFrame_MachineUpdated{
+					MachineUpdated: &v1.MachineUpdated{Machine: &v1.Machine{Id: mArchive.id, Online: true}},
 				},
 			},
 			wantSync: false,
@@ -2979,23 +2651,21 @@ func TestStreamFrameDeviceAndMachineSecuritySync(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			e, legID := setup()
-			frame := tc.frame
-			frame.LegId = legID
 			_, res := e.HandleEvent(&corev1.Event{
 				NowMs: now + 10,
-				Event: &corev1.Event_StreamFrame{StreamFrame: frame},
+				Event: testrelay.RawFrame(legID, tc.frame),
 			})
 			var syncOp uint64
 			for _, eff := range res.Effects {
-				if sr := eff.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+				if sr := eff.GetRelayRpc(); sr != nil && sr.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SECURITY_STATES {
 					syncOp = sr.OpId
 				}
 			}
 			if tc.wantSync && syncOp == 0 {
-				t.Fatalf("expected GET_SECURITY_STATES SecurityRpcEffect for %s", tc.name)
+				t.Fatalf("expected GET_SECURITY_STATES RelayRpcEffect for %s", tc.name)
 			}
 			if !tc.wantSync && syncOp != 0 {
-				t.Fatalf("unexpected GET_SECURITY_STATES SecurityRpcEffect op=%d for %s", syncOp, tc.name)
+				t.Fatalf("unexpected GET_SECURITY_STATES RelayRpcEffect op=%d for %s", syncOp, tc.name)
 			}
 		})
 	}
@@ -3009,14 +2679,11 @@ func TestStreamFrameDeviceAndMachineSecuritySync(t *testing.T) {
 	e.w.LivePushConnected = true
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 5,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: legID,
-				Frame: &corev1.StreamFrameEvent_SessionUpdated{
-					SessionUpdated: &corev1.PlainSession{SessionId: "s-new", MachineId: mNew, UpdatedMs: now},
-				},
+		Event: testrelay.RawFrame(legID, &v1.ServerFrame{
+			Kind: &v1.ServerFrame_SessionUpdated{
+				SessionUpdated: &v1.SessionUpdated{Session: &v1.RemoteSession{SessionId: "s-new", MachineId: mNew, UpdatedMs: now}},
 			},
-		},
+		}),
 	})
 	_, watchRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 6,
@@ -3036,9 +2703,9 @@ func TestStreamFrameDeviceAndMachineSecuritySync(t *testing.T) {
 		NowMs: now + 8,
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId: mNew,
-				SessionId: "s-new",
-				Events:    []*corev1.PlainEvent{{Seq: 1, Verified: true, ApproxBytes: 32, Event: &v1.Event{Seq: 1, SessionId: "s-new"}}},
+				MachineId:    mNew,
+				SessionId:    "s-new",
+				RawEnvelopes: testrelay.MustRawSlice([]*v1.Envelope{{Ciphertext: (&v1.Event{Seq: 1, SessionId: "s-new"}).AppendMarshal(nil)}}),
 			},
 		},
 	})
@@ -3048,34 +2715,30 @@ func TestStreamFrameDeviceAndMachineSecuritySync(t *testing.T) {
 	}
 	_, devRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 8,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: legID,
-				Frame: &corev1.StreamFrameEvent_DeviceUpdated{
-					DeviceUpdated: &corev1.PlainDevice{DeviceId: mNew, Kind: v1.DeviceKind_DEVICE_KIND_MACHINE},
-				},
+		Event: testrelay.RawFrame(legID, &v1.ServerFrame{
+			Kind: &v1.ServerFrame_DeviceUpdated{
+				DeviceUpdated: &v1.DeviceUpdated{Device: &v1.Device{Id: mNew, Kind: v1.DeviceKind_DEVICE_KIND_MACHINE}},
 			},
-		},
+		}),
 	})
 	var secOp uint64
 	for _, eff := range devRes.Effects {
-		if sr := eff.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+		if sr := eff.GetRelayRpc(); sr != nil && sr.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SECURITY_STATES {
 			secOp = sr.OpId
 		}
 	}
 	if secOp == 0 {
-		t.Fatalf("expected GET_SECURITY_STATES SecurityRpcEffect on DeviceUpdated")
+		t.Fatalf("expected GET_SECURITY_STATES RelayRpcEffect on DeviceUpdated")
 	}
-	readPCID, hsNow := connectDirectForExistingEngine(t, e, now+10, client, mNewActor)
+	readPCID, hsNow, sealer := connectDirectForExistingEngine(t, e, now+10, client, mNewActor)
 	e.HandleEvent(&corev1.Event{
 		NowMs: hsNow + 5,
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId: mNew,
-				SessionId: "s-new",
-				PcId:      readPCID,
-				Sender:    mNew,
-				Events:    []*corev1.PlainEvent{{Seq: 1, Verified: true, ApproxBytes: 32, Event: &v1.Event{Seq: 1, SessionId: "s-new"}}},
+				MachineId:    mNew,
+				SessionId:    "s-new",
+				PcId:         readPCID,
+				RawEnvelopes: testrelay.MustRawSlice([]*v1.Envelope{sealer.sealDirectEvent("s-new", 1, mNewActor)}),
 			},
 		},
 	})
@@ -3087,17 +2750,12 @@ func TestStreamFrameDeviceAndMachineSecuritySync(t *testing.T) {
 func TestEventRevMonotonicAcrossTrimHistoryAndSnapshotCache(t *testing.T) {
 	now := int64(1_700_000_000_000)
 	e := NewEngine()
-	_, listsOp := startAndConnect(t, e, now)
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 40,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId:     listsOp,
-				Machines: []*corev1.PlainMachine{{MachineId: "m1", Online: true}},
-				Sessions: []*corev1.PlainSession{{SessionId: "s1", MachineId: "m1", LastSeq: 1, UpdatedMs: now}},
-			},
-		},
-	})
+	fx, _, listsOps := startAndConnect(t, e, now)
+	deliverRefreshRelay(e, now+40, listsOps,
+		[]*v1.Machine{fx.MachineWire(fx.M1, true, 0, nil)},
+		[]*v1.RemoteSession{fx.SessionWire("s1", fx.M1, 1, now, 0, nil, nil)},
+		nil, nil,
+	)
 	_, watchRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 50,
 		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s1", Watched: true}},
@@ -3108,16 +2766,14 @@ func TestEventRevMonotonicAcrossTrimHistoryAndSnapshotCache(t *testing.T) {
 			cacheOp = cr.OpId
 		}
 	}
+	cachedEv := fx.StoredEventWire("s1", 1, &v1.Event{Seq: 1, SessionId: "s1", Kind: &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "hi"}}})
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 60,
 		Event: &corev1.Event_CacheEventsLoaded{
 			CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{
 				OpId:      cacheOp,
 				SessionId: "s1",
-				Events: []*corev1.PlainEvent{{
-					Seq: 1, Verified: true, ApproxBytes: 64,
-					Event: &v1.Event{Seq: 1, SessionId: "s1", Kind: &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "hi"}}},
-				}},
+				RawEvents: testrelay.MustRawSlice([]*v1.StoredEvent{cachedEv}),
 			},
 		},
 	})
@@ -3165,10 +2821,7 @@ func TestEventRevMonotonicAcrossTrimHistoryAndSnapshotCache(t *testing.T) {
 			CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{
 				OpId:      cacheOp2,
 				SessionId: "s1",
-				Events: []*corev1.PlainEvent{{
-					Seq: 1, Verified: true, ApproxBytes: 64,
-					Event: &v1.Event{Seq: 1, SessionId: "s1", Kind: &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "hi"}}},
-				}},
+				RawEvents: testrelay.MustRawSlice([]*v1.StoredEvent{cachedEv}),
 			},
 		},
 	})
@@ -3181,26 +2834,20 @@ func TestEventRevMonotonicAcrossTrimHistoryAndSnapshotCache(t *testing.T) {
 func TestTerminalReadyAndWaitingView(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
-	legID, listsOp := startAndConnect(t, e, now)
+	fx, legID, listsOps := startAndConnect(t, e, now)
 
-	e.HandleEvent(&corev1.Event{
-		NowMs:  now + 20,
-		MonoMs: now + 20,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId:     listsOp,
-				Machines: []*corev1.PlainMachine{{MachineId: "m1", Online: false, Meta: &v1.MachineMeta{Hostname: "MacStudio"}}},
-				Sessions: []*corev1.PlainSession{{SessionId: "s1", MachineId: "m1", LastSeq: 1}},
-			},
-		},
-	})
+	deliverRefreshRelay(e, now+20, listsOps,
+		[]*v1.Machine{fx.MachineWire(fx.M1, false, 0, &v1.MachineMeta{Hostname: "MacStudio"})},
+		[]*v1.RemoteSession{fx.SessionWire("s1", fx.M1, 1, 0, 0, nil, nil)},
+		nil, nil,
+	)
 	// 1. Relay connected: terminal_ready=true even if machine presence says offline.
 	snap1 := e.SessionSnapshot("s1")
-	if !e.machineTerminalReady("m1") || !snap1.TerminalReady || snap1.TerminalWaiting {
+	if !e.machineTerminalReady(fx.M1) || !snap1.TerminalReady || snap1.TerminalWaiting {
 		t.Fatalf("expected terminal_ready=true when relay connected, got snap=%+v", snap1)
 	}
-	if lists.MachineName(snap1.Machine, "m1") != "MacStudio" {
-		t.Fatalf("expected DisplayName=MacStudio, got %q", lists.MachineName(snap1.Machine, "m1"))
+	if lists.MachineName(snap1.Machine, fx.M1) != "MacStudio" {
+		t.Fatalf("expected DisplayName=MacStudio, got %q", lists.MachineName(snap1.Machine, fx.M1))
 	}
 
 	// 2. Relay drops -> enters displayGrace: terminal_ready=false, terminal_waiting=true.
@@ -3212,26 +2859,26 @@ func TestTerminalReadyAndWaitingView(t *testing.T) {
 		},
 	})
 	snap2 := e.SessionSnapshot("s1")
-	if e.machineTerminalReady("m1") || snap2.TerminalReady || !snap2.TerminalWaiting {
+	if e.machineTerminalReady(fx.M1) || snap2.TerminalReady || !snap2.TerminalWaiting {
 		t.Fatalf("expected terminal_ready=false terminal_waiting=true during displayGrace, got snap=%+v", snap2)
 	}
 
 	// 3. Direct ready overrides relay disconnect: terminal_ready=true, terminal_waiting=false.
-	e.directReady["m1"] = true
+	e.directReady[fx.M1] = true
 	snap3 := e.SessionSnapshot("s1")
-	if !e.machineTerminalReady("m1") || !snap3.TerminalReady || snap3.TerminalWaiting {
+	if !e.machineTerminalReady(fx.M1) || !snap3.TerminalReady || snap3.TerminalWaiting {
 		t.Fatalf("expected terminal_ready=true when directReady, got snap=%+v", snap3)
 	}
 
 	// 4. Direct drops and displayGrace expires -> terminal_ready=false, terminal_waiting=false.
-	e.directReady["m1"] = false
+	e.directReady[fx.M1] = false
 	e.HandleEvent(&corev1.Event{
 		NowMs:  now + 100 + DisplayGraceMs + 100,
 		MonoMs: now + 100 + DisplayGraceMs + 100,
 		Event:  &corev1.Event_ClockUpdated{ClockUpdated: &corev1.LocalCalendar{NowMs: now + 100 + DisplayGraceMs + 100}},
 	})
 	snap4 := e.SessionSnapshot("s1")
-	if e.machineTerminalReady("m1") || snap4.TerminalReady || snap4.TerminalWaiting {
+	if e.machineTerminalReady(fx.M1) || snap4.TerminalReady || snap4.TerminalWaiting {
 		t.Fatalf("expected terminal_ready=false terminal_waiting=false after grace expires, got snap=%+v", snap4)
 	}
 }
@@ -3240,21 +2887,30 @@ func TestCommandPriorUnknownRetriesThroughMachineOfflineRefusal(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
 	mono := int64(10_000)
-	_, listsOp := startAndConnect(t, e, now)
+	ids, fs := seedEntropy(20)
 	e.HandleEvent(&corev1.Event{
-		NowMs:  now + 20,
-		MonoMs: mono,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: listsOp,
-				Machines: []*corev1.PlainMachine{{
+		NowMs:      now,
+		MonoMs:     mono,
+		RandomIds:  ids,
+		UnitFloats: fs,
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      "c1",
+					AuthorityDeviceId: "c1",
+					LeaseEndMs:        now + 86_400_000,
+					TrustedMachineIds: []string{"m1"},
+				},
+				Machines: []*corev1.DemoMachine{{
 					MachineId: "m1",
 					Online:    true,
-					Meta:      &v1.MachineMeta{Hostname: "Mac", ProtocolVersion: PeerVersion},
+					RawMeta:   testrelay.MustRaw(&v1.MachineMeta{Hostname: "Mac", ProtocolVersion: PeerVersion}),
 				}},
 			},
 		},
 	})
+	startDemoConnected(e, now+10, mono+10)
 
 	prev, ctx := e.BeginStep()
 	reqID, dispatched := e.SubmitCommand(ctx, SubmitCommandParams{
@@ -3392,7 +3048,7 @@ func TestCommandPriorUnknownRetriesThroughMachineOfflineRefusal(t *testing.T) {
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "executed",
-				Result: &v1.CommandResult{
+				RawResult: testrelay.MustRaw(&v1.CommandResult{
 					Outcome:         "executed",
 					Reason:          "executed",
 					ResultAvailable: true,
@@ -3405,7 +3061,7 @@ func TestCommandPriorUnknownRetriesThroughMachineOfflineRefusal(t *testing.T) {
 							},
 						},
 					},
-				},
+				}),
 			},
 		},
 	})

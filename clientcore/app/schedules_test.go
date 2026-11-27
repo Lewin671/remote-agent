@@ -6,6 +6,7 @@ import (
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/gen/timestamppb"
+	"github.com/Lewin671/remote-agent/clientcore/internal/test/testrelay"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
@@ -37,12 +38,6 @@ func bootConnectedScheduleHost(t *testing.T, caps bool, rev uint64, defaultMode 
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1791633600000,
-		Event: &corev1.Event_SyncLifecycle{
-			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
-		},
-	})
-	c.Dispatch(&corev1.Event{
-		NowMs: 1791633600010,
 		Event: &corev1.Event_SeedDemoWorld{
 			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
 				Security: &corev1.DemoSecurity{
@@ -55,65 +50,49 @@ func bootConnectedScheduleHost(t *testing.T, caps bool, rev uint64, defaultMode 
 			},
 		},
 	})
-	c.Dispatch(&corev1.Event{
-		NowMs: 1791633600020,
-		Event: &corev1.Event_TokenResult{
-			TokenResult: &corev1.TokenResultEvent{OpId: 2, Token: "tok-1"},
+	startBatch := c.Dispatch(&corev1.Event{
+		NowMs: 1791633600000,
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
 		},
 	})
+	legID := testrelay.FindOpenStreamLeg(startBatch.Effects)
 	c.Dispatch(&corev1.Event{
 		NowMs: 1791633600030,
 		Event: &corev1.Event_StreamReady{
-			StreamReady: &corev1.StreamReadyEvent{LegId: 1, ServerTimeMs: 1791633600030},
+			StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: 1791633600030},
 		},
 	})
 	batch := c.Dispatch(&corev1.Event{
 		NowMs: 1791633600040,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: 3,
-				Machines: []*corev1.PlainMachine{
-					{
-						MachineId: "m-1",
-						Online:    true,
-						Meta: &v1.MachineMeta{
-							Hostname:         "MacStudio",
-							ProtocolVersion:  17,
-							ScheduleRevision: rev,
-							Capabilities:     &v1.MachineCapabilities{ScheduledTasks: caps},
-							Agents: []*v1.AgentInfo{
-								{Agent: v1.Agent_AGENT_CODEX, DefaultMode: defaultMode, DefaultModeSource: v1.DefaultModeSource_DEFAULT_MODE_SOURCE_DAEMON_SETTINGS},
-								{Agent: v1.Agent_AGENT_CLAUDE, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK, DefaultModeSource: v1.DefaultModeSource_DEFAULT_MODE_SOURCE_DAEMON_SETTINGS},
-							},
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Machines: []*corev1.DemoMachine{
+					testrelay.DemoMachine("m-1", true, 0, &v1.MachineMeta{
+						Hostname:         "MacStudio",
+						ProtocolVersion:  17,
+						ScheduleRevision: rev,
+						Capabilities:     &v1.MachineCapabilities{ScheduledTasks: caps},
+						Agents: []*v1.AgentInfo{
+							{Agent: v1.Agent_AGENT_CODEX, DefaultMode: defaultMode, DefaultModeSource: v1.DefaultModeSource_DEFAULT_MODE_SOURCE_DAEMON_SETTINGS},
+							{Agent: v1.Agent_AGENT_CLAUDE, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK, DefaultModeSource: v1.DefaultModeSource_DEFAULT_MODE_SOURCE_DAEMON_SETTINGS},
 						},
-					},
+					}),
 				},
-				Sessions: []*corev1.PlainSession{
-					{
-						SessionId: "s-run-1",
-						MachineId: "m-1",
-						LastSeq:   3,
-						UpdatedMs: 1791633500000,
-						Meta: &v1.Session{
-							Id:     "s-run-1",
-							Cwd:    "/Users/me/app",
-							Status: v1.SessionStatus_SESSION_STATUS_EXITED,
-							Agent:  v1.Agent_AGENT_CODEX,
-						},
-					},
-					{
-						SessionId: "s-resume",
-						MachineId: "m-1",
-						LastSeq:   1,
-						UpdatedMs: 1791633400000,
-						Meta: &v1.Session{
-							Id:     "s-resume",
-							Cwd:    "/Users/me/app",
-							Status: v1.SessionStatus_SESSION_STATUS_IDLE,
-							Title:  "Nightly check",
-							Agent:  v1.Agent_AGENT_CODEX,
-						},
-					},
+				Sessions: []*corev1.DemoSession{
+					testrelay.DemoSession("s-run-1", "m-1", 3, 1791633500000, 0, &v1.Session{
+						Id:     "s-run-1",
+						Cwd:    "/Users/me/app",
+						Status: v1.SessionStatus_SESSION_STATUS_EXITED,
+						Agent:  v1.Agent_AGENT_CODEX,
+					}, nil),
+					testrelay.DemoSession("s-resume", "m-1", 1, 1791633400000, 0, &v1.Session{
+						Id:     "s-resume",
+						Cwd:    "/Users/me/app",
+						Status: v1.SessionStatus_SESSION_STATUS_IDLE,
+						Title:  "Nightly check",
+						Agent:  v1.Agent_AGENT_CODEX,
+					}, nil),
 				},
 			},
 		},
@@ -177,7 +156,7 @@ func settleScheduleCommand(t *testing.T, c *Core, dc *corev1.DispatchCommandEffe
 				OuterMatchesInner: true,
 				OuterOutcome:      outerOutcome,
 				OuterReason:       outerReason,
-				Result:            res,
+				RawResult:         testrelay.MustRaw(res),
 			},
 		},
 	})
@@ -269,26 +248,15 @@ func TestScheduleDiscoveryCacheRevisionAndUnsupportedCleanup(t *testing.T) {
 		t.Fatalf("expected live task after settle, got %+v", vm.Others)
 	}
 
-	// Bump ScheduleRevision via stream frame -> triggers second list fetch.
+	// Bump ScheduleRevision via SeedDemoWorld -> triggers second list fetch.
 	revBatch := c.Dispatch(&corev1.Event{
 		NowMs: 1791633600070,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{
-						MachineId: "m-1",
-						Online:    true,
-						Meta: &v1.MachineMeta{
-							Hostname:         "MacStudio",
-							ProtocolVersion:  17,
-							ScheduleRevision: 6,
-							Capabilities:     &v1.MachineCapabilities{ScheduledTasks: true},
-						},
-					},
-				},
-			},
-		},
+		Event: testrelay.DemoMachineEvent(testrelay.DemoMachine("m-1", true, 0, &v1.MachineMeta{
+			Hostname:         "MacStudio",
+			ProtocolVersion:  17,
+			ScheduleRevision: 6,
+			Capabilities:     &v1.MachineCapabilities{ScheduledTasks: true},
+		})),
 	})
 	revList := findScheduleDispatches(revBatch, "list")
 	if len(revList) != 1 {
@@ -313,22 +281,11 @@ func TestScheduleDiscoveryCacheRevisionAndUnsupportedCleanup(t *testing.T) {
 	// Machine loses scheduled_tasks capability -> emits ScheduleDeleteCacheEffect & forgets tasks.
 	unBatch := c.Dispatch(&corev1.Event{
 		NowMs: 1791633600080,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{
-						MachineId: "m-1",
-						Online:    true,
-						Meta: &v1.MachineMeta{
-							Hostname:        "MacStudio",
-							ProtocolVersion: 17,
-							Capabilities:    &v1.MachineCapabilities{ScheduledTasks: false},
-						},
-					},
-				},
-			},
-		},
+		Event: testrelay.DemoMachineEvent(testrelay.DemoMachine("m-1", true, 0, &v1.MachineMeta{
+			Hostname:        "MacStudio",
+			ProtocolVersion: 17,
+			Capabilities:    &v1.MachineCapabilities{ScheduledTasks: false},
+		})),
 	})
 	var deleted bool
 	for _, eff := range unBatch.Effects {
@@ -389,53 +346,24 @@ func TestScheduleInboxDetailPinnedResultAndFinalAnswer(t *testing.T) {
 			ScheduleDetailOpen: &corev1.ScheduleTaskRef{MachineId: "m-1", TaskId: "t1"},
 		},
 	})
-	var cacheOp, getEventsOp uint64
 	var sawDismiss bool
 	for _, eff := range openBatch.Effects {
 		if eff.GetScheduleDismissNotifications() != nil {
 			sawDismiss = true
 		}
-		if cr := eff.GetCacheRead(); cr != nil && cr.GetEvents() != nil && cr.GetEvents().SessionId == "s-run-1" {
-			cacheOp = cr.GetEvents().OpId
-		}
-		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil && rpc.GetGetEvents().SessionId == "s-run-1" {
-			getEventsOp = rpc.OpId
-		}
 	}
-	if !sawDismiss || (cacheOp == 0 && getEventsOp == 0) {
-		t.Fatalf("expected DismissNotifications and CacheReadEvents/GetEvents on DetailOpen (dismiss=%v cacheOp=%d rpcOp=%d)", sawDismiss, cacheOp, getEventsOp)
-	}
-	if cacheOp != 0 && getEventsOp == 0 {
-		cacheBatch := c.Dispatch(&corev1.Event{
-			NowMs: 1791633600065,
-			Event: &corev1.Event_CacheEventsLoaded{
-				CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{OpId: cacheOp, SessionId: "s-run-1"},
-			},
-		})
-		for _, eff := range cacheBatch.Effects {
-			if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil && rpc.GetGetEvents().SessionId == "s-run-1" {
-				getEventsOp = rpc.OpId
-			}
-		}
-	}
-	if getEventsOp == 0 {
-		t.Fatalf("expected GetEvents RPC for s-run-1")
+	if !sawDismiss {
+		t.Fatalf("expected DismissNotifications on DetailOpen")
 	}
 
 	// Feed session events with final_answer.
 	c.Dispatch(&corev1.Event{
 		NowMs: 1791633600070,
-		Event: &corev1.Event_EventsPageFetched{
-			EventsPageFetched: &corev1.EventsPageFetchedEvent{
-				OpId:      getEventsOp,
-				SessionId: "s-run-1",
-				Events: []*corev1.PlainEvent{
-					{Seq: 1, Verified: true, Event: &v1.Event{Seq: 1, Time: &timestamppb.Timestamp{Seconds: 1791619200}, Origin: &v1.Origin{ScheduledTaskId: "t1", ScheduledRunId: "r1"}, Kind: &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "summarize"}}}},
-					{Seq: 2, Verified: true, Event: &v1.Event{Seq: 2, Time: &timestamppb.Timestamp{Seconds: 1791619210}, Kind: &v1.Event_AgentMessage{AgentMessage: &v1.AgentMessage{Phase: "final_answer", Text: "Detailed report markdown"}}}},
-					{Seq: 3, Verified: true, Event: &v1.Event{Seq: 3, Time: &timestamppb.Timestamp{Seconds: 1791619220}, Kind: &v1.Event_TurnEnded{TurnEnded: &v1.TurnEnded{ScheduledTaskId: "t1", ScheduledRunId: "r1", ScheduledNotified: true, Outcome: v1.TurnOutcome_TURN_OUTCOME_COMPLETED}}}},
-				},
-			},
-		},
+		Event: testrelay.DemoEventsEvent("s-run-1",
+			&v1.Event{Seq: 1, SessionId: "s-run-1", Time: &timestamppb.Timestamp{Seconds: 1791619200}, Origin: &v1.Origin{ScheduledTaskId: "t1", ScheduledRunId: "r1"}, Kind: &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "summarize"}}},
+			&v1.Event{Seq: 2, SessionId: "s-run-1", Time: &timestamppb.Timestamp{Seconds: 1791619210}, Kind: &v1.Event_AgentMessage{AgentMessage: &v1.AgentMessage{Phase: "final_answer", Text: "Detailed report markdown"}}},
+			&v1.Event{Seq: 3, SessionId: "s-run-1", Time: &timestamppb.Timestamp{Seconds: 1791619220}, Kind: &v1.Event_TurnEnded{TurnEnded: &v1.TurnEnded{ScheduledTaskId: "t1", ScheduledRunId: "r1", ScheduledNotified: true, Outcome: v1.TurnOutcome_TURN_OUTCOME_COMPLETED}}},
+		),
 	})
 	dvm := viewDetailVM(t, c, "m-1", "t1")
 	if dvm.ResultCard.MarkdownBody != "Detailed report markdown" {
@@ -760,38 +688,38 @@ func TestScheduleEditTargetSelectProjectKeepsLockedMachine(t *testing.T) {
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1791633600060,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				Machines: []*corev1.PlainMachine{
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Machines: []*corev1.DemoMachine{
 					{
 						MachineId: "m-1",
 						Online:    true,
-						Meta: &v1.MachineMeta{
+						RawMeta: testrelay.MustRaw(&v1.MachineMeta{
 							Hostname:         "Mac-1",
 							ProtocolVersion:  17,
 							ScheduleRevision: 1,
 							Capabilities:     &v1.MachineCapabilities{ScheduledTasks: true},
 							Agents:           []*v1.AgentInfo{{Agent: v1.Agent_AGENT_CODEX, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK}},
-						},
+						}),
 					},
 					{
 						MachineId: "m-2",
 						Online:    true,
-						Meta: &v1.MachineMeta{
+						RawMeta: testrelay.MustRaw(&v1.MachineMeta{
 							Hostname:         "Mac-2",
 							ProtocolVersion:  17,
 							ScheduleRevision: 1,
 							Capabilities:     &v1.MachineCapabilities{ScheduledTasks: true},
 							Agents:           []*v1.AgentInfo{{Agent: v1.Agent_AGENT_CODEX, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK}},
-						},
+						}),
 					},
 				},
-				Sessions: []*corev1.PlainSession{
+				Sessions: []*corev1.DemoSession{
 					{
 						SessionId: "s-other",
 						MachineId: "m-2",
 						UpdatedMs: 1791633600055,
-						Meta:      &v1.Session{Id: "s-other", Cwd: "/Users/me/other", Agent: v1.Agent_AGENT_CODEX},
+						RawMeta:   testrelay.MustRaw(&v1.Session{Id: "s-other", Cwd: "/Users/me/other", Agent: v1.Agent_AGENT_CODEX}),
 					},
 				},
 			},
@@ -842,20 +770,20 @@ func TestScheduleInitialLoadingBeforeListsAndCache(t *testing.T) {
 		t.Fatalf("expected initial detail Loading=true with reading_tasks before MachinesListed, got %+v", dvm)
 	}
 
-	// Even after ListsFetched adds a supported machine, before ScheduleListOpen creates a snapshot it must stay Loading=true.
+	// Even after SeedDemoWorld adds a supported machine, before ScheduleListOpen creates a snapshot it must stay Loading=true.
 	c.Dispatch(&corev1.Event{
 		NowMs: 1791633600000,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				Machines: []*corev1.PlainMachine{
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Machines: []*corev1.DemoMachine{
 					{
 						MachineId: "m-1",
 						Online:    false,
-						Meta: &v1.MachineMeta{
+						RawMeta: testrelay.MustRaw(&v1.MachineMeta{
 							Hostname:        "Mac-1",
 							ProtocolVersion: 17,
 							Capabilities:    &v1.MachineCapabilities{ScheduledTasks: true},
-						},
+						}),
 					},
 				},
 			},

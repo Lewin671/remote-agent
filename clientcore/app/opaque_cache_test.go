@@ -322,11 +322,11 @@ func TestOpaqueScheduleCache_AsyncWebCryptoBatchAndRevocationMidFlight(t *testin
 		},
 	})
 	for _, eff := range pumpCoreSecurityEffects(t, c, phone, secStore, nowMs+105, syncBatch) {
-		if rpc := eff.GetSecurityRpc(); rpc != nil {
+		if rpc := eff.GetRelayRpc(); rpc != nil {
 			r2 := c.Dispatch(&corev1.Event{
 				NowMs: nowMs + 106, MonoMs: 1106,
-				Event: &corev1.Event_SecurityRpcResult{
-					SecurityRpcResult: &corev1.SecurityRpcResultEvent{OpId: rpc.OpId, ResponseBytes: s2RespBytes},
+				Event: &corev1.Event_RelayRpcResult{
+					RelayRpcResult: &corev1.RelayRpcResultEvent{OpId: rpc.OpId, ResponseBytes: s2RespBytes},
 				},
 			})
 			pumpCoreSecurityEffects(t, c, phone, secStore, nowMs+106, r2)
@@ -426,17 +426,8 @@ func TestOpaqueUsageCache_RoundTripAndUntrustedRejection(t *testing.T) {
 }
 
 func TestOpaqueCache_SingleFormatByRelayPipeMode(t *testing.T) {
-	for _, pipeMode := range []bool{false, true} {
-		name := "legacy"
-		if pipeMode {
-			name = "relayPipe"
-		}
-		t.Run(name, func(t *testing.T) {
-			c, _, trusted, _, _, dom, s1, sec, _, _, nowMs := setupOpaqueCacheTestCore(t, true)
-			c.Dispatch(&corev1.Event{
-				NowMs: nowMs + 1, MonoMs: 1001,
-				Event: &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: pipeMode}},
-			})
+	c, _, trusted, _, _, dom, s1, sec, _, _, nowMs := setupOpaqueCacheTestCore(t, true)
+	_ = nowMs
 
 			// 1. Schedule cache write: check single-format contract via real settle handler.
 			snapBytes := []byte(`{"tasks":[{"id":"t1","spec":{"title":"Check"}}]}`)
@@ -495,10 +486,8 @@ func TestOpaqueCache_SingleFormatByRelayPipeMode(t *testing.T) {
 			if uw == nil {
 				t.Fatal("expected UsageCacheWriteEffect")
 			}
-			if len(uw.RawSnapshot) == 0 {
-				t.Fatal("UsageCacheWriteEffect must populate opaque RawSnapshot")
-			}
-		})
+	if len(uw.RawSnapshot) == 0 {
+		t.Fatal("UsageCacheWriteEffect must populate opaque RawSnapshot")
 	}
 }
 

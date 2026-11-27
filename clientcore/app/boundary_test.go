@@ -47,57 +47,9 @@ var allowedWireEnums = map[protoreflect.FullName]bool{
 //   - When migrating a field off remoteagent.v1, delete its entry in the same commit;
 //     leaving a resolved entry here fails the test.
 var legacyWireAllowlist = map[string]string{
-	// Legacy machine command bypass (retired in P2-4/P2-5/P4-1).
-	"RunMachineCommandAction.command -> v1.Command":        "legacy-run-machine-command (P2-4/P2-5/P4-1)",
+	// Test/benchmark harness machine command bypass (0 production callers; see report).
+	"RunMachineCommandAction.command -> v1.Command":            "legacy-run-machine-command (P2-4/P2-5/P4-1)",
 	"RunMachineCommandResultEffect.result -> v1.CommandResult": "legacy-run-machine-command (P2-4/P2-5/P4-1)",
-
-	// Legacy typed RPC / stream / cache / envelope / terminal edges (retired in P2-5/P3-2/P4-1).
-	"AccountPrefsFetchedEvent.wire_prefs -> v1.AccountPrefsObject":           "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"AccountPrefsPutResultEvent.wire_current -> v1.AccountPrefsObject":       "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"CacheBootstrapLoadedEvent.wire_machines -> v1.Machine":                  "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"CacheBootstrapLoadedEvent.wire_prefs -> v1.AccountPrefsObject":          "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"CacheBootstrapLoadedEvent.wire_sessions -> v1.RemoteSession":            "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"CacheEventsLoadedEvent.wire_events -> v1.StoredEvent":                   "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"CacheWriteEffect.keep_session_owner -> v1.RemoteSession":                "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"CacheWriteEffect.write_machine -> v1.Machine":                           "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"CacheWriteEffect.write_prefs -> v1.AccountPrefsObject":                  "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"CacheWriteEffect.write_session -> v1.RemoteSession":                     "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"CacheWriteStoredEvents.events -> v1.StoredEvent":                        "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"CommandOutcomeEvent.result -> v1.CommandResult":                         "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"CommandOutcomeEvent.sealed_result -> v1.Envelope":                       "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"DevicesFetchedEvent.wire_devices -> v1.Device":                          "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"DirectEventsReceivedEvent.wire_envelopes -> v1.Envelope":                "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"DispatchCommandEffect.sealed_envelope -> v1.Envelope":                   "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"EventsAppendedFrame.wire_events -> v1.StoredEvent":                      "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"EventsPageFetchedEvent.wire_events -> v1.StoredEvent":                   "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"FetchSessionsPageRpc.after -> v1.SessionCursor":                         "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"ListsFetchedEvent.next -> v1.SessionCursor":                             "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"ListsFetchedEvent.wire_devices -> v1.Device":                            "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"ListsFetchedEvent.wire_machines -> v1.Machine":                          "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"ListsFetchedEvent.wire_sessions -> v1.RemoteSession":                    "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"PlainAccountPrefs.prefs -> v1.ProjectPrefs":                             "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"PlainDevice.meta -> v1.DeviceMeta":                                      "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"PlainEvent.event -> v1.Event":                                           "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"PlainMachine.meta -> v1.MachineMeta":                                    "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"PlainSession.checkpoint -> v1.LiveSnapshot":                             "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"PlainSession.meta -> v1.Session":                                        "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"PutAccountPrefsRpc.next_prefs -> v1.ProjectPrefs":                       "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"PutAccountPrefsRpc.sealed_envelope -> v1.Envelope":                      "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"SessionByIdFetchedEvent.wire_session -> v1.RemoteSession":               "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"SessionsPageFetchedEvent.next -> v1.SessionCursor":                      "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"SessionsPageFetchedEvent.wire_sessions -> v1.RemoteSession":             "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"StreamFrameEvent.wire_account_prefs_updated -> v1.AccountPrefsObject":   "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"StreamFrameEvent.wire_device_updated -> v1.Device":                      "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"StreamFrameEvent.wire_machine_updated -> v1.Machine":                    "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-	"StreamFrameEvent.wire_session_updated -> v1.RemoteSession":              "legacy-relay-pipe (P2-5/P3-2/P4-1)",
-
-	// Demo seeding event (only used by ?demo / preview fixtures).
-	"DemoDevice.meta -> v1.DeviceMeta":          "demo-seed (P4-1)",
-	"DemoMachine.meta -> v1.MachineMeta":        "demo-seed (P4-1)",
-	"DemoSession.checkpoint -> v1.LiveSnapshot": "demo-seed (P4-1)",
-	"DemoSession.meta -> v1.Session":            "demo-seed (P4-1)",
-	"DemoSessionEvents.events -> v1.Event":      "demo-seed (P4-1)",
-	"SeedDemoWorldEvent.prefs -> v1.ProjectPrefs": "demo-seed (P4-1)",
 }
 
 // Permitted remoteagent.core.v1 root entries in cmd/protoc-gen-go-lite/entries.txt.

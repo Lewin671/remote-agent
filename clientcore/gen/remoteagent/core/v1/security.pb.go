@@ -67,37 +67,6 @@ const (
 	SecurityStorageOp_SECURITY_STORAGE_OP_CLEAR_ALL      SecurityStorageOp = 6
 )
 
-type SecurityRpcMethod int32
-
-const (
-	SecurityRpcMethod_SECURITY_RPC_METHOD_UNSPECIFIED            SecurityRpcMethod = 0
-	SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES    SecurityRpcMethod = 1
-	SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_SECURITY_STATE     SecurityRpcMethod = 2
-	SecurityRpcMethod_SECURITY_RPC_METHOD_PIN_SECURITY_DOMAIN    SecurityRpcMethod = 3
-	SecurityRpcMethod_SECURITY_RPC_METHOD_CREATE_PAIRING         SecurityRpcMethod = 4
-	SecurityRpcMethod_SECURITY_RPC_METHOD_PEEK_PAIRING           SecurityRpcMethod = 5
-	SecurityRpcMethod_SECURITY_RPC_METHOD_JOIN_PAIRING           SecurityRpcMethod = 6
-	SecurityRpcMethod_SECURITY_RPC_METHOD_REVEAL_PAIRING         SecurityRpcMethod = 7
-	SecurityRpcMethod_SECURITY_RPC_METHOD_APPROVE_PAIRING        SecurityRpcMethod = 8
-	SecurityRpcMethod_SECURITY_RPC_METHOD_GET_PAIRING            SecurityRpcMethod = 9
-	SecurityRpcMethod_SECURITY_RPC_METHOD_CANCEL_PAIRING         SecurityRpcMethod = 10
-	SecurityRpcMethod_SECURITY_RPC_METHOD_GET_RECOVERY_CHALLENGE SecurityRpcMethod = 11
-	SecurityRpcMethod_SECURITY_RPC_METHOD_GET_RECOVERY_CONTEXT   SecurityRpcMethod = 12
-	SecurityRpcMethod_SECURITY_RPC_METHOD_SUBMIT_RECOVERY        SecurityRpcMethod = 13
-	SecurityRpcMethod_SECURITY_RPC_METHOD_COMPLETE_RECOVERY      SecurityRpcMethod = 14
-	SecurityRpcMethod_SECURITY_RPC_METHOD_DELETE_MACHINE_RECORDS SecurityRpcMethod = 15
-	SecurityRpcMethod_SECURITY_RPC_METHOD_DELETE_ACCOUNT         SecurityRpcMethod = 16
-	SecurityRpcMethod_SECURITY_RPC_METHOD_GET_CHALLENGE          SecurityRpcMethod = 17
-	SecurityRpcMethod_SECURITY_RPC_METHOD_LOGIN                  SecurityRpcMethod = 18
-	SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SIGNUP_CHALLENGE   SecurityRpcMethod = 19
-	SecurityRpcMethod_SECURITY_RPC_METHOD_REGISTER_DEVICE        SecurityRpcMethod = 20
-	SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_DEVICE_META        SecurityRpcMethod = 21
-	SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES           SecurityRpcMethod = 22
-	SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_MACHINES          SecurityRpcMethod = 23
-	SecurityRpcMethod_SECURITY_RPC_METHOD_GET_ACCOUNT_PREFS      SecurityRpcMethod = 24
-	SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_ACCOUNT_PREFS      SecurityRpcMethod = 25
-)
-
 type SecurityBootstrapKind int32
 
 const (
@@ -1301,7 +1270,7 @@ type DemoMachine struct {
 	MachineId  string
 	Online     bool
 	LastSeenMs int64
-	Meta       *v1.MachineMeta
+	RawMeta    []byte
 }
 
 func (m *DemoMachine) GetMachineId() string {
@@ -1322,9 +1291,9 @@ func (m *DemoMachine) GetLastSeenMs() int64 {
 	}
 	return 0
 }
-func (m *DemoMachine) GetMeta() *v1.MachineMeta {
+func (m *DemoMachine) GetRawMeta() []byte {
 	if m != nil {
-		return m.Meta
+		return m.RawMeta
 	}
 	return nil
 }
@@ -1335,7 +1304,7 @@ var LitewireDesc_DemoMachine = litewire.MessageDesc{
 		{Num: 1, Offset: unsafe.Offsetof(DemoMachine{}.MachineId), Kind: litewire.KindString},
 		{Num: 2, Offset: unsafe.Offsetof(DemoMachine{}.Online), Kind: litewire.KindBool},
 		{Num: 3, Offset: unsafe.Offsetof(DemoMachine{}.LastSeenMs), Kind: litewire.KindInt64},
-		{Num: 4, Offset: unsafe.Offsetof(DemoMachine{}.Meta), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_MachineMeta},
+		{Num: 5, Offset: unsafe.Offsetof(DemoMachine{}.RawMeta), Kind: litewire.KindBytes},
 	},
 }
 
@@ -1350,8 +1319,8 @@ type DemoSession struct {
 	LastSeq       uint64
 	UpdatedMs     int64
 	ListedEndedMs int64
-	Meta          *v1.Session
-	Checkpoint    *v1.LiveSnapshot
+	RawMeta       []byte
+	RawCheckpoint []byte
 }
 
 func (m *DemoSession) GetSessionId() string {
@@ -1384,15 +1353,15 @@ func (m *DemoSession) GetListedEndedMs() int64 {
 	}
 	return 0
 }
-func (m *DemoSession) GetMeta() *v1.Session {
+func (m *DemoSession) GetRawMeta() []byte {
 	if m != nil {
-		return m.Meta
+		return m.RawMeta
 	}
 	return nil
 }
-func (m *DemoSession) GetCheckpoint() *v1.LiveSnapshot {
+func (m *DemoSession) GetRawCheckpoint() []byte {
 	if m != nil {
-		return m.Checkpoint
+		return m.RawCheckpoint
 	}
 	return nil
 }
@@ -1405,8 +1374,8 @@ var LitewireDesc_DemoSession = litewire.MessageDesc{
 		{Num: 3, Offset: unsafe.Offsetof(DemoSession{}.LastSeq), Kind: litewire.KindUint64},
 		{Num: 4, Offset: unsafe.Offsetof(DemoSession{}.UpdatedMs), Kind: litewire.KindInt64},
 		{Num: 5, Offset: unsafe.Offsetof(DemoSession{}.ListedEndedMs), Kind: litewire.KindInt64},
-		{Num: 6, Offset: unsafe.Offsetof(DemoSession{}.Meta), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_Session},
-		{Num: 7, Offset: unsafe.Offsetof(DemoSession{}.Checkpoint), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_LiveSnapshot},
+		{Num: 8, Offset: unsafe.Offsetof(DemoSession{}.RawMeta), Kind: litewire.KindBytes},
+		{Num: 9, Offset: unsafe.Offsetof(DemoSession{}.RawCheckpoint), Kind: litewire.KindBytes},
 	},
 }
 
@@ -1420,7 +1389,7 @@ type DemoDevice struct {
 	Kind       v1.DeviceKind
 	CreatedMs  int64
 	LastSeenMs int64
-	Meta       *v1.DeviceMeta
+	RawMeta    []byte
 }
 
 func (m *DemoDevice) GetDeviceId() string {
@@ -1447,9 +1416,9 @@ func (m *DemoDevice) GetLastSeenMs() int64 {
 	}
 	return 0
 }
-func (m *DemoDevice) GetMeta() *v1.DeviceMeta {
+func (m *DemoDevice) GetRawMeta() []byte {
 	if m != nil {
-		return m.Meta
+		return m.RawMeta
 	}
 	return nil
 }
@@ -1461,7 +1430,7 @@ var LitewireDesc_DemoDevice = litewire.MessageDesc{
 		{Num: 2, Offset: unsafe.Offsetof(DemoDevice{}.Kind), Kind: litewire.KindInt32},
 		{Num: 3, Offset: unsafe.Offsetof(DemoDevice{}.CreatedMs), Kind: litewire.KindInt64},
 		{Num: 4, Offset: unsafe.Offsetof(DemoDevice{}.LastSeenMs), Kind: litewire.KindInt64},
-		{Num: 5, Offset: unsafe.Offsetof(DemoDevice{}.Meta), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_DeviceMeta},
+		{Num: 6, Offset: unsafe.Offsetof(DemoDevice{}.RawMeta), Kind: litewire.KindBytes},
 	},
 }
 
@@ -1470,9 +1439,13 @@ func (m *DemoDevice) Unmarshal(b []byte) error {
 }
 
 type DemoSessionEvents struct {
-	_         [0]func()
-	SessionId string
-	Events    []*v1.Event
+	_           [0]func()
+	SessionId   string
+	RawEvents   [][]byte
+	Retired     bool
+	Unavailable bool
+	LoadError   string
+	Replace     bool
 }
 
 func (m *DemoSessionEvents) GetSessionId() string {
@@ -1481,40 +1454,51 @@ func (m *DemoSessionEvents) GetSessionId() string {
 	}
 	return ""
 }
-func (m *DemoSessionEvents) GetEvents() []*v1.Event {
+func (m *DemoSessionEvents) GetRawEvents() [][]byte {
 	if m != nil {
-		return m.Events
+		return m.RawEvents
 	}
 	return nil
+}
+func (m *DemoSessionEvents) GetRetired() bool {
+	if m != nil {
+		return m.Retired
+	}
+	return false
+}
+func (m *DemoSessionEvents) GetUnavailable() bool {
+	if m != nil {
+		return m.Unavailable
+	}
+	return false
+}
+func (m *DemoSessionEvents) GetLoadError() string {
+	if m != nil {
+		return m.LoadError
+	}
+	return ""
+}
+func (m *DemoSessionEvents) GetReplace() bool {
+	if m != nil {
+		return m.Replace
+	}
+	return false
 }
 
 var LitewireDesc_DemoSessionEvents = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&DemoSessionEvents{}) },
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(DemoSessionEvents{}.SessionId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(DemoSessionEvents{}.RawEvents), Kind: litewire.KindBytes, Flags: litewire.FlagRepeated},
+		{Num: 4, Offset: unsafe.Offsetof(DemoSessionEvents{}.Retired), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(DemoSessionEvents{}.Unavailable), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(DemoSessionEvents{}.LoadError), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(DemoSessionEvents{}.Replace), Kind: litewire.KindBool},
 	},
 }
 
 func (m *DemoSessionEvents) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DemoSessionEvents)
-}
-
-func extraUnmarshal_DemoSessionEvents(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	m := (*DemoSessionEvents)(base)
-	b := *bp
-	if wtyp == litewire.BytesType {
-		switch num {
-		case 2:
-			elem := &v1.Event{}
-			m.Events = append(m.Events, elem)
-			if err := litewire.ReadMessage(&b, elem); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 type DemoSecurity struct {
@@ -1688,11 +1672,22 @@ type SeedDemoWorldEvent struct {
 	Machines           []*DemoMachine
 	Sessions           []*DemoSession
 	Devices            []*DemoDevice
-	Prefs              *v1.ProjectPrefs
 	SessionEvents      []*DemoSessionEvents
 	Security           *DemoSecurity
 	DirectReports      []*DemoDirectReport
 	ClearDirectReports bool
+	RawPrefs           []byte
+	RemovedMachineIds  []string
+	RemovedSessionIds  []string
+	HasMoreSessions    bool
+	ListError          string
+	ClearListError     bool
+	PrefsError         string
+	ClearPrefsError    bool
+	PrefsRevision      uint64
+	ReplaceMachines    bool
+	ReplaceSessions    bool
+	ReplaceDevices     bool
 }
 
 func (m *SeedDemoWorldEvent) GetMachines() []*DemoMachine {
@@ -1710,12 +1705,6 @@ func (m *SeedDemoWorldEvent) GetSessions() []*DemoSession {
 func (m *SeedDemoWorldEvent) GetDevices() []*DemoDevice {
 	if m != nil {
 		return m.Devices
-	}
-	return nil
-}
-func (m *SeedDemoWorldEvent) GetPrefs() *v1.ProjectPrefs {
-	if m != nil {
-		return m.Prefs
 	}
 	return nil
 }
@@ -1743,13 +1732,96 @@ func (m *SeedDemoWorldEvent) GetClearDirectReports() bool {
 	}
 	return false
 }
+func (m *SeedDemoWorldEvent) GetRawPrefs() []byte {
+	if m != nil {
+		return m.RawPrefs
+	}
+	return nil
+}
+func (m *SeedDemoWorldEvent) GetRemovedMachineIds() []string {
+	if m != nil {
+		return m.RemovedMachineIds
+	}
+	return nil
+}
+func (m *SeedDemoWorldEvent) GetRemovedSessionIds() []string {
+	if m != nil {
+		return m.RemovedSessionIds
+	}
+	return nil
+}
+func (m *SeedDemoWorldEvent) GetHasMoreSessions() bool {
+	if m != nil {
+		return m.HasMoreSessions
+	}
+	return false
+}
+func (m *SeedDemoWorldEvent) GetListError() string {
+	if m != nil {
+		return m.ListError
+	}
+	return ""
+}
+func (m *SeedDemoWorldEvent) GetClearListError() bool {
+	if m != nil {
+		return m.ClearListError
+	}
+	return false
+}
+func (m *SeedDemoWorldEvent) GetPrefsError() string {
+	if m != nil {
+		return m.PrefsError
+	}
+	return ""
+}
+func (m *SeedDemoWorldEvent) GetClearPrefsError() bool {
+	if m != nil {
+		return m.ClearPrefsError
+	}
+	return false
+}
+func (m *SeedDemoWorldEvent) GetPrefsRevision() uint64 {
+	if m != nil {
+		return m.PrefsRevision
+	}
+	return 0
+}
+func (m *SeedDemoWorldEvent) GetReplaceMachines() bool {
+	if m != nil {
+		return m.ReplaceMachines
+	}
+	return false
+}
+func (m *SeedDemoWorldEvent) GetReplaceSessions() bool {
+	if m != nil {
+		return m.ReplaceSessions
+	}
+	return false
+}
+func (m *SeedDemoWorldEvent) GetReplaceDevices() bool {
+	if m != nil {
+		return m.ReplaceDevices
+	}
+	return false
+}
 
 var LitewireDesc_SeedDemoWorldEvent = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&SeedDemoWorldEvent{}) },
 	Fields: []litewire.Field{
-		{Num: 4, Offset: unsafe.Offsetof(SeedDemoWorldEvent{}.Prefs), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_ProjectPrefs},
 		{Num: 6, Offset: unsafe.Offsetof(SeedDemoWorldEvent{}.Security), Kind: litewire.KindMessage, Sub: &LitewireDesc_DemoSecurity},
 		{Num: 8, Offset: unsafe.Offsetof(SeedDemoWorldEvent{}.ClearDirectReports), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(SeedDemoWorldEvent{}.RawPrefs), Kind: litewire.KindBytes},
+		{Num: 10, Offset: unsafe.Offsetof(SeedDemoWorldEvent{}.RemovedMachineIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 11, Offset: unsafe.Offsetof(SeedDemoWorldEvent{}.RemovedSessionIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 12, Offset: unsafe.Offsetof(SeedDemoWorldEvent{}.HasMoreSessions), Kind: litewire.KindBool},
+		{Num: 13, Offset: unsafe.Offsetof(SeedDemoWorldEvent{}.ListError), Kind: litewire.KindString},
+		{Num: 14, Offset: unsafe.Offsetof(SeedDemoWorldEvent{}.ClearListError), Kind: litewire.KindBool},
+		{Num: 15, Offset: unsafe.Offsetof(SeedDemoWorldEvent{}.PrefsError), Kind: litewire.KindString},
+		{Num: 16, Offset: unsafe.Offsetof(SeedDemoWorldEvent{}.ClearPrefsError), Kind: litewire.KindBool},
+		{Num: 17, Offset: unsafe.Offsetof(SeedDemoWorldEvent{}.PrefsRevision), Kind: litewire.KindUint64},
+		{Num: 18, Offset: unsafe.Offsetof(SeedDemoWorldEvent{}.ReplaceMachines), Kind: litewire.KindBool},
+		{Num: 19, Offset: unsafe.Offsetof(SeedDemoWorldEvent{}.ReplaceSessions), Kind: litewire.KindBool},
+		{Num: 20, Offset: unsafe.Offsetof(SeedDemoWorldEvent{}.ReplaceDevices), Kind: litewire.KindBool},
 	},
 }
 
@@ -1798,7 +1870,7 @@ func extraUnmarshal_SeedDemoWorldEvent(base unsafe.Pointer, num litewire.Number,
 type CacheWriteStoredEvents struct {
 	_         [0]func()
 	SessionId string
-	Events    []*v1.StoredEvent
+	RawEvents [][]byte
 }
 
 func (m *CacheWriteStoredEvents) GetSessionId() string {
@@ -1807,9 +1879,9 @@ func (m *CacheWriteStoredEvents) GetSessionId() string {
 	}
 	return ""
 }
-func (m *CacheWriteStoredEvents) GetEvents() []*v1.StoredEvent {
+func (m *CacheWriteStoredEvents) GetRawEvents() [][]byte {
 	if m != nil {
-		return m.Events
+		return m.RawEvents
 	}
 	return nil
 }
@@ -1817,7 +1889,7 @@ func (m *CacheWriteStoredEvents) GetEvents() []*v1.StoredEvent {
 var LitewireDesc_CacheWriteStoredEvents = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(CacheWriteStoredEvents{}.SessionId), Kind: litewire.KindString},
-		{Num: 2, Offset: unsafe.Offsetof(CacheWriteStoredEvents{}.Events), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &v1.LitewireDesc_StoredEvent},
+		{Num: 3, Offset: unsafe.Offsetof(CacheWriteStoredEvents{}.RawEvents), Kind: litewire.KindBytes, Flags: litewire.FlagRepeated},
 	},
 }
 
@@ -2502,64 +2574,6 @@ func extraUnmarshal_SecurityStorageResultEvent(base unsafe.Pointer, num litewire
 	return false, nil
 }
 
-type SecurityRpcEffect struct {
-	_            [0]func()
-	OpId         uint64
-	Method       SecurityRpcMethod
-	Server       string
-	AuthToken    string
-	RequestBytes []byte
-}
-
-func (m *SecurityRpcEffect) GetOpId() uint64 {
-	if m != nil {
-		return m.OpId
-	}
-	return 0
-}
-func (m *SecurityRpcEffect) GetMethod() SecurityRpcMethod {
-	if m != nil {
-		return m.Method
-	}
-	return 0
-}
-func (m *SecurityRpcEffect) GetServer() string {
-	if m != nil {
-		return m.Server
-	}
-	return ""
-}
-func (m *SecurityRpcEffect) GetAuthToken() string {
-	if m != nil {
-		return m.AuthToken
-	}
-	return ""
-}
-func (m *SecurityRpcEffect) GetRequestBytes() []byte {
-	if m != nil {
-		return m.RequestBytes
-	}
-	return nil
-}
-
-var LitewireDesc_SecurityRpcEffect = litewire.MessageDesc{
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(SecurityRpcEffect{}.OpId), Kind: litewire.KindUint64},
-		{Num: 2, Offset: unsafe.Offsetof(SecurityRpcEffect{}.Method), Kind: litewire.KindInt32},
-		{Num: 3, Offset: unsafe.Offsetof(SecurityRpcEffect{}.Server), Kind: litewire.KindString},
-		{Num: 4, Offset: unsafe.Offsetof(SecurityRpcEffect{}.AuthToken), Kind: litewire.KindString},
-		{Num: 5, Offset: unsafe.Offsetof(SecurityRpcEffect{}.RequestBytes), Kind: litewire.KindBytes},
-	},
-}
-
-func (m *SecurityRpcEffect) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *SecurityRpcEffect) AppendMarshal(b []byte) []byte {
-	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityRpcEffect)
-}
-
 type RpcErrorDetailBytes struct {
 	_        [0]func()
 	TypeName string
@@ -2589,86 +2603,6 @@ var LitewireDesc_RpcErrorDetailBytes = litewire.MessageDesc{
 
 func (m *RpcErrorDetailBytes) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_RpcErrorDetailBytes)
-}
-
-type SecurityRpcResultEvent struct {
-	_             [0]func()
-	OpId          uint64
-	ResponseBytes []byte
-	ConnectCode   int32
-	Error         string
-	NetworkError  bool
-	ErrorDetails  []*RpcErrorDetailBytes
-}
-
-func (m *SecurityRpcResultEvent) GetOpId() uint64 {
-	if m != nil {
-		return m.OpId
-	}
-	return 0
-}
-func (m *SecurityRpcResultEvent) GetResponseBytes() []byte {
-	if m != nil {
-		return m.ResponseBytes
-	}
-	return nil
-}
-func (m *SecurityRpcResultEvent) GetConnectCode() int32 {
-	if m != nil {
-		return m.ConnectCode
-	}
-	return 0
-}
-func (m *SecurityRpcResultEvent) GetError() string {
-	if m != nil {
-		return m.Error
-	}
-	return ""
-}
-func (m *SecurityRpcResultEvent) GetNetworkError() bool {
-	if m != nil {
-		return m.NetworkError
-	}
-	return false
-}
-func (m *SecurityRpcResultEvent) GetErrorDetails() []*RpcErrorDetailBytes {
-	if m != nil {
-		return m.ErrorDetails
-	}
-	return nil
-}
-
-var LitewireDesc_SecurityRpcResultEvent = litewire.MessageDesc{
-	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityRpcResultEvent{}) },
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(SecurityRpcResultEvent{}.OpId), Kind: litewire.KindUint64},
-		{Num: 2, Offset: unsafe.Offsetof(SecurityRpcResultEvent{}.ResponseBytes), Kind: litewire.KindBytes},
-		{Num: 3, Offset: unsafe.Offsetof(SecurityRpcResultEvent{}.ConnectCode), Kind: litewire.KindInt32},
-		{Num: 4, Offset: unsafe.Offsetof(SecurityRpcResultEvent{}.Error), Kind: litewire.KindString},
-		{Num: 5, Offset: unsafe.Offsetof(SecurityRpcResultEvent{}.NetworkError), Kind: litewire.KindBool},
-	},
-}
-
-func (m *SecurityRpcResultEvent) Unmarshal(b []byte) error {
-	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityRpcResultEvent)
-}
-
-func extraUnmarshal_SecurityRpcResultEvent(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	m := (*SecurityRpcResultEvent)(base)
-	b := *bp
-	if wtyp == litewire.BytesType {
-		switch num {
-		case 6:
-			elem := &RpcErrorDetailBytes{}
-			m.ErrorDetails = append(m.ErrorDetails, elem)
-			if err := litewire.ReadMessage(&b, elem); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 type SecurityTokenUpdatedEffect struct {
@@ -5257,10 +5191,8 @@ func init() {
 	LitewireDesc_SecurityCryptoBatchDoneEvent.ExtraUnmarshal = extraUnmarshal_SecurityCryptoBatchDoneEvent
 	LitewireDesc_SecurityOpRequestEvent.ExtraUnmarshal = extraUnmarshal_SecurityOpRequestEvent
 	LitewireDesc_SecurityOpResultEffect.ExtraMarshal = extraMarshal_SecurityOpResultEffect
-	LitewireDesc_DemoSessionEvents.ExtraUnmarshal = extraUnmarshal_DemoSessionEvents
 	LitewireDesc_SeedDemoWorldEvent.ExtraUnmarshal = extraUnmarshal_SeedDemoWorldEvent
 	LitewireDesc_SecurityKeyEncapsulatedEvent.ExtraUnmarshal = extraUnmarshal_SecurityKeyEncapsulatedEvent
 	LitewireDesc_SecurityStorageResultEvent.ExtraUnmarshal = extraUnmarshal_SecurityStorageResultEvent
-	LitewireDesc_SecurityRpcResultEvent.ExtraUnmarshal = extraUnmarshal_SecurityRpcResultEvent
 	LitewireDesc_SecurityWorkflowActionEvent.ExtraUnmarshal = extraUnmarshal_SecurityWorkflowActionEvent
 }

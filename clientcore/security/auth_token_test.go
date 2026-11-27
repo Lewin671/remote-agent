@@ -47,7 +47,6 @@ func newAuthTestEngine(t *testing.T) (*security.Engine, *authSinkRecorder, ed255
 		t.Fatalf("gen ed25519: %v", err)
 	}
 	eng := security.NewEngine(&entropy.Pool{}, 17)
-	eng.SetRelayPipe(true)
 	eng.Configure(&corev1.SecurityConfigEvent{
 		Account:  "acct-1",
 		DeviceId: "dev-1",

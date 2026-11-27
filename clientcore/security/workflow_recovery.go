@@ -52,11 +52,11 @@ func (e *Engine) startFetchRecoveryCtxWithSeed(
 		genPrefix: genPrefix, existingRec: existingRec, useSeed: true, seed: seed, verifyChain: true,
 	}
 	zeroBytes(seed[:])
-	e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_RECOVERY_CHALLENGE, server, "", &v1.GetRecoveryChallengeRequest{}, t)
+	e.waitProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_RECOVERY_CHALLENGE, server, "", &v1.GetRecoveryChallengeRequest{}, t)
 }
 
 func (e *Engine) startFetchRecoveryCtxWithCandSlot(server, recoveryID, candEdSlot string, fgGen uint64, target taskTarget) {
-	e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_RECOVERY_CHALLENGE, server, "", &v1.GetRecoveryChallengeRequest{}, &fetchRecoveryCtxTask{
+	e.waitProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_RECOVERY_CHALLENGE, server, "", &v1.GetRecoveryChallengeRequest{}, &fetchRecoveryCtxTask{
 		taskBase: taskBase{fgGen: fgGen, target: target}, server: server, recoveryID: recoveryID, candEdSlot: candEdSlot,
 	})
 }
@@ -78,7 +78,7 @@ func (t *fetchRecoveryCtxTask) sendContextRPC(e *Engine, sig []byte) {
 		req.RecoveryEd = slices.Clone(t.recPub)
 	}
 	t.stage = recCtxFetch
-	e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_RECOVERY_CONTEXT, t.server, "", req, t)
+	e.waitProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_RECOVERY_CONTEXT, t.server, "", req, t)
 }
 
 func (t *fetchRecoveryCtxTask) step(e *Engine, ev *secEvent) error {
@@ -470,7 +470,7 @@ type continueRecoverySigningTask struct {
 
 func (t *continueRecoverySigningTask) submitSigned(e *Engine, curOp *PersistedOperation) {
 	t.op, t.stage = curOp, contRecSubmitRPC
-	e.waitRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_SUBMIT_RECOVERY, curOp.Server, "", curOp.Signed, t, 0)
+	e.waitRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_SUBMIT_RECOVERY, curOp.Server, "", curOp.Signed, t, 0)
 }
 
 func (t *continueRecoverySigningTask) step(e *Engine, ev *secEvent) error {
@@ -565,7 +565,7 @@ func (t *resumeRecoveryTask) step(e *Engine, ev *secEvent) error {
 		if op.Recovery.RecoveryID == "" {
 			if len(op.Signed) > 0 {
 				t.op, t.stage = op, resumeRecSubmitRPC
-				e.waitRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_SUBMIT_RECOVERY, op.Server, "", op.Signed, t, 0)
+				e.waitRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_SUBMIT_RECOVERY, op.Server, "", op.Signed, t, 0)
 				return nil
 			}
 			e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{ResumedDraft: true, CodeSaved: op.CodeSaved})
@@ -657,7 +657,7 @@ func (t *completeRecoveryTask) onError(e *Engine, err error) {
 
 func (t *completeRecoveryTask) callComplete(e *Engine, curOp *PersistedOperation) {
 	t.op, t.stage = curOp, compRecRPC
-	e.waitRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_COMPLETE_RECOVERY, curOp.Server, "", curOp.Recovery.CompleteRequest, t, 0)
+	e.waitRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_COMPLETE_RECOVERY, curOp.Server, "", curOp.Recovery.CompleteRequest, t, 0)
 }
 
 func (t *completeRecoveryTask) commitRecord(e *Engine, curOp *PersistedOperation, head devicesec.State, leaseRaw []byte) error {
@@ -703,7 +703,7 @@ func (t *completeRecoveryTask) commitRecord(e *Engine, curOp *PersistedOperation
 
 func (t *completeRecoveryTask) publishRetirement(e *Engine, retState devicesec.State, retStateRaw, retLeaseRaw, putRetBytes []byte) {
 	t.retState, t.retStateRaw, t.retLeaseRaw, t.putRetBytes, t.stage = retState, retStateRaw, retLeaseRaw, putRetBytes, compRecRetPut
-	e.waitRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_SECURITY_STATE, t.op.Server, t.tok, putRetBytes, t, 0)
+	e.waitRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_PUT_SECURITY_STATE, t.op.Server, t.tok, putRetBytes, t, 0)
 }
 
 func (t *completeRecoveryTask) step(e *Engine, ev *secEvent) error {
@@ -779,7 +779,7 @@ func (t *completeRecoveryTask) step(e *Engine, ev *secEvent) error {
 	case compRecLease:
 		leaseRaw, _ := ev.lease.MarshalBinary()
 		t.leaseRaw, t.stage = leaseRaw, compRecPutLease
-		e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_SECURITY_STATE, t.op.Server, t.tok, &v1.PutSecurityStateRequest{Lease: leaseRaw}, t)
+		e.waitProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_PUT_SECURITY_STATE, t.op.Server, t.tok, &v1.PutSecurityStateRequest{Lease: leaseRaw}, t)
 	case compRecPutLease:
 		curOp := t.op
 		if retiring := curOp.Recovery.RetiringMemberID; retiring != "" && retiring != curOp.MemberID {

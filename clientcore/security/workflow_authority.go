@@ -31,7 +31,7 @@ const (
 
 func (t *renewLeaseTask) uploadPendingLease(e *Engine, curPending *PersistedOperation, leaseBytes, reqBytes []byte) {
 	t.pending, t.leaseRaw, t.reqBytes, t.stage = curPending, leaseBytes, reqBytes, renewLeasePendingPut
-	e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_SECURITY_STATE, curPending.Server, "", true, t.fgGen, reqBytes, parentTarget(t, 0))
+	e.callAuthedRpc(corev1.RelayRpcMethod_RELAY_RPC_METHOD_PUT_SECURITY_STATE, curPending.Server, "", true, t.fgGen, reqBytes, parentTarget(t, 0))
 }
 
 func (t *renewLeaseTask) runAfterPre(e *Engine) {
@@ -334,7 +334,7 @@ func (t *continueCreationTask) finishWithToken(e *Engine, tok string) error {
 		return err
 	}
 	t.tok, t.genesis, t.stage = tok, genesis, contCreatePin
-	e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PIN_SECURITY_DOMAIN, t.op.Server, tok, &v1.PinSecurityDomainRequest{GenesisState: genesisBytes}, t)
+	e.waitProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_PIN_SECURITY_DOMAIN, t.op.Server, tok, &v1.PinSecurityDomainRequest{GenesisState: genesisBytes}, t)
 	return nil
 }
 
@@ -385,7 +385,7 @@ func (t *continueCreationTask) step(e *Engine, ev *secEvent) error {
 		t.startRegisterAttempt(e, t.op, nil, false)
 	case contCreateSaveRetry:
 		t.op, t.stage = ev.op, contCreateRegRPC
-		e.waitRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_REGISTER_DEVICE, ev.op.Server, "", t.regReq, t, 0)
+		e.waitRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_REGISTER_DEVICE, ev.op.Server, "", t.regReq, t, 0)
 	case contCreateRegRPC:
 		if ev.rpcErr == nil {
 			if ev.err != nil {
@@ -403,7 +403,7 @@ func (t *continueCreationTask) step(e *Engine, ev *secEvent) error {
 			return ev.rpcErr
 		}
 		t.stage = contCreatePowChal
-		e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SIGNUP_CHALLENGE, t.op.Server, "", &v1.GetSignupChallengeRequest{}, t)
+		e.waitProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SIGNUP_CHALLENGE, t.op.Server, "", &v1.GetSignupChallengeRequest{}, t)
 	case contCreatePowChal:
 		var sc v1.GetSignupChallengeResponse
 		if sc.Unmarshal(ev.bytes) != nil || len(sc.Challenge) == 0 || sc.DifficultyBits > 24 || (e.lastNowMs > 0 && sc.ExpiresMs <= e.lastNowMs) {
@@ -438,7 +438,7 @@ func (t *continueCreationTask) step(e *Engine, ev *secEvent) error {
 		e.saveOperationCAS(curPending, &nextOp, parentTarget(t, 0))
 	case contCreateSaveLease:
 		t.op, t.stage = ev.op, contCreatePutLease
-		e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_SECURITY_STATE, ev.op.Server, t.tok, &v1.PutSecurityStateRequest{Lease: t.leaseBytes}, t)
+		e.waitProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_PUT_SECURITY_STATE, ev.op.Server, t.tok, &v1.PutSecurityStateRequest{Lease: t.leaseBytes}, t)
 	case contCreatePutLease:
 		if err := e.checkFG(t.fgGen); err != nil {
 			return err
@@ -771,7 +771,7 @@ func (t *deleteAccountTask) step(e *Engine, ev *secEvent) error {
 			return devicesec.ErrUntrusted
 		}
 		t.head, t.server, t.stage = e.headHash, e.effectiveServer(), delAcctChallenge
-		e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_CHALLENGE, t.server, t.fgGen, &v1.GetChallengeRequest{DeviceId: e.selfDeviceID}, parentTarget(t, 0))
+		e.callAuthedProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_CHALLENGE, t.server, t.fgGen, &v1.GetChallengeRequest{DeviceId: e.selfDeviceID}, parentTarget(t, 0))
 	case delAcctChallenge:
 		var chal v1.GetChallengeResponse
 		if chal.Unmarshal(ev.bytes) != nil || len(chal.Challenge) != 32 {
@@ -793,7 +793,7 @@ func (t *deleteAccountTask) step(e *Engine, ev *secEvent) error {
 			return err
 		}
 		t.stage = delAcctClear
-		e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_DELETE_ACCOUNT, t.server, t.fgGen, &v1.DeleteAccountRequest{
+		e.callAuthedProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_DELETE_ACCOUNT, t.server, t.fgGen, &v1.DeleteAccountRequest{
 			StateHash: t.head[:], Challenge: t.challenge, Signature: ev.bytes,
 		}, parentTarget(t, 0))
 	case delAcctClear:
@@ -1018,7 +1018,7 @@ func (e *Engine) listHandoffCandidatesOp(actionID uint64) {
 		e.emitActionResult(actionID, nil, devicesec.ErrUntrusted)
 		return
 	}
-	e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES, e.effectiveServer(), 0, &v1.ListDevicesRequest{}, parentTarget(&listHandoffCandidatesTask{actionID: actionID}, 0))
+	e.callAuthedProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_DEVICES, e.effectiveServer(), 0, &v1.ListDevicesRequest{}, parentTarget(&listHandoffCandidatesTask{actionID: actionID}, 0))
 }
 
 func (t *listHandoffCandidatesTask) step(e *Engine, ev *secEvent) error {
@@ -1118,7 +1118,7 @@ func (t *handoffAuthorityTask) step(e *Engine, ev *secEvent) error {
 			return devicesec.ErrUntrusted
 		}
 		t.stage = handoffList
-		e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES, e.effectiveServer(), t.fgGen, &v1.ListDevicesRequest{}, parentTarget(t, 0))
+		e.callAuthedProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_DEVICES, e.effectiveServer(), t.fgGen, &v1.ListDevicesRequest{}, parentTarget(t, 0))
 	case handoffList:
 		if ev.err != nil {
 			return t.proceed(e, e.verifiedHandoffCandidates(wf.devicesSnap))
@@ -1198,7 +1198,7 @@ func (t *updateDeviceMetaTask) tryCAS(e *Engine) error {
 		return devicesec.ErrStale
 	}
 	t.stage = metaUpdateList
-	e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES, t.server, 0, &v1.ListDevicesRequest{}, parentTarget(t, 0))
+	e.callAuthedProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_DEVICES, t.server, 0, &v1.ListDevicesRequest{}, parentTarget(t, 0))
 	return nil
 }
 
@@ -1257,7 +1257,7 @@ func (t *updateDeviceMetaTask) step(e *Engine, ev *secEvent) error {
 		e.startSealEnvelopeInternal(e.lastNowMs, devicesec.DeviceMeta, "", "", e.selfDeviceID, t.rev+1, 0, t.plain, false, nil, parentTarget(t, 0))
 	case metaUpdateSeal:
 		t.stage = metaUpdatePut
-		e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_DEVICE_META, t.server, 0, &v1.PutDeviceMetaRequest{
+		e.callAuthedProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_PUT_DEVICE_META, t.server, 0, &v1.PutDeviceMetaRequest{
 			DeviceId: e.selfDeviceID, ExpectedRevision: t.rev, Meta: ev.seal.Envelope,
 		}, parentTarget(t, 0))
 	case metaUpdatePut:

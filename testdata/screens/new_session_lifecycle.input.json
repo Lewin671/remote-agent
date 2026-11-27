@@ -2,27 +2,35 @@
   "steps": [
     {
       "event": {
-        "nowMs": "1791078060000",
         "clockUpdated": {
-          "nowMs": "1791078060000",
-          "todayStartMs": "1791043200000",
-          "yesterdayStartMs": "1790956800000",
-          "weekStartMs": "1790524800000",
-          "nowYear": 2026,
           "months": [
             {
-              "year": 2026,
               "month": 10,
-              "startMs": "1790812800000"
+              "startMs": "1790812800000",
+              "year": 2026
             }
-          ]
-        }
+          ],
+          "nowMs": "1791078060000",
+          "nowYear": 2026,
+          "todayStartMs": "1791043200000",
+          "weekStartMs": "1790524800000",
+          "yesterdayStartMs": "1790956800000"
+        },
+        "nowMs": "1791078060000"
       }
     },
     {
       "event": {
         "nowMs": "1791078060000",
+        "seedDemoWorld": {
+          "clearDirectReports": true
+        }
+      }
+    },
+    {
+      "event": {
         "monoMs": "1000",
+        "nowMs": "1791078060000",
         "randomIds": [
           "req-models-1",
           "att-models-1",
@@ -35,52 +43,35 @@
           "att-start-2",
           "pref-start-1"
         ],
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START"
+        },
         "unitFloats": [
           0.5,
           0.5,
           0.5,
           0.5
-        ],
-        "syncLifecycle": {
-          "kind": "SYNC_LIFECYCLE_KIND_START"
-        }
+        ]
       }
     },
     {
       "event": {
         "nowMs": "1791078060010",
-        "cacheBootstrapLoaded": {
-          "opId": "1",
+        "seedDemoWorld": {
           "machines": [
             {
-              "machineId": "m-off",
-              "online": false,
               "lastSeenMs": "1791000000000",
-              "meta": {
-                "hostname": "OldMac",
-                "protocolVersion": 17,
-                "agents": [
-                  {
-                    "agent": "AGENT_CODEX",
-                    "defaultMode": "APPROVAL_MODE_ASK"
-                  }
-                ]
-              }
+              "machineId": "m-off",
+              "rawMeta": "CgZPbGRNYWNKBAgBIAFgEQ=="
             }
           ],
           "sessions": [
             {
-              "sessionId": "s-old",
-              "machineId": "m-off",
-              "updatedMs": "1791000000000",
               "listedEndedMs": "1791000000000",
-              "meta": {
-                "id": "s-old",
-                "cwd": "/Users/me/Code/app",
-                "agent": "AGENT_CODEX",
-                "status": "SESSION_STATUS_EXITED",
-                "endedAt": "2026-10-03T04:00:00Z"
-              }
+              "machineId": "m-off",
+              "rawMeta": "CgVzLW9sZBISL1VzZXJzL21lL0NvZGUvYXBwIAXIAQHyAQYIwPuB1gY=",
+              "sessionId": "s-old",
+              "updatedMs": "1791000000000"
             }
           ]
         }
@@ -88,10 +79,10 @@
     },
     {
       "event": {
-        "nowMs": "1791078060020",
         "newSessionOpen": {
           "projectKey": "/Users/me/Code/app"
-        }
+        },
+        "nowMs": "1791078060020"
       },
       "views": [
         {
@@ -109,24 +100,15 @@
         "nowMs": "1791078060030",
         "seedDemoWorld": {
           "security": {
-            "isMember": true,
-            "selfDeviceId": "dev-1",
             "authorityDeviceId": "dev-1",
+            "isMember": true,
             "leaseEndMs": "1791164460000",
+            "selfDeviceId": "dev-1",
             "trustedMachineIds": [
               "m-off",
               "m-on"
             ]
           }
-        }
-      }
-    },
-    {
-      "event": {
-        "nowMs": "1791078060040",
-        "tokenResult": {
-          "opId": "2",
-          "token": "tok-1"
         }
       }
     },
@@ -142,62 +124,30 @@
     {
       "event": {
         "nowMs": "1791078060060",
-        "listsFetched": {
-          "opId": "3",
+        "seedDemoWorld": {
+          "clearListError": true,
           "machines": [
             {
-              "machineId": "m-off",
-              "online": false,
               "lastSeenMs": "1791000000000",
-              "meta": {
-                "hostname": "OldMac",
-                "protocolVersion": 17,
-                "agents": [
-                  {
-                    "agent": "AGENT_CODEX",
-                    "defaultMode": "APPROVAL_MODE_ASK"
-                  }
-                ]
-              }
+              "machineId": "m-off",
+              "rawMeta": "CgZPbGRNYWNKBAgBIAFgEQ=="
             },
             {
               "machineId": "m-on",
               "online": true,
-              "meta": {
-                "hostname": "Workstation",
-                "protocolVersion": 17,
-                "agents": [
-                  {
-                    "agent": "AGENT_CODEX",
-                    "defaultMode": "APPROVAL_MODE_ASK"
-                  },
-                  {
-                    "agent": "AGENT_CLAUDE",
-                    "defaultMode": "APPROVAL_MODE_ASK"
-                  }
-                ],
-                "projects": [
-                  {
-                    "path": "/Users/me/Code/app",
-                    "ended": 1
-                  }
-                ]
-              }
+              "rawMeta": "CgtXb3Jrc3RhdGlvbkoECAEgAUoECAIgAWARahYKEi9Vc2Vycy9tZS9Db2RlL2FwcBAB"
             }
           ],
+          "replaceDevices": true,
+          "replaceMachines": true,
+          "replaceSessions": true,
           "sessions": [
             {
-              "sessionId": "s-old",
-              "machineId": "m-off",
-              "updatedMs": "1791000000000",
               "listedEndedMs": "1791000000000",
-              "meta": {
-                "id": "s-old",
-                "cwd": "/Users/me/Code/app",
-                "agent": "AGENT_CODEX",
-                "status": "SESSION_STATUS_EXITED",
-                "endedAt": "2026-10-03T04:00:00Z"
-              }
+              "machineId": "m-off",
+              "rawMeta": "CgVzLW9sZBISL1VzZXJzL21lL0NvZGUvYXBwIAXIAQHyAQYIwPuB1gY=",
+              "sessionId": "s-old",
+              "updatedMs": "1791000000000"
             }
           ]
         }
@@ -215,95 +165,66 @@
     },
     {
       "event": {
-        "nowMs": "1791078060070",
         "newSessionSelectMachine": {
           "machineId": "m-on"
-        }
+        },
+        "nowMs": "1791078060070"
       }
     },
     {
       "event": {
-        "nowMs": "1791078060080",
         "commandOutcome": {
-          "requestId": "req-models-1",
+          "attemptBound": true,
           "attemptId": "att-models-1",
-          "source": "OUTCOME_SOURCE_DAEMON",
-          "signed": true,
           "hashesMatch": true,
-          "attemptBound": true,
           "outerMatchesInner": true,
           "outerOutcome": "executed",
           "outerReason": "ok",
-          "result": {
-            "outcome": "executed",
-            "reason": "ok",
-            "resultAvailable": true,
-            "listModels": {
-              "defaultModel": "gpt-5.4",
-              "models": [
-                {
-                  "slug": "gpt-5.4",
-                  "displayName": "GPT-5.4",
-                  "efforts": [
-                    "medium",
-                    "high"
-                  ],
-                  "defaultEffort": "high"
-                }
-              ]
-            }
-          }
-        }
+          "rawResult": "GghleGVjdXRlZCICb2tAAfoBMQomCgdncHQtNS40EgdHUFQtNS40IgZtZWRpdW0iBGhpZ2gqBGhpZ2gSB2dwdC01LjQ=",
+          "requestId": "req-models-1",
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "nowMs": "1791078060080"
       }
     },
     {
       "event": {
-        "nowMs": "1791078060090",
         "commandOutcome": {
-          "requestId": "req-settings-1",
-          "attemptId": "att-settings-1",
-          "source": "OUTCOME_SOURCE_DAEMON",
-          "signed": true,
-          "hashesMatch": true,
           "attemptBound": true,
+          "attemptId": "att-settings-1",
+          "hashesMatch": true,
           "outerMatchesInner": true,
           "outerOutcome": "executed",
           "outerReason": "ok",
-          "result": {
-            "outcome": "executed",
-            "reason": "ok",
-            "resultAvailable": true,
-            "getSettings": {
-              "settings": {
-                "defaultModel": "gpt-5.4",
-                "defaultEffort": "high",
-                "defaultMode": "APPROVAL_MODE_ASK"
-              }
-            }
-          }
-        }
+          "rawResult": "GghleGVjdXRlZCICb2tAAYoCEwoREgdncHQtNS40GgRoaWdoIAE=",
+          "requestId": "req-settings-1",
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "nowMs": "1791078060090"
       }
     },
     {
       "event": {
-        "nowMs": "1791078060100",
         "newSessionSelectModel": {
-          "model": "gpt-5.4",
           "effort": "high",
-          "mode": "APPROVAL_MODE_AUTO"
-        }
+          "mode": "APPROVAL_MODE_AUTO",
+          "model": "gpt-5.4"
+        },
+        "nowMs": "1791078060100"
       }
     },
     {
       "event": {
-        "nowMs": "1791078060110",
         "draftSetText": {
           "scope": {
-            "kind": "DRAFT_SCOPE_KIND_NEW_SESSION",
-            "id": "/Users/me/Code/app"
+            "id": "/Users/me/Code/app",
+            "kind": "DRAFT_SCOPE_KIND_NEW_SESSION"
           },
           "text": "Ship M2 core"
-        }
+        },
+        "nowMs": "1791078060110"
       },
       "views": [
         {
@@ -318,24 +239,24 @@
     },
     {
       "event": {
-        "nowMs": "1791078060120",
         "newSessionSubmit": {
-          "projectKey": "/Users/me/Code/app",
-          "autoModeSupported": true
-        }
+          "autoModeSupported": true,
+          "projectKey": "/Users/me/Code/app"
+        },
+        "nowMs": "1791078060120"
       }
     },
     {
       "event": {
-        "nowMs": "1791078060130",
         "commandOutcome": {
-          "requestId": "req-start-1",
+          "attemptBound": true,
           "attemptId": "att-start-1",
-          "source": "OUTCOME_SOURCE_DAEMON",
-          "signed": true,
           "hashesMatch": false,
-          "attemptBound": true
-        }
+          "requestId": "req-start-1",
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "nowMs": "1791078060130"
       },
       "views": [
         {
@@ -350,41 +271,28 @@
     },
     {
       "event": {
-        "nowMs": "1791078060200",
         "newSessionSubmit": {
-          "projectKey": "/Users/me/Code/app",
-          "autoModeSupported": true
-        }
+          "autoModeSupported": true,
+          "projectKey": "/Users/me/Code/app"
+        },
+        "nowMs": "1791078060200"
       }
     },
     {
       "event": {
-        "nowMs": "1791078060250",
         "commandOutcome": {
-          "requestId": "req-start-1",
-          "attemptId": "att-start-2",
-          "source": "OUTCOME_SOURCE_DAEMON",
-          "signed": true,
-          "hashesMatch": true,
           "attemptBound": true,
+          "attemptId": "att-start-2",
+          "hashesMatch": true,
           "outerMatchesInner": true,
           "outerOutcome": "executed",
           "outerReason": "ok",
-          "result": {
-            "outcome": "executed",
-            "reason": "ok",
-            "resultAvailable": true,
-            "createSession": {
-              "session": {
-                "id": "s-new",
-                "cwd": "/Users/me/Code/app",
-                "agent": "AGENT_CODEX",
-                "status": "SESSION_STATUS_RUNNING",
-                "title": "Ship M2 core"
-              }
-            }
-          }
-        }
+          "rawResult": "GghleGVjdXRlZCICb2tAAfIBMAouCgVzLW5ldxISL1VzZXJzL21lL0NvZGUvYXBwIAN6DFNoaXAgTTIgY29yZcgBAQ==",
+          "requestId": "req-start-1",
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "nowMs": "1791078060250"
       },
       "views": [
         {
@@ -399,7 +307,6 @@
     },
     {
       "event": {
-        "nowMs": "1791078060295",
         "entropyProvided": {
           "randomIds": [
             "pref-extra-1",
@@ -413,54 +320,22 @@
             0.5,
             0.5
           ]
-        }
+        },
+        "nowMs": "1791078060295"
       }
     },
     {
       "event": {
         "nowMs": "1791078060300",
-        "streamFrame": {
-          "legId": "1",
-          "accountPrefsUpdated": {
-            "revision": "1",
-            "prefs": {
-              "schema": 1,
-              "settings": [
-                {
-                  "path": "/Users/me/Code/app",
-                  "machineId": "m-on",
-                  "agent": "AGENT_CODEX",
-                  "agents": [
-                    {
-                      "agent": "AGENT_UNSPECIFIED",
-                      "model": "gpt-5.4",
-                      "effort": "high"
-                    }
-                  ]
-                },
-                {
-                  "path": "/Users/me/Code/pref",
-                  "machineId": "m-on",
-                  "agent": "AGENT_CLAUDE",
-                  "agents": [
-                    {
-                      "agent": "AGENT_CLAUDE",
-                      "model": "claude-sonnet-5-5"
-                    }
-                  ]
-                }
-              ]
-            }
-          }
-        }
+        "seedDemoWorld": {}
       }
     },
     {
       "event": {
-        "nowMs": "1791078060310",
         "newSessionOpen": {
           "projectKey": "/Users/me/Code/app"
-        }
+        },
+        "nowMs": "1791078060310"
       },
       "views": [
         {
@@ -475,44 +350,27 @@
     },
     {
       "event": {
-        "nowMs": "1791078060320",
         "newSessionOpen": {
           "projectKey": "/Users/me/Code/pref"
-        }
+        },
+        "nowMs": "1791078060320"
       }
     },
     {
       "event": {
-        "nowMs": "1791078060330",
         "commandOutcome": {
-          "requestId": "pref-extra-1",
-          "attemptId": "pref-extra-2",
-          "source": "OUTCOME_SOURCE_DAEMON",
-          "signed": true,
-          "hashesMatch": true,
           "attemptBound": true,
+          "attemptId": "pref-extra-2",
+          "hashesMatch": true,
           "outerMatchesInner": true,
           "outerOutcome": "executed",
           "outerReason": "ok",
-          "result": {
-            "outcome": "executed",
-            "reason": "ok",
-            "resultAvailable": true,
-            "listModels": {
-              "defaultModel": "claude-opus-5-5",
-              "models": [
-                {
-                  "slug": "claude-opus-5-5",
-                  "displayName": "Opus 5.5"
-                },
-                {
-                  "slug": "claude-sonnet-5-5",
-                  "displayName": "Sonnet 5.5"
-                }
-              ]
-            }
-          }
-        }
+          "rawResult": "GghleGVjdXRlZCICb2tAAfoBTwobCg9jbGF1ZGUtb3B1cy01LTUSCE9wdXMgNS41Ch8KEWNsYXVkZS1zb25uZXQtNS01EgpTb25uZXQgNS41Eg9jbGF1ZGUtb3B1cy01LTU=",
+          "requestId": "pref-extra-1",
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "nowMs": "1791078060330"
       },
       "views": [
         {

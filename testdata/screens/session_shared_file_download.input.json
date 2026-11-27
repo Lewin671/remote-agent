@@ -2,49 +2,60 @@
   "steps": [
     {
       "event": {
-        "nowMs": "1791078060000",
         "clockUpdated": {
-          "nowMs": "1791078060000",
-          "todayStartMs": "1791043200000",
-          "yesterdayStartMs": "1790956800000",
-          "weekStartMs": "1790524800000",
-          "nowYear": 2026,
           "months": [
             {
-              "year": 2026,
               "month": 10,
-              "startMs": "1790812800000"
+              "startMs": "1790812800000",
+              "year": 2026
             }
-          ]
-        }
+          ],
+          "nowMs": "1791078060000",
+          "nowYear": 2026,
+          "todayStartMs": "1791043200000",
+          "weekStartMs": "1790524800000",
+          "yesterdayStartMs": "1790956800000"
+        },
+        "nowMs": "1791078060000"
       }
     },
     {
       "event": {
         "nowMs": "1791078060000",
+        "seedDemoWorld": {
+          "clearDirectReports": true
+        }
+      }
+    },
+    {
+      "event": {
         "monoMs": "1000",
-        "randomIds": ["r-1", "r-2", "r-3", "r-4", "r-5", "r-6", "r-7", "r-8"],
-        "unitFloats": [0.5, 0.5, 0.5, 0.5],
+        "nowMs": "1791078060000",
+        "randomIds": [
+          "r-1",
+          "r-2",
+          "r-3",
+          "r-4",
+          "r-5",
+          "r-6",
+          "r-7",
+          "r-8"
+        ],
         "syncLifecycle": {
           "kind": "SYNC_LIFECYCLE_KIND_START"
-        }
+        },
+        "unitFloats": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
       }
     },
     {
       "event": {
-        "nowMs": "1791078060010",
-        "monoMs": "1010",
-        "tokenResult": {
-          "opId": "2",
-          "token": "tok-1",
-          "expiresMs": "1791164460000"
-        }
-      }
-    },
-    {
-      "event": {
-        "nowMs": "1791078060020",
         "monoMs": "1020",
+        "nowMs": "1791078060020",
         "streamReady": {
           "legId": "1",
           "serverTimeMs": "1791078060020"
@@ -53,69 +64,42 @@
     },
     {
       "event": {
-        "nowMs": "1791078060030",
         "monoMs": "1030",
+        "nowMs": "1791078060030",
         "seedDemoWorld": {
-          "security": {
-            "isMember": true,
-            "selfDeviceId": "dev-1",
-            "authorityDeviceId": "dev-1",
-            "leaseEndMs": "1791164460000",
-            "trustedMachineIds": ["m1"],
-            "trustedClientIds": ["dev-1"]
-          },
           "machines": [
             {
               "machineId": "m1",
               "online": true,
-              "meta": {
-                "hostname": "Studio",
-                "home": "/Users/me",
-                "protocolVersion": 17,
-                "capabilities": {
-                  "sharedFiles": true,
-                  "sharedFileChunkBytes": 16
-                }
-              }
+              "rawMeta": "CgZTdHVkaW8yCS9Vc2Vycy9tZVIGgAEBkAEQYBE="
+            }
+          ],
+          "security": {
+            "authorityDeviceId": "dev-1",
+            "isMember": true,
+            "leaseEndMs": "1791164460000",
+            "selfDeviceId": "dev-1",
+            "trustedClientIds": [
+              "dev-1"
+            ],
+            "trustedMachineIds": [
+              "m1"
+            ]
+          },
+          "sessionEvents": [
+            {
+              "rawEvents": [
+                "CAESBHMtZGwaBgjB3IPWBmpiCgR0Yy0xOgljb21wbGV0ZWR6TwoGZi1jbGlwEghjbGlwLm1wNBgYIiARERERERERERERERERERERERERERERERERERERERERESoXL1VzZXJzL21lL3Byb2ovY2xpcC5tcDQ="
+              ],
+              "sessionId": "s-dl"
             }
           ],
           "sessions": [
             {
-              "sessionId": "s-dl",
-              "machineId": "m1",
               "lastSeq": "1",
-              "meta": {
-                "id": "s-dl",
-                "cwd": "/Users/me/proj",
-                "agent": "AGENT_CODEX",
-                "status": "SESSION_STATUS_RUNNING",
-                "title": "Shared File Download"
-              }
-            }
-          ],
-          "sessionEvents": [
-            {
-              "sessionId": "s-dl",
-              "events": [
-                {
-                  "seq": "1",
-                  "sessionId": "s-dl",
-                  "time": "2026-10-03T12:00:01Z",
-                  "toolCall": {
-                    "callId": "tc-1",
-                    "status": "completed",
-                    "sharedFiles": [
-                      {
-                        "fileId": "f-clip",
-                        "name": "clip.mp4",
-                        "path": "/Users/me/proj/clip.mp4",
-                        "sizeBytes": "24",
-                        "sha256": "ERERERERERERERERERERERERERERERERERERERERERE="
-                      }
-                    ]
-                  }
-                }
-              ]
+              "machineId": "m1",
+              "rawMeta": "CgRzLWRsEg4vVXNlcnMvbWUvcHJvaiADehRTaGFyZWQgRmlsZSBEb3dubG9hZMgBAQ==",
+              "sessionId": "s-dl"
             }
           ]
         }
@@ -123,18 +107,18 @@
     },
     {
       "event": {
-        "nowMs": "1791078060100",
         "monoMs": "1100",
+        "nowMs": "1791078060100",
         "sharedFileConfig": {
-          "storageFullKind": "SHARED_FILE_FAILURE_KIND_PHONE_STORAGE_FULL",
-          "scanLocal": true
+          "scanLocal": true,
+          "storageFullKind": "SHARED_FILE_FAILURE_KIND_PHONE_STORAGE_FULL"
         }
       }
     },
     {
       "event": {
-        "nowMs": "1791078060120",
         "monoMs": "1120",
+        "nowMs": "1791078060120",
         "sharedFileLocalScanned": {
           "opId": "1"
         }
@@ -142,8 +126,8 @@
     },
     {
       "event": {
-        "nowMs": "1791078060900",
         "monoMs": "1900",
+        "nowMs": "1791078060900",
         "sharedFileSetVisibleSession": {
           "sessionId": "s-dl"
         }
@@ -151,12 +135,12 @@
     },
     {
       "event": {
-        "nowMs": "1791078061000",
         "monoMs": "2000",
+        "nowMs": "1791078061000",
         "sharedFileStartDownload": {
-          "sessionId": "s-dl",
+          "autoOpenIfStaying": true,
           "fileId": "f-clip",
-          "autoOpenIfStaying": true
+          "sessionId": "s-dl"
         }
       },
       "views": [
@@ -172,52 +156,44 @@
     },
     {
       "event": {
-        "nowMs": "1791078061050",
         "monoMs": "2050",
+        "nowMs": "1791078061050",
         "sharedFileDiskInspected": {
-          "opId": "2",
-          "sessionId": "s-dl",
+          "availableBytes": "1048576",
           "fileId": "f-clip",
           "known": true,
-          "availableBytes": "1048576"
+          "opId": "2",
+          "sessionId": "s-dl"
         }
       }
     },
     {
       "event": {
-        "nowMs": "1791078064500",
-        "monoMs": "5500",
         "commandOutcome": {
-          "requestId": "r-1",
-          "attemptId": "r-2",
-          "source": "OUTCOME_SOURCE_DAEMON",
-          "signed": true,
-          "hashesMatch": true,
           "attemptBound": true,
+          "attemptId": "r-2",
+          "hashesMatch": true,
           "outerMatchesInner": true,
           "outerOutcome": "executed",
           "outerReason": "executed",
-          "result": {
-            "outcome": "executed",
-            "reason": "executed",
-            "resultAvailable": true,
-            "getSharedFileChunk": {
-              "data": "QUFBQUFBQUFBQUFBQUFBQQ==",
-              "totalBytes": "24"
-            }
-          }
-        }
+          "rawResult": "GghleGVjdXRlZCIIZXhlY3V0ZWRAAdICGwoQQUFBQUFBQUFBQUFBQUFBQREYAAAAAAAAAA==",
+          "requestId": "r-1",
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "monoMs": "5500",
+        "nowMs": "1791078064500"
       }
     },
     {
       "event": {
-        "nowMs": "1791078065000",
         "monoMs": "6000",
+        "nowMs": "1791078065000",
         "sharedFileWriteChunkResult": {
-          "opId": "3",
-          "sessionId": "s-dl",
           "fileId": "f-clip",
-          "ok": true
+          "ok": true,
+          "opId": "3",
+          "sessionId": "s-dl"
         }
       },
       "views": [
@@ -233,53 +209,45 @@
     },
     {
       "event": {
-        "nowMs": "1791078066000",
-        "monoMs": "7000",
         "commandOutcome": {
-          "requestId": "r-3",
-          "attemptId": "r-4",
-          "source": "OUTCOME_SOURCE_DAEMON",
-          "signed": true,
-          "hashesMatch": true,
           "attemptBound": true,
+          "attemptId": "r-4",
+          "hashesMatch": true,
           "outerMatchesInner": true,
           "outerOutcome": "executed",
           "outerReason": "executed",
-          "result": {
-            "outcome": "executed",
-            "reason": "executed",
-            "resultAvailable": true,
-            "getSharedFileChunk": {
-              "data": "QUFBQUFBQUFBQUFBQUFBQQ==",
-              "totalBytes": "24"
-            }
-          }
-        }
+          "rawResult": "GghleGVjdXRlZCIIZXhlY3V0ZWRAAdICGwoQQUFBQUFBQUFBQUFBQUFBQREYAAAAAAAAAA==",
+          "requestId": "r-3",
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "monoMs": "7000",
+        "nowMs": "1791078066000"
       }
     },
     {
       "event": {
-        "nowMs": "1791078066100",
         "monoMs": "7100",
+        "nowMs": "1791078066100",
         "sharedFileWriteChunkResult": {
-          "opId": "4",
-          "sessionId": "s-dl",
-          "fileId": "f-clip",
-          "ok": true
-        }
-      }
-    },
-    {
-      "event": {
-        "nowMs": "1791078066200",
-        "monoMs": "7200",
-        "sharedFileVerifyAndCommitResult": {
-          "opId": "5",
-          "sessionId": "s-dl",
           "fileId": "f-clip",
           "ok": true,
+          "opId": "4",
+          "sessionId": "s-dl"
+        }
+      }
+    },
+    {
+      "event": {
+        "monoMs": "7200",
+        "nowMs": "1791078066200",
+        "sharedFileVerifyAndCommitResult": {
+          "durationMs": "62000",
+          "fileId": "f-clip",
           "hasDuration": true,
-          "durationMs": "62000"
+          "ok": true,
+          "opId": "5",
+          "sessionId": "s-dl"
         }
       },
       "views": [

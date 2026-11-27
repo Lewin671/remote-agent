@@ -10,13 +10,17 @@ import (
 	"testing"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
+	"github.com/Lewin671/remote-agent/clientcore/gen/litewire"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/internal/test/testrelay"
 	"github.com/Lewin671/remote-agent/clientcore/security"
 	"github.com/Lewin671/remote-agent/clientcore/transport"
+	stdv1 "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/Lewin671/remote-agent/shared/linkcore"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
+	"google.golang.org/protobuf/proto"
 )
 
 func testSyncRandomBytes(n int) []byte {
@@ -163,9 +167,9 @@ type directSyncHarness struct {
 	wantSeed     bool
 	legacyDaemon bool
 	readPCID     uint64
-	bulkPCID uint64
-	termOpen []string
-	termWait bool
+	bulkPCID     uint64
+	termOpen     []string
+	termWait     bool
 }
 
 func newDirectSyncHarness(t *testing.T) *directSyncHarness {
@@ -255,76 +259,220 @@ func (h *directSyncHarness) connectMainAndList(sessionID string) {
 		RandomIds:  []string{"id1", "id2", "id3", "id4", "id5", "id6", "id7", "id8", "id9", "id10", "id11", "id12", "id13", "id14", "id15", "id16"},
 		UnitFloats: []float64{0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5},
 	})
+	s1, err := devicesec.ParseState(h.statesRaw[len(h.statesRaw)-1])
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	var sec2 [32]byte
+	copy(sec2[:], bytes.Repeat([]byte{0x22}, 32))
+	clientActor := syncTestActor{
+		id:   h.client.id,
+		ed:   h.client.signPriv,
+		edP:  h.client.signPub[:],
+		x:    h.client.xPriv,
+		xPub: h.client.xPub,
+	}
+	daemonActor := syncTestActor{
+		id:   h.daemon.id,
+		ed:   h.daemon.signPriv,
+		edP:  h.daemon.signPub[:],
+		x:    h.daemon.xPriv,
+		xPub: h.daemon.xPub,
+	}
+	rec := &security.PersistedRecord{
+		Server: "https://relay.example.com",
+		Pin: devicesec.Pin{
+			Account: h.account,
+			Domain:  h.domain,
+			Genesis: h.genHash,
+		},
+		AccountPublicKey: append([]byte(nil), h.client.signPub[:]...),
+		MemberID:         h.client.id,
+		Member:           true,
+		States:           h.statesRaw,
+		Lease:            h.leaseRaw,
+		ContentKeys: []security.ContentKeyEntry{{
+			Epoch:  s1.Core.ContentEpoch,
+			Secret: sec2,
+		}},
+	}
+	bootstrapTestSecurityRecord(h.t, h.eng, clientActor, h.now, rec, "tok-1")
 	res := h.step(&corev1.Event{
 		Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}},
-	})
-	var tokenOp uint64
-	for _, eff := range res.Effects {
-		if et := eff.GetEnsureToken(); et != nil {
-			tokenOp = et.OpId
-		}
-	}
-	res = h.step(&corev1.Event{
-		Event: &corev1.Event_TokenResult{TokenResult: &corev1.TokenResultEvent{OpId: tokenOp, Token: "tok-1", ExpiresMs: h.now + 3_600_000}},
 	})
 	var legID uint64
 	for _, eff := range res.Effects {
 		if os := eff.GetOpenStream(); os != nil {
 			legID = os.LegId
 		}
+		if sr := eff.GetRelayRpc(); sr != nil && sr.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SECURITY_STATES {
+			emptyStatesRaw, _ := proto.Marshal(&stdv1.GetSecurityStatesResponse{HeadEpoch: s1.Core.Epoch})
+			h.step(&corev1.Event{
+				Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{OpId: sr.OpId, ResponseBytes: emptyStatesRaw}},
+			})
+		}
 	}
 	res = h.step(&corev1.Event{
 		Event: &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: h.now}},
 	})
-	var listOp uint64
+	var machinesOp, sessionsOp, devicesOp uint64
 	for _, eff := range res.Effects {
-		if r := eff.GetRpc(); r != nil && r.GetFetchLists() != nil {
-			listOp = r.OpId
+		if r := eff.GetRelayRpc(); r != nil {
+			switch r.Method {
+			case corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_MACHINES:
+				machinesOp = r.OpId
+			case corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_REMOTE_SESSIONS:
+				sessionsOp = r.OpId
+			case corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_DEVICES:
+				devicesOp = r.OpId
+			}
 		}
 	}
+	mMeta := (&v1.MachineMeta{
+		Hostname:        "Workstation",
+		ProtocolVersion: PeerVersion,
+		Capabilities:    &v1.MachineCapabilities{ImageUpload: true, FileUpload: true},
+	}).AppendMarshal(nil)
+	sMeta := (&v1.Session{Id: sessionID, Cwd: "/tmp/proj", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING}).AppendMarshal(nil)
+	seed := bytes.Repeat([]byte{0x42}, 32)
 	h.step(&corev1.Event{
-		Event: &corev1.Event_SeedDemoWorld{
-			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
-				Security: &corev1.DemoSecurity{
-					IsMember:          true,
-					SelfDeviceId:      h.client.id,
-					AuthorityDeviceId: h.client.id,
-					TrustedMachineIds: []string{h.daemon.id},
-					HeadEpoch:         1,
-					LeaseEndMs:        h.now + 3_600_000,
-				},
-			},
-		},
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId: machinesOp,
+			ResponseBytes: testrelay.MarshalListMachinesResp([]*v1.Machine{{
+				Id:     h.daemon.id,
+				Online: true,
+				Meta:   sealWireObj(h.t, daemonActor, h.domain, s1, sec2[:], nil, mMeta, devicesec.MachineMeta, h.daemon.id, "", "", 1),
+			}}),
+		}},
 	})
 	h.step(&corev1.Event{
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: listOp,
-				Machines: []*corev1.PlainMachine{
-					{
-						MachineId: h.daemon.id,
-						Online:    true,
-						Meta: &v1.MachineMeta{
-							Hostname:        "Workstation",
-							ProtocolVersion: PeerVersion,
-							Capabilities:    &v1.MachineCapabilities{ImageUpload: true, FileUpload: true},
-						},
-					},
-				},
-				Sessions: []*corev1.PlainSession{
-					{
-						SessionId: sessionID,
-						MachineId: h.daemon.id,
-						LastSeq:   1,
-						Meta:      &v1.Session{Id: sessionID, Cwd: "/tmp/proj", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING},
-					},
-				},
-			},
-		},
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId: sessionsOp,
+			ResponseBytes: testrelay.MarshalListSessionsResp([]*v1.RemoteSession{{
+				SessionId: sessionID,
+				MachineId: h.daemon.id,
+				LastSeq:   1,
+				Key:       sealWireObj(h.t, daemonActor, h.domain, s1, sec2[:], nil, seed, devicesec.SessionKey, h.daemon.id, sessionID, "", 1),
+				Meta:      sealWireObj(h.t, daemonActor, h.domain, s1, sec2[:], nil, sMeta, devicesec.SessionMeta, h.daemon.id, sessionID, "", 1),
+			}}, nil),
+		}},
+	})
+	h.step(&corev1.Event{
+		Event: &corev1.Event_RelayRpcResult{RelayRpcResult: &corev1.RelayRpcResultEvent{
+			OpId:          devicesOp,
+			ResponseBytes: testrelay.MarshalListDevicesResp(nil),
+		}},
 	})
 	h.step(&corev1.Event{
 		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: sessionID, Watched: true}},
 	})
+}
+
+func (h *directSyncHarness) ensureSessionSeed(sid string) []byte {
+	h.t.Helper()
+	seed := bytes.Repeat([]byte{0x42}, 32)
+	if _, ok := h.eng.secEngine.SessionSeed(sid); ok {
+		return seed
+	}
+	s1, err := devicesec.ParseState(h.statesRaw[len(h.statesRaw)-1])
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	sec := bytes.Repeat([]byte{0x22}, 32)
+	daemonActor := syncTestActor{
+		id:   h.daemon.id,
+		ed:   h.daemon.signPriv,
+		edP:  h.daemon.signPub[:],
+		x:    h.daemon.xPriv,
+		xPub: h.daemon.xPub,
+	}
+	keyEnv := sealWireObj(h.t, daemonActor, h.domain, s1, sec, nil, seed, devicesec.SessionKey, h.daemon.id, sid, "", 1)
+	h.eng.Run(func(ctx *StepContext) {
+		effs := h.eng.secEngine.OpenBatchTag(h.now, []security.OpenItem{{
+			Env:             keyEnv,
+			ExpectedPurpose: devicesec.SessionKey,
+			MachineID:       h.daemon.id,
+			SessionID:       sid,
+			History:         true,
+		}}, 0)
+		h.eng.emitRawEffects(ctx, effs)
+	})
+	if _, ok := h.eng.secEngine.SessionSeed(sid); !ok {
+		h.t.Fatalf("ensureSessionSeed(%s): SessionSeed not cached after OpenBatchTag", sid)
+	}
+	return seed
+}
+
+func (h *directSyncHarness) sealDirectEvent(sid string, seq uint64, signer *directTestActor) *v1.Envelope {
+	h.t.Helper()
+	seed := h.ensureSessionSeed(sid)
+	s1, err := devicesec.ParseState(h.statesRaw[len(h.statesRaw)-1])
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	sec := bytes.Repeat([]byte{0x22}, 32)
+	actor := syncTestActor{
+		id:   signer.id,
+		ed:   signer.signPriv,
+		edP:  signer.signPub[:],
+		x:    signer.xPriv,
+		xPub: signer.xPub,
+	}
+	evRaw := (&v1.Event{Seq: seq, SessionId: sid, Kind: &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "e"}}}).AppendMarshal(nil)
+	return sealWireObj(h.t, actor, h.domain, s1, sec, seed, evRaw, devicesec.Event, h.daemon.id, sid, "", seq)
+}
+
+func (h *directSyncHarness) sealCommandResult(reqID, sid, out, reason string) *v1.Envelope {
+	h.t.Helper()
+	prep := h.eng.inFlightCmds[reqID]
+	if prep == nil {
+		h.t.Fatalf("missing inFlightCmds[%s]", reqID)
+	}
+	s1, err := devicesec.ParseState(h.statesRaw[len(h.statesRaw)-1])
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	sec := bytes.Repeat([]byte{0x22}, 32)
+	actor := syncTestActor{
+		id:   h.daemon.id,
+		ed:   h.daemon.signPriv,
+		edP:  h.daemon.signPub[:],
+		x:    h.daemon.xPriv,
+		xPub: h.daemon.xPub,
+	}
+	var resRaw []byte
+	resRaw = litewire.AppendString(resRaw, 3, out)
+	resRaw = litewire.AppendString(resRaw, 4, reason)
+	resRaw = litewire.AppendBytes(resRaw, 6, prep.RequestKeyHash)
+	resRaw = litewire.AppendBytes(resRaw, 7, prep.PayloadHash)
+	resRaw = litewire.AppendBool(resRaw, 8, true)
+	return sealWireObj(h.t, actor, h.domain, s1, sec, nil, resRaw, devicesec.Result, h.daemon.id, sid, reqID, 0)
+}
+
+func (h *directSyncHarness) sealSessionMeta(sid string, lastSeq uint64, updatedMs int64) *v1.RemoteSession {
+	h.t.Helper()
+	seed := h.ensureSessionSeed(sid)
+	s1, err := devicesec.ParseState(h.statesRaw[len(h.statesRaw)-1])
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	sec := bytes.Repeat([]byte{0x22}, 32)
+	actor := syncTestActor{
+		id:   h.daemon.id,
+		ed:   h.daemon.signPriv,
+		edP:  h.daemon.signPub[:],
+		x:    h.daemon.xPriv,
+		xPub: h.daemon.xPub,
+	}
+	smRaw := (&v1.Session{Id: sid, LastSeq: lastSeq, Status: v1.SessionStatus_SESSION_STATUS_RUNNING}).AppendMarshal(nil)
+	return &v1.RemoteSession{
+		SessionId: sid,
+		MachineId: h.daemon.id,
+		LastSeq:   lastSeq,
+		UpdatedMs: updatedMs,
+		Key:       sealWireObj(h.t, actor, h.domain, s1, sec, nil, seed, devicesec.SessionKey, h.daemon.id, sid, "", 1),
+		Meta:      sealWireObj(h.t, actor, h.domain, s1, sec, nil, smRaw, devicesec.SessionMeta, h.daemon.id, sid, "", 1),
+	}
 }
 
 func connectDirectForExistingEngine(
@@ -332,7 +480,7 @@ func connectDirectForExistingEngine(
 	eng *Engine,
 	now int64,
 	client, daemon *directTestActor,
-) (readPCID uint64, updatedNow int64) {
+) (readPCID uint64, updatedNow int64, harness *directSyncHarness) {
 	t.Helper()
 	account := "00000000000000000000000000000001"
 	domain := sha256.Sum256([]byte("direct-sync-domain"))
@@ -357,7 +505,7 @@ func connectDirectForExistingEngine(
 		codec:     codec,
 	}
 	h.driveDirectHandshake()
-	return h.readPCID, h.now
+	return h.readPCID, h.now, h
 }
 
 func (h *directSyncHarness) driveDirectHandshake() {
@@ -378,13 +526,15 @@ func (h *directSyncHarness) driveDirectHandshake() {
 			h.wantSeed = true
 		}
 	}
-	if !h.wantSeed {
-		h.t.Fatal("expected RequestEntropyEffect.MinRandomBytes after TransportConfigEvent")
+	if h.wantSeed {
+		h.step(&corev1.Event{
+			Event: &corev1.Event_EntropyProvided{EntropyProvided: &corev1.EntropyProvided{RandomBytes: testSyncRandomBytes(transport.CoordEntropyRefillBytes)}},
+		})
 	}
-
-	h.step(&corev1.Event{
-		Event: &corev1.Event_EntropyProvided{EntropyProvided: &corev1.EntropyProvided{RandomBytes: testSyncRandomBytes(transport.CoordEntropyRefillBytes)}},
-	})
+	h.eng.relayEpoch = "direct-test-epoch"
+	if h.eng.cachedToken == "" {
+		h.eng.cachedToken = "tok-direct"
+	}
 	h.step(&corev1.Event{
 		Event: &corev1.Event_SecurityConfig{
 			SecurityConfig: &corev1.SecurityConfigEvent{
@@ -637,34 +787,29 @@ func TestSyncDirectLifecycleEventsDualSendAndFallback(t *testing.T) {
 	h.connectMainAndList(sid)
 	h.driveDirectHandshake()
 
-	// 1) Pushed DirectEventsReceivedEvent requires valid confirmed PcId and matching Sender.
-	evPayload := &corev1.PlainEvent{
-		Seq:      1,
-		Verified: true,
-		Event:    &v1.Event{Seq: 1},
-	}
+	// 1) Pushed DirectEventsReceivedEvent requires valid confirmed PcId and trusted machine signer.
+	badEnv := h.sealDirectEvent(sid, 1, h.client)
 	h.step(&corev1.Event{
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId: h.daemon.id,
-				SessionId: sid,
-				PcId:      h.readPCID,
-				Sender:    "impostor-device",
-				Events:    []*corev1.PlainEvent{evPayload},
+				MachineId:    h.daemon.id,
+				SessionId:    sid,
+				PcId:         h.readPCID,
+				RawEnvelopes: testrelay.MustRawSlice([]*v1.Envelope{badEnv}),
 			},
 		},
 	})
 	if buf := h.eng.Buffer(sid); buf != nil && buf.PrefixLen() != 0 {
 		t.Fatalf("expected unauthorized sender to be rejected, got PrefixLen=%d", buf.PrefixLen())
 	}
+	goodEnv := h.sealDirectEvent(sid, 1, h.daemon)
 	h.step(&corev1.Event{
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId: h.daemon.id,
-				SessionId: sid,
-				PcId:      h.readPCID,
-				Sender:    h.daemon.id,
-				Events:    []*corev1.PlainEvent{evPayload},
+				MachineId:    h.daemon.id,
+				SessionId:    sid,
+				PcId:         h.readPCID,
+				RawEnvelopes: testrelay.MustRawSlice([]*v1.Envelope{goodEnv}),
 			},
 		},
 	})
@@ -672,7 +817,7 @@ func TestSyncDirectLifecycleEventsDualSendAndFallback(t *testing.T) {
 		t.Fatalf("expected authorized direct push to ingest seq 1, got %v", buf)
 	}
 
-	// 2) Interactive command triggers dual-send (DIRECT + RELAY); trusted direct outcome wins immediately.
+	// 2) Interactive command triggers dual-send (DIRECT + RELAY Forward); trusted direct outcome wins immediately.
 	_, ok, effects2 := h.submitAndDrain(SubmitCommandParams{
 		SlotKey:   "slot-send-1",
 		MachineID: h.daemon.id,
@@ -682,18 +827,18 @@ func TestSyncDirectLifecycleEventsDualSendAndFallback(t *testing.T) {
 	if !ok {
 		t.Fatal("expected SubmitCommand Send to dispatch")
 	}
-	var directEff, relayEff *corev1.DispatchCommandEffect
+	var directEff *corev1.DispatchCommandEffect
+	var relayRpc *corev1.RelayRpcEffect
 	for _, eff := range effects2 {
-		if dc := eff.GetDispatchCommand(); dc != nil {
-			if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT {
-				directEff = dc
-			} else if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_RELAY {
-				relayEff = dc
-			}
+		if dc := eff.GetDispatchCommand(); dc != nil && dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT {
+			directEff = dc
+		}
+		if r := eff.GetRelayRpc(); r != nil && r.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_FORWARD {
+			relayRpc = r
 		}
 	}
-	if directEff == nil || relayEff == nil || directEff.DirectPcId != h.readPCID || directEff.DirectTicketId == 0 {
-		t.Fatalf("expected both DIRECT and RELAY legs, got direct=%v relay=%v", directEff, relayEff)
+	if directEff == nil || relayRpc == nil || directEff.DirectPcId != h.readPCID || directEff.DirectTicketId == 0 {
+		t.Fatalf("expected both DIRECT and RELAY Forward legs, got direct=%v relay=%v", directEff, relayRpc)
 	}
 	outRes := h.step(&corev1.Event{
 		Event: &corev1.Event_CommandOutcome{
@@ -711,7 +856,7 @@ func TestSyncDirectLifecycleEventsDualSendAndFallback(t *testing.T) {
 				DirectTicketId:    directEff.DirectTicketId,
 				ElapsedMs:         14,
 				ObservedBytes:     256,
-				Result:            &v1.CommandResult{Outcome: "executed", Reason: "executed", ResultAvailable: true},
+				RawResult:         testrelay.MustRaw(&v1.CommandResult{Outcome: "executed", Reason: "executed", ResultAvailable: true}),
 			},
 		},
 	})
@@ -719,7 +864,7 @@ func TestSyncDirectLifecycleEventsDualSendAndFallback(t *testing.T) {
 		t.Fatalf("expected immediate settlement from winning direct leg, got %+v", outRes.Settled)
 	}
 
-	// 3) Read command initially routes over DIRECT and falls back immediately to RELAY on transport error.
+	// 3) Read command initially routes over DIRECT and falls back immediately to RELAY Forward on transport error.
 	_, _, readEffects := h.submitAndDrain(SubmitCommandParams{
 		MachineID: h.daemon.id,
 		Command:   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
@@ -746,31 +891,30 @@ func TestSyncDirectLifecycleEventsDualSendAndFallback(t *testing.T) {
 			},
 		},
 	})
-	var fbDC *corev1.DispatchCommandEffect
+	var fbRelay *corev1.RelayRpcEffect
 	for _, eff := range fbRes.Effects {
-		if dc := eff.GetDispatchCommand(); dc != nil {
-			fbDC = dc
+		if r := eff.GetRelayRpc(); r != nil && r.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_FORWARD {
+			fbRelay = r
 		}
 	}
-	if fbDC == nil || fbDC.RouteLeg != corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_RELAY || !fbDC.ForceRelay {
-		t.Fatalf("expected immediate RELAY fallback with ForceRelay=true, got %+v", fbDC)
+	if fbRelay == nil {
+		t.Fatalf("expected immediate RELAY Forward fallback, got %+v", fbRes.Effects)
 	}
 
 	// 4) Dual-send where direct fails: must wait for relay leg before settling.
-	_, _, effects4 := h.submitAndDrain(SubmitCommandParams{
+	reqID4, _, effects4 := h.submitAndDrain(SubmitCommandParams{
 		SlotKey:   "slot-send-2",
 		MachineID: h.daemon.id,
 		SessionID: sid,
 		Command:   &v1.Command{Kind: &v1.Command_Send{Send: &v1.SendRequest{SessionId: sid, Text: "hi2"}}},
 	})
-	directEff, relayEff = nil, nil
+	directEff, relayRpc = nil, nil
 	for _, eff := range effects4 {
-		if dc := eff.GetDispatchCommand(); dc != nil {
-			if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT {
-				directEff = dc
-			} else if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_RELAY {
-				relayEff = dc
-			}
+		if dc := eff.GetDispatchCommand(); dc != nil && dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT {
+			directEff = dc
+		}
+		if r := eff.GetRelayRpc(); r != nil && r.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_FORWARD {
+			relayRpc = r
 		}
 	}
 	waitRes := h.step(&corev1.Event{
@@ -790,19 +934,13 @@ func TestSyncDirectLifecycleEventsDualSendAndFallback(t *testing.T) {
 	if len(waitRes.Settled) != 0 {
 		t.Fatalf("expected dual-send to wait for relay sibling, got %+v", waitRes.Settled)
 	}
+	var fwdReq4 stdv1.ForwardRequest
+	_ = proto.Unmarshal(relayRpc.RequestBytes, &fwdReq4)
 	winRes := h.step(&corev1.Event{
-		Event: &corev1.Event_CommandOutcome{
-			CommandOutcome: &corev1.CommandOutcomeEvent{
-				RequestId:         relayEff.RequestId,
-				AttemptId:         relayEff.AttemptId,
-				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
-				AttemptBound:      true,
-				Signed:            true,
-				HashesMatch:       true,
-				OuterMatchesInner: true,
-				OuterOutcome:      "executed",
-				OuterReason:       "executed",
-				Result:            &v1.CommandResult{Outcome: "executed", Reason: "executed", ResultAvailable: true},
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId:          relayRpc.OpId,
+				ResponseBytes: testrelay.MarshalForwardResp(fwdReq4.AttemptId, "executed", "executed", h.sealCommandResult(reqID4, sid, "executed", "executed")),
 			},
 		},
 	})
@@ -817,14 +955,13 @@ func TestSyncDirectLifecycleEventsDualSendAndFallback(t *testing.T) {
 		SessionID: sid,
 		Command:   &v1.Command{Kind: &v1.Command_Send{Send: &v1.SendRequest{SessionId: sid, Text: "hi3"}}},
 	})
-	directEff, relayEff = nil, nil
+	directEff, relayRpc = nil, nil
 	for _, eff := range effects5 {
-		if dc := eff.GetDispatchCommand(); dc != nil {
-			if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT {
-				directEff = dc
-			} else if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_RELAY {
-				relayEff = dc
-			}
+		if dc := eff.GetDispatchCommand(); dc != nil && dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT {
+			directEff = dc
+		}
+		if r := eff.GetRelayRpc(); r != nil && r.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_FORWARD {
+			relayRpc = r
 		}
 	}
 	h.step(&corev1.Event{
@@ -842,13 +979,11 @@ func TestSyncDirectLifecycleEventsDualSendAndFallback(t *testing.T) {
 		},
 	})
 	bothFail := h.step(&corev1.Event{
-		Event: &corev1.Event_CommandOutcome{
-			CommandOutcome: &corev1.CommandOutcomeEvent{
-				RequestId:     relayEff.RequestId,
-				AttemptId:     relayEff.AttemptId,
-				Source:        corev1.OutcomeSource_OUTCOME_SOURCE_LOCAL,
-				NotForwarded:  true,
-				TransportCode: "failed_precondition",
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId:              relayRpc.OpId,
+				ConnectCode:       9,
+				DiagnosticMessage: "failed_precondition",
 			},
 		},
 	})
@@ -917,11 +1052,11 @@ func TestSyncDirectLifecycleEventsDualSendAndFallback(t *testing.T) {
 	h.step(&corev1.Event{
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId: h.daemon.id,
-				SessionId: sid,
-				PcId:      0,
-				Sender:    h.daemon.id,
-				Events:    []*corev1.PlainEvent{{Seq: uint64(bufBefore + 1), Verified: true, Event: &v1.Event{Seq: uint64(bufBefore + 1), SessionId: sid}}},
+				MachineId:    h.daemon.id,
+				SessionId:    sid,
+				PcId:         0,
+				Sender:       h.daemon.id,
+				RawEnvelopes: testrelay.MustRawSlice([]*v1.Envelope{{Ciphertext: (&v1.Event{Seq: uint64(bufBefore + 1), SessionId: sid}).AppendMarshal(nil)}}),
 			},
 		},
 	})
@@ -940,38 +1075,32 @@ func TestSyncDirectLifecycleEventsDualSendAndFallback(t *testing.T) {
 	basePending := coord.PendingTicketCount()
 
 	// Dual-send: Relay wins first, then Direct sibling fails late -> FailTicket runs & PendingTicketCount returns to basePending.
-	_, _, dsEffects := h.submitAndDrain(SubmitCommandParams{
+	reqIDLate, _, dsEffects := h.submitAndDrain(SubmitCommandParams{
 		SlotKey:   "slot-late-fail",
 		MachineID: h.daemon.id,
 		SessionID: sid,
 		Command:   &v1.Command{Kind: &v1.Command_Send{Send: &v1.SendRequest{SessionId: sid, Text: "race"}}},
 	})
-	var dLeg, rLeg *corev1.DispatchCommandEffect
+	var dLeg *corev1.DispatchCommandEffect
+	var rLeg *corev1.RelayRpcEffect
 	for _, eff := range dsEffects {
-		if dc := eff.GetDispatchCommand(); dc != nil {
-			if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT {
-				dLeg = dc
-			} else if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_RELAY {
-				rLeg = dc
-			}
+		if dc := eff.GetDispatchCommand(); dc != nil && dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT {
+			dLeg = dc
+		}
+		if r := eff.GetRelayRpc(); r != nil && r.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_FORWARD {
+			rLeg = r
 		}
 	}
 	if dLeg == nil || rLeg == nil || coord.PendingTicketCount() != basePending+1 {
 		t.Fatalf("expected active direct ticket during dual-send, base=%d pending=%d", basePending, coord.PendingTicketCount())
 	}
+	var fwdReqLate stdv1.ForwardRequest
+	_ = proto.Unmarshal(rLeg.RequestBytes, &fwdReqLate)
 	h.step(&corev1.Event{
-		Event: &corev1.Event_CommandOutcome{
-			CommandOutcome: &corev1.CommandOutcomeEvent{
-				RequestId:         rLeg.RequestId,
-				AttemptId:         rLeg.AttemptId,
-				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
-				AttemptBound:      true,
-				Signed:            true,
-				HashesMatch:       true,
-				OuterMatchesInner: true,
-				OuterOutcome:      "executed",
-				OuterReason:       "executed",
-				Result:            &v1.CommandResult{Outcome: "executed", Reason: "executed", ResultAvailable: true},
+		Event: &corev1.Event_RelayRpcResult{
+			RelayRpcResult: &corev1.RelayRpcResultEvent{
+				OpId:          rLeg.OpId,
+				ResponseBytes: testrelay.MarshalForwardResp(fwdReqLate.AttemptId, "executed", "executed", h.sealCommandResult(reqIDLate, sid, "executed", "executed")),
 			},
 		},
 	})
@@ -1059,23 +1188,28 @@ func TestSyncDirectCreateSessionDualSendAndBulkSingleLeg(t *testing.T) {
 	if !ok {
 		t.Fatal("expected CreateSession to dispatch")
 	}
-	var directEff, relayEff *corev1.DispatchCommandEffect
+	var directEff *corev1.DispatchCommandEffect
+	var relayRpc *corev1.RelayRpcEffect
 	for _, eff := range effs {
-		if dc := eff.GetDispatchCommand(); dc != nil {
-			if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT {
-				directEff = dc
-			} else if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_RELAY {
-				relayEff = dc
-			}
+		if dc := eff.GetDispatchCommand(); dc != nil && dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT {
+			directEff = dc
+		}
+		if r := eff.GetRelayRpc(); r != nil && r.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_FORWARD {
+			relayRpc = r
 		}
 	}
-	if directEff == nil || relayEff == nil {
-		t.Fatalf("expected CreateSession dual-send on both DIRECT and RELAY, got direct=%v relay=%v", directEff, relayEff)
+	if directEff == nil || relayRpc == nil {
+		t.Fatalf("expected CreateSession dual-send on both DIRECT and RELAY Forward, got direct=%v relay=%v", directEff, relayRpc)
 	}
-	if directEff.RequestId != relayEff.RequestId || directEff.DeadlineMs != relayEff.DeadlineMs || !bytes.Equal(directEff.CommandBytes, relayEff.CommandBytes) {
-		t.Fatalf("dual-send legs must share exact RequestID/Deadline/CommandBytes")
+	var fwdReq stdv1.ForwardRequest
+	if err := proto.Unmarshal(relayRpc.RequestBytes, &fwdReq); err != nil {
+		t.Fatalf("unmarshal ForwardRequest: %v", err)
 	}
-	if directEff.SealedEnvelope == nil || relayEff.SealedEnvelope == nil || !bytes.Equal(directEff.SealedEnvelope.Ciphertext, relayEff.SealedEnvelope.Ciphertext) {
+	var directEnv stdv1.Envelope
+	if err := proto.Unmarshal(directEff.RawSealedEnvelope, &directEnv); err != nil {
+		t.Fatalf("unmarshal RawSealedEnvelope: %v", err)
+	}
+	if len(directEff.RawSealedEnvelope) == 0 || fwdReq.Command == nil || !bytes.Equal(directEnv.Ciphertext, fwdReq.Command.Ciphertext) {
 		t.Fatalf("dual-send legs must carry identical SealedEnvelope bytes")
 	}
 
@@ -1097,7 +1231,7 @@ func TestSyncDirectCreateSessionDualSendAndBulkSingleLeg(t *testing.T) {
 	}
 	dispatchCount := 0
 	for _, eff := range bulkEffs {
-		if eff.GetDispatchCommand() != nil {
+		if eff.GetDispatchCommand() != nil || (eff.GetRelayRpc() != nil && eff.GetRelayRpc().Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_FORWARD) {
 			dispatchCount++
 		}
 	}
@@ -1128,12 +1262,11 @@ func TestSyncDirectLegacyDaemonCreateSessionStaysRelayOnly(t *testing.T) {
 	}
 	var directCount, relayCount int
 	for _, eff := range effs {
-		if dc := eff.GetDispatchCommand(); dc != nil {
-			if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT {
-				directCount++
-			} else if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_RELAY {
-				relayCount++
-			}
+		if dc := eff.GetDispatchCommand(); dc != nil && dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT {
+			directCount++
+		}
+		if r := eff.GetRelayRpc(); r != nil && r.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_FORWARD {
+			relayCount++
 		}
 	}
 	if directCount != 0 || relayCount != 1 {
@@ -1154,12 +1287,11 @@ func TestSyncDirectLegacyDaemonCreateSessionStaysRelayOnly(t *testing.T) {
 	}
 	directCount, relayCount = 0, 0
 	for _, eff := range sendEffs {
-		if dc := eff.GetDispatchCommand(); dc != nil {
-			if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT {
-				directCount++
-			} else if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_RELAY {
-				relayCount++
-			}
+		if dc := eff.GetDispatchCommand(); dc != nil && dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT {
+			directCount++
+		}
+		if r := eff.GetRelayRpc(); r != nil && r.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_FORWARD {
+			relayCount++
 		}
 	}
 	if directCount != 1 || relayCount != 1 {

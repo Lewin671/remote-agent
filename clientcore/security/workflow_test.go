@@ -338,19 +338,19 @@ func (h *fakeClientHarness) pump(effs []*corev1.Effect) {
 		case *corev1.Effect_SecurityStorage:
 			queue = append(queue, h.handleStorageEffect(k.SecurityStorage)...)
 
-		case *corev1.Effect_SecurityRpc:
-			sr := k.SecurityRpc
+		case *corev1.Effect_RelayRpc:
+			sr := k.RelayRpc
 			respBytes, rErr := h.relay.call(sr.Method, sr.AuthToken, sr.RequestBytes)
-			ev := &corev1.SecurityRpcResultEvent{
+			ev := &corev1.RelayRpcResultEvent{
 				OpId:          sr.OpId,
 				ResponseBytes: respBytes,
 			}
 			if rErr != nil {
 				ev.ConnectCode = rErr.code
-				ev.Error = rErr.msg
+				ev.DiagnosticMessage = rErr.msg
 				ev.NetworkError = rErr.network
 			}
-			queue = append(queue, h.eng.HandleRpcResult(h.nowMs, ev)...)
+			queue = append(queue, h.eng.HandleRelayRpcResult(h.nowMs, ev)...)
 
 		case *corev1.Effect_ScheduleTimer:
 			if k.ScheduleTimer.Kind == corev1.TimerKind_TIMER_KIND_SECURITY_POLL {
@@ -745,7 +745,7 @@ func TestWorkflowPairingCrashRepairAndFallback(t *testing.T) {
 	}
 
 	// Inject transient failure on REGISTER_DEVICE -> persist REGISTRATION_INTENT -> crash & resume!
-	relay.failNextMethod = corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_REGISTER_DEVICE
+	relay.failNextMethod = corev1.RelayRpcMethod_RELAY_RPC_METHOD_REGISTER_DEVICE
 	relay.failNextCode = connectCodeUnavailable
 	b.pumpPollTicks(5, func() bool { return b.actionResults[confirmAID] != nil })
 	if b.actionResults[confirmAID] == nil || b.actionResults[confirmAID].Ok {
@@ -1073,7 +1073,7 @@ func TestWorkflowLeaseRenewalClockSkewLegacyAndNotify(t *testing.T) {
 		DeviceHpkePublicKey: machMem.XPublic[:],
 		ProtocolVersion:     testRelayVersion,
 	}).Marshal()
-	_, _ = relay.call(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_JOIN_PAIRING, "", joinBytes)
+	_, _ = relay.call(corev1.RelayRpcMethod_RELAY_RPC_METHOD_JOIN_PAIRING, "", joinBytes)
 	_ = h.runAction(&corev1.SecurityWorkflowActionEvent{
 		Action: &corev1.SecurityWorkflowActionEvent_PollPairing{PollPairing: &corev1.SecurityStringAction{Value: pMach.Pairing.PairingId}},
 	})
@@ -2455,7 +2455,7 @@ func TestApprovePairingRejectsInvalidRemoveDeviceIDs(t *testing.T) {
 				DeviceHpkePublicKey: machMem.XPublic[:],
 				ProtocolVersion:     testRelayVersion,
 			}).Marshal()
-			if _, rpcErr := relay.call(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_JOIN_PAIRING, "", joinBytes); rpcErr != nil {
+			if _, rpcErr := relay.call(corev1.RelayRpcMethod_RELAY_RPC_METHOD_JOIN_PAIRING, "", joinBytes); rpcErr != nil {
 				t.Fatalf("machine join failed: %+v", rpcErr)
 			}
 			_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
@@ -2699,7 +2699,7 @@ func TestPairingOldDeviceRemovalFailurePersistsAndResumesAcrossRestart(t *testin
 
 	// Inject a transient relay failure during the post-delivery old-device removal PutSecurityState.
 	relay.mu.Lock()
-	relay.failNextMethod = corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_SECURITY_STATE
+	relay.failNextMethod = corev1.RelayRpcMethod_RELAY_RPC_METHOD_PUT_SECURITY_STATE
 	relay.failNextCode = connectCodeUnavailable
 	relay.mu.Unlock()
 

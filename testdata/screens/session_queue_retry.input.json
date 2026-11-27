@@ -2,27 +2,35 @@
   "steps": [
     {
       "event": {
-        "nowMs": "1791078060000",
         "clockUpdated": {
-          "nowMs": "1791078060000",
-          "todayStartMs": "1791043200000",
-          "yesterdayStartMs": "1790956800000",
-          "weekStartMs": "1790524800000",
-          "nowYear": 2026,
           "months": [
             {
-              "year": 2026,
               "month": 10,
-              "startMs": "1790812800000"
+              "startMs": "1790812800000",
+              "year": 2026
             }
-          ]
-        }
+          ],
+          "nowMs": "1791078060000",
+          "nowYear": 2026,
+          "todayStartMs": "1791043200000",
+          "weekStartMs": "1790524800000",
+          "yesterdayStartMs": "1790956800000"
+        },
+        "nowMs": "1791078060000"
       }
     },
     {
       "event": {
         "nowMs": "1791078060000",
+        "seedDemoWorld": {
+          "clearDirectReports": true
+        }
+      }
+    },
+    {
+      "event": {
         "monoMs": "1000",
+        "nowMs": "1791078060000",
         "randomIds": [
           "r-1",
           "r-2",
@@ -30,10 +38,10 @@
           "r-4",
           "r-5",
           "r-6",
-          "r-7",
+          "msg-fail",
           "r-8",
           "r-9",
-          "r-10",
+          "msg-q",
           "r-11",
           "r-12",
           "r-13",
@@ -54,6 +62,9 @@
           "r-28",
           "r-29"
         ],
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START"
+        },
         "unitFloats": [
           0.5,
           0.5,
@@ -67,10 +78,7 @@
           0.5,
           0.5,
           0.5
-        ],
-        "syncLifecycle": {
-          "kind": "SYNC_LIFECYCLE_KIND_START"
-        }
+        ]
       }
     },
     {
@@ -78,26 +86,17 @@
         "nowMs": "1791078060010",
         "seedDemoWorld": {
           "security": {
-            "isMember": true,
-            "selfDeviceId": "dev-1",
             "authorityDeviceId": "dev-1",
+            "isMember": true,
             "leaseEndMs": "1791164460000",
-            "trustedMachineIds": [
-              "m1"
-            ],
+            "selfDeviceId": "dev-1",
             "trustedClientIds": [
               "dev-1"
+            ],
+            "trustedMachineIds": [
+              "m1"
             ]
           }
-        }
-      }
-    },
-    {
-      "event": {
-        "nowMs": "1791078060020",
-        "tokenResult": {
-          "opId": "2",
-          "token": "tok-1"
         }
       }
     },
@@ -113,66 +112,35 @@
     {
       "event": {
         "nowMs": "1791078060040",
-        "listsFetched": {
-          "opId": "3",
-          "machines": [
-            {
-              "machineId": "m1",
-              "online": true,
-              "lastSeenMs": "1791078060000",
-              "meta": {
-                "hostname": "MacStudio",
-                "home": "/Users/me",
-                "protocolVersion": 17,
-                "capabilities": {
-                  "imageUpload": true,
-                  "maxImagesPerMessage": 6,
-                  "approvalAlways": true,
-                  "scheduledTasks": true,
-                  "fileUpload": true,
-                  "sharedFiles": true
-                },
-                "agents": [
-                  {
-                    "agent": "AGENT_CODEX",
-                    "defaultMode": "APPROVAL_MODE_ASK"
-                  },
-                  {
-                    "agent": "AGENT_CLAUDE",
-                    "defaultMode": "APPROVAL_MODE_ASK"
-                  }
-                ]
-              }
-            }
-          ],
-          "sessions": [
-            {
-              "sessionId": "s-qr",
-              "machineId": "m1",
-              "lastSeq": "1",
-              "updatedMs": "1791078060000",
-              "meta": {
-                "id": "s-qr",
-                "cwd": "/Users/me/Code/app",
-                "agent": "AGENT_CODEX",
-                "status": "SESSION_STATUS_RUNNING",
-                "title": "Queue & Retry",
-                "createdAt": "2026-10-04T01:00:00Z"
-              },
-              "checkpoint": {
-                "running": true
-              }
-            }
-          ],
+        "seedDemoWorld": {
+          "clearListError": true,
           "devices": [
             {
+              "createdMs": "1791000000000",
               "deviceId": "dev-1",
               "kind": "DEVICE_KIND_CLIENT",
-              "createdMs": "1791000000000",
-              "meta": {
-                "name": "Phone",
-                "platform": "iOS"
-              }
+              "rawMeta": "CgVQaG9uZRIDaU9T"
+            }
+          ],
+          "machines": [
+            {
+              "lastSeenMs": "1791078060000",
+              "machineId": "m1",
+              "online": true,
+              "rawMeta": "CglNYWNTdHVkaW8yCS9Vc2Vycy9tZUoECAEgAUoECAIgAVINEAEYBlABYAFoAYABAWAR"
+            }
+          ],
+          "replaceDevices": true,
+          "replaceMachines": true,
+          "replaceSessions": true,
+          "sessions": [
+            {
+              "lastSeq": "1",
+              "machineId": "m1",
+              "rawCheckpoint": "MAE=",
+              "rawMeta": "CgRzLXFyEhIvVXNlcnMvbWUvQ29kZS9hcHAgA0IGCJDKhtYGeg1RdWV1ZSAmIFJldHJ5yAEB",
+              "sessionId": "s-qr",
+              "updatedMs": "1791078060000"
             }
           ]
         }
@@ -181,21 +149,16 @@
     {
       "event": {
         "nowMs": "1791078060050",
-        "accountPrefsFetched": {
-          "opId": "4",
-          "prefs": {
-            "revision": "1",
-            "prefs": {
-              "schema": 1
-            }
-          }
+        "seedDemoWorld": {
+          "prefsRevision": "1",
+          "rawPrefs": "CAE="
         }
       }
     },
     {
       "event": {
-        "nowMs": "1791078060060",
         "monoMs": "1100",
+        "nowMs": "1791078060060",
         "sessionOpen": {
           "sessionId": "s-qr"
         }
@@ -203,8 +166,8 @@
     },
     {
       "event": {
-        "nowMs": "1791078060070",
         "monoMs": "1150",
+        "nowMs": "1791078060070",
         "sessionWatch": {
           "sessionId": "s-qr",
           "watched": true
@@ -213,89 +176,89 @@
     },
     {
       "event": {
-        "nowMs": "1791078060078",
-        "monoMs": "1198",
         "draftOpen": {
           "scope": {
-            "kind": "DRAFT_SCOPE_KIND_SESSION",
-            "id": "s-qr"
+            "id": "s-qr",
+            "kind": "DRAFT_SCOPE_KIND_SESSION"
           }
-        }
+        },
+        "monoMs": "1198",
+        "nowMs": "1791078060078"
       }
     },
     {
       "event": {
-        "nowMs": "1791078060079",
-        "monoMs": "1199",
         "draftSetText": {
           "scope": {
-            "kind": "DRAFT_SCOPE_KIND_SESSION",
-            "id": "s-qr"
+            "id": "s-qr",
+            "kind": "DRAFT_SCOPE_KIND_SESSION"
           },
           "text": "steer failed msg"
-        }
+        },
+        "monoMs": "1199",
+        "nowMs": "1791078060079"
       }
     },
     {
       "event": {
-        "nowMs": "1791078060080",
-        "monoMs": "1200",
         "draftSendSession": {
-          "sessionId": "s-qr",
-          "mode": "SEND_MODE_STEER"
-        }
+          "mode": "SEND_MODE_STEER",
+          "sessionId": "s-qr"
+        },
+        "monoMs": "1200",
+        "nowMs": "1791078060080"
       }
     },
     {
       "event": {
-        "nowMs": "1791078060090",
-        "monoMs": "1250",
         "commandOutcome": {
-          "requestId": "r-8",
-          "attemptId": "r-9",
-          "source": "OUTCOME_SOURCE_SERVER",
-          "notForwarded": true,
           "attemptBound": true,
+          "attemptId": "r-9",
+          "notForwarded": true,
           "outerOutcome": "not_sent",
-          "outerReason": "computer_offline"
-        }
+          "outerReason": "computer_offline",
+          "requestId": "r-8",
+          "source": "OUTCOME_SOURCE_SERVER"
+        },
+        "monoMs": "1250",
+        "nowMs": "1791078060090"
       }
     },
     {
       "event": {
-        "nowMs": "1791078060099",
-        "monoMs": "1299",
         "draftSetText": {
           "scope": {
-            "kind": "DRAFT_SCOPE_KIND_SESSION",
-            "id": "s-qr"
+            "id": "s-qr",
+            "kind": "DRAFT_SCOPE_KIND_SESSION"
           },
           "text": "queued second"
-        }
+        },
+        "monoMs": "1299",
+        "nowMs": "1791078060099"
       }
     },
     {
       "event": {
-        "nowMs": "1791078060100",
-        "monoMs": "1300",
         "draftSendSession": {
-          "sessionId": "s-qr",
-          "mode": "SEND_MODE_QUEUE"
-        }
+          "mode": "SEND_MODE_QUEUE",
+          "sessionId": "s-qr"
+        },
+        "monoMs": "1300",
+        "nowMs": "1791078060100"
       }
     },
     {
       "event": {
-        "nowMs": "1791078060110",
-        "monoMs": "1350",
         "commandOutcome": {
-          "requestId": "r-11",
+          "attemptBound": true,
           "attemptId": "r-12",
-          "source": "OUTCOME_SOURCE_DAEMON",
-          "signed": false,
           "hashesMatch": true,
-          "attemptBound": true
-        }
+          "requestId": "r-11",
+          "signed": false,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "monoMs": "1350",
+        "nowMs": "1791078060110"
       },
       "views": [
         {
@@ -310,71 +273,44 @@
     },
     {
       "event": {
-        "nowMs": "1791078060120",
         "monoMs": "1400",
+        "nowMs": "1791078060120",
         "sessionRetryTrayItem": {
-          "sessionId": "s-qr",
-          "requestId": "r-10"
+          "requestId": "msg-q",
+          "sessionId": "s-qr"
         }
       }
     },
     {
       "event": {
-        "nowMs": "1791078060130",
-        "monoMs": "1450",
         "commandOutcome": {
-          "requestId": "r-11",
-          "attemptId": "r-13",
-          "source": "OUTCOME_SOURCE_DAEMON",
-          "signed": true,
-          "hashesMatch": true,
           "attemptBound": true,
+          "attemptId": "r-13",
+          "hashesMatch": true,
           "outerMatchesInner": true,
           "outerOutcome": "executed",
           "outerReason": "ok",
-          "result": {
-            "outcome": "executed",
-            "reason": "ok",
-            "resultAvailable": true,
-            "send": {}
-          }
-        }
+          "rawResult": "GghleGVjdXRlZCICb2tAAVIA",
+          "requestId": "r-11",
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "monoMs": "1450",
+        "nowMs": "1791078060130"
       }
     },
     {
       "event": {
-        "nowMs": "1791078060140",
         "monoMs": "1500",
-        "cacheEventsLoaded": {
-          "opId": "5",
-          "sessionId": "s-qr",
-          "events": [
+        "nowMs": "1791078060140",
+        "seedDemoWorld": {
+          "sessionEvents": [
             {
-              "seq": "1",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "1",
-                "time": "2026-10-04T01:10:01Z",
-                "userMessage": {
-                  "text": "initial task"
-                }
-              }
-            },
-            {
-              "seq": "2",
-              "verified": true,
-              "approxBytes": "64",
-              "event": {
-                "seq": "2",
-                "time": "2026-10-04T01:10:02Z",
-                "inputState": {
-                  "requestId": "r-10",
-                  "status": "INPUT_STATUS_QUEUED",
-                  "text": "queued second",
-                  "mode": "SEND_MODE_QUEUE"
-                }
-              }
+              "rawEvents": [
+                "CAESBHMtcXIaBgjpzobWBlIOCgxpbml0aWFsIHRhc2s=",
+                "CAISBHMtcXIaBgjqzobWBroBGgoFbXNnLXEQASoNcXVldWVkIHNlY29uZDgC"
+              ],
+              "sessionId": "s-qr"
             }
           ]
         }
@@ -392,11 +328,11 @@
     },
     {
       "event": {
-        "nowMs": "1791078060150",
         "monoMs": "1550",
+        "nowMs": "1791078060150",
         "sessionRestoreTrayItem": {
-          "sessionId": "s-qr",
-          "requestId": "r-7"
+          "requestId": "msg-fail",
+          "sessionId": "s-qr"
         }
       }
     }

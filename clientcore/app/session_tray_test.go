@@ -8,6 +8,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/internal/test/testrelay"
 	"github.com/Lewin671/remote-agent/clientcore/screens"
 	"github.com/Lewin671/remote-agent/clientcore/sync"
 	"github.com/Lewin671/remote-agent/clientcore/text"
@@ -19,67 +20,47 @@ func bootstrapTrayApp(t *testing.T, agent v1.Agent, status v1.SessionStatus, run
 		machID = "m-on"
 		sessID = "s-tray"
 	)
-	machines := []*corev1.PlainMachine{
-		{
-			MachineId: machID,
-			Online:    true,
-			Meta: &v1.MachineMeta{
-				Hostname:        "MacStudio",
-				ProtocolVersion: sync.PeerVersion,
-				Capabilities: &v1.MachineCapabilities{
-					ImageUpload:         true,
-					MaxImagesPerMessage: 6,
-					FileUpload:          true,
-				},
-				Agents: []*v1.AgentInfo{
-					{Agent: agent, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
-				},
+	machines := []*corev1.DemoMachine{
+		testrelay.DemoMachine(machID, true, 0, &v1.MachineMeta{
+			Hostname:        "MacStudio",
+			ProtocolVersion: sync.PeerVersion,
+			Capabilities: &v1.MachineCapabilities{
+				ImageUpload:         true,
+				MaxImagesPerMessage: 6,
+				FileUpload:          true,
 			},
-		},
+			Agents: []*v1.AgentInfo{
+				{Agent: agent, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
+			},
+		}),
 	}
-	sessions := []*corev1.PlainSession{
-		{
-			SessionId: sessID,
-			MachineId: machID,
-			Meta: &v1.Session{
-				Id:     sessID,
-				Cwd:    "/Users/me/proj",
-				Agent:  agent,
-				Status: status,
-				Title:  "Tray Test",
-			},
-			Checkpoint: &v1.LiveSnapshot{
-				Running: running,
-			},
-		},
+	sessions := []*corev1.DemoSession{
+		testrelay.DemoSession(sessID, machID, 1, 0, 0, &v1.Session{
+			Id:     sessID,
+			Cwd:    "/Users/me/proj",
+			Agent:  agent,
+			Status: status,
+			Title:  "Tray Test",
+		}, &v1.LiveSnapshot{
+			Running: running,
+		}),
 	}
 	c := bootstrapReadyApp(t, machines, sessions)
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_050,
 		Event: &corev1.Event_SessionOpen{SessionOpen: &corev1.SessionOpenAction{SessionId: sessID}},
 	})
-	watchBatch := c.Dispatch(&corev1.Event{
+	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_060,
 		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: sessID, Watched: true}},
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_070,
-		Event: &corev1.Event_CacheEventsLoaded{
-			CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{
-				OpId:      watchCacheReadOpID(watchBatch),
-				SessionId: sessID,
-				Events: []*corev1.PlainEvent{
-					{
-						Seq:      1,
-						Verified: true,
-						Event: &v1.Event{
-							Seq:  1,
-							Kind: &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "initial task"}},
-						},
-					},
-				},
-			},
-		},
+		Event: testrelay.DemoEventsEvent(sessID, &v1.Event{
+			Seq:       1,
+			SessionId: sessID,
+			Kind:      &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "initial task"}},
+		}),
 	})
 	return c, sessID
 }
@@ -160,30 +141,16 @@ func dispatchExecutedOutcome(c *Core, nowMs int64, dc dispatchedCmd, errCode str
 				OuterMatchesInner: true,
 				OuterOutcome:      res.Outcome,
 				OuterReason:       res.Reason,
-				Result:            res,
+				RawResult:         testrelay.MustRaw(res),
 			},
 		},
 	})
 }
 
 func appendStreamEvents(c *Core, sessID string, nowMs int64, events []*v1.Event) {
-	pe := make([]*corev1.PlainEvent, 0, len(events))
-	for _, ev := range events {
-		pe = append(pe, &corev1.PlainEvent{Seq: ev.Seq, Verified: true, Event: ev})
-	}
 	c.Dispatch(&corev1.Event{
 		NowMs: nowMs,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_EventsAppended{
-					EventsAppended: &corev1.EventsAppendedFrame{
-						SessionId: sessID,
-						Events:    pe,
-					},
-				},
-			},
-		},
+		Event: testrelay.DemoEventsEvent(sessID, events...),
 	})
 }
 

@@ -2,37 +2,45 @@
   "steps": [
     {
       "event": {
-        "nowMs": "1791078060000",
         "clockUpdated": {
-          "nowMs": "1791078060000",
-          "todayStartMs": "1791043200000",
-          "yesterdayStartMs": "1790956800000",
-          "weekStartMs": "1790524800000",
-          "nowYear": 2026,
           "months": [
             {
-              "year": 2026,
               "month": 10,
-              "startMs": "1790812800000"
+              "startMs": "1790812800000",
+              "year": 2026
             }
-          ]
-        }
+          ],
+          "nowMs": "1791078060000",
+          "nowYear": 2026,
+          "todayStartMs": "1791043200000",
+          "weekStartMs": "1790524800000",
+          "yesterdayStartMs": "1790956800000"
+        },
+        "nowMs": "1791078060000"
       }
     },
     {
       "event": {
         "nowMs": "1791078060000",
         "scheduleLocalContext": {
+          "dayAfterTomorrowStartMs": "1791216000000",
           "localTimezone": "UTC",
-          "tomorrowStartMs": "1791129600000",
-          "dayAfterTomorrowStartMs": "1791216000000"
+          "tomorrowStartMs": "1791129600000"
         }
       }
     },
     {
       "event": {
         "nowMs": "1791078060000",
+        "seedDemoWorld": {
+          "clearDirectReports": true
+        }
+      }
+    },
+    {
+      "event": {
         "monoMs": "1000",
+        "nowMs": "1791078060000",
         "randomIds": [
           "req-list-1",
           "att-list-1",
@@ -46,32 +54,15 @@
           "req-list-2",
           "att-list-2"
         ],
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START"
+        },
         "unitFloats": [
           0.5,
           0.5,
           0.5,
           0.5
-        ],
-        "syncLifecycle": {
-          "kind": "SYNC_LIFECYCLE_KIND_START"
-        }
-      }
-    },
-    {
-      "event": {
-        "nowMs": "1791078060010",
-        "cacheBootstrapLoaded": {
-          "opId": "1"
-        }
-      }
-    },
-    {
-      "event": {
-        "nowMs": "1791078060020",
-        "tokenResult": {
-          "opId": "2",
-          "token": "tok-1"
-        }
+        ]
       }
     },
     {
@@ -79,10 +70,10 @@
         "nowMs": "1791078060030",
         "seedDemoWorld": {
           "security": {
-            "isMember": true,
-            "selfDeviceId": "dev-1",
             "authorityDeviceId": "dev-1",
+            "isMember": true,
             "leaseEndMs": "1799999999000",
+            "selfDeviceId": "dev-1",
             "trustedMachineIds": [
               "m1"
             ]
@@ -102,41 +93,25 @@
     {
       "event": {
         "nowMs": "1791078060050",
-        "listsFetched": {
-          "opId": "3",
+        "seedDemoWorld": {
+          "clearListError": true,
           "machines": [
             {
               "machineId": "m1",
               "online": true,
-              "meta": {
-                "hostname": "Workstation",
-                "protocolVersion": 17,
-                "scheduleRevision": "1",
-                "capabilities": {
-                  "scheduledTasks": true
-                },
-                "agents": [
-                  {
-                    "agent": "AGENT_CODEX",
-                    "defaultMode": "APPROVAL_MODE_PLAN",
-                    "defaultModeSource": "DEFAULT_MODE_SOURCE_DAEMON_SETTINGS"
-                  }
-                ]
-              }
+              "rawMeta": "CgtXb3Jrc3RhdGlvbkoGCAEgBCgBUgJgAWARcAE="
             }
           ],
+          "replaceDevices": true,
+          "replaceMachines": true,
+          "replaceSessions": true,
           "sessions": [
             {
-              "sessionId": "s1",
-              "machineId": "m1",
               "lastSeq": "1",
-              "updatedMs": "1791078000000",
-              "meta": {
-                "id": "s1",
-                "cwd": "/Users/me/app",
-                "status": "SESSION_STATUS_EXITED",
-                "agent": "AGENT_CODEX"
-              }
+              "machineId": "m1",
+              "rawMeta": "CgJzMRINL1VzZXJzL21lL2FwcCAFyAEB",
+              "sessionId": "s1",
+              "updatedMs": "1791078000000"
             }
           ]
         }
@@ -146,8 +121,8 @@
       "event": {
         "nowMs": "1791078060060",
         "scheduleFormOpen": {
-          "mode": "SCHEDULE_FORM_MODE_CREATE_NEW",
           "machineId": "m1",
+          "mode": "SCHEDULE_FORM_MODE_CREATE_NEW",
           "projectKey": "/Users/me/app"
         }
       },
@@ -180,17 +155,17 @@
       "event": {
         "nowMs": "1791078060090",
         "scheduleFormUpdateTiming": {
+          "apply": true,
+          "count": "5",
+          "end": "SCHEDULE_TIMING_END_COUNT",
           "kind": "SCHEDULE_TIMING_KIND_WEEKLY",
-          "time": "09:30",
-          "zone": "Asia/Shanghai",
           "replaceWeekdays": true,
+          "time": "09:30",
           "weekdays": [
             1,
             3
           ],
-          "end": "SCHEDULE_TIMING_END_COUNT",
-          "count": "5",
-          "apply": true
+          "zone": "Asia/Shanghai"
         }
       },
       "views": [
@@ -210,15 +185,15 @@
     },
     {
       "event": {
-        "nowMs": "1791078060110",
         "commandOutcome": {
-          "requestId": "req-crt-1",
-          "attemptId": "att-crt-1",
-          "source": "OUTCOME_SOURCE_DAEMON",
-          "signed": true,
           "attemptBound": true,
-          "hashesMatch": false
-        }
+          "attemptId": "att-crt-1",
+          "hashesMatch": false,
+          "requestId": "req-crt-1",
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "nowMs": "1791078060110"
       },
       "views": [
         {
@@ -239,26 +214,19 @@
     },
     {
       "event": {
-        "nowMs": "1791078060130",
         "commandOutcome": {
-          "requestId": "req-crt-1",
-          "attemptId": "att-crt-2",
-          "source": "OUTCOME_SOURCE_DAEMON",
-          "signed": true,
           "attemptBound": true,
+          "attemptId": "att-crt-2",
           "hashesMatch": true,
           "outerMatchesInner": true,
           "outerOutcome": "executed",
           "outerReason": "ok",
-          "result": {
-            "outcome": "executed",
-            "reason": "ok",
-            "resultAvailable": true,
-            "schedule": {
-              "resultJson": "eyJpZCI6InQtY3JlYXRlZCIsInJldmlzaW9uIjoxLCJzdGF0dXMiOiJhY3RpdmUiLCJzb3VyY2UiOiJjbGllbnQiLCJjcmVhdGVkX2F0IjoiMjAyNi0xMC0wNFQwMTo0MTowMFoiLCJ1cGRhdGVkX2F0IjoiMjAyNi0xMC0wNFQwMTo0MTowMFoiLCJuZXh0X3J1bl9hdCI6IjIwMjYtMTAtMDVUMDk6MzA6MDBaIiwic3BlYyI6eyJ0aXRsZSI6IldlZWtseSBhdWRpdCIsIm1lc3NhZ2UiOiJXZWVrbHkgYXVkaXQuIFJ1biBsaW50ZXJzLiIsInRyaWdnZXIiOnsidHlwZSI6ImNhbGVuZGFyIiwidGltZSI6IjA5OjMwIiwid2Vla2RheXMiOlsxLDNdLCJ0aW1lem9uZSI6IkFzaWEvU2hhbmdoYWkiLCJtYXhfcnVucyI6NX0sInRhcmdldCI6eyJ0eXBlIjoibmV3X3Nlc3Npb24iLCJjd2QiOiIvVXNlcnMvbWUvYXBwIiwiYWdlbnQiOiJjb2RleCIsIm1vZGUiOiJhdXRvIn19fQ=="
-            }
-          }
-        }
+          "rawResult": "GghleGVjdXRlZCICb2tAAcICtAMKsQN7ImlkIjoidC1jcmVhdGVkIiwicmV2aXNpb24iOjEsInN0YXR1cyI6ImFjdGl2ZSIsInNvdXJjZSI6ImNsaWVudCIsImNyZWF0ZWRfYXQiOiIyMDI2LTEwLTA0VDAxOjQxOjAwWiIsInVwZGF0ZWRfYXQiOiIyMDI2LTEwLTA0VDAxOjQxOjAwWiIsIm5leHRfcnVuX2F0IjoiMjAyNi0xMC0wNVQwOTozMDowMFoiLCJzcGVjIjp7InRpdGxlIjoiV2Vla2x5IGF1ZGl0IiwibWVzc2FnZSI6IldlZWtseSBhdWRpdC4gUnVuIGxpbnRlcnMuIiwidHJpZ2dlciI6eyJ0eXBlIjoiY2FsZW5kYXIiLCJ0aW1lIjoiMDk6MzAiLCJ3ZWVrZGF5cyI6WzEsM10sInRpbWV6b25lIjoiQXNpYS9TaGFuZ2hhaSIsIm1heF9ydW5zIjo1fSwidGFyZ2V0Ijp7InR5cGUiOiJuZXdfc2Vzc2lvbiIsImN3ZCI6Ii9Vc2Vycy9tZS9hcHAiLCJhZ2VudCI6ImNvZGV4IiwibW9kZSI6ImF1dG8ifX19",
+          "requestId": "req-crt-1",
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "nowMs": "1791078060130"
       },
       "views": [
         {

@@ -222,11 +222,23 @@ func (e *Engine) securityDeviceOffers() []security.DeviceOfferInfo {
 	return out
 }
 
+func (e *Engine) clearDemoState() {
+	e.demoMode = false
+	e.demoListError = ""
+	e.demoPrefsError = ""
+	e.demoSessionRetired = nil
+	e.demoSessionLoadError = nil
+	e.demoDirectReports = nil
+}
+
 func (e *Engine) syncSecurityStateFromEngine(ctx *StepContext, pushToTransport bool) {
 	if e.secEngine == nil {
 		return
 	}
 	snap := e.secEngine.Snapshot()
+	if snap.Cleared || snap.Loaded || e.secEngine.Locked() {
+		e.clearDemoState()
+	}
 	e.security.Loaded = snap.Loaded
 	e.security.IsMember = snap.IsMember
 	if snap.SelfDeviceID != "" {
@@ -340,6 +352,7 @@ func (e *Engine) handleSecurityConfig(ctx *StepContext, ev *corev1.SecurityConfi
 	if ev == nil {
 		return
 	}
+	e.clearDemoState()
 	e.secEngine.Configure(ev)
 	if ev.DeviceId != "" {
 		e.security.SelfDeviceID = ev.DeviceId
@@ -410,12 +423,6 @@ func (e *Engine) handleSecurityStorageResult(ctx *StepContext, ev *corev1.Securi
 	e.maybeRequestEntropy(ctx)
 }
 
-func (e *Engine) handleSecurityRpcResult(ctx *StepContext, ev *corev1.SecurityRpcResultEvent) {
-	effs := e.secEngine.HandleRpcResult(e.nowMs, ev)
-	e.emitSecurityEffects(ctx, effs)
-	e.maybeRequestEntropy(ctx)
-}
-
 func (e *Engine) handleSecurityForeground(ctx *StepContext, ev *corev1.SecurityForegroundEvent) {
 	if ev != nil {
 		effs := e.secEngine.HandleForeground(e.nowMs, ev.Foreground)
@@ -444,6 +451,19 @@ func (e *Engine) handleSecurityPollTimer(ctx *StepContext) {
 func (e *Engine) handleSeedDemoWorld(ctx *StepContext, ev *corev1.SeedDemoWorldEvent) {
 	if ev == nil || e.secEngine.Locked() {
 		return
+	}
+	e.demoMode = true
+	if ev.ClearPrefsError {
+		e.demoPrefsError = ""
+	}
+	if ev.PrefsError != "" {
+		e.demoPrefsError = ev.PrefsError
+	}
+	if ev.ClearListError {
+		e.demoListError = ""
+	}
+	if ev.ListError != "" {
+		e.demoListError = ev.ListError
 	}
 	if s := ev.Security; s != nil {
 		e.security.Loaded = true
@@ -489,32 +509,94 @@ func (e *Engine) handleSeedDemoWorld(ctx *StepContext, ev *corev1.SeedDemoWorldE
 		ctx.Dirty.MarkDirect()
 	}
 
-	seedWorld := (ev.Security == nil && len(ev.DirectReports) == 0 && !ev.ClearDirectReports) ||
+	if ev.ReplaceMachines {
+		clear(e.machines)
+		e.machineOrderStale = true
+	}
+	for _, mid := range ev.RemovedMachineIds {
+		delete(e.machines, mid)
+		e.machineOrderStale = true
+	}
+	if ev.ReplaceSessions {
+		clear(e.sessions)
+		clear(e.listed)
+		e.sessionOrderStale = true
+	}
+	for _, sid := range ev.RemovedSessionIds {
+		delete(e.sessions, sid)
+		delete(e.listed, sid)
+		delete(e.buffers, sid)
+		e.sessionOrderStale = true
+	}
+	if ev.ReplaceDevices {
+		clear(e.devices)
+	}
+
+	seedWorld := (ev.Security == nil && len(ev.DirectReports) == 0 && !ev.ClearDirectReports && ev.ListError == "") ||
 		len(ev.Machines) > 0 || len(ev.Sessions) > 0 ||
-		len(ev.Devices) > 0 || ev.Prefs != nil || len(ev.SessionEvents) > 0
+		len(ev.Devices) > 0 || len(ev.RawPrefs) > 0 || len(ev.SessionEvents) > 0 ||
+		ev.ReplaceMachines || ev.ReplaceSessions || ev.ReplaceDevices ||
+		len(ev.RemovedMachineIds) > 0 || len(ev.RemovedSessionIds) > 0 || ev.ClearListError
 	if seedWorld {
-		e.coldStartGraceExpired = true
-		e.clearColdStartGrace(ctx)
-		e.w.World.MachinesListed = true
-		e.w.World.SessionsListed = true
-		e.w.World.LiveLoaded = true
-		e.w.SessionListError = world.Reason{}
-		e.w.World.SessionListError = ""
+		if !e.running || e.w.World.Connection != lists.ConnConnecting {
+			e.coldStartGraceExpired = true
+			e.clearColdStartGrace(ctx)
+		}
+		if e.demoListError != "" {
+			e.w.World.MachinesListed = false
+			e.w.World.SessionsListed = false
+			e.w.SessionListError = world.PlainReason(e.demoListError)
+			e.w.World.SessionListError = e.demoListError
+		} else if !e.running || e.w.World.Connection != lists.ConnConnecting {
+			e.w.World.MachinesListed = true
+			e.w.World.SessionsListed = true
+			e.w.World.LiveLoaded = true
+			e.w.SessionListError = world.Reason{}
+			e.w.World.SessionListError = ""
+		}
+		if ev.HasMoreSessions {
+			e.w.World.SessionsNext = &lists.SessionPlace{EndedMs: 1, SessionID: "z"}
+			e.w.World.HasMoreSessions = true
+		} else if len(ev.Sessions) > 0 || ev.ReplaceSessions {
+			e.w.World.SessionsNext = nil
+			e.w.World.HasMoreSessions = false
+		}
 
 		for _, m := range ev.Machines {
 			if m == nil || m.MachineId == "" {
 				continue
 			}
+			var meta *v1.MachineMeta
+			if len(m.RawMeta) > 0 {
+				var parsed v1.MachineMeta
+				if err := parsed.Unmarshal(m.RawMeta); err == nil {
+					meta = &parsed
+				}
+			}
 			e.putMachineDecoded(ctx, decodedMachine{
 				MachineID:  m.MachineId,
 				Online:     m.Online,
 				LastSeenMs: m.LastSeenMs,
-				Meta:       m.Meta,
+				Meta:       meta,
 			}, false, false)
 		}
 		for _, s := range ev.Sessions {
 			if s == nil || s.SessionId == "" {
 				continue
+			}
+			var meta *v1.Session
+			if len(s.RawMeta) > 0 {
+				var parsed v1.Session
+				if err := parsed.Unmarshal(s.RawMeta); err == nil {
+					meta = &parsed
+				}
+			}
+			var cp *v1.LiveSnapshot
+			if len(s.RawCheckpoint) > 0 {
+				var parsed v1.LiveSnapshot
+				if err := parsed.Unmarshal(s.RawCheckpoint); err == nil {
+					cp = &parsed
+				}
 			}
 			e.listed[s.SessionId] = true
 			e.putSessionDecoded(ctx, decodedSession{
@@ -523,35 +605,84 @@ func (e *Engine) handleSeedDemoWorld(ctx *StepContext, ev *corev1.SeedDemoWorldE
 				LastSeq:       s.LastSeq,
 				UpdatedMs:     s.UpdatedMs,
 				ListedEndedMs: s.ListedEndedMs,
-				Meta:          s.Meta,
-				Checkpoint:    s.Checkpoint,
+				Meta:          meta,
+				Checkpoint:    cp,
 			}, false)
 		}
-		for _, d := range ev.Devices {
-			if d == nil || d.DeviceId == "" {
-				continue
+		if len(ev.Devices) > 0 || ev.ReplaceDevices {
+			if ev.ReplaceDevices {
+				clear(e.devices)
 			}
-			e.devices[d.DeviceId] = decodedToDeviceEntry(decodedDevice{
-				DeviceID:   d.DeviceId,
-				Kind:       d.Kind,
-				CreatedMs:  d.CreatedMs,
-				LastSeenMs: d.LastSeenMs,
-				Meta:       d.Meta,
-				Registered: true,
-			})
+			seen := make(map[string]bool, len(ev.Devices))
+			for _, d := range ev.Devices {
+				if d == nil || d.DeviceId == "" {
+					continue
+				}
+				seen[d.DeviceId] = true
+				var meta *v1.DeviceMeta
+				if len(d.RawMeta) > 0 {
+					var parsed v1.DeviceMeta
+					if err := parsed.Unmarshal(d.RawMeta); err == nil {
+						meta = &parsed
+					}
+				}
+				e.devices[d.DeviceId] = decodedToDeviceEntry(decodedDevice{
+					DeviceID:   d.DeviceId,
+					Kind:       d.Kind,
+					CreatedMs:  d.CreatedMs,
+					LastSeenMs: d.LastSeenMs,
+					Meta:       meta,
+					Registered: true,
+				})
+			}
+			for id := range e.security.TrustedClients {
+				if !seen[id] {
+					if _, exists := e.devices[id]; !exists {
+						e.devices[id] = decodedToDeviceEntry(decodedDevice{
+							DeviceID:   id,
+							Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
+							Registered: false,
+						})
+					}
+				}
+			}
 		}
-		if ev.Prefs != nil {
-			e.applyAccountPrefsDecoded(&decodedPrefs{
-				Revision: 1,
-				Prefs:    ev.Prefs,
-			}, true)
+		if len(ev.RawPrefs) > 0 {
+			var prefs v1.ProjectPrefs
+			if err := prefs.Unmarshal(ev.RawPrefs); err == nil {
+				rev := ev.PrefsRevision
+				if rev == 0 {
+					rev = max(e.prefs.Revision, 1)
+				}
+				e.applyAccountPrefsDecoded(&decodedPrefs{
+					Revision: rev,
+					Prefs:    &prefs,
+				}, true)
+			}
 		}
 		for _, se := range ev.SessionEvents {
 			if se == nil || se.SessionId == "" {
 				continue
 			}
+			if se.Retired {
+				if e.demoSessionRetired == nil {
+					e.demoSessionRetired = make(map[string]bool)
+				}
+				e.demoSessionRetired[se.SessionId] = true
+				if sess := e.sessions[se.SessionId]; sess != nil {
+					sess.RetiredHistory = true
+				}
+			}
+			if se.LoadError != "" {
+				if e.demoSessionLoadError == nil {
+					e.demoSessionLoadError = make(map[string]string)
+				}
+				e.demoSessionLoadError[se.SessionId] = se.LoadError
+			} else if se.Replace && e.demoSessionLoadError != nil {
+				delete(e.demoSessionLoadError, se.SessionId)
+			}
 			b := e.buffers[se.SessionId]
-			if b == nil {
+			if b == nil || se.Replace {
 				var agent v1.Agent
 				if sess := e.sessions[se.SessionId]; sess != nil && sess.Info != nil {
 					agent = sess.Info.Agent
@@ -559,14 +690,42 @@ func (e *Engine) handleSeedDemoWorld(ctx *StepContext, ev *corev1.SeedDemoWorldE
 				b = newEventBuffer(se.SessionId, agent, e.monoMs)
 				e.buffers[se.SessionId] = b
 			}
-			items := make([]decodedEventItem, 0, len(se.Events))
-			for _, item := range se.Events {
-				if item == nil || item.Seq == 0 {
+			if se.Retired {
+				b.retired = true
+				b.loaded = true
+				b.awaitingCache = false
+				b.errorReason = world.Reason{Kind: world.ReasonHistoryKeysUnavailable}
+				e.bumpRev(b)
+				continue
+			}
+			if se.LoadError != "" {
+				b.loaded = true
+				b.awaitingCache = false
+				b.errorReason = world.PlainReason(se.LoadError)
+				b.fetchErrorReason = world.PlainReason(se.LoadError)
+				e.bumpRev(b)
+				continue
+			}
+			items := make([]decodedEventItem, 0, len(se.RawEvents))
+			for _, raw := range se.RawEvents {
+				if len(raw) == 0 {
+					continue
+				}
+				var item v1.Event
+				if err := item.Unmarshal(raw); err != nil || item.Seq == 0 {
+					continue
+				}
+				if se.Unavailable {
+					items = append(items, decodedEventItem{
+						Seq:         item.Seq,
+						Unavailable: true,
+						ApproxBytes: 64,
+					})
 					continue
 				}
 				items = append(items, decodedEventItem{
 					Seq:         item.Seq,
-					Event:       item,
+					Event:       &item,
 					Verified:    true,
 					ApproxBytes: 128,
 				})
@@ -575,6 +734,11 @@ func (e *Engine) handleSeedDemoWorld(ctx *StepContext, ev *corev1.SeedDemoWorldE
 			b.awaitingCache = false
 			e.ingestDecodedEvents(ctx, se.SessionId, b, items, false, false, true, false)
 		}
+	} else if e.demoListError != "" {
+		e.w.World.MachinesListed = false
+		e.w.World.SessionsListed = false
+		e.w.SessionListError = world.PlainReason(e.demoListError)
+		e.w.World.SessionListError = e.demoListError
 	}
 	if ev.Security != nil {
 		e.pruneUntrustedCaches(ctx)
@@ -710,7 +874,7 @@ type pendingSecOp struct {
 	termRawBytes   int
 	pcID           uint64
 	prep           *PreparedCommand
-	cmdEv          *corev1.CommandOutcomeEvent
+	cmdEv          *cmdOutcome
 	headOpID       string
 	baseRev        uint64
 	nextPrefs      *v1.ProjectPrefs
@@ -773,8 +937,8 @@ func (e *Engine) OnAuthTokenDone(tag uint64, res security.AuthTokenResult) {
 	}
 	switch op.kind {
 	case secOpAuthToken:
-		e.handleTokenResult(stepCtx, &corev1.TokenResultEvent{
-			OpId:           op.opID,
+		e.handleTokenResult(stepCtx, tokenResult{
+			OpID:           op.opID,
 			Token:          res.Token,
 			ExpiresMs:      res.ExpiresMs,
 			Removed:        res.Removed,
@@ -1114,11 +1278,13 @@ func (e *Engine) openWireDirectoryBatchTag(
 
 func (e *Engine) writePrefsCache(stepCtx *StepContext, wire *v1.AccountPrefsObject) {
 	if wire != nil && wire.Revision > 0 {
-		stepCtx.emit(&corev1.Effect{
-			Effect: &corev1.Effect_CacheWrite{
-				CacheWrite: &corev1.CacheWriteEffect{Kind: &corev1.CacheWriteEffect_WritePrefs{WritePrefs: wire}},
-			},
-		})
+		if raw, err := wire.Marshal(); err == nil && len(raw) > 0 {
+			stepCtx.emit(&corev1.Effect{
+				Effect: &corev1.Effect_CacheWrite{
+					CacheWrite: &corev1.CacheWriteEffect{Kind: &corev1.CacheWriteEffect_RawWritePrefs{RawWritePrefs: raw}},
+				},
+			})
+		}
 	}
 }
 
@@ -1366,6 +1532,9 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 			return
 		}
 		e.devices[m.wd.Id] = decodedToDeviceEntry(outD[0])
+		if e.secEngine != nil {
+			e.secEngine.SetDeviceDirectory(e.securityDeviceOffers())
+		}
 		if e.deviceKindNeedsSecuritySync(m.wd.Id, m.wd.Kind) {
 			e.requestSyncSecurity(stepCtx, true)
 		}
@@ -1765,8 +1934,8 @@ func (e *Engine) finishSealCmd(stepCtx *StepContext, op *pendingSecOp, sr securi
 	e.emitCommandAttempt(stepCtx, prep, prep.SealingRetry)
 }
 
-func (e *Engine) openSealedCommandOutcome(ctx *StepContext, prep *PreparedCommand, ev *corev1.CommandOutcomeEvent) {
-	evCopy := *ev
+func (e *Engine) openSealedCommandOutcome(ctx *StepContext, prep *PreparedCommand, ev *cmdOutcome) {
+	evCopy := cloneCmdOutcome(ev)
 	item := security.OpenItem{
 		Env: ev.SealedResult, ExpectedPurpose: devicesec.Result,
 		MachineID: prep.MachineID, SessionID: prep.SessionID, RequestID: prep.RequestID, History: false,
@@ -1854,35 +2023,19 @@ func (e *Engine) finishSealPrefs(stepCtx *StepContext, op *pendingSecOp, sr secu
 	curHead := &e.prefsQueue[0]
 	curHead.Phase = prefsPhasePut
 	curHead.ActiveOpID = e.allocOpID()
-	if e.relayPipe {
-		e.emitRelayRpc(
-			stepCtx,
-			corev1.RelayRpcMethod_RELAY_RPC_METHOD_PUT_ACCOUNT_PREFS,
-			e.cachedToken,
-			relayRpcDefaultTimeoutMs,
-			"",
-			(&v1.PutAccountPrefsRequest{
-				ObjectId:         ProjectPrefsObjectID,
-				ExpectedRevision: op.baseRev,
-				Envelope:         sr.Envelope,
-			}).AppendMarshal(nil),
-			&pendingRelayRpc{kind: relayRpcPrefsPut, opID: curHead.ActiveOpID},
-		)
-		return
-	}
-	stepCtx.emit(&corev1.Effect{
-		Effect: &corev1.Effect_Rpc{
-			Rpc: &corev1.RpcEffect{
-				OpId: curHead.ActiveOpID,
-				Kind: &corev1.RpcEffect_PutAccountPrefs{
-					PutAccountPrefs: &corev1.PutAccountPrefsRpc{
-						ObjectId: ProjectPrefsObjectID, ExpectedRevision: op.baseRev,
-						NextPrefs: op.nextPrefs, SealedEnvelope: sr.Envelope,
-					},
-				},
-			},
-		},
-	})
+	e.emitRelayRpc(
+		stepCtx,
+		corev1.RelayRpcMethod_RELAY_RPC_METHOD_PUT_ACCOUNT_PREFS,
+		e.cachedToken,
+		relayRpcDefaultTimeoutMs,
+		"",
+		(&v1.PutAccountPrefsRequest{
+			ObjectId:         ProjectPrefsObjectID,
+			ExpectedRevision: op.baseRev,
+			Envelope:         sr.Envelope,
+		}).AppendMarshal(nil),
+		&pendingRelayRpc{kind: relayRpcPrefsPut, opID: curHead.ActiveOpID},
+	)
 }
 
 func (e *Engine) cloneRefreshSnapshots() (mp, sp, rp, dp map[string]uint64) {
@@ -2004,11 +2157,6 @@ func (e *Engine) StopAllForLogout(ctx *StepContext) {
 	defer func() { e.activeStepCtx = prevCtx }()
 
 	if e.cachedToken != "" {
-		ctx.emit(&corev1.Effect{
-			Effect: &corev1.Effect_DiscardToken{
-				DiscardToken: &corev1.DiscardTokenEffect{Token: e.cachedToken},
-			},
-		})
 		e.cachedToken = ""
 		e.tokenExpiresMs = 0
 	}

@@ -65,6 +65,14 @@ out: remoteagent.core.v1.EffectBatch
 out: remoteagent.core.v1.Effect
 out: remoteagent.core.v1.PersistedDraftRecord
 out: remoteagent.core.v1.PersistedOutboxRecord
+out: remoteagent.v1.Machine
+out: remoteagent.v1.RemoteSession
+out: remoteagent.v1.StoredEvent
+out: remoteagent.v1.AccountPrefsObject
+out: remoteagent.v1.CommandResult
+out: remoteagent.v1.Session
+out: remoteagent.v1.LiveSnapshot
+out: remoteagent.v1.Event
 out: remoteagent.v1.Command
 out: remoteagent.v1.Envelope
 out: remoteagent.v1.Header

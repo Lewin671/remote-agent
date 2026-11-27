@@ -52,11 +52,6 @@ func TestRelayPipe_StreamRawFrameReadyClockSkewAndRefreshJoin(t *testing.T) {
 			SecurityConfig: &corev1.SecurityConfigEvent{Account: "acct-1", DeviceId: "dev-1", Server: "https://relay.example.com"},
 		},
 	})
-	e.HandleEvent(&corev1.Event{
-		NowMs:  1_000_000,
-		MonoMs: 1_000,
-		Event:  &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true}},
-	})
 	_, startRes := e.HandleEvent(&corev1.Event{
 		NowMs:  1_000_000,
 		MonoMs: 1_000,
@@ -64,9 +59,6 @@ func TestRelayPipe_StreamRawFrameReadyClockSkewAndRefreshJoin(t *testing.T) {
 	})
 	var bootOp uint64
 	for _, eff := range startRes.Effects {
-		if eff.GetEnsureToken() != nil {
-			t.Fatal("relayPipe mode must NOT emit legacy EnsureTokenEffect")
-		}
 		if st := eff.GetSecurityStorage(); st != nil && st.Op == corev1.SecurityStorageOp_SECURITY_STORAGE_OP_READ_BOOTSTRAP {
 			bootOp = st.OpId
 		}
@@ -190,11 +182,6 @@ func TestRelayPipe_ExtractRawPeerFrameDeliveryBytesExact(t *testing.T) {
 
 func TestRelayPipe_ForwardHealthzNotForwardedAndCancel(t *testing.T) {
 	e := NewEngine()
-	e.HandleEvent(&corev1.Event{
-		NowMs:  2_000_000,
-		MonoMs: 2_000,
-		Event:  &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true}},
-	})
 	e.running = true
 	e.networkAvailable = true
 	e.w.World.Connection = lists.ConnConnected
@@ -300,10 +287,6 @@ func TestRelayPipe_ForwardHealthzNotForwardedAndCancel(t *testing.T) {
 
 func TestRelayPipe_PushRpcAction(t *testing.T) {
 	e := NewEngine()
-	e.HandleEvent(&corev1.Event{
-		NowMs: 1000,
-		Event: &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true}},
-	})
 	e.running = true
 	e.cachedToken = "tok-push"
 	e.tokenExpiresMs = 1000 + 7*24*3600*1000
@@ -369,10 +352,6 @@ func TestRelayPipe_Auto401RefreshAndRetryOnce(t *testing.T) {
 		Event: &corev1.Event_SecurityConfig{
 			SecurityConfig: &corev1.SecurityConfigEvent{Account: "acct-1", DeviceId: "dev-1", Server: "https://relay.example.com"},
 		},
-	})
-	e.HandleEvent(&corev1.Event{
-		NowMs: now, MonoMs: 1_000,
-		Event: &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true}},
 	})
 	e.secEngine.SetAuthToken("old-tok", now+3*24*3600_000)
 	e.cachedToken = "old-tok"
@@ -471,10 +450,6 @@ func TestRelayPipe_StopPreservesForwardAndPutPrefsAndSynthesizesAcks(t *testing.
 		Event: &corev1.Event_SecurityConfig{
 			SecurityConfig: &corev1.SecurityConfigEvent{Account: "acct-1", DeviceId: "dev-1", Server: "https://relay.example.com"},
 		},
-	})
-	e.HandleEvent(&corev1.Event{
-		NowMs: now, MonoMs: 1_000,
-		Event: &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true}},
 	})
 	e.running = true
 	e.networkAvailable = true
@@ -663,10 +638,6 @@ func TestRelayPipe_StopPreservesForwardAndPutPrefsAndSynthesizesAcks(t *testing.
 func TestRelayPipe_StopDuringPrefsGetClearsActiveOpAndPreservesHealthzForForward(t *testing.T) {
 	e := NewEngine()
 	now := int64(3_500_000)
-	e.HandleEvent(&corev1.Event{
-		NowMs: now, MonoMs: 1_000,
-		Event: &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true}},
-	})
 	e.running = true
 	e.networkAvailable = true
 	e.w.World.Connection = lists.ConnConnected
@@ -758,10 +729,6 @@ func TestRelayPipe_BackgroundPushWorksWhileStopped(t *testing.T) {
 			SecurityConfig: &corev1.SecurityConfigEvent{Account: "acct-1", DeviceId: "dev-1", Server: "https://relay.example.com"},
 		},
 	})
-	e.HandleEvent(&corev1.Event{
-		NowMs: now, MonoMs: 1_000,
-		Event: &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true}},
-	})
 	// Engine is explicitly STOPPED (e.running == false) and has no cached token yet.
 	if e.running {
 		t.Fatal("expected engine stopped initially")
@@ -838,10 +805,6 @@ func TestRelayPipe_Staggered401ReusesFreshTokenWithoutReLogin(t *testing.T) {
 		Event: &corev1.Event_SecurityConfig{
 			SecurityConfig: &corev1.SecurityConfigEvent{Account: "acct-1", DeviceId: "dev-1", Server: "https://relay.example.com"},
 		},
-	})
-	e.HandleEvent(&corev1.Event{
-		NowMs: now, MonoMs: 1_000,
-		Event: &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true}},
 	})
 	e.secEngine.SetAuthToken("tok-old", now+3*24*3600_000)
 	e.cachedToken = "tok-old"
@@ -930,10 +893,6 @@ func TestRelayPipe_StopClearsInFlightSyncRpcsSoStartCanRefetch(t *testing.T) {
 		Event: &corev1.Event_SecurityConfig{
 			SecurityConfig: &corev1.SecurityConfigEvent{Account: "acct-1", DeviceId: "dev-1", Server: "https://relay.example.com"},
 		},
-	})
-	e.HandleEvent(&corev1.Event{
-		NowMs: now, MonoMs: 1_000,
-		Event: &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true}},
 	})
 	e.running = true
 	e.networkAvailable = true

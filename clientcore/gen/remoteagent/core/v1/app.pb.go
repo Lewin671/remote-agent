@@ -1589,365 +1589,15 @@ func (m *TimerFiredEvent) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TimerFiredEvent)
 }
 
-type PlainMachine struct {
-	_          [0]func()
-	MachineId  string
-	Online     bool
-	LastSeenMs int64
-	Meta       *v1.MachineMeta
-	MetaRev    uint64
-	MetaBroken bool
-}
-
-func (m *PlainMachine) GetMachineId() string {
-	if m != nil {
-		return m.MachineId
-	}
-	return ""
-}
-func (m *PlainMachine) GetOnline() bool {
-	if m != nil {
-		return m.Online
-	}
-	return false
-}
-func (m *PlainMachine) GetLastSeenMs() int64 {
-	if m != nil {
-		return m.LastSeenMs
-	}
-	return 0
-}
-func (m *PlainMachine) GetMeta() *v1.MachineMeta {
-	if m != nil {
-		return m.Meta
-	}
-	return nil
-}
-func (m *PlainMachine) GetMetaRev() uint64 {
-	if m != nil {
-		return m.MetaRev
-	}
-	return 0
-}
-func (m *PlainMachine) GetMetaBroken() bool {
-	if m != nil {
-		return m.MetaBroken
-	}
-	return false
-}
-
-var LitewireDesc_PlainMachine = litewire.MessageDesc{
-	New: func() unsafe.Pointer { return unsafe.Pointer(&PlainMachine{}) },
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(PlainMachine{}.MachineId), Kind: litewire.KindString},
-		{Num: 2, Offset: unsafe.Offsetof(PlainMachine{}.Online), Kind: litewire.KindBool},
-		{Num: 3, Offset: unsafe.Offsetof(PlainMachine{}.LastSeenMs), Kind: litewire.KindInt64},
-		{Num: 4, Offset: unsafe.Offsetof(PlainMachine{}.Meta), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_MachineMeta},
-		{Num: 5, Offset: unsafe.Offsetof(PlainMachine{}.MetaRev), Kind: litewire.KindUint64},
-		{Num: 6, Offset: unsafe.Offsetof(PlainMachine{}.MetaBroken), Kind: litewire.KindBool},
-	},
-}
-
-func (m *PlainMachine) Unmarshal(b []byte) error {
-	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_PlainMachine)
-}
-
-type PlainSession struct {
-	_                 [0]func()
-	SessionId         string
-	MachineId         string
-	LastSeq           uint64
-	UpdatedMs         int64
-	ListedEndedMs     int64
-	Meta              *v1.Session
-	MetaRev           uint64
-	Checkpoint        *v1.LiveSnapshot
-	CheckpointInvalid bool
-	RetiredHistory    bool
-	OpenFailed        bool
-}
-
-func (m *PlainSession) GetSessionId() string {
-	if m != nil {
-		return m.SessionId
-	}
-	return ""
-}
-func (m *PlainSession) GetMachineId() string {
-	if m != nil {
-		return m.MachineId
-	}
-	return ""
-}
-func (m *PlainSession) GetLastSeq() uint64 {
-	if m != nil {
-		return m.LastSeq
-	}
-	return 0
-}
-func (m *PlainSession) GetUpdatedMs() int64 {
-	if m != nil {
-		return m.UpdatedMs
-	}
-	return 0
-}
-func (m *PlainSession) GetListedEndedMs() int64 {
-	if m != nil {
-		return m.ListedEndedMs
-	}
-	return 0
-}
-func (m *PlainSession) GetMeta() *v1.Session {
-	if m != nil {
-		return m.Meta
-	}
-	return nil
-}
-func (m *PlainSession) GetMetaRev() uint64 {
-	if m != nil {
-		return m.MetaRev
-	}
-	return 0
-}
-func (m *PlainSession) GetCheckpoint() *v1.LiveSnapshot {
-	if m != nil {
-		return m.Checkpoint
-	}
-	return nil
-}
-func (m *PlainSession) GetCheckpointInvalid() bool {
-	if m != nil {
-		return m.CheckpointInvalid
-	}
-	return false
-}
-func (m *PlainSession) GetRetiredHistory() bool {
-	if m != nil {
-		return m.RetiredHistory
-	}
-	return false
-}
-func (m *PlainSession) GetOpenFailed() bool {
-	if m != nil {
-		return m.OpenFailed
-	}
-	return false
-}
-
-var LitewireDesc_PlainSession = litewire.MessageDesc{
-	New: func() unsafe.Pointer { return unsafe.Pointer(&PlainSession{}) },
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(PlainSession{}.SessionId), Kind: litewire.KindString},
-		{Num: 2, Offset: unsafe.Offsetof(PlainSession{}.MachineId), Kind: litewire.KindString},
-		{Num: 3, Offset: unsafe.Offsetof(PlainSession{}.LastSeq), Kind: litewire.KindUint64},
-		{Num: 4, Offset: unsafe.Offsetof(PlainSession{}.UpdatedMs), Kind: litewire.KindInt64},
-		{Num: 5, Offset: unsafe.Offsetof(PlainSession{}.ListedEndedMs), Kind: litewire.KindInt64},
-		{Num: 6, Offset: unsafe.Offsetof(PlainSession{}.Meta), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_Session},
-		{Num: 7, Offset: unsafe.Offsetof(PlainSession{}.MetaRev), Kind: litewire.KindUint64},
-		{Num: 8, Offset: unsafe.Offsetof(PlainSession{}.Checkpoint), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_LiveSnapshot},
-		{Num: 9, Offset: unsafe.Offsetof(PlainSession{}.CheckpointInvalid), Kind: litewire.KindBool},
-		{Num: 10, Offset: unsafe.Offsetof(PlainSession{}.RetiredHistory), Kind: litewire.KindBool},
-		{Num: 11, Offset: unsafe.Offsetof(PlainSession{}.OpenFailed), Kind: litewire.KindBool},
-	},
-}
-
-func (m *PlainSession) Unmarshal(b []byte) error {
-	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_PlainSession)
-}
-
-type PlainEvent struct {
-	_           [0]func()
-	Seq         uint64
-	Event       *v1.Event
-	Verified    bool
-	Unavailable bool
-	Broken      bool
-	Retired     bool
-	ApproxBytes int64
-}
-
-func (m *PlainEvent) GetSeq() uint64 {
-	if m != nil {
-		return m.Seq
-	}
-	return 0
-}
-func (m *PlainEvent) GetEvent() *v1.Event {
-	if m != nil {
-		return m.Event
-	}
-	return nil
-}
-func (m *PlainEvent) GetVerified() bool {
-	if m != nil {
-		return m.Verified
-	}
-	return false
-}
-func (m *PlainEvent) GetUnavailable() bool {
-	if m != nil {
-		return m.Unavailable
-	}
-	return false
-}
-func (m *PlainEvent) GetBroken() bool {
-	if m != nil {
-		return m.Broken
-	}
-	return false
-}
-func (m *PlainEvent) GetRetired() bool {
-	if m != nil {
-		return m.Retired
-	}
-	return false
-}
-func (m *PlainEvent) GetApproxBytes() int64 {
-	if m != nil {
-		return m.ApproxBytes
-	}
-	return 0
-}
-
-var LitewireDesc_PlainEvent = litewire.MessageDesc{
-	New: func() unsafe.Pointer { return unsafe.Pointer(&PlainEvent{}) },
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(PlainEvent{}.Seq), Kind: litewire.KindUint64},
-		{Num: 2, Offset: unsafe.Offsetof(PlainEvent{}.Event), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_Event},
-		{Num: 3, Offset: unsafe.Offsetof(PlainEvent{}.Verified), Kind: litewire.KindBool},
-		{Num: 4, Offset: unsafe.Offsetof(PlainEvent{}.Unavailable), Kind: litewire.KindBool},
-		{Num: 5, Offset: unsafe.Offsetof(PlainEvent{}.Broken), Kind: litewire.KindBool},
-		{Num: 6, Offset: unsafe.Offsetof(PlainEvent{}.Retired), Kind: litewire.KindBool},
-		{Num: 7, Offset: unsafe.Offsetof(PlainEvent{}.ApproxBytes), Kind: litewire.KindInt64},
-	},
-}
-
-func (m *PlainEvent) Unmarshal(b []byte) error {
-	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_PlainEvent)
-}
-
-type PlainDevice struct {
-	_          [0]func()
-	DeviceId   string
-	Kind       v1.DeviceKind
-	CreatedMs  int64
-	LastSeenMs int64
-	Meta       *v1.DeviceMeta
-	MetaRev    uint64
-	MetaBroken bool
-}
-
-func (m *PlainDevice) GetDeviceId() string {
-	if m != nil {
-		return m.DeviceId
-	}
-	return ""
-}
-func (m *PlainDevice) GetKind() v1.DeviceKind {
-	if m != nil {
-		return m.Kind
-	}
-	return 0
-}
-func (m *PlainDevice) GetCreatedMs() int64 {
-	if m != nil {
-		return m.CreatedMs
-	}
-	return 0
-}
-func (m *PlainDevice) GetLastSeenMs() int64 {
-	if m != nil {
-		return m.LastSeenMs
-	}
-	return 0
-}
-func (m *PlainDevice) GetMeta() *v1.DeviceMeta {
-	if m != nil {
-		return m.Meta
-	}
-	return nil
-}
-func (m *PlainDevice) GetMetaRev() uint64 {
-	if m != nil {
-		return m.MetaRev
-	}
-	return 0
-}
-func (m *PlainDevice) GetMetaBroken() bool {
-	if m != nil {
-		return m.MetaBroken
-	}
-	return false
-}
-
-var LitewireDesc_PlainDevice = litewire.MessageDesc{
-	New: func() unsafe.Pointer { return unsafe.Pointer(&PlainDevice{}) },
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(PlainDevice{}.DeviceId), Kind: litewire.KindString},
-		{Num: 2, Offset: unsafe.Offsetof(PlainDevice{}.Kind), Kind: litewire.KindInt32},
-		{Num: 3, Offset: unsafe.Offsetof(PlainDevice{}.CreatedMs), Kind: litewire.KindInt64},
-		{Num: 4, Offset: unsafe.Offsetof(PlainDevice{}.LastSeenMs), Kind: litewire.KindInt64},
-		{Num: 5, Offset: unsafe.Offsetof(PlainDevice{}.Meta), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_DeviceMeta},
-		{Num: 6, Offset: unsafe.Offsetof(PlainDevice{}.MetaRev), Kind: litewire.KindUint64},
-		{Num: 7, Offset: unsafe.Offsetof(PlainDevice{}.MetaBroken), Kind: litewire.KindBool},
-	},
-}
-
-func (m *PlainDevice) Unmarshal(b []byte) error {
-	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_PlainDevice)
-}
-
-type PlainAccountPrefs struct {
-	_        [0]func()
-	Revision uint64
-	Prefs    *v1.ProjectPrefs
-	Broken   bool
-}
-
-func (m *PlainAccountPrefs) GetRevision() uint64 {
-	if m != nil {
-		return m.Revision
-	}
-	return 0
-}
-func (m *PlainAccountPrefs) GetPrefs() *v1.ProjectPrefs {
-	if m != nil {
-		return m.Prefs
-	}
-	return nil
-}
-func (m *PlainAccountPrefs) GetBroken() bool {
-	if m != nil {
-		return m.Broken
-	}
-	return false
-}
-
-var LitewireDesc_PlainAccountPrefs = litewire.MessageDesc{
-	New: func() unsafe.Pointer { return unsafe.Pointer(&PlainAccountPrefs{}) },
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(PlainAccountPrefs{}.Revision), Kind: litewire.KindUint64},
-		{Num: 2, Offset: unsafe.Offsetof(PlainAccountPrefs{}.Prefs), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_ProjectPrefs},
-		{Num: 3, Offset: unsafe.Offsetof(PlainAccountPrefs{}.Broken), Kind: litewire.KindBool},
-	},
-}
-
-func (m *PlainAccountPrefs) Unmarshal(b []byte) error {
-	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_PlainAccountPrefs)
-}
-
 type CacheBootstrapLoadedEvent struct {
 	_              [0]func()
 	OpId           uint64
-	Machines       []*PlainMachine
-	Sessions       []*PlainSession
-	Prefs          *PlainAccountPrefs
 	HomeScopeToken string
 	ScopeHmacKey   []byte
 	Error          string
-	WireMachines   []*v1.Machine
-	WireSessions   []*v1.RemoteSession
-	WirePrefs      *v1.AccountPrefsObject
+	RawMachines    [][]byte
+	RawSessions    [][]byte
+	RawPrefs       []byte
 }
 
 func (m *CacheBootstrapLoadedEvent) GetOpId() uint64 {
@@ -1955,24 +1605,6 @@ func (m *CacheBootstrapLoadedEvent) GetOpId() uint64 {
 		return m.OpId
 	}
 	return 0
-}
-func (m *CacheBootstrapLoadedEvent) GetMachines() []*PlainMachine {
-	if m != nil {
-		return m.Machines
-	}
-	return nil
-}
-func (m *CacheBootstrapLoadedEvent) GetSessions() []*PlainSession {
-	if m != nil {
-		return m.Sessions
-	}
-	return nil
-}
-func (m *CacheBootstrapLoadedEvent) GetPrefs() *PlainAccountPrefs {
-	if m != nil {
-		return m.Prefs
-	}
-	return nil
 }
 func (m *CacheBootstrapLoadedEvent) GetHomeScopeToken() string {
 	if m != nil {
@@ -1992,21 +1624,21 @@ func (m *CacheBootstrapLoadedEvent) GetError() string {
 	}
 	return ""
 }
-func (m *CacheBootstrapLoadedEvent) GetWireMachines() []*v1.Machine {
+func (m *CacheBootstrapLoadedEvent) GetRawMachines() [][]byte {
 	if m != nil {
-		return m.WireMachines
+		return m.RawMachines
 	}
 	return nil
 }
-func (m *CacheBootstrapLoadedEvent) GetWireSessions() []*v1.RemoteSession {
+func (m *CacheBootstrapLoadedEvent) GetRawSessions() [][]byte {
 	if m != nil {
-		return m.WireSessions
+		return m.RawSessions
 	}
 	return nil
 }
-func (m *CacheBootstrapLoadedEvent) GetWirePrefs() *v1.AccountPrefsObject {
+func (m *CacheBootstrapLoadedEvent) GetRawPrefs() []byte {
 	if m != nil {
-		return m.WirePrefs
+		return m.RawPrefs
 	}
 	return nil
 }
@@ -2015,11 +1647,12 @@ var LitewireDesc_CacheBootstrapLoadedEvent = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&CacheBootstrapLoadedEvent{}) },
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(CacheBootstrapLoadedEvent{}.OpId), Kind: litewire.KindUint64},
-		{Num: 4, Offset: unsafe.Offsetof(CacheBootstrapLoadedEvent{}.Prefs), Kind: litewire.KindMessage, Sub: &LitewireDesc_PlainAccountPrefs},
 		{Num: 5, Offset: unsafe.Offsetof(CacheBootstrapLoadedEvent{}.HomeScopeToken), Kind: litewire.KindString},
 		{Num: 6, Offset: unsafe.Offsetof(CacheBootstrapLoadedEvent{}.ScopeHmacKey), Kind: litewire.KindBytes},
 		{Num: 7, Offset: unsafe.Offsetof(CacheBootstrapLoadedEvent{}.Error), Kind: litewire.KindString},
-		{Num: 12, Offset: unsafe.Offsetof(CacheBootstrapLoadedEvent{}.WirePrefs), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_AccountPrefsObject},
+		{Num: 13, Offset: unsafe.Offsetof(CacheBootstrapLoadedEvent{}.RawMachines), Kind: litewire.KindBytes, Flags: litewire.FlagRepeated},
+		{Num: 14, Offset: unsafe.Offsetof(CacheBootstrapLoadedEvent{}.RawSessions), Kind: litewire.KindBytes, Flags: litewire.FlagRepeated},
+		{Num: 15, Offset: unsafe.Offsetof(CacheBootstrapLoadedEvent{}.RawPrefs), Kind: litewire.KindBytes},
 	},
 }
 
@@ -2027,49 +1660,14 @@ func (m *CacheBootstrapLoadedEvent) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_CacheBootstrapLoadedEvent)
 }
 
-func extraUnmarshal_CacheBootstrapLoadedEvent(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	m := (*CacheBootstrapLoadedEvent)(base)
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
-		case 2:
-			elem := &PlainMachine{}
-			m.Machines = append(m.Machines, elem)
-			sub = elem
-		case 3:
-			elem := &PlainSession{}
-			m.Sessions = append(m.Sessions, elem)
-			sub = elem
-		case 10:
-			elem := &v1.Machine{}
-			m.WireMachines = append(m.WireMachines, elem)
-			sub = elem
-		case 11:
-			elem := &v1.RemoteSession{}
-			m.WireSessions = append(m.WireSessions, elem)
-			sub = elem
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 type CacheEventsLoadedEvent struct {
-	_          [0]func()
-	OpId       uint64
-	SessionId  string
-	Events     []*PlainEvent
-	Broken     bool
-	Retired    bool
-	Error      string
-	WireEvents []*v1.StoredEvent
+	_         [0]func()
+	OpId      uint64
+	SessionId string
+	Broken    bool
+	Retired   bool
+	Error     string
+	RawEvents [][]byte
 }
 
 func (m *CacheEventsLoadedEvent) GetOpId() uint64 {
@@ -2083,12 +1681,6 @@ func (m *CacheEventsLoadedEvent) GetSessionId() string {
 		return m.SessionId
 	}
 	return ""
-}
-func (m *CacheEventsLoadedEvent) GetEvents() []*PlainEvent {
-	if m != nil {
-		return m.Events
-	}
-	return nil
 }
 func (m *CacheEventsLoadedEvent) GetBroken() bool {
 	if m != nil {
@@ -2108,9 +1700,9 @@ func (m *CacheEventsLoadedEvent) GetError() string {
 	}
 	return ""
 }
-func (m *CacheEventsLoadedEvent) GetWireEvents() []*v1.StoredEvent {
+func (m *CacheEventsLoadedEvent) GetRawEvents() [][]byte {
 	if m != nil {
-		return m.WireEvents
+		return m.RawEvents
 	}
 	return nil
 }
@@ -2123,108 +1715,12 @@ var LitewireDesc_CacheEventsLoadedEvent = litewire.MessageDesc{
 		{Num: 4, Offset: unsafe.Offsetof(CacheEventsLoadedEvent{}.Broken), Kind: litewire.KindBool},
 		{Num: 5, Offset: unsafe.Offsetof(CacheEventsLoadedEvent{}.Retired), Kind: litewire.KindBool},
 		{Num: 6, Offset: unsafe.Offsetof(CacheEventsLoadedEvent{}.Error), Kind: litewire.KindString},
+		{Num: 11, Offset: unsafe.Offsetof(CacheEventsLoadedEvent{}.RawEvents), Kind: litewire.KindBytes, Flags: litewire.FlagRepeated},
 	},
 }
 
 func (m *CacheEventsLoadedEvent) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_CacheEventsLoadedEvent)
-}
-
-func extraUnmarshal_CacheEventsLoadedEvent(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	m := (*CacheEventsLoadedEvent)(base)
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
-		case 3:
-			elem := &PlainEvent{}
-			m.Events = append(m.Events, elem)
-			sub = elem
-		case 10:
-			elem := &v1.StoredEvent{}
-			m.WireEvents = append(m.WireEvents, elem)
-			sub = elem
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-type TokenResultEvent struct {
-	_              [0]func()
-	OpId           uint64
-	Token          string
-	ExpiresMs      int64
-	Removed        bool
-	ErrorCode      string
-	Error          string
-	UnresolvedHost bool
-}
-
-func (m *TokenResultEvent) GetOpId() uint64 {
-	if m != nil {
-		return m.OpId
-	}
-	return 0
-}
-func (m *TokenResultEvent) GetToken() string {
-	if m != nil {
-		return m.Token
-	}
-	return ""
-}
-func (m *TokenResultEvent) GetExpiresMs() int64 {
-	if m != nil {
-		return m.ExpiresMs
-	}
-	return 0
-}
-func (m *TokenResultEvent) GetRemoved() bool {
-	if m != nil {
-		return m.Removed
-	}
-	return false
-}
-func (m *TokenResultEvent) GetErrorCode() string {
-	if m != nil {
-		return m.ErrorCode
-	}
-	return ""
-}
-func (m *TokenResultEvent) GetError() string {
-	if m != nil {
-		return m.Error
-	}
-	return ""
-}
-func (m *TokenResultEvent) GetUnresolvedHost() bool {
-	if m != nil {
-		return m.UnresolvedHost
-	}
-	return false
-}
-
-var LitewireDesc_TokenResultEvent = litewire.MessageDesc{
-	New: func() unsafe.Pointer { return unsafe.Pointer(&TokenResultEvent{}) },
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(TokenResultEvent{}.OpId), Kind: litewire.KindUint64},
-		{Num: 2, Offset: unsafe.Offsetof(TokenResultEvent{}.Token), Kind: litewire.KindString},
-		{Num: 3, Offset: unsafe.Offsetof(TokenResultEvent{}.ExpiresMs), Kind: litewire.KindInt64},
-		{Num: 4, Offset: unsafe.Offsetof(TokenResultEvent{}.Removed), Kind: litewire.KindBool},
-		{Num: 5, Offset: unsafe.Offsetof(TokenResultEvent{}.ErrorCode), Kind: litewire.KindString},
-		{Num: 6, Offset: unsafe.Offsetof(TokenResultEvent{}.Error), Kind: litewire.KindString},
-		{Num: 7, Offset: unsafe.Offsetof(TokenResultEvent{}.UnresolvedHost), Kind: litewire.KindBool},
-	},
-}
-
-func (m *TokenResultEvent) Unmarshal(b []byte) error {
-	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TokenResultEvent)
 }
 
 type StreamReadyEvent struct {
@@ -2313,916 +1809,6 @@ func (m *StreamClosedEvent) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_StreamClosedEvent)
 }
 
-type EventsAppendedFrame struct {
-	_          [0]func()
-	SessionId  string
-	Events     []*PlainEvent
-	WireEvents []*v1.StoredEvent
-}
-
-func (m *EventsAppendedFrame) GetSessionId() string {
-	if m != nil {
-		return m.SessionId
-	}
-	return ""
-}
-func (m *EventsAppendedFrame) GetEvents() []*PlainEvent {
-	if m != nil {
-		return m.Events
-	}
-	return nil
-}
-func (m *EventsAppendedFrame) GetWireEvents() []*v1.StoredEvent {
-	if m != nil {
-		return m.WireEvents
-	}
-	return nil
-}
-
-var LitewireDesc_EventsAppendedFrame = litewire.MessageDesc{
-	New: func() unsafe.Pointer { return unsafe.Pointer(&EventsAppendedFrame{}) },
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(EventsAppendedFrame{}.SessionId), Kind: litewire.KindString},
-	},
-}
-
-func (m *EventsAppendedFrame) Unmarshal(b []byte) error {
-	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_EventsAppendedFrame)
-}
-
-func extraUnmarshal_EventsAppendedFrame(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	m := (*EventsAppendedFrame)(base)
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
-		case 2:
-			elem := &PlainEvent{}
-			m.Events = append(m.Events, elem)
-			sub = elem
-		case 10:
-			elem := &v1.StoredEvent{}
-			m.WireEvents = append(m.WireEvents, elem)
-			sub = elem
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-type StreamFrameEvent struct {
-	_     [0]func()
-	LegId uint64
-	Frame isStreamFrameEvent_Frame
-}
-
-type isStreamFrameEvent_Frame interface{ isStreamFrameEvent_Frame() }
-type StreamFrameEvent_Heartbeat struct {
-	_         [0]func()
-	Heartbeat bool
-}
-
-func (*StreamFrameEvent_Heartbeat) isStreamFrameEvent_Frame() {}
-
-type StreamFrameEvent_MachineUpdated struct {
-	_              [0]func()
-	MachineUpdated *PlainMachine
-}
-
-func (*StreamFrameEvent_MachineUpdated) isStreamFrameEvent_Frame() {}
-
-type StreamFrameEvent_MachineRemovedId struct {
-	_                [0]func()
-	MachineRemovedId string
-}
-
-func (*StreamFrameEvent_MachineRemovedId) isStreamFrameEvent_Frame() {}
-
-type StreamFrameEvent_SessionUpdated struct {
-	_              [0]func()
-	SessionUpdated *PlainSession
-}
-
-func (*StreamFrameEvent_SessionUpdated) isStreamFrameEvent_Frame() {}
-
-type StreamFrameEvent_EventsAppended struct {
-	_              [0]func()
-	EventsAppended *EventsAppendedFrame
-}
-
-func (*StreamFrameEvent_EventsAppended) isStreamFrameEvent_Frame() {}
-
-type StreamFrameEvent_AccountPrefsUpdated struct {
-	_                   [0]func()
-	AccountPrefsUpdated *PlainAccountPrefs
-}
-
-func (*StreamFrameEvent_AccountPrefsUpdated) isStreamFrameEvent_Frame() {}
-
-type StreamFrameEvent_DeviceUpdated struct {
-	_             [0]func()
-	DeviceUpdated *PlainDevice
-}
-
-func (*StreamFrameEvent_DeviceUpdated) isStreamFrameEvent_Frame() {}
-
-type StreamFrameEvent_DeviceRemovedId struct {
-	_               [0]func()
-	DeviceRemovedId string
-}
-
-func (*StreamFrameEvent_DeviceRemovedId) isStreamFrameEvent_Frame() {}
-
-type StreamFrameEvent_WireMachineUpdated struct {
-	_                  [0]func()
-	WireMachineUpdated *v1.Machine
-}
-
-func (*StreamFrameEvent_WireMachineUpdated) isStreamFrameEvent_Frame() {}
-
-type StreamFrameEvent_WireSessionUpdated struct {
-	_                  [0]func()
-	WireSessionUpdated *v1.RemoteSession
-}
-
-func (*StreamFrameEvent_WireSessionUpdated) isStreamFrameEvent_Frame() {}
-
-type StreamFrameEvent_WireAccountPrefsUpdated struct {
-	_                       [0]func()
-	WireAccountPrefsUpdated *v1.AccountPrefsObject
-}
-
-func (*StreamFrameEvent_WireAccountPrefsUpdated) isStreamFrameEvent_Frame() {}
-
-type StreamFrameEvent_WireDeviceUpdated struct {
-	_                 [0]func()
-	WireDeviceUpdated *v1.Device
-}
-
-func (*StreamFrameEvent_WireDeviceUpdated) isStreamFrameEvent_Frame() {}
-
-func (m *StreamFrameEvent) GetFrame() isStreamFrameEvent_Frame {
-	if m != nil {
-		return m.Frame
-	}
-	return nil
-}
-func (m *StreamFrameEvent) GetLegId() uint64 {
-	if m != nil {
-		return m.LegId
-	}
-	return 0
-}
-func (m *StreamFrameEvent) GetHeartbeat() bool {
-	if x, ok := m.GetFrame().(*StreamFrameEvent_Heartbeat); ok && x != nil {
-		return x.Heartbeat
-	}
-	return false
-}
-func (m *StreamFrameEvent) GetMachineUpdated() *PlainMachine {
-	if x, ok := m.GetFrame().(*StreamFrameEvent_MachineUpdated); ok && x != nil {
-		return x.MachineUpdated
-	}
-	return nil
-}
-func (m *StreamFrameEvent) GetMachineRemovedId() string {
-	if x, ok := m.GetFrame().(*StreamFrameEvent_MachineRemovedId); ok && x != nil {
-		return x.MachineRemovedId
-	}
-	return ""
-}
-func (m *StreamFrameEvent) GetSessionUpdated() *PlainSession {
-	if x, ok := m.GetFrame().(*StreamFrameEvent_SessionUpdated); ok && x != nil {
-		return x.SessionUpdated
-	}
-	return nil
-}
-func (m *StreamFrameEvent) GetEventsAppended() *EventsAppendedFrame {
-	if x, ok := m.GetFrame().(*StreamFrameEvent_EventsAppended); ok && x != nil {
-		return x.EventsAppended
-	}
-	return nil
-}
-func (m *StreamFrameEvent) GetAccountPrefsUpdated() *PlainAccountPrefs {
-	if x, ok := m.GetFrame().(*StreamFrameEvent_AccountPrefsUpdated); ok && x != nil {
-		return x.AccountPrefsUpdated
-	}
-	return nil
-}
-func (m *StreamFrameEvent) GetDeviceUpdated() *PlainDevice {
-	if x, ok := m.GetFrame().(*StreamFrameEvent_DeviceUpdated); ok && x != nil {
-		return x.DeviceUpdated
-	}
-	return nil
-}
-func (m *StreamFrameEvent) GetDeviceRemovedId() string {
-	if x, ok := m.GetFrame().(*StreamFrameEvent_DeviceRemovedId); ok && x != nil {
-		return x.DeviceRemovedId
-	}
-	return ""
-}
-func (m *StreamFrameEvent) GetWireMachineUpdated() *v1.Machine {
-	if x, ok := m.GetFrame().(*StreamFrameEvent_WireMachineUpdated); ok && x != nil {
-		return x.WireMachineUpdated
-	}
-	return nil
-}
-func (m *StreamFrameEvent) GetWireSessionUpdated() *v1.RemoteSession {
-	if x, ok := m.GetFrame().(*StreamFrameEvent_WireSessionUpdated); ok && x != nil {
-		return x.WireSessionUpdated
-	}
-	return nil
-}
-func (m *StreamFrameEvent) GetWireAccountPrefsUpdated() *v1.AccountPrefsObject {
-	if x, ok := m.GetFrame().(*StreamFrameEvent_WireAccountPrefsUpdated); ok && x != nil {
-		return x.WireAccountPrefsUpdated
-	}
-	return nil
-}
-func (m *StreamFrameEvent) GetWireDeviceUpdated() *v1.Device {
-	if x, ok := m.GetFrame().(*StreamFrameEvent_WireDeviceUpdated); ok && x != nil {
-		return x.WireDeviceUpdated
-	}
-	return nil
-}
-
-var LitewireDesc_StreamFrameEvent = litewire.MessageDesc{
-	New: func() unsafe.Pointer { return unsafe.Pointer(&StreamFrameEvent{}) },
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(StreamFrameEvent{}.LegId), Kind: litewire.KindUint64},
-	},
-}
-
-func (m *StreamFrameEvent) Unmarshal(b []byte) error {
-	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_StreamFrameEvent)
-}
-
-func extraUnmarshal_StreamFrameEvent(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	m := (*StreamFrameEvent)(base)
-	b := *bp
-	var sub litewire.Unmarshaler
-	switch num {
-	case 2:
-		if wtyp == litewire.VarintType {
-			v, err := litewire.ReadVarint(&b)
-			if err != nil {
-				return false, err
-			}
-			m.Frame = &StreamFrameEvent_Heartbeat{Heartbeat: litewire.DecodeBool(v)}
-			*bp = b
-			return true, nil
-		}
-	case 3:
-		if wtyp == litewire.BytesType {
-			w, _ := m.Frame.(*StreamFrameEvent_MachineUpdated)
-			if w == nil || w.MachineUpdated == nil {
-				w = &StreamFrameEvent_MachineUpdated{MachineUpdated: &PlainMachine{}}
-				m.Frame = w
-			}
-			sub = w.MachineUpdated
-		}
-	case 4:
-		if wtyp == litewire.BytesType {
-			v, err := litewire.ReadString(&b)
-			if err != nil {
-				return false, err
-			}
-			m.Frame = &StreamFrameEvent_MachineRemovedId{MachineRemovedId: v}
-			*bp = b
-			return true, nil
-		}
-	case 5:
-		if wtyp == litewire.BytesType {
-			w, _ := m.Frame.(*StreamFrameEvent_SessionUpdated)
-			if w == nil || w.SessionUpdated == nil {
-				w = &StreamFrameEvent_SessionUpdated{SessionUpdated: &PlainSession{}}
-				m.Frame = w
-			}
-			sub = w.SessionUpdated
-		}
-	case 6:
-		if wtyp == litewire.BytesType {
-			w, _ := m.Frame.(*StreamFrameEvent_EventsAppended)
-			if w == nil || w.EventsAppended == nil {
-				w = &StreamFrameEvent_EventsAppended{EventsAppended: &EventsAppendedFrame{}}
-				m.Frame = w
-			}
-			sub = w.EventsAppended
-		}
-	case 7:
-		if wtyp == litewire.BytesType {
-			w, _ := m.Frame.(*StreamFrameEvent_AccountPrefsUpdated)
-			if w == nil || w.AccountPrefsUpdated == nil {
-				w = &StreamFrameEvent_AccountPrefsUpdated{AccountPrefsUpdated: &PlainAccountPrefs{}}
-				m.Frame = w
-			}
-			sub = w.AccountPrefsUpdated
-		}
-	case 8:
-		if wtyp == litewire.BytesType {
-			w, _ := m.Frame.(*StreamFrameEvent_DeviceUpdated)
-			if w == nil || w.DeviceUpdated == nil {
-				w = &StreamFrameEvent_DeviceUpdated{DeviceUpdated: &PlainDevice{}}
-				m.Frame = w
-			}
-			sub = w.DeviceUpdated
-		}
-	case 9:
-		if wtyp == litewire.BytesType {
-			v, err := litewire.ReadString(&b)
-			if err != nil {
-				return false, err
-			}
-			m.Frame = &StreamFrameEvent_DeviceRemovedId{DeviceRemovedId: v}
-			*bp = b
-			return true, nil
-		}
-	case 10:
-		if wtyp == litewire.BytesType {
-			w, _ := m.Frame.(*StreamFrameEvent_WireMachineUpdated)
-			if w == nil || w.WireMachineUpdated == nil {
-				w = &StreamFrameEvent_WireMachineUpdated{WireMachineUpdated: &v1.Machine{}}
-				m.Frame = w
-			}
-			sub = w.WireMachineUpdated
-		}
-	case 11:
-		if wtyp == litewire.BytesType {
-			w, _ := m.Frame.(*StreamFrameEvent_WireSessionUpdated)
-			if w == nil || w.WireSessionUpdated == nil {
-				w = &StreamFrameEvent_WireSessionUpdated{WireSessionUpdated: &v1.RemoteSession{}}
-				m.Frame = w
-			}
-			sub = w.WireSessionUpdated
-		}
-	case 12:
-		if wtyp == litewire.BytesType {
-			w, _ := m.Frame.(*StreamFrameEvent_WireAccountPrefsUpdated)
-			if w == nil || w.WireAccountPrefsUpdated == nil {
-				w = &StreamFrameEvent_WireAccountPrefsUpdated{WireAccountPrefsUpdated: &v1.AccountPrefsObject{}}
-				m.Frame = w
-			}
-			sub = w.WireAccountPrefsUpdated
-		}
-	case 13:
-		if wtyp == litewire.BytesType {
-			w, _ := m.Frame.(*StreamFrameEvent_WireDeviceUpdated)
-			if w == nil || w.WireDeviceUpdated == nil {
-				w = &StreamFrameEvent_WireDeviceUpdated{WireDeviceUpdated: &v1.Device{}}
-				m.Frame = w
-			}
-			sub = w.WireDeviceUpdated
-		}
-	}
-	if sub != nil {
-		if err := litewire.ReadMessage(&b, sub); err != nil {
-			return false, err
-		}
-		*bp = b
-		return true, nil
-	}
-	return false, nil
-}
-
-type ListsFetchedEvent struct {
-	_              [0]func()
-	OpId           uint64
-	Machines       []*PlainMachine
-	Sessions       []*PlainSession
-	Next           *v1.SessionCursor
-	Devices        []*PlainDevice
-	Error          string
-	UnresolvedHost bool
-	WireMachines   []*v1.Machine
-	WireSessions   []*v1.RemoteSession
-	WireDevices    []*v1.Device
-}
-
-func (m *ListsFetchedEvent) GetOpId() uint64 {
-	if m != nil {
-		return m.OpId
-	}
-	return 0
-}
-func (m *ListsFetchedEvent) GetMachines() []*PlainMachine {
-	if m != nil {
-		return m.Machines
-	}
-	return nil
-}
-func (m *ListsFetchedEvent) GetSessions() []*PlainSession {
-	if m != nil {
-		return m.Sessions
-	}
-	return nil
-}
-func (m *ListsFetchedEvent) GetNext() *v1.SessionCursor {
-	if m != nil {
-		return m.Next
-	}
-	return nil
-}
-func (m *ListsFetchedEvent) GetDevices() []*PlainDevice {
-	if m != nil {
-		return m.Devices
-	}
-	return nil
-}
-func (m *ListsFetchedEvent) GetError() string {
-	if m != nil {
-		return m.Error
-	}
-	return ""
-}
-func (m *ListsFetchedEvent) GetUnresolvedHost() bool {
-	if m != nil {
-		return m.UnresolvedHost
-	}
-	return false
-}
-func (m *ListsFetchedEvent) GetWireMachines() []*v1.Machine {
-	if m != nil {
-		return m.WireMachines
-	}
-	return nil
-}
-func (m *ListsFetchedEvent) GetWireSessions() []*v1.RemoteSession {
-	if m != nil {
-		return m.WireSessions
-	}
-	return nil
-}
-func (m *ListsFetchedEvent) GetWireDevices() []*v1.Device {
-	if m != nil {
-		return m.WireDevices
-	}
-	return nil
-}
-
-var LitewireDesc_ListsFetchedEvent = litewire.MessageDesc{
-	New: func() unsafe.Pointer { return unsafe.Pointer(&ListsFetchedEvent{}) },
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(ListsFetchedEvent{}.OpId), Kind: litewire.KindUint64},
-		{Num: 4, Offset: unsafe.Offsetof(ListsFetchedEvent{}.Next), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_SessionCursor},
-		{Num: 6, Offset: unsafe.Offsetof(ListsFetchedEvent{}.Error), Kind: litewire.KindString},
-		{Num: 7, Offset: unsafe.Offsetof(ListsFetchedEvent{}.UnresolvedHost), Kind: litewire.KindBool},
-	},
-}
-
-func (m *ListsFetchedEvent) Unmarshal(b []byte) error {
-	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ListsFetchedEvent)
-}
-
-func extraUnmarshal_ListsFetchedEvent(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	m := (*ListsFetchedEvent)(base)
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
-		case 2:
-			elem := &PlainMachine{}
-			m.Machines = append(m.Machines, elem)
-			sub = elem
-		case 3:
-			elem := &PlainSession{}
-			m.Sessions = append(m.Sessions, elem)
-			sub = elem
-		case 5:
-			elem := &PlainDevice{}
-			m.Devices = append(m.Devices, elem)
-			sub = elem
-		case 10:
-			elem := &v1.Machine{}
-			m.WireMachines = append(m.WireMachines, elem)
-			sub = elem
-		case 11:
-			elem := &v1.RemoteSession{}
-			m.WireSessions = append(m.WireSessions, elem)
-			sub = elem
-		case 12:
-			elem := &v1.Device{}
-			m.WireDevices = append(m.WireDevices, elem)
-			sub = elem
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-type SessionsPageFetchedEvent struct {
-	_            [0]func()
-	OpId         uint64
-	Sessions     []*PlainSession
-	Next         *v1.SessionCursor
-	Error        string
-	WireSessions []*v1.RemoteSession
-}
-
-func (m *SessionsPageFetchedEvent) GetOpId() uint64 {
-	if m != nil {
-		return m.OpId
-	}
-	return 0
-}
-func (m *SessionsPageFetchedEvent) GetSessions() []*PlainSession {
-	if m != nil {
-		return m.Sessions
-	}
-	return nil
-}
-func (m *SessionsPageFetchedEvent) GetNext() *v1.SessionCursor {
-	if m != nil {
-		return m.Next
-	}
-	return nil
-}
-func (m *SessionsPageFetchedEvent) GetError() string {
-	if m != nil {
-		return m.Error
-	}
-	return ""
-}
-func (m *SessionsPageFetchedEvent) GetWireSessions() []*v1.RemoteSession {
-	if m != nil {
-		return m.WireSessions
-	}
-	return nil
-}
-
-var LitewireDesc_SessionsPageFetchedEvent = litewire.MessageDesc{
-	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionsPageFetchedEvent{}) },
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(SessionsPageFetchedEvent{}.OpId), Kind: litewire.KindUint64},
-		{Num: 3, Offset: unsafe.Offsetof(SessionsPageFetchedEvent{}.Next), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_SessionCursor},
-		{Num: 4, Offset: unsafe.Offsetof(SessionsPageFetchedEvent{}.Error), Kind: litewire.KindString},
-	},
-}
-
-func (m *SessionsPageFetchedEvent) Unmarshal(b []byte) error {
-	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionsPageFetchedEvent)
-}
-
-func extraUnmarshal_SessionsPageFetchedEvent(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	m := (*SessionsPageFetchedEvent)(base)
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
-		case 2:
-			elem := &PlainSession{}
-			m.Sessions = append(m.Sessions, elem)
-			sub = elem
-		case 10:
-			elem := &v1.RemoteSession{}
-			m.WireSessions = append(m.WireSessions, elem)
-			sub = elem
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-type SessionByIdFetchedEvent struct {
-	_           [0]func()
-	OpId        uint64
-	Session     *PlainSession
-	Error       string
-	WireSession *v1.RemoteSession
-}
-
-func (m *SessionByIdFetchedEvent) GetOpId() uint64 {
-	if m != nil {
-		return m.OpId
-	}
-	return 0
-}
-func (m *SessionByIdFetchedEvent) GetSession() *PlainSession {
-	if m != nil {
-		return m.Session
-	}
-	return nil
-}
-func (m *SessionByIdFetchedEvent) GetError() string {
-	if m != nil {
-		return m.Error
-	}
-	return ""
-}
-func (m *SessionByIdFetchedEvent) GetWireSession() *v1.RemoteSession {
-	if m != nil {
-		return m.WireSession
-	}
-	return nil
-}
-
-var LitewireDesc_SessionByIdFetchedEvent = litewire.MessageDesc{
-	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionByIdFetchedEvent{}) },
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(SessionByIdFetchedEvent{}.OpId), Kind: litewire.KindUint64},
-		{Num: 2, Offset: unsafe.Offsetof(SessionByIdFetchedEvent{}.Session), Kind: litewire.KindMessage, Sub: &LitewireDesc_PlainSession},
-		{Num: 3, Offset: unsafe.Offsetof(SessionByIdFetchedEvent{}.Error), Kind: litewire.KindString},
-		{Num: 10, Offset: unsafe.Offsetof(SessionByIdFetchedEvent{}.WireSession), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_RemoteSession},
-	},
-}
-
-func (m *SessionByIdFetchedEvent) Unmarshal(b []byte) error {
-	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionByIdFetchedEvent)
-}
-
-type EventsPageFetchedEvent struct {
-	_          [0]func()
-	OpId       uint64
-	SessionId  string
-	Events     []*PlainEvent
-	More       bool
-	Error      string
-	WireEvents []*v1.StoredEvent
-}
-
-func (m *EventsPageFetchedEvent) GetOpId() uint64 {
-	if m != nil {
-		return m.OpId
-	}
-	return 0
-}
-func (m *EventsPageFetchedEvent) GetSessionId() string {
-	if m != nil {
-		return m.SessionId
-	}
-	return ""
-}
-func (m *EventsPageFetchedEvent) GetEvents() []*PlainEvent {
-	if m != nil {
-		return m.Events
-	}
-	return nil
-}
-func (m *EventsPageFetchedEvent) GetMore() bool {
-	if m != nil {
-		return m.More
-	}
-	return false
-}
-func (m *EventsPageFetchedEvent) GetError() string {
-	if m != nil {
-		return m.Error
-	}
-	return ""
-}
-func (m *EventsPageFetchedEvent) GetWireEvents() []*v1.StoredEvent {
-	if m != nil {
-		return m.WireEvents
-	}
-	return nil
-}
-
-var LitewireDesc_EventsPageFetchedEvent = litewire.MessageDesc{
-	New: func() unsafe.Pointer { return unsafe.Pointer(&EventsPageFetchedEvent{}) },
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(EventsPageFetchedEvent{}.OpId), Kind: litewire.KindUint64},
-		{Num: 2, Offset: unsafe.Offsetof(EventsPageFetchedEvent{}.SessionId), Kind: litewire.KindString},
-		{Num: 4, Offset: unsafe.Offsetof(EventsPageFetchedEvent{}.More), Kind: litewire.KindBool},
-		{Num: 5, Offset: unsafe.Offsetof(EventsPageFetchedEvent{}.Error), Kind: litewire.KindString},
-	},
-}
-
-func (m *EventsPageFetchedEvent) Unmarshal(b []byte) error {
-	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_EventsPageFetchedEvent)
-}
-
-func extraUnmarshal_EventsPageFetchedEvent(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	m := (*EventsPageFetchedEvent)(base)
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
-		case 3:
-			elem := &PlainEvent{}
-			m.Events = append(m.Events, elem)
-			sub = elem
-		case 10:
-			elem := &v1.StoredEvent{}
-			m.WireEvents = append(m.WireEvents, elem)
-			sub = elem
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-type AccountPrefsFetchedEvent struct {
-	_         [0]func()
-	OpId      uint64
-	Prefs     *PlainAccountPrefs
-	Error     string
-	WirePrefs *v1.AccountPrefsObject
-}
-
-func (m *AccountPrefsFetchedEvent) GetOpId() uint64 {
-	if m != nil {
-		return m.OpId
-	}
-	return 0
-}
-func (m *AccountPrefsFetchedEvent) GetPrefs() *PlainAccountPrefs {
-	if m != nil {
-		return m.Prefs
-	}
-	return nil
-}
-func (m *AccountPrefsFetchedEvent) GetError() string {
-	if m != nil {
-		return m.Error
-	}
-	return ""
-}
-func (m *AccountPrefsFetchedEvent) GetWirePrefs() *v1.AccountPrefsObject {
-	if m != nil {
-		return m.WirePrefs
-	}
-	return nil
-}
-
-var LitewireDesc_AccountPrefsFetchedEvent = litewire.MessageDesc{
-	New: func() unsafe.Pointer { return unsafe.Pointer(&AccountPrefsFetchedEvent{}) },
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(AccountPrefsFetchedEvent{}.OpId), Kind: litewire.KindUint64},
-		{Num: 2, Offset: unsafe.Offsetof(AccountPrefsFetchedEvent{}.Prefs), Kind: litewire.KindMessage, Sub: &LitewireDesc_PlainAccountPrefs},
-		{Num: 3, Offset: unsafe.Offsetof(AccountPrefsFetchedEvent{}.Error), Kind: litewire.KindString},
-		{Num: 10, Offset: unsafe.Offsetof(AccountPrefsFetchedEvent{}.WirePrefs), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_AccountPrefsObject},
-	},
-}
-
-func (m *AccountPrefsFetchedEvent) Unmarshal(b []byte) error {
-	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_AccountPrefsFetchedEvent)
-}
-
-type AccountPrefsPutResultEvent struct {
-	_            [0]func()
-	OpId         uint64
-	Applied      bool
-	Current      *PlainAccountPrefs
-	SealConflict bool
-	Error        string
-	WireCurrent  *v1.AccountPrefsObject
-}
-
-func (m *AccountPrefsPutResultEvent) GetOpId() uint64 {
-	if m != nil {
-		return m.OpId
-	}
-	return 0
-}
-func (m *AccountPrefsPutResultEvent) GetApplied() bool {
-	if m != nil {
-		return m.Applied
-	}
-	return false
-}
-func (m *AccountPrefsPutResultEvent) GetCurrent() *PlainAccountPrefs {
-	if m != nil {
-		return m.Current
-	}
-	return nil
-}
-func (m *AccountPrefsPutResultEvent) GetSealConflict() bool {
-	if m != nil {
-		return m.SealConflict
-	}
-	return false
-}
-func (m *AccountPrefsPutResultEvent) GetError() string {
-	if m != nil {
-		return m.Error
-	}
-	return ""
-}
-func (m *AccountPrefsPutResultEvent) GetWireCurrent() *v1.AccountPrefsObject {
-	if m != nil {
-		return m.WireCurrent
-	}
-	return nil
-}
-
-var LitewireDesc_AccountPrefsPutResultEvent = litewire.MessageDesc{
-	New: func() unsafe.Pointer { return unsafe.Pointer(&AccountPrefsPutResultEvent{}) },
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(AccountPrefsPutResultEvent{}.OpId), Kind: litewire.KindUint64},
-		{Num: 2, Offset: unsafe.Offsetof(AccountPrefsPutResultEvent{}.Applied), Kind: litewire.KindBool},
-		{Num: 3, Offset: unsafe.Offsetof(AccountPrefsPutResultEvent{}.Current), Kind: litewire.KindMessage, Sub: &LitewireDesc_PlainAccountPrefs},
-		{Num: 4, Offset: unsafe.Offsetof(AccountPrefsPutResultEvent{}.SealConflict), Kind: litewire.KindBool},
-		{Num: 5, Offset: unsafe.Offsetof(AccountPrefsPutResultEvent{}.Error), Kind: litewire.KindString},
-		{Num: 10, Offset: unsafe.Offsetof(AccountPrefsPutResultEvent{}.WireCurrent), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_AccountPrefsObject},
-	},
-}
-
-func (m *AccountPrefsPutResultEvent) Unmarshal(b []byte) error {
-	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_AccountPrefsPutResultEvent)
-}
-
-type DevicesFetchedEvent struct {
-	_           [0]func()
-	OpId        uint64
-	Devices     []*PlainDevice
-	Error       string
-	PushSeq     uint64
-	WireDevices []*v1.Device
-}
-
-func (m *DevicesFetchedEvent) GetOpId() uint64 {
-	if m != nil {
-		return m.OpId
-	}
-	return 0
-}
-func (m *DevicesFetchedEvent) GetDevices() []*PlainDevice {
-	if m != nil {
-		return m.Devices
-	}
-	return nil
-}
-func (m *DevicesFetchedEvent) GetError() string {
-	if m != nil {
-		return m.Error
-	}
-	return ""
-}
-func (m *DevicesFetchedEvent) GetPushSeq() uint64 {
-	if m != nil {
-		return m.PushSeq
-	}
-	return 0
-}
-func (m *DevicesFetchedEvent) GetWireDevices() []*v1.Device {
-	if m != nil {
-		return m.WireDevices
-	}
-	return nil
-}
-
-var LitewireDesc_DevicesFetchedEvent = litewire.MessageDesc{
-	New: func() unsafe.Pointer { return unsafe.Pointer(&DevicesFetchedEvent{}) },
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(DevicesFetchedEvent{}.OpId), Kind: litewire.KindUint64},
-		{Num: 3, Offset: unsafe.Offsetof(DevicesFetchedEvent{}.Error), Kind: litewire.KindString},
-		{Num: 4, Offset: unsafe.Offsetof(DevicesFetchedEvent{}.PushSeq), Kind: litewire.KindUint64},
-	},
-}
-
-func (m *DevicesFetchedEvent) Unmarshal(b []byte) error {
-	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DevicesFetchedEvent)
-}
-
-func extraUnmarshal_DevicesFetchedEvent(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	m := (*DevicesFetchedEvent)(base)
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
-		case 2:
-			elem := &PlainDevice{}
-			m.Devices = append(m.Devices, elem)
-			sub = elem
-		case 10:
-			elem := &v1.Device{}
-			m.WireDevices = append(m.WireDevices, elem)
-			sub = elem
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 type CommandOutcomeEvent struct {
 	_                 [0]func()
 	RequestId         string
@@ -3235,7 +1821,6 @@ type CommandOutcomeEvent struct {
 	OuterMatchesInner bool
 	OuterOutcome      string
 	OuterReason       string
-	Result            *v1.CommandResult
 	TransportCode     string
 	TransportDetail   string
 	RouteWasDirect    bool
@@ -3243,7 +1828,8 @@ type CommandOutcomeEvent struct {
 	ObservedBytes     int64
 	HandedOff         bool
 	DirectTicketId    uint64
-	SealedResult      *v1.Envelope
+	RawResult         []byte
+	RawSealedResult   []byte
 }
 
 func (m *CommandOutcomeEvent) GetRequestId() string {
@@ -3306,12 +1892,6 @@ func (m *CommandOutcomeEvent) GetOuterReason() string {
 	}
 	return ""
 }
-func (m *CommandOutcomeEvent) GetResult() *v1.CommandResult {
-	if m != nil {
-		return m.Result
-	}
-	return nil
-}
 func (m *CommandOutcomeEvent) GetTransportCode() string {
 	if m != nil {
 		return m.TransportCode
@@ -3354,9 +1934,15 @@ func (m *CommandOutcomeEvent) GetDirectTicketId() uint64 {
 	}
 	return 0
 }
-func (m *CommandOutcomeEvent) GetSealedResult() *v1.Envelope {
+func (m *CommandOutcomeEvent) GetRawResult() []byte {
 	if m != nil {
-		return m.SealedResult
+		return m.RawResult
+	}
+	return nil
+}
+func (m *CommandOutcomeEvent) GetRawSealedResult() []byte {
+	if m != nil {
+		return m.RawSealedResult
 	}
 	return nil
 }
@@ -3374,7 +1960,6 @@ var LitewireDesc_CommandOutcomeEvent = litewire.MessageDesc{
 		{Num: 8, Offset: unsafe.Offsetof(CommandOutcomeEvent{}.OuterMatchesInner), Kind: litewire.KindBool},
 		{Num: 9, Offset: unsafe.Offsetof(CommandOutcomeEvent{}.OuterOutcome), Kind: litewire.KindString},
 		{Num: 10, Offset: unsafe.Offsetof(CommandOutcomeEvent{}.OuterReason), Kind: litewire.KindString},
-		{Num: 11, Offset: unsafe.Offsetof(CommandOutcomeEvent{}.Result), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_CommandResult},
 		{Num: 12, Offset: unsafe.Offsetof(CommandOutcomeEvent{}.TransportCode), Kind: litewire.KindString},
 		{Num: 13, Offset: unsafe.Offsetof(CommandOutcomeEvent{}.TransportDetail), Kind: litewire.KindString},
 		{Num: 14, Offset: unsafe.Offsetof(CommandOutcomeEvent{}.RouteWasDirect), Kind: litewire.KindBool},
@@ -3382,7 +1967,8 @@ var LitewireDesc_CommandOutcomeEvent = litewire.MessageDesc{
 		{Num: 16, Offset: unsafe.Offsetof(CommandOutcomeEvent{}.ObservedBytes), Kind: litewire.KindInt64},
 		{Num: 17, Offset: unsafe.Offsetof(CommandOutcomeEvent{}.HandedOff), Kind: litewire.KindBool},
 		{Num: 18, Offset: unsafe.Offsetof(CommandOutcomeEvent{}.DirectTicketId), Kind: litewire.KindUint64},
-		{Num: 20, Offset: unsafe.Offsetof(CommandOutcomeEvent{}.SealedResult), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_Envelope},
+		{Num: 21, Offset: unsafe.Offsetof(CommandOutcomeEvent{}.RawResult), Kind: litewire.KindBytes},
+		{Num: 22, Offset: unsafe.Offsetof(CommandOutcomeEvent{}.RawSealedResult), Kind: litewire.KindBytes},
 	},
 }
 
@@ -3499,13 +2085,12 @@ func (m *FetchSessionAction) Unmarshal(b []byte) error {
 }
 
 type DirectEventsReceivedEvent struct {
-	_             [0]func()
-	MachineId     string
-	SessionId     string
-	Events        []*PlainEvent
-	PcId          uint64
-	Sender        string
-	WireEnvelopes []*v1.Envelope
+	_            [0]func()
+	MachineId    string
+	SessionId    string
+	PcId         uint64
+	Sender       string
+	RawEnvelopes [][]byte
 }
 
 func (m *DirectEventsReceivedEvent) GetMachineId() string {
@@ -3520,12 +2105,6 @@ func (m *DirectEventsReceivedEvent) GetSessionId() string {
 	}
 	return ""
 }
-func (m *DirectEventsReceivedEvent) GetEvents() []*PlainEvent {
-	if m != nil {
-		return m.Events
-	}
-	return nil
-}
 func (m *DirectEventsReceivedEvent) GetPcId() uint64 {
 	if m != nil {
 		return m.PcId
@@ -3538,9 +2117,9 @@ func (m *DirectEventsReceivedEvent) GetSender() string {
 	}
 	return ""
 }
-func (m *DirectEventsReceivedEvent) GetWireEnvelopes() []*v1.Envelope {
+func (m *DirectEventsReceivedEvent) GetRawEnvelopes() [][]byte {
 	if m != nil {
-		return m.WireEnvelopes
+		return m.RawEnvelopes
 	}
 	return nil
 }
@@ -3552,37 +2131,12 @@ var LitewireDesc_DirectEventsReceivedEvent = litewire.MessageDesc{
 		{Num: 2, Offset: unsafe.Offsetof(DirectEventsReceivedEvent{}.SessionId), Kind: litewire.KindString},
 		{Num: 4, Offset: unsafe.Offsetof(DirectEventsReceivedEvent{}.PcId), Kind: litewire.KindUint64},
 		{Num: 5, Offset: unsafe.Offsetof(DirectEventsReceivedEvent{}.Sender), Kind: litewire.KindString},
+		{Num: 11, Offset: unsafe.Offsetof(DirectEventsReceivedEvent{}.RawEnvelopes), Kind: litewire.KindBytes, Flags: litewire.FlagRepeated},
 	},
 }
 
 func (m *DirectEventsReceivedEvent) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectEventsReceivedEvent)
-}
-
-func extraUnmarshal_DirectEventsReceivedEvent(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	m := (*DirectEventsReceivedEvent)(base)
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
-		case 3:
-			elem := &PlainEvent{}
-			m.Events = append(m.Events, elem)
-			sub = elem
-		case 10:
-			elem := &v1.Envelope{}
-			m.WireEnvelopes = append(m.WireEnvelopes, elem)
-			sub = elem
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 type SessionScheduleHint struct {
@@ -4244,13 +2798,6 @@ type Event_CacheEventsLoaded struct {
 
 func (*Event_CacheEventsLoaded) isEvent_Event() {}
 
-type Event_TokenResult struct {
-	_           [0]func()
-	TokenResult *TokenResultEvent
-}
-
-func (*Event_TokenResult) isEvent_Event() {}
-
 type Event_LocaleChanged struct {
 	_             [0]func()
 	LocaleChanged *LocaleChangedEvent
@@ -4271,62 +2818,6 @@ type Event_StreamClosed struct {
 }
 
 func (*Event_StreamClosed) isEvent_Event() {}
-
-type Event_StreamFrame struct {
-	_           [0]func()
-	StreamFrame *StreamFrameEvent
-}
-
-func (*Event_StreamFrame) isEvent_Event() {}
-
-type Event_ListsFetched struct {
-	_            [0]func()
-	ListsFetched *ListsFetchedEvent
-}
-
-func (*Event_ListsFetched) isEvent_Event() {}
-
-type Event_SessionsPageFetched struct {
-	_                   [0]func()
-	SessionsPageFetched *SessionsPageFetchedEvent
-}
-
-func (*Event_SessionsPageFetched) isEvent_Event() {}
-
-type Event_SessionByIdFetched struct {
-	_                  [0]func()
-	SessionByIdFetched *SessionByIdFetchedEvent
-}
-
-func (*Event_SessionByIdFetched) isEvent_Event() {}
-
-type Event_EventsPageFetched struct {
-	_                 [0]func()
-	EventsPageFetched *EventsPageFetchedEvent
-}
-
-func (*Event_EventsPageFetched) isEvent_Event() {}
-
-type Event_AccountPrefsFetched struct {
-	_                   [0]func()
-	AccountPrefsFetched *AccountPrefsFetchedEvent
-}
-
-func (*Event_AccountPrefsFetched) isEvent_Event() {}
-
-type Event_AccountPrefsPutResult struct {
-	_                     [0]func()
-	AccountPrefsPutResult *AccountPrefsPutResultEvent
-}
-
-func (*Event_AccountPrefsPutResult) isEvent_Event() {}
-
-type Event_DevicesFetched struct {
-	_              [0]func()
-	DevicesFetched *DevicesFetchedEvent
-}
-
-func (*Event_DevicesFetched) isEvent_Event() {}
 
 type Event_CommandOutcome struct {
 	_              [0]func()
@@ -5658,13 +4149,6 @@ type Event_DirectPcProbeReceived struct {
 
 func (*Event_DirectPcProbeReceived) isEvent_Event() {}
 
-type Event_RelayPipeConfig struct {
-	_               [0]func()
-	RelayPipeConfig *RelayPipeConfigEvent
-}
-
-func (*Event_RelayPipeConfig) isEvent_Event() {}
-
 type Event_RelayRpcResult struct {
 	_              [0]func()
 	RelayRpcResult *RelayRpcResultEvent
@@ -5804,13 +4288,6 @@ type Event_SecurityStorageResult struct {
 }
 
 func (*Event_SecurityStorageResult) isEvent_Event() {}
-
-type Event_SecurityRpcResult struct {
-	_                 [0]func()
-	SecurityRpcResult *SecurityRpcResultEvent
-}
-
-func (*Event_SecurityRpcResult) isEvent_Event() {}
 
 type Event_SecurityForeground struct {
 	_                  [0]func()
@@ -6070,12 +4547,6 @@ func (m *Event) GetCacheEventsLoaded() *CacheEventsLoadedEvent {
 	}
 	return nil
 }
-func (m *Event) GetTokenResult() *TokenResultEvent {
-	if x, ok := m.GetEvent().(*Event_TokenResult); ok && x != nil {
-		return x.TokenResult
-	}
-	return nil
-}
 func (m *Event) GetLocaleChanged() *LocaleChangedEvent {
 	if x, ok := m.GetEvent().(*Event_LocaleChanged); ok && x != nil {
 		return x.LocaleChanged
@@ -6091,54 +4562,6 @@ func (m *Event) GetStreamReady() *StreamReadyEvent {
 func (m *Event) GetStreamClosed() *StreamClosedEvent {
 	if x, ok := m.GetEvent().(*Event_StreamClosed); ok && x != nil {
 		return x.StreamClosed
-	}
-	return nil
-}
-func (m *Event) GetStreamFrame() *StreamFrameEvent {
-	if x, ok := m.GetEvent().(*Event_StreamFrame); ok && x != nil {
-		return x.StreamFrame
-	}
-	return nil
-}
-func (m *Event) GetListsFetched() *ListsFetchedEvent {
-	if x, ok := m.GetEvent().(*Event_ListsFetched); ok && x != nil {
-		return x.ListsFetched
-	}
-	return nil
-}
-func (m *Event) GetSessionsPageFetched() *SessionsPageFetchedEvent {
-	if x, ok := m.GetEvent().(*Event_SessionsPageFetched); ok && x != nil {
-		return x.SessionsPageFetched
-	}
-	return nil
-}
-func (m *Event) GetSessionByIdFetched() *SessionByIdFetchedEvent {
-	if x, ok := m.GetEvent().(*Event_SessionByIdFetched); ok && x != nil {
-		return x.SessionByIdFetched
-	}
-	return nil
-}
-func (m *Event) GetEventsPageFetched() *EventsPageFetchedEvent {
-	if x, ok := m.GetEvent().(*Event_EventsPageFetched); ok && x != nil {
-		return x.EventsPageFetched
-	}
-	return nil
-}
-func (m *Event) GetAccountPrefsFetched() *AccountPrefsFetchedEvent {
-	if x, ok := m.GetEvent().(*Event_AccountPrefsFetched); ok && x != nil {
-		return x.AccountPrefsFetched
-	}
-	return nil
-}
-func (m *Event) GetAccountPrefsPutResult() *AccountPrefsPutResultEvent {
-	if x, ok := m.GetEvent().(*Event_AccountPrefsPutResult); ok && x != nil {
-		return x.AccountPrefsPutResult
-	}
-	return nil
-}
-func (m *Event) GetDevicesFetched() *DevicesFetchedEvent {
-	if x, ok := m.GetEvent().(*Event_DevicesFetched); ok && x != nil {
-		return x.DevicesFetched
 	}
 	return nil
 }
@@ -7282,12 +5705,6 @@ func (m *Event) GetDirectPcProbeReceived() *DirectPcProbeReceivedEvent {
 	}
 	return nil
 }
-func (m *Event) GetRelayPipeConfig() *RelayPipeConfigEvent {
-	if x, ok := m.GetEvent().(*Event_RelayPipeConfig); ok && x != nil {
-		return x.RelayPipeConfig
-	}
-	return nil
-}
 func (m *Event) GetRelayRpcResult() *RelayRpcResultEvent {
 	if x, ok := m.GetEvent().(*Event_RelayRpcResult); ok && x != nil {
 		return x.RelayRpcResult
@@ -7405,12 +5822,6 @@ func (m *Event) GetSecurityKeyEncapsulated() *SecurityKeyEncapsulatedEvent {
 func (m *Event) GetSecurityStorageResult() *SecurityStorageResultEvent {
 	if x, ok := m.GetEvent().(*Event_SecurityStorageResult); ok && x != nil {
 		return x.SecurityStorageResult
-	}
-	return nil
-}
-func (m *Event) GetSecurityRpcResult() *SecurityRpcResultEvent {
-	if x, ok := m.GetEvent().(*Event_SecurityRpcResult); ok && x != nil {
-		return x.SecurityRpcResult
 	}
 	return nil
 }
@@ -7636,50 +6047,48 @@ func (m *Event) Unmarshal(b []byte) error {
 func extraUnmarshal_Event(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
 	m := (*Event)(base)
 	switch {
-	case num <= 12:
+	case num <= 21:
 		return m.extraUnmarshalPart0(num, wtyp, bp)
-	case num <= 24:
+	case num <= 36:
 		return m.extraUnmarshalPart1(num, wtyp, bp)
-	case num <= 39:
+	case num <= 50:
 		return m.extraUnmarshalPart2(num, wtyp, bp)
-	case num <= 53:
+	case num <= 204:
 		return m.extraUnmarshalPart3(num, wtyp, bp)
-	case num <= 207:
+	case num <= 217:
 		return m.extraUnmarshalPart4(num, wtyp, bp)
-	case num <= 220:
+	case num <= 229:
 		return m.extraUnmarshalPart5(num, wtyp, bp)
-	case num <= 232:
+	case num <= 247:
 		return m.extraUnmarshalPart6(num, wtyp, bp)
-	case num <= 250:
+	case num <= 259:
 		return m.extraUnmarshalPart7(num, wtyp, bp)
-	case num <= 262:
+	case num <= 273:
 		return m.extraUnmarshalPart8(num, wtyp, bp)
-	case num <= 276:
+	case num <= 310:
 		return m.extraUnmarshalPart9(num, wtyp, bp)
-	case num <= 313:
+	case num <= 330:
 		return m.extraUnmarshalPart10(num, wtyp, bp)
-	case num <= 333:
+	case num <= 344:
 		return m.extraUnmarshalPart11(num, wtyp, bp)
-	case num <= 347:
+	case num <= 360:
 		return m.extraUnmarshalPart12(num, wtyp, bp)
-	case num <= 363:
+	case num <= 380:
 		return m.extraUnmarshalPart13(num, wtyp, bp)
-	case num <= 383:
+	case num <= 400:
 		return m.extraUnmarshalPart14(num, wtyp, bp)
-	case num <= 406:
+	case num <= 415:
 		return m.extraUnmarshalPart15(num, wtyp, bp)
-	case num <= 418:
+	case num <= 434:
 		return m.extraUnmarshalPart16(num, wtyp, bp)
-	case num <= 436:
+	case num <= 457:
 		return m.extraUnmarshalPart17(num, wtyp, bp)
-	case num <= 459:
+	case num <= 474:
 		return m.extraUnmarshalPart18(num, wtyp, bp)
-	case num <= 475:
+	case num <= 486:
 		return m.extraUnmarshalPart19(num, wtyp, bp)
-	case num <= 489:
-		return m.extraUnmarshalPart20(num, wtyp, bp)
 	case num <= 499:
-		return m.extraUnmarshalPart21(num, wtyp, bp)
+		return m.extraUnmarshalPart20(num, wtyp, bp)
 	}
 	return false, nil
 }
@@ -7739,13 +6148,6 @@ func (m *Event) extraUnmarshalPart0(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.CacheEventsLoaded
-		case 8:
-			w, _ := m.Event.(*Event_TokenResult)
-			if w == nil || w.TokenResult == nil {
-				w = &Event_TokenResult{TokenResult: &TokenResultEvent{}}
-				m.Event = w
-			}
-			sub = w.TokenResult
 		case 9:
 			w, _ := m.Event.(*Event_LocaleChanged)
 			if w == nil || w.LocaleChanged == nil {
@@ -7767,13 +6169,20 @@ func (m *Event) extraUnmarshalPart0(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.StreamClosed
-		case 12:
-			w, _ := m.Event.(*Event_StreamFrame)
-			if w == nil || w.StreamFrame == nil {
-				w = &Event_StreamFrame{StreamFrame: &StreamFrameEvent{}}
+		case 20:
+			w, _ := m.Event.(*Event_CommandOutcome)
+			if w == nil || w.CommandOutcome == nil {
+				w = &Event_CommandOutcome{CommandOutcome: &CommandOutcomeEvent{}}
 				m.Event = w
 			}
-			sub = w.StreamFrame
+			sub = w.CommandOutcome
+		case 21:
+			w, _ := m.Event.(*Event_SessionWatch)
+			if w == nil || w.SessionWatch == nil {
+				w = &Event_SessionWatch{SessionWatch: &SessionWatchEvent{}}
+				m.Event = w
+			}
+			sub = w.SessionWatch
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -7792,69 +6201,6 @@ func (m *Event) extraUnmarshalPart1(num litewire.Number, wtyp litewire.Type, bp 
 	var sub litewire.Unmarshaler
 	if wtyp == litewire.BytesType {
 		switch num {
-		case 13:
-			w, _ := m.Event.(*Event_ListsFetched)
-			if w == nil || w.ListsFetched == nil {
-				w = &Event_ListsFetched{ListsFetched: &ListsFetchedEvent{}}
-				m.Event = w
-			}
-			sub = w.ListsFetched
-		case 14:
-			w, _ := m.Event.(*Event_SessionsPageFetched)
-			if w == nil || w.SessionsPageFetched == nil {
-				w = &Event_SessionsPageFetched{SessionsPageFetched: &SessionsPageFetchedEvent{}}
-				m.Event = w
-			}
-			sub = w.SessionsPageFetched
-		case 15:
-			w, _ := m.Event.(*Event_SessionByIdFetched)
-			if w == nil || w.SessionByIdFetched == nil {
-				w = &Event_SessionByIdFetched{SessionByIdFetched: &SessionByIdFetchedEvent{}}
-				m.Event = w
-			}
-			sub = w.SessionByIdFetched
-		case 16:
-			w, _ := m.Event.(*Event_EventsPageFetched)
-			if w == nil || w.EventsPageFetched == nil {
-				w = &Event_EventsPageFetched{EventsPageFetched: &EventsPageFetchedEvent{}}
-				m.Event = w
-			}
-			sub = w.EventsPageFetched
-		case 17:
-			w, _ := m.Event.(*Event_AccountPrefsFetched)
-			if w == nil || w.AccountPrefsFetched == nil {
-				w = &Event_AccountPrefsFetched{AccountPrefsFetched: &AccountPrefsFetchedEvent{}}
-				m.Event = w
-			}
-			sub = w.AccountPrefsFetched
-		case 18:
-			w, _ := m.Event.(*Event_AccountPrefsPutResult)
-			if w == nil || w.AccountPrefsPutResult == nil {
-				w = &Event_AccountPrefsPutResult{AccountPrefsPutResult: &AccountPrefsPutResultEvent{}}
-				m.Event = w
-			}
-			sub = w.AccountPrefsPutResult
-		case 19:
-			w, _ := m.Event.(*Event_DevicesFetched)
-			if w == nil || w.DevicesFetched == nil {
-				w = &Event_DevicesFetched{DevicesFetched: &DevicesFetchedEvent{}}
-				m.Event = w
-			}
-			sub = w.DevicesFetched
-		case 20:
-			w, _ := m.Event.(*Event_CommandOutcome)
-			if w == nil || w.CommandOutcome == nil {
-				w = &Event_CommandOutcome{CommandOutcome: &CommandOutcomeEvent{}}
-				m.Event = w
-			}
-			sub = w.CommandOutcome
-		case 21:
-			w, _ := m.Event.(*Event_SessionWatch)
-			if w == nil || w.SessionWatch == nil {
-				w = &Event_SessionWatch{SessionWatch: &SessionWatchEvent{}}
-				m.Event = w
-			}
-			sub = w.SessionWatch
 		case 22:
 			w, _ := m.Event.(*Event_SessionPin)
 			if w == nil || w.SessionPin == nil {
@@ -7876,24 +6222,6 @@ func (m *Event) extraUnmarshalPart1(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.FetchSession
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart2(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 26:
 			w, _ := m.Event.(*Event_SessionScheduleHints)
 			if w == nil || w.SessionScheduleHints == nil {
@@ -7957,6 +6285,24 @@ func (m *Event) extraUnmarshalPart2(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.HomeEditApprovalDeny
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart2(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 37:
 			w, _ := m.Event.(*Event_HomeAnswerQuestion)
 			if w == nil || w.HomeAnswerQuestion == nil {
@@ -7978,24 +6324,6 @@ func (m *Event) extraUnmarshalPart2(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.HomeAbandonAttention
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart3(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 40:
 			w, _ := m.Event.(*Event_ProjectSetSearch)
 			if w == nil || w.ProjectSetSearch == nil {
@@ -8059,6 +6387,24 @@ func (m *Event) extraUnmarshalPart3(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.NewSessionOpen
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart3(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 51:
 			w, _ := m.Event.(*Event_NewSessionSelectProject)
 			if w == nil || w.NewSessionSelectProject == nil {
@@ -8080,24 +6426,6 @@ func (m *Event) extraUnmarshalPart3(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.NewSessionSelectAgent
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart4(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 54:
 			w, _ := m.Event.(*Event_NewSessionSelectModel)
 			if w == nil || w.NewSessionSelectModel == nil {
@@ -8161,6 +6489,24 @@ func (m *Event) extraUnmarshalPart4(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.CancelMachineCommand
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart4(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 205:
 			w, _ := m.Event.(*Event_SessionSetQuestionIndex)
 			if w == nil || w.SessionSetQuestionIndex == nil {
@@ -8182,24 +6528,6 @@ func (m *Event) extraUnmarshalPart4(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.SessionCancelTrayItem
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart5(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 208:
 			w, _ := m.Event.(*Event_SessionIgnoreTrayItem)
 			if w == nil || w.SessionIgnoreTrayItem == nil {
@@ -8263,6 +6591,24 @@ func (m *Event) extraUnmarshalPart5(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.SessionImageViewerOpen
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart5(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 218:
 			w, _ := m.Event.(*Event_SessionImageViewerNavigate)
 			if w == nil || w.SessionImageViewerNavigate == nil {
@@ -8284,24 +6630,6 @@ func (m *Event) extraUnmarshalPart5(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.SharedFileConfig
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart6(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 221:
 			w, _ := m.Event.(*Event_SharedFileLocalScanned)
 			if w == nil || w.SharedFileLocalScanned == nil {
@@ -8365,6 +6693,24 @@ func (m *Event) extraUnmarshalPart6(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.SharedFileLocalMissing
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart6(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 230:
 			w, _ := m.Event.(*Event_SharedFileClearAll)
 			if w == nil || w.SharedFileClearAll == nil {
@@ -8386,24 +6732,6 @@ func (m *Event) extraUnmarshalPart6(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.SharedFileWriteChunkResult
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart7(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 233:
 			w, _ := m.Event.(*Event_SharedFileVerifyAndCommitResult)
 			if w == nil || w.SharedFileVerifyAndCommitResult == nil {
@@ -8467,6 +6795,24 @@ func (m *Event) extraUnmarshalPart7(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.DraftReserveSlots
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart7(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 248:
 			w, _ := m.Event.(*Event_DraftReleaseSlots)
 			if w == nil || w.DraftReleaseSlots == nil {
@@ -8488,24 +6834,6 @@ func (m *Event) extraUnmarshalPart7(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.DraftRemoveItem
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart8(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 251:
 			w, _ := m.Event.(*Event_DraftRetryItem)
 			if w == nil || w.DraftRetryItem == nil {
@@ -8569,6 +6897,24 @@ func (m *Event) extraUnmarshalPart8(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.AttachmentPrepareImageResult
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart8(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 260:
 			w, _ := m.Event.(*Event_AttachmentHashFileResult)
 			if w == nil || w.AttachmentHashFileResult == nil {
@@ -8590,24 +6936,6 @@ func (m *Event) extraUnmarshalPart8(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.DraftSendSession
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart9(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 263:
 			w, _ := m.Event.(*Event_DraftPutBackInput)
 			if w == nil || w.DraftPutBackInput == nil {
@@ -8671,6 +6999,24 @@ func (m *Event) extraUnmarshalPart9(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.SessionAnswerQuestion
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart9(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 274:
 			w, _ := m.Event.(*Event_SessionAnswerPlan)
 			if w == nil || w.SessionAnswerPlan == nil {
@@ -8692,24 +7038,6 @@ func (m *Event) extraUnmarshalPart9(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.SessionRename
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart10(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 277:
 			w, _ := m.Event.(*Event_SessionSetApprovalMode)
 			if w == nil || w.SessionSetApprovalMode == nil {
@@ -8773,6 +7101,24 @@ func (m *Event) extraUnmarshalPart10(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.ScheduleListOpen
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart10(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 311:
 			w, _ := m.Event.(*Event_ScheduleSelectTask)
 			if w == nil || w.ScheduleSelectTask == nil {
@@ -8794,24 +7140,6 @@ func (m *Event) extraUnmarshalPart10(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.ScheduleMarkRead
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart11(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 314:
 			w, _ := m.Event.(*Event_ScheduleMarkUnread)
 			if w == nil || w.ScheduleMarkUnread == nil {
@@ -8875,6 +7203,24 @@ func (m *Event) extraUnmarshalPart11(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.ScheduleOperate
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart11(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 331:
 			w, _ := m.Event.(*Event_ScheduleRename)
 			if w == nil || w.ScheduleRename == nil {
@@ -8896,24 +7242,6 @@ func (m *Event) extraUnmarshalPart11(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.ScheduleUpdateMessage
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart12(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 334:
 			w, _ := m.Event.(*Event_ScheduleAbandonMutation)
 			if w == nil || w.ScheduleAbandonMutation == nil {
@@ -8977,6 +7305,24 @@ func (m *Event) extraUnmarshalPart12(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.ScheduleFormSelectMachine
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart12(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 345:
 			w, _ := m.Event.(*Event_ScheduleFormSelectAgent)
 			if w == nil || w.ScheduleFormSelectAgent == nil {
@@ -8998,24 +7344,6 @@ func (m *Event) extraUnmarshalPart12(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.ScheduleFormUpdateTiming
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart13(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 348:
 			w, _ := m.Event.(*Event_ScheduleFormSubmit)
 			if w == nil || w.ScheduleFormSubmit == nil {
@@ -9079,6 +7407,24 @@ func (m *Event) extraUnmarshalPart13(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.MachineSettingsOpen
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart13(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 361:
 			w, _ := m.Event.(*Event_MachineSettingsSelectAgent)
 			if w == nil || w.MachineSettingsSelectAgent == nil {
@@ -9100,24 +7446,6 @@ func (m *Event) extraUnmarshalPart13(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.UpdateMachineDaemonSettings
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart14(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 364:
 			w, _ := m.Event.(*Event_UpdateDirectPreference)
 			if w == nil || w.UpdateDirectPreference == nil {
@@ -9181,6 +7509,24 @@ func (m *Event) extraUnmarshalPart14(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.UsageScreenOpen
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart14(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 381:
 			w, _ := m.Event.(*Event_UsageScreenRetry)
 			if w == nil || w.UsageScreenRetry == nil {
@@ -9202,24 +7548,6 @@ func (m *Event) extraUnmarshalPart14(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.UsageScreenSelectSort
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart15(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 384:
 			w, _ := m.Event.(*Event_UsageScreenSelectSeries)
 			if w == nil || w.UsageScreenSelectSeries == nil {
@@ -9283,6 +7611,24 @@ func (m *Event) extraUnmarshalPart15(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.TransportConfig
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart15(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 402:
 			w, _ := m.Event.(*Event_DirectSignalReceived)
 			if w == nil || w.DirectSignalReceived == nil {
@@ -9304,24 +7650,6 @@ func (m *Event) extraUnmarshalPart15(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.DirectPcCreated
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart16(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 407:
 			w, _ := m.Event.(*Event_DirectPcDescription)
 			if w == nil || w.DirectPcDescription == nil {
@@ -9385,6 +7713,24 @@ func (m *Event) extraUnmarshalPart16(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.DirectDcStats
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart16(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 416:
 			w, _ := m.Event.(*Event_DirectRetryNow)
 			if w == nil || w.DirectRetryNow == nil {
@@ -9406,24 +7752,6 @@ func (m *Event) extraUnmarshalPart16(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.DirectBulkTransferBegin
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart17(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 419:
 			w, _ := m.Event.(*Event_DirectBulkTransferDone)
 			if w == nil || w.DirectBulkTransferDone == nil {
@@ -9459,13 +7787,6 @@ func (m *Event) extraUnmarshalPart17(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.DirectPcProbeReceived
-		case 430:
-			w, _ := m.Event.(*Event_RelayPipeConfig)
-			if w == nil || w.RelayPipeConfig == nil {
-				w = &Event_RelayPipeConfig{RelayPipeConfig: &RelayPipeConfigEvent{}}
-				m.Event = w
-			}
-			sub = w.RelayPipeConfig
 		case 431:
 			w, _ := m.Event.(*Event_RelayRpcResult)
 			if w == nil || w.RelayRpcResult == nil {
@@ -9494,6 +7815,24 @@ func (m *Event) extraUnmarshalPart17(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.PushRpc
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart17(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 435:
 			w, _ := m.Event.(*Event_SessionFetchImage)
 			if w == nil || w.SessionFetchImage == nil {
@@ -9508,24 +7847,6 @@ func (m *Event) extraUnmarshalPart17(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.TerminalOpen
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart18(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 437:
 			w, _ := m.Event.(*Event_TerminalClose)
 			if w == nil || w.TerminalClose == nil {
@@ -9596,6 +7917,24 @@ func (m *Event) extraUnmarshalPart18(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityOpRequest
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart18(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 458:
 			w, _ := m.Event.(*Event_SeedDemoWorld)
 			if w == nil || w.SeedDemoWorld == nil {
@@ -9610,24 +7949,6 @@ func (m *Event) extraUnmarshalPart18(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityKeyGenerated
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart19(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 460:
 			w, _ := m.Event.(*Event_SecurityKeyEncapsulated)
 			if w == nil || w.SecurityKeyEncapsulated == nil {
@@ -9642,13 +7963,6 @@ func (m *Event) extraUnmarshalPart19(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityStorageResult
-		case 462:
-			w, _ := m.Event.(*Event_SecurityRpcResult)
-			if w == nil || w.SecurityRpcResult == nil {
-				w = &Event_SecurityRpcResult{SecurityRpcResult: &SecurityRpcResultEvent{}}
-				m.Event = w
-			}
-			sub = w.SecurityRpcResult
 		case 463:
 			w, _ := m.Event.(*Event_SecurityForeground)
 			if w == nil || w.SecurityForeground == nil {
@@ -9705,13 +8019,6 @@ func (m *Event) extraUnmarshalPart19(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.AppRootRetryBootstrap
-		case 475:
-			w, _ := m.Event.(*Event_AppRootVerifyPendingOp)
-			if w == nil || w.AppRootVerifyPendingOp == nil {
-				w = &Event_AppRootVerifyPendingOp{AppRootVerifyPendingOp: &AppRootVerifyPendingOpAction{}}
-				m.Event = w
-			}
-			sub = w.AppRootVerifyPendingOp
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -9725,11 +8032,18 @@ func (m *Event) extraUnmarshalPart19(num litewire.Number, wtyp litewire.Type, bp
 }
 
 //go:noinline
-func (m *Event) extraUnmarshalPart20(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+func (m *Event) extraUnmarshalPart19(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
 	b := *bp
 	var sub litewire.Unmarshaler
 	if wtyp == litewire.BytesType {
 		switch num {
+		case 475:
+			w, _ := m.Event.(*Event_AppRootVerifyPendingOp)
+			if w == nil || w.AppRootVerifyPendingOp == nil {
+				w = &Event_AppRootVerifyPendingOp{AppRootVerifyPendingOp: &AppRootVerifyPendingOpAction{}}
+				m.Event = w
+			}
+			sub = w.AppRootVerifyPendingOp
 		case 476:
 			w, _ := m.Event.(*Event_AppRootDismissUpgradeNotice)
 			if w == nil || w.AppRootDismissUpgradeNotice == nil {
@@ -9807,13 +8121,6 @@ func (m *Event) extraUnmarshalPart20(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.OnboardingRecoveryAction
-		case 489:
-			w, _ := m.Event.(*Event_AddDeviceOpen)
-			if w == nil || w.AddDeviceOpen == nil {
-				w = &Event_AddDeviceOpen{AddDeviceOpen: &AddDeviceOpenAction{}}
-				m.Event = w
-			}
-			sub = w.AddDeviceOpen
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -9827,11 +8134,18 @@ func (m *Event) extraUnmarshalPart20(num litewire.Number, wtyp litewire.Type, bp
 }
 
 //go:noinline
-func (m *Event) extraUnmarshalPart21(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+func (m *Event) extraUnmarshalPart20(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
 	b := *bp
 	var sub litewire.Unmarshaler
 	if wtyp == litewire.BytesType {
 		switch num {
+		case 489:
+			w, _ := m.Event.(*Event_AddDeviceOpen)
+			if w == nil || w.AddDeviceOpen == nil {
+				w = &Event_AddDeviceOpen{AddDeviceOpen: &AddDeviceOpenAction{}}
+				m.Event = w
+			}
+			sub = w.AddDeviceOpen
 		case 490:
 			w, _ := m.Event.(*Event_AddDeviceClose)
 			if w == nil || w.AddDeviceClose == nil {
@@ -10007,74 +8321,6 @@ func (m *CloseStreamEffect) Marshal() ([]byte, error) {
 
 func (m *CloseStreamEffect) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_CloseStreamEffect)
-}
-
-type EnsureTokenEffect struct {
-	_          [0]func()
-	OpId       uint64
-	ForceLogin bool
-	TimeoutMs  int64
-}
-
-func (m *EnsureTokenEffect) GetOpId() uint64 {
-	if m != nil {
-		return m.OpId
-	}
-	return 0
-}
-func (m *EnsureTokenEffect) GetForceLogin() bool {
-	if m != nil {
-		return m.ForceLogin
-	}
-	return false
-}
-func (m *EnsureTokenEffect) GetTimeoutMs() int64 {
-	if m != nil {
-		return m.TimeoutMs
-	}
-	return 0
-}
-
-var LitewireDesc_EnsureTokenEffect = litewire.MessageDesc{
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(EnsureTokenEffect{}.OpId), Kind: litewire.KindUint64},
-		{Num: 2, Offset: unsafe.Offsetof(EnsureTokenEffect{}.ForceLogin), Kind: litewire.KindBool},
-		{Num: 3, Offset: unsafe.Offsetof(EnsureTokenEffect{}.TimeoutMs), Kind: litewire.KindInt64},
-	},
-}
-
-func (m *EnsureTokenEffect) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *EnsureTokenEffect) AppendMarshal(b []byte) []byte {
-	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_EnsureTokenEffect)
-}
-
-type DiscardTokenEffect struct {
-	_     [0]func()
-	Token string
-}
-
-func (m *DiscardTokenEffect) GetToken() string {
-	if m != nil {
-		return m.Token
-	}
-	return ""
-}
-
-var LitewireDesc_DiscardTokenEffect = litewire.MessageDesc{
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(DiscardTokenEffect{}.Token), Kind: litewire.KindString},
-	},
-}
-
-func (m *DiscardTokenEffect) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *DiscardTokenEffect) AppendMarshal(b []byte) []byte {
-	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DiscardTokenEffect)
 }
 
 type ScheduleTimerEffect struct {
@@ -10373,27 +8619,6 @@ type CacheWriteEffect_SetSessionOpen struct {
 
 func (*CacheWriteEffect_SetSessionOpen) isCacheWriteEffect_Kind() {}
 
-type CacheWriteEffect_WriteMachine struct {
-	_            [0]func()
-	WriteMachine *v1.Machine
-}
-
-func (*CacheWriteEffect_WriteMachine) isCacheWriteEffect_Kind() {}
-
-type CacheWriteEffect_WriteSession struct {
-	_            [0]func()
-	WriteSession *v1.RemoteSession
-}
-
-func (*CacheWriteEffect_WriteSession) isCacheWriteEffect_Kind() {}
-
-type CacheWriteEffect_KeepSessionOwner struct {
-	_                [0]func()
-	KeepSessionOwner *v1.RemoteSession
-}
-
-func (*CacheWriteEffect_KeepSessionOwner) isCacheWriteEffect_Kind() {}
-
 type CacheWriteEffect_WriteStoredEvents struct {
 	_                 [0]func()
 	WriteStoredEvents *CacheWriteStoredEvents
@@ -10401,12 +8626,33 @@ type CacheWriteEffect_WriteStoredEvents struct {
 
 func (*CacheWriteEffect_WriteStoredEvents) isCacheWriteEffect_Kind() {}
 
-type CacheWriteEffect_WritePrefs struct {
-	_          [0]func()
-	WritePrefs *v1.AccountPrefsObject
+type CacheWriteEffect_RawWriteMachine struct {
+	_               [0]func()
+	RawWriteMachine []byte
 }
 
-func (*CacheWriteEffect_WritePrefs) isCacheWriteEffect_Kind() {}
+func (*CacheWriteEffect_RawWriteMachine) isCacheWriteEffect_Kind() {}
+
+type CacheWriteEffect_RawWriteSession struct {
+	_               [0]func()
+	RawWriteSession []byte
+}
+
+func (*CacheWriteEffect_RawWriteSession) isCacheWriteEffect_Kind() {}
+
+type CacheWriteEffect_RawKeepSessionOwner struct {
+	_                   [0]func()
+	RawKeepSessionOwner []byte
+}
+
+func (*CacheWriteEffect_RawKeepSessionOwner) isCacheWriteEffect_Kind() {}
+
+type CacheWriteEffect_RawWritePrefs struct {
+	_             [0]func()
+	RawWritePrefs []byte
+}
+
+func (*CacheWriteEffect_RawWritePrefs) isCacheWriteEffect_Kind() {}
 
 func (m *CacheWriteEffect) GetKind() isCacheWriteEffect_Kind {
 	if m != nil {
@@ -10420,33 +8666,33 @@ func (m *CacheWriteEffect) GetSetSessionOpen() *CacheSessionOpen {
 	}
 	return nil
 }
-func (m *CacheWriteEffect) GetWriteMachine() *v1.Machine {
-	if x, ok := m.GetKind().(*CacheWriteEffect_WriteMachine); ok && x != nil {
-		return x.WriteMachine
-	}
-	return nil
-}
-func (m *CacheWriteEffect) GetWriteSession() *v1.RemoteSession {
-	if x, ok := m.GetKind().(*CacheWriteEffect_WriteSession); ok && x != nil {
-		return x.WriteSession
-	}
-	return nil
-}
-func (m *CacheWriteEffect) GetKeepSessionOwner() *v1.RemoteSession {
-	if x, ok := m.GetKind().(*CacheWriteEffect_KeepSessionOwner); ok && x != nil {
-		return x.KeepSessionOwner
-	}
-	return nil
-}
 func (m *CacheWriteEffect) GetWriteStoredEvents() *CacheWriteStoredEvents {
 	if x, ok := m.GetKind().(*CacheWriteEffect_WriteStoredEvents); ok && x != nil {
 		return x.WriteStoredEvents
 	}
 	return nil
 }
-func (m *CacheWriteEffect) GetWritePrefs() *v1.AccountPrefsObject {
-	if x, ok := m.GetKind().(*CacheWriteEffect_WritePrefs); ok && x != nil {
-		return x.WritePrefs
+func (m *CacheWriteEffect) GetRawWriteMachine() []byte {
+	if x, ok := m.GetKind().(*CacheWriteEffect_RawWriteMachine); ok && x != nil {
+		return x.RawWriteMachine
+	}
+	return nil
+}
+func (m *CacheWriteEffect) GetRawWriteSession() []byte {
+	if x, ok := m.GetKind().(*CacheWriteEffect_RawWriteSession); ok && x != nil {
+		return x.RawWriteSession
+	}
+	return nil
+}
+func (m *CacheWriteEffect) GetRawKeepSessionOwner() []byte {
+	if x, ok := m.GetKind().(*CacheWriteEffect_RawKeepSessionOwner); ok && x != nil {
+		return x.RawKeepSessionOwner
+	}
+	return nil
+}
+func (m *CacheWriteEffect) GetRawWritePrefs() []byte {
+	if x, ok := m.GetKind().(*CacheWriteEffect_RawWritePrefs); ok && x != nil {
+		return x.RawWritePrefs
 	}
 	return nil
 }
@@ -10474,25 +8720,25 @@ func extraMarshal_CacheWriteEffect(base unsafe.Pointer, b []byte, idx litewire.N
 		if x != nil && x.SetSessionOpen != nil {
 			onum, omsg = 6, x.SetSessionOpen
 		}
-	case *CacheWriteEffect_WriteMachine:
-		if x != nil && x.WriteMachine != nil {
-			onum, omsg = 7, x.WriteMachine
-		}
-	case *CacheWriteEffect_WriteSession:
-		if x != nil && x.WriteSession != nil {
-			onum, omsg = 8, x.WriteSession
-		}
-	case *CacheWriteEffect_KeepSessionOwner:
-		if x != nil && x.KeepSessionOwner != nil {
-			onum, omsg = 9, x.KeepSessionOwner
-		}
 	case *CacheWriteEffect_WriteStoredEvents:
 		if x != nil && x.WriteStoredEvents != nil {
 			onum, omsg = 10, x.WriteStoredEvents
 		}
-	case *CacheWriteEffect_WritePrefs:
-		if x != nil && x.WritePrefs != nil {
-			onum, omsg = 11, x.WritePrefs
+	case *CacheWriteEffect_RawWriteMachine:
+		if x != nil {
+			b = litewire.AppendBytesAlways(b, 12, x.RawWriteMachine)
+		}
+	case *CacheWriteEffect_RawWriteSession:
+		if x != nil {
+			b = litewire.AppendBytesAlways(b, 13, x.RawWriteSession)
+		}
+	case *CacheWriteEffect_RawKeepSessionOwner:
+		if x != nil {
+			b = litewire.AppendBytesAlways(b, 14, x.RawKeepSessionOwner)
+		}
+	case *CacheWriteEffect_RawWritePrefs:
+		if x != nil {
+			b = litewire.AppendBytesAlways(b, 15, x.RawWritePrefs)
 		}
 	}
 	if omsg != nil {
@@ -10603,421 +8849,25 @@ func extraMarshal_CacheDeleteEffect(base unsafe.Pointer, b []byte, idx litewire.
 	return b
 }
 
-type FetchListsRpc struct {
-	_     [0]func()
-	Limit uint32
-}
-
-func (m *FetchListsRpc) GetLimit() uint32 {
-	if m != nil {
-		return m.Limit
-	}
-	return 0
-}
-
-var LitewireDesc_FetchListsRpc = litewire.MessageDesc{
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(FetchListsRpc{}.Limit), Kind: litewire.KindUint32},
-	},
-}
-
-func (m *FetchListsRpc) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *FetchListsRpc) AppendMarshal(b []byte) []byte {
-	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_FetchListsRpc)
-}
-
-type FetchSessionsPageRpc struct {
-	_     [0]func()
-	After *v1.SessionCursor
-	Limit uint32
-}
-
-func (m *FetchSessionsPageRpc) GetAfter() *v1.SessionCursor {
-	if m != nil {
-		return m.After
-	}
-	return nil
-}
-func (m *FetchSessionsPageRpc) GetLimit() uint32 {
-	if m != nil {
-		return m.Limit
-	}
-	return 0
-}
-
-var LitewireDesc_FetchSessionsPageRpc = litewire.MessageDesc{
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(FetchSessionsPageRpc{}.After), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_SessionCursor},
-		{Num: 2, Offset: unsafe.Offsetof(FetchSessionsPageRpc{}.Limit), Kind: litewire.KindUint32},
-	},
-}
-
-func (m *FetchSessionsPageRpc) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *FetchSessionsPageRpc) AppendMarshal(b []byte) []byte {
-	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_FetchSessionsPageRpc)
-}
-
-type FetchSessionByIdRpc struct {
-	_         [0]func()
-	SessionId string
-}
-
-func (m *FetchSessionByIdRpc) GetSessionId() string {
-	if m != nil {
-		return m.SessionId
-	}
-	return ""
-}
-
-var LitewireDesc_FetchSessionByIdRpc = litewire.MessageDesc{
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(FetchSessionByIdRpc{}.SessionId), Kind: litewire.KindString},
-	},
-}
-
-func (m *FetchSessionByIdRpc) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *FetchSessionByIdRpc) AppendMarshal(b []byte) []byte {
-	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_FetchSessionByIdRpc)
-}
-
-type GetEventsRpc struct {
-	_         [0]func()
-	SessionId string
-	AfterSeq  uint64
-	Limit     uint32
-}
-
-func (m *GetEventsRpc) GetSessionId() string {
-	if m != nil {
-		return m.SessionId
-	}
-	return ""
-}
-func (m *GetEventsRpc) GetAfterSeq() uint64 {
-	if m != nil {
-		return m.AfterSeq
-	}
-	return 0
-}
-func (m *GetEventsRpc) GetLimit() uint32 {
-	if m != nil {
-		return m.Limit
-	}
-	return 0
-}
-
-var LitewireDesc_GetEventsRpc = litewire.MessageDesc{
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(GetEventsRpc{}.SessionId), Kind: litewire.KindString},
-		{Num: 2, Offset: unsafe.Offsetof(GetEventsRpc{}.AfterSeq), Kind: litewire.KindUint64},
-		{Num: 3, Offset: unsafe.Offsetof(GetEventsRpc{}.Limit), Kind: litewire.KindUint32},
-	},
-}
-
-func (m *GetEventsRpc) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *GetEventsRpc) AppendMarshal(b []byte) []byte {
-	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_GetEventsRpc)
-}
-
-type GetAccountPrefsRpc struct {
-	_        [0]func()
-	ObjectId string
-}
-
-func (m *GetAccountPrefsRpc) GetObjectId() string {
-	if m != nil {
-		return m.ObjectId
-	}
-	return ""
-}
-
-var LitewireDesc_GetAccountPrefsRpc = litewire.MessageDesc{
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(GetAccountPrefsRpc{}.ObjectId), Kind: litewire.KindString},
-	},
-}
-
-func (m *GetAccountPrefsRpc) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *GetAccountPrefsRpc) AppendMarshal(b []byte) []byte {
-	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_GetAccountPrefsRpc)
-}
-
-type PutAccountPrefsRpc struct {
-	_                [0]func()
-	ObjectId         string
-	ExpectedRevision uint64
-	NextPrefs        *v1.ProjectPrefs
-	SealedEnvelope   *v1.Envelope
-}
-
-func (m *PutAccountPrefsRpc) GetObjectId() string {
-	if m != nil {
-		return m.ObjectId
-	}
-	return ""
-}
-func (m *PutAccountPrefsRpc) GetExpectedRevision() uint64 {
-	if m != nil {
-		return m.ExpectedRevision
-	}
-	return 0
-}
-func (m *PutAccountPrefsRpc) GetNextPrefs() *v1.ProjectPrefs {
-	if m != nil {
-		return m.NextPrefs
-	}
-	return nil
-}
-func (m *PutAccountPrefsRpc) GetSealedEnvelope() *v1.Envelope {
-	if m != nil {
-		return m.SealedEnvelope
-	}
-	return nil
-}
-
-var LitewireDesc_PutAccountPrefsRpc = litewire.MessageDesc{
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(PutAccountPrefsRpc{}.ObjectId), Kind: litewire.KindString},
-		{Num: 2, Offset: unsafe.Offsetof(PutAccountPrefsRpc{}.ExpectedRevision), Kind: litewire.KindUint64},
-		{Num: 3, Offset: unsafe.Offsetof(PutAccountPrefsRpc{}.NextPrefs), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_ProjectPrefs},
-		{Num: 10, Offset: unsafe.Offsetof(PutAccountPrefsRpc{}.SealedEnvelope), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_Envelope},
-	},
-}
-
-func (m *PutAccountPrefsRpc) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *PutAccountPrefsRpc) AppendMarshal(b []byte) []byte {
-	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_PutAccountPrefsRpc)
-}
-
-type FetchDevicesRpc struct {
-	_     [0]func()
-	Force bool
-}
-
-func (m *FetchDevicesRpc) GetForce() bool {
-	if m != nil {
-		return m.Force
-	}
-	return false
-}
-
-var LitewireDesc_FetchDevicesRpc = litewire.MessageDesc{
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(FetchDevicesRpc{}.Force), Kind: litewire.KindBool},
-	},
-}
-
-func (m *FetchDevicesRpc) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *FetchDevicesRpc) AppendMarshal(b []byte) []byte {
-	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_FetchDevicesRpc)
-}
-
-type RpcEffect struct {
-	_    [0]func()
-	OpId uint64
-	Kind isRpcEffect_Kind
-}
-
-type isRpcEffect_Kind interface{ isRpcEffect_Kind() }
-type RpcEffect_FetchLists struct {
-	_          [0]func()
-	FetchLists *FetchListsRpc
-}
-
-func (*RpcEffect_FetchLists) isRpcEffect_Kind() {}
-
-type RpcEffect_FetchSessionsPage struct {
-	_                 [0]func()
-	FetchSessionsPage *FetchSessionsPageRpc
-}
-
-func (*RpcEffect_FetchSessionsPage) isRpcEffect_Kind() {}
-
-type RpcEffect_FetchSessionById struct {
-	_                [0]func()
-	FetchSessionById *FetchSessionByIdRpc
-}
-
-func (*RpcEffect_FetchSessionById) isRpcEffect_Kind() {}
-
-type RpcEffect_GetEvents struct {
-	_         [0]func()
-	GetEvents *GetEventsRpc
-}
-
-func (*RpcEffect_GetEvents) isRpcEffect_Kind() {}
-
-type RpcEffect_GetAccountPrefs struct {
-	_               [0]func()
-	GetAccountPrefs *GetAccountPrefsRpc
-}
-
-func (*RpcEffect_GetAccountPrefs) isRpcEffect_Kind() {}
-
-type RpcEffect_PutAccountPrefs struct {
-	_               [0]func()
-	PutAccountPrefs *PutAccountPrefsRpc
-}
-
-func (*RpcEffect_PutAccountPrefs) isRpcEffect_Kind() {}
-
-type RpcEffect_FetchDevices struct {
-	_            [0]func()
-	FetchDevices *FetchDevicesRpc
-}
-
-func (*RpcEffect_FetchDevices) isRpcEffect_Kind() {}
-
-func (m *RpcEffect) GetKind() isRpcEffect_Kind {
-	if m != nil {
-		return m.Kind
-	}
-	return nil
-}
-func (m *RpcEffect) GetOpId() uint64 {
-	if m != nil {
-		return m.OpId
-	}
-	return 0
-}
-func (m *RpcEffect) GetFetchLists() *FetchListsRpc {
-	if x, ok := m.GetKind().(*RpcEffect_FetchLists); ok && x != nil {
-		return x.FetchLists
-	}
-	return nil
-}
-func (m *RpcEffect) GetFetchSessionsPage() *FetchSessionsPageRpc {
-	if x, ok := m.GetKind().(*RpcEffect_FetchSessionsPage); ok && x != nil {
-		return x.FetchSessionsPage
-	}
-	return nil
-}
-func (m *RpcEffect) GetFetchSessionById() *FetchSessionByIdRpc {
-	if x, ok := m.GetKind().(*RpcEffect_FetchSessionById); ok && x != nil {
-		return x.FetchSessionById
-	}
-	return nil
-}
-func (m *RpcEffect) GetGetEvents() *GetEventsRpc {
-	if x, ok := m.GetKind().(*RpcEffect_GetEvents); ok && x != nil {
-		return x.GetEvents
-	}
-	return nil
-}
-func (m *RpcEffect) GetGetAccountPrefs() *GetAccountPrefsRpc {
-	if x, ok := m.GetKind().(*RpcEffect_GetAccountPrefs); ok && x != nil {
-		return x.GetAccountPrefs
-	}
-	return nil
-}
-func (m *RpcEffect) GetPutAccountPrefs() *PutAccountPrefsRpc {
-	if x, ok := m.GetKind().(*RpcEffect_PutAccountPrefs); ok && x != nil {
-		return x.PutAccountPrefs
-	}
-	return nil
-}
-func (m *RpcEffect) GetFetchDevices() *FetchDevicesRpc {
-	if x, ok := m.GetKind().(*RpcEffect_FetchDevices); ok && x != nil {
-		return x.FetchDevices
-	}
-	return nil
-}
-
-var LitewireDesc_RpcEffect = litewire.MessageDesc{
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(RpcEffect{}.OpId), Kind: litewire.KindUint64},
-		{Num: litewire.Number(1), Kind: litewire.KindCustom},
-	},
-}
-
-func (m *RpcEffect) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *RpcEffect) AppendMarshal(b []byte) []byte {
-	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_RpcEffect)
-}
-
-func extraMarshal_RpcEffect(base unsafe.Pointer, b []byte, idx litewire.Number) []byte {
-	m := (*RpcEffect)(base)
-	var onum litewire.Number
-	var omsg litewire.Marshaler
-	switch x := m.Kind.(type) {
-	case *RpcEffect_FetchLists:
-		if x != nil && x.FetchLists != nil {
-			onum, omsg = 2, x.FetchLists
-		}
-	case *RpcEffect_FetchSessionsPage:
-		if x != nil && x.FetchSessionsPage != nil {
-			onum, omsg = 3, x.FetchSessionsPage
-		}
-	case *RpcEffect_FetchSessionById:
-		if x != nil && x.FetchSessionById != nil {
-			onum, omsg = 4, x.FetchSessionById
-		}
-	case *RpcEffect_GetEvents:
-		if x != nil && x.GetEvents != nil {
-			onum, omsg = 5, x.GetEvents
-		}
-	case *RpcEffect_GetAccountPrefs:
-		if x != nil && x.GetAccountPrefs != nil {
-			onum, omsg = 6, x.GetAccountPrefs
-		}
-	case *RpcEffect_PutAccountPrefs:
-		if x != nil && x.PutAccountPrefs != nil {
-			onum, omsg = 7, x.PutAccountPrefs
-		}
-	case *RpcEffect_FetchDevices:
-		if x != nil && x.FetchDevices != nil {
-			onum, omsg = 8, x.FetchDevices
-		}
-	}
-	if omsg != nil {
-		b = litewire.AppendMessage(b, onum, omsg)
-	}
-	return b
-}
-
 type DispatchCommandEffect struct {
-	_               [0]func()
-	RequestId       string
-	AttemptId       string
-	MachineId       string
-	SessionId       string
-	DeadlineMs      int64
-	CommandBytes    []byte
-	RouteHint       CommandRouteHint
-	RetryOfUnknown  bool
-	ForceRelay      bool
-	BulkFileKey     string
-	BulkBytes       int64
-	BulkUpload      bool
-	RouteLeg        CommandRouteLeg
-	DirectPcId      uint64
-	DirectTimeoutMs int64
-	DirectTicketId  uint64
-	SealedEnvelope  *v1.Envelope
+	_                 [0]func()
+	RequestId         string
+	AttemptId         string
+	MachineId         string
+	SessionId         string
+	DeadlineMs        int64
+	CommandBytes      []byte
+	RouteHint         CommandRouteHint
+	RetryOfUnknown    bool
+	ForceRelay        bool
+	BulkFileKey       string
+	BulkBytes         int64
+	BulkUpload        bool
+	RouteLeg          CommandRouteLeg
+	DirectPcId        uint64
+	DirectTimeoutMs   int64
+	DirectTicketId    uint64
+	RawSealedEnvelope []byte
 }
 
 func (m *DispatchCommandEffect) GetRequestId() string {
@@ -11116,9 +8966,9 @@ func (m *DispatchCommandEffect) GetDirectTicketId() uint64 {
 	}
 	return 0
 }
-func (m *DispatchCommandEffect) GetSealedEnvelope() *v1.Envelope {
+func (m *DispatchCommandEffect) GetRawSealedEnvelope() []byte {
 	if m != nil {
-		return m.SealedEnvelope
+		return m.RawSealedEnvelope
 	}
 	return nil
 }
@@ -11141,7 +8991,7 @@ var LitewireDesc_DispatchCommandEffect = litewire.MessageDesc{
 		{Num: 14, Offset: unsafe.Offsetof(DispatchCommandEffect{}.DirectPcId), Kind: litewire.KindUint64},
 		{Num: 15, Offset: unsafe.Offsetof(DispatchCommandEffect{}.DirectTimeoutMs), Kind: litewire.KindInt64},
 		{Num: 16, Offset: unsafe.Offsetof(DispatchCommandEffect{}.DirectTicketId), Kind: litewire.KindUint64},
-		{Num: 20, Offset: unsafe.Offsetof(DispatchCommandEffect{}.SealedEnvelope), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_Envelope},
+		{Num: 21, Offset: unsafe.Offsetof(DispatchCommandEffect{}.RawSealedEnvelope), Kind: litewire.KindBytes},
 	},
 }
 
@@ -11572,20 +9422,6 @@ type Effect_CloseStream struct {
 
 func (*Effect_CloseStream) isEffect_Effect() {}
 
-type Effect_EnsureToken struct {
-	_           [0]func()
-	EnsureToken *EnsureTokenEffect
-}
-
-func (*Effect_EnsureToken) isEffect_Effect() {}
-
-type Effect_DiscardToken struct {
-	_            [0]func()
-	DiscardToken *DiscardTokenEffect
-}
-
-func (*Effect_DiscardToken) isEffect_Effect() {}
-
 type Effect_ScheduleTimer struct {
 	_             [0]func()
 	ScheduleTimer *ScheduleTimerEffect
@@ -11620,13 +9456,6 @@ type Effect_CacheDelete struct {
 }
 
 func (*Effect_CacheDelete) isEffect_Effect() {}
-
-type Effect_Rpc struct {
-	_   [0]func()
-	Rpc *RpcEffect
-}
-
-func (*Effect_Rpc) isEffect_Effect() {}
 
 type Effect_DispatchCommand struct {
 	_               [0]func()
@@ -12146,13 +9975,6 @@ type Effect_SecurityStorage struct {
 
 func (*Effect_SecurityStorage) isEffect_Effect() {}
 
-type Effect_SecurityRpc struct {
-	_           [0]func()
-	SecurityRpc *SecurityRpcEffect
-}
-
-func (*Effect_SecurityRpc) isEffect_Effect() {}
-
 type Effect_SecurityWorkflowResult struct {
 	_                      [0]func()
 	SecurityWorkflowResult *SecurityWorkflowResultEffect
@@ -12247,18 +10069,6 @@ func (m *Effect) GetCloseStream() *CloseStreamEffect {
 	}
 	return nil
 }
-func (m *Effect) GetEnsureToken() *EnsureTokenEffect {
-	if x, ok := m.GetEffect().(*Effect_EnsureToken); ok && x != nil {
-		return x.EnsureToken
-	}
-	return nil
-}
-func (m *Effect) GetDiscardToken() *DiscardTokenEffect {
-	if x, ok := m.GetEffect().(*Effect_DiscardToken); ok && x != nil {
-		return x.DiscardToken
-	}
-	return nil
-}
 func (m *Effect) GetScheduleTimer() *ScheduleTimerEffect {
 	if x, ok := m.GetEffect().(*Effect_ScheduleTimer); ok && x != nil {
 		return x.ScheduleTimer
@@ -12286,12 +10096,6 @@ func (m *Effect) GetCacheWrite() *CacheWriteEffect {
 func (m *Effect) GetCacheDelete() *CacheDeleteEffect {
 	if x, ok := m.GetEffect().(*Effect_CacheDelete); ok && x != nil {
 		return x.CacheDelete
-	}
-	return nil
-}
-func (m *Effect) GetRpc() *RpcEffect {
-	if x, ok := m.GetEffect().(*Effect_Rpc); ok && x != nil {
-		return x.Rpc
 	}
 	return nil
 }
@@ -12739,12 +10543,6 @@ func (m *Effect) GetSecurityStorage() *SecurityStorageEffect {
 	}
 	return nil
 }
-func (m *Effect) GetSecurityRpc() *SecurityRpcEffect {
-	if x, ok := m.GetEffect().(*Effect_SecurityRpc); ok && x != nil {
-		return x.SecurityRpc
-	}
-	return nil
-}
 func (m *Effect) GetSecurityWorkflowResult() *SecurityWorkflowResultEffect {
 	if x, ok := m.GetEffect().(*Effect_SecurityWorkflowResult); ok && x != nil {
 		return x.SecurityWorkflowResult
@@ -12867,14 +10665,6 @@ func (m *Effect) appendMarshalEffectPart0(b []byte) ([]byte, bool) {
 		if x != nil && x.CloseStream != nil {
 			onum, omsg = 3, x.CloseStream
 		}
-	case *Effect_EnsureToken:
-		if x != nil && x.EnsureToken != nil {
-			onum, omsg = 4, x.EnsureToken
-		}
-	case *Effect_DiscardToken:
-		if x != nil && x.DiscardToken != nil {
-			onum, omsg = 5, x.DiscardToken
-		}
 	case *Effect_ScheduleTimer:
 		if x != nil && x.ScheduleTimer != nil {
 			onum, omsg = 7, x.ScheduleTimer
@@ -12895,13 +10685,21 @@ func (m *Effect) appendMarshalEffectPart0(b []byte) ([]byte, bool) {
 		if x != nil && x.CacheDelete != nil {
 			onum, omsg = 11, x.CacheDelete
 		}
-	case *Effect_Rpc:
-		if x != nil && x.Rpc != nil {
-			onum, omsg = 12, x.Rpc
-		}
 	case *Effect_DispatchCommand:
 		if x != nil && x.DispatchCommand != nil {
 			onum, omsg = 13, x.DispatchCommand
+		}
+	case *Effect_SaveHomeScope:
+		if x != nil && x.SaveHomeScope != nil {
+			onum, omsg = 14, x.SaveHomeScope
+		}
+	case *Effect_Navigate:
+		if x != nil && x.Navigate != nil {
+			onum, omsg = 15, x.Navigate
+		}
+	case *Effect_RequestEntropy:
+		if x != nil && x.RequestEntropy != nil {
+			onum, omsg = 17, x.RequestEntropy
 		}
 	default:
 		return b, false
@@ -12917,18 +10715,6 @@ func (m *Effect) appendMarshalEffectPart1(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
-	case *Effect_SaveHomeScope:
-		if x != nil && x.SaveHomeScope != nil {
-			onum, omsg = 14, x.SaveHomeScope
-		}
-	case *Effect_Navigate:
-		if x != nil && x.Navigate != nil {
-			onum, omsg = 15, x.Navigate
-		}
-	case *Effect_RequestEntropy:
-		if x != nil && x.RequestEntropy != nil {
-			onum, omsg = 17, x.RequestEntropy
-		}
 	case *Effect_RunMachineCommandResult:
 		if x != nil && x.RunMachineCommandResult != nil {
 			onum, omsg = 18, x.RunMachineCommandResult
@@ -12965,6 +10751,18 @@ func (m *Effect) appendMarshalEffectPart1(b []byte) ([]byte, bool) {
 		if x != nil && x.TerminalDeliverOutput != nil {
 			onum, omsg = 26, x.TerminalDeliverOutput
 		}
+	case *Effect_TerminalStateChanged:
+		if x != nil && x.TerminalStateChanged != nil {
+			onum, omsg = 27, x.TerminalStateChanged
+		}
+	case *Effect_ScheduleMachinePoll:
+		if x != nil && x.ScheduleMachinePoll != nil {
+			onum, omsg = 70, x.ScheduleMachinePoll
+		}
+	case *Effect_DirectPreference:
+		if x != nil && x.DirectPreference != nil {
+			onum, omsg = 71, x.DirectPreference
+		}
 	default:
 		return b, false
 	}
@@ -12979,18 +10777,6 @@ func (m *Effect) appendMarshalEffectPart2(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
-	case *Effect_TerminalStateChanged:
-		if x != nil && x.TerminalStateChanged != nil {
-			onum, omsg = 27, x.TerminalStateChanged
-		}
-	case *Effect_ScheduleMachinePoll:
-		if x != nil && x.ScheduleMachinePoll != nil {
-			onum, omsg = 70, x.ScheduleMachinePoll
-		}
-	case *Effect_DirectPreference:
-		if x != nil && x.DirectPreference != nil {
-			onum, omsg = 71, x.DirectPreference
-		}
 	case *Effect_RenameClient:
 		if x != nil && x.RenameClient != nil {
 			onum, omsg = 72, x.RenameClient
@@ -13027,6 +10813,18 @@ func (m *Effect) appendMarshalEffectPart2(b []byte) ([]byte, bool) {
 		if x != nil && x.DraftStorageList != nil {
 			onum, omsg = 80, x.DraftStorageList
 		}
+	case *Effect_DraftStorageRead:
+		if x != nil && x.DraftStorageRead != nil {
+			onum, omsg = 81, x.DraftStorageRead
+		}
+	case *Effect_DraftStorageWrite:
+		if x != nil && x.DraftStorageWrite != nil {
+			onum, omsg = 82, x.DraftStorageWrite
+		}
+	case *Effect_DraftStorageDelete:
+		if x != nil && x.DraftStorageDelete != nil {
+			onum, omsg = 83, x.DraftStorageDelete
+		}
 	default:
 		return b, false
 	}
@@ -13041,18 +10839,6 @@ func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
-	case *Effect_DraftStorageRead:
-		if x != nil && x.DraftStorageRead != nil {
-			onum, omsg = 81, x.DraftStorageRead
-		}
-	case *Effect_DraftStorageWrite:
-		if x != nil && x.DraftStorageWrite != nil {
-			onum, omsg = 82, x.DraftStorageWrite
-		}
-	case *Effect_DraftStorageDelete:
-		if x != nil && x.DraftStorageDelete != nil {
-			onum, omsg = 83, x.DraftStorageDelete
-		}
 	case *Effect_DraftStorageClearAll:
 		if x != nil && x.DraftStorageClearAll != nil {
 			onum, omsg = 84, x.DraftStorageClearAll
@@ -13089,6 +10875,18 @@ func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
 		if x != nil && x.SharedFileScanLocal != nil {
 			onum, omsg = 42, x.SharedFileScanLocal
 		}
+	case *Effect_SharedFileInspectDisk:
+		if x != nil && x.SharedFileInspectDisk != nil {
+			onum, omsg = 43, x.SharedFileInspectDisk
+		}
+	case *Effect_SharedFileWriteChunk:
+		if x != nil && x.SharedFileWriteChunk != nil {
+			onum, omsg = 44, x.SharedFileWriteChunk
+		}
+	case *Effect_SharedFileVerifyAndCommit:
+		if x != nil && x.SharedFileVerifyAndCommit != nil {
+			onum, omsg = 45, x.SharedFileVerifyAndCommit
+		}
 	default:
 		return b, false
 	}
@@ -13103,18 +10901,6 @@ func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
-	case *Effect_SharedFileInspectDisk:
-		if x != nil && x.SharedFileInspectDisk != nil {
-			onum, omsg = 43, x.SharedFileInspectDisk
-		}
-	case *Effect_SharedFileWriteChunk:
-		if x != nil && x.SharedFileWriteChunk != nil {
-			onum, omsg = 44, x.SharedFileWriteChunk
-		}
-	case *Effect_SharedFileVerifyAndCommit:
-		if x != nil && x.SharedFileVerifyAndCommit != nil {
-			onum, omsg = 45, x.SharedFileVerifyAndCommit
-		}
 	case *Effect_SharedFileDeletePartial:
 		if x != nil && x.SharedFileDeletePartial != nil {
 			onum, omsg = 46, x.SharedFileDeletePartial
@@ -13151,6 +10937,18 @@ func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
 		if x != nil && x.ScheduleSaveSeen != nil {
 			onum, omsg = 63, x.ScheduleSaveSeen
 		}
+	case *Effect_ScheduleDismissNotifications:
+		if x != nil && x.ScheduleDismissNotifications != nil {
+			onum, omsg = 64, x.ScheduleDismissNotifications
+		}
+	case *Effect_ScheduleNavigate:
+		if x != nil && x.ScheduleNavigate != nil {
+			onum, omsg = 65, x.ScheduleNavigate
+		}
+	case *Effect_DirectSignalSend:
+		if x != nil && x.DirectSignalSend != nil {
+			onum, omsg = 102, x.DirectSignalSend
+		}
 	default:
 		return b, false
 	}
@@ -13165,18 +10963,6 @@ func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
-	case *Effect_ScheduleDismissNotifications:
-		if x != nil && x.ScheduleDismissNotifications != nil {
-			onum, omsg = 64, x.ScheduleDismissNotifications
-		}
-	case *Effect_ScheduleNavigate:
-		if x != nil && x.ScheduleNavigate != nil {
-			onum, omsg = 65, x.ScheduleNavigate
-		}
-	case *Effect_DirectSignalSend:
-		if x != nil && x.DirectSignalSend != nil {
-			onum, omsg = 102, x.DirectSignalSend
-		}
 	case *Effect_DirectPcCreate:
 		if x != nil && x.DirectPcCreate != nil {
 			onum, omsg = 103, x.DirectPcCreate
@@ -13213,6 +10999,18 @@ func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
 		if x != nil && x.TerminalReopen != nil {
 			onum, omsg = 112, x.TerminalReopen
 		}
+	case *Effect_DirectRetryNowResult:
+		if x != nil && x.DirectRetryNowResult != nil {
+			onum, omsg = 113, x.DirectRetryNowResult
+		}
+	case *Effect_TerminalHistorySendRequest:
+		if x != nil && x.TerminalHistorySendRequest != nil {
+			onum, omsg = 114, x.TerminalHistorySendRequest
+		}
+	case *Effect_TerminalHistoryUpdated:
+		if x != nil && x.TerminalHistoryUpdated != nil {
+			onum, omsg = 115, x.TerminalHistoryUpdated
+		}
 	default:
 		return b, false
 	}
@@ -13227,18 +11025,6 @@ func (m *Effect) appendMarshalEffectPart6(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
-	case *Effect_DirectRetryNowResult:
-		if x != nil && x.DirectRetryNowResult != nil {
-			onum, omsg = 113, x.DirectRetryNowResult
-		}
-	case *Effect_TerminalHistorySendRequest:
-		if x != nil && x.TerminalHistorySendRequest != nil {
-			onum, omsg = 114, x.TerminalHistorySendRequest
-		}
-	case *Effect_TerminalHistoryUpdated:
-		if x != nil && x.TerminalHistoryUpdated != nil {
-			onum, omsg = 115, x.TerminalHistoryUpdated
-		}
 	case *Effect_DirectPcSendProbe:
 		if x != nil && x.DirectPcSendProbe != nil {
 			onum, omsg = 116, x.DirectPcSendProbe
@@ -13275,6 +11061,18 @@ func (m *Effect) appendMarshalEffectPart6(b []byte) ([]byte, bool) {
 		if x != nil && x.SecurityKeyDiscard != nil {
 			onum, omsg = 139, x.SecurityKeyDiscard
 		}
+	case *Effect_SecurityStorage:
+		if x != nil && x.SecurityStorage != nil {
+			onum, omsg = 140, x.SecurityStorage
+		}
+	case *Effect_SecurityWorkflowResult:
+		if x != nil && x.SecurityWorkflowResult != nil {
+			onum, omsg = 142, x.SecurityWorkflowResult
+		}
+	case *Effect_SecurityStatusChanged:
+		if x != nil && x.SecurityStatusChanged != nil {
+			onum, omsg = 143, x.SecurityStatusChanged
+		}
 	default:
 		return b, false
 	}
@@ -13289,22 +11087,6 @@ func (m *Effect) appendMarshalEffectPart7(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
-	case *Effect_SecurityStorage:
-		if x != nil && x.SecurityStorage != nil {
-			onum, omsg = 140, x.SecurityStorage
-		}
-	case *Effect_SecurityRpc:
-		if x != nil && x.SecurityRpc != nil {
-			onum, omsg = 141, x.SecurityRpc
-		}
-	case *Effect_SecurityWorkflowResult:
-		if x != nil && x.SecurityWorkflowResult != nil {
-			onum, omsg = 142, x.SecurityWorkflowResult
-		}
-	case *Effect_SecurityStatusChanged:
-		if x != nil && x.SecurityStatusChanged != nil {
-			onum, omsg = 143, x.SecurityStatusChanged
-		}
 	case *Effect_SecurityNotifyOpened:
 		if x != nil && x.SecurityNotifyOpened != nil {
 			onum, omsg = 144, x.SecurityNotifyOpened
@@ -13376,21 +11158,11 @@ func init() {
 	LitewireDesc_Screen.ExtraUnmarshal = extraUnmarshal_Screen
 	LitewireDesc_ViewModel.ExtraMarshal = extraMarshal_ViewModel
 	LitewireDesc_LocalCalendar.ExtraUnmarshal = extraUnmarshal_LocalCalendar
-	LitewireDesc_CacheBootstrapLoadedEvent.ExtraUnmarshal = extraUnmarshal_CacheBootstrapLoadedEvent
-	LitewireDesc_CacheEventsLoadedEvent.ExtraUnmarshal = extraUnmarshal_CacheEventsLoadedEvent
-	LitewireDesc_EventsAppendedFrame.ExtraUnmarshal = extraUnmarshal_EventsAppendedFrame
-	LitewireDesc_StreamFrameEvent.ExtraUnmarshal = extraUnmarshal_StreamFrameEvent
-	LitewireDesc_ListsFetchedEvent.ExtraUnmarshal = extraUnmarshal_ListsFetchedEvent
-	LitewireDesc_SessionsPageFetchedEvent.ExtraUnmarshal = extraUnmarshal_SessionsPageFetchedEvent
-	LitewireDesc_EventsPageFetchedEvent.ExtraUnmarshal = extraUnmarshal_EventsPageFetchedEvent
-	LitewireDesc_DevicesFetchedEvent.ExtraUnmarshal = extraUnmarshal_DevicesFetchedEvent
-	LitewireDesc_DirectEventsReceivedEvent.ExtraUnmarshal = extraUnmarshal_DirectEventsReceivedEvent
 	LitewireDesc_SessionScheduleHintsEvent.ExtraUnmarshal = extraUnmarshal_SessionScheduleHintsEvent
 	LitewireDesc_NewSessionSelectModelAction.ExtraUnmarshal = extraUnmarshal_NewSessionSelectModelAction
 	LitewireDesc_Event.ExtraUnmarshal = extraUnmarshal_Event
 	LitewireDesc_CacheReadEffect.ExtraMarshal = extraMarshal_CacheReadEffect
 	LitewireDesc_CacheWriteEffect.ExtraMarshal = extraMarshal_CacheWriteEffect
 	LitewireDesc_CacheDeleteEffect.ExtraMarshal = extraMarshal_CacheDeleteEffect
-	LitewireDesc_RpcEffect.ExtraMarshal = extraMarshal_RpcEffect
 	LitewireDesc_Effect.ExtraMarshal = extraMarshal_Effect
 }

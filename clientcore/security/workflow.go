@@ -408,7 +408,7 @@ func u64Str(v uint64) string {
 func (e *Engine) SetNetworkGeneration(gen uint64) {
 	if gen > e.netGen {
 		e.netGen = gen
-		if e.wf != nil && e.wf.inFlightLogin != nil && e.useRelayPipe {
+		if e.wf != nil && e.wf.inFlightLogin != nil {
 			e.wf.inFlightLogin.resetForNetworkChange(e)
 		}
 	}
@@ -648,28 +648,6 @@ func (e *Engine) HandleStorageResult(nowMs int64, ev *corev1.SecurityStorageResu
 				loginToken: ev.LoginToken, loginTokenExpiresMs: ev.LoginTokenExpiresMs,
 			},
 		})
-	}
-	return e.DrainEffects()
-}
-
-// HandleRpcResult dispatches security RPC completion.
-func (e *Engine) HandleRpcResult(nowMs int64, ev *corev1.SecurityRpcResultEvent) []*corev1.Effect {
-	e.touchNow(nowMs)
-	if ev == nil {
-		return nil
-	}
-	if w, ok := e.takeTask(ev.OpId); ok && w.task != nil {
-		se := &secEvent{kind: evRPC, tag: w.tag, bytes: ev.ResponseBytes}
-		if ev.Error != "" || ev.ConnectCode != 0 || ev.NetworkError || len(ev.ErrorDetails) > 0 {
-			rErr := &rpcError{
-				code:    ev.ConnectCode,
-				msg:     ev.Error,
-				network: ev.NetworkError,
-				detail:  ParseRelayErrorDetail(ev.ErrorDetails),
-			}
-			se.rpcErr, se.err = rErr, rErr
-		}
-		e.stepTask(w.task, se)
 	}
 	return e.DrainEffects()
 }
@@ -1305,7 +1283,7 @@ func (e *Engine) startSharedLogin(timeoutMs int64) {
 	}
 	wf.inFlightLogin = t
 	t.currentRpcOpID = e.waitProtoRPCTimeout(
-		corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_CHALLENGE,
+		corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_CHALLENGE,
 		server,
 		"",
 		&v1.GetChallengeRequest{DeviceId: e.selfDeviceID},
@@ -1396,7 +1374,7 @@ func (t *loginTokenTask) resetForNetworkChange(e *Engine) {
 	t.retriedStaleChallenge = false
 	t.challenge = nil
 	t.currentRpcOpID = e.waitProtoRPCTimeout(
-		corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_CHALLENGE,
+		corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_CHALLENGE,
 		t.server,
 		"",
 		&v1.GetChallengeRequest{DeviceId: t.deviceID},
@@ -1442,7 +1420,7 @@ func (e *Engine) withAuthToken(server, preferred string, fgCheck bool, capturedG
 		e.completeTarget(target, &secEvent{str: wf.cachedToken})
 		return
 	}
-	if !fgCheck && e.useRelayPipe && (server == "" || server == e.effectiveServer()) {
+	if !fgCheck && (server == "" || server == e.effectiveServer()) {
 		e.ensureAuthToken(false, 0, authTokenWaiter{target: target})
 		return
 	}
@@ -1455,7 +1433,7 @@ func (e *Engine) forceLoginToken(server string, keyKind corev1.SecurityKeyKind, 
 		e.failTarget(target, devicesec.ErrUntrusted)
 		return
 	}
-	if cacheResult && !fgCheck && keyKind == keyDevEd && slot == "" && deviceID == e.selfDeviceID && e.useRelayPipe && (server == "" || server == e.effectiveServer()) {
+	if cacheResult && !fgCheck && keyKind == keyDevEd && slot == "" && deviceID == e.selfDeviceID && (server == "" || server == e.effectiveServer()) {
 		e.ensureAuthToken(true, 0, authTokenWaiter{target: target})
 		return
 	}
@@ -1466,7 +1444,7 @@ func (e *Engine) forceLoginToken(server string, keyKind corev1.SecurityKeyKind, 
 		accountGen: e.ensureWF().accountGen,
 	}
 	t.currentRpcOpID = e.waitProtoRPCTimeout(
-		corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_CHALLENGE,
+		corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_CHALLENGE,
 		server,
 		"",
 		&v1.GetChallengeRequest{DeviceId: deviceID},
@@ -1524,7 +1502,7 @@ func (t *loginTokenTask) step(e *Engine, ev *secEvent) error {
 			t.stage = loginStageChallenge
 			t.challenge = nil
 			t.currentRpcOpID = e.waitProtoRPCTimeout(
-				corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_CHALLENGE,
+				corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_CHALLENGE,
 				t.server,
 				"",
 				&v1.GetChallengeRequest{DeviceId: t.deviceID},
@@ -1560,7 +1538,7 @@ func (t *loginTokenTask) step(e *Engine, ev *secEvent) error {
 		}
 		t.stage = loginStageLogin
 		t.currentRpcOpID = e.waitProtoRPCTimeout(
-			corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LOGIN,
+			corev1.RelayRpcMethod_RELAY_RPC_METHOD_LOGIN,
 			t.server,
 			"",
 			&v1.LoginRequest{
@@ -1598,14 +1576,14 @@ const (
 
 type authedRPCTask struct {
 	taskBase
-	method   corev1.SecurityRpcMethod
+	method   corev1.RelayRpcMethod
 	server   string
 	fgCheck  bool
 	reqBytes []byte
 }
 
 //go:noinline
-func (e *Engine) callAuthedRpc(method corev1.SecurityRpcMethod, server, preferred string, fgCheck bool, capturedGen uint64, reqBytes []byte, target taskTarget) {
+func (e *Engine) callAuthedRpc(method corev1.RelayRpcMethod, server, preferred string, fgCheck bool, capturedGen uint64, reqBytes []byte, target taskTarget) {
 	t := &authedRPCTask{
 		taskBase: taskBase{fgGen: capturedGen, target: target}, method: method, server: server, fgCheck: fgCheck, reqBytes: reqBytes,
 	}

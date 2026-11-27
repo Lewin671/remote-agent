@@ -47,14 +47,6 @@ enum RelayRpcMethod {
   RELAY_RPC_METHOD_HEALTHZ = 33;
 }
 
-// Opts the Core instance into the unified byte-pipe mode (RelayRpcEffect,
-// StreamRawFrameEvent, Core-managed login/token refresh, opaque caches, image
-// fetch, and Core-owned terminal crypto/lifecycle). Shells that do not send
-// this event (iOS before P3-2) continue using transitional effects.
-message RelayPipeConfigEvent {
-  bool enabled = 1;
-}
-
 // Universal unary HTTP/Connect byte-pipe effect. The shell sends request_bytes
 // verbatim to the path for method (or GET /healthz for RELAY_RPC_METHOD_HEALTHZ)
 // and returns raw response bytes + Connect error metadata without parsing any

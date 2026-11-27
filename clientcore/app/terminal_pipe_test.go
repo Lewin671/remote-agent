@@ -10,6 +10,7 @@ import (
 
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/internal/test/testrelay"
 	"github.com/Lewin671/remote-agent/clientcore/security"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 	stdv1 "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -70,13 +71,7 @@ func openCoreTerminalForTest(
 ) (streamID string, legID []byte) {
 	t.Helper()
 	// Enable relayPipe mode + provide entropy + start sync engine.
-	c.Dispatch(&corev1.Event{
-		NowMs:  nowMs,
-		MonoMs: 1200,
-		Event: &corev1.Event_RelayPipeConfig{
-			RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true},
-		},
-	})
+	// Start sync and deliver warm token.
 	randBytes := make([]byte, 512)
 	_, _ = rand.Read(randBytes)
 	c.Dispatch(&corev1.Event{
@@ -1173,10 +1168,6 @@ func TestTerminalPipe_NegativeRelayTamperReplaySeqJumpMismatchAndMissingSeed(t *
 	// outbound TerminalInput fails and closes the terminal without emitting TerminalDirectSendEffect.
 	t.Run("outbound_missing_seed", func(t *testing.T) {
 		c2, phone2, trusted2, _, _, dom2, s12, sec2, _, _, now2 := setupOpaqueCacheTestCore(t, true)
-		c2.Dispatch(&corev1.Event{
-			NowMs: now2 + 1, MonoMs: 1001,
-			Event: &corev1.Event_RelayPipeConfig{RelayPipeConfig: &corev1.RelayPipeConfigEvent{Enabled: true}},
-		})
 		// 1. Session with valid Meta but NO SessionKey cannot open a terminal.
 		metaBytes, _ := proto.Marshal(&stdv1.Session{Id: "s-noseed"})
 		metaEnv := sealDaemonWireWithSeed(t, trusted2, dom2, s12, sec2, nil, metaBytes, devicesec.SessionMeta, trusted2.id, "s-noseed", "", 1)
@@ -1184,9 +1175,9 @@ func TestTerminalPipe_NegativeRelayTamperReplaySeqJumpMismatchAndMissingSeed(t *
 			NowMs: now2 + 40, MonoMs: 1040,
 			Event: &corev1.Event_CacheBootstrapLoaded{CacheBootstrapLoaded: &corev1.CacheBootstrapLoadedEvent{
 				OpId: 1,
-				WireSessions: []*v1.RemoteSession{{
+				RawSessions: testrelay.MustRawSlice([]*v1.RemoteSession{{
 					SessionId: "s-noseed", MachineId: trusted2.id, Meta: metaEnv,
-				}},
+				}}),
 			}},
 		})
 		bOpen := c2.Dispatch(&corev1.Event{

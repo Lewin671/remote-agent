@@ -341,7 +341,7 @@ func (t *resumeOfferTask) sendPutReq(e *Engine) error {
 		return devicesec.ErrUntrusted
 	}
 	t.stage = offerPutMeta
-	e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_DEVICE_META, t.op.Server, "", true, t.fgGen, t.reqBytes, parentTarget(t, 0))
+	e.callAuthedRpc(corev1.RelayRpcMethod_RELAY_RPC_METHOD_PUT_DEVICE_META, t.op.Server, "", true, t.fgGen, t.reqBytes, parentTarget(t, 0))
 	return nil
 }
 
@@ -384,7 +384,7 @@ func (t *resumeOfferTask) step(e *Engine, ev *secEvent) error {
 			return t.sendPutReq(e)
 		}
 		t.stage = offerListDevices
-		e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES, t.op.Server, t.fgGen, &v1.ListDevicesRequest{}, parentTarget(t, 0))
+		e.callAuthedProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_DEVICES, t.op.Server, t.fgGen, &v1.ListDevicesRequest{}, parentTarget(t, 0))
 	case offerClearOp, offerDone:
 		e.okTarget(t.target, nil)
 	case offerListDevices:
@@ -436,7 +436,7 @@ func (t *resumeOfferTask) step(e *Engine, ev *secEvent) error {
 			return t.finishOffer(e, true)
 		}
 		t.stage = offerVerifyList
-		e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES, t.op.Server, t.fgGen, &v1.ListDevicesRequest{}, parentTarget(t, 0))
+		e.callAuthedProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_DEVICES, t.op.Server, t.fgGen, &v1.ListDevicesRequest{}, parentTarget(t, 0))
 	case offerVerifyList:
 		var lr v1.ListDevicesResponse
 		if lr.Unmarshal(ev.bytes) != nil {
@@ -485,7 +485,7 @@ func (e *Engine) startResumeDeleteRecordsOp(op *PersistedOperation, fgGen uint64
 
 func (t *resumeDeleteRecordsTask) sendRPC(e *Engine, curOp *PersistedOperation) {
 	t.op, t.stage = curOp, delRecRPC
-	e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_DELETE_MACHINE_RECORDS, curOp.Server, "", true, t.fgGen, curOp.Signed, parentTarget(t, 0))
+	e.callAuthedRpc(corev1.RelayRpcMethod_RELAY_RPC_METHOD_DELETE_MACHINE_RECORDS, curOp.Server, "", true, t.fgGen, curOp.Signed, parentTarget(t, 0))
 }
 
 func (t *resumeDeleteRecordsTask) step(e *Engine, ev *secEvent) error {
@@ -594,7 +594,7 @@ func (t *resumeLeaseTask) publishReq(e *Engine, curOp *PersistedOperation, req *
 
 func (t *resumeLeaseTask) upload(e *Engine, finalOp *PersistedOperation, finalReqBytes, finalLeaseBytes []byte) {
 	t.op, t.reqBytes, t.leaseRaw, t.stage = finalOp, finalReqBytes, finalLeaseBytes, leaseUpload
-	e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_SECURITY_STATE, finalOp.Server, "", true, t.fgGen, finalReqBytes, parentTarget(t, 0))
+	e.callAuthedRpc(corev1.RelayRpcMethod_RELAY_RPC_METHOD_PUT_SECURITY_STATE, finalOp.Server, "", true, t.fgGen, finalReqBytes, parentTarget(t, 0))
 }
 
 func (t *resumeLeaseTask) step(e *Engine, ev *secEvent) error {
@@ -744,7 +744,7 @@ func (t *signStateDraftTask) step(e *Engine, ev *secEvent) error {
 				return newWfError("expired", WorkflowReasonUnpublishedPairingDraftExpired)
 			}
 			t.stage = draftGetPairing
-			e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_PAIRING, t.op.Server, t.fgGen, &v1.GetPairingRequest{PairingId: t.op.Pair.PairingID}, parentTarget(t, 0))
+			e.callAuthedProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_PAIRING, t.op.Server, t.fgGen, &v1.GetPairingRequest{PairingId: t.op.Pair.PairingID}, parentTarget(t, 0))
 			return nil
 		}
 		return t.beginDraftEntropy(e)
@@ -1055,13 +1055,13 @@ func (t *continueStateOpTask) proceedPublish(e *Engine, curOp *PersistedOperatio
 	t.op, t.curReqLease, t.curReqBytes = curOp, reqLease, reqBytes
 	if !t.installed {
 		t.stage = contStatePutState
-		e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_SECURITY_STATE, curOp.Server, "", true, t.fgGen, reqBytes, parentTarget(t, 0))
+		e.callAuthedRpc(corev1.RelayRpcMethod_RELAY_RPC_METHOD_PUT_SECURITY_STATE, curOp.Server, "", true, t.fgGen, reqBytes, parentTarget(t, 0))
 		return
 	}
 	if e.headHash == t.targetHash && len(reqLease) > 0 {
 		if reqLC, err := devicesec.ParseLease(reqLease); err == nil && (!e.hasLease || e.lease.IssuedAt < reqLC.IssuedAt) {
 			t.stage = contStatePutLease
-			e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_SECURITY_STATE, curOp.Server, "", true, t.fgGen, reqBytes, parentTarget(t, 0))
+			e.callAuthedRpc(corev1.RelayRpcMethod_RELAY_RPC_METHOD_PUT_SECURITY_STATE, curOp.Server, "", true, t.fgGen, reqBytes, parentTarget(t, 0))
 			return
 		}
 	}
@@ -1073,7 +1073,7 @@ func (t *continueStateOpTask) checkDeliveryFallback(e *Engine, origErr *rpcError
 		return origErr
 	}
 	t.stage = contStateListDevices
-	e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES, t.op.Server, t.fgGen, &v1.ListDevicesRequest{}, parentTarget(t, 0))
+	e.callAuthedProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_DEVICES, t.op.Server, t.fgGen, &v1.ListDevicesRequest{}, parentTarget(t, 0))
 	return nil
 }
 
@@ -1201,7 +1201,7 @@ func (t *continueStateOpTask) step(e *Engine, ev *secEvent) error {
 			return devicesec.ErrInvalid
 		}
 		t.delivery, t.stage = &delivery, contStateApprovePair
-		e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_APPROVE_PAIRING, saved.Server, "", true, t.fgGen, saved.Delivery, parentTarget(t, 0))
+		e.callAuthedRpc(corev1.RelayRpcMethod_RELAY_RPC_METHOD_APPROVE_PAIRING, saved.Server, "", true, t.fgGen, saved.Delivery, parentTarget(t, 0))
 	case contStateApprovePair:
 		if ev.rpcErr != nil {
 			return t.checkDeliveryFallback(e, ev.rpcErr)
@@ -1210,7 +1210,7 @@ func (t *continueStateOpTask) step(e *Engine, ev *secEvent) error {
 			return ev.err
 		}
 		t.stage = contStateGetPair
-		e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_PAIRING, t.op.Server, t.fgGen, &v1.GetPairingRequest{PairingId: t.delivery.PairingId}, parentTarget(t, 0))
+		e.callAuthedProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_PAIRING, t.op.Server, t.fgGen, &v1.GetPairingRequest{PairingId: t.delivery.PairingId}, parentTarget(t, 0))
 	case contStateGetPair:
 		if ev.rpcErr != nil {
 			return t.checkDeliveryFallback(e, ev.rpcErr)

@@ -75,7 +75,7 @@ type fakeRelay struct {
 
 	forceApproveNotFound bool
 	bumpMetaOnPutOnce    bool
-	failNextMethod       corev1.SecurityRpcMethod
+	failNextMethod       corev1.RelayRpcMethod
 	failNextCode         int32
 }
 
@@ -189,12 +189,12 @@ func lwMarshalDevice(d *v1.Device) []byte {
 	return b
 }
 
-func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes []byte) ([]byte, *rpcError) {
+func (r *fakeRelay) call(method corev1.RelayRpcMethod, token string, reqBytes []byte) ([]byte, *rpcError) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	if r.failNextMethod == method {
-		r.failNextMethod = corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_UNSPECIFIED
+		r.failNextMethod = corev1.RelayRpcMethod_RELAY_RPC_METHOD_UNSPECIFIED
 		code := r.failNextCode
 		if code == 0 {
 			code = connectCodeUnavailable
@@ -209,7 +209,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 	}
 
 	switch method {
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SIGNUP_CHALLENGE:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SIGNUP_CHALLENGE:
 		ch := make([]byte, 32)
 		_, _ = rand.Read(ch)
 		var out []byte
@@ -218,7 +218,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		out = litewire.AppendVarint(out, 3, uint64(r.nowMs+60_000))
 		return out, nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_REGISTER_DEVICE:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_REGISTER_DEVICE:
 		var rawReg, sig, app, appSig []byte
 		var proof v1.SignupProof
 		b := reqBytes
@@ -281,7 +281,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		r.devices[devID] = &v1.Device{Id: devID, Kind: reg.Kind}
 		return litewire.AppendString(nil, 1, devID), nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_CHALLENGE:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_CHALLENGE:
 		var devID string
 		b := reqBytes
 		for len(b) > 0 {
@@ -302,7 +302,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		r.loginChal[hex.EncodeToString(ch)] = devID
 		return litewire.AppendBytes(nil, 1, ch), nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LOGIN:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_LOGIN:
 		var devID string
 		var chal, sig []byte
 		b := reqBytes
@@ -340,7 +340,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		out = litewire.AppendVarint(out, 2, uint64(r.nowMs+7*dayMs))
 		return out, nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PIN_SECURITY_DOMAIN:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_PIN_SECURITY_DOMAIN:
 		devID, acctID, aErr := r.auth(token)
 		if aErr != nil {
 			return nil, aErr
@@ -369,7 +369,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		}
 		return nil, nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_SECURITY_STATE:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_PUT_SECURITY_STATE:
 		devID, acctID, aErr := r.auth(token)
 		if aErr != nil {
 			return nil, aErr
@@ -434,7 +434,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		out = litewire.AppendBytes(out, 2, headBytes)
 		return out, nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_SECURITY_STATES:
 		_, acctID, aErr := r.auth(token)
 		if aErr != nil {
 			return nil, aErr
@@ -494,7 +494,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		}
 		return out, nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_CREATE_PAIRING:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_CREATE_PAIRING:
 		devID, acctID, aErr := r.auth(token)
 		if aErr != nil {
 			return nil, aErr
@@ -539,7 +539,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		out = litewire.AppendBytes(out, 4, row.approverEd)
 		return out, nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PEEK_PAIRING:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_PEEK_PAIRING:
 		var code string
 		b := reqBytes
 		for len(b) > 0 {
@@ -559,7 +559,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		out = litewire.AppendBytes(out, 2, row.commit)
 		return out, nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_JOIN_PAIRING:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_JOIN_PAIRING:
 		var code string
 		var jPub, devPub, devX []byte
 		var jKind v1.DeviceKind
@@ -598,7 +598,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		out = litewire.AppendString(out, 3, row.candToken)
 		return out, nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_REVEAL_PAIRING:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_REVEAL_PAIRING:
 		devID, _, aErr := r.auth(token)
 		if aErr != nil {
 			return nil, aErr
@@ -628,7 +628,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		row.state = v1.PairingState_PAIRING_STATE_REVEALED
 		return nil, nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_APPROVE_PAIRING:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_APPROVE_PAIRING:
 		devID, _, aErr := r.auth(token)
 		if aErr != nil {
 			return nil, aErr
@@ -676,7 +676,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		row.state = v1.PairingState_PAIRING_STATE_APPROVED
 		return nil, nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_PAIRING:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_PAIRING:
 		var pid, candTok string
 		var received bool
 		var joinerMeta v1.Envelope
@@ -743,7 +743,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		}
 		return out, nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_CANCEL_PAIRING:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_CANCEL_PAIRING:
 		var pid string
 		b := reqBytes
 		for len(b) > 0 {
@@ -760,7 +760,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		}
 		return nil, nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_DEVICES:
 		_, acctID, aErr := r.auth(token)
 		if aErr != nil {
 			return nil, aErr
@@ -773,7 +773,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		}
 		return out, nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_MACHINES:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_MACHINES:
 		_, acctID, aErr := r.auth(token)
 		if aErr != nil {
 			return nil, aErr
@@ -786,7 +786,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		}
 		return out, nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_DEVICE_META:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_PUT_DEVICE_META:
 		_, acctID, aErr := r.auth(token)
 		if aErr != nil {
 			return nil, aErr
@@ -825,7 +825,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		}
 		return litewire.AppendBool(nil, 1, applied), nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_DELETE_MACHINE_RECORDS:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_DELETE_MACHINE_RECORDS:
 		devID, acctID, aErr := r.auth(token)
 		if aErr != nil {
 			return nil, aErr
@@ -846,7 +846,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		delete(r.machines[acctID], mid)
 		return nil, nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_DELETE_ACCOUNT:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_DELETE_ACCOUNT:
 		devID, acctID, aErr := r.auth(token)
 		if aErr != nil {
 			return nil, aErr
@@ -868,7 +868,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		}
 		return nil, nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_RECOVERY_CHALLENGE:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_RECOVERY_CHALLENGE:
 		ch := make([]byte, 32)
 		r.challengeSeq++
 		ch[0] = byte(r.challengeSeq >> 8)
@@ -876,7 +876,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		r.recChals[hex.EncodeToString(ch)] = true
 		return litewire.AppendBytes(nil, 1, ch), nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_RECOVERY_CONTEXT:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_RECOVERY_CONTEXT:
 		var recEd, chal, sig []byte
 		var recID string
 		b := reqBytes
@@ -957,7 +957,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		out = litewire.AppendBytes(out, 6, r.accounts[acctID])
 		return out, nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_SUBMIT_RECOVERY:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_SUBMIT_RECOVERY:
 		var stmtBytes, stBytes []byte
 		b := reqBytes
 		for len(b) > 0 {
@@ -1002,7 +1002,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		out = litewire.AppendVarint(out, 2, uint64(readyMs))
 		return out, nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_COMPLETE_RECOVERY:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_COMPLETE_RECOVERY:
 		var rid string
 		var sig []byte
 		b := reqBytes
@@ -1067,7 +1067,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		out = litewire.AppendBytes(out, 2, r.accounts[rec.accountID])
 		return out, nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_ACCOUNT_PREFS:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_ACCOUNT_PREFS:
 		_, acctID, aErr := r.auth(token)
 		if aErr != nil {
 			return nil, aErr
@@ -1088,7 +1088,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		}
 		return out, nil
 
-	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_ACCOUNT_PREFS:
+	case corev1.RelayRpcMethod_RELAY_RPC_METHOD_PUT_ACCOUNT_PREFS:
 		_, acctID, aErr := r.auth(token)
 		if aErr != nil {
 			return nil, aErr
@@ -1143,11 +1143,11 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 // relayVersionField is the protocol_version field number of each relay entry
 // request (proto/remoteagent/v1/relay.proto); the fake rejects any other value
 // so a test proves the engine sends the injected RelayVersion.
-var relayVersionField = map[corev1.SecurityRpcMethod]int32{
-	corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_REGISTER_DEVICE: 7,
-	corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LOGIN:           4,
-	corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PEEK_PAIRING:    2,
-	corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_JOIN_PAIRING:    6,
+var relayVersionField = map[corev1.RelayRpcMethod]int32{
+	corev1.RelayRpcMethod_RELAY_RPC_METHOD_REGISTER_DEVICE: 7,
+	corev1.RelayRpcMethod_RELAY_RPC_METHOD_LOGIN:           4,
+	corev1.RelayRpcMethod_RELAY_RPC_METHOD_PEEK_PAIRING:    2,
+	corev1.RelayRpcMethod_RELAY_RPC_METHOD_JOIN_PAIRING:    6,
 }
 
 func readVarintField(b []byte, field int32) uint64 {

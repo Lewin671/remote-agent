@@ -7,6 +7,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/sharedfiles"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/internal/test/testrelay"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
@@ -51,28 +52,26 @@ func newSFHarness(t *testing.T, chunkBytes int32, files ...*v1.SharedFile) *sfHa
 			},
 		},
 	})
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      "dev-1",
+					AuthorityDeviceId: "dev-1",
+					LeaseEndMs:        h.nowMs + 86_400_000,
+					TrustedMachineIds: []string{h.machineID},
+					TrustedClientIds:  []string{"dev-1"},
+				},
+			},
+		},
+	})
 	effStart := h.dispatch(&corev1.Event{
 		Event: &corev1.Event_SyncLifecycle{
 			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
 		},
 	})
-	var tokOp uint64
-	for _, ef := range effStart.GetEffects() {
-		if et := ef.GetEnsureToken(); et != nil {
-			tokOp = et.GetOpId()
-		}
-	}
-	effTok := h.dispatch(&corev1.Event{
-		Event: &corev1.Event_TokenResult{
-			TokenResult: &corev1.TokenResultEvent{OpId: tokOp, Token: "tok-sf", ExpiresMs: h.nowMs + 3_600_000},
-		},
-	})
-	var legID uint64
-	for _, ef := range effTok.GetEffects() {
-		if os := ef.GetOpenStream(); os != nil {
-			legID = os.GetLegId()
-		}
-	}
+	legID := testrelay.FindOpenStreamLeg(effStart.Effects)
 	h.dispatch(&corev1.Event{
 		Event: &corev1.Event_StreamReady{
 			StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: h.nowMs},
@@ -93,7 +92,7 @@ func newSFHarness(t *testing.T, chunkBytes int32, files ...*v1.SharedFile) *sfHa
 					{
 						MachineId: h.machineID,
 						Online:    true,
-						Meta: &v1.MachineMeta{
+						RawMeta: testrelay.MustRaw(&v1.MachineMeta{
 							Hostname:        "Studio",
 							Home:            "/Users/me",
 							ProtocolVersion: 17,
@@ -101,7 +100,7 @@ func newSFHarness(t *testing.T, chunkBytes int32, files ...*v1.SharedFile) *sfHa
 								SharedFiles:          true,
 								SharedFileChunkBytes: chunkBytes,
 							},
-						},
+						}),
 					},
 				},
 				Sessions: []*corev1.DemoSession{
@@ -109,18 +108,18 @@ func newSFHarness(t *testing.T, chunkBytes int32, files ...*v1.SharedFile) *sfHa
 						SessionId: h.sessionID,
 						MachineId: h.machineID,
 						LastSeq:   1,
-						Meta: &v1.Session{
+						RawMeta: testrelay.MustRaw(&v1.Session{
 							Id:     h.sessionID,
 							Cwd:    "/Users/me/proj",
 							Agent:  v1.Agent_AGENT_CODEX,
 							Status: v1.SessionStatus_SESSION_STATUS_RUNNING,
-						},
+						}),
 					},
 				},
 				SessionEvents: []*corev1.DemoSessionEvents{
 					{
 						SessionId: h.sessionID,
-						Events: []*v1.Event{
+						RawEvents: testrelay.MustRawSlice([]*v1.Event{
 							{
 								Seq: 1,
 								Kind: &v1.Event_ToolCall{
@@ -131,7 +130,7 @@ func newSFHarness(t *testing.T, chunkBytes int32, files ...*v1.SharedFile) *sfHa
 									},
 								},
 							},
-						},
+						}),
 					},
 				},
 			},
@@ -275,7 +274,7 @@ func (h *sfHarness) deliverChunkOK(dc *corev1.DispatchCommandEffect, data []byte
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "executed",
-				Result: &v1.CommandResult{
+				RawResult: testrelay.MustRaw(&v1.CommandResult{
 					Outcome:         "executed",
 					Reason:          "executed",
 					ResultAvailable: true,
@@ -285,7 +284,7 @@ func (h *sfHarness) deliverChunkOK(dc *corev1.DispatchCommandEffect, data []byte
 							TotalBytes: sfUint64(totalBytes),
 						},
 					},
-				},
+				}),
 			},
 		},
 	})
@@ -304,12 +303,12 @@ func (h *sfHarness) deliverDaemonError(dc *corev1.DispatchCommandEffect, errCode
 				OuterMatchesInner: true,
 				OuterOutcome:      "executed",
 				OuterReason:       "executed",
-				Result: &v1.CommandResult{
+				RawResult: testrelay.MustRaw(&v1.CommandResult{
 					Outcome:      "executed",
 					Reason:       "executed",
 					ErrorCode:    errCode,
 					ErrorMessage: errMsg,
-				},
+				}),
 			},
 		},
 	})
@@ -331,27 +330,15 @@ func (h *sfHarness) deliverTransportDrop(dc *corev1.DispatchCommandEffect, code 
 
 func (h *sfHarness) setMachineOnline(online bool) *corev1.EffectBatch {
 	return h.dispatch(&corev1.Event{
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{
-						MachineId: h.machineID,
-						Online:    online,
-						MetaRev:   2,
-						Meta: &v1.MachineMeta{
-							Hostname:        "Studio",
-							Home:            "/Users/me",
-							ProtocolVersion: 17,
-							Capabilities: &v1.MachineCapabilities{
-								SharedFiles:          true,
-								SharedFileChunkBytes: h.chunkBytes,
-							},
-						},
-					},
-				},
+		Event: testrelay.DemoMachineEvent(testrelay.DemoMachine(h.machineID, online, 0, &v1.MachineMeta{
+			Hostname:        "Studio",
+			Home:            "/Users/me",
+			ProtocolVersion: 17,
+			Capabilities: &v1.MachineCapabilities{
+				SharedFiles:          true,
+				SharedFileChunkBytes: h.chunkBytes,
 			},
-		},
+		})),
 	})
 }
 
@@ -373,26 +360,12 @@ func (h *sfHarness) triggerScan() uint64 {
 
 func (h *sfHarness) setSessionExited() *corev1.EffectBatch {
 	return h.dispatch(&corev1.Event{
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
-				LegId: 1,
-				Frame: &corev1.StreamFrameEvent_SessionUpdated{
-					SessionUpdated: &corev1.PlainSession{
-						SessionId:     h.sessionID,
-						MachineId:     h.machineID,
-						LastSeq:       1,
-						ListedEndedMs: h.nowMs,
-						MetaRev:       2,
-						Meta: &v1.Session{
-							Id:     h.sessionID,
-							Cwd:    "/Users/me/proj",
-							Agent:  v1.Agent_AGENT_CODEX,
-							Status: v1.SessionStatus_SESSION_STATUS_EXITED,
-						},
-					},
-				},
-			},
-		},
+		Event: testrelay.DemoSessionEvent(testrelay.DemoSession(h.sessionID, h.machineID, 1, 0, h.nowMs, &v1.Session{
+			Id:     h.sessionID,
+			Cwd:    "/Users/me/proj",
+			Agent:  v1.Agent_AGENT_CODEX,
+			Status: v1.SessionStatus_SESSION_STATUS_EXITED,
+		}, nil)),
 	})
 }
 
@@ -645,7 +618,7 @@ func TestSharedFileDownloadZeroByteAndChunkValidation(t *testing.T) {
 						OuterMatchesInner: true,
 						OuterOutcome:      "executed",
 						OuterReason:       "executed",
-						Result: &v1.CommandResult{
+						RawResult: testrelay.MustRaw(&v1.CommandResult{
 							Outcome:         "executed",
 							Reason:          "executed",
 							ResultAvailable: true,
@@ -655,7 +628,7 @@ func TestSharedFileDownloadZeroByteAndChunkValidation(t *testing.T) {
 									TotalBytes: tc.respTotalBytes,
 								},
 							},
-						},
+						}),
 					},
 				},
 			})
@@ -1086,12 +1059,12 @@ func TestSharedFileDownloadDisconnectReconnectAndTimeout(t *testing.T) {
 					OuterMatchesInner: true,
 					OuterOutcome:      "executed",
 					OuterReason:       "executed",
-					Result: &v1.CommandResult{
+					RawResult: testrelay.MustRaw(&v1.CommandResult{
 						Outcome:         "executed",
 						Reason:          "executed",
 						ResultAvailable: true,
 						// Kind deliberately nil (missing GetSharedFileChunk payload)
-					},
+					}),
 				},
 			},
 		})
@@ -2335,10 +2308,10 @@ func TestSharedFileDownloadCancelDeleteAndAutoOpenTickets(t *testing.T) {
 
 	t.Run("WAITING_RECONNECT pause, cancel, and session exit emit CancelTimer", func(t *testing.T) {
 		cases := []struct {
-			name            string
-			act             func(h *sfHarness) *corev1.EffectBatch
-			wantDeletePart  bool
-			wantStatus      corev1.SharedFileCardStatus
+			name           string
+			act            func(h *sfHarness) *corev1.EffectBatch
+			wantDeletePart bool
+			wantStatus     corev1.SharedFileCardStatus
 		}{
 			{
 				name: "pause cancels reconnect timer and keeps partial",

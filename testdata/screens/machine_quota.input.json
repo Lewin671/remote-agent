@@ -2,27 +2,35 @@
   "steps": [
     {
       "event": {
-        "nowMs": "1791078060000",
         "clockUpdated": {
-          "nowMs": "1791078060000",
-          "todayStartMs": "1791043200000",
-          "yesterdayStartMs": "1790956800000",
-          "weekStartMs": "1790524800000",
-          "nowYear": 2026,
           "months": [
             {
-              "year": 2026,
               "month": 10,
-              "startMs": "1790812800000"
+              "startMs": "1790812800000",
+              "year": 2026
             }
-          ]
-        }
+          ],
+          "nowMs": "1791078060000",
+          "nowYear": 2026,
+          "todayStartMs": "1791043200000",
+          "weekStartMs": "1790524800000",
+          "yesterdayStartMs": "1790956800000"
+        },
+        "nowMs": "1791078060000"
       }
     },
     {
       "event": {
         "nowMs": "1791078060000",
+        "seedDemoWorld": {
+          "clearDirectReports": true
+        }
+      }
+    },
+    {
+      "event": {
         "monoMs": "1000",
+        "nowMs": "1791078060000",
         "syncLifecycle": {
           "kind": "SYNC_LIFECYCLE_KIND_START"
         }
@@ -33,23 +41,14 @@
         "nowMs": "1791078060010",
         "seedDemoWorld": {
           "security": {
-            "isMember": true,
-            "selfDeviceId": "dev-1",
             "authorityDeviceId": "dev-1",
+            "isMember": true,
             "leaseEndMs": "1791164460000",
+            "selfDeviceId": "dev-1",
             "trustedMachineIds": [
               "m1"
             ]
           }
-        }
-      }
-    },
-    {
-      "event": {
-        "nowMs": "1791078060020",
-        "tokenResult": {
-          "opId": "2",
-          "token": "tok-1"
         }
       }
     },
@@ -65,84 +64,18 @@
     {
       "event": {
         "nowMs": "1791078060040",
-        "listsFetched": {
-          "opId": "3",
+        "seedDemoWorld": {
+          "clearListError": true,
           "machines": [
             {
               "machineId": "m1",
               "online": true,
-              "meta": {
-                "hostname": "MacPro",
-                "protocolVersion": 17,
-                "agents": [
-                  {
-                    "agent": "AGENT_CODEX",
-                    "version": "0.42.0",
-                    "verified": true
-                  },
-                  {
-                    "agent": "AGENT_CLAUDE",
-                    "version": "2.1.0",
-                    "verified": true
-                  },
-                  {
-                    "agent": "AGENT_ANTIGRAVITY",
-                    "version": "1.2.0",
-                    "verified": false
-                  }
-                ],
-                "quotas": [
-                  {
-                    "agent": "AGENT_CODEX",
-                    "state": "QUOTA_STATE_OK",
-                    "plan": "prolite",
-                    "login": "QUOTA_LOGIN_SUBSCRIPTION",
-                    "account": "dev@example.com",
-                    "observedMs": "1791077460000",
-                    "windows": [
-                      {
-                        "name": "primary",
-                        "usedPercent": 85.0,
-                        "resetsAtMs": "1791081660000"
-                      },
-                      {
-                        "name": "secondary",
-                        "usedPercent": 40.0,
-                        "resetsAtMs": "1791070000000"
-                      }
-                    ]
-                  },
-                  {
-                    "agent": "AGENT_CLAUDE",
-                    "state": "QUOTA_STATE_FAILED",
-                    "plan": "claude_max",
-                    "observedMs": "1791072000000",
-                    "detail": "Status line unavailable"
-                  },
-                  {
-                    "agent": "AGENT_ANTIGRAVITY",
-                    "state": "QUOTA_STATE_OK",
-                    "observedMs": "1791077900000",
-                    "windows": [
-                      {
-                        "name": "gemini-5h",
-                        "usedPercent": 100.0,
-                        "resetsAtMs": "1791088860000"
-                      },
-                      {
-                        "name": "3p-5h",
-                        "usedPercent": 35.0,
-                        "resetsAtMs": "1791085260000"
-                      },
-                      {
-                        "name": "3p-weekly"
-                      }
-                    ]
-                  }
-                ]
-              }
+              "rawMeta": "CgZNYWNQcm9KDAgBEgYwLjQyLjAYAUoLCAISBTIuMS4wGAFKCQgDEgUxLjIuMFpfCAEQAhoZCgdwcmltYXJ5EQAAAAAAQFVAGOD8pKaQNBobCglzZWNvbmRhcnkRAAAAAAAAREAYgKfdoJA0Igdwcm9saXRlKAEwoNCkpJA0Og9kZXZAZXhhbXBsZS5jb21aMAgCEAMiCmNsYXVkZV9tYXgwgLDXoZA0ShdTdGF0dXMgbGluZSB1bmF2YWlsYWJsZVpOCAMQAhobCglnZW1pbmktNWgRAAAAAAAAWUAY4LbcqZA0GhcKBTNwLTVoEQAAAAAAgEFAGODZgKiQNBoLCgkzcC13ZWVrbHkw4L2/pJA0YBE="
             }
-          ]
+          ],
+          "replaceDevices": true,
+          "replaceMachines": true,
+          "replaceSessions": true
         }
       },
       "views": [
@@ -158,8 +91,8 @@
           "name": "codexOnly",
           "screen": {
             "quota": {
-              "machineId": "m1",
-              "filterAgent": "AGENT_CODEX"
+              "filterAgent": "AGENT_CODEX",
+              "machineId": "m1"
             }
           }
         }

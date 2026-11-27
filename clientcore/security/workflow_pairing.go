@@ -326,7 +326,7 @@ func (t *startPairingTask) step(e *Engine, ev *secEvent) error {
 				return devicesec.ErrUntrusted
 			}
 			t.stage = startPairListMachines
-			e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_MACHINES, server, t.fgGen, &v1.ListMachinesRequest{}, parentTarget(t, 0))
+			e.callAuthedProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_LIST_MACHINES, server, t.fgGen, &v1.ListMachinesRequest{}, parentTarget(t, 0))
 			return nil
 		}
 		t.beginCreate(e)
@@ -362,7 +362,7 @@ func (t *startPairingTask) step(e *Engine, ev *secEvent) error {
 		}
 		commit := devicesec.PairDomainCommit(ev.bytes, t.trust)
 		t.ephemPub, t.commit, t.stage = ev.bytes, commit, startPairCreateRPC
-		e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_CREATE_PAIRING, t.server, t.fgGen, &v1.CreatePairingRequest{Commit: commit}, parentTarget(t, 0))
+		e.callAuthedProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_CREATE_PAIRING, t.server, t.fgGen, &v1.CreatePairingRequest{Commit: commit}, parentTarget(t, 0))
 	case startPairCreateRPC:
 		var resp v1.CreatePairingResponse
 		if resp.Unmarshal(ev.bytes) != nil || resp.PairingId == "" || resp.Code == "" {
@@ -423,7 +423,7 @@ func (t *pollPairingInitiatorTask) step(e *Engine, ev *secEvent) error {
 				return devicesec.ErrUntrusted
 			}
 			t.sess = sess
-			e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_PAIRING, sess.server, t.fgGen, &v1.GetPairingRequest{PairingId: t.pairingID}, parentTarget(t, 0))
+			e.callAuthedProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_PAIRING, sess.server, t.fgGen, &v1.GetPairingRequest{PairingId: t.pairingID}, parentTarget(t, 0))
 			return nil
 		}
 		sess := t.sess
@@ -507,7 +507,7 @@ func (t *pollPairingInitiatorTask) step(e *Engine, ev *secEvent) error {
 			return err
 		}
 		t.ps, t.stage = ps, pollInitReveal
-		e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_REVEAL_PAIRING, sess.server, t.fgGen, &v1.RevealPairingRequest{
+		e.callAuthedProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_REVEAL_PAIRING, sess.server, t.fgGen, &v1.RevealPairingRequest{
 			PairingId: sess.pairingID, InitiatorPublic: slices.Clone(sess.ephemPub), Trust: slices.Clone(sess.trust),
 		}, parentTarget(t, 0))
 	case pollInitReveal:
@@ -847,7 +847,7 @@ func (t *cancelPairingInitiatorTask) step(e *Engine, ev *secEvent) error {
 			return nil
 		}
 		t.stage = cancelInitRPC
-		e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_CANCEL_PAIRING, srv, 0, &v1.CancelPairingRequest{PairingId: t.pairingID}, parentTarget(t, 0))
+		e.callAuthedProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_CANCEL_PAIRING, srv, 0, &v1.CancelPairingRequest{PairingId: t.pairingID}, parentTarget(t, 0))
 	case cancelInitRPC:
 		t.cleanupDraft(e)
 	case cancelInitClear:
@@ -986,7 +986,7 @@ func (t *startJoinPairingTask) step(e *Engine, ev *secEvent) error {
 		e.waitKeyGen(keyEphemX, t.ephemSlot, false, t, 0)
 	case joinStartKeyEphem:
 		t.ephemPub, t.cleanLevel, t.stage = ev.bytes, 3, joinStartPeek
-		e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PEEK_PAIRING, t.server, "", &v1.PeekPairingRequest{Code: t.code, ProtocolVersion: e.relayVersion}, t)
+		e.waitProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_PEEK_PAIRING, t.server, "", &v1.PeekPairingRequest{Code: t.code, ProtocolVersion: e.relayVersion}, t)
 	case joinStartPeek:
 		var pr v1.PeekPairingResponse
 		if pr.Unmarshal(ev.bytes) != nil || pr.PairingId == "" || len(pr.Commit) != 32 {
@@ -1006,7 +1006,7 @@ func (t *startJoinPairingTask) step(e *Engine, ev *secEvent) error {
 		e.writeStorageCAS(bktCand, PairingCandidateStorageKey(t.server, pr.PairingId), "", e.nextWorkflowToken(), false, candBytes, t)
 	case joinStartSaveCand:
 		t.cleanLevel, t.stage = 4, joinStartRPC
-		e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_JOIN_PAIRING, t.server, "", &v1.JoinPairingRequest{
+		e.waitProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_JOIN_PAIRING, t.server, "", &v1.JoinPairingRequest{
 			Code: t.code, JoinerPublic: slices.Clone(t.ephemPub), JoinerKind: v1.DeviceKind_DEVICE_KIND_CLIENT,
 			DevicePublicKey: slices.Clone(t.edPub), DeviceHpkePublicKey: slices.Clone(t.xPub), ProtocolVersion: e.relayVersion,
 		}, t)
@@ -1062,7 +1062,7 @@ func (e *Engine) cancelJoinPairingAction(actionID uint64, pairingID string) {
 	}
 	e.discardJoinSessionKeys(sess)
 	e.fireDeleteStorage(bktCand, PairingCandidateStorageKey(sess.server, sess.pairingID))
-	e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_CANCEL_PAIRING, sess.server, "", &v1.CancelPairingRequest{
+	e.waitProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_CANCEL_PAIRING, sess.server, "", &v1.CancelPairingRequest{
 		PairingId: sess.pairingID, CandidateToken: sess.candidateToken,
 	}, &cancelJoinPairingTask{actionID: actionID})
 }
@@ -1124,7 +1124,7 @@ func (e *Engine) pollJoinState(pairingID string, want v1.PairingState) {
 		e.cancelSecurityPollTimer()
 		return
 	}
-	e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_PAIRING, sess.server, "", &v1.GetPairingRequest{
+	e.waitProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_PAIRING, sess.server, "", &v1.GetPairingRequest{
 		PairingId: sess.pairingID, CandidateToken: sess.candidateToken,
 	}, &pollJoinTask{pairingID: pairingID, want: want, sess: sess})
 }
@@ -1299,7 +1299,7 @@ func (t *pollJoinTask) step(e *Engine, ev *secEvent) error {
 				Platform: sess.platform, Description: sess.description,
 			}); env != nil {
 				t.stage = pollJoinSendMeta
-				e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_PAIRING, sess.server, "", &v1.GetPairingRequest{
+				e.waitProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_PAIRING, sess.server, "", &v1.GetPairingRequest{
 					PairingId: sess.pairingID, CandidateToken: sess.candidateToken, JoinerMeta: env,
 				}, t)
 				return nil
@@ -1365,7 +1365,7 @@ func (e *Engine) startResumeRegistration(fgGen uint64, target taskTarget) {
 		e.okTarget(target, nil)
 		return
 	}
-	e.waitRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_REGISTER_DEVICE, intent.Server, "", intent.RegisterRequest, &resumeRegistrationTask{
+	e.waitRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_REGISTER_DEVICE, intent.Server, "", intent.RegisterRequest, &resumeRegistrationTask{
 		taskBase: taskBase{fgGen: fgGen, target: target}, intent: intent,
 	}, 0)
 }
@@ -1378,7 +1378,7 @@ func (t *resumeRegistrationTask) commitIntent(e *Engine) error {
 		}
 	}
 	if intent.PairingID != "" && intent.CandidateToken != "" {
-		e.fireProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_PAIRING, intent.Server, "", &v1.GetPairingRequest{
+		e.fireProtoRPC(corev1.RelayRpcMethod_RELAY_RPC_METHOD_GET_PAIRING, intent.Server, "", &v1.GetPairingRequest{
 			PairingId: intent.PairingID, CandidateToken: intent.CandidateToken, Received: true,
 		})
 	}

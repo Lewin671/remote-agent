@@ -213,33 +213,45 @@ message SecurityOpResultEffect {
 // ---- Demo/Gallery Mode Seeding (permanently locked out once real security is initialized) ----
 
 message DemoMachine {
+  reserved 4;
+  reserved "meta";
   string machine_id = 1;
   bool online = 2;
   int64 last_seen_ms = 3;
-  remoteagent.v1.MachineMeta meta = 4;
+  bytes raw_meta = 5;
 }
 
 message DemoSession {
+  reserved 6, 7;
+  reserved "meta", "checkpoint";
   string session_id = 1;
   string machine_id = 2;
   uint64 last_seq = 3;
   int64 updated_ms = 4;
   int64 listed_ended_ms = 5;
-  remoteagent.v1.Session meta = 6;
-  remoteagent.v1.LiveSnapshot checkpoint = 7;
+  bytes raw_meta = 8;
+  bytes raw_checkpoint = 9;
 }
 
 message DemoDevice {
+  reserved 5;
+  reserved "meta";
   string device_id = 1;
   remoteagent.v1.DeviceKind kind = 2;
   int64 created_ms = 3;
   int64 last_seen_ms = 4;
-  remoteagent.v1.DeviceMeta meta = 5;
+  bytes raw_meta = 6;
 }
 
 message DemoSessionEvents {
+  reserved 2;
+  reserved "events";
   string session_id = 1;
-  repeated remoteagent.v1.Event events = 2;
+  repeated bytes raw_events = 3;
+  bool retired = 4;
+  bool unavailable = 5;
+  string load_error = 6;
+  bool replace = 7;
 }
 
 message DemoSecurity {
@@ -266,21 +278,36 @@ message DemoDirectReport {
 }
 
 message SeedDemoWorldEvent {
+  reserved 4;
+  reserved "prefs";
   repeated DemoMachine machines = 1;
   repeated DemoSession sessions = 2;
   repeated DemoDevice devices = 3;
-  remoteagent.v1.ProjectPrefs prefs = 4;
   repeated DemoSessionEvents session_events = 5;
   DemoSecurity security = 6;
   repeated DemoDirectReport direct_reports = 7;
   bool clear_direct_reports = 8;
+  bytes raw_prefs = 9;
+  repeated string removed_machine_ids = 10;
+  repeated string removed_session_ids = 11;
+  bool has_more_sessions = 12;
+  string list_error = 13;
+  bool clear_list_error = 14;
+  string prefs_error = 15;
+  bool clear_prefs_error = 16;
+  uint64 prefs_revision = 17;
+  bool replace_machines = 18;
+  bool replace_sessions = 19;
+  bool replace_devices = 20;
 }
 
 // ---- Wire Cache Helpers ----
 
 message CacheWriteStoredEvents {
+  reserved 2;
+  reserved "events";
   string session_id = 1;
-  repeated remoteagent.v1.StoredEvent events = 2;
+  repeated bytes raw_events = 3;
 }
 
 // ---- S6 Externalized Key Generation, KEM, Discard & CAS Storage ----
@@ -397,55 +424,9 @@ message SecurityStorageResultEvent {
 
 // ---- S6 Unified Security RPC Transport ----
 
-enum SecurityRpcMethod {
-  SECURITY_RPC_METHOD_UNSPECIFIED = 0;
-  SECURITY_RPC_METHOD_GET_SECURITY_STATES = 1;
-  SECURITY_RPC_METHOD_PUT_SECURITY_STATE = 2;
-  SECURITY_RPC_METHOD_PIN_SECURITY_DOMAIN = 3;
-  SECURITY_RPC_METHOD_CREATE_PAIRING = 4;
-  SECURITY_RPC_METHOD_PEEK_PAIRING = 5;
-  SECURITY_RPC_METHOD_JOIN_PAIRING = 6;
-  SECURITY_RPC_METHOD_REVEAL_PAIRING = 7;
-  SECURITY_RPC_METHOD_APPROVE_PAIRING = 8;
-  SECURITY_RPC_METHOD_GET_PAIRING = 9;
-  SECURITY_RPC_METHOD_CANCEL_PAIRING = 10;
-  SECURITY_RPC_METHOD_GET_RECOVERY_CHALLENGE = 11;
-  SECURITY_RPC_METHOD_GET_RECOVERY_CONTEXT = 12;
-  SECURITY_RPC_METHOD_SUBMIT_RECOVERY = 13;
-  SECURITY_RPC_METHOD_COMPLETE_RECOVERY = 14;
-  SECURITY_RPC_METHOD_DELETE_MACHINE_RECORDS = 15;
-  SECURITY_RPC_METHOD_DELETE_ACCOUNT = 16;
-  SECURITY_RPC_METHOD_GET_CHALLENGE = 17;
-  SECURITY_RPC_METHOD_LOGIN = 18;
-  SECURITY_RPC_METHOD_GET_SIGNUP_CHALLENGE = 19;
-  SECURITY_RPC_METHOD_REGISTER_DEVICE = 20;
-  SECURITY_RPC_METHOD_PUT_DEVICE_META = 21;
-  SECURITY_RPC_METHOD_LIST_DEVICES = 22;
-  SECURITY_RPC_METHOD_LIST_MACHINES = 23;
-  SECURITY_RPC_METHOD_GET_ACCOUNT_PREFS = 24;
-  SECURITY_RPC_METHOD_PUT_ACCOUNT_PREFS = 25;
-}
-
-message SecurityRpcEffect {
-  uint64 op_id = 1;
-  SecurityRpcMethod method = 2;
-  string server = 3;
-  string auth_token = 4;
-  bytes request_bytes = 5;
-}
-
 message RpcErrorDetailBytes {
   string type_name = 1;
   bytes value = 2;
-}
-
-message SecurityRpcResultEvent {
-  uint64 op_id = 1;
-  bytes response_bytes = 2;
-  int32 connect_code = 3;
-  string error = 4;
-  bool network_error = 5;
-  repeated RpcErrorDetailBytes error_details = 6;
 }
 
 message SecurityTokenUpdatedEffect {

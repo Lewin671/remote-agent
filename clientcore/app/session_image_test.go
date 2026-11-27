@@ -11,6 +11,7 @@ import (
 
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/internal/test/testrelay"
 	"github.com/Lewin671/remote-agent/clientcore/security"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 	stdv1 "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -128,12 +129,12 @@ func seedSessionInCore(
 		Event: &corev1.Event_CacheBootstrapLoaded{
 			CacheBootstrapLoaded: &corev1.CacheBootstrapLoadedEvent{
 				OpId: 1,
-				WireSessions: []*v1.RemoteSession{{
+				RawSessions: testrelay.MustRawSlice([]*v1.RemoteSession{{
 					SessionId: sid,
 					MachineId: machine.id,
 					Key:       keyEnv,
 					Meta:      metaEnv,
-				}},
+				}}),
 			},
 		},
 	})
@@ -424,11 +425,11 @@ func TestSessionImageNegativeCryptoSniffAndUntrustedCache(t *testing.T) {
 		},
 	})
 	for _, eff := range pumpCoreSecurityEffects(t, c, phone, secStore, nowMs+200, syncBatch) {
-		if rpc := eff.GetSecurityRpc(); rpc != nil {
+		if rpc := eff.GetRelayRpc(); rpc != nil {
 			r2 := c.Dispatch(&corev1.Event{
 				NowMs: nowMs + 201, MonoMs: 2201,
-				Event: &corev1.Event_SecurityRpcResult{
-					SecurityRpcResult: &corev1.SecurityRpcResultEvent{OpId: rpc.OpId, ResponseBytes: s2RespBytes},
+				Event: &corev1.Event_RelayRpcResult{
+					RelayRpcResult: &corev1.RelayRpcResultEvent{OpId: rpc.OpId, ResponseBytes: s2RespBytes},
 				},
 			})
 			pumpCoreSecurityEffects(t, c, phone, secStore, nowMs+201, r2)

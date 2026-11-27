@@ -2,27 +2,35 @@
   "steps": [
     {
       "event": {
-        "nowMs": "1791078060000",
         "clockUpdated": {
-          "nowMs": "1791078060000",
-          "todayStartMs": "1791043200000",
-          "yesterdayStartMs": "1790956800000",
-          "weekStartMs": "1790524800000",
-          "nowYear": 2026,
           "months": [
             {
-              "year": 2026,
               "month": 10,
-              "startMs": "1790812800000"
+              "startMs": "1790812800000",
+              "year": 2026
             }
-          ]
-        }
+          ],
+          "nowMs": "1791078060000",
+          "nowYear": 2026,
+          "todayStartMs": "1791043200000",
+          "weekStartMs": "1790524800000",
+          "yesterdayStartMs": "1790956800000"
+        },
+        "nowMs": "1791078060000"
       }
     },
     {
       "event": {
         "nowMs": "1791078060000",
+        "seedDemoWorld": {
+          "clearDirectReports": true
+        }
+      }
+    },
+    {
+      "event": {
         "monoMs": "1000",
+        "nowMs": "1791078060000",
         "randomIds": [
           "live-req-1",
           "live-att-1",
@@ -33,15 +41,15 @@
           "r7",
           "r8"
         ],
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START"
+        },
         "unitFloats": [
           0.5,
           0.5,
           0.5,
           0.5
-        ],
-        "syncLifecycle": {
-          "kind": "SYNC_LIFECYCLE_KIND_START"
-        }
+        ]
       }
     },
     {
@@ -49,23 +57,14 @@
         "nowMs": "1791078060010",
         "seedDemoWorld": {
           "security": {
-            "isMember": true,
-            "selfDeviceId": "dev-1",
             "authorityDeviceId": "dev-1",
+            "isMember": true,
             "leaseEndMs": "1791164460000",
+            "selfDeviceId": "dev-1",
             "trustedMachineIds": [
               "m1"
             ]
           }
-        }
-      }
-    },
-    {
-      "event": {
-        "nowMs": "1791078060020",
-        "tokenResult": {
-          "opId": "2",
-          "token": "tok-1"
         }
       }
     },
@@ -81,37 +80,25 @@
     {
       "event": {
         "nowMs": "1791078060040",
-        "listsFetched": {
-          "opId": "3",
+        "seedDemoWorld": {
+          "clearListError": true,
           "machines": [
             {
               "machineId": "m1",
               "online": true,
-              "meta": {
-                "hostname": "MacBook",
-                "protocolVersion": 17,
-                "agents": [
-                  {
-                    "agent": "AGENT_CODEX",
-                    "defaultMode": "APPROVAL_MODE_ASK"
-                  }
-                ]
-              }
+              "rawMeta": "CgdNYWNCb29rSgQIASABYBE="
             }
           ],
+          "replaceDevices": true,
+          "replaceMachines": true,
+          "replaceSessions": true,
           "sessions": [
             {
-              "sessionId": "s1",
-              "machineId": "m1",
               "lastSeq": "2",
-              "updatedMs": "1791078000000",
-              "meta": {
-                "id": "s1",
-                "cwd": "/Users/me/Code/alpha",
-                "agent": "AGENT_CODEX",
-                "status": "SESSION_STATUS_RUNNING",
-                "title": "Build worker"
-              }
+              "machineId": "m1",
+              "rawMeta": "CgJzMRIUL1VzZXJzL21lL0NvZGUvYWxwaGEgA3oMQnVpbGQgd29ya2VyyAEB",
+              "sessionId": "s1",
+              "updatedMs": "1791078000000"
             }
           ]
         }
@@ -119,8 +106,8 @@
     },
     {
       "event": {
-        "nowMs": "1791078060050",
         "monoMs": "1100",
+        "nowMs": "1791078060050",
         "sessionWatch": {
           "sessionId": "s1",
           "watched": true
@@ -129,34 +116,12 @@
     },
     {
       "event": {
-        "nowMs": "1791078060060",
-        "monoMs": "1200",
-        "cacheEventsLoaded": {
-          "opId": "5",
-          "sessionId": "s1",
-          "events": [
-            {
-              "seq": "1",
-              "verified": true,
-              "approxBytes": "64"
-            },
-            {
-              "seq": "2",
-              "verified": true,
-              "approxBytes": "64"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "event": {
-        "nowMs": "1791078060100",
         "monoMs": "1300",
+        "nowMs": "1791078060100",
         "streamClosed": {
-          "legId": "1",
+          "error": "drop",
           "errorCode": "unavailable",
-          "error": "drop"
+          "legId": "1"
         }
       },
       "views": [
@@ -172,11 +137,11 @@
     },
     {
       "event": {
-        "nowMs": "1791078070200",
         "monoMs": "11500",
+        "nowMs": "1791078070200",
         "timerFired": {
-          "timerId": "4",
-          "kind": "TIMER_KIND_LINK_GRACE"
+          "kind": "TIMER_KIND_LINK_GRACE",
+          "timerId": "4"
         }
       },
       "views": [
@@ -192,28 +157,18 @@
     },
     {
       "event": {
-        "nowMs": "1791078071000",
         "monoMs": "12300",
+        "nowMs": "1791078071000",
         "timerFired": {
-          "timerId": "5",
-          "kind": "TIMER_KIND_RECONNECT"
+          "kind": "TIMER_KIND_RECONNECT",
+          "timerId": "5"
         }
       }
     },
     {
       "event": {
-        "nowMs": "1791078071010",
-        "monoMs": "12310",
-        "tokenResult": {
-          "opId": "7",
-          "token": "tok-2"
-        }
-      }
-    },
-    {
-      "event": {
-        "nowMs": "1791078071020",
         "monoMs": "12320",
+        "nowMs": "1791078071020",
         "streamReady": {
           "legId": "2",
           "serverTimeMs": "1791078071020"
@@ -222,39 +177,27 @@
     },
     {
       "event": {
-        "nowMs": "1791078071030",
         "monoMs": "12330",
-        "listsFetched": {
-          "opId": "8",
+        "nowMs": "1791078071030",
+        "seedDemoWorld": {
+          "clearListError": true,
           "machines": [
             {
               "machineId": "m1",
               "online": true,
-              "meta": {
-                "hostname": "MacBook",
-                "protocolVersion": 17,
-                "agents": [
-                  {
-                    "agent": "AGENT_CODEX",
-                    "defaultMode": "APPROVAL_MODE_ASK"
-                  }
-                ]
-              }
+              "rawMeta": "CgdNYWNCb29rSgQIASABYBE="
             }
           ],
+          "replaceDevices": true,
+          "replaceMachines": true,
+          "replaceSessions": true,
           "sessions": [
             {
-              "sessionId": "s1",
-              "machineId": "m1",
               "lastSeq": "3",
-              "updatedMs": "1791078071000",
-              "meta": {
-                "id": "s1",
-                "cwd": "/Users/me/Code/alpha",
-                "agent": "AGENT_CODEX",
-                "status": "SESSION_STATUS_RUNNING",
-                "title": "Build worker"
-              }
+              "machineId": "m1",
+              "rawMeta": "CgJzMRIUL1VzZXJzL21lL0NvZGUvYWxwaGEgA3oMQnVpbGQgd29ya2VyyAEB",
+              "sessionId": "s1",
+              "updatedMs": "1791078071000"
             }
           ]
         }
