@@ -104,7 +104,7 @@ func (c *Core) viewSettings(screen *corev1.Screen) (*corev1.ViewModel, bool, err
 		}, true, nil
 
 	case *corev1.Screen_Devices:
-		sv := c.buildSyncState(sync.SyncStateOpts{IncludeDevices: true})
+		sv := c.buildSyncState(sync.SyncStateOpts{IncludeDevices: true, IncludeDirectReady: true})
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_Devices{
 				Devices: screens.BuildDevices(st, sv, extra),

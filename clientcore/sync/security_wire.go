@@ -490,6 +490,7 @@ func (e *Engine) handleSeedDemoWorld(ctx *StepContext, ev *corev1.SeedDemoWorldE
 
 	if ev.ClearDirectReports {
 		e.demoDirectReports = nil
+		clear(e.directReady)
 		ctx.Dirty.MarkDirect()
 	}
 	if len(ev.DirectReports) > 0 {
@@ -502,8 +503,10 @@ func (e *Engine) handleSeedDemoWorld(ctx *StepContext, ev *corev1.SeedDemoWorldE
 			}
 			if dr.Report == nil {
 				delete(e.demoDirectReports, dr.MachineId)
+				delete(e.directReady, dr.MachineId)
 			} else {
 				e.demoDirectReports[dr.MachineId] = dr
+				e.directReady[dr.MachineId] = dr.Enabled && dr.Report.State == corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED
 			}
 		}
 		ctx.Dirty.MarkDirect()
