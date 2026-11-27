@@ -18,7 +18,7 @@ type pathDiag struct {
 	reason                     string
 	iceMs, dtlsMs, openMs, cfm atomic.Int64 // 0 = not reached, else ms+1
 	probeMs                    atomic.Int64 // first probe from the peer, ms+1
-	echoed, unready            atomic.Int64 // probes answered / dropped because this side was not yet confirmed
+	echoed, unready            atomic.Int64 // probes answered / dropped because the path was no longer valid
 	iceState, connState        atomic.Value // last state word
 }
 

@@ -916,6 +916,19 @@ func diagPcOutcomeText(pc *transport.PcData) *corev1.Text {
 	return diagCloseCauseText(pc.CloseCause, pc.Probes.Missed)
 }
 
+// closeCauseRank orders how much a cause tells the user: a specific cause beats
+// the generic local-engine close, which beats no cause.
+func closeCauseRank(c transport.CloseCause) int {
+	switch c {
+	case transport.CloseNone:
+		return 0
+	case transport.CloseEngine:
+		return 1
+	default:
+		return 2
+	}
+}
+
 func diagRoundDropSummary(r *transport.RoundData) *corev1.Text {
 	if r == nil || !r.HasEstablished {
 		return nil
@@ -926,10 +939,8 @@ func diagRoundDropSummary(r *transport.RoundData) *corev1.Text {
 		if !pc.HasMark[transport.MarkReady] || !pc.HasClosed {
 			continue
 		}
-		if best == nil ||
-			(best.CloseCause == transport.CloseNone && pc.CloseCause != transport.CloseNone) ||
-			(pc.CloseCause != transport.CloseNone && best.CloseCause == transport.CloseEngine && pc.CloseCause != transport.CloseEngine) ||
-			pc.LivedMs > best.LivedMs {
+		if best == nil || closeCauseRank(pc.CloseCause) > closeCauseRank(best.CloseCause) ||
+			closeCauseRank(pc.CloseCause) == closeCauseRank(best.CloseCause) && pc.LivedMs > best.LivedMs {
 			best = pc
 		}
 	}

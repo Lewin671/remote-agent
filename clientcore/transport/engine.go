@@ -676,11 +676,7 @@ func (e *Engine) ended(now int64, ev RoundEnded) {
 	}
 	p.paths = [3]pathState{}
 	delete(e.rounds, p.id)
-	cause := CloseNone
-	if ev.TimedOut && !p.established {
-		cause = CloseTimeout
-	}
-	e.finished(now, p, ev.TimedOut, cause)
+	e.finished(now, p, ev.TimedOut, CloseNone)
 	e.closed(now, p, UseBoth)
 }
 

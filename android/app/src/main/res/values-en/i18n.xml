@@ -2130,7 +2130,7 @@
     <string name="transport_diag_count">"×%1$d"</string>
     <string name="transport_diag_dtls" formatted="false">"Encryption handshake"</string>
     <string name="transport_diag_explain_generic" formatted="false">"Direct negotiation did not finish within the time budget and will retry when the network changes. Everything currently uses relay automatically with no impact on use."</string>
-    <string name="transport_diag_explain_lost" formatted="false">"Direct connected briefly and then dropped. Everything currently uses relay automatically with no impact on use."</string>
+    <string name="transport_diag_explain_lost" formatted="false">"Direct connected, then dropped. Everything now uses the relay automatically, so nothing is affected."</string>
     <string name="transport_diag_explain_lost_detail">"%1$s. Everything currently uses relay automatically with no impact on use."</string>
     <string name="transport_diag_explain_nat" formatted="false">"Both devices are behind restrictive networks such as cellular NAT or a corporate LAN. Everything currently uses relay automatically with no impact on use."</string>
     <string name="transport_diag_explain_no_reply" formatted="false">"The computer did not reply to the direct handshake; direct connections may be off there or blocked by a firewall. Everything currently uses relay automatically with no impact on use."</string>

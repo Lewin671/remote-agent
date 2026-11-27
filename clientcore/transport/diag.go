@@ -146,7 +146,7 @@ func ParseCloseCause(reason string) CloseCause {
 	case "dc_closed", "dc0_closed", "dc1_closed", "dc_send_failed", "probe_send_failed",
 		"receive_error", "frame_oversize", "frame_overflow", "frame_conflict", "unexpected_dc":
 		return CloseDCClosed
-	case "pc_closed", "peer_closed", "peer_closed_round", "closed_by_peer":
+	case "peer_closed", "peer_closed_round", "closed_by_peer", "signal_close_action", "signal_closed":
 		return ClosePeerClosed
 	case "network_changed":
 		return CloseNetworkChanged
@@ -156,7 +156,8 @@ func ParseCloseCause(reason string) CloseCause {
 		return CloseDisabled
 	case "round_deadline", "timeout":
 		return CloseTimeout
-	case "engine", "engine_close_path", "round_ended", "core_close", "replaced", "retired":
+	// pc_closed: the native PeerConnection reached CLOSED, which only a local close() does.
+	case "engine", "engine_close_path", "round_ended", "core_close", "replaced", "retired", "pc_closed":
 		return CloseEngine
 	default:
 		return CloseNone

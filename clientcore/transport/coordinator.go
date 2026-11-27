@@ -1261,7 +1261,7 @@ func (c *Coordinator) OnPcClosed(now int64, pcID uint64, reason string) []CoordE
 	c.handleEngine(now, DiagPathEnd{
 		Round:  r.id,
 		Use:    b.use,
-		Cause:  b.inferCloseCause(reason, ClosePeerClosed),
+		Cause:  b.inferCloseCause(reason, CloseNone),
 		Probes: b.probeStats(),
 	})
 	b.probeSamples = nil

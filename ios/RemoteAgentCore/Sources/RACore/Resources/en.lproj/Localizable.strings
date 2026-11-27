@@ -1724,7 +1724,7 @@
 "transport_diag_count" = "×%1$lld";
 "transport_diag_dtls" = "Encryption handshake";
 "transport_diag_explain_generic" = "Direct negotiation did not finish within the time budget and will retry when the network changes. Everything currently uses relay automatically with no impact on use.";
-"transport_diag_explain_lost" = "Direct connected briefly and then dropped. Everything currently uses relay automatically with no impact on use.";
+"transport_diag_explain_lost" = "Direct connected, then dropped. Everything now uses the relay automatically, so nothing is affected.";
 "transport_diag_explain_lost_detail" = "%1$@. Everything currently uses relay automatically with no impact on use.";
 "transport_diag_explain_nat" = "Both devices are behind restrictive networks such as cellular NAT or a corporate LAN. Everything currently uses relay automatically with no impact on use.";
 "transport_diag_explain_no_reply" = "The computer did not reply to the direct handshake; direct connections may be off there or blocked by a firewall. Everything currently uses relay automatically with no impact on use.";

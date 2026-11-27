@@ -185,7 +185,6 @@ export class DirectChannel {
   private readonly lifetime = new AbortController();
   private confirmed = false;
   private ended = false;
-  private closeReason = "";
   private chain = Promise.resolve();
   private receiveChain = Promise.resolve();
   private verifying: { bytes: number; frames: number } | null = null;
@@ -615,8 +614,6 @@ export class DirectChannel {
   close(reason = "core_close") {
     if (this.ended) return;
     this.ended = true;
-    const closeReason = this.closeReason || reason;
-    this.closeReason = closeReason;
     this.lifetime.abort(new PathChanged());
     clearTimeout(this.tickTimer);
     this.tickTimer = undefined;
@@ -637,7 +634,7 @@ export class DirectChannel {
     for (const [key, part] of this.partial) this.drop(key, part);
     if (this.verifying) this.releaseVerifying(this.verifying);
     for (const raw of this.waiting.splice(0)) this.options.budget.free(this.options.peer, 1, raw.byteLength, 1);
-    cleanup(() => this.pc.close(), () => this.options.closed(closeReason), () => this.releaseReservation());
+    cleanup(() => this.pc.close(), () => this.options.closed(reason), () => this.releaseReservation());
   }
 
   private releaseReservation() {

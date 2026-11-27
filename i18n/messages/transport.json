@@ -3402,8 +3402,8 @@
   },
   {
     "key": "transport.diag_explain_lost",
-    "zh-CN": "直连曾短暂连上，随后断开。当前所有操作都已自动走中继，不影响正常使用。",
-    "en": "Direct connected briefly and then dropped. Everything currently uses relay automatically with no impact on use.",
+    "zh-CN": "直连连上后又断开了。当前所有操作都已自动走中继，不影响正常使用。",
+    "en": "Direct connected, then dropped. Everything now uses the relay automatically, so nothing is affected.",
     "notes": "排障卡说明：直连连上后断开，无具体时长或关闭原因时的兜底解释。",
     "params": {},
     "platforms": [
