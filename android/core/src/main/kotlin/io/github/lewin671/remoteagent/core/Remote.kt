@@ -1,6 +1,5 @@
 package io.github.lewin671.remoteagent.core
 
-import com.connectrpc.ConnectException
 import com.google.protobuf.ByteString
 import io.github.lewin671.remoteagent.core.proto.*
 import io.github.lewin671.remoteagent.core.proto.Event as CoreEvent
@@ -80,7 +79,6 @@ class Remote(
     private val onDismissScheduleNotifications: (List<ScheduleNotificationRef>) -> Unit = {},
     dispatcher: kotlinx.coroutines.CoroutineDispatcher? = null,
     private val socketFactory: WebSocket.Factory? = null,
-    rpcTransport: com.connectrpc.http.HTTPClientInterface? = null,
     private val onSessionRemoved: suspend (String) -> Unit = {},
     private val monotonic: () -> Long = { System.nanoTime() / 1_000_000 },
     private val rtcFactory: RtcFactory? = null,
@@ -191,8 +189,7 @@ class Remote(
             http = http,
             emit = { ev -> coreHost.dispatch(ev) },
             parentScope = scope,
-            rpcTransport = rpcTransport,
-            dispatcher = if (rpcTransport != null) this.dispatcher else Dispatchers.IO,
+            dispatcher = if (dispatcher == null || dispatcher === Dispatchers.Unconfined) Dispatchers.IO else this.dispatcher,
             defaultServer = account.server,
             defaultDeviceId = account.deviceId,
         )
@@ -687,13 +684,12 @@ class Remote(
                     }
                     if (notifyClose && wasCurrent) {
                         val err = streamError.get()
-                        val ce = err as? ConnectException
                         sendEvent {
                             setStreamClosed(
                                 StreamClosedEvent.newBuilder()
                                     .setLegId(legId)
                                     .setPolicyViolation(policyViolation.get())
-                                    .setErrorCode(ce?.code?.name?.lowercase() ?: "")
+                                    .setErrorCode("")
                                     .setError(err?.message ?: "")
                                     .setUnresolvedHost(err != null && unresolvedHost(err)),
                             )

@@ -21,9 +21,3 @@ plugins:
   - remote: buf.build/protocolbuffers/java:v31.1
     out: core/src/main/gen
     opt: lite
-  - remote: buf.build/connectrpc/kotlin:v0.9.0
-    out: core/src/main/gen
-    opt:
-      - generateCallbackMethods=false
-      - generateCoroutineMethods=true
-      - generateBlockingUnaryMethods=false

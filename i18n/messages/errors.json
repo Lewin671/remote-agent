@@ -44,25 +44,6 @@
     "zh-CN": "server 地址无效"
   },
   {
-    "en": "Login expired: {reason}",
-    "key": "errors.android_login_expired",
-    "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
-    "params": {
-      "reason": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "登录失效：{reason}"
-  },
-  {
     "en": "Remote control authorization expired. Cannot save changes, control sessions, or upload new content. {value1} and retry. History remains viewable",
     "key": "errors.android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or",
     "notes": "Android Api 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
@@ -113,25 +94,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "安全状态不可用"
-  },
-  {
-    "en": "Cannot connect to the server: {reason}",
-    "key": "errors.android_server_unavailable_reason",
-    "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
-    "params": {
-      "reason": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "连不上服务器：{reason}"
   },
   {
     "en": "Terminal connection dropped: {reason}",

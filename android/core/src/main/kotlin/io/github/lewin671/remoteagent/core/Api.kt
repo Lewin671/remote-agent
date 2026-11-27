@@ -1,8 +1,6 @@
 // Account identity, HTTP defaults, and error display helpers (relay RPCs run through Core + SecurityExecutor).
 package io.github.lewin671.remoteagent.core
 
-import com.connectrpc.Code
-import com.connectrpc.ConnectException
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -96,16 +94,6 @@ fun errorText(e: Throwable, leaseRenewalAdvice: io.github.lewin671.remoteagent.c
             "clock" -> copy(UiMessages.errorsAndroidThePhoneClockIsAheadOfTheServerMembershipState())
             else -> e.message ?: copy(UiMessages.errorsAndroidSecurityStateUnavailable())
         }
-        is ConnectException -> networkText(e.exception, copy) ?: when (e.code) {
-            Code.UNAVAILABLE -> e.message?.let { copy(UiMessages.errorsAndroidServerUnavailableReason(it)) } ?: copy(UiMessages.connectionNoServer())
-            Code.PERMISSION_DENIED -> if (hasRelayErrorReason(e, io.github.lewin671.remoteagent.proto.RelayErrorReason.RELAY_ERROR_REASON_LOGIN_FAILED)) {
-                copy(UiMessages.errorsTheServerDoesNotRecognizeThisDeviceItMay())
-            } else {
-                e.message ?: e.code.codeName
-            }
-            Code.UNAUTHENTICATED -> copy(UiMessages.errorsAndroidLoginExpired(e.message.orEmpty()))
-            else -> e.message ?: e.code.codeName
-        }
         else -> networkText(e, copy) ?: e.message ?: e.javaClass.simpleName
     }
 }
@@ -114,8 +102,7 @@ fun errorText(e: Throwable, leaseRenewalAdvice: io.github.lewin671.remoteagent.c
  * The server's address did not resolve: on a phone, the network is down whatever the status bar
  * shows.
  */
-fun unresolvedHost(e: Throwable): Boolean =
-    ((e as? ConnectException)?.exception ?: e) is java.net.UnknownHostException
+fun unresolvedHost(e: Throwable): Boolean = e is java.net.UnknownHostException
 
 private fun networkText(e: Throwable?, copy: MessageResolver): String? = when (e) {
     is java.net.UnknownHostException -> copy(UiMessages.errorsAndroidCannotFindTheServerCheckYourNetwork())
@@ -124,20 +111,6 @@ private fun networkText(e: Throwable?, copy: MessageResolver): String? = when (e
     is javax.net.ssl.SSLException -> copy(UiMessages.errorsAndroidSecureConnectionFailed(e.message.orEmpty()))
     else -> null
 }
-
-private fun hasRelayErrorReason(
-    e: ConnectException,
-    reason: io.github.lewin671.remoteagent.proto.RelayErrorReason,
-): Boolean = e.details.any { d ->
-    (d.type == "remoteagent.v1.RelayErrorDetail" || d.type.endsWith("/remoteagent.v1.RelayErrorDetail")) &&
-        runCatching {
-            io.github.lewin671.remoteagent.proto.RelayErrorDetail.parseFrom(d.payload.toByteArray()).reason == reason
-        }.getOrDefault(false)
-}
-
-/** Only meaningful for an error returned by a login attempt. */
-fun loginDenied(error: Throwable): Boolean =
-    error is ConnectException && error.code == Code.PERMISSION_DENIED
 
 internal const val RELAY_EPOCH_HEADER = "Remote-Agent-Relay-Epoch"
 

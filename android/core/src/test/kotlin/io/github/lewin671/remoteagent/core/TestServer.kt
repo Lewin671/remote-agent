@@ -1,9 +1,5 @@
 package io.github.lewin671.remoteagent.core
 
-import com.connectrpc.ProtocolClientConfig
-import com.connectrpc.impl.ProtocolClient
-import com.connectrpc.okhttp.ConnectOkHttpClient
-import com.connectrpc.protocols.NetworkProtocol
 import com.google.protobuf.ByteString
 import com.google.protobuf.Timestamp
 import io.github.lewin671.remoteagent.proto.*
@@ -15,7 +11,6 @@ import io.github.lewin671.remoteagent.proto.Event
 import io.github.lewin671.remoteagent.proto.ForwardReply
 import io.github.lewin671.remoteagent.proto.Header
 import io.github.lewin671.remoteagent.proto.MachineMeta
-import io.github.lewin671.remoteagent.proto.MachineServiceClient
 import io.github.lewin671.remoteagent.proto.PayloadKind
 import io.github.lewin671.remoteagent.proto.PeerFrame
 import io.github.lewin671.remoteagent.proto.PutMachineRequest
@@ -187,17 +182,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
     }
 
     val id = account.deviceId
-    private val api =
-        MachineServiceClient(
-            ProtocolClient(
-                ConnectOkHttpClient(http),
-                ProtocolClientConfig(
-                    host = account.server,
-                    serializationStrategy = LiteProtobufStrategy,
-                    networkProtocol = NetworkProtocol.CONNECT,
-                ),
-            )
-        )
+    private val api = TestApi(account.server, http)
     private var token = ""
     private var ws: WebSocket? = null
     private val ready = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -250,8 +235,12 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                 header(PayloadKind.PAYLOAD_KIND_MACHINE_META).setSeq(metaRev).build(),
                 meta.toByteArray(),
             )
-        api.putMachine(PutMachineRequest.newBuilder().setMeta(env).build(), TestApi.headers(token))
-            .value()
+        api.unary(
+            "/remoteagent.v1.MachineService/PutMachine",
+            PutMachineRequest.newBuilder().setMeta(env).build(),
+            PutMachineResponse::parseFrom,
+            token,
+        )
     }
 
     /**
@@ -273,16 +262,17 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                 header(PayloadKind.PAYLOAD_KIND_SESSION_META).setSessionId(sid).setSeq(rev).build(),
                 info.toBuilder().setId(sid).build().toByteArray(),
             )
-        api.putSession(
-                PutSessionRequest.newBuilder()
-                    .setSessionId(sid)
-                    .setKey(keyEnv)
-                    .setMeta(meta)
-                    .setEndedMs(endedMs)
-                    .build(),
-                TestApi.headers(token),
-            )
-            .value()
+        api.unary(
+            "/remoteagent.v1.MachineService/PutSession",
+            PutSessionRequest.newBuilder()
+                .setSessionId(sid)
+                .setKey(keyEnv)
+                .setMeta(meta)
+                .setEndedMs(endedMs)
+                .build(),
+            PutSessionResponse::parseFrom,
+            token,
+        )
     }
 
     /**
@@ -303,15 +293,16 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                 payload.toByteArray(),
                 sessionKeys.getValue(sid),
             )
-        api.putImage(
-                io.github.lewin671.remoteagent.proto.PutImageRequest.newBuilder()
-                    .setSessionId(sid)
-                    .setImageId(imageId)
-                    .setImage(env)
-                    .build(),
-                TestApi.headers(token),
-            )
-            .value()
+        api.unary(
+            "/remoteagent.v1.MachineService/PutImage",
+            io.github.lewin671.remoteagent.proto.PutImageRequest.newBuilder()
+                .setSessionId(sid)
+                .setImageId(imageId)
+                .setImage(env)
+                .build(),
+            io.github.lewin671.remoteagent.proto.PutImageResponse::parseFrom,
+            token,
+        )
     }
 
     /** Appends events to a session, numbering them. */
@@ -343,11 +334,12 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                     )
                     .build()
             }
-        api.uploadEvents(
-                UploadEventsRequest.newBuilder().setSessionId(sid).addAllEvents(stored).build(),
-                TestApi.headers(token),
-            )
-            .value()
+        api.unary(
+            "/remoteagent.v1.MachineService/UploadEvents",
+            UploadEventsRequest.newBuilder().setSessionId(sid).addAllEvents(stored).build(),
+            UploadEventsResponse::parseFrom,
+            token,
+        )
     }
 
     /** Connects the stream and answers forwarded commands. */

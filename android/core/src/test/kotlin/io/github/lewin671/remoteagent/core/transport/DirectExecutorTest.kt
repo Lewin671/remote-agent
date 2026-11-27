@@ -23,6 +23,8 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -450,12 +452,10 @@ class DirectExecutorTest {
                 persist = true,
             )
         }
-        val rpcTransport = object : com.connectrpc.http.HTTPClientInterface {
-            override fun unary(
-                request: com.connectrpc.http.UnaryHTTPRequest,
-                onResult: (com.connectrpc.http.HTTPResponse) -> Unit,
-            ): () -> Unit {
-                val method = request.methodSpec.path.substringAfterLast('/')
+        val fakeHttp = okhttp3.OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val req = chain.request()
+                val method = req.url.encodedPath.substringAfterLast('/')
                 val body = when (method) {
                     "GetChallenge" -> io.github.lewin671.remoteagent.proto.GetChallengeResponse.newBuilder()
                         .setChallenge(ByteString.copyFrom(ByteArray(32) { 1 }))
@@ -468,23 +468,16 @@ class DirectExecutorTest {
                         .toByteArray()
                     else -> ByteArray(0)
                 }
-                onResult(
-                    com.connectrpc.http.HTTPResponse(
-                        trailers = emptyMap(),
-                        status = 200,
-                        headers = mapOf("content-type" to listOf("application/proto")),
-                        message = okio.Buffer().write(body),
-                    ),
-                )
-                return {}
+                okhttp3.Response.Builder()
+                    .request(req)
+                    .protocol(okhttp3.Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .header("content-type", "application/proto")
+                    .body(body.toResponseBody("application/proto".toMediaType()))
+                    .build()
             }
-
-            override fun stream(
-                request: com.connectrpc.http.HTTPRequest,
-                duplex: Boolean,
-                onResult: suspend (com.connectrpc.StreamResult<okio.Buffer>) -> Unit,
-            ): com.connectrpc.http.Stream = error("unused")
-        }
+            .build()
         val wsFactory = okhttp3.WebSocket.Factory { req, listener ->
             val fakeWs = object : okhttp3.WebSocket {
                 override fun request(): okhttp3.Request = req
@@ -503,11 +496,10 @@ class DirectExecutorTest {
                 server = "https://example.com",
                 deviceId = "0123456789abcdef0123456789abcdef",
             ),
-            http = okhttp3.OkHttpClient(),
+            http = fakeHttp,
             securityStore = store,
             dispatcher = remoteDispatcher,
             socketFactory = wsFactory,
-            rpcTransport = rpcTransport,
         )
         remote.directSignalSink = { raw -> signalReceived.complete(raw) }
         try {

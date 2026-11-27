@@ -62,14 +62,6 @@ val extractCorebindJar by tasks.registering(Copy::class) {
 dependencies {
     compileOnly(files(corebindClassesJar) { builtBy(extractCorebindJar) })
     api(libs.protobuf.javalite)
-    // connect-kotlin declares moshi-kotlin, the reflective adapter factory,
-    // but reads its JSON with generated adapters, which need Moshi alone.
-    // See LiteProtobuf.kt for why kotlin-reflect is kept out.
-    api(libs.connect.okhttp) {
-        exclude(group = "com.squareup.moshi", module = "moshi-kotlin")
-        exclude(group = "org.jetbrains.kotlin", module = "kotlin-reflect")
-    }
-    runtimeOnly(libs.moshi)
     api(libs.okhttp)
     api(libs.coroutines.core)
 

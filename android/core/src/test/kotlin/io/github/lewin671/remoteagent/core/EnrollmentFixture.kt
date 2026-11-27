@@ -10,28 +10,26 @@ private const val PAIR_APPROVAL_CONTEXT = "remote-agent/v1/pair-approval\u0000"
 
 /** Test helper: logs in using the host [SecurityStoreV4] device Ed25519 key. */
 internal suspend fun loginWithStore(api: TestApi, deviceId: String, store: SecurityStoreV4): LoginResponse {
-    val ch = api.auth
-        .getChallenge(
-            GetChallengeRequest.newBuilder().setDeviceId(deviceId).build(),
-            emptyMap(),
-        )
-        .value()
+    val ch = api.unary(
+        "/remoteagent.v1.AuthService/GetChallenge",
+        GetChallengeRequest.newBuilder().setDeviceId(deviceId).build(),
+        GetChallengeResponse::parseFrom,
+    )
     val sig = store.signKey(
         io.github.lewin671.remoteagent.core.proto.SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_ED,
         "",
         loginMessage(ch.challenge.toByteArray()),
     )
-    return api.auth
-        .login(
-            LoginRequest.newBuilder()
-                .setProtocolVersion(RELAY_PROTOCOL_VERSION)
-                .setDeviceId(deviceId)
-                .setChallenge(ch.challenge)
-                .setSignature(ByteString.copyFrom(sig))
-                .build(),
-            emptyMap(),
-        )
-        .value()
+    return api.unary(
+        "/remoteagent.v1.AuthService/Login",
+        LoginRequest.newBuilder()
+            .setProtocolVersion(RELAY_PROTOCOL_VERSION)
+            .setDeviceId(deviceId)
+            .setChallenge(ch.challenge)
+            .setSignature(ByteString.copyFrom(sig))
+            .build(),
+        LoginResponse::parseFrom,
+    )
 }
 
 /** Creates a new account with its authority client and pins the genesis, as the app does. */
@@ -56,33 +54,38 @@ suspend fun newAuthorityAccount(
         .toByteArray()
     val sig = Corebind.ed25519Sign(root, REGISTER_CONTEXT.toByteArray() + reg)
     val api = TestApi(server, http)
-    val res = api.auth.registerDevice(
+    val res = api.unary(
+        "/remoteagent.v1.AuthService/RegisterDevice",
         RegisterDeviceRequest.newBuilder()
             .setRegistration(ByteString.copyFrom(reg))
             .setSignature(ByteString.copyFrom(sig))
             .setSetupToken(setupToken)
             .setProtocolVersion(RELAY_PROTOCOL_VERSION)
             .build(),
-        emptyMap(),
-    ).value()
+        RegisterDeviceResponse::parseFrom,
+    )
     check(res.deviceId == deviceId) { "registered deviceId mismatch" }
 
     val phone = Account(server, deviceId, accountId)
     val (fixture, genesis) = TestSecurity.initialize(phone, edSeed = edSeed, rootSeed = root, recovery = recoverySeed)
     val token = loginWithStore(api, phone.deviceId, fixture.stores.getValue(phone.deviceId)).token
-    api.client.pinSecurityDomain(
+    api.unary(
+        "/remoteagent.v1.ClientService/PinSecurityDomain",
         PinSecurityDomainRequest.newBuilder()
             .setGenesisState(ByteString.copyFrom(genesis))
             .build(),
-        TestApi.headers(token),
-    ).value()
+        PinSecurityDomainResponse::parseFrom,
+        token,
+    )
     val record = fixture.record(phone.deviceId)
-    api.client.putSecurityState(
+    api.unary(
+        "/remoteagent.v1.ClientService/PutSecurityState",
         PutSecurityStateRequest.newBuilder()
             .setLease(ByteString.copyFrom(record.lease))
             .build(),
-        TestApi.headers(token),
-    ).value()
+        PutSecurityStateResponse::parseFrom,
+        token,
+    )
     fixture.syncStoresForAll()
     return phone
 }
@@ -113,13 +116,15 @@ suspend fun fixtureMember(
     val (record, state) = security.enroll(seed, kind)
     val api = TestApi(authority.server, http)
     val authToken = loginWithStore(api, authority.deviceId, security.stores.getValue(authority.deviceId)).token
-    api.client.putSecurityState(
+    api.unary(
+        "/remoteagent.v1.ClientService/PutSecurityState",
         PutSecurityStateRequest.newBuilder()
             .setLease(ByteString.copyFrom(record.lease))
             .addStates(SecurityState.newBuilder().setState(ByteString.copyFrom(state)).build())
             .build(),
-        TestApi.headers(authToken),
-    ).value()
+        PutSecurityStateResponse::parseFrom,
+        authToken,
+    )
 
     val now = System.currentTimeMillis()
     val candPub = Corebind.ed25519PublicKey(seed)
@@ -142,15 +147,16 @@ suspend fun fixtureMember(
         .build()
         .toByteArray()
     val approvalSig = Corebind.ed25519Sign(authoritySeed, PAIR_APPROVAL_CONTEXT.toByteArray() + approval)
-    val regRes = api.auth.registerDevice(
+    val regRes = api.unary(
+        "/remoteagent.v1.AuthService/RegisterDevice",
         RegisterDeviceRequest.newBuilder()
             .setRegistration(ByteString.copyFrom(reg))
             .setApproval(ByteString.copyFrom(approval))
             .setApprovalSignature(ByteString.copyFrom(approvalSig))
             .setProtocolVersion(RELAY_PROTOCOL_VERSION)
             .build(),
-        emptyMap(),
-    ).value()
+        RegisterDeviceResponse::parseFrom,
+    )
     check(regRes.deviceId == record.member) { "member id mismatch" }
 
     security.seedMemberStore(record, seed)
@@ -165,12 +171,14 @@ suspend fun removeAsAuthority(phone: Account, target: String, http: OkHttpClient
     val updated = security.record(phone.deviceId)
     val api = TestApi(phone.server, http)
     val token = loginWithStore(api, phone.deviceId, security.stores.getValue(phone.deviceId)).token
-    api.client.putSecurityState(
+    api.unary(
+        "/remoteagent.v1.ClientService/PutSecurityState",
         PutSecurityStateRequest.newBuilder()
             .setLease(ByteString.copyFrom(updated.lease))
             .addStates(SecurityState.newBuilder().setState(ByteString.copyFrom(nextState)).build())
             .build(),
-        TestApi.headers(token),
-    ).value()
+        PutSecurityStateResponse::parseFrom,
+        token,
+    )
     security.syncStoresForAll()
 }

@@ -1,15 +1,6 @@
 package io.github.lewin671.remoteagent.core
 
-import com.connectrpc.Code
-import com.connectrpc.Idempotency
-import com.connectrpc.MethodSpec
-import com.connectrpc.StreamType
-import com.connectrpc.http.HTTPClientInterface
-import com.connectrpc.http.HTTPMethod
-import com.connectrpc.http.UnaryHTTPRequest
 import com.google.protobuf.ByteString
-import io.ktor.http.Url
-import okio.Buffer
 import io.github.lewin671.remoteagent.core.proto.Effect
 import io.github.lewin671.remoteagent.core.proto.EffectBatch
 import io.github.lewin671.remoteagent.core.proto.Event as CoreEvent
@@ -146,11 +137,9 @@ private data class ParsedRpcError(
 private fun parseConnectErrorBody(
     httpCode: Int,
     bodyBytes: ByteArray,
-    causeCode: Int? = null,
     causeMsg: String? = null,
-    fallbackDetails: List<RpcErrorDetailBytes> = emptyList(),
 ): ParsedRpcError {
-    var code = causeCode ?: connectCodeFromHttpStatus(httpCode)
+    var code = connectCodeFromHttpStatus(httpCode)
     var msg = causeMsg?.takeIf { it.isNotEmpty() } ?: "HTTP $httpCode"
     val details = mutableListOf<RpcErrorDetailBytes>()
     val text = runCatching { bodyBytes.decodeToString() }.getOrNull()
@@ -174,9 +163,6 @@ private fun parseConnectErrorBody(
             }
         }
     }
-    if (details.isEmpty() && fallbackDetails.isNotEmpty()) {
-        details += fallbackDetails
-    }
     return ParsedRpcError(code, msg, details)
 }
 
@@ -184,11 +170,9 @@ internal fun parseRelayRpcError(
     opId: Long,
     httpCode: Int,
     bodyBytes: ByteArray,
-    causeCode: Int? = null,
     causeMsg: String? = null,
-    fallbackDetails: List<RpcErrorDetailBytes> = emptyList(),
 ): RelayRpcResultEvent {
-    val parsed = parseConnectErrorBody(httpCode, bodyBytes, causeCode, causeMsg, fallbackDetails)
+    val parsed = parseConnectErrorBody(httpCode, bodyBytes, causeMsg)
     return RelayRpcResultEvent.newBuilder()
         .setOpId(opId)
         .setConnectCode(parsed.code)
@@ -209,7 +193,6 @@ class SecurityExecutor(
     private val emit: (CoreEvent) -> Unit,
     parentScope: CoroutineScope,
     private val allowPlainHttp: Boolean = true,
-    private val rpcTransport: HTTPClientInterface? = null,
     dispatcher: CoroutineDispatcher = Dispatchers.IO,
     @Volatile private var defaultServer: String = "",
     @Volatile private var defaultDeviceId: String = "",
@@ -386,7 +369,6 @@ class SecurityExecutor(
         attemptHeader = attemptHeader,
         requestBytes = requestBytes,
         allowPlainHttp = allowPlainHttp,
-        rpcTransport = rpcTransport,
         opId = opId,
         preconfiguredHttp = true,
     )
@@ -420,7 +402,7 @@ private fun relayRpcErr(
         }
         .build()
 
-/** Executes a single unary relay ConnectRPC/HTTP call reusing [SecurityExecutor]'s path table and redirect/auth hardening. */
+/** Executes a single unary relay HTTP+protobuf call reusing [SecurityExecutor]'s path table and redirect/auth hardening. */
 suspend fun executeRelayRpcUnary(
     http: OkHttpClient,
     method: RelayRpcMethod,
@@ -430,7 +412,6 @@ suspend fun executeRelayRpcUnary(
     attemptHeader: String = "",
     requestBytes: ByteArray = ByteArray(0),
     allowPlainHttp: Boolean = true,
-    rpcTransport: HTTPClientInterface? = null,
     opId: Long = 0L,
     preconfiguredHttp: Boolean = false,
 ): RelayRpcResultEvent {
@@ -441,66 +422,6 @@ suspend fun executeRelayRpcUnary(
     }
     val url = Secret.checkServer(server, allowPlainHttp = allowPlainHttp).trimEnd('/') + path
     val isHealthz = method == RelayRpcMethod.RELAY_RPC_METHOD_HEALTHZ
-    if (rpcTransport != null) {
-        val headers = buildMap<String, List<String>> {
-            if (isHealthz) {
-                put("Cache-Control", listOf("no-store"))
-            } else {
-                put("Content-Type", listOf("application/proto"))
-                put("Connect-Protocol-Version", listOf("1"))
-                if (authToken.isNotEmpty()) put("Authorization", listOf("Bearer $authToken"))
-                if (attemptHeader.isNotEmpty()) put("Remote-Agent-Attempt", listOf(attemptHeader))
-            }
-        }
-        val unaryReq = UnaryHTTPRequest(
-            url = Url(url),
-            contentType = if (isHealthz) "" else "application/proto",
-            timeout = null,
-            headers = headers,
-            methodSpec = MethodSpec(
-                path = path,
-                requestClass = ByteArray::class,
-                responseClass = ByteArray::class,
-                streamType = StreamType.UNARY,
-                idempotency = Idempotency.UNKNOWN,
-            ),
-            message = if (isHealthz) Buffer() else Buffer().write(requestBytes),
-            httpMethod = if (isHealthz) HTTPMethod.GET else HTTPMethod.POST,
-        )
-        return suspendCancellableCoroutine { cont ->
-            val cancel = rpcTransport.unary(unaryReq) { res ->
-                val bodyBytes = runCatching { res.message.readByteArray() }.getOrElse { ByteArray(0) }
-                val epoch = res.headers.entries
-                    .firstOrNull { it.key.equals(RELAY_EPOCH_HEADER, ignoreCase = true) }
-                    ?.value?.firstOrNull().orEmpty()
-                val cause = res.cause
-                val status = res.status
-                val causeDetails = cause?.details?.mapNotNull { d ->
-                    val bytes = d.payload.toByteArray()
-                    if (d.type.isEmpty() || bytes.isEmpty()) null
-                    else RpcErrorDetailBytes.newBuilder().setTypeName(d.type).setValue(ByteString.copyFrom(bytes)).build()
-                }.orEmpty()
-                val result = when {
-                    status != null && status in 200..299 && cause == null -> relayRpcOk(opId, bodyBytes, epoch)
-                    cause != null && status == null -> relayRpcErr(
-                        opId = opId,
-                        code = cause.code.value,
-                        msg = cause.message ?: cause.code.codeName,
-                        relayEpoch = epoch,
-                        networkError = cause.code == Code.UNAVAILABLE || cause.code == Code.DEADLINE_EXCEEDED,
-                        unresolvedHost = cause.exception is UnknownHostException,
-                        errorDetails = causeDetails,
-                    )
-                    else -> {
-                        val parsed = parseConnectErrorBody(status ?: 502, bodyBytes, cause?.code?.value, cause?.message, causeDetails)
-                        relayRpcErr(opId, parsed.code, parsed.message, relayEpoch = epoch, errorDetails = parsed.details)
-                    }
-                }
-                if (cont.isActive) cont.resume(result)
-            }
-            cont.invokeOnCancellation { cancel() }
-        }
-    }
     val reqBuilder = Request.Builder().url(url)
     if (isHealthz) {
         reqBuilder.header("Cache-Control", "no-store").get()

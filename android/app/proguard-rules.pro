@@ -4,7 +4,6 @@
 -dontwarn org.conscrypt.**
 -dontwarn org.openjsse.**
 -dontwarn javax.naming.**
--dontwarn io.ktor.**
 -dontwarn org.slf4j.**
 # WebRTC: libjingle_peerconnection's JNI_OnLoad and callbacks look classes up by
 # name (org.jni_zero.JniZero, WebRtcClassLoader and others), so R8 must not strip or rename any of

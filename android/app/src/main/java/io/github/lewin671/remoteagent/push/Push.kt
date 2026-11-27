@@ -167,9 +167,7 @@ object Push {
             throw e
         } catch (e: Exception) {
             val retry = e is java.io.IOException ||
-                (e is io.github.lewin671.remoteagent.core.PushRpcException && e.retryable) ||
-                (e is com.connectrpc.ConnectException &&
-                    e.code in setOf(com.connectrpc.Code.UNKNOWN, com.connectrpc.Code.UNAVAILABLE, com.connectrpc.Code.DEADLINE_EXCEEDED))
+                (e is io.github.lewin671.remoteagent.core.PushRpcException && e.retryable)
             val problem = when {
                 retry && autoRetry -> sessionText(UiMessages.notificationsAndroidCouldNotSyncTheNotificationSubscriptionRetryingAutomatically())
                 retry -> sessionText(UiMessages.notificationsAndroidCouldNotSyncTheNotificationSubscriptionRetry())

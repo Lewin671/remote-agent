@@ -1,7 +1,5 @@
 package io.github.lewin671.remoteagent.core
 
-import com.connectrpc.StreamResult
-import com.connectrpc.http.*
 import com.google.protobuf.ByteString
 import io.github.lewin671.remoteagent.corebind.Corebind
 import io.github.lewin671.remoteagent.proto.*
@@ -14,6 +12,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 import okio.Buffer
 import okio.ByteString.Companion.toByteString
 
@@ -198,15 +198,15 @@ internal class ColdOpenFixture(val historySize: Int = 501) {
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
-internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) : HTTPClientInterface, WebSocket.Factory {
+internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) : WebSocket.Factory {
     val calls = mutableListOf<String>()
     val after = mutableListOf<Long>()
     var machineRows = listOf(Machine.newBuilder().setId(fixture.machineId).setOnline(true).build())
-    var response: (String, UnaryHTTPRequest) -> com.google.protobuf.MessageLite? = { _, _ -> null }
+    var response: (String, Request) -> com.google.protobuf.MessageLite? = { _, _ -> null }
     var count = fixture.historySize
     var missing = 0L
     var latencyMs = 0L
-    var before: suspend (String, UnaryHTTPRequest) -> Unit = { _, _ -> }
+    var before: suspend (String, Request) -> Unit = { _, _ -> }
     var rejectNextHistory = false
     var offline = false
     var denyLogin = false
@@ -216,7 +216,88 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
     private var minted = 0
     private var token = "saved-credential"
     private val sockets = mutableListOf<Socket>()
-    private val http = Api.defaultHttp()
+    private val workerPool = java.util.concurrent.Executors.newCachedThreadPool { r ->
+        Thread(r, "cold-open-http").apply { isDaemon = true }
+    }
+    private val http: OkHttpClient = buildVirtualHttp()
+
+    private fun buildVirtualHttp(): OkHttpClient {
+        val callLatches = ThreadLocal<Pair<java.util.concurrent.CountDownLatch, java.util.concurrent.CountDownLatch>>()
+        val inFlight = java.util.concurrent.ConcurrentHashMap<Call, Pair<Job, java.util.concurrent.CompletableFuture<Response>>>()
+        val dispatcher = Dispatcher(
+            object : java.util.concurrent.AbstractExecutorService() {
+                override fun shutdown() {}
+                override fun shutdownNow(): MutableList<Runnable> = mutableListOf()
+                override fun isShutdown() = false
+                override fun isTerminated() = false
+                override fun awaitTermination(timeout: Long, unit: java.util.concurrent.TimeUnit) = true
+                override fun execute(command: Runnable) {
+                    val entered = java.util.concurrent.CountDownLatch(1)
+                    val finished = java.util.concurrent.CountDownLatch(1)
+                    workerPool.execute {
+                        callLatches.set(entered to finished)
+                        try {
+                            command.run()
+                        } finally {
+                            callLatches.remove()
+                            entered.countDown()
+                            finished.countDown()
+                        }
+                    }
+                    entered.await(5, java.util.concurrent.TimeUnit.SECONDS)
+                }
+            },
+        ).apply {
+            maxRequests = 128
+            maxRequestsPerHost = 64
+        }
+        return Api.defaultHttp().newBuilder()
+            .dispatcher(dispatcher)
+            .eventListenerFactory {
+                object : EventListener() {
+                    override fun canceled(call: Call) {
+                        inFlight.remove(call)?.let { (job, done) ->
+                            job.cancel()
+                            done.completeExceptionally(java.io.IOException("Canceled"))
+                        }
+                    }
+                }
+            }
+            .addInterceptor { chain ->
+                val request = chain.request()
+                val call = chain.call()
+                val bodyBytes = request.body?.let { b -> Buffer().also { b.writeTo(it) }.readByteArray() } ?: ByteArray(0)
+                val (entered, finished) = callLatches.get() ?: (null to null)
+                val done = java.util.concurrent.CompletableFuture<Response>()
+                val job = test.backgroundScope.launch {
+                    try {
+                        val res = handleRpc(request, bodyBytes)
+                        done.complete(res)
+                        finished?.await(5, java.util.concurrent.TimeUnit.SECONDS)
+                    } catch (t: Throwable) {
+                        done.completeExceptionally(t)
+                        if (t is CancellationException) throw t
+                    }
+                }
+                inFlight[call] = job to done
+                if (call.isCanceled()) {
+                    inFlight.remove(call)
+                    job.cancel()
+                    done.completeExceptionally(java.io.IOException("Canceled"))
+                }
+                entered?.countDown()
+                try {
+                    done.get()
+                } catch (e: java.util.concurrent.ExecutionException) {
+                    val cause = e.cause
+                    if (cause is java.io.IOException) throw cause
+                    throw java.io.IOException(cause?.message ?: "interrupted", cause)
+                } finally {
+                    inFlight.remove(call)
+                }
+            }
+            .build()
+    }
 
     fun saved(): MemoryTokens = MemoryTokens(fixture.newPhoneStore()).apply {
         saved = LoginToken(token, fixture.now + 3 * LOGIN_REFRESH_MARGIN_MS)
@@ -234,84 +315,71 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
         securityStore = store,
         dispatcher = StandardTestDispatcher(test.testScheduler),
         socketFactory = sockets,
-        rpcTransport = this,
         monotonic = { test.testScheduler.currentTime },
     )
 
-    override fun unary(request: UnaryHTTPRequest, onResult: (HTTPResponse) -> Unit): () -> Unit {
-        val job = test.backgroundScope.launch {
-            val name = request.methodSpec.path.substringAfterLast('/')
-            calls += name
-            before(name, request)
-            delay(latencyMs)
-            val bearer = request.headers.entries.firstOrNull { it.key.equals("Authorization", true) }?.value?.firstOrNull()
-            val auth = name in setOf("GetChallenge", "Login")
-            if (!auth && bearer.isNullOrEmpty()) anonymous++
-            val unavailable = offline || name in unavailableMethods
-            val denied = denyLogin && name == "Login"
-            if (denied || unavailable || (!auth && bearer != "Bearer $token") || (name == "GetEvents" && rejectNextHistory)) {
-                rejectNextHistory = false
-                onResult(
-                    HTTPResponse(
-                        trailers = emptyMap(),
-                        status = if (denied) 403 else if (unavailable) 503 else 401,
-                        headers = mapOf(
-                            "content-type" to listOf("application/json"),
-                            "Remote-Agent-Relay-Epoch" to listOf("fixture-epoch"),
-                        ),
-                        message = Buffer().writeUtf8(
-                            if (denied) "{\"code\":\"permission_denied\"}"
-                            else if (unavailable) "{\"code\":\"unavailable\"}"
-                            else "{\"code\":\"unauthenticated\"}",
-                        ),
-                    ),
-                )
-                return@launch
-            }
-            val response: com.google.protobuf.MessageLite = response(name, request) ?: when (name) {
-                "GetChallenge" -> GetChallengeResponse.newBuilder().setChallenge(ByteString.copyFrom(ByteArray(32) { 9 })).build()
-                "Login" -> {
-                    val login = LoginRequest.parseFrom(request.message.clone().readByteArray())
-                    check(login.deviceId == fixture.phoneId && login.protocolVersion == RELAY_PROTOCOL_VERSION)
-                    check(Corebind.ed25519Verify(fixture.phoneEdPub, loginMessage(login.challenge.toByteArray()), login.signature.toByteArray()))
-                    token = "credential-${++minted}"
-                    LoginResponse.newBuilder().setToken(token).setExpiresMs(fixture.now + 3 * LOGIN_REFRESH_MARGIN_MS).build()
-                }
-                "ListMachines" -> ListMachinesResponse.newBuilder().addAllMachines(machineRows).build()
-                "GetSecurityStates" -> GetSecurityStatesResponse.newBuilder().setHeadEpoch(2L).build()
-                "ListDevices" -> ListDevicesResponse.getDefaultInstance()
-                "ListRemoteSessions" -> ListRemoteSessionsResponse.newBuilder().addAllSessions(fixture.sessions.values).build()
-                "GetAccountPrefs" -> GetAccountPrefsResponse.getDefaultInstance()
-                "GetEvents" -> {
-                    val page = GetEventsRequest.parseFrom(request.message.clone().readByteArray())
-                    after += page.afterSeq
-                    val available = fixture.events.getValue(page.sessionId)
-                        .take(if (page.sessionId == "long") count else Int.MAX_VALUE)
-                    val selected = available.filter { it.seq > page.afterSeq }.take(page.limit)
-                    GetEventsResponse.newBuilder()
-                        .addAllEvents(selected.filter { it.seq != missing })
-                        .setMore(available.any { it.seq > (selected.lastOrNull()?.seq ?: page.afterSeq) })
-                        .build()
-                }
-                else -> error("Unexpected RPC: $name")
-            }
-            onResult(
-                HTTPResponse(
-                    trailers = emptyMap(),
-                    status = 200,
-                    headers = mapOf(
-                        "content-type" to listOf("application/proto"),
-                        "Remote-Agent-Relay-Epoch" to listOf("fixture-epoch"),
-                    ),
-                    message = Buffer().write(response.toByteArray()),
-                ),
-            )
+    private suspend fun handleRpc(request: Request, bodyBytes: ByteArray): Response {
+        val name = request.url.encodedPath.substringAfterLast('/')
+        calls += name
+        before(name, request)
+        delay(latencyMs)
+        val bearer = request.header("Authorization")
+        val auth = name in setOf("GetChallenge", "Login")
+        if (!auth && bearer.isNullOrEmpty()) anonymous++
+        val unavailable = offline || name in unavailableMethods
+        val denied = denyLogin && name == "Login"
+        if (denied || unavailable || (!auth && bearer != "Bearer $token") || (name == "GetEvents" && rejectNextHistory)) {
+            rejectNextHistory = false
+            val errJson = if (denied) "{\"code\":\"permission_denied\"}"
+                else if (unavailable) "{\"code\":\"unavailable\"}"
+                else "{\"code\":\"unauthenticated\"}"
+            return Response.Builder()
+                .request(request)
+                .protocol(Protocol.HTTP_1_1)
+                .code(if (denied) 403 else if (unavailable) 503 else 401)
+                .message("Error")
+                .header("content-type", "application/json")
+                .header("Remote-Agent-Relay-Epoch", "fixture-epoch")
+                .body(errJson.toResponseBody("application/json".toMediaType()))
+                .build()
         }
-        return { job.cancel() }
+        val response: com.google.protobuf.MessageLite = response(name, request) ?: when (name) {
+            "GetChallenge" -> GetChallengeResponse.newBuilder().setChallenge(ByteString.copyFrom(ByteArray(32) { 9 })).build()
+            "Login" -> {
+                val login = LoginRequest.parseFrom(bodyBytes)
+                check(login.deviceId == fixture.phoneId && login.protocolVersion == RELAY_PROTOCOL_VERSION)
+                check(Corebind.ed25519Verify(fixture.phoneEdPub, loginMessage(login.challenge.toByteArray()), login.signature.toByteArray()))
+                token = "credential-${++minted}"
+                LoginResponse.newBuilder().setToken(token).setExpiresMs(fixture.now + 3 * LOGIN_REFRESH_MARGIN_MS).build()
+            }
+            "ListMachines" -> ListMachinesResponse.newBuilder().addAllMachines(machineRows).build()
+            "GetSecurityStates" -> GetSecurityStatesResponse.newBuilder().setHeadEpoch(2L).build()
+            "ListDevices" -> ListDevicesResponse.getDefaultInstance()
+            "ListRemoteSessions" -> ListRemoteSessionsResponse.newBuilder().addAllSessions(fixture.sessions.values).build()
+            "GetAccountPrefs" -> GetAccountPrefsResponse.getDefaultInstance()
+            "GetEvents" -> {
+                val page = GetEventsRequest.parseFrom(bodyBytes)
+                after += page.afterSeq
+                val available = fixture.events.getValue(page.sessionId)
+                    .take(if (page.sessionId == "long") count else Int.MAX_VALUE)
+                val selected = available.filter { it.seq > page.afterSeq }.take(page.limit)
+                GetEventsResponse.newBuilder()
+                    .addAllEvents(selected.filter { it.seq != missing })
+                    .setMore(available.any { it.seq > (selected.lastOrNull()?.seq ?: page.afterSeq) })
+                    .build()
+            }
+            else -> error("Unexpected RPC: $name")
+        }
+        return Response.Builder()
+            .request(request)
+            .protocol(Protocol.HTTP_1_1)
+            .code(200)
+            .message("OK")
+            .header("content-type", "application/proto")
+            .header("Remote-Agent-Relay-Epoch", "fixture-epoch")
+            .body(response.toByteArray().toResponseBody("application/proto".toMediaType()))
+            .build()
     }
-
-    override fun stream(request: HTTPRequest, duplex: Boolean, onResult: suspend (StreamResult<Buffer>) -> Unit): Stream =
-        error("No streaming RPCs in this fixture")
 
     override fun newWebSocket(request: Request, listener: WebSocketListener): WebSocket = Socket(request, listener).also {
         sockets += it
