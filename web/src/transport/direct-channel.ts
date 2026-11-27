@@ -2,7 +2,7 @@ import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { DirectCandFamily, DirectCandType, DirectStatsPairSchema, DirectStatsReportSchema, DirectStateKind, type DirectStatsPair, type DirectStatsReport } from "../gen/remoteagent/core/v1/transport_pb";
 import { FragmentSchema } from "../gen/remoteagent/v1/transport_pb";
 import { cleanup } from "../cleanup";
-import { PathChanged, abortable } from "./recovery";
+import { PathChanged, abortable, combineSignals } from "./recovery";
 
 const FRAME_BYTES = 16 << 10;
 const PAYLOAD_BYTES = FRAME_BYTES - 128;
@@ -461,7 +461,18 @@ export class DirectChannel {
   }
 
   private async writeNow(raw: Uint8Array<ArrayBuffer>, handoff: () => void, signal?: AbortSignal) {
-    const hash = await sha256(raw);
+    if (this.ended) throw new PathChanged();
+    signal?.throwIfAborted();
+    const combined = combineSignals([this.lifetime.signal, signal]);
+    let hash: Uint8Array<ArrayBuffer>;
+    try {
+      hash = await abortable(sha256(raw), combined.signal);
+    } catch (err) {
+      if (signal?.aborted) throw err;
+      throw new PathChanged();
+    } finally {
+      combined.dispose();
+    }
     const id = crypto.getRandomValues(new Uint8Array(16));
     const count = Math.ceil(raw.byteLength / PAYLOAD_BYTES);
     for (let index = 0; index < count; index++) {

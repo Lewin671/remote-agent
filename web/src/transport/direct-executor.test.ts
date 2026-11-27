@@ -388,6 +388,16 @@ describe("DirectExecutor", () => {
     pc1.state("connected");
     exec.pcConfirm(create(DirectPcConfirmEffectSchema, { pcId: 31n, machineId: "mac", use: 1 }));
 
+    let resolveFreed!: () => void;
+    const freed = new Promise<void>((resolve) => { resolveFreed = resolve; });
+    const origFree = exec.budget.free.bind(exec.budget);
+    vi.spyOn(exec.budget, "free").mockImplementation((peer, direction, bytes, frames) => {
+      origFree(peer, direction, bytes, frames);
+      if (peer === "mac" && direction === 0 && bytes === 1024 && frames === 1) {
+        resolveFreed();
+      }
+    });
+
     expect(exec.sendTerminalFrame(31n, new Uint8Array(1024).fill(3))).toBe(true);
 
     // Same EffectBatch synchronous ClosePC + CreatePC for gen+1 of the same round/use.
@@ -404,11 +414,56 @@ describe("DirectExecutor", () => {
     const created2 = events.find((e) => e.event.case === "directPcCreated" && e.event.value.pcId === 32n);
     expect(created2?.event.case === "directPcCreated" && created2.event.value.ok).toBe(true);
 
-    // Let the aborted writer settle and ensure it does not release pc32's use slot.
-    await new Promise((r) => setTimeout(r, 10));
+    // Wait deterministically for the aborted writer's budget release and ensure it does not release pc32's use slot.
+    await freed;
     expect(exec.budget.acquire("mac", "7", 1)).toBe(false);
     exec.close();
     expect(exec.budget.ownerAvailable("mac", "8")).toBe(true);
+  });
+
+  it("releases write budget promptly on pcClose even while sha256 digest is still pending", async () => {
+    const sdk = fakeRTC();
+    const exec = new DirectExecutor({
+      emit: () => {},
+      onPushedEvent: () => {},
+      factory: sdk.factory,
+    });
+    exec.pcCreate(create(DirectPcCreateEffectSchema, {
+      pcId: 33n,
+      machineId: "mac",
+      roundId: 7n,
+      use: 1,
+      generation: 1n,
+      stunServers: [],
+    }));
+    const pc1 = sdk.pcs[0]!;
+    const dc1 = pc1.channels[0]!;
+    dc1.readyState = "open";
+    dc1.onopen?.();
+    pc1.state("connected");
+    exec.pcConfirm(create(DirectPcConfirmEffectSchema, { pcId: 33n, machineId: "mac", use: 1 }));
+
+    let digestStarted!: () => void;
+    const started = new Promise<void>((resolve) => { digestStarted = resolve; });
+    let releaseDigest!: (buf: ArrayBuffer) => void;
+    const pendingDigest = new Promise<ArrayBuffer>((resolve) => { releaseDigest = resolve; });
+    vi.spyOn(crypto.subtle, "digest").mockImplementation(() => {
+      digestStarted();
+      return pendingDigest;
+    });
+
+    const freeSpy = vi.spyOn(exec.budget, "free");
+
+    expect(exec.sendTerminalFrame(33n, new Uint8Array(1024).fill(3))).toBe(true);
+    await started;
+    exec.pcClose(create(DirectPcCloseEffectSchema, { pcId: 33n }));
+
+    // Budget must be released promptly on close without waiting for pending crypto.subtle.digest.
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    expect(freeSpy).toHaveBeenCalledWith("mac", 0, 1024, 1);
+    exec.close();
+    expect(exec.budget.ownerAvailable("mac", "8")).toBe(true);
+    releaseDigest(new ArrayBuffer(32));
   });
 
   it("does not leak unhandledRejection when PC closes while sendRpc is waiting in write() (audit #8)", async () => {
