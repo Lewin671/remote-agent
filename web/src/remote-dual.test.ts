@@ -1,15 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
-import { Code, ConnectError } from "@connectrpc/connect";
+import { Code, ConnectError } from "./test/remote-fixture";
 import { getCoreHost } from "./core/host";
-import { Purpose } from "./test/stored-security-fixture";
 import { SyntheticRemote } from "./test/remote-fixture";
 import { parseTestHeader, testRequestIdentity } from "./test/stored-security-fixture";
 import { EnvelopeSchema, PayloadKind, type Envelope } from "./gen/remoteagent/v1/envelope_pb";
 import { NotForwardedSchema } from "./gen/remoteagent/v1/relay_pb";
 import { CommandResultSchema, CommandSchema } from "./gen/remoteagent/v1/remote_pb";
 import { DispatchCommandEffectSchema, OutcomeSource } from "./gen/remoteagent/core/v1/app_pb";
-import { SecuritySealEnvelopeOpSchema } from "./gen/remoteagent/core/v1/security_pb";
 import { CommandRouteLeg, DirectSignalSendEffectSchema } from "./gen/remoteagent/core/v1/transport_pb";
 import type { FrameStream } from "./transport/path";
 
@@ -28,20 +26,11 @@ async function sealCmd(
   deadlineMs: bigint,
   commandBytes: Uint8Array<ArrayBuffer>,
 ): Promise<Envelope> {
-  const sealed = await getCoreHost(r).securityOp({
-    case: "sealEnvelope",
-    value: create(SecuritySealEnvelopeOpSchema, {
-      purpose: Purpose.Command,
-      machineId: r.machine,
-      requestId,
-      deadlineMs,
-      plaintext: commandBytes,
-    }),
-  });
-  if (sealed.result.case !== "sealed" || sealed.result.value.rawEnvelope.length === 0) {
-    throw new Error("expected sealed command envelope");
-  }
-  return fromBinary(EnvelopeSchema, sealed.result.value.rawEnvelope);
+  return r.world.fixture.seal(
+    r.member.account.deviceId,
+    { kind: PayloadKind.COMMAND, machineId: r.machine, requestId, deadlineMs },
+    commandBytes,
+  );
 }
 
 describe("Core-driven command attempt execution (Direct & Relay legs)", () => {

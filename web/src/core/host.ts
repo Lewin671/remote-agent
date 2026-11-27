@@ -3609,35 +3609,13 @@ export class CoreHost {
         break;
       }
 
-      case "pingMachineResult": {
-        const res = val.value;
-        const w = this.pingWaiters.get(res.opId);
-        if (w) {
-          this.pingWaiters.delete(res.opId);
-          if (res.ok) {
-            w.resolve();
-          } else {
-            const msg = renderText(res.errorText) || res.errorCode || l10n.t("errors.connection_timed_out");
-            w.reject(new Error(msg));
-          }
-        }
+      case "pingMachineResult":
+        this.settleMachineWaiter(this.pingWaiters, val.value);
         break;
-      }
 
-      case "runMachineCommandResult": {
-        const res = val.value;
-        const w = this.machineCmdWaiters.get(res.opId);
-        if (w) {
-          this.machineCmdWaiters.delete(res.opId);
-          if (res.ok) {
-            w.resolve();
-          } else {
-            const msg = renderText(res.errorText) || res.errorCode || l10n.t("errors.connection_timed_out");
-            w.reject(new Error(msg));
-          }
-        }
+      case "runMachineCommandResult":
+        this.settleMachineWaiter(this.machineCmdWaiters, val.value);
         break;
-      }
 
       case "sessionRestoreComposer": {
         const eff = val.value;
@@ -4371,6 +4349,21 @@ export class CoreHost {
     this.ownSecExec?.close();
     this.attachments.store.releaseStorageLock?.();
     this.core.close();
+  }
+
+  private settleMachineWaiter(
+    map: Map<bigint, { resolve: () => void; reject: (e: Error) => void }>,
+    res: { opId: bigint; ok: boolean; errorText?: Parameters<typeof renderText>[0]; errorCode: string },
+  ): void {
+    const w = map.get(res.opId);
+    if (!w) return;
+    map.delete(res.opId);
+    if (res.ok) {
+      w.resolve();
+    } else {
+      const msg = renderText(res.errorText) || res.errorCode || l10n.t("errors.connection_timed_out");
+      w.reject(new Error(msg));
+    }
   }
 }
 

@@ -1,6 +1,6 @@
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { type Envelope } from "./gen/remoteagent/v1/envelope_pb";
-import { Code, ConnectError } from "@connectrpc/connect";
+import { Code, ConnectError } from "./test/remote-fixture";
 import { afterEach, expect, it, vi } from "vitest";
 import { newRequestID } from "./crypto";
 import { patchSyncState, SyntheticRemote, demoSessions, remoteConnState } from "./test/remote-fixture";

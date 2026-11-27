@@ -1,6 +1,6 @@
 import { t as message } from "./i18n";
 // @vitest-environment happy-dom
-import { Code, ConnectError } from "@connectrpc/connect";
+import { Code, ConnectError } from "./test/remote-fixture";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";

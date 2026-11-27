@@ -3,9 +3,7 @@ import { create } from "@bufbuild/protobuf";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
-import { ConnectError, Code } from "@connectrpc/connect";
 import { t as message } from "./i18n";
-import { errorText } from "./remote";
 import { RejoinButton, RetainedIdentityDeniedScreen } from "./Rejoin";
 import {
   AppRootStage,
@@ -19,7 +17,6 @@ import {
   RetainedDeniedViewSchema,
 } from "./gen/remoteagent/core/v1/security_view_pb";
 import { TextSchema } from "./gen/remoteagent/core/v1/text_pb";
-import { RelayErrorDetailSchema, RelayErrorReason } from "./gen/remoteagent/v1/relay_pb";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let container: HTMLDivElement;
@@ -61,14 +58,6 @@ function makeFakeHost() {
   } as unknown as CoreHost;
   return { host, setExitVm };
 }
-
-it("keeps the login denial distinct from a generic permission denied error", () => {
-  const error = new ConnectError("login failed", Code.PermissionDenied, undefined, [
-    { desc: RelayErrorDetailSchema, value: { reason: RelayErrorReason.LOGIN_FAILED } },
-  ]);
-  expect(errorText(error)).toBe("服务器不认识这台设备（可能已被移除，或服务已重建）");
-  expect(errorText(new ConnectError("operation denied", Code.PermissionDenied))).toBe("operation denied");
-});
 
 it("renders RetainedIdentityDeniedScreen and wires REJOIN_PAIRING request + confirmation", async () => {
   const { host, setExitVm } = makeFakeHost();

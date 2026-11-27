@@ -1,6 +1,26 @@
 import { create, type DescMessage, type MessageInitShape, type MessageShape } from "@bufbuild/protobuf";
-import { Code } from "@connectrpc/connect";
 import { checkServer } from "../crypto";
+
+const ConnectCode = {
+  Canceled: 1,
+  Unknown: 2,
+  InvalidArgument: 3,
+  DeadlineExceeded: 4,
+  NotFound: 5,
+  AlreadyExists: 6,
+  PermissionDenied: 7,
+  ResourceExhausted: 8,
+  FailedPrecondition: 9,
+  Aborted: 10,
+  OutOfRange: 11,
+  Unimplemented: 12,
+  Internal: 13,
+  Unavailable: 14,
+  DataLoss: 15,
+  Unauthenticated: 16,
+} as const;
+
+type ConnectCode = (typeof ConnectCode)[keyof typeof ConnectCode];
 import { EventSchema as CoreEventSchema, type Effect, type Event as CoreEvent } from "../gen/remoteagent/core/v1/app_pb";
 import {
   RelayRpcMethod,
@@ -91,41 +111,41 @@ const RELAY_RPC_PATHS: Partial<Record<RelayRpcMethod, string>> = {
   [RelayRpcMethod.HEALTHZ]: "/healthz",
 };
 
-const CONNECT_NAME_TO_CODE: Record<string, Code> = {
-  canceled: Code.Canceled,
-  unknown: Code.Unknown,
-  invalid_argument: Code.InvalidArgument,
-  deadline_exceeded: Code.DeadlineExceeded,
-  not_found: Code.NotFound,
-  already_exists: Code.AlreadyExists,
-  permission_denied: Code.PermissionDenied,
-  resource_exhausted: Code.ResourceExhausted,
-  failed_precondition: Code.FailedPrecondition,
-  aborted: Code.Aborted,
-  out_of_range: Code.OutOfRange,
-  unimplemented: Code.Unimplemented,
-  internal: Code.Internal,
-  unavailable: Code.Unavailable,
-  data_loss: Code.DataLoss,
-  unauthenticated: Code.Unauthenticated,
+const CONNECT_NAME_TO_CODE: Record<string, ConnectCode> = {
+  canceled: ConnectCode.Canceled,
+  unknown: ConnectCode.Unknown,
+  invalid_argument: ConnectCode.InvalidArgument,
+  deadline_exceeded: ConnectCode.DeadlineExceeded,
+  not_found: ConnectCode.NotFound,
+  already_exists: ConnectCode.AlreadyExists,
+  permission_denied: ConnectCode.PermissionDenied,
+  resource_exhausted: ConnectCode.ResourceExhausted,
+  failed_precondition: ConnectCode.FailedPrecondition,
+  aborted: ConnectCode.Aborted,
+  out_of_range: ConnectCode.OutOfRange,
+  unimplemented: ConnectCode.Unimplemented,
+  internal: ConnectCode.Internal,
+  unavailable: ConnectCode.Unavailable,
+  data_loss: ConnectCode.DataLoss,
+  unauthenticated: ConnectCode.Unauthenticated,
 };
 
-const HTTP_TO_CONNECT: Record<number, Code> = {
-  400: Code.InvalidArgument,
-  401: Code.Unauthenticated,
-  403: Code.PermissionDenied,
-  404: Code.NotFound,
-  409: Code.Aborted,
-  412: Code.FailedPrecondition,
-  429: Code.ResourceExhausted,
-  499: Code.Canceled,
-  502: Code.Unavailable,
-  503: Code.Unavailable,
-  504: Code.Unavailable,
+const HTTP_TO_CONNECT: Record<number, ConnectCode> = {
+  400: ConnectCode.InvalidArgument,
+  401: ConnectCode.Unauthenticated,
+  403: ConnectCode.PermissionDenied,
+  404: ConnectCode.NotFound,
+  409: ConnectCode.Aborted,
+  412: ConnectCode.FailedPrecondition,
+  429: ConnectCode.ResourceExhausted,
+  499: ConnectCode.Canceled,
+  502: ConnectCode.Unavailable,
+  503: ConnectCode.Unavailable,
+  504: ConnectCode.Unavailable,
 };
 
-const httpStatusToConnectCode = (status: number): Code =>
-  HTTP_TO_CONNECT[status] ?? (status >= 500 ? Code.Internal : Code.Unknown);
+const httpStatusToConnectCode = (status: number): ConnectCode =>
+  HTTP_TO_CONNECT[status] ?? (status >= 500 ? ConnectCode.Internal : ConnectCode.Unknown);
 
 export interface RelayRpcUnaryParams {
   opId?: bigint;
@@ -146,7 +166,7 @@ export async function executeRelayRpcUnary(params: RelayRpcUnaryParams): Promise
   if (!path) {
     return create(RelayRpcResultEventSchema, {
       opId,
-      connectCode: Code.InvalidArgument,
+      connectCode: ConnectCode.InvalidArgument,
       diagnosticMessage: "unsupported relay rpc method",
     });
   }
@@ -154,7 +174,7 @@ export async function executeRelayRpcUnary(params: RelayRpcUnaryParams): Promise
   if (!server) {
     return create(RelayRpcResultEventSchema, {
       opId,
-      connectCode: Code.InvalidArgument,
+      connectCode: ConnectCode.InvalidArgument,
       diagnosticMessage: "missing relay server",
     });
   }
@@ -226,7 +246,7 @@ export async function executeRelayRpcUnary(params: RelayRpcUnaryParams): Promise
     const isAbort = ctrl.signal.aborted || (err instanceof Error && err.name === "AbortError");
     return create(RelayRpcResultEventSchema, {
       opId,
-      connectCode: timedOut ? Code.DeadlineExceeded : isAbort ? Code.Canceled : Code.Unavailable,
+      connectCode: timedOut ? ConnectCode.DeadlineExceeded : isAbort ? ConnectCode.Canceled : ConnectCode.Unavailable,
       diagnosticMessage: timedOut ? "connection timed out" : isAbort ? "canceled" : errorMessage(err),
       networkError: !isAbort || timedOut,
     });

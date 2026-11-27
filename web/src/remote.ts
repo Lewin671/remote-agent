@@ -92,8 +92,6 @@ import {
   ListRemoteSessionsResponseSchema,
   MachineSchema,
   NotifyKind,
-  RelayErrorDetailSchema,
-  RelayErrorReason,
   RemoteSessionSchema,
   StoredEventSchema,
   type Machine as RemoteMachine,
@@ -105,9 +103,6 @@ import {
   toBinary,
   type MessageInitShape,
 } from "@bufbuild/protobuf";
-import {
-  ConnectError,
-} from "@connectrpc/connect";
 import { relayFetch } from "./transport";
 import { closeScheduleNotification, watchSecurityPush } from "./push";
 import { checkServer } from "./crypto";
@@ -1101,13 +1096,6 @@ export function errorText(e: unknown): string {
     if (e.code === "unavailable") return l10n.t("errors.waiting_for_the_owning_computer_to_update_the_current_remote");
     if (e.code === "invalid" || e.code === "untrusted") return l10n.t("errors.invalid_ciphertext_signature_key_or_content_verification_failed");
     if (e.code === "conflict") return l10n.t("errors.membership_chain_conflict_security_operations_stopped_verify_devices_and");
-  }
-  if (e instanceof ConnectError) {
-    const relayReason = e.findDetails(RelayErrorDetailSchema)[0]?.reason;
-    if (relayReason === RelayErrorReason.LOGIN_FAILED) {
-      return l10n.t("errors.the_server_does_not_recognize_this_device_it_may");
-    }
-    return e.rawMessage || e.message;
   }
   if (e instanceof Error) return e.message;
   return String(e);

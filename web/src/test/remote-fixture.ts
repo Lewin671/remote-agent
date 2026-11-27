@@ -5,13 +5,62 @@ import {
   type DescMessage,
   type MessageShape,
 } from "@bufbuild/protobuf";
-import { Code, ConnectError } from "@connectrpc/connect";
 import { parseTestHeader, testRequestIdentity, unpackTestBody } from "./stored-security-fixture";
-import { SecurityOpenEnvelopeOpSchema } from "../gen/remoteagent/core/v1/security_pb";
-import { EnvelopeSchema, type Envelope, type Header } from "../gen/remoteagent/v1/envelope_pb";
+
+export const Code = {
+  Canceled: 1,
+  Unknown: 2,
+  InvalidArgument: 3,
+  DeadlineExceeded: 4,
+  NotFound: 5,
+  AlreadyExists: 6,
+  PermissionDenied: 7,
+  ResourceExhausted: 8,
+  FailedPrecondition: 9,
+  Aborted: 10,
+  OutOfRange: 11,
+  Unimplemented: 12,
+  Internal: 13,
+  Unavailable: 14,
+  DataLoss: 15,
+  Unauthenticated: 16,
+} as const;
+export type Code = (typeof Code)[keyof typeof Code];
+
+export type TestRpcErrorDetail =
+  | { type: string; value: Uint8Array }
+  | { desc: DescMessage; value: Record<string, unknown> };
+
+export class ConnectError extends Error {
+  readonly rawMessage: string;
+  readonly code: Code;
+  readonly details: TestRpcErrorDetail[];
+
+  constructor(
+    message: string,
+    code: Code = Code.Unknown,
+    _metadata?: unknown,
+    details: TestRpcErrorDetail[] = [],
+  ) {
+    super(message);
+    this.rawMessage = message;
+    this.code = code;
+    this.details = details;
+  }
+}
+
+function encodeTestErrorDetail(d: TestRpcErrorDetail): { type: string; bytes: Uint8Array } | undefined {
+  if ("type" in d && d.value instanceof Uint8Array) {
+    return { type: d.type, bytes: d.value };
+  }
+  if ("desc" in d && d.desc) {
+    return { type: d.desc.typeName, bytes: toBinary(d.desc, create(d.desc, d.value as never)) };
+  }
+  return undefined;
+}
+import { type Envelope, type Header } from "../gen/remoteagent/v1/envelope_pb";
 import { getCoreHost } from "../core/host";
 import { Remote } from "../remote";
-import { Purpose } from "./stored-security-fixture";
 import { GoSecurityFixture, webMember } from "./security-fixture";
 import { CommandResultSchema, MachineMetaSchema, type LiveSnapshot, type MachineMeta } from "../gen/remoteagent/v1/remote_pb";
 import { SessionSchema, type Session } from "../gen/remoteagent/v1/local_pb";
@@ -38,13 +87,16 @@ import {
   PutAccountPrefsResponseSchema,
   PutDeviceMetaRequestSchema,
   PutDeviceMetaResponseSchema,
+  RemoteSessionSchema,
   SetPushSubscriptionRequestSchema,
   SetPushSubscriptionResponseSchema,
   SetPushTargetRequestSchema,
   SetPushTargetResponseSchema,
 } from "../gen/remoteagent/v1/relay_pb";
 import {
+  CacheBootstrapLoadedEventSchema,
   EventSchema as CoreEventSchema,
+  ScreenTarget,
   StreamClosedEventSchema,
   StreamReadyEventSchema,
   SyncLifecycleActionSchema,
@@ -458,19 +510,11 @@ export class SyntheticRemote extends Remote {
       if (err instanceof ConnectError) {
         const details: Array<{ type: string; value: string }> = [];
         for (const d of err.details ?? []) {
-          let type = "";
-          let bytes: Uint8Array | undefined;
-          if ("type" in d && "value" in d && d.value instanceof Uint8Array) {
-            type = d.type;
-            bytes = d.value;
-          } else if ("desc" in d && d.desc && "value" in d) {
-            type = d.desc.typeName;
-            bytes = toBinary(d.desc, create(d.desc, d.value as never));
-          }
-          if (type && bytes) {
+          const enc = encodeTestErrorDetail(d);
+          if (enc) {
             let bin = "";
-            for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-            details.push({ type, value: btoa(bin) });
+            for (let i = 0; i < enc.bytes.length; i++) bin += String.fromCharCode(enc.bytes[i]);
+            details.push({ type: enc.type, value: btoa(bin) });
           }
         }
         return new Response(
@@ -542,26 +586,51 @@ export class SyntheticRemote extends Remote {
     };
   }
 
+  private seedNonce = 0;
+
   async seedSession(sessionId: string, seed = this.seed) {
+    const nonce = ++this.seedNonce;
     const keyEnv = await this.world.fixture.seal(
       this.machine,
-      { kind: 3, machineId: this.machine, sessionId, seq: 1n },
+      { kind: 3, machineId: this.machine, sessionId, seq: BigInt(nonce) },
       seed,
     );
-    await this.bootstrapSecurity();
-    await getCoreHost(this).securityOp({
-      case: "openEnvelope",
-      value: create(SecurityOpenEnvelopeOpSchema, {
-        rawEnvelope: toBinary(EnvelopeSchema, keyEnv) as Uint8Array<ArrayBuffer>,
-        expectedPurpose: Purpose.SessionKey,
-        machineId: this.machine,
-        sessionId,
-        history: true,
-      }),
+    const metaEnv = await this.seal(
+      { kind: 2, sessionId, seq: 1n },
+      SessionSchema,
+      create(SessionSchema, { id: sessionId, status: SessionStatus.EXITED }),
+    );
+    const rs = create(RemoteSessionSchema, {
+      sessionId,
+      machineId: this.machine,
+      key: keyEnv,
+      meta: metaEnv,
+      endedMs: 1n,
     });
+    await this.bootstrapSecurity();
+    const host = getCoreHost(this);
+    const done = new Promise<void>((resolve) => {
+      const unsub = host.subscribe(ScreenTarget.HOME, () => {
+        unsub();
+        resolve();
+      });
+      host.dispatch(
+        create(CoreEventSchema, {
+          event: {
+            case: "cacheBootstrapLoaded",
+            value: create(CacheBootstrapLoadedEventSchema, {
+              opId: 0n,
+              rawSessions: [toBinary(RemoteSessionSchema, rs) as Uint8Array<ArrayBuffer>],
+            }),
+          },
+        }),
+      );
+    });
+    await done;
+    await new Promise((r) => setTimeout(r, 0));
   }
 
-  static async create() {
+  static async create(opts?: { seedDefaultSession?: boolean }) {
     const world = await GoSecurityFixture.create();
     const member = await webMember(world);
     const seed = crypto.getRandomValues(new Uint8Array(32));
@@ -587,22 +656,24 @@ export class SyntheticRemote extends Remote {
         ],
       }),
     };
-    await r.seedSession("s", seed);
-    patchSyncState(r, {
-      sessions: new Map([
-        [
-          "s",
-          {
-            id: "s",
-            machineId: r.machine,
-            metaRev: 0n,
-            lastSeq: 0n,
-            updatedMs: 0n,
-            endedMs: 0n,
-          },
-        ],
-      ]),
-    });
+    if (opts?.seedDefaultSession !== false) {
+      await r.seedSession("s", seed);
+      patchSyncState(r, {
+        sessions: new Map([
+          [
+            "s",
+            {
+              id: "s",
+              machineId: r.machine,
+              metaRev: 0n,
+              lastSeq: 0n,
+              updatedMs: 0n,
+              endedMs: 0n,
+            },
+          ],
+        ]),
+      });
+    }
     return r;
   }
 

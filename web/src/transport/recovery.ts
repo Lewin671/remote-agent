@@ -1,4 +1,3 @@
-import { Code, ConnectError } from "@connectrpc/connect";
 import * as l10n from "../i18n";
 
 export class PathChanged extends Error {}
@@ -43,7 +42,7 @@ export async function abortable<T>(operation: Promise<T>, signal?: AbortSignal):
 
 /** An operation owner sets the deadline; callers may cancel only their wait. */
 export async function ownedRound<T>(owner: AbortController, ms: number, run: (signal: AbortSignal) => Promise<T>): Promise<T> {
-  const timer = setTimeout(() => owner.abort(new ConnectError(l10n.t("errors.connection_timed_out"), Code.DeadlineExceeded)), ms);
+  const timer = setTimeout(() => owner.abort(new DOMException(l10n.t("errors.connection_timed_out"), "TimeoutError")), ms);
   try { return await abortable(Promise.resolve().then(() => run(owner.signal)), owner.signal); }
   finally { clearTimeout(timer); }
 }
