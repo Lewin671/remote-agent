@@ -677,16 +677,19 @@ final class AppModel {
     func logout(pairing: Bool = false) async {
         if isDemo {
             closeTerminals()
-            if let leavingHost = context?.coreHost {
+            let leavingContext = context
+            let leavingRemote = leavingContext?.remote
+            leavingContext?.markUnloaded()
+            context = nil
+            if let leavingHost = leavingContext?.coreHost {
                 await leavingHost.clearAllSharedFiles()
                 await leavingHost.clearAllDrafts()
                 await leavingHost.closeAsync()
             }
-            if let leavingRemote = context?.remote {
+            if let leavingRemote {
                 ImageCenter.remove(leavingRemote)
                 SharedFileCenter.remove(leavingRemote)
             }
-            context = nil
             screens.resetAccountViews()
             screens.appRoot = PBAppRootViewModel.with { $0.stage = .onboarding }
             screens.onboarding = PBOnboardingViewModel.with { $0.mode = pairing ? .join : .entry }

@@ -569,4 +569,20 @@ final class Harness {
         #expect(NetworkChange.from(old, to: next) == .gained)
         #expect(NetworkChange.from(next, to: next) == .none)
     }
+
+    @Test func demoLogoutUnloadsContextAndAllowsInertMediaCenterLookup() async throws {
+        let h = Harness(); defer { h.cleanUp() }
+        h.model.showDemo(account: Demo.account, remote: Demo.remote(), world: Demo.world(.everyday))
+        let ctx = try #require(h.model.context)
+        #expect(!ctx.isUnloaded)
+
+        await h.model.logout()
+
+        // Require unloaded state before calling ImageCenter.of/SharedFileCenter.of so a
+        // regression fails cleanly here instead of tripping assertionFailure and crashing the host.
+        try #require(ctx.isUnloaded)
+        #expect(h.model.context == nil)
+        _ = ImageCenter.of(ctx)
+        _ = SharedFileCenter.of(ctx)
+    }
 }

@@ -163,6 +163,8 @@ private func sessionViewModel(
         let index = try #require(source.indexPath(for: "e81"))
         let frame = try #require(collection.layoutAttributesForItem(at: index)).frame
         #expect(abs(frame.minY - collection.contentOffset.y) < 1)
+        window.isHidden = true
+        window.rootViewController = nil
         await model.logout()
     }
 
@@ -300,6 +302,8 @@ private func sessionViewModel(
             return stableFrames >= 3
         }
         #expect(scroll.contentSize.height.isFinite && scroll.contentSize.height > scroll.bounds.height)
+        window.isHidden = true
+        window.rootViewController = nil
         await model.logout()
     }
 }
