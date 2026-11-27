@@ -20,11 +20,7 @@ import "remoteagent/core/v1/terminal_history.proto";
 import "remoteagent/core/v1/text.proto";
 import "remoteagent/core/v1/transport.proto";
 import "remoteagent/core/v1/usage_view.proto";
-import "remoteagent/v1/envelope.proto";
 import "remoteagent/v1/event.proto";
-import "remoteagent/v1/local.proto";
-import "remoteagent/v1/relay.proto";
-import "remoteagent/v1/remote.proto";
 
 message HomeScreenRequest {
   int32 ended_limit = 1;
@@ -378,8 +374,8 @@ message NewSessionSubmitAction {
 }
 
 message Event {
-  reserved 8, 12 to 19, 55, 200, 216, 424 to 430, 462;
-  reserved "token_result", "stream_frame", "lists_fetched", "sessions_page_fetched", "session_by_id_fetched", "events_page_fetched", "account_prefs_fetched", "account_prefs_put_result", "devices_fetched", "new_session_set_prompt", "session_submit_command", "shared_file_local_state", "terminal_direct_open", "terminal_direct_close", "terminal_direct_leg", "terminal_direct_input", "terminal_direct_output", "terminal_direct_confirm_rebuild", "relay_pipe_config", "security_rpc_result";
+  reserved 8, 12 to 19, 55, 200, 203, 204, 216, 424 to 430, 462;
+  reserved "token_result", "stream_frame", "lists_fetched", "sessions_page_fetched", "session_by_id_fetched", "events_page_fetched", "account_prefs_fetched", "account_prefs_put_result", "devices_fetched", "new_session_set_prompt", "session_submit_command", "run_machine_command", "cancel_machine_command", "shared_file_local_state", "terminal_direct_open", "terminal_direct_close", "terminal_direct_leg", "terminal_direct_input", "terminal_direct_output", "terminal_direct_confirm_rebuild", "relay_pipe_config", "security_rpc_result";
   oneof event {
     LocalCalendar clock_updated = 1;
     EntropyProvided entropy_provided = 2;
@@ -458,8 +454,6 @@ message Event {
     CheckForUpdatesEvent check_for_updates = 379;
     SessionSlotAction session_abandon_command = 201;
     SessionOpenAction session_open = 202;
-    RunMachineCommandAction run_machine_command = 203;
-    CancelMachineCommandAction cancel_machine_command = 204;
     SessionQuestionStepAction session_set_question_index = 205;
     SessionRefreshHistoryAction session_load_earlier = 206;
     SessionTrayItemAction session_cancel_tray_item = 207;
@@ -808,27 +802,6 @@ message RequestEntropyEffect {
   int32 min_random_bytes = 3;
 }
 
-// Test/benchmark harness only (zero production callers); production connectivity probes use PingMachineAction.
-message RunMachineCommandAction {
-  uint64 op_id = 1;
-  string machine_id = 2;
-  string session_id = 3;
-  remoteagent.v1.Command command = 4;
-  bool skip_connectivity_preflight = 5;
-}
-
-message CancelMachineCommandAction {
-  uint64 op_id = 1;
-}
-
-message RunMachineCommandResultEffect {
-  uint64 op_id = 1;
-  bool ok = 2;
-  string error_code = 3;
-  Text error_text = 4;
-  remoteagent.v1.CommandResult result = 5;
-}
-
 message PingMachineAction {
   uint64 op_id = 1;
   string machine_id = 2;
@@ -846,8 +819,8 @@ message PingMachineResultEffect {
 }
 
 message Effect {
-  reserved 4, 5, 12, 16, 41, 118, 119, 120, 141;
-  reserved "ensure_token", "discard_token", "rpc", "attachments_settled", "session_resend_attachments", "terminal_direct_deliver", "terminal_direct_attach_relay", "terminal_direct_state", "security_rpc";
+  reserved 4, 5, 12, 16, 18, 41, 118, 119, 120, 141;
+  reserved "ensure_token", "discard_token", "rpc", "attachments_settled", "run_machine_command_result", "session_resend_attachments", "terminal_direct_deliver", "terminal_direct_attach_relay", "terminal_direct_state", "security_rpc";
   oneof effect {
     RenderEffect render = 1;
     OpenStreamEffect open_stream = 2;
@@ -861,7 +834,6 @@ message Effect {
     SaveHomeScopeEffect save_home_scope = 14;
     NavigateEffect navigate = 15;
     RequestEntropyEffect request_entropy = 17;
-    RunMachineCommandResultEffect run_machine_command_result = 18;
     CancelDispatchEffect cancel_dispatch = 19;
     // Unified relay byte-pipe effects (20-29 reserved for P2-5).
     RelayRpcEffect relay_rpc = 20;

@@ -460,31 +460,6 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 		case cmdKindGetUsageStats:
 			effects = append(effects, c.onUsageStatsSettled(sc, meta, &dirty)...)
 
-		case cmdKindMachineOneShot:
-			delete(c.m.oneShotReqByOp, meta.opID)
-			ok := sc.Category == outcome.Executed && sc.ErrorCode == ""
-			errCode := sc.ErrorCode
-			errText := screens.ReasonText(sc.ErrorReason)
-			if !ok {
-				if errCode == "" {
-					errCode = "failed"
-				}
-				if errText == nil {
-					errText = text.Msg(text.KeyErrorsCommandFailed)
-				}
-			}
-			effects = append(effects, &corev1.Effect{
-				Effect: &corev1.Effect_RunMachineCommandResult{
-					RunMachineCommandResult: &corev1.RunMachineCommandResultEffect{
-						OpId:      meta.opID,
-						Ok:        ok,
-						ErrorCode: errCode,
-						ErrorText: errText,
-						Result:    sc.Result,
-					},
-				},
-			})
-
 		case cmdKindPingMachine:
 			delete(c.m.pingReqByOp, meta.opID)
 			ok := sc.Category == outcome.Executed && sc.ErrorCode == ""
@@ -1189,62 +1164,6 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 
 	case *corev1.Event_TerminalHistory:
 		effects = append(effects, c.handleTerminalHistoryEvent(ctx, k.TerminalHistory)...)
-
-	case *corev1.Event_RunMachineCommand:
-		if act := k.RunMachineCommand; act != nil && act.OpId != 0 {
-			if prevReq, exists := c.m.oneShotReqByOp[act.OpId]; exists {
-				delete(c.m.oneShotReqByOp, act.OpId)
-				delete(c.m.pendingCmdMeta, prevReq)
-				c.m.sync.CancelCommand(ctx, prevReq)
-			}
-			if act.MachineId == "" || act.Command == nil {
-				effects = append(effects, &corev1.Effect{
-					Effect: &corev1.Effect_RunMachineCommandResult{
-						RunMachineCommandResult: &corev1.RunMachineCommandResultEffect{
-							OpId:      act.OpId,
-							Ok:        false,
-							ErrorCode: "invalid_argument",
-							ErrorText: text.Msg(text.KeyErrorsInvalidCommand),
-						},
-					},
-				})
-				break
-			}
-			reqID, _ := c.m.sync.SubmitCommand(ctx, sync.SubmitCommandParams{
-				MachineID:                 act.MachineId,
-				SessionID:                 act.SessionId,
-				Command:                   act.Command,
-				SkipConnectivityPreflight: act.SkipConnectivityPreflight,
-			})
-			if reqID == "" {
-				effects = append(effects, &corev1.Effect{
-					Effect: &corev1.Effect_RunMachineCommandResult{
-						RunMachineCommandResult: &corev1.RunMachineCommandResultEffect{
-							OpId:      act.OpId,
-							Ok:        false,
-							ErrorCode: "failed",
-							ErrorText: text.Msg(text.KeyErrorsCommandFailed),
-						},
-					},
-				})
-				break
-			}
-			c.m.pendingCmdMeta[reqID] = cmdMeta{
-				kind:      cmdKindMachineOneShot,
-				machineID: act.MachineId,
-				opID:      act.OpId,
-			}
-			c.m.oneShotReqByOp[act.OpId] = reqID
-		}
-
-	case *corev1.Event_CancelMachineCommand:
-		if act := k.CancelMachineCommand; act != nil && act.OpId != 0 {
-			if reqID, ok := c.m.oneShotReqByOp[act.OpId]; ok {
-				delete(c.m.oneShotReqByOp, act.OpId)
-				delete(c.m.pendingCmdMeta, reqID)
-				c.m.sync.CancelCommand(ctx, reqID)
-			}
-		}
 
 	case *corev1.Event_PingMachine:
 		if act := k.PingMachine; act != nil && act.OpId != 0 {

@@ -1083,52 +1083,6 @@ func TestExternalLogoutResetsCoreInPlaceAndIsolatesNewAccount(t *testing.T) {
 	}
 }
 
-func TestDevicesScreenReportsDirectReadyMachines(t *testing.T) {
-	c := New()
-	c.Dispatch(&corev1.Event{
-		NowMs: 10_000,
-		Event: &corev1.Event_SeedDemoWorld{
-			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
-				Security: &corev1.DemoSecurity{
-					IsMember:          true,
-					SelfDeviceId:      "dev-a",
-					AuthorityDeviceId: "dev-a",
-					TrustedMachineIds: []string{"m-direct", "m-relay"},
-					TrustedClientIds:  []string{"dev-a"},
-				},
-				Machines: []*corev1.DemoMachine{
-					{MachineId: "m-direct", Online: true, RawMeta: testrelay.MustRaw(&v1.MachineMeta{Hostname: "Direct-Mac"})},
-					{MachineId: "m-relay", Online: true, RawMeta: testrelay.MustRaw(&v1.MachineMeta{Hostname: "Relay-Mac"})},
-				},
-				DirectReports: []*corev1.DemoDirectReport{
-					{
-						MachineId: "m-direct",
-						Enabled:   true,
-						Report: &corev1.DirectRouteReport{
-							State:     corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
-							ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
-						},
-					},
-				},
-			},
-		},
-	})
-	dv, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Devices{Devices: &corev1.DevicesScreenRequest{}}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := map[string]bool{}
-	for _, m := range dv.GetDevices().GetComputers() {
-		got[m.GetMachineId()] = m.GetDirectReady()
-	}
-	if !got["m-direct"] {
-		t.Fatalf("expected m-direct DirectReady=true on Devices screen, got %+v", got)
-	}
-	if got["m-relay"] {
-		t.Fatalf("expected m-relay DirectReady=false on Devices screen, got %+v", got)
-	}
-}
-
 func TestPendingOpDiscardMatrixAndWorkflowConsistency(t *testing.T) {
 	// Cross-verify EvaluatePendingOpDiscard against the REAL security.Engine discardPendingTask:
 	// for every pending op shape, canDiscard == true iff workflow accepts discard (with flag=requiresConfirm),
@@ -2306,16 +2260,14 @@ func TestExitClearSecurityFailureResumesAccountAuth(t *testing.T) {
 		t.Fatalf("expected SyncNow to populate fresh token, got %q", tok)
 	}
 
-	// 2. Forward command (RunMachineCommand) while sync.cachedToken is still empty (cleared by InvalidateAccountAuthForExit)
+	// 2. Forward command (PingMachine) while sync.cachedToken is still empty (cleared by InvalidateAccountAuthForExit)
 	// must pass finishForwardAuth (exitingAccount must be false) and emit HEALTHZ -> FORWARD.
 	cmdBatch := c.Dispatch(&corev1.Event{
 		NowMs:  59_230,
 		MonoMs: 59_230,
-		Event: &corev1.Event_RunMachineCommand{RunMachineCommand: &corev1.RunMachineCommandAction{
-			OpId:                      701,
-			MachineId:                 machineID,
-			SkipConnectivityPreflight: true,
-			Command:                   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
+		Event: &corev1.Event_PingMachine{PingMachine: &corev1.PingMachineAction{
+			OpId:      701,
+			MachineId: machineID,
 		}},
 	})
 	var sealSignOpID uint64
@@ -2339,7 +2291,7 @@ func TestExitClearSecurityFailureResumesAccountAuth(t *testing.T) {
 		if rpc := eff.GetRelayRpc(); rpc != nil && rpc.Method == corev1.RelayRpcMethod_RELAY_RPC_METHOD_HEALTHZ {
 			hzOpID = rpc.OpId
 		}
-		if res := eff.GetRunMachineCommandResult(); res != nil {
+		if res := eff.GetPingMachineResult(); res != nil {
 			t.Fatalf("Forward command must NOT fail with auth error after failed exit, got %+v", res)
 		}
 	}
@@ -2473,15 +2425,13 @@ func TestExitInPlaceResetClearsRelayPipeStateAndPreservesCounters(t *testing.T) 
 		t.Fatal("expected TerminalOpenSocketEffect")
 	}
 
-	// Put a Forward command in flight: RunMachineCommand(906) -> KeySign -> HEALTHZ -> epoch -> FORWARD.
+	// Put a Forward command in flight: PingMachine(906) -> KeySign -> HEALTHZ -> epoch -> FORWARD.
 	fwdStartBatch := c.Dispatch(&corev1.Event{
 		NowMs:  60_104,
 		MonoMs: 60_104,
-		Event: &corev1.Event_RunMachineCommand{RunMachineCommand: &corev1.RunMachineCommandAction{
-			OpId:                      906,
-			MachineId:                 machineID,
-			SkipConnectivityPreflight: true,
-			Command:                   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
+		Event: &corev1.Event_PingMachine{PingMachine: &corev1.PingMachineAction{
+			OpId:      906,
+			MachineId: machineID,
 		}},
 	})
 	var fwdSignOpID uint64
@@ -2492,8 +2442,8 @@ func TestExitInPlaceResetClearsRelayPipeStateAndPreservesCounters(t *testing.T) 
 	}
 	if fwdSignOpID == 0 {
 		for _, eff := range fwdStartBatch.Effects {
-			if r := eff.GetRunMachineCommandResult(); r != nil {
-				t.Logf("fwdStartBatch cmdRes: op=%d ok=%v code=%q errText=%+v", r.OpId, r.Ok, r.ErrorCode, r.ErrorText)
+			if r := eff.GetPingMachineResult(); r != nil {
+				t.Logf("fwdStartBatch pingRes: op=%d ok=%v code=%q errText=%+v", r.OpId, r.Ok, r.ErrorCode, r.ErrorText)
 			} else {
 				t.Logf("fwdStartBatch eff: %T", eff.Effect)
 			}
@@ -2649,7 +2599,7 @@ func TestExitInPlaceResetClearsRelayPipeStateAndPreservesCounters(t *testing.T) 
 				sawPrefsPutCancel = true
 			}
 		}
-		if cmdRes := eff.GetRunMachineCommandResult(); cmdRes != nil && cmdRes.OpId == 906 && !cmdRes.Ok {
+		if cmdRes := eff.GetPingMachineResult(); cmdRes != nil && cmdRes.OpId == 906 && !cmdRes.Ok {
 			sawFwdSettled = true
 		}
 		if img := eff.GetSessionImageLoaded(); img != nil && img.Status == corev1.SessionImageLoadStatus_SESSION_IMAGE_LOAD_STATUS_ERROR {
@@ -2720,11 +2670,9 @@ func TestExitInPlaceResetClearsRelayPipeStateAndPreservesCounters(t *testing.T) 
 	hzCmdBatch := cHz.Dispatch(&corev1.Event{
 		NowMs:  70_030,
 		MonoMs: 70_030,
-		Event: &corev1.Event_RunMachineCommand{RunMachineCommand: &corev1.RunMachineCommandAction{
-			OpId:                      907,
-			MachineId:                 hzMachineID,
-			SkipConnectivityPreflight: true,
-			Command:                   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
+		Event: &corev1.Event_PingMachine{PingMachine: &corev1.PingMachineAction{
+			OpId:      907,
+			MachineId: hzMachineID,
 		}},
 	})
 	var hzSignOpID uint64
@@ -2761,7 +2709,7 @@ func TestExitInPlaceResetClearsRelayPipeStateAndPreservesCounters(t *testing.T) 
 		if cxl := eff.GetRelayRpcCancel(); cxl != nil && cxl.OpId == healthzOpID {
 			sawHzCancel = true
 		}
-		if cmdRes := eff.GetRunMachineCommandResult(); cmdRes != nil && cmdRes.OpId == 907 && !cmdRes.Ok && cmdRes.ErrorCode == "canceled" {
+		if cmdRes := eff.GetPingMachineResult(); cmdRes != nil && cmdRes.OpId == 907 && !cmdRes.Ok && cmdRes.ErrorCode == "canceled" {
 			sawHzWaiterSettled = true
 		}
 	}

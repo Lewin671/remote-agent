@@ -467,7 +467,6 @@ final class TestCoreDriver: @unchecked Sendable {
     private var nextOpID: UInt64 = 1
     private var timers: [String: (id: UInt64, task: Task<Void, Never>)] = [:]
     private var securityOpWaiters: [UInt64: ContinuationWaiter<PBSecurityOpResultEffect>] = [:]
-    private var machineCmdWaiters: [UInt64: ContinuationWaiter<PBCommandResult>] = [:]
     private var pingWaiters: [UInt64: ContinuationWaiter<Void>] = [:]
     private var inFlightDispatches: [String: [String: Task<Void, Never>]] = [:]
 
@@ -571,48 +570,6 @@ final class TestCoreDriver: @unchecked Sendable {
                     $0.pingMachine = .with {
                         $0.opID = id
                         $0.machineID = machineID
-                    }
-                })
-            }
-        )
-    }
-
-    func runMachineCommand(
-        machineID: String,
-        sessionID: String,
-        command: PBCommand,
-        skipConnectivityPreflight: Bool
-    ) async throws -> PBCommandResult {
-        try await awaitWaiter(
-            isClosed: { self.isClosed() },
-            closedError: { CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()) },
-            register: { waiter in
-                try lock.withLock {
-                    guard !closed else { throw CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()) }
-                    try Task.checkCancellation()
-                    let id = nextOpID
-                    nextOpID &+= 1
-                    machineCmdWaiters[id] = waiter
-                    return id
-                }
-            },
-            unregister: { [self] id in
-                let removed = lock.withLock { machineCmdWaiters.removeValue(forKey: id) }
-                if removed != nil && !self.isClosed() {
-                    self.enqueueEvent(PBCoreEvent.with {
-                        $0.cancelMachineCommand = .with { $0.opID = id }
-                    })
-                }
-                return removed
-            },
-            dispatch: { id in
-                enqueueEvent(PBCoreEvent.with {
-                    $0.runMachineCommand = .with {
-                        $0.opID = id
-                        $0.machineID = machineID
-                        $0.sessionID = sessionID
-                        $0.command = command
-                        $0.skipConnectivityPreflight = skipConnectivityPreflight
                     }
                 })
             }
@@ -737,20 +694,6 @@ final class TestCoreDriver: @unchecked Sendable {
                     msg.isEmpty ? L10nMessage.errorsCommandFailed() : LocalizedMessage(raw: msg)
                 )))
             }
-        case .runMachineCommandResult(let res):
-            let waiter = lock.withLock { machineCmdWaiters.removeValue(forKey: res.opID) }
-            if res.ok {
-                waiter?.resolve(.success(res.result))
-            } else {
-                let code = res.errorCode.isEmpty ? "failed" : res.errorCode
-                let msg = res.hasErrorText ? renderCoreText(res.errorText) : ""
-                let fromDaemon = res.hasResult && (!res.result.errorCode.isEmpty || !res.result.outcome.isEmpty)
-                waiter?.resolve(.failure(CommandError(
-                    code,
-                    msg.isEmpty ? L10nMessage.errorsCommandFailed() : LocalizedMessage(raw: msg),
-                    fromDaemon: fromDaemon
-                )))
-            }
         case .sessionImageLoaded(let res):
             onSessionImageLoaded?(res)
         case .terminalDirectSend, .terminalOpenSocket, .terminalCloseSocket, .terminalDeliverOutput, .terminalStateChanged:
@@ -760,26 +703,23 @@ final class TestCoreDriver: @unchecked Sendable {
     }
 
     func close() {
-        let (pendingTimers, pendingOps, pendingCmds, pendingPings, pendingDispatches) = lock.withLock {
-            () -> ([Task<Void, Never>], [ContinuationWaiter<PBSecurityOpResultEffect>], [ContinuationWaiter<PBCommandResult>], [ContinuationWaiter<Void>], [Task<Void, Never>]) in
-            guard !closed else { return ([], [], [], [], []) }
+        let (pendingTimers, pendingOps, pendingPings, pendingDispatches) = lock.withLock {
+            () -> ([Task<Void, Never>], [ContinuationWaiter<PBSecurityOpResultEffect>], [ContinuationWaiter<Void>], [Task<Void, Never>]) in
+            guard !closed else { return ([], [], [], []) }
             closed = true
             let ts = timers.values.map(\.task)
             let ops = Array(securityOpWaiters.values)
-            let cmds = Array(machineCmdWaiters.values)
             let pings = Array(pingWaiters.values)
             let dispatches = inFlightDispatches.values.flatMap(\.values)
             timers.removeAll()
             securityOpWaiters.removeAll()
-            machineCmdWaiters.removeAll()
             pingWaiters.removeAll()
             inFlightDispatches.removeAll()
-            return (ts, ops, cmds, pings, dispatches)
+            return (ts, ops, pings, dispatches)
         }
         for t in pendingTimers { t.cancel() }
         for t in pendingDispatches { t.cancel() }
         for waiter in pendingOps { waiter.resolve(.failure(SecurityFailure.storage)) }
-        for waiter in pendingCmds { waiter.resolve(.failure(CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()))) }
         for waiter in pendingPings { waiter.resolve(.failure(CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()))) }
         queue.sync {
             core.close()
@@ -853,14 +793,6 @@ func attachTestCoreDriver(
         onRefreshDevices: {},
         onCoreEvent: { ev in
             driver.enqueueEvent(ev)
-        },
-        onRunMachineCommand: { machineId, sessionId, cmd, skip in
-            try await driver.runMachineCommand(
-                machineID: machineId,
-                sessionID: sessionId,
-                command: cmd,
-                skipConnectivityPreflight: skip
-            )
         },
         onPingMachine: { machineId in
             try await driver.pingMachine(machineID: machineId)

@@ -126,21 +126,18 @@ public final actor Remote {
         public var onRefresh: @Sendable () async -> Void
         public var onRefreshDevices: @Sendable () async -> Void
         public var onCoreEvent: @Sendable (PBCoreEvent) async -> Void
-        public var onRunMachineCommand: (@Sendable (String, String, PBCommand, Bool) async throws -> PBCommandResult)?
         public var onPingMachine: (@Sendable (String) async throws -> Void)?
         public var onClose: (@Sendable () -> Void)?
         public init(
             onRefresh: @escaping @Sendable () async -> Void,
             onRefreshDevices: @escaping @Sendable () async -> Void,
             onCoreEvent: @escaping @Sendable (PBCoreEvent) async -> Void = { _ in },
-            onRunMachineCommand: (@Sendable (String, String, PBCommand, Bool) async throws -> PBCommandResult)? = nil,
             onPingMachine: (@Sendable (String) async throws -> Void)? = nil,
             onClose: (@Sendable () -> Void)? = nil
         ) {
             self.onRefresh = onRefresh
             self.onRefreshDevices = onRefreshDevices
             self.onCoreEvent = onCoreEvent
-            self.onRunMachineCommand = onRunMachineCommand
             self.onPingMachine = onPingMachine
             self.onClose = onClose
         }

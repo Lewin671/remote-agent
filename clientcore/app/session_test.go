@@ -2599,7 +2599,7 @@ func TestSessionModelChoiceMaxEffortHint(t *testing.T) {
 	}
 }
 
-func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
+func TestPingAndCancelMachineOneShot(t *testing.T) {
 	c := bootstrapReadyApp(t, []*corev1.DemoMachine{
 		testrelay.DemoMachine("m-on", true, 0, &v1.MachineMeta{Hostname: "Box", ProtocolVersion: sync.PeerVersion}),
 	}, nil)
@@ -2608,13 +2608,13 @@ func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
 	// 1. Invalid argument (missing machine_id) settles immediately with ok=false.
 	badBatch := c.Dispatch(&corev1.Event{
 		NowMs: now,
-		Event: &corev1.Event_RunMachineCommand{
-			RunMachineCommand: &corev1.RunMachineCommandAction{OpId: 1},
+		Event: &corev1.Event_PingMachine{
+			PingMachine: &corev1.PingMachineAction{OpId: 1},
 		},
 	})
-	var badRes *corev1.RunMachineCommandResultEffect
+	var badRes *corev1.PingMachineResultEffect
 	for _, ef := range badBatch.GetEffects() {
-		if r := ef.GetRunMachineCommandResult(); r != nil {
+		if r := ef.GetPingMachineResult(); r != nil {
 			badRes = r
 		}
 	}
@@ -2625,12 +2625,8 @@ func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
 	// 1b. Settled daemon error without error_message still populates fallback error_text.
 	runErrBatch := c.Dispatch(&corev1.Event{
 		NowMs: now + 5,
-		Event: &corev1.Event_RunMachineCommand{
-			RunMachineCommand: &corev1.RunMachineCommandAction{
-				OpId:      11,
-				MachineId: "m-on",
-				Command:   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
-			},
+		Event: &corev1.Event_PingMachine{
+			PingMachine: &corev1.PingMachineAction{OpId: 11, MachineId: "m-on"},
 		},
 	})
 	var dcErr *corev1.DispatchCommandEffect
@@ -2664,9 +2660,9 @@ func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
 			},
 		},
 	})
-	var errRes *corev1.RunMachineCommandResultEffect
+	var errRes *corev1.PingMachineResultEffect
 	for _, ef := range errDoneBatch.GetEffects() {
-		if r := ef.GetRunMachineCommandResult(); r != nil {
+		if r := ef.GetPingMachineResult(); r != nil {
 			errRes = r
 		}
 	}
@@ -2674,15 +2670,11 @@ func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
 		t.Fatalf("expected non-nil error_text on daemon error without message, got %+v", errRes)
 	}
 
-	// 2. Valid one-shot command dispatches and settles with ok=true.
+	// 2. Valid one-shot ping dispatches and settles with ok=true.
 	runBatch := c.Dispatch(&corev1.Event{
 		NowMs: now + 10,
-		Event: &corev1.Event_RunMachineCommand{
-			RunMachineCommand: &corev1.RunMachineCommandAction{
-				OpId:      2,
-				MachineId: "m-on",
-				Command:   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
-			},
+		Event: &corev1.Event_PingMachine{
+			PingMachine: &corev1.PingMachineAction{OpId: 2, MachineId: "m-on"},
 		},
 	})
 	var dc *corev1.DispatchCommandEffect
@@ -2716,9 +2708,9 @@ func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
 			},
 		},
 	})
-	var okRes *corev1.RunMachineCommandResultEffect
+	var okRes *corev1.PingMachineResultEffect
 	for _, ef := range doneBatch.GetEffects() {
-		if r := ef.GetRunMachineCommandResult(); r != nil {
+		if r := ef.GetPingMachineResult(); r != nil {
 			okRes = r
 		}
 	}
@@ -2726,16 +2718,11 @@ func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
 		t.Fatalf("expected ok result for op 2, got %+v", okRes)
 	}
 
-	// 3. Canceled one-shot command suppresses late CommandOutcome.
+	// 3. Canceled one-shot ping suppresses late CommandOutcome.
 	runBatch2 := c.Dispatch(&corev1.Event{
 		NowMs: now + 100,
-		Event: &corev1.Event_RunMachineCommand{
-			RunMachineCommand: &corev1.RunMachineCommandAction{
-				OpId:      3,
-				MachineId: "m-on",
-				SessionId: "s-1",
-				Command:   &v1.Command{Kind: &v1.Command_OpenTerminal{OpenTerminal: &v1.OpenTerminalRequest{SessionId: "s-1", StreamId: "st-1"}}},
-			},
+		Event: &corev1.Event_PingMachine{
+			PingMachine: &corev1.PingMachineAction{OpId: 3, MachineId: "m-on"},
 		},
 	})
 	var dc2 *corev1.DispatchCommandEffect
@@ -2749,8 +2736,8 @@ func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
 	}
 	cancelBatch := c.Dispatch(&corev1.Event{
 		NowMs: now + 110,
-		Event: &corev1.Event_CancelMachineCommand{
-			CancelMachineCommand: &corev1.CancelMachineCommandAction{OpId: 3},
+		Event: &corev1.Event_CancelPingMachine{
+			CancelPingMachine: &corev1.CancelPingMachineAction{OpId: 3},
 		},
 	})
 	var cancelEff *corev1.CancelDispatchEffect
@@ -2780,30 +2767,22 @@ func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
 		},
 	})
 	for _, ef := range lateBatch.GetEffects() {
-		if ef.GetRunMachineCommandResult() != nil {
-			t.Fatalf("canceled one-shot command must not emit result effect: %+v", ef)
+		if ef.GetPingMachineResult() != nil {
+			t.Fatalf("canceled one-shot ping must not emit result effect: %+v", ef)
 		}
 	}
 
-	// 4. Canceling one of two concurrent identical commands cancels only its own request_id.
+	// 4. Canceling one of two concurrent identical pings cancels only its own request_id.
 	runA := c.Dispatch(&corev1.Event{
 		NowMs: now + 200,
-		Event: &corev1.Event_RunMachineCommand{
-			RunMachineCommand: &corev1.RunMachineCommandAction{
-				OpId:      4,
-				MachineId: "m-on",
-				Command:   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
-			},
+		Event: &corev1.Event_PingMachine{
+			PingMachine: &corev1.PingMachineAction{OpId: 4, MachineId: "m-on"},
 		},
 	})
 	runB := c.Dispatch(&corev1.Event{
 		NowMs: now + 201,
-		Event: &corev1.Event_RunMachineCommand{
-			RunMachineCommand: &corev1.RunMachineCommandAction{
-				OpId:      5,
-				MachineId: "m-on",
-				Command:   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
-			},
+		Event: &corev1.Event_PingMachine{
+			PingMachine: &corev1.PingMachineAction{OpId: 5, MachineId: "m-on"},
 		},
 	})
 	var dcA, dcB *corev1.DispatchCommandEffect
@@ -2822,8 +2801,8 @@ func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
 	}
 	cancelA := c.Dispatch(&corev1.Event{
 		NowMs: now + 210,
-		Event: &corev1.Event_CancelMachineCommand{
-			CancelMachineCommand: &corev1.CancelMachineCommandAction{OpId: 4},
+		Event: &corev1.Event_CancelPingMachine{
+			CancelPingMachine: &corev1.CancelPingMachineAction{OpId: 4},
 		},
 	})
 	var canceledIDs []string
@@ -2852,9 +2831,9 @@ func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
 			},
 		},
 	})
-	var resB *corev1.RunMachineCommandResultEffect
+	var resB *corev1.PingMachineResultEffect
 	for _, ef := range doneB.GetEffects() {
-		if r := ef.GetRunMachineCommandResult(); r != nil {
+		if r := ef.GetPingMachineResult(); r != nil {
 			resB = r
 		}
 	}
@@ -2863,7 +2842,7 @@ func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
 	}
 }
 
-func TestRunMachineCommandSkipConnectivityPreflight(t *testing.T) {
+func TestPingMachineSkipConnectivityPreflight(t *testing.T) {
 	c := bootstrapReadyApp(t, []*corev1.DemoMachine{
 		testrelay.DemoMachine("m-off", false, 0, &v1.MachineMeta{Hostname: "Box", ProtocolVersion: sync.PeerVersion}),
 	}, nil)
@@ -2886,82 +2865,24 @@ func TestRunMachineCommandSkipConnectivityPreflight(t *testing.T) {
 		t.Fatalf("expected non-connected state after StreamClosed, got %v", got)
 	}
 
-	// Without skip_connectivity_preflight, preflight fails immediately with no DispatchCommandEffect.
+	// Normal semantic commands fail connectivity preflight while reconnecting with no DispatchCommandEffect.
 	blocked := c.Dispatch(&corev1.Event{
 		NowMs: now + 10,
-		Event: &corev1.Event_RunMachineCommand{
-			RunMachineCommand: &corev1.RunMachineCommandAction{
-				OpId:      1,
+		Event: &corev1.Event_ToggleMachineAgent{
+			ToggleMachineAgent: &corev1.ToggleMachineAgentEvent{
 				MachineId: "m-off",
-				Command:   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
+				Agent:     v1.Agent_AGENT_CODEX,
+				Enabled:   true,
 			},
 		},
 	})
-	var blockedRes *corev1.RunMachineCommandResultEffect
 	for _, ef := range blocked.GetEffects() {
 		if ef.GetDispatchCommand() != nil {
 			t.Fatalf("expected preflight to block dispatch, got %+v", ef)
 		}
-		if r := ef.GetRunMachineCommandResult(); r != nil {
-			blockedRes = r
-		}
-	}
-	if blockedRes == nil || blockedRes.Ok || blockedRes.GetErrorText() == nil {
-		t.Fatalf("expected immediate preflight failure with error_text, got %+v", blockedRes)
 	}
 
-	// With skip_connectivity_preflight, probe/open_terminal still attempts dispatch even while reconnecting and machine appears offline.
-	allowed := c.Dispatch(&corev1.Event{
-		NowMs: now + 20,
-		Event: &corev1.Event_RunMachineCommand{
-			RunMachineCommand: &corev1.RunMachineCommandAction{
-				OpId:                      2,
-				MachineId:                 "m-off",
-				Command:                   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
-				SkipConnectivityPreflight: true,
-			},
-		},
-	})
-	var dc *corev1.DispatchCommandEffect
-	for _, ef := range allowed.GetEffects() {
-		if d := ef.GetDispatchCommand(); d != nil {
-			dc = d
-		}
-		if r := ef.GetRunMachineCommandResult(); r != nil {
-			t.Fatalf("expected skip_connectivity_preflight not to fail in preflight, got %+v", r)
-		}
-	}
-	if dc == nil {
-		t.Fatalf("expected DispatchCommandEffect when skip_connectivity_preflight=true, got %+v", allowed.GetEffects())
-	}
-	done := c.Dispatch(&corev1.Event{
-		NowMs: now + 40,
-		Event: &corev1.Event_CommandOutcome{
-			CommandOutcome: &corev1.CommandOutcomeEvent{
-				RequestId:         dc.RequestId,
-				AttemptId:         dc.AttemptId,
-				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
-				Signed:            true,
-				HashesMatch:       true,
-				AttemptBound:      true,
-				OuterMatchesInner: true,
-				OuterOutcome:      "executed",
-				OuterReason:       "ok",
-				RawResult:         testrelay.MustRaw(&v1.CommandResult{Outcome: "executed", Reason: "ok", ResultAvailable: true}),
-			},
-		},
-	})
-	var okRes *corev1.RunMachineCommandResultEffect
-	for _, ef := range done.GetEffects() {
-		if r := ef.GetRunMachineCommandResult(); r != nil {
-			okRes = r
-		}
-	}
-	if okRes == nil || !okRes.Ok || okRes.OpId != 2 {
-		t.Fatalf("expected op 2 to succeed after bypass dispatch, got %+v", okRes)
-	}
-
-	// Semantic PingMachineAction also bypasses connectivity preflight and supports cancellation.
+	// Semantic PingMachineAction bypasses connectivity preflight and supports cancellation.
 	pinged := c.Dispatch(&corev1.Event{
 		NowMs: now + 50,
 		Event: &corev1.Event_PingMachine{

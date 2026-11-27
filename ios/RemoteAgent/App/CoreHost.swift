@@ -594,8 +594,6 @@ actor CoreHost: SyncEngine {
     private var machineStatusWatches: [UUID: MachineStatusWatchEntry] = [:]
     private var activeDirectDiagnosticsID = ""
     private var hooksInstalled = false
-    private var nextMachineCmdOpID: UInt64 = 1
-    private var machineCmdWaiters: [UInt64: CheckedContinuation<PBCommandResult, Error>] = [:]
     private var nextPingOpID: UInt64 = 1
     private var pingWaiters: [UInt64: CheckedContinuation<Void, Error>] = [:]
     private var retryNowWaiters: [String: [CheckedContinuation<Bool, Never>]] = [:]
@@ -815,11 +813,6 @@ actor CoreHost: SyncEngine {
         for continuation in pendingPings.values {
             continuation.resume(throwing: CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()))
         }
-        let pendingCmds = machineCmdWaiters
-        machineCmdWaiters.removeAll()
-        for continuation in pendingCmds.values {
-            continuation.resume(throwing: CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()))
-        }
         let pendingRetry = retryNowWaiters
         retryNowWaiters.removeAll()
         for list in pendingRetry.values {
@@ -848,17 +841,6 @@ actor CoreHost: SyncEngine {
             },
             onCoreEvent: { [weak self] ev in
                 await self?.dispatch(ev)
-            },
-            onRunMachineCommand: { [weak self] machineID, sessionID, command, skipPreflight in
-                guard let self else {
-                    throw CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled())
-                }
-                return try await self.runMachineCommand(
-                    machineID: machineID,
-                    sessionID: sessionID,
-                    command: command,
-                    skipConnectivityPreflight: skipPreflight
-                )
             },
             onPingMachine: { [weak self] machineID in
                 guard let self else {
@@ -1266,11 +1248,6 @@ actor CoreHost: SyncEngine {
         let pendingPings = pingWaiters
         pingWaiters.removeAll()
         for continuation in pendingPings.values {
-            continuation.resume(throwing: CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()))
-        }
-        let pendingCmds = machineCmdWaiters
-        machineCmdWaiters.removeAll()
-        for continuation in pendingCmds.values {
             continuation.resume(throwing: CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()))
         }
         let pendingRetry = retryNowWaiters
@@ -3209,9 +3186,6 @@ actor CoreHost: SyncEngine {
             case .pingMachineResult(let eff):
                 handlePingMachineResult(eff)
 
-            case .runMachineCommandResult(let eff):
-                handleRunMachineCommandResult(eff)
-
             case .renameClient(let eff):
                 guard let exec = executor else { continue }
                 spawnIO { _ in
@@ -3867,89 +3841,6 @@ actor CoreHost: SyncEngine {
             waiter.resume(throwing: CommandError(
                 code,
                 msg.isEmpty ? L10nMessage.errorsCommandFailed() : LocalizedMessage(raw: msg)
-            ))
-        }
-    }
-
-    func runMachineCommand(
-        machineID: String,
-        sessionID: String = "",
-        command: PBCommand,
-        skipConnectivityPreflight: Bool = false
-    ) async throws -> PBCommandResult {
-        guard !closed else {
-            throw CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled())
-        }
-        try Task.checkCancellation()
-        let opID = nextMachineCmdOpID
-        nextMachineCmdOpID &+= 1
-        return try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { continuation in
-                if closed {
-                    continuation.resume(throwing: CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()))
-                    return
-                }
-                if Task.isCancelled {
-                    continuation.resume(throwing: CancellationError())
-                    return
-                }
-                machineCmdWaiters[opID] = continuation
-                Task {
-                    await self.dispatchRunMachineCommand(
-                        opID: opID,
-                        machineID: machineID,
-                        sessionID: sessionID,
-                        command: command,
-                        skipConnectivityPreflight: skipConnectivityPreflight
-                    )
-                }
-            }
-        } onCancel: {
-            Task { await self.cancelMachineCommand(opID: opID) }
-        }
-    }
-
-    private func dispatchRunMachineCommand(
-        opID: UInt64,
-        machineID: String,
-        sessionID: String,
-        command: PBCommand,
-        skipConnectivityPreflight: Bool
-    ) async {
-        guard !closed, machineCmdWaiters[opID] != nil else { return }
-        await dispatch {
-            $0.runMachineCommand = .with {
-                $0.opID = opID
-                $0.machineID = machineID
-                $0.sessionID = sessionID
-                $0.command = command
-                $0.skipConnectivityPreflight = skipConnectivityPreflight
-            }
-        }
-    }
-
-    private func cancelMachineCommand(opID: UInt64) async {
-        if let waiter = machineCmdWaiters.removeValue(forKey: opID) {
-            waiter.resume(throwing: CancellationError())
-        }
-        guard !closed else { return }
-        await dispatch {
-            $0.cancelMachineCommand = .with { $0.opID = opID }
-        }
-    }
-
-    private func handleRunMachineCommandResult(_ eff: PBCoreRunMachineCommandResultEffect) {
-        guard let waiter = machineCmdWaiters.removeValue(forKey: eff.opID) else { return }
-        if eff.ok {
-            waiter.resume(returning: eff.result)
-        } else {
-            let code = eff.errorCode.isEmpty ? "failed" : eff.errorCode
-            let msg = eff.hasErrorText ? eff.errorText.rendered() : ""
-            let fromDaemon = eff.hasResult && (!eff.result.errorCode.isEmpty || !eff.result.outcome.isEmpty)
-            waiter.resume(throwing: CommandError(
-                code,
-                msg.isEmpty ? L10nMessage.errorsCommandFailed() : LocalizedMessage(raw: msg),
-                fromDaemon: fromDaemon
             ))
         }
     }

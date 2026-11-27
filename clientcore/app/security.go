@@ -1864,7 +1864,7 @@ func (c *Core) executeInPlaceExitReset(ctx *sync.StepContext, intent corev1.Exit
 	ctx.Raw = nil
 	for _, sc := range ctx.Settled {
 		meta, ok := c.m.pendingCmdMeta[sc.RequestID]
-		if !ok || (meta.kind != cmdKindMachineOneShot && meta.kind != cmdKindPingMachine) {
+		if !ok || meta.kind != cmdKindPingMachine {
 			continue
 		}
 		delete(c.m.pendingCmdMeta, sc.RequestID)
@@ -1876,24 +1876,10 @@ func (c *Core) executeInPlaceExitReset(ctx *sync.StepContext, intent corev1.Exit
 		if errText == nil {
 			errText = text.Msg(text.KeyErrorsCommandFailed)
 		}
-		if meta.kind == cmdKindPingMachine {
-			delete(c.m.pingReqByOp, meta.opID)
-			stopEffects = append(stopEffects, &corev1.Effect{
-				Effect: &corev1.Effect_PingMachineResult{
-					PingMachineResult: &corev1.PingMachineResultEffect{
-						OpId:      meta.opID,
-						Ok:        false,
-						ErrorCode: errCode,
-						ErrorText: errText,
-					},
-				},
-			})
-			continue
-		}
-		delete(c.m.oneShotReqByOp, meta.opID)
+		delete(c.m.pingReqByOp, meta.opID)
 		stopEffects = append(stopEffects, &corev1.Effect{
-			Effect: &corev1.Effect_RunMachineCommandResult{
-				RunMachineCommandResult: &corev1.RunMachineCommandResultEffect{
+			Effect: &corev1.Effect_PingMachineResult{
+				PingMachineResult: &corev1.PingMachineResultEffect{
 					OpId:      meta.opID,
 					Ok:        false,
 					ErrorCode: errCode,

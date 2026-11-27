@@ -39,19 +39,6 @@ var allowedWireEnums = map[protoreflect.FullName]bool{
 	"remoteagent.v1.NotifyKind":             true,
 }
 
-// Shrink-only allowlist of legacy remoteagent.v1 message / disallowed-enum edges
-// still reachable from the core contract roots (Screen, ViewModel, Event, Effect).
-//
-// Rules:
-//   - Never add new entries.
-//   - When migrating a field off remoteagent.v1, delete its entry in the same commit;
-//     leaving a resolved entry here fails the test.
-var legacyWireAllowlist = map[string]string{
-	// Test/benchmark harness machine command bypass (0 production callers; see report).
-	"RunMachineCommandAction.command -> v1.Command":            "legacy-run-machine-command (P2-4/P2-5/P4-1)",
-	"RunMachineCommandResultEffect.result -> v1.CommandResult": "legacy-run-machine-command (P2-4/P2-5/P4-1)",
-}
-
 // Permitted remoteagent.core.v1 root entries in cmd/protoc-gen-go-lite/entries.txt.
 var allowedCoreLiteEntries = map[string]bool{
 	"in:remoteagent.core.v1.Screen":                    true,
@@ -141,20 +128,13 @@ func scanCoreWireReferences(roots []protoreflect.MessageDescriptor) map[string]s
 	return violations
 }
 
-func diffWireViolations(found map[string]string, allowlist map[string]string) (unexpected, stale []string) {
-	for edge := range found {
-		if _, ok := allowlist[edge]; !ok {
-			unexpected = append(unexpected, edge)
-		}
+func sortedKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
 	}
-	for edge := range allowlist {
-		if _, ok := found[edge]; !ok {
-			stale = append(stale, edge)
-		}
-	}
-	sort.Strings(unexpected)
-	sort.Strings(stale)
-	return unexpected, stale
+	sort.Strings(keys)
+	return keys
 }
 
 func parseCoreLiteEntries(path string) (map[string]bool, error) {
@@ -183,8 +163,8 @@ func parseCoreLiteEntries(path string) (map[string]bool, error) {
 
 // TestCoreContractWireBoundary enforces the shell/core contract boundary
 // (docs/architecture.md §5 壳的两层职责边界):
-//   - No new remoteagent.v1 message or disallowed enum may enter Screen, ViewModel, Event, or Effect.
-//   - The legacy allowlist is shrink-only: resolved entries must be deleted immediately.
+//   - Zero remoteagent.v1 messages or disallowed enums may be reachable from
+//     Screen, ViewModel, Event, or Effect.
 //   - cmd/protoc-gen-go-lite/entries.txt may only export permitted core contract roots.
 func TestCoreContractWireBoundary(t *testing.T) {
 	roots := []protoreflect.MessageDescriptor{
@@ -194,12 +174,8 @@ func TestCoreContractWireBoundary(t *testing.T) {
 		(&stdcorev1.Effect{}).ProtoReflect().Descriptor(),
 	}
 	found := scanCoreWireReferences(roots)
-	unexpected, stale := diffWireViolations(found, legacyWireAllowlist)
-	for _, edge := range unexpected {
+	for _, edge := range sortedKeys(found) {
 		t.Errorf("forbidden remoteagent.v1 reference in core contract: %q (path: %s)", edge, found[edge])
-	}
-	for _, edge := range stale {
-		t.Errorf("stale legacyWireAllowlist entry %q (tag=%q): violation is gone, delete it", edge, legacyWireAllowlist[edge])
 	}
 
 	entriesPath := filepath.Join("..", "..", "cmd", "protoc-gen-go-lite", "entries.txt")
@@ -306,18 +282,13 @@ func TestCoreContractWireBoundaryGuardEnforcement(t *testing.T) {
 		"FakeRoot.bad_nested_enum -> v1.FakeResponse.Phase",
 		"FakeRoot.bad_unlisted_enum -> v1.UnlistedEnum",
 	}
-	unexpected, stale := diffWireViolations(found, map[string]string{
-		"FakeRoot.stale_entry -> v1.Gone": "fixed",
-	})
-	if len(unexpected) != len(wantEdges) {
-		t.Fatalf("unexpected violations = %v, want %v", unexpected, wantEdges)
+	gotEdges := sortedKeys(found)
+	if len(gotEdges) != len(wantEdges) {
+		t.Fatalf("violations = %v, want %v", gotEdges, wantEdges)
 	}
 	for i := range wantEdges {
-		if unexpected[i] != wantEdges[i] {
-			t.Fatalf("unexpected[%d] = %q, want %q", i, unexpected[i], wantEdges[i])
+		if gotEdges[i] != wantEdges[i] {
+			t.Fatalf("violations[%d] = %q, want %q", i, gotEdges[i], wantEdges[i])
 		}
-	}
-	if len(stale) != 1 || stale[0] != "FakeRoot.stale_entry -> v1.Gone" {
-		t.Fatalf("stale allowlist entries = %v, want [FakeRoot.stale_entry -> v1.Gone]", stale)
 	}
 }

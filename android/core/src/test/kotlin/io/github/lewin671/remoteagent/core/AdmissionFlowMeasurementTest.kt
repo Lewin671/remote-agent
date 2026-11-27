@@ -68,9 +68,15 @@ class AdmissionFlowMeasurementTest {
             return http.newCall(req).execute().use { check(it.isSuccessful); Json.parseToJsonElement(it.body.string()).jsonObject }
         }
         val sid = "flow-android"
-        fun approval(i: Int) = Command.newBuilder()
-            .setResolveApproval(ResolveApprovalRequest.newBuilder().setSessionId(sid).setApprovalId("$sid-approval-${i.toString().padStart(3, '0')}").setAllow(true))
-            .build()
+        suspend fun resolveApproval(i: Int, timeoutMs: Long = 1500) {
+            val approvalId = "$sid-approval-${i.toString().padStart(3, '0')}"
+            remote.coreHost.resolveApproval(sid, approvalId, allow = true)
+            withTimeout(timeoutMs) {
+                remote.watchSession(sid).first { vm ->
+                    !vm.dock.hasItem || vm.dock.approval.approvalId != approvalId || !vm.dock.command.busy
+                }
+            }
+        }
         var loaded = false
         var follow: Job? = null
         try {
@@ -78,15 +84,14 @@ class AdmissionFlowMeasurementTest {
             remote.start()
             val feed = remote.watchSession(sid)
             follow = launch(start = CoroutineStart.UNDISPATCHED) { feed.collect {} }
-            val readyVm = withTimeout(10000) {
+            withTimeout(10000) {
                 feed.first {
                     it.header.connState == io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_CONNECTED &&
                         it.header.found &&
                         it.header.title.literal.startsWith("owner-read-")
                 }
             }
-            val mid = readyVm.header.machineId
-            repeat(20) { remote.coreHost.runMachineCommand(mid, sid, approval(it)) }
+            repeat(20) { resolveApproval(it, 5000) }
             val load = control("start"); loaded = true
             assertEquals(4, load.getValue("normal").jsonPrimitive.int)
             assertEquals(2, load.getValue("bulk").jsonPrimitive.int)
@@ -95,7 +100,7 @@ class AdmissionFlowMeasurementTest {
             var failed = 0
             for (i in 20 until 120) {
                 val start = System.nanoTime()
-                try { withTimeout(1500) { remote.coreHost.runMachineCommand(mid, sid, approval(i)) }; completed++ } catch (e: Exception) { failed++ }
+                try { resolveApproval(i, 1500); completed++ } catch (e: Exception) { failed++ }
                 timings.add((System.nanoTime() - start) / 1000000.0)
                 if (failed > 0) break
             }

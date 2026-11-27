@@ -5952,7 +5952,7 @@
   {
     "path": "clientcore/app/core.go",
     "literal": "failed",
-    "reason": "Internal machine error code assigned to RunMachineCommandResultEffect.ErrorCode and state Error fields near screens.ReasonText; never rendered directly as UI text."
+    "reason": "Internal machine error code assigned to PingMachineResultEffect.ErrorCode and state Error fields near screens.ReasonText; never rendered directly as UI text."
   },
   {
     "path": "ios/RemoteAgent/App/Shared.swift",

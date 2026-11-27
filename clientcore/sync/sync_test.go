@@ -3069,3 +3069,137 @@ func TestCommandPriorUnknownRetriesThroughMachineOfflineRefusal(t *testing.T) {
 		t.Fatalf("expected settled Executed for %q, got %+v", reqID, r5.Settled)
 	}
 }
+
+func TestSubmitCommandFinalFailuresDoNotRetry(t *testing.T) {
+	for _, code := range []string{"canceled", "deadline_exceeded", "unknown", "generation_conflict"} {
+		t.Run(code, func(t *testing.T) {
+			e := NewEngine()
+			now := int64(1_791_078_060_000)
+			mono := int64(1_000)
+			e.HandleEvent(&corev1.Event{
+				NowMs:  now,
+				MonoMs: mono,
+				Event: &corev1.Event_SeedDemoWorld{
+					SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+						Machines: []*corev1.DemoMachine{{
+							MachineId: "m1",
+							Online:    true,
+							RawMeta:   testrelay.MustRaw(&v1.MachineMeta{Hostname: "Mac", ProtocolVersion: PeerVersion}),
+						}},
+					},
+				},
+			})
+			startDemoConnected(e, now+10, mono+10)
+
+			cmd := &v1.Command{Kind: &v1.Command_ListModels{ListModels: &v1.ListModelsRequest{}}}
+			if code == "generation_conflict" {
+				cmd = &v1.Command{Kind: &v1.Command_CompleteImageUpload{CompleteImageUpload: &v1.CompleteImageUploadRequest{TransferId: "tr-final"}}}
+			}
+			prev, ctx := e.BeginStep()
+			reqID, dispatched := e.SubmitCommand(ctx, SubmitCommandParams{
+				MachineID: "m1",
+				Command:   cmd,
+			})
+			step := e.EndStep(prev, ctx)
+			if !dispatched || reqID == "" {
+				t.Fatalf("expected dispatch for %s", code)
+			}
+			var dc *corev1.DispatchCommandEffect
+			for _, ef := range step.Effects {
+				if d := ef.GetDispatchCommand(); d != nil {
+					dc = d
+				}
+			}
+			if dc == nil {
+				t.Fatalf("missing DispatchCommandEffect for %s", code)
+			}
+
+			_, r1 := e.HandleEvent(&corev1.Event{
+				NowMs:  now + 200,
+				MonoMs: mono + 200,
+				Event: &corev1.Event_CommandOutcome{
+					CommandOutcome: &corev1.CommandOutcomeEvent{
+						RequestId:         reqID,
+						AttemptId:         dc.AttemptId,
+						Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+						Signed:            true,
+						HashesMatch:       true,
+						AttemptBound:      true,
+						OuterMatchesInner: true,
+						OuterOutcome:      "executed",
+						OuterReason:       code,
+						RawResult: testrelay.MustRaw(&v1.CommandResult{
+							Outcome:         "executed",
+							Reason:          code,
+							ResultAvailable: true,
+							ErrorCode:       code,
+							ErrorMessage:    "failure",
+						}),
+					},
+				},
+			})
+			for _, ef := range r1.Effects {
+				if st := ef.GetScheduleTimer(); st != nil && st.Kind == corev1.TimerKind_TIMER_KIND_COMMAND_RETRY {
+					t.Fatalf("final error %s must not schedule retry: %+v", code, st)
+				}
+				if ef.GetDispatchCommand() != nil {
+					t.Fatalf("final error %s must not re-dispatch immediately", code)
+				}
+			}
+			if len(r1.Settled) != 1 || r1.Settled[0].ErrorCode != code {
+				t.Fatalf("expected settled ErrorCode=%q, got %+v", code, r1.Settled)
+			}
+		})
+	}
+}
+
+func TestSubmitCommandEnvelopeSessionIDScope(t *testing.T) {
+	e := NewEngine()
+	now := int64(1_791_078_060_000)
+	mono := int64(1_000)
+	e.HandleEvent(&corev1.Event{
+		NowMs:  now,
+		MonoMs: mono,
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Machines: []*corev1.DemoMachine{{
+					MachineId: "m1",
+					Online:    true,
+					RawMeta:   testrelay.MustRaw(&v1.MachineMeta{Hostname: "Mac", ProtocolVersion: PeerVersion}),
+				}},
+			},
+		},
+	})
+	startDemoConnected(e, now+10, mono+10)
+
+	prev1, ctx1 := e.BeginStep()
+	_, ok1 := e.SubmitCommand(ctx1, SubmitCommandParams{
+		MachineID: "m1",
+		SessionID: "s1",
+		Command:   &v1.Command{Kind: &v1.Command_OpenTerminal{OpenTerminal: &v1.OpenTerminalRequest{SessionId: "s1", StreamId: "stream-1"}}},
+	})
+	step1 := e.EndStep(prev1, ctx1)
+
+	prev2, ctx2 := e.BeginStep()
+	_, ok2 := e.SubmitCommand(ctx2, SubmitCommandParams{
+		MachineID: "m1",
+		SessionID: "",
+		Command:   &v1.Command{Kind: &v1.Command_Schedule{Schedule: &v1.ScheduleRequest{Operation: "list", SessionId: "s1"}}},
+	})
+	step2 := e.EndStep(prev2, ctx2)
+
+	if !ok1 || !ok2 {
+		t.Fatalf("expected both commands dispatched, got ok1=%v ok2=%v", ok1, ok2)
+	}
+	var got []string
+	for _, st := range []StepResult{step1, step2} {
+		for _, ef := range st.Effects {
+			if dc := ef.GetDispatchCommand(); dc != nil {
+				got = append(got, dc.SessionId)
+			}
+		}
+	}
+	if len(got) != 2 || got[0] != "s1" || got[1] != "" {
+		t.Fatalf("expected dispatch SessionIds [\"s1\", \"\"], got %q", got)
+	}
+}

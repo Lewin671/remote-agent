@@ -1,9 +1,6 @@
 import "fake-indexeddb/auto";
 import { test, expect } from "vitest";
 import { readFileSync, writeFileSync, realpathSync } from "node:fs";
-import { create } from "@bufbuild/protobuf";
-import { ResolveApprovalRequestSchema } from "./gen/remoteagent/v1/local_pb";
-import { GetLiveSnapshotRequestSchema } from "./gen/remoteagent/v1/remote_pb";
 import { Remote } from "./remote";
 import { getCoreHost } from "./core/host";
 import { ScreenTarget } from "./gen/remoteagent/core/v1/app_pb";
@@ -16,8 +13,16 @@ test.skipIf(!process.env.RA_1B_FLOW_ROOT)("full snapshot and approval flow under
   expect(new URL(config.server).hostname).toBe("127.0.0.1");
   const seed = Uint8Array.from(Buffer.from(config.seed, "base64"));
   const { store, record } = await createTestSecurityStore(config.record, seed, config.server);
+  const settled = new Map<string, () => void>();
   class MeasurementRemote extends Remote {
     constructor() { super({ server: config.server, deviceId: record.memberID, accountId: record.pin.account }, undefined, undefined, undefined, undefined, store); }
+    override async executeCommandAttempt(eff: Parameters<Remote["executeCommandAttempt"]>[0], signal?: AbortSignal) {
+      const out = await super.executeCommandAttempt(eff, signal);
+      for (const [key, resolve] of settled) {
+        if (eff.sessionId === "flow-web") { settled.delete(key); resolve(); break; }
+      }
+      return out;
+    }
   }
   const remote = new MeasurementRemote();
   const control = async (action: string) => {
@@ -36,26 +41,28 @@ test.skipIf(!process.env.RA_1B_FLOW_ROOT)("full snapshot and approval flow under
     check();
   });
   const sid = "flow-web";
-  const approval = (i: number) => ({ case: "resolveApproval" as const, value: create(ResolveApprovalRequestSchema, { sessionId:sid, approvalId:`${sid}-approval-${String(i).padStart(3,"0")}`, allow:true }) });
+  const resolveApproval = (i: number, timeoutMs = 1500) => new Promise<void>((resolve, reject) => {
+    const approvalId = `${sid}-approval-${String(i).padStart(3, "0")}`;
+    const timer = setTimeout(() => { settled.delete(approvalId); reject(Error("approval timed out")); }, timeoutMs);
+    settled.set(approvalId, () => { clearTimeout(timer); resolve(); });
+    host.sessionResolveApproval(sid, approvalId, true, false);
+  });
   let loaded = false;
   try {
     await control("reset");
     remote.start();
+    host.watchSession(sid);
     await until(() => host.viewConnection().connected && !!host.viewSession(sid).header?.found);
-    const machineId = host.viewSession(sid).header!.machineId;
-    await host.runMachineCommand(machineId, sid, {case:"getLiveSnapshot",value:create(GetLiveSnapshotRequestSchema,{sessionId:sid})});
-    for (let i = 0; i < 20; i++) await host.runMachineCommand(machineId, sid, approval(i));
+    for (let i = 0; i < 20; i++) await resolveApproval(i, 5000);
     const load = await control("start"); loaded = true;
     expect(load).toMatchObject({ normal: 4, bulk: 2, input: 1, input_overdue: true });
     const timings: number[] = []; let completed = 0; let failed = 0;
     for (let i = 20; i < 120; i++) {
       const start = performance.now();
-      const stop = new AbortController();
-      const timer = setTimeout(() => stop.abort(), 1500);
       try {
-        await host.runMachineCommand(machineId, sid, approval(i), stop.signal);
+        await resolveApproval(i, 1500);
         completed++;
-      } catch { failed++; } finally { clearTimeout(timer); timings.push(performance.now() - start); }
+      } catch { failed++; } finally { timings.push(performance.now() - start); }
       if (failed) break;
     }
     const counters = await control("stop"); loaded = false;

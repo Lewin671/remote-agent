@@ -443,54 +443,6 @@ class RemoteTest {
             }
         }
 
-    @Test fun verifiedReadTimeoutAndFinalFailuresDoNotRetry() = runBlocking<Unit> {
-        val r = client()
-        r.start()
-        r.awaitUntil("online machine") { r.machineCard(daemon.id)?.online == true }
-        for (code in listOf("canceled", "deadline_exceeded", "unknown", "generation_conflict")) {
-            var calls = 0
-            daemon.answer = { _, _ ->
-                calls++
-                CommandResult.newBuilder().setErrorCode(code).setErrorMessage("failure").build()
-            }
-            val command = if (code == "generation_conflict")
-                Command.newBuilder().setCompleteImageUpload(CompleteImageUploadRequest.newBuilder().setTransferId("test-transfer-id")).build()
-            else Command.newBuilder().setListModels(ListModelsRequest.getDefaultInstance()).build()
-            val error = runCatching { r.coreHost.runMachineCommand(daemon.id, "", command) }.exceptionOrNull() as CommandException
-            assertEquals(code, error.code)
-            assertEquals(1, calls)
-        }
-    }
-
-    @Test
-    fun machineCommandCarriesSessionIdOnlyForSessionScopedCommands() = runBlocking<Unit> {
-        val r = client()
-        r.start()
-        r.awaitUntil("online machine") { r.machineCard(daemon.id)?.online == true }
-
-        val headers = java.util.concurrent.CopyOnWriteArrayList<String>()
-        daemon.answer = { header, cmd ->
-            headers.add(header.sessionId)
-            when (cmd.kindCase) {
-                Command.KindCase.OPEN_TERMINAL -> CommandResult.getDefaultInstance()
-                else -> CommandResult.newBuilder().setSchedule(ScheduleResponse.getDefaultInstance()).build()
-            }
-        }
-        r.coreHost.runMachineCommand(
-            daemon.id,
-            "s1",
-            Command.newBuilder().setOpenTerminal(
-                OpenTerminalRequest.newBuilder().setSessionId("s1").setStreamId("stream-1"),
-            ).build(),
-        )
-        r.coreHost.runMachineCommand(
-            daemon.id,
-            "",
-            Command.newBuilder().setSchedule(ScheduleRequest.newBuilder().setOperation("list").setSessionId("s1")).build(),
-        )
-        assertEquals(listOf("s1", ""), headers.toList())
-    }
-
     @Test
     fun forwardsCommandsAndReportsOffline() =
         runBlocking<Unit> {

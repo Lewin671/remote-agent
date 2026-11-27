@@ -105,20 +105,7 @@ extension Remote {
         }
     }
 
-    // MARK: - Core One-Shot Machine Commands & Probes
-
-    @discardableResult
-    public func runMachineCommand(
-        machineId: String,
-        sessionId: String = "",
-        _ cmd: PBCommand,
-        skipConnectivityPreflight: Bool = false
-    ) async throws -> PBCommandResult {
-        guard let onRun = hostHooks?.onRunMachineCommand else {
-            throw CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled())
-        }
-        return try await onRun(machineId, sessionId, cmd, skipConnectivityPreflight)
-    }
+    // MARK: - Core Probes
 
     public nonisolated func pingServer(timeoutMs: Int64 = 8_000) async throws -> Int64 {
         var request = URLRequest(url: URL(string: origin.server + "/healthz")!)

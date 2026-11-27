@@ -5,6 +5,7 @@ import { createServer } from "node:http";
 import { fromJson } from "@bufbuild/protobuf";
 import { Remote } from "../remote";
 import { getCoreHost } from "../core/host";
+import { SessionSimpleCommandKind } from "../gen/remoteagent/core/v1/session_view_pb";
 import { CommandSchema } from "../gen/remoteagent/v1/remote_pb";
 import { createTestSecurityStore } from "./security-fixture";
 
@@ -27,7 +28,28 @@ test.skipIf(!process.env.RA_TRANSPORT_WEB)("serve the real Web Remote RPC path",
    const chunks:Buffer[]=[];for await(const chunk of req)chunks.push(Buffer.from(chunk));
    const q=JSON.parse(Buffer.concat(chunks).toString());
    const cmd=fromJson(CommandSchema,q.command);
-   await host.runMachineCommand(q.machine,q.session,cmd.kind);
+   switch (cmd.kind.case) {
+    case "getSettings":
+     await host.pingMachine(q.machine);
+     break;
+    case "resolveApproval":
+     host.sessionResolveApproval(q.session, cmd.kind.value.approvalId, cmd.kind.value.allow, cmd.kind.value.always, cmd.kind.value.message);
+     break;
+    case "interrupt":
+     host.sessionSimpleCommand(q.session, SessionSimpleCommandKind.INTERRUPT);
+     break;
+    case "stopSession":
+     host.sessionSimpleCommand(q.session, SessionSimpleCommandKind.STOP);
+     break;
+    case "resumeSession":
+     host.sessionSimpleCommand(q.session, SessionSimpleCommandKind.RESUME);
+     break;
+    case "forkSession":
+     host.sessionSimpleCommand(q.session, SessionSimpleCommandKind.FORK);
+     break;
+    default:
+     await host.pingMachine(q.machine);
+   }
    res.setHeader("Content-Type","application/json");res.end(JSON.stringify({ok:true}));
   }catch(error){
    res.setHeader("Content-Type","application/json");res.end(JSON.stringify({Code:"unknown_outcome",Message:error instanceof Error?error.message:String(error)}));

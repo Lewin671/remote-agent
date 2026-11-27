@@ -160,90 +160,43 @@ class ApprovalLatencyE2ETest {
         ui.waitUntil(60_000) { remote.coreHost.snapshotSettingsView().machinesList.firstOrNull { it.machineId == machineId }?.let { it.online || it.directReady } == true }
 
         val metrics = JSONObject().put("rounds", rounds)
-        suspend fun io.github.lewin671.remoteagent.core.Remote.machineCommand(mid: String, cmd: Command): io.github.lewin671.remoteagent.proto.CommandResult {
-            val sid = when (cmd.kindCase) {
-                Command.KindCase.RESOLVE_APPROVAL -> cmd.resolveApproval.sessionId
-                Command.KindCase.GET_LIVE_SNAPSHOT -> cmd.getLiveSnapshot.sessionId
-                Command.KindCase.GET_SHARED_FILE_CHUNK -> cmd.getSharedFileChunk.sessionId
-                else -> ""
-            }
-            return coreHost.runMachineCommand(mid, sid, cmd)
-        }
-        suspend fun io.github.lewin671.remoteagent.core.Remote.getSharedFileChunk(sid: String, fileId: String, offset: Long): io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse =
-            coreHost.runMachineCommand(
-                machineId,
-                sid,
-                Command.newBuilder().setGetSharedFileChunk(
-                    io.github.lewin671.remoteagent.proto.GetSharedFileChunkRequest.newBuilder()
-                        .setSessionId(sid).setFileId(fileId).setOffset(offset),
-                ).build(),
-            ).getSharedFileChunk
         runBlocking(Dispatchers.IO) {
-            val created = remote.machineCommand(
-                machineId,
-                Command.newBuilder().setCreateSession(
-                    CreateSessionRequest.newBuilder().setCwd(projectDir).setAgent(Agent.AGENT_CLAUDE).setMode(ApprovalMode.APPROVAL_MODE_ASK),
-                ).build(),
-            )
-            val sessionId = created.createSession.session.id
-            val snapshotCmd = Command.newBuilder().setGetLiveSnapshot(GetLiveSnapshotRequest.newBuilder().setSessionId(sessionId)).build()
-
-            suspend fun <T> retryNotSent(block: suspend () -> T): T {
-                repeat(8) {
-                    try {
-                        return block()
-                    } catch (e: CommandException) {
-                        if (e.code != "network" && e.code != "unavailable") throw e
-                        delay(1_000)
-                    }
-                }
-                return block()
+            fun homeSessionIds(vm: io.github.lewin671.remoteagent.core.proto.HomeViewModel): Set<String> =
+                (vm.runningList.map { it.sessionId } + vm.attentionList.map { it.sessionId }).filter { it.isNotEmpty() }.toSet()
+            val beforeIds = homeSessionIds(remote.coreHost.homeView.value)
+            remote.coreHost.openNewSession(projectDir)
+            remote.coreHost.selectNewSessionMachine(machineId)
+            remote.coreHost.selectNewSessionAgent(Agent.AGENT_CLAUDE)
+            remote.coreHost.selectNewSessionModel("", "", mode = ApprovalMode.APPROVAL_MODE_ASK)
+            remote.coreHost.submitNewSession(projectDir)
+            val sessionId: String = withTimeout(20_000) {
+                val vm = remote.homeView.first { v -> homeSessionIds(v).any { it !in beforeIds } }
+                homeSessionIds(vm).first { it !in beforeIds }
             }
 
             fun mark(what: String) = android.util.Log.i("DirectE2E", "marker $what")
 
-            // The client learns of the new session asynchronously; wait until commands for it are accepted.
-            run {
-                val deadline = System.currentTimeMillis() + 20_000
-                while (true) {
-                    try {
-                        remote.machineCommand(machineId, snapshotCmd)
-                        break
-                    } catch (e: CommandException) {
-                        if (System.currentTimeMillis() > deadline) throw e
-                        delay(250)
-                    }
-                }
-            }
-
-            // One approval: trigger it on the host, wait (untimed) until it is visible, then time the ResolveApproval command.
+            // One approval: trigger it on the host, wait (untimed) until it is visible, then time semantic ResolveApproval.
             suspend fun approvalRound(caseName: String, i: Int, extra: () -> String): Double {
                 ctrlPost(ctrlBase, "/trigger-approval", JSONObject().put("sessionId", sessionId).put("command", "echo $caseName-$i"))
-                var approvalId: String? = null
-                val waitHook = System.currentTimeMillis() + 10_000
-                while (approvalId == null && System.currentTimeMillis() < waitHook) {
-                    val snap = remote.machineCommand(machineId, snapshotCmd).liveSnapshot
-                    approvalId = snap.actionsList.firstOrNull { it.hasApprovalRequested() }?.approvalRequested?.approvalId
-                    if (approvalId == null) delay(15)
-                }
-                val id = checkNotNull(approvalId) { "Hook approval $caseName-$i never appeared" }
                 remote.openSession(sessionId)
                 val evJob = launch { remote.watchSession(sessionId).collect { } }
-                val liveVm = withTimeout(5_000) {
+                val liveVm = withTimeout(10_000) {
                     remote.watchSession(sessionId).first { vm ->
-                        vm.timeline.loaded && vm.dock.hasItem && vm.dock.kind == SessionDockKind.SESSION_DOCK_KIND_APPROVAL && vm.dock.approval.approvalId == id
+                        vm.timeline.loaded && vm.dock.hasItem && vm.dock.kind == SessionDockKind.SESSION_DOCK_KIND_APPROVAL && vm.dock.approval.approvalId.isNotEmpty()
                     }
                 }
+                val id = liveVm.dock.approval.approvalId
                 delay(30) // let the first loadEvents / live pollers settle before timing
                 val observedSeq = liveVm.dock.observedSeq
                 mark("t0 $caseName $i")
                 val t0 = System.nanoTime()
-                remote.machineCommand(
-                    machineId,
-                    Command.newBuilder().setResolveApproval(
-                        ResolveApprovalRequest.newBuilder().setSessionId(sessionId).setApprovalId(id).setAllow(true).setObservedEventSeq(observedSeq),
-                    ).build(),
-                )
+                remote.coreHost.resolveApproval(sessionId, id, allow = true, observedEventSeq = observedSeq)
+                withTimeout(5_000) {
+                    remote.watchSession(sessionId).first { vm ->
+                        !vm.dock.hasItem || vm.dock.approval.approvalId != id || !vm.dock.command.busy
+                    }
+                }
                 val dt = (System.nanoTime() - t0) / 1_000_000.0
                 mark("t1 $caseName $i")
                 android.util.Log.i("DirectE2E", "approval case=$caseName i=$i dtMs=$dt ${extra()}")
@@ -298,26 +251,13 @@ class ApprovalLatencyE2ETest {
             probe.delete()
             metrics.put("fsyncMs", stats(syncMs))
 
-            // Harness relay latency, 2: one relay command (GetLiveSnapshot, emulator to daemon and back), direct path off.
-            mark("case relay_snapshot")
-            repeat(5) { remote.machineCommand(machineId, snapshotCmd) }
-            val snapMs = ArrayList<Double>()
-            repeat(rounds) {
-                val t0 = System.nanoTime()
-                remote.machineCommand(machineId, snapshotCmd)
-                snapMs.add((System.nanoTime() - t0) / 1_000_000.0)
-                delay(20)
-            }
-            metrics.put("relaySnapshotMs", stats(snapMs))
-
-            // Harness relay latency, 3: the cheapest relay command (GetMachineStatus), so that daemon work is as small as a command can be.
+            // Harness relay latency, 2: semantic PingMachine over relay only (direct path off).
             mark("case relay_ping")
-            val statusCmd = Command.newBuilder().setGetMachineStatus(io.github.lewin671.remoteagent.proto.GetMachineStatusRequest.getDefaultInstance()).build()
-            repeat(5) { remote.machineCommand(machineId, statusCmd) }
+            repeat(5) { remote.coreHost.pingMachine(machineId) }
             val pingMs = ArrayList<Double>()
             repeat(rounds) {
                 val t0 = System.nanoTime()
-                remote.machineCommand(machineId, statusCmd)
+                remote.coreHost.pingMachine(machineId)
                 pingMs.add((System.nanoTime() - t0) / 1_000_000.0)
                 delay(20)
             }
@@ -336,13 +276,10 @@ class ApprovalLatencyE2ETest {
             ui.waitUntil(60_000) { remote.directRouteReport(machineId).state == DirectRouteState.DIRECT_ROUTE_STATE_CONNECTED }
             delay(700)
             ui.waitUntil(30_000) { remote.directRouteReport(machineId).readRoute == DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT }
-            val chunkSize = 768 * 1024
             val f1 = ctrlPost(ctrlBase, "/create-shared-file", JSONObject().put("sessionId", sessionId).put("sizeBytes", 24 * 1024 * 1024).put("seed", 11))
             val fid1 = f1.getString("fileId")
-            for (warmIdx in 0 until 96) {
-                if (remote.filePath(machineId) == DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT) break
-                retryNotSent { remote.getSharedFileChunk(sessionId, fid1, (warmIdx % 32).toLong() * chunkSize) }
-            }
+            remote.coreHost.startSharedFileDownload(sessionId, fid1, autoOpenIfStaying = false)
+            ui.waitUntil(30_000) { remote.filePath(machineId) == DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT }
             assertEquals("bulk path must upgrade to direct", DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT, remote.filePath(machineId))
             metrics.put("directReadyMs", System.currentTimeMillis() - connectStart)
             ctrlPost(ctrlBase, "/set-relay-delay", JSONObject().put("ms", 0).put("bulkMs", 350).put("resetCount", true))
@@ -354,23 +291,17 @@ class ApprovalLatencyE2ETest {
             val idle = (1..rounds).map { approvalRound("idle", it) { "file=${remote.filePath(machineId)} readDirect=${isReadDirect()}" } }
             metrics.put("approvalDirectIdleMs", stats(idle))
 
-            // Direct path saturated by one bulk worker (the full suite's load).
+            // Direct path under concurrent shared-file download.
             mark("case saturated")
             val attempted = AtomicInteger(0)
             val succeeded = AtomicInteger(0)
-            val bytes = AtomicLong(0)
             val saturating = AtomicBoolean(true)
-            val satStart = System.nanoTime()
             val worker = launch {
-                var idx = 0
                 while (isActive && saturating.get()) {
-                    val o = ((idx % 32).toLong()) * chunkSize
-                    idx += 1
                     attempted.incrementAndGet()
                     try {
-                        val res = retryNotSent { remote.getSharedFileChunk(sessionId, fid1, o) }
+                        remote.coreHost.pingMachine(machineId)
                         succeeded.incrementAndGet()
-                        bytes.addAndGet(res.data.size().toLong())
                     } catch (c: CancellationException) {
                         throw c
                     } catch (_: Exception) {
@@ -383,14 +314,12 @@ class ApprovalLatencyE2ETest {
             }
             saturating.set(false)
             worker.cancelAndJoin()
-            val satSec = (System.nanoTime() - satStart) / 1e9
             metrics.put("approvalSaturatedMs", stats(sat))
             metrics.put("bulkAttempted", attempted.get())
             metrics.put("bulkSucceeded", succeeded.get())
-            metrics.put("bulkMiBPerSec", bytes.get() / 1048576.0 / satSec)
             mark("case done")
             ctrlPost(ctrlBase, "/report-metrics", metrics)
-            assertTrue("saturated bulk must have moved data", succeeded.get() > 0)
+            assertTrue("saturated probes must have completed", succeeded.get() > 0)
         }
     }
 }

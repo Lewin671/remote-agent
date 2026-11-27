@@ -143,17 +143,6 @@ public interface EffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.RequestEntropyEffect getRequestEntropy();
 
   /**
-   * <code>.remoteagent.core.v1.RunMachineCommandResultEffect run_machine_command_result = 18 [json_name = "runMachineCommandResult"];</code>
-   * @return Whether the runMachineCommandResult field is set.
-   */
-  boolean hasRunMachineCommandResult();
-  /**
-   * <code>.remoteagent.core.v1.RunMachineCommandResultEffect run_machine_command_result = 18 [json_name = "runMachineCommandResult"];</code>
-   * @return The runMachineCommandResult.
-   */
-  io.github.lewin671.remoteagent.core.proto.RunMachineCommandResultEffect getRunMachineCommandResult();
-
-  /**
    * <code>.remoteagent.core.v1.CancelDispatchEffect cancel_dispatch = 19 [json_name = "cancelDispatch"];</code>
    * @return Whether the cancelDispatch field is set.
    */

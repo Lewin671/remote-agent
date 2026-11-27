@@ -61,7 +61,6 @@ function makeSecErr(code: SecurityError["code"]): SecurityError {
 import {
   CacheBootstrapLoadedEventSchema,
   CacheEventsLoadedEventSchema,
-  CancelMachineCommandActionSchema,
   CancelPingMachineActionSchema,
   CommandOutcomeEventSchema,
   DirNavigateActionSchema,
@@ -95,7 +94,6 @@ import {
   ProjectKeyActionSchema,
   ProjectScreenRequestSchema,
   ProjectSetSearchActionSchema,
-  RunMachineCommandActionSchema,
   ScreenSchema,
   ScreenTarget,
   SessionWatchEventSchema,
@@ -273,7 +271,7 @@ import {
   HomeRetryAttentionActionSchema,
   type HomeViewModel,
 } from "../gen/remoteagent/core/v1/home_view_pb";
-import { CommandResultSchema, CommandSchema } from "../gen/remoteagent/v1/remote_pb";
+import { CommandResultSchema } from "../gen/remoteagent/v1/remote_pb";
 import {
   MachineChartKind,
   MachinePollMode,
@@ -479,13 +477,6 @@ export interface HostBridge {
   dispatchDirectSignal(raw: Uint8Array<ArrayBuffer>): void;
   dispatchDirectSignalDelivery(frameId: Uint8Array<ArrayBuffer>, status: number, retryAfterMs: number): void;
   pingMachine(machineId: string, signal?: AbortSignal): Promise<void>;
-  runMachineCommand(
-    machineId: string,
-    sessionId: string,
-    cmd: MessageInitShape<typeof CommandSchema>["kind"],
-    signal?: AbortSignal,
-    skipConnectivityPreflight?: boolean,
-  ): Promise<void>;
   changeProjectPref(kind: "pin" | "unpin" | "hide" | "unhide", path: string): void;
   dispatchEvent(ev: Event, onProcessed?: () => void): void;
   subscribe(target: ScreenTarget, fn: () => void): () => void;
@@ -1002,8 +993,6 @@ export class CoreHost {
   private exitConfirmCache?: { version: number; vm: ExitConfirmView };
   private knownDraftScopes = new Map<string, DraftScope>();
   private usageHydratedMachines = new Set<string>();
-  private nextMachineCmdOpId = 0n;
-  private machineCmdWaiters = new Map<bigint, { resolve: () => void; reject: (err: Error) => void }>();
   private nextPingOpId = 0n;
   private pingWaiters = new Map<bigint, { resolve: () => void; reject: (err: Error) => void }>();
   private inFlightDispatches = new Map<string, Map<string, AbortController>>();
@@ -1236,8 +1225,6 @@ export class CoreHost {
       dispatchDirectSignalDelivery: (frameId, status, retryAfterMs) =>
         this.dispatchDirectSignalDelivery(frameId, status, retryAfterMs),
       pingMachine: (machineId, signal) => this.pingMachine(machineId, signal),
-      runMachineCommand: (machineId, sessionId, cmd, signal, skipConnectivityPreflight) =>
-        this.runMachineCommand(machineId, sessionId, cmd, signal, skipConnectivityPreflight),
       changeProjectPref: (kind, path) =>
         this.emit({ case: kind === "pin" || kind === "unpin" ? "projectTogglePin" : "projectToggleHide", value: create(ProjectKeyActionSchema, { projectKey: path }) }),
       dispatchEvent: (ev, onProcessed) => this.dispatch(ev, onProcessed),
@@ -2926,7 +2913,6 @@ export class CoreHost {
     }
   }
 
-  pingMachine(machineId: string, signal?: AbortSignal): Promise<void>;
   pingMachine(machineId: string, signal?: AbortSignal): Promise<void> {
     if (this.closed) return Promise.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
     if (signal?.aborted) return Promise.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
@@ -2953,48 +2939,6 @@ export class CoreHost {
       this.emit({
         case: "pingMachine",
         value: create(PingMachineActionSchema, { opId, machineId }),
-      });
-    });
-  }
-
-  runMachineCommand(
-    machineId: string,
-    sessionId: string,
-    cmd: MessageInitShape<typeof CommandSchema>["kind"],
-    signal?: AbortSignal,
-    skipConnectivityPreflight = false,
-  ): Promise<void> {
-    if (this.closed) return Promise.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
-    if (signal?.aborted) return Promise.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
-    const opId = ++this.nextMachineCmdOpId;
-    return new Promise<void>((resolve, reject) => {
-      const onAbort = () => {
-        if (!this.machineCmdWaiters.delete(opId)) return;
-        if (!this.closed) {
-          this.emit({ case: "cancelMachineCommand", value: create(CancelMachineCommandActionSchema, { opId }) });
-        }
-        reject(new Error(l10n.t("errors.terminal_connection_canceled")));
-      };
-      if (signal) signal.addEventListener("abort", onAbort, { once: true });
-      this.machineCmdWaiters.set(opId, {
-        resolve: () => {
-          signal?.removeEventListener("abort", onAbort);
-          resolve();
-        },
-        reject: (err) => {
-          signal?.removeEventListener("abort", onAbort);
-          reject(err);
-        },
-      });
-      this.emit({
-        case: "runMachineCommand",
-        value: create(RunMachineCommandActionSchema, {
-          opId,
-          machineId,
-          sessionId,
-          command: create(CommandSchema, { kind: cmd }),
-          skipConnectivityPreflight,
-        }),
       });
     });
   }
@@ -3611,10 +3555,6 @@ export class CoreHost {
 
       case "pingMachineResult":
         this.settleMachineWaiter(this.pingWaiters, val.value);
-        break;
-
-      case "runMachineCommandResult":
-        this.settleMachineWaiter(this.machineCmdWaiters, val.value);
         break;
 
       case "sessionRestoreComposer": {
@@ -4328,10 +4268,6 @@ export class CoreHost {
       w.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
     }
     this.pingWaiters.clear();
-    for (const w of this.machineCmdWaiters.values()) {
-      w.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
-    }
-    this.machineCmdWaiters.clear();
     for (const w of this.pushRpcWaiters.values()) {
       w.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
     }
