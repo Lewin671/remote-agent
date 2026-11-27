@@ -984,6 +984,14 @@ func (s idleEntriesByUsedAt) Less(i, j int) bool { return s[i].buf.usedAtMs < s[
 func (s idleEntriesByUsedAt) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
 func (e *Engine) trimHistory(ctx *StepContext) {
+	if e.demoMode {
+		for sid := range e.buffers {
+			if e.sessions[sid] == nil {
+				delete(e.buffers, sid)
+			}
+		}
+		return
+	}
 	var idle []idleEntry
 	var totalBytes int64
 	for sid, b := range e.buffers {
