@@ -529,7 +529,7 @@ func (a *commandAdmission) handleProbeEcho(waiting context.Context, route *callR
 	}
 	options := a.acceptOptions(route)
 	options.NoWait = true
-	body, err := a.endpoint.security.endpoint.AcceptAuthenticated(waiting, p, uint64(a.now().UnixMilli()), options, func(h devicesec.Header, plain []byte) (deviceauth.Completion, error) {
+	body, err := a.endpoint.security.endpoint.AcceptAuthenticated(waiting, p, uint64(time.Now().UnixMilli()), options, func(h devicesec.Header, plain []byte) (deviceauth.Completion, error) {
 		return a.endpoint.probeEchoCompletion(h, plain)
 	})
 	if errors.Is(err, deviceauth.ErrRunning) {

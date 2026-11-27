@@ -699,9 +699,25 @@
   },
   {
     "key": "connection.latency_is_one_round_trip_the_server_row_measures",
-    "zh-CN": "延时是一次往返的总耗时。电脑一行下面分成网络和电脑处理两段，慢的那段会标出来。",
-    "en": "Latency is the total round-trip time. Each computer shows network and computer time below, and marks the slow part.",
-    "notes": "连接检测页底部通用说明，三端及直连/中继共用。无变量。",
+    "zh-CN": "延时是一次往返的总耗时。",
+    "en": "Latency is the total round-trip time.",
+    "notes": "连接检测页底部通用说明第一句，三端及直连/中继共用。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.latency_footer_breakdown",
+    "zh-CN": "电脑一行下面分成网络和电脑处理两段，慢的那段会标出来。",
+    "en": "Each computer shows network and computer time below, and marks the slow part.",
+    "notes": "连接检测页底部补充说明，仅在至少有一台在线成员电脑已进入连接检测状态（非未检测）时拼在通用说明后。无变量。",
     "params": {},
     "platforms": [
       "web",

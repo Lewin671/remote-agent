@@ -157,7 +157,8 @@
     <string name="connection_latency_a11y_total_slow">"总耗时 %1$s 毫秒，较慢"</string>
     <string name="connection_latency_computer" formatted="false">"电脑处理"</string>
     <string name="connection_latency_computer_no_reply" formatted="false">"电脑没有及时回应"</string>
-    <string name="connection_latency_is_one_round_trip_the_server_row_measures" formatted="false">"延时是一次往返的总耗时。电脑一行下面分成网络和电脑处理两段，慢的那段会标出来。"</string>
+    <string name="connection_latency_footer_breakdown" formatted="false">"电脑一行下面分成网络和电脑处理两段，慢的那段会标出来。"</string>
+    <string name="connection_latency_is_one_round_trip_the_server_row_measures" formatted="false">"延时是一次往返的总耗时。"</string>
     <string name="connection_latency_mostly_queued">"主要在排队（%1$s ms），电脑正忙于别的任务"</string>
     <string name="connection_latency_mostly_running">"主要在执行（%1$s ms）"</string>
     <string name="connection_latency_ms">"%1$s ms"</string>

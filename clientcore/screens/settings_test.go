@@ -1072,4 +1072,74 @@ func TestMachineCardPlanBStatesAndConnCheckFooter(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("connCheck footer appends breakdown sentence only when an online member machine is not NOT_CHECKED", func(t *testing.T) {
+		mkState := func() *State {
+			st := NewState(nil)
+			st.Cal = lists.Calendar{NowMs: now}
+			st.World.Connection = lists.ConnConnected
+			st.World.ClientVersion = 17
+			st.World.Machines = []*lists.Machine{
+				{ID: "m1", Online: true, Meta: &v1.MachineMeta{Hostname: "Alpha", ProtocolVersion: 17}},
+				{ID: "m2", Online: true, Meta: &v1.MachineMeta{Hostname: "Beta", ProtocolVersion: 17}},
+				{ID: "m-off", Online: false, Meta: &v1.MachineMeta{Hostname: "Off", ProtocolVersion: 17}},
+			}
+			return st
+		}
+
+		// All NOT_CHECKED (e.g. unmigrated shell that never sends ConnCheckStart) -> only first sentence.
+		extraNotChecked := NewSettingsExtra()
+		extraNotChecked.MachineLatency["m1"] = &MachineLatencySnapshot{State: corev1.MachineLatencyState_MACHINE_LATENCY_STATE_NOT_CHECKED}
+		extraNotChecked.MachineLatency["m2"] = &MachineLatencySnapshot{State: corev1.MachineLatencyState_MACHINE_LATENCY_STATE_NOT_CHECKED}
+		vm := BuildSettings(mkState(), &world.SyncState{}, extraNotChecked)
+		if got := vm.GetConnCheck().GetFooterText(); got.GetKey() != text.KeyConnectionLatencyIsOneRoundTripTheServerRowMeasures {
+			t.Fatalf("all NOT_CHECKED footer=%+v want single sentence key %q", got, text.KeyConnectionLatencyIsOneRoundTripTheServerRowMeasures)
+		}
+
+		// Nil extra (no snapshots at all) -> only first sentence.
+		vmNil := BuildSettings(mkState(), &world.SyncState{}, nil)
+		if got := vmNil.GetConnCheck().GetFooterText(); got.GetKey() != text.KeyConnectionLatencyIsOneRoundTripTheServerRowMeasures {
+			t.Fatalf("nil extra footer=%+v want single sentence key %q", got, text.KeyConnectionLatencyIsOneRoundTripTheServerRowMeasures)
+		}
+
+		// At least one online member machine in MEASURING/DONE/FAILED/UNSUPPORTED -> joins second sentence.
+		for _, activeState := range []corev1.MachineLatencyState{
+			corev1.MachineLatencyState_MACHINE_LATENCY_STATE_MEASURING,
+			corev1.MachineLatencyState_MACHINE_LATENCY_STATE_DONE,
+			corev1.MachineLatencyState_MACHINE_LATENCY_STATE_UNSUPPORTED,
+			corev1.MachineLatencyState_MACHINE_LATENCY_STATE_FAILED,
+		} {
+			extraActive := NewSettingsExtra()
+			extraActive.MachineLatency["m1"] = &MachineLatencySnapshot{State: activeState}
+			extraActive.MachineLatency["m2"] = &MachineLatencySnapshot{State: corev1.MachineLatencyState_MACHINE_LATENCY_STATE_NOT_CHECKED}
+			vmActive := BuildSettings(mkState(), &world.SyncState{}, extraActive)
+			got := vmActive.GetConnCheck().GetFooterText()
+			if got.GetKey() != text.KeyCommonSentenceJoin || len(got.Args) != 2 ||
+				got.Args[0].GetTextValue().GetKey() != text.KeyConnectionLatencyIsOneRoundTripTheServerRowMeasures ||
+				got.Args[1].GetTextValue().GetKey() != text.KeyConnectionLatencyFooterBreakdown {
+				t.Fatalf("state=%v: unexpected joined footer %+v", activeState, got)
+			}
+		}
+
+		// Active latency + unsupported direct -> joins sentence 1 + sentence 2 + unsupported sentence.
+		stUnsup := mkState()
+		stUnsup.PlatformAgentFn = func() string { return "android" }
+		stUnsup.DirectReportFn = func(id string) (bool, *corev1.DirectRouteReport, bool) {
+			if id == "m1" {
+				return false, &corev1.DirectRouteReport{State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_UNSUPPORTED}, true
+			}
+			return false, nil, false
+		}
+		extraBoth := NewSettingsExtra()
+		extraBoth.MachineLatency["m1"] = &MachineLatencySnapshot{State: corev1.MachineLatencyState_MACHINE_LATENCY_STATE_DONE}
+		vmBoth := BuildSettings(stUnsup, &world.SyncState{}, extraBoth)
+		gotBoth := vmBoth.GetConnCheck().GetFooterText()
+		if gotBoth.GetKey() != text.KeyCommonSentenceJoin || len(gotBoth.Args) != 2 ||
+			gotBoth.Args[1].GetTextValue().GetKey() != text.KeyTransportConnFooterUnsupportedApp ||
+			gotBoth.Args[0].GetTextValue().GetKey() != text.KeyCommonSentenceJoin ||
+			gotBoth.Args[0].GetTextValue().Args[0].GetTextValue().GetKey() != text.KeyConnectionLatencyIsOneRoundTripTheServerRowMeasures ||
+			gotBoth.Args[0].GetTextValue().Args[1].GetTextValue().GetKey() != text.KeyConnectionLatencyFooterBreakdown {
+			t.Fatalf("active+unsupported footer=%+v", gotBoth)
+		}
+	})
 }

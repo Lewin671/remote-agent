@@ -9,6 +9,7 @@ package transport
 import (
 	"math"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/latency"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 )
 
@@ -51,8 +52,8 @@ type Hint struct {
 
 // Direct liveness probe RTT retention bounds for connection check.
 const (
-	DirectProbeKeepSamples = 5
-	DirectProbeWindowMs    = 10_000
+	DirectProbeKeepSamples = latency.DirectProbeMaxSamples
+	DirectProbeWindowMs    = latency.DirectProbeWindowMs
 )
 
 // ProbeSample is one verified direct DataChannel liveness probe RTT sample.

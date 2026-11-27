@@ -283,6 +283,15 @@ func (x *Execution) Finish() {
 	}
 }
 func (s *Scheduler) Active() [3]int { s.mu.Lock(); defer s.mu.Unlock(); return s.used }
+func (s *Scheduler) Queued() [4]int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var n [4]int
+	for c := range s.queues {
+		n[c] = s.queues[c].Len()
+	}
+	return n
+}
 func (s *Scheduler) Close() {
 	s.mu.Lock()
 	s.closed = true

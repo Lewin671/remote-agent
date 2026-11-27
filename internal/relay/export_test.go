@@ -2,9 +2,17 @@ package relay
 
 import (
 	"context"
-	"github.com/Lewin671/remote-agent/internal/transport"
+	"crypto/ed25519"
 	"net"
+	"testing"
 	"time"
+
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/internal/transport"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
+	"google.golang.org/protobuf/proto"
 )
 
 // SetNetworkChangesForTest injects OS observations without changing host networking.
@@ -90,6 +98,13 @@ func ActivePoolsForTest(r *Relay) [3]int {
 		return s.Active()
 	}
 	return [3]int{}
+}
+
+func QueuedCallsForTest(r *Relay) [4]int {
+	if s := r.scheduling.Load(); s != nil {
+		return s.Queued()
+	}
+	return [4]int{}
 }
 
 func SetDirectLoopbackForTest(r *Relay)                   { r.directLoopback = true; r.directSTUN = []string{} }
@@ -221,4 +236,178 @@ func SetTerminalBeforeRecordOutputForTest(r *Relay, fn func(streamID string, seq
 		return
 	}
 	h.beforeRecordOutputReplay.Store(&fn)
+}
+
+// ProbeEchoHarnessForTest wraps an in-process daemon endpoint with an authority
+// client and a removable second member for negative admission tests.
+type ProbeEchoHarnessForTest struct {
+	ep           *endpoint
+	keys         *testSecurityKeys
+	authority    *deviceauth.Endpoint
+	secondClient *deviceauth.Endpoint
+	secondMember devicesec.Member
+	binding      deviceauth.PeerBinding
+	secret3      []byte
+	state3       devicesec.State
+}
+
+func NewProbeEchoHarnessForTest(t *testing.T, backend Backend) *ProbeEchoHarnessForTest {
+	t.Helper()
+	ep := testEndpoint(t, New(backend))
+	keys := initializeEndpointSecurityKeys(t, ep)
+	t.Cleanup(func() {
+		ep.link.DrainCalls()
+		ep.admissionOwner().close()
+	})
+
+	// Add a second client member at epoch 3 so it can be cleanly removed at epoch 4.
+	_, c2Ed, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c2X, c2XPub, err := deviceauth.NewXKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	c2Member, err := devicesec.NewMember(c2Ed.Public().(ed25519.PublicKey), c2XPub, devicesec.Client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secret3 := make([]byte, 32)
+	secret3[0] = 3
+	nowMs := uint64(time.Now().UnixMilli())
+	parent := keys.states[len(keys.states)-1]
+	issuedAt := max(nowMs, parent.Core.IssuedAt+1000)
+	state3, err := deviceauth.BuildPairState(parent, c2Member, c2XPub, keys.secret, secret3, keys.phone, issuedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lease3, err := deviceauth.BuildLease(state3, keys.phone, state3.Core.IssuedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ep.security.endpoint.InstallWithLease([]devicesec.State{state3}, []*devicesec.RecoveryStatement{nil}, &lease3, nowMs); err != nil {
+		t.Fatal(err)
+	}
+
+	states3 := append(append([]devicesec.State(nil), keys.states...), state3)
+	proofs3 := []*devicesec.RecoveryStatement{nil, nil, nil}
+	pin, head, selfID := ep.security.endpoint.Snapshot()
+
+	authClient, err := deviceauth.InitEndpoint("", pin, states3, proofs3, head.Core.AuthorityID, keys.phone.Seed(), keys.phoneX, lease3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { authClient.Close() })
+
+	c2Client, err := deviceauth.InitEndpoint("", pin, states3, proofs3, c2Member.ID, c2Ed.Seed(), c2X, lease3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { c2Client.Close() })
+
+	selfMember, _ := head.Core.Member(selfID)
+	peerMember, _ := head.Core.Member(head.Core.AuthorityID)
+	headHash, err := head.Hash()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return &ProbeEchoHarnessForTest{
+		ep:           ep,
+		keys:         keys,
+		authority:    authClient,
+		secondClient: c2Client,
+		secondMember: c2Member,
+		binding:      deviceauth.PeerBinding{Self: selfMember, Peer: peerMember, Head: headHash},
+		secret3:      secret3,
+		state3:       state3,
+	}
+}
+
+func (h *ProbeEchoHarnessForTest) MachineID() string { return h.ep.acct.DeviceID }
+
+func (h *ProbeEchoHarnessForTest) AuthorityClient() *deviceauth.Endpoint { return h.authority }
+
+func (h *ProbeEchoHarnessForTest) SecondClient() *deviceauth.Endpoint { return h.secondClient }
+
+// RemoveSecondMember installs epoch 4 removing the second client on the daemon
+// (and authority client) while leaving SecondClient on epoch 3.
+func (h *ProbeEchoHarnessForTest) RemoveSecondMember(t *testing.T) {
+	t.Helper()
+	var remaining []devicesec.Member
+	for _, m := range h.state3.Core.Members {
+		if m.ID != h.secondMember.ID {
+			remaining = append(remaining, m)
+		}
+	}
+	secret4 := make([]byte, 32)
+	secret4[0] = 4
+	nowMs := uint64(time.Now().UnixMilli())
+	issuedAt := max(nowMs, h.state3.Core.IssuedAt+1000)
+	state4, err := deviceauth.BuildMembershipState(h.state3, remaining, []string{h.secondMember.ID}, h.secret3, secret4, h.keys.phone, issuedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lease4, err := deviceauth.BuildLease(state4, h.keys.phone, state4.Core.IssuedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.ep.security.endpoint.InstallWithLease([]devicesec.State{state4}, []*devicesec.RecoveryStatement{nil}, &lease4, nowMs); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.authority.InstallWithLease([]devicesec.State{state4}, []*devicesec.RecoveryStatement{nil}, &lease4, nowMs); err != nil {
+		t.Fatal(err)
+	}
+	_, head, selfID := h.ep.security.endpoint.Snapshot()
+	selfMember, _ := head.Core.Member(selfID)
+	peerMember, _ := head.Core.Member(head.Core.AuthorityID)
+	headHash, err := head.Hash()
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.binding = deviceauth.PeerBinding{Self: selfMember, Peer: peerMember, Head: headHash}
+}
+
+func (h *ProbeEchoHarnessForTest) SealCommand(t *testing.T, client *deviceauth.Endpoint, reqID, session string, deadline time.Time, cmd *pb.Command) *pb.Envelope {
+	t.Helper()
+	cmd = proto.Clone(cmd).(*pb.Command)
+	cmd.ProtocolVersion = protocol.PeerVersion
+	body, err := proto.Marshal(cmd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wire, err := client.Prepare(devicesec.Header{
+		Purpose:  devicesec.Command,
+		Kind:     uint32(pb.PayloadKind_PAYLOAD_KIND_COMMAND),
+		Machine:  h.ep.acct.DeviceID,
+		Session:  session,
+		Request:  reqID,
+		Deadline: uint64(deadline.UnixMilli()),
+	}, nil, body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	env, err := deviceauth.Envelope(wire)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return env
+}
+
+func (h *ProbeEchoHarnessForTest) DispatchRelay(ctx context.Context, env *pb.Envelope) *pb.ForwardReply {
+	ch := make(chan *pb.ForwardReply, 1)
+	h.ep.dispatch(ctx, &pb.ForwardCall{CallId: 1, AttemptId: "relay-1", Command: env}, func(r *pb.ForwardReply) { ch <- r })
+	return <-ch
+}
+
+func (h *ProbeEchoHarnessForTest) DispatchDirect(ctx context.Context, directUse uint64, env *pb.Envelope) *pb.ForwardReply {
+	ch := make(chan *pb.ForwardReply, 1)
+	h.ep.dispatchDirect(ctx, h.binding, directUse, func() bool { return true }, env, func(r *pb.ForwardReply) { ch <- r })
+	return <-ch
+}
+
+func (h *ProbeEchoHarnessForTest) OpenResult(t *testing.T, client *deviceauth.Endpoint, rep *pb.ForwardReply) *pb.CommandResult {
+	t.Helper()
+	return openCommandResult(t, client, rep)
 }

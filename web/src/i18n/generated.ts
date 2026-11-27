@@ -180,6 +180,7 @@ export interface MessageArgs {
   "connection.latency_a11y_total_slow": { ms: string };
   "connection.latency_computer": { [name: string]: never };
   "connection.latency_computer_no_reply": { [name: string]: never };
+  "connection.latency_footer_breakdown": { [name: string]: never };
   "connection.latency_is_one_round_trip_the_server_row_measures": { [name: string]: never };
   "connection.latency_mostly_queued": { ms: string };
   "connection.latency_mostly_running": { ms: string };
@@ -1991,7 +1992,8 @@ export const messages = {
     "connection.latency_a11y_total_slow": "Total {ms} ms, slow",
     "connection.latency_computer": "Computer",
     "connection.latency_computer_no_reply": "The computer did not answer in time",
-    "connection.latency_is_one_round_trip_the_server_row_measures": "Latency is the total round-trip time. Each computer shows network and computer time below, and marks the slow part.",
+    "connection.latency_footer_breakdown": "Each computer shows network and computer time below, and marks the slow part.",
+    "connection.latency_is_one_round_trip_the_server_row_measures": "Latency is the total round-trip time.",
     "connection.latency_mostly_queued": "Mostly queued ({ms} ms); the computer is busy with other work",
     "connection.latency_mostly_running": "Mostly running ({ms} ms)",
     "connection.latency_ms": "{ms} ms",
@@ -4372,7 +4374,8 @@ export const messages = {
     "connection.latency_a11y_total_slow": "总耗时 {ms} 毫秒，较慢",
     "connection.latency_computer": "电脑处理",
     "connection.latency_computer_no_reply": "电脑没有及时回应",
-    "connection.latency_is_one_round_trip_the_server_row_measures": "延时是一次往返的总耗时。电脑一行下面分成网络和电脑处理两段，慢的那段会标出来。",
+    "connection.latency_footer_breakdown": "电脑一行下面分成网络和电脑处理两段，慢的那段会标出来。",
+    "connection.latency_is_one_round_trip_the_server_row_measures": "延时是一次往返的总耗时。",
     "connection.latency_mostly_queued": "主要在排队（{ms} ms），电脑正忙于别的任务",
     "connection.latency_mostly_running": "主要在执行（{ms} ms）",
     "connection.latency_ms": "{ms} ms",

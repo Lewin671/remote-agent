@@ -57,6 +57,19 @@ func findConnCheckTimer(batch *corev1.EffectBatch, prefix, machineID string) *co
 	return nil
 }
 
+func fireTimer(c *Core, now int64, st *corev1.ScheduleTimerEffect) *corev1.EffectBatch {
+	return c.Dispatch(&corev1.Event{
+		NowMs: now,
+		Event: &corev1.Event_TimerFired{
+			TimerFired: &corev1.TimerFiredEvent{
+				TimerId: st.TimerId,
+				Kind:    st.Kind,
+				Key:     st.Key,
+			},
+		},
+	})
+}
+
 func decodeCommand(t *testing.T, raw []byte) *v1.Command {
 	t.Helper()
 	var cmd v1.Command
@@ -114,14 +127,24 @@ func probeInvalidBodyOutcome(dc *corev1.DispatchCommandEffect, direct bool) *cor
 	}
 }
 
-func TestConnCheckRelayThreeEchoesMedianAndWork(t *testing.T) {
+func directPathChangedOutcome(dc *corev1.DispatchCommandEffect) *corev1.CommandOutcomeEvent {
+	return &corev1.CommandOutcomeEvent{
+		RequestId:      dc.RequestId,
+		AttemptId:      dc.AttemptId,
+		Source:         corev1.OutcomeSource_OUTCOME_SOURCE_TRANSPORT,
+		TransportCode:  "path_changed",
+		RouteWasDirect: true,
+		NotForwarded:   true,
+	}
+}
+
+func TestConnCheckStartResetsServerStateAndWaitsForFreshVerdict(t *testing.T) {
 	c := bootstrapReadyApp(t, []*corev1.DemoMachine{
 		testrelay.DemoMachine("m-relay", true, 0, &v1.MachineMeta{Hostname: "VPS-dev", ProtocolVersion: sync.PeerVersion}),
-		testrelay.DemoMachine("m-off", false, 0, &v1.MachineMeta{Hostname: "Mac mini", ProtocolVersion: sync.PeerVersion}),
 	}, nil)
 	now := int64(1_791_078_061_000)
 
-	// Mark server working, then start conncheck.
+	// Previous round ended with ServerState=WORKING.
 	c.Dispatch(&corev1.Event{
 		NowMs: now,
 		Event: &corev1.Event_ConnCheckStatus{
@@ -131,9 +154,75 @@ func TestConnCheckRelayThreeEchoesMedianAndWork(t *testing.T) {
 			},
 		},
 	})
+
+	// New round starts: must reset ServerState to CHECKING and hold relay machines
+	// until THIS round's shell-reported server verdict arrives.
 	startBatch := c.Dispatch(&corev1.Event{
 		NowMs: now + 10,
 		Event: &corev1.Event_ConnCheckStart{ConnCheckStart: &corev1.ConnCheckStartEvent{}},
+	})
+	if dcs := collectDispatchedCommands(startBatch); len(dcs) != 0 {
+		t.Fatalf("expected relay machine to wait for fresh server verdict after ConnCheckStart, got %+v", dcs)
+	}
+	vm := viewSettingsVM(t, c)
+	if vm.GetConnCheck().GetServerState() != corev1.ConnProbeState_CONN_PROBE_STATE_CHECKING || vm.GetConnCheck().GetLatencyMs() != 0 {
+		t.Fatalf("expected ConnCheckStart to reset ServerState=CHECKING and LatencyMs=0, got %+v", vm.GetConnCheck())
+	}
+	if got := findMachineCard(t, vm, "m-relay").GetLatency().GetState(); got != corev1.MachineLatencyState_MACHINE_LATENCY_STATE_MEASURING {
+		t.Fatalf("expected MEASURING while waiting for server verdict, got %v", got)
+	}
+
+	// Shell reports CHECKING for this round -> still waits, no echo yet.
+	checkingBatch := c.Dispatch(&corev1.Event{
+		NowMs: now + 20,
+		Event: &corev1.Event_ConnCheckStatus{
+			ConnCheckStatus: &corev1.ConnCheckStatusEvent{
+				ServerState: corev1.ConnProbeState_CONN_PROBE_STATE_CHECKING,
+			},
+		},
+	})
+	if dcs := collectDispatchedCommands(checkingBatch); len(dcs) != 0 {
+		t.Fatalf("expected relay machine to keep waiting on CHECKING, got %+v", dcs)
+	}
+
+	// Shell reports WORKING for this round -> echo now dispatches.
+	workingBatch := c.Dispatch(&corev1.Event{
+		NowMs: now + 80,
+		Event: &corev1.Event_ConnCheckStatus{
+			ConnCheckStatus: &corev1.ConnCheckStatusEvent{
+				ServerState: corev1.ConnProbeState_CONN_PROBE_STATE_WORKING,
+				LatencyMs:   62,
+			},
+		},
+	})
+	dcs := collectDispatchedCommands(workingBatch)
+	if len(dcs) != 1 || dcs[0].MachineId != "m-relay" || !dcs[0].ForceRelay {
+		t.Fatalf("expected 1 force-relay echo after fresh WORKING verdict, got %+v", dcs)
+	}
+	if cmd := decodeCommand(t, dcs[0].CommandBytes); cmd.GetProbeLatency() == nil || cmd.GetProbeLatency().GetWork() {
+		t.Fatalf("expected probe_latency(work=false), got %+v", cmd)
+	}
+}
+
+func TestConnCheckRelayThreeEchoesMedianAndWork(t *testing.T) {
+	c := bootstrapReadyApp(t, []*corev1.DemoMachine{
+		testrelay.DemoMachine("m-relay", true, 0, &v1.MachineMeta{Hostname: "VPS-dev", ProtocolVersion: sync.PeerVersion}),
+		testrelay.DemoMachine("m-off", false, 0, &v1.MachineMeta{Hostname: "Mac mini", ProtocolVersion: sync.PeerVersion}),
+	}, nil)
+	now := int64(1_791_078_061_000)
+
+	c.Dispatch(&corev1.Event{
+		NowMs: now + 10,
+		Event: &corev1.Event_ConnCheckStart{ConnCheckStart: &corev1.ConnCheckStartEvent{}},
+	})
+	statusBatch := c.Dispatch(&corev1.Event{
+		NowMs: now + 20,
+		Event: &corev1.Event_ConnCheckStatus{
+			ConnCheckStatus: &corev1.ConnCheckStatusEvent{
+				ServerState: corev1.ConnProbeState_CONN_PROBE_STATE_WORKING,
+				LatencyMs:   86,
+			},
+		},
 	})
 	vm := viewSettingsVM(t, c)
 	if !vm.GetConnCheck().GetMachinesBusy() {
@@ -148,7 +237,7 @@ func TestConnCheckRelayThreeEchoesMedianAndWork(t *testing.T) {
 	}
 
 	// Drive 3 sequential echoes: wire-daemon = 310-10=300, 290-8=282, 350-5=345 -> median 300ms.
-	dcs := collectDispatchedCommands(startBatch)
+	dcs := collectDispatchedCommands(statusBatch)
 	if len(dcs) != 1 || !dcs[0].ForceRelay {
 		t.Fatalf("expected 1 force-relay echo dispatch, got %+v", dcs)
 	}
@@ -161,7 +250,7 @@ func TestConnCheckRelayThreeEchoesMedianAndWork(t *testing.T) {
 		{350, 5_000},  // 345ms
 	}
 	var workDC *corev1.DispatchCommandEffect
-	curNow := now + 10
+	curNow := now + 20
 	for i, ei := range echoInputs {
 		cmd := decodeCommand(t, dcs[0].CommandBytes)
 		if cmd.GetProbeLatency() == nil || cmd.GetProbeLatency().GetWork() {
@@ -229,14 +318,16 @@ func TestConnCheckRelayThreeEchoesMedianAndWork(t *testing.T) {
 	}
 }
 
-func TestConnCheckDirectNormalSlowQueueAndRerouted(t *testing.T) {
+func TestConnCheckDirectSlowQueueReroutedAndSingleRelayFallback(t *testing.T) {
 	c := bootstrapReadyApp(t, []*corev1.DemoMachine{
 		testrelay.DemoMachine("m-direct", true, 0, &v1.MachineMeta{Hostname: "MacBook", ProtocolVersion: sync.PeerVersion}),
 		testrelay.DemoMachine("m-reroute", true, 0, &v1.MachineMeta{Hostname: "Studio", ProtocolVersion: sync.PeerVersion}),
+		testrelay.DemoMachine("m-single-relay", true, 0, &v1.MachineMeta{Hostname: "Mini", ProtocolVersion: sync.PeerVersion}),
 	}, nil)
 	now := int64(1_791_078_061_000)
 
-	// Seed direct reports with active RTTs (demo/golden path).
+	// Seed direct reports (even with ActiveRttMs set, ConnCheck must NOT fall back to
+	// ICE ActiveRttMs; without direct probe samples it waits for the 3s sample timer).
 	c.Dispatch(&corev1.Event{
 		NowMs: now,
 		Event: &corev1.Event_SeedDemoWorld{
@@ -258,12 +349,20 @@ func TestConnCheckDirectNormalSlowQueueAndRerouted(t *testing.T) {
 						MachineId: "m-reroute",
 						Enabled:   true,
 						Report: &corev1.DirectRouteReport{
-							Enabled:        true,
-							Capable:        true,
-							State:          corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
-							ReadRoute:      corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
-							HasActiveRttMs: true,
-							ActiveRttMs:    7,
+							Enabled:   true,
+							Capable:   true,
+							State:     corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
+							ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
+						},
+					},
+					{
+						MachineId: "m-single-relay",
+						Enabled:   true,
+						Report: &corev1.DirectRouteReport{
+							Enabled:   true,
+							Capable:   true,
+							State:     corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
+							ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
 						},
 					},
 				},
@@ -275,34 +374,64 @@ func TestConnCheckDirectNormalSlowQueueAndRerouted(t *testing.T) {
 		NowMs: now + 10,
 		Event: &corev1.Event_ConnCheckStart{ConnCheckStart: &corev1.ConnCheckStartEvent{}},
 	})
-	dcs := collectDispatchedCommands(startBatch)
-	if len(dcs) != 2 {
-		t.Fatalf("expected 2 immediate work probes for direct machines, got %d", len(dcs))
-	}
-	byMachine := map[string]*corev1.DispatchCommandEffect{}
-	for _, dc := range dcs {
-		if dc.ForceRelay {
-			t.Fatalf("direct work probe for %s must not force relay", dc.MachineId)
-		}
-		cmd := decodeCommand(t, dc.CommandBytes)
-		if cmd.GetProbeLatency() == nil || !cmd.GetProbeLatency().GetWork() {
-			t.Fatalf("direct machine %s must skip echo and send work probe directly", dc.MachineId)
-		}
-		byMachine[dc.MachineId] = dc
+	if dcs := collectDispatchedCommands(startBatch); len(dcs) != 0 {
+		t.Fatalf("expected direct machines with 0 probe samples to wait 3s instead of reading ICE RTT, got %+v", dcs)
 	}
 
-	// m-direct completes over direct: total 1250ms, network 8ms, computer 1190ms (queued 1150ms).
+	// Fire 3s sample wait timers for all three direct machines -> dispatches work probes.
+	workStart := now + 10 + latency.DirectSampleWaitMs
+	byMachine := map[string]*corev1.DispatchCommandEffect{}
+	for _, mid := range []string{"m-direct", "m-reroute", "m-single-relay"} {
+		st := findConnCheckTimer(startBatch, connCheckSampleTimerPrefix, mid)
+		if st == nil || st.DelayMs != latency.DirectSampleWaitMs {
+			t.Fatalf("expected 3s sample timer for %s, got %+v", mid, st)
+		}
+		fired := fireTimer(c, workStart, st)
+		dcs := collectDispatchedCommands(fired)
+		if len(dcs) != 1 || dcs[0].ForceRelay {
+			t.Fatalf("expected 1 non-forced work probe for %s, got %+v", mid, dcs)
+		}
+		cmd := decodeCommand(t, dcs[0].CommandBytes)
+		if cmd.GetProbeLatency() == nil || !cmd.GetProbeLatency().GetWork() {
+			t.Fatalf("direct machine %s must send work probe, got %+v", mid, cmd)
+		}
+		byMachine[mid] = dcs[0]
+	}
+
+	// 1. m-single-relay: Single attempt completes over relay (AttemptCount == 1 && !TriedDirect) at +720ms.
+	//    Network RTT is recalculated on relay (700 - 50 = 650ms, NOT slow because relay threshold is 800ms),
+	//    no WaitDirect segment, and no SummaryOverrideText.
 	c.Dispatch(&corev1.Event{
-		NowMs: now + 10 + 1250,
+		NowMs: workStart + 720,
 		Event: &corev1.Event_CommandOutcome{
-			CommandOutcome: probeResultOutcome(byMachine["m-direct"], true, 1210, 1_190_000, 1_150_000, 25_000),
+			CommandOutcome: probeResultOutcome(byMachine["m-single-relay"], false, 700, 50_000, 5_000, 40_000),
 		},
 	})
-	// m-reroute started direct, settled over relay after 3420ms total with winning relay attempt elapsed 374ms and computer 64ms.
+
+	// 2. m-direct completes over direct at +1250ms: wire 1198ms - computer 1190ms = 8ms network, queued 1150ms.
 	c.Dispatch(&corev1.Event{
-		NowMs: now + 10 + 3420,
+		NowMs: workStart + 1250,
 		Event: &corev1.Event_CommandOutcome{
-			CommandOutcome: probeResultOutcome(byMachine["m-reroute"], false, 374, 64_000, 10_000, 50_000),
+			CommandOutcome: probeResultOutcome(byMachine["m-direct"], true, 1198, 1_190_000, 1_150_000, 25_000),
+		},
+	})
+
+	// 3. m-reroute: Attempt 1 fails on direct (path_changed) at +3000ms -> sync retries Attempt 2 over relay
+	//    (AttemptCount == 2 && TriedDirect == true) -> shows Rerouted + 3 segments including WaitDirect.
+	retryBatch := c.Dispatch(&corev1.Event{
+		NowMs: workStart + 3000,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: directPathChangedOutcome(byMachine["m-reroute"]),
+		},
+	})
+	retryDCs := collectDispatchedCommands(retryBatch)
+	if len(retryDCs) != 1 || !retryDCs[0].ForceRelay || retryDCs[0].RequestId != byMachine["m-reroute"].RequestId {
+		t.Fatalf("expected relay retry attempt for m-reroute, got %+v", retryDCs)
+	}
+	c.Dispatch(&corev1.Event{
+		NowMs: workStart + 3420,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: probeResultOutcome(retryDCs[0], false, 374, 64_000, 10_000, 50_000),
 		},
 	})
 
@@ -330,6 +459,17 @@ func TestConnCheckDirectNormalSlowQueueAndRerouted(t *testing.T) {
 		latReroute.Segments[2].GetValueText().GetArgs()[0].GetStrValue() != "3,046" {
 		t.Fatalf("unexpected rerouted view: %+v", latReroute)
 	}
+
+	latSingle := findMachineCard(t, vm, "m-single-relay").GetLatency()
+	if latSingle.Slow ||
+		latSingle.GetSummaryOverrideText() != nil ||
+		len(latSingle.Segments) != 2 ||
+		latSingle.Segments[0].Slow ||
+		latSingle.Segments[0].GetValueText().GetArgs()[0].GetStrValue() != "650" ||
+		latSingle.Segments[1].Slow ||
+		latSingle.Segments[1].GetValueText().GetArgs()[0].GetStrValue() != "50" {
+		t.Fatalf("unexpected single-attempt relay fallback view: %+v", latSingle)
+	}
 }
 
 func TestConnCheckUnsupportedOutdatedDirectAndRelay(t *testing.T) {
@@ -348,35 +488,43 @@ func TestConnCheckUnsupportedOutdatedDirectAndRelay(t *testing.T) {
 						MachineId: "m-direct",
 						Enabled:   true,
 						Report: &corev1.DirectRouteReport{
-							Enabled:        true,
-							Capable:        true,
-							State:          corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
-							ReadRoute:      corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
-							HasActiveRttMs: true,
-							ActiveRttMs:    6,
+							Enabled:   true,
+							Capable:   true,
+							State:     corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
+							ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
 						},
 					},
 				},
 			},
 		},
 	})
-	c.Dispatch(&corev1.Event{
-		NowMs: now + 5,
-		Event: &corev1.Event_ConnCheckStatus{
-			ConnCheckStatus: &corev1.ConnCheckStatusEvent{ServerState: corev1.ConnProbeState_CONN_PROBE_STATE_WORKING, LatencyMs: 50},
-		},
-	})
 	startBatch := c.Dispatch(&corev1.Event{
 		NowMs: now + 10,
 		Event: &corev1.Event_ConnCheckStart{ConnCheckStart: &corev1.ConnCheckStartEvent{}},
 	})
-	dcs := collectDispatchedCommands(startBatch)
-	if len(dcs) != 2 {
-		t.Fatalf("expected 2 probes, got %d", len(dcs))
+	statusBatch := c.Dispatch(&corev1.Event{
+		NowMs: now + 20,
+		Event: &corev1.Event_ConnCheckStatus{
+			ConnCheckStatus: &corev1.ConnCheckStatusEvent{ServerState: corev1.ConnProbeState_CONN_PROBE_STATE_WORKING, LatencyMs: 50},
+		},
+	})
+	relayDCs := collectDispatchedCommands(statusBatch)
+	if len(relayDCs) != 1 || relayDCs[0].MachineId != "m-relay" {
+		t.Fatalf("expected 1 relay echo probe, got %+v", relayDCs)
 	}
-	for _, dc := range dcs {
+	sampleTimer := findConnCheckTimer(startBatch, connCheckSampleTimerPrefix, "m-direct")
+	if sampleTimer == nil {
+		t.Fatalf("expected sample wait timer for m-direct")
+	}
+	directFired := fireTimer(c, now+10+latency.DirectSampleWaitMs, sampleTimer)
+	directDCs := collectDispatchedCommands(directFired)
+	if len(directDCs) != 1 || directDCs[0].MachineId != "m-direct" {
+		t.Fatalf("expected 1 direct work probe, got %+v", directDCs)
+	}
+
+	for _, dc := range []*corev1.DispatchCommandEffect{directDCs[0], relayDCs[0]} {
 		b := c.Dispatch(&corev1.Event{
-			NowMs: now + 40,
+			NowMs: now + 10 + latency.DirectSampleWaitMs + 40,
 			Event: &corev1.Event_CommandOutcome{
 				CommandOutcome: probeInvalidBodyOutcome(dc, dc.MachineId == "m-direct"),
 			},
@@ -390,9 +538,8 @@ func TestConnCheckUnsupportedOutdatedDirectAndRelay(t *testing.T) {
 	latDirect := findMachineCard(t, vm, "m-direct").GetLatency()
 	if latDirect.State != corev1.MachineLatencyState_MACHINE_LATENCY_STATE_UNSUPPORTED ||
 		latDirect.GetValueText().GetKey() != text.KeyConnectionLatencyOutdated ||
-		len(latDirect.Segments) != 1 ||
-		latDirect.Segments[0].GetValueText().GetArgs()[0].GetStrValue() != "6" ||
-		latDirect.GetNoteText().GetKey() != text.KeyConnectionLatencyOutdatedComputer {
+		len(latDirect.Segments) != 0 ||
+		latDirect.GetNoteText().GetKey() != text.KeyConnectionLatencyOutdatedAll {
 		t.Fatalf("unexpected direct UNSUPPORTED view: %+v", latDirect)
 	}
 	latRelay := findMachineCard(t, vm, "m-relay").GetLatency()
@@ -413,56 +560,55 @@ func TestConnCheckTimeoutsServerUnavailableAndStopCancel(t *testing.T) {
 		now := int64(1_791_078_061_000)
 
 		c.Dispatch(&corev1.Event{
-			NowMs: now,
-			Event: &corev1.Event_SeedDemoWorld{
-				SeedDemoWorld: &corev1.SeedDemoWorldEvent{
-					DirectReports: []*corev1.DemoDirectReport{
-						{
-							MachineId: "m-work-to",
-							Enabled:   true,
-							Report: &corev1.DirectRouteReport{
-								Enabled:        true,
-								Capable:        true,
-								State:          corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
-								ReadRoute:      corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
-								HasActiveRttMs: true,
-								ActiveRttMs:    520, // slow direct network preserved on work timeout
-							},
-						},
-					},
-				},
-			},
+			NowMs: now + 10,
+			Event: &corev1.Event_ConnCheckStart{ConnCheckStart: &corev1.ConnCheckStartEvent{}},
 		})
-		c.Dispatch(&corev1.Event{
-			NowMs: now + 5,
+		statusBatch := c.Dispatch(&corev1.Event{
+			NowMs: now + 20,
 			Event: &corev1.Event_ConnCheckStatus{
 				ConnCheckStatus: &corev1.ConnCheckStatusEvent{ServerState: corev1.ConnProbeState_CONN_PROBE_STATE_WORKING, LatencyMs: 40},
 			},
 		})
-		startBatch := c.Dispatch(&corev1.Event{
-			NowMs: now + 10,
-			Event: &corev1.Event_ConnCheckStart{ConnCheckStart: &corev1.ConnCheckStartEvent{}},
-		})
-		echoTimer := findConnCheckTimer(startBatch, connCheckEchoTimerPrefix, "m-echo-to")
-		workTimer := findConnCheckTimer(startBatch, connCheckWorkTimerPrefix, "m-work-to")
+		echoTimer := findConnCheckTimer(statusBatch, connCheckEchoTimerPrefix, "m-echo-to")
 		if echoTimer == nil || echoTimer.DelayMs != latency.EchoTimeoutMs {
-			t.Fatalf("expected 5s echo timer, got %+v", echoTimer)
+			t.Fatalf("expected 5s echo timer for m-echo-to, got %+v", echoTimer)
+		}
+
+		// Drive m-work-to through 3 slow relay echoes (median 900ms >= 800ms slow) into work phase.
+		var workToDC *corev1.DispatchCommandEffect
+		for _, dc := range collectDispatchedCommands(statusBatch) {
+			if dc.MachineId == "m-work-to" {
+				workToDC = dc
+			}
+		}
+		if workToDC == nil {
+			t.Fatalf("expected echo dispatch for m-work-to")
+		}
+		curNow := now + 20
+		var workTimer *corev1.ScheduleTimerEffect
+		for i := range 3 {
+			curNow += 910
+			b := c.Dispatch(&corev1.Event{
+				NowMs: curNow,
+				Event: &corev1.Event_CommandOutcome{
+					CommandOutcome: probeResultOutcome(workToDC, false, 910, 10_000, 1_000, 0),
+				},
+			})
+			dcs := collectDispatchedCommands(b)
+			if len(dcs) != 1 {
+				t.Fatalf("after echo #%d expected next probe for m-work-to, got %+v", i, dcs)
+			}
+			workToDC = dcs[0]
+			if i == 2 {
+				workTimer = findConnCheckTimer(b, connCheckWorkTimerPrefix, "m-work-to")
+			}
 		}
 		if workTimer == nil || workTimer.DelayMs != latency.WorkTimeoutMs {
-			t.Fatalf("expected 15s work timer, got %+v", workTimer)
+			t.Fatalf("expected 15s work timer for m-work-to, got %+v", workTimer)
 		}
 
 		// Fire echo 5s timeout -> cancels echo, marks FAILED with Over 5 s stuck.
-		echoFired := c.Dispatch(&corev1.Event{
-			NowMs: now + 10 + latency.EchoTimeoutMs,
-			Event: &corev1.Event_TimerFired{
-				TimerFired: &corev1.TimerFiredEvent{
-					TimerId: echoTimer.TimerId,
-					Kind:    echoTimer.Kind,
-					Key:     echoTimer.Key,
-				},
-			},
-		})
+		echoFired := fireTimer(c, now+20+latency.EchoTimeoutMs, echoTimer)
 		var canceledEcho bool
 		for _, ef := range echoFired.GetEffects() {
 			if ef.GetCancelDispatch() != nil {
@@ -473,17 +619,8 @@ func TestConnCheckTimeoutsServerUnavailableAndStopCancel(t *testing.T) {
 			t.Fatalf("expected CancelDispatchEffect on echo timeout")
 		}
 
-		// Fire work 15s timeout -> cancels work, marks FAILED with network slow + Over 15 s stuck.
-		workFired := c.Dispatch(&corev1.Event{
-			NowMs: now + 10 + latency.WorkTimeoutMs,
-			Event: &corev1.Event_TimerFired{
-				TimerFired: &corev1.TimerFiredEvent{
-					TimerId: workTimer.TimerId,
-					Kind:    workTimer.Kind,
-					Key:     workTimer.Key,
-				},
-			},
-		})
+		// Fire work 15s timeout -> cancels work, marks FAILED with slow network + Over 15 s stuck.
+		workFired := fireTimer(c, curNow+latency.WorkTimeoutMs, workTimer)
 		var canceledWork bool
 		for _, ef := range workFired.GetEffects() {
 			if ef.GetCancelDispatch() != nil {
@@ -530,32 +667,22 @@ func TestConnCheckTimeoutsServerUnavailableAndStopCancel(t *testing.T) {
 							MachineId: "m-direct",
 							Enabled:   true,
 							Report: &corev1.DirectRouteReport{
-								Enabled:        true,
-								Capable:        true,
-								State:          corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
-								ReadRoute:      corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
-								HasActiveRttMs: true,
-								ActiveRttMs:    6,
+								Enabled:   true,
+								Capable:   true,
+								State:     corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
+								ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
 							},
 						},
 					},
 				},
 			},
 		})
-		// Start while server is CHECKING -> direct starts immediately, relay waits for server status.
-		c.Dispatch(&corev1.Event{
-			NowMs: now + 5,
-			Event: &corev1.Event_ConnCheckStatus{
-				ConnCheckStatus: &corev1.ConnCheckStatusEvent{ServerState: corev1.ConnProbeState_CONN_PROBE_STATE_CHECKING},
-			},
-		})
 		startBatch := c.Dispatch(&corev1.Event{
 			NowMs: now + 10,
 			Event: &corev1.Event_ConnCheckStart{ConnCheckStart: &corev1.ConnCheckStartEvent{}},
 		})
-		dcs := collectDispatchedCommands(startBatch)
-		if len(dcs) != 1 || dcs[0].MachineId != "m-direct" {
-			t.Fatalf("expected only direct machine dispatched while server checking, got %+v", dcs)
+		if findConnCheckTimer(startBatch, connCheckSampleTimerPrefix, "m-direct") == nil {
+			t.Fatalf("expected direct machine sample timer on ConnCheckStart")
 		}
 
 		// Server reports UNAVAILABLE -> relay machine transitions to NOT_CHECKED, direct unaffected.
@@ -581,16 +708,16 @@ func TestConnCheckTimeoutsServerUnavailableAndStopCancel(t *testing.T) {
 		now := int64(1_791_078_061_000)
 
 		c.Dispatch(&corev1.Event{
-			NowMs: now,
+			NowMs: now + 10,
+			Event: &corev1.Event_ConnCheckStart{ConnCheckStart: &corev1.ConnCheckStartEvent{}},
+		})
+		statusBatch := c.Dispatch(&corev1.Event{
+			NowMs: now + 15,
 			Event: &corev1.Event_ConnCheckStatus{
 				ConnCheckStatus: &corev1.ConnCheckStatusEvent{ServerState: corev1.ConnProbeState_CONN_PROBE_STATE_WORKING, LatencyMs: 50},
 			},
 		})
-		startBatch := c.Dispatch(&corev1.Event{
-			NowMs: now + 10,
-			Event: &corev1.Event_ConnCheckStart{ConnCheckStart: &corev1.ConnCheckStartEvent{}},
-		})
-		dcs := collectDispatchedCommands(startBatch)
+		dcs := collectDispatchedCommands(statusBatch)
 		if len(dcs) != 1 {
 			t.Fatalf("expected 1 echo command, got %d", len(dcs))
 		}
@@ -627,14 +754,20 @@ func TestConnCheckTimeoutsServerUnavailableAndStopCancel(t *testing.T) {
 			t.Fatalf("expected NOT_CHECKED after stop, got %v", got)
 		}
 
-		// Restart then external logout -> cancels cleanly.
-		startBatch2 := c.Dispatch(&corev1.Event{
+		// Restart -> waits for fresh server status -> WORKING dispatches -> ExternalLogout cancels cleanly.
+		c.Dispatch(&corev1.Event{
 			NowMs: now + 60,
 			Event: &corev1.Event_ConnCheckStart{ConnCheckStart: &corev1.ConnCheckStartEvent{}},
 		})
-		dcs2 := collectDispatchedCommands(startBatch2)
+		statusBatch2 := c.Dispatch(&corev1.Event{
+			NowMs: now + 65,
+			Event: &corev1.Event_ConnCheckStatus{
+				ConnCheckStatus: &corev1.ConnCheckStatusEvent{ServerState: corev1.ConnProbeState_CONN_PROBE_STATE_WORKING, LatencyMs: 50},
+			},
+		})
+		dcs2 := collectDispatchedCommands(statusBatch2)
 		if len(dcs2) != 1 {
-			t.Fatalf("expected 1 echo command on restart, got %d", len(dcs2))
+			t.Fatalf("expected 1 echo command on restart after WORKING, got %d", len(dcs2))
 		}
 		logoutBatch := c.Dispatch(&corev1.Event{
 			NowMs: now + 70,
@@ -688,16 +821,7 @@ func TestConnCheckTimeoutsServerUnavailableAndStopCancel(t *testing.T) {
 			t.Fatalf("expected 3s sample wait timer, got %+v", sampleTimer)
 		}
 		// Fire 3s timer -> dispatches work probe even without probe sample.
-		fired := c.Dispatch(&corev1.Event{
-			NowMs: now + 10 + latency.DirectSampleWaitMs,
-			Event: &corev1.Event_TimerFired{
-				TimerFired: &corev1.TimerFiredEvent{
-					TimerId: sampleTimer.TimerId,
-					Kind:    sampleTimer.Kind,
-					Key:     sampleTimer.Key,
-				},
-			},
-		})
+		fired := fireTimer(c, now+10+latency.DirectSampleWaitMs, sampleTimer)
 		dcs := collectDispatchedCommands(fired)
 		if len(dcs) != 1 {
 			t.Fatalf("expected work probe dispatched after 3s sample wait, got %d", len(dcs))

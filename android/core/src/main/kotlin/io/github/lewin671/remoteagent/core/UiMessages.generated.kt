@@ -152,6 +152,7 @@ object UiMessages {
     fun connectionLatencyA11YTotalSlow(ms: String): UiMessage = UiMessage("connection.latency_a11y_total_slow", mapOf("ms" to ms))
     fun connectionLatencyComputer(): UiMessage = UiMessage("connection.latency_computer", emptyMap())
     fun connectionLatencyComputerNoReply(): UiMessage = UiMessage("connection.latency_computer_no_reply", emptyMap())
+    fun connectionLatencyFooterBreakdown(): UiMessage = UiMessage("connection.latency_footer_breakdown", emptyMap())
     fun connectionLatencyIsOneRoundTripTheServerRowMeasures(): UiMessage = UiMessage("connection.latency_is_one_round_trip_the_server_row_measures", emptyMap())
     fun connectionLatencyMostlyQueued(ms: String): UiMessage = UiMessage("connection.latency_mostly_queued", mapOf("ms" to ms))
     fun connectionLatencyMostlyRunning(ms: String): UiMessage = UiMessage("connection.latency_mostly_running", mapOf("ms" to ms))

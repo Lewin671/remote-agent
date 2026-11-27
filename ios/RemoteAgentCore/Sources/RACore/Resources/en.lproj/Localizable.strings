@@ -149,7 +149,8 @@
 "connection_latency_a11y_total_slow" = "Total %1$@ ms, slow";
 "connection_latency_computer" = "Computer";
 "connection_latency_computer_no_reply" = "The computer did not answer in time";
-"connection_latency_is_one_round_trip_the_server_row_measures" = "Latency is the total round-trip time. Each computer shows network and computer time below, and marks the slow part.";
+"connection_latency_footer_breakdown" = "Each computer shows network and computer time below, and marks the slow part.";
+"connection_latency_is_one_round_trip_the_server_row_measures" = "Latency is the total round-trip time.";
 "connection_latency_mostly_queued" = "Mostly queued (%1$@ ms); the computer is busy with other work";
 "connection_latency_mostly_running" = "Mostly running (%1$@ ms)";
 "connection_latency_ms" = "%1$@ ms";

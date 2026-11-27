@@ -548,18 +548,32 @@ func buildConnCheckSummary(st *State, syncView *world.SyncState, cc ConnCheckSta
 		syncView = &world.SyncState{}
 	}
 	var hasUnsupportedDirect bool
+	var hasActiveLatency bool
 	var machinesBusy bool
 	for _, m := range machines {
 		if m != nil && m.Online && m.Member {
 			if m.DirectRow != nil && m.DirectRow.Stage == corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_UNSUPPORTED {
 				hasUnsupportedDirect = true
 			}
-			if m.Latency != nil && m.Latency.State == corev1.MachineLatencyState_MACHINE_LATENCY_STATE_MEASURING {
-				machinesBusy = true
+			if m.Latency != nil {
+				if m.Latency.State != corev1.MachineLatencyState_MACHINE_LATENCY_STATE_UNSPECIFIED &&
+					m.Latency.State != corev1.MachineLatencyState_MACHINE_LATENCY_STATE_NOT_CHECKED {
+					hasActiveLatency = true
+				}
+				if m.Latency.State == corev1.MachineLatencyState_MACHINE_LATENCY_STATE_MEASURING {
+					machinesBusy = true
+				}
 			}
 		}
 	}
 	footerTxt := text.Msg(text.KeyConnectionLatencyIsOneRoundTripTheServerRowMeasures)
+	if hasActiveLatency {
+		footerTxt = text.Msg(
+			text.KeyCommonSentenceJoin,
+			text.ArgText("first", footerTxt),
+			text.ArgText("second", text.Msg(text.KeyConnectionLatencyFooterBreakdown)),
+		)
+	}
 	if hasUnsupportedDirect {
 		unsupportedKey := text.KeyTransportConnFooterUnsupportedBrowser
 		if isNativeAppPlatform(st) {

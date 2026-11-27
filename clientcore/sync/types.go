@@ -228,6 +228,7 @@ type SettledCommand struct {
 	Expired        bool
 	Frozen         bool
 	RouteWasDirect bool
+	TriedDirect    bool
 	WireElapsedMs  float64
 	AttemptCount   int
 

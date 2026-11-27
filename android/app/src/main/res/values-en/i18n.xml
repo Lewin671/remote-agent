@@ -161,7 +161,8 @@
     <string name="connection_latency_a11y_total_slow">"Total %1$s ms, slow"</string>
     <string name="connection_latency_computer" formatted="false">"Computer"</string>
     <string name="connection_latency_computer_no_reply" formatted="false">"The computer did not answer in time"</string>
-    <string name="connection_latency_is_one_round_trip_the_server_row_measures" formatted="false">"Latency is the total round-trip time. Each computer shows network and computer time below, and marks the slow part."</string>
+    <string name="connection_latency_footer_breakdown" formatted="false">"Each computer shows network and computer time below, and marks the slow part."</string>
+    <string name="connection_latency_is_one_round_trip_the_server_row_measures" formatted="false">"Latency is the total round-trip time."</string>
     <string name="connection_latency_mostly_queued">"Mostly queued (%1$s ms); the computer is busy with other work"</string>
     <string name="connection_latency_mostly_running">"Mostly running (%1$s ms)"</string>
     <string name="connection_latency_ms">"%1$s ms"</string>

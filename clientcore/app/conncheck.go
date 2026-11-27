@@ -102,17 +102,14 @@ func (c *Core) isMachineReadDirect(m *lists.Machine) bool {
 
 func (c *Core) directProbeMedianMs(machineID string) (int64, bool) {
 	samples := c.m.sync.DirectProbeSamples(machineID)
-	if len(samples) > 0 {
-		vals := make([]float64, len(samples))
-		for i, s := range samples {
-			vals[i] = s.RttMs
-		}
-		return latency.MedianFloat64Ms(vals)
+	if len(samples) == 0 {
+		return 0, false
 	}
-	if _, report, ok := c.m.sync.DemoDirectReport(machineID); ok && report != nil && report.HasActiveRttMs {
-		return max(int64(0), int64(report.ActiveRttMs)), true
+	vals := make([]float64, len(samples))
+	for i, s := range samples {
+		vals[i] = s.RttMs
 	}
-	return 0, false
+	return latency.MedianFloat64Ms(vals)
 }
 
 func (c *Core) onConnCheckStart(ctx *sync.StepContext) {
@@ -124,6 +121,11 @@ func (c *Core) onConnCheckStart(ctx *sync.StepContext) {
 	} else {
 		clear(extra.MachineLatency)
 	}
+	// Reset this round's server probe state so relay machines always wait for
+	// the shell's fresh ConnCheckStatus verdict for the current round.
+	extra.ConnCheck.ServerState = corev1.ConnProbeState_CONN_PROBE_STATE_CHECKING
+	extra.ConnCheck.LatencyMs = 0
+	extra.ConnCheck.LastFailure = ""
 
 	cc.roundID++
 	cc.active = true
@@ -151,10 +153,10 @@ func (c *Core) onConnCheckStart(ctx *sync.StepContext) {
 		targets[i], targets[j] = targets[j], targets[i]
 	})
 
-	serverState := extra.ConnCheck.ServerState
 	for _, m := range targets {
 		direct := c.isMachineReadDirect(m)
 		snap := &screens.MachineLatencySnapshot{
+			State:           corev1.MachineLatencyState_MACHINE_LATENCY_STATE_MEASURING,
 			StartedDirect:   direct,
 			NetworkIsDirect: direct,
 		}
@@ -168,7 +170,6 @@ func (c *Core) onConnCheckStart(ctx *sync.StepContext) {
 		cc.jobs[m.ID] = job
 
 		if direct {
-			snap.State = corev1.MachineLatencyState_MACHINE_LATENCY_STATE_MEASURING
 			if med, ok := c.directProbeMedianMs(m.ID); ok {
 				snap.HasNetwork = true
 				snap.NetworkMs = med
@@ -180,18 +181,8 @@ func (c *Core) onConnCheckStart(ctx *sync.StepContext) {
 			continue
 		}
 
-		// Relay machine: depends on server probe state.
-		switch serverState {
-		case corev1.ConnProbeState_CONN_PROBE_STATE_UNAVAILABLE:
-			snap.State = corev1.MachineLatencyState_MACHINE_LATENCY_STATE_NOT_CHECKED
-			job.phase = connCheckPhaseDone
-		case corev1.ConnProbeState_CONN_PROBE_STATE_WORKING, corev1.ConnProbeState_CONN_PROBE_STATE_SLOW:
-			snap.State = corev1.MachineLatencyState_MACHINE_LATENCY_STATE_MEASURING
-			c.startConnCheckEcho(ctx, job, snap)
-		default:
-			snap.State = corev1.MachineLatencyState_MACHINE_LATENCY_STATE_MEASURING
-			job.phase = connCheckPhaseWaitServer
-		}
+		// Relay machine: always waits for this round's shell-reported server verdict.
+		job.phase = connCheckPhaseWaitServer
 	}
 
 	c.m.settingsDirty.Settings = true
@@ -461,9 +452,9 @@ func (c *Core) onConnCheckCommandSettled(sc sync.SettledCommand, meta cmdMeta) [
 		snap.ExecuteMs = latency.MicrosToMs(pl.ExecuteUs)
 
 		if job.startedDirect && !sc.RouteWasDirect {
-			// Direct attempt did not answer in time and sync rerouted to relay.
-			// Use the single winning relay attempt sample (no follow-up echoes).
-			snap.Rerouted = true
+			// Direct machine settled over relay. Always recalculate network RTT
+			// on the relay leg; only mark Rerouted + WaitDirect when sync made
+			// >1 attempt and actually tried direct first.
 			snap.NetworkIsDirect = false
 			wireMs := sc.WireElapsedMs
 			if wireMs <= 0 {
@@ -471,8 +462,15 @@ func (c *Core) onConnCheckCommandSettled(sc sync.SettledCommand, meta cmdMeta) [
 			}
 			snap.HasNetwork = true
 			snap.NetworkMs = latency.NetRoundTripMs(wireMs, pl.ProcessUs)
-			snap.HasWaitDirect = true
-			snap.WaitDirectMs = latency.WaitDirectMs(totalMs, wireMs)
+			if sc.AttemptCount > 1 && sc.TriedDirect {
+				snap.Rerouted = true
+				snap.HasWaitDirect = true
+				snap.WaitDirectMs = latency.WaitDirectMs(totalMs, wireMs)
+			} else {
+				snap.Rerouted = false
+				snap.HasWaitDirect = false
+				snap.WaitDirectMs = 0
+			}
 		} else if job.startedDirect && !snap.HasNetwork {
 			wireMs := sc.WireElapsedMs
 			if wireMs <= 0 {

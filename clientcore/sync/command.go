@@ -85,6 +85,7 @@ type PreparedCommand struct {
 	Dispatch                  DispatchState
 	AttemptCount              int
 	DispatchedAttempts        int
+	TriedDirect               bool
 	WinningDirect             bool
 	WinningElapsedMs          float64
 	RecoveryUntilMs    int64
@@ -353,6 +354,9 @@ func (e *Engine) emitCommandLeg(
 	prep.PendingAttempts[attemptID] = true
 	e.reqIDByAttempt[attemptID] = prep.RequestID
 	isDirect := leg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT
+	if isDirect {
+		prep.TriedDirect = true
+	}
 	prep.ActiveLegs[attemptID] = &CommandLeg{
 		AttemptID: attemptID,
 		Direct:    isDirect,
@@ -542,6 +546,9 @@ func (e *Engine) finishCommandOutcome(ctx *StepContext, ev *cmdOutcome) {
 		leg = prep.ActiveLegs[ev.AttemptId]
 	}
 
+	if ev.RouteWasDirect {
+		prep.TriedDirect = true
+	}
 	priorBefore := prep.Dispatch.PriorUnknown || (prep.Dispatch.Possible > 1) || (ev.Source != corev1.OutcomeSource_OUTCOME_SOURCE_LOCAL && !ev.NotForwarded)
 
 	if c := e.transportCoord; c != nil {
@@ -889,6 +896,7 @@ func (e *Engine) settleCommand(
 		Expired:        trackerExpired || expired,
 		Frozen:         frozen,
 		RouteWasDirect: prep.WinningDirect,
+		TriedDirect:    prep.TriedDirect,
 		WireElapsedMs:  prep.WinningElapsedMs,
 		AttemptCount:   prep.DispatchedAttempts,
 

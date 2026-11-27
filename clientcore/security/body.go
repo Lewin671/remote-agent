@@ -142,7 +142,8 @@ func IsReadOnlyCommand(cmd *v1.Command) bool {
 		*v1.Command_ListDirectories,
 		*v1.Command_GetLiveSnapshot,
 		*v1.Command_GetImageUploadStatus,
-		*v1.Command_GetSharedFileChunk:
+		*v1.Command_GetSharedFileChunk,
+		*v1.Command_ProbeLatency:
 		return true
 	case *v1.Command_Schedule:
 		return k.Schedule != nil && (k.Schedule.Operation == "list" || k.Schedule.Operation == "get")
