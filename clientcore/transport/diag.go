@@ -116,6 +116,61 @@ const (
 	EndLost
 )
 
+// CloseCause is a privacy-safe enum describing who/why a path or round closed.
+type CloseCause uint8
+
+const (
+	CloseNone CloseCause = iota
+	CloseProbeTimeout
+	ClosePCFailed
+	ClosePCDisconnected
+	CloseDCClosed
+	ClosePeerClosed
+	CloseNetworkChanged
+	CloseBackground
+	CloseDisabled
+	CloseEngine
+	CloseTimeout
+)
+
+// ParseCloseCause maps a fixed shell or session close reason word into a CloseCause.
+// Unknown or free-form strings return CloseNone so no raw error text is retained.
+func ParseCloseCause(reason string) CloseCause {
+	switch reason {
+	case "probe_timeout":
+		return CloseProbeTimeout
+	case "pc_failed", "failed", "ice_failed":
+		return ClosePCFailed
+	case "pc_disconnected", "disconnected", "ice_disconnected":
+		return ClosePCDisconnected
+	case "dc_closed", "dc0_closed", "dc1_closed", "dc_send_failed", "probe_send_failed",
+		"receive_error", "frame_oversize", "frame_overflow", "frame_conflict", "unexpected_dc":
+		return CloseDCClosed
+	case "pc_closed", "peer_closed", "peer_closed_round", "closed_by_peer":
+		return ClosePeerClosed
+	case "network_changed":
+		return CloseNetworkChanged
+	case "background":
+		return CloseBackground
+	case "disabled":
+		return CloseDisabled
+	case "round_deadline", "timeout":
+		return CloseTimeout
+	case "engine", "engine_close_path", "round_ended", "core_close", "replaced", "retired":
+		return CloseEngine
+	default:
+		return CloseNone
+	}
+}
+
+// ProbeStats holds privacy-safe liveness probe counters for one path.
+type ProbeStats struct {
+	Sent   int
+	Echoed int
+	Lost   int
+	Missed int
+}
+
 // Verdict is the one sentence a round comes down to.
 type Verdict uint8
 
@@ -202,12 +257,17 @@ type AttemptData struct {
 
 // PcData is one use over one round.
 type PcData struct {
-	Use      Use
-	Marks    [marks]int64
-	HasMark  [marks]bool
-	Attempts []*AttemptData
-	Rejects  []Rejection
-	Blocked  bool // the device could not make the connection
+	Use        Use
+	Marks      [marks]int64
+	HasMark    [marks]bool
+	Attempts   []*AttemptData
+	Rejects    []Rejection
+	Blocked    bool // the device could not make the connection
+	ClosedAt   int64
+	HasClosed  bool
+	LivedMs    int64
+	CloseCause CloseCause
+	Probes     ProbeStats
 }
 
 // RoundData is one round with a computer.
@@ -218,6 +278,7 @@ type RoundData struct {
 	HasEstablished bool
 	EndedAt        int64
 	End            EndReason
+	CloseCause     CloseCause
 	Unsupported    bool
 	Limited        int
 	Offline        int
@@ -534,6 +595,35 @@ func (pc *PcData) current() *AttemptData {
 func (pc *PcData) mark(t int64, m Mark) {
 	if m < marks && !pc.HasMark[m] {
 		pc.Marks[m], pc.HasMark[m] = t, true
+	}
+}
+
+func (pc *PcData) recordClose(t int64, cause CloseCause, probes ProbeStats) {
+	if probes.Sent > pc.Probes.Sent || (probes.Sent == pc.Probes.Sent &&
+		(probes.Echoed > pc.Probes.Echoed || probes.Lost > pc.Probes.Lost || probes.Missed > pc.Probes.Missed)) {
+		pc.Probes = probes
+	}
+	if !pc.HasClosed {
+		pc.ClosedAt, pc.HasClosed = t, true
+		if pc.HasMark[MarkReady] {
+			pc.LivedMs = max(0, t-pc.Marks[MarkReady])
+		}
+	}
+	if cause != CloseNone && (pc.CloseCause == CloseNone || (pc.CloseCause == CloseEngine && cause != CloseEngine)) {
+		pc.CloseCause = cause
+	}
+}
+
+func (r *RoundData) recordCloseCause(cause CloseCause, readyPath bool) {
+	if cause == CloseNone {
+		return
+	}
+	if r.CloseCause == CloseNone || (r.CloseCause == CloseEngine && cause != CloseEngine) {
+		r.CloseCause = cause
+		return
+	}
+	if readyPath && cause != CloseEngine {
+		r.CloseCause = cause
 	}
 }
 

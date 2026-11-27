@@ -98,7 +98,7 @@ func BuildConnectionGroup(online bool, prefEnabled bool, report *corev1.DirectRo
 			view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_RELAY_FAILED
 			view.Tone = corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_MUTED
 			view.StatusText = text.Msg(text.KeyTransportStatusRelay)
-			view.DetailText = directReasonText(report.Reason)
+			view.DetailText = directReasonText(report.Reason, report.RetryScheduled)
 			view.ShowDiagnosticsEntry = true
 			return view
 		}
@@ -110,8 +110,8 @@ func BuildConnectionGroup(online bool, prefEnabled bool, report *corev1.DirectRo
 			view.DetailText = text.Msg(text.KeyTransportDirectSlow)
 		case report.Reason == corev1.DirectRouteReason_DIRECT_ROUTE_REASON_AT_CAP:
 			view.DetailText = text.Msg(text.KeyTransportReasonAtCapDetail)
-		case directReasonText(report.Reason) != nil:
-			view.DetailText = directReasonText(report.Reason)
+		case directReasonText(report.Reason, report.RetryScheduled) != nil:
+			view.DetailText = directReasonText(report.Reason, report.RetryScheduled)
 		default:
 			view.DetailText = text.Msg(text.KeyTransportReasonChannelPending)
 		}
@@ -121,11 +121,12 @@ func BuildConnectionGroup(online bool, prefEnabled bool, report *corev1.DirectRo
 		case corev1.DirectRouteReason_DIRECT_ROUTE_REASON_PEER_UNSUPPORTED,
 			corev1.DirectRouteReason_DIRECT_ROUTE_REASON_NO_RESPONSE,
 			corev1.DirectRouteReason_DIRECT_ROUTE_REASON_NO_TRAVERSAL,
-			corev1.DirectRouteReason_DIRECT_ROUTE_REASON_FAILED:
+			corev1.DirectRouteReason_DIRECT_ROUTE_REASON_FAILED,
+			corev1.DirectRouteReason_DIRECT_ROUTE_REASON_LOST:
 			view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_RELAY_FAILED
 			view.Tone = corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_MUTED
 			view.StatusText = text.Msg(text.KeyTransportStatusRelay)
-			view.DetailText = directReasonText(report.Reason)
+			view.DetailText = directReasonText(report.Reason, report.RetryScheduled)
 			view.ShowDiagnosticsEntry = true
 		case corev1.DirectRouteReason_DIRECT_ROUTE_REASON_AT_CAP:
 			view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_RELAY
@@ -136,7 +137,7 @@ func BuildConnectionGroup(online bool, prefEnabled bool, report *corev1.DirectRo
 			view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_RELAY
 			view.Tone = corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_MUTED
 			view.StatusText = text.Msg(text.KeyTransportStatusRelay)
-			if r := directReasonText(report.Reason); r != nil {
+			if r := directReasonText(report.Reason, report.RetryScheduled); r != nil {
 				view.DetailText = r
 			} else {
 				view.DetailText = text.Msg(text.KeyTransportReasonStarting)
@@ -191,21 +192,30 @@ func isFailureDirectReason(r corev1.DirectRouteReason) bool {
 	case corev1.DirectRouteReason_DIRECT_ROUTE_REASON_PEER_UNSUPPORTED,
 		corev1.DirectRouteReason_DIRECT_ROUTE_REASON_NO_RESPONSE,
 		corev1.DirectRouteReason_DIRECT_ROUTE_REASON_NO_TRAVERSAL,
-		corev1.DirectRouteReason_DIRECT_ROUTE_REASON_FAILED:
+		corev1.DirectRouteReason_DIRECT_ROUTE_REASON_FAILED,
+		corev1.DirectRouteReason_DIRECT_ROUTE_REASON_LOST:
 		return true
 	default:
 		return false
 	}
 }
 
-func directReasonText(r corev1.DirectRouteReason) *corev1.Text {
+func directReasonText(r corev1.DirectRouteReason, retryScheduled bool) *corev1.Text {
 	switch r {
 	case corev1.DirectRouteReason_DIRECT_ROUTE_REASON_NO_RESPONSE:
 		return text.Msg(text.KeyTransportReasonNoResponse)
 	case corev1.DirectRouteReason_DIRECT_ROUTE_REASON_NO_TRAVERSAL:
 		return text.Msg(text.KeyTransportReasonNoTraversal)
 	case corev1.DirectRouteReason_DIRECT_ROUTE_REASON_FAILED:
-		return text.Msg(text.KeyTransportReasonFailed)
+		if retryScheduled {
+			return text.Msg(text.KeyTransportReasonFailed)
+		}
+		return text.Msg(text.KeyTransportReasonFailedNoRetry)
+	case corev1.DirectRouteReason_DIRECT_ROUTE_REASON_LOST:
+		if retryScheduled {
+			return text.Msg(text.KeyTransportReasonLostRetry)
+		}
+		return text.Msg(text.KeyTransportReasonLost)
 	case corev1.DirectRouteReason_DIRECT_ROUTE_REASON_PEER_UNSUPPORTED:
 		return text.Msg(text.KeyTransportReasonPeerUnsupported)
 	case corev1.DirectRouteReason_DIRECT_ROUTE_REASON_AT_CAP:

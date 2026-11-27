@@ -3335,5 +3335,394 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "transport.reason_failed_no_retry",
+    "zh-CN": "没连上直连",
+    "en": "Couldn't connect directly",
+    "notes": "状态行第二行：直连未建立且当前未排自动重试时显示（区别于带重试的 transport.reason_failed）。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.reason_lost_retry",
+    "zh-CN": "直连断了，稍后会自动再试",
+    "en": "Direct dropped; will try again shortly",
+    "notes": "状态行第二行：直连曾建立但随后断开，且已排自动重试时显示。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.reason_lost",
+    "zh-CN": "直连断开了",
+    "en": "Direct connection dropped",
+    "notes": "状态行第二行：直连曾建立但随后断开，当前未排自动重试时显示。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_title_lost",
+    "zh-CN": "直连连上后又断开了",
+    "en": "Direct connected, then dropped",
+    "notes": "排障卡主标题：最近一轮直连曾建立但已断开，当前回退到中继。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_explain_lost",
+    "zh-CN": "直连曾短暂连上，随后断开。当前所有操作都已自动走中继，不影响正常使用。",
+    "en": "Direct connected briefly and then dropped. Everything currently uses relay automatically with no impact on use.",
+    "notes": "排障卡说明：直连连上后断开，无具体时长或关闭原因时的兜底解释。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_explain_lost_detail",
+    "zh-CN": "{summary}。当前所有操作都已自动走中继，不影响正常使用。",
+    "en": "{summary}. Everything currently uses relay automatically with no impact on use.",
+    "notes": "排障卡说明：直连连上后断开且有具体存活时长/原因摘要（例如「连上 4.2 秒后断开 · 探测连续 3 次无回应」）。",
+    "params": {
+      "summary": {
+        "type": "string",
+        "example": "连上 4.2 秒后断开 · 探测连续 3 次无回应"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_status_dropped",
+    "zh-CN": "已断开",
+    "en": "Dropped",
+    "notes": "排障卡「局域网或公网直通」检查项右侧的状态词：直连曾连通后断开。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_outcome",
+    "zh-CN": "结局",
+    "en": "Outcome",
+    "notes": "诊断详情与复制文本中，每条路径（加载/文件）的结局行标签。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_probes",
+    "zh-CN": "存活探测",
+    "en": "Liveness probes",
+    "notes": "诊断详情与复制文本中，每条路径存活探测计数的标签。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_probes_value",
+    "zh-CN": "发出 {sent} · 回声 {echoed} · 丢失 {lost}",
+    "en": "Sent {sent} · Echoed {echoed} · Lost {lost}",
+    "notes": "诊断详情与复制文本中，单条路径的存活探测发出/收到回声/丢失次数。",
+    "params": {
+      "sent": {
+        "type": "integer",
+        "example": 5
+      },
+      "echoed": {
+        "type": "integer",
+        "example": 2
+      },
+      "lost": {
+        "type": "integer",
+        "example": 3
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_lived_dropped",
+    "zh-CN": "连上 {seconds} 秒后断开",
+    "en": "Dropped after {seconds}s",
+    "notes": "直连建立后存活指定秒数后断开的简短描述（无具体原因时使用）。",
+    "params": {
+      "seconds": {
+        "type": "string",
+        "example": "4.2"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_lived_dropped_cause",
+    "zh-CN": "连上 {seconds} 秒后断开 · {cause}",
+    "en": "Dropped after {seconds}s · {cause}",
+    "notes": "直连建立后存活指定秒数后断开并附关闭原因的描述，排障卡和复制诊断共用。",
+    "params": {
+      "seconds": {
+        "type": "string",
+        "example": "4.2"
+      },
+      "cause": {
+        "type": "string",
+        "example": "探测连续 3 次无回应"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_close_probe_timeout",
+    "zh-CN": "探测连续 {count} 次无回应",
+    "en": "{count} consecutive probes unanswered",
+    "notes": "路径关闭原因：存活探测连续多次无回声触发本地关闭。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 3
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_close_pc_failed",
+    "zh-CN": "连接失败",
+    "en": "Connection failed",
+    "notes": "路径关闭原因：WebRTC PeerConnection/ICE 进入 failed 状态。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_close_pc_disconnected",
+    "zh-CN": "连接中断",
+    "en": "Connection interrupted",
+    "notes": "路径关闭原因：WebRTC PeerConnection/ICE 进入 disconnected 状态。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_close_dc_closed",
+    "zh-CN": "数据通道关闭",
+    "en": "Data channel closed",
+    "notes": "路径关闭原因：WebRTC DataChannel 关闭或发送失败。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_close_peer_closed",
+    "zh-CN": "对端关闭",
+    "en": "Closed by peer",
+    "notes": "路径关闭原因：对端主动关闭连接或轮次。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_close_network_changed",
+    "zh-CN": "网络变化",
+    "en": "Network changed",
+    "notes": "路径关闭原因：设备网络切换导致旧直连作废。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_close_background",
+    "zh-CN": "切到后台",
+    "en": "Moved to background",
+    "notes": "路径关闭原因：应用切到后台，按策略关闭直连。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_close_disabled",
+    "zh-CN": "直连已关闭",
+    "en": "Direct turned off",
+    "notes": "路径关闭原因：用户关闭了这台电脑的直连开关。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_close_engine",
+    "zh-CN": "本地引擎关闭",
+    "en": "Closed by local engine",
+    "notes": "路径关闭原因：传输引擎因安全头变更、租约失效或替换轮次而关闭路径。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_close_timeout",
+    "zh-CN": "建立超时",
+    "en": "Setup timed out",
+    "notes": "路径关闭原因：在建立时限内未完成直连而被关闭。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

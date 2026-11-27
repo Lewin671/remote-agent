@@ -22,6 +22,7 @@ const (
 	ReasonNoResponse
 	ReasonNoTraversal
 	ReasonFailed
+	ReasonLost
 	ReasonAtCap
 	ReasonSecurityPending
 	ReasonStarting
@@ -49,6 +50,8 @@ func reasonOf(f Failure) Reason {
 		return ReasonNoResponse
 	case FailureNoTraversal:
 		return ReasonNoTraversal
+	case FailureLost:
+		return ReasonLost
 	}
 	return ReasonFailed
 }

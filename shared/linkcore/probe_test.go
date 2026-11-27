@@ -39,6 +39,9 @@ func TestProbeTrackerCadenceReplyAndTimeout(t *testing.T) {
 	if tr.PendingCount() != 0 || tr.Missed() != 0 {
 		t.Fatalf("expected cleared state, pending=%d missed=%d", tr.PendingCount(), tr.Missed())
 	}
+	if sent, echoed, lost, missed := tr.Stats(); sent != 1 || echoed != 1 || lost != 0 || missed != 0 {
+		t.Fatalf("expected stats 1/1/0/0, got %d/%d/%d/%d", sent, echoed, lost, missed)
+	}
 
 	// Duplicate or malformed reply is ignored.
 	if _, ok := tr.OnReply(1050, reply1); ok {
@@ -67,6 +70,13 @@ func TestProbeTrackerCadenceReplyAndTimeout(t *testing.T) {
 	f5, timedOut := tr.Tick(5000, true, alloc)
 	if !timedOut || f5 != nil || tr.Missed() != 3 {
 		t.Fatalf("expected timedOut=true at 3rd miss (t=5000), got timedOut=%v f5=%v missed=%d", timedOut, f5, tr.Missed())
+	}
+	if sent, echoed, lost, missed := tr.Stats(); sent != 4 || echoed != 1 || lost != 3 || missed != 3 {
+		t.Fatalf("expected stats 4/1/3/3 after 3 misses, got %d/%d/%d/%d", sent, echoed, lost, missed)
+	}
+	tr.Reset()
+	if sent, echoed, lost, missed := tr.Stats(); sent != 0 || echoed != 0 || lost != 0 || missed != 0 {
+		t.Fatalf("expected zeroed stats after Reset, got %d/%d/%d/%d", sent, echoed, lost, missed)
 	}
 }
 

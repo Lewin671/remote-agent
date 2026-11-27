@@ -688,8 +688,9 @@ func (m *DirectPcStunErrorEvent) Unmarshal(b []byte) error {
 }
 
 type DirectPcClosedEvent struct {
-	_    [0]func()
-	PcId uint64
+	_      [0]func()
+	PcId   uint64
+	Reason string
 }
 
 func (m *DirectPcClosedEvent) GetPcId() uint64 {
@@ -698,11 +699,18 @@ func (m *DirectPcClosedEvent) GetPcId() uint64 {
 	}
 	return 0
 }
+func (m *DirectPcClosedEvent) GetReason() string {
+	if m != nil {
+		return m.Reason
+	}
+	return ""
+}
 
 var LitewireDesc_DirectPcClosedEvent = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectPcClosedEvent{}) },
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(DirectPcClosedEvent{}.PcId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(DirectPcClosedEvent{}.Reason), Kind: litewire.KindString},
 	},
 }
 

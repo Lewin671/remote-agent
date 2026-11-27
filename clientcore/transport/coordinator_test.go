@@ -716,7 +716,7 @@ func TestCoordinatorNextTimersNoBusyLoopAfterDeadline(t *testing.T) {
 	}
 
 	// Closing all remaining PCs after deadlineTicked ends the session immediately.
-	coord.OnPcClosed(pastRetain+10, readPC)
+	coord.OnPcClosed(pastRetain+10, readPC, "")
 	if _, _, _, sessOK, _, _ = coord.NextTimers(pastRetain + 10); sessOK {
 		t.Fatalf("expected no session timers after live PCs close")
 	}
@@ -1030,10 +1030,10 @@ func TestCoordinatorLastPCCloseRetainsSessionWindow(t *testing.T) {
 	r := coord.rounds[rid]
 	// Close bulk first if present, then close read.
 	if bulkPC := r.globalPC[UseBulk]; bulkPC != 0 {
-		coord.OnPcClosed(now+1, bulkPC)
+		coord.OnPcClosed(now+1, bulkPC, "pc_closed")
 	}
 	readPC := r.globalPC[UseRead]
-	coord.OnPcClosed(now+2, readPC)
+	coord.OnPcClosed(now+2, readPC, "pc_failed")
 	if r.ended {
 		t.Fatal("B4: round was immediately ended instead of retained after last PC closed")
 	}
@@ -1230,5 +1230,77 @@ func TestCoordinatorSamplesUnconfirmedSiblingPC(t *testing.T) {
 	}
 	if !sawBulkReadStats {
 		t.Fatalf("expected CoordDcReadStats for unconfirmed UseBulk pc=%d at late sample time, got %+v", bulkPC, effs)
+	}
+}
+
+func TestCoordinatorProbeTimeoutRecordsLostAndProbeStats(t *testing.T) {
+	coord, _, _, now, _, rid, _ := driveEstablishedCoordRound(t, "127.0.0.1", "")
+	r := coord.rounds[rid]
+	machineID := r.machine
+	// Close bulk first so read is the last remaining path.
+	if bulkPC := r.globalPC[UseBulk]; bulkPC != 0 {
+		coord.OnPcClosed(now+50, bulkPC, "pc_closed")
+	}
+	readPC := r.globalPC[UseRead]
+	if readPC == 0 {
+		t.Fatal("expected read PC")
+	}
+	coord.ProvideRandomBytes(now+60, testOSRandom(CoordEntropyRefillBytes))
+	coord.OnDcState(now+60, readPC, true)
+	// Reset probe tracker so this test observes probes deterministically from zero.
+	coord.pcs[readPC].probe.Reset()
+
+	// Send 1st probe and reply to it, then let 3 consecutive probes time out.
+	tCur := now + 100
+	effs := coord.OnSessionTimer(tCur)
+	var firstProbe []byte
+	for _, e := range effs {
+		if sp, ok := e.(CoordPcSendProbe); ok && sp.PCID == readPC {
+			firstProbe = append([]byte(nil), sp.Raw...)
+		}
+	}
+	if len(firstProbe) != linkcore.ProbeFrameBytes {
+		t.Fatalf("expected initial probe frame, got len=%d", len(firstProbe))
+	}
+	reply := append([]byte(nil), firstProbe...)
+	reply[0] = 1
+	coord.OnPcProbeReceived(tCur+20, readPC, reply)
+
+	// Advance 1s per probe: 3 unanswered probes -> probe_timeout on 4th tick.
+	var closedReason string
+	for i := 1; i <= 4; i++ {
+		tCur += linkcore.ProbeIntervalMs
+		for _, e := range coord.OnSessionTimer(tCur) {
+			if cl, ok := e.(CoordPcClose); ok && cl.PCID == readPC {
+				closedReason = cl.Reason
+			}
+		}
+	}
+	if closedReason != "probe_timeout" {
+		t.Fatalf("expected probe_timeout close, got %q", closedReason)
+	}
+
+	// Session must remain retained, status must be StateNone/ReasonLost, and diag must record EndLost + CloseProbeTimeout + probe counts.
+	if r.ended {
+		t.Fatal("expected round to remain retained after probe timeout")
+	}
+	st := coord.Status(tCur, machineID)
+	if st.State != StateNone || st.Reason != ReasonLost {
+		t.Fatalf("expected StateNone/ReasonLost after probe_timeout drop, got %+v", st)
+	}
+	rounds, _, _ := coord.Diagnostics(machineID)
+	if len(rounds) == 0 {
+		t.Fatal("expected diagnostics round")
+	}
+	rd := rounds[0]
+	if rd.End != EndLost || !rd.HasEstablished || rd.CloseCause != CloseProbeTimeout {
+		t.Fatalf("expected EndLost + CloseProbeTimeout, got end=%v est=%v cause=%v", rd.End, rd.HasEstablished, rd.CloseCause)
+	}
+	rpc := rd.Pc(UseRead)
+	if !rpc.HasClosed || rpc.LivedMs <= 0 || rpc.CloseCause != CloseProbeTimeout {
+		t.Fatalf("expected read PC closed with LivedMs>0 & CloseProbeTimeout, got %+v", rpc)
+	}
+	if rpc.Probes.Sent != 4 || rpc.Probes.Echoed != 1 || rpc.Probes.Lost != 3 || rpc.Probes.Missed != 3 {
+		t.Fatalf("expected probe stats 4/1/3/3, got %+v", rpc.Probes)
 	}
 }

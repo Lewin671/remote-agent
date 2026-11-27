@@ -340,3 +340,44 @@ func TestLeadPcAndBestAttempt(t *testing.T) {
 		t.Fatal("judged by the attempt that got furthest, not the newest")
 	}
 }
+
+func TestDiagPathEndAndPrivacy(t *testing.T) {
+	// Free-form strings with IP addresses must map to CloseNone (never stored).
+	if got := ParseCloseCause("error 192.168.1.20:54321 failed"); got != CloseNone {
+		t.Fatalf("free-form reason must map to CloseNone, got %v", got)
+	}
+	for _, tc := range []struct {
+		in   string
+		want CloseCause
+	}{
+		{"probe_timeout", CloseProbeTimeout},
+		{"pc_failed", ClosePCFailed},
+		{"pc_disconnected", ClosePCDisconnected},
+		{"dc0_closed", CloseDCClosed},
+		{"peer_closed_round", ClosePeerClosed},
+		{"network_changed", CloseNetworkChanged},
+		{"background", CloseBackground},
+		{"disabled", CloseDisabled},
+		{"round_ended", CloseEngine},
+		{"round_deadline", CloseTimeout},
+	} {
+		if got := ParseCloseCause(tc.in); got != tc.want {
+			t.Errorf("ParseCloseCause(%q) = %v, want %v", tc.in, got, tc.want)
+		}
+	}
+
+	var d Diag
+	r := d.begin("mac", 1, 1000)
+	pc := r.Pc(UseRead)
+	pc.mark(1000, MarkReady)
+	r.establish(2000)
+	pc.recordClose(5200, CloseProbeTimeout, ProbeStats{Sent: 5, Echoed: 2, Lost: 3, Missed: 3})
+	// Subsequent generic engine close must not overwrite specific cause or survival time.
+	pc.recordClose(9999, CloseEngine, ProbeStats{})
+	if !pc.HasClosed || pc.LivedMs != 4200 || pc.CloseCause != CloseProbeTimeout {
+		t.Fatalf("unexpected pc close record: %+v", pc)
+	}
+	if pc.Probes != (ProbeStats{Sent: 5, Echoed: 2, Lost: 3, Missed: 3}) {
+		t.Fatalf("unexpected probe stats: %+v", pc.Probes)
+	}
+}

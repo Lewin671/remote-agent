@@ -6111,6 +6111,37 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.diag_check_retry" -> {
             resources.getString(R.string.transport_diag_check_retry)
         }
+        "transport.diag_close_background" -> {
+            resources.getString(R.string.transport_diag_close_background)
+        }
+        "transport.diag_close_dc_closed" -> {
+            resources.getString(R.string.transport_diag_close_dc_closed)
+        }
+        "transport.diag_close_disabled" -> {
+            resources.getString(R.string.transport_diag_close_disabled)
+        }
+        "transport.diag_close_engine" -> {
+            resources.getString(R.string.transport_diag_close_engine)
+        }
+        "transport.diag_close_network_changed" -> {
+            resources.getString(R.string.transport_diag_close_network_changed)
+        }
+        "transport.diag_close_pc_disconnected" -> {
+            resources.getString(R.string.transport_diag_close_pc_disconnected)
+        }
+        "transport.diag_close_pc_failed" -> {
+            resources.getString(R.string.transport_diag_close_pc_failed)
+        }
+        "transport.diag_close_peer_closed" -> {
+            resources.getString(R.string.transport_diag_close_peer_closed)
+        }
+        "transport.diag_close_probe_timeout" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getString(R.string.transport_diag_close_probe_timeout, count)
+        }
+        "transport.diag_close_timeout" -> {
+            resources.getString(R.string.transport_diag_close_timeout)
+        }
         "transport.diag_connected_body" -> {
             resources.getString(R.string.transport_diag_connected_body)
         }
@@ -6129,6 +6160,13 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         }
         "transport.diag_explain_generic" -> {
             resources.getString(R.string.transport_diag_explain_generic)
+        }
+        "transport.diag_explain_lost" -> {
+            resources.getString(R.string.transport_diag_explain_lost)
+        }
+        "transport.diag_explain_lost_detail" -> {
+            val summary = message.args.getValue("summary") as String
+            resources.getString(R.string.transport_diag_explain_lost_detail, summary)
         }
         "transport.diag_explain_nat" -> {
             resources.getString(R.string.transport_diag_explain_nat)
@@ -6172,6 +6210,15 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.diag_ipv6" -> {
             resources.getString(R.string.transport_diag_ipv6)
         }
+        "transport.diag_lived_dropped" -> {
+            val seconds = message.args.getValue("seconds") as String
+            resources.getString(R.string.transport_diag_lived_dropped, seconds)
+        }
+        "transport.diag_lived_dropped_cause" -> {
+            val cause = message.args.getValue("cause") as String
+            val seconds = message.args.getValue("seconds") as String
+            resources.getString(R.string.transport_diag_lived_dropped_cause, cause, seconds)
+        }
         "transport.diag_no_attempt" -> {
             resources.getString(R.string.transport_diag_no_attempt)
         }
@@ -6180,6 +6227,9 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         }
         "transport.diag_not_sampled" -> {
             resources.getString(R.string.transport_diag_not_sampled)
+        }
+        "transport.diag_outcome" -> {
+            resources.getString(R.string.transport_diag_outcome)
         }
         "transport.diag_pair" -> {
             val local = message.args.getValue("local") as String
@@ -6220,6 +6270,15 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         }
         "transport.diag_privacy_footer" -> {
             resources.getString(R.string.transport_diag_privacy_footer)
+        }
+        "transport.diag_probes" -> {
+            resources.getString(R.string.transport_diag_probes)
+        }
+        "transport.diag_probes_value" -> {
+            val echoed = message.args.getValue("echoed") as Int
+            val lost = message.args.getValue("lost") as Int
+            val sent = message.args.getValue("sent") as Int
+            resources.getString(R.string.transport_diag_probes_value, echoed, lost, sent)
         }
         "transport.diag_range_cgnat" -> {
             resources.getString(R.string.transport_diag_range_cgnat)
@@ -6398,6 +6457,9 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.diag_status_connected" -> {
             resources.getString(R.string.transport_diag_status_connected)
         }
+        "transport.diag_status_dropped" -> {
+            resources.getString(R.string.transport_diag_status_dropped)
+        }
         "transport.diag_status_enabled" -> {
             resources.getString(R.string.transport_diag_status_enabled)
         }
@@ -6427,6 +6489,9 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         }
         "transport.diag_title_generic" -> {
             resources.getString(R.string.transport_diag_title_generic)
+        }
+        "transport.diag_title_lost" -> {
+            resources.getString(R.string.transport_diag_title_lost)
         }
         "transport.diag_title_no_reply" -> {
             resources.getString(R.string.transport_diag_title_no_reply)
@@ -6464,6 +6529,12 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.diag_verdict_cancelled" -> {
             resources.getString(R.string.transport_diag_verdict_cancelled)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "transport.diag_verdict_channel" -> {
             resources.getString(R.string.transport_diag_verdict_channel)
         }
@@ -6521,12 +6592,6 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.direct" -> {
             resources.getString(R.string.transport_direct)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "transport.direct_slow" -> {
             resources.getString(R.string.transport_direct_slow)
         }
@@ -6610,6 +6675,15 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         }
         "transport.reason_failed" -> {
             resources.getString(R.string.transport_reason_failed)
+        }
+        "transport.reason_failed_no_retry" -> {
+            resources.getString(R.string.transport_reason_failed_no_retry)
+        }
+        "transport.reason_lost" -> {
+            resources.getString(R.string.transport_reason_lost)
+        }
+        "transport.reason_lost_retry" -> {
+            resources.getString(R.string.transport_reason_lost_retry)
         }
         "transport.reason_no_response" -> {
             resources.getString(R.string.transport_reason_no_response)

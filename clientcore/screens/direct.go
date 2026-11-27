@@ -9,6 +9,7 @@ import (
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/clientcore/transport"
+	"github.com/Lewin671/remote-agent/shared/linkcore"
 )
 
 // BuildDirectRouteReport converts a transport.Status snapshot and preference flags
@@ -18,7 +19,8 @@ func BuildDirectRouteReport(status transport.Status, enabled, daemonDisabled boo
 		status.Reason == transport.ReasonPeerUnsupported ||
 		status.Reason == transport.ReasonNoResponse ||
 		status.Reason == transport.ReasonNoTraversal ||
-		status.Reason == transport.ReasonFailed
+		status.Reason == transport.ReasonFailed ||
+		status.Reason == transport.ReasonLost
 
 	var state corev1.DirectRouteState
 	switch status.State {
@@ -44,6 +46,8 @@ func BuildDirectRouteReport(status transport.Status, enabled, daemonDisabled boo
 		reason = corev1.DirectRouteReason_DIRECT_ROUTE_REASON_NO_TRAVERSAL
 	case transport.ReasonFailed:
 		reason = corev1.DirectRouteReason_DIRECT_ROUTE_REASON_FAILED
+	case transport.ReasonLost:
+		reason = corev1.DirectRouteReason_DIRECT_ROUTE_REASON_LOST
 	case transport.ReasonAtCap:
 		reason = corev1.DirectRouteReason_DIRECT_ROUTE_REASON_AT_CAP
 	case transport.ReasonSecurityPending:
@@ -104,6 +108,7 @@ func BuildDirectRouteReport(status transport.Status, enabled, daemonDisabled boo
 		HasDiagnostics:     hasDiagnostics,
 		ReadSlow:           status.ReadSlow,
 		FileSlow:           status.FileSlow,
+		RetryScheduled:     status.RetryScheduled,
 	}
 }
 
@@ -184,7 +189,13 @@ func BuildDirectDiagnosticsView(
 	}
 
 	_ = blockedAt
+	connected := status.State == transport.StateConnected
 	verdict := transport.VerdictOf(chosen, blocked)
+	if !connected && verdict == transport.VerdictConnected {
+		verdict = transport.VerdictLost
+	} else if connected && verdict != transport.VerdictConnected {
+		verdict = transport.VerdictConnected
+	}
 	verdictText := diagVerdictText(verdict)
 
 	var groups []*corev1.DiagGroupView
@@ -192,13 +203,13 @@ func BuildDirectDiagnosticsView(
 		pc, att, _ := transport.LeadPc(chosen)
 		groups = diagAddressGroups(pc, att)
 	}
-	resGroup := diagResultGroup(rounds, chosen, nowMs)
+	resGroup := diagResultGroup(rounds, chosen, connected, nowMs)
 
-	connected := status.State == transport.StateConnected || verdict == transport.VerdictConnected
 	peerOutdated := !connected && (status.Reason == transport.ReasonPeerUnsupported || verdict == transport.VerdictPeerRefused)
 	noReply := !connected && !peerOutdated && (status.Reason == transport.ReasonNoResponse || verdict == transport.VerdictNoReply)
-	probeBlocked := !connected && !peerOutdated && !noReply && (verdict == transport.VerdictNoSTUN || verdict == transport.VerdictNoLocal)
-	natBlocked := !connected && !peerOutdated && !noReply && !probeBlocked &&
+	lost := !connected && !peerOutdated && !noReply && (status.Reason == transport.ReasonLost || verdict == transport.VerdictLost)
+	probeBlocked := !connected && !peerOutdated && !noReply && !lost && (verdict == transport.VerdictNoSTUN || verdict == transport.VerdictNoLocal)
+	natBlocked := !connected && !peerOutdated && !noReply && !lost && !probeBlocked &&
 		(status.Reason == transport.ReasonNoTraversal ||
 			verdict == transport.VerdictAllFailed ||
 			verdict == transport.VerdictIPv6Silent ||
@@ -206,6 +217,8 @@ func BuildDirectDiagnosticsView(
 			verdict == transport.VerdictDTLS ||
 			verdict == transport.VerdictChannel ||
 			verdict == transport.VerdictConfirm)
+
+	dropSummary := diagRoundDropSummary(chosen)
 
 	var titleText, bodyText *corev1.Text
 	switch {
@@ -218,6 +231,13 @@ func BuildDirectDiagnosticsView(
 	case noReply:
 		titleText = text.Msg(text.KeyTransportDiagTitleNoReply)
 		bodyText = text.Msg(text.KeyTransportDiagExplainNoReply)
+	case lost:
+		titleText = text.Msg(text.KeyTransportDiagTitleLost)
+		if dropSummary != nil {
+			bodyText = text.Msg(text.KeyTransportDiagExplainLostDetail, text.ArgText("summary", dropSummary))
+		} else {
+			bodyText = text.Msg(text.KeyTransportDiagExplainLost)
+		}
 	case probeBlocked:
 		titleText = text.Msg(text.KeyTransportDiagTitleProbeBlocked)
 		bodyText = text.Msg(text.KeyTransportDiagExplainProbeBlocked)
@@ -276,6 +296,13 @@ func BuildDirectDiagnosticsView(
 			LabelText:  text.Msg(text.KeyTransportDiagCheckPath),
 			StatusText: text.Msg(text.KeyTransportDiagStatusNotStarted),
 		}
+	case lost:
+		pathCheck = &corev1.PlainDiagCheckView{
+			Mark:       corev1.DiagCheckMark_DIAG_CHECK_MARK_OFF,
+			LabelText:  text.Msg(text.KeyTransportDiagCheckPath),
+			DetailText: dropSummary,
+			StatusText: text.Msg(text.KeyTransportDiagStatusDropped),
+		}
 	case probeBlocked:
 		pathCheck = &corev1.PlainDiagCheckView{
 			Mark:       corev1.DiagCheckMark_DIAG_CHECK_MARK_OFF,
@@ -316,7 +343,7 @@ func BuildDirectDiagnosticsView(
 		}
 	}
 
-	reportLines := buildDiagReportLines(verdictText, rounds, nowMs, platformAgent)
+	reportLines := buildDiagReportLines(verdictText, rounds, connected, nowMs, platformAgent)
 
 	return &corev1.DirectDiagnosticsViewModel{
 		MachineId:    machineID,
@@ -344,7 +371,7 @@ func diagAppendGroup(lines *[]*corev1.Text, g *corev1.DiagGroupView, indent stri
 	}
 }
 
-func buildDiagReportLines(verdictText *corev1.Text, rounds []*transport.RoundData, nowMs int64, platformAgent string) []*corev1.Text {
+func buildDiagReportLines(verdictText *corev1.Text, rounds []*transport.RoundData, connected bool, nowMs int64, platformAgent string) []*corev1.Text {
 	lines := []*corev1.Text{
 		text.Msg(text.KeyTransportDiagReportTitle),
 		text.Msg(text.KeyTransportDiagReportVerdict, text.ArgText("verdict", verdictText)),
@@ -352,20 +379,17 @@ func buildDiagReportLines(verdictText *corev1.Text, rounds []*transport.RoundDat
 	if platformAgent != "" {
 		lines = append(lines, text.Msg(text.KeyTransportDiagReportBrowser, text.Str("value", platformAgent)))
 	}
-	for _, r := range rounds {
+	for i, r := range rounds {
 		if r == nil {
 			continue
 		}
 		ageMs := diagNonNegDiff(nowMs, r.StartedAt)
-		took := diagRoundDuration(r, nowMs)
+		live := connected && i == 0
 		headLeft := text.Msg(text.KeyTransportDiagReportRound,
 			text.Int("n", int64(r.N)),
 			text.ArgText("age", diagAgeText(ageMs)),
 		)
-		headRight := text.Msg(text.KeyTransportDiagRound,
-			text.ArgText("result", diagResultText(r)),
-			text.Str("seconds", formatTenthsSeconds(took)),
-		)
+		headRight := diagRoundSummaryText(r, live, nowMs)
 		lines = append(lines, &corev1.Text{Literal: ""}, text.JoinLiteral(" · ", headLeft, headRight))
 		for _, row := range diagSignalRows(r) {
 			lines = append(lines, text.JoinLiteral("", text.Plain("  "), row.LabelText, text.Plain(": "), row.ValueText))
@@ -394,10 +418,12 @@ func buildDiagReportLines(verdictText *corev1.Text, rounds []*transport.RoundDat
 func diagAddressGroups(pc *transport.PcData, a *transport.AttemptData) []*corev1.DiagGroupView {
 	dash := text.Plain("—")
 	if a == nil {
+		checkRows := []*corev1.DiagRowView{{LabelText: text.Msg(text.KeyTransportDiagNoAttempt), ValueText: dash}}
+		checkRows = append(checkRows, diagPcOutcomeRows(pc)...)
 		return []*corev1.DiagGroupView{
 			{TitleText: text.Msg(text.KeyTransportDiagGLocal), Rows: []*corev1.DiagRowView{{LabelText: text.Msg(text.KeyTransportDiagNoAttempt), ValueText: dash}}},
 			{TitleText: text.Msg(text.KeyTransportDiagGPeer), Rows: []*corev1.DiagRowView{{LabelText: text.Msg(text.KeyTransportDiagNoAttempt), ValueText: dash}}},
-			{TitleText: text.Msg(text.KeyTransportDiagGChecks), Rows: []*corev1.DiagRowView{{LabelText: text.Msg(text.KeyTransportDiagNoAttempt), ValueText: dash}}},
+			{TitleText: text.Msg(text.KeyTransportDiagGChecks), Rows: checkRows},
 		}
 	}
 
@@ -477,6 +503,7 @@ func diagAddressGroups(pc *transport.PcData, a *transport.AttemptData) []*corev1
 		&corev1.DiagRowView{LabelText: text.Msg(text.KeyTransportDiagDtls), ValueText: dtlsVal},
 		&corev1.DiagRowView{LabelText: text.Msg(text.KeyTransportDiagChannel), ValueText: dcVal},
 	)
+	checkRows = append(checkRows, diagPcOutcomeRows(pc)...)
 
 	return []*corev1.DiagGroupView{
 		{TitleText: text.Msg(text.KeyTransportDiagGLocal), Rows: localRows},
@@ -544,7 +571,7 @@ func diagPairRows(a *transport.AttemptData) []*corev1.DiagRowView {
 	return rows
 }
 
-func diagResultGroup(rounds []*transport.RoundData, chosen *transport.RoundData, nowMs int64) *corev1.DiagGroupView {
+func diagResultGroup(rounds []*transport.RoundData, chosen *transport.RoundData, connected bool, nowMs int64) *corev1.DiagGroupView {
 	var rows []*corev1.DiagRowView
 	if chosen != nil {
 		_, _, stage := transport.LeadPc(chosen)
@@ -556,18 +583,15 @@ func diagResultGroup(rounds []*transport.RoundData, chosen *transport.RoundData,
 		}
 		rows = append(rows, diagSignalRows(chosen)...)
 	}
-	for _, r := range rounds {
+	for i, r := range rounds {
 		if r == nil {
 			continue
 		}
 		ageMs := diagNonNegDiff(nowMs, r.StartedAt)
-		took := diagRoundDuration(r, nowMs)
+		live := connected && i == 0
 		rows = append(rows, &corev1.DiagRowView{
 			LabelText: diagAgeText(ageMs),
-			ValueText: text.Msg(text.KeyTransportDiagRound,
-				text.ArgText("result", diagResultText(r)),
-				text.Str("seconds", formatTenthsSeconds(took)),
-			),
+			ValueText: diagRoundSummaryText(r, live, nowMs),
 		})
 	}
 	return &corev1.DiagGroupView{
@@ -851,9 +875,142 @@ func diagStageText(s transport.Stage) *corev1.Text {
 	}
 }
 
-func diagResultText(r *transport.RoundData) *corev1.Text {
+func diagPcOutcomeRows(pc *transport.PcData) []*corev1.DiagRowView {
+	if pc == nil {
+		return nil
+	}
+	var rows []*corev1.DiagRowView
+	if outcome := diagPcOutcomeText(pc); outcome != nil {
+		rows = append(rows, &corev1.DiagRowView{
+			LabelText: text.Msg(text.KeyTransportDiagOutcome),
+			ValueText: outcome,
+		})
+	}
+	if pc.Probes.Sent > 0 {
+		rows = append(rows, &corev1.DiagRowView{
+			LabelText: text.Msg(text.KeyTransportDiagProbes),
+			ValueText: text.Msg(text.KeyTransportDiagProbesValue,
+				text.Int("sent", int64(pc.Probes.Sent)),
+				text.Int("echoed", int64(pc.Probes.Echoed)),
+				text.Int("lost", int64(pc.Probes.Lost)),
+			),
+		})
+	}
+	return rows
+}
+
+func diagPcOutcomeText(pc *transport.PcData) *corev1.Text {
+	if pc == nil {
+		return nil
+	}
+	if pc.HasMark[transport.MarkReady] && pc.HasClosed {
+		secs := formatTenthsSeconds(pc.LivedMs)
+		if cause := diagCloseCauseText(pc.CloseCause, pc.Probes.Missed); cause != nil {
+			return text.Msg(text.KeyTransportDiagLivedDroppedCause,
+				text.Str("seconds", secs),
+				text.ArgText("cause", cause),
+			)
+		}
+		return text.Msg(text.KeyTransportDiagLivedDropped, text.Str("seconds", secs))
+	}
+	return diagCloseCauseText(pc.CloseCause, pc.Probes.Missed)
+}
+
+func diagRoundDropSummary(r *transport.RoundData) *corev1.Text {
+	if r == nil || !r.HasEstablished {
+		return nil
+	}
+	var best *transport.PcData
+	for i := range r.Pcs {
+		pc := &r.Pcs[i]
+		if !pc.HasMark[transport.MarkReady] || !pc.HasClosed {
+			continue
+		}
+		if best == nil ||
+			(best.CloseCause == transport.CloseNone && pc.CloseCause != transport.CloseNone) ||
+			(pc.CloseCause != transport.CloseNone && best.CloseCause == transport.CloseEngine && pc.CloseCause != transport.CloseEngine) ||
+			pc.LivedMs > best.LivedMs {
+			best = pc
+		}
+	}
+	if best != nil {
+		cause := best.CloseCause
+		if cause == transport.CloseNone {
+			cause = r.CloseCause
+		}
+		secs := formatTenthsSeconds(best.LivedMs)
+		if causeTxt := diagCloseCauseText(cause, best.Probes.Missed); causeTxt != nil {
+			return text.Msg(text.KeyTransportDiagLivedDroppedCause,
+				text.Str("seconds", secs),
+				text.ArgText("cause", causeTxt),
+			)
+		}
+		return text.Msg(text.KeyTransportDiagLivedDropped, text.Str("seconds", secs))
+	}
+	if r.End == transport.EndNone && r.CloseCause == transport.CloseNone {
+		return nil
+	}
+	livedMs := max(0, r.EndedAt-r.Established)
+	secs := formatTenthsSeconds(livedMs)
+	if causeTxt := diagCloseCauseText(r.CloseCause, 0); causeTxt != nil {
+		return text.Msg(text.KeyTransportDiagLivedDroppedCause,
+			text.Str("seconds", secs),
+			text.ArgText("cause", causeTxt),
+		)
+	}
+	if r.EndedAt > 0 || r.Established > 0 {
+		return text.Msg(text.KeyTransportDiagLivedDropped, text.Str("seconds", secs))
+	}
+	return nil
+}
+
+func diagCloseCauseText(cause transport.CloseCause, missed int) *corev1.Text {
+	switch cause {
+	case transport.CloseProbeTimeout:
+		n := missed
+		if n <= 0 {
+			n = linkcore.ProbeMaxMissed
+		}
+		return text.Msg(text.KeyTransportDiagCloseProbeTimeout, text.Int("count", int64(n)))
+	case transport.ClosePCFailed:
+		return text.Msg(text.KeyTransportDiagClosePcFailed)
+	case transport.ClosePCDisconnected:
+		return text.Msg(text.KeyTransportDiagClosePcDisconnected)
+	case transport.CloseDCClosed:
+		return text.Msg(text.KeyTransportDiagCloseDcClosed)
+	case transport.ClosePeerClosed:
+		return text.Msg(text.KeyTransportDiagClosePeerClosed)
+	case transport.CloseNetworkChanged:
+		return text.Msg(text.KeyTransportDiagCloseNetworkChanged)
+	case transport.CloseBackground:
+		return text.Msg(text.KeyTransportDiagCloseBackground)
+	case transport.CloseDisabled:
+		return text.Msg(text.KeyTransportDiagCloseDisabled)
+	case transport.CloseEngine:
+		return text.Msg(text.KeyTransportDiagCloseEngine)
+	case transport.CloseTimeout:
+		return text.Msg(text.KeyTransportDiagCloseTimeout)
+	default:
+		return nil
+	}
+}
+
+func diagRoundSummaryText(r *transport.RoundData, live bool, nowMs int64) *corev1.Text {
+	if r.HasEstablished && (r.End != transport.EndNone || !live) {
+		if summary := diagRoundDropSummary(r); summary != nil {
+			return summary
+		}
+	}
+	took := diagRoundDuration(r, nowMs)
+	return text.Msg(text.KeyTransportDiagRound,
+		text.ArgText("result", diagResultText(r, live)),
+		text.Str("seconds", formatTenthsSeconds(took)),
+	)
+}
+
+func diagResultText(r *transport.RoundData, live bool) *corev1.Text {
 	if r.HasEstablished {
-		if r.End != transport.EndNone {
+		if r.End != transport.EndNone || !live {
 			return text.Msg(text.KeyTransportDiagResultLost)
 		}
 		return text.Msg(text.KeyTransportDiagResultOk)

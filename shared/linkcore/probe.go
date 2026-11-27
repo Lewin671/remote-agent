@@ -23,6 +23,9 @@ type ProbeTracker struct {
 	lastSentAt int64
 	hasSent    bool
 	missed     int
+	sent       int
+	echoed     int
+	lost       int
 	pending    []pendingProbe
 }
 
@@ -31,11 +34,20 @@ func (p *ProbeTracker) Reset() {
 	p.lastSentAt = 0
 	p.hasSent = false
 	p.missed = 0
+	p.sent = 0
+	p.echoed = 0
+	p.lost = 0
 	p.pending = nil
 }
 
 // Missed returns the current consecutive missed-probe count.
 func (p *ProbeTracker) Missed() int { return p.missed }
+
+// Stats returns lifetime probe counters (sent, echoed, lost) and the current
+// consecutive missed-probe count since the last Reset.
+func (p *ProbeTracker) Stats() (sent, echoed, lost, missed int) {
+	return p.sent, p.echoed, p.lost, p.missed
+}
 
 // PendingCount returns the number of in-flight probes awaiting echo.
 func (p *ProbeTracker) PendingCount() int { return len(p.pending) }
@@ -52,6 +64,7 @@ func (p *ProbeTracker) OnReply(now int64, raw []byte) (rttMs float64, ok bool) {
 		if item.id == id {
 			p.pending = append(p.pending[:i], p.pending[i+1:]...)
 			p.missed = 0
+			p.echoed++
 			elapsed := now - item.sentAt
 			if elapsed < 0 {
 				elapsed = 0
@@ -71,6 +84,7 @@ func (p *ProbeTracker) Tick(now int64, ready bool, allocNonce func() ([16]byte, 
 		for _, item := range p.pending {
 			if now-item.sentAt >= ProbeTimeoutMs {
 				p.missed++
+				p.lost++
 				if p.missed >= ProbeMaxMissed {
 					p.pending = nil
 					return nil, true
@@ -96,6 +110,7 @@ func (p *ProbeTracker) Tick(now int64, ready bool, allocNonce func() ([16]byte, 
 	}
 	p.lastSentAt = now
 	p.hasSent = true
+	p.sent++
 	p.pending = append(p.pending, pendingProbe{id: id, sentAt: now})
 	frame := make([]byte, ProbeFrameBytes)
 	frame[0] = 0

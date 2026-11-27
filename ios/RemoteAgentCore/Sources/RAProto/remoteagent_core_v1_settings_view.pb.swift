@@ -78,6 +78,7 @@ public enum PBDirectRouteReason: SwiftProtobuf.Enum, Swift.CaseIterable {
   case daemonDisabled // = 7
   case securityPending // = 8
   case starting // = 9
+  case lost // = 10
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -96,6 +97,7 @@ public enum PBDirectRouteReason: SwiftProtobuf.Enum, Swift.CaseIterable {
     case 7: self = .daemonDisabled
     case 8: self = .securityPending
     case 9: self = .starting
+    case 10: self = .lost
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -112,6 +114,7 @@ public enum PBDirectRouteReason: SwiftProtobuf.Enum, Swift.CaseIterable {
     case .daemonDisabled: return 7
     case .securityPending: return 8
     case .starting: return 9
+    case .lost: return 10
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -128,6 +131,7 @@ public enum PBDirectRouteReason: SwiftProtobuf.Enum, Swift.CaseIterable {
     .daemonDisabled,
     .securityPending,
     .starting,
+    .lost,
   ]
 
 }
@@ -1918,6 +1922,11 @@ public struct PBDirectRouteReport: @unchecked Sendable {
   public var terminalRoute: PBDirectPathChoice {
     get {return _storage._terminalRoute}
     set {_uniqueStorage()._terminalRoute = newValue}
+  }
+
+  public var retryScheduled: Bool {
+    get {return _storage._retryScheduled}
+    set {_uniqueStorage()._retryScheduled = newValue}
   }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -3916,7 +3925,7 @@ extension PBDirectRouteState: SwiftProtobuf._ProtoNameProviding {
 }
 
 extension PBDirectRouteReason: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0DIRECT_ROUTE_REASON_UNSPECIFIED\0\u{1}DIRECT_ROUTE_REASON_DISABLED\0\u{1}DIRECT_ROUTE_REASON_PEER_UNSUPPORTED\0\u{1}DIRECT_ROUTE_REASON_NO_RESPONSE\0\u{1}DIRECT_ROUTE_REASON_NO_TRAVERSAL\0\u{1}DIRECT_ROUTE_REASON_FAILED\0\u{1}DIRECT_ROUTE_REASON_AT_CAP\0\u{1}DIRECT_ROUTE_REASON_DAEMON_DISABLED\0\u{1}DIRECT_ROUTE_REASON_SECURITY_PENDING\0\u{1}DIRECT_ROUTE_REASON_STARTING\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0DIRECT_ROUTE_REASON_UNSPECIFIED\0\u{1}DIRECT_ROUTE_REASON_DISABLED\0\u{1}DIRECT_ROUTE_REASON_PEER_UNSUPPORTED\0\u{1}DIRECT_ROUTE_REASON_NO_RESPONSE\0\u{1}DIRECT_ROUTE_REASON_NO_TRAVERSAL\0\u{1}DIRECT_ROUTE_REASON_FAILED\0\u{1}DIRECT_ROUTE_REASON_AT_CAP\0\u{1}DIRECT_ROUTE_REASON_DAEMON_DISABLED\0\u{1}DIRECT_ROUTE_REASON_SECURITY_PENDING\0\u{1}DIRECT_ROUTE_REASON_STARTING\0\u{1}DIRECT_ROUTE_REASON_LOST\0")
 }
 
 extension PBDirectPathChoice: SwiftProtobuf._ProtoNameProviding {
@@ -5805,7 +5814,7 @@ extension PBMachineSettingsScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._
 
 extension PBDirectRouteReport: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DirectRouteReport"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}enabled\0\u{1}capable\0\u{3}daemon_disabled\0\u{1}state\0\u{1}reason\0\u{3}file_route\0\u{3}read_route\0\u{3}has_active_rtt_ms\0\u{3}active_rtt_ms\0\u{3}has_direct_file_mibps\0\u{3}direct_file_mibps\0\u{3}has_relay_file_mibps\0\u{3}relay_file_mibps\0\u{3}has_direct_read_ms\0\u{3}direct_read_ms\0\u{3}has_relay_read_ms\0\u{3}relay_read_ms\0\u{1}warming\0\u{1}compared\0\u{3}has_diagnostics\0\u{3}read_slow\0\u{3}file_slow\0\u{3}terminal_route\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}enabled\0\u{1}capable\0\u{3}daemon_disabled\0\u{1}state\0\u{1}reason\0\u{3}file_route\0\u{3}read_route\0\u{3}has_active_rtt_ms\0\u{3}active_rtt_ms\0\u{3}has_direct_file_mibps\0\u{3}direct_file_mibps\0\u{3}has_relay_file_mibps\0\u{3}relay_file_mibps\0\u{3}has_direct_read_ms\0\u{3}direct_read_ms\0\u{3}has_relay_read_ms\0\u{3}relay_read_ms\0\u{1}warming\0\u{1}compared\0\u{3}has_diagnostics\0\u{3}read_slow\0\u{3}file_slow\0\u{3}terminal_route\0\u{3}retry_scheduled\0")
 
   fileprivate class _StorageClass {
     var _enabled: Bool = false
@@ -5831,6 +5840,7 @@ extension PBDirectRouteReport: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     var _readSlow: Bool = false
     var _fileSlow: Bool = false
     var _terminalRoute: PBDirectPathChoice = .unspecified
+    var _retryScheduled: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5864,6 +5874,7 @@ extension PBDirectRouteReport: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       _readSlow = source._readSlow
       _fileSlow = source._fileSlow
       _terminalRoute = source._terminalRoute
+      _retryScheduled = source._retryScheduled
     }
   }
 
@@ -5905,6 +5916,7 @@ extension PBDirectRouteReport: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         case 21: try { try decoder.decodeSingularBoolField(value: &_storage._readSlow) }()
         case 22: try { try decoder.decodeSingularBoolField(value: &_storage._fileSlow) }()
         case 23: try { try decoder.decodeSingularEnumField(value: &_storage._terminalRoute) }()
+        case 24: try { try decoder.decodeSingularBoolField(value: &_storage._retryScheduled) }()
         default: break
         }
       }
@@ -5982,6 +5994,9 @@ extension PBDirectRouteReport: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       if _storage._terminalRoute != .unspecified {
         try visitor.visitSingularEnumField(value: _storage._terminalRoute, fieldNumber: 23)
       }
+      if _storage._retryScheduled != false {
+        try visitor.visitSingularBoolField(value: _storage._retryScheduled, fieldNumber: 24)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -6014,6 +6029,7 @@ extension PBDirectRouteReport: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         if _storage._readSlow != rhs_storage._readSlow {return false}
         if _storage._fileSlow != rhs_storage._fileSlow {return false}
         if _storage._terminalRoute != rhs_storage._terminalRoute {return false}
+        if _storage._retryScheduled != rhs_storage._retryScheduled {return false}
         return true
       }
       if !storagesAreEqual {return false}

@@ -32,6 +32,7 @@ const (
 	DirectRouteReason_DIRECT_ROUTE_REASON_DAEMON_DISABLED  DirectRouteReason = 7
 	DirectRouteReason_DIRECT_ROUTE_REASON_SECURITY_PENDING DirectRouteReason = 8
 	DirectRouteReason_DIRECT_ROUTE_REASON_STARTING         DirectRouteReason = 9
+	DirectRouteReason_DIRECT_ROUTE_REASON_LOST             DirectRouteReason = 10
 )
 
 type DirectPathChoice int32
@@ -1724,6 +1725,7 @@ type DirectRouteReport struct {
 	ReadSlow           bool
 	FileSlow           bool
 	TerminalRoute      DirectPathChoice
+	RetryScheduled     bool
 }
 
 func (m *DirectRouteReport) GetEnabled() bool {
@@ -1864,6 +1866,12 @@ func (m *DirectRouteReport) GetTerminalRoute() DirectPathChoice {
 	}
 	return 0
 }
+func (m *DirectRouteReport) GetRetryScheduled() bool {
+	if m != nil {
+		return m.RetryScheduled
+	}
+	return false
+}
 
 var LitewireDesc_DirectRouteReport = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectRouteReport{}) },
@@ -1891,6 +1899,7 @@ var LitewireDesc_DirectRouteReport = litewire.MessageDesc{
 		{Num: 21, Offset: unsafe.Offsetof(DirectRouteReport{}.ReadSlow), Kind: litewire.KindBool},
 		{Num: 22, Offset: unsafe.Offsetof(DirectRouteReport{}.FileSlow), Kind: litewire.KindBool},
 		{Num: 23, Offset: unsafe.Offsetof(DirectRouteReport{}.TerminalRoute), Kind: litewire.KindInt32},
+		{Num: 24, Offset: unsafe.Offsetof(DirectRouteReport{}.RetryScheduled), Kind: litewire.KindBool},
 	},
 }
 

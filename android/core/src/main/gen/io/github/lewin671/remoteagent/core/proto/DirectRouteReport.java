@@ -694,6 +694,32 @@ public  final class DirectRouteReport extends
     terminalRoute_ = 0;
   }
 
+  public static final int RETRY_SCHEDULED_FIELD_NUMBER = 24;
+  private boolean retryScheduled_;
+  /**
+   * <code>bool retry_scheduled = 24 [json_name = "retryScheduled"];</code>
+   * @return The retryScheduled.
+   */
+  @java.lang.Override
+  public boolean getRetryScheduled() {
+    return retryScheduled_;
+  }
+  /**
+   * <code>bool retry_scheduled = 24 [json_name = "retryScheduled"];</code>
+   * @param value The retryScheduled to set.
+   */
+  private void setRetryScheduled(boolean value) {
+    
+    retryScheduled_ = value;
+  }
+  /**
+   * <code>bool retry_scheduled = 24 [json_name = "retryScheduled"];</code>
+   */
+  private void clearRetryScheduled() {
+
+    retryScheduled_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.DirectRouteReport parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1525,6 +1551,34 @@ public  final class DirectRouteReport extends
       return this;
     }
 
+    /**
+     * <code>bool retry_scheduled = 24 [json_name = "retryScheduled"];</code>
+     * @return The retryScheduled.
+     */
+    @java.lang.Override
+    public boolean getRetryScheduled() {
+      return instance.getRetryScheduled();
+    }
+    /**
+     * <code>bool retry_scheduled = 24 [json_name = "retryScheduled"];</code>
+     * @param value The retryScheduled to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRetryScheduled(boolean value) {
+      copyOnWrite();
+      instance.setRetryScheduled(value);
+      return this;
+    }
+    /**
+     * <code>bool retry_scheduled = 24 [json_name = "retryScheduled"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRetryScheduled() {
+      copyOnWrite();
+      instance.clearRetryScheduled();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.DirectRouteReport)
   }
   @java.lang.Override
@@ -1564,12 +1618,13 @@ public  final class DirectRouteReport extends
             "readSlow_",
             "fileSlow_",
             "terminalRoute_",
+            "retryScheduled_",
           };
           java.lang.String info =
-              "\u0000\u0017\u0000\u0000\u0001\u0017\u0017\u0000\u0000\u0000\u0001\u0007\u0002\u0007" +
+              "\u0000\u0018\u0000\u0000\u0001\u0018\u0018\u0000\u0000\u0000\u0001\u0007\u0002\u0007" +
               "\u0003\u0007\u0004\f\u0005\f\u0006\f\u0007\f\b\u0007\t\u0004\n\u0007\u000b\u0000" +
               "\f\u0007\r\u0000\u000e\u0007\u000f\u0004\u0010\u0007\u0011\u0004\u0012\u0007\u0013" +
-              "\u0007\u0014\u0007\u0015\u0007\u0016\u0007\u0017\f";
+              "\u0007\u0014\u0007\u0015\u0007\u0016\u0007\u0017\f\u0018\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

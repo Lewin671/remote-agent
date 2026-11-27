@@ -139,7 +139,7 @@ func (e *Engine) Handle(now int64, ev Event) []Effect {
 	case MainLeg:
 		e.mainLeg(now, ev.Ready)
 	case NetworkChanged:
-		e.invalidate(now)
+		e.invalidate(now, CloseNetworkChanged)
 	case DiscoverNow:
 		e.refreshAndDiscover(now)
 	case RoundBooted:
@@ -166,10 +166,10 @@ func (e *Engine) Handle(now int64, ev Event) []Effect {
 	case SecuritySynced:
 		e.synced(now, ev)
 	case SecurityRejected:
-		e.invalidate(now)
+		e.invalidate(now, CloseEngine)
 	case SecurityInstalled:
 		if !ev.Member || ev.Account != e.account || ev.Head != e.head {
-			e.invalidate(now)
+			e.invalidate(now, CloseEngine)
 			if ev.Member && e.foreground && e.legReady {
 				e.refreshAndDiscover(now)
 			}
@@ -287,7 +287,7 @@ func (e *Engine) setForeground(now int64, active bool) {
 	if !active {
 		e.cancelTick()
 		e.hasAuthAt = false
-		e.invalidate(now)
+		e.invalidate(now, CloseBackground)
 		return
 	}
 	if e.legReady {
@@ -325,7 +325,7 @@ func (e *Engine) setSupported(now int64, supported bool) {
 	if !supported {
 		e.cancelTick()
 		e.hasAuthAt = false
-		e.invalidate(now)
+		e.invalidate(now, CloseEngine)
 		return
 	}
 	if e.foreground && e.legReady {
@@ -357,7 +357,7 @@ func (e *Engine) tick(now int64) {
 	}
 	if !e.current(now) {
 		if len(e.peers) > 0 {
-			e.invalidate(now)
+			e.invalidate(now, CloseEngine)
 		}
 	} else {
 		e.discover(now)
@@ -402,7 +402,7 @@ func (e *Engine) refreshAndDiscover(now int64) {
 
 func (e *Engine) synced(now int64, ev SecuritySynced) {
 	if !ev.Member || now >= ev.StartedAt+FreshMs {
-		e.invalidate(now)
+		e.invalidate(now, CloseEngine)
 		return
 	}
 	if ev.Account != e.account {
@@ -412,7 +412,7 @@ func (e *Engine) synced(now int64, ev SecuritySynced) {
 		e.lifetime++
 		clear(e.owners)
 		for _, p := range e.sortedRounds() {
-			e.closeRound(now, p)
+			e.closeRound(now, p, CloseEngine)
 		}
 		clear(e.peers)
 		clear(e.retryAfter)
@@ -434,12 +434,12 @@ func (e *Engine) synced(now int64, ev SecuritySynced) {
 
 // invalidate forgets the security proof and every round; nothing old may
 // delay or shape the next start.
-func (e *Engine) invalidate(now int64) {
+func (e *Engine) invalidate(now int64, cause CloseCause) {
 	e.freshUntil = 0
 	e.lifetime++
 	clear(e.owners)
 	for _, p := range e.sortedRounds() {
-		e.closeRound(now, p)
+		e.closeRound(now, p, cause)
 	}
 	clear(e.peers)
 	clear(e.failures)
@@ -456,9 +456,13 @@ func (e *Engine) setEnabled(now int64, m string, on bool) {
 	e.prefs[m] = on
 	e.lifetime++
 	e.newOwner(m)
+	cause := CloseEngine
+	if !on {
+		cause = CloseDisabled
+	}
 	for _, p := range e.sortedRounds() {
 		if p.machine == m {
-			e.closeRound(now, p)
+			e.closeRound(now, p, cause)
 		}
 	}
 	delete(e.peers, m)
@@ -520,7 +524,7 @@ func (e *Engine) create(now int64, m string, deadline int64, boot string) *round
 		// The session extends its own retention while the computer keeps
 		// talking; here only rounds that are not a computer's current one expire.
 		if now > p.retainUntil && e.peers[p.machine] != p {
-			e.closeRound(now, p)
+			e.closeRound(now, p, CloseEngine)
 		}
 	}
 	if !e.current(now) || !e.enabled(m) {
@@ -566,10 +570,10 @@ func (e *Engine) retire(p *round) {
 	}
 }
 
-func (e *Engine) closeRound(now int64, p *round) {
+func (e *Engine) closeRound(now int64, p *round, cause CloseCause) {
 	p.live = false
 	delete(e.rounds, p.id)
-	e.finished(now, p, false)
+	e.finished(now, p, false, cause)
 	e.emit(CloseRound{Round: p.id})
 }
 
@@ -595,7 +599,7 @@ func (e *Engine) offered(now int64, ev RoundOffered) {
 		// A new computer process: its old rounds are gone, and so is their backoff.
 		for _, p := range e.sortedRounds() {
 			if p.machine == ev.Machine {
-				e.closeRound(now, p)
+				e.closeRound(now, p, ClosePeerClosed)
 			}
 		}
 		delete(e.peers, ev.Machine)
@@ -606,7 +610,7 @@ func (e *Engine) offered(now int64, ev RoundOffered) {
 		for _, p := range e.sortedRounds() {
 			if p.machine == ev.Machine && p.boot != "" && p.boot != ev.Boot {
 				// A new computer process: its old rounds are gone, and so is their backoff.
-				e.closeRound(now, p)
+				e.closeRound(now, p, ClosePeerClosed)
 				if e.peers[ev.Machine] == p {
 					delete(e.peers, ev.Machine)
 				}
@@ -672,7 +676,11 @@ func (e *Engine) ended(now int64, ev RoundEnded) {
 	}
 	p.paths = [3]pathState{}
 	delete(e.rounds, p.id)
-	e.finished(now, p, ev.TimedOut)
+	cause := CloseNone
+	if ev.TimedOut && !p.established {
+		cause = CloseTimeout
+	}
+	e.finished(now, p, ev.TimedOut, cause)
 	e.closed(now, p, UseBoth)
 }
 
@@ -689,14 +697,19 @@ func (e *Engine) closed(now int64, p *round, u Use) {
 		e.routing(m).HardFail(u)
 	}
 	if !p.paths[UseRead].ready && !p.paths[UseBulk].ready {
+		if p.failure == FailureNone && p.established {
+			p.failure = FailureLost
+		}
 		e.failures[m] = p.failure
 		e.routing(m).HardFail(UseBoth)
 		delete(e.peers, m)
 		e.retryAfter[m] = now + e.delay(now, p)
 		if !p.ended {
 			// No path is left: retire while keeping p.live true so replay/ACK
-			// retention remains authorized until RetainUntil.
+			// retention remains authorized until RetainUntil, and seal the
+			// diagnostic outcome now so diagnostics do not claim still connected.
 			e.retire(p)
+			e.finished(now, p, false, CloseNone)
 		}
 	}
 	e.markChanged()

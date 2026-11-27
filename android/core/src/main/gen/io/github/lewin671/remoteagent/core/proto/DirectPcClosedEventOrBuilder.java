@@ -15,4 +15,16 @@ public interface DirectPcClosedEventOrBuilder extends
    * @return The pcId.
    */
   long getPcId();
+
+  /**
+   * <code>string reason = 2 [json_name = "reason"];</code>
+   * @return The reason.
+   */
+  java.lang.String getReason();
+  /**
+   * <code>string reason = 2 [json_name = "reason"];</code>
+   * @return The bytes for reason.
+   */
+  com.google.protobuf.ByteString
+      getReasonBytes();
 }

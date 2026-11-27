@@ -215,7 +215,7 @@ func (e *Engine) handleDirectPcClosed(ctx *StepContext, ev *corev1.DirectPcClose
 	if ev == nil {
 		return
 	}
-	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnPcClosed(e.nowMs, ev.PcId))
+	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnPcClosed(e.nowMs, ev.PcId, ev.Reason))
 }
 
 func (e *Engine) handleDirectDcState(ctx *StepContext, ev *corev1.DirectDcStateEvent) {

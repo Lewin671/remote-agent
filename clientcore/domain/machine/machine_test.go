@@ -280,7 +280,10 @@ func TestDirectConnectionAndClientsAndUpdates(t *testing.T) {
 		{"unspecified_when_enabled", &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE}, text.KeyTransportReasonStarting, false},
 		{"peer_unsupported", &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_UNSUPPORTED}, text.KeyTransportReasonPeerUnsupported, true},
 		{"no_response", &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_NO_RESPONSE}, text.KeyTransportReasonNoResponse, true},
-		{"failed", &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_FAILED}, text.KeyTransportReasonFailed, true},
+		{"failed_retry", &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_FAILED, RetryScheduled: true}, text.KeyTransportReasonFailed, true},
+		{"failed_no_retry", &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_FAILED, RetryScheduled: false}, text.KeyTransportReasonFailedNoRetry, true},
+		{"lost_retry", &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_LOST, RetryScheduled: true}, text.KeyTransportReasonLostRetry, true},
+		{"lost_no_retry", &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_LOST, RetryScheduled: false}, text.KeyTransportReasonLost, true},
 	} {
 		got := BuildConnectionGroup(true, true, tc.report)
 		if keyOf(got.DetailText) != tc.want || got.ShowDiagnosticsEntry != tc.diag {

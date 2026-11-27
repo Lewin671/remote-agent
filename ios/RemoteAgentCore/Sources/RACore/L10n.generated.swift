@@ -7231,6 +7231,46 @@ public enum L10n {
         let key = "transport_diag_check_retry"
         return format(key, locale: locale, args: [])
     }
+    public static func transportDiagCloseBackground(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_close_background"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagCloseDcClosed(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_close_dc_closed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagCloseDisabled(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_close_disabled"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagCloseEngine(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_close_engine"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagCloseNetworkChanged(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_close_network_changed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagClosePcDisconnected(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_close_pc_disconnected"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagClosePcFailed(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_close_pc_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagClosePeerClosed(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_close_peer_closed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagCloseProbeTimeout(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_close_probe_timeout"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func transportDiagCloseTimeout(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_close_timeout"
+        return format(key, locale: locale, args: [])
+    }
     public static func transportDiagConnectedBody(locale: String = MessageLocale.current) -> String {
         let key = "transport_diag_connected_body"
         return format(key, locale: locale, args: [])
@@ -7254,6 +7294,14 @@ public enum L10n {
     public static func transportDiagExplainGeneric(locale: String = MessageLocale.current) -> String {
         let key = "transport_diag_explain_generic"
         return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagExplainLost(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_explain_lost"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagExplainLostDetail(summary: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_explain_lost_detail"
+        return format(key, locale: locale, args: [summary])
     }
     public static func transportDiagExplainNat(locale: String = MessageLocale.current) -> String {
         let key = "transport_diag_explain_nat"
@@ -7311,6 +7359,14 @@ public enum L10n {
         let key = "transport_diag_ipv6"
         return format(key, locale: locale, args: [])
     }
+    public static func transportDiagLivedDropped(seconds: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_lived_dropped"
+        return format(key, locale: locale, args: [seconds])
+    }
+    public static func transportDiagLivedDroppedCause(cause: String, seconds: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_lived_dropped_cause"
+        return format(key, locale: locale, args: [cause, seconds])
+    }
     public static func transportDiagNoAttempt(locale: String = MessageLocale.current) -> String {
         let key = "transport_diag_no_attempt"
         return format(key, locale: locale, args: [])
@@ -7321,6 +7377,10 @@ public enum L10n {
     }
     public static func transportDiagNotSampled(locale: String = MessageLocale.current) -> String {
         let key = "transport_diag_not_sampled"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagOutcome(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_outcome"
         return format(key, locale: locale, args: [])
     }
     public static func transportDiagPair(local: String, remote: String, locale: String = MessageLocale.current) -> String {
@@ -7366,6 +7426,14 @@ public enum L10n {
     public static func transportDiagPrivacyFooter(locale: String = MessageLocale.current) -> String {
         let key = "transport_diag_privacy_footer"
         return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagProbes(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_probes"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagProbesValue(echoed: Int, lost: Int, sent: Int, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_probes_value"
+        return format(key, locale: locale, args: [Int64(echoed), Int64(lost), Int64(sent)])
     }
     public static func transportDiagRangeCgnat(locale: String = MessageLocale.current) -> String {
         let key = "transport_diag_range_cgnat"
@@ -7587,6 +7655,10 @@ public enum L10n {
         let key = "transport_diag_status_connected"
         return format(key, locale: locale, args: [])
     }
+    public static func transportDiagStatusDropped(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_status_dropped"
+        return format(key, locale: locale, args: [])
+    }
     public static func transportDiagStatusEnabled(locale: String = MessageLocale.current) -> String {
         let key = "transport_diag_status_enabled"
         return format(key, locale: locale, args: [])
@@ -7621,6 +7693,10 @@ public enum L10n {
     }
     public static func transportDiagTitleGeneric(locale: String = MessageLocale.current) -> String {
         let key = "transport_diag_title_generic"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagTitleLost(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_title_lost"
         return format(key, locale: locale, args: [])
     }
     public static func transportDiagTitleNoReply(locale: String = MessageLocale.current) -> String {
@@ -7841,6 +7917,18 @@ public enum L10n {
     }
     public static func transportReasonFailed(locale: String = MessageLocale.current) -> String {
         let key = "transport_reason_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportReasonFailedNoRetry(locale: String = MessageLocale.current) -> String {
+        let key = "transport_reason_failed_no_retry"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportReasonLost(locale: String = MessageLocale.current) -> String {
+        let key = "transport_reason_lost"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportReasonLostRetry(locale: String = MessageLocale.current) -> String {
+        let key = "transport_reason_lost_retry"
         return format(key, locale: locale, args: [])
     }
     public static func transportReasonNoResponse(locale: String = MessageLocale.current) -> String {
@@ -15403,6 +15491,46 @@ public enum L10nMessage {
         let key = "transport_diag_check_retry"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func transportDiagCloseBackground() -> LocalizedMessage {
+        let key = "transport_diag_close_background"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagCloseDcClosed() -> LocalizedMessage {
+        let key = "transport_diag_close_dc_closed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagCloseDisabled() -> LocalizedMessage {
+        let key = "transport_diag_close_disabled"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagCloseEngine() -> LocalizedMessage {
+        let key = "transport_diag_close_engine"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagCloseNetworkChanged() -> LocalizedMessage {
+        let key = "transport_diag_close_network_changed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagClosePcDisconnected() -> LocalizedMessage {
+        let key = "transport_diag_close_pc_disconnected"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagClosePcFailed() -> LocalizedMessage {
+        let key = "transport_diag_close_pc_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagClosePeerClosed() -> LocalizedMessage {
+        let key = "transport_diag_close_peer_closed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagCloseProbeTimeout(count: Int) -> LocalizedMessage {
+        let key = "transport_diag_close_probe_timeout"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func transportDiagCloseTimeout() -> LocalizedMessage {
+        let key = "transport_diag_close_timeout"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func transportDiagConnectedBody() -> LocalizedMessage {
         let key = "transport_diag_connected_body"
         return LocalizedMessage(key: key, arguments: [])
@@ -15426,6 +15554,14 @@ public enum L10nMessage {
     public static func transportDiagExplainGeneric() -> LocalizedMessage {
         let key = "transport_diag_explain_generic"
         return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagExplainLost() -> LocalizedMessage {
+        let key = "transport_diag_explain_lost"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagExplainLostDetail(summary: String) -> LocalizedMessage {
+        let key = "transport_diag_explain_lost_detail"
+        return LocalizedMessage(key: key, arguments: [.string(summary)])
     }
     public static func transportDiagExplainNat() -> LocalizedMessage {
         let key = "transport_diag_explain_nat"
@@ -15483,6 +15619,14 @@ public enum L10nMessage {
         let key = "transport_diag_ipv6"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func transportDiagLivedDropped(seconds: String) -> LocalizedMessage {
+        let key = "transport_diag_lived_dropped"
+        return LocalizedMessage(key: key, arguments: [.string(seconds)])
+    }
+    public static func transportDiagLivedDroppedCause(cause: String, seconds: String) -> LocalizedMessage {
+        let key = "transport_diag_lived_dropped_cause"
+        return LocalizedMessage(key: key, arguments: [.string(cause), .string(seconds)])
+    }
     public static func transportDiagNoAttempt() -> LocalizedMessage {
         let key = "transport_diag_no_attempt"
         return LocalizedMessage(key: key, arguments: [])
@@ -15493,6 +15637,10 @@ public enum L10nMessage {
     }
     public static func transportDiagNotSampled() -> LocalizedMessage {
         let key = "transport_diag_not_sampled"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagOutcome() -> LocalizedMessage {
+        let key = "transport_diag_outcome"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func transportDiagPair(local: String, remote: String) -> LocalizedMessage {
@@ -15538,6 +15686,14 @@ public enum L10nMessage {
     public static func transportDiagPrivacyFooter() -> LocalizedMessage {
         let key = "transport_diag_privacy_footer"
         return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagProbes() -> LocalizedMessage {
+        let key = "transport_diag_probes"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagProbesValue(echoed: Int, lost: Int, sent: Int) -> LocalizedMessage {
+        let key = "transport_diag_probes_value"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(echoed)), .integer(Int64(lost)), .integer(Int64(sent))])
     }
     public static func transportDiagRangeCgnat() -> LocalizedMessage {
         let key = "transport_diag_range_cgnat"
@@ -15759,6 +15915,10 @@ public enum L10nMessage {
         let key = "transport_diag_status_connected"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func transportDiagStatusDropped() -> LocalizedMessage {
+        let key = "transport_diag_status_dropped"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func transportDiagStatusEnabled() -> LocalizedMessage {
         let key = "transport_diag_status_enabled"
         return LocalizedMessage(key: key, arguments: [])
@@ -15793,6 +15953,10 @@ public enum L10nMessage {
     }
     public static func transportDiagTitleGeneric() -> LocalizedMessage {
         let key = "transport_diag_title_generic"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagTitleLost() -> LocalizedMessage {
+        let key = "transport_diag_title_lost"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func transportDiagTitleNoReply() -> LocalizedMessage {
@@ -16013,6 +16177,18 @@ public enum L10nMessage {
     }
     public static func transportReasonFailed() -> LocalizedMessage {
         let key = "transport_reason_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportReasonFailedNoRetry() -> LocalizedMessage {
+        let key = "transport_reason_failed_no_retry"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportReasonLost() -> LocalizedMessage {
+        let key = "transport_reason_lost"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportReasonLostRetry() -> LocalizedMessage {
+        let key = "transport_reason_lost_retry"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func transportReasonNoResponse() -> LocalizedMessage {
@@ -18304,12 +18480,24 @@ public enum L10nText {
         switch key {
         case "transport.diag_check_peer": return L10n.format("transport_diag_check_peer", locale: locale, args: [])
         case "transport.diag_check_retry": return L10n.format("transport_diag_check_retry", locale: locale, args: [])
+        case "transport.diag_close_background": return L10n.format("transport_diag_close_background", locale: locale, args: [])
+        case "transport.diag_close_dc_closed": return L10n.format("transport_diag_close_dc_closed", locale: locale, args: [])
+        case "transport.diag_close_disabled": return L10n.format("transport_diag_close_disabled", locale: locale, args: [])
+        case "transport.diag_close_engine": return L10n.format("transport_diag_close_engine", locale: locale, args: [])
+        case "transport.diag_close_network_changed": return L10n.format("transport_diag_close_network_changed", locale: locale, args: [])
+        case "transport.diag_close_pc_disconnected": return L10n.format("transport_diag_close_pc_disconnected", locale: locale, args: [])
+        case "transport.diag_close_pc_failed": return L10n.format("transport_diag_close_pc_failed", locale: locale, args: [])
+        case "transport.diag_close_peer_closed": return L10n.format("transport_diag_close_peer_closed", locale: locale, args: [])
+        case "transport.diag_close_probe_timeout": return L10n.format("transport_diag_close_probe_timeout", locale: locale, args: [intArg(args["count"])])
+        case "transport.diag_close_timeout": return L10n.format("transport_diag_close_timeout", locale: locale, args: [])
         case "transport.diag_connected_body": return L10n.format("transport_diag_connected_body", locale: locale, args: [])
         case "transport.diag_connected_title": return L10n.format("transport_diag_connected_title", locale: locale, args: [])
         case "transport.diag_copy_permission": return L10n.format("transport_diag_copy_permission", locale: locale, args: [])
         case "transport.diag_count": return L10n.format("transport_diag_count", locale: locale, args: [intArg(args["count"])])
         case "transport.diag_dtls": return L10n.format("transport_diag_dtls", locale: locale, args: [])
         case "transport.diag_explain_generic": return L10n.format("transport_diag_explain_generic", locale: locale, args: [])
+        case "transport.diag_explain_lost": return L10n.format("transport_diag_explain_lost", locale: locale, args: [])
+        case "transport.diag_explain_lost_detail": return L10n.format("transport_diag_explain_lost_detail", locale: locale, args: [strArg(args["summary"])])
         case "transport.diag_explain_nat": return L10n.format("transport_diag_explain_nat", locale: locale, args: [])
         case "transport.diag_explain_no_reply": return L10n.format("transport_diag_explain_no_reply", locale: locale, args: [])
         case "transport.diag_explain_peer_old": return L10n.format("transport_diag_explain_peer_old", locale: locale, args: [])
@@ -18324,9 +18512,12 @@ public enum L10nText {
         case "transport.diag_ice": return L10n.format("transport_diag_ice", locale: locale, args: [])
         case "transport.diag_ipv4": return L10n.format("transport_diag_ipv4", locale: locale, args: [])
         case "transport.diag_ipv6": return L10n.format("transport_diag_ipv6", locale: locale, args: [])
+        case "transport.diag_lived_dropped": return L10n.format("transport_diag_lived_dropped", locale: locale, args: [strArg(args["seconds"])])
+        case "transport.diag_lived_dropped_cause": return L10n.format("transport_diag_lived_dropped_cause", locale: locale, args: [strArg(args["cause"]), strArg(args["seconds"])])
         case "transport.diag_no_attempt": return L10n.format("transport_diag_no_attempt", locale: locale, args: [])
         case "transport.diag_none": return L10n.format("transport_diag_none", locale: locale, args: [])
         case "transport.diag_not_sampled": return L10n.format("transport_diag_not_sampled", locale: locale, args: [])
+        case "transport.diag_outcome": return L10n.format("transport_diag_outcome", locale: locale, args: [])
         case "transport.diag_pair": return L10n.format("transport_diag_pair", locale: locale, args: [strArg(args["local"]), strArg(args["remote"])])
         case "transport.diag_pair_failed": return L10n.format("transport_diag_pair_failed", locale: locale, args: [intArg(args["count"])])
         case "transport.diag_pair_ok": return L10n.format("transport_diag_pair_ok", locale: locale, args: [intArg(args["count"])])
@@ -18338,6 +18529,8 @@ public enum L10nText {
         case "transport.diag_peer_no_reply_desc": return L10n.format("transport_diag_peer_no_reply_desc", locale: locale, args: [])
         case "transport.diag_peer_old_desc": return L10n.format("transport_diag_peer_old_desc", locale: locale, args: [])
         case "transport.diag_privacy_footer": return L10n.format("transport_diag_privacy_footer", locale: locale, args: [])
+        case "transport.diag_probes": return L10n.format("transport_diag_probes", locale: locale, args: [])
+        case "transport.diag_probes_value": return L10n.format("transport_diag_probes_value", locale: locale, args: [intArg(args["echoed"]), intArg(args["lost"]), intArg(args["sent"])])
         case "transport.diag_range_cgnat": return L10n.format("transport_diag_range_cgnat", locale: locale, args: [])
         case "transport.diag_range_global": return L10n.format("transport_diag_range_global", locale: locale, args: [])
         case "transport.diag_range_link_local": return L10n.format("transport_diag_range_link_local", locale: locale, args: [])
@@ -18393,6 +18586,7 @@ public enum L10nText {
         case "transport.diag_status_blocked": return L10n.format("transport_diag_status_blocked", locale: locale, args: [])
         case "transport.diag_status_checking": return L10n.format("transport_diag_status_checking", locale: locale, args: [])
         case "transport.diag_status_connected": return L10n.format("transport_diag_status_connected", locale: locale, args: [])
+        case "transport.diag_status_dropped": return L10n.format("transport_diag_status_dropped", locale: locale, args: [])
         case "transport.diag_status_enabled": return L10n.format("transport_diag_status_enabled", locale: locale, args: [])
         case "transport.diag_status_no_reply": return L10n.format("transport_diag_status_no_reply", locale: locale, args: [])
         case "transport.diag_status_not_started": return L10n.format("transport_diag_status_not_started", locale: locale, args: [])
@@ -18402,6 +18596,7 @@ public enum L10nText {
         case "transport.diag_stun_error": return L10n.format("transport_diag_stun_error", locale: locale, args: [intArg(args["code"]), intArg(args["count"]), strArg(args["family"])])
         case "transport.diag_stun_errors": return L10n.format("transport_diag_stun_errors", locale: locale, args: [])
         case "transport.diag_title_generic": return L10n.format("transport_diag_title_generic", locale: locale, args: [])
+        case "transport.diag_title_lost": return L10n.format("transport_diag_title_lost", locale: locale, args: [])
         case "transport.diag_title_no_reply": return L10n.format("transport_diag_title_no_reply", locale: locale, args: [])
         case "transport.diag_title_probe_blocked": return L10n.format("transport_diag_title_probe_blocked", locale: locale, args: [])
         case "transport.diag_type_host": return L10n.format("transport_diag_type_host", locale: locale, args: [])
@@ -18433,6 +18628,11 @@ public enum L10nText {
         case "transport.diag_verdict_unknown": return L10n.format("transport_diag_verdict_unknown", locale: locale, args: [])
         case "transport.diag_verdict_unselected": return L10n.format("transport_diag_verdict_unselected", locale: locale, args: [])
         case "transport.direct": return L10n.format("transport_direct", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve13(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "transport.direct_slow": return L10n.format("transport_direct_slow", locale: locale, args: [])
         case "transport.file_speed_both": return L10n.format("transport_file_speed_both", locale: locale, args: [strArg(args["direct"]), strArg(args["relay"])])
         case "transport.file_speed_direct": return L10n.format("transport_file_speed_direct", locale: locale, args: [strArg(args["direct"])])
@@ -18452,16 +18652,14 @@ public enum L10nText {
         case "transport.read_latency_both": return L10n.format("transport_read_latency_both", locale: locale, args: [strArg(args["direct"]), strArg(args["relay"])])
         case "transport.read_latency_direct": return L10n.format("transport_read_latency_direct", locale: locale, args: [strArg(args["direct"])])
         case "transport.read_latency_relay": return L10n.format("transport_read_latency_relay", locale: locale, args: [strArg(args["relay"])])
-        default: return nil
-        }
-    }
-    private static func resolve13(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "transport.reason_at_cap": return L10n.format("transport_reason_at_cap", locale: locale, args: [])
         case "transport.reason_at_cap_detail": return L10n.format("transport_reason_at_cap_detail", locale: locale, args: [])
         case "transport.reason_channel_pending": return L10n.format("transport_reason_channel_pending", locale: locale, args: [])
         case "transport.reason_daemon_disabled": return L10n.format("transport_reason_daemon_disabled", locale: locale, args: [])
         case "transport.reason_failed": return L10n.format("transport_reason_failed", locale: locale, args: [])
+        case "transport.reason_failed_no_retry": return L10n.format("transport_reason_failed_no_retry", locale: locale, args: [])
+        case "transport.reason_lost": return L10n.format("transport_reason_lost", locale: locale, args: [])
+        case "transport.reason_lost_retry": return L10n.format("transport_reason_lost_retry", locale: locale, args: [])
         case "transport.reason_no_response": return L10n.format("transport_reason_no_response", locale: locale, args: [])
         case "transport.reason_no_traversal": return L10n.format("transport_reason_no_traversal", locale: locale, args: [])
         case "transport.reason_peer_unsupported": return L10n.format("transport_reason_peer_unsupported", locale: locale, args: [])

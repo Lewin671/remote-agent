@@ -51,6 +51,10 @@ public enum DirectRouteReason
    * <code>DIRECT_ROUTE_REASON_STARTING = 9;</code>
    */
   DIRECT_ROUTE_REASON_STARTING(9),
+  /**
+   * <code>DIRECT_ROUTE_REASON_LOST = 10;</code>
+   */
+  DIRECT_ROUTE_REASON_LOST(10),
   UNRECOGNIZED(-1),
   ;
 
@@ -94,6 +98,10 @@ public enum DirectRouteReason
    * <code>DIRECT_ROUTE_REASON_STARTING = 9;</code>
    */
   public static final int DIRECT_ROUTE_REASON_STARTING_VALUE = 9;
+  /**
+   * <code>DIRECT_ROUTE_REASON_LOST = 10;</code>
+   */
+  public static final int DIRECT_ROUTE_REASON_LOST_VALUE = 10;
 
 
   @java.lang.Override
@@ -127,6 +135,7 @@ public enum DirectRouteReason
       case 7: return DIRECT_ROUTE_REASON_DAEMON_DISABLED;
       case 8: return DIRECT_ROUTE_REASON_SECURITY_PENDING;
       case 9: return DIRECT_ROUTE_REASON_STARTING;
+      case 10: return DIRECT_ROUTE_REASON_LOST;
       default: return null;
     }
   }

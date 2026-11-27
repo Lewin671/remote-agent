@@ -1582,12 +1582,24 @@ export interface MessageArgs {
   "transport.diag_check_path": { [name: string]: never };
   "transport.diag_check_peer": { [name: string]: never };
   "transport.diag_check_retry": { [name: string]: never };
+  "transport.diag_close_background": { [name: string]: never };
+  "transport.diag_close_dc_closed": { [name: string]: never };
+  "transport.diag_close_disabled": { [name: string]: never };
+  "transport.diag_close_engine": { [name: string]: never };
+  "transport.diag_close_network_changed": { [name: string]: never };
+  "transport.diag_close_pc_disconnected": { [name: string]: never };
+  "transport.diag_close_pc_failed": { [name: string]: never };
+  "transport.diag_close_peer_closed": { [name: string]: never };
+  "transport.diag_close_probe_timeout": { count: number };
+  "transport.diag_close_timeout": { [name: string]: never };
   "transport.diag_connected_body": { [name: string]: never };
   "transport.diag_connected_title": { [name: string]: never };
   "transport.diag_copy_permission": { [name: string]: never };
   "transport.diag_count": { count: number };
   "transport.diag_dtls": { [name: string]: never };
   "transport.diag_explain_generic": { [name: string]: never };
+  "transport.diag_explain_lost": { [name: string]: never };
+  "transport.diag_explain_lost_detail": { summary: string };
   "transport.diag_explain_nat": { [name: string]: never };
   "transport.diag_explain_no_reply": { [name: string]: never };
   "transport.diag_explain_peer_old": { [name: string]: never };
@@ -1602,9 +1614,12 @@ export interface MessageArgs {
   "transport.diag_ice": { [name: string]: never };
   "transport.diag_ipv4": { [name: string]: never };
   "transport.diag_ipv6": { [name: string]: never };
+  "transport.diag_lived_dropped": { seconds: string };
+  "transport.diag_lived_dropped_cause": { cause: string; seconds: string };
   "transport.diag_no_attempt": { [name: string]: never };
   "transport.diag_none": { [name: string]: never };
   "transport.diag_not_sampled": { [name: string]: never };
+  "transport.diag_outcome": { [name: string]: never };
   "transport.diag_pair": { local: string; remote: string };
   "transport.diag_pair_failed": { count: number };
   "transport.diag_pair_ok": { count: number };
@@ -1616,6 +1631,8 @@ export interface MessageArgs {
   "transport.diag_peer_no_reply_desc": { [name: string]: never };
   "transport.diag_peer_old_desc": { [name: string]: never };
   "transport.diag_privacy_footer": { [name: string]: never };
+  "transport.diag_probes": { [name: string]: never };
+  "transport.diag_probes_value": { echoed: number; lost: number; sent: number };
   "transport.diag_range_cgnat": { [name: string]: never };
   "transport.diag_range_global": { [name: string]: never };
   "transport.diag_range_link_local": { [name: string]: never };
@@ -1671,6 +1688,7 @@ export interface MessageArgs {
   "transport.diag_status_blocked": { [name: string]: never };
   "transport.diag_status_checking": { [name: string]: never };
   "transport.diag_status_connected": { [name: string]: never };
+  "transport.diag_status_dropped": { [name: string]: never };
   "transport.diag_status_enabled": { [name: string]: never };
   "transport.diag_status_no_reply": { [name: string]: never };
   "transport.diag_status_not_started": { [name: string]: never };
@@ -1680,6 +1698,7 @@ export interface MessageArgs {
   "transport.diag_stun_error": { code: number; count: number; family: string };
   "transport.diag_stun_errors": { [name: string]: never };
   "transport.diag_title_generic": { [name: string]: never };
+  "transport.diag_title_lost": { [name: string]: never };
   "transport.diag_title_no_reply": { [name: string]: never };
   "transport.diag_title_probe_blocked": { [name: string]: never };
   "transport.diag_type_host": { [name: string]: never };
@@ -1735,6 +1754,9 @@ export interface MessageArgs {
   "transport.reason_channel_pending": { [name: string]: never };
   "transport.reason_daemon_disabled": { [name: string]: never };
   "transport.reason_failed": { [name: string]: never };
+  "transport.reason_failed_no_retry": { [name: string]: never };
+  "transport.reason_lost": { [name: string]: never };
+  "transport.reason_lost_retry": { [name: string]: never };
   "transport.reason_no_response": { [name: string]: never };
   "transport.reason_no_traversal": { [name: string]: never };
   "transport.reason_peer_unsupported": { [name: string]: never };
@@ -3946,12 +3968,24 @@ export const messages = {
     "transport.diag_check_path": "Local or public direct path",
     "transport.diag_check_peer": "Computer reachable & responding",
     "transport.diag_check_retry": "Background auto-retry",
+    "transport.diag_close_background": "Moved to background",
+    "transport.diag_close_dc_closed": "Data channel closed",
+    "transport.diag_close_disabled": "Direct turned off",
+    "transport.diag_close_engine": "Closed by local engine",
+    "transport.diag_close_network_changed": "Network changed",
+    "transport.diag_close_pc_disconnected": "Connection interrupted",
+    "transport.diag_close_pc_failed": "Connection failed",
+    "transport.diag_close_peer_closed": "Closed by peer",
+    "transport.diag_close_probe_timeout": "{count} consecutive probes unanswered",
+    "transport.diag_close_timeout": "Setup timed out",
     "transport.diag_connected_body": "Loading, files, and terminal are back on a direct connection.",
     "transport.diag_connected_title": "Direct connected",
     "transport.diag_copy_permission": "Couldn’t copy; check clipboard permission",
     "transport.diag_count": "×{count}",
     "transport.diag_dtls": "Encryption handshake",
     "transport.diag_explain_generic": "Direct negotiation did not finish within the time budget and will retry when the network changes. Everything currently uses relay automatically with no impact on use.",
+    "transport.diag_explain_lost": "Direct connected briefly and then dropped. Everything currently uses relay automatically with no impact on use.",
+    "transport.diag_explain_lost_detail": "{summary}. Everything currently uses relay automatically with no impact on use.",
     "transport.diag_explain_nat": "Both devices are behind restrictive networks such as cellular NAT or a corporate LAN. Everything currently uses relay automatically with no impact on use.",
     "transport.diag_explain_no_reply": "The computer did not reply to the direct handshake; direct connections may be off there or blocked by a firewall. Everything currently uses relay automatically with no impact on use.",
     "transport.diag_explain_peer_old": "The remote-agent version on the computer does not support direct connections yet; update it to enable direct paths. Everything currently uses relay automatically with no impact on use.",
@@ -3966,9 +4000,12 @@ export const messages = {
     "transport.diag_ice": "ICE state",
     "transport.diag_ipv4": "IPv4",
     "transport.diag_ipv6": "IPv6",
+    "transport.diag_lived_dropped": "Dropped after {seconds}s",
+    "transport.diag_lived_dropped_cause": "Dropped after {seconds}s · {cause}",
     "transport.diag_no_attempt": "No connection was created",
     "transport.diag_none": "None",
     "transport.diag_not_sampled": "No check records were read",
+    "transport.diag_outcome": "Outcome",
     "transport.diag_pair": "{local} → {remote}",
     "transport.diag_pair_failed": "{count} failed",
     "transport.diag_pair_ok": "{count} succeeded",
@@ -3980,6 +4017,8 @@ export const messages = {
     "transport.diag_peer_no_reply_desc": "Timed out waiting for the computer to respond",
     "transport.diag_peer_old_desc": "remote-agent on this computer doesn’t support direct yet",
     "transport.diag_privacy_footer": "Copied diagnostics include address types and ranges only—no IP addresses, ports, or chat content.",
+    "transport.diag_probes": "Liveness probes",
+    "transport.diag_probes_value": "Sent {sent} · Echoed {echoed} · Lost {lost}",
     "transport.diag_range_cgnat": "carrier-shared",
     "transport.diag_range_global": "global",
     "transport.diag_range_link_local": "link-local",
@@ -4035,6 +4074,7 @@ export const messages = {
     "transport.diag_status_blocked": "Unreachable",
     "transport.diag_status_checking": "Checking…",
     "transport.diag_status_connected": "Connected",
+    "transport.diag_status_dropped": "Dropped",
     "transport.diag_status_enabled": "On",
     "transport.diag_status_no_reply": "No reply",
     "transport.diag_status_not_started": "Not started",
@@ -4044,6 +4084,7 @@ export const messages = {
     "transport.diag_stun_error": "{code} · {family} ×{count}",
     "transport.diag_stun_errors": "STUN errors",
     "transport.diag_title_generic": "Couldn’t connect; will try again shortly",
+    "transport.diag_title_lost": "Direct connected, then dropped",
     "transport.diag_title_no_reply": "Computer didn’t reply to handshake",
     "transport.diag_title_probe_blocked": "Current network restricts direct probing",
     "transport.diag_type_host": "Local interface",
@@ -4099,6 +4140,9 @@ export const messages = {
     "transport.reason_channel_pending": "Direct channel not ready yet",
     "transport.reason_daemon_disabled": "Direct is off on this computer",
     "transport.reason_failed": "Couldn't connect; will try again shortly",
+    "transport.reason_failed_no_retry": "Couldn't connect directly",
+    "transport.reason_lost": "Direct connection dropped",
+    "transport.reason_lost_retry": "Direct dropped; will try again shortly",
     "transport.reason_no_response": "The computer didn't answer; direct may be turned off there",
     "transport.reason_no_traversal": "The two networks can't reach each other directly",
     "transport.reason_peer_unsupported": "The computer's version is too old; update it to use direct",
@@ -6238,12 +6282,24 @@ export const messages = {
     "transport.diag_check_path": "局域网或公网直通",
     "transport.diag_check_peer": "电脑在线并响应",
     "transport.diag_check_retry": "后台自动重试",
+    "transport.diag_close_background": "切到后台",
+    "transport.diag_close_dc_closed": "数据通道关闭",
+    "transport.diag_close_disabled": "直连已关闭",
+    "transport.diag_close_engine": "本地引擎关闭",
+    "transport.diag_close_network_changed": "网络变化",
+    "transport.diag_close_pc_disconnected": "连接中断",
+    "transport.diag_close_pc_failed": "连接失败",
+    "transport.diag_close_peer_closed": "对端关闭",
+    "transport.diag_close_probe_timeout": "探测连续 {count} 次无回应",
+    "transport.diag_close_timeout": "建立超时",
     "transport.diag_connected_body": "加载、文件与终端现在已恢复直连。",
     "transport.diag_connected_title": "直连已连上",
     "transport.diag_copy_permission": "没能复制，请检查剪贴板权限",
     "transport.diag_count": "×{count}",
     "transport.diag_dtls": "加密握手",
     "transport.diag_explain_generic": "本次协商没有在时限内完成，网络稳定后会自动再试。当前所有操作都已自动走中继，不影响正常使用。",
+    "transport.diag_explain_lost": "直连曾短暂连上，随后断开。当前所有操作都已自动走中继，不影响正常使用。",
+    "transport.diag_explain_lost_detail": "{summary}。当前所有操作都已自动走中继，不影响正常使用。",
     "transport.diag_explain_nat": "本机与电脑各自处在限制直连的网络里，常见于蜂窝网络或公司内网。当前所有操作都已自动走中继，不影响正常使用。",
     "transport.diag_explain_no_reply": "电脑没有回应直连握手，可能在电脑上关闭了直连或防火墙拦下了请求。当前所有操作都已自动走中继，不影响正常使用。",
     "transport.diag_explain_peer_old": "电脑上安装的 remote-agent 版本暂不支持直连，更新后即可自动使用。当前所有操作都已自动走中继，不影响正常使用。",
@@ -6258,9 +6314,12 @@ export const messages = {
     "transport.diag_ice": "ICE 状态",
     "transport.diag_ipv4": "IPv4",
     "transport.diag_ipv6": "IPv6",
+    "transport.diag_lived_dropped": "连上 {seconds} 秒后断开",
+    "transport.diag_lived_dropped_cause": "连上 {seconds} 秒后断开 · {cause}",
     "transport.diag_no_attempt": "没有创建连接",
     "transport.diag_none": "没有",
     "transport.diag_not_sampled": "没有读到检查记录",
+    "transport.diag_outcome": "结局",
     "transport.diag_pair": "{local} → {remote}",
     "transport.diag_pair_failed": "失败 {count}",
     "transport.diag_pair_ok": "成功 {count}",
@@ -6272,6 +6331,8 @@ export const messages = {
     "transport.diag_peer_no_reply_desc": "握手等待超时，未收到电脑应答",
     "transport.diag_peer_old_desc": "电脑上的 remote-agent 暂不支持直连",
     "transport.diag_privacy_footer": "复制的诊断只含地址类型和范围，不含具体地址、端口或对话内容。",
+    "transport.diag_probes": "存活探测",
+    "transport.diag_probes_value": "发出 {sent} · 回声 {echoed} · 丢失 {lost}",
     "transport.diag_range_cgnat": "运营商共享",
     "transport.diag_range_global": "全球",
     "transport.diag_range_link_local": "链路本地",
@@ -6327,6 +6388,7 @@ export const messages = {
     "transport.diag_status_blocked": "未通",
     "transport.diag_status_checking": "正在检查…",
     "transport.diag_status_connected": "已连通",
+    "transport.diag_status_dropped": "已断开",
     "transport.diag_status_enabled": "已开启",
     "transport.diag_status_no_reply": "未响应",
     "transport.diag_status_not_started": "未开始",
@@ -6336,6 +6398,7 @@ export const messages = {
     "transport.diag_stun_error": "{code} · {family} ×{count}",
     "transport.diag_stun_errors": "STUN 错误",
     "transport.diag_title_generic": "暂时没连上，稍后会自动再试",
+    "transport.diag_title_lost": "直连连上后又断开了",
     "transport.diag_title_no_reply": "电脑没有回应直连握手，可能在电脑上关了直连",
     "transport.diag_title_probe_blocked": "所在网络限制了直连探测，不能直接连通",
     "transport.diag_type_host": "本机网卡",
@@ -6391,6 +6454,9 @@ export const messages = {
     "transport.reason_channel_pending": "直连通道尚未就绪",
     "transport.reason_daemon_disabled": "电脑未开直连",
     "transport.reason_failed": "没连上，稍后会自动再试",
+    "transport.reason_failed_no_retry": "没连上直连",
+    "transport.reason_lost": "直连断开了",
+    "transport.reason_lost_retry": "直连断了，稍后会自动再试",
     "transport.reason_no_response": "电脑没有回应，可能在电脑上关了直连",
     "transport.reason_no_traversal": "两边的网络隔开了，不能直接连通",
     "transport.reason_peer_unsupported": "电脑上的版本太旧，更新后可用",

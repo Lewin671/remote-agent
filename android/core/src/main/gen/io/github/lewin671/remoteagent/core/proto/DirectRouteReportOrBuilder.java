@@ -172,4 +172,10 @@ public interface DirectRouteReportOrBuilder extends
    * @return The terminalRoute.
    */
   io.github.lewin671.remoteagent.core.proto.DirectPathChoice getTerminalRoute();
+
+  /**
+   * <code>bool retry_scheduled = 24 [json_name = "retryScheduled"];</code>
+   * @return The retryScheduled.
+   */
+  boolean getRetryScheduled();
 }

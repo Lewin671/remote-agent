@@ -220,8 +220,28 @@ type pcBinding struct {
 	use            Use
 	confirmed      bool
 	closedNotified bool
+	lastConnState  string
+	lastIceState   string
 	probe          linkcore.ProbeTracker
 	probeSamples   []ProbeSample
+}
+
+func (b *pcBinding) probeStats() ProbeStats {
+	sent, echoed, lost, missed := b.probe.Stats()
+	return ProbeStats{Sent: sent, Echoed: echoed, Lost: lost, Missed: missed}
+}
+
+func (b *pcBinding) inferCloseCause(reason string, fallback CloseCause) CloseCause {
+	if cause := ParseCloseCause(reason); cause != CloseNone {
+		return cause
+	}
+	if b.lastConnState == "failed" || b.lastIceState == "failed" {
+		return ClosePCFailed
+	}
+	if b.lastConnState == "disconnected" || b.lastIceState == "disconnected" {
+		return ClosePCDisconnected
+	}
+	return fallback
 }
 
 func (b *pcBinding) recordProbeSample(now int64, rttMs float64) {
@@ -576,9 +596,11 @@ func (c *Coordinator) OnSessionTimer(now int64) []CoordEffect {
 		}
 		if !r.session.View().Retired && uint64(now)+lateStatsSampleLeadMs >= r.session.Deadline() {
 			for _, u := range []Use{UseRead, UseBulk} {
-				if !r.sampledLate[u] && !r.confirmed[u] && r.globalPC[u] != 0 {
+				if !r.sampledLate[u] && !r.confirmed[u] {
 					r.sampledLate[u] = true
-					c.handleEngine(now, DiagSampleWanted{Round: r.id, Use: u})
+					if r.globalPC[u] != 0 {
+						c.handleEngine(now, DiagSampleWanted{Round: r.id, Use: u})
+					}
 				}
 			}
 		}
@@ -630,6 +652,12 @@ func (c *Coordinator) stepProbeTrackers(now int64) {
 			c.maybeLowWater()
 		}
 		if timedOut {
+			c.handleEngine(now, DiagPathEnd{
+				Round:  r.id,
+				Use:    b.use,
+				Cause:  CloseProbeTimeout,
+				Probes: b.probeStats(),
+			})
 			b.probeSamples = nil
 			delete(r.localToGlobal, b.localID)
 			if r.globalPC[b.use] == pcID {
@@ -1147,6 +1175,11 @@ func (c *Coordinator) OnPcState(now int64, pcID uint64, kind StateKind, value st
 	if b == nil {
 		return nil
 	}
+	if kind == StateConn {
+		b.lastConnState = value
+	} else if kind == StateICE {
+		b.lastIceState = value
+	}
 	c.handleEngine(now, DiagState{Round: r.id, Use: b.use, Kind: kind, Value: value})
 	if kind == StateConn && (value == "connected" || value == "failed" || value == "disconnected") ||
 		kind == StateICE && (value == "connected" || value == "completed" || value == "failed") {
@@ -1194,6 +1227,12 @@ func (c *Coordinator) OnDcState(now int64, pcID uint64, open bool) []CoordEffect
 	c.handleEngine(now, DiagState{Round: r.id, Use: b.use, Kind: StateDC, Value: val})
 	r.dcOpen[b.use] = open
 	if !open {
+		c.handleEngine(now, DiagPathEnd{
+			Round:  r.id,
+			Use:    b.use,
+			Cause:  b.inferCloseCause("", CloseDCClosed),
+			Probes: b.probeStats(),
+		})
 		b.probe.Reset()
 		b.probeSamples = nil
 		c.markPCClosed(now, r, b, pcID)
@@ -1214,11 +1253,17 @@ func (c *Coordinator) OnPcProbeReceived(now int64, pcID uint64, raw []byte) []Co
 }
 
 // OnPcClosed reports that the native WebRTC PeerConnection closed.
-func (c *Coordinator) OnPcClosed(now int64, pcID uint64) []CoordEffect {
+func (c *Coordinator) OnPcClosed(now int64, pcID uint64, reason string) []CoordEffect {
 	b, r := c.lookupPC(pcID)
 	if b == nil {
 		return nil
 	}
+	c.handleEngine(now, DiagPathEnd{
+		Round:  r.id,
+		Use:    b.use,
+		Cause:  b.inferCloseCause(reason, ClosePeerClosed),
+		Probes: b.probeStats(),
+	})
 	b.probeSamples = nil
 	r.dcOpen[b.use] = false
 	if r.globalPC[b.use] == pcID {
@@ -1507,9 +1552,7 @@ func (c *Coordinator) NextTimers(now int64) (engineAt int64, engineOK bool, sess
 			addSess(int64(due))
 		}
 		if !v.Retired && r.session.Deadline() > lateStatsSampleLeadMs {
-			needLate := (!r.sampledLate[UseRead] && !r.confirmed[UseRead] && r.globalPC[UseRead] != 0) ||
-				(!r.sampledLate[UseBulk] && !r.confirmed[UseBulk] && r.globalPC[UseBulk] != 0)
-			if needLate {
+			if (!r.sampledLate[UseRead] && !r.confirmed[UseRead]) || (!r.sampledLate[UseBulk] && !r.confirmed[UseBulk]) {
 				addSess(int64(r.session.Deadline()) - lateStatsSampleLeadMs)
 			}
 		}
@@ -2038,6 +2081,12 @@ func (c *Coordinator) applySessionEffects(now int64, r *coordRound, effects []li
 			delete(r.localToGlobal, eff.ID)
 			b := c.pcs[pcID]
 			if b != nil {
+				c.handleEngine(now, DiagPathEnd{
+					Round:  r.id,
+					Use:    b.use,
+					Cause:  b.inferCloseCause(eff.Reason, CloseEngine),
+					Probes: b.probeStats(),
+				})
 				if r.globalPC[b.use] == pcID {
 					r.globalPC[b.use] = 0
 				}
@@ -2148,6 +2197,12 @@ func (c *Coordinator) closeRoundNow(now int64, r *coordRound) {
 	for localID, pcID := range r.localToGlobal {
 		delete(r.localToGlobal, localID)
 		if b := c.pcs[pcID]; b != nil {
+			c.handleEngine(now, DiagPathEnd{
+				Round:  r.id,
+				Use:    b.use,
+				Cause:  b.inferCloseCause("", CloseEngine),
+				Probes: b.probeStats(),
+			})
 			c.markPCClosed(now, r, b, pcID)
 			delete(c.pcs, pcID)
 		}

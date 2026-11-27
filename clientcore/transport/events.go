@@ -17,6 +17,7 @@ const (
 	FailurePeerUnsupported         // the computer answered Unsupported
 	FailureNoResponse              // the computer never answered the handshake
 	FailureNoTraversal             // the handshake worked but no address was found
+	FailureLost                    // at least one path came up, then all paths closed
 )
 
 // Caps is the part of a computer's capability snapshot (Control 14) that

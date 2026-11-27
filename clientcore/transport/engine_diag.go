@@ -83,6 +83,14 @@ type DiagStats struct {
 	Report *StatsReport
 }
 
+// DiagPathEnd records why a use's path closed and its liveness probe counters.
+type DiagPathEnd struct {
+	Round  RoundID
+	Use    Use
+	Cause  CloseCause
+	Probes ProbeStats
+}
+
 // RefreshDiagnostics: the sheet is open; read the stats of the rounds being tried.
 type RefreshDiagnostics struct{ Machine string }
 
@@ -102,6 +110,7 @@ func (DiagState) event()          {}
 func (DiagBlocked) event()        {}
 func (DiagSampleWanted) event()   {}
 func (DiagStats) event()          {}
+func (DiagPathEnd) event()        {}
 func (RefreshDiagnostics) event() {}
 func (ReadStats) effect()         {}
 
@@ -128,7 +137,7 @@ func (e *Engine) pathUp(now int64, p *round, u Use) {
 
 // finished records how a round ended: lost after a path came up, else the
 // session's cause, else a timeout, a retirement or a cancellation.
-func (e *Engine) finished(now int64, p *round, timedOut bool) {
+func (e *Engine) finished(now int64, p *round, timedOut bool, cause CloseCause) {
 	r := e.diag.round(p.id)
 	if r == nil {
 		return
@@ -147,6 +156,18 @@ func (e *Engine) finished(now int64, p *round, timedOut bool) {
 		end = EndTimeout
 	case p.retired:
 		end = EndRetired
+	}
+	if cause == CloseNone && timedOut && !p.established {
+		cause = CloseTimeout
+	}
+	if cause != CloseNone {
+		r.recordCloseCause(cause, false)
+		t := r.since(now)
+		for i := range r.Pcs {
+			if r.Pcs[i].HasMark[MarkReady] && !r.Pcs[i].HasClosed {
+				r.Pcs[i].recordClose(t, cause, ProbeStats{})
+			}
+		}
 	}
 	r.finish(now, end)
 }
@@ -174,6 +195,8 @@ func (e *Engine) handleDiag(now int64, ev Event) bool {
 	case DiagSampleWanted:
 		id, u = ev.Round, ev.Use
 	case DiagStats:
+		id, u = ev.Round, ev.Use
+	case DiagPathEnd:
 		id, u = ev.Round, ev.Use
 	case RefreshDiagnostics:
 		for _, p := range e.sortedRounds() {
@@ -231,6 +254,9 @@ func (e *Engine) handleDiag(now int64, ev Event) bool {
 				a.take(t, *ev.Report)
 			}
 		}
+	case DiagPathEnd:
+		pc.recordClose(t, ev.Cause, ev.Probes)
+		r.recordCloseCause(ev.Cause, pc.HasMark[MarkReady])
 	}
 	e.markChanged()
 	return true

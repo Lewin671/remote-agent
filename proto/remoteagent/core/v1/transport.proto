@@ -137,6 +137,7 @@ message DirectPcStunErrorEvent {
 
 message DirectPcClosedEvent {
   uint64 pc_id = 1;
+  string reason = 2;
 }
 
 message DirectDcStateEvent {

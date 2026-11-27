@@ -70,6 +70,7 @@ func TestStatusReasons(t *testing.T) {
 		{FailurePeerUnsupported, ReasonPeerUnsupported},
 		{FailureNoResponse, ReasonNoResponse},
 		{FailureNoTraversal, ReasonNoTraversal},
+		{FailureLost, ReasonLost},
 		{FailureNone, ReasonFailed},
 	} {
 		r := newRig(t, 0.5)
@@ -105,5 +106,25 @@ func TestStatusReasons(t *testing.T) {
 	e := NewEngine(true)
 	if s := e.Status(0, "m1"); s.Reason != ReasonSecurityPending {
 		t.Errorf("before any sync: %+v", s)
+	}
+
+	// An established round whose paths all close reports ReasonLost (not ReasonFailed),
+	// immediately records EndLost in diagnostics, and sets RetryScheduled only while delay > 0.
+	rLost := newRig(t, 0.5)
+	id := rLost.started("m1")
+	rLost.up(id, UseRead)
+	rLost.advance(4200)
+	rLost.do(PathClosed{Round: id, Use: UseRead})
+	s := rLost.e.Status(rLost.now, "m1")
+	if s.State != StateNone || s.Reason != ReasonLost || !s.RetryScheduled {
+		t.Fatalf("established then dropped: want StateNone/ReasonLost/RetryScheduled=true, got %+v", s)
+	}
+	rounds, _, _ := rLost.e.Diagnostics("m1")
+	if len(rounds) == 0 || rounds[0].End != EndLost || !rounds[0].HasEstablished {
+		t.Fatalf("expected immediate EndLost in diagnostics after last path closes, got %+v", rounds)
+	}
+	rLost.advance(rLost.retryIn("m1"))
+	if s2 := rLost.e.Status(rLost.now, "m1"); s2.Reason != ReasonLost || s2.RetryScheduled {
+		t.Fatalf("once retry is due, RetryScheduled must be false while ReasonLost remains, got %+v", s2)
 	}
 }
