@@ -1174,7 +1174,7 @@ class Remote(
         coreHost.syncLifecycle(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_RECONNECT_NOW)
     }
 
-    // --- One-shot Machine Probes ---
+    // --- Server Probe ---
 
     suspend fun pingServer(timeoutMs: Long = 8_000): Long = withContext(Dispatchers.IO) {
         val req = okhttp3.Request.Builder().url(relayServer.trimEnd('/') + "/healthz").header("Cache-Control", "no-store").build()
@@ -1188,19 +1188,6 @@ class Remote(
             throw MessageException(UiMessages.connectionNoResponse().messageText(), e)
         }
         (System.nanoTime() - started) / 1_000_000
-    }
-
-    suspend fun pingMachine(machineId: String, timeoutMs: Long = 15_000): Long {
-        ensureSecurityConfigured()
-        val started = System.nanoTime()
-        try {
-            withTimeout(timeoutMs) {
-                coreHost.pingMachine(machineId)
-            }
-        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-            throw MessageException(UiMessages.connectionNoResponse().messageText(), e)
-        }
-        return (System.nanoTime() - started) / 1_000_000
     }
 
     // --- Media & Terminal ---

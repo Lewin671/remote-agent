@@ -250,7 +250,12 @@ class DirectTransportUiTest {
                     .setMachineId("m1")
                     .setName("alpha")
                     .setOnline(true)
-                    .setMember(true),
+                    .setMember(true)
+                    .setLatency(
+                        io.github.lewin671.remoteagent.core.proto.MachineLatencyView.newBuilder()
+                            .setState(io.github.lewin671.remoteagent.core.proto.MachineLatencyState.MACHINE_LATENCY_STATE_DONE)
+                            .setValueText(CoreText.newBuilder().setLiteral("40 ms")),
+                    ),
             )
             .addMachines(
                 MachineListCardView.newBuilder()
@@ -262,6 +267,11 @@ class DirectTransportUiTest {
                         ConnCheckDirectRowView.newBuilder()
                             .setVisible(false)
                             .setStage(ConnectionGroupStage.CONNECTION_GROUP_STAGE_UNSUPPORTED),
+                    )
+                    .setLatency(
+                        io.github.lewin671.remoteagent.core.proto.MachineLatencyView.newBuilder()
+                            .setState(io.github.lewin671.remoteagent.core.proto.MachineLatencyState.MACHINE_LATENCY_STATE_DONE)
+                            .setValueText(CoreText.newBuilder().setLiteral("40 ms")),
                     ),
             )
             .addMachines(
@@ -278,9 +288,7 @@ class DirectTransportUiTest {
                     settingsView = settingsView,
                     onClose = {},
                     serverAddress = "https://example.com",
-                    onlineMachines = { listOf("m1", "m2") },
                     pingServer = { 20L },
-                    pingMachine = { 40L },
                     reconnectNow = {},
                     clock = { 1000L },
                 )
@@ -333,6 +341,11 @@ class DirectTransportUiTest {
                             .setTone(ConnectionGroupTone.CONNECTION_GROUP_TONE_LIVE)
                             .setStatusText(lit("正在用直连"))
                             .setMetricText(lit("18 ms")),
+                    )
+                    .setLatency(
+                        io.github.lewin671.remoteagent.core.proto.MachineLatencyView.newBuilder()
+                            .setState(io.github.lewin671.remoteagent.core.proto.MachineLatencyState.MACHINE_LATENCY_STATE_DONE)
+                            .setValueText(lit("40 ms")),
                     ),
             )
             .addMachines(
@@ -348,6 +361,11 @@ class DirectTransportUiTest {
                             .setTone(ConnectionGroupTone.CONNECTION_GROUP_TONE_WARN)
                             .setStatusText(lit("正在用中继"))
                             .setDetailText(lit("两边的网络隔开了，不能直接连通")),
+                    )
+                    .setLatency(
+                        io.github.lewin671.remoteagent.core.proto.MachineLatencyView.newBuilder()
+                            .setState(io.github.lewin671.remoteagent.core.proto.MachineLatencyState.MACHINE_LATENCY_STATE_DONE)
+                            .setValueText(lit("40 ms")),
                     ),
             )
             .build()
@@ -357,9 +375,7 @@ class DirectTransportUiTest {
                     settingsView = settingsView,
                     onClose = {},
                     serverAddress = "https://example.com",
-                    onlineMachines = { listOf("m1", "m2") },
                     pingServer = { 20L },
-                    pingMachine = { 40L },
                     reconnectNow = {},
                     clock = { 1000L },
                 )

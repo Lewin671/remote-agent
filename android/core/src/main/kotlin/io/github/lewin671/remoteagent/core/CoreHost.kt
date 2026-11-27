@@ -2703,6 +2703,14 @@ class CoreHost(
         )
     }
 
+    fun startConnCheck() = send {
+        setConnCheckStart(ConnCheckStartEvent.getDefaultInstance())
+    }
+
+    fun stopConnCheck() = send {
+        setConnCheckStop(ConnCheckStopEvent.getDefaultInstance())
+    }
+
     fun reportClientUpdateState(event: ClientUpdateStateEvent) = send {
         setClientUpdateState(event)
     }

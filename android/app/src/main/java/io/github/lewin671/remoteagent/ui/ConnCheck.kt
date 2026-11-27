@@ -11,32 +11,39 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.github.lewin671.remoteagent.core.Ping
-import io.github.lewin671.remoteagent.core.SLOW_MACHINE_MS
 import io.github.lewin671.remoteagent.core.SLOW_SERVER_MS
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.median
 import io.github.lewin671.remoteagent.core.proto.ConnCheckDirectRowView
 import io.github.lewin671.remoteagent.core.proto.ConnProbeState
 import io.github.lewin671.remoteagent.core.proto.ConnState as CoreConnState
-import io.github.lewin671.remoteagent.core.proto.ConnectionGroupStage
+import io.github.lewin671.remoteagent.core.proto.MachineLatencyState
+import io.github.lewin671.remoteagent.core.proto.MachineLatencyView
 import io.github.lewin671.remoteagent.core.proto.MachineListCardView
 import io.github.lewin671.remoteagent.core.proto.SettingsViewModel
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
+import java.text.NumberFormat
+import java.util.Locale
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 
 @Composable
@@ -49,14 +56,11 @@ fun ConnCheckSheet(onClose: () -> Unit) {
         settingsView = settingsView,
         onClose = onClose,
         serverAddress = remote.account.server,
-        onlineMachines = {
-            val vm = remote.settingsView.value.takeIf { it != SettingsViewModel.getDefaultInstance() } ?: initialVm
-            vm.machinesList.filter { it.online }.map { it.machineId }
-        },
         pingServer = { remote.pingServer() },
-        pingMachine = { remote.pingMachine(it) },
         reconnectNow = { remote.reconnectNow() },
         onProbeStatus = { s, ms, err -> remote.coreHost.reportConnCheckStatus(s, ms, err) },
+        onStartCheck = { remote.coreHost.startConnCheck() },
+        onStopCheck = { remote.coreHost.stopConnCheck() },
     )
 }
 
@@ -65,19 +69,19 @@ internal fun ConnCheckSheet(
     settingsView: SettingsViewModel,
     onClose: () -> Unit,
     serverAddress: String,
-    onlineMachines: () -> List<String>,
     pingServer: suspend () -> Long,
-    pingMachine: suspend (String) -> Long,
     reconnectNow: () -> Unit,
     clock: () -> Long = System::currentTimeMillis,
     onProbeStatus: (ConnProbeState, Int, String) -> Unit = { _, _, _ -> },
+    onStartCheck: () -> Unit = {},
+    onStopCheck: () -> Unit = {},
 ) {
     val copy = uiText()
     val p = pal
     var server by remember { mutableStateOf<Ping>(Ping.Wait) }
-    val machines = remember { mutableStateMapOf<String, Ping>() }
-    var run by remember { mutableStateOf(0) }
-    var busy by remember { mutableStateOf(true) }
+    var run by remember { mutableIntStateOf(0) }
+    var serverBusy by remember { mutableStateOf(true) }
+    val currentOnStop by rememberUpdatedState(onStopCheck)
     val cc = settingsView.connCheck
     val isConnected = cc.connState == CoreConnState.CONN_STATE_CONNECTED
     val startedAt = cc.connStartedAtMs.takeIf { it > 0L }
@@ -93,18 +97,14 @@ internal fun ConnCheckSheet(
             }
         }
     }
-    val list = settingsView.machinesList
-    val directReadyById = remember(settingsView.machinesList) {
-        settingsView.machinesList.associate { it.machineId to it.directReady }
+    DisposableEffect(Unit) {
+        onDispose { currentOnStop() }
     }
     LaunchedEffect(run) {
-        busy = true
-        onProbeStatus(ConnProbeState.CONN_PROBE_STATE_CHECKING, 0, "")
-        val online = onlineMachines()
+        serverBusy = true
         server = Ping.Wait
-        machines.clear()
-        online.forEach { machines[it] = Ping.Wait }
-        var reached = true
+        onProbeStatus(ConnProbeState.CONN_PROBE_STATE_CHECKING, 0, "")
+        onStartCheck()
         try {
             val ms = median(List(3) { pingServer() })
             server = Ping.Ok(ms)
@@ -114,61 +114,220 @@ internal fun ConnCheckSheet(
                 ms.toInt(),
                 "",
             )
-        } catch (e: kotlinx.coroutines.CancellationException) {
+        } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            reached = false
             val err = displayError(e).ifEmpty { copy(UiMessages.connectionNoResponse()) }
             server = Ping.Fail(err)
             onProbeStatus(ConnProbeState.CONN_PROBE_STATE_UNAVAILABLE, 0, err)
-            online.filter { directReadyById[it] != true }.forEach { machines[it] = Ping.Skip }
+        } finally {
+            serverBusy = false
         }
-        coroutineScope {
-            online.filter { reached || directReadyById[it] == true }.map { id ->
-                async {
-                    machines[id] = runCatching { Ping.Ok(pingMachine(id)) }.getOrElse {
-                        if (it is kotlinx.coroutines.CancellationException) throw it
-                        else Ping.Fail(displayError(it).ifEmpty { copy(UiMessages.connectionNoResponse()) })
-                    }
-                }
-            }.awaitAll()
-        }
-        busy = false
     }
+    val busy = serverBusy || cc.machinesBusy
+    val largeFont = LocalDensity.current.fontScale >= 1.8f
+
     @Composable
-    fun line(name: String, sub: String? = null, tag: String = "", tagA11y: String = "", value: @Composable () -> Unit) {
+    fun dotted(color: Color, text: String, ink: Color = p.ink2) =
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            StatusMark(MarkKind.ONLINE, size = 9.dp, color = color)
+            Text(text, style = T.s17.digits(), color = ink, maxLines = 1, softWrap = false)
+        }
+
+    @Composable
+    fun spinning(text: String) =
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Spinner(p.ink, size = 12.dp, stroke = 1.5.dp)
+            Text(text, style = T.s17.digits(), color = p.ink2, maxLines = 1, softWrap = false)
+        }
+
+    @Composable
+    fun standardLine(
+        name: String,
+        sub: String? = null,
+        tag: String = "",
+        tagA11y: String = "",
+        value: @Composable () -> Unit,
+    ) {
+        if (largeFont) {
+            Column(Modifier.fillMaxWidth().heightIn(min = 50.dp).padding(start = 18.dp, end = 16.dp, top = 11.dp, bottom = 11.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(name, style = T.s17, color = p.ink, modifier = Modifier.weight(1f, fill = false))
+                    if (tag.isNotEmpty()) DisambiguatorTag(tag, a11y = tagA11y)
+                }
+                if (sub != null) Text(sub, style = T.s13, color = p.ink2, modifier = Modifier.padding(top = 1.dp))
+                Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.End) { value() }
+            }
+            return
+        }
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = 14.dp, vertical = 6.dp),
+            Modifier.fillMaxWidth().heightIn(min = 50.dp).padding(start = 18.dp, end = 16.dp, top = 11.dp, bottom = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(name, style = T.s15, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    Text(name, style = T.s17, color = p.ink, modifier = Modifier.weight(1f, fill = false))
                     if (tag.isNotEmpty()) DisambiguatorTag(tag, a11y = tagA11y)
                 }
-                if (sub != null) Text(sub, style = T.s13, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (sub != null) Text(sub, style = T.s13, color = p.ink2, modifier = Modifier.padding(top = 1.dp))
             }
             value()
         }
     }
+
     @Composable
-    fun dotted(color: androidx.compose.ui.graphics.Color, text: String, ink: androidx.compose.ui.graphics.Color = p.ink) =
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            StatusMark(MarkKind.ONLINE, color = color)
-            Text(text, style = T.s13, color = ink)
+    fun serverResult(ping: Ping) = when (ping) {
+        Ping.Wait -> spinning(copy(UiMessages.connectionChecking()))
+        is Ping.Fail -> Text(
+            ping.error,
+            style = T.s17,
+            color = p.red,
+            textAlign = TextAlign.End,
+            modifier = Modifier.widthIn(max = 168.dp),
+        )
+        is Ping.Ok -> {
+            val slow = ping.ms >= SLOW_SERVER_MS
+            val formatted = formatLatencyMs(ping.ms)
+            val label = copy(
+                if (slow) UiMessages.connectionLatencyMsSlow(formatted)
+                else UiMessages.connectionLatencyMs(formatted),
+            )
+            dotted(if (slow) p.faint else p.green, label)
         }
-    @Composable
-    fun result(ping: Ping?, slow: Long) = when (ping) {
-        null, Ping.Wait -> IconText(Lucide.LoaderCircle, copy(UiMessages.connectionChecking()), p.ink2, T.s13)
-        Ping.Skip -> Text(copy(UiMessages.connectionNotChecked()), style = T.s13, color = p.ink2)
-        is Ping.Fail -> Text(ping.error, style = T.s13, color = p.red, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 200.dp))
-        is Ping.Ok -> dotted(if (ping.ms >= slow) p.orange else p.green, "${ping.ms} ms" + if (ping.ms >= slow) copy(UiMessages.connectionSlow()) else "")
     }
+
+    @Composable
+    fun machineLatencyValue(latency: MachineLatencyView) {
+        val valText = uiText(latency.valueText)
+        when (latency.state) {
+            MachineLatencyState.MACHINE_LATENCY_STATE_MEASURING ->
+                spinning(valText.ifEmpty { copy(UiMessages.connectionChecking()) })
+            MachineLatencyState.MACHINE_LATENCY_STATE_DONE ->
+                dotted(if (latency.slow) p.faint else p.green, valText)
+            MachineLatencyState.MACHINE_LATENCY_STATE_FAILED ->
+                Text(
+                    valText,
+                    style = T.s17,
+                    color = p.red,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.widthIn(max = 168.dp),
+                )
+            else ->
+                Text(
+                    valText.ifEmpty { copy(UiMessages.connectionNotChecked()) },
+                    style = T.s17,
+                    color = p.ink2,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+        }
+    }
+
+    @Composable
+    fun machineLatencyRow(m: MachineListCardView, directRow: ConnCheckDirectRowView?, latency: MachineLatencyView) {
+        val name = m.name.ifEmpty { m.machineId }
+        val tagA11y = if (m.hasDisambiguatorA11Y()) uiText(m.disambiguatorA11Y) else ""
+        val summary = when {
+            latency.hasSummaryOverrideText() && latency.summaryOverrideText.isCoreTextNotEmpty() ->
+                uiText(latency.summaryOverrideText)
+            directRow != null && directRow.visible -> {
+                val statusWord = uiText(directRow.statusText)
+                val detailWord = uiText(directRow.detailText).takeIf { it.isNotEmpty() }
+                listOfNotNull(statusWord.takeIf { it.isNotEmpty() }, detailWord).joinToString(" · ")
+            }
+            else -> ""
+        }
+        val a11y = if (latency.hasA11YText() && latency.a11YText.isCoreTextNotEmpty()) uiText(latency.a11YText) else ""
+        val rowMod = Modifier
+            .fillMaxWidth()
+            .then(
+                if (a11y.isNotEmpty()) Modifier.semantics(mergeDescendants = true) { contentDescription = a11y }
+                else Modifier,
+            )
+            .padding(start = 18.dp, end = 16.dp, top = 13.dp, bottom = 13.dp)
+
+        Column(rowMod) {
+            if (largeFont) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(name, style = T.s17, color = p.ink, modifier = Modifier.weight(1f, fill = false))
+                    if (m.disambiguator.isNotEmpty()) DisambiguatorTag(m.disambiguator, a11y = tagA11y)
+                }
+                if (summary.isNotEmpty()) Text(summary, style = T.s13, color = p.ink2, modifier = Modifier.padding(top = 1.dp))
+                Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.End) {
+                    machineLatencyValue(latency)
+                }
+            } else {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(name, style = T.s17, color = p.ink, modifier = Modifier.weight(1f, fill = false))
+                            if (m.disambiguator.isNotEmpty()) DisambiguatorTag(m.disambiguator, a11y = tagA11y)
+                        }
+                        if (summary.isNotEmpty()) {
+                            Text(summary, style = T.s13, color = p.ink2, modifier = Modifier.padding(top = 1.dp))
+                        }
+                    }
+                    machineLatencyValue(latency)
+                }
+            }
+            if (latency.segmentsCount > 0) {
+                Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                    for (seg in latency.segmentsList) {
+                        val emphasized = seg.slow || seg.stuck
+                        val segStyle = (if (emphasized) T.s13b else T.s13).copy(lineHeight = 20.sp)
+                        val segColor = if (emphasized) p.ink else p.ink2
+                        val label = uiText(seg.labelText)
+                        val slowTag = if (seg.slow && seg.hasSlowLabelText()) uiText(seg.slowLabelText) else ""
+                        val leftText = if (slowTag.isNotEmpty()) label + " · " + slowTag else label
+                        val segVal = uiText(seg.valueText)
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.Top,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Text(leftText, style = segStyle, color = segColor, modifier = Modifier.weight(1f))
+                            Text(
+                                segVal,
+                                style = segStyle.digits(),
+                                color = segColor,
+                                textAlign = TextAlign.End,
+                                maxLines = 1,
+                                softWrap = false,
+                            )
+                        }
+                        val detail = if (seg.hasDetailText()) uiText(seg.detailText) else ""
+                        if (detail.isNotEmpty()) {
+                            Text(
+                                detail,
+                                style = T.s12.copy(lineHeight = 17.sp),
+                                color = p.ink2,
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 3.dp),
+                            )
+                        }
+                    }
+                }
+            }
+            val note = if (latency.hasNoteText()) uiText(latency.noteText) else ""
+            if (note.isNotEmpty()) {
+                Text(
+                    note,
+                    style = T.s13,
+                    color = p.ink2,
+                    modifier = Modifier.fillMaxWidth().padding(top = if (latency.segmentsCount > 0) 4.dp else 8.dp),
+                )
+            }
+        }
+    }
+
     Sheet(onClose) {
         SheetHead(copy(UiMessages.homeConnectionCheck()), copy(UiMessages.commonDone()), onClose)
-        Column(Modifier.fillMaxWidth().clip(Radii.R14).background(if (LocalOnSoft.current) p.raised else p.gbg)) {
-            line(copy(UiMessages.connectionLivePush())) {
+        Column(Modifier.fillMaxWidth().clip(Radii.R18).background(if (LocalOnSoft.current) p.raised else p.gbg)) {
+            standardLine(copy(UiMessages.connectionLivePush())) {
                 val connLabel = when (cc.connState) {
                     CoreConnState.CONN_STATE_CONNECTED -> copy(UiMessages.connectionConnected())
                     CoreConnState.CONN_STATE_CONNECTING -> copy(UiMessages.connectionConnectingConnCheck())
@@ -184,32 +343,33 @@ internal fun ConnCheckSheet(
                 }
                 dotted(dotColor, connLabel)
             }
-            HorizontalDivider(color = p.sep, thickness = 0.5.dp)
+            HorizontalDivider(Modifier.padding(start = 18.dp), thickness = 0.5.dp, color = p.sep)
             val network = cc.networkAvailable
-            line(copy(UiMessages.connectionLocalNetwork())) {
+            standardLine(copy(UiMessages.connectionLocalNetwork())) {
                 dotted(if (network) p.green else p.faint, if (network) copy(UiMessages.connectionWorking()) else copy(UiMessages.connectionUnavailable()))
             }
-            HorizontalDivider(color = p.sep, thickness = 0.5.dp)
-            line(copy(UiMessages.securityServer()), serverAddress.substringAfter("://")) { result(server, SLOW_SERVER_MS) }
-            for (m in list) {
-                HorizontalDivider(color = p.sep, thickness = 0.5.dp)
+            HorizontalDivider(Modifier.padding(start = 18.dp), thickness = 0.5.dp, color = p.sep)
+            standardLine(copy(UiMessages.securityServer()), serverAddress.substringAfter("://")) { serverResult(server) }
+            for (m in settingsView.machinesList) {
+                HorizontalDivider(Modifier.padding(start = 18.dp), thickness = 0.5.dp, color = p.sep)
                 val directRow: ConnCheckDirectRowView? = if (m.online && m.member && m.hasDirectRow()) m.directRow else null
-                val tagA11y = if (m.hasDisambiguatorA11Y()) uiText(m.disambiguatorA11Y) else ""
-                line(m.name.ifEmpty { m.machineId }, tag = m.disambiguator, tagA11y = tagA11y) {
-                    if (m.online) result(machines[m.machineId], SLOW_MACHINE_MS)
-                    else dotted(p.faint, copy(UiMessages.settingsOffline()), p.ink2)
-                }
-                if (directRow != null && directRow.visible) {
-                    val statusWord = uiText(directRow.statusText)
-                    val detailWord = uiText(directRow.detailText).takeIf { it.isNotEmpty() }
-                    val summary = listOfNotNull(statusWord.takeIf { it.isNotEmpty() }, detailWord).joinToString(" · ")
-                    if (summary.isNotEmpty()) {
-                        Text(
-                            summary,
-                            style = T.s13,
-                            color = p.ink2,
-                            modifier = Modifier.fillMaxWidth().padding(start = 28.dp, end = 14.dp, bottom = 8.dp),
-                        )
+                if (m.online && m.hasLatency()) {
+                    machineLatencyRow(m, directRow, m.latency)
+                } else {
+                    val tagA11y = if (m.hasDisambiguatorA11Y()) uiText(m.disambiguatorA11Y) else ""
+                    standardLine(m.name.ifEmpty { m.machineId }, tag = m.disambiguator, tagA11y = tagA11y) {
+                        if (!m.online) {
+                            dotted(p.faint, copy(UiMessages.settingsOffline()), p.ink2)
+                        } else {
+                            val fallback = if (m.hasStatusText()) uiText(m.statusText) else ""
+                            Text(
+                                fallback.ifEmpty { copy(UiMessages.connectionNotChecked()) },
+                                style = T.s17,
+                                color = p.ink2,
+                                maxLines = 1,
+                                softWrap = false,
+                            )
+                        }
                     }
                 }
             }
@@ -241,8 +401,17 @@ internal fun ConnCheckSheet(
             .ifEmpty { copy(UiMessages.connectionLatencyIsOneRoundTripTheServerRowMeasures()) }
         Hint(foot)
         Btns(Modifier.padding(top = 12.dp)) {
-            if (!isConnected) PillButton(copy(UiMessages.connectionReconnectNow()), reconnectNow, Modifier.weight(1f))
-            PillButton(copy(UiMessages.connectionTestAgain()), { run++ }, Modifier.weight(1f), enabled = !busy)
+            if (!isConnected) PillButton(copy(UiMessages.connectionReconnectNow()), reconnectNow, Modifier.weight(1f), ButtonKind.INK)
+            PillButton(
+                copy(UiMessages.connectionTestAgain()),
+                { run++ },
+                Modifier.weight(1f),
+                kind = if (isConnected) ButtonKind.INK else ButtonKind.SECONDARY,
+                enabled = !busy,
+            )
         }
     }
 }
+
+private fun formatLatencyMs(ms: Long): String =
+    NumberFormat.getIntegerInstance(Locale.US).format(ms)

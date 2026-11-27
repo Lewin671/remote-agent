@@ -318,10 +318,45 @@ class I18nBatchCTest(private val locale: String) {
                     .setMachineId("m")
                     .setName("studio-dev")
                     .setOnline(true)
-                    .setMember(true),
+                    .setMember(true)
+                    .setLatency(
+                        io.github.lewin671.remoteagent.core.proto.MachineLatencyView.newBuilder()
+                            .setState(io.github.lewin671.remoteagent.core.proto.MachineLatencyState.MACHINE_LATENCY_STATE_DONE)
+                            .setSlow(true)
+                            .setValueText(
+                                io.github.lewin671.remoteagent.core.proto.Text.newBuilder()
+                                    .setKey("connection.latency_ms_slow")
+                                    .addArgs(io.github.lewin671.remoteagent.core.proto.TextArg.newBuilder().setName("ms").setStrValue("1,800")),
+                            )
+                            .addSegments(
+                                io.github.lewin671.remoteagent.core.proto.MachineLatencySegment.newBuilder()
+                                    .setLabelText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey("connection.latency_network"))
+                                    .setValueText(
+                                        io.github.lewin671.remoteagent.core.proto.Text.newBuilder()
+                                            .setKey("connection.latency_ms")
+                                            .addArgs(io.github.lewin671.remoteagent.core.proto.TextArg.newBuilder().setName("ms").setStrValue("12")),
+                                    ),
+                            )
+                            .addSegments(
+                                io.github.lewin671.remoteagent.core.proto.MachineLatencySegment.newBuilder()
+                                    .setLabelText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey("connection.latency_computer"))
+                                    .setValueText(
+                                        io.github.lewin671.remoteagent.core.proto.Text.newBuilder()
+                                            .setKey("connection.latency_ms")
+                                            .addArgs(io.github.lewin671.remoteagent.core.proto.TextArg.newBuilder().setName("ms").setStrValue("1,740")),
+                                    )
+                                    .setSlow(true)
+                                    .setSlowLabelText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey("connection.latency_slow"))
+                                    .setDetailText(
+                                        io.github.lewin671.remoteagent.core.proto.Text.newBuilder()
+                                            .setKey("connection.latency_mostly_queued")
+                                            .addArgs(io.github.lewin671.remoteagent.core.proto.TextArg.newBuilder().setName("ms").setStrValue("1,680")),
+                                    ),
+                            ),
+                    ),
             )
             .build()
-        show { ConnCheckSheet(vm, {}, "https://example.com", { listOf("m") }, { 750 }, { 1800 }, {}) }
+        show { ConnCheckSheet(vm, {}, "https://example.com", { 750 }, {}) }
         shot("connection")
     }
     @Test fun schedules() { show { SchedulesScreen() }; shot("schedules") }
