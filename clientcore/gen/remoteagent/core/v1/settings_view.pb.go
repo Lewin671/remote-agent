@@ -106,6 +106,17 @@ const (
 	ConnProbeState_CONN_PROBE_STATE_UNAVAILABLE ConnProbeState = 5
 )
 
+type MachineLatencyState int32
+
+const (
+	MachineLatencyState_MACHINE_LATENCY_STATE_UNSPECIFIED MachineLatencyState = 0
+	MachineLatencyState_MACHINE_LATENCY_STATE_NOT_CHECKED MachineLatencyState = 1
+	MachineLatencyState_MACHINE_LATENCY_STATE_MEASURING   MachineLatencyState = 2
+	MachineLatencyState_MACHINE_LATENCY_STATE_DONE        MachineLatencyState = 3
+	MachineLatencyState_MACHINE_LATENCY_STATE_FAILED      MachineLatencyState = 4
+	MachineLatencyState_MACHINE_LATENCY_STATE_UNSUPPORTED MachineLatencyState = 5
+)
+
 type MachineAlertKind int32
 
 const (
@@ -138,6 +149,146 @@ const (
 	DiagCheckMark_DIAG_CHECK_MARK_OFF         DiagCheckMark = 2
 	DiagCheckMark_DIAG_CHECK_MARK_RUN         DiagCheckMark = 3
 )
+
+type MachineLatencySegment struct {
+	_             [0]func()
+	LabelText     *Text
+	ValueText     *Text
+	Slow          bool
+	Stuck         bool
+	DetailText    *Text
+	SlowLabelText *Text
+}
+
+func (m *MachineLatencySegment) GetLabelText() *Text {
+	if m != nil {
+		return m.LabelText
+	}
+	return nil
+}
+func (m *MachineLatencySegment) GetValueText() *Text {
+	if m != nil {
+		return m.ValueText
+	}
+	return nil
+}
+func (m *MachineLatencySegment) GetSlow() bool {
+	if m != nil {
+		return m.Slow
+	}
+	return false
+}
+func (m *MachineLatencySegment) GetStuck() bool {
+	if m != nil {
+		return m.Stuck
+	}
+	return false
+}
+func (m *MachineLatencySegment) GetDetailText() *Text {
+	if m != nil {
+		return m.DetailText
+	}
+	return nil
+}
+func (m *MachineLatencySegment) GetSlowLabelText() *Text {
+	if m != nil {
+		return m.SlowLabelText
+	}
+	return nil
+}
+
+var LitewireDesc_MachineLatencySegment = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(MachineLatencySegment{}.LabelText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 2, Offset: unsafe.Offsetof(MachineLatencySegment{}.ValueText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(MachineLatencySegment{}.Slow), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(MachineLatencySegment{}.Stuck), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(MachineLatencySegment{}.DetailText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 6, Offset: unsafe.Offsetof(MachineLatencySegment{}.SlowLabelText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
+
+func (m *MachineLatencySegment) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *MachineLatencySegment) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_MachineLatencySegment)
+}
+
+type MachineLatencyView struct {
+	_                   [0]func()
+	State               MachineLatencyState
+	ValueText           *Text
+	Slow                bool
+	Segments            []*MachineLatencySegment
+	SummaryOverrideText *Text
+	NoteText            *Text
+	A11YText            *Text
+}
+
+func (m *MachineLatencyView) GetState() MachineLatencyState {
+	if m != nil {
+		return m.State
+	}
+	return 0
+}
+func (m *MachineLatencyView) GetValueText() *Text {
+	if m != nil {
+		return m.ValueText
+	}
+	return nil
+}
+func (m *MachineLatencyView) GetSlow() bool {
+	if m != nil {
+		return m.Slow
+	}
+	return false
+}
+func (m *MachineLatencyView) GetSegments() []*MachineLatencySegment {
+	if m != nil {
+		return m.Segments
+	}
+	return nil
+}
+func (m *MachineLatencyView) GetSummaryOverrideText() *Text {
+	if m != nil {
+		return m.SummaryOverrideText
+	}
+	return nil
+}
+func (m *MachineLatencyView) GetNoteText() *Text {
+	if m != nil {
+		return m.NoteText
+	}
+	return nil
+}
+func (m *MachineLatencyView) GetA11YText() *Text {
+	if m != nil {
+		return m.A11YText
+	}
+	return nil
+}
+
+var LitewireDesc_MachineLatencyView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(MachineLatencyView{}.State), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(MachineLatencyView{}.ValueText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(MachineLatencyView{}.Slow), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(MachineLatencyView{}.Segments), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_MachineLatencySegment},
+		{Num: 5, Offset: unsafe.Offsetof(MachineLatencyView{}.SummaryOverrideText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 6, Offset: unsafe.Offsetof(MachineLatencyView{}.NoteText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 7, Offset: unsafe.Offsetof(MachineLatencyView{}.A11YText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
+
+func (m *MachineLatencyView) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *MachineLatencyView) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_MachineLatencyView)
+}
 
 type SettingsScreenRequest struct {
 }
@@ -315,6 +466,7 @@ type MachineListCardView struct {
 	MetaSegments      []*MachineCardMetaSegment
 	MetaSeparator     string
 	DisambiguatorA11Y *Text
+	Latency           *MachineLatencyView
 }
 
 func (m *MachineListCardView) GetMachineId() string {
@@ -443,6 +595,12 @@ func (m *MachineListCardView) GetDisambiguatorA11Y() *Text {
 	}
 	return nil
 }
+func (m *MachineListCardView) GetLatency() *MachineLatencyView {
+	if m != nil {
+		return m.Latency
+	}
+	return nil
+}
 
 var LitewireDesc_MachineListCardView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -467,6 +625,7 @@ var LitewireDesc_MachineListCardView = litewire.MessageDesc{
 		{Num: 23, Offset: unsafe.Offsetof(MachineListCardView{}.MetaSegments), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_MachineCardMetaSegment},
 		{Num: 24, Offset: unsafe.Offsetof(MachineListCardView{}.MetaSeparator), Kind: litewire.KindString},
 		{Num: 25, Offset: unsafe.Offsetof(MachineListCardView{}.DisambiguatorA11Y), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 26, Offset: unsafe.Offsetof(MachineListCardView{}.Latency), Kind: litewire.KindMessage, Sub: &LitewireDesc_MachineLatencyView},
 	},
 }
 
@@ -1099,6 +1258,7 @@ type ConnCheckSummaryView struct {
 	IsConnecting      bool
 	BannerText        *Text
 	FooterText        *Text
+	MachinesBusy      bool
 }
 
 func (m *ConnCheckSummaryView) GetServerState() ConnProbeState {
@@ -1197,6 +1357,12 @@ func (m *ConnCheckSummaryView) GetFooterText() *Text {
 	}
 	return nil
 }
+func (m *ConnCheckSummaryView) GetMachinesBusy() bool {
+	if m != nil {
+		return m.MachinesBusy
+	}
+	return false
+}
 
 var LitewireDesc_ConnCheckSummaryView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -1216,6 +1382,7 @@ var LitewireDesc_ConnCheckSummaryView = litewire.MessageDesc{
 		{Num: 14, Offset: unsafe.Offsetof(ConnCheckSummaryView{}.IsConnecting), Kind: litewire.KindBool},
 		{Num: 15, Offset: unsafe.Offsetof(ConnCheckSummaryView{}.BannerText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 16, Offset: unsafe.Offsetof(ConnCheckSummaryView{}.FooterText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 17, Offset: unsafe.Offsetof(ConnCheckSummaryView{}.MachinesBusy), Kind: litewire.KindBool},
 	},
 }
 
@@ -4334,6 +4501,28 @@ var LitewireDesc_ConnCheckStatusEvent = litewire.MessageDesc{
 
 func (m *ConnCheckStatusEvent) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ConnCheckStatusEvent)
+}
+
+type ConnCheckStartEvent struct {
+}
+
+var LitewireDesc_ConnCheckStartEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ConnCheckStartEvent{}) },
+}
+
+func (m *ConnCheckStartEvent) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ConnCheckStartEvent)
+}
+
+type ConnCheckStopEvent struct {
+}
+
+var LitewireDesc_ConnCheckStopEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ConnCheckStopEvent{}) },
+}
+
+func (m *ConnCheckStopEvent) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ConnCheckStopEvent)
 }
 
 type ClientUpdateStateEvent struct {

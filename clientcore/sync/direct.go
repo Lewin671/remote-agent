@@ -40,6 +40,14 @@ func (e *Engine) DemoDirectReport(machineID string) (bool, *corev1.DirectRouteRe
 	return entry.Enabled, entry.Report, true
 }
 
+// DirectProbeSamples returns recent direct liveness probe RTT samples for machineID's active read path.
+func (e *Engine) DirectProbeSamples(machineID string) []transport.ProbeSample {
+	if e == nil || e.transportCoord == nil || machineID == "" {
+		return nil
+	}
+	return e.transportCoord.ReadProbeSamples(e.nowMs, machineID)
+}
+
 // DirectMachineReport returns the live direct-path preference, daemon policy state,
 // status summary, and retained diagnostic rounds for machineID.
 func (e *Engine) DirectMachineReport(machineID string) (
@@ -788,7 +796,10 @@ func (e *Engine) commandTransportHint(prep *PreparedCommand) (transport.Hint, bo
 		}, true
 	default:
 		if prep.RouteHint == corev1.CommandRouteHint_COMMAND_ROUTE_HINT_READ {
-			return transport.Hint{Use: transport.UseRead}, true
+			return transport.Hint{
+				Use:             transport.UseRead,
+				NoControlSample: prep.NoControlSample || prep.Command.GetProbeLatency() != nil,
+			}, true
 		}
 		return transport.Hint{}, false
 	}

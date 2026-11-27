@@ -462,6 +462,56 @@ public enum PBConnProbeState: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
+public enum PBMachineLatencyState: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case notChecked // = 1
+  case measuring // = 2
+  case done // = 3
+  case failed // = 4
+  case unsupported // = 5
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .notChecked
+    case 2: self = .measuring
+    case 3: self = .done
+    case 4: self = .failed
+    case 5: self = .unsupported
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .notChecked: return 1
+    case .measuring: return 2
+    case .done: return 3
+    case .failed: return 4
+    case .unsupported: return 5
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBMachineLatencyState] = [
+    .unspecified,
+    .notChecked,
+    .measuring,
+    .done,
+    .failed,
+    .unsupported,
+  ]
+
+}
+
 public enum PBMachineAlertKind: SwiftProtobuf.Enum, Swift.CaseIterable {
   public typealias RawValue = Int
   case unspecified // = 0
@@ -616,6 +666,127 @@ public enum PBDiagCheckMark: SwiftProtobuf.Enum, Swift.CaseIterable {
     .run,
   ]
 
+}
+
+public struct PBMachineLatencySegment: @unchecked Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var labelText: PBCoreText {
+    get {return _storage._labelText ?? PBCoreText()}
+    set {_uniqueStorage()._labelText = newValue}
+  }
+  /// Returns true if `labelText` has been explicitly set.
+  public var hasLabelText: Bool {return _storage._labelText != nil}
+  /// Clears the value of `labelText`. Subsequent reads from it will return its default value.
+  public mutating func clearLabelText() {_uniqueStorage()._labelText = nil}
+
+  public var valueText: PBCoreText {
+    get {return _storage._valueText ?? PBCoreText()}
+    set {_uniqueStorage()._valueText = newValue}
+  }
+  /// Returns true if `valueText` has been explicitly set.
+  public var hasValueText: Bool {return _storage._valueText != nil}
+  /// Clears the value of `valueText`. Subsequent reads from it will return its default value.
+  public mutating func clearValueText() {_uniqueStorage()._valueText = nil}
+
+  public var slow: Bool {
+    get {return _storage._slow}
+    set {_uniqueStorage()._slow = newValue}
+  }
+
+  public var stuck: Bool {
+    get {return _storage._stuck}
+    set {_uniqueStorage()._stuck = newValue}
+  }
+
+  public var detailText: PBCoreText {
+    get {return _storage._detailText ?? PBCoreText()}
+    set {_uniqueStorage()._detailText = newValue}
+  }
+  /// Returns true if `detailText` has been explicitly set.
+  public var hasDetailText: Bool {return _storage._detailText != nil}
+  /// Clears the value of `detailText`. Subsequent reads from it will return its default value.
+  public mutating func clearDetailText() {_uniqueStorage()._detailText = nil}
+
+  public var slowLabelText: PBCoreText {
+    get {return _storage._slowLabelText ?? PBCoreText()}
+    set {_uniqueStorage()._slowLabelText = newValue}
+  }
+  /// Returns true if `slowLabelText` has been explicitly set.
+  public var hasSlowLabelText: Bool {return _storage._slowLabelText != nil}
+  /// Clears the value of `slowLabelText`. Subsequent reads from it will return its default value.
+  public mutating func clearSlowLabelText() {_uniqueStorage()._slowLabelText = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+public struct PBMachineLatencyView: @unchecked Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var state: PBMachineLatencyState {
+    get {return _storage._state}
+    set {_uniqueStorage()._state = newValue}
+  }
+
+  public var valueText: PBCoreText {
+    get {return _storage._valueText ?? PBCoreText()}
+    set {_uniqueStorage()._valueText = newValue}
+  }
+  /// Returns true if `valueText` has been explicitly set.
+  public var hasValueText: Bool {return _storage._valueText != nil}
+  /// Clears the value of `valueText`. Subsequent reads from it will return its default value.
+  public mutating func clearValueText() {_uniqueStorage()._valueText = nil}
+
+  public var slow: Bool {
+    get {return _storage._slow}
+    set {_uniqueStorage()._slow = newValue}
+  }
+
+  public var segments: [PBMachineLatencySegment] {
+    get {return _storage._segments}
+    set {_uniqueStorage()._segments = newValue}
+  }
+
+  public var summaryOverrideText: PBCoreText {
+    get {return _storage._summaryOverrideText ?? PBCoreText()}
+    set {_uniqueStorage()._summaryOverrideText = newValue}
+  }
+  /// Returns true if `summaryOverrideText` has been explicitly set.
+  public var hasSummaryOverrideText: Bool {return _storage._summaryOverrideText != nil}
+  /// Clears the value of `summaryOverrideText`. Subsequent reads from it will return its default value.
+  public mutating func clearSummaryOverrideText() {_uniqueStorage()._summaryOverrideText = nil}
+
+  public var noteText: PBCoreText {
+    get {return _storage._noteText ?? PBCoreText()}
+    set {_uniqueStorage()._noteText = newValue}
+  }
+  /// Returns true if `noteText` has been explicitly set.
+  public var hasNoteText: Bool {return _storage._noteText != nil}
+  /// Clears the value of `noteText`. Subsequent reads from it will return its default value.
+  public mutating func clearNoteText() {_uniqueStorage()._noteText = nil}
+
+  public var a11YText: PBCoreText {
+    get {return _storage._a11YText ?? PBCoreText()}
+    set {_uniqueStorage()._a11YText = newValue}
+  }
+  /// Returns true if `a11YText` has been explicitly set.
+  public var hasA11YText: Bool {return _storage._a11YText != nil}
+  /// Clears the value of `a11YText`. Subsequent reads from it will return its default value.
+  public mutating func clearA11YText() {_uniqueStorage()._a11YText = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public struct PBSettingsScreenRequest: Sendable {
@@ -832,6 +1003,15 @@ public struct PBMachineListCardView: @unchecked Sendable {
   public var hasDisambiguatorA11Y: Bool {return _storage._disambiguatorA11Y != nil}
   /// Clears the value of `disambiguatorA11Y`. Subsequent reads from it will return its default value.
   public mutating func clearDisambiguatorA11Y() {_uniqueStorage()._disambiguatorA11Y = nil}
+
+  public var latency: PBMachineLatencyView {
+    get {return _storage._latency ?? PBMachineLatencyView()}
+    set {_uniqueStorage()._latency = newValue}
+  }
+  /// Returns true if `latency` has been explicitly set.
+  public var hasLatency: Bool {return _storage._latency != nil}
+  /// Clears the value of `latency`. Subsequent reads from it will return its default value.
+  public mutating func clearLatency() {_uniqueStorage()._latency = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1362,6 +1542,11 @@ public struct PBConnCheckSummaryView: @unchecked Sendable {
   public var hasFooterText: Bool {return _storage._footerText != nil}
   /// Clears the value of `footerText`. Subsequent reads from it will return its default value.
   public mutating func clearFooterText() {_uniqueStorage()._footerText = nil}
+
+  public var machinesBusy: Bool {
+    get {return _storage._machinesBusy}
+    set {_uniqueStorage()._machinesBusy = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3606,6 +3791,26 @@ public struct PBConnCheckStatusEvent: Sendable {
   public init() {}
 }
 
+public struct PBConnCheckStartEvent: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBConnCheckStopEvent: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 public struct PBClientUpdateStateEvent: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -3742,6 +3947,10 @@ extension PBConnProbeState: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0CONN_PROBE_STATE_UNSPECIFIED\0\u{1}CONN_PROBE_STATE_NOT_CHECKED\0\u{1}CONN_PROBE_STATE_CHECKING\0\u{1}CONN_PROBE_STATE_WORKING\0\u{1}CONN_PROBE_STATE_SLOW\0\u{1}CONN_PROBE_STATE_UNAVAILABLE\0")
 }
 
+extension PBMachineLatencyState: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0MACHINE_LATENCY_STATE_UNSPECIFIED\0\u{1}MACHINE_LATENCY_STATE_NOT_CHECKED\0\u{1}MACHINE_LATENCY_STATE_MEASURING\0\u{1}MACHINE_LATENCY_STATE_DONE\0\u{1}MACHINE_LATENCY_STATE_FAILED\0\u{1}MACHINE_LATENCY_STATE_UNSUPPORTED\0")
+}
+
 extension PBMachineAlertKind: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0MACHINE_ALERT_KIND_UNSPECIFIED\0\u{1}MACHINE_ALERT_KIND_DISK_LOW\0\u{1}MACHINE_ALERT_KIND_PROTOCOL_MISMATCH\0")
 }
@@ -3756,6 +3965,223 @@ extension PBMachineCardMetaIcon: SwiftProtobuf._ProtoNameProviding {
 
 extension PBDiagCheckMark: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0DIAG_CHECK_MARK_UNSPECIFIED\0\u{1}DIAG_CHECK_MARK_ONLINE\0\u{1}DIAG_CHECK_MARK_OFF\0\u{1}DIAG_CHECK_MARK_RUN\0")
+}
+
+extension PBMachineLatencySegment: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MachineLatencySegment"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}label_text\0\u{3}value_text\0\u{1}slow\0\u{1}stuck\0\u{3}detail_text\0\u{3}slow_label_text\0")
+
+  fileprivate class _StorageClass {
+    var _labelText: PBCoreText? = nil
+    var _valueText: PBCoreText? = nil
+    var _slow: Bool = false
+    var _stuck: Bool = false
+    var _detailText: PBCoreText? = nil
+    var _slowLabelText: PBCoreText? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _labelText = source._labelText
+      _valueText = source._valueText
+      _slow = source._slow
+      _stuck = source._stuck
+      _detailText = source._detailText
+      _slowLabelText = source._slowLabelText
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularMessageField(value: &_storage._labelText) }()
+        case 2: try { try decoder.decodeSingularMessageField(value: &_storage._valueText) }()
+        case 3: try { try decoder.decodeSingularBoolField(value: &_storage._slow) }()
+        case 4: try { try decoder.decodeSingularBoolField(value: &_storage._stuck) }()
+        case 5: try { try decoder.decodeSingularMessageField(value: &_storage._detailText) }()
+        case 6: try { try decoder.decodeSingularMessageField(value: &_storage._slowLabelText) }()
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      try { if let v = _storage._labelText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+      } }()
+      try { if let v = _storage._valueText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      } }()
+      if _storage._slow != false {
+        try visitor.visitSingularBoolField(value: _storage._slow, fieldNumber: 3)
+      }
+      if _storage._stuck != false {
+        try visitor.visitSingularBoolField(value: _storage._stuck, fieldNumber: 4)
+      }
+      try { if let v = _storage._detailText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
+      } }()
+      try { if let v = _storage._slowLabelText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
+      } }()
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBMachineLatencySegment, rhs: PBMachineLatencySegment) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._labelText != rhs_storage._labelText {return false}
+        if _storage._valueText != rhs_storage._valueText {return false}
+        if _storage._slow != rhs_storage._slow {return false}
+        if _storage._stuck != rhs_storage._stuck {return false}
+        if _storage._detailText != rhs_storage._detailText {return false}
+        if _storage._slowLabelText != rhs_storage._slowLabelText {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBMachineLatencyView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MachineLatencyView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}state\0\u{3}value_text\0\u{1}slow\0\u{1}segments\0\u{3}summary_override_text\0\u{3}note_text\0\u{3}a11y_text\0")
+
+  fileprivate class _StorageClass {
+    var _state: PBMachineLatencyState = .unspecified
+    var _valueText: PBCoreText? = nil
+    var _slow: Bool = false
+    var _segments: [PBMachineLatencySegment] = []
+    var _summaryOverrideText: PBCoreText? = nil
+    var _noteText: PBCoreText? = nil
+    var _a11YText: PBCoreText? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _state = source._state
+      _valueText = source._valueText
+      _slow = source._slow
+      _segments = source._segments
+      _summaryOverrideText = source._summaryOverrideText
+      _noteText = source._noteText
+      _a11YText = source._a11YText
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularEnumField(value: &_storage._state) }()
+        case 2: try { try decoder.decodeSingularMessageField(value: &_storage._valueText) }()
+        case 3: try { try decoder.decodeSingularBoolField(value: &_storage._slow) }()
+        case 4: try { try decoder.decodeRepeatedMessageField(value: &_storage._segments) }()
+        case 5: try { try decoder.decodeSingularMessageField(value: &_storage._summaryOverrideText) }()
+        case 6: try { try decoder.decodeSingularMessageField(value: &_storage._noteText) }()
+        case 7: try { try decoder.decodeSingularMessageField(value: &_storage._a11YText) }()
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._state != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._state, fieldNumber: 1)
+      }
+      try { if let v = _storage._valueText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      } }()
+      if _storage._slow != false {
+        try visitor.visitSingularBoolField(value: _storage._slow, fieldNumber: 3)
+      }
+      if !_storage._segments.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._segments, fieldNumber: 4)
+      }
+      try { if let v = _storage._summaryOverrideText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
+      } }()
+      try { if let v = _storage._noteText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
+      } }()
+      try { if let v = _storage._a11YText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
+      } }()
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBMachineLatencyView, rhs: PBMachineLatencyView) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._state != rhs_storage._state {return false}
+        if _storage._valueText != rhs_storage._valueText {return false}
+        if _storage._slow != rhs_storage._slow {return false}
+        if _storage._segments != rhs_storage._segments {return false}
+        if _storage._summaryOverrideText != rhs_storage._summaryOverrideText {return false}
+        if _storage._noteText != rhs_storage._noteText {return false}
+        if _storage._a11YText != rhs_storage._a11YText {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
 }
 
 extension PBSettingsScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
@@ -3921,7 +4347,7 @@ extension PBMachineCardQuotaItem: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension PBMachineListCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineListCardView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}name\0\u{1}online\0\u{1}member\0\u{3}protocol_mismatch\0\u{3}status_text\0\u{4}\u{2}last_seen_ms\0\u{3}direct_row\0\u{3}status_dot\0\u{4}\u{3}in_device_directory\0\u{3}direct_ready\0\u{2}\u{2}disambiguator\0\u{1}dimmed\0\u{1}alerts\0\u{3}quota_items\0\u{3}secondary_note\0\u{3}direct_active\0\u{1}appearance\0\u{3}meta_segments\0\u{3}meta_separator\0\u{3}disambiguator_a11y\0\u{b}quota_summaries\0\u{b}status_warn\0\u{b}subtitle_parts\0\u{b}short_id\0\u{c}\u{7}\u{1}\u{c}\u{b}\u{1}\u{c}\u{c}\u{1}\u{c}\u{f}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}name\0\u{1}online\0\u{1}member\0\u{3}protocol_mismatch\0\u{3}status_text\0\u{4}\u{2}last_seen_ms\0\u{3}direct_row\0\u{3}status_dot\0\u{4}\u{3}in_device_directory\0\u{3}direct_ready\0\u{2}\u{2}disambiguator\0\u{1}dimmed\0\u{1}alerts\0\u{3}quota_items\0\u{3}secondary_note\0\u{3}direct_active\0\u{1}appearance\0\u{3}meta_segments\0\u{3}meta_separator\0\u{3}disambiguator_a11y\0\u{1}latency\0\u{b}quota_summaries\0\u{b}status_warn\0\u{b}subtitle_parts\0\u{b}short_id\0\u{c}\u{7}\u{1}\u{c}\u{b}\u{1}\u{c}\u{c}\u{1}\u{c}\u{f}\u{1}")
 
   fileprivate class _StorageClass {
     var _machineID: String = String()
@@ -3945,6 +4371,7 @@ extension PBMachineListCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _metaSegments: [PBMachineCardMetaSegment] = []
     var _metaSeparator: String = String()
     var _disambiguatorA11Y: PBCoreText? = nil
+    var _latency: PBMachineLatencyView? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3976,6 +4403,7 @@ extension PBMachineListCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _metaSegments = source._metaSegments
       _metaSeparator = source._metaSeparator
       _disambiguatorA11Y = source._disambiguatorA11Y
+      _latency = source._latency
     }
   }
 
@@ -4015,6 +4443,7 @@ extension PBMachineListCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 23: try { try decoder.decodeRepeatedMessageField(value: &_storage._metaSegments) }()
         case 24: try { try decoder.decodeSingularStringField(value: &_storage._metaSeparator) }()
         case 25: try { try decoder.decodeSingularMessageField(value: &_storage._disambiguatorA11Y) }()
+        case 26: try { try decoder.decodeSingularMessageField(value: &_storage._latency) }()
         default: break
         }
       }
@@ -4090,6 +4519,9 @@ extension PBMachineListCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       try { if let v = _storage._disambiguatorA11Y {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 25)
       } }()
+      try { if let v = _storage._latency {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 26)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4120,6 +4552,7 @@ extension PBMachineListCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._metaSegments != rhs_storage._metaSegments {return false}
         if _storage._metaSeparator != rhs_storage._metaSeparator {return false}
         if _storage._disambiguatorA11Y != rhs_storage._disambiguatorA11Y {return false}
+        if _storage._latency != rhs_storage._latency {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -4866,7 +5299,7 @@ extension PBClientUpdateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
 
 extension PBConnCheckSummaryView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ConnCheckSummaryView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}server_state\0\u{3}latency_ms\0\u{3}status_word\0\u{3}summary_text\0\u{3}last_failure_text\0\u{3}conn_state\0\u{3}network_available\0\u{3}live_push_connected\0\u{3}ever_online\0\u{1}failures\0\u{3}conn_started_at_ms\0\u{3}conn_step\0\u{3}display_grace\0\u{3}is_connecting\0\u{3}banner_text\0\u{3}footer_text\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}server_state\0\u{3}latency_ms\0\u{3}status_word\0\u{3}summary_text\0\u{3}last_failure_text\0\u{3}conn_state\0\u{3}network_available\0\u{3}live_push_connected\0\u{3}ever_online\0\u{1}failures\0\u{3}conn_started_at_ms\0\u{3}conn_step\0\u{3}display_grace\0\u{3}is_connecting\0\u{3}banner_text\0\u{3}footer_text\0\u{3}machines_busy\0")
 
   fileprivate class _StorageClass {
     var _serverState: PBConnProbeState = .unspecified
@@ -4885,6 +5318,7 @@ extension PBConnCheckSummaryView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     var _isConnecting: Bool = false
     var _bannerText: PBCoreText? = nil
     var _footerText: PBCoreText? = nil
+    var _machinesBusy: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -4911,6 +5345,7 @@ extension PBConnCheckSummaryView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       _isConnecting = source._isConnecting
       _bannerText = source._bannerText
       _footerText = source._footerText
+      _machinesBusy = source._machinesBusy
     }
   }
 
@@ -4945,6 +5380,7 @@ extension PBConnCheckSummaryView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
         case 14: try { try decoder.decodeSingularBoolField(value: &_storage._isConnecting) }()
         case 15: try { try decoder.decodeSingularMessageField(value: &_storage._bannerText) }()
         case 16: try { try decoder.decodeSingularMessageField(value: &_storage._footerText) }()
+        case 17: try { try decoder.decodeSingularBoolField(value: &_storage._machinesBusy) }()
         default: break
         }
       }
@@ -5005,6 +5441,9 @@ extension PBConnCheckSummaryView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       try { if let v = _storage._footerText {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 16)
       } }()
+      if _storage._machinesBusy != false {
+        try visitor.visitSingularBoolField(value: _storage._machinesBusy, fieldNumber: 17)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -5030,6 +5469,7 @@ extension PBConnCheckSummaryView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
         if _storage._isConnecting != rhs_storage._isConnecting {return false}
         if _storage._bannerText != rhs_storage._bannerText {return false}
         if _storage._footerText != rhs_storage._footerText {return false}
+        if _storage._machinesBusy != rhs_storage._machinesBusy {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -8481,6 +8921,44 @@ extension PBConnCheckStatusEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     if lhs.serverState != rhs.serverState {return false}
     if lhs.latencyMs != rhs.latencyMs {return false}
     if lhs.lastFailure != rhs.lastFailure {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBConnCheckStartEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ConnCheckStartEvent"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBConnCheckStartEvent, rhs: PBConnCheckStartEvent) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBConnCheckStopEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ConnCheckStopEvent"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBConnCheckStopEvent, rhs: PBConnCheckStopEvent) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

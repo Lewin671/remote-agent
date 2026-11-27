@@ -446,6 +446,8 @@ message Event {
     UsageCacheWrittenEvent usage_cache_written = 393;
     PingMachineAction ping_machine = 394;
     CancelPingMachineAction cancel_ping_machine = 395;
+    ConnCheckStartEvent conn_check_start = 396;
+    ConnCheckStopEvent conn_check_stop = 397;
     UpdateClientNameEvent update_client_name = 370;
     SetNotificationPrefEvent set_notification_pref = 375;
     SetAppearancePrefEvent set_appearance_pref = 376;

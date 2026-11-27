@@ -901,6 +901,13 @@ func (c *Core) dispatchSettingsUI(ctx *sync.StepContext, ev *corev1.Event) []*co
 		extra.ConnCheck.LatencyMs = cc.LatencyMs
 		extra.ConnCheck.LastFailure = cc.LastFailure
 		c.m.settingsDirty.Settings = true
+		c.onConnCheckStatusUpdated(ctx)
+
+	case *corev1.Event_ConnCheckStart:
+		c.onConnCheckStart(ctx)
+
+	case *corev1.Event_ConnCheckStop:
+		c.stopConnCheck(ctx, true)
 
 	case *corev1.Event_ClientUpdateState:
 		if a.ClientUpdateState == nil {

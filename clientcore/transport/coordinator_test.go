@@ -905,9 +905,43 @@ func TestCoordinatorProbeLivenessAndTimeout(t *testing.T) {
 	probeRaw[0] = 1
 	coord.OnPcProbeReceived(t1+20, pcID, probeRaw)
 
-	// Three consecutive missed probes close the PC with reason "probe_timeout".
+	// Verify the probe RTT sample is retained on Status.Measured.
+	st := coord.Status(t1+20, r.machine)
+	if st.Measured.ProbeSampleCount != 1 || st.Measured.ProbeSamples[0].RttMs != 20 {
+		t.Fatalf("expected 1 probe sample of 20ms, got count=%d samples=%+v", st.Measured.ProbeSampleCount, st.Measured.ProbeSamples)
+	}
+
+	// Send 5 more probes to verify capping at 5 most recent samples.
+	curSample := t1 + 20
+	for _, rtt := range []int64{12, 18, 25, 31, 9} {
+		curSample += int64(linkcore.ProbeIntervalMs)
+		tickEffs := coord.OnSessionTimer(curSample)
+		var raw []byte
+		for _, e := range tickEffs {
+			if sp, ok := e.(CoordPcSendProbe); ok && sp.PCID == pcID {
+				raw = append([]byte(nil), sp.Raw...)
+			}
+		}
+		if len(raw) != linkcore.ProbeFrameBytes {
+			t.Fatalf("expected probe frame at %d", curSample)
+		}
+		raw[0] = 1
+		coord.OnPcProbeReceived(curSample+rtt, pcID, raw)
+	}
+	st = coord.Status(curSample+50, r.machine)
+	wantRTTs := []float64{12, 18, 25, 31, 9}
+	if st.Measured.ProbeSampleCount != len(wantRTTs) {
+		t.Fatalf("expected %d retained probe samples, got %d", len(wantRTTs), st.Measured.ProbeSampleCount)
+	}
+	for i, w := range wantRTTs {
+		if st.Measured.ProbeSamples[i].RttMs != w {
+			t.Fatalf("sample[%d]=%v want %v", i, st.Measured.ProbeSamples[i].RttMs, w)
+		}
+	}
+
+	// Three consecutive missed probes close the PC with reason "probe_timeout" and clear samples.
 	var closedReason string
-	cur := t1
+	cur := curSample + 50
 	for step := 0; step < 6 && closedReason == ""; step++ {
 		cur += int64(linkcore.ProbeIntervalMs)
 		for _, e := range coord.OnSessionTimer(cur) {
@@ -918,6 +952,9 @@ func TestCoordinatorProbeLivenessAndTimeout(t *testing.T) {
 	}
 	if closedReason != "probe_timeout" {
 		t.Fatalf("expected probe_timeout close after 3 misses, got %q", closedReason)
+	}
+	if got := coord.Status(cur, r.machine).Measured.ProbeSampleCount; got != 0 {
+		t.Fatalf("expected probe samples cleared after close, got %d", got)
 	}
 }
 

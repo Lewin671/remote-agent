@@ -42,10 +42,23 @@ const (
 // Hint describes a request for route choice: a read, or a bulk transfer of one
 // file (an upload also names its kind and chunk size).
 type Hint struct {
-	Use    Use
-	File   string
-	Upload Upload
-	Bytes  int64
+	Use             Use
+	File            string
+	Upload          Upload
+	Bytes           int64
+	NoControlSample bool // do not advance or trigger the 1-in-8 relay control sample
+}
+
+// Direct liveness probe RTT retention bounds for connection check.
+const (
+	DirectProbeKeepSamples = 5
+	DirectProbeWindowMs    = 10_000
+)
+
+// ProbeSample is one verified direct DataChannel liveness probe RTT sample.
+type ProbeSample struct {
+	AtMs  int64
+	RttMs float64
 }
 
 // The direct-first rule's numbers (docs/transport.md 「升级与热备」 4 and 6).
@@ -134,10 +147,12 @@ type Routing struct {
 
 // Measured is what has been measured. A route without data is absent, never zero.
 type Measured struct {
-	ReadMs       [2]float64
-	HasReadMs    [2]bool
-	FileMiBps    [2]float64
-	HasFileMiBps [2]bool
+	ReadMs           [2]float64
+	HasReadMs        [2]bool
+	FileMiBps        [2]float64
+	HasFileMiBps     [2]bool
+	ProbeSamples     [DirectProbeKeepSamples]ProbeSample
+	ProbeSampleCount int
 }
 
 func (r *Routing) lane(u Use) *lane {
@@ -171,6 +186,9 @@ func median(s []sample) float64 {
 func (r *Routing) Choose(h Hint, ready bool, now int64) Route {
 	if !ready {
 		return Relay
+	}
+	if h.NoControlSample {
+		return r.preferred(r.lane(h.Use), now)
 	}
 	return r.lane(h.Use).choose(now)
 }

@@ -296,6 +296,12 @@ func TestDirectCommandAndLargeReadThroughLocalServer(t *testing.T) {
 	if call(0, "", &pb.Command{Kind: &pb.Command_GetSettings{GetSettings: &pb.GetSettingsRequest{}}}).GetGetSettings() == nil {
 		t.Fatal("read-only response missing")
 	}
+	if pl := call(0, "", &pb.Command{Kind: &pb.Command_ProbeLatency{ProbeLatency: &pb.ProbeLatencyRequest{Work: false}}}).GetProbeLatency(); pl == nil || pl.ExecuteUs != 0 || pl.ProcessUs < pl.QueueUs {
+		t.Fatalf("direct echo probe_latency invalid: %+v", pl)
+	}
+	if pl := call(0, "", &pb.Command{Kind: &pb.Command_ProbeLatency{ProbeLatency: &pb.ProbeLatencyRequest{Work: true}}}).GetProbeLatency(); pl == nil || pl.ProcessUs < pl.QueueUs+pl.ExecuteUs {
+		t.Fatalf("direct work probe_latency invalid: %+v", pl)
+	}
 	databaseURL := url.URL{Scheme: "file", Path: filepath.Join(os.Getenv("REMOTE_AGENT_HOME"), "security-v4.db"), RawQuery: "mode=ro"}
 	db, err := sql.Open("sqlite", databaseURL.String())
 	if err != nil {

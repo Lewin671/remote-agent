@@ -259,6 +259,240 @@
           }
         }
       ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078061000",
+        "seedDemoWorld": {
+          "security": {
+            "authorityDeviceId": "dev-auth",
+            "isMember": true,
+            "leaseEndMs": "1791164460000",
+            "selfDeviceId": "dev-self",
+            "trustedClientIds": [
+              "dev-self",
+              "dev-auth"
+            ],
+            "trustedMachineIds": [
+              "m-cc-1-ok",
+              "m-cc-2-slow",
+              "m-cc-3-reroute",
+              "m-cc-4-outdated",
+              "m-cc-5-timeout"
+            ]
+          },
+          "machines": [
+            {
+              "lastSeenMs": "1791078061000",
+              "machineId": "m-cc-1-ok",
+              "online": true,
+              "rawMeta": "CgdNYWNCb29rYBE="
+            },
+            {
+              "lastSeenMs": "1791078061000",
+              "machineId": "m-cc-2-slow",
+              "online": true,
+              "rawMeta": "CgZTdHVkaW9gEQ=="
+            },
+            {
+              "lastSeenMs": "1791078061000",
+              "machineId": "m-cc-3-reroute",
+              "online": true,
+              "rawMeta": "CgtXb3Jrc3RhdGlvbmAR"
+            },
+            {
+              "lastSeenMs": "1791078061000",
+              "machineId": "m-cc-4-outdated",
+              "online": true,
+              "rawMeta": "CgNMYWJgEQ=="
+            },
+            {
+              "lastSeenMs": "1791078061000",
+              "machineId": "m-cc-5-timeout",
+              "online": true,
+              "rawMeta": "CgdWUFMtZGV2YBE="
+            }
+          ],
+          "replaceMachines": true,
+          "directReports": [
+            {
+              "enabled": true,
+              "machineId": "m-cc-1-ok",
+              "report": {
+                "activeRttMs": 6,
+                "capable": true,
+                "enabled": true,
+                "hasActiveRttMs": true,
+                "readRoute": "DIRECT_PATH_CHOICE_DIRECT",
+                "state": "DIRECT_ROUTE_STATE_CONNECTED"
+              }
+            },
+            {
+              "enabled": true,
+              "machineId": "m-cc-2-slow",
+              "report": {
+                "activeRttMs": 8,
+                "capable": true,
+                "enabled": true,
+                "hasActiveRttMs": true,
+                "readRoute": "DIRECT_PATH_CHOICE_DIRECT",
+                "state": "DIRECT_ROUTE_STATE_CONNECTED"
+              }
+            },
+            {
+              "enabled": true,
+              "machineId": "m-cc-3-reroute",
+              "report": {
+                "activeRttMs": 7,
+                "capable": true,
+                "enabled": true,
+                "hasActiveRttMs": true,
+                "readRoute": "DIRECT_PATH_CHOICE_DIRECT",
+                "state": "DIRECT_ROUTE_STATE_CONNECTED"
+              }
+            },
+            {
+              "enabled": true,
+              "machineId": "m-cc-5-timeout",
+              "report": {
+                "activeRttMs": 520,
+                "capable": true,
+                "enabled": true,
+                "hasActiveRttMs": true,
+                "readRoute": "DIRECT_PATH_CHOICE_DIRECT",
+                "state": "DIRECT_ROUTE_STATE_CONNECTED"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "connCheckStatus": {
+          "latencyMs": 86,
+          "serverState": "CONN_PROBE_STATE_WORKING"
+        },
+        "nowMs": "1791078061010"
+      }
+    },
+    {
+      "event": {
+        "connCheckStart": {},
+        "monoMs": "2000",
+        "nowMs": "1791078061020",
+        "randomIds": [
+          "cc-r1",
+          "cc-a1",
+          "cc-r2",
+          "cc-a2",
+          "cc-r3",
+          "cc-a3",
+          "cc-r4",
+          "cc-a4",
+          "cc-r5",
+          "cc-a5"
+        ]
+      }
+    },
+    {
+      "event": {
+        "commandOutcome": {
+          "attemptBound": true,
+          "attemptId": "cc-a1",
+          "elapsedMs": 32,
+          "hashesMatch": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "completed",
+          "rawResult": "GghleGVjdXRlZCIJY29tcGxldGVkQAHqAgsIiKQBEOgHGLiUAQ==",
+          "requestId": "cc-r1",
+          "routeWasDirect": true,
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "monoMs": "2038",
+        "nowMs": "1791078061058"
+      }
+    },
+    {
+      "event": {
+        "commandOutcome": {
+          "attemptBound": true,
+          "attemptId": "cc-a2",
+          "elapsedMs": 1210,
+          "hashesMatch": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "completed",
+          "rawResult": "GghleGVjdXRlZCIJY29tcGxldGVkQAHqAgwI8NBIELCYRhiowwE=",
+          "requestId": "cc-r2",
+          "routeWasDirect": true,
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "monoMs": "3250",
+        "nowMs": "1791078062270"
+      }
+    },
+    {
+      "event": {
+        "commandOutcome": {
+          "attemptBound": true,
+          "attemptId": "cc-a3",
+          "elapsedMs": 374,
+          "hashesMatch": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "completed",
+          "rawResult": "GghleGVjdXRlZCIJY29tcGxldGVkQAHqAgsIgPQDEJBOGNCGAw==",
+          "requestId": "cc-r3",
+          "routeWasDirect": false,
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "monoMs": "5420",
+        "nowMs": "1791078064440"
+      }
+    },
+    {
+      "event": {
+        "commandOutcome": {
+          "attemptBound": true,
+          "attemptId": "cc-a4",
+          "elapsedMs": 45,
+          "hashesMatch": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "rejected",
+          "outerReason": "invalid_body",
+          "rawResult": "ChBpbnZhbGlkX2FyZ3VtZW50GghyZWplY3RlZCIMaW52YWxpZF9ib2R5",
+          "requestId": "cc-r4",
+          "routeWasDirect": false,
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "monoMs": "5480",
+        "nowMs": "1791078064500"
+      }
+    },
+    {
+      "event": {
+        "monoMs": "17000",
+        "nowMs": "1791078076020",
+        "timerFired": {
+          "key": "conncheck:work:1:m-cc-5-timeout",
+          "kind": "TIMER_KIND_UI_TRANSIENT",
+          "timerId": "8"
+        }
+      },
+      "views": [
+        {
+          "name": "connCheckBreakdown",
+          "screen": {
+            "settings": {}
+          }
+        }
+      ]
     }
   ]
 }

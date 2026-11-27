@@ -49,6 +49,27 @@ type ConnCheckState struct {
 	LastFailure string
 }
 
+// MachineLatencySnapshot holds the Core-owned connection-check state and measurements for one machine.
+type MachineLatencySnapshot struct {
+	State            corev1.MachineLatencyState
+	StartedDirect    bool
+	Rerouted         bool
+	HasNetwork       bool
+	NetworkMs        int64
+	NetworkIsDirect  bool
+	NetworkTimedOut  bool
+	HasComputer      bool
+	ComputerMs       int64
+	QueueMs          int64
+	ExecuteMs        int64
+	ComputerTimedOut bool
+	HasWaitDirect    bool
+	WaitDirectMs     int64
+	HasTotal         bool
+	TotalMs          int64
+	ErrorText        *corev1.Text
+}
+
 // UpdateState holds shell-reported client release check/download state.
 type UpdateState struct {
 	CurrentVersion          string
@@ -73,14 +94,16 @@ type SettingsExtra struct {
 	Notifications           NotificationPrefs
 	Theme                   corev1.ThemePreference
 	ConnCheck               ConnCheckState
+	MachineLatency          map[string]*MachineLatencySnapshot
 	Update                  UpdateState
 }
 
 // NewSettingsExtra initializes default SettingsExtra state matching shell defaults.
 func NewSettingsExtra() *SettingsExtra {
 	return &SettingsExtra{
-		Machines:  make(map[string]*MachineSettingsExtra),
-		PollFeeds: make(map[string]*MachinePollFeed),
+		Machines:       make(map[string]*MachineSettingsExtra),
+		PollFeeds:      make(map[string]*MachinePollFeed),
+		MachineLatency: make(map[string]*MachineLatencySnapshot),
 		Notifications: NotificationPrefs{
 			Supported:       true,
 			Permission:      corev1.NotificationPermissionState_NOTIFICATION_PERMISSION_STATE_UNSPECIFIED,
@@ -336,6 +359,13 @@ func buildMachineListCards(st *State, syncView *world.SyncState, machines []*lis
 			if readDirect {
 				pingDirect[m.ID] = true
 			}
+			if online && !unlinked && !archived && mismatch == 0 {
+				var snap *MachineLatencySnapshot
+				if extra != nil && extra.MachineLatency != nil {
+					snap = extra.MachineLatency[m.ID]
+				}
+				card.Latency = BuildMachineLatencyView(name, card.DirectRow, snap)
+			}
 		}
 		var metaSegments []*corev1.MachineCardMetaSegment
 		if !text.IsEmpty(statusTxt) {
@@ -508,7 +538,7 @@ func buildAppearanceView(theme corev1.ThemePreference) *corev1.AppearanceView {
 	}
 }
 
-func buildConnCheckSummary(st *State, syncView *world.SyncState, cc ConnCheckState, machines []*corev1.MachineListCardView, pingDirect map[string]bool) *corev1.ConnCheckSummaryView {
+func buildConnCheckSummary(st *State, syncView *world.SyncState, cc ConnCheckState, machines []*corev1.MachineListCardView, _ map[string]bool) *corev1.ConnCheckSummaryView {
 	connState := mapSessionConnState(st.World.Connection)
 	isConnecting := st.World.Connection == lists.ConnConnecting || st.World.Connection == lists.ConnReconnecting
 	networkAvailable := st.World.Connection != lists.ConnNoNetwork
@@ -517,28 +547,19 @@ func buildConnCheckSummary(st *State, syncView *world.SyncState, cc ConnCheckSta
 	} else {
 		syncView = &world.SyncState{}
 	}
-	var onlineMembers, directMembers int
 	var hasUnsupportedDirect bool
+	var machinesBusy bool
 	for _, m := range machines {
 		if m != nil && m.Online && m.Member {
-			onlineMembers++
-			if pingDirect[m.MachineId] {
-				directMembers++
-			}
 			if m.DirectRow != nil && m.DirectRow.Stage == corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_UNSUPPORTED {
 				hasUnsupportedDirect = true
 			}
+			if m.Latency != nil && m.Latency.State == corev1.MachineLatencyState_MACHINE_LATENCY_STATE_MEASURING {
+				machinesBusy = true
+			}
 		}
 	}
-	var footerTxt *corev1.Text
-	switch {
-	case onlineMembers > 0 && directMembers == onlineMembers:
-		footerTxt = text.Msg(text.KeyConnectionLatencyFooterDirect)
-	case directMembers > 0:
-		footerTxt = text.Msg(text.KeyConnectionLatencyFooterMixed)
-	default:
-		footerTxt = text.Msg(text.KeyConnectionLatencyIsOneRoundTripTheServerRowMeasures)
-	}
+	footerTxt := text.Msg(text.KeyConnectionLatencyIsOneRoundTripTheServerRowMeasures)
 	if hasUnsupportedDirect {
 		unsupportedKey := text.KeyTransportConnFooterUnsupportedBrowser
 		if isNativeAppPlatform(st) {
@@ -563,6 +584,7 @@ func buildConnCheckSummary(st *State, syncView *world.SyncState, cc ConnCheckSta
 		DisplayGrace:      st.DisplayGrace || syncView.DisplayGrace,
 		IsConnecting:      isConnecting,
 		FooterText:        footerTxt,
+		MachinesBusy:      machinesBusy,
 	}
 	if st != nil && !st.ConnectionReason.IsZero() {
 		out.LastFailureText = ReasonText(st.ConnectionReason)

@@ -926,13 +926,13 @@ func TestMachineCardPlanBStatesAndConnCheckFooter(t *testing.T) {
 				name:          "all online direct",
 				reports:       map[string]*corev1.DirectRouteReport{"m1": directReport, "m2": directReport},
 				wantDirect:    map[string]bool{"m1": true, "m2": true, "m3": false},
-				wantFooterKey: text.KeyConnectionLatencyFooterDirect,
+				wantFooterKey: text.KeyConnectionLatencyIsOneRoundTripTheServerRowMeasures,
 			},
 			{
 				name:          "mixed direct and relay",
 				reports:       map[string]*corev1.DirectRouteReport{"m1": directReport, "m2": relayReport},
 				wantDirect:    map[string]bool{"m1": true, "m2": false, "m3": false},
-				wantFooterKey: text.KeyConnectionLatencyFooterMixed,
+				wantFooterKey: text.KeyConnectionLatencyIsOneRoundTripTheServerRowMeasures,
 			},
 			{
 				name:          "all relay",

@@ -154,9 +154,28 @@
     <string name="connection_connecting_conn_check" formatted="false">"Connecting"</string>
     <string name="connection_connecting_conn_check_label" formatted="false">"Connecting"</string>
     <string name="connection_last_failure">"Last failure: %1$s"</string>
-    <string name="connection_latency_footer_direct" formatted="false">"Latency is one round trip. The server row measures this device to the server; computer rows measure a direct round trip to the computer."</string>
-    <string name="connection_latency_footer_mixed" formatted="false">"Latency is one round trip. The server row measures this device to the server; each computer row follows its active route—directly to the computer when using direct, or through the server when using relay."</string>
-    <string name="connection_latency_is_one_round_trip_the_server_row_measures" formatted="false">"Latency is one round trip. The server row measures this device to the server; computer rows go through the server to the computer and back, so they are slower."</string>
+    <string name="connection_latency_a11y">"%2$s, %1$s"</string>
+    <string name="connection_latency_a11y_segment">"%1$s %2$s"</string>
+    <string name="connection_latency_a11y_segment_slow">"%1$s %2$s, slow"</string>
+    <string name="connection_latency_a11y_total">"Total %1$s ms"</string>
+    <string name="connection_latency_a11y_total_slow">"Total %1$s ms, slow"</string>
+    <string name="connection_latency_computer" formatted="false">"Computer"</string>
+    <string name="connection_latency_computer_no_reply" formatted="false">"The computer did not answer in time"</string>
+    <string name="connection_latency_is_one_round_trip_the_server_row_measures" formatted="false">"Latency is the total round-trip time. Each computer shows network and computer time below, and marks the slow part."</string>
+    <string name="connection_latency_mostly_queued">"Mostly queued (%1$s ms); the computer is busy with other work"</string>
+    <string name="connection_latency_mostly_running">"Mostly running (%1$s ms)"</string>
+    <string name="connection_latency_ms">"%1$s ms"</string>
+    <string name="connection_latency_ms_slow">"%1$s ms · Slow"</string>
+    <string name="connection_latency_network" formatted="false">"Network"</string>
+    <string name="connection_latency_no_reply" formatted="false">"No response"</string>
+    <string name="connection_latency_outdated" formatted="false">"Outdated"</string>
+    <string name="connection_latency_outdated_all" formatted="false">"Update remote-agent on this computer to see network and processing time"</string>
+    <string name="connection_latency_outdated_computer" formatted="false">"Update remote-agent on this computer to see its processing time"</string>
+    <string name="connection_latency_over_seconds">"Over %1$d s"</string>
+    <string name="connection_latency_pending" formatted="false">"—"</string>
+    <string name="connection_latency_rerouted" formatted="false">"Direct did not answer in time; this check went through the relay"</string>
+    <string name="connection_latency_slow" formatted="false">"Slow"</string>
+    <string name="connection_latency_wait_direct" formatted="false">"Waiting for direct"</string>
     <string name="connection_live_push" formatted="false">"Live push"</string>
     <string name="connection_live_push_is_not_connected" formatted="false">"Live push is not connected."</string>
     <string name="connection_live_push_is_not_connected_session_changes_may_be">"Live push is not connected; session changes may be delayed. Last failure: %1$s"</string>

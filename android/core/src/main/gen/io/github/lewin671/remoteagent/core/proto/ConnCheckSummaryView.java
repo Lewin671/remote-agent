@@ -597,6 +597,32 @@ public  final class ConnCheckSummaryView extends
     bitField0_ = (bitField0_ & ~0x00000020);
   }
 
+  public static final int MACHINES_BUSY_FIELD_NUMBER = 17;
+  private boolean machinesBusy_;
+  /**
+   * <code>bool machines_busy = 17 [json_name = "machinesBusy"];</code>
+   * @return The machinesBusy.
+   */
+  @java.lang.Override
+  public boolean getMachinesBusy() {
+    return machinesBusy_;
+  }
+  /**
+   * <code>bool machines_busy = 17 [json_name = "machinesBusy"];</code>
+   * @param value The machinesBusy to set.
+   */
+  private void setMachinesBusy(boolean value) {
+    
+    machinesBusy_ = value;
+  }
+  /**
+   * <code>bool machines_busy = 17 [json_name = "machinesBusy"];</code>
+   */
+  private void clearMachinesBusy() {
+
+    machinesBusy_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.ConnCheckSummaryView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1292,6 +1318,34 @@ public  final class ConnCheckSummaryView extends
       return this;
     }
 
+    /**
+     * <code>bool machines_busy = 17 [json_name = "machinesBusy"];</code>
+     * @return The machinesBusy.
+     */
+    @java.lang.Override
+    public boolean getMachinesBusy() {
+      return instance.getMachinesBusy();
+    }
+    /**
+     * <code>bool machines_busy = 17 [json_name = "machinesBusy"];</code>
+     * @param value The machinesBusy to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMachinesBusy(boolean value) {
+      copyOnWrite();
+      instance.setMachinesBusy(value);
+      return this;
+    }
+    /**
+     * <code>bool machines_busy = 17 [json_name = "machinesBusy"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMachinesBusy() {
+      copyOnWrite();
+      instance.clearMachinesBusy();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.ConnCheckSummaryView)
   }
   @java.lang.Override
@@ -1325,12 +1379,13 @@ public  final class ConnCheckSummaryView extends
             "isConnecting_",
             "bannerText_",
             "footerText_",
+            "machinesBusy_",
           };
           java.lang.String info =
-              "\u0000\u0010\u0000\u0001\u0001\u0010\u0010\u0000\u0000\u0000\u0001\f\u0002\u0004" +
+              "\u0000\u0011\u0000\u0001\u0001\u0011\u0011\u0000\u0000\u0000\u0001\f\u0002\u0004" +
               "\u0003\u1009\u0000\u0004\u1009\u0001\u0005\u1009\u0002\u0006\f\u0007\u0007\b\u0007" +
               "\t\u0007\n\u0004\u000b\u0002\f\u1009\u0003\r\u0007\u000e\u0007\u000f\u1009\u0004" +
-              "\u0010\u1009\u0005";
+              "\u0010\u1009\u0005\u0011\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

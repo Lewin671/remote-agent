@@ -224,6 +224,8 @@ func TestScreenInputFixturesDaemonContract(t *testing.T) {
 				} else if payload.GetSharedFileChunk.GetTotalBytes() < uint64(len(payload.GetSharedFileChunk.Data)) {
 					t.Errorf("%s: GetSharedFileChunk totalBytes (%d) < len(data) (%d)", label, payload.GetSharedFileChunk.GetTotalBytes(), len(payload.GetSharedFileChunk.Data))
 				}
+			case *pb.CommandResult_ProbeLatency:
+				assertProbeLatencyInvariants(t, label, payload.ProbeLatency)
 			}
 		}
 	}
@@ -260,6 +262,20 @@ func assertGetSettingsInvariants(t *testing.T, label string, res *pb.GetSettings
 	t.Helper()
 	if res == nil || res.Settings == nil {
 		t.Errorf("%s: GetSettingsResponse missing Settings", label)
+	}
+}
+
+func assertProbeLatencyInvariants(t *testing.T, label string, res *pb.ProbeLatencyResponse) {
+	t.Helper()
+	if res == nil {
+		t.Errorf("%s: nil ProbeLatencyResponse", label)
+		return
+	}
+	if res.ProcessUs < 0 || res.QueueUs < 0 || res.ExecuteUs < 0 {
+		t.Errorf("%s: negative ProbeLatencyResponse fields: %+v", label, res)
+	}
+	if res.ProcessUs < res.QueueUs+res.ExecuteUs {
+		t.Errorf("%s: ProbeLatencyResponse process_us (%d) < queue_us (%d) + execute_us (%d)", label, res.ProcessUs, res.QueueUs, res.ExecuteUs)
 	}
 }
 

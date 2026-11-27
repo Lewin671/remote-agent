@@ -50,6 +50,21 @@ func (c *endpoint) commandCompletion(ctx context.Context, h devicesec.Header, pl
 	if deadline, ok := callCtx.Deadline(); category == deviceauth.NoCategory || ok && !time.Now().Before(deadline) {
 		return deviceauth.Undetermined(), deviceauth.ErrOutcomeUnknown
 	}
+	return finalizeCommandResult(h, original, res, category)
+}
+
+func (c *endpoint) probeEchoCompletion(h devicesec.Header, original []byte) (deviceauth.Completion, error) {
+	out := &pb.CommandResult{}
+	if h.Session != "" {
+		out.ErrorCode = connect.CodeInvalidArgument.String()
+		out.ErrorMessage = "a machine command must not name a session"
+	} else {
+		out.Kind = &pb.CommandResult_ProbeLatency{ProbeLatency: &pb.ProbeLatencyResponse{}}
+	}
+	return finalizeCommandResult(h, original, out, deviceauth.Executed)
+}
+
+func finalizeCommandResult(h devicesec.Header, original []byte, res *pb.CommandResult, category deviceauth.Category) (deviceauth.Completion, error) {
 	res.Outcome = "executed"
 	if category == deviceauth.BusinessConflict {
 		res.Outcome = "conflict"
@@ -70,6 +85,13 @@ func (c *endpoint) commandCompletion(ctx context.Context, h devicesec.Header, pl
 		return deviceauth.FinalBusinessConflict(body), nil
 	}
 	return deviceauth.Final(body), nil
+}
+
+func (c *endpoint) admissionNow() time.Time {
+	if c != nil && c.admission != nil {
+		return c.admission.now()
+	}
+	return time.Now()
 }
 
 func (c *endpoint) replyResult(route *callRoute, header devicesec.Header, raw bool, result []byte, err error) {
@@ -107,6 +129,28 @@ func (c *endpoint) replyResult(route *callRoute, header devicesec.Header, raw bo
 	} else {
 		proof = &pb.CommandResult{}
 		err = proto.Unmarshal(result, proof)
+		if err == nil && proof.GetProbeLatency() != nil {
+			pl := proof.GetProbeLatency()
+			now := c.admissionNow()
+			var processUs, queueUs int64
+			if !route.receivedAt.IsZero() {
+				processUs = max(int64(0), now.Sub(route.receivedAt).Microseconds())
+				if !route.authStartAt.IsZero() {
+					queueUs += max(int64(0), route.authStartAt.Sub(route.receivedAt).Microseconds())
+				}
+			}
+			if !route.queuedAt.IsZero() && !route.grantedAt.IsZero() {
+				queueUs += max(int64(0), route.grantedAt.Sub(route.queuedAt).Microseconds())
+			}
+			executeUs := max(int64(0), pl.ExecuteUs)
+			if processUs < queueUs+executeUs {
+				processUs = queueUs + executeUs
+			}
+			pl.ProcessUs = processUs
+			pl.QueueUs = queueUs
+			pl.ExecuteUs = executeUs
+			result, err = proto.Marshal(proof)
+		}
 	}
 	if err != nil {
 		fail("result_encoding_failed")
@@ -249,6 +293,20 @@ func (c *endpoint) executeEvidence(ctx context.Context, sessionID string, cmd *p
 	case *pb.Command_GetSettings:
 		err = machine(func() error {
 			return call(ctx, l.GetSettings, k.GetSettings, func(m *pb.GetSettingsResponse) { out.Kind = &pb.CommandResult_GetSettings{GetSettings: m} })
+		})
+	case *pb.Command_ProbeLatency:
+		err = machine(func() error {
+			if !k.ProbeLatency.GetWork() {
+				out.Kind = &pb.CommandResult_ProbeLatency{ProbeLatency: &pb.ProbeLatencyResponse{}}
+				return nil
+			}
+			execStart := c.admissionNow()
+			if err := call(ctx, l.GetSettings, &pb.GetSettingsRequest{}, func(*pb.GetSettingsResponse) {}); err != nil {
+				return err
+			}
+			execUs := max(int64(0), c.admissionNow().Sub(execStart).Microseconds())
+			out.Kind = &pb.CommandResult_ProbeLatency{ProbeLatency: &pb.ProbeLatencyResponse{ExecuteUs: execUs}}
+			return nil
 		})
 	case *pb.Command_BeginImageUpload:
 		err = machine(func() error {

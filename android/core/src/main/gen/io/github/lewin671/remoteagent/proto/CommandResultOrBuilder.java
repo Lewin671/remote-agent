@@ -444,5 +444,16 @@ public interface CommandResultOrBuilder extends
    */
   io.github.lewin671.remoteagent.proto.UsageStatsResponse getUsageStats();
 
+  /**
+   * <code>.remoteagent.v1.ProbeLatencyResponse probe_latency = 45 [json_name = "probeLatency"];</code>
+   * @return Whether the probeLatency field is set.
+   */
+  boolean hasProbeLatency();
+  /**
+   * <code>.remoteagent.v1.ProbeLatencyResponse probe_latency = 45 [json_name = "probeLatency"];</code>
+   * @return The probeLatency.
+   */
+  io.github.lewin671.remoteagent.proto.ProbeLatencyResponse getProbeLatency();
+
   public io.github.lewin671.remoteagent.proto.CommandResult.KindCase getKindCase();
 }

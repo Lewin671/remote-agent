@@ -691,6 +691,14 @@ public struct PBCommand: Sendable {
     set {kind = .getUsageStats(newValue)}
   }
 
+  public var probeLatency: PBProbeLatencyRequest {
+    get {
+      if case .probeLatency(let v)? = kind {return v}
+      return PBProbeLatencyRequest()
+    }
+    set {kind = .probeLatency(newValue)}
+  }
+
   /// The peer protocol version the client speaks (internal/protocol.PeerVersion).
   /// A daemon of another version refuses the command and says which side to update.
   public var protocolVersion: UInt32 = 0
@@ -731,6 +739,7 @@ public struct PBCommand: Sendable {
     case getSharedFileChunk(PBGetSharedFileChunkRequest)
     case getMachineStatus(PBGetMachineStatusRequest)
     case getUsageStats(PBGetUsageStatsRequest)
+    case probeLatency(PBProbeLatencyRequest)
 
   }
 
@@ -1033,6 +1042,14 @@ public struct PBCommandResult: @unchecked Sendable {
     set {_uniqueStorage()._kind = .usageStats(newValue)}
   }
 
+  public var probeLatency: PBProbeLatencyResponse {
+    get {
+      if case .probeLatency(let v)? = _storage._kind {return v}
+      return PBProbeLatencyResponse()
+    }
+    set {_uniqueStorage()._kind = .probeLatency(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public enum OneOf_Kind: Equatable, Sendable {
@@ -1066,12 +1083,46 @@ public struct PBCommandResult: @unchecked Sendable {
     case getSharedFileChunk(PBGetSharedFileChunkResponse)
     case machineStatus(PBMachineStatus)
     case usageStats(PBUsageStatsResponse)
+    case probeLatency(PBProbeLatencyResponse)
 
   }
 
   public init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+public struct PBProbeLatencyRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// false: echo, replied immediately after authentication without entering the scheduler.
+  /// true: work, queued as an ordinary read-only command performing the same reads as GetSettings.
+  public var work: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBProbeLatencyResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Total daemon processing time from admission entry until just before sealing the reply.
+  public var processUs: Int64 = 0
+
+  /// Waiting time included in process_us (authentication queue + scheduler slot wait).
+  public var queueUs: Int64 = 0
+
+  /// Execution time included in process_us; 0 for echo.
+  public var executeUs: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
 }
 
 /// OpenTerminalRequest asks the daemon to stream a session's terminal. The
@@ -1997,7 +2048,7 @@ extension PBAgentInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
 
 extension PBCommand: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Command"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}send\0\u{1}interrupt\0\u{3}resolve_approval\0\u{3}answer_question\0\u{3}stop_session\0\u{3}cancel_input\0\u{3}set_model\0\u{3}set_approval_mode\0\u{1}compact\0\u{3}answer_plan\0\u{3}open_terminal\0\u{3}resume_session\0\u{3}resume_input\0\u{3}rename_session\0\u{3}fork_session\0\u{4}\u{5}create_session\0\u{3}list_models\0\u{3}list_directories\0\u{3}get_settings\0\u{3}update_settings\0\u{3}begin_image_upload\0\u{3}put_image_chunk\0\u{3}get_image_upload_status\0\u{3}complete_image_upload\0\u{3}abort_image_upload\0\u{1}schedule\0\u{3}get_live_snapshot\0\u{3}get_shared_file_chunk\0\u{3}get_machine_status\0\u{3}get_usage_stats\0\u{4}B\u{1}protocol_version\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}send\0\u{1}interrupt\0\u{3}resolve_approval\0\u{3}answer_question\0\u{3}stop_session\0\u{3}cancel_input\0\u{3}set_model\0\u{3}set_approval_mode\0\u{1}compact\0\u{3}answer_plan\0\u{3}open_terminal\0\u{3}resume_session\0\u{3}resume_input\0\u{3}rename_session\0\u{3}fork_session\0\u{4}\u{5}create_session\0\u{3}list_models\0\u{3}list_directories\0\u{3}get_settings\0\u{3}update_settings\0\u{3}begin_image_upload\0\u{3}put_image_chunk\0\u{3}get_image_upload_status\0\u{3}complete_image_upload\0\u{3}abort_image_upload\0\u{1}schedule\0\u{3}get_live_snapshot\0\u{3}get_shared_file_chunk\0\u{3}get_machine_status\0\u{3}get_usage_stats\0\u{3}probe_latency\0\u{4}A\u{1}protocol_version\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2395,6 +2446,19 @@ extension PBCommand: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
           self.kind = .getUsageStats(v)
         }
       }()
+      case 35: try {
+        var v: PBProbeLatencyRequest?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .probeLatency(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .probeLatency(v)
+        }
+      }()
       case 100: try { try decoder.decodeSingularUInt32Field(value: &self.protocolVersion) }()
       default: break
       }
@@ -2527,6 +2591,10 @@ extension PBCommand: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
       guard case .getUsageStats(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 34)
     }()
+    case .probeLatency?: try {
+      guard case .probeLatency(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 35)
+    }()
     case nil: break
     }
     if self.protocolVersion != 0 {
@@ -2545,7 +2613,7 @@ extension PBCommand: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
 
 extension PBCommandResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CommandResult"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}error_code\0\u{3}error_message\0\u{1}outcome\0\u{1}reason\0\u{3}conflict_kind\0\u{3}request_key_hash\0\u{3}payload_hash\0\u{3}result_available\0\u{2}\u{2}send\0\u{1}interrupt\0\u{3}resolve_approval\0\u{3}answer_question\0\u{3}stop_session\0\u{3}cancel_input\0\u{3}set_model\0\u{3}set_approval_mode\0\u{1}compact\0\u{3}answer_plan\0\u{3}open_terminal\0\u{3}resume_session\0\u{3}resume_input\0\u{3}rename_session\0\u{3}fork_session\0\u{4}\u{6}create_session\0\u{3}list_models\0\u{3}list_directories\0\u{3}get_settings\0\u{3}update_settings\0\u{3}begin_image_upload\0\u{3}put_image_chunk\0\u{3}get_image_upload_status\0\u{3}complete_image_upload\0\u{3}abort_image_upload\0\u{1}schedule\0\u{3}live_snapshot\0\u{3}get_shared_file_chunk\0\u{3}machine_status\0\u{3}usage_stats\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}error_code\0\u{3}error_message\0\u{1}outcome\0\u{1}reason\0\u{3}conflict_kind\0\u{3}request_key_hash\0\u{3}payload_hash\0\u{3}result_available\0\u{2}\u{2}send\0\u{1}interrupt\0\u{3}resolve_approval\0\u{3}answer_question\0\u{3}stop_session\0\u{3}cancel_input\0\u{3}set_model\0\u{3}set_approval_mode\0\u{1}compact\0\u{3}answer_plan\0\u{3}open_terminal\0\u{3}resume_session\0\u{3}resume_input\0\u{3}rename_session\0\u{3}fork_session\0\u{4}\u{6}create_session\0\u{3}list_models\0\u{3}list_directories\0\u{3}get_settings\0\u{3}update_settings\0\u{3}begin_image_upload\0\u{3}put_image_chunk\0\u{3}get_image_upload_status\0\u{3}complete_image_upload\0\u{3}abort_image_upload\0\u{1}schedule\0\u{3}live_snapshot\0\u{3}get_shared_file_chunk\0\u{3}machine_status\0\u{3}usage_stats\0\u{3}probe_latency\0")
 
   fileprivate class _StorageClass {
     var _errorCode: String = String()
@@ -2992,6 +3060,19 @@ extension PBCommandResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
             _storage._kind = .usageStats(v)
           }
         }()
+        case 45: try {
+          var v: PBProbeLatencyResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .probeLatency(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .probeLatency(v)
+          }
+        }()
         default: break
         }
       }
@@ -3149,6 +3230,10 @@ extension PBCommandResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
         guard case .usageStats(let v)? = _storage._kind else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 44)
       }()
+      case .probeLatency?: try {
+        guard case .probeLatency(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 45)
+      }()
       case nil: break
       }
     }
@@ -3173,6 +3258,76 @@ extension PBCommandResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
       }
       if !storagesAreEqual {return false}
     }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBProbeLatencyRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ProbeLatencyRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}work\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBoolField(value: &self.work) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.work != false {
+      try visitor.visitSingularBoolField(value: self.work, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBProbeLatencyRequest, rhs: PBProbeLatencyRequest) -> Bool {
+    if lhs.work != rhs.work {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBProbeLatencyResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ProbeLatencyResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}process_us\0\u{3}queue_us\0\u{3}execute_us\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self.processUs) }()
+      case 2: try { try decoder.decodeSingularInt64Field(value: &self.queueUs) }()
+      case 3: try { try decoder.decodeSingularInt64Field(value: &self.executeUs) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.processUs != 0 {
+      try visitor.visitSingularInt64Field(value: self.processUs, fieldNumber: 1)
+    }
+    if self.queueUs != 0 {
+      try visitor.visitSingularInt64Field(value: self.queueUs, fieldNumber: 2)
+    }
+    if self.executeUs != 0 {
+      try visitor.visitSingularInt64Field(value: self.executeUs, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBProbeLatencyResponse, rhs: PBProbeLatencyResponse) -> Bool {
+    if lhs.processUs != rhs.processUs {return false}
+    if lhs.queueUs != rhs.queueUs {return false}
+    if lhs.executeUs != rhs.executeUs {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

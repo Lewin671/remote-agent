@@ -805,6 +805,7 @@ type Command struct {
 	//	*Command_GetSharedFileChunk
 	//	*Command_GetMachineStatus
 	//	*Command_GetUsageStats
+	//	*Command_ProbeLatency
 	Kind isCommand_Kind `protobuf_oneof:"kind"`
 	// The peer protocol version the client speaks (internal/protocol.PeerVersion).
 	// A daemon of another version refuses the command and says which side to update.
@@ -1120,6 +1121,15 @@ func (x *Command) GetGetUsageStats() *GetUsageStatsRequest {
 	return nil
 }
 
+func (x *Command) GetProbeLatency() *ProbeLatencyRequest {
+	if x != nil {
+		if x, ok := x.Kind.(*Command_ProbeLatency); ok {
+			return x.ProbeLatency
+		}
+	}
+	return nil
+}
+
 func (x *Command) GetProtocolVersion() uint32 {
 	if x != nil {
 		return x.ProtocolVersion
@@ -1254,6 +1264,10 @@ type Command_GetUsageStats struct {
 	GetUsageStats *GetUsageStatsRequest `protobuf:"bytes,34,opt,name=get_usage_stats,json=getUsageStats,proto3,oneof"`
 }
 
+type Command_ProbeLatency struct {
+	ProbeLatency *ProbeLatencyRequest `protobuf:"bytes,35,opt,name=probe_latency,json=probeLatency,proto3,oneof"`
+}
+
 func (*Command_Send) isCommand_Kind() {}
 
 func (*Command_Interrupt) isCommand_Kind() {}
@@ -1314,6 +1328,8 @@ func (*Command_GetMachineStatus) isCommand_Kind() {}
 
 func (*Command_GetUsageStats) isCommand_Kind() {}
 
+func (*Command_ProbeLatency) isCommand_Kind() {}
+
 // CommandResult is the daemon's reply to a Command. A retried request ID
 // gets the original result instead of running the command again.
 type CommandResult struct {
@@ -1361,6 +1377,7 @@ type CommandResult struct {
 	//	*CommandResult_GetSharedFileChunk
 	//	*CommandResult_MachineStatus
 	//	*CommandResult_UsageStats
+	//	*CommandResult_ProbeLatency
 	Kind          isCommandResult_Kind `protobuf_oneof:"kind"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1729,6 +1746,15 @@ func (x *CommandResult) GetUsageStats() *UsageStatsResponse {
 	return nil
 }
 
+func (x *CommandResult) GetProbeLatency() *ProbeLatencyResponse {
+	if x != nil {
+		if x, ok := x.Kind.(*CommandResult_ProbeLatency); ok {
+			return x.ProbeLatency
+		}
+	}
+	return nil
+}
+
 type isCommandResult_Kind interface {
 	isCommandResult_Kind()
 }
@@ -1853,6 +1879,10 @@ type CommandResult_UsageStats struct {
 	UsageStats *UsageStatsResponse `protobuf:"bytes,44,opt,name=usage_stats,json=usageStats,proto3,oneof"`
 }
 
+type CommandResult_ProbeLatency struct {
+	ProbeLatency *ProbeLatencyResponse `protobuf:"bytes,45,opt,name=probe_latency,json=probeLatency,proto3,oneof"`
+}
+
 func (*CommandResult_Send) isCommandResult_Kind() {}
 
 func (*CommandResult_Interrupt) isCommandResult_Kind() {}
@@ -1913,6 +1943,117 @@ func (*CommandResult_MachineStatus) isCommandResult_Kind() {}
 
 func (*CommandResult_UsageStats) isCommandResult_Kind() {}
 
+func (*CommandResult_ProbeLatency) isCommandResult_Kind() {}
+
+type ProbeLatencyRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// false: echo, replied immediately after authentication without entering the scheduler.
+	// true: work, queued as an ordinary read-only command performing the same reads as GetSettings.
+	Work          bool `protobuf:"varint,1,opt,name=work,proto3" json:"work,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProbeLatencyRequest) Reset() {
+	*x = ProbeLatencyRequest{}
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProbeLatencyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProbeLatencyRequest) ProtoMessage() {}
+
+func (x *ProbeLatencyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProbeLatencyRequest.ProtoReflect.Descriptor instead.
+func (*ProbeLatencyRequest) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ProbeLatencyRequest) GetWork() bool {
+	if x != nil {
+		return x.Work
+	}
+	return false
+}
+
+type ProbeLatencyResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Total daemon processing time from admission entry until just before sealing the reply.
+	ProcessUs int64 `protobuf:"varint,1,opt,name=process_us,json=processUs,proto3" json:"process_us,omitempty"`
+	// Waiting time included in process_us (authentication queue + scheduler slot wait).
+	QueueUs int64 `protobuf:"varint,2,opt,name=queue_us,json=queueUs,proto3" json:"queue_us,omitempty"`
+	// Execution time included in process_us; 0 for echo.
+	ExecuteUs     int64 `protobuf:"varint,3,opt,name=execute_us,json=executeUs,proto3" json:"execute_us,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProbeLatencyResponse) Reset() {
+	*x = ProbeLatencyResponse{}
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProbeLatencyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProbeLatencyResponse) ProtoMessage() {}
+
+func (x *ProbeLatencyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProbeLatencyResponse.ProtoReflect.Descriptor instead.
+func (*ProbeLatencyResponse) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ProbeLatencyResponse) GetProcessUs() int64 {
+	if x != nil {
+		return x.ProcessUs
+	}
+	return 0
+}
+
+func (x *ProbeLatencyResponse) GetQueueUs() int64 {
+	if x != nil {
+		return x.QueueUs
+	}
+	return 0
+}
+
+func (x *ProbeLatencyResponse) GetExecuteUs() int64 {
+	if x != nil {
+		return x.ExecuteUs
+	}
+	return 0
+}
+
 // OpenTerminalRequest asks the daemon to stream a session's terminal. The
 // client and the daemon each connect to the server's /v1/term with the
 // stream ID, and the server joins the two connections.
@@ -1927,7 +2068,7 @@ type OpenTerminalRequest struct {
 
 func (x *OpenTerminalRequest) Reset() {
 	*x = OpenTerminalRequest{}
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[7]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1939,7 +2080,7 @@ func (x *OpenTerminalRequest) String() string {
 func (*OpenTerminalRequest) ProtoMessage() {}
 
 func (x *OpenTerminalRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[7]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1952,7 +2093,7 @@ func (x *OpenTerminalRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OpenTerminalRequest.ProtoReflect.Descriptor instead.
 func (*OpenTerminalRequest) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{7}
+	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *OpenTerminalRequest) GetSessionId() string {
@@ -1977,7 +2118,7 @@ type OpenTerminalResponse struct {
 
 func (x *OpenTerminalResponse) Reset() {
 	*x = OpenTerminalResponse{}
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[8]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1989,7 +2130,7 @@ func (x *OpenTerminalResponse) String() string {
 func (*OpenTerminalResponse) ProtoMessage() {}
 
 func (x *OpenTerminalResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[8]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2002,7 +2143,7 @@ func (x *OpenTerminalResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OpenTerminalResponse.ProtoReflect.Descriptor instead.
 func (*OpenTerminalResponse) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{8}
+	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{10}
 }
 
 // TerminalFrame is the content of a TERMINAL_OUTPUT or TERMINAL_INPUT
@@ -2025,7 +2166,7 @@ type TerminalFrame struct {
 
 func (x *TerminalFrame) Reset() {
 	*x = TerminalFrame{}
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[9]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2037,7 +2178,7 @@ func (x *TerminalFrame) String() string {
 func (*TerminalFrame) ProtoMessage() {}
 
 func (x *TerminalFrame) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[9]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2050,7 +2191,7 @@ func (x *TerminalFrame) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TerminalFrame.ProtoReflect.Descriptor instead.
 func (*TerminalFrame) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{9}
+	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *TerminalFrame) GetKind() isTerminalFrame_Kind {
@@ -2184,7 +2325,7 @@ type TerminalSnapshot struct {
 
 func (x *TerminalSnapshot) Reset() {
 	*x = TerminalSnapshot{}
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[10]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2196,7 +2337,7 @@ func (x *TerminalSnapshot) String() string {
 func (*TerminalSnapshot) ProtoMessage() {}
 
 func (x *TerminalSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[10]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2209,7 +2350,7 @@ func (x *TerminalSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TerminalSnapshot.ProtoReflect.Descriptor instead.
 func (*TerminalSnapshot) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{10}
+	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *TerminalSnapshot) GetData() []byte {
@@ -2245,7 +2386,7 @@ type TerminalHistoryRequest struct {
 
 func (x *TerminalHistoryRequest) Reset() {
 	*x = TerminalHistoryRequest{}
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[11]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2257,7 +2398,7 @@ func (x *TerminalHistoryRequest) String() string {
 func (*TerminalHistoryRequest) ProtoMessage() {}
 
 func (x *TerminalHistoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[11]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2270,7 +2411,7 @@ func (x *TerminalHistoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TerminalHistoryRequest.ProtoReflect.Descriptor instead.
 func (*TerminalHistoryRequest) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{11}
+	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *TerminalHistoryRequest) GetRequestId() string {
@@ -2300,7 +2441,7 @@ type TerminalHistoryPage struct {
 
 func (x *TerminalHistoryPage) Reset() {
 	*x = TerminalHistoryPage{}
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[12]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2312,7 +2453,7 @@ func (x *TerminalHistoryPage) String() string {
 func (*TerminalHistoryPage) ProtoMessage() {}
 
 func (x *TerminalHistoryPage) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[12]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2325,7 +2466,7 @@ func (x *TerminalHistoryPage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TerminalHistoryPage.ProtoReflect.Descriptor instead.
 func (*TerminalHistoryPage) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{12}
+	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *TerminalHistoryPage) GetRequestId() string {
@@ -2376,7 +2517,7 @@ type TerminalResize struct {
 
 func (x *TerminalResize) Reset() {
 	*x = TerminalResize{}
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[13]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2388,7 +2529,7 @@ func (x *TerminalResize) String() string {
 func (*TerminalResize) ProtoMessage() {}
 
 func (x *TerminalResize) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[13]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2401,7 +2542,7 @@ func (x *TerminalResize) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TerminalResize.ProtoReflect.Descriptor instead.
 func (*TerminalResize) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{13}
+	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *TerminalResize) GetCols() int32 {
@@ -2444,7 +2585,7 @@ type PairingPayload struct {
 
 func (x *PairingPayload) Reset() {
 	*x = PairingPayload{}
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[14]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2456,7 +2597,7 @@ func (x *PairingPayload) String() string {
 func (*PairingPayload) ProtoMessage() {}
 
 func (x *PairingPayload) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[14]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2469,7 +2610,7 @@ func (x *PairingPayload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PairingPayload.ProtoReflect.Descriptor instead.
 func (*PairingPayload) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{14}
+	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *PairingPayload) GetServer() string {
@@ -2541,7 +2682,7 @@ type NotifyContent struct {
 
 func (x *NotifyContent) Reset() {
 	*x = NotifyContent{}
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[15]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2553,7 +2694,7 @@ func (x *NotifyContent) String() string {
 func (*NotifyContent) ProtoMessage() {}
 
 func (x *NotifyContent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[15]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2566,7 +2707,7 @@ func (x *NotifyContent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NotifyContent.ProtoReflect.Descriptor instead.
 func (*NotifyContent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{15}
+	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *NotifyContent) GetMachineId() string {
@@ -2659,7 +2800,7 @@ type NotifyApproval struct {
 
 func (x *NotifyApproval) Reset() {
 	*x = NotifyApproval{}
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[16]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2671,7 +2812,7 @@ func (x *NotifyApproval) String() string {
 func (*NotifyApproval) ProtoMessage() {}
 
 func (x *NotifyApproval) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[16]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2684,7 +2825,7 @@ func (x *NotifyApproval) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NotifyApproval.ProtoReflect.Descriptor instead.
 func (*NotifyApproval) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{16}
+	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *NotifyApproval) GetApprovalId() string {
@@ -2752,7 +2893,7 @@ type ImagePayload struct {
 
 func (x *ImagePayload) Reset() {
 	*x = ImagePayload{}
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[17]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2764,7 +2905,7 @@ func (x *ImagePayload) String() string {
 func (*ImagePayload) ProtoMessage() {}
 
 func (x *ImagePayload) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[17]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2777,7 +2918,7 @@ func (x *ImagePayload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImagePayload.ProtoReflect.Descriptor instead.
 func (*ImagePayload) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{17}
+	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ImagePayload) GetFormat() ImageFormat {
@@ -2828,7 +2969,7 @@ type DeviceMeta struct {
 
 func (x *DeviceMeta) Reset() {
 	*x = DeviceMeta{}
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[18]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2840,7 +2981,7 @@ func (x *DeviceMeta) String() string {
 func (*DeviceMeta) ProtoMessage() {}
 
 func (x *DeviceMeta) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[18]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2853,7 +2994,7 @@ func (x *DeviceMeta) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeviceMeta.ProtoReflect.Descriptor instead.
 func (*DeviceMeta) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{18}
+	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *DeviceMeta) GetName() string {
@@ -2909,7 +3050,7 @@ type ProjectPrefs struct {
 
 func (x *ProjectPrefs) Reset() {
 	*x = ProjectPrefs{}
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[19]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2921,7 +3062,7 @@ func (x *ProjectPrefs) String() string {
 func (*ProjectPrefs) ProtoMessage() {}
 
 func (x *ProjectPrefs) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[19]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2934,7 +3075,7 @@ func (x *ProjectPrefs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectPrefs.ProtoReflect.Descriptor instead.
 func (*ProjectPrefs) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{19}
+	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ProjectPrefs) GetSchema() int32 {
@@ -2993,7 +3134,7 @@ type ProjectSettings struct {
 
 func (x *ProjectSettings) Reset() {
 	*x = ProjectSettings{}
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[20]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3005,7 +3146,7 @@ func (x *ProjectSettings) String() string {
 func (*ProjectSettings) ProtoMessage() {}
 
 func (x *ProjectSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[20]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3018,7 +3159,7 @@ func (x *ProjectSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectSettings.ProtoReflect.Descriptor instead.
 func (*ProjectSettings) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{20}
+	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ProjectSettings) GetPath() string {
@@ -3074,7 +3215,7 @@ type AgentSettings struct {
 
 func (x *AgentSettings) Reset() {
 	*x = AgentSettings{}
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[21]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3086,7 +3227,7 @@ func (x *AgentSettings) String() string {
 func (*AgentSettings) ProtoMessage() {}
 
 func (x *AgentSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[21]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3099,7 +3240,7 @@ func (x *AgentSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentSettings.ProtoReflect.Descriptor instead.
 func (*AgentSettings) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{21}
+	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *AgentSettings) GetAgent() Agent {
@@ -3148,7 +3289,7 @@ type ProjectPref struct {
 
 func (x *ProjectPref) Reset() {
 	*x = ProjectPref{}
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[22]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3160,7 +3301,7 @@ func (x *ProjectPref) String() string {
 func (*ProjectPref) ProtoMessage() {}
 
 func (x *ProjectPref) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[22]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3173,7 +3314,7 @@ func (x *ProjectPref) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectPref.ProtoReflect.Descriptor instead.
 func (*ProjectPref) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{22}
+	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ProjectPref) GetPath() string {
@@ -3201,7 +3342,7 @@ type GetLiveSnapshotRequest struct {
 
 func (x *GetLiveSnapshotRequest) Reset() {
 	*x = GetLiveSnapshotRequest{}
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[23]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3213,7 +3354,7 @@ func (x *GetLiveSnapshotRequest) String() string {
 func (*GetLiveSnapshotRequest) ProtoMessage() {}
 
 func (x *GetLiveSnapshotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[23]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3226,7 +3367,7 @@ func (x *GetLiveSnapshotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLiveSnapshotRequest.ProtoReflect.Descriptor instead.
 func (*GetLiveSnapshotRequest) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{23}
+	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *GetLiveSnapshotRequest) GetSessionId() string {
@@ -3250,7 +3391,7 @@ type LiveSnapshot struct {
 
 func (x *LiveSnapshot) Reset() {
 	*x = LiveSnapshot{}
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[24]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3262,7 +3403,7 @@ func (x *LiveSnapshot) String() string {
 func (*LiveSnapshot) ProtoMessage() {}
 
 func (x *LiveSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_remote_proto_msgTypes[24]
+	mi := &file_remoteagent_v1_remote_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3275,7 +3416,7 @@ func (x *LiveSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiveSnapshot.ProtoReflect.Descriptor instead.
 func (*LiveSnapshot) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{24}
+	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *LiveSnapshot) GetSession() *Session {
@@ -3373,7 +3514,7 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\bverified\x18\x03 \x01(\bR\bverified\x12?\n" +
 	"\fdefault_mode\x18\x04 \x01(\x0e2\x1c.remoteagent.v1.ApprovalModeR\vdefaultMode\x12Q\n" +
 	"\x13default_mode_source\x18\x05 \x01(\x0e2!.remoteagent.v1.DefaultModeSourceR\x11defaultModeSource\x12.\n" +
-	"\x13default_mode_varies\x18\x06 \x01(\bR\x11defaultModeVaries\"\xeb\x12\n" +
+	"\x13default_mode_varies\x18\x06 \x01(\bR\x11defaultModeVaries\"\xb7\x13\n" +
 	"\aCommand\x121\n" +
 	"\x04send\x18\x01 \x01(\v2\x1b.remoteagent.v1.SendRequestH\x00R\x04send\x12@\n" +
 	"\tinterrupt\x18\x02 \x01(\v2 .remoteagent.v1.InterruptRequestH\x00R\tinterrupt\x12S\n" +
@@ -3407,9 +3548,10 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\x11get_live_snapshot\x18\x1f \x01(\v2&.remoteagent.v1.GetLiveSnapshotRequestH\x00R\x0fgetLiveSnapshot\x12^\n" +
 	"\x15get_shared_file_chunk\x18  \x01(\v2).remoteagent.v1.GetSharedFileChunkRequestH\x00R\x12getSharedFileChunk\x12W\n" +
 	"\x12get_machine_status\x18! \x01(\v2'.remoteagent.v1.GetMachineStatusRequestH\x00R\x10getMachineStatus\x12N\n" +
-	"\x0fget_usage_stats\x18\" \x01(\v2$.remoteagent.v1.GetUsageStatsRequestH\x00R\rgetUsageStats\x12)\n" +
+	"\x0fget_usage_stats\x18\" \x01(\v2$.remoteagent.v1.GetUsageStatsRequestH\x00R\rgetUsageStats\x12J\n" +
+	"\rprobe_latency\x18# \x01(\v2#.remoteagent.v1.ProbeLatencyRequestH\x00R\fprobeLatency\x12)\n" +
 	"\x10protocol_version\x18d \x01(\rR\x0fprotocolVersionB\x06\n" +
-	"\x04kind\"\xc9\x14\n" +
+	"\x04kind\"\x96\x15\n" +
 	"\rCommandResult\x12\x1d\n" +
 	"\n" +
 	"error_code\x18\x01 \x01(\tR\terrorCode\x12#\n" +
@@ -3453,8 +3595,17 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\x15get_shared_file_chunk\x18* \x01(\v2*.remoteagent.v1.GetSharedFileChunkResponseH\x00R\x12getSharedFileChunk\x12F\n" +
 	"\x0emachine_status\x18+ \x01(\v2\x1d.remoteagent.v1.MachineStatusH\x00R\rmachineStatus\x12E\n" +
 	"\vusage_stats\x18, \x01(\v2\".remoteagent.v1.UsageStatsResponseH\x00R\n" +
-	"usageStatsB\x06\n" +
-	"\x04kind\"Q\n" +
+	"usageStats\x12K\n" +
+	"\rprobe_latency\x18- \x01(\v2$.remoteagent.v1.ProbeLatencyResponseH\x00R\fprobeLatencyB\x06\n" +
+	"\x04kind\")\n" +
+	"\x13ProbeLatencyRequest\x12\x12\n" +
+	"\x04work\x18\x01 \x01(\bR\x04work\"o\n" +
+	"\x14ProbeLatencyResponse\x12\x1d\n" +
+	"\n" +
+	"process_us\x18\x01 \x01(\x03R\tprocessUs\x12\x19\n" +
+	"\bqueue_us\x18\x02 \x01(\x03R\aqueueUs\x12\x1d\n" +
+	"\n" +
+	"execute_us\x18\x03 \x01(\x03R\texecuteUs\"Q\n" +
 	"\x13OpenTerminalRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1b\n" +
@@ -3604,7 +3755,7 @@ func file_remoteagent_v1_remote_proto_rawDescGZIP() []byte {
 }
 
 var file_remoteagent_v1_remote_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_remoteagent_v1_remote_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_remoteagent_v1_remote_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_remoteagent_v1_remote_proto_goTypes = []any{
 	(QuotaState)(0),                      // 0: remoteagent.v1.QuotaState
 	(QuotaLogin)(0),                      // 1: remoteagent.v1.QuotaLogin
@@ -3617,188 +3768,192 @@ var file_remoteagent_v1_remote_proto_goTypes = []any{
 	(*AgentInfo)(nil),                    // 8: remoteagent.v1.AgentInfo
 	(*Command)(nil),                      // 9: remoteagent.v1.Command
 	(*CommandResult)(nil),                // 10: remoteagent.v1.CommandResult
-	(*OpenTerminalRequest)(nil),          // 11: remoteagent.v1.OpenTerminalRequest
-	(*OpenTerminalResponse)(nil),         // 12: remoteagent.v1.OpenTerminalResponse
-	(*TerminalFrame)(nil),                // 13: remoteagent.v1.TerminalFrame
-	(*TerminalSnapshot)(nil),             // 14: remoteagent.v1.TerminalSnapshot
-	(*TerminalHistoryRequest)(nil),       // 15: remoteagent.v1.TerminalHistoryRequest
-	(*TerminalHistoryPage)(nil),          // 16: remoteagent.v1.TerminalHistoryPage
-	(*TerminalResize)(nil),               // 17: remoteagent.v1.TerminalResize
-	(*PairingPayload)(nil),               // 18: remoteagent.v1.PairingPayload
-	(*NotifyContent)(nil),                // 19: remoteagent.v1.NotifyContent
-	(*NotifyApproval)(nil),               // 20: remoteagent.v1.NotifyApproval
-	(*ImagePayload)(nil),                 // 21: remoteagent.v1.ImagePayload
-	(*DeviceMeta)(nil),                   // 22: remoteagent.v1.DeviceMeta
-	(*ProjectPrefs)(nil),                 // 23: remoteagent.v1.ProjectPrefs
-	(*ProjectSettings)(nil),              // 24: remoteagent.v1.ProjectSettings
-	(*AgentSettings)(nil),                // 25: remoteagent.v1.AgentSettings
-	(*ProjectPref)(nil),                  // 26: remoteagent.v1.ProjectPref
-	(*GetLiveSnapshotRequest)(nil),       // 27: remoteagent.v1.GetLiveSnapshotRequest
-	(*LiveSnapshot)(nil),                 // 28: remoteagent.v1.LiveSnapshot
-	(*MachineCapabilities)(nil),          // 29: remoteagent.v1.MachineCapabilities
-	(*DiskStatus)(nil),                   // 30: remoteagent.v1.DiskStatus
-	(Agent)(0),                           // 31: remoteagent.v1.Agent
-	(ApprovalMode)(0),                    // 32: remoteagent.v1.ApprovalMode
-	(*SendRequest)(nil),                  // 33: remoteagent.v1.SendRequest
-	(*InterruptRequest)(nil),             // 34: remoteagent.v1.InterruptRequest
-	(*ResolveApprovalRequest)(nil),       // 35: remoteagent.v1.ResolveApprovalRequest
-	(*AnswerQuestionRequest)(nil),        // 36: remoteagent.v1.AnswerQuestionRequest
-	(*StopSessionRequest)(nil),           // 37: remoteagent.v1.StopSessionRequest
-	(*CancelInputRequest)(nil),           // 38: remoteagent.v1.CancelInputRequest
-	(*SetModelRequest)(nil),              // 39: remoteagent.v1.SetModelRequest
-	(*SetApprovalModeRequest)(nil),       // 40: remoteagent.v1.SetApprovalModeRequest
-	(*CompactRequest)(nil),               // 41: remoteagent.v1.CompactRequest
-	(*AnswerPlanRequest)(nil),            // 42: remoteagent.v1.AnswerPlanRequest
-	(*ResumeSessionRequest)(nil),         // 43: remoteagent.v1.ResumeSessionRequest
-	(*ResumeInputRequest)(nil),           // 44: remoteagent.v1.ResumeInputRequest
-	(*RenameSessionRequest)(nil),         // 45: remoteagent.v1.RenameSessionRequest
-	(*ForkSessionRequest)(nil),           // 46: remoteagent.v1.ForkSessionRequest
-	(*CreateSessionRequest)(nil),         // 47: remoteagent.v1.CreateSessionRequest
-	(*ListModelsRequest)(nil),            // 48: remoteagent.v1.ListModelsRequest
-	(*ListDirectoriesRequest)(nil),       // 49: remoteagent.v1.ListDirectoriesRequest
-	(*GetSettingsRequest)(nil),           // 50: remoteagent.v1.GetSettingsRequest
-	(*UpdateSettingsRequest)(nil),        // 51: remoteagent.v1.UpdateSettingsRequest
-	(*BeginImageUploadRequest)(nil),      // 52: remoteagent.v1.BeginImageUploadRequest
-	(*PutImageChunkRequest)(nil),         // 53: remoteagent.v1.PutImageChunkRequest
-	(*GetImageUploadStatusRequest)(nil),  // 54: remoteagent.v1.GetImageUploadStatusRequest
-	(*CompleteImageUploadRequest)(nil),   // 55: remoteagent.v1.CompleteImageUploadRequest
-	(*AbortImageUploadRequest)(nil),      // 56: remoteagent.v1.AbortImageUploadRequest
-	(*ScheduleRequest)(nil),              // 57: remoteagent.v1.ScheduleRequest
-	(*GetSharedFileChunkRequest)(nil),    // 58: remoteagent.v1.GetSharedFileChunkRequest
-	(*GetMachineStatusRequest)(nil),      // 59: remoteagent.v1.GetMachineStatusRequest
-	(*GetUsageStatsRequest)(nil),         // 60: remoteagent.v1.GetUsageStatsRequest
-	(*SendResponse)(nil),                 // 61: remoteagent.v1.SendResponse
-	(*InterruptResponse)(nil),            // 62: remoteagent.v1.InterruptResponse
-	(*ResolveApprovalResponse)(nil),      // 63: remoteagent.v1.ResolveApprovalResponse
-	(*AnswerQuestionResponse)(nil),       // 64: remoteagent.v1.AnswerQuestionResponse
-	(*StopSessionResponse)(nil),          // 65: remoteagent.v1.StopSessionResponse
-	(*CancelInputResponse)(nil),          // 66: remoteagent.v1.CancelInputResponse
-	(*SetModelResponse)(nil),             // 67: remoteagent.v1.SetModelResponse
-	(*SetApprovalModeResponse)(nil),      // 68: remoteagent.v1.SetApprovalModeResponse
-	(*CompactResponse)(nil),              // 69: remoteagent.v1.CompactResponse
-	(*AnswerPlanResponse)(nil),           // 70: remoteagent.v1.AnswerPlanResponse
-	(*ResumeSessionResponse)(nil),        // 71: remoteagent.v1.ResumeSessionResponse
-	(*ResumeInputResponse)(nil),          // 72: remoteagent.v1.ResumeInputResponse
-	(*RenameSessionResponse)(nil),        // 73: remoteagent.v1.RenameSessionResponse
-	(*ForkSessionResponse)(nil),          // 74: remoteagent.v1.ForkSessionResponse
-	(*CreateSessionResponse)(nil),        // 75: remoteagent.v1.CreateSessionResponse
-	(*ListModelsResponse)(nil),           // 76: remoteagent.v1.ListModelsResponse
-	(*ListDirectoriesResponse)(nil),      // 77: remoteagent.v1.ListDirectoriesResponse
-	(*GetSettingsResponse)(nil),          // 78: remoteagent.v1.GetSettingsResponse
-	(*UpdateSettingsResponse)(nil),       // 79: remoteagent.v1.UpdateSettingsResponse
-	(*BeginImageUploadResponse)(nil),     // 80: remoteagent.v1.BeginImageUploadResponse
-	(*PutImageChunkResponse)(nil),        // 81: remoteagent.v1.PutImageChunkResponse
-	(*GetImageUploadStatusResponse)(nil), // 82: remoteagent.v1.GetImageUploadStatusResponse
-	(*CompleteImageUploadResponse)(nil),  // 83: remoteagent.v1.CompleteImageUploadResponse
-	(*AbortImageUploadResponse)(nil),     // 84: remoteagent.v1.AbortImageUploadResponse
-	(*ScheduleResponse)(nil),             // 85: remoteagent.v1.ScheduleResponse
-	(*GetSharedFileChunkResponse)(nil),   // 86: remoteagent.v1.GetSharedFileChunkResponse
-	(*MachineStatus)(nil),                // 87: remoteagent.v1.MachineStatus
-	(*UsageStatsResponse)(nil),           // 88: remoteagent.v1.UsageStatsResponse
-	(*SecurityState)(nil),                // 89: remoteagent.v1.SecurityState
-	(NotifyKind)(0),                      // 90: remoteagent.v1.NotifyKind
-	(ImageFormat)(0),                     // 91: remoteagent.v1.ImageFormat
-	(*Session)(nil),                      // 92: remoteagent.v1.Session
-	(*Event)(nil),                        // 93: remoteagent.v1.Event
+	(*ProbeLatencyRequest)(nil),          // 11: remoteagent.v1.ProbeLatencyRequest
+	(*ProbeLatencyResponse)(nil),         // 12: remoteagent.v1.ProbeLatencyResponse
+	(*OpenTerminalRequest)(nil),          // 13: remoteagent.v1.OpenTerminalRequest
+	(*OpenTerminalResponse)(nil),         // 14: remoteagent.v1.OpenTerminalResponse
+	(*TerminalFrame)(nil),                // 15: remoteagent.v1.TerminalFrame
+	(*TerminalSnapshot)(nil),             // 16: remoteagent.v1.TerminalSnapshot
+	(*TerminalHistoryRequest)(nil),       // 17: remoteagent.v1.TerminalHistoryRequest
+	(*TerminalHistoryPage)(nil),          // 18: remoteagent.v1.TerminalHistoryPage
+	(*TerminalResize)(nil),               // 19: remoteagent.v1.TerminalResize
+	(*PairingPayload)(nil),               // 20: remoteagent.v1.PairingPayload
+	(*NotifyContent)(nil),                // 21: remoteagent.v1.NotifyContent
+	(*NotifyApproval)(nil),               // 22: remoteagent.v1.NotifyApproval
+	(*ImagePayload)(nil),                 // 23: remoteagent.v1.ImagePayload
+	(*DeviceMeta)(nil),                   // 24: remoteagent.v1.DeviceMeta
+	(*ProjectPrefs)(nil),                 // 25: remoteagent.v1.ProjectPrefs
+	(*ProjectSettings)(nil),              // 26: remoteagent.v1.ProjectSettings
+	(*AgentSettings)(nil),                // 27: remoteagent.v1.AgentSettings
+	(*ProjectPref)(nil),                  // 28: remoteagent.v1.ProjectPref
+	(*GetLiveSnapshotRequest)(nil),       // 29: remoteagent.v1.GetLiveSnapshotRequest
+	(*LiveSnapshot)(nil),                 // 30: remoteagent.v1.LiveSnapshot
+	(*MachineCapabilities)(nil),          // 31: remoteagent.v1.MachineCapabilities
+	(*DiskStatus)(nil),                   // 32: remoteagent.v1.DiskStatus
+	(Agent)(0),                           // 33: remoteagent.v1.Agent
+	(ApprovalMode)(0),                    // 34: remoteagent.v1.ApprovalMode
+	(*SendRequest)(nil),                  // 35: remoteagent.v1.SendRequest
+	(*InterruptRequest)(nil),             // 36: remoteagent.v1.InterruptRequest
+	(*ResolveApprovalRequest)(nil),       // 37: remoteagent.v1.ResolveApprovalRequest
+	(*AnswerQuestionRequest)(nil),        // 38: remoteagent.v1.AnswerQuestionRequest
+	(*StopSessionRequest)(nil),           // 39: remoteagent.v1.StopSessionRequest
+	(*CancelInputRequest)(nil),           // 40: remoteagent.v1.CancelInputRequest
+	(*SetModelRequest)(nil),              // 41: remoteagent.v1.SetModelRequest
+	(*SetApprovalModeRequest)(nil),       // 42: remoteagent.v1.SetApprovalModeRequest
+	(*CompactRequest)(nil),               // 43: remoteagent.v1.CompactRequest
+	(*AnswerPlanRequest)(nil),            // 44: remoteagent.v1.AnswerPlanRequest
+	(*ResumeSessionRequest)(nil),         // 45: remoteagent.v1.ResumeSessionRequest
+	(*ResumeInputRequest)(nil),           // 46: remoteagent.v1.ResumeInputRequest
+	(*RenameSessionRequest)(nil),         // 47: remoteagent.v1.RenameSessionRequest
+	(*ForkSessionRequest)(nil),           // 48: remoteagent.v1.ForkSessionRequest
+	(*CreateSessionRequest)(nil),         // 49: remoteagent.v1.CreateSessionRequest
+	(*ListModelsRequest)(nil),            // 50: remoteagent.v1.ListModelsRequest
+	(*ListDirectoriesRequest)(nil),       // 51: remoteagent.v1.ListDirectoriesRequest
+	(*GetSettingsRequest)(nil),           // 52: remoteagent.v1.GetSettingsRequest
+	(*UpdateSettingsRequest)(nil),        // 53: remoteagent.v1.UpdateSettingsRequest
+	(*BeginImageUploadRequest)(nil),      // 54: remoteagent.v1.BeginImageUploadRequest
+	(*PutImageChunkRequest)(nil),         // 55: remoteagent.v1.PutImageChunkRequest
+	(*GetImageUploadStatusRequest)(nil),  // 56: remoteagent.v1.GetImageUploadStatusRequest
+	(*CompleteImageUploadRequest)(nil),   // 57: remoteagent.v1.CompleteImageUploadRequest
+	(*AbortImageUploadRequest)(nil),      // 58: remoteagent.v1.AbortImageUploadRequest
+	(*ScheduleRequest)(nil),              // 59: remoteagent.v1.ScheduleRequest
+	(*GetSharedFileChunkRequest)(nil),    // 60: remoteagent.v1.GetSharedFileChunkRequest
+	(*GetMachineStatusRequest)(nil),      // 61: remoteagent.v1.GetMachineStatusRequest
+	(*GetUsageStatsRequest)(nil),         // 62: remoteagent.v1.GetUsageStatsRequest
+	(*SendResponse)(nil),                 // 63: remoteagent.v1.SendResponse
+	(*InterruptResponse)(nil),            // 64: remoteagent.v1.InterruptResponse
+	(*ResolveApprovalResponse)(nil),      // 65: remoteagent.v1.ResolveApprovalResponse
+	(*AnswerQuestionResponse)(nil),       // 66: remoteagent.v1.AnswerQuestionResponse
+	(*StopSessionResponse)(nil),          // 67: remoteagent.v1.StopSessionResponse
+	(*CancelInputResponse)(nil),          // 68: remoteagent.v1.CancelInputResponse
+	(*SetModelResponse)(nil),             // 69: remoteagent.v1.SetModelResponse
+	(*SetApprovalModeResponse)(nil),      // 70: remoteagent.v1.SetApprovalModeResponse
+	(*CompactResponse)(nil),              // 71: remoteagent.v1.CompactResponse
+	(*AnswerPlanResponse)(nil),           // 72: remoteagent.v1.AnswerPlanResponse
+	(*ResumeSessionResponse)(nil),        // 73: remoteagent.v1.ResumeSessionResponse
+	(*ResumeInputResponse)(nil),          // 74: remoteagent.v1.ResumeInputResponse
+	(*RenameSessionResponse)(nil),        // 75: remoteagent.v1.RenameSessionResponse
+	(*ForkSessionResponse)(nil),          // 76: remoteagent.v1.ForkSessionResponse
+	(*CreateSessionResponse)(nil),        // 77: remoteagent.v1.CreateSessionResponse
+	(*ListModelsResponse)(nil),           // 78: remoteagent.v1.ListModelsResponse
+	(*ListDirectoriesResponse)(nil),      // 79: remoteagent.v1.ListDirectoriesResponse
+	(*GetSettingsResponse)(nil),          // 80: remoteagent.v1.GetSettingsResponse
+	(*UpdateSettingsResponse)(nil),       // 81: remoteagent.v1.UpdateSettingsResponse
+	(*BeginImageUploadResponse)(nil),     // 82: remoteagent.v1.BeginImageUploadResponse
+	(*PutImageChunkResponse)(nil),        // 83: remoteagent.v1.PutImageChunkResponse
+	(*GetImageUploadStatusResponse)(nil), // 84: remoteagent.v1.GetImageUploadStatusResponse
+	(*CompleteImageUploadResponse)(nil),  // 85: remoteagent.v1.CompleteImageUploadResponse
+	(*AbortImageUploadResponse)(nil),     // 86: remoteagent.v1.AbortImageUploadResponse
+	(*ScheduleResponse)(nil),             // 87: remoteagent.v1.ScheduleResponse
+	(*GetSharedFileChunkResponse)(nil),   // 88: remoteagent.v1.GetSharedFileChunkResponse
+	(*MachineStatus)(nil),                // 89: remoteagent.v1.MachineStatus
+	(*UsageStatsResponse)(nil),           // 90: remoteagent.v1.UsageStatsResponse
+	(*SecurityState)(nil),                // 91: remoteagent.v1.SecurityState
+	(NotifyKind)(0),                      // 92: remoteagent.v1.NotifyKind
+	(ImageFormat)(0),                     // 93: remoteagent.v1.ImageFormat
+	(*Session)(nil),                      // 94: remoteagent.v1.Session
+	(*Event)(nil),                        // 95: remoteagent.v1.Event
 }
 var file_remoteagent_v1_remote_proto_depIdxs = []int32{
 	8,  // 0: remoteagent.v1.MachineMeta.agents:type_name -> remoteagent.v1.AgentInfo
-	29, // 1: remoteagent.v1.MachineMeta.capabilities:type_name -> remoteagent.v1.MachineCapabilities
+	31, // 1: remoteagent.v1.MachineMeta.capabilities:type_name -> remoteagent.v1.MachineCapabilities
 	6,  // 2: remoteagent.v1.MachineMeta.quotas:type_name -> remoteagent.v1.AgentQuota
 	5,  // 3: remoteagent.v1.MachineMeta.projects:type_name -> remoteagent.v1.ProjectSummary
-	30, // 4: remoteagent.v1.MachineMeta.disk_status:type_name -> remoteagent.v1.DiskStatus
-	31, // 5: remoteagent.v1.MachineMeta.disabled_agents:type_name -> remoteagent.v1.Agent
-	31, // 6: remoteagent.v1.AgentQuota.agent:type_name -> remoteagent.v1.Agent
+	32, // 4: remoteagent.v1.MachineMeta.disk_status:type_name -> remoteagent.v1.DiskStatus
+	33, // 5: remoteagent.v1.MachineMeta.disabled_agents:type_name -> remoteagent.v1.Agent
+	33, // 6: remoteagent.v1.AgentQuota.agent:type_name -> remoteagent.v1.Agent
 	0,  // 7: remoteagent.v1.AgentQuota.state:type_name -> remoteagent.v1.QuotaState
 	7,  // 8: remoteagent.v1.AgentQuota.windows:type_name -> remoteagent.v1.QuotaWindow
 	1,  // 9: remoteagent.v1.AgentQuota.login:type_name -> remoteagent.v1.QuotaLogin
-	31, // 10: remoteagent.v1.AgentInfo.agent:type_name -> remoteagent.v1.Agent
-	32, // 11: remoteagent.v1.AgentInfo.default_mode:type_name -> remoteagent.v1.ApprovalMode
+	33, // 10: remoteagent.v1.AgentInfo.agent:type_name -> remoteagent.v1.Agent
+	34, // 11: remoteagent.v1.AgentInfo.default_mode:type_name -> remoteagent.v1.ApprovalMode
 	2,  // 12: remoteagent.v1.AgentInfo.default_mode_source:type_name -> remoteagent.v1.DefaultModeSource
-	33, // 13: remoteagent.v1.Command.send:type_name -> remoteagent.v1.SendRequest
-	34, // 14: remoteagent.v1.Command.interrupt:type_name -> remoteagent.v1.InterruptRequest
-	35, // 15: remoteagent.v1.Command.resolve_approval:type_name -> remoteagent.v1.ResolveApprovalRequest
-	36, // 16: remoteagent.v1.Command.answer_question:type_name -> remoteagent.v1.AnswerQuestionRequest
-	37, // 17: remoteagent.v1.Command.stop_session:type_name -> remoteagent.v1.StopSessionRequest
-	38, // 18: remoteagent.v1.Command.cancel_input:type_name -> remoteagent.v1.CancelInputRequest
-	39, // 19: remoteagent.v1.Command.set_model:type_name -> remoteagent.v1.SetModelRequest
-	40, // 20: remoteagent.v1.Command.set_approval_mode:type_name -> remoteagent.v1.SetApprovalModeRequest
-	41, // 21: remoteagent.v1.Command.compact:type_name -> remoteagent.v1.CompactRequest
-	42, // 22: remoteagent.v1.Command.answer_plan:type_name -> remoteagent.v1.AnswerPlanRequest
-	11, // 23: remoteagent.v1.Command.open_terminal:type_name -> remoteagent.v1.OpenTerminalRequest
-	43, // 24: remoteagent.v1.Command.resume_session:type_name -> remoteagent.v1.ResumeSessionRequest
-	44, // 25: remoteagent.v1.Command.resume_input:type_name -> remoteagent.v1.ResumeInputRequest
-	45, // 26: remoteagent.v1.Command.rename_session:type_name -> remoteagent.v1.RenameSessionRequest
-	46, // 27: remoteagent.v1.Command.fork_session:type_name -> remoteagent.v1.ForkSessionRequest
-	47, // 28: remoteagent.v1.Command.create_session:type_name -> remoteagent.v1.CreateSessionRequest
-	48, // 29: remoteagent.v1.Command.list_models:type_name -> remoteagent.v1.ListModelsRequest
-	49, // 30: remoteagent.v1.Command.list_directories:type_name -> remoteagent.v1.ListDirectoriesRequest
-	50, // 31: remoteagent.v1.Command.get_settings:type_name -> remoteagent.v1.GetSettingsRequest
-	51, // 32: remoteagent.v1.Command.update_settings:type_name -> remoteagent.v1.UpdateSettingsRequest
-	52, // 33: remoteagent.v1.Command.begin_image_upload:type_name -> remoteagent.v1.BeginImageUploadRequest
-	53, // 34: remoteagent.v1.Command.put_image_chunk:type_name -> remoteagent.v1.PutImageChunkRequest
-	54, // 35: remoteagent.v1.Command.get_image_upload_status:type_name -> remoteagent.v1.GetImageUploadStatusRequest
-	55, // 36: remoteagent.v1.Command.complete_image_upload:type_name -> remoteagent.v1.CompleteImageUploadRequest
-	56, // 37: remoteagent.v1.Command.abort_image_upload:type_name -> remoteagent.v1.AbortImageUploadRequest
-	57, // 38: remoteagent.v1.Command.schedule:type_name -> remoteagent.v1.ScheduleRequest
-	27, // 39: remoteagent.v1.Command.get_live_snapshot:type_name -> remoteagent.v1.GetLiveSnapshotRequest
-	58, // 40: remoteagent.v1.Command.get_shared_file_chunk:type_name -> remoteagent.v1.GetSharedFileChunkRequest
-	59, // 41: remoteagent.v1.Command.get_machine_status:type_name -> remoteagent.v1.GetMachineStatusRequest
-	60, // 42: remoteagent.v1.Command.get_usage_stats:type_name -> remoteagent.v1.GetUsageStatsRequest
-	61, // 43: remoteagent.v1.CommandResult.send:type_name -> remoteagent.v1.SendResponse
-	62, // 44: remoteagent.v1.CommandResult.interrupt:type_name -> remoteagent.v1.InterruptResponse
-	63, // 45: remoteagent.v1.CommandResult.resolve_approval:type_name -> remoteagent.v1.ResolveApprovalResponse
-	64, // 46: remoteagent.v1.CommandResult.answer_question:type_name -> remoteagent.v1.AnswerQuestionResponse
-	65, // 47: remoteagent.v1.CommandResult.stop_session:type_name -> remoteagent.v1.StopSessionResponse
-	66, // 48: remoteagent.v1.CommandResult.cancel_input:type_name -> remoteagent.v1.CancelInputResponse
-	67, // 49: remoteagent.v1.CommandResult.set_model:type_name -> remoteagent.v1.SetModelResponse
-	68, // 50: remoteagent.v1.CommandResult.set_approval_mode:type_name -> remoteagent.v1.SetApprovalModeResponse
-	69, // 51: remoteagent.v1.CommandResult.compact:type_name -> remoteagent.v1.CompactResponse
-	70, // 52: remoteagent.v1.CommandResult.answer_plan:type_name -> remoteagent.v1.AnswerPlanResponse
-	12, // 53: remoteagent.v1.CommandResult.open_terminal:type_name -> remoteagent.v1.OpenTerminalResponse
-	71, // 54: remoteagent.v1.CommandResult.resume_session:type_name -> remoteagent.v1.ResumeSessionResponse
-	72, // 55: remoteagent.v1.CommandResult.resume_input:type_name -> remoteagent.v1.ResumeInputResponse
-	73, // 56: remoteagent.v1.CommandResult.rename_session:type_name -> remoteagent.v1.RenameSessionResponse
-	74, // 57: remoteagent.v1.CommandResult.fork_session:type_name -> remoteagent.v1.ForkSessionResponse
-	75, // 58: remoteagent.v1.CommandResult.create_session:type_name -> remoteagent.v1.CreateSessionResponse
-	76, // 59: remoteagent.v1.CommandResult.list_models:type_name -> remoteagent.v1.ListModelsResponse
-	77, // 60: remoteagent.v1.CommandResult.list_directories:type_name -> remoteagent.v1.ListDirectoriesResponse
-	78, // 61: remoteagent.v1.CommandResult.get_settings:type_name -> remoteagent.v1.GetSettingsResponse
-	79, // 62: remoteagent.v1.CommandResult.update_settings:type_name -> remoteagent.v1.UpdateSettingsResponse
-	80, // 63: remoteagent.v1.CommandResult.begin_image_upload:type_name -> remoteagent.v1.BeginImageUploadResponse
-	81, // 64: remoteagent.v1.CommandResult.put_image_chunk:type_name -> remoteagent.v1.PutImageChunkResponse
-	82, // 65: remoteagent.v1.CommandResult.get_image_upload_status:type_name -> remoteagent.v1.GetImageUploadStatusResponse
-	83, // 66: remoteagent.v1.CommandResult.complete_image_upload:type_name -> remoteagent.v1.CompleteImageUploadResponse
-	84, // 67: remoteagent.v1.CommandResult.abort_image_upload:type_name -> remoteagent.v1.AbortImageUploadResponse
-	85, // 68: remoteagent.v1.CommandResult.schedule:type_name -> remoteagent.v1.ScheduleResponse
-	28, // 69: remoteagent.v1.CommandResult.live_snapshot:type_name -> remoteagent.v1.LiveSnapshot
-	86, // 70: remoteagent.v1.CommandResult.get_shared_file_chunk:type_name -> remoteagent.v1.GetSharedFileChunkResponse
-	87, // 71: remoteagent.v1.CommandResult.machine_status:type_name -> remoteagent.v1.MachineStatus
-	88, // 72: remoteagent.v1.CommandResult.usage_stats:type_name -> remoteagent.v1.UsageStatsResponse
-	14, // 73: remoteagent.v1.TerminalFrame.snapshot:type_name -> remoteagent.v1.TerminalSnapshot
-	16, // 74: remoteagent.v1.TerminalFrame.history_page:type_name -> remoteagent.v1.TerminalHistoryPage
-	17, // 75: remoteagent.v1.TerminalFrame.resize:type_name -> remoteagent.v1.TerminalResize
-	15, // 76: remoteagent.v1.TerminalFrame.history_request:type_name -> remoteagent.v1.TerminalHistoryRequest
-	3,  // 77: remoteagent.v1.TerminalHistoryPage.error_code:type_name -> remoteagent.v1.TerminalHistoryErrorCode
-	89, // 78: remoteagent.v1.PairingPayload.security_states:type_name -> remoteagent.v1.SecurityState
-	90, // 79: remoteagent.v1.NotifyContent.kind:type_name -> remoteagent.v1.NotifyKind
-	20, // 80: remoteagent.v1.NotifyContent.approval:type_name -> remoteagent.v1.NotifyApproval
-	30, // 81: remoteagent.v1.NotifyContent.disk_status:type_name -> remoteagent.v1.DiskStatus
-	91, // 82: remoteagent.v1.ImagePayload.format:type_name -> remoteagent.v1.ImageFormat
-	26, // 83: remoteagent.v1.ProjectPrefs.pinned:type_name -> remoteagent.v1.ProjectPref
-	26, // 84: remoteagent.v1.ProjectPrefs.hidden:type_name -> remoteagent.v1.ProjectPref
-	24, // 85: remoteagent.v1.ProjectPrefs.settings:type_name -> remoteagent.v1.ProjectSettings
-	31, // 86: remoteagent.v1.ProjectSettings.agent:type_name -> remoteagent.v1.Agent
-	25, // 87: remoteagent.v1.ProjectSettings.agents:type_name -> remoteagent.v1.AgentSettings
-	31, // 88: remoteagent.v1.AgentSettings.agent:type_name -> remoteagent.v1.Agent
-	32, // 89: remoteagent.v1.AgentSettings.mode:type_name -> remoteagent.v1.ApprovalMode
-	92, // 90: remoteagent.v1.LiveSnapshot.session:type_name -> remoteagent.v1.Session
-	93, // 91: remoteagent.v1.LiveSnapshot.actions:type_name -> remoteagent.v1.Event
-	92, // [92:92] is the sub-list for method output_type
-	92, // [92:92] is the sub-list for method input_type
-	92, // [92:92] is the sub-list for extension type_name
-	92, // [92:92] is the sub-list for extension extendee
-	0,  // [0:92] is the sub-list for field type_name
+	35, // 13: remoteagent.v1.Command.send:type_name -> remoteagent.v1.SendRequest
+	36, // 14: remoteagent.v1.Command.interrupt:type_name -> remoteagent.v1.InterruptRequest
+	37, // 15: remoteagent.v1.Command.resolve_approval:type_name -> remoteagent.v1.ResolveApprovalRequest
+	38, // 16: remoteagent.v1.Command.answer_question:type_name -> remoteagent.v1.AnswerQuestionRequest
+	39, // 17: remoteagent.v1.Command.stop_session:type_name -> remoteagent.v1.StopSessionRequest
+	40, // 18: remoteagent.v1.Command.cancel_input:type_name -> remoteagent.v1.CancelInputRequest
+	41, // 19: remoteagent.v1.Command.set_model:type_name -> remoteagent.v1.SetModelRequest
+	42, // 20: remoteagent.v1.Command.set_approval_mode:type_name -> remoteagent.v1.SetApprovalModeRequest
+	43, // 21: remoteagent.v1.Command.compact:type_name -> remoteagent.v1.CompactRequest
+	44, // 22: remoteagent.v1.Command.answer_plan:type_name -> remoteagent.v1.AnswerPlanRequest
+	13, // 23: remoteagent.v1.Command.open_terminal:type_name -> remoteagent.v1.OpenTerminalRequest
+	45, // 24: remoteagent.v1.Command.resume_session:type_name -> remoteagent.v1.ResumeSessionRequest
+	46, // 25: remoteagent.v1.Command.resume_input:type_name -> remoteagent.v1.ResumeInputRequest
+	47, // 26: remoteagent.v1.Command.rename_session:type_name -> remoteagent.v1.RenameSessionRequest
+	48, // 27: remoteagent.v1.Command.fork_session:type_name -> remoteagent.v1.ForkSessionRequest
+	49, // 28: remoteagent.v1.Command.create_session:type_name -> remoteagent.v1.CreateSessionRequest
+	50, // 29: remoteagent.v1.Command.list_models:type_name -> remoteagent.v1.ListModelsRequest
+	51, // 30: remoteagent.v1.Command.list_directories:type_name -> remoteagent.v1.ListDirectoriesRequest
+	52, // 31: remoteagent.v1.Command.get_settings:type_name -> remoteagent.v1.GetSettingsRequest
+	53, // 32: remoteagent.v1.Command.update_settings:type_name -> remoteagent.v1.UpdateSettingsRequest
+	54, // 33: remoteagent.v1.Command.begin_image_upload:type_name -> remoteagent.v1.BeginImageUploadRequest
+	55, // 34: remoteagent.v1.Command.put_image_chunk:type_name -> remoteagent.v1.PutImageChunkRequest
+	56, // 35: remoteagent.v1.Command.get_image_upload_status:type_name -> remoteagent.v1.GetImageUploadStatusRequest
+	57, // 36: remoteagent.v1.Command.complete_image_upload:type_name -> remoteagent.v1.CompleteImageUploadRequest
+	58, // 37: remoteagent.v1.Command.abort_image_upload:type_name -> remoteagent.v1.AbortImageUploadRequest
+	59, // 38: remoteagent.v1.Command.schedule:type_name -> remoteagent.v1.ScheduleRequest
+	29, // 39: remoteagent.v1.Command.get_live_snapshot:type_name -> remoteagent.v1.GetLiveSnapshotRequest
+	60, // 40: remoteagent.v1.Command.get_shared_file_chunk:type_name -> remoteagent.v1.GetSharedFileChunkRequest
+	61, // 41: remoteagent.v1.Command.get_machine_status:type_name -> remoteagent.v1.GetMachineStatusRequest
+	62, // 42: remoteagent.v1.Command.get_usage_stats:type_name -> remoteagent.v1.GetUsageStatsRequest
+	11, // 43: remoteagent.v1.Command.probe_latency:type_name -> remoteagent.v1.ProbeLatencyRequest
+	63, // 44: remoteagent.v1.CommandResult.send:type_name -> remoteagent.v1.SendResponse
+	64, // 45: remoteagent.v1.CommandResult.interrupt:type_name -> remoteagent.v1.InterruptResponse
+	65, // 46: remoteagent.v1.CommandResult.resolve_approval:type_name -> remoteagent.v1.ResolveApprovalResponse
+	66, // 47: remoteagent.v1.CommandResult.answer_question:type_name -> remoteagent.v1.AnswerQuestionResponse
+	67, // 48: remoteagent.v1.CommandResult.stop_session:type_name -> remoteagent.v1.StopSessionResponse
+	68, // 49: remoteagent.v1.CommandResult.cancel_input:type_name -> remoteagent.v1.CancelInputResponse
+	69, // 50: remoteagent.v1.CommandResult.set_model:type_name -> remoteagent.v1.SetModelResponse
+	70, // 51: remoteagent.v1.CommandResult.set_approval_mode:type_name -> remoteagent.v1.SetApprovalModeResponse
+	71, // 52: remoteagent.v1.CommandResult.compact:type_name -> remoteagent.v1.CompactResponse
+	72, // 53: remoteagent.v1.CommandResult.answer_plan:type_name -> remoteagent.v1.AnswerPlanResponse
+	14, // 54: remoteagent.v1.CommandResult.open_terminal:type_name -> remoteagent.v1.OpenTerminalResponse
+	73, // 55: remoteagent.v1.CommandResult.resume_session:type_name -> remoteagent.v1.ResumeSessionResponse
+	74, // 56: remoteagent.v1.CommandResult.resume_input:type_name -> remoteagent.v1.ResumeInputResponse
+	75, // 57: remoteagent.v1.CommandResult.rename_session:type_name -> remoteagent.v1.RenameSessionResponse
+	76, // 58: remoteagent.v1.CommandResult.fork_session:type_name -> remoteagent.v1.ForkSessionResponse
+	77, // 59: remoteagent.v1.CommandResult.create_session:type_name -> remoteagent.v1.CreateSessionResponse
+	78, // 60: remoteagent.v1.CommandResult.list_models:type_name -> remoteagent.v1.ListModelsResponse
+	79, // 61: remoteagent.v1.CommandResult.list_directories:type_name -> remoteagent.v1.ListDirectoriesResponse
+	80, // 62: remoteagent.v1.CommandResult.get_settings:type_name -> remoteagent.v1.GetSettingsResponse
+	81, // 63: remoteagent.v1.CommandResult.update_settings:type_name -> remoteagent.v1.UpdateSettingsResponse
+	82, // 64: remoteagent.v1.CommandResult.begin_image_upload:type_name -> remoteagent.v1.BeginImageUploadResponse
+	83, // 65: remoteagent.v1.CommandResult.put_image_chunk:type_name -> remoteagent.v1.PutImageChunkResponse
+	84, // 66: remoteagent.v1.CommandResult.get_image_upload_status:type_name -> remoteagent.v1.GetImageUploadStatusResponse
+	85, // 67: remoteagent.v1.CommandResult.complete_image_upload:type_name -> remoteagent.v1.CompleteImageUploadResponse
+	86, // 68: remoteagent.v1.CommandResult.abort_image_upload:type_name -> remoteagent.v1.AbortImageUploadResponse
+	87, // 69: remoteagent.v1.CommandResult.schedule:type_name -> remoteagent.v1.ScheduleResponse
+	30, // 70: remoteagent.v1.CommandResult.live_snapshot:type_name -> remoteagent.v1.LiveSnapshot
+	88, // 71: remoteagent.v1.CommandResult.get_shared_file_chunk:type_name -> remoteagent.v1.GetSharedFileChunkResponse
+	89, // 72: remoteagent.v1.CommandResult.machine_status:type_name -> remoteagent.v1.MachineStatus
+	90, // 73: remoteagent.v1.CommandResult.usage_stats:type_name -> remoteagent.v1.UsageStatsResponse
+	12, // 74: remoteagent.v1.CommandResult.probe_latency:type_name -> remoteagent.v1.ProbeLatencyResponse
+	16, // 75: remoteagent.v1.TerminalFrame.snapshot:type_name -> remoteagent.v1.TerminalSnapshot
+	18, // 76: remoteagent.v1.TerminalFrame.history_page:type_name -> remoteagent.v1.TerminalHistoryPage
+	19, // 77: remoteagent.v1.TerminalFrame.resize:type_name -> remoteagent.v1.TerminalResize
+	17, // 78: remoteagent.v1.TerminalFrame.history_request:type_name -> remoteagent.v1.TerminalHistoryRequest
+	3,  // 79: remoteagent.v1.TerminalHistoryPage.error_code:type_name -> remoteagent.v1.TerminalHistoryErrorCode
+	91, // 80: remoteagent.v1.PairingPayload.security_states:type_name -> remoteagent.v1.SecurityState
+	92, // 81: remoteagent.v1.NotifyContent.kind:type_name -> remoteagent.v1.NotifyKind
+	22, // 82: remoteagent.v1.NotifyContent.approval:type_name -> remoteagent.v1.NotifyApproval
+	32, // 83: remoteagent.v1.NotifyContent.disk_status:type_name -> remoteagent.v1.DiskStatus
+	93, // 84: remoteagent.v1.ImagePayload.format:type_name -> remoteagent.v1.ImageFormat
+	28, // 85: remoteagent.v1.ProjectPrefs.pinned:type_name -> remoteagent.v1.ProjectPref
+	28, // 86: remoteagent.v1.ProjectPrefs.hidden:type_name -> remoteagent.v1.ProjectPref
+	26, // 87: remoteagent.v1.ProjectPrefs.settings:type_name -> remoteagent.v1.ProjectSettings
+	33, // 88: remoteagent.v1.ProjectSettings.agent:type_name -> remoteagent.v1.Agent
+	27, // 89: remoteagent.v1.ProjectSettings.agents:type_name -> remoteagent.v1.AgentSettings
+	33, // 90: remoteagent.v1.AgentSettings.agent:type_name -> remoteagent.v1.Agent
+	34, // 91: remoteagent.v1.AgentSettings.mode:type_name -> remoteagent.v1.ApprovalMode
+	94, // 92: remoteagent.v1.LiveSnapshot.session:type_name -> remoteagent.v1.Session
+	95, // 93: remoteagent.v1.LiveSnapshot.actions:type_name -> remoteagent.v1.Event
+	94, // [94:94] is the sub-list for method output_type
+	94, // [94:94] is the sub-list for method input_type
+	94, // [94:94] is the sub-list for extension type_name
+	94, // [94:94] is the sub-list for extension extendee
+	0,  // [0:94] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_v1_remote_proto_init() }
@@ -3842,6 +3997,7 @@ func file_remoteagent_v1_remote_proto_init() {
 		(*Command_GetSharedFileChunk)(nil),
 		(*Command_GetMachineStatus)(nil),
 		(*Command_GetUsageStats)(nil),
+		(*Command_ProbeLatency)(nil),
 	}
 	file_remoteagent_v1_remote_proto_msgTypes[6].OneofWrappers = []any{
 		(*CommandResult_Send)(nil),
@@ -3874,8 +4030,9 @@ func file_remoteagent_v1_remote_proto_init() {
 		(*CommandResult_GetSharedFileChunk)(nil),
 		(*CommandResult_MachineStatus)(nil),
 		(*CommandResult_UsageStats)(nil),
+		(*CommandResult_ProbeLatency)(nil),
 	}
-	file_remoteagent_v1_remote_proto_msgTypes[9].OneofWrappers = []any{
+	file_remoteagent_v1_remote_proto_msgTypes[11].OneofWrappers = []any{
 		(*TerminalFrame_Snapshot)(nil),
 		(*TerminalFrame_Output)(nil),
 		(*TerminalFrame_HistoryPage)(nil),
@@ -3890,7 +4047,7 @@ func file_remoteagent_v1_remote_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_v1_remote_proto_rawDesc), len(file_remoteagent_v1_remote_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   25,
+			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

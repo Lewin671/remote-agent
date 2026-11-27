@@ -61,6 +61,7 @@ public  final class CommandResult extends
     GET_SHARED_FILE_CHUNK(42),
     MACHINE_STATUS(43),
     USAGE_STATS(44),
+    PROBE_LATENCY(45),
     KIND_NOT_SET(0);
     private final int value;
     private KindCase(int value) {
@@ -106,6 +107,7 @@ public  final class CommandResult extends
         case 42: return GET_SHARED_FILE_CHUNK;
         case 43: return MACHINE_STATUS;
         case 44: return USAGE_STATS;
+        case 45: return PROBE_LATENCY;
         case 0: return KIND_NOT_SET;
         default: return null;
       }
@@ -2072,6 +2074,58 @@ public  final class CommandResult extends
     }
   }
 
+  public static final int PROBE_LATENCY_FIELD_NUMBER = 45;
+  /**
+   * <code>.remoteagent.v1.ProbeLatencyResponse probe_latency = 45 [json_name = "probeLatency"];</code>
+   */
+  @java.lang.Override
+  public boolean hasProbeLatency() {
+    return kindCase_ == 45;
+  }
+  /**
+   * <code>.remoteagent.v1.ProbeLatencyResponse probe_latency = 45 [json_name = "probeLatency"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.ProbeLatencyResponse getProbeLatency() {
+    if (kindCase_ == 45) {
+       return (io.github.lewin671.remoteagent.proto.ProbeLatencyResponse) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.ProbeLatencyResponse.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.ProbeLatencyResponse probe_latency = 45 [json_name = "probeLatency"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setProbeLatency(io.github.lewin671.remoteagent.proto.ProbeLatencyResponse value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 45;
+  }
+  /**
+   * <code>.remoteagent.v1.ProbeLatencyResponse probe_latency = 45 [json_name = "probeLatency"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeProbeLatency(io.github.lewin671.remoteagent.proto.ProbeLatencyResponse value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 45 &&
+        kind_ != io.github.lewin671.remoteagent.proto.ProbeLatencyResponse.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.ProbeLatencyResponse.newBuilder((io.github.lewin671.remoteagent.proto.ProbeLatencyResponse) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 45;
+  }
+  /**
+   * <code>.remoteagent.v1.ProbeLatencyResponse probe_latency = 45 [json_name = "probeLatency"];</code>
+   */
+  private void clearProbeLatency() {
+    if (kindCase_ == 45) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
   public static io.github.lewin671.remoteagent.proto.CommandResult parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -4020,6 +4074,54 @@ public  final class CommandResult extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.ProbeLatencyResponse probe_latency = 45 [json_name = "probeLatency"];</code>
+     */
+    @java.lang.Override
+    public boolean hasProbeLatency() {
+      return instance.hasProbeLatency();
+    }
+    /**
+     * <code>.remoteagent.v1.ProbeLatencyResponse probe_latency = 45 [json_name = "probeLatency"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.ProbeLatencyResponse getProbeLatency() {
+      return instance.getProbeLatency();
+    }
+    /**
+     * <code>.remoteagent.v1.ProbeLatencyResponse probe_latency = 45 [json_name = "probeLatency"];</code>
+     */
+    public Builder setProbeLatency(io.github.lewin671.remoteagent.proto.ProbeLatencyResponse value) {
+      copyOnWrite();
+      instance.setProbeLatency(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ProbeLatencyResponse probe_latency = 45 [json_name = "probeLatency"];</code>
+     */
+    public Builder setProbeLatency(
+        io.github.lewin671.remoteagent.proto.ProbeLatencyResponse.Builder builderForValue) {
+      copyOnWrite();
+      instance.setProbeLatency(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ProbeLatencyResponse probe_latency = 45 [json_name = "probeLatency"];</code>
+     */
+    public Builder mergeProbeLatency(io.github.lewin671.remoteagent.proto.ProbeLatencyResponse value) {
+      copyOnWrite();
+      instance.mergeProbeLatency(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ProbeLatencyResponse probe_latency = 45 [json_name = "probeLatency"];</code>
+     */
+    public Builder clearProbeLatency() {
+      copyOnWrite();
+      instance.clearProbeLatency();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.CommandResult)
   }
   @java.lang.Override
@@ -4076,14 +4178,15 @@ public  final class CommandResult extends
             io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse.class,
             io.github.lewin671.remoteagent.proto.MachineStatus.class,
             io.github.lewin671.remoteagent.proto.UsageStatsResponse.class,
+            io.github.lewin671.remoteagent.proto.ProbeLatencyResponse.class,
           };
           java.lang.String info =
-              "\u0000&\u0001\u0000\u0001,&\u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
+              "\u0000\'\u0001\u0000\u0001-\'\u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
               "\u0004\u0208\u0005\u0208\u0006\n\u0007\n\b\u0007\n<\u0000\u000b<\u0000\f<\u0000\r" +
               "<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000" +
               "\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000\u0018<\u0000\u001e<\u0000\u001f" +
               "<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$<\u0000%<\u0000&<\u0000\'<\u0000(<\u0000" +
-              ")<\u0000*<\u0000+<\u0000,<\u0000";
+              ")<\u0000*<\u0000+<\u0000,<\u0000-<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

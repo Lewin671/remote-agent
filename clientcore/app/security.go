@@ -1859,6 +1859,7 @@ func (c *Core) handleExternalLogout(ctx *sync.StepContext) []*corev1.Effect {
 // discards the old Model completely while preserving monotonic op_id counters, and
 // re-initializes Core in place into ONBOARDING with non-account client config preserved.
 func (c *Core) executeInPlaceExitReset(ctx *sync.StepContext, intent corev1.ExitIntentKind, preserveServer string) []*corev1.Effect {
+	c.stopConnCheck(ctx, true)
 	c.m.sync.StopAllForLogout(ctx)
 	stopEffects := append([]*corev1.Effect(nil), ctx.Raw...)
 	ctx.Raw = nil

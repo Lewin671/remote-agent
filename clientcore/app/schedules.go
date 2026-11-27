@@ -420,9 +420,18 @@ func (c *Core) submitSchedTaskMutation(ctx *sync.StepContext, slotKey, mutKey, m
 func (c *Core) onSyncEventConsumed(ev *corev1.Event, effects *[]*corev1.Effect) {
 	c.onSharedFilesSyncEvent(ev, effects)
 	c.onAttachmentsSyncEvent(ev, effects)
+	if ev.GetDirectPcProbeReceived() != nil {
+		c.onConnCheckDirectProbeReceived(effects)
+	}
 	if lc := ev.GetSyncLifecycle(); lc != nil {
 		if lc.Kind == corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_STOP {
 			c.m.activeNewSessionPagingKey = ""
+			if c.m.connCheck != nil && c.m.connCheck.active {
+				prev, stepCtx := c.m.sync.BeginStep()
+				c.stopConnCheck(stepCtx, true)
+				res := c.m.sync.EndStep(prev, stepCtx)
+				*effects = append(*effects, res.Effects...)
+			}
 			if c.m.pendingNotifTap != nil {
 				prev, stepCtx := c.m.sync.BeginStep()
 				c.cancelPendingNotifTap(stepCtx)

@@ -150,9 +150,28 @@
     <string name="connection_connecting_conn_check" formatted="false">"连接中"</string>
     <string name="connection_connecting_conn_check_label" formatted="false">"连接"</string>
     <string name="connection_last_failure">"上一次失败：%1$s"</string>
-    <string name="connection_latency_footer_direct" formatted="false">"延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经直连往返电脑。"</string>
-    <string name="connection_latency_footer_mixed" formatted="false">"延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行按当前路线测量，走直连时直接往返电脑，走中继时经服务器再回来。"</string>
-    <string name="connection_latency_is_one_round_trip_the_server_row_measures" formatted="false">"延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。"</string>
+    <string name="connection_latency_a11y">"%2$s，%1$s"</string>
+    <string name="connection_latency_a11y_segment">"%1$s %2$s"</string>
+    <string name="connection_latency_a11y_segment_slow">"%1$s %2$s，较慢"</string>
+    <string name="connection_latency_a11y_total">"总耗时 %1$s 毫秒"</string>
+    <string name="connection_latency_a11y_total_slow">"总耗时 %1$s 毫秒，较慢"</string>
+    <string name="connection_latency_computer" formatted="false">"电脑处理"</string>
+    <string name="connection_latency_computer_no_reply" formatted="false">"电脑没有及时回应"</string>
+    <string name="connection_latency_is_one_round_trip_the_server_row_measures" formatted="false">"延时是一次往返的总耗时。电脑一行下面分成网络和电脑处理两段，慢的那段会标出来。"</string>
+    <string name="connection_latency_mostly_queued">"主要在排队（%1$s ms），电脑正忙于别的任务"</string>
+    <string name="connection_latency_mostly_running">"主要在执行（%1$s ms）"</string>
+    <string name="connection_latency_ms">"%1$s ms"</string>
+    <string name="connection_latency_ms_slow">"%1$s ms · 较慢"</string>
+    <string name="connection_latency_network" formatted="false">"网络往返"</string>
+    <string name="connection_latency_no_reply" formatted="false">"没有回应"</string>
+    <string name="connection_latency_outdated" formatted="false">"版本较旧"</string>
+    <string name="connection_latency_outdated_all" formatted="false">"更新电脑上的 remote-agent 后，可显示网络往返和电脑处理的耗时"</string>
+    <string name="connection_latency_outdated_computer" formatted="false">"更新电脑上的 remote-agent 后，可显示电脑处理的耗时"</string>
+    <string name="connection_latency_over_seconds">"超过 %1$d 秒"</string>
+    <string name="connection_latency_pending" formatted="false">"—"</string>
+    <string name="connection_latency_rerouted" formatted="false">"直连没有及时回应，这一次改走了中继"</string>
+    <string name="connection_latency_slow" formatted="false">"较慢"</string>
+    <string name="connection_latency_wait_direct" formatted="false">"等直连回应"</string>
     <string name="connection_live_push" formatted="false">"实时推送"</string>
     <string name="connection_live_push_is_not_connected" formatted="false">"实时推送未连接。"</string>
     <string name="connection_live_push_is_not_connected_session_changes_may_be">"实时推送未连接，会话变化可能延迟。最近一次失败：%1$s"</string>

@@ -25,6 +25,8 @@ const (
 	cmdKindToggleMachineAgent
 	cmdKindGetUsageStats
 	cmdKindPingMachine
+	cmdKindConnCheckEcho
+	cmdKindConnCheckWork
 )
 
 type cmdMeta struct {
@@ -41,6 +43,7 @@ type cmdMeta struct {
 	toggleEnabled bool
 	pickerKey     string
 	opID          uint64
+	roundID       uint64
 }
 
 type scheduleDirty struct {
@@ -65,6 +68,7 @@ type Model struct {
 	pingReqByOp           map[uint64]string
 	settings              *screens.SettingsExtra
 	settingsDirty         settingsDirtyFlags
+	connCheck             *connCheckController
 	sessions              *sessionStore
 	sharedFiles           *sfManager
 	attachments           *attManager

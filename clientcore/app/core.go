@@ -484,6 +484,9 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				},
 			})
 
+		case cmdKindConnCheckEcho, cmdKindConnCheckWork:
+			effects = append(effects, c.onConnCheckCommandSettled(sc, meta)...)
+
 		case cmdKindListDirs:
 			if meta.pickerKey == "" {
 				continue

@@ -767,6 +767,28 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.CancelPingMachineAction getCancelPingMachine();
 
   /**
+   * <code>.remoteagent.core.v1.ConnCheckStartEvent conn_check_start = 396 [json_name = "connCheckStart"];</code>
+   * @return Whether the connCheckStart field is set.
+   */
+  boolean hasConnCheckStart();
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckStartEvent conn_check_start = 396 [json_name = "connCheckStart"];</code>
+   * @return The connCheckStart.
+   */
+  io.github.lewin671.remoteagent.core.proto.ConnCheckStartEvent getConnCheckStart();
+
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckStopEvent conn_check_stop = 397 [json_name = "connCheckStop"];</code>
+   * @return Whether the connCheckStop field is set.
+   */
+  boolean hasConnCheckStop();
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckStopEvent conn_check_stop = 397 [json_name = "connCheckStop"];</code>
+   * @return The connCheckStop.
+   */
+  io.github.lewin671.remoteagent.core.proto.ConnCheckStopEvent getConnCheckStop();
+
+  /**
    * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>
    * @return Whether the updateClientName field is set.
    */

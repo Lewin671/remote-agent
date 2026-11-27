@@ -215,18 +215,21 @@ type SecurityState struct {
 
 // SettledCommand notifies upper layers (e.g. app) when a dispatched command finishes.
 type SettledCommand struct {
-	_           [0]func()
-	RequestID   string
-	SlotKey     string
-	MachineID   string
-	SessionID   string
-	Category    outcome.Category
-	Result      *v1.CommandResult
-	ErrorCode   string
-	ErrorReason world.Reason
-	FromDaemon  bool
-	Expired     bool
-	Frozen      bool
+	_              [0]func()
+	RequestID      string
+	SlotKey        string
+	MachineID      string
+	SessionID      string
+	Category       outcome.Category
+	Result         *v1.CommandResult
+	ErrorCode      string
+	ErrorReason    world.Reason
+	FromDaemon     bool
+	Expired        bool
+	Frozen         bool
+	RouteWasDirect bool
+	WireElapsedMs  float64
+	AttemptCount   int
 
 	SealedResult *v1.Envelope
 }

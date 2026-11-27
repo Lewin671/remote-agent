@@ -196,7 +196,7 @@ func ReadOnlyCommand(h devicesec.Header, plain []byte) bool {
 // command kinds are mutations, so future additions cannot bypass at-most-once.
 func IsReadOnlyCommand(cmd *pb.Command) bool {
 	switch k := cmd.Kind.(type) {
-	case *pb.Command_GetMachineStatus, *pb.Command_GetUsageStats, *pb.Command_GetSettings, *pb.Command_ListModels, *pb.Command_ListDirectories, *pb.Command_GetLiveSnapshot, *pb.Command_GetImageUploadStatus, *pb.Command_GetSharedFileChunk:
+	case *pb.Command_GetMachineStatus, *pb.Command_GetUsageStats, *pb.Command_GetSettings, *pb.Command_ListModels, *pb.Command_ListDirectories, *pb.Command_GetLiveSnapshot, *pb.Command_GetImageUploadStatus, *pb.Command_GetSharedFileChunk, *pb.Command_ProbeLatency:
 		return true
 	case *pb.Command_Schedule:
 		return k.Schedule.GetOperation() == "list" || k.Schedule.GetOperation() == "get"

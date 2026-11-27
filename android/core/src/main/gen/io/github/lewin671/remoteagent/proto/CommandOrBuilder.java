@@ -359,6 +359,17 @@ public interface CommandOrBuilder extends
   io.github.lewin671.remoteagent.proto.GetUsageStatsRequest getGetUsageStats();
 
   /**
+   * <code>.remoteagent.v1.ProbeLatencyRequest probe_latency = 35 [json_name = "probeLatency"];</code>
+   * @return Whether the probeLatency field is set.
+   */
+  boolean hasProbeLatency();
+  /**
+   * <code>.remoteagent.v1.ProbeLatencyRequest probe_latency = 35 [json_name = "probeLatency"];</code>
+   * @return The probeLatency.
+   */
+  io.github.lewin671.remoteagent.proto.ProbeLatencyRequest getProbeLatency();
+
+  /**
    * <pre>
    * The peer protocol version the client speaks (internal/protocol.PeerVersion).
    * A daemon of another version refuses the command and says which side to update.

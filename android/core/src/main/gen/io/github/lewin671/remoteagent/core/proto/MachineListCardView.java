@@ -991,6 +991,54 @@ public  final class MachineListCardView extends
     bitField0_ = (bitField0_ & ~0x00000008);
   }
 
+  public static final int LATENCY_FIELD_NUMBER = 26;
+  private io.github.lewin671.remoteagent.core.proto.MachineLatencyView latency_;
+  /**
+   * <code>.remoteagent.core.v1.MachineLatencyView latency = 26 [json_name = "latency"];</code>
+   */
+  @java.lang.Override
+  public boolean hasLatency() {
+    return ((bitField0_ & 0x00000010) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineLatencyView latency = 26 [json_name = "latency"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineLatencyView getLatency() {
+    return latency_ == null ? io.github.lewin671.remoteagent.core.proto.MachineLatencyView.getDefaultInstance() : latency_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineLatencyView latency = 26 [json_name = "latency"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setLatency(io.github.lewin671.remoteagent.core.proto.MachineLatencyView value) {
+    value.getClass();  // minimal bytecode null check
+    latency_ = value;
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineLatencyView latency = 26 [json_name = "latency"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeLatency(io.github.lewin671.remoteagent.core.proto.MachineLatencyView value) {
+    value.getClass();  // minimal bytecode null check
+    if (latency_ != null &&
+        latency_ != io.github.lewin671.remoteagent.core.proto.MachineLatencyView.getDefaultInstance()) {
+      latency_ =
+        io.github.lewin671.remoteagent.core.proto.MachineLatencyView.newBuilder(latency_).mergeFrom(value).buildPartial();
+    } else {
+      latency_ = value;
+    }
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineLatencyView latency = 26 [json_name = "latency"];</code>
+   */
+  private void clearLatency() {
+    latency_ = null;
+    bitField0_ = (bitField0_ & ~0x00000010);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.MachineListCardView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -2094,6 +2142,53 @@ public  final class MachineListCardView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.MachineLatencyView latency = 26 [json_name = "latency"];</code>
+     */
+    @java.lang.Override
+    public boolean hasLatency() {
+      return instance.hasLatency();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineLatencyView latency = 26 [json_name = "latency"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineLatencyView getLatency() {
+      return instance.getLatency();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineLatencyView latency = 26 [json_name = "latency"];</code>
+     */
+    public Builder setLatency(io.github.lewin671.remoteagent.core.proto.MachineLatencyView value) {
+      copyOnWrite();
+      instance.setLatency(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.MachineLatencyView latency = 26 [json_name = "latency"];</code>
+     */
+    public Builder setLatency(
+        io.github.lewin671.remoteagent.core.proto.MachineLatencyView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setLatency(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineLatencyView latency = 26 [json_name = "latency"];</code>
+     */
+    public Builder mergeLatency(io.github.lewin671.remoteagent.core.proto.MachineLatencyView value) {
+      copyOnWrite();
+      instance.mergeLatency(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineLatencyView latency = 26 [json_name = "latency"];</code>
+     */
+    public Builder clearLatency() {  copyOnWrite();
+      instance.clearLatency();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.MachineListCardView)
   }
   @java.lang.Override
@@ -2135,12 +2230,14 @@ public  final class MachineListCardView extends
             io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegment.class,
             "metaSeparator_",
             "disambiguatorA11Y_",
+            "latency_",
           };
           java.lang.String info =
-              "\u0000\u0015\u0000\u0001\u0001\u0019\u0015\u0000\u0003\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u0016\u0000\u0001\u0001\u001a\u0016\u0000\u0003\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0007\u0004\u0007\u0005\u0004\u0006\u1009\u0000\b\u0002\t\u1009\u0001\n\f" +
               "\r\u0007\u000e\u0007\u0010\u0208\u0011\u0007\u0012\u001b\u0013\u001b\u0014\u1009" +
-              "\u0002\u0015\u0007\u0016\f\u0017\u001b\u0018\u0208\u0019\u1009\u0003";
+              "\u0002\u0015\u0007\u0016\f\u0017\u001b\u0018\u0208\u0019\u1009\u0003\u001a\u1009" +
+              "\u0004";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

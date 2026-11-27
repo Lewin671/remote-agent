@@ -80,9 +80,13 @@ type PreparedCommand struct {
 	CommandBytes       []byte
 	RouteHint                 corev1.CommandRouteHint
 	ForceRelay                bool
+	NoControlSample           bool
 	SkipConnectivityPreflight bool
-	Dispatch           DispatchState
-	AttemptCount       int
+	Dispatch                  DispatchState
+	AttemptCount              int
+	DispatchedAttempts        int
+	WinningDirect             bool
+	WinningElapsedMs          float64
 	RecoveryUntilMs    int64
 	PendingAttempts    map[string]bool
 	DualMode           bool
@@ -111,13 +115,15 @@ type AttemptTracker struct {
 
 // SubmitCommandParams configures a command submission through the sync engine.
 type SubmitCommandParams struct {
-	SlotKey     string
-	MachineID   string
-	SessionID   string
-	Command     *v1.Command
+	SlotKey                   string
+	MachineID                 string
+	SessionID                 string
+	Command                   *v1.Command
 	BulkFileKey               string
 	BulkBytes                 int64
 	BulkUpload                bool
+	ForceRelay                bool
+	NoControlSample           bool
 	SkipConnectivityPreflight bool
 }
 
@@ -177,6 +183,8 @@ func (e *Engine) SubmitCommand(ctx *StepContext, in SubmitCommandParams) (reques
 			BulkFileKey:               in.BulkFileKey,
 			BulkBytes:                 in.BulkBytes,
 			BulkUpload:                in.BulkUpload,
+			ForceRelay:                in.ForceRelay,
+			NoControlSample:           in.NoControlSample,
 			SkipConnectivityPreflight: in.SkipConnectivityPreflight,
 		}
 		if tracker != nil {
@@ -341,6 +349,7 @@ func (e *Engine) emitCommandLeg(
 ) {
 	prep.Dispatch.Active++
 	prep.Dispatch.Possible++
+	prep.DispatchedAttempts++
 	prep.PendingAttempts[attemptID] = true
 	e.reqIDByAttempt[attemptID] = prep.RequestID
 	isDirect := leg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT
@@ -636,6 +645,9 @@ func (e *Engine) finishCommandOutcome(ctx *StepContext, ev *cmdOutcome) {
 		}
 	}
 
+	prep.WinningDirect = ev.RouteWasDirect
+	prep.WinningElapsedMs = ev.ElapsedMs
+
 	switch ev.Source {
 	case corev1.OutcomeSource_OUTCOME_SOURCE_LOCAL:
 		if prep.Dispatch.Possible > 0 {
@@ -865,17 +877,20 @@ func (e *Engine) settleCommand(
 		sealedResult = prep.VerifiedSealedResult
 	}
 	ctx.Settled = append(ctx.Settled, SettledCommand{
-		RequestID:   prep.RequestID,
-		SlotKey:     prep.SlotKey,
-		MachineID:   prep.MachineID,
-		SessionID:   prep.SessionID,
-		Category:    cat,
-		Result:      res,
-		ErrorCode:   errCode,
-		ErrorReason: errReason,
-		FromDaemon:  res != nil && cat != outcome.Unknown,
-		Expired:     trackerExpired || expired,
-		Frozen:      frozen,
+		RequestID:      prep.RequestID,
+		SlotKey:        prep.SlotKey,
+		MachineID:      prep.MachineID,
+		SessionID:      prep.SessionID,
+		Category:       cat,
+		Result:         res,
+		ErrorCode:      errCode,
+		ErrorReason:    errReason,
+		FromDaemon:     res != nil && cat != outcome.Unknown,
+		Expired:        trackerExpired || expired,
+		Frozen:         frozen,
+		RouteWasDirect: prep.WinningDirect,
+		WireElapsedMs:  prep.WinningElapsedMs,
+		AttemptCount:   prep.DispatchedAttempts,
 
 		SealedResult: sealedResult,
 	})
@@ -952,7 +967,8 @@ func routeHintFor(cmd *v1.Command) corev1.CommandRouteHint {
 		*v1.Command_GetLiveSnapshot,
 		*v1.Command_GetMachineStatus,
 		*v1.Command_GetUsageStats,
-		*v1.Command_GetImageUploadStatus:
+		*v1.Command_GetImageUploadStatus,
+		*v1.Command_ProbeLatency:
 		return corev1.CommandRouteHint_COMMAND_ROUTE_HINT_READ
 	case *v1.Command_Schedule:
 		if k.Schedule != nil && (k.Schedule.Operation == "list" || k.Schedule.Operation == "get") {

@@ -173,9 +173,28 @@ export interface MessageArgs {
   "connection.connecting_conn_check": { [name: string]: never };
   "connection.connecting_conn_check_label": { [name: string]: never };
   "connection.last_failure": { value: string };
-  "connection.latency_footer_direct": { [name: string]: never };
-  "connection.latency_footer_mixed": { [name: string]: never };
+  "connection.latency_a11y": { details: string; name: string };
+  "connection.latency_a11y_segment": { label: string; value: string };
+  "connection.latency_a11y_segment_slow": { label: string; value: string };
+  "connection.latency_a11y_total": { ms: string };
+  "connection.latency_a11y_total_slow": { ms: string };
+  "connection.latency_computer": { [name: string]: never };
+  "connection.latency_computer_no_reply": { [name: string]: never };
   "connection.latency_is_one_round_trip_the_server_row_measures": { [name: string]: never };
+  "connection.latency_mostly_queued": { ms: string };
+  "connection.latency_mostly_running": { ms: string };
+  "connection.latency_ms": { ms: string };
+  "connection.latency_ms_slow": { ms: string };
+  "connection.latency_network": { [name: string]: never };
+  "connection.latency_no_reply": { [name: string]: never };
+  "connection.latency_outdated": { [name: string]: never };
+  "connection.latency_outdated_all": { [name: string]: never };
+  "connection.latency_outdated_computer": { [name: string]: never };
+  "connection.latency_over_seconds": { seconds: number };
+  "connection.latency_pending": { [name: string]: never };
+  "connection.latency_rerouted": { [name: string]: never };
+  "connection.latency_slow": { [name: string]: never };
+  "connection.latency_wait_direct": { [name: string]: never };
   "connection.live_push": { [name: string]: never };
   "connection.live_push_is_not_connected": { [name: string]: never };
   "connection.live_push_is_not_connected_session_changes_may_be": { value: string };
@@ -1965,9 +1984,28 @@ export const messages = {
     "connection.connecting_conn_check": "Connecting",
     "connection.connecting_conn_check_label": "Connecting",
     "connection.last_failure": "Last failure: {value}",
-    "connection.latency_footer_direct": "Latency is one round trip. The server row measures this device to the server; computer rows measure a direct round trip to the computer.",
-    "connection.latency_footer_mixed": "Latency is one round trip. The server row measures this device to the server; each computer row follows its active route—directly to the computer when using direct, or through the server when using relay.",
-    "connection.latency_is_one_round_trip_the_server_row_measures": "Latency is one round trip. The server row measures this device to the server; computer rows go through the server to the computer and back, so they are slower.",
+    "connection.latency_a11y": "{name}, {details}",
+    "connection.latency_a11y_segment": "{label} {value}",
+    "connection.latency_a11y_segment_slow": "{label} {value}, slow",
+    "connection.latency_a11y_total": "Total {ms} ms",
+    "connection.latency_a11y_total_slow": "Total {ms} ms, slow",
+    "connection.latency_computer": "Computer",
+    "connection.latency_computer_no_reply": "The computer did not answer in time",
+    "connection.latency_is_one_round_trip_the_server_row_measures": "Latency is the total round-trip time. Each computer shows network and computer time below, and marks the slow part.",
+    "connection.latency_mostly_queued": "Mostly queued ({ms} ms); the computer is busy with other work",
+    "connection.latency_mostly_running": "Mostly running ({ms} ms)",
+    "connection.latency_ms": "{ms} ms",
+    "connection.latency_ms_slow": "{ms} ms · Slow",
+    "connection.latency_network": "Network",
+    "connection.latency_no_reply": "No response",
+    "connection.latency_outdated": "Outdated",
+    "connection.latency_outdated_all": "Update remote-agent on this computer to see network and processing time",
+    "connection.latency_outdated_computer": "Update remote-agent on this computer to see its processing time",
+    "connection.latency_over_seconds": "Over {seconds} s",
+    "connection.latency_pending": "—",
+    "connection.latency_rerouted": "Direct did not answer in time; this check went through the relay",
+    "connection.latency_slow": "Slow",
+    "connection.latency_wait_direct": "Waiting for direct",
     "connection.live_push": "Live push",
     "connection.live_push_is_not_connected": "Live push is not connected.",
     "connection.live_push_is_not_connected_session_changes_may_be": "Live push is not connected; session changes may be delayed. Last failure: {value}",
@@ -4327,9 +4365,28 @@ export const messages = {
     "connection.connecting_conn_check": "连接中",
     "connection.connecting_conn_check_label": "连接",
     "connection.last_failure": "上一次失败：{value}",
-    "connection.latency_footer_direct": "延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经直连往返电脑。",
-    "connection.latency_footer_mixed": "延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行按当前路线测量，走直连时直接往返电脑，走中继时经服务器再回来。",
-    "connection.latency_is_one_round_trip_the_server_row_measures": "延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。",
+    "connection.latency_a11y": "{name}，{details}",
+    "connection.latency_a11y_segment": "{label} {value}",
+    "connection.latency_a11y_segment_slow": "{label} {value}，较慢",
+    "connection.latency_a11y_total": "总耗时 {ms} 毫秒",
+    "connection.latency_a11y_total_slow": "总耗时 {ms} 毫秒，较慢",
+    "connection.latency_computer": "电脑处理",
+    "connection.latency_computer_no_reply": "电脑没有及时回应",
+    "connection.latency_is_one_round_trip_the_server_row_measures": "延时是一次往返的总耗时。电脑一行下面分成网络和电脑处理两段，慢的那段会标出来。",
+    "connection.latency_mostly_queued": "主要在排队（{ms} ms），电脑正忙于别的任务",
+    "connection.latency_mostly_running": "主要在执行（{ms} ms）",
+    "connection.latency_ms": "{ms} ms",
+    "connection.latency_ms_slow": "{ms} ms · 较慢",
+    "connection.latency_network": "网络往返",
+    "connection.latency_no_reply": "没有回应",
+    "connection.latency_outdated": "版本较旧",
+    "connection.latency_outdated_all": "更新电脑上的 remote-agent 后，可显示网络往返和电脑处理的耗时",
+    "connection.latency_outdated_computer": "更新电脑上的 remote-agent 后，可显示电脑处理的耗时",
+    "connection.latency_over_seconds": "超过 {seconds} 秒",
+    "connection.latency_pending": "—",
+    "connection.latency_rerouted": "直连没有及时回应，这一次改走了中继",
+    "connection.latency_slow": "较慢",
+    "connection.latency_wait_direct": "等直连回应",
     "connection.live_push": "实时推送",
     "connection.live_push_is_not_connected": "实时推送未连接。",
     "connection.live_push_is_not_connected_session_changes_may_be": "实时推送未连接，会话变化可能延迟。最近一次失败：{value}",

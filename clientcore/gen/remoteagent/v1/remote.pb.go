@@ -854,6 +854,13 @@ type Command_GetUsageStats struct {
 
 func (*Command_GetUsageStats) isCommand_Kind() {}
 
+type Command_ProbeLatency struct {
+	_            [0]func()
+	ProbeLatency *ProbeLatencyRequest
+}
+
+func (*Command_ProbeLatency) isCommand_Kind() {}
+
 func (m *Command) GetKind() isCommand_Kind {
 	if m != nil {
 		return m.Kind
@@ -1040,6 +1047,12 @@ func (m *Command) GetGetUsageStats() *GetUsageStatsRequest {
 	}
 	return nil
 }
+func (m *Command) GetProbeLatency() *ProbeLatencyRequest {
+	if x, ok := m.GetKind().(*Command_ProbeLatency); ok && x != nil {
+		return x.ProbeLatency
+	}
+	return nil
+}
 func (m *Command) GetProtocolVersion() uint32 {
 	if m != nil {
 		return m.ProtocolVersion
@@ -1223,6 +1236,11 @@ func (m *Command) cloneKindPart2(cp *Command) bool {
 	case *Command_GetUsageStats:
 		if v != nil {
 			cp.Kind = &Command_GetUsageStats{GetUsageStats: v.GetUsageStats.Clone()}
+		}
+		return true
+	case *Command_ProbeLatency:
+		if v != nil {
+			cp.Kind = &Command_ProbeLatency{ProbeLatency: v.ProbeLatency.Clone()}
 		}
 		return true
 	}
@@ -1415,6 +1433,10 @@ func (m *Command) appendMarshalKindPart2(b []byte) ([]byte, bool) {
 		if x != nil && x.GetUsageStats != nil {
 			onum, omsg = 34, x.GetUsageStats
 		}
+	case *Command_ProbeLatency:
+		if x != nil && x.ProbeLatency != nil {
+			onum, omsg = 35, x.ProbeLatency
+		}
 	default:
 		return b, false
 	}
@@ -1435,7 +1457,7 @@ func extraUnmarshal_Command(base unsafe.Pointer, num litewire.Number, wtyp litew
 		return m.extraUnmarshalPart0(num, wtyp, bp)
 	case num <= 28:
 		return m.extraUnmarshalPart1(num, wtyp, bp)
-	case num <= 34:
+	case num <= 35:
 		return m.extraUnmarshalPart2(num, wtyp, bp)
 	}
 	return false, nil
@@ -1693,6 +1715,13 @@ func (m *Command) extraUnmarshalPart2(num litewire.Number, wtyp litewire.Type, b
 				m.Kind = w
 			}
 			sub = w.GetUsageStats
+		case 35:
+			w, _ := m.Kind.(*Command_ProbeLatency)
+			if w == nil || w.ProbeLatency == nil {
+				w = &Command_ProbeLatency{ProbeLatency: &ProbeLatencyRequest{}}
+				m.Kind = w
+			}
+			sub = w.ProbeLatency
 		}
 		if sub != nil {
 			if err := litewire.ReadStrictMessage(&b, sub, &m.hasUnknown); err != nil {
@@ -1932,6 +1961,13 @@ type CommandResult_UsageStats struct {
 
 func (*CommandResult_UsageStats) isCommandResult_Kind() {}
 
+type CommandResult_ProbeLatency struct {
+	_            [0]func()
+	ProbeLatency *ProbeLatencyResponse
+}
+
+func (*CommandResult_ProbeLatency) isCommandResult_Kind() {}
+
 func (m *CommandResult) GetKind() isCommandResult_Kind {
 	if m != nil {
 		return m.Kind
@@ -2166,6 +2202,12 @@ func (m *CommandResult) GetUsageStats() *UsageStatsResponse {
 	}
 	return nil
 }
+func (m *CommandResult) GetProbeLatency() *ProbeLatencyResponse {
+	if x, ok := m.GetKind().(*CommandResult_ProbeLatency); ok && x != nil {
+		return x.ProbeLatency
+	}
+	return nil
+}
 
 var LitewireDesc_CommandResult = litewire.MessageDesc{
 	Strict:        true,
@@ -2360,6 +2402,10 @@ func (m *CommandResult) appendMarshalKindPart2(b []byte) ([]byte, bool) {
 		if x != nil && x.UsageStats != nil {
 			onum, omsg = 44, x.UsageStats
 		}
+	case *CommandResult_ProbeLatency:
+		if x != nil && x.ProbeLatency != nil {
+			onum, omsg = 45, x.ProbeLatency
+		}
 	default:
 		return b, false
 	}
@@ -2380,7 +2426,7 @@ func extraUnmarshal_CommandResult(base unsafe.Pointer, num litewire.Number, wtyp
 		return m.extraUnmarshalPart0(num, wtyp, bp)
 	case num <= 38:
 		return m.extraUnmarshalPart1(num, wtyp, bp)
-	case num <= 44:
+	case num <= 45:
 		return m.extraUnmarshalPart2(num, wtyp, bp)
 	}
 	return false, nil
@@ -2638,6 +2684,13 @@ func (m *CommandResult) extraUnmarshalPart2(num litewire.Number, wtyp litewire.T
 				m.Kind = w
 			}
 			sub = w.UsageStats
+		case 45:
+			w, _ := m.Kind.(*CommandResult_ProbeLatency)
+			if w == nil || w.ProbeLatency == nil {
+				w = &CommandResult_ProbeLatency{ProbeLatency: &ProbeLatencyResponse{}}
+				m.Kind = w
+			}
+			sub = w.ProbeLatency
 		}
 		if sub != nil {
 			if err := litewire.ReadStrictMessage(&b, sub, &m.hasUnknown); err != nil {
@@ -2648,6 +2701,102 @@ func (m *CommandResult) extraUnmarshalPart2(num litewire.Number, wtyp litewire.T
 		}
 	}
 	return false, nil
+}
+
+type ProbeLatencyRequest struct {
+	_          [0]func()
+	Work       bool
+	hasUnknown bool
+}
+
+func (m *ProbeLatencyRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
+
+func (m *ProbeLatencyRequest) GetWork() bool {
+	if m != nil {
+		return m.Work
+	}
+	return false
+}
+
+func (m *ProbeLatencyRequest) Clone() *ProbeLatencyRequest {
+	if m == nil {
+		return nil
+	}
+	cp := *m
+	return &cp
+}
+
+var LitewireDesc_ProbeLatencyRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ProbeLatencyRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ProbeLatencyRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ProbeLatencyRequest{}.Work), Kind: litewire.KindBool},
+	},
+}
+
+func (m *ProbeLatencyRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ProbeLatencyRequest) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ProbeLatencyRequest)
+}
+
+func (m *ProbeLatencyRequest) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ProbeLatencyRequest)
+}
+
+type ProbeLatencyResponse struct {
+	_          [0]func()
+	ProcessUs  int64
+	QueueUs    int64
+	ExecuteUs  int64
+	hasUnknown bool
+}
+
+func (m *ProbeLatencyResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
+
+func (m *ProbeLatencyResponse) GetProcessUs() int64 {
+	if m != nil {
+		return m.ProcessUs
+	}
+	return 0
+}
+func (m *ProbeLatencyResponse) GetQueueUs() int64 {
+	if m != nil {
+		return m.QueueUs
+	}
+	return 0
+}
+func (m *ProbeLatencyResponse) GetExecuteUs() int64 {
+	if m != nil {
+		return m.ExecuteUs
+	}
+	return 0
+}
+
+var LitewireDesc_ProbeLatencyResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ProbeLatencyResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ProbeLatencyResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ProbeLatencyResponse{}.ProcessUs), Kind: litewire.KindInt64},
+		{Num: 2, Offset: unsafe.Offsetof(ProbeLatencyResponse{}.QueueUs), Kind: litewire.KindInt64},
+		{Num: 3, Offset: unsafe.Offsetof(ProbeLatencyResponse{}.ExecuteUs), Kind: litewire.KindInt64},
+	},
+}
+
+func (m *ProbeLatencyResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ProbeLatencyResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ProbeLatencyResponse)
+}
+
+func (m *ProbeLatencyResponse) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ProbeLatencyResponse)
 }
 
 type OpenTerminalRequest struct {

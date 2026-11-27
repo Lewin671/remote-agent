@@ -46,6 +46,32 @@ func TestDirectPreferredOnReadyWithRelayControlSample(t *testing.T) {
 	}
 }
 
+func TestNoControlSampleDoesNotAdvanceRelayCounter(t *testing.T) {
+	var r Routing
+	now := int64(10_000)
+	probeHint := Hint{Use: UseRead, NoControlSample: true}
+	for range 32 {
+		if got := r.Choose(probeHint, true, now); got != Direct {
+			t.Fatalf("NoControlSample chose %v, want Direct", got)
+		}
+	}
+	// Normal read counter must remain untouched: first 7 are Direct, 8th is Relay.
+	for i := 1; i <= 7; i++ {
+		if got := r.Choose(read, true, now); got != Direct {
+			t.Fatalf("normal choose #%d = %v, want Direct", i, got)
+		}
+	}
+	if got := r.Choose(read, true, now); got != Relay {
+		t.Fatalf("normal choose #8 = %v, want Relay", got)
+	}
+	// Still respects read fallback backoff.
+	c := &clock{now}
+	observeReads(&r, c, 8, 4, 200, 40, 100)
+	if got := r.Choose(probeHint, true, c.now); got != Relay {
+		t.Fatalf("NoControlSample during fallback chose %v, want Relay", got)
+	}
+}
+
 // Guards rule 4's sample counts and the strict 1.5× + 20 ms margin.
 func TestReadFallbackRule(t *testing.T) {
 	for _, tc := range []struct {

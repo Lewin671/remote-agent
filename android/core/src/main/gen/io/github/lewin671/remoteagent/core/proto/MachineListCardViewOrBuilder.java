@@ -213,4 +213,15 @@ public interface MachineListCardViewOrBuilder extends
    * @return The disambiguatorA11y.
    */
   io.github.lewin671.remoteagent.core.proto.Text getDisambiguatorA11Y();
+
+  /**
+   * <code>.remoteagent.core.v1.MachineLatencyView latency = 26 [json_name = "latency"];</code>
+   * @return Whether the latency field is set.
+   */
+  boolean hasLatency();
+  /**
+   * <code>.remoteagent.core.v1.MachineLatencyView latency = 26 [json_name = "latency"];</code>
+   * @return The latency.
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineLatencyView getLatency();
 }

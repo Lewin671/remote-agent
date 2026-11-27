@@ -1541,6 +1541,9 @@ func (c *Core) reconcileHomeFocusState(ctx *sync.StepContext) {
 }
 
 func (c *Core) handleUITransientTimer(ctx *sync.StepContext, store *sessionStore, key string) []*corev1.Effect {
+	if strings.HasPrefix(key, connCheckTimerPrefix) {
+		return c.handleConnCheckTimer(ctx, key)
+	}
 	if key == notifTapTimerKey {
 		return c.handleNotifTapTimeout()
 	}

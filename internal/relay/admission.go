@@ -24,10 +24,14 @@ type callRoute struct {
 	directUse uint64
 	allow     func() bool // local atomic flags only; callable under endpoint admission lock
 
-	callID    uint64
-	attemptID string
-	send      func(*pb.ForwardReply)
-	once      sync.Once
+	callID      uint64
+	attemptID   string
+	send        func(*pb.ForwardReply)
+	once        sync.Once
+	receivedAt  time.Time
+	authStartAt time.Time
+	queuedAt    time.Time
+	grantedAt   time.Time
 }
 
 func (r *callRoute) reply(v *pb.ForwardReply) { r.once.Do(func() { r.send(v) }) }
@@ -132,6 +136,7 @@ func (c *endpoint) admissionOwner() *commandAdmission {
 			syncing:       map[string]bool{},
 			inflight:      map[string]*pendingExecution{},
 			verifiedPeers: map[string]*peerVerifiedCache{},
+			nowFn:         c.r.SchedulerNow,
 			scheduler:     transport.NewSchedulerWithClock(c.link, c.r.SchedulerNow, c.r.SchedulerAfter),
 		}
 		a.frames = linkcore.FairQueue[*authFrame]{Entries: 64, Bytes: 4 << 20, PeerEntries: 8, PeerBytes: 1 << 20}
@@ -162,6 +167,7 @@ func (c *endpoint) dispatchDirect(waiting context.Context, binding deviceauth.Pe
 }
 func (c *endpoint) dispatchRoute(waiting context.Context, call *pb.ForwardCall, route *callRoute) {
 	a := c.admissionOwner()
+	route.receivedAt = a.now()
 	refuse := func(reason string) { a.respond(&callResult{route: route, entry: reason}) }
 	size := proto.Size(call)
 	if size > 1<<20 {
@@ -224,6 +230,7 @@ func (a *commandAdmission) authenticateLoop() {
 		if frame.waiting.Err() != nil {
 			continue
 		}
+		frame.route.authStartAt = a.now()
 		if a.endpoint.security == nil {
 			a.respond(&callResult{route: frame.route, entry: "security_unavailable"})
 			continue
@@ -431,7 +438,7 @@ func commandResources(h devicesec.Header, cmd *pb.Command) []string {
 		resources = append(resources, "session:"+h.Session)
 	}
 	class, _ := classifyCommand(cmd)
-	if class == transport.Bulk || cmd.GetGetImageUploadStatus() != nil || cmd.GetUpdateSettings() != nil || cmd.GetGetSettings() != nil || cmd.GetSend() != nil && (len(cmd.GetSend().ImageIds) > 0 || len(cmd.GetSend().FileIds) > 0) {
+	if class == transport.Bulk || cmd.GetGetImageUploadStatus() != nil || cmd.GetUpdateSettings() != nil || cmd.GetGetSettings() != nil || (cmd.GetProbeLatency() != nil && cmd.GetProbeLatency().GetWork()) || cmd.GetSend() != nil && (len(cmd.GetSend().ImageIds) > 0 || len(cmd.GetSend().FileIds) > 0) {
 		resources = append(resources, "uploads")
 	}
 	if len(resources) == 0 {
@@ -476,6 +483,10 @@ func (a *commandAdmission) classify(waiting context.Context, route *callRoute, p
 			return
 		}
 	}
+	if pl := cmd.GetProbeLatency(); pl != nil && !pl.GetWork() {
+		a.handleProbeEcho(waiting, route, p)
+		return
+	}
 	raw := cmd.GetGetSharedFileChunk() != nil
 	pc, waitCtx, owned := a.claimInflight(waiting, route, p, raw)
 	if !owned {
@@ -486,25 +497,48 @@ func (a *commandAdmission) classify(waiting context.Context, route *callRoute, p
 		return
 	}
 	j := &transport.Job{Class: class, Peer: h.Sender, Session: h.Session, Resources: commandResources(h, cmd), Bytes: p.Size(), Deadline: time.UnixMilli(int64(h.Deadline)), Approval: approval, Snapshot: cmd.GetGetLiveSnapshot() != nil, Priority: controlPriority(cmd)}
-	queuedAt := time.Now()
+	queuedAt := a.now()
+	route.queuedAt = queuedAt
 	observe := func(acquired bool, at time.Time) {
 		if approval && a.endpoint.r.observeApproval != nil {
 			a.endpoint.r.observeApproval(acquired, at.Sub(queuedAt))
 		}
 	}
 	j.Reject = func() {
-		observe(false, time.Now())
+		observe(false, a.now())
 		err := p.Decision("busy", devicesec.ErrCapacity)
 		a.finishInflight(pc, nil, err, raw, false)
 		a.result(route, p, nil, err, raw)
 	}
 	j.Run = func(ctx context.Context, execution *transport.Execution) {
+		route.grantedAt = a.now()
 		observe(true, execution.GrantedAt())
 		a.execute(ctx, waitCtx, waiting, route, p, raw, execution, pc)
 	}
 	if !a.scheduler.Submit(waitCtx, j) {
 		j.Reject()
 	}
+}
+
+// handleProbeEcho answers probe_latency(work=false) immediately after full
+// authentication and replay-floor admission via AcceptAuthenticated, skipping
+// the scheduler queue and backend execution.
+func (a *commandAdmission) handleProbeEcho(waiting context.Context, route *callRoute, p *deviceauth.Authenticated) {
+	if waiting.Err() != nil {
+		return
+	}
+	options := a.acceptOptions(route)
+	options.NoWait = true
+	body, err := a.endpoint.security.endpoint.AcceptAuthenticated(waiting, p, uint64(a.now().UnixMilli()), options, func(h devicesec.Header, plain []byte) (deviceauth.Completion, error) {
+		return a.endpoint.probeEchoCompletion(h, plain)
+	})
+	if errors.Is(err, deviceauth.ErrRunning) {
+		if !a.existing(waiting, route, p) {
+			a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), false)
+		}
+		return
+	}
+	a.result(route, p, body, err, false)
 }
 
 func (a *commandAdmission) abandonInflightLocked(pc *pendingExecution) {

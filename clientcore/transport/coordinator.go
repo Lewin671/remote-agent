@@ -221,6 +221,24 @@ type pcBinding struct {
 	confirmed      bool
 	closedNotified bool
 	probe          linkcore.ProbeTracker
+	probeSamples   []ProbeSample
+}
+
+func (b *pcBinding) recordProbeSample(now int64, rttMs float64) {
+	if rttMs < 0 {
+		rttMs = 0
+	}
+	kept := b.probeSamples[:0]
+	for _, s := range b.probeSamples {
+		if now-s.AtMs <= DirectProbeWindowMs {
+			kept = append(kept, s)
+		}
+	}
+	kept = append(kept, ProbeSample{AtMs: now, RttMs: rttMs})
+	if len(kept) > DirectProbeKeepSamples {
+		kept = append([]ProbeSample(nil), kept[len(kept)-DirectProbeKeepSamples:]...)
+	}
+	b.probeSamples = kept
 }
 
 type coordRound struct {
@@ -609,6 +627,7 @@ func (c *Coordinator) stepProbeTrackers(now int64) {
 			c.maybeLowWater()
 		}
 		if timedOut {
+			b.probeSamples = nil
 			delete(r.localToGlobal, b.localID)
 			if r.globalPC[b.use] == pcID {
 				r.globalPC[b.use] = 0
@@ -1173,6 +1192,7 @@ func (c *Coordinator) OnDcState(now int64, pcID uint64, open bool) []CoordEffect
 	r.dcOpen[b.use] = open
 	if !open {
 		b.probe.Reset()
+		b.probeSamples = nil
 		c.markPCClosed(now, r, b, pcID)
 	}
 	return c.take()
@@ -1184,7 +1204,9 @@ func (c *Coordinator) OnPcProbeReceived(now int64, pcID uint64, raw []byte) []Co
 	if b == nil || !b.confirmed || r.ended {
 		return nil
 	}
-	_, _ = b.probe.OnReply(now, raw)
+	if rttMs, ok := b.probe.OnReply(now, raw); ok && b.use == UseRead {
+		b.recordProbeSample(now, rttMs)
+	}
 	return c.take()
 }
 
@@ -1194,6 +1216,7 @@ func (c *Coordinator) OnPcClosed(now int64, pcID uint64) []CoordEffect {
 	if b == nil {
 		return nil
 	}
+	b.probeSamples = nil
 	r.dcOpen[b.use] = false
 	if r.globalPC[b.use] == pcID {
 		r.globalPC[b.use] = 0
@@ -1569,7 +1592,50 @@ func (c *Coordinator) Ready(now int64, machineID string, h Hint) bool {
 	return c.engine.Ready(now, machineID, h)
 }
 func (c *Coordinator) Status(now int64, machineID string) Status {
-	return c.engine.Status(now, machineID)
+	st := c.engine.Status(now, machineID)
+	c.fillReadProbeSamples(now, machineID, &st.Measured)
+	return st
+}
+
+func (c *Coordinator) fillReadProbeSamples(now int64, machineID string, m *Measured) {
+	if c == nil || m == nil || machineID == "" {
+		return
+	}
+	p := c.engine.peers[machineID]
+	if p == nil {
+		return
+	}
+	r := c.rounds[p.id]
+	if r == nil || r.ended || !r.confirmed[UseRead] || !r.dcOpen[UseRead] {
+		return
+	}
+	pcID := r.globalPC[UseRead]
+	if pcID == 0 {
+		return
+	}
+	b := c.pcs[pcID]
+	if b == nil || !b.confirmed || b.closedNotified || len(b.probeSamples) == 0 {
+		return
+	}
+	n := 0
+	for _, s := range b.probeSamples {
+		if now-s.AtMs <= DirectProbeWindowMs && n < DirectProbeKeepSamples {
+			m.ProbeSamples[n] = s
+			n++
+		}
+	}
+	m.ProbeSampleCount = n
+}
+
+// ReadProbeSamples returns recent direct liveness probe RTT samples for machineID's active read path.
+func (c *Coordinator) ReadProbeSamples(now int64, machineID string) []ProbeSample {
+	m := c.Status(now, machineID).Measured
+	if m.ProbeSampleCount == 0 {
+		return nil
+	}
+	out := make([]ProbeSample, m.ProbeSampleCount)
+	copy(out, m.ProbeSamples[:m.ProbeSampleCount])
+	return out
 }
 func (c *Coordinator) FileRoute(now int64, machineID string) Route {
 	return c.engine.FileRoute(now, machineID)

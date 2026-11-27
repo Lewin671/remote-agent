@@ -145,4 +145,10 @@ public interface ConnCheckSummaryViewOrBuilder extends
    * @return The footerText.
    */
   io.github.lewin671.remoteagent.core.proto.Text getFooterText();
+
+  /**
+   * <code>bool machines_busy = 17 [json_name = "machinesBusy"];</code>
+   * @return The machinesBusy.
+   */
+  boolean getMachinesBusy();
 }

@@ -89,6 +89,34 @@ enum ConnProbeState {
   CONN_PROBE_STATE_UNAVAILABLE = 5;
 }
 
+enum MachineLatencyState {
+  MACHINE_LATENCY_STATE_UNSPECIFIED = 0;
+  MACHINE_LATENCY_STATE_NOT_CHECKED = 1;
+  MACHINE_LATENCY_STATE_MEASURING = 2;
+  MACHINE_LATENCY_STATE_DONE = 3;
+  MACHINE_LATENCY_STATE_FAILED = 4;
+  MACHINE_LATENCY_STATE_UNSUPPORTED = 5;
+}
+
+message MachineLatencySegment {
+  Text label_text = 1;
+  Text value_text = 2;
+  bool slow = 3;
+  bool stuck = 4;
+  Text detail_text = 5;
+  Text slow_label_text = 6;
+}
+
+message MachineLatencyView {
+  MachineLatencyState state = 1;
+  Text value_text = 2;
+  bool slow = 3;
+  repeated MachineLatencySegment segments = 4;
+  Text summary_override_text = 5;
+  Text note_text = 6;
+  Text a11y_text = 7;
+}
+
 // ---- Settings Screen ----
 
 message SettingsScreenRequest {}
@@ -156,6 +184,7 @@ message MachineListCardView {
   repeated MachineCardMetaSegment meta_segments = 23;
   string meta_separator = 24;
   Text disambiguator_a11y = 25;
+  MachineLatencyView latency = 26;
 }
 
 message ClientRowView {
@@ -256,6 +285,7 @@ message ConnCheckSummaryView {
   bool is_connecting = 14;
   Text banner_text = 15;
   Text footer_text = 16;
+  bool machines_busy = 17;
 }
 
 message SettingsViewModel {
@@ -684,6 +714,10 @@ message ConnCheckStatusEvent {
   int32 latency_ms = 2;
   string last_failure = 3;
 }
+
+message ConnCheckStartEvent {}
+
+message ConnCheckStopEvent {}
 
 message ClientUpdateStateEvent {
   string current_version = 1;

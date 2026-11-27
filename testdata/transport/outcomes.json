@@ -160,6 +160,10 @@
   {
     "kind": "getUsageStats",
     "readOnly": true
+  },
+  {
+    "kind": "probeLatency",
+    "readOnly": true
   }
 ],
   "vectors": [

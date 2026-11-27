@@ -186,6 +186,7 @@ message Command {
     GetSharedFileChunkRequest get_shared_file_chunk = 32;
     GetMachineStatusRequest get_machine_status = 33;
     GetUsageStatsRequest get_usage_stats = 34;
+    ProbeLatencyRequest probe_latency = 35;
   }
   // The peer protocol version the client speaks (internal/protocol.PeerVersion).
   // A daemon of another version refuses the command and says which side to update.
@@ -238,7 +239,23 @@ message CommandResult {
     GetSharedFileChunkResponse get_shared_file_chunk = 42;
     MachineStatus machine_status = 43;
     UsageStatsResponse usage_stats = 44;
+    ProbeLatencyResponse probe_latency = 45;
   }
+}
+
+message ProbeLatencyRequest {
+  // false: echo, replied immediately after authentication without entering the scheduler.
+  // true: work, queued as an ordinary read-only command performing the same reads as GetSettings.
+  bool work = 1;
+}
+
+message ProbeLatencyResponse {
+  // Total daemon processing time from admission entry until just before sealing the reply.
+  int64 process_us = 1;
+  // Waiting time included in process_us (authentication queue + scheduler slot wait).
+  int64 queue_us = 2;
+  // Execution time included in process_us; 0 for echo.
+  int64 execute_us = 3;
 }
 
 // OpenTerminalRequest asks the daemon to stream a session's terminal. The

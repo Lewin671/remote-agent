@@ -89,6 +89,8 @@ public  final class Event extends
     USAGE_CACHE_WRITTEN(393),
     PING_MACHINE(394),
     CANCEL_PING_MACHINE(395),
+    CONN_CHECK_START(396),
+    CONN_CHECK_STOP(397),
     UPDATE_CLIENT_NAME(370),
     SET_NOTIFICATION_PREF(375),
     SET_APPEARANCE_PREF(376),
@@ -351,6 +353,8 @@ public  final class Event extends
         case 393: return USAGE_CACHE_WRITTEN;
         case 394: return PING_MACHINE;
         case 395: return CANCEL_PING_MACHINE;
+        case 396: return CONN_CHECK_START;
+        case 397: return CONN_CHECK_STOP;
         case 370: return UPDATE_CLIENT_NAME;
         case 375: return SET_NOTIFICATION_PREF;
         case 376: return SET_APPEARANCE_PREF;
@@ -4102,6 +4106,110 @@ public  final class Event extends
    */
   private void clearCancelPingMachine() {
     if (eventCase_ == 395) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int CONN_CHECK_START_FIELD_NUMBER = 396;
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckStartEvent conn_check_start = 396 [json_name = "connCheckStart"];</code>
+   */
+  @java.lang.Override
+  public boolean hasConnCheckStart() {
+    return eventCase_ == 396;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckStartEvent conn_check_start = 396 [json_name = "connCheckStart"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ConnCheckStartEvent getConnCheckStart() {
+    if (eventCase_ == 396) {
+       return (io.github.lewin671.remoteagent.core.proto.ConnCheckStartEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ConnCheckStartEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckStartEvent conn_check_start = 396 [json_name = "connCheckStart"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setConnCheckStart(io.github.lewin671.remoteagent.core.proto.ConnCheckStartEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 396;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckStartEvent conn_check_start = 396 [json_name = "connCheckStart"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeConnCheckStart(io.github.lewin671.remoteagent.core.proto.ConnCheckStartEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 396 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ConnCheckStartEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ConnCheckStartEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.ConnCheckStartEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 396;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckStartEvent conn_check_start = 396 [json_name = "connCheckStart"];</code>
+   */
+  private void clearConnCheckStart() {
+    if (eventCase_ == 396) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int CONN_CHECK_STOP_FIELD_NUMBER = 397;
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckStopEvent conn_check_stop = 397 [json_name = "connCheckStop"];</code>
+   */
+  @java.lang.Override
+  public boolean hasConnCheckStop() {
+    return eventCase_ == 397;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckStopEvent conn_check_stop = 397 [json_name = "connCheckStop"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ConnCheckStopEvent getConnCheckStop() {
+    if (eventCase_ == 397) {
+       return (io.github.lewin671.remoteagent.core.proto.ConnCheckStopEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ConnCheckStopEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckStopEvent conn_check_stop = 397 [json_name = "connCheckStop"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setConnCheckStop(io.github.lewin671.remoteagent.core.proto.ConnCheckStopEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 397;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckStopEvent conn_check_stop = 397 [json_name = "connCheckStop"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeConnCheckStop(io.github.lewin671.remoteagent.core.proto.ConnCheckStopEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 397 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ConnCheckStopEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ConnCheckStopEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.ConnCheckStopEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 397;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckStopEvent conn_check_stop = 397 [json_name = "connCheckStop"];</code>
+   */
+  private void clearConnCheckStop() {
+    if (eventCase_ == 397) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -17091,6 +17199,102 @@ public  final class Event extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.ConnCheckStartEvent conn_check_start = 396 [json_name = "connCheckStart"];</code>
+     */
+    @java.lang.Override
+    public boolean hasConnCheckStart() {
+      return instance.hasConnCheckStart();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckStartEvent conn_check_start = 396 [json_name = "connCheckStart"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ConnCheckStartEvent getConnCheckStart() {
+      return instance.getConnCheckStart();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckStartEvent conn_check_start = 396 [json_name = "connCheckStart"];</code>
+     */
+    public Builder setConnCheckStart(io.github.lewin671.remoteagent.core.proto.ConnCheckStartEvent value) {
+      copyOnWrite();
+      instance.setConnCheckStart(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckStartEvent conn_check_start = 396 [json_name = "connCheckStart"];</code>
+     */
+    public Builder setConnCheckStart(
+        io.github.lewin671.remoteagent.core.proto.ConnCheckStartEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setConnCheckStart(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckStartEvent conn_check_start = 396 [json_name = "connCheckStart"];</code>
+     */
+    public Builder mergeConnCheckStart(io.github.lewin671.remoteagent.core.proto.ConnCheckStartEvent value) {
+      copyOnWrite();
+      instance.mergeConnCheckStart(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckStartEvent conn_check_start = 396 [json_name = "connCheckStart"];</code>
+     */
+    public Builder clearConnCheckStart() {
+      copyOnWrite();
+      instance.clearConnCheckStart();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckStopEvent conn_check_stop = 397 [json_name = "connCheckStop"];</code>
+     */
+    @java.lang.Override
+    public boolean hasConnCheckStop() {
+      return instance.hasConnCheckStop();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckStopEvent conn_check_stop = 397 [json_name = "connCheckStop"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ConnCheckStopEvent getConnCheckStop() {
+      return instance.getConnCheckStop();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckStopEvent conn_check_stop = 397 [json_name = "connCheckStop"];</code>
+     */
+    public Builder setConnCheckStop(io.github.lewin671.remoteagent.core.proto.ConnCheckStopEvent value) {
+      copyOnWrite();
+      instance.setConnCheckStop(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckStopEvent conn_check_stop = 397 [json_name = "connCheckStop"];</code>
+     */
+    public Builder setConnCheckStop(
+        io.github.lewin671.remoteagent.core.proto.ConnCheckStopEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setConnCheckStop(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckStopEvent conn_check_stop = 397 [json_name = "connCheckStop"];</code>
+     */
+    public Builder mergeConnCheckStop(io.github.lewin671.remoteagent.core.proto.ConnCheckStopEvent value) {
+      copyOnWrite();
+      instance.mergeConnCheckStop(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckStopEvent conn_check_stop = 397 [json_name = "connCheckStop"];</code>
+     */
+    public Builder clearConnCheckStop() {
+      copyOnWrite();
+      instance.clearConnCheckStop();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>
      */
     @java.lang.Override
@@ -26170,6 +26374,8 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.UsageCacheWrittenEvent.class,
             io.github.lewin671.remoteagent.core.proto.PingMachineAction.class,
             io.github.lewin671.remoteagent.core.proto.CancelPingMachineAction.class,
+            io.github.lewin671.remoteagent.core.proto.ConnCheckStartEvent.class,
+            io.github.lewin671.remoteagent.core.proto.ConnCheckStopEvent.class,
             io.github.lewin671.remoteagent.core.proto.TransportConfigEvent.class,
             io.github.lewin671.remoteagent.core.proto.DirectSignalReceivedEvent.class,
             io.github.lewin671.remoteagent.core.proto.DirectSignalDeliveryEvent.class,
@@ -26242,7 +26448,7 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.ExitConfirmAction.class,
           };
           java.lang.String info =
-              "\u0000\u00fb\u0001\u0000\u0001\u01f3\u00fb\u0000\u0002\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u00fd\u0001\u0000\u0001\u01f3\u00fd\u0000\u0002\u0000\u0001<\u0000\u0002<" +
               "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\t<\u0000" +
               "\n<\u0000\u000b<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000\u0018" +
               "<\u0000\u001a<\u0000\u001b<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000" +
@@ -26268,18 +26474,19 @@ public  final class Event extends
               "<\u0000\u0163<\u0000\u0168<\u0000\u0169<\u0000\u016a<\u0000\u016b<\u0000\u016c<\u0000" +
               "\u016e<\u0000\u0172<\u0000\u0177<\u0000\u0178<\u0000\u0179<\u0000\u017a<\u0000\u017b" +
               "<\u0000\u017c<\u0000\u017d<\u0000\u017e<\u0000\u017f<\u0000\u0180<\u0000\u0181<\u0000" +
-              "\u0186<\u0000\u0187<\u0000\u0188<\u0000\u0189<\u0000\u018a<\u0000\u018b<\u0000\u0190" +
-              "<\u0000\u0192<\u0000\u0193<\u0000\u0196<\u0000\u0197<\u0000\u0198<\u0000\u0199<\u0000" +
-              "\u019a<\u0000\u019b<\u0000\u019c<\u0000\u019d<\u0000\u019e<\u0000\u019f<\u0000\u01a0" +
-              "<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000\u01a4<\u0000\u01a5<\u0000\u01a6<\u0000" +
-              "\u01a7<\u0000\u01af<\u0000\u01b0<\u0000\u01b1<\u0000\u01b2<\u0000\u01b3<\u0000\u01b4" +
-              "<\u0000\u01b5<\u0000\u01b6<\u0000\u01b7<\u0000\u01b8<\u0000\u01b9<\u0000\u01c2<\u0000" +
-              "\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd" +
-              "<\u0000\u01cf<\u0000\u01d0<\u0000\u01d1<\u0000\u01d6<\u0000\u01d7<\u0000\u01d8<\u0000" +
-              "\u01d9<\u0000\u01da<\u0000\u01db<\u0000\u01dc<\u0000\u01dd<\u0000\u01de<\u0000\u01df" +
-              "<\u0000\u01e0<\u0000\u01e1<\u0000\u01e2<\u0000\u01e3<\u0000\u01e4<\u0000\u01e5<\u0000" +
-              "\u01e6<\u0000\u01e9<\u0000\u01ea<\u0000\u01eb<\u0000\u01ed<\u0000\u01ee<\u0000\u01ef" +
-              "<\u0000\u01f0<\u0000\u01f1<\u0000\u01f2<\u0000\u01f3<\u0000";
+              "\u0186<\u0000\u0187<\u0000\u0188<\u0000\u0189<\u0000\u018a<\u0000\u018b<\u0000\u018c" +
+              "<\u0000\u018d<\u0000\u0190<\u0000\u0192<\u0000\u0193<\u0000\u0196<\u0000\u0197<\u0000" +
+              "\u0198<\u0000\u0199<\u0000\u019a<\u0000\u019b<\u0000\u019c<\u0000\u019d<\u0000\u019e" +
+              "<\u0000\u019f<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000\u01a4<\u0000" +
+              "\u01a5<\u0000\u01a6<\u0000\u01a7<\u0000\u01af<\u0000\u01b0<\u0000\u01b1<\u0000\u01b2" +
+              "<\u0000\u01b3<\u0000\u01b4<\u0000\u01b5<\u0000\u01b6<\u0000\u01b7<\u0000\u01b8<\u0000" +
+              "\u01b9<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000\u01ca<\u0000\u01cb" +
+              "<\u0000\u01cc<\u0000\u01cd<\u0000\u01cf<\u0000\u01d0<\u0000\u01d1<\u0000\u01d6<\u0000" +
+              "\u01d7<\u0000\u01d8<\u0000\u01d9<\u0000\u01da<\u0000\u01db<\u0000\u01dc<\u0000\u01dd" +
+              "<\u0000\u01de<\u0000\u01df<\u0000\u01e0<\u0000\u01e1<\u0000\u01e2<\u0000\u01e3<\u0000" +
+              "\u01e4<\u0000\u01e5<\u0000\u01e6<\u0000\u01e9<\u0000\u01ea<\u0000\u01eb<\u0000\u01ed" +
+              "<\u0000\u01ee<\u0000\u01ef<\u0000\u01f0<\u0000\u01f1<\u0000\u01f2<\u0000\u01f3<\u0000" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
