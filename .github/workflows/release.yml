@@ -508,6 +508,7 @@ jobs:
   # App-hosted simulator tests gate only the App Store upload (its workflow
   # needs the whole Release run to succeed), not the shared release, which
   # would otherwise wait on the slowest runner.
+  # Do not add secrets to this job: on failure the .xcresult artifact is uploaded publicly.
   ios-app-checks:
     needs: source
     runs-on: xcode-27
@@ -573,8 +574,25 @@ jobs:
             [ -n "$id" ] || { printf '%s\n' "$devices" >&2; exit 1; }
             destination="platform=iOS Simulator,id=$id"
           fi
-          xcodebuild -quiet -test-timeouts-enabled YES -default-test-execution-time-allowance 180 -maximum-test-execution-time-allowance 180 -collect-test-diagnostics never -parallel-testing-enabled NO -jobs 4 -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination "$destination" -derivedDataPath "$RUNNER_TEMP/DerivedData" -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages" -only-testing:RemoteAgentTests test
+          result_bundle="$RUNNER_TEMP/ios-app-tests.xcresult"
+          rm -rf "$result_bundle"
+          set +e
+          xcodebuild -quiet -test-timeouts-enabled YES -default-test-execution-time-allowance 180 -maximum-test-execution-time-allowance 180 -collect-test-diagnostics never -parallel-testing-enabled NO -jobs 4 -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination "$destination" -derivedDataPath "$RUNNER_TEMP/DerivedData" -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages" -resultBundlePath "$result_bundle" -only-testing:RemoteAgentTests test
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            python3 ios/scripts/xcresult_failures.py "$result_bundle" >&2 || true
+          fi
           rm -rf "$RUNNER_TEMP/DerivedData/Logs"
+          exit "$status"
+      - name: Upload failed iOS test result bundle
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ios-app-tests-xcresult
+          path: ${{ runner.temp }}/ios-app-tests.xcresult
+          retention-days: 3
+          if-no-files-found: ignore
       # The App Store archive builds Release, where DEBUG-only code is compiled out;
       # catch a missing Release counterpart here rather than at upload time.
       - name: App Release configuration compiles

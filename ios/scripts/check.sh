@@ -25,7 +25,8 @@ case "$mode" in std|full|core|app|ui|perf) ;; *) echo "usage: check.sh [core|app
 
 ios=$(cd "$(dirname "$0")/.." && pwd)
 out=$(mktemp -t ra-ios-check)
-trap 'rm -f "$out"' EXIT
+result_dir=$(mktemp -d -t ra-ios-xcresult)
+trap 'rm -rf "$out" "$result_dir"' EXIT
 
 fail() {
     echo "check.sh: $1" >&2
@@ -104,5 +105,8 @@ if [ -n "$udid" ]; then
         xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
     done
 fi
-xcodebuild -quiet -test-timeouts-enabled YES -default-test-execution-time-allowance 180 -maximum-test-execution-time-allowance 180 -collect-test-diagnostics never -parallel-testing-enabled NO -jobs "${IOS_BUILD_JOBS:-4}" -project "$ios/RemoteAgent.xcodeproj" -scheme "$scheme" -destination "$destination" "$@" test >"$out" 2>&1 \
-    || fail "the app did not build or its tests failed (xcodebuild build test, $destination)"
+result_bundle="$result_dir/test.xcresult"
+if ! xcodebuild -quiet -test-timeouts-enabled YES -default-test-execution-time-allowance 180 -maximum-test-execution-time-allowance 180 -collect-test-diagnostics never -parallel-testing-enabled NO -jobs "${IOS_BUILD_JOBS:-4}" -project "$ios/RemoteAgent.xcodeproj" -scheme "$scheme" -destination "$destination" -resultBundlePath "$result_bundle" "$@" test >"$out" 2>&1; then
+    python3 "$ios/scripts/xcresult_failures.py" "$result_bundle" >>"$out" 2>&1 || true
+    fail "the app did not build or its tests failed (xcodebuild build test, $destination)"
+fi

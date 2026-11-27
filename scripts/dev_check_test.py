@@ -93,6 +93,7 @@ with open(os.environ["RA_MODE_PROBE"], "a") as output:
                         # No argument is the delivery check: everything except UI automation and perf benchmarks.
                         expected = {None: ["-only-testing:RemoteAgentTests"], "full": [], "app": ["-only-testing:RemoteAgentTests"], "ui": ["-only-testing:RemoteAgentUITests"], "perf": ["-only-testing:RemoteAgentPerfTests"]}[mode]
                         self.assertEqual(selected, expected)
+                        self.assertIn("-resultBundlePath", native["args"])
 
 
 if __name__ == "__main__":
