@@ -107,8 +107,7 @@ final class CipherStore: CipherCache {
 
     /// Logging out: removes every account's cache under `root`. Stores opened from it must be closed first.
     static func eraseAll(root: URL = CipherStore.defaultRoot) throws {
-        guard FileManager.default.fileExists(atPath: root.path) else { return }
-        try FileManager.default.removeItem(at: root)
+        try removeItemIfPresent(at: root)
     }
 
     // MARK: CipherCache

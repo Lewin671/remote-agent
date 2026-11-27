@@ -117,6 +117,7 @@ private func nextEvent<T: Sendable>(_ events: AsyncStream<T>) async -> T? {
             screens: screens,
             defaults: UserDefaults(suiteName: "sf-test-\(UUID().uuidString)")!,
             sharedFileStore: store,
+            sharedFileQueue: SharedFileStorageQueue(),
             demoMode: true
         )
         let opened = Opened()
@@ -344,6 +345,7 @@ private func nextEvent<T: Sendable>(_ events: AsyncStream<T>) async -> T? {
             screens: screens,
             defaults: UserDefaults(suiteName: "sf-order-\(UUID().uuidString)")!,
             sharedFileStore: store,
+            sharedFileQueue: SharedFileStorageQueue(),
             demoMode: true
         )
         defer { Task { await host.closeAsync() } }

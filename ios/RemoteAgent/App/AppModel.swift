@@ -45,6 +45,8 @@ final class AccountContext {
         preferenceDefaults: UserDefaults = .standard,
         pendingStore: PendingScope = PendingStore.ephemeral().scoped(),
         sharedFileRoot: URL = SharedFileCenter.defaultRoot,
+        sharedFileQueue: SharedFileStorageQueue = .shared,
+        draftStorageQueue: DraftStorageQueue = .shared,
         demoDirectories: DirectorySource? = nil,
         demoModels: [String: PBListModelsResponse] = [:],
         demoMode: Bool = false,
@@ -64,7 +66,9 @@ final class AccountContext {
             screens: screens,
             defaults: preferenceDefaults,
             sharedFileStore: SharedFileStore(root: sharedFileRoot),
+            sharedFileQueue: sharedFileQueue,
             pendingStore: pendingStore,
+            draftStorageQueue: draftStorageQueue,
             demoDirectories: demoDirectories,
             demoModels: demoModels,
             demoMode: demoMode
@@ -208,11 +212,22 @@ final class AppModel {
         var makeExecutor: (@MainActor (_ account: Account, _ cache: (any CipherCache)?, _ securityStore: any SecurityStoreV4) throws -> (any CoreHostExecutor, Remote))? = nil
         /// What this client says it runs on, as Android's "Android 16 · Pixel 9".
         var deviceDescription: @MainActor @Sendable () -> String = AppModel.defaultDeviceDescription
-        /// Erases what is stored for the account: the keys, the cache and the pending images. Called off the main actor.
+        /// Erases what is stored for the account: the keys, the cache, shared files, and the pending images. Called off the main actor.
         var erase: @Sendable (AccountStorage) throws -> Void = { storage in
             try LocalAccountData.erase(
-                vault: storage.vault, cacheRoot: storage.cacheRoot, pending: storage.pending)
+                vault: storage.vault,
+                cacheRoot: storage.cacheRoot,
+                sharedFiles: storage.sharedFileRoot,
+                pending: storage.pending
+            )
         }
+        /// Serial FIFO queues for shared-file and draft/outbox disk I/O (isolated per test harness).
+        var sharedFileQueue: SharedFileStorageQueue = .shared
+        var draftStorageQueue: DraftStorageQueue = .shared
+        /// Discards transient picker-staged videos on startup and logout.
+        var discardLibraryVideos: @Sendable () -> Void = { LibraryVideos.discardAll() }
+        /// Clears the persisted legacy v3 repair notice in the vault.
+        var dismissUpgradeNotice: @Sendable (Vault) -> Void = { $0.dismissLegacyRepairNotice() }
         /// Unregisters APNs remote notifications on logout so no stale push registration remains.
         var unregisterRemoteNotifications: @MainActor () -> Void = {
             UIApplication.shared.unregisterForRemoteNotifications()
@@ -249,12 +264,16 @@ final class AppModel {
     func ensureCoreHost() -> CoreHost {
         if let existing = _coreHost { return existing }
         let vault = parts.storage.vault
+        let dismissUpgradeNotice = parts.dismissUpgradeNotice
         let host = try! CoreHost.singleCore(
             store: vault,
             http: Self.http,
             allowPlainHttp: parts.allowPlainHttp,
             screens: screens,
             defaults: parts.defaults,
+            sharedFileStore: SharedFileStore(root: parts.storage.sharedFileRoot),
+            sharedFileQueue: parts.sharedFileQueue,
+            draftStorageQueue: parts.draftStorageQueue,
             callbacks: CoreHost.SecurityHostCallbacks(
                 onRequestStoragePersist: nil,
                 onUnregisterPushOnExit: { [weak self] eff in
@@ -273,7 +292,7 @@ final class AppModel {
                     }
                 },
                 onDismissUpgradeNotice: {
-                    Task.detached { vault.dismissLegacyRepairNotice() }
+                    Task.detached { dismissUpgradeNotice(vault) }
                 },
                 onPersistLastServer: { [weak self] server in
                     await MainActor.run {
@@ -387,8 +406,9 @@ final class AppModel {
     init(settings: SettingsStore, parts: Parts = Parts()) {
         self.settings = settings
         self.parts = parts
+        let discardLibraryVideos = parts.discardLibraryVideos
         Task.detached(priority: .utility) {
-            LibraryVideos.discardAll()
+            discardLibraryVideos()
         }
     }
 
@@ -505,7 +525,7 @@ final class AppModel {
         else if let leaving = account, lastServer.isEmpty { lastServer = leaving.server }
         generation += 1
         let store = await unloadAccountRuntime(clearPendingMedia: true)
-        LibraryVideos.discardAll()
+        parts.discardLibraryVideos()
         parts.unregisterRemoteNotifications()
         parts.clearNotifications()
         let storage = parts.storage
@@ -587,7 +607,7 @@ final class AppModel {
             account: acct,
             defaults: ScopeDefaults(parts.defaults, scope: [acct.server, acct.deviceId]),
             pendingStore: pendingScope,
-            sharedFileStore: SharedFileStore(root: SharedFileCenter.defaultRoot)
+            sharedFileStore: SharedFileStore(root: parts.storage.sharedFileRoot)
         )
         guard gen == generation else {
             await host.detachAccount()
@@ -599,11 +619,14 @@ final class AppModel {
             remote: remote,
             preferenceDefaults: parts.defaults,
             pendingStore: pendingScope,
+            sharedFileRoot: parts.storage.sharedFileRoot,
+            sharedFileQueue: parts.sharedFileQueue,
+            draftStorageQueue: parts.draftStorageQueue,
             core: screens,
             coreHost: host
         )
         let imageCenter = ImageCenter.install(remote: remote, coreHost: host, pending: pendingScope)
-        let sharedCenter = SharedFileCenter.install(remote: remote, coreHost: host, root: SharedFileCenter.defaultRoot)
+        let sharedCenter = SharedFileCenter.install(remote: remote, coreHost: host, root: parts.storage.sharedFileRoot)
         await host.setDeviceDescription(parts.deviceDescription)
         let cleanup: @Sendable (String) async -> Void = { [weak ctx] sid in
             guard let ctx else { return }
@@ -659,7 +682,7 @@ final class AppModel {
             await host.externalLogout()
         }
         let store = await unloadAccountRuntime(clearPendingMedia: true)
-        LibraryVideos.discardAll()
+        parts.discardLibraryVideos()
         parts.unregisterRemoteNotifications()
         parts.clearNotifications()
         let storage = parts.storage
@@ -740,6 +763,8 @@ final class AppModel {
                 remote: remote,
                 pendingStore: demoPending,
                 sharedFileRoot: demoSharedRoot,
+                sharedFileQueue: parts.sharedFileQueue,
+                draftStorageQueue: parts.draftStorageQueue,
                 demoDirectories: Demo.directories,
                 demoModels: models,
                 demoMode: true,

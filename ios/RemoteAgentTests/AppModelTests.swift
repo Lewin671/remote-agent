@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 @testable import RACore
 import RAProto
 import Security
@@ -6,6 +7,97 @@ import Testing
 import os
 
 @testable import RemoteAgent
+
+/// Explicit completion signal counter for deterministic async waits without wall-clock polling.
+final class SignalCounter: Sendable {
+    private let state = OSAllocatedUnfairLock<(count: Int, waiters: [(id: UUID, target: Int, cont: CheckedContinuation<Void, Error>)])>(
+        initialState: (0, [])
+    )
+
+    var count: Int { state.withLock { $0.count } }
+
+    func signal() {
+        let ready: [CheckedContinuation<Void, Error>] = state.withLock { s in
+            s.count += 1
+            var remaining: [(id: UUID, target: Int, cont: CheckedContinuation<Void, Error>)] = []
+            var done: [CheckedContinuation<Void, Error>] = []
+            for w in s.waiters {
+                if s.count >= w.target { done.append(w.cont) }
+                else { remaining.append(w) }
+            }
+            s.waiters = remaining
+            return done
+        }
+        for c in ready { c.resume() }
+    }
+
+    func wait(atLeast target: Int) async throws {
+        if count >= target { return }
+        try Task.checkCancellation()
+        let id = UUID()
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+                let immediate: Result<Void, Error>? = state.withLock { s in
+                    if s.count >= target { return .success(()) }
+                    if Task.isCancelled { return .failure(CancellationError()) }
+                    s.waiters.append((id, target, cont))
+                    return nil
+                }
+                if let immediate { cont.resume(with: immediate) }
+            }
+        } onCancel: {
+            let cancelled: CheckedContinuation<Void, Error>? = state.withLock { s in
+                guard let idx = s.waiters.firstIndex(where: { $0.id == id }) else { return nil }
+                return s.waiters.remove(at: idx).cont
+            }
+            cancelled?.resume(throwing: CancellationError())
+        }
+    }
+}
+
+/// Suspends on `@Observable` mutations until `condition()` holds, with no wall-clock polling.
+/// Hang protection is delegated to Swift Testing `.timeLimit` and xcodebuild's test time allowance.
+@MainActor
+private func awaitObservation(_ condition: @MainActor () -> Bool) async throws {
+    while !condition() {
+        try Task.checkCancellation()
+        let gate = OSAllocatedUnfairLock<CheckedContinuation<Void, Error>?>(initialState: nil)
+        let resumeOnce: @Sendable (Result<Void, Error>) -> Void = { result in
+            let cont = gate.withLock { c -> CheckedContinuation<Void, Error>? in
+                let taken = c
+                c = nil
+                return taken
+            }
+            cont?.resume(with: result)
+        }
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+                let ready = OSAllocatedUnfairLock(initialState: false)
+                let notify: @Sendable () -> Void = {
+                    let first = ready.withLock { seen -> Bool in
+                        guard !seen else { return false }
+                        seen = true
+                        return true
+                    }
+                    if first { resumeOnce(.success(())) }
+                }
+                gate.withLock { $0 = cont }
+                withObservationTracking {
+                    _ = condition()
+                } onChange: {
+                    notify()
+                }
+                if Task.isCancelled {
+                    resumeOnce(.failure(CancellationError()))
+                } else if condition() {
+                    notify()
+                }
+            }
+        } onCancel: {
+            resumeOnce(.failure(CancellationError()))
+        }
+    }
+}
 
 /// A network watcher that says only what the test tells it.
 final class FakeNetwork: NetworkWatching, @unchecked Sendable {
@@ -75,8 +167,11 @@ final class Harness {
         deviceId: "00112233445566778899aabbccddeeff",
         accountId: "11111111111111111111111111111111")
     private(set) var executors: [RecordingExecutor] = []
-    var cleared = 0
-    var unregisteredPush = 0
+    let clearedSignal = SignalCounter()
+    let unregisteredPushSignal = SignalCounter()
+    let upgradeNoticeDismissedSignal = SignalCounter()
+    var cleared: Int { clearedSignal.count }
+    var unregisteredPush: Int { unregisteredPushSignal.count }
     var erase: (@Sendable (AccountStorage) throws -> Void)?
 
     lazy var model: AppModel = makeModel()
@@ -96,7 +191,19 @@ final class Harness {
     func makeModel() -> AppModel {
         var parts = AppModel.Parts()
         parts.storage = AccountStorage(
-            vault: vault, cacheRoot: root.appending(path: "cache"), pending: pending)
+            vault: vault,
+            cacheRoot: root.appending(path: "cache"),
+            pending: pending,
+            sharedFileRoot: root.appending(path: "shared-files")
+        )
+        parts.sharedFileQueue = SharedFileStorageQueue()
+        parts.draftStorageQueue = DraftStorageQueue()
+        parts.discardLibraryVideos = {}
+        let upgradeSignal = upgradeNoticeDismissedSignal
+        parts.dismissUpgradeNotice = { vault in
+            vault.dismissLegacyRepairNotice()
+            upgradeSignal.signal()
+        }
         parts.network = FakeNetwork()
         parts.defaults = defaults
         parts.allowPlainHttp = true
@@ -106,10 +213,18 @@ final class Harness {
             return (exec, exec.remote)
         }
         parts.deviceDescription = { "iOS 26.0 · iPhone" }
-        parts.unregisterRemoteNotifications = { [unowned self] in self.unregisteredPush += 1 }
-        parts.clearNotifications = { [unowned self] in self.cleared += 1 }
+        parts.unregisterRemoteNotifications = { [unowned self] in self.unregisteredPushSignal.signal() }
+        parts.clearNotifications = { [unowned self] in self.clearedSignal.signal() }
         if let erase { parts.erase = erase }
         return AppModel(settings: settings, parts: parts)
+    }
+
+    func awaitLoaded(_ target: AppModel? = nil) async throws {
+        let m = target ?? model
+        try await awaitObservation {
+            let stage = m.screens.appRoot.stage
+            return stage != .unspecified && stage != .loading && (stage != .ready || m.context != nil)
+        }
     }
 
     var executor: RecordingExecutor { executors.last! }
@@ -152,12 +267,12 @@ final class Harness {
 }
 
 @MainActor
-@Suite struct AppModelTests {
+@Suite(.timeLimit(.minutes(1))) struct AppModelTests {
     @Test func withoutAnAccountOnboardingIsShownAndNoExecutorIsCreated() async throws {
         let h = Harness(); defer { h.cleanUp() }
         #expect(h.model.screens.appRoot.stage == .unspecified)
         h.model.setForeground(true)
-        try await h.model.waitForLoadForTest()
+        try await h.awaitLoaded()
         #expect(h.model.screens.appRoot.stage == .onboarding)
         #expect(h.model.screens.onboarding.mode == .entry)
         #expect(h.model.context == nil)
@@ -200,7 +315,7 @@ final class Harness {
         )
 
         h.model.setForeground(true)
-        try await h.model.waitForLoadForTest()
+        try await h.awaitLoaded()
         #expect(h.model.screens.appRoot.stage == .ready)
         #expect(h.model.account?.deviceId == fix.clientId)
         #expect(h.model.account?.accountId == fix.accountId)
@@ -352,7 +467,7 @@ final class Harness {
 
     @Test func corruptRegistrationIntentSurfacesBootstrapErrorAndSetupResetRecoversInPlace() async throws {
         let h = Harness(); defer { h.cleanUp() }
-        _ = h.vault.executeStorage(.with {
+        let seed = h.vault.executeStorage(.with {
             $0.op = .writeCas
             $0.bucket = .registrationIntent
             $0.key = "intent"
@@ -360,16 +475,19 @@ final class Harness {
             $0.nextRevision = "r1"
             $0.data = Data("synthetic-invalid-receipt".utf8)
         })
+        #expect(seed.error.isEmpty && !seed.conflict)
         h.model.setForeground(true)
-        try await h.model.waitForLoadForTest()
+        try await h.awaitLoaded()
         #expect(h.model.screens.appRoot.stage == .bootstrapError)
         #expect(h.model.screens.appRoot.bootstrapError.canReset)
         #expect(h.vault.hasPersistedState())
 
         await h.model.coreHost.exitRequest(intent: .setupReset)
-        await eventually("exit confirm shown") { h.model.screens.exitConfirm.step == .awaitingConfirm }
+        try await awaitObservation { h.model.screens.exitConfirm.step == .awaitingConfirm }
         await h.model.coreHost.exitConfirm(true)
-        await eventually("reset to onboarding") { h.model.screens.appRoot.stage == .onboarding }
+        try await h.unregisteredPushSignal.wait(atLeast: 1)
+        try await h.clearedSignal.wait(atLeast: 1)
+        try await awaitObservation { h.model.screens.appRoot.stage == .onboarding }
 
         #expect(!h.vault.hasPersistedState())
         #expect(h.unregisteredPush == 1)
@@ -378,7 +496,7 @@ final class Harness {
 
     @Test func corruptRecordSurfacesBootstrapErrorAndSetupResetClearsState() async throws {
         let h = Harness(); defer { h.cleanUp() }
-        _ = h.vault.executeStorage(.with {
+        let seed = h.vault.executeStorage(.with {
             $0.op = .writeCas
             $0.bucket = .record
             $0.key = "record"
@@ -386,15 +504,18 @@ final class Harness {
             $0.nextRevision = "r1"
             $0.data = Data([1, 2, 3, 4])
         })
+        #expect(seed.error.isEmpty && !seed.conflict)
         h.model.setForeground(true)
-        try await h.model.waitForLoadForTest()
+        try await h.awaitLoaded()
         #expect(h.model.screens.appRoot.stage == .bootstrapError)
         #expect(h.model.screens.appRoot.bootstrapError.canReset)
 
         await h.model.coreHost.exitRequest(intent: .setupReset)
-        await eventually("exit confirm shown") { h.model.screens.exitConfirm.step == .awaitingConfirm }
+        try await awaitObservation { h.model.screens.exitConfirm.step == .awaitingConfirm }
         await h.model.coreHost.exitConfirm(true)
-        await eventually("onboarding after reset") { h.model.screens.appRoot.stage == .onboarding }
+        try await h.unregisteredPushSignal.wait(atLeast: 1)
+        try await h.clearedSignal.wait(atLeast: 1)
+        try await awaitObservation { h.model.screens.appRoot.stage == .onboarding }
         #expect(h.unregisteredPush == 1)
         #expect(!h.vault.hasPersistedState())
     }
@@ -424,7 +545,7 @@ final class Harness {
             h.cleanUp()
         }
         h.model.setForeground(true)
-        try await h.model.waitForLoadForTest()
+        try await h.awaitLoaded()
         #expect(h.model.screens.appRoot.stage == .bootstrapError)
         #expect(!h.model.screens.appRoot.bootstrapError.canReset)
         #expect(h.model.screens.appRoot.bootstrapError.canRetry)
@@ -433,7 +554,7 @@ final class Harness {
         locked.withLock { $0 = false }
         h.model.setForeground(false)
         h.model.setForeground(true)
-        await eventually("recovered to onboarding") { h.model.screens.appRoot.stage == .onboarding }
+        try await awaitObservation { h.model.screens.appRoot.stage == .onboarding }
     }
 
     @Test func legacyV3WipeClearsCipherCachePreservesPendingKeyAndPersistsRepairNoticeAcrossColdRestart() async throws {
@@ -446,7 +567,7 @@ final class Harness {
         try cache.close()
 
         h.model.setForeground(true)
-        try await h.model.waitForLoadForTest()
+        try await h.awaitLoaded()
         #expect(h.model.screens.appRoot.stage == .onboarding)
         #expect(h.model.screens.onboarding.showLegacyRepairBanner)
         #expect(try h.vault.read(.pendingKey) == Data(repeating: 9, count: 32))
@@ -455,13 +576,14 @@ final class Harness {
         // Cold restart still sees the banner until dismissed through Core.
         let second = h.makeModel(); defer { second.closeSyncForTest() }
         second.setForeground(true)
-        try await second.waitForLoadForTest()
+        try await h.awaitLoaded(second)
         #expect(second.screens.appRoot.stage == .onboarding)
         #expect(second.screens.onboarding.showLegacyRepairBanner)
 
         await second.coreHost.appRootDismissUpgradeNotice()
-        await eventually("banner dismissed") { !second.screens.onboarding.showLegacyRepairBanner }
-        await eventually("upgrade notice deleted in vault") { !h.vault.hasUpgradeNotice() }
+        try await awaitObservation { !second.screens.onboarding.showLegacyRepairBanner }
+        try await h.upgradeNoticeDismissedSignal.wait(atLeast: 1)
+        #expect(!h.vault.hasUpgradeNotice())
     }
 
     @Test func accountRuntimeChangedAttachesToSingleCoreAndOpensCipherCache() async throws {
@@ -516,7 +638,7 @@ final class Harness {
                 }
             }
         ])
-        await eventually("re-attached") { h.model.context != nil }
+        try await awaitObservation { h.model.context != nil }
         let next = try #require(h.model.context)
         #expect(next !== oldContext)
         #expect(next.coreHost === host)
@@ -525,25 +647,27 @@ final class Harness {
     @Test func pendingCreateResumesInOnboardingAndSetupResetClearsIt() async throws {
         let h = Harness(); defer { h.cleanUp() }
         h.model.setForeground(true)
-        try await h.model.waitForLoadForTest()
+        try await h.awaitLoaded()
         #expect(h.model.screens.appRoot.stage == .onboarding)
 
         await h.model.coreHost.onboardingSetMode(.create)
         await h.model.coreHost.onboardingCreateSubmit(serverInput: "https://relay.example.com")
-        await eventually("recovery code generated") { !h.model.screens.onboarding.create.recoveryCode.isEmpty }
+        try await awaitObservation { !h.model.screens.onboarding.create.recoveryCode.isEmpty }
         #expect(h.vault.hasPersistedState())
 
         // Cold restart resumes directly in onboarding create mode with pending create.
         let second = h.makeModel(); defer { second.closeSyncForTest() }
         second.setForeground(true)
-        try await second.waitForLoadForTest()
+        try await h.awaitLoaded(second)
         #expect(second.screens.appRoot.stage == .onboarding)
         #expect(second.screens.onboarding.mode == .create)
 
         await second.coreHost.exitRequest(intent: .setupReset)
-        await eventually("exit confirm awaits") { second.screens.exitConfirm.step == .awaitingConfirm }
+        try await awaitObservation { second.screens.exitConfirm.step == .awaitingConfirm }
         await second.coreHost.exitConfirm(true)
-        await eventually("reset back to entry") {
+        try await h.unregisteredPushSignal.wait(atLeast: 1)
+        try await h.clearedSignal.wait(atLeast: 1)
+        try await awaitObservation {
             second.screens.appRoot.stage == .onboarding && second.screens.onboarding.mode == .entry
         }
         #expect(!h.vault.hasPersistedState())

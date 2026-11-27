@@ -396,9 +396,18 @@ import Testing
         await cache.putBlob(name: "x", data: Data([1]))
         try cache.close()
 
-        try LocalAccountData.erase(vault: vault, cacheRoot: cacheRoot, pending: s)
+        let sharedFilesRoot = FileManager.default.temporaryDirectory.appending(path: "ra-sf-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: sharedFilesRoot) }
+        try FileManager.default.createDirectory(at: sharedFilesRoot, withIntermediateDirectories: true)
+        try Data("sf".utf8).write(to: sharedFilesRoot.appending(path: "file.bin"))
+
+        try LocalAccountData.erase(vault: vault, cacheRoot: cacheRoot, sharedFiles: sharedFilesRoot, pending: s)
         #expect(!vault.hasPersistedState())
         #expect(!FileManager.default.fileExists(atPath: cacheRoot.path))
         #expect(!FileManager.default.fileExists(atPath: dir.path))
+        #expect(!FileManager.default.fileExists(atPath: sharedFilesRoot.path))
+
+        // Re-erasing when cache, pending, and sharedFiles directories are already absent must succeed idempotently.
+        try LocalAccountData.erase(vault: vault, cacheRoot: cacheRoot, sharedFiles: sharedFilesRoot, pending: s)
     }
 }

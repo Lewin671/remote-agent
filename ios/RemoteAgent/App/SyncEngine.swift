@@ -97,12 +97,18 @@ struct AccountStorage: Sendable {
     var vault: Vault
     var cacheRoot: URL
     var pending: PendingStore
+    var sharedFileRoot: URL = SharedFileCenter.defaultRoot
 
     static func standard() -> AccountStorage {
         let cacheRoot = CipherStore.defaultRoot
         let vault = Vault(onLegacyWipe: {
             try? CipherStore.eraseAll(root: cacheRoot)
         })
-        return AccountStorage(vault: vault, cacheRoot: cacheRoot, pending: PendingStore(vault: vault))
+        return AccountStorage(
+            vault: vault,
+            cacheRoot: cacheRoot,
+            pending: PendingStore(vault: vault),
+            sharedFileRoot: SharedFileCenter.defaultRoot
+        )
     }
 }

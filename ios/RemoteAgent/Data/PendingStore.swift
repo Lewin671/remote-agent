@@ -356,7 +356,7 @@ final class PendingStore: @unchecked Sendable {
                 return
             }
             try everyStep([
-                { if FileManager.default.fileExists(atPath: self.directory.path) { try FileManager.default.removeItem(at: self.directory) } },
+                { try removeItemIfPresent(at: self.directory) },
                 { try self.vault?.delete(.pendingKey) },
             ])
         }
@@ -1114,8 +1114,21 @@ enum LocalAccountData {
         try everyStep([
             { try CipherStore.eraseAll(root: cacheRoot) },
             { try pending.clearAll() },
-            { if FileManager.default.fileExists(atPath: sharedFiles.path) { try FileManager.default.removeItem(at: sharedFiles) } },
+            { try removeItemIfPresent(at: sharedFiles) },
         ])
+    }
+}
+
+/// Removes `url` if present, treating an already-absent path (`NSFileNoSuchFileError` / `ENOENT`)
+/// as success so concurrent cleanup or OS cache purges do not fail account teardown.
+func removeItemIfPresent(at url: URL) throws {
+    do {
+        try FileManager.default.removeItem(at: url)
+    } catch let err as NSError where
+        (err.domain == NSCocoaErrorDomain && err.code == NSFileNoSuchFileError)
+        || (err.domain == NSPOSIXErrorDomain && err.code == Int(ENOENT))
+    {
+        return
     }
 }
 

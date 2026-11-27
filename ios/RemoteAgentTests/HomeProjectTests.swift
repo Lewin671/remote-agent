@@ -927,16 +927,21 @@ private final class PipeTraceRecorder: @unchecked Sendable {
         executor: FakeCoreExecutor,
         screens: CoreScreens,
         defaults: UserDefaults,
-        draftStorageQueue: DraftStorageQueue = .shared,
+        sharedFileQueue: SharedFileStorageQueue = SharedFileStorageQueue(),
+        draftStorageQueue: DraftStorageQueue = DraftStorageQueue(),
         trace: PipeTraceRecorder? = nil,
         onNavigate: @escaping @MainActor @Sendable (PBCoreNavigateEffect) -> Void = { _ in }
-    ) async throws -> CoreHost {
+    ) async throws -> (host: CoreHost, sharedFileRoot: URL) {
+        let sharedFileRoot = FileManager.default.temporaryDirectory
+            .appending(path: "ra-home-sf-\(UUID().uuidString)", directoryHint: .isDirectory)
         let host = try CoreHost.singleCore(
             store: executor.securityStore,
             http: HTTP(),
             allowPlainHttp: true,
             screens: screens,
             defaults: defaults,
+            sharedFileStore: SharedFileStore(root: sharedFileRoot),
+            sharedFileQueue: sharedFileQueue,
             draftStorageQueue: draftStorageQueue,
             clock: { FakeRelayAuthority.nowMs },
             sleep: { _ in try? await Task.sleep(for: .milliseconds(5)) },
@@ -959,10 +964,10 @@ private final class PipeTraceRecorder: @unchecked Sendable {
             account: executor.account,
             defaults: ScopeDefaults(defaults),
             pendingStore: PendingStore.ephemeral().scoped(),
-            sharedFileStore: SharedFileStore(root: SharedFileCenter.defaultRoot)
+            sharedFileStore: SharedFileStore(root: sharedFileRoot)
         )
         await host.startAsync()
-        return host
+        return (host, sharedFileRoot)
     }
 
     @Test func coreHostDrivesRealCoreAndPublishesObservableScreens() async throws {
@@ -975,7 +980,7 @@ private final class PipeTraceRecorder: @unchecked Sendable {
         defaults.removePersistentDomain(forName: suiteName)
         let key = scopeHmacKey(localKey: executor.account.localKey)
 
-        let host = try await makeStartedHost(
+        let (host, sharedFileRoot) = try await makeStartedHost(
             executor: executor,
             screens: screens,
             defaults: defaults,
@@ -983,6 +988,7 @@ private final class PipeTraceRecorder: @unchecked Sendable {
             trace: trace,
             onNavigate: { eff in Task { await navRecorder.record(eff) } }
         )
+        defer { try? FileManager.default.removeItem(at: sharedFileRoot) }
         await host.showHome()
 
         try await waitForObservation(label: "home populated") {
@@ -1042,11 +1048,12 @@ private final class PipeTraceRecorder: @unchecked Sendable {
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
 
-        let host = try await makeStartedHost(
+        let (host, sharedFileRoot) = try await makeStartedHost(
             executor: executor,
             screens: screens,
             defaults: defaults
         )
+        defer { try? FileManager.default.removeItem(at: sharedFileRoot) }
 
         // 1. Start -> online -> lists -> home rows
         await host.showHome()
@@ -1105,11 +1112,12 @@ private final class PipeTraceRecorder: @unchecked Sendable {
             return nil
         }
 
-        let host = try await makeStartedHost(
+        let (host, sharedFileRoot) = try await makeStartedHost(
             executor: executor,
             screens: screens,
             defaults: defaults
         )
+        defer { try? FileManager.default.removeItem(at: sharedFileRoot) }
         try await waitForObservation(label: "connected for cancel test") { screens.connection.state == .connected }
 
         await host.dispatch(PBCoreEvent.with {
@@ -1137,11 +1145,12 @@ private final class PipeTraceRecorder: @unchecked Sendable {
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
 
-        let host = try await makeStartedHost(
+        let (host, sharedFileRoot) = try await makeStartedHost(
             executor: executor,
             screens: screens,
             defaults: defaults
         )
+        defer { try? FileManager.default.removeItem(at: sharedFileRoot) }
         try await waitForObservation(label: "connected for ping test") { screens.connection.state == .connected }
 
         // 1. Happy path completes through Core over the relay byte pipe.
