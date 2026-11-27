@@ -33,6 +33,11 @@ final class TestClock: @unchecked Sendable {
     func advance(_ seconds: TimeInterval) { lock.withLock { date += seconds } }
 }
 
+struct EventuallyTimeoutError: Error, CustomStringConvertible {
+    let what: String
+    var description: String { "never happened: \(what)" }
+}
+
 /// Waits for observable work to finish, reporting a failure at a wall-clock deadline.
 @MainActor
 func eventually(_ what: String = "", _ condition: @MainActor () -> Bool) async {
@@ -43,6 +48,39 @@ func eventually(_ what: String = "", _ condition: @MainActor () -> Bool) async {
             return
         }
         try? await Task.sleep(for: .milliseconds(2))
+    }
+}
+
+/// Throwing variant of `eventually` for `@MainActor` conditions.
+@MainActor
+func eventuallyOrThrow(
+    _ what: String = "",
+    timeoutSeconds: Double = 5,
+    _ condition: @MainActor () -> Bool
+) async throws {
+    let deadline = ContinuousClock.now.advanced(by: .milliseconds(Int64(timeoutSeconds * 1000)))
+    while !condition() {
+        try Task.checkCancellation()
+        guard ContinuousClock.now < deadline else {
+            throw EventuallyTimeoutError(what: what)
+        }
+        try await Task.sleep(for: .milliseconds(2))
+    }
+}
+
+/// Throwing variant of `eventually` for async conditions (e.g. actor state).
+func eventuallyAsync(
+    _ what: String = "",
+    timeoutSeconds: Double = 5,
+    _ condition: @Sendable () async -> Bool
+) async throws {
+    let deadline = ContinuousClock.now.advanced(by: .milliseconds(Int64(timeoutSeconds * 1000)))
+    while !(await condition()) {
+        try Task.checkCancellation()
+        guard ContinuousClock.now < deadline else {
+            throw EventuallyTimeoutError(what: what)
+        }
+        try await Task.sleep(for: .milliseconds(2))
     }
 }
 

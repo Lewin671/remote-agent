@@ -889,6 +889,20 @@ private actor FakeCoreExecutor: CoreHostExecutor {
 
     func renameDevice(_ id: String, name: String) async throws {}
 
+    func waitFor(
+        timeoutSeconds: Double = 5,
+        label: String = "FakeCoreExecutor state",
+        _ predicate: @escaping @Sendable (isolated FakeCoreExecutor) -> Bool
+    ) async throws {
+        try await eventuallyAsync(label, timeoutSeconds: timeoutSeconds) {
+            await self.checkPredicate(predicate)
+        }
+    }
+
+    private func checkPredicate(_ predicate: @Sendable (isolated FakeCoreExecutor) -> Bool) -> Bool {
+        predicate(self)
+    }
+
     func close() async {
         hooksBox.lock.withLock {
             hooksBox.closed = true
@@ -899,7 +913,54 @@ private actor FakeCoreExecutor: CoreHostExecutor {
 
 private actor NavRecorder {
     var navigated: [PBCoreNavigateEffect] = []
-    func record(_ eff: PBCoreNavigateEffect) { navigated.append(eff) }
+
+    func record(_ eff: PBCoreNavigateEffect) {
+        navigated.append(eff)
+    }
+
+    func waitFor(
+        timeoutSeconds: Double = 5,
+        label: String = "navigation",
+        _ predicate: @escaping @Sendable ([PBCoreNavigateEffect]) -> Bool
+    ) async throws {
+        try await eventuallyAsync(label, timeoutSeconds: timeoutSeconds) {
+            await predicate(self.navigated)
+        }
+    }
+}
+
+private func parkUntilCancelled(onCancel: @escaping @Sendable () -> Void) async {
+    let state = OSAllocatedUnfairLock<(cancelled: Bool, cont: CheckedContinuation<Void, Never>?)>(
+        initialState: (false, nil)
+    )
+    await withTaskCancellationHandler {
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            let alreadyCancelled = state.withLock { s -> Bool in
+                if s.cancelled || Task.isCancelled { return true }
+                s.cont = cont
+                return false
+            }
+            if alreadyCancelled { cont.resume() }
+        }
+    } onCancel: {
+        onCancel()
+        let cont = state.withLock { s -> CheckedContinuation<Void, Never>? in
+            s.cancelled = true
+            let c = s.cont
+            s.cont = nil
+            return c
+        }
+        cont?.resume()
+    }
+}
+
+@MainActor
+private func waitForObservation(
+    label: String,
+    timeoutSeconds: Double = 5,
+    _ cond: @escaping @MainActor () -> Bool
+) async throws {
+    try await eventuallyOrThrow(label, timeoutSeconds: timeoutSeconds, cond)
 }
 
 private final class PipeTraceRecorder: @unchecked Sendable {
@@ -955,7 +1016,7 @@ private final class PipeTraceRecorder: @unchecked Sendable {
             networkAvailable: true,
             networkSignature: "wifi"
         )
-        await waitUntil { screens.appRoot.stage == .ready }
+        try await waitForObservation(label: "appRoot ready") { screens.appRoot.stage == .ready }
         await host.attachAccount(
             executor: executor,
             account: executor.account,
@@ -987,7 +1048,9 @@ private final class PipeTraceRecorder: @unchecked Sendable {
         )
         await host.showHome()
 
-        await waitUntil { screens.home.canStart && screens.home.running.count == 1 && screens.home.scopeMenu.count >= 2 }
+        try await waitForObservation(label: "home populated") {
+            screens.home.canStart && screens.home.running.count == 1 && screens.home.scopeMenu.count >= 2
+        }
 
         // Production pipe is unconditional: all unary relay traffic flows over RelayRpcEffect.
         let eventsAndEffects = trace.snapshot()
@@ -997,23 +1060,26 @@ private final class PipeTraceRecorder: @unchecked Sendable {
 
         await host.dispatch(PBCoreEvent.with { $0.homeSetScope.scopeKey = "/Users/me/Code/foo" })
         let expectedToken = encodeScopeToken(scopeKey: "/Users/me/Code/foo", hmacKey: key)
-        await waitUntil { defaults.string(forKey: AccountDefaults.key("homeScopeToken")) == expectedToken }
+        try await waitForObservation(label: "homeScopeToken saved") {
+            screens.home.scopeKey == "/Users/me/Code/foo"
+                && defaults.string(forKey: AccountDefaults.key("homeScopeToken")) == expectedToken
+        }
         #expect(screens.home.scopeKey == "/Users/me/Code/foo")
 
         await host.setManageActive(true)
         await host.dispatch(PBCoreEvent.with { $0.projectTogglePin.projectKey = "/Users/me/Code/foo" })
-        await waitUntil {
-            await executor.savedPrefs.contains(where: { saved in
+        try await executor.waitFor(label: "savedPrefs pinned") { exec in
+            exec.savedPrefs.contains(where: { saved in
                 saved.pinned.contains(where: { $0.path == "/Users/me/Code/foo" })
             })
         }
 
         await host.showNewSession(projectKey: "/Users/me/Code/foo")
-        await waitUntil { !screens.newSession.modelPanel.models.isEmpty }
+        try await waitForObservation(label: "newSession models loaded") { !screens.newSession.modelPanel.models.isEmpty }
         #expect(screens.newSession.modelPanel.models.first?.slug == "gpt-5")
 
         await host.setDraftText(scope: .newSession("/Users/me/Code/foo"), text: "Run checks")
-        await waitUntil {
+        try await waitForObservation(label: "draft ready to send") {
             screens.newSession.draft.text == "Run checks"
                 && screens.newSession.draft.canSend
                 && !screens.newSession.draft.restoring
@@ -1022,8 +1088,12 @@ private final class PipeTraceRecorder: @unchecked Sendable {
             projectKey: "/Users/me/Code/foo",
             autoModeSupported: false
         )
-        await waitUntil { await executor.createdRequests.contains { $0.prompt == "Run checks" && $0.cwd == "/Users/me/Code/foo" } }
-        await waitUntil { await navRecorder.navigated.contains { $0.route == .session && $0.sessionID == "sess-created" } }
+        try await executor.waitFor(label: "createSession request") { exec in
+            exec.createdRequests.contains { $0.prompt == "Run checks" && $0.cwd == "/Users/me/Code/foo" }
+        }
+        try await navRecorder.waitFor(label: "navigate to sess-created") { nav in
+            nav.contains { $0.route == .session && $0.sessionID == "sess-created" }
+        }
         await host.closeAsync()
         defaults.removePersistentDomain(forName: suiteName)
     }
@@ -1043,17 +1113,16 @@ private final class PipeTraceRecorder: @unchecked Sendable {
 
         // 1. Start -> online -> lists -> home rows
         await host.showHome()
-        await waitUntil {
-            let fetches = await executor.fetchListsCount
-            return screens.connection.state == .connected
+        try await waitForObservation(label: "connected and s1 listed") {
+            screens.connection.state == .connected
                 && screens.connection.connected
-                && fetches >= 1
                 && screens.home.running.contains { $0.sessionID == "s1" }
         }
+        #expect(await executor.fetchListsCount >= 1)
 
         // 2. Disconnect (streamClosed) -> state reflects offline/reconnecting
         await executor.dropActiveStream(errorCode: "unavailable", reason: "server restarting")
-        await waitUntil {
+        try await waitForObservation(label: "disconnected") {
             screens.connection.state != .connected && !screens.connection.connected
         }
 
@@ -1071,14 +1140,12 @@ private final class PipeTraceRecorder: @unchecked Sendable {
             },
             updatedMs: 1_791_000_001_000
         )
-        await waitUntil {
-            let legs = await executor.openedLegs.count
-            let fetches = await executor.fetchListsCount
-            return screens.connection.state == .connected
-                && legs >= 2
-                && fetches > initialFetches
+        try await waitForObservation(label: "reconnected and s3 caught up") {
+            screens.connection.state == .connected
                 && screens.home.running.contains { $0.sessionID == "s3" }
         }
+        #expect(await executor.openedLegs.count >= 2)
+        #expect(await executor.fetchListsCount > initialFetches)
 
         await host.closeAsync()
         defaults.removePersistentDomain(forName: suiteName)
@@ -1091,14 +1158,12 @@ private final class PipeTraceRecorder: @unchecked Sendable {
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
 
-        let started = OSAllocatedUnfairLock(initialState: false)
-        let cancelled = OSAllocatedUnfairLock(initialState: false)
+        let startedFlag = OSAllocatedUnfairLock(initialState: false)
+        let cancelledFlag = OSAllocatedUnfairLock(initialState: false)
         await executor.setForwardHandler { _, _ in
-            started.withLock { $0 = true }
-            await withTaskCancellationHandler {
-                try? await Task.sleep(for: .seconds(60))
-            } onCancel: {
-                cancelled.withLock { $0 = true }
+            startedFlag.withLock { $0 = true }
+            await parkUntilCancelled {
+                cancelledFlag.withLock { $0 = true }
             }
             return nil
         }
@@ -1108,7 +1173,7 @@ private final class PipeTraceRecorder: @unchecked Sendable {
             screens: screens,
             defaults: defaults
         )
-        await waitUntil { screens.connection.state == .connected }
+        try await waitForObservation(label: "connected for cancel test") { screens.connection.state == .connected }
 
         await host.dispatch(PBCoreEvent.with {
             $0.pingMachine = .with {
@@ -1116,13 +1181,13 @@ private final class PipeTraceRecorder: @unchecked Sendable {
                 $0.machineID = executor.machineID
             }
         })
-        await waitUntil { started.withLock { $0 } }
+        try await eventuallyAsync("forward attempt started") { startedFlag.withLock { $0 } }
 
         await host.dispatch(PBCoreEvent.with {
             $0.cancelPingMachine = .with { $0.opID = 77 }
         })
-        await waitUntil { cancelled.withLock { $0 } }
-        #expect(cancelled.withLock { $0 })
+        try await eventuallyAsync("forward attempt cancelled") { cancelledFlag.withLock { $0 } }
+        #expect(cancelledFlag.withLock { $0 })
 
         await host.closeAsync()
         defaults.removePersistentDomain(forName: suiteName)
@@ -1140,27 +1205,25 @@ private final class PipeTraceRecorder: @unchecked Sendable {
             screens: screens,
             defaults: defaults
         )
-        await waitUntil { screens.connection.state == .connected }
+        try await waitForObservation(label: "connected for ping test") { screens.connection.state == .connected }
 
         // 1. Happy path completes through Core over the relay byte pipe.
         try await host.pingMachine(machineID: executor.machineID)
 
         // 2. Cancelling the caller task sends CancelPingMachineAction and cancels the in-flight relay Forward RPC.
-        let started = OSAllocatedUnfairLock(initialState: false)
-        let cancelled = OSAllocatedUnfairLock(initialState: false)
+        let startedFlag = OSAllocatedUnfairLock(initialState: false)
+        let cancelledFlag = OSAllocatedUnfairLock(initialState: false)
         await executor.setForwardHandler { _, _ in
-            started.withLock { $0 = true }
-            await withTaskCancellationHandler {
-                try? await Task.sleep(for: .seconds(60))
-            } onCancel: {
-                cancelled.withLock { $0 = true }
+            startedFlag.withLock { $0 = true }
+            await parkUntilCancelled {
+                cancelledFlag.withLock { $0 = true }
             }
             return nil
         }
         let task = Task {
             try await host.pingMachine(machineID: executor.machineID)
         }
-        await waitUntil { started.withLock { $0 } }
+        try await eventuallyAsync("ping forward started") { startedFlag.withLock { $0 } }
         task.cancel()
         do {
             _ = try await task.value
@@ -1168,19 +1231,11 @@ private final class PipeTraceRecorder: @unchecked Sendable {
         } catch is CancellationError {
             // expected
         }
-        await waitUntil { cancelled.withLock { $0 } }
-        #expect(cancelled.withLock { $0 })
+        try await eventuallyAsync("ping forward cancelled") { cancelledFlag.withLock { $0 } }
+        #expect(cancelledFlag.withLock { $0 })
 
         await host.closeAsync()
         defaults.removePersistentDomain(forName: suiteName)
-    }
-
-    private func waitUntil(_ cond: @escaping () async -> Bool) async {
-        for _ in 0..<100 {
-            if await cond() { return }
-            try? await Task.sleep(for: .milliseconds(20))
-        }
-        Issue.record("condition not met before timeout")
     }
 
     @Test func goldenViewModelsRenderHomeProjectManageAndNewSessionCleanly() {
@@ -1278,9 +1333,7 @@ private final class PipeTraceRecorder: @unchecked Sendable {
         defer { model.closeSyncForTest() }
         let host = try #require(model.context?.coreHost)
         let core = try #require(model.context?.core)
-        for _ in 0..<200 where core.home.headline.title.rendered().isEmpty {
-            try? await Task.sleep(for: .milliseconds(20))
-        }
+        try await waitForObservation(label: "demo home hydrated") { !core.home.headline.title.rendered().isEmpty }
         let t1 = await host.acquireDirPicker(key: "manage")
         let t2 = await host.acquireDirPicker(key: "schedule-form")
         await host.dispatch(PBCoreEvent.with {
@@ -1289,8 +1342,9 @@ private final class PipeTraceRecorder: @unchecked Sendable {
         await host.dispatch(PBCoreEvent.with {
             $0.projectOpenDirPicker = .with { $0.machineID = "mac"; $0.path = "/Users/me/Docs"; $0.pickerKey = "schedule-form" }
         })
-        for _ in 0..<200 where (core.dirPickers["manage"]?.currentPath ?? "").isEmpty || (core.dirPickers["schedule-form"]?.currentPath ?? "").isEmpty {
-            try? await Task.sleep(for: .milliseconds(20))
+        try await waitForObservation(label: "concurrent dirPickers hydrated") {
+            !(core.dirPickers["manage"]?.currentPath ?? "").isEmpty
+                && !(core.dirPickers["schedule-form"]?.currentPath ?? "").isEmpty
         }
         #expect(core.dirPickers["manage"]?.pickerKey == "manage")
         #expect(core.dirPickers["schedule-form"]?.pickerKey == "schedule-form")
