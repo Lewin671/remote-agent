@@ -260,7 +260,7 @@ type coordRound struct {
 	confirmed      [3]bool
 	srflxSeen      bool
 	anyPC          bool
-	sampledLate    bool
+	sampledLate    [3]bool
 	everReady      bool
 	roundUnsupp    bool
 	useUnsupp      [3]bool
@@ -574,10 +574,13 @@ func (c *Coordinator) OnSessionTimer(now int64) []CoordEffect {
 		if r == nil {
 			continue
 		}
-		if !r.sampledLate && !r.session.View().Established && uint64(now)+lateStatsSampleLeadMs >= r.session.Deadline() {
-			r.sampledLate = true
-			c.handleEngine(now, DiagSampleWanted{Round: r.id, Use: UseRead})
-			c.handleEngine(now, DiagSampleWanted{Round: r.id, Use: UseBulk})
+		if !r.session.View().Retired && uint64(now)+lateStatsSampleLeadMs >= r.session.Deadline() {
+			for _, u := range []Use{UseRead, UseBulk} {
+				if !r.sampledLate[u] && !r.confirmed[u] && r.globalPC[u] != 0 {
+					r.sampledLate[u] = true
+					c.handleEngine(now, DiagSampleWanted{Round: r.id, Use: u})
+				}
+			}
 		}
 		if now >= int64(r.session.Deadline()) {
 			r.deadlineTicked = true
@@ -1503,8 +1506,12 @@ func (c *Coordinator) NextTimers(now int64) (engineAt int64, engineOK bool, sess
 		if due, ok := r.session.NextTimer(); ok {
 			addSess(int64(due))
 		}
-		if !v.Retired && !r.sampledLate && !v.Established && r.session.Deadline() > lateStatsSampleLeadMs {
-			addSess(int64(r.session.Deadline()) - lateStatsSampleLeadMs)
+		if !v.Retired && r.session.Deadline() > lateStatsSampleLeadMs {
+			needLate := (!r.sampledLate[UseRead] && !r.confirmed[UseRead] && r.globalPC[UseRead] != 0) ||
+				(!r.sampledLate[UseBulk] && !r.confirmed[UseBulk] && r.globalPC[UseBulk] != 0)
+			if needLate {
+				addSess(int64(r.session.Deadline()) - lateStatsSampleLeadMs)
+			}
 		}
 		if !v.Retired && !r.deadlineTicked {
 			addSess(int64(r.session.Deadline()))
@@ -2011,6 +2018,13 @@ func (c *Coordinator) applySessionEffects(now int64, r *coordRound, effects []li
 			r.everReady = true
 			c.emit(CoordPcConfirm{PCID: pcID, MachineID: r.machine, Use: u})
 			c.handleEngine(now, PathReady{Round: r.id, Use: u, Path: pcID})
+			other := UseBulk
+			if u == UseBulk {
+				other = UseRead
+			}
+			if !r.confirmed[other] && r.globalPC[other] != 0 {
+				c.handleEngine(now, DiagSampleWanted{Round: r.id, Use: other})
+			}
 			if u == UseRead {
 				c.maybeSendClientCapabilities(now, r)
 				c.attachDirectTerminalsForMachine(now, r.machine)

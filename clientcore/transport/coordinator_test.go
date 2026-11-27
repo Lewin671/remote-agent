@@ -1191,3 +1191,44 @@ func TestCoordinatorRecordsBatchCapCandidateDropsInDiagnostics(t *testing.T) {
 		t.Fatalf("expected candidates:batch cap with N=6 in diagnostics, got %+v", rounds[0].Pcs[0].Rejects)
 	}
 }
+
+func TestCoordinatorSamplesUnconfirmedSiblingPC(t *testing.T) {
+	coord, _, _, now, _, rid, _ := driveEstablishedCoordRound(t, "127.0.0.1", "")
+	r := coord.rounds[rid]
+	// Simulate half-open round: UseRead is confirmed/established while UseBulk is created and stuck in ICE checking.
+	r.confirmed[UseBulk] = false
+	r.sampledLate[UseBulk] = false
+	bulkPC := r.globalPC[UseBulk]
+	if bulkPC == 0 {
+		t.Fatal("expected bulk PC")
+	}
+	if b := coord.pcs[bulkPC]; b != nil {
+		b.confirmed = false
+	}
+	// Reset diagnostic sampling state on UseBulk attempt so we observe new ReadStats requests.
+	rounds, _, _ := coord.Diagnostics(r.machine)
+	bulkAttempt := rounds[0].Pc(UseBulk).current()
+	if bulkAttempt == nil {
+		t.Fatal("expected bulk attempt")
+	}
+	bulkAttempt.sampling = false
+	bulkAttempt.Samples = 0
+	bulkAttempt.Sampled = false
+
+	// Advance to deadline - lateStatsSampleLeadMs: UseBulk must still be scheduled & sampled even though the round is Established.
+	lateAt := int64(r.session.Deadline()) - lateStatsSampleLeadMs
+	_, _, sessAt, sessOK, _, _ := coord.NextTimers(now)
+	if !sessOK || sessAt > lateAt {
+		t.Fatalf("expected late sample timer <= %d for unconfirmed UseBulk, got ok=%v at=%d", lateAt, sessOK, sessAt)
+	}
+	effs := coord.OnSessionTimer(lateAt)
+	sawBulkReadStats := false
+	for _, e := range effs {
+		if rs, ok := e.(CoordDcReadStats); ok && rs.PCID == bulkPC && rs.Use == UseBulk {
+			sawBulkReadStats = true
+		}
+	}
+	if !sawBulkReadStats {
+		t.Fatalf("expected CoordDcReadStats for unconfirmed UseBulk pc=%d at late sample time, got %+v", bulkPC, effs)
+	}
+}
