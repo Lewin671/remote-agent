@@ -4240,13 +4240,6 @@ type Event_SecurityCryptoBatchDone struct {
 
 func (*Event_SecurityCryptoBatchDone) isEvent_Event() {}
 
-type Event_SecurityOpRequest struct {
-	_                 [0]func()
-	SecurityOpRequest *SecurityOpRequestEvent
-}
-
-func (*Event_SecurityOpRequest) isEvent_Event() {}
-
 type Event_SeedDemoWorld struct {
 	_             [0]func()
 	SeedDemoWorld *SeedDemoWorldEvent
@@ -5769,12 +5762,6 @@ func (m *Event) GetSecurityCryptoBatchDone() *SecurityCryptoBatchDoneEvent {
 	}
 	return nil
 }
-func (m *Event) GetSecurityOpRequest() *SecurityOpRequestEvent {
-	if x, ok := m.GetEvent().(*Event_SecurityOpRequest); ok && x != nil {
-		return x.SecurityOpRequest
-	}
-	return nil
-}
 func (m *Event) GetSeedDemoWorld() *SeedDemoWorldEvent {
 	if x, ok := m.GetEvent().(*Event_SeedDemoWorld); ok && x != nil {
 		return x.SeedDemoWorld
@@ -6055,11 +6042,11 @@ func extraUnmarshal_Event(base unsafe.Pointer, num litewire.Number, wtyp litewir
 		return m.extraUnmarshalPart15(num, wtyp, bp)
 	case num <= 436:
 		return m.extraUnmarshalPart16(num, wtyp, bp)
-	case num <= 459:
+	case num <= 460:
 		return m.extraUnmarshalPart17(num, wtyp, bp)
-	case num <= 476:
+	case num <= 477:
 		return m.extraUnmarshalPart18(num, wtyp, bp)
-	case num <= 490:
+	case num <= 491:
 		return m.extraUnmarshalPart19(num, wtyp, bp)
 	case num <= 499:
 		return m.extraUnmarshalPart20(num, wtyp, bp)
@@ -7870,13 +7857,6 @@ func (m *Event) extraUnmarshalPart17(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityCryptoBatchDone
-		case 457:
-			w, _ := m.Event.(*Event_SecurityOpRequest)
-			if w == nil || w.SecurityOpRequest == nil {
-				w = &Event_SecurityOpRequest{SecurityOpRequest: &SecurityOpRequestEvent{}}
-				m.Event = w
-			}
-			sub = w.SecurityOpRequest
 		case 458:
 			w, _ := m.Event.(*Event_SeedDemoWorld)
 			if w == nil || w.SeedDemoWorld == nil {
@@ -7891,6 +7871,13 @@ func (m *Event) extraUnmarshalPart17(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityKeyGenerated
+		case 460:
+			w, _ := m.Event.(*Event_SecurityKeyEncapsulated)
+			if w == nil || w.SecurityKeyEncapsulated == nil {
+				w = &Event_SecurityKeyEncapsulated{SecurityKeyEncapsulated: &SecurityKeyEncapsulatedEvent{}}
+				m.Event = w
+			}
+			sub = w.SecurityKeyEncapsulated
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -7909,13 +7896,6 @@ func (m *Event) extraUnmarshalPart18(num litewire.Number, wtyp litewire.Type, bp
 	var sub litewire.Unmarshaler
 	if wtyp == litewire.BytesType {
 		switch num {
-		case 460:
-			w, _ := m.Event.(*Event_SecurityKeyEncapsulated)
-			if w == nil || w.SecurityKeyEncapsulated == nil {
-				w = &Event_SecurityKeyEncapsulated{SecurityKeyEncapsulated: &SecurityKeyEncapsulatedEvent{}}
-				m.Event = w
-			}
-			sub = w.SecurityKeyEncapsulated
 		case 461:
 			w, _ := m.Event.(*Event_SecurityStorageResult)
 			if w == nil || w.SecurityStorageResult == nil {
@@ -7993,6 +7973,13 @@ func (m *Event) extraUnmarshalPart18(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.AppRootDismissUpgradeNotice
+		case 477:
+			w, _ := m.Event.(*Event_OnboardingSetMode)
+			if w == nil || w.OnboardingSetMode == nil {
+				w = &Event_OnboardingSetMode{OnboardingSetMode: &OnboardingSetModeAction{}}
+				m.Event = w
+			}
+			sub = w.OnboardingSetMode
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -8011,13 +7998,6 @@ func (m *Event) extraUnmarshalPart19(num litewire.Number, wtyp litewire.Type, bp
 	var sub litewire.Unmarshaler
 	if wtyp == litewire.BytesType {
 		switch num {
-		case 477:
-			w, _ := m.Event.(*Event_OnboardingSetMode)
-			if w == nil || w.OnboardingSetMode == nil {
-				w = &Event_OnboardingSetMode{OnboardingSetMode: &OnboardingSetModeAction{}}
-				m.Event = w
-			}
-			sub = w.OnboardingSetMode
 		case 478:
 			w, _ := m.Event.(*Event_OnboardingCreateEdit)
 			if w == nil || w.OnboardingCreateEdit == nil {
@@ -8095,6 +8075,13 @@ func (m *Event) extraUnmarshalPart19(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.AddDeviceClose
+		case 491:
+			w, _ := m.Event.(*Event_AddDeviceAction)
+			if w == nil || w.AddDeviceAction == nil {
+				w = &Event_AddDeviceAction{AddDeviceAction: &AddDeviceAction{}}
+				m.Event = w
+			}
+			sub = w.AddDeviceAction
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -8113,13 +8100,6 @@ func (m *Event) extraUnmarshalPart20(num litewire.Number, wtyp litewire.Type, bp
 	var sub litewire.Unmarshaler
 	if wtyp == litewire.BytesType {
 		switch num {
-		case 491:
-			w, _ := m.Event.(*Event_AddDeviceAction)
-			if w == nil || w.AddDeviceAction == nil {
-				w = &Event_AddDeviceAction{AddDeviceAction: &AddDeviceAction{}}
-				m.Event = w
-			}
-			sub = w.AddDeviceAction
 		case 493:
 			w, _ := m.Event.(*Event_AccountSecurityOpen)
 			if w == nil || w.AccountSecurityOpen == nil {
@@ -9757,13 +9737,6 @@ type Effect_SecurityCryptoBatch struct {
 
 func (*Effect_SecurityCryptoBatch) isEffect_Effect() {}
 
-type Effect_SecurityOpResult struct {
-	_                [0]func()
-	SecurityOpResult *SecurityOpResultEffect
-}
-
-func (*Effect_SecurityOpResult) isEffect_Effect() {}
-
 type Effect_SecurityKeyGenerate struct {
 	_                   [0]func()
 	SecurityKeyGenerate *SecurityKeyGenerateEffect
@@ -10324,12 +10297,6 @@ func (m *Effect) GetSecurityCryptoBatch() *SecurityCryptoBatchEffect {
 	}
 	return nil
 }
-func (m *Effect) GetSecurityOpResult() *SecurityOpResultEffect {
-	if x, ok := m.GetEffect().(*Effect_SecurityOpResult); ok && x != nil {
-		return x.SecurityOpResult
-	}
-	return nil
-}
 func (m *Effect) GetSecurityKeyGenerate() *SecurityKeyGenerateEffect {
 	if x, ok := m.GetEffect().(*Effect_SecurityKeyGenerate); ok && x != nil {
 		return x.SecurityKeyGenerate
@@ -10852,10 +10819,6 @@ func (m *Effect) appendMarshalEffectPart6(b []byte) ([]byte, bool) {
 		if x != nil && x.SecurityCryptoBatch != nil {
 			onum, omsg = 135, x.SecurityCryptoBatch
 		}
-	case *Effect_SecurityOpResult:
-		if x != nil && x.SecurityOpResult != nil {
-			onum, omsg = 136, x.SecurityOpResult
-		}
 	case *Effect_SecurityKeyGenerate:
 		if x != nil && x.SecurityKeyGenerate != nil {
 			onum, omsg = 137, x.SecurityKeyGenerate
@@ -10884,6 +10847,10 @@ func (m *Effect) appendMarshalEffectPart6(b []byte) ([]byte, bool) {
 		if x != nil && x.SecurityNotifyOpened != nil {
 			onum, omsg = 144, x.SecurityNotifyOpened
 		}
+	case *Effect_SecurityTokenUpdated:
+		if x != nil && x.SecurityTokenUpdated != nil {
+			onum, omsg = 145, x.SecurityTokenUpdated
+		}
 	default:
 		return b, false
 	}
@@ -10898,10 +10865,6 @@ func (m *Effect) appendMarshalEffectPart7(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
-	case *Effect_SecurityTokenUpdated:
-		if x != nil && x.SecurityTokenUpdated != nil {
-			onum, omsg = 145, x.SecurityTokenUpdated
-		}
 	case *Effect_RequestStoragePersist:
 		if x != nil && x.RequestStoragePersist != nil {
 			onum, omsg = 146, x.RequestStoragePersist

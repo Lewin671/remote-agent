@@ -390,21 +390,6 @@ func (e *Engine) handleSecurityCryptoBatchDone(ctx *StepContext, ev *corev1.Secu
 	e.emitSecurityEffects(ctx, effs)
 }
 
-func (e *Engine) handleSecurityOpRequest(ctx *StepContext, ev *corev1.SecurityOpRequestEvent) {
-	var repls []*v1.MachineReplacementProof
-	if op := ev.GetOpenEnvelope(); op != nil && op.History && op.SessionId != "" {
-		repls = e.sessionReplacements[op.SessionId]
-		if len(repls) == 0 {
-			if sess := e.sessions[op.SessionId]; sess != nil && sess.Info != nil {
-				repls = sess.Info.MachineReplacements
-			}
-		}
-	}
-	effs := e.secEngine.HandleSecurityOp(e.nowMs, ev, repls...)
-	e.emitSecurityEffects(ctx, effs)
-	e.maybeRequestEntropy(ctx)
-}
-
 func (e *Engine) handleSecurityKeyGenerated(ctx *StepContext, ev *corev1.SecurityKeyGeneratedEvent) {
 	effs := e.secEngine.HandleKeyGenerated(e.nowMs, ev)
 	e.emitSecurityEffects(ctx, effs)

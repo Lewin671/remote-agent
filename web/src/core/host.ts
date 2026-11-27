@@ -2,7 +2,7 @@ import { create, fromBinary, toBinary, type MessageInitShape } from "@bufbuild/p
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { AttachmentExecutor, type ImagePrepareFn } from "../attachment-executor";
 import { MemoryAttachmentStore, WebAttachmentStore, type AttachmentStore } from "../attachment-store";
-import { newRequestID, UnsupportedHistoryError } from "../crypto";
+import { newRequestID } from "../crypto";
 import * as l10n from "../i18n";
 import { PEER_PROTOCOL_VERSION } from "../protocol";
 import { describeBrowser } from "../devices";
@@ -29,34 +29,6 @@ export class SecurityError extends Error {
   ) {
     super(`security: ${code}`);
   }
-}
-
-function structuredToSecurityCode(code: SecurityErrorCode): SecurityError["code"] {
-  switch (code) {
-    case SecurityErrorCode.LEASE_EXPIRED:
-      return "lease";
-    case SecurityErrorCode.STALE:
-      return "stale";
-    case SecurityErrorCode.UNTRUSTED:
-      return "untrusted";
-    case SecurityErrorCode.CLOCK_SKEWED:
-      return "clock";
-    case SecurityErrorCode.CAPACITY:
-      return "capacity";
-    case SecurityErrorCode.STORAGE:
-      return "storage";
-    case SecurityErrorCode.CONFLICT:
-      return "conflict";
-    case SecurityErrorCode.RECOVERY_UNAVAILABLE:
-    case SecurityErrorCode.UNAVAILABLE:
-      return "unavailable";
-    default:
-      return "invalid";
-  }
-}
-
-function makeSecErr(code: SecurityError["code"]): SecurityError {
-  return new SecurityError(code);
 }
 import {
   CacheBootstrapLoadedEventSchema,
@@ -167,11 +139,7 @@ import {
 } from "../gen/remoteagent/core/v1/relay_pipe_pb";
 import {
   SecurityConfigEventSchema,
-  SecurityErrorCode,
   SecurityForegroundEventSchema,
-  SecurityOpRequestEventSchema,
-  type SecurityOpRequestEvent,
-  type SecurityOpResultEffect,
   type SecurityStatusChangedEffect,
   type SecurityTokenUpdatedEffect,
 } from "../gen/remoteagent/core/v1/security_pb";
@@ -473,7 +441,6 @@ export interface HostBridge {
   terminalInput(req: MessageInitShape<typeof TerminalInputActionSchema>): void;
   terminalConfirmRebuild(streamId: string): void;
   readonly securityClient: SecurityClient;
-  securityOp(op: SecurityOpRequestEvent["op"]): Promise<SecurityOpResultEffect>;
   dispatchDirectSignal(raw: Uint8Array<ArrayBuffer>): void;
   dispatchDirectSignalDelivery(frameId: Uint8Array<ArrayBuffer>, status: number, retryAfterMs: number): void;
   pingMachine(machineId: string, signal?: AbortSignal): Promise<void>;
@@ -1045,8 +1012,6 @@ export class CoreHost {
   private securityBootstrapped = false;
   private securityBootstrapPromise?: Promise<void>;
   readonly securityClient: SecurityClient;
-  private nextSecurityOpId = 1n;
-  private securityOpWaiters = new Map<bigint, { resolve: (eff: SecurityOpResultEffect) => void; reject: (err: Error) => void }>();
   private nextPushRpcOpId = 1n;
   private pushRpcWaiters = new Map<bigint, { resolve: (eff: PushRpcResultEffect) => void; reject: (err: Error) => void }>();
   private nextImageFetchOpId = 1n;
@@ -1220,7 +1185,6 @@ export class CoreHost {
       terminalConfirmRebuild: (streamId) =>
         this.emit({ case: "terminalConfirmRebuild", value: create(TerminalConfirmRebuildActionSchema, { streamId }) }),
       securityClient: this.securityClient,
-      securityOp: (op) => this.securityOp(op),
       dispatchDirectSignal: (raw) => this.dispatchDirectSignal(raw),
       dispatchDirectSignalDelivery: (frameId, status, retryAfterMs) =>
         this.dispatchDirectSignalDelivery(frameId, status, retryAfterMs),
@@ -1751,7 +1715,6 @@ export class CoreHost {
     this.clearTimers();
     clearInterval(this.clockTimer);
     this.clockTimer = undefined;
-    this.rejectSecurityOps();
     this.securityClient.rejectAll();
     if (!this.closed) this.emit({ case: "syncLifecycle", value: create(SyncLifecycleActionSchema, { kind: SyncLifecycleKind.STOP }) });
     for (const w of this.imageFetchWaiters.values()) {
@@ -1762,13 +1725,6 @@ export class CoreHost {
       w.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
     }
     this.pushRpcWaiters.clear();
-  }
-
-  private rejectSecurityOps() {
-    for (const w of this.securityOpWaiters.values()) {
-      w.reject(makeSecErr("unavailable"));
-    }
-    this.securityOpWaiters.clear();
   }
 
   setForeground(active: boolean) {
@@ -2888,19 +2844,6 @@ export class CoreHost {
     };
   }
 
-  securityOp(op: SecurityOpRequestEvent["op"]): Promise<SecurityOpResultEffect> {
-    if (this.closed) return Promise.reject(makeSecErr("unavailable"));
-    this.ensureSecurityConfigured();
-    const opId = this.nextSecurityOpId++;
-    return new Promise<SecurityOpResultEffect>((resolve, reject) => {
-      this.securityOpWaiters.set(opId, { resolve, reject });
-      this.emit({
-        case: "securityOpRequest",
-        value: create(SecurityOpRequestEventSchema, { opId, op }),
-      });
-    });
-  }
-
   dispatchDirectSignal(raw: Uint8Array<ArrayBuffer>) {
     if (!this.closed && raw.byteLength > 0) {
       this.emit({ case: "directSignalReceived", value: create(DirectSignalReceivedEventSchema, { raw }) });
@@ -3948,24 +3891,6 @@ export class CoreHost {
       case "securityNotifyOpened":
         break;
 
-      case "securityOpResult": {
-        const res = val.value;
-        const w = this.securityOpWaiters.get(res.opId);
-        if (w) {
-          this.securityOpWaiters.delete(res.opId);
-          if (res.error) {
-            if (res.structuredErrorCode === SecurityErrorCode.UNSUPPORTED_HISTORY) {
-              w.reject(new UnsupportedHistoryError());
-            } else {
-              w.reject(makeSecErr(structuredToSecurityCode(res.structuredErrorCode)));
-            }
-          } else {
-            w.resolve(res);
-          }
-        }
-        break;
-      }
-
       case "sharedFileScanLocal":
         this.sharedFiles.handleScanLocal(val.value);
         break;
@@ -4280,7 +4205,6 @@ export class CoreHost {
       for (const fn of list) fn(false);
     }
     this.retryNowWaiters.clear();
-    this.rejectSecurityOps();
     this.securityClient.rejectAll();
     this.ownSecExec?.close();
     this.attachments.store.releaseStorageLock?.();

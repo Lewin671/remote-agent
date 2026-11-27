@@ -1,40 +1,16 @@
 package io.github.lewin671.remoteagent.core
 
-import com.google.protobuf.ByteString
 import com.google.protobuf.MessageLite
-import io.github.lewin671.remoteagent.core.proto.Effect
-import io.github.lewin671.remoteagent.core.proto.EffectBatch
-import io.github.lewin671.remoteagent.core.proto.EntropyProvided
-import io.github.lewin671.remoteagent.core.proto.Event as CoreProtoEvent
-import io.github.lewin671.remoteagent.core.proto.LocalCalendar
-import io.github.lewin671.remoteagent.core.proto.SecurityActionEmpty
-import io.github.lewin671.remoteagent.core.proto.SecurityConfigEvent
-import io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreedEvent
-import io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulatedEvent
-import io.github.lewin671.remoteagent.core.proto.SecurityKeyGeneratedEvent
-import io.github.lewin671.remoteagent.core.proto.SecurityKeyKind
-import io.github.lewin671.remoteagent.core.proto.SecurityKeySignedEvent
-import io.github.lewin671.remoteagent.core.proto.SecurityOpRequestEvent
-import io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect
-import io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeOp
-import io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeResult
-import io.github.lewin671.remoteagent.core.proto.SecuritySealEnvelopeOp
-import io.github.lewin671.remoteagent.core.proto.SecurityWorkflowActionEvent
-import io.github.lewin671.remoteagent.corebind.Core
 import io.github.lewin671.remoteagent.corebind.Corebind
 import io.github.lewin671.remoteagent.proto.DeviceKind
 import io.github.lewin671.remoteagent.proto.Envelope
 import io.github.lewin671.remoteagent.proto.Header
-import io.github.lewin671.remoteagent.proto.PayloadKind
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
 import java.io.File
 import java.nio.ByteBuffer
-import java.security.SecureRandom
 import java.util.Base64
-import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -201,7 +177,8 @@ internal fun deriveNotifyPurposeKey(
 internal fun requestIdentityForTest(
     account: String,
     domain: ByteArray,
-    opened: SecurityOpenEnvelopeResult,
+    header: Header,
+    purpose: Int,
     unpacked: ByteArray,
 ): Pair<ByteArray, ByteArray> {
     val keyBos = ByteArrayOutputStream()
@@ -209,287 +186,28 @@ internal fun requestIdentityForTest(
         s.write("ra4/request-key\u0000".toByteArray(Charsets.US_ASCII))
         lpStr(s, account)
         s.write(domain)
-        lpStr(s, opened.sender)
-        s.writeInt(opened.purpose)
-        lpStr(s, opened.machineId)
-        lpStr(s, opened.sessionId)
-        lpStr(s, opened.requestId)
-        s.writeLong(opened.seq)
+        lpStr(s, header.sender)
+        s.writeInt(purpose)
+        lpStr(s, header.machineId)
+        lpStr(s, header.sessionId)
+        lpStr(s, header.requestId)
+        s.writeLong(header.seq)
     }
     val key = sha256(keyBos.toByteArray())
-    val kind = when (opened.purpose) {
+    val kind = when (purpose) {
         14, 15 -> 8 // TerminalResize / TerminalHistory map to PayloadKind 8
-        else -> opened.purpose
+        else -> purpose
     }
     val payloadBos = ByteArrayOutputStream()
     DataOutputStream(payloadBos).use { s ->
         s.write("ra4/authorized-payload\u0000".toByteArray(Charsets.US_ASCII))
         lpBytes(s, key)
         s.writeInt(kind)
-        s.writeLong(opened.deadlineMs)
+        s.writeLong(header.deadlineMs)
         lpBytes(s, unpacked)
     }
     val payload = sha256(payloadBos.toByteArray())
     return key to payload
-}
-
-/** Synchronous Go Core runner backed by [MemorySecurityStoreV4] for unit tests & fake daemons. */
-internal class CoreMemoryBridge(
-    private val store: MemorySecurityStoreV4,
-    private val server: String,
-    private val deviceId: String,
-    private val accountId: String,
-    private val clock: () -> Long = System::currentTimeMillis,
-) : AutoCloseable {
-    private val rng = SecureRandom()
-    private val core: Core = Corebind.new_()
-    private val closed = AtomicBoolean(false)
-    private var opSeq = 1L
-
-    init {
-        step(
-            CoreProtoEvent.newBuilder()
-                .setNowMs(clock())
-                .setSecurityConfig(
-                    SecurityConfigEvent.newBuilder()
-                        .setAccount(accountId)
-                        .setDeviceId(deviceId)
-                        .setServer(server)
-                        .setInlineCrypto(true)
-                        .setForeground(true),
-                )
-                .build(),
-        )
-        step(
-            CoreProtoEvent.newBuilder()
-                .setNowMs(clock())
-                .setClockUpdated(LocalCalendar.newBuilder().setNowMs(clock()))
-                .build(),
-        )
-        step(
-            CoreProtoEvent.newBuilder()
-                .setNowMs(clock())
-                .setSecurityAction(
-                    SecurityWorkflowActionEvent.newBuilder()
-                        .setActionId(1L)
-                        .setBootstrap(SecurityActionEmpty.getDefaultInstance()),
-                )
-                .build(),
-        )
-    }
-
-    private fun buildEntropy(minIds: Int, minFloats: Int, minRandomBytes: Int): EntropyProvided {
-        val b = EntropyProvided.newBuilder()
-        repeat(minIds.coerceAtLeast(16)) { b.addRandomIds(UUID.randomUUID().toString()) }
-        repeat(minFloats.coerceAtLeast(16)) {
-            b.addUnitFloats((rng.nextInt().toLong() and 0xFFFFFFFFL).toDouble() / 4294967296.0)
-        }
-        val nBytes = minRandomBytes.coerceAtLeast(4096)
-        b.setRandomBytes(ByteString.copyFrom(ByteArray(nBytes).also { rng.nextBytes(it) }))
-        return b.build()
-    }
-
-    private fun step(initial: CoreProtoEvent): List<Effect> {
-        check(!closed.get()) { "CoreMemoryBridge closed" }
-        val out = ArrayList<Effect>()
-        val queue = ArrayDeque<CoreProtoEvent>()
-        queue.addLast(initial)
-        while (queue.isNotEmpty()) {
-            val next = queue.removeFirst()
-            val raw: ByteArray? = core.dispatch(next.toByteArray())
-            val batch = if (raw == null || raw.isEmpty()) EffectBatch.getDefaultInstance() else EffectBatch.parseFrom(raw)
-            for (eff in batch.effectsList) {
-                when (eff.effectCase) {
-                    Effect.EffectCase.REQUEST_ENTROPY -> {
-                        val req = eff.requestEntropy
-                        queue.addLast(
-                            CoreProtoEvent.newBuilder()
-                                .setNowMs(clock())
-                                .setEntropyProvided(
-                                    buildEntropy(req.minIds, req.minFloats, req.minRandomBytes),
-                                )
-                                .build(),
-                        )
-                    }
-                    Effect.EffectCase.SECURITY_KEY_GENERATE -> {
-                        val g = eff.securityKeyGenerate
-                        val pub = store.generateKey(g.keyKind, g.slot, g.persist)
-                        queue.addLast(
-                            CoreProtoEvent.newBuilder()
-                                .setNowMs(clock())
-                                .setSecurityKeyGenerated(
-                                    SecurityKeyGeneratedEvent.newBuilder()
-                                        .setOpId(g.opId)
-                                        .setPublicKey(ByteString.copyFrom(pub)),
-                                )
-                                .build(),
-                        )
-                    }
-                    Effect.EffectCase.SECURITY_KEY_SIGN -> {
-                        val s = eff.securityKeySign
-                        val ev = runCatching {
-                            val sig = store.signKey(s.keyKind, s.slot, s.message.toByteArray())
-                            SecurityKeySignedEvent.newBuilder()
-                                .setOpId(s.opId)
-                                .setSignature(ByteString.copyFrom(sig))
-                                .build()
-                        }.getOrElse { e ->
-                            SecurityKeySignedEvent.newBuilder()
-                                .setOpId(s.opId)
-                                .setError(e.message ?: "sign error")
-                                .build()
-                        }
-                        queue.addLast(CoreProtoEvent.newBuilder().setNowMs(clock()).setSecurityKeySigned(ev).build())
-                    }
-                    Effect.EffectCase.SECURITY_KEY_AGREE -> {
-                        val a = eff.securityKeyAgree
-                        val ev = runCatching {
-                            val sh = store.agreeKey(a.keyKind, a.slot, a.peerPublic.toByteArray())
-                            SecurityKeyAgreedEvent.newBuilder()
-                                .setOpId(a.opId)
-                                .setShared(ByteString.copyFrom(sh))
-                                .build()
-                        }.getOrElse { e ->
-                            SecurityKeyAgreedEvent.newBuilder()
-                                .setOpId(a.opId)
-                                .setError(e.message ?: "agree error")
-                                .build()
-                        }
-                        queue.addLast(CoreProtoEvent.newBuilder().setNowMs(clock()).setSecurityKeyAgreed(ev).build())
-                    }
-                    Effect.EffectCase.SECURITY_KEY_ENCAPSULATE -> {
-                        val e = eff.securityKeyEncapsulate
-                        val pairs = store.encapsulate(e.recipientsList)
-                        queue.addLast(
-                            CoreProtoEvent.newBuilder()
-                                .setNowMs(clock())
-                                .setSecurityKeyEncapsulated(
-                                    SecurityKeyEncapsulatedEvent.newBuilder()
-                                        .setOpId(e.opId)
-                                        .addAllPairs(pairs),
-                                )
-                                .build(),
-                        )
-                    }
-                    Effect.EffectCase.SECURITY_KEY_DISCARD -> {
-                        store.discardKey(eff.securityKeyDiscard.keyKind, eff.securityKeyDiscard.slot)
-                    }
-                    Effect.EffectCase.SECURITY_STORAGE -> {
-                        val rep = store.executeStorage(eff.securityStorage)
-                        queue.addLast(
-                            CoreProtoEvent.newBuilder()
-                                .setNowMs(clock())
-                                .setSecurityStorageResult(rep)
-                                .build(),
-                        )
-                    }
-                    else -> out += eff
-                }
-            }
-        }
-        return out
-    }
-
-    fun syncClock() {
-        step(
-            CoreProtoEvent.newBuilder()
-                .setNowMs(clock())
-                .setClockUpdated(LocalCalendar.newBuilder().setNowMs(clock()))
-                .build(),
-        )
-    }
-
-    private fun runOp(configure: SecurityOpRequestEvent.Builder.() -> Unit): SecurityOpResultEffect {
-        syncClock()
-        val id = opSeq++
-        val effs = step(
-            CoreProtoEvent.newBuilder()
-                .setNowMs(clock())
-                .setSecurityOpRequest(SecurityOpRequestEvent.newBuilder().setOpId(id).apply(configure))
-                .build(),
-        )
-        val res = effs.lastOrNull { it.hasSecurityOpResult() && it.securityOpResult.opId == id }
-            ?.securityOpResult
-            ?: throw SecurityFailure("invalid")
-        if (res.error.isNotEmpty()) {
-            throw SecurityFailure(securityErrorCodeKey(res.structuredErrorCode), res.error)
-        }
-        return res
-    }
-
-    fun seal(
-        purpose: Int,
-        machine: String = "",
-        session: String = "",
-        request: String = "",
-        seq: Long = 0L,
-        deadline: Long = 0L,
-        plain: ByteArray,
-        useSessionSeed: Boolean = false,
-        overrideSessionSeed: ByteArray? = null,
-    ): Envelope {
-        val res = runOp {
-            setSealEnvelope(
-                SecuritySealEnvelopeOp.newBuilder()
-                    .setPurpose(purpose)
-                    .setMachineId(machine)
-                    .setSessionId(session)
-                    .setRequestId(request)
-                    .setSeq(seq)
-                    .setDeadlineMs(deadline)
-                    .setPlaintext(ByteString.copyFrom(plain))
-                    .setUseSessionSeed(useSessionSeed || overrideSessionSeed != null)
-                    .apply {
-                        if (overrideSessionSeed != null) {
-                            setOverrideSessionSeed(ByteString.copyFrom(overrideSessionSeed))
-                        }
-                    },
-            )
-        }
-        return Envelope.parseFrom(res.sealed.rawEnvelope)
-    }
-
-    fun open(
-        env: Envelope,
-        expectedPurpose: Int = 0,
-        history: Boolean = false,
-        overrideSessionSeed: ByteArray? = null,
-    ): Pair<SecurityOpenEnvelopeResult, ByteArray> {
-        val res = runOp {
-            setOpenEnvelope(
-                SecurityOpenEnvelopeOp.newBuilder()
-                    .setRawEnvelope(env.toByteString())
-                    .setExpectedPurpose(expectedPurpose)
-                    .setHistory(history)
-                    .apply {
-                        if (overrideSessionSeed != null) {
-                            setOverrideSessionSeed(ByteString.copyFrom(overrideSessionSeed))
-                        }
-                    },
-            )
-        }
-        return res.opened to res.opened.plaintext.toByteArray()
-    }
-
-    fun headerFromOpened(opened: SecurityOpenEnvelopeResult): Header {
-        val kind = PayloadKind.forNumber(opened.purpose) ?: PayloadKind.PAYLOAD_KIND_UNSPECIFIED
-        return Header.newBuilder()
-            .setVersion(ENVELOPE_VERSION)
-            .setKind(kind)
-            .setMachineId(opened.machineId)
-            .setSessionId(opened.sessionId)
-            .setRequestId(opened.requestId)
-            .setSeq(opened.seq)
-            .setDeadlineMs(opened.deadlineMs)
-            .setSender(opened.sender)
-            .build()
-    }
-
-    override fun close() {
-        if (closed.compareAndSet(false, true)) {
-            core.close()
-        }
-    }
 }
 
 /**
@@ -588,10 +306,10 @@ class TestSecurity private constructor(private val process: Process, val serverU
         return bytes(reply, "State")
     }
 
-    fun seal(account: Account, h: Header, plain: ByteArray, seed: ByteArray? = null): Envelope {
+    fun sealMember(memberId: String, h: Header, plain: ByteArray, seed: ByteArray? = null): Envelope {
         val reply = call(
             "seal",
-            "Member" to JsonPrimitive(account.deviceId),
+            "Member" to JsonPrimitive(memberId),
             "Header" to blob(h.toByteArray()),
             "Plain" to blob(plain),
             "SessionSeed" to blob(seed ?: byteArrayOf()),
@@ -599,17 +317,27 @@ class TestSecurity private constructor(private val process: Process, val serverU
         return Envelope.parseFrom(bytes(reply, "Envelope"))
     }
 
+    fun seal(account: Account, h: Header, plain: ByteArray, seed: ByteArray? = null): Envelope =
+        sealMember(account.deviceId, h, plain, seed)
+
     fun seal(account: Account, h: Header, message: MessageLite, seed: ByteArray? = null) =
         seal(account, h, message.toByteArray(), seed)
 
-    fun open(account: Account, env: Envelope, seed: ByteArray? = null): Pair<Header, ByteArray> {
+    fun openWithPurpose(account: Account, env: Envelope, seed: ByteArray? = null): Triple<Header, ByteArray, Int> {
         val reply = call(
             "open",
             "Member" to JsonPrimitive(account.deviceId),
             "Envelope" to blob(env.toByteArray()),
             "SessionSeed" to blob(seed ?: byteArrayOf()),
         )
-        return Header.parseFrom(bytes(reply, "Header")) to bytes(reply, "Plain")
+        val header = Header.parseFrom(bytes(reply, "Header"))
+        val purpose = reply["Purpose"]?.jsonPrimitive?.content?.toIntOrNull() ?: header.kindValue
+        return Triple(header, bytes(reply, "Plain"), purpose)
+    }
+
+    fun open(account: Account, env: Envelope, seed: ByteArray? = null): Pair<Header, ByteArray> {
+        val (h, plain, _) = openWithPurpose(account, env, seed)
+        return h to plain
     }
 
     override fun close() {
@@ -668,6 +396,46 @@ class TestSecurity private constructor(private val process: Process, val serverU
             fixture.seedMemberStore(rec, edSeed)
             all[account.server] = fixture
             return fixture to fixture.bytes(reply, "Genesis")
+        }
+
+        /** Starts a standalone fixture process seeded from static domain vectors (no production Core). */
+        fun forVectors(
+            account: String,
+            domain: ByteArray,
+            genesis: ByteArray,
+            states: List<ByteArray>,
+            lease: ByteArray,
+            members: List<Triple<String, ByteArray, ByteArray>>,
+            proofs: List<ByteArray?> = emptyList(),
+        ): TestSecurity {
+            val bin = File(
+                System.getProperty("raSecurityFixture")
+                    ?: error("security fixture binary missing"),
+            )
+            val process = ProcessBuilder(bin.absolutePath)
+                .redirectError(ProcessBuilder.Redirect.INHERIT)
+                .start()
+            val fixture = TestSecurity(process, "https://vectors.example.com")
+            try {
+                for ((memberId, edSeed, xPriv) in members) {
+                    fixture.call(
+                        "load",
+                        "Account" to JsonPrimitive(account),
+                        "Domain" to blob(domain),
+                        "Genesis" to blob(genesis),
+                        "States" to JsonArray(states.map { blob(it) }),
+                        "Proofs" to JsonArray(proofs.map { if (it == null) JsonNull else blob(it) }),
+                        "Lease" to blob(lease),
+                        "Member" to JsonPrimitive(memberId),
+                        "Seed" to blob(edSeed),
+                        "X" to blob(xPriv),
+                    )
+                }
+            } catch (t: Throwable) {
+                fixture.close()
+                throw t
+            }
+            return fixture
         }
     }
 }

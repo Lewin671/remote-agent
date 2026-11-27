@@ -136,9 +136,9 @@ private final class Frames: TermListener, Sendable {
     func onClose(_ reason: String) { closes.put(reason) }
 }
 
-private extension Remote {
+extension Remote {
     @discardableResult
-    func hydrateExecutorState() async throws -> [String: PBSession] {
+    func hydrateExecutorState() async throws -> [String] {
         _ = try await testSyncSecurity()
         let tok = securityStore.loadLoginToken(server: account.server, deviceId: account.deviceId)?.token ?? ""
         let reqBytes = try PBListRemoteSessionsRequest.with { $0.limit = 50 }.serializedData()
@@ -152,27 +152,14 @@ private extension Remote {
             opID: 3
         )
         let listed = try PBListRemoteSessionsResponse(serializedBytes: res?.responseBytes ?? Data())
-        var openedSessions: [String: PBSession] = [:]
-        var routes: [PBWatchedSessionRoute] = []
-        for rs in listed.sessions {
-            if rs.hasKey {
-                _ = try? await openEnvelopeOp(
-                    envelope: rs.key, expectedPurpose: .sessionKey,
-                    machineId: rs.machineID, sessionId: rs.sessionID, history: true)
-            }
-            if rs.hasMeta, let opened = try? await openEnvelopeOp(
-                envelope: rs.meta, expectedPurpose: .sessionMeta,
-                machineId: rs.machineID, sessionId: rs.sessionID, history: true),
-               let session = try? PBSession(serializedBytes: opened.plaintext) {
-                openedSessions[rs.sessionID] = session
-            }
-            routes.append(.with {
+        let routes = listed.sessions.map { rs in
+            PBWatchedSessionRoute.with {
                 $0.sessionID = rs.sessionID
                 $0.machineID = rs.machineID
-            })
+            }
         }
         setWatchedSessions(routes)
-        return openedSessions
+        return try await hydrateCoreSessions()
     }
 }
 
@@ -341,7 +328,7 @@ extension SyncServerTests {
                 try await attachTestCoreDriver(to: joined)
                 defer { joined.close() }
                 let openedSessions = try await joined.hydrateExecutorState()
-                #expect(openedSessions["s1"] != nil)
+                #expect(openedSessions.contains("s1"))
             }
         }
 

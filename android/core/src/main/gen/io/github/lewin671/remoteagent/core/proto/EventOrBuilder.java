@@ -2378,17 +2378,6 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchDoneEvent getSecurityCryptoBatchDone();
 
   /**
-   * <code>.remoteagent.core.v1.SecurityOpRequestEvent security_op_request = 457 [json_name = "securityOpRequest"];</code>
-   * @return Whether the securityOpRequest field is set.
-   */
-  boolean hasSecurityOpRequest();
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpRequestEvent security_op_request = 457 [json_name = "securityOpRequest"];</code>
-   * @return The securityOpRequest.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecurityOpRequestEvent getSecurityOpRequest();
-
-  /**
    * <code>.remoteagent.core.v1.SeedDemoWorldEvent seed_demo_world = 458 [json_name = "seedDemoWorld"];</code>
    * @return Whether the seedDemoWorld field is set.
    */

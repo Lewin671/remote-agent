@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/machinestatus"
 	"github.com/Lewin671/remote-agent/internal/schedule"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 // TestScreenFixturesMatchDaemonHandlers verifies that real internal/daemon
@@ -131,7 +133,7 @@ func TestScreenInputFixturesDaemonContract(t *testing.T) {
 			Steps []struct {
 				Event struct {
 					CommandOutcome *struct {
-						Result json.RawMessage `json:"result"`
+						RawResult string `json:"rawResult"`
 					} `json:"commandOutcome"`
 					ListsFetched *struct {
 						Machines []struct {
@@ -171,12 +173,21 @@ func TestScreenInputFixturesDaemonContract(t *testing.T) {
 				}
 			}
 
-			if step.Event.CommandOutcome == nil || len(step.Event.CommandOutcome.Result) == 0 {
+			if step.Event.CommandOutcome == nil || step.Event.CommandOutcome.RawResult == "" {
+				continue
+			}
+			rawBytes, err := base64.StdEncoding.DecodeString(step.Event.CommandOutcome.RawResult)
+			if err != nil {
+				t.Errorf("%s step %d commandOutcome.rawResult invalid base64: %v", base, idx, err)
 				continue
 			}
 			var res pb.CommandResult
-			if err := strict.Unmarshal(step.Event.CommandOutcome.Result, &res); err != nil {
-				t.Errorf("%s step %d commandOutcome.result invalid wire CommandResult: %v", base, idx, err)
+			if err := proto.Unmarshal(rawBytes, &res); err != nil {
+				t.Errorf("%s step %d commandOutcome.rawResult invalid wire CommandResult: %v", base, idx, err)
+				continue
+			}
+			if len(res.ProtoReflect().GetUnknown()) > 0 {
+				t.Errorf("%s step %d commandOutcome.rawResult contains unknown protobuf fields", base, idx)
 				continue
 			}
 			checkedResults++
@@ -218,7 +229,7 @@ func TestScreenInputFixturesDaemonContract(t *testing.T) {
 	}
 
 	if checkedResults == 0 {
-		t.Fatal("expected at least one commandOutcome.result across testdata/screens/*.input.json")
+		t.Fatal("expected at least one commandOutcome.rawResult across testdata/screens/*.input.json")
 	}
 }
 

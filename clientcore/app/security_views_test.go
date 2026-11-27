@@ -1083,6 +1083,52 @@ func TestExternalLogoutResetsCoreInPlaceAndIsolatesNewAccount(t *testing.T) {
 	}
 }
 
+func TestDevicesScreenReportsDirectReadyMachines(t *testing.T) {
+	c := New()
+	c.Dispatch(&corev1.Event{
+		NowMs: 10_000,
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      "dev-a",
+					AuthorityDeviceId: "dev-a",
+					TrustedMachineIds: []string{"m-direct", "m-relay"},
+					TrustedClientIds:  []string{"dev-a"},
+				},
+				Machines: []*corev1.DemoMachine{
+					{MachineId: "m-direct", Online: true, RawMeta: testrelay.MustRaw(&v1.MachineMeta{Hostname: "Direct-Mac"})},
+					{MachineId: "m-relay", Online: true, RawMeta: testrelay.MustRaw(&v1.MachineMeta{Hostname: "Relay-Mac"})},
+				},
+				DirectReports: []*corev1.DemoDirectReport{
+					{
+						MachineId: "m-direct",
+						Enabled:   true,
+						Report: &corev1.DirectRouteReport{
+							State:     corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
+							ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
+						},
+					},
+				},
+			},
+		},
+	})
+	dv, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Devices{Devices: &corev1.DevicesScreenRequest{}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]bool{}
+	for _, m := range dv.GetDevices().GetComputers() {
+		got[m.GetMachineId()] = m.GetDirectReady()
+	}
+	if !got["m-direct"] {
+		t.Fatalf("expected m-direct DirectReady=true on Devices screen, got %+v", got)
+	}
+	if got["m-relay"] {
+		t.Fatalf("expected m-relay DirectReady=false on Devices screen, got %+v", got)
+	}
+}
+
 func TestPendingOpDiscardMatrixAndWorkflowConsistency(t *testing.T) {
 	// Cross-verify EvaluatePendingOpDiscard against the REAL security.Engine discardPendingTask:
 	// for every pending op shape, canDiscard == true iff workflow accepts discard (with flag=requiresConfirm),

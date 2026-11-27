@@ -466,9 +466,10 @@ final class TestCoreDriver: @unchecked Sendable {
     private var closed = false
     private var nextOpID: UInt64 = 1
     private var timers: [String: (id: UInt64, task: Task<Void, Never>)] = [:]
-    private var securityOpWaiters: [UInt64: ContinuationWaiter<PBSecurityOpResultEffect>] = [:]
     private var pingWaiters: [UInt64: ContinuationWaiter<Void>] = [:]
     private var inFlightDispatches: [String: [String: Task<Void, Never>]] = [:]
+    private var watchedRoutes: [PBWatchedSessionRoute] = []
+    private var onWatchedSessions: (@Sendable ([PBWatchedSessionRoute]) -> Void)?
 
     init(
         executor: SecurityExecutor,
@@ -480,6 +481,7 @@ final class TestCoreDriver: @unchecked Sendable {
         onDispatchCommand: (@Sendable (PBCoreDispatchCommandEffect) async -> PBCoreCommandOutcomeEvent)? = nil,
         onTerminalEffect: (@Sendable (PBCoreEffect) -> Void)? = nil,
         onSessionImageLoaded: (@Sendable (PBSessionImageLoadedEffect) -> Void)? = nil,
+        onWatchedSessions: (@Sendable ([PBWatchedSessionRoute]) -> Void)? = nil,
         initialConfig: PBSecurityConfigEvent? = nil,
         relayPipe: Bool = false
     ) throws {
@@ -493,6 +495,7 @@ final class TestCoreDriver: @unchecked Sendable {
         self.onDispatchCommand = onDispatchCommand
         self.onTerminalEffect = onTerminalEffect
         self.onSessionImageLoaded = onSessionImageLoaded
+        self.onWatchedSessions = onWatchedSessions
         enqueueEvent(PBCoreEvent.with {
             $0.entropyProvided = Self.buildEntropy(minIds: 16, minFloats: 16, minRandomBytes: 4096)
         })
@@ -518,28 +521,12 @@ final class TestCoreDriver: @unchecked Sendable {
         }
     }
 
-    func runSecurityOp(_ configure: @Sendable (inout PBSecurityOpRequestEvent) -> Void) async throws -> PBSecurityOpResultEffect {
-        try await awaitWaiter(
-            isClosed: { self.isClosed() },
-            closedError: { SecurityFailure.storage },
-            register: { waiter in
-                try lock.withLock {
-                    guard !closed else { throw SecurityFailure.storage }
-                    try Task.checkCancellation()
-                    let id = nextOpID
-                    nextOpID &+= 1
-                    securityOpWaiters[id] = waiter
-                    return id
-                }
-            },
-            unregister: { [self] id in lock.withLock { securityOpWaiters.removeValue(forKey: id) } },
-            dispatch: { id in
-                var req = PBSecurityOpRequestEvent()
-                configure(&req)
-                req.opID = id
-                enqueueEvent(PBCoreEvent.with { $0.securityOpRequest = req })
-            }
-        )
+    func viewHome() -> PBCoreHomeViewModel? {
+        queue.sync {
+            guard !isClosed() else { return nil }
+            let screen = PBCoreScreen.with { $0.home = .with { $0.endedLimit = 50 } }
+            return try? core.view(screen).home
+        }
     }
 
     func pingMachine(machineID: String) async throws {
@@ -645,9 +632,28 @@ final class TestCoreDriver: @unchecked Sendable {
             }
         case .securityTokenUpdated(let t):
             onTokenUpdated?(t)
-        case .securityOpResult(let res):
-            let waiter = lock.withLock { securityOpWaiters.removeValue(forKey: res.opID) }
-            waiter?.resolve(.success(res))
+        case .openStream(let s):
+            inlineQueue.append(PBCoreEvent.with {
+                $0.nowMs = clock()
+                $0.monoMs = clock()
+                $0.streamReady = .with {
+                    $0.legID = s.legID
+                    $0.serverTimeMs = clock()
+                }
+            })
+        case .cacheRead(let r):
+            var reply = PBCoreEvent()
+            reply.nowMs = clock()
+            reply.monoMs = clock()
+            switch r.kind {
+            case .bootstrap(let b)?:
+                reply.cacheBootstrapLoaded = .with { $0.opID = b.opID }
+            case .events(let e)?:
+                reply.cacheEventsLoaded = .with { $0.opID = e.opID; $0.sessionID = e.sessionID }
+            case nil:
+                break
+            }
+            inlineQueue.append(reply)
         case .dispatchCommand(let cmdEff):
             guard let dispatchFn = onDispatchCommand else { break }
             let reqID = cmdEff.requestID
@@ -703,23 +709,20 @@ final class TestCoreDriver: @unchecked Sendable {
     }
 
     func close() {
-        let (pendingTimers, pendingOps, pendingPings, pendingDispatches) = lock.withLock {
-            () -> ([Task<Void, Never>], [ContinuationWaiter<PBSecurityOpResultEffect>], [ContinuationWaiter<Void>], [Task<Void, Never>]) in
-            guard !closed else { return ([], [], [], []) }
+        let (pendingTimers, pendingPings, pendingDispatches) = lock.withLock {
+            () -> ([Task<Void, Never>], [ContinuationWaiter<Void>], [Task<Void, Never>]) in
+            guard !closed else { return ([], [], []) }
             closed = true
             let ts = timers.values.map(\.task)
-            let ops = Array(securityOpWaiters.values)
             let pings = Array(pingWaiters.values)
             let dispatches = inFlightDispatches.values.flatMap(\.values)
             timers.removeAll()
-            securityOpWaiters.removeAll()
             pingWaiters.removeAll()
             inFlightDispatches.removeAll()
-            return (ts, ops, pings, dispatches)
+            return (ts, pings, dispatches)
         }
         for t in pendingTimers { t.cancel() }
         for t in pendingDispatches { t.cancel() }
-        for waiter in pendingOps { waiter.resolve(.failure(SecurityFailure.storage)) }
         for waiter in pendingPings { waiter.resolve(.failure(CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()))) }
         queue.sync {
             core.close()
@@ -822,50 +825,29 @@ private enum TestCoreDriverRegistry {
 }
 
 extension Remote {
-    func openEnvelopeOp(
-        envelope: PBEnvelope,
-        expectedPurpose: SecurityPurpose,
-        machineId: String = "",
-        sessionId: String = "",
-        requestId: String = "",
-        seq: UInt64 = 0,
-        history: Bool = false,
-        overrideSessionSeed: Data = Data()
-    ) async throws -> PBSecurityOpenEnvelopeResult {
+    func hydrateCoreSessions() async throws -> [String] {
         guard let driver = TestCoreDriverRegistry.driver(for: self) else {
             throw SecurityFailure.storage
         }
-        let rawEnv = try envelope.serializedData()
-        let res = try await driver.runSecurityOp {
-            $0.openEnvelope = .with {
-                $0.rawEnvelope = rawEnv
-                $0.expectedPurpose = expectedPurpose.rawValue
-                $0.machineID = machineId
-                $0.sessionID = sessionId
-                $0.requestID = requestId
-                $0.seq = seq
-                $0.history = history
-                if !overrideSessionSeed.isEmpty { $0.overrideSessionSeed = overrideSessionSeed }
+        driver.enqueueEvent(PBCoreEvent.with { $0.syncLifecycle.kind = .reconnectNow })
+        let deadline = Date().addingTimeInterval(10)
+        while Date() < deadline {
+            if let home = driver.viewHome() {
+                let ids = home.attention.map(\.sessionID)
+                    + home.running.map(\.sessionID)
+                    + home.endedGroups.flatMap { $0.items.map(\.sessionID) }
+                if !ids.isEmpty {
+                    return ids
+                }
             }
+            try await Task.sleep(nanoseconds: 20_000_000)
         }
-        if !res.error.isEmpty {
-            switch res.structuredErrorCode {
-            case .unsupportedHistory: throw UnsupportedHistoryError()
-            case .recoveryUnavailable: throw SecurityFailure.unavailable
-            case .leaseExpired: throw SecurityFailure.lease
-            case .stale: throw SecurityFailure.stale
-            case .clockSkewed: throw SecurityFailure.clock
-            case .untrusted: throw SecurityFailure.untrusted
-            case .capacity: throw SecurityFailure.capacity
-            case .storage: throw SecurityFailure.storage
-            case .conflict: throw SecurityFailure.conflict
-            default: throw SecurityFailure.invalid
-            }
+        if let home = driver.viewHome() {
+            return home.attention.map(\.sessionID)
+                + home.running.map(\.sessionID)
+                + home.endedGroups.flatMap { $0.items.map(\.sessionID) }
         }
-        guard case .opened(let opened)? = res.result else {
-            throw SecurityFailure.invalid
-        }
-        return opened
+        return []
     }
 }
 
@@ -928,10 +910,6 @@ final class TestSecurityNode: @unchecked Sendable {
         self.executor = executor
         self.client = client
         self.driver = driver
-    }
-
-    func securityOp(_ configure: @Sendable (inout PBSecurityOpRequestEvent) -> Void) async throws -> PBSecurityOpResultEffect {
-        try await driver.runSecurityOp(configure)
     }
 
     func close() {

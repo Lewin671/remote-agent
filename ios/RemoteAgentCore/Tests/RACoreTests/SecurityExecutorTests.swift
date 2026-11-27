@@ -342,12 +342,7 @@ extension ServerTests {
                 let notifyBlob = try #require(adminStore.readNotifyBlob())
 
                 let daemon = w.daemon
-                let daemonStore = try #require(TestSecurity.find(w.server.url)?.store(daemon.id))
-                let daemonNode = try TestSecurityNode(store: daemonStore, http: w.http, allowPlainHttp: true)
-                defer { daemonNode.close() }
-                let daemonBoot = try await daemonNode.client.bootstrap()
-                #expect(daemonBoot.bootstrap == .ready)
-
+                let security = try TestSecurity.get(w.server.url)
                 var content = PBNotifyContent()
                 content.kind = .machineDisk
                 content.machineID = daemon.id
@@ -355,17 +350,11 @@ extension ServerTests {
                 content.diskStatus.observedMs = 1
                 content.diskStatus.availableBytes = 1_500_000_000
                 content.diskStatus.pressure = .critical
-                let payload = try content.serializedData()
-                let sealed = try await daemonNode.securityOp {
-                    $0.sealEnvelope = .with {
-                        $0.purpose = SecurityPurpose.notify.rawValue
-                        $0.machineID = daemon.id
-                        $0.requestID = "disk:1:\(PBResourcePressure.critical.rawValue)"
-                        $0.plaintext = payload
-                    }
-                }
-                #expect(sealed.error.isEmpty)
-                let envData = sealed.sealed.rawEnvelope
+                var header = PBHeader()
+                header.kind = .notify
+                header.machineID = daemon.id
+                header.requestID = "disk:1:\(PBResourcePressure.critical.rawValue)"
+                let envData = try security.seal(daemon.account, header, content).serializedData()
                 let expectedTag = "\(daemon.id)/NOTIFY_KIND_MACHINE_DISK"
                 let noticeEn = try receiveMachineDiskNotification(
                     envelope: envData,
@@ -415,7 +404,7 @@ extension ServerTests {
                 )
                 #expect(wrongTag == nil)
 
-                var tampered = try PBEnvelope(serializedBytes: sealed.sealed.rawEnvelope)
+                var tampered = try PBEnvelope(serializedBytes: envData)
                 tampered.signature[0] ^= 0xff
                 #expect(throws: SecurityWorkflowError.self) {
                     _ = try receiveMachineDiskNotification(

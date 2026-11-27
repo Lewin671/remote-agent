@@ -53,19 +53,6 @@ internal class ColdOpenFixture(val historySize: Int = 501) {
         contentKeys = listOf(contentEpoch to contentSecret),
     )
 
-    private val machineRecordBytes = encodeV4RecordBytes(
-        account = accountId,
-        domain = domain,
-        genesis = genesisHash,
-        memberId = machineId,
-        member = true,
-        server = "https://example.com",
-        states = listOf(genesisRaw, addedRaw),
-        lease = leaseBytes,
-        floorMs = now,
-        contentKeys = listOf(contentEpoch to contentSecret),
-    )
-
     fun newPhoneStore(): MemorySecurityStoreV4 = MemorySecurityStoreV4().apply {
         seedTestRecord(
             edPrivate = phoneSeed,
@@ -76,25 +63,30 @@ internal class ColdOpenFixture(val historySize: Int = 501) {
         )
     }
 
-    private fun newMachineStore(): MemorySecurityStoreV4 = MemorySecurityStoreV4().apply {
-        seedTestRecord(
-            edPrivate = machineSeed,
-            edPublic = Corebind.ed25519PublicKey(machineSeed),
-            xPrivate = machineX,
-            xPublic = Corebind.x25519PublicKey(machineX),
-            recordBytes = machineRecordBytes,
-        )
-    }
+    private fun newFixture(): TestSecurity = TestSecurity.forVectors(
+        account = accountId,
+        domain = domain,
+        genesis = genesisHash,
+        states = listOf(genesisRaw, addedRaw),
+        lease = leaseBytes,
+        members = listOf(
+            Triple(phoneId, phoneSeed, phoneX),
+            Triple(machineId, machineSeed, machineX),
+        ),
+    )
 
     private fun sealMachine(purpose: PayloadKind, sid: String, seq: Long, plain: ByteArray): Envelope =
-        CoreMemoryBridge(newMachineStore(), "https://example.com", machineId, accountId, clock = { now }).use { b ->
-            b.seal(
-                purpose = purpose.number,
-                machine = machineId,
-                session = sid,
-                seq = seq,
+        newFixture().use { fx ->
+            fx.sealMember(
+                memberId = machineId,
+                h = Header.newBuilder()
+                    .setKind(purpose)
+                    .setMachineId(machineId)
+                    .setSessionId(sid)
+                    .setSeq(seq)
+                    .build(),
                 plain = plain,
-                overrideSessionSeed = if (purpose == PayloadKind.PAYLOAD_KIND_EVENT) seed else null,
+                seed = if (purpose == PayloadKind.PAYLOAD_KIND_EVENT) seed else null,
             )
         }
 
@@ -112,11 +104,14 @@ internal class ColdOpenFixture(val historySize: Int = 501) {
         .build()
 
     fun device(revision: Long, name: String): Device {
-        val env = CoreMemoryBridge(newPhoneStore(), "https://example.com", phoneId, accountId, clock = { now }).use { b ->
-            b.seal(
-                purpose = PayloadKind.PAYLOAD_KIND_DEVICE_META.number,
-                request = phoneId,
-                seq = revision,
+        val env = newFixture().use { fx ->
+            fx.sealMember(
+                memberId = phoneId,
+                h = Header.newBuilder()
+                    .setKind(PayloadKind.PAYLOAD_KIND_DEVICE_META)
+                    .setRequestId(phoneId)
+                    .setSeq(revision)
+                    .build(),
                 plain = DeviceMeta.newBuilder().setName(name).build().toByteArray(),
             )
         }
@@ -124,18 +119,32 @@ internal class ColdOpenFixture(val historySize: Int = 501) {
     }
 
     val sessions: Map<String, RemoteSession> =
-        CoreMemoryBridge(newMachineStore(), "https://example.com", machineId, accountId, clock = { now }).use { b ->
+        newFixture().use { fx ->
             listOf("long", "short", "empty").associateWith { sid ->
                 RemoteSession.newBuilder()
                     .setSessionId(sid)
                     .setMachineId(machineId)
-                    .setKey(b.seal(PayloadKind.PAYLOAD_KIND_SESSION_KEY.number, machine = machineId, session = sid, seq = 1L, plain = seed))
+                    .setKey(
+                        fx.sealMember(
+                            memberId = machineId,
+                            h = Header.newBuilder()
+                                .setKind(PayloadKind.PAYLOAD_KIND_SESSION_KEY)
+                                .setMachineId(machineId)
+                                .setSessionId(sid)
+                                .setSeq(1L)
+                                .build(),
+                            plain = seed,
+                        ),
+                    )
                     .setMeta(
-                        b.seal(
-                            PayloadKind.PAYLOAD_KIND_SESSION_META.number,
-                            machine = machineId,
-                            session = sid,
-                            seq = 1L,
+                        fx.sealMember(
+                            memberId = machineId,
+                            h = Header.newBuilder()
+                                .setKind(PayloadKind.PAYLOAD_KIND_SESSION_META)
+                                .setMachineId(machineId)
+                                .setSessionId(sid)
+                                .setSeq(1L)
+                                .build(),
                             plain = Session.newBuilder().setId(sid).setTitle(sid).build().toByteArray(),
                         ),
                     )
@@ -171,7 +180,7 @@ internal class ColdOpenFixture(val historySize: Int = 501) {
     ).build()
 
     val events: Map<String, List<StoredEvent>> =
-        CoreMemoryBridge(newMachineStore(), "https://example.com", machineId, accountId, clock = { now }).use { b ->
+        newFixture().use { fx ->
             listOf("long", "short", "empty").associateWith { sid ->
                 (1..when (sid) { "long" -> historySize + 1; "short" -> 2; else -> 0 }).map { seq ->
                     val event = Event.newBuilder()
@@ -182,13 +191,16 @@ internal class ColdOpenFixture(val historySize: Int = 501) {
                     StoredEvent.newBuilder()
                         .setSeq(seq.toLong())
                         .setEnvelope(
-                            b.seal(
-                                PayloadKind.PAYLOAD_KIND_EVENT.number,
-                                machine = machineId,
-                                session = sid,
-                                seq = seq.toLong(),
+                            fx.sealMember(
+                                memberId = machineId,
+                                h = Header.newBuilder()
+                                    .setKind(PayloadKind.PAYLOAD_KIND_EVENT)
+                                    .setMachineId(machineId)
+                                    .setSessionId(sid)
+                                    .setSeq(seq.toLong())
+                                    .build(),
                                 plain = event.toByteArray(),
-                                overrideSessionSeed = seed,
+                                seed = seed,
                             ),
                         )
                         .build()

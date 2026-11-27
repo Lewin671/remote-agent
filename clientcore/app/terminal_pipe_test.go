@@ -1239,13 +1239,13 @@ func TestTerminalPipe_NegativeRelayTamperReplaySeqJumpMismatchAndMissingSeed(t *
 	})
 }
 
-func TestTerminalPipe_CrossCompatWithLegacyHandleSecurityOp(t *testing.T) {
+func TestTerminalPipe_DaemonWireRoundTrip(t *testing.T) {
 	c, phone, trusted, _, _, dom, s1, sec, _, _, nowMs := setupOpaqueCacheTestCore(t, true)
 	seed := bytes.Repeat([]byte{0x68}, 32)
 	seedSessionInCore(t, c, dom, s1, sec, trusted, "s-compat", seed, nil, nowMs+50)
 	streamID, _ := openCoreTerminalForTest(t, c, phone, trusted, dom, s1, sec, seed, "s-compat", "", nowMs+100)
 
-	// Direction 1: New pipe TerminalInputAction -> sealed envelope -> opened via legacy SecurityOpRequest(OpenEnvelope)!
+	// Direction 1: TerminalInputAction -> sealed envelope -> verified via daemon-side openDaemonEnvelopeWithSeed.
 	bIn := c.Dispatch(&corev1.Event{
 		NowMs: nowMs + 200, MonoMs: 2000,
 		Event: &corev1.Event_TerminalInput{TerminalInput: &corev1.TerminalInputAction{
@@ -1269,118 +1269,19 @@ func TestTerminalPipe_CrossCompatWithLegacyHandleSecurityOp(t *testing.T) {
 		}
 	}
 	if len(sealedIn) == 0 {
-		t.Fatal("expected sealed envelope from new TerminalInputAction")
+		t.Fatal("expected sealed envelope from TerminalInputAction")
 	}
-	var envIn v1.Envelope
-	if err := envIn.Unmarshal(sealedIn); err != nil {
-		t.Fatalf("unmarshal sealedIn: %v", err)
-	}
-	bOpen := c.Dispatch(&corev1.Event{
-		NowMs: nowMs + 205, MonoMs: 2005,
-		Event: &corev1.Event_SecurityOpRequest{SecurityOpRequest: &corev1.SecurityOpRequestEvent{
-			OpId: 9901,
-			Op: &corev1.SecurityOpRequestEvent_OpenEnvelope{OpenEnvelope: &corev1.SecurityOpenEnvelopeOp{
-				RawEnvelope:         envIn.AppendMarshal(nil),
-				ExpectedPurpose:     uint32(devicesec.TerminalInput),
-				MachineId:           trusted.id,
-				SessionId:           "s-compat",
-				RequestId:           streamID,
-				Seq:                 1,
-				OverrideSessionSeed: seed,
-			}},
-		}},
-	})
-	var opRes *corev1.SecurityOpResultEffect
-	for _, eff := range bOpen.Effects {
-		if r := eff.GetSecurityOpResult(); r != nil && r.OpId == 9901 {
-			opRes = r
-		}
-	}
-	if opRes == nil || opRes.Error != "" || opRes.GetOpened() == nil {
-		t.Fatalf("legacy OpenEnvelope failed on new pipe's sealed input: %+v", opRes)
-	}
+	hdrIn, plainIn := openDaemonEnvelopeWithSeed(t, sealedIn, sec, seed, phone.edP)
 	var tfIn stdv1.TerminalFrame
-	_ = proto.Unmarshal(opRes.GetOpened().GetPlaintext(), &tfIn)
-	if string(tfIn.GetInput()) != "compat-in" {
-		t.Fatalf("legacy OpenEnvelope plaintext = %q, want compat-in", string(tfIn.GetInput()))
+	_ = proto.Unmarshal(plainIn, &tfIn)
+	if hdrIn.Purpose != devicesec.TerminalInput || hdrIn.Seq != 1 || string(tfIn.GetInput()) != "compat-in" {
+		t.Fatalf("daemon-opened input mismatch: hdr=%+v input=%q", hdrIn, string(tfIn.GetInput()))
 	}
 
-	// Direction 2: Legacy SecurityOpRequest(SealEnvelope) for client-origin TerminalInput verifies identically via daemon-side open,
-	// and a machine-origin TerminalOutput envelope opens identically through BOTH legacy HandleSecurityOp(OpenEnvelope) and new TerminalInboundBytesEvent!
-	legacyInPlain, _ := proto.Marshal(&stdv1.TerminalFrame{Kind: &stdv1.TerminalFrame_Input{Input: []byte("compat-legacy-in")}})
-	bSeal := c.Dispatch(&corev1.Event{
-		NowMs: nowMs + 210, MonoMs: 2010,
-		Event: &corev1.Event_SecurityOpRequest{SecurityOpRequest: &corev1.SecurityOpRequestEvent{
-			OpId: 9902,
-			Op: &corev1.SecurityOpRequestEvent_SealEnvelope{SealEnvelope: &corev1.SecuritySealEnvelopeOp{
-				Purpose:             uint32(devicesec.TerminalInput),
-				MachineId:           trusted.id,
-				SessionId:           "s-compat",
-				RequestId:           streamID,
-				Seq:                 2,
-				DeadlineMs:          nowMs + 60_000,
-				Plaintext:           legacyInPlain,
-				UseSessionSeed:      true,
-				OverrideSessionSeed: seed,
-			}},
-		}},
-	})
-	var legacyEnvBytes []byte
-	for q := append([]*corev1.Effect(nil), bSeal.Effects...); len(q) > 0; {
-		eff := q[0]
-		q = q[1:]
-		if ks := eff.GetSecurityKeySign(); ks != nil {
-			next := c.Dispatch(&corev1.Event{
-				NowMs: nowMs + 211, MonoMs: 2011,
-				Event: &corev1.Event_SecurityKeySigned{SecurityKeySigned: &corev1.SecurityKeySignedEvent{
-					OpId: ks.OpId, Signature: ed25519.Sign(phone.ed, ks.Message),
-				}},
-			})
-			q = append(q, next.Effects...)
-		} else if r := eff.GetSecurityOpResult(); r != nil && r.OpId == 9902 {
-			if r.Error != "" {
-				t.Fatalf("legacy SealEnvelope failed: %s", r.Error)
-			}
-			legacyEnvBytes = r.GetSealed().GetRawEnvelope()
-		}
-	}
-	if len(legacyEnvBytes) == 0 {
-		t.Fatal("missing legacy SealEnvelope result")
-	}
-	hdrLeg, plainLeg := openDaemonEnvelopeWithSeed(t, legacyEnvBytes, sec, seed, phone.edP)
-	var tfLeg stdv1.TerminalFrame
-	_ = proto.Unmarshal(plainLeg, &tfLeg)
-	if hdrLeg.Purpose != devicesec.TerminalInput || hdrLeg.Seq != 2 || string(tfLeg.GetInput()) != "compat-legacy-in" {
-		t.Fatalf("legacy-sealed input mismatch: hdr=%+v input=%q", hdrLeg, string(tfLeg.GetInput()))
-	}
-
+	// Direction 2: Daemon-sealed TerminalOutput envelope opens cleanly via TerminalInboundBytesEvent.
 	outPlain, _ := proto.Marshal(&stdv1.TerminalFrame{Kind: &stdv1.TerminalFrame_Output{Output: []byte("compat-out")}})
 	outEnv := sealDaemonWireWithSeed(t, trusted, dom, s1, sec, seed, outPlain, devicesec.TerminalOutput, trusted.id, "s-compat", streamID, 1)
 	rawOut, _ := outEnv.Marshal()
-	bLegacyOpenOut := c.Dispatch(&corev1.Event{
-		NowMs: nowMs + 215, MonoMs: 2015,
-		Event: &corev1.Event_SecurityOpRequest{SecurityOpRequest: &corev1.SecurityOpRequestEvent{
-			OpId: 9903,
-			Op: &corev1.SecurityOpRequestEvent_OpenEnvelope{OpenEnvelope: &corev1.SecurityOpenEnvelopeOp{
-				RawEnvelope:         rawOut,
-				ExpectedPurpose:     uint32(devicesec.TerminalOutput),
-				MachineId:           trusted.id,
-				SessionId:           "s-compat",
-				RequestId:           streamID,
-				Seq:                 1,
-				OverrideSessionSeed: seed,
-			}},
-		}},
-	})
-	var legOutPlain []byte
-	for _, eff := range bLegacyOpenOut.Effects {
-		if r := eff.GetSecurityOpResult(); r != nil && r.OpId == 9903 {
-			if r.Error != "" {
-				t.Fatalf("legacy OpenEnvelope(TerminalOutput) failed: %s", r.Error)
-			}
-			legOutPlain = r.GetOpened().GetPlaintext()
-		}
-	}
 	bDel := c.Dispatch(&corev1.Event{
 		NowMs: nowMs + 220, MonoMs: 2020,
 		Event: &corev1.Event_TerminalInboundBytes{TerminalInboundBytes: &corev1.TerminalInboundBytesEvent{
@@ -1393,10 +1294,8 @@ func TestTerminalPipe_CrossCompatWithLegacyHandleSecurityOp(t *testing.T) {
 			delivered = d
 		}
 	}
-	var tfLegOut stdv1.TerminalFrame
-	_ = proto.Unmarshal(legOutPlain, &tfLegOut)
-	if delivered == nil || !bytes.Equal(delivered.Frames[0].GetOutput(), tfLegOut.GetOutput()) || string(delivered.Frames[0].GetOutput()) != "compat-out" {
-		t.Fatalf("cross-compat output mismatch: pipe=%+v legacy=%q", delivered, string(tfLegOut.GetOutput()))
+	if delivered == nil || string(delivered.Frames[0].GetOutput()) != "compat-out" {
+		t.Fatalf("terminal output mismatch: delivered=%+v", delivered)
 	}
 }
 

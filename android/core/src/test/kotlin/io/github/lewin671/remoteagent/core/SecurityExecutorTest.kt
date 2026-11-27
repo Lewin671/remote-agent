@@ -78,26 +78,6 @@ class SecurityExecutorTest {
             purposeKey = deriveNotifyPurposeKey(secret, accountId, domain, contentEpoch),
         )
 
-        val machineStore = MemorySecurityStoreV4().apply {
-            val recBytes = encodeV4RecordBytes(
-                account = accountId,
-                domain = domain,
-                genesis = genesisHash,
-                memberId = machineId,
-                server = "https://ra.example.com",
-                states = listOf(genesisRaw, addedRaw),
-                lease = lease,
-                contentKeys = listOf(contentEpoch to secret),
-            )
-            seedTestRecord(
-                edPrivate = machineSeed,
-                edPublic = Corebind.ed25519PublicKey(machineSeed),
-                xPrivate = machineX,
-                xPublic = Corebind.x25519PublicKey(machineX),
-                recordBytes = recBytes,
-                notifyBytes = notifyBlob,
-            )
-        }
         val content = NotifyContent.newBuilder()
             .setMachineId(machineId)
             .setSessionId("s-notify")
@@ -107,18 +87,22 @@ class SecurityExecutorTest {
             .setText("Body")
             .build()
 
-        val env: Envelope = CoreMemoryBridge(
-            store = machineStore,
-            server = "https://ra.example.com",
-            deviceId = machineId,
-            accountId = accountId,
-            clock = { parseLeaseIssuedAt(lease) + 1000L },
-        ).use { bridge ->
-            bridge.seal(
-                purpose = PayloadKind.PAYLOAD_KIND_NOTIFY_VALUE,
-                machine = machineId,
-                session = "s-notify",
-                request = "notify:1:1",
+        val env: Envelope = TestSecurity.forVectors(
+            account = accountId,
+            domain = domain,
+            genesis = genesisHash,
+            states = listOf(genesisRaw, addedRaw),
+            lease = lease,
+            members = listOf(Triple(machineId, machineSeed, machineX)),
+        ).use { fx ->
+            fx.sealMember(
+                memberId = machineId,
+                h = Header.newBuilder()
+                    .setKind(PayloadKind.PAYLOAD_KIND_NOTIFY)
+                    .setMachineId(machineId)
+                    .setSessionId("s-notify")
+                    .setRequestId("notify:1:1")
+                    .build(),
                 plain = content.toByteArray(),
             )
         }

@@ -95,7 +95,6 @@ public  final class Effect extends
     SECURITY_KEY_SIGN(130),
     SECURITY_KEY_AGREE(131),
     SECURITY_CRYPTO_BATCH(135),
-    SECURITY_OP_RESULT(136),
     SECURITY_KEY_GENERATE(137),
     SECURITY_KEY_ENCAPSULATE(138),
     SECURITY_KEY_DISCARD(139),
@@ -201,7 +200,6 @@ public  final class Effect extends
         case 130: return SECURITY_KEY_SIGN;
         case 131: return SECURITY_KEY_AGREE;
         case 135: return SECURITY_CRYPTO_BATCH;
-        case 136: return SECURITY_OP_RESULT;
         case 137: return SECURITY_KEY_GENERATE;
         case 138: return SECURITY_KEY_ENCAPSULATE;
         case 139: return SECURITY_KEY_DISCARD;
@@ -4244,58 +4242,6 @@ public  final class Effect extends
    */
   private void clearSecurityCryptoBatch() {
     if (effectCase_ == 135) {
-      effectCase_ = 0;
-      effect_ = null;
-    }
-  }
-
-  public static final int SECURITY_OP_RESULT_FIELD_NUMBER = 136;
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
-   */
-  @java.lang.Override
-  public boolean hasSecurityOpResult() {
-    return effectCase_ == 136;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect getSecurityOpResult() {
-    if (effectCase_ == 136) {
-       return (io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect) effect_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSecurityOpResult(io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect value) {
-    value.getClass();  // minimal bytecode null check
-    effect_ = value;
-    effectCase_ = 136;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeSecurityOpResult(io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect value) {
-    value.getClass();  // minimal bytecode null check
-    if (effectCase_ == 136 &&
-        effect_ != io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect.getDefaultInstance()) {
-      effect_ = io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect) effect_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      effect_ = value;
-    }
-    effectCase_ = 136;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
-   */
-  private void clearSecurityOpResult() {
-    if (effectCase_ == 136) {
       effectCase_ = 0;
       effect_ = null;
     }
@@ -8859,54 +8805,6 @@ public  final class Effect extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
-     */
-    @java.lang.Override
-    public boolean hasSecurityOpResult() {
-      return instance.hasSecurityOpResult();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect getSecurityOpResult() {
-      return instance.getSecurityOpResult();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
-     */
-    public Builder setSecurityOpResult(io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect value) {
-      copyOnWrite();
-      instance.setSecurityOpResult(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
-     */
-    public Builder setSecurityOpResult(
-        io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSecurityOpResult(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
-     */
-    public Builder mergeSecurityOpResult(io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect value) {
-      copyOnWrite();
-      instance.mergeSecurityOpResult(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
-     */
-    public Builder clearSecurityOpResult() {
-      copyOnWrite();
-      instance.clearSecurityOpResult();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.SecurityKeyGenerateEffect security_key_generate = 137 [json_name = "securityKeyGenerate"];</code>
      */
     @java.lang.Override
@@ -9672,7 +9570,6 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.SecurityKeySignEffect.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreeEffect.class,
             io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchEffect.class,
-            io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeyGenerateEffect.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulateEffect.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeyDiscardEffect.class,
@@ -9689,7 +9586,7 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.PersistLastServerEffect.class,
           };
           java.lang.String info =
-              "\u0000[\u0001\u0000\u0001\u0097[\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "\u0000Z\u0001\u0000\u0001\u0097Z\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
               "<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<\u0000\u000b<\u0000\r<\u0000\u000e<\u0000" +
               "\u000f<\u0000\u0011<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017" +
               "<\u0000\u0018<\u0000\u0019<\u0000\u001a<\u0000\u001b<\u0000(<\u0000*<\u0000+<\u0000" +
@@ -9698,9 +9595,9 @@ public  final class Effect extends
               "M<\u0000N<\u0000O<\u0000P<\u0000Q<\u0000R<\u0000S<\u0000T<\u0000U<\u0000V<\u0000" +
               "W<\u0000X<\u0000Y<\u0000Z<\u0000f<\u0000g<\u0000h<\u0000i<\u0000j<\u0000k<\u0000" +
               "l<\u0000m<\u0000o<\u0000p<\u0000q<\u0000r<\u0000s<\u0000t<\u0000u<\u0000\u0082<\u0000" +
-              "\u0083<\u0000\u0087<\u0000\u0088<\u0000\u0089<\u0000\u008a<\u0000\u008b<\u0000\u008c" +
-              "<\u0000\u008e<\u0000\u008f<\u0000\u0090<\u0000\u0091<\u0000\u0092<\u0000\u0093<\u0000" +
-              "\u0094<\u0000\u0095<\u0000\u0096<\u0000\u0097<\u0000";
+              "\u0083<\u0000\u0087<\u0000\u0089<\u0000\u008a<\u0000\u008b<\u0000\u008c<\u0000\u008e" +
+              "<\u0000\u008f<\u0000\u0090<\u0000\u0091<\u0000\u0092<\u0000\u0093<\u0000\u0094<\u0000" +
+              "\u0095<\u0000\u0096<\u0000\u0097<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

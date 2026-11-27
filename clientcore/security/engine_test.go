@@ -933,37 +933,31 @@ func TestEngineOverrideSessionSeedAndNotifyOpening(t *testing.T) {
 
 	overrideSeed := bytes.Repeat([]byte{0x5a}, 32)
 	msgRaw := litewire.AppendBytes(nil, 10, []byte("ls\n"))
-	var opRes *corev1.SecurityOpResultEffect
-	opEffs := eng.HandleSecurityOp(nowMs+100, &corev1.SecurityOpRequestEvent{
-		OpId: 77,
-		Op: &corev1.SecurityOpRequestEvent_SealEnvelope{
-			SealEnvelope: &corev1.SecuritySealEnvelopeOp{
-				Purpose:             uint32(devicesec.TerminalInput),
-				MachineId:           machine.id,
-				SessionId:           "sess-term",
-				RequestId:           "term-stream-123456",
-				Seq:                 1,
-				DeadlineMs:          nowMs + 60_000,
-				Plaintext:           msgRaw,
-				OverrideSessionSeed: overrideSeed,
-			},
+	var sealedRes SealResult
+	var sealDone bool
+	opEffs := eng.SealEnvelope(
+		nowMs+100,
+		devicesec.TerminalInput,
+		machine.id,
+		"sess-term",
+		"term-stream-123456",
+		1,
+		uint64(nowMs+60_000),
+		msgRaw,
+		true,
+		overrideSeed,
+		func(r SealResult) {
+			sealedRes = r
+			sealDone = true
 		},
-	})
-	for _, ef := range executeHostEffects(t, eng, phone, nowMs+100, opEffs) {
-		if r := ef.GetSecurityOpResult(); r != nil {
-			opRes = r
-		}
-	}
-	if opRes == nil || opRes.Error != "" || opRes.GetSealed() == nil || len(opRes.GetSealed().RawEnvelope) == 0 {
-		t.Fatalf("expected SealEnvelope with OverrideSessionSeed to succeed, got %+v", opRes)
-	}
-	var sealedEnv v1.Envelope
-	if err := sealedEnv.Unmarshal(opRes.GetSealed().RawEnvelope); err != nil {
-		t.Fatalf("unmarshal sealed raw envelope: %v", err)
+	)
+	executeHostEffects(t, eng, phone, nowMs+100, opEffs)
+	if !sealDone || sealedRes.Err != nil || sealedRes.Envelope == nil {
+		t.Fatalf("expected SealEnvelope with OverrideSessionSeed to succeed, got done=%v res=%+v", sealDone, sealedRes)
 	}
 	var opened []OpenResult
 	eng.OpenBatch(nowMs+100, []OpenItem{{
-		Env:             &sealedEnv,
+		Env:             sealedRes.Envelope,
 		ExpectedPurpose: devicesec.TerminalInput,
 		MachineID:       machine.id,
 		SessionID:       "sess-term",
@@ -1134,5 +1128,104 @@ func TestDevicesecVerifyTransitionAndSecurityGates(t *testing.T) {
 	}))
 	if len(histCmd) != 1 || !errors.Is(histCmd[0].Err, devicesec.ErrUntrusted) {
 		t.Fatalf("expected History:true OpenBatch to reject Command with ErrUntrusted, got %+v", histCmd)
+	}
+}
+
+func TestRetiredHistoryEnvelopeRejectedWithoutMutatingVerifiedState(t *testing.T) {
+	nowMs := int64(1_700_000_000_000)
+	acct, dom, gen, phone, machine, _, _, sec2, rawStates, leaseRaw, states := makeGenesisAndTwoStateRecord(t, uint64(nowMs))
+
+	pool := &entropy.Pool{}
+	pool.Append(bytes.Repeat([]byte{0x77}, 4096))
+	eng := NewEngine(pool, 0)
+	eng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: phone.id, InlineCrypto: true})
+	executeHostEffects(t, eng, phone, nowMs+100, eng.ApplyRecord(nowMs+100, RecordUpdate{
+		Account: acct, Domain: dom[:], Genesis: gen[:], States: rawStates, Lease: leaseRaw,
+	}))
+
+	// Seal valid current SessionKey (seq=1) and SessionMeta (seq=2) and verify opening them succeeds.
+	seed := bytes.Repeat([]byte{0x44}, 32)
+	s1Hash, err := states[1].Hash()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sealMachine := func(purpose devicesec.Purpose, seq uint64, plain []byte) *v1.Envelope {
+		t.Helper()
+		h := devicesec.Header{
+			Account: acct, Domain: dom, Epoch: states[1].Core.Epoch, State: s1Hash,
+			ContentEpoch: states[1].Core.ContentEpoch, Sender: machine.id,
+			Kind: purpose.Kind(), Purpose: purpose, Machine: machine.id, Session: "known", Seq: seq,
+		}
+		hb, key, nonce, err := devicesec.PrepareCiphertext(sec2, nil, h, len(plain), rand.Reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		blk, _ := aes.NewCipher(key)
+		aead, _ := cipher.NewGCM(blk)
+		ct, originMsg, err := devicesec.AssembleCiphertext(hb, nonce, aead.Seal(nil, nonce, plain, hb))
+		if err != nil {
+			t.Fatal(err)
+		}
+		ct.Origin = ed25519.Sign(machine.ed, originMsg)
+		env, err := ToProtoEnvelope(ct)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return env
+	}
+	keyEnv := sealMachine(devicesec.SessionKey, 1, seed)
+	metaPlain, _ := (&v1.Session{Id: "known", Title: "current title"}).Marshal()
+	metaEnv := sealMachine(devicesec.SessionMeta, 2, metaPlain)
+
+	var validRes []OpenResult
+	executeHostEffects(t, eng, phone, nowMs+100, eng.OpenBatch(nowMs+100, []OpenItem{
+		{Env: keyEnv, ExpectedPurpose: devicesec.SessionKey, MachineID: machine.id, SessionID: "known", History: true},
+		{Env: metaEnv, ExpectedPurpose: devicesec.SessionMeta, MachineID: machine.id, SessionID: "known", History: true},
+	}, func(r []OpenResult) {
+		validRes = r
+	}))
+	if len(validRes) != 2 || validRes[0].Err != nil || validRes[1].Err != nil || validRes[1].Header.Seq != 2 {
+		t.Fatalf("expected valid session key/meta open, got %+v", validRes)
+	}
+
+	// Retired v1 envelopes for SessionKey, SessionMeta, Event, and Image must all fail with ErrUnsupportedHistory
+	// without clearing the verified session key cache.
+	cases := []struct {
+		kind    v1.PayloadKind
+		purpose devicesec.Purpose
+		seq     uint64
+	}{
+		{v1.PayloadKind_PAYLOAD_KIND_SESSION_KEY, devicesec.SessionKey, 0},
+		{v1.PayloadKind_PAYLOAD_KIND_SESSION_META, devicesec.SessionMeta, 0},
+		{v1.PayloadKind_PAYLOAD_KIND_EVENT, devicesec.Event, 1},
+		{v1.PayloadKind_PAYLOAD_KIND_IMAGE, devicesec.Image, 0},
+	}
+	for _, tc := range cases {
+		hdrBytes, err := (&v1.Header{Version: 1, Kind: tc.kind}).Marshal()
+		if err != nil {
+			t.Fatal(err)
+		}
+		retired := &v1.Envelope{Header: hdrBytes}
+		var res []OpenResult
+		executeHostEffects(t, eng, phone, nowMs+100, eng.OpenBatch(nowMs+100, []OpenItem{{
+			Env: retired, ExpectedPurpose: tc.purpose, MachineID: machine.id, SessionID: "known", Seq: tc.seq, History: true,
+		}}, func(r []OpenResult) {
+			res = r
+		}))
+		if len(res) != 1 || !errors.Is(res[0].Err, ErrUnsupportedHistory) {
+			t.Fatalf("retired kind=%v: got %+v, want ErrUnsupportedHistory", tc.kind, res)
+		}
+	}
+
+	// Session key cached from valid keyEnv must still open subsequent events after retired rejections.
+	evEnv := sealEventProto(t, machine, dom, states[1], sec2, seed, acct, "known", 1, uint64(nowMs+100), "after-retired")
+	var afterRes []OpenResult
+	executeHostEffects(t, eng, phone, nowMs+100, eng.OpenBatch(nowMs+100, []OpenItem{{
+		Env: evEnv, ExpectedPurpose: devicesec.Event, MachineID: machine.id, SessionID: "known", Seq: 1, History: true,
+	}}, func(r []OpenResult) {
+		afterRes = r
+	}))
+	if len(afterRes) != 1 || afterRes[0].Err != nil {
+		t.Fatalf("expected valid event after retired rejection to still open, got %+v", afterRes)
 	}
 }

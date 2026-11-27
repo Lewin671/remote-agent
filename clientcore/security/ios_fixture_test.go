@@ -20,6 +20,11 @@ type iosHomeProjectFixture struct {
 	Server        string   `json:"server"`
 	NowMs         int64    `json:"nowMs"`
 	AccountID     string   `json:"accountId"`
+	Domain        []byte   `json:"domain"`
+	Epoch         uint64   `json:"epoch"`
+	ContentEpoch  uint64   `json:"contentEpoch"`
+	StateHash     []byte   `json:"stateHash"`
+	ContentSecret []byte   `json:"contentSecret"`
 	ClientID      string   `json:"clientId"`
 	MachineID     string   `json:"machineId"`
 	ClientEdSeed  []byte   `json:"clientEdSeed"`
@@ -140,10 +145,19 @@ func generateIOSHomeProjectFixture(t *testing.T) iosHomeProjectFixture {
 		return raw
 	}
 
+	s1Hash, err := s1.Hash()
+	if err != nil {
+		t.Fatalf("state1 Hash: %v", err)
+	}
 	return iosHomeProjectFixture{
 		Server:        server,
 		NowMs:         int64(nowMs + 100),
 		AccountID:     client.id,
+		Domain:        dom[:],
+		Epoch:         s1.Core.Epoch,
+		ContentEpoch:  s1.Core.ContentEpoch,
+		StateHash:     s1Hash[:],
+		ContentSecret: sec2,
 		ClientID:      client.id,
 		MachineID:     machine.id,
 		ClientEdSeed:  client.ed.Seed(),
@@ -282,5 +296,22 @@ func TestIOSHomeProjectFixture(t *testing.T) {
 	mm, ok := s1.Core.Member(fix.MachineID)
 	if !ok || mm.Kind != devicesec.Machine || !bytes.Equal(mm.EdPublic[:], fix.MachineEdPub) || !bytes.Equal(mm.XPublic[:], fix.MachineXPub) {
 		t.Fatalf("machine member = (%+v, %v), want Machine with matching keys", mm, ok)
+	}
+	s1Hash, err := s1.Hash()
+	if err != nil {
+		t.Fatalf("s1.Hash: %v", err)
+	}
+	if !bytes.Equal(fix.Domain, s1.Core.Domain[:]) || fix.Epoch != s1.Core.Epoch || fix.ContentEpoch != s1.Core.ContentEpoch || !bytes.Equal(fix.StateHash, s1Hash[:]) {
+		t.Fatalf("fixture head metadata mismatch: epoch=%d/%d contentEpoch=%d/%d", fix.Epoch, s1.Core.Epoch, fix.ContentEpoch, s1.Core.ContentEpoch)
+	}
+	var foundSecret bool
+	for _, ck := range cRec.ContentKeys {
+		if ck.Epoch == fix.ContentEpoch && bytes.Equal(ck.Secret[:], fix.ContentSecret) {
+			foundSecret = true
+			break
+		}
+	}
+	if !foundSecret {
+		t.Fatalf("fixture contentSecret missing from clientRecord content keys for epoch %d", fix.ContentEpoch)
 	}
 }

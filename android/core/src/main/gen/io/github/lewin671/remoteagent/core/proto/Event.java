@@ -234,7 +234,6 @@ public  final class Event extends
     SECURITY_KEY_SIGNED(452),
     SECURITY_KEY_AGREED(453),
     SECURITY_CRYPTO_BATCH_DONE(456),
-    SECURITY_OP_REQUEST(457),
     SEED_DEMO_WORLD(458),
     SECURITY_KEY_GENERATED(459),
     SECURITY_KEY_ENCAPSULATED(460),
@@ -497,7 +496,6 @@ public  final class Event extends
         case 452: return SECURITY_KEY_SIGNED;
         case 453: return SECURITY_KEY_AGREED;
         case 456: return SECURITY_CRYPTO_BATCH_DONE;
-        case 457: return SECURITY_OP_REQUEST;
         case 458: return SEED_DEMO_WORLD;
         case 459: return SECURITY_KEY_GENERATED;
         case 460: return SECURITY_KEY_ENCAPSULATED;
@@ -11684,58 +11682,6 @@ public  final class Event extends
    */
   private void clearSecurityCryptoBatchDone() {
     if (eventCase_ == 456) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
-  public static final int SECURITY_OP_REQUEST_FIELD_NUMBER = 457;
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpRequestEvent security_op_request = 457 [json_name = "securityOpRequest"];</code>
-   */
-  @java.lang.Override
-  public boolean hasSecurityOpRequest() {
-    return eventCase_ == 457;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpRequestEvent security_op_request = 457 [json_name = "securityOpRequest"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecurityOpRequestEvent getSecurityOpRequest() {
-    if (eventCase_ == 457) {
-       return (io.github.lewin671.remoteagent.core.proto.SecurityOpRequestEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SecurityOpRequestEvent.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpRequestEvent security_op_request = 457 [json_name = "securityOpRequest"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSecurityOpRequest(io.github.lewin671.remoteagent.core.proto.SecurityOpRequestEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 457;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpRequestEvent security_op_request = 457 [json_name = "securityOpRequest"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeSecurityOpRequest(io.github.lewin671.remoteagent.core.proto.SecurityOpRequestEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 457 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.SecurityOpRequestEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.SecurityOpRequestEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.SecurityOpRequestEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 457;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpRequestEvent security_op_request = 457 [json_name = "securityOpRequest"];</code>
-   */
-  private void clearSecurityOpRequest() {
-    if (eventCase_ == 457) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -24153,54 +24099,6 @@ public  final class Event extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.SecurityOpRequestEvent security_op_request = 457 [json_name = "securityOpRequest"];</code>
-     */
-    @java.lang.Override
-    public boolean hasSecurityOpRequest() {
-      return instance.hasSecurityOpRequest();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityOpRequestEvent security_op_request = 457 [json_name = "securityOpRequest"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecurityOpRequestEvent getSecurityOpRequest() {
-      return instance.getSecurityOpRequest();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityOpRequestEvent security_op_request = 457 [json_name = "securityOpRequest"];</code>
-     */
-    public Builder setSecurityOpRequest(io.github.lewin671.remoteagent.core.proto.SecurityOpRequestEvent value) {
-      copyOnWrite();
-      instance.setSecurityOpRequest(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityOpRequestEvent security_op_request = 457 [json_name = "securityOpRequest"];</code>
-     */
-    public Builder setSecurityOpRequest(
-        io.github.lewin671.remoteagent.core.proto.SecurityOpRequestEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSecurityOpRequest(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityOpRequestEvent security_op_request = 457 [json_name = "securityOpRequest"];</code>
-     */
-    public Builder mergeSecurityOpRequest(io.github.lewin671.remoteagent.core.proto.SecurityOpRequestEvent value) {
-      copyOnWrite();
-      instance.mergeSecurityOpRequest(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityOpRequestEvent security_op_request = 457 [json_name = "securityOpRequest"];</code>
-     */
-    public Builder clearSecurityOpRequest() {
-      copyOnWrite();
-      instance.clearSecurityOpRequest();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.SeedDemoWorldEvent seed_demo_world = 458 [json_name = "seedDemoWorld"];</code>
      */
     @java.lang.Override
@@ -26308,7 +26206,6 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.SecurityKeySignedEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreedEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchDoneEvent.class,
-            io.github.lewin671.remoteagent.core.proto.SecurityOpRequestEvent.class,
             io.github.lewin671.remoteagent.core.proto.SeedDemoWorldEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeyGeneratedEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulatedEvent.class,
@@ -26345,7 +26242,7 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.ExitConfirmAction.class,
           };
           java.lang.String info =
-              "\u0000\u00fc\u0001\u0000\u0001\u01f3\u00fc\u0000\u0002\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u00fb\u0001\u0000\u0001\u01f3\u00fb\u0000\u0002\u0000\u0001<\u0000\u0002<" +
               "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\t<\u0000" +
               "\n<\u0000\u000b<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000\u0018" +
               "<\u0000\u001a<\u0000\u001b<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000" +
@@ -26377,12 +26274,12 @@ public  final class Event extends
               "<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000\u01a4<\u0000\u01a5<\u0000\u01a6<\u0000" +
               "\u01a7<\u0000\u01af<\u0000\u01b0<\u0000\u01b1<\u0000\u01b2<\u0000\u01b3<\u0000\u01b4" +
               "<\u0000\u01b5<\u0000\u01b6<\u0000\u01b7<\u0000\u01b8<\u0000\u01b9<\u0000\u01c2<\u0000" +
-              "\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000\u01c9<\u0000\u01ca<\u0000\u01cb<\u0000\u01cc" +
-              "<\u0000\u01cd<\u0000\u01cf<\u0000\u01d0<\u0000\u01d1<\u0000\u01d6<\u0000\u01d7<\u0000" +
-              "\u01d8<\u0000\u01d9<\u0000\u01da<\u0000\u01db<\u0000\u01dc<\u0000\u01dd<\u0000\u01de" +
-              "<\u0000\u01df<\u0000\u01e0<\u0000\u01e1<\u0000\u01e2<\u0000\u01e3<\u0000\u01e4<\u0000" +
-              "\u01e5<\u0000\u01e6<\u0000\u01e9<\u0000\u01ea<\u0000\u01eb<\u0000\u01ed<\u0000\u01ee" +
-              "<\u0000\u01ef<\u0000\u01f0<\u0000\u01f1<\u0000\u01f2<\u0000\u01f3<\u0000";
+              "\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd" +
+              "<\u0000\u01cf<\u0000\u01d0<\u0000\u01d1<\u0000\u01d6<\u0000\u01d7<\u0000\u01d8<\u0000" +
+              "\u01d9<\u0000\u01da<\u0000\u01db<\u0000\u01dc<\u0000\u01dd<\u0000\u01de<\u0000\u01df" +
+              "<\u0000\u01e0<\u0000\u01e1<\u0000\u01e2<\u0000\u01e3<\u0000\u01e4<\u0000\u01e5<\u0000" +
+              "\u01e6<\u0000\u01e9<\u0000\u01ea<\u0000\u01eb<\u0000\u01ed<\u0000\u01ee<\u0000\u01ef" +
+              "<\u0000\u01f0<\u0000\u01f1<\u0000\u01f2<\u0000\u01f3<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

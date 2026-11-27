@@ -2913,7 +2913,7 @@ actor CoreHost: SyncEngine {
                 guard !demoMode, let executor else { continue }
                 await executor.closeStream(legId: s.legID)
 
-            case .securityNotifyOpened, .securityOpResult:
+            case .securityNotifyOpened:
                 break
 
             case .scheduleTimer(let t):

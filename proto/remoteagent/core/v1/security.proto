@@ -118,65 +118,6 @@ message SecurityCryptoBatchDoneEvent {
   string error = 3;
 }
 
-// ---- Test-Fixture Crypto Bridge (zero production callers) ----
-
-message SecurityOpenEnvelopeOp {
-  reserved 1;
-  reserved "envelope";
-  uint32 expected_purpose = 2;
-  string machine_id = 3;
-  string session_id = 4;
-  string request_id = 5;
-  uint64 seq = 6;
-  bool history = 7;
-  bytes override_session_seed = 8;
-  bytes raw_envelope = 9;
-}
-
-message SecuritySealEnvelopeOp {
-  uint32 purpose = 1;
-  string machine_id = 2;
-  string session_id = 3;
-  string request_id = 4;
-  uint64 seq = 5;
-  int64 deadline_ms = 6;
-  bytes plaintext = 7;
-  bool use_session_seed = 8;
-  bytes override_session_seed = 9;
-}
-
-message SecurityOpRequestEvent {
-  reserved 4;
-  reserved "get_session_seed";
-  uint64 op_id = 1;
-  oneof op {
-    SecurityOpenEnvelopeOp open_envelope = 2;
-    SecuritySealEnvelopeOp seal_envelope = 3;
-  }
-}
-
-message SecurityOpenEnvelopeResult {
-  bytes header = 1;
-  bytes plaintext = 2;
-  uint64 epoch = 3;
-  uint64 content_epoch = 4;
-  uint64 seq = 5;
-  string sender = 6;
-  uint32 purpose = 7;
-  string machine_id = 8;
-  string session_id = 9;
-  string request_id = 10;
-  int64 deadline_ms = 11;
-}
-
-message SecuritySealEnvelopeResult {
-  reserved 1;
-  reserved "envelope";
-  bytes request_key_hash = 2;
-  bytes payload_hash = 3;
-  bytes raw_envelope = 4;
-}
-
 enum SecurityErrorCode {
   SECURITY_ERROR_CODE_UNSPECIFIED = 0;
   SECURITY_ERROR_CODE_INVALID = 1;
@@ -196,18 +137,6 @@ enum SecurityErrorCode {
   SECURITY_ERROR_CODE_CANCELED = 15;
   SECURITY_ERROR_CODE_UNAVAILABLE = 16;
   SECURITY_ERROR_CODE_FOREGROUND = 17;
-}
-
-message SecurityOpResultEffect {
-  reserved 3, 6;
-  reserved "error_code", "session_seed";
-  uint64 op_id = 1;
-  string error = 2;
-  oneof result {
-    SecurityOpenEnvelopeResult opened = 4;
-    SecuritySealEnvelopeResult sealed = 5;
-  }
-  SecurityErrorCode structured_error_code = 7;
 }
 
 // ---- Demo/Gallery Mode Seeding (permanently locked out once real security is initialized) ----

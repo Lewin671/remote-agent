@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/sha256"
 	"errors"
 	"slices"
 
@@ -1094,8 +1093,6 @@ type openBatchTask struct {
 	useSink      bool
 	sinkTag      uint64
 	target       taskTarget
-	secOpID      uint64
-	secOpHeader  []byte
 }
 
 func (e *Engine) startOpenBatch(nowMs int64, t *openBatchTask) {
@@ -1103,34 +1100,7 @@ func (e *Engine) startOpenBatch(nowMs int64, t *openBatchTask) {
 	e.waitUnlocked(nowMs, false, taskWait{task: t})
 }
 
-//go:noinline
-func (e *Engine) emitSecurityOpResult(res *corev1.SecurityOpResultEffect) {
-	e.out = append(e.out, &corev1.Effect{
-		Effect: &corev1.Effect_SecurityOpResult{SecurityOpResult: res},
-	})
-}
-
 func (t *openBatchTask) finish(e *Engine) {
-	if t.secOpID != 0 {
-		r := t.results[0]
-		if r.Err != nil {
-			e.emitSecurityOpErr(t.secOpID, r.Err)
-			return
-		}
-		e.emitSecurityOpResult(&corev1.SecurityOpResultEffect{
-			OpId: t.secOpID,
-			Result: &corev1.SecurityOpResultEffect_Opened{
-				Opened: &corev1.SecurityOpenEnvelopeResult{
-					Header: slices.Clone(t.secOpHeader), Plaintext: r.Plain,
-					Epoch: r.Header.Epoch, ContentEpoch: r.Header.ContentEpoch, Seq: r.Header.Seq,
-					Sender: r.Header.Sender, Purpose: uint32(r.Header.Purpose),
-					MachineId: r.Header.Machine, SessionId: r.Header.Session, RequestId: r.Header.Request,
-					DeadlineMs: int64(r.Header.Deadline),
-				},
-			},
-		})
-		return
-	}
 	if t.useSink {
 		if wf := e.wf; wf != nil && wf.asyncSink != nil {
 			wf.asyncSink.OnOpenBatchDone(t.sinkTag, t.results)
@@ -1461,7 +1431,6 @@ type sealEnvelopeTask struct {
 	useSink        bool
 	sinkTag        uint64
 	target         taskTarget
-	secOpID        uint64
 }
 
 func (e *Engine) startSealEnvelope(nowMs int64, t *sealEnvelopeTask) {
@@ -1474,26 +1443,6 @@ func (t *sealEnvelopeTask) fail(e *Engine, err error) error {
 }
 
 func (t *sealEnvelopeTask) finish(e *Engine, sr SealResult) {
-	if t.secOpID != 0 {
-		if sr.Err != nil {
-			e.emitSecurityOpErr(t.secOpID, sr.Err)
-			return
-		}
-		rawEnv, err := sr.Envelope.Marshal()
-		if err != nil {
-			e.emitSecurityOpErr(t.secOpID, err)
-			return
-		}
-		e.emitSecurityOpResult(&corev1.SecurityOpResultEffect{
-			OpId: t.secOpID,
-			Result: &corev1.SecurityOpResultEffect_Sealed{
-				Sealed: &corev1.SecuritySealEnvelopeResult{
-					RawEnvelope: rawEnv, RequestKeyHash: sr.RequestKeyHash, PayloadHash: sr.PayloadHash,
-				},
-			},
-		})
-		return
-	}
 	if t.useSink {
 		if wf := e.wf; wf != nil && wf.asyncSink != nil {
 			wf.asyncSink.OnSealEnvelopeDone(t.sinkTag, sr, sr.Err)
@@ -1653,14 +1602,6 @@ func (e *Engine) sealEnvelope(
 	return e.DrainEffects()
 }
 
-func (e *Engine) emitSecurityOpErr(opID uint64, err error) {
-	e.emitSecurityOpResult(&corev1.SecurityOpResultEffect{
-		OpId:                opID,
-		Error:               err.Error(),
-		StructuredErrorCode: StructuredErrorCode(err),
-	})
-}
-
 // VerifiedMachineReplacementOrigins verifies authority-signed replacement proofs
 // for target against the currently verified membership chain and returns the set
 // of replaced ancestor machine IDs.
@@ -1673,53 +1614,4 @@ func (e *Engine) VerifiedMachineReplacementOrigins(target string, proofs []*v1.M
 		return nil
 	}
 	return origins
-}
-
-// HandleSecurityOp executes stateful shell bridge operations (for remaining S6/file/terminal callers).
-func (e *Engine) HandleSecurityOp(nowMs int64, req *corev1.SecurityOpRequestEvent, replacements ...*v1.MachineReplacementProof) []*corev1.Effect {
-	e.touchNow(nowMs)
-	if req == nil {
-		return nil
-	}
-	switch op := req.Op.(type) {
-	case *corev1.SecurityOpRequestEvent_OpenEnvelope:
-		if op.OpenEnvelope == nil || len(op.OpenEnvelope.RawEnvelope) == 0 {
-			e.emitSecurityOpErr(req.OpId, devicesec.ErrInvalid)
-			return e.DrainEffects()
-		}
-		o := op.OpenEnvelope
-		var env v1.Envelope
-		if err := env.Unmarshal(o.RawEnvelope); err != nil {
-			e.emitSecurityOpErr(req.OpId, devicesec.ErrInvalid)
-			return e.DrainEffects()
-		}
-		e.startOpenBatch(nowMs, &openBatchTask{
-			items: []OpenItem{{
-				Env: &env, ExpectedPurpose: devicesec.Purpose(o.ExpectedPurpose),
-				MachineID: o.MachineId, SessionID: o.SessionId, RequestID: o.RequestId,
-				Seq: o.Seq, History: o.History, Replacements: replacements, OverrideSeed: o.OverrideSessionSeed,
-			}},
-			secOpID: req.OpId, secOpHeader: env.GetSecurityHeader(),
-		})
-	case *corev1.SecurityOpRequestEvent_SealEnvelope:
-		if op.SealEnvelope == nil {
-			e.emitSecurityOpErr(req.OpId, devicesec.ErrInvalid)
-			return e.DrainEffects()
-		}
-		s := op.SealEnvelope
-		e.startSealEnvelope(nowMs, &sealEnvelopeTask{
-			purpose: devicesec.Purpose(s.Purpose), machineID: s.MachineId, sessionID: s.SessionId,
-			requestID: s.RequestId, seq: s.Seq, deadlineMs: uint64(max(0, s.DeadlineMs)),
-			plain: s.Plaintext, useSessionSeed: s.UseSessionSeed, overrideSeed: s.OverrideSessionSeed, secOpID: req.OpId,
-		})
-	default:
-		e.emitSecurityOpErr(req.OpId, devicesec.ErrInvalid)
-	}
-	return e.DrainEffects()
-}
-
-// ComputeSHA256 is a tiny shared digest helper for tests/callers.
-func ComputeSHA256(b []byte) []byte {
-	sum := sha256.Sum256(b)
-	return sum[:]
 }

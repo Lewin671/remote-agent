@@ -871,17 +871,6 @@ public interface EffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchEffect getSecurityCryptoBatch();
 
   /**
-   * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
-   * @return Whether the securityOpResult field is set.
-   */
-  boolean hasSecurityOpResult();
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
-   * @return The securityOpResult.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect getSecurityOpResult();
-
-  /**
    * <code>.remoteagent.core.v1.SecurityKeyGenerateEffect security_key_generate = 137 [json_name = "securityKeyGenerate"];</code>
    * @return Whether the securityKeyGenerate field is set.
    */

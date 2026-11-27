@@ -38,11 +38,17 @@ type request struct {
 	Targets     []string
 	Recovery    []byte
 	Kind        uint32
+	Purpose     uint32
 	Header      []byte
 	Plain       []byte
 	SessionSeed []byte
 	Envelope    []byte
 	State       []byte
+	Domain      []byte
+	Genesis     []byte
+	States      [][]byte
+	Proofs      [][]byte
+	Lease       []byte
 }
 type record struct {
 	Lease   []byte   `json:"lease"`
@@ -65,6 +71,7 @@ type response struct {
 	Envelope []byte          `json:",omitempty"`
 	Header   []byte          `json:",omitempty"`
 	Plain    []byte          `json:",omitempty"`
+	Purpose  uint32          `json:",omitempty"`
 	Error    string          `json:",omitempty"`
 }
 type fixture struct {
@@ -393,6 +400,48 @@ func (f *fixture) run(q request) (response, error) {
 	case "state":
 		sraw, err := f.states[len(f.states)-1].MarshalBinary()
 		return response{State: sraw}, err
+	case "load":
+		if q.Account == "" || len(q.Domain) != 32 || len(q.Genesis) != 32 || len(q.States) == 0 || q.Member == "" || len(q.Seed) != 32 || len(q.X) != 32 {
+			return response{}, devicesec.ErrInvalid
+		}
+		var domain, genesis devicesec.Hash
+		copy(domain[:], q.Domain)
+		copy(genesis[:], q.Genesis)
+		pin := devicesec.Pin{Account: q.Account, Domain: domain, Genesis: genesis}
+		states := make([]devicesec.State, 0, len(q.States))
+		for _, raw := range q.States {
+			st, err := devicesec.ParseState(raw)
+			if err != nil {
+				return response{}, err
+			}
+			states = append(states, st)
+		}
+		proofs := make([]*devicesec.RecoveryStatement, len(states))
+		for i := range states {
+			if i < len(q.Proofs) && len(q.Proofs[i]) > 0 {
+				p, err := devicesec.ParseRecoveryStatement(q.Proofs[i])
+				if err != nil {
+					return response{}, err
+				}
+				proofs[i] = &p
+			}
+		}
+		lease, err := devicesec.ParseLease(q.Lease)
+		if err != nil {
+			return response{}, err
+		}
+		ed := ed25519.NewKeyFromSeed(q.Seed)
+		ep, err := deviceauth.InitEndpoint("", pin, states, proofs, q.Member, q.Seed, q.X, lease)
+		if err != nil {
+			return response{}, err
+		}
+		f.account = q.Account
+		f.domain = domain
+		f.pin = pin
+		f.states = states
+		f.proofs = proofs
+		f.members[q.Member] = &member{ed: ed, x: q.X, endpoint: ep}
+		return response{}, nil
 	case "seal":
 		m := f.members[q.Member]
 		if m == nil || len(q.Header) == 0 {
@@ -402,7 +451,13 @@ func (f *fixture) run(q request) (response, error) {
 		if err := proto.Unmarshal(q.Header, h); err != nil {
 			return response{}, err
 		}
-		header := devicesec.Header{Kind: uint32(h.Kind), Purpose: devicesec.Purpose(h.Kind), Machine: h.MachineId, Session: h.SessionId, Request: h.RequestId, Seq: h.Seq, Deadline: uint64(h.DeadlineMs), Compression: uint32(h.Compression)}
+		purpose := devicesec.Purpose(h.Kind)
+		kind := uint32(h.Kind)
+		if q.Purpose != 0 {
+			purpose = devicesec.Purpose(q.Purpose)
+			kind = purpose.Kind()
+		}
+		header := devicesec.Header{Kind: kind, Purpose: purpose, Machine: h.MachineId, Session: h.SessionId, Request: h.RequestId, Seq: h.Seq, Deadline: uint64(h.DeadlineMs), Compression: uint32(h.Compression)}
 		wire, err := m.endpoint.Prepare(header, q.SessionSeed, q.Plain)
 		if err != nil {
 			return response{}, err
@@ -436,7 +491,7 @@ func (f *fixture) run(q request) (response, error) {
 			return response{}, err
 		}
 		projection, err := proto.Marshal(deviceauth.Projection(header))
-		return response{Header: projection, Plain: plain}, err
+		return response{Header: projection, Plain: plain, Purpose: uint32(header.Purpose)}, err
 	}
 	return response{}, errors.New("unknown fixture operation")
 }

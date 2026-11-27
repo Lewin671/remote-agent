@@ -846,8 +846,6 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 		e.handleSecurityKeyAgreed(ctx, k.SecurityKeyAgreed)
 	case *corev1.Event_SecurityCryptoBatchDone:
 		e.handleSecurityCryptoBatchDone(ctx, k.SecurityCryptoBatchDone)
-	case *corev1.Event_SecurityOpRequest:
-		e.handleSecurityOpRequest(ctx, k.SecurityOpRequest)
 	case *corev1.Event_SecurityKeyGenerated:
 		e.handleSecurityKeyGenerated(ctx, k.SecurityKeyGenerated)
 	case *corev1.Event_SecurityKeyEncapsulated:

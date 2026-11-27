@@ -145,36 +145,14 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
     AutoCloseable {
     private val security = TestSecurity.get(account.server)
     private val store = security.stores.getValue(account.deviceId)
-    private fun newBridge() = CoreMemoryBridge(
-        store = store,
-        server = account.server,
-        deviceId = account.deviceId,
-        accountId = account.accountId,
-    )
 
     private fun seal(h: Header, plain: ByteArray, seed: ByteArray? = null): Envelope =
-        newBridge().use { bridge ->
-            bridge.seal(
-                purpose = h.kindValue,
-                machine = h.machineId,
-                session = h.sessionId,
-                request = h.requestId,
-                seq = h.seq,
-                deadline = h.deadlineMs,
-                plain = plain,
-                useSessionSeed = seed != null,
-                overrideSessionSeed = seed,
-            )
-        }
+        security.seal(account, h, plain, seed)
 
     private fun openWithMeta(
         env: Envelope,
         seed: ByteArray? = null,
-    ): Triple<Header, ByteArray, io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeResult> =
-        newBridge().use { bridge ->
-            val (opened, plain) = bridge.open(env, overrideSessionSeed = seed)
-            Triple(bridge.headerFromOpened(opened), plain, opened)
-        }
+    ): Triple<Header, ByteArray, Int> = security.openWithPurpose(account, env, seed)
 
     private fun open(env: Envelope, seed: ByteArray? = null): Pair<Header, ByteArray> {
         val (h, plain, _) = openWithMeta(env, seed)
@@ -383,7 +361,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                         }
                         if (!f.hasForwardCall()) return
                         val call = f.forwardCall
-                        val (h, pt, opened) = openWithMeta(call.command)
+                        val (h, pt, purpose) = openWithMeta(call.command)
                         val cmd = Command.parseFrom(pt)
                         if (!cmd.hasGetLiveSnapshot()) {commands += h to cmd; commandPayloads += h to pt.copyOf()}
                         if (cmd.hasOpenTerminal()) serveTerminal(h, cmd)
@@ -443,7 +421,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                             } else answer(h, cmd)
                         val domain = security.domains[account.accountId]
                             ?: security.record(account.deviceId).domain
-                        val binding = requestIdentityForTest(account.accountId, domain, opened, pt)
+                        val binding = requestIdentityForTest(account.accountId, domain, h, purpose, pt)
                         val proof=result.toBuilder().setRequestKeyHash(ByteString.copyFrom(binding.first)).setPayloadHash(ByteString.copyFrom(binding.second)).apply {
                             if (result.outcome.isEmpty()) { setOutcome("executed"); setReason("completed"); setResultAvailable(true) }
                         }.build()

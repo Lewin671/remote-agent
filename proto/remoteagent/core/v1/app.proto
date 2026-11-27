@@ -374,8 +374,8 @@ message NewSessionSubmitAction {
 }
 
 message Event {
-  reserved 8, 12 to 19, 55, 200, 203, 204, 216, 424 to 430, 462;
-  reserved "token_result", "stream_frame", "lists_fetched", "sessions_page_fetched", "session_by_id_fetched", "events_page_fetched", "account_prefs_fetched", "account_prefs_put_result", "devices_fetched", "new_session_set_prompt", "session_submit_command", "run_machine_command", "cancel_machine_command", "shared_file_local_state", "terminal_direct_open", "terminal_direct_close", "terminal_direct_leg", "terminal_direct_input", "terminal_direct_output", "terminal_direct_confirm_rebuild", "relay_pipe_config", "security_rpc_result";
+  reserved 8, 12 to 19, 55, 200, 203, 204, 216, 424 to 430, 457, 462;
+  reserved "token_result", "stream_frame", "lists_fetched", "sessions_page_fetched", "session_by_id_fetched", "events_page_fetched", "account_prefs_fetched", "account_prefs_put_result", "devices_fetched", "new_session_set_prompt", "session_submit_command", "run_machine_command", "cancel_machine_command", "shared_file_local_state", "terminal_direct_open", "terminal_direct_close", "terminal_direct_leg", "terminal_direct_input", "terminal_direct_output", "terminal_direct_confirm_rebuild", "relay_pipe_config", "security_op_request", "security_rpc_result";
   oneof event {
     LocalCalendar clock_updated = 1;
     EntropyProvided entropy_provided = 2;
@@ -595,7 +595,6 @@ message Event {
     SecurityKeySignedEvent security_key_signed = 452;
     SecurityKeyAgreedEvent security_key_agreed = 453;
     SecurityCryptoBatchDoneEvent security_crypto_batch_done = 456;
-    SecurityOpRequestEvent security_op_request = 457;
     SeedDemoWorldEvent seed_demo_world = 458;
     SecurityKeyGeneratedEvent security_key_generated = 459;
     SecurityKeyEncapsulatedEvent security_key_encapsulated = 460;
@@ -819,8 +818,8 @@ message PingMachineResultEffect {
 }
 
 message Effect {
-  reserved 4, 5, 12, 16, 18, 41, 118, 119, 120, 141;
-  reserved "ensure_token", "discard_token", "rpc", "attachments_settled", "run_machine_command_result", "session_resend_attachments", "terminal_direct_deliver", "terminal_direct_attach_relay", "terminal_direct_state", "security_rpc";
+  reserved 4, 5, 12, 16, 18, 41, 118, 119, 120, 136, 141;
+  reserved "ensure_token", "discard_token", "rpc", "attachments_settled", "run_machine_command_result", "session_resend_attachments", "terminal_direct_deliver", "terminal_direct_attach_relay", "terminal_direct_state", "security_op_result", "security_rpc";
   oneof effect {
     RenderEffect render = 1;
     OpenStreamEffect open_stream = 2;
@@ -902,7 +901,6 @@ message Effect {
     SecurityKeySignEffect security_key_sign = 130;
     SecurityKeyAgreeEffect security_key_agree = 131;
     SecurityCryptoBatchEffect security_crypto_batch = 135;
-    SecurityOpResultEffect security_op_result = 136;
     SecurityKeyGenerateEffect security_key_generate = 137;
     SecurityKeyEncapsulateEffect security_key_encapsulate = 138;
     SecurityKeyDiscardEffect security_key_discard = 139;
