@@ -37,20 +37,79 @@ import io.github.lewin671.remoteagent.proto.MachineMeta
 import java.io.File
 import java.nio.file.Files
 import java.util.Collections
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 
 class AttachmentsIoExecutorTest {
+
+    @get:Rule
+    val timeout = hangGuard()
+
+    private fun AttachmentIoExecutor.attachCountingStorage(host: CoreHost): AtomicLong {
+        attach(host)
+        val enqueued = AtomicLong(0L)
+        val origList = host.onDraftStorageList
+        val origRead = host.onDraftStorageRead
+        val origWrite = host.onDraftStorageWrite
+        val origDelete = host.onDraftStorageDelete
+        val origClear = host.onDraftStorageClearAll
+        val origRelease = host.onAttachmentReleaseLocal
+        host.onDraftStorageList = {
+            enqueued.incrementAndGet()
+            origList(it)
+        }
+        host.onDraftStorageRead = {
+            enqueued.incrementAndGet()
+            origRead(it)
+        }
+        host.onDraftStorageWrite = {
+            enqueued.incrementAndGet()
+            origWrite(it)
+        }
+        host.onDraftStorageDelete = {
+            enqueued.incrementAndGet()
+            origDelete(it)
+        }
+        host.onDraftStorageClearAll = {
+            enqueued.incrementAndGet()
+            origClear(it)
+        }
+        host.onAttachmentReleaseLocal = {
+            enqueued.incrementAndGet()
+            origRelease(it)
+        }
+        return enqueued
+    }
+
+    /**
+     * Drains the CoreHost mailbox and the AttachmentIoExecutor FIFO storage queue to a fixed point
+     * so multi-hop flows (e.g., DraftStorageWriteResult -> coalesced dirtyWrite -> DraftStorageWrite
+     * -> DraftStorageWriteResult, or AttachmentConfig -> DraftStorageList -> DraftStorageListed)
+     * have completely finished before asserting or closing.
+     */
+    private suspend fun settleCoreAndStorage(
+        host: CoreHost,
+        exec: AttachmentIoExecutor,
+        storageEnqueued: AtomicLong,
+    ) {
+        while (true) {
+            val before = storageEnqueued.get()
+            host.flushMailboxForTest()
+            exec.awaitStorageIdle()
+            host.flushMailboxForTest()
+            if (storageEnqueued.get() == before) return
+        }
+    }
 
     private fun withTempDir(block: (File) -> Unit) {
         val dir = Files.createTempDirectory("ra-att-test-").toFile()
@@ -370,7 +429,7 @@ class AttachmentsIoExecutorTest {
     @Test
     fun realCoreHostSmokePersistsDraftTextAndPreparesPickedImageAcrossRestart() = withTempDir { root ->
         val keyProvider = InMemoryAttachmentKeyProvider()
-        val prepareSeen = CountDownLatch(1)
+        val prepareSeen = CompletableDeferred<Unit>()
         val exec1 = AttachmentIoExecutor(
             rootDir = root,
             keyProvider = keyProvider,
@@ -383,7 +442,7 @@ class AttachmentsIoExecutorTest {
                     val bytes = ByteArray(512) { 0x5A }
                     val prep = storeBlob(".prep", bytes)
                     val thumb = storeBlob(".thumb", byteArrayOf(9, 8, 7))
-                    prepareSeen.countDown()
+                    prepareSeen.complete(Unit)
                     PreparedImageOutcome(
                         ok = true,
                         preparedRef = prep,
@@ -409,6 +468,7 @@ class AttachmentsIoExecutorTest {
                         .setFileUpload(true),
                 )
                 .build()
+            val streamReadyDispatched = CompletableDeferred<Unit>()
             host1.onCacheRead = { cr ->
                 if (cr.kindCase == CacheReadEffect.KindCase.BOOTSTRAP) {
                     host1.dispatch(
@@ -428,8 +488,9 @@ class AttachmentsIoExecutorTest {
                         )
                         .build(),
                 )
+                streamReadyDispatched.complete(Unit)
             }
-            exec1.attach(host1)
+            val storageEnqueued1 = exec1.attachCountingStorage(host1)
             runBlocking {
                 // Config MUST precede any Draft* event.
                 host1.sendAttachmentConfig(
@@ -463,23 +524,16 @@ class AttachmentsIoExecutorTest {
                         .build(),
                 )
                 host1.syncLifecycle(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_START)
-                // Wait for machine m1 to be online and connected.
-                withTimeout(5_000L) {
-                    while (host1.snapshotSettingsView().machinesList.none { it.machineId == "m1" && it.online }) {
-                        kotlinx.coroutines.delay(10L)
-                    }
-                }
-                exec1.awaitStorageIdle()
+                // Wait for sync start -> bootstrap -> stream ready and initial storage scan.
+                streamReadyDispatched.await()
+                settleCoreAndStorage(host1, exec1, storageEnqueued1)
+                assertTrue(host1.snapshotSettingsView().machinesList.any { it.machineId == "m1" && it.online })
+
                 host1.openDraft(scope, "m1")
-                // Wait for DraftOpen's DraftStorageRead to settle before adding items.
-                withTimeout(5_000L) {
-                    while (true) {
-                        exec1.awaitStorageIdle()
-                        host1.dispatchAndWait(CoreEvent.newBuilder().build())
-                        if (!host1.snapshotAttachmentDraft(scope).restoring) break
-                        kotlinx.coroutines.delay(10L)
-                    }
-                }
+                // Wait for DraftOpen's DraftStorageRead -> DraftStorageReadResult to settle before adding items.
+                settleCoreAndStorage(host1, exec1, storageEnqueued1)
+                assertFalse(host1.snapshotAttachmentDraft(scope).restoring)
+
                 host1.setDraftText(scope, "hello draft")
                 host1.addDraftItems(
                     scope,
@@ -497,19 +551,17 @@ class AttachmentsIoExecutorTest {
                             .build(),
                     ),
                 )
-                assertTrue("expected AttachmentPrepareImageEffect", prepareSeen.await(5, TimeUnit.SECONDS))
-                // Wait for prepare result + coalesced draft write to settle on disk.
-                withTimeout(5_000L) {
-                    while (true) {
-                        exec1.awaitStorageIdle()
-                        val view = host1.snapshotAttachmentDraft(scope)
-                        if (view.text == "hello draft" && view.imagesCount == 1 && view.imagesList[0].preparedRef.isNotEmpty()) {
-                            break
-                        }
-                        kotlinx.coroutines.delay(20L)
-                    }
+                // Wait for prepareImage to finish on workScope AND for Core to apply AttachmentPrepareImageResult.
+                prepareSeen.await()
+                val preparedView = host1.watchAttachmentDraft(scope).first { view ->
+                    view.text == "hello draft" &&
+                        view.imagesCount == 1 &&
+                        view.imagesList[0].preparedRef.isNotEmpty()
                 }
-                exec1.awaitStorageIdle()
+                assertTrue(preparedView.imagesList[0].preparedRef.startsWith(LOCAL_BLOB_REF_PREFIX))
+                // Drain any in-flight DraftStorageWrite -> DraftStorageWriteResult -> coalesced dirtyWrite
+                // round-trips to a fixed point before closing host1/exec1.
+                settleCoreAndStorage(host1, exec1, storageEnqueued1)
             }
         } finally {
             host1.close()
@@ -524,7 +576,7 @@ class AttachmentsIoExecutorTest {
         )
         val host2 = CoreHost()
         try {
-            exec2.attach(host2)
+            val storageEnqueued2 = exec2.attachCountingStorage(host2)
             runBlocking {
                 host2.sendAttachmentConfig(
                     persistDrafts = true,
@@ -533,19 +585,14 @@ class AttachmentsIoExecutorTest {
                     maxChunkBytes = 0,
                     hasPersistedPreparedImages = true,
                 )
-                withTimeout(5_000L) {
-                    while (true) {
-                        exec2.awaitStorageIdle()
-                        val view = host2.snapshotAttachmentDraft(scope)
-                        if (view.text == "hello draft" && view.imagesCount == 1) {
-                            assertTrue(view.imagesList[0].preparedRef.startsWith(LOCAL_BLOB_REF_PREFIX))
-                            assertTrue(view.imagesList[0].thumbRef.startsWith(LOCAL_BLOB_REF_PREFIX))
-                            assertNotNull(exec2.readEncryptedBlobFull(view.imagesList[0].preparedRef))
-                            break
-                        }
-                        kotlinx.coroutines.delay(20L)
-                    }
-                }
+                // Wait for AttachmentConfig -> DraftStorageList -> DraftStorageListed (and any GC effects).
+                settleCoreAndStorage(host2, exec2, storageEnqueued2)
+                val view = host2.snapshotAttachmentDraft(scope)
+                assertEquals("hello draft", view.text)
+                assertEquals(1, view.imagesCount)
+                assertTrue(view.imagesList[0].preparedRef.startsWith(LOCAL_BLOB_REF_PREFIX))
+                assertTrue(view.imagesList[0].thumbRef.startsWith(LOCAL_BLOB_REF_PREFIX))
+                assertNotNull(exec2.readEncryptedBlobFull(view.imagesList[0].preparedRef))
             }
         } finally {
             host2.close()
