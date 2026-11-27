@@ -191,3 +191,11 @@ func FormatMs(ms int64) string {
 	}
 	return string(buf)
 }
+
+// ClampNetworkMs keeps the network figure within the measured total: it is
+// at most totalMs minus the computer's own processing time, and never
+// negative.
+func ClampNetworkMs(networkMs, totalMs, computerMs int64) int64 {
+	limit := max(int64(0), totalMs-max(int64(0), computerMs))
+	return min(max(int64(0), networkMs), limit)
+}

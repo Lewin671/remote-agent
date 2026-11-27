@@ -481,6 +481,13 @@ func (c *Core) onConnCheckCommandSettled(sc sync.SettledCommand, meta cmdMeta) [
 			snap.NetworkIsDirect = true
 		}
 
+		// The direct figure is a keepalive median from the last few seconds,
+		// not this command, so it can exceed what this round trip left for
+		// the network; never show a part larger than the whole.
+		if snap.HasNetwork {
+			snap.NetworkMs = latency.ClampNetworkMs(snap.NetworkMs, totalMs, snap.ComputerMs)
+		}
+
 		snap.State = corev1.MachineLatencyState_MACHINE_LATENCY_STATE_DONE
 		job.phase = connCheckPhaseDone
 	}

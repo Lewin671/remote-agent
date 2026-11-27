@@ -50,6 +50,17 @@ func TestNetRoundTripAndWaitDirectClampZero(t *testing.T) {
 	if got := MicrosToMs(21_500); got != 22 {
 		t.Fatalf("MicrosToMs(21500) = %d, want 22", got)
 	}
+	// A direct keepalive median (13 ms) larger than this round trip (8 ms total).
+	for _, c := range []struct{ net, total, computer, want int64 }{
+		{13, 8, 0, 8},
+		{13, 8, 3, 5},
+		{6, 38, 21, 6},
+		{5, 2, 9, 0},
+	} {
+		if got := ClampNetworkMs(c.net, c.total, c.computer); got != c.want {
+			t.Fatalf("ClampNetworkMs(%d, %d, %d) = %d, want %d", c.net, c.total, c.computer, got, c.want)
+		}
+	}
 }
 
 func TestFormatMs(t *testing.T) {
