@@ -60,7 +60,7 @@ final class SyntheticPhone: @unchecked Sendable {
         regReq.registration = regBytes
         regReq.signature = sig
         regReq.setupToken = setupToken
-        let regRes = try await api.auth.registerDevice(request: regReq).testValue()
+        let regRes: PBRegisterDeviceResponse = try await api.unary("/remoteagent.v1.AuthService/RegisterDevice", regReq)
         guard regRes.deviceID == devId else { throw TestFailure("registered deviceId mismatch") }
 
         let phoneAccount = Account(server: api.server, deviceId: devId, accountId: accountId)
@@ -74,11 +74,11 @@ final class SyntheticPhone: @unchecked Sendable {
         let tok = try await testLoginWithStore(api: api, deviceId: devId, store: store).token
         var pinReq = PBPinSecurityDomainRequest()
         pinReq.genesisState = genesis
-        _ = try await api.client.pinSecurityDomain(request: pinReq, headers: TestApi.headers(token: tok)).testValue()
+        let _: PBPinSecurityDomainResponse = try await api.unary("/remoteagent.v1.ClientService/PinSecurityDomain", pinReq, token: tok)
         let rec = try fixture.record(member: devId)
         var leaseReq = PBPutSecurityStateRequest()
         leaseReq.lease = rec.lease
-        _ = try await api.client.putSecurityState(request: leaseReq, headers: TestApi.headers(token: tok)).testValue()
+        let _: PBPutSecurityStateResponse = try await api.unary("/remoteagent.v1.ClientService/PutSecurityState", leaseReq, token: tok)
         fixture.syncStoresForAll()
         return SyntheticPhone(
             account: phoneAccount,
@@ -124,7 +124,7 @@ final class SyntheticPhone: @unchecked Sendable {
         req.registration = regBytes
         req.approval = approvalBytes
         req.approvalSignature = approvalSig
-        let res = try await api.auth.registerDevice(request: req).testValue()
+        let res: PBRegisterDeviceResponse = try await api.unary("/remoteagent.v1.AuthService/RegisterDevice", req)
         guard res.deviceID == rec.member else { throw TestFailure("enrolled deviceId mismatch") }
 
         try fixture.seedMemberStore(rec, edSeed: seed)
@@ -145,6 +145,6 @@ final class SyntheticPhone: @unchecked Sendable {
         var s = PBSecurityState()
         s.state = state
         req.states = [s]
-        _ = try await api.client.putSecurityState(request: req, headers: TestApi.headers(token: token)).testValue()
+        let _: PBPutSecurityStateResponse = try await api.unary("/remoteagent.v1.ClientService/PutSecurityState", req, token: token)
     }
 }

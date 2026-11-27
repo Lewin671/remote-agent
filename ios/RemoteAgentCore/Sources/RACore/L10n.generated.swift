@@ -6001,10 +6001,6 @@ public enum L10n {
         let key = "settings_ios_saving"
         return format(key, locale: locale, args: [])
     }
-    public static func settingsIosServerCommunication(locale: String = MessageLocale.current) -> String {
-        let key = "settings_ios_server_communication"
-        return format(key, locale: locale, args: [])
-    }
     public static func settingsIosSessionsEndAutomaticallyAfterThisMuchInactivityNotRunning(locale: String = MessageLocale.current) -> String {
         let key = "settings_ios_sessions_end_automatically_after_this_much_inactivity_not_running"
         return format(key, locale: locale, args: [])
@@ -14097,10 +14093,6 @@ public enum L10nMessage {
         let key = "settings_ios_saving"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func settingsIosServerCommunication() -> LocalizedMessage {
-        let key = "settings_ios_server_communication"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func settingsIosSessionsEndAutomaticallyAfterThisMuchInactivityNotRunning() -> LocalizedMessage {
         let key = "settings_ios_sessions_end_automatically_after_this_much_inactivity_not_running"
         return LocalizedMessage(key: key, arguments: [])
@@ -17820,15 +17812,14 @@ public enum L10nText {
         case "settings.ios_protocol_message_encoding": return L10n.format("settings_ios_protocol_message_encoding", locale: locale, args: [])
         case "settings.ios_reload": return L10n.format("settings_ios_reload", locale: locale, args: [])
         case "settings.ios_saving": return L10n.format("settings_ios_saving", locale: locale, args: [])
-        case "settings.ios_server_communication": return L10n.format("settings_ios_server_communication", locale: locale, args: [])
         case "settings.ios_sessions_end_automatically_after_this_much_inactivity_not_running": return L10n.format("settings_ios_sessions_end_automatically_after_this_much_inactivity_not_running", locale: locale, args: [])
         case "settings.ios_shared_core_message_encoding": return L10n.format("settings_ios_shared_core_message_encoding", locale: locale, args: [])
+        case "settings.ios_support_and_feedback": return L10n.format("settings_ios_support_and_feedback", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve10(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
-        case "settings.ios_support_and_feedback": return L10n.format("settings_ios_support_and_feedback", locale: locale, args: [])
         case "settings.ios_the_android_app_and_home_screen_web_app_can": return L10n.format("settings_ios_the_android_app_and_home_screen_web_app_can", locale: locale, args: [])
         case "settings.ios_the_number_on_the_sessions_tab": return L10n.format("settings_ios_the_number_on_the_sessions_tab", locale: locale, args: [])
         case "settings.ios_these_libraries_are_used_by_optional_parts_of_connect": return L10n.format("settings_ios_these_libraries_are_used_by_optional_parts_of_connect", locale: locale, args: [])
@@ -17978,12 +17969,12 @@ public enum L10nText {
         case "shared_file.menu_save_to_album": return L10n.format("shared_file_menu_save_to_album", locale: locale, args: [])
         case "shared_file.menu_save_to_device": return L10n.format("shared_file_menu_save_to_device", locale: locale, args: [])
         case "shared_file.menu_share": return L10n.format("shared_file_menu_share", locale: locale, args: [])
+        case "shared_file.notification_files": return L10n.format("shared_file_notification_files", locale: locale, args: [intArg(args["count"])])
         default: return nil
         }
     }
     private static func resolve11(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
-        case "shared_file.notification_files": return L10n.format("shared_file_notification_files", locale: locale, args: [intArg(args["count"])])
         case "shared_file.reason_browser_storage_full": return L10n.format("shared_file_reason_browser_storage_full", locale: locale, args: [])
         case "shared_file.reason_checksum_mismatch": return L10n.format("shared_file_reason_checksum_mismatch", locale: locale, args: [])
         case "shared_file.reason_disconnected": return L10n.format("shared_file_reason_disconnected", locale: locale, args: [])
@@ -18145,12 +18136,12 @@ public enum L10nText {
         case "transport.diag_g_result": return L10n.format("transport_diag_g_result", locale: locale, args: [])
         case "transport.diag_gather": return L10n.format("transport_diag_gather", locale: locale, args: [])
         case "transport.diag_hidden": return L10n.format("transport_diag_hidden", locale: locale, args: [])
+        case "transport.diag_ice": return L10n.format("transport_diag_ice", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve12(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
-        case "transport.diag_ice": return L10n.format("transport_diag_ice", locale: locale, args: [])
         case "transport.diag_ipv4": return L10n.format("transport_diag_ipv4", locale: locale, args: [])
         case "transport.diag_ipv6": return L10n.format("transport_diag_ipv6", locale: locale, args: [])
         case "transport.diag_no_attempt": return L10n.format("transport_diag_no_attempt", locale: locale, args: [])
@@ -18300,12 +18291,12 @@ public enum L10nText {
         case "transport.row_retry_direct": return L10n.format("transport_row_retry_direct", locale: locale, args: [])
         case "transport.row_unavailable": return L10n.format("transport_row_unavailable", locale: locale, args: [])
         case "transport.row_using_direct": return L10n.format("transport_row_using_direct", locale: locale, args: [])
+        case "transport.row_using_direct_ms": return L10n.format("transport_row_using_direct_ms", locale: locale, args: [strArg(args["ms"])])
         default: return nil
         }
     }
     private static func resolve13(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
-        case "transport.row_using_direct_ms": return L10n.format("transport_row_using_direct_ms", locale: locale, args: [strArg(args["ms"])])
         case "transport.rtt_ms": return L10n.format("transport_rtt_ms", locale: locale, args: [strArg(args["ms"])])
         case "transport.speed_file": return L10n.format("transport_speed_file", locale: locale, args: [])
         case "transport.speed_read": return L10n.format("transport_speed_read", locale: locale, args: [])

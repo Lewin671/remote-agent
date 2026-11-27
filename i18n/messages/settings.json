@@ -1598,20 +1598,6 @@
     }
   },
   {
-    "key": "settings.ios_server_communication",
-    "zh-CN": "和服务器通信",
-    "en": "Server communication",
-    "notes": "iOS Licenses.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.ios_sessions_end_automatically_after_this_much_inactivity_not_running",
     "zh-CN": "会话这么久没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在。",
     "en": "Sessions end automatically after this much inactivity (not running, nothing pending, no terminal input). Resume anytime; chat history is preserved.",
@@ -1669,8 +1655,8 @@
   },
   {
     "key": "settings.ios_these_libraries_are_used_by_optional_parts_of_connect",
-    "zh-CN": "这些是 connect-swift 和 SwiftTerm 的可选部分用到的库，没有编进这个 App；许可证一并附上。",
-    "en": "These libraries are used by optional parts of connect-swift and SwiftTerm and are not compiled into this app. Their licenses are included.",
+    "zh-CN": "这些是 SwiftTerm 的可选部分用到的库，没有编进这个 App；许可证一并附上。",
+    "en": "These libraries are used by optional parts of SwiftTerm and are not compiled into this app. Their licenses are included.",
     "notes": "iOS LicensesScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [

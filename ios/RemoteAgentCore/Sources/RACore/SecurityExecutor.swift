@@ -1,7 +1,49 @@
-import Connect
 import Foundation
 import RAProto
 import SwiftProtobuf
+
+/// ConnectRPC canonical status codes (numeric values match `connectrpc.com/connect`).
+public enum ConnectCode: Int, Sendable, Equatable {
+    case ok = 0
+    case canceled = 1
+    case unknown = 2
+    case invalidArgument = 3
+    case deadlineExceeded = 4
+    case notFound = 5
+    case alreadyExists = 6
+    case permissionDenied = 7
+    case resourceExhausted = 8
+    case failedPrecondition = 9
+    case aborted = 10
+    case outOfRange = 11
+    case unimplemented = 12
+    case internalError = 13
+    case unavailable = 14
+    case dataLoss = 15
+    case unauthenticated = 16
+
+    public var name: String {
+        switch self {
+        case .ok: "ok"
+        case .canceled: "canceled"
+        case .unknown: "unknown"
+        case .invalidArgument: "invalid_argument"
+        case .deadlineExceeded: "deadline_exceeded"
+        case .notFound: "not_found"
+        case .alreadyExists: "already_exists"
+        case .permissionDenied: "permission_denied"
+        case .resourceExhausted: "resource_exhausted"
+        case .failedPrecondition: "failed_precondition"
+        case .aborted: "aborted"
+        case .outOfRange: "out_of_range"
+        case .unimplemented: "unimplemented"
+        case .internalError: "internal"
+        case .unavailable: "unavailable"
+        case .dataLoss: "data_loss"
+        case .unauthenticated: "unauthenticated"
+        }
+    }
+}
 
 /// Executes host-side key generation/agreement/signing, v4 storage transactions, and universal
 /// unary Connect/HTTP byte-pipe RPC calls requested by Go `clientcore`.
@@ -319,7 +361,7 @@ public final class SecurityExecutor: @unchecked Sendable {
         }
     }
 
-    static func connectCodeFromHttpStatus(_ status: Int) -> Code {
+    static func connectCodeFromHttpStatus(_ status: Int) -> ConnectCode {
         switch status {
         case 400: .invalidArgument
         case 401: .unauthenticated
@@ -370,7 +412,7 @@ public final class SecurityExecutor: @unchecked Sendable {
         .healthz: "/healthz",
     ]
 
-    private static let connectCodes: [String: Code] = [
+    private static let connectCodes: [String: ConnectCode] = [
         "canceled": .canceled, "unknown": .unknown, "invalid_argument": .invalidArgument,
         "deadline_exceeded": .deadlineExceeded, "not_found": .notFound, "already_exists": .alreadyExists,
         "permission_denied": .permissionDenied, "resource_exhausted": .resourceExhausted,
@@ -390,7 +432,7 @@ public final class SecurityExecutor: @unchecked Sendable {
         return Data(base64Encoded: padded)
     }
 
-    static func parseConnectErrorBody(_ data: Data?, fallbackCode: Code) -> (code: Code, message: String, details: [PBRpcErrorDetailBytes]) {
+    static func parseConnectErrorBody(_ data: Data?, fallbackCode: ConnectCode) -> (code: ConnectCode, message: String, details: [PBRpcErrorDetailBytes]) {
         let fallback = "HTTP error (\(fallbackCode.name))"
         guard let data, !data.isEmpty,
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]

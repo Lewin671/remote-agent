@@ -1406,13 +1406,12 @@
 "settings_ios_protocol_message_encoding" = "Protocol message encoding";
 "settings_ios_reload" = "Reload";
 "settings_ios_saving" = "Saving…";
-"settings_ios_server_communication" = "Server communication";
 "settings_ios_sessions_end_automatically_after_this_much_inactivity_not_running" = "Sessions end automatically after this much inactivity (not running, nothing pending, no terminal input). Resume anytime; chat history is preserved.";
 "settings_ios_shared_core_message_encoding" = "Shared core message encoding";
 "settings_ios_support_and_feedback" = "Support and feedback";
 "settings_ios_the_android_app_and_home_screen_web_app_can" = "The Android app and home screen web app can enable alerts in their own settings";
 "settings_ios_the_number_on_the_sessions_tab" = "The number on the Sessions tab";
-"settings_ios_these_libraries_are_used_by_optional_parts_of_connect" = "These libraries are used by optional parts of connect-swift and SwiftTerm and are not compiled into this app. Their licenses are included.";
+"settings_ios_these_libraries_are_used_by_optional_parts_of_connect" = "These libraries are used by optional parts of SwiftTerm and are not compiled into this app. Their licenses are included.";
 "settings_ios_this_client_is_not_in_the_current_trusted_directory" = "This client is not in the current trusted directory. Revocation status is determined by the receipt.";
 "settings_ios_this_computer_is_not_in_the_current_trusted_directory" = "This computer is not in the current trusted directory. Revocation status is determined by the receipt.";
 "settings_ios_this_ios_version_cannot_send_alerts_yet_you_will" = "This iOS version cannot send alerts yet. You will not receive system notifications when a session needs attention. Open the app to see it at the top of Sessions.";

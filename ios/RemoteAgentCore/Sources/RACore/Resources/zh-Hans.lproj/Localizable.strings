@@ -1406,13 +1406,12 @@
 "settings_ios_protocol_message_encoding" = "协议报文的编码";
 "settings_ios_reload" = "重新读取";
 "settings_ios_saving" = "正在保存…";
-"settings_ios_server_communication" = "和服务器通信";
 "settings_ios_sessions_end_automatically_after_this_much_inactivity_not_running" = "会话这么久没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在。";
 "settings_ios_shared_core_message_encoding" = "共享核心的协议编码";
 "settings_ios_support_and_feedback" = "支持与反馈";
 "settings_ios_the_android_app_and_home_screen_web_app_can" = "Android App 和添加到主屏幕的网页可以在各自的设置里开启提醒";
 "settings_ios_the_number_on_the_sessions_tab" = "「会话」标签上的数字";
-"settings_ios_these_libraries_are_used_by_optional_parts_of_connect" = "这些是 connect-swift 和 SwiftTerm 的可选部分用到的库，没有编进这个 App；许可证一并附上。";
+"settings_ios_these_libraries_are_used_by_optional_parts_of_connect" = "这些是 SwiftTerm 的可选部分用到的库，没有编进这个 App；许可证一并附上。";
 "settings_ios_this_client_is_not_in_the_current_trusted_directory" = "这个客户端不在当前可信目录中，撤销状态以回执为准";
 "settings_ios_this_computer_is_not_in_the_current_trusted_directory" = "这台电脑不在当前可信目录中，撤销状态以回执为准";
 "settings_ios_this_ios_version_cannot_send_alerts_yet_you_will" = "这个 iOS 版本还不能发提醒。有会话等你处理时不会收到系统通知，打开 App 后会显示在「会话」页最上面。";

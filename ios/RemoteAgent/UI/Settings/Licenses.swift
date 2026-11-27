@@ -25,18 +25,11 @@ struct License: Identifiable, Sendable, Equatable {
 enum Licenses {
     static var all: [License] { [
         License(files: ["Apache-2.0-swift-protobuf"], name: "swift-protobuf", use: L10n.settingsIosProtocolMessageEncoding(), kind: "Apache-2.0", package: "swift-protobuf", linked: true),
-        License(files: ["Apache-2.0-connect-swift"], name: "connect-swift", use: L10n.settingsIosServerCommunication(), kind: "Apache-2.0", package: "connect-swift", linked: true),
         License(files: ["MIT-GRDB"], name: "GRDB", use: L10n.settingsIosLocalCiphertextCache(), kind: "MIT", package: "grdb.swift", linked: true),
         License(files: ["MIT-SwiftTerm"], name: "SwiftTerm", use: L10n.sessionTerminal(), kind: "MIT", package: "swiftterm", linked: true),
         License(files: ["BSD-3-Clause-WebRTC"], name: "WebRTC", use: L10n.transportDirect(), kind: "BSD-3-Clause", package: "webrtc", linked: true),
         License(files: ["BSD-3-Clause-Go"], name: "The Go Programming Language", use: L10n.settingsIosEventProjectionCore(), kind: "BSD-3-Clause", package: nil, linked: true),
         License(files: ["BSD-3-Clause-google-protobuf"], name: "google.golang.org/protobuf", use: L10n.settingsIosSharedCoreMessageEncoding(), kind: "BSD-3-Clause", package: nil, linked: true),
-        unlinked("swift-nio", notice: true),
-        unlinked("swift-nio-http2", notice: true),
-        unlinked("swift-nio-ssl", notice: true),
-        unlinked("swift-atomics"),
-        unlinked("swift-collections"),
-        unlinked("swift-system"),
         unlinked("swift-argument-parser"),
     ] }
 

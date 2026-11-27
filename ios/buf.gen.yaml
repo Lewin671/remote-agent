@@ -46,10 +46,3 @@ plugins:
     opt:
       - Visibility=Public
       - FileNaming=PathToUnderscores
-  - remote: buf.build/connectrpc/swift:v1.2.1
-    out: RemoteAgentCore/Sources/RAProto
-    opt:
-      - Visibility=Public
-      - FileNaming=PathToUnderscores
-      - GenerateAsyncMethods=true
-      - GenerateCallbackMethods=false

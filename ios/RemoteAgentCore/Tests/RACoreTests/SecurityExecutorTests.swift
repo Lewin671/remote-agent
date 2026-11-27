@@ -1,4 +1,3 @@
-import Connect
 import CryptoKit
 import Foundation
 import os
@@ -158,7 +157,7 @@ private final class TimeoutRPCProtocol: URLProtocol, @unchecked Sendable {
         })
         let rpcRes = try await mailbox.take().relayRpcResult
         #expect(rpcRes.opID == 78)
-        #expect(rpcRes.connectCode == Int32(Code.deadlineExceeded.rawValue))
+        #expect(rpcRes.connectCode == Int32(ConnectCode.deadlineExceeded.rawValue))
         #expect(rpcRes.networkError)
     }
 
@@ -272,7 +271,7 @@ private final class TimeoutRPCProtocol: URLProtocol, @unchecked Sendable {
         })
         let errRes = try await mailbox.take().relayRpcResult
         #expect(errRes.opID == 13)
-        #expect(errRes.connectCode == Int32(Code.unavailable.rawValue))
+        #expect(errRes.connectCode == Int32(ConnectCode.unavailable.rawValue))
         #expect(errRes.diagnosticMessage == "offline")
         #expect(errRes.relayEpoch == "77")
         #expect(errRes.errorDetails.count == 1)

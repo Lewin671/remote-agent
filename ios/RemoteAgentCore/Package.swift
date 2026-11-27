@@ -17,7 +17,6 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-protobuf.git", exact: "1.38.1"),
-        .package(url: "https://github.com/connectrpc/connect-swift.git", exact: "1.2.3"),
         // DataChannel only (transport phase 1: docs/transport.md §2). Pinned to the version and
         // checksum the 1a experiment verified; the binary target's checksum is in the tag's Package.swift.
         .package(url: "https://github.com/stasel/WebRTC.git", exact: "157.0.0"),
@@ -32,7 +31,6 @@ let package = Package(
             name: "RAProto",
             dependencies: [
                 .product(name: "SwiftProtobuf", package: "swift-protobuf"),
-                .product(name: "Connect", package: "connect-swift"),
             ],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
@@ -42,7 +40,6 @@ let package = Package(
                 "RAProto",
                 "Corebind",
                 .product(name: "SwiftProtobuf", package: "swift-protobuf"),
-                .product(name: "Connect", package: "connect-swift"),
             ],
             resources: [.process("Resources")]
         ),

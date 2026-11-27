@@ -106,9 +106,5 @@ import Testing
             default: Issue.record("\(license.name) has a licence the test does not know: \(license.kind)")
             }
         }
-        // Apple's NIO projects ask that their NOTICE travels with them.
-        let nio = try #require(Licenses.all.first { $0.package == "swift-nio" })
-        #expect(nio.files.count == 2)
-        #expect(try #require(Licenses.text(nio)).contains("SwiftNIO"))
     }
 }
