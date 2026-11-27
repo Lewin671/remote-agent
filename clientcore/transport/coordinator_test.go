@@ -13,6 +13,16 @@ import (
 	"github.com/Lewin671/remote-agent/shared/peerwire"
 )
 
+// fixedEntropy returns mid-range bytes so jittered delays land well inside
+// their bounds, never at zero.
+func fixedEntropy(n int) []byte {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = 0x80 | byte(i)
+	}
+	return b
+}
+
 func testOSRandom(n int) []byte {
 	b := make([]byte, n)
 	_, _ = rand.Read(b)
@@ -343,7 +353,10 @@ func TestCoordinatorUnsupportedAndTerminalReopen(t *testing.T) {
 	now := int64(1_700_000_000_000)
 
 	coord := NewCoordinator(CoordConfig{Supported: true, Account: "00000000000000000000000000000001", ProtocolVersion: 17})
-	coord.ProvideRandomBytes(now, testOSRandom(CoordEntropyRefillBytes))
+	// Fixed entropy: reconnect backoff uses full jitter, so random bytes can
+	// draw a delay of ~0 ms and reopen immediately, failing the "backoff before
+	// second reopen" check about once in a few hundred runs.
+	coord.ProvideRandomBytes(now, fixedEntropy(CoordEntropyRefillBytes))
 	coord.SetMainLeg(now, true)
 	coord.OnSecuritySnapshot(now, CoordSecuritySnapshot{
 		Member: true, Account: "00000000000000000000000000000001", Domain: domain,
