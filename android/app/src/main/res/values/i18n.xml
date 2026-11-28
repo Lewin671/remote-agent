@@ -2017,6 +2017,11 @@
     <string name="transport_conn_footer_unsupported_browser" formatted="false">"这个浏览器不支持直连，已全部经中继连接。"</string>
     <string name="transport_detail_daemon_disabled" formatted="false">"在这台电脑上开启后可用"</string>
     <string name="transport_detail_relay_only" formatted="false">"已全部经中继连接，不影响正常使用"</string>
+    <string name="transport_diag_active_path" formatted="false">"当前线路"</string>
+    <plurals name="transport_diag_active_path_switches">
+        <item quantity="other">"切换 %1$d 次"</item>
+    </plurals>
+    <string name="transport_diag_active_path_value">"%1$s → %3$s（%2$s → %4$s）"</string>
     <string name="transport_diag_at">"%2$s %1$s 秒"</string>
     <string name="transport_diag_cand">"%2$s ×%1$d（%3$s）"</string>
     <string name="transport_diag_channel" formatted="false">"数据通道"</string>
@@ -2072,8 +2077,15 @@
     <string name="transport_diag_peer_no_reply_desc" formatted="false">"握手等待超时，未收到电脑应答"</string>
     <string name="transport_diag_peer_old_desc" formatted="false">"电脑上的 remote-agent 暂不支持直连"</string>
     <string name="transport_diag_privacy_footer" formatted="false">"复制的诊断只含地址类型和范围，不含具体地址、端口或对话内容。"</string>
+    <string name="transport_diag_probe_last_echo">"最后回声在断开前 %1$s 秒"</string>
+    <string name="transport_diag_probe_late">"迟到 %1$d"</string>
+    <string name="transport_diag_probe_late_max">"迟到 %1$d（最慢 %2$s）"</string>
+    <string name="transport_diag_probe_lost">"丢失 %1$d"</string>
+    <string name="transport_diag_probe_ontime">"按时回声 %1$d"</string>
+    <string name="transport_diag_probe_ontime_max">"按时回声 %1$d（最慢 %2$s）"</string>
+    <string name="transport_diag_probe_sent">"发出 %1$d"</string>
+    <string name="transport_diag_probe_unmatched">"未匹配 %1$d"</string>
     <string name="transport_diag_probes" formatted="false">"存活探测"</string>
-    <string name="transport_diag_probes_value">"发出 %3$d · 回声 %1$d · 丢失 %2$d"</string>
     <string name="transport_diag_range_cgnat" formatted="false">"运营商共享"</string>
     <string name="transport_diag_range_global" formatted="false">"全球"</string>
     <string name="transport_diag_range_link_local" formatted="false">"链路本地"</string>
@@ -2107,6 +2119,12 @@
     <string name="transport_diag_retrying" formatted="false">"正在尝试…"</string>
     <string name="transport_diag_round">"%1$s · %2$s 秒"</string>
     <string name="transport_diag_rtt">"%1$d ms"</string>
+    <string name="transport_diag_rx" formatted="false">"收到数据"</string>
+    <plurals name="transport_diag_rx_count">
+        <item quantity="other">"%1$d 帧 / %2$s"</item>
+    </plurals>
+    <string name="transport_diag_rx_last_before_drop">"最后一帧在断开前 %1$s 秒"</string>
+    <string name="transport_diag_seconds">"%1$s 秒"</string>
     <string name="transport_diag_section_auto" formatted="false">"自动排障检查"</string>
     <string name="transport_diag_sig_limited">"被中继限速 ×%1$d"</string>
     <string name="transport_diag_sig_offline">"电脑不在线 ×%1$d"</string>

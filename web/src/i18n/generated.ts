@@ -1578,6 +1578,9 @@ export interface MessageArgs {
   "transport.conn_footer_unsupported_browser": { [name: string]: never };
   "transport.detail_daemon_disabled": { [name: string]: never };
   "transport.detail_relay_only": { [name: string]: never };
+  "transport.diag_active_path": { [name: string]: never };
+  "transport.diag_active_path_switches": { count: number };
+  "transport.diag_active_path_value": { localFamily: string; localType: string; remoteFamily: string; remoteType: string };
   "transport.diag_at": { seconds: string; state: string };
   "transport.diag_cand": { count: number; kind: string; scope: string };
   "transport.diag_channel": { [name: string]: never };
@@ -1633,8 +1636,15 @@ export interface MessageArgs {
   "transport.diag_peer_no_reply_desc": { [name: string]: never };
   "transport.diag_peer_old_desc": { [name: string]: never };
   "transport.diag_privacy_footer": { [name: string]: never };
+  "transport.diag_probe_last_echo": { seconds: string };
+  "transport.diag_probe_late": { count: number };
+  "transport.diag_probe_late_max": { count: number; max: string };
+  "transport.diag_probe_lost": { count: number };
+  "transport.diag_probe_ontime": { count: number };
+  "transport.diag_probe_ontime_max": { count: number; max: string };
+  "transport.diag_probe_sent": { count: number };
+  "transport.diag_probe_unmatched": { count: number };
   "transport.diag_probes": { [name: string]: never };
-  "transport.diag_probes_value": { echoed: number; lost: number; sent: number };
   "transport.diag_range_cgnat": { [name: string]: never };
   "transport.diag_range_global": { [name: string]: never };
   "transport.diag_range_link_local": { [name: string]: never };
@@ -1668,6 +1678,10 @@ export interface MessageArgs {
   "transport.diag_retrying": { [name: string]: never };
   "transport.diag_round": { result: string; seconds: string };
   "transport.diag_rtt": { ms: number };
+  "transport.diag_rx": { [name: string]: never };
+  "transport.diag_rx_count": { count: number; size: string };
+  "transport.diag_rx_last_before_drop": { seconds: string };
+  "transport.diag_seconds": { seconds: string };
   "transport.diag_section_auto": { [name: string]: never };
   "transport.diag_sig_limited": { count: number };
   "transport.diag_sig_offline": { count: number };
@@ -3972,6 +3986,15 @@ export const messages = {
     "transport.conn_footer_unsupported_browser": "This browser does not support direct connections; everything connects via relay.",
     "transport.detail_daemon_disabled": "Turn it on from this computer to use direct connections",
     "transport.detail_relay_only": "Everything connects via relay as usual",
+    "transport.diag_active_path": "Active path",
+    "transport.diag_active_path_switches": {
+      "forms": {
+        "one": "{count} switch",
+        "other": "{count} switches"
+      },
+      "plural": "count"
+    },
+    "transport.diag_active_path_value": "{localFamily} → {remoteFamily} ({localType} → {remoteType})",
     "transport.diag_at": "{state} {seconds} s",
     "transport.diag_cand": "{kind} ×{count} ({scope})",
     "transport.diag_channel": "Data channel",
@@ -4027,8 +4050,15 @@ export const messages = {
     "transport.diag_peer_no_reply_desc": "Timed out waiting for the computer to respond",
     "transport.diag_peer_old_desc": "remote-agent on this computer doesn’t support direct yet",
     "transport.diag_privacy_footer": "Copied diagnostics include address types and ranges only—no IP addresses, ports, or chat content.",
+    "transport.diag_probe_last_echo": "last echo {seconds}s before drop",
+    "transport.diag_probe_late": "Late {count}",
+    "transport.diag_probe_late_max": "Late {count} (max {max})",
+    "transport.diag_probe_lost": "Lost {count}",
+    "transport.diag_probe_ontime": "On-time {count}",
+    "transport.diag_probe_ontime_max": "On-time {count} (max {max})",
+    "transport.diag_probe_sent": "Sent {count}",
+    "transport.diag_probe_unmatched": "Unmatched {count}",
     "transport.diag_probes": "Liveness probes",
-    "transport.diag_probes_value": "Sent {sent} · Echoed {echoed} · Lost {lost}",
     "transport.diag_range_cgnat": "carrier-shared",
     "transport.diag_range_global": "global",
     "transport.diag_range_link_local": "link-local",
@@ -4062,6 +4092,16 @@ export const messages = {
     "transport.diag_retrying": "Trying…",
     "transport.diag_round": "{result} · {seconds} s",
     "transport.diag_rtt": "{ms} ms",
+    "transport.diag_rx": "Data received",
+    "transport.diag_rx_count": {
+      "forms": {
+        "one": "{count} frame / {size}",
+        "other": "{count} frames / {size}"
+      },
+      "plural": "count"
+    },
+    "transport.diag_rx_last_before_drop": "last frame {seconds}s before drop",
+    "transport.diag_seconds": "{seconds}s",
     "transport.diag_section_auto": "Automatic check",
     "transport.diag_sig_limited": "Rate-limited by the relay ×{count}",
     "transport.diag_sig_offline": "Computer offline ×{count}",
@@ -6293,6 +6333,14 @@ export const messages = {
     "transport.conn_footer_unsupported_browser": "这个浏览器不支持直连，已全部经中继连接。",
     "transport.detail_daemon_disabled": "在这台电脑上开启后可用",
     "transport.detail_relay_only": "已全部经中继连接，不影响正常使用",
+    "transport.diag_active_path": "当前线路",
+    "transport.diag_active_path_switches": {
+      "forms": {
+        "other": "切换 {count} 次"
+      },
+      "plural": "count"
+    },
+    "transport.diag_active_path_value": "{localFamily} → {remoteFamily}（{localType} → {remoteType}）",
     "transport.diag_at": "{state} {seconds} 秒",
     "transport.diag_cand": "{kind} ×{count}（{scope}）",
     "transport.diag_channel": "数据通道",
@@ -6348,8 +6396,15 @@ export const messages = {
     "transport.diag_peer_no_reply_desc": "握手等待超时，未收到电脑应答",
     "transport.diag_peer_old_desc": "电脑上的 remote-agent 暂不支持直连",
     "transport.diag_privacy_footer": "复制的诊断只含地址类型和范围，不含具体地址、端口或对话内容。",
+    "transport.diag_probe_last_echo": "最后回声在断开前 {seconds} 秒",
+    "transport.diag_probe_late": "迟到 {count}",
+    "transport.diag_probe_late_max": "迟到 {count}（最慢 {max}）",
+    "transport.diag_probe_lost": "丢失 {count}",
+    "transport.diag_probe_ontime": "按时回声 {count}",
+    "transport.diag_probe_ontime_max": "按时回声 {count}（最慢 {max}）",
+    "transport.diag_probe_sent": "发出 {count}",
+    "transport.diag_probe_unmatched": "未匹配 {count}",
     "transport.diag_probes": "存活探测",
-    "transport.diag_probes_value": "发出 {sent} · 回声 {echoed} · 丢失 {lost}",
     "transport.diag_range_cgnat": "运营商共享",
     "transport.diag_range_global": "全球",
     "transport.diag_range_link_local": "链路本地",
@@ -6383,6 +6438,15 @@ export const messages = {
     "transport.diag_retrying": "正在尝试…",
     "transport.diag_round": "{result} · {seconds} 秒",
     "transport.diag_rtt": "{ms} ms",
+    "transport.diag_rx": "收到数据",
+    "transport.diag_rx_count": {
+      "forms": {
+        "other": "{count} 帧 / {size}"
+      },
+      "plural": "count"
+    },
+    "transport.diag_rx_last_before_drop": "最后一帧在断开前 {seconds} 秒",
+    "transport.diag_seconds": "{seconds} 秒",
     "transport.diag_section_auto": "自动排障检查",
     "transport.diag_sig_limited": "被中继限速 ×{count}",
     "transport.diag_sig_offline": "电脑不在线 ×{count}",

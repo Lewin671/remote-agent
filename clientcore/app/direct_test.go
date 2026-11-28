@@ -157,8 +157,15 @@ func loadTransportZhCN(t *testing.T) map[string]string {
 	}
 	out := make(map[string]string, len(entries))
 	for _, e := range entries {
-		if s, ok := e.ZhCN.(string); ok {
-			out[e.Key] = s
+		switch v := e.ZhCN.(type) {
+		case string:
+			out[e.Key] = v
+		case map[string]any:
+			if forms, ok := v["forms"].(map[string]any); ok {
+				if other, ok := forms["other"].(string); ok {
+					out[e.Key] = other
+				}
+			}
 		}
 	}
 	// Include time.just_now from common/time if needed.
@@ -233,15 +240,41 @@ func TestDirectDiagnosticsConnectedThenDropped(t *testing.T) {
 	e.Handle(now-5300, transport.DiagState{Round: rid, Use: transport.UseRead, Kind: transport.StateICE, Value: "connected"})
 	e.Handle(now-5200, transport.DiagState{Round: rid, Use: transport.UseRead, Kind: transport.StateDTLS, Value: "connected"})
 	e.Handle(now-5100, transport.DiagState{Round: rid, Use: transport.UseRead, Kind: transport.StateDC, Value: "open"})
+	e.Handle(now-5050, transport.DiagStats{
+		Round: rid,
+		Use:   transport.UseRead,
+		Report: &transport.StatsReport{
+			DTLS: "connected",
+			DC:   "open",
+			Locals: []transport.StatsCandidate{
+				{ID: "l6", Type: "host", Address: "2001:db8:1::5"},
+			},
+			Remotes: []transport.StatsCandidate{
+				{ID: "r6", Type: "prflx", Address: "2001:db8:2::9"},
+			},
+			Pairs: []transport.StatsPair{
+				{Local: "l6", Remote: "r6", State: "succeeded", Nominated: true, Selected: true, RTTSeconds: 0.009, HasRTT: true, Sent: 6, Got: 6},
+			},
+		},
+	})
 	e.Handle(now-5000, transport.PathReady{Round: rid, Use: transport.UseRead, Path: 11})
 
-	// 4.2s later, 3 consecutive probes go unanswered -> DiagPathEnd + PathClosed.
+	// 4.2s later, 3 consecutive probes go unanswered (2 arrived late, 1 lost) -> DiagPathEnd + PathClosed.
 	dropAt := now - 800
 	e.Handle(dropAt, transport.DiagPathEnd{
-		Round:  rid,
-		Use:    transport.UseRead,
-		Cause:  transport.CloseProbeTimeout,
-		Probes: transport.ProbeStats{Sent: 5, Echoed: 2, Lost: 3, Missed: 3},
+		Round: rid,
+		Use:   transport.UseRead,
+		Cause: transport.CloseProbeTimeout,
+		Probes: transport.ProbeStats{
+			Sent: 4, Echoed: 1, EchoMaxMs: 13,
+			Late: 2, LateMaxMs: 1800, Unmatched: 0,
+			Lost: 1, Missed: 3,
+			HasLastEcho: true, LastEchoAgoMs: 200,
+		},
+		Rx: transport.DCRxStats{
+			Frames: 12, Bytes: 34 * 1024,
+			HasLastRx: true, LastRxAgoMs: 300,
+		},
 	})
 	e.Handle(dropAt, transport.PathClosed{Round: rid, Use: transport.UseRead})
 
@@ -288,6 +321,24 @@ func TestDirectDiagnosticsConnectedThenDropped(t *testing.T) {
 		t.Fatalf("unexpected path check: status=%q detail=%q", renderTextZh(dict, dd.Checks[1].StatusText), renderTextZh(dict, dd.Checks[1].DetailText))
 	}
 
+	var groupOut []string
+	for _, g := range dd.Groups {
+		for _, row := range g.Rows {
+			groupOut = append(groupOut, renderTextZh(dict, row.LabelText)+": "+renderTextZh(dict, row.ValueText))
+		}
+	}
+	groupJoined := strings.Join(groupOut, "\n")
+	for _, want := range []string{
+		"当前线路: IPv6 → IPv6（本机网卡 → 对端发现） · 切换 0 次",
+		"结局: 连上 4.2 秒后断开 · 探测连续 3 次无回应",
+		"存活探测: 发出 4 · 按时回声 1（最慢 13 ms） · 迟到 2（最慢 1.8 秒） · 未匹配 0 · 丢失 1 · 最后回声在断开前 0.2 秒",
+		"收到数据: 12 帧 / 34.0 KB · 最后一帧在断开前 0.3 秒",
+	} {
+		if !strings.Contains(groupJoined, want) {
+			t.Fatalf("diagnostics card groups missing %q:\n%s", want, groupJoined)
+		}
+	}
+
 	var reportOut []string
 	for _, line := range dd.ReportLines {
 		reportOut = append(reportOut, renderTextZh(dict, line))
@@ -296,14 +347,16 @@ func TestDirectDiagnosticsConnectedThenDropped(t *testing.T) {
 	for _, want := range []string{
 		"结论：直连连上后又断开了",
 		"连上 4.2 秒后断开 · 探测连续 3 次无回应",
+		"当前线路: IPv6 → IPv6（本机网卡 → 对端发现） · 切换 0 次",
 		"结局: 连上 4.2 秒后断开 · 探测连续 3 次无回应",
-		"存活探测: 发出 5 · 回声 2 · 丢失 3",
+		"存活探测: 发出 4 · 按时回声 1（最慢 13 ms） · 迟到 2（最慢 1.8 秒） · 未匹配 0 · 丢失 1 · 最后回声在断开前 0.2 秒",
+		"收到数据: 12 帧 / 34.0 KB · 最后一帧在断开前 0.3 秒",
 	} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("copied report missing %q:\n%s", want, joined)
 		}
 	}
-	for _, forbidden := range []string{"结论：直连已连上", "已恢复直连", "192.168.1.20", "2001:db8:2::9", "54321"} {
+	for _, forbidden := range []string{"结论：直连已连上", "已恢复直连", "192.168.1.20", "2001:db8:1::5", "2001:db8:2::9", "54321"} {
 		if strings.Contains(joined, forbidden) {
 			t.Fatalf("copied report contains forbidden string %q:\n%s", forbidden, joined)
 		}
@@ -327,4 +380,82 @@ func TestDirectDiagnosticsConnectedThenDropped(t *testing.T) {
 	t.Logf("CARD_TITLE: %s", cardTitle)
 	t.Logf("CARD_BODY: %s", cardBody)
 	t.Logf("COPIED_REPORT:\n%s", joined)
+}
+
+func TestDirectDiagnosticsRowVariants(t *testing.T) {
+	dict := loadTransportZhCN(t)
+	now := int64(1_791_078_010_000)
+	for _, tc := range []struct {
+		name      string
+		probes    transport.ProbeStats
+		rx        transport.DCRxStats
+		hasPair   bool
+		switches  int
+		wantLines []string
+		omitLines []string
+	}{
+		{
+			name:   "no echoes, zero rx, no selected pair",
+			probes: transport.ProbeStats{Sent: 3, Lost: 3, Missed: 3},
+			rx:     transport.DCRxStats{},
+			wantLines: []string{
+				"存活探测: 发出 3 · 按时回声 0 · 迟到 0 · 未匹配 0 · 丢失 3",
+				"收到数据: 0 帧 / 0 B",
+			},
+			omitLines: []string{"当前线路:", "最后回声在断开前", "最后一帧在断开前"},
+		},
+		{
+			name:     "late echoes, switched pair, single frame",
+			probes:   transport.ProbeStats{Sent: 4, Echoed: 1, EchoMaxMs: 13, Late: 2, LateMaxMs: 1800, Unmatched: 1, Lost: 1, Missed: 3, HasLastEcho: true, LastEchoAgoMs: 200},
+			rx:       transport.DCRxStats{Frames: 1, Bytes: 512, HasLastRx: true, LastRxAgoMs: 100},
+			hasPair:  true,
+			switches: 1,
+			wantLines: []string{
+				"当前线路: IPv4 → IPv6（公网映射 → 本机网卡） · 切换 1 次",
+				"存活探测: 发出 4 · 按时回声 1（最慢 13 ms） · 迟到 2（最慢 1.8 秒） · 未匹配 1 · 丢失 1 · 最后回声在断开前 0.2 秒",
+				"收到数据: 1 帧 / 512 B · 最后一帧在断开前 0.1 秒",
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			att := &transport.AttemptData{Local: transport.Tally{}, Remote: transport.Tally{}}
+			if tc.hasPair {
+				att.HasSelectedPair = true
+				att.SelectedPair = transport.SelectedPairKind{
+					LocalFamily: transport.Family4, RemoteFamily: transport.Family6,
+					LocalType: transport.CandSrflx, RemoteType: transport.CandHost,
+				}
+				att.SelectedPairChanges = tc.switches
+			}
+			r := &transport.RoundData{
+				N: 1, StartedAt: now - 5000, Established: 800, HasEstablished: true, EndedAt: 5000,
+				End: transport.EndLost, CloseCause: transport.CloseProbeTimeout,
+				Pcs: [2]transport.PcData{
+					{
+						Use: transport.UseRead, Attempts: []*transport.AttemptData{att},
+						HasClosed: true, ClosedAt: 5000, LivedMs: 4200, CloseCause: transport.CloseProbeTimeout,
+						Probes: tc.probes, Rx: tc.rx,
+					},
+					{Use: transport.UseBulk},
+				},
+			}
+			r.Pcs[0].HasMark[transport.MarkReady] = true
+			dd := screens.BuildDirectDiagnosticsView("m-1", transport.Status{State: transport.StateNone, Reason: transport.ReasonLost}, true, false, []*transport.RoundData{r}, 0, false, now, "Android")
+			var lines []string
+			for _, l := range dd.ReportLines {
+				lines = append(lines, renderTextZh(dict, l))
+			}
+			joined := strings.Join(lines, "\n")
+			for _, w := range tc.wantLines {
+				if !strings.Contains(joined, w) {
+					t.Errorf("missing %q in:\n%s", w, joined)
+				}
+			}
+			for _, o := range tc.omitLines {
+				if strings.Contains(joined, o) {
+					t.Errorf("unexpected %q in:\n%s", o, joined)
+				}
+			}
+		})
+	}
 }

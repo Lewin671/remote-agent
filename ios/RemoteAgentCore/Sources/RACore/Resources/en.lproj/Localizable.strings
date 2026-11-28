@@ -1703,6 +1703,8 @@
 "transport_conn_footer_unsupported_browser" = "This browser does not support direct connections; everything connects via relay.";
 "transport_detail_daemon_disabled" = "Turn it on from this computer to use direct connections";
 "transport_detail_relay_only" = "Everything connects via relay as usual";
+"transport_diag_active_path" = "Active path";
+"transport_diag_active_path_value" = "%1$@ → %3$@ (%2$@ → %4$@)";
 "transport_diag_at" = "%2$@ %1$@ s";
 "transport_diag_cand" = "%2$@ ×%1$lld (%3$@)";
 "transport_diag_channel" = "Data channel";
@@ -1758,8 +1760,15 @@
 "transport_diag_peer_no_reply_desc" = "Timed out waiting for the computer to respond";
 "transport_diag_peer_old_desc" = "remote-agent on this computer doesn’t support direct yet";
 "transport_diag_privacy_footer" = "Copied diagnostics include address types and ranges only—no IP addresses, ports, or chat content.";
+"transport_diag_probe_last_echo" = "last echo %1$@s before drop";
+"transport_diag_probe_late" = "Late %1$lld";
+"transport_diag_probe_late_max" = "Late %1$lld (max %2$@)";
+"transport_diag_probe_lost" = "Lost %1$lld";
+"transport_diag_probe_ontime" = "On-time %1$lld";
+"transport_diag_probe_ontime_max" = "On-time %1$lld (max %2$@)";
+"transport_diag_probe_sent" = "Sent %1$lld";
+"transport_diag_probe_unmatched" = "Unmatched %1$lld";
 "transport_diag_probes" = "Liveness probes";
-"transport_diag_probes_value" = "Sent %3$lld · Echoed %1$lld · Lost %2$lld";
 "transport_diag_range_cgnat" = "carrier-shared";
 "transport_diag_range_global" = "global";
 "transport_diag_range_link_local" = "link-local";
@@ -1793,6 +1802,9 @@
 "transport_diag_retrying" = "Trying…";
 "transport_diag_round" = "%1$@ · %2$@ s";
 "transport_diag_rtt" = "%1$lld ms";
+"transport_diag_rx" = "Data received";
+"transport_diag_rx_last_before_drop" = "last frame %1$@s before drop";
+"transport_diag_seconds" = "%1$@s";
 "transport_diag_section_auto" = "Automatic check";
 "transport_diag_sig_limited" = "Rate-limited by the relay ×%1$lld";
 "transport_diag_sig_offline" = "Computer offline ×%1$lld";

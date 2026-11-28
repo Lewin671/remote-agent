@@ -1618,6 +1618,38 @@
 			<string>Edited %1$lld files</string>
 		</dict>
 	</dict>
+	<key>transport_diag_active_path_switches</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld switch</string>
+			<key>other</key>
+			<string>%1$lld switches</string>
+		</dict>
+	</dict>
+	<key>transport_diag_rx_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld frame / %2$@</string>
+			<key>other</key>
+			<string>%1$lld frames / %2$@</string>
+		</dict>
+	</dict>
 	<key>usage_charts_a11y</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

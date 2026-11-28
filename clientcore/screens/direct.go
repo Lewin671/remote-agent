@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/sharedfiles"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
@@ -485,6 +486,9 @@ func diagAddressGroups(pc *transport.PcData, a *transport.AttemptData) []*corev1
 	} else {
 		checkRows = []*corev1.DiagRowView{{LabelText: text.Msg(text.KeyTransportDiagNotSampled), ValueText: dash}}
 	}
+	if activeRow := diagSelectedPairRow(a); activeRow != nil {
+		checkRows = append(checkRows, activeRow)
+	}
 	if ice := diagTimeline(a, transport.StateICE); ice != nil {
 		checkRows = append(checkRows, &corev1.DiagRowView{LabelText: text.Msg(text.KeyTransportDiagIce), ValueText: ice})
 	}
@@ -875,6 +879,82 @@ func diagStageText(s transport.Stage) *corev1.Text {
 	}
 }
 
+func diagSelectedPairRow(a *transport.AttemptData) *corev1.DiagRowView {
+	if a == nil || !a.HasSelectedPair {
+		return nil
+	}
+	sp := a.SelectedPair
+	val := text.Msg(text.KeyTransportDiagActivePathValue,
+		text.ArgText("localFamily", diagFamilyWord(sp.LocalFamily)),
+		text.ArgText("remoteFamily", diagFamilyWord(sp.RemoteFamily)),
+		text.ArgText("localType", diagTypeWord(sp.LocalType)),
+		text.ArgText("remoteType", diagTypeWord(sp.RemoteType)),
+	)
+	switches := text.Msg(text.KeyTransportDiagActivePathSwitches, text.Int("count", int64(a.SelectedPairChanges)))
+	return &corev1.DiagRowView{
+		LabelText: text.Msg(text.KeyTransportDiagActivePath),
+		ValueText: text.JoinLiteral(" · ", val, switches),
+	}
+}
+
+func diagDurationText(ms int64) *corev1.Text {
+	if ms < 0 {
+		ms = 0
+	}
+	if ms < 1000 {
+		return text.Msg(text.KeyTransportDiagRtt, text.Int("ms", ms))
+	}
+	return text.Msg(text.KeyTransportDiagSeconds, text.Str("seconds", formatTenthsSeconds(ms)))
+}
+
+func diagProbesValueText(p transport.ProbeStats, hasClosed bool) *corev1.Text {
+	var onTime *corev1.Text
+	if p.Echoed > 0 {
+		onTime = text.Msg(text.KeyTransportDiagProbeOntimeMax,
+			text.Int("count", int64(p.Echoed)),
+			text.ArgText("max", diagDurationText(p.EchoMaxMs)),
+		)
+	} else {
+		onTime = text.Msg(text.KeyTransportDiagProbeOntime, text.Int("count", 0))
+	}
+	var late *corev1.Text
+	if p.Late > 0 {
+		late = text.Msg(text.KeyTransportDiagProbeLateMax,
+			text.Int("count", int64(p.Late)),
+			text.ArgText("max", diagDurationText(p.LateMaxMs)),
+		)
+	} else {
+		late = text.Msg(text.KeyTransportDiagProbeLate, text.Int("count", 0))
+	}
+	parts := []*corev1.Text{
+		text.Msg(text.KeyTransportDiagProbeSent, text.Int("count", int64(p.Sent))),
+		onTime,
+		late,
+		text.Msg(text.KeyTransportDiagProbeUnmatched, text.Int("count", int64(p.Unmatched))),
+		text.Msg(text.KeyTransportDiagProbeLost, text.Int("count", int64(p.Lost))),
+	}
+	if hasClosed && p.HasLastEcho {
+		parts = append(parts, text.Msg(text.KeyTransportDiagProbeLastEcho,
+			text.Str("seconds", formatTenthsSeconds(p.LastEchoAgoMs)),
+		))
+	}
+	return text.JoinLiteral(" · ", parts...)
+}
+
+func diagRxValueText(rx transport.DCRxStats, hasClosed bool) *corev1.Text {
+	base := text.Msg(text.KeyTransportDiagRxCount,
+		text.Int("count", rx.Frames),
+		text.Str("size", sharedfiles.FormatFileSize(rx.Bytes)),
+	)
+	if hasClosed && rx.HasLastRx {
+		last := text.Msg(text.KeyTransportDiagRxLastBeforeDrop,
+			text.Str("seconds", formatTenthsSeconds(rx.LastRxAgoMs)),
+		)
+		return text.JoinLiteral(" · ", base, last)
+	}
+	return base
+}
+
 func diagPcOutcomeRows(pc *transport.PcData) []*corev1.DiagRowView {
 	if pc == nil {
 		return nil
@@ -889,11 +969,13 @@ func diagPcOutcomeRows(pc *transport.PcData) []*corev1.DiagRowView {
 	if pc.Probes.Sent > 0 {
 		rows = append(rows, &corev1.DiagRowView{
 			LabelText: text.Msg(text.KeyTransportDiagProbes),
-			ValueText: text.Msg(text.KeyTransportDiagProbesValue,
-				text.Int("sent", int64(pc.Probes.Sent)),
-				text.Int("echoed", int64(pc.Probes.Echoed)),
-				text.Int("lost", int64(pc.Probes.Lost)),
-			),
+			ValueText: diagProbesValueText(pc.Probes, pc.HasClosed),
+		})
+	}
+	if pc.HasMark[transport.MarkReady] || pc.Rx.Frames > 0 {
+		rows = append(rows, &corev1.DiagRowView{
+			LabelText: text.Msg(text.KeyTransportDiagRx),
+			ValueText: diagRxValueText(pc.Rx, pc.HasClosed),
 		})
 	}
 	return rows

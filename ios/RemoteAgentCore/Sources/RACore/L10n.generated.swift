@@ -7215,6 +7215,18 @@ public enum L10n {
         let key = "transport_detail_relay_only"
         return format(key, locale: locale, args: [])
     }
+    public static func transportDiagActivePath(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_active_path"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagActivePathSwitches(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_active_path_switches"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func transportDiagActivePathValue(localFamily: String, localType: String, remoteFamily: String, remoteType: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_active_path_value"
+        return format(key, locale: locale, args: [localFamily, localType, remoteFamily, remoteType])
+    }
     public static func transportDiagAt(seconds: String, state: String, locale: String = MessageLocale.current) -> String {
         let key = "transport_diag_at"
         return format(key, locale: locale, args: [seconds, state])
@@ -7435,13 +7447,41 @@ public enum L10n {
         let key = "transport_diag_privacy_footer"
         return format(key, locale: locale, args: [])
     }
+    public static func transportDiagProbeLastEcho(seconds: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_probe_last_echo"
+        return format(key, locale: locale, args: [seconds])
+    }
+    public static func transportDiagProbeLate(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_probe_late"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func transportDiagProbeLateMax(count: Int, max: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_probe_late_max"
+        return format(key, locale: locale, args: [Int64(count), max])
+    }
+    public static func transportDiagProbeLost(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_probe_lost"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func transportDiagProbeOntime(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_probe_ontime"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func transportDiagProbeOntimeMax(count: Int, max: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_probe_ontime_max"
+        return format(key, locale: locale, args: [Int64(count), max])
+    }
+    public static func transportDiagProbeSent(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_probe_sent"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func transportDiagProbeUnmatched(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_probe_unmatched"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
     public static func transportDiagProbes(locale: String = MessageLocale.current) -> String {
         let key = "transport_diag_probes"
         return format(key, locale: locale, args: [])
-    }
-    public static func transportDiagProbesValue(echoed: Int, lost: Int, sent: Int, locale: String = MessageLocale.current) -> String {
-        let key = "transport_diag_probes_value"
-        return format(key, locale: locale, args: [Int64(echoed), Int64(lost), Int64(sent)])
     }
     public static func transportDiagRangeCgnat(locale: String = MessageLocale.current) -> String {
         let key = "transport_diag_range_cgnat"
@@ -7574,6 +7614,22 @@ public enum L10n {
     public static func transportDiagRtt(ms: Int, locale: String = MessageLocale.current) -> String {
         let key = "transport_diag_rtt"
         return format(key, locale: locale, args: [Int64(ms)])
+    }
+    public static func transportDiagRx(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_rx"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagRxCount(count: Int, size: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_rx_count"
+        return format(key, locale: locale, args: [Int64(count), size])
+    }
+    public static func transportDiagRxLastBeforeDrop(seconds: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_rx_last_before_drop"
+        return format(key, locale: locale, args: [seconds])
+    }
+    public static func transportDiagSeconds(seconds: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_seconds"
+        return format(key, locale: locale, args: [seconds])
     }
     public static func transportDiagSectionAuto(locale: String = MessageLocale.current) -> String {
         let key = "transport_diag_section_auto"
@@ -15483,6 +15539,18 @@ public enum L10nMessage {
         let key = "transport_detail_relay_only"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func transportDiagActivePath() -> LocalizedMessage {
+        let key = "transport_diag_active_path"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagActivePathSwitches(count: Int) -> LocalizedMessage {
+        let key = "transport_diag_active_path_switches"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func transportDiagActivePathValue(localFamily: String, localType: String, remoteFamily: String, remoteType: String) -> LocalizedMessage {
+        let key = "transport_diag_active_path_value"
+        return LocalizedMessage(key: key, arguments: [.string(localFamily), .string(localType), .string(remoteFamily), .string(remoteType)])
+    }
     public static func transportDiagAt(seconds: String, state: String) -> LocalizedMessage {
         let key = "transport_diag_at"
         return LocalizedMessage(key: key, arguments: [.string(seconds), .string(state)])
@@ -15703,13 +15771,41 @@ public enum L10nMessage {
         let key = "transport_diag_privacy_footer"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func transportDiagProbeLastEcho(seconds: String) -> LocalizedMessage {
+        let key = "transport_diag_probe_last_echo"
+        return LocalizedMessage(key: key, arguments: [.string(seconds)])
+    }
+    public static func transportDiagProbeLate(count: Int) -> LocalizedMessage {
+        let key = "transport_diag_probe_late"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func transportDiagProbeLateMax(count: Int, max: String) -> LocalizedMessage {
+        let key = "transport_diag_probe_late_max"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(max)])
+    }
+    public static func transportDiagProbeLost(count: Int) -> LocalizedMessage {
+        let key = "transport_diag_probe_lost"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func transportDiagProbeOntime(count: Int) -> LocalizedMessage {
+        let key = "transport_diag_probe_ontime"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func transportDiagProbeOntimeMax(count: Int, max: String) -> LocalizedMessage {
+        let key = "transport_diag_probe_ontime_max"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(max)])
+    }
+    public static func transportDiagProbeSent(count: Int) -> LocalizedMessage {
+        let key = "transport_diag_probe_sent"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func transportDiagProbeUnmatched(count: Int) -> LocalizedMessage {
+        let key = "transport_diag_probe_unmatched"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
     public static func transportDiagProbes() -> LocalizedMessage {
         let key = "transport_diag_probes"
         return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func transportDiagProbesValue(echoed: Int, lost: Int, sent: Int) -> LocalizedMessage {
-        let key = "transport_diag_probes_value"
-        return LocalizedMessage(key: key, arguments: [.integer(Int64(echoed)), .integer(Int64(lost)), .integer(Int64(sent))])
     }
     public static func transportDiagRangeCgnat() -> LocalizedMessage {
         let key = "transport_diag_range_cgnat"
@@ -15842,6 +15938,22 @@ public enum L10nMessage {
     public static func transportDiagRtt(ms: Int) -> LocalizedMessage {
         let key = "transport_diag_rtt"
         return LocalizedMessage(key: key, arguments: [.integer(Int64(ms))])
+    }
+    public static func transportDiagRx() -> LocalizedMessage {
+        let key = "transport_diag_rx"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagRxCount(count: Int, size: String) -> LocalizedMessage {
+        let key = "transport_diag_rx_count"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(size)])
+    }
+    public static func transportDiagRxLastBeforeDrop(seconds: String) -> LocalizedMessage {
+        let key = "transport_diag_rx_last_before_drop"
+        return LocalizedMessage(key: key, arguments: [.string(seconds)])
+    }
+    public static func transportDiagSeconds(seconds: String) -> LocalizedMessage {
+        let key = "transport_diag_seconds"
+        return LocalizedMessage(key: key, arguments: [.string(seconds)])
     }
     public static func transportDiagSectionAuto() -> LocalizedMessage {
         let key = "transport_diag_section_auto"
@@ -18487,13 +18599,16 @@ public enum L10nText {
         case "transport.conn_footer_unsupported_browser": return L10n.format("transport_conn_footer_unsupported_browser", locale: locale, args: [])
         case "transport.detail_daemon_disabled": return L10n.format("transport_detail_daemon_disabled", locale: locale, args: [])
         case "transport.detail_relay_only": return L10n.format("transport_detail_relay_only", locale: locale, args: [])
-        case "transport.diag_at": return L10n.format("transport_diag_at", locale: locale, args: [strArg(args["seconds"]), strArg(args["state"])])
-        case "transport.diag_cand": return L10n.format("transport_diag_cand", locale: locale, args: [intArg(args["count"]), strArg(args["kind"]), strArg(args["scope"])])
+        case "transport.diag_active_path": return L10n.format("transport_diag_active_path", locale: locale, args: [])
+        case "transport.diag_active_path_switches": return L10n.format("transport_diag_active_path_switches", locale: locale, args: [intArg(args["count"])])
         default: return nil
         }
     }
     private static func resolve12(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "transport.diag_active_path_value": return L10n.format("transport_diag_active_path_value", locale: locale, args: [strArg(args["localFamily"]), strArg(args["localType"]), strArg(args["remoteFamily"]), strArg(args["remoteType"])])
+        case "transport.diag_at": return L10n.format("transport_diag_at", locale: locale, args: [strArg(args["seconds"]), strArg(args["state"])])
+        case "transport.diag_cand": return L10n.format("transport_diag_cand", locale: locale, args: [intArg(args["count"]), strArg(args["kind"]), strArg(args["scope"])])
         case "transport.diag_channel": return L10n.format("transport_diag_channel", locale: locale, args: [])
         case "transport.diag_check_path": return L10n.format("transport_diag_check_path", locale: locale, args: [])
         case "transport.diag_check_peer": return L10n.format("transport_diag_check_peer", locale: locale, args: [])
@@ -18547,8 +18662,15 @@ public enum L10nText {
         case "transport.diag_peer_no_reply_desc": return L10n.format("transport_diag_peer_no_reply_desc", locale: locale, args: [])
         case "transport.diag_peer_old_desc": return L10n.format("transport_diag_peer_old_desc", locale: locale, args: [])
         case "transport.diag_privacy_footer": return L10n.format("transport_diag_privacy_footer", locale: locale, args: [])
+        case "transport.diag_probe_last_echo": return L10n.format("transport_diag_probe_last_echo", locale: locale, args: [strArg(args["seconds"])])
+        case "transport.diag_probe_late": return L10n.format("transport_diag_probe_late", locale: locale, args: [intArg(args["count"])])
+        case "transport.diag_probe_late_max": return L10n.format("transport_diag_probe_late_max", locale: locale, args: [intArg(args["count"]), strArg(args["max"])])
+        case "transport.diag_probe_lost": return L10n.format("transport_diag_probe_lost", locale: locale, args: [intArg(args["count"])])
+        case "transport.diag_probe_ontime": return L10n.format("transport_diag_probe_ontime", locale: locale, args: [intArg(args["count"])])
+        case "transport.diag_probe_ontime_max": return L10n.format("transport_diag_probe_ontime_max", locale: locale, args: [intArg(args["count"]), strArg(args["max"])])
+        case "transport.diag_probe_sent": return L10n.format("transport_diag_probe_sent", locale: locale, args: [intArg(args["count"])])
+        case "transport.diag_probe_unmatched": return L10n.format("transport_diag_probe_unmatched", locale: locale, args: [intArg(args["count"])])
         case "transport.diag_probes": return L10n.format("transport_diag_probes", locale: locale, args: [])
-        case "transport.diag_probes_value": return L10n.format("transport_diag_probes_value", locale: locale, args: [intArg(args["echoed"]), intArg(args["lost"]), intArg(args["sent"])])
         case "transport.diag_range_cgnat": return L10n.format("transport_diag_range_cgnat", locale: locale, args: [])
         case "transport.diag_range_global": return L10n.format("transport_diag_range_global", locale: locale, args: [])
         case "transport.diag_range_link_local": return L10n.format("transport_diag_range_link_local", locale: locale, args: [])
@@ -18582,6 +18704,10 @@ public enum L10nText {
         case "transport.diag_retrying": return L10n.format("transport_diag_retrying", locale: locale, args: [])
         case "transport.diag_round": return L10n.format("transport_diag_round", locale: locale, args: [strArg(args["result"]), strArg(args["seconds"])])
         case "transport.diag_rtt": return L10n.format("transport_diag_rtt", locale: locale, args: [intArg(args["ms"])])
+        case "transport.diag_rx": return L10n.format("transport_diag_rx", locale: locale, args: [])
+        case "transport.diag_rx_count": return L10n.format("transport_diag_rx_count", locale: locale, args: [intArg(args["count"]), strArg(args["size"])])
+        case "transport.diag_rx_last_before_drop": return L10n.format("transport_diag_rx_last_before_drop", locale: locale, args: [strArg(args["seconds"])])
+        case "transport.diag_seconds": return L10n.format("transport_diag_seconds", locale: locale, args: [strArg(args["seconds"])])
         case "transport.diag_section_auto": return L10n.format("transport_diag_section_auto", locale: locale, args: [])
         case "transport.diag_sig_limited": return L10n.format("transport_diag_sig_limited", locale: locale, args: [intArg(args["count"])])
         case "transport.diag_sig_offline": return L10n.format("transport_diag_sig_offline", locale: locale, args: [intArg(args["count"])])
@@ -18630,6 +18756,11 @@ public enum L10nText {
         case "transport.diag_verdict_channel": return L10n.format("transport_diag_verdict_channel", locale: locale, args: [])
         case "transport.diag_verdict_confirm": return L10n.format("transport_diag_verdict_confirm", locale: locale, args: [])
         case "transport.diag_verdict_connected": return L10n.format("transport_diag_verdict_connected", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve13(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "transport.diag_verdict_create_failed": return L10n.format("transport_diag_verdict_create_failed", locale: locale, args: [])
         case "transport.diag_verdict_dtls": return L10n.format("transport_diag_verdict_dtls", locale: locale, args: [])
         case "transport.diag_verdict_ipv6_silent": return L10n.format("transport_diag_verdict_ipv6_silent", locale: locale, args: [])
@@ -18644,11 +18775,6 @@ public enum L10nText {
         case "transport.diag_verdict_signal_limited": return L10n.format("transport_diag_verdict_signal_limited", locale: locale, args: [])
         case "transport.diag_verdict_signal_offline": return L10n.format("transport_diag_verdict_signal_offline", locale: locale, args: [])
         case "transport.diag_verdict_unknown": return L10n.format("transport_diag_verdict_unknown", locale: locale, args: [])
-        default: return nil
-        }
-    }
-    private static func resolve13(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "transport.diag_verdict_unselected": return L10n.format("transport_diag_verdict_unselected", locale: locale, args: [])
         case "transport.direct": return L10n.format("transport_direct", locale: locale, args: [])
         case "transport.direct_slow": return L10n.format("transport_direct_slow", locale: locale, args: [])

@@ -3486,22 +3486,344 @@
     }
   },
   {
-    "key": "transport.diag_probes_value",
-    "zh-CN": "发出 {sent} · 回声 {echoed} · 丢失 {lost}",
-    "en": "Sent {sent} · Echoed {echoed} · Lost {lost}",
-    "notes": "诊断详情与复制文本中，单条路径的存活探测发出/收到回声/丢失次数。",
+    "key": "transport.diag_seconds",
+    "zh-CN": "{seconds} 秒",
+    "en": "{seconds}s",
+    "notes": "诊断详情与复制文本中，大于等于 1 秒的时长（保留一位小数，如 1.8 秒）。",
     "params": {
-      "sent": {
+      "seconds": {
+        "type": "string",
+        "example": "1.8"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_probe_sent",
+    "zh-CN": "发出 {count}",
+    "en": "Sent {count}",
+    "notes": "存活探测行片段：本路径发出的存活探测总数。",
+    "params": {
+      "count": {
         "type": "integer",
-        "example": 5
+        "example": 4
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_probe_ontime",
+    "zh-CN": "按时回声 {count}",
+    "en": "On-time {count}",
+    "notes": "存活探测行片段：在超时前收到的回声次数（无按时回声时使用）。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 0
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_probe_ontime_max",
+    "zh-CN": "按时回声 {count}（最慢 {max}）",
+    "en": "On-time {count} (max {max})",
+    "notes": "存活探测行片段：按时收到的回声次数及其中最慢的往返耗时。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 1
       },
-      "echoed": {
+      "max": {
+        "type": "string",
+        "example": "13 ms"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_probe_late",
+    "zh-CN": "迟到 {count}",
+    "en": "Late {count}",
+    "notes": "存活探测行片段：超时之后才到达的回声次数（为 0 时使用）。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 0
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_probe_late_max",
+    "zh-CN": "迟到 {count}（最慢 {max}）",
+    "en": "Late {count} (max {max})",
+    "notes": "存活探测行片段：超时后到达的迟到回声次数及其中最慢的耗时。",
+    "params": {
+      "count": {
         "type": "integer",
         "example": 2
       },
-      "lost": {
+      "max": {
+        "type": "string",
+        "example": "1.8 秒"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_probe_unmatched",
+    "zh-CN": "未匹配 {count}",
+    "en": "Unmatched {count}",
+    "notes": "存活探测行片段：既不在待回也不在最近已超时记录中的回声次数。",
+    "params": {
+      "count": {
         "type": "integer",
-        "example": 3
+        "example": 0
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_probe_lost",
+    "zh-CN": "丢失 {count}",
+    "en": "Lost {count}",
+    "notes": "存活探测行片段：发出后未收到任何回声（含迟到）的探测次数。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 1
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_probe_last_echo",
+    "zh-CN": "最后回声在断开前 {seconds} 秒",
+    "en": "last echo {seconds}s before drop",
+    "notes": "存活探测行尾部片段：最后一次收到任何探测回声距离路径断开的秒数。",
+    "params": {
+      "seconds": {
+        "type": "string",
+        "example": "0.2"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_rx",
+    "zh-CN": "收到数据",
+    "en": "Data received",
+    "notes": "诊断详情与复制文本中，每条路径确认后在数据通道 dc0 上收到业务帧统计的行标签。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_rx_count",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 帧 / {size}"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} frame / {size}",
+        "other": "{count} frames / {size}"
+      }
+    },
+    "notes": "收到数据行片段：确认后在 dc0 上收到的业务帧数和总大小（如「12 帧 / 34.0 KB」）。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 12
+      },
+      "size": {
+        "type": "string",
+        "example": "34.0 KB"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_rx_last_before_drop",
+    "zh-CN": "最后一帧在断开前 {seconds} 秒",
+    "en": "last frame {seconds}s before drop",
+    "notes": "收到数据行尾部片段：最后一次收到 dc0 业务帧距离路径断开的秒数。",
+    "params": {
+      "seconds": {
+        "type": "string",
+        "example": "0.3"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_active_path",
+    "zh-CN": "当前线路",
+    "en": "Active path",
+    "notes": "诊断详情与复制文本中，当前选中 ICE 候选对的行标签（只含地址族和候选类型，不含地址或端口）。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_active_path_value",
+    "zh-CN": "{localFamily} → {remoteFamily}（{localType} → {remoteType}）",
+    "en": "{localFamily} → {remoteFamily} ({localType} → {remoteType})",
+    "notes": "当前线路行的值：本机地址族 → 电脑地址族（本机候选类型 → 电脑候选类型），不含地址或端口。",
+    "params": {
+      "localFamily": {
+        "type": "string",
+        "example": "IPv6"
+      },
+      "remoteFamily": {
+        "type": "string",
+        "example": "IPv6"
+      },
+      "localType": {
+        "type": "string",
+        "example": "本机网卡"
+      },
+      "remoteType": {
+        "type": "string",
+        "example": "对端发现"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_active_path_switches",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "切换 {count} 次"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} switch",
+        "other": "{count} switches"
+      }
+    },
+    "notes": "当前线路行尾部片段：路径存活期间选中候选对发生变化的次数。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 0
       }
     },
     "platforms": [

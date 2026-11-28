@@ -2113,6 +2113,12 @@
     <string name="transport_conn_footer_unsupported_browser" formatted="false">"This browser does not support direct connections; everything connects via relay."</string>
     <string name="transport_detail_daemon_disabled" formatted="false">"Turn it on from this computer to use direct connections"</string>
     <string name="transport_detail_relay_only" formatted="false">"Everything connects via relay as usual"</string>
+    <string name="transport_diag_active_path" formatted="false">"Active path"</string>
+    <plurals name="transport_diag_active_path_switches">
+        <item quantity="one">"%1$d switch"</item>
+        <item quantity="other">"%1$d switches"</item>
+    </plurals>
+    <string name="transport_diag_active_path_value">"%1$s → %3$s (%2$s → %4$s)"</string>
     <string name="transport_diag_at">"%2$s %1$s s"</string>
     <string name="transport_diag_cand">"%2$s ×%1$d (%3$s)"</string>
     <string name="transport_diag_channel" formatted="false">"Data channel"</string>
@@ -2168,8 +2174,15 @@
     <string name="transport_diag_peer_no_reply_desc" formatted="false">"Timed out waiting for the computer to respond"</string>
     <string name="transport_diag_peer_old_desc" formatted="false">"remote-agent on this computer doesn’t support direct yet"</string>
     <string name="transport_diag_privacy_footer" formatted="false">"Copied diagnostics include address types and ranges only—no IP addresses, ports, or chat content."</string>
+    <string name="transport_diag_probe_last_echo">"last echo %1$ss before drop"</string>
+    <string name="transport_diag_probe_late">"Late %1$d"</string>
+    <string name="transport_diag_probe_late_max">"Late %1$d (max %2$s)"</string>
+    <string name="transport_diag_probe_lost">"Lost %1$d"</string>
+    <string name="transport_diag_probe_ontime">"On-time %1$d"</string>
+    <string name="transport_diag_probe_ontime_max">"On-time %1$d (max %2$s)"</string>
+    <string name="transport_diag_probe_sent">"Sent %1$d"</string>
+    <string name="transport_diag_probe_unmatched">"Unmatched %1$d"</string>
     <string name="transport_diag_probes" formatted="false">"Liveness probes"</string>
-    <string name="transport_diag_probes_value">"Sent %3$d · Echoed %1$d · Lost %2$d"</string>
     <string name="transport_diag_range_cgnat" formatted="false">"carrier-shared"</string>
     <string name="transport_diag_range_global" formatted="false">"global"</string>
     <string name="transport_diag_range_link_local" formatted="false">"link-local"</string>
@@ -2203,6 +2216,13 @@
     <string name="transport_diag_retrying" formatted="false">"Trying…"</string>
     <string name="transport_diag_round">"%1$s · %2$s s"</string>
     <string name="transport_diag_rtt">"%1$d ms"</string>
+    <string name="transport_diag_rx" formatted="false">"Data received"</string>
+    <plurals name="transport_diag_rx_count">
+        <item quantity="one">"%1$d frame / %2$s"</item>
+        <item quantity="other">"%1$d frames / %2$s"</item>
+    </plurals>
+    <string name="transport_diag_rx_last_before_drop">"last frame %1$ss before drop"</string>
+    <string name="transport_diag_seconds">"%1$ss"</string>
     <string name="transport_diag_section_auto" formatted="false">"Automatic check"</string>
     <string name="transport_diag_sig_limited">"Rate-limited by the relay ×%1$d"</string>
     <string name="transport_diag_sig_offline">"Computer offline ×%1$d"</string>

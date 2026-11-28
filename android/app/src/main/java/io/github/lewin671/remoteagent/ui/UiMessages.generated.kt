@@ -6097,6 +6097,20 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.detail_relay_only" -> {
             resources.getString(R.string.transport_detail_relay_only)
         }
+        "transport.diag_active_path" -> {
+            resources.getString(R.string.transport_diag_active_path)
+        }
+        "transport.diag_active_path_switches" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.transport_diag_active_path_switches, count, count)
+        }
+        "transport.diag_active_path_value" -> {
+            val localFamily = message.args.getValue("localFamily") as String
+            val localType = message.args.getValue("localType") as String
+            val remoteFamily = message.args.getValue("remoteFamily") as String
+            val remoteType = message.args.getValue("remoteType") as String
+            resources.getString(R.string.transport_diag_active_path_value, localFamily, localType, remoteFamily, remoteType)
+        }
         "transport.diag_at" -> {
             val seconds = message.args.getValue("seconds") as String
             val state = message.args.getValue("state") as String
@@ -6280,14 +6294,42 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.diag_privacy_footer" -> {
             resources.getString(R.string.transport_diag_privacy_footer)
         }
+        "transport.diag_probe_last_echo" -> {
+            val seconds = message.args.getValue("seconds") as String
+            resources.getString(R.string.transport_diag_probe_last_echo, seconds)
+        }
+        "transport.diag_probe_late" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getString(R.string.transport_diag_probe_late, count)
+        }
+        "transport.diag_probe_late_max" -> {
+            val count = message.args.getValue("count") as Int
+            val max = message.args.getValue("max") as String
+            resources.getString(R.string.transport_diag_probe_late_max, count, max)
+        }
+        "transport.diag_probe_lost" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getString(R.string.transport_diag_probe_lost, count)
+        }
+        "transport.diag_probe_ontime" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getString(R.string.transport_diag_probe_ontime, count)
+        }
+        "transport.diag_probe_ontime_max" -> {
+            val count = message.args.getValue("count") as Int
+            val max = message.args.getValue("max") as String
+            resources.getString(R.string.transport_diag_probe_ontime_max, count, max)
+        }
+        "transport.diag_probe_sent" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getString(R.string.transport_diag_probe_sent, count)
+        }
+        "transport.diag_probe_unmatched" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getString(R.string.transport_diag_probe_unmatched, count)
+        }
         "transport.diag_probes" -> {
             resources.getString(R.string.transport_diag_probes)
-        }
-        "transport.diag_probes_value" -> {
-            val echoed = message.args.getValue("echoed") as Int
-            val lost = message.args.getValue("lost") as Int
-            val sent = message.args.getValue("sent") as Int
-            resources.getString(R.string.transport_diag_probes_value, echoed, lost, sent)
         }
         "transport.diag_range_cgnat" -> {
             resources.getString(R.string.transport_diag_range_cgnat)
@@ -6398,6 +6440,22 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
             val ms = message.args.getValue("ms") as Int
             resources.getString(R.string.transport_diag_rtt, ms)
         }
+        "transport.diag_rx" -> {
+            resources.getString(R.string.transport_diag_rx)
+        }
+        "transport.diag_rx_count" -> {
+            val count = message.args.getValue("count") as Int
+            val size = message.args.getValue("size") as String
+            resources.getQuantityString(R.plurals.transport_diag_rx_count, count, count, size)
+        }
+        "transport.diag_rx_last_before_drop" -> {
+            val seconds = message.args.getValue("seconds") as String
+            resources.getString(R.string.transport_diag_rx_last_before_drop, seconds)
+        }
+        "transport.diag_seconds" -> {
+            val seconds = message.args.getValue("seconds") as String
+            resources.getString(R.string.transport_diag_seconds, seconds)
+        }
         "transport.diag_section_auto" -> {
             resources.getString(R.string.transport_diag_section_auto)
         }
@@ -6487,6 +6545,12 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.diag_status_wait_update" -> {
             resources.getString(R.string.transport_diag_status_wait_update)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "transport.diag_stun_error" -> {
             val code = message.args.getValue("code") as Int
             val count = message.args.getValue("count") as Int
@@ -6532,12 +6596,6 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.diag_verdict_all_failed" -> {
             resources.getString(R.string.transport_diag_verdict_all_failed)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "transport.diag_verdict_budget" -> {
             resources.getString(R.string.transport_diag_verdict_budget)
         }
