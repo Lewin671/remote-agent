@@ -35,13 +35,12 @@ type pathDiag struct {
 }
 
 type endSnapshot struct {
-	dc1Buffered  uint64
-	dc0Buffered  uint64
-	sctpSrttMs   int64
-	sctpCwnd     uint32
-	sctpRwnd     uint32
-	sctpBuffered int
-	pair         string
+	dc1Buffered uint64
+	dc0Buffered uint64
+	sctpSrttMs  int64
+	sctpCwnd    uint32
+	sctpRwnd    uint32
+	pair        string
 }
 
 func atomicMaxUint64(dst *atomic.Uint64, v uint64) {
@@ -199,7 +198,7 @@ func (d *pathDiag) end(use, generation uint64, peer string, snap endSnapshot) {
 		"dc1_buffered", snap.dc1Buffered, "dc0_buffered", snap.dc0Buffered,
 		"dc1_buffered_max", d.dc1BufMax.Load(), "dc0_buffered_max", d.dc0BufMax.Load(),
 		"sctp_srtt_ms", snap.sctpSrttMs, "sctp_cwnd", snap.sctpCwnd, "sctp_rwnd", snap.sctpRwnd,
-		"sctp_buffered", snap.sctpBuffered, "sctp_cwnd_min", uint32(d.cwndMin.Load()),
+		"sctp_cwnd_min", uint32(d.cwndMin.Load()),
 		"dc0_tx_frames", d.txFrames.Load(), "dc0_tx_bytes", d.txBytes.Load(),
 		"last_rx_ms", lastRxAgo, "pair", pair, "pair_changes", d.pairChanges.Load())
 }

@@ -254,7 +254,6 @@ func TestPathEndAppendsEchoSCTPTxRxAndPairFields(t *testing.T) {
 		"sctp_srtt_ms=",
 		"sctp_cwnd=",
 		"sctp_rwnd=",
-		"sctp_buffered=",
 		"sctp_cwnd_min=",
 		"dc0_tx_frames=1",
 		"dc0_tx_bytes=",

@@ -69,25 +69,25 @@ type partial struct {
 }
 type message struct{ data []byte }
 type Path struct {
-	cfg          Config
-	pc           *webrtc.PeerConnection
-	data, probe  *webrtc.DataChannel
-	ctx          context.Context
-	cancel       context.CancelFunc
-	once         sync.Once
-	mu           sync.Mutex
+	cfg             Config
+	pc              *webrtc.PeerConnection
+	data, probe     *webrtc.DataChannel
+	ctx             context.Context
+	cancel          context.CancelFunc
+	once            sync.Once
+	mu              sync.Mutex
 	confirmed       bool
 	confirmOnce     sync.Once
 	confirmation    chan struct{}
 	disconnectTimer *time.Timer
 	disconnectSeq   uint64
 	pending         map[string]*partial
-	received     chan message
-	ready, low   chan struct{}
-	closed       chan struct{}
-	sendMu       chan struct{}
-	writers      sync.WaitGroup
-	diag         pathDiag
+	received        chan message
+	ready, low      chan struct{}
+	closed          chan struct{}
+	sendMu          chan struct{}
+	writers         sync.WaitGroup
+	diag            pathDiag
 }
 
 func New(ctx context.Context, cfg Config) (*Path, error) {
@@ -220,6 +220,8 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 					}
 				}
 				p.diag.echoSent(err != nil, dc1Buf, dc0Buf)
+				// Sample the SCTP window with each echo (once a second at most), not on a timer.
+				p.sampleSCTP()
 			})
 		}
 	}
@@ -236,7 +238,6 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 					p.closeWhy(p.gateReason())
 					return
 				}
-				p.sampleSCTP()
 				p.expire(now)
 			}
 		}
@@ -637,9 +638,6 @@ func (p *Path) snapshotEnd() endSnapshot {
 			snap.sctpCwnd = st.CongestionWindow
 			snap.sctpRwnd = st.ReceiverWindow
 			p.diag.sampleCwnd(st.CongestionWindow)
-			if buf := sctp.BufferedAmount(); buf > 0 {
-				snap.sctpBuffered = buf
-			}
 			if dtls := sctp.Transport(); dtls != nil {
 				if ice := dtls.ICETransport(); ice != nil {
 					if pair, err := ice.GetSelectedCandidatePair(); err == nil && pair != nil {

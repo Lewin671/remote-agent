@@ -171,12 +171,18 @@ func (p *ProbeTracker) Tick(now int64, ready bool, allocNonce func() ([16]byte, 
 	p.pruneExpired(now)
 	if len(p.pending) > 0 {
 		kept := p.pending[:0]
-		for _, item := range p.pending {
+		for i, item := range p.pending {
 			if now-item.sentAt >= ProbeTimeoutMs {
 				p.missed++
 				p.lost++
 				p.rememberExpired(item)
 				if p.missed >= ProbeMaxMissed {
+					// The path closes now; remember the probes still in flight so their
+					// echoes count as late rather than unmatched.
+					rest := append(append([]pendingProbe(nil), kept...), p.pending[i+1:]...)
+					for _, r := range rest {
+						p.rememberExpired(r)
+					}
 					p.pending = nil
 					return nil, true
 				}
