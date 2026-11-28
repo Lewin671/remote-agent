@@ -540,6 +540,9 @@ func (e *Engine) handleTerminalInboundBytes(ctx *StepContext, ev *corev1.Termina
 		return
 	}
 	rawLen := len(ev.RawEnvelope)
+	if ev.FromDirect && ev.PcId != 0 && rawLen > 0 && e.transportCoord != nil {
+		e.transportCoord.RecordDCRx(e.nowMs, ev.PcId, 1, int64(rawLen))
+	}
 	if ts.openPendingFrames >= maxTerminalOpenQueueFrames || ts.openPendingBytes+rawLen > maxTerminalOpenQueueBytes {
 		e.failTerminalOpen(ctx, ts, "backlog", nil)
 		return

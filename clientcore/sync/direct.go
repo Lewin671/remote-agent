@@ -389,6 +389,9 @@ func (e *Engine) handleDirectBulkTransferDone(ctx *StepContext, ev *corev1.Direc
 	}
 	if ev.TicketId != 0 {
 		if ev.Ok {
+			if ev.RouteWasDirect {
+				c.RecordDCRxByTicket(e.nowMs, ev.TicketId, 1, max(0, ev.ObservedBytes))
+			}
 			e.emitCoordEffects(ctx, c.ObserveTicket(e.nowMs, ev.TicketId, ev.RouteWasDirect, ev.ObservedBytes, ev.ElapsedMs))
 		} else if ev.RouteWasDirect {
 			e.emitCoordEffects(ctx, c.FailTicket(e.nowMs, ev.TicketId))

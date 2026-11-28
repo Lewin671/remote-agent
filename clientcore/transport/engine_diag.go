@@ -83,12 +83,13 @@ type DiagStats struct {
 	Report *StatsReport
 }
 
-// DiagPathEnd records why a use's path closed and its liveness probe counters.
+// DiagPathEnd records why a use's path closed, its liveness probe counters, and dc0 receive counters.
 type DiagPathEnd struct {
 	Round  RoundID
 	Use    Use
 	Cause  CloseCause
 	Probes ProbeStats
+	Rx     DCRxStats
 }
 
 // RefreshDiagnostics: the sheet is open; read the stats of the rounds being tried.
@@ -165,7 +166,7 @@ func (e *Engine) finished(now int64, p *round, timedOut bool, cause CloseCause) 
 		t := r.since(now)
 		for i := range r.Pcs {
 			if r.Pcs[i].HasMark[MarkReady] && !r.Pcs[i].HasClosed {
-				r.Pcs[i].recordClose(t, cause, ProbeStats{})
+				r.Pcs[i].recordClose(t, cause, ProbeStats{}, DCRxStats{})
 			}
 		}
 	}
@@ -255,7 +256,7 @@ func (e *Engine) handleDiag(now int64, ev Event) bool {
 			}
 		}
 	case DiagPathEnd:
-		pc.recordClose(t, ev.Cause, ev.Probes)
+		pc.recordClose(t, ev.Cause, ev.Probes, ev.Rx)
 		r.recordCloseCause(ev.Cause, pc.HasMark[MarkReady])
 	}
 	e.markChanged()

@@ -1265,22 +1265,34 @@ func TestCoordinatorProbeTimeoutRecordsLostAndProbeStats(t *testing.T) {
 	reply := append([]byte(nil), firstProbe...)
 	reply[0] = 1
 	coord.OnPcProbeReceived(tCur+20, readPC, reply)
+	coord.RecordDCRx(tCur+200, readPC, 2, 4096)
 
 	// Advance 1s per probe: 3 unanswered probes -> probe_timeout on 4th tick.
+	// Deliver a late reply for probe #2 (1500ms after send) and one more dc0 frame before timeout.
 	var closedReason string
+	var secondProbe []byte
 	for i := 1; i <= 4; i++ {
 		tCur += linkcore.ProbeIntervalMs
 		for _, e := range coord.OnSessionTimer(tCur) {
+			if sp, ok := e.(CoordPcSendProbe); ok && sp.PCID == readPC && i == 1 {
+				secondProbe = append([]byte(nil), sp.Raw...)
+			}
 			if cl, ok := e.(CoordPcClose); ok && cl.PCID == readPC {
 				closedReason = cl.Reason
 			}
+		}
+		if i == 2 && len(secondProbe) == linkcore.ProbeFrameBytes {
+			late := append([]byte(nil), secondProbe...)
+			late[0] = 1
+			coord.OnPcProbeReceived(tCur+500, readPC, late)
+			coord.RecordDCRx(tCur+700, readPC, 1, 1024)
 		}
 	}
 	if closedReason != "probe_timeout" {
 		t.Fatalf("expected probe_timeout close, got %q", closedReason)
 	}
 
-	// Session must remain retained, status must be StateNone/ReasonLost, and diag must record EndLost + CloseProbeTimeout + probe counts.
+	// Session must remain retained, status must be StateNone/ReasonLost, and diag must record EndLost + CloseProbeTimeout + probe/rx counts.
 	if r.ended {
 		t.Fatal("expected round to remain retained after probe timeout")
 	}
@@ -1300,7 +1312,12 @@ func TestCoordinatorProbeTimeoutRecordsLostAndProbeStats(t *testing.T) {
 	if !rpc.HasClosed || rpc.LivedMs <= 0 || rpc.CloseCause != CloseProbeTimeout {
 		t.Fatalf("expected read PC closed with LivedMs>0 & CloseProbeTimeout, got %+v", rpc)
 	}
-	if rpc.Probes.Sent != 4 || rpc.Probes.Echoed != 1 || rpc.Probes.Lost != 3 || rpc.Probes.Missed != 3 {
-		t.Fatalf("expected probe stats 4/1/3/3, got %+v", rpc.Probes)
+	if rpc.Probes.Sent != 4 || rpc.Probes.Echoed != 1 || rpc.Probes.EchoMaxMs != 20 ||
+		rpc.Probes.Late != 1 || rpc.Probes.LateMaxMs != 1500 || rpc.Probes.Unmatched != 0 ||
+		rpc.Probes.Lost != 2 || rpc.Probes.Missed != 3 || !rpc.Probes.HasLastEcho || rpc.Probes.LastEchoAgoMs != 1500 {
+		t.Fatalf("unexpected probe stats: %+v", rpc.Probes)
+	}
+	if rpc.Rx.Frames != 3 || rpc.Rx.Bytes != 5120 || !rpc.Rx.HasLastRx || rpc.Rx.LastRxAgoMs != 1300 {
+		t.Fatalf("unexpected rx stats: %+v", rpc.Rx)
 	}
 }

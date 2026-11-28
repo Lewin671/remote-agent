@@ -166,10 +166,32 @@ func ParseCloseCause(reason string) CloseCause {
 
 // ProbeStats holds privacy-safe liveness probe counters for one path.
 type ProbeStats struct {
-	Sent   int
-	Echoed int
-	Lost   int
-	Missed int
+	Sent          int
+	Echoed        int
+	EchoMaxMs     int64
+	Late          int
+	LateMaxMs     int64
+	Unmatched     int
+	Lost          int
+	Missed        int
+	HasLastEcho   bool
+	LastEchoAgoMs int64
+}
+
+// DCRxStats holds privacy-safe confirmed dc0 receive counters and recency for one path.
+type DCRxStats struct {
+	Frames      int64
+	Bytes       int64
+	HasLastRx   bool
+	LastRxAgoMs int64
+}
+
+// SelectedPairKind identifies the active candidate pair using only address families and candidate types.
+type SelectedPairKind struct {
+	LocalFamily  Family
+	RemoteFamily Family
+	LocalType    CandType
+	RemoteType   CandType
 }
 
 // Verdict is the one sentence a round comes down to.
@@ -244,16 +266,19 @@ type StunError struct {
 
 // AttemptData is one peer connection of a use; a restart makes a new one.
 type AttemptData struct {
-	At       int64
-	Local    Tally
-	Remote   Tally
-	Stun     []StunError
-	States   []StateEvent
-	Pairs    []PairGroup
-	Samples  int
-	Sampled  bool
-	sampling bool
-	last     [stateKinds]string
+	At                  int64
+	Local               Tally
+	Remote              Tally
+	Stun                []StunError
+	States              []StateEvent
+	Pairs               []PairGroup
+	HasSelectedPair     bool
+	SelectedPair        SelectedPairKind
+	SelectedPairChanges int
+	Samples             int
+	Sampled             bool
+	sampling            bool
+	last                [stateKinds]string
 }
 
 // PcData is one use over one round.
@@ -269,6 +294,7 @@ type PcData struct {
 	LivedMs    int64
 	CloseCause CloseCause
 	Probes     ProbeStats
+	Rx         DCRxStats
 }
 
 // RoundData is one round with a computer.
@@ -512,6 +538,7 @@ type StatsPair struct {
 	Local, Remote string
 	State         string // succeeded, failed, or anything in progress
 	Nominated     bool
+	Selected      bool
 	RTTSeconds    float64
 	HasRTT        bool
 	Sent, Got     int
@@ -540,8 +567,23 @@ func (a *AttemptData) take(t int64, s StatsReport) {
 	a.state(t, StateDTLS, s.DTLS)
 	a.state(t, StateDC, s.DC)
 	var groups []PairGroup
+	var selectedExplicit, selectedFallback SelectedPairKind
+	hasExplicit, hasFallback := false, false
 	for _, p := range s.Pairs {
 		l, r := locals[p.Local], remotes[p.Remote]
+		if p.Selected && !hasExplicit {
+			selectedExplicit = SelectedPairKind{
+				LocalFamily: l.Family, RemoteFamily: r.Family,
+				LocalType: l.Type, RemoteType: r.Type,
+			}
+			hasExplicit = true
+		} else if p.Nominated && p.State == "succeeded" && !hasFallback {
+			selectedFallback = SelectedPairKind{
+				LocalFamily: l.Family, RemoteFamily: r.Family,
+				LocalType: l.Type, RemoteType: r.Type,
+			}
+			hasFallback = true
+		}
 		i := 0
 		for i < len(groups) && !(groups[i].LocalType == l.Type && groups[i].LocalFamily == l.Family && groups[i].RemoteType == r.Type && groups[i].RemoteFamily == r.Family) {
 			i++
@@ -573,6 +615,19 @@ func (a *AttemptData) take(t int64, s StatsReport) {
 		g.Sent += max(0, p.Sent)
 		g.Got += max(0, p.Got)
 	}
+	if hasExplicit || hasFallback {
+		cur := selectedExplicit
+		if !hasExplicit {
+			cur = selectedFallback
+		}
+		if !a.HasSelectedPair {
+			a.HasSelectedPair = true
+			a.SelectedPair = cur
+		} else if a.SelectedPair != cur {
+			a.SelectedPairChanges++
+			a.SelectedPair = cur
+		}
+	}
 	a.Pairs = groups
 	a.Sampled = true
 }
@@ -599,10 +654,13 @@ func (pc *PcData) mark(t int64, m Mark) {
 	}
 }
 
-func (pc *PcData) recordClose(t int64, cause CloseCause, probes ProbeStats) {
+func (pc *PcData) recordClose(t int64, cause CloseCause, probes ProbeStats, rx DCRxStats) {
 	if probes.Sent > pc.Probes.Sent || (probes.Sent == pc.Probes.Sent &&
-		(probes.Echoed > pc.Probes.Echoed || probes.Lost > pc.Probes.Lost || probes.Missed > pc.Probes.Missed)) {
+		(probes.Echoed > pc.Probes.Echoed || probes.Late > pc.Probes.Late || probes.Unmatched > pc.Probes.Unmatched || probes.Lost > pc.Probes.Lost || probes.Missed > pc.Probes.Missed)) {
 		pc.Probes = probes
+	}
+	if rx.Frames > pc.Rx.Frames || (rx.Frames == pc.Rx.Frames && rx.Bytes > pc.Rx.Bytes) {
+		pc.Rx = rx
 	}
 	if !pc.HasClosed {
 		pc.ClosedAt, pc.HasClosed = t, true

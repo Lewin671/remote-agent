@@ -757,6 +757,16 @@ func (e *Engine) handleDirectEvents(ctx *StepContext, ev *corev1.DirectEventsRec
 	if len(ev.RawEnvelopes) == 0 || e.secEngine == nil {
 		return
 	}
+	var rxFrames, rxBytes int64
+	for _, raw := range ev.RawEnvelopes {
+		if len(raw) > 0 {
+			rxFrames++
+			rxBytes += int64(len(raw))
+		}
+	}
+	if rxFrames > 0 {
+		e.transportCoord.RecordDCRx(e.nowMs, ev.PcId, rxFrames, rxBytes)
+	}
 	items := make([]security.OpenItem, 0, len(ev.RawEnvelopes))
 	for _, raw := range ev.RawEnvelopes {
 		if len(raw) == 0 {

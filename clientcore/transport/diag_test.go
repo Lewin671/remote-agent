@@ -371,13 +371,57 @@ func TestDiagPathEndAndPrivacy(t *testing.T) {
 	pc := r.Pc(UseRead)
 	pc.mark(1000, MarkReady)
 	r.establish(2000)
-	pc.recordClose(5200, CloseProbeTimeout, ProbeStats{Sent: 5, Echoed: 2, Lost: 3, Missed: 3})
-	// Subsequent generic engine close must not overwrite specific cause or survival time.
-	pc.recordClose(9999, CloseEngine, ProbeStats{})
+	wantProbes := ProbeStats{Sent: 5, Echoed: 2, EchoMaxMs: 13, Late: 2, LateMaxMs: 1800, Unmatched: 0, Lost: 1, Missed: 3, HasLastEcho: true, LastEchoAgoMs: 250}
+	wantRx := DCRxStats{Frames: 12, Bytes: 34816, HasLastRx: true, LastRxAgoMs: 300}
+	pc.recordClose(5200, CloseProbeTimeout, wantProbes, wantRx)
+	// Subsequent generic engine close must not overwrite specific cause, survival time, probes or rx.
+	pc.recordClose(9999, CloseEngine, ProbeStats{}, DCRxStats{})
 	if !pc.HasClosed || pc.LivedMs != 4200 || pc.CloseCause != CloseProbeTimeout {
 		t.Fatalf("unexpected pc close record: %+v", pc)
 	}
-	if pc.Probes != (ProbeStats{Sent: 5, Echoed: 2, Lost: 3, Missed: 3}) {
+	if pc.Probes != wantProbes {
 		t.Fatalf("unexpected probe stats: %+v", pc.Probes)
+	}
+	if pc.Rx != wantRx {
+		t.Fatalf("unexpected rx stats: %+v", pc.Rx)
+	}
+}
+
+func TestDiagSelectedPairAndSwitchCount(t *testing.T) {
+	var d Diag
+	r := d.begin("mac", 1, 1000)
+	a := r.Pc(UseRead).begin(0)
+
+	// Explicit selected pair wins over nominated fallback.
+	p1 := spair("L6", "R6", "succeeded", 5, 5, 0.01)
+	p1.Selected = true
+	p2 := spair("L4", "R4", "succeeded", 5, 5, 0.02)
+	a.take(100, knownReport(p2, p1))
+	want1 := SelectedPairKind{LocalFamily: Family6, RemoteFamily: Family6, LocalType: CandHost, RemoteType: CandHost}
+	if !a.HasSelectedPair || a.SelectedPair != want1 || a.SelectedPairChanges != 0 {
+		t.Fatalf("initial selected pair = %+v (has=%v changes=%d), want %+v", a.SelectedPair, a.HasSelectedPair, a.SelectedPairChanges, want1)
+	}
+
+	// Same pair sampled again does not increment changes.
+	a.take(200, knownReport(p2, p1))
+	if a.SelectedPairChanges != 0 {
+		t.Fatalf("unchanged pair must not increment changes, got %d", a.SelectedPairChanges)
+	}
+
+	// Switch to IPv4 srflx -> host increments changes to 1.
+	p3 := spair("LS", "R4", "succeeded", 8, 8, 0.03)
+	p3.Selected = true
+	a.take(300, knownReport(p3))
+	want2 := SelectedPairKind{LocalFamily: Family4, RemoteFamily: Family4, LocalType: CandSrflx, RemoteType: CandHost}
+	if a.SelectedPair != want2 || a.SelectedPairChanges != 1 {
+		t.Fatalf("switched pair = %+v changes=%d, want %+v changes=1", a.SelectedPair, a.SelectedPairChanges, want2)
+	}
+
+	// Privacy guard: SelectedPairKind contains no addresses or ports.
+	txt := fmt.Sprint(a.SelectedPair)
+	for _, secret := range []string{L6, L4, LS, R6, R4, RS, port} {
+		if strings.Contains(txt, secret) {
+			t.Fatalf("selected pair leaks %q: %s", secret, txt)
+		}
 	}
 }

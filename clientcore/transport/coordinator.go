@@ -224,11 +224,43 @@ type pcBinding struct {
 	lastIceState   string
 	probe          linkcore.ProbeTracker
 	probeSamples   []ProbeSample
+	dcRxFrames     int64
+	dcRxBytes      int64
+	hasLastRx      bool
+	lastRxAt       int64
 }
 
-func (b *pcBinding) probeStats() ProbeStats {
-	sent, echoed, lost, missed := b.probe.Stats()
-	return ProbeStats{Sent: sent, Echoed: echoed, Lost: lost, Missed: missed}
+func (b *pcBinding) probeStats(now int64) ProbeStats {
+	st := b.probe.Stats()
+	var lastEchoAgo int64
+	if st.HasLastEcho {
+		lastEchoAgo = max(0, now-st.LastEchoAt)
+	}
+	return ProbeStats{
+		Sent:          st.Sent,
+		Echoed:        st.Echoed,
+		EchoMaxMs:     st.EchoMaxMs,
+		Late:          st.Late,
+		LateMaxMs:     st.LateMaxMs,
+		Unmatched:     st.Unmatched,
+		Lost:          st.Lost,
+		Missed:        st.Missed,
+		HasLastEcho:   st.HasLastEcho,
+		LastEchoAgoMs: lastEchoAgo,
+	}
+}
+
+func (b *pcBinding) rxStats(now int64) DCRxStats {
+	var lastRxAgo int64
+	if b.hasLastRx {
+		lastRxAgo = max(0, now-b.lastRxAt)
+	}
+	return DCRxStats{
+		Frames:      b.dcRxFrames,
+		Bytes:       b.dcRxBytes,
+		HasLastRx:   b.hasLastRx,
+		LastRxAgoMs: lastRxAgo,
+	}
 }
 
 func (b *pcBinding) inferCloseCause(reason string, fallback CloseCause) CloseCause {
@@ -309,6 +341,7 @@ func (r *coordRound) recordSentFrame(id string) {
 type trackedTicket struct {
 	ticket     Ticket
 	useDirect  bool
+	pcID       uint64
 	deadlineMs int64
 }
 
@@ -656,7 +689,8 @@ func (c *Coordinator) stepProbeTrackers(now int64) {
 				Round:  r.id,
 				Use:    b.use,
 				Cause:  CloseProbeTimeout,
-				Probes: b.probeStats(),
+				Probes: b.probeStats(now),
+				Rx:     b.rxStats(now),
 			})
 			b.probeSamples = nil
 			delete(r.localToGlobal, b.localID)
@@ -1231,7 +1265,8 @@ func (c *Coordinator) OnDcState(now int64, pcID uint64, open bool) []CoordEffect
 			Round:  r.id,
 			Use:    b.use,
 			Cause:  b.inferCloseCause("", CloseDCClosed),
-			Probes: b.probeStats(),
+			Probes: b.probeStats(now),
+			Rx:     b.rxStats(now),
 		})
 		b.probe.Reset()
 		b.probeSamples = nil
@@ -1252,6 +1287,36 @@ func (c *Coordinator) OnPcProbeReceived(now int64, pcID uint64, raw []byte) []Co
 	return c.take()
 }
 
+// RecordDCRx records confirmed business frames received on dc0 for diagnostics only.
+// It emits no effects and never affects routing or close decisions.
+func (c *Coordinator) RecordDCRx(now int64, pcID uint64, frames, bytes int64) {
+	if pcID == 0 || frames <= 0 {
+		return
+	}
+	b, r := c.lookupPC(pcID)
+	if b == nil || !b.confirmed || r.ended {
+		return
+	}
+	b.dcRxFrames += frames
+	if bytes > 0 {
+		b.dcRxBytes += bytes
+	}
+	b.hasLastRx = true
+	b.lastRxAt = now
+}
+
+// RecordDCRxByTicket records confirmed business frames received on dc0 via a tracked direct ticket.
+func (c *Coordinator) RecordDCRxByTicket(now int64, ticketID uint64, frames, bytes int64) {
+	if ticketID == 0 || frames <= 0 {
+		return
+	}
+	t, ok := c.tickets[ticketID]
+	if !ok || !t.useDirect || t.pcID == 0 {
+		return
+	}
+	c.RecordDCRx(now, t.pcID, frames, bytes)
+}
+
 // OnPcClosed reports that the native WebRTC PeerConnection closed.
 func (c *Coordinator) OnPcClosed(now int64, pcID uint64, reason string) []CoordEffect {
 	b, r := c.lookupPC(pcID)
@@ -1262,7 +1327,8 @@ func (c *Coordinator) OnPcClosed(now int64, pcID uint64, reason string) []CoordE
 		Round:  r.id,
 		Use:    b.use,
 		Cause:  b.inferCloseCause(reason, CloseNone),
-		Probes: b.probeStats(),
+		Probes: b.probeStats(now),
+		Rx:     b.rxStats(now),
 	})
 	b.probeSamples = nil
 	r.dcOpen[b.use] = false
@@ -1327,7 +1393,7 @@ func (c *Coordinator) PrepareAttempt(now int64, machineID string, h Hint, deadli
 				if pcID := r.globalPC[u]; pcID != 0 {
 					c.nextTicketID++
 					tid := c.nextTicketID
-					c.tickets[tid] = trackedTicket{ticket: ticket, useDirect: true, deadlineMs: ticketDeadline}
+					c.tickets[tid] = trackedTicket{ticket: ticket, useDirect: true, pcID: pcID, deadlineMs: ticketDeadline}
 					return RouteDecision{
 						UseDirect: true,
 						PCID:      pcID,
@@ -1365,7 +1431,7 @@ func (c *Coordinator) PrepareInteractive(now int64, machineID string, deadlineMs
 	}
 	c.nextTicketID++
 	tid := c.nextTicketID
-	c.tickets[tid] = trackedTicket{ticket: ticket, useDirect: true, deadlineMs: ticketDeadline}
+	c.tickets[tid] = trackedTicket{ticket: ticket, useDirect: true, pcID: pcID, deadlineMs: ticketDeadline}
 	return RouteDecision{
 		UseDirect: true,
 		PCID:      pcID,
@@ -2085,7 +2151,8 @@ func (c *Coordinator) applySessionEffects(now int64, r *coordRound, effects []li
 					Round:  r.id,
 					Use:    b.use,
 					Cause:  b.inferCloseCause(eff.Reason, CloseEngine),
-					Probes: b.probeStats(),
+					Probes: b.probeStats(now),
+					Rx:     b.rxStats(now),
 				})
 				if r.globalPC[b.use] == pcID {
 					r.globalPC[b.use] = 0
@@ -2201,7 +2268,8 @@ func (c *Coordinator) closeRoundNow(now int64, r *coordRound) {
 				Round:  r.id,
 				Use:    b.use,
 				Cause:  b.inferCloseCause("", CloseEngine),
-				Probes: b.probeStats(),
+				Probes: b.probeStats(now),
+				Rx:     b.rxStats(now),
 			})
 			c.markPCClosed(now, r, b, pcID)
 			delete(c.pcs, pcID)

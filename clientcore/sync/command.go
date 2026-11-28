@@ -62,6 +62,7 @@ func cloneCmdOutcome(ev *cmdOutcome) cmdOutcome {
 type CommandLeg struct {
 	AttemptID string
 	Direct    bool
+	PCID      uint64
 	TicketID  uint64
 	HandedOff bool
 	Done      bool
@@ -360,6 +361,7 @@ func (e *Engine) emitCommandLeg(
 	prep.ActiveLegs[attemptID] = &CommandLeg{
 		AttemptID: attemptID,
 		Direct:    isDirect,
+		PCID:      dec.pcID,
 		TicketID:  dec.ticketID,
 	}
 	if !isDirect && !e.demoMode && prep.SealedEnvelope != nil {
@@ -477,6 +479,33 @@ type directRouteArg struct {
 func (e *Engine) handleCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcomeEvent) {
 	if ev == nil || ev.RequestId == "" {
 		return
+	}
+	if ev.RouteWasDirect && ev.Source == corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON && e.transportCoord != nil {
+		rxBytes := int64(len(ev.RawSealedResult))
+		if rxBytes == 0 {
+			rxBytes = int64(len(ev.RawResult))
+		}
+		if rxBytes == 0 && ev.ObservedBytes > 0 {
+			rxBytes = ev.ObservedBytes
+		}
+		var pcID uint64
+		ticketID := ev.DirectTicketId
+		if prep := e.inFlightCmds[ev.RequestId]; prep != nil && ev.AttemptId != "" {
+			if leg := prep.ActiveLegs[ev.AttemptId]; leg != nil {
+				pcID = leg.PCID
+				if ticketID == 0 {
+					ticketID = leg.TicketID
+				}
+			}
+		}
+		if ticketID == 0 && ev.AttemptId != "" {
+			ticketID = e.lateDirectTickets[ev.AttemptId]
+		}
+		if pcID != 0 {
+			e.transportCoord.RecordDCRx(e.nowMs, pcID, 1, rxBytes)
+		} else if ticketID != 0 {
+			e.transportCoord.RecordDCRxByTicket(e.nowMs, ticketID, 1, rxBytes)
+		}
 	}
 	oc := &cmdOutcome{CommandOutcomeEvent: ev}
 	if len(ev.RawResult) > 0 {
