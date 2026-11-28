@@ -130,6 +130,15 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 	p.pc = pc
 	pc.OnDataChannel(func(dc *webrtc.DataChannel) { _ = dc.Close(); p.closeWhy("unexpected_data_channel") })
 	pc.OnICEConnectionStateChange(func(s webrtc.ICEConnectionState) { p.diag.ice(s.String()) })
+	if sctp := pc.SCTP(); sctp != nil {
+		if dtls := sctp.Transport(); dtls != nil {
+			if ice := dtls.ICETransport(); ice != nil {
+				ice.OnSelectedCandidatePairChange(func(pair *webrtc.ICECandidatePair) {
+					p.diag.pairChanged(formatPairTag(pair))
+				})
+			}
+		}
+	}
 	pc.OnICECandidate(func(c *webrtc.ICECandidate) {
 		if !p.valid() {
 			return
@@ -179,6 +188,7 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 		} else {
 			p.probe = dc
 			dc.OnMessage(func(m webrtc.DataChannelMessage) {
+				p.diag.rx()
 				// Probe channel accepts only fixed-size opaque echoes, never fragments or
 				// commands. Its response cannot amplify a request. Allow echoing once DTLS
 				// and the probe channel are open and the path's admission gate is valid,
@@ -193,9 +203,23 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 					return
 				}
 				p.diag.probe(true)
+				var dc0Buf, dc1Buf uint64
+				if p.data != nil {
+					dc0Buf = p.data.BufferedAmount()
+				}
+				dc1Buf = dc.BufferedAmount()
 				reply := append([]byte(nil), m.Data...)
 				reply[0] = 1
-				_ = dc.Send(reply)
+				err := dc.Send(reply)
+				if after := dc.BufferedAmount(); after > dc1Buf {
+					dc1Buf = after
+				}
+				if p.data != nil {
+					if after := p.data.BufferedAmount(); after > dc0Buf {
+						dc0Buf = after
+					}
+				}
+				p.diag.echoSent(err != nil, dc1Buf, dc0Buf)
 			})
 		}
 	}
@@ -212,6 +236,7 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 					p.closeWhy(p.gateReason())
 					return
 				}
+				p.sampleSCTP()
 				p.expire(now)
 			}
 		}
@@ -438,7 +463,11 @@ func (p *Path) TryWriteLow(raw []byte, maxBuffered uint64) bool {
 			return false
 		}
 	}
-	return p.data.Send(frame) == nil
+	if p.data.Send(frame) != nil {
+		return false
+	}
+	p.diag.txFrame(len(frame))
+	return true
 }
 
 // TryWrite is nonblocking result-path admission. The original deadline and
@@ -499,10 +528,12 @@ func (p *Path) write(ctx context.Context, raw []byte) error {
 		if err = p.data.Send(frame); err != nil {
 			return err
 		}
+		p.diag.txFrame(len(frame))
 	}
 	return nil
 }
 func (p *Path) receive(m webrtc.DataChannelMessage) {
+	p.diag.rx()
 	if !p.valid() || m.IsString || len(m.Data) > maxFrame {
 		return
 	}
@@ -580,10 +611,51 @@ func (p *Path) expire(now time.Time) {
 		}
 	}
 }
+func (p *Path) sampleSCTP() {
+	if p.pc == nil {
+		return
+	}
+	if sctp := p.pc.SCTP(); sctp != nil {
+		if st := sctp.Stats(); st.CongestionWindow > 0 {
+			p.diag.sampleCwnd(st.CongestionWindow)
+		}
+	}
+}
+
+func (p *Path) snapshotEnd() endSnapshot {
+	snap := endSnapshot{sctpSrttMs: -1, pair: "none"}
+	if p.probe != nil {
+		snap.dc1Buffered = p.probe.BufferedAmount()
+	}
+	if p.data != nil {
+		snap.dc0Buffered = p.data.BufferedAmount()
+	}
+	if p.pc != nil {
+		if sctp := p.pc.SCTP(); sctp != nil {
+			st := sctp.Stats()
+			snap.sctpSrttMs = srttSecondsToMs(st.SmoothedRoundTripTime)
+			snap.sctpCwnd = st.CongestionWindow
+			snap.sctpRwnd = st.ReceiverWindow
+			p.diag.sampleCwnd(st.CongestionWindow)
+			if buf := sctp.BufferedAmount(); buf > 0 {
+				snap.sctpBuffered = buf
+			}
+			if dtls := sctp.Transport(); dtls != nil {
+				if ice := dtls.ICETransport(); ice != nil {
+					if pair, err := ice.GetSelectedCandidatePair(); err == nil && pair != nil {
+						snap.pair = formatPairTag(pair)
+					}
+				}
+			}
+		}
+	}
+	return snap
+}
+
 func (p *Path) Close() {
 	p.once.Do(func() {
 		p.cancel()
-		p.diag.end(p.cfg.Use, p.cfg.Generation, p.cfg.Peer)
+		p.diag.end(p.cfg.Use, p.cfg.Generation, p.cfg.Peer, p.snapshotEnd())
 		if p.cfg.Ended != nil {
 			p.cfg.Ended()
 		}
