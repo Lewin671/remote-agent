@@ -3,11 +3,13 @@ import RACore
 import RAProto
 import SwiftUI
 
-/// 连接检测 (mockup 「连接检测」, Android's ConnCheckSheet): how long a round
-/// trip takes now on each stretch of the way, the nearest first: this
-/// device's network, the server, then each computer through the server.
-/// Measured when opened and on 再测一次; nothing runs in the background
-/// (architecture §9 「连接检测」).
+/// 连接检测 (client-v66 「连接检测」): how long a round trip takes now on
+/// each stretch of the way, the nearest first: this device's network, the
+/// server, then each online computer. The server's /healthz is timed here;
+/// each computer's total, its network and computer segments, slow marks and
+/// summary come from Core's `MachineLatencyView`, which runs `probe_latency`
+/// once ConnCheckStart arrives. Measured when opened and on 再测一次; nothing
+/// runs in the background (architecture §9 「连接检测」).
 struct ConnectionCheckScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
@@ -20,24 +22,20 @@ struct ConnectionCheckScreen: View {
         // Online first: those are the ones measured.
         let byName = settingsVM.machines
         let machines = byName.filter(\.online) + byName.filter { !$0.online }
+        let busy = (check?.busy ?? true) || settingsVM.connCheck.machinesBusy
         SettingsPage {
             GroupCard {
                 let network = settingsVM.connCheck.networkAvailable
                 GRow(L10n.connectionLocalNetwork(), value: network ? L10n.connectionWorking() : L10n.connectionUnavailable()).valueLead { Dot(network ? DS.green : DS.ink3) }
-                result(L10n.securityServer(), sub: hostOf(context.account.server), check?.server ?? .wait, slow: slowServerMs)
+                serverRow(check?.server ?? .wait)
                 for m in machines {
                     let tag = m.disambiguator.isEmpty ? nil : m.disambiguator
                     let tagA11y = m.hasDisambiguatorA11Y ? m.disambiguatorA11Y.rendered() : nil
                     if m.online, m.member || model.isDemo {
-                        result(m.name, tag: tag, tagA11y: tagA11y, check?.machines[m.machineID] ?? .wait, slow: slowMachineMs)
-                        if m.hasDirectRow, m.directRow.visible {
-                            let row = m.directRow
-                            let status = row.statusText.rendered()
-                            let detail = row.detailText.rendered()
-                            let metric = row.metricText.rendered()
-                            let trailing = [status, metric].filter { !$0.isEmpty }.joined(separator: " · ")
-                            GRow(row.labelText.rendered().or(L10n.transportDirect()), sub: detail.isEmpty ? nil : detail, value: trailing.isEmpty ? nil : trailing)
-                                .valueLead { directMark(row) }
+                        if m.hasLatency {
+                            ConnCheckMachineRow(card: m, tag: tag, tagA11y: tagA11y)
+                        } else {
+                            GRow(m.name, tag: tag, tagA11y: tagA11y, value: m.statusText.rendered().or(L10n.connectionNotChecked()))
                         }
                     } else if !m.member {
                         // Whether it is there is not known from here; the server's row says why.
@@ -50,23 +48,23 @@ struct ConnectionCheckScreen: View {
             .padding(.top, 4)
             let foot = settingsVM.connCheck.footerText.rendered().or(L10n.connectionLatencyIsOneRoundTripTheServerRowMeasures())
             GroupNote(foot)
-            Btn(L10n.connectionTestAgain(), enabled: check?.busy == false, background: DS.gbg) { run += 1 }
+            Btn(L10n.connectionTestAgain(), enabled: !busy, background: DS.gbg) { run += 1 }
                 .padding(.horizontal, 16)
         }
         .navBar(L10n.homeConnectionCheck())
         .debugSignal("check.again") { run += 1 }
         .task(id: run) {
             await context.coreHost.openSettings()
-            let made = check ?? ConnectionCheckModel(probes: probes)
+            let made = if let check { check } else { ConnectionCheckModel(probes: await probes()) }
             check = made
-            // The computers Core lists as online now, after openSettings() refreshed the view model.
-            let freshMachines = context.core.settings.machines
-            let online = freshMachines.filter { $0.online && ($0.member || model.isDemo) }.map(\.machineID)
-            context.dispatch {
-                $0.connCheckStatus.serverState = .checking
-            }
-            await made.measure(online: online)
+            // Core resets the server verdict on Start; this round's verdict must come after it.
+            await context.coreHost.dispatch(PBCoreEvent.with { $0.connCheckStart = PBConnCheckStartEvent() })
+            await made.measure()
+            guard !Task.isCancelled else { return }
             reportProbeStatus(made.server)
+        }
+        .onDisappear {
+            context.dispatch { $0.connCheckStop = PBConnCheckStopEvent() }
         }
     }
 
@@ -75,8 +73,6 @@ struct ConnectionCheckScreen: View {
             switch ping {
             case .wait:
                 ev.connCheckStatus.serverState = .checking
-            case .skip:
-                ev.connCheckStatus.serverState = .notChecked
             case .ok(let ms):
                 ev.connCheckStatus.serverState = ms >= slowServerMs ? .slow : .working
                 ev.connCheckStatus.latencyMs = Int32(ms)
@@ -87,83 +83,153 @@ struct ConnectionCheckScreen: View {
         }
     }
 
-    @ViewBuilder
-    private func directMark(_ row: PBConnCheckDirectRowView) -> some View {
-        switch row.stage {
-        case .direct: Dot(DS.green)
-        case .connecting, .measuring: Mark(Mark.progress, color: DS.ink2, size: 13, relativeTo: .footnote)
-        default: Dot(row.tone == .warn ? DS.orange : DS.faint)
-        }
-    }
-
-    /// A row with what its stretch measured.
-    private func result(_ title: String, tag: String? = nil, tagA11y: String? = nil, sub: String? = nil, _ ping: Ping, slow: Int64) -> GRow {
+    /// The server's row: the middle of three /healthz round trips.
+    private func serverRow(_ ping: Ping) -> GRow {
+        let title = L10n.securityServer()
+        let sub = hostOf(context.account.server)
         switch ping {
         case .wait:
-            return GRow(title, tag: tag, tagA11y: tagA11y, sub: sub, value: L10n.connectionChecking())
+            return GRow(title, sub: sub, value: L10n.connectionChecking())
                 .valueLead { Mark(Mark.progress, color: DS.ink2, size: 13, relativeTo: .footnote) }
-        case .skip:
-            return GRow(title, tag: tag, tagA11y: tagA11y, sub: sub, value: L10n.connectionNotChecked())
         case .fail(let error):
-            return GRow(title, tag: tag, tagA11y: tagA11y, sub: sub, value: error, valueColor: DS.red)
+            return GRow(title, sub: sub, value: error, valueColor: DS.red)
         case .ok(let ms):
-            let late = ms >= slow
-            return GRow(title, tag: tag, tagA11y: tagA11y, sub: sub, value: "\(ms) ms" + (late ? L10n.connectionSlow() : ""), valueColor: DS.ink2)
+            let late = ms >= slowServerMs
+            let shown = formatLatencyMs(ms)
+            return GRow(title, sub: sub, value: late ? L10n.connectionLatencyMsSlow(ms: shown) : L10n.connectionLatencyMs(ms: shown), valueColor: DS.ink2)
                 // Slow asks nothing of you: a light grey dot, not orange (design-system §2).
                 .valueLead { Dot(late ? DS.faint : DS.green) }
         }
     }
 
-    private var probes: ConnectionProbes {
+    private func probes() async -> ConnectionProbes {
         #if DEBUG
         // With the sample connection down (`-demoLink`), the sample server does not answer either.
-        if model.isDemo { return .demo(context.core.settings.online ? SettingsDemo.state : "serverDown") }
+        if model.isDemo {
+            let link = await context.coreHost.currentDemoWorld().connection
+            return .demo(link == .connected ? SettingsDemo.state : "serverDown")
+        }
         #endif
         let remote = context.remote
-        let directByID = Dictionary(uniqueKeysWithValues: context.core.settings.machines.map { ($0.machineID, $0.directReady) })
-        return ConnectionProbes(
-            server: { try await remote.pingServer() },
-            machine: { try await remote.pingMachine($0) },
-            canProbe: { id, reached in reached || (directByID[id] ?? false) }
-        )
+        return ConnectionProbes(server: { try await remote.pingServer() })
     }
 }
 
-/// The two measurements, so that the order and the rules are tested without a server.
+/// Thousands grouped the same way in every language, as Core writes a computer's total.
+func formatLatencyMs(_ ms: Int64) -> String {
+    max(0, ms).formatted(.number.grouping(.automatic).locale(Locale(identifier: "en_US")))
+}
+
+/// One online computer in 连接检测, drawn from Core's `MachineLatencyView`:
+/// name, the route summary under it and the total at its end, then the
+/// network and computer segments (and waiting for direct, after a reroute)
+/// as two aligned columns, a slow or stuck one in bold `ink`.
+private struct ConnCheckMachineRow: View {
+    let card: PBMachineListCardView
+    let tag: String?
+    let tagA11y: String?
+
+    var body: some View {
+        let lat = card.latency
+        let a11y = lat.a11YText.rendered()
+        VStack(alignment: .leading, spacing: 0) {
+            head(lat)
+            if !lat.segments.isEmpty || !lat.noteText.rendered().isEmpty {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(Array(lat.segments.enumerated()), id: \.offset) { _, seg in
+                        segment(seg)
+                    }
+                    let note = lat.noteText.rendered()
+                    if !note.isEmpty {
+                        Text(note).font(.footnote).ink(DS.ink2)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, lat.segments.isEmpty ? 0 : 2)
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, -4)
+                .padding(.bottom, 11)
+            }
+        }
+        .accessibilityElement(children: a11y.isEmpty ? .combine : .ignore)
+        .modifier(OptionalA11yLabel(text: a11y))
+    }
+
+    private func head(_ lat: PBMachineLatencyView) -> GRow {
+        let summary: String = {
+            let override = lat.summaryOverrideText.rendered()
+            if !override.isEmpty { return override }
+            guard card.hasDirectRow, card.directRow.visible else { return "" }
+            return [card.directRow.statusText.rendered(), card.directRow.detailText.rendered()]
+                .filter { !$0.isEmpty }.joined(separator: " · ")
+        }()
+        let sub = summary.isEmpty ? nil : summary
+        let value = lat.valueText.rendered()
+        switch lat.state {
+        case .measuring:
+            return GRow(card.name, tag: tag, tagA11y: tagA11y, sub: sub, value: value.or(L10n.connectionChecking()))
+                .valueLead { Mark(Mark.progress, color: DS.ink2, size: 13, relativeTo: .footnote) }
+        case .done:
+            return GRow(card.name, tag: tag, tagA11y: tagA11y, sub: sub, value: value, valueColor: DS.ink2)
+                // Slow asks nothing of you: a light grey dot, not orange (design-system §2).
+                .valueLead { Dot(lat.slow ? DS.faint : DS.green) }
+        case .failed:
+            return GRow(card.name, tag: tag, tagA11y: tagA11y, sub: sub, value: value, valueColor: DS.red)
+        default:
+            return GRow(card.name, tag: tag, tagA11y: tagA11y, sub: sub, value: value.or(L10n.connectionNotChecked()))
+        }
+    }
+
+    private func segment(_ seg: PBMachineLatencySegment) -> some View {
+        let strong = seg.slow || seg.stuck
+        let label = seg.labelText.rendered()
+        let slowTag = seg.slow ? seg.slowLabelText.rendered() : ""
+        let left = slowTag.isEmpty ? label : label + " · " + slowTag
+        let detail = seg.detailText.rendered()
+        return VStack(alignment: .leading, spacing: 1) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(left).frame(maxWidth: .infinity, alignment: .leading)
+                Text(seg.valueText.rendered()).monospacedDigit().lineLimit(1).fixedSize()
+            }
+            .font(.footnote.weight(strong ? .semibold : .regular))
+            .ink(strong ? DS.ink : DS.ink2)
+            if !detail.isEmpty {
+                Text(detail).font(.caption).ink(DS.ink2).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
+
+private struct OptionalA11yLabel: ViewModifier {
+    let text: String
+    func body(content: Content) -> some View {
+        if text.isEmpty { content } else { content.accessibilityLabel(text) }
+    }
+}
+
+/// The server's measurement, so that its order and rules are tested without a server.
 struct ConnectionProbes: Sendable {
     /// One round trip to the server, in ms.
     var server: @Sendable () async throws -> Int64
-    /// One round trip to a computer through the server, in ms.
-    var machine: @Sendable (_ id: String) async throws -> Int64
-    var canProbe: @Sendable (_ id: String, _ serverReachable: Bool) -> Bool = { _, reached in reached }
 
     #if DEBUG
     /// Fixed answers for looking at the page with `-demo`.
     static func demo(_ state: String?) -> ConnectionProbes {
-        ConnectionProbes(
-            server: {
-                if state == "checking" { try await Task.sleep(nanoseconds: 3_600_000_000_000) }
-                if state == "serverDown" { throw UserError(L10nMessage.connectionNoResponse()) }
-                return 86
-            },
-            machine: { id in
-                if state == "machineDown", id == "vps" { throw CommandError(CommandError.unavailable, L10nMessage.errorsTheComputerIsOfflineTheCommandWasNotSent()) }
-                // Told apart by ID so that one of them is slow.
-                return id == "vps" ? 2140 : 132
-            })
+        ConnectionProbes(server: {
+            if state == "checking" { try await Task.sleep(nanoseconds: 3_600_000_000_000) }
+            if state == "serverDown" { throw UserError(L10nMessage.connectionNoResponse()) }
+            return 86
+        })
     }
     #endif
 }
 
-/// One run of the check: the server first, by the middle one of three
-/// requests, then every online computer at once. When the server does not
-/// answer, each peer Link decides whether its path still permits a probe.
-/// RelayPath keeps the existing skip policy.
+/// One run of the server's row: the middle one of three /healthz requests.
+/// The computers are measured by Core after ConnCheckStart.
 @MainActor
 @Observable
 final class ConnectionCheckModel {
     private(set) var server = Ping.wait
-    private(set) var machines: [String: Ping] = [:]
     private(set) var busy = false
 
     @ObservationIgnored private let probes: ConnectionProbes
@@ -174,15 +240,13 @@ final class ConnectionCheckModel {
         self.probes = probes
     }
 
-    /// Measures the server and the computers `online`. Ends early, writing nothing, when its task is cancelled.
-    func measure(online: [String]) async {
+    /// Measures the server. Ends early, writing nothing, when its task is cancelled.
+    func measure() async {
         run += 1
         let mine = run
         busy = true
         server = .wait
-        machines = Dictionary(uniqueKeysWithValues: Set(online).map { ($0, Ping.wait) })
         defer { if mine == run { busy = false } }
-        var reached = true
         do {
             var samples: [Int64] = []
             for _ in 0..<3 {
@@ -195,26 +259,6 @@ final class ConnectionCheckModel {
         } catch {
             guard mine == run, !Task.isCancelled else { return }
             server = .fail(error: errorText(error).or(L10n.connectionNoResponse()))
-            reached = false
-            for id in machines.keys where !probes.canProbe(id, false) { machines[id] = .skip }
-        }
-        let probe = probes.machine
-        await withTaskGroup(of: (String, Ping?).self) { group in
-            for id in machines.keys where probes.canProbe(id, reached) {
-                group.addTask {
-                    do {
-                        return (id, .ok(ms: try await probe(id)))
-                    } catch is CancellationError {
-                        return (id, nil)
-                    } catch {
-                        return (id, .fail(error: errorText(error).or(L10n.connectionNoResponse())))
-                    }
-                }
-            }
-            for await (id, ping) in group {
-                guard mine == run, !Task.isCancelled else { continue }
-                if let ping { machines[id] = ping }
-            }
         }
     }
 }

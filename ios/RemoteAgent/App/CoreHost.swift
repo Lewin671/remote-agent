@@ -3726,6 +3726,28 @@ actor CoreHost: SyncEngine {
                 return
             }
             #if DEBUG
+            if demoMode, case .probeLatency(let req)? = cmd.kind {
+                // 连接检测 samples: VPS-dev's computer time is slow, mostly execution (client-v66).
+                if SettingsDemo.state == "machineDown", c.machineID == "vps" {
+                    await dispatch {
+                        $0.commandOutcome = .with {
+                            $0.requestID = c.requestID; $0.attemptID = c.attemptID
+                            $0.source = .local; $0.notForwarded = true
+                            $0.transportCode = CommandError.unavailable
+                            $0.transportDetail = L10n.errorsTheComputerIsOfflineTheCommandWasNotSent()
+                        }
+                    }
+                    return
+                }
+                let slow = c.machineID == "vps"
+                let outcome = Self.demoExecutedOutcome(for: c) {
+                    $0.probeLatency = req.work
+                        ? .with { $0.processUs = slow ? 1_790_000 : 21_000; $0.queueUs = slow ? 20_000 : 2_000; $0.executeUs = slow ? 1_770_000 : 19_000 }
+                        : .with { $0.processUs = 1_000 }
+                }
+                await dispatch { $0.commandOutcome = outcome }
+                return
+            }
             if demoMode, case .getMachineStatus? = cmd.kind {
                 let mode = await MachineStatusDemo.mode
                 if mode == "loading" { return }
