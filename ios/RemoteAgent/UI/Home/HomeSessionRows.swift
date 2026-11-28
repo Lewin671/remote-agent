@@ -7,7 +7,8 @@ import SwiftUI
 // sit side by side in one LazyVStack. Keying their ForEach by the bare session
 // ID gives the same identity to rows in different lists, and the lazy stack
 // then keeps drawing the row from the list the session just left (stale
-// status, wrong row style). Each list keys its rows with its own prefix.
+// status, wrong row style). Each list keys its rows with its own prefix; the
+// home screen's ended rows add their date group (`EndedEntry`).
 extension PBCoreAttentionRowView { var listID: String { "att:\(sessionID)" } }
 extension PBCoreSessionRowView { var listID: String { "run:\(sessionID)" } }
 extension PBCoreEndedRowView { var listID: String { "end:\(sessionID)" } }

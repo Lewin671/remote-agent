@@ -172,7 +172,7 @@ struct HomeContent: View {
         ids += home.running.map(\.listID)
         for g in home.endedGroups {
             ids.append("grp:\(g.groupKey)")
-            ids += g.items.map(\.listID)
+            ids += g.items.map { EndedEntry(group: g.groupKey, row: $0).id }
         }
         return ids
     }
@@ -259,8 +259,8 @@ struct HomeContent: View {
     @ViewBuilder private var endedSections: some View {
         ForEach(home.endedGroups, id: \.groupKey) { group in
             SectionTitle(title: group.label.rendered(), dated: true)
-            ForEach(group.items, id: \.listID) { row in
-                HomeEndedRow(row: row)
+            ForEach(group.items.map { EndedEntry(group: group.groupKey, row: $0) }) { entry in
+                HomeEndedRow(row: entry.row)
             }
         }
     }
@@ -505,3 +505,12 @@ private struct HomeScopeSheet: View {
     )
 }
 #endif
+
+/// An ended row keyed by its date group too: at midnight, or when the local
+/// calendar arrives, a session moves from one group to the next, and the lazy
+/// stack must build a new row there rather than keep the old one.
+private struct EndedEntry: Identifiable {
+    let group: String
+    let row: PBCoreEndedRowView
+    var id: String { "end:\(group):\(row.sessionID)" }
+}
