@@ -275,6 +275,7 @@ func convertDirectStatsReport(in *corev1.DirectStatsReport) *transport.StatsRepo
 			Remote:     rid,
 			State:      p.State,
 			Nominated:  p.Nominated,
+			Selected:   p.Selected,
 			RTTSeconds: p.CurrentRttSeconds,
 			HasRTT:     p.HasCurrentRtt,
 			Sent:       int(p.RequestsSent),

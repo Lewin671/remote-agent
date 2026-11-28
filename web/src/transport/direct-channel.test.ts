@@ -99,30 +99,33 @@ describe("DirectChannel", () => {
     await vi.waitFor(() => expect(received).toHaveLength(1));
     expect(received[0]).toEqual(payload);
 
-    // readStats translates addresses to family + type with zero raw IP/port fields
+    // readStats translates addresses to family + type with zero raw IP/port fields and marks selectedCandidatePairId
     pc.report = [
       { id: "lc1", type: "local-candidate", candidateType: "srflx", address: "198.51.100.42", port: 51234 },
       { id: "rc1", type: "remote-candidate", candidateType: "host", address: "2001:db8::1", port: 60000 },
       { id: "cp1", type: "candidate-pair", localCandidateId: "lc1", remoteCandidateId: "rc1", nominated: true, state: "succeeded", requestsSent: 3, responsesReceived: 2, currentRoundTripTime: 0.015 },
-      { id: "tr1", type: "transport", dtlsState: "connected" },
+      { id: "cp2", type: "candidate-pair", localCandidateId: "lc1", remoteCandidateId: "rc1", nominated: false, state: "failed", requestsSent: 1, responsesReceived: 0 },
+      { id: "tr1", type: "transport", dtlsState: "connected", selectedCandidatePairId: "cp1" },
       { id: "dc1", type: "data-channel", dataChannelIdentifier: 0, state: "open" },
     ];
     const stats = await channel.readStats();
     expect(stats.dtlsState).toBe("connected");
     expect(stats.dcState).toBe("open");
-    expect(stats.pairs).toHaveLength(1);
+    expect(stats.pairs).toHaveLength(2);
     expect(stats.pairs[0]).toMatchObject({
       localType: DirectCandType.SRFLX,
       localFamily: DirectCandFamily.V4,
       remoteType: DirectCandType.HOST,
       remoteFamily: DirectCandFamily.V6,
       nominated: true,
+      selected: true,
       state: "succeeded",
       requestsSent: 3,
       responsesReceived: 2,
       hasCurrentRtt: true,
       currentRttSeconds: 0.015,
     });
+    expect(stats.pairs[1]?.selected).toBe(false);
     const serialized = JSON.stringify(stats);
     expect(serialized).not.toContain("198.51.100.42");
     expect(serialized).not.toContain("2001:db8::1");
@@ -530,5 +533,54 @@ describe("DirectChannel", () => {
     expect(dc.onclose).toBeNull();
     expect(dc.onmessage).toBeNull();
     expect(probe.onmessage).toBeNull();
+  });
+
+  it("forwards kind=1 probe replies while valid even before ready, keeping kind=0 gated by ready", () => {
+    const sdk = fakeRTC();
+    const budget = new DirectBudget();
+    const probeReplies: Uint8Array[] = [];
+    const channel = new DirectChannel({
+      peer: "peer",
+      roundId: 9n,
+      use: 1,
+      generation: 1n,
+      budget,
+      valid: () => true,
+      stun: [],
+      factory: sdk.factory,
+      candidate: () => {},
+      state: () => {},
+      frame: () => {},
+      closed: () => {},
+      probeReply: (raw) => probeReplies.push(raw),
+    });
+
+    const pc = sdk.pcs[0]!;
+    const dc = pc.channels[0]!;
+    const probe = pc.channels[1]!;
+    probe.readyState = "open";
+    expect(channel.ready).toBe(false);
+
+    const req = new Uint8Array(17);
+    req[0] = 0;
+    req[1] = 0x11;
+    probe.onmessage?.({ data: req.buffer as ArrayBuffer });
+    expect(probe.send).not.toHaveBeenCalled();
+
+    const reply = new Uint8Array(17);
+    reply[0] = 1;
+    reply[1] = 0x22;
+    probe.onmessage?.({ data: reply.buffer as ArrayBuffer });
+    expect(probeReplies).toHaveLength(1);
+    expect(probeReplies[0]).toEqual(reply);
+
+    dc.readyState = "open";
+    pc.state("connected");
+    channel.confirm();
+    expect(channel.ready).toBe(true);
+    probe.onmessage?.({ data: req.buffer as ArrayBuffer });
+    expect(probe.send).toHaveBeenCalledTimes(1);
+
+    channel.close();
   });
 });

@@ -64,6 +64,7 @@ message DirectStatsPair {
   int32 responses_received = 8;
   double current_rtt_seconds = 9;
   bool has_current_rtt = 10;
+  bool selected = 11;
 }
 
 message DirectStatsReport {

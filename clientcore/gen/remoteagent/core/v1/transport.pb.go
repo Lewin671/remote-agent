@@ -150,6 +150,7 @@ type DirectStatsPair struct {
 	ResponsesReceived int32
 	CurrentRttSeconds float64
 	HasCurrentRtt     bool
+	Selected          bool
 }
 
 func (m *DirectStatsPair) GetLocalType() DirectCandType {
@@ -212,6 +213,12 @@ func (m *DirectStatsPair) GetHasCurrentRtt() bool {
 	}
 	return false
 }
+func (m *DirectStatsPair) GetSelected() bool {
+	if m != nil {
+		return m.Selected
+	}
+	return false
+}
 
 var LitewireDesc_DirectStatsPair = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectStatsPair{}) },
@@ -226,6 +233,7 @@ var LitewireDesc_DirectStatsPair = litewire.MessageDesc{
 		{Num: 8, Offset: unsafe.Offsetof(DirectStatsPair{}.ResponsesReceived), Kind: litewire.KindInt32},
 		{Num: 9, Offset: unsafe.Offsetof(DirectStatsPair{}.CurrentRttSeconds), Kind: litewire.KindDouble},
 		{Num: 10, Offset: unsafe.Offsetof(DirectStatsPair{}.HasCurrentRtt), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(DirectStatsPair{}.Selected), Kind: litewire.KindBool},
 	},
 }
 

@@ -289,9 +289,10 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                 override fun onBufferedAmountChange(previousAmount: Long) {}
 
                 override fun onMessage(data: ByteArray) {
-                    val ch = probeRef ?: return
-                    if (!ready || data.size != 17) return
+                    if (!valid() || data.size != 17) return
                     if (data[0] == 0.toByte()) {
+                        val ch = probeRef ?: return
+                        if (!ready) return
                         val reply = data.copyOf()
                         reply[0] = 1
                         ch.send(reply, true)

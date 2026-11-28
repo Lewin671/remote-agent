@@ -363,6 +363,32 @@ public  final class DirectStatsPair extends
     hasCurrentRtt_ = false;
   }
 
+  public static final int SELECTED_FIELD_NUMBER = 11;
+  private boolean selected_;
+  /**
+   * <code>bool selected = 11 [json_name = "selected"];</code>
+   * @return The selected.
+   */
+  @java.lang.Override
+  public boolean getSelected() {
+    return selected_;
+  }
+  /**
+   * <code>bool selected = 11 [json_name = "selected"];</code>
+   * @param value The selected to set.
+   */
+  private void setSelected(boolean value) {
+    
+    selected_ = value;
+  }
+  /**
+   * <code>bool selected = 11 [json_name = "selected"];</code>
+   */
+  private void clearSelected() {
+
+    selected_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.DirectStatsPair parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -833,6 +859,34 @@ public  final class DirectStatsPair extends
       return this;
     }
 
+    /**
+     * <code>bool selected = 11 [json_name = "selected"];</code>
+     * @return The selected.
+     */
+    @java.lang.Override
+    public boolean getSelected() {
+      return instance.getSelected();
+    }
+    /**
+     * <code>bool selected = 11 [json_name = "selected"];</code>
+     * @param value The selected to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSelected(boolean value) {
+      copyOnWrite();
+      instance.setSelected(value);
+      return this;
+    }
+    /**
+     * <code>bool selected = 11 [json_name = "selected"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSelected() {
+      copyOnWrite();
+      instance.clearSelected();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.DirectStatsPair)
   }
   @java.lang.Override
@@ -859,10 +913,12 @@ public  final class DirectStatsPair extends
             "responsesReceived_",
             "currentRttSeconds_",
             "hasCurrentRtt_",
+            "selected_",
           };
           java.lang.String info =
-              "\u0000\n\u0000\u0000\u0001\n\n\u0000\u0000\u0000\u0001\f\u0002\f\u0003\f\u0004\f" +
-              "\u0005\u0007\u0006\u0208\u0007\u0004\b\u0004\t\u0000\n\u0007";
+              "\u0000\u000b\u0000\u0000\u0001\u000b\u000b\u0000\u0000\u0000\u0001\f\u0002\f\u0003" +
+              "\f\u0004\f\u0005\u0007\u0006\u0208\u0007\u0004\b\u0004\t\u0000\n\u0007\u000b\u0007" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

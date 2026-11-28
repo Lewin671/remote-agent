@@ -19,7 +19,9 @@ import org.webrtc.DataChannel
 import org.webrtc.IceCandidate
 import org.webrtc.MediaConstraints
 import org.webrtc.PeerConnection
+import org.webrtc.RTCStats
 import org.webrtc.RTCStatsCollectorCallback
+import org.webrtc.RTCStatsReport
 import org.webrtc.SdpObserver
 import org.webrtc.SessionDescription
 import java.nio.ByteBuffer
@@ -113,6 +115,7 @@ class AndroidRtcAdapterTest {
         val createdChannels = CopyOnWriteArrayList<GuardedNativeDataChannel>()
         @Volatile var autoCompleteCallbacks = false
         @Volatile var delayJniMs = 0L
+        @Volatile var statsReport: RTCStatsReport? = null
 
         private inline fun <T> guard(op: String, block: () -> T): T {
             inFlight.incrementAndGet()
@@ -163,7 +166,9 @@ class AndroidRtcAdapterTest {
             PeerConnection.IceConnectionState.CONNECTED
         }
 
-        override fun getStats(callback: RTCStatsCollectorCallback) = guard("getStats") {}
+        override fun getStats(callback: RTCStatsCollectorCallback) = guard("getStats") {
+            statsReport?.let { callback.onStatsDelivered(it) }
+        }
 
         override fun close() = guard("close") {}
 
@@ -409,5 +414,40 @@ class AndroidRtcAdapterTest {
         assertEquals(0, commitCalls)
         assertEquals(1, applyCalls)
         assertFalse(store.isEnabled("https://example.com", "dev-1", "mac-1"))
+    }
+
+    @Test
+    fun readStatsMapsSelectedCandidatePairIdWithoutLeakingAddresses() = runBlocking {
+        val nativePeer = GuardedNativePeer()
+        val statsMap = linkedMapOf(
+            "lc1" to RTCStats(0L, "local-candidate", "lc1", mapOf("candidateType" to "host", "address" to "2001:db8:1::5", "port" to 54321)),
+            "rc1" to RTCStats(0L, "remote-candidate", "rc1", mapOf("candidateType" to "prflx", "address" to "2001:db8:2::9", "port" to 41478)),
+            "lc2" to RTCStats(0L, "local-candidate", "lc2", mapOf("candidateType" to "srflx", "address" to "198.51.100.7", "port" to 50000)),
+            "rc2" to RTCStats(0L, "remote-candidate", "rc2", mapOf("candidateType" to "host", "address" to "192.168.1.20", "port" to 41478)),
+            "cp1" to RTCStats(0L, "candidate-pair", "cp1", mapOf("localCandidateId" to "lc1", "remoteCandidateId" to "rc1", "nominated" to true, "state" to "succeeded", "requestsSent" to 4, "responsesReceived" to 4, "currentRoundTripTime" to 0.011)),
+            "cp2" to RTCStats(0L, "candidate-pair", "cp2", mapOf("localCandidateId" to "lc2", "remoteCandidateId" to "rc2", "nominated" to false, "state" to "failed", "requestsSent" to 2, "responsesReceived" to 0)),
+            "tr1" to RTCStats(0L, "transport", "tr1", mapOf("dtlsState" to "connected", "selectedCandidatePairId" to "cp1")),
+            "dc0" to RTCStats(0L, "data-channel", "dc0", mapOf("dataChannelIdentifier" to 0, "state" to "open")),
+        )
+        nativePeer.statsReport = RTCStatsReport(0L, statsMap)
+        val pc = AndroidRtcPeerConnection(noopPeerListener) { nativePeer }
+        try {
+            val report = pc.readStats()
+            assertEquals("connected", report.dtlsState)
+            assertEquals("open", report.dcState)
+            assertEquals(2, report.pairsCount)
+            val selected = report.pairsList.single { it.selected }
+            assertEquals(io.github.lewin671.remoteagent.core.proto.DirectCandFamily.DIRECT_CAND_FAMILY_V6, selected.localFamily)
+            assertEquals(io.github.lewin671.remoteagent.core.proto.DirectCandType.DIRECT_CAND_TYPE_HOST, selected.localType)
+            assertEquals(io.github.lewin671.remoteagent.core.proto.DirectCandFamily.DIRECT_CAND_FAMILY_V6, selected.remoteFamily)
+            assertEquals(io.github.lewin671.remoteagent.core.proto.DirectCandType.DIRECT_CAND_TYPE_PRFLX, selected.remoteType)
+            assertFalse(report.pairsList.single { !it.selected }.selected)
+            val dump = report.toString()
+            for (secret in listOf("2001:db8", "198.51.100.7", "192.168.1.20", "54321", "41478")) {
+                assertFalse("report must not leak $secret", dump.contains(secret))
+            }
+        } finally {
+            pc.close()
+        }
     }
 }

@@ -425,6 +425,7 @@ type DirectStatsPair struct {
 	ResponsesReceived int32                  `protobuf:"varint,8,opt,name=responses_received,json=responsesReceived,proto3" json:"responses_received,omitempty"`
 	CurrentRttSeconds float64                `protobuf:"fixed64,9,opt,name=current_rtt_seconds,json=currentRttSeconds,proto3" json:"current_rtt_seconds,omitempty"`
 	HasCurrentRtt     bool                   `protobuf:"varint,10,opt,name=has_current_rtt,json=hasCurrentRtt,proto3" json:"has_current_rtt,omitempty"`
+	Selected          bool                   `protobuf:"varint,11,opt,name=selected,proto3" json:"selected,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -525,6 +526,13 @@ func (x *DirectStatsPair) GetCurrentRttSeconds() float64 {
 func (x *DirectStatsPair) GetHasCurrentRtt() bool {
 	if x != nil {
 		return x.HasCurrentRtt
+	}
+	return false
+}
+
+func (x *DirectStatsPair) GetSelected() bool {
+	if x != nil {
+		return x.Selected
 	}
 	return false
 }
@@ -1200,6 +1208,7 @@ func (x *DirectPcStunErrorEvent) GetAddress() string {
 type DirectPcClosedEvent struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	PcId          uint64                 `protobuf:"varint,1,opt,name=pc_id,json=pcId,proto3" json:"pc_id,omitempty"`
+	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1239,6 +1248,13 @@ func (x *DirectPcClosedEvent) GetPcId() uint64 {
 		return x.PcId
 	}
 	return 0
+}
+
+func (x *DirectPcClosedEvent) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
 }
 
 type DirectDcStateEvent struct {
@@ -2615,7 +2631,7 @@ const file_remoteagent_core_v1_transport_proto_rawDesc = "" +
 	"\x15DirectPreferenceEntry\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x18\n" +
-	"\aenabled\x18\x02 \x01(\bR\aenabled\"\x91\x04\n" +
+	"\aenabled\x18\x02 \x01(\bR\aenabled\"\xad\x04\n" +
 	"\x0fDirectStatsPair\x12B\n" +
 	"\n" +
 	"local_type\x18\x01 \x01(\x0e2#.remoteagent.core.v1.DirectCandTypeR\tlocalType\x12H\n" +
@@ -2629,7 +2645,8 @@ const file_remoteagent_core_v1_transport_proto_rawDesc = "" +
 	"\x12responses_received\x18\b \x01(\x05R\x11responsesReceived\x12.\n" +
 	"\x13current_rtt_seconds\x18\t \x01(\x01R\x11currentRttSeconds\x12&\n" +
 	"\x0fhas_current_rtt\x18\n" +
-	" \x01(\bR\rhasCurrentRtt\"\xa6\x01\n" +
+	" \x01(\bR\rhasCurrentRtt\x12\x1a\n" +
+	"\bselected\x18\v \x01(\bR\bselected\"\xa6\x01\n" +
 	"\x11DirectStatsReport\x12\x1b\n" +
 	"\tice_state\x18\x01 \x01(\tR\biceState\x12\x1d\n" +
 	"\n" +
@@ -2676,9 +2693,10 @@ const file_remoteagent_core_v1_transport_proto_rawDesc = "" +
 	"\x16DirectPcStunErrorEvent\x12\x13\n" +
 	"\x05pc_id\x18\x01 \x01(\x04R\x04pcId\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\x05R\x04code\x12\x18\n" +
-	"\aaddress\x18\x03 \x01(\tR\aaddress\"*\n" +
+	"\aaddress\x18\x03 \x01(\tR\aaddress\"B\n" +
 	"\x13DirectPcClosedEvent\x12\x13\n" +
-	"\x05pc_id\x18\x01 \x01(\x04R\x04pcId\"=\n" +
+	"\x05pc_id\x18\x01 \x01(\x04R\x04pcId\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"=\n" +
 	"\x12DirectDcStateEvent\x12\x13\n" +
 	"\x05pc_id\x18\x01 \x01(\x04R\x04pcId\x12\x12\n" +
 	"\x04open\x18\x02 \x01(\bR\x04open\"i\n" +

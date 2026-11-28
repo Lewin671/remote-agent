@@ -304,6 +304,8 @@ public struct PBCoreDirectStatsPair: Sendable {
 
   public var hasCurrentRtt_p: Bool = false
 
+  public var selected: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -978,7 +980,7 @@ extension PBCoreDirectPreferenceEntry: SwiftProtobuf.Message, SwiftProtobuf._Mes
 
 extension PBCoreDirectStatsPair: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DirectStatsPair"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}local_type\0\u{3}local_family\0\u{3}remote_type\0\u{3}remote_family\0\u{1}nominated\0\u{1}state\0\u{3}requests_sent\0\u{3}responses_received\0\u{3}current_rtt_seconds\0\u{3}has_current_rtt\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}local_type\0\u{3}local_family\0\u{3}remote_type\0\u{3}remote_family\0\u{1}nominated\0\u{1}state\0\u{3}requests_sent\0\u{3}responses_received\0\u{3}current_rtt_seconds\0\u{3}has_current_rtt\0\u{1}selected\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -996,6 +998,7 @@ extension PBCoreDirectStatsPair: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       case 8: try { try decoder.decodeSingularInt32Field(value: &self.responsesReceived) }()
       case 9: try { try decoder.decodeSingularDoubleField(value: &self.currentRttSeconds) }()
       case 10: try { try decoder.decodeSingularBoolField(value: &self.hasCurrentRtt_p) }()
+      case 11: try { try decoder.decodeSingularBoolField(value: &self.selected) }()
       default: break
       }
     }
@@ -1032,6 +1035,9 @@ extension PBCoreDirectStatsPair: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if self.hasCurrentRtt_p != false {
       try visitor.visitSingularBoolField(value: self.hasCurrentRtt_p, fieldNumber: 10)
     }
+    if self.selected != false {
+      try visitor.visitSingularBoolField(value: self.selected, fieldNumber: 11)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1046,6 +1052,7 @@ extension PBCoreDirectStatsPair: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if lhs.responsesReceived != rhs.responsesReceived {return false}
     if lhs.currentRttSeconds != rhs.currentRttSeconds {return false}
     if lhs.hasCurrentRtt_p != rhs.hasCurrentRtt_p {return false}
+    if lhs.selected != rhs.selected {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

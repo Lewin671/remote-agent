@@ -520,6 +520,7 @@ internal class AndroidRtcPeerConnection internal constructor(
                     pc.getStats { report ->
                         var dtlsState = ""
                         var dcState = ""
+                        var selectedPairId: String? = null
                         val locals = HashMap<String, Pair<DirectCandType, DirectCandFamily>>()
                         val remotes = HashMap<String, Pair<DirectCandType, DirectCandFamily>>()
                         val rawPairs = ArrayList<RTCStats>()
@@ -532,7 +533,10 @@ internal class AndroidRtcPeerConnection internal constructor(
                                     if (s.type == "local-candidate") locals[s.id] = info else remotes[s.id] = info
                                 }
                                 "candidate-pair" -> rawPairs.add(s)
-                                "transport" -> (m["dtlsState"] as? String)?.takeIf { it.isNotEmpty() }?.let { dtlsState = it }
+                                "transport" -> {
+                                    (m["dtlsState"] as? String)?.takeIf { it.isNotEmpty() }?.let { dtlsState = it }
+                                    (m["selectedCandidatePairId"] as? String)?.takeIf { it.isNotEmpty() }?.let { selectedPairId = it }
+                                }
                                 "data-channel" -> {
                                     val dcId = (m["dataChannelIdentifier"] as? Number)?.toInt()
                                     val st = m["state"] as? String
@@ -551,12 +555,14 @@ internal class AndroidRtcPeerConnection internal constructor(
                             val remoteInfo = remotes[m["remoteCandidateId"] as? String]
                                 ?: (DirectCandType.DIRECT_CAND_TYPE_UNSPECIFIED to DirectCandFamily.DIRECT_CAND_FAMILY_UNSPECIFIED)
                             val rtt = (m["currentRoundTripTime"] as? Number)?.toDouble()?.takeIf { it.isFinite() }
+                            val isSelected = (selectedPairId != null && p.id == selectedPairId) || (m["selected"] == true)
                             val pairBuilder = DirectStatsPair.newBuilder()
                                 .setLocalType(localInfo.first)
                                 .setLocalFamily(localInfo.second)
                                 .setRemoteType(remoteInfo.first)
                                 .setRemoteFamily(remoteInfo.second)
                                 .setNominated(m["nominated"] == true)
+                                .setSelected(isSelected)
                                 .setState((m["state"] as? String).orEmpty())
                                 .setRequestsSent(statsInt(m["requestsSent"]))
                                 .setResponsesReceived(statsInt(m["responsesReceived"]))

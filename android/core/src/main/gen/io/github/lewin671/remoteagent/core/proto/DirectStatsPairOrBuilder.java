@@ -95,4 +95,10 @@ public interface DirectStatsPairOrBuilder extends
    * @return The hasCurrentRtt.
    */
   boolean getHasCurrentRtt();
+
+  /**
+   * <code>bool selected = 11 [json_name = "selected"];</code>
+   * @return The selected.
+   */
+  boolean getSelected();
 }

@@ -870,4 +870,66 @@ class DirectChannelTest {
             closeScope.cancel()
         }
     }
+
+    @Test
+    fun probeReplyForwardsWhileValidEvenBeforeReadyAndKindZeroStaysGatedByReady() = runTest {
+        val (dispatcher, closeScope) = testRuntime()
+        var fakePc: FakePeerConnection? = null
+        val probeReplies = CopyOnWriteArrayList<ByteArray>()
+        val channel = DirectChannel(
+            DirectChannelOptions(
+                peer = "m-1",
+                roundId = 72L,
+                use = 1,
+                generation = 1L,
+                budget = DirectBudget(),
+                valid = { true },
+                stun = emptyList(),
+                factory = RtcFactory { _, l -> FakePeerConnection(l).also { fakePc = it } },
+                candidate = {},
+                state = { _, _ -> },
+                frame = {},
+                closed = {},
+                probeReply = { probeReplies.add(it) },
+                monotonic = { testScheduler.currentTime },
+                dispatcher = dispatcher,
+                receiveDispatcher = dispatcher,
+                closeScope = closeScope,
+            ),
+        )
+        try {
+            val data = fakePc!!.channels.getValue(0)
+            val probe = fakePc!!.channels.getValue(1)
+            probe.open()
+            // Not confirmed and dc0 not open yet -> ready is false, valid() is true.
+            assertFalse(channel.ready)
+
+            val req = ByteArray(17).apply { this[0] = 0; this[1] = 0x11 }
+            probe.listener.onMessage(req)
+            assertTrue("kind=0 probe request must not be echoed before ready", probe.sent.isEmpty())
+
+            val reply = ByteArray(17).apply { this[0] = 1; this[1] = 0x22 }
+            probe.listener.onMessage(reply)
+            assertEquals("kind=1 probe echo must forward whenever valid()", 1, probeReplies.size)
+            assertArrayEquals(reply, probeReplies[0])
+
+            // Once ready (dc0 open + confirmed), kind=0 IS echoed.
+            data.open()
+            channel.confirm()
+            assertTrue(channel.ready)
+            probe.listener.onMessage(req)
+            assertEquals(1, probe.sent.size)
+            assertEquals(1.toByte(), probe.sent[0][0])
+
+            // After close(), valid() is false so kind=1 is no longer forwarded.
+            channel.close()
+            runCurrent()
+            probe.listener.onMessage(reply)
+            assertEquals(1, probeReplies.size)
+        } finally {
+            channel.close()
+            runCurrent()
+            closeScope.cancel()
+        }
+    }
 }

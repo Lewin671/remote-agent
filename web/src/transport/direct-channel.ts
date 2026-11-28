@@ -279,10 +279,10 @@ export class DirectChannel {
         .catch(() => this.close("receive_error"));
     };
     this.probe.onmessage = (event) => {
-      if (!this.ready || !(event.data instanceof ArrayBuffer) || event.data.byteLength !== 17) return;
+      if (!this.valid() || !(event.data instanceof ArrayBuffer) || event.data.byteLength !== 17) return;
       const raw = new Uint8Array(event.data);
       if (raw[0] === 0) {
-        if (this.probe.readyState !== "open") return;
+        if (!this.ready || this.probe.readyState !== "open") return;
         raw[0] = 1;
         try {
           this.probe.send(raw);
@@ -402,6 +402,7 @@ export class DirectChannel {
         const locals = new Map<string, { type: DirectCandType; family: DirectCandFamily }>();
         const remotes = new Map<string, { type: DirectCandType; family: DirectCandFamily }>();
         const rawPairs: Array<Record<string, unknown>> = [];
+        let selectedPairId = "";
         stats.forEach((s: Record<string, unknown>) => {
           switch (s.type) {
             case "local-candidate":
@@ -416,6 +417,9 @@ export class DirectChannel {
               break;
             case "transport":
               if (typeof s.dtlsState === "string" && s.dtlsState) dtlsState = s.dtlsState;
+              if (typeof s.selectedCandidatePairId === "string" && s.selectedCandidatePairId) {
+                selectedPairId = s.selectedCandidatePairId;
+              }
               break;
             case "data-channel":
               if ((s.dataChannelIdentifier === undefined || s.dataChannelIdentifier === 0) && typeof s.state === "string") {
@@ -428,12 +432,14 @@ export class DirectChannel {
           const l = locals.get(String(p.localCandidateId)) ?? { type: DirectCandType.UNSPECIFIED, family: DirectCandFamily.UNSPECIFIED };
           const r = remotes.get(String(p.remoteCandidateId)) ?? { type: DirectCandType.UNSPECIFIED, family: DirectCandFamily.UNSPECIFIED };
           const hasRtt = typeof p.currentRoundTripTime === "number" && Number.isFinite(p.currentRoundTripTime);
+          const isSelected = (selectedPairId !== "" && String(p.id) === selectedPairId) || p.selected === true;
           pairs.push(create(DirectStatsPairSchema, {
             localType: l.type,
             localFamily: l.family,
             remoteType: r.type,
             remoteFamily: r.family,
             nominated: p.nominated === true,
+            selected: isSelected,
             state: typeof p.state === "string" ? p.state : "",
             requestsSent: typeof p.requestsSent === "number" && Number.isFinite(p.requestsSent) ? Math.floor(p.requestsSent) : 0,
             responsesReceived: typeof p.responsesReceived === "number" && Number.isFinite(p.responsesReceived) ? Math.floor(p.responsesReceived) : 0,
