@@ -4263,10 +4263,10 @@ actor CoreHost: SyncEngine {
         let nowMs = clock()
         let cal = Self.makeLocalCalendar(nowMs: nowMs)
         let sched = Self.makeScheduleLocalContext(nowMs: nowMs)
-        await dispatch {
-            $0.clockUpdated = cal
-            $0.scheduleLocalContext = sched
-        }
+        // Two events: both fields sit in the event oneof, so setting them on
+        // one event keeps only the last and the core never gets the calendar.
+        await dispatch { $0.clockUpdated = cal }
+        await dispatch { $0.scheduleLocalContext = sched }
     }
 
     static func makeScheduleLocalContext(nowMs: Int64, timeZone: TimeZone = .current) -> PBScheduleLocalContextEvent {
