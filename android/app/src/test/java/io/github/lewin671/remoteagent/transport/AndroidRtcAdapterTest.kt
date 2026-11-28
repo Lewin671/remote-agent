@@ -168,6 +168,7 @@ class AndroidRtcAdapterTest {
 
         override fun getStats(callback: RTCStatsCollectorCallback) = guard("getStats") {
             statsReport?.let { callback.onStatsDelivered(it) }
+            Unit
         }
 
         override fun close() = guard("close") {}
