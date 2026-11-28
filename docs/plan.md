@@ -15,7 +15,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 | daemon（Claude Code） | 和 Codex 同等的全部操作，外加账户额度采集、退出结算和首条输出前中断恢复；模型列表、档位、上下文窗口和 auto 是否可用都读 Claude Code 的模型目录（它自己的缓存和编进 daemon 的副本取较新的），模型按具体 ID 选择 | 真实 CLI（`scripts/acceptance-claude.sh`，[记录](acceptance-notes.md#3-claude-code)） | 网页和原生客户端的直接界面操作；图片、auto 模式、审批超时、压缩、分叉 |
 | Antigravity（agy） | daemon 与协议 14、网页/Android/iOS 的多 CLI 界面已整合完成（[architecture §19](architecture.md#19-接入-antigravity)） | agy 1.5.0 真实加密端到端与 doctor；本机 Chrome 直接操作的新建、消息、审批、额度及会话设置；三端自动检查，见[整合验收](acceptance-notes.md#antigravity-三端整合与网页直接验收2026-11-04) | 原生客户端真机与直接界面操作；源会话退出后的 MCP 定时派发、API 计费来源仍待验证。审计修复的真实双图与自然计划流程见[复验](acceptance-notes.md#antigravity-审计修复复验2026-11-04) |
 | server 和端到端加密 | 设备登记和登录、密文存储和转发、配对、Web Push 和 FCM、图片存取和配额、会话列表分页、信封内层压缩；一台中继上的多个账户、开放注册和账户管理（[architecture](architecture.md#一台中继上的多个账户)） | 自动测试，加线上 server 的手动验收；协议版本 3 的分页和压缩在线上账户里用网页走过一遍（[记录](acceptance-notes.md#8-v9-以后的界面改动)）；多账户：自动测试，加一次旧库迁移的本地演练 | 协议版本 3 在 Android、Safari、多项目和断线重连下的验收；多账户在公共中继上由别人走一遍「试用」流程 |
-| 网页 | 界面稿 [client-v58](design/client-v66.html) 的全部画面，手机和宽屏（[验收](acceptance-notes.md#网页按-client-v58-重画2026-11-11)） | 到 v7：真实 CLI 加逐屏对照；v8：真实 CLI，没有逐屏对照；v9 以后的改动大多只过自动测试（[记录](acceptance-notes.md#8-v9-以后的界面改动)） | 真机上的键盘、系统选图、分享面板、推送和扫码；Codex 生成图只用演示数据看过；往上翻时分段读取更早的记录 |
+| 网页 | 界面稿 [client-v58](design/client-v67.html) 的全部画面，手机和宽屏（[验收](acceptance-notes.md#网页按-client-v58-重画2026-11-11)） | 到 v7：真实 CLI 加逐屏对照；v8：真实 CLI，没有逐屏对照；v9 以后的改动大多只过自动测试（[记录](acceptance-notes.md#8-v9-以后的界面改动)） | 真机上的键盘、系统选图、分享面板、推送和扫码；Codex 生成图只用演示数据看过；往上翻时分段读取更早的记录 |
 | Android App | 界面稿 v58 的手机和宽屏画面；原生终端、FCM 推送、在通知里审批 | 模拟器上的真实 CLI 直接点按（[v58 验收](acceptance-notes.md#android-按-client-v58-重画2026-11-11)）；各画面用示例数据对照过亮色和暗色 | 真机验收；聊天开头的「开始时间 · 目录」一行；平板和横屏布局；下方「Android 的小缺口」 |
 | iOS App | 界面稿 v58 的手机和 iPad 画面，界面层用系统组件；原生终端；从 App 发图、文件和看大图。没有推送，也没有在通知里审批（[ios-client · 还不能做的](ios-client.md#还不能做的)） | 模拟器真实 CLI：文件选择/发送已由 XCUITest 点按真实系统选择器（[记录](acceptance-notes.md#ios-原生选择器实测2026-10-28)），其余链路主要由调试信号触发（[记录](acceptance-notes.md#11-ios)）；各画面用三组示例数据看过亮色、暗色和特大字号 | 0.55.0 已于 2026-11-06 在美区 App Store 上架；手工手势、VoiceOver 朗读、硬件键盘、iPad 横屏都没验证；下方「iOS」一组待确认 |
 | 客户端状态推导 | 三端共同规则与共享事件向量（[契约](architecture.md#客户端状态推导的共同规则)） | 网页真实 CLI（独立无头 Chrome 手机宽/宽屏）；原生自动测试（[记录](acceptance-notes.md#客户端状态推导共享向量)） | 当前 checkpoint 已过自动验收；聊天历史分段读取 |
@@ -53,7 +53,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 
 按顺序做；第一项是当前的主要工作。
 
-1. **三端按 [client-v58](design/client-v66.html) 实现新界面**。网页已完成（[验收](acceptance-notes.md#网页按-client-v58-重画2026-11-11)）；iOS 已完成（[验收](acceptance-notes.md#ios-按-client-v58-重写界面层2026-11-11)）；Android 已完成（[验收](acceptance-notes.md#android-按-client-v58-重画2026-11-11)）。剩下的是三端真机验收和各验收记录里标为未验证的流程。规则见 [design-system.md](design-system.md)，功能和行为不变。iOS 的界面层改用系统组件重写（NavigationStack、系统弹层与菜单、系统材质、SF Symbols），不再自绘（[ios-client · 选型](ios-client.md#选型)）。验收标准：每端逐屏对照 v58 的亮色和暗色，按 design-system 第 9 节自查；现有自动测试通过；在隔离环境用真实 CLI 直接操作一遍新建、审批、提问、计划、定时和设置，未覆盖的流程标为未验证
+1. **三端按 [client-v58](design/client-v67.html) 实现新界面**。网页已完成（[验收](acceptance-notes.md#网页按-client-v58-重画2026-11-11)）；iOS 已完成（[验收](acceptance-notes.md#ios-按-client-v58-重写界面层2026-11-11)）；Android 已完成（[验收](acceptance-notes.md#android-按-client-v58-重画2026-11-11)）。剩下的是三端真机验收和各验收记录里标为未验证的流程。规则见 [design-system.md](design-system.md)，功能和行为不变。iOS 的界面层改用系统组件重写（NavigationStack、系统弹层与菜单、系统材质、SF Symbols），不再自绘（[ios-client · 选型](ios-client.md#选型)）。验收标准：每端逐屏对照 v58 的亮色和暗色，按 design-system 第 9 节自查；现有自动测试通过；在隔离环境用真实 CLI 直接操作一遍新建、审批、提问、计划、定时和设置，未覆盖的流程标为未验证
 2. **相册里图片和视频一起选**。「＋」的相册入口同时列出图片和视频，视频按文件发送，规则见 [session-files.md](session-files.md#从相册选视频)。只改三端的选择器和草稿显示，不改协议。随新界面一起做。验收标准：三端各从相册选一段视频发给真实 CLI，CLI 收到文件路径；超过 100 MiB 的视频在选中时提示；电脑不能收文件时相册只列图片
 3. **Agent 发文件的联合验收**。电脑端和三端文件卡已整合，设计见 [session-files.md](session-files.md#agent-给客户端发文件)。直连复用同一共享对象与只读 `GetSharedFileChunk`，不开放客户端任意路径，待确认事项见「待确认 › 传输模块与直连」。验收标准：Claude Code、Codex、Antigravity 各在隔离环境里真实调用一次 `send_file`，三端在直接界面操作下下载并核对哈希；电脑离线、会话结束、本机副本与断点恢复按共同状态规则显示。
 4. **文件附件的三端联合验收**。按 [session-files.md](session-files.md) 和「待确认 › 文件附件」，在独立测试环境补真机、云文件提供器、大文件内存峰值及断连恢复。验收标准：逐项记录环境、直接界面操作与调试触发的区别、真实 CLI 结果及资源占用；修复确认的问题，未覆盖的流程继续明确标为未验证。
@@ -65,7 +65,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 10. **v8 以后的界面改动补验收**。两端逐屏对照 client-v38（网页的 v8 改动也没有逐屏对照过），并连真实 CLI 走一遍设置类页面
 11. **清理被登录 shell 取代的机制**。客户端开的会话现在由登录 shell 现算环境（[architecture §6](architecture.md#6-接入-codex)），`agent.env`、`daemon.sh install` 写进服务的 `PATH`、以及用户自己的 `~/.local/shims` 包装脚本都只是为了在没有这步之前把环境补上。先在真实使用里观察一段时间：从手机新开的会话能直接用到新装的命令和升级过的 CLI，不需要重装服务或改 `agent.env`；确认后删掉 daemon 读 `agent.env` 和 install 写 `PATH` 的逻辑，并同步 README 和 architecture §6
 12. **偶发失败的测试**。v0.108.1（2026-11-27）按根因修掉一批 CI 与高负载下的偶发失败，其中四处是产品问题：daemon 终端输出序号与重放缓冲不同步导致重新接入被误判溢出、安全状态与租约分两步安装导致操作被拒、网页会话缓存不失效、iOS 演示模式退出崩溃；其余改为注入时钟/调度器或等明确条件（Android `showForTest` 与核心邮箱串行、`SharedFiles` 注入 IO 调度器、附件冷启动等存储收敛，iOS 直连注入时钟与关闭调度，Go `ptyhost` 注入宽限定时器、`TestPhase2CrossPathFaultInjection10000` 注入调度时钟等），Android 单测的 Robolectric SDK 改为构建期由 Gradle 解析、运行期离线。之后 iOS App 检查里 `AppModelTests` 的重置类用例仍偶发超时，v0.108.2 改为等明确信号并把启动、前后台与网络命令按先后排队，v0.108.3 修了存储队列 `drain()` 的优先级反转（等待者在时把剩余写盘提升到等待者优先级，依据 CI 超时时的 spindump；本机未复现），CI 失败时会打印 xcresult 断言摘要。v0.108.3 的正式发布与 3 次 Release 演练全部检查（含 iOS App 检查）通过。iOS 留下的小项：给「drain 时正在执行的操作被提升」补测试；`PriorityEscalatingSerialQueue.drain()` 的 DEBUG/Release 两份加锁代码合一；`SecurityScreensTests` 等仍有 5 秒 `waitForLoadForTest`/`eventually`。仍待确认：Go `TestLateProbePreservesEstablishedRealPionSession`、Android `DirectTransportTest`、iOS `DirectEngineBehaviorTests` 在负载高时的偶发超时，这批没有复查。验收标准：找到依赖真实时间的等待并改为按事件或可控时钟推进，在并行负载下连跑 20 次不失败另：v0.109.0 的 Release 被 `TestCoordinatorUnsupportedAndTerminalReopen` 拦下（真随机数驱动全抖动退避，偶尔抽到约 0 ms），已改为固定熵；v0.109.1 的 Release 里 iOS `RemoteTests.streamsTheTerminal` 在 CI 超过 120 秒，尚未查因。
-13. **连接检测耗时拆分：iOS 接入与收尾**。v0.109 起网页和 Android 把电脑一行拆成网络往返与电脑处理（只读指令 `probe_latency`，规则在 `clientcore`，界面见 [client-v66](design/client-v66.html#conncheck)）。iOS 仍用 `PingMachine` 只显示总耗时，底部说明在没有分段时只显示第一句。剩下：iOS 壳按同一视图模型接入（先发 `ConnCheckStart` 再报本轮服务器结论，见 [architecture.md](architecture.md) 的连接检测）；三端都迁完后删除核心里的 `PingMachine*`；线上用真实弱网各看一次慢在网络、慢在电脑和改走中继三种显示。验收标准：iOS 模拟器按金样渲染并连真实 daemon 测一次，`git grep PingMachine` 只剩测试或为零
+13. **连接检测耗时拆分：iOS 接入与收尾**。v0.109 起网页和 Android 把电脑一行拆成网络往返与电脑处理（只读指令 `probe_latency`，规则在 `clientcore`，界面见 [client-v67](design/client-v67.html#conncheck)）。iOS 仍用 `PingMachine` 只显示总耗时，底部说明在没有分段时只显示第一句。剩下：iOS 壳按同一视图模型接入（先发 `ConnCheckStart` 再报本轮服务器结论，见 [architecture.md](architecture.md) 的连接检测）；三端都迁完后删除核心里的 `PingMachine*`；线上用真实弱网各看一次慢在网络、慢在电脑和改走中继三种显示。验收标准：iOS 模拟器按金样渲染并连真实 daemon 测一次，`git grep PingMachine` 只剩测试或为零
 
 ### 直连实施与验收
 
@@ -88,7 +88,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 - **恢复（0c 验 relay，第 1 期加 direct/bulk，第 2 期加指令，第 3 期加终端）**：按 [恢复目标](transport.md#可测的恢复承诺) 分别记录单路故障的最大连续应用间隔和双路换网的 relay/direct 可用时间。无 hint 单独计发现时间；限流风暴、超 RTT、超 replay 的不达标情况单列。0c 在恢复预算内保持原 ID 的在途操作，试探不清掉健康独立终端的画面、不重打未知按键；真实终端腿丢失沿用新流+快照。第 3 期再验有界输入缓存与旧流续接，不能绕过 fail-stop。bulk 另测软期限与持久 offset。
 - **安全与资源（0a 验结果/持久预算，第 1 期验信令/撤销/池，第 2/3 期加对应负载，第 4 期验真机 30 分钟）**：按 [安全绑定](transport.md#5-协议与安全绑定) 测重放窗口边界/重启、信令与 SDP fuzz、仅收输出撤销、Install/Touch 和租约关闭时间、机器策略远程关闭及重启保持；多客户端/多 daemon 达资源上限及 30 分钟传输内存不持续增长。中继扣留撤销的租约边界不得伪装成短时撤销保证。
 
-**直连界面已按 v63 新设计与共享核心接线重构（待补真机验收）**：直连设计已在 v63 定稿为「顶栏轻气泡 + 人话排障单」（规则见 [transport · 界面规则](transport.md#7-界面规则)、[design-system · 「连接」组](design-system.md#6-组件)，手机与宽屏界面稿见 [client-v66 · 直连](design/client-v66.html#direct)），主路径使用统一 `ConnectionGroupView` / `DirectDiagnosticsViewModel` / `SessionDirectChipView` 视图模型。仍须按下列标准补齐真机验收（含手机与宽屏亮暗主题、辅助功能、本地化及真机直连；路径切换不弹提示，关闭后无 STUN/ICE；隔离 server → daemon → tmux → 真实 CLI 分别记录直接界面操作与调试触发，不使用日常账户）。
+**直连界面已按 v63 新设计与共享核心接线重构（待补真机验收）**：直连设计已在 v63 定稿为「顶栏轻气泡 + 人话排障单」（规则见 [transport · 界面规则](transport.md#7-界面规则)、[design-system · 「连接」组](design-system.md#6-组件)，手机与宽屏界面稿见 [client-v67 · 直连](design/client-v67.html#direct)），主路径使用统一 `ConnectionGroupView` / `DirectDiagnosticsViewModel` / `SessionDirectChipView` 视图模型。仍须按下列标准补齐真机验收（含手机与宽屏亮暗主题、辅助功能、本地化及真机直连；路径切换不弹提示，关闭后无 STUN/ICE；隔离 server → daemon → tmux → 真实 CLI 分别记录直接界面操作与调试触发，不使用日常账户）。
 
 **Android 的小缺口**（没排期，碰到相关改动时一起做）：
 
@@ -195,7 +195,7 @@ v61 整理时按当前代码核对，以下实现仍偏离负责人裁定，尚�
 - Android 的会话和项目页在平板与横屏上仍是手机布局，要不要做网页那样的侧栏加主区域未定
 - 客户端切换 fast 模式是否要做（优先级低）
 - 运行中的会话要不要也能分叉（比如主任务跑着，另开一支问别的）。现在只允许空闲和已结束的会话（[architecture §13](architecture.md#13-daemon-设置与远程新建会话)）；要做得先实测两个 CLI 怎么处理停在一轮中间的记录，再定复制来的历史在哪里收尾
-- 连接检测里「较慢」的界线是初始取值（服务器 500 ms；电脑分段：网络往返直连 500 ms、经中继 800 ms，电脑处理 500 ms，等直连回应 500 ms，总耗时 1500 ms，见 [design-system.md](design-system.md)），用一段时间后按实际延时再定
+- 连接检测里「较慢」的界线是初始取值（服务器 500 ms；电脑分段：网络往返直连 500 ms、经中继 800 ms，电脑处理 500 ms，本机处理 500 ms，等直连回应 500 ms，总耗时 1500 ms，见 [design-system.md](design-system.md)），用一段时间后按实际延时再定
 - 会话图片的保存期限（30 天）和配额（1 GiB）、预览长边 320px、显示版 2048px、加密后整个信封不超过 1 MiB 都是初始取值（[session-images.md](session-images.md)），要用实际截图和一段时间的用量看清晰度、流量和空间再定
 - server 的过期图片仍保留状态行，SQLite 空间用于后续复用；是否需要定期压缩数据库及历史元数据期限未定
 - 图片过期后要不要支持从电脑重新取（daemon 从 rollout 或 transcript 里重新编码上传）；需要机器在线，也要一个新的指令
