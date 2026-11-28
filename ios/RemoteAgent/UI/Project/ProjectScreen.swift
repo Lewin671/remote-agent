@@ -234,7 +234,7 @@ struct ProjectDetailContent<Composer: View>: View {
     @ViewBuilder private var sessionsSection: some View {
         if !detail.active.isEmpty {
             SectionLabel(L10n.homeLive(), count: Int(detail.activeCount)).accessibilityElement(children: .combine)
-            ForEach(Array(detail.active.enumerated()), id: \.element.sessionID) { idx, row in
+            ForEach(Array(detail.active.enumerated()), id: \.element.listID) { idx, row in
                 HomeSessionRow(row: row, last: idx == detail.active.count - 1)
             }
         }
@@ -244,7 +244,7 @@ struct ProjectDetailContent<Composer: View>: View {
                 showEnded ? L10n.listStateEnded() : L10n.projectsIosRecentEnded(),
                 count: showEnded ? Int(detail.endedTotal) : nil
             ).accessibilityElement(children: .combine)
-            ForEach(recent, id: \.sessionID) { row in
+            ForEach(recent, id: \.listID) { row in
                 HomeEndedRow(row: row)
             }
             if showEnded && (detail.canLoadEarlier || detail.hasMoreEnded_p) {

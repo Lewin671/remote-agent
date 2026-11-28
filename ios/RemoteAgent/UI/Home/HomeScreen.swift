@@ -168,11 +168,11 @@ struct HomeContent: View {
         } else if showTopQuestion {
             ids.append("qcard:\(home.topAttentionQuestion.sessionID)")
         }
-        ids += filteredAttentionRows.map { "att:\($0.sessionID)" }
-        ids += home.running.map { "run:\($0.sessionID)" }
+        ids += filteredAttentionRows.map(\.listID)
+        ids += home.running.map(\.listID)
         for g in home.endedGroups {
             ids.append("grp:\(g.groupKey)")
-            ids += g.items.map { "end:\($0.sessionID)" }
+            ids += g.items.map(\.listID)
         }
         return ids
     }
@@ -221,7 +221,7 @@ struct HomeContent: View {
             ? attentionRows
             : Array(attentionRows.prefix(attentionMax))
         let hidden = max(0, attentionRows.count - rows.count)
-        ForEach(Array(rows.enumerated()), id: \.element.sessionID) { index, row in
+        ForEach(Array(rows.enumerated()), id: \.element.listID) { index, row in
             HomePendingRow(
                 row: row,
                 first: index == 0,
@@ -243,7 +243,7 @@ struct HomeContent: View {
             let rows = allRunning || !home.filterQuery.isEmpty
                 ? home.running
                 : Array(home.running.prefix(runningMax))
-            ForEach(Array(rows.enumerated()), id: \.element.sessionID) { index, row in
+            ForEach(Array(rows.enumerated()), id: \.element.listID) { index, row in
                 HomeSessionRow(row: row, last: index == rows.count - 1)
             }
             if rows.count < home.running.count {
@@ -259,7 +259,7 @@ struct HomeContent: View {
     @ViewBuilder private var endedSections: some View {
         ForEach(home.endedGroups, id: \.groupKey) { group in
             SectionTitle(title: group.label.rendered(), dated: true)
-            ForEach(group.items, id: \.sessionID) { row in
+            ForEach(group.items, id: \.listID) { row in
                 HomeEndedRow(row: row)
             }
         }

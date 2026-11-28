@@ -3,6 +3,15 @@ import RACore
 import RAProto
 import SwiftUI
 
+// A session moves between the attention, live and ended lists, and those lists
+// sit side by side in one LazyVStack. Keying their ForEach by the bare session
+// ID gives the same identity to rows in different lists, and the lazy stack
+// then keeps drawing the row from the list the session just left (stale
+// status, wrong row style). Each list keys its rows with its own prefix.
+extension PBCoreAttentionRowView { var listID: String { "att:\(sessionID)" } }
+extension PBCoreSessionRowView { var listID: String { "run:\(sessionID)" } }
+extension PBCoreEndedRowView { var listID: String { "end:\(sessionID)" } }
+
 /// One session that has not ended: the status graphic, the title and time,
 /// then 「状态 · 预览」 with the status word in `ink2` like the rest, then
 /// metadata and any scheduled task note.
