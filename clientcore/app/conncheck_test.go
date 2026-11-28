@@ -107,6 +107,40 @@ func probeResultOutcome(dc *corev1.DispatchCommandEffect, direct bool, elapsedMs
 	}
 }
 
+// answerWorkProbes answers each of a machine's processing probes with the
+// same result, the first at firstNow and each next one stepMs later, so every
+// probe after the first takes stepMs. It returns the time of the last answer.
+func answerWorkProbes(t *testing.T, c *Core, dc *corev1.DispatchCommandEffect, firstNow, stepMs int64, mk func(*corev1.DispatchCommandEffect) *corev1.CommandOutcomeEvent) int64 {
+	t.Helper()
+	now := firstNow
+	for i := range latency.WorkSamples {
+		if i > 0 {
+			now += stepMs
+		}
+		b := c.Dispatch(&corev1.Event{NowMs: now, Event: &corev1.Event_CommandOutcome{CommandOutcome: mk(dc)}})
+		var next *corev1.DispatchCommandEffect
+		for _, d := range collectDispatchedCommands(b) {
+			if d.MachineId == dc.MachineId {
+				next = d
+			}
+		}
+		if i == latency.WorkSamples-1 {
+			if next != nil {
+				t.Fatalf("%s: unexpected probe after the last one: %+v", dc.MachineId, next)
+			}
+			break
+		}
+		if next == nil {
+			t.Fatalf("%s: expected processing probe #%d", dc.MachineId, i+2)
+		}
+		if cmd := decodeCommand(t, next.CommandBytes); !cmd.GetProbeLatency().GetWork() || next.ForceRelay != dc.ForceRelay {
+			t.Fatalf("%s: probe #%d must be the same work probe, got %+v force=%v", dc.MachineId, i+2, cmd, next.ForceRelay)
+		}
+		dc = next
+	}
+	return now
+}
+
 func probeInvalidBodyOutcome(dc *corev1.DispatchCommandEffect, direct bool) *corev1.CommandOutcomeEvent {
 	return &corev1.CommandOutcomeEvent{
 		RequestId:         dc.RequestId,
@@ -290,13 +324,10 @@ func TestConnCheckRelayThreeEchoesMedianAndWork(t *testing.T) {
 		t.Fatalf("expected force-relay probe_latency(work=true), got %+v force=%v", workCmd, workDC.ForceRelay)
 	}
 
-	// Work probe finishes in 2140ms with computer 1790ms (execute 1770ms > queue 10ms).
-	curNow += 2140
-	c.Dispatch(&corev1.Event{
-		NowMs: curNow,
-		Event: &corev1.Event_CommandOutcome{
-			CommandOutcome: probeResultOutcome(workDC, false, 2090, 1_790_000, 10_000, 1_770_000),
-		},
+	// Each work probe finishes in 2140ms: wire 2090ms, computer 1790ms
+	// (execute 1770ms > queue 10ms) -> network 300ms, this device 50ms.
+	answerWorkProbes(t, c, workDC, curNow+2140, 2140, func(dc *corev1.DispatchCommandEffect) *corev1.CommandOutcomeEvent {
+		return probeResultOutcome(dc, false, 2090, 1_790_000, 10_000, 1_770_000)
 	})
 	vm = viewSettingsVM(t, c)
 	if vm.GetConnCheck().GetMachinesBusy() {
@@ -307,9 +338,12 @@ func TestConnCheckRelayThreeEchoesMedianAndWork(t *testing.T) {
 		!lat.Slow ||
 		lat.GetValueText().GetKey() != text.KeyConnectionLatencyMsSlow ||
 		lat.GetValueText().GetArgs()[0].GetStrValue() != "2,140" ||
-		len(lat.Segments) != 2 ||
+		len(lat.Segments) != 3 ||
 		lat.Segments[0].Slow ||
 		lat.Segments[0].GetValueText().GetArgs()[0].GetStrValue() != "300" ||
+		lat.Segments[2].GetLabelText().GetKey() != text.KeyConnectionLatencyLocal ||
+		lat.Segments[2].GetValueText().GetArgs()[0].GetStrValue() != "50" ||
+		lat.GetNoteText().GetKey() != text.KeyConnectionLatencyRunsRange ||
 		!lat.Segments[1].Slow ||
 		lat.Segments[1].GetValueText().GetArgs()[0].GetStrValue() != "1,790" ||
 		lat.Segments[1].GetDetailText().GetKey() != text.KeyConnectionLatencyMostlyRunning ||
@@ -398,26 +432,9 @@ func TestConnCheckDirectSlowQueueReroutedAndSingleRelayFallback(t *testing.T) {
 		byMachine[mid] = dcs[0]
 	}
 
-	// 1. m-single-relay: Single attempt completes over relay (AttemptCount == 1 && !TriedDirect) at +720ms.
-	//    Network RTT is recalculated on relay (700 - 50 = 650ms, NOT slow because relay threshold is 800ms),
-	//    no WaitDirect segment, and no SummaryOverrideText.
-	c.Dispatch(&corev1.Event{
-		NowMs: workStart + 720,
-		Event: &corev1.Event_CommandOutcome{
-			CommandOutcome: probeResultOutcome(byMachine["m-single-relay"], false, 700, 50_000, 5_000, 40_000),
-		},
-	})
-
-	// 2. m-direct completes over direct at +1250ms: wire 1198ms - computer 1190ms = 8ms network, queued 1150ms.
-	c.Dispatch(&corev1.Event{
-		NowMs: workStart + 1250,
-		Event: &corev1.Event_CommandOutcome{
-			CommandOutcome: probeResultOutcome(byMachine["m-direct"], true, 1198, 1_190_000, 1_150_000, 25_000),
-		},
-	})
-
-	// 3. m-reroute: Attempt 1 fails on direct (path_changed) at +3000ms -> sync retries Attempt 2 over relay
-	//    (AttemptCount == 2 && TriedDirect == true) -> shows Rerouted + 3 segments including WaitDirect.
+	// 1. m-reroute: Attempt 1 fails on direct (path_changed) at +3000ms -> sync retries Attempt 2 over relay
+	//    (AttemptCount == 2 && TriedDirect == true) -> shows Rerouted + 3 segments including WaitDirect,
+	//    and stops probing: more probes would each wait for direct again.
 	retryBatch := c.Dispatch(&corev1.Event{
 		NowMs: workStart + 3000,
 		Event: &corev1.Event_CommandOutcome{
@@ -428,11 +445,27 @@ func TestConnCheckDirectSlowQueueReroutedAndSingleRelayFallback(t *testing.T) {
 	if len(retryDCs) != 1 || !retryDCs[0].ForceRelay || retryDCs[0].RequestId != byMachine["m-reroute"].RequestId {
 		t.Fatalf("expected relay retry attempt for m-reroute, got %+v", retryDCs)
 	}
-	c.Dispatch(&corev1.Event{
+	rerouteDone := c.Dispatch(&corev1.Event{
 		NowMs: workStart + 3420,
 		Event: &corev1.Event_CommandOutcome{
 			CommandOutcome: probeResultOutcome(retryDCs[0], false, 374, 64_000, 10_000, 50_000),
 		},
+	})
+	if dcs := collectDispatchedCommands(rerouteDone); len(dcs) != 0 {
+		t.Fatalf("expected no more probes after a reroute, got %+v", dcs)
+	}
+
+	// 2. m-single-relay: Single attempts complete over relay (AttemptCount == 1 && !TriedDirect), 720ms each.
+	//    Network RTT is recalculated on relay (700 - 50 = 650ms, NOT slow because relay threshold is 800ms),
+	//    no WaitDirect segment, and no SummaryOverrideText. The first probe also waited for m-reroute, so
+	//    it is the slowest and the shown one is a 720ms probe.
+	last := answerWorkProbes(t, c, byMachine["m-single-relay"], workStart+3420+720, 720, func(dc *corev1.DispatchCommandEffect) *corev1.CommandOutcomeEvent {
+		return probeResultOutcome(dc, false, 700, 50_000, 5_000, 40_000)
+	})
+
+	// 3. m-direct completes over direct in 1250ms: wire 1198ms - computer 1190ms = 8ms network, queued 1150ms.
+	answerWorkProbes(t, c, byMachine["m-direct"], last+1250, 1250, func(dc *corev1.DispatchCommandEffect) *corev1.CommandOutcomeEvent {
+		return probeResultOutcome(dc, true, 1198, 1_190_000, 1_150_000, 25_000)
 	})
 
 	vm := viewSettingsVM(t, c)
@@ -442,7 +475,8 @@ func TestConnCheckDirectSlowQueueReroutedAndSingleRelayFallback(t *testing.T) {
 		latDirect.Segments[0].GetValueText().GetArgs()[0].GetStrValue() != "8" ||
 		!latDirect.Segments[1].Slow ||
 		latDirect.Segments[1].GetDetailText().GetKey() != text.KeyConnectionLatencyMostlyQueued ||
-		latDirect.Segments[1].GetDetailText().GetArgs()[0].GetStrValue() != "1,150" {
+		latDirect.Segments[1].GetDetailText().GetArgs()[0].GetStrValue() != "1,150" ||
+		latDirect.Segments[2].GetValueText().GetArgs()[0].GetStrValue() != "52" {
 		t.Fatalf("unexpected direct slow-queued view: %+v", latDirect)
 	}
 
@@ -456,18 +490,23 @@ func TestConnCheckDirectSlowQueueReroutedAndSingleRelayFallback(t *testing.T) {
 		latReroute.Segments[1].GetValueText().GetArgs()[0].GetStrValue() != "64" ||
 		!latReroute.Segments[2].Slow ||
 		latReroute.Segments[2].GetLabelText().GetKey() != text.KeyConnectionLatencyWaitDirect ||
-		latReroute.Segments[2].GetValueText().GetArgs()[0].GetStrValue() != "3,046" {
+		latReroute.Segments[2].GetValueText().GetArgs()[0].GetStrValue() != "3,046" ||
+		latReroute.GetNoteText() != nil {
 		t.Fatalf("unexpected rerouted view: %+v", latReroute)
 	}
 
 	latSingle := findMachineCard(t, vm, "m-single-relay").GetLatency()
 	if latSingle.Slow ||
 		latSingle.GetSummaryOverrideText() != nil ||
-		len(latSingle.Segments) != 2 ||
+		latSingle.GetValueText().GetArgs()[0].GetStrValue() != "720" ||
+		len(latSingle.Segments) != 3 ||
 		latSingle.Segments[0].Slow ||
 		latSingle.Segments[0].GetValueText().GetArgs()[0].GetStrValue() != "650" ||
 		latSingle.Segments[1].Slow ||
-		latSingle.Segments[1].GetValueText().GetArgs()[0].GetStrValue() != "50" {
+		latSingle.Segments[1].GetValueText().GetArgs()[0].GetStrValue() != "50" ||
+		latSingle.Segments[2].GetValueText().GetArgs()[0].GetStrValue() != "20" ||
+		latSingle.GetNoteText().GetArgs()[1].GetStrValue() != "720" ||
+		latSingle.GetNoteText().GetArgs()[2].GetStrValue() != "4,140" {
 		t.Fatalf("unexpected single-attempt relay fallback view: %+v", latSingle)
 	}
 }
@@ -826,15 +865,12 @@ func TestConnCheckTimeoutsServerUnavailableAndStopCancel(t *testing.T) {
 		if len(dcs) != 1 {
 			t.Fatalf("expected work probe dispatched after 3s sample wait, got %d", len(dcs))
 		}
-		c.Dispatch(&corev1.Event{
-			NowMs: now + 10 + latency.DirectSampleWaitMs + 42,
-			Event: &corev1.Event_CommandOutcome{
-				CommandOutcome: probeResultOutcome(dcs[0], true, 30, 12_000, 1_000, 10_000),
-			},
+		answerWorkProbes(t, c, dcs[0], now+10+latency.DirectSampleWaitMs+42, 42, func(dc *corev1.DispatchCommandEffect) *corev1.CommandOutcomeEvent {
+			return probeResultOutcome(dc, true, 30, 12_000, 1_000, 10_000)
 		})
 		vm := viewSettingsVM(t, c)
 		lat := findMachineCard(t, vm, "m-direct-nosamp").GetLatency()
-		if lat.State != corev1.MachineLatencyState_MACHINE_LATENCY_STATE_DONE || lat.Slow || len(lat.Segments) != 2 {
+		if lat.State != corev1.MachineLatencyState_MACHINE_LATENCY_STATE_DONE || lat.Slow || len(lat.Segments) != 3 {
 			t.Fatalf("unexpected direct no-sample fallback view: %+v", lat)
 		}
 	})
@@ -871,7 +907,7 @@ func TestSettingsOverviewGoldenConnCheckBreakdown(t *testing.T) {
 	if lat := byID["m-cc-1-ok"].GetLatency(); lat.GetState() != stdcorev1.MachineLatencyState_MACHINE_LATENCY_STATE_DONE || lat.GetSlow() {
 		t.Fatalf("m-cc-1-ok expected normal DONE, got %+v", lat)
 	}
-	if lat := byID["m-cc-2-slow"].GetLatency(); lat.GetState() != stdcorev1.MachineLatencyState_MACHINE_LATENCY_STATE_DONE || !lat.GetSlow() || len(lat.GetSegments()) != 2 || lat.GetSegments()[1].GetDetailText().GetKey() != text.KeyConnectionLatencyMostlyQueued {
+	if lat := byID["m-cc-2-slow"].GetLatency(); lat.GetState() != stdcorev1.MachineLatencyState_MACHINE_LATENCY_STATE_DONE || !lat.GetSlow() || len(lat.GetSegments()) != 3 || lat.GetSegments()[1].GetDetailText().GetKey() != text.KeyConnectionLatencyMostlyQueued {
 		t.Fatalf("m-cc-2-slow expected slow computer queued, got %+v", lat)
 	}
 	if lat := byID["m-cc-3-reroute"].GetLatency(); lat.GetState() != stdcorev1.MachineLatencyState_MACHINE_LATENCY_STATE_DONE || !lat.GetSlow() || len(lat.GetSegments()) != 3 || lat.GetSummaryOverrideText().GetKey() != text.KeyConnectionLatencyRerouted {

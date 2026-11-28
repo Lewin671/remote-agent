@@ -66,6 +66,22 @@
 			<string>A message can have at most %1$lld images</string>
 		</dict>
 	</dict>
+	<key>connection_latency_runs_range</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld run: %3$@–%2$@ ms</string>
+			<key>other</key>
+			<string>%1$lld runs: %3$@–%2$@ ms</string>
+		</dict>
+	</dict>
 	<key>connection_sec_elapsed</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

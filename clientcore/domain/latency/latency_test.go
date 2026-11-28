@@ -25,7 +25,7 @@ func TestMedianInt64(t *testing.T) {
 	}
 }
 
-func TestNetRoundTripAndWaitDirectClampZero(t *testing.T) {
+func TestNetRoundTripClampZero(t *testing.T) {
 	if got := NetRoundTripMs(100, 25_000); got != 75 {
 		t.Fatalf("NetRoundTripMs(100, 25000) = %d, want 75", got)
 	}
@@ -34,12 +34,6 @@ func TestNetRoundTripAndWaitDirectClampZero(t *testing.T) {
 	}
 	if got := NetRoundTripMs(10.6, 500); got != 10 {
 		t.Fatalf("NetRoundTripMs(10.6, 500) = %d, want 10", got)
-	}
-	if got := WaitDirectMs(3420, 374); got != 3046 {
-		t.Fatalf("WaitDirectMs(3420, 374) = %d, want 3046", got)
-	}
-	if got := WaitDirectMs(200, 300); got != 0 {
-		t.Fatalf("WaitDirectMs(200, 300) = %d, want 0", got)
 	}
 	if got := MicrosToMs(-10); got != 0 {
 		t.Fatalf("MicrosToMs(-10) = %d, want 0", got)
@@ -171,6 +165,16 @@ func TestEvaluateThresholdsAndCause(t *testing.T) {
 			want: EvalResult{WaitDirectSlow: true, TotalSlow: true},
 		},
 		{
+			name: "local_at_threshold",
+			in: EvalInput{
+				HasNetwork: true, NetworkMs: 11, NetworkIsDirect: true,
+				HasComputer: true, ComputerMs: 3, ExecuteMs: 2,
+				HasLocal: true, LocalMs: 500,
+				HasTotal: true, TotalMs: 514,
+			},
+			want: EvalResult{LocalSlow: true, TotalSlow: true},
+		},
+		{
 			name: "total_only_slow_fallback",
 			in: EvalInput{
 				HasNetwork: true, NetworkMs: 700, NetworkIsDirect: false,
@@ -201,5 +205,56 @@ func TestEvaluateThresholdsAndCause(t *testing.T) {
 				t.Fatalf("Evaluate(%+v) = %+v, want %+v", tc.in, got, tc.want)
 			}
 		})
+	}
+}
+
+// Guards the promise on screen: the shown parts add up to the shown total.
+func TestSplitWorkPartsAddUp(t *testing.T) {
+	for _, c := range []struct {
+		name                     string
+		total                    int64
+		wire                     float64
+		processUs                int64
+		wantNet, wantComp, wantR int64
+	}{
+		{"direct", 76, 14, 3_000, 11, 3, 62},
+		{"rerouted_rest_is_wait", 3420, 374, 64_000, 310, 64, 3046},
+		{"unknown_wire_all_network", 40, 0, 10_000, 30, 10, 0},
+		{"wire_longer_than_total", 20, 35, 5_000, 15, 5, 0},
+		{"daemon_longer_than_total", 8, 9, 12_000, 0, 12, 0},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			n, comp, r := SplitWork(c.total, c.wire, c.processUs)
+			if n != c.wantNet || comp != c.wantComp || r != c.wantR {
+				t.Fatalf("SplitWork(%d, %v, %d) = %d, %d, %d; want %d, %d, %d", c.total, c.wire, c.processUs, n, comp, r, c.wantNet, c.wantComp, c.wantR)
+			}
+		})
+	}
+}
+
+func TestPickSampleAndRange(t *testing.T) {
+	totals := func(ms ...int64) []WorkSample {
+		out := make([]WorkSample, len(ms))
+		for i, v := range ms {
+			out[i] = WorkSample{TotalMs: v}
+		}
+		return out
+	}
+	if i, _ := PickSample(totals(76, 14, 18, 15, 20)); i != 2 {
+		t.Fatalf("median pick = %d, want 2 (18 ms)", i)
+	}
+	if i, _ := PickSample(totals(30, 10)); i != 0 {
+		t.Fatalf("even pick = %d, want upper middle 0", i)
+	}
+	s := totals(20, 3420)
+	s[1].Rerouted = true
+	if i, _ := PickSample(s); i != 1 {
+		t.Fatalf("rerouted pick = %d, want 1", i)
+	}
+	if _, ok := PickSample(nil); ok {
+		t.Fatal("PickSample(nil) ok = true")
+	}
+	if lo, hi, _ := TotalRange(totals(76, 14, 18)); lo != 14 || hi != 76 {
+		t.Fatalf("TotalRange = %d..%d, want 14..76", lo, hi)
 	}
 }

@@ -306,6 +306,8 @@ class ConnCheckTest {
         ui.onNodeWithText("38 ms").assertExists()
         ui.onNodeWithText("11 ms").assertExists()
         ui.onNodeWithText("21 ms").assertExists()
+        ui.onNodeWithText("6 ms").assertExists()
+        ui.onNodeWithText("5 次测量：38～38 ms").assertExists()
 
         // 2. Studio: slow computer with queued detail
         ui.onNodeWithText("Studio").assertExists()
@@ -333,7 +335,7 @@ class ConnCheckTest {
         ui.onNodeWithText("超过 15 秒").assertExists()
 
         // Footer
-        ui.onNodeWithText("延时是一次往返的总耗时。电脑一行下面分成网络和电脑处理两段，慢的那段会标出来。", substring = true)
+        ui.onNodeWithText("延时是一次往返的总耗时。电脑一行取几次测量里居中的那次，下面几段加起来就是它，慢的那段会标出来。", substring = true)
             .performScrollTo()
             .assertExists()
 

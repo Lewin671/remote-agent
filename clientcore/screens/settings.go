@@ -65,8 +65,15 @@ type MachineLatencySnapshot struct {
 	ComputerTimedOut bool
 	HasWaitDirect    bool
 	WaitDirectMs     int64
+	HasLocal         bool
+	LocalMs          int64
 	HasTotal         bool
 	TotalMs          int64
+	// Totals across this round's processing probes; the shown parts come
+	// from one of them (see latency.PickSample).
+	SampleCount int
+	MinTotalMs  int64
+	MaxTotalMs  int64
 	ErrorText        *corev1.Text
 }
 

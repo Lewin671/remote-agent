@@ -715,8 +715,8 @@
   },
   {
     "key": "connection.latency_footer_breakdown",
-    "zh-CN": "电脑一行下面分成网络和电脑处理两段，慢的那段会标出来。",
-    "en": "Each computer shows network and computer time below, and marks the slow part.",
+    "zh-CN": "电脑一行取几次测量里居中的那次，下面几段加起来就是它，慢的那段会标出来。",
+    "en": "Each computer shows the middle of several runs; the parts below add up to it, and the slow part is marked.",
     "notes": "连接检测页底部补充说明，仅在至少有一台在线成员电脑已进入连接检测状态（非未检测）时拼在通用说明后。无变量。",
     "params": {},
     "platforms": [
@@ -799,6 +799,62 @@
     "en": "Waiting for direct",
     "notes": "连接检测电脑明细行名称：直连尝试超时后改走中继时，等待直连回应花掉的时间。无变量。",
     "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.latency_local",
+    "zh-CN": "本机处理",
+    "en": "This device",
+    "notes": "连接检测电脑明细行名称：本机（手机或浏览器）上加解密、调度和处理结果花的时间，即总耗时减去网络往返和电脑处理。紧凑短标签，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.latency_runs_range",
+    "zh-CN": {
+      "forms": {
+        "other": "{count} 次测量：{min}～{max} ms"
+      },
+      "plural": "count"
+    },
+    "en": {
+      "forms": {
+        "one": "{count} run: {min}–{max} ms",
+        "other": "{count} runs: {min}–{max} ms"
+      },
+      "plural": "count"
+    },
+    "notes": "连接检测电脑明细下面的一行小字：这一轮测了几次，最快和最慢的总耗时。min、max 为千位分隔后的毫秒数。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 5
+      },
+      "min": {
+        "type": "string",
+        "example": "12"
+      },
+      "max": {
+        "type": "string",
+        "example": "76"
+      }
+    },
     "platforms": [
       "web",
       "android",

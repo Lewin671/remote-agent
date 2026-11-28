@@ -41,6 +41,7 @@ type connCheckMachineJob struct {
 	reqStartedMonoMs  int64
 	workStartedMonoMs int64
 	echoSamples       []int64
+	workSamples       []latency.WorkSample
 }
 
 type connCheckController struct {
@@ -346,6 +347,34 @@ func (c *Core) startConnCheckEcho(ctx *sync.StepContext, job *connCheckMachineJo
 	c.m.sync.ScheduleAppTimer(ctx, corev1.TimerKind_TIMER_KIND_UI_TRANSIENT, connCheckTimerKey(connCheckEchoTimerPrefix, job.roundID, job.machineID), latency.EchoTimeoutMs)
 }
 
+// applyConnCheckWorkSamples fills the finished snapshot from one shown
+// probe, so its parts add up to its total, plus the range across probes.
+func applyConnCheckWorkSamples(snap *screens.MachineLatencySnapshot, samples []latency.WorkSample) {
+	i, _ := latency.PickSample(samples)
+	s := samples[i]
+	snap.HasTotal = true
+	snap.TotalMs = s.TotalMs
+	snap.HasNetwork = true
+	snap.NetworkMs = s.NetworkMs
+	snap.NetworkIsDirect = s.NetworkIsDirect
+	snap.HasComputer = true
+	snap.ComputerMs = s.ComputerMs
+	snap.QueueMs = s.QueueMs
+	snap.ExecuteMs = s.ExecuteMs
+	snap.Rerouted = s.Rerouted
+	snap.HasWaitDirect = s.Rerouted
+	snap.HasLocal = !s.Rerouted
+	snap.WaitDirectMs = 0
+	snap.LocalMs = 0
+	if s.Rerouted {
+		snap.WaitDirectMs = s.RestMs
+	} else {
+		snap.LocalMs = s.RestMs
+	}
+	snap.SampleCount = len(samples)
+	snap.MinTotalMs, snap.MaxTotalMs, _ = latency.TotalRange(samples)
+}
+
 func (c *Core) startConnCheckWork(ctx *sync.StepContext, job *connCheckMachineJob, snap *screens.MachineLatencySnapshot) {
 	job.phase = connCheckPhaseWork
 	job.workStartedMonoMs = c.m.sync.MonoMs()
@@ -446,54 +475,24 @@ func (c *Core) onConnCheckCommandSettled(sc sync.SettledCommand, meta cmdMeta) [
 		}
 		totalMs := max(int64(0), c.m.sync.MonoMs()-job.workStartedMonoMs)
 		pl := sc.Result.GetProbeLatency()
-		snap.HasTotal = true
-		snap.TotalMs = totalMs
-		snap.HasComputer = true
-		snap.ComputerMs = latency.MicrosToMs(pl.ProcessUs)
-		snap.QueueMs = latency.MicrosToMs(pl.QueueUs)
-		snap.ExecuteMs = latency.MicrosToMs(pl.ExecuteUs)
-
-		if job.startedDirect && !sc.RouteWasDirect {
-			// Direct machine settled over relay. Always recalculate network RTT
-			// on the relay leg; only mark Rerouted + WaitDirect when sync made
-			// >1 attempt and actually tried direct first.
-			snap.NetworkIsDirect = false
-			wireMs := sc.WireElapsedMs
-			if wireMs <= 0 {
-				wireMs = float64(totalMs)
-			}
-			snap.HasNetwork = true
-			snap.NetworkMs = latency.NetRoundTripMs(wireMs, pl.ProcessUs)
-			if sc.AttemptCount > 1 && sc.TriedDirect {
-				snap.Rerouted = true
-				snap.HasWaitDirect = true
-				snap.WaitDirectMs = latency.WaitDirectMs(totalMs, wireMs)
-			} else {
-				snap.Rerouted = false
-				snap.HasWaitDirect = false
-				snap.WaitDirectMs = 0
-			}
-		} else if job.startedDirect && !snap.HasNetwork {
-			wireMs := sc.WireElapsedMs
-			if wireMs <= 0 {
-				wireMs = float64(totalMs)
-			}
-			snap.HasNetwork = true
-			snap.NetworkMs = latency.NetRoundTripMs(wireMs, pl.ProcessUs)
-			snap.NetworkIsDirect = true
+		sample := latency.WorkSample{
+			QueueMs:         latency.MicrosToMs(pl.QueueUs),
+			ExecuteMs:       latency.MicrosToMs(pl.ExecuteUs),
+			NetworkIsDirect: sc.RouteWasDirect,
+			// Direct machine settled over relay after sync actually tried
+			// direct first: the rest of the round trip was spent waiting.
+			Rerouted: job.startedDirect && !sc.RouteWasDirect && sc.AttemptCount > 1 && sc.TriedDirect,
 		}
-
-		// The network figure is measured separately from this command (a
-		// direct keepalive median, or the relay echoes), so it can exceed what
-		// this round trip left for the network; never show a part larger than
-		// the whole, on either path.
-		if snap.HasNetwork {
-			snap.NetworkMs = latency.ClampNetworkMs(snap.NetworkMs, totalMs, snap.ComputerMs)
+		sample.NetworkMs, sample.ComputerMs, sample.RestMs = latency.SplitWork(totalMs, sc.WireElapsedMs, pl.ProcessUs)
+		sample.TotalMs = sample.NetworkMs + sample.ComputerMs + sample.RestMs
+		job.workSamples = append(job.workSamples, sample)
+		// A reroute is the answer for this round; more probes would each
+		// wait for direct again.
+		if !sample.Rerouted && len(job.workSamples) < latency.WorkSamples {
+			c.startConnCheckWork(stepCtx, job, snap)
+			break
 		}
-		// The computer's self-reported time happens inside this round trip,
-		// so the total can never be smaller than it.
-		snap.TotalMs = max(snap.TotalMs, snap.ComputerMs)
-
+		applyConnCheckWorkSamples(snap, job.workSamples)
 		snap.State = corev1.MachineLatencyState_MACHINE_LATENCY_STATE_DONE
 		job.phase = connCheckPhaseDone
 	}

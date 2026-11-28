@@ -110,14 +110,16 @@ describe("connection check golden rendering", () => {
     expect(segmentsOf(okRow)).toEqual([
       { label: "网络往返", slowTag: "", value: "11 ms", detail: "", emphasized: false },
       { label: "电脑处理", slowTag: "", value: "21 ms", detail: "", emphasized: false },
+      { label: "本机处理", slowTag: "", value: "6 ms", detail: "", emphasized: false },
     ]);
+    expect(okRow.querySelector(".conn-nt")?.textContent).toBe("5 次测量：38～38 ms");
 
     // 2. Slow on computer with detail line (m-cc-2-slow)
     const slowRow = machineRow("m-cc-2-slow");
     expect(slowRow.querySelector(".conn-top .mv")?.textContent?.trim()).toBe("1,250 ms · 较慢");
     expect(slowRow.querySelector(".conn-top .mv .mark.off")).not.toBeNull();
     const slowSegs = segmentsOf(slowRow);
-    expect(slowSegs).toHaveLength(2);
+    expect(slowSegs).toHaveLength(3);
     expect(slowSegs[0]).toEqual({ label: "网络往返", slowTag: "", value: "20 ms", detail: "", emphasized: false });
     expect(slowSegs[1].label).toBe("电脑处理");
     expect(slowSegs[1].slowTag).toBe("较慢");
@@ -322,7 +324,7 @@ describe("connection check event wiring and core integration", () => {
       return r;
     }
 
-    it("measures via clientcore probe_latency and renders direct summary + two breakdown rows", async () => {
+    it("measures via clientcore probe_latency and renders direct summary + three breakdown rows", async () => {
       // Demo runs no transport, so a direct machine has no keepalive samples
       // and the core waits its 3 s before probing; direct rows are covered by
       // the golden test above, so this smoke stays on the relay.
@@ -331,7 +333,7 @@ describe("connection check event wiring and core integration", () => {
 
       const mac = machineRow("mac");
       expect(mac.querySelectorAll(".mark").length).toBe(1);
-      expect(segmentsOf(mac).map((s) => s.label)).toEqual(["网络往返", "电脑处理"]);
+      expect(segmentsOf(mac).map((s) => s.label)).toEqual(["网络往返", "电脑处理", "本机处理"]);
 
       // VPS-dev in demo returns slow computer execution (1,790 ms)
       const vps = machineRow("vps");

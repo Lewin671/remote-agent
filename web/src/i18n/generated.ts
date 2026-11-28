@@ -182,6 +182,7 @@ export interface MessageArgs {
   "connection.latency_computer_no_reply": { [name: string]: never };
   "connection.latency_footer_breakdown": { [name: string]: never };
   "connection.latency_is_one_round_trip_the_server_row_measures": { [name: string]: never };
+  "connection.latency_local": { [name: string]: never };
   "connection.latency_mostly_queued": { ms: string };
   "connection.latency_mostly_running": { ms: string };
   "connection.latency_ms": { ms: string };
@@ -194,6 +195,7 @@ export interface MessageArgs {
   "connection.latency_over_seconds": { seconds: number };
   "connection.latency_pending": { [name: string]: never };
   "connection.latency_rerouted": { [name: string]: never };
+  "connection.latency_runs_range": { count: number; max: string; min: string };
   "connection.latency_slow": { [name: string]: never };
   "connection.latency_wait_direct": { [name: string]: never };
   "connection.live_push": { [name: string]: never };
@@ -2014,8 +2016,9 @@ export const messages = {
     "connection.latency_a11y_total_slow": "Total {ms} ms, slow",
     "connection.latency_computer": "Computer",
     "connection.latency_computer_no_reply": "The computer did not answer in time",
-    "connection.latency_footer_breakdown": "Each computer shows network and computer time below, and marks the slow part.",
+    "connection.latency_footer_breakdown": "Each computer shows the middle of several runs; the parts below add up to it, and the slow part is marked.",
     "connection.latency_is_one_round_trip_the_server_row_measures": "Latency is the total round-trip time.",
+    "connection.latency_local": "This device",
     "connection.latency_mostly_queued": "Mostly queued ({ms} ms); the computer is busy with other work",
     "connection.latency_mostly_running": "Mostly running ({ms} ms)",
     "connection.latency_ms": "{ms} ms",
@@ -2028,6 +2031,13 @@ export const messages = {
     "connection.latency_over_seconds": "Over {seconds} s",
     "connection.latency_pending": "—",
     "connection.latency_rerouted": "Direct did not answer in time; this check went through the relay",
+    "connection.latency_runs_range": {
+      "forms": {
+        "one": "{count} run: {min}–{max} ms",
+        "other": "{count} runs: {min}–{max} ms"
+      },
+      "plural": "count"
+    },
     "connection.latency_slow": "Slow",
     "connection.latency_wait_direct": "Waiting for direct",
     "connection.live_push": "Live push",
@@ -4418,8 +4428,9 @@ export const messages = {
     "connection.latency_a11y_total_slow": "总耗时 {ms} 毫秒，较慢",
     "connection.latency_computer": "电脑处理",
     "connection.latency_computer_no_reply": "电脑没有及时回应",
-    "connection.latency_footer_breakdown": "电脑一行下面分成网络和电脑处理两段，慢的那段会标出来。",
+    "connection.latency_footer_breakdown": "电脑一行取几次测量里居中的那次，下面几段加起来就是它，慢的那段会标出来。",
     "connection.latency_is_one_round_trip_the_server_row_measures": "延时是一次往返的总耗时。",
+    "connection.latency_local": "本机处理",
     "connection.latency_mostly_queued": "主要在排队（{ms} ms），电脑正忙于别的任务",
     "connection.latency_mostly_running": "主要在执行（{ms} ms）",
     "connection.latency_ms": "{ms} ms",
@@ -4432,6 +4443,12 @@ export const messages = {
     "connection.latency_over_seconds": "超过 {seconds} 秒",
     "connection.latency_pending": "—",
     "connection.latency_rerouted": "直连没有及时回应，这一次改走了中继",
+    "connection.latency_runs_range": {
+      "forms": {
+        "other": "{count} 次测量：{min}～{max} ms"
+      },
+      "plural": "count"
+    },
     "connection.latency_slow": "较慢",
     "connection.latency_wait_direct": "等直连回应",
     "connection.live_push": "实时推送",

@@ -28,6 +28,8 @@ func BuildMachineLatencyView(machineName string, directRow *corev1.ConnCheckDire
 		ExecuteMs:       snap.ExecuteMs,
 		HasWaitDirect:   snap.HasWaitDirect,
 		WaitDirectMs:    snap.WaitDirectMs,
+		HasLocal:        snap.HasLocal,
+		LocalMs:         snap.LocalMs,
 		HasTotal:        snap.HasTotal,
 		TotalMs:         snap.TotalMs,
 	})
@@ -47,10 +49,14 @@ func BuildMachineLatencyView(machineName string, directRow *corev1.ConnCheckDire
 			LabelText: text.Msg(text.KeyConnectionLatencyComputer),
 			ValueText: text.Msg(text.KeyConnectionLatencyPending),
 		}
+		localSeg := &corev1.MachineLatencySegment{
+			LabelText: text.Msg(text.KeyConnectionLatencyLocal),
+			ValueText: text.Msg(text.KeyConnectionLatencyPending),
+		}
 		v := &corev1.MachineLatencyView{
 			State:     corev1.MachineLatencyState_MACHINE_LATENCY_STATE_MEASURING,
 			ValueText: text.Msg(text.KeyConnectionChecking),
-			Segments:  []*corev1.MachineLatencySegment{netSeg, compSeg},
+			Segments:  []*corev1.MachineLatencySegment{netSeg, compSeg, localSeg},
 		}
 		v.A11YText = buildMachineLatencyA11y(machineName, directRow, v, 0, false)
 		return v
@@ -82,6 +88,14 @@ func BuildMachineLatencyView(machineName string, directRow *corev1.ConnCheckDire
 			}
 		}
 		segs := []*corev1.MachineLatencySegment{netSeg, compSeg}
+		if snap.HasLocal {
+			segs = append(segs, &corev1.MachineLatencySegment{
+				LabelText:     text.Msg(text.KeyConnectionLatencyLocal),
+				ValueText:     formatLatencyMsText(snap.LocalMs),
+				Slow:          eval.LocalSlow,
+				SlowLabelText: slowLabelText(eval.LocalSlow),
+			})
+		}
 		var summaryOverride *corev1.Text
 		if snap.Rerouted {
 			summaryOverride = text.Msg(text.KeyConnectionLatencyRerouted)
@@ -100,6 +114,13 @@ func BuildMachineLatencyView(machineName string, directRow *corev1.ConnCheckDire
 			Slow:                eval.TotalSlow,
 			Segments:            segs,
 			SummaryOverrideText: summaryOverride,
+		}
+		if snap.SampleCount > 1 {
+			v.NoteText = text.Msg(text.KeyConnectionLatencyRunsRange,
+				text.Int("count", int64(snap.SampleCount)),
+				text.Str("min", latency.FormatMs(snap.MinTotalMs)),
+				text.Str("max", latency.FormatMs(snap.MaxTotalMs)),
+			)
 		}
 		v.A11YText = buildMachineLatencyA11y(machineName, directRow, v, snap.TotalMs, true)
 		return v

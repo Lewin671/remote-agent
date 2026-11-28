@@ -371,7 +371,23 @@
           "cc-a2",
           "cc-r3",
           "cc-a3",
-          "cc-a3b"
+          "cc-r1b",
+          "cc-a1b",
+          "cc-r1c",
+          "cc-a1c",
+          "cc-r1d",
+          "cc-a1d",
+          "cc-r1e",
+          "cc-a1e",
+          "cc-r2b",
+          "cc-a2b",
+          "cc-r2c",
+          "cc-a2c",
+          "cc-a3b",
+          "cc-r2d",
+          "cc-a2d",
+          "cc-r2e",
+          "cc-a2e"
         ]
       }
     },
@@ -522,6 +538,86 @@
       "event": {
         "commandOutcome": {
           "attemptBound": true,
+          "attemptId": "cc-a1b",
+          "elapsedMs": 32,
+          "hashesMatch": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "completed",
+          "rawResult": "GghleGVjdXRlZCIJY29tcGxldGVkQAHqAgsIiKQBEOgHGLiUAQ==",
+          "requestId": "cc-r1b",
+          "routeWasDirect": true,
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "monoMs": "5076",
+        "nowMs": "1791078064096"
+      }
+    },
+    {
+      "event": {
+        "commandOutcome": {
+          "attemptBound": true,
+          "attemptId": "cc-a1c",
+          "elapsedMs": 32,
+          "hashesMatch": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "completed",
+          "rawResult": "GghleGVjdXRlZCIJY29tcGxldGVkQAHqAgsIiKQBEOgHGLiUAQ==",
+          "requestId": "cc-r1c",
+          "routeWasDirect": true,
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "monoMs": "5114",
+        "nowMs": "1791078064134"
+      }
+    },
+    {
+      "event": {
+        "commandOutcome": {
+          "attemptBound": true,
+          "attemptId": "cc-a1d",
+          "elapsedMs": 32,
+          "hashesMatch": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "completed",
+          "rawResult": "GghleGVjdXRlZCIJY29tcGxldGVkQAHqAgsIiKQBEOgHGLiUAQ==",
+          "requestId": "cc-r1d",
+          "routeWasDirect": true,
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "monoMs": "5152",
+        "nowMs": "1791078064172"
+      }
+    },
+    {
+      "event": {
+        "commandOutcome": {
+          "attemptBound": true,
+          "attemptId": "cc-a1e",
+          "elapsedMs": 32,
+          "hashesMatch": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "completed",
+          "rawResult": "GghleGVjdXRlZCIJY29tcGxldGVkQAHqAgsIiKQBEOgHGLiUAQ==",
+          "requestId": "cc-r1e",
+          "routeWasDirect": true,
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "monoMs": "5190",
+        "nowMs": "1791078064210"
+      }
+    },
+    {
+      "event": {
+        "commandOutcome": {
+          "attemptBound": true,
           "attemptId": "cc-a2",
           "elapsedMs": 1210,
           "hashesMatch": true,
@@ -536,6 +632,26 @@
         },
         "monoMs": "6250",
         "nowMs": "1791078065270"
+      }
+    },
+    {
+      "event": {
+        "commandOutcome": {
+          "attemptBound": true,
+          "attemptId": "cc-a2b",
+          "elapsedMs": 1210,
+          "hashesMatch": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "completed",
+          "rawResult": "GghleGVjdXRlZCIJY29tcGxldGVkQAHqAgwI8NBIELCYRhiowwE=",
+          "requestId": "cc-r2b",
+          "routeWasDirect": true,
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "monoMs": "7500",
+        "nowMs": "1791078066520"
       }
     },
     {
@@ -570,6 +686,66 @@
         },
         "monoMs": "8420",
         "nowMs": "1791078067440"
+      }
+    },
+    {
+      "event": {
+        "commandOutcome": {
+          "attemptBound": true,
+          "attemptId": "cc-a2c",
+          "elapsedMs": 1210,
+          "hashesMatch": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "completed",
+          "rawResult": "GghleGVjdXRlZCIJY29tcGxldGVkQAHqAgwI8NBIELCYRhiowwE=",
+          "requestId": "cc-r2c",
+          "routeWasDirect": true,
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "monoMs": "8750",
+        "nowMs": "1791078067770"
+      }
+    },
+    {
+      "event": {
+        "commandOutcome": {
+          "attemptBound": true,
+          "attemptId": "cc-a2d",
+          "elapsedMs": 1210,
+          "hashesMatch": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "completed",
+          "rawResult": "GghleGVjdXRlZCIJY29tcGxldGVkQAHqAgwI8NBIELCYRhiowwE=",
+          "requestId": "cc-r2d",
+          "routeWasDirect": true,
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "monoMs": "10000",
+        "nowMs": "1791078069020"
+      }
+    },
+    {
+      "event": {
+        "commandOutcome": {
+          "attemptBound": true,
+          "attemptId": "cc-a2e",
+          "elapsedMs": 1210,
+          "hashesMatch": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "completed",
+          "rawResult": "GghleGVjdXRlZCIJY29tcGxldGVkQAHqAgwI8NBIELCYRhiowwE=",
+          "requestId": "cc-r2e",
+          "routeWasDirect": true,
+          "signed": true,
+          "source": "OUTCOME_SOURCE_DAEMON"
+        },
+        "monoMs": "11250",
+        "nowMs": "1791078070270"
       }
     },
     {

@@ -33,16 +33,18 @@ func TestBuildMachineLatencyViewStates(t *testing.T) {
 		})
 		if vDirect.State != corev1.MachineLatencyState_MACHINE_LATENCY_STATE_MEASURING ||
 			vDirect.GetValueText().GetKey() != text.KeyConnectionChecking ||
-			len(vDirect.Segments) != 2 ||
+			len(vDirect.Segments) != 3 ||
 			vDirect.Segments[0].GetValueText().GetKey() != text.KeyConnectionLatencyMs ||
-			vDirect.Segments[1].GetValueText().GetKey() != text.KeyConnectionLatencyPending {
+			vDirect.Segments[1].GetValueText().GetKey() != text.KeyConnectionLatencyPending ||
+			vDirect.Segments[2].GetLabelText().GetKey() != text.KeyConnectionLatencyLocal ||
+			vDirect.Segments[2].GetValueText().GetKey() != text.KeyConnectionLatencyPending {
 			t.Fatalf("unexpected direct MEASURING view: %+v", vDirect)
 		}
 
 		vRelay := BuildMachineLatencyView("VPS-dev", nil, &MachineLatencySnapshot{
 			State: corev1.MachineLatencyState_MACHINE_LATENCY_STATE_MEASURING,
 		})
-		if len(vRelay.Segments) != 2 ||
+		if len(vRelay.Segments) != 3 ||
 			vRelay.Segments[0].GetValueText().GetKey() != text.KeyConnectionLatencyPending ||
 			vRelay.Segments[1].GetValueText().GetKey() != text.KeyConnectionLatencyPending {
 			t.Fatalf("unexpected relay MEASURING view: %+v", vRelay)
